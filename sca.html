@@ -13,46 +13,35 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
 #video{position:fixed;inset:0;width:100%;height:100%;object-fit:cover;z-index:0;}
 #canvas{display:none;}
 #oc{position:fixed;inset:0;width:100%;height:100%;z-index:5;pointer-events:none;}
-
-/* SETUP */
 #setup{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;padding:32px;z-index:100;}
-.s-logo{font-family:'Orbitron',monospace;font-size:32px;font-weight:900;color:var(--g);letter-spacing:5px;text-shadow:0 0 30px var(--g);text-align:center;}
+.s-logo{font-family:'Orbitron',monospace;font-size:32px;font-weight:900;color:var(--g);letter-spacing:5px;text-shadow:0 0 30px var(--g);text-align:center;line-height:1.1;}
 .s-sub{font-family:monospace;font-size:11px;color:rgba(255,255,255,.3);letter-spacing:3px;}
 .s-inp{width:100%;max-width:340px;background:rgba(0,0,0,.5);border:1px solid rgba(0,255,179,.25);color:#fff;padding:12px 14px;font-family:monospace;font-size:13px;outline:none;}
 .s-inp:focus{border-color:var(--g);}
 .s-btn{width:100%;max-width:340px;background:var(--g);color:#000;border:none;padding:15px;font-family:'Orbitron',monospace;font-weight:700;font-size:13px;letter-spacing:2px;cursor:pointer;}
 .s-note{font-size:10px;color:rgba(255,255,255,.2);text-align:center;max-width:280px;line-height:1.7;}
-
-/* HUD */
 #hud{position:fixed;top:0;left:0;right:0;z-index:30;padding:12px 14px;background:linear-gradient(to bottom,rgba(0,0,0,.9),transparent);display:flex;justify-content:space-between;align-items:center;}
 .hl{font-family:'Orbitron',monospace;font-size:14px;font-weight:900;color:var(--g);letter-spacing:3px;text-shadow:0 0 16px var(--g);}
 .hbtns{display:flex;gap:6px;align-items:center;}
 #hstatus{font-family:monospace;font-size:10px;color:rgba(255,255,255,.35);letter-spacing:1px;margin-right:4px;}
 .hbtn{background:rgba(255,255,255,.08);color:rgba(255,255,255,.5);border:1px solid rgba(255,255,255,.15);padding:6px 12px;font-family:monospace;font-size:10px;cursor:pointer;letter-spacing:1px;}
 .hbtn.on{color:var(--red);border-color:var(--red);}
-
-/* SCAN BAR */
 #scanbar{position:fixed;bottom:0;left:0;right:0;z-index:30;padding:16px 16px 32px;background:linear-gradient(to top,rgba(0,0,0,.92) 60%,transparent);display:flex;flex-direction:column;align-items:center;gap:8px;}
-#scanbtn{background:var(--g);color:#000;border:none;padding:18px 64px;font-family:'Orbitron',monospace;font-weight:900;font-size:16px;letter-spacing:2px;cursor:pointer;box-shadow:0 0 32px rgba(0,255,179,.5);touch-action:manipulation;-webkit-touch-callout:none;}
+#scanbtn{background:var(--g);color:#000;border:none;padding:18px 64px;font-family:'Orbitron',monospace;font-weight:900;font-size:16px;letter-spacing:2px;cursor:pointer;box-shadow:0 0 32px rgba(0,255,179,.5);touch-action:manipulation;}
 #scanbtn.reading{background:var(--gold);}
 #scanbtn.autoon{background:var(--red);}
 .shint{font-family:monospace;font-size:10px;color:rgba(255,255,255,.25);letter-spacing:1px;}
-
-/* BRACKETS */
 #brackets{position:fixed;inset:0;z-index:4;pointer-events:none;}
-.br{position:absolute;width:40px;height:40px;border-color:var(--g);border-style:solid;opacity:.5;}
-.tl{top:26%;left:6%;border-width:2px 0 0 2px;}
-.tr{top:26%;right:6%;border-width:2px 2px 0 0;}
-.bl{bottom:26%;left:6%;border-width:0 0 2px 2px;}
-.brr{bottom:26%;right:6%;border-width:0 2px 2px 0;}
-#scanline{position:absolute;left:6%;right:6%;height:1.5px;background:linear-gradient(90deg,transparent,var(--g),transparent);box-shadow:0 0 8px var(--g);top:26%;animation:scan 2.5s ease-in-out infinite;}
-@keyframes scan{0%{top:27%}48%{top:73%}52%{top:73%}100%{top:27%}}
-
-/* BUBBLES */
-.bub{position:fixed;background:rgba(5,5,7,.96);border:1.5px solid var(--g);padding:10px 12px;width:170px;z-index:20;box-shadow:0 0 16px rgba(0,255,179,.2);}
+.br{position:absolute;width:44px;height:44px;border-color:var(--g);border-style:solid;opacity:.5;}
+.tl{top:24%;left:5%;border-width:2px 0 0 2px;}.tr{top:24%;right:5%;border-width:2px 2px 0 0;}
+.bl{bottom:24%;left:5%;border-width:0 0 2px 2px;}.brr{bottom:24%;right:5%;border-width:0 2px 2px 0;}
+#scanline{position:absolute;left:5%;right:5%;height:1.5px;background:linear-gradient(90deg,transparent,var(--g),transparent);box-shadow:0 0 8px var(--g);animation:scan 2.5s ease-in-out infinite;}
+@keyframes scan{0%{top:25%}48%{top:75%}52%{top:75%}100%{top:25%}}
+.bub{position:fixed;background:rgba(5,5,7,.96);border:1.5px solid var(--g);padding:10px 12px;width:172px;z-index:20;box-shadow:0 0 16px rgba(0,255,179,.2);}
 .bub::before{content:'';position:absolute;top:-1px;left:0;right:0;height:1.5px;background:linear-gradient(90deg,transparent,var(--g),transparent);}
 .bg{font-family:'Orbitron',monospace;font-size:7px;letter-spacing:2px;color:var(--g);margin-bottom:2px;opacity:.7;}
-.bn{font-size:13px;font-weight:600;color:#fff;margin-bottom:6px;padding-right:18px;line-height:1.2;}
+.bn{font-size:13px;font-weight:600;color:#fff;margin-bottom:2px;padding-right:18px;line-height:1.2;}
+.bset{font-family:monospace;font-size:9px;color:rgba(255,255,255,.35);margin-bottom:6px;}
 .bp{font-family:'Orbitron',monospace;font-size:22px;font-weight:900;color:var(--g);text-shadow:0 0 10px rgba(0,255,179,.4);line-height:1;}
 .br2{font-family:monospace;font-size:9px;color:rgba(255,255,255,.3);margin-bottom:6px;}
 .bsels{display:flex;flex-direction:column;gap:4px;margin-bottom:6px;}
@@ -62,31 +51,30 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
 .bcp{font-family:'Orbitron',monospace;font-size:7px;padding:2px 5px;border:1px solid rgba(255,255,255,.15);color:rgba(255,255,255,.4);cursor:pointer;}
 .bcp.on{border-color:var(--g);color:var(--g);background:var(--gd);}
 .btcg{display:block;background:rgba(0,255,179,.08);color:var(--g);font-family:'Orbitron',monospace;font-size:7px;letter-spacing:1px;padding:5px 6px;text-decoration:none;text-align:center;border:1px solid rgba(0,255,179,.2);}
-.bx{position:absolute;top:4px;right:6px;background:none;border:none;color:rgba(255,255,255,.25);font-size:15px;cursor:pointer;line-height:1;padding:0;}
+.bx{position:absolute;top:4px;right:6px;background:none;border:none;color:rgba(255,255,255,.25);font-size:15px;cursor:pointer;padding:0;}
+.confidence{display:inline-block;font-family:monospace;font-size:8px;padding:1px 5px;margin-bottom:4px;}
+.conf-high{color:#00ffb3;border:1px solid rgba(0,255,179,.3);background:rgba(0,255,179,.08);}
+.conf-med{color:var(--gold);border:1px solid rgba(255,209,102,.3);background:rgba(255,209,102,.08);}
+.conf-low{color:var(--red);border:1px solid rgba(255,77,109,.3);background:rgba(255,77,109,.08);}
 .toast{position:fixed;top:70px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.95);border:1px solid rgba(0,255,179,.4);padding:9px 20px;font-family:monospace;font-size:11px;color:var(--g);z-index:200;white-space:nowrap;max-width:90vw;text-align:center;}
 </style>
 </head>
 <body>
-
-<!-- SETUP SCREEN -->
 <div id="setup">
   <div class="s-logo">LBA<br>SCANNER</div>
   <div class="s-sub">AR CARD PRICE SCANNER</div>
   <input class="s-inp" id="kinp" type="password" placeholder="Anthropic API key (sk-ant-...)">
   <button class="s-btn" onclick="launch()">&#9654; LAUNCH SCANNER</button>
-  <div class="s-note">Points camera at any TCG or sports card — AI reads it and shows live pricing on screen</div>
+  <div class="s-note">Points camera at any trading card or sports card — AI visually identifies it and shows all printings and live pricing</div>
 </div>
-
 <video id="video" autoplay playsinline muted></video>
 <canvas id="canvas"></canvas>
 <canvas id="oc"></canvas>
-
 <div id="brackets">
   <div class="br tl"></div><div class="br tr"></div>
   <div class="br bl"></div><div class="br brr"></div>
   <div id="scanline"></div>
 </div>
-
 <div id="hud" style="display:none">
   <span class="hl">LBA</span>
   <div class="hbtns">
@@ -95,101 +83,97 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
     <button class="hbtn" onclick="clearAll()">CLEAR</button>
   </div>
 </div>
-
 <div id="scanbar" style="display:none">
   <button id="scanbtn" onclick="doScan()">&#9654; SCAN CARDS</button>
   <div class="shint">Point camera at cards then tap scan</div>
 </div>
-
 <script>
-// Key stored in localStorage — never in code
-const CM = {NM:1,LP:.8,MP:.64,HP:.4,DMG:.25};
+const CM={NM:1,LP:.8,MP:.64,HP:.4,DMG:.25};
 let bubs=[],auto=false,autoT=null,scanning=false,octx=null,wakeLock=null;
-const video=document.getElementById('video');
-const canvas=document.getElementById('canvas');
-const oc=document.getElementById('oc');
-
-// Check saved key
-const savedKey = localStorage.getItem('lba_k');
-if(savedKey) document.getElementById('kinp').value = savedKey;
+const video=document.getElementById('video'),canvas=document.getElementById('canvas'),oc=document.getElementById('oc');
+const savedKey=localStorage.getItem('lba_k');
+if(savedKey) document.getElementById('kinp').value=savedKey;
 
 function launch(){
-  const k = document.getElementById('kinp').value.trim();
-  if(!k){ toast('Enter your Anthropic API key'); return; }
-  if(!k.startsWith('sk-ant-')){ toast('Key must start with sk-ant-'); return; }
-  localStorage.setItem('lba_k', k);
+  const k=document.getElementById('kinp').value.trim();
+  if(!k){toast('Enter your Anthropic API key');return;}
+  if(!k.startsWith('sk-ant-')){toast('Key must start with sk-ant-');return;}
+  localStorage.setItem('lba_k',k);
   startScanner();
 }
-
-// Auto-launch if key saved
 if(savedKey) startScanner();
 
 async function startScanner(){
   document.getElementById('setup').style.display='none';
   document.getElementById('hud').style.display='flex';
   document.getElementById('scanbar').style.display='flex';
-
-  // Resize canvas
-  function resizeOC(){ oc.width=window.innerWidth; oc.height=window.innerHeight; }
-  window.addEventListener('resize', resizeOC); resizeOC();
-  octx = oc.getContext('2d');
-
-  // Wake lock — keeps screen on so camera doesn't stop
-  try {
+  function resizeOC(){oc.width=window.innerWidth;oc.height=window.innerHeight;}
+  window.addEventListener('resize',resizeOC);resizeOC();
+  octx=oc.getContext('2d');
+  try{
     if('wakeLock' in navigator){
-      wakeLock = await navigator.wakeLock.request('screen');
-      document.addEventListener('visibilitychange', async()=>{
-        if(wakeLock!==null && document.visibilityState==='visible'){
-          wakeLock = await navigator.wakeLock.request('screen');
+      wakeLock=await navigator.wakeLock.request('screen');
+      document.addEventListener('visibilitychange',async()=>{
+        if(wakeLock!==null&&document.visibilityState==='visible'){
+          wakeLock=await navigator.wakeLock.request('screen');
         }
       });
     }
-  } catch(e){ console.log('WakeLock:', e); }
-
-  // Start camera
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video:{ facingMode:{ideal:'environment'}, width:{ideal:1280}, height:{ideal:720} },
-      audio:false
-    });
-    video.srcObject = stream;
+  }catch(e){}
+  try{
+    const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1920},height:{ideal:1080}},audio:false});
+    video.srcObject=stream;
     await video.play();
-    document.getElementById('hstatus').textContent = 'LIVE';
-  } catch(e){
-    toast('Camera error: '+e.message);
-  }
+    document.getElementById('hstatus').textContent='LIVE';
+  }catch(e){toast('Camera: '+e.message);}
 }
 
 function capture(){
-  const vw=video.videoWidth||1280, vh=video.videoHeight||720;
-  canvas.width=800; canvas.height=Math.round(800*vh/vw);
+  const vw=video.videoWidth||1280,vh=video.videoHeight||720;
+  canvas.width=1024;canvas.height=Math.round(1024*vh/vw);
   canvas.getContext('2d').drawImage(video,0,0,canvas.width,canvas.height);
-  return canvas.toDataURL('image/jpeg',.82).split(',')[1];
+  return canvas.toDataURL('image/jpeg',.88).split(',')[1];
 }
 
 async function doScan(){
-  if(scanning) return;
-  const key = localStorage.getItem('lba_k');
-  if(!key){ toast('No API key — reload and enter key'); return; }
+  if(scanning)return;
+  const key=localStorage.getItem('lba_k');
+  if(!key){toast('No API key — reload and enter key');return;}
   scanning=true;
-  const btn=document.getElementById('scanbtn');
-  const hs=document.getElementById('hstatus');
-  btn.textContent='READING...'; btn.className='reading';
-  hs.textContent='SCANNING...';
-
+  const btn=document.getElementById('scanbtn'),hs=document.getElementById('hstatus');
+  btn.textContent='READING...';btn.className='reading';hs.textContent='SCANNING...';
   try{
-    const img = capture();
-    const prompt = `Identify ALL trading cards visible in this image. Return ONLY a raw JSON array, no markdown, no explanation:
+    const img=capture();
+    // TWO-STEP: First visually analyze, then identify with full context
+    const prompt=`You are an expert trading card identifier with deep knowledge of TCG and sports cards. Analyze this image using VISUAL identification, not just text reading.
+
+VISUAL ANALYSIS APPROACH:
+1. Look at card LAYOUT, BORDER COLOR, FOIL PATTERNS, HOLOGRAPHIC effects
+2. For sports cards: identify player POSE, JERSEY NUMBER, TEAM COLORS, UNIFORM style, background stadium
+3. For TCG: identify card FRAME style, energy/mana symbols, artwork style, foil pattern type
+4. Read any visible text as CONFIRMATION only, not primary identification
+5. Identify the MANUFACTURER logo (Topps, Panini, Upper Deck, Pokemon Company, Wizards, Konami)
+6. Look for PARALLEL indicators: refractor shimmer, prizm pattern, color borders, gold foil, chrome finish
+
+Return ONLY a raw JSON array, no markdown:
 [{
-  "name": "exact card name as printed on card",
+  "name": "exact card name",
   "game": "Pokemon TCG|Magic: The Gathering|Yu-Gi-Oh!|Sports Card|Other TCG",
+  "sport": "Baseball|Basketball|Football|Hockey|Soccer|null",
+  "player": "player full name if sports card",
+  "team": "team name if sports card",
+  "year": "card year from copyright",
+  "manufacturer": "Topps|Panini|Upper Deck|Pokemon Company|Wizards of the Coast|Konami|Other",
+  "confidence": "high|medium|low",
+  "visual_notes": "brief description of what you visually see",
   "cx": 50,
   "cy": 50,
   "printings": [
     {
       "set": "Full set name",
-      "variant": "Base|Holo|Reverse Holo|Full Art|Alt Art|Borderless|Showcase|Extended Art|Etched Foil|Galaxy Foil|Textured Foil|Retro Frame|Serialized|1st Edition|Unlimited|Promo|Rainbow Rare|Secret Rare|Special Illustration Rare|Collector Booster|Buy-a-Box|Prerelease|Gold Border",
-      "year": "year if known",
+      "variant": "Base|Chrome|Prizm|Refractor|Gold Refractor|Silver Prizm|Red Prizm|Blue Wave|Green|Orange|Pink|Purple|Holo|Reverse Holo|Full Art|Alt Art|Borderless|Showcase|Extended Art|Etched Foil|Galaxy Foil|Textured Foil|Retro Frame|Serialized|1st Edition|Promo|Rainbow Rare|Secret Rare|Special Illustration Rare|Collector Booster|Superfractor|Auto|Relic|Patch|Jersey|Rookie",
+      "year": "year",
+      "numbered": "/25|/49|/99|/199|/299|null",
       "mid": 5.00,
       "low": 2.00,
       "high": 10.00
@@ -197,80 +181,56 @@ async function doScan(){
   ]
 }]
 
-RULES:
-- cx/cy = card center as % of image width/height (0-100)
-- Include EVERY known printing — be exhaustive
-- MTG: every set, borderless, showcase, extended art, retro frame, serialized, collector booster exclusives, buy-a-box, prerelease, bundle
-- Pokemon: every set, holo, reverse holo, full art, alt art, rainbow rare, gold rare, special illustration rare, japanese exclusives, promos
-- Yu-Gi-Oh: every set, secret rare, ultimate rare, ghost rare, starlight rare, gold rare, collector rare, quarter century secret rare
-- Sports: base, parallels, refractors, prizms, holofoil, autos, relics, numbered
-- Estimate real current TCGPlayer NM market prices
-- Max 5 cards, return [] if no cards visible`;
+IMPORTANT RULES:
+- cx/cy = card center as % of image (0-100)
+- For sports cards include ALL parallel versions: base, chrome, prizm, refractor, colored parallels, autos, relics, numbered variants
+- For Pokemon: every set printing, every holo variant, reverse holo, full art, alt art, rainbow, gold, special illustration, japanese exclusives
+- For MTG: every set, collector variants, borderless, showcase, extended art, retro frame, serialized, promos
+- For Yu-Gi-Oh: every set release, every rarity tier
+- Price based on current market, account for condition and rarity
+- Set confidence to "low" if image is blurry or card is partially visible
+- Max 5 cards, empty [] if no cards visible`;
 
-    const res = await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',
-      headers:{
-        'Content-Type':'application/json',
-        'x-api-key': key,
-        'anthropic-version':'2023-06-01',
-        'anthropic-dangerous-direct-browser-access':'true'
-      },
-      body: JSON.stringify({
-        model:'claude-sonnet-4-20250514',
-        max_tokens:2000,
-        messages:[{role:'user',content:[
-          {type:'image',source:{type:'base64',media_type:'image/jpeg',data:img}},
-          {type:'text',text:prompt}
-        ]}]
-      })
-    });
-
-    if(!res.ok){
-      const e = await res.json();
-      throw new Error(e.error?.message || 'HTTP '+res.status);
-    }
-
-    const data = await res.json();
-    const text = data.content[0].text.replace(/```json|```/g,'').trim();
-    const cards = JSON.parse(text);
-
-    if(Array.isArray(cards) && cards.length){
-      if(auto) clearAll();
-      cards.forEach(c => addBubble(c));
-      hs.textContent = cards.length + ' FOUND';
+    const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:3000,messages:[{role:'user',content:[{type:'image',source:{type:'base64',media_type:'image/jpeg',data:img}},{type:'text',text:prompt}]}]})});
+    if(!res.ok){const e=await res.json();throw new Error(e.error?.message||'HTTP '+res.status);}
+    const data=await res.json();
+    const text=data.content[0].text.replace(/```json|```/g,'').trim();
+    const cards=JSON.parse(text);
+    if(Array.isArray(cards)&&cards.length){
+      if(auto)clearAll();
+      cards.forEach(c=>addBubble(c));
+      hs.textContent=cards.length+' FOUND';
       drawLines();
-    } else {
-      hs.textContent = 'NONE';
-      toast('No cards detected — try again');
-    }
-  } catch(e){
-    document.getElementById('hstatus').textContent = 'ERROR';
-    toast('Error: '+e.message);
-  }
-
-  scanning=false;
-  btn.innerHTML='&#9654; SCAN CARDS'; btn.className='';
+    }else{hs.textContent='NONE';toast('No cards detected — try again');}
+  }catch(e){document.getElementById('hstatus').textContent='ERROR';toast('Error: '+e.message);}
+  scanning=false;btn.innerHTML='&#9654; SCAN CARDS';btn.className='';
 }
 
 function addBubble(card){
-  const W=window.innerWidth, H=window.innerHeight;
-  const cx=(card.cx/100)*W, cy=(card.cy/100)*H;
+  const W=window.innerWidth,H=window.innerHeight;
+  const cx=(card.cx/100)*W,cy=(card.cy/100)*H;
   const id='b'+Date.now()+Math.random().toString(36).slice(2,5);
-  const prints = card.printings||[];
-  const first = prints[0]||{mid:0,low:0,high:0,set:'Unknown',variant:''};
+  const prints=card.printings||[];
+  const first=prints[0]||{mid:0,low:0,high:0,set:'Unknown',variant:''};
+  const el=document.createElement('div');
+  el.className='bub';el.id=id;el._prints=prints;
 
-  const el = document.createElement('div');
-  el.className='bub'; el.id=id; el._prints=prints;
+  // Build display name
+  const displayName = card.player || card.name;
+  const displaySub = card.player
+    ? `${card.team||''} ${card.year||''} ${card.manufacturer||''}`.trim()
+    : `${first.set} ${first.year||''}`.trim();
 
-  const q = encodeURIComponent(card.name+' '+(first.set||''));
-  const printOpts = prints.map((p,i)=>
-    `<option value="${i}">${p.set}${p.variant&&p.variant!=='Base'?' · '+p.variant:''}${p.year?' ('+p.year+')':''}</option>`
-  ).join('');
+  const confClass = card.confidence==='high'?'conf-high':card.confidence==='low'?'conf-low':'conf-med';
+  const q=encodeURIComponent((card.player||card.name)+' '+(card.sport||card.game||'')+' '+(first.set||''));
+  const printOpts=prints.map((p,i)=>`<option value="${i}">${p.set}${p.variant&&p.variant!=='Base'?' · '+p.variant:''}${p.numbered?' '+p.numbered:''}${p.year?' ('+p.year+')':''}</option>`).join('');
 
   el.innerHTML=`
     <button class="bx" onclick="rmBub('${id}')">×</button>
-    <div class="bg">${card.game||'CARD'}</div>
-    <div class="bn">${card.name}</div>
+    <div class="bg">${card.game||'CARD'}${card.sport?' · '+card.sport:''}</div>
+    <div class="bn">${displayName}</div>
+    <div class="bset">${displaySub}</div>
+    <span class="confidence ${confClass}">${card.confidence||'med'} confidence</span>
     <div class="bp" id="bp${id}">$${first.mid.toFixed(2)}</div>
     <div class="br2" id="br${id}">$${first.low.toFixed(2)} – $${first.high.toFixed(2)} NM</div>
     <div class="bsels">
@@ -287,110 +247,75 @@ function addBubble(card){
     <a class="btcg" id="bt${id}" href="https://www.tcgplayer.com/search/all/product?q=${q}" target="_blank">TCGPlayer ↗</a>
   `;
 
-  const bw=170, bh=310;
-  let left=cx-bw/2, top=cy-bh-24;
-  if(top<60) top=cy+20;
+  const bw=172,bh=340;
+  let left=cx-bw/2,top=cy-bh-24;
+  if(top<60)top=cy+20;
   left=Math.max(6,Math.min(left,W-bw-6));
   top=Math.max(60,Math.min(top,H-bh-90));
-  el.style.left=left+'px'; el.style.top=top+'px';
+  el.style.left=left+'px';el.style.top=top+'px';
   document.body.appendChild(el);
   bubs.push({id,el,ax:cx,ay:cy});
 }
 
 window.chPrint=function(id){
-  const el=document.getElementById(id); if(!el)return;
+  const el=document.getElementById(id);if(!el)return;
   const pi=parseInt(document.getElementById('ps'+id).value);
   const cond=document.getElementById('cs'+id)?.value||'NM';
-  if(!isNaN(pi)) updatePrice(id,el._prints[pi],cond);
+  if(!isNaN(pi))updatePrice(id,el._prints[pi],cond);
 };
-
 window.chCond=function(id){
-  const el=document.getElementById(id); if(!el)return;
+  const el=document.getElementById(id);if(!el)return;
   const pi=parseInt(document.getElementById('ps'+id)?.value)||0;
   const cond=document.getElementById('cs'+id).value;
   el.querySelectorAll('.bcp').forEach(p=>p.classList.toggle('on',p.textContent===cond));
   updatePrice(id,el._prints[pi]||el._prints[0],cond);
 };
-
 window.cpill=function(id,pill,cond){
-  const el=document.getElementById(id); if(!el)return;
+  const el=document.getElementById(id);if(!el)return;
   const pi=parseInt(document.getElementById('ps'+id)?.value)||0;
-  const cs=document.getElementById('cs'+id);
-  if(cs) cs.value=cond;
+  const cs=document.getElementById('cs'+id);if(cs)cs.value=cond;
   el.querySelectorAll('.bcp').forEach(p=>p.classList.remove('on'));
   pill.classList.add('on');
   updatePrice(id,el._prints[pi]||el._prints[0],cond);
 };
-
 function updatePrice(id,p,cond){
   if(!p)return;
   const m=CM[cond]||1;
-  const bp=document.getElementById('bp'+id);
-  const br=document.getElementById('br'+id);
-  const bt=document.getElementById('bt'+id);
   const name=document.getElementById(id)?.querySelector('.bn')?.textContent||'';
-  if(bp) bp.textContent='$'+(p.mid*m).toFixed(2);
-  if(br) br.textContent='$'+(p.low*m).toFixed(2)+' – $'+(p.high*m).toFixed(2)+' '+cond;
-  if(bt) bt.href='https://www.tcgplayer.com/search/all/product?q='+encodeURIComponent(name+' '+p.set+' '+(p.variant||''));
+  document.getElementById('bp'+id).textContent='$'+(p.mid*m).toFixed(2);
+  document.getElementById('br'+id).textContent='$'+(p.low*m).toFixed(2)+' – $'+(p.high*m).toFixed(2)+' '+cond;
+  const bt=document.getElementById('bt'+id);
+  if(bt)bt.href='https://www.tcgplayer.com/search/all/product?q='+encodeURIComponent(name+' '+p.set+' '+(p.variant||''));
 }
-
 window.rmBub=function(id){
   document.getElementById(id)?.remove();
   bubs=bubs.filter(b=>b.id!==id);
   drawLines();
 };
-
-function clearAll(){
-  bubs.forEach(b=>b.el?.remove());
-  bubs=[];
-  if(octx) octx.clearRect(0,0,oc.width,oc.height);
-}
-
+function clearAll(){bubs.forEach(b=>b.el?.remove());bubs=[];if(octx)octx.clearRect(0,0,oc.width,oc.height);}
 function drawLines(){
   if(!octx)return;
   octx.clearRect(0,0,oc.width,oc.height);
   bubs.forEach(b=>{
     if(!b.el?.parentNode)return;
     const r=b.el.getBoundingClientRect();
-    const bx=r.left+r.width/2, by=r.bottom;
-    octx.beginPath();
-    octx.moveTo(bx,by);
-    octx.lineTo(b.ax,b.ay);
-    octx.strokeStyle='rgba(0,255,179,.35)';
-    octx.lineWidth=1.5;
-    octx.setLineDash([4,4]);
-    octx.stroke();
-    octx.beginPath();
-    octx.arc(b.ax,b.ay,5,0,Math.PI*2);
-    octx.fillStyle='rgba(0,255,179,.7)';
-    octx.fill();
-    octx.setLineDash([]);
+    const bx=r.left+r.width/2,by=r.bottom;
+    octx.beginPath();octx.moveTo(bx,by);octx.lineTo(b.ax,b.ay);
+    octx.strokeStyle='rgba(0,255,179,.35)';octx.lineWidth=1.5;octx.setLineDash([4,4]);octx.stroke();
+    octx.beginPath();octx.arc(b.ax,b.ay,5,0,Math.PI*2);
+    octx.fillStyle='rgba(0,255,179,.7)';octx.fill();octx.setLineDash([]);
   });
 }
-
 function toggleAuto(){
   auto=!auto;
-  const ab=document.getElementById('autobitn');
-  const sb=document.getElementById('scanbtn');
-  if(auto){
-    ab.classList.add('on'); ab.textContent='STOP';
-    sb.innerHTML='AUTO ON'; sb.className='autoon';
-    autoT=setInterval(()=>{if(!scanning)doScan();},4500);
-    doScan();
-  } else {
-    clearInterval(autoT);
-    ab.classList.remove('on'); ab.textContent='AUTO';
-    sb.innerHTML='&#9654; SCAN CARDS'; sb.className='';
-  }
+  const ab=document.getElementById('autobitn'),sb=document.getElementById('scanbtn');
+  if(auto){ab.classList.add('on');ab.textContent='STOP';sb.innerHTML='AUTO ON';sb.className='autoon';autoT=setInterval(()=>{if(!scanning)doScan();},5000);doScan();}
+  else{clearInterval(autoT);ab.classList.remove('on');ab.textContent='AUTO';sb.innerHTML='&#9654; SCAN CARDS';sb.className='';}
 }
-
 function toast(msg){
-  const old=document.querySelector('.toast');
-  if(old)old.remove();
-  const t=document.createElement('div');
-  t.className='toast'; t.textContent=msg;
-  document.body.appendChild(t);
-  setTimeout(()=>t.remove(),4000);
+  const old=document.querySelector('.toast');if(old)old.remove();
+  const t=document.createElement('div');t.className='toast';t.textContent=msg;
+  document.body.appendChild(t);setTimeout(()=>t.remove(),4000);
 }
 </script>
 </body>
