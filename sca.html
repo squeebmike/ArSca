@@ -45,7 +45,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
 .btype{font-family:'Orbitron',monospace;font-size:7px;letter-spacing:2px;margin-bottom:2px;opacity:.8;}
 .btype.tcg{color:var(--g)}.btype.sports{color:var(--gold)}.btype.comic{color:var(--purple)}
 .bname{font-size:13px;font-weight:600;color:#fff;margin-bottom:1px;padding-right:18px;line-height:1.2;}
-.bsub{font-family:monospace;font-size:9px;color:rgba(255,255,255,.4);margin-bottom:4px;line-height:1.4;}
+.bsub{font-family:monospace;font-size:9px;color:rgba(255,255,255,.4);margin-bottom:4px;line-height:1.5;}
 .drow{display:flex;align-items:center;gap:6px;margin-bottom:3px;}
 .dscore{font-family:'Orbitron',monospace;font-size:11px;font-weight:700;padding:2px 7px;}
 .dhi{color:#00ffb3;background:rgba(0,255,179,.12);border:1px solid rgba(0,255,179,.3);}
@@ -61,9 +61,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
 .keynotes{font-family:monospace;font-size:8px;color:rgba(255,209,102,.7);margin-bottom:4px;line-height:1.4;}
 .prow{display:flex;align-items:baseline;gap:5px;margin-bottom:2px;}
 .bprice{font-family:'Orbitron',monospace;font-size:20px;font-weight:900;line-height:1;}
-.bprice.tcg{color:var(--g);text-shadow:0 0 10px rgba(0,255,179,.4);}
-.bprice.sports{color:var(--gold);text-shadow:0 0 10px rgba(255,209,102,.3);}
-.bprice.comic{color:var(--purple);text-shadow:0 0 10px rgba(199,125,255,.3);}
+.bprice.tcg{color:var(--g);}.bprice.sports{color:var(--gold);}.bprice.comic{color:var(--purple);}
 .brange{font-family:monospace;font-size:9px;color:rgba(255,255,255,.3);margin-bottom:5px;}
 .comps{margin-bottom:5px;}
 .comps-hdr{font-family:'Orbitron',monospace;font-size:7px;letter-spacing:1px;color:rgba(255,255,255,.3);margin-bottom:3px;}
@@ -84,7 +82,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
 .a-130{background:rgba(72,202,228,.08);color:var(--blue);border:1px solid rgba(72,202,228,.2);}
 .a-gcol{background:rgba(199,125,255,.08);color:var(--purple);border:1px solid rgba(199,125,255,.2);}
 .a-inv{background:rgba(0,255,179,.1);color:var(--g);border:1px solid rgba(0,255,179,.25);grid-column:1/-1;margin-top:2px;}
-.a-inv.added{background:rgba(0,255,179,.22);border-color:var(--g);}
+.a-inv.added{background:rgba(0,255,179,.22);}
 .bx{position:absolute;top:4px;right:6px;background:none;border:none;color:rgba(255,255,255,.25);font-size:15px;cursor:pointer;padding:0;}
 .conf{font-family:monospace;font-size:8px;padding:1px 5px;display:inline-block;margin-bottom:4px;}
 .c-hi{color:var(--g);border:1px solid rgba(0,255,179,.25);background:rgba(0,255,179,.06);}
@@ -156,7 +154,7 @@ function capture(){
   const vw=video.videoWidth||1280,vh=video.videoHeight||720;
   canvas.width=1024;canvas.height=Math.round(1024*vh/vw);
   canvas.getContext('2d').drawImage(video,0,0,canvas.width,canvas.height);
-  return canvas.toDataURL('image/jpeg',.88).split(',')[1];
+  return canvas.toDataURL('image/jpeg',.9).split(',')[1];
 }
 
 async function doScan(){
@@ -166,72 +164,98 @@ async function doScan(){
   try{
     const img=capture();
     const key=localStorage.getItem('lba_k');
-    const prompt=`You are an expert at identifying collectibles. Look at this image carefully and identify ALL items: trading cards (TCG or sports), comics, and graded slabs.
 
-IDENTIFICATION METHOD — use ALL available visual clues:
-- Card borders, frame style, foil/holo patterns, rarity symbols
-- For sports: player pose, jersey number, team colors/logo, uniform, stadium, manufacturer logo (Topps/Panini/Upper Deck), copyright year
-- For TCG: energy symbols, card frame, set symbol, artwork style
-- For comics: title logo, cover art, publisher logo, issue number, UPC area, cover date
-- For graded: slab label color and design (PSA=red/blue, BGS=black, CGC=yellow/black)
+    const prompt=`Carefully examine this image and identify every trading card, comic book, or graded slab visible.
 
-Return ONLY a raw JSON array, absolutely no markdown or explanation:
+STEP 1 — READ ALL TEXT ON EACH ITEM FIRST:
+Before anything else, carefully read every word of text visible on each card/item including:
+- Player/character name (usually largest text on card)
+- Card number (bottom corner, format like 123/456 or #123)  
+- Set name (usually bottom of card)
+- Year (copyright line, usually very small at bottom)
+- Manufacturer name (Topps, Panini, Upper Deck, Bowman, Fleer, Donruss, Pokemon Company, Wizards, Konami)
+- Any serial number (/25, /49, /99, /199 etc)
+- Rarity symbol or word
+- For comics: title logo, issue number, cover date, publisher
+
+STEP 2 — IDENTIFY VISUAL CHARACTERISTICS:
+- Border/frame color (base=white/silver, gold=gold refractor, red/blue/green/orange=prizm parallel)
+- Surface finish (chrome shimmer, prizm rainbow pattern, standard matte, foil)
+- Holo pattern type (for Pokemon/MTG)
+- Slab label color (PSA=red+blue, BGS=black, CGC=yellow+black, SGC=red)
+- Comic condition and cover variant
+
+STEP 3 — COMBINE text + visual to make the most accurate identification possible.
+
+Return ONLY a raw JSON array with no markdown, no explanation, nothing else:
 [{
-  "name": "exact name — player name for sports, card name for TCG, title+issue for comics",
+  "name": "EXACT player name or card name as printed — this must be accurate",
   "game": "Pokemon TCG|Magic: The Gathering|Yu-Gi-Oh!|Sports Card|Comic|Graded Slab|Other TCG",
   "sport": "Baseball|Basketball|Football|Hockey|Soccer|null",
-  "player": "player full name if sports card, null otherwise",
-  "team": "team name or null",
-  "year": "year from card/copyright",
+  "player": "exact player name if sports card",
+  "team": "team name",
+  "year": "year from card",
+  "card_number": "card number if visible e.g. 287/700",
   "manufacturer": "Topps|Panini|Upper Deck|Bowman|Fleer|Donruss|Pokemon Company|Wizards|Konami|Marvel|DC|Image|Other",
-  "publisher": "Marvel|DC|Image|Dark Horse|IDW|Other|null",
-  "issue": "#number if comic, null otherwise",
+  "publisher": "publisher if comic",
+  "issue": "issue number if comic",
+  "set_name": "the specific set name as printed on card",
+  "parallel": "Base|Chrome|Prizm|Gold Refractor|Silver Prizm|Red Prizm|Blue Prizm|Green|Orange|Pink|Purple|Optic|Holo|Reverse Holo|Full Art|Alt Art|Borderless|Showcase|Extended Art|Etched Foil|Galaxy Foil|Serialized|1st Edition|Promo|Rainbow Rare|Secret Rare",
+  "serial_number": "/99 or null",
+  "grading_company": "PSA|BGS|CGC|SGC|null",
+  "grade": "10|9.5|9|8.5|null",
   "is_rookie": true or false,
   "is_key": true or false,
-  "key_notes": "why notable: 1st app, HOF, tournament staple, death issue, etc or null",
+  "key_notes": "1st appearance, HOF, banned card, death issue, etc — or null",
   "confidence": "high|medium|low",
+  "confidence_reason": "what made identification easy or hard",
   "desirability": 7,
   "trend": "up|down|flat",
-  "trend_reason": "brief reason",
+  "trend_reason": "brief market reason",
   "cx": 50, "cy": 50,
   "printings": [{
-    "set": "full set name",
-    "variant": "Base|Chrome|Prizm|Silver Prizm|Gold Refractor|Red Prizm|Blue|Green|Orange|Holo|Reverse Holo|Full Art|Alt Art|Borderless|Showcase|Extended Art|Etched Foil|Retro Frame|Serialized|1st Edition|Promo|Rainbow Rare|Secret Rare|Special Illustration Rare|Collector Booster|Auto|Relic|Patch|Standard|Variant A|Virgin|Sketch|Foil|Newsstand",
+    "set": "exact full set name",
+    "variant": "Base|Chrome|Prizm|Silver Prizm|Gold Refractor|Red Prizm|Blue|Green|Orange|Holo|Reverse Holo|Full Art|Alt Art|Borderless|Showcase|Extended Art|Etched Foil|Galaxy Foil|Textured Foil|Retro Frame|Serialized|1st Edition|Unlimited|Promo|Rainbow Rare|Secret Rare|Special Illustration Rare|Collector Booster|Auto|Relic|Patch|Standard|Variant|Virgin|Foil|Newsstand",
     "year": "year",
     "numbered": "/99 or null",
-    "mid": 5.00, "low": 2.00, "high": 10.00
+    "mid": 5.00,
+    "low": 2.00,
+    "high": 10.00
   }],
   "comps": [
-    {"desc": "sold listing description", "price": 8.50},
-    {"desc": "sold listing description", "price": 7.00},
-    {"desc": "sold listing description", "price": 9.50}
+    {"desc": "specific recent comp e.g. NM 2023 Topps Chrome Acuna RC", "price": 18.50},
+    {"desc": "comp description", "price": 16.00},
+    {"desc": "comp description", "price": 21.00}
   ]
 }]
 
-CRITICAL RULES:
-- cx/cy = center of each item as % of full image (0-100)
-- Include EVERY known printing — be exhaustive for popular cards
-- For sports: all parallels (prizm colors, chrome, refractor, optic, select, mosaic, autos, relics)
-- For Pokemon/MTG/YuGiOh: every set, every variant, promos, special editions
-- For comics: standard, newsstand, variant covers, CGC graded versions
-- Comps = realistic recent eBay sold prices for that specific card/variant
-- Max 5 items, return [] if nothing visible`;
+ACCURACY RULES:
+- cx/cy = center of item as % of image (0-100)  
+- If text is blurry, say confidence=low and give best guess
+- Include ALL printings exhaustively — every set, every parallel
+- Comps should reflect realistic current eBay sold prices
+- For sports include all parallel variants (prizm colors, chrome, optic, select, mosaic, refractors, autos, relics)
+- For Pokemon/MTG include every set printing, every special variant
+- NEVER make up a card — if unsure set confidence=low
+- Return [] if nothing visible`;
 
     const res=await fetch('https://api.anthropic.com/v1/messages',{
       method:'POST',
       headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:3000,messages:[{role:'user',content:[{type:'image',source:{type:'base64',media_type:'image/jpeg',data:img}},{type:'text',text:prompt}]}]})
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:4000,messages:[{role:'user',content:[{type:'image',source:{type:'base64',media_type:'image/jpeg',data:img}},{type:'text',text:prompt}]}]})
     });
+
     if(!res.ok){const e=await res.json();throw new Error(e.error?.message||'HTTP '+res.status);}
     const data=await res.json();
-    const text=data.content[0].text.replace(/```json|```/g,'').trim();
-    const items=JSON.parse(text);
+    const raw=data.content[0].text.replace(/```json|```/g,'').trim();
+    const items=JSON.parse(raw);
+
     if(Array.isArray(items)&&items.length){
       if(auto)clearAll();
       items.forEach(item=>addBubble(item));
       hs.textContent=items.length+' FOUND';
       drawLines();
-    }else{hs.textContent='NONE';toast('Nothing detected — try again');}
+    }else{hs.textContent='NONE';toast('Nothing detected — get closer and try again');}
   }catch(e){document.getElementById('hstatus').textContent='ERROR';toast('Error: '+e.message);}
   scanning=false;btn.innerHTML='&#9654; SCAN CARDS';btn.className='';
 }
@@ -261,20 +285,29 @@ function addBubble(item){
   if(item.is_rookie)tags.push('<span class="tag rc">RC</span>');
   if(item.is_key)tags.push('<span class="tag key">KEY</span>');
   if(ds>=8)tags.push('<span class="tag hot">HOT</span>');
+  if(item.grading_company&&item.grade)tags.push(`<span class="tag key">${item.grading_company} ${item.grade}</span>`);
 
   const compsHtml=item.comps&&item.comps.length?
-    `<div class="comps"><div class="comps-hdr">${ct==='sports'?'EBAY SOLD COMPS':ct==='comic'?'RECENT SALES':'RECENT SALES'}</div>${item.comps.slice(0,3).map(c=>`<div class="comp-row"><span class="comp-d">${c.desc}</span><span class="comp-p ${ct}">$${c.price.toFixed(2)}</span></div>`).join('')}</div>`:'';
+    `<div class="comps"><div class="comps-hdr">${ct==='sports'?'EBAY SOLD COMPS':ct==='comic'?'RECENT SALES':'RECENT SALES'}</div>${item.comps.slice(0,3).map(c=>`<div class="comp-row"><span class="comp-d">${c.desc}</span><span class="comp-p ${ct}">$${Number(c.price).toFixed(2)}</span></div>`).join('')}</div>`:'';
 
   const printOpts=prints.map((p,i)=>`<option value="${i}">${p.set}${p.variant&&p.variant!=='Base'?' · '+p.variant:''}${p.numbered?' '+p.numbered:''}${p.year?' ('+p.year+')':''}</option>`).join('');
 
   const displayName=item.player||item.name;
-  const subParts=[item.team,item.sport,item.year,item.manufacturer,item.publisher,item.issue].filter(Boolean);
+  const subParts=[];
+  if(item.team)subParts.push(item.team);
+  if(item.year)subParts.push(item.year);
+  if(item.set_name)subParts.push(item.set_name);
+  if(item.parallel&&item.parallel!=='Base')subParts.push(item.parallel);
+  if(item.serial_number)subParts.push(item.serial_number);
+  if(item.card_number)subParts.push('#'+item.card_number);
+  if(item.publisher)subParts.push(item.publisher);
+  if(item.issue)subParts.push(item.issue);
+
   const confCls=item.confidence==='high'?'c-hi':item.confidence==='low'?'c-lo':'c-md';
 
-  // Action buttons
   let acts='';
   if(ct==='sports'){
-    const q=encodeURIComponent((item.player||item.name)+' '+(item.year||'')+' '+(first.variant||''));
+    const q=encodeURIComponent((item.player||item.name)+' '+(item.year||'')+' '+(item.parallel||'')+' '+(item.set_name||''));
     const q130=encodeURIComponent((item.player||item.name)+' '+(item.year||''));
     acts=`<a class="bact a-ebay" href="https://www.ebay.com/sch/i.html?_nkw=${q}&LH_Sold=1&LH_Complete=1" target="_blank">eBay Sold ↗</a>
           <a class="bact a-130" href="https://130point.com/sales/?q=${q130}" target="_blank">130Point ↗</a>`;
@@ -284,8 +317,8 @@ function addBubble(item){
     acts=`<a class="bact a-gcol" href="https://www.gocollect.com/search/?q=${qgc}" target="_blank">GoCollect ↗</a>
           <a class="bact a-ebay" href="https://www.ebay.com/sch/i.html?_nkw=${qe}&LH_Sold=1" target="_blank">eBay Sold ↗</a>`;
   }else{
-    const qt=encodeURIComponent((item.name||'')+' '+(first.set||''));
-    const qe=encodeURIComponent((item.name||'')+' '+(item.game||'')+' '+(first.set||''));
+    const qt=encodeURIComponent((item.name||'')+' '+(item.set_name||''));
+    const qe=encodeURIComponent((item.name||'')+' '+(item.game||'')+' '+(item.set_name||''));
     acts=`<a class="bact a-tcg" id="bt${id}" href="https://www.tcgplayer.com/search/all/product?q=${qt}" target="_blank">TCGPlayer ↗</a>
           <a class="bact a-ebay" href="https://www.ebay.com/sch/i.html?_nkw=${qe}&LH_Sold=1" target="_blank">eBay Sold ↗</a>`;
   }
@@ -295,18 +328,18 @@ function addBubble(item){
     <div class="btype ${ct}">${item.game}${item.sport?' · '+item.sport:''}</div>
     <div class="bname">${displayName}</div>
     ${subParts.length?`<div class="bsub">${subParts.join(' · ')}</div>`:''}
-    <span class="conf ${confCls}">${item.confidence||'med'} confidence</span>
+    <span class="conf ${confCls}">${item.confidence} conf${item.confidence_reason?' — '+item.confidence_reason.substring(0,30):''}</span>
     <div class="drow">
       <span class="dscore ${dc}">${ds}/10</span>
-      <span class="trend ${tc}">${ti}${item.trend_reason||''}</span>
+      <span class="trend ${tc}">${ti}${(item.trend_reason||'').substring(0,22)}</span>
     </div>
     ${tags.length?`<div class="tags">${tags.join('')}</div>`:''}
     ${item.key_notes?`<div class="keynotes">${item.key_notes}</div>`:''}
     <div class="prow">
-      <span class="bprice ${ct}" id="bp${id}">$${first.mid.toFixed(2)}</span>
+      <span class="bprice ${ct}" id="bp${id}">$${Number(first.mid).toFixed(2)}</span>
       <span style="font-family:monospace;font-size:8px;color:rgba(255,255,255,.3)">EST</span>
     </div>
-    <div class="brange" id="br${id}">$${first.low.toFixed(2)} – $${first.high.toFixed(2)} NM</div>
+    <div class="brange" id="br${id}">$${Number(first.low).toFixed(2)} – $${Number(first.high).toFixed(2)} NM</div>
     ${compsHtml}
     <div class="bsels">
       <select class="bsel" id="ps${id}" onchange="chPrint('${id}')">${printOpts}</select>
@@ -315,7 +348,7 @@ function addBubble(item){
     <div class="bconds">${Object.keys(CM).map((c,i)=>`<span class="bcp${i===0?' on':''}" onclick="cpill('${id}',this,'${c}')">${c}</span>`).join('')}</div>
     <div class="bacts">${acts}<button class="bact a-inv" id="inv${id}" onclick="addToInv('${id}')">+ Add to Inventory</button></div>`;
 
-  const bw=186,bh=450;
+  const bw=186,bh=460;
   let left=cx-bw/2,top=cy-bh-24;
   if(top<60)top=cy+20;
   left=Math.max(6,Math.min(left,W-bw-6));
@@ -352,7 +385,7 @@ function updatePrice(id,p,cond){
   document.getElementById('bp'+id).textContent='$'+(p.mid*m).toFixed(2);
   document.getElementById('br'+id).textContent='$'+(p.low*m).toFixed(2)+' – $'+(p.high*m).toFixed(2)+' '+cond;
   const bt=document.getElementById('bt'+id);
-  if(bt){const n=document.getElementById(id)?.querySelector('.bname')?.textContent||'';bt.href='https://www.tcgplayer.com/search/all/product?q='+encodeURIComponent(n+' '+p.set+' '+(p.variant||''));}
+  if(bt){const n=document.getElementById(id)?.querySelector('.bname')?.textContent||'';bt.href='https://www.tcgplayer.com/search/all/product?q='+encodeURIComponent(n+' '+(p.set||'')+' '+(p.variant||''));}
 }
 window.addToInv=function(id){
   const el=document.getElementById(id);if(!el||!el._item)return;
@@ -360,7 +393,7 @@ window.addToInv=function(id){
   const pi=parseInt(document.getElementById('ps'+id)?.value)||0;
   const cond=document.getElementById('cs'+id)?.value||'NM';
   const print=el._prints[pi]||el._prints[0]||{};
-  const entry={id:'scan_'+Date.now(),name:item.player||item.name,category:ct==='sports'?'Sports':ct==='comic'?'Comic':'TCG',set:print.set||'',variant:print.variant||'',condition:cond,year:item.year||'',team:item.team||'',player:item.player||'',manufacturer:item.manufacturer||'',publisher:item.publisher||'',issue:item.issue||'',is_rookie:item.is_rookie||false,key_notes:item.key_notes||'',market:print.mid||0,price:print.mid||0,cost:0,status:'in_stock',addedAt:new Date().toISOString(),scannedFrom:'AR Scanner'};
+  const entry={id:'scan_'+Date.now(),name:item.player||item.name,category:ct==='sports'?'Sports':ct==='comic'?'Comic':'TCG',set:print.set||item.set_name||'',variant:print.variant||item.parallel||'',condition:cond,year:item.year||'',team:item.team||'',player:item.player||'',manufacturer:item.manufacturer||'',publisher:item.publisher||'',issue:item.issue||'',card_number:item.card_number||'',serial_number:item.serial_number||'',is_rookie:item.is_rookie||false,key_notes:item.key_notes||'',grading_company:item.grading_company||'',grade:item.grade||'',market:Number(print.mid)||0,price:Number(print.mid)||0,cost:0,status:'in_stock',addedAt:new Date().toISOString(),scannedFrom:'AR Scanner'};
   const inv=JSON.parse(localStorage.getItem('lba_inventory')||'[]');inv.unshift(entry);localStorage.setItem('lba_inventory',JSON.stringify(inv));
   const pend=JSON.parse(localStorage.getItem('lba_pending')||'[]');pend.unshift(entry);localStorage.setItem('lba_pending',JSON.stringify(pend));
   const btn=document.getElementById('inv'+id);if(btn){btn.textContent='✓ Added!';btn.classList.add('added');}
@@ -375,8 +408,7 @@ function drawLines(){
   bubs.forEach(b=>{
     if(!b.el?.parentNode)return;
     const r=b.el.getBoundingClientRect();
-    const bx=r.left+r.width/2,by=r.bottom;
-    octx.beginPath();octx.moveTo(bx,by);octx.lineTo(b.ax,b.ay);
+    octx.beginPath();octx.moveTo(r.left+r.width/2,r.bottom);octx.lineTo(b.ax,b.ay);
     octx.strokeStyle=lc[b.ct]||lc.tcg;octx.lineWidth=1.5;octx.setLineDash([4,4]);octx.stroke();
     octx.beginPath();octx.arc(b.ax,b.ay,5,0,Math.PI*2);
     octx.fillStyle=dc[b.ct]||dc.tcg;octx.fill();octx.setLineDash([]);
