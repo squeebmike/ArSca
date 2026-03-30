@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>LBA Scanner — Live AR</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+:root{
+  --g:#00ffb3;--gd:rgba(0,255,179,0.18);--gold:#ffd166;
+  --red:#ff4d6d;--bg:#050507;--head:'Orbitron',monospace;
+}
+html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-family:'DM Sans',sans-serif;color:#fff;}
+
+/* ── SETUP ── */
+#setup{position:fixed;inset:0;z-index:200;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:28px;}
+.sbox{width:100%;max-width:380px;border:1px solid rgba(0,255,179,.3);padding:28px 24px;background:rgba(0,255,179,.03);position:relative;}
+.sbox::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--g),transparent);}
+.s-logo{font-family:var(--head);font-size:20px;font-weight:900;color:var(--g);letter-spacing:3px;text-shadow:0 0 20px var(--g);margin-bottom:2px;}
+.s-sub{font-size:11px;color:rgba(255,255,255,.3);letter-spacing:2px;margin-bottom:24px;}
+.s-label{font-family:var(--head);font-size:8px;letter-spacing:2px;color:rgba(255,255,255,.3);margin-bottom:6px;}
+.s-input{width:100%;background:rgba(0,0,0,.5);border:1px solid rgba(0,255,179,.2);color:#fff;padding:11px 13px;font-family:monospace;font-size:13px;outline:none;margin-bottom:14px;}
+.s-input:focus{border-color:var(--g);}
+.s-btn{width:100%;background:var(--g);color:#000;border:none;padding:13px;font-family:var(--head);font-size:11px;font-weight:700;letter-spacing:2px;cursor:pointer;}
+.s-note{font-size:10px;color:rgba(255,255,255,.2);margin-top:12px;line-height:1.6;}
+
+/* ── CAMERA ── */
+#video{position:fixed;inset:0;width:100%;height:100%;object-fit:cover;z-index:0;}
+#canvas{display:none;}
+#overlay-canvas{position:fixed;inset:0;width:100%;height:100%;z-index:5;pointer-events:none;}
+
+/* ── HUD ── */
+#hud{position:fixed;top:0;left:0;right:0;z-index:30;padding:12px 16px;background:linear-gradient(to bottom,rgba(0,0,0,.88),transparent);display:none;justify-content:space-between;align-items:center;}
+.hud-logo{font-family:var(--head);font-size:14px;font-weight:900;color:var(--g);letter-spacing:3px;text-shadow:0 0 16px var(--g);}
+.hud-right{display:flex;gap:8px;align-items:center;}
+#hud-mode{font-family:var(--head);font-size:9px;letter-spacing:2px;padding:5px 10px;border:1px solid rgba(0,255,179,.3);color:var(--g);background:rgba(0,255,179,.06);cursor:pointer;}
+#hud-status{font-family:monospace;font-size:10px;color:rgba(255,255,255,.35);letter-spacing:1px;}
+
+/* ── PRICE BUBBLES (AR overlay) ── */
+.bubble{
+  position:fixed;
+  z-index:20;
+  background:rgba(5,5,7,.93);
+  border:1.5px solid var(--g);
+  border-radius:2px;
+  padding:8px 11px;
+  pointer-events:auto;
+  backdrop-filter:blur(6px);
+  transition:opacity .3s;
+  max-width:160px;
+  box-shadow:0 0 16px rgba(0,255,179,.2);
+}
+.bubble::before{
+  content:'';position:absolute;top:-1px;left:0;right:0;height:1.5px;
+  background:linear-gradient(90deg,transparent,var(--g),transparent);
+}
+.b-game{font-family:var(--head);font-size:7px;letter-spacing:2px;color:var(--g);margin-bottom:2px;opacity:.7;}
+.b-name{font-size:12px;font-weight:600;color:#fff;margin-bottom:6px;line-height:1.2;}
+.b-price{font-family:var(--head);font-size:20px;font-weight:900;color:var(--g);text-shadow:0 0 10px rgba(0,255,179,.4);line-height:1;}
+.b-range{font-family:monospace;font-size:9px;color:rgba(255,255,255,.3);margin-top:2px;}
+.b-cond{display:flex;gap:4px;margin-top:6px;flex-wrap:wrap;}
+.b-pill{font-family:var(--head);font-size:7px;padding:2px 6px;border:1px solid rgba(255,255,255,.15);color:rgba(255,255,255,.4);cursor:pointer;letter-spacing:1px;}
+.b-pill.active{border-color:var(--g);color:var(--g);background:var(--gd);}
+.b-tcg{display:block;margin-top:6px;background:rgba(0,255,179,.1);color:var(--g);font-family:var(--head);font-size:7px;letter-spacing:1px;padding:4px 8px;text-decoration:none;text-align:center;border:1px solid rgba(0,255,179,.2);}
+.b-close{position:absolute;top:4px;right:6px;background:none;border:none;color:rgba(255,255,255,.25);font-size:13px;cursor:pointer;line-height:1;}
+
+/* ── SCAN BTN ── */
+#scan-bar{position:fixed;bottom:0;left:0;right:0;z-index:30;padding:16px;background:linear-gradient(to top,rgba(0,0,0,.9) 60%,transparent);display:none;flex-direction:column;align-items:center;gap:10px;}
+#scan-btn{background:var(--g);color:#000;border:none;padding:16px 52px;font-family:var(--head);font-weight:900;font-size:14px;letter-spacing:2px;cursor:pointer;box-shadow:0 0 30px rgba(0,255,179,.45);transition:all .15s;}
+#scan-btn:active{transform:scale(.96);}
+#scan-btn.live{background:var(--red);box-shadow:0 0 30px rgba(255,77,109,.45);}
+#scan-btn.reading{background:var(--gold);box-shadow:0 0 30px rgba(255,209,102,.4);}
+.scan-hint{font-family:monospace;font-size:10px;color:rgba(255,255,255,.3);letter-spacing:1px;}
+
+/* ── CONNECTOR LINES drawn on overlay-canvas ── */
+
+/* ── TOAST ── */
+.toast{position:fixed;top:72px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.95);border:1px solid rgba(0,255,179,.4);padding:9px 22px;font-family:monospace;font-size:11px;color:var(--g);z-index:200;white-space:nowrap;animation:tin .2s ease;}
+@keyframes tin{from{opacity:0;top:82px}to{opacity:1;top:72px}}
+</style>
+</head>
+<body>
+
+<!-- SETUP -->
+<div id="setup">
+  <div class="sbox">
+    <div class="s-logo">LBA SCANNER</div>
+    <div class="s-sub">LIVE AR CARD PRICER</div>
+    <div class="s-label">Anthropic API Key</div>
+    <input type="password" class="s-input" id="api-input" placeholder="sk-ant-...">
+    <button class="s-btn" onclick="init()">LAUNCH AR SCANNER</button>
+    <div class="s-note">Points camera at any cards — prices appear live over each card on screen.</div>
+  </div>
+</div>
+
+<video id="video" autoplay playsinline muted></video>
+<canvas id="canvas"></canvas>
+<canvas id="overlay-canvas"></canvas>
+
+<div id="hud">
+  <div class="hud-logo">LBA</div>
+  <div class="hud-right">
+    <div id="hud-status">READY</div>
+    <div id="hud-mode" onclick="toggleMode()">MANUAL</div>
+  </div>
+</div>
+
+<div id="scan-bar">
+  <button id="scan-btn" onclick="handleScanBtn()">▶ SCAN CARDS</button>
+  <div class="scan-hint" id="scan-hint">Point camera at cards and tap scan</div>
+</div>
+
+<script>
+let apiKey = localStorage.getItem('lba_key6') || '';
+let video, canvas, overlayCanvas, ctx, octx;
+let autoMode = false;
+let autoTimer = null;
+let scanning = false;
+let bubbles = []; // {el, x, y, w, h} for connector lines
+let condMultipliers = {NM:1, LP:0.8, MP:0.64, HP:0.4, DMG:0.25};
+
+if (apiKey) startApp();
+
+function init() {
+  const k = document.getElementById('api-input').value.trim();
+  if (!k.startsWith('sk-ant-')) { toast('Key must start with sk-ant-'); return; }
+  apiKey = k;
+  localStorage.setItem('lba_key6', k);
+  startApp();
+}
+
+function startApp() {
+  document.getElementById('setup').style.display = 'none';
+  video = document.getElementById('video');
+  canvas = document.getElementById('canvas');
+  overlayCanvas = document.getElementById('overlay-canvas');
+
+  navigator.mediaDevices.getUserMedia({
+    video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } },
+    audio: false
+  }).then(s => {
+    video.srcObject = s;
+    video.play();
+    video.onloadedmetadata = () => {
+      overlayCanvas.width = window.innerWidth;
+      overlayCanvas.height = window.innerHeight;
+      octx = overlayCanvas.getContext('2d');
+    };
+    document.getElementById('hud').style.display = 'flex';
+    document.getElementById('scan-bar').style.display = 'flex';
+    window.addEventListener('resize', () => {
+      overlayCanvas.width = window.innerWidth;
+      overlayCanvas.height = window.innerHeight;
+    });
+  }).catch(e => alert('Camera: ' + e.message));
+}
+
+function handleScanBtn() {
+  if (autoMode) {
+    stopAuto();
+  } else {
+    scanFrame();
+  }
+}
+
+function toggleMode() {
+  autoMode = !autoMode;
+  const modeBtn = document.getElementById('hud-mode');
+  const scanBtn = document.getElementById('scan-btn');
+  const hint = document.getElementById('scan-hint');
+  if (autoMode) {
+    modeBtn.textContent = 'AUTO ON';
+    modeBtn.style.borderColor = 'var(--g)';
+    modeBtn.style.background = 'rgba(0,255,179,.12)';
+    scanBtn.textContent = '⏹ STOP AUTO';
+    scanBtn.classList.add('live');
+    hint.textContent = 'Scanning every 4 seconds — move phone slowly';
+    autoTimer = setInterval(() => { if (!scanning) scanFrame(); }, 4000);
+    scanFrame();
+  } else {
+    stopAuto();
+  }
+}
+
+function stopAuto() {
+  autoMode = false;
+  clearInterval(autoTimer);
+  const modeBtn = document.getElementById('hud-mode');
+  const scanBtn = document.getElementById('scan-btn');
+  const hint = document.getElementById('scan-hint');
+  modeBtn.textContent = 'MANUAL';
+  modeBtn.style.borderColor = 'rgba(0,255,179,.3)';
+  modeBtn.style.background = 'rgba(0,255,179,.06)';
+  scanBtn.textContent = '▶ SCAN CARDS';
+  scanBtn.classList.remove('live');
+  hint.textContent = 'Point camera at cards and tap scan';
+}
+
+function captureFrame() {
+  const vw = video.videoWidth || 1280;
+  const vh = video.videoHeight || 720;
+  canvas.width = 800;
+  canvas.height = Math.round(800 * vh / vw);
+  const c = canvas.getContext('2d');
+  c.drawImage(video, 0, 0, canvas.width, canvas.height);
+  return canvas.toDataURL('image/jpeg', 0.82).split(',')[1];
+}
+
+async function scanFrame() {
+  if (scanning) return;
+  scanning = true;
+  const btn = document.getElementById('scan-btn');
+  const status = document.getElementById('hud-status');
+  if (!autoMode) { btn.textContent = 'READING...'; btn.classList.add('reading'); }
+  status.textContent = 'SCANNING...';
+
+  try {
+    const img = captureFrame();
+    const W = window.innerWidth, H = window.innerHeight;
+
+    const prompt = `You are scanning a photo of trading cards laid out on a surface. Identify ALL trading cards visible.
+
+For each card return its position as a percentage of the image (0-100). Center x/y of where the card appears.
+
+Return ONLY raw JSON array, no markdown:
+[
+  {
+    "name": "exact card name",
+    "game": "Pokemon TCG|Magic: The Gathering|Yu-Gi-Oh!|Sports Card|Other",
+    "set": "most likely set",
+    "cx": 50,
+    "cy": 50,
+    "mid": 4.50,
+    "low": 2.00,
+    "high": 9.00,
+    "printings": ["Set A", "Set B - Full Art", "Set C - Alt Art"]
+  }
+]
+
+cx/cy are center percentages (0-100) of where the card is in the image.
+mid/low/high are NM TCGPlayer price estimates in USD.
+Include up to 6 cards. If no cards visible return [].`;
+
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 800,
+        messages: [{ role: 'user', content: [
+          { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: img } },
+          { type: 'text', text: prompt }
+        ]}]
+      })
+    });
+
+    if (!res.ok) { const e = await res.json(); throw new Error(e.error?.message || 'API ' + res.status); }
+    const data = await res.json();
+    const text = data.content[0].text.replace(/```json|```/g, '').trim();
+    const cards = JSON.parse(text);
+
+    if (Array.isArray(cards) && cards.length > 0) {
+      // Clear old bubbles if auto mode (fresh scan)
+      if (autoMode) clearBubbles();
+      cards.forEach(card => placeBubble(card, W, H));
+      status.textContent = `${cards.length} CARD${cards.length>1?'S':''} FOUND`;
+      drawConnectors();
+    } else {
+      status.textContent = 'NO CARDS';
+      toast('No cards detected');
+    }
+  } catch(e) {
+    status.textContent = 'ERROR';
+    toast('Error: ' + e.message);
+  }
+
+  scanning = false;
+  if (!autoMode) { btn.textContent = '▶ SCAN CARDS'; btn.classList.remove('reading'); }
+}
+
+function placeBubble(card, W, H) {
+  // Convert card center % to screen coords
+  const cx = (card.cx / 100) * W;
+  const cy = (card.cy / 100) * H;
+
+  // Build bubble
+  const el = document.createElement('div');
+  el.className = 'bubble';
+  const id = 'b' + Date.now() + Math.random().toString(36).slice(2,5);
+  el.id = id;
+
+  const q = encodeURIComponent(card.name + ' ' + (card.set || ''));
+  const tcgUrl = `https://www.tcgplayer.com/search/all/product?q=${q}`;
+
+  const printingOpts = card.printings && card.printings.length > 1
+    ? `<select onchange="updateBubblePrice('${id}',this.value,${card.mid},${card.low},${card.high})" style="width:100%;background:#111;color:#fff;border:1px solid #333;padding:5px;font-family:monospace;font-size:10px;margin-top:6px;outline:none;">${card.printings.map(p=>`<option>${p}</option>`).join('')}</select>`
+    : '';
+
+  el.innerHTML = `
+    <button class="b-close" onclick="removeBubble('${id}')">✕</button>
+    <div class="b-game">${card.game || 'CARD'}</div>
+    <div class="b-name">${card.name}</div>
+    <div class="b-price" id="bp-${id}">$${(card.mid||0).toFixed(2)}</div>
+    <div class="b-range" id="br-${id}">$${(card.low||0).toFixed(2)} – $${(card.high||0).toFixed(2)}</div>
+    ${printingOpts}
+    <div class="b-cond">
+      ${Object.keys(condMultipliers).map((c,i)=>`<div class="b-pill${i===0?' active':''}" onclick="setCondBubble('${id}','${c}',${card.mid},${card.low},${card.high},this)">${c}</div>`).join('')}
+    </div>
+    <a class="b-tcg" href="${tcgUrl}" target="_blank">TCGPlayer ↗</a>
+  `;
+
+  // Position bubble — try to keep on screen
+  const bw = 160, bh = 220;
+  let left = cx - bw / 2;
+  let top = cy - bh - 20; // above card center
+  if (top < 70) top = cy + 30; // below if too high
+  if (left < 8) left = 8;
+  if (left + bw > W - 8) left = W - bw - 8;
+  if (top + bh > H - 100) top = H - bh - 100;
+
+  el.style.left = left + 'px';
+  el.style.top = top + 'px';
+  document.body.appendChild(el);
+
+  bubbles.push({ id, el, anchorX: cx, anchorY: cy, bx: left + bw/2, by: top + bh });
+}
+
+function drawConnectors() {
+  if (!octx) return;
+  octx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+  bubbles.forEach(b => {
+    if (!b.el.parentNode) return;
+    octx.beginPath();
+    octx.moveTo(b.bx, b.by);
+    octx.lineTo(b.anchorX, b.anchorY);
+    octx.strokeStyle = 'rgba(0,255,179,0.35)';
+    octx.lineWidth = 1.5;
+    octx.setLineDash([4, 4]);
+    octx.stroke();
+    // dot at card location
+    octx.beginPath();
+    octx.arc(b.anchorX, b.anchorY, 5, 0, Math.PI * 2);
+    octx.fillStyle = 'rgba(0,255,179,0.7)';
+    octx.fill();
+    octx.setLineDash([]);
+  });
+}
+
+window.removeBubble = function(id) {
+  const el = document.getElementById(id);
+  if (el) el.remove();
+  bubbles = bubbles.filter(b => b.id !== id);
+  if (octx) { octx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height); drawConnectors(); }
+};
+
+window.setCondBubble = function(id, cond, mid, low, high, pill) {
+  const mult = condMultipliers[cond] || 1;
+  const bp = document.getElementById('bp-' + id);
+  const br = document.getElementById('br-' + id);
+  if (bp) bp.textContent = '$' + (mid * mult).toFixed(2);
+  if (br) br.textContent = '$' + (low * mult).toFixed(2) + ' – $' + (high * mult).toFixed(2);
+  pill.closest('.b-cond').querySelectorAll('.b-pill').forEach(p => p.classList.remove('active'));
+  pill.classList.add('active');
+};
+
+window.updateBubblePrice = function(id, printing, mid, low, high) {
+  // Re-query price for different printing
+  const bp = document.getElementById('bp-' + id);
+  if (bp) { bp.textContent = '...'; bp.style.color = 'var(--gold)'; }
+  fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true' },
+    body: JSON.stringify({ model:'claude-haiku-4-5-20251001', max_tokens:80,
+      messages:[{role:'user',content:'TCGPlayer NM price for: '+printing+'. JSON only: {"mid":0.00,"low":0.00,"high":0.00}'}] })
+  }).then(r=>r.json()).then(d=>{
+    try {
+      const p = JSON.parse(d.content[0].text.replace(/```json|```/g,'').trim());
+      if (bp) { bp.textContent = '$' + (p.mid||mid).toFixed(2); bp.style.color = 'var(--g)'; }
+      const br = document.getElementById('br-' + id);
+      if (br) br.textContent = '$' + (p.low||low).toFixed(2) + ' – $' + (p.high||high).toFixed(2);
+    } catch(e) { if (bp) { bp.textContent = '$' + mid.toFixed(2); bp.style.color = 'var(--g)'; } }
+  }).catch(() => { if (bp) { bp.textContent = '$' + mid.toFixed(2); bp.style.color = 'var(--g)'; } });
+};
+
+function clearBubbles() {
+  bubbles.forEach(b => { if (b.el.parentNode) b.el.remove(); });
+  bubbles = [];
+  if (octx) octx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+}
+
+function toast(msg) {
+  const t = document.createElement('div');
+  t.className = 'toast';
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 3500);
+}
+</script>
+</body>
+</html>
