@@ -11,118 +11,101 @@
 :root{--g:#00ffb3;--gd:rgba(0,255,179,0.15);--gold:#ffd166;--red:#ff4d6d;--blue:#48cae4;--purple:#c77dff;--bg:#050507;}
 html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-family:'DM Sans',sans-serif;color:#fff;}
 #video{position:fixed;inset:0;width:100%;height:100%;object-fit:cover;z-index:0;}
-#canvas,#cropcanvas{display:none;}
+#canvas{display:none;}
 #oc{position:fixed;inset:0;width:100%;height:100%;z-index:5;pointer-events:none;}
-/* SETUP */
 #setup{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:32px;z-index:100;}
 .s-logo{font-family:'Orbitron',monospace;font-size:30px;font-weight:900;color:var(--g);letter-spacing:5px;text-shadow:0 0 30px var(--g);text-align:center;line-height:1.1;}
-.s-sub{font-family:monospace;font-size:10px;color:rgba(255,255,255,.3);letter-spacing:3px;text-align:center;}
+.s-sub{font-family:monospace;font-size:10px;color:rgba(255,255,255,.3);letter-spacing:3px;}
+.s-badges{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;}
+.s-badge{font-family:monospace;font-size:9px;padding:3px 8px;border:1px solid rgba(0,255,179,.2);color:rgba(0,255,179,.5);letter-spacing:1px;}
 .s-inp{width:100%;max-width:340px;background:rgba(0,0,0,.5);border:1px solid rgba(0,255,179,.25);color:#fff;padding:12px 14px;font-family:monospace;font-size:13px;outline:none;}
 .s-inp:focus{border-color:var(--g);}
 .s-btn{width:100%;max-width:340px;background:var(--g);color:#000;border:none;padding:15px;font-family:'Orbitron',monospace;font-weight:700;font-size:13px;letter-spacing:2px;cursor:pointer;}
-.s-badges{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;max-width:320px;}
-.s-badge{font-family:monospace;font-size:9px;padding:3px 8px;border:1px solid rgba(0,255,179,.2);color:rgba(0,255,179,.5);letter-spacing:1px;}
-/* HUD */
 #hud{position:fixed;top:0;left:0;right:0;z-index:30;padding:12px 14px;background:linear-gradient(to bottom,rgba(0,0,0,.9),transparent);display:flex;justify-content:space-between;align-items:center;}
 .hl{font-family:'Orbitron',monospace;font-size:14px;font-weight:900;color:var(--g);letter-spacing:3px;text-shadow:0 0 16px var(--g);}
 .hbtns{display:flex;gap:6px;align-items:center;}
 #hstatus{font-family:monospace;font-size:10px;color:rgba(255,255,255,.35);letter-spacing:1px;margin-right:4px;}
 .hbtn{background:rgba(255,255,255,.08);color:rgba(255,255,255,.5);border:1px solid rgba(255,255,255,.15);padding:6px 12px;font-family:monospace;font-size:10px;cursor:pointer;letter-spacing:1px;}
 .hbtn.on{color:var(--red);border-color:var(--red);}
-/* SCAN BAR */
 #scanbar{position:fixed;bottom:0;left:0;right:0;z-index:30;padding:16px 16px 32px;background:linear-gradient(to top,rgba(0,0,0,.92) 60%,transparent);display:flex;flex-direction:column;align-items:center;gap:8px;}
-#scanbtn{background:var(--g);color:#000;border:none;padding:18px 60px;font-family:'Orbitron',monospace;font-weight:900;font-size:15px;letter-spacing:2px;cursor:pointer;box-shadow:0 0 32px rgba(0,255,179,.5);touch-action:manipulation;}
+#scanbtn{background:var(--g);color:#000;border:none;padding:18px 64px;font-family:'Orbitron',monospace;font-weight:900;font-size:15px;letter-spacing:2px;cursor:pointer;box-shadow:0 0 32px rgba(0,255,179,.5);touch-action:manipulation;}
 #scanbtn.reading{background:var(--gold);}
 #scanbtn.autoon{background:var(--red);}
 .shint{font-family:monospace;font-size:10px;color:rgba(255,255,255,.25);letter-spacing:1px;}
-/* BRACKETS */
 #brackets{position:fixed;inset:0;z-index:4;pointer-events:none;}
 .br{position:absolute;width:44px;height:44px;border-color:var(--g);border-style:solid;opacity:.5;}
 .tl{top:22%;left:4%;border-width:2px 0 0 2px;}.tr{top:22%;right:4%;border-width:2px 2px 0 0;}
 .bl{bottom:22%;left:4%;border-width:0 0 2px 2px;}.brr{bottom:22%;right:4%;border-width:0 2px 2px 0;}
 #scanline{position:absolute;left:4%;right:4%;height:1.5px;background:linear-gradient(90deg,transparent,var(--g),transparent);box-shadow:0 0 8px var(--g);animation:scan 2.5s ease-in-out infinite;}
 @keyframes scan{0%{top:23%}48%{top:77%}52%{top:77%}100%{top:23%}}
-/* BUBBLE */
-.bub{position:fixed;background:rgba(5,5,7,.97);border:1.5px solid var(--g);padding:10px 12px;width:190px;z-index:20;box-shadow:0 0 20px rgba(0,255,179,.15);overflow:hidden;}
+.bub{position:fixed;background:rgba(5,5,7,.97);border:1.5px solid var(--g);padding:10px 12px;width:186px;z-index:20;box-shadow:0 0 20px rgba(0,255,179,.15);}
 .bub::before{content:'';position:absolute;top:-1px;left:0;right:0;height:1.5px;background:linear-gradient(90deg,transparent,var(--g),transparent);}
-.bub.sports{border-color:var(--gold);}
-.bub.sports::before{background:linear-gradient(90deg,transparent,var(--gold),transparent);}
-.bub.comic{border-color:var(--purple);}
-.bub.comic::before{background:linear-gradient(90deg,transparent,var(--purple),transparent);}
-.bg{font-family:'Orbitron',monospace;font-size:7px;letter-spacing:2px;margin-bottom:2px;opacity:.8;}
-.bg.tcg{color:var(--g)}.bg.sports{color:var(--gold)}.bg.comic{color:var(--purple)}
-.bn{font-size:13px;font-weight:600;color:#fff;margin-bottom:1px;padding-right:18px;line-height:1.2;}
-.bsub{font-family:monospace;font-size:9px;color:rgba(255,255,255,.4);margin-bottom:5px;line-height:1.4;}
-/* DESIRABILITY */
-.drow{display:flex;align-items:center;gap:6px;margin-bottom:4px;}
+.bub.sports{border-color:var(--gold);}.bub.sports::before{background:linear-gradient(90deg,transparent,var(--gold),transparent);}
+.bub.comic{border-color:var(--purple);}.bub.comic::before{background:linear-gradient(90deg,transparent,var(--purple),transparent);}
+.btype{font-family:'Orbitron',monospace;font-size:7px;letter-spacing:2px;margin-bottom:2px;opacity:.8;}
+.btype.tcg{color:var(--g)}.btype.sports{color:var(--gold)}.btype.comic{color:var(--purple)}
+.bname{font-size:13px;font-weight:600;color:#fff;margin-bottom:1px;padding-right:18px;line-height:1.2;}
+.bsub{font-family:monospace;font-size:9px;color:rgba(255,255,255,.4);margin-bottom:4px;line-height:1.4;}
+.drow{display:flex;align-items:center;gap:6px;margin-bottom:3px;}
 .dscore{font-family:'Orbitron',monospace;font-size:11px;font-weight:700;padding:2px 7px;}
 .dhi{color:#00ffb3;background:rgba(0,255,179,.12);border:1px solid rgba(0,255,179,.3);}
 .dmd{color:var(--gold);background:rgba(255,209,102,.1);border:1px solid rgba(255,209,102,.3);}
 .dlo{color:var(--red);background:rgba(255,77,109,.1);border:1px solid rgba(255,77,109,.3);}
-.trend{font-family:monospace;font-size:10px;}
+.trend{font-family:monospace;font-size:10px;flex:1;}
 .tup{color:#00ffb3}.tdn{color:var(--red)}.tfl{color:rgba(255,255,255,.4)}
-/* TAGS */
-.tags{display:flex;flex-wrap:wrap;gap:3px;margin-bottom:5px;}
+.tags{display:flex;flex-wrap:wrap;gap:3px;margin-bottom:4px;}
 .tag{font-family:monospace;font-size:8px;padding:2px 5px;border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.4);}
 .tag.hot{border-color:rgba(255,77,109,.4);color:var(--red);background:rgba(255,77,109,.08);}
 .tag.rc{border-color:rgba(255,209,102,.4);color:var(--gold);background:rgba(255,209,102,.08);}
 .tag.key{border-color:rgba(0,255,179,.4);color:var(--g);background:rgba(0,255,179,.08);}
-.tag.cgc{border-color:rgba(72,202,228,.4);color:var(--blue);background:rgba(72,202,228,.08);}
-/* PRICE */
+.keynotes{font-family:monospace;font-size:8px;color:rgba(255,209,102,.7);margin-bottom:4px;line-height:1.4;}
 .prow{display:flex;align-items:baseline;gap:5px;margin-bottom:2px;}
-.bp{font-family:'Orbitron',monospace;font-size:20px;font-weight:900;line-height:1;}
-.bp.tcg{color:var(--g);text-shadow:0 0 10px rgba(0,255,179,.4);}
-.bp.sports{color:var(--gold);text-shadow:0 0 10px rgba(255,209,102,.3);}
-.bp.comic{color:var(--purple);text-shadow:0 0 10px rgba(199,125,255,.3);}
-.bsrc{font-family:monospace;font-size:8px;color:rgba(255,255,255,.3);letter-spacing:1px;}
-.br2{font-family:monospace;font-size:9px;color:rgba(255,255,255,.3);margin-bottom:5px;}
-/* COMPS */
-.comps{margin-bottom:6px;}
-.comps-title{font-family:'Orbitron',monospace;font-size:7px;letter-spacing:1px;color:rgba(255,255,255,.3);margin-bottom:3px;}
-.comp-item{display:flex;justify-content:space-between;padding:2px 0;border-bottom:1px solid rgba(255,255,255,.05);}
-.comp-desc{font-family:monospace;font-size:8px;color:rgba(255,255,255,.45);flex:1;margin-right:4px;line-height:1.3;}
-.comp-price{font-family:'Orbitron',monospace;font-size:9px;}
-.comp-price.tcg{color:var(--g)}.comp-price.sports{color:var(--gold)}.comp-price.comic{color:var(--purple)}
-/* SELECTS */
+.bprice{font-family:'Orbitron',monospace;font-size:20px;font-weight:900;line-height:1;}
+.bprice.tcg{color:var(--g);text-shadow:0 0 10px rgba(0,255,179,.4);}
+.bprice.sports{color:var(--gold);text-shadow:0 0 10px rgba(255,209,102,.3);}
+.bprice.comic{color:var(--purple);text-shadow:0 0 10px rgba(199,125,255,.3);}
+.brange{font-family:monospace;font-size:9px;color:rgba(255,255,255,.3);margin-bottom:5px;}
+.comps{margin-bottom:5px;}
+.comps-hdr{font-family:'Orbitron',monospace;font-size:7px;letter-spacing:1px;color:rgba(255,255,255,.3);margin-bottom:3px;}
+.comp-row{display:flex;justify-content:space-between;padding:2px 0;border-bottom:1px solid rgba(255,255,255,.05);}
+.comp-d{font-family:monospace;font-size:8px;color:rgba(255,255,255,.45);flex:1;margin-right:4px;line-height:1.3;}
+.comp-p{font-family:'Orbitron',monospace;font-size:9px;}
+.comp-p.tcg{color:var(--g)}.comp-p.sports{color:var(--gold)}.comp-p.comic{color:var(--purple)}
 .bsels{display:flex;flex-direction:column;gap:4px;margin-bottom:5px;}
 .bsel{width:100%;background:#0d0d0f;color:#fff;border:1px solid rgba(255,255,255,.12);padding:5px 7px;font-family:monospace;font-size:10px;outline:none;}
 .bsel:focus{border-color:var(--g);}
 .bconds{display:flex;gap:3px;flex-wrap:wrap;margin-bottom:5px;}
 .bcp{font-family:'Orbitron',monospace;font-size:7px;padding:2px 5px;border:1px solid rgba(255,255,255,.15);color:rgba(255,255,255,.4);cursor:pointer;}
 .bcp.on{border-color:var(--g);color:var(--g);background:var(--gd);}
-/* ACTIONS */
-.bacts{display:grid;grid-template-columns:1fr 1fr;gap:3px;margin-bottom:0;}
+.bacts{display:grid;grid-template-columns:1fr 1fr;gap:3px;}
 .bact{border:none;padding:7px 4px;font-family:'Orbitron',monospace;font-size:7px;letter-spacing:1px;cursor:pointer;text-align:center;text-decoration:none;display:block;line-height:1.3;}
 .a-tcg{background:rgba(0,255,179,.08);color:var(--g);border:1px solid rgba(0,255,179,.2);}
 .a-ebay{background:rgba(255,209,102,.08);color:var(--gold);border:1px solid rgba(255,209,102,.2);}
 .a-130{background:rgba(72,202,228,.08);color:var(--blue);border:1px solid rgba(72,202,228,.2);}
 .a-gcol{background:rgba(199,125,255,.08);color:var(--purple);border:1px solid rgba(199,125,255,.2);}
-.a-inv{background:rgba(0,255,179,.12);color:var(--g);border:1px solid rgba(0,255,179,.3);grid-column:1/-1;margin-top:1px;}
-.a-inv.added{background:rgba(0,255,179,.25);border-color:var(--g);}
-.bx{position:absolute;top:4px;right:6px;background:none;border:none;color:rgba(255,255,255,.25);font-size:15px;cursor:pointer;padding:0;z-index:1;}
-.conf-badge{font-family:monospace;font-size:8px;padding:1px 5px;margin-bottom:4px;display:inline-block;}
-.c-hi{color:var(--g);border:1px solid rgba(0,255,179,.3);background:rgba(0,255,179,.06);}
-.c-md{color:var(--gold);border:1px solid rgba(255,209,102,.3);background:rgba(255,209,102,.06);}
-.c-lo{color:var(--red);border:1px solid rgba(255,77,109,.3);background:rgba(255,77,109,.06);}
+.a-inv{background:rgba(0,255,179,.1);color:var(--g);border:1px solid rgba(0,255,179,.25);grid-column:1/-1;margin-top:2px;}
+.a-inv.added{background:rgba(0,255,179,.22);border-color:var(--g);}
+.bx{position:absolute;top:4px;right:6px;background:none;border:none;color:rgba(255,255,255,.25);font-size:15px;cursor:pointer;padding:0;}
+.conf{font-family:monospace;font-size:8px;padding:1px 5px;display:inline-block;margin-bottom:4px;}
+.c-hi{color:var(--g);border:1px solid rgba(0,255,179,.25);background:rgba(0,255,179,.06);}
+.c-md{color:var(--gold);border:1px solid rgba(255,209,102,.25);background:rgba(255,209,102,.06);}
+.c-lo{color:var(--red);border:1px solid rgba(255,77,109,.25);background:rgba(255,77,109,.06);}
 .toast{position:fixed;top:70px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.95);border:1px solid rgba(0,255,179,.4);padding:9px 20px;font-family:monospace;font-size:11px;color:var(--g);z-index:200;max-width:90vw;text-align:center;}
 </style>
 </head>
 <body>
 <div id="setup">
   <div class="s-logo">LBA<br>SCANNER</div>
-  <div class="s-sub">AI VISUAL CARD IDENTIFIER</div>
+  <div class="s-sub">AI CARD + COMIC IDENTIFIER</div>
   <div class="s-badges">
-    <span class="s-badge">TCG CARDS</span>
-    <span class="s-badge">SPORTS CARDS</span>
-    <span class="s-badge">COMICS</span>
-    <span class="s-badge">GRADED SLABS</span>
+    <span class="s-badge">TCG</span><span class="s-badge">SPORTS</span>
+    <span class="s-badge">COMICS</span><span class="s-badge">GRADED</span>
   </div>
   <input class="s-inp" id="kinp" type="password" placeholder="Anthropic API key (sk-ant-...)">
   <button class="s-btn" onclick="launch()">&#9654; LAUNCH SCANNER</button>
 </div>
 <video id="video" autoplay playsinline muted></video>
 <canvas id="canvas"></canvas>
-<canvas id="cropcanvas"></canvas>
 <canvas id="oc"></canvas>
 <div id="brackets">
   <div class="br tl"></div><div class="br tr"></div>
@@ -139,17 +122,14 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
 </div>
 <div id="scanbar" style="display:none">
   <button id="scanbtn" onclick="doScan()">&#9654; SCAN CARDS</button>
-  <div class="shint">Point camera at cards — sports, TCG, or comics</div>
+  <div class="shint">TCG · Sports · Comics · Graded slabs</div>
 </div>
 <script>
 const CM={NM:1,LP:.8,MP:.64,HP:.4,DMG:.25};
 let bubs=[],auto=false,autoT=null,scanning=false,octx=null,wakeLock=null;
-const video=document.getElementById('video');
-const canvas=document.getElementById('canvas');
-const crop=document.getElementById('cropcanvas');
-const oc=document.getElementById('oc');
+const video=document.getElementById('video'),canvas=document.getElementById('canvas'),oc=document.getElementById('oc');
 const savedKey=localStorage.getItem('lba_k');
-if(savedKey) document.getElementById('kinp').value=savedKey;
+if(savedKey)document.getElementById('kinp').value=savedKey;
 
 function launch(){
   const k=document.getElementById('kinp').value.trim();
@@ -157,7 +137,7 @@ function launch(){
   if(!k.startsWith('sk-ant-')){toast('Key must start with sk-ant-');return;}
   localStorage.setItem('lba_k',k);startScanner();
 }
-if(savedKey) startScanner();
+if(savedKey)startScanner();
 
 async function startScanner(){
   document.getElementById('setup').style.display='none';
@@ -172,199 +152,170 @@ async function startScanner(){
   }catch(e){toast('Camera: '+e.message);}
 }
 
-function capture(w,h){
+function capture(){
   const vw=video.videoWidth||1280,vh=video.videoHeight||720;
-  canvas.width=w||1024;canvas.height=h||Math.round((w||1024)*vh/vw);
+  canvas.width=1024;canvas.height=Math.round(1024*vh/vw);
   canvas.getContext('2d').drawImage(video,0,0,canvas.width,canvas.height);
   return canvas.toDataURL('image/jpeg',.88).split(',')[1];
-}
-
-// Crop a region from video for close-up analysis
-function captureRegion(cx,cy,pct){
-  const vw=video.videoWidth||1280,vh=video.videoHeight||720;
-  const size=Math.min(vw,vh)*pct;
-  const sx=Math.max(0,(cx/100)*vw-size/2);
-  const sy=Math.max(0,(cy/100)*vh-size/2);
-  const sw=Math.min(size,vw-sx),sh=Math.min(size,vh-sy);
-  crop.width=512;crop.height=512;
-  crop.getContext('2d').drawImage(video,sx,sy,sw,sh,0,0,512,512);
-  return crop.toDataURL('image/jpeg',.9).split(',')[1];
-}
-
-async function callClaude(messages,maxTok){
-  const key=localStorage.getItem('lba_k');
-  const res=await fetch('https://api.anthropic.com/v1/messages',{
-    method:'POST',headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-    body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:maxTok||2000,messages})
-  });
-  if(!res.ok){const e=await res.json();throw new Error(e.error?.message||'HTTP '+res.status);}
-  return (await res.json()).content[0].text;
 }
 
 async function doScan(){
   if(scanning)return;scanning=true;
   const btn=document.getElementById('scanbtn'),hs=document.getElementById('hstatus');
-  btn.textContent='SCANNING...';btn.className='reading';hs.textContent='SCANNING...';
-
+  btn.textContent='READING...';btn.className='reading';hs.textContent='SCANNING...';
   try{
-    // PASS 1 — Wide shot: find all items and positions
-    const img=capture(1024);
-    const pass1=`Scan this image and identify ALL collectibles: trading cards (TCG/sports), graded slabs, and comics.
+    const img=capture();
+    const key=localStorage.getItem('lba_k');
+    const prompt=`You are an expert at identifying collectibles. Look at this image carefully and identify ALL items: trading cards (TCG or sports), comics, and graded slabs.
 
-Return ONLY raw JSON array, no markdown:
-[{"type":"tcg|sports|comic|slab","cx":50,"cy":50,"quick_id":"brief description e.g. Pokemon Charizard holo, 2023 Topps Acuna Jr rookie prizm, Amazing Spider-Man #1"}]
+IDENTIFICATION METHOD — use ALL available visual clues:
+- Card borders, frame style, foil/holo patterns, rarity symbols
+- For sports: player pose, jersey number, team colors/logo, uniform, stadium, manufacturer logo (Topps/Panini/Upper Deck), copyright year
+- For TCG: energy symbols, card frame, set symbol, artwork style
+- For comics: title logo, cover art, publisher logo, issue number, UPC area, cover date
+- For graded: slab label color and design (PSA=red/blue, BGS=black, CGC=yellow/black)
 
-cx/cy = center of each item as % of image. Max 5 items. Empty [] if none.`;
+Return ONLY a raw JSON array, absolutely no markdown or explanation:
+[{
+  "name": "exact name — player name for sports, card name for TCG, title+issue for comics",
+  "game": "Pokemon TCG|Magic: The Gathering|Yu-Gi-Oh!|Sports Card|Comic|Graded Slab|Other TCG",
+  "sport": "Baseball|Basketball|Football|Hockey|Soccer|null",
+  "player": "player full name if sports card, null otherwise",
+  "team": "team name or null",
+  "year": "year from card/copyright",
+  "manufacturer": "Topps|Panini|Upper Deck|Bowman|Fleer|Donruss|Pokemon Company|Wizards|Konami|Marvel|DC|Image|Other",
+  "publisher": "Marvel|DC|Image|Dark Horse|IDW|Other|null",
+  "issue": "#number if comic, null otherwise",
+  "is_rookie": true or false,
+  "is_key": true or false,
+  "key_notes": "why notable: 1st app, HOF, tournament staple, death issue, etc or null",
+  "confidence": "high|medium|low",
+  "desirability": 7,
+  "trend": "up|down|flat",
+  "trend_reason": "brief reason",
+  "cx": 50, "cy": 50,
+  "printings": [{
+    "set": "full set name",
+    "variant": "Base|Chrome|Prizm|Silver Prizm|Gold Refractor|Red Prizm|Blue|Green|Orange|Holo|Reverse Holo|Full Art|Alt Art|Borderless|Showcase|Extended Art|Etched Foil|Retro Frame|Serialized|1st Edition|Promo|Rainbow Rare|Secret Rare|Special Illustration Rare|Collector Booster|Auto|Relic|Patch|Standard|Variant A|Virgin|Sketch|Foil|Newsstand",
+    "year": "year",
+    "numbered": "/99 or null",
+    "mid": 5.00, "low": 2.00, "high": 10.00
+  }],
+  "comps": [
+    {"desc": "sold listing description", "price": 8.50},
+    {"desc": "sold listing description", "price": 7.00},
+    {"desc": "sold listing description", "price": 9.50}
+  ]
+}]
 
-    const p1text=await callClaude([{role:'user',content:[{type:'image',source:{type:'base64',media_type:'image/jpeg',data:img}},{type:'text',text:pass1}]}],500);
-    const found=JSON.parse(p1text.replace(/```json|```/g,'').trim());
+CRITICAL RULES:
+- cx/cy = center of each item as % of full image (0-100)
+- Include EVERY known printing — be exhaustive for popular cards
+- For sports: all parallels (prizm colors, chrome, refractor, optic, select, mosaic, autos, relics)
+- For Pokemon/MTG/YuGiOh: every set, every variant, promos, special editions
+- For comics: standard, newsstand, variant covers, CGC graded versions
+- Comps = realistic recent eBay sold prices for that specific card/variant
+- Max 5 items, return [] if nothing visible`;
 
-    if(!Array.isArray(found)||!found.length){
-      hs.textContent='NONE';toast('No collectibles detected');
-      scanning=false;btn.innerHTML='&#9654; SCAN CARDS';btn.className='';return;
-    }
-
-    // PASS 2 — Zoom into each item for detailed ID
-    if(auto) clearAll();
-    hs.textContent='IDENTIFYING '+found.length+'...';
-
-    for(const item of found){
-      try{
-        const zoomImg=captureRegion(item.cx,item.cy,0.5);
-        const detail=await identifyItem(item,zoomImg);
-        if(detail) addBubble(detail);
-      }catch(e){console.error('Item ID failed:',e);}
-    }
-
-    drawLines();hs.textContent=bubs.length+' FOUND';
-  }catch(e){hs.textContent='ERROR';toast('Error: '+e.message);}
+    const res=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:3000,messages:[{role:'user',content:[{type:'image',source:{type:'base64',media_type:'image/jpeg',data:img}},{type:'text',text:prompt}]}]})
+    });
+    if(!res.ok){const e=await res.json();throw new Error(e.error?.message||'HTTP '+res.status);}
+    const data=await res.json();
+    const text=data.content[0].text.replace(/```json|```/g,'').trim();
+    const items=JSON.parse(text);
+    if(Array.isArray(items)&&items.length){
+      if(auto)clearAll();
+      items.forEach(item=>addBubble(item));
+      hs.textContent=items.length+' FOUND';
+      drawLines();
+    }else{hs.textContent='NONE';toast('Nothing detected — try again');}
+  }catch(e){document.getElementById('hstatus').textContent='ERROR';toast('Error: '+e.message);}
   scanning=false;btn.innerHTML='&#9654; SCAN CARDS';btn.className='';
 }
 
-async function identifyItem(item,zoomImg){
-  const t=item.type;
-
-  let prompt='';
-  if(t==='sports'){
-    prompt=`This is a close-up of a sports card. Use VISUAL identification — look at player pose, jersey number, team colors, uniform style, manufacturer logo (Topps/Panini/Upper Deck), border color, foil/chrome/prizm patterns, copyright year.
-
-Return ONLY raw JSON, no markdown:
-{"name":"player full name","game":"Sports Card","sport":"Baseball|Basketball|Football|Hockey|Soccer","team":"team name","year":"year","manufacturer":"Topps|Panini|Upper Deck|Bowman|Other","set_base":"base set name e.g. 2023 Topps Series 1","is_rookie":true,"is_key":false,"key_notes":"why notable","confidence":"high|medium|low","visual_notes":"what you see visually","cx":${item.cx},"cy":${item.cy},
-"printings":[{"set":"full set name","variant":"Base|Chrome|Prizm|Silver Prizm|Gold Refractor|Red Prizm|Blue|Green|Orange|Holo|Optic|Select|Mosaic|Topps Gold|Topps Rainbow|Refractor|Superfractor|Auto|Relic|Patch|Numbered","year":"year","numbered":"/99 or null","mid":5.00,"low":2.00,"high":10.00}],
-"comps":[{"desc":"similar card sold description","price":8.50,"days_ago":5},{"desc":"description","price":7.00,"days_ago":10}],
-"desirability":7,"trend":"up|down|flat","trend_reason":"brief reason"}
-
-Include base + ALL parallel variants (prizm colors, chrome, refractors, optic, auto, relic). Be exhaustive.`;
-  } else if(t==='comic'){
-    prompt=`This is a close-up of a comic book. Identify it visually — look at cover art style, logo/title treatment, publisher logo, spine color, UPC barcode area, cover date.
-
-Return ONLY raw JSON, no markdown:
-{"name":"comic title","game":"Comic","issue":"#1","publisher":"Marvel|DC|Image|Dark Horse|IDW|Other","year":"cover year or date","is_key":true,"key_notes":"1st appearance of, death of, etc","cover_variant":"Standard|Variant A|Virgin|Sketch|Foil|Newsstand","confidence":"high|medium|low","cx":${item.cx},"cy":${item.cy},
-"printings":[{"set":"publisher + issue e.g. Marvel Amazing Spider-Man #300","variant":"Standard|Variant A|Virgin|Sketch|Foil|Newsstand|CGC 9.8|CGC 9.6|CGC 9.4","mid":25.00,"low":15.00,"high":40.00}],
-"comps":[{"desc":"raw vs graded sold","price":22.00,"days_ago":7}],
-"desirability":6,"trend":"up|down|flat","trend_reason":"brief"}`;
-  } else {
-    prompt=`This is a close-up of a trading card or graded slab. Use VISUAL identification — card frame style, energy symbols, artwork, foil pattern, holo type, set symbol, rarity indicator, slab company label if graded.
-
-Return ONLY raw JSON, no markdown:
-{"name":"exact card name","game":"Pokemon TCG|Magic: The Gathering|Yu-Gi-Oh!|Other TCG","is_key":false,"key_notes":"tournament staple, 1st appearance etc","confidence":"high|medium|low","cx":${item.cx},"cy":${item.cy},
-"printings":[{"set":"full set name","variant":"Base|Holo|Reverse Holo|Full Art|Alt Art|Borderless|Showcase|Extended Art|Etched Foil|Galaxy Foil|Textured Foil|Retro Frame|Serialized|1st Edition|Promo|Rainbow Rare|Secret Rare|Special Illustration Rare|Collector Booster","year":"year","mid":5.00,"low":2.00,"high":10.00}],
-"comps":[{"desc":"NM sold comp","price":6.00,"days_ago":4}],
-"desirability":6,"trend":"up|down|flat","trend_reason":"brief"}`;
-  }
-
-  const text=await callClaude([{role:'user',content:[{type:'image',source:{type:'base64',media_type:'image/jpeg',data:zoomImg}},{type:'text',text:prompt}]}],2000);
-  const card=JSON.parse(text.replace(/```json|```/g,'').trim());
-  return card;
-}
-
-function cardType(card){
-  if(card.game==='Sports Card') return 'sports';
-  if(card.game==='Comic') return 'comic';
+function getType(item){
+  if(item.game==='Sports Card')return 'sports';
+  if(item.game==='Comic')return 'comic';
   return 'tcg';
 }
 
-function addBubble(card){
+function addBubble(item){
   const W=window.innerWidth,H=window.innerHeight;
-  const cx=(card.cx/100)*W,cy=(card.cy/100)*H;
+  const cx=(item.cx/100)*W,cy=(item.cy/100)*H;
   const id='b'+Date.now()+Math.random().toString(36).slice(2,5);
-  const prints=card.printings||[];
+  const prints=item.printings||[];
   const first=prints[0]||{mid:0,low:0,high:0,set:'Unknown',variant:''};
-  const ct=cardType(card);
+  const ct=getType(item);
   const el=document.createElement('div');
-  el.className='bub '+ct;el.id=id;el._prints=prints;el._card=card;
+  el.className='bub '+ct;el.id=id;el._prints=prints;el._item=item;el._ct=ct;
 
-  const ds=Math.min(10,Math.max(1,card.desirability||5));
+  const ds=Math.min(10,Math.max(1,item.desirability||5));
   const dc=ds>=7?'dhi':ds>=4?'dmd':'dlo';
-  const tc=card.trend==='up'?'tup':card.trend==='down'?'tdn':'tfl';
-  const ti=card.trend==='up'?'↑':card.trend==='down'?'↓':'→';
+  const tc=item.trend==='up'?'tup':item.trend==='down'?'tdn':'tfl';
+  const ti=item.trend==='up'?'↑ ':item.trend==='down'?'↓ ':'→ ';
 
-  // Tags
   const tags=[];
-  if(card.is_rookie)tags.push('<span class="tag rc">RC</span>');
-  if(card.is_key||card.is_key_card)tags.push('<span class="tag key">KEY</span>');
+  if(item.is_rookie)tags.push('<span class="tag rc">RC</span>');
+  if(item.is_key)tags.push('<span class="tag key">KEY</span>');
   if(ds>=8)tags.push('<span class="tag hot">HOT</span>');
-  if(ct==='comic'&&card.issue)tags.push('<span class="tag cgc">'+card.issue+'</span>');
 
-  // Comps
-  let compsHtml='';
-  if(card.comps&&card.comps.length){
-    const label=ct==='sports'?'RECENT SOLD COMPS':ct==='comic'?'RECENT COMIC SALES':'RECENT SALES';
-    compsHtml=`<div class="comps"><div class="comps-title">${label}</div>${card.comps.slice(0,3).map(c=>`<div class="comp-item"><span class="comp-desc">${c.desc}</span><span class="comp-price ${ct}">$${c.price.toFixed(2)}</span></div>`).join('')}</div>`;
-  }
+  const compsHtml=item.comps&&item.comps.length?
+    `<div class="comps"><div class="comps-hdr">${ct==='sports'?'EBAY SOLD COMPS':ct==='comic'?'RECENT SALES':'RECENT SALES'}</div>${item.comps.slice(0,3).map(c=>`<div class="comp-row"><span class="comp-d">${c.desc}</span><span class="comp-p ${ct}">$${c.price.toFixed(2)}</span></div>`).join('')}</div>`:'';
 
-  // Print options
   const printOpts=prints.map((p,i)=>`<option value="${i}">${p.set}${p.variant&&p.variant!=='Base'?' · '+p.variant:''}${p.numbered?' '+p.numbered:''}${p.year?' ('+p.year+')':''}</option>`).join('');
 
-  const displayName=card.player||card.name;
-  const displaySub=[card.team,card.sport,card.year,card.manufacturer,card.publisher,card.issue].filter(Boolean).join(' · ');
-  const confClass=card.confidence==='high'?'c-hi':card.confidence==='low'?'c-lo':'c-md';
+  const displayName=item.player||item.name;
+  const subParts=[item.team,item.sport,item.year,item.manufacturer,item.publisher,item.issue].filter(Boolean);
+  const confCls=item.confidence==='high'?'c-hi':item.confidence==='low'?'c-lo':'c-md';
 
-  // Action buttons based on type
-  let actionsHtml='';
+  // Action buttons
+  let acts='';
   if(ct==='sports'){
-    const q=encodeURIComponent((card.player||card.name)+' '+(card.year||'')+' '+(first.variant||'')+' card');
-    const q130=encodeURIComponent((card.player||card.name)+' '+(card.year||''));
-    actionsHtml=`
-      <a class="bact a-ebay" href="https://www.ebay.com/sch/i.html?_nkw=${q}&LH_Sold=1&LH_Complete=1" target="_blank">eBay Sold ↗</a>
-      <a class="bact a-130" href="https://130point.com/sales/?q=${q130}" target="_blank">130Point ↗</a>`;
-  } else if(ct==='comic'){
-    const qgc=encodeURIComponent((card.name||'')+' '+(card.issue||''));
-    const qebay=encodeURIComponent((card.name||'')+' '+(card.issue||'')+' comic');
-    actionsHtml=`
-      <a class="bact a-gcol" href="https://www.gocollect.com/search/?q=${qgc}" target="_blank">GoCollect ↗</a>
-      <a class="bact a-ebay" href="https://www.ebay.com/sch/i.html?_nkw=${qebay}&LH_Sold=1" target="_blank">eBay Sold ↗</a>`;
-  } else {
-    const q=encodeURIComponent((card.name||'')+' '+(first.set||''));
-    const qebay=encodeURIComponent((card.name||'')+' '+(card.game||'')+' '+first.set);
-    actionsHtml=`
-      <a class="bact a-tcg" id="bt${id}" href="https://www.tcgplayer.com/search/all/product?q=${q}" target="_blank">TCGPlayer ↗</a>
-      <a class="bact a-ebay" href="https://www.ebay.com/sch/i.html?_nkw=${qebay}&LH_Sold=1" target="_blank">eBay Sold ↗</a>`;
+    const q=encodeURIComponent((item.player||item.name)+' '+(item.year||'')+' '+(first.variant||''));
+    const q130=encodeURIComponent((item.player||item.name)+' '+(item.year||''));
+    acts=`<a class="bact a-ebay" href="https://www.ebay.com/sch/i.html?_nkw=${q}&LH_Sold=1&LH_Complete=1" target="_blank">eBay Sold ↗</a>
+          <a class="bact a-130" href="https://130point.com/sales/?q=${q130}" target="_blank">130Point ↗</a>`;
+  }else if(ct==='comic'){
+    const qgc=encodeURIComponent((item.name||'')+' '+(item.issue||''));
+    const qe=encodeURIComponent((item.name||'')+' '+(item.issue||'')+' comic');
+    acts=`<a class="bact a-gcol" href="https://www.gocollect.com/search/?q=${qgc}" target="_blank">GoCollect ↗</a>
+          <a class="bact a-ebay" href="https://www.ebay.com/sch/i.html?_nkw=${qe}&LH_Sold=1" target="_blank">eBay Sold ↗</a>`;
+  }else{
+    const qt=encodeURIComponent((item.name||'')+' '+(first.set||''));
+    const qe=encodeURIComponent((item.name||'')+' '+(item.game||'')+' '+(first.set||''));
+    acts=`<a class="bact a-tcg" id="bt${id}" href="https://www.tcgplayer.com/search/all/product?q=${qt}" target="_blank">TCGPlayer ↗</a>
+          <a class="bact a-ebay" href="https://www.ebay.com/sch/i.html?_nkw=${qe}&LH_Sold=1" target="_blank">eBay Sold ↗</a>`;
   }
 
   el.innerHTML=`
     <button class="bx" onclick="rmBub('${id}')">×</button>
-    <div class="bg ${ct}">${card.game||'CARD'}${card.sport?' · '+card.sport:''}</div>
-    <div class="bn">${displayName}</div>
-    ${displaySub?`<div class="bsub">${displaySub}</div>`:''}
-    <span class="conf-badge ${confClass}">${card.confidence||'med'} conf</span>
-    <div class="drow"><span class="dscore ${dc}">${ds}/10</span><span class="trend ${tc}">${ti} ${card.trend_reason||''}</span></div>
+    <div class="btype ${ct}">${item.game}${item.sport?' · '+item.sport:''}</div>
+    <div class="bname">${displayName}</div>
+    ${subParts.length?`<div class="bsub">${subParts.join(' · ')}</div>`:''}
+    <span class="conf ${confCls}">${item.confidence||'med'} confidence</span>
+    <div class="drow">
+      <span class="dscore ${dc}">${ds}/10</span>
+      <span class="trend ${tc}">${ti}${item.trend_reason||''}</span>
+    </div>
     ${tags.length?`<div class="tags">${tags.join('')}</div>`:''}
-    ${card.key_notes?`<div style="font-family:monospace;font-size:8px;color:rgba(255,209,102,.7);margin-bottom:4px;line-height:1.4">${card.key_notes}</div>`:''}
-    <div class="prow"><div class="bp ${ct}" id="bp${id}">$${first.mid.toFixed(2)}</div><div class="bsrc">EST</div></div>
-    <div class="br2" id="br${id}">$${first.low.toFixed(2)} – $${first.high.toFixed(2)} NM</div>
+    ${item.key_notes?`<div class="keynotes">${item.key_notes}</div>`:''}
+    <div class="prow">
+      <span class="bprice ${ct}" id="bp${id}">$${first.mid.toFixed(2)}</span>
+      <span style="font-family:monospace;font-size:8px;color:rgba(255,255,255,.3)">EST</span>
+    </div>
+    <div class="brange" id="br${id}">$${first.low.toFixed(2)} – $${first.high.toFixed(2)} NM</div>
     ${compsHtml}
     <div class="bsels">
       <select class="bsel" id="ps${id}" onchange="chPrint('${id}')">${printOpts}</select>
       <select class="bsel" id="cs${id}" onchange="chCond('${id}')">${Object.keys(CM).map(c=>`<option>${c}</option>`).join('')}</select>
     </div>
     <div class="bconds">${Object.keys(CM).map((c,i)=>`<span class="bcp${i===0?' on':''}" onclick="cpill('${id}',this,'${c}')">${c}</span>`).join('')}</div>
-    <div class="bacts">
-      ${actionsHtml}
-      <button class="bact a-inv" id="inv${id}" onclick="addToInv('${id}')">+ Add to Inventory</button>
-    </div>`;
+    <div class="bacts">${acts}<button class="bact a-inv" id="inv${id}" onclick="addToInv('${id}')">+ Add to Inventory</button></div>`;
 
-  const bw=190,bh=440;
+  const bw=186,bh=450;
   let left=cx-bw/2,top=cy-bh-24;
   if(top<60)top=cy+20;
   left=Math.max(6,Math.min(left,W-bw-6));
@@ -401,57 +352,39 @@ function updatePrice(id,p,cond){
   document.getElementById('bp'+id).textContent='$'+(p.mid*m).toFixed(2);
   document.getElementById('br'+id).textContent='$'+(p.low*m).toFixed(2)+' – $'+(p.high*m).toFixed(2)+' '+cond;
   const bt=document.getElementById('bt'+id);
-  if(bt){const name=document.getElementById(id)?.querySelector('.bn')?.textContent||'';bt.href='https://www.tcgplayer.com/search/all/product?q='+encodeURIComponent(name+' '+p.set+' '+(p.variant||''));}
+  if(bt){const n=document.getElementById(id)?.querySelector('.bname')?.textContent||'';bt.href='https://www.tcgplayer.com/search/all/product?q='+encodeURIComponent(n+' '+p.set+' '+(p.variant||''));}
 }
 window.addToInv=function(id){
-  const el=document.getElementById(id);if(!el||!el._card)return;
-  const card=el._card;
+  const el=document.getElementById(id);if(!el||!el._item)return;
+  const item=el._item,ct=el._ct;
   const pi=parseInt(document.getElementById('ps'+id)?.value)||0;
   const cond=document.getElementById('cs'+id)?.value||'NM';
   const print=el._prints[pi]||el._prints[0]||{};
-  const ct=cardType(card);
-  const item={
-    id:'scan_'+Date.now(),
-    name:card.player||card.name,
-    category:ct==='sports'?'Sports':ct==='comic'?'Comic':'TCG',
-    set:print.set||'',variant:print.variant||'',condition:cond,
-    year:card.year||'',team:card.team||'',player:card.player||'',
-    manufacturer:card.manufacturer||'',publisher:card.publisher||'',
-    issue:card.issue||'',is_rookie:card.is_rookie||false,
-    key_notes:card.key_notes||'',market:print.mid||0,price:print.mid||0,
-    cost:0,status:'in_stock',addedAt:new Date().toISOString(),scannedFrom:'AR Scanner'
-  };
-  const inv=JSON.parse(localStorage.getItem('lba_inventory')||'[]');
-  inv.unshift(item);localStorage.setItem('lba_inventory',JSON.stringify(inv));
-  const pending=JSON.parse(localStorage.getItem('lba_pending')||'[]');
-  pending.unshift(item);localStorage.setItem('lba_pending',JSON.stringify(pending));
-  const btn=document.getElementById('inv'+id);
-  if(btn){btn.textContent='✓ Added!';btn.classList.add('added');}
-  toast('Added: '+item.name);
+  const entry={id:'scan_'+Date.now(),name:item.player||item.name,category:ct==='sports'?'Sports':ct==='comic'?'Comic':'TCG',set:print.set||'',variant:print.variant||'',condition:cond,year:item.year||'',team:item.team||'',player:item.player||'',manufacturer:item.manufacturer||'',publisher:item.publisher||'',issue:item.issue||'',is_rookie:item.is_rookie||false,key_notes:item.key_notes||'',market:print.mid||0,price:print.mid||0,cost:0,status:'in_stock',addedAt:new Date().toISOString(),scannedFrom:'AR Scanner'};
+  const inv=JSON.parse(localStorage.getItem('lba_inventory')||'[]');inv.unshift(entry);localStorage.setItem('lba_inventory',JSON.stringify(inv));
+  const pend=JSON.parse(localStorage.getItem('lba_pending')||'[]');pend.unshift(entry);localStorage.setItem('lba_pending',JSON.stringify(pend));
+  const btn=document.getElementById('inv'+id);if(btn){btn.textContent='✓ Added!';btn.classList.add('added');}
+  toast('Added: '+(item.player||item.name));
 };
-window.rmBub=function(id){
-  document.getElementById(id)?.remove();
-  bubs=bubs.filter(b=>b.id!==id);drawLines();
-};
+window.rmBub=function(id){document.getElementById(id)?.remove();bubs=bubs.filter(b=>b.id!==id);drawLines();};
 function clearAll(){bubs.forEach(b=>b.el?.remove());bubs=[];if(octx)octx.clearRect(0,0,oc.width,oc.height);}
 function drawLines(){
   if(!octx)return;octx.clearRect(0,0,oc.width,oc.height);
-  const colors={tcg:'rgba(0,255,179,.35)',sports:'rgba(255,209,102,.35)',comic:'rgba(199,125,255,.35)'};
-  const dots={tcg:'rgba(0,255,179,.7)',sports:'rgba(255,209,102,.7)',comic:'rgba(199,125,255,.7)'};
+  const lc={tcg:'rgba(0,255,179,.35)',sports:'rgba(255,209,102,.35)',comic:'rgba(199,125,255,.35)'};
+  const dc={tcg:'rgba(0,255,179,.7)',sports:'rgba(255,209,102,.7)',comic:'rgba(199,125,255,.7)'};
   bubs.forEach(b=>{
     if(!b.el?.parentNode)return;
     const r=b.el.getBoundingClientRect();
     const bx=r.left+r.width/2,by=r.bottom;
     octx.beginPath();octx.moveTo(bx,by);octx.lineTo(b.ax,b.ay);
-    octx.strokeStyle=colors[b.ct]||colors.tcg;octx.lineWidth=1.5;octx.setLineDash([4,4]);octx.stroke();
+    octx.strokeStyle=lc[b.ct]||lc.tcg;octx.lineWidth=1.5;octx.setLineDash([4,4]);octx.stroke();
     octx.beginPath();octx.arc(b.ax,b.ay,5,0,Math.PI*2);
-    octx.fillStyle=dots[b.ct]||dots.tcg;octx.fill();octx.setLineDash([]);
+    octx.fillStyle=dc[b.ct]||dc.tcg;octx.fill();octx.setLineDash([]);
   });
 }
 function toggleAuto(){
-  auto=!auto;
-  const ab=document.getElementById('autobitn'),sb=document.getElementById('scanbtn');
-  if(auto){ab.classList.add('on');ab.textContent='STOP';sb.innerHTML='AUTO ON';sb.className='autoon';autoT=setInterval(()=>{if(!scanning)doScan();},6000);doScan();}
+  auto=!auto;const ab=document.getElementById('autobitn'),sb=document.getElementById('scanbtn');
+  if(auto){ab.classList.add('on');ab.textContent='STOP';sb.innerHTML='AUTO ON';sb.className='autoon';autoT=setInterval(()=>{if(!scanning)doScan();},5500);doScan();}
   else{clearInterval(autoT);ab.classList.remove('on');ab.textContent='AUTO';sb.innerHTML='&#9654; SCAN CARDS';sb.className='';}
 }
 function toast(msg){
