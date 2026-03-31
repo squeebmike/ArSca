@@ -280,13 +280,16 @@ async function fetchAllPrintings(item){
             || card.tcgplayer?.prices?.normal?.low || 0;
           const high = card.tcgplayer?.prices?.holofoil?.high
             || card.tcgplayer?.prices?.normal?.high || 0;
+          const tcgUrl = card.tcgplayer?.url || null;
           result.printings.push({
             set: card.set?.name || 'Unknown Set',
             variant: variantName || rarity || 'Base',
             year: card.set?.releaseDate?.substring(0,4) || '',
             numbered: number&&total ? `${number}/${total}` : null,
-            mid: mid||2, low: low||1, high: high||5,
+            mid: mid||0, low: low||0, high: high||0,
+            hasRealPrice: !!(mid),
             imageUrl: card.images?.large || card.images?.small || null,
+            tcgUrl: tcgUrl,
             setId: card.set?.id || '',
             cardId: card.id
           });
@@ -312,13 +315,17 @@ async function fetchAllPrintings(item){
           const usd = parseFloat(card.prices?.usd||0);
           const usdFoil = parseFloat(card.prices?.usd_foil||0);
           const isFoil = card.foil && !card.nonfoil;
+          const tcgLink = card.purchase_uris?.tcgplayer || null;
           result.printings.push({
             set: card.set_name || 'Unknown Set',
             variant: card.frame_effects?.join(' ') || (isFoil?'Foil':'Base'),
             year: card.released_at?.substring(0,4) || '',
             numbered: card.collector_number ? `#${card.collector_number}` : null,
-            mid: usdFoil||usd||1, low: Math.max((usdFoil||usd)*0.7,0.25), high: (usdFoil||usd)*1.4||3,
+            mid: usdFoil||usd||0, low: Math.max((usdFoil||usd)*0.8,0), high: (usdFoil||usd)*1.3||0,
+            hasRealPrice: !!(usdFoil||usd),
             imageUrl: imgUrl,
+            tcgUrl: tcgLink,
+            scryfallUrl: `https://scryfall.com/card/${card.set}/${card.collector_number}`,
             setCode: card.set,
             cardId: card.id
           });
@@ -342,13 +349,16 @@ async function fetchAllPrintings(item){
         if(card.card_sets&&card.card_sets.length){
           card.card_sets.forEach((s, i) => {
             const setNameLower = (s.set_name||'').toLowerCase();
+            const ygoPrice = parseFloat(s.set_price)||0;
             result.printings.push({
               set: s.set_name || 'Unknown Set',
               variant: s.set_rarity || 'Common',
               year: s.set_code?.match(/\d{2}/)?.[0] ? '20'+s.set_code.match(/\d{2}/)[0] : '',
               numbered: s.set_code||null,
-              mid: parseFloat(s.set_price)||1, low: parseFloat(s.set_price)*0.7||0.5, high: parseFloat(s.set_price)*1.4||2,
+              mid: ygoPrice, low: ygoPrice*0.8, high: ygoPrice*1.3,
+              hasRealPrice: !!(ygoPrice),
               imageUrl: card.card_images[0]?.image_url || null,
+              tcgUrl: `https://www.tcgplayer.com/search/yugioh/product?productLineName=yugioh&q=${encodeURIComponent(card.name)}`,
               setCode: s.set_code
             });
             if(hintSet && setNameLower.includes(hintSet.split(' ')[0])) bestIdx = i;
@@ -704,8 +714,17 @@ function addBubble(item,stock,imgUrl,apiPrintings,bestMatchIdx){
   const sc=si>2?'sn-in':si>0?'sn-low':'sn-no';
 
   let actLinks='';
-  if(isSlab){const q=encodeURIComponent((item.player||item.name)+' '+(item.grading_company||'')+' '+item.grade);actLinks=`<a class="bact a-ebay" href="https://www.ebay.com/sch/i.html?_nkw=${q}&LH_Sold=1" target="_blank">eBay Sold ↗</a><a class="bact a-130" href="https://130point.com/sales/?q=${encodeURIComponent(item.player||item.name)}" target="_blank">130Point ↗</a>${item.cert_number&&ct==='psa'?`<a class="bact a-psa" href="https://www.psacard.com/cert/${item.cert_number}" target="_blank">PSA Verify ↗</a>`:''}`;}
-  else if(ct==='sports'){const q=encodeURIComponent((item.player||item.name)+' '+(item.year||''));actLinks=`<a class="bact a-ebay" href="https://www.ebay.com/sch/i.html?_nkw=${q}&LH_Sold=1" target="_blank">eBay Sold ↗</a><a class="bact a-130" href="https://130point.com/sales/?q=${q}" target="_blank">130Point ↗</a>`;}
+  if(isSlab){const q=encodeURIComponent((item.player||item.name)+' '+(item.grading_company||'')+' '+item.grade);actLinks=`<a class="bact a-ebay" href="https://www.ebay.com/sch/i.html?_nkw=${q}&LH_Sold=1&LH_Complete=1" target="_blank">eBay Sold ↗</a>
+              <a class="bact a-ebay" style="background:rgba(72,202,228,.08);color:var(--blue);border-color:rgba(72,202,228,.2)" href="https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(item.player||item.name)}&LH_Sold=1&LH_Complete=1" target="_blank">All Sales ↗</a>
+              ${item.cert_number&&ct==='psa'?`<a class="bact a-psa" href="https://www.psacard.com/cert/${item.cert_number}" target="_blank">PSA Verify ↗</a>`:''}
+              ${item.cert_number&&ct==='bgs'?`<a class="bact a-bgs" href="https://www.beckett.com/grading/cert?cert=${item.cert_number}" target="_blank">BGS Verify ↗</a>`:''}`;
+  }
+  else if(ct==='sports'){
+    const qBase=encodeURIComponent((item.player||item.name)+' '+(item.year||''));
+    const qFull=encodeURIComponent((item.player||item.name)+' '+(item.year||'')+' '+((item.parallel&&item.parallel!=='Base')?item.parallel:''));
+    actLinks=`<a class="bact a-ebay" href="https://www.ebay.com/sch/i.html?_nkw=${qFull}&LH_Sold=1&LH_Complete=1" target="_blank">eBay Sold ↗</a>
+      <a class="bact a-ebay" style="background:rgba(72,202,228,.08);color:var(--blue);border-color:rgba(72,202,228,.2)" href="https://www.ebay.com/sch/i.html?_nkw=${qBase}&LH_Sold=1&LH_Complete=1" target="_blank">Base Sales ↗</a>`;
+  }
   else if(ct==='comic'){const qgc=encodeURIComponent((item.name||'')+' '+(item.issue||''));actLinks=`<a class="bact a-gcol" href="https://www.gocollect.com/search/?q=${qgc}" target="_blank">GoCollect ↗</a><a class="bact a-ebay" href="https://www.ebay.com/sch/i.html?_nkw=${qgc}&LH_Sold=1" target="_blank">eBay ↗</a>`;}
   else{const qt=encodeURIComponent((item.name||'')+' '+(item.set_name||''));actLinks=`<a class="bact a-tcg" id="bt${id}" href="https://www.tcgplayer.com/search/all/product?q=${qt}" target="_blank">TCGPlayer ↗</a><a class="bact a-ebay" href="https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(item.name||'')}&LH_Sold=1" target="_blank">eBay ↗</a>`;}
 
@@ -721,9 +740,21 @@ function addBubble(item,stock,imgUrl,apiPrintings,bestMatchIdx){
     <div class="drow"><span class="dscore ${dc}">${ds}/10</span><span class="trend ${tc}">${ti}${(item.trend_reason||'').substring(0,20)}</span></div>
     ${tags.length?`<div class="tags">${tags.join('')}</div>`:''}
     ${item.key_notes?`<div class="keynotes">${item.key_notes}</div>`:''}
-    <div class="prow"><span class="bprice ${ct}" id="bp${id}">$${Number(first.mid).toFixed(2)}</span><span style="font-family:monospace;font-size:8px;color:rgba(255,255,255,.3)">${apiPrintings?'API':'EST'}</span></div>
-    <div class="brange" id="br${id}">$${Number(first.low).toFixed(2)} – $${Number(first.high).toFixed(2)}${isSlab?' GRADED':' NM'}</div>
-    ${apiPrintings?`<div style="font-family:monospace;font-size:8px;color:rgba(0,255,179,.5);margin-bottom:4px">★ best match · ${prints.length} printings</div>`:''}
+    ${(()=>{
+      const hasReal = first.hasRealPrice || (first.mid>0 && apiPrintings);
+      const isSportsOrComic = ct==='sports'||ct==='comic';
+      if(isSportsOrComic){
+        return `<div class="prow"><span class="bprice ${ct}" style="font-size:13px;color:rgba(255,255,255,.4)">SEE COMPS ↓</span></div>
+        <div class="brange" id="br${id}" style="color:rgba(255,255,255,.25)">Tap eBay Sold for real prices</div>`;
+      }
+      if(hasReal){
+        return `<div class="prow"><span class="bprice ${ct}" id="bp${id}">$${Number(first.mid).toFixed(2)}</span><span style="font-family:monospace;font-size:8px;color:rgba(0,255,179,.5)">LIVE</span></div>
+        <div class="brange" id="br${id}">$${Number(first.low).toFixed(2)} – $${Number(first.high).toFixed(2)} NM</div>`;
+      }
+      return `<div class="prow"><span class="bprice ${ct}" style="font-size:13px;color:rgba(255,255,255,.4)">NO PRICE DATA</span></div>
+      <div class="brange" id="br${id}" style="color:rgba(255,255,255,.2)">Select printing for price</div>`;
+    })()}
+    ${apiPrintings?`<div style="font-family:monospace;font-size:8px;color:rgba(0,255,179,.5);margin-bottom:4px">★ best match · ${prints.length} printings found</div>`:''}
     ${compsHtml}
     ${!isSlab?`<div class="bsels"><select class="bsel" id="ps${id}" onchange="chPrint('${id}')" data-bmi="${bmi}">${printOpts}</select><select class="bsel" id="cs${id}" onchange="chCond('${id}')">${Object.keys(CM).map(c=>`<option>${c}</option>`).join('')}</select></div><div class="bconds">${Object.keys(CM).map((c,i)=>`<span class="bcp${i===0?' on':''}" onclick="cpill('${id}',this,'${c}')">${c}</span>`).join('')}</div>`:''}
     <div class="bacts" id="acts${id}">${actLinks}<button class="bact a-add" onclick="showAddForm('${id}')">+ Add to Inventory</button>${si>0?`<button class="bact a-sell" onclick="showSellForm('${id}')">✓ Mark as Sold</button>`:''}</div>`;
@@ -741,7 +772,29 @@ function addBubble(item,stock,imgUrl,apiPrintings,bestMatchIdx){
 window.chPrint=function(id){const el=document.getElementById(id);if(!el)return;const pi=parseInt(document.getElementById('ps'+id).value);const cond=document.getElementById('cs'+id)?.value||'NM';if(!isNaN(pi))updatePrice(id,el._prints[pi],cond);};
 window.chCond=function(id){const el=document.getElementById(id);if(!el)return;const pi=parseInt(document.getElementById('ps'+id)?.value)||0;const cond=document.getElementById('cs'+id).value;el.querySelectorAll('.bcp').forEach(p=>p.classList.toggle('on',p.textContent===cond));updatePrice(id,el._prints[pi]||el._prints[0],cond);};
 window.cpill=function(id,pill,cond){const el=document.getElementById(id);if(!el)return;const pi=parseInt(document.getElementById('ps'+id)?.value)||0;const cs=document.getElementById('cs'+id);if(cs)cs.value=cond;el.querySelectorAll('.bcp').forEach(p=>p.classList.remove('on'));pill.classList.add('on');updatePrice(id,el._prints[pi]||el._prints[0],cond);};
-function updatePrice(id,p,cond){if(!p)return;const m=CM[cond]||1;document.getElementById('bp'+id).textContent='$'+(p.mid*m).toFixed(2);document.getElementById('br'+id).textContent='$'+(p.low*m).toFixed(2)+' – $'+(p.high*m).toFixed(2)+' '+cond;const bt=document.getElementById('bt'+id);if(bt){const n=document.getElementById(id)?.querySelector('.bname')?.textContent||'';bt.href='https://www.tcgplayer.com/search/all/product?q='+encodeURIComponent(n+' '+(p.set||'')+' '+(p.variant||''));}}
+function updatePrice(id,p,cond){
+  if(!p)return;
+  const m=CM[cond]||1;
+  const bpEl=document.getElementById('bp'+id);
+  const brEl=document.getElementById('br'+id);
+  if(bpEl&&p.hasRealPrice&&p.mid>0){
+    bpEl.textContent='$'+(p.mid*m).toFixed(2);
+    if(brEl)brEl.textContent='$'+(p.low*m).toFixed(2)+' – $'+(p.high*m).toFixed(2)+' '+cond;
+  } else if(bpEl) {
+    bpEl.textContent='No price data';
+    bpEl.style.fontSize='11px';bpEl.style.color='rgba(255,255,255,.4)';
+    if(brEl)brEl.textContent='Check TCGPlayer for current price';
+  }
+  // Update TCGPlayer link to direct URL for this printing if available
+  const bt=document.getElementById('bt'+id);
+  if(bt){
+    if(p.tcgUrl){bt.href=p.tcgUrl;bt.textContent='TCGPlayer ↗';}
+    else{const n=document.getElementById(id)?.querySelector('.bname')?.textContent||'';bt.href='https://www.tcgplayer.com/search/all/product?q='+encodeURIComponent(n+' '+(p.set||'')+' '+(p.variant||''));bt.textContent='TCGPlayer Search ↗';}
+  }
+  // Update Scryfall link if available
+  const sf=document.getElementById('sf'+id);
+  if(sf&&p.scryfallUrl)sf.href=p.scryfallUrl;
+}
 
 window.showAddForm=function(id){
   const el=document.getElementById(id);if(!el)return;
@@ -909,10 +962,14 @@ window.resetActs=function(id){
   const el=document.getElementById(id);if(!el||!el._item)return;
   const item=el._item,ct=el._ct,stock=checkStock(item),si=stock.inStock;
   let links='';
-  if(ct==='sports'){const q=encodeURIComponent((item.player||item.name)+' '+(item.year||''));links=`<a class="bact a-ebay" href="https://www.ebay.com/sch/i.html?_nkw=${q}&LH_Sold=1" target="_blank">eBay ↗</a><a class="bact a-130" href="https://130point.com/sales/?q=${q}" target="_blank">130Point ↗</a>`;}
+  if(ct==='sports'){const q=encodeURIComponent((item.player||item.name)+' '+(item.year||''));links=`<a class="bact a-ebay" href="https://www.ebay.com/sch/i.html?_nkw=${q}&LH_Sold=1&LH_Complete=1" target="_blank">eBay Sold ↗</a><a class="bact a-ebay" style="background:rgba(72,202,228,.08);color:var(--blue);border-color:rgba(72,202,228,.2)" href="https://www.ebay.com/sch/i.html?_nkw=${q}&LH_Sold=1" target="_blank">eBay Base ↗</a>`;}
   else if(ct==='comic'){const q=encodeURIComponent((item.name||'')+' '+(item.issue||''));links=`<a class="bact a-gcol" href="https://www.gocollect.com/search/?q=${q}" target="_blank">GoCollect ↗</a><a class="bact a-ebay" href="https://www.ebay.com/sch/i.html?_nkw=${q}&LH_Sold=1" target="_blank">eBay ↗</a>`;}
-  else if(['psa','bgs','cgc','sgc'].includes(ct)){const q=encodeURIComponent((item.player||item.name)+' '+(item.grading_company||'')+' '+(item.grade||''));links=`<a class="bact a-ebay" href="https://www.ebay.com/sch/i.html?_nkw=${q}&LH_Sold=1" target="_blank">eBay ↗</a><a class="bact a-130" href="https://130point.com/sales/?q=${encodeURIComponent(item.player||item.name)}" target="_blank">130Point ↗</a>`;}
-  else{const q=encodeURIComponent((item.name||'')+' '+(item.set_name||''));links=`<a class="bact a-tcg" href="https://www.tcgplayer.com/search/all/product?q=${q}" target="_blank">TCGPlayer ↗</a><a class="bact a-ebay" href="https://www.ebay.com/sch/i.html?_nkw=${q}&LH_Sold=1" target="_blank">eBay ↗</a>`;}
+  else if(['psa','bgs','cgc','sgc'].includes(ct)){const q=encodeURIComponent((item.player||item.name)+' '+(item.grading_company||'')+' '+(item.grade||''));links=`<a class="bact a-ebay" href="https://www.ebay.com/sch/i.html?_nkw=${q}&LH_Sold=1" target="_blank">eBay ↗</a><a class="bact a-ebay" style="background:rgba(72,202,228,.08);color:var(--blue);border-color:rgba(72,202,228,.2)" href="https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(item.player||item.name)}&LH_Sold=1&LH_Complete=1" target="_blank">All Sales ↗</a>`;}
+  else{
+    const q=encodeURIComponent((item.name||'')+' '+(item.set_name||item.game||''));
+    const qe=encodeURIComponent((item.name||'')+' '+(item.set_name||'')+' '+(item.game||''));
+    links=`<a class="bact a-tcg" href="https://www.tcgplayer.com/search/all/product?q=${q}" target="_blank">TCGPlayer Search ↗</a><a class="bact a-ebay" href="https://www.ebay.com/sch/i.html?_nkw=${qe}&LH_Sold=1&LH_Complete=1" target="_blank">eBay Sold ↗</a>`;
+  }
   document.getElementById('acts'+id).innerHTML=links+`<button class="bact a-add" onclick="showAddForm('${id}')">+ Add to Inventory</button>${si>0?`<button class="bact a-sell" onclick="showSellForm('${id}')">✓ Mark as Sold</button>`:''}`;
 };
 
