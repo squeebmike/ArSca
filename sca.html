@@ -8,37 +8,55 @@
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
-:root{--g:#00ffb3;--gd:rgba(0,255,179,0.15);--gold:#ffd166;--red:#ff4d6d;--blue:#48cae4;--purple:#c77dff;--bg:#050507;}
+:root{--g:#00ffb3;--gd:rgba(0,255,179,0.15);--gold:#ffd166;--red:#ff4d6d;--blue:#48cae4;--purple:#c77dff;--bg:#050507;--surface:rgba(5,5,7,0.97);}
 html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-family:'DM Sans',sans-serif;color:#fff;}
 #video{position:fixed;inset:0;width:100%;height:100%;object-fit:cover;z-index:0;}
-#canvas{display:none;}
+#canvas,#backcanvas{display:none;}
 #oc{position:fixed;inset:0;width:100%;height:100%;z-index:5;pointer-events:none;}
-#setup{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:32px;z-index:100;}
-.s-logo{font-family:'Orbitron',monospace;font-size:30px;font-weight:900;color:var(--g);letter-spacing:5px;text-shadow:0 0 30px var(--g);text-align:center;line-height:1.1;}
+
+/* SETUP */
+#setup{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:32px;z-index:100;}
+.s-logo{font-family:'Orbitron',monospace;font-size:28px;font-weight:900;color:var(--g);letter-spacing:5px;text-shadow:0 0 30px var(--g);text-align:center;line-height:1.1;}
 .s-sub{font-family:monospace;font-size:10px;color:rgba(255,255,255,.3);letter-spacing:3px;}
-.s-badges{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;}
-.s-badge{font-family:monospace;font-size:9px;padding:3px 8px;border:1px solid rgba(0,255,179,.2);color:rgba(0,255,179,.5);letter-spacing:1px;}
+.s-badges{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;}
+.s-badge{font-family:monospace;font-size:9px;padding:3px 8px;border:1px solid rgba(0,255,179,.2);color:rgba(0,255,179,.5);}
 .s-inp{width:100%;max-width:340px;background:rgba(0,0,0,.5);border:1px solid rgba(0,255,179,.25);color:#fff;padding:12px 14px;font-family:monospace;font-size:13px;outline:none;}
 .s-inp:focus{border-color:var(--g);}
 .s-btn{width:100%;max-width:340px;background:var(--g);color:#000;border:none;padding:15px;font-family:'Orbitron',monospace;font-weight:700;font-size:13px;letter-spacing:2px;cursor:pointer;}
+
+/* HUD */
 #hud{position:fixed;top:0;left:0;right:0;z-index:30;padding:12px 14px;background:linear-gradient(to bottom,rgba(0,0,0,.9),transparent);display:flex;justify-content:space-between;align-items:center;}
 .hl{font-family:'Orbitron',monospace;font-size:14px;font-weight:900;color:var(--g);letter-spacing:3px;text-shadow:0 0 16px var(--g);}
 .hbtns{display:flex;gap:6px;align-items:center;}
-#hstatus{font-family:monospace;font-size:10px;color:rgba(255,255,255,.35);letter-spacing:1px;margin-right:4px;}
-.hbtn{background:rgba(255,255,255,.08);color:rgba(255,255,255,.5);border:1px solid rgba(255,255,255,.15);padding:6px 12px;font-family:monospace;font-size:10px;cursor:pointer;letter-spacing:1px;}
+#hstatus{font-family:monospace;font-size:10px;color:rgba(255,255,255,.35);letter-spacing:1px;margin-right:2px;}
+.hbtn{background:rgba(255,255,255,.08);color:rgba(255,255,255,.5);border:1px solid rgba(255,255,255,.15);padding:5px 10px;font-family:monospace;font-size:10px;cursor:pointer;}
 .hbtn.on{color:var(--red);border-color:var(--red);}
-#scanbar{position:fixed;bottom:0;left:0;right:0;z-index:30;padding:16px 16px 32px;background:linear-gradient(to top,rgba(0,0,0,.92) 60%,transparent);display:flex;flex-direction:column;align-items:center;gap:8px;}
-#scanbtn{background:var(--g);color:#000;border:none;padding:18px 64px;font-family:'Orbitron',monospace;font-weight:900;font-size:15px;letter-spacing:2px;cursor:pointer;box-shadow:0 0 32px rgba(0,255,179,.5);touch-action:manipulation;}
+.hbtn.flip-on{color:var(--gold);border-color:var(--gold);background:rgba(255,209,102,.1);}
+
+/* SCAN BAR */
+#scanbar{position:fixed;bottom:0;left:0;right:0;z-index:30;padding:14px 14px 28px;background:linear-gradient(to top,rgba(0,0,0,.92) 60%,transparent);display:flex;flex-direction:column;align-items:center;gap:8px;}
+#scanbtn{background:var(--g);color:#000;border:none;padding:16px 56px;font-family:'Orbitron',monospace;font-weight:900;font-size:15px;letter-spacing:2px;cursor:pointer;box-shadow:0 0 32px rgba(0,255,179,.5);touch-action:manipulation;}
 #scanbtn.reading{background:var(--gold);}
 #scanbtn.autoon{background:var(--red);}
-.shint{font-family:monospace;font-size:10px;color:rgba(255,255,255,.25);letter-spacing:1px;}
+#scanbtn.backmode{background:var(--gold);box-shadow:0 0 32px rgba(255,209,102,.5);}
+.shint{font-family:monospace;font-size:10px;color:rgba(255,255,255,.25);letter-spacing:1px;text-align:center;}
+.shint.back{color:var(--gold);}
+
+/* BRACKETS */
 #brackets{position:fixed;inset:0;z-index:4;pointer-events:none;}
 .br{position:absolute;width:44px;height:44px;border-color:var(--g);border-style:solid;opacity:.5;}
+.br.gold{border-color:var(--gold);}
 .tl{top:22%;left:4%;border-width:2px 0 0 2px;}.tr{top:22%;right:4%;border-width:2px 2px 0 0;}
 .bl{bottom:22%;left:4%;border-width:0 0 2px 2px;}.brr{bottom:22%;right:4%;border-width:0 2px 2px 0;}
 #scanline{position:absolute;left:4%;right:4%;height:1.5px;background:linear-gradient(90deg,transparent,var(--g),transparent);box-shadow:0 0 8px var(--g);animation:scan 2.5s ease-in-out infinite;}
+#scanline.gold{background:linear-gradient(90deg,transparent,var(--gold),transparent);box-shadow:0 0 8px var(--gold);}
 @keyframes scan{0%{top:23%}48%{top:77%}52%{top:77%}100%{top:23%}}
-.bub{position:fixed;background:rgba(5,5,7,.97);border:1.5px solid var(--g);padding:10px 12px;width:186px;z-index:20;box-shadow:0 0 20px rgba(0,255,179,.15);}
+
+/* BACK MODE INDICATOR */
+#backbadge{position:fixed;top:60px;left:50%;transform:translateX(-50%);z-index:30;background:rgba(255,209,102,.15);border:1px solid var(--gold);padding:6px 16px;font-family:'Orbitron',monospace;font-size:9px;letter-spacing:2px;color:var(--gold);display:none;}
+
+/* BUBBLE */
+.bub{position:fixed;background:var(--surface);border:1.5px solid var(--g);padding:10px 12px;width:192px;z-index:20;box-shadow:0 0 20px rgba(0,255,179,.15);max-height:80vh;overflow-y:auto;}
 .bub::before{content:'';position:absolute;top:-1px;left:0;right:0;height:1.5px;background:linear-gradient(90deg,transparent,var(--g),transparent);}
 .bub.sports{border-color:var(--gold);}.bub.sports::before{background:linear-gradient(90deg,transparent,var(--gold),transparent);}
 .bub.comic{border-color:var(--purple);}.bub.comic::before{background:linear-gradient(90deg,transparent,var(--purple),transparent);}
@@ -46,6 +64,16 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
 .btype.tcg{color:var(--g)}.btype.sports{color:var(--gold)}.btype.comic{color:var(--purple)}
 .bname{font-size:13px;font-weight:600;color:#fff;margin-bottom:1px;padding-right:18px;line-height:1.2;}
 .bsub{font-family:monospace;font-size:9px;color:rgba(255,255,255,.4);margin-bottom:4px;line-height:1.5;}
+
+/* STOCK INDICATOR */
+.stock-row{display:flex;align-items:center;gap:6px;margin-bottom:6px;padding:5px 8px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);}
+.stock-num{font-family:'Orbitron',monospace;font-size:14px;font-weight:900;}
+.stock-num.instock{color:var(--g);}
+.stock-num.lowstock{color:var(--gold);}
+.stock-num.nostock{color:var(--red);}
+.stock-label{font-family:monospace;font-size:9px;color:rgba(255,255,255,.4);letter-spacing:1px;}
+
+/* DESIRABILITY */
 .drow{display:flex;align-items:center;gap:6px;margin-bottom:3px;}
 .dscore{font-family:'Orbitron',monospace;font-size:11px;font-weight:700;padding:2px 7px;}
 .dhi{color:#00ffb3;background:rgba(0,255,179,.12);border:1px solid rgba(0,255,179,.3);}
@@ -53,45 +81,83 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
 .dlo{color:var(--red);background:rgba(255,77,109,.1);border:1px solid rgba(255,77,109,.3);}
 .trend{font-family:monospace;font-size:10px;flex:1;}
 .tup{color:#00ffb3}.tdn{color:var(--red)}.tfl{color:rgba(255,255,255,.4)}
+
+/* TAGS */
 .tags{display:flex;flex-wrap:wrap;gap:3px;margin-bottom:4px;}
 .tag{font-family:monospace;font-size:8px;padding:2px 5px;border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.4);}
 .tag.hot{border-color:rgba(255,77,109,.4);color:var(--red);background:rgba(255,77,109,.08);}
 .tag.rc{border-color:rgba(255,209,102,.4);color:var(--gold);background:rgba(255,209,102,.08);}
 .tag.key{border-color:rgba(0,255,179,.4);color:var(--g);background:rgba(0,255,179,.08);}
 .keynotes{font-family:monospace;font-size:8px;color:rgba(255,209,102,.7);margin-bottom:4px;line-height:1.4;}
+
+/* PRICE */
 .prow{display:flex;align-items:baseline;gap:5px;margin-bottom:2px;}
 .bprice{font-family:'Orbitron',monospace;font-size:20px;font-weight:900;line-height:1;}
 .bprice.tcg{color:var(--g);}.bprice.sports{color:var(--gold);}.bprice.comic{color:var(--purple);}
 .brange{font-family:monospace;font-size:9px;color:rgba(255,255,255,.3);margin-bottom:5px;}
+
+/* COMPS */
 .comps{margin-bottom:5px;}
 .comps-hdr{font-family:'Orbitron',monospace;font-size:7px;letter-spacing:1px;color:rgba(255,255,255,.3);margin-bottom:3px;}
 .comp-row{display:flex;justify-content:space-between;padding:2px 0;border-bottom:1px solid rgba(255,255,255,.05);}
 .comp-d{font-family:monospace;font-size:8px;color:rgba(255,255,255,.45);flex:1;margin-right:4px;line-height:1.3;}
 .comp-p{font-family:'Orbitron',monospace;font-size:9px;}
 .comp-p.tcg{color:var(--g)}.comp-p.sports{color:var(--gold)}.comp-p.comic{color:var(--purple)}
+
+/* BACK INFO */
+.backinfo{background:rgba(255,209,102,.05);border:1px solid rgba(255,209,102,.2);padding:6px 8px;margin-bottom:6px;}
+.backinfo-hdr{font-family:'Orbitron',monospace;font-size:7px;letter-spacing:1px;color:var(--gold);margin-bottom:4px;}
+.backinfo-row{display:flex;justify-content:space-between;font-family:monospace;font-size:8px;color:rgba(255,255,255,.5);padding:1px 0;}
+.backinfo-val{color:rgba(255,255,255,.8);}
+
+/* SELECTS */
 .bsels{display:flex;flex-direction:column;gap:4px;margin-bottom:5px;}
 .bsel{width:100%;background:#0d0d0f;color:#fff;border:1px solid rgba(255,255,255,.12);padding:5px 7px;font-family:monospace;font-size:10px;outline:none;}
 .bsel:focus{border-color:var(--g);}
 .bconds{display:flex;gap:3px;flex-wrap:wrap;margin-bottom:5px;}
 .bcp{font-family:'Orbitron',monospace;font-size:7px;padding:2px 5px;border:1px solid rgba(255,255,255,.15);color:rgba(255,255,255,.4);cursor:pointer;}
 .bcp.on{border-color:var(--g);color:var(--g);background:var(--gd);}
-.bacts{display:grid;grid-template-columns:1fr 1fr;gap:3px;}
+
+/* ADD TO INV MODAL */
+.inv-form{background:rgba(0,0,0,.4);border:1px solid rgba(0,255,179,.2);padding:8px;margin-bottom:5px;}
+.inv-form-title{font-family:'Orbitron',monospace;font-size:8px;letter-spacing:1px;color:var(--g);margin-bottom:6px;}
+.inv-inp{width:100%;background:#0d0d0f;color:#fff;border:1px solid rgba(255,255,255,.12);padding:5px 7px;font-family:monospace;font-size:11px;outline:none;margin-bottom:4px;}
+.inv-inp:focus{border-color:var(--g);}
+.inv-inp::placeholder{color:rgba(255,255,255,.2);}
+.inv-row{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:4px;}
+.inv-label{font-family:monospace;font-size:8px;color:rgba(255,255,255,.3);margin-bottom:2px;}
+
+/* SOLD MODAL */
+.sold-form{background:rgba(255,77,109,.05);border:1px solid rgba(255,77,109,.2);padding:8px;margin-bottom:5px;}
+.sold-form-title{font-family:'Orbitron',monospace;font-size:8px;letter-spacing:1px;color:var(--red);margin-bottom:6px;}
+
+/* ACTIONS */
+.bacts{display:grid;grid-template-columns:1fr 1fr;gap:3px;margin-bottom:4px;}
 .bact{border:none;padding:7px 4px;font-family:'Orbitron',monospace;font-size:7px;letter-spacing:1px;cursor:pointer;text-align:center;text-decoration:none;display:block;line-height:1.3;}
 .a-tcg{background:rgba(0,255,179,.08);color:var(--g);border:1px solid rgba(0,255,179,.2);}
 .a-ebay{background:rgba(255,209,102,.08);color:var(--gold);border:1px solid rgba(255,209,102,.2);}
 .a-130{background:rgba(72,202,228,.08);color:var(--blue);border:1px solid rgba(72,202,228,.2);}
 .a-gcol{background:rgba(199,125,255,.08);color:var(--purple);border:1px solid rgba(199,125,255,.2);}
-.a-inv{background:rgba(0,255,179,.1);color:var(--g);border:1px solid rgba(0,255,179,.25);grid-column:1/-1;margin-top:2px;}
-.a-inv.added{background:rgba(0,255,179,.22);}
+.a-add{background:rgba(0,255,179,.1);color:var(--g);border:1px solid rgba(0,255,179,.25);grid-column:1/-1;}
+.a-sell{background:rgba(255,77,109,.1);color:var(--red);border:1px solid rgba(255,77,109,.25);grid-column:1/-1;}
+.a-confirm{background:var(--g);color:#000;border:none;grid-column:1/-1;font-weight:700;}
+.a-confirm.sell{background:var(--red;}
+.a-cancel{background:rgba(255,255,255,.06);color:rgba(255,255,255,.4);border:1px solid rgba(255,255,255,.1);}
+.a-added{background:rgba(0,255,179,.2);color:var(--g);border:1px solid var(--g);grid-column:1/-1;}
+
 .bx{position:absolute;top:4px;right:6px;background:none;border:none;color:rgba(255,255,255,.25);font-size:15px;cursor:pointer;padding:0;}
 .conf{font-family:monospace;font-size:8px;padding:1px 5px;display:inline-block;margin-bottom:4px;}
 .c-hi{color:var(--g);border:1px solid rgba(0,255,179,.25);background:rgba(0,255,179,.06);}
 .c-md{color:var(--gold);border:1px solid rgba(255,209,102,.25);background:rgba(255,209,102,.06);}
 .c-lo{color:var(--red);border:1px solid rgba(255,77,109,.25);background:rgba(255,77,109,.06);}
+.profit-preview{font-family:'Orbitron',monospace;font-size:10px;padding:4px 6px;text-align:center;margin-bottom:4px;}
+.profit-pos{color:var(--g);background:rgba(0,255,179,.08);border:1px solid rgba(0,255,179,.2);}
+.profit-neg{color:var(--red);background:rgba(255,77,109,.08);border:1px solid rgba(255,77,109,.2);}
 .toast{position:fixed;top:70px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.95);border:1px solid rgba(0,255,179,.4);padding:9px 20px;font-family:monospace;font-size:11px;color:var(--g);z-index:200;max-width:90vw;text-align:center;}
 </style>
 </head>
 <body>
+
 <div id="setup">
   <div class="s-logo">LBA<br>SCANNER</div>
   <div class="s-sub">AI CARD + COMIC IDENTIFIER</div>
@@ -102,30 +168,42 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
   <input class="s-inp" id="kinp" type="password" placeholder="Anthropic API key (sk-ant-...)">
   <button class="s-btn" onclick="launch()">&#9654; LAUNCH SCANNER</button>
 </div>
+
 <video id="video" autoplay playsinline muted></video>
 <canvas id="canvas"></canvas>
+<canvas id="backcanvas"></canvas>
 <canvas id="oc"></canvas>
+
 <div id="brackets">
-  <div class="br tl"></div><div class="br tr"></div>
-  <div class="br bl"></div><div class="br brr"></div>
+  <div class="br tl" id="br-tl"></div><div class="br tr" id="br-tr"></div>
+  <div class="br bl" id="br-bl"></div><div class="br brr" id="br-br"></div>
   <div id="scanline"></div>
 </div>
+
+<div id="backbadge">⟳ BACK OF CARD MODE</div>
+
 <div id="hud" style="display:none">
   <span class="hl">LBA</span>
   <div class="hbtns">
     <span id="hstatus">LIVE</span>
+    <button class="hbtn" id="flipbtn" onclick="toggleFlip()">FLIP</button>
     <button class="hbtn" id="autobitn" onclick="toggleAuto()">AUTO</button>
     <button class="hbtn" onclick="clearAll()">CLEAR</button>
   </div>
 </div>
+
 <div id="scanbar" style="display:none">
   <button id="scanbtn" onclick="doScan()">&#9654; SCAN CARDS</button>
-  <div class="shint">TCG · Sports · Comics · Graded slabs</div>
+  <div class="shint" id="scanhint">TCG · Sports · Comics · Graded slabs</div>
 </div>
+
 <script>
 const CM={NM:1,LP:.8,MP:.64,HP:.4,DMG:.25};
-let bubs=[],auto=false,autoT=null,scanning=false,octx=null,wakeLock=null;
-const video=document.getElementById('video'),canvas=document.getElementById('canvas'),oc=document.getElementById('oc');
+const WF_COLLECTION='69cb5611c6522a8591b552c4';
+let bubs=[],auto=false,autoT=null,scanning=false,octx=null,wakeLock=null,flipMode=false;
+const video=document.getElementById('video'),canvas=document.getElementById('canvas');
+const backcanvas=document.getElementById('backcanvas'),oc=document.getElementById('oc');
+
 const savedKey=localStorage.getItem('lba_k');
 if(savedKey)document.getElementById('kinp').value=savedKey;
 
@@ -150,6 +228,33 @@ async function startScanner(){
   }catch(e){toast('Camera: '+e.message);}
 }
 
+function toggleFlip(){
+  flipMode=!flipMode;
+  const fb=document.getElementById('flipbtn');
+  const sl=document.getElementById('scanline');
+  const sb=document.getElementById('scanbtn');
+  const hint=document.getElementById('scanhint');
+  const badge=document.getElementById('backbadge');
+  ['br-tl','br-tr','br-bl','br-br'].forEach(id=>{
+    document.getElementById(id).classList.toggle('gold',flipMode);
+  });
+  if(flipMode){
+    fb.classList.add('flip-on');fb.textContent='FRONT';
+    sl.classList.add('gold');
+    sb.classList.add('backmode');sb.innerHTML='&#9654; SCAN BACK';
+    hint.textContent='Flip card over — back gives serial # and stats';
+    hint.classList.add('back');
+    badge.style.display='block';
+  }else{
+    fb.classList.remove('flip-on');fb.textContent='FLIP';
+    sl.classList.remove('gold');
+    sb.classList.remove('backmode');sb.innerHTML='&#9654; SCAN CARDS';
+    hint.textContent='TCG · Sports · Comics · Graded slabs';
+    hint.classList.remove('back');
+    badge.style.display='none';
+  }
+}
+
 function capture(){
   const vw=video.videoWidth||1280,vh=video.videoHeight||720;
   canvas.width=1024;canvas.height=Math.round(1024*vh/vw);
@@ -157,107 +262,213 @@ function capture(){
   return canvas.toDataURL('image/jpeg',.9).split(',')[1];
 }
 
+async function callClaude(msgs,maxTok){
+  const key=localStorage.getItem('lba_k');
+  const res=await fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+    body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:maxTok||3000,messages:msgs})
+  });
+  if(!res.ok){const e=await res.json();throw new Error(e.error?.message||'HTTP '+res.status);}
+  return(await res.json()).content[0].text;
+}
+
 async function doScan(){
   if(scanning)return;scanning=true;
   const btn=document.getElementById('scanbtn'),hs=document.getElementById('hstatus');
-  btn.textContent='READING...';btn.className='reading';hs.textContent='SCANNING...';
+  btn.textContent='READING...';btn.className=flipMode?'backmode reading':'reading';hs.textContent='SCANNING...';
   try{
     const img=capture();
-    const key=localStorage.getItem('lba_k');
+    if(flipMode){
+      await scanBack(img);
+    }else{
+      await scanFront(img);
+    }
+  }catch(e){document.getElementById('hstatus').textContent='ERROR';toast('Error: '+e.message);}
+  scanning=false;
+  btn.innerHTML=flipMode?'&#9654; SCAN BACK':'&#9654; SCAN CARDS';
+  btn.className=flipMode?'backmode':'';
+}
 
-    const prompt=`Carefully examine this image and identify every trading card, comic book, or graded slab visible.
+async function scanFront(img){
+  const hs=document.getElementById('hstatus');
+  const prompt=`You are an expert collectibles identifier. Carefully examine this image.
 
-STEP 1 — READ ALL TEXT ON EACH ITEM FIRST:
-Before anything else, carefully read every word of text visible on each card/item including:
-- Player/character name (usually largest text on card)
-- Card number (bottom corner, format like 123/456 or #123)  
-- Set name (usually bottom of card)
-- Year (copyright line, usually very small at bottom)
-- Manufacturer name (Topps, Panini, Upper Deck, Bowman, Fleer, Donruss, Pokemon Company, Wizards, Konami)
-- Any serial number (/25, /49, /99, /199 etc)
-- Rarity symbol or word
-- For comics: title logo, issue number, cover date, publisher
+STEP 1 — READ ALL TEXT FIRST:
+Read every word visible: player/card name, card number (e.g. 287/700), set name, year, manufacturer, serial number (/25, /49, /99, etc), rarity, publisher, issue number.
 
-STEP 2 — IDENTIFY VISUAL CHARACTERISTICS:
-- Border/frame color (base=white/silver, gold=gold refractor, red/blue/green/orange=prizm parallel)
-- Surface finish (chrome shimmer, prizm rainbow pattern, standard matte, foil)
-- Holo pattern type (for Pokemon/MTG)
-- Slab label color (PSA=red+blue, BGS=black, CGC=yellow+black, SGC=red)
-- Comic condition and cover variant
+STEP 2 — VISUAL ANALYSIS:
+Border color, foil/chrome/prizm shimmer, holo pattern, slab label, artwork style, character design, costume, artist style (for virgin/textless covers — identify purely from visual elements like character pose, art style, color palette, composition).
 
-STEP 3 — COMBINE text + visual to make the most accurate identification possible.
+STEP 3 — COMBINE for best identification.
 
-Return ONLY a raw JSON array with no markdown, no explanation, nothing else:
+Return ONLY raw JSON array, no markdown:
 [{
-  "name": "EXACT player name or card name as printed — this must be accurate",
-  "game": "Pokemon TCG|Magic: The Gathering|Yu-Gi-Oh!|Sports Card|Comic|Graded Slab|Other TCG",
-  "sport": "Baseball|Basketball|Football|Hockey|Soccer|null",
-  "player": "exact player name if sports card",
-  "team": "team name",
-  "year": "year from card",
-  "card_number": "card number if visible e.g. 287/700",
-  "manufacturer": "Topps|Panini|Upper Deck|Bowman|Fleer|Donruss|Pokemon Company|Wizards|Konami|Marvel|DC|Image|Other",
-  "publisher": "publisher if comic",
-  "issue": "issue number if comic",
-  "set_name": "the specific set name as printed on card",
-  "parallel": "Base|Chrome|Prizm|Gold Refractor|Silver Prizm|Red Prizm|Blue Prizm|Green|Orange|Pink|Purple|Optic|Holo|Reverse Holo|Full Art|Alt Art|Borderless|Showcase|Extended Art|Etched Foil|Galaxy Foil|Serialized|1st Edition|Promo|Rainbow Rare|Secret Rare",
-  "serial_number": "/99 or null",
-  "grading_company": "PSA|BGS|CGC|SGC|null",
-  "grade": "10|9.5|9|8.5|null",
-  "is_rookie": true or false,
-  "is_key": true or false,
-  "key_notes": "1st appearance, HOF, banned card, death issue, etc — or null",
-  "confidence": "high|medium|low",
-  "confidence_reason": "what made identification easy or hard",
-  "desirability": 7,
-  "trend": "up|down|flat",
-  "trend_reason": "brief market reason",
-  "cx": 50, "cy": 50,
-  "printings": [{
-    "set": "exact full set name",
-    "variant": "Base|Chrome|Prizm|Silver Prizm|Gold Refractor|Red Prizm|Blue|Green|Orange|Holo|Reverse Holo|Full Art|Alt Art|Borderless|Showcase|Extended Art|Etched Foil|Galaxy Foil|Textured Foil|Retro Frame|Serialized|1st Edition|Unlimited|Promo|Rainbow Rare|Secret Rare|Special Illustration Rare|Collector Booster|Auto|Relic|Patch|Standard|Variant|Virgin|Foil|Newsstand",
-    "year": "year",
-    "numbered": "/99 or null",
-    "mid": 5.00,
-    "low": 2.00,
-    "high": 10.00
-  }],
-  "comps": [
-    {"desc": "specific recent comp e.g. NM 2023 Topps Chrome Acuna RC", "price": 18.50},
-    {"desc": "comp description", "price": 16.00},
-    {"desc": "comp description", "price": 21.00}
-  ]
+  "name":"exact name — player name for sports, card name for TCG, title+issue for comics",
+  "game":"Pokemon TCG|Magic: The Gathering|Yu-Gi-Oh!|Sports Card|Comic|Graded Slab|Other TCG",
+  "sport":"Baseball|Basketball|Football|Hockey|Soccer|null",
+  "player":"player full name if sports",
+  "team":"team name or null",
+  "year":"year from card",
+  "card_number":"card number e.g. 287/700 or null",
+  "manufacturer":"Topps|Panini|Upper Deck|Bowman|Fleer|Donruss|Pokemon Company|Wizards|Konami|Marvel|DC|Image|Dark Horse|Other",
+  "publisher":"publisher if comic or null",
+  "issue":"issue number if comic or null",
+  "set_name":"exact set name printed on card",
+  "parallel":"Base|Chrome|Prizm|Silver Prizm|Gold Refractor|Red Prizm|Blue|Green|Orange|Pink|Purple|Holo|Reverse Holo|Full Art|Alt Art|Borderless|Showcase|Extended Art|Etched Foil|Galaxy Foil|Retro Frame|Serialized|1st Edition|Promo|Rainbow Rare|Secret Rare|Special Illustration Rare|Collector Booster|Auto|Relic|Patch|Standard|Variant|Virgin|Textless|Sketch|Foil|Newsstand",
+  "serial_number":"/99 or null",
+  "grading_company":"PSA|BGS|CGC|SGC|null",
+  "grade":"10|9.5|9|null",
+  "is_rookie":true,
+  "is_key":false,
+  "key_notes":"why notable or null",
+  "confidence":"high|medium|low",
+  "confidence_reason":"what helped or hurt identification",
+  "desirability":7,
+  "trend":"up|down|flat",
+  "trend_reason":"brief market reason",
+  "cx":50,"cy":50,
+  "printings":[{"set":"full set name","variant":"Base|Chrome|Prizm|Silver Prizm|Gold Refractor|Red Prizm|Blue|Green|Orange|Holo|Reverse Holo|Full Art|Alt Art|Borderless|Showcase|Extended Art|Serialized|1st Edition|Promo|Rainbow Rare|Secret Rare|Special Illustration Rare|Auto|Relic|Standard|Variant|Virgin","year":"year","numbered":"/99 or null","mid":5.00,"low":2.00,"high":10.00}],
+  "comps":[{"desc":"specific sold comp","price":8.50},{"desc":"comp","price":7.00},{"desc":"comp","price":9.50}]
 }]
 
-ACCURACY RULES:
-- cx/cy = center of item as % of image (0-100)  
-- If text is blurry, say confidence=low and give best guess
-- Include ALL printings exhaustively — every set, every parallel
-- Comps should reflect realistic current eBay sold prices
-- For sports include all parallel variants (prizm colors, chrome, optic, select, mosaic, refractors, autos, relics)
-- For Pokemon/MTG include every set printing, every special variant
-- NEVER make up a card — if unsure set confidence=low
-- Return [] if nothing visible`;
+RULES:
+- cx/cy=center as % of image 0-100
+- For virgin/textless comics with no text: identify from artwork, character, art style, costume details
+- Include ALL printings exhaustively
+- Sports: all parallels, chrome, prizm colors, optic, select, mosaic, autos, relics
+- Pokemon/MTG: every set, every variant, promos
+- Comics: standard, newsstand, variants, virgin, sketch, CGC graded versions
+- Comps=realistic current eBay sold prices
+- Max 5 items, [] if nothing visible`;
 
-    const res=await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',
-      headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:4000,messages:[{role:'user',content:[{type:'image',source:{type:'base64',media_type:'image/jpeg',data:img}},{type:'text',text:prompt}]}]})
-    });
+  const text=await callClaude([{role:'user',content:[{type:'image',source:{type:'base64',media_type:'image/jpeg',data:img}},{type:'text',text:prompt}]}],4000);
+  const items=JSON.parse(text.replace(/```json|```/g,'').trim());
 
-    if(!res.ok){const e=await res.json();throw new Error(e.error?.message||'HTTP '+res.status);}
-    const data=await res.json();
-    const raw=data.content[0].text.replace(/```json|```/g,'').trim();
-    const items=JSON.parse(raw);
+  if(Array.isArray(items)&&items.length){
+    if(auto)clearAll();
+    for(const item of items){
+      const stock=checkStock(item);
+      addBubble(item,stock);
+    }
+    document.getElementById('hstatus').textContent=items.length+' FOUND';
+    drawLines();
+  }else{
+    document.getElementById('hstatus').textContent='NONE';
+    toast('Nothing detected — get closer or try again');
+  }
+}
 
-    if(Array.isArray(items)&&items.length){
-      if(auto)clearAll();
-      items.forEach(item=>addBubble(item));
-      hs.textContent=items.length+' FOUND';
-      drawLines();
-    }else{hs.textContent='NONE';toast('Nothing detected — get closer and try again');}
-  }catch(e){document.getElementById('hstatus').textContent='ERROR';toast('Error: '+e.message);}
-  scanning=false;btn.innerHTML='&#9654; SCAN CARDS';btn.className='';
+async function scanBack(img){
+  const hs=document.getElementById('hstatus');
+  const prompt=`This is the BACK of a sports card or trading card. Extract all information visible.
+
+Return ONLY raw JSON, no markdown:
+{
+  "card_type":"sports|tcg",
+  "player":"player name if visible",
+  "serial_number":"/99 or null if visible",
+  "print_run":"total print run number or null",
+  "auto_authenticated":true or false,
+  "stats":[{"label":"stat name","value":"stat value"}],
+  "year":"year if visible",
+  "set":"set name if visible",
+  "card_number":"card number if visible",
+  "rookie_stamp":true or false,
+  "copyright":"copyright text if visible",
+  "notes":"any other notable info on the back"
+}
+
+Read every number, label, signature line, hologram, authentication sticker carefully.`;
+
+  const text=await callClaude([{role:'user',content:[{type:'image',source:{type:'base64',media_type:'image/jpeg',data:img}},{type:'text',text:prompt}]}],800);
+  const back=JSON.parse(text.replace(/```json|```/g,'').trim());
+
+  // Find the most recent front-scanned bubble and update it with back info
+  // Or show as a floating back-info panel
+  if(bubs.length>0){
+    const lastBub=bubs[bubs.length-1];
+    addBackInfo(lastBub.id,back);
+    hs.textContent='BACK SCANNED';
+    toast('Back info added to last card');
+  }else{
+    // Show standalone back info
+    showBackStandalone(back);
+    hs.textContent='BACK READ';
+  }
+}
+
+function showBackStandalone(back){
+  const id='back_'+Date.now();
+  const W=window.innerWidth,H=window.innerHeight;
+  const el=document.createElement('div');
+  el.className='bub';el.id=id;
+  el.style.left='10px';el.style.top='80px';
+
+  let statsHtml='';
+  if(back.stats&&back.stats.length){
+    statsHtml=back.stats.slice(0,6).map(s=>`<div class="backinfo-row"><span>${s.label}</span><span class="backinfo-val">${s.value}</span></div>`).join('');
+  }
+
+  el.innerHTML=`
+    <button class="bx" onclick="document.getElementById('${id}').remove()">×</button>
+    <div class="btype tcg">CARD BACK</div>
+    <div class="backinfo">
+      <div class="backinfo-hdr">⟳ BACK OF CARD DATA</div>
+      ${back.serial_number?`<div class="backinfo-row"><span>Serial</span><span class="backinfo-val">${back.serial_number}</span></div>`:''}
+      ${back.print_run?`<div class="backinfo-row"><span>Print Run</span><span class="backinfo-val">${back.print_run}</span></div>`:''}
+      ${back.auto_authenticated?`<div class="backinfo-row"><span>Auto Auth</span><span class="backinfo-val" style="color:var(--g)">✓ YES</span></div>`:''}
+      ${back.rookie_stamp?`<div class="backinfo-row"><span>RC Stamp</span><span class="backinfo-val" style="color:var(--gold)">✓ YES</span></div>`:''}
+      ${back.card_number?`<div class="backinfo-row"><span>Card #</span><span class="backinfo-val">${back.card_number}</span></div>`:''}
+      ${statsHtml}
+      ${back.notes?`<div style="font-family:monospace;font-size:8px;color:rgba(255,255,255,.4);margin-top:4px;line-height:1.4">${back.notes}</div>`:''}
+    </div>`;
+
+  document.body.appendChild(el);
+  bubs.push({id,el,ax:W/2,ay:H/2,ct:'tcg'});
+  drawLines();
+}
+
+function addBackInfo(bubId,back){
+  const el=document.getElementById(bubId);
+  if(!el)return;
+  const existing=el.querySelector('.backinfo');
+  if(existing)existing.remove();
+
+  let statsHtml='';
+  if(back.stats&&back.stats.length){
+    statsHtml=back.stats.slice(0,6).map(s=>`<div class="backinfo-row"><span>${s.label}</span><span class="backinfo-val">${s.value}</span></div>`).join('');
+  }
+
+  const bi=document.createElement('div');
+  bi.className='backinfo';
+  bi.innerHTML=`
+    <div class="backinfo-hdr">⟳ BACK OF CARD</div>
+    ${back.serial_number?`<div class="backinfo-row"><span>Serial</span><span class="backinfo-val">${back.serial_number}</span></div>`:''}
+    ${back.print_run?`<div class="backinfo-row"><span>Print Run</span><span class="backinfo-val">${back.print_run}</span></div>`:''}
+    ${back.auto_authenticated?`<div class="backinfo-row"><span>Auto</span><span class="backinfo-val" style="color:var(--g)">✓ Authenticated</span></div>`:''}
+    ${back.rookie_stamp?`<div class="backinfo-row"><span>RC</span><span class="backinfo-val" style="color:var(--gold)">✓ Rookie Stamp</span></div>`:''}
+    ${statsHtml}
+    ${back.notes?`<div style="font-family:monospace;font-size:8px;color:rgba(255,255,255,.4);margin-top:3px;line-height:1.4">${back.notes.substring(0,80)}</div>`:''}`;
+
+  // Insert before actions
+  const acts=el.querySelector('.bacts');
+  if(acts)el.insertBefore(bi,acts);
+  else el.appendChild(bi);
+}
+
+function checkStock(item){
+  const inv=JSON.parse(localStorage.getItem('lba_inventory')||'[]');
+  const name=(item.player||item.name||'').toLowerCase();
+  const set=(item.set_name||'').toLowerCase();
+  const matches=inv.filter(i=>{
+    const iname=(i.name||'').toLowerCase();
+    const iset=(i.set||'').toLowerCase();
+    return iname.includes(name.split(' ')[0])||name.includes(iname.split(' ')[0]);
+  });
+  const inStock=matches.filter(i=>i.status==='in_stock').length;
+  const totalSold=matches.filter(i=>i.status==='sold').length;
+  return{inStock,totalSold,matches};
 }
 
 function getType(item){
@@ -266,7 +477,7 @@ function getType(item){
   return 'tcg';
 }
 
-function addBubble(item){
+function addBubble(item,stock){
   const W=window.innerWidth,H=window.innerHeight;
   const cx=(item.cx/100)*W,cy=(item.cy/100)*H;
   const id='b'+Date.now()+Math.random().toString(36).slice(2,5);
@@ -286,6 +497,12 @@ function addBubble(item){
   if(item.is_key)tags.push('<span class="tag key">KEY</span>');
   if(ds>=8)tags.push('<span class="tag hot">HOT</span>');
   if(item.grading_company&&item.grade)tags.push(`<span class="tag key">${item.grading_company} ${item.grade}</span>`);
+
+  // Stock indicator
+  const si=stock.inStock;
+  const sc=si>2?'instock':si>0?'lowstock':'nostock';
+  const sl=si>0?`${si} IN STOCK`:'NOT IN STOCK';
+  const stockHtml=`<div class="stock-row"><span class="stock-num ${sc}">${si}</span><div><div class="stock-label">${sl}</div>${stock.totalSold>0?`<div class="stock-label">${stock.totalSold} SOLD ALL TIME</div>`:''}</div></div>`;
 
   const compsHtml=item.comps&&item.comps.length?
     `<div class="comps"><div class="comps-hdr">${ct==='sports'?'EBAY SOLD COMPS':ct==='comic'?'RECENT SALES':'RECENT SALES'}</div>${item.comps.slice(0,3).map(c=>`<div class="comp-row"><span class="comp-d">${c.desc}</span><span class="comp-p ${ct}">$${Number(c.price).toFixed(2)}</span></div>`).join('')}</div>`:'';
@@ -328,10 +545,11 @@ function addBubble(item){
     <div class="btype ${ct}">${item.game}${item.sport?' · '+item.sport:''}</div>
     <div class="bname">${displayName}</div>
     ${subParts.length?`<div class="bsub">${subParts.join(' · ')}</div>`:''}
-    <span class="conf ${confCls}">${item.confidence} conf${item.confidence_reason?' — '+item.confidence_reason.substring(0,30):''}</span>
+    ${stockHtml}
+    <span class="conf ${confCls}">${item.confidence} conf — ${(item.confidence_reason||'').substring(0,35)}</span>
     <div class="drow">
       <span class="dscore ${dc}">${ds}/10</span>
-      <span class="trend ${tc}">${ti}${(item.trend_reason||'').substring(0,22)}</span>
+      <span class="trend ${tc}">${ti}${(item.trend_reason||'').substring(0,20)}</span>
     </div>
     ${tags.length?`<div class="tags">${tags.join('')}</div>`:''}
     ${item.key_notes?`<div class="keynotes">${item.key_notes}</div>`:''}
@@ -346,9 +564,13 @@ function addBubble(item){
       <select class="bsel" id="cs${id}" onchange="chCond('${id}')">${Object.keys(CM).map(c=>`<option>${c}</option>`).join('')}</select>
     </div>
     <div class="bconds">${Object.keys(CM).map((c,i)=>`<span class="bcp${i===0?' on':''}" onclick="cpill('${id}',this,'${c}')">${c}</span>`).join('')}</div>
-    <div class="bacts">${acts}<button class="bact a-inv" id="inv${id}" onclick="addToInv('${id}')">+ Add to Inventory</button></div>`;
+    <div class="bacts" id="acts${id}">
+      ${acts}
+      <button class="bact a-add" onclick="showAddForm('${id}')">+ Add to Inventory</button>
+      ${si>0?`<button class="bact a-sell" onclick="showSellForm('${id}')">✓ Mark as Sold</button>`:''}
+    </div>`;
 
-  const bw=186,bh=460;
+  const bw=192,bh=500;
   let left=cx-bw/2,top=cy-bh-24;
   if(top<60)top=cy+20;
   left=Math.max(6,Math.min(left,W-bw-6));
@@ -357,6 +579,180 @@ function addBubble(item){
   document.body.appendChild(el);
   bubs.push({id,el,ax:cx,ay:cy,ct});
 }
+
+window.showAddForm=function(id){
+  const el=document.getElementById(id);if(!el)return;
+  const acts=document.getElementById('acts'+id);
+  const pi=parseInt(document.getElementById('ps'+id)?.value)||0;
+  const cond=document.getElementById('cs'+id)?.value||'NM';
+  const print=el._prints[pi]||el._prints[0]||{};
+  const mkt=Number(print.mid||0).toFixed(2);
+
+  acts.innerHTML=`
+    <div class="inv-form">
+      <div class="inv-form-title">+ ADD TO INVENTORY</div>
+      <div class="inv-label">Your Cost ($)</div>
+      <input class="inv-inp" id="cost${id}" type="number" placeholder="0.00" step="0.01" oninput="previewProfit('${id}')">
+      <div class="inv-label">Quantity</div>
+      <input class="inv-inp" id="qty${id}" type="number" placeholder="1" value="1" min="1">
+      <div class="inv-label">Storage Location</div>
+      <input class="inv-inp" id="loc${id}" type="text" placeholder="Bin A3, Showcase 2...">
+      <div class="inv-label">Source</div>
+      <input class="inv-inp" id="src${id}" type="text" placeholder="Collection buy, show, lot...">
+      <div id="pp${id}"></div>
+    </div>
+    <div class="bacts">
+      <button class="bact a-confirm" onclick="confirmAdd('${id}')">SAVE TO INVENTORY</button>
+      <button class="bact a-cancel" onclick="resetActs('${id}')">Cancel</button>
+    </div>`;
+};
+
+window.previewProfit=function(id){
+  const el=document.getElementById(id);if(!el)return;
+  const pi=parseInt(document.getElementById('ps'+id)?.value)||0;
+  const print=el._prints[pi]||el._prints[0]||{};
+  const cost=parseFloat(document.getElementById('cost'+id)?.value)||0;
+  const mkt=Number(print.mid||0);
+  const profit=mkt-cost;
+  const pp=document.getElementById('pp'+id);
+  if(pp&&cost>0){
+    const cls=profit>=0?'profit-pos':'profit-neg';
+    pp.innerHTML=`<div class="profit-preview ${cls}">Est Profit: $${profit.toFixed(2)} (${mkt>0?((profit/mkt)*100).toFixed(0):0}% margin)</div>`;
+  }
+};
+
+window.confirmAdd=function(id){
+  const el=document.getElementById(id);if(!el||!el._item)return;
+  const item=el._item,ct=el._ct;
+  const pi=parseInt(document.getElementById('ps'+id)?.value)||0;
+  const cond=document.getElementById('cs'+id)?.value||'NM';
+  const print=el._prints[pi]||el._prints[0]||{};
+  const cost=parseFloat(document.getElementById('cost'+id)?.value)||0;
+  const qty=parseInt(document.getElementById('qty'+id)?.value)||1;
+  const loc=document.getElementById('loc'+id)?.value||'';
+  const src=document.getElementById('src'+id)?.value||'';
+
+  for(let i=0;i<qty;i++){
+    const entry={
+      id:'scan_'+Date.now()+'_'+i,
+      name:item.player||item.name,
+      category:ct==='sports'?'Sports':ct==='comic'?'Comic':'TCG',
+      set:print.set||item.set_name||'',
+      variant:print.variant||item.parallel||'',
+      condition:cond,year:item.year||'',
+      team:item.team||'',player:item.player||'',
+      manufacturer:item.manufacturer||'',publisher:item.publisher||'',
+      issue:item.issue||'',card_number:item.card_number||'',
+      serial_number:item.serial_number||'',
+      grading_company:item.grading_company||'',grade:item.grade||'',
+      is_rookie:item.is_rookie||false,key_notes:item.key_notes||'',
+      cost:cost,market:Number(print.mid)||0,price:Number(print.mid)||0,
+      location:loc,source:src,
+      desirability:item.desirability||5,
+      status:'in_stock',
+      addedAt:new Date().toISOString(),
+      scannedFrom:'AR Scanner'
+    };
+    const inv=JSON.parse(localStorage.getItem('lba_inventory')||'[]');
+    inv.unshift(entry);localStorage.setItem('lba_inventory',JSON.stringify(inv));
+  }
+
+  const acts=document.getElementById('acts'+id);
+  if(acts)acts.innerHTML=`<div class="bact a-added">✓ Added ${qty>1?qty+'x ':''}- Cost $${cost.toFixed(2)} · Est Profit $${(Number(print.mid||0)-cost).toFixed(2)}</div><button class="bact a-sell" onclick="showSellForm('${id}')">✓ Mark as Sold</button>`;
+  toast('Added '+(qty>1?qty+'x ':'')+((item.player||item.name)||'item'));
+};
+
+window.showSellForm=function(id){
+  const el=document.getElementById(id);if(!el)return;
+  const inv=JSON.parse(localStorage.getItem('lba_inventory')||'[]');
+  const name=(el._item.player||el._item.name||'').toLowerCase();
+  const inStock=inv.filter(i=>i.status==='in_stock'&&((i.name||'').toLowerCase().includes(name.split(' ')[0])||name.includes((i.name||'').toLowerCase().split(' ')[0])));
+  const avgCost=inStock.length?inStock.reduce((a,i)=>a+(i.cost||0),0)/inStock.length:0;
+  const pi=parseInt(document.getElementById('ps'+id)?.value)||0;
+  const print=el._prints[pi]||el._prints[0]||{};
+
+  const acts=document.getElementById('acts'+id);
+  acts.innerHTML=`
+    <div class="sold-form">
+      <div class="sold-form-title">✓ RECORD SALE</div>
+      ${inStock.length?`<div style="font-family:monospace;font-size:9px;color:rgba(255,255,255,.4);margin-bottom:6px">${inStock.length} in stock · Avg cost $${avgCost.toFixed(2)}</div>`:''}
+      <div class="inv-label">Sale Price ($)</div>
+      <input class="inv-inp" id="sale${id}" type="number" placeholder="${Number(print.mid||0).toFixed(2)}" step="0.01" oninput="previewSaleProfit('${id}',${avgCost})">
+      <div class="inv-label">Sale Channel</div>
+      <select class="bsel" id="chan${id}" style="margin-bottom:4px">
+        <option>In-Store</option><option>eBay</option>
+        <option>Whatnot</option><option>Website</option>
+      </select>
+      <div id="sp${id}"></div>
+    </div>
+    <div class="bacts">
+      <button class="bact a-confirm" style="background:var(--red)" onclick="confirmSell('${id}',${avgCost})">RECORD SALE</button>
+      <button class="bact a-cancel" onclick="resetActs('${id}')">Cancel</button>
+    </div>`;
+};
+
+window.previewSaleProfit=function(id,avgCost){
+  const sale=parseFloat(document.getElementById('sale'+id)?.value)||0;
+  const profit=sale-avgCost;
+  const sp=document.getElementById('sp'+id);
+  if(sp&&sale>0){
+    const cls=profit>=0?'profit-pos':'profit-neg';
+    sp.innerHTML=`<div class="profit-preview ${cls}">Profit: $${profit.toFixed(2)}${avgCost>0?' (cost $'+avgCost.toFixed(2)+')':''}</div>`;
+  }
+};
+
+window.confirmSell=function(id,avgCost){
+  const el=document.getElementById(id);if(!el||!el._item)return;
+  const salePrice=parseFloat(document.getElementById('sale'+id)?.value)||0;
+  if(!salePrice){toast('Enter a sale price');return;}
+  const channel=document.getElementById('chan'+id)?.value||'In-Store';
+  const item=el._item;
+  const name=(item.player||item.name||'').toLowerCase();
+
+  const inv=JSON.parse(localStorage.getItem('lba_inventory')||'[]');
+  let soldOne=false;
+  for(let i=0;i<inv.length;i++){
+    const iname=(inv[i].name||'').toLowerCase();
+    if(inv[i].status==='in_stock'&&(iname.includes(name.split(' ')[0])||name.includes(iname.split(' ')[0]))){
+      inv[i].status='sold';
+      inv[i].soldAt=new Date().toISOString();
+      inv[i].salePrice=salePrice;
+      inv[i].saleChannel=channel;
+      inv[i].profit=salePrice-(inv[i].cost||avgCost||0);
+      soldOne=true;break;
+    }
+  }
+
+  if(!soldOne){
+    // Item not in inventory — add as sold
+    inv.unshift({id:'scan_'+Date.now(),name:item.player||item.name,category:el._ct==='sports'?'Sports':el._ct==='comic'?'Comic':'TCG',cost:avgCost,salePrice,profit:salePrice-avgCost,saleChannel:channel,status:'sold',soldAt:new Date().toISOString(),addedAt:new Date().toISOString()});
+  }
+
+  // Save sale record
+  const sales=JSON.parse(localStorage.getItem('lba_sales')||'[]');
+  sales.unshift({id:'sale_'+Date.now(),name:item.player||item.name,category:el._ct==='sports'?'Sports':el._ct==='comic'?'Comic':'TCG',cost:avgCost,salePrice,profit:salePrice-avgCost,channel,date:new Date().toISOString()});
+  localStorage.setItem('lba_sales',JSON.stringify(sales));
+  localStorage.setItem('lba_inventory',JSON.stringify(inv));
+
+  const profit=salePrice-avgCost;
+  const acts=document.getElementById('acts'+id);
+  const cls=profit>=0?'profit-pos':'profit-neg';
+  if(acts)acts.innerHTML=`<div class="bact a-added">✓ SOLD $${salePrice.toFixed(2)} via ${channel}</div><div class="profit-preview ${cls}">Profit: $${profit.toFixed(2)}</div>`;
+  toast('Sold! Profit: $'+profit.toFixed(2));
+};
+
+window.resetActs=function(id){
+  const el=document.getElementById(id);if(!el||!el._item)return;
+  const ct=el._ct,item=el._item;
+  const stock=checkStock(item);
+  const si=stock.inStock;
+  const acts=document.getElementById('acts'+id);
+  let links='';
+  if(ct==='sports'){const q=encodeURIComponent((item.player||item.name)+' '+(item.year||'')+' '+(item.parallel||''));const q130=encodeURIComponent((item.player||item.name)+' '+(item.year||''));links=`<a class="bact a-ebay" href="https://www.ebay.com/sch/i.html?_nkw=${q}&LH_Sold=1" target="_blank">eBay Sold ↗</a><a class="bact a-130" href="https://130point.com/sales/?q=${q130}" target="_blank">130Point ↗</a>`;}
+  else if(ct==='comic'){const qgc=encodeURIComponent((item.name||'')+' '+(item.issue||''));const qe=encodeURIComponent((item.name||'')+' comic');links=`<a class="bact a-gcol" href="https://www.gocollect.com/search/?q=${qgc}" target="_blank">GoCollect ↗</a><a class="bact a-ebay" href="https://www.ebay.com/sch/i.html?_nkw=${qe}&LH_Sold=1" target="_blank">eBay Sold ↗</a>`;}
+  else{const qt=encodeURIComponent((item.name||'')+' '+(item.set_name||''));const qe=encodeURIComponent((item.name||'')+' '+(item.game||''));links=`<a class="bact a-tcg" href="https://www.tcgplayer.com/search/all/product?q=${qt}" target="_blank">TCGPlayer ↗</a><a class="bact a-ebay" href="https://www.ebay.com/sch/i.html?_nkw=${qe}&LH_Sold=1" target="_blank">eBay Sold ↗</a>`;}
+  acts.innerHTML=links+`<button class="bact a-add" onclick="showAddForm('${id}')">+ Add to Inventory</button>${si>0?`<button class="bact a-sell" onclick="showSellForm('${id}')">✓ Mark as Sold</button>`:''}`;
+};
 
 window.chPrint=function(id){
   const el=document.getElementById(id);if(!el)return;
@@ -387,18 +783,6 @@ function updatePrice(id,p,cond){
   const bt=document.getElementById('bt'+id);
   if(bt){const n=document.getElementById(id)?.querySelector('.bname')?.textContent||'';bt.href='https://www.tcgplayer.com/search/all/product?q='+encodeURIComponent(n+' '+(p.set||'')+' '+(p.variant||''));}
 }
-window.addToInv=function(id){
-  const el=document.getElementById(id);if(!el||!el._item)return;
-  const item=el._item,ct=el._ct;
-  const pi=parseInt(document.getElementById('ps'+id)?.value)||0;
-  const cond=document.getElementById('cs'+id)?.value||'NM';
-  const print=el._prints[pi]||el._prints[0]||{};
-  const entry={id:'scan_'+Date.now(),name:item.player||item.name,category:ct==='sports'?'Sports':ct==='comic'?'Comic':'TCG',set:print.set||item.set_name||'',variant:print.variant||item.parallel||'',condition:cond,year:item.year||'',team:item.team||'',player:item.player||'',manufacturer:item.manufacturer||'',publisher:item.publisher||'',issue:item.issue||'',card_number:item.card_number||'',serial_number:item.serial_number||'',is_rookie:item.is_rookie||false,key_notes:item.key_notes||'',grading_company:item.grading_company||'',grade:item.grade||'',market:Number(print.mid)||0,price:Number(print.mid)||0,cost:0,status:'in_stock',addedAt:new Date().toISOString(),scannedFrom:'AR Scanner'};
-  const inv=JSON.parse(localStorage.getItem('lba_inventory')||'[]');inv.unshift(entry);localStorage.setItem('lba_inventory',JSON.stringify(inv));
-  const pend=JSON.parse(localStorage.getItem('lba_pending')||'[]');pend.unshift(entry);localStorage.setItem('lba_pending',JSON.stringify(pend));
-  const btn=document.getElementById('inv'+id);if(btn){btn.textContent='✓ Added!';btn.classList.add('added');}
-  toast('Added: '+(item.player||item.name));
-};
 window.rmBub=function(id){document.getElementById(id)?.remove();bubs=bubs.filter(b=>b.id!==id);drawLines();};
 function clearAll(){bubs.forEach(b=>b.el?.remove());bubs=[];if(octx)octx.clearRect(0,0,oc.width,oc.height);}
 function drawLines(){
