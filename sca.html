@@ -842,26 +842,7 @@ For virgin/textless comics: identify from artwork, character, art style only. In
 
 async function scanBack(img){
   const hs=document.getElementById('hstatus');
-  const text=await callClaude([{role:'user',content:[{type:'image',source:{type:'base64',media_type:'image/jpeg',data:img}},{type:'text',text:'Card back. Read EVERY number, word, and marking carefully.
-
-Return ONLY JSON:
-{
-  "player": "player name if visible",
-  "card_number": "exact card number from back e.g. 287 or 287/700",
-  "set_name": "set name if printed on back",
-  "year": "year if visible",
-  "serial_number": "/25 serial stamp or null",
-  "print_run": "total print run number or null",
-  "auto_authenticated": true or false,
-  "rookie_stamp": true or false,
-  "team": "team name if visible",
-  "stats": [{"label": "stat label", "value": "stat value"}],
-  "bio": "any biographical text visible",
-  "copyright": "copyright line text",
-  "notes": "any other notable text or markings"
-}
-
-The card number on the back is the most reliable way to confirm which exact card this is.'}]}],600);
+  const text=await callClaude([{role:'user',content:[{type:'image',source:{type:'base64',media_type:'image/jpeg',data:img}},{type:'text',text:'Card back. Read every number, word and marking carefully. Return ONLY JSON with these fields: player (name), card_number (exact e.g. 287 or 287/700 - most important field), set_name, year, serial_number (/25 etc or null), print_run (null if none), auto_authenticated (true/false), rookie_stamp (true/false), team, stats (array of {label,value}), bio (short bio text), copyright (copyright line), notes (other markings).'}]}],600);
   const back=JSON.parse(text.replace(/```json|```/g,'').trim());
   if(bubs.length>0){addBackInfo(bubs[bubs.length-1].id,back);hs.textContent='BACK SCANNED';toast('Back info added');}
   else{showBackStandalone(back);hs.textContent='BACK READ';}
