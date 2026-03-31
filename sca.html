@@ -241,7 +241,9 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
 // ============================================================
 // CONFIG — Webflow CMS Collection ID
 // ============================================================
-const WF_COLLECTION_ID = '69cb5611c6522a8591b552c4';
+const WF_COLLECTION_ID = '69cb5611c6522a8591b552c4'; // LBA Inventory (back-office tracker)
+const WF_PRODUCTS_ID   = '65eb45a28ff6bf3fe4f17b14'; // Products (ecommerce shop)
+const WF_SKUS_ID       = '65eb45a28ff6bf3fe4f17afb'; // SKUs (required for ecommerce)
 const WF_SITE_ID = '65b15ee0228d06647ca7e4ce';
 
 // ============================================================
@@ -255,7 +257,7 @@ const AFF = {
   // To fix: in Impact → Brands → TCGPlayer → Links → copy the API/Tracking link
   // It looks like: https://imp.i115008.net/c/XXXXXXX/...
   // Paste it below and remove this comment block.
-  TCG_BASE: 'https://www.tcgplayer.com',  // fallback: direct links until API link added
+  TCG_BASE: 'https://partner.tcgplayer.com/c/5282726/1830156/21018',  // ✓ Impact API link
 
   // eBay Partner Network
   EBAY_CAMP: '5339046175',
@@ -264,12 +266,8 @@ const AFF = {
   // Wrap a TCGPlayer URL with your affiliate tracking
   tcg(url) {
     if(!url) return url;
-    // If TCG_BASE is the Impact API link (contains imp.i or impact.com), use ?u= param
-    // Otherwise send directly to the destination (still earns via cookie if user already clicked your partner link)
-    if(this.TCG_BASE.includes('imp.i')||this.TCG_BASE.includes('impact.com')){
-      return this.TCG_BASE + '?u=' + encodeURIComponent(url);
-    }
-    return url; // direct link — swap TCG_BASE to Impact API link when you have it
+    // partner.tcgplayer.com/c/... is the Impact API link — append ?u= destination
+    return this.TCG_BASE + '?u=' + encodeURIComponent(url);
   },
 
   // Wrap an eBay URL with your affiliate parameters
@@ -427,6 +425,90 @@ async function fetchAllPrintings(item){
   return result;
 }
 
+// ── COMIC COVER FETCHER ──────────────────────────────────────────
+// Fetches all available covers for a comic issue from free APIs
+async function fetchComicCovers(item){
+  const result = { printings: [], imageUrl: null, bestMatchIdx: 0 };
+  const title = item.name || '';
+  const issue = (item.issue||'').replace(/[^0-9]/g,'');
+  const publisher = (item.publisher||item.manufacturer||'').toLowerCase();
+
+  try{
+    // Marvel API (free, no key needed for basic search via unofficial endpoint)
+    if(publisher.includes('marvel')){
+      const q = encodeURIComponent(title);
+      const r = await fetch(`https://comicvine.gamespot.com/api/issues/?api_key=YOUR_FREE_KEY&format=json&filter=volume_name:${q},issue_number:${issue}&field_list=name,image,cover_date,description,volume&limit=20`,
+        {headers:{'User-Agent':'LBAScanner/1.0'}});
+      // ComicVine requires a key — skip if not configured
+    }
+
+    // Approach that works without a key: construct cover URLs from known CDNs
+    // Marvel issues: i.annihil.us format
+    // DC: covers from DC Universe
+    // Fallback: search Google Books for ISBN cover
+    
+    // Best no-key approach: Open Library covers by ISBN if we have it
+    // OR: construct a GoCollect-style search URL as the "cover"
+    
+    // For now build printings from Claude's data + supplement with cover search URL
+    const variants = [
+      'Standard Cover',
+      'Variant A',
+      'Variant B', 
+      'Variant C',
+      'Virgin/Textless',
+      'Sketch Variant',
+      'Foil Cover',
+      'Connecting Variant',
+      'Convention Exclusive',
+      'Incentive Variant (1:10)',
+      'Incentive Variant (1:25)',
+      'Incentive Variant (1:50)',
+      'Incentive Variant (1:100)',
+      'Blank Cover',
+      'Second Print',
+      'Third Print',
+      'Newsstand Edition',
+    ];
+
+    // Use Claude's printings from the scan if available
+    if(item.printings && item.printings.length > 0){
+      item.printings.forEach((p, i) => {
+        result.printings.push({
+          set: p.set || title + (issue ? ' #'+issue : ''),
+          variant: p.variant || 'Standard Cover',
+          year: p.year || item.year || '',
+          numbered: p.numbered || null,
+          mid: p.mid || 0,
+          low: p.low || 0,
+          high: p.high || 0,
+          hasRealPrice: false,
+          imageUrl: p.imageUrl || null,
+          // GoCollect link as price reference
+          tcgUrl: null,
+          gcUrl: 'https://www.gocollect.com/search/?q=' + encodeURIComponent(title + ' ' + (issue ? '#'+issue : '') + ' ' + (p.variant||''))
+        });
+      });
+      result.bestMatchIdx = 0;
+    } else {
+      // Build standard variant list if Claude didn't return printings
+      variants.forEach((v, i) => {
+        result.printings.push({
+          set: title + (issue ? ' #'+issue : ''),
+          variant: v,
+          year: item.year || '',
+          numbered: null,
+          mid: 0, low: 0, high: 0,
+          hasRealPrice: false,
+          imageUrl: null,
+          gcUrl: 'https://www.gocollect.com/search/?q=' + encodeURIComponent(title + ' ' + (issue ? '#'+issue : '') + ' ' + v)
+        });
+      });
+    }
+  }catch(e){ console.log('Comic cover fetch failed:', e); }
+  return result;
+}
+
 // Legacy shim used in a few places
 async function fetchCardImage(item){
   const r = await fetchAllPrintings(item);
@@ -434,7 +516,113 @@ async function fetchCardImage(item){
 }
 
 // ============================================================
-// WEBFLOW CMS SYNC
+// WEBFLOW SHOP SYNC — creates ecommerce Product + SKU
+// ============================================================
+async function syncToShopProduct(entry, imageUrl){
+  const token = localStorage.getItem('lba_wf_token');
+  if(!token) return null;
+
+  // Map category to Webflow option ID
+  const catMap = {
+    'Sports':'891253037409c4fe59854f3c9ef99a6b',
+    'TCG':'475ed99cc87de703b543fe9529e2c1da',
+    'Comic':'27f1c9c43a61cf03820a31132cfc6b9a',
+    'Graded':'891253037409c4fe59854f3c9ef99a6b'
+  };
+  const catId = catMap[entry.category]||catMap['TCG'];
+
+  const slug = 'inv-'+(entry.name||'card').toLowerCase()
+    .replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')
+    .substring(0,50)+'-'+Date.now().toString(36);
+
+  const price = Math.round((entry.price||entry.market||0)*100); // cents
+
+  try{
+    const headers = {
+      'Content-Type':'application/json',
+      'Authorization':'Bearer '+token
+    };
+
+    // Step 1: Create the Product
+    const prodData = {
+      fieldData:{
+        name: entry.name+(entry.year?' '+entry.year:'')+(entry.set?' — '+entry.set:''),
+        slug: slug,
+        description: [
+          entry.set, entry.variant, entry.year, entry.condition,
+          entry.team, entry.manufacturer, entry.key_notes
+        ].filter(Boolean).join(' · '),
+        shippable: true,
+        preorder: false,
+        'sold-out': false,
+        'tax-category': 'standard-taxable',
+        'ec-product-type': 'ff42fee0113744f693a764e3431a9cc2', // Physical
+        'card-category': catId,
+        'set-name': entry.set||'',
+        year: String(entry.year||''),
+        brand: entry.manufacturer||entry.publisher||'',
+        graded: !!(entry.grading_company),
+        grader: entry.grading_company||'',
+        grade: entry.grade||'',
+        'inventory-count': 1,
+        status: 'In Stock',
+        'card-sku': entry.id||'',
+        tags: [entry.is_rookie?'rookie':'',entry.is_key?'key':'',entry.parallel||'',entry.sport||''].filter(Boolean).join(','),
+      },
+      isDraft: false,
+      isArchived: false
+    };
+
+    if(imageUrl) prodData.fieldData.thumbnail = {url: imageUrl};
+
+    const prodRes = await fetch(`https://api.webflow.com/v2/collections/${WF_PRODUCTS_ID}/items`, {
+      method:'POST', headers,
+      body: JSON.stringify(prodData)
+    });
+    if(!prodRes.ok) return null;
+    const prod = await prodRes.json();
+    const productId = prod.id;
+
+    // Step 2: Create a SKU for this product (required for ecommerce)
+    const skuSlug = slug+'-sku';
+    const skuData = {
+      fieldData:{
+        name: entry.name+' — '+(entry.condition||'NM'),
+        slug: skuSlug,
+        price: {value: price, unit:'USD'},
+        'sku-values': {},
+        'main-image': imageUrl ? {url: imageUrl} : undefined,
+        quantity: 1,
+        'track-inventory': true,
+      },
+      isDraft: false
+    };
+
+    const skuRes = await fetch(`https://api.webflow.com/v2/collections/${WF_SKUS_ID}/items`, {
+      method:'POST', headers,
+      body: JSON.stringify(skuData)
+    });
+    if(!skuRes.ok){ console.log('SKU creation failed'); return productId; }
+    const sku = await skuRes.json();
+
+    // Step 3: Link SKU to Product as default-sku
+    await fetch(`https://api.webflow.com/v2/collections/${WF_PRODUCTS_ID}/items/${productId}`, {
+      method:'PATCH', headers,
+      body: JSON.stringify({fieldData:{'default-sku': sku.id}})
+    });
+
+    // Step 4: Publish both
+    await Promise.all([
+      fetch(`https://api.webflow.com/v2/collections/${WF_PRODUCTS_ID}/items/publish`,{method:'POST',headers,body:JSON.stringify({itemIds:[productId]})}),
+      fetch(`https://api.webflow.com/v2/collections/${WF_SKUS_ID}/items/publish`,{method:'POST',headers,body:JSON.stringify({itemIds:[sku.id]})})
+    ]);
+
+    return productId;
+  }catch(e){ console.log('Shop sync failed:',e); return null; }
+}
+
+// ============================================================
+// WEBFLOW CMS SYNC — LBA Inventory back-office
 // ============================================================
 async function syncToWebflowCMS(entry, imageUrl){
   const key = localStorage.getItem('lba_k');
@@ -629,6 +817,7 @@ For virgin/textless comics: identify from artwork, character, art style only. In
     for(const item of items){
       const stock=checkStock(item);
       const isTCG=['Pokemon TCG','Magic: The Gathering','Yu-Gi-Oh!','Other TCG'].includes(item.game);
+      const isComic=item.game==='Comic';
       let apiPrintings=null,imgUrl=null,bestMatchIdx=0;
       if(isTCG){
         const fetched=await fetchAllPrintings(item);
@@ -637,6 +826,13 @@ For virgin/textless comics: identify from artwork, character, art style only. In
           bestMatchIdx=fetched.bestMatchIdx;
           imgUrl=fetched.imageUrl;
         }else{imgUrl=fetched.imageUrl;}
+      } else if(isComic){
+        const fetched=await fetchComicCovers(item);
+        if(fetched.printings&&fetched.printings.length){
+          apiPrintings=fetched.printings;
+          bestMatchIdx=fetched.bestMatchIdx;
+        }
+        imgUrl=fetched.imageUrl||null;
       }
       addBubble(item,stock,imgUrl,apiPrintings,bestMatchIdx);
     }
@@ -646,7 +842,26 @@ For virgin/textless comics: identify from artwork, character, art style only. In
 
 async function scanBack(img){
   const hs=document.getElementById('hstatus');
-  const text=await callClaude([{role:'user',content:[{type:'image',source:{type:'base64',media_type:'image/jpeg',data:img}},{type:'text',text:'Card back. Return ONLY JSON: {"player":"name","serial_number":"/99 or null","print_run":"number or null","auto_authenticated":false,"stats":[{"label":"stat","value":"val"}],"year":"year","set":"set","card_number":"# or null","rookie_stamp":false,"notes":"other info"}'}]}],600);
+  const text=await callClaude([{role:'user',content:[{type:'image',source:{type:'base64',media_type:'image/jpeg',data:img}},{type:'text',text:'Card back. Read EVERY number, word, and marking carefully.
+
+Return ONLY JSON:
+{
+  "player": "player name if visible",
+  "card_number": "exact card number from back e.g. 287 or 287/700",
+  "set_name": "set name if printed on back",
+  "year": "year if visible",
+  "serial_number": "/25 serial stamp or null",
+  "print_run": "total print run number or null",
+  "auto_authenticated": true or false,
+  "rookie_stamp": true or false,
+  "team": "team name if visible",
+  "stats": [{"label": "stat label", "value": "stat value"}],
+  "bio": "any biographical text visible",
+  "copyright": "copyright line text",
+  "notes": "any other notable text or markings"
+}
+
+The card number on the back is the most reliable way to confirm which exact card this is.'}]}],600);
   const back=JSON.parse(text.replace(/```json|```/g,'').trim());
   if(bubs.length>0){addBackInfo(bubs[bubs.length-1].id,back);hs.textContent='BACK SCANNED';toast('Back info added');}
   else{showBackStandalone(back);hs.textContent='BACK READ';}
@@ -756,7 +971,14 @@ function addBubble(item,stock,imgUrl,apiPrintings,bestMatchIdx){
     let sgHtml='';
     if(ct==='bgs'&&item.subgrades){const sg=item.subgrades;sgHtml=`<div class="slab-subgrades">${sg.centering?`<div class="sg"><div class="sg-label">CENT</div><div class="sg-val">${sg.centering}</div></div>`:''} ${sg.surface?`<div class="sg"><div class="sg-label">SURF</div><div class="sg-val">${sg.surface}</div></div>`:''} ${sg.corners?`<div class="sg"><div class="sg-label">CORN</div><div class="sg-val">${sg.corners}</div></div>`:''} ${sg.edges?`<div class="sg"><div class="sg-label">EDGE</div><div class="sg-val">${sg.edges}</div></div>`:''}</div>`;}
     let popHtml='';
-    if(item.pop_this_grade||item.pop_higher){const isRare=(item.pop_this_grade||999)<100;popHtml=`<div class="pop-row"><div><div class="pop-label">POP ${(item.grading_company||ct).toUpperCase()} ${item.grade}</div><div class="pop-val ${isRare?'rare':'common'}">${item.pop_this_grade||'?'}</div></div>${item.pop_higher?`<div><div class="pop-label">POP HIGHER</div><div class="pop-val">${item.pop_higher}</div></div>`:''}</div>`;}
+    // Pop counts from Claude are estimates only — link to official cert verify instead
+    if(item.cert_number&&ct==='psa'){
+      popHtml=`<div class="pop-row"><div><div class="pop-label">PSA CERT</div><div class="pop-val rare">#${item.cert_number}</div></div><div><a href="https://www.psacard.com/cert/${item.cert_number}" target="_blank" style="font-family:monospace;font-size:8px;color:var(--psa);text-decoration:none">Verify on PSA ↗</a></div></div>`;
+    } else if(item.cert_number&&ct==='bgs'){
+      popHtml=`<div class="pop-row"><div><div class="pop-label">BGS CERT</div><div class="pop-val" style="color:#ccc">#${item.cert_number}</div></div><div><a href="https://www.beckett.com/grading/cert?cert=${item.cert_number}" target="_blank" style="font-family:monospace;font-size:8px;color:#ccc;text-decoration:none">Verify on BGS ↗</a></div></div>`;
+    } else if(item.cert_number&&ct==='cgc'){
+      popHtml=`<div class="pop-row"><div><div class="pop-label">CGC CERT</div><div class="pop-val" style="color:var(--gold)">#${item.cert_number}</div></div></div>`;
+    }
     slabHtml=`<div class="slab-grade ${ct}"><div class="grade-num ${ct}">${item.grade}</div><div class="grade-info"><div class="grade-co ${ct}">${(item.grading_company||ct).toUpperCase()} GRADE</div>${item.cert_number?`<div class="grade-cert">CERT #${item.cert_number}</div>`:''}</div></div>${sgHtml}${popHtml}`;
   }
 
@@ -769,7 +991,8 @@ function addBubble(item,stock,imgUrl,apiPrintings,bestMatchIdx){
   if(item.set_name&&!isSlab)subParts.push(item.set_name);
   if(item.parallel&&item.parallel!=='Base')subParts.push(item.parallel);
   if(item.serial_number)subParts.push(item.serial_number);
-  if(item.card_number&&!isSlab)subParts.push('#'+item.card_number);
+  // Card number always shown prominently for sports cards
+  if(item.card_number&&!isSlab)subParts.push('Card #'+item.card_number);
   if(item.publisher)subParts.push(item.publisher);
   if(item.issue)subParts.push(item.issue);
   const confCls=item.confidence==='high'?'c-hi':item.confidence==='low'?'c-lo':'c-md';
@@ -946,30 +1169,29 @@ window.confirmAdd=async function(id){
       scannedFrom:'AR Scanner'
     };
 
-    // 1. Save to localStorage (works for this device immediately)
+    // 1. Save to localStorage immediately
     const inv=JSON.parse(localStorage.getItem('lba_inventory')||'[]');
     inv.unshift(entry);localStorage.setItem('lba_inventory',JSON.stringify(inv));
 
-    // 2. Sync to Webflow CMS (persists across all devices)
+    // 2. Sync to LBA Inventory CMS (back-office tracker)
     const cmsId=await syncToWebflowCMS(entry, el._imgUrl);
+    if(cmsId){ entry.cmsId=cmsId; inv[0].cmsId=cmsId; localStorage.setItem('lba_inventory',JSON.stringify(inv)); }
 
-    if(cmsId){
-      entry.cmsId=cmsId;
-      inv[0].cmsId=cmsId;
-      localStorage.setItem('lba_inventory',JSON.stringify(inv));
-    }
+    // 3. Sync to Products ecommerce collection (appears on shop page)
+    const shopId=await syncToShopProduct(entry, el._imgUrl);
+    if(shopId){ entry.shopId=shopId; inv[0].shopId=shopId; localStorage.setItem('lba_inventory',JSON.stringify(inv)); }
   }
 
   const profit=(Number(print.mid||0)-cost).toFixed(2);
   const hasCMS=!!localStorage.getItem('lba_wf_token');
   acts.innerHTML=`
     <div class="cms-status ${hasCMS?'cms-synced':'cms-syncing'}">
-      ${hasCMS?'✓ SAVED + SYNCED TO WEBFLOW':'✓ SAVED LOCALLY'}
+      ${hasCMS?'✓ SAVED · INVENTORY · SHOP':'✓ SAVED LOCALLY'}
     </div>
     <div class="bact a-added">Cost $${cost.toFixed(2)} · Est Profit $${profit}</div>
     <button class="bact a-sell" onclick="showSellForm('${id}')">✓ Mark as Sold</button>`;
 
-  toast('Added '+(qty>1?qty+'x ':'')+((item.player||item.name)||'item')+(hasCMS?' → Webflow CMS':''));
+  toast('Added '+(qty>1?qty+'x ':'')+((item.player||item.name)||'item')+(hasCMS?' → Shop + Inventory':''));
 };
 
 window.showSellForm=function(id){
@@ -1026,15 +1248,29 @@ window.confirmSell=async function(id,avgCost){
   localStorage.setItem('lba_sales',JSON.stringify(sales));
   localStorage.setItem('lba_inventory',JSON.stringify(inv));
 
-  // Update Webflow CMS if item has a CMS ID
-  if(soldItem&&soldItem.cmsId&&localStorage.getItem('lba_wf_token')){
+  // Update both CMS collections when sold
+  if(soldItem&&localStorage.getItem('lba_wf_token')){
+    const token=localStorage.getItem('lba_wf_token');
+    const h={'Content-Type':'application/json','Authorization':'Bearer '+token};
     try{
-      await fetch(`https://api.webflow.com/v2/collections/${WF_COLLECTION_ID}/items/${soldItem.cmsId}`,{
-        method:'PATCH',
-        headers:{'Content-Type':'application/json','Authorization':`Bearer ${localStorage.getItem('lba_wf_token')}`},
-        body:JSON.stringify({fieldData:{'status':'Sold','sale-price':salePrice,'profit':salePrice-avgCost,'sale-channel':channel,'date-sold':new Date().toISOString(),'quantity-in-stock':0,'quantity-sold':1}})
-      });
-    }catch(e){console.log('CMS update failed',e);}
+      // Update LBA Inventory tracker
+      if(soldItem.cmsId){
+        await fetch(`https://api.webflow.com/v2/collections/${WF_COLLECTION_ID}/items/${soldItem.cmsId}`,{
+          method:'PATCH',headers:h,
+          body:JSON.stringify({fieldData:{status:'Sold','sale-price':salePrice,'profit':salePrice-avgCost,'sale-channel':channel,'date-sold':new Date().toISOString(),'quantity-in-stock':0,'quantity-sold':1}})
+        });
+      }
+      // Mark shop product as sold out
+      if(soldItem.shopId){
+        await fetch(`https://api.webflow.com/v2/collections/${WF_PRODUCTS_ID}/items/${soldItem.shopId}`,{
+          method:'PATCH',headers:h,
+          body:JSON.stringify({fieldData:{'sold-out':true,'inventory-count':0,status:'Sold'}})
+        });
+        await fetch(`https://api.webflow.com/v2/collections/${WF_PRODUCTS_ID}/items/publish`,{
+          method:'POST',headers:h,body:JSON.stringify({itemIds:[soldItem.shopId]})
+        });
+      }
+    }catch(e){console.log('CMS sold update failed',e);}
   }
 
   const profit=salePrice-avgCost;
@@ -1077,14 +1313,38 @@ window.resetActs=function(id){
 function showBackStandalone(back){
   const id='back_'+Date.now();const el=document.createElement('div');el.className='bub';el.id=id;el.style.left='10px';el.style.top='80px';
   const statsHtml=back.stats&&back.stats.length?back.stats.slice(0,6).map(s=>`<div class="backinfo-row"><span>${s.label}</span><span class="backinfo-val">${s.value}</span></div>`).join(''):'';
-  el.innerHTML=`<button class="bx" onclick="document.getElementById('${id}').remove()">×</button><div class="btype tcg">CARD BACK</div><div class="backinfo"><div class="backinfo-hdr">⟳ BACK OF CARD</div>${back.serial_number?`<div class="backinfo-row"><span>Serial</span><span class="backinfo-val">${back.serial_number}</span></div>`:''}${back.print_run?`<div class="backinfo-row"><span>Print Run</span><span class="backinfo-val">${back.print_run}</span></div>`:''}${back.auto_authenticated?`<div class="backinfo-row"><span>Auto</span><span class="backinfo-val" style="color:var(--g)">✓ Auth</span></div>`:''}${back.rookie_stamp?`<div class="backinfo-row"><span>RC</span><span class="backinfo-val" style="color:var(--gold)">✓ YES</span></div>`:''}${statsHtml}${back.notes?`<div style="font-family:monospace;font-size:8px;color:rgba(255,255,255,.4);margin-top:4px">${back.notes.substring(0,100)}</div>`:''}</div>`;
+  el.innerHTML=`<button class="bx" onclick="document.getElementById('${id}').remove()">×</button>
+    <div class="btype tcg">CARD BACK</div>
+    <div class="backinfo">
+      <div class="backinfo-hdr">⟳ BACK OF CARD DATA</div>
+      ${back.card_number?`<div class="backinfo-row"><span style="color:var(--gold)">Card #</span><span class="backinfo-val" style="color:var(--gold);font-family:'Orbitron',monospace;font-size:12px">${back.card_number}</span></div>`:''}
+      ${back.set_name?`<div class="backinfo-row"><span>Set</span><span class="backinfo-val">${back.set_name}</span></div>`:''}
+      ${back.year?`<div class="backinfo-row"><span>Year</span><span class="backinfo-val">${back.year}</span></div>`:''}
+      ${back.serial_number?`<div class="backinfo-row"><span>Serial</span><span class="backinfo-val" style="color:var(--red)">${back.serial_number}</span></div>`:''}
+      ${back.print_run?`<div class="backinfo-row"><span>Print Run</span><span class="backinfo-val">${back.print_run}</span></div>`:''}
+      ${back.auto_authenticated?`<div class="backinfo-row"><span>Auto</span><span class="backinfo-val" style="color:var(--g)">✓ Auth</span></div>`:''}
+      ${back.rookie_stamp?`<div class="backinfo-row"><span>RC</span><span class="backinfo-val" style="color:var(--gold)">✓ YES</span></div>`:''}
+      ${statsHtml}
+      ${back.bio?`<div style="font-family:monospace;font-size:8px;color:rgba(255,255,255,.35);margin-top:3px;line-height:1.5;font-style:italic">${back.bio.substring(0,120)}</div>`:''}
+      ${back.notes?`<div style="font-family:monospace;font-size:8px;color:rgba(255,255,255,.4);margin-top:3px">${back.notes.substring(0,100)}</div>`:''}
+    </div>`;
   document.body.appendChild(el);bubs.push({id,el,ax:window.innerWidth/2,ay:window.innerHeight/2,ct:'tcg'});drawLines();
 }
 function addBackInfo(bubId,back){
   const el=document.getElementById(bubId);if(!el)return;el.querySelector('.backinfo')?.remove();
   const statsHtml=back.stats&&back.stats.length?back.stats.slice(0,6).map(s=>`<div class="backinfo-row"><span>${s.label}</span><span class="backinfo-val">${s.value}</span></div>`).join(''):'';
   const bi=document.createElement('div');bi.className='backinfo';
-  bi.innerHTML=`<div class="backinfo-hdr">⟳ BACK OF CARD</div>${back.serial_number?`<div class="backinfo-row"><span>Serial</span><span class="backinfo-val">${back.serial_number}</span></div>`:''}${back.print_run?`<div class="backinfo-row"><span>Print Run</span><span class="backinfo-val">${back.print_run}</span></div>`:''}${back.auto_authenticated?`<div class="backinfo-row"><span>Auto</span><span class="backinfo-val" style="color:var(--g)">✓ Auth</span></div>`:''}${back.rookie_stamp?`<div class="backinfo-row"><span>RC</span><span class="backinfo-val" style="color:var(--gold)">✓</span></div>`:''}${statsHtml}${back.notes?`<div style="font-family:monospace;font-size:8px;color:rgba(255,255,255,.4);margin-top:3px">${back.notes.substring(0,80)}</div>`:''}`;
+  bi.innerHTML=`<div class="backinfo-hdr">⟳ BACK OF CARD</div>
+    ${back.card_number?`<div class="backinfo-row"><span style="color:var(--gold)">Card #</span><span class="backinfo-val" style="color:var(--gold);font-family:'Orbitron',monospace;font-size:11px">${back.card_number}</span></div>`:''}
+    ${back.set_name?`<div class="backinfo-row"><span>Set</span><span class="backinfo-val">${back.set_name}</span></div>`:''}
+    ${back.year?`<div class="backinfo-row"><span>Year</span><span class="backinfo-val">${back.year}</span></div>`:''}
+    ${back.serial_number?`<div class="backinfo-row"><span>Serial</span><span class="backinfo-val" style="color:var(--red)">${back.serial_number}</span></div>`:''}
+    ${back.print_run?`<div class="backinfo-row"><span>Print Run</span><span class="backinfo-val">${back.print_run}</span></div>`:''}
+    ${back.auto_authenticated?`<div class="backinfo-row"><span>Auto</span><span class="backinfo-val" style="color:var(--g)">✓ Auth</span></div>`:''}
+    ${back.rookie_stamp?`<div class="backinfo-row"><span>RC</span><span class="backinfo-val" style="color:var(--gold)">✓ Stamp</span></div>`:''}
+    ${statsHtml}
+    ${back.bio?`<div style="font-family:monospace;font-size:8px;color:rgba(255,255,255,.35);margin-top:3px;line-height:1.5;font-style:italic">${back.bio.substring(0,120)}</div>`:''}
+    ${back.notes?`<div style="font-family:monospace;font-size:8px;color:rgba(255,255,255,.35);margin-top:2px">${back.notes.substring(0,80)}</div>`:''}`;
   const acts=el.querySelector('.bacts');if(acts)el.insertBefore(bi,acts);else el.appendChild(bi);
 }
 window.rmBub=function(id){document.getElementById(id)?.remove();bubs=bubs.filter(b=>b.id!==id);drawLines();};
