@@ -582,7 +582,7 @@ async function syncToShopProduct(entry, imageUrl){
 
     if(imageUrl) prodData.fieldData.thumbnail = {url: imageUrl};
 
-    const prodRes = await fetch(`https://api.webflow.com/v2/collections/${WF_PRODUCTS_ID}/items`, {
+    const prodRes = await wfFetch(`/collections/${WF_PRODUCTS_ID}/items`, {
       method:'POST', headers,
       body: JSON.stringify(prodData)
     });
@@ -605,7 +605,7 @@ async function syncToShopProduct(entry, imageUrl){
       isDraft: false
     };
 
-    const skuRes = await fetch(`https://api.webflow.com/v2/collections/${WF_SKUS_ID}/items`, {
+    const skuRes = await wfFetch(`/collections/${WF_SKUS_ID}/items`, {
       method:'POST', headers,
       body: JSON.stringify(skuData)
     });
@@ -613,15 +613,15 @@ async function syncToShopProduct(entry, imageUrl){
     const sku = await skuRes.json();
 
     // Step 3: Link SKU to Product as default-sku
-    await fetch(`https://api.webflow.com/v2/collections/${WF_PRODUCTS_ID}/items/${productId}`, {
+    await wfFetch(`/collections/${WF_PRODUCTS_ID}/items/${productId}`, {
       method:'PATCH', headers,
       body: JSON.stringify({fieldData:{'default-sku': sku.id}})
     });
 
     // Step 4: Publish both
     await Promise.all([
-      fetch(`https://api.webflow.com/v2/collections/${WF_PRODUCTS_ID}/items/publish`,{method:'POST',headers,body:JSON.stringify({itemIds:[productId]})}),
-      fetch(`https://api.webflow.com/v2/collections/${WF_SKUS_ID}/items/publish`,{method:'POST',headers,body:JSON.stringify({itemIds:[sku.id]})})
+      wfFetch(`/collections/${WF_PRODUCTS_ID}/items/publish`,{method:'POST',headers,body:JSON.stringify({itemIds:[productId]})}),
+      wfFetch(`/collections/${WF_SKUS_ID}/items/publish`,{method:'POST',headers,body:JSON.stringify({itemIds:[sku.id]})})
     ]);
 
     return productId;
@@ -677,20 +677,16 @@ async function syncToWebflowCMS(entry, imageUrl){
   }
 
   try{
-    const res = await fetch(`https://api.webflow.com/v2/collections/${WF_COLLECTION_ID}/items`, {
+    const res = await wfFetch(`/collections/${WF_COLLECTION_ID}/items`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('lba_wf_token')||''}`,
-        'accept': 'application/json'
-      },
+      headers: { 'Content-Type': 'application/json', 'accept': 'application/json' },
       body: JSON.stringify({ fieldData, isDraft: false, isArchived: false })
     });
 
     if(res.ok){
       const data = await res.json();
       // Also publish it
-      await fetch(`https://api.webflow.com/v2/collections/${WF_COLLECTION_ID}/items/publish`, {
+      await wfFetch(`/collections/${WF_COLLECTION_ID}/items/publish`, {
         method: 'POST',
         headers: { 'Content-Type':'application/json', 'Authorization':`Bearer ${localStorage.getItem('lba_wf_token')||''}` },
         body: JSON.stringify({ itemIds: [data.id] })
@@ -720,6 +716,10 @@ function launch(){
   if(!localStorage.getItem('lba_wf_token')){
     const wft=prompt('Optional: Webflow API token for cloud sync (leave blank to skip):');
     if(wft&&wft.length>10)localStorage.setItem('lba_wf_token',wft);
+  }
+  if(!localStorage.getItem('lba_proxy_url')&&localStorage.getItem('lba_wf_token')){
+    const proxy=prompt('Optional: Cloudflare proxy URL (e.g. https://lba-proxy.name.workers.dev) — leave blank to skip:');
+    if(proxy&&proxy.includes('workers.dev'))localStorage.setItem('lba_proxy_url',proxy);
   }
   startScanner();
 }
@@ -1243,18 +1243,18 @@ window.confirmSell=async function(id,avgCost){
     try{
       // Update LBA Inventory tracker
       if(soldItem.cmsId){
-        await fetch(`https://api.webflow.com/v2/collections/${WF_COLLECTION_ID}/items/${soldItem.cmsId}`,{
+        await wfFetch(`/collections/${WF_COLLECTION_ID}/items/${soldItem.cmsId}`,{
           method:'PATCH',headers:h,
           body:JSON.stringify({fieldData:{status:'Sold','sale-price':salePrice,'profit':salePrice-avgCost,'sale-channel':channel,'date-sold':new Date().toISOString(),'quantity-in-stock':0,'quantity-sold':1}})
         });
       }
       // Mark shop product as sold out
       if(soldItem.shopId){
-        await fetch(`https://api.webflow.com/v2/collections/${WF_PRODUCTS_ID}/items/${soldItem.shopId}`,{
+        await wfFetch(`/collections/${WF_PRODUCTS_ID}/items/${soldItem.shopId}`,{
           method:'PATCH',headers:h,
           body:JSON.stringify({fieldData:{'sold-out':true,'inventory-count':0,status:'Sold'}})
         });
-        await fetch(`https://api.webflow.com/v2/collections/${WF_PRODUCTS_ID}/items/publish`,{
+        await wfFetch(`/collections/${WF_PRODUCTS_ID}/items/publish`,{
           method:'POST',headers:h,body:JSON.stringify({itemIds:[soldItem.shopId]})
         });
       }
