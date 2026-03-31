@@ -271,7 +271,8 @@ tr.sold-row td{opacity:.4;}
 </main>
 
 <script>
-const WF_COLLECTION = '69cb5611c6522a8591b552c4';
+const WF_COLLECTION = '65eb45a28ff6bf3fe4f17b14'; // Products ecommerce collection
+const WF_SKUS = '65eb45a28ff6bf3fe4f17afb'; // SKUs collection
 let allItems = [], filteredItems = [], sortCol = 'name', sortDir = 1, activeFilter = 'all', page = 1;
 const PER_PAGE = 50;
 
@@ -355,268 +356,36 @@ async function loadInventory(){
       }
       const d = await res.json();
       total = d.pagination?.total || 0;
-      const items = (d.items||[]).map(i => ({
-        id: i.id,
-        name: i.fieldData?.['player-card-name'] || i.fieldData?.name || '—',
-        set: i.fieldData?.set || '',
-        variant: i.fieldData?.['variant-parallel'] || '',
-        year: i.fieldData?.year || '',
-        condition: i.fieldData?.condition || 'NM',
-        category: i.fieldData?.category || 'TCG',
-        manufacturer: i.fieldData?.manufacturer || '',
-        grading: i.fieldData?.['grading-company'] || '',
-        grade: i.fieldData?.grade || '',
-        cost: parseFloat(i.fieldData?.cost) || 0,
-        market: parseFloat(i.fieldData?.['market-value']) || 0,
-        salePrice: parseFloat(i.fieldData?.['sale-price']) || 0,
-        profit: parseFloat(i.fieldData?.profit) || 0,
-        status: (i.fieldData?.status||'').toLowerCase().replace(' ','_') === 'in_stock' || i.fieldData?.status === 'In Stock' ? 'in_stock' : 'sold',
-        channel: i.fieldData?.['sale-channel'] || '',
-        addedAt: i.fieldData?.['date-added'] || i.createdOn || '',
-        soldAt: i.fieldData?.['date-sold'] || '',
-        location: i.fieldData?.location || '',
-        keyNotes: i.fieldData?.['key-notes'] || '',
-        isRookie: i.fieldData?.['is-rookie'] || false,
-        desirability: i.fieldData?.['desirability-score'] || 0,
-      }));
-      all = all.concat(items);
-      offset += 100;
-      if(d.items?.length < 100) break;
-    }
-
-    // Also merge localStorage items not yet synced
-    const local = JSON.parse(localStorage.getItem('lba_inventory')||'[]');
-    const cmsIds = new Set(all.map(i=>i.id));
-    const localOnly = local.filter(i=>!i.cmsId); // items without a CMS ID haven't synced yet
-    const merged = [...all, ...localOnly.map(i=>({
-      id: i.id,
-      name: i.name||'—',
-      set: i.set||'',
-      variant: i.variant||'',
-      year: i.year||'',
-      condition: i.condition||'NM',
-      category: i.category||'TCG',
-      cost: i.cost||0,
-      market: i.market||0,
-      salePrice: i.salePrice||0,
-      profit: i.profit||0,
-      status: i.status||'in_stock',
-      channel: i.saleChannel||'',
-      addedAt: i.addedAt||'',
-      soldAt: i.soldAt||'',
-      _local: true
-    }))];
-
-    allItems = merged;
-    filteredItems = [...allItems];
-    renderAll();
-    document.getElementById('sync-status').textContent = `${all.length} CMS · ${localOnly.length} local · ${new Date().toLocaleTimeString()}`;
-
-    // Low stock alerts
-    const inStock = allItems.filter(i=>i.status==='in_stock');
-    if(inStock.length < 10){
-      const ab = document.getElementById('alert-bar');
-      ab.textContent = `⚠ Low inventory — only ${inStock.length} items in stock. Time to restock!`;
-      ab.style.display = 'block';
-    }
-  }catch(e){
-    document.getElementById('sync-status').textContent = 'Error: '+e.message;
-    console.error(e);
-  }
-}
-
-function renderAll(){
-  renderStats();
-  renderCategories();
-  renderChannels();
-  renderTopValue();
-  renderRecentFeed();
-  filterTable();
-}
-
-function fmt$(n){ return '$'+Number(n||0).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0}); }
-function fmtD$(n){ return '$'+Number(n||0).toFixed(2); }
-
-function renderStats(){
-  const inStock = allItems.filter(i=>i.status==='in_stock');
-  const sold = allItems.filter(i=>i.status==='sold');
-  const mktVal = inStock.reduce((a,i)=>a+(i.market||0),0);
-  const totalProfit = sold.reduce((a,i)=>a+(i.profit||0),0);
-  const totalCost = allItems.reduce((a,i)=>a+(i.cost||0),0);
-  const avgMargin = sold.length ? totalProfit/sold.length : 0;
-
-  document.getElementById('s1').textContent = inStock.length;
-  document.getElementById('s1b').textContent = allItems.length+' total items';
-  document.getElementById('s2').textContent = fmt$(mktVal);
-  document.getElementById('s3').textContent = (totalProfit>=0?'+':'')+fmt$(totalProfit);
-  document.getElementById('s3').className = 'sc-val'+(totalProfit>=0?' g':' r');
-  document.getElementById('s3b').textContent = sold.length+' items sold';
-  document.getElementById('s4').textContent = sold.length;
-  document.getElementById('s4b').textContent = fmt$(sold.reduce((a,i)=>a+(i.salePrice||0),0))+' revenue';
-  document.getElementById('s5').textContent = fmt$(totalCost);
-  document.getElementById('s6').textContent = (avgMargin>=0?'+':'')+fmtD$(avgMargin);
-  document.getElementById('s6').className = 'sc-val'+(avgMargin>=0?' p':' r');
-}
-
-function renderCategories(){
-  const cats = ['Sports','TCG','Comic','Graded'];
-  let total = 0;
-  cats.forEach(c=>{
-    const items = allItems.filter(i=>(i.category||'').toLowerCase()===c.toLowerCase()&&i.status==='in_stock');
-    const val = items.reduce((a,i)=>a+(i.market||0),0);
-    total += items.length;
-    const key = c.toLowerCase().replace('comic','comic');
-    const el = document.getElementById('c-'+key);
-    const vel = document.getElementById('cv-'+key);
-    if(el) el.textContent = items.length;
-    if(vel) vel.textContent = fmt$(val)+' value';
-  });
-  document.getElementById('cat-total').textContent = total+' in stock';
-}
-
-function renderChannels(){
-  const sold = allItems.filter(i=>i.status==='sold');
-  const channels = {};
-  sold.forEach(i=>{ const ch=i.channel||'In-Store'; channels[ch]=(channels[ch]||0)+(i.salePrice||0); });
-  const max = Math.max(...Object.values(channels),1);
-  const colors = {'In-Store':'ch-g','eBay':'ch-gold','Whatnot':'ch-p','Website':'ch-b'};
-  const sorted = Object.entries(channels).sort((a,b)=>b[1]-a[1]);
-  const el = document.getElementById('channel-bars');
-  if(!sorted.length){ el.innerHTML='<div class="empty"><div class="empty-t">NO SALES YET</div></div>'; return; }
-  el.innerHTML = sorted.map(([ch,val])=>`
-    <div class="br-row ${colors[ch]||'ch-r'}">
-      <span class="br-lbl">${ch}</span>
-      <div class="br-track"><div class="br-fill" style="width:${(val/max*100).toFixed(1)}%"></div></div>
-      <span class="br-val">${fmt$(val)}</span>
-    </div>`).join('');
-}
-
-function renderTopValue(){
-  const inStock = allItems.filter(i=>i.status==='in_stock'&&(i.market||0)>0)
-    .sort((a,b)=>(b.market||0)-(a.market||0)).slice(0,8);
-  const el = document.getElementById('top-value');
-  if(!inStock.length){ el.innerHTML='<div class="empty"><div class="empty-t">NO ITEMS YET</div><div class="empty-s">Scan cards and add to inventory</div></div>'; return; }
-  const max = inStock[0].market||1;
-  const catColor = {Sports:'var(--gold)',TCG:'var(--g)',Comic:'var(--purple)',Graded:'var(--blue)'};
-  el.innerHTML = inStock.map(i=>`
-    <div class="br-row">
-      <span class="br-lbl" title="${i.name}">${i.name}</span>
-      <div class="br-track"><div class="br-fill" style="width:${((i.market||0)/max*100).toFixed(1)}%;background:${catColor[i.category]||'var(--g)'}"></div></div>
-      <span class="br-val">${fmtD$(i.market)}</span>
-    </div>`).join('');
-}
-
-function renderRecentFeed(){
-  const sorted = [...allItems].sort((a,b)=>{
-    const da = new Date(a.soldAt||a.addedAt||0);
-    const db = new Date(b.soldAt||b.addedAt||0);
-    return db-da;
-  }).slice(0,12);
-  const el = document.getElementById('recent-feed');
-  if(!sorted.length){ el.innerHTML='<div class="empty"><div class="empty-t">NO ACTIVITY</div></div>'; return; }
-  el.innerHTML = sorted.map(i=>{
-    const isSale = i.status==='sold';
-    const date = new Date(i.soldAt||i.addedAt||0);
-    const dateStr = date.getFullYear()>2000 ? date.toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '—';
-    const amt = isSale ? fmtD$(i.salePrice) : (i.market>0?fmtD$(i.market):'—');
-    const amtCls = isSale ? 'pos' : 'cost';
-    const profit = isSale ? (i.profit>=0?'+':'')+fmtD$(i.profit) : '';
-    return `<div class="fi">
-      <div class="fi-ico ${isSale?'sale':'add'}">${isSale?'✓':'+'}</div>
-      <div class="fi-body">
-        <div class="fi-name">${i.name}</div>
-        <div class="fi-meta">${isSale?'SOLD via '+(i.channel||'—'):i.category} · ${dateStr}${profit?' · <span style="color:var(--g)">'+profit+'</span>':''}</div>
-      </div>
-      <div class="fi-amt ${amtCls}">${amt}</div>
-    </div>`;
-  }).join('');
-}
-
-// TABLE
-let tableSort = {col:'name',dir:1};
-function sortBy(col){
-  if(tableSort.col===col) tableSort.dir *= -1;
-  else{ tableSort.col=col; tableSort.dir=1; }
-  document.querySelectorAll('th').forEach(t=>t.className='');
-  const th = [...document.querySelectorAll('th')].find(t=>t.textContent.trim().toLowerCase()===col.toLowerCase());
-  if(th) th.className = tableSort.dir===1?'asc':'desc';
-  page=1; renderTable();
-}
-function setFilter(f,btn){
-  activeFilter=f; page=1;
-  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('on'));
-  btn.classList.add('on');
-  filterTable();
-}
-function filterTable(){
-  const q = document.getElementById('tbl-search').value.toLowerCase();
-  filteredItems = allItems.filter(i=>{
-    const matchQ = !q || (i.name||'').toLowerCase().includes(q)||(i.set||'').toLowerCase().includes(q);
-    const matchF = activeFilter==='all' ? true
-      : activeFilter==='in_stock' ? i.status==='in_stock'
-      : activeFilter==='sold' ? i.status==='sold'
-      : (i.category||'').toLowerCase()===activeFilter.toLowerCase();
-    return matchQ && matchF;
-  });
-  filteredItems.sort((a,b)=>{
-    let av=a[tableSort.col]||'', bv=b[tableSort.col]||'';
-    if(typeof av==='string') av=av.toLowerCase();
-    if(typeof bv==='string') bv=bv.toLowerCase();
-    return av<bv?-tableSort.dir:av>bv?tableSort.dir:0;
-  });
-  renderTable();
-}
-function renderTable(){
-  const start=(page-1)*PER_PAGE, end=start+PER_PAGE;
-  const pageItems = filteredItems.slice(start,end);
-  const tbody = document.getElementById('inv-tbody');
-  if(!filteredItems.length){
-    tbody.innerHTML=`<tr><td colspan="8"><div class="empty"><div class="empty-ico">📦</div><div class="empty-t">NO ITEMS FOUND</div><div class="empty-s">Scan cards with the scanner and tap Add to Inventory.<br>Make sure your Webflow API token is entered.</div></div></td></tr>`;
-    document.getElementById('pager').innerHTML=''; return;
-  }
-  tbody.innerHTML = pageItems.map(i=>{
-    const inStock = i.status==='in_stock';
-    const profit = inStock ? (i.market-i.cost) : i.profit;
-    const pCls = profit>=0?'p-profit':'p-profit neg';
-    const catKey = (i.category||'TCG').replace(/\s+/g,'');
-    return `<tr class="${inStock?'':'sold-row'}">
-      <td><span class="dot ${inStock?'in_stock':'sold'}"></span><span class="n-cell">${i.name}${i.isRookie?' <span style="color:var(--gold);font-size:9px">RC</span>':''}</span></td>
-      <td><span class="s-cell">${[i.set,i.variant].filter(Boolean).join(' · ')||'—'}</span></td>
-      <td><span class="cat-tag ${catKey}">${i.category||'TCG'}</span></td>
-      <td><span class="cond-tag ${i.condition}">${i.condition||'NM'}</span></td>
-      <td class="p-cell p-mkt">${i.market>0?fmtD$(i.market):'—'}</td>
-      <td class="p-cell p-cost">${i.cost>0?fmtD$(i.cost):'—'}</td>
-      <td class="p-cell ${pCls}">${i.cost>0||i.profit?(profit>=0?'+':'')+fmtD$(profit):'—'}</td>
-      <td><span style="font-family:'DM Mono',monospace;font-size:10px;color:${inStock?'var(--g)':'var(--dim)'}">${inStock?'IN STOCK':'SOLD'+(i.channel?' via '+i.channel:'')}</span></td>
-    </tr>`;
-  }).join('');
-  renderPager();
-}
-function renderPager(){
-  const total = Math.ceil(filteredItems.length/PER_PAGE);
-  if(total<=1){ document.getElementById('pager').innerHTML=''; return; }
-  let html='';
-  for(let i=1;i<=total;i++) html+=`<button class="pg${i===page?' on':''}" onclick="page=${i};renderTable()">${i}</button>`;
-  document.getElementById('pager').innerHTML=html;
-}
-
-function showTokenHelp(msg){
-  const setup = document.getElementById('setup');
-  setup.style.display = 'flex';
-  // Add or update help message
-  let help = document.getElementById('token-help');
-  if(!help){
-    help = document.createElement('div');
-    help.id = 'token-help';
-    help.style.cssText = 'max-width:360px;background:rgba(255,77,109,.08);border:1px solid rgba(255,77,109,.3);padding:12px 14px;font-family:DM Mono,monospace;font-size:11px;color:#ff4d6d;line-height:1.7;text-align:center;';
-    setup.appendChild(help);
-  }
-  help.textContent = msg;
-  // Pre-fill existing token so user can see it
-  const existing = localStorage.getItem('lba_wf_dash_token');
-  if(existing) document.getElementById('wf-token-inp').value = existing;
-}
-</script>
-<div id="lba-nav"><a class="lba-nav-btn" href="sca.html"><span class="nav-ico">⬡</span>SCANNER</a><a class="lba-nav-btn active" href="dashboard.html"><span class="nav-ico">▦</span>DASHBOARD</a></div>
-</body>
-</html>
+      const items = (d.items||[]).map(i => {
+        const f = i.fieldData || {};
+        const isSold = f['sold-out']===true || (f.status||'').toLowerCase().includes('sold');
+        const catMap = {
+          '891253037409c4fe59854f3c9ef99a6b':'Sports',
+          '475ed99cc87de703b543fe9529e2c1da':'TCG',
+          '27f1c9c43a61cf03820a31132cfc6b9a':'Comic',
+          '2c3076cc33bf2f312265bfdc894db265':'Supplies'
+        };
+        return {
+          id: i.id,
+          name: f['player-card-name']||f.name||'—',
+          set: f['set-name']||f.set||'',
+          variant: f['variant-parallel']||f.variant||'',
+          year: f.year||'',
+          condition: f.condition||'NM',
+          category: catMap[f['card-category']]||f.category||'TCG',
+          manufacturer: f.brand||f.manufacturer||f.publisher||'',
+          grading: f.grader||f['grading-company']||'',
+          grade: f.grade||'',
+          cost: parseFloat(f.cost)||0,
+          market: parseFloat(f['market-value']||f.msrp)||0,
+          salePrice: parseFloat(f['sale-price'])||0,
+          profit: parseFloat(f.profit)||0,
+          status: isSold?'sold':'in_stock',
+          channel: f['sale-channel']||'',
+          addedAt: f['date-added']||i.createdOn||'',
+          soldAt: f['date-sold']||'',
+          isRookie: f['is-rookie']||false,
+          description: f.description||'',
+          tags: f.tags||'',
+        };
+      })
