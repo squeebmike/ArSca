@@ -179,7 +179,9 @@ tr.sold-row td{opacity:.4;}
   <div class="s-sub">WALK-OFF SPORTS CARDS</div>
   <input class="s-inp" id="wf-token-inp" type="password" placeholder="Webflow API token (wf_...)">
   <button class="s-btn" onclick="initDashboard()">▶ LOAD DASHBOARD</button>
-  <p class="s-note">Your Webflow API token is stored locally on this device only. Never shared. Get it from Webflow Account → Integrations → API Access.</p>
+  <p class="s-note">Your Webflow API token is stored locally. Get it from Webflow Site Settings → Integrations → API Access.</p>
+  <input class="s-inp" id="proxy-inp" type="text" placeholder="Cloudflare Worker URL (optional but needed for CMS sync)">
+  <p class="s-note" style="color:rgba(255,209,102,.6)">Without the proxy, data shows from this device only.<br>Proxy setup instructions in lba-proxy-worker.js</p>
 </div>
 
 <header>
@@ -274,14 +276,35 @@ let allItems = [], filteredItems = [], sortCol = 'name', sortDir = 1, activeFilt
 const PER_PAGE = 50;
 
 const savedToken = localStorage.getItem('lba_wf_dash_token');
-if(savedToken){ document.getElementById('setup').style.display='none'; loadInventory(); }
+const savedProxy = localStorage.getItem('lba_proxy_url');
+if(savedToken){
+  document.getElementById('setup').style.display='none';
+  loadInventory();
+} else {
+  if(savedProxy) document.getElementById('proxy-inp') && (document.getElementById('proxy-inp').value = savedProxy);
+}
 
 function initDashboard(){
   const t = document.getElementById('wf-token-inp').value.trim();
   if(!t){ alert('Enter your Webflow API token'); return; }
   localStorage.setItem('lba_wf_dash_token', t);
+  const p = document.getElementById('proxy-inp')?.value?.trim();
+  if(p && p.includes('workers')) localStorage.setItem('lba_proxy_url', p);
   document.getElementById('setup').style.display = 'none';
   loadInventory();
+}
+
+function showProxySetup(){
+  const setup = document.getElementById('setup');
+  setup.style.display = 'flex';
+  let help = document.getElementById('token-help');
+  if(!help){
+    help = document.createElement('div');
+    help.id = 'token-help';
+    help.style.cssText = 'max-width:360px;background:rgba(255,209,102,.08);border:1px solid rgba(255,209,102,.3);padding:12px 14px;font-family:DM Mono,monospace;font-size:11px;color:var(--gold);line-height:1.7;text-align:center;';
+    setup.appendChild(help);
+  }
+  help.innerHTML = '⚠ CORS blocked — Webflow API requires a proxy.<br>Deploy lba-proxy-worker.js to Cloudflare Workers (free),<br>then paste the worker URL in the field above.';
 }
 
 async function loadInventory(){
@@ -290,12 +313,46 @@ async function loadInventory(){
   document.getElementById('sync-status').textContent = 'Loading...';
   try{
     // Fetch all pages from Webflow CMS
+    // Proxy URL stored separately — set once in setup
+    const proxyUrl = localStorage.getItem('lba_proxy_url')||'https://still-resonance-4f87.swarnerauto.workers.dev';
+
+    function buildUrl(path){
+      if(proxyUrl) return proxyUrl.replace(/\/+$/,'')+'/proxy'+path;
+      return 'https://api.webflow.com/v2'+path;
+    }
+    function buildHeaders(){
+      const h = { 'accept':'application/json', 'X-LBA-Token': token };
+      if(!proxyUrl) h['Authorization'] = 'Bearer '+token;
+      return h;
+    }
+
     let all = [], offset = 0, total = 1;
     while(offset < total){
-      const res = await fetch(`https://api.webflow.com/v2/collections/${WF_COLLECTION}/items?limit=100&offset=${offset}`,{
-        headers:{ 'Authorization':'Bearer '+token, 'accept':'application/json' }
-      });
-      if(res.status === 401){ localStorage.removeItem('lba_wf_dash_token'); document.getElementById('setup').style.display='flex'; return; }
+      let res;
+      try{
+        res = await fetch(buildUrl(`/collections/${WF_COLLECTION}/items?limit=100&offset=${offset}`),{
+          headers: buildHeaders()
+        });
+      }catch(fetchErr){
+        document.getElementById('sync-status').textContent = '⚠ CORS error — need Cloudflare proxy. See setup.';
+        showProxySetup();
+        break;
+      }
+      if(res.status === 401){
+        localStorage.removeItem('lba_wf_dash_token');
+        document.getElementById('setup').style.display='flex';
+        document.getElementById('wf-token-inp').placeholder = '⚠ Token rejected — paste new token';
+        return;
+      }
+      if(res.status === 403){
+        document.getElementById('sync-status').textContent = '⚠ Token missing CMS: Read permission';
+        showTokenHelp('Your Webflow API token is missing CMS Read access. Go to Webflow → Account Settings → Integrations → API Access, edit your token and enable CMS: Read scope, then refresh.');
+        break;
+      }
+      if(!res.ok){
+        document.getElementById('sync-status').textContent = `API error ${res.status}`;
+        break;
+      }
       const d = await res.json();
       total = d.pagination?.total || 0;
       const items = (d.items||[]).map(i => ({
@@ -541,6 +598,23 @@ function renderPager(){
   let html='';
   for(let i=1;i<=total;i++) html+=`<button class="pg${i===page?' on':''}" onclick="page=${i};renderTable()">${i}</button>`;
   document.getElementById('pager').innerHTML=html;
+}
+
+function showTokenHelp(msg){
+  const setup = document.getElementById('setup');
+  setup.style.display = 'flex';
+  // Add or update help message
+  let help = document.getElementById('token-help');
+  if(!help){
+    help = document.createElement('div');
+    help.id = 'token-help';
+    help.style.cssText = 'max-width:360px;background:rgba(255,77,109,.08);border:1px solid rgba(255,77,109,.3);padding:12px 14px;font-family:DM Mono,monospace;font-size:11px;color:#ff4d6d;line-height:1.7;text-align:center;';
+    setup.appendChild(help);
+  }
+  help.textContent = msg;
+  // Pre-fill existing token so user can see it
+  const existing = localStorage.getItem('lba_wf_dash_token');
+  if(existing) document.getElementById('wf-token-inp').value = existing;
 }
 </script>
 <div id="lba-nav"><a class="lba-nav-btn" href="sca.html"><span class="nav-ico">⬡</span>SCANNER</a><a class="lba-nav-btn active" href="dashboard.html"><span class="nav-ico">▦</span>DASHBOARD</a></div>
