@@ -1161,11 +1161,8 @@ window.confirmAdd=async function(id){
     const inv=JSON.parse(localStorage.getItem('lba_inventory')||'[]');
     inv.unshift(entry);localStorage.setItem('lba_inventory',JSON.stringify(inv));
 
-    // 2. Sync to LBA Inventory CMS (back-office tracker)
-    const cmsId=await syncToWebflowCMS(entry, el._imgUrl);
-    if(cmsId){ entry.cmsId=cmsId; inv[0].cmsId=cmsId; localStorage.setItem('lba_inventory',JSON.stringify(inv)); }
-
-    // 3. Sync to Products ecommerce collection (appears on shop page)
+    // Sync to Products ecommerce collection — single source of truth
+    // Appears on shop page AND dashboard reads from here
     const shopId=await syncToShopProduct(entry, el._imgUrl);
     if(shopId){ entry.shopId=shopId; inv[0].shopId=shopId; localStorage.setItem('lba_inventory',JSON.stringify(inv)); }
   }
