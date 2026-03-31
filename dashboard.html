@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LBA Dashboard — Walk-Off Sports Cards</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--g:#00ffb3;--gd:rgba(0,255,179,.1);--gold:#ffd166;--red:#ff4d6d;--blue:#48cae4;--purple:#c77dff;--bg:#07080a;--surf:#0d0f14;--border:rgba(255,255,255,.07);--text:#e4e4e8;--dim:rgba(228,228,232,.4);}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100vh;}
+body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse at 15% 15%,rgba(0,255,179,.03) 0,transparent 55%),radial-gradient(ellipse at 85% 85%,rgba(199,125,255,.03) 0,transparent 55%);pointer-events:none;}
+
+/* SETUP SCREEN */
+#setup{position:fixed;inset:0;background:var(--bg);z-index:200;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:32px;}
+.s-logo{font-family:'Orbitron',monospace;font-size:24px;font-weight:900;color:var(--g);letter-spacing:4px;text-shadow:0 0 24px rgba(0,255,179,.4);}
+.s-sub{font-family:'DM Mono',monospace;font-size:10px;color:var(--dim);letter-spacing:3px;}
+.s-inp{width:100%;max-width:360px;background:rgba(0,0,0,.4);border:1px solid rgba(0,255,179,.2);color:var(--text);padding:11px 14px;font-family:'DM Mono',monospace;font-size:12px;outline:none;}
+.s-inp:focus{border-color:var(--g);}
+.s-inp::placeholder{color:rgba(255,255,255,.2);}
+.s-btn{width:100%;max-width:360px;background:var(--g);color:#000;border:none;padding:13px;font-family:'Orbitron',monospace;font-weight:700;font-size:12px;letter-spacing:2px;cursor:pointer;}
+.s-note{font-size:11px;color:var(--dim);text-align:center;max-width:320px;line-height:1.7;}
+
+/* HEADER */
+header{position:sticky;top:0;z-index:100;background:rgba(7,8,10,.95);backdrop-filter:blur(16px);border-bottom:1px solid var(--border);}
+.hdr{max-width:1400px;margin:0 auto;height:56px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;}
+.logo{font-family:'Orbitron',monospace;font-size:14px;font-weight:900;color:var(--g);letter-spacing:3px;}
+.logo em{color:var(--dim);font-style:normal;font-weight:400;}
+.hdr-right{display:flex;align-items:center;gap:12px;}
+#sync-status{font-family:'DM Mono',monospace;font-size:10px;color:var(--dim);}
+.hbtn{background:var(--gd);border:1px solid rgba(0,255,179,.2);color:var(--g);padding:5px 14px;font-family:'Orbitron',monospace;font-size:9px;letter-spacing:2px;cursor:pointer;transition:.15s;}
+.hbtn:hover{background:rgba(0,255,179,.18);}
+.hbtn.scan{background:rgba(255,209,102,.1);border-color:rgba(255,209,102,.25);color:var(--gold);}
+
+/* MAIN */
+main{max-width:1400px;margin:0 auto;padding:28px 24px 80px;}
+.sec-label{font-family:'Orbitron',monospace;font-size:8px;letter-spacing:4px;color:var(--dim);margin-bottom:14px;display:flex;align-items:center;gap:10px;}
+.sec-label::after{content:'';flex:1;height:1px;background:var(--border);}
+
+/* STAT CARDS */
+.stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;margin-bottom:32px;}
+.sc{background:var(--surf);border:1px solid var(--border);padding:18px 20px;position:relative;overflow:hidden;transition:border-color .2s;}
+.sc::before{content:'';position:absolute;inset:0 0 auto;height:2px;}
+.sc.g::before{background:var(--g);}
+.sc.gold::before{background:var(--gold);}
+.sc.r::before{background:var(--red);}
+.sc.b::before{background:var(--blue);}
+.sc.p::before{background:var(--purple);}
+.sc-label{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:2px;color:var(--dim);margin-bottom:7px;}
+.sc-val{font-family:'Orbitron',monospace;font-size:26px;font-weight:900;line-height:1;}
+.sc.g .sc-val{color:var(--g);text-shadow:0 0 16px rgba(0,255,179,.25);}
+.sc.gold .sc-val{color:var(--gold);}
+.sc.r .sc-val{color:var(--red);}
+.sc.b .sc-val{color:var(--blue);}
+.sc.p .sc-val{color:var(--purple);}
+.sc-sub{font-family:'DM Mono',monospace;font-size:10px;color:var(--dim);margin-top:4px;}
+
+/* TWO COL */
+.two{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:32px;}
+@media(max-width:860px){.two{grid-template-columns:1fr;}}
+
+/* PANEL */
+.panel{background:var(--surf);border:1px solid var(--border);padding:20px;}
+.panel-hdr{font-family:'Orbitron',monospace;font-size:9px;letter-spacing:3px;color:var(--dim);margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;}
+.panel-hdr b{font-family:'Orbitron',monospace;font-size:10px;color:var(--text);font-weight:700;}
+
+/* CATEGORY PILLS */
+.cat-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.cp{background:rgba(255,255,255,.03);border:1px solid var(--border);padding:14px;position:relative;overflow:hidden;}
+.cp::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;}
+.cp[data-c=Sports]::after{background:var(--gold);}
+.cp[data-c=TCG]::after{background:var(--g);}
+.cp[data-c=Comic]::after{background:var(--purple);}
+.cp[data-c=Graded]::after{background:var(--blue);}
+.cp-name{font-family:'Orbitron',monospace;font-size:7px;letter-spacing:2px;color:var(--dim);margin-bottom:4px;}
+.cp-n{font-family:'Orbitron',monospace;font-size:22px;font-weight:900;}
+.cp[data-c=Sports] .cp-n{color:var(--gold);}
+.cp[data-c=TCG] .cp-n{color:var(--g);}
+.cp[data-c=Comic] .cp-n{color:var(--purple);}
+.cp[data-c=Graded] .cp-n{color:var(--blue);}
+.cp-v{font-family:'DM Mono',monospace;font-size:9px;color:var(--dim);margin-top:2px;}
+
+/* BAR ROWS */
+.br-row{display:flex;align-items:center;gap:10px;margin-bottom:9px;}
+.br-lbl{font-family:'DM Mono',monospace;font-size:10px;color:var(--text);width:90px;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.br-track{flex:1;height:5px;background:rgba(255,255,255,.05);}
+.br-fill{height:100%;transition:width .7s ease;}
+.br-val{font-family:'Orbitron',monospace;font-size:9px;color:var(--dim);width:52px;text-align:right;flex-shrink:0;}
+
+/* CHANNEL BARS */
+.ch-g .br-fill{background:var(--g);}
+.ch-b .br-fill{background:var(--blue);}
+.ch-gold .br-fill{background:var(--gold);}
+.ch-p .br-fill{background:var(--purple);}
+.ch-r .br-fill{background:var(--red);}
+
+/* INVENTORY TABLE */
+.tbl-wrap{margin-bottom:32px;}
+.tbl-controls{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;}
+.tbl-search{flex:1;min-width:160px;background:rgba(255,255,255,.04);border:1px solid var(--border);color:var(--text);padding:8px 12px;font-family:'DM Mono',monospace;font-size:11px;outline:none;}
+.tbl-search:focus{border-color:rgba(0,255,179,.25);}
+.filter-btn{background:rgba(255,255,255,.04);border:1px solid var(--border);color:var(--dim);padding:7px 14px;font-family:'DM Mono',monospace;font-size:10px;cursor:pointer;white-space:nowrap;}
+.filter-btn.on{border-color:var(--g);color:var(--g);background:var(--gd);}
+table{width:100%;border-collapse:collapse;background:var(--surf);}
+th{font-family:'Orbitron',monospace;font-size:8px;letter-spacing:2px;color:var(--dim);text-align:left;padding:9px 12px;border-bottom:1px solid var(--border);cursor:pointer;user-select:none;white-space:nowrap;}
+th:hover{color:var(--text);}
+th.asc::after{content:' ↑';}
+th.desc::after{content:' ↓';}
+td{padding:9px 12px;border-bottom:1px solid rgba(255,255,255,.03);font-size:12px;vertical-align:middle;}
+tr:hover td{background:rgba(255,255,255,.015);}
+tr.sold-row td{opacity:.4;}
+.n-cell{font-weight:500;max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.s-cell{font-family:'DM Mono',monospace;font-size:10px;color:var(--dim);max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.cond-tag{font-family:'Orbitron',monospace;font-size:7px;padding:2px 5px;border:1px solid rgba(255,255,255,.1);color:var(--dim);}
+.cond-tag.NM,.cond-tag.Mint{border-color:rgba(0,255,179,.3);color:var(--g);}
+.cat-tag{font-family:'DM Mono',monospace;font-size:9px;padding:2px 7px;}
+.cat-tag.Sports{color:var(--gold);background:rgba(255,209,102,.08);border:1px solid rgba(255,209,102,.18);}
+.cat-tag.TCG{color:var(--g);background:var(--gd);border:1px solid rgba(0,255,179,.18);}
+.cat-tag.Comic{color:var(--purple);background:rgba(199,125,255,.08);border:1px solid rgba(199,125,255,.18);}
+.cat-tag.Graded{color:var(--blue);background:rgba(72,202,228,.08);border:1px solid rgba(72,202,228,.18);}
+.p-cell{font-family:'Orbitron',monospace;font-size:11px;text-align:right;white-space:nowrap;}
+.p-mkt{color:var(--text);}
+.p-cost{color:var(--dim);}
+.p-profit{color:var(--g);}
+.p-profit.neg{color:var(--red);}
+.dot{width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:5px;flex-shrink:0;}
+.dot.in_stock{background:var(--g);box-shadow:0 0 5px rgba(0,255,179,.4);}
+.dot.sold{background:var(--dim);}
+
+/* RECENT SALES */
+.feed{display:flex;flex-direction:column;gap:0;}
+.fi{display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.04);}
+.fi-ico{width:30px;height:30px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;border:1px solid;}
+.fi-ico.sale{background:rgba(0,255,179,.08);border-color:rgba(0,255,179,.18);}
+.fi-ico.add{background:rgba(72,202,228,.08);border-color:rgba(72,202,228,.18);}
+.fi-body{flex:1;min-width:0;}
+.fi-name{font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.fi-meta{font-family:'DM Mono',monospace;font-size:10px;color:var(--dim);margin-top:1px;}
+.fi-amt{font-family:'Orbitron',monospace;font-size:11px;flex-shrink:0;}
+.fi-amt.pos{color:var(--g);}
+.fi-amt.cost{color:var(--blue);}
+
+/* PAGINATION */
+.pager{display:flex;gap:5px;justify-content:center;margin-top:14px;}
+.pg{background:rgba(255,255,255,.04);border:1px solid var(--border);color:var(--dim);padding:5px 11px;font-family:'DM Mono',monospace;font-size:10px;cursor:pointer;}
+.pg.on{background:var(--gd);border-color:rgba(0,255,179,.25);color:var(--g);}
+
+/* LOW STOCK */
+.alert{background:rgba(255,209,102,.06);border:1px solid rgba(255,209,102,.2);border-left:3px solid var(--gold);padding:10px 14px;margin-bottom:20px;font-family:'DM Mono',monospace;font-size:11px;color:var(--gold);display:none;}
+
+/* EMPTY */
+.empty{text-align:center;padding:48px;color:var(--dim);}
+.empty-ico{font-size:28px;margin-bottom:10px;opacity:.3;}
+.empty-t{font-family:'Orbitron',monospace;font-size:10px;letter-spacing:2px;margin-bottom:8px;}
+.empty-s{font-size:12px;line-height:1.7;}
+
+/* LOADING */
+.loading{text-align:center;padding:32px;font-family:'DM Mono',monospace;font-size:11px;color:var(--dim);letter-spacing:2px;}
+
+@media(max-width:600px){
+  .stats{grid-template-columns:1fr 1fr;}
+  main{padding:16px 14px;}
+  th:nth-child(4),td:nth-child(4),th:nth-child(5),td:nth-child(5){display:none;}
+}
+
+/* NAV BAR */
+#lba-nav{position:fixed;bottom:0;left:0;right:0;z-index:500;background:rgba(5,5,7,.97);border-top:1px solid rgba(255,255,255,.08);display:flex;height:52px;safe-area-inset-bottom:env(safe-area-inset-bottom);}
+.lba-nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;background:none;border:none;color:rgba(255,255,255,.35);cursor:pointer;font-family:'Orbitron',monospace;font-size:7px;letter-spacing:1px;text-decoration:none;transition:color .15s;}
+.lba-nav-btn:hover{color:rgba(255,255,255,.6);}
+.lba-nav-btn.active{color:var(--g);}
+.lba-nav-btn .nav-ico{font-size:16px;line-height:1;}
+</style>
+</head>
+<body>
+
+<!-- SETUP / API KEY SCREEN -->
+<div id="setup">
+  <div class="s-logo">LBA DASHBOARD</div>
+  <div class="s-sub">WALK-OFF SPORTS CARDS</div>
+  <input class="s-inp" id="wf-token-inp" type="password" placeholder="Webflow API token (wf_...)">
+  <button class="s-btn" onclick="initDashboard()">▶ LOAD DASHBOARD</button>
+  <p class="s-note">Your Webflow API token is stored locally on this device only. Never shared. Get it from Webflow Account → Integrations → API Access.</p>
+</div>
+
+<header>
+  <div class="hdr">
+    <div class="logo">LBA <em>/</em> INVENTORY</div>
+    <div class="hdr-right">
+      <span id="sync-status">—</span>
+      <button class="hbtn scan" onclick="window.open('https://squeebmike.github.io/ArSca/sca.html')">⟳ SCANNER</button>
+      <button class="hbtn" onclick="loadInventory()">↻ REFRESH</button>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div id="alert-bar" class="alert"></div>
+
+  <!-- STATS ROW -->
+  <div class="sec-label">OVERVIEW</div>
+  <div class="stats">
+    <div class="sc g"><div class="sc-label">IN STOCK</div><div class="sc-val" id="s1">—</div><div class="sc-sub" id="s1b">items</div></div>
+    <div class="sc gold"><div class="sc-label">MARKET VALUE</div><div class="sc-val" id="s2">—</div><div class="sc-sub">at market price</div></div>
+    <div class="sc g"><div class="sc-label">TOTAL PROFIT</div><div class="sc-val" id="s3">—</div><div class="sc-sub" id="s3b">realized</div></div>
+    <div class="sc b"><div class="sc-label">ITEMS SOLD</div><div class="sc-val" id="s4">—</div><div class="sc-sub" id="s4b">all time</div></div>
+    <div class="sc r"><div class="sc-label">COST BASIS</div><div class="sc-val" id="s5">—</div><div class="sc-sub">total invested</div></div>
+    <div class="sc p"><div class="sc-label">AVG MARGIN</div><div class="sc-val" id="s6">—</div><div class="sc-sub">per sold item</div></div>
+  </div>
+
+  <!-- CATEGORY + CHANNELS -->
+  <div class="two">
+    <div class="panel">
+      <div class="panel-hdr">BY CATEGORY <b id="cat-total"></b></div>
+      <div class="cat-grid" id="cat-grid">
+        <div class="cp" data-c="Sports"><div class="cp-name">SPORTS</div><div class="cp-n" id="c-sports">0</div><div class="cp-v" id="cv-sports">$0 value</div></div>
+        <div class="cp" data-c="TCG"><div class="cp-name">TCG</div><div class="cp-n" id="c-tcg">0</div><div class="cp-v" id="cv-tcg">$0 value</div></div>
+        <div class="cp" data-c="Comic"><div class="cp-name">COMICS</div><div class="cp-n" id="c-comic">0</div><div class="cp-v" id="cv-comic">$0 value</div></div>
+        <div class="cp" data-c="Graded"><div class="cp-name">GRADED</div><div class="cp-n" id="c-graded">0</div><div class="cp-v" id="cv-graded">$0 value</div></div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-hdr">SALES BY CHANNEL <b></b></div>
+      <div id="channel-bars"><div class="loading">Loading...</div></div>
+    </div>
+  </div>
+
+  <!-- TOP VALUE + RECENT SALES -->
+  <div class="two">
+    <div class="panel">
+      <div class="panel-hdr">TOP VALUE IN STOCK <b></b></div>
+      <div id="top-value"><div class="loading">Loading...</div></div>
+    </div>
+    <div class="panel">
+      <div class="panel-hdr">RECENT ACTIVITY <b></b></div>
+      <div class="feed" id="recent-feed"><div class="loading">Loading...</div></div>
+    </div>
+  </div>
+
+  <!-- INVENTORY TABLE -->
+  <div class="sec-label">FULL INVENTORY</div>
+  <div class="tbl-wrap">
+    <div class="tbl-controls">
+      <input class="tbl-search" id="tbl-search" placeholder="Search name, set, player..." oninput="filterTable()">
+      <button class="filter-btn on" data-f="all" onclick="setFilter('all',this)">All</button>
+      <button class="filter-btn" data-f="in_stock" onclick="setFilter('in_stock',this)">In Stock</button>
+      <button class="filter-btn" data-f="sold" onclick="setFilter('sold',this)">Sold</button>
+      <button class="filter-btn" data-f="Sports" onclick="setFilter('Sports',this)">Sports</button>
+      <button class="filter-btn" data-f="TCG" onclick="setFilter('TCG',this)">TCG</button>
+      <button class="filter-btn" data-f="Comic" onclick="setFilter('Comic',this)">Comics</button>
+      <button class="filter-btn" data-f="Graded" onclick="setFilter('Graded',this)">Graded</button>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th onclick="sortBy('name')">NAME</th>
+          <th onclick="sortBy('set')">SET</th>
+          <th>CAT</th>
+          <th onclick="sortBy('condition')">COND</th>
+          <th onclick="sortBy('market')" style="text-align:right">MARKET</th>
+          <th onclick="sortBy('cost')" style="text-align:right">COST</th>
+          <th onclick="sortBy('profit')" style="text-align:right">PROFIT</th>
+          <th>STATUS</th>
+        </tr>
+      </thead>
+      <tbody id="inv-tbody"></tbody>
+    </table>
+    <div class="pager" id="pager"></div>
+  </div>
+</main>
+
+<script>
+const WF_COLLECTION = '69cb5611c6522a8591b552c4';
+let allItems = [], filteredItems = [], sortCol = 'name', sortDir = 1, activeFilter = 'all', page = 1;
+const PER_PAGE = 50;
+
+const savedToken = localStorage.getItem('lba_wf_dash_token');
+if(savedToken){ document.getElementById('setup').style.display='none'; loadInventory(); }
+
+function initDashboard(){
+  const t = document.getElementById('wf-token-inp').value.trim();
+  if(!t){ alert('Enter your Webflow API token'); return; }
+  localStorage.setItem('lba_wf_dash_token', t);
+  document.getElementById('setup').style.display = 'none';
+  loadInventory();
+}
+
+async function loadInventory(){
+  const token = localStorage.getItem('lba_wf_dash_token');
+  if(!token){ document.getElementById('setup').style.display='flex'; return; }
+  document.getElementById('sync-status').textContent = 'Loading...';
+  try{
+    // Fetch all pages from Webflow CMS
+    let all = [], offset = 0, total = 1;
+    while(offset < total){
+      const res = await fetch(`https://api.webflow.com/v2/collections/${WF_COLLECTION}/items?limit=100&offset=${offset}`,{
+        headers:{ 'Authorization':'Bearer '+token, 'accept':'application/json' }
+      });
+      if(res.status === 401){ localStorage.removeItem('lba_wf_dash_token'); document.getElementById('setup').style.display='flex'; return; }
+      const d = await res.json();
+      total = d.pagination?.total || 0;
+      const items = (d.items||[]).map(i => ({
+        id: i.id,
+        name: i.fieldData?.['player-card-name'] || i.fieldData?.name || '—',
+        set: i.fieldData?.set || '',
+        variant: i.fieldData?.['variant-parallel'] || '',
+        year: i.fieldData?.year || '',
+        condition: i.fieldData?.condition || 'NM',
+        category: i.fieldData?.category || 'TCG',
+        manufacturer: i.fieldData?.manufacturer || '',
+        grading: i.fieldData?.['grading-company'] || '',
+        grade: i.fieldData?.grade || '',
+        cost: parseFloat(i.fieldData?.cost) || 0,
+        market: parseFloat(i.fieldData?.['market-value']) || 0,
+        salePrice: parseFloat(i.fieldData?.['sale-price']) || 0,
+        profit: parseFloat(i.fieldData?.profit) || 0,
+        status: (i.fieldData?.status||'').toLowerCase().replace(' ','_') === 'in_stock' || i.fieldData?.status === 'In Stock' ? 'in_stock' : 'sold',
+        channel: i.fieldData?.['sale-channel'] || '',
+        addedAt: i.fieldData?.['date-added'] || i.createdOn || '',
+        soldAt: i.fieldData?.['date-sold'] || '',
+        location: i.fieldData?.location || '',
+        keyNotes: i.fieldData?.['key-notes'] || '',
+        isRookie: i.fieldData?.['is-rookie'] || false,
+        desirability: i.fieldData?.['desirability-score'] || 0,
+      }));
+      all = all.concat(items);
+      offset += 100;
+      if(d.items?.length < 100) break;
+    }
+
+    // Also merge localStorage items not yet synced
+    const local = JSON.parse(localStorage.getItem('lba_inventory')||'[]');
+    const cmsIds = new Set(all.map(i=>i.id));
+    const localOnly = local.filter(i=>!i.cmsId); // items without a CMS ID haven't synced yet
+    const merged = [...all, ...localOnly.map(i=>({
+      id: i.id,
+      name: i.name||'—',
+      set: i.set||'',
+      variant: i.variant||'',
+      year: i.year||'',
+      condition: i.condition||'NM',
+      category: i.category||'TCG',
+      cost: i.cost||0,
+      market: i.market||0,
+      salePrice: i.salePrice||0,
+      profit: i.profit||0,
+      status: i.status||'in_stock',
+      channel: i.saleChannel||'',
+      addedAt: i.addedAt||'',
+      soldAt: i.soldAt||'',
+      _local: true
+    }))];
+
+    allItems = merged;
+    filteredItems = [...allItems];
+    renderAll();
+    document.getElementById('sync-status').textContent = `${all.length} CMS · ${localOnly.length} local · ${new Date().toLocaleTimeString()}`;
+
+    // Low stock alerts
+    const inStock = allItems.filter(i=>i.status==='in_stock');
+    if(inStock.length < 10){
+      const ab = document.getElementById('alert-bar');
+      ab.textContent = `⚠ Low inventory — only ${inStock.length} items in stock. Time to restock!`;
+      ab.style.display = 'block';
+    }
+  }catch(e){
+    document.getElementById('sync-status').textContent = 'Error: '+e.message;
+    console.error(e);
+  }
+}
+
+function renderAll(){
+  renderStats();
+  renderCategories();
+  renderChannels();
+  renderTopValue();
+  renderRecentFeed();
+  filterTable();
+}
+
+function fmt$(n){ return '$'+Number(n||0).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0}); }
+function fmtD$(n){ return '$'+Number(n||0).toFixed(2); }
+
+function renderStats(){
+  const inStock = allItems.filter(i=>i.status==='in_stock');
+  const sold = allItems.filter(i=>i.status==='sold');
+  const mktVal = inStock.reduce((a,i)=>a+(i.market||0),0);
+  const totalProfit = sold.reduce((a,i)=>a+(i.profit||0),0);
+  const totalCost = allItems.reduce((a,i)=>a+(i.cost||0),0);
+  const avgMargin = sold.length ? totalProfit/sold.length : 0;
+
+  document.getElementById('s1').textContent = inStock.length;
+  document.getElementById('s1b').textContent = allItems.length+' total items';
+  document.getElementById('s2').textContent = fmt$(mktVal);
+  document.getElementById('s3').textContent = (totalProfit>=0?'+':'')+fmt$(totalProfit);
+  document.getElementById('s3').className = 'sc-val'+(totalProfit>=0?' g':' r');
+  document.getElementById('s3b').textContent = sold.length+' items sold';
+  document.getElementById('s4').textContent = sold.length;
+  document.getElementById('s4b').textContent = fmt$(sold.reduce((a,i)=>a+(i.salePrice||0),0))+' revenue';
+  document.getElementById('s5').textContent = fmt$(totalCost);
+  document.getElementById('s6').textContent = (avgMargin>=0?'+':'')+fmtD$(avgMargin);
+  document.getElementById('s6').className = 'sc-val'+(avgMargin>=0?' p':' r');
+}
+
+function renderCategories(){
+  const cats = ['Sports','TCG','Comic','Graded'];
+  let total = 0;
+  cats.forEach(c=>{
+    const items = allItems.filter(i=>(i.category||'').toLowerCase()===c.toLowerCase()&&i.status==='in_stock');
+    const val = items.reduce((a,i)=>a+(i.market||0),0);
+    total += items.length;
+    const key = c.toLowerCase().replace('comic','comic');
+    const el = document.getElementById('c-'+key);
+    const vel = document.getElementById('cv-'+key);
+    if(el) el.textContent = items.length;
+    if(vel) vel.textContent = fmt$(val)+' value';
+  });
+  document.getElementById('cat-total').textContent = total+' in stock';
+}
+
+function renderChannels(){
+  const sold = allItems.filter(i=>i.status==='sold');
+  const channels = {};
+  sold.forEach(i=>{ const ch=i.channel||'In-Store'; channels[ch]=(channels[ch]||0)+(i.salePrice||0); });
+  const max = Math.max(...Object.values(channels),1);
+  const colors = {'In-Store':'ch-g','eBay':'ch-gold','Whatnot':'ch-p','Website':'ch-b'};
+  const sorted = Object.entries(channels).sort((a,b)=>b[1]-a[1]);
+  const el = document.getElementById('channel-bars');
+  if(!sorted.length){ el.innerHTML='<div class="empty"><div class="empty-t">NO SALES YET</div></div>'; return; }
+  el.innerHTML = sorted.map(([ch,val])=>`
+    <div class="br-row ${colors[ch]||'ch-r'}">
+      <span class="br-lbl">${ch}</span>
+      <div class="br-track"><div class="br-fill" style="width:${(val/max*100).toFixed(1)}%"></div></div>
+      <span class="br-val">${fmt$(val)}</span>
+    </div>`).join('');
+}
+
+function renderTopValue(){
+  const inStock = allItems.filter(i=>i.status==='in_stock'&&(i.market||0)>0)
+    .sort((a,b)=>(b.market||0)-(a.market||0)).slice(0,8);
+  const el = document.getElementById('top-value');
+  if(!inStock.length){ el.innerHTML='<div class="empty"><div class="empty-t">NO ITEMS YET</div><div class="empty-s">Scan cards and add to inventory</div></div>'; return; }
+  const max = inStock[0].market||1;
+  const catColor = {Sports:'var(--gold)',TCG:'var(--g)',Comic:'var(--purple)',Graded:'var(--blue)'};
+  el.innerHTML = inStock.map(i=>`
+    <div class="br-row">
+      <span class="br-lbl" title="${i.name}">${i.name}</span>
+      <div class="br-track"><div class="br-fill" style="width:${((i.market||0)/max*100).toFixed(1)}%;background:${catColor[i.category]||'var(--g)'}"></div></div>
+      <span class="br-val">${fmtD$(i.market)}</span>
+    </div>`).join('');
+}
+
+function renderRecentFeed(){
+  const sorted = [...allItems].sort((a,b)=>{
+    const da = new Date(a.soldAt||a.addedAt||0);
+    const db = new Date(b.soldAt||b.addedAt||0);
+    return db-da;
+  }).slice(0,12);
+  const el = document.getElementById('recent-feed');
+  if(!sorted.length){ el.innerHTML='<div class="empty"><div class="empty-t">NO ACTIVITY</div></div>'; return; }
+  el.innerHTML = sorted.map(i=>{
+    const isSale = i.status==='sold';
+    const date = new Date(i.soldAt||i.addedAt||0);
+    const dateStr = date.getFullYear()>2000 ? date.toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '—';
+    const amt = isSale ? fmtD$(i.salePrice) : (i.market>0?fmtD$(i.market):'—');
+    const amtCls = isSale ? 'pos' : 'cost';
+    const profit = isSale ? (i.profit>=0?'+':'')+fmtD$(i.profit) : '';
+    return `<div class="fi">
+      <div class="fi-ico ${isSale?'sale':'add'}">${isSale?'✓':'+'}</div>
+      <div class="fi-body">
+        <div class="fi-name">${i.name}</div>
+        <div class="fi-meta">${isSale?'SOLD via '+(i.channel||'—'):i.category} · ${dateStr}${profit?' · <span style="color:var(--g)">'+profit+'</span>':''}</div>
+      </div>
+      <div class="fi-amt ${amtCls}">${amt}</div>
+    </div>`;
+  }).join('');
+}
+
+// TABLE
+let tableSort = {col:'name',dir:1};
+function sortBy(col){
+  if(tableSort.col===col) tableSort.dir *= -1;
+  else{ tableSort.col=col; tableSort.dir=1; }
+  document.querySelectorAll('th').forEach(t=>t.className='');
+  const th = [...document.querySelectorAll('th')].find(t=>t.textContent.trim().toLowerCase()===col.toLowerCase());
+  if(th) th.className = tableSort.dir===1?'asc':'desc';
+  page=1; renderTable();
+}
+function setFilter(f,btn){
+  activeFilter=f; page=1;
+  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  filterTable();
+}
+function filterTable(){
+  const q = document.getElementById('tbl-search').value.toLowerCase();
+  filteredItems = allItems.filter(i=>{
+    const matchQ = !q || (i.name||'').toLowerCase().includes(q)||(i.set||'').toLowerCase().includes(q);
+    const matchF = activeFilter==='all' ? true
+      : activeFilter==='in_stock' ? i.status==='in_stock'
+      : activeFilter==='sold' ? i.status==='sold'
+      : (i.category||'').toLowerCase()===activeFilter.toLowerCase();
+    return matchQ && matchF;
+  });
+  filteredItems.sort((a,b)=>{
+    let av=a[tableSort.col]||'', bv=b[tableSort.col]||'';
+    if(typeof av==='string') av=av.toLowerCase();
+    if(typeof bv==='string') bv=bv.toLowerCase();
+    return av<bv?-tableSort.dir:av>bv?tableSort.dir:0;
+  });
+  renderTable();
+}
+function renderTable(){
+  const start=(page-1)*PER_PAGE, end=start+PER_PAGE;
+  const pageItems = filteredItems.slice(start,end);
+  const tbody = document.getElementById('inv-tbody');
+  if(!filteredItems.length){
+    tbody.innerHTML=`<tr><td colspan="8"><div class="empty"><div class="empty-ico">📦</div><div class="empty-t">NO ITEMS FOUND</div><div class="empty-s">Scan cards with the scanner and tap Add to Inventory.<br>Make sure your Webflow API token is entered.</div></div></td></tr>`;
+    document.getElementById('pager').innerHTML=''; return;
+  }
+  tbody.innerHTML = pageItems.map(i=>{
+    const inStock = i.status==='in_stock';
+    const profit = inStock ? (i.market-i.cost) : i.profit;
+    const pCls = profit>=0?'p-profit':'p-profit neg';
+    const catKey = (i.category||'TCG').replace(/\s+/g,'');
+    return `<tr class="${inStock?'':'sold-row'}">
+      <td><span class="dot ${inStock?'in_stock':'sold'}"></span><span class="n-cell">${i.name}${i.isRookie?' <span style="color:var(--gold);font-size:9px">RC</span>':''}</span></td>
+      <td><span class="s-cell">${[i.set,i.variant].filter(Boolean).join(' · ')||'—'}</span></td>
+      <td><span class="cat-tag ${catKey}">${i.category||'TCG'}</span></td>
+      <td><span class="cond-tag ${i.condition}">${i.condition||'NM'}</span></td>
+      <td class="p-cell p-mkt">${i.market>0?fmtD$(i.market):'—'}</td>
+      <td class="p-cell p-cost">${i.cost>0?fmtD$(i.cost):'—'}</td>
+      <td class="p-cell ${pCls}">${i.cost>0||i.profit?(profit>=0?'+':'')+fmtD$(profit):'—'}</td>
+      <td><span style="font-family:'DM Mono',monospace;font-size:10px;color:${inStock?'var(--g)':'var(--dim)'}">${inStock?'IN STOCK':'SOLD'+(i.channel?' via '+i.channel:'')}</span></td>
+    </tr>`;
+  }).join('');
+  renderPager();
+}
+function renderPager(){
+  const total = Math.ceil(filteredItems.length/PER_PAGE);
+  if(total<=1){ document.getElementById('pager').innerHTML=''; return; }
+  let html='';
+  for(let i=1;i<=total;i++) html+=`<button class="pg${i===page?' on':''}" onclick="page=${i};renderTable()">${i}</button>`;
+  document.getElementById('pager').innerHTML=html;
+}
+</script>
+<div id="lba-nav"><a class="lba-nav-btn" href="sca.html"><span class="nav-ico">⬡</span>SCANNER</a><a class="lba-nav-btn active" href="dashboard.html"><span class="nav-ico">▦</span>DASHBOARD</a></div>
+</body>
+</html>
