@@ -8,13 +8,11 @@
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
-:root{--g:#00ffb3;--gd:rgba(0,255,179,0.15);--gold:#ffd166;--red:#ff4d6d;--blue:#48cae4;--purple:#c77dff;--psa:#e63946;--bgs:#2d2d2d;--cgc:#f4a261;--bg:#050507;--surface:rgba(5,5,7,0.97);}
+:root{--g:#00ffb3;--gd:rgba(0,255,179,0.15);--gold:#ffd166;--red:#ff4d6d;--blue:#48cae4;--purple:#c77dff;--psa:#e63946;--bg:#050507;--surface:rgba(5,5,7,0.97);}
 html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-family:'DM Sans',sans-serif;color:#fff;}
 #video{position:fixed;inset:0;width:100%;height:100%;object-fit:cover;z-index:0;}
 #canvas{display:none;}
 #oc{position:fixed;inset:0;width:100%;height:100%;z-index:5;pointer-events:none;}
-
-/* SETUP */
 #setup{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:32px;z-index:100;}
 .s-logo{font-family:'Orbitron',monospace;font-size:28px;font-weight:900;color:var(--g);letter-spacing:5px;text-shadow:0 0 30px var(--g);text-align:center;line-height:1.1;}
 .s-sub{font-family:monospace;font-size:10px;color:rgba(255,255,255,.3);letter-spacing:3px;}
@@ -24,8 +22,6 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
 .s-inp:focus{border-color:var(--g);}
 .s-btn{width:100%;max-width:340px;background:var(--g);color:#000;border:none;padding:15px;font-family:'Orbitron',monospace;font-weight:700;font-size:13px;letter-spacing:2px;cursor:pointer;}
 .s-btn2{width:100%;max-width:340px;background:rgba(255,209,102,.15);color:var(--gold);border:1px solid rgba(255,209,102,.4);padding:13px;font-family:'Orbitron',monospace;font-weight:700;font-size:12px;letter-spacing:2px;cursor:pointer;}
-
-/* HUD */
 #hud{position:fixed;top:0;left:0;right:0;z-index:30;padding:10px 12px;background:linear-gradient(to bottom,rgba(0,0,0,.9),transparent);display:flex;justify-content:space-between;align-items:center;}
 .hl{font-family:'Orbitron',monospace;font-size:13px;font-weight:900;color:var(--g);letter-spacing:3px;text-shadow:0 0 16px var(--g);}
 .hbtns{display:flex;gap:5px;align-items:center;}
@@ -34,18 +30,14 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
 .hbtn.on{color:var(--red);border-color:var(--red);}
 .hbtn.flip-on{color:var(--gold);border-color:var(--gold);background:rgba(255,209,102,.1);}
 .hbtn.bulk-on{color:var(--purple);border-color:var(--purple);background:rgba(199,125,255,.1);}
-
-/* SCAN BAR */
 #scanbar{position:fixed;bottom:0;left:0;right:0;z-index:30;padding:12px 12px 26px;background:linear-gradient(to top,rgba(0,0,0,.92) 60%,transparent);display:flex;flex-direction:column;align-items:center;gap:7px;}
 #scanbtn{background:var(--g);color:#000;border:none;padding:15px 52px;font-family:'Orbitron',monospace;font-weight:900;font-size:14px;letter-spacing:2px;cursor:pointer;box-shadow:0 0 32px rgba(0,255,179,.5);touch-action:manipulation;}
 #scanbtn.reading{background:var(--gold);}
 #scanbtn.autoon{background:var(--red);}
-#scanbtn.backmode{background:var(--gold);box-shadow:0 0 32px rgba(255,209,102,.5);}
-#scanbtn.bulkmode{background:var(--purple);box-shadow:0 0 32px rgba(199,125,255,.5);}
+#scanbtn.backmode{background:var(--gold);}
+#scanbtn.bulkmode{background:var(--purple);}
 .shint{font-family:monospace;font-size:10px;color:rgba(255,255,255,.25);letter-spacing:1px;text-align:center;}
 .shint.back{color:var(--gold);}.shint.bulk{color:var(--purple);}
-
-/* BRACKETS */
 #brackets{position:fixed;inset:0;z-index:4;pointer-events:none;}
 .br{position:absolute;width:44px;height:44px;border-color:var(--g);border-style:solid;opacity:.5;}
 .br.gold{border-color:var(--gold);}.br.purple{border-color:var(--purple);}
@@ -58,55 +50,43 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
 #modebadge{position:fixed;top:58px;left:50%;transform:translateX(-50%);z-index:30;padding:5px 14px;font-family:'Orbitron',monospace;font-size:9px;letter-spacing:2px;display:none;}
 #modebadge.back{background:rgba(255,209,102,.15);border:1px solid var(--gold);color:var(--gold);}
 #modebadge.bulk{background:rgba(199,125,255,.15);border:1px solid var(--purple);color:var(--purple);}
-
-/* BUBBLE */
-.bub{position:fixed;background:var(--surface);border:1.5px solid var(--g);padding:10px 12px;width:190px;z-index:20;box-shadow:0 0 20px rgba(0,255,179,.15);max-height:82vh;overflow-y:auto;}
+.bub{position:fixed;background:var(--surface);border:1.5px solid var(--g);padding:10px 12px;width:192px;z-index:20;box-shadow:0 0 20px rgba(0,255,179,.15);max-height:82vh;overflow-y:auto;}
 .bub::before{content:'';position:absolute;top:-1px;left:0;right:0;height:1.5px;background:linear-gradient(90deg,transparent,var(--g),transparent);}
 .bub.sports{border-color:var(--gold);}.bub.sports::before{background:linear-gradient(90deg,transparent,var(--gold),transparent);}
 .bub.comic{border-color:var(--purple);}.bub.comic::before{background:linear-gradient(90deg,transparent,var(--purple),transparent);}
-/* SLAB STYLES */
 .bub.psa{border-color:var(--psa);border-width:2px;}.bub.psa::before{background:linear-gradient(90deg,transparent,var(--psa),transparent);}
 .bub.bgs{border-color:#aaa;}.bub.bgs::before{background:linear-gradient(90deg,transparent,#aaa,transparent);}
-.bub.cgc{border-color:var(--cgc);}.bub.cgc::before{background:linear-gradient(90deg,transparent,var(--cgc),transparent);}
-.bub.sgc{border-color:#ff9500;}.bub.sgc::before{background:linear-gradient(90deg,transparent,#ff9500,transparent);}
-
+.bub.cgc{border-color:var(--gold);}.bub.cgc::before{background:linear-gradient(90deg,transparent,var(--gold),transparent);}
+/* CARD IMAGE */
+.card-img{width:100%;height:120px;object-fit:contain;margin-bottom:6px;border:1px solid rgba(255,255,255,.08);background:rgba(0,0,0,.3);}
+.card-img-placeholder{width:100%;height:80px;display:flex;align-items:center;justify-content:center;font-family:monospace;font-size:9px;color:rgba(255,255,255,.2);letter-spacing:1px;border:1px dashed rgba(255,255,255,.08);margin-bottom:6px;}
 .btype{font-family:'Orbitron',monospace;font-size:7px;letter-spacing:2px;margin-bottom:2px;opacity:.8;}
 .btype.tcg{color:var(--g)}.btype.sports{color:var(--gold)}.btype.comic{color:var(--purple)}
-.btype.psa{color:var(--psa)}.btype.bgs{color:#ccc}.btype.cgc{color:var(--cgc)}.btype.sgc{color:#ff9500}
+.btype.psa{color:var(--psa)}.btype.bgs{color:#ccc}.btype.cgc{color:var(--gold)}.btype.sgc{color:#ff9500}
 .bname{font-size:13px;font-weight:600;color:#fff;margin-bottom:1px;padding-right:18px;line-height:1.2;}
 .bsub{font-family:monospace;font-size:9px;color:rgba(255,255,255,.4);margin-bottom:4px;line-height:1.5;}
-
-/* SLAB SPECIFIC */
 .slab-grade{display:flex;align-items:center;gap:8px;margin-bottom:6px;padding:8px 10px;}
 .slab-grade.psa{background:rgba(230,57,70,.12);border:1px solid rgba(230,57,70,.3);}
 .slab-grade.bgs{background:rgba(150,150,150,.1);border:1px solid rgba(150,150,150,.3);}
 .slab-grade.cgc{background:rgba(244,162,97,.1);border:1px solid rgba(244,162,97,.3);}
-.slab-grade.sgc{background:rgba(255,149,0,.1);border:1px solid rgba(255,149,0,.3);}
 .grade-num{font-family:'Orbitron',monospace;font-size:28px;font-weight:900;line-height:1;}
-.grade-num.psa{color:var(--psa);text-shadow:0 0 16px rgba(230,57,70,.5);}
-.grade-num.bgs{color:#ccc;text-shadow:0 0 16px rgba(200,200,200,.4);}
-.grade-num.cgc{color:var(--cgc);text-shadow:0 0 16px rgba(244,162,97,.5);}
-.grade-num.sgc{color:#ff9500;text-shadow:0 0 16px rgba(255,149,0,.5);}
+.grade-num.psa{color:var(--psa)}.grade-num.bgs{color:#ccc}.grade-num.cgc{color:var(--gold)}.grade-num.sgc{color:#ff9500}
 .grade-info{display:flex;flex-direction:column;gap:2px;}
 .grade-co{font-family:'Orbitron',monospace;font-size:11px;font-weight:700;letter-spacing:1px;}
-.grade-co.psa{color:var(--psa)}.grade-co.bgs{color:#ccc}.grade-co.cgc{color:var(--cgc)}.grade-co.sgc{color:#ff9500}
+.grade-co.psa{color:var(--psa)}.grade-co.bgs{color:#ccc}.grade-co.cgc{color:var(--gold)}.grade-co.sgc{color:#ff9500}
 .grade-cert{font-family:monospace;font-size:9px;color:rgba(255,255,255,.4);}
 .slab-subgrades{display:grid;grid-template-columns:1fr 1fr;gap:3px;margin-bottom:6px;}
 .sg{background:rgba(255,255,255,.04);padding:4px 6px;text-align:center;}
 .sg-label{font-family:monospace;font-size:7px;color:rgba(255,255,255,.3);letter-spacing:1px;}
 .sg-val{font-family:'Orbitron',monospace;font-size:11px;font-weight:700;color:#ccc;}
-.pop-row{display:flex;justify-content:space-between;align-items:center;padding:5px 8px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);margin-bottom:5px;}
-.pop-label{font-family:monospace;font-size:8px;color:rgba(255,255,255,.35);letter-spacing:1px;}
-.pop-val{font-family:'Orbitron',monospace;font-size:10px;}
+.pop-row{display:flex;justify-content:space-between;padding:5px 8px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);margin-bottom:5px;}
+.pop-label{font-family:monospace;font-size:8px;color:rgba(255,255,255,.35);}
 .pop-val.rare{color:var(--g)}.pop-val.common{color:rgba(255,255,255,.5)}
-
-/* STOCK */
+.pop-val{font-family:'Orbitron',monospace;font-size:10px;}
 .stock-row{display:flex;align-items:center;gap:6px;margin-bottom:5px;padding:4px 7px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);}
 .stock-num{font-family:'Orbitron',monospace;font-size:14px;font-weight:900;}
 .sn-in{color:var(--g)}.sn-low{color:var(--gold)}.sn-no{color:var(--red)}
 .stock-label{font-family:monospace;font-size:9px;color:rgba(255,255,255,.4);letter-spacing:1px;}
-
-/* DESIRABILITY */
 .drow{display:flex;align-items:center;gap:6px;margin-bottom:3px;}
 .dscore{font-family:'Orbitron',monospace;font-size:10px;font-weight:700;padding:2px 6px;}
 .dhi{color:#00ffb3;background:rgba(0,255,179,.12);border:1px solid rgba(0,255,179,.3);}
@@ -123,14 +103,13 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
 .prow{display:flex;align-items:baseline;gap:5px;margin-bottom:2px;}
 .bprice{font-family:'Orbitron',monospace;font-size:20px;font-weight:900;line-height:1;}
 .bprice.tcg{color:var(--g)}.bprice.sports{color:var(--gold)}.bprice.comic{color:var(--purple)}
-.bprice.psa{color:var(--psa)}.bprice.bgs{color:#ccc}.bprice.cgc{color:var(--cgc)}.bprice.sgc{color:#ff9500}
+.bprice.psa,.bprice.bgs,.bprice.cgc,.bprice.sgc{color:#ccc}
 .brange{font-family:monospace;font-size:9px;color:rgba(255,255,255,.3);margin-bottom:5px;}
 .comps{margin-bottom:5px;}
 .comps-hdr{font-family:'Orbitron',monospace;font-size:7px;letter-spacing:1px;color:rgba(255,255,255,.3);margin-bottom:3px;}
 .comp-row{display:flex;justify-content:space-between;padding:2px 0;border-bottom:1px solid rgba(255,255,255,.05);}
 .comp-d{font-family:monospace;font-size:8px;color:rgba(255,255,255,.45);flex:1;margin-right:4px;line-height:1.3;}
-.comp-p{font-family:'Orbitron',monospace;font-size:9px;}
-.comp-p.tcg,.comp-p.slab{color:var(--g)}.comp-p.sports{color:var(--gold)}.comp-p.comic{color:var(--purple)}
+.comp-p{font-family:'Orbitron',monospace;font-size:9px;color:var(--g);}
 .backinfo{background:rgba(255,209,102,.05);border:1px solid rgba(255,209,102,.2);padding:6px 8px;margin-bottom:6px;}
 .backinfo-hdr{font-family:'Orbitron',monospace;font-size:7px;letter-spacing:1px;color:var(--gold);margin-bottom:4px;}
 .backinfo-row{display:flex;justify-content:space-between;font-family:monospace;font-size:8px;color:rgba(255,255,255,.5);padding:1px 0;}
@@ -149,6 +128,11 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
 .inv-inp:focus{border-color:var(--g);}
 .inv-inp::placeholder{color:rgba(255,255,255,.2);}
 .inv-label{font-family:monospace;font-size:8px;color:rgba(255,255,255,.3);margin-bottom:2px;}
+/* CMS SYNC STATUS */
+.cms-status{font-family:monospace;font-size:8px;padding:3px 6px;text-align:center;margin-bottom:4px;letter-spacing:1px;}
+.cms-syncing{color:var(--gold);border:1px solid rgba(255,209,102,.2);background:rgba(255,209,102,.06);}
+.cms-synced{color:var(--g);border:1px solid rgba(0,255,179,.2);background:rgba(0,255,179,.06);}
+.cms-error{color:var(--red);border:1px solid rgba(255,77,109,.2);background:rgba(255,77,109,.06);}
 .bacts{display:grid;grid-template-columns:1fr 1fr;gap:3px;margin-bottom:0;}
 .bact{border:none;padding:7px 4px;font-family:'Orbitron',monospace;font-size:7px;letter-spacing:1px;cursor:pointer;text-align:center;text-decoration:none;display:block;line-height:1.3;}
 .a-tcg{background:rgba(0,255,179,.08);color:var(--g);border:1px solid rgba(0,255,179,.2);}
@@ -156,7 +140,6 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
 .a-130{background:rgba(72,202,228,.08);color:var(--blue);border:1px solid rgba(72,202,228,.2);}
 .a-gcol{background:rgba(199,125,255,.08);color:var(--purple);border:1px solid rgba(199,125,255,.2);}
 .a-psa{background:rgba(230,57,70,.08);color:var(--psa);border:1px solid rgba(230,57,70,.2);}
-.a-bgs{background:rgba(150,150,150,.08);color:#ccc;border:1px solid rgba(150,150,150,.2);}
 .a-add{background:rgba(0,255,179,.1);color:var(--g);border:1px solid rgba(0,255,179,.25);grid-column:1/-1;}
 .a-sell{background:rgba(255,77,109,.1);color:var(--red);border:1px solid rgba(255,77,109,.25);grid-column:1/-1;}
 .a-confirm{background:var(--g);color:#000;border:none;grid-column:1/-1;font-weight:700;}
@@ -170,15 +153,13 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
 .profit-preview{font-family:'Orbitron',monospace;font-size:10px;padding:4px 6px;text-align:center;margin-bottom:4px;}
 .profit-pos{color:var(--g);background:rgba(0,255,179,.08);border:1px solid rgba(0,255,179,.2);}
 .profit-neg{color:var(--red);background:rgba(255,77,109,.08);border:1px solid rgba(255,77,109,.2);}
-
-/* BULK BUY PANEL */
+/* BULK PANEL */
 #bulkpanel{position:fixed;bottom:80px;left:10px;right:10px;z-index:25;background:rgba(5,5,7,.97);border:1.5px solid var(--purple);padding:14px;display:none;max-height:60vh;overflow-y:auto;}
 #bulkpanel::before{content:'';position:absolute;top:-1px;left:0;right:0;height:1.5px;background:linear-gradient(90deg,transparent,var(--purple),transparent);}
 .bulk-hdr{font-family:'Orbitron',monospace;font-size:11px;font-weight:900;color:var(--purple);letter-spacing:2px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;}
 .bulk-settings{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;}
 .bulk-label{font-family:monospace;font-size:8px;color:rgba(255,255,255,.35);letter-spacing:1px;margin-bottom:3px;}
 .bulk-inp{width:100%;background:#0d0d0f;color:#fff;border:1px solid rgba(199,125,255,.2);padding:6px 8px;font-family:'Orbitron',monospace;font-size:12px;outline:none;}
-.bulk-inp:focus{border-color:var(--purple);}
 .bulk-list{margin-bottom:10px;}
 .bulk-item{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.05);}
 .bulk-item-name{font-family:monospace;font-size:10px;color:#fff;flex:1;}
@@ -193,7 +174,6 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
 .bulk-btn.primary{background:var(--purple);color:#fff;}
 .bulk-btn.secondary{background:rgba(255,255,255,.06);color:rgba(255,255,255,.5);border:1px solid rgba(255,255,255,.1);}
 .empty-bulk{font-family:monospace;font-size:11px;color:rgba(255,255,255,.25);text-align:center;padding:20px 0;letter-spacing:1px;}
-
 .toast{position:fixed;top:70px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.95);border:1px solid rgba(0,255,179,.4);padding:9px 20px;font-family:monospace;font-size:11px;color:var(--g);z-index:200;max-width:90vw;text-align:center;}
 </style>
 </head>
@@ -214,14 +194,12 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
 <video id="video" autoplay playsinline muted></video>
 <canvas id="canvas"></canvas>
 <canvas id="oc"></canvas>
-
 <div id="brackets">
   <div class="br tl" id="br-tl"></div><div class="br tr" id="br-tr"></div>
   <div class="br bl" id="br-bl"></div><div class="br brr" id="br-br"></div>
   <div id="scanline"></div>
 </div>
 <div id="modebadge"></div>
-
 <div id="hud" style="display:none">
   <span class="hl">LBA</span>
   <div class="hbtns">
@@ -232,31 +210,21 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
     <button class="hbtn" onclick="clearAll()">CLR</button>
   </div>
 </div>
-
 <div id="scanbar" style="display:none">
   <button id="scanbtn" onclick="doScan()">&#9654; SCAN CARDS</button>
   <div class="shint" id="scanhint">TCG · Sports · Comics · Slabs</div>
 </div>
 
-<!-- BULK BUY PANEL -->
 <div id="bulkpanel">
   <div class="bulk-hdr">
     <span>BULK BUY CALCULATOR</span>
     <button style="background:none;border:none;color:rgba(255,255,255,.3);font-size:16px;cursor:pointer" onclick="toggleBulk()">×</button>
   </div>
   <div class="bulk-settings">
-    <div>
-      <div class="bulk-label">BUY % OF MARKET</div>
-      <input class="bulk-inp" id="bulk-pct" type="number" value="50" min="1" max="100" oninput="updateBulkTotal()">
-    </div>
-    <div>
-      <div class="bulk-label">MAX OFFER ($)</div>
-      <input class="bulk-inp" id="bulk-max" type="number" value="" placeholder="No limit" oninput="updateBulkTotal()">
-    </div>
+    <div><div class="bulk-label">BUY % OF MARKET</div><input class="bulk-inp" id="bulk-pct" type="number" value="50" min="1" max="100" oninput="updateBulkTotal()"></div>
+    <div><div class="bulk-label">MAX OFFER ($)</div><input class="bulk-inp" id="bulk-max" type="number" value="" placeholder="No limit" oninput="updateBulkTotal()"></div>
   </div>
-  <div class="bulk-list" id="bulk-list">
-    <div class="empty-bulk">Scan cards to add to bulk offer</div>
-  </div>
+  <div class="bulk-list" id="bulk-list"><div class="empty-bulk">Scan cards to add to bulk offer</div></div>
   <div class="bulk-total" id="bulk-total" style="display:none">
     <div class="bulk-total-row"><span>Total Market Value</span><span id="bt-mkt">$0.00</span></div>
     <div class="bulk-total-row"><span>Your Offer (<span id="bt-pct">50</span>%)</span><span></span></div>
@@ -270,10 +238,127 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
 </div>
 
 <script>
+// ============================================================
+// CONFIG — Webflow CMS Collection ID
+// ============================================================
+const WF_COLLECTION_ID = '69cb5611c6522a8591b552c4';
+const WF_SITE_ID = '65b15ee0228d06647ca7e4ce';
+
+// ============================================================
+// TCG IMAGE APIs (all free, no key needed)
+// ============================================================
+async function fetchCardImage(item){
+  const game = item.game||'';
+  const name = item.name||'';
+  const set  = item.set_name||'';
+  try{
+    // Pokemon TCG
+    if(game==='Pokemon TCG'){
+      const q=encodeURIComponent(`name:"${name}"`);
+      const r=await fetch(`https://api.pokemontcg.io/v2/cards?q=${q}&pageSize=1`);
+      const d=await r.json();
+      if(d.data&&d.data[0]&&d.data[0].images)
+        return d.data[0].images.large||d.data[0].images.small;
+    }
+    // Magic: The Gathering — Scryfall
+    if(game==='Magic: The Gathering'){
+      const q=encodeURIComponent(name+(set?' set:'+set.substring(0,4):''));
+      const r=await fetch(`https://api.scryfall.com/cards/named?fuzzy=${encodeURIComponent(name)}`);
+      const d=await r.json();
+      if(d.image_uris)return d.image_uris.normal||d.image_uris.large;
+      if(d.card_faces&&d.card_faces[0]&&d.card_faces[0].image_uris)
+        return d.card_faces[0].image_uris.normal;
+    }
+    // Yu-Gi-Oh — YGOProDeck
+    if(game==='Yu-Gi-Oh!'){
+      const r=await fetch(`https://db.ygoprodeck.com/api/v7/cardinfo.php?name=${encodeURIComponent(name)}`);
+      const d=await r.json();
+      if(d.data&&d.data[0]&&d.data[0].card_images)
+        return d.data[0].card_images[0].image_url;
+    }
+  }catch(e){console.log('Image fetch failed:',e);}
+  return null;
+}
+
+// ============================================================
+// WEBFLOW CMS SYNC
+// ============================================================
+async function syncToWebflowCMS(entry, imageUrl){
+  const key = localStorage.getItem('lba_k');
+  if(!key) return null;
+
+  // Generate unique slug
+  const slug = 'lba-' + Date.now() + '-' + Math.random().toString(36).slice(2,6);
+
+  const fieldData = {
+    name: entry.name || 'Unknown Card',
+    slug: slug,
+    'player-card-name': entry.player || entry.name || '',
+    'set': entry.set || '',
+    'variant-parallel': entry.variant || '',
+    'year': entry.year ? String(entry.year) : '',
+    'team': entry.team || '',
+    'manufacturer': entry.manufacturer || '',
+    'condition': entry.condition || 'NM',
+    'card-number': entry.card_number || '',
+    'serial-number': entry.serial_number || '',
+    'grading-company': entry.grading_company || '',
+    'grade': entry.grade || '',
+    'cert-number': entry.cert_number || '',
+    'sport': entry.sport || '',
+    'key-notes': entry.key_notes || '',
+    'cost': Math.round((entry.cost || 0) * 100) / 100,
+    'market-value': Math.round((entry.market || 0) * 100) / 100,
+    'list-price': Math.round((entry.price || entry.market || 0) * 100) / 100,
+    'quantity-in-stock': 1,
+    'quantity-sold': 0,
+    'is-rookie': entry.is_rookie || false,
+    'is-key-card': entry.is_key || false,
+    'status': 'In Stock',
+    'category': entry.category || 'TCG',
+    'source': entry.source || 'AR Scanner',
+    'location': entry.location || '',
+    'desirability-score': entry.desirability || 5,
+    'desirability': entry.desirability || 5,
+    'date-added': new Date().toISOString(),
+  };
+
+  // Add image URL if we have one
+  if(imageUrl){
+    fieldData['card-photo'] = { url: imageUrl };
+  }
+
+  try{
+    const res = await fetch(`https://api.webflow.com/v2/collections/${WF_COLLECTION_ID}/items`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('lba_wf_token')||''}`,
+        'accept': 'application/json'
+      },
+      body: JSON.stringify({ fieldData, isDraft: false, isArchived: false })
+    });
+
+    if(res.ok){
+      const data = await res.json();
+      // Also publish it
+      await fetch(`https://api.webflow.com/v2/collections/${WF_COLLECTION_ID}/items/publish`, {
+        method: 'POST',
+        headers: { 'Content-Type':'application/json', 'Authorization':`Bearer ${localStorage.getItem('lba_wf_token')||''}` },
+        body: JSON.stringify({ itemIds: [data.id] })
+      });
+      return data.id;
+    }
+  }catch(e){ console.log('CMS sync failed:', e); }
+  return null;
+}
+
+// ============================================================
+// MAIN APP
+// ============================================================
 const CM={NM:1,LP:.8,MP:.64,HP:.4,DMG:.25};
 let bubs=[],auto=false,autoT=null,scanning=false,octx=null,wakeLock=null;
-let flipMode=false,bulkMode=false;
-let bulkItems=[];
+let flipMode=false,bulkMode=false,bulkItems=[];
 const video=document.getElementById('video'),canvas=document.getElementById('canvas'),oc=document.getElementById('oc');
 const savedKey=localStorage.getItem('lba_k');
 if(savedKey)document.getElementById('kinp').value=savedKey;
@@ -282,11 +367,17 @@ function launch(){
   const k=document.getElementById('kinp').value.trim();
   if(!k){toast('Enter your Anthropic API key');return;}
   if(!k.startsWith('sk-ant-')){toast('Key must start with sk-ant-');return;}
-  localStorage.setItem('lba_k',k);startScanner();
+  localStorage.setItem('lba_k',k);
+  // Check for Webflow token
+  if(!localStorage.getItem('lba_wf_token')){
+    const wft=prompt('Optional: Webflow API token for cloud sync (leave blank to skip):');
+    if(wft&&wft.length>10)localStorage.setItem('lba_wf_token',wft);
+  }
+  startScanner();
 }
 function launchBulk(){
   const k=document.getElementById('kinp').value.trim();
-  if(!k){toast('Enter your Anthropic API key');return;}
+  if(!k){toast('Enter API key');return;}
   if(!k.startsWith('sk-ant-')){toast('Key must start with sk-ant-');return;}
   localStorage.setItem('lba_k',k);startScanner(true);
 }
@@ -306,17 +397,14 @@ async function startScanner(goToBulk){
   if(goToBulk)toggleBulk();
 }
 
-function setBracketColor(color){
-  ['br-tl','br-tr','br-bl','br-br'].forEach(id=>{
+function setBracketColor(c){
+  ['br-tl','br-tr','br-bl','br-br'].forEach((id,i)=>{
     const el=document.getElementById(id);
-    el.className='br '+(['tl','tr','bl','brr'][['br-tl','br-tr','br-bl','br-br'].indexOf(id)]);
-    if(color)el.classList.add(color);
+    el.className='br '+(['tl','tr','bl','brr'][i]);
+    if(c)el.classList.add(c);
   });
   const sl=document.getElementById('scanline');
-  sl.className=color?'gold':''===color?'':'';
-  if(color==='gold')sl.className='gold';
-  else if(color==='purple')sl.className='purple';
-  else sl.className='';
+  sl.className=c==='gold'?'gold':c==='purple'?'purple':'';
 }
 
 function toggleFlip(){
@@ -328,7 +416,6 @@ function toggleFlip(){
   if(flipMode){fb.classList.add('flip-on');fb.textContent='FRONT';sb.className='backmode';sb.innerHTML='&#9654; SCAN BACK';hint.textContent='Flip card — back shows serial # and stats';hint.className='shint back';badge.textContent='⟳ BACK OF CARD MODE';badge.className='back';badge.style.display='block';}
   else{fb.classList.remove('flip-on');fb.textContent='FLIP';sb.className='';sb.innerHTML='&#9654; SCAN CARDS';hint.textContent='TCG · Sports · Comics · Slabs';hint.className='shint';badge.style.display='none';}
 }
-
 function toggleBulk(){
   if(flipMode)toggleFlip();
   bulkMode=!bulkMode;
@@ -346,7 +433,6 @@ function capture(){
   canvas.getContext('2d').drawImage(video,0,0,canvas.width,canvas.height);
   return canvas.toDataURL('image/jpeg',.9).split(',')[1];
 }
-
 async function callClaude(msgs,maxTok){
   const key=localStorage.getItem('lba_k');
   const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:maxTok||3000,messages:msgs})});
@@ -357,7 +443,7 @@ async function callClaude(msgs,maxTok){
 async function doScan(){
   if(scanning)return;scanning=true;
   const btn=document.getElementById('scanbtn'),hs=document.getElementById('hstatus');
-  const origText=btn.innerHTML;
+  const orig=btn.innerHTML;
   btn.textContent='READING...';btn.classList.add('reading');hs.textContent='SCANNING...';
   try{
     const img=capture();
@@ -365,71 +451,40 @@ async function doScan(){
     else if(bulkMode)await scanBulk(img);
     else await scanFront(img);
   }catch(e){hs.textContent='ERROR';toast('Error: '+e.message);}
-  scanning=false;
-  btn.innerHTML=origText;btn.classList.remove('reading');
+  scanning=false;btn.innerHTML=orig;btn.classList.remove('reading');
 }
 
 async function scanFront(img){
   const hs=document.getElementById('hstatus');
-  const prompt=`You are an expert collectibles identifier. Examine this image carefully.
+  const prompt=`You are an expert collectibles identifier. Examine this image.
 
-IMPORTANT: Check if this is a GRADED SLAB first — look for a plastic case with a label (PSA=red/blue/white label, BGS=black label with subgrades, CGC=yellow/orange label for comics, SGC=red label).
+Check for GRADED SLAB first — PSA=red/blue/white label, BGS=black label with subgrades, CGC=yellow/orange, SGC=red label.
 
-STEP 1 — READ ALL TEXT: player/card name, card number, set name, year, cert number (on slab label), grade (on slab label), serial number.
-STEP 2 — VISUAL: border color, foil/shimmer, holo pattern, slab label design, artwork style.
-STEP 3 — COMBINE for best ID.
+STEP 1 — READ ALL TEXT: name, card number, set, year, cert number, grade, serial number.
+STEP 2 — VISUAL: border color, foil, holo, slab label, artwork style.
+STEP 3 — COMBINE.
 
 Return ONLY raw JSON array, no markdown:
-[{
-  "name":"exact name",
-  "game":"Pokemon TCG|Magic: The Gathering|Yu-Gi-Oh!|Sports Card|Comic|PSA Slab|BGS Slab|CGC Slab|SGC Slab|Other TCG",
-  "sport":"Baseball|Basketball|Football|Hockey|Soccer|null",
-  "player":"player name or null",
-  "team":"team or null",
-  "year":"year",
-  "card_number":"card # or null",
-  "manufacturer":"Topps|Panini|Upper Deck|Bowman|Fleer|Donruss|Pokemon Company|Wizards|Konami|Marvel|DC|Image|Dark Horse|Other",
-  "publisher":"publisher if comic or null",
-  "issue":"issue # if comic or null",
-  "set_name":"exact set name",
-  "parallel":"Base|Chrome|Prizm|Silver Prizm|Gold Refractor|Red Prizm|Blue|Green|Orange|Holo|Reverse Holo|Full Art|Alt Art|Borderless|Showcase|Extended Art|Etched Foil|Serialized|1st Edition|Promo|Rainbow Rare|Secret Rare|Special Illustration Rare|Auto|Relic|Standard|Variant|Virgin|Textless|Sketch|Foil|Newsstand",
-  "serial_number":"/99 or null",
-  "grading_company":"PSA|BGS|CGC|SGC|null",
-  "grade":"10|9.5|9|8.5|8|null",
-  "cert_number":"cert number from slab label or null",
-  "subgrades":{"centering":"9.5","surface":"9","corners":"9.5","edges":"9"} or null,
-  "pop_this_grade":"estimated population at this grade e.g. 450 or null",
-  "pop_higher":"estimated population at higher grades e.g. 120 or null",
-  "is_black_label":true or false,
-  "is_rookie":true,
-  "is_key":false,
-  "key_notes":"why notable or null",
-  "confidence":"high|medium|low",
-  "confidence_reason":"what helped or hurt",
-  "desirability":7,
-  "trend":"up|down|flat",
-  "trend_reason":"brief reason",
-  "cx":50,"cy":50,
-  "printings":[{"set":"full set","variant":"variant","year":"year","numbered":"/99 or null","mid":5.00,"low":2.00,"high":10.00}],
-  "comps":[{"desc":"specific comp description","price":8.50},{"desc":"comp","price":7.00},{"desc":"comp","price":9.50}]
-}]
+[{"name":"exact name","game":"Pokemon TCG|Magic: The Gathering|Yu-Gi-Oh!|Sports Card|Comic|PSA Slab|BGS Slab|CGC Slab|SGC Slab|Other TCG","sport":"Baseball|Basketball|Football|Hockey|Soccer|null","player":"player name or null","team":"team or null","year":"year","card_number":"# or null","manufacturer":"Topps|Panini|Upper Deck|Bowman|Pokemon Company|Wizards|Konami|Marvel|DC|Image|Other","publisher":"publisher if comic","issue":"issue # if comic","set_name":"exact set","parallel":"Base|Chrome|Prizm|Silver Prizm|Gold Refractor|Red Prizm|Blue|Green|Orange|Holo|Reverse Holo|Full Art|Alt Art|Borderless|Showcase|Extended Art|Etched Foil|Serialized|1st Edition|Promo|Rainbow Rare|Secret Rare|Special Illustration Rare|Auto|Relic|Standard|Variant|Virgin|Textless|Sketch|Foil|Newsstand","serial_number":"/99 or null","grading_company":"PSA|BGS|CGC|SGC|null","grade":"10|9.5|9|8.5|null","cert_number":"cert # or null","subgrades":{"centering":"9.5","surface":"9","corners":"9.5","edges":"9"},"pop_this_grade":450,"pop_higher":120,"is_black_label":false,"is_rookie":true,"is_key":false,"key_notes":"why notable or null","confidence":"high|medium|low","confidence_reason":"brief","desirability":7,"trend":"up|down|flat","trend_reason":"brief","cx":50,"cy":50,"printings":[{"set":"set","variant":"variant","year":"year","numbered":"/99 or null","mid":5.00,"low":2.00,"high":10.00}],"comps":[{"desc":"comp description","price":8.50},{"desc":"comp","price":7.00},{"desc":"comp","price":9.50}]}]
 
-For GRADED SLABS: carefully read the cert number and grade from the label. Include slab-specific pricing — graded prices are much higher than raw. Include comps for that specific grade.
-For virgin/textless comics: identify from artwork, character, art style, costume, color palette.
-Include ALL printings. Max 4 items. [] if nothing visible.`;
+For virgin/textless comics: identify from artwork, character, art style only. Include ALL printings. Max 4. [] if none.`;
 
   const text=await callClaude([{role:'user',content:[{type:'image',source:{type:'base64',media_type:'image/jpeg',data:img}},{type:'text',text:prompt}]}],4000);
   const items=JSON.parse(text.replace(/```json|```/g,'').trim());
   if(Array.isArray(items)&&items.length){
     if(auto)clearAll();
-    items.forEach(item=>addBubble(item,checkStock(item)));
+    for(const item of items){
+      const stock=checkStock(item);
+      const imgUrl=await fetchCardImage(item);
+      addBubble(item,stock,imgUrl);
+    }
     hs.textContent=items.length+' FOUND';drawLines();
   }else{hs.textContent='NONE';toast('Nothing detected — get closer');}
 }
 
 async function scanBack(img){
   const hs=document.getElementById('hstatus');
-  const text=await callClaude([{role:'user',content:[{type:'image',source:{type:'base64',media_type:'image/jpeg',data:img}},{type:'text',text:'This is the BACK of a card. Extract all info. Return ONLY JSON: {"player":"name or null","serial_number":"/99 or null","print_run":"number or null","auto_authenticated":true,"stats":[{"label":"stat","value":"val"}],"year":"year","set":"set","card_number":"# or null","rookie_stamp":true,"notes":"any other info"}'}]}],600);
+  const text=await callClaude([{role:'user',content:[{type:'image',source:{type:'base64',media_type:'image/jpeg',data:img}},{type:'text',text:'Card back. Return ONLY JSON: {"player":"name","serial_number":"/99 or null","print_run":"number or null","auto_authenticated":false,"stats":[{"label":"stat","value":"val"}],"year":"year","set":"set","card_number":"# or null","rookie_stamp":false,"notes":"other info"}'}]}],600);
   const back=JSON.parse(text.replace(/```json|```/g,'').trim());
   if(bubs.length>0){addBackInfo(bubs[bubs.length-1].id,back);hs.textContent='BACK SCANNED';toast('Back info added');}
   else{showBackStandalone(back);hs.textContent='BACK READ';}
@@ -437,77 +492,43 @@ async function scanBack(img){
 
 async function scanBulk(img){
   const hs=document.getElementById('hstatus');
-  const text=await callClaude([{role:'user',content:[{type:'image',source:{type:'base64',media_type:'image/jpeg',data:img}},{type:'text',text:'Identify all trading cards/comics visible. Return ONLY JSON array: [{"name":"player or card name","year":"year","set":"set","parallel":"variant or Base","market_nm":5.00}]. market_nm=current NM eBay/TCGPlayer price. Max 6. [] if none.'}]}],800);
+  const text=await callClaude([{role:'user',content:[{type:'image',source:{type:'base64',media_type:'image/jpeg',data:img}},{type:'text',text:'Identify all trading cards/comics visible. Return ONLY JSON array:[{"name":"name","year":"year","set":"set","parallel":"variant or Base","market_nm":5.00}]. market_nm=current NM price. Max 6. [] if none.'}]}],800);
   const items=JSON.parse(text.replace(/```json|```/g,'').trim());
-  if(Array.isArray(items)&&items.length){
-    items.forEach(item=>addToBulk(item));
-    hs.textContent=items.length+' ADDED';updateBulkTotal();
-  }else{hs.textContent='NONE';toast('No cards found');}
+  if(Array.isArray(items)&&items.length){items.forEach(i=>addToBulk(i));hs.textContent=items.length+' ADDED';updateBulkTotal();}
+  else{hs.textContent='NONE';toast('No cards found');}
 }
 
 function addToBulk(item){
-  const id='bl'+Date.now()+Math.random().toString(36).slice(2,4);
-  bulkItems.push({...item,id});
+  bulkItems.push({...item,id:'bl'+Date.now()+Math.random().toString(36).slice(2,4)});
   renderBulkList();
 }
-
 function renderBulkList(){
   const list=document.getElementById('bulk-list');
   const total=document.getElementById('bulk-total');
   if(!bulkItems.length){list.innerHTML='<div class="empty-bulk">Scan cards to add to bulk offer</div>';total.style.display='none';return;}
   const pct=(parseFloat(document.getElementById('bulk-pct').value)||50)/100;
-  list.innerHTML=bulkItems.map(item=>`
-    <div class="bulk-item">
-      <div class="bulk-item-name">${item.name}${item.year?' '+item.year:''}</div>
-      <div class="bulk-item-mkt">$${Number(item.market_nm).toFixed(2)}</div>
-      <div class="bulk-item-offer">$${(item.market_nm*pct).toFixed(2)}</div>
-      <button class="bulk-item-rm" onclick="removeBulkItem('${item.id}')">×</button>
-    </div>`).join('');
-  total.style.display='block';
-  updateBulkTotal();
+  list.innerHTML=bulkItems.map(item=>`<div class="bulk-item"><div class="bulk-item-name">${item.name}${item.year?' '+item.year:''}</div><div class="bulk-item-mkt">$${Number(item.market_nm).toFixed(2)}</div><div class="bulk-item-offer">$${(item.market_nm*pct).toFixed(2)}</div><button class="bulk-item-rm" onclick="removeBulkItem('${item.id}')">×</button></div>`).join('');
+  total.style.display='block';updateBulkTotal();
 }
-
 window.updateBulkTotal=function(){
   const pct=(parseFloat(document.getElementById('bulk-pct').value)||50)/100;
-  const maxOffer=parseFloat(document.getElementById('bulk-max').value)||Infinity;
+  const maxO=parseFloat(document.getElementById('bulk-max').value)||Infinity;
   const totalMkt=bulkItems.reduce((a,i)=>a+Number(i.market_nm||0),0);
-  let offer=Math.min(totalMkt*pct,maxOffer);
-  const profit=totalMkt-offer;
+  const offer=Math.min(totalMkt*pct,maxO);
   document.getElementById('bt-mkt').textContent='$'+totalMkt.toFixed(2);
   document.getElementById('bt-pct').textContent=Math.round(pct*100);
   document.getElementById('bt-offer').textContent='$'+offer.toFixed(2);
-  document.getElementById('bt-profit').textContent='$'+profit.toFixed(2);
+  document.getElementById('bt-profit').textContent='$'+(totalMkt-offer).toFixed(2);
   renderBulkList();
 };
-
 window.removeBulkItem=function(id){bulkItems=bulkItems.filter(i=>i.id!==id);renderBulkList();updateBulkTotal();};
 window.clearBulk=function(){bulkItems=[];renderBulkList();};
 window.copyBulkOffer=function(){
-  const pct=(parseFloat(document.getElementById('bulk-pct').value)||50);
+  const pct=parseFloat(document.getElementById('bulk-pct').value)||50;
   const offer=document.getElementById('bt-offer').textContent;
-  const lines=bulkItems.map(i=>`${i.name}${i.year?' '+i.year:''}: $${(i.market_nm*(pct/100)).toFixed(2)}`);
-  const text=`LBA BULK BUY OFFER (${pct}% of market)\n\n${lines.join('\n')}\n\nTOTAL OFFER: ${offer}`;
-  navigator.clipboard?.writeText(text).then(()=>toast('Offer copied to clipboard')).catch(()=>toast(text.substring(0,50)+'...'));
+  const text=`LBA BULK BUY OFFER (${pct}% of market)\n\n${bulkItems.map(i=>`${i.name}${i.year?' '+i.year:''}: $${(i.market_nm*(pct/100)).toFixed(2)}`).join('\n')}\n\nTOTAL OFFER: ${offer}`;
+  navigator.clipboard?.writeText(text).then(()=>toast('Offer copied!')).catch(()=>toast('Copy failed'));
 };
-
-function showBackStandalone(back){
-  const id='back_'+Date.now();
-  const el=document.createElement('div');
-  el.className='bub';el.id=id;el.style.left='10px';el.style.top='80px';
-  let statsHtml=back.stats&&back.stats.length?back.stats.slice(0,6).map(s=>`<div class="backinfo-row"><span>${s.label}</span><span class="backinfo-val">${s.value}</span></div>`).join(''):'';
-  el.innerHTML=`<button class="bx" onclick="document.getElementById('${id}').remove()">×</button><div class="btype tcg">CARD BACK</div><div class="backinfo"><div class="backinfo-hdr">⟳ BACK OF CARD</div>${back.serial_number?`<div class="backinfo-row"><span>Serial</span><span class="backinfo-val">${back.serial_number}</span></div>`:''}${back.print_run?`<div class="backinfo-row"><span>Print Run</span><span class="backinfo-val">${back.print_run}</span></div>`:''}${back.auto_authenticated?`<div class="backinfo-row"><span>Auto</span><span class="backinfo-val" style="color:var(--g)">✓ Authenticated</span></div>`:''}${back.rookie_stamp?`<div class="backinfo-row"><span>RC Stamp</span><span class="backinfo-val" style="color:var(--gold)">✓ YES</span></div>`:''}${back.card_number?`<div class="backinfo-row"><span>Card #</span><span class="backinfo-val">${back.card_number}</span></div>`:''}${statsHtml}${back.notes?`<div style="font-family:monospace;font-size:8px;color:rgba(255,255,255,.4);margin-top:4px;line-height:1.4">${back.notes.substring(0,100)}</div>`:''}</div>`;
-  document.body.appendChild(el);
-  bubs.push({id,el,ax:window.innerWidth/2,ay:window.innerHeight/2,ct:'tcg'});drawLines();
-}
-
-function addBackInfo(bubId,back){
-  const el=document.getElementById(bubId);if(!el)return;
-  el.querySelector('.backinfo')?.remove();
-  let statsHtml=back.stats&&back.stats.length?back.stats.slice(0,6).map(s=>`<div class="backinfo-row"><span>${s.label}</span><span class="backinfo-val">${s.value}</span></div>`).join(''):'';
-  const bi=document.createElement('div');bi.className='backinfo';
-  bi.innerHTML=`<div class="backinfo-hdr">⟳ BACK OF CARD</div>${back.serial_number?`<div class="backinfo-row"><span>Serial</span><span class="backinfo-val">${back.serial_number}</span></div>`:''}${back.print_run?`<div class="backinfo-row"><span>Print Run</span><span class="backinfo-val">${back.print_run}</span></div>`:''}${back.auto_authenticated?`<div class="backinfo-row"><span>Auto</span><span class="backinfo-val" style="color:var(--g)">✓ Auth</span></div>`:''}${back.rookie_stamp?`<div class="backinfo-row"><span>RC</span><span class="backinfo-val" style="color:var(--gold)">✓ Stamp</span></div>`:''}${statsHtml}${back.notes?`<div style="font-family:monospace;font-size:8px;color:rgba(255,255,255,.4);margin-top:3px;line-height:1.4">${back.notes.substring(0,80)}</div>`:''}`;
-  const acts=el.querySelector('.bacts');if(acts)el.insertBefore(bi,acts);else el.appendChild(bi);
-}
 
 function getType(item){
   const g=item.game||'';
@@ -519,15 +540,14 @@ function getType(item){
   if(g==='Comic')return 'comic';
   return 'tcg';
 }
-
 function checkStock(item){
   const inv=JSON.parse(localStorage.getItem('lba_inventory')||'[]');
   const name=(item.player||item.name||'').toLowerCase().split(' ')[0];
-  const matches=inv.filter(i=>(i.name||'').toLowerCase().includes(name)||name.includes((i.name||'').toLowerCase().split(' ')[0]));
-  return{inStock:matches.filter(i=>i.status==='in_stock').length,totalSold:matches.filter(i=>i.status==='sold').length};
+  const m=inv.filter(i=>(i.name||'').toLowerCase().includes(name)||name.includes((i.name||'').toLowerCase().split(' ')[0]));
+  return{inStock:m.filter(i=>i.status==='in_stock').length,totalSold:m.filter(i=>i.status==='sold').length};
 }
 
-function addBubble(item,stock){
+function addBubble(item,stock,imgUrl){
   const W=window.innerWidth,H=window.innerHeight;
   const cx=(item.cx/100)*W,cy=(item.cy/100)*H;
   const id='b'+Date.now()+Math.random().toString(36).slice(2,5);
@@ -536,7 +556,7 @@ function addBubble(item,stock){
   const ct=getType(item);
   const isSlab=['psa','bgs','cgc','sgc'].includes(ct);
   const el=document.createElement('div');
-  el.className='bub '+ct;el.id=id;el._prints=prints;el._item=item;el._ct=ct;
+  el.className='bub '+ct;el.id=id;el._prints=prints;el._item=item;el._ct=ct;el._imgUrl=imgUrl||null;
 
   const ds=Math.min(10,Math.max(1,item.desirability||5));
   const dc=ds>=7?'dhi':ds>=4?'dmd':'dlo';
@@ -546,52 +566,24 @@ function addBubble(item,stock){
   if(item.is_rookie)tags.push('<span class="tag rc">RC</span>');
   if(item.is_key)tags.push('<span class="tag key">KEY</span>');
   if(ds>=8)tags.push('<span class="tag hot">HOT</span>');
-  if(item.is_black_label)tags.push('<span class="tag key" style="color:#fff;border-color:#aaa;background:rgba(0,0,0,.5)">BLACK LABEL</span>');
+  if(item.is_black_label)tags.push('<span class="tag key" style="color:#fff;border-color:#aaa">BLACK LABEL</span>');
 
-  // Slab grade display
+  // Card image
+  const imgHtml=imgUrl
+    ?`<img class="card-img" src="${imgUrl}" alt="${item.name}" loading="lazy" onerror="this.style.display='none'">`
+    :(ct==='tcg'?`<div class="card-img-placeholder">NO IMAGE</div>`:'');
+
+  // Slab display
   let slabHtml='';
   if(isSlab&&item.grade){
-    const gc=item.grading_company||ct.toUpperCase();
-    const gcColor=ct;
-    // Subgrades for BGS
     let sgHtml='';
-    if(ct==='bgs'&&item.subgrades){
-      const sg=item.subgrades;
-      sgHtml=`<div class="slab-subgrades">
-        ${sg.centering?`<div class="sg"><div class="sg-label">CENT</div><div class="sg-val">${sg.centering}</div></div>`:''}
-        ${sg.surface?`<div class="sg"><div class="sg-label">SURF</div><div class="sg-val">${sg.surface}</div></div>`:''}
-        ${sg.corners?`<div class="sg"><div class="sg-label">CORN</div><div class="sg-val">${sg.corners}</div></div>`:''}
-        ${sg.edges?`<div class="sg"><div class="sg-label">EDGE</div><div class="sg-val">${sg.edges}</div></div>`:''}
-      </div>`;
-    }
-    // Pop report
+    if(ct==='bgs'&&item.subgrades){const sg=item.subgrades;sgHtml=`<div class="slab-subgrades">${sg.centering?`<div class="sg"><div class="sg-label">CENT</div><div class="sg-val">${sg.centering}</div></div>`:''} ${sg.surface?`<div class="sg"><div class="sg-label">SURF</div><div class="sg-val">${sg.surface}</div></div>`:''} ${sg.corners?`<div class="sg"><div class="sg-label">CORN</div><div class="sg-val">${sg.corners}</div></div>`:''} ${sg.edges?`<div class="sg"><div class="sg-label">EDGE</div><div class="sg-val">${sg.edges}</div></div>`:''}</div>`;}
     let popHtml='';
-    if(item.pop_this_grade||item.pop_higher){
-      const isRare=(item.pop_this_grade||999)<100;
-      popHtml=`<div class="pop-row">
-        <div><div class="pop-label">POP ${gc} ${item.grade}</div><div class="pop-val ${isRare?'rare':'common'}">${item.pop_this_grade||'?'}</div></div>
-        ${item.pop_higher?`<div><div class="pop-label">POP HIGHER</div><div class="pop-val">${item.pop_higher}</div></div>`:''}
-      </div>`;
-    }
-    // Cert lookup links
-    let certLinks='';
-    if(item.cert_number){
-      if(ct==='psa')certLinks=`<a class="bact a-psa" href="https://www.psacard.com/cert/${item.cert_number}" target="_blank">PSA Cert ↗</a>`;
-      else if(ct==='bgs')certLinks=`<a class="bact a-bgs" href="https://www.beckett.com/grading/cert?cert=${item.cert_number}" target="_blank">BGS Cert ↗</a>`;
-    }
-    slabHtml=`
-      <div class="slab-grade ${ct}">
-        <div class="grade-num ${ct}">${item.grade}</div>
-        <div class="grade-info">
-          <div class="grade-co ${ct}">${gc} GRADE</div>
-          ${item.cert_number?`<div class="grade-cert">CERT #${item.cert_number}</div>`:''}
-          ${item.is_black_label?'<div style="font-family:monospace;font-size:8px;color:#fff;letter-spacing:1px">★ BLACK LABEL</div>':''}
-        </div>
-      </div>
-      ${sgHtml}${popHtml}`;
+    if(item.pop_this_grade||item.pop_higher){const isRare=(item.pop_this_grade||999)<100;popHtml=`<div class="pop-row"><div><div class="pop-label">POP ${(item.grading_company||ct).toUpperCase()} ${item.grade}</div><div class="pop-val ${isRare?'rare':'common'}">${item.pop_this_grade||'?'}</div></div>${item.pop_higher?`<div><div class="pop-label">POP HIGHER</div><div class="pop-val">${item.pop_higher}</div></div>`:''}</div>`;}
+    slabHtml=`<div class="slab-grade ${ct}"><div class="grade-num ${ct}">${item.grade}</div><div class="grade-info"><div class="grade-co ${ct}">${(item.grading_company||ct).toUpperCase()} GRADE</div>${item.cert_number?`<div class="grade-cert">CERT #${item.cert_number}</div>`:''}</div></div>${sgHtml}${popHtml}`;
   }
 
-  const compsHtml=item.comps&&item.comps.length?`<div class="comps"><div class="comps-hdr">${isSlab?'GRADED SALES':ct==='sports'?'EBAY SOLD':ct==='comic'?'RECENT SALES':'RECENT SALES'}</div>${item.comps.slice(0,3).map(c=>`<div class="comp-row"><span class="comp-d">${c.desc}</span><span class="comp-p ${isSlab?'slab':ct}">$${Number(c.price).toFixed(2)}</span></div>`).join('')}</div>`:'';
+  const compsHtml=item.comps&&item.comps.length?`<div class="comps"><div class="comps-hdr">${isSlab?'GRADED SALES':ct==='sports'?'EBAY SOLD COMPS':'RECENT SALES'}</div>${item.comps.slice(0,3).map(c=>`<div class="comp-row"><span class="comp-d">${c.desc}</span><span class="comp-p">$${Number(c.price).toFixed(2)}</span></div>`).join('')}</div>`:'';
   const printOpts=prints.map((p,i)=>`<option value="${i}">${p.set}${p.variant&&p.variant!=='Base'?' · '+p.variant:''}${p.numbered?' '+p.numbered:''}${p.year?' ('+p.year+')':''}</option>`).join('');
   const displayName=item.player||item.name;
   const subParts=[];
@@ -606,37 +598,21 @@ function addBubble(item,stock){
   const confCls=item.confidence==='high'?'c-hi':item.confidence==='low'?'c-lo':'c-md';
   const si=stock.inStock;
   const sc=si>2?'sn-in':si>0?'sn-low':'sn-no';
-  const stockHtml=`<div class="stock-row"><span class="stock-num ${sc}">${si}</span><div><div class="stock-label">${si>0?si+' IN STOCK':'NOT IN STOCK'}</div>${stock.totalSold>0?`<div class="stock-label">${stock.totalSold} SOLD ALL TIME</div>`:''}</div></div>`;
 
-  // Action links
   let actLinks='';
-  if(isSlab){
-    const q=encodeURIComponent((item.player||item.name)+' '+(item.grading_company||'')+' '+item.grade+' '+(item.year||''));
-    actLinks=`<a class="bact a-ebay" href="https://www.ebay.com/sch/i.html?_nkw=${q}&LH_Sold=1&LH_Complete=1" target="_blank">eBay Sold ↗</a>
-              <a class="bact a-130" href="https://130point.com/sales/?q=${encodeURIComponent((item.player||item.name))}" target="_blank">130Point ↗</a>
-              ${item.cert_number&&ct==='psa'?`<a class="bact a-psa" href="https://www.psacard.com/cert/${item.cert_number}" target="_blank">PSA Verify ↗</a>`:''}
-              ${item.cert_number&&ct==='bgs'?`<a class="bact a-bgs" href="https://www.beckett.com/grading/cert?cert=${item.cert_number}" target="_blank">BGS Verify ↗</a>`:''}`;
-  }else if(ct==='sports'){
-    const q=encodeURIComponent((item.player||item.name)+' '+(item.year||'')+' '+(item.parallel||''));
-    actLinks=`<a class="bact a-ebay" href="https://www.ebay.com/sch/i.html?_nkw=${q}&LH_Sold=1" target="_blank">eBay Sold ↗</a>
-              <a class="bact a-130" href="https://130point.com/sales/?q=${encodeURIComponent((item.player||item.name))}" target="_blank">130Point ↗</a>`;
-  }else if(ct==='comic'){
-    const qgc=encodeURIComponent((item.name||'')+' '+(item.issue||''));
-    actLinks=`<a class="bact a-gcol" href="https://www.gocollect.com/search/?q=${qgc}" target="_blank">GoCollect ↗</a>
-              <a class="bact a-ebay" href="https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent((item.name||'')+' '+(item.issue||''))}&LH_Sold=1" target="_blank">eBay ↗</a>`;
-  }else{
-    const qt=encodeURIComponent((item.name||'')+' '+(item.set_name||''));
-    actLinks=`<a class="bact a-tcg" id="bt${id}" href="https://www.tcgplayer.com/search/all/product?q=${qt}" target="_blank">TCGPlayer ↗</a>
-              <a class="bact a-ebay" href="https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent((item.name||'')+' '+(item.game||''))}&LH_Sold=1" target="_blank">eBay ↗</a>`;
-  }
+  if(isSlab){const q=encodeURIComponent((item.player||item.name)+' '+(item.grading_company||'')+' '+item.grade);actLinks=`<a class="bact a-ebay" href="https://www.ebay.com/sch/i.html?_nkw=${q}&LH_Sold=1" target="_blank">eBay Sold ↗</a><a class="bact a-130" href="https://130point.com/sales/?q=${encodeURIComponent(item.player||item.name)}" target="_blank">130Point ↗</a>${item.cert_number&&ct==='psa'?`<a class="bact a-psa" href="https://www.psacard.com/cert/${item.cert_number}" target="_blank">PSA Verify ↗</a>`:''}`;}
+  else if(ct==='sports'){const q=encodeURIComponent((item.player||item.name)+' '+(item.year||''));actLinks=`<a class="bact a-ebay" href="https://www.ebay.com/sch/i.html?_nkw=${q}&LH_Sold=1" target="_blank">eBay Sold ↗</a><a class="bact a-130" href="https://130point.com/sales/?q=${q}" target="_blank">130Point ↗</a>`;}
+  else if(ct==='comic'){const qgc=encodeURIComponent((item.name||'')+' '+(item.issue||''));actLinks=`<a class="bact a-gcol" href="https://www.gocollect.com/search/?q=${qgc}" target="_blank">GoCollect ↗</a><a class="bact a-ebay" href="https://www.ebay.com/sch/i.html?_nkw=${qgc}&LH_Sold=1" target="_blank">eBay ↗</a>`;}
+  else{const qt=encodeURIComponent((item.name||'')+' '+(item.set_name||''));actLinks=`<a class="bact a-tcg" id="bt${id}" href="https://www.tcgplayer.com/search/all/product?q=${qt}" target="_blank">TCGPlayer ↗</a><a class="bact a-ebay" href="https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(item.name||'')}&LH_Sold=1" target="_blank">eBay ↗</a>`;}
 
   el.innerHTML=`
     <button class="bx" onclick="rmBub('${id}')">×</button>
+    ${imgHtml}
     <div class="btype ${ct}">${item.game}</div>
     <div class="bname">${displayName}</div>
     ${subParts.length?`<div class="bsub">${subParts.join(' · ')}</div>`:''}
     ${slabHtml}
-    ${stockHtml}
+    <div class="stock-row"><span class="stock-num ${sc}">${si}</span><div><div class="stock-label">${si>0?si+' IN STOCK':'NOT IN STOCK'}</div>${stock.totalSold>0?`<div class="stock-label">${stock.totalSold} SOLD</div>`:''}</div></div>
     <span class="conf ${confCls}">${item.confidence} — ${(item.confidence_reason||'').substring(0,30)}</span>
     <div class="drow"><span class="dscore ${dc}">${ds}/10</span><span class="trend ${tc}">${ti}${(item.trend_reason||'').substring(0,20)}</span></div>
     ${tags.length?`<div class="tags">${tags.join('')}</div>`:''}
@@ -645,13 +621,9 @@ function addBubble(item,stock){
     <div class="brange" id="br${id}">$${Number(first.low).toFixed(2)} – $${Number(first.high).toFixed(2)}${isSlab?' GRADED':' NM'}</div>
     ${compsHtml}
     ${!isSlab?`<div class="bsels"><select class="bsel" id="ps${id}" onchange="chPrint('${id}')">${printOpts}</select><select class="bsel" id="cs${id}" onchange="chCond('${id}')">${Object.keys(CM).map(c=>`<option>${c}</option>`).join('')}</select></div><div class="bconds">${Object.keys(CM).map((c,i)=>`<span class="bcp${i===0?' on':''}" onclick="cpill('${id}',this,'${c}')">${c}</span>`).join('')}</div>`:''}
-    <div class="bacts" id="acts${id}">
-      ${actLinks}
-      <button class="bact a-add" onclick="showAddForm('${id}')">+ Add to Inventory</button>
-      ${si>0?`<button class="bact a-sell" onclick="showSellForm('${id}')">✓ Mark as Sold</button>`:''}
-    </div>`;
+    <div class="bacts" id="acts${id}">${actLinks}<button class="bact a-add" onclick="showAddForm('${id}')">+ Add to Inventory</button>${si>0?`<button class="bact a-sell" onclick="showSellForm('${id}')">✓ Mark as Sold</button>`:''}</div>`;
 
-  const bw=190,bh=isSlab?480:520;
+  const bw=192,bh=isSlab?480:540;
   let left=cx-bw/2,top=cy-bh-24;
   if(top<60)top=cy+20;
   left=Math.max(6,Math.min(left,W-bw-6));
@@ -670,12 +642,34 @@ window.showAddForm=function(id){
   const el=document.getElementById(id);if(!el)return;
   const pi=parseInt(document.getElementById('ps'+id)?.value)||0;
   const print=el._prints[pi]||el._prints[0]||{};
-  document.getElementById('acts'+id).innerHTML=`<div class="inv-form"><div class="inv-form-title">+ ADD TO INVENTORY</div><div class="inv-label">Your Cost ($)</div><input class="inv-inp" id="cost${id}" type="number" placeholder="0.00" step="0.01" oninput="previewProfit('${id}')"><div class="inv-label">Quantity</div><input class="inv-inp" id="qty${id}" type="number" placeholder="1" value="1" min="1"><div class="inv-label">Storage Location</div><input class="inv-inp" id="loc${id}" type="text" placeholder="Bin A3, Showcase..."><div id="pp${id}"></div></div><div class="bacts"><button class="bact a-confirm" onclick="confirmAdd('${id}')">SAVE</button><button class="bact a-cancel" onclick="resetActs('${id}')">Cancel</button></div>`;
+  document.getElementById('acts'+id).innerHTML=`
+    <div class="inv-form">
+      <div class="inv-form-title">+ ADD TO INVENTORY</div>
+      <div class="inv-label">Your Cost ($)</div>
+      <input class="inv-inp" id="cost${id}" type="number" placeholder="0.00" step="0.01" oninput="previewProfit('${id}')">
+      <div class="inv-label">Quantity</div>
+      <input class="inv-inp" id="qty${id}" type="number" value="1" min="1">
+      <div class="inv-label">Storage Location</div>
+      <input class="inv-inp" id="loc${id}" type="text" placeholder="Bin A3, Showcase...">
+      <div id="pp${id}"></div>
+    </div>
+    <div class="bacts">
+      <button class="bact a-confirm" onclick="confirmAdd('${id}')">SAVE + SYNC</button>
+      <button class="bact a-cancel" onclick="resetActs('${id}')">Cancel</button>
+    </div>`;
 };
 
-window.previewProfit=function(id){const el=document.getElementById(id);if(!el)return;const pi=parseInt(document.getElementById('ps'+id)?.value)||0;const print=el._prints[pi]||el._prints[0]||{};const cost=parseFloat(document.getElementById('cost'+id)?.value)||0;const mkt=Number(print.mid||0);const profit=mkt-cost;const pp=document.getElementById('pp'+id);if(pp&&cost>0){pp.innerHTML=`<div class="profit-preview ${profit>=0?'profit-pos':'profit-neg'}">Est Profit: $${profit.toFixed(2)}</div>`;}};
+window.previewProfit=function(id){
+  const el=document.getElementById(id);if(!el)return;
+  const pi=parseInt(document.getElementById('ps'+id)?.value)||0;
+  const print=el._prints[pi]||el._prints[0]||{};
+  const cost=parseFloat(document.getElementById('cost'+id)?.value)||0;
+  const mkt=Number(print.mid||0);const profit=mkt-cost;
+  const pp=document.getElementById('pp'+id);
+  if(pp&&cost>0)pp.innerHTML=`<div class="profit-preview ${profit>=0?'profit-pos':'profit-neg'}">Est Profit: $${profit.toFixed(2)}</div>`;
+};
 
-window.confirmAdd=function(id){
+window.confirmAdd=async function(id){
   const el=document.getElementById(id);if(!el||!el._item)return;
   const item=el._item,ct=el._ct;
   const pi=parseInt(document.getElementById('ps'+id)?.value)||0;
@@ -684,12 +678,56 @@ window.confirmAdd=function(id){
   const cost=parseFloat(document.getElementById('cost'+id)?.value)||0;
   const qty=parseInt(document.getElementById('qty'+id)?.value)||1;
   const loc=document.getElementById('loc'+id)?.value||'';
+
+  // Show syncing status
+  const acts=document.getElementById('acts'+id);
+  acts.innerHTML=`<div class="cms-status cms-syncing">⟳ SAVING TO INVENTORY...</div>`;
+
   for(let i=0;i<qty;i++){
-    const entry={id:'scan_'+Date.now()+'_'+i,name:item.player||item.name,category:ct==='sports'?'Sports':ct==='comic'?'Comic':['psa','bgs','cgc','sgc'].includes(ct)?'Graded':'TCG',set:print.set||item.set_name||'',variant:print.variant||item.parallel||'',condition:cond,year:item.year||'',team:item.team||'',player:item.player||'',manufacturer:item.manufacturer||'',publisher:item.publisher||'',issue:item.issue||'',card_number:item.card_number||'',serial_number:item.serial_number||'',grading_company:item.grading_company||'',grade:item.grade||'',cert_number:item.cert_number||'',is_rookie:item.is_rookie||false,key_notes:item.key_notes||'',cost,market:Number(print.mid)||0,price:Number(print.mid)||0,location:loc,desirability:item.desirability||5,status:'in_stock',addedAt:new Date().toISOString(),scannedFrom:'AR Scanner'};
-    const inv=JSON.parse(localStorage.getItem('lba_inventory')||'[]');inv.unshift(entry);localStorage.setItem('lba_inventory',JSON.stringify(inv));
+    const entry={
+      id:'scan_'+Date.now()+'_'+i,
+      name:item.player||item.name,
+      category:ct==='sports'?'Sports':ct==='comic'?'Comic':['psa','bgs','cgc','sgc'].includes(ct)?'Graded':'TCG',
+      set:print.set||item.set_name||'',
+      variant:print.variant||item.parallel||'',
+      condition:cond,year:item.year||'',team:item.team||'',
+      player:item.player||'',manufacturer:item.manufacturer||'',
+      publisher:item.publisher||'',issue:item.issue||'',
+      card_number:item.card_number||'',serial_number:item.serial_number||'',
+      grading_company:item.grading_company||'',grade:item.grade||'',
+      cert_number:item.cert_number||'',sport:item.sport||'',
+      is_rookie:item.is_rookie||false,is_key:item.is_key||false,
+      key_notes:item.key_notes||'',cost,
+      market:Number(print.mid)||0,price:Number(print.mid)||0,
+      location:loc,desirability:item.desirability||5,
+      status:'in_stock',addedAt:new Date().toISOString(),
+      scannedFrom:'AR Scanner'
+    };
+
+    // 1. Save to localStorage (works for this device immediately)
+    const inv=JSON.parse(localStorage.getItem('lba_inventory')||'[]');
+    inv.unshift(entry);localStorage.setItem('lba_inventory',JSON.stringify(inv));
+
+    // 2. Sync to Webflow CMS (persists across all devices)
+    const cmsId=await syncToWebflowCMS(entry, el._imgUrl);
+
+    if(cmsId){
+      entry.cmsId=cmsId;
+      inv[0].cmsId=cmsId;
+      localStorage.setItem('lba_inventory',JSON.stringify(inv));
+    }
   }
-  document.getElementById('acts'+id).innerHTML=`<div class="bact a-added">✓ Added ${qty>1?qty+'x ':''}- Cost $${cost.toFixed(2)} · Est Profit $${(Number((el._prints[pi]||el._prints[0]||{}).mid||0)-cost).toFixed(2)}</div><button class="bact a-sell" onclick="showSellForm('${id}')">✓ Mark as Sold</button>`;
-  toast('Added '+(item.player||item.name));
+
+  const profit=(Number(print.mid||0)-cost).toFixed(2);
+  const hasCMS=!!localStorage.getItem('lba_wf_token');
+  acts.innerHTML=`
+    <div class="cms-status ${hasCMS?'cms-synced':'cms-syncing'}">
+      ${hasCMS?'✓ SAVED + SYNCED TO WEBFLOW':'✓ SAVED LOCALLY'}
+    </div>
+    <div class="bact a-added">Cost $${cost.toFixed(2)} · Est Profit $${profit}</div>
+    <button class="bact a-sell" onclick="showSellForm('${id}')">✓ Mark as Sold</button>`;
+
+  toast('Added '+(qty>1?qty+'x ':'')+((item.player||item.name)||'item')+(hasCMS?' → Webflow CMS':''));
 };
 
 window.showSellForm=function(id){
@@ -700,12 +738,27 @@ window.showSellForm=function(id){
   const avgCost=inStock.length?inStock.reduce((a,i)=>a+(i.cost||0),0)/inStock.length:0;
   const pi=parseInt(document.getElementById('ps'+id)?.value)||0;
   const print=el._prints[pi]||el._prints[0]||{};
-  document.getElementById('acts'+id).innerHTML=`<div class="sold-form"><div class="sold-form-title">✓ RECORD SALE</div>${inStock.length?`<div style="font-family:monospace;font-size:9px;color:rgba(255,255,255,.4);margin-bottom:6px">${inStock.length} in stock · Avg cost $${avgCost.toFixed(2)}</div>`:''}<div class="inv-label">Sale Price ($)</div><input class="inv-inp" id="sale${id}" type="number" placeholder="${Number(print.mid||0).toFixed(2)}" step="0.01" oninput="previewSale('${id}',${avgCost})"><div class="inv-label">Channel</div><select class="bsel" id="chan${id}" style="margin-bottom:4px"><option>In-Store</option><option>eBay</option><option>Whatnot</option><option>Website</option></select><div id="sp${id}"></div></div><div class="bacts"><button class="bact a-confirm" style="background:var(--red)" onclick="confirmSell('${id}',${avgCost})">RECORD SALE</button><button class="bact a-cancel" onclick="resetActs('${id}')">Cancel</button></div>`;
+  document.getElementById('acts'+id).innerHTML=`
+    <div class="sold-form">
+      <div class="sold-form-title">✓ RECORD SALE</div>
+      ${inStock.length?`<div style="font-family:monospace;font-size:9px;color:rgba(255,255,255,.4);margin-bottom:6px">${inStock.length} in stock · Avg cost $${avgCost.toFixed(2)}</div>`:''}
+      <div class="inv-label">Sale Price ($)</div>
+      <input class="inv-inp" id="sale${id}" type="number" placeholder="${Number(print.mid||0).toFixed(2)}" step="0.01" oninput="previewSale('${id}',${avgCost})">
+      <div class="inv-label">Channel</div>
+      <select class="bsel" id="chan${id}" style="margin-bottom:4px">
+        <option>In-Store</option><option>eBay</option><option>Whatnot</option><option>Website</option>
+      </select>
+      <div id="sp${id}"></div>
+    </div>
+    <div class="bacts">
+      <button class="bact a-confirm" style="background:var(--red)" onclick="confirmSell('${id}',${avgCost})">RECORD SALE</button>
+      <button class="bact a-cancel" onclick="resetActs('${id}')">Cancel</button>
+    </div>`;
 };
 
 window.previewSale=function(id,avgCost){const sale=parseFloat(document.getElementById('sale'+id)?.value)||0;const profit=sale-avgCost;const sp=document.getElementById('sp'+id);if(sp&&sale>0)sp.innerHTML=`<div class="profit-preview ${profit>=0?'profit-pos':'profit-neg'}">Profit: $${profit.toFixed(2)}</div>`;};
 
-window.confirmSell=function(id,avgCost){
+window.confirmSell=async function(id,avgCost){
   const el=document.getElementById(id);if(!el||!el._item)return;
   const salePrice=parseFloat(document.getElementById('sale'+id)?.value)||0;
   if(!salePrice){toast('Enter a sale price');return;}
@@ -713,12 +766,35 @@ window.confirmSell=function(id,avgCost){
   const item=el._item;
   const name=(item.player||item.name||'').toLowerCase().split(' ')[0];
   const inv=JSON.parse(localStorage.getItem('lba_inventory')||'[]');
-  let soldOne=false;
-  for(let i=0;i<inv.length;i++){if(inv[i].status==='in_stock'&&(inv[i].name||'').toLowerCase().includes(name)){inv[i].status='sold';inv[i].soldAt=new Date().toISOString();inv[i].salePrice=salePrice;inv[i].saleChannel=channel;inv[i].profit=salePrice-(inv[i].cost||avgCost||0);soldOne=true;break;}}
-  if(!soldOne)inv.unshift({id:'scan_'+Date.now(),name:item.player||item.name,category:el._ct==='sports'?'Sports':el._ct==='comic'?'Comic':'TCG',cost:avgCost,salePrice,profit:salePrice-avgCost,saleChannel:channel,status:'sold',soldAt:new Date().toISOString(),addedAt:new Date().toISOString()});
+  let soldItem=null;
+  for(let i=0;i<inv.length;i++){
+    if(inv[i].status==='in_stock'&&(inv[i].name||'').toLowerCase().includes(name)){
+      inv[i].status='sold';inv[i].soldAt=new Date().toISOString();
+      inv[i].salePrice=salePrice;inv[i].saleChannel=channel;
+      inv[i].profit=salePrice-(inv[i].cost||avgCost||0);
+      soldItem=inv[i];break;
+    }
+  }
+  if(!soldItem){
+    const e={id:'scan_'+Date.now(),name:item.player||item.name,category:el._ct==='sports'?'Sports':el._ct==='comic'?'Comic':'TCG',cost:avgCost,salePrice,profit:salePrice-avgCost,saleChannel:channel,status:'sold',soldAt:new Date().toISOString(),addedAt:new Date().toISOString()};
+    inv.unshift(e);soldItem=e;
+  }
   const sales=JSON.parse(localStorage.getItem('lba_sales')||'[]');
   sales.unshift({id:'sale_'+Date.now(),name:item.player||item.name,category:el._ct==='sports'?'Sports':el._ct==='comic'?'Comic':'TCG',cost:avgCost,salePrice,profit:salePrice-avgCost,channel,date:new Date().toISOString()});
-  localStorage.setItem('lba_sales',JSON.stringify(sales));localStorage.setItem('lba_inventory',JSON.stringify(inv));
+  localStorage.setItem('lba_sales',JSON.stringify(sales));
+  localStorage.setItem('lba_inventory',JSON.stringify(inv));
+
+  // Update Webflow CMS if item has a CMS ID
+  if(soldItem&&soldItem.cmsId&&localStorage.getItem('lba_wf_token')){
+    try{
+      await fetch(`https://api.webflow.com/v2/collections/${WF_COLLECTION_ID}/items/${soldItem.cmsId}`,{
+        method:'PATCH',
+        headers:{'Content-Type':'application/json','Authorization':`Bearer ${localStorage.getItem('lba_wf_token')}`},
+        body:JSON.stringify({fieldData:{'status':'Sold','sale-price':salePrice,'profit':salePrice-avgCost,'sale-channel':channel,'date-sold':new Date().toISOString(),'quantity-in-stock':0,'quantity-sold':1}})
+      });
+    }catch(e){console.log('CMS update failed',e);}
+  }
+
   const profit=salePrice-avgCost;
   document.getElementById('acts'+id).innerHTML=`<div class="bact a-added">✓ SOLD $${salePrice.toFixed(2)} via ${channel}</div><div class="profit-preview ${profit>=0?'profit-pos':'profit-neg'}">Profit: $${profit.toFixed(2)}</div>`;
   toast('Sold! Profit: $'+profit.toFixed(2));
@@ -726,9 +802,7 @@ window.confirmSell=function(id,avgCost){
 
 window.resetActs=function(id){
   const el=document.getElementById(id);if(!el||!el._item)return;
-  const item=el._item,ct=el._ct;
-  const stock=checkStock(item);
-  const si=stock.inStock;
+  const item=el._item,ct=el._ct,stock=checkStock(item),si=stock.inStock;
   let links='';
   if(ct==='sports'){const q=encodeURIComponent((item.player||item.name)+' '+(item.year||''));links=`<a class="bact a-ebay" href="https://www.ebay.com/sch/i.html?_nkw=${q}&LH_Sold=1" target="_blank">eBay ↗</a><a class="bact a-130" href="https://130point.com/sales/?q=${q}" target="_blank">130Point ↗</a>`;}
   else if(ct==='comic'){const q=encodeURIComponent((item.name||'')+' '+(item.issue||''));links=`<a class="bact a-gcol" href="https://www.gocollect.com/search/?q=${q}" target="_blank">GoCollect ↗</a><a class="bact a-ebay" href="https://www.ebay.com/sch/i.html?_nkw=${q}&LH_Sold=1" target="_blank">eBay ↗</a>`;}
@@ -737,6 +811,19 @@ window.resetActs=function(id){
   document.getElementById('acts'+id).innerHTML=links+`<button class="bact a-add" onclick="showAddForm('${id}')">+ Add to Inventory</button>${si>0?`<button class="bact a-sell" onclick="showSellForm('${id}')">✓ Mark as Sold</button>`:''}`;
 };
 
+function showBackStandalone(back){
+  const id='back_'+Date.now();const el=document.createElement('div');el.className='bub';el.id=id;el.style.left='10px';el.style.top='80px';
+  const statsHtml=back.stats&&back.stats.length?back.stats.slice(0,6).map(s=>`<div class="backinfo-row"><span>${s.label}</span><span class="backinfo-val">${s.value}</span></div>`).join(''):'';
+  el.innerHTML=`<button class="bx" onclick="document.getElementById('${id}').remove()">×</button><div class="btype tcg">CARD BACK</div><div class="backinfo"><div class="backinfo-hdr">⟳ BACK OF CARD</div>${back.serial_number?`<div class="backinfo-row"><span>Serial</span><span class="backinfo-val">${back.serial_number}</span></div>`:''}${back.print_run?`<div class="backinfo-row"><span>Print Run</span><span class="backinfo-val">${back.print_run}</span></div>`:''}${back.auto_authenticated?`<div class="backinfo-row"><span>Auto</span><span class="backinfo-val" style="color:var(--g)">✓ Auth</span></div>`:''}${back.rookie_stamp?`<div class="backinfo-row"><span>RC</span><span class="backinfo-val" style="color:var(--gold)">✓ YES</span></div>`:''}${statsHtml}${back.notes?`<div style="font-family:monospace;font-size:8px;color:rgba(255,255,255,.4);margin-top:4px">${back.notes.substring(0,100)}</div>`:''}</div>`;
+  document.body.appendChild(el);bubs.push({id,el,ax:window.innerWidth/2,ay:window.innerHeight/2,ct:'tcg'});drawLines();
+}
+function addBackInfo(bubId,back){
+  const el=document.getElementById(bubId);if(!el)return;el.querySelector('.backinfo')?.remove();
+  const statsHtml=back.stats&&back.stats.length?back.stats.slice(0,6).map(s=>`<div class="backinfo-row"><span>${s.label}</span><span class="backinfo-val">${s.value}</span></div>`).join(''):'';
+  const bi=document.createElement('div');bi.className='backinfo';
+  bi.innerHTML=`<div class="backinfo-hdr">⟳ BACK OF CARD</div>${back.serial_number?`<div class="backinfo-row"><span>Serial</span><span class="backinfo-val">${back.serial_number}</span></div>`:''}${back.print_run?`<div class="backinfo-row"><span>Print Run</span><span class="backinfo-val">${back.print_run}</span></div>`:''}${back.auto_authenticated?`<div class="backinfo-row"><span>Auto</span><span class="backinfo-val" style="color:var(--g)">✓ Auth</span></div>`:''}${back.rookie_stamp?`<div class="backinfo-row"><span>RC</span><span class="backinfo-val" style="color:var(--gold)">✓</span></div>`:''}${statsHtml}${back.notes?`<div style="font-family:monospace;font-size:8px;color:rgba(255,255,255,.4);margin-top:3px">${back.notes.substring(0,80)}</div>`:''}`;
+  const acts=el.querySelector('.bacts');if(acts)el.insertBefore(bi,acts);else el.appendChild(bi);
+}
 window.rmBub=function(id){document.getElementById(id)?.remove();bubs=bubs.filter(b=>b.id!==id);drawLines();};
 function clearAll(){bubs.forEach(b=>b.el?.remove());bubs=[];if(octx)octx.clearRect(0,0,oc.width,oc.height);}
 function drawLines(){
