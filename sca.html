@@ -273,8 +273,14 @@ const AFF = {
   // Wrap a TCGPlayer URL with your affiliate tracking
   tcg(url) {
     if(!url) return url;
-    // partner.tcgplayer.com/c/... is the Impact API link — append ?u= destination
-    return this.TCG_BASE + '?u=' + encodeURIComponent(url);
+    // Impact deep link format: append ?u= for tracking
+    // BUT partner.tcgplayer.com/c/... is a SHARE link that doesn't support deep linking
+    // Instead: send directly to TCGPlayer — the affiliate cookie is set when they visit
+    // via your partner link separately. For true deep links you need the Impact API link
+    // from Impact dashboard → Brands → TCGPlayer → Links → "API Link" (NOT "Vanity Link")
+    // The API link looks like: https://impact.go2cloud.org/aff_c?offer_id=...&aff_id=...
+    // Until then, send direct to TCGPlayer so the link actually works
+    return url;
   },
 
   // Wrap an eBay URL with your affiliate parameters
