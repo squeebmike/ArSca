@@ -245,39 +245,131 @@ const WF_COLLECTION_ID = '69cb5611c6522a8591b552c4';
 const WF_SITE_ID = '65b15ee0228d06647ca7e4ce';
 
 // ============================================================
-// TCG IMAGE APIs (all free, no key needed)
+// TCG PRINTING FETCHERS — fetch ALL printings from free APIs
+// Returns { printings: [...], imageUrl: '...', bestMatchIdx: 0 }
 // ============================================================
-async function fetchCardImage(item){
+
+async function fetchAllPrintings(item){
   const game = item.game||'';
   const name = item.name||'';
-  const set  = item.set_name||'';
+  const hintSet = (item.set_name||'').toLowerCase();
+  const result = { printings: [], imageUrl: null, bestMatchIdx: 0 };
+
   try{
-    // Pokemon TCG
+    // ── POKEMON TCG ──────────────────────────────────────────
     if(game==='Pokemon TCG'){
-      const q=encodeURIComponent(`name:"${name}"`);
-      const r=await fetch(`https://api.pokemontcg.io/v2/cards?q=${q}&pageSize=1`);
-      const d=await r.json();
-      if(d.data&&d.data[0]&&d.data[0].images)
-        return d.data[0].images.large||d.data[0].images.small;
+      // Search all printings of this card name
+      const q = encodeURIComponent(`name:"${name}"`);
+      const r = await fetch(`https://api.pokemontcg.io/v2/cards?q=${q}&pageSize=100&orderBy=-set.releaseDate`);
+      const d = await r.json();
+      if(d.data&&d.data.length){
+        let bestIdx = 0;
+        d.data.forEach((card, i) => {
+          const setNameLower = (card.set?.name||'').toLowerCase();
+          const variantName = card.subtypes?.join(' ')||'';
+          const rarity = card.rarity||'';
+          const number = card.number||'';
+          const total = card.set?.total||'';
+          // Build a price estimate from tcgplayer data if available
+          const mid = card.tcgplayer?.prices?.holofoil?.mid
+            || card.tcgplayer?.prices?.normal?.mid
+            || card.tcgplayer?.prices?.['1stEditionHolofoil']?.mid
+            || card.tcgplayer?.prices?.reverseHolofoil?.mid
+            || 0;
+          const low = card.tcgplayer?.prices?.holofoil?.low
+            || card.tcgplayer?.prices?.normal?.low || 0;
+          const high = card.tcgplayer?.prices?.holofoil?.high
+            || card.tcgplayer?.prices?.normal?.high || 0;
+          result.printings.push({
+            set: card.set?.name || 'Unknown Set',
+            variant: variantName || rarity || 'Base',
+            year: card.set?.releaseDate?.substring(0,4) || '',
+            numbered: number&&total ? `${number}/${total}` : null,
+            mid: mid||2, low: low||1, high: high||5,
+            imageUrl: card.images?.large || card.images?.small || null,
+            setId: card.set?.id || '',
+            cardId: card.id
+          });
+          // Score match quality against Claude's hint set
+          if(hintSet && setNameLower.includes(hintSet.split(' ')[0])) bestIdx = i;
+        });
+        result.bestMatchIdx = bestIdx;
+        result.imageUrl = d.data[bestIdx]?.images?.large || d.data[0]?.images?.small;
+      }
     }
-    // Magic: The Gathering — Scryfall
-    if(game==='Magic: The Gathering'){
-      const q=encodeURIComponent(name+(set?' set:'+set.substring(0,4):''));
-      const r=await fetch(`https://api.scryfall.com/cards/named?fuzzy=${encodeURIComponent(name)}`);
-      const d=await r.json();
-      if(d.image_uris)return d.image_uris.normal||d.image_uris.large;
-      if(d.card_faces&&d.card_faces[0]&&d.card_faces[0].image_uris)
-        return d.card_faces[0].image_uris.normal;
+
+    // ── MAGIC: THE GATHERING (Scryfall) ──────────────────────
+    else if(game==='Magic: The Gathering'){
+      // Get all printings via /cards/search with unique=prints
+      const r = await fetch(`https://api.scryfall.com/cards/search?q=${encodeURIComponent('!"'+name+'"')}&unique=prints&order=released&dir=desc`);
+      const d = await r.json();
+      if(d.data&&d.data.length){
+        let bestIdx = 0;
+        d.data.forEach((card, i) => {
+          const setNameLower = (card.set_name||'').toLowerCase();
+          const imgUrl = card.image_uris?.normal
+            || card.card_faces?.[0]?.image_uris?.normal || null;
+          const usd = parseFloat(card.prices?.usd||0);
+          const usdFoil = parseFloat(card.prices?.usd_foil||0);
+          const isFoil = card.foil && !card.nonfoil;
+          result.printings.push({
+            set: card.set_name || 'Unknown Set',
+            variant: card.frame_effects?.join(' ') || (isFoil?'Foil':'Base'),
+            year: card.released_at?.substring(0,4) || '',
+            numbered: card.collector_number ? `#${card.collector_number}` : null,
+            mid: usdFoil||usd||1, low: Math.max((usdFoil||usd)*0.7,0.25), high: (usdFoil||usd)*1.4||3,
+            imageUrl: imgUrl,
+            setCode: card.set,
+            cardId: card.id
+          });
+          if(hintSet && setNameLower.includes(hintSet.split(' ')[0])) bestIdx = i;
+        });
+        result.bestMatchIdx = bestIdx;
+        result.imageUrl = d.data[bestIdx]?.image_uris?.normal
+          || d.data[bestIdx]?.card_faces?.[0]?.image_uris?.normal
+          || d.data[0]?.image_uris?.normal;
+      }
     }
-    // Yu-Gi-Oh — YGOProDeck
-    if(game==='Yu-Gi-Oh!'){
-      const r=await fetch(`https://db.ygoprodeck.com/api/v7/cardinfo.php?name=${encodeURIComponent(name)}`);
-      const d=await r.json();
-      if(d.data&&d.data[0]&&d.data[0].card_images)
-        return d.data[0].card_images[0].image_url;
+
+    // ── YU-GI-OH (YGOProDeck) ────────────────────────────────
+    else if(game==="Yu-Gi-Oh!"){
+      const r = await fetch(`https://db.ygoprodeck.com/api/v7/cardinfo.php?name=${encodeURIComponent(name)}`);
+      const d = await r.json();
+      if(d.data&&d.data[0]){
+        const card = d.data[0];
+        // Each card_set entry is a printing
+        let bestIdx = 0;
+        if(card.card_sets&&card.card_sets.length){
+          card.card_sets.forEach((s, i) => {
+            const setNameLower = (s.set_name||'').toLowerCase();
+            result.printings.push({
+              set: s.set_name || 'Unknown Set',
+              variant: s.set_rarity || 'Common',
+              year: s.set_code?.match(/\d{2}/)?.[0] ? '20'+s.set_code.match(/\d{2}/)[0] : '',
+              numbered: s.set_code||null,
+              mid: parseFloat(s.set_price)||1, low: parseFloat(s.set_price)*0.7||0.5, high: parseFloat(s.set_price)*1.4||2,
+              imageUrl: card.card_images[0]?.image_url || null,
+              setCode: s.set_code
+            });
+            if(hintSet && setNameLower.includes(hintSet.split(' ')[0])) bestIdx = i;
+          });
+          result.bestMatchIdx = bestIdx;
+        } else {
+          result.printings.push({set:'Unknown',variant:'Base',year:'',numbered:null,mid:1,low:0.5,high:2,imageUrl:card.card_images[0]?.image_url||null});
+        }
+        result.imageUrl = card.card_images[0]?.image_url || null;
+      }
     }
-  }catch(e){console.log('Image fetch failed:',e);}
-  return null;
+
+  }catch(e){ console.log('Printings fetch failed:',e); }
+
+  return result;
+}
+
+// Legacy shim used in a few places
+async function fetchCardImage(item){
+  const r = await fetchAllPrintings(item);
+  return r.imageUrl;
 }
 
 // ============================================================
@@ -475,8 +567,17 @@ For virgin/textless comics: identify from artwork, character, art style only. In
     if(auto)clearAll();
     for(const item of items){
       const stock=checkStock(item);
-      const imgUrl=await fetchCardImage(item);
-      addBubble(item,stock,imgUrl);
+      const isTCG=['Pokemon TCG','Magic: The Gathering','Yu-Gi-Oh!','Other TCG'].includes(item.game);
+      let apiPrintings=null,imgUrl=null,bestMatchIdx=0;
+      if(isTCG){
+        const fetched=await fetchAllPrintings(item);
+        if(fetched.printings&&fetched.printings.length){
+          apiPrintings=fetched.printings;
+          bestMatchIdx=fetched.bestMatchIdx;
+          imgUrl=fetched.imageUrl;
+        }else{imgUrl=fetched.imageUrl;}
+      }
+      addBubble(item,stock,imgUrl,apiPrintings,bestMatchIdx);
     }
     hs.textContent=items.length+' FOUND';drawLines();
   }else{hs.textContent='NONE';toast('Nothing detected — get closer');}
@@ -547,16 +648,19 @@ function checkStock(item){
   return{inStock:m.filter(i=>i.status==='in_stock').length,totalSold:m.filter(i=>i.status==='sold').length};
 }
 
-function addBubble(item,stock,imgUrl){
+function addBubble(item,stock,imgUrl,apiPrintings,bestMatchIdx){
   const W=window.innerWidth,H=window.innerHeight;
   const cx=(item.cx/100)*W,cy=(item.cy/100)*H;
   const id='b'+Date.now()+Math.random().toString(36).slice(2,5);
-  const prints=item.printings||[];
-  const first=prints[0]||{mid:0,low:0,high:0,set:'Unknown',variant:''};
+  // Merge: API printings override Claude's guesses when available.
+  // Best match index pre-selects the most likely printing.
+  const prints = (apiPrintings && apiPrintings.length) ? apiPrintings : (item.printings||[]);
+  const bmi = bestMatchIdx||0;
+  const first=prints[bmi]||prints[0]||{mid:0,low:0,high:0,set:'Unknown',variant:''};
   const ct=getType(item);
   const isSlab=['psa','bgs','cgc','sgc'].includes(ct);
   const el=document.createElement('div');
-  el.className='bub '+ct;el.id=id;el._prints=prints;el._item=item;el._ct=ct;el._imgUrl=imgUrl||null;
+  el.className='bub '+ct;el.id=id;el._prints=prints;el._item=item;el._ct=ct;el._imgUrl=imgUrl||null;el._apiPrintings=apiPrintings||null;el._bmi=bmi||0;
 
   const ds=Math.min(10,Math.max(1,item.desirability||5));
   const dc=ds>=7?'dhi':ds>=4?'dmd':'dlo';
@@ -584,7 +688,7 @@ function addBubble(item,stock,imgUrl){
   }
 
   const compsHtml=item.comps&&item.comps.length?`<div class="comps"><div class="comps-hdr">${isSlab?'GRADED SALES':ct==='sports'?'EBAY SOLD COMPS':'RECENT SALES'}</div>${item.comps.slice(0,3).map(c=>`<div class="comp-row"><span class="comp-d">${c.desc}</span><span class="comp-p">$${Number(c.price).toFixed(2)}</span></div>`).join('')}</div>`:'';
-  const printOpts=prints.map((p,i)=>`<option value="${i}">${p.set}${p.variant&&p.variant!=='Base'?' · '+p.variant:''}${p.numbered?' '+p.numbered:''}${p.year?' ('+p.year+')':''}</option>`).join('');
+  const printOpts=prints.map((p,i)=>`<option value="${i}"${i===bmi?' selected':''}>` + (i===bmi?'★ ':'')+`${p.set}${p.variant&&p.variant!=='Base'?' · '+p.variant:''}${p.numbered?' '+p.numbered:''}${p.year?' ('+p.year+')':''}</option>`).join('');
   const displayName=item.player||item.name;
   const subParts=[];
   if(item.team)subParts.push(item.team);
@@ -617,10 +721,11 @@ function addBubble(item,stock,imgUrl){
     <div class="drow"><span class="dscore ${dc}">${ds}/10</span><span class="trend ${tc}">${ti}${(item.trend_reason||'').substring(0,20)}</span></div>
     ${tags.length?`<div class="tags">${tags.join('')}</div>`:''}
     ${item.key_notes?`<div class="keynotes">${item.key_notes}</div>`:''}
-    <div class="prow"><span class="bprice ${ct}" id="bp${id}">$${Number(first.mid).toFixed(2)}</span><span style="font-family:monospace;font-size:8px;color:rgba(255,255,255,.3)">EST</span></div>
+    <div class="prow"><span class="bprice ${ct}" id="bp${id}">$${Number(first.mid).toFixed(2)}</span><span style="font-family:monospace;font-size:8px;color:rgba(255,255,255,.3)">${apiPrintings?'API':'EST'}</span></div>
     <div class="brange" id="br${id}">$${Number(first.low).toFixed(2)} – $${Number(first.high).toFixed(2)}${isSlab?' GRADED':' NM'}</div>
+    ${apiPrintings?`<div style="font-family:monospace;font-size:8px;color:rgba(0,255,179,.5);margin-bottom:4px">★ best match · ${prints.length} printings</div>`:''}
     ${compsHtml}
-    ${!isSlab?`<div class="bsels"><select class="bsel" id="ps${id}" onchange="chPrint('${id}')">${printOpts}</select><select class="bsel" id="cs${id}" onchange="chCond('${id}')">${Object.keys(CM).map(c=>`<option>${c}</option>`).join('')}</select></div><div class="bconds">${Object.keys(CM).map((c,i)=>`<span class="bcp${i===0?' on':''}" onclick="cpill('${id}',this,'${c}')">${c}</span>`).join('')}</div>`:''}
+    ${!isSlab?`<div class="bsels"><select class="bsel" id="ps${id}" onchange="chPrint('${id}')" data-bmi="${bmi}">${printOpts}</select><select class="bsel" id="cs${id}" onchange="chCond('${id}')">${Object.keys(CM).map(c=>`<option>${c}</option>`).join('')}</select></div><div class="bconds">${Object.keys(CM).map((c,i)=>`<span class="bcp${i===0?' on':''}" onclick="cpill('${id}',this,'${c}')">${c}</span>`).join('')}</div>`:''}
     <div class="bacts" id="acts${id}">${actLinks}<button class="bact a-add" onclick="showAddForm('${id}')">+ Add to Inventory</button>${si>0?`<button class="bact a-sell" onclick="showSellForm('${id}')">✓ Mark as Sold</button>`:''}</div>`;
 
   const bw=192,bh=isSlab?480:540;
