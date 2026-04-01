@@ -318,12 +318,16 @@ const AFF = {
 // ============================================================
 // WEBFLOW PROXY — routes all WF API calls through Cloudflare Worker
 // ============================================================
-const WF_PROXY_URL = localStorage.getItem('lba_proxy_url') || 'https://still-resonance-4f87.swarnerauto.workers.dev';
+const WF_PROXY_DEFAULT = 'https://still-resonance-4f87.swarnerauto.workers.dev';
+
+// Always read fresh from localStorage so settings changes take effect immediately
+function getProxyUrl(){ return (localStorage.getItem('lba_proxy_url') || WF_PROXY_DEFAULT).replace(/\/+$/, ''); }
+function getWfToken(){ return localStorage.getItem('lba_wf_token') || ''; }
 
 async function wfFetch(path, options){
   options = options || {};
-  const token = localStorage.getItem('lba_wf_token') || '';
-  const url = WF_PROXY_URL.replace(/\/+$/, '') + '/proxy' + path;
+  const token = getWfToken();
+  const url = getProxyUrl() + '/proxy' + path;
   const headers = Object.assign(
     {'Content-Type':'application/json','X-LBA-Token':token,'accept':'application/json'},
     options.headers || {}
@@ -558,7 +562,7 @@ async function fetchCardImage(item){
 // WEBFLOW SHOP SYNC — creates ecommerce Product + SKU
 // ============================================================
 async function syncToShopProduct(entry, imageUrl){
-  const token = localStorage.getItem('lba_wf_token');
+  const token = getWfToken();
   if(!token) return null;
 
   const catMap = {
@@ -1405,7 +1409,7 @@ async function saveSettings(){
   if(p && p.includes('workers')) localStorage.setItem('lba_proxy_url', p);
   closeSettings();
   try{
-    const proxy = (p||localStorage.getItem('lba_proxy_url')||WF_PROXY_URL);
+    const proxy = (p||localStorage.getItem('lba_proxy_url')||WF_PROXY_DEFAULT);
     const r = await fetch(proxy.replace(/\/+$/,'')+'/health');
     const d = await r.json();
     toast(d.ok ? '✓ Settings saved · Worker connected — tap RETRY SYNC on your card' : '⚠ Worker error · check URL');
@@ -1415,8 +1419,8 @@ async function saveSettings(){
 }
 
 async function testWebflowWrite(){
-  const t = document.getElementById('settings-wf-token').value.trim() || localStorage.getItem('lba_wf_token') || '';
-  const p = document.getElementById('settings-proxy').value.trim() || localStorage.getItem('lba_proxy_url') || WF_PROXY_URL;
+  const t = document.getElementById('settings-wf-token').value.trim() || getWfToken();
+  const p = document.getElementById('settings-proxy').value.trim() || getProxyUrl();
   const res_el = document.getElementById('settings-test-result');
   res_el.style.display='block';
   res_el.textContent = 'Testing...';
@@ -1447,7 +1451,8 @@ async function retrySync(id){
   const el = document.getElementById(id);
   if(!el||!el._pendingEntry){ toast('No pending entry found — scan and add again'); return; }
   const entry = el._pendingEntry;
-  if(!localStorage.getItem('lba_wf_token')){
+  const tok = getWfToken();
+  if(!tok){
     showSettings();
     toast('Enter your Webflow token in settings first');
     return;
