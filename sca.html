@@ -186,6 +186,14 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
 </style>
 </head>
 <body>
+<!-- DEBUG PANEL — remove after fixing -->
+<div id="debug-panel" style="display:none;position:fixed;top:0;left:0;right:0;z-index:9999;background:#000;color:#0f0;font-family:monospace;font-size:10px;padding:8px;max-height:40vh;overflow-y:auto;border-bottom:2px solid #0f0;">
+  <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+    <span style="color:#ff0;font-weight:bold">DEBUG LOG</span>
+    <button onclick="document.getElementById('debug-panel').style.display='none'" style="background:none;border:1px solid #666;color:#666;padding:1px 6px;cursor:pointer;font-size:9px">CLOSE</button>
+  </div>
+  <div id="debug-log"></div>
+</div>
 
 <div id="setup">
   <div class="s-logo">LBA<br>SCANNER</div>
@@ -258,6 +266,26 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
 </div>
 
 <script>
+// Visible debug log
+(function(){
+  const orig = {log: console.log, error: console.error, warn: console.warn};
+  function addLog(type, args){
+    const panel = document.getElementById('debug-panel');
+    const log = document.getElementById('debug-log');
+    if(!panel||!log) return;
+    panel.style.display = 'block';
+    const line = document.createElement('div');
+    line.style.cssText = 'border-bottom:1px solid #222;padding:2px 0;color:'+(type==='error'?'#f55':type==='warn'?'#ff0':'#0f0');
+    line.textContent = '['+type.toUpperCase()+'] ' + Array.from(args).map(a => typeof a==='object'?JSON.stringify(a):String(a)).join(' ');
+    log.prepend(line);
+    // Keep only last 20 lines
+    while(log.children.length > 20) log.removeChild(log.lastChild);
+  }
+  console.log = function(){ orig.log.apply(console,arguments); addLog('log',arguments); };
+  console.error = function(){ orig.error.apply(console,arguments); addLog('error',arguments); };
+  console.warn = function(){ orig.warn.apply(console,arguments); addLog('warn',arguments); };
+})();
+
 // ============================================================
 // CONFIG — Webflow CMS Collection ID
 // ============================================================
@@ -563,58 +591,28 @@ async function fetchCardImage(item){
 // ============================================================
 async function syncToShopProduct(entry, imageUrl){
   const token = getWfToken();
-  if(!token) return null;
+  if(!token){ console.log('syncToShopProduct: no token'); return null; }
 
-  const catMap = {
-    'Sports':'891253037409c4fe59854f3c9ef99a6b',
-    'TCG':'475ed99cc87de703b543fe9529e2c1da',
-    'Comic':'27f1c9c43a61cf03820a31132cfc6b9a',
-    'Graded':'891253037409c4fe59854f3c9ef99a6b'
-  };
-  const catId = catMap[entry.category]||catMap['TCG'];
-  const slug = 'inv-'+(entry.name||'card').toLowerCase()
-    .replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')
-    .substring(0,50)+'-'+Date.now().toString(36);
+  const slug = 'inv-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,6);
+  const name = (entry.name||'Card')+' '+(entry.year||'')+' '+(entry.set||'');
+  const priceCents = Math.round((entry.market||entry.price||0)*100)||100;
 
-  // Price in CENTS (integer)
-  const priceCents = Math.round((entry.price||entry.market||0)*100);
-
-  // Product name
-  const productName = [entry.name, entry.year, entry.set].filter(Boolean).join(' · ').substring(0,256);
-
-  // Build the correct Webflow ecommerce API request
-  // Endpoint: POST /v2/sites/{site_id}/products
-  // This creates Product + default SKU in one call
+  // Minimal payload — matches the working test button exactly
   const payload = {
     product: {
       fieldData: {
-        name: productName,
+        name: name.trim().substring(0,255),
         slug: slug,
-        description: [entry.set, entry.variant, entry.year, entry.condition, entry.team].filter(Boolean).join(' · '),
         shippable: true,
         'ec-product-type': 'ff42fee0113744f693a764e3431a9cc2',
         'sold-out': false,
         'tax-category': 'standard-taxable',
-        // Custom fields — these must match your Products collection schema exactly
-        'card-category': catId,
-        'set-name': entry.set||'',
-        year: String(entry.year||''),
-        brand: entry.manufacturer||entry.publisher||'',
-        graded: !!(entry.grading_company),
-        grader: entry.grading_company||'',
-        grade: entry.grade||'',
-        // Status option ID for 'In Stock' (NOT the string — it's an option field)
-        status: 'f3769d1e15fa0956f98984d6fa36437f',
-        'market-value': entry.market||entry.price||0,
-        cost: entry.cost||0,
-        'card-sku': entry.id||'',
       }
     },
     sku: {
       fieldData: {
-        name: productName,
+        name: name.trim().substring(0,255),
         slug: slug+'-sku',
-        // Price must be in cents as integer
         price: { value: priceCents, unit: 'USD' },
         'sku-values': {},
       }
@@ -622,33 +620,50 @@ async function syncToShopProduct(entry, imageUrl){
     publishStatus: 'live'
   };
 
-  if(imageUrl) payload.product.fieldData.thumbnail = {url: imageUrl};
+  // Add optional custom fields only if they have values
+  const catMap = {
+    'Sports':'891253037409c4fe59854f3c9ef99a6b',
+    'TCG':'475ed99cc87de703b543fe9529e2c1da',
+    'Comic':'27f1c9c43a61cf03820a31132cfc6b9a',
+    'Graded':'891253037409c4fe59854f3c9ef99a6b'
+  };
+  if(catMap[entry.category]) payload.product.fieldData['card-category'] = catMap[entry.category];
+  if(entry.set) payload.product.fieldData['set-name'] = entry.set;
+  if(entry.year) payload.product.fieldData['year'] = String(entry.year);
+  if(entry.cost) payload.product.fieldData['cost'] = entry.cost;
+  if(entry.market) payload.product.fieldData['market-value'] = entry.market;
+  payload.product.fieldData['status'] = 'f3769d1e15fa0956f98984d6fa36437f';
+
+  const url = getProxyUrl() + '/proxy/sites/65b15ee0228d06647ca7e4ce/products';
+  console.log('syncToShopProduct: POST', url, JSON.stringify(payload).substring(0,200));
 
   try{
-    // Use the ecommerce endpoint, NOT the CMS collections endpoint
-    const res = await wfFetch(`/sites/65b15ee0228d06647ca7e4ce/products`, {
+    const res = await fetch(url, {
       method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-LBA-Token': token,
+        'accept': 'application/json'
+      },
       body: JSON.stringify(payload)
     });
 
-    const text = await res.text();
-    let data;
-    try{ data = JSON.parse(text); }catch(e){ console.log('Parse error:', text.substring(0,200)); return null; }
+    const txt = await res.text();
+    console.log('syncToShopProduct response:', res.status, txt.substring(0,300));
 
     if(!res.ok){
-      const errMsg = JSON.stringify(data).substring(0,500);
-      console.error('Webflow ecommerce error:', res.status, errMsg);
-      // Show error in UI
-      const acts = document.getElementById('acts'+Object.keys(window._scanBubbles||{}).pop());
-      toast('⚠ Webflow sync failed ('+res.status+'): '+errMsg.substring(0,80));
+      toast('⚠ Webflow error '+res.status+': '+txt.substring(0,100));
       return null;
     }
 
+    const data = JSON.parse(txt);
     const productId = data.product?.id || data.id;
-    console.log('Product created:', productId);
+    console.log('✓ Product created:', productId);
     return productId;
+
   }catch(e){
-    console.log('syncToShopProduct error:', e.message);
+    console.error('syncToShopProduct fetch error:', e);
+    toast('⚠ Network error: '+e.message);
     return null;
   }
 }
