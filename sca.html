@@ -226,6 +226,8 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
   <input class="s-inp" id="settings-wf-token" type="password" placeholder="Webflow API token (wf_...)">
   <input class="s-inp" id="settings-proxy" type="text" placeholder="Cloudflare Worker URL" value="https://still-resonance-4f87.swarnerauto.workers.dev">
   <button class="s-btn" onclick="saveSettings()">SAVE SETTINGS</button>
+  <button class="s-btn" style="background:rgba(0,255,179,.15);margin-top:-8px;" onclick="testWebflowWrite()">🔬 TEST WEBFLOW WRITE</button>
+  <div id="settings-test-result" style="font-family:monospace;font-size:10px;color:rgba(255,255,255,.5);max-width:320px;word-break:break-all;text-align:center;display:none;padding:8px;background:rgba(0,0,0,.4);"></div>
   <button style="background:none;border:none;color:rgba(255,255,255,.3);font-family:monospace;font-size:12px;cursor:pointer;padding:8px;" onclick="closeSettings()">Cancel</button>
 </div>
 <div id="scanbar" style="display:none">
@@ -1181,37 +1183,35 @@ window.confirmAdd=async function(id){
     const inv=JSON.parse(localStorage.getItem('lba_inventory')||'[]');
     inv.unshift(entry);localStorage.setItem('lba_inventory',JSON.stringify(inv));
 
-    // Prompt for token if missing
-    if(!localStorage.getItem('lba_wf_token')){
-      const t=prompt('Enter Webflow API token to sync to shop (needs Ecommerce: Write scope), or cancel to save locally only:');
-      if(t&&t.startsWith('wf_')) localStorage.setItem('lba_wf_token',t);
-    }
-
     // Sync to Products ecommerce collection — single source of truth
     const shopId=await syncToShopProduct(entry, el._imgUrl);
     if(shopId){ entry.shopId=shopId; inv[0].shopId=shopId; localStorage.setItem('lba_inventory',JSON.stringify(inv)); }
   }
+
+  // Store last entry on element so settings panel can retry sync after token entered
+  el._pendingEntry = JSON.parse(localStorage.getItem('lba_inventory')||'[]')[0];
 
   const profit=(Number(print.mid||0)-cost).toFixed(2);
   const token=localStorage.getItem('lba_wf_token');
   const lastEntry=JSON.parse(localStorage.getItem('lba_inventory')||'[]')[0];
   const didSync=!!(lastEntry&&lastEntry.shopId);
   let statusMsg, statusCls;
-  if(!token){
-    statusMsg='✓ SAVED LOCALLY — tap ⚙ to add Webflow token for cloud sync';
-    statusCls='cms-syncing';
-  } else if(didSync){
+  if(didSync){
     statusMsg='✓ SYNCED TO WEBFLOW · SHOP + DASHBOARD';
     statusCls='cms-synced';
+  } else if(!token){
+    statusMsg='✓ SAVED LOCALLY — tap ⚙ to enter Webflow token, then tap RETRY SYNC below';
+    statusCls='cms-syncing';
   } else {
-    statusMsg='⚠ SAVED LOCALLY · Webflow sync failed — check token has Ecommerce: Write';
+    statusMsg='⚠ SYNC FAILED — tap RETRY SYNC (token may need Ecommerce: Write)';
     statusCls='cms-error';
   }
   acts.innerHTML=`
     <div class="cms-status ${statusCls}">${statusMsg}</div>
     <div class="bact a-added">Cost $${cost.toFixed(2)} · Est Profit $${profit}</div>
+    ${!didSync?`<button class="bact" style="background:rgba(0,255,179,.1);border:1px solid rgba(0,255,179,.3);color:var(--g)" onclick="retrySync('${id}')">↑ RETRY SYNC</button>`:''}
     <button class="bact a-sell" onclick="showSellForm('${id}')">✓ Mark as Sold</button>`;
-  toast('Added '+(qty>1?qty+'x ':'')+((item.player||item.name)||'item')+(didSync?' → Webflow':'  (local only)'));
+  toast('Added '+(qty>1?qty+'x ':'')+((item.player||item.name)||'item')+(didSync?' → Webflow':'  (tap RETRY SYNC)'));
 };
 
 window.showSellForm=function(id){
@@ -1404,14 +1404,72 @@ async function saveSettings(){
   if(t && t.length>10) localStorage.setItem('lba_wf_token', t);
   if(p && p.includes('workers')) localStorage.setItem('lba_proxy_url', p);
   closeSettings();
-  // Quick test: verify the token works by calling the health endpoint
   try{
     const proxy = (p||localStorage.getItem('lba_proxy_url')||WF_PROXY_URL);
     const r = await fetch(proxy.replace(/\/+$/,'')+'/health');
     const d = await r.json();
-    toast(d.ok ? '✓ Settings saved · Worker connected' : '⚠ Worker error · check URL');
+    toast(d.ok ? '✓ Settings saved · Worker connected — tap RETRY SYNC on your card' : '⚠ Worker error · check URL');
   }catch(e){
     toast('⚠ Worker unreachable — check URL');
+  }
+}
+
+async function testWebflowWrite(){
+  const t = document.getElementById('settings-wf-token').value.trim() || localStorage.getItem('lba_wf_token') || '';
+  const p = document.getElementById('settings-proxy').value.trim() || localStorage.getItem('lba_proxy_url') || WF_PROXY_URL;
+  const res_el = document.getElementById('settings-test-result');
+  res_el.style.display='block';
+  res_el.textContent = 'Testing...';
+  if(!t){ res_el.textContent='No token entered'; return; }
+  const url = p.replace(/\/+$/,'')+'/proxy/sites/65b15ee0228d06647ca7e4ce/products';
+  const testPayload = {
+    product:{fieldData:{name:'LBA Test '+Date.now(),slug:'lba-test-'+Date.now(),'ec-product-type':'ff42fee0113744f693a764e3431a9cc2',shippable:true,'sold-out':false,'tax-category':'standard-taxable'}},
+    sku:{fieldData:{name:'Test SKU',slug:'lba-test-sku-'+Date.now(),price:{value:100,unit:'USD'},'sku-values':{}}},
+    publishStatus:'staging'
+  };
+  try{
+    const r = await fetch(url,{method:'POST',headers:{'Content-Type':'application/json','X-LBA-Token':t,'accept':'application/json'},body:JSON.stringify(testPayload)});
+    const txt = await r.text();
+    if(r.ok){
+      res_el.style.color='var(--g)';
+      res_el.textContent='✓ SUCCESS ('+r.status+') — Webflow write works! Product created.';
+    } else {
+      res_el.style.color='var(--red)';
+      res_el.textContent='✗ FAILED ('+r.status+'): '+txt.substring(0,200);
+    }
+  }catch(e){
+    res_el.style.color='var(--red)';
+    res_el.textContent='✗ Network error: '+e.message;
+  }
+}
+
+async function retrySync(id){
+  const el = document.getElementById(id);
+  if(!el||!el._pendingEntry){ toast('No pending entry found — scan and add again'); return; }
+  const entry = el._pendingEntry;
+  if(!localStorage.getItem('lba_wf_token')){
+    showSettings();
+    toast('Enter your Webflow token in settings first');
+    return;
+  }
+  const acts = document.getElementById('acts'+id);
+  acts.innerHTML += '<div class="cms-status cms-syncing">⟳ Retrying sync...</div>';
+  const shopId = await syncToShopProduct(entry, el._imgUrl);
+  if(shopId){
+    // Update localStorage entry with shopId
+    const inv = JSON.parse(localStorage.getItem('lba_inventory')||'[]');
+    const idx = inv.findIndex(i=>i.id===entry.id);
+    if(idx>=0){ inv[idx].shopId=shopId; localStorage.setItem('lba_inventory',JSON.stringify(inv)); }
+    entry.shopId = shopId;
+    el._pendingEntry = entry;
+    // Update status display
+    const statusEl = acts.querySelector('.cms-status');
+    if(statusEl){ statusEl.textContent='✓ SYNCED TO WEBFLOW · SHOP + DASHBOARD'; statusEl.className='cms-status cms-synced'; }
+    const retryBtn = acts.querySelector('button[onclick^="retrySync"]');
+    if(retryBtn) retryBtn.remove();
+    toast('✓ Synced to Webflow successfully!');
+  } else {
+    toast('⚠ Sync still failing — check browser console for error details');
   }
 }
 
