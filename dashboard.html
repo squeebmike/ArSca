@@ -208,6 +208,7 @@ tr.sold td{opacity:.4;}
         <th onclick="srt('name')">NAME</th>
         <th onclick="srt('set')">SET</th>
         <th>CAT</th>
+        <th onclick="srt('qty')" style="text-align:center">QTY</th>
         <th onclick="srt('market')" style="text-align:right">MARKET</th>
         <th onclick="srt('cost')" style="text-align:right">COST</th>
         <th onclick="srt('profit')" style="text-align:right">PROFIT</th>
@@ -365,6 +366,7 @@ function mapItem(i, skuPriceMap){
     cost,
     market,
     salePrice,
+    qty: parseInt(f['inventory-count'])||1,
     profit: parseFloat(f.profit)||(isSold&&cost>0?salePrice-cost:0),
     status: isSold?'sold':'in_stock',
     channel: f['sale-channel']||'',
@@ -401,12 +403,13 @@ const fd$ = n => '$'+Number(n||0).toFixed(2);
 function renderStats(){
   const ins = all.filter(i=>i.status==='in_stock');
   const sol = all.filter(i=>i.status==='sold');
-  const mkt = ins.reduce((a,i)=>a+(i.market||0),0);
+  const totalQty = ins.reduce((a,i)=>a+(i.qty||1),0);
+  const mkt = ins.reduce((a,i)=>a+(i.market||0)*(i.qty||1),0);
   const pft = sol.reduce((a,i)=>a+(i.profit||0),0);
-  const cost = all.reduce((a,i)=>a+(i.cost||0),0);
+  const cost = all.reduce((a,i)=>a+(i.cost||0)*(i.qty||1),0);
   const avg = sol.length ? pft/sol.length : 0;
   document.getElementById('s1').textContent = ins.length;
-  document.getElementById('s1b').textContent = all.length+' total';
+  document.getElementById('s1b').textContent = totalQty+' units · '+all.length+' SKUs';
   document.getElementById('s2').textContent = f$(mkt);
   document.getElementById('s3').textContent = (pft>=0?'+':'')+f$(pft);
   document.getElementById('s3').className='sc-v'+(pft>=0?'':' neg');
@@ -523,6 +526,7 @@ function renderTable(){
       <td><span class="dot ${ins?'in_stock':'sold'}"></span><span class="nc">${i.name}${i.isRookie?' <span style="color:var(--gold);font-size:8px">RC</span>':''}</span></td>
       <td><span class="sc2">${[i.set,i.variant].filter(Boolean).join(' · ')||'—'}</span></td>
       <td><span class="ct ${cat}">${i.category||'TCG'}</span></td>
+      <td style="text-align:center;font-family:'Orbitron',monospace;font-size:11px;color:${(i.qty||1)>1?'var(--g)':'var(--dim)'}">${i.qty||1}</td>
       <td class="pc pm">${i.market>0?fd$(i.market):'—'}</td>
       <td class="pc pd">${i.cost>0?fd$(i.cost):'—'}</td>
       <td class="pc ${pc}">${(i.cost>0||i.profit)?(pft>=0?'+':'')+fd$(pft):'—'}</td>
