@@ -215,7 +215,17 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
     <button class="hbtn" id="bulkbtn" onclick="toggleBulk()">BULK</button>
     <button class="hbtn" id="autobitn" onclick="toggleAuto()">AUTO</button>
     <button class="hbtn" onclick="clearAll()">CLR</button>
+    <button class="hbtn" id="settingsbtn" onclick="showSettings()" style="color:rgba(255,255,255,.3)">⚙</button>
   </div>
+</div>
+
+<!-- SETTINGS PANEL -->
+<div id="settings-panel" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:500;display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:32px;">
+  <div style="font-family:'Orbitron',monospace;font-size:14px;color:var(--g);letter-spacing:3px;">SETTINGS</div>
+  <input class="s-inp" id="settings-wf-token" type="password" placeholder="Webflow API token (wf_...)">
+  <input class="s-inp" id="settings-proxy" type="text" placeholder="Cloudflare Worker URL" value="https://still-resonance-4f87.swarnerauto.workers.dev">
+  <button class="s-btn" onclick="saveSettings()">SAVE SETTINGS</button>
+  <button style="background:none;border:none;color:rgba(255,255,255,.3);font-family:monospace;font-size:12px;cursor:pointer;padding:8px;" onclick="closeSettings()">Cancel</button>
 </div>
 <div id="scanbar" style="display:none">
   <button id="scanbtn" onclick="doScan()">&#9654; SCAN CARDS</button>
@@ -301,6 +311,23 @@ const AFF = {
     return this.ebay(url);
   }
 };
+
+// ============================================================
+// WEBFLOW PROXY — routes all WF API calls through Cloudflare Worker
+// ============================================================
+const WF_PROXY_URL = localStorage.getItem('lba_proxy_url') || 'https://still-resonance-4f87.swarnerauto.workers.dev';
+
+async function wfFetch(path, options){
+  options = options || {};
+  const token = localStorage.getItem('lba_wf_token') || '';
+  const url = WF_PROXY_URL.replace(/\/+$/, '') + '/proxy' + path;
+  const headers = Object.assign(
+    {'Content-Type':'application/json','X-LBA-Token':token,'accept':'application/json'},
+    options.headers || {}
+  );
+  return fetch(url, Object.assign({}, options, {headers: headers}));
+}
+
 
 // ============================================================
 // TCG PRINTING FETCHERS — fetch ALL printings from free APIs
@@ -531,7 +558,6 @@ async function syncToShopProduct(entry, imageUrl){
   const token = localStorage.getItem('lba_wf_token');
   if(!token) return null;
 
-  // Map category to Webflow option ID
   const catMap = {
     'Sports':'891253037409c4fe59854f3c9ef99a6b',
     'TCG':'475ed99cc87de703b543fe9529e2c1da',
@@ -539,33 +565,30 @@ async function syncToShopProduct(entry, imageUrl){
     'Graded':'891253037409c4fe59854f3c9ef99a6b'
   };
   const catId = catMap[entry.category]||catMap['TCG'];
-
   const slug = 'inv-'+(entry.name||'card').toLowerCase()
     .replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')
     .substring(0,50)+'-'+Date.now().toString(36);
 
-  const price = Math.round((entry.price||entry.market||0)*100); // cents
+  // Price in CENTS (integer)
+  const priceCents = Math.round((entry.price||entry.market||0)*100);
 
-  try{
-    const headers = {
-      'Content-Type':'application/json',
-      'Authorization':'Bearer '+token
-    };
+  // Product name
+  const productName = [entry.name, entry.year, entry.set].filter(Boolean).join(' · ').substring(0,256);
 
-    // Step 1: Create the Product
-    const prodData = {
-      fieldData:{
-        name: entry.name+(entry.year?' '+entry.year:'')+(entry.set?' — '+entry.set:''),
+  // Build the correct Webflow ecommerce API request
+  // Endpoint: POST /v2/sites/{site_id}/products
+  // This creates Product + default SKU in one call
+  const payload = {
+    product: {
+      fieldData: {
+        name: productName,
         slug: slug,
-        description: [
-          entry.set, entry.variant, entry.year, entry.condition,
-          entry.team, entry.manufacturer, entry.key_notes
-        ].filter(Boolean).join(' · '),
+        description: [entry.set, entry.variant, entry.year, entry.condition, entry.team].filter(Boolean).join(' · '),
         shippable: true,
-        preorder: false,
+        'ec-product-type': 'ff42fee0113744f693a764e3431a9cc2', // Physical
         'sold-out': false,
         'tax-category': 'standard-taxable',
-        'ec-product-type': 'ff42fee0113744f693a764e3431a9cc2', // Physical
+        // Custom fields on your Products collection
         'card-category': catId,
         'set-name': entry.set||'',
         year: String(entry.year||''),
@@ -575,60 +598,52 @@ async function syncToShopProduct(entry, imageUrl){
         grade: entry.grade||'',
         'inventory-count': 1,
         status: 'In Stock',
+        'market-value': entry.market||entry.price||0,
+        cost: entry.cost||0,
         'card-sku': entry.id||'',
-        tags: [entry.is_rookie?'rookie':'',entry.is_key?'key':'',entry.parallel||'',entry.sport||''].filter(Boolean).join(','),
-      },
-      isDraft: false,
-      isArchived: false
-    };
-
-    if(imageUrl) prodData.fieldData.thumbnail = {url: imageUrl};
-
-    const prodRes = await wfFetch(`/collections/${WF_PRODUCTS_ID}/items`, {
-      method:'POST', headers,
-      body: JSON.stringify(prodData)
-    });
-    if(!prodRes.ok) return null;
-    const prod = await prodRes.json();
-    const productId = prod.id;
-
-    // Step 2: Create a SKU for this product (required for ecommerce)
-    const skuSlug = slug+'-sku';
-    const skuData = {
-      fieldData:{
-        name: entry.name+' — '+(entry.condition||'NM'),
-        slug: skuSlug,
-        price: {value: price, unit:'USD'},
+        tags: [entry.is_rookie?'rookie':'',entry.is_key?'key':''].filter(Boolean).join(','),
+      }
+    },
+    sku: {
+      fieldData: {
+        name: productName + ' — ' + (entry.condition||'NM'),
+        slug: slug+'-sku',
+        price: { value: priceCents, unit: 'USD' },
         'sku-values': {},
-        'main-image': imageUrl ? {url: imageUrl} : undefined,
         quantity: 1,
         'track-inventory': true,
-      },
-      isDraft: false
-    };
+      }
+    },
+    publishStatus: 'live'
+  };
 
-    const skuRes = await wfFetch(`/collections/${WF_SKUS_ID}/items`, {
-      method:'POST', headers,
-      body: JSON.stringify(skuData)
-    });
-    if(!skuRes.ok){ console.log('SKU creation failed'); return productId; }
-    const sku = await skuRes.json();
+  if(imageUrl) payload.product.fieldData.thumbnail = {url: imageUrl};
 
-    // Step 3: Link SKU to Product as default-sku
-    await wfFetch(`/collections/${WF_PRODUCTS_ID}/items/${productId}`, {
-      method:'PATCH', headers,
-      body: JSON.stringify({fieldData:{'default-sku': sku.id}})
+  try{
+    // Use the ecommerce endpoint, NOT the CMS collections endpoint
+    const res = await wfFetch(`/sites/65b15ee0228d06647ca7e4ce/products`, {
+      method: 'POST',
+      body: JSON.stringify(payload)
     });
 
-    // Step 4: Publish both
-    await Promise.all([
-      wfFetch(`/collections/${WF_PRODUCTS_ID}/items/publish`,{method:'POST',headers,body:JSON.stringify({itemIds:[productId]})}),
-      wfFetch(`/collections/${WF_SKUS_ID}/items/publish`,{method:'POST',headers,body:JSON.stringify({itemIds:[sku.id]})})
-    ]);
+    const text = await res.text();
+    let data;
+    try{ data = JSON.parse(text); }catch(e){ console.log('Parse error:', text.substring(0,200)); return null; }
 
+    if(!res.ok){
+      console.log('Shop product creation failed:', res.status, JSON.stringify(data).substring(0,300));
+      return null;
+    }
+
+    const productId = data.product?.id || data.id;
+    console.log('Product created:', productId);
     return productId;
-  }catch(e){ console.log('Shop sync failed:',e); return null; }
+  }catch(e){
+    console.log('syncToShopProduct error:', e.message);
+    return null;
+  }
 }
+
 
 // ============================================================
 // WEBFLOW CMS SYNC — LBA Inventory back-office
@@ -1354,6 +1369,26 @@ function toggleAuto(){
   if(auto){ab.classList.add('on');ab.textContent='STOP';sb.innerHTML='AUTO ON';sb.className='autoon';autoT=setInterval(()=>{if(!scanning)doScan();},5500);doScan();}
   else{clearInterval(autoT);ab.classList.remove('on');ab.textContent='AUTO';sb.innerHTML='&#9654; SCAN CARDS';sb.className='';}
 }
+function showSettings(){
+  const panel = document.getElementById('settings-panel');
+  panel.style.display='flex';
+  const t = localStorage.getItem('lba_wf_token')||'';
+  const p = localStorage.getItem('lba_proxy_url')||'https://still-resonance-4f87.swarnerauto.workers.dev';
+  document.getElementById('settings-wf-token').value = t;
+  document.getElementById('settings-proxy').value = p;
+}
+function closeSettings(){
+  document.getElementById('settings-panel').style.display='none';
+}
+function saveSettings(){
+  const t = document.getElementById('settings-wf-token').value.trim();
+  const p = document.getElementById('settings-proxy').value.trim();
+  if(t && t.length>10) localStorage.setItem('lba_wf_token', t);
+  if(p && p.includes('workers')) localStorage.setItem('lba_proxy_url', p);
+  closeSettings();
+  toast('Settings saved' + (t?'  · Webflow token set':'') + (p?' · Proxy set':''));
+}
+
 function toast(msg){const old=document.querySelector('.toast');if(old)old.remove();const t=document.createElement('div');t.className='toast';t.textContent=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),4000);}
 </script>
 
