@@ -271,61 +271,88 @@ function buildHeaders(){
 
 async function loadInventory(){
   const token = localStorage.getItem('lba_wf_dash_token');
-  if(!token){
-    document.getElementById('setup').style.display='flex';
-    return;
-  }
+  if(!token){ document.getElementById('setup').style.display='flex'; return; }
   document.getElementById('sync-status').textContent = 'Loading...';
 
   try{
-    let items=[], offset=0, total=1;
+    // Fetch Products
+    let products=[], offset=0, total=1;
     while(offset < total){
       const res = await fetch(
         buildUrl(`/collections/${WF_PRODUCTS}/items?limit=100&offset=${offset}`),
         { headers: buildHeaders() }
       );
-
-      if(res.status===401){
-        localStorage.removeItem('lba_wf_dash_token');
-        document.getElementById('setup').style.display='flex';
-        document.getElementById('token-help').innerHTML='Token rejected — please re-enter your Webflow token.';
-        document.getElementById('token-help').style.display='block';
-        return;
-      }
-      if(res.status===403){
-        document.getElementById('setup').style.display='flex';
-        document.getElementById('token-help').innerHTML='Token missing CMS: Read permission. Edit token in Webflow Site Settings → Integrations → API Access.';
-        document.getElementById('token-help').style.display='block';
-        return;
-      }
-      if(!res.ok){
-        throw new Error(`Webflow API returned ${res.status}`);
-      }
-
+      if(res.status===401){ localStorage.removeItem('lba_wf_dash_token'); document.getElementById('setup').style.display='flex'; return; }
+      if(res.status===403){ showError('Token missing CMS: Read permission.'); return; }
+      if(!res.ok) throw new Error(`Products API ${res.status}`);
       const d = await res.json();
       total = d.pagination?.total || 0;
-      items = items.concat((d.items||[]).map(mapItem));
+      products = products.concat(d.items||[]);
       offset += 100;
       if((d.items||[]).length < 100) break;
     }
 
-    // Webflow data only — no localStorage fallback
-    all = items;
+    // Fetch SKUs (price data for existing items)
+    let skus=[], sOffset=0, sTotal=1;
+    while(sOffset < sTotal){
+      const res = await fetch(
+        buildUrl(`/collections/${WF_SKUS}/items?limit=100&offset=${sOffset}`),
+        { headers: buildHeaders() }
+      );
+      if(res.ok){
+        const d = await res.json();
+        sTotal = d.pagination?.total || 0;
+        skus = skus.concat(d.items||[]);
+        sOffset += 100;
+        if((d.items||[]).length < 100) break;
+      } else { break; }
+    }
+
+    // Build SKU price map: product_id -> price in dollars
+    const skuPriceMap = {};
+    skus.forEach(sku => {
+      const productId = sku.fieldData?.product;
+      const priceCents = sku.fieldData?.price?.value || 0;
+      if(productId && priceCents > 0){
+        skuPriceMap[productId] = priceCents / 100;
+      }
+    });
+
+    all = products.map(p => mapItem(p, skuPriceMap));
     filtered = [...all];
     renderAll();
     document.getElementById('sync-status').textContent =
-      `${items.length} products from Webflow · ${new Date().toLocaleTimeString()}`;
+      `${products.length} products · ${skus.length} SKUs · ${new Date().toLocaleTimeString()}`;
 
   }catch(e){
     console.error('Load error:', e);
-    // Show error in status bar — do NOT redirect to login or show local data
-    document.getElementById('sync-status').textContent = '⚠ ' + e.message + ' — tap REFRESH to retry';
+    document.getElementById('sync-status').textContent = '⚠ ' + e.message + ' — tap REFRESH';
   }
 }
 
-function mapItem(i){
+
+function mapItem(i, skuPriceMap){
   const f = i.fieldData||{};
-  const isSold = f['sold-out']===true || (f.status||'').toLowerCase().includes('sold');
+  skuPriceMap = skuPriceMap || {};
+
+  // Status
+  const STATUS_SOLD_ID = 'e6b42f14fcb99aa2168a5f5672226f68';
+  const isSold = f['sold-out']===true
+    || f.status === STATUS_SOLD_ID
+    || (typeof f.status==='string' && f.status.toLowerCase().includes('sold'));
+
+  // Category — handle option IDs and publisher fallback
+  let category = CAT_MAP[f['card-category']] || 'Comic';
+  if(!f['card-category'] && (f.publisher||f.brand||'').match(/marvel|dc|image|dark horse|idw/i)){
+    category = 'Comic';
+  }
+
+  // Price — use custom fields first, fall back to SKU price
+  const skuPrice = skuPriceMap[i.id] || 0;
+  const market = parseFloat(f['market-value']) || skuPrice || 0;
+  const cost = parseFloat(f.cost) || 0;
+  const salePrice = parseFloat(f['sale-price']) || (isSold ? skuPrice : 0);
+
   return {
     id: i.id,
     name: f['player-card-name']||f.name||'—',
@@ -333,11 +360,11 @@ function mapItem(i){
     variant: f['variant-parallel']||f.variant||'',
     year: f.year||'',
     condition: f.condition||'NM',
-    category: CAT_MAP[f['card-category']]||f.category||'TCG',
-    cost: parseFloat(f.cost)||0,
-    market: parseFloat(f['market-value']||f.msrp)||0,
-    salePrice: parseFloat(f['sale-price'])||0,
-    profit: parseFloat(f.profit)||0,
+    category,
+    cost,
+    market,
+    salePrice,
+    profit: parseFloat(f.profit)||(isSold&&cost>0?salePrice-cost:0),
     status: isSold?'sold':'in_stock',
     channel: f['sale-channel']||'',
     addedAt: f['date-added']||i.createdOn||'',
