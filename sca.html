@@ -594,7 +594,7 @@ async function syncToShopProduct(entry, imageUrl){
   if(!token){ console.log('syncToShopProduct: no token'); return null; }
 
   const slug = 'inv-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,6);
-  const name = [(entry.name||'Card'), entry.year, entry.set].filter(Boolean).join(' ').trim().substring(0,255);
+  const name = [(entry.name||'Card'), entry.year!=='null'?entry.year:null, entry.set!=='null'?entry.set:null].filter(Boolean).join(' ').trim().substring(0,255);
   const priceCents = Math.max(1, Math.round((entry.market||entry.price||0)*100));
 
   const catMap = {
@@ -1180,7 +1180,7 @@ window.confirmAdd=async function(id){
   for(let i=0;i<qty;i++){
     const entry={
       id:'scan_'+Date.now()+'_'+i,
-      name:item.player||item.name,
+      name:(item.player&&item.player!=='null'?item.player:null)||item.name||'Unknown Card',
       category:ct==='sports'?'Sports':ct==='comic'?'Comic':['psa','bgs','cgc','sgc'].includes(ct)?'Graded':'TCG',
       set:print.set||item.set_name||'',
       variant:print.variant||item.parallel||'',
