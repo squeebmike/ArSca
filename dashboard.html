@@ -12,7 +12,7 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min
 body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse at 15% 15%,rgba(0,255,179,.03) 0,transparent 55%),radial-gradient(ellipse at 85% 85%,rgba(199,125,255,.03) 0,transparent 55%);pointer-events:none;}
 
 /* SETUP */
-#setup{position:fixed;inset:0;background:var(--bg);z-index:200;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:32px;}
+#setup{position:fixed;inset:0;background:var(--bg);z-index:200;display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:32px;}
 .s-logo{font-family:'Orbitron',monospace;font-size:22px;font-weight:900;color:var(--g);letter-spacing:4px;text-shadow:0 0 24px rgba(0,255,179,.4);}
 .s-sub{font-family:'DM Mono',monospace;font-size:10px;color:var(--dim);letter-spacing:3px;}
 .s-inp{width:100%;max-width:360px;background:rgba(0,0,0,.4);border:1px solid rgba(0,255,179,.2);color:var(--text);padding:11px 14px;font-family:'DM Mono',monospace;font-size:12px;outline:none;}
@@ -242,12 +242,11 @@ const PER=50;
 // ── INIT ─────────────────────────────────────────────────────────
 const savedToken = localStorage.getItem('lba_wf_dash_token');
 if(savedToken){
-  document.getElementById('setup').style.display='none';
-  loadInventory();
+  loadInventory(); // setup hidden by CSS default (display:none)
 } else {
-  // Pre-fill proxy
+  document.getElementById('setup').style.display='flex';
   const sp = localStorage.getItem('lba_proxy_url');
-  if(sp) document.getElementById('proxy-inp').value = sp;
+  if(sp){ const pi=document.getElementById('proxy-inp'); if(pi) pi.value=sp; }
 }
 
 function initDashboard(){
@@ -343,11 +342,14 @@ async function loadInventory(){
         isRookie:i.is_rookie||false, _local:true
       }));
       if(all.length === 0){
-        document.getElementById('sync-status').textContent = '⚠ ' + e.message;
-        document.getElementById('token-help').innerHTML = 
-          'Connection failed. Check Worker URL and Webflow token. Error: ' + e.message;
-        document.getElementById('token-help').style.display = 'block';
-        document.getElementById('setup').style.display = 'flex';
+        // Show a non-blocking error message without redirecting to setup
+        document.getElementById('sync-status').textContent = '⚠ Load failed — tap REFRESH';
+        // Show a floating error instead of the setup screen
+        const errDiv = document.createElement('div');
+        errDiv.style.cssText = 'position:fixed;top:70px;left:50%;transform:translateX(-50%);background:#1a1b20;border:1px solid rgba(255,77,109,.4);padding:12px 20px;font-family:DM Mono,monospace;font-size:11px;color:#ff4d6d;z-index:300;max-width:90vw;text-align:center;border-radius:2px;';
+        errDiv.innerHTML = '⚠ ' + e.message + '<br><small>Check Worker URL · Tap REFRESH to retry</small>';
+        document.body.appendChild(errDiv);
+        setTimeout(()=>errDiv.remove(), 8000);
         return;
       }
     }
