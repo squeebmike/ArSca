@@ -586,10 +586,10 @@ async function syncToShopProduct(entry, imageUrl){
         slug: slug,
         description: [entry.set, entry.variant, entry.year, entry.condition, entry.team].filter(Boolean).join(' · '),
         shippable: true,
-        'ec-product-type': 'ff42fee0113744f693a764e3431a9cc2', // Physical
+        'ec-product-type': 'ff42fee0113744f693a764e3431a9cc2',
         'sold-out': false,
         'tax-category': 'standard-taxable',
-        // Custom fields on your Products collection
+        // Custom fields — these must match your Products collection schema exactly
         'card-category': catId,
         'set-name': entry.set||'',
         year: String(entry.year||''),
@@ -597,22 +597,20 @@ async function syncToShopProduct(entry, imageUrl){
         graded: !!(entry.grading_company),
         grader: entry.grading_company||'',
         grade: entry.grade||'',
-        'inventory-count': 1,
-        status: 'In Stock',
+        // Status option ID for 'In Stock' (NOT the string — it's an option field)
+        status: 'f3769d1e15fa0956f98984d6fa36437f',
         'market-value': entry.market||entry.price||0,
         cost: entry.cost||0,
         'card-sku': entry.id||'',
-        tags: [entry.is_rookie?'rookie':'',entry.is_key?'key':''].filter(Boolean).join(','),
       }
     },
     sku: {
       fieldData: {
-        name: productName + ' — ' + (entry.condition||'NM'),
+        name: productName,
         slug: slug+'-sku',
+        // Price must be in cents as integer
         price: { value: priceCents, unit: 'USD' },
         'sku-values': {},
-        quantity: 1,
-        'track-inventory': true,
       }
     },
     publishStatus: 'live'
@@ -632,7 +630,11 @@ async function syncToShopProduct(entry, imageUrl){
     try{ data = JSON.parse(text); }catch(e){ console.log('Parse error:', text.substring(0,200)); return null; }
 
     if(!res.ok){
-      console.log('Shop product creation failed:', res.status, JSON.stringify(data).substring(0,300));
+      const errMsg = JSON.stringify(data).substring(0,500);
+      console.error('Webflow ecommerce error:', res.status, errMsg);
+      // Show error in UI
+      const acts = document.getElementById('acts'+Object.keys(window._scanBubbles||{}).pop());
+      toast('⚠ Webflow sync failed ('+res.status+'): '+errMsg.substring(0,80));
       return null;
     }
 
