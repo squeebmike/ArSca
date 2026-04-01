@@ -313,14 +313,46 @@ async function loadInventory(){
       isRookie:i.is_rookie||false, _local:true
     }));
 
-    all = [...items, ...unsynced];
+    // Show CMS data immediately, then merge local
+    all = [...items];
+    filtered = [...all];
+    renderAll(); // Render CMS items first so dashboard stays visible
+    
+    // Now add any unsynced local items
+    if(unsynced.length){
+      all = [...items, ...unsynced];
+      filtered = [...all];
+      renderAll();
+    }
+    document.getElementById('sync-status').textContent =
+      `${items.length} products · ${unsynced.length} local · ${new Date().toLocaleTimeString()}`;
+  }catch(e){
+    console.error('Load error:', e);
+    document.getElementById('sync-status').textContent = '⚠ CMS error — showing local data';
+    // Don't redirect to login on catch — just show whatever we have
+    // from localStorage so the dashboard stays visible
+    if(all.length === 0){
+      // Only show error if we have nothing at all
+      const local = JSON.parse(localStorage.getItem('lba_inventory')||'[]');
+      all = local.map(i=>({
+        id:i.id, name:i.name||'—', set:i.set||'', variant:i.variant||'',
+        year:i.year||'', condition:i.condition||'NM', category:i.category||'TCG',
+        cost:i.cost||0, market:i.market||0, salePrice:i.salePrice||0,
+        profit:i.profit||0, status:i.status||'in_stock',
+        channel:i.saleChannel||'', addedAt:i.addedAt||'', soldAt:i.soldAt||'',
+        isRookie:i.is_rookie||false, _local:true
+      }));
+      if(all.length === 0){
+        document.getElementById('sync-status').textContent = '⚠ ' + e.message;
+        document.getElementById('token-help').innerHTML = 
+          'Connection failed. Check Worker URL and Webflow token. Error: ' + e.message;
+        document.getElementById('token-help').style.display = 'block';
+        document.getElementById('setup').style.display = 'flex';
+        return;
+      }
+    }
     filtered = [...all];
     renderAll();
-    document.getElementById('sync-status').textContent =
-      `${items.length} products · ${unsynced.length} unsynced · ${new Date().toLocaleTimeString()}`;
-  }catch(e){
-    document.getElementById('sync-status').textContent = '⚠ ' + e.message;
-    showError('Failed to connect. Check that the Cloudflare Worker is deployed and the URL is correct.<br>Worker: ' + (localStorage.getItem('lba_proxy_url')||DEFAULT_PROXY));
   }
 }
 
