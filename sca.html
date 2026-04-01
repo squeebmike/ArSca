@@ -594,25 +594,46 @@ async function syncToShopProduct(entry, imageUrl){
   if(!token){ console.log('syncToShopProduct: no token'); return null; }
 
   const slug = 'inv-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,6);
-  const name = (entry.name||'Card')+' '+(entry.year||'')+' '+(entry.set||'');
-  const priceCents = Math.round((entry.market||entry.price||0)*100)||100;
+  const name = [(entry.name||'Card'), entry.year, entry.set].filter(Boolean).join(' ').trim().substring(0,255);
+  const priceCents = Math.max(1, Math.round((entry.market||entry.price||0)*100));
 
-  // Minimal payload — matches the working test button exactly
+  const catMap = {
+    'Sports': '891253037409c4fe59854f3c9ef99a6b',
+    'TCG':    '475ed99cc87de703b543fe9529e2c1da',
+    'Comic':  '27f1c9c43a61cf03820a31132cfc6b9a',
+    'Graded': '891253037409c4fe59854f3c9ef99a6b'
+  };
+
+  // Build product fieldData using ONLY fields confirmed in the schema
+  const productFields = {
+    name: name,
+    slug: slug,
+    shippable: true,
+    'ec-product-type': 'ff42fee0113744f693a764e3431a9cc2',
+    'sold-out': false,
+    'tax-category': 'standard-taxable',
+    status: 'f3769d1e15fa0956f98984d6fa36437f', // In Stock option ID
+  };
+
+  // Optional fields — only add if they have values
+  if(catMap[entry.category])    productFields['card-category'] = catMap[entry.category];
+  if(entry.set)                  productFields['set-name'] = String(entry.set).substring(0,255);
+  if(entry.year)                 productFields['year'] = String(entry.year);
+  if(entry.manufacturer||entry.publisher) productFields['brand'] = (entry.manufacturer||entry.publisher||'').substring(0,255);
+  if(entry.grading_company)     productFields['graded'] = true;
+  if(entry.grading_company)     productFields['grader'] = String(entry.grading_company);
+  if(entry.grade)               productFields['grade'] = String(entry.grade);
+  if(entry.market > 0)          productFields['market-value'] = Math.round(entry.market); // confirmed field
+  if(entry.cost > 0)            productFields['cost'] = Math.round(entry.cost);           // confirmed field
+  if(entry.market > 0)          productFields['msrp'] = Math.round(entry.market);         // existing field
+  if(entry.id)                  productFields['card-sku'] = String(entry.id).substring(0,255);
+
   const payload = {
-    product: {
-      fieldData: {
-        name: name.trim().substring(0,255),
-        slug: slug,
-        shippable: true,
-        'ec-product-type': 'ff42fee0113744f693a764e3431a9cc2',
-        'sold-out': false,
-        'tax-category': 'standard-taxable',
-      }
-    },
+    product: { fieldData: productFields },
     sku: {
       fieldData: {
-        name: name.trim().substring(0,255),
-        slug: slug+'-sku',
+        name: name,
+        slug: slug + '-sku',
         price: { value: priceCents, unit: 'USD' },
         'sku-values': {},
       }
@@ -620,49 +641,28 @@ async function syncToShopProduct(entry, imageUrl){
     publishStatus: 'live'
   };
 
-  // Add optional custom fields only if they have values
-  const catMap = {
-    'Sports':'891253037409c4fe59854f3c9ef99a6b',
-    'TCG':'475ed99cc87de703b543fe9529e2c1da',
-    'Comic':'27f1c9c43a61cf03820a31132cfc6b9a',
-    'Graded':'891253037409c4fe59854f3c9ef99a6b'
-  };
-  if(catMap[entry.category]) payload.product.fieldData['card-category'] = catMap[entry.category];
-  if(entry.set) payload.product.fieldData['set-name'] = entry.set;
-  if(entry.year) payload.product.fieldData['year'] = String(entry.year);
-  if(entry.cost) payload.product.fieldData['cost'] = entry.cost;
-  if(entry.market) payload.product.fieldData['market-value'] = entry.market;
-  payload.product.fieldData['status'] = 'f3769d1e15fa0956f98984d6fa36437f';
-
   const url = getProxyUrl() + '/proxy/sites/65b15ee0228d06647ca7e4ce/products';
-  console.log('syncToShopProduct: POST', url, JSON.stringify(payload).substring(0,200));
+  console.log('Syncing:', name, '| url:', url.substring(0,60), '| price:', priceCents);
 
   try{
     const res = await fetch(url, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-LBA-Token': token,
-        'accept': 'application/json'
-      },
+      headers: { 'Content-Type':'application/json', 'X-LBA-Token':token, 'accept':'application/json' },
       body: JSON.stringify(payload)
     });
-
     const txt = await res.text();
-    console.log('syncToShopProduct response:', res.status, txt.substring(0,300));
+    console.log('Response:', res.status, txt.substring(0,200));
 
     if(!res.ok){
-      toast('⚠ Webflow error '+res.status+': '+txt.substring(0,100));
+      toast('⚠ Webflow '+res.status+': '+txt.substring(0,80));
       return null;
     }
-
     const data = JSON.parse(txt);
     const productId = data.product?.id || data.id;
-    console.log('✓ Product created:', productId);
+    console.log('✓ Created product:', productId);
     return productId;
-
   }catch(e){
-    console.error('syncToShopProduct fetch error:', e);
+    console.error('Sync error:', e.message);
     toast('⚠ Network error: '+e.message);
     return null;
   }
