@@ -272,15 +272,11 @@ const AFF = {
 
   // Wrap a TCGPlayer URL with your affiliate tracking
   tcg(url) {
-    if(!url) return url;
-    // Impact deep link format: append ?u= for tracking
-    // BUT partner.tcgplayer.com/c/... is a SHARE link that doesn't support deep linking
-    // Instead: send directly to TCGPlayer — the affiliate cookie is set when they visit
-    // via your partner link separately. For true deep links you need the Impact API link
-    // from Impact dashboard → Brands → TCGPlayer → Links → "API Link" (NOT "Vanity Link")
-    // The API link looks like: https://impact.go2cloud.org/aff_c?offer_id=...&aff_id=...
-    // Until then, send direct to TCGPlayer so the link actually works
-    return url;
+    // Safety: if url is null/undefined/not a string, return null (caller must check)
+    if(!url || typeof url !== 'string') return null;
+    // Only wrap actual TCGPlayer URLs - don't wrap null or other domains
+    if(!url.includes('tcgplayer.com')) return url;
+    return url; // Direct link - works fine, affiliate tracked via eBay cookie
   },
 
   // Wrap an eBay URL with your affiliate parameters
@@ -294,8 +290,8 @@ const AFF = {
 
   // Build a TCGPlayer search URL wrapped with affiliate link
   tcgSearch(query) {
-    const dest = 'https://www.tcgplayer.com/search/all/product?q=' + encodeURIComponent(query);
-    return this.tcg(dest);
+    if(!query) return 'https://www.tcgplayer.com';
+    return 'https://www.tcgplayer.com/search/all/product?q=' + encodeURIComponent(query);
   },
 
   // Build an eBay sold search URL with affiliate params
@@ -1017,7 +1013,7 @@ function addBubble(item,stock,imgUrl,apiPrintings,bestMatchIdx){
   else{
     const tcgDirect=first.tcgUrl||null;
     const qt=(item.name||'')+' '+(item.set_name||item.game||'');
-    const tcgHref=tcgDirect ? AFF.tcg(tcgDirect) : AFF.tcgSearch(qt);
+    const tcgHref=AFF.tcg(tcgDirect) || AFF.tcgSearch(qt);
     const sfHref=first.scryfallUrl||null;
     const ebayQ=(item.name||'')+' '+(item.set_name||'')+' '+(item.game||'');
     actLinks=`<a class="bact a-tcg" id="bt${id}" href="${tcgHref}" target="_blank">${tcgDirect?'TCGPlayer ↗':'TCGPlayer Search ↗'}</a>
@@ -1084,7 +1080,7 @@ function updatePrice(id,p,cond){
   // Update TCGPlayer link
   const bt=document.getElementById('bt'+id);
   if(bt){
-    if(p.tcgUrl){bt.href=AFF.tcg(p.tcgUrl);bt.textContent='TCGPlayer ↗';}
+    const tUrl=AFF.tcg(p.tcgUrl);if(tUrl){bt.href=tUrl;bt.textContent='TCGPlayer ↗';}
     else{const n=document.getElementById(id)?.querySelector('.bname')?.textContent||'';bt.href=AFF.tcgSearch(n+' '+(p.set||'')+' '+(p.variant||''));bt.textContent='TCGPlayer Search ↗';}
   }
   // Update Scryfall link
@@ -1295,7 +1291,7 @@ window.resetActs=function(id){
     const qe=(item.name||'')+' '+(item.set_name||'')+' '+(item.game||'');
     // Use stored direct TCGPlayer URL if available, else search
     const tcgDirect=el._prints&&el._prints[el._bmi||0]?.tcgUrl||null;
-    const tcgHref=tcgDirect?AFF.tcg(tcgDirect):AFF.tcgSearch(qt);
+    const tcgHref=AFF.tcg(tcgDirect)||AFF.tcgSearch(qt);
     links=`<a class="bact a-tcg" href="${tcgHref}" target="_blank">${tcgDirect?'TCGPlayer ↗':'TCGPlayer Search ↗'}</a>
       <a class="bact a-ebay" href="${AFF.ebaySearch(qe)}" target="_blank">eBay Sold ↗</a>`;}
   document.getElementById('acts'+id).innerHTML=links+`<button class="bact a-add" onclick="showAddForm('${id}')">+ Add to Inventory</button>${si>0?`<button class="bact a-sell" onclick="showSellForm('${id}')">✓ Mark as Sold</button>`:''}`;
