@@ -271,90 +271,55 @@ function buildHeaders(){
 
 async function loadInventory(){
   const token = localStorage.getItem('lba_wf_dash_token');
-  if(!token){ document.getElementById('setup').style.display='flex'; return; }
+  if(!token){
+    document.getElementById('setup').style.display='flex';
+    return;
+  }
   document.getElementById('sync-status').textContent = 'Loading...';
 
   try{
     let items=[], offset=0, total=1;
     while(offset < total){
-      const res = await fetch(buildUrl(`/collections/${WF_PRODUCTS}/items?limit=100&offset=${offset}`), {
-        headers: buildHeaders()
-      });
+      const res = await fetch(
+        buildUrl(`/collections/${WF_PRODUCTS}/items?limit=100&offset=${offset}`),
+        { headers: buildHeaders() }
+      );
+
       if(res.status===401){
         localStorage.removeItem('lba_wf_dash_token');
-        showError('Token rejected — please re-enter your Webflow token.');
+        document.getElementById('setup').style.display='flex';
+        document.getElementById('token-help').innerHTML='Token rejected — please re-enter your Webflow token.';
+        document.getElementById('token-help').style.display='block';
         return;
       }
       if(res.status===403){
-        showError('Token missing CMS: Read permission. Edit your token in Webflow Site Settings → Integrations.');
+        document.getElementById('setup').style.display='flex';
+        document.getElementById('token-help').innerHTML='Token missing CMS: Read permission. Edit token in Webflow Site Settings → Integrations → API Access.';
+        document.getElementById('token-help').style.display='block';
         return;
       }
       if(!res.ok){
-        showError(`API error ${res.status} — check your token and proxy URL.`);
-        break;
+        throw new Error(`Webflow API returned ${res.status}`);
       }
+
       const d = await res.json();
       total = d.pagination?.total || 0;
-      const batch = (d.items||[]).map(mapItem);
-      items = items.concat(batch);
+      items = items.concat((d.items||[]).map(mapItem));
       offset += 100;
       if((d.items||[]).length < 100) break;
     }
 
-    // Merge unsynced local items
-    const local = JSON.parse(localStorage.getItem('lba_inventory')||'[]');
-    const unsynced = local.filter(i=>!i.shopId&&!i.cmsId).map(i=>({
-      id:i.id, name:i.name||'—', set:i.set||'', variant:i.variant||'',
-      year:i.year||'', condition:i.condition||'NM', category:i.category||'TCG',
-      cost:i.cost||0, market:i.market||0, salePrice:i.salePrice||0,
-      profit:i.profit||0, status:i.status||'in_stock',
-      channel:i.saleChannel||'', addedAt:i.addedAt||'', soldAt:i.soldAt||'',
-      isRookie:i.is_rookie||false, _local:true
-    }));
-
-    // Show CMS data immediately, then merge local
-    all = [...items];
-    filtered = [...all];
-    renderAll(); // Render CMS items first so dashboard stays visible
-    
-    // Now add any unsynced local items
-    if(unsynced.length){
-      all = [...items, ...unsynced];
-      filtered = [...all];
-      renderAll();
-    }
-    document.getElementById('sync-status').textContent =
-      `${items.length} products · ${unsynced.length} local · ${new Date().toLocaleTimeString()}`;
-  }catch(e){
-    console.error('Load error:', e);
-    document.getElementById('sync-status').textContent = '⚠ CMS error — showing local data';
-    // Don't redirect to login on catch — just show whatever we have
-    // from localStorage so the dashboard stays visible
-    if(all.length === 0){
-      // Only show error if we have nothing at all
-      const local = JSON.parse(localStorage.getItem('lba_inventory')||'[]');
-      all = local.map(i=>({
-        id:i.id, name:i.name||'—', set:i.set||'', variant:i.variant||'',
-        year:i.year||'', condition:i.condition||'NM', category:i.category||'TCG',
-        cost:i.cost||0, market:i.market||0, salePrice:i.salePrice||0,
-        profit:i.profit||0, status:i.status||'in_stock',
-        channel:i.saleChannel||'', addedAt:i.addedAt||'', soldAt:i.soldAt||'',
-        isRookie:i.is_rookie||false, _local:true
-      }));
-      if(all.length === 0){
-        // Show a non-blocking error message without redirecting to setup
-        document.getElementById('sync-status').textContent = '⚠ Load failed — tap REFRESH';
-        // Show a floating error instead of the setup screen
-        const errDiv = document.createElement('div');
-        errDiv.style.cssText = 'position:fixed;top:70px;left:50%;transform:translateX(-50%);background:#1a1b20;border:1px solid rgba(255,77,109,.4);padding:12px 20px;font-family:DM Mono,monospace;font-size:11px;color:#ff4d6d;z-index:300;max-width:90vw;text-align:center;border-radius:2px;';
-        errDiv.innerHTML = '⚠ ' + e.message + '<br><small>Check Worker URL · Tap REFRESH to retry</small>';
-        document.body.appendChild(errDiv);
-        setTimeout(()=>errDiv.remove(), 8000);
-        return;
-      }
-    }
+    // Webflow data only — no localStorage fallback
+    all = items;
     filtered = [...all];
     renderAll();
+    document.getElementById('sync-status').textContent =
+      `${items.length} products from Webflow · ${new Date().toLocaleTimeString()}`;
+
+  }catch(e){
+    console.error('Load error:', e);
+    // Show error in status bar — do NOT redirect to login or show local data
+    document.getElementById('sync-status').textContent = '⚠ ' + e.message + ' — tap REFRESH to retry';
   }
 }
 
