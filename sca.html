@@ -345,10 +345,10 @@ const AFF = {
 // ============================================================
 // WEBFLOW PROXY — routes all WF API calls through Cloudflare Worker
 // ============================================================
-const WF_PROXY_DEFAULT = 'https://still-resonance-4f87.swarnerauto.workers.dev';
+const WORKER_URL = 'https://still-resonance-4f87.swarnerauto.workers.dev';
 
 // Always read fresh from localStorage so settings changes take effect immediately
-function getProxyUrl(){ return (localStorage.getItem('lba_proxy_url') || WF_PROXY_DEFAULT).replace(/\/+$/, ''); }
+
 
 async function wfFetch(path, options){
   options = options || {};
@@ -587,8 +587,7 @@ async function fetchCardImage(item){
 // WEBFLOW SHOP SYNC — creates ecommerce Product + SKU
 // ============================================================
 async function syncToShopProduct(entry, imageUrl){
-  const token = getWfToken();
-  if(!token){ console.log('syncToShopProduct: no token'); return null; }
+  // Token in Cloudflare Worker — no browser token needed
 
   const slug = 'inv-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,6);
   const name = [(entry.name||'Card'), entry.year!=='null'?entry.year:null, entry.set!=='null'?entry.set:null].filter(Boolean).join(' ').trim().substring(0,255);
@@ -638,7 +637,7 @@ async function syncToShopProduct(entry, imageUrl){
     publishStatus: 'live'
   };
 
-  const url = getProxyUrl() + '/proxy/sites/65b15ee0228d06647ca7e4ce/products';
+  const url = WORKER_URL + '/proxy/sites/65b15ee0228d06647ca7e4ce/products';
   console.log('Syncing:', name, '| url:', url.substring(0,60), '| price:', priceCents);
 
   try{
@@ -747,8 +746,6 @@ function launch(){
   startScanner();
 }
 function launchBulk(){
-  const k=document.getElementById('kinp').value.trim();
-  if(!k){toast('Enter API key');return;}
   startScanner(true);
 }
 
@@ -1411,8 +1408,7 @@ async function saveSettings(){
   // Worker URL is hardcoded — settings panel is info only
   closeSettings();
   try{
-    const proxy = (p||localStorage.getItem('lba_proxy_url')||WF_PROXY_DEFAULT);
-    const r = await fetch(proxy.replace(/\/+$/,'')+'/health');
+    const r = await fetch(WORKER_URL+'/health');
     const d = await r.json();
     toast(d.ok ? '✓ Settings saved · Worker connected — tap RETRY SYNC on your card' : '⚠ Worker error · check URL');
   }catch(e){
@@ -1421,13 +1417,10 @@ async function saveSettings(){
 }
 
 async function testWebflowWrite(){
-  const t = document.getElementById('settings-wf-token').value.trim() || getWfToken();
-  const p = document.getElementById('settings-proxy').value.trim() || getProxyUrl();
   const res_el = document.getElementById('settings-test-result');
-  res_el.style.display='block';
-  res_el.textContent = 'Testing...';
-  if(!t){ res_el.textContent='No token entered'; return; }
-  const url = WORKER_URL+'/proxy/sites/65b15ee0228d06647ca7e4ce/products';
+  if(res_el) res_el.style.display='block';
+  if(res_el) res_el.textContent = 'Testing...';
+  const url = WORKER_URL + '/proxy/sites/65b15ee0228d06647ca7e4ce/products';
   const testPayload = {
     product:{fieldData:{name:'LBA Test '+Date.now(),slug:'lba-test-'+Date.now(),'ec-product-type':'ff42fee0113744f693a764e3431a9cc2',shippable:true,'sold-out':false,'tax-category':'standard-taxable'}},
     sku:{fieldData:{name:'Test SKU',slug:'lba-test-sku-'+Date.now(),price:{value:100,unit:'USD'},'sku-values':{}}},
@@ -1436,18 +1429,17 @@ async function testWebflowWrite(){
   try{
     const r = await fetch(url,{method:'POST',headers:{'Content-Type':'application/json','accept':'application/json'},body:JSON.stringify(testPayload)});
     const txt = await r.text();
-    if(r.ok){
-      res_el.style.color='var(--g)';
-      res_el.textContent='✓ SUCCESS ('+r.status+') — Webflow write works! Product created.';
-    } else {
-      res_el.style.color='var(--red)';
-      res_el.textContent='✗ FAILED ('+r.status+'): '+txt.substring(0,200);
+    if(res_el){
+      res_el.style.color = r.ok ? 'var(--g)' : 'var(--red)';
+      res_el.textContent = r.ok
+        ? '✓ SUCCESS ('+r.status+') — Webflow write works!'
+        : '✗ FAILED ('+r.status+'): '+txt.substring(0,150);
     }
   }catch(e){
-    res_el.style.color='var(--red)';
-    res_el.textContent='✗ Network error: '+e.message;
+    if(res_el){ res_el.style.color='var(--red)'; res_el.textContent='✗ Network error: '+e.message; }
   }
 }
+
 
 async function retrySync(id){
   const el = document.getElementById(id);
