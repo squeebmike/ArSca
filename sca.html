@@ -13,7 +13,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
 #video{position:fixed;inset:0;width:100%;height:100%;object-fit:cover;z-index:0;}
 #canvas{display:none;}
 #oc{position:fixed;inset:0;width:100%;height:100%;z-index:5;pointer-events:none;}
-#setup{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:32px;z-index:100;}
+#setup{position:fixed;inset:0;background:var(--bg);display:none;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:32px;z-index:100;}
 .s-logo{font-family:'Orbitron',monospace;font-size:28px;font-weight:900;color:var(--g);letter-spacing:5px;text-shadow:0 0 30px var(--g);text-align:center;line-height:1.1;}
 .s-sub{font-family:monospace;font-size:10px;color:rgba(255,255,255,.3);letter-spacing:3px;}
 .s-badges{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;}
@@ -202,7 +202,6 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
     <span class="s-badge">TCG</span><span class="s-badge">SPORTS</span>
     <span class="s-badge">COMICS</span><span class="s-badge">PSA/BGS/CGC</span>
   </div>
-  <input class="s-inp" id="kinp" type="password" placeholder="Anthropic API key (sk-ant-...)">
   <button class="s-btn" onclick="launch()">&#9654; LAUNCH SCANNER</button>
   <button class="s-btn2" onclick="launchBulk()">&#9654; BULK BUY MODE</button>
 </div>
@@ -231,7 +230,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
 <!-- SETTINGS PANEL -->
 <div id="settings-panel" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:500;display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:32px;">
   <div style="font-family:'Orbitron',monospace;font-size:14px;color:var(--g);letter-spacing:3px;">SETTINGS</div>
-  <input class="s-inp" id="settings-wf-token" type="password" placeholder="Webflow API token (wf_...)">
+
   <input class="s-inp" id="settings-proxy" type="text" placeholder="Cloudflare Worker URL" value="https://still-resonance-4f87.swarnerauto.workers.dev">
   <button class="s-btn" onclick="saveSettings()">SAVE SETTINGS</button>
   <button class="s-btn" style="background:rgba(0,255,179,.15);margin-top:-8px;" onclick="testWebflowWrite()">🔬 TEST WEBFLOW WRITE</button>
@@ -350,14 +349,12 @@ const WF_PROXY_DEFAULT = 'https://still-resonance-4f87.swarnerauto.workers.dev';
 
 // Always read fresh from localStorage so settings changes take effect immediately
 function getProxyUrl(){ return (localStorage.getItem('lba_proxy_url') || WF_PROXY_DEFAULT).replace(/\/+$/, ''); }
-function getWfToken(){ return localStorage.getItem('lba_wf_token') || ''; }
 
 async function wfFetch(path, options){
   options = options || {};
-  const token = getWfToken();
-  const url = getProxyUrl() + '/proxy' + path;
+  const url = WORKER_URL + '/proxy' + path;
   const headers = Object.assign(
-    {'Content-Type':'application/json','X-LBA-Token':token,'accept':'application/json'},
+    {'Content-Type':'application/json','accept':'application/json'},
     options.headers || {}
   );
   return fetch(url, Object.assign({}, options, {headers: headers}));
@@ -647,7 +644,7 @@ async function syncToShopProduct(entry, imageUrl){
   try{
     const res = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type':'application/json', 'X-LBA-Token':token, 'accept':'application/json' },
+      headers: { 'Content-Type':'application/json', 'accept':'application/json' },
       body: JSON.stringify(payload)
     });
     const txt = await res.text();
@@ -673,9 +670,7 @@ async function syncToShopProduct(entry, imageUrl){
 // WEBFLOW CMS SYNC — LBA Inventory back-office
 // ============================================================
 async function syncToWebflowCMS(entry, imageUrl){
-  const key = localStorage.getItem('lba_k');
-  if(!key) return null;
-
+    // Token in Cloudflare Worker env
   // Generate unique slug
   const slug = 'lba-' + Date.now() + '-' + Math.random().toString(36).slice(2,6);
 
@@ -729,7 +724,7 @@ async function syncToWebflowCMS(entry, imageUrl){
       // Also publish it
       await wfFetch(`/collections/${WF_COLLECTION_ID}/items/publish`, {
         method: 'POST',
-        headers: { 'Content-Type':'application/json', 'Authorization':`Bearer ${localStorage.getItem('lba_wf_token')||''}` },
+        headers: { 'Content-Type':'application/json', 'Content-Type':'application/json' },
         body: JSON.stringify({ itemIds: [data.id] })
       });
       return data.id;
@@ -745,32 +740,17 @@ const CM={NM:1,LP:.8,MP:.64,HP:.4,DMG:.25};
 let bubs=[],auto=false,autoT=null,scanning=false,octx=null,wakeLock=null;
 let flipMode=false,bulkMode=false,bulkItems=[];
 const video=document.getElementById('video'),canvas=document.getElementById('canvas'),oc=document.getElementById('oc');
-const savedKey=localStorage.getItem('lba_k');
-if(savedKey)document.getElementById('kinp').value=savedKey;
+
 
 function launch(){
-  const k=document.getElementById('kinp').value.trim();
-  if(!k){toast('Enter your Anthropic API key');return;}
-  if(!k.startsWith('sk-ant-')){toast('Key must start with sk-ant-');return;}
-  localStorage.setItem('lba_k',k);
-  // Check for Webflow token
-  if(!localStorage.getItem('lba_wf_token')){
-    const wft=prompt('Optional: Webflow API token for cloud sync (leave blank to skip):');
-    if(wft&&wft.length>10)localStorage.setItem('lba_wf_token',wft);
-  }
-  if(!localStorage.getItem('lba_proxy_url')&&localStorage.getItem('lba_wf_token')){
-    const proxy=prompt('Optional: Cloudflare proxy URL (e.g. https://lba-proxy.name.workers.dev) — leave blank to skip:');
-    if(proxy&&proxy.includes('workers.dev'))localStorage.setItem('lba_proxy_url',proxy);
-  }
+  // Secrets live in Cloudflare Worker — no API key needed in browser
   startScanner();
 }
 function launchBulk(){
   const k=document.getElementById('kinp').value.trim();
   if(!k){toast('Enter API key');return;}
-  if(!k.startsWith('sk-ant-')){toast('Key must start with sk-ant-');return;}
-  localStorage.setItem('lba_k',k);startScanner(true);
+  startScanner(true);
 }
-if(savedKey)startScanner();
 
 async function startScanner(goToBulk){
   document.getElementById('setup').style.display='none';
@@ -822,12 +802,25 @@ function capture(){
   canvas.getContext('2d').drawImage(video,0,0,canvas.width,canvas.height);
   return canvas.toDataURL('image/jpeg',.9).split(',')[1];
 }
-async function callClaude(msgs,maxTok){
-  const key=localStorage.getItem('lba_k');
-  const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:maxTok||3000,messages:msgs})});
-  if(!res.ok){const e=await res.json();throw new Error(e.error?.message||'HTTP '+res.status);}
-  return(await res.json()).content[0].text;
+async function callClaude(msgs, maxTok){
+  // Routes through Cloudflare Worker — API key never touches the browser
+  const res = await fetch(WORKER_URL + '/anthropic/messages', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: maxTok || 1000,
+      messages: msgs,
+    })
+  });
+  if(!res.ok){
+    const t = await res.text();
+    throw new Error('Claude error ' + res.status + ': ' + t.substring(0,120));
+  }
+  const d = await res.json();
+  return d.content;
 }
+
 
 async function doScan(){
   if(scanning)return;scanning=true;
@@ -1211,7 +1204,6 @@ window.confirmAdd=async function(id){
   el._pendingEntry = JSON.parse(localStorage.getItem('lba_inventory')||'[]')[0];
 
   const profit=(Number(print.mid||0)-cost).toFixed(2);
-  const token=localStorage.getItem('lba_wf_token');
   const lastEntry=JSON.parse(localStorage.getItem('lba_inventory')||'[]')[0];
   const didSync=!!(lastEntry&&lastEntry.shopId);
   let statusMsg, statusCls;
@@ -1288,9 +1280,8 @@ window.confirmSell=async function(id,avgCost){
   localStorage.setItem('lba_inventory',JSON.stringify(inv));
 
   // Update both CMS collections when sold
-  if(soldItem&&localStorage.getItem('lba_wf_token')){
-    const token=localStorage.getItem('lba_wf_token');
-    const h={'Content-Type':'application/json','Authorization':'Bearer '+token};
+  if(soldItem){
+    const h={'Content-Type':'application/json'};
     try{
       // Update LBA Inventory tracker
       if(soldItem.cmsId){
@@ -1409,8 +1400,7 @@ function toggleAuto(){
 function showSettings(){
   const panel = document.getElementById('settings-panel');
   panel.style.display='flex';
-  const t = localStorage.getItem('lba_wf_token')||'';
-  const p = localStorage.getItem('lba_proxy_url')||'https://still-resonance-4f87.swarnerauto.workers.dev';
+  const p = WORKER_URL;
   document.getElementById('settings-wf-token').value = t;
   document.getElementById('settings-proxy').value = p;
 }
@@ -1418,10 +1408,7 @@ function closeSettings(){
   document.getElementById('settings-panel').style.display='none';
 }
 async function saveSettings(){
-  const t = document.getElementById('settings-wf-token').value.trim();
-  const p = document.getElementById('settings-proxy').value.trim();
-  if(t && t.length>10) localStorage.setItem('lba_wf_token', t);
-  if(p && p.includes('workers')) localStorage.setItem('lba_proxy_url', p);
+  // Worker URL is hardcoded — settings panel is info only
   closeSettings();
   try{
     const proxy = (p||localStorage.getItem('lba_proxy_url')||WF_PROXY_DEFAULT);
@@ -1440,14 +1427,14 @@ async function testWebflowWrite(){
   res_el.style.display='block';
   res_el.textContent = 'Testing...';
   if(!t){ res_el.textContent='No token entered'; return; }
-  const url = p.replace(/\/+$/,'')+'/proxy/sites/65b15ee0228d06647ca7e4ce/products';
+  const url = WORKER_URL+'/proxy/sites/65b15ee0228d06647ca7e4ce/products';
   const testPayload = {
     product:{fieldData:{name:'LBA Test '+Date.now(),slug:'lba-test-'+Date.now(),'ec-product-type':'ff42fee0113744f693a764e3431a9cc2',shippable:true,'sold-out':false,'tax-category':'standard-taxable'}},
     sku:{fieldData:{name:'Test SKU',slug:'lba-test-sku-'+Date.now(),price:{value:100,unit:'USD'},'sku-values':{}}},
     publishStatus:'staging'
   };
   try{
-    const r = await fetch(url,{method:'POST',headers:{'Content-Type':'application/json','X-LBA-Token':t,'accept':'application/json'},body:JSON.stringify(testPayload)});
+    const r = await fetch(url,{method:'POST',headers:{'Content-Type':'application/json','accept':'application/json'},body:JSON.stringify(testPayload)});
     const txt = await r.text();
     if(r.ok){
       res_el.style.color='var(--g)';
@@ -1466,12 +1453,7 @@ async function retrySync(id){
   const el = document.getElementById(id);
   if(!el||!el._pendingEntry){ toast('No pending entry found — scan and add again'); return; }
   const entry = el._pendingEntry;
-  const tok = getWfToken();
-  if(!tok){
-    showSettings();
-    toast('Enter your Webflow token in settings first');
-    return;
-  }
+  // Token in Cloudflare env — proceed
   const acts = document.getElementById('acts'+id);
   acts.innerHTML += '<div class="cms-status cms-syncing">⟳ Retrying sync...</div>';
   const shopId = await syncToShopProduct(entry, el._imgUrl);
@@ -1494,6 +1476,9 @@ async function retrySync(id){
 }
 
 function toast(msg){const old=document.querySelector('.toast');if(old)old.remove();const t=document.createElement('div');t.className='toast';t.textContent=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),4000);}
+
+// Auto-launch — no credentials needed, everything in Cloudflare Worker
+window.addEventListener('load', function(){ startScanner(); });
 </script>
 
 <div id="lba-nav"><a class="lba-nav-btn active" href="sca.html"><span class="nav-ico">⬡</span>SCANNER</a><a class="lba-nav-btn" href="dashboard.html"><span class="nav-ico">▦</span>DASHBOARD</a></div>
