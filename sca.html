@@ -815,7 +815,13 @@ async function callClaude(msgs, maxTok){
     throw new Error('Claude error ' + res.status + ': ' + t.substring(0,120));
   }
   const d = await res.json();
-  return d.content;
+  // Return the text string directly — callers use text.replace() for JSON parsing
+  const content = d.content;
+  if(Array.isArray(content)){
+    const textBlock = content.find(b => b.type === 'text');
+    return textBlock ? textBlock.text : '';
+  }
+  return typeof content === 'string' ? content : '';
 }
 
 
