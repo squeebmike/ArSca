@@ -3,43 +3,42 @@
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>LBA Dashboard</title>
+
 <style>
 body{background:#000;color:#fff;font-family:sans-serif;padding:20px}
+h1{margin-bottom:10px}
 .card{background:#111;padding:15px;margin:10px 0;border-radius:10px}
 </style>
 </head>
 
 <body>
 
-<h2>Inventory Dashboard</h2>
+<h1>Inventory</h1>
 
-<div class="card">
-Proxy:
-<input id="proxy" style="width:100%">
-</div>
+<button onclick="load()">Refresh</button>
 
-<button onclick="load()">Load Inventory</button>
-
-<pre id="out"></pre>
+<div id="stats"></div>
+<pre id="data"></pre>
 
 <script>
 
-const DEFAULT_PROXY = "https://still-resonance-4f87.swarnerauto.workers.dev";
-
-document.getElementById("proxy").value =
-localStorage.getItem("proxy") || DEFAULT_PROXY;
+const WORKER = "https://still-resonance-4f87.swarnerauto.workers.dev";
 
 async function load(){
 
-  const proxy = document.getElementById("proxy").value;
-  localStorage.setItem("proxy", proxy);
-
-  const res = await fetch(proxy + "/proxy/collections/YOUR_COLLECTION/items");
+  const res = await fetch(WORKER + "/proxy/collections/YOUR_COLLECTION/items");
   const data = await res.json();
 
-  document.getElementById("out").textContent =
-  JSON.stringify(data,null,2);
+  document.getElementById("data").textContent =
+    JSON.stringify(data,null,2);
+
+  const total = data.items?.length || 0;
+
+  document.getElementById("stats").innerHTML =
+    `<div class="card">Total Items: ${total}</div>`;
 }
+
+load();
 
 </script>
 
