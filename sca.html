@@ -1,59 +1,199 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>LBA Scanner</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: Arial, sans-serif; margin: 0; background:#0b0b0b; color:#fff; }
+    #video { width: 100%; max-height: 50vh; object-fit: cover; background:#000; }
+    .wrap { padding: 16px; }
+    .card { background:#151515; border:1px solid #333; border-radius:10px; padding:16px; margin-bottom:16px; }
+    button { padding:12px 16px; border:none; border-radius:8px; cursor:pointer; margin-right:8px; margin-bottom:8px; }
+    button.primary { background:#00d084; color:#000; font-weight:bold; }
+    button.secondary { background:#333; color:#fff; }
+    input, select { padding:10px; width:100%; margin-bottom:10px; border-radius:6px; border:1px solid #444; background:#111; color:#fff; }
+    pre { white-space: pre-wrap; word-break: break-word; background:#000; color:#0f0; padding:12px; border-radius:8px; overflow:auto; }
+    .result { border:1px solid #333; padding:12px; border-radius:8px; margin-bottom:10px; background:#111; }
+    .muted { color:#999; font-size:14px; }
+  </style>
 </head>
 <body>
-  <h1>Scanner</h1>
+  <video id="video" autoplay playsinline muted></video>
 
-  <label>Worker URL:</label><br>
-  <input id="proxy" style="width:400px"><br><br>
+  <div class="wrap">
+    <div class="card">
+      <div><strong>Worker URL:</strong> <span id="worker-url"></span></div>
+      <div class="muted">No Anthropic key field. No Webflow token field.</div>
+    </div>
 
-  <label>Webflow Token (optional):</label><br>
-  <input id="token" style="width:400px"><br><br>
+    <div class="card">
+      <label><strong>Inventory Collection ID</strong></label>
+      <input id="collectionId" value="69cb5611c6522a8591b552c4" />
 
-  <label>Collection ID:</label><br>
-  <input id="collection" style="width:400px"><br><br>
+      <button class="primary" id="scanBtn">Scan Front</button>
+      <button class="secondary" id="scanBackBtn">Scan Back</button>
+      <button class="secondary" id="bulkBtn">Bulk Scan</button>
+    </div>
 
-  <label>Item Name:</label><br>
-  <input id="name"><br><br>
+    <div class="card">
+      <h3>Detected Items</h3>
+      <div id="results">Nothing scanned yet.</div>
+    </div>
 
-  <button onclick="addItem()">Add Item</button>
+    <div class="card">
+      <h3>Raw Output</h3>
+      <pre id="raw">Ready.</pre>
+    </div>
+  </div>
 
-  <pre id="output"></pre>
+  <canvas id="canvas" style="display:none;"></canvas>
 
   <script>
-    function getHeaders() {
-      const token = document.getElementById('token').value;
-      const headers = { 'Content-Type': 'application/json' };
-      if (token) headers['X-LBA-Token'] = token;
-      return headers;
+    const WORKER_URL = 'https://still-resonance-4f87.swarnerauto.workers.dev';
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const resultsEl = document.getElementById('results');
+    const rawEl = document.getElementById('raw');
+
+    document.getElementById('worker-url').textContent = WORKER_URL;
+
+    async function startCamera() {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: { ideal: 'environment' },
+          width: { ideal: 1920 },
+          height: { ideal: 1080 }
+        },
+        audio: false
+      });
+      video.srcObject = stream;
+      await video.play();
     }
 
-    async function addItem() {
-      const proxy = document.getElementById('proxy').value;
-      const collection = document.getElementById('collection').value;
-      const name = document.getElementById('name').value;
+    function captureFrame() {
+      const vw = video.videoWidth || 1280;
+      const vh = video.videoHeight || 720;
+      canvas.width = 1024;
+      canvas.height = Math.round((1024 * vh) / vw);
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      return canvas.toDataURL('image/jpeg', 0.9).split(',')[1];
+    }
 
-      const res = await fetch(
-        proxy + '/proxy/collections/' + collection + '/items',
-        {
-          method: 'POST',
-          headers: getHeaders(),
-          body: JSON.stringify({
-            fieldData: {
-              name: name,
-              slug: name.toLowerCase().replace(/\s+/g, '-')
-            }
-          })
-        }
-      );
+    function escapeHtml(str) {
+      return String(str || '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#039;');
+    }
+
+    function renderResults(items) {
+      if (!Array.isArray(items) || !items.length) {
+        resultsEl.innerHTML = 'No items detected.';
+        return;
+      }
+
+      resultsEl.innerHTML = items.map((item, index) => {
+        const name = item.player || item.name || 'Unknown';
+        const set = item.set_name || item.set || '';
+        const variant = item.parallel || '';
+        const year = item.year || '';
+        const price = item?.printings?.[0]?.mid || 0;
+
+        return `
+          <div class="result">
+            <div><strong>${escapeHtml(name)}</strong></div>
+            <div>${escapeHtml([year, set, variant].filter(Boolean).join(' · ') || '—')}</div>
+            <div>Estimated Market: $${Number(price || 0).toFixed(2)}</div>
+            <label>Cost</label>
+            <input id="cost-${index}" type="number" step="0.01" placeholder="0.00" />
+            <label>Quantity</label>
+            <input id="qty-${index}" type="number" value="1" min="1" />
+            <button class="primary" onclick='saveItem(${JSON.stringify(item)}, ${index})'>Add to Webflow</button>
+          </div>
+        `;
+      }).join('');
+    }
+
+    async function scan(mode) {
+      rawEl.textContent = 'Scanning...';
+      resultsEl.textContent = 'Scanning...';
+
+      const imageBase64 = captureFrame();
+
+      const res = await fetch(WORKER_URL + '/api/scan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageBase64, mode })
+      });
 
       const data = await res.json();
+      rawEl.textContent = JSON.stringify(data, null, 2);
 
-      document.getElementById('output').textContent =
-        JSON.stringify(data, null, 2);
+      if (!data.ok) {
+        resultsEl.textContent = data.error || 'Scan failed';
+        return;
+      }
+
+      const items = Array.isArray(data.data) ? data.data : [data.data];
+      renderResults(items);
+      window.__lastScanItems = items;
     }
+
+    async function saveItem(item, index) {
+      const collectionId = document.getElementById('collectionId').value.trim();
+      const cost = Number(document.getElementById(`cost-${index}`).value || 0);
+      const qty = Number(document.getElementById(`qty-${index}`).value || 1);
+      const firstPrinting = item?.printings?.[0] || {};
+
+      const payload = {
+        isArchived: false,
+        isDraft: false,
+        fieldData: {
+          name: item.player || item.name || 'Unknown Item',
+          slug: (item.player || item.name || 'unknown-item')
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/^-+|-+$/g, '') + '-' + Date.now(),
+          'player-card-name': item.player || item.name || '',
+          'set-name': firstPrinting.set || item.set_name || '',
+          'variant-parallel': firstPrinting.variant || item.parallel || '',
+          'year': item.year || '',
+          'market-value': Number(firstPrinting.mid || 0),
+          'cost': cost,
+          'inventory-count': qty,
+          'sold-out': false
+        }
+      };
+
+      const res = await fetch(WORKER_URL + '/proxy/collections/' + collectionId + '/items', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await res.json();
+      rawEl.textContent = JSON.stringify(data, null, 2);
+
+      if (res.ok) {
+        alert('Added to Webflow');
+      } else {
+        alert('Failed to add item');
+      }
+    }
+
+    document.getElementById('scanBtn').addEventListener('click', () => scan('front'));
+    document.getElementById('scanBackBtn').addEventListener('click', () => scan('back'));
+    document.getElementById('bulkBtn').addEventListener('click', () => scan('bulk'));
+
+    startCamera().catch(err => {
+      rawEl.textContent = 'Camera error: ' + err.message;
+      resultsEl.textContent = 'Camera could not start.';
+    });
   </script>
 </body>
 </html>
