@@ -691,10 +691,21 @@ async function syncToShopProduct(entry, imageUrl){
     // Card details
     if(entry.set)        custom['set-name']   = String(entry.set).substring(0, 255);
     if(entry.year)       custom['year']        = String(entry.year);
-    if(entry.sport)      custom['sport']       = entry.sport; // Option field — must match exactly
     if(entry.publisher)  custom['publisher']   = String(entry.publisher).substring(0, 255);
+    if(entry.issue)      custom['publisher']   = (custom['publisher']||'') + (entry.issue ? ' #'+entry.issue : '');
     if(entry.manufacturer || entry.publisher)
       custom['brand'] = (entry.manufacturer || entry.publisher || '').substring(0, 255);
+
+    // Sport option field — map string to option ID
+    const sportMap = {
+      'Baseball':   'e45a7313644967946a4c31433ee38600',
+      'Basketball': 'da6a66f7042e014dca2dcb233846d44e',
+      'Football':   '78efb48c800973ab2aaf2ccd0b9ec086',
+      'Hockey':     '6e34ff4eaf384557dc3faf9d5686e199',
+      'Soccer':     '1b6de817c9717e6ba15e1bb21a2c9f0c',
+      'Other':      '1b6de817c9717e6ba15e1bb21a2c9f0c',
+    };
+    if(entry.sport && sportMap[entry.sport]) custom['sport'] = sportMap[entry.sport];
 
     // Grading
     if(entry.grading_company){ custom['graded'] = true; custom['grader'] = String(entry.grading_company); }
@@ -708,6 +719,8 @@ async function syncToShopProduct(entry, imageUrl){
     if(tags.length)      custom['tags']        = tags.join(',');
     if(description)      custom['card-description'] = description;
     if(entry.id)         custom['card-sku']    = String(entry.id).substring(0, 255);
+    // qty from the add form
+    custom['inventory-count'] = entry.qty || 1;
 
     // Rookie / key flags — these map to Switch fields
     if(entry.is_rookie)  custom['graded'] = custom['graded'] || false; // keep graded toggle
