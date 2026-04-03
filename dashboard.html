@@ -1,41 +1,207 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <title>LBA Dashboard</title>
-</head>
-<body>
-  <h1>Inventory Dashboard</h1>
+const WEBFLOW_BASE = 'https://api.webflow.com/v2';
 
-  <label>Worker URL:</label><br>
-  <input id="proxy" style="width:400px"><br><br>
+const ALLOWED_ORIGINS = [
+  'https://squeebmike.github.io',
+  'http://localhost',
+  'http://127.0.0.1:5500',
+  'null'
+];
 
-  <label>Webflow Token (optional):</label><br>
-  <input id="token" style="width:400px"><br><br>
+function corsHeaders(origin) {
+  const allowed = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+  return {
+    'Access-Control-Allow-Origin': allowed,
+    'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Vary': 'Origin'
+  };
+}
 
-  <button onclick="loadData()">Load Inventory</button>
-
-  <pre id="output"></pre>
-
-  <script>
-    function getHeaders() {
-      const token = document.getElementById('token').value;
-      const headers = { 'Content-Type': 'application/json' };
-      if (token) headers['X-LBA-Token'] = token;
-      return headers;
+function json(data, status = 200, origin = ALLOWED_ORIGINS[0]) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: {
+      'Content-Type': 'application/json',
+      ...corsHeaders(origin)
     }
+  });
+}
 
-    async function loadData() {
-      const proxy = document.getElementById('proxy').value;
+async function proxyToWebflow(request, env, origin) {
+  const url = new URL(request.url);
+  const wfPath = url.pathname.replace(/^\/proxy/, '');
+  const wfUrl = WEBFLOW_BASE + wfPath + url.search;
 
-      const res = await fetch(proxy + '/proxy/collections', {
-        headers: getHeaders()
+  const token = env.WEBFLOW_TOKEN;
+  if (!token) {
+    return json({ ok: false, error: 'Missing WEBFLOW_TOKEN secret' }, 500, origin);
+  }
+
+  const method = request.method;
+  const body = ['GET', 'HEAD'].includes(method) ? undefined : await request.text();
+
+  const wfRes = await fetch(wfUrl, {
+    method,
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      'accept': 'application/json'
+    },
+    body
+  });
+
+  const text = await wfRes.text();
+
+  return new Response(text, {
+    status: wfRes.status,
+    headers: {
+      'Content-Type': 'application/json',
+      ...corsHeaders(origin)
+    }
+  });
+}
+
+async function scanWithAnthropic(request, env, origin) {
+  const key = env.ANTHROPIC_API_KEY;
+  if (!key) {
+    return json({ ok: false, error: 'Missing ANTHROPIC_API_KEY secret' }, 500, origin);
+  }
+
+  let payload;
+  try {
+    payload = await request.json();
+  } catch {
+    return json({ ok: false, error: 'Invalid JSON body' }, 400, origin);
+  }
+
+  const { imageBase64, mode = 'front' } = payload || {};
+  if (!imageBase64) {
+    return json({ ok: false, error: 'Missing imageBase64' }, 400, origin);
+  }
+
+  let prompt = '';
+  if (mode === 'bulk') {
+    prompt = `Identify all visible trading cards or comics. Return ONLY raw JSON array with this format:
+[{"name":"name","year":"year","set":"set","parallel":"variant","market_nm":5.00}]
+Return [] if none.`;
+  } else if (mode === 'back') {
+    prompt = `Read the back of the card. Return ONLY raw JSON:
+{"player":"name or null","card_number":"exact or null","set_name":"set or null","year":"year or null","serial_number":"serial or null","team":"team or null","notes":"short notes or null"}`;
+  } else {
+    prompt = `You are an expert collectibles identifier. Examine this image and return ONLY raw JSON array, no markdown:
+[{
+  "name":"exact name",
+  "game":"Pokemon TCG|Magic: The Gathering|Yu-Gi-Oh!|Sports Card|Comic|PSA Slab|BGS Slab|CGC Slab|SGC Slab|Other TCG",
+  "sport":"Baseball|Basketball|Football|Hockey|Soccer|null",
+  "player":"player name or null",
+  "team":"team or null",
+  "year":"year",
+  "card_number":"# or null",
+  "manufacturer":"Topps|Panini|Upper Deck|Bowman|Pokemon Company|Wizards|Konami|Marvel|DC|Image|Other",
+  "publisher":"publisher if comic",
+  "issue":"issue # if comic",
+  "set_name":"exact set",
+  "parallel":"Base|Chrome|Prizm|Silver Prizm|Gold Refractor|Red Prizm|Blue|Green|Orange|Holo|Reverse Holo|Full Art|Alt Art|Borderless|Showcase|Extended Art|Etched Foil|Serialized|1st Edition|Promo|Rainbow Rare|Secret Rare|Special Illustration Rare|Auto|Relic|Standard|Variant|Virgin|Textless|Sketch|Foil|Newsstand",
+  "serial_number":"/99 or null",
+  "grading_company":"PSA|BGS|CGC|SGC|null",
+  "grade":"10|9.5|9|8.5|null",
+  "cert_number":"cert # or null",
+  "is_rookie":false,
+  "is_key":false,
+  "key_notes":"why notable or null",
+  "confidence":"high|medium|low",
+  "confidence_reason":"brief",
+  "desirability":5,
+  "trend":"up|down|flat",
+  "trend_reason":"brief",
+  "cx":50,
+  "cy":50,
+  "printings":[{"set":"set","variant":"variant","year":"year","numbered":"/99 or null","mid":5.00,"low":2.00,"high":10.00}],
+  "comps":[{"desc":"comp description","price":8.50}]
+}]
+Return [] if none.`;
+  }
+
+  const anthRes = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': key,
+      'anthropic-version': '2023-06-01'
+    },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 3500,
+      messages: [
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'image',
+              source: {
+                type: 'base64',
+                media_type: 'image/jpeg',
+                data: imageBase64
+              }
+            },
+            {
+              type: 'text',
+              text: prompt
+            }
+          ]
+        }
+      ]
+    })
+  });
+
+  const anthText = await anthRes.text();
+
+  if (!anthRes.ok) {
+    return json({ ok: false, error: 'Anthropic call failed', detail: anthText }, anthRes.status, origin);
+  }
+
+  let parsed;
+  try {
+    const anthData = JSON.parse(anthText);
+    const text = anthData?.content?.[0]?.text || '';
+    parsed = JSON.parse(text.replace(/```json|```/g, '').trim());
+  } catch (err) {
+    return json({ ok: false, error: 'Failed to parse Anthropic response', detail: String(err), raw: anthText }, 500, origin);
+  }
+
+  return json({ ok: true, data: parsed }, 200, origin);
+}
+
+export default {
+  async fetch(request, env) {
+    const origin = request.headers.get('Origin') || ALLOWED_ORIGINS[0];
+
+    if (request.method === 'OPTIONS') {
+      return new Response(null, {
+        status: 204,
+        headers: corsHeaders(origin)
       });
-
-      const data = await res.json();
-
-      document.getElementById('output').textContent =
-        JSON.stringify(data, null, 2);
     }
-  </script>
-</body>
-</html>
+
+    const url = new URL(request.url);
+
+    if (url.pathname === '/health') {
+      return json({
+        ok: true,
+        worker: true,
+        hasWebflowSecret: !!env.WEBFLOW_TOKEN,
+        hasAnthropicSecret: !!env.ANTHROPIC_API_KEY
+      }, 200, origin);
+    }
+
+    if (url.pathname.startsWith('/proxy/')) {
+      return proxyToWebflow(request, env, origin);
+    }
+
+    if (url.pathname === '/api/scan' && request.method === 'POST') {
+      return scanWithAnthropic(request, env, origin);
+    }
+
+    return json({ ok: false, error: 'Route not found' }, 404, origin);
+  }
+};
