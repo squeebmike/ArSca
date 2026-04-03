@@ -2,58 +2,66 @@
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Scanner</title>
+<title>LBA Scanner</title>
 
 <style>
 body{margin:0;background:#000;color:#fff;font-family:sans-serif}
-video{width:100%;height:auto}
-button{padding:10px;margin:10px}
-.card{background:#111;padding:10px;margin:10px}
+#cam{width:100%;height:auto}
+#hud{
+  position:fixed;top:0;left:0;width:100%;height:100%;
+  pointer-events:none;border:3px solid rgba(0,255,255,0.2)
+}
+#controls{
+  position:fixed;bottom:0;width:100%;
+  background:#111;padding:10px;text-align:center
+}
+button{
+  padding:12px 20px;margin:5px;
+  background:#0ff;border:none;color:#000;font-weight:bold
+}
+.card{
+  background:#111;margin:10px;padding:10px;border-radius:10px
+}
 </style>
 </head>
 
 <body>
 
 <video id="cam" autoplay playsinline></video>
-
-<br>
-
-<button onclick="scan()">Scan</button>
+<div id="hud"></div>
 
 <div id="results"></div>
 
+<div id="controls">
+<button onclick="scan()">SCAN</button>
+</div>
+
 <script>
 
-const DEFAULT_PROXY = "https://still-resonance-4f87.swarnerauto.workers.dev";
+const WORKER = "https://still-resonance-4f87.swarnerauto.workers.dev";
 
 let stream;
 
 async function start(){
-  stream = await navigator.mediaDevices.getUserMedia({video:true});
+  stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment"}});
   document.getElementById("cam").srcObject = stream;
 }
-
 start();
 
 function capture(){
-  const video = document.getElementById("cam");
-  const canvas = document.createElement("canvas");
-  canvas.width = video.videoWidth;
-  canvas.height = video.videoHeight;
-
-  const ctx = canvas.getContext("2d");
-  ctx.drawImage(video,0,0);
-
-  return canvas.toDataURL("image/jpeg").split(",")[1];
+  const v = document.getElementById("cam");
+  const c = document.createElement("canvas");
+  c.width = v.videoWidth;
+  c.height = v.videoHeight;
+  c.getContext("2d").drawImage(v,0,0);
+  return c.toDataURL("image/jpeg").split(",")[1];
 }
 
 async function scan(){
 
-  const proxy = localStorage.getItem("proxy") || DEFAULT_PROXY;
-
   const img = capture();
 
-  const res = await fetch(proxy + "/api/scan",{
+  const res = await fetch(WORKER + "/api/scan",{
     method:"POST",
     headers:{'Content-Type':'application/json'},
     body:JSON.stringify({
@@ -65,13 +73,12 @@ async function scan(){
   const data = await res.json();
 
   const out = document.getElementById("results");
+  out.innerHTML = "";
 
   if(!data.ok){
-    out.innerHTML = "Error";
+    out.innerHTML = "Scan failed";
     return;
   }
-
-  out.innerHTML = "";
 
   data.data.forEach(card=>{
     const div = document.createElement("div");
@@ -79,33 +86,27 @@ async function scan(){
 
     div.innerHTML = `
       <b>${card.name}</b><br>
-      ${card.year} - ${card.set}<br>
-      $${card.market_nm}
+      ${card.year} ${card.set_name || ''}<br>
+      $${card.printings?.[0]?.mid || 0}
       <br><br>
-      <button onclick="addToWebflow('${card.name}')">
-        Add to Webflow
-      </button>
+      <button onclick='add("${card.name}")'>Add to Webflow</button>
     `;
 
     out.appendChild(div);
   });
 }
 
-async function addToWebflow(name){
+async function add(name){
 
-  const proxy = localStorage.getItem("proxy") || DEFAULT_PROXY;
-
-  const res = await fetch(proxy + "/proxy/collections/YOUR_COLLECTION/items",{
+  await fetch(WORKER + "/proxy/collections/YOUR_COLLECTION/items",{
     method:"POST",
     headers:{'Content-Type':'application/json'},
     body:JSON.stringify({
-      fields:{
-        name:name
-      }
+      fields:{ name:name }
     })
   });
 
-  alert("Sent to Webflow");
+  alert("Added to Webflow");
 }
 
 </script>
