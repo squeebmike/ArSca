@@ -586,6 +586,81 @@ async function fetchCardImage(item){
 // ============================================================
 // WEBFLOW SHOP SYNC — creates ecommerce Product + SKU
 // ============================================================
+
+// ── IMAGE CAPTURE HELPERS ────────────────────────────────────────────────────
+function snapPreview(id) {
+  // Snap current frame and show as preview in the add form
+  const snap = document.createElement('canvas');
+  const vw = video.videoWidth || 1280, vh = video.videoHeight || 720;
+  const scale = Math.min(1, 800 / vw);
+  snap.width = Math.round(vw * scale);
+  snap.height = Math.round(vh * scale);
+  snap.getContext('2d').drawImage(video, 0, 0, snap.width, snap.height);
+  const dataUrl = snap.toDataURL('image/jpeg', 0.88);
+
+  // Store on element for use during confirmAdd
+  const el = document.getElementById(id);
+  if(el) el._capturedPhoto = dataUrl.split(',')[1]; // base64 only
+
+  // Show preview
+  const prev = document.getElementById('photo-preview-'+id);
+  const lbl  = document.getElementById('photo-label-'+id);
+  if(prev) prev.innerHTML = '<img src="'+dataUrl+'" style="height:100%;width:100%;object-fit:cover;border-radius:5px">';
+  if(lbl)  lbl.style.display = 'none';
+}
+
+window.retakePhoto = function(id) {
+  snapPreview(id);
+  toast('Photo updated');
+};
+
+// ── IMAGE UPLOAD ─────────────────────────────────────────────────────────────
+// Captures current camera frame and uploads to Webflow Assets via worker
+// Returns the CDN URL or null on failure
+async function uploadCardImage(cardName) {
+  try {
+    // Capture current video frame at reasonable resolution
+    const snap = document.createElement('canvas');
+    const vw = video.videoWidth || 1280;
+    const vh = video.videoHeight || 720;
+    // Max 1200px wide to keep upload fast
+    const maxW = 1200;
+    const scale = Math.min(1, maxW / vw);
+    snap.width  = Math.round(vw * scale);
+    snap.height = Math.round(vh * scale);
+    snap.getContext('2d').drawImage(video, 0, 0, snap.width, snap.height);
+
+    // Get base64 JPEG (0.88 quality = good balance of size/quality)
+    const dataUrl = snap.toDataURL('image/jpeg', 0.88);
+    const base64  = dataUrl.split(',')[1];
+    const fileName = 'card-' + (cardName || 'scan').toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-').substring(0, 40)
+      + '-' + Date.now().toString(36) + '.jpg';
+
+    console.log('Uploading image:', fileName, '~' + Math.round(base64.length * 0.75 / 1024) + 'KB');
+
+    const res = await fetch(WORKER_URL + '/upload-image', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ base64, fileName, mimeType: 'image/jpeg' }),
+    });
+
+    if (!res.ok) {
+      const err = await res.text();
+      console.warn('Image upload failed:', res.status, err);
+      return null;
+    }
+
+    const data = await res.json();
+    console.log('✓ Image uploaded:', data.url);
+    return data.url || null;
+
+  } catch (e) {
+    console.warn('Image upload error (non-critical):', e.message);
+    return null;
+  }
+}
+
 async function syncToShopProduct(entry, imageUrl){
   // Build a clean display name: Player/Card + Year + Set + Variant
   const nameParts = [
@@ -722,9 +797,10 @@ async function syncToShopProduct(entry, imageUrl){
     // qty from the add form
     custom['inventory-count'] = entry.qty || 1;
 
-    // Rookie / key flags — these map to Switch fields
-    if(entry.is_rookie)  custom['graded'] = custom['graded'] || false; // keep graded toggle
-    // Note: is_rookie and is_key don't have dedicated switch fields in schema yet
+    // Thumbnail image — set if we have a CDN URL
+    if(imageUrl) {
+      custom['thumbnail'] = { url: imageUrl, alt: name };
+    }
 
     try{
       const patch = await wfFetch(
@@ -1224,11 +1300,24 @@ window.showAddForm=function(id){
       <div class="inv-label">Storage Location</div>
       <input class="inv-inp" id="loc${id}" type="text" placeholder="Bin A3, Showcase...">
       <div id="pp${id}"></div>
+      <div class="inv-label" style="margin-top:6px">Card Photo</div>
+      <div id="photo-preview-${id}" style="width:100%;height:80px;background:rgba(0,255,179,.05);border:1px dashed rgba(0,255,179,.2);border-radius:6px;display:flex;align-items:center;justify-content:center;margin-bottom:4px;overflow:hidden;cursor:pointer" onclick="retakePhoto('${id}')">
+        <span id="photo-label-${id}" style="font-family:monospace;font-size:9px;color:rgba(0,255,179,.4)">📸 TAP TO SNAP PHOTO</span>
+      </div>
     </div>
     <div class="bacts">
       <button class="bact a-confirm" onclick="confirmAdd('${id}')">SAVE + SYNC</button>
       <button class="bact a-cancel" onclick="resetActs('${id}')">Cancel</button>
     </div>`;
+  // Auto-snap photo when form opens (if no API image available)
+  if(!el._imgUrl) {
+    setTimeout(() => snapPreview(id), 300);
+  } else {
+    // Show existing API image as preview
+    const prev = document.getElementById('photo-preview-'+id);
+    if(prev) { prev.innerHTML = '<img src="'+el._imgUrl+'" style="height:100%;object-fit:contain">'; }
+    el._capturedPhoto = null; // will use API image
+  }
 };
 
 window.previewProfit=function(id){
@@ -1280,8 +1369,33 @@ window.confirmAdd=async function(id){
     const inv=JSON.parse(localStorage.getItem('lba_inventory')||'[]');
     inv.unshift(entry);localStorage.setItem('lba_inventory',JSON.stringify(inv));
 
+    // Upload captured photo (snapped when form opened) or fall back to API image
+    let inventoryImageUrl = null;
+    if(el._capturedPhoto) {
+      acts.innerHTML = `<div class="cms-status cms-syncing">📸 Uploading photo...</div>`;
+      try {
+        const uploadRes = await fetch(WORKER_URL + '/upload-image', {
+          method: 'POST',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({
+            base64: el._capturedPhoto,
+            fileName: 'card-' + (entry.name||'scan').toLowerCase().replace(/[^a-z0-9]+/g,'-').substring(0,40) + '-' + Date.now().toString(36) + '.jpg',
+            mimeType: 'image/jpeg'
+          })
+        });
+        if(uploadRes.ok) {
+          const ud = await uploadRes.json();
+          inventoryImageUrl = ud.url || null;
+          console.log('✓ Photo uploaded:', inventoryImageUrl);
+        }
+      } catch(ue) { console.warn('Photo upload failed (non-critical):', ue.message); }
+    }
+    // Fall back to TCGPlayer/API image if no photo captured
+    if(!inventoryImageUrl) inventoryImageUrl = el._imgUrl || null;
+
     // Sync to Products ecommerce collection — single source of truth
-    const shopId=await syncToShopProduct(entry, el._imgUrl);
+    acts.innerHTML = `<div class="cms-status cms-syncing">⟳ SAVING TO INVENTORY...</div>`;
+    const shopId = await syncToShopProduct(entry, inventoryImageUrl);
     if(shopId){ entry.shopId=shopId; inv[0].shopId=shopId; localStorage.setItem('lba_inventory',JSON.stringify(inv)); }
   }
 
