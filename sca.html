@@ -610,7 +610,52 @@ async function findExistingProduct(entry) {
     return nameMatch && setMatch && yearMatch && varMatch;
   });
 
-  return match ? { shopId: match.shopId, localId: match.id, qty: match.qty || 1 } : null;
+  if(match) return { shopId: match.shopId, localId: match.id, qty: match.qty || 1 };
+
+  // Not in localStorage — search Webflow Products collection directly
+  // This catches items added via Webflow CMS editor or other devices
+  try {
+    const searchName = (entry.name || '').toLowerCase();
+    const res = await wfFetch('/collections/65eb45a28ff6bf3fe4f17b14/items?limit=100');
+    if(res.ok) {
+      const data = await res.json();
+      const items = data.items || [];
+      const wfMatch = items.find(i => {
+        const iName = (i.fieldData?.name || '').toLowerCase();
+        const iSet  = (i.fieldData?.['set-name'] || '').toLowerCase();
+        const iYear = String(i.fieldData?.year || '');
+        const iSold = i.fieldData?.['sold-out'] === true ||
+                      i.fieldData?.status === 'e6b42f14fcb99aa2168a5f5672226f68';
+        if(iSold) return false;
+        const nameOk = iName.includes(searchName.split(' ')[0]) ||
+                       searchName.includes(iName.split(' ')[0]);
+        const setOk  = !setNorm || iSet.includes(setNorm.substring(0,5)) ||
+                       setNorm.includes(iSet.substring(0,5));
+        const yearOk = !yearStr || !iYear || iYear === yearStr;
+        return nameOk && setOk && yearOk;
+      });
+      if(wfMatch) {
+        const qty = parseInt(wfMatch.fieldData?.['inventory-count']) || 1;
+        // Save to localStorage so future checks are fast
+        const inv = JSON.parse(localStorage.getItem('lba_inventory') || '[]');
+        if(!inv.find(i => i.shopId === wfMatch.id)) {
+          inv.unshift({
+            id: 'wf_' + wfMatch.id,
+            name: wfMatch.fieldData?.name || '',
+            set: wfMatch.fieldData?.['set-name'] || '',
+            year: wfMatch.fieldData?.year || '',
+            shopId: wfMatch.id,
+            qty,
+            status: 'in_stock',
+          });
+          localStorage.setItem('lba_inventory', JSON.stringify(inv));
+        }
+        return { shopId: wfMatch.id, localId: 'wf_' + wfMatch.id, qty };
+      }
+    }
+  } catch(e){ console.warn('Webflow stock check failed:', e.message); }
+
+  return null;
 }
 
 // Increment quantity on an existing Webflow product instead of creating duplicate
@@ -787,6 +832,27 @@ async function syncToShopProduct(entry, imageUrl){
     const productId = data.product?.id || data.id;
     if(!productId){ console.warn('No product ID in response'); return null; }
     console.log('✓ Product created:', productId);
+
+    // ── UPLOAD BACK PHOTO as Photo 2 if available ───────────────
+    let photo2Url = null;
+    if(entry.backB64) {
+      try {
+        const b2Res = await fetch(WORKER_URL + '/upload-image', {
+          method: 'POST',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({
+            base64: entry.backB64,
+            fileName: 'back-' + slug + '.jpg',
+            mimeType: 'image/jpeg'
+          })
+        });
+        if(b2Res.ok) {
+          const b2d = await b2Res.json();
+          photo2Url = b2d.url || null;
+          console.log('✓ Back photo uploaded:', photo2Url);
+        }
+      } catch(pe){ console.warn('Back photo upload failed:', pe.message); }
+    }
 
     // ── STEP 2: PATCH all custom CMS fields ──────────────────────
     // These fields live on the Products CMS collection item
@@ -1120,18 +1186,60 @@ async function scanBack(img){
         toast('Back scan merged — refetching accurate prices');
         // Store back photo base64 on element for upload
         lastBub.el._backB64 = img;
-        // Update the subline display to show card number
+
+        // Re-identify with combined front+back data for accurate parallel/set matching
+        hs.textContent = 'COMBINING SCANS...';
+        try {
+          const combinedPrompt = `You identified this sports card from the front:
+Name: ${item.player || item.name}
+Year: ${item.year || 'unknown'}
+Set: ${item.set_name || 'unknown'}
+Parallel: ${item.parallel || 'Base'}
+Manufacturer: ${item.manufacturer || 'unknown'}
+
+From the back scan we now know:
+Card Number: ${back.card_number || 'unknown'}
+Serial Number: ${back.serial_number || 'none'}
+Parallel Code: ${back.parallel_code || 'none'}
+Print Run: ${back.print_run || 'none'}
+Copyright: ${back.copyright || ''}
+
+Using ALL of this combined information, return ONLY a JSON object with the most accurate identification:
+{"name":"exact player name","year":"year","set_name":"exact set name","parallel":"exact parallel/variant name","card_number":"number","serial_number":"/X or null","manufacturer":"brand","sport":"sport","is_rookie":true/false,"is_key":false,"key_notes":"why notable or null","market_nm":0.00}
+
+Be very specific about the parallel using the card number and any codes found.`;
+
+          const reText = await callClaude([{role:'user',content:[{type:'text',text:combinedPrompt}]}], 400);
+          const refined = JSON.parse(reText.replace(/```json|```/g,'').trim());
+          if(refined && refined.name) {
+            // Merge refined data back into item
+            if(refined.set_name)   item.set_name   = refined.set_name;
+            if(refined.parallel)   item.parallel   = refined.parallel;
+            if(refined.is_rookie)  item.is_rookie  = refined.is_rookie;
+            if(refined.key_notes)  item.key_notes  = refined.key_notes;
+            if(refined.market_nm && refined.market_nm > 0) {
+              // Update the price display on the bubble
+              const bpEl = lastBub.el.querySelector('.bprice');
+              if(bpEl) bpEl.textContent = '$' + Number(refined.market_nm).toFixed(2);
+              const brEl = lastBub.el.querySelector('[id^="br"]');
+              if(brEl) brEl.textContent = 'Combined scan estimate';
+            }
+          }
+        } catch(re){ console.warn('Re-identification failed (non-critical):', re.message); }
+
+        // Update the subline display
         const bsub = lastBub.el.querySelector('.bsub');
         if(bsub) {
-          const parts = bsub.textContent.split(' · ').filter(p => !p.startsWith('Card #'));
+          const parts = bsub.textContent.split(' · ').filter(p => !p.startsWith('Card #') && !p.startsWith('/'));
           parts.push('Card #' + back.card_number);
           if(back.serial_number) parts.push(back.serial_number);
+          if(back.parallel_code) parts.push(back.parallel_code);
           bsub.textContent = parts.join(' · ');
         }
       }
     }
-    hs.textContent = 'BACK MERGED';
-    toast('✓ Back scan merged — card number & serials updated');
+    hs.textContent = 'BACK MERGED ✓';
+    toast('✓ Both sides combined — card identified accurately');
   } else {
     showBackStandalone(back);
     hs.textContent = 'BACK READ';
@@ -1205,7 +1313,9 @@ function checkStock(item){
     // Require name + at least one of set/year; if no set hint, just name-match
     return nameMatch && (setMatch||yearMatch||(!set&&!year));
   });
-  return{inStock:m.filter(i=>i.status==='in_stock').length,totalSold:m.filter(i=>i.status==='sold').length};
+  const inStock = m.filter(i=>i.status==='in_stock');
+  const totalQty = inStock.reduce((a,i)=>a+(i.qty||1), 0);
+  return{inStock:totalQty, totalSold:m.filter(i=>i.status==='sold').length};
 }
 
 function addBubble(item,stock,imgUrl,apiPrintings,bestMatchIdx){
@@ -1954,6 +2064,7 @@ window.showEbayForm = function(id) {
   // Store catId on modal for submit
   modal._catId = catId;
   modal._imgUrl = el._imgUrl || null;
+  modal._id = id; // store bubble ID for image gathering
 };
 
 window.submitEbayListing = async function(id) {
@@ -1977,6 +2088,16 @@ window.submitEbayListing = async function(id) {
   status.style.background = 'rgba(255,209,102,.08)';
   status.textContent = '⟳ Listing on eBay...';
 
+  // Collect all available image URLs for this card
+  const el = document.getElementById(id);
+  const allImages = [];
+  if(imgUrl) allImages.push(imgUrl);  // TCGPlayer/API image or front photo
+  // If we have a back photo that was already uploaded, include it
+  // (It'll be the Webflow CDN URL if upload succeeded during Add to Inventory)
+  const inv = JSON.parse(localStorage.getItem('lba_inventory')||'[]');
+  const matchedItem = inv.find(i => (i.name||'').toLowerCase().includes((el?._item?.player||el?._item?.name||'').toLowerCase().split(' ')[0]));
+  // For now pass front image; more images can be added post-listing via eBay
+
   const payload = {
     title,
     description: desc,
@@ -1987,7 +2108,7 @@ window.submitEbayListing = async function(id) {
     duration,
     quantity: qty,
     categoryId: catId,
-    imageUrl: imgUrl,
+    imageUrl: allImages[0] || null,
   };
 
   try {
