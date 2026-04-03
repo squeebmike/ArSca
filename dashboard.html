@@ -131,16 +131,7 @@ tr.sold td{opacity:.4;}
 </head>
 <body>
 
-<div id="setup">
-  <div class="s-logo">LBA DASHBOARD</div>
-  <div class="s-sub">WALK-OFF SPORTS CARDS</div>
-  <input class="s-inp" id="wf-inp" type="password" placeholder="Webflow API token (wf_...)">
-  <input class="s-inp" id="proxy-inp" type="text" placeholder="Cloudflare Worker URL (optional)" value="https://still-resonance-4f87.swarnerauto.workers.dev">
-  <button class="s-btn" onclick="initDashboard()">▶ LOAD DASHBOARD</button>
-  <p class="s-note">Token stored locally on this device. Get it from Webflow Site Settings → Integrations → API Access (needs CMS: Read).</p>
-  <p class="s-note warn">The Cloudflare Worker proxy is needed to avoid CORS errors.</p>
-  <div id="token-help"></div>
-</div>
+<div id="setup" style="display:none"></div>
 
 <header>
   <div class="hdr">
@@ -148,7 +139,6 @@ tr.sold td{opacity:.4;}
     <div class="hdr-right">
       <span id="sync-status">—</span>
       <button class="hbtn" onclick="loadInventory()">↻ REFRESH</button>
-      <button class="hbtn" style="background:rgba(255,77,109,.1);border-color:rgba(255,77,109,.25);color:var(--red)" onclick="resetToken()">⚙ TOKEN</button>
     </div>
   </div>
 </header>
@@ -227,9 +217,9 @@ tr.sold td{opacity:.4;}
 
 <script>
 // ── CONFIG ──────────────────────────────────────────────────────
+const WORKER = 'https://still-resonance-4f87.swarnerauto.workers.dev';
 const WF_PRODUCTS = '65eb45a28ff6bf3fe4f17b14';
 const WF_SKUS     = '65eb45a28ff6bf3fe4f17afb';
-const DEFAULT_PROXY = 'https://still-resonance-4f87.swarnerauto.workers.dev';
 const CAT_MAP = {
   '891253037409c4fe59854f3c9ef99a6b':'Sports',
   '475ed99cc87de703b543fe9529e2c1da':'TCG',
@@ -237,124 +227,78 @@ const CAT_MAP = {
   '2c3076cc33bf2f312265bfdc894db265':'Supplies'
 };
 
+// ── FETCH — all calls go through Cloudflare Worker, no tokens in browser
+async function wfGet(path){
+  const res = await fetch(WORKER + '/proxy' + path, {
+    headers: { 'accept':'application/json', 'Content-Type':'application/json' }
+  });
+  if(!res.ok) throw new Error('API ' + res.status + ' on ' + path);
+  return res.json();
+}
+
 // ── STATE ────────────────────────────────────────────────────────
 let all=[], filtered=[], sortCol='name', sortDir=1, activeF='all', page=1;
 const PER=50;
 
-// ── INIT ─────────────────────────────────────────────────────────
-const savedToken = localStorage.getItem('lba_wf_dash_token');
-if(savedToken){
-  loadInventory(); // setup hidden by CSS default (display:none)
-} else {
-  document.getElementById('setup').style.display='flex';
-  const sp = localStorage.getItem('lba_proxy_url');
-  if(sp){ const pi=document.getElementById('proxy-inp'); if(pi) pi.value=sp; }
-}
-
-function initDashboard(){
-  const t = document.getElementById('wf-inp').value.trim();
-  if(!t){ alert('Enter your Webflow API token'); return; }
-  localStorage.setItem('lba_wf_dash_token', t);
-  const p = document.getElementById('proxy-inp').value.trim();
-  if(p) localStorage.setItem('lba_proxy_url', p);
-  document.getElementById('setup').style.display='none';
-  loadInventory();
-}
-
-// ── FETCH ────────────────────────────────────────────────────────
-function buildUrl(path){
-  const proxy = localStorage.getItem('lba_proxy_url') || DEFAULT_PROXY;
-  return proxy.replace(/\/+$/,'') + '/proxy' + path;
-}
-function buildHeaders(){
-  const t = localStorage.getItem('lba_wf_dash_token') || '';
-  return { 'accept':'application/json', 'X-LBA-Token': t };
-}
+// ── INIT — auto-load on page load, no credentials needed ─────────
+window.addEventListener('load', function(){ loadInventory(); });
 
 async function loadInventory(){
-  const token = localStorage.getItem('lba_wf_dash_token');
-  if(!token){ document.getElementById('setup').style.display='flex'; return; }
   document.getElementById('sync-status').textContent = 'Loading...';
-
   try{
     // Fetch Products
     let products=[], offset=0, total=1;
     while(offset < total){
-      const res = await fetch(
-        buildUrl(`/collections/${WF_PRODUCTS}/items?limit=100&offset=${offset}`),
-        { headers: buildHeaders() }
-      );
-      if(res.status===401){ localStorage.removeItem('lba_wf_dash_token'); document.getElementById('setup').style.display='flex'; return; }
-      if(res.status===403){ showError('Token missing CMS: Read permission.'); return; }
-      if(!res.ok) throw new Error(`Products API ${res.status}`);
-      const d = await res.json();
+      const d = await wfGet(`/collections/${WF_PRODUCTS}/items?limit=100&offset=${offset}`);
       total = d.pagination?.total || 0;
       products = products.concat(d.items||[]);
       offset += 100;
       if((d.items||[]).length < 100) break;
     }
 
-    // Fetch SKUs (price data for existing items)
+    // Fetch SKUs for price data
     let skus=[], sOffset=0, sTotal=1;
     while(sOffset < sTotal){
-      const res = await fetch(
-        buildUrl(`/collections/${WF_SKUS}/items?limit=100&offset=${sOffset}`),
-        { headers: buildHeaders() }
-      );
-      if(res.ok){
-        const d = await res.json();
-        sTotal = d.pagination?.total || 0;
-        skus = skus.concat(d.items||[]);
-        sOffset += 100;
-        if((d.items||[]).length < 100) break;
-      } else { break; }
+      const d = await wfGet(`/collections/${WF_SKUS}/items?limit=100&offset=${sOffset}`);
+      sTotal = d.pagination?.total || 0;
+      skus = skus.concat(d.items||[]);
+      sOffset += 100;
+      if((d.items||[]).length < 100) break;
     }
 
-    // Build SKU price map: product_id -> price in dollars
+    // Build SKU price map: product_id → price in dollars
     const skuPriceMap = {};
     skus.forEach(sku => {
-      const productId = sku.fieldData?.product;
-      const priceCents = sku.fieldData?.price?.value || 0;
-      if(productId && priceCents > 0){
-        skuPriceMap[productId] = priceCents / 100;
-      }
+      const pid = sku.fieldData?.product;
+      const cents = sku.fieldData?.price?.value || 0;
+      if(pid && cents > 0) skuPriceMap[pid] = cents / 100;
     });
 
     all = products.map(p => mapItem(p, skuPriceMap));
     filtered = [...all];
     renderAll();
     document.getElementById('sync-status').textContent =
-      `${products.length} products · ${skus.length} SKUs · ${new Date().toLocaleTimeString()}`;
-
+      `${products.length} products · ${new Date().toLocaleTimeString()}`;
   }catch(e){
-    console.error('Load error:', e);
+    console.error(e);
     document.getElementById('sync-status').textContent = '⚠ ' + e.message + ' — tap REFRESH';
   }
 }
 
-
 function mapItem(i, skuPriceMap){
   const f = i.fieldData||{};
-  skuPriceMap = skuPriceMap || {};
-
-  // Status
-  const STATUS_SOLD_ID = 'e6b42f14fcb99aa2168a5f5672226f68';
-  const isSold = f['sold-out']===true
-    || f.status === STATUS_SOLD_ID
+  skuPriceMap = skuPriceMap||{};
+  const STATUS_SOLD = 'e6b42f14fcb99aa2168a5f5672226f68';
+  const isSold = f['sold-out']===true || f.status===STATUS_SOLD
     || (typeof f.status==='string' && f.status.toLowerCase().includes('sold'));
-
-  // Category — handle option IDs and publisher fallback
   let category = CAT_MAP[f['card-category']] || 'Comic';
   if(!f['card-category'] && (f.publisher||f.brand||'').match(/marvel|dc|image|dark horse|idw/i)){
     category = 'Comic';
   }
-
-  // Price — use custom fields first, fall back to SKU price
   const skuPrice = skuPriceMap[i.id] || 0;
   const market = parseFloat(f['market-value']) || skuPrice || 0;
   const cost = parseFloat(f.cost) || 0;
   const salePrice = parseFloat(f['sale-price']) || (isSold ? skuPrice : 0);
-
   return {
     id: i.id,
     name: f['player-card-name']||f.name||'—',
@@ -373,92 +317,70 @@ function mapItem(i, skuPriceMap){
     addedAt: f['date-added']||i.createdOn||'',
     soldAt: f['date-sold']||'',
     isRookie: f['is-rookie']||false,
-    description: f.description||'',
     publisher: f.publisher||f.brand||'',
   };
 }
 
-function showError(msg){
-  const h = document.getElementById('token-help');
-  h.innerHTML = msg;
-  h.style.display = 'block';
-  document.getElementById('setup').style.display = 'flex';
-  const t = localStorage.getItem('lba_wf_dash_token');
-  if(t) document.getElementById('wf-inp').value = t;
-}
-
 // ── RENDER ───────────────────────────────────────────────────────
 function renderAll(){
-  renderStats();
-  renderCats();
-  renderChannels();
-  renderTopVal();
-  renderFeed();
-  filterTable();
+  renderStats(); renderCats(); renderChannels(); renderTopVal(); renderFeed(); filterTable();
 }
 
 const f$ = n => '$'+Number(n||0).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0});
 const fd$ = n => '$'+Number(n||0).toFixed(2);
 
 function renderStats(){
-  const ins = all.filter(i=>i.status==='in_stock');
-  const sol = all.filter(i=>i.status==='sold');
-  const totalQty = ins.reduce((a,i)=>a+(i.qty||1),0);
-  const mkt = ins.reduce((a,i)=>a+(i.market||0)*(i.qty||1),0);
-  const pft = sol.reduce((a,i)=>a+(i.profit||0),0);
-  const cost = all.reduce((a,i)=>a+(i.cost||0)*(i.qty||1),0);
-  const avg = sol.length ? pft/sol.length : 0;
-  document.getElementById('s1').textContent = ins.length;
-  document.getElementById('s1b').textContent = totalQty+' units · '+all.length+' SKUs';
-  document.getElementById('s2').textContent = f$(mkt);
-  document.getElementById('s3').textContent = (pft>=0?'+':'')+f$(pft);
+  const ins=all.filter(i=>i.status==='in_stock');
+  const sol=all.filter(i=>i.status==='sold');
+  const totalQty=ins.reduce((a,i)=>a+(i.qty||1),0);
+  const mkt=ins.reduce((a,i)=>a+(i.market||0)*(i.qty||1),0);
+  const pft=sol.reduce((a,i)=>a+(i.profit||0),0);
+  const cost=all.reduce((a,i)=>a+(i.cost||0)*(i.qty||1),0);
+  const avg=sol.length?pft/sol.length:0;
+  document.getElementById('s1').textContent=ins.length;
+  document.getElementById('s1b').textContent=totalQty+' units · '+all.length+' SKUs';
+  document.getElementById('s2').textContent=f$(mkt);
+  document.getElementById('s3').textContent=(pft>=0?'+':'')+f$(pft);
   document.getElementById('s3').className='sc-v'+(pft>=0?'':' neg');
-  document.getElementById('s3b').textContent = sol.length+' sold';
-  document.getElementById('s4').textContent = sol.length;
-  document.getElementById('s4b').textContent = f$(sol.reduce((a,i)=>a+(i.salePrice||0),0))+' rev';
-  document.getElementById('s5').textContent = f$(cost);
-  document.getElementById('s6').textContent = (avg>=0?'+':'')+fd$(avg);
+  document.getElementById('s3b').textContent=sol.length+' sold';
+  document.getElementById('s4').textContent=sol.length;
+  document.getElementById('s4b').textContent=f$(sol.reduce((a,i)=>a+(i.salePrice||0),0))+' rev';
+  document.getElementById('s5').textContent=f$(cost);
+  document.getElementById('s6').textContent=(avg>=0?'+':'')+fd$(avg);
 }
 
 function renderCats(){
   ['Sports','TCG','Comic','Graded'].forEach(c=>{
-    const it = all.filter(i=>i.category===c&&i.status==='in_stock');
-    const v = it.reduce((a,i)=>a+(i.market||0),0);
-    const key = c.toLowerCase();
-    const el = document.getElementById('c-'+key);
-    const vel = document.getElementById('cv-'+key);
+    const it=all.filter(i=>i.category===c&&i.status==='in_stock');
+    const v=it.reduce((a,i)=>a+(i.market||0),0);
+    const key=c.toLowerCase();
+    const el=document.getElementById('c-'+key);
+    const vel=document.getElementById('cv-'+key);
     if(el) el.textContent=it.length;
     if(vel) vel.textContent=f$(v)+' value';
   });
-  const tot = all.filter(i=>i.status==='in_stock').length;
-  document.getElementById('ct-total').textContent = tot+' in stock';
+  document.getElementById('ct-total').textContent=all.filter(i=>i.status==='in_stock').length+' in stock';
 }
 
 function renderChannels(){
-  const sol = all.filter(i=>i.status==='sold');
+  const sol=all.filter(i=>i.status==='sold');
   const chs={};
   sol.forEach(i=>{const c=i.channel||'In-Store';chs[c]=(chs[c]||0)+(i.salePrice||0);});
-  const pairs = Object.entries(chs).sort((a,b)=>b[1]-a[1]);
-  const max = pairs[0]?.[1]||1;
+  const pairs=Object.entries(chs).sort((a,b)=>b[1]-a[1]);
+  const max=pairs[0]?.[1]||1;
   const cols={'In-Store':'var(--g)','eBay':'var(--gold)','Whatnot':'var(--purple)','Website':'var(--blue)'};
-  const el = document.getElementById('ch-bars');
-  if(!pairs.length){el.innerHTML='<div style="color:var(--dim);font-family:\'DM Mono\',monospace;font-size:11px;padding:20px 0">No sales yet</div>';return;}
-  el.innerHTML = pairs.map(([c,v])=>`<div class="br">
-    <span class="br-l">${c}</span>
-    <div class="br-t"><div class="br-f" style="width:${(v/max*100).toFixed(1)}%;background:${cols[c]||'var(--red)'}"></div></div>
-    <span class="br-v">${f$(v)}</span></div>`).join('');
+  const el=document.getElementById('ch-bars');
+  if(!pairs.length){el.innerHTML='<div style="color:var(--dim);font-family:monospace;font-size:11px;padding:20px 0">No sales yet</div>';return;}
+  el.innerHTML=pairs.map(([c,v])=>`<div class="br"><span class="br-l">${c}</span><div class="br-t"><div class="br-f" style="width:${(v/max*100).toFixed(1)}%;background:${cols[c]||'var(--red)'}"></div></div><span class="br-v">${f$(v)}</span></div>`).join('');
 }
 
 function renderTopVal(){
-  const top = all.filter(i=>i.status==='in_stock'&&i.market>0).sort((a,b)=>b.market-a.market).slice(0,8);
+  const top=all.filter(i=>i.status==='in_stock'&&i.market>0).sort((a,b)=>b.market-a.market).slice(0,8);
   const el=document.getElementById('top-val');
   if(!top.length){el.innerHTML='<div class="empty"><div class="empty-t">NO ITEMS YET</div><div class="empty-s">Scan cards and add to inventory</div></div>';return;}
   const max=top[0].market;
   const cc={'Sports':'var(--gold)','TCG':'var(--g)','Comic':'var(--purple)','Graded':'var(--blue)'};
-  el.innerHTML=top.map(i=>`<div class="br">
-    <span class="br-l" title="${i.name}">${i.name}</span>
-    <div class="br-t"><div class="br-f" style="width:${(i.market/max*100).toFixed(1)}%;background:${cc[i.category]||'var(--g)'}"></div></div>
-    <span class="br-v">${fd$(i.market)}</span></div>`).join('');
+  el.innerHTML=top.map(i=>`<div class="br"><span class="br-l" title="${i.name}">${i.name}</span><div class="br-t"><div class="br-f" style="width:${(i.market/max*100).toFixed(1)}%;background:${cc[i.category]||'var(--g)'}"></div></div><span class="br-v">${fd$(i.market)}</span></div>`).join('');
 }
 
 function renderFeed(){
@@ -469,24 +391,16 @@ function renderFeed(){
     const isSale=i.status==='sold';
     const d=new Date(i.soldAt||i.addedAt||0);
     const ds=d.getFullYear()>2000?d.toLocaleDateString('en-US',{month:'short',day:'numeric'}):'—';
-    return `<div class="fi">
-      <div class="fi-i ${isSale?'sale':'add'}">${isSale?'✓':'+'}</div>
-      <div class="fi-b">
-        <div class="fi-n">${i.name}</div>
-        <div class="fi-m">${isSale?'SOLD via '+(i.channel||'—'):i.category} · ${ds}</div>
-      </div>
-      <div class="fi-a ${isSale?'pos':'cost'}">${isSale?fd$(i.salePrice):i.market>0?fd$(i.market):'—'}</div>
-    </div>`;
+    return `<div class="fi"><div class="fi-i ${isSale?'sale':'add'}">${isSale?'✓':'+'}</div><div class="fi-b"><div class="fi-n">${i.name}</div><div class="fi-m">${isSale?'SOLD via '+(i.channel||'—'):i.category} · ${ds}</div></div><div class="fi-a ${isSale?'pos':'cost'}">${isSale?fd$(i.salePrice):i.market>0?fd$(i.market):'—'}</div></div>`;
   }).join('');
 }
 
 // ── TABLE ────────────────────────────────────────────────────────
 let ts={col:'name',dir:1};
 function srt(col){
-  if(ts.col===col)ts.dir*=-1; else{ts.col=col;ts.dir=1;}
+  if(ts.col===col)ts.dir*=-1;else{ts.col=col;ts.dir=1;}
   document.querySelectorAll('th').forEach(t=>t.className='');
-  [...document.querySelectorAll('th')].find(t=>t.onclick?.toString().includes(col))
-    ?.classList.add(ts.dir===1?'asc':'desc');
+  [...document.querySelectorAll('th')].find(t=>t.onclick?.toString().includes(col))?.classList.add(ts.dir===1?'asc':'desc');
   page=1;renderTable();
 }
 function setF(f,btn){
@@ -514,7 +428,7 @@ function renderTable(){
   const rows=filtered.slice(start,end);
   const tb=document.getElementById('tbody');
   if(!filtered.length){
-    tb.innerHTML=`<tr><td colspan="7"><div class="empty"><div class="empty-t">NO ITEMS FOUND</div><div class="empty-s">Scan cards with the scanner and tap Add to Inventory.<br>Make sure Webflow token and proxy URL are correct.</div></div></td></tr>`;
+    tb.innerHTML=`<tr><td colspan="8"><div class="empty"><div class="empty-t">NO ITEMS FOUND</div><div class="empty-s">Scanner adds items automatically via Cloudflare Worker.</div></div></td></tr>`;
     document.getElementById('pager').innerHTML='';return;
   }
   tb.innerHTML=rows.map(i=>{
@@ -533,23 +447,14 @@ function renderTable(){
       <td><span style="font-family:'DM Mono',monospace;font-size:10px;color:${ins?'var(--g)':'var(--dim)'}">${ins?'IN STOCK':'SOLD'+(i.channel?' · '+i.channel:'')}</span></td>
     </tr>`;
   }).join('');
-  // Pager
   const tot=Math.ceil(filtered.length/PER);
   document.getElementById('pager').innerHTML=tot<=1?'':
     Array.from({length:tot},(_,i)=>`<button class="pg${i+1===page?' on':''}" onclick="page=${i+1};renderTable()">${i+1}</button>`).join('');
 }
 
 function resetToken(){
-  localStorage.removeItem('lba_wf_dash_token');
-  localStorage.removeItem('lba_proxy_url');
-  // Show setup screen with current values pre-filled
-  const t = localStorage.getItem('lba_wf_dash_token') || '';
-  const p = localStorage.getItem('lba_proxy_url') || DEFAULT_PROXY;
-  document.getElementById('wf-inp').value = t;
-  document.getElementById('proxy-inp').value = p;
-  document.getElementById('setup').style.display = 'flex';
-  document.getElementById('token-help').style.display = 'none';
-  document.getElementById('token-help').innerHTML = '';
+  // Nothing to reset — tokens live in Cloudflare Worker
+  loadInventory();
 }
 </script>
 </body>
