@@ -587,48 +587,62 @@ async function fetchCardImage(item){
 // WEBFLOW SHOP SYNC — creates ecommerce Product + SKU
 // ============================================================
 async function syncToShopProduct(entry, imageUrl){
-  // Token in Cloudflare Worker — no browser token needed
+  // Build a clean display name: Player/Card + Year + Set + Variant
+  const nameParts = [
+    (entry.player && entry.player !== 'null') ? entry.player : (entry.name || 'Card'),
+    (entry.year   && entry.year   !== 'null') ? entry.year   : null,
+    (entry.set    && entry.set    !== 'null') ? entry.set    : null,
+    (entry.variant && entry.variant !== 'Base' && entry.variant !== 'null') ? entry.variant : null,
+  ];
+  const name = nameParts.filter(Boolean).join(' ').trim().substring(0, 255);
+  const slug = 'inv-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2,6);
+  const priceCents = Math.max(1, Math.round((entry.market || entry.price || 0) * 100));
 
-  const slug = 'inv-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,6);
-  const name = [(entry.name||'Card'), entry.year!=='null'?entry.year:null, entry.set!=='null'?entry.set:null].filter(Boolean).join(' ').trim().substring(0,255);
-  const priceCents = Math.max(1, Math.round((entry.market||entry.price||0)*100));
+  // Build a rich description from all scanner data
+  const descParts = [];
+  if(entry.player && entry.player !== 'null') descParts.push(entry.player);
+  if(entry.team)        descParts.push(entry.team);
+  if(entry.sport)       descParts.push(entry.sport);
+  if(entry.year)        descParts.push(entry.year);
+  if(entry.set)         descParts.push(entry.set);
+  if(entry.variant && entry.variant !== 'Base') descParts.push(entry.variant);
+  if(entry.card_number) descParts.push('Card #' + entry.card_number);
+  if(entry.serial_number) descParts.push('Serial: ' + entry.serial_number);
+  if(entry.condition)   descParts.push('Condition: ' + entry.condition);
+  if(entry.grading_company) descParts.push(entry.grading_company + (entry.grade ? ' ' + entry.grade : ''));
+  if(entry.cert_number) descParts.push('Cert #' + entry.cert_number);
+  if(entry.is_rookie)   descParts.push('Rookie Card');
+  if(entry.is_key)      descParts.push('Key Issue');
+  if(entry.key_notes)   descParts.push(entry.key_notes);
+  const description = descParts.join(' · ');
 
-  const catMap = {
-    'Sports': '891253037409c4fe59854f3c9ef99a6b',
-    'TCG':    '475ed99cc87de703b543fe9529e2c1da',
-    'Comic':  '27f1c9c43a61cf03820a31132cfc6b9a',
-    'Graded': '891253037409c4fe59854f3c9ef99a6b'
-  };
+  // Build tags string
+  const tags = [];
+  if(entry.is_rookie)   tags.push('rookie');
+  if(entry.is_key)      tags.push('key');
+  if(entry.grading_company) tags.push(entry.grading_company.toLowerCase());
+  if(entry.serial_number) tags.push('numbered');
+  if(entry.variant && entry.variant !== 'Base') tags.push(entry.variant.toLowerCase().replace(/\s+/g,'-'));
+  if(entry.sport)       tags.push(entry.sport.toLowerCase());
+  if(entry.category)    tags.push(entry.category.toLowerCase());
 
-  // Build product fieldData using ONLY fields confirmed in the schema
-  const productFields = {
-    name: name,
-    slug: slug,
-    shippable: true,
-    'ec-product-type': 'ff42fee0113744f693a764e3431a9cc2',
-    'sold-out': false,
-    'tax-category': 'standard-taxable',
-    status: 'f3769d1e15fa0956f98984d6fa36437f', // In Stock option ID
-  };
-
-  // Optional fields — only add if they have values
-  if(catMap[entry.category])    productFields['card-category'] = catMap[entry.category];
-  if(entry.set)                  productFields['set-name'] = String(entry.set).substring(0,255);
-  if(entry.year)                 productFields['year'] = String(entry.year);
-  if(entry.manufacturer||entry.publisher) productFields['brand'] = (entry.manufacturer||entry.publisher||'').substring(0,255);
-  if(entry.grading_company)     productFields['graded'] = true;
-  if(entry.grading_company)     productFields['grader'] = String(entry.grading_company);
-  if(entry.grade)               productFields['grade'] = String(entry.grade);
-  if(entry.market > 0)          productFields['market-value'] = Math.round(entry.market); // confirmed field
-  if(entry.cost > 0)            productFields['cost'] = Math.round(entry.cost);           // confirmed field
-  if(entry.market > 0)          productFields['msrp'] = Math.round(entry.market);         // existing field
-  if(entry.id)                  productFields['card-sku'] = String(entry.id).substring(0,255);
-
+  // ── STEP 1: Create ecommerce product ─────────────────────────
+  // /v2/sites/{id}/products ONLY accepts these core fields
   const payload = {
-    product: { fieldData: productFields },
+    product: {
+      fieldData: {
+        name,
+        slug,
+        shippable: true,
+        'ec-product-type': 'ff42fee0113744f693a764e3431a9cc2', // Physical
+        'sold-out': false,
+        'tax-category': 'standard-taxable',
+        'description': description || name,
+      }
+    },
     sku: {
       fieldData: {
-        name: name,
+        name,
         slug: slug + '-sku',
         price: { value: priceCents, unit: 'USD' },
         'sku-values': {},
@@ -638,7 +652,7 @@ async function syncToShopProduct(entry, imageUrl){
   };
 
   const url = WORKER_URL + '/proxy/sites/65b15ee0228d06647ca7e4ce/products';
-  console.log('Syncing:', name, '| url:', url.substring(0,60), '| price:', priceCents);
+  console.log('Syncing:', name, '| $' + (priceCents/100).toFixed(2));
 
   try{
     const res = await fetch(url, {
@@ -647,23 +661,78 @@ async function syncToShopProduct(entry, imageUrl){
       body: JSON.stringify(payload)
     });
     const txt = await res.text();
-    console.log('Response:', res.status, txt.substring(0,200));
-
     if(!res.ok){
-      toast('⚠ Webflow '+res.status+': '+txt.substring(0,80));
+      console.error('Product create failed:', res.status, txt.substring(0,200));
+      toast('⚠ Webflow ' + res.status + ': ' + txt.substring(0, 80));
       return null;
     }
+
     const data = JSON.parse(txt);
     const productId = data.product?.id || data.id;
-    console.log('✓ Created product:', productId);
+    if(!productId){ console.warn('No product ID in response'); return null; }
+    console.log('✓ Product created:', productId);
+
+    // ── STEP 2: PATCH all custom CMS fields ──────────────────────
+    // These fields live on the Products CMS collection item
+    const catMap = {
+      'Sports': '891253037409c4fe59854f3c9ef99a6b',
+      'TCG':    '475ed99cc87de703b543fe9529e2c1da',
+      'Comic':  '27f1c9c43a61cf03820a31132cfc6b9a',
+      'Graded': '891253037409c4fe59854f3c9ef99a6b',
+    };
+
+    const custom = { name, slug };
+
+    // Identity
+    if(entry.category && catMap[entry.category])
+      custom['card-category'] = catMap[entry.category];
+    custom['status'] = 'f3769d1e15fa0956f98984d6fa36437f'; // In Stock
+
+    // Card details
+    if(entry.set)        custom['set-name']   = String(entry.set).substring(0, 255);
+    if(entry.year)       custom['year']        = String(entry.year);
+    if(entry.sport)      custom['sport']       = entry.sport; // Option field — must match exactly
+    if(entry.publisher)  custom['publisher']   = String(entry.publisher).substring(0, 255);
+    if(entry.manufacturer || entry.publisher)
+      custom['brand'] = (entry.manufacturer || entry.publisher || '').substring(0, 255);
+
+    // Grading
+    if(entry.grading_company){ custom['graded'] = true; custom['grader'] = String(entry.grading_company); }
+    if(entry.grade)      custom['grade']       = String(entry.grade);
+
+    // Pricing / inventory
+    if(entry.market > 0) custom['msrp']        = Math.round(entry.market);
+    custom['inventory-count'] = entry.qty || 1;
+
+    // Meta
+    if(tags.length)      custom['tags']        = tags.join(',');
+    if(description)      custom['card-description'] = description;
+    if(entry.id)         custom['card-sku']    = String(entry.id).substring(0, 255);
+
+    // Rookie / key flags — these map to Switch fields
+    if(entry.is_rookie)  custom['graded'] = custom['graded'] || false; // keep graded toggle
+    // Note: is_rookie and is_key don't have dedicated switch fields in schema yet
+
+    try{
+      const patch = await wfFetch(
+        '/collections/65eb45a28ff6bf3fe4f17b14/items/' + productId,
+        { method: 'PATCH', body: JSON.stringify({ fieldData: custom }) }
+      );
+      const pTxt = await patch.text();
+      console.log('Custom fields PATCH:', patch.status, pTxt.substring(0, 120));
+      if(!patch.ok) console.warn('PATCH fields warning:', pTxt.substring(0, 200));
+    } catch(pe){
+      console.warn('Custom field patch failed (non-critical):', pe.message);
+    }
+
     return productId;
-  }catch(e){
+
+  } catch(e){
     console.error('Sync error:', e.message);
-    toast('⚠ Network error: '+e.message);
+    toast('⚠ Network error: ' + e.message);
     return null;
   }
 }
-
 
 // ============================================================
 // WEBFLOW CMS SYNC — LBA Inventory back-office
@@ -1213,9 +1282,6 @@ window.confirmAdd=async function(id){
   if(didSync){
     statusMsg='✓ SYNCED TO WEBFLOW · SHOP + DASHBOARD';
     statusCls='cms-synced';
-  } else if(!token){
-    statusMsg='✓ SAVED LOCALLY — tap ⚙ to enter Webflow token, then tap RETRY SYNC below';
-    statusCls='cms-syncing';
   } else {
     statusMsg='⚠ SYNC FAILED — tap RETRY SYNC (token may need Ecommerce: Write)';
     statusCls='cms-error';
