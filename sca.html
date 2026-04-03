@@ -904,9 +904,16 @@ async function syncToShopProduct(entry, imageUrl){
     // qty from the add form
     custom['inventory-count'] = entry.qty || 1;
 
-    // Thumbnail (front) and Photo 2 (back) image fields
-    if(imageUrl)   custom['thumbnail']    = { url: imageUrl };
-    if(photo2Url)  custom['slide-image-2'] = { url: photo2Url };
+    // Webflow CMS Image fields — format: { url: '...' }
+    // imageUrl must be a publicly accessible URL (Webflow CDN or TCGPlayer CDN)
+    if(imageUrl) {
+      console.log('Setting thumbnail:', imageUrl.substring(0,80));
+      custom['thumbnail'] = { url: imageUrl };
+    }
+    if(photo2Url) {
+      console.log('Setting photo2:', photo2Url.substring(0,80));
+      custom['slide-image-2'] = { url: photo2Url };
+    }
 
     try{
       const patch = await wfFetch(
@@ -1460,6 +1467,37 @@ function addBubble(item,stock,imgUrl,apiPrintings,bestMatchIdx){
   el.style.left=left+'px';el.style.top=top+'px';
   document.body.appendChild(el);
   bubs.push({id,el,ax:cx,ay:cy,ct});
+
+  // Async: check Webflow for live stock count and update badge
+  (async () => {
+    try {
+      const liveStock = await findExistingProduct({
+        name: item.player || item.name,
+        set: item.set_name || '',
+        year: item.year || '',
+        variant: item.parallel || 'Base',
+      });
+      if(liveStock) {
+        const liveQty = liveStock.qty || 1;
+        const badge = el.querySelector('.stock-num');
+        const label = el.querySelector('.stock-label');
+        if(badge) {
+          badge.textContent = liveQty;
+          badge.className = 'stock-num ' + (liveQty > 2 ? 'sn-in' : liveQty > 0 ? 'sn-low' : 'sn-no');
+        }
+        if(label) label.textContent = liveQty + ' IN STOCK';
+        // Also show sell button if in stock and not already shown
+        const acts = document.getElementById('acts'+id);
+        if(acts && liveQty > 0 && !acts.querySelector('.a-sell')) {
+          const sellBtn = document.createElement('button');
+          sellBtn.className = 'bact a-sell';
+          sellBtn.textContent = '✓ Mark as Sold';
+          sellBtn.onclick = () => showSellForm(id);
+          acts.appendChild(sellBtn);
+        }
+      }
+    } catch(e) { /* non-critical */ }
+  })();
 }
 
 window.setHolo=function(id, printIdx, isHolo){
@@ -1474,7 +1512,31 @@ window.setHolo=function(id, printIdx, isHolo){
   if(hBtn) hBtn.style.borderColor = isHolo ? 'rgba(255,209,102,.8)' : 'rgba(255,209,102,.3)';
   if(nBtn) nBtn.style.borderColor = !isHolo ? 'rgba(255,255,255,.5)' : 'rgba(255,255,255,.15)';
 };
-window.chPrint=function(id){const el=document.getElementById(id);if(!el)return;const pi=parseInt(document.getElementById('ps'+id).value);const cond=document.getElementById('cs'+id)?.value||'NM';if(!isNaN(pi))updatePrice(id,el._prints[pi],cond);};
+window.chPrint=function(id){
+  const el=document.getElementById(id);if(!el)return;
+  const pi=parseInt(document.getElementById('ps'+id).value);
+  const cond=document.getElementById('cs'+id)?.value||'NM';
+  if(isNaN(pi))return;
+  const p=el._prints[pi];
+  if(!p)return;
+  updatePrice(id,p,cond);
+  // Update sub-info line with selected printing details
+  const bsub=el.querySelector('.bsub');
+  if(bsub&&p.set){
+    const item=el._item||{};
+    const parts=[];
+    if(item.team)parts.push(item.team);
+    if(item.year&&p.year!==item.year)parts.push(p.year||item.year);
+    else if(item.year)parts.push(item.year);
+    if(p.set)parts.push(p.set);
+    if(p.variant&&p.variant!=='Base')parts.push(p.variant);
+    if(p.numbered)parts.push(p.numbered);
+    if(item.card_number)parts.push('Card #'+item.card_number);
+    bsub.textContent=parts.join(' · ');
+  }
+  // Update bubble _imgUrl so eBay listing gets the right image
+  if(p.imageUrl) el._imgUrl=p.imageUrl;
+};
 window.chCond=function(id){const el=document.getElementById(id);if(!el)return;const pi=parseInt(document.getElementById('ps'+id)?.value)||0;const cond=document.getElementById('cs'+id).value;el.querySelectorAll('.bcp').forEach(p=>p.classList.toggle('on',p.textContent===cond));updatePrice(id,el._prints[pi]||el._prints[0],cond);};
 window.cpill=function(id,pill,cond){const el=document.getElementById(id);if(!el)return;const pi=parseInt(document.getElementById('ps'+id)?.value)||0;const cs=document.getElementById('cs'+id);if(cs)cs.value=cond;el.querySelectorAll('.bcp').forEach(p=>p.classList.remove('on'));pill.classList.add('on');updatePrice(id,el._prints[pi]||el._prints[0],cond);};
 function updatePrice(id,p,cond){
@@ -1531,13 +1593,16 @@ window.showAddForm=function(id){
       <button class="bact a-cancel" onclick="resetActs('${id}')">Cancel</button>
     </div>`;
   // Auto-snap photo when form opens (if no API image available)
-  if(!el._imgUrl) {
+  const isSports = el._ct === 'sports';
+  if(!el._imgUrl || isSports) {
+    // Always snap for sports cards (no TCGPlayer image) or when no API image
     setTimeout(() => snapPreview(id), 300);
   } else {
-    // Show existing API image as preview
+    // TCG: show API image but also snap camera in background for Webflow
     const prev = document.getElementById('photo-preview-'+id);
-    if(prev) { prev.innerHTML = '<img src="'+el._imgUrl+'" style="height:100%;object-fit:contain">'; }
-    el._capturedPhoto = null; // will use API image
+    if(prev) { prev.innerHTML = '<img src="'+el._imgUrl+'" style="height:100%;object-fit:contain;width:100%">'; }
+    // Still snap camera photo for Webflow inventory (API image for eBay/TCGPlayer)
+    setTimeout(() => snapPreview(id), 500);
   }
 };
 
@@ -1619,29 +1684,41 @@ window.confirmAdd=async function(id){
     const inv=JSON.parse(localStorage.getItem('lba_inventory')||'[]');
     inv.unshift(entry);localStorage.setItem('lba_inventory',JSON.stringify(inv));
 
-    // Upload captured photo (snapped when form opened) or fall back to API image
+    // Upload captured photo — use item.name here since entry isn't built yet
+    // For sports cards: always use camera photo (no TCGPlayer API image available)
+    // For TCG: use camera photo if taken, else fall back to TCGPlayer API image
     let inventoryImageUrl = null;
-    if(el._capturedPhoto) {
+    const photoBase64 = el._capturedPhoto || null;
+    const hasApiImage = !!(el._imgUrl);
+    const isSportsCard = el._ct === 'sports';
+
+    if(photoBase64) {
       acts.innerHTML = `<div class="cms-status cms-syncing">📸 Uploading photo...</div>`;
       try {
+        const photoName = 'card-' + (item.player||item.name||'scan').toLowerCase()
+          .replace(/[^a-z0-9]+/g,'-').substring(0,40) + '-' + Date.now().toString(36) + '.jpg';
         const uploadRes = await fetch(WORKER_URL + '/upload-image', {
           method: 'POST',
           headers: {'Content-Type':'application/json'},
-          body: JSON.stringify({
-            base64: el._capturedPhoto,
-            fileName: 'card-' + (entry.name||'scan').toLowerCase().replace(/[^a-z0-9]+/g,'-').substring(0,40) + '-' + Date.now().toString(36) + '.jpg',
-            mimeType: 'image/jpeg'
-          })
+          body: JSON.stringify({ base64: photoBase64, fileName: photoName, mimeType: 'image/jpeg' })
         });
         if(uploadRes.ok) {
           const ud = await uploadRes.json();
           inventoryImageUrl = ud.url || null;
           console.log('✓ Photo uploaded:', inventoryImageUrl);
+        } else {
+          const errTxt = await uploadRes.text();
+          console.warn('Photo upload failed:', uploadRes.status, errTxt.substring(0,100));
         }
-      } catch(ue) { console.warn('Photo upload failed (non-critical):', ue.message); }
+      } catch(ue) { console.warn('Photo upload error:', ue.message); }
     }
-    // Fall back to TCGPlayer/API image if no photo captured
-    if(!inventoryImageUrl) inventoryImageUrl = el._imgUrl || null;
+
+    // For TCG: fall back to API image if no camera photo
+    if(!inventoryImageUrl && !isSportsCard && hasApiImage) {
+      inventoryImageUrl = el._imgUrl;
+    }
+    // Also store on element so eBay listing can use it
+    if(inventoryImageUrl) el._uploadedPhotoUrl = inventoryImageUrl;
 
     // Sync to Products ecommerce collection — single source of truth
     acts.innerHTML = `<div class="cms-status cms-syncing">⟳ SAVING TO INVENTORY...</div>`;
@@ -2098,6 +2175,9 @@ window.submitEbayListing = async function(id) {
   const matchedItem = inv.find(i => (i.name||'').toLowerCase().includes((el?._item?.player||el?._item?.name||'').toLowerCase().split(' ')[0]));
   // For now pass front image; more images can be added post-listing via eBay
 
+  // Use uploaded camera photo if available, else API image
+  const bestImageUrl = el?._uploadedPhotoUrl || el?._imgUrl || allImages[0] || null;
+
   const payload = {
     title,
     description: desc,
@@ -2108,7 +2188,7 @@ window.submitEbayListing = async function(id) {
     duration,
     quantity: qty,
     categoryId: catId,
-    imageUrl: allImages[0] || null,
+    imageUrl: bestImageUrl,
   };
 
   try {
