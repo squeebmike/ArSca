@@ -1,46 +1,556 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>LBA Dashboard</title>
-
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LBA Dashboard — Walk-Off Sports Cards</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-body{background:#000;color:#fff;font-family:sans-serif;padding:20px}
-h1{margin-bottom:10px}
-.card{background:#111;padding:15px;margin:10px 0;border-radius:10px}
+:root{--g:#00ffb3;--gd:rgba(0,255,179,.1);--gold:#ffd166;--red:#ff4d6d;--blue:#48cae4;--purple:#c77dff;--bg:#07080a;--surf:#0d0f14;--border:rgba(255,255,255,.07);--text:#e4e4e8;--dim:rgba(228,228,232,.4);}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100vh;padding-bottom:60px;}
+body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse at 15% 15%,rgba(0,255,179,.03) 0,transparent 55%),radial-gradient(ellipse at 85% 85%,rgba(199,125,255,.03) 0,transparent 55%);pointer-events:none;}
+
+/* SETUP */
+#setup{position:fixed;inset:0;background:var(--bg);z-index:200;display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:32px;}
+.s-logo{font-family:'Orbitron',monospace;font-size:22px;font-weight:900;color:var(--g);letter-spacing:4px;text-shadow:0 0 24px rgba(0,255,179,.4);}
+.s-sub{font-family:'DM Mono',monospace;font-size:10px;color:var(--dim);letter-spacing:3px;}
+.s-inp{width:100%;max-width:360px;background:rgba(0,0,0,.4);border:1px solid rgba(0,255,179,.2);color:var(--text);padding:11px 14px;font-family:'DM Mono',monospace;font-size:12px;outline:none;}
+.s-inp:focus{border-color:var(--g);}
+.s-inp::placeholder{color:rgba(255,255,255,.2);}
+.s-btn{width:100%;max-width:360px;background:var(--g);color:#000;border:none;padding:13px;font-family:'Orbitron',monospace;font-weight:700;font-size:12px;letter-spacing:2px;cursor:pointer;}
+.s-note{font-size:11px;color:var(--dim);text-align:center;max-width:320px;line-height:1.7;}
+.s-note.warn{color:rgba(255,209,102,.6);}
+#token-help{max-width:360px;background:rgba(255,77,109,.08);border:1px solid rgba(255,77,109,.3);padding:12px 14px;font-family:'DM Mono',monospace;font-size:11px;color:var(--red);line-height:1.7;text-align:center;display:none;}
+
+/* HEADER */
+header{position:sticky;top:0;z-index:100;background:rgba(7,8,10,.95);backdrop-filter:blur(16px);border-bottom:1px solid var(--border);}
+.hdr{max-width:1400px;margin:0 auto;height:56px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;}
+.logo{font-family:'Orbitron',monospace;font-size:14px;font-weight:900;color:var(--g);letter-spacing:3px;}
+.logo em{color:var(--dim);font-style:normal;font-weight:400;}
+.hdr-right{display:flex;align-items:center;gap:10px;}
+#sync-status{font-family:'DM Mono',monospace;font-size:10px;color:var(--dim);}
+.hbtn{background:var(--gd);border:1px solid rgba(0,255,179,.2);color:var(--g);padding:5px 12px;font-family:'Orbitron',monospace;font-size:9px;letter-spacing:2px;cursor:pointer;}
+
+/* MAIN */
+main{max-width:1400px;margin:0 auto;padding:24px 24px 80px;}
+.sec{font-family:'Orbitron',monospace;font-size:8px;letter-spacing:4px;color:var(--dim);margin-bottom:14px;display:flex;align-items:center;gap:10px;}
+.sec::after{content:'';flex:1;height:1px;background:var(--border);}
+
+/* STAT CARDS */
+.stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-bottom:28px;}
+.sc{background:var(--surf);border:1px solid var(--border);padding:16px 18px;position:relative;overflow:hidden;}
+.sc::before{content:'';position:absolute;inset:0 0 auto;height:2px;}
+.sc.g::before{background:var(--g)}.sc.gold::before{background:var(--gold)}.sc.r::before{background:var(--red)}.sc.b::before{background:var(--blue)}.sc.p::before{background:var(--purple)}
+.sc-l{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:2px;color:var(--dim);margin-bottom:6px;}
+.sc-v{font-family:'Orbitron',monospace;font-size:24px;font-weight:900;line-height:1;}
+.sc.g .sc-v{color:var(--g)}.sc.gold .sc-v{color:var(--gold)}.sc.r .sc-v{color:var(--red)}.sc.b .sc-v{color:var(--blue)}.sc.p .sc-v{color:var(--purple)}
+.sc-s{font-family:'DM Mono',monospace;font-size:10px;color:var(--dim);margin-top:3px;}
+
+/* TWO COL */
+.two{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:28px;}
+@media(max-width:820px){.two{grid-template-columns:1fr;}}
+
+/* PANEL */
+.panel{background:var(--surf);border:1px solid var(--border);padding:18px;}
+.ph{font-family:'Orbitron',monospace;font-size:9px;letter-spacing:3px;color:var(--dim);margin-bottom:14px;display:flex;justify-content:space-between;}
+.ph b{color:var(--text);font-weight:700;}
+
+/* CAT GRID */
+.cg{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.cp{background:rgba(255,255,255,.03);border:1px solid var(--border);padding:12px;position:relative;}
+.cp::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;}
+.cp[data-c=Sports]::after{background:var(--gold)}.cp[data-c=TCG]::after{background:var(--g)}.cp[data-c=Comic]::after{background:var(--purple)}.cp[data-c=Graded]::after{background:var(--blue)}
+.cp-n{font-family:'Orbitron',monospace;font-size:7px;letter-spacing:2px;color:var(--dim);margin-bottom:3px;}
+.cp-v{font-family:'Orbitron',monospace;font-size:20px;font-weight:900;}
+.cp[data-c=Sports] .cp-v{color:var(--gold)}.cp[data-c=TCG] .cp-v{color:var(--g)}.cp[data-c=Comic] .cp-v{color:var(--purple)}.cp[data-c=Graded] .cp-v{color:var(--blue)}
+.cp-s{font-family:'DM Mono',monospace;font-size:9px;color:var(--dim);margin-top:2px;}
+
+/* BARS */
+.br{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+.br-l{font-family:'DM Mono',monospace;font-size:10px;color:var(--text);width:85px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.br-t{flex:1;height:5px;background:rgba(255,255,255,.05);}
+.br-f{height:100%;transition:width .6s ease;}
+.br-v{font-family:'Orbitron',monospace;font-size:9px;color:var(--dim);width:50px;text-align:right;flex-shrink:0;}
+
+/* FEED */
+.fi{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.04);}
+.fi-i{width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;border:1px solid;}
+.fi-i.sale{background:rgba(0,255,179,.08);border-color:rgba(0,255,179,.18);}
+.fi-i.add{background:rgba(72,202,228,.08);border-color:rgba(72,202,228,.18);}
+.fi-b{flex:1;min-width:0;}
+.fi-n{font-size:12px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.fi-m{font-family:'DM Mono',monospace;font-size:10px;color:var(--dim);margin-top:1px;}
+.fi-a{font-family:'Orbitron',monospace;font-size:11px;flex-shrink:0;}
+.fi-a.pos{color:var(--g)}.fi-a.cost{color:var(--blue)}
+
+/* TABLE */
+.tc{display:flex;gap:7px;margin-bottom:12px;flex-wrap:wrap;}
+.tsi{flex:1;min-width:150px;background:rgba(255,255,255,.04);border:1px solid var(--border);color:var(--text);padding:8px 11px;font-family:'DM Mono',monospace;font-size:11px;outline:none;}
+.tsi:focus{border-color:rgba(0,255,179,.25);}
+.fb{background:rgba(255,255,255,.04);border:1px solid var(--border);color:var(--dim);padding:7px 12px;font-family:'DM Mono',monospace;font-size:10px;cursor:pointer;}
+.fb.on{border-color:var(--g);color:var(--g);background:var(--gd);}
+table{width:100%;border-collapse:collapse;background:var(--surf);}
+th{font-family:'Orbitron',monospace;font-size:8px;letter-spacing:2px;color:var(--dim);text-align:left;padding:9px 10px;border-bottom:1px solid var(--border);cursor:pointer;user-select:none;white-space:nowrap;}
+th:hover{color:var(--text);}th.asc::after{content:' ↑'}th.desc::after{content:' ↓'}
+td{padding:8px 10px;border-bottom:1px solid rgba(255,255,255,.03);font-size:12px;vertical-align:middle;}
+tr:hover td{background:rgba(255,255,255,.015);}
+tr.sold td{opacity:.4;}
+.nc{font-weight:500;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.sc2{font-family:'DM Mono',monospace;font-size:10px;color:var(--dim);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.ct{font-family:monospace;font-size:9px;padding:2px 6px;}
+.ct.Sports{color:var(--gold);background:rgba(255,209,102,.08);border:1px solid rgba(255,209,102,.18);}
+.ct.TCG{color:var(--g);background:var(--gd);border:1px solid rgba(0,255,179,.18);}
+.ct.Comic{color:var(--purple);background:rgba(199,125,255,.08);border:1px solid rgba(199,125,255,.18);}
+.ct.Graded{color:var(--blue);background:rgba(72,202,228,.08);border:1px solid rgba(72,202,228,.18);}
+.pc{font-family:'Orbitron',monospace;font-size:10px;text-align:right;white-space:nowrap;}
+.pm{color:var(--text)}.pd{color:var(--dim)}.pp{color:var(--g)}.pp.neg{color:var(--red)}
+.dot{width:6px;height:6px;border-radius:50%;display:inline-block;margin-right:4px;}
+.dot.in_stock{background:var(--g);box-shadow:0 0 4px rgba(0,255,179,.4);}
+.dot.sold{background:var(--dim);}
+.pager{display:flex;gap:5px;justify-content:center;margin-top:12px;}
+.pg{background:rgba(255,255,255,.04);border:1px solid var(--border);color:var(--dim);padding:5px 10px;font-family:'DM Mono',monospace;font-size:10px;cursor:pointer;}
+.pg.on{background:var(--gd);border-color:rgba(0,255,179,.25);color:var(--g);}
+.empty{text-align:center;padding:40px;color:var(--dim);}
+.empty-t{font-family:'Orbitron',monospace;font-size:10px;letter-spacing:2px;margin-bottom:8px;}
+.empty-s{font-size:12px;line-height:1.7;}
+
+/* NAV BAR */
+#lba-nav{position:fixed;bottom:0;left:0;right:0;z-index:500;background:rgba(5,5,7,.97);border-top:1px solid rgba(255,255,255,.08);display:flex;height:52px;}
+.lba-nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;background:none;border:none;color:rgba(255,255,255,.35);cursor:pointer;font-family:'Orbitron',monospace;font-size:7px;letter-spacing:1px;text-decoration:none;transition:color .15s;}
+.lba-nav-btn:hover{color:rgba(255,255,255,.6);}
+.lba-nav-btn.active{color:var(--g);}
+.lba-nav-btn .nav-ico{font-size:16px;line-height:1;}
+
+@media(max-width:600px){
+  .stats{grid-template-columns:1fr 1fr;}
+  main{padding:16px 12px 80px;}
+  th:nth-child(5),td:nth-child(5),th:nth-child(6),td:nth-child(6){display:none;}
+}
 </style>
 </head>
-
 <body>
 
-<h1>Inventory</h1>
+<div id="setup">
+  <div class="s-logo">LBA DASHBOARD</div>
+  <div class="s-sub">WALK-OFF SPORTS CARDS</div>
+  <input class="s-inp" id="wf-inp" type="password" placeholder="Webflow API token (wf_...)">
+  <input class="s-inp" id="proxy-inp" type="text" placeholder="Cloudflare Worker URL (optional)" value="https://still-resonance-4f87.swarnerauto.workers.dev">
+  <button class="s-btn" onclick="initDashboard()">▶ LOAD DASHBOARD</button>
+  <p class="s-note">Token stored locally on this device. Get it from Webflow Site Settings → Integrations → API Access (needs CMS: Read).</p>
+  <p class="s-note warn">The Cloudflare Worker proxy is needed to avoid CORS errors.</p>
+  <div id="token-help"></div>
+</div>
 
-<button onclick="load()">Refresh</button>
+<header>
+  <div class="hdr">
+    <div class="logo">LBA <em>/</em> INVENTORY</div>
+    <div class="hdr-right">
+      <span id="sync-status">—</span>
+      <button class="hbtn" onclick="loadInventory()">↻ REFRESH</button>
+      <button class="hbtn" style="background:rgba(255,77,109,.1);border-color:rgba(255,77,109,.25);color:var(--red)" onclick="resetToken()">⚙ TOKEN</button>
+    </div>
+  </div>
+</header>
 
-<div id="stats"></div>
-<pre id="data"></pre>
+<main>
+  <div class="sec">OVERVIEW</div>
+  <div class="stats">
+    <div class="sc g"><div class="sc-l">IN STOCK</div><div class="sc-v" id="s1">—</div><div class="sc-s" id="s1b">items</div></div>
+    <div class="sc gold"><div class="sc-l">MARKET VALUE</div><div class="sc-v" id="s2">—</div><div class="sc-s">at market price</div></div>
+    <div class="sc g"><div class="sc-l">TOTAL PROFIT</div><div class="sc-v" id="s3">—</div><div class="sc-s" id="s3b">realized</div></div>
+    <div class="sc b"><div class="sc-l">ITEMS SOLD</div><div class="sc-v" id="s4">—</div><div class="sc-s" id="s4b">all time</div></div>
+    <div class="sc r"><div class="sc-l">COST BASIS</div><div class="sc-v" id="s5">—</div><div class="sc-s">total invested</div></div>
+    <div class="sc p"><div class="sc-l">AVG MARGIN</div><div class="sc-v" id="s6">—</div><div class="sc-s">per sold item</div></div>
+  </div>
+
+  <div class="two">
+    <div class="panel">
+      <div class="ph">BY CATEGORY <b id="ct-total"></b></div>
+      <div class="cg">
+        <div class="cp" data-c="Sports"><div class="cp-n">SPORTS</div><div class="cp-v" id="c-sports">0</div><div class="cp-s" id="cv-sports">$0</div></div>
+        <div class="cp" data-c="TCG"><div class="cp-n">TCG</div><div class="cp-v" id="c-tcg">0</div><div class="cp-s" id="cv-tcg">$0</div></div>
+        <div class="cp" data-c="Comic"><div class="cp-n">COMICS</div><div class="cp-v" id="c-comic">0</div><div class="cp-s" id="cv-comic">$0</div></div>
+        <div class="cp" data-c="Graded"><div class="cp-n">GRADED</div><div class="cp-v" id="c-graded">0</div><div class="cp-s" id="cv-graded">$0</div></div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="ph">SALES BY CHANNEL</div>
+      <div id="ch-bars"><div style="color:var(--dim);font-family:'DM Mono',monospace;font-size:11px;padding:20px 0">No sales yet</div></div>
+    </div>
+  </div>
+
+  <div class="two">
+    <div class="panel">
+      <div class="ph">TOP VALUE IN STOCK</div>
+      <div id="top-val"></div>
+    </div>
+    <div class="panel">
+      <div class="ph">RECENT ACTIVITY</div>
+      <div id="feed"></div>
+    </div>
+  </div>
+
+  <div class="sec">FULL INVENTORY</div>
+  <div>
+    <div class="tc">
+      <input class="tsi" id="tbl-q" placeholder="Search name, set..." oninput="filterTable()">
+      <button class="fb on" onclick="setF('all',this)">All</button>
+      <button class="fb" onclick="setF('in_stock',this)">In Stock</button>
+      <button class="fb" onclick="setF('sold',this)">Sold</button>
+      <button class="fb" onclick="setF('Sports',this)">Sports</button>
+      <button class="fb" onclick="setF('TCG',this)">TCG</button>
+      <button class="fb" onclick="setF('Comic',this)">Comics</button>
+      <button class="fb" onclick="setF('Graded',this)">Graded</button>
+    </div>
+    <table>
+      <thead><tr>
+        <th onclick="srt('name')">NAME</th>
+        <th onclick="srt('set')">SET</th>
+        <th>CAT</th>
+        <th onclick="srt('qty')" style="text-align:center">QTY</th>
+        <th onclick="srt('market')" style="text-align:right">MARKET</th>
+        <th onclick="srt('cost')" style="text-align:right">COST</th>
+        <th onclick="srt('profit')" style="text-align:right">PROFIT</th>
+        <th>STATUS</th>
+      </tr></thead>
+      <tbody id="tbody"></tbody>
+    </table>
+    <div class="pager" id="pager"></div>
+  </div>
+</main>
+
+<div id="lba-nav">
+  <a class="lba-nav-btn" href="sca.html"><span class="nav-ico">⬡</span>SCANNER</a>
+  <a class="lba-nav-btn active" href="dashboard.html"><span class="nav-ico">▦</span>DASHBOARD</a>
+</div>
 
 <script>
+// ── CONFIG ──────────────────────────────────────────────────────
+const WF_PRODUCTS = '65eb45a28ff6bf3fe4f17b14';
+const WF_SKUS     = '65eb45a28ff6bf3fe4f17afb';
+const DEFAULT_PROXY = 'https://still-resonance-4f87.swarnerauto.workers.dev';
+const CAT_MAP = {
+  '891253037409c4fe59854f3c9ef99a6b':'Sports',
+  '475ed99cc87de703b543fe9529e2c1da':'TCG',
+  '27f1c9c43a61cf03820a31132cfc6b9a':'Comic',
+  '2c3076cc33bf2f312265bfdc894db265':'Supplies'
+};
 
-const WORKER = "https://still-resonance-4f87.swarnerauto.workers.dev";
+// ── STATE ────────────────────────────────────────────────────────
+let all=[], filtered=[], sortCol='name', sortDir=1, activeF='all', page=1;
+const PER=50;
 
-async function load(){
-
-  const res = await fetch(WORKER + "/proxy/collections/YOUR_COLLECTION/items");
-  const data = await res.json();
-
-  document.getElementById("data").textContent =
-    JSON.stringify(data,null,2);
-
-  const total = data.items?.length || 0;
-
-  document.getElementById("stats").innerHTML =
-    `<div class="card">Total Items: ${total}</div>`;
+// ── INIT ─────────────────────────────────────────────────────────
+const savedToken = localStorage.getItem('lba_wf_dash_token');
+if(savedToken){
+  loadInventory(); // setup hidden by CSS default (display:none)
+} else {
+  document.getElementById('setup').style.display='flex';
+  const sp = localStorage.getItem('lba_proxy_url');
+  if(sp){ const pi=document.getElementById('proxy-inp'); if(pi) pi.value=sp; }
 }
 
-load();
+function initDashboard(){
+  const t = document.getElementById('wf-inp').value.trim();
+  if(!t){ alert('Enter your Webflow API token'); return; }
+  localStorage.setItem('lba_wf_dash_token', t);
+  const p = document.getElementById('proxy-inp').value.trim();
+  if(p) localStorage.setItem('lba_proxy_url', p);
+  document.getElementById('setup').style.display='none';
+  loadInventory();
+}
 
+// ── FETCH ────────────────────────────────────────────────────────
+function buildUrl(path){
+  const proxy = localStorage.getItem('lba_proxy_url') || DEFAULT_PROXY;
+  return proxy.replace(/\/+$/,'') + '/proxy' + path;
+}
+function buildHeaders(){
+  const t = localStorage.getItem('lba_wf_dash_token') || '';
+  return { 'accept':'application/json', 'X-LBA-Token': t };
+}
+
+async function loadInventory(){
+  const token = localStorage.getItem('lba_wf_dash_token');
+  if(!token){ document.getElementById('setup').style.display='flex'; return; }
+  document.getElementById('sync-status').textContent = 'Loading...';
+
+  try{
+    // Fetch Products
+    let products=[], offset=0, total=1;
+    while(offset < total){
+      const res = await fetch(
+        buildUrl(`/collections/${WF_PRODUCTS}/items?limit=100&offset=${offset}`),
+        { headers: buildHeaders() }
+      );
+      if(res.status===401){ localStorage.removeItem('lba_wf_dash_token'); document.getElementById('setup').style.display='flex'; return; }
+      if(res.status===403){ showError('Token missing CMS: Read permission.'); return; }
+      if(!res.ok) throw new Error(`Products API ${res.status}`);
+      const d = await res.json();
+      total = d.pagination?.total || 0;
+      products = products.concat(d.items||[]);
+      offset += 100;
+      if((d.items||[]).length < 100) break;
+    }
+
+    // Fetch SKUs (price data for existing items)
+    let skus=[], sOffset=0, sTotal=1;
+    while(sOffset < sTotal){
+      const res = await fetch(
+        buildUrl(`/collections/${WF_SKUS}/items?limit=100&offset=${sOffset}`),
+        { headers: buildHeaders() }
+      );
+      if(res.ok){
+        const d = await res.json();
+        sTotal = d.pagination?.total || 0;
+        skus = skus.concat(d.items||[]);
+        sOffset += 100;
+        if((d.items||[]).length < 100) break;
+      } else { break; }
+    }
+
+    // Build SKU price map: product_id -> price in dollars
+    const skuPriceMap = {};
+    skus.forEach(sku => {
+      const productId = sku.fieldData?.product;
+      const priceCents = sku.fieldData?.price?.value || 0;
+      if(productId && priceCents > 0){
+        skuPriceMap[productId] = priceCents / 100;
+      }
+    });
+
+    all = products.map(p => mapItem(p, skuPriceMap));
+    filtered = [...all];
+    renderAll();
+    document.getElementById('sync-status').textContent =
+      `${products.length} products · ${skus.length} SKUs · ${new Date().toLocaleTimeString()}`;
+
+  }catch(e){
+    console.error('Load error:', e);
+    document.getElementById('sync-status').textContent = '⚠ ' + e.message + ' — tap REFRESH';
+  }
+}
+
+
+function mapItem(i, skuPriceMap){
+  const f = i.fieldData||{};
+  skuPriceMap = skuPriceMap || {};
+
+  // Status
+  const STATUS_SOLD_ID = 'e6b42f14fcb99aa2168a5f5672226f68';
+  const isSold = f['sold-out']===true
+    || f.status === STATUS_SOLD_ID
+    || (typeof f.status==='string' && f.status.toLowerCase().includes('sold'));
+
+  // Category — handle option IDs and publisher fallback
+  let category = CAT_MAP[f['card-category']] || 'Comic';
+  if(!f['card-category'] && (f.publisher||f.brand||'').match(/marvel|dc|image|dark horse|idw/i)){
+    category = 'Comic';
+  }
+
+  // Price — use custom fields first, fall back to SKU price
+  const skuPrice = skuPriceMap[i.id] || 0;
+  const market = parseFloat(f['market-value']) || skuPrice || 0;
+  const cost = parseFloat(f.cost) || 0;
+  const salePrice = parseFloat(f['sale-price']) || (isSold ? skuPrice : 0);
+
+  return {
+    id: i.id,
+    name: f['player-card-name']||f.name||'—',
+    set: f['set-name']||f.set||'',
+    variant: f['variant-parallel']||f.variant||'',
+    year: f.year||'',
+    condition: f.condition||'NM',
+    category,
+    cost,
+    market,
+    salePrice,
+    qty: parseInt(f['inventory-count'])||1,
+    profit: parseFloat(f.profit)||(isSold&&cost>0?salePrice-cost:0),
+    status: isSold?'sold':'in_stock',
+    channel: f['sale-channel']||'',
+    addedAt: f['date-added']||i.createdOn||'',
+    soldAt: f['date-sold']||'',
+    isRookie: f['is-rookie']||false,
+    description: f.description||'',
+    publisher: f.publisher||f.brand||'',
+  };
+}
+
+function showError(msg){
+  const h = document.getElementById('token-help');
+  h.innerHTML = msg;
+  h.style.display = 'block';
+  document.getElementById('setup').style.display = 'flex';
+  const t = localStorage.getItem('lba_wf_dash_token');
+  if(t) document.getElementById('wf-inp').value = t;
+}
+
+// ── RENDER ───────────────────────────────────────────────────────
+function renderAll(){
+  renderStats();
+  renderCats();
+  renderChannels();
+  renderTopVal();
+  renderFeed();
+  filterTable();
+}
+
+const f$ = n => '$'+Number(n||0).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0});
+const fd$ = n => '$'+Number(n||0).toFixed(2);
+
+function renderStats(){
+  const ins = all.filter(i=>i.status==='in_stock');
+  const sol = all.filter(i=>i.status==='sold');
+  const totalQty = ins.reduce((a,i)=>a+(i.qty||1),0);
+  const mkt = ins.reduce((a,i)=>a+(i.market||0)*(i.qty||1),0);
+  const pft = sol.reduce((a,i)=>a+(i.profit||0),0);
+  const cost = all.reduce((a,i)=>a+(i.cost||0)*(i.qty||1),0);
+  const avg = sol.length ? pft/sol.length : 0;
+  document.getElementById('s1').textContent = ins.length;
+  document.getElementById('s1b').textContent = totalQty+' units · '+all.length+' SKUs';
+  document.getElementById('s2').textContent = f$(mkt);
+  document.getElementById('s3').textContent = (pft>=0?'+':'')+f$(pft);
+  document.getElementById('s3').className='sc-v'+(pft>=0?'':' neg');
+  document.getElementById('s3b').textContent = sol.length+' sold';
+  document.getElementById('s4').textContent = sol.length;
+  document.getElementById('s4b').textContent = f$(sol.reduce((a,i)=>a+(i.salePrice||0),0))+' rev';
+  document.getElementById('s5').textContent = f$(cost);
+  document.getElementById('s6').textContent = (avg>=0?'+':'')+fd$(avg);
+}
+
+function renderCats(){
+  ['Sports','TCG','Comic','Graded'].forEach(c=>{
+    const it = all.filter(i=>i.category===c&&i.status==='in_stock');
+    const v = it.reduce((a,i)=>a+(i.market||0),0);
+    const key = c.toLowerCase();
+    const el = document.getElementById('c-'+key);
+    const vel = document.getElementById('cv-'+key);
+    if(el) el.textContent=it.length;
+    if(vel) vel.textContent=f$(v)+' value';
+  });
+  const tot = all.filter(i=>i.status==='in_stock').length;
+  document.getElementById('ct-total').textContent = tot+' in stock';
+}
+
+function renderChannels(){
+  const sol = all.filter(i=>i.status==='sold');
+  const chs={};
+  sol.forEach(i=>{const c=i.channel||'In-Store';chs[c]=(chs[c]||0)+(i.salePrice||0);});
+  const pairs = Object.entries(chs).sort((a,b)=>b[1]-a[1]);
+  const max = pairs[0]?.[1]||1;
+  const cols={'In-Store':'var(--g)','eBay':'var(--gold)','Whatnot':'var(--purple)','Website':'var(--blue)'};
+  const el = document.getElementById('ch-bars');
+  if(!pairs.length){el.innerHTML='<div style="color:var(--dim);font-family:\'DM Mono\',monospace;font-size:11px;padding:20px 0">No sales yet</div>';return;}
+  el.innerHTML = pairs.map(([c,v])=>`<div class="br">
+    <span class="br-l">${c}</span>
+    <div class="br-t"><div class="br-f" style="width:${(v/max*100).toFixed(1)}%;background:${cols[c]||'var(--red)'}"></div></div>
+    <span class="br-v">${f$(v)}</span></div>`).join('');
+}
+
+function renderTopVal(){
+  const top = all.filter(i=>i.status==='in_stock'&&i.market>0).sort((a,b)=>b.market-a.market).slice(0,8);
+  const el=document.getElementById('top-val');
+  if(!top.length){el.innerHTML='<div class="empty"><div class="empty-t">NO ITEMS YET</div><div class="empty-s">Scan cards and add to inventory</div></div>';return;}
+  const max=top[0].market;
+  const cc={'Sports':'var(--gold)','TCG':'var(--g)','Comic':'var(--purple)','Graded':'var(--blue)'};
+  el.innerHTML=top.map(i=>`<div class="br">
+    <span class="br-l" title="${i.name}">${i.name}</span>
+    <div class="br-t"><div class="br-f" style="width:${(i.market/max*100).toFixed(1)}%;background:${cc[i.category]||'var(--g)'}"></div></div>
+    <span class="br-v">${fd$(i.market)}</span></div>`).join('');
+}
+
+function renderFeed(){
+  const sorted=[...all].sort((a,b)=>new Date(b.soldAt||b.addedAt||0)-new Date(a.soldAt||a.addedAt||0)).slice(0,10);
+  const el=document.getElementById('feed');
+  if(!sorted.length){el.innerHTML='<div class="empty"><div class="empty-t">NO ACTIVITY</div></div>';return;}
+  el.innerHTML=sorted.map(i=>{
+    const isSale=i.status==='sold';
+    const d=new Date(i.soldAt||i.addedAt||0);
+    const ds=d.getFullYear()>2000?d.toLocaleDateString('en-US',{month:'short',day:'numeric'}):'—';
+    return `<div class="fi">
+      <div class="fi-i ${isSale?'sale':'add'}">${isSale?'✓':'+'}</div>
+      <div class="fi-b">
+        <div class="fi-n">${i.name}</div>
+        <div class="fi-m">${isSale?'SOLD via '+(i.channel||'—'):i.category} · ${ds}</div>
+      </div>
+      <div class="fi-a ${isSale?'pos':'cost'}">${isSale?fd$(i.salePrice):i.market>0?fd$(i.market):'—'}</div>
+    </div>`;
+  }).join('');
+}
+
+// ── TABLE ────────────────────────────────────────────────────────
+let ts={col:'name',dir:1};
+function srt(col){
+  if(ts.col===col)ts.dir*=-1; else{ts.col=col;ts.dir=1;}
+  document.querySelectorAll('th').forEach(t=>t.className='');
+  [...document.querySelectorAll('th')].find(t=>t.onclick?.toString().includes(col))
+    ?.classList.add(ts.dir===1?'asc':'desc');
+  page=1;renderTable();
+}
+function setF(f,btn){
+  activeF=f;page=1;
+  document.querySelectorAll('.fb').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  filterTable();
+}
+function filterTable(){
+  const q=document.getElementById('tbl-q').value.toLowerCase();
+  filtered=all.filter(i=>{
+    const mq=!q||(i.name||'').toLowerCase().includes(q)||(i.set||'').toLowerCase().includes(q);
+    const mf=activeF==='all'?true:activeF==='in_stock'?i.status==='in_stock':activeF==='sold'?i.status==='sold':(i.category||'').toLowerCase()===activeF.toLowerCase();
+    return mq&&mf;
+  });
+  filtered.sort((a,b)=>{
+    let av=a[ts.col]||'',bv=b[ts.col]||'';
+    if(typeof av==='string'){av=av.toLowerCase();bv=bv.toLowerCase();}
+    return av<bv?-ts.dir:av>bv?ts.dir:0;
+  });
+  renderTable();
+}
+function renderTable(){
+  const start=(page-1)*PER,end=start+PER;
+  const rows=filtered.slice(start,end);
+  const tb=document.getElementById('tbody');
+  if(!filtered.length){
+    tb.innerHTML=`<tr><td colspan="7"><div class="empty"><div class="empty-t">NO ITEMS FOUND</div><div class="empty-s">Scan cards with the scanner and tap Add to Inventory.<br>Make sure Webflow token and proxy URL are correct.</div></div></td></tr>`;
+    document.getElementById('pager').innerHTML='';return;
+  }
+  tb.innerHTML=rows.map(i=>{
+    const ins=i.status==='in_stock';
+    const pft=ins?(i.market-i.cost):i.profit;
+    const pc=pft>=0?'pp':'pp neg';
+    const cat=(i.category||'TCG').replace(/\s+/g,'');
+    return `<tr class="${ins?'':'sold'}">
+      <td><span class="dot ${ins?'in_stock':'sold'}"></span><span class="nc">${i.name}${i.isRookie?' <span style="color:var(--gold);font-size:8px">RC</span>':''}</span></td>
+      <td><span class="sc2">${[i.set,i.variant].filter(Boolean).join(' · ')||'—'}</span></td>
+      <td><span class="ct ${cat}">${i.category||'TCG'}</span></td>
+      <td style="text-align:center;font-family:'Orbitron',monospace;font-size:11px;color:${(i.qty||1)>1?'var(--g)':'var(--dim)'}">${i.qty||1}</td>
+      <td class="pc pm">${i.market>0?fd$(i.market):'—'}</td>
+      <td class="pc pd">${i.cost>0?fd$(i.cost):'—'}</td>
+      <td class="pc ${pc}">${(i.cost>0||i.profit)?(pft>=0?'+':'')+fd$(pft):'—'}</td>
+      <td><span style="font-family:'DM Mono',monospace;font-size:10px;color:${ins?'var(--g)':'var(--dim)'}">${ins?'IN STOCK':'SOLD'+(i.channel?' · '+i.channel:'')}</span></td>
+    </tr>`;
+  }).join('');
+  // Pager
+  const tot=Math.ceil(filtered.length/PER);
+  document.getElementById('pager').innerHTML=tot<=1?'':
+    Array.from({length:tot},(_,i)=>`<button class="pg${i+1===page?' on':''}" onclick="page=${i+1};renderTable()">${i+1}</button>`).join('');
+}
+
+function resetToken(){
+  localStorage.removeItem('lba_wf_dash_token');
+  localStorage.removeItem('lba_proxy_url');
+  // Show setup screen with current values pre-filled
+  const t = localStorage.getItem('lba_wf_dash_token') || '';
+  const p = localStorage.getItem('lba_proxy_url') || DEFAULT_PROXY;
+  document.getElementById('wf-inp').value = t;
+  document.getElementById('proxy-inp').value = p;
+  document.getElementById('setup').style.display = 'flex';
+  document.getElementById('token-help').style.display = 'none';
+  document.getElementById('token-help').innerHTML = '';
+}
 </script>
-
 </body>
 </html>
