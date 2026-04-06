@@ -5,7 +5,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<title>LBA Scanner</title>
+<title>LBA v8 Scanner</title>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
@@ -1560,189 +1560,146 @@ async function doScan(){
 }
 
 async function scanFront(img){
-  const hs=document.getElementById('hstatus');
-    // ── TWO-PHASE SCAN: Phase 1 = fast read, Phase 2 = parallel lookup ──
-  // Phase 1: Tiny focused prompt → card identity in ~1-2s on Haiku
-  const quickPrompt = `Identify this trading card or collectible. Return ONLY compact JSON, no extra text:
-{"game":"Pokemon TCG|Magic: The Gathering|Yu-Gi-Oh!|Sports Card|Comic|PSA Slab|BGS Slab|CGC Slab|SGC Slab","name":"exact name","player":"player name or null","sport":"Baseball|Basketball|Football|Hockey|Soccer|null","team":"team or null","year":"4-digit year or null","card_number":"X/Y from card bottom e.g. 4/102 or 006/165 or 287 — CRITICAL","set_name":"exact set name","set_id":"tcg set id if known else empty","parallel":"Base or exact parallel e.g. Gold Prizm or Holo","serial_number":"/X if serialized else null","grading_company":"PSA|BGS|CGC|SGC|null","grade":"grade number or null","cert_number":"cert or null","manufacturer":"brand","is_rookie":false,"cx":50,"cy":50}`;
-
-  // Store front scan image for two-scan sports card identification
+  const hs = document.getElementById('hstatus');
   window._lastFrontB64 = img;
   window._lastFrontTime = Date.now();
 
-  const text=await callClaude([{role:'user',content:[{type:'image',source:{type:'base64',media_type:'image/jpeg',data:img}},{type:'text',text:quickPrompt}]}],800);
-  let items=[];
-  console.log('[VERSION] sca.html v6 — parse-fix + phase2-closure-fix');
-  console.log('[SCAN] Raw:', text ? text.substring(0,150) : 'EMPTY');
+  const quickPrompt = `Identify this trading card. Return ONLY a JSON array like this example:
+[{"game":"Pokemon TCG","name":"Charizard ex","player":null,"sport":null,"team":null,"year":"2023","card_number":"006/165","set_name":"Scarlet & Violet 151","set_id":"sv3pt5","parallel":"Holo Rare","serial_number":null,"grading_company":null,"grade":null,"cert_number":null,"manufacturer":"Pokemon Company","is_rookie":false,"cx":50,"cy":50}]
+
+Rules: game must be one of: Pokemon TCG, Magic: The Gathering, Yu-Gi-Oh!, Sports Card, Comic, PSA Slab, BGS Slab, CGC Slab, SGC Slab. Return array only, no other text.`;
+
+  const text = await callClaude([{role:'user',content:[
+    {type:'image',source:{type:'base64',media_type:'image/jpeg',data:img}},
+    {type:'text',text:quickPrompt}
+  ]}], 800);
+
+  console.log('[v8] Raw response:', text ? text.substring(0,200) : 'EMPTY');
+
+  let items = [];
   try {
-    // Step 1: strip all markdown code fences
-    let _raw = text.replace(/```json/gi,'').replace(/```/g,'').trim();
-    // Step 2: find the first [ or { — skip any preamble text
-    const iB = _raw.indexOf('[');
-    const iO = _raw.indexOf('{');
-    if(iB >= 0 && (iO < 0 || iB <= iO)) {
-      // Starts with array — use as-is
-      _raw = _raw.slice(iB);
-    } else if(iO >= 0) {
-      // Single object — wrap in array
-      _raw = '[' + _raw.slice(iO) + ']';
-    } else {
-      throw new Error('No JSON found in: ' + _raw.substring(0,80));
-    }
-    items = JSON.parse(_raw);
+    // Strip markdown, find first [ or {
+    let raw = text.replace(/```json/gi,'').replace(/```/g,'').trim();
+    const ai = raw.indexOf('[');
+    const oi = raw.indexOf('{');
+    if(ai >= 0 && (oi < 0 || ai < oi)) raw = raw.slice(ai);
+    else if(oi >= 0) raw = '[' + raw.slice(oi) + ']';
+    else throw new Error('no json in: ' + raw.slice(0,60));
+    items = JSON.parse(raw);
     if(!Array.isArray(items)) items = [];
-  } catch(parseErr) {
-    console.warn('[SCAN] Parse failed:', parseErr.message, '| raw:', text ? text.substring(0,200) : 'empty');
-    toast('Scan parse error — retrying');
-    // Retry with ultra-minimal prompt
-    try {
-      const retry = await callClaude([{role:'user',content:[
-        {type:'image',source:{type:'base64',media_type:'image/jpeg',data:img}},
-        {type:'text',text:'Trading card name and set. JSON only, no text: [{"name":"NAME","game":"Pokemon TCG","set_name":"SET","card_number":"NUM","parallel":"Base","cx":50,"cy":50}]'}
-      ]}], 300);
-      const iB2 = retry.indexOf('['), iO2 = retry.indexOf('{');
-      let r2 = (iB2>=0&&(iO2<0||iB2<=iO2)) ? retry.slice(iB2) : (iO2>=0 ? '['+retry.slice(iO2)+']' : '[]');
-      const ri = JSON.parse(r2);
-      if(Array.isArray(ri) && ri.length) { items = ri; console.log('[SCAN] Retry ok'); }
-    } catch(e2) { console.warn('[SCAN] Retry failed:', e2.message); }
+    console.log('[v8] Parsed', items.length, 'items, first:', items[0]?.name, items[0]?.game);
+  } catch(e) {
+    console.error('[v8] Parse error:', e.message, 'raw was:', text ? text.slice(0,300) : 'empty');
+    hs.textContent = 'PARSE ERR';
+    toast('Scan error — try again');
+    return;
   }
-  if(Array.isArray(items)&&items.length){
-    if(auto)clearAll();
-    for(const item of items){
-      const stock=checkStock(item);
-      const isTCG=['Pokemon TCG','Magic: The Gathering','Yu-Gi-Oh!','Other TCG'].includes(item.game);
-      const isComic=item.game==='Comic';
-      let apiPrintings=null,imgUrl=null,bestMatchIdx=0;
-      // TCGPlayer/comic data loads async in Phase 2 — bubble shows immediately
-      console.log('[SCAN] Adding bubble for:', item?.name || '?', 'game:', item?.game, 'ct:', item?.game ? 'tcg' : '?');
-      const bbl = addBubble(item,stock,imgUrl,apiPrintings,bestMatchIdx);
-      console.log('[SCAN] Bubble result:', bbl ? 'OK el.id='+bbl.id+' left='+bbl.style.left+' top='+bbl.style.top : 'NULL - addBubble returned nothing');
-      // Store front image on bubble for two-image back scan
-      if(bbl && window._lastFrontB64) bbl._frontB64 = window._lastFrontB64;
 
-      // ── PHASE 2: Async TCGPlayer + enrichment — runs after bubble is visible ──
-      // Capture all vars explicitly so closure works correctly
-      const _bbl = bbl, _item = item, _isTCG = isTCG, _isComic = isComic;
-      (async () => {
-        try {
-          if(!_bbl) return;
-          const bubEl = _bbl;
-          // Re-evaluate TCG check in case game string has slight variation
-          const gameStr = (_item.game||'').toLowerCase();
-          const isTCGLocal = _isTCG || gameStr.includes('pokemon') || gameStr.includes('magic') || gameStr.includes('yu-gi') || gameStr.includes('tcg');
-          const isComicLocal = _isComic || gameStr.includes('comic');
+  if(!items.length) {
+    hs.textContent = 'NONE';
+    toast('Nothing detected — move card closer');
+    return;
+  }
 
-          // Step A: Fetch TCGPlayer / comic data
-          if(isTCGLocal) {
-            hs.textContent = 'LOADING PRICES...';
-            const fetched = await fetchAllPrintings(_item);
-            if(fetched.printings && fetched.printings.length) {
-              bubEl._prints = fetched.printings;
-              bubEl._apiPrintings = fetched.printings;
-              if(fetched.imageUrl && !bubEl._imgUrl) {
-                bubEl._imgUrl = fetched.imageUrl;
-                const imgEl = bubEl.querySelector('.card-img');
-                if(imgEl) { imgEl.src = fetched.imageUrl; imgEl.style.display='block'; }
-              }
-              const bmi = fetched.bestMatchIdx || 0;
-              // Rebuild the price + dropdown with real data
-              const priceEl = bubEl.querySelector('.bprice,.prow');
-              const selEl = document.getElementById('ps' + bubEl.id);
-              if(selEl) {
-                // Rebuild dropdown options with prices
-                const p = fetched.printings;
-                selEl.innerHTML = p.map((pr,i) => {
-                  const price = pr.mid > 0 ? ` — $${pr.mid.toFixed(2)}` : '';
-                  const marker = i===bmi ? '★ ' : '';
-                  const variant = pr.variant && pr.variant!=='Base' ? ' · '+pr.variant : '';
-                  const num = pr.numbered ? ' '+pr.numbered : '';
-                  const yr = pr.year ? ` (${pr.year})` : '';
-                  return `<option value="${i}"${i===bmi?' selected':''}>${marker}${pr.set}${variant}${num}${yr}${price}</option>`;
-                }).join('');
-                // Update count label
-                const lbl = bubEl.querySelector('.bsels-label');
-                if(lbl) lbl.textContent = p.length + ' PRINTING' + (p.length!==1?'S':'') + ' FOUND — SELECT TO SWITCH';
+  if(auto) clearAll();
 
-                // Rebuild finish/tier toggle buttons
-                const FTLBLS = {'1stEditionHolofoil':'1st Ed ✨','1stEditionNormal':'1st Ed','unlimitedHolofoil':'Unlim ✨','unlimitedNormal':'Unlimited','holofoil':'✨ Holo','normal':'Normal','reverseHolofoil':'↩ Rev Holo','shadowlessHolofoil':'Shadow ✨','shadowlessNormal':'Shadowless'};
-                const allFinishes = [];
-                p.forEach((pr,pi) => {
-                  if(pr.allPrices) pr.allPrices.forEach(tier => {
-                    if(tier.mid > 0 && !allFinishes.find(f=>f.finish===tier.finish))
-                      allFinishes.push({finish:tier.finish, printIdx:pi, mid:tier.mid});
-                  });
-                });
-                // Remove old toggle if present
-                bubEl.querySelectorAll('[id^="finish-tog-"]').forEach(el2=>el2.remove());
-                if(allFinishes.length > 1) {
-                  const togDiv = document.createElement('div');
-                  togDiv.id = 'finish-tog-' + bubEl.id;
-                  togDiv.style.cssText = 'display:flex;gap:3px;margin-bottom:5px;flex-wrap:wrap';
-                  togDiv.innerHTML = allFinishes.slice(0,5).map((fg,fi) => {
-                    const isFoil = fg.finish.toLowerCase().includes('holo');
-                    const bg = isFoil?'rgba(255,209,102,.12)':'rgba(255,255,255,.05)';
-                    const bc = isFoil?'rgba(255,209,102,.3)':'rgba(255,255,255,.12)';
-                    const col = isFoil?'#ffd166':'#aaa';
-                    const lbl2 = FTLBLS[fg.finish]||fg.finish;
-                    return `<button class="bcp holo-tog${fi===0?' htog-on':''}" onclick="setFinish('${bubEl.id}','${fg.finish}',${fg.printIdx},this)" style="flex:1;min-width:56px;background:${bg};border:1px solid ${bc};color:${col};font-size:8px;padding:4px 2px;border-radius:4px;cursor:pointer;white-space:nowrap">${lbl2} $${fg.mid.toFixed(2)}</button>`;
-                  }).join('');
-                  const bselsEl2 = bubEl.querySelector('.bsels');
-                  if(bselsEl2) bselsEl2.before(togDiv);
-                  else bubEl.querySelector('.bacts')?.before(togDiv);
-                }
-              }
-              // Update price display with best match
-              const best = fetched.printings[bmi];
-              if(best) {
-                const condEl = document.getElementById('cs' + bubEl.id);
-                const cond = condEl?.value || 'NM';
-                updatePrice(bubEl.id, best, cond);
-              }
-              hs.textContent = 'READY';
+  for(const item of items) {
+    const stock = checkStock(item);
+    const isTCG = ['Pokemon TCG','Magic: The Gathering','Yu-Gi-Oh!','Other TCG'].includes(item.game);
+    const isComic = item.game === 'Comic';
+
+    // cx/cy default to center if missing or invalid
+    const W = window.innerWidth, H = window.innerHeight;
+    const cx = (typeof item.cx === 'number' ? item.cx : 50) / 100 * W;
+    const cy = (typeof item.cy === 'number' ? item.cy : 50) / 100 * H;
+    // Patch item so addBubble uses safe values
+    item.cx = typeof item.cx === 'number' ? item.cx : 50;
+    item.cy = typeof item.cy === 'number' ? item.cy : 50;
+
+    console.log('[v8] addBubble:', item.name, item.game, 'cx='+item.cx, 'cy='+item.cy);
+    const bbl = addBubble(item, stock, null, null, 0);
+    console.log('[v8] bubble result:', bbl ? 'OK '+bbl.id+' left='+bbl.style.left+' top='+bbl.style.top : 'FAILED');
+
+    if(bbl) bbl._frontB64 = img;
+
+    // Phase 2: load TCGPlayer prices async after bubble shows
+    const _bbl = bbl, _item = item, _isTCG = isTCG, _isComic = isComic;
+    (async () => {
+      try {
+        if(!_bbl) return;
+        const gameStr = (_item.game||'').toLowerCase();
+        const isTCGLocal = _isTCG || gameStr.includes('pokemon') || gameStr.includes('magic') || gameStr.includes('yu-gi') || gameStr.includes('tcg');
+        const isComicLocal = _isComic || gameStr.includes('comic');
+
+        if(isTCGLocal) {
+          hs.textContent = 'LOADING PRICES...';
+          const fetched = await fetchAllPrintings(_item);
+          if(fetched.printings && fetched.printings.length) {
+            _bbl._prints = fetched.printings;
+            if(fetched.imageUrl) {
+              _bbl._imgUrl = fetched.imageUrl;
+              const imgEl = _bbl.querySelector('.card-img,#cimg'+_bbl.id);
+              if(imgEl) { imgEl.src = fetched.imageUrl; imgEl.style.display='block'; }
             }
-          } else if(isComicLocal) {
-            const fetched = await fetchComicCovers(_item);
-            if(fetched.printings && fetched.printings.length) {
-              bubEl._prints = fetched.printings;
-              const selEl = document.getElementById('ps' + bubEl.id);
-              if(selEl) {
-                selEl.innerHTML = fetched.printings.map((pr,i) =>
-                  `<option value="${i}"${i===0?' selected':''}>${pr.set} ${pr.variant||''} ${pr.year||''}</option>`
-                ).join('');
-              }
+            const bmi = fetched.bestMatchIdx || 0;
+            const selEl = document.getElementById('ps' + _bbl.id);
+            if(selEl) {
+              selEl.innerHTML = fetched.printings.map((pr,i) => {
+                const price = pr.mid > 0 ? ` — $${pr.mid.toFixed(2)}` : '';
+                const marker = i===bmi ? '★ ' : '';
+                const variant = pr.variant && pr.variant!=='Base' ? ' · '+pr.variant : '';
+                const num = pr.numbered ? ' '+pr.numbered : '';
+                const yr = pr.year ? ` (${pr.year})` : '';
+                return `<option value="${i}"${i===bmi?' selected':''}>${marker}${pr.set}${variant}${num}${yr}${price}</option>`;
+              }).join('');
+              const lbl = _bbl.querySelector('.bsels-label');
+              if(lbl) lbl.textContent = fetched.printings.length + ' PRINTING' + (fetched.printings.length!==1?'S':'') + ' FOUND — SELECT TO SWITCH';
             }
+            const best = fetched.printings[bmi];
+            if(best) {
+              const cond = document.getElementById('cs'+_bbl.id)?.value || 'NM';
+              updatePrice(_bbl.id, best, cond);
+            }
+            hs.textContent = 'READY';
+          } else {
+            hs.textContent = 'NO PRICES FOUND';
           }
-
-          // Step B: Async comps enrichment (non-blocking, fills comps section)
-          const enrichPrompt = `Based on your training data, estimate prices for: ${_item.name} ${_item.year||''} ${_item.set_name||''} ${_item.parallel||'Base'}.
-Return ONLY this exact JSON with no other text:
-{"comps":[{"desc":"NM raw","price":0.00},{"desc":"LP raw","price":0.00},{"desc":"PSA 9","price":0.00}],"trend":"up|down|flat","is_key":false}`;
-          const enrichText = await callClaude([{role:'user',content:[{type:'text',text:enrichPrompt}]}], 200);
-          const _er = enrichText || '';
-          const _ei = _er.indexOf('{'); 
-          const enriched = _ei >= 0 ? JSON.parse('[' + _er.slice(_ei) + ']')[0] : null;
-          if(!enriched || !enriched.comps) throw new Error('No comps in: ' + _er.substring(0,60));
-          if(enriched.comps && bubEl._item) {
-            bubEl._item.comps = enriched.comps;
-            const compsEl = bubEl.querySelector ? bubEl.querySelector('.comps') : document.getElementById(bubEl.id)?.querySelector('.comps');
-            if(compsEl && enriched.comps.length) {
-              compsEl.innerHTML = '<div class="comps-hdr">RECENT SALES (AI est)</div>'
-                + enriched.comps.map(c=>`<div class="comp-row"><span class="comp-d">${c.desc}</span><span class="comp-p">$${Number(c.price).toFixed(2)}</span></div>`).join('');
-            }
+        } else if(isComicLocal) {
+          const fetched = await fetchComicCovers(_item);
+          if(fetched.printings && fetched.printings.length) {
+            _bbl._prints = fetched.printings;
           }
-        } catch(e2) {
-          console.error('[PHASE2] TCGPlayer/enrich error:', e2.message, e2);
-          hs.textContent = 'PRICE LOAD ERR';
         }
-      })();
-    }
-    console.log('[SCAN] Done:', items.length, 'items processed');
-    hs.textContent=items.length+' FOUND';drawLines();
-  }else{
-    console.log('[SCAN] items array empty after parse, items=', JSON.stringify(items).substring(0,100));
-    hs.textContent='NONE';toast('Nothing detected — get closer');
+
+        // Enrich with comps
+        try {
+          const ep = `Estimate prices for: ${_item.name} ${_item.year||''} ${_item.set_name||''} ${_item.parallel||'Base'}. Return ONLY JSON: {"comps":[{"desc":"NM raw","price":0.00},{"desc":"LP raw","price":0.00},{"desc":"PSA 9","price":0.00}],"trend":"up|down|flat"}`;
+          const et = await callClaude([{role:'user',content:[{type:'text',text:ep}]}], 200);
+          const ei = et.indexOf('{');
+          if(ei >= 0) {
+            const ed = JSON.parse('[' + et.slice(ei) + ']')[0];
+            if(ed && ed.comps && _bbl._item) {
+              _bbl._item.comps = ed.comps;
+              const compsEl = _bbl.querySelector('.comps');
+              if(compsEl) {
+                compsEl.innerHTML = '<div class="comps-hdr">PRICE EST (AI)</div>'
+                  + ed.comps.map(c=>`<div class="comp-row"><span class="comp-d">${c.desc}</span><span class="comp-p">$${Number(c.price).toFixed(2)}</span></div>`).join('');
+              }
+            }
+          }
+        } catch(e3) { /* comps non-critical */ }
+
+      } catch(e2) {
+        console.error('[v8] Phase2 error:', e2.message);
+        hs.textContent = 'PRICE ERR';
+      }
+    })();
   }
+
+  hs.textContent = items.length + ' FOUND';
+  drawLines();
 }
+
 
 async function scanBack(img){
   const hs = document.getElementById('hstatus');
