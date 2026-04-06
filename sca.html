@@ -1572,7 +1572,7 @@ async function scanFront(img){
 
   const text=await callClaude([{role:'user',content:[{type:'image',source:{type:'base64',media_type:'image/jpeg',data:img}},{type:'text',text:quickPrompt}]}],800);
   let items=[];
-  console.log('[VERSION] sca.html v4 loaded — parse fix active');
+  console.log('[VERSION] sca.html v6 — parse-fix + phase2-closure-fix');
   console.log('[SCAN] Raw:', text ? text.substring(0,150) : 'EMPTY');
   try {
     // Step 1: strip all markdown code fences
@@ -1614,7 +1614,9 @@ async function scanFront(img){
       const isComic=item.game==='Comic';
       let apiPrintings=null,imgUrl=null,bestMatchIdx=0;
       // TCGPlayer/comic data loads async in Phase 2 — bubble shows immediately
+      console.log('[SCAN] Adding bubble for:', _item?.name || item?.name || '?', 'game:', item?.game);
       const bbl = addBubble(item,stock,imgUrl,apiPrintings,bestMatchIdx);
+      console.log('[SCAN] Bubble created:', bbl ? 'YES id='+bbl.id : 'NO - addBubble returned null');
       // Store front image on bubble for two-image back scan
       if(bbl && window._lastFrontB64) bbl._frontB64 = window._lastFrontB64;
 
@@ -1712,11 +1714,14 @@ async function scanFront(img){
           }
 
           // Step B: Async comps enrichment (non-blocking, fills comps section)
-          const enrichPrompt = `Card: ${_item.name}, ${_item.year||''}, ${_item.set_name||''}, ${_item.parallel||'Base'}.
-Give 3 recent eBay sold comps. Return ONLY JSON:
-{"comps":[{"desc":"brief sold desc","price":0.00},{"desc":"","price":0.00},{"desc":"","price":0.00}],"trend":"up|down|flat","is_key":false}`;
-          const enrichText = await callClaude([{role:'user',content:[{type:'text',text:enrichPrompt}]}], 300);
-          const enriched = JSON.parse(enrichText.replace(/```json|```/g,'').trim());
+          const enrichPrompt = `Based on your training data, estimate prices for: ${_item.name} ${_item.year||''} ${_item.set_name||''} ${_item.parallel||'Base'}.
+Return ONLY this exact JSON with no other text:
+{"comps":[{"desc":"NM raw","price":0.00},{"desc":"LP raw","price":0.00},{"desc":"PSA 9","price":0.00}],"trend":"up|down|flat","is_key":false}`;
+          const enrichText = await callClaude([{role:'user',content:[{type:'text',text:enrichPrompt}]}], 200);
+          const _er = enrichText || '';
+          const _ei = _er.indexOf('{'); 
+          const enriched = _ei >= 0 ? JSON.parse('[' + _er.slice(_ei) + ']')[0] : null;
+          if(!enriched || !enriched.comps) throw new Error('No comps in: ' + _er.substring(0,60));
           if(enriched.comps && bubEl._item) {
             bubEl._item.comps = enriched.comps;
             const compsEl = bubEl.querySelector ? bubEl.querySelector('.comps') : document.getElementById(bubEl.id)?.querySelector('.comps');
@@ -1731,8 +1736,12 @@ Give 3 recent eBay sold comps. Return ONLY JSON:
         }
       })();
     }
+    console.log('[SCAN] Done:', items.length, 'items processed');
     hs.textContent=items.length+' FOUND';drawLines();
-  }else{hs.textContent='NONE';toast('Nothing detected — get closer');}
+  }else{
+    console.log('[SCAN] items array empty after parse, items=', JSON.stringify(items).substring(0,100));
+    hs.textContent='NONE';toast('Nothing detected — get closer');
+  }
 }
 
 async function scanBack(img){
