@@ -54,8 +54,8 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
 .bub::before{content:'';position:absolute;top:-1px;left:0;right:0;height:1.5px;background:linear-gradient(90deg,transparent,var(--g),transparent);}
 .bub.sports{border-color:var(--gold);}.bub.sports::before{background:linear-gradient(90deg,transparent,var(--gold),transparent);}
 .bub.comic{border-color:var(--purple);}.bub.comic::before{background:linear-gradient(90deg,transparent,var(--purple),transparent);}
-.bub.psa{border-color:var(--psa);border-width:2px;}.bub.psa::before{background:linear-gradient(90deg,transparent,var(--psa),transparent);}
-.bub.bgs{border-color:#aaa;}.bub.bgs::before{background:linear-gradient(90deg,transparent,#aaa,transparent);}
+.bub.psa{border-color:var(--psa,#e63946)!important;border-width:2px!important;box-shadow:0 0 12px rgba(230,57,70,.2);}.bub.psa::before{background:linear-gradient(90deg,transparent,var(--psa,#e63946),transparent);}
+.bub.bgs{border-color:#aaaaaa!important;border-width:2px!important;box-shadow:0 0 10px rgba(170,170,170,.15);}.bub.bgs::before{background:linear-gradient(90deg,transparent,#aaa,transparent);}
 .bub.cgc{border-color:var(--cgc,#f4a261);border-width:2px;}.bub.cgc::before{background:linear-gradient(90deg,transparent,var(--cgc,#f4a261),transparent);}.bub.sgc{border-color:var(--sgc,#ff9500);border-width:2px;}.bub.sgc::before{background:linear-gradient(90deg,transparent,var(--sgc,#ff9500),transparent);}
 /* CARD IMAGE */
 .card-img{width:100%;height:120px;object-fit:contain;margin-bottom:6px;border:1px solid rgba(255,255,255,.08);background:rgba(0,0,0,.3);}
@@ -1427,13 +1427,19 @@ function addBubble(item,stock,imgUrl,apiPrintings,bestMatchIdx){
           : `<a class="bact a-psa" href="https://www.psacard.com/cert/lookup" target="_blank">🔍 PSA Lookup ↗</a>`)
       : '';
     const bgsVerify = ct==='bgs'
-      ? (item.cert_number ? `<a class="bact a-bgs" href="https://www.beckett.com/grading/cert?cert=${item.cert_number}" target="_blank">🔍 BGS Verify ↗</a>` : '')
+      ? (item.cert_number
+          ? `<a class="bact a-bgs" href="https://www.beckett.com/grading/cert?cert=${item.cert_number}" target="_blank">🔍 BGS Verify ↗</a>`
+          : `<a class="bact a-bgs" href="https://www.beckett.com/grading/cert" target="_blank">🔍 BGS Lookup ↗</a>`)
       : '';
     const cgcVerify = ct==='cgc'
-      ? (item.cert_number ? `<a class="bact" style="background:rgba(244,162,97,.08);color:#f4a261;border:1px solid rgba(244,162,97,.3)" href="https://www.cgccomics.com/certification/item-lookup/?certNumber=${item.cert_number}" target="_blank">🔍 CGC Verify ↗</a>` : '')
+      ? (item.cert_number
+          ? `<a class="bact" style="background:rgba(244,162,97,.08);color:#f4a261;border:1px solid rgba(244,162,97,.3)" href="https://www.cgccomics.com/certification/item-lookup/?certNumber=${item.cert_number}" target="_blank">🔍 CGC Verify ↗</a>`
+          : `<a class="bact" style="background:rgba(244,162,97,.08);color:#f4a261;border:1px solid rgba(244,162,97,.3)" href="https://www.cgccomics.com/certification/item-lookup/" target="_blank">🔍 CGC Lookup ↗</a>`)
       : '';
     const sgcVerify = ct==='sgc'
-      ? (item.cert_number ? `<a class="bact" style="background:rgba(255,149,0,.08);color:#ff9500;border:1px solid rgba(255,149,0,.3)" href="https://www.sgccard.com/cert-lookup/?cert=${item.cert_number}" target="_blank">🔍 SGC Verify ↗</a>` : '')
+      ? (item.cert_number
+          ? `<a class="bact" style="background:rgba(255,149,0,.08);color:#ff9500;border:1px solid rgba(255,149,0,.3)" href="https://www.sgccard.com/cert-lookup/?cert=${item.cert_number}" target="_blank">🔍 SGC Verify ↗</a>`
+          : `<a class="bact" style="background:rgba(255,149,0,.08);color:#ff9500;border:1px solid rgba(255,149,0,.3)" href="https://www.sgccard.com/cert-lookup/" target="_blank">🔍 SGC Lookup ↗</a>`)
       : '';
     actLinks=`<a class="bact a-ebay" href="${AFF.ebaySearch(qSlab)}" target="_blank">eBay Sold ↗</a>
       <a class="bact a-ebay" style="background:rgba(72,202,228,.08);color:var(--blue);border-color:rgba(72,202,228,.2)" href="${AFF.ebaySearch(qSlabBase)}" target="_blank">All Sales ↗</a>
@@ -1506,13 +1512,22 @@ function addBubble(item,stock,imgUrl,apiPrintings,bestMatchIdx){
         </div>` : '';
       return `${holoToggle}<div class="bsels"><select class="bsel" id="ps${id}" onchange="chPrint('${id}')" data-bmi="${bmi}">${printOpts}</select><select class="bsel" id="cs${id}" onchange="chCond('${id}')">${Object.keys(CM).map(c=>`<option>${c}</option>`).join('')}</select></div><div class="bconds">${Object.keys(CM).map((c,i)=>`<span class="bcp${i===0?' on':''}" onclick="cpill('${id}',this,'${c}')">${c}</span>`).join('')}</div>`;
     })():''}
-    <div class="bacts" id="acts${id}">${actLinks}<button class="bact a-add" onclick="showAddForm('${id}')">+ Add to Inventory</button>${si>0?`<button class="bact a-sell" onclick="showSellForm('${id}')">✓ Mark as Sold</button>`:''}<button class="bact" style="background:rgba(255,209,102,.08);border:1px solid rgba(255,209,102,.2);color:#ffd166" onclick="showEbayForm('${id}')">📦 List on eBay</button></div>`;
+    <div class="bacts" id="acts${id}">
+      ${actLinks}
+      ${ct==='sports'?`<button class="bact" style="background:rgba(255,209,102,.06);border:1px solid rgba(255,209,102,.2);color:#ffd166;font-size:9px" onclick="scanBackForBubble('${id}')">⟳ SCAN BACK</button>`:''}
+      ${ct==='tcg'?`<button class="bact" style="background:rgba(0,255,179,.06);border:1px solid rgba(0,255,179,.2);color:var(--g);font-size:9px" onclick="scanBackForBubble('${id}')">⟳ SCAN BACK</button>`:''}
+      <button class="bact a-add" onclick="showAddForm('${id}')">+ Add to Inventory</button>
+      ${si>0?`<button class="bact a-sell" onclick="showSellForm('${id}')">✓ Mark as Sold</button>`:''}
+      <button class="bact" style="background:rgba(255,209,102,.08);border:1px solid rgba(255,209,102,.2);color:#ffd166" onclick="showEbayForm('${id}')">📦 List on eBay</button>
+    </div>`;
 
-  const bw=192,bh=isSlab?480:540;
-  let left=cx-bw/2,top=cy-bh-24;
+  const bw=192;
+  el.style.maxHeight='80vh';
+  el.style.overflowY='auto';
+  let left=cx-bw/2,top=cy-320;
   if(top<60)top=cy+20;
   left=Math.max(6,Math.min(left,W-bw-6));
-  top=Math.max(60,Math.min(top,H-bh-90));
+  top=Math.max(60,Math.min(top,window.innerHeight-80));
   el.style.left=left+'px';el.style.top=top+'px';
   document.body.appendChild(el);
   bubs.push({id,el,ax:cx,ay:cy,ct});
@@ -2453,6 +2468,55 @@ window.submitEbayListing = async function(id) {
   }
 };
 
+
+// ── SCAN BACK FOR SPECIFIC BUBBLE ────────────────────────────────────────────
+// Called from the "⟳ SCAN BACK" button on a bubble
+// Snaps current camera frame and runs back-scan analysis
+// targeting the specific bubble by ID
+window.scanBackForBubble = async function(bubId) {
+  // Find the bubble
+  const bub = bubs.find(b => b.id === bubId);
+  if(!bub) { toast('Bubble not found'); return; }
+
+  const btn = bub.el.querySelector('[onclick*="scanBackForBubble"]');
+  if(btn) { btn.textContent = '⟳ SCANNING...'; btn.disabled = true; }
+
+  const hs = document.getElementById('hstatus');
+  hs.textContent = 'READING BACK...';
+
+  try {
+    // Snap current camera frame
+    const snap = document.createElement('canvas');
+    const vw = video.videoWidth || 1280, vh = video.videoHeight || 720;
+    snap.width = Math.min(vw, 1280);
+    snap.height = Math.round(snap.width * vh / vw);
+    snap.getContext('2d').drawImage(video, 0, 0, snap.width, snap.height);
+    const img = snap.toDataURL('image/jpeg', 0.92).split(',')[1];
+
+    // Temporarily make this bubble the "last" bub so scanBack targets it
+    const originalLast = bubs[bubs.length - 1];
+    const bubIdx = bubs.findIndex(b => b.id === bubId);
+    if(bubIdx >= 0 && bubIdx !== bubs.length - 1) {
+      // Move to end temporarily
+      bubs.splice(bubIdx, 1);
+      bubs.push(bub);
+    }
+
+    await scanBack(img);
+
+    // Restore original order if we moved it
+    if(bubIdx >= 0 && bubIdx !== bubs.length - 1) {
+      bubs.splice(bubs.length - 1, 1);
+      bubs.splice(bubIdx, 0, bub);
+    }
+
+  } catch(e) {
+    toast('Back scan error: ' + e.message);
+    hs.textContent = 'ERROR';
+  }
+
+  if(btn) { btn.textContent = '⟳ SCAN BACK'; btn.disabled = false; }
+};
 
 // Auto-launch — no credentials needed, everything in Cloudflare Worker
 window.addEventListener('load', function(){ startScanner(); });
