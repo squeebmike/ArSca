@@ -50,7 +50,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
 #modebadge{position:fixed;top:58px;left:50%;transform:translateX(-50%);z-index:30;padding:5px 14px;font-family:'Orbitron',monospace;font-size:9px;letter-spacing:2px;display:none;}
 #modebadge.back{background:rgba(255,209,102,.15);border:1px solid var(--gold);color:var(--gold);}
 #modebadge.bulk{background:rgba(199,125,255,.15);border:1px solid var(--purple);color:var(--purple);}
-.bub{position:fixed;background:var(--surface);border:1.5px solid var(--g);padding:10px 12px;width:192px;z-index:20;box-shadow:0 0 20px rgba(0,255,179,.15);max-height:82vh;overflow-y:auto;}
+.bub{position:fixed;background:var(--surface);border:1.5px solid var(--g);padding:10px 12px;width:220px;z-index:20;box-shadow:0 0 20px rgba(0,255,179,.15);max-height:82vh;overflow-y:auto;}
 .bub::before{content:'';position:absolute;top:-1px;left:0;right:0;height:1.5px;background:linear-gradient(90deg,transparent,var(--g),transparent);}
 .bub.sports{border:1.5px solid var(--gold)!important;}.bub.sports::before{background:linear-gradient(90deg,transparent,var(--gold),transparent);}
 .bub.comic{border:1.5px solid var(--purple)!important;}.bub.comic::before{background:linear-gradient(90deg,transparent,var(--purple),transparent);}
@@ -115,8 +115,9 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
 .backinfo-row{display:flex;justify-content:space-between;font-family:monospace;font-size:8px;color:rgba(255,255,255,.5);padding:1px 0;}
 .backinfo-val{color:rgba(255,255,255,.8);}
 .bsels{display:flex;flex-direction:column;gap:4px;margin-bottom:5px;}
-.bsel{width:100%;background:#0d0d0f;color:#fff;border:1px solid rgba(255,255,255,.12);padding:5px 7px;font-family:monospace;font-size:10px;outline:none;}
-.bsel:focus{border-color:var(--g);}
+.bsel{width:100%;background:rgba(0,255,179,.05);color:#fff;border:1px solid rgba(0,255,179,.25);padding:7px 8px;font-family:monospace;font-size:10px;outline:none;border-radius:5px;cursor:pointer;margin-bottom:3px;}
+.bsel:focus,.bsel:hover{border-color:rgba(0,255,179,.5);background:rgba(0,255,179,.08);}
+.bsels-label{font-family:monospace;font-size:8px;color:rgba(0,255,179,.5);letter-spacing:1px;text-transform:uppercase;margin-bottom:2px;}
 .bconds{display:flex;gap:3px;flex-wrap:wrap;margin-bottom:5px;}
 .bcp{font-family:'Orbitron',monospace;font-size:7px;padding:2px 5px;border:1px solid rgba(255,255,255,.15);color:rgba(255,255,255,.4);cursor:pointer;}
 .bcp.on{border-color:var(--g);color:var(--g);background:var(--gd);}
@@ -1461,9 +1462,14 @@ function toggleBulk(){
 
 function capture(){
   const vw=video.videoWidth||1280,vh=video.videoHeight||720;
-  canvas.width=1024;canvas.height=Math.round(1024*vh/vw);
-  canvas.getContext('2d').drawImage(video,0,0,canvas.width,canvas.height);
-  return canvas.toDataURL('image/jpeg',.9).split(',')[1];
+  // Use higher resolution — better for reading small card numbers and set symbols
+  const maxW = 1280;
+  canvas.width=Math.min(vw, maxW);
+  canvas.height=Math.round(canvas.width*vh/vw);
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(video,0,0,canvas.width,canvas.height);
+  // Use 0.95 quality — better for fine text like card numbers
+  return canvas.toDataURL('image/jpeg',.95).split(',')[1];
 }
 async function callClaude(msgs, maxTok){
   // Routes through Cloudflare Worker — API key never touches the browser
@@ -1471,7 +1477,7 @@ async function callClaude(msgs, maxTok){
     method: 'POST',
     headers: {'Content-Type':'application/json'},
     body: JSON.stringify({
-      model: 'claude-haiku-4-5-20251001',
+      model: 'claude-sonnet-4-6',
       max_tokens: maxTok || 1000,
       messages: msgs,
     })
@@ -1968,7 +1974,7 @@ function addBubble(item,stock,imgUrl,apiPrintings,bestMatchIdx){
           <button class="bcp holo-tog" id="htog-holo-${id}" onclick="setHolo('${id}',${holoIdx},true)" style="flex:1;background:rgba(255,209,102,.15);border:1px solid rgba(255,209,102,.3);color:#ffd166;font-size:9px;padding:4px;border-radius:4px;cursor:pointer">✨ HOLO $${Number(prints[holoIdx].mid||0).toFixed(2)}</button>
           <button class="bcp holo-tog" id="htog-norm-${id}" onclick="setHolo('${id}',${normIdx},false)" style="flex:1;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.15);color:#aaa;font-size:9px;padding:4px;border-radius:4px;cursor:pointer">NON-HOLO $${Number(prints[normIdx].mid||0).toFixed(2)}</button>
         </div>` : '';
-      return `${holoToggle}<div class="bsels"><select class="bsel" id="ps${id}" onchange="chPrint('${id}')" data-bmi="${bmi}">${printOpts}</select><select class="bsel" id="cs${id}" onchange="chCond('${id}')">${Object.keys(CM).map(c=>`<option>${c}</option>`).join('')}</select></div><div class="bconds">${Object.keys(CM).map((c,i)=>`<span class="bcp${i===0?' on':''}" onclick="cpill('${id}',this,'${c}')">${c}</span>`).join('')}</div>`;
+      return `${holoToggle}<div class="bsels"><div class="bsels-label">${prints.length} PRINTING${prints.length!==1?'S':''} FOUND — SELECT TO SWITCH</div><select class="bsel" id="ps${id}" onchange="chPrint('${id}')" data-bmi="${bmi}" size="1">${printOpts}</select><select class="bsel" id="cs${id}" onchange="chCond('${id}')">${Object.keys(CM).map(c=>`<option>${c}</option>`).join('')}</select></div><div class="bconds">${Object.keys(CM).map((c,i)=>`<span class="bcp${i===0?' on':''}" onclick="cpill('${id}',this,'${c}')">${c}</span>`).join('')}</div>`;
     })():''}
     <div class="bacts" id="acts${id}">
       ${actLinks}
@@ -1980,8 +1986,8 @@ function addBubble(item,stock,imgUrl,apiPrintings,bestMatchIdx){
       <button class="bact" style="background:rgba(255,209,102,.08);border:1px solid rgba(255,209,102,.2);color:#ffd166" onclick="showEbayForm('${id}')">📦 List on eBay</button>
     </div>`;
 
-  const bw=192;
-  el.style.maxHeight='80vh';
+  const bw=220;
+  el.style.maxHeight='85vh';
   el.style.overflowY='auto';
   let left=cx-bw/2,top=cy-320;
   if(top<60)top=cy+20;
@@ -2105,6 +2111,27 @@ window.chPrint=function(id){
   // Update comps section header
   const compsHdr=el.querySelector('.comps-hdr');
   if(compsHdr&&p.set) compsHdr.textContent=(p.variant&&p.variant!=='Base'?p.variant+' ':'')+'RECENT SALES';
+
+  // Update btype label to show selected printing
+  const btypeEl = el.querySelector('.btype');
+  if(btypeEl && p.set) {
+    const ct2 = el._ct;
+    const parts = [p.set];
+    if(p.variant && p.variant !== 'Base') parts.push(p.variant);
+    if(p.year) parts.push(p.year);
+    btypeEl.textContent = parts.join(' · ');
+  }
+
+  // Flash the dropdown green briefly to confirm selection
+  const selEl = document.getElementById('ps'+id);
+  if(selEl) {
+    selEl.style.background = 'rgba(0,255,179,.2)';
+    selEl.style.borderColor = 'var(--g)';
+    setTimeout(() => {
+      selEl.style.background = '';
+      selEl.style.borderColor = '';
+    }, 600);
+  }
 };
 window.chCond=function(id){const el=document.getElementById(id);if(!el)return;const pi=parseInt(document.getElementById('ps'+id)?.value)||0;const cond=document.getElementById('cs'+id).value;el.querySelectorAll('.bcp').forEach(p=>p.classList.toggle('on',p.textContent===cond));updatePrice(id,el._prints[pi]||el._prints[0],cond);};
 window.cpill=function(id,pill,cond){const el=document.getElementById(id);if(!el)return;const pi=parseInt(document.getElementById('ps'+id)?.value)||0;const cs=document.getElementById('cs'+id);if(cs)cs.value=cond;el.querySelectorAll('.bcp').forEach(p=>p.classList.remove('on'));pill.classList.add('on');updatePrice(id,el._prints[pi]||el._prints[0],cond);};
