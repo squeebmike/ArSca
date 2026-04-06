@@ -1640,15 +1640,21 @@ function addBubble(item,stock,imgUrl,apiPrintings,bestMatchIdx){
       const hasReal = first.hasRealPrice || (first.mid>0 && apiPrintings);
       const isSportsOrComic = ct==='sports'||ct==='comic';
       if(isSportsOrComic){
-        return `<div class="prow"><span class="bprice ${ct}" style="font-size:13px;color:rgba(255,255,255,.4)">SEE COMPS ↓</span></div>
-        <div class="brange" id="br${id}" style="color:rgba(255,255,255,.25)">Tap eBay Sold for real prices</div>`;
+        // Use first comp as price estimate if available
+        const estPrice = item.comps && item.comps.length ? item.comps[0].price : 0;
+        if(estPrice > 0) {
+          return `<div class="prow"><span class="bprice ${ct}" id="bp${id}">$${Number(estPrice).toFixed(2)}</span><span style="font-family:monospace;font-size:8px;color:rgba(255,209,102,.4)">EST</span></div>
+          <div class="brange" id="br${id}" style="color:rgba(255,255,255,.3)">AI estimate · Tap eBay Sold for live data</div>`;
+        }
+        return `<div class="prow"><span class="bprice ${ct}" style="font-size:11px;color:rgba(255,255,255,.4)">SCAN BACK FOR PRICE</span></div>
+        <div class="brange" id="br${id}" style="color:rgba(255,255,255,.2)">Tap eBay Sold ↑ for real comps</div>`;
       }
       if(hasReal){
         return `<div class="prow"><span class="bprice ${ct}" id="bp${id}">$${Number(first.mid).toFixed(2)}</span><span style="font-family:monospace;font-size:8px;color:rgba(0,255,179,.5)">LIVE</span></div>
         <div class="brange" id="br${id}">$${Number(first.low).toFixed(2)} – $${Number(first.high).toFixed(2)} NM</div>`;
       }
-      return `<div class="prow"><span class="bprice ${ct}" style="font-size:13px;color:rgba(255,255,255,.4)">NO PRICE DATA</span></div>
-      <div class="brange" id="br${id}" style="color:rgba(255,255,255,.2)">Select printing for price</div>`;
+      return `<div class="prow"><span class="bprice ${ct}" id="bp${id}" style="font-size:11px;color:rgba(255,255,255,.35)">NO TCG PRICE FOUND</span></div>
+      <div class="brange" id="br${id}" style="color:rgba(255,255,255,.2)">Try selecting a different printing ↑</div>`;
     })()}
     ${apiPrintings?`<div style="font-family:monospace;font-size:8px;color:rgba(0,255,179,.5);margin-bottom:4px">★ best match · ${prints.length} printings found</div>`:''}
     ${compsHtml}
@@ -2718,12 +2724,12 @@ window.scanBackForBubble = async function(bubId) {
 // CONFIGURATION — fill these in with your payment handles
 // ════════════════════════════════════════════════════════════
 const POS_CONFIG = {
-  stripe_pk: '',          // pk_live_... — paste your Stripe publishable key here
-  venmo:    '@walkoff-cards',     // your Venmo @handle
-  paypal:   'walkoffcards',       // your PayPal.me username
-  cashapp:  '$walkoffcards',      // your Cash App $cashtag
-  zelle:    '',                   // your Zelle phone or email
-  tax_rate:  0,                   // default tax % (e.g. 9.8 for WA state)
+  stripe_pk: 'pk_live_51OhyA8LHo6HlAYnMuSJGtOtXDbU5I8NIvHqgSpoKfH8PoZ2pIHCFVyO1fkqlpcpTAQ5tgEMGbWYlA81hiwQ2HhB400tlnsrfsw',
+  venmo:    'Shawn-Warner-84',
+  paypal:   '',             // add your PayPal.me username when ready
+  cashapp:  '',             // add your $cashtag when ready
+  zelle:    '',             // not used
+  tax_rate:  0,
   store_name: 'Walk-Off Sports Cards',
   store_location: 'Kingston, WA',
 };
@@ -2741,7 +2747,7 @@ let currentPaymentIntentId = null;
 // ════════════════════════════════════════════════════════════
 // NAV — add POS + Pricing buttons to nav bar
 // ════════════════════════════════════════════════════════════
-(function injectNavButtons(){
+function injectNavButtons(){
   const nav = document.getElementById('lba-nav');
   if(!nav) return;
 
@@ -2767,7 +2773,7 @@ let currentPaymentIntentId = null;
     nav.appendChild(cartBtn);
     nav.appendChild(priceBtn);
   }
-})();
+}  // end injectNavButtons
 
 // ════════════════════════════════════════════════════════════
 // CART FUNCTIONS
@@ -2791,7 +2797,13 @@ function addToCart(item, imgUrl, price){
   cart.push(cartItem);
   updateCartBadge();
   renderCart();
-  toast('Added to cart: ' + cartItem.name);
+  toast('🛒 Added: ' + cartItem.name);
+  // Auto-show cart briefly so user knows where to find it
+  const cartEl = document.getElementById('pos-cart');
+  if(cartEl && !cartEl.classList.contains('on')) {
+    cartEl.classList.add('on');
+    renderCart();
+  }
 }
 
 window.removeFromCart = function(id){
@@ -2968,7 +2980,7 @@ const QR_HANDLES = {
   venmo:   { label:'Venmo', color:'#008CFF', handle: () => POS_CONFIG.venmo },
   paypal:  { label:'PayPal', color:'#003087', handle: () => 'paypal.me/'+POS_CONFIG.paypal },
   cashapp: { label:'Cash App', color:'#00D632', handle: () => POS_CONFIG.cashapp },
-  zelle:   { label:'Zelle', color:'#6B1BE3', handle: () => POS_CONFIG.zelle },
+  // zelle removed per user preference
 };
 
 function buildQRTabs(){
@@ -3260,7 +3272,10 @@ function generatePriceTag(){
 const _origAddBubble = window.addBubble;
 
 // Auto-launch — no credentials needed, everything in Cloudflare Worker
-window.addEventListener('load', function(){ startScanner(); });
+window.addEventListener('load', function(){
+  startScanner();
+  injectNavButtons();
+});
 </script>
 
 <div id="lba-nav"><a class="lba-nav-btn active" href="sca.html"><span class="nav-ico">⬡</span>SCANNER</a><a class="lba-nav-btn" href="dashboard.html"><span class="nav-ico">▦</span>DASHBOARD</a></div>
@@ -3325,9 +3340,7 @@ window.addEventListener('load', function(){ startScanner(); });
       <div class="ck-method" id="m-cashapp" onclick="selectPayment('cashapp')">
         <div class="ck-method-ico" style="font-size:18px;font-family:'DM Mono',monospace;color:#00D632;font-weight:700">$</div><div class="ck-method-lbl">CASH APP</div>
       </div>
-      <div class="ck-method" id="m-zelle" onclick="selectPayment('zelle')">
-        <div class="ck-method-ico" style="font-size:18px;font-family:'DM Mono',monospace;color:#6B1BE3;font-weight:700">Z</div><div class="ck-method-lbl">ZELLE</div>
-      </div>
+
     </div>
 
     <!-- CASH PANEL -->
