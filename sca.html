@@ -52,11 +52,11 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
 #modebadge.bulk{background:rgba(199,125,255,.15);border:1px solid var(--purple);color:var(--purple);}
 .bub{position:fixed;background:var(--surface);border:1.5px solid var(--g);padding:10px 12px;width:192px;z-index:20;box-shadow:0 0 20px rgba(0,255,179,.15);max-height:82vh;overflow-y:auto;}
 .bub::before{content:'';position:absolute;top:-1px;left:0;right:0;height:1.5px;background:linear-gradient(90deg,transparent,var(--g),transparent);}
-.bub.sports{border-color:var(--gold);}.bub.sports::before{background:linear-gradient(90deg,transparent,var(--gold),transparent);}
-.bub.comic{border-color:var(--purple);}.bub.comic::before{background:linear-gradient(90deg,transparent,var(--purple),transparent);}
-.bub.psa{border-color:var(--psa,#e63946)!important;border-width:2px!important;box-shadow:0 0 12px rgba(230,57,70,.2);}.bub.psa::before{background:linear-gradient(90deg,transparent,var(--psa,#e63946),transparent);}
-.bub.bgs{border-color:#aaaaaa!important;border-width:2px!important;box-shadow:0 0 10px rgba(170,170,170,.15);}.bub.bgs::before{background:linear-gradient(90deg,transparent,#aaa,transparent);}
-.bub.cgc{border-color:var(--cgc,#f4a261);border-width:2px;}.bub.cgc::before{background:linear-gradient(90deg,transparent,var(--cgc,#f4a261),transparent);}.bub.sgc{border-color:var(--sgc,#ff9500);border-width:2px;}.bub.sgc::before{background:linear-gradient(90deg,transparent,var(--sgc,#ff9500),transparent);}
+.bub.sports{border:1.5px solid var(--gold)!important;}.bub.sports::before{background:linear-gradient(90deg,transparent,var(--gold),transparent);}
+.bub.comic{border:1.5px solid var(--purple)!important;}.bub.comic::before{background:linear-gradient(90deg,transparent,var(--purple),transparent);}
+.bub.psa{border:2px solid var(--psa,#e63946)!important;box-shadow:0 0 14px rgba(230,57,70,.25)!important;}.bub.psa::before{background:linear-gradient(90deg,transparent,var(--psa,#e63946),transparent);}
+.bub.bgs{border:2px solid #aaaaaa!important;box-shadow:0 0 10px rgba(170,170,170,.2)!important;}.bub.bgs::before{background:linear-gradient(90deg,transparent,#aaa,transparent);}
+.bub.cgc{border:2px solid var(--cgc,#f4a261)!important;box-shadow:0 0 12px rgba(244,162,97,.2)!important;}.bub.cgc::before{background:linear-gradient(90deg,transparent,var(--cgc,#f4a261),transparent);}.bub.sgc{border:2px solid var(--sgc,#ff9500)!important;box-shadow:0 0 12px rgba(255,149,0,.2)!important;}.bub.sgc::before{background:linear-gradient(90deg,transparent,var(--sgc,#ff9500),transparent);}
 /* CARD IMAGE */
 .card-img{width:100%;height:120px;object-fit:contain;margin-bottom:6px;border:1px solid rgba(255,255,255,.08);background:rgba(0,0,0,.3);}
 .card-img-placeholder{width:100%;height:80px;display:flex;align-items:center;justify-content:center;font-family:monospace;font-size:9px;color:rgba(255,255,255,.2);letter-spacing:1px;border:1px dashed rgba(255,255,255,.08);margin-bottom:6px;}
@@ -1123,7 +1123,7 @@ STEP 2 — VISUAL: border color, foil, holo, slab label, artwork style.
 STEP 3 — COMBINE.
 
 Return ONLY raw JSON array, no markdown:
-[{"name":"exact name","game":"Pokemon TCG|Magic: The Gathering|Yu-Gi-Oh!|Sports Card|Comic|PSA Slab|BGS Slab|CGC Slab|SGC Slab|Other TCG","sport":"Baseball|Basketball|Football|Hockey|Soccer|null","player":"player name or null","team":"team or null","year":"year","card_number":"# or null","manufacturer":"Topps|Panini|Upper Deck|Bowman|Pokemon Company|Wizards|Konami|Marvel|DC|Image|Other","publisher":"publisher if comic","issue":"issue # if comic","set_name":"exact set","parallel":"Base|Chrome|Prizm|Silver Prizm|Gold Refractor|Red Prizm|Blue|Green|Orange|Holo|Reverse Holo|Full Art|Alt Art|Borderless|Showcase|Extended Art|Etched Foil|Serialized|1st Edition|Promo|Rainbow Rare|Secret Rare|Special Illustration Rare|Auto|Relic|Standard|Variant|Virgin|Textless|Sketch|Foil|Newsstand","serial_number":"/99 or null","grading_company":"PSA|BGS|CGC|SGC|null","grade":"10|9.5|9|8.5|null","cert_number":"cert # or null","subgrades":{"centering":"9.5","surface":"9","corners":"9.5","edges":"9"},"pop_this_grade":450,"pop_higher":120,"is_black_label":false,"is_rookie":true,"is_key":false,"key_notes":"why notable or null","confidence":"high|medium|low","confidence_reason":"brief","desirability":7,"trend":"up|down|flat","trend_reason":"brief","cx":50,"cy":50,"printings":[{"set":"set","variant":"variant","year":"year","numbered":"/99 or null","mid":5.00,"low":2.00,"high":10.00}],"comps":[{"desc":"comp description","price":8.50},{"desc":"comp","price":7.00},{"desc":"comp","price":9.50}]}]
+[{"name":"exact name","game":"Pokemon TCG|Magic: The Gathering|Yu-Gi-Oh!|Sports Card|Comic|PSA Slab|BGS Slab|CGC Slab|SGC Slab|Other TCG — IMPORTANT: if item is in a graded plastic slab with a label (PSA/BGS/CGC/SGC), game MUST be one of the Slab options","sport":"Baseball|Basketball|Football|Hockey|Soccer|null","player":"player name or null","team":"team or null","year":"year","card_number":"# or null","manufacturer":"Topps|Panini|Upper Deck|Bowman|Pokemon Company|Wizards|Konami|Marvel|DC|Image|Other","publisher":"publisher if comic","issue":"issue # if comic","set_name":"exact set","parallel":"Base|Chrome|Prizm|Silver Prizm|Gold Refractor|Red Prizm|Blue|Green|Orange|Holo|Reverse Holo|Full Art|Alt Art|Borderless|Showcase|Extended Art|Etched Foil|Serialized|1st Edition|Promo|Rainbow Rare|Secret Rare|Special Illustration Rare|Auto|Relic|Standard|Variant|Virgin|Textless|Sketch|Foil|Newsstand","serial_number":"/99 or null","grading_company":"PSA|BGS|CGC|SGC|null","grade":"10|9.5|9|8.5|null","cert_number":"cert # or null","subgrades":{"centering":"9.5","surface":"9","corners":"9.5","edges":"9"},"pop_this_grade":450,"pop_higher":120,"is_black_label":false,"is_rookie":true,"is_key":false,"key_notes":"why notable or null","confidence":"high|medium|low","confidence_reason":"brief","desirability":7,"trend":"up|down|flat","trend_reason":"brief","cx":50,"cy":50,"printings":[{"set":"set","variant":"variant","year":"year","numbered":"/99 or null","mid":5.00,"low":2.00,"high":10.00}],"comps":[{"desc":"comp description","price":8.50},{"desc":"comp","price":7.00},{"desc":"comp","price":9.50}]}]
 
 For virgin/textless comics: identify from artwork, character, art style only. Include ALL printings. Max 4. [] if none.`;
 
@@ -1313,13 +1313,22 @@ window.copyBulkOffer=function(){
 };
 
 function getType(item){
-  const g=item.game||'';
-  if(g.includes('PSA'))return 'psa';
-  if(g.includes('BGS'))return 'bgs';
-  if(g.includes('CGC'))return 'cgc';
-  if(g.includes('SGC'))return 'sgc';
-  if(g==='Sports Card')return 'sports';
-  if(g==='Comic')return 'comic';
+  const g = (item.game||'').toLowerCase();
+  const gr = (item.grading_company||'').toLowerCase();
+  // Check grading_company first — most reliable signal
+  if(gr==='psa' || g.includes('psa')) return 'psa';
+  if(gr==='bgs' || gr==='beckett' || g.includes('bgs')) return 'bgs';
+  if(gr==='cgc' || g.includes('cgc')) return 'cgc';
+  if(gr==='sgc' || g.includes('sgc')) return 'sgc';
+  // If graded flag is set and company matches
+  if(item.graded && gr) {
+    if(gr.includes('psa')) return 'psa';
+    if(gr.includes('bgs')||gr.includes('beckett')) return 'bgs';
+    if(gr.includes('cgc')) return 'cgc';
+    if(gr.includes('sgc')) return 'sgc';
+  }
+  if(g==='sports card'||g==='sports') return 'sports';
+  if(g==='comic') return 'comic';
   return 'tcg';
 }
 function checkStock(item){
