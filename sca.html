@@ -1573,10 +1573,15 @@ async function scanFront(img){
   let items=[];
   console.log('[SCAN] Raw Claude response:', text ? text.substring(0,200) : 'EMPTY');
   try {
-    let _raw=text.replace(/```json|```/g,'').trim();
+    // Strip ALL markdown fences, whitespace, newlines around the JSON
+    let _raw=text.replace(/```json/g,'').replace(/```/g,'').trim();
     if(!_raw) throw new Error('Empty response from Claude');
-    // Claude sometimes returns {} instead of [] — wrap it
+    _raw = _raw.trim();
     if(_raw.startsWith('{')) _raw='['+_raw+']';
+    const jsonStart = _raw.indexOf('[');
+    const objStart  = _raw.indexOf('{');
+    if(jsonStart < 0 && objStart >= 0) _raw = '[' + _raw.slice(objStart) + ']';
+    else if(objStart >= 0 && (jsonStart < 0 || objStart < jsonStart)) _raw = '[' + _raw.slice(objStart) + ']';
     items=JSON.parse(_raw);
     if(!Array.isArray(items)) items=[];
   } catch(parseErr) {
@@ -1613,15 +1618,21 @@ async function scanFront(img){
       if(bbl && window._lastFrontB64) bbl._frontB64 = window._lastFrontB64;
 
       // ── PHASE 2: Async TCGPlayer + enrichment — runs after bubble is visible ──
+      // Capture all vars explicitly so closure works correctly
+      const _bbl = bbl, _item = item, _isTCG = isTCG, _isComic = isComic;
       (async () => {
         try {
-          if(!bbl) return;
-          const bubEl = bbl;
+          if(!_bbl) return;
+          const bubEl = _bbl;
+          // Re-evaluate TCG check in case game string has slight variation
+          const gameStr = (_item.game||'').toLowerCase();
+          const isTCGLocal = _isTCG || gameStr.includes('pokemon') || gameStr.includes('magic') || gameStr.includes('yu-gi') || gameStr.includes('tcg');
+          const isComicLocal = _isComic || gameStr.includes('comic');
 
           // Step A: Fetch TCGPlayer / comic data
-          if(isTCG) {
+          if(isTCGLocal) {
             hs.textContent = 'LOADING PRICES...';
-            const fetched = await fetchAllPrintings(item);
+            const fetched = await fetchAllPrintings(_item);
             if(fetched.printings && fetched.printings.length) {
               bubEl._prints = fetched.printings;
               bubEl._apiPrintings = fetched.printings;
@@ -1686,8 +1697,8 @@ async function scanFront(img){
               }
               hs.textContent = 'READY';
             }
-          } else if(isComic) {
-            const fetched = await fetchComicCovers(item);
+          } else if(isComicLocal) {
+            const fetched = await fetchComicCovers(_item);
             if(fetched.printings && fetched.printings.length) {
               bubEl._prints = fetched.printings;
               const selEl = document.getElementById('ps' + bubEl.id);
@@ -1700,7 +1711,7 @@ async function scanFront(img){
           }
 
           // Step B: Async comps enrichment (non-blocking, fills comps section)
-          const enrichPrompt = `Card: ${item.name}, ${item.year||''}, ${item.set_name||''}, ${item.parallel||'Base'}.
+          const enrichPrompt = `Card: ${_item.name}, ${_item.year||''}, ${_item.set_name||''}, ${_item.parallel||'Base'}.
 Give 3 recent eBay sold comps. Return ONLY JSON:
 {"comps":[{"desc":"brief sold desc","price":0.00},{"desc":"","price":0.00},{"desc":"","price":0.00}],"trend":"up|down|flat","is_key":false}`;
           const enrichText = await callClaude([{role:'user',content:[{type:'text',text:enrichPrompt}]}], 300);
@@ -1713,7 +1724,10 @@ Give 3 recent eBay sold comps. Return ONLY JSON:
                 + enriched.comps.map(c=>`<div class="comp-row"><span class="comp-d">${c.desc}</span><span class="comp-p">$${Number(c.price).toFixed(2)}</span></div>`).join('');
             }
           }
-        } catch(e2) { /* non-critical */ }
+        } catch(e2) {
+          console.error('[PHASE2] TCGPlayer/enrich error:', e2.message, e2);
+          hs.textContent = 'PRICE LOAD ERR';
+        }
       })();
     }
     hs.textContent=items.length+' FOUND';drawLines();
@@ -1837,10 +1851,15 @@ async function scanBulk(img){
   let items=[];
   console.log('[SCAN] Raw Claude response:', text ? text.substring(0,200) : 'EMPTY');
   try {
-    let _raw=text.replace(/```json|```/g,'').trim();
+    // Strip ALL markdown fences, whitespace, newlines around the JSON
+    let _raw=text.replace(/```json/g,'').replace(/```/g,'').trim();
     if(!_raw) throw new Error('Empty response from Claude');
-    // Claude sometimes returns {} instead of [] — wrap it
+    _raw = _raw.trim();
     if(_raw.startsWith('{')) _raw='['+_raw+']';
+    const jsonStart = _raw.indexOf('[');
+    const objStart  = _raw.indexOf('{');
+    if(jsonStart < 0 && objStart >= 0) _raw = '[' + _raw.slice(objStart) + ']';
+    else if(objStart >= 0 && (jsonStart < 0 || objStart < jsonStart)) _raw = '[' + _raw.slice(objStart) + ']';
     items=JSON.parse(_raw);
     if(!Array.isArray(items)) items=[];
   } catch(parseErr) {
@@ -2242,6 +2261,7 @@ function addBubble(item,stock,imgUrl,apiPrintings,bestMatchIdx){
       }
     } catch(e) { console.warn('Stock check error:', e.message); }
   })();
+  return el;  // Phase 2 uses this to update bubble after TCGPlayer loads
 }
 
 window.setFinish=function(id, finish, printIdx, btn){
