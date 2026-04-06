@@ -56,7 +56,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
 .bub.comic{border-color:var(--purple);}.bub.comic::before{background:linear-gradient(90deg,transparent,var(--purple),transparent);}
 .bub.psa{border-color:var(--psa);border-width:2px;}.bub.psa::before{background:linear-gradient(90deg,transparent,var(--psa),transparent);}
 .bub.bgs{border-color:#aaa;}.bub.bgs::before{background:linear-gradient(90deg,transparent,#aaa,transparent);}
-.bub.cgc{border-color:var(--gold);}.bub.cgc::before{background:linear-gradient(90deg,transparent,var(--gold),transparent);}
+.bub.cgc{border-color:var(--cgc,#f4a261);border-width:2px;}.bub.cgc::before{background:linear-gradient(90deg,transparent,var(--cgc,#f4a261),transparent);}.bub.sgc{border-color:var(--sgc,#ff9500);border-width:2px;}.bub.sgc::before{background:linear-gradient(90deg,transparent,var(--sgc,#ff9500),transparent);}
 /* CARD IMAGE */
 .card-img{width:100%;height:120px;object-fit:contain;margin-bottom:6px;border:1px solid rgba(255,255,255,.08);background:rgba(0,0,0,.3);}
 .card-img-placeholder{width:100%;height:80px;display:flex;align-items:center;justify-content:center;font-family:monospace;font-size:9px;color:rgba(255,255,255,.2);letter-spacing:1px;border:1px dashed rgba(255,255,255,.08);margin-bottom:6px;}
@@ -312,11 +312,13 @@ const AFF = {
 
   // Wrap a TCGPlayer URL with your affiliate tracking
   tcg(url) {
-    // Safety: if url is null/undefined/not a string, return null (caller must check)
     if(!url || typeof url !== 'string') return null;
-    // Only wrap actual TCGPlayer URLs - don't wrap null or other domains
     if(!url.includes('tcgplayer.com')) return url;
-    return url; // Direct link - works fine, affiliate tracked via eBay cookie
+    // Wrap with Impact Radius affiliate tracking
+    // TCG_BASE is your Impact API link: https://partner.tcgplayer.com/c/5282726/1830156/21018
+    // The ?u= parameter deep-links to the specific card page
+    const sep = this.TCG_BASE.includes('?') ? '&' : '?';
+    return this.TCG_BASE + sep + 'u=' + encodeURIComponent(url);
   },
 
   // Wrap an eBay URL with your affiliate parameters
@@ -1387,7 +1389,10 @@ function addBubble(item,stock,imgUrl,apiPrintings,bestMatchIdx){
     slabHtml=`<div class="slab-grade ${ct}"><div class="grade-num ${ct}">${item.grade}</div><div class="grade-info"><div class="grade-co ${ct}">${(item.grading_company||ct).toUpperCase()} GRADE</div>${item.cert_number?`<div class="grade-cert">CERT #${item.cert_number}</div>`:''}</div></div>${sgHtml}${popHtml}`;
   }
 
-  const compsHtml=item.comps&&item.comps.length?`<div class="comps"><div class="comps-hdr">${isSlab?'GRADED SALES':ct==='sports'?'EBAY SOLD COMPS':'RECENT SALES'}</div>${item.comps.slice(0,3).map(c=>`<div class="comp-row"><span class="comp-d">${c.desc}</span><span class="comp-p">$${Number(c.price).toFixed(2)}</span></div>`).join('')}</div>`:'';
+  // comps come from Claude scan — these are AI estimates from training data
+  // For real-time prices: tap eBay Sold link
+  const compSrc = isSlab?'GRADED COMPS (AI est)':ct==='sports'?'SOLD COMPS (AI est — tap eBay for live)':'RECENT SALES (AI est)';
+  const compsHtml=item.comps&&item.comps.length?`<div class="comps"><div class="comps-hdr" id="comps-hdr${id}">${compSrc}</div>${item.comps.slice(0,3).map(c=>`<div class="comp-row"><span class="comp-d">${c.desc}</span><span class="comp-p">$${Number(c.price).toFixed(2)}</span></div>`).join('')}</div>`:'';
   const printOpts=prints.map((p,i)=>`<option value="${i}"${i===bmi?' selected':''}>` + (i===bmi?'★ ':'')+`${p.set}${p.variant&&p.variant!=='Base'?' · '+p.variant:''}${p.numbered?' '+p.numbered:''}${p.year?' ('+p.year+')':''}</option>`).join('');
   const displayName=item.player||item.name;
   const subParts=[];
@@ -1406,7 +1411,14 @@ function addBubble(item,stock,imgUrl,apiPrintings,bestMatchIdx){
 
   let actLinks='';
   if(isSlab){
-    const qSlab=(item.player||item.name)+' '+(item.grading_company||'')+' '+(item.grade||'');
+    const qSlab=[
+      item.player||item.name,
+      item.year,
+      item.set_name,
+      item.grading_company,
+      item.grade,
+      item.serial_number
+    ].filter(Boolean).join(' ');
     const qSlabBase=(item.player||item.name)||'';
     // Verify button always shown — uses cert number if available, else search
     const psaVerify = ct==='psa'
@@ -1428,7 +1440,14 @@ function addBubble(item,stock,imgUrl,apiPrintings,bestMatchIdx){
       ${psaVerify}${bgsVerify}${cgcVerify}${sgcVerify}`;
   }
   else if(ct==='sports'){
-    const qFull=(item.player||item.name)+' '+(item.year||'')+' '+((item.parallel&&item.parallel!=='Base')?item.parallel:'');
+    const qFull=[
+      item.player||item.name,
+      item.year,
+      item.set_name,
+      (item.parallel&&item.parallel!=='Base')?item.parallel:null,
+      item.card_number?'#'+item.card_number:null,
+      item.serial_number||null
+    ].filter(Boolean).join(' ');
     const qBase=(item.player||item.name)+' '+(item.year||'');
     actLinks=`<a class="bact a-ebay" href="${AFF.ebaySearch(qFull)}" target="_blank">eBay Sold ↗</a>
       <a class="bact a-ebay" style="background:rgba(72,202,228,.08);color:var(--blue);border-color:rgba(72,202,228,.2)" href="${AFF.ebaySearch(qBase)}" target="_blank">Base Sales ↗</a>`;
@@ -1487,7 +1506,7 @@ function addBubble(item,stock,imgUrl,apiPrintings,bestMatchIdx){
         </div>` : '';
       return `${holoToggle}<div class="bsels"><select class="bsel" id="ps${id}" onchange="chPrint('${id}')" data-bmi="${bmi}">${printOpts}</select><select class="bsel" id="cs${id}" onchange="chCond('${id}')">${Object.keys(CM).map(c=>`<option>${c}</option>`).join('')}</select></div><div class="bconds">${Object.keys(CM).map((c,i)=>`<span class="bcp${i===0?' on':''}" onclick="cpill('${id}',this,'${c}')">${c}</span>`).join('')}</div>`;
     })():''}
-    <div class="bacts" id="acts${id}">${actLinks}<button class="bact a-add" onclick="showAddForm('${id}')">+ Add to Inventory</button>${si>0?`<button class="bact a-sell" onclick="showSellForm('${id}')">✓ Mark as Sold</button>`:''}</div>`;
+    <div class="bacts" id="acts${id}">${actLinks}<button class="bact a-add" onclick="showAddForm('${id}')">+ Add to Inventory</button>${si>0?`<button class="bact a-sell" onclick="showSellForm('${id}')">✓ Mark as Sold</button>`:''}<button class="bact" style="background:rgba(255,209,102,.08);border:1px solid rgba(255,209,102,.2);color:#ffd166" onclick="showEbayForm('${id}')">📦 List on eBay</button></div>`;
 
   const bw=192,bh=isSlab?480:540;
   let left=cx-bw/2,top=cy-bh-24;
@@ -1559,23 +1578,58 @@ window.chPrint=function(id){
   if(isNaN(pi))return;
   const p=el._prints[pi];
   if(!p)return;
+  const item=el._item||{};
+
+  // Update price display
   updatePrice(id,p,cond);
-  // Update sub-info line with selected printing details
+
+  // Update sub-info line
   const bsub=el.querySelector('.bsub');
-  if(bsub&&p.set){
-    const item=el._item||{};
+  if(bsub){
     const parts=[];
     if(item.team)parts.push(item.team);
-    if(item.year&&p.year!==item.year)parts.push(p.year||item.year);
-    else if(item.year)parts.push(item.year);
+    const yr=p.year||item.year||'';
+    if(yr)parts.push(yr);
     if(p.set)parts.push(p.set);
     if(p.variant&&p.variant!=='Base')parts.push(p.variant);
     if(p.numbered)parts.push(p.numbered);
     if(item.card_number)parts.push('Card #'+item.card_number);
-    bsub.textContent=parts.join(' · ');
+    if(item.serial_number)parts.push(item.serial_number);
+    bsub.textContent=parts.filter(Boolean).join(' · ');
   }
-  // Update bubble _imgUrl so eBay listing gets the right image
-  if(p.imageUrl) el._imgUrl=p.imageUrl;
+
+  // Update card image
+  if(p.imageUrl){
+    const imgEl=document.getElementById('cimg'+id);
+    if(imgEl){imgEl.src=p.imageUrl;imgEl.style.display='block';}
+    el._imgUrl=p.imageUrl;
+  }
+
+  // Update TCGPlayer link with direct URL for this printing
+  const btEl=document.getElementById('bt'+id);
+  if(btEl){
+    const tUrl=AFF.tcg(p.tcgUrl);
+    if(tUrl){btEl.href=tUrl;btEl.textContent='TCGPlayer ↗';}
+    else{
+      const qt=(item.name||'')+' '+(p.set||item.set_name||'')+' '+(p.variant&&p.variant!=='Base'?p.variant:'');
+      btEl.href=AFF.tcgSearch(qt.trim());
+      btEl.textContent='TCGPlayer Search ↗';
+    }
+  }
+
+  // Update eBay sold search with full card info including card number
+  const ebayBtns=el.querySelectorAll('.a-ebay');
+  if(ebayBtns[0]){
+    const qFull=[item.player||item.name, p.year||item.year, p.set||item.set_name,
+      p.variant&&p.variant!=='Base'?p.variant:null,
+      item.card_number?'#'+item.card_number:null,
+      item.serial_number].filter(Boolean).join(' ');
+    ebayBtns[0].href=AFF.ebaySearch(qFull);
+  }
+
+  // Update comps section header
+  const compsHdr=el.querySelector('.comps-hdr');
+  if(compsHdr&&p.set) compsHdr.textContent=(p.variant&&p.variant!=='Base'?p.variant+' ':'')+'RECENT SALES';
 };
 window.chCond=function(id){const el=document.getElementById(id);if(!el)return;const pi=parseInt(document.getElementById('ps'+id)?.value)||0;const cond=document.getElementById('cs'+id).value;el.querySelectorAll('.bcp').forEach(p=>p.classList.toggle('on',p.textContent===cond));updatePrice(id,el._prints[pi]||el._prints[0],cond);};
 window.cpill=function(id,pill,cond){const el=document.getElementById(id);if(!el)return;const pi=parseInt(document.getElementById('ps'+id)?.value)||0;const cs=document.getElementById('cs'+id);if(cs)cs.value=cond;el.querySelectorAll('.bcp').forEach(p=>p.classList.remove('on'));pill.classList.add('on');updatePrice(id,el._prints[pi]||el._prints[0],cond);};
@@ -1876,7 +1930,14 @@ window.resetActs=function(id){
   const item=el._item,ct=el._ct,stock=checkStock(item),si=stock.inStock;
   let links='';
   if(ct==='sports'){
-    const qFull=(item.player||item.name)+' '+(item.year||'')+' '+((item.parallel&&item.parallel!=='Base')?item.parallel:'');
+    const qFull=[
+      item.player||item.name,
+      item.year,
+      item.set_name,
+      (item.parallel&&item.parallel!=='Base')?item.parallel:null,
+      item.card_number?'#'+item.card_number:null,
+      item.serial_number||null
+    ].filter(Boolean).join(' ');
     const qBase=(item.player||item.name)+' '+(item.year||'');
     links=`<a class="bact a-ebay" href="${AFF.ebaySearch(qFull)}" target="_blank">eBay Sold ↗</a>
       <a class="bact a-ebay" style="background:rgba(72,202,228,.08);color:var(--blue);border-color:rgba(72,202,228,.2)" href="${AFF.ebaySearch(qBase)}" target="_blank">Base Sales ↗</a>`;}
@@ -1886,7 +1947,14 @@ window.resetActs=function(id){
     links=`<a class="bact a-gcol" href="https://www.gocollect.com/search/?q=${qgc}" target="_blank">GoCollect ↗</a>
       <a class="bact a-ebay" href="${AFF.ebaySearch(qComic+' comic')}" target="_blank">eBay Sold ↗</a>`;}
   else if(['psa','bgs','cgc','sgc'].includes(ct)){
-    const qSlab=(item.player||item.name)+' '+(item.grading_company||'')+' '+(item.grade||'');
+    const qSlab=[
+      item.player||item.name,
+      item.year,
+      item.set_name,
+      item.grading_company,
+      item.grade,
+      item.serial_number
+    ].filter(Boolean).join(' ');
     const qSlabBase=(item.player||item.name)||'';
     links=`<a class="bact a-ebay" href="${AFF.ebaySearch(qSlab)}" target="_blank">eBay Sold ↗</a>
       <a class="bact a-ebay" style="background:rgba(72,202,228,.08);color:var(--blue);border-color:rgba(72,202,228,.2)" href="${AFF.ebaySearch(qSlabBase)}" target="_blank">All Sales ↗</a>
@@ -2048,11 +2116,13 @@ function toast(msg){const old=document.querySelector('.toast');if(old)old.remove
 window.showEbayForm = function(id) {
   const el = document.getElementById(id); if(!el || !el._item) return;
   const item = el._item;
-  const pi   = parseInt(document.getElementById('ps'+id)?.value) || 0;
+  // Read currently selected printing from dropdown
+  const pi   = parseInt(document.getElementById('ps'+id)?.value) || el._bmi || 0;
   const cond = document.getElementById('cs'+id)?.value || 'NM';
   const print = el._prints?.[pi] || el._prints?.[0] || {};
   const ct = el._ct;
   const isSlab = ['psa','bgs','cgc','sgc'].includes(ct);
+  console.log('eBay form: printing', pi, print.set, print.variant, print.mid);
 
   // eBay condition IDs — matches eBay app condition dropdown
   const condMap = {
@@ -2073,23 +2143,24 @@ window.showEbayForm = function(id) {
   };
   const catId = catMap[ct] || '261328';
 
-  // Build title — mirrors eBay app auto-title for cards
+  // Build title from selected printing + item data — mirrors eBay app
   const tp = [];
-  if(item.year)    tp.push(item.year);
+  if(item.year || print.year) tp.push(item.year || print.year);
   if(item.manufacturer) tp.push(item.manufacturer);
   if(item.player||item.name) tp.push(item.player||item.name);
   if(print.set||item.set_name) tp.push(print.set||item.set_name);
   if(print.variant && print.variant !== 'Base') tp.push(print.variant);
-  if(item.serial_number) tp.push(item.serial_number);
+  if(print.numbered || item.serial_number) tp.push(print.numbered || item.serial_number);
   if(isSlab && item.grading_company) tp.push(item.grading_company + (item.grade?' '+item.grade:''));
   if(item.card_number) tp.push('#'+item.card_number);
   if(item.is_rookie) tp.push('RC');
   let title = tp.filter(Boolean).join(' ').substring(0, 80);
 
-  // Price suggestion
-  const mktPrice = Number(print.mid || 0);
+  // Price from selected printing
+  const condMultiplier = {'NM':1,'LP':.8,'MP':.64,'HP':.4,'DMG':.25}[cond] || 1;
+  const mktPrice = Number(print.mid || 0) * condMultiplier;
   const sugPrice  = mktPrice > 0 ? (mktPrice * 1.1).toFixed(2) : '';
-  const startPrice= mktPrice > 0 ? (mktPrice * 0.8).toFixed(2) : '';
+  const startPrice= mktPrice > 0 ? (mktPrice * 0.75).toFixed(2) : '';
 
   // Description — mirrors eBay app description template
   const descLines = [
@@ -2212,7 +2283,7 @@ window.showEbayForm = function(id) {
           <div><div style="font-family:monospace;font-size:8px;color:#555;margin-bottom:2px">MANUFACTURER</div>
             <input id="eb-mfr" value="${item.manufacturer||''}" style="width:100%;background:#1a1a1a;border:1px solid rgba(255,255,255,.08);color:#ccc;padding:5px 8px;border-radius:4px;font-size:10px;box-sizing:border-box"></div>
           <div><div style="font-family:monospace;font-size:8px;color:#555;margin-bottom:2px">SET</div>
-            <input id="eb-set" value="${print.set||item.set_name||''}" style="width:100%;background:#1a1a1a;border:1px solid rgba(255,255,255,.08);color:#ccc;padding:5px 8px;border-radius:4px;font-size:10px;box-sizing:border-box"></div>
+            <input id="eb-set" value="${print.set||item.set_name||item.game||''}" style="width:100%;background:#1a1a1a;border:1px solid rgba(255,255,255,.08);color:#ccc;padding:5px 8px;border-radius:4px;font-size:10px;box-sizing:border-box"></div>
           <div><div style="font-family:monospace;font-size:8px;color:#555;margin-bottom:2px">PARALLEL/VARIETY</div>
             <input id="eb-parallel" value="${print.variant||item.parallel||'Base'}" style="width:100%;background:#1a1a1a;border:1px solid rgba(255,255,255,.08);color:#ccc;padding:5px 8px;border-radius:4px;font-size:10px;box-sizing:border-box"></div>
           <div><div style="font-family:monospace;font-size:8px;color:#555;margin-bottom:2px">CARD NUMBER</div>
