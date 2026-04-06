@@ -298,6 +298,8 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
 /* NAV CART BADGE */
 .nav-cart-badge{position:absolute;top:-4px;right:-4px;background:var(--red);color:#fff;font-size:8px;font-weight:700;width:16px;height:16px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'DM Mono',monospace;}
 .lba-nav-btn{position:relative;}
+.htog-on{background:rgba(255,209,102,.25)!important;border-color:var(--gold)!important;color:var(--gold)!important;}
+.holo-tog{transition:.15s;}
 </style>
 </head>
 <body>
@@ -1509,11 +1511,19 @@ async function _claudeCall(model, msgs, maxTok){
     headers: {'Content-Type':'application/json'},
     body: JSON.stringify({ model, max_tokens: maxTok || 1000, messages: msgs })
   });
+  const respText = await res.text();
+  console.log('[CLAUDE] HTTP', res.status, 'response preview:', respText.substring(0,200));
   if(!res.ok){
-    const t = await res.text();
-    throw new Error('Claude ' + model + ' error ' + res.status + ': ' + t.substring(0,120));
+    throw new Error('Claude ' + model + ' error ' + res.status + ': ' + respText.substring(0,200));
   }
-  const d = await res.json();
+  let d;
+  try { d = JSON.parse(respText); } catch(e) {
+    throw new Error('Claude response not JSON: ' + respText.substring(0,150));
+  }
+  // Handle Anthropic error responses (status 200 but error in body)
+  if(d.type === 'error') {
+    throw new Error('Claude API error: ' + (d.error?.message || JSON.stringify(d.error)));
+  }
   const content = d.content;
   if(Array.isArray(content)){
     const tb = content.find(b => b.type === 'text');
@@ -1559,8 +1569,37 @@ async function scanFront(img){
   window._lastFrontB64 = img;
   window._lastFrontTime = Date.now();
 
-  const text=await callClaude([{role:'user',content:[{type:'image',source:{type:'base64',media_type:'image/jpeg',data:img}},{type:'text',text:quickPrompt}]}],400);
-  const items=JSON.parse(text.replace(/```json|```/g,'').trim());
+  const text=await callClaude([{role:'user',content:[{type:'image',source:{type:'base64',media_type:'image/jpeg',data:img}},{type:'text',text:quickPrompt}]}],800);
+  let items=[];
+  console.log('[SCAN] Raw Claude response:', text ? text.substring(0,200) : 'EMPTY');
+  try {
+    let _raw=text.replace(/```json|```/g,'').trim();
+    if(!_raw) throw new Error('Empty response from Claude');
+    // Claude sometimes returns {} instead of [] — wrap it
+    if(_raw.startsWith('{')) _raw='['+_raw+']';
+    items=JSON.parse(_raw);
+    if(!Array.isArray(items)) items=[];
+  } catch(parseErr) {
+    hs.textContent='PARSE ERROR';
+    // Show first 60 chars of response so user can see what Claude returned
+    const preview = text ? text.substring(0,60).replace(/\n/g,' ') : 'empty';
+    toast('Parse error: ' + preview);
+    console.warn('Parse failed. Full response:', text, parseErr);
+    // Try one more time with an even simpler prompt
+    try {
+      const retry = await callClaude([{role:'user',content:[
+        {type:'image',source:{type:'base64',media_type:'image/jpeg',data:img}},
+        {type:'text',text:'What trading card is this? Reply with ONLY: [{"name":"X","game":"Y","year":"Z","set_name":"A","card_number":"B","parallel":"Base","cx":50,"cy":50}]'}
+      ]}], 400);
+      let _r2 = retry.replace(/```json|```/g,'').trim();
+      if(_r2.startsWith('{')) _r2='['+_r2+']';
+      const retryItems = JSON.parse(_r2);
+      if(Array.isArray(retryItems) && retryItems.length) {
+        items = retryItems;
+        console.log('Retry succeeded:', retryItems);
+      }
+    } catch(e2) { console.warn('Retry also failed:', e2); }
+  }
   if(Array.isArray(items)&&items.length){
     if(auto)clearAll();
     for(const item of items){
@@ -1568,52 +1607,113 @@ async function scanFront(img){
       const isTCG=['Pokemon TCG','Magic: The Gathering','Yu-Gi-Oh!','Other TCG'].includes(item.game);
       const isComic=item.game==='Comic';
       let apiPrintings=null,imgUrl=null,bestMatchIdx=0;
-      if(isTCG){
-        const fetched=await fetchAllPrintings(item);
-        if(fetched.printings&&fetched.printings.length){
-          apiPrintings=fetched.printings;
-          bestMatchIdx=fetched.bestMatchIdx;
-          imgUrl=fetched.imageUrl;
-        }else{imgUrl=fetched.imageUrl;}
-      } else if(isComic){
-        const fetched=await fetchComicCovers(item);
-        if(fetched.printings&&fetched.printings.length){
-          apiPrintings=fetched.printings;
-          bestMatchIdx=fetched.bestMatchIdx;
-        }
-        imgUrl=fetched.imageUrl||null;
-      }
+      // TCGPlayer/comic data loads async in Phase 2 — bubble shows immediately
       const bbl = addBubble(item,stock,imgUrl,apiPrintings,bestMatchIdx);
       // Store front image on bubble for two-image back scan
       if(bbl && window._lastFrontB64) bbl._frontB64 = window._lastFrontB64;
 
-      // ── PHASE 2: Async enrichment (comps, printings, full details) ──
-      // Runs AFTER bubble is visible — doesn't block the UI
+      // ── PHASE 2: Async TCGPlayer + enrichment — runs after bubble is visible ──
       (async () => {
         try {
-          const bubId = bbl?._id || bbl?.id;
           if(!bbl) return;
-          const enrichPrompt = `This is the same card: ${item.name}, ${item.year||''} ${item.set_name||''} ${item.parallel||''}.
-Give me 3 recent eBay sold comps and any additional printing variants I should show.
-Return ONLY JSON: {"comps":[{"desc":"brief sold listing desc","price":0.00},{"desc":"","price":0.00},{"desc":"","price":0.00}],"key_notes":"why notable or null","is_key":false,"desirability":5,"trend":"up|down|flat"}`;
+          const bubEl = bbl;
 
-          const enrichText = await callClaude([{role:'user',content:[
-            {type:'image',source:{type:'base64',media_type:'image/jpeg',data:img}},
-            {type:'text',text:enrichPrompt}
-          ]}], 400);
-          const enriched = JSON.parse(enrichText.replace(/\`\`\`json|\`\`\`/g,'').trim());
-          if(enriched.comps && bbl._item) {
-            bbl._item.comps = enriched.comps;
-            bbl._item.key_notes = enriched.key_notes;
-            bbl._item.is_key = enriched.is_key;
-            // Update comps display in bubble
-            const compsEl = bbl.querySelector ? bbl.querySelector('.comps') : document.getElementById(bbl.id)?.querySelector('.comps');
+          // Step A: Fetch TCGPlayer / comic data
+          if(isTCG) {
+            hs.textContent = 'LOADING PRICES...';
+            const fetched = await fetchAllPrintings(item);
+            if(fetched.printings && fetched.printings.length) {
+              bubEl._prints = fetched.printings;
+              bubEl._apiPrintings = fetched.printings;
+              if(fetched.imageUrl && !bubEl._imgUrl) {
+                bubEl._imgUrl = fetched.imageUrl;
+                const imgEl = bubEl.querySelector('.card-img');
+                if(imgEl) { imgEl.src = fetched.imageUrl; imgEl.style.display='block'; }
+              }
+              const bmi = fetched.bestMatchIdx || 0;
+              // Rebuild the price + dropdown with real data
+              const priceEl = bubEl.querySelector('.bprice,.prow');
+              const selEl = document.getElementById('ps' + bubEl.id);
+              if(selEl) {
+                // Rebuild dropdown options with prices
+                const p = fetched.printings;
+                selEl.innerHTML = p.map((pr,i) => {
+                  const price = pr.mid > 0 ? ` — $${pr.mid.toFixed(2)}` : '';
+                  const marker = i===bmi ? '★ ' : '';
+                  const variant = pr.variant && pr.variant!=='Base' ? ' · '+pr.variant : '';
+                  const num = pr.numbered ? ' '+pr.numbered : '';
+                  const yr = pr.year ? ` (${pr.year})` : '';
+                  return `<option value="${i}"${i===bmi?' selected':''}>${marker}${pr.set}${variant}${num}${yr}${price}</option>`;
+                }).join('');
+                // Update count label
+                const lbl = bubEl.querySelector('.bsels-label');
+                if(lbl) lbl.textContent = p.length + ' PRINTING' + (p.length!==1?'S':'') + ' FOUND — SELECT TO SWITCH';
+
+                // Rebuild finish/tier toggle buttons
+                const FTLBLS = {'1stEditionHolofoil':'1st Ed ✨','1stEditionNormal':'1st Ed','unlimitedHolofoil':'Unlim ✨','unlimitedNormal':'Unlimited','holofoil':'✨ Holo','normal':'Normal','reverseHolofoil':'↩ Rev Holo','shadowlessHolofoil':'Shadow ✨','shadowlessNormal':'Shadowless'};
+                const allFinishes = [];
+                p.forEach((pr,pi) => {
+                  if(pr.allPrices) pr.allPrices.forEach(tier => {
+                    if(tier.mid > 0 && !allFinishes.find(f=>f.finish===tier.finish))
+                      allFinishes.push({finish:tier.finish, printIdx:pi, mid:tier.mid});
+                  });
+                });
+                // Remove old toggle if present
+                bubEl.querySelectorAll('[id^="finish-tog-"]').forEach(el2=>el2.remove());
+                if(allFinishes.length > 1) {
+                  const togDiv = document.createElement('div');
+                  togDiv.id = 'finish-tog-' + bubEl.id;
+                  togDiv.style.cssText = 'display:flex;gap:3px;margin-bottom:5px;flex-wrap:wrap';
+                  togDiv.innerHTML = allFinishes.slice(0,5).map((fg,fi) => {
+                    const isFoil = fg.finish.toLowerCase().includes('holo');
+                    const bg = isFoil?'rgba(255,209,102,.12)':'rgba(255,255,255,.05)';
+                    const bc = isFoil?'rgba(255,209,102,.3)':'rgba(255,255,255,.12)';
+                    const col = isFoil?'#ffd166':'#aaa';
+                    const lbl2 = FTLBLS[fg.finish]||fg.finish;
+                    return `<button class="bcp holo-tog${fi===0?' htog-on':''}" onclick="setFinish('${bubEl.id}','${fg.finish}',${fg.printIdx},this)" style="flex:1;min-width:56px;background:${bg};border:1px solid ${bc};color:${col};font-size:8px;padding:4px 2px;border-radius:4px;cursor:pointer;white-space:nowrap">${lbl2} $${fg.mid.toFixed(2)}</button>`;
+                  }).join('');
+                  const bselsEl2 = bubEl.querySelector('.bsels');
+                  if(bselsEl2) bselsEl2.before(togDiv);
+                  else bubEl.querySelector('.bacts')?.before(togDiv);
+                }
+              }
+              // Update price display with best match
+              const best = fetched.printings[bmi];
+              if(best) {
+                const condEl = document.getElementById('cs' + bubEl.id);
+                const cond = condEl?.value || 'NM';
+                updatePrice(bubEl.id, best, cond);
+              }
+              hs.textContent = 'READY';
+            }
+          } else if(isComic) {
+            const fetched = await fetchComicCovers(item);
+            if(fetched.printings && fetched.printings.length) {
+              bubEl._prints = fetched.printings;
+              const selEl = document.getElementById('ps' + bubEl.id);
+              if(selEl) {
+                selEl.innerHTML = fetched.printings.map((pr,i) =>
+                  `<option value="${i}"${i===0?' selected':''}>${pr.set} ${pr.variant||''} ${pr.year||''}</option>`
+                ).join('');
+              }
+            }
+          }
+
+          // Step B: Async comps enrichment (non-blocking, fills comps section)
+          const enrichPrompt = `Card: ${item.name}, ${item.year||''}, ${item.set_name||''}, ${item.parallel||'Base'}.
+Give 3 recent eBay sold comps. Return ONLY JSON:
+{"comps":[{"desc":"brief sold desc","price":0.00},{"desc":"","price":0.00},{"desc":"","price":0.00}],"trend":"up|down|flat","is_key":false}`;
+          const enrichText = await callClaude([{role:'user',content:[{type:'text',text:enrichPrompt}]}], 300);
+          const enriched = JSON.parse(enrichText.replace(/```json|```/g,'').trim());
+          if(enriched.comps && bubEl._item) {
+            bubEl._item.comps = enriched.comps;
+            const compsEl = bubEl.querySelector ? bubEl.querySelector('.comps') : document.getElementById(bubEl.id)?.querySelector('.comps');
             if(compsEl && enriched.comps.length) {
-              compsEl.innerHTML = `<div class="comps-hdr">RECENT SALES (AI est)</div>`
+              compsEl.innerHTML = '<div class="comps-hdr">RECENT SALES (AI est)</div>'
                 + enriched.comps.map(c=>`<div class="comp-row"><span class="comp-d">${c.desc}</span><span class="comp-p">$${Number(c.price).toFixed(2)}</span></div>`).join('');
             }
           }
-        } catch(e2) { /* enrichment failure is non-critical */ }
+        } catch(e2) { /* non-critical */ }
       })();
     }
     hs.textContent=items.length+' FOUND';drawLines();
@@ -1734,7 +1834,36 @@ Return ONLY JSON (no markdown):
 async function scanBulk(img){
   const hs=document.getElementById('hstatus');
   const text=await callClaude([{role:'user',content:[{type:'image',source:{type:'base64',media_type:'image/jpeg',data:img}},{type:'text',text:'Identify all trading cards/comics visible. Return ONLY JSON array:[{"name":"name","year":"year","set":"set","parallel":"variant or Base","market_nm":5.00}]. market_nm=current NM price. Max 6. [] if none.'}]}],800);
-  const items=JSON.parse(text.replace(/```json|```/g,'').trim());
+  let items=[];
+  console.log('[SCAN] Raw Claude response:', text ? text.substring(0,200) : 'EMPTY');
+  try {
+    let _raw=text.replace(/```json|```/g,'').trim();
+    if(!_raw) throw new Error('Empty response from Claude');
+    // Claude sometimes returns {} instead of [] — wrap it
+    if(_raw.startsWith('{')) _raw='['+_raw+']';
+    items=JSON.parse(_raw);
+    if(!Array.isArray(items)) items=[];
+  } catch(parseErr) {
+    hs.textContent='PARSE ERROR';
+    // Show first 60 chars of response so user can see what Claude returned
+    const preview = text ? text.substring(0,60).replace(/\n/g,' ') : 'empty';
+    toast('Parse error: ' + preview);
+    console.warn('Parse failed. Full response:', text, parseErr);
+    // Try one more time with an even simpler prompt
+    try {
+      const retry = await callClaude([{role:'user',content:[
+        {type:'image',source:{type:'base64',media_type:'image/jpeg',data:img}},
+        {type:'text',text:'What trading card is this? Reply with ONLY: [{"name":"X","game":"Y","year":"Z","set_name":"A","card_number":"B","parallel":"Base","cx":50,"cy":50}]'}
+      ]}], 400);
+      let _r2 = retry.replace(/```json|```/g,'').trim();
+      if(_r2.startsWith('{')) _r2='['+_r2+']';
+      const retryItems = JSON.parse(_r2);
+      if(Array.isArray(retryItems) && retryItems.length) {
+        items = retryItems;
+        console.log('Retry succeeded:', retryItems);
+      }
+    } catch(e2) { console.warn('Retry also failed:', e2); }
+  }
   if(Array.isArray(items)&&items.length){items.forEach(i=>addToBulk(i));hs.textContent=items.length+' ADDED';updateBulkTotal();}
   else{hs.textContent='NONE';toast('No cards found');}
 }
@@ -1986,11 +2115,69 @@ function addBubble(item,stock,imgUrl,apiPrintings,bestMatchIdx){
       // Build holo toggle if both holo and non-holo printings exist
       const holoIdx = prints.findIndex(p => (p.variant||'').match(/holo|foil|reverse|full art|alt art/i));
       const normIdx = prints.findIndex(p => !(p.variant||'').match(/holo|foil|reverse|full art|alt art/i));
-      const holoToggle = (holoIdx >= 0 && normIdx >= 0) ?
-        `<div style="display:flex;gap:4px;margin-bottom:4px">
-          <button class="bcp holo-tog" id="htog-holo-${id}" onclick="setHolo('${id}',${holoIdx},true)" style="flex:1;background:rgba(255,209,102,.15);border:1px solid rgba(255,209,102,.3);color:#ffd166;font-size:9px;padding:4px;border-radius:4px;cursor:pointer">✨ HOLO $${Number(prints[holoIdx].mid||0).toFixed(2)}</button>
-          <button class="bcp holo-tog" id="htog-norm-${id}" onclick="setHolo('${id}',${normIdx},false)" style="flex:1;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.15);color:#aaa;font-size:9px;padding:4px;border-radius:4px;cursor:pointer">NON-HOLO $${Number(prints[normIdx].mid||0).toFixed(2)}</button>
-        </div>` : '';
+      // Build finish/tier toggle buttons from all available printings
+  // Group by finish type: 1st Ed Holo, Unlimited Holo, Reverse Holo, Normal, etc.
+  const FINISH_LABELS = {
+    '1stEditionHolofoil': '1st Ed ✨',
+    '1stEditionNormal':   '1st Ed',
+    'unlimitedHolofoil':  'Unlim ✨',
+    'unlimitedNormal':    'Unlimited',
+    'holofoil':           '✨ Holo',
+    'normal':             'Normal',
+    'reverseHolofoil':    '↩ Rev Holo',
+    'shadowlessHolofoil': 'Shadowless ✨',
+    'shadowlessNormal':   'Shadowless',
+  };
+  // Collect distinct finish groups from all printings for this card
+  const finishGroups = [];
+  prints.forEach((p, i) => {
+    if(!p.hasRealPrice && p.mid === 0) return;
+    // Detect finish from variant text or allPrices
+    if(p.allPrices && p.allPrices.length > 0) {
+      p.allPrices.forEach(tier => {
+        if(tier.mid > 0 && !finishGroups.find(f => f.finish === tier.finish && f.printIdx === i)) {
+          finishGroups.push({ finish: tier.finish, printIdx: i, mid: tier.mid, label: FINISH_LABELS[tier.finish] || tier.finish });
+        }
+      });
+    } else {
+      // Fallback: infer from variant name
+      const v = (p.variant||'').toLowerCase();
+      const finish = v.includes('1st') ? (v.includes('holo') ? '1stEditionHolofoil' : '1stEditionNormal')
+                   : v.includes('shadow') ? 'shadowlessHolofoil'
+                   : v.includes('rev') ? 'reverseHolofoil'
+                   : v.includes('holo') ? 'holofoil'
+                   : 'normal';
+      if(!finishGroups.find(f => f.finish === finish)) {
+        finishGroups.push({ finish, printIdx: i, mid: p.mid||0, label: FINISH_LABELS[finish]||finish });
+      }
+    }
+  });
+
+  // Build toggle buttons — show up to 4 finish options
+  const holoToggle = finishGroups.length > 1
+    ? `<div style="display:flex;gap:3px;margin-bottom:5px;flex-wrap:wrap" id="finish-tog-${id}">
+        ${finishGroups.slice(0,4).map((fg, fi) => {
+          const isSelected = fi === 0;
+          const isFoil = ['holofoil','1stEditionHolofoil','unlimitedHolofoil','reverseHolofoil','shadowlessHolofoil'].includes(fg.finish);
+          const bg = isFoil ? 'rgba(255,209,102,.12)' : 'rgba(255,255,255,.05)';
+          const border = isFoil ? 'rgba(255,209,102,.3)' : 'rgba(255,255,255,.12)';
+          const color = isFoil ? '#ffd166' : '#aaa';
+          return `<button class="bcp holo-tog${isSelected?' htog-on':''}" data-finish="${fg.finish}" data-idx="${fg.printIdx}"
+            onclick="setFinish('${id}','${fg.finish}',${fg.printIdx},this)"
+            style="flex:1;min-width:60px;background:${bg};border:1px solid ${border};color:${color};font-size:8px;padding:4px 3px;border-radius:4px;cursor:pointer;white-space:nowrap">
+            ${fg.label} $${Number(fg.mid||0).toFixed(2)}</button>`;
+        }).join('')}
+      </div>`
+    : (holoIdx >= 0 && normIdx >= 0
+        ? `<div style="display:flex;gap:4px;margin-bottom:4px">
+            <button class="bcp holo-tog htog-on" onclick="setHolo('${id}',${holoIdx},true)"
+              style="flex:1;background:rgba(255,209,102,.15);border:1px solid rgba(255,209,102,.3);color:#ffd166;font-size:9px;padding:4px;border-radius:4px;cursor:pointer">
+              ✨ HOLO $$${Number(prints[holoIdx].mid||0).toFixed(2)}</button>
+            <button class="bcp holo-tog" onclick="setHolo('${id}',${normIdx},false)"
+              style="flex:1;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.15);color:#aaa;font-size:9px;padding:4px;border-radius:4px;cursor:pointer">
+              NON-HOLO $$${Number(prints[normIdx].mid||0).toFixed(2)}</button>
+          </div>`
+        : '');
       return `${holoToggle}<div class="bsels"><div class="bsels-label">${prints.length} PRINTING${prints.length!==1?'S':''} FOUND — SELECT TO SWITCH</div><select class="bsel" id="ps${id}" onchange="chPrint('${id}')" data-bmi="${bmi}">${printOpts}</select><select class="bsel" id="cs${id}" onchange="chCond('${id}')">${Object.keys(CM).map(c=>`<option>${c}</option>`).join('')}</select></div><div class="bconds">${Object.keys(CM).map((c,i)=>`<span class="bcp${i===0?' on':''}" onclick="cpill('${id}',this,'${c}')">${c}</span>`).join('')}</div>`;
     })():''}
     <div class="bacts" id="acts${id}">
@@ -2056,6 +2243,27 @@ function addBubble(item,stock,imgUrl,apiPrintings,bestMatchIdx){
     } catch(e) { console.warn('Stock check error:', e.message); }
   })();
 }
+
+window.setFinish=function(id, finish, printIdx, btn){
+  const el = document.getElementById(id); if(!el) return;
+  // Update active button highlight
+  const togWrap = document.getElementById('finish-tog-'+id);
+  if(togWrap) togWrap.querySelectorAll('.holo-tog').forEach(b => b.classList.remove('htog-on'));
+  if(btn) btn.classList.add('htog-on');
+  // If allPrices has this finish, find the right mid price
+  const print = el._prints?.[printIdx];
+  if(print) {
+    const tier = print.allPrices?.find(t => t.finish === finish);
+    const displayPrice = tier?.mid || print.mid || 0;
+    const fakePrint = {...print, mid: displayPrice, _finish: finish};
+    const sel = document.getElementById('ps'+id);
+    if(sel) sel.value = printIdx;
+    const cond = document.getElementById('cs'+id)?.value || 'NM';
+    updatePrice(id, fakePrint, cond);
+    el._selectedFinish = finish;
+    el._selectedFinishPrice = displayPrice;
+  }
+};
 
 window.setHolo=function(id, printIdx, isHolo){
   const el = document.getElementById(id); if(!el) return;
@@ -3623,6 +3831,59 @@ function newTransaction(){
 function openPricingTools(){
   document.getElementById('pricing-panel').classList.add('on');
   document.getElementById('mc-ship').value = '1.00';
+
+  // Auto-fill from last scanned card
+  const lastBub = bubs.length > 0 ? bubs[bubs.length-1] : null;
+  if(!lastBub || !lastBub.el._item) return;
+  const item = lastBub.el._item;
+  const pi   = parseInt(document.getElementById('ps'+lastBub.id)?.value)||0;
+  const print = lastBub.el._prints?.[pi] || {};
+
+  // Build search string from scanned card
+  const cardName = [item.player||item.name, item.year, print.set||item.set_name,
+    print.variant && print.variant!=='Base' ? print.variant : null,
+    item.card_number ? '#'+item.card_number : null
+  ].filter(Boolean).join(' ');
+
+  // Fill quick price search
+  const ptSearch = document.getElementById('pt-search');
+  if(ptSearch && cardName) {
+    ptSearch.value = cardName;
+    debouncePriceSearch();
+  }
+
+  // Fill grade spread
+  const ptGrade = document.getElementById('pt-grade-card');
+  if(ptGrade && cardName) ptGrade.value = cardName;
+
+  // Fill trend
+  const ptDelta = document.getElementById('pt-delta-card');
+  if(ptDelta && cardName) ptDelta.value = cardName;
+
+  // Fill margin calculator with current price as sell price
+  const mktPrice = print.mid || 0;
+  if(mktPrice > 0) {
+    const sellEl = document.getElementById('mc-sell');
+    if(sellEl) { sellEl.value = mktPrice.toFixed(2); calcMargin(); }
+  }
+
+  // Fill price tag generator
+  const ptTagName = document.getElementById('pt-tag-name');
+  const ptTagPrice = document.getElementById('pt-tag-price');
+  if(ptTagName) ptTagName.value = item.player||item.name||'';
+  if(ptTagPrice && mktPrice > 0) ptTagPrice.value = mktPrice.toFixed(2);
+
+  // Show a banner at top of pricing panel showing what card is loaded
+  let banner = document.getElementById('pt-card-banner');
+  if(!banner) {
+    banner = document.createElement('div');
+    banner.id = 'pt-card-banner';
+    banner.style.cssText = 'background:rgba(0,255,179,.06);border:1px solid rgba(0,255,179,.2);border-radius:6px;padding:8px 12px;margin-bottom:12px;font-family:"DM Mono",monospace;font-size:9px;color:var(--g);display:flex;justify-content:space-between;align-items:center';
+    const ptBody = document.querySelector('#pricing-panel .pt-body');
+    if(ptBody) ptBody.prepend(banner);
+  }
+  banner.innerHTML = `<span>📊 Loaded: <b style="color:#fff">${item.player||item.name||'?'}</b>${print.set?' · '+print.set:''}</span>`
+    + (mktPrice > 0 ? `<span style="color:var(--gold);font-family:'Orbitron',monospace;font-size:11px">$${mktPrice.toFixed(2)}</span>` : '');
 }
 function closePricingTools(){ document.getElementById('pricing-panel').classList.remove('on'); }
 
