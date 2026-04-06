@@ -1571,39 +1571,38 @@ async function scanFront(img){
 
   const text=await callClaude([{role:'user',content:[{type:'image',source:{type:'base64',media_type:'image/jpeg',data:img}},{type:'text',text:quickPrompt}]}],800);
   let items=[];
-  console.log('[SCAN] Raw Claude response:', text ? text.substring(0,200) : 'EMPTY');
+  console.log('[SCAN] Raw:', text ? text.substring(0,150) : 'EMPTY');
   try {
-    // Strip ALL markdown fences, whitespace, newlines around the JSON
-    let _raw=text.replace(/```json/g,'').replace(/```/g,'').trim();
-    if(!_raw) throw new Error('Empty response from Claude');
-    _raw = _raw.trim();
-    if(_raw.startsWith('{')) _raw='['+_raw+']';
-    const jsonStart = _raw.indexOf('[');
-    const objStart  = _raw.indexOf('{');
-    if(jsonStart < 0 && objStart >= 0) _raw = '[' + _raw.slice(objStart) + ']';
-    else if(objStart >= 0 && (jsonStart < 0 || objStart < jsonStart)) _raw = '[' + _raw.slice(objStart) + ']';
-    items=JSON.parse(_raw);
-    if(!Array.isArray(items)) items=[];
+    // Step 1: strip all markdown code fences
+    let _raw = text.replace(/```json/gi,'').replace(/```/g,'').trim();
+    // Step 2: find the first [ or { — skip any preamble text
+    const iB = _raw.indexOf('[');
+    const iO = _raw.indexOf('{');
+    if(iB >= 0 && (iO < 0 || iB <= iO)) {
+      // Starts with array — use as-is
+      _raw = _raw.slice(iB);
+    } else if(iO >= 0) {
+      // Single object — wrap in array
+      _raw = '[' + _raw.slice(iO) + ']';
+    } else {
+      throw new Error('No JSON found in: ' + _raw.substring(0,80));
+    }
+    items = JSON.parse(_raw);
+    if(!Array.isArray(items)) items = [];
   } catch(parseErr) {
-    hs.textContent='PARSE ERROR';
-    // Show first 60 chars of response so user can see what Claude returned
-    const preview = text ? text.substring(0,60).replace(/\n/g,' ') : 'empty';
-    toast('Parse error: ' + preview);
-    console.warn('Parse failed. Full response:', text, parseErr);
-    // Try one more time with an even simpler prompt
+    console.warn('[SCAN] Parse failed:', parseErr.message, '| raw:', text ? text.substring(0,200) : 'empty');
+    toast('Scan parse error — retrying');
+    // Retry with ultra-minimal prompt
     try {
       const retry = await callClaude([{role:'user',content:[
         {type:'image',source:{type:'base64',media_type:'image/jpeg',data:img}},
-        {type:'text',text:'What trading card is this? Reply with ONLY: [{"name":"X","game":"Y","year":"Z","set_name":"A","card_number":"B","parallel":"Base","cx":50,"cy":50}]'}
-      ]}], 400);
-      let _r2 = retry.replace(/```json|```/g,'').trim();
-      if(_r2.startsWith('{')) _r2='['+_r2+']';
-      const retryItems = JSON.parse(_r2);
-      if(Array.isArray(retryItems) && retryItems.length) {
-        items = retryItems;
-        console.log('Retry succeeded:', retryItems);
-      }
-    } catch(e2) { console.warn('Retry also failed:', e2); }
+        {type:'text',text:'Trading card name and set. JSON only, no text: [{"name":"NAME","game":"Pokemon TCG","set_name":"SET","card_number":"NUM","parallel":"Base","cx":50,"cy":50}]'}
+      ]}], 300);
+      const iB2 = retry.indexOf('['), iO2 = retry.indexOf('{');
+      let r2 = (iB2>=0&&(iO2<0||iB2<=iO2)) ? retry.slice(iB2) : (iO2>=0 ? '['+retry.slice(iO2)+']' : '[]');
+      const ri = JSON.parse(r2);
+      if(Array.isArray(ri) && ri.length) { items = ri; console.log('[SCAN] Retry ok'); }
+    } catch(e2) { console.warn('[SCAN] Retry failed:', e2.message); }
   }
   if(Array.isArray(items)&&items.length){
     if(auto)clearAll();
@@ -1849,39 +1848,38 @@ async function scanBulk(img){
   const hs=document.getElementById('hstatus');
   const text=await callClaude([{role:'user',content:[{type:'image',source:{type:'base64',media_type:'image/jpeg',data:img}},{type:'text',text:'Identify all trading cards/comics visible. Return ONLY JSON array:[{"name":"name","year":"year","set":"set","parallel":"variant or Base","market_nm":5.00}]. market_nm=current NM price. Max 6. [] if none.'}]}],800);
   let items=[];
-  console.log('[SCAN] Raw Claude response:', text ? text.substring(0,200) : 'EMPTY');
+  console.log('[SCAN] Raw:', text ? text.substring(0,150) : 'EMPTY');
   try {
-    // Strip ALL markdown fences, whitespace, newlines around the JSON
-    let _raw=text.replace(/```json/g,'').replace(/```/g,'').trim();
-    if(!_raw) throw new Error('Empty response from Claude');
-    _raw = _raw.trim();
-    if(_raw.startsWith('{')) _raw='['+_raw+']';
-    const jsonStart = _raw.indexOf('[');
-    const objStart  = _raw.indexOf('{');
-    if(jsonStart < 0 && objStart >= 0) _raw = '[' + _raw.slice(objStart) + ']';
-    else if(objStart >= 0 && (jsonStart < 0 || objStart < jsonStart)) _raw = '[' + _raw.slice(objStart) + ']';
-    items=JSON.parse(_raw);
-    if(!Array.isArray(items)) items=[];
+    // Step 1: strip all markdown code fences
+    let _raw = text.replace(/```json/gi,'').replace(/```/g,'').trim();
+    // Step 2: find the first [ or { — skip any preamble text
+    const iB = _raw.indexOf('[');
+    const iO = _raw.indexOf('{');
+    if(iB >= 0 && (iO < 0 || iB <= iO)) {
+      // Starts with array — use as-is
+      _raw = _raw.slice(iB);
+    } else if(iO >= 0) {
+      // Single object — wrap in array
+      _raw = '[' + _raw.slice(iO) + ']';
+    } else {
+      throw new Error('No JSON found in: ' + _raw.substring(0,80));
+    }
+    items = JSON.parse(_raw);
+    if(!Array.isArray(items)) items = [];
   } catch(parseErr) {
-    hs.textContent='PARSE ERROR';
-    // Show first 60 chars of response so user can see what Claude returned
-    const preview = text ? text.substring(0,60).replace(/\n/g,' ') : 'empty';
-    toast('Parse error: ' + preview);
-    console.warn('Parse failed. Full response:', text, parseErr);
-    // Try one more time with an even simpler prompt
+    console.warn('[SCAN] Parse failed:', parseErr.message, '| raw:', text ? text.substring(0,200) : 'empty');
+    toast('Scan parse error — retrying');
+    // Retry with ultra-minimal prompt
     try {
       const retry = await callClaude([{role:'user',content:[
         {type:'image',source:{type:'base64',media_type:'image/jpeg',data:img}},
-        {type:'text',text:'What trading card is this? Reply with ONLY: [{"name":"X","game":"Y","year":"Z","set_name":"A","card_number":"B","parallel":"Base","cx":50,"cy":50}]'}
-      ]}], 400);
-      let _r2 = retry.replace(/```json|```/g,'').trim();
-      if(_r2.startsWith('{')) _r2='['+_r2+']';
-      const retryItems = JSON.parse(_r2);
-      if(Array.isArray(retryItems) && retryItems.length) {
-        items = retryItems;
-        console.log('Retry succeeded:', retryItems);
-      }
-    } catch(e2) { console.warn('Retry also failed:', e2); }
+        {type:'text',text:'Trading card name and set. JSON only, no text: [{"name":"NAME","game":"Pokemon TCG","set_name":"SET","card_number":"NUM","parallel":"Base","cx":50,"cy":50}]'}
+      ]}], 300);
+      const iB2 = retry.indexOf('['), iO2 = retry.indexOf('{');
+      let r2 = (iB2>=0&&(iO2<0||iB2<=iO2)) ? retry.slice(iB2) : (iO2>=0 ? '['+retry.slice(iO2)+']' : '[]');
+      const ri = JSON.parse(r2);
+      if(Array.isArray(ri) && ri.length) { items = ri; console.log('[SCAN] Retry ok'); }
+    } catch(e2) { console.warn('[SCAN] Retry failed:', e2.message); }
   }
   if(Array.isArray(items)&&items.length){items.forEach(i=>addToBulk(i));hs.textContent=items.length+' ADDED';updateBulkTotal();}
   else{hs.textContent='NONE';toast('No cards found');}
