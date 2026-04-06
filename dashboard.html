@@ -402,6 +402,11 @@ tr.sold:hover td{opacity:.7;}
 
 <div id="lba-nav">
   <a class="lba-nav-btn" href="sca.html"><span class="nav-ico">⬡</span>SCANNER</a>
+  <a class="lba-nav-btn" href="sca.html" id="dash-cart-nav" style="position:relative">
+    <span class="nav-ico">🛒</span>
+    <span style="font-size:7px">CART</span>
+    <span id="dash-cart-count" style="display:none;position:absolute;top:4px;right:8px;background:#ff4d6d;color:#fff;font-size:8px;font-weight:700;width:15px;height:15px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'DM Mono',monospace"></span>
+  </a>
   <a class="lba-nav-btn active" href="dashboard.html"><span class="nav-ico">▦</span>DASHBOARD</a>
 </div>
 
@@ -736,7 +741,7 @@ function renderTable(){
       <td class="pp pd">${i.cost>0?fd$(i.cost):'—'}</td>
       <td class="${ppc}">${i.cost>0||i.profit?(pft>=0?'+':'')+fd$(pft)+(i.cost>0?' ('+margin+')':''):'—'}</td>
       <td><span style="font-family:'DM Mono',monospace;font-size:9px;color:${ins?'var(--g)':'var(--dim)'}">${ins?'IN STOCK':'SOLD'+(i.channel?' · '+i.channel:'')}</span></td>
-      <td><div class="row-act">${ins?`<button class="ra ra-sell" onclick="openSellModal('${i.id}')">Sell</button>`:''}<button class="ra ra-ebay" onclick="openEbayFromDash('${i.id}')">eBay</button></div></td>
+      <td><div class="row-act">${ins?`<button class="ra ra-sell" onclick="openSellModal('${i.id}')">Sell</button>`:''}<button class="ra" style="background:rgba(0,255,179,.08);border-color:rgba(0,255,179,.25);color:#00ffb3" onclick="dashAddToCart('${i.id}')">🛒</button><button class="ra ra-ebay" onclick="openEbayFromDash('${i.id}')">eBay</button></div></td>
     </tr>`;
   }).join('');
   const tot=Math.ceil(filtered.length/PER);
@@ -814,6 +819,50 @@ async function confirmQuickSell(){
     closeSellModal();
     renderAll();
   } catch(e){ alert('Error: '+e.message); }
+}
+
+// ── CART INTEGRATION FROM DASHBOARD ───────────────────────
+// Adds item directly to scanner cart via shared localStorage
+function dashAddToCart(id){
+  const item = all.find(i => i.id === id);
+  if(!item) return;
+  if(item.status === 'sold'){ alert('This item is already sold'); return; }
+
+  // Read existing cart from localStorage
+  let cartData = { items: [], discount: 0 };
+  try {
+    const saved = localStorage.getItem('pos_cart_v2');
+    if(saved) cartData = JSON.parse(saved);
+  } catch(e) {}
+
+  // Add item to cart
+  const cartItem = {
+    id: 'ci_dash_' + Date.now(),
+    name: item.name,
+    sub: [item.set, item.year, item.category].filter(Boolean).join(' · '),
+    price: item.market || item.salePrice || 0,
+    img: null,
+    shopId: item.id,
+    category: item.category,
+  };
+  cartData.items.push(cartItem);
+  cartData.savedAt = new Date().toISOString();
+
+  localStorage.setItem('pos_cart_v2', JSON.stringify(cartData));
+
+  // Visual feedback
+  toast_dash('🛒 Added to cart: ' + item.name);
+}
+
+function toast_dash(msg){
+  const existing = document.getElementById('dash-toast');
+  if(existing) existing.remove();
+  const t = document.createElement('div');
+  t.id = 'dash-toast';
+  t.style.cssText = 'position:fixed;bottom:72px;left:50%;transform:translateX(-50%);background:#00ffb3;color:#000;font-family:"DM Mono",monospace;font-size:10px;font-weight:700;padding:8px 16px;border-radius:6px;z-index:9999;letter-spacing:1px;white-space:nowrap;pointer-events:none';
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 2500);
 }
 
 function openEbayFromDash(id){
