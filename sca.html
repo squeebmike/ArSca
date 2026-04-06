@@ -507,28 +507,140 @@ async function fetchAllPrintings(item){
       } else {
         q = encodeURIComponent(`name:"${name}"`);
       }
+      // For vintage sets: if we can determine set from card total, make targeted query
+      const hintCardTotal2 = (item.card_number||'').includes('/') ? (item.card_number||'').split('/')[1] : '';
+      if(hintCardTotal2 && !setHintId && !cardNum) {
+        // We have X/TOTAL but no explicit set ID — let scoring handle it
+      }
       const r = await fetch(`https://api.pokemontcg.io/v2/cards?q=${q}&pageSize=100&orderBy=-set.releaseDate`);
       const d = await r.json();
       // Set total lookup — helps identify set when card number includes total (e.g. /165 = sv3pt5)
+      // SET_TOTALS: card total → TCG set ID
+      // This is the MOST reliable identifier — card number X/TOTAL tells us exact set
       const SET_TOTALS = {
-        '165':'sv3pt5',  // Pokémon 151
-        '230':'sv1',     // Scarlet & Violet Base
-        '197':'sv2',     // Paldea Evolved
-        '182':'sv3',     // Obsidian Flames
-        '167':'sv4',     // Paradox Rift
-        '131':'sv4pt5',  // Paldean Fates
-        '102':'base1',   // Base Set
-        '64':'base2',    // Jungle
-        '111':'base4',   // Base Set 2
-        '64':'gym1',     // Gym Heroes
-        '69':'gym2',     // Gym Challenge
-        '250':'swsh35',  // Vivid Voltage
-        '203':'swsh4',   // Shining Fates
-        '264':'swsh9',   // Brilliant Stars
-        '196':'swsh10',  // Astral Radiance
-        '195':'swsh11',  // Lost Origin
-        '195':'swsh12',  // Silver Tempest
-        '91':'sv5',      // Twilight Mastery (if applicable)
+        // ── CLASSIC (Wizards era) ─────────────────────
+        '102':'base1',    // Base Set
+        '64':'base2',     // Jungle
+        '62':'base3',     // Fossil
+        '111':'base4',    // Base Set 2
+        '69':'base5',     // Team Rocket
+        '132':'gym1',     // Gym Heroes
+        '132':'gym2',     // Gym Challenge
+        '111':'neo1',     // Neo Genesis
+        '111':'neo2',     // Neo Discovery
+        '64':'neo3',      // Neo Revelation
+        '66':'neo4',      // Neo Destiny
+        '147':'si1',      // Southern Islands
+        '144':'ecard1',   // Expedition Base Set
+        '144':'ecard2',   // Aquapolis
+        '100':'ecard3',   // Skyridge
+        // ── EX era ────────────────────────────────────
+        '109':'ex1',      // Ruby & Sapphire
+        '97':'ex2',       // Sandstorm
+        '100':'ex3',      // Dragon
+        '100':'ex4',      // Team Magma vs Team Aqua
+        '116':'ex5',      // Hidden Legends
+        '106':'ex6',      // FireRed & LeafGreen
+        '108':'ex7',      // Team Rocket Returns
+        '100':'ex8',      // Deoxys
+        '108':'ex9',      // Emerald
+        '115':'ex10',     // Unseen Forces
+        '101':'ex11',     // Delta Species
+        '110':'ex12',     // Legend Maker
+        '92':'ex13',      // Holon Phantoms
+        '110':'ex14',     // Crystal Guardians
+        '113':'ex15',     // Dragon Frontiers
+        '100':'ex16',     // Power Keepers
+        // ── DP era ────────────────────────────────────
+        '130':'dp1',      // Diamond & Pearl
+        '123':'dp2',      // Mysterious Treasures
+        '132':'dp3',      // Secret Wonders
+        '106':'dp4',      // Great Encounters
+        '127':'dp5',      // Majestic Dawn
+        '100':'dp6',      // Legends Awakened
+        '106':'dp7',      // Stormfront
+        '111':'pl1',      // Platinum
+        '111':'pl2',      // Rising Rivals
+        '100':'pl3',      // Supreme Victors
+        '111':'pl4',      // Arceus
+        // ── HGSS era ──────────────────────────────────
+        '123':'hgss1',    // HeartGold & SoulSilver
+        '102':'hgss2',    // Unleashed
+        '95':'hgss3',     // Undaunted
+        '102':'hgss4',    // Triumphant
+        '90':'col1',      // Call of Legends
+        // ── BW era ────────────────────────────────────
+        '114':'bw1',      // Black & White
+        '98':'bw2',       // Emerging Powers
+        '101':'bw3',      // Noble Victories
+        '99':'bw4',       // Next Destinies
+        '108':'bw5',      // Dark Explorers
+        '124':'bw6',      // Dragons Exalted
+        '149':'bw7',      // Boundaries Crossed
+        '113':'bw8',      // Plasma Storm
+        '122':'bw9',      // Plasma Freeze
+        '101':'bw10',     // Plasma Blast
+        '101':'bw11',     // Legendary Treasures
+        // ── XY era ────────────────────────────────────
+        '146':'xy1',      // XY Base Set
+        '111':'xy2',      // Flashfire
+        '106':'xy3',      // Furious Fists
+        '119':'xy4',      // Phantom Forces
+        '160':'xy5',      // Primal Clash
+        '108':'xy6',      // Roaring Skies
+        '98':'xy7',       // Ancient Origins
+        '162':'xy8',      // BREAKthrough
+        '122':'xy9',      // BREAKpoint
+        '114':'xy10',     // Fates Collide
+        '114':'xy11',     // Steam Siege
+        '140':'xy12',     // Evolutions
+        '124':'g1',       // Generations
+        // ── SM era ────────────────────────────────────
+        '149':'sm1',      // Sun & Moon Base
+        '145':'sm2',      // Guardians Rising
+        '147':'sm3',      // Burning Shadows
+        '73':'sm35',      // Shining Legends
+        '214':'sm4',      // Crimson Invasion
+        '214':'sm5',      // Ultra Prism
+        '156':'sm6',      // Forbidden Light
+        '168':'sm7',      // Celestial Storm
+        '95':'sm75',      // Dragon Majesty
+        '181':'sm8',      // Lost Thunder
+        '184':'sm9',      // Team Up
+        '111':'sm10',     // Unbroken Bonds
+        '236':'sm11',     // Unified Minds
+        '73':'sm115',     // Hidden Fates
+        '202':'sm12',     // Cosmic Eclipse
+        // ── SWSH era ──────────────────────────────────
+        '202':'swsh1',    // Sword & Shield Base
+        '192':'swsh2',    // Rebel Clash
+        '185':'swsh3',    // Darkness Ablaze
+        '073':'swsh35',   // Champion's Path
+        '185':'swsh4',    // Vivid Voltage
+        '163':'swsh5',    // Battle Styles
+        '198':'swsh6',    // Chilling Reign
+        '216':'swsh7',    // Evolving Skies
+        '100':'cel25',    // Celebrations
+        '189':'swsh8',    // Fusion Strike
+        '173':'swsh9',    // Brilliant Stars
+        '186':'swsh10',   // Astral Radiance
+        '196':'swsh11',   // Lost Origin
+        '195':'swsh12',   // Silver Tempest
+        '203':'swsh12pt5',// Crown Zenith
+        '91':'swsh45',    // Shining Fates
+        // ── SV era ────────────────────────────────────
+        '258':'sv1',      // Scarlet & Violet Base
+        '197':'sv2',      // Paldea Evolved
+        '230':'sv3',      // Obsidian Flames
+        '182':'sv3pt5',   // 151 (alternate total count)
+        '165':'sv3pt5',   // Pokémon 151
+        '167':'sv4',      // Paradox Rift
+        '131':'sv4pt5',   // Paldean Fates
+        '162':'sv5',      // Temporal Forces
+        '191':'sv6',      // Twilight Mastery
+        '175':'sv6pt5',   // Shrouded Fable
+        '175':'sv7',      // Stellar Crown
+        '191':'sv8',      // Surging Sparks
       };
       const hintCardTotal = (item.card_number||'').includes('/') ? (item.card_number||'').split('/')[1] : '';
       const setFromTotal = hintCardTotal ? SET_TOTALS[hintCardTotal] : '';
@@ -564,53 +676,110 @@ async function fetchAllPrintings(item){
             setId: card.set?.id || '',
             cardId: card.id
           });
-          // ── IMPROVED SET MATCHING ─────────────────────────────
-          // Bonus: set ID from card total (most reliable when available)
-          if(setFromTotal && card.set?.id === setFromTotal) score += 90;
-          // Score this printing against all signals Claude gave us
+          // ── SCORE THIS PRINTING AGAINST ALL CLAUDE SIGNALS ───────
           let score = 0;
-          const hintYear = String(item.year || '');
-          const hintNumber = String(item.card_number || '');
+          const hintYear    = String(item.year || '');
+          const hintNumber  = (item.card_number || '').replace(/^0+/,'').split('/')[0]; // "006" → "6"
+          const hintTotal   = (item.card_number || '').includes('/') ? (item.card_number||'').split('/')[1] : '';
           const hintVariant = (item.parallel || '').toLowerCase();
+          const hintSetId   = (item.set_id || '').toLowerCase();
           const releaseYear = (card.set?.releaseDate||'').substring(0,4);
+          const cardNumClean= number.replace(/^0+/,'').split('/')[0]; // normalize "006" → "6"
 
-          // Exact card number match is strongest signal
-          if(hintNumber && number === hintNumber) score += 100;
+          // 1. Exact card number match (+100) — strongest single signal
+          if(hintNumber && cardNumClean && hintNumber === cardNumClean) score += 100;
 
-          // Year match
-          if(hintYear && releaseYear === hintYear) score += 30;
+          // 2. Set ID from card total (+90) — e.g. /102 = base1, /165 = sv3pt5
+          if(hintTotal && setFromTotal && card.set?.id === setFromTotal) score += 90;
 
-          // Set name matching — check multiple ways
+          // 3. Explicit set ID from Claude (+85)
+          if(hintSetId && card.set?.id?.toLowerCase() === hintSetId) score += 85;
+
+          // 4. Set name word matching — split and compare
           if(hintSet) {
-            const hintWords = hintSet.replace(/[^a-z0-9 ]/gi,'').toLowerCase().split(' ').filter(w=>w.length>2);
-            const apiWords  = setNameLower.replace(/[^a-z0-9 ]/gi,'').split(' ');
-            // Count how many hint words appear in the API set name
-            const wordMatches = hintWords.filter(w => apiWords.some(a => a.includes(w) || w.includes(a))).length;
-            score += wordMatches * 20;
-            // Special: "151" matches "Pokémon Card 151"
-            const hintNums = hintSet.match(/\d+/g)||[];
-            const apiNums  = setNameLower.match(/\d+/g)||[];
+            const hintWords = hintSet.replace(/[^a-z0-9 ]/gi,' ').toLowerCase().split(' ').filter(w=>w.length>2);
+            const apiWords  = setNameLower.replace(/[^a-z0-9 ]/gi,' ').split(' ').filter(Boolean);
+            const wordMatches = hintWords.filter(w => apiWords.some(a => a===w || a.includes(w) || w.includes(a)));
+            score += wordMatches.length * 20;
+
+            // Numbers in set name (e.g. "151" in "Pokémon Card 151")
+            const hintNums = hintSet.match(/\d{2,}/g)||[];
+            const apiNums  = setNameLower.match(/\d{2,}/g)||[];
             if(hintNums.some(n => apiNums.includes(n))) score += 40;
-            // Direct set ID match (e.g. "sv3pt5" for 151)
-            const hintId = (item.set_id||'').toLowerCase();
-            if(hintId && card.set?.id?.toLowerCase() === hintId) score += 80;
+
+            // Classic/vintage set aliases — covers all Wizards era names
+            const CLASSIC_ALIASES = {
+              'base set':'base1','base':'base1','base1':'base1',
+              'jungle':'base2','fossil':'base3','base set 2':'base4',
+              'team rocket':'base5','gym heroes':'gym1','gym challenge':'gym2',
+              'neo genesis':'neo1','neo discovery':'neo2',
+              'neo revelation':'neo3','neo destiny':'neo4',
+              'expedition':'ecard1','aquapolis':'ecard2','skyridge':'ecard3',
+              'ruby sapphire':'ex1','sandstorm':'ex2','dragon':'ex3',
+              'hidden legends':'ex5','firered leafgreen':'ex6',
+              'emerald':'ex9','delta species':'ex11',
+              'diamond pearl':'dp1','mysterious treasures':'dp2',
+              'secret wonders':'dp3','great encounters':'dp4',
+              'majestic dawn':'dp5','legends awakened':'dp6',
+              'stormfront':'dp7','platinum':'pl1','rising rivals':'pl2',
+              'supreme victors':'pl3','arceus':'pl4',
+              'heartgold soulsilver':'hgss1','heartgold soul silver':'hgss1',
+              'unleashed':'hgss2','undaunted':'hgss3','triumphant':'hgss4',
+              'call of legends':'col1',
+              'black white':'bw1','black and white':'bw1',
+              'emerging powers':'bw2','noble victories':'bw3',
+              'next destinies':'bw4','dark explorers':'bw5',
+              'dragons exalted':'bw6','plasma storm':'bw8',
+              'plasma freeze':'bw9','plasma blast':'bw10',
+              'legendary treasures':'bw11',
+              'xy':'xy1','flashfire':'xy2','furious fists':'xy3',
+              'phantom forces':'xy4','primal clash':'xy5',
+              'roaring skies':'xy6','ancient origins':'xy7',
+              'breakthrough':'xy8','breakpoint':'xy9',
+              'fates collide':'xy10','steam siege':'xy11','evolutions':'xy12',
+              'sun moon':'sm1','sun and moon':'sm1',
+              'guardians rising':'sm2','burning shadows':'sm3',
+              'crimson invasion':'sm4','ultra prism':'sm5',
+              'forbidden light':'sm6','celestial storm':'sm7',
+              'lost thunder':'sm8','team up':'sm9',
+              'unbroken bonds':'sm10','unified minds':'sm11',
+              'hidden fates':'sm115','cosmic eclipse':'sm12',
+              'sword shield':'swsh1','sword and shield':'swsh1',
+              'rebel clash':'swsh2','darkness ablaze':'swsh3',
+              'vivid voltage':'swsh35','battle styles':'swsh5',
+              'chilling reign':'swsh6','evolving skies':'swsh7',
+              'fusion strike':'swsh8','brilliant stars':'swsh9',
+              'astral radiance':'swsh10','lost origin':'swsh11',
+              'silver tempest':'swsh12','crown zenith':'swsh12pt5',
+              'shining fates':'swsh45',
+              'scarlet violet':'sv1','scarlet and violet':'sv1',
+              'paldea evolved':'sv2','obsidian flames':'sv3',
+              '151':'sv3pt5','pokemon 151':'sv3pt5','pokémon 151':'sv3pt5',
+              'paradox rift':'sv4','paldean fates':'sv4pt5',
+              'temporal forces':'sv5','twilight mastery':'sv6',
+              'shrouded fable':'sv6pt5','stellar crown':'sv7',
+              'surging sparks':'sv8',
+            };
+            const cleanHint = hintSet.replace(/[^a-z0-9 ]/g,' ').trim().replace(/\s+/g,' ');
+            const aliasId = CLASSIC_ALIASES[cleanHint];
+            if(aliasId && card.set?.id === aliasId) score += 85;
           }
 
-          // Variant/parallel match
+          // 5. Year match (+30)
+          if(hintYear && releaseYear && hintYear === releaseYear) score += 30;
+
+          // 6. Variant/parallel match (+25)
           if(hintVariant && hintVariant !== 'base') {
-            const subtypeLower = variantName.toLowerCase();
-            if(subtypeLower.includes(hintVariant) || hintVariant.includes(subtypeLower)) score += 25;
+            const vLower = variantName.toLowerCase();
+            if(vLower.includes(hintVariant) || hintVariant.includes(vLower)) score += 25;
           }
 
-          // Prefer cards with real prices
+          // 7. Has real price (+5 tiebreaker)
           if(mid > 0) score += 5;
 
-          if(score > 0) {
-            // Track best score
-            if(!result._bestScore || score > result._bestScore) {
-              result._bestScore = score;
-              bestIdx = i;
-            }
+          if(score > (result._bestScore||0)) {
+            result._bestScore = score;
+            bestIdx = i;
           }
         });
         result.bestMatchIdx = bestIdx;
@@ -1361,14 +1530,26 @@ FOR SPORTS CARDS — Read carefully:
 - Memorabilia/Patch: look for embedded card piece
 
 FOR POKEMON TCG — Read carefully:
-- Card name (exact, e.g. "Charizard ex" not just "Charizard")
+- Card name EXACTLY as printed — "Charizard ex" is different from "Charizard EX" is different from "Charizard". Look for ex/EX/GX/V/VMAX/VSTAR/e after the name.
 - HP number
-- Card number at bottom (e.g. "006/165" or "4/102") — CRITICAL
-- Set symbol (bottom right icon)
-- Set name if printed
-- Rarity symbol (common=circle, uncommon=diamond, rare=star, ultra=two stars, secret=three stars)
-- Foil pattern type: holo, reverse holo, full art, special illustration rare, rainbow rare, gold
-- Generation/era from art style and set symbol
+- Card number at BOTTOM of card (e.g. "4/102" or "006/165") — THIS IS THE MOST IMPORTANT FIELD. Read it carefully. The total after the slash tells you the exact set.
+- Set symbol bottom right — identify it:
+    VINTAGE (Yellow border, simple art):
+    * Pokeball = Base Set (102 cards, set ID: base1)
+    * Palm tree = Jungle (64 cards, set ID: base2)
+    * Fossil skull = Fossil (62 cards, set ID: base3)
+    * Bold R = Team Rocket (82 cards, set ID: base5)
+    * Two pokeballs = Base Set 2 (130 cards, set ID: base4)
+    * Winged helmet = Neo Genesis (111 cards, set ID: neo1)
+    * Drop of water = Neo Discovery (75 cards, set ID: neo2)
+    * Starburst = Neo Revelation (64 cards, set ID: neo3)
+    * Yin-yang = Neo Destiny (105 cards, set ID: neo4)
+    EX ERA (2003-2007): Look for "EX" in name, shield-style border
+    MODERN (2023+): Set code printed bottom left like sv3pt5, sv1, swsh1
+- 1st Edition stamp: small oval on left center — extremely important if visible
+- Shadowless (Base Set only): no drop shadow under artwork box
+- Holo vs non-holo: does the artwork have a foil shine?
+- Era from art style: Yellow border=Wizards era, rounded corners modern=XY+, textured holos=modern SV era
 
 FOR MTG — Read:
 - Card name, mana cost, type line, set symbol, collector number (bottom left e.g. "175/281")
