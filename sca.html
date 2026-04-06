@@ -1614,9 +1614,9 @@ async function scanFront(img){
       const isComic=item.game==='Comic';
       let apiPrintings=null,imgUrl=null,bestMatchIdx=0;
       // TCGPlayer/comic data loads async in Phase 2 — bubble shows immediately
-      console.log('[SCAN] Adding bubble for:', _item?.name || item?.name || '?', 'game:', item?.game);
+      console.log('[SCAN] Adding bubble for:', item?.name || '?', 'game:', item?.game, 'ct:', item?.game ? 'tcg' : '?');
       const bbl = addBubble(item,stock,imgUrl,apiPrintings,bestMatchIdx);
-      console.log('[SCAN] Bubble created:', bbl ? 'YES id='+bbl.id : 'NO - addBubble returned null');
+      console.log('[SCAN] Bubble result:', bbl ? 'OK el.id='+bbl.id+' left='+bbl.style.left+' top='+bbl.style.top : 'NULL - addBubble returned nothing');
       // Store front image on bubble for two-image back scan
       if(bbl && window._lastFrontB64) bbl._frontB64 = window._lastFrontB64;
 
@@ -1970,7 +1970,9 @@ function checkStock(item){
 
 function addBubble(item,stock,imgUrl,apiPrintings,bestMatchIdx){
   const W=window.innerWidth,H=window.innerHeight;
-  const cx=(item.cx/100)*W,cy=(item.cy/100)*H;
+  // Default cx/cy to center if Claude didn't include them
+  const cx = ((item.cx != null ? item.cx : 50)/100)*W;
+  const cy = ((item.cy != null ? item.cy : 50)/100)*H;
   const id='b'+Date.now()+Math.random().toString(36).slice(2,5);
   // Merge: API printings override Claude's guesses when available.
   // Best match index pre-selects the most likely printing.
@@ -2225,7 +2227,11 @@ function addBubble(item,stock,imgUrl,apiPrintings,bestMatchIdx){
   if(top<60)top=cy+20;
   left=Math.max(6,Math.min(left,W-bw-6));
   top=Math.max(60,Math.min(top,window.innerHeight-80));
-  el.style.left=left+'px';el.style.top=top+'px';
+  // Safety: ensure valid numbers
+  const safeLeft = isNaN(left) ? 10 : left;
+  const safeTop  = isNaN(top)  ? 80 : top;
+  console.log('[BUBBLE] Position: left='+safeLeft+' top='+safeTop+' W='+W+' H='+H);
+  el.style.left=safeLeft+'px';el.style.top=safeTop+'px';
   document.body.appendChild(el);
   bubs.push({id,el,ax:cx,ay:cy,ct});
   el._frontB64 = null; // will be set by scanFront caller
