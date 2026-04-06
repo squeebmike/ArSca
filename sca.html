@@ -2735,14 +2735,45 @@ const POS_CONFIG = {
 };
 
 // ════════════════════════════════════════════════════════════
-// CART STATE
+// CART STATE — persisted to localStorage so it survives refresh
 // ════════════════════════════════════════════════════════════
-let cart = [];
-let cartDiscount = 0;
 let stripeInstance = null;
 let stripeCardElement = null;
 let activePaymentMethod = null;
 let currentPaymentIntentId = null;
+
+// Load cart from localStorage or start fresh
+function loadCartState() {
+  try {
+    const saved = localStorage.getItem('pos_cart_v2');
+    if(saved) {
+      const parsed = JSON.parse(saved);
+      cart = parsed.items || [];
+      cartDiscount = parsed.discount || 0;
+      return true;
+    }
+  } catch(e) { console.warn('Cart load error:', e); }
+  return false;
+}
+function saveCartState() {
+  try {
+    localStorage.setItem('pos_cart_v2', JSON.stringify({
+      items: cart,
+      discount: cartDiscount,
+      savedAt: new Date().toISOString(),
+    }));
+  } catch(e) { console.warn('Cart save error:', e); }
+}
+function clearCartState() {
+  localStorage.removeItem('pos_cart_v2');
+  cart = [];
+  cartDiscount = 0;
+}
+
+let cart = [];
+let cartDiscount = 0;
+// Restore cart immediately on script load
+loadCartState();
 
 // ════════════════════════════════════════════════════════════
 // NAV — add POS + Pricing buttons to nav bar
@@ -2795,6 +2826,7 @@ function addToCart(item, imgUrl, price){
     category: item.category || 'TCG',
   };
   cart.push(cartItem);
+  saveCartState();
   updateCartBadge();
   renderCart();
   toast('🛒 Added: ' + cartItem.name);
@@ -2808,6 +2840,7 @@ function addToCart(item, imgUrl, price){
 
 window.removeFromCart = function(id){
   cart = cart.filter(i => i.id !== id);
+  saveCartState();
   updateCartBadge();
   renderCart();
 };
@@ -2816,7 +2849,7 @@ window.editCartPrice = function(id){
   const item = cart.find(i => i.id === id);
   if(!item) return;
   const np = parseFloat(prompt('New price for ' + item.name + ':', item.price.toFixed(2)));
-  if(!isNaN(np) && np >= 0){ item.price = np; renderCart(); }
+  if(!isNaN(np) && np >= 0){ item.price = np; saveCartState(); renderCart(); }
 };
 
 function addManualItem(){
@@ -2831,6 +2864,7 @@ function addManualItem(){
 
 function setDiscount(pct, btn){
   cartDiscount = pct;
+  saveCartState();
   document.querySelectorAll('.pos-disc-btn').forEach(b => b.classList.remove('on'));
   btn.classList.add('on');
   renderCartTotals();
@@ -2865,6 +2899,11 @@ function renderCart(){
   const empty = document.getElementById('cart-empty');
   const countLbl = document.getElementById('cart-count-lbl');
   if(countLbl) countLbl.textContent = cart.length ? cart.length + ' item' + (cart.length>1?'s':'') : '';
+  // Restore discount button state
+  if(cartDiscount > 0) {
+    const discBtn = document.getElementById('disc-' + cartDiscount);
+    if(discBtn) { document.querySelectorAll('.pos-disc-btn').forEach(b=>b.classList.remove('on')); discBtn.classList.add('on'); }
+  }
 
   if(!cart.length){
     if(empty) empty.style.display='block';
@@ -2935,10 +2974,16 @@ function selectPayment(method){
   document.querySelectorAll('.ck-method').forEach(m => m.classList.remove('on'));
   document.querySelectorAll('.ck-panel').forEach(p => p.classList.remove('on'));
   document.getElementById('m-'+method)?.classList.add('on');
-  if(method === 'cash') document.getElementById('panel-cash').classList.add('on');
-  else if(method === 'card') document.getElementById('panel-card').classList.add('on');
-  else document.getElementById('panel-qr').classList.add('on');
-  if(['venmo','paypal','cashapp','zelle'].includes(method)) showQR(method);
+  if(method === 'cash') {
+    document.getElementById('panel-cash').classList.add('on');
+  } else if(method === 'card') {
+    document.getElementById('panel-card').classList.add('on');
+    if(POS_CONFIG.stripe_pk && !stripeInstance) initStripe();
+  } else {
+    document.getElementById('panel-qr').classList.add('on');
+    buildQRTabs();
+    if(['venmo','paypal','cashapp'].includes(method)) showQR(method);
+  }
 }
 
 // ── CASH ──────────────────────────────────────────────────
@@ -2986,8 +3031,17 @@ const QR_HANDLES = {
 function buildQRTabs(){
   const tabs = document.getElementById('qr-tabs');
   if(!tabs) return;
-  const methods = ['venmo','paypal','cashapp','zelle'].filter(m => QR_HANDLES[m].handle() && QR_HANDLES[m].handle()!=='');
+  const methods = ['venmo','paypal','cashapp'].filter(m => {
+    const h = QR_HANDLES[m]?.handle();
+    return h && h !== '' && h !== 'undefined';
+  });
+  if(methods.length === 0) {
+    tabs.innerHTML = '<div style="font-family:monospace;font-size:9px;color:rgba(255,255,255,.3);padding:8px">No payment handles configured — add to POS_CONFIG in sca.html</div>';
+    return;
+  }
   tabs.innerHTML = methods.map(m => `<div class="ck-qr-tab" id="qrtab-${m}" onclick="showQR('${m}')">${QR_HANDLES[m].label}</div>`).join('');
+  // Auto-show first available method
+  if(methods[0]) showQR(methods[0]);
 }
 
 function showQR(method){
@@ -3000,7 +3054,11 @@ function showQR(method){
   const {total} = getCartTotals();
   // Build payment URL for deep linking
   let payUrl = '';
-  if(method==='venmo') payUrl = `venmo://paycharge?txn=pay&recipients=${handle.replace('@','')}&amount=${total.toFixed(2)}&note=Walk-Off+Sports+Cards`;
+  if(method==='venmo') {
+    const venmoUser = handle.replace('@','');
+    // Try deep link first — opens Venmo app; falls back to web
+    payUrl = `https://venmo.com/${venmoUser}?txn=pay&amount=${total.toFixed(2)}&note=Walk-Off+Sports+Cards`;
+  }
   else if(method==='paypal') payUrl = `https://paypal.me/${POS_CONFIG.paypal}/${total.toFixed(2)}`;
   else if(method==='cashapp') payUrl = `https://cash.app/${POS_CONFIG.cashapp}/${total.toFixed(2)}`;
   else payUrl = handle; // Zelle — just show handle
@@ -3135,7 +3193,7 @@ function showReceipt(tx){
 function closeReceipt(){ document.getElementById('receipt-modal').classList.remove('on'); }
 function printReceipt(){ window.print(); }
 function newTransaction(){
-  cart = []; cartDiscount = 0;
+  clearCartState();
   updateCartBadge(); renderCart(); closeReceipt();
   toast('Ready for next sale');
 }
@@ -3275,6 +3333,11 @@ const _origAddBubble = window.addBubble;
 window.addEventListener('load', function(){
   startScanner();
   injectNavButtons();
+  // Restore cart from localStorage if any items were saved
+  if(cart.length > 0) {
+    updateCartBadge();
+    toast('🛒 Cart restored — ' + cart.length + ' item' + (cart.length > 1 ? 's' : ''));
+  }
 });
 </script>
 
@@ -3353,10 +3416,29 @@ window.addEventListener('load', function(){
 
     <!-- CARD PANEL (Stripe) -->
     <div class="ck-panel" id="panel-card">
-      <div style="font-family:'DM Mono',monospace;font-size:9px;color:rgba(255,255,255,.4);margin-bottom:8px">ENTER CARD DETAILS</div>
+      <!-- Visual card mockup -->
+      <div style="background:linear-gradient(135deg,#1a1a2e,#16213e);border-radius:12px;padding:16px 18px;margin-bottom:14px;border:1px solid rgba(255,255,255,.1);position:relative;min-height:100px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <div style="font-family:'Orbitron',monospace;font-size:11px;color:rgba(255,255,255,.4);letter-spacing:2px">CREDIT / DEBIT</div>
+          <div style="display:flex;gap:4px">
+            <div style="width:24px;height:16px;background:#eb001b;border-radius:50%;opacity:.8"></div>
+            <div style="width:24px;height:16px;background:#f79e1b;border-radius:50%;opacity:.8;margin-left:-10px"></div>
+          </div>
+        </div>
+        <div style="font-family:'DM Mono',monospace;font-size:13px;color:rgba(255,255,255,.6);letter-spacing:3px;margin-bottom:10px">•••• •••• •••• ••••</div>
+        <div style="display:flex;justify-content:space-between">
+          <div style="font-family:'DM Mono',monospace;font-size:9px;color:rgba(255,255,255,.3)">CARDHOLDER</div>
+          <div style="font-family:'DM Mono',monospace;font-size:9px;color:rgba(255,255,255,.3)">EXPIRES</div>
+        </div>
+        <div style="position:absolute;bottom:12px;right:16px;font-family:'Orbitron',monospace;font-size:8px;color:rgba(255,255,255,.15)">STRIPE SECURED</div>
+      </div>
+      <div style="font-family:'DM Mono',monospace;font-size:9px;color:rgba(255,255,255,.4);margin-bottom:6px;letter-spacing:1px">CARD NUMBER · EXPIRY · CVC</div>
       <div id="stripe-card-element"></div>
-      <div id="stripe-errors" style="font-family:'DM Mono',monospace;font-size:9px;color:var(--red);margin-bottom:8px;min-height:14px"></div>
-      <div style="font-family:'DM Mono',monospace;font-size:8px;color:rgba(255,255,255,.2);margin-bottom:10px">🔒 Secured by Stripe — card number never stored locally</div>
+      <div id="stripe-errors" style="font-family:'DM Mono',monospace;font-size:9px;color:var(--red);margin:6px 0;min-height:14px"></div>
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px">
+        <span style="font-size:14px">🔒</span>
+        <span style="font-family:'DM Mono',monospace;font-size:8px;color:rgba(255,255,255,.2)">256-bit SSL · Card number secured by Stripe · Never stored locally</span>
+      </div>
       <button class="ck-confirm-btn card" id="stripe-pay-btn" onclick="processStripePayment()">💳 CHARGE CARD</button>
       <div class="ck-status" id="stripe-status"></div>
     </div>
