@@ -492,9 +492,47 @@ async function fetchAllPrintings(item){
     // ── POKEMON TCG ──────────────────────────────────────────
     if(game==='Pokemon TCG'){
       // Search all printings of this card name
-      const q = encodeURIComponent(`name:"${name}"`);
+      // Build search query — include card number if available to narrow results
+      const cardNum = (item.card_number||'').split('/')[0].replace(/^0+/,''); // e.g. "006/165" → "6"
+      const setHintId = item.set_id || '';
+      let q;
+      if(cardNum && setHintId) {
+        // Most specific: card number + set ID (e.g. number:6 set.id:sv3pt5)
+        q = encodeURIComponent(`name:"${name}" number:${cardNum} set.id:${setHintId}`);
+      } else if(cardNum) {
+        // Card number narrows it significantly
+        q = encodeURIComponent(`name:"${name}" number:${cardNum}`);
+      } else if(setHintId) {
+        q = encodeURIComponent(`name:"${name}" set.id:${setHintId}`);
+      } else {
+        q = encodeURIComponent(`name:"${name}"`);
+      }
       const r = await fetch(`https://api.pokemontcg.io/v2/cards?q=${q}&pageSize=100&orderBy=-set.releaseDate`);
       const d = await r.json();
+      // Set total lookup — helps identify set when card number includes total (e.g. /165 = sv3pt5)
+      const SET_TOTALS = {
+        '165':'sv3pt5',  // Pokémon 151
+        '230':'sv1',     // Scarlet & Violet Base
+        '197':'sv2',     // Paldea Evolved
+        '182':'sv3',     // Obsidian Flames
+        '167':'sv4',     // Paradox Rift
+        '131':'sv4pt5',  // Paldean Fates
+        '102':'base1',   // Base Set
+        '64':'base2',    // Jungle
+        '111':'base4',   // Base Set 2
+        '64':'gym1',     // Gym Heroes
+        '69':'gym2',     // Gym Challenge
+        '250':'swsh35',  // Vivid Voltage
+        '203':'swsh4',   // Shining Fates
+        '264':'swsh9',   // Brilliant Stars
+        '196':'swsh10',  // Astral Radiance
+        '195':'swsh11',  // Lost Origin
+        '195':'swsh12',  // Silver Tempest
+        '91':'sv5',      // Twilight Mastery (if applicable)
+      };
+      const hintCardTotal = (item.card_number||'').includes('/') ? (item.card_number||'').split('/')[1] : '';
+      const setFromTotal = hintCardTotal ? SET_TOTALS[hintCardTotal] : '';
+
       if(d.data&&d.data.length){
         let bestIdx = 0;
         d.data.forEach((card, i) => {
@@ -526,8 +564,54 @@ async function fetchAllPrintings(item){
             setId: card.set?.id || '',
             cardId: card.id
           });
-          // Score match quality against Claude's hint set
-          if(hintSet && setNameLower.includes(hintSet.split(' ')[0])) bestIdx = i;
+          // ── IMPROVED SET MATCHING ─────────────────────────────
+          // Bonus: set ID from card total (most reliable when available)
+          if(setFromTotal && card.set?.id === setFromTotal) score += 90;
+          // Score this printing against all signals Claude gave us
+          let score = 0;
+          const hintYear = String(item.year || '');
+          const hintNumber = String(item.card_number || '');
+          const hintVariant = (item.parallel || '').toLowerCase();
+          const releaseYear = (card.set?.releaseDate||'').substring(0,4);
+
+          // Exact card number match is strongest signal
+          if(hintNumber && number === hintNumber) score += 100;
+
+          // Year match
+          if(hintYear && releaseYear === hintYear) score += 30;
+
+          // Set name matching — check multiple ways
+          if(hintSet) {
+            const hintWords = hintSet.replace(/[^a-z0-9 ]/gi,'').toLowerCase().split(' ').filter(w=>w.length>2);
+            const apiWords  = setNameLower.replace(/[^a-z0-9 ]/gi,'').split(' ');
+            // Count how many hint words appear in the API set name
+            const wordMatches = hintWords.filter(w => apiWords.some(a => a.includes(w) || w.includes(a))).length;
+            score += wordMatches * 20;
+            // Special: "151" matches "Pokémon Card 151"
+            const hintNums = hintSet.match(/\d+/g)||[];
+            const apiNums  = setNameLower.match(/\d+/g)||[];
+            if(hintNums.some(n => apiNums.includes(n))) score += 40;
+            // Direct set ID match (e.g. "sv3pt5" for 151)
+            const hintId = (item.set_id||'').toLowerCase();
+            if(hintId && card.set?.id?.toLowerCase() === hintId) score += 80;
+          }
+
+          // Variant/parallel match
+          if(hintVariant && hintVariant !== 'base') {
+            const subtypeLower = variantName.toLowerCase();
+            if(subtypeLower.includes(hintVariant) || hintVariant.includes(subtypeLower)) score += 25;
+          }
+
+          // Prefer cards with real prices
+          if(mid > 0) score += 5;
+
+          if(score > 0) {
+            // Track best score
+            if(!result._bestScore || score > result._bestScore) {
+              result._bestScore = score;
+              bestIdx = i;
+            }
+          }
         });
         result.bestMatchIdx = bestIdx;
         result.imageUrl = d.data[bestIdx]?.images?.large || d.data[0]?.images?.small;
@@ -1254,16 +1338,52 @@ async function doScan(){
 
 async function scanFront(img){
   const hs=document.getElementById('hstatus');
-  const prompt=`You are an expert collectibles identifier. Examine this image.
+  const prompt=`You are an expert trading card and collectibles identifier with deep knowledge of sports cards, Pokemon, MTG, Yu-Gi-Oh, comics, and graded slabs.
 
-Check for GRADED SLAB first — PSA=red/blue/white label, BGS=black label with subgrades, CGC=yellow/orange, SGC=red label.
+IDENTIFICATION PRIORITY ORDER:
+1. Check if this is a GRADED SLAB — PSA (red/blue label), BGS/Beckett (black label with 4 subgrades), CGC (yellow/gold label), SGC (red label). If slab: read cert number, grade, and the card inside.
+2. Identify the game/sport category
+3. Read ALL text on the card — every word, number, symbol
 
-STEP 1 — READ ALL TEXT: name, card number, set, year, cert number, grade, serial number.
-STEP 2 — VISUAL: border color, foil, holo, slab label, artwork style.
-STEP 3 — COMBINE.
+FOR SPORTS CARDS — Read carefully:
+- Player name (largest text, usually top or center)
+- Team name
+- Year (small text, often bottom corner or top)
+- Manufacturer logo: Topps / Panini / Upper Deck / Bowman / Donruss / Score / O-Pee-Chee / Stadium Club
+- Set name (printed small, may be on front or bottom)
+- Card number (bottom corner, e.g. "287" or "287/700" — CRITICAL for identification)
+- Serial number printed as "/XX" e.g. /25 /99 /10 /5 /1 — write exactly as printed
+- Parallel type from BORDER COLOR: Gold border=Gold, Silver=Silver, Red=Red, Blue=Blue, Orange=Orange, Green=Green, Purple=Purple, Black=Black, Rainbow=Rainbow Foil
+- Prizm cards: color of the prizm wave pattern = parallel name (e.g. Green Wave Prizm, Gold Prizm)
+- Chrome/Refractor: look for rainbow shimmer — "Refractor" if no color, else "[Color] Refractor"
+- RC or ROOKIE CARD stamp
+- Auto: look for actual signature or "AUTOGRAPH" text
+- Memorabilia/Patch: look for embedded card piece
 
-Return ONLY raw JSON array, no markdown:
-[{"name":"exact name","game":"Pokemon TCG|Magic: The Gathering|Yu-Gi-Oh!|Sports Card|Comic|PSA Slab|BGS Slab|CGC Slab|SGC Slab|Other TCG — IMPORTANT: if item is in a graded plastic slab with a label (PSA/BGS/CGC/SGC), game MUST be one of the Slab options","sport":"Baseball|Basketball|Football|Hockey|Soccer|null","player":"player name or null","team":"team or null","year":"year","card_number":"# or null","manufacturer":"Topps|Panini|Upper Deck|Bowman|Pokemon Company|Wizards|Konami|Marvel|DC|Image|Other","publisher":"publisher if comic","issue":"issue # if comic","set_name":"exact set","parallel":"Base|Chrome|Prizm|Silver Prizm|Gold Refractor|Red Prizm|Blue|Green|Orange|Holo|Reverse Holo|Full Art|Alt Art|Borderless|Showcase|Extended Art|Etched Foil|Serialized|1st Edition|Promo|Rainbow Rare|Secret Rare|Special Illustration Rare|Auto|Relic|Standard|Variant|Virgin|Textless|Sketch|Foil|Newsstand","serial_number":"/99 or null","grading_company":"PSA|BGS|CGC|SGC|null","grade":"10|9.5|9|8.5|null","cert_number":"cert # or null","subgrades":{"centering":"9.5","surface":"9","corners":"9.5","edges":"9"},"pop_this_grade":450,"pop_higher":120,"is_black_label":false,"is_rookie":true,"is_key":false,"key_notes":"why notable or null","confidence":"high|medium|low","confidence_reason":"brief","desirability":7,"trend":"up|down|flat","trend_reason":"brief","cx":50,"cy":50,"printings":[{"set":"set","variant":"variant","year":"year","numbered":"/99 or null","mid":5.00,"low":2.00,"high":10.00}],"comps":[{"desc":"comp description","price":8.50},{"desc":"comp","price":7.00},{"desc":"comp","price":9.50}]}]
+FOR POKEMON TCG — Read carefully:
+- Card name (exact, e.g. "Charizard ex" not just "Charizard")
+- HP number
+- Card number at bottom (e.g. "006/165" or "4/102") — CRITICAL
+- Set symbol (bottom right icon)
+- Set name if printed
+- Rarity symbol (common=circle, uncommon=diamond, rare=star, ultra=two stars, secret=three stars)
+- Foil pattern type: holo, reverse holo, full art, special illustration rare, rainbow rare, gold
+- Generation/era from art style and set symbol
+
+FOR MTG — Read:
+- Card name, mana cost, type line, set symbol, collector number (bottom left e.g. "175/281")
+- Foil indicator, frame style (old border pre-2003, new, modern, showcase, borderless, alternate art)
+
+Return ONLY a raw JSON array. For each card identified:
+[{"name":"exact card name","game":"Pokemon TCG|Magic: The Gathering|Yu-Gi-Oh!|Sports Card|Comic|PSA Slab|BGS Slab|CGC Slab|SGC Slab|Other TCG — IMPORTANT: if in graded plastic slab with label, game MUST be one of the Slab options","sport":"Baseball|Basketball|Football|Hockey|Soccer|null","player":"player name or null","team":"team name or null","year":"4-digit year","card_number":"exact number e.g. 287 or 287/700 or 006/165 — read from card, very important","manufacturer":"Topps|Panini|Upper Deck|Bowman|Pokemon Company|Wizards|Konami|Marvel|DC|Image|Other","publisher":"publisher if comic","issue":"issue number if comic","set_name":"exact set name — for Pokemon include full name e.g. Scarlet & Violet 151 not just 151","set_id":"Pokemon TCG set ID if visible e.g. sv3pt5 for 151, swsh1 for SWSH Base — empty string if unsure","parallel":"Base|Chrome|Prizm|Silver Prizm|Gold Prizm|Red Prizm|Blue Prizm|Green Prizm|Orange Prizm|Gold Refractor|Red Refractor|Holo|Reverse Holo|Full Art|Alt Art|Borderless|Showcase|Extended Art|Rainbow Rare|Secret Rare|Special Illustration Rare|Gold Rare|Serialized|1st Edition|Promo|Standard","serial_number":"/99 or null — write exactly as printed","grading_company":"PSA|BGS|CGC|SGC|null","grade":"10|9.5|9|8.5|null","cert_number":"cert number from label or null","subgrades":{"centering":"9.5","surface":"9","corners":"9.5","edges":"9"},"is_rookie":true,"is_key":false,"key_notes":"why notable or null","confidence":"high|medium|low","confidence_reason":"brief — e.g. card number visible, set symbol clear","desirability":7,"trend":"up|down|flat","trend_reason":"brief","cx":50,"cy":50,"printings":[{"set":"set name","variant":"variant","year":"year","numbered":"/99 or null","mid":5.00,"low":2.00,"high":10.00}],"comps":[{"desc":"recent eBay sold comp description","price":8.50},{"desc":"comp","price":7.00},{"desc":"comp","price":9.50}]}]
+
+ACCURACY RULES:
+- If you can read the card number, that is the most reliable identifier — use it
+- For Pokemon: the number at the bottom (e.g. 006/165) tells you exactly which set (165 cards = sv3pt5 "151")
+- For sports parallels: gold border = Gold parallel, NOT base
+- If confidence is low, say so in confidence_reason
+- For sports cards with no card number visible, describe what parallel indicators you can see
+- Include 3 realistic comps based on actual market knowledge
 
 For virgin/textless comics: identify from artwork, character, art style only. Include ALL printings. Max 4. [] if none.`;
 
@@ -3062,11 +3182,68 @@ function showQR(method){
   else if(method==='paypal') payUrl = `https://paypal.me/${POS_CONFIG.paypal}/${total.toFixed(2)}`;
   else if(method==='cashapp') payUrl = `https://cash.app/${POS_CONFIG.cashapp}/${total.toFixed(2)}`;
   else payUrl = handle; // Zelle — just show handle
-  // Use Google Charts QR API
-  const qrUrl = `https://chart.googleapis.com/chart?chs=180x180&cht=qr&chl=${encodeURIComponent(payUrl)}&choe=UTF-8`;
-  document.getElementById('qr-img').src = qrUrl;
+  // Generate QR code client-side using qrcode library (no external image request)
+  const qrBox = document.getElementById('qr-box');
+  qrBox.innerHTML = '<canvas id="qr-canvas" style="width:180px;height:180px;border-radius:8px"></canvas>'
+    + '<div class="ck-qr-handle" id="qr-handle"></div>'
+    + '<div class="ck-qr-amount" id="qr-amount"></div>';
   document.getElementById('qr-handle').textContent = handle;
   document.getElementById('qr-amount').textContent = '$'+total.toFixed(2);
+  // Load qrcode.js if not already loaded, then render
+  function renderQR(){
+    const canvas = document.getElementById('qr-canvas');
+    if(!canvas) return;
+    // Use qrcode-generator (loaded below)
+    try {
+      const qr = qrcode(0, 'M');
+      qr.addData(payUrl);
+      qr.make();
+      const size = 180;
+      canvas.width = size; canvas.height = size;
+      const ctx = canvas.getContext('2d');
+      const modules = qr.getModuleCount();
+      const cellSize = size / modules;
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0,0,size,size);
+      ctx.fillStyle = '#000000';
+      for(let r=0;r<modules;r++){
+        for(let c=0;c<modules;c++){
+          if(qr.isDark(r,c)){
+            ctx.fillRect(Math.floor(c*cellSize), Math.floor(r*cellSize),
+              Math.ceil(cellSize), Math.ceil(cellSize));
+          }
+        }
+      }
+    } catch(e) {
+      // Fallback: show payment URL as text if QR fails
+      canvas.style.display='none';
+      const fb = document.createElement('div');
+      fb.style.cssText='font-family:monospace;font-size:8px;color:#111;word-break:break-all;padding:8px;background:#fff;border-radius:6px;max-width:180px';
+      fb.textContent = payUrl;
+      canvas.parentNode.insertBefore(fb, canvas);
+    }
+  }
+  if(typeof qrcode === 'undefined'){
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js';
+    s.onload = () => {
+      // qrcodejs uses different API — switch to qrcode-generator
+      const s2 = document.createElement('script');
+      s2.src = 'https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js';
+      s2.onload = renderQR;
+      document.head.appendChild(s2);
+    };
+    s.onerror = () => {
+      // Direct load qrcode-generator
+      const s2 = document.createElement('script');
+      s2.src = 'https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js';
+      s2.onload = renderQR;
+      document.head.appendChild(s2);
+    };
+    document.head.appendChild(s);
+  } else {
+    renderQR();
+  }
 }
 
 function completeQRSale(){
@@ -3447,7 +3624,7 @@ window.addEventListener('load', function(){
     <div class="ck-panel" id="panel-qr">
       <div class="ck-qr-tabs" id="qr-tabs"></div>
       <div class="ck-qr-box" id="qr-box">
-        <img id="qr-img" src="" alt="QR Code">
+        <canvas id="qr-canvas" style="width:180px;height:180px;border-radius:8px"></canvas>
         <div class="ck-qr-handle" id="qr-handle"></div>
         <div class="ck-qr-amount" id="qr-amount"></div>
       </div>
