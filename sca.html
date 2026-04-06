@@ -1125,6 +1125,10 @@ Return ONLY raw JSON array, no markdown:
 
 For virgin/textless comics: identify from artwork, character, art style only. Include ALL printings. Max 4. [] if none.`;
 
+  // Store front scan image for two-scan sports card identification
+  window._lastFrontB64 = img;
+  window._lastFrontTime = Date.now();
+
   const text=await callClaude([{role:'user',content:[{type:'image',source:{type:'base64',media_type:'image/jpeg',data:img}},{type:'text',text:prompt}]}],4000);
   const items=JSON.parse(text.replace(/```json|```/g,'').trim());
   if(Array.isArray(items)&&items.length){
@@ -1157,96 +1161,108 @@ For virgin/textless comics: identify from artwork, character, art style only. In
 
 async function scanBack(img){
   const hs = document.getElementById('hstatus');
-  hs.textContent = 'READING BACK...';
-
-  // Store back image for later upload to Webflow Photo 2
   window._lastBackB64 = img;
 
-  const text = await callClaude([{role:'user',content:[
-    {type:'image', source:{type:'base64', media_type:'image/jpeg', data:img}},
-    {type:'text', text:'Card back. Read every single number, word, code, and marking carefully. Return ONLY JSON: { player, card_number (e.g. "287" or "287/700" — MOST IMPORTANT), set_name, year, serial_number (e.g. "/25" or null), print_run (total print run number or null), parallel_code (any code like "PRIZM", "REFRACTOR", "GOLD", "SILVER", set indicator codes), auto_authenticated (true/false), rookie_stamp (true/false), team, manufacturer, stats (array of {label,value}), bio (short text), copyright (copyright line), notes (any other markings or codes). Look especially for small reference codes, set codes, parallel identifiers printed anywhere on the card back.}' }
-  ]}], 800);
+  const hasFront = window._lastFrontB64 && (Date.now() - (window._lastFrontTime||0)) < 180000;
+  const lastBub  = bubs.length > 0 ? bubs[bubs.length-1] : null;
+  const isSports = lastBub?.el?._ct === 'sports';
+  const isSlab   = ['psa','bgs','cgc','sgc'].includes(lastBub?.el?._ct||'');
 
-  const back = JSON.parse(text.replace(/```json|```/g,'').trim());
+  if(hasFront && (isSports || isSlab) && lastBub) {
+    // ─── TWO-SCAN: Send BOTH images at once ───────────────────────
+    hs.textContent = 'COMBINING BOTH SIDES...';
+    const twoScanPrompt = `You are a sports/trading card expert. I am showing you the FRONT (Image 1) and BACK (Image 2) of the SAME card simultaneously.
 
-  // If we have an existing front-scan bubble, merge the back data in
-  if(bubs.length > 0) {
-    const lastBub = bubs[bubs.length - 1];
-    addBackInfo(lastBub.id, back);
+Use BOTH images together to produce the most accurate possible identification.
 
-    // Merge back scan data into the bubble item for more accurate identification
-    if(lastBub.el && lastBub.el._item) {
-      const item = lastBub.el._item;
-      // Back scan overrides front scan for these critical fields
-      if(back.card_number)    item.card_number    = back.card_number;
-      if(back.serial_number)  item.serial_number  = back.serial_number;
-      if(back.print_run)      item.print_run      = back.print_run;
-      if(back.year && !item.year) item.year        = back.year;
-      if(back.set_name && !item.set_name) item.set_name = back.set_name;
-      if(back.parallel_code)  item.parallel_code  = back.parallel_code;
-      if(back.auto_authenticated) item.auto_authenticated = true;
-      if(back.rookie_stamp)   item.is_rookie      = true;
+FRONT tells you: player name, year, team, brand style, parallel (foil/color/pattern/texture)
+BACK tells you: card number, serial number (/X), parallel reference codes, copyright, set code, stats, manufacturer
 
-      // For sports cards: if we have card_number + serial from back, re-fetch pricing
-      if((item.sport || lastBub.el._ct === 'sports') && back.card_number) {
-        hs.textContent = 'UPDATING PRICES...';
-        toast('Back scan merged — refetching accurate prices');
-        // Store back photo base64 on element for upload
+Cross-reference both sides — many parallels can ONLY be confirmed by combining front visual with back codes.
+
+Return ONLY JSON (no markdown):
+{"player":"exact full name","year":"4-digit","set_name":"exact official set name","parallel":"exact parallel e.g. Base|Gold Prizm|Silver Refractor|Orange Wave|Holo Silver|Mosaic|Prizm|etc","card_number":"e.g. 287 or 287/700","serial_number":"/25 or null","print_run":25,"manufacturer":"Topps|Panini|Upper Deck|Bowman|Leaf","sport":"Baseball|Basketball|Football|Hockey","team":"team","is_rookie":true,"auto_authenticated":false,"parallel_code":"any back code","set_code":"any set identifier","grading_company":"PSA|BGS|CGC|SGC or null","grade":"10 or null","cert_number":"cert# or null","confidence":"high|medium|low","confidence_reason":"brief explanation using both scans"}`;
+
+    try {
+      const text = await callClaude([{role:'user',content:[
+        {type:'image', source:{type:'base64', media_type:'image/jpeg', data:window._lastFrontB64}},
+        {type:'image', source:{type:'base64', media_type:'image/jpeg', data:img}},
+        {type:'text', text:twoScanPrompt}
+      ]}], 1000);
+
+      const c = JSON.parse(text.replace(/```json|```/g,'').trim());
+      if(c && c.player && lastBub.el._item) {
+        const item = lastBub.el._item;
+        if(c.player)       { item.player = c.player; item.name = c.player; }
+        if(c.set_name)       item.set_name = c.set_name;
+        if(c.parallel)       item.parallel = c.parallel;
+        if(c.card_number)    item.card_number = c.card_number;
+        if(c.serial_number)  item.serial_number = c.serial_number;
+        if(c.print_run)      item.print_run = c.print_run;
+        if(c.year)           item.year = c.year;
+        if(c.manufacturer)   item.manufacturer = c.manufacturer;
+        if(c.is_rookie)      item.is_rookie = true;
+        if(c.auto_authenticated) item.auto_authenticated = true;
+        if(c.parallel_code)  item.parallel_code = c.parallel_code;
+        if(c.grading_company){ item.grading_company = c.grading_company; }
+        if(c.grade)          item.grade = c.grade;
+        if(c.cert_number)    item.cert_number = c.cert_number;
         lastBub.el._backB64 = img;
 
-        // Re-identify with combined front+back data for accurate parallel/set matching
-        hs.textContent = 'COMBINING SCANS...';
-        try {
-          const combinedPrompt = `You identified this sports card from the front:
-Name: ${item.player || item.name}
-Year: ${item.year || 'unknown'}
-Set: ${item.set_name || 'unknown'}
-Parallel: ${item.parallel || 'Base'}
-Manufacturer: ${item.manufacturer || 'unknown'}
-
-From the back scan we now know:
-Card Number: ${back.card_number || 'unknown'}
-Serial Number: ${back.serial_number || 'none'}
-Parallel Code: ${back.parallel_code || 'none'}
-Print Run: ${back.print_run || 'none'}
-Copyright: ${back.copyright || ''}
-
-Using ALL of this combined information, return ONLY a JSON object with the most accurate identification:
-{"name":"exact player name","year":"year","set_name":"exact set name","parallel":"exact parallel/variant name","card_number":"number","serial_number":"/X or null","manufacturer":"brand","sport":"sport","is_rookie":true/false,"is_key":false,"key_notes":"why notable or null","market_nm":0.00}
-
-Be very specific about the parallel using the card number and any codes found.`;
-
-          const reText = await callClaude([{role:'user',content:[{type:'text',text:combinedPrompt}]}], 400);
-          const refined = JSON.parse(reText.replace(/```json|```/g,'').trim());
-          if(refined && refined.name) {
-            // Merge refined data back into item
-            if(refined.set_name)   item.set_name   = refined.set_name;
-            if(refined.parallel)   item.parallel   = refined.parallel;
-            if(refined.is_rookie)  item.is_rookie  = refined.is_rookie;
-            if(refined.key_notes)  item.key_notes  = refined.key_notes;
-            if(refined.market_nm && refined.market_nm > 0) {
-              // Update the price display on the bubble
-              const bpEl = lastBub.el.querySelector('.bprice');
-              if(bpEl) bpEl.textContent = '$' + Number(refined.market_nm).toFixed(2);
-              const brEl = lastBub.el.querySelector('[id^="br"]');
-              if(brEl) brEl.textContent = 'Combined scan estimate';
-            }
-          }
-        } catch(re){ console.warn('Re-identification failed (non-critical):', re.message); }
-
-        // Update the subline display
+        // Update bubble display
+        const bname = lastBub.el.querySelector('.bname');
+        if(bname) bname.textContent = c.player || c.name || item.name;
         const bsub = lastBub.el.querySelector('.bsub');
         if(bsub) {
-          const parts = bsub.textContent.split(' · ').filter(p => !p.startsWith('Card #') && !p.startsWith('/'));
-          parts.push('Card #' + back.card_number);
-          if(back.serial_number) parts.push(back.serial_number);
-          if(back.parallel_code) parts.push(back.parallel_code);
-          bsub.textContent = parts.join(' · ');
+          const pts = [];
+          if(c.team)  pts.push(c.team);
+          if(c.year)  pts.push(c.year);
+          if(c.set_name) pts.push(c.set_name);
+          if(c.parallel && c.parallel !== 'Base') pts.push(c.parallel);
+          if(c.card_number) pts.push('Card #'+c.card_number);
+          if(c.serial_number) pts.push(c.serial_number);
+          bsub.textContent = pts.join(' · ');
         }
+        const confEl = lastBub.el.querySelector('.conf');
+        if(confEl) {
+          confEl.textContent = (c.confidence||'high') + ' — ' + (c.confidence_reason||'').substring(0,40) + ' [2-SCAN ✓]';
+          confEl.className = 'conf ' + (c.confidence==='high'?'c-hi':c.confidence==='low'?'c-lo':'c-md');
+        }
+        hs.textContent = '✓ TWO-SCAN';
+        toast('✓ Both sides combined: '+c.parallel+' · #'+(c.card_number||'?'));
+        return;
+      }
+    } catch(e) { console.warn('Two-scan failed, using single back:', e.message); }
+  }
+
+  // ─── SINGLE BACK SCAN (fallback / non-sports) ─────────────────
+  hs.textContent = 'READING BACK...';
+  const text = await callClaude([{role:'user',content:[
+    {type:'image', source:{type:'base64', media_type:'image/jpeg', data:img}},
+    {type:'text', text:'Card back. Read every number, word and marking carefully. Return ONLY JSON: {player,card_number,set_name,year,serial_number,print_run,parallel_code,auto_authenticated,rookie_stamp,team,stats,bio,copyright,notes}' }
+  ]}], 600);
+
+  const back = JSON.parse(text.replace(/```json|```/g,'').trim());
+  if(bubs.length > 0) {
+    const b = bubs[bubs.length-1];
+    addBackInfo(b.id, back);
+    if(b.el?._item) {
+      const item = b.el._item;
+      if(back.card_number)   item.card_number   = back.card_number;
+      if(back.serial_number) item.serial_number = back.serial_number;
+      if(back.parallel_code) item.parallel_code = back.parallel_code;
+      if(back.rookie_stamp)  item.is_rookie = true;
+      b.el._backB64 = img;
+      const bsub = b.el.querySelector('.bsub');
+      if(bsub && back.card_number) {
+        const parts = bsub.textContent.split(' · ').filter(p => !p.startsWith('Card #'));
+        parts.push('Card #'+back.card_number);
+        if(back.serial_number) parts.push(back.serial_number);
+        bsub.textContent = parts.join(' · ');
       }
     }
-    hs.textContent = 'BACK MERGED ✓';
-    toast('✓ Both sides combined — card identified accurately');
+    hs.textContent = 'BACK SCANNED';
+    toast('Back info added');
   } else {
     showBackStandalone(back);
     hs.textContent = 'BACK READ';
@@ -1392,10 +1408,24 @@ function addBubble(item,stock,imgUrl,apiPrintings,bestMatchIdx){
   if(isSlab){
     const qSlab=(item.player||item.name)+' '+(item.grading_company||'')+' '+(item.grade||'');
     const qSlabBase=(item.player||item.name)||'';
+    // Verify button always shown — uses cert number if available, else search
+    const psaVerify = ct==='psa'
+      ? (item.cert_number
+          ? `<a class="bact a-psa" href="https://www.psacard.com/cert/${item.cert_number}" target="_blank">🔍 PSA Verify ↗</a>`
+          : `<a class="bact a-psa" href="https://www.psacard.com/cert/lookup" target="_blank">🔍 PSA Lookup ↗</a>`)
+      : '';
+    const bgsVerify = ct==='bgs'
+      ? (item.cert_number ? `<a class="bact a-bgs" href="https://www.beckett.com/grading/cert?cert=${item.cert_number}" target="_blank">🔍 BGS Verify ↗</a>` : '')
+      : '';
+    const cgcVerify = ct==='cgc'
+      ? (item.cert_number ? `<a class="bact" style="background:rgba(244,162,97,.08);color:#f4a261;border:1px solid rgba(244,162,97,.3)" href="https://www.cgccomics.com/certification/item-lookup/?certNumber=${item.cert_number}" target="_blank">🔍 CGC Verify ↗</a>` : '')
+      : '';
+    const sgcVerify = ct==='sgc'
+      ? (item.cert_number ? `<a class="bact" style="background:rgba(255,149,0,.08);color:#ff9500;border:1px solid rgba(255,149,0,.3)" href="https://www.sgccard.com/cert-lookup/?cert=${item.cert_number}" target="_blank">🔍 SGC Verify ↗</a>` : '')
+      : '';
     actLinks=`<a class="bact a-ebay" href="${AFF.ebaySearch(qSlab)}" target="_blank">eBay Sold ↗</a>
       <a class="bact a-ebay" style="background:rgba(72,202,228,.08);color:var(--blue);border-color:rgba(72,202,228,.2)" href="${AFF.ebaySearch(qSlabBase)}" target="_blank">All Sales ↗</a>
-      ${item.cert_number&&ct==='psa'?`<a class="bact a-psa" href="https://www.psacard.com/cert/${item.cert_number}" target="_blank">PSA Verify ↗</a>`:''}
-      ${item.cert_number&&ct==='bgs'?`<a class="bact a-bgs" href="https://www.beckett.com/grading/cert?cert=${item.cert_number}" target="_blank">BGS Verify ↗</a>`:''}`;
+      ${psaVerify}${bgsVerify}${cgcVerify}${sgcVerify}`;
   }
   else if(ct==='sports'){
     const qFull=(item.player||item.name)+' '+(item.year||'')+' '+((item.parallel&&item.parallel!=='Base')?item.parallel:'');
@@ -1468,35 +1498,45 @@ function addBubble(item,stock,imgUrl,apiPrintings,bestMatchIdx){
   document.body.appendChild(el);
   bubs.push({id,el,ax:cx,ay:cy,ct});
 
-  // Async: check Webflow for live stock count and update badge
+  // Async: check Webflow for live stock — tight name+set+year match only
   (async () => {
     try {
-      const liveStock = await findExistingProduct({
-        name: item.player || item.name,
-        set: item.set_name || '',
-        year: item.year || '',
-        variant: item.parallel || 'Base',
+      const cardName = (item.player || item.name || '').trim();
+      const cardSet  = (item.set_name || '').trim();
+      const cardYear = String(item.year || '').trim();
+      if(!cardName || cardName.length < 3) return;
+
+      const res = await wfFetch('/collections/65eb45a28ff6bf3fe4f17b14/items?limit=100');
+      if(!res.ok) return;
+      const data = await res.json();
+      const items = data.items || [];
+      const nameNorm = cardName.toLowerCase().replace(/[^a-z0-9]/g,'');
+
+      const matches = items.filter(i => {
+        const ifd = i.fieldData || {};
+        if(ifd['sold-out'] === true || ifd.status === 'e6b42f14fcb99aa2168a5f5672226f68') return false;
+        const iName = (ifd.name || '').toLowerCase().replace(/[^a-z0-9]/g,'');
+        const iSet  = (ifd['set-name'] || '').toLowerCase().replace(/[^a-z0-9]/g,'');
+        const iYear = String(ifd.year || '');
+        const setNorm = cardSet.toLowerCase().replace(/[^a-z0-9]/g,'');
+        // Require EXACT name match to prevent false positives
+        const nameMatch = iName === nameNorm;
+        const setMatch  = setNorm.length > 3 && (iSet === setNorm || iSet.includes(setNorm) || setNorm.includes(iSet));
+        const yearMatch = cardYear.length === 4 && iYear === cardYear;
+        return nameMatch && (setMatch || yearMatch);
       });
-      if(liveStock) {
-        const liveQty = liveStock.qty || 1;
+
+      if(matches.length > 0) {
+        const totalQty = matches.reduce((a,i) => a + (parseInt(i.fieldData?.['inventory-count'])||1), 0);
         const badge = el.querySelector('.stock-num');
         const label = el.querySelector('.stock-label');
         if(badge) {
-          badge.textContent = liveQty;
-          badge.className = 'stock-num ' + (liveQty > 2 ? 'sn-in' : liveQty > 0 ? 'sn-low' : 'sn-no');
+          badge.textContent = totalQty;
+          badge.className = 'stock-num ' + (totalQty > 2 ? 'sn-in' : totalQty > 0 ? 'sn-low' : 'sn-no');
         }
-        if(label) label.textContent = liveQty + ' IN STOCK';
-        // Also show sell button if in stock and not already shown
-        const acts = document.getElementById('acts'+id);
-        if(acts && liveQty > 0 && !acts.querySelector('.a-sell')) {
-          const sellBtn = document.createElement('button');
-          sellBtn.className = 'bact a-sell';
-          sellBtn.textContent = '✓ Mark as Sold';
-          sellBtn.onclick = () => showSellForm(id);
-          acts.appendChild(sellBtn);
-        }
+        if(label) label.textContent = totalQty + ' IN STOCK';
       }
-    } catch(e) { /* non-critical */ }
+    } catch(e) { console.warn('Stock check error:', e.message); }
   })();
 }
 
@@ -1860,7 +1900,15 @@ window.resetActs=function(id){
     const tcgHref=AFF.tcg(tcgDirect)||AFF.tcgSearch(qt);
     links=`<a class="bact a-tcg" href="${tcgHref}" target="_blank">${tcgDirect?'TCGPlayer ↗':'TCGPlayer Search ↗'}</a>
       <a class="bact a-ebay" href="${AFF.ebaySearch(qe)}" target="_blank">eBay Sold ↗</a>`;}
-  document.getElementById('acts'+id).innerHTML=links+`<button class="bact a-add" onclick="showAddForm('${id}')">+ Add to Inventory</button>${si>0?`<button class="bact a-sell" onclick="showSellForm('${id}')">✓ Mark as Sold</button>`:''}<button class="bact" style="background:rgba(255,209,102,.08);border:1px solid rgba(255,209,102,.2);color:#ffd166" onclick="showEbayForm('${id}')">📦 List on eBay</button>`;
+  // Always include verify button for slabs in resetActs
+  let verifyBtn = '';
+  if(['psa','bgs','cgc','sgc'].includes(ct)) {
+    const certNum = el?._item?.cert_number || '';
+    if(ct==='psa') verifyBtn = `<a class="bact a-psa" href="https://www.psacard.com/cert/${certNum||'lookup'}" target="_blank">🔍 PSA Verify ↗</a>`;
+    else if(ct==='bgs') verifyBtn = `<a class="bact a-bgs" href="https://www.beckett.com/grading/cert${certNum?'?cert='+certNum:''}" target="_blank">🔍 BGS Verify ↗</a>`;
+    else if(ct==='cgc') verifyBtn = `<a class="bact" style="background:rgba(244,162,97,.08);border:1px solid rgba(244,162,97,.2);color:#f4a261" href="https://www.cgccards.com/certlookup/${certNum}" target="_blank">🔍 CGC Verify ↗</a>`;
+  }
+  document.getElementById('acts'+id).innerHTML=links+verifyBtn+`<button class="bact a-add" onclick="showAddForm('${id}')">+ Add to Inventory</button>${si>0?`<button class="bact a-sell" onclick="showSellForm('${id}')">✓ Mark as Sold</button>`:''}<button class="bact" style="background:rgba(255,209,102,.08);border:1px solid rgba(255,209,102,.2);color:#ffd166" onclick="showEbayForm('${id}')">📦 List on eBay</button>`;
 };
 
 function showBackStandalone(back){
@@ -2002,193 +2050,307 @@ window.showEbayForm = function(id) {
   const item = el._item;
   const pi   = parseInt(document.getElementById('ps'+id)?.value) || 0;
   const cond = document.getElementById('cs'+id)?.value || 'NM';
-  const print = el._prints[pi] || el._prints[0] || {};
+  const print = el._prints?.[pi] || el._prints?.[0] || {};
+  const ct = el._ct;
+  const isSlab = ['psa','bgs','cgc','sgc'].includes(ct);
 
-  // Map condition to eBay condition IDs
-  const ebayCondMap = {
-    'NM': {id:'3000', label:'Very Good'},
-    'LP': {id:'3000', label:'Very Good'},
-    'MP': {id:'5000', label:'Good'},
-    'HP': {id:'6000', label:'Acceptable'},
-    'DMG':{id:'7000', label:'For parts or not working'},
+  // eBay condition IDs — matches eBay app condition dropdown
+  const condMap = {
+    'NM':  {id:'3000', label:'Very Good'},
+    'LP':  {id:'3000', label:'Very Good'},
+    'MP':  {id:'4000', label:'Good'},
+    'HP':  {id:'5000', label:'Good (Acceptable)'},
+    'DMG': {id:'6000', label:'Acceptable'},
   };
-  const ebayCond = ebayCondMap[cond] || ebayCondMap['NM'];
+  const ebCond = isSlab ? {id:'2750', label:'Like New'} : (condMap[cond] || condMap['NM']);
 
-  // Build eBay title (max 80 chars)
-  const titleParts = [
-    item.player || item.name,
-    item.year,
-    print.set || item.set_name,
-    (print.variant && print.variant !== 'Base') ? print.variant : null,
-    item.serial_number ? item.serial_number : null,
-    item.grading_company ? item.grading_company + ' ' + item.grade : null,
-  ].filter(Boolean);
-  let title = titleParts.join(' ').substring(0, 80);
+  // eBay category IDs
+  const catMap = {
+    sports: '261328',  // Sports Trading Cards
+    tcg:    '183454',  // CCG Individual Cards
+    comic:  '259104',  // Comics
+    psa:    '261328', bgs: '261328', cgc: '261328', sgc: '261328',
+  };
+  const catId = catMap[ct] || '261328';
 
-  // Suggested price: market value × 1.1 (slight markup) or just market
-  const suggestedPrice = (Number(print.mid || 0) * 1.1).toFixed(2);
-  const minPrice = Number(print.low || print.mid || 0).toFixed(2);
+  // Build title — mirrors eBay app auto-title for cards
+  const tp = [];
+  if(item.year)    tp.push(item.year);
+  if(item.manufacturer) tp.push(item.manufacturer);
+  if(item.player||item.name) tp.push(item.player||item.name);
+  if(print.set||item.set_name) tp.push(print.set||item.set_name);
+  if(print.variant && print.variant !== 'Base') tp.push(print.variant);
+  if(item.serial_number) tp.push(item.serial_number);
+  if(isSlab && item.grading_company) tp.push(item.grading_company + (item.grade?' '+item.grade:''));
+  if(item.card_number) tp.push('#'+item.card_number);
+  if(item.is_rookie) tp.push('RC');
+  let title = tp.filter(Boolean).join(' ').substring(0, 80);
 
-  // Build description
+  // Price suggestion
+  const mktPrice = Number(print.mid || 0);
+  const sugPrice  = mktPrice > 0 ? (mktPrice * 1.1).toFixed(2) : '';
+  const startPrice= mktPrice > 0 ? (mktPrice * 0.8).toFixed(2) : '';
+
+  // Description — mirrors eBay app description template
   const descLines = [
-    `${item.player || item.name}`,
-    print.set || item.set_name ? `Set: ${print.set || item.set_name}` : '',
-    item.year ? `Year: ${item.year}` : '',
-    (print.variant && print.variant !== 'Base') ? `Variant: ${print.variant}` : '',
-    item.card_number ? `Card #${item.card_number}` : '',
+    `${item.player||item.name}`,
+    `Year: ${item.year||'—'}  |  Set: ${print.set||item.set_name||'—'}`,
+    (print.variant && print.variant !== 'Base') ? `Parallel: ${print.variant}` : '',
+    item.card_number ? `Card #: ${item.card_number}` : '',
     item.serial_number ? `Serial: ${item.serial_number}` : '',
-    item.grading_company ? `Grade: ${item.grading_company} ${item.grade}` : `Condition: ${cond} (Near Mint)`,
-    item.is_rookie ? 'Rookie Card ⭐' : '',
+    item.sport ? `Sport: ${item.sport}` : '',
+    item.team ? `Team: ${item.team}` : '',
+    isSlab ? `Grade: ${item.grading_company||''} ${item.grade||''}  ${item.cert_number?'Cert #'+item.cert_number:''}` : `Condition: ${cond} (${ebCond.label})`,
+    item.is_rookie ? '⭐ Rookie Card' : '',
     '',
-    'Ships in toploader with team bag, bubble mailer.',
-    'Fast shipping from Walk-Off Sports Cards & Comics.',
-  ].filter(Boolean).join('\n');
+    'Cards ship in penny sleeve + toploader, inside bubble mailer.',
+    'Fast handling — ships within 1 business day.',
+    'Walk-Off Sports Cards & Comics — Kingston, WA.',
+  ].filter(x=>x!==null).join('\n');
 
-  // eBay category IDs for cards
-  const catId = el._ct === 'sports' ? '261328' : // Sports Trading Cards
-                el._ct === 'comic'  ? '259104' : // Comics
-                ['psa','bgs','cgc','sgc'].includes(el._ct) ? '261328' :
-                '183454'; // CCG Individual Cards (TCG)
+  const imgSrc = el._uploadedPhotoUrl || el._imgUrl || null;
 
-  const imgHtml = el._imgUrl
-    ? `<img src="${el._imgUrl}" style="width:80px;height:80px;object-fit:contain;border-radius:4px;border:1px solid rgba(255,255,255,.1)">`
-    : '<div style="width:80px;height:80px;background:rgba(255,255,255,.05);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:9px;color:#666">No image</div>';
-
-  // Inject modal
   document.getElementById('ebay-modal')?.remove();
   const modal = document.createElement('div');
   modal.id = 'ebay-modal';
-  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.95);z-index:9999;overflow-y:auto;padding:16px;display:flex;align-items:flex-start;justify-content:center';
+  modal.setAttribute('data-bubble-id', id);
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.96);z-index:9999;overflow-y:auto;padding:12px;display:flex;align-items:flex-start;justify-content:center;padding-top:16px';
+
   modal.innerHTML = `
-    <div style="width:100%;max-width:460px;background:#111;border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:20px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-        <div style="font-family:'Orbitron',monospace;font-size:13px;color:#e94560;letter-spacing:2px">📦 LIST ON EBAY</div>
-        <button onclick="document.getElementById('ebay-modal').remove()" style="background:none;border:none;color:#888;font-size:20px;cursor:pointer">×</button>
+    <div style="width:100%;max-width:480px;background:#111;border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:18px;margin-bottom:40px">
+      <!-- Header -->
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+        <div style="font-family:'Orbitron',monospace;font-size:12px;color:#e94560;letter-spacing:2px">📦 LIST ON EBAY</div>
+        <button onclick="document.getElementById('ebay-modal').remove()" style="background:none;border:none;color:#666;font-size:22px;cursor:pointer;line-height:1">×</button>
       </div>
 
-      <div style="display:flex;gap:12px;margin-bottom:16px;align-items:flex-start">
-        ${imgHtml}
-        <div style="flex:1">
-          <div style="font-family:monospace;font-size:10px;color:#888;margin-bottom:4px">TITLE (max 80 chars)</div>
-          <input id="eb-title" style="width:100%;background:#1a1a1a;border:1px solid rgba(255,255,255,.15);color:#fff;padding:8px;border-radius:6px;font-size:11px;box-sizing:border-box" value="${title}" maxlength="80">
-          <div id="eb-title-count" style="font-size:9px;color:#555;text-align:right;margin-top:2px">${title.length}/80</div>
+      <!-- Photo preview -->
+      <div style="display:flex;gap:10px;margin-bottom:14px;align-items:flex-start">
+        <div id="eb-photo-wrap" style="width:72px;height:72px;flex-shrink:0;background:#1a1a1a;border-radius:6px;overflow:hidden;border:1px solid rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;cursor:pointer" onclick="ebayRetakePhoto('${id}')">
+          ${imgSrc ? `<img src="${imgSrc}" style="width:100%;height:100%;object-fit:cover">` : `<span style="font-size:20px">📸</span>`}
+        </div>
+        <div style="flex:1;min-width:0">
+          <div style="font-family:monospace;font-size:9px;color:#666;margin-bottom:3px">TITLE (80 char max)</div>
+          <input id="eb-title" maxlength="80" style="width:100%;background:#1a1a1a;border:1px solid rgba(255,255,255,.12);color:#fff;padding:7px 10px;border-radius:6px;font-size:11px;box-sizing:border-box" value="${title}">
+          <div id="eb-title-ct" style="font-size:9px;color:#444;text-align:right;margin-top:2px">${title.length}/80</div>
         </div>
       </div>
 
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+      <!-- Format + Price row -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
         <div>
-          <div style="font-family:monospace;font-size:9px;color:#888;margin-bottom:4px">FORMAT</div>
-          <select id="eb-format" style="width:100%;background:#1a1a1a;border:1px solid rgba(255,255,255,.15);color:#fff;padding:7px;border-radius:6px;font-size:11px">
+          <div style="font-family:monospace;font-size:9px;color:#666;margin-bottom:3px">FORMAT</div>
+          <select id="eb-format" onchange="ebayToggleAuction()" style="width:100%;background:#1a1a1a;border:1px solid rgba(255,255,255,.12);color:#fff;padding:7px;border-radius:6px;font-size:11px">
             <option value="FIXED_PRICE">Buy It Now</option>
             <option value="AUCTION">Auction</option>
           </select>
         </div>
         <div>
-          <div style="font-family:monospace;font-size:9px;color:#888;margin-bottom:4px">CONDITION</div>
-          <select id="eb-cond" style="width:100%;background:#1a1a1a;border:1px solid rgba(255,255,255,.15);color:#fff;padding:7px;border-radius:6px;font-size:11px">
-            <option value="3000" ${ebayCond.id==='3000'?'selected':''}>Very Good</option>
-            <option value="4000">Good</option>
-            <option value="5000">Good (Acceptable)</option>
-            <option value="2750">Like New</option>
-            <option value="1000">Brand New</option>
-          </select>
-        </div>
-        <div>
-          <div style="font-family:monospace;font-size:9px;color:#888;margin-bottom:4px">BIN PRICE ($)</div>
-          <input id="eb-price" type="number" step="0.01" min="0.99" value="${suggestedPrice}" style="width:100%;background:#1a1a1a;border:1px solid rgba(255,255,255,.15);color:#e94560;padding:7px;border-radius:6px;font-size:13px;font-weight:700;box-sizing:border-box">
-        </div>
-        <div>
-          <div style="font-family:monospace;font-size:9px;color:#888;margin-bottom:4px">SHIPPING ($)</div>
-          <input id="eb-ship" type="number" step="0.01" value="1.00" style="width:100%;background:#1a1a1a;border:1px solid rgba(255,255,255,.15);color:#fff;padding:7px;border-radius:6px;font-size:11px;box-sizing:border-box">
-        </div>
-        <div>
-          <div style="font-family:monospace;font-size:9px;color:#888;margin-bottom:4px">DURATION</div>
-          <select id="eb-duration" style="width:100%;background:#1a1a1a;border:1px solid rgba(255,255,255,.15);color:#fff;padding:7px;border-radius:6px;font-size:11px">
-            <option value="GTC">Good Till Cancelled</option>
+          <div style="font-family:monospace;font-size:9px;color:#666;margin-bottom:3px">DURATION</div>
+          <select id="eb-duration" style="width:100%;background:#1a1a1a;border:1px solid rgba(255,255,255,.12);color:#fff;padding:7px;border-radius:6px;font-size:11px">
+            <option value="GTC">Good 'Till Cancelled</option>
             <option value="DAYS_7">7 Days</option>
             <option value="DAYS_3">3 Days</option>
+            <option value="DAYS_5">5 Days</option>
+            <option value="DAYS_10">10 Days</option>
+          </select>
+        </div>
+        <div id="eb-bin-wrap">
+          <div style="font-family:monospace;font-size:9px;color:#666;margin-bottom:3px">BUY IT NOW ($)</div>
+          <input id="eb-price" type="number" step="0.01" min="0.99" value="${sugPrice}" style="width:100%;background:#1a1a1a;border:1px solid rgba(255,255,255,.12);color:#e94560;padding:7px;border-radius:6px;font-size:14px;font-weight:700;box-sizing:border-box">
+        </div>
+        <div id="eb-start-wrap" style="display:none">
+          <div style="font-family:monospace;font-size:9px;color:#666;margin-bottom:3px">START PRICE ($)</div>
+          <input id="eb-start-price" type="number" step="0.01" min="0.99" value="${startPrice}" style="width:100%;background:#1a1a1a;border:1px solid rgba(255,255,255,.12);color:#ffd166;padding:7px;border-radius:6px;font-size:14px;font-weight:700;box-sizing:border-box">
+        </div>
+        <div>
+          <div style="font-family:monospace;font-size:9px;color:#666;margin-bottom:3px">QTY</div>
+          <input id="eb-qty" type="number" value="1" min="1" style="width:100%;background:#1a1a1a;border:1px solid rgba(255,255,255,.12);color:#fff;padding:7px;border-radius:6px;font-size:11px;box-sizing:border-box">
+        </div>
+      </div>
+
+      <!-- Condition row -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+        <div>
+          <div style="font-family:monospace;font-size:9px;color:#666;margin-bottom:3px">CONDITION</div>
+          <select id="eb-cond" style="width:100%;background:#1a1a1a;border:1px solid rgba(255,255,255,.12);color:#fff;padding:7px;border-radius:6px;font-size:11px">
+            ${isSlab ? `
+              <option value="2750" selected>Like New (Graded)</option>
+              <option value="3000">Very Good</option>` : `
+              <option value="3000" ${ebCond.id==='3000'?'selected':''}>Very Good (NM/LP)</option>
+              <option value="4000" ${ebCond.id==='4000'?'selected':''}>Good (MP)</option>
+              <option value="5000" ${ebCond.id==='5000'?'selected':''}>Good — Acceptable (HP)</option>
+              <option value="6000" ${ebCond.id==='6000'?'selected':''}>Acceptable (Damaged)</option>`}
           </select>
         </div>
         <div>
-          <div style="font-family:monospace;font-size:9px;color:#888;margin-bottom:4px">QTY</div>
-          <input id="eb-qty" type="number" value="1" min="1" style="width:100%;background:#1a1a1a;border:1px solid rgba(255,255,255,.15);color:#fff;padding:7px;border-radius:6px;font-size:11px;box-sizing:border-box">
+          <div style="font-family:monospace;font-size:9px;color:#666;margin-bottom:3px">CATEGORY</div>
+          <select id="eb-cat" style="width:100%;background:#1a1a1a;border:1px solid rgba(255,255,255,.12);color:#fff;padding:7px;border-radius:6px;font-size:11px">
+            <option value="261328" ${catId==='261328'?'selected':''}>Sports Trading Cards</option>
+            <option value="183454" ${catId==='183454'?'selected':''}>CCG / TCG Cards</option>
+            <option value="259104" ${catId==='259104'?'selected':''}>Comics</option>
+            <option value="64349">Sports Mem & Cards</option>
+            <option value="214">Collectibles</option>
+          </select>
         </div>
       </div>
 
+      <!-- Condition description (shown for graded/special) -->
+      <div style="margin-bottom:10px">
+        <div style="font-family:monospace;font-size:9px;color:#666;margin-bottom:3px">CONDITION DESCRIPTION (optional)</div>
+        <input id="eb-cond-desc" placeholder="e.g. PSA 10 Gem Mint. No scratches on case." style="width:100%;background:#1a1a1a;border:1px solid rgba(255,255,255,.12);color:#ccc;padding:7px 10px;border-radius:6px;font-size:10px;box-sizing:border-box" value="${isSlab ? (item.grading_company||'') + ' ' + (item.grade||'') + (item.cert_number?' Cert #'+item.cert_number:'') : ''}">
+      </div>
+
+      <!-- Card aspects — collapsible -->
+      <details style="margin-bottom:10px">
+        <summary style="font-family:monospace;font-size:9px;color:#888;cursor:pointer;margin-bottom:6px">ITEM SPECIFICS ▸</summary>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px">
+          <div><div style="font-family:monospace;font-size:8px;color:#555;margin-bottom:2px">PLAYER/ATHLETE</div>
+            <input id="eb-player" value="${item.player||item.name||''}" style="width:100%;background:#1a1a1a;border:1px solid rgba(255,255,255,.08);color:#ccc;padding:5px 8px;border-radius:4px;font-size:10px;box-sizing:border-box"></div>
+          <div><div style="font-family:monospace;font-size:8px;color:#555;margin-bottom:2px">YEAR</div>
+            <input id="eb-year" value="${item.year||''}" style="width:100%;background:#1a1a1a;border:1px solid rgba(255,255,255,.08);color:#ccc;padding:5px 8px;border-radius:4px;font-size:10px;box-sizing:border-box"></div>
+          <div><div style="font-family:monospace;font-size:8px;color:#555;margin-bottom:2px">MANUFACTURER</div>
+            <input id="eb-mfr" value="${item.manufacturer||''}" style="width:100%;background:#1a1a1a;border:1px solid rgba(255,255,255,.08);color:#ccc;padding:5px 8px;border-radius:4px;font-size:10px;box-sizing:border-box"></div>
+          <div><div style="font-family:monospace;font-size:8px;color:#555;margin-bottom:2px">SET</div>
+            <input id="eb-set" value="${print.set||item.set_name||''}" style="width:100%;background:#1a1a1a;border:1px solid rgba(255,255,255,.08);color:#ccc;padding:5px 8px;border-radius:4px;font-size:10px;box-sizing:border-box"></div>
+          <div><div style="font-family:monospace;font-size:8px;color:#555;margin-bottom:2px">PARALLEL/VARIETY</div>
+            <input id="eb-parallel" value="${print.variant||item.parallel||'Base'}" style="width:100%;background:#1a1a1a;border:1px solid rgba(255,255,255,.08);color:#ccc;padding:5px 8px;border-radius:4px;font-size:10px;box-sizing:border-box"></div>
+          <div><div style="font-family:monospace;font-size:8px;color:#555;margin-bottom:2px">CARD NUMBER</div>
+            <input id="eb-cardnum" value="${item.card_number||''}" style="width:100%;background:#1a1a1a;border:1px solid rgba(255,255,255,.08);color:#ccc;padding:5px 8px;border-radius:4px;font-size:10px;box-sizing:border-box"></div>
+          <div><div style="font-family:monospace;font-size:8px;color:#555;margin-bottom:2px">TEAM</div>
+            <input id="eb-team" value="${item.team||''}" style="width:100%;background:#1a1a1a;border:1px solid rgba(255,255,255,.08);color:#ccc;padding:5px 8px;border-radius:4px;font-size:10px;box-sizing:border-box"></div>
+          <div><div style="font-family:monospace;font-size:8px;color:#555;margin-bottom:2px">SPORT</div>
+            <select id="eb-sport" style="width:100%;background:#1a1a1a;border:1px solid rgba(255,255,255,.08);color:#ccc;padding:5px 8px;border-radius:4px;font-size:10px">
+              <option value="">—</option>
+              ${['Baseball','Basketball','Football','Hockey','Soccer','Golf','Tennis','MMA','Wrestling','Other'].map(s=>`<option value="${s}" ${item.sport===s?'selected':''}>${s}</option>`).join('')}
+            </select></div>
+          ${isSlab ? `
+          <div><div style="font-family:monospace;font-size:8px;color:#555;margin-bottom:2px">GRADER</div>
+            <select id="eb-grader" style="width:100%;background:#1a1a1a;border:1px solid rgba(255,255,255,.08);color:#ccc;padding:5px 8px;border-radius:4px;font-size:10px">
+              ${['PSA','BGS','CGC','SGC','CSG','HGA','MNT'].map(g=>`<option value="${g}" ${(item.grading_company||ct.toUpperCase())===g?'selected':''}>${g}</option>`).join('')}
+            </select></div>
+          <div><div style="font-family:monospace;font-size:8px;color:#555;margin-bottom:2px">GRADE</div>
+            <select id="eb-grade" style="width:100%;background:#1a1a1a;border:1px solid rgba(255,255,255,.08);color:#ccc;padding:5px 8px;border-radius:4px;font-size:10px">
+              ${['10','9.5','9','8.5','8','7.5','7','6.5','6','5','4','3','2','1'].map(g=>`<option value="${g}" ${String(item.grade)===g?'selected':''}>${g}</option>`).join('')}
+            </select></div>` : ''}
+          <div style="display:flex;align-items:center;gap:6px;padding-top:14px">
+            <input type="checkbox" id="eb-rookie" ${item.is_rookie?'checked':''} style="width:14px;height:14px">
+            <label for="eb-rookie" style="font-family:monospace;font-size:9px;color:#ccc;cursor:pointer">Rookie Card</label>
+          </div>
+        </div>
+      </details>
+
+      <!-- Description -->
       <div style="margin-bottom:12px">
-        <div style="font-family:monospace;font-size:9px;color:#888;margin-bottom:4px">DESCRIPTION</div>
-        <textarea id="eb-desc" rows="5" style="width:100%;background:#1a1a1a;border:1px solid rgba(255,255,255,.15);color:#ccc;padding:8px;border-radius:6px;font-size:10px;line-height:1.5;resize:vertical;box-sizing:border-box">${descLines}</textarea>
+        <div style="font-family:monospace;font-size:9px;color:#666;margin-bottom:3px">DESCRIPTION</div>
+        <textarea id="eb-desc" rows="5" style="width:100%;background:#1a1a1a;border:1px solid rgba(255,255,255,.12);color:#aaa;padding:8px;border-radius:6px;font-size:10px;line-height:1.5;resize:vertical;box-sizing:border-box">${descLines}</textarea>
       </div>
 
-      <div id="eb-status" style="display:none;margin-bottom:12px;padding:10px;border-radius:6px;font-family:monospace;font-size:10px;text-align:center"></div>
-
+      <!-- Status + Submit -->
+      <div id="eb-status" style="display:none;margin-bottom:10px;padding:10px;border-radius:6px;font-family:monospace;font-size:10px;text-align:center;line-height:1.5"></div>
       <div style="display:flex;gap:8px">
-        <button onclick="submitEbayListing('${id}')" style="flex:1;background:#e94560;color:#fff;border:none;padding:12px;border-radius:8px;font-family:'Orbitron',monospace;font-size:11px;font-weight:700;cursor:pointer;letter-spacing:1px">📦 LIST ON EBAY</button>
-        <button onclick="document.getElementById('ebay-modal').remove()" style="background:rgba(255,255,255,.05);color:#888;border:1px solid rgba(255,255,255,.1);padding:12px 16px;border-radius:8px;cursor:pointer;font-size:12px">Cancel</button>
+        <button onclick="submitEbayListing('${id}')" style="flex:1;background:#e94560;color:#fff;border:none;padding:13px;border-radius:8px;font-family:'Orbitron',monospace;font-size:11px;font-weight:700;cursor:pointer;letter-spacing:1px">📦 LIST ON EBAY</button>
+        <button onclick="document.getElementById('ebay-modal').remove()" style="background:rgba(255,255,255,.05);color:#666;border:1px solid rgba(255,255,255,.1);padding:13px 16px;border-radius:8px;cursor:pointer;font-size:13px">✕</button>
       </div>
-      <div style="margin-top:10px;font-family:monospace;font-size:8px;color:#444;text-align:center">
-        eBay category: ${catId} · Worker needs EBAY_USER_TOKEN secret
-      </div>
+      <div style="margin-top:8px;font-family:monospace;font-size:8px;color:#333;text-align:center">Market: $${mktPrice.toFixed(2)} · Category ID: ${catId}</div>
     </div>`;
 
   document.body.appendChild(modal);
 
-  // Title char counter
-  document.getElementById('eb-title').addEventListener('input', function() {
-    document.getElementById('eb-title-count').textContent = this.value.length + '/80';
+  document.getElementById('eb-title').addEventListener('input', function(){
+    document.getElementById('eb-title-ct').textContent = this.value.length+'/80';
   });
-
-  // Store catId on modal for submit
-  modal._catId = catId;
-  modal._imgUrl = el._imgUrl || null;
-  modal._id = id; // store bubble ID for image gathering
 };
+
+window.ebayToggleAuction = function() {
+  const fmt = document.getElementById('eb-format').value;
+  document.getElementById('eb-bin-wrap').style.display   = fmt === 'FIXED_PRICE' ? '' : 'none';
+  document.getElementById('eb-start-wrap').style.display = fmt === 'AUCTION'     ? '' : 'none';
+};
+
+window.ebayRetakePhoto = function(id) {
+  const snap = document.createElement('canvas');
+  const vw = video.videoWidth||1280, vh = video.videoHeight||720;
+  const scale = Math.min(1, 1200/vw);
+  snap.width = Math.round(vw*scale); snap.height = Math.round(vh*scale);
+  snap.getContext('2d').drawImage(video, 0, 0, snap.width, snap.height);
+  const dataUrl = snap.toDataURL('image/jpeg', 0.88);
+  const el = document.getElementById(id);
+  if(el) el._capturedPhoto = dataUrl.split(',')[1];
+  // Update preview in modal
+  const wrap = document.getElementById('eb-photo-wrap');
+  if(wrap) wrap.innerHTML = `<img src="${dataUrl}" style="width:100%;height:100%;object-fit:cover">`;
+  toast('Photo updated');
+};
+
 
 window.submitEbayListing = async function(id) {
   const modal = document.getElementById('ebay-modal');
   const status = document.getElementById('eb-status');
-  const title    = document.getElementById('eb-title').value.trim();
-  const price    = parseFloat(document.getElementById('eb-price').value) || 0;
-  const shipping = parseFloat(document.getElementById('eb-ship').value) || 0;
-  const format   = document.getElementById('eb-format').value;
-  const condId   = document.getElementById('eb-cond').value;
-  const duration = document.getElementById('eb-duration').value;
-  const qty      = parseInt(document.getElementById('eb-qty').value) || 1;
-  const desc     = document.getElementById('eb-desc').value;
-  const catId    = modal._catId || '261328';
-  const imgUrl   = modal._imgUrl || null;
+  const el = document.getElementById(id);
 
-  if(!title || price < 0.99) { toast('Title and price required'); return; }
+  const title   = document.getElementById('eb-title').value.trim();
+  const price   = parseFloat(document.getElementById('eb-price').value) || 0;
+  const startPr = parseFloat(document.getElementById('eb-start-price')?.value) || 0;
+  const format  = document.getElementById('eb-format').value;
+  const condId  = document.getElementById('eb-cond').value;
+  const condDesc= document.getElementById('eb-cond-desc').value.trim();
+  const duration= document.getElementById('eb-duration').value;
+  const qty     = parseInt(document.getElementById('eb-qty').value) || 1;
+  const catId   = document.getElementById('eb-cat').value;
+  const desc    = document.getElementById('eb-desc').value;
+
+  // Aspects
+  const player  = document.getElementById('eb-player')?.value.trim() || '';
+  const year    = document.getElementById('eb-year')?.value.trim() || '';
+  const mfr     = document.getElementById('eb-mfr')?.value.trim() || '';
+  const set     = document.getElementById('eb-set')?.value.trim() || '';
+  const parallel= document.getElementById('eb-parallel')?.value.trim() || '';
+  const cardNum = document.getElementById('eb-cardnum')?.value.trim() || '';
+  const team    = document.getElementById('eb-team')?.value.trim() || '';
+  const sport   = document.getElementById('eb-sport')?.value || '';
+  const grader  = document.getElementById('eb-grader')?.value || '';
+  const grade   = document.getElementById('eb-grade')?.value || '';
+  const isRookie= document.getElementById('eb-rookie')?.checked || false;
+  const serialNum = el?._item?.serial_number || '';
+
+  const finalPrice = format === 'AUCTION' ? startPr : price;
+  if(!title || finalPrice < 0.99) { toast('Title and price required'); return; }
 
   status.style.display = 'block';
   status.style.color = '#ffd166';
-  status.style.background = 'rgba(255,209,102,.08)';
+  status.style.background = 'rgba(255,209,102,.06)';
+  status.style.border = '1px solid rgba(255,209,102,.2)';
+  status.textContent = '⟳ Creating eBay listing...';
+
+  // Upload photo if we have a newly snapped one
+  let imageUrl = el?._uploadedPhotoUrl || el?._imgUrl || null;
+  if(el?._capturedPhoto && !el._uploadedPhotoUrl) {
+    status.textContent = '📸 Uploading photo...';
+    try {
+      const upRes = await fetch(WORKER_URL + '/upload-image', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({
+          base64: el._capturedPhoto,
+          fileName: 'ebay-'+Date.now().toString(36)+'.jpg',
+          mimeType: 'image/jpeg'
+        })
+      });
+      if(upRes.ok) { const ud = await upRes.json(); imageUrl = ud.url || imageUrl; el._uploadedPhotoUrl = imageUrl; }
+    } catch(e) { console.warn('Photo upload:', e.message); }
+  }
+
   status.textContent = '⟳ Listing on eBay...';
 
-  // Collect all available image URLs for this card
-  const el = document.getElementById(id);
-  const allImages = [];
-  if(imgUrl) allImages.push(imgUrl);  // TCGPlayer/API image or front photo
-  // If we have a back photo that was already uploaded, include it
-  // (It'll be the Webflow CDN URL if upload succeeded during Add to Inventory)
-  const inv = JSON.parse(localStorage.getItem('lba_inventory')||'[]');
-  const matchedItem = inv.find(i => (i.name||'').toLowerCase().includes((el?._item?.player||el?._item?.name||'').toLowerCase().split(' ')[0]));
-  // For now pass front image; more images can be added post-listing via eBay
-
-  // Use uploaded camera photo if available, else API image
-  const bestImageUrl = el?._uploadedPhotoUrl || el?._imgUrl || allImages[0] || null;
-
   const payload = {
-    title,
-    description: desc,
-    price: price.toFixed(2),
-    shippingCost: shipping.toFixed(2),
-    format,
-    conditionId: condId,
-    duration,
-    quantity: qty,
-    categoryId: catId,
-    imageUrl: bestImageUrl,
+    title, description: desc, price: finalPrice.toFixed(2),
+    format, conditionId: condId, conditionDescription: condDesc,
+    duration, quantity: qty, categoryId: catId,
+    imageUrl, imageUrls: imageUrl ? [imageUrl] : [],
+    // Card aspects
+    player, year, manufacturer: mfr, set, parallel, cardNumber: cardNum,
+    team, sport, grade, grader, isRookie, serialNumber: serialNum,
   };
 
   try {
@@ -2201,23 +2363,25 @@ window.submitEbayListing = async function(id) {
 
     if(res.ok && data.listingId) {
       status.style.color = '#22c55e';
-      status.style.background = 'rgba(34,197,94,.08)';
-      status.innerHTML = '✓ LISTED! <a href="https://www.ebay.com/itm/' + data.listingId + '" target="_blank" style="color:#22c55e;margin-left:8px">View on eBay ↗</a>';
+      status.style.background = 'rgba(34,197,94,.06)';
+      status.style.border = '1px solid rgba(34,197,94,.2)';
+      status.innerHTML = `✓ LISTED!<br><a href="https://www.ebay.com/itm/${data.listingId}" target="_blank" style="color:#22c55e">View listing on eBay ↗</a>`;
       toast('✓ Listed on eBay!');
     } else if(data.needsToken) {
       status.style.color = '#e94560';
-      status.style.background = 'rgba(233,69,96,.08)';
-      status.textContent = '⚠ EBAY_USER_TOKEN not set in Cloudflare Worker secrets — see setup instructions';
+      status.style.background = 'rgba(233,69,96,.06)';
+      status.textContent = '⚠ EBAY_USER_TOKEN not set in Cloudflare Worker secrets';
     } else {
       status.style.color = '#e94560';
-      status.style.background = 'rgba(233,69,96,.08)';
-      status.textContent = '⚠ Error: ' + (data.error || data.message || JSON.stringify(data).substring(0,100));
+      status.style.background = 'rgba(233,69,96,.06)';
+      status.innerHTML = '⚠ ' + (data.error || 'Unknown error').replace(/</g,'&lt;');
     }
   } catch(e) {
     status.style.color = '#e94560';
-    status.textContent = '⚠ Network error: ' + e.message;
+    status.textContent = '⚠ ' + e.message;
   }
 };
+
 
 // Auto-launch — no credentials needed, everything in Cloudflare Worker
 window.addEventListener('load', function(){ startScanner(); });
