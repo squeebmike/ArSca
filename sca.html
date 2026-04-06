@@ -655,28 +655,59 @@ async function fetchAllPrintings(item){
           const number = card.number||'';
           const total = card.set?.total||'';
           // Build a price estimate from tcgplayer data if available
-          const mid = card.tcgplayer?.prices?.holofoil?.mid
-            || card.tcgplayer?.prices?.normal?.mid
-            || card.tcgplayer?.prices?.['1stEditionHolofoil']?.mid
-            || card.tcgplayer?.prices?.reverseHolofoil?.mid
-            || 0;
-          const low = card.tcgplayer?.prices?.holofoil?.low
-            || card.tcgplayer?.prices?.normal?.low || 0;
-          const high = card.tcgplayer?.prices?.holofoil?.high
-            || card.tcgplayer?.prices?.normal?.high || 0;
+          // Extract ALL available price tiers from TCGPlayer
+          const tcgPrices = card.tcgplayer?.prices || {};
+          // Build a list of all price tiers available for this card
+          const priceTiers = Object.entries(tcgPrices).map(([finish, p]) => ({
+            finish,
+            mid: p.mid || 0,
+            low: p.low || 0,
+            high: p.high || 0,
+            market: p.market || p.mid || 0,
+          })).filter(t => t.mid > 0 || t.market > 0);
+
+          // Pick the best price tier for display:
+          // Priority: holofoil > 1stEditionHolofoil > unlimitedHolofoil > normal > reverseHolofoil
+          const TIER_PRIORITY = ['holofoil','1stEditionHolofoil','unlimitedHolofoil',
+                                  'normal','1stEditionNormal','unlimitedNormal',
+                                  'reverseHolofoil'];
+          const bestTier = TIER_PRIORITY.map(t => tcgPrices[t]).find(t => t?.mid > 0)
+            || priceTiers[0]
+            || {};
+          const mid = bestTier.market || bestTier.mid || 0;
+          const low = bestTier.low || 0;
+          const high = bestTier.high || 0;
           const tcgUrl = card.tcgplayer?.url || null;
-          result.printings.push({
+
+          // For each price tier, create a separate printing entry
+          // so user can see 1st Edition vs Unlimited vs Holo prices separately
+          const baseEntry = {
             set: card.set?.name || 'Unknown Set',
             variant: variantName || rarity || 'Base',
             year: card.set?.releaseDate?.substring(0,4) || '',
             numbered: number&&total ? `${number}/${total}` : null,
-            mid: mid||0, low: low||0, high: high||0,
+            mid, low, high,
             hasRealPrice: !!(mid),
             imageUrl: card.images?.large || card.images?.small || null,
             tcgUrl: tcgUrl,
             setId: card.set?.id || '',
-            cardId: card.id
-          });
+            cardId: card.id,
+            allPrices: priceTiers,  // expose all tiers for holo/non-holo toggle
+          };
+          result.printings.push(baseEntry);
+          // Add 1st Edition as separate entry if available (different price)
+          const ed1Holo = tcgPrices['1stEditionHolofoil'];
+          const ed1Norm = tcgPrices['1stEditionNormal'];
+          if(ed1Holo?.mid > 0 && Math.abs((ed1Holo.mid - mid) / (mid||1)) > 0.05) {
+            result.printings.splice(result.printings.length-1, 0, {
+              ...baseEntry,
+              variant: (variantName||rarity||'') + ' 1st Edition',
+              mid: ed1Holo.market || ed1Holo.mid || 0,
+              low: ed1Holo.low || 0,
+              high: ed1Holo.high || 0,
+              hasRealPrice: true,
+            });
+          }
           // ── SCORE THIS PRINTING AGAINST ALL CLAUDE SIGNALS ───────
           let score = 0;
           const hintYear    = String(item.year || '');
@@ -1420,7 +1451,7 @@ function setBracketColor(c){
 // sendBothImages() sends front+back to Claude simultaneously
 // for maximum accuracy on card number, parallel, serial.
 async function sendBothImagesToClaude(frontB64, backB64, existingItem){
-  const text = await callClaude([{
+  const text = await callClaudeSonnet([{
     role:'user',
     content:[
       {type:'image', source:{type:'base64',media_type:'image/jpeg',data:frontB64}},
@@ -1471,29 +1502,35 @@ function capture(){
   // Use 0.95 quality — better for fine text like card numbers
   return canvas.toDataURL('image/jpeg',.95).split(',')[1];
 }
-async function callClaude(msgs, maxTok){
+async function _claudeCall(model, msgs, maxTok){
   // Routes through Cloudflare Worker — API key never touches the browser
   const res = await fetch(WORKER_URL + '/anthropic/messages', {
     method: 'POST',
     headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({
-      model: 'claude-sonnet-4-6',
-      max_tokens: maxTok || 1000,
-      messages: msgs,
-    })
+    body: JSON.stringify({ model, max_tokens: maxTok || 1000, messages: msgs })
   });
   if(!res.ok){
     const t = await res.text();
-    throw new Error('Claude error ' + res.status + ': ' + t.substring(0,120));
+    throw new Error('Claude ' + model + ' error ' + res.status + ': ' + t.substring(0,120));
   }
   const d = await res.json();
-  // Return the text string directly — callers use text.replace() for JSON parsing
   const content = d.content;
   if(Array.isArray(content)){
-    const textBlock = content.find(b => b.type === 'text');
-    return textBlock ? textBlock.text : '';
+    const tb = content.find(b => b.type === 'text');
+    return tb ? tb.text : '';
   }
   return typeof content === 'string' ? content : '';
+}
+
+// FAST scan model — Haiku: ~2-4s, great at reading text from images
+async function callClaude(msgs, maxTok){
+  return _claudeCall('claude-haiku-4-5-20251001', msgs, maxTok || 1000);
+}
+
+// ACCURATE analysis model — Sonnet: ~8-15s, better for complex reasoning
+// Used for: back scan, two-image combine, pricing analysis, grade spread
+async function callClaudeSonnet(msgs, maxTok){
+  return _claudeCall('claude-sonnet-4-6', msgs, maxTok || 1000);
 }
 
 
@@ -1513,72 +1550,16 @@ async function doScan(){
 
 async function scanFront(img){
   const hs=document.getElementById('hstatus');
-  const prompt=`You are an expert trading card and collectibles identifier with deep knowledge of sports cards, Pokemon, MTG, Yu-Gi-Oh, comics, and graded slabs.
-
-IDENTIFICATION PRIORITY ORDER:
-1. Check if this is a GRADED SLAB — PSA (red/blue label), BGS/Beckett (black label with 4 subgrades), CGC (yellow/gold label), SGC (red label). If slab: read cert number, grade, and the card inside.
-2. Identify the game/sport category
-3. Read ALL text on the card — every word, number, symbol
-
-FOR SPORTS CARDS — Read carefully:
-- Player name (largest text, usually top or center)
-- Team name
-- Year (small text, often bottom corner or top)
-- Manufacturer logo: Topps / Panini / Upper Deck / Bowman / Donruss / Score / O-Pee-Chee / Stadium Club
-- Set name (printed small, may be on front or bottom)
-- Card number (bottom corner, e.g. "287" or "287/700" — CRITICAL for identification)
-- Serial number printed as "/XX" e.g. /25 /99 /10 /5 /1 — write exactly as printed
-- Parallel type from BORDER COLOR: Gold border=Gold, Silver=Silver, Red=Red, Blue=Blue, Orange=Orange, Green=Green, Purple=Purple, Black=Black, Rainbow=Rainbow Foil
-- Prizm cards: color of the prizm wave pattern = parallel name (e.g. Green Wave Prizm, Gold Prizm)
-- Chrome/Refractor: look for rainbow shimmer — "Refractor" if no color, else "[Color] Refractor"
-- RC or ROOKIE CARD stamp
-- Auto: look for actual signature or "AUTOGRAPH" text
-- Memorabilia/Patch: look for embedded card piece
-
-FOR POKEMON TCG — Read carefully:
-- Card name EXACTLY as printed — "Charizard ex" is different from "Charizard EX" is different from "Charizard". Look for ex/EX/GX/V/VMAX/VSTAR/e after the name.
-- HP number
-- Card number at BOTTOM of card (e.g. "4/102" or "006/165") — THIS IS THE MOST IMPORTANT FIELD. Read it carefully. The total after the slash tells you the exact set.
-- Set symbol bottom right — identify it:
-    VINTAGE (Yellow border, simple art):
-    * Pokeball = Base Set (102 cards, set ID: base1)
-    * Palm tree = Jungle (64 cards, set ID: base2)
-    * Fossil skull = Fossil (62 cards, set ID: base3)
-    * Bold R = Team Rocket (82 cards, set ID: base5)
-    * Two pokeballs = Base Set 2 (130 cards, set ID: base4)
-    * Winged helmet = Neo Genesis (111 cards, set ID: neo1)
-    * Drop of water = Neo Discovery (75 cards, set ID: neo2)
-    * Starburst = Neo Revelation (64 cards, set ID: neo3)
-    * Yin-yang = Neo Destiny (105 cards, set ID: neo4)
-    EX ERA (2003-2007): Look for "EX" in name, shield-style border
-    MODERN (2023+): Set code printed bottom left like sv3pt5, sv1, swsh1
-- 1st Edition stamp: small oval on left center — extremely important if visible
-- Shadowless (Base Set only): no drop shadow under artwork box
-- Holo vs non-holo: does the artwork have a foil shine?
-- Era from art style: Yellow border=Wizards era, rounded corners modern=XY+, textured holos=modern SV era
-
-FOR MTG — Read:
-- Card name, mana cost, type line, set symbol, collector number (bottom left e.g. "175/281")
-- Foil indicator, frame style (old border pre-2003, new, modern, showcase, borderless, alternate art)
-
-Return ONLY a raw JSON array. For each card identified:
-[{"name":"exact card name","game":"Pokemon TCG|Magic: The Gathering|Yu-Gi-Oh!|Sports Card|Comic|PSA Slab|BGS Slab|CGC Slab|SGC Slab|Other TCG — IMPORTANT: if in graded plastic slab with label, game MUST be one of the Slab options","sport":"Baseball|Basketball|Football|Hockey|Soccer|null","player":"player name or null","team":"team name or null","year":"4-digit year","card_number":"exact number e.g. 287 or 287/700 or 006/165 — read from card, very important","manufacturer":"Topps|Panini|Upper Deck|Bowman|Pokemon Company|Wizards|Konami|Marvel|DC|Image|Other","publisher":"publisher if comic","issue":"issue number if comic","set_name":"exact set name — for Pokemon include full name e.g. Scarlet & Violet 151 not just 151","set_id":"Pokemon TCG set ID if visible e.g. sv3pt5 for 151, swsh1 for SWSH Base — empty string if unsure","parallel":"Base|Chrome|Prizm|Silver Prizm|Gold Prizm|Red Prizm|Blue Prizm|Green Prizm|Orange Prizm|Gold Refractor|Red Refractor|Holo|Reverse Holo|Full Art|Alt Art|Borderless|Showcase|Extended Art|Rainbow Rare|Secret Rare|Special Illustration Rare|Gold Rare|Serialized|1st Edition|Promo|Standard","serial_number":"/99 or null — write exactly as printed","grading_company":"PSA|BGS|CGC|SGC|null","grade":"10|9.5|9|8.5|null","cert_number":"cert number from label or null","subgrades":{"centering":"9.5","surface":"9","corners":"9.5","edges":"9"},"is_rookie":true,"is_key":false,"key_notes":"why notable or null","confidence":"high|medium|low","confidence_reason":"brief — e.g. card number visible, set symbol clear","desirability":7,"trend":"up|down|flat","trend_reason":"brief","cx":50,"cy":50,"printings":[{"set":"set name","variant":"variant","year":"year","numbered":"/99 or null","mid":5.00,"low":2.00,"high":10.00}],"comps":[{"desc":"recent eBay sold comp description","price":8.50},{"desc":"comp","price":7.00},{"desc":"comp","price":9.50}]}]
-
-ACCURACY RULES:
-- If you can read the card number, that is the most reliable identifier — use it
-- For Pokemon: the number at the bottom (e.g. 006/165) tells you exactly which set (165 cards = sv3pt5 "151")
-- For sports parallels: gold border = Gold parallel, NOT base
-- If confidence is low, say so in confidence_reason
-- For sports cards with no card number visible, describe what parallel indicators you can see
-- Include 3 realistic comps based on actual market knowledge
-
-For virgin/textless comics: identify from artwork, character, art style only. Include ALL printings. Max 4. [] if none.`;
+    // ── TWO-PHASE SCAN: Phase 1 = fast read, Phase 2 = parallel lookup ──
+  // Phase 1: Tiny focused prompt → card identity in ~1-2s on Haiku
+  const quickPrompt = `Identify this trading card or collectible. Return ONLY compact JSON, no extra text:
+{"game":"Pokemon TCG|Magic: The Gathering|Yu-Gi-Oh!|Sports Card|Comic|PSA Slab|BGS Slab|CGC Slab|SGC Slab","name":"exact name","player":"player name or null","sport":"Baseball|Basketball|Football|Hockey|Soccer|null","team":"team or null","year":"4-digit year or null","card_number":"X/Y from card bottom e.g. 4/102 or 006/165 or 287 — CRITICAL","set_name":"exact set name","set_id":"tcg set id if known else empty","parallel":"Base or exact parallel e.g. Gold Prizm or Holo","serial_number":"/X if serialized else null","grading_company":"PSA|BGS|CGC|SGC|null","grade":"grade number or null","cert_number":"cert or null","manufacturer":"brand","is_rookie":false,"cx":50,"cy":50}`;
 
   // Store front scan image for two-scan sports card identification
   window._lastFrontB64 = img;
   window._lastFrontTime = Date.now();
 
-  const text=await callClaude([{role:'user',content:[{type:'image',source:{type:'base64',media_type:'image/jpeg',data:img}},{type:'text',text:prompt}]}],4000);
+  const text=await callClaude([{role:'user',content:[{type:'image',source:{type:'base64',media_type:'image/jpeg',data:img}},{type:'text',text:quickPrompt}]}],400);
   const items=JSON.parse(text.replace(/```json|```/g,'').trim());
   if(Array.isArray(items)&&items.length){
     if(auto)clearAll();
@@ -1605,6 +1586,35 @@ For virgin/textless comics: identify from artwork, character, art style only. In
       const bbl = addBubble(item,stock,imgUrl,apiPrintings,bestMatchIdx);
       // Store front image on bubble for two-image back scan
       if(bbl && window._lastFrontB64) bbl._frontB64 = window._lastFrontB64;
+
+      // ── PHASE 2: Async enrichment (comps, printings, full details) ──
+      // Runs AFTER bubble is visible — doesn't block the UI
+      (async () => {
+        try {
+          const bubId = bbl?._id || bbl?.id;
+          if(!bbl) return;
+          const enrichPrompt = `This is the same card: ${item.name}, ${item.year||''} ${item.set_name||''} ${item.parallel||''}.
+Give me 3 recent eBay sold comps and any additional printing variants I should show.
+Return ONLY JSON: {"comps":[{"desc":"brief sold listing desc","price":0.00},{"desc":"","price":0.00},{"desc":"","price":0.00}],"key_notes":"why notable or null","is_key":false,"desirability":5,"trend":"up|down|flat"}`;
+
+          const enrichText = await callClaude([{role:'user',content:[
+            {type:'image',source:{type:'base64',media_type:'image/jpeg',data:img}},
+            {type:'text',text:enrichPrompt}
+          ]}], 400);
+          const enriched = JSON.parse(enrichText.replace(/\`\`\`json|\`\`\`/g,'').trim());
+          if(enriched.comps && bbl._item) {
+            bbl._item.comps = enriched.comps;
+            bbl._item.key_notes = enriched.key_notes;
+            bbl._item.is_key = enriched.is_key;
+            // Update comps display in bubble
+            const compsEl = bbl.querySelector ? bbl.querySelector('.comps') : document.getElementById(bbl.id)?.querySelector('.comps');
+            if(compsEl && enriched.comps.length) {
+              compsEl.innerHTML = `<div class="comps-hdr">RECENT SALES (AI est)</div>`
+                + enriched.comps.map(c=>`<div class="comp-row"><span class="comp-d">${c.desc}</span><span class="comp-p">$${Number(c.price).toFixed(2)}</span></div>`).join('');
+            }
+          }
+        } catch(e2) { /* enrichment failure is non-critical */ }
+      })();
     }
     hs.textContent=items.length+' FOUND';drawLines();
   }else{hs.textContent='NONE';toast('Nothing detected — get closer');}
@@ -1851,7 +1861,14 @@ function addBubble(item,stock,imgUrl,apiPrintings,bestMatchIdx){
   // For real-time prices: tap eBay Sold link
   const compSrc = isSlab?'GRADED COMPS (AI est)':ct==='sports'?'SOLD COMPS (AI est — tap eBay for live)':'RECENT SALES (AI est)';
   const compsHtml=item.comps&&item.comps.length?`<div class="comps"><div class="comps-hdr" id="comps-hdr${id}">${compSrc}</div>${item.comps.slice(0,3).map(c=>`<div class="comp-row"><span class="comp-d">${c.desc}</span><span class="comp-p">$${Number(c.price).toFixed(2)}</span></div>`).join('')}</div>`:'';
-  const printOpts=prints.map((p,i)=>`<option value="${i}"${i===bmi?' selected':''}>` + (i===bmi?'★ ':'')+`${p.set}${p.variant&&p.variant!=='Base'?' · '+p.variant:''}${p.numbered?' '+p.numbered:''}${p.year?' ('+p.year+')':''}</option>`).join('');
+    const printOpts=prints.map((p,i)=>{
+    const price = p.mid > 0 ? ` — $${p.mid.toFixed(2)}` : '';
+    const marker = i===bmi ? '★ ' : '';
+    const variant = p.variant && p.variant!=='Base' ? ' · '+p.variant : '';
+    const num = p.numbered ? ' '+p.numbered : '';
+    const yr = p.year ? ` (${p.year})` : '';
+    return `<option value="${i}"${i===bmi?' selected':''}>${marker}${p.set}${variant}${num}${yr}${price}</option>`;
+  }).join('');
   const displayName=item.player||item.name;
   const subParts=[];
   if(item.team)subParts.push(item.team);
@@ -1974,7 +1991,7 @@ function addBubble(item,stock,imgUrl,apiPrintings,bestMatchIdx){
           <button class="bcp holo-tog" id="htog-holo-${id}" onclick="setHolo('${id}',${holoIdx},true)" style="flex:1;background:rgba(255,209,102,.15);border:1px solid rgba(255,209,102,.3);color:#ffd166;font-size:9px;padding:4px;border-radius:4px;cursor:pointer">✨ HOLO $${Number(prints[holoIdx].mid||0).toFixed(2)}</button>
           <button class="bcp holo-tog" id="htog-norm-${id}" onclick="setHolo('${id}',${normIdx},false)" style="flex:1;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.15);color:#aaa;font-size:9px;padding:4px;border-radius:4px;cursor:pointer">NON-HOLO $${Number(prints[normIdx].mid||0).toFixed(2)}</button>
         </div>` : '';
-      return `${holoToggle}<div class="bsels"><div class="bsels-label">${prints.length} PRINTING${prints.length!==1?'S':''} FOUND — SELECT TO SWITCH</div><select class="bsel" id="ps${id}" onchange="chPrint('${id}')" data-bmi="${bmi}" size="1">${printOpts}</select><select class="bsel" id="cs${id}" onchange="chCond('${id}')">${Object.keys(CM).map(c=>`<option>${c}</option>`).join('')}</select></div><div class="bconds">${Object.keys(CM).map((c,i)=>`<span class="bcp${i===0?' on':''}" onclick="cpill('${id}',this,'${c}')">${c}</span>`).join('')}</div>`;
+      return `${holoToggle}<div class="bsels"><div class="bsels-label">${prints.length} PRINTING${prints.length!==1?'S':''} FOUND — SELECT TO SWITCH</div><select class="bsel" id="ps${id}" onchange="chPrint('${id}')" data-bmi="${bmi}">${printOpts}</select><select class="bsel" id="cs${id}" onchange="chCond('${id}')">${Object.keys(CM).map(c=>`<option>${c}</option>`).join('')}</select></div><div class="bconds">${Object.keys(CM).map((c,i)=>`<span class="bcp${i===0?' on':''}" onclick="cpill('${id}',this,'${c}')">${c}</span>`).join('')}</div>`;
     })():''}
     <div class="bacts" id="acts${id}">
       ${actLinks}
@@ -3286,7 +3303,24 @@ window.addBubbleToCart = function(id){
 // ════════════════════════════════════════════════════════════
 function openCheckout(){
   const {total} = getCartTotals();
+  if(total <= 0){ toast('Cart is empty'); return; }
   document.getElementById('ck-total-display').textContent = '$'+total.toFixed(2);
+
+  // ── INVENTORY SYNC WARNING ─────────────────────────────────────
+  const unsynced = cart.filter(i => !i.shopId);
+  const ckBody = document.querySelector('#checkout .ck-body');
+  const existingWarn = document.getElementById('ck-sync-warn');
+  if(existingWarn) existingWarn.remove();
+  if(unsynced.length > 0 && ckBody) {
+    const warn = document.createElement('div');
+    warn.id = 'ck-sync-warn';
+    warn.style.cssText = 'background:rgba(255,209,102,.08);border:1px solid rgba(255,209,102,.3);border-radius:8px;padding:10px 12px;margin-bottom:12px;font-family:"DM Mono",monospace;font-size:9px;color:#ffd166;line-height:1.6';
+    warn.innerHTML = `⚠ ${unsynced.length} item${unsynced.length>1?'s':''} not yet in Webflow inventory:<br>`
+      + unsynced.map(i=>`<span style="color:rgba(255,255,255,.5)">• ${i.name}</span>`).join('<br>')
+      + `<br><span style="color:rgba(255,209,102,.6)">These won't be marked sold in your store. Tap "+ Add to Inventory" on the bubble first to track them.</span>`;
+    ckBody.prepend(warn);
+  }
+
   document.getElementById('checkout').classList.add('on');
   buildNumpad();
   buildQRTabs();
@@ -3625,7 +3659,7 @@ async function runPriceSearch(){
   el.textContent = '⟳ Looking up...';
   el.style.color = 'var(--gold)';
   try {
-    const text = await callClaude([{role:'user',content:[{type:'text',text:
+    const text = await callClaudeSonnet([{role:'user',content:[{type:'text',text:
       `What is the current market price for: "${q}"?
       Give me TCGPlayer mid, eBay sold average, and high/low range.
       Return ONLY JSON: {"name":"exact name","tcg_mid":0.00,"ebay_avg":0.00,"low":0.00,"high":0.00,"condition":"NM","note":"brief note e.g. trending up, common, etc"}`
@@ -3651,7 +3685,7 @@ async function lookupGradeSpread(){
   const grid = document.getElementById('grade-grid');
   grid.innerHTML = '<div style="font-family:monospace;font-size:8px;color:rgba(255,255,255,.3);grid-column:1/-1;text-align:center;padding:8px">Loading grade values...</div>';
   try {
-    const text = await callClaude([{role:'user',content:[{type:'text',text:
+    const text = await callClaudeSonnet([{role:'user',content:[{type:'text',text:
       `What are the PSA graded values for: "${q}"?
       Return ONLY JSON array of 8 grades: [{"grade":"10","price":0.00},{"grade":"9.5","price":0.00},{"grade":"9","price":0.00},{"grade":"8.5","price":0.00},{"grade":"8","price":0.00},{"grade":"7","price":0.00},{"grade":"6","price":0.00},{"grade":"5","price":0.00}]
       Use current eBay sold averages. If unknown use 0.`
@@ -3677,7 +3711,7 @@ async function lookupTrendDelta(){
   el.textContent = '⟳ Analyzing trend...';
   el.style.color = 'var(--gold)';
   try {
-    const text = await callClaude([{role:'user',content:[{type:'text',text:
+    const text = await callClaudeSonnet([{role:'user',content:[{type:'text',text:
       `What is the price trend for: "${q}"?
       Based on your training data, estimate the trend.
       Return ONLY JSON: {"trend":"up|down|flat|volatile","pct_30d":0.0,"pct_90d":0.0,"reason":"brief reason","current_nm":0.00}`
