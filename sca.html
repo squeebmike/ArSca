@@ -183,6 +183,120 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
 .lba-nav-btn:hover{color:rgba(255,255,255,.6);}
 .lba-nav-btn.active{color:var(--g);}
 .lba-nav-btn .nav-ico{font-size:16px;line-height:1;}
+
+/* ── POS CART ─────────────────────────────────────────── */
+#pos-cart{position:fixed;inset:0;background:var(--bg);z-index:800;display:none;flex-direction:column;overflow:hidden;}
+#pos-cart.on{display:flex;}
+.pos-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:rgba(0,0,0,.4);border-bottom:1px solid rgba(255,255,255,.08);flex-shrink:0;}
+.pos-title{font-family:'Orbitron',monospace;font-size:13px;letter-spacing:2px;color:var(--g);}
+.pos-close{background:none;border:none;color:rgba(255,255,255,.4);font-size:22px;cursor:pointer;padding:0 4px;}
+.pos-items{flex:1;overflow-y:auto;padding:10px 12px;}
+.pos-item{display:flex;align-items:center;gap:8px;padding:10px 10px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:8px;margin-bottom:8px;}
+.pos-item-img{width:44px;height:44px;border-radius:5px;object-fit:contain;background:rgba(0,0,0,.4);flex-shrink:0;}
+.pos-item-info{flex:1;min-width:0;}
+.pos-item-name{font-size:11px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.pos-item-sub{font-family:'DM Mono',monospace;font-size:9px;color:rgba(255,255,255,.4);margin-top:1px;}
+.pos-item-price{font-family:'Orbitron',monospace;font-size:13px;font-weight:700;color:var(--gold);flex-shrink:0;}
+.pos-item-rm{background:none;border:none;color:rgba(255,77,109,.5);font-size:16px;cursor:pointer;padding:0 2px;flex-shrink:0;}
+.pos-item-edit{background:none;border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.5);font-size:9px;border-radius:4px;padding:2px 6px;cursor:pointer;margin-top:3px;}
+.pos-empty{text-align:center;padding:48px 20px;font-family:'DM Mono',monospace;font-size:10px;color:rgba(255,255,255,.2);}
+.pos-footer{padding:12px 16px;background:rgba(0,0,0,.5);border-top:1px solid rgba(255,255,255,.08);flex-shrink:0;}
+.pos-totals{margin-bottom:12px;}
+.pos-row{display:flex;justify-content:space-between;font-family:'DM Mono',monospace;font-size:10px;color:rgba(255,255,255,.5);margin-bottom:4px;}
+.pos-row.total{font-size:16px;color:#fff;font-weight:700;font-family:'Orbitron',monospace;border-top:1px solid rgba(255,255,255,.1);padding-top:8px;margin-top:4px;}
+.pos-row.total span:last-child{color:var(--g);}
+.pos-tax-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+.pos-tax-label{font-family:'DM Mono',monospace;font-size:9px;color:rgba(255,255,255,.4);}
+.pos-tax-inp{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:#fff;padding:4px 8px;border-radius:4px;font-family:'DM Mono',monospace;font-size:10px;width:60px;text-align:center;}
+.pos-discount-row{display:flex;gap:6px;margin-bottom:8px;}
+.pos-disc-btn{flex:1;padding:5px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.5);font-family:'DM Mono',monospace;font-size:9px;border-radius:4px;cursor:pointer;}
+.pos-disc-btn.on{background:rgba(255,209,102,.1);border-color:rgba(255,209,102,.3);color:var(--gold);}
+.pos-checkout-btn{width:100%;padding:14px;background:var(--g);color:#000;border:none;border-radius:8px;font-family:'Orbitron',monospace;font-size:13px;font-weight:900;letter-spacing:2px;cursor:pointer;}
+.pos-checkout-btn:disabled{opacity:.4;cursor:not-allowed;}
+.pos-add-btn{width:100%;padding:9px;background:rgba(0,255,179,.06);border:1px solid rgba(0,255,179,.2);color:var(--g);border-radius:6px;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:1px;cursor:pointer;margin-bottom:8px;}
+
+/* ── CHECKOUT ─────────────────────────────────────────── */
+#checkout{position:fixed;inset:0;background:var(--bg);z-index:900;display:none;flex-direction:column;overflow:hidden;}
+#checkout.on{display:flex;}
+.ck-header{display:flex;align-items:center;gap:10px;padding:12px 16px;background:rgba(0,0,0,.4);border-bottom:1px solid rgba(255,255,255,.08);flex-shrink:0;}
+.ck-back{background:none;border:none;color:rgba(255,255,255,.5);font-size:18px;cursor:pointer;}
+.ck-title{font-family:'Orbitron',monospace;font-size:12px;letter-spacing:2px;color:var(--g);}
+.ck-total-banner{background:rgba(0,255,179,.06);border-bottom:1px solid rgba(0,255,179,.1);padding:12px 16px;text-align:center;flex-shrink:0;}
+.ck-total-lbl{font-family:'DM Mono',monospace;font-size:9px;color:rgba(0,255,179,.5);letter-spacing:2px;}
+.ck-total-amt{font-family:'Orbitron',monospace;font-size:28px;font-weight:900;color:var(--g);}
+.ck-body{flex:1;overflow-y:auto;padding:14px 16px;}
+.ck-methods{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;}
+.ck-method{padding:14px 10px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:10px;text-align:center;cursor:pointer;transition:.15s;}
+.ck-method:hover,.ck-method.on{background:rgba(0,255,179,.06);border-color:rgba(0,255,179,.3);}
+.ck-method-ico{font-size:22px;margin-bottom:5px;}
+.ck-method-lbl{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:1px;color:rgba(255,255,255,.6);}
+.ck-panel{display:none;margin-top:8px;}
+.ck-panel.on{display:block;}
+/* Cash panel */
+.ck-cash-inp{width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:#fff;padding:14px;border-radius:8px;font-family:'Orbitron',monospace;font-size:24px;text-align:center;margin-bottom:10px;outline:none;}
+.ck-numpad{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:12px;}
+.ck-key{padding:14px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);border-radius:6px;font-family:'Orbitron',monospace;font-size:16px;text-align:center;cursor:pointer;color:#fff;}
+.ck-key:active{background:rgba(255,255,255,.12);}
+.ck-change{background:rgba(0,255,179,.06);border:1px solid rgba(0,255,179,.15);border-radius:6px;padding:12px;text-align:center;font-family:'DM Mono',monospace;font-size:11px;color:var(--g);margin-bottom:12px;min-height:42px;}
+/* QR panel */
+.ck-qr-tabs{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap;}
+.ck-qr-tab{padding:7px 14px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:20px;font-family:'DM Mono',monospace;font-size:9px;cursor:pointer;color:rgba(255,255,255,.5);}
+.ck-qr-tab.on{background:rgba(0,255,179,.08);border-color:rgba(0,255,179,.3);color:var(--g);}
+.ck-qr-box{background:rgba(255,255,255,.96);border-radius:12px;padding:16px;text-align:center;margin-bottom:10px;}
+.ck-qr-box img{width:180px;height:180px;}
+.ck-qr-handle{font-family:'DM Mono',monospace;font-size:11px;color:#111;margin-top:6px;}
+.ck-qr-amount{font-family:'Orbitron',monospace;font-size:16px;font-weight:700;color:#333;margin-top:2px;}
+/* Stripe panel */
+#stripe-card-element{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:14px;margin-bottom:10px;}
+.ck-confirm-btn{width:100%;padding:14px;border:none;border-radius:8px;font-family:'Orbitron',monospace;font-size:13px;font-weight:900;letter-spacing:2px;cursor:pointer;margin-bottom:8px;}
+.ck-confirm-btn.cash{background:var(--g);color:#000;}
+.ck-confirm-btn.card{background:#635BFF;color:#fff;}
+.ck-confirm-btn.qr{background:rgba(0,255,179,.12);color:var(--g);border:1px solid rgba(0,255,179,.3);}
+.ck-confirm-btn:disabled{opacity:.4;}
+.ck-status{font-family:'DM Mono',monospace;font-size:10px;text-align:center;margin-top:6px;min-height:16px;color:var(--g);}
+
+/* ── RECEIPT ──────────────────────────────────────────── */
+#receipt-modal{position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:1000;display:none;align-items:center;justify-content:center;padding:16px;}
+#receipt-modal.on{display:flex;}
+.receipt{background:#fff;color:#111;border-radius:12px;padding:20px;width:100%;max-width:340px;max-height:85vh;overflow-y:auto;}
+.receipt-logo{font-family:'Orbitron',monospace;font-size:14px;font-weight:900;text-align:center;letter-spacing:2px;margin-bottom:2px;}
+.receipt-sub{font-size:10px;color:#666;text-align:center;margin-bottom:12px;}
+.receipt-divider{border:none;border-top:1px dashed #ccc;margin:10px 0;}
+.receipt-line{display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px;}
+.receipt-line.bold{font-weight:700;font-size:13px;}
+.receipt-line.total{font-size:15px;font-weight:900;border-top:2px solid #111;padding-top:8px;margin-top:4px;}
+.receipt-thanks{text-align:center;font-size:10px;color:#888;margin-top:10px;}
+.receipt-btns{display:flex;gap:8px;margin-top:12px;}
+.receipt-btn{flex:1;padding:10px;border:1px solid #ddd;border-radius:6px;font-size:11px;cursor:pointer;background:#f5f5f5;}
+
+/* ── PRICING TOOLS ────────────────────────────────────── */
+#pricing-panel{position:fixed;inset:0;background:var(--bg);z-index:700;display:none;flex-direction:column;}
+#pricing-panel.on{display:flex;}
+.pt-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:rgba(0,0,0,.4);border-bottom:1px solid rgba(255,255,255,.08);}
+.pt-title{font-family:'Orbitron',monospace;font-size:12px;letter-spacing:2px;color:var(--gold);}
+.pt-body{flex:1;overflow-y:auto;padding:12px 16px;}
+.pt-section{margin-bottom:20px;}
+.pt-section-h{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:2px;color:rgba(255,255,255,.4);margin-bottom:8px;text-transform:uppercase;}
+.pt-card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:8px;padding:12px;margin-bottom:8px;}
+.pt-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}
+.pt-label{font-family:'DM Mono',monospace;font-size:9px;color:rgba(255,255,255,.5);}
+.pt-val{font-family:'Orbitron',monospace;font-size:12px;font-weight:700;}
+.pt-val.g{color:var(--g);}
+.pt-val.gold{color:var(--gold);}
+.pt-val.red{color:var(--red);}
+.pt-val.blue{color:var(--blue);}
+.pt-inp{width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:#fff;padding:8px 10px;border-radius:6px;font-family:'DM Mono',monospace;font-size:11px;margin-bottom:6px;outline:none;}
+.pt-grade-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;}
+.pt-grade-btn{padding:8px 4px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:5px;text-align:center;cursor:pointer;}
+.pt-grade-btn.on{background:rgba(0,255,179,.1);border-color:rgba(0,255,179,.3);}
+.pt-grade-val{font-family:'Orbitron',monospace;font-size:9px;color:var(--g);}
+.pt-grade-price{font-family:'DM Mono',monospace;font-size:8px;color:rgba(255,255,255,.4);}
+.pt-trend-bar{height:4px;background:rgba(255,255,255,.08);border-radius:2px;margin-top:4px;}
+.pt-trend-fill{height:4px;border-radius:2px;transition:width .4s;}
+
+/* NAV CART BADGE */
+.nav-cart-badge{position:absolute;top:-4px;right:-4px;background:var(--red);color:#fff;font-size:8px;font-weight:700;width:16px;height:16px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'DM Mono',monospace;}
+.lba-nav-btn{position:relative;}
 </style>
 </head>
 <body>
@@ -1046,6 +1160,32 @@ function setBracketColor(c){
   sl.className=c==='gold'?'gold':c==='purple'?'purple':'';
 }
 
+// ── TWO-IMAGE SPORTS ACCURACY ───────────────────────────
+// For sports cards: after front scan, if user taps SCAN BACK,
+// we already have the front image stored on the bubble.
+// sendBothImages() sends front+back to Claude simultaneously
+// for maximum accuracy on card number, parallel, serial.
+async function sendBothImagesToClaude(frontB64, backB64, existingItem){
+  const text = await callClaude([{
+    role:'user',
+    content:[
+      {type:'image', source:{type:'base64',media_type:'image/jpeg',data:frontB64}},
+      {type:'image', source:{type:'base64',media_type:'image/jpeg',data:backB64}},
+      {type:'text', text:`You are looking at the FRONT and BACK of the same sports trading card simultaneously.
+The first image is the FRONT, the second image is the BACK.
+
+Read EVERY detail from BOTH images together:
+- Front: player name, team, year, set name, parallel color/type, manufacturer
+- Back: card number (e.g. 287/700), serial number (/25 etc), parallel reference codes, copyright, stats, bio
+- Cross-reference: manufacturer on front vs copyright on back to confirm set/year
+
+Return ONLY JSON with the most accurate identification possible:
+{"player":"full name","year":"4-digit year","set_name":"exact set name","parallel":"exact parallel e.g. Gold Prizm /10 or Base or Silver Prizm","card_number":"e.g. 287 or 287/700","serial_number":"/X or null","manufacturer":"Topps/Panini/Upper Deck/Bowman","sport":"Baseball/Basketball/Football/Hockey","is_rookie":true/false,"team":"team name","confidence":"high/medium","market_nm_estimate":0.00,"search_query":"best eBay sold search for this exact card"}`
+    }
+  ]}], 600);
+  return JSON.parse(text.replace(/\`\`\`json|\`\`\`/g,'').trim());
+}
+
 function toggleFlip(){
   if(bulkMode)toggleBulk();
   flipMode=!flipMode;
@@ -1107,7 +1247,7 @@ async function doScan(){
     const img=capture();
     if(flipMode)await scanBack(img);
     else if(bulkMode)await scanBulk(img);
-    else await scanFront(img);
+    else { window._lastFrontB64 = img; await scanFront(img); }
   }catch(e){hs.textContent='ERROR';toast('Error: '+e.message);}
   scanning=false;btn.innerHTML=orig;btn.classList.remove('reading');
 }
@@ -1155,7 +1295,9 @@ For virgin/textless comics: identify from artwork, character, art style only. In
         }
         imgUrl=fetched.imageUrl||null;
       }
-      addBubble(item,stock,imgUrl,apiPrintings,bestMatchIdx);
+      const bbl = addBubble(item,stock,imgUrl,apiPrintings,bestMatchIdx);
+      // Store front image on bubble for two-image back scan
+      if(bbl && window._lastFrontB64) bbl._frontB64 = window._lastFrontB64;
     }
     hs.textContent=items.length+' FOUND';drawLines();
   }else{hs.textContent='NONE';toast('Nothing detected — get closer');}
@@ -1525,6 +1667,7 @@ function addBubble(item,stock,imgUrl,apiPrintings,bestMatchIdx){
       ${actLinks}
       ${ct==='sports'?`<button class="bact" style="background:rgba(255,209,102,.06);border:1px solid rgba(255,209,102,.2);color:#ffd166;font-size:9px" onclick="scanBackForBubble('${id}')">⟳ SCAN BACK</button>`:''}
       ${ct==='tcg'?`<button class="bact" style="background:rgba(0,255,179,.06);border:1px solid rgba(0,255,179,.2);color:var(--g);font-size:9px" onclick="scanBackForBubble('${id}')">⟳ SCAN BACK</button>`:''}
+      <button class="bact" style="background:rgba(0,255,179,.1);border:1px solid rgba(0,255,179,.3);color:var(--g);font-weight:700" onclick="addBubbleToCart('${id}')">🛒 Add to Cart</button>
       <button class="bact a-add" onclick="showAddForm('${id}')">+ Add to Inventory</button>
       ${si>0?`<button class="bact a-sell" onclick="showSellForm('${id}')">✓ Mark as Sold</button>`:''}
       <button class="bact" style="background:rgba(255,209,102,.08);border:1px solid rgba(255,209,102,.2);color:#ffd166" onclick="showEbayForm('${id}')">📦 List on eBay</button>
@@ -1540,6 +1683,7 @@ function addBubble(item,stock,imgUrl,apiPrintings,bestMatchIdx){
   el.style.left=left+'px';el.style.top=top+'px';
   document.body.appendChild(el);
   bubs.push({id,el,ax:cx,ay:cy,ct});
+  el._frontB64 = null; // will be set by scanFront caller
 
   // Async: check Webflow for live stock — tight name+set+year match only
   (async () => {
@@ -2511,7 +2655,48 @@ window.scanBackForBubble = async function(bubId) {
       bubs.push(bub);
     }
 
-    await scanBack(img);
+    // If we have the front image for this bubble AND it's a sports card,
+    // use two-image call for maximum accuracy
+    const ct2 = bub.el?._ct;
+    const frontB64 = bub.el?._frontB64 || window._lastFrontB64;
+    if(ct2 === 'sports' && frontB64) {
+      hs.textContent = 'COMBINING BOTH SIDES...';
+      bub.el._backB64 = img;
+      try {
+        const refined = await sendBothImagesToClaude(frontB64, img, bub.el._item);
+        if(refined && refined.player && bub.el._item) {
+          const item = bub.el._item;
+          item.player      = refined.player    || item.player;
+          item.year        = refined.year       || item.year;
+          item.set_name    = refined.set_name   || item.set_name;
+          item.parallel    = refined.parallel   || item.parallel;
+          item.card_number = refined.card_number|| item.card_number;
+          item.serial_number=refined.serial_number||item.serial_number;
+          item.manufacturer= refined.manufacturer||item.manufacturer;
+          item.is_rookie   = refined.is_rookie  || item.is_rookie;
+          item._searchQuery= refined.search_query||'';
+          // Update bubble display
+          const bname = bub.el.querySelector('.bname');
+          if(bname) bname.textContent = refined.player;
+          const bsub = bub.el.querySelector('.bsub');
+          if(bsub) bsub.textContent = [refined.year, refined.set_name,
+            refined.parallel!=='Base'?refined.parallel:null,
+            refined.card_number?'Card #'+refined.card_number:null,
+            refined.serial_number].filter(Boolean).join(' · ');
+          // Update eBay search
+          const ebayBtns = bub.el.querySelectorAll('.a-ebay');
+          if(ebayBtns[0] && refined.search_query) ebayBtns[0].href = AFF.ebaySearch(refined.search_query);
+          hs.textContent = '✓ DUAL-SCAN (' + (refined.confidence||'?') + ')';
+          toast('✓ Both sides analyzed — ' + refined.parallel + (refined.serial_number?' '+refined.serial_number:''));
+          addBackInfo(bubId, {card_number:refined.card_number,serial_number:refined.serial_number,set_name:refined.set_name,year:refined.year,notes:'Two-image scan'});
+        }
+      } catch(e2) {
+        console.warn('Two-image failed, falling back to single back scan:', e2.message);
+        await scanBack(img);
+      }
+    } else {
+      await scanBack(img);
+    }
 
     // Restore original order if we moved it
     if(bubIdx >= 0 && bubIdx !== bubs.length - 1) {
@@ -2527,10 +2712,759 @@ window.scanBackForBubble = async function(bubId) {
   if(btn) { btn.textContent = '⟳ SCAN BACK'; btn.disabled = false; }
 };
 
+
+
+// ════════════════════════════════════════════════════════════
+// CONFIGURATION — fill these in with your payment handles
+// ════════════════════════════════════════════════════════════
+const POS_CONFIG = {
+  stripe_pk: '',          // pk_live_... — paste your Stripe publishable key here
+  venmo:    '@walkoff-cards',     // your Venmo @handle
+  paypal:   'walkoffcards',       // your PayPal.me username
+  cashapp:  '$walkoffcards',      // your Cash App $cashtag
+  zelle:    '',                   // your Zelle phone or email
+  tax_rate:  0,                   // default tax % (e.g. 9.8 for WA state)
+  store_name: 'Walk-Off Sports Cards',
+  store_location: 'Kingston, WA',
+};
+
+// ════════════════════════════════════════════════════════════
+// CART STATE
+// ════════════════════════════════════════════════════════════
+let cart = [];
+let cartDiscount = 0;
+let stripeInstance = null;
+let stripeCardElement = null;
+let activePaymentMethod = null;
+let currentPaymentIntentId = null;
+
+// ════════════════════════════════════════════════════════════
+// NAV — add POS + Pricing buttons to nav bar
+// ════════════════════════════════════════════════════════════
+(function injectNavButtons(){
+  const nav = document.getElementById('lba-nav');
+  if(!nav) return;
+
+  const cartBtn = document.createElement('a');
+  cartBtn.className = 'lba-nav-btn';
+  cartBtn.id = 'nav-cart-btn';
+  cartBtn.onclick = toggleCart;
+  cartBtn.innerHTML = '<span class="nav-ico">🛒</span><span style="font-size:7px">CART</span>';
+  cartBtn.style.cursor = 'pointer';
+
+  const priceBtn = document.createElement('a');
+  priceBtn.className = 'lba-nav-btn';
+  priceBtn.onclick = openPricingTools;
+  priceBtn.innerHTML = '<span class="nav-ico">📊</span><span style="font-size:7px">PRICING</span>';
+  priceBtn.style.cursor = 'pointer';
+
+  // Insert before dashboard link
+  const dashBtn = nav.querySelector('a[href="dashboard.html"]');
+  if(dashBtn) {
+    nav.insertBefore(priceBtn, dashBtn);
+    nav.insertBefore(cartBtn, priceBtn);
+  } else {
+    nav.appendChild(cartBtn);
+    nav.appendChild(priceBtn);
+  }
+})();
+
+// ════════════════════════════════════════════════════════════
+// CART FUNCTIONS
+// ════════════════════════════════════════════════════════════
+function toggleCart(){
+  const el = document.getElementById('pos-cart');
+  el.classList.toggle('on');
+  renderCart();
+}
+
+function addToCart(item, imgUrl, price){
+  const cartItem = {
+    id: 'ci_' + Date.now() + Math.random().toString(36).slice(2,5),
+    name: item.player || item.name || 'Item',
+    sub: [item.year, item.set_name, item.parallel && item.parallel!=='Base'?item.parallel:null, item.card_number?'#'+item.card_number:null].filter(Boolean).join(' · '),
+    price: price || 0,
+    img: imgUrl || null,
+    shopId: item.shopId || null,
+    category: item.category || 'TCG',
+  };
+  cart.push(cartItem);
+  updateCartBadge();
+  renderCart();
+  toast('Added to cart: ' + cartItem.name);
+}
+
+window.removeFromCart = function(id){
+  cart = cart.filter(i => i.id !== id);
+  updateCartBadge();
+  renderCart();
+};
+
+window.editCartPrice = function(id){
+  const item = cart.find(i => i.id === id);
+  if(!item) return;
+  const np = parseFloat(prompt('New price for ' + item.name + ':', item.price.toFixed(2)));
+  if(!isNaN(np) && np >= 0){ item.price = np; renderCart(); }
+};
+
+function addManualItem(){
+  const name = prompt('Item name:');
+  if(!name) return;
+  const price = parseFloat(prompt('Price ($):'));
+  if(isNaN(price)) return;
+  cart.push({ id:'ci_'+Date.now(), name, sub:'Manual entry', price, img:null });
+  updateCartBadge();
+  renderCart();
+}
+
+function setDiscount(pct, btn){
+  cartDiscount = pct;
+  document.querySelectorAll('.pos-disc-btn').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+  renderCartTotals();
+}
+
+function getCartTotals(){
+  const sub = cart.reduce((a,i) => a+(i.price||0), 0);
+  const disc = sub * (cartDiscount/100);
+  const taxRate = parseFloat(document.getElementById('cart-tax')?.value) || POS_CONFIG.tax_rate || 0;
+  const tax = (sub - disc) * (taxRate/100);
+  const total = sub - disc + tax;
+  return { sub, disc, tax, total, taxRate };
+}
+
+function renderCartTotals(){
+  const {sub, disc, tax, total, taxRate} = getCartTotals();
+  const fd$ = n => '$'+n.toFixed(2);
+  document.getElementById('cart-subtotal').textContent = fd$(sub);
+  const discRow = document.getElementById('cart-disc-row');
+  if(disc > 0){ discRow.style.display='flex'; document.getElementById('cart-disc-amt').textContent='-'+fd$(disc); }
+  else discRow.style.display='none';
+  const taxRow = document.getElementById('cart-tax-row');
+  if(taxRate > 0){ taxRow.style.display='flex'; document.getElementById('cart-tax-amt').textContent=fd$(tax); }
+  else taxRow.style.display='none';
+  document.getElementById('cart-total').textContent = fd$(total);
+  const btn = document.getElementById('cart-checkout-btn');
+  if(btn) btn.disabled = cart.length === 0;
+}
+
+function renderCart(){
+  const list = document.getElementById('cart-items-list');
+  const empty = document.getElementById('cart-empty');
+  const countLbl = document.getElementById('cart-count-lbl');
+  if(countLbl) countLbl.textContent = cart.length ? cart.length + ' item' + (cart.length>1?'s':'') : '';
+
+  if(!cart.length){
+    if(empty) empty.style.display='block';
+    renderCartTotals();
+    return;
+  }
+  if(empty) empty.style.display='none';
+
+  list.innerHTML = cart.map(i => `
+    <div class="pos-item">
+      ${i.img ? `<img class="pos-item-img" src="${i.img}" onerror="this.style.display='none'">` : '<div class="pos-item-img" style="background:rgba(255,255,255,.06)"></div>'}
+      <div class="pos-item-info">
+        <div class="pos-item-name">${i.name}</div>
+        <div class="pos-item-sub">${i.sub||''}</div>
+        <button class="pos-item-edit" onclick="editCartPrice('${i.id}')">Edit price</button>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+        <span class="pos-item-price">$${(i.price||0).toFixed(2)}</span>
+        <button class="pos-item-rm" onclick="removeFromCart('${i.id}')">×</button>
+      </div>
+    </div>`).join('');
+
+  renderCartTotals();
+}
+
+function updateCartBadge(){
+  const btn = document.getElementById('nav-cart-btn');
+  if(!btn) return;
+  let badge = btn.querySelector('.nav-cart-badge');
+  if(cart.length === 0){
+    if(badge) badge.remove();
+    return;
+  }
+  if(!badge){ badge = document.createElement('span'); badge.className='nav-cart-badge'; btn.appendChild(badge); }
+  badge.textContent = cart.length;
+}
+
+// Add to Cart button — injected into each bubble
+window.addBubbleToCart = function(id){
+  const el = document.getElementById(id);
+  if(!el || !el._item) return;
+  const pi = parseInt(document.getElementById('ps'+id)?.value)||0;
+  const print = el._prints?.[pi]||el._prints?.[0]||{};
+  const cond = document.getElementById('cs'+id)?.value||'NM';
+  const condM = {NM:1,LP:.8,MP:.64,HP:.4,DMG:.25}[cond]||1;
+  const price = Number(print.mid||0) * condM;
+  addToCart(el._item, el._uploadedPhotoUrl||el._imgUrl, price);
+};
+
+// ════════════════════════════════════════════════════════════
+// CHECKOUT
+// ════════════════════════════════════════════════════════════
+function openCheckout(){
+  const {total} = getCartTotals();
+  document.getElementById('ck-total-display').textContent = '$'+total.toFixed(2);
+  document.getElementById('checkout').classList.add('on');
+  buildNumpad();
+  buildQRTabs();
+  if(POS_CONFIG.stripe_pk && !stripeInstance) initStripe();
+}
+
+function closeCheckout(){
+  document.getElementById('checkout').classList.remove('on');
+}
+
+function selectPayment(method){
+  activePaymentMethod = method;
+  document.querySelectorAll('.ck-method').forEach(m => m.classList.remove('on'));
+  document.querySelectorAll('.ck-panel').forEach(p => p.classList.remove('on'));
+  document.getElementById('m-'+method)?.classList.add('on');
+  if(method === 'cash') document.getElementById('panel-cash').classList.add('on');
+  else if(method === 'card') document.getElementById('panel-card').classList.add('on');
+  else document.getElementById('panel-qr').classList.add('on');
+  if(['venmo','paypal','cashapp','zelle'].includes(method)) showQR(method);
+}
+
+// ── CASH ──────────────────────────────────────────────────
+function buildNumpad(){
+  const pad = document.getElementById('cash-numpad');
+  if(!pad) return;
+  const keys = ['1','2','3','4','5','6','7','8','9','.',  '0','⌫'];
+  pad.innerHTML = keys.map(k => `<div class="ck-key" onclick="cashKey('${k}')">${k}</div>`).join('');
+}
+
+function cashKey(k){
+  const inp = document.getElementById('cash-tendered');
+  if(!inp) return;
+  if(k==='⌫'){ inp.value=inp.value.slice(0,-1); }
+  else if(k==='.' && inp.value.includes('.')){ return; }
+  else { inp.value += k; }
+  calcChange();
+}
+
+function calcChange(){
+  const {total} = getCartTotals();
+  const tendered = parseFloat(document.getElementById('cash-tendered')?.value)||0;
+  const el = document.getElementById('cash-change');
+  if(!tendered){ el.textContent='Enter amount received'; el.style.color='rgba(255,255,255,.3)'; return; }
+  const change = tendered - total;
+  if(change < 0){ el.textContent='⚠ Need $'+Math.abs(change).toFixed(2)+' more'; el.style.color='var(--red)'; }
+  else { el.textContent='Change: $'+change.toFixed(2); el.style.color='var(--g)'; }
+}
+
+function completeCashSale(){
+  const {total} = getCartTotals();
+  const tendered = parseFloat(document.getElementById('cash-tendered')?.value)||0;
+  if(tendered < total){ toast('Not enough cash tendered'); return; }
+  recordTransaction('Cash', total, tendered - total);
+}
+
+// ── QR PAYMENTS ───────────────────────────────────────────
+const QR_HANDLES = {
+  venmo:   { label:'Venmo', color:'#008CFF', handle: () => POS_CONFIG.venmo },
+  paypal:  { label:'PayPal', color:'#003087', handle: () => 'paypal.me/'+POS_CONFIG.paypal },
+  cashapp: { label:'Cash App', color:'#00D632', handle: () => POS_CONFIG.cashapp },
+  zelle:   { label:'Zelle', color:'#6B1BE3', handle: () => POS_CONFIG.zelle },
+};
+
+function buildQRTabs(){
+  const tabs = document.getElementById('qr-tabs');
+  if(!tabs) return;
+  const methods = ['venmo','paypal','cashapp','zelle'].filter(m => QR_HANDLES[m].handle() && QR_HANDLES[m].handle()!=='');
+  tabs.innerHTML = methods.map(m => `<div class="ck-qr-tab" id="qrtab-${m}" onclick="showQR('${m}')">${QR_HANDLES[m].label}</div>`).join('');
+}
+
+function showQR(method){
+  const h = QR_HANDLES[method];
+  if(!h) return;
+  const handle = h.handle();
+  if(!handle) return;
+  document.querySelectorAll('.ck-qr-tab').forEach(t => t.classList.remove('on'));
+  document.getElementById('qrtab-'+method)?.classList.add('on');
+  const {total} = getCartTotals();
+  // Build payment URL for deep linking
+  let payUrl = '';
+  if(method==='venmo') payUrl = `venmo://paycharge?txn=pay&recipients=${handle.replace('@','')}&amount=${total.toFixed(2)}&note=Walk-Off+Sports+Cards`;
+  else if(method==='paypal') payUrl = `https://paypal.me/${POS_CONFIG.paypal}/${total.toFixed(2)}`;
+  else if(method==='cashapp') payUrl = `https://cash.app/${POS_CONFIG.cashapp}/${total.toFixed(2)}`;
+  else payUrl = handle; // Zelle — just show handle
+  // Use Google Charts QR API
+  const qrUrl = `https://chart.googleapis.com/chart?chs=180x180&cht=qr&chl=${encodeURIComponent(payUrl)}&choe=UTF-8`;
+  document.getElementById('qr-img').src = qrUrl;
+  document.getElementById('qr-handle').textContent = handle;
+  document.getElementById('qr-amount').textContent = '$'+total.toFixed(2);
+}
+
+function completeQRSale(){
+  const {total} = getCartTotals();
+  const method = activePaymentMethod || 'Venmo';
+  recordTransaction(QR_HANDLES[method]?.label || method, total, 0);
+}
+
+// ── STRIPE ────────────────────────────────────────────────
+async function initStripe(){
+  if(!POS_CONFIG.stripe_pk || POS_CONFIG.stripe_pk.length < 10) return;
+  if(typeof Stripe === 'undefined'){
+    await new Promise((res,rej)=>{
+      const s=document.createElement('script'); s.src='https://js.stripe.com/v3/';
+      s.onload=res; s.onerror=rej; document.head.appendChild(s);
+    });
+  }
+  stripeInstance = Stripe(POS_CONFIG.stripe_pk);
+  const elements = stripeInstance.elements();
+  stripeCardElement = elements.create('card', {
+    style:{
+      base:{ color:'#fff', fontFamily:'"DM Mono",monospace', fontSize:'14px',
+             '::placeholder':{color:'rgba(255,255,255,.3)'}, iconColor:'#00ffb3' },
+      invalid:{color:'#ff4d6d'},
+    }
+  });
+  stripeCardElement.mount('#stripe-card-element');
+  stripeCardElement.on('change', e => {
+    document.getElementById('stripe-errors').textContent = e.error ? e.error.message : '';
+  });
+}
+
+async function processStripePayment(){
+  const {total} = getCartTotals();
+  if(total <= 0){ toast('Nothing to charge'); return; }
+  const btn = document.getElementById('stripe-pay-btn');
+  const status = document.getElementById('stripe-status');
+  btn.disabled = true;
+  status.textContent = '⟳ Creating payment...';
+  status.style.color = 'var(--gold)';
+  try {
+    // Create PaymentIntent via Worker
+    const res = await fetch(WORKER_URL + '/stripe/create-payment-intent', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ amount: Math.round(total * 100), currency: 'usd',
+                             description: 'Walk-Off Sports Cards — ' + cart.length + ' item(s)' })
+    });
+    const {clientSecret, error: piError} = await res.json();
+    if(piError || !clientSecret){ status.textContent = '⚠ ' + (piError||'No client secret'); btn.disabled=false; return; }
+
+    status.textContent = '⟳ Processing card...';
+    const {paymentIntent, error} = await stripeInstance.confirmCardPayment(clientSecret, {
+      payment_method: { card: stripeCardElement }
+    });
+    if(error){ status.textContent = '⚠ ' + error.message; btn.disabled=false; return; }
+    if(paymentIntent.status === 'succeeded'){
+      status.textContent = '✓ Payment approved!';
+      status.style.color = 'var(--g)';
+      setTimeout(() => recordTransaction('Card (Stripe)', total, 0), 600);
+    }
+  } catch(e){
+    status.textContent = '⚠ ' + e.message;
+  }
+  btn.disabled = false;
+}
+
+// ── RECORD TRANSACTION ────────────────────────────────────
+async function recordTransaction(method, total, change){
+  const tx = {
+    id: 'tx_'+Date.now(),
+    date: new Date().toISOString(),
+    items: [...cart],
+    method,
+    subtotal: getCartTotals().sub,
+    discount: getCartTotals().disc,
+    tax: getCartTotals().tax,
+    total,
+    change,
+  };
+
+  // Save to localStorage
+  const txLog = JSON.parse(localStorage.getItem('pos_transactions')||'[]');
+  txLog.unshift(tx);
+  localStorage.setItem('pos_transactions', JSON.stringify(txLog.slice(0,500)));
+
+  // Mark items as sold in Webflow (best-effort)
+  for(const item of cart){
+    if(item.shopId){
+      wfFetch('/collections/65eb45a28ff6bf3fe4f17b14/items/'+item.shopId, {
+        method:'PATCH',
+        body:JSON.stringify({fieldData:{'sold-out':true,'inventory-count':0,'status':'e6b42f14fcb99aa2168a5f5672226f68'}})
+      }).catch(()=>{});
+    }
+  }
+
+  closeCheckout();
+  document.getElementById('pos-cart').classList.remove('on');
+  showReceipt(tx);
+}
+
+// ── RECEIPT ───────────────────────────────────────────────
+function showReceipt(tx){
+  const modal = document.getElementById('receipt-modal');
+  const items = document.getElementById('receipt-items');
+  const totals = document.getElementById('receipt-totals');
+  const now = new Date(tx.date);
+  const ds = now.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})+' '+now.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+
+  items.innerHTML = `
+    <div style="font-size:9px;color:#888;margin-bottom:6px">${ds} · ${tx.method}</div>
+    ${tx.items.map(i=>`<div class="receipt-line"><span>${i.name}</span><span>$${(i.price||0).toFixed(2)}</span></div>`).join('')}`;
+
+  totals.innerHTML = `
+    ${tx.discount>0?`<div class="receipt-line"><span>Discount</span><span>-$${tx.discount.toFixed(2)}</span></div>`:''}
+    ${tx.tax>0?`<div class="receipt-line"><span>Tax</span><span>$${tx.tax.toFixed(2)}</span></div>`:''}
+    <div class="receipt-line total bold"><span>TOTAL</span><span>$${tx.total.toFixed(2)}</span></div>
+    ${tx.change>0?`<div class="receipt-line"><span>Change</span><span>$${tx.change.toFixed(2)}</span></div>`:''}
+    <div style="font-size:9px;color:#888;margin-top:6px;text-align:center">Paid by ${tx.method}</div>`;
+
+  modal.classList.add('on');
+}
+
+function closeReceipt(){ document.getElementById('receipt-modal').classList.remove('on'); }
+function printReceipt(){ window.print(); }
+function newTransaction(){
+  cart = []; cartDiscount = 0;
+  updateCartBadge(); renderCart(); closeReceipt();
+  toast('Ready for next sale');
+}
+
+// ════════════════════════════════════════════════════════════
+// PRICING TOOLS
+// ════════════════════════════════════════════════════════════
+function openPricingTools(){
+  document.getElementById('pricing-panel').classList.add('on');
+  document.getElementById('mc-ship').value = '1.00';
+}
+function closePricingTools(){ document.getElementById('pricing-panel').classList.remove('on'); }
+
+// Margin calculator
+function calcMargin(){
+  const cost = parseFloat(document.getElementById('mc-cost')?.value)||0;
+  const sell = parseFloat(document.getElementById('mc-sell')?.value)||0;
+  const ship = parseFloat(document.getElementById('mc-ship')?.value)||0;
+  const fees = sell * 0.1325 + 0.30; // eBay final value fee ~13.25% + $0.30
+  const profit = sell - cost - fees - ship;
+  const roi = cost > 0 ? (profit/cost*100) : 0;
+  const bar = Math.min(100, Math.max(0, roi));
+
+  document.getElementById('mc-fees').textContent = '$'+fees.toFixed(2);
+  document.getElementById('mc-profit').textContent = (profit>=0?'+':'')+'$'+Math.abs(profit).toFixed(2);
+  document.getElementById('mc-profit').className = 'pt-val '+(profit>=0?'g':'red');
+  document.getElementById('mc-roi').textContent = (roi>=0?'+':'')+roi.toFixed(1)+'%';
+  document.getElementById('mc-roi').className = 'pt-val '+(roi>=0?'g':'red');
+  document.getElementById('mc-bar').style.width = bar+'%';
+  document.getElementById('mc-bar').style.background = profit>=0?'var(--g)':'var(--red)';
+}
+
+// Price search — uses Claude to get quick price
+let priceSearchTimer = null;
+function debouncePriceSearch(){
+  clearTimeout(priceSearchTimer);
+  priceSearchTimer = setTimeout(runPriceSearch, 800);
+}
+
+async function runPriceSearch(){
+  const q = document.getElementById('pt-search')?.value?.trim();
+  if(!q || q.length < 3) return;
+  const el = document.getElementById('pt-results');
+  el.textContent = '⟳ Looking up...';
+  el.style.color = 'var(--gold)';
+  try {
+    const text = await callClaude([{role:'user',content:[{type:'text',text:
+      `What is the current market price for: "${q}"?
+      Give me TCGPlayer mid, eBay sold average, and high/low range.
+      Return ONLY JSON: {"name":"exact name","tcg_mid":0.00,"ebay_avg":0.00,"low":0.00,"high":0.00,"condition":"NM","note":"brief note e.g. trending up, common, etc"}`
+    }]}], 400);
+    const data = JSON.parse(text.replace(/\`\`\`json|\`\`\`/g,'').trim());
+    el.style.color = 'var(--g)';
+    el.innerHTML = `
+      <div style="margin-bottom:4px;font-size:10px;color:#fff">${data.name||q}</div>
+      <div class="pt-row"><span class="pt-label">TCGPlayer mid</span><span class="pt-val g">$${(data.tcg_mid||0).toFixed(2)}</span></div>
+      <div class="pt-row"><span class="pt-label">eBay avg sold</span><span class="pt-val gold">$${(data.ebay_avg||0).toFixed(2)}</span></div>
+      <div class="pt-row"><span class="pt-label">Range (NM)</span><span class="pt-val blue">$${(data.low||0).toFixed(2)} – $${(data.high||0).toFixed(2)}</span></div>
+      <div style="font-size:8px;color:rgba(255,255,255,.3);margin-top:4px">${data.note||''} · AI estimate from training data</div>`;
+  } catch(e){
+    el.style.color = 'var(--red)';
+    el.textContent = '⚠ Could not look up: '+e.message;
+  }
+}
+
+// Grade spread
+async function lookupGradeSpread(){
+  const q = document.getElementById('pt-grade-card')?.value?.trim();
+  if(!q || q.length < 3) return;
+  const grid = document.getElementById('grade-grid');
+  grid.innerHTML = '<div style="font-family:monospace;font-size:8px;color:rgba(255,255,255,.3);grid-column:1/-1;text-align:center;padding:8px">Loading grade values...</div>';
+  try {
+    const text = await callClaude([{role:'user',content:[{type:'text',text:
+      `What are the PSA graded values for: "${q}"?
+      Return ONLY JSON array of 8 grades: [{"grade":"10","price":0.00},{"grade":"9.5","price":0.00},{"grade":"9","price":0.00},{"grade":"8.5","price":0.00},{"grade":"8","price":0.00},{"grade":"7","price":0.00},{"grade":"6","price":0.00},{"grade":"5","price":0.00}]
+      Use current eBay sold averages. If unknown use 0.`
+    }]}], 400);
+    const grades = JSON.parse(text.replace(/\`\`\`json|\`\`\`/g,'').trim());
+    grid.innerHTML = grades.map(g => `
+      <div class="pt-grade-btn" onclick="this.classList.toggle('on')">
+        <div class="pt-grade-val">PSA ${g.grade}</div>
+        <div class="pt-grade-price">$${(g.price||0).toFixed(2)}</div>
+      </div>`).join('');
+  } catch(e){
+    grid.innerHTML = '<div style="color:var(--red);font-size:8px;padding:8px">Error: '+e.message+'</div>';
+  }
+}
+
+document.getElementById('pt-grade-card')?.addEventListener('keydown', e => { if(e.key==='Enter') lookupGradeSpread(); });
+
+// Market trend delta
+async function lookupTrendDelta(){
+  const q = document.getElementById('pt-delta-card')?.value?.trim();
+  if(!q) return;
+  const el = document.getElementById('pt-delta-result');
+  el.textContent = '⟳ Analyzing trend...';
+  el.style.color = 'var(--gold)';
+  try {
+    const text = await callClaude([{role:'user',content:[{type:'text',text:
+      `What is the price trend for: "${q}"?
+      Based on your training data, estimate the trend.
+      Return ONLY JSON: {"trend":"up|down|flat|volatile","pct_30d":0.0,"pct_90d":0.0,"reason":"brief reason","current_nm":0.00}`
+    }]}], 300);
+    const d = JSON.parse(text.replace(/\`\`\`json|\`\`\`/g,'').trim());
+    const tc = d.trend==='up'?'var(--g)':d.trend==='down'?'var(--red)':'var(--gold)';
+    el.style.color = tc;
+    el.innerHTML = `<span style="color:${tc}">${d.trend==='up'?'↑':d.trend==='down'?'↓':'→'} ${d.trend.toUpperCase()}</span> &nbsp;
+      30d: ${d.pct_30d>=0?'+':''}${(d.pct_30d||0).toFixed(1)}% &nbsp; 90d: ${d.pct_90d>=0?'+':''}${(d.pct_90d||0).toFixed(1)}%<br>
+      <span style="color:rgba(255,255,255,.3);font-size:8px">${d.reason||''}</span>`;
+  } catch(e){ el.style.color='var(--red)'; el.textContent='Error: '+e.message; }
+}
+document.getElementById('pt-delta-card')?.addEventListener('keydown', e => { if(e.key==='Enter') lookupTrendDelta(); });
+
+// Price tag generator
+function generatePriceTag(){
+  const name = document.getElementById('pt-tag-name')?.value?.trim();
+  const price = parseFloat(document.getElementById('pt-tag-price')?.value)||0;
+  const cond = document.getElementById('pt-tag-cond')?.value||'NM';
+  if(!name || !price){ toast('Enter name and price'); return; }
+  const el = document.getElementById('pt-tag-preview');
+  el.innerHTML = `
+    <div style="background:#fff;color:#111;border-radius:8px;padding:10px 12px;margin-top:6px;font-family:'DM Mono',monospace;">
+      <div style="font-size:11px;font-weight:700;margin-bottom:2px">${name}</div>
+      <div style="font-size:9px;color:#666;margin-bottom:4px">${cond} · Walk-Off Sports Cards</div>
+      <div style="font-size:20px;font-weight:900;color:#111">$${price.toFixed(2)}</div>
+      <button onclick="window.print()" style="width:100%;margin-top:8px;padding:6px;background:#111;color:#fff;border:none;border-radius:4px;font-size:9px;cursor:pointer">🖨 Print Tag</button>
+    </div>`;
+}
+
+// ════════════════════════════════════════════════════════════
+// ADD TO CART BUTTON — inject into every bubble's bacts
+// ════════════════════════════════════════════════════════════
+// Hook into addBubble post-render to add cart button
+const _origAddBubble = window.addBubble;
+
 // Auto-launch — no credentials needed, everything in Cloudflare Worker
 window.addEventListener('load', function(){ startScanner(); });
 </script>
 
 <div id="lba-nav"><a class="lba-nav-btn active" href="sca.html"><span class="nav-ico">⬡</span>SCANNER</a><a class="lba-nav-btn" href="dashboard.html"><span class="nav-ico">▦</span>DASHBOARD</a></div>
+<!-- ═══ POS CART ═══════════════════════════════════════ -->
+<div id="pos-cart">
+  <div class="pos-header">
+    <span class="pos-title">🛒 CART</span>
+    <div style="display:flex;gap:8px;align-items:center">
+      <span id="cart-count-lbl" style="font-family:'DM Mono',monospace;font-size:9px;color:rgba(255,255,255,.4)"></span>
+      <button class="pos-close" onclick="toggleCart()">×</button>
+    </div>
+  </div>
+  <div class="pos-items" id="cart-items-list">
+    <div class="pos-empty" id="cart-empty">No items yet — scan a card and tap Add to Cart</div>
+  </div>
+  <div class="pos-footer">
+    <button class="pos-add-btn" onclick="addManualItem()">+ Add Manual Item</button>
+    <div class="pos-totals">
+      <div class="pos-tax-row">
+        <span class="pos-tax-label">Tax rate %</span>
+        <input class="pos-tax-inp" id="cart-tax" type="number" value="0" min="0" max="30" step="0.1" oninput="renderCartTotals()">
+        <div class="pos-discount-row" style="margin:0;flex:1;justify-content:flex-end;display:flex;gap:4px">
+          <button class="pos-disc-btn" id="disc-none" onclick="setDiscount(0,this)">No disc</button>
+          <button class="pos-disc-btn" id="disc-10" onclick="setDiscount(10,this)">10%</button>
+          <button class="pos-disc-btn" id="disc-20" onclick="setDiscount(20,this)">20%</button>
+        </div>
+      </div>
+      <div class="pos-row"><span>Subtotal</span><span id="cart-subtotal">$0.00</span></div>
+      <div class="pos-row" id="cart-disc-row" style="display:none"><span>Discount</span><span id="cart-disc-amt" style="color:var(--red)">-$0.00</span></div>
+      <div class="pos-row" id="cart-tax-row" style="display:none"><span>Tax</span><span id="cart-tax-amt">$0.00</span></div>
+      <div class="pos-row total"><span>TOTAL</span><span id="cart-total">$0.00</span></div>
+    </div>
+    <button class="pos-checkout-btn" id="cart-checkout-btn" onclick="openCheckout()" disabled>CHECKOUT</button>
+  </div>
+</div>
+
+<!-- ═══ CHECKOUT ════════════════════════════════════════ -->
+<div id="checkout">
+  <div class="ck-header">
+    <button class="ck-back" onclick="closeCheckout()">←</button>
+    <span class="ck-title">CHECKOUT</span>
+  </div>
+  <div class="ck-total-banner">
+    <div class="ck-total-lbl">TOTAL DUE</div>
+    <div class="ck-total-amt" id="ck-total-display">$0.00</div>
+  </div>
+  <div class="ck-body">
+    <div style="font-family:'DM Mono',monospace;font-size:9px;color:rgba(255,255,255,.4);letter-spacing:2px;margin-bottom:10px">SELECT PAYMENT METHOD</div>
+    <div class="ck-methods">
+      <div class="ck-method" id="m-cash" onclick="selectPayment('cash')">
+        <div class="ck-method-ico">💵</div><div class="ck-method-lbl">CASH</div>
+      </div>
+      <div class="ck-method" id="m-card" onclick="selectPayment('card')">
+        <div class="ck-method-ico">💳</div><div class="ck-method-lbl">CARD</div>
+      </div>
+      <div class="ck-method" id="m-venmo" onclick="selectPayment('venmo')">
+        <div class="ck-method-ico" style="font-size:18px;font-family:'DM Mono',monospace;color:#008CFF;font-weight:700">V</div><div class="ck-method-lbl">VENMO</div>
+      </div>
+      <div class="ck-method" id="m-paypal" onclick="selectPayment('paypal')">
+        <div class="ck-method-ico" style="font-size:18px;font-family:'DM Mono',monospace;color:#003087;font-weight:700">PP</div><div class="ck-method-lbl">PAYPAL</div>
+      </div>
+      <div class="ck-method" id="m-cashapp" onclick="selectPayment('cashapp')">
+        <div class="ck-method-ico" style="font-size:18px;font-family:'DM Mono',monospace;color:#00D632;font-weight:700">$</div><div class="ck-method-lbl">CASH APP</div>
+      </div>
+      <div class="ck-method" id="m-zelle" onclick="selectPayment('zelle')">
+        <div class="ck-method-ico" style="font-size:18px;font-family:'DM Mono',monospace;color:#6B1BE3;font-weight:700">Z</div><div class="ck-method-lbl">ZELLE</div>
+      </div>
+    </div>
+
+    <!-- CASH PANEL -->
+    <div class="ck-panel" id="panel-cash">
+      <input class="ck-cash-inp" id="cash-tendered" type="text" placeholder="$0.00" oninput="calcChange()">
+      <div class="ck-numpad" id="cash-numpad"></div>
+      <div class="ck-change" id="cash-change">Enter amount received</div>
+      <button class="ck-confirm-btn cash" onclick="completeCashSale()">✓ COMPLETE SALE</button>
+    </div>
+
+    <!-- CARD PANEL (Stripe) -->
+    <div class="ck-panel" id="panel-card">
+      <div style="font-family:'DM Mono',monospace;font-size:9px;color:rgba(255,255,255,.4);margin-bottom:8px">ENTER CARD DETAILS</div>
+      <div id="stripe-card-element"></div>
+      <div id="stripe-errors" style="font-family:'DM Mono',monospace;font-size:9px;color:var(--red);margin-bottom:8px;min-height:14px"></div>
+      <div style="font-family:'DM Mono',monospace;font-size:8px;color:rgba(255,255,255,.2);margin-bottom:10px">🔒 Secured by Stripe — card number never stored locally</div>
+      <button class="ck-confirm-btn card" id="stripe-pay-btn" onclick="processStripePayment()">💳 CHARGE CARD</button>
+      <div class="ck-status" id="stripe-status"></div>
+    </div>
+
+    <!-- QR PAYMENT PANELS (Venmo, PayPal, Cash App, Zelle) -->
+    <div class="ck-panel" id="panel-qr">
+      <div class="ck-qr-tabs" id="qr-tabs"></div>
+      <div class="ck-qr-box" id="qr-box">
+        <img id="qr-img" src="" alt="QR Code">
+        <div class="ck-qr-handle" id="qr-handle"></div>
+        <div class="ck-qr-amount" id="qr-amount"></div>
+      </div>
+      <div style="font-family:'DM Mono',monospace;font-size:9px;color:rgba(255,255,255,.4);text-align:center;margin-bottom:10px">Customer scans QR → pays → you confirm</div>
+      <button class="ck-confirm-btn qr" onclick="completeQRSale()">✓ PAYMENT RECEIVED</button>
+      <div class="ck-status" id="qr-status"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ RECEIPT ══════════════════════════════════════════ -->
+<div id="receipt-modal">
+  <div class="receipt" id="receipt-content">
+    <div class="receipt-logo">WALK-OFF SPORTS CARDS</div>
+    <div class="receipt-sub">Kingston, WA · walkoffsc.com</div>
+    <hr class="receipt-divider">
+    <div id="receipt-items"></div>
+    <hr class="receipt-divider">
+    <div id="receipt-totals"></div>
+    <div class="receipt-thanks">Thank you for shopping with us! ⚾</div>
+    <div class="receipt-btns">
+      <button class="receipt-btn" onclick="printReceipt()">🖨 Print</button>
+      <button class="receipt-btn" onclick="closeReceipt()">Close</button>
+      <button class="receipt-btn" onclick="newTransaction()">New Sale</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ PRICING TOOLS ════════════════════════════════════ -->
+<div id="pricing-panel">
+  <div class="pt-header">
+    <span class="pt-title">📊 PRICING TOOLS</span>
+    <button class="pos-close" onclick="closePricingTools()">×</button>
+  </div>
+  <div class="pt-body">
+
+    <div class="pt-section">
+      <div class="pt-section-h">QUICK PRICE LOOKUP</div>
+      <div class="pt-card">
+        <input class="pt-inp" id="pt-search" placeholder="Card name, set, year..." oninput="debouncePriceSearch()">
+        <div id="pt-results" style="font-family:'DM Mono',monospace;font-size:9px;color:rgba(255,255,255,.4);text-align:center;padding:8px">Enter card name to search</div>
+      </div>
+    </div>
+
+    <div class="pt-section">
+      <div class="pt-section-h">GRADE VALUE SPREAD (PSA)</div>
+      <div class="pt-card" id="grade-spread-card">
+        <input class="pt-inp" id="pt-grade-card" placeholder="Card name for grade spread...">
+        <div class="pt-grade-grid" id="grade-grid">
+          <div style="font-family:monospace;font-size:8px;color:rgba(255,255,255,.2);grid-column:1/-1;text-align:center;padding:8px">Enter card name above then tap a grade</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="pt-section">
+      <div class="pt-section-h">MARGIN CALCULATOR</div>
+      <div class="pt-card">
+        <div class="pt-row">
+          <span class="pt-label">Cost paid</span>
+          <span></span>
+        </div>
+        <input class="pt-inp" id="mc-cost" type="number" placeholder="$0.00" step="0.01" oninput="calcMargin()">
+        <div class="pt-row">
+          <span class="pt-label">Sell price</span><span></span>
+        </div>
+        <input class="pt-inp" id="mc-sell" type="number" placeholder="$0.00" step="0.01" oninput="calcMargin()">
+        <div class="pt-row">
+          <span class="pt-label">eBay fees (~13.25%)</span>
+          <span class="pt-val gold" id="mc-fees">—</span>
+        </div>
+        <div class="pt-row">
+          <span class="pt-label">Shipping est.</span>
+          <input class="pt-inp" id="mc-ship" type="number" placeholder="1.00" step="0.25" value="1.00" style="width:70px;margin:0;padding:4px 6px" oninput="calcMargin()">
+        </div>
+        <div class="pt-row" style="margin-top:6px">
+          <span class="pt-label" style="font-size:10px;color:#fff">Net profit</span>
+          <span class="pt-val g" id="mc-profit" style="font-size:16px">—</span>
+        </div>
+        <div class="pt-row">
+          <span class="pt-label">ROI</span>
+          <span class="pt-val" id="mc-roi">—</span>
+        </div>
+        <div class="pt-trend-bar"><div class="pt-trend-fill" id="mc-bar" style="width:0%;background:var(--g)"></div></div>
+      </div>
+    </div>
+
+    <div class="pt-section">
+      <div class="pt-section-h">MARKET TREND DELTA</div>
+      <div class="pt-card">
+        <input class="pt-inp" id="pt-delta-card" placeholder="Card name...">
+        <div id="pt-delta-result" style="font-family:'DM Mono',monospace;font-size:9px;color:rgba(255,255,255,.3);padding:6px 0">Enter a card to see 30/60/90-day trend estimate</div>
+      </div>
+    </div>
+
+    <div class="pt-section">
+      <div class="pt-section-h">PRICE TAG GENERATOR</div>
+      <div class="pt-card">
+        <input class="pt-inp" id="pt-tag-name" placeholder="Item name">
+        <input class="pt-inp" id="pt-tag-price" type="number" placeholder="Price $" step="0.01">
+        <select class="pt-inp" id="pt-tag-cond">
+          <option value="NM">NM — Near Mint</option>
+          <option value="LP">LP — Light Play</option>
+          <option value="MP">MP — Moderate Play</option>
+          <option value="HP">HP — Heavy Play</option>
+        </select>
+        <button style="width:100%;padding:10px;background:rgba(255,209,102,.08);border:1px solid rgba(255,209,102,.2);color:var(--gold);border-radius:6px;font-family:'DM Mono',monospace;font-size:9px;cursor:pointer;letter-spacing:1px" onclick="generatePriceTag()">GENERATE PRICE TAG</button>
+        <div id="pt-tag-preview" style="margin-top:8px"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
 </body>
 </html>
