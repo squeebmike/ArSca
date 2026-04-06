@@ -335,7 +335,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
 <div id="hud" style="display:none">
   <span class="hl">LBA</span>
   <div class="hbtns">
-    <span id="hstatus">LIVE</span>
+    <span id="hstatus">v4LIVE</span>
     <button class="hbtn" id="flipbtn" onclick="toggleFlip()">FLIP</button>
     <button class="hbtn" id="bulkbtn" onclick="toggleBulk()">BULK</button>
     <button class="hbtn" id="autobitn" onclick="toggleAuto()">AUTO</button>
@@ -1571,6 +1571,7 @@ async function scanFront(img){
 
   const text=await callClaude([{role:'user',content:[{type:'image',source:{type:'base64',media_type:'image/jpeg',data:img}},{type:'text',text:quickPrompt}]}],800);
   let items=[];
+  console.log('[VERSION] sca.html v4 loaded — parse fix active');
   console.log('[SCAN] Raw:', text ? text.substring(0,150) : 'EMPTY');
   try {
     // Step 1: strip all markdown code fences
