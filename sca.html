@@ -1638,8 +1638,23 @@ Rules: game must be one of: Pokemon TCG, Magic: The Gathering, Yu-Gi-Oh!, Sports
             _bbl._prints = fetched.printings;
             if(fetched.imageUrl) {
               _bbl._imgUrl = fetched.imageUrl;
-              const imgEl = _bbl.querySelector('.card-img,#cimg'+_bbl.id);
-              if(imgEl) { imgEl.src = fetched.imageUrl; imgEl.style.display='block'; }
+              const imgSlot = document.getElementById('cimg'+_bbl.id);
+              if(imgSlot) {
+                if(imgSlot.tagName === 'IMG') {
+                  imgSlot.src = fetched.imageUrl;
+                  imgSlot.style.display = 'block';
+                } else {
+                  // Replace placeholder div with actual img
+                  const img = document.createElement('img');
+                  img.className = 'card-img';
+                  img.id = 'cimg' + _bbl.id;
+                  img.src = fetched.imageUrl;
+                  img.alt = _bbl._item?.name || '';
+                  img.loading = 'lazy';
+                  img.onerror = function(){ this.style.display='none'; };
+                  imgSlot.parentNode.replaceChild(img, imgSlot);
+                }
+              }
             }
             const bmi = fetched.bestMatchIdx || 0;
             const selEl = document.getElementById('ps' + _bbl.id);
