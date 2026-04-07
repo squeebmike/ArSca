@@ -1632,10 +1632,20 @@ async function scanFront(img){
   window._lastFrontB64 = img;
   window._lastFrontTime = Date.now();
 
-  const quickPrompt = `Identify this trading card. Return ONLY a JSON array like this example:
-[{"game":"Pokemon TCG","name":"Charizard ex","player":null,"sport":null,"team":null,"year":"2023","card_number":"006/165","set_name":"Scarlet & Violet 151","set_id":"sv3pt5","parallel":"Holo Rare","serial_number":null,"grading_company":null,"grade":null,"cert_number":null,"manufacturer":"Pokemon Company","is_rookie":false,"cx":50,"cy":50}]
+  const quickPrompt = `Identify this collectible item. It could be a trading card, toy, Hot Wheels, comic book, action figure, Funko Pop, LEGO set, video game, sports memorabilia, or anything collectible.
 
-Rules: game must be one of: Pokemon TCG, Magic: The Gathering, Yu-Gi-Oh!, Sports Card, Comic, PSA Slab, BGS Slab, CGC Slab, SGC Slab. Return array only, no other text.`;
+Return ONLY a JSON array — no markdown, no text:
+[{"game":"item category","name":"exact item name","player":null,"sport":null,"team":null,"year":"year","card_number":"card # if applicable","set_name":"set/series/line","set_id":"tcg set id if known","parallel":"variant/edition/color","serial_number":null,"grading_company":null,"grade":null,"cert_number":null,"manufacturer":"brand/publisher","is_rookie":false,"cx":50,"cy":50,"item_type":"card|toy|comic|game|figure|memorabilia|other","search_query":"best eBay search string for this exact item"}]
+
+For game field use EXACTLY one of:
+- Trading cards: "Pokemon TCG", "Magic: The Gathering", "Yu-Gi-Oh!", "Sports Card"
+- Comics: "Comic"
+- Graded slabs: "PSA Slab", "BGS Slab", "CGC Slab", "SGC Slab"  
+- Toys/Collectibles: "Hot Wheels", "Funko Pop", "LEGO", "Action Figure", "Video Game", "Sports Memorabilia", "Collectible"
+
+For search_query: build the BEST possible eBay search string. For Hot Wheels include year+color+casting name. For Funko include number+name+exclusivity. For comics include title+issue+grade if graded. Be SPECIFIC.
+
+Return array only.`;
 
   const text = await callClaude([{role:'user',content:[
     {type:'image',source:{type:'base64',media_type:'image/jpeg',data:img}},
@@ -1676,6 +1686,7 @@ Rules: game must be one of: Pokemon TCG, Magic: The Gathering, Yu-Gi-Oh!, Sports
     const stock = checkStock(item);
     const isTCG = ['Pokemon TCG','Magic: The Gathering','Yu-Gi-Oh!','Other TCG'].includes(item.game);
     const isComic = item.game === 'Comic';
+    const isGeneral = ['Hot Wheels','Funko Pop','LEGO','Action Figure','Video Game','Sports Memorabilia','Collectible'].includes(item.game);
 
     // cx/cy default to center if missing or invalid
     const W = window.innerWidth, H = window.innerHeight;
@@ -1763,6 +1774,13 @@ Rules: game must be one of: Pokemon TCG, Magic: The Gathering, Yu-Gi-Oh!, Sports
           if(fetched.printings && fetched.printings.length) {
             _bbl._prints = fetched.printings;
           }
+        } else {
+          // General collectible (Hot Wheels, Funko, etc) — no API, show search guidance
+          hs.textContent = 'TAP EBAY SOLD ↗';
+          const bpEl = document.getElementById('bp'+_bbl.id);
+          const brEl = document.getElementById('br'+_bbl.id);
+          if(bpEl) { bpEl.textContent='SEE EBAY'; bpEl.style.fontSize='11px'; bpEl.style.color='rgba(199,125,255,.8)'; }
+          if(brEl) brEl.textContent='Tap eBay Sold or Active for current prices';
         }
 
         // Enrich with comps
@@ -1996,6 +2014,7 @@ function getType(item){
   }
   if(g==='sports card'||g==='sports') return 'sports';
   if(g==='comic') return 'comic';
+  if(g==='hot wheels'||g==='funko pop'||g==='lego'||g==='action figure'||g==='video game'||g==='sports memorabilia'||g==='collectible') return 'general';
   return 'tcg';
 }
 function checkStock(item){
@@ -2150,6 +2169,13 @@ function addBubble(item,stock,imgUrl,apiPrintings,bestMatchIdx){
     const qeComic=(item.name||'')+' '+(item.issue||'')+' comic';
     actLinks=`<a class="bact a-gcol" href="https://www.gocollect.com/search/?q=${qgc}" target="_blank">GoCollect ↗</a>
       <a class="bact a-ebay" href="${AFF.ebaySearch(qeComic)}" target="_blank">eBay Sold ↗</a>`;
+  }
+  else if(ct==='general'){
+    const ebayQ = item.search_query || ((item.name||'')+' '+(item.set_name||'')+' '+(item.year||''));
+    const ebayBase = (item.name||'')+' '+(item.manufacturer||item.game||'');
+    actLinks=`<a class="bact a-ebay" href="${AFF.ebaySearch(ebayQ)}" target="_blank">eBay Sold ↗</a>
+      <a class="bact a-ebay" style="background:rgba(72,202,228,.08);color:var(--blue);border-color:rgba(72,202,228,.2)" href="${AFF.ebayActive(ebayQ)}" target="_blank">eBay Active ↗</a>
+      <a class="bact a-ebay" style="background:rgba(199,125,255,.08);color:var(--purple);border-color:rgba(199,125,255,.2)" href="${AFF.ebaySearch(ebayBase)}" target="_blank">eBay Broader ↗</a>`;
   }
   else{
     const tcgDirect=first.tcgUrl||null;
@@ -2456,7 +2482,28 @@ window.chPrint=function(id){
   }
 };
 window.chCond=function(id){const el=document.getElementById(id);if(!el)return;const pi=parseInt(document.getElementById('ps'+id)?.value)||0;const cond=document.getElementById('cs'+id).value;el.querySelectorAll('.bcp').forEach(p=>p.classList.toggle('on',p.textContent===cond));updatePrice(id,el._prints[pi]||el._prints[0],cond);};
-window.cpill=function(id,pill,cond){const el=document.getElementById(id);if(!el)return;const pi=parseInt(document.getElementById('ps'+id)?.value)||0;const cs=document.getElementById('cs'+id);if(cs)cs.value=cond;el.querySelectorAll('.bcp').forEach(p=>p.classList.remove('on'));pill.classList.add('on');updatePrice(id,el._prints[pi]||el._prints[0],cond);};
+window.cpill=function(id,pill,cond){
+  const el=document.getElementById(id);if(!el)return;
+  const pi=parseInt(document.getElementById('ps'+id)?.value)||0;
+  const cs=document.getElementById('cs'+id);if(cs)cs.value=cond;
+  el.querySelectorAll('.bcp').forEach(p=>p.classList.remove('on'));
+  pill.classList.add('on');
+  updatePrice(id,el._prints[pi]||el._prints[0],cond);
+  // Update eBay links with condition filter
+  const ebayCondMap={'NM':'Near Mint','LP':'Lightly Played','MP':'Moderately Played','HP':'Heavily Played','DMG':'Damaged'};
+  const ebayCondId={'NM':'3000','LP':'3000','MP':'4000','HP':'5000','DMG':'6000'};
+  const condId = ebayCondId[cond]||'3000';
+  const item = el._item||{};
+  const p = el._prints?.[pi]||el._prints?.[0]||{};
+  const baseQ = [item.player||item.name, item.year||p.year, p.set||item.set_name, p.variant&&p.variant!=='Base'?p.variant:null].filter(Boolean).join(' ');
+  const ebayBtns = el.querySelectorAll('.a-ebay');
+  if(ebayBtns[0] && baseQ) {
+    const soldUrl = AFF.ebaySearch(baseQ)+'&LH_ItemCondition='+condId;
+    const activeUrl = AFF.ebayActive(baseQ)+'&LH_ItemCondition='+condId;
+    if(ebayBtns[0]) ebayBtns[0].href = soldUrl;
+    if(ebayBtns[1]) ebayBtns[1].href = activeUrl;
+  }
+};
 function updatePrice(id,p,cond){
   if(!p)return;
   const m=CM[cond]||1;
@@ -2471,11 +2518,20 @@ function updatePrice(id,p,cond){
     bpEl.style.fontSize='11px';bpEl.style.color='rgba(255,255,255,.4)';
     if(brEl)brEl.textContent='Check TCGPlayer for current price';
   }
-  // Update TCGPlayer link
+  // Update TCGPlayer link with condition filter
   const bt=document.getElementById('bt'+id);
   if(bt){
-    const tUrl=AFF.tcg(p.tcgUrl);if(tUrl){bt.href=tUrl;bt.textContent='TCGPlayer ↗';}
-    else{const n=document.getElementById(id)?.querySelector('.bname')?.textContent||'';bt.href=AFF.tcgSearch(n+' '+(p.set||'')+' '+(p.variant||''));bt.textContent='TCGPlayer Search ↗';}
+    const tUrl=AFF.tcg(p.tcgUrl);
+    const tcgCondMap={'NM':'Near Mint','LP':'Lightly Played','MP':'Moderately Played','HP':'Heavily Played','DMG':'Damaged'};
+    const tcgCond = tcgCondMap[cond]||'Near Mint';
+    if(tUrl){
+      bt.href = tUrl+(tUrl.includes('?')?'&':'?')+'Condition='+encodeURIComponent(tcgCond);
+      bt.textContent='TCGPlayer ('+cond+') ↗';
+    } else {
+      const n=document.getElementById(id)?.querySelector('.bname')?.textContent||'';
+      bt.href=AFF.tcgSearch(n+' '+(p.set||'')+' '+(p.variant||''));
+      bt.textContent='TCGPlayer Search ↗';
+    }
   }
   // Update Scryfall link
   const sf=document.getElementById('sf'+id);
