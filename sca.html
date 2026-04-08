@@ -569,9 +569,12 @@ const AFF = {
   },
 
   // Build a TCGPlayer search URL wrapped with affiliate link
-  tcgSearch(query) {
+  tcgSearch(query, cond) {
     if(!query) return 'https://www.tcgplayer.com';
-    return 'https://www.tcgplayer.com/search/all/product?q=' + encodeURIComponent(query);
+    const condMap = {'NM':'Near Mint','LP':'Lightly Played','MP':'Moderately Played','HP':'Heavily Played','DMG':'Damaged'};
+    let url = 'https://www.tcgplayer.com/search/all/product?q=' + encodeURIComponent(query);
+    if(cond && condMap[cond]) url += '&condition=' + encodeURIComponent(condMap[cond]);
+    return url;
   },
 
   // Build an eBay sold search URL with affiliate params
@@ -869,21 +872,26 @@ async function fetchAllPrintings(item){
             || card.card_faces?.[0]?.image_uris?.normal || null;
           const usd = parseFloat(card.prices?.usd||0);
           const usdFoil = parseFloat(card.prices?.usd_foil||0);
-          const isFoil = card.foil && !card.nonfoil;
+          // MTG: determine available finishes from actual price data
+          const hasNonFoil = usd > 0;
+          const hasFoil = usdFoil > 0;
+          const usdEtched = parseFloat(card.prices?.usd_etched||0);
+          const hasEtched = usdEtched > 0;
+          // Best price to show: prefer non-foil if available, else foil
+          const bestMid = hasNonFoil ? usd : (hasFoil ? usdFoil : 0);
           const tcgLink = card.purchase_uris?.tcgplayer || null;
-          // Build allPrices for MTG so finish toggle shows foil/nonfoil
+          // Build allPrices for finish toggle buttons
           const mtgPriceTiers = [];
-          if(usd > 0)     mtgPriceTiers.push({finish:'normal',    mid:usd,     low:usd*0.8,    high:usd*1.3});
-          if(usdFoil > 0) mtgPriceTiers.push({finish:'holofoil',  mid:usdFoil, low:usdFoil*0.8,high:usdFoil*1.3});
-          const parseFloat2 = parseFloat(card.prices?.usd_etched||0);
-          if(parseFloat2>0) mtgPriceTiers.push({finish:'unlimitedHolofoil', mid:parseFloat2, low:parseFloat2*0.8, high:parseFloat2*1.3});
+          if(hasNonFoil) mtgPriceTiers.push({finish:'normal',    mid:usd,       low:usd*0.8,       high:usd*1.3});
+          if(hasFoil)    mtgPriceTiers.push({finish:'holofoil',  mid:usdFoil,   low:usdFoil*0.8,   high:usdFoil*1.3});
+          if(hasEtched)  mtgPriceTiers.push({finish:'unlimitedHolofoil', mid:usdEtched, low:usdEtched*0.8, high:usdEtched*1.3});
 
           result.printings.push({
             set: card.set_name || 'Unknown Set',
-            variant: card.frame_effects?.join(' ') || (usdFoil>usd?'Foil':'Base'),
+            variant: (usd > 0 && usdFoil > 0) ? 'Nonfoil' : (usdFoil > 0 ? 'Foil' : 'Nonfoil'),
             year: card.released_at?.substring(0,4) || '',
             numbered: card.collector_number ? `#${card.collector_number}` : null,
-            mid: usdFoil||usd||0, low: Math.max((usdFoil||usd)*0.8,0), high: (usdFoil||usd)*1.3||0,
+            mid: (usd > 0 ? usd : usdFoil)||0, low: Math.max((usd||usdFoil)*0.8,0), high: (usd||usdFoil)*1.3||0,
             hasRealPrice: !!(usdFoil||usd),
             imageUrl: imgUrl,
             tcgUrl: tcgLink,
@@ -938,6 +946,47 @@ async function fetchAllPrintings(item){
   }catch(e){ console.log('Printings fetch failed:',e); }
 
   return result;
+}
+
+// ── PRICE CONDITION CHART ────────────────────────────────────────────────
+// Shows a mini bar chart of prices by condition (NM/LP/MP/HP/DMG)
+// Similar to TCGPlayer's condition price breakdown
+function buildPriceChart(bubEl, printing) {
+  if(!printing || !printing.mid || printing.mid <= 0) return;
+  const id = bubEl.id;
+  // Remove any existing chart
+  bubEl.querySelector('.price-chart')?.remove();
+  const nmPrice = printing.mid;
+  // Condition multipliers matching industry standard
+  const conds = [
+    {label:'NM', val: nmPrice,           color:'#00ffb3'},
+    {label:'LP', val: nmPrice * 0.80,    color:'#48cae4'},
+    {label:'MP', val: nmPrice * 0.60,    color:'#ffd166'},
+    {label:'HP', val: nmPrice * 0.40,    color:'#ff9500'},
+    {label:'DMG',val: nmPrice * 0.20,    color:'#ff4d6d'},
+  ];
+  const maxVal = nmPrice;
+  const chart = document.createElement('div');
+  chart.className = 'price-chart';
+  chart.style.cssText = 'margin:6px 0 4px;padding:8px;background:rgba(0,0,0,.3);border-radius:6px;border:1px solid rgba(255,255,255,.06)';
+  chart.innerHTML = '<div style="font-family:monospace;font-size:7px;color:rgba(255,255,255,.3);letter-spacing:1px;margin-bottom:5px">PRICE BY CONDITION</div>'
+    + conds.map(c => {
+      const pct = Math.max(4, (c.val / maxVal * 100)).toFixed(0);
+      return '<div style="display:flex;align-items:center;gap:5px;margin-bottom:3px">'
+        + '<div style="font-family:monospace;font-size:8px;color:rgba(255,255,255,.4);width:26px;flex-shrink:0">' + c.label + '</div>'
+        + '<div style="flex:1;height:5px;background:rgba(255,255,255,.06);border-radius:3px">'
+        + '<div style="width:' + pct + '%;height:5px;background:' + c.color + ';border-radius:3px;transition:width .3s"></div>'
+        + '</div>'
+        + '<div style="font-family:monospace;font-size:8px;color:' + c.color + ';width:40px;text-align:right;flex-shrink:0">$' + c.val.toFixed(2) + '</div>'
+        + '</div>';
+    }).join('');
+  // Insert before the condition pills
+  const cpillsEl = bubEl.querySelector('.bconds');
+  if(cpillsEl) cpillsEl.before(chart);
+  else {
+    const actsEl = bubEl.querySelector('.bacts');
+    if(actsEl) actsEl.before(chart);
+  }
 }
 
 // ── FALLBACK CARD PICKER ─────────────────────────────────────────
@@ -2021,6 +2070,10 @@ Return array only, no markdown.`;
               }
             }
             hs.textContent = 'READY';
+            // Build condition price chart after prices load
+            if(best && best.mid > 0) {
+              buildPriceChart(_bbl, best);
+            }
           } else {
             // No results found — show fallback picker so user can select correct card
             hs.textContent = 'NOT FOUND — showing alternatives';
@@ -2414,8 +2467,9 @@ function checkStock(item){
     const nameMatch=iname===name||(name.length>3&&iname.includes(name))||(iname.length>3&&name.includes(iname));
     const setMatch=set&&iset&&(iset===set||iset.includes(set.split(' ')[0])||set.includes(iset.split(' ')[0]));
     const yearMatch=year&&iyear&&year===iyear;
-    // Require name + at least one of set/year; if no set hint, just name-match
-    return nameMatch && (setMatch||yearMatch||(!set&&!year));
+    // Require name + at least one of set/year to avoid false positives
+    if(!setMatch && !yearMatch) return false;  // Need at least one anchor
+    return nameMatch && (setMatch||yearMatch);
   });
   const inStock = m.filter(i=>i.status==='in_stock');
   const totalQty = inStock.reduce((a,i)=>a+(i.qty||1), 0);
@@ -2869,8 +2923,9 @@ window.chPrint=function(id){
       btEl.textContent='TCGPlayer ('+cond2+') ↗';
     } else {
       const qt=(item.name||'')+' '+(p.set||item.set_name||'')+' '+(p.variant&&p.variant!=='Base'?p.variant:'');
-      btEl.href=AFF.tcgSearch(qt.trim());
-      btEl.textContent='TCGPlayer Search ↗';
+      const cond3 = document.getElementById('cs'+id)?.value||'NM';
+      btEl.href=AFF.tcgSearch(qt.trim(), cond3);
+      btEl.textContent='TCGPlayer Search ('+cond3+') ↗';
     }
   }
 
@@ -3041,9 +3096,14 @@ window.confirmAdd=async function(id){
     variant: print.variant||item.parallel||'',
     year: item.year||'',
   };
+  // Only flag as duplicate if we have a STRONG match: name + set + year all match
+  // AND the existing item has a shopId (meaning it was actually synced)
   const existing = await findExistingProduct(firstEntry);
+  const isRealDuplicate = existing && existing.shopId &&
+    firstEntry.set && firstEntry.year &&  // require set+year to prevent false positives
+    existing.qty !== undefined;
 
-  if(existing && existing.shopId) {
+  if(isRealDuplicate) {
     // Already have this card — just increment quantity
     const newQty = (existing.qty || 1) + qty;
     await incrementProductQty(existing.shopId, newQty);
@@ -3142,7 +3202,7 @@ window.confirmAdd=async function(id){
     statusMsg='✓ SYNCED TO WEBFLOW · SHOP + DASHBOARD';
     statusCls='cms-synced';
   } else {
-    statusMsg='⚠ SYNC FAILED — tap RETRY SYNC (token may need Ecommerce: Write)';
+    statusMsg='⚠ NOT SYNCED TO WEBFLOW — Saved locally ✓';
     statusCls='cms-error';
   }
   acts.innerHTML=`
@@ -3934,12 +3994,20 @@ function loadCartState() {
   return false;
 }
 function saveCartState() {
+  const cartData = {
+    items: cart,
+    discount: cartDiscount,
+    savedAt: new Date().toISOString(),
+    storeId: STORE.store_name || 'default',
+  };
   try {
-    localStorage.setItem('pos_cart_v2', JSON.stringify({
-      items: cart,
-      discount: cartDiscount,
-      savedAt: new Date().toISOString(),
-    }));
+    localStorage.setItem('pos_cart_v2', JSON.stringify(cartData));
+    // Push to Worker for cross-device sync (tablet customer display)
+    fetch(WORKER_URL + '/cart', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(cartData),
+    }).catch(() => {});
   } catch(e) { console.warn('Cart save error:', e); }
 }
 function clearCartState() {
@@ -4107,6 +4175,18 @@ function renderCart(){
   renderCartTotals();
 }
 
+async function syncCartToWorker(cartData) {
+  // Write cart to Worker KV so any device can read it
+  try {
+    await fetch(WORKER_URL + '/cart', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(cartData),
+      signal: AbortSignal.timeout(2000)
+    });
+  } catch(e) {} // Non-critical, silent fail
+}
+
 function updateCartBadge(){
   const btn = document.getElementById('nav-cart-btn');
   if(!btn) return;
@@ -4228,7 +4308,12 @@ function buildQRTabs(){
   if(!tabs) return;
   const methods = ['venmo','paypal','cashapp'].filter(m => {
     const h = QR_HANDLES[m]?.handle();
-    return h && h !== '' && h !== 'undefined';
+    if(!h || h === '' || h === 'undefined') return false;
+    // Extra check: paypal.me/ with nothing after is invalid
+    if(m === 'paypal' && h === 'paypal.me/') return false;
+    // cashapp $ with nothing is invalid
+    if(m === 'cashapp' && (h === '$' || h === '')) return false;
+    return true;
   });
   if(methods.length === 0) {
     tabs.innerHTML = '<div style="font-family:monospace;font-size:9px;color:rgba(255,255,255,.3);padding:8px">No payment handles configured — add to POS_CONFIG in sca.html</div>';
@@ -4254,7 +4339,23 @@ function showQR(method){
     // Try deep link first — opens Venmo app; falls back to web
     payUrl = `https://venmo.com/${venmoUser}?txn=pay&amount=${total.toFixed(2)}&note=Walk-Off+Sports+Cards`;
   }
-  else if(method==='paypal') payUrl = `https://paypal.me/${POS_CONFIG.paypal}/${total.toFixed(2)}`;
+  else if(method==='paypal') {
+    // PayPal.me QR scanning doesn't reliably open the PayPal app
+    // Show a large tappable link instead that the customer can tap directly
+    payUrl = 'https://paypal.me/'+POS_CONFIG.paypal+'/'+total.toFixed(2);
+    // Override the QR box to show a tap button instead
+    const qrBox2 = document.getElementById('qr-box');
+    if(qrBox2) {
+      qrBox2.innerHTML = '<div style="text-align:center;padding:20px">'
+        + '<div style="font-family:monospace;font-size:11px;color:rgba(255,255,255,.5);margin-bottom:12px">TAP TO PAY WITH PAYPAL</div>'
+        + '<a href="'+payUrl+'" target="_blank" style="display:block;background:#003087;color:#fff;font-family:Orbitron,monospace;font-size:16px;font-weight:700;padding:18px 24px;border-radius:10px;text-decoration:none;letter-spacing:1px">PayPal $'+total.toFixed(2)+'</a>'
+        + '<div style="font-family:monospace;font-size:9px;color:rgba(255,255,255,.3);margin-top:10px">paypal.me/'+POS_CONFIG.paypal+'</div>'
+        + '</div>';
+      document.getElementById('qr-handle').textContent = POS_CONFIG.paypal;
+      document.getElementById('qr-amount').textContent = '$'+total.toFixed(2);
+    }
+    return;
+  }
   else if(method==='cashapp') payUrl = `https://cash.app/${POS_CONFIG.cashapp}/${total.toFixed(2)}`;
   else payUrl = handle; // Zelle — just show handle
   // Generate QR code client-side using qrcode library (no external image request)
