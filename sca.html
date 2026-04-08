@@ -1604,6 +1604,10 @@ const video=document.getElementById('video'),canvas=document.getElementById('can
 function launch(){
   // Secrets live in Cloudflare Worker — no API key needed in browser
   startScanner();
+  // Show cart restored toast now that we're live
+  const cart = JSON.parse(localStorage.getItem('pos_cart_v2')||'{"items":[]}');
+  const n = (cart.items||[]).length;
+  if(n > 0) setTimeout(() => toast('🛒 Cart restored — ' + n + ' item' + (n > 1 ? 's' : '')), 1000);
 }
 function launchBulk(){
   startScanner(true);
@@ -3663,11 +3667,11 @@ async function testObWorker() {
 }
 
 function launchApp() {
-  startScanner();
+  // Show setup splash — user taps LAUNCH to start camera (avoids black screen on permission prompt)
+  document.getElementById('setup').style.display = 'flex';
   injectNavButtons();
   if(cart.length > 0) {
     updateCartBadge();
-    toast('🛒 Cart restored — ' + cart.length + ' item' + (cart.length > 1 ? 's' : ''));
   }
   // Update all store-name/location references in the UI
   document.querySelectorAll('.store-name-display').forEach(el => el.textContent = STORE.store_name);
