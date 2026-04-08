@@ -844,16 +844,35 @@ tr.sold:hover td{opacity:.7;}
 </div>
 
 <script>
-const WORKER = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const WF_PRODUCTS = '65eb45a28ff6bf3fe4f17b14';
-const WF_SKUS     = '65eb45a28ff6bf3fe4f17afb';
+// Load store config from localStorage — same config as scanner
+function loadDashConfig(){
+  try {
+    const s = localStorage.getItem('store_config');
+    if(s) return Object.assign({}, DEFAULT_DASH_CONFIG, JSON.parse(s));
+  } catch(e){}
+  return Object.assign({}, DEFAULT_DASH_CONFIG);
+}
+const DEFAULT_DASH_CONFIG = {
+  worker_url:       'https://still-resonance-4f87.swarnerauto.workers.dev',
+  wf_site_id:       DASH_CFG.wf_site_id,
+  wf_products_col:  WF_PRODUCTS,
+  wf_skus_col:      '65eb45a28ff6bf3fe4f17afb',
+  wf_status_sold:   STATUS_SOLD,
+  wf_status_instock:'f3769d1e15fa0956f98984d6fa36437f',
+  store_name:       'Walk-Off Sports Cards',
+  store_location:   'Kingston, WA',
+};
+const DASH_CFG = loadDashConfig();
+const WORKER = DASH_CFG.worker_url;
+const WF_PRODUCTS = DASH_CFG.wf_products_col;
+const WF_SKUS     = DASH_CFG.wf_skus_col;
+const STATUS_SOLD = DASH_CFG.wf_status_sold;
 const CAT_MAP = {
-  '891253037409c4fe59854f3c9ef99a6b':'Sports',
-  '475ed99cc87de703b543fe9529e2c1da':'TCG',
-  '27f1c9c43a61cf03820a31132cfc6b9a':'Comic',
+  [DASH_CFG.wf_cat_sports||DASH_CFG.wf_cat_sports||'891253037409c4fe59854f3c9ef99a6b']:'Sports',
+  [DASH_CFG.wf_cat_tcg  ||DASH_CFG.wf_cat_tcg||'475ed99cc87de703b543fe9529e2c1da']:'TCG',
+  [DASH_CFG.wf_cat_comic||DASH_CFG.wf_cat_comic||'27f1c9c43a61cf03820a31132cfc6b9a']:'Comic',
   '2c3076cc33bf2f312265bfdc894db265':'Supplies',
 };
-const STATUS_SOLD = 'e6b42f14fcb99aa2168a5f5672226f68';
 
 let all=[], filtered=[], activeF='all', activeTab='overview', soldData=[];
 let ts={col:'name',dir:1};
@@ -1859,7 +1878,7 @@ document.getElementById('edit-modal').addEventListener('click', function(e){
 // WEBFLOW PRODUCT CREATE (for unsynced items)
 // ══════════════════════════════════════════════════
 async function createWebflowProduct(item, updates) {
-  const catMap = {Sports:'891253037409c4fe59854f3c9ef99a6b',TCG:'475ed99cc87de703b543fe9529e2c1da',Comic:'27f1c9c43a61cf03820a31132cfc6b9a',Graded:'891253037409c4fe59854f3c9ef99a6b'};
+  const catMap = {Sports:DASH_CFG.wf_cat_sports||'891253037409c4fe59854f3c9ef99a6b',TCG:DASH_CFG.wf_cat_tcg||'475ed99cc87de703b543fe9529e2c1da',Comic:DASH_CFG.wf_cat_comic||'27f1c9c43a61cf03820a31132cfc6b9a',Graded:DASH_CFG.wf_cat_sports||'891253037409c4fe59854f3c9ef99a6b'};
   const nameParts = [item.name||'Card', updates.year||item.year, updates.set||item.set, updates.variant||item.variant].filter(Boolean);
   const displayName = nameParts.join(' ').substring(0, 200);
   const slug = 'inv-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2,6);
@@ -1874,7 +1893,7 @@ async function createWebflowProduct(item, updates) {
           fieldData: {
             name: displayName,
             slug: slug,
-            'ec-product-type': 'ff42fee0113744f693a764e3431a9cc2',
+            'ec-product-type': DASH_CFG.wf_product_type||'ff42fee0113744f693a764e3431a9cc2',
             'card-category': catMap[updates.category||item.category] || catMap['TCG'],
             'inventory-count': updates.qty || 1,
           }
@@ -2043,7 +2062,7 @@ async function confirmEditAndSync() {
 
   try {
     const priceCents = Math.round((updates.market||0) * 100);
-    const catMap = {Sports:'891253037409c4fe59854f3c9ef99a6b',TCG:'475ed99cc87de703b543fe9529e2c1da',Comic:'27f1c9c43a61cf03820a31132cfc6b9a',Graded:'891253037409c4fe59854f3c9ef99a6b'};
+    const catMap = {Sports:DASH_CFG.wf_cat_sports||'891253037409c4fe59854f3c9ef99a6b',TCG:DASH_CFG.wf_cat_tcg||'475ed99cc87de703b543fe9529e2c1da',Comic:DASH_CFG.wf_cat_comic||'27f1c9c43a61cf03820a31132cfc6b9a',Graded:DASH_CFG.wf_cat_sports||'891253037409c4fe59854f3c9ef99a6b'};
 
     const fieldData = {
       'inventory-count': updates.qty,
