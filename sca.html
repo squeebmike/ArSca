@@ -554,6 +554,15 @@ async function fetchAllPrintings(item){
 
           // For each price tier, create a separate printing entry
           // so user can see 1st Edition vs Unlimited vs Holo prices separately
+          // Build condition-specific prices object
+          const condPrices = {
+            NM: Object.values(tcgPrices).find(p=>p?.mid>0)?.mid || mid || 0,
+            LP: Object.values(tcgPrices).find(p=>p?.mid>0)?.['lightly played'] || (mid*0.80) || 0,
+            MP: Object.values(tcgPrices).find(p=>p?.mid>0)?.['moderately played'] || (mid*0.60) || 0,
+            HP: Object.values(tcgPrices).find(p=>p?.mid>0)?.['heavily played'] || (mid*0.40) || 0,
+            DMG: Object.values(tcgPrices).find(p=>p?.mid>0)?.damaged || (mid*0.20) || 0,
+          };
+
           const baseEntry = {
             set: card.set?.name || 'Unknown Set',
             variant: variantName || rarity || 'Base',
@@ -565,7 +574,8 @@ async function fetchAllPrintings(item){
             tcgUrl: tcgUrl,
             setId: card.set?.id || '',
             cardId: card.id,
-            allPrices: priceTiers,  // expose all tiers for holo/non-holo toggle
+            allPrices: priceTiers,
+            condPrices,  // condition-specific prices
           };
           result.printings.push(baseEntry);
           // Add 1st Edition as separate entry if available (different price)
@@ -689,6 +699,8 @@ async function fetchAllPrintings(item){
         });
         result.bestMatchIdx = bestIdx;
         result.imageUrl = d.data[bestIdx]?.images?.large || d.data[0]?.images?.small;
+        // Store the pokemontcg.io card ID for fast future lookups
+        result.tcgCardId = d.data[bestIdx]?.id || null;
       }
     }
 
@@ -1716,6 +1728,11 @@ Return array only.`;
           const fetched = await fetchAllPrintings(_item);
           if(fetched.printings && fetched.printings.length) {
             _bbl._prints = fetched.printings;
+            // Store TCGPlayer card ID for fast price lookups later
+            if(fetched.tcgCardId) {
+              _bbl._tcgCardId = fetched.tcgCardId;
+              if(_bbl._item) _bbl._item.tcgCardId = fetched.tcgCardId;
+            }
             if(fetched.imageUrl) {
               _bbl._imgUrl = fetched.imageUrl;
               const imgSlot = document.getElementById('cimg'+_bbl.id);
@@ -1773,6 +1790,11 @@ Return array only.`;
           const fetched = await fetchComicCovers(_item);
           if(fetched.printings && fetched.printings.length) {
             _bbl._prints = fetched.printings;
+            // Store TCGPlayer card ID for fast price lookups later
+            if(fetched.tcgCardId) {
+              _bbl._tcgCardId = fetched.tcgCardId;
+              if(_bbl._item) _bbl._item.tcgCardId = fetched.tcgCardId;
+            }
           }
         } else {
           // General collectible (Hot Wheels, Funko, etc) — no API, show search guidance
@@ -1783,9 +1805,31 @@ Return array only.`;
           if(brEl) brEl.textContent='Tap eBay Sold or Active for current prices';
         }
 
+        // Sports cards: show "flip & scan back" prompt to get card number/serial
+        if((_item.game==='Sports Card' || _bbl._ct==='sports') && !_bbl._backScanned) {
+          hs.textContent = '⟳ FLIP TO SCAN BACK';
+          // Add a prominent flip prompt to the bubble
+          const existingFlip = _bbl.querySelector('.flip-prompt');
+          if(!existingFlip) {
+            const fp = document.createElement('div');
+            fp.className = 'flip-prompt';
+            fp.style.cssText = 'background:rgba(255,209,102,.1);border:1px solid rgba(255,209,102,.4);border-radius:8px;padding:10px;margin:8px 0;font-family:monospace;font-size:10px;color:#ffd166;text-align:center;cursor:pointer';
+            fp.innerHTML = '⟳ FLIP CARD &amp; TAP SCAN BACK<br><span style="font-size:8px;color:rgba(255,209,102,.5)">Gets card #, serial, set details from back</span>';
+            fp.onclick = () => { toggleFlip(); fp.style.display='none'; };
+            const bacts = _bbl.querySelector('.bacts');
+            if(bacts) _bbl.insertBefore(fp, bacts);
+          }
+        }
+
         // Enrich with comps
         try {
-          const ep = `Estimate prices for: ${_item.name} ${_item.year||''} ${_item.set_name||''} ${_item.parallel||'Base'}. Return ONLY JSON: {"comps":[{"desc":"NM raw","price":0.00},{"desc":"LP raw","price":0.00},{"desc":"PSA 9","price":0.00}],"trend":"up|down|flat"}`;
+          // Build item description based on type
+          const isCard = ['Pokemon TCG','Magic: The Gathering','Yu-Gi-Oh!','Sports Card'].includes(_item.game);
+          const isToy = ['Hot Wheels','Funko Pop','LEGO','Action Figure','Collectible'].includes(_item.game);
+          const itemDesc = isCard
+            ? `${_item.player||_item.name} ${_item.year||''} ${_item.set_name||''} ${_item.parallel&&_item.parallel!=='Base'?_item.parallel:''} ${_item.card_number?'#'+_item.card_number:''} ${_item.serial_number||''}`.trim()
+            : `${_item.name} ${_item.year||''} ${_item.set_name||_item.manufacturer||''}`.trim();
+          const ep = `Based on your training data, estimate eBay sold prices for: "${itemDesc}". ${isToy?'This is a collectible toy/figure — use completed eBay listings as reference.':''} Return ONLY JSON: {"comps":[{"desc":"NM/Mint ungraded","price":0.00},{"desc":"Good/LP","price":0.00},{"desc":"${isCard?'PSA 9 graded':'Sealed/New'}","price":0.00}],"trend":"up|down|flat","note":"brief market note"}`;
           const et = await callClaude([{role:'user',content:[{type:'text',text:ep}]}], 200);
           const ei = et.indexOf('{');
           if(ei >= 0) {
@@ -1796,6 +1840,16 @@ Return array only.`;
               if(compsEl) {
                 compsEl.innerHTML = '<div class="comps-hdr">PRICE EST (AI)</div>'
                   + ed.comps.map(c=>`<div class="comp-row"><span class="comp-d">${c.desc}</span><span class="comp-p">$${Number(c.price).toFixed(2)}</span></div>`).join('');
+              }
+              // For sports/comics — update the main price display with NM estimate
+              const bpEl = document.getElementById('bp'+_bbl.id);
+              const brEl = document.getElementById('br'+_bbl.id);
+              const ct2 = _bbl._ct;
+              if(bpEl && (ct2==='sports'||ct2==='comic'||ct2==='general') && ed.comps[0]?.price > 0) {
+                bpEl.textContent = '$'+Number(ed.comps[0].price).toFixed(2);
+                bpEl.style.fontSize = '';
+                bpEl.style.color = '';
+                if(brEl) brEl.textContent = 'AI est · tap eBay Sold for live comps';
               }
             }
           }
@@ -1817,106 +1871,190 @@ async function scanBack(img){
   const hs = document.getElementById('hstatus');
   window._lastBackB64 = img;
 
-  const hasFront = window._lastFrontB64 && (Date.now() - (window._lastFrontTime||0)) < 180000;
-  const lastBub  = bubs.length > 0 ? bubs[bubs.length-1] : null;
-  const isSports = lastBub?.el?._ct === 'sports';
-  const isSlab   = ['psa','bgs','cgc','sgc'].includes(lastBub?.el?._ct||'');
+  const hasFront    = window._lastFrontB64 && (Date.now() - (window._lastFrontTime||0)) < 180000;
+  const lastBub     = bubs.length > 0 ? bubs[bubs.length-1] : null;
+  const ct          = lastBub?.el?._ct || '';
+  const isSports    = ct === 'sports';
+  const isSlab      = ['psa','bgs','cgc','sgc'].includes(ct);
+  const item        = lastBub?.el?._item || null;
 
-  if(hasFront && (isSports || isSlab) && lastBub) {
-    // ─── TWO-SCAN: Send BOTH images at once ───────────────────────
-    hs.textContent = 'COMBINING BOTH SIDES...';
-    const twoScanPrompt = `You are a sports/trading card expert. I am showing you the FRONT (Image 1) and BACK (Image 2) of the SAME card simultaneously.
+  // ─── SPORTS CARD: Send BOTH sides simultaneously ──────────────
+  if(isSports && hasFront && lastBub) {
+    hs.textContent = 'READING BOTH SIDES...';
 
-Use BOTH images together to produce the most accurate possible identification.
+    // Build context from front scan
+    const frontContext = item ? [
+      item.player || item.name,
+      item.year,
+      item.set_name,
+      item.parallel && item.parallel !== 'Base' ? item.parallel : null,
+      item.manufacturer,
+      item.sport,
+      item.team,
+    ].filter(Boolean).join(', ') : 'unknown sports card';
 
-FRONT tells you: player name, year, team, brand style, parallel (foil/color/pattern/texture)
-BACK tells you: card number, serial number (/X), parallel reference codes, copyright, set code, stats, manufacturer
+    const dualPrompt = `You are looking at the FRONT (Image 1) and BACK (Image 2) of the same sports trading card simultaneously.
 
-Cross-reference both sides — many parallels can ONLY be confirmed by combining front visual with back codes.
+FRONT context already identified: ${frontContext}
 
-Return ONLY JSON (no markdown):
-{"player":"exact full name","year":"4-digit","set_name":"exact official set name","parallel":"exact parallel e.g. Base|Gold Prizm|Silver Refractor|Orange Wave|Holo Silver|Mosaic|Prizm|etc","card_number":"e.g. 287 or 287/700","serial_number":"/25 or null","print_run":25,"manufacturer":"Topps|Panini|Upper Deck|Bowman|Leaf","sport":"Baseball|Basketball|Football|Hockey","team":"team","is_rookie":true,"auto_authenticated":false,"parallel_code":"any back code","set_code":"any set identifier","grading_company":"PSA|BGS|CGC|SGC or null","grade":"10 or null","cert_number":"cert# or null","confidence":"high|medium|low","confidence_reason":"brief explanation using both scans"}`;
+READ EVERY DETAIL from both images:
+- FRONT: player name, team colors, year printed (bottom corner), manufacturer logo (Topps/Panini/Upper Deck/Bowman/Donruss), set name printed on card, parallel color/foil/border, RC/rookie stamp
+- BACK: card number (e.g. 287 or 287/700 — usually bottom corner), serial number (/25 etc — stamped in foil usually), parallel code text, copyright year, set code, stats, bio, any special stamps
+
+The BACK is the authoritative source for card number, serial, and set code.
+The FRONT is authoritative for player name, team, parallel visual appearance.
+
+Return ONLY JSON, no markdown:
+{"player":"full name","year":"4-digit","set_name":"exact official name","parallel":"exact parallel e.g. Base|Gold Prizm|Silver Refractor|Orange Wave|Holo|Mosaic|Chrome|Prizm","card_number":"e.g. 287 or 287/700","serial_number":"/25 or null","print_run":25,"manufacturer":"Topps|Panini|Upper Deck|Bowman|Leaf|Donruss|Fleer|Score","sport":"Baseball|Basketball|Football|Hockey|Soccer","team":"team name","is_rookie":true,"grading_company":null,"grade":null,"cert_number":null,"confidence":"high|medium|low","search_query":"best eBay sold search for this exact card e.g. 2021 Topps Prizm Patrick Mahomes Gold Prizm /10"}`;
 
     try {
-      const text = await callClaude([{role:'user',content:[
-        {type:'image', source:{type:'base64', media_type:'image/jpeg', data:window._lastFrontB64}},
-        {type:'image', source:{type:'base64', media_type:'image/jpeg', data:img}},
-        {type:'text', text:twoScanPrompt}
-      ]}], 1000);
+      const text = await callClaudeSonnet([{role:'user',content:[
+        {type:'image', source:{type:'base64',media_type:'image/jpeg',data:window._lastFrontB64}},
+        {type:'image', source:{type:'base64',media_type:'image/jpeg',data:img}},
+        {type:'text', text:dualPrompt}
+      ]}], 800);
 
-      const c = JSON.parse(text.replace(/```json|```/g,'').trim());
-      if(c && c.player && lastBub.el._item) {
-        const item = lastBub.el._item;
-        if(c.player)       { item.player = c.player; item.name = c.player; }
-        if(c.set_name)       item.set_name = c.set_name;
-        if(c.parallel)       item.parallel = c.parallel;
-        if(c.card_number)    item.card_number = c.card_number;
-        if(c.serial_number)  item.serial_number = c.serial_number;
-        if(c.print_run)      item.print_run = c.print_run;
-        if(c.year)           item.year = c.year;
-        if(c.manufacturer)   item.manufacturer = c.manufacturer;
-        if(c.is_rookie)      item.is_rookie = true;
-        if(c.auto_authenticated) item.auto_authenticated = true;
-        if(c.parallel_code)  item.parallel_code = c.parallel_code;
-        if(c.grading_company){ item.grading_company = c.grading_company; }
-        if(c.grade)          item.grade = c.grade;
-        if(c.cert_number)    item.cert_number = c.cert_number;
+      let c;
+      try {
+        let raw = text.replace(/```json/gi,'').replace(/```/g,'').trim();
+        const oi = raw.indexOf('{');
+        if(oi >= 0) raw = raw.slice(oi);
+        c = JSON.parse(raw);
+      } catch(pe) { throw new Error('Parse failed: '+text.substring(0,100)); }
+
+      if(c && lastBub.el._item) {
+        const it = lastBub.el._item;
+        if(c.player)          { it.player = c.player; it.name = c.player; }
+        if(c.year)              it.year = c.year;
+        if(c.set_name)          it.set_name = c.set_name;
+        if(c.parallel)          it.parallel = c.parallel;
+        if(c.card_number)       it.card_number = c.card_number;
+        if(c.serial_number)     it.serial_number = c.serial_number;
+        if(c.print_run)         it.print_run = c.print_run;
+        if(c.manufacturer)      it.manufacturer = c.manufacturer;
+        if(c.sport)             it.sport = c.sport;
+        if(c.team)              it.team = c.team;
+        if(c.is_rookie)         it.is_rookie = true;
+        if(c.search_query)      it._searchQuery = c.search_query;
+        if(c.grading_company)   it.grading_company = c.grading_company;
+        if(c.grade)             it.grade = c.grade;
+        if(c.cert_number)       it.cert_number = c.cert_number;
+        lastBub.el._backScanned = true;
         lastBub.el._backB64 = img;
+
+        // Remove flip prompt
+        lastBub.el.querySelector('.flip-prompt')?.remove();
 
         // Update bubble display
         const bname = lastBub.el.querySelector('.bname');
-        if(bname) bname.textContent = c.player || c.name || item.name;
+        if(bname) bname.textContent = c.player || it.name;
         const bsub = lastBub.el.querySelector('.bsub');
         if(bsub) {
-          const pts = [];
-          if(c.team)  pts.push(c.team);
-          if(c.year)  pts.push(c.year);
-          if(c.set_name) pts.push(c.set_name);
-          if(c.parallel && c.parallel !== 'Base') pts.push(c.parallel);
-          if(c.card_number) pts.push('Card #'+c.card_number);
-          if(c.serial_number) pts.push(c.serial_number);
+          const pts = [
+            c.team, c.year, c.set_name,
+            c.parallel && c.parallel !== 'Base' ? c.parallel : null,
+            c.card_number ? 'Card #'+c.card_number : null,
+            c.serial_number || null,
+            c.is_rookie ? '⭐ RC' : null,
+          ].filter(Boolean);
           bsub.textContent = pts.join(' · ');
         }
-        const confEl = lastBub.el.querySelector('.conf');
-        if(confEl) {
-          confEl.textContent = (c.confidence||'high') + ' — ' + (c.confidence_reason||'').substring(0,40) + ' [2-SCAN ✓]';
-          confEl.className = 'conf ' + (c.confidence==='high'?'c-hi':c.confidence==='low'?'c-lo':'c-md');
+
+        // Update eBay links with refined data
+        const qBest = c.search_query || [c.player,c.year,c.set_name,c.parallel!=='Base'?c.parallel:null,c.card_number?'#'+c.card_number:null,c.serial_number].filter(Boolean).join(' ');
+        const ebayBtns = lastBub.el.querySelectorAll('.a-ebay');
+        if(ebayBtns[0]) ebayBtns[0].href = AFF.ebaySearch(qBest);
+        if(ebayBtns[1]) ebayBtns[1].href = AFF.ebayActive(qBest);
+
+        // Serial number gets its own red button
+        if(c.serial_number) {
+          const qSerial = [c.player,c.year,c.serial_number].filter(Boolean).join(' ');
+          const actsEl = lastBub.el.querySelector('.bacts');
+          if(actsEl && !actsEl.querySelector('.serial-link')) {
+            const sl = document.createElement('a');
+            sl.className = 'bact a-ebay serial-link';
+            sl.style.cssText = 'background:rgba(255,77,109,.15);border-color:rgba(255,77,109,.5);color:#ff4d6d;font-weight:700';
+            sl.href = AFF.ebaySearch(qSerial);
+            sl.target = '_blank';
+            sl.textContent = '🔢 Serial '+c.serial_number+' Sold ↗';
+            actsEl.prepend(sl);
+          }
         }
-        hs.textContent = '✓ TWO-SCAN';
-        toast('✓ Both sides combined: '+c.parallel+' · #'+(c.card_number||'?'));
-        return;
+
+        hs.textContent = '✓ DUAL SCAN · ' + (c.confidence||'').toUpperCase();
+        toast('✓ Both sides combined · #'+(c.card_number||'?')+' '+c.parallel);
+
+        // Trigger AI price estimate with full info
+        const ep = `eBay sold prices for: "${qBest}". Return ONLY JSON: {"comps":[{"desc":"NM raw","price":0.00},{"desc":"Good/LP","price":0.00},{"desc":"PSA 9","price":0.00}],"trend":"up|down|flat","note":"brief note"}`;
+        callClaude([{role:'user',content:[{type:'text',text:ep}]}],200).then(et=>{
+          try {
+            const ei = et.indexOf('{');
+            if(ei<0) return;
+            const ed = JSON.parse('['+et.slice(ei)+']')[0];
+            if(ed?.comps?.length) {
+              it.comps = ed.comps;
+              const bpEl = document.getElementById('bp'+lastBub.id);
+              const brEl = document.getElementById('br'+lastBub.id);
+              if(bpEl && ed.comps[0]?.price>0) { bpEl.textContent='$'+Number(ed.comps[0].price).toFixed(2); bpEl.style.fontSize=''; bpEl.style.color=''; }
+              if(brEl) brEl.textContent='AI est · tap eBay Sold for live comps';
+              const compsEl = lastBub.el.querySelector('.comps');
+              if(compsEl) compsEl.innerHTML = '<div class="comps-hdr">PRICE EST (AI)</div>'+ed.comps.map(c2=>`<div class="comp-row"><span class="comp-d">${c2.desc}</span><span class="comp-p">$${Number(c2.price).toFixed(2)}</span></div>`).join('');
+            }
+          } catch(e3){}
+        }).catch(()=>{});
       }
-    } catch(e) { console.warn('Two-scan failed, using single back:', e.message); }
+    } catch(e) {
+      console.warn('[DUAL SCAN] failed:', e.message);
+      hs.textContent = 'DUAL SCAN FAILED — using back only';
+      // Fall through to single back scan
+      await doSingleBackScan(img, lastBub, item, hs);
+    }
+    return;
   }
 
-  // ─── SINGLE BACK SCAN (fallback / non-sports) ─────────────────
+  // ─── SLAB or TCG: single back scan ─────────────────────────────
+  await doSingleBackScan(img, lastBub, item, hs);
+}
+
+async function doSingleBackScan(img, lastBub, item, hs) {
   hs.textContent = 'READING BACK...';
   const text = await callClaude([{role:'user',content:[
-    {type:'image', source:{type:'base64', media_type:'image/jpeg', data:img}},
-    {type:'text', text:'Card back. Read every number, word and marking carefully. Return ONLY JSON: {player,card_number,set_name,year,serial_number,print_run,parallel_code,auto_authenticated,rookie_stamp,team,stats,bio,copyright,notes}' }
+    {type:'image', source:{type:'base64',media_type:'image/jpeg',data:img}},
+    {type:'text', text:'Read every number, word, marking on this card back. Return ONLY JSON: {"player":null,"card_number":"e.g. 287 or 287/700","set_name":null,"year":null,"serial_number":"/X or null","print_run":null,"parallel_code":null,"auto_authenticated":false,"rookie_stamp":false,"team":null,"manufacturer":null,"stats":[],"bio":null,"copyright":null,"notes":null}'}
   ]}], 600);
 
-  const back = JSON.parse(text.replace(/```json|```/g,'').trim());
-  if(bubs.length > 0) {
-    const b = bubs[bubs.length-1];
-    addBackInfo(b.id, back);
-    if(b.el?._item) {
-      const item = b.el._item;
+  let back;
+  try {
+    let raw = text.replace(/```json/gi,'').replace(/```/g,'').trim();
+    const oi = raw.indexOf('{');
+    if(oi>=0) raw = raw.slice(oi);
+    back = JSON.parse(raw);
+  } catch(e) { toast('Back scan parse error'); return; }
+
+  if(lastBub?.el) {
+    lastBub.el._backB64 = img;
+    lastBub.el._backScanned = true;
+    lastBub.el.querySelector('.flip-prompt')?.remove();
+    addBackInfo(lastBub.id, back);
+
+    if(item) {
       if(back.card_number)   item.card_number   = back.card_number;
       if(back.serial_number) item.serial_number = back.serial_number;
       if(back.parallel_code) item.parallel_code = back.parallel_code;
+      if(back.year && !item.year) item.year      = back.year;
       if(back.rookie_stamp)  item.is_rookie = true;
-      b.el._backB64 = img;
-      const bsub = b.el.querySelector('.bsub');
+      if(back.auto_authenticated) item.auto_authenticated = true;
+
+      const bsub = lastBub.el.querySelector('.bsub');
       if(bsub && back.card_number) {
-        const parts = bsub.textContent.split(' · ').filter(p => !p.startsWith('Card #'));
+        const parts = bsub.textContent.split(' · ').filter(p=>!p.startsWith('Card #'));
         parts.push('Card #'+back.card_number);
         if(back.serial_number) parts.push(back.serial_number);
         bsub.textContent = parts.join(' · ');
       }
     }
     hs.textContent = 'BACK SCANNED';
-    toast('Back info added');
+    toast('✓ Back info added');
   } else {
     showBackStandalone(back);
     hs.textContent = 'BACK READ';
@@ -2152,17 +2290,23 @@ function addBubble(item,stock,imgUrl,apiPrintings,bestMatchIdx){
       ${psaVerify}${bgsVerify}${cgcVerify}${sgcVerify}`;
   }
   else if(ct==='sports'){
+    const qSerial = item.serial_number ? [item.player||item.name, item.year, item.serial_number].filter(Boolean).join(' ') : null;
     const qFull=[
       item.player||item.name,
       item.year,
+      item.manufacturer||null,
       item.set_name,
       (item.parallel&&item.parallel!=='Base')?item.parallel:null,
       item.card_number?'#'+item.card_number:null,
-      item.serial_number||null
+      item.is_rookie?'RC':null
     ].filter(Boolean).join(' ');
-    const qBase=(item.player||item.name)+' '+(item.year||'');
-    actLinks=`<a class="bact a-ebay" href="${AFF.ebaySearch(qFull)}" target="_blank">eBay Sold ↗</a>
-      <a class="bact a-ebay" style="background:rgba(72,202,228,.08);color:var(--blue);border-color:rgba(72,202,228,.2)" href="${AFF.ebaySearch(qBase)}" target="_blank">Base Sales ↗</a>`;
+    const qBase=[item.player||item.name, item.year, item.set_name].filter(Boolean).join(' ');
+    const qBest = item.search_query || qFull;
+    actLinks=`
+      ${qSerial?`<a class="bact a-ebay" style="background:rgba(255,77,109,.12);border-color:rgba(255,77,109,.4);color:#ff4d6d;font-weight:700" href="${AFF.ebaySearch(qSerial)}" target="_blank">🔢 Serial ${item.serial_number} Sold ↗</a>`:''}
+      <a class="bact a-ebay" href="${AFF.ebaySearch(qBest)}" target="_blank">eBay Sold ↗</a>
+      <a class="bact a-ebay" style="background:rgba(72,202,228,.08);color:var(--blue);border-color:rgba(72,202,228,.2)" href="${AFF.ebayActive(qBest)}" target="_blank">eBay Active ↗</a>
+      <a class="bact a-ebay" style="background:rgba(255,255,255,.04);color:rgba(255,255,255,.4);border-color:rgba(255,255,255,.08);font-size:8px" href="${AFF.ebaySearch(qBase)}" target="_blank">Broader ↗</a>`;
   }
   else if(ct==='comic'){
     const qgc=encodeURIComponent((item.name||'')+' '+(item.issue||''));
@@ -2173,9 +2317,21 @@ function addBubble(item,stock,imgUrl,apiPrintings,bestMatchIdx){
   else if(ct==='general'){
     const ebayQ = item.search_query || ((item.name||'')+' '+(item.set_name||'')+' '+(item.year||''));
     const ebayBase = (item.name||'')+' '+(item.manufacturer||item.game||'');
+    const isLego = (item.game||'').toLowerCase().includes('lego');
+    const isFunko = (item.game||'').toLowerCase().includes('funko');
+    const isHW = (item.game||'').toLowerCase().includes('hot wheels');
+    // Build specialty links based on item type
+    const specialtyLink = isLego
+      ? `<a class="bact" style="background:rgba(255,209,102,.08);color:var(--gold);border-color:rgba(255,209,102,.2)" href="https://www.bricklink.com/v2/search.page?q=${encodeURIComponent(item.set_name||item.name)}" target="_blank">BrickLink ↗</a>`
+      : isFunko
+      ? `<a class="bact" style="background:rgba(199,125,255,.08);color:var(--purple);border-color:rgba(199,125,255,.2)" href="https://www.funko.com/search?q=${encodeURIComponent(item.name)}" target="_blank">Funko.com ↗</a>`
+      : isHW
+      ? `<a class="bact" style="background:rgba(255,77,109,.08);color:var(--red);border-color:rgba(255,77,109,.2)" href="https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(item.name+' hot wheels')}&LH_Sold=1&_sop=13" target="_blank">HW Sold ↗</a>`
+      : '';
     actLinks=`<a class="bact a-ebay" href="${AFF.ebaySearch(ebayQ)}" target="_blank">eBay Sold ↗</a>
       <a class="bact a-ebay" style="background:rgba(72,202,228,.08);color:var(--blue);border-color:rgba(72,202,228,.2)" href="${AFF.ebayActive(ebayQ)}" target="_blank">eBay Active ↗</a>
-      <a class="bact a-ebay" style="background:rgba(199,125,255,.08);color:var(--purple);border-color:rgba(199,125,255,.2)" href="${AFF.ebaySearch(ebayBase)}" target="_blank">eBay Broader ↗</a>`;
+      ${specialtyLink}
+      <a class="bact a-ebay" style="background:rgba(255,255,255,.04);color:rgba(255,255,255,.4);border-color:rgba(255,255,255,.08);font-size:8px" href="${AFF.ebaySearch(ebayBase)}" target="_blank">Broader ↗</a>`;
   }
   else{
     const tcgDirect=first.tcgUrl||null;
@@ -2202,14 +2358,13 @@ function addBubble(item,stock,imgUrl,apiPrintings,bestMatchIdx){
       const hasReal = first.hasRealPrice || (first.mid>0 && apiPrintings);
       const isSportsOrComic = ct==='sports'||ct==='comic';
       if(isSportsOrComic){
-        // Use first comp as price estimate if available
         const estPrice = item.comps && item.comps.length ? item.comps[0].price : 0;
         if(estPrice > 0) {
-          return `<div class="prow"><span class="bprice ${ct}" id="bp${id}">$${Number(estPrice).toFixed(2)}</span><span style="font-family:monospace;font-size:8px;color:rgba(255,209,102,.4)">EST</span></div>
-          <div class="brange" id="br${id}" style="color:rgba(255,255,255,.3)">AI estimate · Tap eBay Sold for live data</div>`;
+          return `<div class="prow"><span class="bprice ${ct}" id="bp${id}">$${Number(estPrice).toFixed(2)}</span><span style="font-family:monospace;font-size:8px;color:rgba(255,209,102,.4)">EST NM</span></div>
+          <div class="brange" id="br${id}" style="color:rgba(255,255,255,.3)">AI est · tap eBay Sold for live comps</div>`;
         }
-        return `<div class="prow"><span class="bprice ${ct}" style="font-size:11px;color:rgba(255,255,255,.4)">SCAN BACK FOR PRICE</span></div>
-        <div class="brange" id="br${id}" style="color:rgba(255,255,255,.2)">Tap eBay Sold ↑ for real comps</div>`;
+        return `<div class="prow"><span class="bprice ${ct}" id="bp${id}" style="font-size:11px;color:rgba(0,255,179,.4)">LOADING PRICES...</span></div>
+        <div class="brange" id="br${id}" style="color:rgba(255,255,255,.2)">Fetching AI price estimate...</div>`;
       }
       if(hasReal){
         return `<div class="prow"><span class="bprice ${ct}" id="bp${id}">$${Number(first.mid).toFixed(2)}</span><span style="font-family:monospace;font-size:8px;color:rgba(0,255,179,.5)">LIVE</span></div>
@@ -2643,6 +2798,7 @@ window.confirmAdd=async function(id){
       player:item.player||'',manufacturer:item.manufacturer||'',
       publisher:item.publisher||'',issue:item.issue||'',
       card_number:item.card_number||'',serial_number:item.serial_number||'',
+      tcgCardId:item.tcgCardId||el._tcgCardId||'',
       grading_company:item.grading_company||'',grade:item.grade||'',
       cert_number:item.cert_number||'',sport:item.sport||'',
       is_rookie:item.is_rookie||false,is_key:item.is_key||false,
