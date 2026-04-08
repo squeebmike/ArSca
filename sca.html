@@ -719,9 +719,16 @@ async function fetchAllPrintings(item){
           const usdFoil = parseFloat(card.prices?.usd_foil||0);
           const isFoil = card.foil && !card.nonfoil;
           const tcgLink = card.purchase_uris?.tcgplayer || null;
+          // Build allPrices for MTG so finish toggle shows foil/nonfoil
+          const mtgPriceTiers = [];
+          if(usd > 0)     mtgPriceTiers.push({finish:'normal',    mid:usd,     low:usd*0.8,    high:usd*1.3});
+          if(usdFoil > 0) mtgPriceTiers.push({finish:'holofoil',  mid:usdFoil, low:usdFoil*0.8,high:usdFoil*1.3});
+          const parseFloat2 = parseFloat(card.prices?.usd_etched||0);
+          if(parseFloat2>0) mtgPriceTiers.push({finish:'unlimitedHolofoil', mid:parseFloat2, low:parseFloat2*0.8, high:parseFloat2*1.3});
+
           result.printings.push({
             set: card.set_name || 'Unknown Set',
-            variant: card.frame_effects?.join(' ') || (isFoil?'Foil':'Base'),
+            variant: card.frame_effects?.join(' ') || (usdFoil>usd?'Foil':'Base'),
             year: card.released_at?.substring(0,4) || '',
             numbered: card.collector_number ? `#${card.collector_number}` : null,
             mid: usdFoil||usd||0, low: Math.max((usdFoil||usd)*0.8,0), high: (usdFoil||usd)*1.3||0,
@@ -730,7 +737,8 @@ async function fetchAllPrintings(item){
             tcgUrl: tcgLink,
             scryfallUrl: `https://scryfall.com/card/${card.set}/${card.collector_number}`,
             setCode: card.set,
-            cardId: card.id
+            cardId: card.id,
+            allPrices: mtgPriceTiers,
           });
           if(hintSet && setNameLower.includes(hintSet.split(' ')[0])) bestIdx = i;
         });
@@ -1644,27 +1652,23 @@ async function scanFront(img){
   window._lastFrontB64 = img;
   window._lastFrontTime = Date.now();
 
-  const quickPrompt = `Identify this collectible item. It could be a trading card, toy, Hot Wheels, comic book, action figure, Funko Pop, LEGO set, video game, sports memorabilia, or anything collectible.
+  const quickPrompt = `Identify this item. Can be a trading card, toy, comic, Hot Wheels, Funko Pop, LEGO, figure, game, or any collectible.
 
-Return ONLY a JSON array — no markdown, no text:
-[{"game":"item category","name":"exact item name","player":null,"sport":null,"team":null,"year":"year","card_number":"card # if applicable","set_name":"set/series/line","set_id":"tcg set id if known","parallel":"variant/edition/color","serial_number":null,"grading_company":null,"grade":null,"cert_number":null,"manufacturer":"brand/publisher","is_rookie":false,"cx":50,"cy":50,"item_type":"card|toy|comic|game|figure|memorabilia|other","search_query":"best eBay search string for this exact item"}]
+Return ONLY a JSON array. Example:
+[{"game":"Sports Card","name":"Patrick Mahomes","player":"Patrick Mahomes","sport":"Football","team":"Chiefs","year":"2019","card_number":null,"set_name":null,"set_id":null,"parallel":"Base","serial_number":null,"grading_company":null,"grade":null,"cert_number":null,"manufacturer":"Panini","is_rookie":true,"cx":50,"cy":50,"search_query":"2019 Panini Mahomes rookie"}]
 
-For game field use EXACTLY one of:
-- Trading cards: "Pokemon TCG", "Magic: The Gathering", "Yu-Gi-Oh!", "Sports Card"
-- Comics: "Comic"
-- Graded slabs: "PSA Slab", "BGS Slab", "CGC Slab", "SGC Slab"  
-- Toys/Collectibles: "Hot Wheels", "Funko Pop", "LEGO", "Action Figure", "Video Game", "Sports Memorabilia", "Collectible"
+game must be exactly one of: Pokemon TCG, Magic: The Gathering, Yu-Gi-Oh!, Sports Card, Comic, PSA Slab, BGS Slab, CGC Slab, SGC Slab, Hot Wheels, Funko Pop, LEGO, Action Figure, Video Game, Sports Memorabilia, Collectible
 
-For search_query: build the BEST possible eBay search string. For Hot Wheels include year+color+casting name. For Funko include number+name+exclusivity. For comics include title+issue+grade if graded. Be SPECIFIC.
+search_query: best eBay search for this exact item. Be specific — include year, color, card#, serial if visible.
 
-Return array only.`;
+Return array only, no markdown.`;
 
   const text = await callClaude([{role:'user',content:[
     {type:'image',source:{type:'base64',media_type:'image/jpeg',data:img}},
     {type:'text',text:quickPrompt}
-  ]}], 800);
+  ]}], 1000);
 
-  console.log('[v9] sca loaded — cascade+image+API fixes'); document.getElementById('hstatus').textContent='v9 READY';
+  console.log('[v10] sca loaded — universal scan fixed'); document.getElementById('hstatus').textContent='v9 READY';
   console.log('[v8] Raw response:', text ? text.substring(0,200) : 'EMPTY');
 
   let items = [];
@@ -1715,13 +1719,14 @@ Return array only.`;
     if(bbl) bbl._frontB64 = img;
 
     // Phase 2: load TCGPlayer prices async after bubble shows
-    const _bbl = bbl, _item = item, _isTCG = isTCG, _isComic = isComic;
+    const _bbl = bbl, _item = item, _isTCG = isTCG, _isComic = isComic, _isGeneral = isGeneral;
     (async () => {
       try {
         if(!_bbl) return;
         const gameStr = (_item.game||'').toLowerCase();
         const isTCGLocal = _isTCG || gameStr.includes('pokemon') || gameStr.includes('magic') || gameStr.includes('yu-gi') || gameStr.includes('tcg');
         const isComicLocal = _isComic || gameStr.includes('comic');
+        const isGeneralLocal = _isGeneral || ['hot wheels','funko','lego','action figure','video game','memorabilia','collectible'].some(t=>gameStr.includes(t));
 
         if(isTCGLocal) {
           hs.textContent = 'LOADING PRICES...';
@@ -1796,13 +1801,15 @@ Return array only.`;
               if(_bbl._item) _bbl._item.tcgCardId = fetched.tcgCardId;
             }
           }
-        } else {
-          // General collectible (Hot Wheels, Funko, etc) — no API, show search guidance
-          hs.textContent = 'TAP EBAY SOLD ↗';
+        } else if(isGeneralLocal) {
+          // General collectible — no price API, guidance only
           const bpEl = document.getElementById('bp'+_bbl.id);
           const brEl = document.getElementById('br'+_bbl.id);
-          if(bpEl) { bpEl.textContent='SEE EBAY'; bpEl.style.fontSize='11px'; bpEl.style.color='rgba(199,125,255,.8)'; }
-          if(brEl) brEl.textContent='Tap eBay Sold or Active for current prices';
+          if(bpEl) { bpEl.textContent='SEE EBAY ↗'; bpEl.style.fontSize='11px'; bpEl.style.color='rgba(199,125,255,.8)'; }
+          if(brEl) brEl.textContent='Tap eBay Sold for recent sales';
+          hs.textContent = 'TAP EBAY SOLD ↗';
+        } else {
+          hs.textContent = 'READY';
         }
 
         // Sports cards: show "flip & scan back" prompt to get card number/serial
@@ -2206,7 +2213,7 @@ function addBubble(item,stock,imgUrl,apiPrintings,bestMatchIdx){
   // Card image
   const imgHtml=imgUrl
     ?`<img class="card-img" id="cimg${id}" src="${imgUrl}" alt="${item.name}" loading="lazy" onerror="this.style.display='none'">`
-    :(ct==='tcg'?`<div class="card-img-placeholder" id="cimg${id}" style="display:flex;align-items:center;justify-content:center;font-family:monospace;font-size:9px;color:rgba(0,255,179,.4)">⟳ LOADING...</div>`:'');
+    :(['tcg','general','sports','comic'].includes(ct)?`<div class="card-img-placeholder" id="cimg${id}" style="display:flex;align-items:center;justify-content:center;font-family:monospace;font-size:9px;color:rgba(0,255,179,.4)">⟳ LOADING...</div>`:'');
 
   // Slab display
   let slabHtml='';
@@ -2356,7 +2363,7 @@ function addBubble(item,stock,imgUrl,apiPrintings,bestMatchIdx){
     ${item.key_notes?`<div class="keynotes">${item.key_notes}</div>`:''}
     ${(()=>{
       const hasReal = first.hasRealPrice || (first.mid>0 && apiPrintings);
-      const isSportsOrComic = ct==='sports'||ct==='comic';
+      const isSportsOrComic = ct==='sports'||ct==='comic'||ct==='general';
       if(isSportsOrComic){
         const estPrice = item.comps && item.comps.length ? item.comps[0].price : 0;
         if(estPrice > 0) {
@@ -2448,6 +2455,7 @@ function addBubble(item,stock,imgUrl,apiPrintings,bestMatchIdx){
       ${actLinks}
       ${ct==='sports'?`<button class="bact" style="background:rgba(255,209,102,.06);border:1px solid rgba(255,209,102,.2);color:#ffd166;font-size:9px" onclick="scanBackForBubble('${id}')">⟳ SCAN BACK</button>`:''}
       ${ct==='tcg'?`<button class="bact" style="background:rgba(0,255,179,.06);border:1px solid rgba(0,255,179,.2);color:var(--g);font-size:9px" onclick="scanBackForBubble('${id}')">⟳ SCAN BACK</button>`:''}
+      ${ct==='general'?`<button class="bact" style="background:rgba(199,125,255,.06);border:1px solid rgba(199,125,255,.2);color:var(--purple);font-size:9px" onclick="scanBackForBubble('${id}')">⟳ SCAN BACK</button>`:''}
       <button class="bact" style="background:rgba(0,255,179,.1);border:1px solid rgba(0,255,179,.3);color:var(--g);font-weight:700" onclick="addBubbleToCart('${id}')">🛒 Add to Cart</button>
       <button class="bact a-add" onclick="showAddForm('${id}')">+ Add to Inventory</button>
       ${si>0?`<button class="bact a-sell" onclick="showSellForm('${id}')">✓ Mark as Sold</button>`:''}
