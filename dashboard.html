@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LBA Dashboard</title>
+<title>Walk-Off Dashboard</title>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root{--g:#00ffb3;--gd:rgba(0,255,179,.1);--gold:#ffd166;--red:#ff4d6d;--blue:#48cae4;--purple:#c77dff;--bg:#07080a;--surf:#0d0f14;--surf2:#141720;--border:rgba(255,255,255,.07);--text:#e4e4e8;--dim:rgba(228,228,232,.4);}
@@ -191,7 +191,7 @@ tr.sold:hover td{opacity:.7;}
 
 <header>
   <div class="hdr">
-    <div class="logo" id="dash-logo">LBA <span>DASHBOARD</span></div>
+    <div class="logo">WALK-OFF <span>DASHBOARD</span></div>
     <div class="hdr-right">
       <span id="sync-status">Loading...</span>
       <button class="hbtn" onclick="loadInventory()">↻ REFRESH</button>
@@ -548,8 +548,8 @@ tr.sold:hover td{opacity:.7;}
     <!-- Live customer view rendered here -->
     <div style="max-width:600px;margin:0 auto;padding:0 20px">
       <div style="text-align:center;padding:40px 20px 20px">
-        <div style="font-family:'Orbitron',monospace;font-size:28px;font-weight:900;color:var(--g);letter-spacing:4px;margin-bottom:4px" id="cd-store-name">LBA</div>
-        <div style="font-family:'Orbitron',monospace;font-size:11px;color:var(--dim);letter-spacing:3px" id="cd-store-loc">POINT OF SALE</div>
+        <div style="font-family:'Orbitron',monospace;font-size:28px;font-weight:900;color:var(--g);letter-spacing:4px;margin-bottom:4px">WALK-OFF</div>
+        <div style="font-family:'Orbitron',monospace;font-size:11px;color:var(--dim);letter-spacing:3px">SPORTS CARDS & COMICS · KINGSTON, WA</div>
       </div>
       <div id="cd-items" style="margin-bottom:20px"></div>
       <div id="cd-totals" style="background:var(--surf);border:1px solid var(--border);border-radius:12px;padding:20px;text-align:center">
@@ -844,36 +844,7 @@ tr.sold:hover td{opacity:.7;}
 </div>
 
 <script>
-// ── STORE CONFIG — shared with sca.html via localStorage ──────────────────
-const DASH_DEFAULT_CONFIG = {
-  store_name:     'Walk-Off Sports Cards',
-  store_location: 'Kingston, WA',
-  store_website:  'walkoffsc.com',
-  worker_url:     'https://still-resonance-4f87.swarnerauto.workers.dev',
-};
-function dashLoadConfig() {
-  try {
-    const s = localStorage.getItem('store_config');
-    if(s) return Object.assign({}, DASH_DEFAULT_CONFIG, JSON.parse(s));
-  } catch(e) {}
-  return Object.assign({}, DASH_DEFAULT_CONFIG);
-}
-const DASH_STORE = dashLoadConfig();
-const WORKER = DASH_STORE.worker_url;
-
-// Apply store name to header on load
-document.addEventListener('DOMContentLoaded', () => {
-  document.title = DASH_STORE.store_name + ' · Dashboard';
-  // Update logo
-  const logoEl = document.getElementById('dash-logo');
-  if(logoEl) logoEl.innerHTML = DASH_STORE.store_name.toUpperCase() + ' <span>DASHBOARD</span>';
-  // Update customer display
-  const cdName = document.getElementById('cd-store-name');
-  const cdLoc  = document.getElementById('cd-store-loc');
-  if(cdName) cdName.textContent = DASH_STORE.store_name.toUpperCase();
-  if(cdLoc)  cdLoc.textContent  = DASH_STORE.store_location ? DASH_STORE.store_location.toUpperCase() : '';
-});
-
+const WORKER = 'https://still-resonance-4f87.swarnerauto.workers.dev';
 const WF_PRODUCTS = '65eb45a28ff6bf3fe4f17b14';
 const WF_SKUS     = '65eb45a28ff6bf3fe4f17afb';
 const CAT_MAP = {
@@ -1417,7 +1388,7 @@ function notifyWant(id){
   const w = wantList.find(x=>x.id===id);
   if(!w) return;
   const inStock = all.filter(i=>i.status==='in_stock'&&i.name.toLowerCase().includes(w.item.toLowerCase().split(' ')[0]));
-  const msg = `Hi ${w.customer}! We have ${w.item} in stock at ${DASH_STORE.store_name}${DASH_STORE.store_location ? ' (' + DASH_STORE.store_location + ')' : ''}. Come check it out!${DASH_STORE.store_website ? ' ' + DASH_STORE.store_website : ''}`;
+  const msg = `Hi ${w.customer}! We have ${w.item} in stock at Walk-Off Sports Cards (Kingston, WA). Come check it out! walkoffsc.com`;
   if(w.contact && w.contact.includes('@')) {
     window.open('mailto:'+w.contact+'?subject=Your Want List Item is In Stock!&body='+encodeURIComponent(msg));
   } else if(w.contact) {
@@ -1603,7 +1574,7 @@ function exportConsignReport(){
   const w = window.open('','_blank','width=500,height=700');
   w.document.write(`<html><head><title>Consignment Report</title>
     <style>body{font-family:monospace;padding:20px;font-size:11px;}h2,h3{margin:12px 0 6px;}table{width:100%;border-collapse:collapse;}td,th{border:1px solid #ddd;padding:6px 8px;text-align:left;font-size:10px;}th{background:#f5f5f5;font-weight:bold;}</style></head><body>
-    <h2>${DASH_STORE.store_name} — Consignment Report</h2>
+    <h2>Walk-Off Sports Cards — Consignment Report</h2>
     <p>${new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}</p>
     <h3>AMOUNTS OWED TO CONSIGNORS</h3>
     ${unpaid.length?`<table><tr><th>Item</th><th>Consignor</th><th>Contact</th><th>Sale</th><th>Owed</th></tr>`+unpaid.map(c=>`<tr><td>${c.item}</td><td>${c.owner}</td><td>${c.contact||''}</td><td>$${(c.salePrice||0).toFixed(2)}</td><td><b>$${((c.salePrice||0)*(1-c.split/100)).toFixed(2)}</b></td></tr>`).join('')+'</table>':'<p>None</p>'}
@@ -1786,7 +1757,7 @@ function printRestockList(){
   const items = document.querySelectorAll('#rs-checklist input[type="checkbox"]');
   const w = window.open('','_blank','width=400,height=600');
   w.document.write('<html><head><title>Restock List</title><style>body{font-family:monospace;padding:20px;font-size:11px;}input{margin-right:8px;}</style></head><body>');
-  w.document.write('<h2>'+DASH_STORE.store_name+' — Restock List</h2>');
+  w.document.write('<h2>Walk-Off Sports Cards — Restock List</h2>');
   w.document.write('<p>'+new Date().toLocaleDateString()+'</p>');
   document.querySelectorAll('#rs-checklist [style*="border-bottom"]').forEach(row=>{
     w.document.write('<div style="padding:6px 0;border-bottom:1px solid #eee"><input type="checkbox"> '+row.querySelector('div').textContent+'</div>');
@@ -2379,8 +2350,8 @@ function printBuyOffer(){
   const lines = buyList.map(i=>'  '+i.name+': '+(i.market?'$'+i.market.toFixed(2):'TBD')).join('\n');
   const w = window.open('','_blank','width=400,height=600');
   w.document.write(`<html><head><title>Buy Offer</title><style>body{font-family:monospace;padding:20px;font-size:12px;}</style></head><body>
-    <h2>${DASH_STORE.store_name}</h2>
-    <p>${DASH_STORE.store_location}${DASH_STORE.store_website ? ' · ' + DASH_STORE.store_website : ''}</p>
+    <h2>Walk-Off Sports Cards</h2>
+    <p>Kingston, WA · walkoffsc.com</p>
     <hr>
     <p><b>BUY LIST OFFER (${pct}% of market)</b></p>
     <pre>${lines}</pre>
@@ -2444,7 +2415,7 @@ function generateEOD(){
 
   el.innerHTML = `
     <div id="eod-printable">
-      <div style="font-family:'Orbitron',monospace;font-size:11px;font-weight:900;color:var(--g);margin-bottom:4px;letter-spacing:2px">${DASH_STORE.store_name.toUpperCase()}</div>
+      <div style="font-family:'Orbitron',monospace;font-size:11px;font-weight:900;color:var(--g);margin-bottom:4px;letter-spacing:2px">WALK-OFF SPORTS CARDS</div>
       <div style="font-family:monospace,monospace;font-size:9px;color:var(--dim);margin-bottom:14px">END OF DAY · ${dateLabel}</div>
 
       <div class="eod-section">
