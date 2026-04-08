@@ -527,9 +527,9 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
 // CONFIG — Webflow CMS Collection ID
 // ============================================================
 const WF_COLLECTION_ID = '69cb5611c6522a8591b552c4'; // LBA Inventory (back-office tracker)
-const WF_PRODUCTS_ID   = '65eb45a28ff6bf3fe4f17b14'; // Products (ecommerce shop)
-const WF_SKUS_ID       = '65eb45a28ff6bf3fe4f17afb'; // SKUs (required for ecommerce)
-const WF_SITE_ID = '65b15ee0228d06647ca7e4ce';
+const WF_PRODUCTS_ID   = STORE.wf_products_col; // Products (ecommerce shop)
+const WF_SKUS_ID       = STORE.wf_skus_col; // SKUs (required for ecommerce)
+const WF_SITE_ID = STORE.wf_site_id;
 
 // ============================================================
 // AFFILIATE CONFIG
@@ -602,11 +602,19 @@ const DEFAULT_CONFIG = {
   paypal:         '',
   cashapp:        '',
   tax_rate:       0,
-  webflow_site_id:'65b15ee0228d06647ca7e4ce',
-  store_logo:     '',
-  store_color:    '#00ffb3',
   currency:       'USD',
   onboarded:      true,
+  // Webflow IDs — specific to this store's Webflow site
+  // Other stores will have different IDs set during onboarding
+  wf_site_id:           STORE.wf_site_id,
+  wf_products_col:      STORE.wf_products_col,
+  wf_skus_col:          STORE.wf_skus_col,
+  wf_product_type:      STORE.wf_product_type,
+  wf_cat_sports:        STORE.wf_cat_sports,
+  wf_cat_tcg:           STORE.wf_cat_tcg,
+  wf_cat_comic:         STORE.wf_cat_comic,
+  wf_status_instock:    STORE.wf_status_instock,
+  wf_status_sold:       STORE.wf_status_sold,
 };
 
 function loadStoreConfig() {
@@ -1178,9 +1186,25 @@ window.selectFallbackCard = async function(bubId, altIdx) {
 
   // Update item data
   if(bubEl._item) {
-    bubEl._item.set_name = alt.set;
-    bubEl._item.year = alt.year;
+    // Update ALL relevant item fields from the selected card
+    bubEl._item.set_name   = alt.set || bubEl._item.set_name;
+    bubEl._item.year       = alt.year || bubEl._item.year;
     bubEl._item.card_number = alt.number && alt.total ? alt.number+'/'+alt.total : alt.number;
+    if(alt.cardId) bubEl._item.tcgCardId = alt.cardId;
+    if(alt.mid > 0) bubEl._item.market = alt.mid;
+    // Update the _prints array so confirmAdd uses correct printing data
+    const selPrint = {
+      set: alt.set, variant: alt.number ? 'Card #'+alt.number : 'Base',
+      year: alt.year, numbered: alt.number && alt.total ? alt.number+'/'+alt.total : null,
+      mid: alt.mid || 0, low: (alt.mid||0)*0.8, high: (alt.mid||0)*1.2,
+      hasRealPrice: (alt.mid||0) > 0, imageUrl: alt.image || null, tcgUrl: alt.tcgUrl || null,
+      allPrices: alt.allPrices || [], cardId: alt.cardId || null,
+    };
+    if(!bubEl._prints) bubEl._prints = [];
+    bubEl._prints[0] = selPrint;  // Replace first printing with selected card
+    // Re-select pi=0 in dropdown
+    const selEl2 = document.getElementById('ps'+bubId);
+    if(selEl2) selEl2.value = '0';
   }
 
   document.getElementById('hstatus').textContent = 'SELECTED · $'+(alt.mid||0).toFixed(2);
@@ -1318,7 +1342,7 @@ async function findExistingProduct(entry) {
         const iSet  = (i.fieldData?.['set-name'] || '').toLowerCase();
         const iYear = String(i.fieldData?.year || '');
         const iSold = i.fieldData?.['sold-out'] === true ||
-                      i.fieldData?.status === 'e6b42f14fcb99aa2168a5f5672226f68';
+                      i.fieldData?.status === STORE.wf_status_sold;
         if(iSold) return false;
         const nameOk = iName.includes(searchName.split(' ')[0]) ||
                        searchName.includes(iName.split(' ')[0]);
@@ -1488,7 +1512,7 @@ async function syncToShopProduct(entry, imageUrl){
         name,
         slug,
         shippable: true,
-        'ec-product-type': 'ff42fee0113744f693a764e3431a9cc2', // Physical
+        'ec-product-type': STORE.wf_product_type, // Physical
         'sold-out': false,
         'tax-category': 'standard-taxable',
         'description': description || name,
@@ -1550,10 +1574,10 @@ async function syncToShopProduct(entry, imageUrl){
     // ── STEP 2: PATCH all custom CMS fields ──────────────────────
     // These fields live on the Products CMS collection item
     const catMap = {
-      'Sports': '891253037409c4fe59854f3c9ef99a6b',
-      'TCG':    '475ed99cc87de703b543fe9529e2c1da',
-      'Comic':  '27f1c9c43a61cf03820a31132cfc6b9a',
-      'Graded': '891253037409c4fe59854f3c9ef99a6b',
+      'Sports': STORE.wf_cat_sports,
+      'TCG':    STORE.wf_cat_tcg,
+      'Comic':  STORE.wf_cat_comic,
+      'Graded': STORE.wf_cat_sports,
     };
 
     const custom = { name, slug };
@@ -1561,7 +1585,7 @@ async function syncToShopProduct(entry, imageUrl){
     // Identity
     if(entry.category && catMap[entry.category])
       custom['card-category'] = catMap[entry.category];
-    custom['status'] = 'f3769d1e15fa0956f98984d6fa36437f'; // In Stock
+    custom['status'] = STORE.wf_status_instock; // In Stock
 
     // Card details
     if(entry.set)        custom['set-name']   = String(entry.set).substring(0, 255);
@@ -2788,7 +2812,7 @@ function addBubble(item,stock,imgUrl,apiPrintings,bestMatchIdx){
 
       const matches = items.filter(i => {
         const ifd = i.fieldData || {};
-        if(ifd['sold-out'] === true || ifd.status === 'e6b42f14fcb99aa2168a5f5672226f68') return false;
+        if(ifd['sold-out'] === true || ifd.status === STORE.wf_status_sold) return false;
         const iName = (ifd.name || '').toLowerCase().replace(/[^a-z0-9]/g,'');
         const iSet  = (ifd['set-name'] || '').toLowerCase().replace(/[^a-z0-9]/g,'');
         const iYear = String(ifd.year || '');
@@ -3476,7 +3500,7 @@ async function testWebflowWrite(){
   if(res_el) res_el.textContent = 'Testing...';
   const url = WORKER_URL + '/proxy/sites/65b15ee0228d06647ca7e4ce/products';
   const testPayload = {
-    product:{fieldData:{name:'LBA Test '+Date.now(),slug:'lba-test-'+Date.now(),'ec-product-type':'ff42fee0113744f693a764e3431a9cc2',shippable:true,'sold-out':false,'tax-category':'standard-taxable'}},
+    product:{fieldData:{name:'LBA Test '+Date.now(),slug:'lba-test-'+Date.now(),'ec-product-type':STORE.wf_product_type,shippable:true,'sold-out':false,'tax-category':'standard-taxable'}},
     sku:{fieldData:{name:'Test SKU',slug:'lba-test-sku-'+Date.now(),price:{value:100,unit:'USD'},'sku-values':{}}},
     publishStatus:'staging'
   };
@@ -4512,7 +4536,7 @@ async function recordTransaction(method, total, change){
     if(item.shopId){
       wfFetch('/collections/65eb45a28ff6bf3fe4f17b14/items/'+item.shopId, {
         method:'PATCH',
-        body:JSON.stringify({fieldData:{'sold-out':true,'inventory-count':0,'status':'e6b42f14fcb99aa2168a5f5672226f68'}})
+        body:JSON.stringify({fieldData:{'sold-out':true,'inventory-count':0,'status':STORE.wf_status_sold}})
       }).catch(()=>{});
     }
   }
