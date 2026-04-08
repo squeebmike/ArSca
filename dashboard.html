@@ -1309,7 +1309,63 @@ function openEbayFromDash(id){
 // ══════════════════════════════════════════════════
 let wantList = JSON.parse(localStorage.getItem('pos_wantlist')||'[]');
 
-function saveWantList(){ localStorage.setItem('pos_wantlist', JSON.stringify(wantList)); }
+function saveWantList(){
+  localStorage.setItem('pos_wantlist', JSON.stringify(wantList));
+  // Sync to Worker for cross-device access
+  fetch(WORKER + '/wantlist', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify(wantList),
+  }).catch(() => {});
+}
+
+async function loadWantListFromWorker() {
+  try {
+    const r = await fetch(WORKER + '/wantlist', {signal: AbortSignal.timeout(2000)});
+    if(r.ok) {
+      const remote = await r.json();
+      if(Array.isArray(remote) && remote.length > 0) {
+        const localIds = new Set(wantList.map(w => w.id));
+        const merged = [...wantList, ...remote.filter(w => !localIds.has(w.id))];
+        wantList = merged;
+        localStorage.setItem('pos_wantlist', JSON.stringify(wantList));
+        renderWantList();
+      }
+    }
+  } catch(e) {}
+}
+
+async function syncWantListToWebflow(){
+  // Store want list as a JSON blob in a dedicated Webflow CMS item
+  // Uses the lba_inventory collection with a special id 'pos-wantlist-sync'
+  try {
+    const payload = { key: 'wantlist', value: JSON.stringify(wantList), updated: new Date().toISOString() };
+    await fetch(WORKER+'/proxy/collections/65eb45a28ff6bf3fe4f17b14/items/pos-wantlist-sync', {
+      method: 'PATCH',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ fieldData: { name:'pos-wantlist-sync', 'card-description': JSON.stringify(wantList) } })
+    }).catch(()=>{});
+  } catch(e) {}
+}
+
+async function loadWantListFromWebflow(){
+  // Try to load from Worker KV first (fastest cross-device sync)
+  try {
+    const r = await fetch(WORKER+'/kv/wantlist', {signal: AbortSignal.timeout(3000)});
+    if(r.ok) {
+      const d = await r.json();
+      if(d && d.value) {
+        const remote = JSON.parse(d.value);
+        if(Array.isArray(remote) && remote.length > wantList.length) {
+          wantList = remote;
+          localStorage.setItem('pos_wantlist', JSON.stringify(wantList));
+          renderWantList();
+          toast_dash('Want list loaded from cloud (' + wantList.length + ' items)');
+        }
+      }
+    }
+  } catch(e) {}
+}
 
 function addWantItem(){
   const item = document.getElementById('wl-item').value.trim();
@@ -1771,7 +1827,7 @@ function printRestockList(){
 const _origSwitchTab = switchTab;
 switchTab = function(tab, btn){
   _origSwitchTab(tab, btn);
-  if(tab==='wantlist') renderWantList();
+  if(tab==='wantlist') { loadWantListFromWorker().then(()=>renderWantList()); }
   if(tab==='consign') renderConsign();
   if(tab==='locations') renderLocations();
   if(tab==='restock') renderRestock();
@@ -1798,6 +1854,59 @@ document.getElementById('sell-modal').addEventListener('click', function(e){
 document.getElementById('edit-modal').addEventListener('click', function(e){
   if(e.target===this) closeEditModal();
 });
+
+// ══════════════════════════════════════════════════
+// WEBFLOW PRODUCT CREATE (for unsynced items)
+// ══════════════════════════════════════════════════
+async function createWebflowProduct(item, updates) {
+  const catMap = {Sports:'891253037409c4fe59854f3c9ef99a6b',TCG:'475ed99cc87de703b543fe9529e2c1da',Comic:'27f1c9c43a61cf03820a31132cfc6b9a',Graded:'891253037409c4fe59854f3c9ef99a6b'};
+  const nameParts = [item.name||'Card', updates.year||item.year, updates.set||item.set, updates.variant||item.variant].filter(Boolean);
+  const displayName = nameParts.join(' ').substring(0, 200);
+  const slug = 'inv-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2,6);
+  const priceCents = Math.round((updates.market||0) * 100);
+
+  try {
+    const res = await fetch(WORKER+'/proxy/sites/65b15ee0228d06647ca7e4ce/products', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json','accept':'application/json'},
+      body: JSON.stringify({
+        product: {
+          fieldData: {
+            name: displayName,
+            slug: slug,
+            'ec-product-type': 'ff42fee0113744f693a764e3431a9cc2',
+            'card-category': catMap[updates.category||item.category] || catMap['TCG'],
+            'inventory-count': updates.qty || 1,
+          }
+        },
+        sku: {
+          fieldData: {
+            name: displayName + ' SKU',
+            slug: slug + '-sku',
+            price: { value: priceCents, unit: 'USD' },
+            'sku-values': {}
+          }
+        }
+      })
+    });
+    if(!res.ok) return null;
+    const data = await res.json();
+    const productId = data.product?.id || data.id;
+    if(!productId) return null;
+    // Patch additional fields
+    await fetch(WORKER+'/proxy/collections/65eb45a28ff6bf3fe4f17b14/items/'+productId, {
+      method: 'PATCH',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ fieldData: {
+        'set-name': updates.set||item.set||'',
+        year: String(updates.year||item.year||''),
+        'card-condition': updates.condition||item.condition||'NM',
+        msrp: Math.round(updates.market||0),
+      }})
+    }).catch(()=>{});
+    return productId;
+  } catch(e) { return null; }
+}
 
 // ══════════════════════════════════════════════════
 // EDIT ITEM MODAL
@@ -1912,8 +2021,23 @@ async function confirmEditAndSync() {
   statusEl.textContent = '⟳ Syncing to Webflow...';
 
   if(!item.shopId) {
+    // Item was never synced to Webflow — try to sync it now
+    statusEl.style.color = 'var(--gold)';
+    statusEl.textContent = '⟳ Creating new Webflow product...';
+    try {
+      const newShopId = await createWebflowProduct(item, updates);
+      if(newShopId) {
+        item.shopId = newShopId;
+        const inv2 = JSON.parse(localStorage.getItem('lba_inventory')||'[]');
+        const idx2 = inv2.findIndex(i=>i.id===id);
+        if(idx2>=0){ inv2[idx2].shopId=newShopId; localStorage.setItem('lba_inventory',JSON.stringify(inv2)); }
+        statusEl.style.color='var(--g)';
+        statusEl.textContent='✓ Created in Webflow! ID: '+newShopId.substring(0,12)+'...';
+        return;
+      }
+    } catch(e2) {}
     statusEl.style.color = 'var(--red)';
-    statusEl.textContent = '⚠ No Webflow ID — item was not synced when added. Save locally only.';
+    statusEl.textContent = '⚠ Could not create in Webflow — check Worker connection';
     return;
   }
 
@@ -2466,9 +2590,24 @@ function printEOD(){
 // ══════════════════════════════════════════════════
 // CUSTOMER FACING DISPLAY
 // ══════════════════════════════════════════════════
-function renderCustomerDisplay(){
-  const saved = localStorage.getItem('pos_cart_v2');
-  const cartData = saved ? JSON.parse(saved) : {items:[], discount:0};
+async function fetchCartFromWorker(){
+  try {
+    const r = await fetch(WORKER+'/cart', {method:'GET', signal: AbortSignal.timeout(2000)});
+    if(r.ok) {
+      const d = await r.json();
+      if(d && d.items) return d;
+    }
+  } catch(e) {}
+  return null;
+}
+
+async function renderCustomerDisplay(){
+  // Try Worker first (cross-device sync), fall back to localStorage
+  let cartData = await fetchCartFromWorker();
+  if(!cartData) {
+    const saved = localStorage.getItem('pos_cart_v2');
+    cartData = saved ? JSON.parse(saved) : {items:[], discount:0};
+  }
   const items = cartData.items || [];
   const disc = cartData.discount || 0;
 
@@ -2501,7 +2640,7 @@ function renderCustomerDisplay(){
 
 // Auto-refresh customer display every 3 seconds
 setInterval(renderCustomerDisplay, 3000);
-renderCustomerDisplay();
+renderCustomerDisplay().catch(()=>{});
 
 // Init drawer state on load
 renderDrawer();
