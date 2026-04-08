@@ -302,6 +302,11 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
 .lba-nav-btn{position:relative;}
 .htog-on{background:rgba(255,209,102,.25)!important;border-color:var(--gold)!important;color:var(--gold)!important;}
 .holo-tog{transition:.15s;}
+/* ONBOARDING / SETTINGS FORM FIELDS */
+.ob-label{display:block;font-family:monospace;font-size:9px;color:rgba(255,255,255,.4);letter-spacing:1px;margin-bottom:4px;margin-top:10px;}
+.ob-inp{width:100%;background:#141720;border:1px solid rgba(255,255,255,.1);color:#fff;padding:10px 12px;font-family:monospace;font-size:12px;outline:none;border-radius:6px;margin-bottom:2px;}
+.ob-inp:focus{border-color:rgba(0,255,179,.4);background:#0d1018;}
+.ob-inp::placeholder{color:rgba(255,255,255,.2);}
 </style>
 </head>
 <body>
@@ -334,6 +339,55 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
   <div id="scanline"></div>
 </div>
 <div id="modebadge"></div>
+<!-- ═══ ONBOARDING SCREEN ═══════════════════════════════════════ -->
+<div id="onboarding" style="display:none;position:fixed;inset:0;background:#07080a;z-index:10000;overflow-y:auto;padding:32px 20px">
+  <div style="max-width:480px;margin:0 auto">
+    <div style="text-align:center;margin-bottom:32px">
+      <div id="ob-logo" style="font-family:'Orbitron',monospace;font-size:28px;font-weight:900;color:#00ffb3;letter-spacing:4px;margin-bottom:8px">LBA SCANNER</div>
+      <div style="font-family:'DM Mono',monospace;font-size:12px;color:rgba(255,255,255,.4);letter-spacing:2px">CARD SHOP POINT OF SALE</div>
+      <div style="font-family:'DM Mono',monospace;font-size:10px;color:rgba(255,255,255,.2);margin-top:4px" id="ob-brand-name">CARD SHOP POS</div>
+    </div>
+
+    <div style="background:#0d0f14;border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:24px;margin-bottom:16px">
+      <div style="font-family:'Orbitron',monospace;font-size:10px;color:#00ffb3;letter-spacing:2px;margin-bottom:16px">1. YOUR STORE</div>
+      <label class="ob-label">Store Name</label>
+      <input class="ob-inp" id="ob-store-name" placeholder="e.g. River City Cards" value="">
+      <label class="ob-label">City, State</label>
+      <input class="ob-inp" id="ob-location" placeholder="e.g. Sacramento, CA">
+      <label class="ob-label">Website (optional)</label>
+      <input class="ob-inp" id="ob-website" placeholder="e.g. rivercitycards.com">
+    </div>
+
+    <div style="background:#0d0f14;border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:24px;margin-bottom:16px">
+      <div style="font-family:'Orbitron',monospace;font-size:10px;color:#00ffb3;letter-spacing:2px;margin-bottom:16px">2. PAYMENTS</div>
+      <label class="ob-label">Venmo Handle</label>
+      <input class="ob-inp" id="ob-venmo" placeholder="e.g. StoreName-123">
+      <label class="ob-label">PayPal.me Username (optional)</label>
+      <input class="ob-inp" id="ob-paypal" placeholder="e.g. rivercitycards">
+      <label class="ob-label">Cash App $Cashtag (optional)</label>
+      <input class="ob-inp" id="ob-cashapp" placeholder="e.g. $rivercitycards">
+      <label class="ob-label">Tax Rate %</label>
+      <input class="ob-inp" id="ob-tax" type="number" placeholder="e.g. 10.1" min="0" max="30" step="0.1" value="0">
+      <label class="ob-label">Stripe Publishable Key (for card payments, optional)</label>
+      <input class="ob-inp" id="ob-stripe" placeholder="pk_live_..." type="text">
+    </div>
+
+    <div style="background:#0d0f14;border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:24px;margin-bottom:16px">
+      <div style="font-family:'Orbitron',monospace;font-size:10px;color:#00ffb3;letter-spacing:2px;margin-bottom:16px">3. BACKEND</div>
+      <label class="ob-label">Cloudflare Worker URL</label>
+      <input class="ob-inp" id="ob-worker" placeholder="https://your-worker.workers.dev" value="">
+      <div style="font-family:'DM Mono',monospace;font-size:9px;color:rgba(255,255,255,.3);margin-top:4px">Your Claude API proxy. Contact your LBA provider for this URL.</div>
+      <div style="margin-top:12px">
+        <button onclick="testObWorker()" style="background:rgba(0,255,179,.08);border:1px solid rgba(0,255,179,.2);color:#00ffb3;font-family:'DM Mono',monospace;font-size:10px;padding:8px 14px;border-radius:6px;cursor:pointer">Test Connection</button>
+        <span id="ob-worker-status" style="font-family:'DM Mono',monospace;font-size:9px;color:rgba(255,255,255,.3);margin-left:8px"></span>
+      </div>
+    </div>
+
+    <button onclick="completeOnboarding()" style="width:100%;background:#00ffb3;color:#000;font-family:'Orbitron',monospace;font-size:13px;font-weight:900;padding:16px;border:none;border-radius:8px;cursor:pointer;letter-spacing:2px;margin-bottom:12px">START SCANNING →</button>
+    <button onclick="skipOnboarding()" style="width:100%;background:none;border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.3);font-family:'DM Mono',monospace;font-size:10px;padding:10px;border-radius:8px;cursor:pointer">Use default settings</button>
+  </div>
+</div>
+
 <div id="hud" style="display:none">
   <span class="hl">LBA</span>
   <div class="hbtns">
@@ -347,14 +401,84 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
 </div>
 
 <!-- SETTINGS PANEL -->
-<div id="settings-panel" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:500;display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:32px;">
-  <div style="font-family:'Orbitron',monospace;font-size:14px;color:var(--g);letter-spacing:3px;">SETTINGS</div>
+<div id="settings-panel" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.96);z-index:500;overflow-y:auto;padding:20px">
+  <div style="max-width:480px;margin:0 auto">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+      <div style="font-family:'Orbitron',monospace;font-size:14px;color:var(--g);letter-spacing:3px">⚙ SETTINGS</div>
+      <button onclick="closeSettings()" style="background:none;border:none;color:rgba(255,255,255,.4);font-size:22px;cursor:pointer">×</button>
+    </div>
 
-  <input class="s-inp" id="settings-proxy" type="text" placeholder="Cloudflare Worker URL" value="https://still-resonance-4f87.swarnerauto.workers.dev">
-  <button class="s-btn" onclick="saveSettings()">SAVE SETTINGS</button>
-  <button class="s-btn" style="background:rgba(0,255,179,.15);margin-top:-8px;" onclick="testWebflowWrite()">🔬 TEST WEBFLOW WRITE</button>
-  <div id="settings-test-result" style="font-family:monospace;font-size:10px;color:rgba(255,255,255,.5);max-width:320px;word-break:break-all;text-align:center;display:none;padding:8px;background:rgba(0,0,0,.4);"></div>
-  <button style="background:none;border:none;color:rgba(255,255,255,.3);font-family:monospace;font-size:12px;cursor:pointer;padding:8px;" onclick="closeSettings()">Cancel</button>
+    <!-- Store Info -->
+    <div style="background:#0d0f14;border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:16px;margin-bottom:12px">
+      <div style="font-family:monospace;font-size:9px;color:var(--g);letter-spacing:2px;margin-bottom:12px">🏪 STORE INFO</div>
+      <label class="ob-label">Store Name</label>
+      <input class="ob-inp" id="settings-store-name">
+      <label class="ob-label">Location</label>
+      <input class="ob-inp" id="settings-location">
+      <label class="ob-label">Website</label>
+      <input class="ob-inp" id="settings-website">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
+        <div>
+          <label class="ob-label">Tax Rate %</label>
+          <input class="ob-inp" id="settings-tax" type="number" min="0" max="30" step="0.1">
+        </div>
+        <div>
+          <label class="ob-label">Currency</label>
+          <select id="settings-currency" style="width:100%;background:#141720;border:1px solid rgba(255,255,255,.1);color:#fff;padding:10px;border-radius:6px;font-family:monospace;font-size:12px">
+            <option value="USD">USD $</option>
+            <option value="CAD">CAD $</option>
+            <option value="GBP">GBP £</option>
+            <option value="EUR">EUR €</option>
+            <option value="AUD">AUD $</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Payments -->
+    <div style="background:#0d0f14;border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:16px;margin-bottom:12px">
+      <div style="font-family:monospace;font-size:9px;color:var(--g);letter-spacing:2px;margin-bottom:12px">💳 PAYMENTS</div>
+      <label class="ob-label">Venmo Handle</label>
+      <input class="ob-inp" id="settings-venmo">
+      <label class="ob-label">PayPal.me Username</label>
+      <input class="ob-inp" id="settings-paypal">
+      <label class="ob-label">Cash App $Cashtag</label>
+      <input class="ob-inp" id="settings-cashapp">
+      <label class="ob-label">Stripe Publishable Key</label>
+      <input class="ob-inp" id="settings-stripe" type="text" placeholder="pk_live_...">
+    </div>
+
+    <!-- Backend -->
+    <div style="background:#0d0f14;border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:16px;margin-bottom:12px">
+      <div style="font-family:monospace;font-size:9px;color:var(--g);letter-spacing:2px;margin-bottom:12px">⚡ BACKEND</div>
+      <label class="ob-label">Cloudflare Worker URL</label>
+      <input class="ob-inp" id="settings-proxy" type="text">
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <button class="s-btn" onclick="testWorkerConnection()" style="flex:1">Test Connection</button>
+        <button class="s-btn" style="flex:1;background:rgba(0,255,179,.15);" onclick="testWebflowWrite()">Test Webflow</button>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <button class="s-btn" onclick="connectPrinter()" style="flex:1;background:rgba(72,202,228,.1)">🖨 Connect Printer (USB)</button>
+        <button class="s-btn" onclick="exportInventoryCSV()" style="flex:1">📥 Export CSV</button>
+      </div>
+      <div id="settings-test-result" style="font-family:monospace;font-size:10px;color:rgba(255,255,255,.5);margin-top:8px;word-break:break-all;display:none;padding:8px;background:rgba(0,0,0,.4);border-radius:4px"></div>
+    </div>
+
+    <!-- Danger zone -->
+    <div style="background:rgba(255,77,109,.04);border:1px solid rgba(255,77,109,.15);border-radius:10px;padding:16px;margin-bottom:20px">
+      <div style="font-family:monospace;font-size:9px;color:var(--red);letter-spacing:2px;margin-bottom:10px">⚠ DATA</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <button onclick="exportInventoryCSV()" style="background:rgba(0,255,179,.08);border:1px solid rgba(0,255,179,.2);color:var(--g);font-family:monospace;font-size:9px;padding:8px;border-radius:6px;cursor:pointer">📥 Export CSV</button>
+        <button onclick="exportInventoryJSON()" style="background:rgba(72,202,228,.08);border:1px solid rgba(72,202,228,.2);color:var(--blue);font-family:monospace;font-size:9px;padding:8px;border-radius:6px;cursor:pointer">📥 Export JSON</button>
+        <button onclick="importInventoryJSON()" style="background:rgba(255,209,102,.08);border:1px solid rgba(255,209,102,.2);color:var(--gold);font-family:monospace;font-size:9px;padding:8px;border-radius:6px;cursor:pointer">📤 Import JSON</button>
+        <button onclick="clearAllData()" style="background:rgba(255,77,109,.08);border:1px solid rgba(255,77,109,.2);color:var(--red);font-family:monospace;font-size:9px;padding:8px;border-radius:6px;cursor:pointer">🗑 Clear All Data</button>
+      </div>
+    </div>
+
+    <button onclick="saveSettings()" style="width:100%;background:var(--g);color:#000;font-family:'Orbitron',monospace;font-size:12px;font-weight:900;padding:14px;border:none;border-radius:8px;cursor:pointer;letter-spacing:2px;margin-bottom:8px">SAVE SETTINGS</button>
+    <button onclick="closeSettings()" style="width:100%;background:none;border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.3);font-family:monospace;font-size:10px;padding:10px;border-radius:8px;cursor:pointer">Cancel</button>
+    <div style="text-align:center;font-family:monospace;font-size:8px;color:rgba(255,255,255,.2);margin-top:12px">LBA Scanner · v2.0 · lbascan.com</div>
+  </div>
 </div>
 <div id="scanbar" style="display:none">
   <button id="scanbtn" onclick="doScan()">&#9654; SCAN CARDS</button>
@@ -466,7 +590,40 @@ const AFF = {
 // ============================================================
 // WEBFLOW PROXY — routes all WF API calls through Cloudflare Worker
 // ============================================================
-const WORKER_URL = 'https://still-resonance-4f87.swarnerauto.workers.dev';
+// ══════════════════════════════════════════════════════
+// STORE CONFIG — loaded from localStorage (set during onboarding)
+// Default values are for Walk-Off Sports Cards (overridden per store)
+// ══════════════════════════════════════════════════════
+const DEFAULT_CONFIG = {
+  store_name:     'Walk-Off Sports Cards',
+  store_location: 'Kingston, WA',
+  store_website:  'walkoffsc.com',
+  worker_url:     'https://still-resonance-4f87.swarnerauto.workers.dev',
+  stripe_pk:      'pk_live_51OhyA8LHo6HlAYnMuSJGtOtXDbU5I8NIvHqgSpoKfH8PoZ2pIHCFVyO1fkqlpcpTAQ5tgEMGbWYlA81hiwQ2HhB400tlnsrfsw',
+  venmo:          'Shawn-Warner-84',
+  paypal:         '',
+  cashapp:        '',
+  tax_rate:       0,
+  webflow_site_id:'65b15ee0228d06647ca7e4ce',
+  store_logo:     '',
+  store_color:    '#00ffb3',
+  currency:       'USD',
+  onboarded:      true,
+};
+
+function loadStoreConfig() {
+  try {
+    const saved = localStorage.getItem('store_config');
+    if(saved) return Object.assign({}, DEFAULT_CONFIG, JSON.parse(saved));
+  } catch(e) {}
+  return Object.assign({}, DEFAULT_CONFIG);
+}
+function saveStoreConfig(cfg) {
+  localStorage.setItem('store_config', JSON.stringify(cfg));
+}
+
+const STORE = loadStoreConfig();
+const WORKER_URL = STORE.worker_url;
 
 // Always read fresh from localStorage so settings changes take effect immediately
 
@@ -1010,28 +1167,7 @@ async function fetchComicCovers(item){
     // Best no-key approach: Open Library covers by ISBN if we have it
     // OR: construct a GoCollect-style search URL as the "cover"
     
-    // For now build printings from Claude's data + supplement with cover search URL
-    const variants = [
-      'Standard Cover',
-      'Variant A',
-      'Variant B', 
-      'Variant C',
-      'Virgin/Textless',
-      'Sketch Variant',
-      'Foil Cover',
-      'Connecting Variant',
-      'Convention Exclusive',
-      'Incentive Variant (1:10)',
-      'Incentive Variant (1:25)',
-      'Incentive Variant (1:50)',
-      'Incentive Variant (1:100)',
-      'Blank Cover',
-      'Second Print',
-      'Third Print',
-      'Newsstand Edition',
-    ];
-
-    // Use Claude's printings from the scan if available
+    // For now build printings from Claude's data + supplement with cover search URL\n    const variants = [\n      'Standard Cover',\n      'Variant A',\n      'Variant B', \n      'Variant C',\n      'Virgin/Textless',\n      'Sketch Variant',\n      'Foil Cover',\n      'Connecting Variant',\n      'Convention Exclusive',\n      'Incentive Variant (1:10)',\n      'Incentive Variant (1:25)',\n      'Incentive Variant (1:50)',\n      'Incentive Variant (1:100)',\n      'Blank Cover',\n      'Second Print',\n      'Third Print',\n      'Newsstand Edition',\n    ];\n\n    // Use Claude's printings from the scan if available
     if(item.printings && item.printings.length > 0){
       item.printings.forEach((p, i) => {
         result.printings.push({
@@ -1051,46 +1187,7 @@ async function fetchComicCovers(item){
       });
       result.bestMatchIdx = 0;
     } else {
-      // Build standard variant list if Claude didn't return printings
-      variants.forEach((v, i) => {
-        result.printings.push({
-          set: title + (issue ? ' #'+issue : ''),
-          variant: v,
-          year: item.year || '',
-          numbered: null,
-          mid: 0, low: 0, high: 0,
-          hasRealPrice: false,
-          imageUrl: null,
-          gcUrl: 'https://www.gocollect.com/search/?q=' + encodeURIComponent(title + ' ' + (issue ? '#'+issue : '') + ' ' + v)
-        });
-      });
-    }
-  }catch(e){ console.log('Comic cover fetch failed:', e); }
-  return result;
-}
-
-// Legacy shim used in a few places
-async function fetchCardImage(item){
-  const r = await fetchAllPrintings(item);
-  return r.imageUrl;
-}
-
-// ============================================================
-// WEBFLOW SHOP SYNC — creates ecommerce Product + SKU
-// ============================================================
-
-
-// ── DUPLICATE DETECTION ───────────────────────────────────────────────────────
-// Returns existing shopId if a matching card is already in inventory, else null
-async function findExistingProduct(entry) {
-  // Check localStorage first (fast)
-  const inv = JSON.parse(localStorage.getItem('lba_inventory') || '[]');
-  const nameNorm = (entry.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-  const setNorm  = (entry.set  || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-  const yearStr  = String(entry.year || '');
-
-  const match = inv.find(i => {
-    if(i.status === 'sold') return false; // sold items don't count
+      // Build standard variant list if Claude didn't return printings\n      variants.forEach((v, i) => {\n        result.printings.push({\n          set: title + (issue ? ' #'+issue : ''),\n          variant: v,\n          year: item.year || '',\n          numbered: null,\n          mid: 0, low: 0, high: 0,\n          hasRealPrice: false,\n          imageUrl: null,\n          gcUrl: 'https://www.gocollect.com/search/?q=' + encodeURIComponent(title + ' ' + (issue ? '#'+issue : '') + ' ' + v)\n        });\n      });\n    }\n  }catch(e){ console.log('Comic cover fetch failed:', e); }\n  return result;\n}\n\n// Legacy shim used in a few places\nasync function fetchCardImage(item){\n  const r = await fetchAllPrintings(item);\n  return r.imageUrl;\n}\n\n// ============================================================\n// WEBFLOW SHOP SYNC — creates ecommerce Product + SKU\n// ============================================================\n\n\n// ── DUPLICATE DETECTION ───────────────────────────────────────────────────────\n// Returns existing shopId if a matching card is already in inventory, else null\nasync function findExistingProduct(entry) {\n  // Check localStorage first (fast)\n  const inv = JSON.parse(localStorage.getItem('lba_inventory') || '[]');\n  const nameNorm = (entry.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');\n  const setNorm  = (entry.set  || '').toLowerCase().replace(/[^a-z0-9]/g, '');\n  const yearStr  = String(entry.year || '');\n\n  const match = inv.find(i => {\n    if(i.status === 'sold') return false; // sold items don't count
     const iName = (i.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
     const iSet  = (i.set  || '').toLowerCase().replace(/[^a-z0-9]/g, '');
     const nameMatch = iName === nameNorm || (nameNorm.length > 4 && iName.includes(nameNorm));
@@ -1779,11 +1876,94 @@ Return array only, no markdown.`;
               }).join('');
               const lbl = _bbl.querySelector('.bsels-label');
               if(lbl) lbl.textContent = fetched.printings.length + ' PRINTING' + (fetched.printings.length!==1?'S':'') + ' FOUND — SELECT TO SWITCH';
+
+              // ── FINISH/FOIL TOGGLE BUTTONS ──────────────────────
+              const FTLBLS = {
+                '1stEditionHolofoil':'1st Ed ✨','1stEditionNormal':'1st Ed',
+                'unlimitedHolofoil':'Unlim ✨','unlimitedNormal':'Unlimited',
+                'holofoil':'✨ Holo','normal':'Normal','reverseHolofoil':'↩ Rev Holo',
+                'shadowlessHolofoil':'Shadow ✨','shadowlessNormal':'Shadowless',
+              };
+              const allFinishes = [];
+              fetched.printings.forEach((pr,pi) => {
+                if(pr.allPrices && pr.allPrices.length > 0) {
+                  pr.allPrices.forEach(tier => {
+                    if(tier.mid > 0 && !allFinishes.find(f=>f.finish===tier.finish))
+                      allFinishes.push({finish:tier.finish, printIdx:pi, mid:tier.mid});
+                  });
+                }
+              });
+              _bbl.querySelectorAll('[id^="finish-tog-"]').forEach(el2=>el2.remove());
+              if(allFinishes.length > 1) {
+                const togDiv = document.createElement('div');
+                togDiv.id = 'finish-tog-' + _bbl.id;
+                togDiv.style.cssText = 'display:flex;gap:3px;margin-bottom:5px;flex-wrap:wrap';
+                togDiv.innerHTML = allFinishes.slice(0,5).map((fg,fi) => {
+                  const isFoil = fg.finish.toLowerCase().includes('holo');
+                  const bg  = isFoil ? 'rgba(255,209,102,.12)' : 'rgba(255,255,255,.05)';
+                  const bc  = isFoil ? 'rgba(255,209,102,.3)'  : 'rgba(255,255,255,.12)';
+                  const col = isFoil ? '#ffd166' : '#aaa';
+                  const lbl2 = FTLBLS[fg.finish] || fg.finish;
+                  return `<button class="bcp holo-tog${fi===0?' htog-on':''}"
+                    onclick="setFinish('${_bbl.id}','${fg.finish}',${fg.printIdx},this)"
+                    style="flex:1;min-width:56px;background:${bg};border:1px solid ${bc};color:${col};font-size:8px;padding:4px 2px;border-radius:4px;cursor:pointer;white-space:nowrap">
+                    ${lbl2} $${fg.mid.toFixed(2)}</button>`;
+                }).join('');
+                const bselsEl2 = _bbl.querySelector('.bsels');
+                if(bselsEl2) bselsEl2.before(togDiv);
+                else _bbl.querySelector('.bacts')?.before(togDiv);
+              }
+
+              // ── IMAGE CARD STRIP (scrollable, tap to select) ──────
+              // Build a horizontal strip of card images for all printings
+              // Replacing the old "NO IMAGE" placeholder approach
+              const hasImages = fetched.printings.some(p=>p.imageUrl);
+              if(hasImages) {
+                const existingStrip = _bbl.querySelector('.card-strip');
+                if(existingStrip) existingStrip.remove();
+                const strip = document.createElement('div');
+                strip.className = 'card-strip';
+                strip.style.cssText = 'display:flex;gap:4px;overflow-x:auto;margin-bottom:8px;padding:4px 0;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch';
+                strip.innerHTML = fetched.printings.slice(0,15).map((pr,i) => {
+                  if(!pr.imageUrl) return '';
+                  const isSelected = i===bmi;
+                  return `<div onclick="chPrintFromStrip('${_bbl.id}',${i},this)"
+                    data-pidx="${i}"
+                    style="flex-shrink:0;scroll-snap-align:start;cursor:pointer;border-radius:6px;overflow:hidden;border:2px solid ${isSelected?'rgba(0,255,179,.8)':'rgba(255,255,255,.1)'};transition:.15s;width:80px">
+                    <img src="${pr.imageUrl}" style="width:80px;height:110px;object-fit:contain;background:#000;display:block"
+                      onerror="this.closest('[data-pidx]').style.display='none'"
+                      loading="lazy">
+                    <div style="font-family:monospace;font-size:7px;color:rgba(255,255,255,.5);padding:2px 3px;text-align:center;background:rgba(0,0,0,.6);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${pr.year||''} ${pr.mid>0?'$'+pr.mid.toFixed(2):''}</div>
+                  </div>`;
+                }).join('');
+                // Insert strip before the bsels div
+                const bselsEl3 = _bbl.querySelector('.bsels');
+                if(bselsEl3) bselsEl3.before(strip);
+                else {
+                  // Replace the old card-img-placeholder with the strip
+                  const imgSlotStrip = document.getElementById('cimg'+_bbl.id);
+                  if(imgSlotStrip) imgSlotStrip.parentNode.replaceChild(strip, imgSlotStrip);
+                  else _bbl.querySelector('.bacts')?.before(strip);
+                }
+              }
             }
             const best = fetched.printings[bmi];
             if(best) {
               const cond = document.getElementById('cs'+_bbl.id)?.value || 'NM';
               updatePrice(_bbl.id, best, cond);
+              // Set image from best match
+              if(best.imageUrl) {
+                const imgSlot = document.getElementById('cimg'+_bbl.id);
+                if(imgSlot && imgSlot.tagName !== 'IMG') {
+                  const img = document.createElement('img');
+                  img.className='card-img'; img.id='cimg'+_bbl.id;
+                  img.src=best.imageUrl; img.style.cssText='width:100%;height:120px;object-fit:contain';
+                  img.onerror=function(){this.style.display='none';};
+                  imgSlot.parentNode.replaceChild(img, imgSlot);
+                } else if(imgSlot) {
+                  imgSlot.src = best.imageUrl;
+                }
+              }
             }
             hs.textContent = 'READY';
           } else {
@@ -2185,11 +2365,7 @@ function checkStock(item){
 
 function addBubble(item,stock,imgUrl,apiPrintings,bestMatchIdx){
   const W=window.innerWidth,H=window.innerHeight;
-  // Default cx/cy to center if Claude didn't include them
-  const cx = ((item.cx != null ? item.cx : 50)/100)*W;
-  const cy = ((item.cy != null ? item.cy : 50)/100)*H;
-  const id='b'+Date.now()+Math.random().toString(36).slice(2,5);
-  // Merge: API printings override Claude's guesses when available.
+  // Default cx/cy to center if Claude didn't include them\n  const cx = ((item.cx != null ? item.cx : 50)/100)*W;\n  const cy = ((item.cy != null ? item.cy : 50)/100)*H;\n  const id='b'+Date.now()+Math.random().toString(36).slice(2,5);\n  // Merge: API printings override Claude's guesses when available.
   // Best match index pre-selects the most likely printing.
   const prints = (apiPrintings && apiPrintings.length) ? apiPrintings : (item.printings||[]);
   const bmi = bestMatchIdx||0;
@@ -2458,6 +2634,7 @@ function addBubble(item,stock,imgUrl,apiPrintings,bestMatchIdx){
       ${ct==='general'?`<button class="bact" style="background:rgba(199,125,255,.06);border:1px solid rgba(199,125,255,.2);color:var(--purple);font-size:9px" onclick="scanBackForBubble('${id}')">⟳ SCAN BACK</button>`:''}
       <button class="bact" style="background:rgba(0,255,179,.1);border:1px solid rgba(0,255,179,.3);color:var(--g);font-weight:700" onclick="addBubbleToCart('${id}')">🛒 Add to Cart</button>
       <button class="bact a-add" onclick="showAddForm('${id}')">+ Add to Inventory</button>
+      ${ct==='sports'||ct==='tcg'?`<button class="bact" style="background:rgba(72,202,228,.06);border:1px solid rgba(72,202,228,.2);color:var(--blue);font-size:9px" onclick="showGradeSubmit('${id}')">📤 Submit to Grader</button>`:''}
       ${si>0?`<button class="bact a-sell" onclick="showSellForm('${id}')">✓ Mark as Sold</button>`:''}
       <button class="bact" style="background:rgba(255,209,102,.08);border:1px solid rgba(255,209,102,.2);color:#ffd166" onclick="showEbayForm('${id}')">📦 List on eBay</button>
     </div>`;
@@ -2554,6 +2731,27 @@ window.setHolo=function(id, printIdx, isHolo){
   if(hBtn) hBtn.style.borderColor = isHolo ? 'rgba(255,209,102,.8)' : 'rgba(255,209,102,.3)';
   if(nBtn) nBtn.style.borderColor = !isHolo ? 'rgba(255,255,255,.5)' : 'rgba(255,255,255,.15)';
 };
+window.chPrintFromStrip = function(bubId, printIdx, card) {
+  // Highlight selected card in strip
+  const strip = card.closest('.card-strip');
+  if(strip) strip.querySelectorAll('[data-pidx]').forEach(c => c.style.borderColor='rgba(255,255,255,.1)');
+  card.style.borderColor = 'rgba(0,255,179,.8)';
+  // Update the dropdown selection
+  const selEl = document.getElementById('ps'+bubId);
+  if(selEl) selEl.value = printIdx;
+  // Trigger chPrint logic
+  const bubEl = document.getElementById(bubId);
+  if(!bubEl) return;
+  const cond = document.getElementById('cs'+bubId)?.value || 'NM';
+  const p = bubEl._prints?.[printIdx];
+  if(p) updatePrice(bubId, p, cond);
+  // Update main image
+  if(p?.imageUrl) {
+    const imgEl = document.getElementById('cimg'+bubId);
+    if(imgEl?.tagName==='IMG') imgEl.src = p.imageUrl;
+  }
+};
+
 window.chPrint=function(id){
   const el=document.getElementById(id);if(!el)return;
   const pi=parseInt(document.getElementById('ps'+id).value);
@@ -2600,9 +2798,13 @@ window.chPrint=function(id){
   // Update TCGPlayer link with direct URL for this printing
   const btEl=document.getElementById('bt'+id);
   if(btEl){
-    const tUrl=AFF.tcg(p.tcgUrl);
-    if(tUrl){btEl.href=tUrl;btEl.textContent='TCGPlayer ↗';}
-    else{
+    if(p.tcgUrl){
+      const cond2 = document.getElementById('cs'+id)?.value||'NM';
+      const condMapP={'NM':'Near Mint','LP':'Lightly Played','MP':'Moderately Played','HP':'Heavily Played','DMG':'Damaged'};
+      const innerUrlP = p.tcgUrl+(p.tcgUrl.includes('?')?'&':'?')+'Condition='+encodeURIComponent(condMapP[cond2]||'Near Mint');
+      btEl.href=AFF.tcg(innerUrlP)||innerUrlP;
+      btEl.textContent='TCGPlayer ('+cond2+') ↗';
+    } else {
       const qt=(item.name||'')+' '+(p.set||item.set_name||'')+' '+(p.variant&&p.variant!=='Base'?p.variant:'');
       btEl.href=AFF.tcgSearch(qt.trim());
       btEl.textContent='TCGPlayer Search ↗';
@@ -2688,7 +2890,9 @@ function updatePrice(id,p,cond){
     const tcgCondMap={'NM':'Near Mint','LP':'Lightly Played','MP':'Moderately Played','HP':'Heavily Played','DMG':'Damaged'};
     const tcgCond = tcgCondMap[cond]||'Near Mint';
     if(tUrl){
-      bt.href = tUrl+(tUrl.includes('?')?'&':'?')+'Condition='+encodeURIComponent(tcgCond);
+      // Add condition param to inner URL BEFORE affiliate wrapping so TCGPlayer sees it
+      const innerUrl = tUrl+(tUrl.includes('?')?'&':'?')+'Condition='+encodeURIComponent(tcgCond);
+      bt.href = AFF.tcg(innerUrl) || innerUrl;
       bt.textContent='TCGPlayer ('+cond+') ↗';
     } else {
       const n=document.getElementById(id)?.querySelector('.bname')?.textContent||'';
@@ -2822,448 +3026,7 @@ window.confirmAdd=async function(id){
     const inv=JSON.parse(localStorage.getItem('lba_inventory')||'[]');
     inv.unshift(entry);localStorage.setItem('lba_inventory',JSON.stringify(inv));
 
-    // Upload captured photo — use item.name here since entry isn't built yet
-    // For sports cards: always use camera photo (no TCGPlayer API image available)
-    // For TCG: use camera photo if taken, else fall back to TCGPlayer API image
-    let inventoryImageUrl = null;
-    const photoBase64 = el._capturedPhoto || null;
-    const hasApiImage = !!(el._imgUrl);
-    const isSportsCard = el._ct === 'sports';
-
-    if(photoBase64) {
-      acts.innerHTML = `<div class="cms-status cms-syncing">📸 Uploading photo...</div>`;
-      try {
-        const photoName = 'card-' + (item.player||item.name||'scan').toLowerCase()
-          .replace(/[^a-z0-9]+/g,'-').substring(0,40) + '-' + Date.now().toString(36) + '.jpg';
-        const uploadRes = await fetch(WORKER_URL + '/upload-image', {
-          method: 'POST',
-          headers: {'Content-Type':'application/json'},
-          body: JSON.stringify({ base64: photoBase64, fileName: photoName, mimeType: 'image/jpeg' })
-        });
-        if(uploadRes.ok) {
-          const ud = await uploadRes.json();
-          inventoryImageUrl = ud.url || null;
-          console.log('✓ Photo uploaded:', inventoryImageUrl);
-        } else {
-          const errTxt = await uploadRes.text();
-          console.warn('Photo upload failed:', uploadRes.status, errTxt.substring(0,100));
-        }
-      } catch(ue) { console.warn('Photo upload error:', ue.message); }
-    }
-
-    // For TCG: fall back to API image if no camera photo
-    if(!inventoryImageUrl && !isSportsCard && hasApiImage) {
-      inventoryImageUrl = el._imgUrl;
-    }
-    // Also store on element so eBay listing can use it
-    if(inventoryImageUrl) el._uploadedPhotoUrl = inventoryImageUrl;
-
-    // Sync to Products ecommerce collection — single source of truth
-    acts.innerHTML = `<div class="cms-status cms-syncing">⟳ SAVING TO INVENTORY...</div>`;
-    const shopId = await syncToShopProduct(entry, inventoryImageUrl);
-    if(shopId){ entry.shopId=shopId; inv[0].shopId=shopId; localStorage.setItem('lba_inventory',JSON.stringify(inv)); }
-  }
-
-  // Store last entry on element so settings panel can retry sync after token entered
-  el._pendingEntry = JSON.parse(localStorage.getItem('lba_inventory')||'[]')[0];
-
-  const profit=(Number(print.mid||0)-cost).toFixed(2);
-  const lastEntry=JSON.parse(localStorage.getItem('lba_inventory')||'[]')[0];
-  const didSync=!!(lastEntry&&lastEntry.shopId);
-  let statusMsg, statusCls;
-  if(didSync){
-    statusMsg='✓ SYNCED TO WEBFLOW · SHOP + DASHBOARD';
-    statusCls='cms-synced';
-  } else {
-    statusMsg='⚠ SYNC FAILED — tap RETRY SYNC (token may need Ecommerce: Write)';
-    statusCls='cms-error';
-  }
-  acts.innerHTML=`
-    <div class="cms-status ${statusCls}">${statusMsg}</div>
-    <div class="bact a-added">Cost $${cost.toFixed(2)} · Est Profit $${profit}</div>
-    ${!didSync?`<button class="bact" style="background:rgba(0,255,179,.1);border:1px solid rgba(0,255,179,.3);color:var(--g)" onclick="retrySync('${id}')">↑ RETRY SYNC</button>`:''}
-    <button class="bact a-sell" onclick="showSellForm('${id}')">✓ Mark as Sold</button>`;
-  toast('Added '+(qty>1?qty+'x ':'')+((item.player||item.name)||'item')+(didSync?' → Webflow':'  (tap RETRY SYNC)'));
-};
-
-window.showSellForm=function(id){
-  const el=document.getElementById(id);if(!el)return;
-  const inv=JSON.parse(localStorage.getItem('lba_inventory')||'[]');
-  const name=(el._item.player||el._item.name||'').toLowerCase().split(' ')[0];
-  const inStock=inv.filter(i=>i.status==='in_stock'&&(i.name||'').toLowerCase().includes(name));
-  const avgCost=inStock.length?inStock.reduce((a,i)=>a+(i.cost||0),0)/inStock.length:0;
-  const pi=parseInt(document.getElementById('ps'+id)?.value)||0;
-  const print=el._prints[pi]||el._prints[0]||{};
-  document.getElementById('acts'+id).innerHTML=`
-    <div class="sold-form">
-      <div class="sold-form-title">✓ RECORD SALE</div>
-      ${inStock.length?`<div style="font-family:monospace;font-size:9px;color:rgba(255,255,255,.4);margin-bottom:6px">${inStock.length} in stock · Avg cost $${avgCost.toFixed(2)}</div>`:''}
-      <div class="inv-label">Sale Price ($)</div>
-      <input class="inv-inp" id="sale${id}" type="number" placeholder="${Number(print.mid||0).toFixed(2)}" step="0.01" oninput="previewSale('${id}',${avgCost})">
-      <div class="inv-label">Channel</div>
-      <select class="bsel" id="chan${id}" style="margin-bottom:4px">
-        <option>In-Store</option><option>eBay</option><option>Whatnot</option><option>Website</option>
-      </select>
-      <div id="sp${id}"></div>
-    </div>
-    <div class="bacts">
-      <button class="bact a-confirm" style="background:var(--red)" onclick="confirmSell('${id}',${avgCost})">RECORD SALE</button>
-      <button class="bact a-cancel" onclick="resetActs('${id}')">Cancel</button>
-    </div>`;
-};
-
-window.previewSale=function(id,avgCost){const sale=parseFloat(document.getElementById('sale'+id)?.value)||0;const profit=sale-avgCost;const sp=document.getElementById('sp'+id);if(sp&&sale>0)sp.innerHTML=`<div class="profit-preview ${profit>=0?'profit-pos':'profit-neg'}">Profit: $${profit.toFixed(2)}</div>`;};
-
-window.confirmSell=async function(id,avgCost){
-  const el=document.getElementById(id);if(!el||!el._item)return;
-  const salePrice=parseFloat(document.getElementById('sale'+id)?.value)||0;
-  if(!salePrice){toast('Enter a sale price');return;}
-  const channel=document.getElementById('chan'+id)?.value||'In-Store';
-  const item=el._item;
-  const name=(item.player||item.name||'').toLowerCase().split(' ')[0];
-  const inv=JSON.parse(localStorage.getItem('lba_inventory')||'[]');
-  let soldItem=null;
-  for(let i=0;i<inv.length;i++){
-    if(inv[i].status==='in_stock'&&(inv[i].name||'').toLowerCase().includes(name)){
-      inv[i].status='sold';inv[i].soldAt=new Date().toISOString();
-      inv[i].salePrice=salePrice;inv[i].saleChannel=channel;
-      inv[i].profit=salePrice-(inv[i].cost||avgCost||0);
-      soldItem=inv[i];break;
-    }
-  }
-  if(!soldItem){
-    const e={id:'scan_'+Date.now(),name:item.player||item.name,category:el._ct==='sports'?'Sports':el._ct==='comic'?'Comic':'TCG',cost:avgCost,salePrice,profit:salePrice-avgCost,saleChannel:channel,status:'sold',soldAt:new Date().toISOString(),addedAt:new Date().toISOString()};
-    inv.unshift(e);soldItem=e;
-  }
-  const sales=JSON.parse(localStorage.getItem('lba_sales')||'[]');
-  sales.unshift({id:'sale_'+Date.now(),name:item.player||item.name,category:el._ct==='sports'?'Sports':el._ct==='comic'?'Comic':'TCG',cost:avgCost,salePrice,profit:salePrice-avgCost,channel,date:new Date().toISOString()});
-  localStorage.setItem('lba_sales',JSON.stringify(sales));
-  localStorage.setItem('lba_inventory',JSON.stringify(inv));
-
-  // Update both CMS collections when sold
-  if(soldItem){
-    const h={'Content-Type':'application/json'};
-    try{
-      // Update LBA Inventory tracker
-      if(soldItem.cmsId){
-        await wfFetch(`/collections/${WF_COLLECTION_ID}/items/${soldItem.cmsId}`,{
-          method:'PATCH',headers:h,
-          body:JSON.stringify({fieldData:{status:'Sold','sale-price':salePrice,'profit':salePrice-avgCost,'sale-channel':channel,'date-sold':new Date().toISOString(),'quantity-in-stock':0,'quantity-sold':1}})
-        });
-      }
-      // Mark shop product as sold out
-      if(soldItem.shopId){
-        await wfFetch(`/collections/${WF_PRODUCTS_ID}/items/${soldItem.shopId}`,{
-          method:'PATCH',headers:h,
-          body:JSON.stringify({fieldData:{'sold-out':true,'inventory-count':0,status:'Sold'}})
-        });
-        await wfFetch(`/collections/${WF_PRODUCTS_ID}/items/publish`,{
-          method:'POST',headers:h,body:JSON.stringify({itemIds:[soldItem.shopId]})
-        });
-      }
-    }catch(e){console.log('CMS sold update failed',e);}
-  }
-
-  const profit=salePrice-avgCost;
-  document.getElementById('acts'+id).innerHTML=`<div class="bact a-added">✓ SOLD $${salePrice.toFixed(2)} via ${channel}</div><div class="profit-preview ${profit>=0?'profit-pos':'profit-neg'}">Profit: $${profit.toFixed(2)}</div>`;
-  toast('Sold! Profit: $'+profit.toFixed(2));
-};
-
-window.resetActs=function(id){
-  const el=document.getElementById(id);if(!el||!el._item)return;
-  const item=el._item,ct=el._ct,stock=checkStock(item),si=stock.inStock;
-  let links='';
-  if(ct==='sports'){
-    const qFull=[
-      item.player||item.name,
-      item.year,
-      item.set_name,
-      (item.parallel&&item.parallel!=='Base')?item.parallel:null,
-      item.card_number?'#'+item.card_number:null,
-      item.serial_number||null
-    ].filter(Boolean).join(' ');
-    const qBase=(item.player||item.name)+' '+(item.year||'');
-    links=`<a class="bact a-ebay" href="${AFF.ebaySearch(qFull)}" target="_blank">eBay Sold ↗</a>
-      <a class="bact a-ebay" style="background:rgba(72,202,228,.08);color:var(--blue);border-color:rgba(72,202,228,.2)" href="${AFF.ebaySearch(qBase)}" target="_blank">Base Sales ↗</a>`;}
-  else if(ct==='comic'){
-    const qComic=(item.name||'')+' '+(item.issue||'');
-    const qgc=encodeURIComponent(qComic);
-    links=`<a class="bact a-gcol" href="https://www.gocollect.com/search/?q=${qgc}" target="_blank">GoCollect ↗</a>
-      <a class="bact a-ebay" href="${AFF.ebaySearch(qComic+' comic')}" target="_blank">eBay Sold ↗</a>`;}
-  else if(['psa','bgs','cgc','sgc'].includes(ct)){
-    const qSlab=[
-      item.player||item.name,
-      item.year,
-      item.set_name,
-      item.grading_company,
-      item.grade,
-      item.serial_number
-    ].filter(Boolean).join(' ');
-    const qSlabBase=(item.player||item.name)||'';
-    links=`<a class="bact a-ebay" href="${AFF.ebaySearch(qSlab)}" target="_blank">eBay Sold ↗</a>
-      <a class="bact a-ebay" style="background:rgba(72,202,228,.08);color:var(--blue);border-color:rgba(72,202,228,.2)" href="${AFF.ebaySearch(qSlabBase)}" target="_blank">All Sales ↗</a>
-      ${item.cert_number&&ct==='psa'?`<a class="bact a-psa" href="https://www.psacard.com/cert/${item.cert_number}" target="_blank">PSA Verify ↗</a>`:''}
-      ${item.cert_number&&ct==='bgs'?`<a class="bact a-bgs" href="https://www.beckett.com/grading/cert?cert=${item.cert_number}" target="_blank">BGS Verify ↗</a>`:''}`;}
-  else{
-    const qt=(item.name||'')+' '+(item.set_name||item.game||'');
-    const qe=(item.name||'')+' '+(item.set_name||'')+' '+(item.game||'');
-    // Use stored direct TCGPlayer URL if available, else search
-    const tcgDirect=el._prints&&el._prints[el._bmi||0]?.tcgUrl||null;
-    const tcgHref=AFF.tcg(tcgDirect)||AFF.tcgSearch(qt);
-    links=`<a class="bact a-tcg" href="${tcgHref}" target="_blank">${tcgDirect?'TCGPlayer ↗':'TCGPlayer Search ↗'}</a>
-      <a class="bact a-ebay" href="${AFF.ebaySearch(qe)}" target="_blank">eBay Sold ↗</a>`;}
-  // Always include verify button for slabs in resetActs
-  let verifyBtn = '';
-  if(['psa','bgs','cgc','sgc'].includes(ct)) {
-    const certNum = el?._item?.cert_number || '';
-    if(ct==='psa') verifyBtn = `<a class="bact a-psa" href="https://www.psacard.com/cert/${certNum||'lookup'}" target="_blank">🔍 PSA Verify ↗</a>`;
-    else if(ct==='bgs') verifyBtn = `<a class="bact a-bgs" href="https://www.beckett.com/grading/cert${certNum?'?cert='+certNum:''}" target="_blank">🔍 BGS Verify ↗</a>`;
-    else if(ct==='cgc') verifyBtn = `<a class="bact" style="background:rgba(244,162,97,.08);border:1px solid rgba(244,162,97,.2);color:#f4a261" href="https://www.cgccards.com/certlookup/${certNum}" target="_blank">🔍 CGC Verify ↗</a>`;
-  }
-  document.getElementById('acts'+id).innerHTML=links+verifyBtn+`<button class="bact a-add" onclick="showAddForm('${id}')">+ Add to Inventory</button>${si>0?`<button class="bact a-sell" onclick="showSellForm('${id}')">✓ Mark as Sold</button>`:''}<button class="bact" style="background:rgba(255,209,102,.08);border:1px solid rgba(255,209,102,.2);color:#ffd166" onclick="showEbayForm('${id}')">📦 List on eBay</button>`;
-};
-
-function showBackStandalone(back){
-  const id='back_'+Date.now();const el=document.createElement('div');el.className='bub';el.id=id;el.style.left='10px';el.style.top='80px';
-  const statsHtml=back.stats&&back.stats.length?back.stats.slice(0,6).map(s=>`<div class="backinfo-row"><span>${s.label}</span><span class="backinfo-val">${s.value}</span></div>`).join(''):'';
-  el.innerHTML=`<button class="bx" onclick="document.getElementById('${id}').remove()">×</button>
-    <div class="btype tcg">CARD BACK</div>
-    <div class="backinfo">
-      <div class="backinfo-hdr">⟳ BACK OF CARD DATA</div>
-      ${back.card_number?`<div class="backinfo-row"><span style="color:var(--gold)">Card #</span><span class="backinfo-val" style="color:var(--gold);font-family:'Orbitron',monospace;font-size:12px">${back.card_number}</span></div>`:''}
-      ${back.set_name?`<div class="backinfo-row"><span>Set</span><span class="backinfo-val">${back.set_name}</span></div>`:''}
-      ${back.year?`<div class="backinfo-row"><span>Year</span><span class="backinfo-val">${back.year}</span></div>`:''}
-      ${back.serial_number?`<div class="backinfo-row"><span>Serial</span><span class="backinfo-val" style="color:var(--red)">${back.serial_number}</span></div>`:''}
-      ${back.print_run?`<div class="backinfo-row"><span>Print Run</span><span class="backinfo-val">${back.print_run}</span></div>`:''}
-      ${back.auto_authenticated?`<div class="backinfo-row"><span>Auto</span><span class="backinfo-val" style="color:var(--g)">✓ Auth</span></div>`:''}
-      ${back.rookie_stamp?`<div class="backinfo-row"><span>RC</span><span class="backinfo-val" style="color:var(--gold)">✓ YES</span></div>`:''}
-      ${statsHtml}
-      ${back.bio?`<div style="font-family:monospace;font-size:8px;color:rgba(255,255,255,.35);margin-top:3px;line-height:1.5;font-style:italic">${back.bio.substring(0,120)}</div>`:''}
-      ${back.notes?`<div style="font-family:monospace;font-size:8px;color:rgba(255,255,255,.4);margin-top:3px">${back.notes.substring(0,100)}</div>`:''}
-    </div>`;
-  document.body.appendChild(el);bubs.push({id,el,ax:window.innerWidth/2,ay:window.innerHeight/2,ct:'tcg'});drawLines();
-}
-function addBackInfo(bubId,back){
-  const el=document.getElementById(bubId);if(!el)return;el.querySelector('.backinfo')?.remove();
-  const statsHtml=back.stats&&back.stats.length?back.stats.slice(0,6).map(s=>`<div class="backinfo-row"><span>${s.label}</span><span class="backinfo-val">${s.value}</span></div>`).join(''):'';
-  const bi=document.createElement('div');bi.className='backinfo';
-  bi.innerHTML=`<div class="backinfo-hdr">⟳ BACK OF CARD</div>
-    ${back.card_number?`<div class="backinfo-row"><span style="color:var(--gold)">Card #</span><span class="backinfo-val" style="color:var(--gold);font-family:'Orbitron',monospace;font-size:11px">${back.card_number}</span></div>`:''}
-    ${back.set_name?`<div class="backinfo-row"><span>Set</span><span class="backinfo-val">${back.set_name}</span></div>`:''}
-    ${back.year?`<div class="backinfo-row"><span>Year</span><span class="backinfo-val">${back.year}</span></div>`:''}
-    ${back.serial_number?`<div class="backinfo-row"><span>Serial</span><span class="backinfo-val" style="color:var(--red)">${back.serial_number}</span></div>`:''}
-    ${back.print_run?`<div class="backinfo-row"><span>Print Run</span><span class="backinfo-val">${back.print_run}</span></div>`:''}
-    ${back.auto_authenticated?`<div class="backinfo-row"><span>Auto</span><span class="backinfo-val" style="color:var(--g)">✓ Auth</span></div>`:''}
-    ${back.rookie_stamp?`<div class="backinfo-row"><span>RC</span><span class="backinfo-val" style="color:var(--gold)">✓ Stamp</span></div>`:''}
-    ${statsHtml}
-    ${back.bio?`<div style="font-family:monospace;font-size:8px;color:rgba(255,255,255,.35);margin-top:3px;line-height:1.5;font-style:italic">${back.bio.substring(0,120)}</div>`:''}
-    ${back.notes?`<div style="font-family:monospace;font-size:8px;color:rgba(255,255,255,.35);margin-top:2px">${back.notes.substring(0,80)}</div>`:''}`;
-  const acts=el.querySelector('.bacts');if(acts)el.insertBefore(bi,acts);else el.appendChild(bi);
-}
-window.rmBub=function(id){document.getElementById(id)?.remove();bubs=bubs.filter(b=>b.id!==id);drawLines();};
-function clearAll(){bubs.forEach(b=>b.el?.remove());bubs=[];if(octx)octx.clearRect(0,0,oc.width,oc.height);}
-function drawLines(){
-  if(!octx)return;octx.clearRect(0,0,oc.width,oc.height);
-  const lc={tcg:'rgba(0,255,179,.35)',sports:'rgba(255,209,102,.35)',comic:'rgba(199,125,255,.35)',psa:'rgba(230,57,70,.4)',bgs:'rgba(180,180,180,.3)',cgc:'rgba(244,162,97,.4)',sgc:'rgba(255,149,0,.4)'};
-  const dc={tcg:'rgba(0,255,179,.7)',sports:'rgba(255,209,102,.7)',comic:'rgba(199,125,255,.7)',psa:'rgba(230,57,70,.8)',bgs:'rgba(180,180,180,.7)',cgc:'rgba(244,162,97,.8)',sgc:'rgba(255,149,0,.8)'};
-  bubs.forEach(b=>{
-    if(!b.el?.parentNode)return;
-    const r=b.el.getBoundingClientRect();
-    octx.beginPath();octx.moveTo(r.left+r.width/2,r.bottom);octx.lineTo(b.ax,b.ay);
-    octx.strokeStyle=lc[b.ct]||lc.tcg;octx.lineWidth=1.5;octx.setLineDash([4,4]);octx.stroke();
-    octx.beginPath();octx.arc(b.ax,b.ay,6,0,Math.PI*2);
-    octx.fillStyle=dc[b.ct]||dc.tcg;octx.fill();octx.setLineDash([]);
-  });
-}
-function toggleAuto(){
-  auto=!auto;const ab=document.getElementById('autobitn'),sb=document.getElementById('scanbtn');
-  if(auto){ab.classList.add('on');ab.textContent='STOP';sb.innerHTML='AUTO ON';sb.className='autoon';autoT=setInterval(()=>{if(!scanning)doScan();},5500);doScan();}
-  else{clearInterval(autoT);ab.classList.remove('on');ab.textContent='AUTO';sb.innerHTML='&#9654; SCAN CARDS';sb.className='';}
-}
-function showSettings(){
-  const panel = document.getElementById('settings-panel');
-  panel.style.display='flex';
-  const p = WORKER_URL;
-  document.getElementById('settings-wf-token').value = t;
-  document.getElementById('settings-proxy').value = p;
-}
-function closeSettings(){
-  document.getElementById('settings-panel').style.display='none';
-}
-async function saveSettings(){
-  // Worker URL is hardcoded — settings panel is info only
-  closeSettings();
-  try{
-    const r = await fetch(WORKER_URL+'/health');
-    const d = await r.json();
-    toast(d.ok ? '✓ Settings saved · Worker connected — tap RETRY SYNC on your card' : '⚠ Worker error · check URL');
-  }catch(e){
-    toast('⚠ Worker unreachable — check URL');
-  }
-}
-
-async function testWebflowWrite(){
-  const res_el = document.getElementById('settings-test-result');
-  if(res_el) res_el.style.display='block';
-  if(res_el) res_el.textContent = 'Testing...';
-  const url = WORKER_URL + '/proxy/sites/65b15ee0228d06647ca7e4ce/products';
-  const testPayload = {
-    product:{fieldData:{name:'LBA Test '+Date.now(),slug:'lba-test-'+Date.now(),'ec-product-type':'ff42fee0113744f693a764e3431a9cc2',shippable:true,'sold-out':false,'tax-category':'standard-taxable'}},
-    sku:{fieldData:{name:'Test SKU',slug:'lba-test-sku-'+Date.now(),price:{value:100,unit:'USD'},'sku-values':{}}},
-    publishStatus:'staging'
-  };
-  try{
-    const r = await fetch(url,{method:'POST',headers:{'Content-Type':'application/json','accept':'application/json'},body:JSON.stringify(testPayload)});
-    const txt = await r.text();
-    if(res_el){
-      res_el.style.color = r.ok ? 'var(--g)' : 'var(--red)';
-      res_el.textContent = r.ok
-        ? '✓ SUCCESS ('+r.status+') — Webflow write works!'
-        : '✗ FAILED ('+r.status+'): '+txt.substring(0,150);
-    }
-  }catch(e){
-    if(res_el){ res_el.style.color='var(--red)'; res_el.textContent='✗ Network error: '+e.message; }
-  }
-}
-
-
-async function retrySync(id){
-  const el = document.getElementById(id);
-  if(!el||!el._pendingEntry){ toast('No pending entry found — scan and add again'); return; }
-  const entry = el._pendingEntry;
-  // Token in Cloudflare env — proceed
-  const acts = document.getElementById('acts'+id);
-  acts.innerHTML += '<div class="cms-status cms-syncing">⟳ Retrying sync...</div>';
-  const shopId = await syncToShopProduct(entry, el._imgUrl);
-  if(shopId){
-    // Update localStorage entry with shopId
-    const inv = JSON.parse(localStorage.getItem('lba_inventory')||'[]');
-    const idx = inv.findIndex(i=>i.id===entry.id);
-    if(idx>=0){ inv[idx].shopId=shopId; localStorage.setItem('lba_inventory',JSON.stringify(inv)); }
-    entry.shopId = shopId;
-    el._pendingEntry = entry;
-    // Update status display
-    const statusEl = acts.querySelector('.cms-status');
-    if(statusEl){ statusEl.textContent='✓ SYNCED TO WEBFLOW · SHOP + DASHBOARD'; statusEl.className='cms-status cms-synced'; }
-    const retryBtn = acts.querySelector('button[onclick^="retrySync"]');
-    if(retryBtn) retryBtn.remove();
-    toast('✓ Synced to Webflow successfully!');
-  } else {
-    toast('⚠ Sync still failing — check browser console for error details');
-  }
-}
-
-function toast(msg){const old=document.querySelector('.toast');if(old)old.remove();const t=document.createElement('div');t.className='toast';t.textContent=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),4000);}
-
-
-// ── EBAY LISTING ─────────────────────────────────────────────────────────────
-window.showEbayForm = function(id) {
-  const el = document.getElementById(id); if(!el || !el._item) return;
-  const item = el._item;
-  // Read currently selected printing from dropdown
-  const pi   = parseInt(document.getElementById('ps'+id)?.value) || el._bmi || 0;
-  const cond = document.getElementById('cs'+id)?.value || 'NM';
-  const print = el._prints?.[pi] || el._prints?.[0] || {};
-  const ct = el._ct;
-  const isSlab = ['psa','bgs','cgc','sgc'].includes(ct);
-  console.log('eBay form: printing', pi, print.set, print.variant, print.mid);
-
-  // eBay condition IDs — matches eBay app condition dropdown
-  const condMap = {
-    'NM':  {id:'3000', label:'Very Good'},
-    'LP':  {id:'3000', label:'Very Good'},
-    'MP':  {id:'4000', label:'Good'},
-    'HP':  {id:'5000', label:'Good (Acceptable)'},
-    'DMG': {id:'6000', label:'Acceptable'},
-  };
-  const ebCond = isSlab ? {id:'2750', label:'Like New'} : (condMap[cond] || condMap['NM']);
-
-  // eBay category IDs
-  const catMap = {
-    sports: '261328',  // Sports Trading Cards
-    tcg:    '183454',  // CCG Individual Cards
-    comic:  '259104',  // Comics
-    psa:    '261328', bgs: '261328', cgc: '261328', sgc: '261328',
-  };
-  const catId = catMap[ct] || '261328';
-
-  // Build title from selected printing + item data — mirrors eBay app
-  const tp = [];
-  if(item.year || print.year) tp.push(item.year || print.year);
-  if(item.manufacturer) tp.push(item.manufacturer);
-  if(item.player||item.name) tp.push(item.player||item.name);
-  if(print.set||item.set_name) tp.push(print.set||item.set_name);
-  if(print.variant && print.variant !== 'Base') tp.push(print.variant);
-  if(print.numbered || item.serial_number) tp.push(print.numbered || item.serial_number);
-  if(isSlab && item.grading_company) tp.push(item.grading_company + (item.grade?' '+item.grade:''));
-  if(item.card_number) tp.push('#'+item.card_number);
-  if(item.is_rookie) tp.push('RC');
-  let title = tp.filter(Boolean).join(' ').substring(0, 80);
-
-  // Price from selected printing
-  const condMultiplier = {'NM':1,'LP':.8,'MP':.64,'HP':.4,'DMG':.25}[cond] || 1;
-  const mktPrice = Number(print.mid || 0) * condMultiplier;
-  const sugPrice  = mktPrice > 0 ? (mktPrice * 1.1).toFixed(2) : '';
-  const startPrice= mktPrice > 0 ? (mktPrice * 0.75).toFixed(2) : '';
-
-  // Description — mirrors eBay app description template
-  const descLines = [
-    `${item.player||item.name}`,
-    `Year: ${item.year||'—'}  |  Set: ${print.set||item.set_name||'—'}`,
-    (print.variant && print.variant !== 'Base') ? `Parallel: ${print.variant}` : '',
-    item.card_number ? `Card #: ${item.card_number}` : '',
-    item.serial_number ? `Serial: ${item.serial_number}` : '',
-    item.sport ? `Sport: ${item.sport}` : '',
-    item.team ? `Team: ${item.team}` : '',
-    isSlab ? `Grade: ${item.grading_company||''} ${item.grade||''}  ${item.cert_number?'Cert #'+item.cert_number:''}` : `Condition: ${cond} (${ebCond.label})`,
-    item.is_rookie ? '⭐ Rookie Card' : '',
-    '',
-    'Cards ship in penny sleeve + toploader, inside bubble mailer.',
-    'Fast handling — ships within 1 business day.',
-    'Walk-Off Sports Cards & Comics — Kingston, WA.',
-  ].filter(x=>x!==null).join('\n');
-
-  const imgSrc = el._uploadedPhotoUrl || el._imgUrl || null;
-
-  document.getElementById('ebay-modal')?.remove();
-  const modal = document.createElement('div');
-  modal.id = 'ebay-modal';
-  modal.setAttribute('data-bubble-id', id);
-  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.96);z-index:9999;overflow-y:auto;padding:12px;display:flex;align-items:flex-start;justify-content:center;padding-top:16px';
-
-  modal.innerHTML = `
-    <div style="width:100%;max-width:480px;background:#111;border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:18px;margin-bottom:40px">
-      <!-- Header -->
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-        <div style="font-family:'Orbitron',monospace;font-size:12px;color:#e94560;letter-spacing:2px">📦 LIST ON EBAY</div>
-        <button onclick="document.getElementById('ebay-modal').remove()" style="background:none;border:none;color:#666;font-size:22px;cursor:pointer;line-height:1">×</button>
-      </div>
-
-      <!-- Photo preview -->
-      <div style="display:flex;gap:10px;margin-bottom:14px;align-items:flex-start">
-        <div id="eb-photo-wrap" style="width:72px;height:72px;flex-shrink:0;background:#1a1a1a;border-radius:6px;overflow:hidden;border:1px solid rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;cursor:pointer" onclick="ebayRetakePhoto('${id}')">
-          ${imgSrc ? `<img src="${imgSrc}" style="width:100%;height:100%;object-fit:cover">` : `<span style="font-size:20px">📸</span>`}
-        </div>
-        <div style="flex:1;min-width:0">
-          <div style="font-family:monospace;font-size:9px;color:#666;margin-bottom:3px">TITLE (80 char max)</div>
-          <input id="eb-title" maxlength="80" style="width:100%;background:#1a1a1a;border:1px solid rgba(255,255,255,.12);color:#fff;padding:7px 10px;border-radius:6px;font-size:11px;box-sizing:border-box" value="${title}">
-          <div id="eb-title-ct" style="font-size:9px;color:#444;text-align:right;margin-top:2px">${title.length}/80</div>
-        </div>
-      </div>
-
-      <!-- Format + Price row -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
-        <div>
-          <div style="font-family:monospace;font-size:9px;color:#666;margin-bottom:3px">FORMAT</div>
-          <select id="eb-format" onchange="ebayToggleAuction()" style="width:100%;background:#1a1a1a;border:1px solid rgba(255,255,255,.12);color:#fff;padding:7px;border-radius:6px;font-size:11px">
-            <option value="FIXED_PRICE">Buy It Now</option>
-            <option value="AUCTION">Auction</option>
-          </select>
-        </div>
-        <div>
-          <div style="font-family:monospace;font-size:9px;color:#666;margin-bottom:3px">DURATION</div>
-          <select id="eb-duration" style="width:100%;background:#1a1a1a;border:1px solid rgba(255,255,255,.12);color:#fff;padding:7px;border-radius:6px;font-size:11px">
-            <option value="GTC">Good 'Till Cancelled</option>
+    // Upload captured photo — use item.name here since entry isn't built yet\n    // For sports cards: always use camera photo (no TCGPlayer API image available)\n    // For TCG: use camera photo if taken, else fall back to TCGPlayer API image\n    let inventoryImageUrl = null;\n    const photoBase64 = el._capturedPhoto || null;\n    const hasApiImage = !!(el._imgUrl);\n    const isSportsCard = el._ct === 'sports';\n\n    if(photoBase64) {\n      acts.innerHTML = `<div class="cms-status cms-syncing">📸 Uploading photo...</div>`;\n      try {\n        const photoName = 'card-' + (item.player||item.name||'scan').toLowerCase()\n          .replace(/[^a-z0-9]+/g,'-').substring(0,40) + '-' + Date.now().toString(36) + '.jpg';\n        const uploadRes = await fetch(WORKER_URL + '/upload-image', {\n          method: 'POST',\n          headers: {'Content-Type':'application/json'},\n          body: JSON.stringify({ base64: photoBase64, fileName: photoName, mimeType: 'image/jpeg' })\n        });\n        if(uploadRes.ok) {\n          const ud = await uploadRes.json();\n          inventoryImageUrl = ud.url || null;\n          console.log('✓ Photo uploaded:', inventoryImageUrl);\n        } else {\n          const errTxt = await uploadRes.text();\n          console.warn('Photo upload failed:', uploadRes.status, errTxt.substring(0,100));\n        }\n      } catch(ue) { console.warn('Photo upload error:', ue.message); }\n    }\n\n    // For TCG: fall back to API image if no camera photo\n    if(!inventoryImageUrl && !isSportsCard && hasApiImage) {\n      inventoryImageUrl = el._imgUrl;\n    }\n    // Also store on element so eBay listing can use it\n    if(inventoryImageUrl) el._uploadedPhotoUrl = inventoryImageUrl;\n\n    // Sync to Products ecommerce collection — single source of truth\n    acts.innerHTML = `<div class="cms-status cms-syncing">⟳ SAVING TO INVENTORY...</div>`;\n    const shopId = await syncToShopProduct(entry, inventoryImageUrl);\n    if(shopId){ entry.shopId=shopId; inv[0].shopId=shopId; localStorage.setItem('lba_inventory',JSON.stringify(inv)); }\n  }\n\n  // Store last entry on element so settings panel can retry sync after token entered\n  el._pendingEntry = JSON.parse(localStorage.getItem('lba_inventory')||'[]')[0];\n\n  const profit=(Number(print.mid||0)-cost).toFixed(2);\n  const lastEntry=JSON.parse(localStorage.getItem('lba_inventory')||'[]')[0];\n  const didSync=!!(lastEntry&&lastEntry.shopId);\n  let statusMsg, statusCls;\n  if(didSync){\n    statusMsg='✓ SYNCED TO WEBFLOW · SHOP + DASHBOARD';\n    statusCls='cms-synced';\n  } else {\n    statusMsg='⚠ SYNC FAILED — tap RETRY SYNC (token may need Ecommerce: Write)';\n    statusCls='cms-error';\n  }\n  acts.innerHTML=`\n    <div class="cms-status ${statusCls}">${statusMsg}</div>\n    <div class="bact a-added">Cost $${cost.toFixed(2)} · Est Profit $${profit}</div>\n    ${!didSync?`<button class="bact" style="background:rgba(0,255,179,.1);border:1px solid rgba(0,255,179,.3);color:var(--g)" onclick="retrySync('${id}')">↑ RETRY SYNC</button>`:''}\n    <button class="bact a-sell" onclick="showSellForm('${id}')">✓ Mark as Sold</button>`;\n  toast('Added '+(qty>1?qty+'x ':'')+((item.player||item.name)||'item')+(didSync?' → Webflow':'  (tap RETRY SYNC)'));\n};\n\nwindow.showSellForm=function(id){\n  const el=document.getElementById(id);if(!el)return;\n  const inv=JSON.parse(localStorage.getItem('lba_inventory')||'[]');\n  const name=(el._item.player||el._item.name||'').toLowerCase().split(' ')[0];\n  const inStock=inv.filter(i=>i.status==='in_stock'&&(i.name||'').toLowerCase().includes(name));\n  const avgCost=inStock.length?inStock.reduce((a,i)=>a+(i.cost||0),0)/inStock.length:0;\n  const pi=parseInt(document.getElementById('ps'+id)?.value)||0;\n  const print=el._prints[pi]||el._prints[0]||{};\n  document.getElementById('acts'+id).innerHTML=`\n    <div class="sold-form">\n      <div class="sold-form-title">✓ RECORD SALE</div>\n      ${inStock.length?`<div style="font-family:monospace;font-size:9px;color:rgba(255,255,255,.4);margin-bottom:6px">${inStock.length} in stock · Avg cost $${avgCost.toFixed(2)}</div>`:''}\n      <div class="inv-label">Sale Price ($)</div>\n      <input class="inv-inp" id="sale${id}" type="number" placeholder="${Number(print.mid||0).toFixed(2)}" step="0.01" oninput="previewSale('${id}',${avgCost})">\n      <div class="inv-label">Channel</div>\n      <select class="bsel" id="chan${id}" style="margin-bottom:4px">\n        <option>In-Store</option><option>eBay</option><option>Whatnot</option><option>Website</option>\n      </select>\n      <div id="sp${id}"></div>\n    </div>\n    <div class="bacts">\n      <button class="bact a-confirm" style="background:var(--red)" onclick="confirmSell('${id}',${avgCost})">RECORD SALE</button>\n      <button class="bact a-cancel" onclick="resetActs('${id}')">Cancel</button>\n    </div>`;\n};\n\nwindow.previewSale=function(id,avgCost){const sale=parseFloat(document.getElementById('sale'+id)?.value)||0;const profit=sale-avgCost;const sp=document.getElementById('sp'+id);if(sp&&sale>0)sp.innerHTML=`<div class="profit-preview ${profit>=0?'profit-pos':'profit-neg'}">Profit: $${profit.toFixed(2)}</div>`;};\n\nwindow.confirmSell=async function(id,avgCost){\n  const el=document.getElementById(id);if(!el||!el._item)return;\n  const salePrice=parseFloat(document.getElementById('sale'+id)?.value)||0;\n  if(!salePrice){toast('Enter a sale price');return;}\n  const channel=document.getElementById('chan'+id)?.value||'In-Store';\n  const item=el._item;\n  const name=(item.player||item.name||'').toLowerCase().split(' ')[0];\n  const inv=JSON.parse(localStorage.getItem('lba_inventory')||'[]');\n  let soldItem=null;\n  for(let i=0;i<inv.length;i++){\n    if(inv[i].status==='in_stock'&&(inv[i].name||'').toLowerCase().includes(name)){\n      inv[i].status='sold';inv[i].soldAt=new Date().toISOString();\n      inv[i].salePrice=salePrice;inv[i].saleChannel=channel;\n      inv[i].profit=salePrice-(inv[i].cost||avgCost||0);\n      soldItem=inv[i];break;\n    }\n  }\n  if(!soldItem){\n    const e={id:'scan_'+Date.now(),name:item.player||item.name,category:el._ct==='sports'?'Sports':el._ct==='comic'?'Comic':'TCG',cost:avgCost,salePrice,profit:salePrice-avgCost,saleChannel:channel,status:'sold',soldAt:new Date().toISOString(),addedAt:new Date().toISOString()};\n    inv.unshift(e);soldItem=e;\n  }\n  const sales=JSON.parse(localStorage.getItem('lba_sales')||'[]');\n  sales.unshift({id:'sale_'+Date.now(),name:item.player||item.name,category:el._ct==='sports'?'Sports':el._ct==='comic'?'Comic':'TCG',cost:avgCost,salePrice,profit:salePrice-avgCost,channel,date:new Date().toISOString()});\n  localStorage.setItem('lba_sales',JSON.stringify(sales));\n  localStorage.setItem('lba_inventory',JSON.stringify(inv));\n\n  // Update both CMS collections when sold\n  if(soldItem){\n    const h={'Content-Type':'application/json'};\n    try{\n      // Update LBA Inventory tracker\n      if(soldItem.cmsId){\n        await wfFetch(`/collections/${WF_COLLECTION_ID}/items/${soldItem.cmsId}`,{\n          method:'PATCH',headers:h,\n          body:JSON.stringify({fieldData:{status:'Sold','sale-price':salePrice,'profit':salePrice-avgCost,'sale-channel':channel,'date-sold':new Date().toISOString(),'quantity-in-stock':0,'quantity-sold':1}})\n        });\n      }\n      // Mark shop product as sold out\n      if(soldItem.shopId){\n        await wfFetch(`/collections/${WF_PRODUCTS_ID}/items/${soldItem.shopId}`,{\n          method:'PATCH',headers:h,\n          body:JSON.stringify({fieldData:{'sold-out':true,'inventory-count':0,status:'Sold'}})\n        });\n        await wfFetch(`/collections/${WF_PRODUCTS_ID}/items/publish`,{\n          method:'POST',headers:h,body:JSON.stringify({itemIds:[soldItem.shopId]})\n        });\n      }\n    }catch(e){console.log('CMS sold update failed',e);}\n  }\n\n  const profit=salePrice-avgCost;\n  document.getElementById('acts'+id).innerHTML=`<div class="bact a-added">✓ SOLD $${salePrice.toFixed(2)} via ${channel}</div><div class="profit-preview ${profit>=0?'profit-pos':'profit-neg'}">Profit: $${profit.toFixed(2)}</div>`;\n  toast('Sold! Profit: $'+profit.toFixed(2));\n};\n\nwindow.resetActs=function(id){\n  const el=document.getElementById(id);if(!el||!el._item)return;\n  const item=el._item,ct=el._ct,stock=checkStock(item),si=stock.inStock;\n  let links='';\n  if(ct==='sports'){\n    const qFull=[\n      item.player||item.name,\n      item.year,\n      item.set_name,\n      (item.parallel&&item.parallel!=='Base')?item.parallel:null,\n      item.card_number?'#'+item.card_number:null,\n      item.serial_number||null\n    ].filter(Boolean).join(' ');\n    const qBase=(item.player||item.name)+' '+(item.year||'');\n    links=`<a class="bact a-ebay" href="${AFF.ebaySearch(qFull)}" target="_blank">eBay Sold ↗</a>\n      <a class="bact a-ebay" style="background:rgba(72,202,228,.08);color:var(--blue);border-color:rgba(72,202,228,.2)" href="${AFF.ebaySearch(qBase)}" target="_blank">Base Sales ↗</a>`;}\n  else if(ct==='comic'){\n    const qComic=(item.name||'')+' '+(item.issue||'');\n    const qgc=encodeURIComponent(qComic);\n    links=`<a class="bact a-gcol" href="https://www.gocollect.com/search/?q=${qgc}" target="_blank">GoCollect ↗</a>\n      <a class="bact a-ebay" href="${AFF.ebaySearch(qComic+' comic')}" target="_blank">eBay Sold ↗</a>`;}\n  else if(['psa','bgs','cgc','sgc'].includes(ct)){\n    const qSlab=[\n      item.player||item.name,\n      item.year,\n      item.set_name,\n      item.grading_company,\n      item.grade,\n      item.serial_number\n    ].filter(Boolean).join(' ');\n    const qSlabBase=(item.player||item.name)||'';\n    links=`<a class="bact a-ebay" href="${AFF.ebaySearch(qSlab)}" target="_blank">eBay Sold ↗</a>\n      <a class="bact a-ebay" style="background:rgba(72,202,228,.08);color:var(--blue);border-color:rgba(72,202,228,.2)" href="${AFF.ebaySearch(qSlabBase)}" target="_blank">All Sales ↗</a>\n      ${item.cert_number&&ct==='psa'?`<a class="bact a-psa" href="https://www.psacard.com/cert/${item.cert_number}" target="_blank">PSA Verify ↗</a>`:''}\n      ${item.cert_number&&ct==='bgs'?`<a class="bact a-bgs" href="https://www.beckett.com/grading/cert?cert=${item.cert_number}" target="_blank">BGS Verify ↗</a>`:''}`;}\n  else{\n    const qt=(item.name||'')+' '+(item.set_name||item.game||'');\n    const qe=(item.name||'')+' '+(item.set_name||'')+' '+(item.game||'');\n    // Use stored direct TCGPlayer URL if available, else search\n    const tcgDirect=el._prints&&el._prints[el._bmi||0]?.tcgUrl||null;\n    const tcgHref=AFF.tcg(tcgDirect)||AFF.tcgSearch(qt);\n    links=`<a class="bact a-tcg" href="${tcgHref}" target="_blank">${tcgDirect?'TCGPlayer ↗':'TCGPlayer Search ↗'}</a>\n      <a class="bact a-ebay" href="${AFF.ebaySearch(qe)}" target="_blank">eBay Sold ↗</a>`;}\n  // Always include verify button for slabs in resetActs\n  let verifyBtn = '';\n  if(['psa','bgs','cgc','sgc'].includes(ct)) {\n    const certNum = el?._item?.cert_number || '';\n    if(ct==='psa') verifyBtn = `<a class="bact a-psa" href="https://www.psacard.com/cert/${certNum||'lookup'}" target="_blank">🔍 PSA Verify ↗</a>`;\n    else if(ct==='bgs') verifyBtn = `<a class="bact a-bgs" href="https://www.beckett.com/grading/cert${certNum?'?cert='+certNum:''}" target="_blank">🔍 BGS Verify ↗</a>`;\n    else if(ct==='cgc') verifyBtn = `<a class="bact" style="background:rgba(244,162,97,.08);border:1px solid rgba(244,162,97,.2);color:#f4a261" href="https://www.cgccards.com/certlookup/${certNum}" target="_blank">🔍 CGC Verify ↗</a>`;\n  }\n  document.getElementById('acts'+id).innerHTML=links+verifyBtn+`<button class="bact a-add" onclick="showAddForm('${id}')">+ Add to Inventory</button>${si>0?`<button class="bact a-sell" onclick="showSellForm('${id}')">✓ Mark as Sold</button>`:''}<button class="bact" style="background:rgba(255,209,102,.08);border:1px solid rgba(255,209,102,.2);color:#ffd166" onclick="showEbayForm('${id}')">📦 List on eBay</button>`;\n};\n\nfunction showBackStandalone(back){\n  const id='back_'+Date.now();const el=document.createElement('div');el.className='bub';el.id=id;el.style.left='10px';el.style.top='80px';\n  const statsHtml=back.stats&&back.stats.length?back.stats.slice(0,6).map(s=>`<div class="backinfo-row"><span>${s.label}</span><span class="backinfo-val">${s.value}</span></div>`).join(''):'';\n  el.innerHTML=`<button class="bx" onclick="document.getElementById('${id}').remove()">×</button>\n    <div class="btype tcg">CARD BACK</div>\n    <div class="backinfo">\n      <div class="backinfo-hdr">⟳ BACK OF CARD DATA</div>\n      ${back.card_number?`<div class="backinfo-row"><span style="color:var(--gold)">Card #</span><span class="backinfo-val" style="color:var(--gold);font-family:'Orbitron',monospace;font-size:12px">${back.card_number}</span></div>`:''}\n      ${back.set_name?`<div class="backinfo-row"><span>Set</span><span class="backinfo-val">${back.set_name}</span></div>`:''}\n      ${back.year?`<div class="backinfo-row"><span>Year</span><span class="backinfo-val">${back.year}</span></div>`:''}\n      ${back.serial_number?`<div class="backinfo-row"><span>Serial</span><span class="backinfo-val" style="color:var(--red)">${back.serial_number}</span></div>`:''}\n      ${back.print_run?`<div class="backinfo-row"><span>Print Run</span><span class="backinfo-val">${back.print_run}</span></div>`:''}\n      ${back.auto_authenticated?`<div class="backinfo-row"><span>Auto</span><span class="backinfo-val" style="color:var(--g)">✓ Auth</span></div>`:''}\n      ${back.rookie_stamp?`<div class="backinfo-row"><span>RC</span><span class="backinfo-val" style="color:var(--gold)">✓ YES</span></div>`:''}\n      ${statsHtml}\n      ${back.bio?`<div style="font-family:monospace;font-size:8px;color:rgba(255,255,255,.35);margin-top:3px;line-height:1.5;font-style:italic">${back.bio.substring(0,120)}</div>`:''}\n      ${back.notes?`<div style="font-family:monospace;font-size:8px;color:rgba(255,255,255,.4);margin-top:3px">${back.notes.substring(0,100)}</div>`:''}\n    </div>`;\n  document.body.appendChild(el);bubs.push({id,el,ax:window.innerWidth/2,ay:window.innerHeight/2,ct:'tcg'});drawLines();\n}\nfunction addBackInfo(bubId,back){\n  const el=document.getElementById(bubId);if(!el)return;el.querySelector('.backinfo')?.remove();\n  const statsHtml=back.stats&&back.stats.length?back.stats.slice(0,6).map(s=>`<div class="backinfo-row"><span>${s.label}</span><span class="backinfo-val">${s.value}</span></div>`).join(''):'';\n  const bi=document.createElement('div');bi.className='backinfo';\n  bi.innerHTML=`<div class="backinfo-hdr">⟳ BACK OF CARD</div>\n    ${back.card_number?`<div class="backinfo-row"><span style="color:var(--gold)">Card #</span><span class="backinfo-val" style="color:var(--gold);font-family:'Orbitron',monospace;font-size:11px">${back.card_number}</span></div>`:''}\n    ${back.set_name?`<div class="backinfo-row"><span>Set</span><span class="backinfo-val">${back.set_name}</span></div>`:''}\n    ${back.year?`<div class="backinfo-row"><span>Year</span><span class="backinfo-val">${back.year}</span></div>`:''}\n    ${back.serial_number?`<div class="backinfo-row"><span>Serial</span><span class="backinfo-val" style="color:var(--red)">${back.serial_number}</span></div>`:''}\n    ${back.print_run?`<div class="backinfo-row"><span>Print Run</span><span class="backinfo-val">${back.print_run}</span></div>`:''}\n    ${back.auto_authenticated?`<div class="backinfo-row"><span>Auto</span><span class="backinfo-val" style="color:var(--g)">✓ Auth</span></div>`:''}\n    ${back.rookie_stamp?`<div class="backinfo-row"><span>RC</span><span class="backinfo-val" style="color:var(--gold)">✓ Stamp</span></div>`:''}\n    ${statsHtml}\n    ${back.bio?`<div style="font-family:monospace;font-size:8px;color:rgba(255,255,255,.35);margin-top:3px;line-height:1.5;font-style:italic">${back.bio.substring(0,120)}</div>`:''}\n    ${back.notes?`<div style="font-family:monospace;font-size:8px;color:rgba(255,255,255,.35);margin-top:2px">${back.notes.substring(0,80)}</div>`:''}`;\n  const acts=el.querySelector('.bacts');if(acts)el.insertBefore(bi,acts);else el.appendChild(bi);\n}\nwindow.rmBub=function(id){document.getElementById(id)?.remove();bubs=bubs.filter(b=>b.id!==id);drawLines();};\nfunction clearAll(){bubs.forEach(b=>b.el?.remove());bubs=[];if(octx)octx.clearRect(0,0,oc.width,oc.height);}\nfunction drawLines(){\n  if(!octx)return;octx.clearRect(0,0,oc.width,oc.height);\n  const lc={tcg:'rgba(0,255,179,.35)',sports:'rgba(255,209,102,.35)',comic:'rgba(199,125,255,.35)',psa:'rgba(230,57,70,.4)',bgs:'rgba(180,180,180,.3)',cgc:'rgba(244,162,97,.4)',sgc:'rgba(255,149,0,.4)'};\n  const dc={tcg:'rgba(0,255,179,.7)',sports:'rgba(255,209,102,.7)',comic:'rgba(199,125,255,.7)',psa:'rgba(230,57,70,.8)',bgs:'rgba(180,180,180,.7)',cgc:'rgba(244,162,97,.8)',sgc:'rgba(255,149,0,.8)'};\n  bubs.forEach(b=>{\n    if(!b.el?.parentNode)return;\n    const r=b.el.getBoundingClientRect();\n    octx.beginPath();octx.moveTo(r.left+r.width/2,r.bottom);octx.lineTo(b.ax,b.ay);\n    octx.strokeStyle=lc[b.ct]||lc.tcg;octx.lineWidth=1.5;octx.setLineDash([4,4]);octx.stroke();\n    octx.beginPath();octx.arc(b.ax,b.ay,6,0,Math.PI*2);\n    octx.fillStyle=dc[b.ct]||dc.tcg;octx.fill();octx.setLineDash([]);\n  });\n}\nfunction toggleAuto(){\n  auto=!auto;const ab=document.getElementById('autobitn'),sb=document.getElementById('scanbtn');\n  if(auto){ab.classList.add('on');ab.textContent='STOP';sb.innerHTML='AUTO ON';sb.className='autoon';autoT=setInterval(()=>{if(!scanning)doScan();},5500);doScan();}\n  else{clearInterval(autoT);ab.classList.remove('on');ab.textContent='AUTO';sb.innerHTML='&#9654; SCAN CARDS';sb.className='';}\n}\nfunction showSettings(){\n  const panel = document.getElementById('settings-panel');\n  panel.style.display='block';\n  // Populate fields from STORE config\n  const fields = {\n    'settings-store-name': STORE.store_name,\n    'settings-location':   STORE.store_location,\n    'settings-website':    STORE.store_website,\n    'settings-tax':        STORE.tax_rate,\n    'settings-venmo':      STORE.venmo,\n    'settings-paypal':     STORE.paypal,\n    'settings-cashapp':    STORE.cashapp,\n    'settings-stripe':     STORE.stripe_pk,\n    'settings-proxy':      STORE.worker_url,\n  };\n  Object.entries(fields).forEach(([id, val]) => {\n    const el = document.getElementById(id);\n    if(el) el.value = val || '';\n  });\n  const cur = document.getElementById('settings-currency');\n  if(cur) [...cur.options].forEach(o => o.selected = o.value === STORE.currency);\n}\nfunction closeSettings(){\n  document.getElementById('settings-panel').style.display='none';\n}\nasync function saveSettings(){\n  const newConfig = {\n    store_name:     document.getElementById('settings-store-name').value.trim() || STORE.store_name,\n    store_location: document.getElementById('settings-location').value.trim()   || STORE.store_location,\n    store_website:  document.getElementById('settings-website').value.trim()    || STORE.store_website,\n    tax_rate:       parseFloat(document.getElementById('settings-tax').value)   || 0,\n    venmo:          document.getElementById('settings-venmo').value.trim(),\n    paypal:         document.getElementById('settings-paypal').value.trim(),\n    cashapp:        document.getElementById('settings-cashapp').value.trim(),\n    stripe_pk:      document.getElementById('settings-stripe').value.trim()     || STORE.stripe_pk,\n    worker_url:     document.getElementById('settings-proxy').value.trim()      || STORE.worker_url,\n    currency:       document.getElementById('settings-currency')?.value         || 'USD',\n    onboarded:      true,\n  };\n  Object.assign(STORE, newConfig);\n  saveStoreConfig(STORE);\n  closeSettings();\n  toast('✓ Settings saved');\n  // Reinit Stripe if key changed\n  if(newConfig.stripe_pk && !stripeInstance) initStripe();\n}\nasync function testWorkerConnection(){\n  const url = document.getElementById('settings-proxy').value.trim() || STORE.worker_url;\n  const statusEl = document.getElementById('settings-test-result');\n  statusEl.style.display='block';\n  statusEl.style.color='var(--gold)';\n  statusEl.textContent = '⟳ Testing...';\n  try {\n    const r = await fetch(url+'/health');\n    const d = await r.json();\n    statusEl.style.color = d.ok ? 'var(--g)' : 'var(--red)';\n    statusEl.textContent = d.ok ? '✓ Worker connected' : '⚠ Worker responded but not OK';\n  } catch(e) {\n    statusEl.style.color = 'var(--red)';\n    statusEl.textContent = '⚠ Cannot reach worker: '+e.message;\n  }\n}\n\nasync function testWebflowWrite(){\n  const res_el = document.getElementById('settings-test-result');\n  if(res_el) res_el.style.display='block';\n  if(res_el) res_el.textContent = 'Testing...';\n  const url = WORKER_URL + '/proxy/sites/65b15ee0228d06647ca7e4ce/products';\n  const testPayload = {\n    product:{fieldData:{name:'LBA Test '+Date.now(),slug:'lba-test-'+Date.now(),'ec-product-type':'ff42fee0113744f693a764e3431a9cc2',shippable:true,'sold-out':false,'tax-category':'standard-taxable'}},\n    sku:{fieldData:{name:'Test SKU',slug:'lba-test-sku-'+Date.now(),price:{value:100,unit:'USD'},'sku-values':{}}},\n    publishStatus:'staging'\n  };\n  try{\n    const r = await fetch(url,{method:'POST',headers:{'Content-Type':'application/json','accept':'application/json'},body:JSON.stringify(testPayload)});\n    const txt = await r.text();\n    if(res_el){\n      res_el.style.color = r.ok ? 'var(--g)' : 'var(--red)';\n      res_el.textContent = r.ok\n        ? '✓ SUCCESS ('+r.status+') — Webflow write works!'\n        : '✗ FAILED ('+r.status+'): '+txt.substring(0,150);\n    }\n  }catch(e){\n    if(res_el){ res_el.style.color='var(--red)'; res_el.textContent='✗ Network error: '+e.message; }\n  }\n}\n\n\nasync function retrySync(id){\n  const el = document.getElementById(id);\n  if(!el||!el._pendingEntry){ toast('No pending entry found — scan and add again'); return; }\n  const entry = el._pendingEntry;\n  // Token in Cloudflare env — proceed\n  const acts = document.getElementById('acts'+id);\n  acts.innerHTML += '<div class="cms-status cms-syncing">⟳ Retrying sync...</div>';\n  const shopId = await syncToShopProduct(entry, el._imgUrl);\n  if(shopId){\n    // Update localStorage entry with shopId\n    const inv = JSON.parse(localStorage.getItem('lba_inventory')||'[]');\n    const idx = inv.findIndex(i=>i.id===entry.id);\n    if(idx>=0){ inv[idx].shopId=shopId; localStorage.setItem('lba_inventory',JSON.stringify(inv)); }\n    entry.shopId = shopId;\n    el._pendingEntry = entry;\n    // Update status display\n    const statusEl = acts.querySelector('.cms-status');\n    if(statusEl){ statusEl.textContent='✓ SYNCED TO WEBFLOW · SHOP + DASHBOARD'; statusEl.className='cms-status cms-synced'; }\n    const retryBtn = acts.querySelector('button[onclick^="retrySync"]');\n    if(retryBtn) retryBtn.remove();\n    toast('✓ Synced to Webflow successfully!');\n  } else {\n    toast('⚠ Sync still failing — check browser console for error details');\n  }\n}\n\nfunction toast(msg){const old=document.querySelector('.toast');if(old)old.remove();const t=document.createElement('div');t.className='toast';t.textContent=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),4000);}\n\n\n// ── EBAY LISTING ─────────────────────────────────────────────────────────────\nwindow.showEbayForm = function(id) {\n  const el = document.getElementById(id); if(!el || !el._item) return;\n  const item = el._item;\n  // Read currently selected printing from dropdown\n  const pi   = parseInt(document.getElementById('ps'+id)?.value) || el._bmi || 0;\n  const cond = document.getElementById('cs'+id)?.value || 'NM';\n  const print = el._prints?.[pi] || el._prints?.[0] || {};\n  const ct = el._ct;\n  const isSlab = ['psa','bgs','cgc','sgc'].includes(ct);\n  console.log('eBay form: printing', pi, print.set, print.variant, print.mid);\n\n  // eBay condition IDs — matches eBay app condition dropdown\n  const condMap = {\n    'NM':  {id:'3000', label:'Very Good'},\n    'LP':  {id:'3000', label:'Very Good'},\n    'MP':  {id:'4000', label:'Good'},\n    'HP':  {id:'5000', label:'Good (Acceptable)'},\n    'DMG': {id:'6000', label:'Acceptable'},\n  };\n  const ebCond = isSlab ? {id:'2750', label:'Like New'} : (condMap[cond] || condMap['NM']);\n\n  // eBay category IDs\n  const catMap = {\n    sports: '261328',  // Sports Trading Cards\n    tcg:    '183454',  // CCG Individual Cards\n    comic:  '259104',  // Comics\n    psa:    '261328', bgs: '261328', cgc: '261328', sgc: '261328',\n  };\n  const catId = catMap[ct] || '261328';\n\n  // Build title from selected printing + item data — mirrors eBay app\n  const tp = [];\n  if(item.year || print.year) tp.push(item.year || print.year);\n  if(item.manufacturer) tp.push(item.manufacturer);\n  if(item.player||item.name) tp.push(item.player||item.name);\n  if(print.set||item.set_name) tp.push(print.set||item.set_name);\n  if(print.variant && print.variant !== 'Base') tp.push(print.variant);\n  if(print.numbered || item.serial_number) tp.push(print.numbered || item.serial_number);\n  if(isSlab && item.grading_company) tp.push(item.grading_company + (item.grade?' '+item.grade:''));\n  if(item.card_number) tp.push('#'+item.card_number);\n  if(item.is_rookie) tp.push('RC');\n  let title = tp.filter(Boolean).join(' ').substring(0, 80);\n\n  // Price from selected printing\n  const condMultiplier = {'NM':1,'LP':.8,'MP':.64,'HP':.4,'DMG':.25}[cond] || 1;\n  const mktPrice = Number(print.mid || 0) * condMultiplier;\n  const sugPrice  = mktPrice > 0 ? (mktPrice * 1.1).toFixed(2) : '';\n  const startPrice= mktPrice > 0 ? (mktPrice * 0.75).toFixed(2) : '';\n\n  // Description — mirrors eBay app description template\n  const descLines = [\n    `${item.player||item.name}`,\n    `Year: ${item.year||'—'}  |  Set: ${print.set||item.set_name||'—'}`,\n    (print.variant && print.variant !== 'Base') ? `Parallel: ${print.variant}` : '',\n    item.card_number ? `Card #: ${item.card_number}` : '',\n    item.serial_number ? `Serial: ${item.serial_number}` : '',\n    item.sport ? `Sport: ${item.sport}` : '',\n    item.team ? `Team: ${item.team}` : '',\n    isSlab ? `Grade: ${item.grading_company||''} ${item.grade||''}  ${item.cert_number?'Cert #'+item.cert_number:''}` : `Condition: ${cond} (${ebCond.label})`,\n    item.is_rookie ? '⭐ Rookie Card' : '',\n    '',\n    'Cards ship in penny sleeve + toploader, inside bubble mailer.',\n    'Fast handling — ships within 1 business day.',\n    STORE.store_name + (STORE.store_location ? ' — ' + STORE.store_location : '') + '.',\n  ].filter(x=>x!==null).join('\n');\n\n  const imgSrc = el._uploadedPhotoUrl || el._imgUrl || null;\n\n  document.getElementById('ebay-modal')?.remove();\n  const modal = document.createElement('div');\n  modal.id = 'ebay-modal';\n  modal.setAttribute('data-bubble-id', id);\n  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.96);z-index:9999;overflow-y:auto;padding:12px;display:flex;align-items:flex-start;justify-content:center;padding-top:16px';\n\n  modal.innerHTML = `\n    <div style="width:100%;max-width:480px;background:#111;border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:18px;margin-bottom:40px">\n      <!-- Header -->\n      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">\n        <div style="font-family:'Orbitron',monospace;font-size:12px;color:#e94560;letter-spacing:2px">📦 LIST ON EBAY</div>\n        <button onclick="document.getElementById('ebay-modal').remove()" style="background:none;border:none;color:#666;font-size:22px;cursor:pointer;line-height:1">×</button>\n      </div>\n\n      <!-- Photo preview -->\n      <div style="display:flex;gap:10px;margin-bottom:14px;align-items:flex-start">\n        <div id="eb-photo-wrap" style="width:72px;height:72px;flex-shrink:0;background:#1a1a1a;border-radius:6px;overflow:hidden;border:1px solid rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;cursor:pointer" onclick="ebayRetakePhoto('${id}')">\n          ${imgSrc ? `<img src="${imgSrc}" style="width:100%;height:100%;object-fit:cover">` : `<span style="font-size:20px">📸</span>`}\n        </div>\n        <div style="flex:1;min-width:0">\n          <div style="font-family:monospace;font-size:9px;color:#666;margin-bottom:3px">TITLE (80 char max)</div>\n          <input id="eb-title" maxlength="80" style="width:100%;background:#1a1a1a;border:1px solid rgba(255,255,255,.12);color:#fff;padding:7px 10px;border-radius:6px;font-size:11px;box-sizing:border-box" value="${title}">\n          <div id="eb-title-ct" style="font-size:9px;color:#444;text-align:right;margin-top:2px">${title.length}/80</div>\n        </div>\n      </div>\n\n      <!-- Format + Price row -->\n      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">\n        <div>\n          <div style="font-family:monospace;font-size:9px;color:#666;margin-bottom:3px">FORMAT</div>\n          <select id="eb-format" onchange="ebayToggleAuction()" style="width:100%;background:#1a1a1a;border:1px solid rgba(255,255,255,.12);color:#fff;padding:7px;border-radius:6px;font-size:11px">\n            <option value="FIXED_PRICE">Buy It Now</option>\n            <option value="AUCTION">Auction</option>\n          </select>\n        </div>\n        <div>\n          <div style="font-family:monospace;font-size:9px;color:#666;margin-bottom:3px">DURATION</div>\n          <select id="eb-duration" style="width:100%;background:#1a1a1a;border:1px solid rgba(255,255,255,.12);color:#fff;padding:7px;border-radius:6px;font-size:11px">\n            <option value="GTC">Good 'Till Cancelled</option>
             <option value="DAYS_7">7 Days</option>
             <option value="DAYS_3">3 Days</option>
             <option value="DAYS_5">5 Days</option>
@@ -3593,15 +3356,15 @@ window.scanBackForBubble = async function(bubId) {
 // ════════════════════════════════════════════════════════════
 // CONFIGURATION — fill these in with your payment handles
 // ════════════════════════════════════════════════════════════
+// POS_CONFIG delegates to STORE (white-label config)
 const POS_CONFIG = {
-  stripe_pk: 'pk_live_51OhyA8LHo6HlAYnMuSJGtOtXDbU5I8NIvHqgSpoKfH8PoZ2pIHCFVyO1fkqlpcpTAQ5tgEMGbWYlA81hiwQ2HhB400tlnsrfsw',
-  venmo:    'Shawn-Warner-84',
-  paypal:   '',             // add your PayPal.me username when ready
-  cashapp:  '',             // add your $cashtag when ready
-  zelle:    '',             // not used
-  tax_rate:  0,
-  store_name: 'Walk-Off Sports Cards',
-  store_location: 'Kingston, WA',
+  get stripe_pk()      { return STORE.stripe_pk; },
+  get venmo()          { return STORE.venmo; },
+  get paypal()         { return STORE.paypal; },
+  get cashapp()        { return STORE.cashapp; },
+  get tax_rate()       { return STORE.tax_rate || 0; },
+  get store_name()     { return STORE.store_name; },
+  get store_location() { return STORE.store_location; },
 };
 
 // ════════════════════════════════════════════════════════════
@@ -3842,721 +3605,91 @@ function openCheckout(){
     warn.style.cssText = 'background:rgba(255,209,102,.08);border:1px solid rgba(255,209,102,.3);border-radius:8px;padding:10px 12px;margin-bottom:12px;font-family:"DM Mono",monospace;font-size:9px;color:#ffd166;line-height:1.6';
     warn.innerHTML = `⚠ ${unsynced.length} item${unsynced.length>1?'s':''} not yet in Webflow inventory:<br>`
       + unsynced.map(i=>`<span style="color:rgba(255,255,255,.5)">• ${i.name}</span>`).join('<br>')
-      + `<br><span style="color:rgba(255,209,102,.6)">These won't be marked sold in your store. Tap "+ Add to Inventory" on the bubble first to track them.</span>`;
-    ckBody.prepend(warn);
-  }
-
-  document.getElementById('checkout').classList.add('on');
-  buildNumpad();
-  buildQRTabs();
-  if(POS_CONFIG.stripe_pk && !stripeInstance) initStripe();
-}
-
-function closeCheckout(){
-  document.getElementById('checkout').classList.remove('on');
-}
-
-function selectPayment(method){
-  activePaymentMethod = method;
-  document.querySelectorAll('.ck-method').forEach(m => m.classList.remove('on'));
-  document.querySelectorAll('.ck-panel').forEach(p => p.classList.remove('on'));
-  document.getElementById('m-'+method)?.classList.add('on');
-  if(method === 'cash') {
-    document.getElementById('panel-cash').classList.add('on');
-  } else if(method === 'card') {
-    document.getElementById('panel-card').classList.add('on');
-    if(POS_CONFIG.stripe_pk && !stripeInstance) initStripe();
-  } else {
-    document.getElementById('panel-qr').classList.add('on');
-    buildQRTabs();
-    if(['venmo','paypal','cashapp'].includes(method)) showQR(method);
-  }
-}
-
-// ── CASH ──────────────────────────────────────────────────
-function buildNumpad(){
-  const pad = document.getElementById('cash-numpad');
-  if(!pad) return;
-  const keys = ['1','2','3','4','5','6','7','8','9','.',  '0','⌫'];
-  pad.innerHTML = keys.map(k => `<div class="ck-key" onclick="cashKey('${k}')">${k}</div>`).join('');
-}
-
-function cashKey(k){
-  const inp = document.getElementById('cash-tendered');
-  if(!inp) return;
-  if(k==='⌫'){ inp.value=inp.value.slice(0,-1); }
-  else if(k==='.' && inp.value.includes('.')){ return; }
-  else { inp.value += k; }
-  calcChange();
-}
-
-function calcChange(){
-  const {total} = getCartTotals();
-  const tendered = parseFloat(document.getElementById('cash-tendered')?.value)||0;
-  const el = document.getElementById('cash-change');
-  if(!tendered){ el.textContent='Enter amount received'; el.style.color='rgba(255,255,255,.3)'; return; }
-  const change = tendered - total;
-  if(change < 0){ el.textContent='⚠ Need $'+Math.abs(change).toFixed(2)+' more'; el.style.color='var(--red)'; }
-  else { el.textContent='Change: $'+change.toFixed(2); el.style.color='var(--g)'; }
-}
-
-function completeCashSale(){
-  const {total} = getCartTotals();
-  const tendered = parseFloat(document.getElementById('cash-tendered')?.value)||0;
-  if(tendered < total){ toast('Not enough cash tendered'); return; }
-  recordTransaction('Cash', total, tendered - total);
-}
-
-// ── QR PAYMENTS ───────────────────────────────────────────
-const QR_HANDLES = {
-  venmo:   { label:'Venmo', color:'#008CFF', handle: () => POS_CONFIG.venmo },
-  paypal:  { label:'PayPal', color:'#003087', handle: () => 'paypal.me/'+POS_CONFIG.paypal },
-  cashapp: { label:'Cash App', color:'#00D632', handle: () => POS_CONFIG.cashapp },
-  // zelle removed per user preference
-};
-
-function buildQRTabs(){
-  const tabs = document.getElementById('qr-tabs');
-  if(!tabs) return;
-  const methods = ['venmo','paypal','cashapp'].filter(m => {
-    const h = QR_HANDLES[m]?.handle();
-    return h && h !== '' && h !== 'undefined';
-  });
-  if(methods.length === 0) {
-    tabs.innerHTML = '<div style="font-family:monospace;font-size:9px;color:rgba(255,255,255,.3);padding:8px">No payment handles configured — add to POS_CONFIG in sca.html</div>';
-    return;
-  }
-  tabs.innerHTML = methods.map(m => `<div class="ck-qr-tab" id="qrtab-${m}" onclick="showQR('${m}')">${QR_HANDLES[m].label}</div>`).join('');
-  // Auto-show first available method
-  if(methods[0]) showQR(methods[0]);
-}
-
-function showQR(method){
-  const h = QR_HANDLES[method];
-  if(!h) return;
-  const handle = h.handle();
-  if(!handle) return;
-  document.querySelectorAll('.ck-qr-tab').forEach(t => t.classList.remove('on'));
-  document.getElementById('qrtab-'+method)?.classList.add('on');
-  const {total} = getCartTotals();
-  // Build payment URL for deep linking
-  let payUrl = '';
-  if(method==='venmo') {
-    const venmoUser = handle.replace('@','');
-    // Try deep link first — opens Venmo app; falls back to web
-    payUrl = `https://venmo.com/${venmoUser}?txn=pay&amount=${total.toFixed(2)}&note=Walk-Off+Sports+Cards`;
-  }
-  else if(method==='paypal') payUrl = `https://paypal.me/${POS_CONFIG.paypal}/${total.toFixed(2)}`;
-  else if(method==='cashapp') payUrl = `https://cash.app/${POS_CONFIG.cashapp}/${total.toFixed(2)}`;
-  else payUrl = handle; // Zelle — just show handle
-  // Generate QR code client-side using qrcode library (no external image request)
-  const qrBox = document.getElementById('qr-box');
-  qrBox.innerHTML = '<canvas id="qr-canvas" style="width:180px;height:180px;border-radius:8px"></canvas>'
-    + '<div class="ck-qr-handle" id="qr-handle"></div>'
-    + '<div class="ck-qr-amount" id="qr-amount"></div>';
-  document.getElementById('qr-handle').textContent = handle;
-  document.getElementById('qr-amount').textContent = '$'+total.toFixed(2);
-  // Load qrcode.js if not already loaded, then render
-  function renderQR(){
-    const canvas = document.getElementById('qr-canvas');
-    if(!canvas) return;
-    // Use qrcode-generator (loaded below)
-    try {
-      const qr = qrcode(0, 'M');
-      qr.addData(payUrl);
-      qr.make();
-      const size = 180;
-      canvas.width = size; canvas.height = size;
-      const ctx = canvas.getContext('2d');
-      const modules = qr.getModuleCount();
-      const cellSize = size / modules;
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(0,0,size,size);
-      ctx.fillStyle = '#000000';
-      for(let r=0;r<modules;r++){
-        for(let c=0;c<modules;c++){
-          if(qr.isDark(r,c)){
-            ctx.fillRect(Math.floor(c*cellSize), Math.floor(r*cellSize),
-              Math.ceil(cellSize), Math.ceil(cellSize));
-          }
-        }
-      }
-    } catch(e) {
-      // Fallback: show payment URL as text if QR fails
-      canvas.style.display='none';
-      const fb = document.createElement('div');
-      fb.style.cssText='font-family:monospace;font-size:8px;color:#111;word-break:break-all;padding:8px;background:#fff;border-radius:6px;max-width:180px';
-      fb.textContent = payUrl;
-      canvas.parentNode.insertBefore(fb, canvas);
-    }
-  }
-  if(typeof qrcode === 'undefined'){
-    const s = document.createElement('script');
-    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js';
-    s.onload = () => {
-      // qrcodejs uses different API — switch to qrcode-generator
-      const s2 = document.createElement('script');
-      s2.src = 'https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js';
-      s2.onload = renderQR;
-      document.head.appendChild(s2);
-    };
-    s.onerror = () => {
-      // Direct load qrcode-generator
-      const s2 = document.createElement('script');
-      s2.src = 'https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js';
-      s2.onload = renderQR;
-      document.head.appendChild(s2);
-    };
-    document.head.appendChild(s);
-  } else {
-    renderQR();
-  }
-}
-
-function completeQRSale(){
-  const {total} = getCartTotals();
-  const method = activePaymentMethod || 'Venmo';
-  recordTransaction(QR_HANDLES[method]?.label || method, total, 0);
-}
-
-// ── STRIPE ────────────────────────────────────────────────
-async function initStripe(){
-  if(!POS_CONFIG.stripe_pk || POS_CONFIG.stripe_pk.length < 10) return;
-  if(typeof Stripe === 'undefined'){
-    await new Promise((res,rej)=>{
-      const s=document.createElement('script'); s.src='https://js.stripe.com/v3/';
-      s.onload=res; s.onerror=rej; document.head.appendChild(s);
-    });
-  }
-  stripeInstance = Stripe(POS_CONFIG.stripe_pk);
-  const elements = stripeInstance.elements();
-  stripeCardElement = elements.create('card', {
-    style:{
-      base:{ color:'#fff', fontFamily:'"DM Mono",monospace', fontSize:'14px',
-             '::placeholder':{color:'rgba(255,255,255,.3)'}, iconColor:'#00ffb3' },
-      invalid:{color:'#ff4d6d'},
-    }
-  });
-  stripeCardElement.mount('#stripe-card-element');
-  stripeCardElement.on('change', e => {
-    document.getElementById('stripe-errors').textContent = e.error ? e.error.message : '';
-  });
-}
-
-async function processStripePayment(){
-  const {total} = getCartTotals();
-  if(total <= 0){ toast('Nothing to charge'); return; }
-  const btn = document.getElementById('stripe-pay-btn');
-  const status = document.getElementById('stripe-status');
-  btn.disabled = true;
-  status.textContent = '⟳ Creating payment...';
-  status.style.color = 'var(--gold)';
-  try {
-    // Create PaymentIntent via Worker
-    const res = await fetch(WORKER_URL + '/stripe/create-payment-intent', {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ amount: Math.round(total * 100), currency: 'usd',
-                             description: 'Walk-Off Sports Cards — ' + cart.length + ' item(s)' })
-    });
-    const {clientSecret, error: piError} = await res.json();
-    if(piError || !clientSecret){ status.textContent = '⚠ ' + (piError||'No client secret'); btn.disabled=false; return; }
-
-    status.textContent = '⟳ Processing card...';
-    const {paymentIntent, error} = await stripeInstance.confirmCardPayment(clientSecret, {
-      payment_method: { card: stripeCardElement }
-    });
-    if(error){ status.textContent = '⚠ ' + error.message; btn.disabled=false; return; }
-    if(paymentIntent.status === 'succeeded'){
-      status.textContent = '✓ Payment approved!';
-      status.style.color = 'var(--g)';
-      setTimeout(() => recordTransaction('Card (Stripe)', total, 0), 600);
-    }
-  } catch(e){
-    status.textContent = '⚠ ' + e.message;
-  }
-  btn.disabled = false;
-}
-
-// ── RECORD TRANSACTION ────────────────────────────────────
-async function recordTransaction(method, total, change){
-  const tx = {
-    id: 'tx_'+Date.now(),
-    date: new Date().toISOString(),
-    items: [...cart],
-    method,
-    subtotal: getCartTotals().sub,
-    discount: getCartTotals().disc,
-    tax: getCartTotals().tax,
-    total,
-    change,
-  };
-
-  // Save to localStorage
-  const txLog = JSON.parse(localStorage.getItem('pos_transactions')||'[]');
-  txLog.unshift(tx);
-  localStorage.setItem('pos_transactions', JSON.stringify(txLog.slice(0,500)));
-
-  // Mark items as sold in Webflow (best-effort)
-  for(const item of cart){
-    if(item.shopId){
-      wfFetch('/collections/65eb45a28ff6bf3fe4f17b14/items/'+item.shopId, {
-        method:'PATCH',
-        body:JSON.stringify({fieldData:{'sold-out':true,'inventory-count':0,'status':'e6b42f14fcb99aa2168a5f5672226f68'}})
-      }).catch(()=>{});
-    }
-  }
-
-  closeCheckout();
-  document.getElementById('pos-cart').classList.remove('on');
-  showReceipt(tx);
-}
-
-// ── RECEIPT ───────────────────────────────────────────────
-function showReceipt(tx){
-  const modal = document.getElementById('receipt-modal');
-  const items = document.getElementById('receipt-items');
-  const totals = document.getElementById('receipt-totals');
-  const now = new Date(tx.date);
-  const ds = now.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})+' '+now.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
-
-  items.innerHTML = `
-    <div style="font-size:9px;color:#888;margin-bottom:6px">${ds} · ${tx.method}</div>
-    ${tx.items.map(i=>`<div class="receipt-line"><span>${i.name}</span><span>$${(i.price||0).toFixed(2)}</span></div>`).join('')}`;
-
-  totals.innerHTML = `
-    ${tx.discount>0?`<div class="receipt-line"><span>Discount</span><span>-$${tx.discount.toFixed(2)}</span></div>`:''}
-    ${tx.tax>0?`<div class="receipt-line"><span>Tax</span><span>$${tx.tax.toFixed(2)}</span></div>`:''}
-    <div class="receipt-line total bold"><span>TOTAL</span><span>$${tx.total.toFixed(2)}</span></div>
-    ${tx.change>0?`<div class="receipt-line"><span>Change</span><span>$${tx.change.toFixed(2)}</span></div>`:''}
-    <div style="font-size:9px;color:#888;margin-top:6px;text-align:center">Paid by ${tx.method}</div>`;
-
-  modal.classList.add('on');
-}
-
-function closeReceipt(){ document.getElementById('receipt-modal').classList.remove('on'); }
-function printReceipt(){ window.print(); }
-function newTransaction(){
-  clearCartState();
-  updateCartBadge(); renderCart(); closeReceipt();
-  toast('Ready for next sale');
-}
-
-// ════════════════════════════════════════════════════════════
-// PRICING TOOLS
-// ════════════════════════════════════════════════════════════
-function openPricingTools(){
-  document.getElementById('pricing-panel').classList.add('on');
-  document.getElementById('mc-ship').value = '1.00';
-
-  // Auto-fill from last scanned card
-  const lastBub = bubs.length > 0 ? bubs[bubs.length-1] : null;
-  if(!lastBub || !lastBub.el._item) return;
-  const item = lastBub.el._item;
-  const pi   = parseInt(document.getElementById('ps'+lastBub.id)?.value)||0;
-  const print = lastBub.el._prints?.[pi] || {};
-
-  // Build search string from scanned card
-  const cardName = [item.player||item.name, item.year, print.set||item.set_name,
-    print.variant && print.variant!=='Base' ? print.variant : null,
-    item.card_number ? '#'+item.card_number : null
-  ].filter(Boolean).join(' ');
-
-  // Fill quick price search
-  const ptSearch = document.getElementById('pt-search');
-  if(ptSearch && cardName) {
-    ptSearch.value = cardName;
-    debouncePriceSearch();
-  }
-
-  // Fill grade spread
-  const ptGrade = document.getElementById('pt-grade-card');
-  if(ptGrade && cardName) ptGrade.value = cardName;
-
-  // Fill trend
-  const ptDelta = document.getElementById('pt-delta-card');
-  if(ptDelta && cardName) ptDelta.value = cardName;
-
-  // Fill margin calculator with current price as sell price
-  const mktPrice = print.mid || 0;
-  if(mktPrice > 0) {
-    const sellEl = document.getElementById('mc-sell');
-    if(sellEl) { sellEl.value = mktPrice.toFixed(2); calcMargin(); }
-  }
-
-  // Fill price tag generator
-  const ptTagName = document.getElementById('pt-tag-name');
-  const ptTagPrice = document.getElementById('pt-tag-price');
-  if(ptTagName) ptTagName.value = item.player||item.name||'';
-  if(ptTagPrice && mktPrice > 0) ptTagPrice.value = mktPrice.toFixed(2);
-
-  // Show a banner at top of pricing panel showing what card is loaded
-  let banner = document.getElementById('pt-card-banner');
-  if(!banner) {
-    banner = document.createElement('div');
-    banner.id = 'pt-card-banner';
-    banner.style.cssText = 'background:rgba(0,255,179,.06);border:1px solid rgba(0,255,179,.2);border-radius:6px;padding:8px 12px;margin-bottom:12px;font-family:"DM Mono",monospace;font-size:9px;color:var(--g);display:flex;justify-content:space-between;align-items:center';
-    const ptBody = document.querySelector('#pricing-panel .pt-body');
-    if(ptBody) ptBody.prepend(banner);
-  }
-  banner.innerHTML = `<span>📊 Loaded: <b style="color:#fff">${item.player||item.name||'?'}</b>${print.set?' · '+print.set:''}</span>`
-    + (mktPrice > 0 ? `<span style="color:var(--gold);font-family:'Orbitron',monospace;font-size:11px">$${mktPrice.toFixed(2)}</span>` : '');
-}
-function closePricingTools(){ document.getElementById('pricing-panel').classList.remove('on'); }
-
-// Margin calculator
-function calcMargin(){
-  const cost = parseFloat(document.getElementById('mc-cost')?.value)||0;
-  const sell = parseFloat(document.getElementById('mc-sell')?.value)||0;
-  const ship = parseFloat(document.getElementById('mc-ship')?.value)||0;
-  const fees = sell * 0.1325 + 0.30; // eBay final value fee ~13.25% + $0.30
-  const profit = sell - cost - fees - ship;
-  const roi = cost > 0 ? (profit/cost*100) : 0;
-  const bar = Math.min(100, Math.max(0, roi));
-
-  document.getElementById('mc-fees').textContent = '$'+fees.toFixed(2);
-  document.getElementById('mc-profit').textContent = (profit>=0?'+':'')+'$'+Math.abs(profit).toFixed(2);
-  document.getElementById('mc-profit').className = 'pt-val '+(profit>=0?'g':'red');
-  document.getElementById('mc-roi').textContent = (roi>=0?'+':'')+roi.toFixed(1)+'%';
-  document.getElementById('mc-roi').className = 'pt-val '+(roi>=0?'g':'red');
-  document.getElementById('mc-bar').style.width = bar+'%';
-  document.getElementById('mc-bar').style.background = profit>=0?'var(--g)':'var(--red)';
-}
-
-// Price search — uses Claude to get quick price
-let priceSearchTimer = null;
-function debouncePriceSearch(){
-  clearTimeout(priceSearchTimer);
-  priceSearchTimer = setTimeout(runPriceSearch, 800);
-}
-
-async function runPriceSearch(){
-  const q = document.getElementById('pt-search')?.value?.trim();
-  if(!q || q.length < 3) return;
-  const el = document.getElementById('pt-results');
-  el.textContent = '⟳ Looking up...';
-  el.style.color = 'var(--gold)';
-  try {
-    const text = await callClaudeSonnet([{role:'user',content:[{type:'text',text:
-      `What is the current market price for: "${q}"?
-      Give me TCGPlayer mid, eBay sold average, and high/low range.
-      Return ONLY JSON: {"name":"exact name","tcg_mid":0.00,"ebay_avg":0.00,"low":0.00,"high":0.00,"condition":"NM","note":"brief note e.g. trending up, common, etc"}`
-    }]}], 400);
-    const data = JSON.parse(text.replace(/\`\`\`json|\`\`\`/g,'').trim());
-    el.style.color = 'var(--g)';
-    el.innerHTML = `
-      <div style="margin-bottom:4px;font-size:10px;color:#fff">${data.name||q}</div>
-      <div class="pt-row"><span class="pt-label">TCGPlayer mid</span><span class="pt-val g">$${(data.tcg_mid||0).toFixed(2)}</span></div>
-      <div class="pt-row"><span class="pt-label">eBay avg sold</span><span class="pt-val gold">$${(data.ebay_avg||0).toFixed(2)}</span></div>
-      <div class="pt-row"><span class="pt-label">Range (NM)</span><span class="pt-val blue">$${(data.low||0).toFixed(2)} – $${(data.high||0).toFixed(2)}</span></div>
-      <div style="font-size:8px;color:rgba(255,255,255,.3);margin-top:4px">${data.note||''} · AI estimate from training data</div>`;
-  } catch(e){
-    el.style.color = 'var(--red)';
-    el.textContent = '⚠ Could not look up: '+e.message;
-  }
-}
-
-// Grade spread
-async function lookupGradeSpread(){
-  const q = document.getElementById('pt-grade-card')?.value?.trim();
-  if(!q || q.length < 3) return;
-  const grid = document.getElementById('grade-grid');
-  grid.innerHTML = '<div style="font-family:monospace;font-size:8px;color:rgba(255,255,255,.3);grid-column:1/-1;text-align:center;padding:8px">Loading grade values...</div>';
-  try {
-    const text = await callClaudeSonnet([{role:'user',content:[{type:'text',text:
-      `What are the PSA graded values for: "${q}"?
-      Return ONLY JSON array of 8 grades: [{"grade":"10","price":0.00},{"grade":"9.5","price":0.00},{"grade":"9","price":0.00},{"grade":"8.5","price":0.00},{"grade":"8","price":0.00},{"grade":"7","price":0.00},{"grade":"6","price":0.00},{"grade":"5","price":0.00}]
-      Use current eBay sold averages. If unknown use 0.`
-    }]}], 400);
-    const grades = JSON.parse(text.replace(/\`\`\`json|\`\`\`/g,'').trim());
-    grid.innerHTML = grades.map(g => `
-      <div class="pt-grade-btn" onclick="this.classList.toggle('on')">
-        <div class="pt-grade-val">PSA ${g.grade}</div>
-        <div class="pt-grade-price">$${(g.price||0).toFixed(2)}</div>
-      </div>`).join('');
-  } catch(e){
-    grid.innerHTML = '<div style="color:var(--red);font-size:8px;padding:8px">Error: '+e.message+'</div>';
-  }
-}
-
-document.getElementById('pt-grade-card')?.addEventListener('keydown', e => { if(e.key==='Enter') lookupGradeSpread(); });
-
-// Market trend delta
-async function lookupTrendDelta(){
-  const q = document.getElementById('pt-delta-card')?.value?.trim();
-  if(!q) return;
-  const el = document.getElementById('pt-delta-result');
-  el.textContent = '⟳ Analyzing trend...';
-  el.style.color = 'var(--gold)';
-  try {
-    const text = await callClaudeSonnet([{role:'user',content:[{type:'text',text:
-      `What is the price trend for: "${q}"?
-      Based on your training data, estimate the trend.
-      Return ONLY JSON: {"trend":"up|down|flat|volatile","pct_30d":0.0,"pct_90d":0.0,"reason":"brief reason","current_nm":0.00}`
-    }]}], 300);
-    const d = JSON.parse(text.replace(/\`\`\`json|\`\`\`/g,'').trim());
-    const tc = d.trend==='up'?'var(--g)':d.trend==='down'?'var(--red)':'var(--gold)';
-    el.style.color = tc;
-    el.innerHTML = `<span style="color:${tc}">${d.trend==='up'?'↑':d.trend==='down'?'↓':'→'} ${d.trend.toUpperCase()}</span> &nbsp;
-      30d: ${d.pct_30d>=0?'+':''}${(d.pct_30d||0).toFixed(1)}% &nbsp; 90d: ${d.pct_90d>=0?'+':''}${(d.pct_90d||0).toFixed(1)}%<br>
-      <span style="color:rgba(255,255,255,.3);font-size:8px">${d.reason||''}</span>`;
-  } catch(e){ el.style.color='var(--red)'; el.textContent='Error: '+e.message; }
-}
-document.getElementById('pt-delta-card')?.addEventListener('keydown', e => { if(e.key==='Enter') lookupTrendDelta(); });
-
-// Price tag generator
-function generatePriceTag(){
-  const name = document.getElementById('pt-tag-name')?.value?.trim();
-  const price = parseFloat(document.getElementById('pt-tag-price')?.value)||0;
-  const cond = document.getElementById('pt-tag-cond')?.value||'NM';
-  if(!name || !price){ toast('Enter name and price'); return; }
-  const el = document.getElementById('pt-tag-preview');
-  el.innerHTML = `
-    <div style="background:#fff;color:#111;border-radius:8px;padding:10px 12px;margin-top:6px;font-family:'DM Mono',monospace;">
-      <div style="font-size:11px;font-weight:700;margin-bottom:2px">${name}</div>
-      <div style="font-size:9px;color:#666;margin-bottom:4px">${cond} · Walk-Off Sports Cards</div>
-      <div style="font-size:20px;font-weight:900;color:#111">$${price.toFixed(2)}</div>
-      <button onclick="window.print()" style="width:100%;margin-top:8px;padding:6px;background:#111;color:#fff;border:none;border-radius:4px;font-size:9px;cursor:pointer">🖨 Print Tag</button>
-    </div>`;
-}
-
-// ════════════════════════════════════════════════════════════
-// ADD TO CART BUTTON — inject into every bubble's bacts
+      + `<br><span style="color:rgba(255,209,102,.6)">These won't be marked sold in your store. Tap "+ Add to Inventory" on the bubble first to track them.</span>`;\n    ckBody.prepend(warn);\n  }\n\n  document.getElementById('checkout').classList.add('on');\n  buildNumpad();\n  buildQRTabs();\n  if(POS_CONFIG.stripe_pk && !stripeInstance) initStripe();\n}\n\nfunction closeCheckout(){\n  document.getElementById('checkout').classList.remove('on');\n}\n\nfunction selectPayment(method){\n  activePaymentMethod = method;\n  document.querySelectorAll('.ck-method').forEach(m => m.classList.remove('on'));\n  document.querySelectorAll('.ck-panel').forEach(p => p.classList.remove('on'));\n  document.getElementById('m-'+method)?.classList.add('on');\n  if(method === 'cash') {\n    document.getElementById('panel-cash').classList.add('on');\n  } else if(method === 'card') {\n    document.getElementById('panel-card').classList.add('on');\n    if(POS_CONFIG.stripe_pk && !stripeInstance) initStripe();\n  } else {\n    document.getElementById('panel-qr').classList.add('on');\n    buildQRTabs();\n    if(['venmo','paypal','cashapp'].includes(method)) showQR(method);\n  }\n}\n\n// ── CASH ──────────────────────────────────────────────────\nfunction buildNumpad(){\n  const pad = document.getElementById('cash-numpad');\n  if(!pad) return;\n  const keys = ['1','2','3','4','5','6','7','8','9','.',  '0','⌫'];\n  pad.innerHTML = keys.map(k => `<div class="ck-key" onclick="cashKey('${k}')">${k}</div>`).join('');\n}\n\nfunction cashKey(k){\n  const inp = document.getElementById('cash-tendered');\n  if(!inp) return;\n  if(k==='⌫'){ inp.value=inp.value.slice(0,-1); }\n  else if(k==='.' && inp.value.includes('.')){ return; }\n  else { inp.value += k; }\n  calcChange();\n}\n\nfunction calcChange(){\n  const {total} = getCartTotals();\n  const tendered = parseFloat(document.getElementById('cash-tendered')?.value)||0;\n  const el = document.getElementById('cash-change');\n  if(!tendered){ el.textContent='Enter amount received'; el.style.color='rgba(255,255,255,.3)'; return; }\n  const change = tendered - total;\n  if(change < 0){ el.textContent='⚠ Need $'+Math.abs(change).toFixed(2)+' more'; el.style.color='var(--red)'; }\n  else { el.textContent='Change: $'+change.toFixed(2); el.style.color='var(--g)'; }\n}\n\nfunction completeCashSale(){\n  const {total} = getCartTotals();\n  const tendered = parseFloat(document.getElementById('cash-tendered')?.value)||0;\n  if(tendered < total){ toast('Not enough cash tendered'); return; }\n  recordTransaction('Cash', total, tendered - total);\n}\n\n// ── QR PAYMENTS ───────────────────────────────────────────\nconst QR_HANDLES = {\n  venmo:   { label:'Venmo', color:'#008CFF', handle: () => POS_CONFIG.venmo },\n  paypal:  { label:'PayPal', color:'#003087', handle: () => 'paypal.me/'+POS_CONFIG.paypal },\n  cashapp: { label:'Cash App', color:'#00D632', handle: () => POS_CONFIG.cashapp },\n  // zelle removed per user preference\n};\n\nfunction buildQRTabs(){\n  const tabs = document.getElementById('qr-tabs');\n  if(!tabs) return;\n  const methods = ['venmo','paypal','cashapp'].filter(m => {\n    const h = QR_HANDLES[m]?.handle();\n    return h && h !== '' && h !== 'undefined';\n  });\n  if(methods.length === 0) {\n    tabs.innerHTML = '<div style="font-family:monospace;font-size:9px;color:rgba(255,255,255,.3);padding:8px">No payment handles configured — add to POS_CONFIG in sca.html</div>';\n    return;\n  }\n  tabs.innerHTML = methods.map(m => `<div class="ck-qr-tab" id="qrtab-${m}" onclick="showQR('${m}')">${QR_HANDLES[m].label}</div>`).join('');\n  // Auto-show first available method\n  if(methods[0]) showQR(methods[0]);\n}\n\nfunction showQR(method){\n  const h = QR_HANDLES[method];\n  if(!h) return;\n  const handle = h.handle();\n  if(!handle) return;\n  document.querySelectorAll('.ck-qr-tab').forEach(t => t.classList.remove('on'));\n  document.getElementById('qrtab-'+method)?.classList.add('on');\n  const {total} = getCartTotals();\n  // Build payment URL for deep linking\n  let payUrl = '';\n  if(method==='venmo') {\n    const venmoUser = handle.replace('@','');\n    // Try deep link first — opens Venmo app; falls back to web\n    payUrl = `https://venmo.com/${venmoUser}?txn=pay&amount=${total.toFixed(2)}&note=${encodeURIComponent(STORE.store_name)}`;\n  }\n  else if(method==='paypal') payUrl = `https://paypal.me/${POS_CONFIG.paypal}/${total.toFixed(2)}`;\n  else if(method==='cashapp') payUrl = `https://cash.app/${POS_CONFIG.cashapp}/${total.toFixed(2)}`;\n  else payUrl = handle; // Zelle — just show handle\n  // Generate QR code client-side using qrcode library (no external image request)\n  const qrBox = document.getElementById('qr-box');\n  qrBox.innerHTML = '<canvas id="qr-canvas" style="width:180px;height:180px;border-radius:8px"></canvas>'\n    + '<div class="ck-qr-handle" id="qr-handle"></div>'\n    + '<div class="ck-qr-amount" id="qr-amount"></div>';\n  document.getElementById('qr-handle').textContent = handle;\n  document.getElementById('qr-amount').textContent = '$'+total.toFixed(2);\n  // Load qrcode.js if not already loaded, then render\n  function renderQR(){\n    const canvas = document.getElementById('qr-canvas');\n    if(!canvas) return;\n    // Use qrcode-generator (loaded below)\n    try {\n      const qr = qrcode(0, 'M');\n      qr.addData(payUrl);\n      qr.make();\n      const size = 180;\n      canvas.width = size; canvas.height = size;\n      const ctx = canvas.getContext('2d');\n      const modules = qr.getModuleCount();\n      const cellSize = size / modules;\n      ctx.fillStyle = '#ffffff';\n      ctx.fillRect(0,0,size,size);\n      ctx.fillStyle = '#000000';\n      for(let r=0;r<modules;r++){\n        for(let c=0;c<modules;c++){\n          if(qr.isDark(r,c)){\n            ctx.fillRect(Math.floor(c*cellSize), Math.floor(r*cellSize),\n              Math.ceil(cellSize), Math.ceil(cellSize));\n          }\n        }\n      }\n    } catch(e) {\n      // Fallback: show payment URL as text if QR fails\n      canvas.style.display='none';\n      const fb = document.createElement('div');\n      fb.style.cssText='font-family:monospace;font-size:8px;color:#111;word-break:break-all;padding:8px;background:#fff;border-radius:6px;max-width:180px';\n      fb.textContent = payUrl;\n      canvas.parentNode.insertBefore(fb, canvas);\n    }\n  }\n  if(typeof qrcode === 'undefined'){\n    const s = document.createElement('script');\n    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js';\n    s.onload = () => {\n      // qrcodejs uses different API — switch to qrcode-generator\n      const s2 = document.createElement('script');\n      s2.src = 'https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js';\n      s2.onload = renderQR;\n      document.head.appendChild(s2);\n    };\n    s.onerror = () => {\n      // Direct load qrcode-generator\n      const s2 = document.createElement('script');\n      s2.src = 'https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js';\n      s2.onload = renderQR;\n      document.head.appendChild(s2);\n    };\n    document.head.appendChild(s);\n  } else {\n    renderQR();\n  }\n}\n\nfunction completeQRSale(){\n  const {total} = getCartTotals();\n  const method = activePaymentMethod || 'Venmo';\n  recordTransaction(QR_HANDLES[method]?.label || method, total, 0);\n}\n\n// ── STRIPE ────────────────────────────────────────────────\nasync function initStripe(){\n  if(!POS_CONFIG.stripe_pk || POS_CONFIG.stripe_pk.length < 10) return;\n  if(typeof Stripe === 'undefined'){\n    await new Promise((res,rej)=>{\n      const s=document.createElement('script'); s.src='https://js.stripe.com/v3/';\n      s.onload=res; s.onerror=rej; document.head.appendChild(s);\n    });\n  }\n  stripeInstance = Stripe(POS_CONFIG.stripe_pk);\n  const elements = stripeInstance.elements();\n  stripeCardElement = elements.create('card', {\n    style:{\n      base:{ color:'#fff', fontFamily:'"DM Mono",monospace', fontSize:'14px',\n             '::placeholder':{color:'rgba(255,255,255,.3)'}, iconColor:'#00ffb3' },\n      invalid:{color:'#ff4d6d'},\n    }\n  });\n  stripeCardElement.mount('#stripe-card-element');\n  stripeCardElement.on('change', e => {\n    document.getElementById('stripe-errors').textContent = e.error ? e.error.message : '';\n  });\n}\n\nasync function processStripePayment(){\n  const {total} = getCartTotals();\n  if(total <= 0){ toast('Nothing to charge'); return; }\n  const btn = document.getElementById('stripe-pay-btn');\n  const status = document.getElementById('stripe-status');\n  btn.disabled = true;\n  status.textContent = '⟳ Creating payment...';\n  status.style.color = 'var(--gold)';\n  try {\n    // Create PaymentIntent via Worker\n    const res = await fetch(WORKER_URL + '/stripe/create-payment-intent', {\n      method: 'POST',\n      headers: {'Content-Type':'application/json'},\n      body: JSON.stringify({ amount: Math.round(total * 100), currency: 'usd',\n                             description: STORE.store_name + ' — ' + cart.length + ' item(s)' })\n    });\n    const {clientSecret, error: piError} = await res.json();\n    if(piError || !clientSecret){ status.textContent = '⚠ ' + (piError||'No client secret'); btn.disabled=false; return; }\n\n    status.textContent = '⟳ Processing card...';\n    const {paymentIntent, error} = await stripeInstance.confirmCardPayment(clientSecret, {\n      payment_method: { card: stripeCardElement }\n    });\n    if(error){ status.textContent = '⚠ ' + error.message; btn.disabled=false; return; }\n    if(paymentIntent.status === 'succeeded'){\n      status.textContent = '✓ Payment approved!';\n      status.style.color = 'var(--g)';\n      setTimeout(() => recordTransaction('Card (Stripe)', total, 0), 600);\n    }\n  } catch(e){\n    status.textContent = '⚠ ' + e.message;\n  }\n  btn.disabled = false;\n}\n\n// ── RECORD TRANSACTION ────────────────────────────────────\nasync function recordTransaction(method, total, change){\n  const tx = {\n    id: 'tx_'+Date.now(),\n    date: new Date().toISOString(),\n    items: [...cart],\n    method,\n    subtotal: getCartTotals().sub,\n    discount: getCartTotals().disc,\n    tax: getCartTotals().tax,\n    total,\n    change,\n  };\n\n  window._lastTx = tx; // for receipt printer\n  // Save to localStorage\n  const txLog = JSON.parse(localStorage.getItem('pos_transactions')||'[]');\n  txLog.unshift(tx);\n  localStorage.setItem('pos_transactions', JSON.stringify(txLog.slice(0,500)));\n\n  // Mark items as sold in Webflow (best-effort)\n  for(const item of cart){\n    if(item.shopId){\n      wfFetch('/collections/65eb45a28ff6bf3fe4f17b14/items/'+item.shopId, {\n        method:'PATCH',\n        body:JSON.stringify({fieldData:{'sold-out':true,'inventory-count':0,'status':'e6b42f14fcb99aa2168a5f5672226f68'}})\n      }).catch(()=>{});\n    }\n  }\n\n  closeCheckout();\n  document.getElementById('pos-cart').classList.remove('on');\n  showReceipt(tx);\n}\n\n// ── RECEIPT ───────────────────────────────────────────────\nfunction showReceipt(tx){\n  const modal = document.getElementById('receipt-modal');\n  const items = document.getElementById('receipt-items');\n  const totals = document.getElementById('receipt-totals');\n  const now = new Date(tx.date);\n  const ds = now.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})+' '+now.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});\n\n  items.innerHTML = `\n    <div style="font-size:9px;color:#888;margin-bottom:6px">${ds} · ${tx.method}</div>\n    ${tx.items.map(i=>`<div class="receipt-line"><span>${i.name}</span><span>$${(i.price||0).toFixed(2)}</span></div>`).join('')}`;\n\n  totals.innerHTML = `\n    ${tx.discount>0?`<div class="receipt-line"><span>Discount</span><span>-$${tx.discount.toFixed(2)}</span></div>`:''}\n    ${tx.tax>0?`<div class="receipt-line"><span>Tax</span><span>$${tx.tax.toFixed(2)}</span></div>`:''}\n    <div class="receipt-line total bold"><span>TOTAL</span><span>$${tx.total.toFixed(2)}</span></div>\n    ${tx.change>0?`<div class="receipt-line"><span>Change</span><span>$${tx.change.toFixed(2)}</span></div>`:''}\n    <div style="font-size:9px;color:#888;margin-top:6px;text-align:center">Paid by ${tx.method}</div>`;\n\n  modal.classList.add('on');\n}\n\nfunction closeReceipt(){ document.getElementById('receipt-modal').classList.remove('on'); }\nfunction printReceipt(){ window.print(); }\nfunction newTransaction(){\n  clearCartState();\n  updateCartBadge(); renderCart(); closeReceipt();\n  toast('Ready for next sale');\n}\n\n// ════════════════════════════════════════════════════════════\n// PRICING TOOLS\n// ════════════════════════════════════════════════════════════\nfunction openPricingTools(){\n  document.getElementById('pricing-panel').classList.add('on');\n  document.getElementById('mc-ship').value = '1.00';\n\n  // Auto-fill from last scanned card\n  const lastBub = bubs.length > 0 ? bubs[bubs.length-1] : null;\n  if(!lastBub || !lastBub.el._item) return;\n  const item = lastBub.el._item;\n  const pi   = parseInt(document.getElementById('ps'+lastBub.id)?.value)||0;\n  const print = lastBub.el._prints?.[pi] || {};\n\n  // Build search string from scanned card\n  const cardName = [item.player||item.name, item.year, print.set||item.set_name,\n    print.variant && print.variant!=='Base' ? print.variant : null,\n    item.card_number ? '#'+item.card_number : null\n  ].filter(Boolean).join(' ');\n\n  // Fill quick price search\n  const ptSearch = document.getElementById('pt-search');\n  if(ptSearch && cardName) {\n    ptSearch.value = cardName;\n    debouncePriceSearch();\n  }\n\n  // Fill grade spread\n  const ptGrade = document.getElementById('pt-grade-card');\n  if(ptGrade && cardName) ptGrade.value = cardName;\n\n  // Fill trend\n  const ptDelta = document.getElementById('pt-delta-card');\n  if(ptDelta && cardName) ptDelta.value = cardName;\n\n  // Fill margin calculator with current price as sell price\n  const mktPrice = print.mid || 0;\n  if(mktPrice > 0) {\n    const sellEl = document.getElementById('mc-sell');\n    if(sellEl) { sellEl.value = mktPrice.toFixed(2); calcMargin(); }\n  }\n\n  // Fill price tag generator\n  const ptTagName = document.getElementById('pt-tag-name');\n  const ptTagPrice = document.getElementById('pt-tag-price');\n  if(ptTagName) ptTagName.value = item.player||item.name||'';\n  if(ptTagPrice && mktPrice > 0) ptTagPrice.value = mktPrice.toFixed(2);\n\n  // Show a banner at top of pricing panel showing what card is loaded\n  let banner = document.getElementById('pt-card-banner');\n  if(!banner) {\n    banner = document.createElement('div');\n    banner.id = 'pt-card-banner';\n    banner.style.cssText = 'background:rgba(0,255,179,.06);border:1px solid rgba(0,255,179,.2);border-radius:6px;padding:8px 12px;margin-bottom:12px;font-family:"DM Mono",monospace;font-size:9px;color:var(--g);display:flex;justify-content:space-between;align-items:center';\n    const ptBody = document.querySelector('#pricing-panel .pt-body');\n    if(ptBody) ptBody.prepend(banner);\n  }\n  banner.innerHTML = `<span>📊 Loaded: <b style="color:#fff">${item.player||item.name||'?'}</b>${print.set?' · '+print.set:''}</span>`\n    + (mktPrice > 0 ? `<span style="color:var(--gold);font-family:'Orbitron',monospace;font-size:11px">$${mktPrice.toFixed(2)}</span>` : '');\n}\nfunction closePricingTools(){ document.getElementById('pricing-panel').classList.remove('on'); }\n\n// Margin calculator\nfunction calcMargin(){\n  const cost = parseFloat(document.getElementById('mc-cost')?.value)||0;\n  const sell = parseFloat(document.getElementById('mc-sell')?.value)||0;\n  const ship = parseFloat(document.getElementById('mc-ship')?.value)||0;\n  const fees = sell * 0.1325 + 0.30; // eBay final value fee ~13.25% + $0.30\n  const profit = sell - cost - fees - ship;\n  const roi = cost > 0 ? (profit/cost*100) : 0;\n  const bar = Math.min(100, Math.max(0, roi));\n\n  document.getElementById('mc-fees').textContent = '$'+fees.toFixed(2);\n  document.getElementById('mc-profit').textContent = (profit>=0?'+':'')+'$'+Math.abs(profit).toFixed(2);\n  document.getElementById('mc-profit').className = 'pt-val '+(profit>=0?'g':'red');\n  document.getElementById('mc-roi').textContent = (roi>=0?'+':'')+roi.toFixed(1)+'%';\n  document.getElementById('mc-roi').className = 'pt-val '+(roi>=0?'g':'red');\n  document.getElementById('mc-bar').style.width = bar+'%';\n  document.getElementById('mc-bar').style.background = profit>=0?'var(--g)':'var(--red)';\n}\n\n// Price search — uses Claude to get quick price\nlet priceSearchTimer = null;\nfunction debouncePriceSearch(){\n  clearTimeout(priceSearchTimer);\n  priceSearchTimer = setTimeout(runPriceSearch, 800);\n}\n\nasync function runPriceSearch(){\n  const q = document.getElementById('pt-search')?.value?.trim();\n  if(!q || q.length < 3) return;\n  const el = document.getElementById('pt-results');\n  el.textContent = '⟳ Looking up...';\n  el.style.color = 'var(--gold)';\n  try {\n    const text = await callClaudeSonnet([{role:'user',content:[{type:'text',text:\n      `What is the current market price for: "${q}"?\n      Give me TCGPlayer mid, eBay sold average, and high/low range.\n      Return ONLY JSON: {"name":"exact name","tcg_mid":0.00,"ebay_avg":0.00,"low":0.00,"high":0.00,"condition":"NM","note":"brief note e.g. trending up, common, etc"}`\n    }]}], 400);\n    const data = JSON.parse(text.replace(/\`\`\`json|\`\`\`/g,'').trim());\n    el.style.color = 'var(--g)';\n    el.innerHTML = `\n      <div style="margin-bottom:4px;font-size:10px;color:#fff">${data.name||q}</div>\n      <div class="pt-row"><span class="pt-label">TCGPlayer mid</span><span class="pt-val g">$${(data.tcg_mid||0).toFixed(2)}</span></div>\n      <div class="pt-row"><span class="pt-label">eBay avg sold</span><span class="pt-val gold">$${(data.ebay_avg||0).toFixed(2)}</span></div>\n      <div class="pt-row"><span class="pt-label">Range (NM)</span><span class="pt-val blue">$${(data.low||0).toFixed(2)} – $${(data.high||0).toFixed(2)}</span></div>\n      <div style="font-size:8px;color:rgba(255,255,255,.3);margin-top:4px">${data.note||''} · AI estimate from training data</div>`;\n  } catch(e){\n    el.style.color = 'var(--red)';\n    el.textContent = '⚠ Could not look up: '+e.message;\n  }\n}\n\n// Grade spread\nasync function lookupGradeSpread(){\n  const q = document.getElementById('pt-grade-card')?.value?.trim();\n  if(!q || q.length < 3) return;\n  const grid = document.getElementById('grade-grid');\n  grid.innerHTML = '<div style="font-family:monospace;font-size:8px;color:rgba(255,255,255,.3);grid-column:1/-1;text-align:center;padding:8px">Loading grade values...</div>';\n  try {\n    const text = await callClaudeSonnet([{role:'user',content:[{type:'text',text:\n      `What are the PSA graded values for: "${q}"?\n      Return ONLY JSON array of 8 grades: [{"grade":"10","price":0.00},{"grade":"9.5","price":0.00},{"grade":"9","price":0.00},{"grade":"8.5","price":0.00},{"grade":"8","price":0.00},{"grade":"7","price":0.00},{"grade":"6","price":0.00},{"grade":"5","price":0.00}]\n      Use current eBay sold averages. If unknown use 0.`\n    }]}], 400);\n    const grades = JSON.parse(text.replace(/\`\`\`json|\`\`\`/g,'').trim());\n    grid.innerHTML = grades.map(g => `\n      <div class="pt-grade-btn" onclick="this.classList.toggle('on')">\n        <div class="pt-grade-val">PSA ${g.grade}</div>\n        <div class="pt-grade-price">$${(g.price||0).toFixed(2)}</div>\n      </div>`).join('');\n  } catch(e){\n    grid.innerHTML = '<div style="color:var(--red);font-size:8px;padding:8px">Error: '+e.message+'</div>';\n  }\n}\n\ndocument.getElementById('pt-grade-card')?.addEventListener('keydown', e => { if(e.key==='Enter') lookupGradeSpread(); });\n\n// Market trend delta\nasync function lookupTrendDelta(){\n  const q = document.getElementById('pt-delta-card')?.value?.trim();\n  if(!q) return;\n  const el = document.getElementById('pt-delta-result');\n  el.textContent = '⟳ Analyzing trend...';\n  el.style.color = 'var(--gold)';\n  try {\n    const text = await callClaudeSonnet([{role:'user',content:[{type:'text',text:\n      `What is the price trend for: "${q}"?\n      Based on your training data, estimate the trend.\n      Return ONLY JSON: {"trend":"up|down|flat|volatile","pct_30d":0.0,"pct_90d":0.0,"reason":"brief reason","current_nm":0.00}`\n    }]}], 300);\n    const d = JSON.parse(text.replace(/\`\`\`json|\`\`\`/g,'').trim());\n    const tc = d.trend==='up'?'var(--g)':d.trend==='down'?'var(--red)':'var(--gold)';\n    el.style.color = tc;\n    el.innerHTML = `<span style="color:${tc}">${d.trend==='up'?'↑':d.trend==='down'?'↓':'→'} ${d.trend.toUpperCase()}</span> &nbsp;\n      30d: ${d.pct_30d>=0?'+':''}${(d.pct_30d||0).toFixed(1)}% &nbsp; 90d: ${d.pct_90d>=0?'+':''}${(d.pct_90d||0).toFixed(1)}%<br>\n      <span style="color:rgba(255,255,255,.3);font-size:8px">${d.reason||''}</span>`;\n  } catch(e){ el.style.color='var(--red)'; el.textContent='Error: '+e.message; }\n}\ndocument.getElementById('pt-delta-card')?.addEventListener('keydown', e => { if(e.key==='Enter') lookupTrendDelta(); });\n\n// Price tag generator\nfunction generatePriceTag(){\n  const name = document.getElementById('pt-tag-name')?.value?.trim();\n  const price = parseFloat(document.getElementById('pt-tag-price')?.value)||0;\n  const cond = document.getElementById('pt-tag-cond')?.value||'NM';\n  if(!name || !price){ toast('Enter name and price'); return; }\n  const el = document.getElementById('pt-tag-preview');\n  el.innerHTML = `\n    <div style="background:#fff;color:#111;border-radius:8px;padding:10px 12px;margin-top:6px;font-family:'DM Mono',monospace;">\n      <div style="font-size:11px;font-weight:700;margin-bottom:2px">${name}</div>\n      <div style="font-size:9px;color:#666;margin-bottom:4px">${cond} · ${STORE.store_name}</div>\n      <div style="font-size:20px;font-weight:900;color:#111">$${price.toFixed(2)}</div>\n      <button onclick="window.print()" style="width:100%;margin-top:8px;padding:6px;background:#111;color:#fff;border:none;border-radius:4px;font-size:9px;cursor:pointer">🖨 Print Tag</button>\n    </div>`;\n}\n\n// ════════════════════════════════════════════════════════════\n// ADD TO CART BUTTON — inject into every bubble's bacts
 // ════════════════════════════════════════════════════════════
 // Hook into addBubble post-render to add cart button
 const _origAddBubble = window.addBubble;
 
-// Auto-launch — no credentials needed, everything in Cloudflare Worker
-window.addEventListener('load', function(){
+// ══════════════════════════════════════════════════
+// ONBOARDING
+// ══════════════════════════════════════════════════
+function showOnboarding() {
+  document.getElementById('setup').style.display = 'none';
+  document.getElementById('onboarding').style.display = 'block';
+}
+
+function skipOnboarding() {
+  STORE.onboarded = true;
+  saveStoreConfig(STORE);
+  document.getElementById('onboarding').style.display = 'none';
+  launchApp();
+}
+
+function completeOnboarding() {
+  const name = document.getElementById('ob-store-name').value.trim();
+  if(!name) { alert('Please enter your store name'); return; }
+  const newConfig = {
+    store_name:     name,
+    store_location: document.getElementById('ob-location').value.trim(),
+    store_website:  document.getElementById('ob-website').value.trim(),
+    venmo:          document.getElementById('ob-venmo').value.trim(),
+    paypal:         document.getElementById('ob-paypal').value.trim(),
+    cashapp:        document.getElementById('ob-cashapp').value.trim(),
+    tax_rate:       parseFloat(document.getElementById('ob-tax').value) || 0,
+    stripe_pk:      document.getElementById('ob-stripe').value.trim() || DEFAULT_CONFIG.stripe_pk,
+    worker_url:     document.getElementById('ob-worker').value.trim() || DEFAULT_CONFIG.worker_url,
+    onboarded:      true,
+  };
+  Object.assign(STORE, newConfig);
+  saveStoreConfig(STORE);
+  document.getElementById('onboarding').style.display = 'none';
+  launchApp();
+}
+
+async function testObWorker() {
+  const url = document.getElementById('ob-worker').value.trim();
+  const statusEl = document.getElementById('ob-worker-status');
+  if(!url) { statusEl.textContent = 'Enter a Worker URL first'; return; }
+  statusEl.textContent = '⟳ Testing...';
+  try {
+    const r = await fetch(url + '/health');
+    const d = await r.json();
+    statusEl.style.color = d.ok ? '#00ffb3' : '#ff4d6d';
+    statusEl.textContent = d.ok ? '✓ Connected!' : '⚠ Error';
+  } catch(e) {
+    statusEl.style.color = '#ff4d6d';
+    statusEl.textContent = '⚠ Unreachable';
+  }
+}
+
+function launchApp() {
   startScanner();
   injectNavButtons();
-  // Restore cart from localStorage if any items were saved
   if(cart.length > 0) {
     updateCartBadge();
     toast('🛒 Cart restored — ' + cart.length + ' item' + (cart.length > 1 ? 's' : ''));
   }
-});
-</script>
+  // Update all store-name/location references in the UI
+  document.querySelectorAll('.store-name-display').forEach(el => el.textContent = STORE.store_name);
+  document.querySelectorAll('.store-loc-display').forEach(el => el.textContent = STORE.store_location);
+  // Update receipt header
+  const rw = document.getElementById('receipt-website');
+  if(rw) rw.textContent = STORE.store_website || '';
+  // Update page title
+  document.title = STORE.store_name + ' · LBA Scanner';
+  // Update settings version footer
+  const verEl = document.querySelector('#settings-panel div[style*="lbascan.com"]');
+  if(verEl) verEl.textContent = STORE.store_name + ' · LBA Scanner v2.0';
+}
 
-<div id="lba-nav"><a class="lba-nav-btn active" href="sca.html"><span class="nav-ico">⬡</span>SCANNER</a><a class="lba-nav-btn" href="dashboard.html"><span class="nav-ico">▦</span>DASHBOARD</a></div>
-<!-- ═══ POS CART ═══════════════════════════════════════ -->
-<div id="pos-cart">
-  <div class="pos-header">
-    <span class="pos-title">🛒 CART</span>
-    <div style="display:flex;gap:8px;align-items:center">
-      <span id="cart-count-lbl" style="font-family:'DM Mono',monospace;font-size:9px;color:rgba(255,255,255,.4)"></span>
-      <button class="pos-close" onclick="toggleCart()">×</button>
-    </div>
-  </div>
-  <div class="pos-items" id="cart-items-list">
-    <div class="pos-empty" id="cart-empty">No items yet — scan a card and tap Add to Cart</div>
-  </div>
-  <div class="pos-footer">
-    <button class="pos-add-btn" onclick="addManualItem()">+ Add Manual Item</button>
-    <div class="pos-totals">
-      <div class="pos-tax-row">
-        <span class="pos-tax-label">Tax rate %</span>
-        <input class="pos-tax-inp" id="cart-tax" type="number" value="0" min="0" max="30" step="0.1" oninput="renderCartTotals()">
-        <div class="pos-discount-row" style="margin:0;flex:1;justify-content:flex-end;display:flex;gap:4px">
-          <button class="pos-disc-btn" id="disc-none" onclick="setDiscount(0,this)">No disc</button>
-          <button class="pos-disc-btn" id="disc-10" onclick="setDiscount(10,this)">10%</button>
-          <button class="pos-disc-btn" id="disc-20" onclick="setDiscount(20,this)">20%</button>
-        </div>
-      </div>
-      <div class="pos-row"><span>Subtotal</span><span id="cart-subtotal">$0.00</span></div>
-      <div class="pos-row" id="cart-disc-row" style="display:none"><span>Discount</span><span id="cart-disc-amt" style="color:var(--red)">-$0.00</span></div>
-      <div class="pos-row" id="cart-tax-row" style="display:none"><span>Tax</span><span id="cart-tax-amt">$0.00</span></div>
-      <div class="pos-row total"><span>TOTAL</span><span id="cart-total">$0.00</span></div>
-    </div>
-    <button class="pos-checkout-btn" id="cart-checkout-btn" onclick="openCheckout()" disabled>CHECKOUT</button>
-  </div>
-</div>
+// ══════════════════════════════════════════════════
+// DATA EXPORT / IMPORT
+// ══════════════════════════════════════════════════
+function exportInventoryCSV() {
+  const inv = JSON.parse(localStorage.getItem('lba_inventory') || '[]');
+  if(!inv.length) { toast('No inventory to export'); return; }
+  const headers = ['Name','Category','Set','Variant','Year','Condition','Card#','Serial#','Grader','Grade','Cost','Market','Status','Location','Added','Notes'];
+  const esc = v => '"'+(v||'').toString().replace(/"/g,'""')+'"';\n  const rows = inv.map(i => [i.name,i.category,i.set,i.variant,i.year,i.condition,i.card_number,i.serial_number,i.grading_company,i.grade,i.cost,i.market,i.status,i.location,i.addedAt?new Date(i.addedAt).toLocaleDateString():'',i.key_notes].map(esc).join(','));\n  const NL = String.fromCharCode(10);\n  const csv = [headers.join(',')].concat(rows).join(NL);\n  const blob = new Blob([csv], {type:'text/csv'});\n  const a = document.createElement('a');\n  a.href = URL.createObjectURL(blob);\n  a.download = (STORE.store_name||'inventory').replace(/\s+/g,'-').toLowerCase()+'-'+new Date().toISOString().split('T')[0]+'.csv';\n  a.click();\n  toast('Exported '+inv.length+' items');\n}\n\nfunction exportInventoryJSON() {\n  const data = {\n    store: STORE.store_name,\n    exported: new Date().toISOString(),\n    inventory: JSON.parse(localStorage.getItem('lba_inventory') || '[]'),\n    sales: JSON.parse(localStorage.getItem('lba_sales') || '[]'),\n    transactions: JSON.parse(localStorage.getItem('pos_transactions') || '[]'),\n  };\n  const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});\n  const a = document.createElement('a');\n  a.href = URL.createObjectURL(blob);\n  a.download = (STORE.store_name||'lba').replace(/\s+/g,'-').toLowerCase() + '-backup-' + new Date().toISOString().split('T')[0] + '.json';\n  a.click();\n  toast('✓ Full backup exported');\n}\n\nfunction importInventoryJSON() {\n  const input = document.createElement('input');\n  input.type = 'file';\n  input.accept = '.json';\n  input.onchange = e => {\n    const file = e.target.files[0];\n    if(!file) return;\n    const reader = new FileReader();\n    reader.onload = evt => {\n      try {\n        const data = JSON.parse(evt.target.result);\n        if(data.inventory) {\n          const existing = JSON.parse(localStorage.getItem('lba_inventory') || '[]');\n          // Merge, avoiding duplicates by ID\n          const existingIds = new Set(existing.map(i=>i.id));\n          const newItems = data.inventory.filter(i=>!existingIds.has(i.id));\n          const merged = [...existing, ...newItems];\n          localStorage.setItem('lba_inventory', JSON.stringify(merged));\n          toast('✓ Imported ' + newItems.length + ' new items');\n        }\n        if(data.store_config) Object.assign(STORE, data.store_config);\n      } catch(err) { toast('⚠ Import failed: invalid file'); }\n    };\n    reader.readAsText(file);\n  };\n  input.click();\n}\n\nfunction clearAllData() {\n  if(!confirm('CLEAR ALL DATA? This cannot be undone.
 
-<!-- ═══ CHECKOUT ════════════════════════════════════════ -->
-<div id="checkout">
-  <div class="ck-header">
-    <button class="ck-back" onclick="closeCheckout()">←</button>
-    <span class="ck-title">CHECKOUT</span>
-  </div>
-  <div class="ck-total-banner">
-    <div class="ck-total-lbl">TOTAL DUE</div>
-    <div class="ck-total-amt" id="ck-total-display">$0.00</div>
-  </div>
-  <div class="ck-body">
-    <div style="font-family:'DM Mono',monospace;font-size:9px;color:rgba(255,255,255,.4);letter-spacing:2px;margin-bottom:10px">SELECT PAYMENT METHOD</div>
-    <div class="ck-methods">
-      <div class="ck-method" id="m-cash" onclick="selectPayment('cash')">
-        <div class="ck-method-ico">💵</div><div class="ck-method-lbl">CASH</div>
-      </div>
-      <div class="ck-method" id="m-card" onclick="selectPayment('card')">
-        <div class="ck-method-ico">💳</div><div class="ck-method-lbl">CARD</div>
-      </div>
-      <div class="ck-method" id="m-venmo" onclick="selectPayment('venmo')">
-        <div class="ck-method-ico" style="font-size:18px;font-family:'DM Mono',monospace;color:#008CFF;font-weight:700">V</div><div class="ck-method-lbl">VENMO</div>
-      </div>
-      <div class="ck-method" id="m-paypal" onclick="selectPayment('paypal')">
-        <div class="ck-method-ico" style="font-size:18px;font-family:'DM Mono',monospace;color:#003087;font-weight:700">PP</div><div class="ck-method-lbl">PAYPAL</div>
-      </div>
-      <div class="ck-method" id="m-cashapp" onclick="selectPayment('cashapp')">
-        <div class="ck-method-ico" style="font-size:18px;font-family:'DM Mono',monospace;color:#00D632;font-weight:700">$</div><div class="ck-method-lbl">CASH APP</div>
-      </div>
-
-    </div>
-
-    <!-- CASH PANEL -->
-    <div class="ck-panel" id="panel-cash">
-      <input class="ck-cash-inp" id="cash-tendered" type="text" placeholder="$0.00" oninput="calcChange()">
-      <div class="ck-numpad" id="cash-numpad"></div>
-      <div class="ck-change" id="cash-change">Enter amount received</div>
-      <button class="ck-confirm-btn cash" onclick="completeCashSale()">✓ COMPLETE SALE</button>
-    </div>
-
-    <!-- CARD PANEL (Stripe) -->
-    <div class="ck-panel" id="panel-card">
-      <!-- Visual card mockup -->
-      <div style="background:linear-gradient(135deg,#1a1a2e,#16213e);border-radius:12px;padding:16px 18px;margin-bottom:14px;border:1px solid rgba(255,255,255,.1);position:relative;min-height:100px">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-          <div style="font-family:'Orbitron',monospace;font-size:11px;color:rgba(255,255,255,.4);letter-spacing:2px">CREDIT / DEBIT</div>
-          <div style="display:flex;gap:4px">
-            <div style="width:24px;height:16px;background:#eb001b;border-radius:50%;opacity:.8"></div>
-            <div style="width:24px;height:16px;background:#f79e1b;border-radius:50%;opacity:.8;margin-left:-10px"></div>
-          </div>
-        </div>
-        <div style="font-family:'DM Mono',monospace;font-size:13px;color:rgba(255,255,255,.6);letter-spacing:3px;margin-bottom:10px">•••• •••• •••• ••••</div>
-        <div style="display:flex;justify-content:space-between">
-          <div style="font-family:'DM Mono',monospace;font-size:9px;color:rgba(255,255,255,.3)">CARDHOLDER</div>
-          <div style="font-family:'DM Mono',monospace;font-size:9px;color:rgba(255,255,255,.3)">EXPIRES</div>
-        </div>
-        <div style="position:absolute;bottom:12px;right:16px;font-family:'Orbitron',monospace;font-size:8px;color:rgba(255,255,255,.15)">STRIPE SECURED</div>
-      </div>
-      <div style="font-family:'DM Mono',monospace;font-size:9px;color:rgba(255,255,255,.4);margin-bottom:6px;letter-spacing:1px">CARD NUMBER · EXPIRY · CVC</div>
-      <div id="stripe-card-element"></div>
-      <div id="stripe-errors" style="font-family:'DM Mono',monospace;font-size:9px;color:var(--red);margin:6px 0;min-height:14px"></div>
-      <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px">
-        <span style="font-size:14px">🔒</span>
-        <span style="font-family:'DM Mono',monospace;font-size:8px;color:rgba(255,255,255,.2)">256-bit SSL · Card number secured by Stripe · Never stored locally</span>
-      </div>
-      <button class="ck-confirm-btn card" id="stripe-pay-btn" onclick="processStripePayment()">💳 CHARGE CARD</button>
-      <div class="ck-status" id="stripe-status"></div>
-    </div>
-
-    <!-- QR PAYMENT PANELS (Venmo, PayPal, Cash App, Zelle) -->
-    <div class="ck-panel" id="panel-qr">
-      <div class="ck-qr-tabs" id="qr-tabs"></div>
-      <div class="ck-qr-box" id="qr-box">
-        <canvas id="qr-canvas" style="width:180px;height:180px;border-radius:8px"></canvas>
-        <div class="ck-qr-handle" id="qr-handle"></div>
-        <div class="ck-qr-amount" id="qr-amount"></div>
-      </div>
-      <div style="font-family:'DM Mono',monospace;font-size:9px;color:rgba(255,255,255,.4);text-align:center;margin-bottom:10px">Customer scans QR → pays → you confirm</div>
-      <button class="ck-confirm-btn qr" onclick="completeQRSale()">✓ PAYMENT RECEIVED</button>
-      <div class="ck-status" id="qr-status"></div>
-    </div>
-  </div>
-</div>
-
-<!-- ═══ RECEIPT ══════════════════════════════════════════ -->
-<div id="receipt-modal">
-  <div class="receipt" id="receipt-content">
-    <div class="receipt-logo">WALK-OFF SPORTS CARDS</div>
-    <div class="receipt-sub">Kingston, WA · walkoffsc.com</div>
-    <hr class="receipt-divider">
-    <div id="receipt-items"></div>
-    <hr class="receipt-divider">
-    <div id="receipt-totals"></div>
-    <div class="receipt-thanks">Thank you for shopping with us! ⚾</div>
-    <div class="receipt-btns">
-      <button class="receipt-btn" onclick="printReceipt()">🖨 Print</button>
-      <button class="receipt-btn" onclick="closeReceipt()">Close</button>
-      <button class="receipt-btn" onclick="newTransaction()">New Sale</button>
-    </div>
-  </div>
-</div>
-
-<!-- ═══ PRICING TOOLS ════════════════════════════════════ -->
-<div id="pricing-panel">
-  <div class="pt-header">
-    <span class="pt-title">📊 PRICING TOOLS</span>
-    <button class="pos-close" onclick="closePricingTools()">×</button>
-  </div>
-  <div class="pt-body">
-
-    <div class="pt-section">
-      <div class="pt-section-h">QUICK PRICE LOOKUP</div>
-      <div class="pt-card">
-        <input class="pt-inp" id="pt-search" placeholder="Card name, set, year..." oninput="debouncePriceSearch()">
-        <div id="pt-results" style="font-family:'DM Mono',monospace;font-size:9px;color:rgba(255,255,255,.4);text-align:center;padding:8px">Enter card name to search</div>
-      </div>
-    </div>
-
-    <div class="pt-section">
-      <div class="pt-section-h">GRADE VALUE SPREAD (PSA)</div>
-      <div class="pt-card" id="grade-spread-card">
-        <input class="pt-inp" id="pt-grade-card" placeholder="Card name for grade spread...">
-        <div class="pt-grade-grid" id="grade-grid">
-          <div style="font-family:monospace;font-size:8px;color:rgba(255,255,255,.2);grid-column:1/-1;text-align:center;padding:8px">Enter card name above then tap a grade</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="pt-section">
-      <div class="pt-section-h">MARGIN CALCULATOR</div>
-      <div class="pt-card">
-        <div class="pt-row">
-          <span class="pt-label">Cost paid</span>
-          <span></span>
-        </div>
-        <input class="pt-inp" id="mc-cost" type="number" placeholder="$0.00" step="0.01" oninput="calcMargin()">
-        <div class="pt-row">
-          <span class="pt-label">Sell price</span><span></span>
-        </div>
-        <input class="pt-inp" id="mc-sell" type="number" placeholder="$0.00" step="0.01" oninput="calcMargin()">
-        <div class="pt-row">
-          <span class="pt-label">eBay fees (~13.25%)</span>
-          <span class="pt-val gold" id="mc-fees">—</span>
-        </div>
-        <div class="pt-row">
-          <span class="pt-label">Shipping est.</span>
-          <input class="pt-inp" id="mc-ship" type="number" placeholder="1.00" step="0.25" value="1.00" style="width:70px;margin:0;padding:4px 6px" oninput="calcMargin()">
-        </div>
-        <div class="pt-row" style="margin-top:6px">
-          <span class="pt-label" style="font-size:10px;color:#fff">Net profit</span>
-          <span class="pt-val g" id="mc-profit" style="font-size:16px">—</span>
-        </div>
-        <div class="pt-row">
-          <span class="pt-label">ROI</span>
-          <span class="pt-val" id="mc-roi">—</span>
-        </div>
-        <div class="pt-trend-bar"><div class="pt-trend-fill" id="mc-bar" style="width:0%;background:var(--g)"></div></div>
-      </div>
-    </div>
-
-    <div class="pt-section">
-      <div class="pt-section-h">MARKET TREND DELTA</div>
-      <div class="pt-card">
-        <input class="pt-inp" id="pt-delta-card" placeholder="Card name...">
-        <div id="pt-delta-result" style="font-family:'DM Mono',monospace;font-size:9px;color:rgba(255,255,255,.3);padding:6px 0">Enter a card to see 30/60/90-day trend estimate</div>
-      </div>
-    </div>
-
-    <div class="pt-section">
-      <div class="pt-section-h">PRICE TAG GENERATOR</div>
-      <div class="pt-card">
-        <input class="pt-inp" id="pt-tag-name" placeholder="Item name">
-        <input class="pt-inp" id="pt-tag-price" type="number" placeholder="Price $" step="0.01">
-        <select class="pt-inp" id="pt-tag-cond">
-          <option value="NM">NM — Near Mint</option>
-          <option value="LP">LP — Light Play</option>
-          <option value="MP">MP — Moderate Play</option>
-          <option value="HP">HP — Heavy Play</option>
-        </select>
-        <button style="width:100%;padding:10px;background:rgba(255,209,102,.08);border:1px solid rgba(255,209,102,.2);color:var(--gold);border-radius:6px;font-family:'DM Mono',monospace;font-size:9px;cursor:pointer;letter-spacing:1px" onclick="generatePriceTag()">GENERATE PRICE TAG</button>
-        <div id="pt-tag-preview" style="margin-top:8px"></div>
-      </div>
-    </div>
-
-  </div>
-</div>
-
-</body>
-</html>
+This will delete all inventory, sales, and transaction records.')) return;\n  if(!confirm('Are you SURE? Type OK to confirm.')) return;\n  ['lba_inventory','lba_sales','pos_transactions','pos_cart_v2','pos_drawer','pos_wantlist','pos_consign','pos_locations'].forEach(k => localStorage.removeItem(k));\n  toast('⚠ All data cleared');\n  location.reload();\n}\n\n// ══════════════════════════════════════════════════\n// OFFLINE SCAN QUEUE\n// ══════════════════════════════════════════════════\nlet offlineQueue = JSON.parse(localStorage.getItem('offline_queue') || '[]');\nlet isOnline = navigator.onLine;\n\nwindow.addEventListener('online', () => {\n  isOnline = true;\n  updateOnlineStatus();\n  if(offlineQueue.length > 0) syncOfflineQueue();\n});\nwindow.addEventListener('offline', () => {\n  isOnline = false;\n  updateOnlineStatus();\n});\n\nfunction updateOnlineStatus() {\n  const hs = document.getElementById('hstatus');\n  if(!isOnline && hs) hs.textContent = '⚡ OFFLINE MODE';\n}\n\nfunction queueOfflineItem(entry) {\n  offlineQueue.push({...entry, queuedAt: new Date().toISOString()});\n  localStorage.setItem('offline_queue', JSON.stringify(offlineQueue));\n  const hs = document.getElementById('hstatus');\n  if(hs) hs.textContent = 'SAVED OFFLINE (' + offlineQueue.length + ')';\n}\n\nasync function syncOfflineQueue() {\n  if(!offlineQueue.length) return;\n  toast('⟳ Syncing ' + offlineQueue.length + ' offline items...');\n  let synced = 0;\n  for(const entry of [...offlineQueue]) {\n    try {\n      const shopId = await syncToShopProduct(entry, entry.imageUrl || null);\n      if(shopId) {\n        const inv = JSON.parse(localStorage.getItem('lba_inventory')||'[]');\n        const idx = inv.findIndex(i=>i.id===entry.id);\n        if(idx>=0) { inv[idx].shopId=shopId; localStorage.setItem('lba_inventory',JSON.stringify(inv)); }\n        offlineQueue = offlineQueue.filter(q=>q.id!==entry.id);\n        synced++;\n      }\n    } catch(e) {}\n  }\n  localStorage.setItem('offline_queue', JSON.stringify(offlineQueue));\n  if(synced > 0) toast('✓ Synced ' + synced + ' items to Webflow');\n}\n\n// ══════════════════════════════════════════════════\n// RECEIPT PRINTER (WebUSB + print fallback)\n// ══════════════════════════════════════════════════\nasync function printReceipt(tx) {\n  // Try WebUSB Star/Epson printer first, fall back to browser print\n  const printContent = generateReceiptHTML(tx);\n\n  // Check if WebUSB is available and a printer is connected\n  if('usb' in navigator) {\n    try {\n      // Try to find a previously authorized printer\n      const devices = await navigator.usb.getDevices();\n      const printer = devices.find(d =>\n        d.vendorId === 0x0519 || // Star Micronics\n        d.vendorId === 0x04b8    // Epson\n      );\n      if(printer) {\n        await printViaWebUSB(printer, tx);\n        return;\n      }\n    } catch(e) {}\n  }\n\n  // Browser print fallback\n  const w = window.open('', '_blank', 'width=360,height=600');\n  w.document.write(printContent);\n  w.document.close();\n  w.focus();\n  setTimeout(() => w.print(), 500);\n}\n\nasync function connectPrinter() {\n  if(!('usb' in navigator)) { toast('WebUSB not supported — use Chrome on Android/desktop'); return; }\n  try {\n    const device = await navigator.usb.requestDevice({\n      filters: [\n        {vendorId: 0x0519}, // Star Micronics\n        {vendorId: 0x04b8}, // Epson\n      ]\n    });\n    toast('✓ Printer connected: ' + (device.productName || 'USB Printer'));\n  } catch(e) {\n    toast('No printer selected');\n  }\n}\n\nasync function printViaWebUSB(device, tx) {\n  // ESC/POS commands for Star/Epson thermal printers\n  try {\n    await device.open();\n    await device.selectConfiguration(1);\n    await device.claimInterface(0);\n    const ESC = 0x1B, GS = 0x1D;\n    const enc = new TextEncoder();\n    const lines = [];\n    const center = str => 'a' + str + '
+';\n    const left = str => 'a
