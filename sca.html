@@ -502,7 +502,51 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
   </div>
 </div>
 
-<script>
+<script>// ══════════════════════════════════════════════════════
+// STORE CONFIG — loaded from localStorage (set during onboarding)
+// Default values are for Walk-Off Sports Cards (overridden per store)
+// ══════════════════════════════════════════════════════
+const DEFAULT_CONFIG = {
+  store_name:     'Walk-Off Sports Cards',
+  store_location: 'Kingston, WA',
+  store_website:  'walkoffsc.com',
+  worker_url:     'https://still-resonance-4f87.swarnerauto.workers.dev',
+  stripe_pk:      'pk_live_51OhyA8LHo6HlAYnMuSJGtOtXDbU5I8NIvHqgSpoKfH8PoZ2pIHCFVyO1fkqlpcpTAQ5tgEMGbWYlA81hiwQ2HhB400tlnsrfsw',
+  venmo:          'Shawn-Warner-84',
+  paypal:         '',
+  cashapp:        '',
+  tax_rate:       0,
+  currency:       'USD',
+  onboarded:      true,
+  // Webflow IDs — Walk-Off Sports Cards defaults
+  // Overridden per-store from localStorage after onboarding
+  wf_site_id:           '65b15ee0228d06647ca7e4ce',
+  wf_products_col:      '65eb45a28ff6bf3fe4f17b14',
+  wf_skus_col:          '65eb45a28ff6bf3fe4f17afb',
+  wf_product_type:      'ff42fee0113744f693a764e3431a9cc2',
+  wf_cat_sports:        '891253037409c4fe59854f3c9ef99a6b',
+  wf_cat_tcg:           '475ed99cc87de703b543fe9529e2c1da',
+  wf_cat_comic:         '27f1c9c43a61cf03820a31132cfc6b9a',
+  wf_status_instock:    'f3769d1e15fa0956f98984d6fa36437f',
+  wf_status_sold:       'e6b42f14fcb99aa2168a5f5672226f68',
+};
+
+function loadStoreConfig() {
+  try {
+    const saved = localStorage.getItem('store_config');
+    if(saved) return Object.assign({}, DEFAULT_CONFIG, JSON.parse(saved));
+  } catch(e) {}
+  return Object.assign({}, DEFAULT_CONFIG);
+}
+function saveStoreConfig(cfg) {
+  localStorage.setItem('store_config', JSON.stringify(cfg));
+}
+
+const STORE = loadStoreConfig();
+const WORKER_URL = STORE.worker_url;
+
+
+
 // Visible debug log
 (function(){
   const orig = {log: console.log, error: console.error, warn: console.warn};
@@ -588,49 +632,6 @@ const AFF = {
 // ============================================================
 // WEBFLOW PROXY — routes all WF API calls through Cloudflare Worker
 // ============================================================
-// ══════════════════════════════════════════════════════
-// STORE CONFIG — loaded from localStorage (set during onboarding)
-// Default values are for Walk-Off Sports Cards (overridden per store)
-// ══════════════════════════════════════════════════════
-const DEFAULT_CONFIG = {
-  store_name:     'Walk-Off Sports Cards',
-  store_location: 'Kingston, WA',
-  store_website:  'walkoffsc.com',
-  worker_url:     'https://still-resonance-4f87.swarnerauto.workers.dev',
-  stripe_pk:      'pk_live_51OhyA8LHo6HlAYnMuSJGtOtXDbU5I8NIvHqgSpoKfH8PoZ2pIHCFVyO1fkqlpcpTAQ5tgEMGbWYlA81hiwQ2HhB400tlnsrfsw',
-  venmo:          'Shawn-Warner-84',
-  paypal:         '',
-  cashapp:        '',
-  tax_rate:       0,
-  currency:       'USD',
-  onboarded:      true,
-  // Webflow IDs — specific to this store's Webflow site
-  // Other stores will have different IDs set during onboarding
-  wf_site_id:           STORE.wf_site_id,
-  wf_products_col:      STORE.wf_products_col,
-  wf_skus_col:          STORE.wf_skus_col,
-  wf_product_type:      STORE.wf_product_type,
-  wf_cat_sports:        STORE.wf_cat_sports,
-  wf_cat_tcg:           STORE.wf_cat_tcg,
-  wf_cat_comic:         STORE.wf_cat_comic,
-  wf_status_instock:    STORE.wf_status_instock,
-  wf_status_sold:       STORE.wf_status_sold,
-};
-
-function loadStoreConfig() {
-  try {
-    const saved = localStorage.getItem('store_config');
-    if(saved) return Object.assign({}, DEFAULT_CONFIG, JSON.parse(saved));
-  } catch(e) {}
-  return Object.assign({}, DEFAULT_CONFIG);
-}
-function saveStoreConfig(cfg) {
-  localStorage.setItem('store_config', JSON.stringify(cfg));
-}
-
-const STORE = loadStoreConfig();
-const WORKER_URL = STORE.worker_url;
-
 // Always read fresh from localStorage so settings changes take effect immediately
 
 
