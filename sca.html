@@ -1489,7 +1489,8 @@ async function syncToShopProduct(entry, imageUrl, extraPhotoUrls){
   ];
   const name = nameParts.filter(Boolean).join(' ').trim().substring(0, 255);
   const slug = 'inv-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2,6);
-  const priceCents = Math.max(1, Math.round((entry.market || entry.price || 0) * 100));
+  // Use explicit retail_price if set, else fall back to market price
+  const priceCents = Math.max(1, Math.round((entry.retail_price || entry.price || entry.market || 0) * 100));
 
   // Build a rich description from all scanner data
   const descParts = [];
@@ -1644,17 +1645,21 @@ async function syncToShopProduct(entry, imageUrl, extraPhotoUrls){
 
     // Webflow CMS Image fields — format: { url: '...' }
     // imageUrl must be a publicly accessible URL (Webflow CDN or TCGPlayer CDN)
-    if(imageUrl) {
+    if(imageUrl && imageUrl.startsWith('http')) {
       console.log('Setting thumbnail:', imageUrl.substring(0,80));
-      custom['thumbnail'] = { url: imageUrl };
+      custom['thumbnail'] = { url: imageUrl, alt: entry.name || 'Card' };
     }
-    if(photo2Url) {
+    if(photo2Url && photo2Url.startsWith('http')) {
       console.log('Setting photo2:', photo2Url.substring(0,80));
-      custom['slide-image-2'] = { url: photo2Url };
+      custom['slide-image-2'] = { url: photo2Url, alt: (entry.name||'Card')+' back' };
     }
     // Additional photos → MultiImage field
+    // Webflow MultiImage expects array of objects with url and alt
     if(extraPhotoUrls && extraPhotoUrls.length) {
-      custom['additional-photos'] = extraPhotoUrls.map(url => ({ url }));
+      custom['additional-photos'] = extraPhotoUrls
+        .filter(u => u && typeof u === 'string' && u.startsWith('http'))
+        .map(url => ({ url, alt: entry.name || 'Card photo' }));
+      console.log('Setting', custom['additional-photos'].length, 'additional photos');
     }
 
     try{
@@ -3088,6 +3093,17 @@ function updatePrice(id,p,cond){
     const imgEl=document.getElementById('cimg'+id);
     if(imgEl){imgEl.src=p.imageUrl;imgEl.style.display='block';}
   }
+  // UPDATE retail price input if add form is open and user hasn't overridden it
+  const retailInp = document.getElementById('retail'+id);
+  if(retailInp && p.mid > 0) {
+    const condMultiplier = CM[cond] || 1;
+    const condPrice = (p.mid * condMultiplier);
+    // Only auto-update if user hasn't manually typed a custom price
+    if(!retailInp.dataset.userEdited) {
+      retailInp.value = condPrice.toFixed(2);
+      retailInp.placeholder = condPrice.toFixed(2);
+    }
+  }
 }
 
 window.showAddForm=function(id){
@@ -3100,7 +3116,7 @@ window.showAddForm=function(id){
       <div class="inv-label">Your Cost ($)</div>
       <input class="inv-inp" id="cost${id}" type="number" placeholder="0.00" step="0.01" oninput="previewProfit('${id}')">
       <div class="inv-label">Retail Price ($) <span style="color:rgba(255,255,255,.4);font-size:9px">leave blank to use market price</span></div>
-      <input class="inv-inp" id="retail${id}" type="number" placeholder="${Number(print.mid||0).toFixed(2)}" step="0.01">
+      <input class="inv-inp" id="retail${id}" type="number" placeholder="${Number(print.mid||0).toFixed(2)}" step="0.01" oninput="this.dataset.userEdited='1'">
       <div class="inv-label">Quantity</div>
       <input class="inv-inp" id="qty${id}" type="number" value="1" min="1">
       <div class="inv-label">Storage Location</div>
@@ -3120,6 +3136,11 @@ window.showAddForm=function(id){
       <button class="bact a-confirm" onclick="confirmAdd('${id}')">SAVE + SYNC</button>
       <button class="bact a-cancel" onclick="resetActs('${id}')">Cancel</button>
     </div>`;
+  // Reset retail price user-edited flag on fresh open
+  setTimeout(() => {
+    const ri = document.getElementById('retail'+id);
+    if(ri) ri.dataset.userEdited = '';
+  }, 50);
   // Auto-snap photo when form opens (if no API image available)
   const isSports = el._ct === 'sports';
   if(!el._imgUrl || isSports) {
