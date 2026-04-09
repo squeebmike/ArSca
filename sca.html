@@ -502,47 +502,28 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
   </div>
 </div>
 
-<script>// ══════════════════════════════════════════════════════
-// STORE CONFIG — loaded from localStorage (set during onboarding)
-// Default values are for Walk-Off Sports Cards (overridden per store)
-// ══════════════════════════════════════════════════════
-const DEFAULT_CONFIG = {
-  store_name:     'Walk-Off Sports Cards',
-  store_location: 'Kingston, WA',
-  store_website:  'walkoffsc.com',
-  worker_url:     'https://still-resonance-4f87.swarnerauto.workers.dev',
-  stripe_pk:      'pk_live_51OhyA8LHo6HlAYnMuSJGtOtXDbU5I8NIvHqgSpoKfH8PoZ2pIHCFVyO1fkqlpcpTAQ5tgEMGbWYlA81hiwQ2HhB400tlnsrfsw',
-  venmo:          'Shawn-Warner-84',
-  paypal:         '',
-  cashapp:        '',
-  tax_rate:       0,
-  currency:       'USD',
-  onboarded:      true,
-  // Webflow IDs — Walk-Off Sports Cards defaults
-  // Overridden per-store from localStorage after onboarding
-  wf_site_id:           '65b15ee0228d06647ca7e4ce',
-  wf_products_col:      '65eb45a28ff6bf3fe4f17b14',
-  wf_skus_col:          '65eb45a28ff6bf3fe4f17afb',
-  wf_product_type:      'ff42fee0113744f693a764e3431a9cc2',
-  wf_cat_sports:        '891253037409c4fe59854f3c9ef99a6b',
-  wf_cat_tcg:           '475ed99cc87de703b543fe9529e2c1da',
-  wf_cat_comic:         '27f1c9c43a61cf03820a31132cfc6b9a',
-  wf_status_instock:    'f3769d1e15fa0956f98984d6fa36437f',
-  wf_status_sold:       'e6b42f14fcb99aa2168a5f5672226f68',
+<script>// ── Walk-Off Sports Cards — config ───────────────────────────
+const STORE = {
+  store_name:       'Walk-Off Sports Cards',
+  store_location:   'Kingston, WA',
+  store_website:    'walkoffsc.com',
+  worker_url:       'https://still-resonance-4f87.swarnerauto.workers.dev',
+  stripe_pk:        'pk_live_51OhyA8LHo6HlAYnMuSJGtOtXDbU5I8NIvHqgSpoKfH8PoZ2pIHCFVyO1fkqlpcpTAQ5tgEMGbWYlA81hiwQ2HhB400tlnsrfsw',
+  venmo:            'Shawn-Warner-84',
+  paypal:           '',
+  cashapp:          '',
+  tax_rate:         0,
+  currency:         'USD',
+  wf_site_id:       '65b15ee0228d06647ca7e4ce',
+  wf_products_col:  '65eb45a28ff6bf3fe4f17b14',
+  wf_skus_col:      '65eb45a28ff6bf3fe4f17afb',
+  wf_product_type:  'ff42fee0113744f693a764e3431a9cc2',
+  wf_cat_sports:    '891253037409c4fe59854f3c9ef99a6b',
+  wf_cat_tcg:       '475ed99cc87de703b543fe9529e2c1da',
+  wf_cat_comic:     '27f1c9c43a61cf03820a31132cfc6b9a',
+  wf_status_instock:'f3769d1e15fa0956f98984d6fa36437f',
+  wf_status_sold:   'e6b42f14fcb99aa2168a5f5672226f68',
 };
-
-function loadStoreConfig() {
-  try {
-    const saved = localStorage.getItem('store_config');
-    if(saved) return Object.assign({}, DEFAULT_CONFIG, JSON.parse(saved));
-  } catch(e) {}
-  return Object.assign({}, DEFAULT_CONFIG);
-}
-function saveStoreConfig(cfg) {
-  localStorage.setItem('store_config', JSON.stringify(cfg));
-}
-
-const STORE = loadStoreConfig();
 const WORKER_URL = STORE.worker_url;
 
 
@@ -1309,38 +1290,8 @@ async function fetchCardImage(item){
 // ── DUPLICATE DETECTION ───────────────────────────────────────────────────────
 // Returns existing shopId if a matching card is already in inventory, else null
 async function findExistingProduct(entry) {
-  // Check localStorage first (fast)
-  const inv = JSON.parse(localStorage.getItem('lba_inventory') || '[]');
-  const nameNorm = (entry.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-  const setNorm  = (entry.set  || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-  const yearStr  = String(entry.year || '');
-  const varNorm  = (entry.variant || 'Base').toLowerCase();
-
-  const match = inv.find(i => {
-    if(i.status === 'sold') return false;
-    const iName = (i.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-    const iSet  = (i.set  || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-    const iVar  = (i.variant || 'Base').toLowerCase();
-    const iYear = String(i.year || '');
-
-    // Name must match exactly (after normalizing)
-    if(iName !== nameNorm) return false;
-
-    // If we have set info, it must match
-    if(setNorm && iSet && iSet !== setNorm &&
-       !iSet.includes(setNorm.substring(0,8)) &&
-       !setNorm.includes(iSet.substring(0,8))) return false;
-
-    // If we have year info, it must match
-    if(yearStr && iYear && iYear !== yearStr) return false;
-
-    // Variant must match
-    if(iVar !== varNorm) return false;
-
-    return true;
-  });
-
-  if(match) return { shopId: match.shopId, localId: match.id, qty: match.qty || 1 };
+  // Webflow is the source of truth — search products collection directly
+  // No localStorage involved
 
   // Not in localStorage — search Webflow Products collection directly
   // This catches items added via Webflow CMS editor or other devices
@@ -3182,9 +3133,7 @@ window.confirmAdd=async function(id){
       backB64: el._backB64 || null,
     };
 
-    // 1. Save to localStorage immediately
-    const inv=JSON.parse(localStorage.getItem('lba_inventory')||'[]');
-    inv.unshift(entry);localStorage.setItem('lba_inventory',JSON.stringify(inv));
+    // Note: Webflow is source of truth — no localStorage for inventory
 
     // Upload captured photo — use item.name here since entry isn't built yet
     // For sports cards: always use camera photo (no TCGPlayer API image available)
@@ -3225,7 +3174,7 @@ window.confirmAdd=async function(id){
     // Sync to Products ecommerce collection — single source of truth
     acts.innerHTML = `<div class="cms-status cms-syncing">⟳ SAVING TO INVENTORY...</div>`;
     const shopId = await syncToShopProduct(entry, inventoryImageUrl);
-    if(shopId){ entry.shopId=shopId; inv[0].shopId=shopId; localStorage.setItem('lba_inventory',JSON.stringify(inv)); }
+    if(shopId){ entry.shopId=shopId; }
   }
 
   // Store last entry on element so settings panel can retry sync after token entered
@@ -3484,8 +3433,7 @@ async function saveSettings(){
     onboarded:      true,
   };
   Object.assign(STORE, newConfig);
-  saveStoreConfig(STORE);
-  closeSettings();
+    closeSettings();
   toast('✓ Settings saved');
   // Reinit Stripe if key changed
   if(newConfig.stripe_pk && !stripeInstance) initStripe();
@@ -4783,8 +4731,7 @@ function showOnboarding() {
 
 function skipOnboarding() {
   STORE.onboarded = true;
-  saveStoreConfig(STORE);
-  document.getElementById('onboarding').style.display = 'none';
+    document.getElementById('onboarding').style.display = 'none';
   launchApp();
 }
 
@@ -4804,8 +4751,7 @@ function completeOnboarding() {
     onboarded:      true,
   };
   Object.assign(STORE, newConfig);
-  saveStoreConfig(STORE);
-  document.getElementById('onboarding').style.display = 'none';
+    document.getElementById('onboarding').style.display = 'none';
   launchApp();
 }
 
@@ -4965,7 +4911,7 @@ async function saveSettings(){
     venmo:g('settings-venmo'),paypal:g('settings-paypal'),cashapp:g('settings-cashapp'),
     stripe_pk:g('settings-stripe')||STORE.stripe_pk,
     worker_url:g('settings-proxy')||STORE.worker_url,onboarded:true};
-  Object.assign(STORE,c);saveStoreConfig(STORE);closeSettings();toast('Settings saved');
+  Object.assign(STORE,c);closeSettings();toast('Settings saved');
   document.querySelectorAll('.store-name-display').forEach(function(el){el.textContent=STORE.store_name;});
 }
 async function testWorkerConnection(){
