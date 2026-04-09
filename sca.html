@@ -1352,7 +1352,7 @@ async function findExistingProduct(entry) {
 async function incrementProductQty(shopId, newQty) {
   try {
     const patch = await wfFetch(
-      '/collections/65eb45a28ff6bf3fe4f17b14/items/' + shopId,
+      '/collections/'+STORE.wf_products_col+'/items/' + shopId,
       { method: 'PATCH', body: JSON.stringify({ fieldData: { 'inventory-count': newQty } }) }
     );
     console.log('Qty updated:', patch.status, shopId, '→', newQty);
@@ -1607,7 +1607,7 @@ async function syncToShopProduct(entry, imageUrl){
 
     try{
       const patch = await wfFetch(
-        '/collections/65eb45a28ff6bf3fe4f17b14/items/' + productId,
+        '/collections/'+STORE.wf_products_col+'/items/' + productId,
         { method: 'PATCH', body: JSON.stringify({ fieldData: custom }) }
       );
       const pTxt = await patch.text();
@@ -2452,25 +2452,8 @@ function getType(item){
   return 'tcg';
 }
 function checkStock(item){
-  const inv=JSON.parse(localStorage.getItem('lba_inventory')||'[]');
-  const name=(item.player||item.name||'').toLowerCase();
-  const set=(item.set_name||'').toLowerCase();
-  const year=String(item.year||'');
-  // Match requires BOTH name AND (set OR year) to match — prevents false cross-set positives
-  const m=inv.filter(i=>{
-    const iname=(i.name||'').toLowerCase();
-    const iset=(i.set||'').toLowerCase();
-    const iyear=String(i.year||'');
-    const nameMatch=iname===name||(name.length>3&&iname.includes(name))||(iname.length>3&&name.includes(iname));
-    const setMatch=set&&iset&&(iset===set||iset.includes(set.split(' ')[0])||set.includes(iset.split(' ')[0]));
-    const yearMatch=year&&iyear&&year===iyear;
-    // Require name + at least one of set/year to avoid false positives
-    if(!setMatch && !yearMatch) return false;  // Need at least one anchor
-    return nameMatch && (setMatch||yearMatch);
-  });
-  const inStock = m.filter(i=>i.status==='in_stock');
-  const totalQty = inStock.reduce((a,i)=>a+(i.qty||1), 0);
-  return{inStock:totalQty, totalSold:m.filter(i=>i.status==='sold').length};
+  // Webflow is source of truth — default 0, Phase 2 async updates from Webflow
+  return { inStock: 0, totalSold: 0 };
 }
 
 function addBubble(item,stock,imgUrl,apiPrintings,bestMatchIdx){
@@ -3081,6 +3064,7 @@ window.confirmAdd=async function(id){
   const cost=parseFloat(document.getElementById('cost'+id)?.value)||0;
   const qty=parseInt(document.getElementById('qty'+id)?.value)||1;
   const loc=document.getElementById('loc'+id)?.value||'';
+  el._addedCost = cost; // store for sell flow
 
   // Show syncing status
   const acts=document.getElementById('acts'+id);
@@ -3102,19 +3086,12 @@ window.confirmAdd=async function(id){
   const isRealDuplicate = !!(existing && existing.localId);
 
   if(isRealDuplicate) {
-    // Already have this card — just increment quantity
+    // Already have this card in Webflow — increment qty there
     const newQty = (existing.qty || 1) + qty;
-    await incrementProductQty(existing.shopId, newQty);
-
-    // Update localStorage qty too
-    const inv = JSON.parse(localStorage.getItem('lba_inventory')||'[]');
-    const localIdx = inv.findIndex(i => i.id === existing.localId);
-    if(localIdx >= 0) { inv[localIdx].qty = newQty; inv[localIdx].cost = Math.min(inv[localIdx].cost||cost, cost); }
-    localStorage.setItem('lba_inventory', JSON.stringify(inv));
-
+    const ok = await incrementProductQty(existing.shopId, newQty);
     acts.innerHTML = `
-      <div class="cms-status cms-synced">✓ ALREADY IN STOCK — Qty updated to ${newQty}</div>
-      <div class="bact a-added">Cost $${cost.toFixed(2)} · Now have ${newQty}x</div>
+      <div class="cms-status ${ok?'cms-synced':'cms-error'}">${ok?'✓ QTY UPDATED IN WEBFLOW — Now '+newQty+'x':'⚠ Webflow qty update failed'}</div>
+      <div class="bact a-added">Already in stock · Now have ${newQty}x</div>
       <button class="bact a-sell" onclick="showSellForm('${id}')">✓ Mark as Sold</button>`;
     toast('Qty updated → ' + newQty + 'x ' + (item.player||item.name));
     return;
@@ -3143,7 +3120,7 @@ window.confirmAdd=async function(id){
       backB64: el._backB64 || null,
     };
 
-    // Note: Webflow is source of truth — no localStorage for inventory
+    // Saving to Webflow below — no localStorage
 
     // Upload captured photo — use item.name here since entry isn't built yet
     // For sports cards: always use camera photo (no TCGPlayer API image available)
@@ -3185,14 +3162,14 @@ window.confirmAdd=async function(id){
     acts.innerHTML = `<div class="cms-status cms-syncing">⟳ SAVING TO INVENTORY...</div>`;
     const shopId = await syncToShopProduct(entry, inventoryImageUrl);
     if(shopId){ entry.shopId=shopId; }
+    // Store shopId on element for sell flow
+    if(!el._shopIds) el._shopIds = [];
+    if(shopId) el._shopIds.push(shopId);
   }
 
   // Store last entry on element so settings panel can retry sync after token entered
-  el._pendingEntry = JSON.parse(localStorage.getItem('lba_inventory')||'[]')[0];
-
   const profit=(Number(print.mid||0)-cost).toFixed(2);
-  const lastEntry=JSON.parse(localStorage.getItem('lba_inventory')||'[]')[0];
-  const didSync=!!(lastEntry&&lastEntry.shopId);
+  const didSync=!!(entry.shopId);
   let statusMsg, statusCls;
   if(didSync){
     statusMsg='✓ SYNCED TO WEBFLOW · SHOP + DASHBOARD';
@@ -3207,17 +3184,16 @@ window.confirmAdd=async function(id){
     ${!didSync?`<button class="bact" style="background:rgba(0,255,179,.1);border:1px solid rgba(0,255,179,.3);color:var(--g)" onclick="retrySync('${id}')">↑ RETRY SYNC</button>`:''}
     <button class="bact a-sell" onclick="showSellForm('${id}')">✓ Mark as Sold</button>`;
   toast('Added '+(qty>1?qty+'x ':'')+((item.player||item.name)||'item')+(didSync?' → Webflow':'  (tap RETRY SYNC)'));
-  el._pickerSelected = false; // reset for next scan
+  el._pickerSelected = false;
 };
 
 window.showSellForm=function(id){
   const el=document.getElementById(id);if(!el)return;
-  const inv=JSON.parse(localStorage.getItem('lba_inventory')||'[]');
-  const name=(el._item.player||el._item.name||'').toLowerCase().split(' ')[0];
-  const inStock=inv.filter(i=>i.status==='in_stock'&&(i.name||'').toLowerCase().includes(name));
-  const avgCost=inStock.length?inStock.reduce((a,i)=>a+(i.cost||0),0)/inStock.length:0;
+  // Cost comes from what was entered at add time (stored on element)
+  const avgCost = el._addedCost || 0;
   const pi=parseInt(document.getElementById('ps'+id)?.value)||0;
   const print=el._prints[pi]||el._prints[0]||{};
+  const inStock = el._shopIds && el._shopIds.length ? [{cost:avgCost}] : [];
   document.getElementById('acts'+id).innerHTML=`
     <div class="sold-form">
       <div class="sold-form-title">✓ RECORD SALE</div>
@@ -3244,52 +3220,64 @@ window.confirmSell=async function(id,avgCost){
   if(!salePrice){toast('Enter a sale price');return;}
   const channel=document.getElementById('chan'+id)?.value||'In-Store';
   const item=el._item;
-  const name=(item.player||item.name||'').toLowerCase().split(' ')[0];
-  const inv=JSON.parse(localStorage.getItem('lba_inventory')||'[]');
-  let soldItem=null;
-  for(let i=0;i<inv.length;i++){
-    if(inv[i].status==='in_stock'&&(inv[i].name||'').toLowerCase().includes(name)){
-      inv[i].status='sold';inv[i].soldAt=new Date().toISOString();
-      inv[i].salePrice=salePrice;inv[i].saleChannel=channel;
-      inv[i].profit=salePrice-(inv[i].cost||avgCost||0);
-      soldItem=inv[i];break;
-    }
-  }
-  if(!soldItem){
-    const e={id:'scan_'+Date.now(),name:item.player||item.name,category:el._ct==='sports'?'Sports':el._ct==='comic'?'Comic':'TCG',cost:avgCost,salePrice,profit:salePrice-avgCost,saleChannel:channel,status:'sold',soldAt:new Date().toISOString(),addedAt:new Date().toISOString()};
-    inv.unshift(e);soldItem=e;
-  }
-  const sales=JSON.parse(localStorage.getItem('lba_sales')||'[]');
-  sales.unshift({id:'sale_'+Date.now(),name:item.player||item.name,category:el._ct==='sports'?'Sports':el._ct==='comic'?'Comic':'TCG',cost:avgCost,salePrice,profit:salePrice-avgCost,channel,date:new Date().toISOString()});
-  localStorage.setItem('lba_sales',JSON.stringify(sales));
-  localStorage.setItem('lba_inventory',JSON.stringify(inv));
+  const cost=el._addedCost||avgCost||0;
+  const profit=salePrice-cost;
 
-  // Update both CMS collections when sold
-  if(soldItem){
-    const h={'Content-Type':'application/json'};
-    try{
-      // Update LBA Inventory tracker
-      if(soldItem.cmsId){
-        await wfFetch(`/collections/${WF_COLLECTION_ID}/items/${soldItem.cmsId}`,{
-          method:'PATCH',headers:h,
-          body:JSON.stringify({fieldData:{status:'Sold','sale-price':salePrice,'profit':salePrice-avgCost,'sale-channel':channel,'date-sold':new Date().toISOString(),'quantity-in-stock':0,'quantity-sold':1}})
-        });
+  // shopId was stored on element when item was added
+  const shopId = el._shopIds && el._shopIds[0];
+
+  // Show working state
+  const actsEl = document.getElementById('acts'+id);
+  actsEl.innerHTML = '<div class="cms-status cms-syncing">⟳ RECORDING SALE IN WEBFLOW...</div>';
+
+  let wfOk = false;
+  if(shopId) {
+    try {
+      // 1. Mark product sold-out in Products collection
+      const patch = await wfFetch(
+        '/collections/'+STORE.wf_products_col+'/items/'+shopId,
+        { method:'PATCH', body:JSON.stringify({ fieldData:{
+          'sold-out': true,
+          'inventory-count': 0,
+          status: STORE.wf_status_sold,
+          'sale-price': salePrice,
+          'profit': profit,
+          'sale-channel': channel,
+          'date-sold': new Date().toISOString(),
+        }})}
+      );
+      wfOk = patch.ok;
+
+      // 2. Publish the update so the shop reflects it
+      if(wfOk) {
+        await wfFetch(
+          '/collections/'+STORE.wf_products_col+'/items/publish',
+          { method:'POST', body:JSON.stringify({ itemIds:[shopId] })}
+        ).catch(()=>{});
       }
-      // Mark shop product as sold out
-      if(soldItem.shopId){
-        await wfFetch(`/collections/${WF_PRODUCTS_ID}/items/${soldItem.shopId}`,{
-          method:'PATCH',headers:h,
-          body:JSON.stringify({fieldData:{'sold-out':true,'inventory-count':0,status:'Sold'}})
-        });
-        await wfFetch(`/collections/${WF_PRODUCTS_ID}/items/publish`,{
-          method:'POST',headers:h,body:JSON.stringify({itemIds:[soldItem.shopId]})
-        });
-      }
-    }catch(e){console.log('CMS sold update failed',e);}
+    } catch(e){ console.warn('Webflow sell update failed:', e.message); }
+  } else {
+    console.warn('No shopId on element — item was not synced to Webflow when added');
   }
 
-  const profit=salePrice-avgCost;
-  document.getElementById('acts'+id).innerHTML=`<div class="bact a-added">✓ SOLD $${salePrice.toFixed(2)} via ${channel}</div><div class="profit-preview ${profit>=0?'profit-pos':'profit-neg'}">Profit: $${profit.toFixed(2)}</div>`;
+  // Record sale in localStorage for dashboard reports (non-critical)
+  try {
+    const sales=JSON.parse(localStorage.getItem('lba_sales')||'[]');
+    sales.unshift({
+      id:'sale_'+Date.now(),
+      name:item.player||item.name,
+      category:el._ct==='sports'?'Sports':el._ct==='comic'?'Comic':'TCG',
+      shopId, cost, salePrice, profit, channel,
+      date:new Date().toISOString()
+    });
+    localStorage.setItem('lba_sales',JSON.stringify(sales));
+  } catch(e){}
+
+  actsEl.innerHTML=`
+    <div class="cms-status ${wfOk?'cms-synced':'cms-error'}">${wfOk?'✓ SOLD IN WEBFLOW':'⚠ SOLD LOCALLY — Webflow not updated'+(shopId?'':' (item was not synced)')}
+    </div>
+    <div class="bact a-added">✓ SOLD $${salePrice.toFixed(2)} via ${channel}</div>
+    <div class="profit-preview ${profit>=0?'profit-pos':'profit-neg'}">Profit: $${profit.toFixed(2)}</div>`;
   toast('Sold! Profit: $'+profit.toFixed(2));
 };
 
@@ -3500,11 +3488,10 @@ async function retrySync(id){
   acts.innerHTML += '<div class="cms-status cms-syncing">⟳ Retrying sync...</div>';
   const shopId = await syncToShopProduct(entry, el._imgUrl);
   if(shopId){
-    // Update localStorage entry with shopId
-    const inv = JSON.parse(localStorage.getItem('lba_inventory')||'[]');
-    const idx = inv.findIndex(i=>i.id===entry.id);
-    if(idx>=0){ inv[idx].shopId=shopId; localStorage.setItem('lba_inventory',JSON.stringify(inv)); }
     entry.shopId = shopId;
+    // Store shopId on element so sell flow can use it
+    if(!el._shopIds) el._shopIds = [];
+    el._shopIds.push(shopId);
     el._pendingEntry = entry;
     // Update status display
     const statusEl = acts.querySelector('.cms-status');
@@ -4506,7 +4493,7 @@ async function recordTransaction(method, total, change){
   // Mark items as sold in Webflow (best-effort)
   for(const item of cart){
     if(item.shopId){
-      wfFetch('/collections/65eb45a28ff6bf3fe4f17b14/items/'+item.shopId, {
+      wfFetch('/collections/'+STORE.wf_products_col+'/items/'+item.shopId, {
         method:'PATCH',
         body:JSON.stringify({fieldData:{'sold-out':true,'inventory-count':0,'status':STORE.wf_status_sold}})
       }).catch(()=>{});
@@ -4797,9 +4784,33 @@ function launchApp() {
 // ══════════════════════════════════════════════════
 // DATA EXPORT / IMPORT
 // ══════════════════════════════════════════════════
-function exportInventoryCSV() {
-  const inv = JSON.parse(localStorage.getItem('lba_inventory') || '[]');
-  if(!inv.length) { toast('No inventory to export'); return; }
+async function exportInventoryCSV() {
+  toast('Fetching inventory from Webflow...');
+  let inv = [];
+  try {
+    let offset=0, total=999;
+    while(offset < total){
+      const d = await wfFetch('/collections/'+STORE.wf_products_col+'/items?limit=100&offset='+offset);
+      if(!d.ok) break;
+      const data = await d.json();
+      total = data.pagination?.total || 0;
+      (data.items||[]).forEach(i=>{
+        const fd = i.fieldData||{};
+        inv.push({
+          name:fd.name||'',category:fd['card-category']||'',
+          set:fd['set-name']||'',variant:fd.variant||'',year:fd.year||'',
+          condition:fd['card-condition']||'',card_number:fd['card-number']||'',
+          serial_number:fd['serial-number']||'',grading_company:fd.grader||'',
+          grade:fd.grade||'',cost:fd.cost||0,market:fd.msrp||0,
+          status:fd.status||'',location:fd.location||'',
+          addedAt:i.createdOn||'',key_notes:fd.description||''
+        });
+      });
+      offset += 100;
+      if((data.items||[]).length < 100) break;
+    }
+  } catch(err){ toast('Export failed: '+err.message); return; }
+  if(!inv.length) { toast('No inventory in Webflow'); return; }
   const headers = ['Name','Category','Set','Variant','Year','Condition','Card#','Serial#','Grader','Grade','Cost','Market','Status','Location','Added','Notes'];
   const NL = String.fromCharCode(10);
   function escCSV(v){ return '"'+String(v||'').replace(/"/g,'""')+'"'; }
@@ -4812,9 +4823,15 @@ function exportInventoryCSV() {
   toast('Exported '+inv.length+' items');
 }
 
-function exportInventoryJSON() {
+async function exportInventoryJSON() {
+  toast('Fetching from Webflow...');
+  var inv = [];
+  try {
+    var d = await wfFetch('/collections/'+STORE.wf_products_col+'/items?limit=100');
+    if(d.ok){ var r=await d.json(); inv=(r.items||[]).map(i=>i.fieldData||{}); }
+  } catch(err){}
   var data = { store:STORE.store_name, exported:new Date().toISOString(),
-    inventory:JSON.parse(localStorage.getItem('lba_inventory')||'[]'),
+    inventory:inv,
     transactions:JSON.parse(localStorage.getItem('pos_transactions')||'[]') };
   var a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));
