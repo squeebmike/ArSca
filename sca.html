@@ -1364,6 +1364,47 @@ async function incrementProductQty(shopId, newQty) {
 }
 
 // ── IMAGE CAPTURE HELPERS ────────────────────────────────────────────────────
+// ── ADDITIONAL PHOTOS ───────────────────────────────────────────────────────
+function snapAdditionalPhoto(id) {
+  const snap = document.createElement('canvas');
+  const vw = video.videoWidth||1280, vh = video.videoHeight||720;
+  const scale = Math.min(1, 800/vw);
+  snap.width = Math.round(vw*scale); snap.height = Math.round(vh*scale);
+  snap.getContext('2d').drawImage(video, 0, 0, snap.width, snap.height);
+  const dataUrl = snap.toDataURL('image/jpeg', 0.85);
+  addExtraPhoto(id, dataUrl);
+}
+
+function uploadAdditionalPhoto(id) {
+  const inp = document.createElement('input');
+  inp.type='file'; inp.accept='image/*';
+  inp.onchange = e => {
+    const file = e.target.files[0]; if(!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => addExtraPhoto(id, ev.target.result);
+    reader.readAsDataURL(file);
+  };
+  inp.click();
+}
+
+function addExtraPhoto(id, dataUrl) {
+  const el = document.getElementById(id);
+  if(!el) return;
+  if(!el._extraPhotos) el._extraPhotos = [];
+  el._extraPhotos.push(dataUrl.split(',')[1]);
+  const container = document.getElementById('extra-photos-'+id);
+  if(!container) return;
+  const img = document.createElement('img');
+  img.src = dataUrl;
+  img.style.cssText = 'width:48px;height:48px;object-fit:cover;border-radius:4px;border:1px solid rgba(0,255,179,.3)';
+  img.onclick = () => { // tap to remove
+    const idx = el._extraPhotos.indexOf(dataUrl.split(',')[1]);
+    if(idx>=0) el._extraPhotos.splice(idx,1);
+    img.remove();
+  };
+  container.appendChild(img);
+  toast('Photo added (' + el._extraPhotos.length + ')');
+}
 function snapPreview(id) {
   // Snap current frame and show as preview in the add form
   const snap = document.createElement('canvas');
@@ -1437,7 +1478,7 @@ async function uploadCardImage(cardName) {
   }
 }
 
-async function syncToShopProduct(entry, imageUrl){
+async function syncToShopProduct(entry, imageUrl, extraPhotoUrls){
   // Build a clean display name: Player/Card + Year + Set + Variant
   const nameParts = [
     (entry.player && entry.player !== 'null') ? entry.player : (entry.name || 'Card'),
@@ -1485,10 +1526,11 @@ async function syncToShopProduct(entry, imageUrl){
         name,
         slug,
         shippable: true,
-        'ec-product-type': STORE.wf_product_type, // Physical
+        'ec-product-type': STORE.wf_product_type,
         'sold-out': false,
         'tax-category': 'standard-taxable',
         'description': description || name,
+        'inventory-count': entry.qty || 1,
       }
     },
     sku: {
@@ -1502,7 +1544,7 @@ async function syncToShopProduct(entry, imageUrl){
     publishStatus: 'live'
   };
 
-  const url = WORKER_URL + '/proxy/sites/65b15ee0228d06647ca7e4ce/products';
+  const url = WORKER_URL + '/proxy/sites/'+STORE.wf_site_id+'/products';
   console.log('Syncing:', name, '| $' + (priceCents/100).toFixed(2));
 
   try{
@@ -1589,6 +1631,11 @@ async function syncToShopProduct(entry, imageUrl){
 
     // Meta
     if(tags.length)      custom['tags']        = tags.join(',');
+    // Condition, cost, retail price
+    const condMap = {'NM':'05cbd3bb538b65343a8f40c0fbe31282','LP':'80fd49b88449644f4d07b359e1605285','MP':'ca2f2fe8cc18722f0d692fc8085c032b','HP':'db523fd58130ff74075929bccd03a52f','DMG':'42d7ad74836de857454ebe2062d09a40'};
+    if(entry.condition && condMap[entry.condition]) custom['condition'] = condMap[entry.condition];
+    if(entry.cost > 0)         custom['cost-basis']    = Math.round(entry.cost * 100) / 100;
+    if(entry.retail_price > 0) custom['retail-price']  = Math.round(entry.retail_price * 100) / 100;
     if(description)      custom['card-description'] = description;
     if(entry.id)         custom['card-sku']    = String(entry.id).substring(0, 255);
     // qty from the add form
@@ -1603,6 +1650,10 @@ async function syncToShopProduct(entry, imageUrl){
     if(photo2Url) {
       console.log('Setting photo2:', photo2Url.substring(0,80));
       custom['slide-image-2'] = { url: photo2Url };
+    }
+    // Additional photos → MultiImage field
+    if(extraPhotoUrls && extraPhotoUrls.length) {
+      custom['additional-photos'] = extraPhotoUrls.map(url => ({ url }));
     }
 
     try{
@@ -3017,6 +3068,8 @@ window.showAddForm=function(id){
       <div class="inv-form-title">+ ADD TO INVENTORY</div>
       <div class="inv-label">Your Cost ($)</div>
       <input class="inv-inp" id="cost${id}" type="number" placeholder="0.00" step="0.01" oninput="previewProfit('${id}')">
+      <div class="inv-label">Retail Price ($) <span style="color:rgba(255,255,255,.4);font-size:9px">leave blank to use market price</span></div>
+      <input class="inv-inp" id="retail${id}" type="number" placeholder="${Number(print.mid||0).toFixed(2)}" step="0.01">
       <div class="inv-label">Quantity</div>
       <input class="inv-inp" id="qty${id}" type="number" value="1" min="1">
       <div class="inv-label">Storage Location</div>
@@ -3026,6 +3079,11 @@ window.showAddForm=function(id){
       <div id="photo-preview-${id}" style="width:100%;height:80px;background:rgba(0,255,179,.05);border:1px dashed rgba(0,255,179,.2);border-radius:6px;display:flex;align-items:center;justify-content:center;margin-bottom:4px;overflow:hidden;cursor:pointer" onclick="retakePhoto('${id}')">
         <span id="photo-label-${id}" style="font-family:monospace;font-size:9px;color:rgba(0,255,179,.4)">📸 TAP TO SNAP PHOTO</span>
       </div>
+      <div style="display:flex;gap:4px;margin-bottom:4px">
+        <button class="bact" style="flex:1;font-size:9px;padding:6px 4px;background:rgba(0,255,179,.08)" onclick="snapAdditionalPhoto('${id}')" type="button">📷 ADD PHOTO</button>
+        <button class="bact" style="flex:1;font-size:9px;padding:6px 4px;background:rgba(0,255,179,.08)" onclick="uploadAdditionalPhoto('${id}')" type="button">📁 UPLOAD</button>
+      </div>
+      <div id="extra-photos-${id}" style="display:flex;flex-wrap:wrap;gap:3px;min-height:0"></div>
     </div>
     <div class="bacts">
       <button class="bact a-confirm" onclick="confirmAdd('${id}')">SAVE + SYNC</button>
@@ -3062,9 +3120,10 @@ window.confirmAdd=async function(id){
   const cond=document.getElementById('cs'+id)?.value||'NM';
   const print=el._prints[pi]||el._prints[0]||{};
   const cost=parseFloat(document.getElementById('cost'+id)?.value)||0;
+  const retailPrice=parseFloat(document.getElementById('retail'+id)?.value)||0;
   const qty=parseInt(document.getElementById('qty'+id)?.value)||1;
   const loc=document.getElementById('loc'+id)?.value||'';
-  el._addedCost = cost; // store for sell flow
+  el._addedCost = cost;
 
   // Show syncing status
   const acts=document.getElementById('acts'+id);
@@ -3113,7 +3172,9 @@ window.confirmAdd=async function(id){
       cert_number:item.cert_number||'',sport:item.sport||'',
       is_rookie:item.is_rookie||false,is_key:item.is_key||false,
       key_notes:item.key_notes||'',cost,
-      market:Number(print.mid)||0,price:Number(print.mid)||0,
+      market:Number(print.mid)||0,
+      price: retailPrice > 0 ? retailPrice : Number(print.mid)||0,
+      retail_price: retailPrice > 0 ? retailPrice : Number(print.mid)||0,
       location:loc,desirability:item.desirability||5,
       status:'in_stock',addedAt:new Date().toISOString(),
       scannedFrom:'AR Scanner',
@@ -3155,12 +3216,27 @@ window.confirmAdd=async function(id){
     if(!inventoryImageUrl && !isSportsCard && hasApiImage) {
       inventoryImageUrl = el._imgUrl;
     }
-    // Also store on element so eBay listing can use it
     if(inventoryImageUrl) el._uploadedPhotoUrl = inventoryImageUrl;
+
+    // Upload additional photos (back of card, etc.)
+    let extraPhotoUrls = [];
+    if(el._extraPhotos && el._extraPhotos.length) {
+      acts.innerHTML = '<div class="cms-status cms-syncing">📸 Uploading extra photos...</div>';
+      for(let ep of el._extraPhotos) {
+        try {
+          const epName = 'card-extra-'+Date.now().toString(36)+'.jpg';
+          const epRes = await fetch(WORKER_URL+'/upload-image', {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({base64:ep, fileName:epName, mimeType:'image/jpeg'})
+          });
+          if(epRes.ok) { const epd=await epRes.json(); if(epd.url) extraPhotoUrls.push(epd.url); }
+        } catch(ue){}
+      }
+    }
 
     // Sync to Products ecommerce collection — single source of truth
     acts.innerHTML = `<div class="cms-status cms-syncing">⟳ SAVING TO INVENTORY...</div>`;
-    const shopId = await syncToShopProduct(entry, inventoryImageUrl);
+    const shopId = await syncToShopProduct(entry, inventoryImageUrl, extraPhotoUrls);
     if(shopId){ entry.shopId=shopId; }
     // Store shopId on element for sell flow
     if(!el._shopIds) el._shopIds = [];
@@ -3458,7 +3534,7 @@ async function testWebflowWrite(){
   const res_el = document.getElementById('settings-test-result');
   if(res_el) res_el.style.display='block';
   if(res_el) res_el.textContent = 'Testing...';
-  const url = WORKER_URL + '/proxy/sites/65b15ee0228d06647ca7e4ce/products';
+  const url = WORKER_URL + '/proxy/sites/'+STORE.wf_site_id+'/products';
   const testPayload = {
     product:{fieldData:{name:'LBA Test '+Date.now(),slug:'lba-test-'+Date.now(),'ec-product-type':STORE.wf_product_type,shippable:true,'sold-out':false,'tax-category':'standard-taxable'}},
     sku:{fieldData:{name:'Test SKU',slug:'lba-test-sku-'+Date.now(),price:{value:100,unit:'USD'},'sku-values':{}}},
