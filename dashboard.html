@@ -909,15 +909,18 @@ function mapItem(i, skuMap){
   const isSold = f['sold-out']===true || f.status===STATUS_SOLD || (typeof f.status==='string'&&f.status.toLowerCase().includes('sold'));
   let cat = CAT_MAP[f['card-category']] || 'TCG';
   const skuPrice = skuMap[i.id]||0;
-  const market = parseFloat(f['market-value'])||parseFloat(f['msrp'])||skuPrice||0;
-  const cost = parseFloat(f.cost)||0;
-  const salePrice = skuPrice;
-  const qty = parseInt(f['inventory-count'])||1;
+  const market = parseFloat(f['retail-price'])||parseFloat(f['msrp'])||skuPrice||0;
+  const cost = parseFloat(f['cost-basis'])||parseFloat(f.cost)||0;
+  // sale-price is written by confirmSell when item is sold
+  const salePrice = parseFloat(f['sale-price'])||skuPrice||market;
+  const qty = parseInt(f['inventory-count'])||0;
+  const profit = isSold ? (parseFloat(f['profit'])||salePrice-cost) : 0;
+  const condition = f['condition']||'';
   return {
     id:i.id, name:f.name||'—', set:f['set-name']||'',
     variant:f.variant||'', year:f.year||'',
     category:cat, cost, market, salePrice, qty,
-    profit:isSold&&cost>0?salePrice-cost:0,
+    profit, condition,
     status:isSold?'sold':'in_stock',
     channel:f['sale-channel']||'',
     addedAt:f['date-added']||i.createdOn||'',
@@ -926,6 +929,7 @@ function mapItem(i, skuMap){
     grader:f.grader||'', grade:f.grade||'',
     tags:f.tags||'',
     thumbnail:f.thumbnail?.url||null,
+    location:f.location||'',
   };
 }
 
