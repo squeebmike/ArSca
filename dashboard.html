@@ -2017,68 +2017,90 @@ async function confirmEditAndSync() {
     key_notes: document.getElementById('edit-notes').value.trim(),
   };
 
-  saveEditToLocalStorage(editingItemId, updates);
-
   const statusEl = document.getElementById('edit-sync-status');
   statusEl.style.color = 'var(--gold)';
   statusEl.textContent = '⟳ Syncing to Webflow...';
 
-  if(!item.shopId) {
-    // Item was never synced to Webflow — try to sync it now
-    statusEl.style.color = 'var(--gold)';
-    statusEl.textContent = '⟳ Creating new Webflow product...';
-    try {
-      const newShopId = await createWebflowProduct(item, updates);
-      if(newShopId) {
-        item.shopId = newShopId;
-        const inv2 = JSON.parse(localStorage.getItem('lba_inventory')||'[]');
-        const idx2 = inv2.findIndex(i=>i.id===id);
-        if(idx2>=0){ inv2[idx2].shopId=newShopId; localStorage.setItem('lba_inventory',JSON.stringify(inv2)); }
-        statusEl.style.color='var(--g)';
-        statusEl.textContent='✓ Created in Webflow! ID: '+newShopId.substring(0,12)+'...';
-        return;
-      }
-    } catch(e2) {}
+  // Dashboard items always come from Webflow so item.id is always the Webflow ID
+  // The wfId check above handles the missing ID case
+
+  // item.id IS the Webflow product ID (set by mapItem: id:i.id)
+  // NEVER create — always PATCH the existing item
+  const wfId = item.id;
+  if(!wfId) {
     statusEl.style.color = 'var(--red)';
-    statusEl.textContent = '⚠ Could not create in Webflow — check Worker connection';
+    statusEl.textContent = '⚠ No Webflow ID on this item';
     return;
   }
 
   try {
     const priceCents = Math.round((updates.market||0) * 100);
-    const catMap = {Sports:'891253037409c4fe59854f3c9ef99a6b',TCG:'475ed99cc87de703b543fe9529e2c1da',Comic:'27f1c9c43a61cf03820a31132cfc6b9a',Graded:'891253037409c4fe59854f3c9ef99a6b'};
+    const catMap = {
+      'Sports':'891253037409c4fe59854f3c9ef99a6b',
+      'TCG':'475ed99cc87de703b543fe9529e2c1da',
+      'Comic':'27f1c9c43a61cf03820a31132cfc6b9a',
+      'Graded':'891253037409c4fe59854f3c9ef99a6b'
+    };
+    const condMap = {
+      'NM':'05cbd3bb538b65343a8f40c0fbe31282',
+      'LP':'80fd49b88449644f4d07b359e1605285',
+      'MP':'ca2f2fe8cc18722f0d692fc8085c032b',
+      'HP':'db523fd58130ff74075929bccd03a52f',
+      'DMG':'42d7ad74836de857454ebe2062d09a40'
+    };
 
+    // Build CMS fieldData — only update fields that have values
     const fieldData = {
       'inventory-count': updates.qty,
       'msrp': Math.round(updates.market||0),
+      'retail-price': Math.round(updates.market||0),
     };
-    if(updates.set) fieldData['set-name'] = updates.set;
-    if(updates.year) fieldData['year'] = String(updates.year);
+    if(updates.set)       fieldData['set-name']        = updates.set;
+    if(updates.year)      fieldData['year']             = String(updates.year);
+    if(updates.variant)   fieldData['variant']          = updates.variant;
+    if(updates.location)  fieldData['location']         = updates.location;
     if(updates.key_notes) fieldData['card-description'] = updates.key_notes;
+    if(updates.cost > 0)  fieldData['cost-basis']       = updates.cost;
     if(catMap[updates.category]) fieldData['card-category'] = catMap[updates.category];
+    if(condMap[updates.condition]) fieldData['condition'] = condMap[updates.condition];
+    // Update name if set changed
+    if(updates.set || updates.year) {
+      const nameParts = [item.name, updates.year||item.year, updates.set||item.set].filter(Boolean);
+      // Don't rename — keep original name to avoid breaking things
+    }
 
-    // Update SKU price via products endpoint
-    const r = await fetch(WORKER+'/proxy/sites/65b15ee0228d06647ca7e4ce/products/'+item.shopId, {
-      method: 'PATCH',
-      headers: {'Content-Type':'application/json','accept':'application/json'},
-      body: JSON.stringify({ sku: { fieldData: { price: { value: priceCents, unit: 'USD' } } } })
-    });
-
-    // Update CMS fields
-    const r2 = await fetch(WORKER+'/proxy/collections/65eb45a28ff6bf3fe4f17b14/items/'+item.shopId, {
+    // 1. PATCH CMS item fields (ALWAYS — never POST/create)
+    const r2 = await fetch(WORKER+'/proxy/collections/'+WF_PRODUCTS+'/items/'+wfId, {
       method: 'PATCH',
       headers: {'Content-Type':'application/json'},
       body: JSON.stringify({ fieldData })
     });
 
-    if(r.ok || r2.ok) {
-      statusEl.style.color = 'var(--g)';
-      statusEl.textContent = '✓ Synced to Webflow — price: $'+(updates.market||0).toFixed(2)+' · qty: '+updates.qty;
-    } else {
-      const err = await r2.text();
-      statusEl.style.color = 'var(--red)';
-      statusEl.textContent = '⚠ Webflow error: '+err.substring(0,80);
-    }
+    // 2. PATCH SKU price via ecommerce products endpoint
+    const r = await fetch(WORKER+'/proxy/sites/'+WF_SITE_ID+'/products/'+wfId, {
+      method: 'PATCH',
+      headers: {'Content-Type':'application/json','accept':'application/json'},
+      body: JSON.stringify({ sku: { fieldData: { price: { value: priceCents, unit: 'USD' } } } })
+    });
+
+    // 3. Publish so changes go live
+    await fetch(WORKER+'/proxy/collections/'+WF_PRODUCTS+'/items/publish', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ itemIds: [wfId] })
+    }).catch(()=>{});
+
+    // Update in-memory data so table reflects change immediately
+    const idx2 = all.findIndex(i=>i.id===wfId);
+    if(idx2>=0) Object.assign(all[idx2], { market:updates.market, qty:updates.qty, cost:updates.cost, set:updates.set, year:updates.year, variant:updates.variant });
+    renderAll();
+
+    const r2txt = r2.ok ? '' : ' (CMS: '+(await r2.text()).substring(0,40)+')';
+    statusEl.style.color = (r2.ok || r.ok) ? 'var(--g)' : 'var(--red)';
+    statusEl.textContent = (r2.ok || r.ok)
+      ? '✓ Updated in Webflow — $'+(updates.market||0).toFixed(2)+' · '+updates.qty+'x'
+      : '⚠ Webflow error'+r2txt;
+
   } catch(e) {
     statusEl.style.color = 'var(--red)';
     statusEl.textContent = '⚠ '+e.message;
