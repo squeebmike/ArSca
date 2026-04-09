@@ -1314,18 +1314,30 @@ async function findExistingProduct(entry) {
   const nameNorm = (entry.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
   const setNorm  = (entry.set  || '').toLowerCase().replace(/[^a-z0-9]/g, '');
   const yearStr  = String(entry.year || '');
+  const varNorm  = (entry.variant || 'Base').toLowerCase();
 
   const match = inv.find(i => {
-    if(i.status === 'sold') return false; // sold items don't count
+    if(i.status === 'sold') return false;
     const iName = (i.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
     const iSet  = (i.set  || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-    const nameMatch = iName === nameNorm || (nameNorm.length > 4 && iName.includes(nameNorm));
-    const setMatch  = !setNorm || !iSet || iSet === setNorm ||
-                      iSet.includes(setNorm.substring(0,6)) ||
-                      setNorm.includes(iSet.substring(0,6));
-    const yearMatch = !yearStr || !i.year || String(i.year) === yearStr;
-    const varMatch  = (entry.variant || 'Base') === (i.variant || 'Base');
-    return nameMatch && setMatch && yearMatch && varMatch;
+    const iVar  = (i.variant || 'Base').toLowerCase();
+    const iYear = String(i.year || '');
+
+    // Name must match exactly (after normalizing)
+    if(iName !== nameNorm) return false;
+
+    // If we have set info, it must match
+    if(setNorm && iSet && iSet !== setNorm &&
+       !iSet.includes(setNorm.substring(0,8)) &&
+       !setNorm.includes(iSet.substring(0,8))) return false;
+
+    // If we have year info, it must match
+    if(yearStr && iYear && iYear !== yearStr) return false;
+
+    // Variant must match
+    if(iVar !== varNorm) return false;
+
+    return true;
   });
 
   if(match) return { shopId: match.shopId, localId: match.id, qty: match.qty || 1 };
@@ -1334,7 +1346,7 @@ async function findExistingProduct(entry) {
   // This catches items added via Webflow CMS editor or other devices
   try {
     const searchName = (entry.name || '').toLowerCase();
-    const res = await wfFetch('/collections/65eb45a28ff6bf3fe4f17b14/items?limit=100');
+    const res = await wfFetch('/collections/'+STORE.wf_products_col+'/items?limit=100');
     if(res.ok) {
       const data = await res.json();
       const items = data.items || [];
@@ -2805,7 +2817,7 @@ function addBubble(item,stock,imgUrl,apiPrintings,bestMatchIdx){
       const cardYear = String(item.year || '').trim();
       if(!cardName || cardName.length < 3) return;
 
-      const res = await wfFetch('/collections/65eb45a28ff6bf3fe4f17b14/items?limit=100');
+      const res = await wfFetch('/collections/'+STORE.wf_products_col+'/items?limit=100');
       if(!res.ok) return;
       const data = await res.json();
       const items = data.items || [];
@@ -3124,9 +3136,9 @@ window.confirmAdd=async function(id){
   // Only flag as duplicate if we have a STRONG match: name + set + year all match
   // AND the existing item has a shopId (meaning it was actually synced)
   const existing = await findExistingProduct(firstEntry);
-  const isRealDuplicate = existing && existing.shopId &&
-    firstEntry.set && firstEntry.year &&  // require set+year to prevent false positives
-    existing.qty !== undefined;
+  // isRealDuplicate: found an exact match in inventory (name+set+year+variant all matched)
+  // The findExistingProduct now uses strict matching so we trust its result
+  const isRealDuplicate = !!(existing && existing.localId);
 
   if(isRealDuplicate) {
     // Already have this card — just increment quantity
