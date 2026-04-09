@@ -1149,7 +1149,8 @@ window.selectFallbackCard = async function(bubId, altIdx) {
   if(selEl) {
     selEl.innerHTML = bubEl._prints.map((p,i) => {
       const price = p.mid>0 ? ` — $${p.mid.toFixed(2)}` : '';
-      return `<option value="${i}"${i===0?' selected':''}>${i===0?'★ ':''}${p.set}${p.numbered?' · #'+p.numbered:''}${p.year?' ('+p.year+')':''}${price}</option>`;
+      const stock = (p.qty != null && p.qty > 0) ? ` · ${p.qty} in stock` : (p.qty === 0 ? ' · SOLD OUT' : '');
+      return `<option value="${i}"${i===0?' selected':''}>${i===0?'★ ':''}${p.set}${p.numbered?' · #'+p.numbered:''}${p.year?' ('+p.year+')':''}${price}${stock}</option>`;
     }).join('');
   }
   const lblEl = bubEl.querySelector('.bsels-label');
@@ -2840,6 +2841,36 @@ function addBubble(item,stock,imgUrl,apiPrintings,bestMatchIdx){
           badge.className = 'stock-num ' + (totalQty > 2 ? 'sn-in' : totalQty > 0 ? 'sn-low' : 'sn-no');
         }
         if(label) label.textContent = totalQty + ' IN STOCK';
+
+        // Store shopId and qty on the bubble element for add/sell flow
+        const firstMatch = matches[0];
+        if(!el._shopIds) el._shopIds = [];
+        if(firstMatch.id && !el._shopIds.includes(firstMatch.id)) el._shopIds.push(firstMatch.id);
+
+        // Update _prints with qty so dropdown shows stock count
+        if(el._prints && el._prints.length > 0) {
+          // Match each print to a Webflow item and set qty
+          el._prints.forEach((p, pi) => {
+            const pSetNorm = (p.set||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+            const wfMatch = matches.find(m => {
+              const mSet = (m.fieldData?.['set-name']||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+              return mSet === pSetNorm || mSet.includes(pSetNorm) || pSetNorm.includes(mSet);
+            });
+            if(wfMatch) {
+              p.qty = parseInt(wfMatch.fieldData?.['inventory-count'])||0;
+              p.wfId = wfMatch.id;
+            }
+          });
+          // Rebuild dropdown with updated qty
+          const selEl = document.getElementById('ps'+bubId);
+          if(selEl) {
+            selEl.innerHTML = el._prints.map((p,i) => {
+              const price = p.mid>0 ? ` — $${p.mid.toFixed(2)}` : '';
+              const stock = p.qty != null ? (p.qty > 0 ? ` · ${p.qty} in stock` : ' · SOLD OUT') : '';
+              return `<option value="${i}"${i===parseInt(selEl.value)?' selected':''}>${i===0?'★ ':''}${p.set}${p.numbered?' · #'+p.numbered:''}${p.year?' ('+p.year+')':''}${price}${stock}</option>`;
+            }).join('');
+          }
+        }
       }
     } catch(e) { console.warn('Stock check error:', e.message); }
   })();
