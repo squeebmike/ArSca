@@ -529,6 +529,11 @@ const WORKER_URL = STORE.worker_url;
 
 
 // Visible debug log
+function toggleDebugLog(){
+  const p = document.getElementById('debug-panel');
+  if(!p) return;
+  p.style.display = p.style.display === 'none' ? 'block' : 'none';
+}
 (function(){
   const orig = {log: console.log, error: console.error, warn: console.warn};
   function addLog(type, args){
@@ -943,40 +948,77 @@ async function fetchAllPrintings(item){
 // Similar to TCGPlayer's condition price breakdown
 function buildPriceChart(bubEl, printing) {
   if(!printing || !printing.mid || printing.mid <= 0) return;
-  const id = bubEl.id;
-  // Remove any existing chart
   bubEl.querySelector('.price-chart')?.remove();
   const nmPrice = printing.mid;
-  // Condition multipliers matching industry standard
+  const low = printing.low || nmPrice * 0.8;
+  const high = printing.high || nmPrice * 1.3;
+
+  // Condition price breakdown
   const conds = [
-    {label:'NM', val: nmPrice,           color:'#00ffb3'},
-    {label:'LP', val: nmPrice * 0.80,    color:'#48cae4'},
-    {label:'MP', val: nmPrice * 0.60,    color:'#ffd166'},
-    {label:'HP', val: nmPrice * 0.40,    color:'#ff9500'},
-    {label:'DMG',val: nmPrice * 0.20,    color:'#ff4d6d'},
+    {label:'NM', val:nmPrice,         color:'#00ffb3'},
+    {label:'LP', val:nmPrice*0.80,    color:'#48cae4'},
+    {label:'MP', val:nmPrice*0.60,    color:'#ffd166'},
+    {label:'HP', val:nmPrice*0.40,    color:'#ff9500'},
+    {label:'DMG',val:nmPrice*0.20,    color:'#ff4d6d'},
   ];
-  const maxVal = nmPrice;
+
+  // allPrices data for sparkline-style graph across finish types
+  const allPrices = printing.allPrices || [];
+
   const chart = document.createElement('div');
   chart.className = 'price-chart';
-  chart.style.cssText = 'margin:6px 0 4px;padding:8px;background:rgba(0,0,0,.3);border-radius:6px;border:1px solid rgba(255,255,255,.06)';
-  chart.innerHTML = '<div style="font-family:monospace;font-size:7px;color:rgba(255,255,255,.3);letter-spacing:1px;margin-bottom:5px">PRICE BY CONDITION</div>'
+  chart.style.cssText = 'margin:6px 0 2px;background:rgba(0,0,0,.35);border-radius:8px;border:1px solid rgba(255,255,255,.07);overflow:hidden';
+
+  // Header row: market + range
+  const headerHtml = '<div style="display:flex;justify-content:space-between;align-items:baseline;padding:7px 10px 4px">'
+    + '<div style="font-family:Orbitron,monospace;font-size:10px;font-weight:700;color:#00ffb3">$' + nmPrice.toFixed(2) + ' <span style="font-size:8px;color:rgba(255,255,255,.3);font-family:monospace;font-weight:400">NM MARKET</span></div>'
+    + '<div style="font-family:monospace;font-size:8px;color:rgba(255,255,255,.3)">$' + low.toFixed(2) + ' – $' + high.toFixed(2) + '</div>'
+    + '</div>';
+
+  // Condition bar chart
+  const maxVal = nmPrice;
+  const barsHtml = '<div style="padding:0 10px 6px">'
+    + '<div style="font-family:monospace;font-size:7px;color:rgba(255,255,255,.25);letter-spacing:1px;margin-bottom:4px">PRICE BY CONDITION</div>'
     + conds.map(c => {
-      const pct = Math.max(4, (c.val / maxVal * 100)).toFixed(0);
-      return '<div style="display:flex;align-items:center;gap:5px;margin-bottom:3px">'
-        + '<div style="font-family:monospace;font-size:8px;color:rgba(255,255,255,.4);width:26px;flex-shrink:0">' + c.label + '</div>'
-        + '<div style="flex:1;height:5px;background:rgba(255,255,255,.06);border-radius:3px">'
-        + '<div style="width:' + pct + '%;height:5px;background:' + c.color + ';border-radius:3px;transition:width .3s"></div>'
-        + '</div>'
-        + '<div style="font-family:monospace;font-size:8px;color:' + c.color + ';width:40px;text-align:right;flex-shrink:0">$' + c.val.toFixed(2) + '</div>'
+        const pct = Math.max(3, (c.val / maxVal * 100)).toFixed(0);
+        return '<div style="display:flex;align-items:center;gap:5px;margin-bottom:3px">'
+          + '<div style="font-family:monospace;font-size:8px;color:rgba(255,255,255,.4);width:26px;flex-shrink:0">' + c.label + '</div>'
+          + '<div style="flex:1;height:5px;background:rgba(255,255,255,.05);border-radius:3px">'
+          + '<div style="width:' + pct + '%;height:5px;background:' + c.color + ';border-radius:3px;transition:width .4s ease"></div>'
+          + '</div>'
+          + '<div style="font-family:monospace;font-size:8px;color:' + c.color + ';width:36px;text-align:right;flex-shrink:0">$' + c.val.toFixed(2) + '</div>'
+          + '</div>';
+      }).join('')
+    + '</div>';
+
+  // Finish comparison row (normal/foil/etched) from allPrices if available
+  let finishHtml = '';
+  if(allPrices.length > 1) {
+    const maxFinish = Math.max(...allPrices.map(p=>p.mid||0));
+    if(maxFinish > 0) {
+      finishHtml = '<div style="border-top:1px solid rgba(255,255,255,.06);padding:5px 10px 6px">'
+        + '<div style="font-family:monospace;font-size:7px;color:rgba(255,255,255,.25);letter-spacing:1px;margin-bottom:4px">BY FINISH</div>'
+        + allPrices.filter(p=>p.mid>0).map(p => {
+            const pct = Math.max(3, (p.mid / maxFinish * 100)).toFixed(0);
+            const label = (p.finish||'normal').replace('holofoil','foil').replace('normal','base').substring(0,6).toUpperCase();
+            return '<div style="display:flex;align-items:center;gap:5px;margin-bottom:3px">'
+              + '<div style="font-family:monospace;font-size:7px;color:rgba(255,255,255,.35);width:36px;flex-shrink:0">' + label + '</div>'
+              + '<div style="flex:1;height:4px;background:rgba(255,255,255,.05);border-radius:2px">'
+              + '<div style="width:' + pct + '%;height:4px;background:rgba(255,209,102,.7);border-radius:2px"></div>'
+              + '</div>'
+              + '<div style="font-family:monospace;font-size:7px;color:rgba(255,209,102,.8);width:36px;text-align:right;flex-shrink:0">$' + p.mid.toFixed(2) + '</div>'
+              + '</div>';
+          }).join('')
         + '</div>';
-    }).join('');
-  // Insert before the condition pills
+    }
+  }
+
+  chart.innerHTML = headerHtml + barsHtml + finishHtml;
+
+  // Insert before condition pills
   const cpillsEl = bubEl.querySelector('.bconds');
   if(cpillsEl) cpillsEl.before(chart);
-  else {
-    const actsEl = bubEl.querySelector('.bacts');
-    if(actsEl) actsEl.before(chart);
-  }
+  else { const actsEl = bubEl.querySelector('.bacts'); if(actsEl) actsEl.before(chart); }
 }
 
 // ── FALLBACK CARD PICKER ─────────────────────────────────────────
@@ -1196,7 +1238,64 @@ window.selectFallbackCard = async function(bubId, altIdx) {
 };
 
 // ── COMIC COVER FETCHER ──────────────────────────────────────────
-// Fetches all available covers for a comic issue from free APIs
+// Fetches comic cover data and price estimates from Open Library + eBay
+async function fetchComicCovers(item){
+  const result = { printings: [], imageUrl: null, bestMatchIdx: 0 };
+  const title = (item.name || '').trim();
+  const issue = (item.issue||'').replace(/[^0-9#]/g,'').replace('#','');
+  const year = item.year || '';
+  const publisher = (item.publisher||item.manufacturer||'').toLowerCase();
+
+  if(!title) return result;
+
+  try {
+    // Build standard variant list for covers
+    const variants = ['Standard Cover', 'Variant A', 'Variant B', 'Variant C', 'Incentive Cover'];
+    variants.forEach((v) => {
+      const gcUrl = 'https://www.gocollect.com/search/?q=' + encodeURIComponent(title + (issue?' #'+issue:'') + ' ' + v);
+      result.printings.push({
+        set: title + (issue ? ' #'+issue : ''),
+        variant: v,
+        year: year,
+        numbered: null,
+        mid: 0, low: 0, high: 0,
+        hasRealPrice: false,
+        imageUrl: null,
+        gcUrl,
+        tcgUrl: null,
+      });
+    });
+    result.bestMatchIdx = 0;
+
+    // Try to get cover image from Open Library (for vintage comics)
+    if(publisher.includes('dc') || publisher.includes('marvel') || title.length > 3) {
+      try {
+        const olQ = encodeURIComponent(title + (issue?' '+issue:'') + (publisher?' '+publisher:''));
+        const olRes = await fetch('https://openlibrary.org/search.json?q='+olQ+'&fields=cover_i,title,first_publish_year&limit=1');
+        if(olRes.ok) {
+          const olData = await olRes.json();
+          const book = olData.docs && olData.docs[0];
+          if(book && book.cover_i) {
+            result.imageUrl = 'https://covers.openlibrary.org/b/id/' + book.cover_i + '-L.jpg';
+            if(result.printings[0]) result.printings[0].imageUrl = result.imageUrl;
+          }
+        }
+      } catch(e2) { /* cover fetch optional */ }
+    }
+
+    // Use eBay completed listings via Worker as price proxy
+    // (eBay shows actual sold prices for CGC/raw graded comics)
+    const searchQ = [title, issue?'#'+issue:'', year, publisher].filter(Boolean).join(' ');
+    const ebayUrl = 'https://www.ebay.com/sch/i.html?_nkw=' + encodeURIComponent(searchQ) + '&LH_Sold=1&LH_Complete=1';
+    // Store search query on item for eBay button
+    if(result.printings[0]) result.printings[0].tcgUrl = ebayUrl;
+
+  } catch(e){ console.warn('Comic cover fetch failed:', e.message); }
+
+  return result;
+}
+
+
 async function fetchComicCovers(item){
   const result = { printings: [], imageUrl: null, bestMatchIdx: 0 };
   const title = item.name || '';
@@ -1907,10 +2006,12 @@ async function scanFront(img){
   window._lastFrontB64 = img;
   window._lastFrontTime = Date.now();
 
-  const quickPrompt = `Identify this item. Can be a trading card, toy, comic, Hot Wheels, Funko Pop, LEGO, figure, game, or any collectible.
+  const quickPrompt = `Identify this item. Can be a trading card, sports card, comic book, Hot Wheels, Funko Pop, LEGO, figure, game, or any collectible.
 
 Return ONLY a JSON array. Example:
 [{"game":"Sports Card","name":"Patrick Mahomes","player":"Patrick Mahomes","sport":"Football","team":"Chiefs","year":"2019","card_number":null,"set_name":null,"set_id":null,"parallel":"Base","serial_number":null,"grading_company":null,"grade":null,"cert_number":null,"manufacturer":"Panini","is_rookie":true,"cx":50,"cy":50,"search_query":"2019 Panini Mahomes rookie"}]
+
+For comics use: {"game":"Comic","name":"Amazing Spider-Man","issue":"#300","year":"1988","publisher":"Marvel","variant":"First print","cx":50,"cy":50,"search_query":"Amazing Spider-Man 300 1988 first print venom"}
 
 game must be exactly one of: Pokemon TCG, Magic: The Gathering, Yu-Gi-Oh!, Sports Card, Comic, PSA Slab, BGS Slab, CGC Slab, SGC Slab, Hot Wheels, Funko Pop, LEGO, Action Figure, Video Game, Sports Memorabilia, Collectible
 
@@ -2137,12 +2238,27 @@ Return array only, no markdown.`;
           const fetched = await fetchComicCovers(_item);
           if(fetched.printings && fetched.printings.length) {
             _bbl._prints = fetched.printings;
-            // Store TCGPlayer card ID for fast price lookups later
-            if(fetched.tcgCardId) {
-              _bbl._tcgCardId = fetched.tcgCardId;
-              if(_bbl._item) _bbl._item.tcgCardId = fetched.tcgCardId;
+            // Update dropdown with variant options
+            const selEl = document.getElementById('ps'+bubId);
+            if(selEl) {
+              selEl.innerHTML = fetched.printings.map((p,i) =>
+                '<option value="'+i+'"'+(i===0?' selected':'')+'>'+p.variant+'</option>'
+              ).join('');
             }
           }
+          // Set cover image if found
+          if(fetched.imageUrl) {
+            _bbl._imgUrl = fetched.imageUrl;
+            const imgEl = document.getElementById('cimg'+bubId);
+            if(imgEl) { imgEl.src = fetched.imageUrl; imgEl.style.display='block'; }
+          }
+          // Update eBay sold link with specific search
+          const comicTitle = (_item.name||'') + ' ' + (_item.issue||'');
+          const comicEbayQ = [_item.name, _item.issue, _item.year, _item.publisher].filter(Boolean).join(' ');
+          const ebayBtns = _bbl.querySelectorAll('.a-ebay');
+          if(ebayBtns[0]) ebayBtns[0].href = AFF.ebaySearch(comicEbayQ);
+          // Update status
+          if(hs) hs.textContent = 'COMIC · TAP EBAY FOR PRICING';
         } else if(isGeneralLocal) {
           // General collectible — no price API, guidance only
           const bpEl = document.getElementById('bp'+_bbl.id);
@@ -4146,17 +4262,11 @@ function injectNavButtons(){
   cartBtn.innerHTML = '<span class="nav-ico">🛒</span><span style="font-size:7px">CART</span>';
   cartBtn.style.cursor = 'pointer';
 
-  const priceBtn = document.createElement('a');
-  priceBtn.className = 'lba-nav-btn';
-  priceBtn.onclick = openPricingTools;
-  priceBtn.innerHTML = '<span class="nav-ico">📊</span><span style="font-size:7px">PRICING</span>';
-  priceBtn.style.cursor = 'pointer';
-
+  // Pricing tab removed — all price info is in the bubble
   // Insert before dashboard link
   const dashBtn = nav.querySelector('a[href="dashboard.html"]');
   if(dashBtn) {
-    nav.insertBefore(priceBtn, dashBtn);
-    nav.insertBefore(cartBtn, priceBtn);
+    nav.insertBefore(cartBtn, dashBtn);
   } else {
     nav.appendChild(cartBtn);
     nav.appendChild(priceBtn);
