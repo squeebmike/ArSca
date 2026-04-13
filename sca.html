@@ -144,6 +144,8 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
 .a-130{background:rgba(72,202,228,.08);color:var(--blue);border:1px solid rgba(72,202,228,.2);}
 .a-gcol{background:rgba(199,125,255,.08);color:var(--purple);border:1px solid rgba(199,125,255,.2);}
 .a-psa{background:rgba(230,57,70,.08);color:var(--psa);border:1px solid rgba(230,57,70,.2);}
+.slab-grader-pill{cursor:pointer;transition:background .15s,color .15s;}
+.slab-grader-pill.on{background:rgba(255,209,102,.2)!important;color:#ffd166!important;border-color:rgba(255,209,102,.5)!important;}
 .a-add{background:rgba(0,255,179,.1);color:var(--g);border:1px solid rgba(0,255,179,.25);grid-column:1/-1;}
 .a-sell{background:rgba(255,77,109,.1);color:var(--red);border:1px solid rgba(255,77,109,.25);grid-column:1/-1;}
 .a-confirm{background:var(--g);color:#000;border:none;grid-column:1/-1;font-weight:700;}
@@ -2895,7 +2897,46 @@ function addBubble(item,stock,imgUrl,apiPrintings,bestMatchIdx){
               NON-HOLO $$${Number(prints[normIdx].mid||0).toFixed(2)}</button>
           </div>`
         : '');
-      return `${holoToggle}<div class="bsels"><div class="bsels-label">${prints.length > 0 ? prints.length+' PRINTING'+(prints.length!==1?'S':'')+' FOUND' : 'LOADING PRINTINGS...'}</div><select class="bsel" id="ps${id}" onchange="chPrint('${id}')" data-bmi="${bmi}">${printOpts}</select><select class="bsel" id="cs${id}" onchange="chCond('${id}')">${Object.keys(CM).map(c=>`<option>${c}</option>`).join('')}</select></div><div class="bconds">${Object.keys(CM).map((c,i)=>`<span class="bcp${i===0?' on':''}" onclick="cpill('${id}',this,'${c}')">${c}</span>`).join('')}</div>`;
+      // Slab mode panel — hidden by default, toggled by SLAB button
+  // Auto-show if this is already detected as a slab
+  const slabPanelId = 'slab-panel-'+id;
+  const slabPanelOpen = isSlab; // auto-open for detected slabs
+  const graders = ['PSA','BGS','CGC','SGC'];
+  const grades = ['10','9.5','9','8.5','8','7.5','7','6','5','4','3','2','1','A'];
+  const detectedGrader = (item.grading_company||'').toUpperCase() || (isSlab ? ct.toUpperCase() : '');
+  const detectedGrade = item.grade || '';
+  const graderPills = graders.map(g =>
+    `<span class="bcp slab-grader-pill${g===detectedGrader?' on':''}" onclick="setSlabGrader('${id}','${g}',this)" style="font-size:8px;padding:3px 7px">${g}</span>`
+  ).join('');
+  const gradeOpts = grades.map(g =>
+    `<option value="${g}"${g===detectedGrade?' selected':''}>${g}</option>`
+  ).join('');
+
+  const slabPanel = `<div id="${slabPanelId}" style="display:${slabPanelOpen?'block':'none'};background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:8px;margin-bottom:6px">
+    <div style="font-family:monospace;font-size:7px;color:rgba(255,255,255,.3);letter-spacing:2px;margin-bottom:6px">GRADING COMPANY</div>
+    <div class="bconds" style="margin-bottom:8px">${graderPills}</div>
+    <div style="display:flex;gap:6px;align-items:center;margin-bottom:8px">
+      <div style="flex:1">
+        <div style="font-family:monospace;font-size:7px;color:rgba(255,255,255,.3);letter-spacing:2px;margin-bottom:4px">GRADE</div>
+        <select class="bsel" id="slab-grade-${id}" onchange="updateSlabSearch('${id}')">${gradeOpts}</select>
+      </div>
+      <div style="flex:2">
+        <div style="font-family:monospace;font-size:7px;color:rgba(255,255,255,.3);letter-spacing:2px;margin-bottom:4px">CERT # (optional)</div>
+        <input class="inv-inp" id="slab-cert-${id}" style="margin:0;padding:5px 8px;font-size:10px" placeholder="e.g. 12345678" value="${item.cert_number||''}" oninput="updateSlabVerifyLink('${id}')">
+      </div>
+    </div>
+    <div id="slab-links-${id}" style="display:flex;gap:4px;flex-wrap:wrap"></div>
+  </div>`;
+
+  // SLAB toggle button — shows for sports/TCG even when not auto-detected
+  const showSlabToggle = ct==='sports'||ct==='tcg'||isSlab;
+  const slabToggleBtn = showSlabToggle
+    ? `<button class="bact" id="slab-tog-${id}" onclick="toggleSlabPanel('${id}')"
+        style="background:${isSlab?'rgba(255,209,102,.15)':'rgba(255,255,255,.05)'};border:1px solid ${isSlab?'rgba(255,209,102,.4)':'rgba(255,255,255,.15)'};color:${isSlab?'#ffd166':'rgba(255,255,255,.4)'};font-size:8px;letter-spacing:1px">
+        📋 SLAB${isSlab?' · '+detectedGrader+' '+detectedGrade:''}</button>`
+    : '';
+
+  return `${holoToggle}${slabPanel}${slabToggleBtn}<div class="bsels"><div class="bsels-label">${prints.length > 0 ? prints.length+' PRINTING'+(prints.length!==1?'S':'')+' FOUND' : 'LOADING PRINTINGS...'}</div><select class="bsel" id="ps${id}" onchange="chPrint('${id}')" data-bmi="${bmi}">${printOpts}</select><select class="bsel" id="cs${id}" onchange="chCond('${id}')">${Object.keys(CM).map(c=>`<option>${c}</option>`).join('')}</select></div><div class="bconds">${Object.keys(CM).map((c,i)=>`<span class="bcp${i===0?' on':''}" onclick="cpill('${id}',this,'${c}')">${c}</span>`).join('')}</div>`;
     })():''}
     <div class="bacts" id="acts${id}">
       ${actLinks}
@@ -4209,16 +4250,37 @@ let currentPaymentIntentId = null;
 
 // Load cart from localStorage or start fresh
 function loadCartState() {
+  // Sync from localStorage immediately (synchronous startup)
   try {
     const saved = localStorage.getItem('pos_cart_v2');
     if(saved) {
       const parsed = JSON.parse(saved);
       cart = parsed.items || [];
       cartDiscount = parsed.discount || 0;
-      return true;
     }
-  } catch(e) { console.warn('Cart load error:', e); }
-  return false;
+  } catch(e) {}
+  // Then async-check Worker — if Worker has newer/different cart, merge
+  // This makes the scanner pick up a cart started on another device
+  setTimeout(async () => {
+    try {
+      const r = await fetch(WORKER_URL + '/cart', {signal: AbortSignal.timeout(2000)});
+      if(!r.ok) return;
+      const wc = await r.json();
+      if(!wc || !wc.savedAt || wc.clearedAt) return; // empty/cleared cart, skip
+      const localSaved = localStorage.getItem('pos_cart_v2');
+      const lc = localSaved ? JSON.parse(localSaved) : null;
+      const workerIsNewer = !lc || new Date(wc.savedAt) > new Date(lc.savedAt||0);
+      if(workerIsNewer && (wc.items||[]).length > 0) {
+        cart = wc.items;
+        cartDiscount = wc.discount || 0;
+        localStorage.setItem('pos_cart_v2', JSON.stringify(wc));
+        updateCartBadge();
+        renderCart();
+        if(cart.length > 0) toast('Cart synced · ' + cart.length + ' item' + (cart.length>1?'s':''));
+      }
+    } catch(e) {}
+  }, 800);
+  return cart.length > 0;
 }
 function saveCartState() {
   const cartData = {
@@ -4282,15 +4344,21 @@ function toggleCart(){
   renderCart();
 }
 
-function addToCart(item, imgUrl, price){
+function addToCart(item, imgUrl, price, opts){
+  opts = opts || {};
   const cartItem = {
     id: 'ci_' + Date.now() + Math.random().toString(36).slice(2,5),
     name: item.player || item.name || 'Item',
     sub: [item.year, item.set_name, item.parallel && item.parallel!=='Base'?item.parallel:null, item.card_number?'#'+item.card_number:null].filter(Boolean).join(' · '),
     price: price || 0,
+    cost: opts.cost || item.cost || 0,
     img: imgUrl || null,
-    shopId: item.shopId || null,
+    shopId: opts.shopId || item.shopId || null,
+    wfId:  opts.shopId || item.shopId || null,
     category: item.category || 'TCG',
+    condition: opts.condition || '',
+    set: item.set_name || item.set || '',
+    year: item.year || '',
   };
   cart.push(cartItem);
   saveCartState();
@@ -4379,19 +4447,24 @@ function renderCart(){
   }
   if(empty) empty.style.display='none';
 
-  list.innerHTML = cart.map(i => `
-    <div class="pos-item">
+  list.innerHTML = cart.map(i => {
+    const syncDot = i.shopId
+      ? '<span style="color:#00ffb3;font-size:7px"> ●WF</span>'
+      : '<span style="color:rgba(255,209,102,.5);font-size:7px" title="Not in Webflow inventory"> ○unsynced</span>';
+    const condStr = i.condition ? ` · <span style="color:rgba(255,255,255,.4)">${i.condition}</span>` : '';
+    return `<div class="pos-item">
       ${i.img ? `<img class="pos-item-img" src="${i.img}" onerror="this.style.display='none'">` : '<div class="pos-item-img" style="background:rgba(255,255,255,.06)"></div>'}
       <div class="pos-item-info">
-        <div class="pos-item-name">${i.name}</div>
-        <div class="pos-item-sub">${i.sub||''}</div>
+        <div class="pos-item-name">${i.name}${syncDot}</div>
+        <div class="pos-item-sub">${i.sub||''}${condStr}</div>
         <button class="pos-item-edit" onclick="editCartPrice('${i.id}')">Edit price</button>
       </div>
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
         <span class="pos-item-price">$${(i.price||0).toFixed(2)}</span>
         <button class="pos-item-rm" onclick="removeFromCart('${i.id}')">×</button>
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 
   renderCartTotals();
 }
@@ -4428,8 +4501,22 @@ window.addBubbleToCart = function(id){
   const print = el._prints?.[pi]||el._prints?.[0]||{};
   const cond = document.getElementById('cs'+id)?.value||'NM';
   const condM = {NM:1,LP:.8,MP:.64,HP:.4,DMG:.25}[cond]||1;
-  const price = Number(print.mid||0) * condM;
-  addToCart(el._item, el._uploadedPhotoUrl||el._imgUrl, price);
+  const retailInp = document.getElementById('retail'+id);
+  const retailPrice = retailInp ? parseFloat(retailInp.value)||0 : 0;
+  const price = retailPrice > 0 ? retailPrice : (Number(print.mid||0) * condM);
+  const shopId = (el._shopIds && el._shopIds[0]) || (print.wfId) || null;
+  addToCart(el._item, el._uploadedPhotoUrl||el._imgUrl, price, {
+    shopId, cost: el._addedCost || 0, condition: cond,
+  });
+  // Show inline confirmation
+  const existingBadge = el.querySelector('.cart-confirm-badge');
+  if(existingBadge) existingBadge.remove();
+  const badge = document.createElement('div');
+  badge.className = 'cart-confirm-badge';
+  badge.style.cssText = 'font-family:monospace;font-size:9px;color:#00ffb3;padding:4px 0;text-align:center;letter-spacing:1px';
+  badge.textContent = '✓ IN CART · $' + price.toFixed(2);
+  const actsEl = document.getElementById('acts'+id);
+  if(actsEl) actsEl.prepend(badge);
 };
 
 // ════════════════════════════════════════════════════════════
@@ -4710,9 +4797,10 @@ async function processStripePayment(){
 
 // ── RECORD TRANSACTION ────────────────────────────────────
 async function recordTransaction(method, total, change){
+  const soldAt = new Date().toISOString();
   const tx = {
     id: 'tx_'+Date.now(),
-    date: new Date().toISOString(),
+    date: soldAt,
     items: [...cart],
     method,
     subtotal: getCartTotals().sub,
@@ -4722,21 +4810,65 @@ async function recordTransaction(method, total, change){
     change,
   };
 
-  window._lastTx = tx; // for receipt printer
-  // Save to localStorage
-  const txLog = JSON.parse(localStorage.getItem('pos_transactions')||'[]');
-  txLog.unshift(tx);
-  localStorage.setItem('pos_transactions', JSON.stringify(txLog.slice(0,500)));
+  window._lastTx = tx;
 
-  // Mark items as sold in Webflow (best-effort)
-  for(const item of cart){
-    if(item.shopId){
-      wfFetch('/collections/'+STORE.wf_products_col+'/items/'+item.shopId, {
-        method:'PATCH',
-        body:JSON.stringify({fieldData:{'sold-out':true,'inventory-count':0,'status':STORE.wf_status_sold}})
-      }).catch(()=>{});
+  // Save transaction log to localStorage
+  try {
+    const txLog = JSON.parse(localStorage.getItem('pos_transactions')||'[]');
+    txLog.unshift(tx);
+    localStorage.setItem('pos_transactions', JSON.stringify(txLog.slice(0,500)));
+  } catch(e) {}
+
+  // Mark ALL cart items as sold in Webflow
+  const soldAt2 = soldAt;
+  const cartSnapshot = [...cart];
+  for(const item of cartSnapshot) {
+    let shopId = item.shopId || item.wfId;
+    // If no shopId, try quick Webflow lookup by exact name
+    if(!shopId && item.name) {
+      try {
+        const res = await wfFetch('/collections/'+STORE.wf_products_col+'/items?limit=100');
+        if(res && res.ok) {
+          const data = await res.json();
+          const nameNorm = item.name.toLowerCase().replace(/[^a-z0-9]/g,'');
+          const match = (data.items||[]).find(i => {
+            const iName = (i.fieldData?.name||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+            return iName === nameNorm;
+          });
+          if(match) shopId = match.id;
+        }
+      } catch(e) {}
+    }
+    if(shopId) {
+      const itemCost = item.cost || 0;
+      wfFetch('/collections/'+STORE.wf_products_col+'/items/'+shopId, {
+        method: 'PATCH',
+        body: JSON.stringify({ fieldData: {
+          'sold-out':        true,
+          'inventory-count': 0,
+          'status':          STORE.wf_status_sold,
+          'sale-price':      item.price,
+          'profit':          item.price - itemCost,
+          'sale-channel':    method,
+          'date-sold':       soldAt2,
+        }})
+      }).catch(e => console.warn('Webflow sold mark failed:', item.name, e.message));
+    } else {
+      console.warn('No Webflow ID for cart item:', item.name);
     }
   }
+
+  // Clear cart from all stores
+  clearCartState();
+  updateCartBadge();
+  renderCart();
+
+  // Clear Worker cart so tablet shows empty
+  fetch(WORKER_URL+'/cart', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({items:[], discount:0, total:0, clearedAt: soldAt, lastTxId: tx.id})
+  }).catch(()=>{});
 
   closeCheckout();
   document.getElementById('pos-cart').classList.remove('on');
@@ -5193,6 +5325,102 @@ async function testWorkerConnection(){
 window.addEventListener('online',function(){var h=document.getElementById('hstatus');if(h&&h.textContent==='OFFLINE MODE')h.textContent='READY';});
 window.addEventListener('offline',function(){var h=document.getElementById('hstatus');if(h)h.textContent='OFFLINE MODE';});
 
+
+// ═══ SLAB PANEL FUNCTIONS ══════════════════════════════════════
+function toggleSlabPanel(id) {
+  const panel = document.getElementById('slab-panel-'+id);
+  const btn = document.getElementById('slab-tog-'+id);
+  if(!panel) return;
+  const isOpen = panel.style.display !== 'none';
+  panel.style.display = isOpen ? 'none' : 'block';
+  if(!isOpen) {
+    // Opening — update links immediately
+    updateSlabVerifyLink(id);
+    updateSlabSearch(id);
+    if(btn) { btn.style.background='rgba(255,209,102,.15)'; btn.style.borderColor='rgba(255,209,102,.4)'; btn.style.color='#ffd166'; }
+  } else {
+    if(btn) { btn.style.background='rgba(255,255,255,.05)'; btn.style.borderColor='rgba(255,255,255,.15)'; btn.style.color='rgba(255,255,255,.4)'; }
+  }
+}
+
+function setSlabGrader(id, grader, pill) {
+  // Update pill UI
+  const panel = document.getElementById('slab-panel-'+id);
+  if(panel) panel.querySelectorAll('.slab-grader-pill').forEach(p => p.classList.remove('on'));
+  if(pill) pill.classList.add('on');
+  // Store on element
+  const el = document.getElementById(id);
+  if(el) { if(!el._slabInfo) el._slabInfo = {}; el._slabInfo.grader = grader; }
+  updateSlabVerifyLink(id);
+  updateSlabSearch(id);
+  // Update toggle button label
+  const grade = document.getElementById('slab-grade-'+id)?.value || '';
+  const btn = document.getElementById('slab-tog-'+id);
+  if(btn) btn.textContent = '📋 SLAB · ' + grader + (grade ? ' ' + grade : '');
+}
+
+function updateSlabVerifyLink(id) {
+  const el = document.getElementById(id);
+  const linksEl = document.getElementById('slab-links-'+id);
+  if(!linksEl) return;
+
+  const grader = (el?._slabInfo?.grader || el?.querySelector('.slab-grader-pill.on')?.textContent || 'PSA').trim();
+  const cert = document.getElementById('slab-cert-'+id)?.value?.trim() || '';
+  const grade = document.getElementById('slab-grade-'+id)?.value || '';
+
+  // Store on item
+  if(el?._item) {
+    el._item.grading_company = grader;
+    el._item.grade = grade;
+    if(cert) el._item.cert_number = cert;
+  }
+
+  let verifyHref = '', verifyLabel = '';
+  if(grader === 'PSA') {
+    verifyHref = cert ? `https://www.psacard.com/cert/${cert}` : `https://www.psacard.com/cert/lookup`;
+    verifyLabel = cert ? '🔍 PSA Verify ↗' : '🔍 PSA Lookup ↗';
+  } else if(grader === 'BGS') {
+    verifyHref = cert ? `https://www.beckett.com/grading/cert?cert=${cert}` : `https://www.beckett.com/grading/cert`;
+    verifyLabel = cert ? '🔍 BGS Verify ↗' : '🔍 BGS Lookup ↗';
+  } else if(grader === 'CGC') {
+    verifyHref = cert ? `https://www.cgccomics.com/certification/item-lookup/?certNumber=${cert}` : `https://www.cgccomics.com/certification/item-lookup/`;
+    verifyLabel = cert ? '🔍 CGC Verify ↗' : '🔍 CGC Lookup ↗';
+  } else if(grader === 'SGC') {
+    verifyHref = cert ? `https://www.sgccard.com/cert-lookup/?cert=${cert}` : `https://www.sgccard.com/cert-lookup/`;
+    verifyLabel = cert ? '🔍 SGC Verify ↗' : '🔍 SGC Lookup ↗';
+  }
+
+  const graderColors = { PSA:'var(--psa,#e63946)', BGS:'rgba(200,200,255,.9)', CGC:'#f4a261', SGC:'#ff9500' };
+  const color = graderColors[grader] || '#fff';
+
+  linksEl.innerHTML = verifyHref
+    ? `<a class="bact" href="${verifyHref}" target="_blank"
+        style="flex:1;text-align:center;background:rgba(255,255,255,.06);border:1px solid ${color};color:${color};font-weight:700;font-size:9px">
+        ${verifyLabel}</a>`
+    : '';
+
+  // Also trigger a graded eBay search update
+  updateSlabSearch(id);
+}
+
+function updateSlabSearch(id) {
+  const el = document.getElementById(id);
+  if(!el || !el._item) return;
+  const grader = (el._slabInfo?.grader || el?.querySelector('.slab-grader-pill.on')?.textContent || 'PSA').trim();
+  const grade = document.getElementById('slab-grade-'+id)?.value || '';
+  const item = el._item;
+  const q = [item.player||item.name, item.year, item.set_name, grader, grade].filter(Boolean).join(' ');
+  const qBase = [item.player||item.name, item.year, item.set_name, grader].filter(Boolean).join(' ');
+
+  // Update eBay sold link in main actLinks to use graded search
+  const ebayBtns = el.querySelectorAll('.a-ebay');
+  if(ebayBtns[0] && q) ebayBtns[0].href = AFF.ebaySearch(q);
+  if(ebayBtns[1] && qBase) ebayBtns[1].href = AFF.ebaySearch(qBase);
+
+  // Update toggle button
+  const btn = document.getElementById('slab-tog-'+id);
+  if(btn && grade) btn.textContent = '📋 SLAB · ' + grader + ' ' + grade;
+}
 // ═══ LAUNCH ═════════════════════════════════════════════════════
 window.addEventListener('load', function(){
   startScanner();
