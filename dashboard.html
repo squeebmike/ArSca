@@ -133,6 +133,7 @@ tr.sold:hover td{opacity:.7;}
 .ct.Comic{background:rgba(199,125,255,.1);color:var(--purple);}
 .ct.Graded{background:rgba(72,202,228,.1);color:var(--blue);}
 .ct.Supplies{background:rgba(255,255,255,.06);color:var(--dim);}
+.ct.Collectibles{background:rgba(255,149,0,.1);color:#ff9500;}
 .pp{font-family:monospace,monospace;font-size:11px;text-align:right;}
 .pm{color:var(--gold);}
 .pd{color:var(--blue);}
@@ -310,6 +311,7 @@ tr.sold:hover td{opacity:.7;}
     <button class="fb" onclick="setF('TCG',this)">🎴 TCG</button>
     <button class="fb" onclick="setF('Comic',this)">📖 Comics</button>
     <button class="fb" onclick="setF('Graded',this)">🏆 Graded</button>
+    <button class="fb" onclick="setF('Collectibles',this)">🏷 Collectibles</button>
     <span id="tbl-count" style="font-family:monospace,monospace;font-size:9px;color:var(--dim);margin-left:4px"></span>
   </div>
   <div class="tbl-wrap">
@@ -405,6 +407,7 @@ tr.sold:hover td{opacity:.7;}
           <option value="Yu-Gi-Oh!">Yu-Gi-Oh!</option>
           <option value="Comic">Comic</option>
           <option value="Graded">Graded Slab</option>
+          <option value="Collectibles">Collectibles</option>
         </select>
         <button class="hbtn" onclick="runPriceLookup()" style="white-space:nowrap">LOOK UP</button>
       </div>
@@ -602,6 +605,7 @@ tr.sold:hover td{opacity:.7;}
           <option value="Sports">Sports</option>
           <option value="Comic">Comic</option>
           <option value="Graded">Graded</option>
+          <option value="Collectibles">Collectibles</option>
         </select>
       </div>
     </div>
@@ -617,6 +621,25 @@ tr.sold:hover td{opacity:.7;}
 
     <label style="margin-top:8px;display:block">Description / Notes</label>
     <textarea id="edit-notes" rows="2" style="width:100%;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:8px;border-radius:6px;font-size:11px;resize:vertical"></textarea>
+
+    <div style="margin-top:10px;border-top:1px solid var(--border);padding-top:10px">
+      <div style="font-family:monospace;font-size:8px;color:var(--dim);letter-spacing:2px;margin-bottom:8px">ADDITIONAL DETAILS</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+        <div><label>Player / Creator</label><input type="text" id="edit-player" placeholder="Player, artist..."></div>
+        <div><label>Team / Publisher</label><input type="text" id="edit-team" placeholder="Team, publisher..."></div>
+        <div><label>Issue # / Item #</label><input type="text" id="edit-issue" placeholder="#1, SKU..."></div>
+        <div><label>Serial # / Numbered</label><input type="text" id="edit-serial" placeholder="023/150"></div>
+        <div><label>Card # / Language</label><input type="text" id="edit-cardnum" placeholder="123/200, Japanese"></div>
+        <div><label>Grade (CGC/CBCS/PSA)</label><input type="text" id="edit-grade-extra" placeholder="CGC 9.8, PSA 10"></div>
+      </div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap">
+        <label style="display:flex;align-items:center;gap:5px;font-family:monospace;font-size:10px;color:var(--dim);cursor:pointer"><input type="checkbox" id="edit-rookie"> RC</label>
+        <label style="display:flex;align-items:center;gap:5px;font-family:monospace;font-size:10px;color:var(--dim);cursor:pointer"><input type="checkbox" id="edit-auto"> Auto/Sig</label>
+        <label style="display:flex;align-items:center;gap:5px;font-family:monospace;font-size:10px;color:var(--dim);cursor:pointer"><input type="checkbox" id="edit-patch"> Patch</label>
+        <label style="display:flex;align-items:center;gap:5px;font-family:monospace;font-size:10px;color:var(--dim);cursor:pointer"><input type="checkbox" id="edit-key"> Key Issue</label>
+        <label style="display:flex;align-items:center;gap:5px;font-family:monospace;font-size:10px;color:var(--dim);cursor:pointer"><input type="checkbox" id="edit-signed"> Signed</label>
+      </div>
+    </div>
 
     <div id="edit-profit-preview" style="font-family:'DM Mono',monospace;font-size:10px;margin:8px 0"></div>
 
@@ -669,6 +692,7 @@ tr.sold:hover td{opacity:.7;}
           <option value="any">Any Category</option>
           <option value="TCG">TCG</option><option value="Sports">Sports</option>
           <option value="Comic">Comic</option><option value="Graded">Graded</option>
+          <option value="Collectibles">Collectibles</option>
         </select>
         <input class="tsi" id="wl-notes" placeholder="Notes (condition req, variant, etc)" style="flex:1;margin-bottom:0">
         <button class="hbtn" onclick="addWantItem()" style="white-space:nowrap">+ ADD</button>
@@ -926,10 +950,25 @@ function mapItem(i, skuMap){
     addedAt:f['date-added']||i.createdOn||'',
     soldAt:f['date-sold']||'',
     isRookie:f.is_rookie||false,
+    is_rookie:f.is_rookie||false,
     grader:f.grader||'', grade:f.grade||'',
     tags:f.tags||'',
     thumbnail:f.thumbnail?.url||null,
     location:f.location||'',
+    player:f['player-card-name']||f.player||'',
+    team:f.team||'',
+    sport:f.sport||'',
+    issue:f.issue||'',
+    publisher:f.publisher||'',
+    card_number:f['card-number']||f.card_number||'',
+    serial_number:f['serial-number']||f.serial_number||'',
+    is_auto:f.is_auto||false,
+    is_patch:f.is_patch||false,
+    is_key:f['is-key-card']||f.is_key||false,
+    is_signed:f.is_signed||false,
+    language:f.language||'English',
+    comic_grade:f['comic-grade']||f.comic_grade||'',
+    key_notes:f['key-notes']||f.key_notes||'',
   };
 }
 
@@ -974,7 +1013,7 @@ function renderStats(){
 
 function renderCats(){
   const ins=all.filter(i=>i.status==='in_stock');
-  const cats=['Sports','TCG','Comic','Graded'];
+  const cats=['Sports','TCG','Comic','Graded','Collectibles'];
   const vals = cats.map(c=>ins.filter(i=>i.category===c).reduce((a,i)=>a+(i.market||0)*(i.qty||1),0));
   const maxVal = Math.max(...vals,1);
   cats.forEach((c,idx)=>{
@@ -992,7 +1031,7 @@ function renderCats(){
 
   // Profit meter
   const sol=all.filter(i=>i.status==='sold');
-  const catColors={'Sports':'var(--gold)','TCG':'var(--g)','Comic':'var(--purple)','Graded':'var(--blue)'};
+  const catColors={'Sports':'var(--gold)','TCG':'var(--g)','Comic':'var(--purple)','Graded':'var(--blue)','Collectibles':'#ff9500'};
   const profitMeter=document.getElementById('profit-meter');
   const catProfits=cats.map(c=>({c,p:sol.filter(i=>i.category===c).reduce((a,i)=>a+(i.profit||0),0)}));
   const maxP=Math.max(...catProfits.map(x=>Math.abs(x.p)),1);
@@ -1759,8 +1798,8 @@ function renderRestock(){
   const ins = all.filter(i=>i.status==='in_stock');
 
   // Fastest sellers by category (items/week)
-  const cats = ['Sports','TCG','Comic','Graded'];
-  const catColors = {Sports:'var(--gold)',TCG:'var(--g)',Comic:'var(--purple)',Graded:'var(--blue)'};
+  const cats = ['Sports','TCG','Comic','Graded','Collectibles'];
+  const catColors = {Sports:'var(--gold)',TCG:'var(--g)',Comic:'var(--purple)',Graded:'var(--blue)',Collectibles:'#ff9500'};
   const catSales = cats.map(c=>{
     const catSold = sol.filter(i=>i.category===c);
     const weeks = catSold.length ? Math.max(1,(Date.now()-new Date(catSold[catSold.length-1].soldAt))/604800000) : 1;
@@ -1934,6 +1973,17 @@ function openEditModal(id) {
   document.getElementById('edit-variant').value = item.variant || '';
   document.getElementById('edit-location').value = item.location || '';
   document.getElementById('edit-notes').value = item.key_notes || item.notes || '';
+  document.getElementById('edit-player').value = item.player || '';
+  document.getElementById('edit-team').value = item.team || item.publisher || '';
+  document.getElementById('edit-issue').value = item.issue || '';
+  document.getElementById('edit-serial').value = item.serial_number || '';
+  document.getElementById('edit-cardnum').value = item.card_number || '';
+  document.getElementById('edit-grade-extra').value = item.comic_grade || item.grade || '';
+  document.getElementById('edit-rookie').checked = item.is_rookie || item.isRookie || false;
+  document.getElementById('edit-auto').checked = item.is_auto || false;
+  document.getElementById('edit-patch').checked = item.is_patch || false;
+  document.getElementById('edit-key').checked = item.is_key || false;
+  document.getElementById('edit-signed').checked = item.is_signed || false;
   document.getElementById('edit-sync-status').textContent = '';
 
   const condSel = document.getElementById('edit-condition');
@@ -1996,6 +2046,17 @@ function confirmEdit() {
     condition: document.getElementById('edit-condition').value,
     category: document.getElementById('edit-category').value,
     key_notes: document.getElementById('edit-notes').value.trim(),
+    player: document.getElementById('edit-player').value.trim(),
+    team: document.getElementById('edit-team').value.trim(),
+    issue: document.getElementById('edit-issue').value.trim(),
+    serial_number: document.getElementById('edit-serial').value.trim(),
+    card_number: document.getElementById('edit-cardnum').value.trim(),
+    comic_grade: document.getElementById('edit-grade-extra').value.trim(),
+    is_rookie: document.getElementById('edit-rookie').checked,
+    is_auto: document.getElementById('edit-auto').checked,
+    is_patch: document.getElementById('edit-patch').checked,
+    is_key: document.getElementById('edit-key').checked,
+    is_signed: document.getElementById('edit-signed').checked,
   };
   saveEditToLocalStorage(editingItemId, updates);
   toast_dash('✓ Saved: ' + (all.find(i=>i.id===editingItemId)?.name||'item'));
@@ -2019,6 +2080,17 @@ async function confirmEditAndSync() {
     condition: document.getElementById('edit-condition').value,
     category: document.getElementById('edit-category').value,
     key_notes: document.getElementById('edit-notes').value.trim(),
+    player: document.getElementById('edit-player').value.trim(),
+    team: document.getElementById('edit-team').value.trim(),
+    issue: document.getElementById('edit-issue').value.trim(),
+    serial_number: document.getElementById('edit-serial').value.trim(),
+    card_number: document.getElementById('edit-cardnum').value.trim(),
+    comic_grade: document.getElementById('edit-grade-extra').value.trim(),
+    is_rookie: document.getElementById('edit-rookie').checked,
+    is_auto: document.getElementById('edit-auto').checked,
+    is_patch: document.getElementById('edit-patch').checked,
+    is_key: document.getElementById('edit-key').checked,
+    is_signed: document.getElementById('edit-signed').checked,
   };
 
   const statusEl = document.getElementById('edit-sync-status');
