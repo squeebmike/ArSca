@@ -1248,144 +1248,182 @@ window.selectFallbackCard = async function(bubId, altIdx) {
   bubEl._pickerSelected = true;
 };
 
-// ── COMIC COVER FETCHER ──────────────────────────────────────────
-// Fetches comic cover data and price estimates from Open Library + eBay
-async function fetchComicCovers(item){
-  const result = { printings: [], imageUrl: null, bestMatchIdx: 0 };
-  const title = (item.name || '').trim();
-  const issue = (item.issue||'').replace(/[^0-9#]/g,'').replace('#','');
-  const year = item.year || '';
-  const publisher = (item.publisher||item.manufacturer||'').toLowerCase();
+// ── COMIC VARIANT SELECTOR ────────────────────────────────────────
+// Called when user taps a cover in the variant image strip
+window.applyComicVariant = function(bubId, varIdx) {
+  const el = document.getElementById(bubId);
+  if(!el || !el._cvVariants) return;
+  const v = el._cvVariants[varIdx];
+  if(!v) return;
 
-  if(!title) return result;
+  // Update bubble cover image
+  const imgEl = el.querySelector('.card-img');
+  if(imgEl && v.cover_image) imgEl.src = v.cover_image;
+
+  // Update item fields
+  if(el._item) {
+    if(v.title)      el._item.name    = v.title;
+    if(v.volume)     el._item.set_name = v.volume;
+    if(v.publisher)  el._item.publisher = v.publisher;
+    if(v.cover_date) el._item.year    = v.cover_date.slice(0,4);
+    el._item.cvId = v.id;
+  }
+
+  // Update bname / bsub display
+  const bnameEl = el.querySelector('.bname');
+  if(bnameEl && v.title) bnameEl.textContent = v.title;
+  const bsubEl = el.querySelector('.bsub');
+  if(bsubEl) {
+    const parts = [v.volume, v.cover_date?.slice(0,4), v.publisher].filter(Boolean);
+    bsubEl.textContent = parts.join(' · ');
+  }
+
+  // Highlight selected strip card
+  el.querySelectorAll('.comic-variant-strip [data-vidx]').forEach((d,i) => {
+    d.style.borderColor = i === varIdx ? 'rgba(199,125,255,.9)' : 'rgba(255,255,255,.1)';
+  });
+
+  toast('✓ ' + (v.title || 'Cover') + ' selected');
+};
+
+// ── COMIC CACHE ──────────────────────────────────────────────────
+// Simple in-memory cache keyed by "title|issue" (lowercased)
+// Cleared on page reload — no stale data risk
+const _comicCache = {};
+
+// ── COMIC VINE — real variant covers ─────────────────────────────
+// Returns array of variant objects with cover_image URLs from Comic Vine
+async function fetchComicVariants(title, issueNumber) {
+  if(!title) return [];
+  const cacheKey = (title + '|' + (issueNumber||'')).toLowerCase();
+  if(_comicCache[cacheKey]?.variants !== undefined) return _comicCache[cacheKey].variants;
 
   try {
-    // Build standard variant list for covers
-    const variants = ['Standard Cover', 'Variant A', 'Variant B', 'Variant C', 'Incentive Cover'];
-    variants.forEach((v) => {
-      const gcUrl = 'https://www.gocollect.com/search/?q=' + encodeURIComponent(title + (issue?' #'+issue:'') + ' ' + v);
-      result.printings.push({
-        set: title + (issue ? ' #'+issue : ''),
-        variant: v,
-        year: year,
-        numbered: null,
-        mid: 0, low: 0, high: 0,
-        hasRealPrice: false,
-        imageUrl: null,
-        gcUrl,
-        tcgUrl: null,
-      });
-    });
-    result.bestMatchIdx = 0;
-
-    // Try to get cover image from Open Library (for vintage comics)
-    if(publisher.includes('dc') || publisher.includes('marvel') || title.length > 3) {
-      try {
-        const olQ = encodeURIComponent(title + (issue?' '+issue:'') + (publisher?' '+publisher:''));
-        const olRes = await fetch('https://openlibrary.org/search.json?q='+olQ+'&fields=cover_i,title,first_publish_year&limit=1');
-        if(olRes.ok) {
-          const olData = await olRes.json();
-          const book = olData.docs && olData.docs[0];
-          if(book && book.cover_i) {
-            result.imageUrl = 'https://covers.openlibrary.org/b/id/' + book.cover_i + '-L.jpg';
-            if(result.printings[0]) result.printings[0].imageUrl = result.imageUrl;
-          }
-        }
-      } catch(e2) { /* cover fetch optional */ }
-    }
-
-    // Use eBay completed listings via Worker as price proxy
-    // (eBay shows actual sold prices for CGC/raw graded comics)
-    const searchQ = [title, issue?'#'+issue:'', year, publisher].filter(Boolean).join(' ');
-    const ebayUrl = 'https://www.ebay.com/sch/i.html?_nkw=' + encodeURIComponent(searchQ) + '&LH_Sold=1&LH_Complete=1';
-    // Store search query on item for eBay button
-    if(result.printings[0]) result.printings[0].tcgUrl = ebayUrl;
-
-  } catch(e){ console.warn('Comic cover fetch failed:', e.message); }
-
-  return result;
+    const params = new URLSearchParams({ title });
+    if(issueNumber) params.set('issue', issueNumber);
+    const res = await fetch(WORKER_URL + '/comic/variants?' + params.toString());
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    const variants = data.variants || [];
+    if(!_comicCache[cacheKey]) _comicCache[cacheKey] = {};
+    _comicCache[cacheKey].variants = variants;
+    return variants;
+  } catch(e) {
+    console.warn('[Comic Vine]', e.message);
+    if(!_comicCache[cacheKey]) _comicCache[cacheKey] = {};
+    _comicCache[cacheKey].variants = []; // cache the miss so we don't retry
+    return [];
+  }
 }
 
+// ── COMIC PRICING — eBay sold / active price range ───────────────
+// Returns { averagePrice, recentPrices[], source }
+async function fetchComicPricing(title, issueNumber) {
+  if(!title) return { averagePrice: 0, recentPrices: [] };
+  const cacheKey = (title + '|' + (issueNumber||'')).toLowerCase();
+  if(_comicCache[cacheKey]?.pricing !== undefined) return _comicCache[cacheKey].pricing;
 
+  try {
+    const params = new URLSearchParams({ title });
+    if(issueNumber) params.set('issue', issueNumber);
+    const res = await fetch(WORKER_URL + '/comic/pricing?' + params.toString());
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    const pricing = {
+      averagePrice: data.averagePrice || 0,
+      recentPrices: data.recentPrices || [],
+      source: data.source || 'none',
+    };
+    if(!_comicCache[cacheKey]) _comicCache[cacheKey] = {};
+    _comicCache[cacheKey].pricing = pricing;
+    return pricing;
+  } catch(e) {
+    console.warn('[Comic Pricing]', e.message);
+    if(!_comicCache[cacheKey]) _comicCache[cacheKey] = {};
+    _comicCache[cacheKey].pricing = { averagePrice: 0, recentPrices: [] };
+    return { averagePrice: 0, recentPrices: [] };
+  }
+}
+
+// ── COMIC COVER FETCHER ─────────────────────────────────────────
 async function fetchComicCovers(item){
-  const result = { printings: [], imageUrl: null, bestMatchIdx: 0 };
-  const title = item.name || '';
-  const issue = (item.issue||'').replace(/[^0-9]/g,'');
+  const result = { printings: [], imageUrl: null, bestMatchIdx: 0, pricing: null };
+  const title   = item.name || '';
+  const issue   = (item.issue||'').replace(/[^0-9]/g,'');
   const publisher = (item.publisher||item.manufacturer||'').toLowerCase();
 
-  try{
-    // Marvel API (free, no key needed for basic search via unofficial endpoint)
-    if(publisher.includes('marvel')){
-      const q = encodeURIComponent(title);
-      const r = await fetch(`https://comicvine.gamespot.com/api/issues/?api_key=YOUR_FREE_KEY&format=json&filter=volume_name:${q},issue_number:${issue}&field_list=name,image,cover_date,description,volume&limit=20`,
-        {headers:{'User-Agent':'LBAScanner/1.0'}});
-      // ComicVine requires a key — skip if not configured
-    }
+  try {
+    // ── Fetch Comic Vine variants + eBay pricing in parallel ────
+    const [cvVariants, pricing] = await Promise.all([
+      fetchComicVariants(title, issue),
+      fetchComicPricing(title, issue),
+    ]);
 
-    // Approach that works without a key: construct cover URLs from known CDNs
-    // Marvel issues: i.annihil.us format
-    // DC: covers from DC Universe
-    // Fallback: search Google Books for ISBN cover
-    
-    // Best no-key approach: Open Library covers by ISBN if we have it
-    // OR: construct a GoCollect-style search URL as the "cover"
-    
-    // For now build printings from Claude's data + supplement with cover search URL
-    const variants = [
-      'Standard Cover',
-      'Variant A',
-      'Variant B', 
-      'Variant C',
-      'Virgin/Textless',
-      'Sketch Variant',
-      'Foil Cover',
-      'Connecting Variant',
-      'Convention Exclusive',
-      'Incentive Variant (1:10)',
-      'Incentive Variant (1:25)',
-      'Incentive Variant (1:50)',
-      'Incentive Variant (1:100)',
-      'Blank Cover',
-      'Second Print',
-      'Third Print',
-      'Newsstand Edition',
-    ];
+    result.pricing = pricing;
+    const avg   = pricing.averagePrice || 0;
+    const gcBase = 'https://www.gocollect.com/search/?q=' + encodeURIComponent(title + (issue ? ' #'+issue : ''));
 
-    // Use Claude's printings from the scan if available
-    if(item.printings && item.printings.length > 0){
-      item.printings.forEach((p, i) => {
+    if(cvVariants && cvVariants.length > 0) {
+      // ── Comic Vine path: real covers + real variants ───────────
+      cvVariants.forEach((v, i) => {
+        const yr = v.cover_date ? v.cover_date.slice(0,4) : (item.year || '');
         result.printings.push({
-          set: p.set || title + (issue ? ' #'+issue : ''),
-          variant: p.variant || 'Standard Cover',
-          year: p.year || item.year || '',
-          numbered: p.numbered || null,
-          mid: p.mid || 0,
-          low: p.low || 0,
-          high: p.high || 0,
-          hasRealPrice: false,
-          imageUrl: p.imageUrl || null,
-          // GoCollect link as price reference
-          tcgUrl: null,
-          gcUrl: 'https://www.gocollect.com/search/?q=' + encodeURIComponent(title + ' ' + (issue ? '#'+issue : '') + ' ' + (p.variant||''))
+          set:          v.volume  || title + (issue ? ' #'+issue : ''),
+          variant:      v.title   || 'Cover',
+          year:         yr,
+          numbered:     null,
+          mid:          avg,
+          low:          avg > 0 ? Math.round(avg * 0.7 * 100)/100 : 0,
+          high:         avg > 0 ? Math.round(avg * 1.4 * 100)/100 : 0,
+          hasRealPrice: avg > 0,
+          imageUrl:     v.cover_image || null,
+          gcUrl:        gcBase,
+          tcgUrl:       null,
+          publisher:    v.publisher || publisher,
+          cvId:         v.id,
+          cvDescription: v.description || null,
+          // Attach full variants array only on first entry for reference
+          _cvVariants:  i === 0 ? cvVariants : undefined,
+        });
+        // Use first cover image as the bubble's hero image
+        if(i === 0 && v.cover_image) result.imageUrl = v.cover_image;
+      });
+      result.bestMatchIdx = 0;
+
+    } else {
+      // ── Fallback: use Claude's printings or generic variant list ─
+      const fallbackVariants = [
+        'Standard Cover','Variant A','Variant B','Variant C',
+        'Virgin/Textless','Sketch Variant','Foil Cover',
+        'Connecting Variant','Newsstand Edition',
+        'Second Print','Third Print',
+        'Convention Exclusive','Incentive Variant (1:10)',
+        'Incentive Variant (1:25)','Incentive Variant (1:50)',
+      ];
+      const source = (item.printings && item.printings.length > 0) ? item.printings : fallbackVariants.map(v=>({variant:v}));
+      source.forEach(p => {
+        const variantLabel = p.variant || 'Standard Cover';
+        result.printings.push({
+          set:          p.set || title + (issue ? ' #'+issue : ''),
+          variant:      variantLabel,
+          year:         p.year || item.year || '',
+          numbered:     p.numbered || null,
+          mid:          avg || p.mid || 0,
+          low:          avg > 0 ? Math.round(avg * 0.7 * 100)/100 : (p.low || 0),
+          high:         avg > 0 ? Math.round(avg * 1.4 * 100)/100 : (p.high || 0),
+          hasRealPrice: avg > 0,
+          imageUrl:     p.imageUrl || null,
+          gcUrl:        gcBase + ' ' + encodeURIComponent(variantLabel),
+          tcgUrl:       null,
         });
       });
       result.bestMatchIdx = 0;
-    } else {
-      // Build standard variant list if Claude didn't return printings
-      variants.forEach((v, i) => {
-        result.printings.push({
-          set: title + (issue ? ' #'+issue : ''),
-          variant: v,
-          year: item.year || '',
-          numbered: null,
-          mid: 0, low: 0, high: 0,
-          hasRealPrice: false,
-          imageUrl: null,
-          gcUrl: 'https://www.gocollect.com/search/?q=' + encodeURIComponent(title + ' ' + (issue ? '#'+issue : '') + ' ' + v)
-        });
-      });
     }
-  }catch(e){ console.log('Comic cover fetch failed:', e); }
+
+  } catch(e) {
+    console.warn('[fetchComicCovers]', e.message);
+    // Return result unchanged — existing data unaffected
+  }
   return result;
 }
 
@@ -2298,13 +2336,57 @@ Return array only, no markdown.`;
               }
             }
           }
-          // Update eBay sold link with specific search
+          // Update eBay links with specific search
           const comicEbayQ = [_item.name, _item.issue, _item.year, _item.publisher].filter(Boolean).join(' ');
           const ebayBtns = _bbl.querySelectorAll('.a-ebay');
           if(ebayBtns[0]) ebayBtns[0].href = AFF.ebaySearch(comicEbayQ);
           if(ebayBtns[1]) ebayBtns[1].href = AFF.ebayActive(comicEbayQ);
-          // Update status
-          if(hs) hs.textContent = 'COMIC · TAP EBAY FOR PRICING';
+
+          // Surface pricing into the bubble's price row
+          const pricing = fetched.pricing;
+          if(pricing && pricing.averagePrice > 0) {
+            const bpC = document.getElementById('bp'+_bbl.id);
+            const brC = document.getElementById('br'+_bbl.id);
+            if(bpC) { bpC.textContent = '$' + pricing.averagePrice.toFixed(2); bpC.style.fontSize=''; bpC.style.color=''; }
+            const srcLabel = pricing.source === 'ebay_sold' ? 'eBay sold avg' : 'eBay active avg';
+            if(brC) brC.textContent = srcLabel + ' · ' + pricing.recentPrices.length + ' listings';
+            // Show GoCollect link and price range in comps section
+            const compsEl = _bbl.querySelector('.comps');
+            if(compsEl) {
+              const lo = Math.round(pricing.averagePrice * 0.7 * 100)/100;
+              const hi = Math.round(pricing.averagePrice * 1.4 * 100)/100;
+              compsEl.innerHTML = `<div class="comps-hdr">${srcLabel.toUpperCase()} — ${pricing.recentPrices.length} LISTINGS</div>
+                <div class="comp-row"><span class="comp-d">Average</span><span class="comp-p">$${pricing.averagePrice.toFixed(2)}</span></div>
+                <div class="comp-row"><span class="comp-d">Low est</span><span class="comp-p">$${lo.toFixed(2)}</span></div>
+                <div class="comp-row"><span class="comp-d">High est</span><span class="comp-p">$${hi.toFixed(2)}</span></div>`;
+            }
+          }
+
+          // Build variant image strip if Comic Vine covers loaded
+          const cvVars = fetched.printings?.find(p=>p._cvVariants)?._cvVariants;
+          if(cvVars && cvVars.length > 1) {
+            const existingStrip = _bbl.querySelector('.comic-variant-strip');
+            if(!existingStrip) {
+              const strip = document.createElement('div');
+              strip.className = 'comic-variant-strip';
+              strip.style.cssText = 'display:flex;gap:4px;overflow-x:auto;margin-bottom:8px;padding:4px 0;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch';
+              strip.innerHTML = cvVars.filter(v=>v.cover_image).map((v,i) =>
+                `<div onclick="applyComicVariant('${_bbl.id}',${i})" data-vidx="${i}"
+                  style="flex-shrink:0;scroll-snap-align:start;cursor:pointer;border-radius:5px;overflow:hidden;border:2px solid ${i===0?'rgba(199,125,255,.8)':'rgba(255,255,255,.1)'};width:75px;transition:.15s"
+                  onmouseenter="this.style.borderColor='rgba(199,125,255,.6)'" onmouseleave="this.style.borderColor='${i===0?'rgba(199,125,255,.8)':'rgba(255,255,255,.1)'}'">
+                  <img src="${v.cover_image}" style="width:75px;height:105px;object-fit:cover;display:block" loading="lazy" onerror="this.closest('[data-vidx]').style.display='none'">
+                  <div style="font-family:monospace;font-size:6px;color:rgba(255,255,255,.4);padding:2px 3px;background:rgba(0,0,0,.7);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${v.title||'Cover'}</div>
+                </div>`
+              ).join('');
+              // Store variants on bubble for applyComicVariant
+              _bbl._cvVariants = cvVars;
+              const imgSlot = document.getElementById('cimg'+_bbl.id);
+              if(imgSlot) imgSlot.after(strip); else _bbl.querySelector('.bacts')?.before(strip);
+            }
+          }
+
+          const cvCount = fetched.printings.filter(p=>p.cvId).length;
+          if(hs) hs.textContent = cvCount > 0 ? `COMIC · ${cvCount} COVERS FOUND` : 'COMIC · TAP EBAY FOR PRICING';
         } else if(isGeneralLocal) {
           // General collectible — no price API, guidance only
           const bpEl = document.getElementById('bp'+_bbl.id);
