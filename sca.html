@@ -1291,6 +1291,59 @@ window.applyComicVariant = function(bubId, varIdx) {
 // Cleared on page reload — no stale data risk
 const _comicCache = {};
 
+// ── COMIC VISUAL MATCH — compare scanned cover against CV thumbnails ──
+// Sends the scanned image + up to 6 Comic Vine cover URLs to Sonnet.
+// Sonnet picks which CV cover most closely matches the actual scan.
+// Returns { bestIdx, confidence, reason } where bestIdx is index in cvVariants.
+async function findBestComicCoverMatch(frontB64, cvVariants) {
+  const withCovers = cvVariants.filter(v => v.cover_image);
+  if(!frontB64 || withCovers.length < 2) return { bestIdx: 0, confidence: 'low', reason: 'not enough candidates' };
+
+  // Cap at 6 candidates to keep prompt size manageable
+  const candidates = withCovers.slice(0, 6);
+
+  try {
+    // Build multi-image message: scan first, then each CV cover as a URL image
+    const content = [
+      { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: frontB64 } },
+      { type: 'text', text:
+        `That is the SCANNED comic cover. Below are ${candidates.length} Comic Vine cover candidates numbered 0–${candidates.length-1}. ` +
+        `Compare the scanned cover against each candidate. Look at: title/logo typography and style, publisher branding, art style (painted vs flat vs sketch), ` +
+        `color palette, character poses, barcode presence, cover price text, and overall layout composition. ` +
+        `Which candidate number (0–${candidates.length-1}) is the SAME EDITION as the scanned cover? ` +
+        `Return ONLY JSON — no markdown: {"best_match":0,"confidence":"high","reason":"specific visual detail that confirms the match"}`
+      },
+    ];
+
+    candidates.forEach((v, i) => {
+      const label = [v.volume || v.title, v.cover_date || v.year, v.publisher].filter(Boolean).join(' · ');
+      content.push({ type: 'text', text: `Candidate ${i}: ${label}` });
+      content.push({ type: 'image', source: { type: 'url', url: v.cover_image } });
+    });
+
+    // Use Sonnet — Haiku is weaker at multi-image visual reasoning
+    const resp = await callClaudeSonnet([{ role: 'user', content }], 200);
+    const ji = resp.indexOf('{');
+    if(ji >= 0) {
+      const result = JSON.parse(resp.slice(ji));
+      const picked = result.best_match;
+      if(typeof picked === 'number' && picked >= 0 && picked < candidates.length) {
+        // Map back from the "candidates" sub-array to the original cvVariants index
+        const matched = candidates[picked];
+        const originalIdx = cvVariants.indexOf(matched);
+        return {
+          bestIdx: originalIdx >= 0 ? originalIdx : 0,
+          confidence: result.confidence || 'medium',
+          reason: result.reason || '',
+        };
+      }
+    }
+  } catch(e) {
+    console.warn('[Comic visual match]', e.message);
+  }
+  return { bestIdx: 0, confidence: 'low', reason: 'visual match failed' };
+}
+
 // ── COMIC VINE — real variant covers ─────────────────────────────
 // Returns array of variant objects with cover_image URLs from Comic Vine
 async function fetchComicVariants(title, issueNumber, year) {
@@ -2429,6 +2482,34 @@ Return array only, no markdown.`;
           const hasPricing = fetched.pricing && fetched.pricing.averagePrice > 0;
           const priceSrc = fetched.pricing?.source === 'ai_estimate' ? ' · AI PRICED' : (hasPricing ? ' · PRICED' : '');
           if(hs) hs.textContent = cvCount > 0 ? `COMIC · ${cvCount} COVERS${priceSrc}` : (hasPricing ? `COMIC · PRICED${priceSrc}` : 'COMIC · TAP EBAY FOR PRICING');
+
+          // ── Visual cover matching — compare scan against CV thumbnails ──
+          // Runs after strip is shown so user sees results while Sonnet thinks
+          const cvVarsForMatch = fetched.printings?.find(p=>p._cvVariants)?._cvVariants;
+          if(_bbl._frontB64 && cvVarsForMatch && cvVarsForMatch.filter(v=>v.cover_image).length >= 2) {
+            if(hs) hs.textContent = (hs.textContent || '') + ' · MATCHING COVER...';
+            try {
+              const match = await findBestComicCoverMatch(_bbl._frontB64, cvVarsForMatch);
+              console.log('[Comic visual match] idx='+match.bestIdx+' conf='+match.confidence+' — '+match.reason);
+              if(match.confidence !== 'low') {
+                // Apply best visual match (even if index 0 — confirms or corrects selection)
+                applyComicVariant(_bbl.id, match.bestIdx);
+                // Patch _item context so prices/eBay links use the matched edition
+                const vMatch = cvVarsForMatch[match.bestIdx];
+                if(vMatch?.cover_date) _item.year = vMatch.cover_date.slice(0,4);
+                if(vMatch?.publisher)  _item.publisher = vMatch.publisher;
+              }
+              // Update status — include match reason on hover via title attr
+              const matchLabel = match.confidence === 'low' ? '' : ` · COVER ${match.bestIdx} MATCHED`;
+              const finalStatus = cvCount > 0
+                ? `COMIC · ${cvCount} COVERS${priceSrc}${matchLabel}`
+                : (hasPricing ? `COMIC · PRICED${priceSrc}` : 'COMIC · TAP EBAY FOR PRICING');
+              if(hs) { hs.textContent = finalStatus; hs.title = match.reason || ''; }
+            } catch(me) {
+              console.warn('[Comic visual match]', me.message);
+              if(hs) hs.textContent = hs.textContent.replace(' · MATCHING COVER...', '');
+            }
+          }
         } else if(isGeneralLocal) {
           // General collectible — no price API, guidance only
           const bpEl = document.getElementById('bp'+_bbl.id);
