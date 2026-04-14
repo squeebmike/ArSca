@@ -1293,14 +1293,15 @@ const _comicCache = {};
 
 // ── COMIC VINE — real variant covers ─────────────────────────────
 // Returns array of variant objects with cover_image URLs from Comic Vine
-async function fetchComicVariants(title, issueNumber) {
+async function fetchComicVariants(title, issueNumber, year) {
   if(!title) return [];
-  const cacheKey = (title + '|' + (issueNumber||'')).toLowerCase();
+  const cacheKey = (title + '|' + (issueNumber||'') + '|' + (year||'')).toLowerCase();
   if(_comicCache[cacheKey]?.variants !== undefined) return _comicCache[cacheKey].variants;
 
   try {
     const params = new URLSearchParams({ title });
     if(issueNumber) params.set('issue', issueNumber);
+    if(year) params.set('year', String(year));
     const res = await fetch(WORKER_URL + '/comic/variants?' + params.toString());
     if(!res.ok) throw new Error('HTTP ' + res.status);
     const data = await res.json();
@@ -1355,7 +1356,7 @@ async function fetchComicCovers(item){
   try {
     // ── Fetch Comic Vine variants + eBay pricing in parallel ────
     const [cvVariants, pricing] = await Promise.all([
-      fetchComicVariants(title, issue),
+      fetchComicVariants(title, issue, item.year),
       fetchComicPricing(title, issue),
     ]);
 
@@ -2071,7 +2072,14 @@ async function scanFront(img){
 
 IMPORTANT RULES:
 - For sports cards: DO NOT guess the player if face is unclear — set confidence:"low" and describe what you can see (uniform color, number, position). Look for ANY text on the card edges/corners for year or card number.
-- For comics: Read the TITLE and ISSUE NUMBER from the cover carefully. Check for variant cover indicators.
+- For comics: Read the TITLE and ISSUE NUMBER from the cover carefully. CRITICAL — determine the CORRECT PUBLISHER and YEAR from VISUAL EVIDENCE on the cover, not the most famous version:
+  * Look for the publisher logo/imprint (Mirage, IDW, Image, Dark Horse, DC, Marvel, Fantagraphics, etc.) — it appears on the cover or spine
+  * Check cover price: $0.75 or $1.50 = ~1984 era; $1.25-$2.50 = late 80s/90s; $2.99-$3.99 = 2000s-present
+  * Check for UPC barcode: vintage comics (pre-1975) have NO barcode; modern comics have a UPC barcode on the cover
+  * Check printing style: black & white interior art comics often have covers indicating B&W content; full-color modern vs B&W indie
+  * Check for "Volume 2", "Vol. 2", or "Series 2" text on the cover — different volume = different publisher or era
+  * The year you report should be what you can VISUALLY CONFIRM from the cover, not the year of the most famous issue with that number
+  * Example: TMNT #1 from IDW (2011) has IDW logo, $3.99 cover price, UPC barcode, full color. TMNT #1 from Mirage (1984) has no barcode, $1.50 price, Mirage logo — very different look
 - For slabs (PSA/BGS/CGC/SGC): Read the label — player name, year, set, grade, cert number are ALL printed clearly on the label.
 - Only return items you can actually identify. If truly unreadable, return confidence:"low" with best guess.
 - cx/cy = % position of card center in image (0-100).
@@ -2079,7 +2087,8 @@ IMPORTANT RULES:
 Return ONLY a JSON array, no markdown. Examples:
 [{"game":"Sports Card","name":"Patrick Mahomes","player":"Patrick Mahomes","sport":"Football","team":"Kansas City Chiefs","year":"2019","card_number":null,"set_name":"Panini Prizm","parallel":"Base","serial_number":null,"manufacturer":"Panini","is_rookie":true,"cx":50,"cy":50,"confidence":"high","confidence_reason":"name clearly visible on front","search_query":"2019 Panini Prizm Patrick Mahomes rookie base"}]
 
-Comic example: {"game":"Comic","name":"Amazing Spider-Man","issue":"#300","year":"1988","publisher":"Marvel","variant":"First print","cx":50,"cy":50,"confidence":"high","confidence_reason":"title and issue # clearly visible","search_query":"Amazing Spider-Man 300 1988 first print venom"}
+Comic example: {"game":"Comic","name":"Amazing Spider-Man","issue":"#300","year":"1988","publisher":"Marvel","volume":"1","variant":"First print","cx":50,"cy":50,"confidence":"high","confidence_reason":"Marvel logo top-left, $1.50 cover price, no UPC barcode visible","search_query":"Amazing Spider-Man 300 1988 first print venom"}
+Comic example 2 (modern): {"game":"Comic","name":"Teenage Mutant Ninja Turtles","issue":"#1","year":"2011","publisher":"IDW","volume":"5","variant":"Cover A","cx":50,"cy":50,"confidence":"high","confidence_reason":"IDW logo visible, $3.99 cover price, UPC barcode present, full color","search_query":"TMNT Teenage Mutant Ninja Turtles 1 2011 IDW cover A"}
 
 Slab example: {"game":"PSA Slab","name":"Charizard","grading_company":"PSA","grade":"9","cert_number":"12345678","year":"1999","set_name":"Base Set","manufacturer":"WOTC","cx":50,"cy":50,"confidence":"high","confidence_reason":"PSA label clearly readable"}
 
@@ -2343,22 +2352,53 @@ Return array only, no markdown.`;
           if(ebayBtns[1]) ebayBtns[1].href = AFF.ebayActive(comicEbayQ);
 
           // Surface pricing into the bubble's price row
-          const pricing = fetched.pricing;
+          let pricing = fetched.pricing;
+
+          // ── Claude pricing fallback when eBay returns nothing ──
+          if(!pricing || pricing.averagePrice === 0) {
+            try {
+              const comicCtx = [_item.name, _item.issue ? '#'+_item.issue : '', _item.year, _item.publisher].filter(Boolean).join(' ');
+              const comicPricePrompt = `Estimate current eBay market prices for this comic book: "${comicCtx}". Use your knowledge of recent sold listings. Return ONLY JSON (no markdown): {"comps":[{"desc":"Raw VF/NM","price":0.00},{"desc":"Raw VG/FN","price":0.00},{"desc":"CGC 9.8","price":0.00},{"desc":"CGC 9.6","price":0.00}],"note":"brief market context"}`;
+              const cpt = await callClaude([{role:'user',content:[{type:'text',text:comicPricePrompt}]}], 250);
+              const ci = cpt.indexOf('{');
+              if(ci >= 0) {
+                const cd = JSON.parse(cpt.slice(ci));
+                if(cd?.comps?.length) {
+                  const rawComp = cd.comps.find(c=>c.desc.toLowerCase().includes('raw') && c.desc.toLowerCase().includes('vf'));
+                  const aiAvg = rawComp ? rawComp.price : cd.comps[0].price;
+                  pricing = { averagePrice: aiAvg, recentPrices: [], source: 'ai_estimate', comps: cd.comps, note: cd.note };
+                  fetched.pricing = pricing;
+                  // store comps on bubble for condition chart
+                  if(_bbl._item) _bbl._item.comps = cd.comps;
+                }
+              }
+            } catch(pe) { console.warn('[Comic AI price]', pe.message); }
+          }
+
           if(pricing && pricing.averagePrice > 0) {
             const bpC = document.getElementById('bp'+_bbl.id);
             const brC = document.getElementById('br'+_bbl.id);
             if(bpC) { bpC.textContent = '$' + pricing.averagePrice.toFixed(2); bpC.style.fontSize=''; bpC.style.color=''; }
-            const srcLabel = pricing.source === 'ebay_sold' ? 'eBay sold avg' : 'eBay active avg';
-            if(brC) brC.textContent = srcLabel + ' · ' + pricing.recentPrices.length + ' listings';
-            // Show GoCollect link and price range in comps section
+            const srcLabel = pricing.source === 'ebay_sold' ? 'eBay sold avg'
+                           : pricing.source === 'ebay_active' ? 'eBay active avg'
+                           : 'AI price est';
+            if(brC) brC.textContent = srcLabel + (pricing.recentPrices?.length ? ' · ' + pricing.recentPrices.length + ' listings' : '');
+            // Show price comps section
             const compsEl = _bbl.querySelector('.comps');
             if(compsEl) {
-              const lo = Math.round(pricing.averagePrice * 0.7 * 100)/100;
-              const hi = Math.round(pricing.averagePrice * 1.4 * 100)/100;
-              compsEl.innerHTML = `<div class="comps-hdr">${srcLabel.toUpperCase()} — ${pricing.recentPrices.length} LISTINGS</div>
-                <div class="comp-row"><span class="comp-d">Average</span><span class="comp-p">$${pricing.averagePrice.toFixed(2)}</span></div>
-                <div class="comp-row"><span class="comp-d">Low est</span><span class="comp-p">$${lo.toFixed(2)}</span></div>
-                <div class="comp-row"><span class="comp-d">High est</span><span class="comp-p">$${hi.toFixed(2)}</span></div>`;
+              if(pricing.source === 'ai_estimate' && pricing.comps?.length) {
+                // AI returned detailed comps — show them all
+                compsEl.innerHTML = `<div class="comps-hdr">AI PRICE ESTIMATE · RAW &amp; GRADED</div>` +
+                  pricing.comps.map(c => `<div class="comp-row"><span class="comp-d">${c.desc}</span><span class="comp-p">$${Number(c.price).toFixed(2)}</span></div>`).join('') +
+                  (pricing.note ? `<div style="font-size:9px;color:rgba(255,255,255,.35);margin-top:4px;font-style:italic">${pricing.note}</div>` : '');
+              } else {
+                const lo = Math.round(pricing.averagePrice * 0.7 * 100)/100;
+                const hi = Math.round(pricing.averagePrice * 1.4 * 100)/100;
+                compsEl.innerHTML = `<div class="comps-hdr">${srcLabel.toUpperCase()} — ${pricing.recentPrices?.length||0} LISTINGS</div>
+                  <div class="comp-row"><span class="comp-d">Average</span><span class="comp-p">$${pricing.averagePrice.toFixed(2)}</span></div>
+                  <div class="comp-row"><span class="comp-d">Low est</span><span class="comp-p">$${lo.toFixed(2)}</span></div>
+                  <div class="comp-row"><span class="comp-d">High est</span><span class="comp-p">$${hi.toFixed(2)}</span></div>`;
+              }
             }
           }
 
@@ -2386,7 +2426,9 @@ Return array only, no markdown.`;
           }
 
           const cvCount = fetched.printings.filter(p=>p.cvId).length;
-          if(hs) hs.textContent = cvCount > 0 ? `COMIC · ${cvCount} COVERS FOUND` : 'COMIC · TAP EBAY FOR PRICING';
+          const hasPricing = fetched.pricing && fetched.pricing.averagePrice > 0;
+          const priceSrc = fetched.pricing?.source === 'ai_estimate' ? ' · AI PRICED' : (hasPricing ? ' · PRICED' : '');
+          if(hs) hs.textContent = cvCount > 0 ? `COMIC · ${cvCount} COVERS${priceSrc}` : (hasPricing ? `COMIC · PRICED${priceSrc}` : 'COMIC · TAP EBAY FOR PRICING');
         } else if(isGeneralLocal) {
           // General collectible — no price API, guidance only
           const bpEl = document.getElementById('bp'+_bbl.id);
