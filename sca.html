@@ -617,6 +617,12 @@ const AFF = {
     let url = 'https://www.ebay.com/sch/i.html?_nkw=' + encodeURIComponent(query);
     if(sold) url += '&LH_Sold=1&LH_Complete=1';
     return this.ebay(url);
+  },
+
+  // Build an eBay active listings search URL (no sold filter)
+  ebayActive(query) {
+    const url = 'https://www.ebay.com/sch/i.html?_nkw=' + encodeURIComponent(query) + '&_sop=12'; // sort by ending soonest
+    return this.ebay(url);
   }
 };
 
@@ -2108,7 +2114,8 @@ Return array only, no markdown.`;
         const gameStr = (_item.game||'').toLowerCase();
         const isTCGLocal = _isTCG || gameStr.includes('pokemon') || gameStr.includes('magic') || gameStr.includes('yu-gi') || gameStr.includes('tcg');
         const isComicLocal = _isComic || gameStr.includes('comic');
-        const isGeneralLocal = _isGeneral || ['hot wheels','funko','lego','action figure','video game','memorabilia','collectible'].some(t=>gameStr.includes(t));
+        const isSportsLocal = gameStr === 'sports card' || gameStr === 'sports' || _bbl._ct === 'sports';
+        const isGeneralLocal = !isTCGLocal && !isComicLocal && !isSportsLocal && (_isGeneral || ['hot wheels','funko','lego','action figure','video game','memorabilia','collectible'].some(t=>gameStr.includes(t)));
 
         if(isTCGLocal) {
           hs.textContent = 'LOADING PRICES...';
@@ -2265,24 +2272,37 @@ Return array only, no markdown.`;
           if(fetched.printings && fetched.printings.length) {
             _bbl._prints = fetched.printings;
             // Update dropdown with variant options
-            const selEl = document.getElementById('ps'+bubId);
+            const selEl = document.getElementById('ps'+_bbl.id);
             if(selEl) {
               selEl.innerHTML = fetched.printings.map((p,i) =>
                 '<option value="'+i+'"'+(i===0?' selected':'')+'>'+p.variant+'</option>'
               ).join('');
+              const lbl = _bbl.querySelector('.bsels-label');
+              if(lbl) lbl.textContent = fetched.printings.length + ' VARIANT' + (fetched.printings.length!==1?'S':'') + ' FOUND';
             }
           }
           // Set cover image if found
           if(fetched.imageUrl) {
             _bbl._imgUrl = fetched.imageUrl;
-            const imgEl = document.getElementById('cimg'+bubId);
-            if(imgEl) { imgEl.src = fetched.imageUrl; imgEl.style.display='block'; }
+            const imgEl = document.getElementById('cimg'+_bbl.id);
+            if(imgEl) {
+              if(imgEl.tagName === 'IMG') {
+                imgEl.src = fetched.imageUrl;
+              } else {
+                const newImg = document.createElement('img');
+                newImg.className = 'card-img'; newImg.id = 'cimg'+_bbl.id;
+                newImg.src = fetched.imageUrl;
+                newImg.style.cssText = 'width:100%;height:120px;object-fit:contain';
+                newImg.onerror = function(){ this.style.display='none'; };
+                imgEl.parentNode.replaceChild(newImg, imgEl);
+              }
+            }
           }
           // Update eBay sold link with specific search
-          const comicTitle = (_item.name||'') + ' ' + (_item.issue||'');
           const comicEbayQ = [_item.name, _item.issue, _item.year, _item.publisher].filter(Boolean).join(' ');
           const ebayBtns = _bbl.querySelectorAll('.a-ebay');
           if(ebayBtns[0]) ebayBtns[0].href = AFF.ebaySearch(comicEbayQ);
+          if(ebayBtns[1]) ebayBtns[1].href = AFF.ebayActive(comicEbayQ);
           // Update status
           if(hs) hs.textContent = 'COMIC · TAP EBAY FOR PRICING';
         } else if(isGeneralLocal) {
@@ -2292,6 +2312,41 @@ Return array only, no markdown.`;
           if(bpEl) { bpEl.textContent='SEE EBAY ↗'; bpEl.style.fontSize='11px'; bpEl.style.color='rgba(199,125,255,.8)'; }
           if(brEl) brEl.textContent='Tap eBay Sold for recent sales';
           hs.textContent = 'TAP EBAY SOLD ↗';
+        } else if(isSportsLocal) {
+          // Sports card — get AI price comps immediately, show flip prompt
+          hs.textContent = '⟳ LOADING SPORTS COMPS...';
+          const playerName = _item.player || _item.name || '';
+          const sportQ = [playerName, _item.year, _item.set_name, _item.parallel && _item.parallel !== 'Base' ? _item.parallel : null, _item.manufacturer].filter(Boolean).join(' ');
+          const sportPrompt = `eBay sold prices for this sports card: "${sportQ}". Include raw NM, raw LP, and a graded (PSA 9 or PSA 10) comp. Return ONLY JSON: {"comps":[{"desc":"Raw NM","price":0.00},{"desc":"Raw LP/Good","price":0.00},{"desc":"PSA 9","price":0.00},{"desc":"PSA 10","price":0.00}],"trend":"up|down|flat","trend_reason":"brief reason","note":"brief note about this card's market"}`;
+          const sportText = await callClaude([{role:'user',content:[{type:'text',text:sportPrompt}]}], 250);
+          try {
+            const si2 = sportText.indexOf('{');
+            if(si2 >= 0) {
+              const sd = JSON.parse('[' + sportText.slice(si2) + ']')[0];
+              if(sd?.comps?.length && _bbl._item) {
+                _bbl._item.comps = sd.comps;
+                _bbl._item.trend = sd.trend;
+                _bbl._item.trend_reason = sd.trend_reason;
+                const bpEl2 = document.getElementById('bp'+_bbl.id);
+                const brEl2 = document.getElementById('br'+_bbl.id);
+                if(bpEl2 && sd.comps[0]?.price > 0) {
+                  bpEl2.textContent = '$' + Number(sd.comps[0].price).toFixed(2);
+                  bpEl2.style.fontSize = ''; bpEl2.style.color = '';
+                }
+                if(brEl2) brEl2.textContent = 'AI est · PSA 9: $' + (sd.comps[2]?.price > 0 ? sd.comps[2].price.toFixed(2) : '—') + ' · PSA 10: $' + (sd.comps[3]?.price > 0 ? sd.comps[3].price.toFixed(2) : '—');
+                // Show comps section
+                const compsEl2 = _bbl.querySelector('.comps');
+                if(compsEl2) compsEl2.innerHTML = '<div class="comps-hdr">PRICE EST (AI) — TAP eBay SOLD FOR LIVE</div>' + sd.comps.map(c=>`<div class="comp-row"><span class="comp-d">${c.desc}</span><span class="comp-p">$${Number(c.price).toFixed(2)}</span></div>`).join('');
+                if(sd.note) {
+                  const noteEl = document.createElement('div');
+                  noteEl.style.cssText = 'font-family:monospace;font-size:7px;color:rgba(255,209,102,.4);margin:4px 0;padding:4px 6px;background:rgba(255,209,102,.04);border-radius:3px;border-left:2px solid rgba(255,209,102,.2)';
+                  noteEl.textContent = sd.note;
+                  _bbl.querySelector('.comps')?.after(noteEl);
+                }
+              }
+            }
+          } catch(se) { /* non-critical */ }
+          hs.textContent = 'SPORTS · FLIP FOR CARD #';
         } else {
           hs.textContent = 'READY';
         }
@@ -3148,7 +3203,7 @@ function addBubble(item,stock,imgUrl,apiPrintings,bestMatchIdx){
             }
           });
           // Rebuild dropdown with updated qty
-          const selEl = document.getElementById('ps'+bubId);
+          const selEl = document.getElementById('ps'+id);
           if(selEl) {
             selEl.innerHTML = el._prints.map((p,i) => {
               const price = p.mid>0 ? ` — $${p.mid.toFixed(2)}` : '';
