@@ -1609,6 +1609,13 @@ async function syncToShopProduct(entry, imageUrl, extraPhotoUrls){
   if(entry.is_rookie)   descParts.push('Rookie Card');
   if(entry.is_key)      descParts.push('Key Issue');
   if(entry.key_notes)   descParts.push(entry.key_notes);
+  if(entry.is_auto)     descParts.push('Autograph');
+  if(entry.is_patch)    descParts.push('Patch/Jersey');
+  if(entry.language && entry.language !== 'English') descParts.push(entry.language);
+  if(entry.printing)    descParts.push(entry.printing);
+  if(entry.comic_grade) descParts.push(entry.comic_grade);
+  if(entry.is_signed)   descParts.push('Signed');
+  if(entry.is_sealed)   descParts.push('Sealed');
   const description = descParts.join(' · ');
 
   // Build tags string
@@ -1620,6 +1627,11 @@ async function syncToShopProduct(entry, imageUrl, extraPhotoUrls){
   if(entry.variant && entry.variant !== 'Base') tags.push(entry.variant.toLowerCase().replace(/\s+/g,'-'));
   if(entry.sport)       tags.push(entry.sport.toLowerCase());
   if(entry.category)    tags.push(entry.category.toLowerCase());
+  if(entry.is_auto)     tags.push('auto');
+  if(entry.is_patch)    tags.push('patch');
+  if(entry.is_signed)   tags.push('signed');
+  if(entry.is_sealed)   tags.push('sealed');
+  if(entry.language && entry.language !== 'English') tags.push(entry.language.toLowerCase());
 
   // ── STEP 1: Create ecommerce product ─────────────────────────
   // /v2/sites/{id}/products ONLY accepts these core fields
@@ -3267,6 +3279,14 @@ window.showAddForm=function(id){
   const el=document.getElementById(id);if(!el)return;
   const pi=parseInt(document.getElementById('ps'+id)?.value)||0;
   const print=el._prints[pi]||el._prints[0]||{};
+  const _ct2=el._ct||'tcg',_itm=el._item||{};
+  const _catF=(()=>{
+    if(_ct2==='sports')return `<div style="border-top:1px solid rgba(255,209,102,.2);margin:6px 0;padding-top:6px"><div style="font-family:monospace;font-size:7px;color:rgba(255,209,102,.7);letter-spacing:2px;margin-bottom:4px">⚾ SPORTS CARD DETAILS</div><div class="inv-label">Player Name</div><input class="inv-inp" id="cf-player-${id}" type="text" value="${_itm.player||''}" placeholder="Player name"><div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:0"><div><div class="inv-label">Team</div><input class="inv-inp" id="cf-team-${id}" type="text" value="${_itm.team||''}" placeholder="e.g. Yankees"></div><div><div class="inv-label">Sport</div><select class="inv-inp" id="cf-sport-${id}" style="padding:5px 4px"><option${(_itm.sport||'')==='Baseball'?' selected':''}>Baseball</option><option${(_itm.sport||'')==='Basketball'?' selected':''}>Basketball</option><option${(_itm.sport||'')==='Football'?' selected':''}>Football</option><option${(_itm.sport||'')==='Hockey'?' selected':''}>Hockey</option><option${(_itm.sport||'')==='Soccer'?' selected':''}>Soccer</option><option${(_itm.sport||'')==='Golf'?' selected':''}>Golf</option><option${(_itm.sport||'')==='MMA/UFC'?' selected':''}>MMA/UFC</option><option${(_itm.sport||'')==='Wrestling'?' selected':''}>Wrestling</option><option${(_itm.sport||'')==='Other'?' selected':''}>Other</option></select></div></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:4px"><div><div class="inv-label">Card #</div><input class="inv-inp" id="cf-cnum-${id}" type="text" value="${_itm.card_number||''}" placeholder="42/100"></div><div><div class="inv-label">Serial # (if numbered)</div><input class="inv-inp" id="cf-serial-${id}" type="text" value="${_itm.serial_number||''}" placeholder="023/150"></div></div><div style="display:flex;gap:10px;margin-top:4px;flex-wrap:wrap"><label style="display:flex;align-items:center;gap:4px;font-family:monospace;font-size:9px;color:rgba(255,255,255,.5);cursor:pointer"><input type="checkbox" id="cf-rc-${id}"${_itm.is_rookie?' checked':''}> RC</label><label style="display:flex;align-items:center;gap:4px;font-family:monospace;font-size:9px;color:rgba(255,255,255,.5);cursor:pointer"><input type="checkbox" id="cf-auto-${id}"${_itm.is_auto?' checked':''}> Auto/Sig</label><label style="display:flex;align-items:center;gap:4px;font-family:monospace;font-size:9px;color:rgba(255,255,255,.5);cursor:pointer"><input type="checkbox" id="cf-patch-${id}"${_itm.is_patch?' checked':''}> Patch/Jersey</label></div></div>`;
+    if(_ct2==='comic')return `<div style="border-top:1px solid rgba(199,125,255,.2);margin:6px 0;padding-top:6px"><div style="font-family:monospace;font-size:7px;color:rgba(199,125,255,.7);letter-spacing:2px;margin-bottom:4px">📖 COMIC DETAILS</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:4px"><div><div class="inv-label">Issue #</div><input class="inv-inp" id="cf-issue-${id}" type="text" value="${_itm.issue||''}" placeholder="#1"></div><div><div class="inv-label">Publisher</div><input class="inv-inp" id="cf-pub-${id}" type="text" value="${_itm.publisher||''}" placeholder="Marvel, DC..."></div></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:4px"><div><div class="inv-label">Printing / Edition</div><select class="inv-inp" id="cf-print-${id}" style="padding:5px 4px"><option>1st Print</option><option>2nd Print</option><option>3rd Print</option><option>Newsstand</option><option>Direct Edition</option><option>Variant Cover</option><option>Facsimile</option><option>Other</option></select></div><div><div class="inv-label">Grade (CGC/CBCS/PGX)</div><input class="inv-inp" id="cf-cgrade-${id}" type="text" placeholder="e.g. CGC 9.8"></div></div><div><div class="inv-label">Key Notes / Story Arc</div><input class="inv-inp" id="cf-arc-${id}" type="text" value="${_itm.key_notes||''}" placeholder="1st app., key issue, newsstand..."></div><div style="display:flex;gap:10px;margin-top:4px;flex-wrap:wrap"><label style="display:flex;align-items:center;gap:4px;font-family:monospace;font-size:9px;color:rgba(255,255,255,.5);cursor:pointer"><input type="checkbox" id="cf-key-${id}"${_itm.is_key?' checked':''}> Key Issue</label><label style="display:flex;align-items:center;gap:4px;font-family:monospace;font-size:9px;color:rgba(255,255,255,.5);cursor:pointer"><input type="checkbox" id="cf-signed-${id}"> Signed</label></div></div>`;
+    if(_ct2==='tcg')return `<div style="border-top:1px solid rgba(0,255,179,.15);margin:6px 0;padding-top:6px"><div style="font-family:monospace;font-size:7px;color:rgba(0,255,179,.5);letter-spacing:2px;margin-bottom:4px">🎴 TCG DETAILS</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:4px"><div><div class="inv-label">Card Number</div><input class="inv-inp" id="cf-cnum-${id}" type="text" value="${_itm.card_number||''}" placeholder="123/200"></div><div><div class="inv-label">Language</div><select class="inv-inp" id="cf-lang-${id}" style="padding:5px 4px"><option>English</option><option>Japanese</option><option>Korean</option><option>Chinese</option><option>German</option><option>French</option><option>Spanish</option><option>Portuguese</option></select></div></div><div style="display:flex;gap:10px;margin-top:4px;flex-wrap:wrap"><label style="display:flex;align-items:center;gap:4px;font-family:monospace;font-size:9px;color:rgba(255,255,255,.5);cursor:pointer"><input type="checkbox" id="cf-1st-${id}"${_itm.is_1st_edition?' checked':''}> 1st Edition</label><label style="display:flex;align-items:center;gap:4px;font-family:monospace;font-size:9px;color:rgba(255,255,255,.5);cursor:pointer"><input type="checkbox" id="cf-signed-${id}"> Signed</label></div></div>`;
+    if(_ct2==='general')return `<div style="border-top:1px solid rgba(255,255,255,.1);margin:6px 0;padding-top:6px"><div style="font-family:monospace;font-size:7px;color:rgba(255,255,255,.4);letter-spacing:2px;margin-bottom:4px">🏆 COLLECTIBLE DETAILS</div><div><div class="inv-label">Brand / Manufacturer</div><input class="inv-inp" id="cf-brand-${id}" type="text" value="${_itm.manufacturer||''}" placeholder="Funko, LEGO, Hasbro..."></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:4px"><div><div class="inv-label">Item / SKU #</div><input class="inv-inp" id="cf-inum-${id}" type="text" placeholder="#XXXX"></div><div><div class="inv-label">Edition</div><select class="inv-inp" id="cf-ed-${id}" style="padding:5px 4px"><option>Standard</option><option>Limited Edition</option><option>Convention Exclusive</option><option>Chase</option><option>Variant</option><option>Prototype</option></select></div></div><div style="display:flex;gap:10px;margin-top:4px;flex-wrap:wrap"><label style="display:flex;align-items:center;gap:4px;font-family:monospace;font-size:9px;color:rgba(255,255,255,.5);cursor:pointer"><input type="checkbox" id="cf-sealed-${id}"> Sealed/MIB</label><label style="display:flex;align-items:center;gap:4px;font-family:monospace;font-size:9px;color:rgba(255,255,255,.5);cursor:pointer"><input type="checkbox" id="cf-signed-${id}"> Signed</label></div></div>`;
+    return '';
+  })();
   document.getElementById('acts'+id).innerHTML=`
     <div class="inv-form">
       <div class="inv-form-title">+ ADD TO INVENTORY</div>
@@ -3278,6 +3298,7 @@ window.showAddForm=function(id){
       <input class="inv-inp" id="qty${id}" type="number" value="1" min="1">
       <div class="inv-label">Storage Location</div>
       <input class="inv-inp" id="loc${id}" type="text" placeholder="Bin A3, Showcase...">
+      ${_catF}
       <div id="pp${id}"></div>
       <div class="inv-label" style="margin-top:6px">Card Photo</div>
       <div id="photo-preview-${id}" style="width:100%;height:80px;background:rgba(0,255,179,.05);border:1px dashed rgba(0,255,179,.2);border-radius:6px;display:flex;align-items:center;justify-content:center;margin-bottom:4px;overflow:hidden;cursor:pointer" onclick="retakePhoto('${id}')">
@@ -3332,6 +3353,12 @@ window.confirmAdd=async function(id){
   const retailPrice=parseFloat(document.getElementById('retail'+id)?.value)||0;
   const qty=parseInt(document.getElementById('qty'+id)?.value)||1;
   const loc=document.getElementById('loc'+id)?.value||'';
+  const _g=n=>document.getElementById('cf-'+n+'-'+id);
+  const _cf={};
+  if(el._ct==='sports'){_cf.player=_g('player')?.value||'';_cf.team=_g('team')?.value||'';_cf.sport=_g('sport')?.value||'';_cf.card_number=_g('cnum')?.value||'';_cf.serial_number=_g('serial')?.value||'';_cf.is_rookie=_g('rc')?.checked||false;_cf.is_auto=_g('auto')?.checked||false;_cf.is_patch=_g('patch')?.checked||false;}
+  else if(el._ct==='comic'){_cf.issue=_g('issue')?.value||'';_cf.publisher=_g('pub')?.value||'';_cf.printing=_g('print')?.value||'';_cf.comic_grade=_g('cgrade')?.value||'';_cf.key_notes=_g('arc')?.value||'';_cf.is_key=_g('key')?.checked||false;_cf.is_signed=_g('signed')?.checked||false;}
+  else if(el._ct==='tcg'){_cf.card_number=_g('cnum')?.value||'';_cf.language=_g('lang')?.value||'English';_cf.is_1st_edition=_g('1st')?.checked||false;_cf.is_signed=_g('signed')?.checked||false;}
+  else if(el._ct==='general'){_cf.manufacturer=_g('brand')?.value||'';_cf.serial_number=_g('inum')?.value||'';_cf.variant=_g('ed')?.value||'';_cf.is_sealed=_g('sealed')?.checked||false;_cf.is_signed=_g('signed')?.checked||false;}
   el._addedCost = cost;
 
   // Show syncing status
@@ -3368,18 +3395,21 @@ window.confirmAdd=async function(id){
   for(let i=0;i<qty;i++){
     const entry={
       id:'scan_'+Date.now()+'_'+i,
-      name:(item.player&&item.player!=='null'?item.player:null)||item.name||'Unknown Card',
-      category:ct==='sports'?'Sports':ct==='comic'?'Comic':['psa','bgs','cgc','sgc'].includes(ct)?'Graded':'TCG',
+      name:((_cf.player||item.player)&&(_cf.player||item.player)!=='null'?(_cf.player||item.player):null)||item.name||'Unknown Card',
+      category:ct==='sports'?'Sports':ct==='comic'?'Comic':['psa','bgs','cgc','sgc'].includes(ct)?'Graded':ct==='general'?'Collectibles':'TCG',
       set:print.set||item.set_name||'',
-      variant:print.variant||item.parallel||'',
-      condition:cond,year:item.year||'',team:item.team||'',
-      player:item.player||'',manufacturer:item.manufacturer||'',
-      publisher:item.publisher||'',issue:item.issue||'',
-      card_number:item.card_number||'',serial_number:item.serial_number||'',
+      variant:_cf.variant||(print.variant||item.parallel||''),
+      condition:cond,year:item.year||'',team:_cf.team||item.team||'',
+      player:_cf.player||item.player||'',manufacturer:_cf.manufacturer||item.manufacturer||'',
+      publisher:_cf.publisher||item.publisher||'',issue:_cf.issue||item.issue||'',
+      card_number:_cf.card_number||item.card_number||'',serial_number:_cf.serial_number||item.serial_number||'',
+      is_auto:_cf.is_auto||false,is_patch:_cf.is_patch||false,language:_cf.language||'English',
+      printing:_cf.printing||'',comic_grade:_cf.comic_grade||'',
+      key_notes:_cf.key_notes||item.key_notes||'',is_signed:_cf.is_signed||false,is_sealed:_cf.is_sealed||false,
       tcgCardId:item.tcgCardId||el._tcgCardId||'',
       grading_company:item.grading_company||'',grade:item.grade||'',
       cert_number:item.cert_number||'',sport:item.sport||'',
-      is_rookie:item.is_rookie||false,is_key:item.is_key||false,
+      is_rookie:_cf.is_rookie||item.is_rookie||false,is_key:_cf.is_key||item.is_key||false,
       key_notes:item.key_notes||'',cost,
       market:Number(print.mid)||0,
       price: retailPrice > 0 ? retailPrice : Number(print.mid)||0,
