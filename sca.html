@@ -52,7 +52,10 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
 #modebadge{position:fixed;top:58px;left:50%;transform:translateX(-50%);z-index:30;padding:5px 14px;font-family:'Orbitron',monospace;font-size:9px;letter-spacing:2px;display:none;}
 #modebadge.back{background:rgba(255,209,102,.15);border:1px solid var(--gold);color:var(--gold);}
 #modebadge.bulk{background:rgba(199,125,255,.15);border:1px solid var(--purple);color:var(--purple);}
-.bub{position:fixed;background:var(--surface);border:1.5px solid var(--g);padding:10px 12px;width:220px;z-index:20;box-shadow:0 0 20px rgba(0,255,179,.15);max-height:82vh;overflow-y:auto;}
+.bub{position:fixed;background:var(--surface);border:1.5px solid var(--g);padding:10px 12px;width:220px;z-index:20;box-shadow:0 0 20px rgba(0,255,179,.15);max-height:82vh;overflow-y:auto;touch-action:none;}
+.bub-drag{text-align:center;padding:3px 0 5px;color:rgba(255,255,255,.18);font-size:14px;letter-spacing:3px;cursor:grab;user-select:none;margin:-4px -6px 7px;border-bottom:1px solid rgba(255,255,255,.06);transition:color .2s;}
+.bub-drag:hover{color:rgba(255,255,255,.45);}
+.bub-drag:active{cursor:grabbing;}
 .bub::before{content:'';position:absolute;top:-1px;left:0;right:0;height:1.5px;background:linear-gradient(90deg,transparent,var(--g),transparent);}
 .bub.sports{border:1.5px solid var(--gold)!important;}.bub.sports::before{background:linear-gradient(90deg,transparent,var(--gold),transparent);}
 .bub.comic{border:1.5px solid var(--purple)!important;}.bub.comic::before{background:linear-gradient(90deg,transparent,var(--purple),transparent);}
@@ -2020,16 +2023,25 @@ async function scanFront(img){
   window._lastFrontB64 = img;
   window._lastFrontTime = Date.now();
 
-  const quickPrompt = `Identify this item. Can be a trading card, sports card, comic book, Hot Wheels, Funko Pop, LEGO, figure, game, or any collectible.
+  const quickPrompt = `Identify this collectible item from the image. It can be a trading card, sports card, comic book, graded slab, or any collectible.
 
-Return ONLY a JSON array. Example:
-[{"game":"Sports Card","name":"Patrick Mahomes","player":"Patrick Mahomes","sport":"Football","team":"Chiefs","year":"2019","card_number":null,"set_name":null,"set_id":null,"parallel":"Base","serial_number":null,"grading_company":null,"grade":null,"cert_number":null,"manufacturer":"Panini","is_rookie":true,"cx":50,"cy":50,"search_query":"2019 Panini Mahomes rookie"}]
+IMPORTANT RULES:
+- For sports cards: DO NOT guess the player if face is unclear — set confidence:"low" and describe what you can see (uniform color, number, position). Look for ANY text on the card edges/corners for year or card number.
+- For comics: Read the TITLE and ISSUE NUMBER from the cover carefully. Check for variant cover indicators.
+- For slabs (PSA/BGS/CGC/SGC): Read the label — player name, year, set, grade, cert number are ALL printed clearly on the label.
+- Only return items you can actually identify. If truly unreadable, return confidence:"low" with best guess.
+- cx/cy = % position of card center in image (0-100).
 
-For comics use: {"game":"Comic","name":"Amazing Spider-Man","issue":"#300","year":"1988","publisher":"Marvel","variant":"First print","cx":50,"cy":50,"search_query":"Amazing Spider-Man 300 1988 first print venom"}
+Return ONLY a JSON array, no markdown. Examples:
+[{"game":"Sports Card","name":"Patrick Mahomes","player":"Patrick Mahomes","sport":"Football","team":"Kansas City Chiefs","year":"2019","card_number":null,"set_name":"Panini Prizm","parallel":"Base","serial_number":null,"manufacturer":"Panini","is_rookie":true,"cx":50,"cy":50,"confidence":"high","confidence_reason":"name clearly visible on front","search_query":"2019 Panini Prizm Patrick Mahomes rookie base"}]
+
+Comic example: {"game":"Comic","name":"Amazing Spider-Man","issue":"#300","year":"1988","publisher":"Marvel","variant":"First print","cx":50,"cy":50,"confidence":"high","confidence_reason":"title and issue # clearly visible","search_query":"Amazing Spider-Man 300 1988 first print venom"}
+
+Slab example: {"game":"PSA Slab","name":"Charizard","grading_company":"PSA","grade":"9","cert_number":"12345678","year":"1999","set_name":"Base Set","manufacturer":"WOTC","cx":50,"cy":50,"confidence":"high","confidence_reason":"PSA label clearly readable"}
 
 game must be exactly one of: Pokemon TCG, Magic: The Gathering, Yu-Gi-Oh!, Sports Card, Comic, PSA Slab, BGS Slab, CGC Slab, SGC Slab, Hot Wheels, Funko Pop, LEGO, Action Figure, Video Game, Sports Memorabilia, Collectible
 
-search_query: best eBay search for this exact item. Be specific — include year, color, card#, serial if visible.
+search_query: most specific possible eBay search — include year, set, parallel color, card#, serial# if visible.
 
 Return array only, no markdown.`;
 
@@ -2376,15 +2388,28 @@ async function scanBack(img){
 
 FRONT context already identified: ${frontContext}
 
-READ EVERY DETAIL from both images:
-- FRONT: player name, team colors, year printed (bottom corner), manufacturer logo (Topps/Panini/Upper Deck/Bowman/Donruss), set name printed on card, parallel color/foil/border, RC/rookie stamp
-- BACK: card number (e.g. 287 or 287/700 — usually bottom corner), serial number (/25 etc — stamped in foil usually), parallel code text, copyright year, set code, stats, bio, any special stamps
+READ EVERY DETAIL from both images with maximum precision:
 
-The BACK is the authoritative source for card number, serial, and set code.
-The FRONT is authoritative for player name, team, parallel visual appearance.
+FRONT IMAGE — look for:
+• Player name (full name), team name, team colors/logo
+• Year printed (usually bottom corner or in set name)
+• Manufacturer logo: Topps / Panini / Upper Deck / Bowman / Donruss / Leaf / Fleer / Score / Prizm / Select / Mosaic / Chronicles / Optic
+• Set name as printed on the card
+• Parallel finish: foil color, border color (Gold/Silver/Bronze/Orange/Blue/Green/Red/Purple/Pink/Rainbow), Chrome/Prizm/Refractor/Holo/Mosaic pattern, any numbered stamp on front
+• RC / Rookie stamp, autograph, patch/relic window
+
+BACK IMAGE — look for (ZOOM IN on all corners and edges):
+• CARD NUMBER: usually bottom-right or bottom-left corner (e.g. "287" or "287/700"). Look past any crease or damage.
+• SERIAL NUMBER: foil-stamped limited print run (e.g. 15/25, 042/150) — look on all four edges
+• SET CODE / COPYRIGHT LINE: tiny text at bottom (e.g. "© 2021 Panini America")
+• PARALLEL TEXT: sometimes printed on back (e.g. "GOLD /10" or "SILVER PRIZM")
+• YEAR in copyright line if not visible on front
+• PLAYER STATS / BIO: confirm player name and team
+
+AUTHORITY: Back is definitive for card#, serial#, year. Front is definitive for parallel color and player ID.
 
 Return ONLY JSON, no markdown:
-{"player":"full name","year":"4-digit","set_name":"exact official name","parallel":"exact parallel e.g. Base|Gold Prizm|Silver Refractor|Orange Wave|Holo|Mosaic|Chrome|Prizm","card_number":"e.g. 287 or 287/700","serial_number":"/25 or null","print_run":25,"manufacturer":"Topps|Panini|Upper Deck|Bowman|Leaf|Donruss|Fleer|Score","sport":"Baseball|Basketball|Football|Hockey|Soccer","team":"team name","is_rookie":true,"grading_company":null,"grade":null,"cert_number":null,"confidence":"high|medium|low","search_query":"best eBay sold search for this exact card e.g. 2021 Topps Prizm Patrick Mahomes Gold Prizm /10"}`;
+{"player":"full name","year":"4-digit","set_name":"exact official name","parallel":"exact parallel e.g. Base|Gold Prizm|Silver Refractor|Orange Wave|Holo|Mosaic|Chrome|Prizm","card_number":"e.g. 287","serial_number":"/25 or null","print_run":25,"manufacturer":"Topps|Panini|Upper Deck|Bowman|Leaf|Donruss|Fleer|Score","sport":"Baseball|Basketball|Football|Hockey|Soccer","team":"team name","is_rookie":true,"grading_company":null,"grade":null,"cert_number":null,"confidence":"high|medium|low","confidence_reason":"brief reason e.g. card# clearly visible on back","search_query":"best eBay sold search for this exact card e.g. 2021 Topps Prizm Patrick Mahomes Gold Prizm /10"}`;
 
     try {
       const text = await callClaudeSonnet([{role:'user',content:[
@@ -2463,6 +2488,22 @@ Return ONLY JSON, no markdown:
         hs.textContent = '✓ DUAL SCAN · ' + (c.confidence||'').toUpperCase();
         toast('✓ Both sides combined · #'+(c.card_number||'?')+' '+c.parallel);
 
+        // Inject Beckett direct card lookup after back-scan confirms card# + year
+        if((c.card_number || it.card_number) && (c.year || it.year)) {
+          const actsEl = lastBub.el.querySelector('.bacts');
+          if(actsEl && !actsEl.querySelector('.beckett-direct')) {
+            const bkQ = encodeURIComponent([c.player||it.player||it.name, c.year||it.year, c.set_name||it.set_name, c.card_number||it.card_number].filter(Boolean).join(' '));
+            const bkBtn = document.createElement('a');
+            bkBtn.className = 'bact beckett-direct';
+            bkBtn.style.cssText = 'background:rgba(0,180,255,.12);color:#00b4ff;border:1px solid rgba(0,180,255,.35);font-weight:700;font-size:9px';
+            bkBtn.href = `https://www.beckett.com/price-guide/?q=${bkQ}`;
+            bkBtn.target = '_blank';
+            bkBtn.textContent = '📊 Beckett #'+(c.card_number||it.card_number)+' ↗';
+            const scanBackBtn = actsEl.querySelector('[onclick*="scanBackForBubble"]');
+            if(scanBackBtn) scanBackBtn.after(bkBtn); else actsEl.prepend(bkBtn);
+          }
+        }
+
         // Trigger AI price estimate with full info
         const ep = `eBay sold prices for: "${qBest}". Return ONLY JSON: {"comps":[{"desc":"NM raw","price":0.00},{"desc":"Good/LP","price":0.00},{"desc":"PSA 9","price":0.00}],"trend":"up|down|flat","note":"brief note"}`;
         callClaude([{role:'user',content:[{type:'text',text:ep}]}],200).then(et=>{
@@ -2499,8 +2540,19 @@ async function doSingleBackScan(img, lastBub, item, hs) {
   hs.textContent = 'READING BACK...';
   const text = await callClaude([{role:'user',content:[
     {type:'image', source:{type:'base64',media_type:'image/jpeg',data:img}},
-    {type:'text', text:'Read every number, word, marking on this card back. Return ONLY JSON: {"player":null,"card_number":"e.g. 287 or 287/700","set_name":null,"year":null,"serial_number":"/X or null","print_run":null,"parallel_code":null,"auto_authenticated":false,"rookie_stamp":false,"team":null,"manufacturer":null,"stats":[],"bio":null,"copyright":null,"notes":null}'}
-  ]}], 600);
+    {type:'text', text:`Read every number, word, and marking on this card back with maximum precision.
+
+PRIORITY — look carefully for:
+1. CARD NUMBER: usually printed at bottom corner (e.g. "287" or "#287" or "287/700"). Scan ALL corners.
+2. SERIAL NUMBER: foil-stamped print run, often on edges (e.g. "042/150" or "15/25")
+3. COPYRIGHT LINE: tiny text at very bottom (e.g. "© 2021 Panini America Inc.")
+4. SET CODE: abbreviated set name in fine print
+5. PLAYER NAME / STATS: confirm who this card is
+6. ANY FOIL STAMPS: authentication marks, auto certification, rookie designations
+
+Return ONLY JSON, no markdown:
+{"player":null,"card_number":"e.g. 287","set_name":null,"year":null,"serial_number":"/X or null","print_run":null,"parallel_code":null,"auto_authenticated":false,"rookie_stamp":false,"team":null,"manufacturer":null,"stats":[],"bio":null,"copyright":null,"notes":"any other text visible"}`}
+  ]}], 700);
 
   let back;
   try {
@@ -2532,8 +2584,23 @@ async function doSingleBackScan(img, lastBub, item, hs) {
         bsub.textContent = parts.join(' · ');
       }
     }
+    // Inject Beckett direct button if card# now known
+    if(back.card_number && item) {
+      const actsEl = lastBub.el.querySelector('.bacts');
+      if(actsEl && !actsEl.querySelector('.beckett-direct')) {
+        const bkQ = encodeURIComponent([item.player||item.name, item.year||back.year, item.set_name||back.set_name, back.card_number].filter(Boolean).join(' '));
+        const bkBtn = document.createElement('a');
+        bkBtn.className = 'bact beckett-direct';
+        bkBtn.style.cssText = 'background:rgba(0,180,255,.12);color:#00b4ff;border:1px solid rgba(0,180,255,.35);font-weight:700;font-size:9px';
+        bkBtn.href = `https://www.beckett.com/price-guide/?q=${bkQ}`;
+        bkBtn.target = '_blank';
+        bkBtn.textContent = '📊 Beckett #'+back.card_number+' ↗';
+        const scanBackBtn = actsEl.querySelector('[onclick*="scanBackForBubble"]');
+        if(scanBackBtn) scanBackBtn.after(bkBtn); else actsEl.prepend(bkBtn);
+      }
+    }
     hs.textContent = 'BACK SCANNED';
-    toast('✓ Back info added');
+    toast('✓ Back info added · #'+(back.card_number||'?'));
   } else {
     showBackStandalone(back);
     hs.textContent = 'BACK READ';
@@ -2773,6 +2840,7 @@ function addBubble(item,stock,imgUrl,apiPrintings,bestMatchIdx){
       ${qSerial?`<a class="bact a-ebay" style="background:rgba(255,77,109,.12);border-color:rgba(255,77,109,.4);color:#ff4d6d;font-weight:700" href="${AFF.ebaySearch(qSerial)}" target="_blank">🔢 Serial ${item.serial_number} Sold ↗</a>`:''}
       <a class="bact a-ebay" href="${AFF.ebaySearch(qBest)}" target="_blank">eBay Sold ↗</a>
       <a class="bact a-ebay" style="background:rgba(72,202,228,.08);color:var(--blue);border-color:rgba(72,202,228,.2)" href="${AFF.ebayActive(qBest)}" target="_blank">eBay Active ↗</a>
+      <a class="bact" style="background:rgba(0,180,255,.08);color:#00b4ff;border:1px solid rgba(0,180,255,.25);font-size:8px" href="https://www.beckett.com/price-guide/?q=${encodeURIComponent(qFull)}" target="_blank">📊 Beckett ↗</a>
       <a class="bact a-ebay" style="background:rgba(255,255,255,.04);color:rgba(255,255,255,.4);border-color:rgba(255,255,255,.08);font-size:8px" href="${AFF.ebaySearch(qBase)}" target="_blank">Broader ↗</a>`;
   }
   else if(ct==='comic'){
@@ -2810,6 +2878,7 @@ function addBubble(item,stock,imgUrl,apiPrintings,bestMatchIdx){
       <a class="bact a-ebay" href="${AFF.ebaySearch(ebayQ)}" target="_blank">eBay Sold ↗</a>
       ${sfHref?`<a class="bact a-tcg" id="sf${id}" style="background:rgba(0,100,255,.08);color:#88aaff;border-color:rgba(88,136,255,.3)" href="${AFF.tcg(sfHref)}" target="_blank">Scryfall ↗</a>`:''}`;
   }el.innerHTML=`
+    <div class="bub-drag" id="drag-handle-${id}" title="Drag to move">⠿ ⠿ ⠿</div>
     <button class="bx" onclick="rmBub('${id}')">×</button>
     ${imgHtml}
     <div class="btype ${ct}">${item.game}</div>
@@ -2933,15 +3002,22 @@ function addBubble(item,stock,imgUrl,apiPrintings,bestMatchIdx){
         <select class="bsel" id="slab-grade-${id}" onchange="updateSlabSearch('${id}')">${gradeOpts}</select>
       </div>
       <div style="flex:2">
-        <div style="font-family:monospace;font-size:7px;color:rgba(255,255,255,.3);letter-spacing:2px;margin-bottom:4px">CERT # (optional)</div>
-        <input class="inv-inp" id="slab-cert-${id}" style="margin:0;padding:5px 8px;font-size:10px" placeholder="e.g. 12345678" value="${item.cert_number||''}" oninput="updateSlabVerifyLink('${id}')">
+        <div style="font-family:monospace;font-size:7px;color:rgba(255,255,255,.3);letter-spacing:2px;margin-bottom:4px">CERT # → auto-lookup ↓</div>
+        <input class="inv-inp" id="slab-cert-${id}" style="margin:0;padding:5px 8px;font-size:10px" placeholder="e.g. 12345678" value="${item.cert_number||''}" oninput="updateSlabVerifyLink('${id}');debouncePSALookup('${id}')">
       </div>
     </div>
-    <div id="slab-links-${id}" style="display:flex;gap:4px;flex-wrap:wrap"></div>
+    <div style="display:flex;gap:4px;margin-bottom:4px">
+      <button onclick="psaLookup('${id}',document.getElementById('slab-cert-${id}')?.value?.replace(/\\D/g,''))"
+        style="flex:1;background:rgba(230,57,70,.15);border:1px solid rgba(230,57,70,.4);color:#e63946;padding:6px;font-family:monospace;font-size:8px;letter-spacing:1px;border-radius:4px;cursor:pointer;font-weight:700">
+        🔴 LOOK UP PSA CERT</button>
+    </div>
+    <div id="slab-links-${id}" style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:4px"></div>
+    <div id="slab-pop-${id}" style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:4px"></div>
+    <div id="slab-psa-${id}" style="display:none;background:rgba(230,57,70,.06);border:1px solid rgba(230,57,70,.2);border-radius:6px;padding:8px;margin-top:4px;font-family:monospace;font-size:8px"></div>
   </div>`;
 
-  // SLAB toggle button — shows for sports/TCG even when not auto-detected
-  const showSlabToggle = ct==='sports'||ct==='tcg'||isSlab;
+  // SLAB toggle button — shows for all card types (PSA lookup works for any raw card)
+  const showSlabToggle = true;
   const slabToggleBtn = showSlabToggle
     ? `<button class="bact" id="slab-tog-${id}" onclick="toggleSlabPanel('${id}')"
         style="background:${isSlab?'rgba(255,209,102,.15)':'rgba(255,255,255,.05)'};border:1px solid ${isSlab?'rgba(255,209,102,.4)':'rgba(255,255,255,.15)'};color:${isSlab?'#ffd166':'rgba(255,255,255,.4)'};font-size:8px;letter-spacing:1px">
@@ -2954,7 +3030,9 @@ function addBubble(item,stock,imgUrl,apiPrintings,bestMatchIdx){
       ${actLinks}
       ${ct==='sports'?`<button class="bact" style="background:rgba(255,209,102,.06);border:1px solid rgba(255,209,102,.2);color:#ffd166;font-size:9px" onclick="scanBackForBubble('${id}')">⟳ SCAN BACK</button>`:''}
       ${ct==='tcg'?`<button class="bact" style="background:rgba(0,255,179,.06);border:1px solid rgba(0,255,179,.2);color:var(--g);font-size:9px" onclick="scanBackForBubble('${id}')">⟳ SCAN BACK</button>`:''}
+      ${ct==='comic'?`<button class="bact" style="background:rgba(199,125,255,.06);border:1px solid rgba(199,125,255,.2);color:var(--purple);font-size:9px" onclick="scanBackForBubble('${id}')">⟳ SCAN BACK</button>`:''}
       ${ct==='general'?`<button class="bact" style="background:rgba(199,125,255,.06);border:1px solid rgba(199,125,255,.2);color:var(--purple);font-size:9px" onclick="scanBackForBubble('${id}')">⟳ SCAN BACK</button>`:''}
+      <button class="bact" style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.15);color:rgba(255,255,255,.6);font-size:9px" onclick="openVariantSearch('${id}')">🔍 Browse All Variants</button>
       <button class="bact" style="background:rgba(0,255,179,.1);border:1px solid rgba(0,255,179,.3);color:var(--g);font-weight:700" onclick="addBubbleToCart('${id}')">🛒 Add to Cart</button>
       <button class="bact a-add" onclick="showAddForm('${id}')">+ Add to Inventory</button>
       ${ct==='sports'||ct==='tcg'?`<button class="bact" style="background:rgba(72,202,228,.06);border:1px solid rgba(72,202,228,.2);color:var(--blue);font-size:9px" onclick="showGradeSubmit('${id}')">📤 Submit to Grader</button>`:''}
@@ -2977,6 +3055,40 @@ function addBubble(item,stock,imgUrl,apiPrintings,bestMatchIdx){
   document.body.appendChild(el);
   bubs.push({id,el,ax:cx,ay:cy,ct});
   el._frontB64 = null; // will be set by scanFront caller
+
+  // ── AUTO PSA LOOKUP if cert# already known from scan ────────
+  if(isSlab && ct==='psa' && item.cert_number) {
+    // Delay slightly so DOM is ready
+    setTimeout(() => {
+      const certInp = document.getElementById('slab-cert-'+id);
+      if(certInp && !certInp.value) certInp.value = item.cert_number;
+      psaLookup(id, String(item.cert_number).replace(/\D/g,''));
+    }, 400);
+  }
+
+  // ── DRAG-TO-MOVE ────────────────────────────────────────────
+  (function(){
+    const handle = document.getElementById('drag-handle-'+id);
+    if(!handle) return;
+    let _ox=0,_oy=0,_dragging=false;
+    handle.addEventListener('pointerdown', e=>{
+      _dragging=true;
+      const r=el.getBoundingClientRect();
+      _ox=e.clientX-r.left; _oy=e.clientY-r.top;
+      el.style.zIndex='9999'; el.style.transition='none';
+      el.setPointerCapture(e.pointerId);
+      e.preventDefault();
+    },{passive:false});
+    el.addEventListener('pointermove', e=>{
+      if(!_dragging) return;
+      const nx=Math.max(0,Math.min(e.clientX-_ox, window.innerWidth-el.offsetWidth));
+      const ny=Math.max(56,Math.min(e.clientY-_oy, window.innerHeight-40));
+      el.style.left=nx+'px'; el.style.top=ny+'px';
+      e.preventDefault();
+    },{passive:false});
+    el.addEventListener('pointerup', ()=>{ _dragging=false; el.style.zIndex=''; });
+    el.addEventListener('pointercancel',()=>{ _dragging=false; el.style.zIndex=''; });
+  })();
 
   // Async: check Webflow for live stock — tight name+set+year match only
   (async () => {
@@ -4524,7 +4636,7 @@ function updateCartBadge(){
 }
 
 // Add to Cart button — injected into each bubble
-window.addBubbleToCart = function(id){
+window.addBubbleToCart = async function(id){
   const el = document.getElementById(id);
   if(!el || !el._item) return;
   const pi = parseInt(document.getElementById('ps'+id)?.value)||0;
@@ -4534,7 +4646,37 @@ window.addBubbleToCart = function(id){
   const retailInp = document.getElementById('retail'+id);
   const retailPrice = retailInp ? parseFloat(retailInp.value)||0 : 0;
   const price = retailPrice > 0 ? retailPrice : (Number(print.mid||0) * condM);
-  const shopId = (el._shopIds && el._shopIds[0]) || (print.wfId) || null;
+  let shopId = (el._shopIds && el._shopIds[0]) || (print.wfId) || null;
+
+  // Auto-sync to Webflow if not yet in inventory — ensures sale gets recorded at checkout
+  if(!shopId && STORE.worker_url) {
+    const actsEl2 = document.getElementById('acts'+id);
+    const syncBadge = document.createElement('div');
+    syncBadge.style.cssText = 'font-family:monospace;font-size:9px;color:#ffd166;padding:4px 0;text-align:center;letter-spacing:1px;animation:none';
+    syncBadge.textContent = '⟳ Syncing to inventory...';
+    if(actsEl2) actsEl2.prepend(syncBadge);
+    try {
+      const item = el._item, ct = el._ct||'tcg';
+      const autoEntry = {
+        id:'scan_cart_'+Date.now(),
+        name:(item.player&&item.player!=='null'?item.player:null)||item.name||'Unknown Card',
+        category:ct==='sports'?'Sports':ct==='comic'?'Comic':['psa','bgs','cgc','sgc'].includes(ct)?'Graded':ct==='general'?'Collectibles':'TCG',
+        set:print.set||item.set_name||'', variant:print.variant||item.parallel||'',
+        condition:cond, year:item.year||'', team:item.team||'', player:item.player||'',
+        manufacturer:item.manufacturer||'', publisher:item.publisher||'',
+        issue:item.issue||'', card_number:item.card_number||'',
+        serial_number:item.serial_number||'', grading_company:item.grading_company||'',
+        grade:item.grade||'', cert_number:item.cert_number||'',
+        sport:item.sport||'', is_rookie:item.is_rookie||false, is_key:item.is_key||false,
+        cost:el._addedCost||0, market:Number(print.mid)||0,
+        price, retail_price:price, qty:1, status:'in_stock',
+      };
+      shopId = await syncToShopProduct(autoEntry, el._uploadedPhotoUrl||el._imgUrl||null, []);
+      if(shopId){ if(!el._shopIds) el._shopIds=[]; el._shopIds.push(shopId); }
+    } catch(e){ console.warn('Auto-sync for cart failed:', e.message); }
+    syncBadge.remove();
+  }
+
   addToCart(el._item, el._uploadedPhotoUrl||el._imgUrl, price, {
     shopId, cost: el._addedCost || 0, condition: cond,
   });
@@ -4543,8 +4685,9 @@ window.addBubbleToCart = function(id){
   if(existingBadge) existingBadge.remove();
   const badge = document.createElement('div');
   badge.className = 'cart-confirm-badge';
-  badge.style.cssText = 'font-family:monospace;font-size:9px;color:#00ffb3;padding:4px 0;text-align:center;letter-spacing:1px';
-  badge.textContent = '✓ IN CART · $' + price.toFixed(2);
+  badge.style.cssText = 'font-family:monospace;font-size:9px;padding:4px 0;text-align:center;letter-spacing:1px';
+  badge.style.color = shopId ? '#00ffb3' : '#ffd166';
+  badge.textContent = shopId ? '✓ IN CART · $'+price.toFixed(2) : '⚠ IN CART (not synced) · $'+price.toFixed(2);
   const actsEl = document.getElementById('acts'+id);
   if(actsEl) actsEl.prepend(badge);
 };
@@ -4852,22 +4995,34 @@ async function recordTransaction(method, total, change){
   // Mark ALL cart items as sold in Webflow
   const soldAt2 = soldAt;
   const cartSnapshot = [...cart];
+  const _unsyncedNames = [];
+
+  // Pre-fetch Webflow inventory once for fallback lookups (avoid per-item requests)
+  let _wfAllItems = null;
+  const _hasUnsynced = cartSnapshot.some(i => !(i.shopId || i.wfId));
+  if(_hasUnsynced && STORE.worker_url) {
+    try {
+      const _r1 = await wfFetch('/collections/'+STORE.wf_products_col+'/items?limit=200&sort=created-on:desc');
+      if(_r1 && _r1.ok) {
+        const _d1 = await _r1.json();
+        _wfAllItems = _d1.items || [];
+      }
+    } catch(e) {}
+  }
+
   for(const item of cartSnapshot) {
     let shopId = item.shopId || item.wfId;
-    // If no shopId, try quick Webflow lookup by exact name
-    if(!shopId && item.name) {
-      try {
-        const res = await wfFetch('/collections/'+STORE.wf_products_col+'/items?limit=100');
-        if(res && res.ok) {
-          const data = await res.json();
-          const nameNorm = item.name.toLowerCase().replace(/[^a-z0-9]/g,'');
-          const match = (data.items||[]).find(i => {
-            const iName = (i.fieldData?.name||'').toLowerCase().replace(/[^a-z0-9]/g,'');
-            return iName === nameNorm;
-          });
-          if(match) shopId = match.id;
-        }
-      } catch(e) {}
+    // Fallback: fuzzy Webflow lookup by name (and optional year cross-match)
+    if(!shopId && item.name && _wfAllItems) {
+      const nameNorm = item.name.toLowerCase().replace(/[^a-z0-9]/g,'');
+      const itemYear = item.year ? String(item.year) : null;
+      const match = _wfAllItems.find(i => {
+        const iName = (i.fieldData?.name||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+        if(iName !== nameNorm) return false;
+        if(itemYear && i.fieldData?.year && String(i.fieldData.year) !== itemYear) return false;
+        return true;
+      });
+      if(match) shopId = match.id;
     }
     if(shopId) {
       const itemCost = item.cost || 0;
@@ -4885,7 +5040,13 @@ async function recordTransaction(method, total, change){
       }).catch(e => console.warn('Webflow sold mark failed:', item.name, e.message));
     } else {
       console.warn('No Webflow ID for cart item:', item.name);
+      _unsyncedNames.push(item.name || 'Unknown item');
     }
+  }
+
+  // Notify user if any items couldn't be marked sold in Webflow
+  if(_unsyncedNames.length > 0) {
+    setTimeout(() => toast('⚠ ' + _unsyncedNames.length + ' item(s) not recorded in Webflow — mark sold manually in dashboard: ' + _unsyncedNames.join(', ')), 2500);
   }
 
   // Clear cart from all stores
@@ -5439,8 +5600,9 @@ function updateSlabSearch(id) {
   const grader = (el._slabInfo?.grader || el?.querySelector('.slab-grader-pill.on')?.textContent || 'PSA').trim();
   const grade = document.getElementById('slab-grade-'+id)?.value || '';
   const item = el._item;
-  const q = [item.player||item.name, item.year, item.set_name, grader, grade].filter(Boolean).join(' ');
-  const qBase = [item.player||item.name, item.year, item.set_name, grader].filter(Boolean).join(' ');
+  const name = item.player || item.name || '';
+  const q = [name, item.year, item.set_name, grader, grade].filter(Boolean).join(' ');
+  const qBase = [name, item.year, item.set_name, grader].filter(Boolean).join(' ');
 
   // Update eBay sold link in main actLinks to use graded search
   const ebayBtns = el.querySelectorAll('.a-ebay');
@@ -5450,7 +5612,377 @@ function updateSlabSearch(id) {
   // Update toggle button
   const btn = document.getElementById('slab-tog-'+id);
   if(btn && grade) btn.textContent = '📋 SLAB · ' + grader + ' ' + grade;
+
+  // ── Pop count + price research links (no cert required) ──────
+  const popEl = document.getElementById('slab-pop-'+id);
+  if(!popEl) return;
+  const qEnc = encodeURIComponent([name, item.year, item.set_name].filter(Boolean).join(' '));
+  const qGraded = encodeURIComponent(q);
+  const gc = { PSA:'rgba(230,57,70', BGS:'rgba(150,150,150', CGC:'rgba(244,162,97', SGC:'rgba(255,149,0' };
+  const tc = { PSA:'#e63946', BGS:'#bbb', CGC:'#f4a261', SGC:'#ff9500' };
+  const gc0 = gc[grader] || gc.PSA;
+  const tc0 = tc[grader] || '#aaa';
+  const btnSty = `background:${gc0},.08);color:${tc0};border:1px solid ${gc0},.3);font-size:8px`;
+
+  let links = [];
+  if(grader === 'PSA') {
+    links.push(`<a class="bact" href="https://www.psacard.com/cardfacts/?q=${qEnc}" target="_blank" style="${btnSty}">📊 PSA Pop ↗</a>`);
+    links.push(`<a class="bact" href="https://www.psacard.com/auctionprices/index.aspx?q=${qEnc}${grade?'&g='+grade:''}" target="_blank" style="${btnSty}">💰 PSA Prices ↗</a>`);
+  } else if(grader === 'BGS') {
+    links.push(`<a class="bact" href="https://www.beckett.com/price-guide/?q=${qEnc}" target="_blank" style="${btnSty}">📊 Beckett Pop ↗</a>`);
+    links.push(`<a class="bact" href="https://www.beckett.com/price-guide/?q=${qEnc}${grade?'&grade='+grade:''}" target="_blank" style="${btnSty}">💰 BGS Prices ↗</a>`);
+  } else if(grader === 'CGC') {
+    links.push(`<a class="bact" href="https://www.cgccomics.com/certification/item-lookup/" target="_blank" style="${btnSty}">📊 CGC Census ↗</a>`);
+    links.push(`<a class="bact" href="https://www.gocollect.com/search/?q=${qEnc}" target="_blank" style="${btnSty}">💰 GoCollect ↗</a>`);
+  } else if(grader === 'SGC') {
+    links.push(`<a class="bact" href="https://www.sgccard.com/pop-report/" target="_blank" style="${btnSty}">📊 SGC Pop ↗</a>`);
+  }
+  // Always: eBay sold for this graded card (raw or graded)
+  links.push(`<a class="bact" href="${AFF.ebaySearch(q)}" target="_blank" style="background:rgba(255,255,255,.04);color:rgba(255,255,255,.35);border:1px solid rgba(255,255,255,.1);font-size:8px">eBay ${grader}${grade?' '+grade:''} Sold ↗</a>`);
+  // Raw card sold (for value comparison)
+  const qRaw = encodeURIComponent([name, item.year, item.set_name].filter(Boolean).join(' ') + ' raw');
+  links.push(`<a class="bact" href="${AFF.ebaySearch([name, item.year, item.set_name].filter(Boolean).join(' '))}" target="_blank" style="background:rgba(255,255,255,.03);color:rgba(255,255,255,.25);border:1px solid rgba(255,255,255,.07);font-size:7px">Raw Sold ↗</a>`);
+
+  popEl.innerHTML = links.join('');
 }
+// ════════════════════════════════════════════════════════════════
+// PSA API — real cert lookup, pop counts, auto-fill
+// ════════════════════════════════════════════════════════════════
+
+// Debounce timers per bubble
+const _psaTimers = {};
+
+function debouncePSALookup(id) {
+  const certEl = document.getElementById('slab-cert-'+id);
+  const cert = (certEl?.value || '').replace(/\D/g,'');
+  // PSA cert numbers are 8 digits (some older ones 7)
+  if(cert.length < 7) {
+    // Hide PSA data panel if cert cleared
+    const d = document.getElementById('slab-psa-'+id);
+    if(d) { d.style.display='none'; d.innerHTML=''; }
+    return;
+  }
+  clearTimeout(_psaTimers[id]);
+  _psaTimers[id] = setTimeout(() => psaLookup(id, cert), 600);
+}
+
+async function psaLookup(id, certNumber) {
+  const el = document.getElementById(id);
+  if(!el) return;
+  const grader = (el._slabInfo?.grader || el?.querySelector('.slab-grader-pill.on')?.textContent || 'PSA').trim();
+  if(grader !== 'PSA') return; // Only run for PSA
+
+  const panel = document.getElementById('slab-psa-'+id);
+  if(!panel) return;
+
+  // Show loading state
+  panel.style.display = 'block';
+  panel.innerHTML = `<div style="color:rgba(230,57,70,.6);letter-spacing:1px">⟳ LOOKING UP PSA #${certNumber}...</div>`;
+
+  try {
+    const res = await fetch(WORKER_URL + '/psa/cert/' + certNumber);
+    const data = await res.json();
+
+    if(!data.ok || !data.cert) {
+      panel.innerHTML = `<div style="color:rgba(255,100,100,.7)">⚠ PSA lookup failed${data.error ? ' — '+data.error : ''}</div>`;
+      return;
+    }
+
+    const c = data.cert;
+
+    // ── Auto-fill bubble with verified PSA data ──────────────
+    if(el._item) {
+      const it = el._item;
+      if(c.subject)     { it.player = c.subject; it.name = c.subject; }
+      if(c.year)          it.year = c.year;
+      if(c.series)        it.set_name = c.series;
+      if(c.brand)         it.manufacturer = c.brand;
+      if(c.cardNumber)    it.card_number = c.cardNumber;
+      if(c.variety)       it.parallel = c.variety;
+      if(c.grade)         it.grade = c.grade;
+      it.grading_company = 'PSA';
+      it.cert_number = certNumber;
+
+      // Update visible bubble text
+      const bnameEl = el.querySelector('.bname');
+      if(bnameEl && c.subject) bnameEl.textContent = c.subject;
+      const bsubEl = el.querySelector('.bsub');
+      if(bsubEl) {
+        const parts = [c.year, c.brand, c.series, c.variety&&c.variety!=='Base'?c.variety:null, c.cardNumber?'#'+c.cardNumber:null].filter(Boolean);
+        bsubEl.textContent = parts.join(' · ');
+      }
+      // Update grade display
+      const gradeNumEl = el.querySelector('.grade-num');
+      if(gradeNumEl && c.grade) gradeNumEl.textContent = c.grade;
+      // Update eBay search links to use verified data
+      const qVerified = [c.subject, c.year, c.brand, c.series, 'PSA', c.grade].filter(Boolean).join(' ');
+      el.querySelectorAll('.a-ebay').forEach((a,i) => {
+        if(a.href && qVerified) a.href = AFF.ebaySearch(qVerified);
+      });
+    }
+
+    // ── Pop count math ───────────────────────────────────────
+    // PSA returns totalPop (all grades) + popHigher (graded higher than this cert)
+    // We can derive: pop at THIS grade = totalPop - popHigher - popBelow
+    // (popBelow not directly given, but we show what we have)
+    const gradeNum  = parseFloat(c.grade) || 0;
+    const popHigher = c.popHigher || 0;
+    const totalPop  = c.totalPop || 0;
+    // Estimate pop at this grade (not perfect without full pop report, but useful)
+    const popAtGrade = totalPop > 0 ? Math.max(0, totalPop - popHigher) : 0;
+    const rarityPct  = totalPop > 0 ? ((popAtGrade / totalPop)*100).toFixed(1) : null;
+
+    // Grade description mapping
+    const gradeDescs = { '10':'GEM MT','9.5':'MINT+','9':'MINT','8.5':'NM-MT+','8':'NM-MT','7.5':'NM+','7':'NM','6':'EX-MT','5':'EX','4':'VG-EX','3':'VG','2':'GOOD','1':'POOR','A':'AUTH' };
+    const gradeLabel = c.gradeDesc || gradeDescs[c.grade] || '';
+
+    // Rarity color
+    const rarityColor = popHigher===0 ? '#ffd166' : popAtGrade < 10 ? '#00ffb3' : popAtGrade < 50 ? '#48cae4' : 'rgba(255,255,255,.5)';
+
+    // ── PSA photo ────────────────────────────────────────────
+    let photoHtml = '';
+    if(c.photoUrl) {
+      // Update bubble card image too
+      const cimg = el.querySelector('.card-img, .card-img-placeholder');
+      if(cimg && cimg.tagName === 'IMG') cimg.src = c.photoUrl;
+      photoHtml = `<img src="${c.photoUrl}" style="width:100%;max-height:80px;object-fit:contain;border-radius:3px;margin-bottom:6px;border:1px solid rgba(230,57,70,.2)" onerror="this.remove()">`;
+    }
+
+    // ── Render PSA data panel ────────────────────────────────
+    panel.style.background = 'rgba(230,57,70,.07)';
+    panel.style.borderColor = 'rgba(230,57,70,.3)';
+    panel.innerHTML = `
+      ${photoHtml}
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
+        <div>
+          <div style="color:#e63946;font-weight:700;font-size:9px;letter-spacing:1px">✓ PSA VERIFIED</div>
+          <div style="color:#fff;font-size:10px;font-weight:600;margin-top:2px">${c.subject||'Unknown'}</div>
+          <div style="color:rgba(255,255,255,.45);font-size:8px">${[c.year,c.brand,c.series].filter(Boolean).join(' · ')}</div>
+          ${c.variety?`<div style="color:rgba(255,255,255,.35);font-size:7px">${c.variety}</div>`:''}
+          ${c.cardNumber?`<div style="color:rgba(255,255,255,.35);font-size:7px">Card #${c.cardNumber}</div>`:''}
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:22px;font-weight:900;color:#e63946;line-height:1">${c.grade||'?'}</div>
+          <div style="font-size:7px;color:rgba(230,57,70,.7);letter-spacing:1px">${gradeLabel}</div>
+        </div>
+      </div>
+      ${totalPop > 0 ? `
+      <div style="border-top:1px solid rgba(230,57,70,.15);padding-top:6px;margin-top:2px">
+        <div style="color:rgba(255,255,255,.3);font-size:7px;letter-spacing:1px;margin-bottom:4px">POPULATION REPORT</div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <div style="flex:1">
+            <div style="color:${rarityColor};font-size:16px;font-weight:700;line-height:1">${popAtGrade.toLocaleString()}</div>
+            <div style="color:rgba(255,255,255,.3);font-size:7px">PSA ${c.grade} pop</div>
+          </div>
+          <div style="flex:1">
+            <div style="color:${popHigher===0?'#ffd166':'rgba(255,255,255,.5)'};font-size:16px;font-weight:700;line-height:1">${popHigher.toLocaleString()}</div>
+            <div style="color:rgba(255,255,255,.3);font-size:7px">graded higher</div>
+          </div>
+          <div style="flex:1">
+            <div style="color:rgba(255,255,255,.5);font-size:16px;font-weight:700;line-height:1">${totalPop.toLocaleString()}</div>
+            <div style="color:rgba(255,255,255,.3);font-size:7px">total pop</div>
+          </div>
+        </div>
+        ${popHigher === 0 ? `<div style="color:#ffd166;font-size:8px;margin-top:4px">★ NONE GRADED HIGHER — top of pop</div>` : ''}
+        ${rarityPct ? `<div style="color:rgba(255,255,255,.25);font-size:7px;margin-top:2px">${rarityPct}% of total pop at this grade</div>` : ''}
+      </div>` : ''}
+      ${c.isDualCert?`<div style="color:#ffd166;font-size:7px;margin-top:4px">⚠ DUAL CERT</div>`:''}
+      ${c.isAuthentic?`<div style="color:rgba(255,255,255,.4);font-size:7px;margin-top:4px">AUTH — not numerically graded</div>`:''}
+    `;
+
+    // Store verified data on element
+    el._psaData = c;
+    toast('✓ PSA verified · ' + (c.subject||certNumber) + ' · PSA ' + c.grade);
+
+  } catch(e) {
+    panel.innerHTML = `<div style="color:rgba(255,100,100,.6)">⚠ PSA lookup error — ${e.message}</div>`;
+    console.warn('[PSA]', e);
+  }
+}
+
+// ════════════════════════════════════════════════════════════════
+// BROWSE ALL VARIANTS — search drawer
+// ════════════════════════════════════════════════════════════════
+let _varBubId = null; // which bubble we're searching for
+
+function _ensureVariantModal() {
+  if(document.getElementById('var-modal')) return;
+  const m = document.createElement('div');
+  m.id = 'var-modal';
+  m.style.cssText = 'position:fixed;bottom:0;left:0;right:0;background:#0d1117;border-top:2px solid rgba(255,255,255,.15);z-index:2000;display:none;flex-direction:column;max-height:75vh;box-shadow:0 -8px 40px rgba(0,0,0,.7);';
+  m.innerHTML = `
+    <div style="padding:10px 12px 8px;display:flex;gap:8px;align-items:center;border-bottom:1px solid rgba(255,255,255,.07);flex-shrink:0">
+      <div style="font-family:monospace;font-size:8px;letter-spacing:2px;color:rgba(255,255,255,.3);min-width:70px">BROWSE ALL</div>
+      <input id="var-inp" style="flex:1;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);color:#fff;padding:7px 10px;font-family:monospace;font-size:11px;border-radius:4px;outline:none" placeholder="Card name, set, year..." onkeydown="if(event.key==='Enter')doVariantSearch()">
+      <button onclick="doVariantSearch()" style="background:rgba(0,255,179,.12);border:1px solid rgba(0,255,179,.3);color:var(--g,#00ffb3);padding:7px 12px;font-family:monospace;font-size:10px;border-radius:4px;cursor:pointer;white-space:nowrap">🔍 Search</button>
+      <button onclick="closeVariantSearch()" style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);color:rgba(255,255,255,.5);padding:7px 10px;font-family:monospace;font-size:12px;border-radius:4px;cursor:pointer">×</button>
+    </div>
+    <div id="var-tabs" style="display:flex;gap:0;border-bottom:1px solid rgba(255,255,255,.06);flex-shrink:0">
+      <button class="var-tab on" onclick="setVarTab('ai',this)" style="flex:1;padding:7px;font-family:monospace;font-size:8px;letter-spacing:1px;background:rgba(0,255,179,.08);border:none;border-bottom:2px solid var(--g,#00ffb3);color:var(--g,#00ffb3);cursor:pointer">AI VARIANTS</button>
+      <button class="var-tab" onclick="setVarTab('ebay',this)" style="flex:1;padding:7px;font-family:monospace;font-size:8px;letter-spacing:1px;background:none;border:none;border-bottom:2px solid transparent;color:rgba(255,255,255,.35);cursor:pointer">EBAY SOLD</button>
+      <button class="var-tab" onclick="setVarTab('beckett',this)" style="flex:1;padding:7px;font-family:monospace;font-size:8px;letter-spacing:1px;background:none;border:none;border-bottom:2px solid transparent;color:rgba(255,255,255,.35);cursor:pointer">BECKETT</button>
+      <button class="var-tab" onclick="setVarTab('130pt',this)" style="flex:1;padding:7px;font-family:monospace;font-size:8px;letter-spacing:1px;background:none;border:none;border-bottom:2px solid transparent;color:rgba(255,255,255,.35);cursor:pointer">130PT</button>
+    </div>
+    <div id="var-results" style="overflow-y:auto;padding:10px 12px;flex:1"></div>
+  `;
+  document.body.appendChild(m);
+}
+
+window._varTab = 'ai';
+function setVarTab(tab, btn) {
+  window._varTab = tab;
+  document.querySelectorAll('.var-tab').forEach(b => {
+    b.style.background='none'; b.style.borderBottom='2px solid transparent'; b.style.color='rgba(255,255,255,.35)';
+  });
+  btn.style.background='rgba(0,255,179,.08)'; btn.style.borderBottom='2px solid var(--g,#00ffb3)'; btn.style.color='var(--g,#00ffb3)';
+  // Rebuild results for the active tab
+  doVariantSearch();
+}
+
+window.openVariantSearch = function(id) {
+  _varBubId = id;
+  _ensureVariantModal();
+  const el = document.getElementById(id);
+  const item = el?._item || {};
+  const name = item.player || item.name || '';
+  const game = item.game || '';
+  const year = item.year ? ' '+item.year : '';
+  const set  = item.set_name ? ' '+item.set_name : '';
+  document.getElementById('var-inp').value = name + year + set;
+  document.getElementById('var-modal').style.display = 'flex';
+  document.getElementById('var-results').innerHTML = '<div style="color:rgba(255,255,255,.3);font-family:monospace;font-size:9px;text-align:center;padding:20px">Tap Search to find all variants</div>';
+  window._varGame = game;
+  window._varTab = 'ai';
+  // Reset tab UI
+  document.querySelectorAll('.var-tab').forEach((b,i) => {
+    b.style.background = i===0?'rgba(0,255,179,.08)':'none';
+    b.style.borderBottom = i===0?'2px solid var(--g,#00ffb3)':'2px solid transparent';
+    b.style.color = i===0?'var(--g,#00ffb3)':'rgba(255,255,255,.35)';
+  });
+  // Auto-search
+  doVariantSearch();
+};
+
+window.closeVariantSearch = function() {
+  const m = document.getElementById('var-modal');
+  if(m) m.style.display = 'none';
+  _varBubId = null;
+};
+
+window.doVariantSearch = async function() {
+  const q = document.getElementById('var-inp')?.value?.trim();
+  const res = document.getElementById('var-results');
+  if(!res) return;
+  if(!q) { res.innerHTML = '<div style="color:rgba(255,255,255,.3);font-family:monospace;font-size:9px;text-align:center;padding:20px">Enter a card name</div>'; return; }
+
+  const tab = window._varTab || 'ai';
+  const game = window._varGame || '';
+
+  // ── eBay / Beckett / 130pt tabs = open link ─────────────────
+  if(tab !== 'ai') {
+    const qEnc = encodeURIComponent(q);
+    const links = {
+      ebay: `https://www.ebay.com/sch/i.html?_nkw=${qEnc}&LH_Complete=1&LH_Sold=1&_sop=13`,
+      beckett: `https://www.beckett.com/price-guide/?q=${qEnc}`,
+      '130pt': `https://130point.com/sales/?q=${qEnc}`,
+    };
+    res.innerHTML = `
+      <div style="padding:8px 0;font-family:monospace;font-size:9px;color:rgba(255,255,255,.3);margin-bottom:8px">Tap to open in new tab:</div>
+      <a href="${links[tab]}" target="_blank" style="display:flex;align-items:center;gap:8px;padding:12px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:6px;color:#fff;text-decoration:none;font-family:monospace;font-size:10px">
+        🔗 Search "${q}" on ${tab==='ebay'?'eBay Sold':tab==='beckett'?'Beckett Price Guide':'130pt'} ↗
+      </a>`;
+    return;
+  }
+
+  // ── AI tab: ask Claude for all known variants ────────────────
+  res.innerHTML = '<div style="color:rgba(0,255,179,.5);font-family:monospace;font-size:9px;text-align:center;padding:20px">⟳ SEARCHING ALL VARIANTS...</div>';
+
+  const gameCtx = game ? ` (${game})` : '';
+  const prompt = `List ALL notable printings/variants of "${q}"${gameCtx}.
+
+Include: different sets, years, parallels, numbered editions, autos, patches, special editions, promos, reprints.
+For sports cards: include all Topps/Panini/Upper Deck sets and parallels.
+For TCG: include all set printings, holos, reverse holos, Secret Rares, Full Art, alt art.
+For comics: include all print runs, variants, cover variants, newsstand, CGC grades.
+
+Return ONLY a JSON array, up to 30 items, no markdown:
+[{"set":"Base Set","variant":"Shadowless Holo","year":"1999","card_number":null,"serial":null,"mid":5000,"low":2000,"high":12000,"note":"Rare shadowless print"},...]
+
+Fields: set, variant, year, card_number, serial, mid (median $), low ($), high ($), note.`;
+
+  try {
+    const text = await callClaude([{role:'user',content:[{type:'text',text:prompt}]}], 1200);
+    let raw = text.replace(/```json/gi,'').replace(/```/g,'').trim();
+    const ai = raw.indexOf('[');
+    if(ai>=0) raw = raw.slice(ai);
+    const variants = JSON.parse(raw);
+    if(!variants.length) throw new Error('empty');
+
+    res.innerHTML = `
+      <div style="font-family:monospace;font-size:8px;color:rgba(255,255,255,.3);margin-bottom:8px;">${variants.length} VARIANTS FOUND · tap to use</div>
+      ${variants.map((v,i) => {
+        const price = v.mid > 0 ? `<span style="color:var(--g,#00ffb3);font-weight:700">$${Number(v.mid).toFixed(2)}</span>` : '';
+        const range = (v.low>0&&v.high>0) ? `<span style="color:rgba(255,255,255,.3);font-size:8px"> $${v.low}–$${v.high}</span>` : '';
+        const serial = v.serial ? `<span style="color:#ff4d6d;font-size:8px"> ${v.serial}</span>` : '';
+        const num = v.card_number ? `<span style="color:rgba(255,255,255,.4);font-size:8px"> #${v.card_number}</span>` : '';
+        return `<div onclick="applyVariant(${JSON.stringify(v).replace(/"/g,'&quot;')})" style="display:flex;flex-direction:column;gap:2px;padding:9px 10px;margin-bottom:5px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);border-radius:5px;cursor:pointer;transition:background .15s" onmouseenter="this.style.background='rgba(0,255,179,.08)'" onmouseleave="this.style.background='rgba(255,255,255,.04)'">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <span style="font-family:monospace;font-size:10px;color:#fff;font-weight:600">${v.set||'Unknown Set'}${serial}</span>
+            <span>${price}${range}</span>
+          </div>
+          <div style="font-family:monospace;font-size:8px;color:rgba(255,255,255,.4)">${v.variant||'Base'}${num}${v.year?' · '+v.year:''}</div>
+          ${v.note?`<div style="font-family:monospace;font-size:7px;color:rgba(255,255,255,.25)">${v.note}</div>`:''}
+        </div>`;
+      }).join('')}`;
+  } catch(e) {
+    res.innerHTML = `<div style="color:#ff4d6d;font-family:monospace;font-size:9px;text-align:center;padding:20px">⚠ Search failed — try a simpler name<br><span style="color:rgba(255,255,255,.3)">${e.message}</span></div>`;
+  }
+};
+
+window.applyVariant = function(v) {
+  if(!_varBubId) return;
+  const el = document.getElementById(_varBubId);
+  if(!el || !el._item) return;
+  // Build a synthetic print entry and prepend to the bubble's prints
+  const p = {
+    set: v.set || 'Unknown',
+    variant: v.variant || 'Base',
+    year: v.year || el._item.year,
+    mid: v.mid || 0,
+    low: v.low || 0,
+    high: v.high || 0,
+    card_number: v.card_number || null,
+    numbered: v.serial || null,
+    note: v.note || '',
+    _applied: true,
+  };
+  if(!el._prints) el._prints = [];
+  el._prints.unshift(p);
+  // Update item fields
+  if(v.set) el._item.set_name = v.set;
+  if(v.variant && v.variant !== 'Base') el._item.parallel = v.variant;
+  if(v.year) el._item.year = v.year;
+  if(v.card_number) el._item.card_number = v.card_number;
+  // Refresh the printing selector
+  const sel = document.getElementById('ps'+_varBubId);
+  if(sel) {
+    const opt = document.createElement('option');
+    opt.value = 0; opt.selected = true;
+    opt.textContent = '★ '+p.set+(p.variant&&p.variant!=='Base'?' · '+p.variant:'')+(p.year?' ('+p.year+')':'')+(p.mid>0?' — $'+p.mid.toFixed(2):'');
+    sel.prepend(opt);
+    // Shift existing option values up
+    Array.from(sel.options).forEach((o,i) => { if(i>0) o.value=i; });
+  }
+  // Update price display
+  const bpEl = document.getElementById('bp'+_varBubId);
+  const brEl = document.getElementById('br'+_varBubId);
+  if(bpEl && p.mid>0) { bpEl.textContent='$'+p.mid.toFixed(2); bpEl.style.fontSize=''; bpEl.style.color=''; }
+  if(brEl && p.low>0) brEl.textContent='$'+p.low+'–$'+p.high+' range';
+  toast('✓ '+p.set+' applied to bubble');
+  closeVariantSearch();
+};
+
+// ════════════════════════════════════════════════════════════════
 // ═══ LAUNCH ═════════════════════════════════════════════════════
 window.addEventListener('load', function(){
   startScanner();
