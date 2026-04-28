@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="2026.04.28.2">
+<meta name="version" content="2026.04.28.3">
 <title>Walk-Off Dashboard</title>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -193,7 +193,7 @@ tr.sold:hover td{opacity:.7;}
 
 <header>
   <div class="hdr">
-    <div class="logo">WALK-OFF <span>DASHBOARD · v2026.04.28.2</span></div>
+    <div class="logo">WALK-OFF <span>DASHBOARD · v2026.04.28.3</span></div>
     <div class="hdr-right">
       <span id="sync-status">Loading...</span>
       <button class="hbtn" onclick="loadInventory()">↻ REFRESH</button>
@@ -871,7 +871,7 @@ tr.sold:hover td{opacity:.7;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.04.28.2';
+const APP_VERSION = '2026.04.28.3';
 const STORE_ID = 'walkoff-main';
 const REGISTER_ID = 'front';
 const WF_PRODUCTS = '65eb45a28ff6bf3fe4f17b14';
@@ -999,6 +999,50 @@ function renderAll(){
   renderChannels(); renderTopSold(); renderMonthly();
   renderAlerts(); filterTable(); renderSoldTable();
 }
+
+function applyDashboardItemUpdate(id, updates) {
+  const idx = all.findIndex(i => i.id === id);
+  if(idx < 0) return false;
+  Object.assign(all[idx], {
+    cost: updates.cost,
+    market: updates.market,
+    price: updates.market,
+    qty: updates.qty,
+    year: updates.year,
+    set: updates.set,
+    variant: updates.variant,
+    location: updates.location,
+    condition: updates.condition,
+    category: updates.category,
+    key_notes: updates.key_notes,
+    notes: updates.key_notes,
+    player: updates.player,
+    team: updates.team,
+    issue: updates.issue,
+    serial_number: updates.serial_number,
+    card_number: updates.card_number,
+    comic_grade: updates.comic_grade,
+    grade: updates.comic_grade || all[idx].grade,
+    is_rookie: updates.is_rookie,
+    isRookie: updates.is_rookie,
+    is_auto: updates.is_auto,
+    is_patch: updates.is_patch,
+    is_key: updates.is_key,
+    is_signed: updates.is_signed,
+  });
+  soldData = all.filter(i => i.status === 'sold');
+  renderAll();
+  return true;
+}
+
+async function refreshInventoryQuietly(){
+  if(document.hidden || document.getElementById('edit-modal')?.classList.contains('on')) return;
+  const oldStatus = document.getElementById('sync-status')?.textContent || '';
+  try { await loadInventory(); }
+  catch(e) { if(oldStatus) document.getElementById('sync-status').textContent = oldStatus; }
+}
+
+setInterval(refreshInventoryQuietly, 60000);
 
 const f$=n=>'$'+Number(n||0).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0});
 const fd$=n=>'$'+Number(n||0).toFixed(2);
@@ -2208,10 +2252,8 @@ async function confirmEditAndSync() {
       body: JSON.stringify({ itemIds: [wfId] })
     }).catch(()=>{});
 
-    // Update in-memory data so table reflects change immediately
-    const idx2 = all.findIndex(i=>i.id===wfId);
-    if(idx2>=0) Object.assign(all[idx2], { market:updates.market, qty:updates.qty, cost:updates.cost, set:updates.set, year:updates.year, variant:updates.variant });
-    renderAll();
+    // Update the tablet view immediately so a reload is not needed.
+    applyDashboardItemUpdate(wfId, updates);
 
     const r2txt = r2.ok ? '' : ' (CMS: '+(await r2.text()).substring(0,40)+')';
     statusEl.style.color = (r2.ok || r.ok) ? 'var(--g)' : 'var(--red)';
