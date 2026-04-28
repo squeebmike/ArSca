@@ -468,6 +468,8 @@ export default {
           set = '', parallel = '', cardNumber = '',
           player = '', team = '', grade = '', grader = '',
           isRookie = false, serialNumber = '',
+          upc = '', features = '', productType = '', configuration = '',
+          league = '', season = '', customAspects = {},
         } = b;
 
         if (!title || !price) return json({ error: 'title and price required' }, 400);
@@ -502,6 +504,16 @@ export default {
         if (serialNumber) aspects['Serial Numbered'] = [serialNumber];
         if (grader) aspects['Professional Grader'] = [grader];
         if (grade) aspects['Grade'] = [String(grade)];
+        if (upc) aspects['UPC'] = [String(upc)];
+        if (league) aspects['League'] = [league];
+        if (season) aspects['Season'] = [String(season)];
+        if (productType) aspects['Type'] = [productType === 'sealed' ? 'Sports Trading Card Box' : productType];
+        if (configuration) aspects['Configuration'] = [configuration];
+        if (features) aspects['Features'] = String(features).split(',').map(s => s.trim()).filter(Boolean);
+        for (const [k, v] of Object.entries(customAspects || {})) {
+          if (!k || v == null || v === '') continue;
+          aspects[k] = Array.isArray(v) ? v.map(String) : [String(v)];
+        }
         aspects['Sport'] = aspects['Sport'] || ['Trading Cards'];
 
         const allImgUrls = [];
