@@ -895,6 +895,20 @@ async function wfPatch(path, body){
   return fetch(WORKER+'/proxy'+path,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
 }
 
+async function postCartToWorker(cartData){
+  try {
+    await fetch(WORKER+'/cart', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(cartData),
+      signal:AbortSignal.timeout(2500)
+    });
+    return true;
+  } catch(e) {
+    return false;
+  }
+}
+
 window.addEventListener('load', loadInventory);
 
 async function loadInventory(){
@@ -1285,15 +1299,24 @@ async function confirmQuickSell(){
   const item=all.find(i=>i.id===sellItemId); if(!item) return;
   const salePrice=parseFloat(document.getElementById('sell-price').value)||0;
   const channel=document.getElementById('sell-channel').value;
+  const soldAt = new Date().toISOString();
   if(!salePrice){alert('Enter a sale price');return;}
   // Update Webflow
   try {
     await wfPatch('/collections/'+WF_PRODUCTS+'/items/'+item.id, {
-      fieldData:{'sold-out':true,'inventory-count':0,status:STATUS_SOLD}
+      fieldData:{
+        'sold-out':true,
+        'inventory-count':0,
+        status:STATUS_SOLD,
+        'sale-price':salePrice,
+        'profit':salePrice-(item.cost||0),
+        'sale-channel':channel,
+        'date-sold':soldAt
+      }
     });
     // Update local
     const idx=all.findIndex(i=>i.id===item.id);
-    if(idx>=0){all[idx].status='sold';all[idx].salePrice=salePrice;all[idx].profit=salePrice-(item.cost||0);all[idx].channel=channel;all[idx].soldAt=new Date().toISOString();}
+    if(idx>=0){all[idx].status='sold';all[idx].salePrice=salePrice;all[idx].profit=salePrice-(item.cost||0);all[idx].channel=channel;all[idx].soldAt=soldAt;}
     soldData=all.filter(i=>i.status==='sold');
     closeSellModal();
     renderAll();
@@ -1320,14 +1343,23 @@ function dashAddToCart(id){
     name: item.name,
     sub: [item.set, item.year, item.category].filter(Boolean).join(' · '),
     price: item.market || item.salePrice || 0,
-    img: null,
+    cost: item.cost || 0,
+    img: item.thumbnail || null,
     shopId: item.id,
+    wfId: item.id,
     category: item.category,
+    condition: item.condition || '',
+    set: item.set || '',
+    year: item.year || '',
   };
   cartData.items.push(cartItem);
   cartData.savedAt = new Date().toISOString();
+  cartData.storeId = 'Walk-Off Sports Cards';
 
   localStorage.setItem('pos_cart_v2', JSON.stringify(cartData));
+  postCartToWorker(cartData).then(ok => {
+    if(!ok) toast_dash('Added locally - scanner will sync when opened');
+  });
 
   // Visual feedback
   toast_dash('🛒 Added to cart: ' + item.name);
@@ -2714,7 +2746,8 @@ async function renderCustomerDisplay(){
 
   const sub = items.reduce((a,i)=>a+(i.price||0),0);
   const discAmt = sub * (disc/100);
-  const total = sub - discAmt;
+  const tax = Number(cartData.tax || 0);
+  const total = Number(cartData.total || (sub - discAmt + tax));
 
   const itemsEl = document.getElementById('cd-items');
   const totalEl = document.getElementById('cd-total');
@@ -2736,7 +2769,7 @@ async function renderCustomerDisplay(){
   </div>`).join('');
 
   totalEl.textContent = '$'+total.toFixed(2);
-  countEl.textContent = items.length + ' item' + (items.length>1?'s':'') + (disc>0?' · '+disc+'% discount applied':'');
+  countEl.textContent = items.length + ' item' + (items.length>1?'s':'') + (disc>0?' · '+disc+'% discount applied':'') + (tax>0?' · tax included':'');
 }
 
 // Auto-refresh customer display every 3 seconds

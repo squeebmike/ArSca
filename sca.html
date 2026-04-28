@@ -4668,9 +4668,15 @@ function loadCartState() {
       const r = await fetch(WORKER_URL + '/cart', {signal: AbortSignal.timeout(2000)});
       if(!r.ok) return;
       const wc = await r.json();
-      if(!wc || !wc.savedAt || wc.clearedAt) return; // empty/cleared cart, skip
       const localSaved = localStorage.getItem('pos_cart_v2');
       const lc = localSaved ? JSON.parse(localSaved) : null;
+      if(wc?.clearedAt && (!lc || new Date(wc.clearedAt) > new Date(lc.savedAt||0))) {
+        clearCartState();
+        updateCartBadge();
+        renderCart();
+        return;
+      }
+      if(!wc || !wc.savedAt || wc.clearedAt) return; // empty/cleared cart, skip
       const workerIsNewer = !lc || new Date(wc.savedAt) > new Date(lc.savedAt||0);
       if(workerIsNewer && (wc.items||[]).length > 0) {
         cart = wc.items;
@@ -4685,9 +4691,17 @@ function loadCartState() {
   return cart.length > 0;
 }
 function saveCartState() {
+  const totals = typeof getCartTotals === 'function'
+    ? getCartTotals()
+    : {sub:0, disc:0, tax:0, total:0, taxRate:0};
   const cartData = {
     items: cart,
     discount: cartDiscount,
+    subtotal: totals.sub,
+    discountAmount: totals.disc,
+    tax: totals.tax,
+    taxRate: totals.taxRate,
+    total: totals.total,
     savedAt: new Date().toISOString(),
     storeId: STORE.store_name || 'default',
   };
@@ -4795,6 +4809,7 @@ function addManualItem(){
   const price = parseFloat(prompt('Price ($):'));
   if(isNaN(price)) return;
   cart.push({ id:'ci_'+Date.now(), name, sub:'Manual entry', price, img:null });
+  saveCartState();
   updateCartBadge();
   renderCart();
 }
@@ -5256,6 +5271,7 @@ async function recordTransaction(method, total, change){
   const soldAt2 = soldAt;
   const cartSnapshot = [...cart];
   const _unsyncedNames = [];
+  const _soldMarkJobs = [];
 
   // Pre-fetch Webflow inventory once for fallback lookups (avoid per-item requests)
   let _wfAllItems = null;
@@ -5286,7 +5302,7 @@ async function recordTransaction(method, total, change){
     }
     if(shopId) {
       const itemCost = item.cost || 0;
-      wfFetch('/collections/'+STORE.wf_products_col+'/items/'+shopId, {
+      const job = wfFetch('/collections/'+STORE.wf_products_col+'/items/'+shopId, {
         method: 'PATCH',
         body: JSON.stringify({ fieldData: {
           'sold-out':        true,
@@ -5297,11 +5313,28 @@ async function recordTransaction(method, total, change){
           'sale-channel':    method,
           'date-sold':       soldAt2,
         }})
-      }).catch(e => console.warn('Webflow sold mark failed:', item.name, e.message));
+      }).then(async r => {
+        if(!r.ok) {
+          const detail = await r.text().catch(() => '');
+          throw new Error('Webflow ' + r.status + (detail ? ': ' + detail.substring(0,120) : ''));
+        }
+      });
+      _soldMarkJobs.push({name:item.name || 'Unknown item', job});
     } else {
       console.warn('No Webflow ID for cart item:', item.name);
       _unsyncedNames.push(item.name || 'Unknown item');
     }
+  }
+
+  if(_soldMarkJobs.length) {
+    const results = await Promise.allSettled(_soldMarkJobs.map(j => j.job));
+    results.forEach((r, idx) => {
+      if(r.status === 'rejected') {
+        const name = _soldMarkJobs[idx].name;
+        console.warn('Webflow sold mark failed:', name, r.reason?.message || r.reason);
+        _unsyncedNames.push(name);
+      }
+    });
   }
 
   // Notify user if any items couldn't be marked sold in Webflow
