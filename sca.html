@@ -3,7 +3,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="version" content="2026.04.28.3">
+<meta name="version" content="2026.04.28.4">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>LBA Scanner</title>
@@ -393,7 +393,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
   <div class="hbtns">
     <span id="show-badge" style="font-family:monospace;font-size:9px;color:rgba(255,209,102,.7);letter-spacing:1px"></span>
     <span id="offline-sync-badge" style="font-family:monospace;font-size:9px;color:rgba(255,255,255,.35);letter-spacing:1px">online</span>
-    <span id="app-version" style="font-family:monospace;font-size:9px;color:rgba(0,255,179,.55);letter-spacing:1px">v2026.04.28.3</span>
+    <span id="app-version" style="font-family:monospace;font-size:9px;color:rgba(0,255,179,.55);letter-spacing:1px">v2026.04.28.4</span>
     <span id="hstatus">READY</span>
     <button class="hbtn" id="flipbtn" onclick="toggleFlip()">FLIP</button>
     <button class="hbtn" id="bulkbtn" onclick="toggleBulk()">BULK</button>
@@ -570,7 +570,7 @@ const STORE = {
   wf_status_instock:'f3769d1e15fa0956f98984d6fa36437f',
   wf_status_sold:   'e6b42f14fcb99aa2168a5f5672226f68',
 };
-const APP_VERSION = '2026.04.28.3';
+const APP_VERSION = '2026.04.28.4';
 const WORKER_URL = STORE.worker_url;
 
 function slugifyId(value, fallback) {
@@ -2185,6 +2185,118 @@ async function callClaudeSonnet(msgs, maxTok){
   return _claudeCall('claude-sonnet-4-6', msgs, maxTok || 1000);
 }
 
+function parseClaudeJson(text, fallback) {
+  try {
+    let raw = String(text || '').replace(/```json/gi,'').replace(/```/g,'').trim();
+    const ai = raw.indexOf('[');
+    const oi = raw.indexOf('{');
+    if(ai >= 0 && (oi < 0 || ai < oi)) raw = raw.slice(ai);
+    else if(oi >= 0) raw = raw.slice(oi);
+    else return fallback;
+    return JSON.parse(raw);
+  } catch(e) {
+    return fallback;
+  }
+}
+
+function isSpecialScanItem(item) {
+  const g = String(item?.game || '').toLowerCase();
+  return g.includes('sports card') || g.includes('comic') || g.includes('slab');
+}
+
+async function refineSpecialScan(item, img) {
+  if(!isSpecialScanItem(item)) return item;
+  const game = String(item.game || '');
+  const base = JSON.stringify(item);
+  const prompt = game.includes('Comic')
+    ? `Re-check this comic cover for vending inventory. Prior result: ${base}
+
+Focus only on visible cover evidence: title/logo, issue number, publisher logo, cover price, UPC barcode, volume/series text, cover date, printing/variant hints, signatures/sketch cover/foil.
+Do not substitute a famous issue/year if not visible. Return ONLY one JSON object with:
+{"game":"Comic","name":"","issue":"","year":"","publisher":"","volume":"","variant":"","printing":"","cover_price":"","barcode_visible":true,"confidence":"high|medium|low","confidence_reason":"","search_query":""}`
+    : `Re-check this sports card or graded slab for vending inventory. Prior result: ${base}
+
+Focus only on visible evidence: player/name, team, sport, year, manufacturer, set, parallel/color, card number, rookie logo, autograph/patch, serial number, grader, grade, cert number.
+If the front is missing card number/serial, leave it null and say "scan back recommended" in confidence_reason. Return ONLY one JSON object with:
+{"game":"Sports Card","name":"","player":"","sport":"","team":"","year":"","manufacturer":"","set_name":"","parallel":"Base","card_number":null,"serial_number":null,"is_rookie":false,"is_auto":false,"is_patch":false,"grading_company":"","grade":"","cert_number":"","confidence":"high|medium|low","confidence_reason":"","search_query":""}`;
+  const text = await callClaudeSonnet([{role:'user',content:[
+    {type:'image',source:{type:'base64',media_type:'image/jpeg',data:img}},
+    {type:'text',text:prompt}
+  ]}], 700);
+  const refined = parseClaudeJson(text, null);
+  if(!refined || Array.isArray(refined)) return item;
+  return Object.assign({}, item, refined, {
+    cx: item.cx,
+    cy: item.cy,
+    refinedAt: new Date().toISOString(),
+  });
+}
+
+function scanHandoffKey() {
+  return 'scan_handoff_' + getStoreId() + '_' + getRegisterId();
+}
+
+async function readScanHandoffQueue() {
+  try {
+    const res = await fetch(scopedWorkerPath('/kv/' + encodeURIComponent(scanHandoffKey())), { signal: AbortSignal.timeout(2500) });
+    const data = await res.json();
+    return data?.value ? JSON.parse(data.value) : [];
+  } catch(e) {
+    return [];
+  }
+}
+
+async function writeScanHandoffQueue(queue) {
+  await fetch(scopedWorkerPath('/kv/' + encodeURIComponent(scanHandoffKey())), {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify(queue.slice(0, 25)),
+    signal: AbortSignal.timeout(3000),
+  });
+}
+
+function buildHandoffItem(el) {
+  const item = el?._item || {};
+  const print = (el?._prints || [])[el?._bmi || 0] || {};
+  const category = el?._ct === 'sports' ? 'Sports' : el?._ct === 'comic' ? 'Comic' : ['psa','bgs','cgc','sgc'].includes(el?._ct) ? 'Graded' : 'TCG';
+  return {
+    id: 'phone_scan_' + Date.now(),
+    sentAt: new Date().toISOString(),
+    source: 'phone-scanner',
+    appVersion: APP_VERSION,
+    show: getShowContext(),
+    category,
+    name: item.player || item.name || 'Scanned item',
+    player: item.player || '',
+    team: item.team || item.publisher || '',
+    year: item.year || print.year || '',
+    set: print.set || item.set_name || item.set || '',
+    variant: print.variant || item.parallel || item.variant || '',
+    issue: item.issue || '',
+    publisher: item.publisher || '',
+    card_number: item.card_number || print.card_number || '',
+    serial_number: item.serial_number || '',
+    confidence: item.confidence || 'medium',
+    confidence_reason: item.confidence_reason || '',
+    price: Number(print.mid || item.market_nm || item.market || 0),
+    imageUrl: el?._uploadedPhotoUrl || el?._imgUrl || null,
+    search_query: item.search_query || [item.player || item.name, item.year, print.set || item.set_name, print.variant || item.parallel].filter(Boolean).join(' '),
+  };
+}
+
+window.sendBubbleToTablet = async function(id) {
+  const el = document.getElementById(id);
+  if(!el) return toast('Scan not found');
+  const handoff = buildHandoffItem(el);
+  try {
+    const queue = await readScanHandoffQueue();
+    queue.unshift(handoff);
+    await writeScanHandoffQueue(queue);
+    toast('Sent to tablet POS');
+  } catch(e) {
+    toast('Could not send to tablet: ' + e.message);
+  }
+};
 
 async function doScan(){
   if(scanning)return;scanning=true;
@@ -2208,6 +2320,8 @@ async function scanFront(img){
   const quickPrompt = `Identify this collectible item from the image. It can be a trading card, sports card, comic book, graded slab, or any collectible.
 
 IMPORTANT RULES:
+- First classify the item type. Then use the matching extraction rules. Do not use TCG assumptions for sports cards or comics.
+- For sports cards: parallel/color, card number, rookie logo, autograph, relic/patch, and serial number matter more than generic set names. If card number or serial is not visible, say scan back recommended.
 - For sports cards: DO NOT guess the player if face is unclear — set confidence:"low" and describe what you can see (uniform color, number, position). Look for ANY text on the card edges/corners for year or card number.
 - For comics: Read the TITLE and ISSUE NUMBER from the cover carefully. CRITICAL — determine the CORRECT PUBLISHER and YEAR from VISUAL EVIDENCE on the cover, not the most famous version:
   * Look for the publisher logo/imprint (Mirage, IDW, Image, Dark Horse, DC, Marvel, Fantagraphics, etc.) — it appears on the cover or spine
@@ -2240,7 +2354,7 @@ Return array only, no markdown.`;
     {type:'text',text:quickPrompt}
   ]}], 1000);
 
-  console.log('[v10] sca loaded — universal scan fixed'); document.getElementById('hstatus').textContent='v9 READY';
+  console.log('[scanner] universal scan parsed'); document.getElementById('hstatus').textContent='v' + APP_VERSION + ' READY';
   console.log('[v8] Raw response:', text ? text.substring(0,200) : 'EMPTY');
 
   let items = [];
@@ -2266,6 +2380,11 @@ Return array only, no markdown.`;
     hs.textContent = 'NONE';
     toast('Nothing detected — move card closer');
     return;
+  }
+
+  if(items.some(isSpecialScanItem)) {
+    hs.textContent = 'VERIFYING...';
+    items = await Promise.all(items.map(item => refineSpecialScan(item, img).catch(() => item)));
   }
 
   if(auto) clearAll();
@@ -3378,6 +3497,7 @@ function addBubble(item,stock,imgUrl,apiPrintings,bestMatchIdx){
       ${ct==='general'?`<button class="bact" style="background:rgba(199,125,255,.06);border:1px solid rgba(199,125,255,.2);color:var(--purple);font-size:9px" onclick="scanBackForBubble('${id}')">⟳ SCAN BACK</button>`:''}
       <button class="bact" style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.15);color:rgba(255,255,255,.6);font-size:9px" onclick="openVariantSearch('${id}')">🔍 Browse All Variants</button>
       <button class="bact" style="background:rgba(0,255,179,.1);border:1px solid rgba(0,255,179,.3);color:var(--g);font-weight:700" onclick="addBubbleToCart('${id}')">🛒 Add to Cart</button>
+      <button class="bact" style="background:rgba(72,202,228,.08);border:1px solid rgba(72,202,228,.25);color:var(--blue);font-weight:700" onclick="sendBubbleToTablet('${id}')">Send to Tablet</button>
       <button class="bact a-add" onclick="showAddForm('${id}')">+ Add to Inventory</button>
       ${ct==='sports'||ct==='tcg'?`<button class="bact" style="background:rgba(72,202,228,.06);border:1px solid rgba(72,202,228,.2);color:var(--blue);font-size:9px" onclick="showGradeSubmit('${id}')">📤 Submit to Grader</button>`:''}
       ${si>0?`<button class="bact a-sell" onclick="showSellForm('${id}')">✓ Mark as Sold</button>`:''}

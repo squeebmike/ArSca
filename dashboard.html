@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="2026.04.28.3">
+<meta name="version" content="2026.04.28.4">
 <title>Walk-Off Dashboard</title>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -193,7 +193,7 @@ tr.sold:hover td{opacity:.7;}
 
 <header>
   <div class="hdr">
-    <div class="logo">WALK-OFF <span>DASHBOARD · v2026.04.28.3</span></div>
+    <div class="logo">WALK-OFF <span>DASHBOARD · v2026.04.28.4</span></div>
     <div class="hdr-right">
       <span id="sync-status">Loading...</span>
       <button class="hbtn" onclick="loadInventory()">↻ REFRESH</button>
@@ -391,6 +391,16 @@ tr.sold:hover td{opacity:.7;}
 <!-- POS TOOLS TAB -->
 <div id="tab-pos" class="tab-panel">
   <div class="sec">POS TOOLS</div>
+
+  <div class="panel" style="margin-top:4px;margin-bottom:14px">
+    <div class="ph">PHONE SCANNER INBOX <span id="scan-inbox-count" style="font-size:9px;color:var(--dim)">waiting for scans</span></div>
+    <div style="font-family:monospace,monospace;font-size:10px;color:var(--dim);margin-bottom:10px">
+      Send a scan from the phone, then accept it here on the tablet as a cart item or use it to jump into inventory search.
+    </div>
+    <div id="scan-inbox-list" style="display:grid;gap:8px">
+      <div style="font-family:monospace,monospace;font-size:10px;color:var(--dim);padding:10px;border:1px dashed var(--border);border-radius:8px;text-align:center">No phone scans yet</div>
+    </div>
+  </div>
 
   <!-- Row 1: Quick Price Lookup + Cash Drawer -->
   <div class="two" style="margin-top:4px">
@@ -871,7 +881,7 @@ tr.sold:hover td{opacity:.7;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.04.28.3';
+const APP_VERSION = '2026.04.28.4';
 const STORE_ID = 'walkoff-main';
 const REGISTER_ID = 'front';
 const WF_PRODUCTS = '65eb45a28ff6bf3fe4f17b14';
@@ -892,6 +902,34 @@ const PER=50; let page=1;
 
 function cartWorkerPath(){
   return WORKER + '/cart?store=' + encodeURIComponent(STORE_ID) + '&register=' + encodeURIComponent(REGISTER_ID);
+}
+
+function scopedWorkerPath(path){
+  const sep = path.includes('?') ? '&' : '?';
+  return WORKER + path + sep + 'store=' + encodeURIComponent(STORE_ID) + '&register=' + encodeURIComponent(REGISTER_ID);
+}
+
+function scanHandoffKey(){
+  return 'scan_handoff_' + STORE_ID + '_' + REGISTER_ID;
+}
+
+async function readScanInbox(){
+  try {
+    const r = await fetch(scopedWorkerPath('/kv/' + encodeURIComponent(scanHandoffKey())), { signal: AbortSignal.timeout(2500) });
+    const d = await r.json();
+    return d?.value ? JSON.parse(d.value) : [];
+  } catch(e) {
+    return [];
+  }
+}
+
+async function writeScanInbox(queue){
+  await fetch(scopedWorkerPath('/kv/' + encodeURIComponent(scanHandoffKey())), {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify(queue.slice(0,25)),
+    signal: AbortSignal.timeout(2500),
+  });
 }
 
 async function wfGet(path){
@@ -1418,6 +1456,92 @@ function dashAddToCart(id){
   // Visual feedback
   toast_dash('🛒 Added to cart: ' + item.name);
 }
+
+function addScanToCart(scan){
+  let cartData = { items: [], discount: 0 };
+  try {
+    const saved = localStorage.getItem('pos_cart_v2');
+    if(saved) cartData = JSON.parse(saved);
+  } catch(e) {}
+  cartData.items.push({
+    id: 'ci_phone_' + Date.now(),
+    name: scan.name || 'Phone scan',
+    sub: [scan.year, scan.set, scan.variant, scan.card_number ? '#'+scan.card_number : null, scan.issue ? '#'+scan.issue : null].filter(Boolean).join(' · '),
+    price: Number(scan.price || 0),
+    cost: 0,
+    img: scan.imageUrl || null,
+    shopId: null,
+    wfId: null,
+    category: scan.category || 'TCG',
+    condition: 'NM',
+    set: scan.set || '',
+    year: scan.year || '',
+  });
+  cartData.savedAt = new Date().toISOString();
+  cartData.storeId = STORE_ID;
+  cartData.registerId = REGISTER_ID;
+  cartData.appVersion = APP_VERSION;
+  localStorage.setItem('pos_cart_v2', JSON.stringify(cartData));
+  postCartToWorker(cartData);
+  toast_dash('Added phone scan to cart: ' + (scan.name || 'item'));
+}
+
+async function removeScanFromInbox(scanId){
+  const queue = await readScanInbox();
+  await writeScanInbox(queue.filter(s => s.id !== scanId));
+  renderScanInbox();
+}
+
+async function acceptScanToCart(scanId){
+  const queue = await readScanInbox();
+  const scan = queue.find(s => s.id === scanId);
+  if(scan) addScanToCart(scan);
+  await writeScanInbox(queue.filter(s => s.id !== scanId));
+  renderScanInbox();
+}
+
+async function searchScanInInventory(scanId){
+  const queue = await readScanInbox();
+  const scan = queue.find(s => s.id === scanId);
+  if(!scan) return;
+  switchTab('inventory', document.querySelector('.tab:nth-child(2)'));
+  const q = document.getElementById('tbl-q');
+  if(q) {
+    q.value = [scan.name, scan.year, scan.set, scan.issue].filter(Boolean).join(' ');
+    filterTable();
+  }
+}
+
+async function renderScanInbox(){
+  const list = document.getElementById('scan-inbox-list');
+  const count = document.getElementById('scan-inbox-count');
+  if(!list) return;
+  const queue = await readScanInbox();
+  if(count) count.textContent = queue.length ? queue.length + ' incoming' : 'waiting for scans';
+  if(!queue.length) {
+    list.innerHTML = '<div style="font-family:monospace,monospace;font-size:10px;color:var(--dim);padding:10px;border:1px dashed var(--border);border-radius:8px;text-align:center">No phone scans yet</div>';
+    return;
+  }
+  list.innerHTML = queue.slice(0,8).map(s => {
+    const meta = [s.category, s.year, s.set, s.variant, s.issue ? '#'+s.issue : '', s.card_number ? '#'+s.card_number : ''].filter(Boolean).join(' · ');
+    return `<div style="display:grid;grid-template-columns:52px 1fr auto;gap:10px;align-items:center;background:var(--surf2);border:1px solid var(--border);border-radius:8px;padding:8px">
+      ${s.imageUrl ? `<img src="${s.imageUrl}" style="width:52px;height:52px;object-fit:cover;border-radius:6px;border:1px solid var(--border)">` : `<div style="width:52px;height:52px;border-radius:6px;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;color:var(--dim);font-size:9px">SCAN</div>`}
+      <div>
+        <div style="font-weight:700;color:var(--text);font-size:12px">${s.name || 'Phone scan'}</div>
+        <div style="font-family:monospace,monospace;font-size:9px;color:var(--dim);margin-top:2px">${meta || 'No details'}</div>
+        <div style="font-family:monospace,monospace;font-size:8px;color:${s.confidence==='low'?'var(--red)':s.confidence==='high'?'var(--g)':'var(--gold)'};margin-top:2px">${(s.confidence || 'medium').toUpperCase()} ${s.confidence_reason ? '· '+s.confidence_reason : ''}</div>
+      </div>
+      <div style="display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end">
+        <button class="ra" style="background:rgba(0,255,179,.08);border-color:rgba(0,255,179,.25);color:var(--g)" onclick="acceptScanToCart('${s.id}')">Cart</button>
+        <button class="ra" onclick="searchScanInInventory('${s.id}')">Find</button>
+        <button class="ra" style="background:rgba(255,77,109,.08);border-color:rgba(255,77,109,.25);color:var(--red)" onclick="removeScanFromInbox('${s.id}')">Dismiss</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+setInterval(renderScanInbox, 2500);
+renderScanInbox();
 
 function toast_dash(msg){
   const existing = document.getElementById('dash-toast');
@@ -1963,6 +2087,7 @@ switchTab = function(tab, btn){
   if(tab==='consign') renderConsign();
   if(tab==='locations') renderLocations();
   if(tab==='restock') renderRestock();
+  if(tab==='pos') renderScanInbox();
 };
 
 // Check want list when inventory loads
