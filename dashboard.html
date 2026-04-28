@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="2026.04.28.4">
+<meta name="version" content="2026.04.28.6">
 <title>Walk-Off Dashboard</title>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -193,7 +193,7 @@ tr.sold:hover td{opacity:.7;}
 
 <header>
   <div class="hdr">
-    <div class="logo">WALK-OFF <span>DASHBOARD · v2026.04.28.4</span></div>
+    <div class="logo">WALK-OFF <span>DASHBOARD · v2026.04.28.6</span></div>
     <div class="hdr-right">
       <span id="sync-status">Loading...</span>
       <button class="hbtn" onclick="loadInventory()">↻ REFRESH</button>
@@ -881,7 +881,7 @@ tr.sold:hover td{opacity:.7;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.04.28.4';
+const APP_VERSION = '2026.04.28.6';
 const STORE_ID = 'walkoff-main';
 const REGISTER_ID = 'front';
 const WF_PRODUCTS = '65eb45a28ff6bf3fe4f17b14';
@@ -1556,8 +1556,118 @@ function toast_dash(msg){
 
 function openEbayFromDash(id){
   const item=all.find(i=>i.id===id); if(!item) return;
-  const q=encodeURIComponent([item.name,item.year,item.set,item.category].filter(Boolean).join(' '));
-  window.open('https://www.ebay.com/sl/sell?title='+encodeURIComponent([item.year,item.name,item.set].filter(Boolean).join(' ').substring(0,80)),'_blank');
+  const cat = item.category || 'Sports';
+  const isComic = cat === 'Comic';
+  const isTCG = cat === 'TCG';
+  const isGraded = cat === 'Graded' || item.grader || item.grade;
+  const catId = isComic ? '259104' : isTCG ? '183454' : '261328';
+  const conditionId = isGraded ? '2750' : '3000';
+  const title = [item.year,item.name,item.set,item.variant,item.card_number?'#'+item.card_number:null,isGraded?[item.grader,item.grade].filter(Boolean).join(' '):null,item.isRookie?'RC':null]
+    .filter(Boolean).join(' ').replace(/\s+/g,' ').substring(0,80);
+  const price = Number(item.market || item.salePrice || 0);
+  const desc = [
+    title,
+    '',
+    item.category ? 'Category: '+item.category : '',
+    item.year ? 'Year: '+item.year : '',
+    item.set ? 'Set: '+item.set : '',
+    item.variant ? 'Variant: '+item.variant : '',
+    item.condition ? 'Condition: '+item.condition : '',
+    item.card_number ? 'Card #: '+item.card_number : '',
+    item.serial_number ? 'Serial #: '+item.serial_number : '',
+    item.player ? 'Player: '+item.player : '',
+    item.team ? 'Team: '+item.team : '',
+    item.issue ? 'Issue: '+item.issue : '',
+    item.publisher ? 'Publisher: '+item.publisher : '',
+    isGraded ? 'Grade: '+[item.grader,item.grade].filter(Boolean).join(' ') : '',
+    '',
+    'Ships carefully packed from Walk-Off Sports Cards in Kingston, WA.'
+  ].filter(Boolean).join('\n');
+
+  document.getElementById('dash-ebay-modal')?.remove();
+  const modal=document.createElement('div');
+  modal.id='dash-ebay-modal';
+  modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:9999;display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;padding:24px 12px';
+  modal.innerHTML=`
+    <div style="width:100%;max-width:560px;background:var(--surf);border:1px solid var(--border);border-radius:10px;padding:16px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <div style="font-family:'Orbitron',monospace;color:var(--gold);font-size:13px;letter-spacing:2px">LIST INVENTORY ON EBAY</div>
+        <button onclick="document.getElementById('dash-ebay-modal').remove()" style="background:none;border:none;color:var(--dim);font-size:22px;cursor:pointer">×</button>
+      </div>
+      <div style="display:grid;grid-template-columns:80px 1fr;gap:12px;margin-bottom:12px;align-items:start">
+        ${item.thumbnail?`<img src="${item.thumbnail}" style="width:80px;height:100px;object-fit:contain;background:#050507;border:1px solid var(--border);border-radius:6px">`:`<div style="width:80px;height:100px;background:#050507;border:1px solid var(--border);border-radius:6px;display:flex;align-items:center;justify-content:center;color:var(--dim);font-family:monospace;font-size:9px">NO IMAGE</div>`}
+        <div>
+          <label style="font-family:monospace;font-size:9px;color:var(--dim)">TITLE</label>
+          <input id="dash-eb-title" maxlength="80" value="${title.replace(/"/g,'&quot;')}" style="width:100%;margin-top:4px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:9px;border-radius:6px;font-size:12px;box-sizing:border-box">
+          <div id="dash-eb-title-count" style="font-family:monospace;font-size:8px;color:var(--dim);text-align:right;margin-top:3px">${title.length}/80</div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px">
+        <div><label style="font-family:monospace;font-size:9px;color:var(--dim)">PRICE</label><input id="dash-eb-price" type="number" step="0.01" min="0.99" value="${price?price.toFixed(2):''}" style="width:100%;margin-top:4px;background:var(--surf2);border:1px solid var(--border);color:var(--gold);padding:9px;border-radius:6px;box-sizing:border-box"></div>
+        <div><label style="font-family:monospace;font-size:9px;color:var(--dim)">QTY</label><input id="dash-eb-qty" type="number" min="1" value="${Math.max(1, item.qty||1)}" style="width:100%;margin-top:4px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:9px;border-radius:6px;box-sizing:border-box"></div>
+        <div><label style="font-family:monospace;font-size:9px;color:var(--dim)">FORMAT</label><select id="dash-eb-format" style="width:100%;margin-top:4px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:9px;border-radius:6px"><option value="FIXED_PRICE">Buy It Now</option><option value="AUCTION">Auction</option></select></div>
+        <div><label style="font-family:monospace;font-size:9px;color:var(--dim)">CONDITION</label><select id="dash-eb-condition" style="width:100%;margin-top:4px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:9px;border-radius:6px"><option value="2750" ${conditionId==='2750'?'selected':''}>Like New / Graded</option><option value="3000" ${conditionId==='3000'?'selected':''}>Very Good</option><option value="4000">Good</option><option value="5000">Acceptable</option></select></div>
+        <div><label style="font-family:monospace;font-size:9px;color:var(--dim)">CATEGORY</label><select id="dash-eb-category" style="width:100%;margin-top:4px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:9px;border-radius:6px"><option value="261328" ${catId==='261328'?'selected':''}>Sports Cards</option><option value="183454" ${catId==='183454'?'selected':''}>TCG Cards</option><option value="259104" ${catId==='259104'?'selected':''}>Comics</option></select></div>
+        <div><label style="font-family:monospace;font-size:9px;color:var(--dim)">DURATION</label><select id="dash-eb-duration" style="width:100%;margin-top:4px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:9px;border-radius:6px"><option value="GTC">GTC</option><option value="DAYS_7">7 days</option><option value="DAYS_10">10 days</option></select></div>
+      </div>
+      <label style="font-family:monospace;font-size:9px;color:var(--dim)">CONDITION DESCRIPTION</label>
+      <input id="dash-eb-cond-desc" value="${(isGraded?[item.grader,item.grade].filter(Boolean).join(' '):item.condition||'').replace(/"/g,'&quot;')}" style="width:100%;margin:4px 0 10px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:9px;border-radius:6px;box-sizing:border-box">
+      <label style="font-family:monospace;font-size:9px;color:var(--dim)">DESCRIPTION</label>
+      <textarea id="dash-eb-desc" rows="8" style="width:100%;margin-top:4px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:9px;border-radius:6px;box-sizing:border-box;resize:vertical">${desc}</textarea>
+      <div id="dash-eb-status" style="display:none;margin:10px 0;padding:10px;border-radius:6px;font-family:monospace;font-size:10px;text-align:center"></div>
+      <div style="display:flex;gap:8px;margin-top:12px">
+        <button class="hbtn" style="flex:1;padding:12px;background:rgba(255,209,102,.12);border-color:rgba(255,209,102,.35);color:var(--gold)" onclick="submitDashboardEbayListing('${id}')">LIST ON EBAY</button>
+        <button class="hbtn" style="padding:12px" onclick="document.getElementById('dash-ebay-modal').remove()">CANCEL</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+  document.getElementById('dash-eb-title').addEventListener('input', function(){
+    document.getElementById('dash-eb-title-count').textContent=this.value.length+'/80';
+  });
+}
+
+async function submitDashboardEbayListing(id){
+  const item=all.find(i=>i.id===id); if(!item) return;
+  const status=document.getElementById('dash-eb-status');
+  const title=document.getElementById('dash-eb-title').value.trim();
+  const price=parseFloat(document.getElementById('dash-eb-price').value)||0;
+  if(!title || price<0.99){ toast_dash('eBay listing needs title and price'); return; }
+  status.style.display='block'; status.style.color='var(--gold)'; status.style.border='1px solid rgba(255,209,102,.25)'; status.style.background='rgba(255,209,102,.06)'; status.textContent='Creating eBay listing...';
+  const payload={
+    title,
+    description:document.getElementById('dash-eb-desc').value,
+    price:price.toFixed(2),
+    format:document.getElementById('dash-eb-format').value,
+    conditionId:document.getElementById('dash-eb-condition').value,
+    conditionDescription:document.getElementById('dash-eb-cond-desc').value.trim(),
+    duration:document.getElementById('dash-eb-duration').value,
+    quantity:parseInt(document.getElementById('dash-eb-qty').value)||1,
+    categoryId:document.getElementById('dash-eb-category').value,
+    imageUrl:item.thumbnail||null,
+    imageUrls:item.thumbnail?[item.thumbnail]:[],
+    sport:item.sport||'',
+    year:item.year||'',
+    manufacturer:item.manufacturer||'',
+    set:item.set||'',
+    parallel:item.variant||'',
+    cardNumber:item.card_number||'',
+    player:item.player||item.name||'',
+    team:item.team||'',
+    grade:item.grade||'',
+    grader:item.grader||'',
+    isRookie:!!item.isRookie,
+    serialNumber:item.serial_number||'',
+  };
+  try{
+    const res=await fetch(WORKER+'/ebay/list',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    const data=await res.json().catch(()=>({}));
+    if(!res.ok || !data.listingId) throw new Error(data.error||('eBay error '+res.status));
+    status.style.color='var(--g)'; status.style.border='1px solid rgba(0,255,179,.25)'; status.style.background='rgba(0,255,179,.06)';
+    status.innerHTML='Listed on eBay<br><a href="https://www.ebay.com/itm/'+data.listingId+'" target="_blank" style="color:var(--g)">View listing</a>';
+  }catch(e){
+    status.style.color='var(--red)'; status.style.border='1px solid rgba(255,77,109,.25)'; status.style.background='rgba(255,77,109,.06)';
+    status.textContent=e.message;
+  }
 }
 
 // ══════════════════════════════════════════════════
