@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="2026.04.28.1">
+<meta name="version" content="2026.04.28.2">
 <title>Walk-Off Dashboard</title>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -193,7 +193,7 @@ tr.sold:hover td{opacity:.7;}
 
 <header>
   <div class="hdr">
-    <div class="logo">WALK-OFF <span>DASHBOARD · v2026.04.28.1</span></div>
+    <div class="logo">WALK-OFF <span>DASHBOARD · v2026.04.28.2</span></div>
     <div class="hdr-right">
       <span id="sync-status">Loading...</span>
       <button class="hbtn" onclick="loadInventory()">↻ REFRESH</button>
@@ -871,7 +871,9 @@ tr.sold:hover td{opacity:.7;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.04.28.1';
+const APP_VERSION = '2026.04.28.2';
+const STORE_ID = 'walkoff-main';
+const REGISTER_ID = 'front';
 const WF_PRODUCTS = '65eb45a28ff6bf3fe4f17b14';
 const WF_SKUS     = '65eb45a28ff6bf3fe4f17afb';
 const WF_SITE_ID  = '65b15ee0228d06647ca7e4ce';
@@ -888,6 +890,10 @@ let all=[], filtered=[], activeF='all', activeTab='overview', soldData=[];
 let ts={col:'name',dir:1};
 const PER=50; let page=1;
 
+function cartWorkerPath(){
+  return WORKER + '/cart?store=' + encodeURIComponent(STORE_ID) + '&register=' + encodeURIComponent(REGISTER_ID);
+}
+
 async function wfGet(path){
   const r = await fetch(WORKER+'/proxy'+path,{headers:{'accept':'application/json','Content-Type':'application/json'}});
   if(!r.ok) throw new Error('API '+r.status);
@@ -899,7 +905,7 @@ async function wfPatch(path, body){
 
 async function postCartToWorker(cartData){
   try {
-    await fetch(WORKER+'/cart', {
+    await fetch(cartWorkerPath(), {
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify(cartData),
@@ -1356,7 +1362,9 @@ function dashAddToCart(id){
   };
   cartData.items.push(cartItem);
   cartData.savedAt = new Date().toISOString();
-  cartData.storeId = 'Walk-Off Sports Cards';
+  cartData.storeId = STORE_ID;
+  cartData.registerId = REGISTER_ID;
+  cartData.appVersion = APP_VERSION;
 
   localStorage.setItem('pos_cart_v2', JSON.stringify(cartData));
   postCartToWorker(cartData).then(ok => {
@@ -2727,7 +2735,7 @@ function printEOD(){
 // ══════════════════════════════════════════════════
 async function fetchCartFromWorker(){
   try {
-    const r = await fetch(WORKER+'/cart', {method:'GET', signal: AbortSignal.timeout(2000)});
+    const r = await fetch(cartWorkerPath(), {method:'GET', signal: AbortSignal.timeout(2000)});
     if(r.ok) {
       const d = await r.json();
       if(d && d.items) return d;

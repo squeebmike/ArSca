@@ -3,7 +3,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="version" content="2026.04.28.1">
+<meta name="version" content="2026.04.28.2">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>LBA Scanner</title>
@@ -391,7 +391,9 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
 <div id="hud" style="display:none">
   <span class="hl">LBA</span>
   <div class="hbtns">
-    <span id="app-version" style="font-family:monospace;font-size:9px;color:rgba(0,255,179,.55);letter-spacing:1px">v2026.04.28.1</span>
+    <span id="show-badge" style="font-family:monospace;font-size:9px;color:rgba(255,209,102,.7);letter-spacing:1px"></span>
+    <span id="offline-sync-badge" style="font-family:monospace;font-size:9px;color:rgba(255,255,255,.35);letter-spacing:1px">online</span>
+    <span id="app-version" style="font-family:monospace;font-size:9px;color:rgba(0,255,179,.55);letter-spacing:1px">v2026.04.28.2</span>
     <span id="hstatus">READY</span>
     <button class="hbtn" id="flipbtn" onclick="toggleFlip()">FLIP</button>
     <button class="hbtn" id="bulkbtn" onclick="toggleBulk()">BULK</button>
@@ -420,6 +422,16 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
       <input class="ob-inp" id="settings-website">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
         <div>
+          <label class="ob-label">Vendor ID</label>
+          <input class="ob-inp" id="settings-vendor-id" placeholder="walkoff">
+        </div>
+        <div>
+          <label class="ob-label">Register ID</label>
+          <input class="ob-inp" id="settings-register-id" placeholder="front">
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
+        <div>
           <label class="ob-label">Tax Rate %</label>
           <input class="ob-inp" id="settings-tax" type="number" min="0" max="30" step="0.1">
         </div>
@@ -432,6 +444,28 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
             <option value="EUR">EUR €</option>
             <option value="AUD">AUD $</option>
           </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Show / Booth Mode -->
+    <div style="background:#0d0f14;border:1px solid rgba(255,209,102,.15);border-radius:10px;padding:16px;margin-bottom:12px">
+      <div style="font-family:monospace;font-size:9px;color:var(--gold);letter-spacing:2px;margin-bottom:12px">SHOW / BOOTH MODE</div>
+      <label class="ob-label">Event Name</label>
+      <input class="ob-inp" id="settings-event-name" placeholder="e.g. Tacoma Mall Weekend">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
+        <div>
+          <label class="ob-label">Event Type</label>
+          <select id="settings-event-type" style="width:100%;background:#141720;border:1px solid rgba(255,255,255,.1);color:#fff;padding:10px;border-radius:6px;font-family:monospace;font-size:12px">
+            <option value="card-show">Card show</option>
+            <option value="mall">Mall vending</option>
+            <option value="pop-up">Pop-up</option>
+            <option value="shop">Shop</option>
+          </select>
+        </div>
+        <div>
+          <label class="ob-label">Booth / Table</label>
+          <input class="ob-inp" id="settings-booth-name" placeholder="A12">
         </div>
       </div>
     </div>
@@ -520,6 +554,12 @@ const STORE = {
   cashapp:          '',
   tax_rate:         0,
   currency:         'USD',
+  vendor_id:        'walkoff',
+  store_id:         'walkoff-main',
+  register_id:      'front',
+  event_name:       '',
+  event_type:       'card-show',
+  booth_name:       '',
   wf_site_id:       '65b15ee0228d06647ca7e4ce',
   wf_products_col:  '65eb45a28ff6bf3fe4f17b14',
   wf_skus_col:      '65eb45a28ff6bf3fe4f17afb',
@@ -530,8 +570,50 @@ const STORE = {
   wf_status_instock:'f3769d1e15fa0956f98984d6fa36437f',
   wf_status_sold:   'e6b42f14fcb99aa2168a5f5672226f68',
 };
-const APP_VERSION = '2026.04.28.1';
+const APP_VERSION = '2026.04.28.2';
 const WORKER_URL = STORE.worker_url;
+
+function slugifyId(value, fallback) {
+  return String(value || fallback || 'default')
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '') || fallback || 'default';
+}
+
+function getStoreId() {
+  return slugifyId(STORE.store_id || STORE.store_name, 'walkoff-main');
+}
+
+function getRegisterId() {
+  return slugifyId(STORE.register_id, 'front');
+}
+
+function scopedWorkerPath(path) {
+  const base = String(STORE.worker_url || WORKER_URL).replace(/\/+$/, '');
+  const sep = path.includes('?') ? '&' : '?';
+  return base + path + sep + 'store=' + encodeURIComponent(getStoreId()) + '&register=' + encodeURIComponent(getRegisterId());
+}
+
+function getShowContext() {
+  return {
+    vendorId: slugifyId(STORE.vendor_id || STORE.store_name, 'walkoff'),
+    storeId: getStoreId(),
+    registerId: getRegisterId(),
+    eventName: STORE.event_name || '',
+    eventType: STORE.event_type || 'card-show',
+    boothName: STORE.booth_name || '',
+    appVersion: APP_VERSION,
+  };
+}
+
+function updateShowBadge() {
+  const el = document.getElementById('show-badge');
+  if(!el) return;
+  const ctx = getShowContext();
+  const event = ctx.eventName || ctx.storeId;
+  el.textContent = (event + (ctx.boothName ? ' · ' + ctx.boothName : '')).toUpperCase();
+}
 
 
 
@@ -4095,6 +4177,10 @@ function showSettings(){
     'settings-cashapp':    STORE.cashapp,
     'settings-stripe':     STORE.stripe_pk,
     'settings-proxy':      STORE.worker_url,
+    'settings-vendor-id':   STORE.vendor_id,
+    'settings-register-id': STORE.register_id,
+    'settings-event-name':  STORE.event_name,
+    'settings-booth-name':  STORE.booth_name,
   };
   Object.entries(fields).forEach(([id, val]) => {
     const el = document.getElementById(id);
@@ -4102,6 +4188,8 @@ function showSettings(){
   });
   const cur = document.getElementById('settings-currency');
   if(cur) [...cur.options].forEach(o => o.selected = o.value === STORE.currency);
+  const eventType = document.getElementById('settings-event-type');
+  if(eventType) [...eventType.options].forEach(o => o.selected = o.value === (STORE.event_type || 'card-show'));
 }
 function closeSettings(){
   document.getElementById('settings-panel').style.display='none';
@@ -4118,10 +4206,18 @@ async function saveSettings(){
     stripe_pk:      document.getElementById('settings-stripe').value.trim()     || STORE.stripe_pk,
     worker_url:     document.getElementById('settings-proxy').value.trim()      || STORE.worker_url,
     currency:       document.getElementById('settings-currency')?.value         || 'USD',
+    vendor_id:      document.getElementById('settings-vendor-id')?.value.trim() || STORE.vendor_id,
+    store_id:       slugifyId(document.getElementById('settings-vendor-id')?.value.trim() || STORE.store_name, STORE.store_id),
+    register_id:    document.getElementById('settings-register-id')?.value.trim() || STORE.register_id,
+    event_name:     document.getElementById('settings-event-name')?.value.trim() || '',
+    event_type:     document.getElementById('settings-event-type')?.value || 'card-show',
+    booth_name:     document.getElementById('settings-booth-name')?.value.trim() || '',
     onboarded:      true,
   };
   Object.assign(STORE, newConfig);
-    closeSettings();
+  closeSettings();
+  updateShowBadge();
+  saveCartState();
   toast('✓ Settings saved');
   // Reinit Stripe if key changed
   if(newConfig.stripe_pk && !stripeInstance) initStripe();
@@ -4667,7 +4763,7 @@ function loadCartState() {
   // This makes the scanner pick up a cart started on another device
   setTimeout(async () => {
     try {
-      const r = await fetch(WORKER_URL + '/cart', {signal: AbortSignal.timeout(2000)});
+      const r = await fetch(scopedWorkerPath('/cart'), {signal: AbortSignal.timeout(2000)});
       if(!r.ok) return;
       const wc = await r.json();
       const localSaved = localStorage.getItem('pos_cart_v2');
@@ -4705,12 +4801,15 @@ function saveCartState() {
     taxRate: totals.taxRate,
     total: totals.total,
     savedAt: new Date().toISOString(),
-    storeId: STORE.store_name || 'default',
+    storeId: getStoreId(),
+    registerId: getRegisterId(),
+    show: getShowContext(),
+    appVersion: APP_VERSION,
   };
   try {
     localStorage.setItem('pos_cart_v2', JSON.stringify(cartData));
     // Push to Worker for cross-device sync (tablet customer display)
-    fetch(WORKER_URL + '/cart', {
+    fetch(scopedWorkerPath('/cart'), {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
       body: JSON.stringify(cartData),
@@ -4722,6 +4821,65 @@ function clearCartState() {
   cart = [];
   cartDiscount = 0;
 }
+
+function getSyncQueue() {
+  try { return JSON.parse(localStorage.getItem('pos_sync_queue') || '[]'); }
+  catch(e) { return []; }
+}
+
+function saveSyncQueue(queue) {
+  localStorage.setItem('pos_sync_queue', JSON.stringify(queue.slice(0, 200)));
+  updateSyncQueueBadge();
+}
+
+function queueCheckoutSync(payload, reason) {
+  const queue = getSyncQueue();
+  queue.unshift({ id:'sync_'+Date.now(), queuedAt:new Date().toISOString(), reason:reason || 'offline', payload });
+  saveSyncQueue(queue);
+  toast('Checkout saved offline. It will sync when online.');
+}
+
+async function flushSyncQueue() {
+  if(!navigator.onLine) { updateSyncQueueBadge(); return; }
+  const queue = getSyncQueue();
+  if(!queue.length) { updateSyncQueueBadge(); return; }
+  const remaining = [];
+  for(const job of queue.reverse()) {
+    try {
+      const res = await fetch(scopedWorkerPath('/pos/checkout'), {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify(job.payload),
+        signal: AbortSignal.timeout(12000),
+      });
+      if(!res.ok) remaining.unshift(job);
+    } catch(e) {
+      remaining.unshift(job);
+    }
+  }
+  saveSyncQueue(remaining);
+  if(queue.length && !remaining.length) toast('Offline checkouts synced');
+}
+
+function updateSyncQueueBadge() {
+  const el = document.getElementById('offline-sync-badge');
+  if(!el) return;
+  const count = getSyncQueue().length;
+  if(!navigator.onLine) {
+    el.textContent = count ? 'offline · ' + count + ' queued' : 'offline';
+    el.style.color = 'rgba(255,209,102,.8)';
+  } else if(count) {
+    el.textContent = count + ' queued';
+    el.style.color = 'rgba(255,209,102,.8)';
+  } else {
+    el.textContent = 'online';
+    el.style.color = 'rgba(255,255,255,.35)';
+  }
+}
+
+window.addEventListener('online', flushSyncQueue);
+window.addEventListener('offline', updateSyncQueueBadge);
+setInterval(flushSyncQueue, 30000);
 
 let cart = [];
 let cartDiscount = 0;
@@ -4891,7 +5049,7 @@ function renderCart(){
 async function syncCartToWorker(cartData) {
   // Write cart to Worker KV so any device can read it
   try {
-    await fetch(WORKER_URL + '/cart', {
+    await fetch(scopedWorkerPath('/cart'), {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
       body: JSON.stringify(cartData),
@@ -5033,6 +5191,14 @@ function cashKey(k){
   if(k==='⌫'){ inp.value=inp.value.slice(0,-1); }
   else if(k==='.' && inp.value.includes('.')){ return; }
   else { inp.value += k; }
+  calcChange();
+}
+
+function setCashTendered(amount){
+  const inp = document.getElementById('cash-tendered');
+  if(!inp) return;
+  if(amount === 'exact') amount = getCartTotals().total;
+  inp.value = Number(amount || 0).toFixed(2);
   calcChange();
 }
 
@@ -5248,16 +5414,25 @@ async function processStripePayment(){
 // ── RECORD TRANSACTION ────────────────────────────────────
 async function recordTransaction(method, total, change){
   const soldAt = new Date().toISOString();
+  const totals = getCartTotals();
+  const show = getShowContext();
+  const cartSnapshot = [...cart];
   const tx = {
     id: 'tx_'+Date.now(),
     date: soldAt,
-    items: [...cart],
+    items: cartSnapshot,
     method,
-    subtotal: getCartTotals().sub,
-    discount: getCartTotals().disc,
-    tax: getCartTotals().tax,
+    subtotal: totals.sub,
+    discount: totals.disc,
+    tax: totals.tax,
+    taxRate: totals.taxRate,
     total,
     change,
+    show,
+    vendorId: show.vendorId,
+    storeId: show.storeId,
+    registerId: show.registerId,
+    appVersion: APP_VERSION,
   };
 
   window._lastTx = tx;
@@ -5269,9 +5444,25 @@ async function recordTransaction(method, total, change){
     localStorage.setItem('pos_transactions', JSON.stringify(txLog.slice(0,500)));
   } catch(e) {}
 
+  const checkoutPayload = { transaction: tx, items: cartSnapshot, show, source: 'scanner', appVersion: APP_VERSION };
+  try {
+    const res = await fetch(scopedWorkerPath('/pos/checkout'), {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(checkoutPayload),
+      signal: AbortSignal.timeout(12000),
+    });
+    const data = await res.json().catch(() => ({}));
+    if(!res.ok) {
+      if(!navigator.onLine || res.status >= 500) queueCheckoutSync(checkoutPayload, data.error || 'server checkout failed');
+      else toast('Checkout recorded locally. Worker error: ' + (data.error || res.status));
+    }
+  } catch(e) {
+    queueCheckoutSync(checkoutPayload, e.message);
+  }
+
   // Mark ALL cart items as sold in Webflow
   const soldAt2 = soldAt;
-  const cartSnapshot = [...cart];
   const _unsyncedNames = [];
   const _soldMarkJobs = [];
 
@@ -5350,7 +5541,7 @@ async function recordTransaction(method, total, change){
   renderCart();
 
   // Clear Worker cart so tablet shows empty
-  fetch(WORKER_URL+'/cart', {
+  fetch(scopedWorkerPath('/cart'), {
     method:'POST',
     headers:{'Content-Type':'application/json'},
     body: JSON.stringify({items:[], discount:0, total:0, clearedAt: soldAt, lastTxId: tx.id})
@@ -5722,7 +5913,7 @@ function importInventoryJSON() {
 function clearAllData() {
   if(!confirm('CLEAR ALL DATA? Cannot be undone.')) return;
   if(!confirm('Are you absolutely sure?')) return;
-  ['lba_inventory','lba_sales','pos_transactions','pos_cart_v2','pos_drawer','pos_wantlist','pos_consign','pos_locations'].forEach(function(k){localStorage.removeItem(k);});
+  ['lba_inventory','lba_sales','pos_transactions','pos_cart_v2','pos_sync_queue','pos_drawer','pos_wantlist','pos_consign','pos_locations'].forEach(function(k){localStorage.removeItem(k);});
   toast('All data cleared');
   location.reload();
 }
@@ -5783,8 +5974,12 @@ function showSettings(){
     'settings-website':STORE.store_website,'settings-tax':STORE.tax_rate,
     'settings-venmo':STORE.venmo,'settings-paypal':STORE.paypal,
     'settings-cashapp':STORE.cashapp,'settings-stripe':STORE.stripe_pk,
-    'settings-proxy':STORE.worker_url};
+    'settings-proxy':STORE.worker_url,
+    'settings-vendor-id':STORE.vendor_id,'settings-register-id':STORE.register_id,
+    'settings-event-name':STORE.event_name,'settings-booth-name':STORE.booth_name};
   Object.entries(F).forEach(function(kv){var el=document.getElementById(kv[0]);if(el)el.value=kv[1]||'';});
+  var cur=document.getElementById('settings-currency'); if(cur) cur.value=STORE.currency||'USD';
+  var et=document.getElementById('settings-event-type'); if(et) et.value=STORE.event_type||'card-show';
 }
 function closeSettings(){document.getElementById('settings-panel').style.display='none';}
 async function saveSettings(){
@@ -5794,8 +5989,14 @@ async function saveSettings(){
     store_website:g('settings-website'),tax_rate:parseFloat(g('settings-tax'))||0,
     venmo:g('settings-venmo'),paypal:g('settings-paypal'),cashapp:g('settings-cashapp'),
     stripe_pk:g('settings-stripe')||STORE.stripe_pk,
-    worker_url:g('settings-proxy')||STORE.worker_url,onboarded:true};
-  Object.assign(STORE,c);closeSettings();toast('Settings saved');
+    worker_url:g('settings-proxy')||STORE.worker_url,
+    currency:g('settings-currency')||'USD',
+    vendor_id:g('settings-vendor-id')||STORE.vendor_id,
+    store_id:slugifyId(g('settings-vendor-id')||STORE.store_name,STORE.store_id),
+    register_id:g('settings-register-id')||STORE.register_id,
+    event_name:g('settings-event-name'),event_type:g('settings-event-type')||'card-show',
+    booth_name:g('settings-booth-name'),onboarded:true};
+  Object.assign(STORE,c);closeSettings();toast('Settings saved');updateShowBadge();saveCartState();
   document.querySelectorAll('.store-name-display').forEach(function(el){el.textContent=STORE.store_name;});
 }
 async function testWorkerConnection(){
@@ -6288,6 +6489,9 @@ window.addEventListener('load', function(){
   }
   document.querySelectorAll('.store-name-display').forEach(function(el){el.textContent=STORE.store_name;});
   document.querySelectorAll('.store-loc-display').forEach(function(el){el.textContent=STORE.store_location;});
+  updateShowBadge();
+  updateSyncQueueBadge();
+  flushSyncQueue();
 });
 </script>
 
@@ -6359,6 +6563,12 @@ window.addEventListener('load', function(){
     <!-- CASH PANEL -->
     <div class="ck-panel" id="panel-cash">
       <input class="ck-cash-inp" id="cash-tendered" type="text" placeholder="$0.00" oninput="calcChange()">
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:0 0 10px">
+        <button class="pos-disc-btn" onclick="setCashTendered('exact')">Exact</button>
+        <button class="pos-disc-btn" onclick="setCashTendered(20)">$20</button>
+        <button class="pos-disc-btn" onclick="setCashTendered(50)">$50</button>
+        <button class="pos-disc-btn" onclick="setCashTendered(100)">$100</button>
+      </div>
       <div class="ck-numpad" id="cash-numpad"></div>
       <div class="ck-change" id="cash-change">Enter amount received</div>
       <button class="ck-confirm-btn cash" onclick="completeCashSale()">✓ COMPLETE SALE</button>
