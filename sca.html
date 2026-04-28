@@ -3,7 +3,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="version" content="2026.04.28.4">
+<meta name="version" content="2026.04.28.5">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>LBA Scanner</title>
@@ -314,7 +314,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
 <div id="debug-panel" style="display:none;position:fixed;top:0;left:0;right:0;z-index:9999;background:#000;color:#0f0;font-family:monospace;font-size:10px;padding:8px;max-height:40vh;overflow-y:auto;border-bottom:2px solid #0f0;">
   <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
     <span style="color:#ff0;font-weight:bold">DEBUG LOG</span>
-    <button onclick="document.getElementById('debug-panel').style.display='none'" style="background:none;border:1px solid #666;color:#666;padding:1px 6px;cursor:pointer;font-size:9px">CLOSE</button>
+    <button onclick="document.getElementById('debug-panel').style.display='none';document.getElementById('debugbtn')?.classList.remove('on')" style="background:none;border:1px solid #666;color:#666;padding:1px 6px;cursor:pointer;font-size:9px">CLOSE</button>
   </div>
   <div id="debug-log"></div>
 </div>
@@ -389,16 +389,17 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
 </div>
 
 <div id="hud" style="display:none">
-  <span class="hl">LBA</span>
+  <span class="hl">Walk-Off</span>
   <div class="hbtns">
     <span id="show-badge" style="font-family:monospace;font-size:9px;color:rgba(255,209,102,.7);letter-spacing:1px"></span>
     <span id="offline-sync-badge" style="font-family:monospace;font-size:9px;color:rgba(255,255,255,.35);letter-spacing:1px">online</span>
-    <span id="app-version" style="font-family:monospace;font-size:9px;color:rgba(0,255,179,.55);letter-spacing:1px">v2026.04.28.4</span>
+    <span id="app-version" style="font-family:monospace;font-size:9px;color:rgba(0,255,179,.55);letter-spacing:1px">v2026.04.28.5</span>
     <span id="hstatus">READY</span>
     <button class="hbtn" id="flipbtn" onclick="toggleFlip()">FLIP</button>
     <button class="hbtn" id="bulkbtn" onclick="toggleBulk()">BULK</button>
     <button class="hbtn" id="autobitn" onclick="toggleAuto()">AUTO</button>
     <button class="hbtn" onclick="clearAll()">CLR</button>
+    <button class="hbtn" id="debugbtn" onclick="toggleDebugLog()">LOG</button>
     <button class="hbtn" id="settingsbtn" onclick="showSettings()" style="color:rgba(255,255,255,.3)">⚙</button>
   </div>
 </div>
@@ -570,7 +571,7 @@ const STORE = {
   wf_status_instock:'f3769d1e15fa0956f98984d6fa36437f',
   wf_status_sold:   'e6b42f14fcb99aa2168a5f5672226f68',
 };
-const APP_VERSION = '2026.04.28.4';
+const APP_VERSION = '2026.04.28.5';
 const WORKER_URL = STORE.worker_url;
 
 function slugifyId(value, fallback) {
@@ -620,8 +621,10 @@ function updateShowBadge() {
 // Visible debug log
 function toggleDebugLog(){
   const p = document.getElementById('debug-panel');
+  const b = document.getElementById('debugbtn');
   if(!p) return;
   p.style.display = p.style.display === 'none' ? 'block' : 'none';
+  if(b) b.classList.toggle('on', p.style.display !== 'none');
 }
 (function(){
   const orig = {log: console.log, error: console.error, warn: console.warn};
@@ -629,7 +632,6 @@ function toggleDebugLog(){
     const panel = document.getElementById('debug-panel');
     const log = document.getElementById('debug-log');
     if(!panel||!log) return;
-    panel.style.display = 'block';
     const line = document.createElement('div');
     line.style.cssText = 'border-bottom:1px solid #222;padding:2px 0;color:'+(type==='error'?'#f55':type==='warn'?'#ff0':'#0f0');
     line.textContent = '['+type.toUpperCase()+'] ' + Array.from(args).map(a => typeof a==='object'?JSON.stringify(a):String(a)).join(' ');
