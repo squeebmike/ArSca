@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="2026.04.29.1">
+<meta name="version" content="2026.04.29.2">
 <title>Walk-Off Dashboard</title>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -193,7 +193,7 @@ tr.sold:hover td{opacity:.7;}
 
 <header>
   <div class="hdr">
-    <div class="logo">WALK-OFF <span>DASHBOARD · v2026.04.29.1</span></div>
+    <div class="logo">WALK-OFF <span>DASHBOARD · v2026.04.29.2</span></div>
     <div class="hdr-right">
       <span id="sync-status">Loading...</span>
       <button class="hbtn" onclick="loadInventory()">↻ REFRESH</button>
@@ -503,8 +503,14 @@ tr.sold:hover td{opacity:.7;}
       </div>
       <div style="display:flex;gap:6px;margin-bottom:10px;align-items:center">
         <span style="font-family:monospace,monospace;font-size:9px;color:var(--dim)">OFFER %</span>
-        <input type="range" id="bl-pct" min="20" max="80" value="50" step="5" oninput="updateBuyListOffer()" style="flex:1">
+        <input type="range" id="bl-pct" min="0" max="100" value="50" step="5" oninput="updateBuyListOffer()" style="flex:1">
         <span id="bl-pct-lbl" style="font-family:'Orbitron',monospace;font-size:12px;color:var(--gold);min-width:36px;text-align:right">50%</span>
+      </div>
+      <div style="display:flex;gap:5px;margin-bottom:10px;flex-wrap:wrap">
+        <button class="hbtn" onclick="setBuyOfferPct(70)" style="font-size:8px;padding:6px 9px">70%</button>
+        <button class="hbtn" onclick="setBuyOfferPct(75)" style="font-size:8px;padding:6px 9px">75%</button>
+        <button class="hbtn" onclick="setBuyOfferPct(80)" style="font-size:8px;padding:6px 9px">80%</button>
+        <button class="hbtn" onclick="setBuyOfferPct(85)" style="font-size:8px;padding:6px 9px">85%</button>
       </div>
       <div style="display:flex;gap:6px;margin-bottom:10px">
         <input class="tsi" id="bl-customer" placeholder="Customer name" style="flex:1;margin-bottom:0">
@@ -546,7 +552,7 @@ tr.sold:hover td{opacity:.7;}
     <div class="panel" style="margin-top:14px;margin-left:20px;margin-right:20px;max-width:calc(1400px - 40px);margin-left:auto;margin-right:auto">
       <div class="ph">🔄 TCGPLAYER MASS PRICE SYNC <span style="font-size:8px;color:var(--dim)">Updates Webflow prices based on condition</span></div>
       <div style="font-family:monospace;font-size:10px;color:var(--dim);margin-bottom:10px;line-height:1.6">
-        Looks up each in-stock TCG card on TCGPlayer and updates the price in Webflow based on its stored condition.
+        Pokemon cards use PokemonTCG.io market data as the TCGPlayer-backed source and update Webflow by stored condition.
         NM→TCG mid, LP→80%, MP→64%, HP→40%, DMG→25%. Only affects TCG items with a known set.
       </div>
       <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px">
@@ -912,7 +918,7 @@ tr.sold:hover td{opacity:.7;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.04.29.1';
+const APP_VERSION = '2026.04.29.2';
 const STORE_ID = 'walkoff-main';
 const REGISTER_ID = 'front';
 const WF_PRODUCTS = '65eb45a28ff6bf3fe4f17b14';
@@ -2516,6 +2522,12 @@ async function createWebflowProduct(item, updates) {
             'ec-product-type': 'ff42fee0113744f693a764e3431a9cc2',
             'card-category': catMap[updates.category||item.category] || catMap['TCG'],
             'inventory-count': updates.qty || 1,
+            'cost-basis': Number(updates.cost||0),
+            'set-name': updates.set||item.set||'',
+            year: String(updates.year||item.year||''),
+            variant: updates.variant||item.variant||'',
+            'card-number': updates.card_number||item.card_number||'',
+            msrp: Math.round(updates.market||0),
           }
         },
         sku: {
@@ -2543,6 +2555,8 @@ async function createWebflowProduct(item, updates) {
         variant: updates.variant||item.variant||'',
         'card-number': updates.card_number||item.card_number||'',
         'cost-basis': Number(updates.cost||0),
+        location: updates.location||'',
+        'card-description': updates.key_notes||'',
         msrp: Math.round(updates.market||0),
       }})
     }).catch(()=>{});
@@ -2781,10 +2795,40 @@ async function confirmEditAndSync() {
 // TCGPLAYER MASS PRICE SYNC
 // ══════════════════════════════════════════════════
 const COND_MULTIPLIER = {NM:1.0, LP:0.80, MP:0.64, HP:0.40, DMG:0.25};
+const TCG_COND_LABELS = {NM:'Near Mint', LP:'Lightly Played', MP:'Moderately Played', HP:'Heavily Played', DMG:'Damaged'};
+
+function normalizeCardNameForPokemon(name){
+  return String(name||'')
+    .replace(/\b(PSA|BGS|CGC|SGC)\s*\d+(\.\d+)?\b/gi,'')
+    .replace(/\b(GEM\s*MT|MINT|NEAR\s*MINT|NM|LP|MP|HP|DMG)\b/gi,'')
+    .replace(/\s+#?\d+\/\d+\s*$/,'')
+    .replace(/\s+/g,' ')
+    .trim();
+}
+
+function chooseBestPokemonCard(cards, name, setName){
+  if(!cards || !cards.length) return null;
+  const n = normalizeCardNameForPokemon(name).toLowerCase();
+  const s = String(setName||'').toLowerCase();
+  return cards
+    .map(card => {
+      let score = 0;
+      const cn = String(card.name||'').toLowerCase();
+      const cs = String(card.set?.name||'').toLowerCase();
+      if(cn === n) score += 50;
+      else if(cn.includes(n) || n.includes(cn)) score += 25;
+      if(s && cs === s) score += 35;
+      else if(s && (cs.includes(s) || s.includes(cs))) score += 18;
+      if(card.tcgplayer?.prices) score += 10;
+      return {card, score};
+    })
+    .sort((a,b)=>b.score-a.score)[0].card;
+}
 
 async function fetchTCGPrice(name, setName, tcgCardId) {
   try {
     let card = null;
+    const cleanName = normalizeCardNameForPokemon(name);
 
     // If we have a stored card ID, use it directly — fastest and most accurate
     if(tcgCardId) {
@@ -2795,17 +2839,17 @@ async function fetchTCGPrice(name, setName, tcgCardId) {
 
     // Fallback to name+set search
     if(!card) {
-      const q = setName ? `name:"${name}" set.name:"${setName}"` : `name:"${name}"`;
-      const r = await fetch(`https://api.pokemontcg.io/v2/cards?q=${encodeURIComponent(q)}&pageSize=5`);
+      const q = setName ? `name:"${cleanName}" set.name:"${setName}"` : `name:"${cleanName}"`;
+      const r = await fetch(`https://api.pokemontcg.io/v2/cards?q=${encodeURIComponent(q)}&pageSize=20`);
       const d = await r.json();
-      if(d.data && d.data.length) card = d.data[0];
+      if(d.data && d.data.length) card = chooseBestPokemonCard(d.data, cleanName, setName);
     }
 
     // Final fallback: name only
     if(!card) {
-      const r2 = await fetch(`https://api.pokemontcg.io/v2/cards?q=${encodeURIComponent('name:"'+name+'"')}&pageSize=5`);
+      const r2 = await fetch(`https://api.pokemontcg.io/v2/cards?q=${encodeURIComponent('name:"'+cleanName+'"')}&pageSize=20`);
       const d2 = await r2.json();
-      if(d2.data && d2.data.length) card = d2.data[0];
+      if(d2.data && d2.data.length) card = chooseBestPokemonCard(d2.data, cleanName, setName);
     }
 
     if(!card) return null;
@@ -2813,7 +2857,7 @@ async function fetchTCGPrice(name, setName, tcgCardId) {
     const tcgPrices = card.tcgplayer?.prices || {};
 
     // Get the best NM mid price across all finishes
-    const nmMid = Object.values(tcgPrices).find(p=>p?.mid>0)?.mid || 0;
+    const nmMid = Object.values(tcgPrices).find(p=>p?.market>0 || p?.mid>0)?.market || Object.values(tcgPrices).find(p=>p?.mid>0)?.mid || 0;
     if(!nmMid) return null;
 
     // Return object with condition-specific prices
@@ -2822,10 +2866,12 @@ async function fetchTCGPrice(name, setName, tcgCardId) {
     return {
       NM:  nmMid,
       LP:  nmMid * 0.80,   // TCGPlayer standard LP discount
-      MP:  nmMid * 0.60,   // MP typically 60% of NM
+      MP:  nmMid * 0.64,   // MP
       HP:  nmMid * 0.40,   // HP 40%
-      DMG: nmMid * 0.20,   // Damaged 20%
+      DMG: nmMid * 0.25,   // Damaged 25%
       cardId: card.id,      // Store for future lookups
+      cardName: card.name,
+      setName: card.set?.name || '',
       imageUrl: card.images?.large || card.images?.small || null,
     };
   } catch(e) { return null; }
@@ -2860,12 +2906,15 @@ async function runPriceSync() {
   if(catFilter !== 'all') items = items.filter(i => i.category === catFilter);
   if(condFilter !== 'all') items = items.filter(i => (i.condition||'NM') === condFilter);
   items = items.filter(i => i.name && i.name.length > 2);
+  const skippedNonPokemon = items.filter(i => !i.tcgCardId && !/pokemon|pokémon/i.test([i.category,i.set,i.name].join(' '))).length;
+  items = items.filter(i => i.tcgCardId || /pokemon|pokémon/i.test([i.category,i.set,i.name].join(' ')));
 
   if(!items.length) { toast_dash('No items match filters'); return; }
 
   progressEl.style.display = 'block';
   logEl.innerHTML = '';
-  let updated = 0, failed = 0, skipped = 0;
+  let updated = 0, failed = 0, skipped = skippedNonPokemon;
+  if(skippedNonPokemon) logEl.innerHTML += `<div style="color:var(--gold)">Skipped ${skippedNonPokemon} non-Pokemon TCG items. Direct TCGPlayer feed not connected yet.</div>`;
 
   for(let idx2=0; idx2<items.length; idx2++) {
     const item = items[idx2];
@@ -2909,18 +2958,30 @@ async function runPriceSync() {
     // Update Webflow if shopId exists
     if(item.shopId) {
       try {
-        await fetch(WORKER+'/proxy/sites/65b15ee0228d06647ca7e4ce/products/'+item.shopId, {
+        const skuRes = await fetch(WORKER+'/proxy/sites/65b15ee0228d06647ca7e4ce/products/'+item.shopId, {
           method:'PATCH',
           headers:{'Content-Type':'application/json','accept':'application/json'},
           body: JSON.stringify({ sku: { fieldData: { price: { value: Math.round(newPrice*100), unit:'USD' } } } })
         });
-      } catch(e) {}
+        if(!skuRes.ok) throw new Error('SKU update ' + skuRes.status);
+        await wfPatch('/collections/'+WF_PRODUCTS+'/items/'+item.id, {
+          fieldData: {
+            msrp: Math.round(newPrice),
+            'retail-price': Math.round(newPrice),
+            'card-condition': item.condition || 'NM'
+          }
+        }).catch(()=>{});
+      } catch(e) {
+        failed++;
+        logEl.innerHTML += `<div style="color:var(--red)">Webflow update failed: ${item.name} (${e.message})</div>`;
+        continue;
+      }
     }
 
     updated++;
     const condLabel = cond==='NM'?'':` → ${cond}`;
     const idLabel = tcgData.cardId ? ` [${tcgData.cardId}]` : '';
-    logEl.innerHTML += `<div style="color:var(--g)">✓ ${item.name}: NM $${tcgData.NM.toFixed(2)}${condLabel} = $${newPrice.toFixed(2)}${idLabel}</div>`;
+    logEl.innerHTML += `<div style="color:var(--g)">✓ ${item.name}: ${tcgData.cardName||'match'} / ${tcgData.setName||'set'} · NM $${tcgData.NM.toFixed(2)}${condLabel} = $${newPrice.toFixed(2)}${idLabel}</div>`;
     logEl.scrollTop = logEl.scrollHeight;
 
     // Small delay to avoid rate limiting
@@ -3158,6 +3219,12 @@ function updateBuyListOffer(){
   renderBuyList();
 }
 
+function setBuyOfferPct(pct){
+  const slider = document.getElementById('bl-pct');
+  if(slider) slider.value = pct;
+  updateBuyListOffer();
+}
+
 function renderBuyList(){
   const pct = parseFloat(document.getElementById('bl-pct').value||50)/100;
   const totalMkt = buyList.reduce((a,i)=>a+(i.market||0),0);
@@ -3215,7 +3282,7 @@ function buyItemToInventoryUpdates(item){
   const pct = parseFloat(document.getElementById('bl-pct')?.value || 50) / 100;
   return {
     name:item.name,
-    category:item.category || 'TCG',
+    category:item.category === 'Pokemon TCG' ? 'TCG' : (item.category || 'TCG'),
     set:item.set || '',
     variant:item.variant || '',
     year:item.year || '',
@@ -3223,6 +3290,13 @@ function buyItemToInventoryUpdates(item){
     market:Number(item.market || 0),
     cost:Math.round(Number(item.market || 0) * pct * 100) / 100,
     card_number:item.card_number || '',
+    location:getShowMode()?.eventName ? 'Show buy - ' + getShowMode().eventName : 'Buy/trade intake',
+    key_notes:[
+      'Buy/trade intake',
+      item.scan?.confidence ? 'Scan confidence: '+item.scan.confidence : '',
+      item.scan?.confidence_reason || '',
+      item.scan?.search_query ? 'Search: '+item.scan.search_query : ''
+    ].filter(Boolean).join('\n'),
     qty:1
   };
 }

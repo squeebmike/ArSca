@@ -3,7 +3,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="version" content="2026.04.29.1">
+<meta name="version" content="2026.04.29.2">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>LBA Scanner</title>
@@ -393,7 +393,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
   <div class="hbtns">
     <span id="show-badge" style="font-family:monospace;font-size:9px;color:rgba(255,209,102,.7);letter-spacing:1px"></span>
     <span id="offline-sync-badge" style="font-family:monospace;font-size:9px;color:rgba(255,255,255,.35);letter-spacing:1px">online</span>
-    <span id="app-version" style="font-family:monospace;font-size:9px;color:rgba(0,255,179,.55);letter-spacing:1px">v2026.04.29.1</span>
+    <span id="app-version" style="font-family:monospace;font-size:9px;color:rgba(0,255,179,.55);letter-spacing:1px">v2026.04.29.2</span>
     <span id="hstatus">READY</span>
     <button class="hbtn" id="flipbtn" onclick="toggleFlip()">FLIP</button>
     <button class="hbtn" id="bulkbtn" onclick="toggleBulk()">BULK</button>
@@ -571,7 +571,7 @@ const STORE = {
   wf_status_instock:'f3769d1e15fa0956f98984d6fa36437f',
   wf_status_sold:   'e6b42f14fcb99aa2168a5f5672226f68',
 };
-const APP_VERSION = '2026.04.29.1';
+const APP_VERSION = '2026.04.29.2';
 const WORKER_URL = STORE.worker_url;
 
 function slugifyId(value, fallback) {
@@ -693,8 +693,9 @@ const AFF = {
   tcgSearch(query, cond) {
     if(!query) return 'https://www.tcgplayer.com';
     const condMap = {'NM':'Near Mint','LP':'Lightly Played','MP':'Moderately Played','HP':'Heavily Played','DMG':'Damaged'};
-    let url = 'https://www.tcgplayer.com/search/all/product?q=' + encodeURIComponent(query);
-    if(cond && condMap[cond]) url += '&condition=' + encodeURIComponent(condMap[cond]);
+    const search = cond && condMap[cond] ? `${query} ${condMap[cond]}` : query;
+    let url = 'https://www.tcgplayer.com/search/all/product?q=' + encodeURIComponent(search);
+    if(cond && condMap[cond]) url += '&Condition=' + encodeURIComponent(condMap[cond]) + '&condition=' + encodeURIComponent(condMap[cond]);
     return url;
   },
 
@@ -3498,7 +3499,7 @@ function addBubble(item,stock,imgUrl,apiPrintings,bestMatchIdx){
       ${ct==='tcg'?`<button class="bact" style="background:rgba(0,255,179,.06);border:1px solid rgba(0,255,179,.2);color:var(--g);font-size:9px" onclick="scanBackForBubble('${id}')">⟳ SCAN BACK</button>`:''}
       ${ct==='comic'?`<button class="bact" style="background:rgba(199,125,255,.06);border:1px solid rgba(199,125,255,.2);color:var(--purple);font-size:9px" onclick="scanBackForBubble('${id}')">⟳ SCAN BACK</button>`:''}
       ${ct==='general'?`<button class="bact" style="background:rgba(199,125,255,.06);border:1px solid rgba(199,125,255,.2);color:var(--purple);font-size:9px" onclick="scanBackForBubble('${id}')">⟳ SCAN BACK</button>`:''}
-      <button class="bact" style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.15);color:rgba(255,255,255,.6);font-size:9px" onclick="openVariantSearch('${id}')">🔍 Browse All Variants</button>
+      <button class="bact" style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.15);color:rgba(255,255,255,.6);font-size:9px" onclick="openVariantSearch('${id}')">${ct==='comic'?'📚 Browse Covers':'🔍 Browse All Variants'}</button>
       <button class="bact" style="background:rgba(0,255,179,.1);border:1px solid rgba(0,255,179,.3);color:var(--g);font-weight:700" onclick="addBubbleToCart('${id}')">🛒 Add to Cart</button>
       <button class="bact" style="background:rgba(72,202,228,.08);border:1px solid rgba(72,202,228,.25);color:var(--blue);font-weight:700" onclick="sendBubbleToTablet('${id}')">Send to Tablet</button>
       <button class="bact a-add" onclick="showAddForm('${id}')">+ Add to Inventory</button>
@@ -3830,7 +3831,7 @@ function updatePrice(id,p,cond){
     } else {
       const n=document.getElementById(id)?.querySelector('.bname')?.textContent||'';
       bt.href=AFF.tcgSearch(n+' '+(p.set||'')+' '+(p.variant||''), cond);
-      bt.textContent='TCGPlayer Search ↗';
+      bt.textContent='TCGPlayer ('+cond+') ↗';
     }
   }
   // Update Scryfall link
@@ -6467,10 +6468,13 @@ window.openVariantSearch = function(id) {
   const game = item.game || '';
   const year = item.year ? ' '+item.year : '';
   const set  = item.set_name ? ' '+item.set_name : '';
-  document.getElementById('var-inp').value = name + year + set;
+  const issue = item.issue ? ' #'+String(item.issue).replace(/^#/,'') : '';
+  document.getElementById('var-inp').value = game === 'Comic' ? (name + issue + year).trim() : name + year + set;
   document.getElementById('var-modal').style.display = 'flex';
   document.getElementById('var-results').innerHTML = '<div style="color:rgba(255,255,255,.3);font-family:monospace;font-size:9px;text-align:center;padding:20px">Tap Search to find all variants</div>';
   window._varGame = game;
+  window._varIssue = item.issue || '';
+  window._varYear = item.year || '';
   window._varTab = 'ai';
   // Reset tab UI
   document.querySelectorAll('.var-tab').forEach((b,i) => {
@@ -6496,6 +6500,30 @@ window.doVariantSearch = async function() {
 
   const tab = window._varTab || 'ai';
   const game = window._varGame || '';
+  if(game === 'Comic' && tab === 'ai') {
+    res.innerHTML = '<div style="color:rgba(199,125,255,.7);font-family:monospace;font-size:9px;text-align:center;padding:20px">Searching comic covers...</div>';
+    const title = q.replace(/\s+#?\d+.*$/,'').trim();
+    const issueMatch = q.match(/#?\s*(\d+[A-Za-z]?)/);
+    const issue = (window._varIssue || (issueMatch ? issueMatch[1] : '') || '').replace(/[^0-9A-Za-z]/g,'');
+    const year = window._varYear || ((q.match(/\b(19|20)\d{2}\b/)||[])[0] || '');
+    try {
+      const covers = await fetchComicVariants(title || q, issue, year);
+      if(covers && covers.length) {
+        res.innerHTML = `
+          <div style="font-family:monospace;font-size:8px;color:rgba(255,255,255,.3);margin-bottom:8px;">${covers.length} COVER CANDIDATES · tap to use</div>
+          <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px">
+          ${covers.map(v => {
+            const payload = { set:v.volume||title||q, variant:[v.title,v.publisher,v.year].filter(Boolean).join(' · ')||'Variant Cover', year:v.year||year, card_number:v.issue_number||issue, mid:0, low:0, high:0, note:v.cover_date||'', imageUrl:v.cover_image||null };
+            return `<div onclick="applyVariant(${JSON.stringify(payload).replace(/"/g,'&quot;')})" style="background:rgba(255,255,255,.04);border:1px solid rgba(199,125,255,.18);border-radius:7px;padding:7px;cursor:pointer">
+              ${v.cover_image ? `<img src="${v.cover_image}" style="width:100%;height:150px;object-fit:contain;background:#050507;border-radius:4px;margin-bottom:6px">` : ''}
+              <div style="font-family:monospace;font-size:9px;color:#fff;font-weight:700">${v.volume || title || q}</div>
+              <div style="font-family:monospace;font-size:8px;color:rgba(255,255,255,.45)">${[v.title || 'Cover', v.issue_number?'#'+v.issue_number:'', v.year].filter(Boolean).join(' · ')}</div>
+            </div>`;
+          }).join('')}</div>`;
+        return;
+      }
+    } catch(e) {}
+  }
 
   // ── eBay / Beckett / 130pt tabs = open link ─────────────────
   if(tab !== 'ai') {
@@ -6570,6 +6598,7 @@ window.applyVariant = function(v) {
     mid: v.mid || 0,
     low: v.low || 0,
     high: v.high || 0,
+    imageUrl: v.imageUrl || null,
     card_number: v.card_number || null,
     numbered: v.serial || null,
     note: v.note || '',
@@ -6582,6 +6611,7 @@ window.applyVariant = function(v) {
   if(v.variant && v.variant !== 'Base') el._item.parallel = v.variant;
   if(v.year) el._item.year = v.year;
   if(v.card_number) el._item.card_number = v.card_number;
+  if(v.imageUrl) el._imgUrl = v.imageUrl;
   // Refresh the printing selector
   const sel = document.getElementById('ps'+_varBubId);
   if(sel) {
