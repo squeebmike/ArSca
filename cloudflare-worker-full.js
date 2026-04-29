@@ -965,21 +965,37 @@ export default {
         const params = new URLSearchParams({
           limit: '5',
           includeEbay: 'true',
-          includeGraded: 'true',
+          days: '90',
         });
         if (tcgPlayerId) params.set('tcgPlayerId', tcgPlayerId);
         else params.set('search', q);
 
-        const pptRes = await fetch(`https://www.pokemonpricetracker.com/api/v2/cards?${params.toString()}`, {
-          headers: { 'Authorization': 'Bearer ' + key, 'Accept': 'application/json' },
-        });
-        const remaining = pptRes.headers.get('X-RateLimit-Daily-Remaining') || null;
-        const consumed = pptRes.headers.get('X-API-Calls-Consumed') || null;
-        const raw = await pptRes.text();
-        let data;
-        try { data = JSON.parse(raw); } catch (e) { data = { raw: raw.slice(0, 300) }; }
+        async function callPpt(requestParams) {
+          const res = await fetch(`https://www.pokemonpricetracker.com/api/v2/cards?${requestParams.toString()}`, {
+            headers: { 'Authorization': 'Bearer ' + key, 'Accept': 'application/json' },
+          });
+          const raw = await res.text();
+          let data;
+          try { data = JSON.parse(raw); } catch (e) { data = { raw: raw.slice(0, 300) }; }
+          return {
+            res,
+            data,
+            remaining: res.headers.get('X-RateLimit-Daily-Remaining') || null,
+            consumed: res.headers.get('X-API-Calls-Consumed') || null,
+          };
+        }
+
+        let { res: pptRes, data, remaining, consumed } = await callPpt(params);
+        const providerWarnings = [];
+        if (!pptRes.ok && [400, 402, 403].includes(pptRes.status) && params.get('includeEbay') === 'true') {
+          providerWarnings.push('PokemonPriceTracker graded/eBay data unavailable on this key or request; showing basic card data if available');
+          params.delete('includeEbay');
+          params.delete('days');
+          ({ res: pptRes, data, remaining, consumed } = await callPpt(params));
+        }
         if (!pptRes.ok) {
-          return { ok: false, source: 'pokemonpricetracker', warnings: ['PokemonPriceTracker API ' + pptRes.status], providerDetail: data, remaining, consumed };
+          const msg = errorMessageFromApi(data, 'PokemonPriceTracker API ' + pptRes.status);
+          return { ok: false, source: 'pokemonpricetracker', warnings: ['PokemonPriceTracker API ' + pptRes.status + ': ' + msg], providerDetail: data, remaining, consumed };
         }
 
         const cards = Array.isArray(data?.data) ? data.data : (Array.isArray(data?.cards) ? data.cards : []);
@@ -1009,9 +1025,10 @@ export default {
           recentPrices: [],
           error: null,
         }));
-        const priced = comps.filter(c => c.medianPrice > 0).length;
+        const hasAnyPrice = comps.some(c => c.medianPrice > 0);
+        const hasGradedPrice = comps.some(c => c.key !== 'raw' && c.medianPrice > 0);
         return {
-          ok: priced > 0,
+          ok: hasAnyPrice,
           source: 'pokemonpricetracker',
           comps,
           card: {
@@ -1020,7 +1037,7 @@ export default {
             cardNumber: card.cardNumber || card.number || null,
             image: card.image?.large || card.image?.small || card.images?.large || card.images?.small || null,
           },
-          warnings: priced ? [] : ['PokemonPriceTracker matched card but returned no graded values on this plan/result'],
+          warnings: providerWarnings.concat(hasGradedPrice ? [] : ['PokemonPriceTracker returned raw pricing but no graded values for this card/key']),
           remaining,
           consumed,
         };
