@@ -3,7 +3,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="version" content="2026.04.29.7">
+<meta name="version" content="2026.04.29.8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>LBA Scanner</title>
@@ -52,7 +52,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
 #modebadge{position:fixed;top:58px;left:50%;transform:translateX(-50%);z-index:30;padding:5px 14px;font-family:'Orbitron',monospace;font-size:9px;letter-spacing:2px;display:none;}
 #modebadge.back{background:rgba(255,209,102,.15);border:1px solid var(--gold);color:var(--gold);}
 #modebadge.bulk{background:rgba(199,125,255,.15);border:1px solid var(--purple);color:var(--purple);}
-.bub{position:fixed;background:var(--surface);border:1.5px solid var(--g);padding:10px 12px;width:220px;z-index:20;box-shadow:0 0 20px rgba(0,255,179,.15);max-height:82vh;overflow-y:auto;touch-action:none;}
+.bub{position:fixed;background:var(--surface);border:1.5px solid var(--g);padding:12px 14px;width:min(340px,calc(100vw - 24px));z-index:20;box-shadow:0 0 20px rgba(0,255,179,.15);max-height:82vh;overflow-y:auto;touch-action:none;}
 .bub-drag{text-align:center;padding:3px 0 5px;color:rgba(255,255,255,.18);font-size:14px;letter-spacing:3px;cursor:grab;user-select:none;margin:-4px -6px 7px;border-bottom:1px solid rgba(255,255,255,.06);transition:color .2s;}
 .bub-drag:hover{color:rgba(255,255,255,.45);}
 .bub-drag:active{cursor:grabbing;}
@@ -63,7 +63,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
 .bub.bgs{border:2px solid #aaaaaa!important;box-shadow:0 0 10px rgba(170,170,170,.2)!important;}.bub.bgs::before{background:linear-gradient(90deg,transparent,#aaa,transparent);}
 .bub.cgc{border:2px solid var(--cgc,#f4a261)!important;box-shadow:0 0 12px rgba(244,162,97,.2)!important;}.bub.cgc::before{background:linear-gradient(90deg,transparent,var(--cgc,#f4a261),transparent);}.bub.sgc{border:2px solid var(--sgc,#ff9500)!important;box-shadow:0 0 12px rgba(255,149,0,.2)!important;}.bub.sgc::before{background:linear-gradient(90deg,transparent,var(--sgc,#ff9500),transparent);}
 /* CARD IMAGE */
-.card-img{width:100%;height:120px;object-fit:contain;margin-bottom:6px;border:1px solid rgba(255,255,255,.08);background:rgba(0,0,0,.3);}
+.card-img{width:100%;height:150px;object-fit:contain;margin-bottom:8px;border:1px solid rgba(255,255,255,.08);background:rgba(0,0,0,.3);}
 .card-img-placeholder{width:100%;height:80px;display:flex;align-items:center;justify-content:center;font-family:monospace;font-size:9px;color:rgba(255,255,255,.2);letter-spacing:1px;border:1px dashed rgba(255,255,255,.08);margin-bottom:6px;}
 .btype{font-family:'Orbitron',monospace;font-size:7px;letter-spacing:2px;margin-bottom:2px;opacity:.8;}
 .btype.tcg{color:var(--g)}.btype.sports{color:var(--gold)}.btype.comic{color:var(--purple)}
@@ -112,9 +112,10 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
 .brange{font-family:monospace;font-size:9px;color:rgba(255,255,255,.3);margin-bottom:5px;}
 .comps{margin-bottom:5px;}
 .comps-hdr{font-family:'Orbitron',monospace;font-size:7px;letter-spacing:1px;color:rgba(255,255,255,.3);margin-bottom:3px;}
-.comp-row{display:flex;justify-content:space-between;padding:2px 0;border-bottom:1px solid rgba(255,255,255,.05);}
-.comp-d{font-family:monospace;font-size:8px;color:rgba(255,255,255,.45);flex:1;margin-right:4px;line-height:1.3;}
-.comp-p{font-family:'Orbitron',monospace;font-size:9px;color:var(--g);}
+.comp-row{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.05);}
+.comp-d{font-family:monospace;font-size:9px;color:rgba(255,255,255,.5);flex:1;margin-right:4px;line-height:1.35;}
+.comp-p{font-family:'Orbitron',monospace;font-size:11px;color:var(--g);white-space:nowrap;}
+@media (min-width:700px){.bub{width:380px}.card-img{height:170px}}
 .backinfo{background:rgba(255,209,102,.05);border:1px solid rgba(255,209,102,.2);padding:6px 8px;margin-bottom:6px;}
 .backinfo-hdr{font-family:'Orbitron',monospace;font-size:7px;letter-spacing:1px;color:var(--gold);margin-bottom:4px;}
 .backinfo-row{display:flex;justify-content:space-between;font-family:monospace;font-size:8px;color:rgba(255,255,255,.5);padding:1px 0;}
@@ -393,7 +394,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
   <div class="hbtns">
     <span id="show-badge" style="font-family:monospace;font-size:9px;color:rgba(255,209,102,.7);letter-spacing:1px"></span>
     <span id="offline-sync-badge" style="font-family:monospace;font-size:9px;color:rgba(255,255,255,.35);letter-spacing:1px">online</span>
-    <span id="app-version" style="font-family:monospace;font-size:9px;color:rgba(0,255,179,.55);letter-spacing:1px">v2026.04.29.7</span>
+    <span id="app-version" style="font-family:monospace;font-size:9px;color:rgba(0,255,179,.55);letter-spacing:1px">v2026.04.29.8</span>
     <span id="hstatus">READY</span>
     <button class="hbtn" id="flipbtn" onclick="toggleFlip()">FLIP</button>
     <button class="hbtn" id="bulkbtn" onclick="toggleBulk()">BULK</button>
@@ -571,7 +572,7 @@ const STORE = {
   wf_status_instock:'f3769d1e15fa0956f98984d6fa36437f',
   wf_status_sold:   'e6b42f14fcb99aa2168a5f5672226f68',
 };
-const APP_VERSION = '2026.04.29.7';
+const APP_VERSION = '2026.04.29.8';
 const WORKER_URL = STORE.worker_url;
 
 function slugifyId(value, fallback) {
@@ -6281,37 +6282,44 @@ function updateSlabSearch(id) {
   links.push(`<a class="bact" href="${AFF.ebaySearch(rawParts.concat(['PSA 10']).join(' '))}" target="_blank" style="background:rgba(230,57,70,.08);color:#ff6b75;border:1px solid rgba(230,57,70,.3);font-size:8px">PSA 10 Sold</a>`);
   links.push(`<a class="bact" href="${AFF.ebaySearch(rawParts.concat(['BGS 9.5']).join(' '))}" target="_blank" style="background:rgba(180,180,180,.07);color:#bbb;border:1px solid rgba(180,180,180,.24);font-size:8px">BGS 9.5 Sold</a>`);
   popEl.innerHTML = links.join('');
-  debounceGradedResearch(id, rawParts.join(' '));
+  debounceGradedResearch(id, rawParts.join(' '), item.category || item.game || '', p.cardId || item.tcgCardId || '');
 }
 
 const _gradedResearchTimers = {};
 
-function debounceGradedResearch(id, q) {
+function debounceGradedResearch(id, q, category, tcgPlayerId) {
   clearTimeout(_gradedResearchTimers[id]);
-  _gradedResearchTimers[id] = setTimeout(() => fetchGradedResearch(id, q), 450);
+  _gradedResearchTimers[id] = setTimeout(() => fetchGradedResearch(id, q, category, tcgPlayerId), 450);
 }
 
-async function fetchGradedResearch(id, q) {
+async function fetchGradedResearch(id, q, category, tcgPlayerId) {
   const panel = document.getElementById('slab-research-'+id);
   if(!panel || !q) return;
   panel.style.display = 'block';
   panel.innerHTML = '<div style="color:rgba(255,209,102,.75);letter-spacing:1px">Loading graded comps...</div>';
   try {
-    const res = await fetch(WORKER_URL + '/graded/pricing?q=' + encodeURIComponent(q));
+    const params = new URLSearchParams({ q });
+    if(category) params.set('category', category);
+    if(tcgPlayerId) params.set('tcgPlayerId', tcgPlayerId);
+    const res = await fetch(WORKER_URL + '/graded/pricing?' + params.toString());
     const data = await res.json();
     if(!data.ok) throw new Error(data.error || 'graded pricing failed');
     const comps = data.comps || [];
     const rows = comps.map(c => {
       const val = c.medianPrice || c.averagePrice || 0;
-      const src = c.source === 'ebay_sold' ? 'sold' : (c.source === 'ebay_active' ? 'active' : 'no data');
+      const src = c.source === 'pokemonpricetracker' ? (c.population ? 'pop '+c.population : 'PPT')
+        : (c.source === 'ebay_sold' ? 'sold' : (c.source === 'ebay_active' ? 'active' : 'no data'));
       const price = val > 0 ? '$' + Number(val).toFixed(2) : '--';
       return `<div class="comp-row"><span class="comp-d">${c.label} <span style="color:rgba(255,255,255,.25)">(${c.count||0} ${src})</span></span><span class="comp-p">${price}</span></div>`;
     }).join('');
     const raw = comps.find(c => c.key === 'raw')?.medianPrice || 0;
     const psa10 = comps.find(c => c.key === 'psa10')?.medianPrice || 0;
     const multiple = raw > 0 && psa10 > 0 ? ` - PSA 10 is ${(psa10/raw).toFixed(1)}x raw` : '';
+    const cardLine = data.card ? `<div style="font-family:monospace;font-size:8px;color:rgba(255,255,255,.35);margin-bottom:4px">${[data.card.name,data.card.setName,data.card.cardNumber?'#'+data.card.cardNumber:null].filter(Boolean).join(' - ')}</div>` : '';
+    const usageLine = data.usage?.remaining ? `<div style="font-family:monospace;font-size:7px;color:rgba(255,255,255,.22);margin-top:4px">PPT credits left: ${data.usage.remaining}</div>` : '';
     const warnings = data.warnings?.length ? `<div style="color:rgba(255,209,102,.78);margin-top:4px;line-height:1.35">${data.needsEbayAuth?'eBay auth needs refresh. ':''}${data.warnings.slice(0,2).join(' | ')}</div>` : '';
-    panel.innerHTML = `<div class="comps-hdr">LIVE GRADED RESEARCH${multiple}</div>${rows || '<div style="color:rgba(255,255,255,.35)">No eBay comps returned.</div>'}${warnings}${data.needsEbay?'<div style="color:#ffd166;margin-top:4px">Add EBAY_APP_ID for sold comps.</div>':''}`;
+    const sourceLabel = data.source === 'pokemonpricetracker' ? 'POKEMONPRICE GRADING' : 'LIVE GRADED RESEARCH';
+    panel.innerHTML = `<div class="comps-hdr">${sourceLabel}${multiple}</div>${cardLine}${rows || '<div style="color:rgba(255,255,255,.35)">No graded values returned.</div>'}${warnings}${usageLine}${data.needsEbay?'<div style="color:#ffd166;margin-top:4px">Add EBAY_APP_ID for sold comps.</div>':''}`;
   } catch(e) {
     panel.innerHTML = `<div style="color:rgba(255,100,100,.7)">Graded comps unavailable: ${e.message}</div>`;
   }

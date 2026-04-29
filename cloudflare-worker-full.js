@@ -167,6 +167,7 @@ export default {
         comicvine: !!env.COMICVINE_API_KEY,
         tcgapi: !!env.TCGAPI_KEY,
         pokemontcg: !!env.POKEMONTCG_API_KEY,
+        pokemonprice: !!(env.POKEMONPRICE_API_KEY || env.POKEMON_PRICE_TRACKER_API_KEY),
         kv: !!env.LBA_KV,
       });
     }
@@ -882,6 +883,8 @@ export default {
 
     if (url.pathname === '/graded/pricing') {
       const q = (url.searchParams.get('q') || '').trim();
+      const category = (url.searchParams.get('category') || '').toLowerCase();
+      const tcgPlayerId = (url.searchParams.get('tcgPlayerId') || '').trim();
       if (!q) return json({ ok: false, error: 'q required' }, 400);
 
       const median = values => {
@@ -899,6 +902,144 @@ export default {
         { key: 'bgs95', label: 'BGS 9.5 sold', query: clean(`${q} BGS 9.5`) },
         { key: 'cgc10', label: 'CGC 10 sold', query: clean(`${q} CGC 10`) },
       ];
+
+      function moneyValue(v) {
+        if (typeof v === 'number') return v > 0 ? v : 0;
+        if (typeof v === 'string') {
+          const n = Number(v.replace(/[$,]/g, ''));
+          return n > 0 ? n : 0;
+        }
+        if (!v || typeof v !== 'object') return 0;
+        for (const key of ['market', 'marketPrice', 'price', 'value', 'avg', 'average', 'median', 'lastSold', 'last_sale', 'lastSale']) {
+          const n = moneyValue(v[key]);
+          if (n) return n;
+        }
+        return 0;
+      }
+
+      function recursivePrice(obj, company, grade) {
+        if (!obj || typeof obj !== 'object') return 0;
+        const companyKeys = [company, company.toUpperCase(), company.toLowerCase()];
+        for (const ck of companyKeys) {
+          const branch = obj[ck];
+          if (branch && typeof branch === 'object') {
+            const direct = moneyValue(branch[String(grade)] || branch['grade_' + String(grade).replace('.', '_')]);
+            if (direct) return direct;
+          }
+        }
+        for (const [key, value] of Object.entries(obj)) {
+          const normalized = key.toLowerCase().replace(/[^a-z0-9.]/g, '');
+          if (normalized.includes(company.toLowerCase()) && normalized.includes(String(grade).replace('.', ''))) {
+            const direct = moneyValue(value);
+            if (direct) return direct;
+          }
+          if (value && typeof value === 'object') {
+            const nested = recursivePrice(value, company, grade);
+            if (nested) return nested;
+          }
+        }
+        return 0;
+      }
+
+      function recursivePopulation(obj, company, grade) {
+        if (!obj || typeof obj !== 'object') return 0;
+        for (const [key, value] of Object.entries(obj)) {
+          const normalized = key.toLowerCase().replace(/[^a-z0-9.]/g, '');
+          if (normalized.includes(company.toLowerCase()) && normalized.includes(String(grade).replace('.', '')) && /pop|population/.test(normalized)) {
+            const n = Number(value);
+            if (n > 0) return n;
+          }
+          if (value && typeof value === 'object') {
+            const nested = recursivePopulation(value, company, grade);
+            if (nested) return nested;
+          }
+        }
+        return 0;
+      }
+
+      async function pokemonPriceTracker() {
+        const key = env.POKEMONPRICE_API_KEY || env.POKEMON_PRICE_TRACKER_API_KEY;
+        const isPokemon = !category || /pokemon|tcg/.test(category) || /pokemon/i.test(q) || tcgPlayerId;
+        if (!key || !isPokemon) return null;
+
+        const params = new URLSearchParams({
+          limit: '5',
+          includeEbay: 'true',
+          includeGraded: 'true',
+        });
+        if (tcgPlayerId) params.set('tcgPlayerId', tcgPlayerId);
+        else params.set('search', q);
+
+        const pptRes = await fetch(`https://www.pokemonpricetracker.com/api/v2/cards?${params.toString()}`, {
+          headers: { 'Authorization': 'Bearer ' + key, 'Accept': 'application/json' },
+        });
+        const remaining = pptRes.headers.get('X-RateLimit-Daily-Remaining') || null;
+        const consumed = pptRes.headers.get('X-API-Calls-Consumed') || null;
+        const raw = await pptRes.text();
+        let data;
+        try { data = JSON.parse(raw); } catch (e) { data = { raw: raw.slice(0, 300) }; }
+        if (!pptRes.ok) {
+          return { ok: false, source: 'pokemonpricetracker', warnings: ['PokemonPriceTracker API ' + pptRes.status], providerDetail: data, remaining, consumed };
+        }
+
+        const cards = Array.isArray(data?.data) ? data.data : (Array.isArray(data?.cards) ? data.cards : []);
+        const card = cards[0] || data?.data || data?.card || null;
+        if (!card || Array.isArray(card)) {
+          return { ok: false, source: 'pokemonpricetracker', warnings: ['PokemonPriceTracker found no matching Pokemon card'], remaining, consumed };
+        }
+
+        const rawPrice = moneyValue(card.prices?.market || card.prices || card.tcgplayer || card.rawPrice || card.marketPrice);
+        const mapped = [
+          { key: 'raw', label: 'Raw market', value: rawPrice, pop: 0 },
+          { key: 'psa8', label: 'PSA 8 value', value: recursivePrice(card, 'psa', 8), pop: recursivePopulation(card, 'psa', 8) },
+          { key: 'psa9', label: 'PSA 9 value', value: recursivePrice(card, 'psa', 9), pop: recursivePopulation(card, 'psa', 9) },
+          { key: 'psa10', label: 'PSA 10 value', value: recursivePrice(card, 'psa', 10), pop: recursivePopulation(card, 'psa', 10) },
+          { key: 'bgs95', label: 'BGS 9.5 value', value: recursivePrice(card, 'bgs', 9.5), pop: recursivePopulation(card, 'bgs', 9.5) },
+          { key: 'cgc10', label: 'CGC 10 value', value: recursivePrice(card, 'cgc', 10), pop: recursivePopulation(card, 'cgc', 10) },
+        ];
+        const comps = mapped.map(c => ({
+          key: c.key,
+          label: c.label,
+          query: q,
+          source: 'pokemonpricetracker',
+          count: c.pop || 0,
+          averagePrice: Math.round((c.value || 0) * 100) / 100,
+          medianPrice: Math.round((c.value || 0) * 100) / 100,
+          population: c.pop || 0,
+          recentPrices: [],
+          error: null,
+        }));
+        const priced = comps.filter(c => c.medianPrice > 0).length;
+        return {
+          ok: priced > 0,
+          source: 'pokemonpricetracker',
+          comps,
+          card: {
+            name: card.name || card.card || q,
+            setName: card.setName || card.set?.name || card.set || null,
+            cardNumber: card.cardNumber || card.number || null,
+            image: card.image?.large || card.image?.small || card.images?.large || card.images?.small || null,
+          },
+          warnings: priced ? [] : ['PokemonPriceTracker matched card but returned no graded values on this plan/result'],
+          remaining,
+          consumed,
+        };
+      }
+
+      const pokemonResult = await pokemonPriceTracker();
+      if (pokemonResult) {
+        return json({
+          ok: true,
+          query: q,
+          source: 'pokemonpricetracker',
+          comps: pokemonResult.comps || [],
+          card: pokemonResult.card || null,
+          warnings: pokemonResult.warnings || [],
+          needsEbayAuth: false,
+          needsEbay: false,
+          usage: { remaining: pokemonResult.remaining || null, consumed: pokemonResult.consumed || null },
+        });
+      }
 
       async function completedPrices(query) {
         if (!env.EBAY_APP_ID) return { source: 'none', prices: [] };
