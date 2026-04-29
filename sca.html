@@ -3,7 +3,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="version" content="2026.04.29.10">
+<meta name="version" content="2026.04.29.12">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>LBA Scanner</title>
@@ -394,7 +394,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
   <div class="hbtns">
     <span id="show-badge" style="font-family:monospace;font-size:9px;color:rgba(255,209,102,.7);letter-spacing:1px"></span>
     <span id="offline-sync-badge" style="font-family:monospace;font-size:9px;color:rgba(255,255,255,.35);letter-spacing:1px">online</span>
-    <span id="app-version" style="font-family:monospace;font-size:9px;color:rgba(0,255,179,.55);letter-spacing:1px">v2026.04.29.10</span>
+    <span id="app-version" style="font-family:monospace;font-size:9px;color:rgba(0,255,179,.55);letter-spacing:1px">v2026.04.29.12</span>
     <span id="hstatus">READY</span>
     <button class="hbtn" id="flipbtn" onclick="toggleFlip()">FLIP</button>
     <button class="hbtn" id="bulkbtn" onclick="toggleBulk()">BULK</button>
@@ -572,7 +572,7 @@ const STORE = {
   wf_status_instock:'f3769d1e15fa0956f98984d6fa36437f',
   wf_status_sold:   'e6b42f14fcb99aa2168a5f5672226f68',
 };
-const APP_VERSION = '2026.04.29.10';
+const APP_VERSION = '2026.04.29.12';
 const WORKER_URL = STORE.worker_url;
 
 function slugifyId(value, fallback) {
@@ -581,6 +581,11 @@ function slugifyId(value, fallback) {
     .trim()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '') || fallback || 'default';
+}
+
+function tcgProductIdFromUrl(url) {
+  const s = String(url || '');
+  return (s.match(/\/product\/(\d+)/) || s.match(/[?&]productId=(\d+)/) || [])[1] || '';
 }
 
 function getStoreId() {
@@ -808,6 +813,7 @@ async function fetchAllPrintings(item){
           const low = bestTier.low || 0;
           const high = bestTier.high || 0;
           const tcgUrl = card.tcgplayer?.url || null;
+          const tcgPlayerProductId = tcgProductIdFromUrl(tcgUrl);
 
           // For each price tier, create a separate printing entry
           // so user can see 1st Edition vs Unlimited vs Holo prices separately
@@ -829,6 +835,7 @@ async function fetchAllPrintings(item){
             hasRealPrice: !!(mid),
             imageUrl: card.images?.large || card.images?.small || null,
             tcgUrl: tcgUrl,
+            tcgPlayerProductId,
             setId: card.set?.id || '',
             cardId: card.id,
             allPrices: priceTiers,
@@ -1162,6 +1169,7 @@ async function showFallbackPicker(bubEl, item) {
         image: card.images?.small || null,
         mid: Object.values(card.tcgplayer?.prices || {}).find(p => p?.mid > 0)?.mid || 0,
         tcgUrl: card.tcgplayer?.url || null,
+        tcgPlayerProductId: tcgProductIdFromUrl(card.tcgplayer?.url),
         allPrices: Object.entries(card.tcgplayer?.prices || {}).map(([finish, p]) => ({finish, mid: p?.mid||0})).filter(t=>t.mid>0),
       }));
     } else if(game.includes('magic')) {
@@ -1323,6 +1331,7 @@ window.selectFallbackCard = async function(bubId, altIdx) {
     bubEl._item.year       = alt.year || bubEl._item.year;
     bubEl._item.card_number = alt.number && alt.total ? alt.number+'/'+alt.total : alt.number;
     if(alt.cardId) bubEl._item.tcgCardId = alt.cardId;
+    if(alt.tcgPlayerProductId) bubEl._item.tcgPlayerProductId = alt.tcgPlayerProductId;
     if(alt.mid > 0) bubEl._item.market = alt.mid;
     // Update the _prints array so confirmAdd uses correct printing data
     const selPrint = {
@@ -1330,7 +1339,7 @@ window.selectFallbackCard = async function(bubId, altIdx) {
       year: alt.year, numbered: alt.number && alt.total ? alt.number+'/'+alt.total : null,
       mid: alt.mid || 0, low: (alt.mid||0)*0.8, high: (alt.mid||0)*1.2,
       hasRealPrice: (alt.mid||0) > 0, imageUrl: alt.image || null, tcgUrl: alt.tcgUrl || null,
-      allPrices: alt.allPrices || [], cardId: alt.cardId || null,
+      allPrices: alt.allPrices || [], cardId: alt.cardId || null, tcgPlayerProductId: alt.tcgPlayerProductId || null,
     };
     if(!bubEl._prints) bubEl._prints = [];
     bubEl._prints[0] = selPrint;  // Replace first printing with selected card
@@ -6282,7 +6291,7 @@ function updateSlabSearch(id) {
   links.push(`<a class="bact" href="${AFF.ebaySearch(rawParts.concat(['PSA 10']).join(' '))}" target="_blank" style="background:rgba(230,57,70,.08);color:#ff6b75;border:1px solid rgba(230,57,70,.3);font-size:8px">PSA 10 Sold</a>`);
   links.push(`<a class="bact" href="${AFF.ebaySearch(rawParts.concat(['BGS 9.5']).join(' '))}" target="_blank" style="background:rgba(180,180,180,.07);color:#bbb;border:1px solid rgba(180,180,180,.24);font-size:8px">BGS 9.5 Sold</a>`);
   popEl.innerHTML = links.join('');
-  debounceGradedResearch(id, rawParts.join(' '), item.category || item.game || '', p.cardId || item.tcgCardId || '');
+  debounceGradedResearch(id, rawParts.join(' '), item.category || item.game || '', p.tcgPlayerProductId || item.tcgPlayerProductId || '');
 }
 
 const _gradedResearchTimers = {};

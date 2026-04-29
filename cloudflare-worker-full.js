@@ -919,6 +919,20 @@ export default {
 
       function recursivePrice(obj, company, grade) {
         if (!obj || typeof obj !== 'object') return 0;
+        const targetGrade = String(grade).replace('.', '');
+        const descriptor = [
+          obj.grade,
+          obj.condition,
+          obj.grader,
+          obj.gradingCompany,
+          obj.company,
+          obj.title,
+          obj.label,
+        ].filter(Boolean).join(' ').toLowerCase().replace(/[^a-z0-9.]/g, '');
+        if (descriptor.includes(company.toLowerCase()) && descriptor.includes(targetGrade)) {
+          const direct = moneyValue(obj);
+          if (direct) return direct;
+        }
         const companyKeys = [company, company.toUpperCase(), company.toLowerCase()];
         for (const ck of companyKeys) {
           const branch = obj[ck];
@@ -929,7 +943,7 @@ export default {
         }
         for (const [key, value] of Object.entries(obj)) {
           const normalized = key.toLowerCase().replace(/[^a-z0-9.]/g, '');
-          if (normalized.includes(company.toLowerCase()) && normalized.includes(String(grade).replace('.', ''))) {
+          if (normalized.includes(company.toLowerCase()) && normalized.includes(targetGrade)) {
             const direct = moneyValue(value);
             if (direct) return direct;
           }
@@ -943,9 +957,23 @@ export default {
 
       function recursivePopulation(obj, company, grade) {
         if (!obj || typeof obj !== 'object') return 0;
+        const targetGrade = String(grade).replace('.', '');
+        const descriptor = [
+          obj.grade,
+          obj.condition,
+          obj.grader,
+          obj.gradingCompany,
+          obj.company,
+          obj.title,
+          obj.label,
+        ].filter(Boolean).join(' ').toLowerCase().replace(/[^a-z0-9.]/g, '');
+        if (descriptor.includes(company.toLowerCase()) && descriptor.includes(targetGrade)) {
+          const n = Number(obj.population || obj.pop || obj.totalPop || obj.count);
+          if (n > 0) return n;
+        }
         for (const [key, value] of Object.entries(obj)) {
           const normalized = key.toLowerCase().replace(/[^a-z0-9.]/g, '');
-          if (normalized.includes(company.toLowerCase()) && normalized.includes(String(grade).replace('.', '')) && /pop|population/.test(normalized)) {
+          if (normalized.includes(company.toLowerCase()) && normalized.includes(targetGrade) && /pop|population/.test(normalized)) {
             const n = Number(value);
             if (n > 0) return n;
           }
@@ -965,9 +993,9 @@ export default {
         const params = new URLSearchParams({
           limit: '5',
           includeEbay: 'true',
-          days: '90',
+          days: '7',
         });
-        if (tcgPlayerId) params.set('tcgPlayerId', tcgPlayerId);
+        if (/^\d+$/.test(tcgPlayerId)) params.set('tcgPlayerId', tcgPlayerId);
         else params.set('search', q);
 
         async function callPpt(requestParams) {
