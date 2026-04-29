@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="2026.04.29.13">
+<meta name="version" content="2026.04.29.14">
 <title>Walk-Off Dashboard</title>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -140,6 +140,13 @@ tr.sold:hover td{opacity:.7;}
 .pd{color:var(--blue);}
 .pp.pos{color:var(--g);}
 .pp.neg{color:var(--red);}
+.src-badge{display:inline-block;margin-top:3px;font-family:monospace,monospace;font-size:7px;letter-spacing:.8px;text-transform:uppercase;padding:2px 5px;border-radius:3px;border:1px solid rgba(255,255,255,.1);color:var(--dim);background:rgba(255,255,255,.03);white-space:nowrap;}
+.src-badge.tcg{border-color:rgba(0,255,179,.22);color:var(--g);background:rgba(0,255,179,.06);}
+.src-badge.pokemon{border-color:rgba(72,202,228,.22);color:var(--blue);background:rgba(72,202,228,.06);}
+.src-badge.ebay{border-color:rgba(255,209,102,.25);color:var(--gold);background:rgba(255,209,102,.06);}
+.src-badge.ai{border-color:rgba(199,125,255,.22);color:var(--purple);background:rgba(199,125,255,.06);}
+.src-badge.manual{border-color:rgba(255,255,255,.12);color:rgba(255,255,255,.42);}
+.src-badge.slab{border-color:rgba(230,57,70,.26);color:#ff6b75;background:rgba(230,57,70,.06);}
 .row-act{display:flex;gap:4px;}
 .ra{font-family:monospace,monospace;font-size:8px;padding:3px 7px;border-radius:3px;cursor:pointer;border:1px solid;transition:.15s;white-space:nowrap;}
 .ra-sell{background:rgba(255,77,109,.08);border-color:rgba(255,77,109,.2);color:var(--red);}
@@ -424,6 +431,18 @@ tr.sold:hover td{opacity:.7;}
     </div>
     <div id="scan-inbox-list" style="display:grid;gap:8px">
       <div style="font-family:monospace,monospace;font-size:10px;color:var(--dim);padding:10px;border:1px dashed var(--border);border-radius:8px;text-align:center">No phone scans yet</div>
+    </div>
+  </div>
+
+  <div class="panel" style="margin-top:4px;margin-bottom:14px">
+    <div class="ph">EBAY CONNECTION <span id="ebay-oauth-status" style="font-size:9px;color:var(--dim)">checking...</span></div>
+    <div style="font-family:monospace,monospace;font-size:10px;color:var(--dim);margin-bottom:10px;line-height:1.55">
+      Listing inventory needs an eBay seller refresh token. App credentials are stored in the Worker; connect once here after the RuName is set.
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <button class="hbtn" onclick="refreshEbayStatus()">CHECK STATUS</button>
+      <button class="hbtn" onclick="connectEbay()">CONNECT EBAY</button>
+      <span id="ebay-oauth-hint" style="font-family:monospace,monospace;font-size:9px;color:var(--dim)"></span>
     </div>
   </div>
 
@@ -918,7 +937,7 @@ tr.sold:hover td{opacity:.7;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.04.29.13';
+const APP_VERSION = '2026.04.29.14';
 const STORE_ID = 'walkoff-main';
 const REGISTER_ID = 'front';
 const WF_PRODUCTS = '65eb45a28ff6bf3fe4f17b14';
@@ -946,6 +965,26 @@ const LIFECYCLE_LABELS = {
   returned: 'Returned',
   lost_damaged: 'Lost/damaged',
 };
+
+function priceSourceInfo(source, category){
+  const raw = String(source || '').trim();
+  const s = raw.toLowerCase();
+  if(s.includes('tcg') || s.includes('market')) return { label:'TCG market', cls:'tcg' };
+  if(s.includes('pokemonprice') || s.includes('pokeprice')) return { label:'PokePrice', cls:'slab' };
+  if(s.includes('pokemon')) return { label:'PokemonTCG', cls:'pokemon' };
+  if(s.includes('scry') || s.includes('magic')) return { label:'Scryfall', cls:'tcg' };
+  if(s.includes('ebay') || s.includes('sold')) return { label:'eBay sold', cls:'ebay' };
+  if(s.includes('ai') || s.includes('estimate')) return { label:'AI est', cls:'ai' };
+  if(s.includes('manual')) return { label:'Manual', cls:'manual' };
+  if(category === 'TCG') return { label:'TCG market', cls:'tcg' };
+  if(category === 'Graded') return { label:'Slab comp', cls:'slab' };
+  return { label: raw || 'Manual', cls:'manual' };
+}
+
+function priceSourceBadge(source, category){
+  const info = priceSourceInfo(source, category);
+  return `<span class="src-badge ${info.cls}">${info.label}</span>`;
+}
 
 function cartWorkerPath(){
   return WORKER + '/cart?store=' + encodeURIComponent(STORE_ID) + '&register=' + encodeURIComponent(REGISTER_ID);
@@ -1064,6 +1103,54 @@ function scopedWorkerPath(path){
   return WORKER + path + sep + 'store=' + encodeURIComponent(STORE_ID) + '&register=' + encodeURIComponent(REGISTER_ID);
 }
 
+async function refreshEbayStatus(){
+  const status = document.getElementById('ebay-oauth-status');
+  const hint = document.getElementById('ebay-oauth-hint');
+  if(!status) return;
+  status.textContent = 'checking...';
+  status.style.color = 'var(--dim)';
+  try {
+    const res = await fetch(WORKER + '/ebay/status', { cache:'no-store', signal:AbortSignal.timeout(3500) });
+    const d = await res.json();
+    if(!res.ok) throw new Error(d.error || 'eBay status failed');
+    if(d.readyToList) {
+      status.textContent = 'ready to list';
+      status.style.color = 'var(--g)';
+      if(hint) hint.textContent = d.refreshConfigured ? 'OAuth refresh token connected' : 'Using legacy token';
+    } else if(!d.clientConfigured) {
+      status.textContent = 'app credentials missing';
+      status.style.color = 'var(--red)';
+      if(hint) hint.textContent = 'Set EBAY_CLIENT_ID and EBAY_CLIENT_SECRET in the Worker';
+    } else if(!d.ruNameConfigured) {
+      status.textContent = 'needs RuName';
+      status.style.color = 'var(--gold)';
+      if(hint) hint.textContent = 'Copy the eBay RuName / redirect value from User Tokens into EBAY_RU_NAME';
+    } else {
+      status.textContent = 'needs connect';
+      status.style.color = 'var(--gold)';
+      if(hint) hint.textContent = 'Tap CONNECT EBAY and approve seller access';
+    }
+  } catch(e) {
+    status.textContent = 'error';
+    status.style.color = 'var(--red)';
+    if(hint) hint.textContent = e.message || 'Could not check eBay';
+  }
+}
+
+async function connectEbay(){
+  const hint = document.getElementById('ebay-oauth-hint');
+  try {
+    const res = await fetch(WORKER + '/ebay/auth-url', { cache:'no-store', signal:AbortSignal.timeout(3500) });
+    const d = await res.json();
+    if(!res.ok || !d.url) throw new Error(d.error || 'Could not create eBay auth URL');
+    window.open(d.url, '_blank');
+    if(hint) hint.textContent = 'Approve eBay, then return here and CHECK STATUS';
+  } catch(e) {
+    toast_dash(e.message || 'eBay connect failed');
+    if(hint) hint.textContent = e.message || 'eBay connect failed';
+  }
+}
+
 function scanHandoffKey(){
   return 'scan_handoff_' + STORE_ID + '_' + REGISTER_ID;
 }
@@ -1112,6 +1199,7 @@ async function postCartToWorker(cartData){
 
 window.addEventListener('load', function(){
   renderShowMode();
+  refreshEbayStatus();
   syncLifecycleFromWorker().finally(loadInventory);
 });
 
@@ -1158,11 +1246,12 @@ function mapItem(i, skuMap){
   const qty = parseInt(f['inventory-count'])||0;
   const profit = isSold ? (parseFloat(f['profit'])||salePrice-cost) : 0;
   const condition = f['condition']||'';
+  const priceSource = f['price-source'] || f.price_source || f['pricing-source'] || f.pricing_source || '';
   return {
     id:i.id, name:f.name||'—', set:f['set-name']||'',
     variant:f.variant||'', year:f.year||'',
     category:cat, cost, market, salePrice, qty,
-    profit, condition,
+    profit, condition, priceSource,
     status:isSold?'sold':'in_stock',
     lifecycle:getLifecycle(i.id, isSold?'sold':'in_stock'),
     channel:f['sale-channel']||'',
@@ -1211,6 +1300,7 @@ function applyDashboardItemUpdate(id, updates) {
     location: updates.location,
     condition: updates.condition,
     category: updates.category,
+    priceSource: updates.priceSource || updates.price_source || all[idx].priceSource,
     key_notes: updates.key_notes,
     notes: updates.key_notes,
     player: updates.player,
@@ -1480,7 +1570,7 @@ function renderTable(){
       <td><span class="sc2">${[i.set,i.variant].filter(Boolean).join(' · ')||'—'}</span></td>
       <td><span class="ct ${cat}">${i.category}</span></td>
       <td style="text-align:center;font-family:monospace,monospace;font-size:11px;color:${(i.qty||1)>1?'var(--g)':'var(--dim)'}">${i.qty||1}</td>
-      <td class="pp pm">${i.market>0?fd$(i.market):'—'}</td>
+      <td class="pp pm">${i.market>0?fd$(i.market):'—'}<br>${priceSourceBadge(i.priceSource, i.category)}</td>
       <td class="pp pd">${i.cost>0?fd$(i.cost):'—'}</td>
       <td class="${ppc}">${i.cost>0||i.profit?(pft>=0?'+':'')+fd$(pft)+(i.cost>0?' ('+margin+')':''):'—'}</td>
       <td><span style="font-family:monospace,monospace;font-size:9px;color:${ins?'var(--g)':'var(--dim)'}">${ins?'IN STOCK':'SOLD'+(i.channel?' · '+i.channel:'')}</span></td>
@@ -1666,6 +1756,10 @@ function getScanMarket(scan){
   return Number(scan?.price || scan?.market || scan?.market_nm_estimate || scan?.tcg_mid || scan?.ebay_avg || scan?.mid || 0);
 }
 
+function getScanPriceSource(scan){
+  return scan?.priceSource || scan?.price_source || scan?.pricingSource || scan?.source || scan?.market_source || scan?.scanSource || (scan?.tcg_mid ? 'tcg_market' : '') || (scan?.ebay_avg ? 'ebay_sold' : '') || 'scanner';
+}
+
 function scanToBuyItem(scan){
   return {
     id: 'bl_scan_' + (scan.id || Date.now()) + '_' + Math.random().toString(36).slice(2,5),
@@ -1679,6 +1773,7 @@ function scanToBuyItem(scan){
     year: scan.year || '',
     card_number: scan.card_number || scan.cardNumber || '',
     imageUrl: getScanImageUrl(scan),
+    priceSource: getScanPriceSource(scan),
     scan
   };
 }
@@ -2527,6 +2622,7 @@ async function createWebflowProduct(item, updates) {
             year: String(updates.year||item.year||''),
             variant: updates.variant||item.variant||'',
             'card-number': updates.card_number||item.card_number||'',
+            'price-source': updates.priceSource || item.priceSource || '',
             msrp: Math.round(updates.market||0),
           }
         },
@@ -2554,6 +2650,7 @@ async function createWebflowProduct(item, updates) {
         'card-condition': updates.condition||item.condition||'NM',
         variant: updates.variant||item.variant||'',
         'card-number': updates.card_number||item.card_number||'',
+        'price-source': updates.priceSource || item.priceSource || '',
         'cost-basis': Number(updates.cost||0),
         location: updates.location||'',
         'card-description': updates.key_notes||'',
@@ -3330,7 +3427,7 @@ function addBuyListItem(){
   const name = document.getElementById('bl-input').value.trim();
   const price = parseFloat(document.getElementById('bl-price').value)||0;
   if(!name) return;
-  buyList.push({id:'bl'+Date.now(), name, market: price, condition:'NM'});
+  buyList.push({id:'bl'+Date.now(), name, market: price, condition:'NM', priceSource: price ? 'manual' : 'ai_estimate'});
   saveBuyList();
   document.getElementById('bl-input').value='';
   document.getElementById('bl-price').value='';
@@ -3352,6 +3449,7 @@ async function autoLookupBuyItem(item){
     const data = oi>=0 ? JSON.parse('['+text.slice(oi)+']')[0] : null;
     if(data && data.price>0){
       item.market = data.price;
+      item.priceSource = 'ai_estimate';
       saveBuyList();
       renderBuyList();
     }
@@ -3395,7 +3493,10 @@ function renderBuyList(){
   if(!buyList.length){ el.innerHTML='<div style="font-family:monospace,monospace;font-size:10px;color:var(--dim);text-align:center;padding:20px">Add cards to build offer</div>'; return; }
   el.innerHTML = buyList.map(i=>`<div class="bl-item">
     ${i.imageUrl ? `<img src="${i.imageUrl}" style="width:34px;height:34px;object-fit:cover;border-radius:4px;border:1px solid var(--border);margin-right:6px">` : ''}
-    <span class="bl-item-name">${i.name}<div style="font-family:monospace;font-size:8px;color:var(--dim);font-weight:400">${[i.year,i.set,i.variant,i.card_number?'#'+i.card_number:'',i.condition].filter(Boolean).join(' · ')}</div></span>
+    <span class="bl-item-name">${i.name}<div style="font-family:monospace;font-size:8px;color:var(--dim);font-weight:400">${[i.year,i.set,i.variant,i.card_number?'#'+i.card_number:''].filter(Boolean).join(' · ')}</div>${priceSourceBadge(i.priceSource, i.category)}</span>
+    <select onchange="updateBuyItem('${i.id}','condition',this.value)" style="width:62px;background:var(--surf);border:1px solid var(--border);color:var(--text);padding:5px;border-radius:5px;font-size:10px">
+      ${['NM','LP','MP','HP','DMG'].map(c=>`<option value="${c}" ${String(i.condition||'NM')===c?'selected':''}>${c}</option>`).join('')}
+    </select>
     <input type="number" step="0.01" value="${i.market||''}" placeholder="market" onchange="updateBuyItem('${i.id}','market',this.value)" style="width:82px;background:var(--surf);border:1px solid var(--border);color:var(--text);padding:5px;border-radius:5px;font-size:10px">
     <span class="bl-item-offer">${i.market?('$'+(i.market*pct).toFixed(2)):'...'}</span>
     <button class="bl-item-rm" onclick="removeBuyItem('${i.id}')">×</button>
@@ -3438,8 +3539,49 @@ function textBuyOffer(){
   window.location.href = phone ? `sms:${phone}?&body=${body}` : `sms:?&body=${body}`;
 }
 
+function getBuyOfferTotals(){
+  const pct = parseFloat(document.getElementById('bl-pct')?.value || 50) / 100;
+  const marketTotal = buyList.reduce((a,i)=>a+Number(i.market||0),0);
+  return {
+    pct: Math.round(pct * 100),
+    marketTotal: Math.round(marketTotal * 100) / 100,
+    offerTotal: Math.round(marketTotal * pct * 100) / 100,
+  };
+}
+
+function logBuyOffer(addedCount, failedCount){
+  const totals = getBuyOfferTotals();
+  const log = JSON.parse(localStorage.getItem('pos_buy_offers') || '[]');
+  log.unshift({
+    id: 'buy_' + Date.now(),
+    date: new Date().toISOString(),
+    customer: document.getElementById('bl-customer')?.value.trim() || '',
+    phone: (document.getElementById('bl-phone')?.value || '').trim(),
+    show: getShowMode(),
+    pct: totals.pct,
+    marketTotal: totals.marketTotal,
+    offerTotal: totals.offerTotal,
+    addedCount,
+    failedCount,
+    appVersion: APP_VERSION,
+    items: buyList.map(i => ({
+      name:i.name,
+      market:Number(i.market||0),
+      offer:Math.round(Number(i.market||0) * (totals.pct/100) * 100) / 100,
+      condition:i.condition || 'NM',
+      category:i.category || '',
+      set:i.set || '',
+      year:i.year || '',
+      card_number:i.card_number || '',
+      priceSource:i.priceSource || '',
+    })),
+  });
+  localStorage.setItem('pos_buy_offers', JSON.stringify(log.slice(0,200)));
+}
+
 function buyItemToInventoryUpdates(item){
   const pct = parseFloat(document.getElementById('bl-pct')?.value || 50) / 100;
+  const cost = Math.round(Number(item.market || 0) * pct * 100) / 100;
   return {
     name:item.name,
     category:item.category === 'Pokemon TCG' ? 'TCG' : (item.category || 'TCG'),
@@ -3448,11 +3590,16 @@ function buyItemToInventoryUpdates(item){
     year:item.year || '',
     condition:item.condition || 'NM',
     market:Number(item.market || 0),
-    cost:Math.round(Number(item.market || 0) * pct * 100) / 100,
+    cost,
+    priceSource:item.priceSource || getScanPriceSource(item.scan) || 'manual',
     card_number:item.card_number || '',
     location:getShowMode()?.eventName ? 'Show buy - ' + getShowMode().eventName : 'Buy/trade intake',
     key_notes:[
       'Buy/trade intake',
+      'Offer cost: $' + cost.toFixed(2),
+      item.priceSource ? 'Price source: ' + priceSourceInfo(item.priceSource, item.category).label : '',
+      document.getElementById('bl-customer')?.value.trim() ? 'Customer: ' + document.getElementById('bl-customer').value.trim() : '',
+      document.getElementById('bl-phone')?.value.trim() ? 'Phone: ' + document.getElementById('bl-phone').value.trim() : '',
       item.scan?.confidence ? 'Scan confidence: '+item.scan.confidence : '',
       item.scan?.confidence_reason || '',
       item.scan?.search_query ? 'Search: '+item.scan.search_query : ''
@@ -3470,6 +3617,7 @@ async function bulkAddBuyListToInventory(skipConfirm){
     const productId = await createWebflowProduct(item.scan || item, updates);
     if(productId) ok++; else fail++;
   }
+  logBuyOffer(ok, fail);
   toast_dash('Inventory add complete: ' + ok + ' added' + (fail ? ', ' + fail + ' failed' : ''));
   if(ok) { clearBuyList(); loadInventory(); }
 }
@@ -3506,6 +3654,8 @@ function generateEOD(){
   // Pull from POS transaction log
   const txLog = JSON.parse(localStorage.getItem('pos_transactions')||'[]');
   const dayTx = txLog.filter(t => new Date(t.date).toDateString() === targetDay);
+  const buyLog = JSON.parse(localStorage.getItem('pos_buy_offers')||'[]');
+  const dayBuys = buyLog.filter(b => new Date(b.date).toDateString() === targetDay);
 
   // Pull from inventory sold items
   const inv = JSON.parse(localStorage.getItem('lba_inventory')||'[]');
@@ -3524,8 +3674,11 @@ function generateEOD(){
   const venmoTotal = dayTx.filter(t=>t.method?.includes('Venmo')||t.method?.includes('venmo')).reduce((a,t)=>a+t.total,0);
   const otherTotal = totalRevenue - cashTotal - cardTotal - venmoTotal;
   const totalProfit = daySold.reduce((a,i)=>a+(i.profit||0),0);
+  const buyMarketTotal = dayBuys.reduce((a,b)=>a+Number(b.marketTotal||0),0);
+  const buyPaidTotal = dayBuys.reduce((a,b)=>a+Number(b.offerTotal||0),0);
+  const buyItemCount = dayBuys.reduce((a,b)=>a+(b.items?.length || b.addedCount || 0),0);
   const avgSale = dayTx.length ? totalRevenue/dayTx.length : 0;
-  const expectedCash = Number(show?.startCash || 0) + cashTotal;
+  const expectedCash = Number(show?.startCash || 0) + cashTotal - buyPaidTotal;
 
   // Category breakdown
   const cats = {};
@@ -3570,10 +3723,20 @@ function generateEOD(){
         <div class="eod-hdr">INVENTORY MOVEMENT</div>
         <div class="eod-row"><span class="eod-label">Inventory Sold</span><span class="eod-val">${daySold.length}</span></div>
         <div class="eod-row"><span class="eod-label">Items Added Today</span><span class="eod-val">${itemsAdded.length}</span></div>
+        <div class="eod-row"><span class="eod-label">Buy/Trade Items</span><span class="eod-val">${buyItemCount}</span></div>
         <div class="eod-row"><span class="eod-label">At Show</span><span class="eod-val">${atShowCount}</span></div>
         <div class="eod-row"><span class="eod-label">Listed Online</span><span class="eod-val">${listedCount}</span></div>
         <div class="eod-row"><span class="eod-label">Pulled for eBay</span><span class="eod-val">${pulledCount}</span></div>
       </div>
+
+      ${dayBuys.length?`
+      <div class="eod-section">
+        <div class="eod-hdr">BUY / TRADE INTAKE</div>
+        <div class="eod-row"><span class="eod-label">Offers Completed</span><span class="eod-val">${dayBuys.length}</span></div>
+        <div class="eod-row"><span class="eod-label">Items Bought</span><span class="eod-val">${buyItemCount}</span></div>
+        <div class="eod-row"><span class="eod-label">Market Value</span><span class="eod-val">$${buyMarketTotal.toFixed(2)}</span></div>
+        <div class="eod-row total"><span class="eod-label">CASH / TRADE PAID</span><span class="eod-val" style="color:var(--gold)">$${buyPaidTotal.toFixed(2)}</span></div>
+      </div>`:''}
 
       <div class="eod-section">
         <div class="eod-hdr">BY PAYMENT METHOD</div>
@@ -3617,21 +3780,28 @@ function exportEODCSV(){
   const targetDay = new Date(dateStr+'T00:00:00').toDateString();
   const txLog = JSON.parse(localStorage.getItem('pos_transactions')||'[]');
   const dayTx = txLog.filter(t => new Date(t.date).toDateString() === targetDay);
+  const buyLog = JSON.parse(localStorage.getItem('pos_buy_offers')||'[]');
+  const dayBuys = buyLog.filter(b => new Date(b.date).toDateString() === targetDay);
   const show = getShowMode() || {};
   const inv = JSON.parse(localStorage.getItem('lba_inventory')||'[]');
   const daySold = inv.filter(i => i.status==='sold' && i.soldAt && new Date(i.soldAt).toDateString()===targetDay);
   const itemsAdded = all.filter(i => i.addedAt && new Date(i.addedAt).toDateString()===targetDay);
   const soldByName = {};
   daySold.forEach(i => { soldByName[i.name] = i; });
-  const rows = [['event','booth','date','tx_id','time','method','item','category','price','cost','profit','tx_total','inventory_sold_count','items_added_count','show_price_rule_pct','app_version']];
+  const rows = [['event','booth','date','record_type','tx_id','time','method','item','category','price','cost','profit','tx_total','market_total','offer_pct','inventory_sold_count','items_added_count','show_price_rule_pct','price_source','app_version']];
   dayTx.forEach(t => (t.items||[]).forEach(item => rows.push([
-    show.eventName||'', show.booth||'', dateStr, t.id||'', new Date(t.date).toLocaleTimeString(),
+    show.eventName||'', show.booth||'', dateStr, 'sale', t.id||'', new Date(t.date).toLocaleTimeString(),
     t.method||'', item.name||'', item.category||'', Number(item.price||0).toFixed(2),
     Number(item.cost || soldByName[item.name]?.cost || 0).toFixed(2),
     Number((item.price || 0) - (item.cost || soldByName[item.name]?.cost || 0)).toFixed(2),
-    Number(t.total||0).toFixed(2), daySold.length, itemsAdded.length, show.priceRulePct || '', APP_VERSION
+    Number(t.total||0).toFixed(2), '', '', daySold.length, itemsAdded.length, show.priceRulePct || '', item.priceSource || '', APP_VERSION
   ])));
-  if(rows.length===1) rows.push([show.eventName||'', show.booth||'', dateStr, '', '', 'NO SALES', '', '', '', '', '', '', daySold.length, itemsAdded.length, show.priceRulePct || '', APP_VERSION]);
+  dayBuys.forEach(b => (b.items||[]).forEach(item => rows.push([
+    b.show?.eventName || show.eventName || '', b.show?.booth || show.booth || '', dateStr, 'buy', b.id || '', new Date(b.date).toLocaleTimeString(),
+    'Buy/Trade', item.name || '', item.category || '', '', Number(item.offer||0).toFixed(2), '', Number(b.offerTotal||0).toFixed(2),
+    Number(item.market||0).toFixed(2), b.pct || '', daySold.length, itemsAdded.length, show.priceRulePct || '', item.priceSource || '', APP_VERSION
+  ])));
+  if(rows.length===1) rows.push([show.eventName||'', show.booth||'', dateStr, 'none', '', '', 'NO ACTIVITY', '', '', '', '', '', '', '', '', daySold.length, itemsAdded.length, show.priceRulePct || '', '', APP_VERSION]);
   const csv = rows.map(r => r.map(v => '"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\n');
   const blob = new Blob([csv], {type:'text/csv'});
   const a = document.createElement('a');

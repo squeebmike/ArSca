@@ -3,7 +3,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="version" content="2026.04.29.13">
+<meta name="version" content="2026.04.29.14">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>LBA Scanner</title>
@@ -110,6 +110,12 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
 .bprice.tcg{color:var(--g)}.bprice.sports{color:var(--gold)}.bprice.comic{color:var(--purple)}
 .bprice.psa,.bprice.bgs,.bprice.cgc,.bprice.sgc{color:#ccc}
 .brange{font-family:monospace;font-size:9px;color:rgba(255,255,255,.3);margin-bottom:5px;}
+.src-badge{display:inline-block;font-family:monospace;font-size:7px;letter-spacing:.8px;text-transform:uppercase;padding:2px 5px;border-radius:3px;border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.4);background:rgba(255,255,255,.03);white-space:nowrap;}
+.src-badge.tcg{border-color:rgba(0,255,179,.25);color:var(--g);background:rgba(0,255,179,.06);}
+.src-badge.pokemon{border-color:rgba(72,202,228,.25);color:var(--blue);background:rgba(72,202,228,.06);}
+.src-badge.ebay{border-color:rgba(255,209,102,.3);color:var(--gold);background:rgba(255,209,102,.06);}
+.src-badge.ai{border-color:rgba(199,125,255,.25);color:var(--purple);background:rgba(199,125,255,.06);}
+.src-badge.slab{border-color:rgba(230,57,70,.3);color:#ff6b75;background:rgba(230,57,70,.06);}
 .comps{margin-bottom:5px;}
 .comps-hdr{font-family:'Orbitron',monospace;font-size:7px;letter-spacing:1px;color:rgba(255,255,255,.3);margin-bottom:3px;}
 .comp-row{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.05);}
@@ -572,7 +578,7 @@ const STORE = {
   wf_status_instock:'f3769d1e15fa0956f98984d6fa36437f',
   wf_status_sold:   'e6b42f14fcb99aa2168a5f5672226f68',
 };
-const APP_VERSION = '2026.04.29.13';
+const APP_VERSION = '2026.04.29.14';
 const WORKER_URL = STORE.worker_url;
 
 function slugifyId(value, fallback) {
@@ -586,6 +592,24 @@ function slugifyId(value, fallback) {
 function tcgProductIdFromUrl(url) {
   const s = String(url || '');
   return (s.match(/\/product\/(\d+)/) || s.match(/[?&]productId=(\d+)/) || [])[1] || '';
+}
+
+function priceSourceInfo(source, itemType){
+  const raw = String(source || '').trim();
+  const s = raw.toLowerCase();
+  if(s.includes('tcg') || s.includes('market')) return { label:'TCG market', cls:'tcg' };
+  if(s.includes('pokemonprice') || s.includes('pokeprice')) return { label:'PokePrice', cls:'slab' };
+  if(s.includes('pokemon')) return { label:'PokemonTCG', cls:'pokemon' };
+  if(s.includes('scry') || s.includes('magic')) return { label:'Scryfall', cls:'tcg' };
+  if(s.includes('ebay') || s.includes('sold')) return { label:'eBay sold', cls:'ebay' };
+  if(s.includes('ai') || s.includes('estimate')) return { label:'AI est', cls:'ai' };
+  if(['psa','bgs','cgc','sgc'].includes(itemType)) return { label:'Slab comp', cls:'slab' };
+  return { label: raw || 'Manual', cls:'manual' };
+}
+
+function priceSourceBadge(source, itemType){
+  const info = priceSourceInfo(source, itemType);
+  return `<span class="src-badge ${info.cls}">${info.label}</span>`;
 }
 
 function getStoreId() {
@@ -848,6 +872,7 @@ async function fetchAllPrintings(item){
             cardId: card.id,
             allPrices: priceTiers,
             condPrices,  // condition-specific prices
+            priceSource: 'tcg_market',
           };
           result.printings.push(baseEntry);
           // Add 1st Edition as separate entry if available (different price)
@@ -1016,6 +1041,7 @@ async function fetchAllPrintings(item){
             setCode: card.set,
             cardId: card.id,
             allPrices: mtgPriceTiers,
+            priceSource: 'scryfall_market',
           });
           if(hintSet && setNameLower.includes(hintSet.split(' ')[0])) bestIdx = i;
         });
@@ -1048,13 +1074,14 @@ async function fetchAllPrintings(item){
               hasRealPrice: !!(ygoPrice),
               imageUrl: card.card_images[0]?.image_url || null,
               tcgUrl: `https://www.tcgplayer.com/search/yugioh/product?productLineName=yugioh&q=${encodeURIComponent(card.name)}`,
-              setCode: s.set_code
+              setCode: s.set_code,
+              priceSource: 'ygoprodeck_tcg_estimate'
             });
             if(hintSet && setNameLower.includes(hintSet.split(' ')[0])) bestIdx = i;
           });
           result.bestMatchIdx = bestIdx;
         } else {
-          result.printings.push({set:'Unknown',variant:'Base',year:'',numbered:null,mid:1,low:0.5,high:2,imageUrl:card.card_images[0]?.image_url||null});
+          result.printings.push({set:'Unknown',variant:'Base',year:'',numbered:null,mid:1,low:0.5,high:2,imageUrl:card.card_images[0]?.image_url||null,priceSource:'ygoprodeck_estimate'});
         }
         result.imageUrl = card.card_images[0]?.image_url || null;
       }
@@ -3219,6 +3246,7 @@ function addBubble(item,stock,imgUrl,apiPrintings,bestMatchIdx){
   const bmi = bestMatchIdx||0;
   const first=prints[bmi]||prints[0]||{mid:0,low:0,high:0,set:'Unknown',variant:''};
   const ct=getType(item);
+  item.priceSource = item.priceSource || item.price_source || first.priceSource || (item.comps?.length ? 'ai_estimate' : '');
   const isSlab=['psa','bgs','cgc','sgc'].includes(ct);
   const el=document.createElement('div');
   el.className='bub '+ct;el.id=id;el._prints=prints;el._item=item;el._ct=ct;el._imgUrl=imgUrl||null;el._apiPrintings=apiPrintings||null;el._bmi=bmi||0;
@@ -3393,15 +3421,15 @@ function addBubble(item,stock,imgUrl,apiPrintings,bestMatchIdx){
       if(isSportsOrComic){
         const estPrice = item.comps && item.comps.length ? item.comps[0].price : 0;
         if(estPrice > 0) {
-          return `<div class="prow"><span class="bprice ${ct}" id="bp${id}">$${Number(estPrice).toFixed(2)}</span><span style="font-family:monospace;font-size:8px;color:rgba(255,209,102,.4)">EST NM</span></div>
-          <div class="brange" id="br${id}" style="color:rgba(255,255,255,.3)">AI est · tap eBay Sold for live comps</div>`;
+          return `<div class="prow"><span class="bprice ${ct}" id="bp${id}">$${Number(estPrice).toFixed(2)}</span>${priceSourceBadge(item.priceSource || 'ai_estimate', ct)}</div>
+          <div class="brange" id="br${id}" style="color:rgba(255,255,255,.3)">AI estimate · tap eBay Sold for live comps</div>`;
         }
         return `<div class="prow"><span class="bprice ${ct}" id="bp${id}" style="font-size:11px;color:rgba(0,255,179,.4)">LOADING PRICES...</span></div>
         <div class="brange" id="br${id}" style="color:rgba(255,255,255,.2)">Fetching AI price estimate...</div>`;
       }
       if(hasReal){
-        return `<div class="prow"><span class="bprice ${ct}" id="bp${id}">$${Number(first.mid).toFixed(2)}</span><span style="font-family:monospace;font-size:8px;color:rgba(0,255,179,.5)">LIVE</span></div>
-        <div class="brange" id="br${id}">$${Number(first.low).toFixed(2)} – $${Number(first.high).toFixed(2)} NM</div>`;
+        return `<div class="prow"><span class="bprice ${ct}" id="bp${id}">$${Number(first.mid).toFixed(2)}</span>${priceSourceBadge(first.priceSource || item.priceSource || 'tcg_market', ct)}</div>
+        <div class="brange" id="br${id}">$${Number(first.low).toFixed(2)} - $${Number(first.high).toFixed(2)} NM</div>`;
       }
       return `<div class="prow"><span class="bprice ${ct}" id="bp${id}" style="font-size:11px;color:rgba(0,255,179,.4)">LOADING PRICES...</span></div>
       <div class="brange" id="br${id}" style="color:rgba(255,255,255,.2)">Fetching from TCGPlayer...</div>`;

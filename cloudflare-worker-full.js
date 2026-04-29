@@ -18,6 +18,14 @@ const ANTHROPIC_BASE = 'https://api.anthropic.com/v1';
 const SITE_ID = '65b15ee0228d06647ca7e4ce';
 const WF_PRODUCTS = '65eb45a28ff6bf3fe4f17b14';
 const WF_STATUS_SOLD = 'e6b42f14fcb99aa2168a5f5672226f68';
+const EBAY_TOKEN_URL = 'https://api.ebay.com/identity/v1/oauth2/token';
+const EBAY_AUTH_URL = 'https://auth.ebay.com/oauth2/authorize';
+const EBAY_SCOPES = [
+  'https://api.ebay.com/oauth/api_scope',
+  'https://api.ebay.com/oauth/api_scope/sell.inventory',
+  'https://api.ebay.com/oauth/api_scope/sell.account',
+  'https://api.ebay.com/oauth/api_scope/sell.fulfillment.readonly',
+].join(' ');
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -59,6 +67,59 @@ function cartKeyFromUrl(url) {
 function legacyCartKey(url) {
   const hasScopedKey = url.searchParams.has('store') || url.searchParams.has('register');
   return hasScopedKey ? cartKeyFromUrl(url) : 'pos_cart';
+}
+
+async function getStoredSecret(env, key) {
+  if (env[key]) return env[key];
+  try {
+    const val = env.LBA_KV ? await env.LBA_KV.get('secret:' + key) : null;
+    return val || '';
+  } catch (_) {
+    return '';
+  }
+}
+
+async function putStoredSecret(env, key, value) {
+  if (!env.LBA_KV || !value) return false;
+  await env.LBA_KV.put('secret:' + key, value);
+  return true;
+}
+
+async function ebayTokenRequest(env, params) {
+  const clientId = await getStoredSecret(env, 'EBAY_CLIENT_ID');
+  const clientSecret = await getStoredSecret(env, 'EBAY_CLIENT_SECRET');
+  if (!clientId || !clientSecret) throw new Error('EBAY_CLIENT_ID and EBAY_CLIENT_SECRET are required');
+  const res = await fetch(EBAY_TOKEN_URL, {
+    method: 'POST',
+    headers: {
+      'Authorization': 'Basic ' + btoa(clientId + ':' + clientSecret),
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: params.toString(),
+  });
+  const text = await res.text();
+  let data; try { data = JSON.parse(text); } catch (_) { data = { raw: text }; }
+  if (!res.ok) throw new Error(errorMessageFromApi(data, 'eBay OAuth ' + res.status));
+  return data;
+}
+
+async function getEbayUserAccessToken(env) {
+  const staticToken = await getStoredSecret(env, 'EBAY_USER_TOKEN');
+  const refreshToken = await getStoredSecret(env, 'EBAY_REFRESH_TOKEN');
+  if (!refreshToken) return staticToken;
+
+  const cached = env.LBA_KV ? await env.LBA_KV.get('secret:EBAY_ACCESS_TOKEN') : null;
+  const exp = env.LBA_KV ? Number(await env.LBA_KV.get('secret:EBAY_ACCESS_EXPIRES') || 0) : 0;
+  if (cached && exp > Date.now() + 120000) return cached;
+
+  const params = new URLSearchParams({ grant_type: 'refresh_token', refresh_token: refreshToken });
+  const data = await ebayTokenRequest(env, params);
+  const accessToken = data.access_token;
+  if (accessToken && env.LBA_KV) {
+    await env.LBA_KV.put('secret:EBAY_ACCESS_TOKEN', accessToken, { expirationTtl: Math.max(300, Number(data.expires_in || 7200)) });
+    await env.LBA_KV.put('secret:EBAY_ACCESS_EXPIRES', String(Date.now() + Number(data.expires_in || 7200) * 1000));
+  }
+  return accessToken || staticToken;
 }
 
 function leftRotate(x, c) {
@@ -164,6 +225,8 @@ export default {
         psa: !!env.PSA_TOKEN,
         stripe: !!env.STRIPE_SECRET_KEY,
         ebay: !!env.EBAY_USER_TOKEN,
+        ebayClient: !!(env.EBAY_CLIENT_ID || (env.LBA_KV && await env.LBA_KV.get('secret:EBAY_CLIENT_ID'))),
+        ebayRefresh: !!(env.EBAY_REFRESH_TOKEN || (env.LBA_KV && await env.LBA_KV.get('secret:EBAY_REFRESH_TOKEN'))),
         comicvine: !!env.COMICVINE_API_KEY,
         tcgapi: !!env.TCGAPI_KEY,
         pokemontcg: !!env.POKEMONTCG_API_KEY,
@@ -455,9 +518,68 @@ export default {
       }
     }
 
+    if (url.pathname === '/ebay/status') {
+      const hasClient = !!(await getStoredSecret(env, 'EBAY_CLIENT_ID')) && !!(await getStoredSecret(env, 'EBAY_CLIENT_SECRET'));
+      const hasRefresh = !!(await getStoredSecret(env, 'EBAY_REFRESH_TOKEN'));
+      const hasLegacyUserToken = !!(await getStoredSecret(env, 'EBAY_USER_TOKEN'));
+      const ruName = await getStoredSecret(env, 'EBAY_RU_NAME');
+      return json({
+        ok: true,
+        clientConfigured: hasClient,
+        refreshConfigured: hasRefresh,
+        legacyUserToken: hasLegacyUserToken,
+        ruNameConfigured: !!ruName,
+        readyToList: hasClient && (hasRefresh || hasLegacyUserToken),
+      });
+    }
+
+    if (url.pathname === '/ebay/auth-url') {
+      const clientId = await getStoredSecret(env, 'EBAY_CLIENT_ID');
+      const ruName = await getStoredSecret(env, 'EBAY_RU_NAME');
+      if (!clientId) return json({ error: 'EBAY_CLIENT_ID not configured' }, 500);
+      if (!ruName) return json({ error: 'EBAY_RU_NAME not configured', hint: 'Set the RuName/redirect_uri value from eBay User Tokens page as EBAY_RU_NAME.' }, 500);
+      const state = crypto.randomUUID();
+      if (env.LBA_KV) await env.LBA_KV.put('ebay_oauth_state:' + state, '1', { expirationTtl: 900 });
+      const auth = new URL(EBAY_AUTH_URL);
+      auth.searchParams.set('client_id', clientId);
+      auth.searchParams.set('redirect_uri', ruName);
+      auth.searchParams.set('response_type', 'code');
+      auth.searchParams.set('scope', EBAY_SCOPES);
+      auth.searchParams.set('state', state);
+      return json({ ok: true, url: auth.toString(), state, scopes: EBAY_SCOPES.split(' ') });
+    }
+
+    if (url.pathname === '/ebay/oauth/callback') {
+      const code = url.searchParams.get('code') || '';
+      const state = url.searchParams.get('state') || '';
+      const ruName = await getStoredSecret(env, 'EBAY_RU_NAME');
+      if (!code) return json({ error: 'Missing eBay code' }, 400);
+      if (env.LBA_KV && state) {
+        const okState = await env.LBA_KV.get('ebay_oauth_state:' + state);
+        if (!okState) return json({ error: 'Invalid or expired OAuth state' }, 400);
+        await env.LBA_KV.delete('ebay_oauth_state:' + state);
+      }
+      const data = await ebayTokenRequest(env, new URLSearchParams({
+        grant_type: 'authorization_code',
+        code,
+        redirect_uri: ruName,
+      }));
+      if (data.refresh_token) await putStoredSecret(env, 'EBAY_REFRESH_TOKEN', data.refresh_token);
+      if (data.access_token && env.LBA_KV) {
+        await env.LBA_KV.put('secret:EBAY_ACCESS_TOKEN', data.access_token, { expirationTtl: Math.max(300, Number(data.expires_in || 7200)) });
+        await env.LBA_KV.put('secret:EBAY_ACCESS_EXPIRES', String(Date.now() + Number(data.expires_in || 7200) * 1000));
+      }
+      return new Response('<html><body style="font-family:system-ui;background:#0d0f14;color:#e4e4e8;padding:32px"><h2>eBay connected</h2><p>You can close this tab and return to Walk-Off.</p></body></html>', {
+        headers: { ...CORS, 'Content-Type': 'text/html' },
+      });
+    }
+
     if (url.pathname === '/ebay/list') {
       if (request.method !== 'POST') return json({ error: 'POST only' }, 405);
-      if (!env.EBAY_USER_TOKEN) return json({ needsToken: true, error: 'EBAY_USER_TOKEN not set' }, 401);
+      let ebayToken = '';
+      try { ebayToken = await getEbayUserAccessToken(env); }
+      catch (tokenErr) { return json({ needsToken: true, error: tokenErr.message }, 401); }
+      if (!ebayToken) return json({ needsToken: true, error: 'Connect eBay first: missing user access/refresh token' }, 401);
 
       try {
         const b = await request.json();
@@ -481,7 +603,7 @@ export default {
         await fetch(`https://api.ebay.com/sell/inventory/v1/location/${locationKey}`, {
           method: 'POST',
           headers: {
-            'Authorization': 'Bearer ' + env.EBAY_USER_TOKEN,
+            'Authorization': 'Bearer ' + ebayToken,
             'Content-Type': 'application/json',
             'Content-Language': 'en-US',
           },
@@ -542,7 +664,7 @@ export default {
         const itemRes = await fetch(`https://api.ebay.com/sell/inventory/v1/inventory_item/${sku}`, {
           method: 'PUT',
           headers: {
-            'Authorization': 'Bearer ' + env.EBAY_USER_TOKEN,
+            'Authorization': 'Bearer ' + ebayToken,
             'Content-Type': 'application/json',
             'Content-Language': 'en-US',
           },
@@ -577,7 +699,7 @@ export default {
         const offerRes = await fetch('https://api.ebay.com/sell/inventory/v1/offer', {
           method: 'POST',
           headers: {
-            'Authorization': 'Bearer ' + env.EBAY_USER_TOKEN,
+            'Authorization': 'Bearer ' + ebayToken,
             'Content-Type': 'application/json',
             'Content-Language': 'en-US',
           },
@@ -594,7 +716,7 @@ export default {
         const offerId = offerData.offerId;
         const pubRes = await fetch(`https://api.ebay.com/sell/inventory/v1/offer/${offerId}/publish`, {
           method: 'POST',
-          headers: { 'Authorization': 'Bearer ' + env.EBAY_USER_TOKEN, 'Content-Type': 'application/json' },
+          headers: { 'Authorization': 'Bearer ' + ebayToken, 'Content-Type': 'application/json' },
         });
 
         const pubTxt = await pubRes.text();
