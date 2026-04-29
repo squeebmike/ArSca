@@ -2816,6 +2816,12 @@ function isSealedProduct(item){
   return /sealed|booster|box|hobby|blaster|mega|pack|case|tin|etb|elite trainer|bundle/.test([item.name,item.set,item.variant].filter(Boolean).join(' ').toLowerCase());
 }
 
+function getPricingInventorySource(){
+  const loaded = Array.isArray(all) && all.length ? all : [];
+  if(loaded.length) return loaded;
+  return JSON.parse(localStorage.getItem('lba_inventory')||'[]');
+}
+
 function normalizeCardNameForPokemon(name){
   return String(name||'')
     .replace(/\b(PSA|BGS|CGC|SGC)\s*\d+(\.\d+)?\b/gi,'')
@@ -2876,6 +2882,38 @@ async function fetchTCGPrice(name, setName, tcgCardId) {
       };
     }
 
+    if(/magic|mtg/.test(pricingGameForItem(itemCtx || {name:itemName,set:itemSet,category:'TCG'}))) {
+      const sf = await fetch(`https://api.scryfall.com/cards/search?q=${encodeURIComponent('!"'+itemName+'"')}&unique=prints&order=released&dir=desc`)
+        .then(r => r.ok ? r.json() : null)
+        .catch(() => null);
+      const cards = sf?.data || [];
+      const setHint = String(itemSet || '').toLowerCase();
+      const best = cards
+        .map(c => {
+          let score = 0;
+          if(setHint && String(c.set_name||'').toLowerCase().includes(setHint)) score += 20;
+          if(Number(c.prices?.usd || 0) > 0) score += 10;
+          if(Number(c.prices?.usd_foil || 0) > 0) score += 5;
+          return {c, score};
+        })
+        .sort((a,b)=>b.score-a.score)[0]?.c;
+      const nm = Number(best?.prices?.usd || best?.prices?.usd_foil || best?.prices?.usd_etched || 0);
+      if(nm > 0) {
+        return {
+          NM:nm,
+          LP:nm*0.80,
+          MP:nm*0.64,
+          HP:nm*0.40,
+          DMG:nm*0.25,
+          cardId:best.id || '',
+          cardName:best.name || itemName,
+          setName:best.set_name || itemSet,
+          imageUrl:best.image_uris?.large || best.image_uris?.normal || null,
+          source:'scryfall'
+        };
+      }
+    }
+
     // If we have a stored card ID, use it directly — fastest and most accurate
     if(tcgCardId) {
       const r = await fetch(`https://api.pokemontcg.io/v2/cards/${tcgCardId}`);
@@ -2927,7 +2965,7 @@ async function previewPriceSync() {
   const catFilter = document.getElementById('sync-category').value;
   const condFilter = document.getElementById('sync-condition-filter').value;
   const preview = document.getElementById('sync-preview');
-  const inv = JSON.parse(localStorage.getItem('lba_inventory')||'[]');
+  const inv = getPricingInventorySource();
 
   let items = inv.filter(i => i.status === 'in_stock');
   if(catFilter !== 'all') items = items.filter(i => catFilter === 'TCG' ? isTcgInventoryItem(i) : i.category === catFilter);
@@ -2951,7 +2989,7 @@ async function previewPriceSync() {
 async function runPriceSync() {
   const catFilter = document.getElementById('sync-category').value;
   const condFilter = document.getElementById('sync-condition-filter').value;
-  const inv = JSON.parse(localStorage.getItem('lba_inventory')||'[]');
+  const inv = getPricingInventorySource();
   const progressEl = document.getElementById('sync-progress');
   const barEl = document.getElementById('sync-bar');
   const logEl = document.getElementById('sync-log');
@@ -3028,6 +3066,20 @@ async function runPriceSync() {
       } catch(e) {
         failed++;
         logEl.innerHTML += `<div style="color:var(--red)">Webflow update failed: ${item.name} (${e.message})</div>`;
+        continue;
+      }
+    } else if(item.id) {
+      try {
+        await wfPatch('/collections/'+WF_PRODUCTS+'/items/'+item.id, {
+          fieldData: {
+            msrp: Math.round(newPrice),
+            'retail-price': Math.round(newPrice),
+            'card-condition': item.condition || 'NM'
+          }
+        });
+      } catch(e) {
+        failed++;
+        logEl.innerHTML += `<div style="color:var(--red)">Webflow CMS update failed: ${item.name} (${e.message})</div>`;
         continue;
       }
     }
