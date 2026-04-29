@@ -880,6 +880,88 @@ export default {
       }
     }
 
+    if (url.pathname === '/graded/pricing') {
+      const q = (url.searchParams.get('q') || '').trim();
+      if (!q) return json({ ok: false, error: 'q required' }, 400);
+
+      const median = values => {
+        const a = values.filter(v => Number(v) > 0).sort((x, y) => x - y);
+        if (!a.length) return 0;
+        const mid = Math.floor(a.length / 2);
+        return a.length % 2 ? a[mid] : (a[mid - 1] + a[mid]) / 2;
+      };
+
+      const clean = s => String(s || '').replace(/\s+/g, ' ').trim();
+      const searches = [
+        { key: 'raw', label: 'Raw sold', query: clean(`${q} raw -PSA -BGS -CGC -SGC`) },
+        { key: 'psa9', label: 'PSA 9 sold', query: clean(`${q} PSA 9`) },
+        { key: 'psa10', label: 'PSA 10 sold', query: clean(`${q} PSA 10`) },
+        { key: 'bgs95', label: 'BGS 9.5 sold', query: clean(`${q} BGS 9.5`) },
+        { key: 'cgc10', label: 'CGC 10 sold', query: clean(`${q} CGC 10`) },
+      ];
+
+      async function completedPrices(query) {
+        if (!env.EBAY_APP_ID) return { source: 'none', prices: [] };
+        const findRes = await fetch(
+          `https://svcs.ebay.com/services/search/FindingService/v1` +
+          `?OPERATION-NAME=findCompletedItems&SERVICE-VERSION=1.0.0` +
+          `&SECURITY-APPNAME=${env.EBAY_APP_ID}&RESPONSE-DATA-FORMAT=JSON&REST-PAYLOAD` +
+          `&keywords=${encodeURIComponent(query)}` +
+          `&itemFilter%280%29.name=SoldItemsOnly&itemFilter%280%29.value=true` +
+          `&sortOrder=EndTimeSoonest&paginationInput.entriesPerPage=25`
+        );
+        if (!findRes.ok) return { source: 'ebay_sold', prices: [], error: 'Finding API ' + findRes.status };
+        const fd = await findRes.json();
+        const items = fd.findCompletedItemsResponse?.[0]?.searchResult?.[0]?.item || [];
+        const prices = items
+          .map(i => Number(i.sellingStatus?.[0]?.currentPrice?.[0]?.['__value__'] || 0))
+          .filter(p => p > 0);
+        return { source: 'ebay_sold', prices };
+      }
+
+      async function activePrices(query) {
+        if (!env.EBAY_USER_TOKEN) return { source: 'none', prices: [] };
+        const browseRes = await fetch(
+          `https://api.ebay.com/buy/browse/v1/item_summary/search?q=${encodeURIComponent(query)}&limit=25&sort=price`,
+          { headers: {
+            'Authorization': 'Bearer ' + env.EBAY_USER_TOKEN,
+            'X-EBAY-C-MARKETPLACE-ID': 'EBAY_US',
+            'Content-Type': 'application/json',
+          } }
+        );
+        if (!browseRes.ok) return { source: 'ebay_active', prices: [], error: 'Browse API ' + browseRes.status };
+        const bd = await browseRes.json();
+        const prices = (bd.itemSummaries || [])
+          .map(i => Number(i.price?.value || 0))
+          .filter(p => p > 0);
+        return { source: 'ebay_active', prices };
+      }
+
+      const comps = [];
+      for (const s of searches) {
+        let result = await completedPrices(s.query);
+        if (!result.prices.length) result = await activePrices(s.query);
+        const avg = result.prices.length ? result.prices.reduce((a, b) => a + b, 0) / result.prices.length : 0;
+        comps.push({
+          ...s,
+          source: result.source,
+          count: result.prices.length,
+          averagePrice: Math.round(avg * 100) / 100,
+          medianPrice: Math.round(median(result.prices) * 100) / 100,
+          recentPrices: result.prices.slice(0, 8),
+          error: result.error || null,
+        });
+      }
+
+      return json({
+        ok: true,
+        query: q,
+        source: env.EBAY_APP_ID ? 'ebay_sold' : (env.EBAY_USER_TOKEN ? 'ebay_active' : 'none'),
+        comps,
+        needsEbay: !env.EBAY_APP_ID && !env.EBAY_USER_TOKEN,
+      });
+    }
+
     if (url.pathname === '/comic/pricing') {
       const title = url.searchParams.get('title') || '';
       const issue = url.searchParams.get('issue') || '';

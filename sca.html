@@ -3,7 +3,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="version" content="2026.04.29.5">
+<meta name="version" content="2026.04.29.6">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>LBA Scanner</title>
@@ -393,7 +393,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
   <div class="hbtns">
     <span id="show-badge" style="font-family:monospace;font-size:9px;color:rgba(255,209,102,.7);letter-spacing:1px"></span>
     <span id="offline-sync-badge" style="font-family:monospace;font-size:9px;color:rgba(255,255,255,.35);letter-spacing:1px">online</span>
-    <span id="app-version" style="font-family:monospace;font-size:9px;color:rgba(0,255,179,.55);letter-spacing:1px">v2026.04.29.5</span>
+    <span id="app-version" style="font-family:monospace;font-size:9px;color:rgba(0,255,179,.55);letter-spacing:1px">v2026.04.29.6</span>
     <span id="hstatus">READY</span>
     <button class="hbtn" id="flipbtn" onclick="toggleFlip()">FLIP</button>
     <button class="hbtn" id="bulkbtn" onclick="toggleBulk()">BULK</button>
@@ -571,7 +571,7 @@ const STORE = {
   wf_status_instock:'f3769d1e15fa0956f98984d6fa36437f',
   wf_status_sold:   'e6b42f14fcb99aa2168a5f5672226f68',
 };
-const APP_VERSION = '2026.04.29.5';
+const APP_VERSION = '2026.04.29.6';
 const WORKER_URL = STORE.worker_url;
 
 function slugifyId(value, fallback) {
@@ -3491,6 +3491,7 @@ function addBubble(item,stock,imgUrl,apiPrintings,bestMatchIdx){
     </div>
     <div id="slab-links-${id}" style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:4px"></div>
     <div id="slab-pop-${id}" style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:4px"></div>
+    <div id="slab-research-${id}" style="display:none;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.08);border-radius:6px;padding:7px;margin-bottom:4px;font-family:monospace;font-size:8px;color:rgba(255,255,255,.55)"></div>
     <div id="slab-psa-${id}" style="display:none;background:rgba(230,57,70,.06);border:1px solid rgba(230,57,70,.2);border-radius:6px;padding:8px;margin-top:4px;font-family:monospace;font-size:8px"></div>
   </div>`;
 
@@ -6280,6 +6281,39 @@ function updateSlabSearch(id) {
   links.push(`<a class="bact" href="${AFF.ebaySearch(rawParts.concat(['PSA 10']).join(' '))}" target="_blank" style="background:rgba(230,57,70,.08);color:#ff6b75;border:1px solid rgba(230,57,70,.3);font-size:8px">PSA 10 Sold</a>`);
   links.push(`<a class="bact" href="${AFF.ebaySearch(rawParts.concat(['BGS 9.5']).join(' '))}" target="_blank" style="background:rgba(180,180,180,.07);color:#bbb;border:1px solid rgba(180,180,180,.24);font-size:8px">BGS 9.5 Sold</a>`);
   popEl.innerHTML = links.join('');
+  debounceGradedResearch(id, rawParts.join(' '));
+}
+
+const _gradedResearchTimers = {};
+
+function debounceGradedResearch(id, q) {
+  clearTimeout(_gradedResearchTimers[id]);
+  _gradedResearchTimers[id] = setTimeout(() => fetchGradedResearch(id, q), 450);
+}
+
+async function fetchGradedResearch(id, q) {
+  const panel = document.getElementById('slab-research-'+id);
+  if(!panel || !q) return;
+  panel.style.display = 'block';
+  panel.innerHTML = '<div style="color:rgba(255,209,102,.75);letter-spacing:1px">Loading graded comps...</div>';
+  try {
+    const res = await fetch(WORKER_URL + '/graded/pricing?q=' + encodeURIComponent(q));
+    const data = await res.json();
+    if(!data.ok) throw new Error(data.error || 'graded pricing failed');
+    const comps = data.comps || [];
+    const rows = comps.map(c => {
+      const val = c.medianPrice || c.averagePrice || 0;
+      const src = c.source === 'ebay_sold' ? 'sold' : (c.source === 'ebay_active' ? 'active' : 'no data');
+      const price = val > 0 ? '$' + Number(val).toFixed(2) : '--';
+      return `<div class="comp-row"><span class="comp-d">${c.label} <span style="color:rgba(255,255,255,.25)">(${c.count||0} ${src})</span></span><span class="comp-p">${price}</span></div>`;
+    }).join('');
+    const raw = comps.find(c => c.key === 'raw')?.medianPrice || 0;
+    const psa10 = comps.find(c => c.key === 'psa10')?.medianPrice || 0;
+    const multiple = raw > 0 && psa10 > 0 ? ` - PSA 10 is ${(psa10/raw).toFixed(1)}x raw` : '';
+    panel.innerHTML = `<div class="comps-hdr">LIVE GRADED RESEARCH${multiple}</div>${rows || '<div style="color:rgba(255,255,255,.35)">No eBay comps returned.</div>'}${data.needsEbay?'<div style="color:#ffd166;margin-top:4px">Add EBAY_APP_ID for sold comps.</div>':''}`;
+  } catch(e) {
+    panel.innerHTML = `<div style="color:rgba(255,100,100,.7)">Graded comps unavailable: ${e.message}</div>`;
+  }
 }
 // ════════════════════════════════════════════════════════════════
 // PSA API — real cert lookup, pop counts, auto-fill
