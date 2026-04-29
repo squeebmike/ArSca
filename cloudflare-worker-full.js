@@ -165,6 +165,8 @@ export default {
         stripe: !!env.STRIPE_SECRET_KEY,
         ebay: !!env.EBAY_USER_TOKEN,
         comicvine: !!env.COMICVINE_API_KEY,
+        tcgapi: !!env.TCGAPI_KEY,
+        pokemontcg: !!env.POKEMONTCG_API_KEY,
         kv: !!env.LBA_KV,
       });
     }
@@ -716,7 +718,14 @@ export default {
 
       if (/pokemon|pokémon/.test(game)) {
         try {
-          const r = await fetch(`https://api.pokemontcg.io/v2/cards?q=${encodeURIComponent('name:"' + q + '"')}&pageSize=10`);
+          const pokemonHeaders = env.POKEMONTCG_API_KEY ? { 'X-Api-Key': env.POKEMONTCG_API_KEY } : {};
+          const r = await fetch(`https://api.pokemontcg.io/v2/cards?q=${encodeURIComponent('name:"' + q + '"')}&pageSize=10`, {
+            headers: pokemonHeaders,
+          });
+          if (!r.ok) {
+            const err = await r.text();
+            return json({ ok: false, source: 'pokemontcg', error: 'PokemonTCG API ' + r.status, detail: err.slice(0, 200) }, r.status);
+          }
           const d = await r.json();
           const card = d.data?.[0];
           const prices = card?.tcgplayer?.prices || {};
