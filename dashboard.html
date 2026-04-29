@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="2026.04.28.8">
+<meta name="version" content="2026.04.29.1">
 <title>Walk-Off Dashboard</title>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -193,7 +193,7 @@ tr.sold:hover td{opacity:.7;}
 
 <header>
   <div class="hdr">
-    <div class="logo">WALK-OFF <span>DASHBOARD · v2026.04.28.8</span></div>
+    <div class="logo">WALK-OFF <span>DASHBOARD · v2026.04.29.1</span></div>
     <div class="hdr-right">
       <span id="sync-status">Loading...</span>
       <button class="hbtn" onclick="loadInventory()">↻ REFRESH</button>
@@ -415,7 +415,12 @@ tr.sold:hover td{opacity:.7;}
   <div class="panel" style="margin-top:4px;margin-bottom:14px">
     <div class="ph">PHONE SCANNER INBOX <span id="scan-inbox-count" style="font-size:9px;color:var(--dim)">waiting for scans</span></div>
     <div style="font-family:monospace,monospace;font-size:10px;color:var(--dim);margin-bottom:10px">
-      Send a scan from the phone, then accept it here on the tablet as a cart item or use it to jump into inventory search.
+      Send a scan from the phone, then add it to a sale cart, a buy offer, or inventory intake.
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+      <button class="hbtn" onclick="addAllScansToBuyList()">ADD ALL TO BUY OFFER</button>
+      <button class="hbtn" onclick="bulkAddScanInboxToInventory()">BULK ADD TO INVENTORY</button>
+      <button class="hbtn" onclick="renderScanInbox()">REFRESH INBOX</button>
     </div>
     <div id="scan-inbox-list" style="display:grid;gap:8px">
       <div style="font-family:monospace,monospace;font-size:10px;color:var(--dim);padding:10px;border:1px dashed var(--border);border-radius:8px;text-align:center">No phone scans yet</div>
@@ -501,6 +506,10 @@ tr.sold:hover td{opacity:.7;}
         <input type="range" id="bl-pct" min="20" max="80" value="50" step="5" oninput="updateBuyListOffer()" style="flex:1">
         <span id="bl-pct-lbl" style="font-family:'Orbitron',monospace;font-size:12px;color:var(--gold);min-width:36px;text-align:right">50%</span>
       </div>
+      <div style="display:flex;gap:6px;margin-bottom:10px">
+        <input class="tsi" id="bl-customer" placeholder="Customer name" style="flex:1;margin-bottom:0">
+        <input class="tsi" id="bl-phone" placeholder="Phone for text offer" style="flex:1;margin-bottom:0">
+      </div>
       <div id="bl-items" style="min-height:80px;margin-bottom:10px"></div>
       <div style="background:var(--surf2);border:1px solid var(--border);border-radius:8px;padding:10px;display:flex;justify-content:space-between;align-items:center">
         <div>
@@ -513,6 +522,8 @@ tr.sold:hover td{opacity:.7;}
         </div>
         <div style="display:flex;flex-direction:column;gap:4px">
           <button class="hbtn" onclick="printBuyOffer()" style="font-size:8px">🖨 PRINT</button>
+          <button class="hbtn" onclick="textBuyOffer()" style="font-size:8px">TEXT</button>
+          <button class="hbtn" onclick="bulkAddBuyListToInventory()" style="font-size:8px">ADD INV</button>
           <button class="hbtn" onclick="clearBuyList()" style="background:rgba(255,77,109,.08);border-color:rgba(255,77,109,.2);color:var(--red);font-size:8px">CLEAR</button>
         </div>
       </div>
@@ -901,7 +912,7 @@ tr.sold:hover td{opacity:.7;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.04.28.8';
+const APP_VERSION = '2026.04.29.1';
 const STORE_ID = 'walkoff-main';
 const REGISTER_ID = 'front';
 const WF_PRODUCTS = '65eb45a28ff6bf3fe4f17b14';
@@ -1621,13 +1632,13 @@ function addScanToCart(scan){
     id: 'ci_phone_' + Date.now(),
     name: scan.name || 'Phone scan',
     sub: [scan.year, scan.set, scan.variant, scan.card_number ? '#'+scan.card_number : null, scan.issue ? '#'+scan.issue : null].filter(Boolean).join(' · '),
-    price: Number(scan.price || 0),
+    price: Number(scan.price || scan.market || scan.market_nm_estimate || scan.tcg_mid || scan.ebay_avg || 0),
     cost: 0,
-    img: scan.imageUrl || null,
+    img: getScanImageUrl(scan),
     shopId: null,
     wfId: null,
     category: scan.category || 'TCG',
-    condition: 'NM',
+    condition: scan.condition || 'NM',
     set: scan.set || '',
     year: scan.year || '',
   });
@@ -1639,6 +1650,40 @@ function addScanToCart(scan){
   localStorage.setItem('pos_cart_v2', JSON.stringify(cartData));
   postCartToWorker(cartData);
   toast_dash('Added phone scan to cart: ' + (scan.name || 'item'));
+}
+
+function getScanImageUrl(scan){
+  return scan?.imageUrl || scan?.image_url || scan?.thumbnail || scan?.cover_image || scan?.photoUrl || scan?.frontImageUrl || scan?.img || null;
+}
+
+function getScanMarket(scan){
+  return Number(scan?.price || scan?.market || scan?.market_nm_estimate || scan?.tcg_mid || scan?.ebay_avg || scan?.mid || 0);
+}
+
+function scanToBuyItem(scan){
+  return {
+    id: 'bl_scan_' + (scan.id || Date.now()) + '_' + Math.random().toString(36).slice(2,5),
+    scanId: scan.id || null,
+    name: scan.name || scan.player || 'Phone scan',
+    market: getScanMarket(scan),
+    condition: scan.condition || 'NM',
+    category: scan.category || scan.game || 'TCG',
+    set: scan.set || scan.set_name || '',
+    variant: scan.variant || scan.parallel || '',
+    year: scan.year || '',
+    card_number: scan.card_number || scan.cardNumber || '',
+    imageUrl: getScanImageUrl(scan),
+    scan
+  };
+}
+
+function saveBuyList(){
+  localStorage.setItem('pos_buy_list', JSON.stringify(buyList.slice(0,100)));
+}
+
+function loadBuyList(){
+  try { buyList = JSON.parse(localStorage.getItem('pos_buy_list') || '[]'); }
+  catch(e) { buyList = []; }
 }
 
 async function removeScanFromInbox(scanId){
@@ -1653,6 +1698,30 @@ async function acceptScanToCart(scanId){
   if(scan) addScanToCart(scan);
   await writeScanInbox(queue.filter(s => s.id !== scanId));
   renderScanInbox();
+}
+
+async function acceptScanToBuyList(scanId){
+  const queue = await readScanInbox();
+  const scan = queue.find(s => s.id === scanId);
+  if(scan) {
+    buyList.push(scanToBuyItem(scan));
+    saveBuyList();
+    renderBuyList();
+    toast_dash('Added to buy offer: ' + (scan.name || scan.player || 'item'));
+  }
+  await writeScanInbox(queue.filter(s => s.id !== scanId));
+  renderScanInbox();
+}
+
+async function addAllScansToBuyList(){
+  const queue = await readScanInbox();
+  if(!queue.length){ toast_dash('No scans waiting'); return; }
+  queue.forEach(scan => buyList.push(scanToBuyItem(scan)));
+  saveBuyList();
+  renderBuyList();
+  await writeScanInbox([]);
+  renderScanInbox();
+  toast_dash('Added ' + queue.length + ' scans to buy offer');
 }
 
 async function searchScanInInventory(scanId){
@@ -1679,8 +1748,9 @@ async function renderScanInbox(){
   }
   list.innerHTML = queue.slice(0,8).map(s => {
     const meta = [s.category, s.year, s.set, s.variant, s.issue ? '#'+s.issue : '', s.card_number ? '#'+s.card_number : ''].filter(Boolean).join(' · ');
+    const img = getScanImageUrl(s);
     return `<div style="display:grid;grid-template-columns:52px 1fr auto;gap:10px;align-items:center;background:var(--surf2);border:1px solid var(--border);border-radius:8px;padding:8px">
-      ${s.imageUrl ? `<img src="${s.imageUrl}" style="width:52px;height:52px;object-fit:cover;border-radius:6px;border:1px solid var(--border)">` : `<div style="width:52px;height:52px;border-radius:6px;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;color:var(--dim);font-size:9px">SCAN</div>`}
+      ${img ? `<img src="${img}" style="width:52px;height:52px;object-fit:cover;border-radius:6px;border:1px solid var(--border)">` : `<div style="width:52px;height:52px;border-radius:6px;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;color:var(--dim);font-size:9px">SCAN</div>`}
       <div>
         <div style="font-weight:700;color:var(--text);font-size:12px">${s.name || 'Phone scan'}</div>
         <div style="font-family:monospace,monospace;font-size:9px;color:var(--dim);margin-top:2px">${meta || 'No details'}</div>
@@ -1688,6 +1758,7 @@ async function renderScanInbox(){
       </div>
       <div style="display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end">
         <button class="ra" style="background:rgba(0,255,179,.08);border-color:rgba(0,255,179,.25);color:var(--g)" onclick="acceptScanToCart('${s.id}')">Cart</button>
+        <button class="ra" style="background:rgba(255,209,102,.08);border-color:rgba(255,209,102,.25);color:var(--gold)" onclick="acceptScanToBuyList('${s.id}')">Offer</button>
         <button class="ra" onclick="searchScanInInventory('${s.id}')">Find</button>
         <button class="ra" style="background:rgba(255,77,109,.08);border-color:rgba(255,77,109,.25);color:var(--red)" onclick="removeScanFromInbox('${s.id}')">Dismiss</button>
       </div>
@@ -2469,6 +2540,9 @@ async function createWebflowProduct(item, updates) {
         'set-name': updates.set||item.set||'',
         year: String(updates.year||item.year||''),
         'card-condition': updates.condition||item.condition||'NM',
+        variant: updates.variant||item.variant||'',
+        'card-number': updates.card_number||item.card_number||'',
+        'cost-basis': Number(updates.cost||0),
         msrp: Math.round(updates.market||0),
       }})
     }).catch(()=>{});
@@ -3035,7 +3109,8 @@ function addBuyListItem(){
   const name = document.getElementById('bl-input').value.trim();
   const price = parseFloat(document.getElementById('bl-price').value)||0;
   if(!name) return;
-  buyList.push({id:'bl'+Date.now(), name, market: price});
+  buyList.push({id:'bl'+Date.now(), name, market: price, condition:'NM'});
+  saveBuyList();
   document.getElementById('bl-input').value='';
   document.getElementById('bl-price').value='';
   renderBuyList();
@@ -3056,6 +3131,7 @@ async function autoLookupBuyItem(item){
     const data = oi>=0 ? JSON.parse('['+text.slice(oi)+']')[0] : null;
     if(data && data.price>0){
       item.market = data.price;
+      saveBuyList();
       renderBuyList();
     }
   } catch(e){}
@@ -3063,6 +3139,16 @@ async function autoLookupBuyItem(item){
 
 function removeBuyItem(id){
   buyList = buyList.filter(i=>i.id!==id);
+  saveBuyList();
+  renderBuyList();
+}
+
+function updateBuyItem(id, field, value){
+  const item = buyList.find(i => i.id === id);
+  if(!item) return;
+  if(field === 'market') item.market = parseFloat(value) || 0;
+  else item[field] = value;
+  saveBuyList();
   renderBuyList();
 }
 
@@ -3081,8 +3167,9 @@ function renderBuyList(){
   const el = document.getElementById('bl-items');
   if(!buyList.length){ el.innerHTML='<div style="font-family:monospace,monospace;font-size:10px;color:var(--dim);text-align:center;padding:20px">Add cards to build offer</div>'; return; }
   el.innerHTML = buyList.map(i=>`<div class="bl-item">
-    <span class="bl-item-name">${i.name}</span>
-    <span class="bl-item-mkt">${i.market?'$'+i.market.toFixed(2):'...'}</span>
+    ${i.imageUrl ? `<img src="${i.imageUrl}" style="width:34px;height:34px;object-fit:cover;border-radius:4px;border:1px solid var(--border);margin-right:6px">` : ''}
+    <span class="bl-item-name">${i.name}<div style="font-family:monospace;font-size:8px;color:var(--dim);font-weight:400">${[i.year,i.set,i.variant,i.card_number?'#'+i.card_number:'',i.condition].filter(Boolean).join(' · ')}</div></span>
+    <input type="number" step="0.01" value="${i.market||''}" placeholder="market" onchange="updateBuyItem('${i.id}','market',this.value)" style="width:82px;background:var(--surf);border:1px solid var(--border);color:var(--text);padding:5px;border-radius:5px;font-size:10px">
     <span class="bl-item-offer">${i.market?('$'+(i.market*pct).toFixed(2)):'...'}</span>
     <button class="bl-item-rm" onclick="removeBuyItem('${i.id}')">×</button>
   </div>`).join('');
@@ -3108,8 +3195,66 @@ function printBuyOffer(){
   </body></html>`);
 }
 
+function buildBuyOfferText(){
+  const pct = document.getElementById('bl-pct').value;
+  const offer = document.getElementById('bl-offer').textContent;
+  const mkt = document.getElementById('bl-total-mkt').textContent;
+  const customer = document.getElementById('bl-customer')?.value.trim();
+  const lines = buyList.map(i => `${i.name}: market ${i.market?'$'+Number(i.market).toFixed(2):'TBD'}, offer ${i.market?'$'+(Number(i.market)*(pct/100)).toFixed(2):'TBD'}`).join('\n');
+  return `${customer ? customer + ', ' : ''}Walk-Off offer:\n${lines}\nTotal market: ${mkt}\nOffer (${pct}%): ${offer}\nOffer valid today.`;
+}
+
+function textBuyOffer(){
+  if(!buyList.length){ toast_dash('No buy offer to text'); return; }
+  const phone = (document.getElementById('bl-phone')?.value || '').replace(/\D/g,'');
+  const body = encodeURIComponent(buildBuyOfferText());
+  window.location.href = phone ? `sms:${phone}?&body=${body}` : `sms:?&body=${body}`;
+}
+
+function buyItemToInventoryUpdates(item){
+  const pct = parseFloat(document.getElementById('bl-pct')?.value || 50) / 100;
+  return {
+    name:item.name,
+    category:item.category || 'TCG',
+    set:item.set || '',
+    variant:item.variant || '',
+    year:item.year || '',
+    condition:item.condition || 'NM',
+    market:Number(item.market || 0),
+    cost:Math.round(Number(item.market || 0) * pct * 100) / 100,
+    card_number:item.card_number || '',
+    qty:1
+  };
+}
+
+async function bulkAddBuyListToInventory(skipConfirm){
+  if(!buyList.length){ toast_dash('No buy offer items to add'); return; }
+  if(!skipConfirm && !confirm('Add all buy offer cards to Webflow inventory?')) return;
+  let ok = 0, fail = 0;
+  for(const item of buyList) {
+    const updates = buyItemToInventoryUpdates(item);
+    const productId = await createWebflowProduct(item.scan || item, updates);
+    if(productId) ok++; else fail++;
+  }
+  toast_dash('Inventory add complete: ' + ok + ' added' + (fail ? ', ' + fail + ' failed' : ''));
+  if(ok) { clearBuyList(); loadInventory(); }
+}
+
+async function bulkAddScanInboxToInventory(){
+  const queue = await readScanInbox();
+  if(!queue.length){ toast_dash('No scans waiting'); return; }
+  if(!confirm('Add all waiting phone scans to Webflow inventory?')) return;
+  queue.forEach(scan => buyList.push(scanToBuyItem(scan)));
+  saveBuyList();
+  await writeScanInbox([]);
+  renderScanInbox();
+  renderBuyList();
+  await bulkAddBuyListToInventory(true);
+}
+
 function clearBuyList(){
   buyList=[];
+  saveBuyList();
   renderBuyList();
 }
 
@@ -3320,6 +3465,7 @@ renderCustomerDisplay().catch(()=>{});
 
 // Init drawer state on load
 renderDrawer();
+loadBuyList();
 renderBuyList();
 
 </script>
