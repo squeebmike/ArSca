@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="2026.04.28.7">
+<meta name="version" content="2026.04.28.8">
 <title>Walk-Off Dashboard</title>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -193,7 +193,7 @@ tr.sold:hover td{opacity:.7;}
 
 <header>
   <div class="hdr">
-    <div class="logo">WALK-OFF <span>DASHBOARD · v2026.04.28.7</span></div>
+    <div class="logo">WALK-OFF <span>DASHBOARD · v2026.04.28.8</span></div>
     <div class="hdr-right">
       <span id="sync-status">Loading...</span>
       <button class="hbtn" onclick="loadInventory()">↻ REFRESH</button>
@@ -308,6 +308,9 @@ tr.sold:hover td{opacity:.7;}
     <button class="fb on" onclick="setF('all',this)">All</button>
     <button class="fb" onclick="setF('in_stock',this)">In Stock</button>
     <button class="fb" onclick="setF('sold',this)">Sold</button>
+    <button class="fb" onclick="setF('at_show',this)">At Show</button>
+    <button class="fb" onclick="setF('listed_online',this)">Listed</button>
+    <button class="fb" onclick="setF('pulled_ebay',this)">Pulled</button>
     <button class="fb" onclick="setF('Sports',this)">⚾ Sports</button>
     <button class="fb" onclick="setF('TCG',this)">🎴 TCG</button>
     <button class="fb" onclick="setF('Comic',this)">📖 Comics</button>
@@ -391,6 +394,23 @@ tr.sold:hover td{opacity:.7;}
 <!-- POS TOOLS TAB -->
 <div id="tab-pos" class="tab-panel">
   <div class="sec">POS TOOLS</div>
+
+  <div class="panel" style="margin-top:4px;margin-bottom:14px">
+    <div class="ph">SHOW MODE <span id="show-mode-status" style="font-size:9px;color:var(--dim)">not started</span></div>
+    <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:8px;margin-bottom:10px">
+      <input class="tsi" id="show-event-name" placeholder="Tacoma Mall Show" style="margin-bottom:0">
+      <input class="tsi" id="show-booth" placeholder="Booth / table" style="margin-bottom:0">
+      <input class="tsi" id="show-start-cash" type="number" step="0.01" placeholder="Starting cash" style="margin-bottom:0">
+      <input class="tsi" id="show-price-rule" type="number" step="1" placeholder="Show % off" style="margin-bottom:0">
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="hbtn" onclick="startShowMode()">START / SAVE SHOW</button>
+      <button class="hbtn" onclick="markAllVisibleAtShow()">MARK FILTERED AT SHOW</button>
+      <button class="hbtn" onclick="generateEOD()">GENERATE CLOSEOUT</button>
+      <button class="hbtn" onclick="exportEODCSV()">EXPORT REPORT CSV</button>
+      <button class="hbtn" style="background:rgba(255,77,109,.08);border-color:rgba(255,77,109,.2);color:var(--red)" onclick="endShowMode()">END SHOW</button>
+    </div>
+  </div>
 
   <div class="panel" style="margin-top:4px;margin-bottom:14px">
     <div class="ph">PHONE SCANNER INBOX <span id="scan-inbox-count" style="font-size:9px;color:var(--dim)">waiting for scans</span></div>
@@ -881,7 +901,7 @@ tr.sold:hover td{opacity:.7;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.04.28.7';
+const APP_VERSION = '2026.04.28.8';
 const STORE_ID = 'walkoff-main';
 const REGISTER_ID = 'front';
 const WF_PRODUCTS = '65eb45a28ff6bf3fe4f17b14';
@@ -899,9 +919,127 @@ const CAT_MAP = {
 let all=[], filtered=[], activeF='all', activeTab='overview', soldData=[];
 let ts={col:'name',dir:1};
 const PER=50; let page=1;
+const LIFECYCLE_LABELS = {
+  in_stock: 'In stock',
+  at_show: 'At show',
+  sold: 'Sold',
+  listed_online: 'Listed online',
+  pulled_ebay: 'Pulled for eBay',
+  consigned: 'Consigned',
+  returned: 'Returned',
+  lost_damaged: 'Lost/damaged',
+};
 
 function cartWorkerPath(){
   return WORKER + '/cart?store=' + encodeURIComponent(STORE_ID) + '&register=' + encodeURIComponent(REGISTER_ID);
+}
+
+function getLifecycleMap(){
+  try { return JSON.parse(localStorage.getItem('inventory_lifecycle') || '{}'); }
+  catch(e) { return {}; }
+}
+
+function saveLifecycleMap(map){
+  localStorage.setItem('inventory_lifecycle', JSON.stringify(map));
+  fetch(scopedWorkerPath('/kv/inventory_lifecycle'), {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify(map)
+  }).catch(() => {});
+}
+
+async function syncLifecycleFromWorker(){
+  try {
+    const res = await fetch(scopedWorkerPath('/kv/inventory_lifecycle'), { cache: 'no-store' });
+    const data = await res.json().catch(() => ({}));
+    if(res.ok && data.value) {
+      const parsed = typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
+      localStorage.setItem('inventory_lifecycle', JSON.stringify(parsed));
+    }
+  } catch(e) {}
+}
+
+function getLifecycle(id, fallback){
+  const map = getLifecycleMap();
+  return map[id] || fallback || 'in_stock';
+}
+
+function setLifecycle(id, state, silent){
+  const map = getLifecycleMap();
+  map[id] = state;
+  saveLifecycleMap(map);
+  const item = all.find(i => i.id === id);
+  if(item) item.lifecycle = state;
+  if(!silent) toast_dash('Status set to ' + (LIFECYCLE_LABELS[state] || state));
+  renderAll();
+}
+
+function getShowMode(){
+  try { return JSON.parse(localStorage.getItem('pos_show_mode') || 'null'); }
+  catch(e) { return null; }
+}
+
+function saveShowMode(show){
+  localStorage.setItem('pos_show_mode', JSON.stringify(show));
+  renderShowMode();
+}
+
+function renderShowMode(){
+  const show = getShowMode();
+  const status = document.getElementById('show-mode-status');
+  if(!status) return;
+  if(!show) {
+    status.textContent = 'not started';
+    status.style.color = 'var(--dim)';
+    return;
+  }
+  document.getElementById('show-event-name').value = show.eventName || '';
+  document.getElementById('show-booth').value = show.booth || '';
+  document.getElementById('show-start-cash').value = show.startCash || '';
+  document.getElementById('show-price-rule').value = show.priceRulePct || '';
+  status.textContent = (show.eventName || 'Show') + (show.booth ? ' · ' + show.booth : '');
+  status.style.color = 'var(--gold)';
+}
+
+function startShowMode(){
+  const show = {
+    id: 'show_' + Date.now(),
+    eventName: document.getElementById('show-event-name').value.trim() || 'Tacoma Mall Show',
+    booth: document.getElementById('show-booth').value.trim(),
+    startCash: parseFloat(document.getElementById('show-start-cash').value) || 0,
+    priceRulePct: parseFloat(document.getElementById('show-price-rule').value) || 0,
+    startedAt: getShowMode()?.startedAt || new Date().toISOString(),
+  };
+  saveShowMode(show);
+  if(show.startCash > 0 && !drawerState) {
+    document.getElementById('drawer-float').value = show.startCash.toFixed(2);
+  }
+  toast_dash('Show mode active: ' + show.eventName);
+}
+
+function endShowMode(){
+  if(!confirm('End current show mode? Generate/export closeout first if needed.')) return;
+  localStorage.removeItem('pos_show_mode');
+  renderShowMode();
+  toast_dash('Show mode ended');
+}
+
+function markAllVisibleAtShow(){
+  const show = getShowMode();
+  if(!show) startShowMode();
+  const map = getLifecycleMap();
+  filtered.forEach(i => { if(i.status === 'in_stock') { map[i.id] = 'at_show'; i.lifecycle = 'at_show'; } });
+  saveLifecycleMap(map);
+  renderAll();
+  toast_dash('Marked ' + filtered.length + ' filtered items At Show');
+}
+
+function applyShowPriceRule(price){
+  const show = getShowMode();
+  const pct = Number(show?.priceRulePct || 0);
+  const base = Number(price || 0);
+  if(!pct || base <= 0) return base;
+  return Math.max(0, Math.round((base * (1 - pct / 100)) * 100) / 100);
 }
 
 function scopedWorkerPath(path){
@@ -955,7 +1093,10 @@ async function postCartToWorker(cartData){
   }
 }
 
-window.addEventListener('load', loadInventory);
+window.addEventListener('load', function(){
+  renderShowMode();
+  syncLifecycleFromWorker().finally(loadInventory);
+});
 
 async function loadInventory(){
   document.getElementById('sync-status').textContent = 'Loading...';
@@ -1006,6 +1147,7 @@ function mapItem(i, skuMap){
     category:cat, cost, market, salePrice, qty,
     profit, condition,
     status:isSold?'sold':'in_stock',
+    lifecycle:getLifecycle(i.id, isSold?'sold':'in_stock'),
     channel:f['sale-channel']||'',
     addedAt:f['date-added']||i.createdOn||'',
     soldAt:f['date-sold']||'',
@@ -1291,6 +1433,7 @@ function filterTable(){
     if(activeF==='all') return mq;
     if(activeF==='in_stock') return mq&&i.status==='in_stock';
     if(activeF==='sold') return mq&&i.status==='sold';
+    if(LIFECYCLE_LABELS[activeF]) return mq&&i.lifecycle===activeF;
     return mq&&i.category===activeF;
   });
   filtered.sort((a,b)=>{
@@ -1315,7 +1458,7 @@ function renderTable(){
     const ppc=pft>=0?'pp pos':'pp neg';
     const cat=(i.category||'TCG').replace(/\s+/g,'');
     const margin=i.cost>0?((pft/i.cost)*100).toFixed(0)+'%':'—';
-    return `<tr class="${ins?'':'sold'}">
+    return `<tr class="${ins?'':'sold'}" data-item-id="${i.id}">
       <td><span class="dot ${ins?'in_stock':'sold'}"></span><span class="nc" title="${i.tcgCardId?'TCG ID: '+i.tcgCardId:''}">${i.name}${i.isRookie?' <span style="color:var(--gold);font-size:8px">RC</span>':''}${i.tcgCardId?'<span style="font-family:monospace;font-size:7px;color:rgba(0,255,179,.4);margin-left:4px">●</span>':''}</span></td>
       <td><span class="sc2">${[i.set,i.variant].filter(Boolean).join(' · ')||'—'}</span></td>
       <td><span class="ct ${cat}">${i.category}</span></td>
@@ -1327,6 +1470,15 @@ function renderTable(){
       <td><div class="row-act">${ins?`<button class="ra ra-sell" onclick="openSellModal('${i.id}')">Sell</button>`:''}<button class="ra" style="background:rgba(0,255,179,.08);border-color:rgba(0,255,179,.25);color:#00ffb3" onclick="dashAddToCart('${i.id}')">🛒</button><button class="ra ra-ebay" onclick="openEbayFromDash('${i.id}')">eBay</button><button class="ra" style="background:rgba(199,125,255,.08);border-color:rgba(199,125,255,.25);color:var(--purple)" onclick="openEditModal('${i.id}')">✏️ Edit</button></div></td>
     </tr>`;
   }).join('');
+  tb.querySelectorAll('tr[data-item-id]').forEach(tr => {
+    const item = rows.find(r => r.id === tr.dataset.itemId);
+    const cell = tr.children[7];
+    if(!item || !cell) return;
+    const current = item.lifecycle || (item.status === 'sold' ? 'sold' : 'in_stock');
+    cell.innerHTML = `<select class="min" style="width:138px;font-size:9px;padding:6px" onchange="setLifecycle('${item.id}', this.value)">
+      ${Object.entries(LIFECYCLE_LABELS).map(([v,l])=>`<option value="${v}" ${current===v?'selected':''}>${l}</option>`).join('')}
+    </select>`;
+  });
   const tot=Math.ceil(filtered.length/PER);
   document.getElementById('pager').innerHTML=tot<=1?'':Array.from({length:tot},(_,i)=>`<button class="pg${i+1===page?' on':''}" onclick="page=${i+1};renderTable()">${i+1}</button>`).join('');
 }
@@ -1406,7 +1558,8 @@ async function confirmQuickSell(){
     });
     // Update local
     const idx=all.findIndex(i=>i.id===item.id);
-    if(idx>=0){all[idx].status='sold';all[idx].salePrice=salePrice;all[idx].profit=salePrice-(item.cost||0);all[idx].channel=channel;all[idx].soldAt=soldAt;}
+    if(idx>=0){all[idx].status='sold';all[idx].lifecycle='sold';all[idx].salePrice=salePrice;all[idx].profit=salePrice-(item.cost||0);all[idx].channel=channel;all[idx].soldAt=soldAt;}
+    setLifecycle(item.id, 'sold', true);
     soldData=all.filter(i=>i.status==='sold');
     closeSellModal();
     renderAll();
@@ -1432,7 +1585,7 @@ function dashAddToCart(id){
     id: 'ci_dash_' + Date.now(),
     name: item.name,
     sub: [item.set, item.year, item.category].filter(Boolean).join(' · '),
-    price: item.market || item.salePrice || 0,
+    price: applyShowPriceRule(item.market || item.salePrice || 0),
     cost: item.cost || 0,
     img: item.thumbnail || null,
     shopId: item.id,
@@ -1447,6 +1600,7 @@ function dashAddToCart(id){
   cartData.storeId = STORE_ID;
   cartData.registerId = REGISTER_ID;
   cartData.appVersion = APP_VERSION;
+  cartData.show = getShowMode();
 
   localStorage.setItem('pos_cart_v2', JSON.stringify(cartData));
   postCartToWorker(cartData).then(ok => {
@@ -1481,6 +1635,7 @@ function addScanToCart(scan){
   cartData.storeId = STORE_ID;
   cartData.registerId = REGISTER_ID;
   cartData.appVersion = APP_VERSION;
+  cartData.show = getShowMode();
   localStorage.setItem('pos_cart_v2', JSON.stringify(cartData));
   postCartToWorker(cartData);
   toast_dash('Added phone scan to cart: ' + (scan.name || 'item'));
@@ -1556,6 +1711,7 @@ function toast_dash(msg){
 
 function openEbayFromDash(id){
   const item=all.find(i=>i.id===id); if(!item) return;
+  if((item.lifecycle || 'in_stock') !== 'listed_online') setLifecycle(id, 'pulled_ebay', true);
   const esc = v => String(v||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
   const condLabelMap = {
     '05cbd3bb538b65343a8f40c0fbe31282':'Near Mint',
@@ -1707,6 +1863,8 @@ async function submitDashboardEbayListing(id){
     }
     status.style.color='var(--g)'; status.style.border='1px solid rgba(0,255,179,.25)'; status.style.background='rgba(0,255,179,.06)';
     status.innerHTML='Listed on eBay<br><a href="https://www.ebay.com/itm/'+data.listingId+'" target="_blank" style="color:var(--g)">View listing</a>';
+    setLifecycle(id, 'listed_online', true);
+    toast_dash('Inventory status set to Listed online');
   }catch(e){
     status.style.color='var(--red)'; status.style.border='1px solid rgba(255,77,109,.25)'; status.style.background='rgba(255,77,109,.06)';
     status.textContent=e.message;
@@ -2973,6 +3131,12 @@ function generateEOD(){
   // Pull from inventory sold items
   const inv = JSON.parse(localStorage.getItem('lba_inventory')||'[]');
   const daySold = inv.filter(i => i.status==='sold' && i.soldAt && new Date(i.soldAt).toDateString()===targetDay);
+  const lifecycleMap = getLifecycleMap();
+  const show = getShowMode();
+  const itemsAdded = all.filter(i => i.addedAt && new Date(i.addedAt).toDateString()===targetDay);
+  const atShowCount = Object.values(lifecycleMap).filter(v => v==='at_show').length;
+  const listedCount = Object.values(lifecycleMap).filter(v => v==='listed_online').length;
+  const pulledCount = Object.values(lifecycleMap).filter(v => v==='pulled_ebay').length;
 
   const totalRevenue = dayTx.reduce((a,t)=>a+t.total,0);
   const totalItems = dayTx.reduce((a,t)=>a+t.items.length,0);
@@ -2982,6 +3146,7 @@ function generateEOD(){
   const otherTotal = totalRevenue - cashTotal - cardTotal - venmoTotal;
   const totalProfit = daySold.reduce((a,i)=>a+(i.profit||0),0);
   const avgSale = dayTx.length ? totalRevenue/dayTx.length : 0;
+  const expectedCash = Number(show?.startCash || 0) + cashTotal;
 
   // Category breakdown
   const cats = {};
@@ -2995,7 +3160,7 @@ function generateEOD(){
   const dateLabel = targetDate.toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
   const el = document.getElementById('eod-report');
 
-  if(!dayTx.length && !daySold.length) {
+  if(!dayTx.length && !daySold.length && !itemsAdded.length && !show) {
     el.innerHTML = `<div style="font-family:monospace,monospace;font-size:10px;color:var(--dim);text-align:center;padding:20px">No transactions found for ${dateLabel}</div>`;
     return;
   }
@@ -3005,12 +3170,30 @@ function generateEOD(){
       <div style="font-family:'Orbitron',monospace;font-size:11px;font-weight:900;color:var(--g);margin-bottom:4px;letter-spacing:2px">WALK-OFF SPORTS CARDS</div>
       <div style="font-family:monospace,monospace;font-size:9px;color:var(--dim);margin-bottom:14px">END OF DAY · ${dateLabel}</div>
 
+      ${show?`<div class="eod-section">
+        <div class="eod-hdr">SHOW</div>
+        <div class="eod-row"><span class="eod-label">Event</span><span class="eod-val">${show.eventName||'Show'}</span></div>
+        ${show.booth?`<div class="eod-row"><span class="eod-label">Booth/Table</span><span class="eod-val">${show.booth}</span></div>`:''}
+        <div class="eod-row"><span class="eod-label">Starting Cash</span><span class="eod-val">$${Number(show.startCash||0).toFixed(2)}</span></div>
+        <div class="eod-row"><span class="eod-label">Expected Cash</span><span class="eod-val">$${expectedCash.toFixed(2)}</span></div>
+        ${show.priceRulePct?`<div class="eod-row"><span class="eod-label">Show Price Rule</span><span class="eod-val">${show.priceRulePct}% off</span></div>`:''}
+      </div>`:''}
+
       <div class="eod-section">
         <div class="eod-hdr">SALES SUMMARY</div>
         <div class="eod-row"><span class="eod-label">Transactions</span><span class="eod-val">${dayTx.length}</span></div>
         <div class="eod-row"><span class="eod-label">Items Sold</span><span class="eod-val">${totalItems}</span></div>
         <div class="eod-row"><span class="eod-label">Avg Sale</span><span class="eod-val">$${avgSale.toFixed(2)}</span></div>
         <div class="eod-row total"><span class="eod-label">TOTAL REVENUE</span><span class="eod-val">$${totalRevenue.toFixed(2)}</span></div>
+      </div>
+
+      <div class="eod-section">
+        <div class="eod-hdr">INVENTORY MOVEMENT</div>
+        <div class="eod-row"><span class="eod-label">Inventory Sold</span><span class="eod-val">${daySold.length}</span></div>
+        <div class="eod-row"><span class="eod-label">Items Added Today</span><span class="eod-val">${itemsAdded.length}</span></div>
+        <div class="eod-row"><span class="eod-label">At Show</span><span class="eod-val">${atShowCount}</span></div>
+        <div class="eod-row"><span class="eod-label">Listed Online</span><span class="eod-val">${listedCount}</span></div>
+        <div class="eod-row"><span class="eod-label">Pulled for eBay</span><span class="eod-val">${pulledCount}</span></div>
       </div>
 
       <div class="eod-section">
@@ -3048,6 +3231,35 @@ function printEOD(){
     ${content.innerHTML.replace(/var\(--g\)/g,'#00aa77').replace(/var\(--red\)/g,'#cc0000').replace(/var\(--dim\)/g,'#999')}
     <script>window.print();<\/script>
   </body></html>`);
+}
+
+function exportEODCSV(){
+  const dateStr = document.getElementById('eod-date')?.value || new Date().toISOString().split('T')[0];
+  const targetDay = new Date(dateStr+'T00:00:00').toDateString();
+  const txLog = JSON.parse(localStorage.getItem('pos_transactions')||'[]');
+  const dayTx = txLog.filter(t => new Date(t.date).toDateString() === targetDay);
+  const show = getShowMode() || {};
+  const inv = JSON.parse(localStorage.getItem('lba_inventory')||'[]');
+  const daySold = inv.filter(i => i.status==='sold' && i.soldAt && new Date(i.soldAt).toDateString()===targetDay);
+  const itemsAdded = all.filter(i => i.addedAt && new Date(i.addedAt).toDateString()===targetDay);
+  const soldByName = {};
+  daySold.forEach(i => { soldByName[i.name] = i; });
+  const rows = [['event','booth','date','tx_id','time','method','item','category','price','cost','profit','tx_total','inventory_sold_count','items_added_count','show_price_rule_pct','app_version']];
+  dayTx.forEach(t => (t.items||[]).forEach(item => rows.push([
+    show.eventName||'', show.booth||'', dateStr, t.id||'', new Date(t.date).toLocaleTimeString(),
+    t.method||'', item.name||'', item.category||'', Number(item.price||0).toFixed(2),
+    Number(item.cost || soldByName[item.name]?.cost || 0).toFixed(2),
+    Number((item.price || 0) - (item.cost || soldByName[item.name]?.cost || 0)).toFixed(2),
+    Number(t.total||0).toFixed(2), daySold.length, itemsAdded.length, show.priceRulePct || '', APP_VERSION
+  ])));
+  if(rows.length===1) rows.push([show.eventName||'', show.booth||'', dateStr, '', '', 'NO SALES', '', '', '', '', '', '', daySold.length, itemsAdded.length, show.priceRulePct || '', APP_VERSION]);
+  const csv = rows.map(r => r.map(v => '"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\n');
+  const blob = new Blob([csv], {type:'text/csv'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = (show.eventName||'show-closeout').replace(/[^a-z0-9]+/gi,'-').toLowerCase() + '-' + dateStr + '.csv';
+  a.click();
+  URL.revokeObjectURL(a.href);
 }
 
 // ══════════════════════════════════════════════════
