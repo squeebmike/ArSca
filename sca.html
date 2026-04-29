@@ -3,7 +3,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="version" content="2026.04.29.12">
+<meta name="version" content="2026.04.29.13">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>LBA Scanner</title>
@@ -394,7 +394,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
   <div class="hbtns">
     <span id="show-badge" style="font-family:monospace;font-size:9px;color:rgba(255,209,102,.7);letter-spacing:1px"></span>
     <span id="offline-sync-badge" style="font-family:monospace;font-size:9px;color:rgba(255,255,255,.35);letter-spacing:1px">online</span>
-    <span id="app-version" style="font-family:monospace;font-size:9px;color:rgba(0,255,179,.55);letter-spacing:1px">v2026.04.29.12</span>
+    <span id="app-version" style="font-family:monospace;font-size:9px;color:rgba(0,255,179,.55);letter-spacing:1px">v2026.04.29.13</span>
     <span id="hstatus">READY</span>
     <button class="hbtn" id="flipbtn" onclick="toggleFlip()">FLIP</button>
     <button class="hbtn" id="bulkbtn" onclick="toggleBulk()">BULK</button>
@@ -572,7 +572,7 @@ const STORE = {
   wf_status_instock:'f3769d1e15fa0956f98984d6fa36437f',
   wf_status_sold:   'e6b42f14fcb99aa2168a5f5672226f68',
 };
-const APP_VERSION = '2026.04.29.12';
+const APP_VERSION = '2026.04.29.13';
 const WORKER_URL = STORE.worker_url;
 
 function slugifyId(value, fallback) {
@@ -792,21 +792,29 @@ async function fetchAllPrintings(item){
           // Build a price estimate from tcgplayer data if available
           // Extract ALL available price tiers from TCGPlayer
           const tcgPrices = card.tcgplayer?.prices || {};
+          const priceValue = (p, condition) => {
+            if(!p) return 0;
+            if(condition === 'NM') return p.market || p.mid || p.price || 0;
+            const keyMap = { LP:'lightlyPlayed', MP:'moderatelyPlayed', HP:'heavilyPlayed', DMG:'damaged' };
+            const looseMap = { LP:'lightly played', MP:'moderately played', HP:'heavily played', DMG:'damaged' };
+            const direct = p[keyMap[condition]] || p[looseMap[condition]] || 0;
+            return direct || ((p.market || p.mid || 0) * (CM[condition] || 1));
+          };
           // Build a list of all price tiers available for this card
           const priceTiers = Object.entries(tcgPrices).map(([finish, p]) => ({
             finish,
-            mid: p.mid || 0,
+            mid: p.market || p.mid || 0,
             low: p.low || 0,
             high: p.high || 0,
             market: p.market || p.mid || 0,
           })).filter(t => t.mid > 0 || t.market > 0);
 
           // Pick the best price tier for display:
-          // Priority: holofoil > 1stEditionHolofoil > unlimitedHolofoil > normal > reverseHolofoil
-          const TIER_PRIORITY = ['holofoil','1stEditionHolofoil','unlimitedHolofoil',
-                                  'normal','1stEditionNormal','unlimitedNormal',
-                                  'reverseHolofoil'];
-          const bestTier = TIER_PRIORITY.map(t => tcgPrices[t]).find(t => t?.mid > 0)
+          // Priority: card's natural/current finish first, then NM market values.
+          const TIER_PRIORITY = ['normal','holofoil','reverseHolofoil',
+                                  '1stEditionHolofoil','1stEditionNormal',
+                                  'unlimitedHolofoil','unlimitedNormal'];
+          const bestTier = TIER_PRIORITY.map(t => tcgPrices[t]).find(t => (t?.market || t?.mid) > 0)
             || priceTiers[0]
             || {};
           const mid = bestTier.market || bestTier.mid || 0;
@@ -819,11 +827,11 @@ async function fetchAllPrintings(item){
           // so user can see 1st Edition vs Unlimited vs Holo prices separately
           // Build condition-specific prices object
           const condPrices = {
-            NM: Object.values(tcgPrices).find(p=>p?.mid>0)?.mid || mid || 0,
-            LP: Object.values(tcgPrices).find(p=>p?.mid>0)?.['lightly played'] || (mid*0.80) || 0,
-            MP: Object.values(tcgPrices).find(p=>p?.mid>0)?.['moderately played'] || (mid*0.60) || 0,
-            HP: Object.values(tcgPrices).find(p=>p?.mid>0)?.['heavily played'] || (mid*0.40) || 0,
-            DMG: Object.values(tcgPrices).find(p=>p?.mid>0)?.damaged || (mid*0.20) || 0,
+            NM: priceValue(bestTier, 'NM') || mid || 0,
+            LP: priceValue(bestTier, 'LP') || (mid*0.80) || 0,
+            MP: priceValue(bestTier, 'MP') || (mid*0.60) || 0,
+            HP: priceValue(bestTier, 'HP') || (mid*0.40) || 0,
+            DMG: priceValue(bestTier, 'DMG') || (mid*0.20) || 0,
           };
 
           const baseEntry = {
@@ -1063,17 +1071,18 @@ async function fetchAllPrintings(item){
 function buildPriceChart(bubEl, printing) {
   if(!printing || !printing.mid || printing.mid <= 0) return;
   bubEl.querySelector('.price-chart')?.remove();
-  const nmPrice = printing.mid;
+  const condPrices = printing.condPrices || {};
+  const nmPrice = condPrices.NM || printing.mid;
   const low = printing.low || nmPrice * 0.8;
   const high = printing.high || nmPrice * 1.3;
 
   // Condition price breakdown
   const conds = [
     {label:'NM', val:nmPrice,         color:'#00ffb3'},
-    {label:'LP', val:nmPrice*0.80,    color:'#48cae4'},
-    {label:'MP', val:nmPrice*0.60,    color:'#ffd166'},
-    {label:'HP', val:nmPrice*0.40,    color:'#ff9500'},
-    {label:'DMG',val:nmPrice*0.20,    color:'#ff4d6d'},
+    {label:'LP', val:condPrices.LP || nmPrice*0.80,    color:'#48cae4'},
+    {label:'MP', val:condPrices.MP || nmPrice*0.60,    color:'#ffd166'},
+    {label:'HP', val:condPrices.HP || nmPrice*0.40,    color:'#ff9500'},
+    {label:'DMG',val:condPrices.DMG || nmPrice*0.20,    color:'#ff4d6d'},
   ];
 
   // allPrices data for sparkline-style graph across finish types
@@ -3520,8 +3529,7 @@ function addBubble(item,stock,imgUrl,apiPrintings,bestMatchIdx){
       ${ct==='sports'?`<button class="bact" style="background:rgba(255,209,102,.06);border:1px solid rgba(255,209,102,.2);color:#ffd166;font-size:9px" onclick="scanBackForBubble('${id}')">⟳ SCAN BACK</button>`:''}
       ${ct==='tcg'?`<button class="bact" style="background:rgba(0,255,179,.06);border:1px solid rgba(0,255,179,.2);color:var(--g);font-size:9px" onclick="scanBackForBubble('${id}')">⟳ SCAN BACK</button>`:''}
       ${ct==='comic'?`<button class="bact" style="background:rgba(199,125,255,.06);border:1px solid rgba(199,125,255,.2);color:var(--purple);font-size:9px" onclick="scanBackForBubble('${id}')">⟳ SCAN BACK</button>`:''}
-      ${ct==='general'?`<button class="bact" style="background:rgba(199,125,255,.06);border:1px solid rgba(199,125,255,.2);color:var(--purple);font-size:9px" onclick="scanBackForBubble('${id}')">⟳ SCAN BACK</button>`:''}
-      <button class="bact" style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.15);color:rgba(255,255,255,.6);font-size:9px" onclick="openVariantSearch('${id}')">${ct==='comic'?'📚 Browse Covers':'🔍 Browse All Variants'}</button>
+      ${ct==='comic'?`<button class="bact" style="background:rgba(199,125,255,.06);border:1px solid rgba(199,125,255,.2);color:var(--purple);font-size:9px" onclick="openVariantSearch('${id}')">Browse Covers</button>`:''}
       <button class="bact" style="background:rgba(0,255,179,.1);border:1px solid rgba(0,255,179,.3);color:var(--g);font-weight:700" onclick="addBubbleToCart('${id}')">🛒 Add to Cart</button>
       <button class="bact" style="background:rgba(72,202,228,.08);border:1px solid rgba(72,202,228,.25);color:var(--blue);font-weight:700" onclick="sendBubbleToTablet('${id}')">Send to Tablet</button>
       <button class="bact a-add" onclick="showAddForm('${id}')">+ Add to Inventory</button>
@@ -3669,6 +3677,7 @@ window.setFinish=function(id, finish, printIdx, btn){
     if(sel) sel.value = printIdx;
     const cond = document.getElementById('cs'+id)?.value || 'NM';
     updatePrice(id, fakePrint, cond);
+    buildPriceChart(el, fakePrint);
     el._selectedFinish = finish;
     el._selectedFinishPrice = displayPrice;
   }
@@ -3680,6 +3689,7 @@ window.setHolo=function(id, printIdx, isHolo){
   if(sel) sel.value = printIdx;
   const cond = document.getElementById('cs'+id)?.value || 'NM';
   updatePrice(id, el._prints[printIdx], cond);
+  buildPriceChart(el, el._prints[printIdx]);
   // Visual feedback on buttons
   const hBtn = document.getElementById('htog-holo-'+id);
   const nBtn = document.getElementById('htog-norm-'+id);
@@ -3718,6 +3728,7 @@ window.chPrint=function(id){
 
   // Update price display
   updatePrice(id,p,cond);
+  if(el._ct === 'tcg') buildPriceChart(el, p);
 
   // Update sub-info line
   const bsub=el.querySelector('.bsub');
@@ -3827,12 +3838,15 @@ window.cpill=function(id,pill,cond){
 function updatePrice(id,p,cond){
   if(!p)return;
   const m=CM[cond]||1;
+  const exactPrice = p.condPrices?.[cond] || 0;
+  const displayPrice = exactPrice || (p.mid*m);
+  const nmPrice = p.condPrices?.NM || p.mid || 0;
   const bpEl=document.getElementById('bp'+id);
   const brEl=document.getElementById('br'+id);
-  if(bpEl&&p.hasRealPrice&&p.mid>0){
-    bpEl.textContent='$'+(p.mid*m).toFixed(2);
+  if(bpEl&&p.hasRealPrice&&displayPrice>0){
+    bpEl.textContent='$'+displayPrice.toFixed(2);
     bpEl.style.fontSize='';bpEl.style.color='';
-    if(brEl)brEl.textContent='$'+(p.low*m).toFixed(2)+' – $'+(p.high*m).toFixed(2)+' '+cond;
+    if(brEl)brEl.textContent=(exactPrice?'TCGPlayer ':'Est. ') + cond + ' market - NM $' + Number(nmPrice||0).toFixed(2);
   } else if(bpEl) {
     bpEl.textContent='No price data';
     bpEl.style.fontSize='11px';bpEl.style.color='rgba(255,255,255,.4)';
@@ -3864,9 +3878,8 @@ function updatePrice(id,p,cond){
   }
   // UPDATE retail price input if add form is open and user hasn't overridden it
   const retailInp = document.getElementById('retail'+id);
-  if(retailInp && p.mid > 0) {
-    const condMultiplier = CM[cond] || 1;
-    const condPrice = (p.mid * condMultiplier);
+  if(retailInp && displayPrice > 0) {
+    const condPrice = displayPrice;
     // Only auto-update if user hasn't manually typed a custom price
     if(!retailInp.dataset.userEdited) {
       retailInp.value = condPrice.toFixed(2);
