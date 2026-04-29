@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="2026.04.29.4">
+<meta name="version" content="2026.04.29.5">
 <title>Walk-Off Dashboard</title>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -193,7 +193,7 @@ tr.sold:hover td{opacity:.7;}
 
 <header>
   <div class="hdr">
-    <div class="logo">WALK-OFF <span>DASHBOARD · v2026.04.29.4</span></div>
+    <div class="logo">WALK-OFF <span>DASHBOARD · v2026.04.29.5</span></div>
     <div class="hdr-right">
       <span id="sync-status">Loading...</span>
       <button class="hbtn" onclick="loadInventory()">↻ REFRESH</button>
@@ -918,7 +918,7 @@ tr.sold:hover td{opacity:.7;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.04.29.4';
+const APP_VERSION = '2026.04.29.5';
 const STORE_ID = 'walkoff-main';
 const REGISTER_ID = 'front';
 const WF_PRODUCTS = '65eb45a28ff6bf3fe4f17b14';
@@ -2822,28 +2822,65 @@ function getPricingInventorySource(){
   return JSON.parse(localStorage.getItem('lba_inventory')||'[]');
 }
 
-function normalizeCardNameForPokemon(name){
-  return String(name||'')
+function normalizeTcgLookupName(name){
+  let s = String(name||'')
     .replace(/\b(PSA|BGS|CGC|SGC)\s*\d+(\.\d+)?\b/gi,'')
     .replace(/\b(GEM\s*MT|MINT|NEAR\s*MINT|NM|LP|MP|HP|DMG)\b/gi,'')
+    .replace(/\b(nonfoil|foil|etched|holofoil|reverse holo|holographic|basic|rapid strike|single strike)\b/gi,'')
+    .replace(/\b(card\s*)?#\s*[A-Z]*\d+[a-z]?\b/gi,'')
+    .replace(/\b\d{4}\b/g,'')
     .replace(/\s+#?\d+\/\d+\s*$/,'')
+    .replace(/\s+/g,' ')
+    .trim();
+
+  const setMarkers = [
+    'Scarlet & Violet', 'Destined Rivals', 'Surging Sparks', 'Shining Fates',
+    'Lost Origin', 'Ancient Origins', 'Black Star Promos', 'SWSH Black Star Promos',
+    'Mega Evolution', 'MEG EN', 'Pokemon MEG EN'
+  ];
+  for(const marker of setMarkers) {
+    const idx = s.toLowerCase().indexOf(marker.toLowerCase());
+    if(idx > 0) {
+      s = s.slice(0, idx).trim();
+      break;
+    }
+  }
+  return s
+    .replace(/[-–—]\s*$/,'')
     .replace(/\s+/g,' ')
     .trim();
 }
 
+function normalizeCardNameForPokemon(name){
+  return normalizeTcgLookupName(name);
+}
+
+function extractPokemonNumber(item){
+  return String([item?.card_number, item?.name, item?.set].filter(Boolean).join(' '))
+    .match(/(?:card\s*)?#\s*([A-Z]*\d+[a-z]?)/i)?.[1] || '';
+}
+
 function chooseBestPokemonCard(cards, name, setName){
   if(!cards || !cards.length) return null;
-  const n = normalizeCardNameForPokemon(name).toLowerCase();
+  const ctx = typeof name === 'object' ? name : {name, set:setName};
+  const n = normalizeCardNameForPokemon(ctx.name).toLowerCase();
   const s = String(setName||'').toLowerCase();
+  const num = extractPokemonNumber(ctx);
   return cards
     .map(card => {
       let score = 0;
       const cn = String(card.name||'').toLowerCase();
       const cs = String(card.set?.name||'').toLowerCase();
+      const cnum = String(card.number||'').toLowerCase();
       if(cn === n) score += 50;
       else if(cn.includes(n) || n.includes(cn)) score += 25;
       if(s && cs === s) score += 35;
       else if(s && (cs.includes(s) || s.includes(cs))) score += 18;
+      else {
+        const full = String([ctx.name, ctx.set].filter(Boolean).join(' ')).toLowerCase();
+        if(cs && full.includes(cs)) score += 14;
+      }
+      if(num && cnum === String(num).toLowerCase()) score += 35;
       if(card.tcgplayer?.prices) score += 10;
       return {card, score};
     })
@@ -2858,8 +2895,10 @@ async function fetchTCGPrice(name, setName, tcgCardId) {
     const itemSet = itemCtx?.set || setName || '';
     const itemCond = itemCtx?.condition || 'NM';
     const cleanName = normalizeCardNameForPokemon(itemName);
+    const lookupName = normalizeTcgLookupName(itemName);
+    const lookupNumber = extractPokemonNumber(itemCtx || {name:itemName,set:itemSet});
     const universal = await fetch(WORKER + '/pricing/tcg?' + new URLSearchParams({
-      q: [itemName, itemSet].filter(Boolean).join(' '),
+      q: [lookupName || itemName, itemSet, lookupNumber ? '#'+lookupNumber : ''].filter(Boolean).join(' '),
       game: pricingGameForItem(itemCtx || {name:itemName,set:itemSet,category:'TCG'}),
       set: itemSet,
       condition: itemCond,
@@ -2883,7 +2922,7 @@ async function fetchTCGPrice(name, setName, tcgCardId) {
     }
 
     if(/magic|mtg/.test(pricingGameForItem(itemCtx || {name:itemName,set:itemSet,category:'TCG'}))) {
-      const sf = await fetch(`https://api.scryfall.com/cards/search?q=${encodeURIComponent('!"'+itemName+'"')}&unique=prints&order=released&dir=desc`)
+      const sf = await fetch(`https://api.scryfall.com/cards/search?q=${encodeURIComponent('!"'+(lookupName || itemName)+'"')}&unique=prints&order=released&dir=desc`)
         .then(r => r.ok ? r.json() : null)
         .catch(() => null);
       const cards = sf?.data || [];
@@ -2923,17 +2962,27 @@ async function fetchTCGPrice(name, setName, tcgCardId) {
 
     // Fallback to name+set search
     if(!card) {
-      const q = setName ? `name:"${cleanName}" set.name:"${setName}"` : `name:"${cleanName}"`;
+      const qParts = [`name:"${cleanName}"`];
+      if(itemSet) qParts.push(`set.name:"${itemSet}"`);
+      if(lookupNumber) qParts.push(`number:"${lookupNumber}"`);
+      const q = qParts.join(' ');
       const r = await fetch(`https://api.pokemontcg.io/v2/cards?q=${encodeURIComponent(q)}&pageSize=20`);
       const d = await r.json();
-      if(d.data && d.data.length) card = chooseBestPokemonCard(d.data, cleanName, setName);
+      if(d.data && d.data.length) card = chooseBestPokemonCard(d.data, itemCtx || {name:cleanName,set:itemSet,card_number:lookupNumber}, itemSet);
     }
 
     // Final fallback: name only
     if(!card) {
       const r2 = await fetch(`https://api.pokemontcg.io/v2/cards?q=${encodeURIComponent('name:"'+cleanName+'"')}&pageSize=20`);
       const d2 = await r2.json();
-      if(d2.data && d2.data.length) card = chooseBestPokemonCard(d2.data, cleanName, setName);
+      if(d2.data && d2.data.length) card = chooseBestPokemonCard(d2.data, itemCtx || {name:cleanName,set:itemSet,card_number:lookupNumber}, itemSet);
+    }
+
+    // Last-chance fuzzy search catches new/alternate inventory names.
+    if(!card && cleanName) {
+      const r3 = await fetch(`https://api.pokemontcg.io/v2/cards?q=${encodeURIComponent('name:'+cleanName)}&pageSize=30`);
+      const d3 = await r3.json();
+      if(d3.data && d3.data.length) card = chooseBestPokemonCard(d3.data, itemCtx || {name:cleanName,set:itemSet,card_number:lookupNumber}, itemSet);
     }
 
     if(!card) return null;
@@ -3025,6 +3074,11 @@ async function runPriceSync() {
     const tcgData = await fetchTCGPrice(item, item.set, item.tcgCardId);
     if(!tcgData) {
       failed++;
+      const debugName = normalizeTcgLookupName(item.name || '');
+      const debugNum = extractPokemonNumber(item);
+      logEl.innerHTML += `<div style="color:var(--red)">NOT FOUND: ${item.name}<span style="color:var(--dim)"> · searched: ${debugName || item.name}${debugNum?' #'+debugNum:''}</span></div>`;
+      logEl.scrollTop = logEl.scrollHeight;
+      continue;
       logEl.innerHTML += `<div style="color:var(--red)">✗ NOT FOUND: ${item.name}</div>`;
       logEl.scrollTop = logEl.scrollHeight;
       continue;
