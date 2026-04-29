@@ -906,12 +906,19 @@ export default {
           `https://svcs.ebay.com/services/search/FindingService/v1` +
           `?OPERATION-NAME=findCompletedItems&SERVICE-VERSION=1.0.0` +
           `&SECURITY-APPNAME=${env.EBAY_APP_ID}&RESPONSE-DATA-FORMAT=JSON&REST-PAYLOAD` +
+          `&GLOBAL-ID=EBAY-US` +
           `&keywords=${encodeURIComponent(query)}` +
           `&itemFilter%280%29.name=SoldItemsOnly&itemFilter%280%29.value=true` +
           `&sortOrder=EndTimeSoonest&paginationInput.entriesPerPage=25`
         );
         if (!findRes.ok) return { source: 'ebay_sold', prices: [], error: 'Finding API ' + findRes.status };
         const fd = await findRes.json();
+        const root = fd.findCompletedItemsResponse?.[0] || {};
+        const ack = root.ack?.[0] || '';
+        const errMsg = root.errorMessage?.[0]?.error?.[0]?.message?.[0] || '';
+        if (ack && !['Success', 'Warning'].includes(ack)) {
+          return { source: 'ebay_sold', prices: [], error: 'Finding API ' + (errMsg || ack) };
+        }
         const items = fd.findCompletedItemsResponse?.[0]?.searchResult?.[0]?.item || [];
         const prices = items
           .map(i => Number(i.sellingStatus?.[0]?.currentPrice?.[0]?.['__value__'] || 0))
@@ -953,11 +960,14 @@ export default {
         });
       }
 
+      const warnings = [...new Set(comps.map(c => c.error).filter(Boolean))];
       return json({
         ok: true,
         query: q,
         source: env.EBAY_APP_ID ? 'ebay_sold' : (env.EBAY_USER_TOKEN ? 'ebay_active' : 'none'),
         comps,
+        warnings,
+        needsEbayAuth: warnings.some(w => /401|authorization|access token|invalid/i.test(w)),
         needsEbay: !env.EBAY_APP_ID && !env.EBAY_USER_TOKEN,
       });
     }
