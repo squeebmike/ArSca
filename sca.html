@@ -571,7 +571,7 @@ const STORE = {
   wf_status_instock:'f3769d1e15fa0956f98984d6fa36437f',
   wf_status_sold:   'e6b42f14fcb99aa2168a5f5672226f68',
 };
-const APP_VERSION = '2026.04.29.2';
+const APP_VERSION = '2026.04.29.3';
 const WORKER_URL = STORE.worker_url;
 
 function slugifyId(value, fallback) {
@@ -697,6 +697,14 @@ const AFF = {
     let url = 'https://www.tcgplayer.com/search/all/product?q=' + encodeURIComponent(search);
     if(cond && condMap[cond]) url += '&Condition=' + encodeURIComponent(condMap[cond]) + '&condition=' + encodeURIComponent(condMap[cond]);
     return url;
+  },
+
+  tcgWithCondition(url, cond) {
+    if(!url) return null;
+    const condMap = {'NM':'Near Mint','LP':'Lightly Played','MP':'Moderately Played','HP':'Heavily Played','DMG':'Damaged'};
+    const tcgCond = condMap[cond || 'NM'] || 'Near Mint';
+    const inner = url + (url.includes('?') ? '&' : '?') + 'Condition=' + encodeURIComponent(tcgCond) + '&condition=' + encodeURIComponent(tcgCond);
+    return this.tcg(inner) || inner;
   },
 
   // Build an eBay sold search URL with affiliate params
@@ -2335,6 +2343,7 @@ IMPORTANT RULES:
   * Check for "Volume 2", "Vol. 2", or "Series 2" text on the cover — different volume = different publisher or era
   * The year you report should be what you can VISUALLY CONFIRM from the cover, not the year of the most famous issue with that number
   * Example: TMNT #1 from IDW (2011) has IDW logo, $3.99 cover price, UPC barcode, full color. TMNT #1 from Mirage (1984) has no barcode, $1.50 price, Mirage logo — very different look
+- For sealed product: classify as Sealed Product. Read brand/manufacturer, sport or game, year, product line, configuration (hobby box, blaster, mega, booster box, ETB, tin, pack, case), quantity/pack count, and UPC if visible. Do not invent a single-card name for sealed wax.
 - For slabs (PSA/BGS/CGC/SGC): Read the label — player name, year, set, grade, cert number are ALL printed clearly on the label.
 - Only return items you can actually identify. If truly unreadable, return confidence:"low" with best guess.
 - cx/cy = % position of card center in image (0-100).
@@ -2347,7 +2356,9 @@ Comic example 2 (modern): {"game":"Comic","name":"Teenage Mutant Ninja Turtles",
 
 Slab example: {"game":"PSA Slab","name":"Charizard","grading_company":"PSA","grade":"9","cert_number":"12345678","year":"1999","set_name":"Base Set","manufacturer":"WOTC","cx":50,"cy":50,"confidence":"high","confidence_reason":"PSA label clearly readable"}
 
-game must be exactly one of: Pokemon TCG, Magic: The Gathering, Yu-Gi-Oh!, Sports Card, Comic, PSA Slab, BGS Slab, CGC Slab, SGC Slab, Hot Wheels, Funko Pop, LEGO, Action Figure, Video Game, Sports Memorabilia, Collectible
+Sealed example: {"game":"Sealed Product","name":"2023 Topps Holiday Baseball Mega Box","year":"2023","manufacturer":"Topps","sport":"Baseball","product_line":"Holiday Baseball","configuration":"Mega Box","upc":null,"cx":50,"cy":50,"confidence":"high","confidence_reason":"front box panel and Topps branding clearly visible","search_query":"2023 Topps Holiday Baseball Mega Box sealed"}
+
+game must be exactly one of: Pokemon TCG, Magic: The Gathering, Yu-Gi-Oh!, Sports Card, Comic, Sealed Product, PSA Slab, BGS Slab, CGC Slab, SGC Slab, Hot Wheels, Funko Pop, LEGO, Action Figure, Video Game, Sports Memorabilia, Collectible
 
 search_query: most specific possible eBay search — include year, set, parallel color, card#, serial# if visible.
 
@@ -3338,7 +3349,7 @@ function addBubble(item,stock,imgUrl,apiPrintings,bestMatchIdx){
   else{
     const tcgDirect=first.tcgUrl||null;
     const qt=(item.name||'')+' '+(item.set_name||item.game||'');
-    const tcgHref=AFF.tcg(tcgDirect) || AFF.tcgSearch(qt);
+    const tcgHref=AFF.tcgWithCondition(tcgDirect, 'NM') || AFF.tcgSearch(qt, 'NM');
     const sfHref=first.scryfallUrl||null;
     const ebayQ=(item.name||'')+' '+(item.set_name||'')+' '+(item.game||'');
     actLinks=`<a class="bact a-tcg" id="bt${id}" href="${tcgHref}" target="_blank">${tcgDirect?'TCGPlayer ↗':'TCGPlayer Search ↗'}</a>
@@ -3734,8 +3745,7 @@ window.chPrint=function(id){
     if(p.tcgUrl){
       const cond2 = document.getElementById('cs'+id)?.value||'NM';
       const condMapP={'NM':'Near Mint','LP':'Lightly Played','MP':'Moderately Played','HP':'Heavily Played','DMG':'Damaged'};
-      const innerUrlP = p.tcgUrl+(p.tcgUrl.includes('?')?'&':'?')+'Condition='+encodeURIComponent(condMapP[cond2]||'Near Mint');
-      btEl.href=AFF.tcg(innerUrlP)||innerUrlP;
+      btEl.href=AFF.tcgWithCondition(p.tcgUrl, cond2);
       btEl.textContent='TCGPlayer ('+cond2+') ↗';
     } else {
       const qt=(item.name||'')+' '+(p.set||item.set_name||'')+' '+(p.variant&&p.variant!=='Base'?p.variant:'');
@@ -3825,8 +3835,7 @@ function updatePrice(id,p,cond){
     const tcgCond = tcgCondMap[cond]||'Near Mint';
     if(tUrl){
       // Add condition param to inner URL BEFORE affiliate wrapping so TCGPlayer sees it
-      const innerUrl = tUrl+(tUrl.includes('?')?'&':'?')+'Condition='+encodeURIComponent(tcgCond);
-      bt.href = AFF.tcg(innerUrl) || innerUrl;
+      bt.href = AFF.tcgWithCondition(tUrl, cond);
       bt.textContent='TCGPlayer ('+cond+') ↗';
     } else {
       const n=document.getElementById(id)?.querySelector('.bname')?.textContent||'';
@@ -4216,7 +4225,7 @@ window.resetActs=function(id){
     const qe=(item.name||'')+' '+(item.set_name||'')+' '+(item.game||'');
     // Use stored direct TCGPlayer URL if available, else search
     const tcgDirect=el._prints&&el._prints[el._bmi||0]?.tcgUrl||null;
-    const tcgHref=AFF.tcg(tcgDirect)||AFF.tcgSearch(qt);
+    const tcgHref=AFF.tcgWithCondition(tcgDirect, 'NM')||AFF.tcgSearch(qt, 'NM');
     links=`<a class="bact a-tcg" href="${tcgHref}" target="_blank">${tcgDirect?'TCGPlayer ↗':'TCGPlayer Search ↗'}</a>
       <a class="bact a-ebay" href="${AFF.ebaySearch(qe)}" target="_blank">eBay Sold ↗</a>`;}
   // Always include verify button for slabs in resetActs
@@ -6221,8 +6230,13 @@ function updateSlabSearch(id) {
   const grade = document.getElementById('slab-grade-'+id)?.value || '';
   const item = el._item;
   const name = item.player || item.name || '';
-  const q = [name, item.year, item.set_name, grader, grade].filter(Boolean).join(' ');
-  const qBase = [name, item.year, item.set_name, grader].filter(Boolean).join(' ');
+  const pi = parseInt(document.getElementById('ps'+id)?.value)||0;
+  const p = el._prints?.[pi] || el._prints?.[0] || {};
+  const setName = item.set_name || p.set || '';
+  const parallel = item.parallel || p.variant || '';
+  const rawParts = [name, item.year || p.year, setName, parallel && parallel !== 'Base' ? parallel : null].filter(Boolean);
+  const q = rawParts.concat([grader, grade]).filter(Boolean).join(' ');
+  const qBase = rawParts.concat([grader]).filter(Boolean).join(' ');
 
   // Update eBay sold link in main actLinks to use graded search
   const ebayBtns = el.querySelectorAll('.a-ebay');
@@ -6236,7 +6250,7 @@ function updateSlabSearch(id) {
   // ── Pop count + price research links (no cert required) ──────
   const popEl = document.getElementById('slab-pop-'+id);
   if(!popEl) return;
-  const qEnc = encodeURIComponent([name, item.year, item.set_name].filter(Boolean).join(' '));
+  const qEnc = encodeURIComponent(rawParts.join(' '));
   const qGraded = encodeURIComponent(q);
   const gc = { PSA:'rgba(230,57,70', BGS:'rgba(150,150,150', CGC:'rgba(244,162,97', SGC:'rgba(255,149,0' };
   const tc = { PSA:'#e63946', BGS:'#bbb', CGC:'#f4a261', SGC:'#ff9500' };
@@ -6260,9 +6274,11 @@ function updateSlabSearch(id) {
   // Always: eBay sold for this graded card (raw or graded)
   links.push(`<a class="bact" href="${AFF.ebaySearch(q)}" target="_blank" style="background:rgba(255,255,255,.04);color:rgba(255,255,255,.35);border:1px solid rgba(255,255,255,.1);font-size:8px">eBay ${grader}${grade?' '+grade:''} Sold ↗</a>`);
   // Raw card sold (for value comparison)
-  const qRaw = encodeURIComponent([name, item.year, item.set_name].filter(Boolean).join(' ') + ' raw');
-  links.push(`<a class="bact" href="${AFF.ebaySearch([name, item.year, item.set_name].filter(Boolean).join(' '))}" target="_blank" style="background:rgba(255,255,255,.03);color:rgba(255,255,255,.25);border:1px solid rgba(255,255,255,.07);font-size:7px">Raw Sold ↗</a>`);
+  links.push(`<a class="bact" href="${AFF.ebaySearch(rawParts.concat(['raw']).join(' '))}" target="_blank" style="background:rgba(255,255,255,.03);color:rgba(255,255,255,.25);border:1px solid rgba(255,255,255,.07);font-size:7px">Raw Sold</a>`);
 
+  links.push(`<a class="bact" href="${AFF.ebaySearch(rawParts.concat(['PSA 9']).join(' '))}" target="_blank" style="background:rgba(230,57,70,.06);color:#e63946;border:1px solid rgba(230,57,70,.22);font-size:8px">PSA 9 Sold</a>`);
+  links.push(`<a class="bact" href="${AFF.ebaySearch(rawParts.concat(['PSA 10']).join(' '))}" target="_blank" style="background:rgba(230,57,70,.08);color:#ff6b75;border:1px solid rgba(230,57,70,.3);font-size:8px">PSA 10 Sold</a>`);
+  links.push(`<a class="bact" href="${AFF.ebaySearch(rawParts.concat(['BGS 9.5']).join(' '))}" target="_blank" style="background:rgba(180,180,180,.07);color:#bbb;border:1px solid rgba(180,180,180,.24);font-size:8px">BGS 9.5 Sold</a>`);
   popEl.innerHTML = links.join('');
 }
 // ════════════════════════════════════════════════════════════════

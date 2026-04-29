@@ -641,6 +641,101 @@ export default {
       }
     }
 
+    // Universal TCG pricing proxy.
+    // Optional secret: TCGAPI_KEY from https://tcgapi.dev
+    // GET /pricing/tcg?q=&game=&set=&condition=&sealed=true
+    if (url.pathname === '/pricing/tcg') {
+      const q = (url.searchParams.get('q') || '').trim();
+      const game = (url.searchParams.get('game') || '').trim().toLowerCase();
+      const setName = (url.searchParams.get('set') || '').trim().toLowerCase();
+      const condition = (url.searchParams.get('condition') || 'NM').toUpperCase();
+      const sealed = /^(1|true|yes)$/i.test(url.searchParams.get('sealed') || '');
+      if (q.length < 2) return json({ ok: false, error: 'q required' }, 400);
+
+      const condMult = { NM: 1, LP: 0.8, MP: 0.64, HP: 0.4, DMG: 0.25 };
+      const gameSlug = (() => {
+        if (/magic|mtg/.test(game)) return 'magic-the-gathering';
+        if (/yu|yugioh|yu-gi-oh/.test(game)) return 'yu-gi-oh';
+        if (/pokemon|pokémon/.test(game)) return 'pokemon';
+        if (/one piece/.test(game)) return 'one-piece-card-game';
+        if (/lorcana/.test(game)) return 'lorcana';
+        return game.replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+      })();
+
+      if (env.TCGAPI_KEY) {
+        try {
+          const params = new URLSearchParams({ q, per_page: '20', sort: 'relevance' });
+          if (gameSlug) params.set('game', gameSlug);
+          if (sealed) params.set('type', 'Sealed Products');
+          const apiRes = await fetch(`https://api.tcgapi.dev/v1/search?${params.toString()}`, {
+            headers: { 'X-API-Key': env.TCGAPI_KEY, 'Accept': 'application/json' },
+          });
+          const data = await apiRes.json().catch(() => ({}));
+          if (!apiRes.ok) return json({ ok: false, source: 'tcgapi', error: errorMessageFromApi(data, 'TCG API error'), detail: data }, apiRes.status);
+          const rows = data.data || [];
+          const best = rows
+            .map(card => {
+              let score = 0;
+              const hay = [card.name, card.clean_name, card.set_name, card.number].filter(Boolean).join(' ').toLowerCase();
+              const qq = q.toLowerCase();
+              if (hay.includes(qq)) score += 20;
+              if (setName && String(card.set_name || '').toLowerCase().includes(setName)) score += 20;
+              if (sealed && /sealed/i.test(card.product_type || '')) score += 20;
+              if (card.market_price || card.price || card.low_price) score += 10;
+              return { card, score };
+            })
+            .sort((a, b) => b.score - a.score)[0]?.card;
+          if (!best) return json({ ok: false, source: 'tcgapi', error: 'No match', matches: [] }, 404);
+          const priceRows = Array.isArray(best.prices) ? best.prices : [];
+          const normalPrice = priceRows.find(p => /normal|regular|standard/i.test(p.printing || '')) || priceRows[0] || {};
+          const nm = Number(
+            best.market_price ||
+            best.price ||
+            best.median_price ||
+            best.low_price ||
+            normalPrice.market_price ||
+            normalPrice.price ||
+            normalPrice.median_price ||
+            normalPrice.low_price ||
+            0
+          );
+          const price = Math.max(0, Math.round(nm * (condMult[condition] || 1) * 100) / 100);
+          return json({
+            ok: true,
+            source: 'tcgapi',
+            match: best,
+            price,
+            condition,
+            nmMarket: nm,
+            matches: rows.slice(0, 8),
+          });
+        } catch (e) {
+          return json({ ok: false, source: 'tcgapi', error: e.message }, 500);
+        }
+      }
+
+      if (/pokemon|pokémon/.test(game)) {
+        try {
+          const r = await fetch(`https://api.pokemontcg.io/v2/cards?q=${encodeURIComponent('name:"' + q + '"')}&pageSize=10`);
+          const d = await r.json();
+          const card = d.data?.[0];
+          const prices = card?.tcgplayer?.prices || {};
+          const nm = Object.values(prices).find(p => p?.market > 0 || p?.mid > 0)?.market || Object.values(prices).find(p => p?.mid > 0)?.mid || 0;
+          if (!card || !nm) return json({ ok: false, source: 'pokemontcg', error: 'No price match' }, 404);
+          return json({ ok: true, source: 'pokemontcg', match: card, price: Math.round(nm * (condMult[condition] || 1) * 100) / 100, condition, nmMarket: nm, matches: d.data || [] });
+        } catch (e) {
+          return json({ ok: false, source: 'pokemontcg', error: e.message }, 500);
+        }
+      }
+
+      return json({
+        ok: false,
+        needsKey: true,
+        source: 'none',
+        error: 'TCGAPI_KEY not set. Add a free key from https://tcgapi.dev for MTG, Yu-Gi-Oh, Lorcana, One Piece, sealed products, and other TCG prices.',
+      }, 501);
+    }
+
     const PSA_BASE = 'https://api.psacard.com/publicapi';
 
     if (url.pathname.startsWith('/psa/')) {

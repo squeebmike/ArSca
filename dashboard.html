@@ -918,7 +918,7 @@ tr.sold:hover td{opacity:.7;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.04.29.2';
+const APP_VERSION = '2026.04.29.3';
 const STORE_ID = 'walkoff-main';
 const REGISTER_ID = 'front';
 const WF_PRODUCTS = '65eb45a28ff6bf3fe4f17b14';
@@ -2797,6 +2797,25 @@ async function confirmEditAndSync() {
 const COND_MULTIPLIER = {NM:1.0, LP:0.80, MP:0.64, HP:0.40, DMG:0.25};
 const TCG_COND_LABELS = {NM:'Near Mint', LP:'Lightly Played', MP:'Moderately Played', HP:'Heavily Played', DMG:'Damaged'};
 
+function isTcgInventoryItem(item){
+  return /tcg|pokemon|pokémon|magic|mtg|yu-?gi-?oh|one piece|lorcana|flesh and blood|digimon|dragon ball|weiss|vanguard/i
+    .test([item.category,item.name,item.set].filter(Boolean).join(' '));
+}
+
+function pricingGameForItem(item){
+  const s = [item.category,item.name,item.set].filter(Boolean).join(' ').toLowerCase();
+  if(/magic|mtg/.test(s)) return 'magic-the-gathering';
+  if(/yu-?gi-?oh|yugioh/.test(s)) return 'yu-gi-oh';
+  if(/pokemon|pokémon/.test(s)) return 'pokemon';
+  if(/one piece/.test(s)) return 'one-piece-card-game';
+  if(/lorcana/.test(s)) return 'lorcana';
+  return String(item.category||'').toLowerCase();
+}
+
+function isSealedProduct(item){
+  return /sealed|booster|box|hobby|blaster|mega|pack|case|tin|etb|elite trainer|bundle/.test([item.name,item.set,item.variant].filter(Boolean).join(' ').toLowerCase());
+}
+
 function normalizeCardNameForPokemon(name){
   return String(name||'')
     .replace(/\b(PSA|BGS|CGC|SGC)\s*\d+(\.\d+)?\b/gi,'')
@@ -2828,7 +2847,34 @@ function chooseBestPokemonCard(cards, name, setName){
 async function fetchTCGPrice(name, setName, tcgCardId) {
   try {
     let card = null;
-    const cleanName = normalizeCardNameForPokemon(name);
+    const itemCtx = typeof name === 'object' ? name : null;
+    const itemName = itemCtx?.name || name;
+    const itemSet = itemCtx?.set || setName || '';
+    const itemCond = itemCtx?.condition || 'NM';
+    const cleanName = normalizeCardNameForPokemon(itemName);
+    const universal = await fetch(WORKER + '/pricing/tcg?' + new URLSearchParams({
+      q: [itemName, itemSet].filter(Boolean).join(' '),
+      game: pricingGameForItem(itemCtx || {name:itemName,set:itemSet,category:'TCG'}),
+      set: itemSet,
+      condition: itemCond,
+      sealed: isSealedProduct(itemCtx || {name:itemName,set:itemSet}) ? 'true' : ''
+    }).toString()).then(r => r.json().then(d => ({ ok:r.ok, status:r.status, d }))).catch(() => null);
+    if(universal?.ok && universal.d?.ok) {
+      const m = universal.d.match || {};
+      const nm = Number(universal.d.nmMarket || universal.d.price || 0);
+      return {
+        NM:nm,
+        LP:nm*0.80,
+        MP:nm*0.64,
+        HP:nm*0.40,
+        DMG:nm*0.25,
+        cardId:m.id || m.tcgplayer_id || '',
+        cardName:m.name || itemName,
+        setName:m.set_name || itemSet,
+        imageUrl:m.image_url || m.images?.large || null,
+        source:universal.d.source,
+      };
+    }
 
     // If we have a stored card ID, use it directly — fastest and most accurate
     if(tcgCardId) {
@@ -2884,7 +2930,7 @@ async function previewPriceSync() {
   const inv = JSON.parse(localStorage.getItem('lba_inventory')||'[]');
 
   let items = inv.filter(i => i.status === 'in_stock');
-  if(catFilter !== 'all') items = items.filter(i => i.category === catFilter);
+  if(catFilter !== 'all') items = items.filter(i => catFilter === 'TCG' ? isTcgInventoryItem(i) : i.category === catFilter);
   if(condFilter !== 'all') items = items.filter(i => (i.condition||'NM') === condFilter);
   items = items.filter(i => i.name && i.name.length > 2);
 
@@ -2892,6 +2938,14 @@ async function previewPriceSync() {
     <div style="color:var(--dim)">Conditions: NM=100% · LP=80% · MP=64% · HP=40% · DMG=25% of TCG mid price</div>
     <div style="margin-top:6px">${items.slice(0,5).map(i=>`<div>• ${i.name} (${i.condition||'NM'}) — current: ${i.market>0?'$'+i.market.toFixed(2):'no price'}</div>`).join('')}
     ${items.length>5?`<div style="color:var(--dim)">...and ${items.length-5} more</div>`:''}</div>`;
+  const eligibleItems = items.filter(isTcgInventoryItem);
+  const nonTcg = items.length - eligibleItems.length;
+  preview.innerHTML = `<div style="margin-bottom:6px"><b>${eligibleItems.length} TCG/sealed items</b> will be looked up</div>
+    <div style="color:var(--dim)">Condition multipliers: NM=100% · LP=80% · MP=64% · HP=40% · DMG=25%</div>
+    ${nonTcg ? `<div style="color:var(--gold);margin-top:4px">${nonTcg} non-TCG items skipped.</div>` : ''}
+    <div style="color:var(--gold);margin-top:4px">MTG/Yu-Gi-Oh/Lorcana/sealed require TCGAPI_KEY in Cloudflare; Pokemon has a free fallback.</div>
+    <div style="margin-top:6px">${eligibleItems.slice(0,5).map(i=>`<div>• ${i.name} (${TCG_COND_LABELS[i.condition||'NM']||i.condition||'NM'}) — current: ${i.market>0?'$'+i.market.toFixed(2):'no price'}</div>`).join('')}
+    ${eligibleItems.length>5?`<div style="color:var(--dim)">...and ${eligibleItems.length-5} more</div>`:''}</div>`;
 }
 
 async function runPriceSync() {
@@ -2903,18 +2957,18 @@ async function runPriceSync() {
   const logEl = document.getElementById('sync-log');
 
   let items = inv.filter(i => i.status === 'in_stock');
-  if(catFilter !== 'all') items = items.filter(i => i.category === catFilter);
+  if(catFilter !== 'all') items = items.filter(i => catFilter === 'TCG' ? isTcgInventoryItem(i) : i.category === catFilter);
   if(condFilter !== 'all') items = items.filter(i => (i.condition||'NM') === condFilter);
   items = items.filter(i => i.name && i.name.length > 2);
-  const skippedNonPokemon = items.filter(i => !i.tcgCardId && !/pokemon|pokémon/i.test([i.category,i.set,i.name].join(' '))).length;
-  items = items.filter(i => i.tcgCardId || /pokemon|pokémon/i.test([i.category,i.set,i.name].join(' ')));
+  const skippedNonPokemon = items.filter(i => !isTcgInventoryItem(i)).length;
+  items = items.filter(isTcgInventoryItem);
 
   if(!items.length) { toast_dash('No items match filters'); return; }
 
   progressEl.style.display = 'block';
   logEl.innerHTML = '';
   let updated = 0, failed = 0, skipped = skippedNonPokemon;
-  if(skippedNonPokemon) logEl.innerHTML += `<div style="color:var(--gold)">Skipped ${skippedNonPokemon} non-Pokemon TCG items. Direct TCGPlayer feed not connected yet.</div>`;
+  if(skippedNonPokemon) logEl.innerHTML += `<div style="color:var(--gold)">Skipped ${skippedNonPokemon} non-TCG items.</div>`;
 
   for(let idx2=0; idx2<items.length; idx2++) {
     const item = items[idx2];
@@ -2923,14 +2977,14 @@ async function runPriceSync() {
     const cond = item.condition || 'NM';
     const mult = COND_MULTIPLIER[cond] || 1.0;
 
-    // Only do TCG cards
-    if(!['TCG','Graded'].includes(item.category)) {
+    // Keep this guarded for safety if the upstream filter changes later.
+    if(!isTcgInventoryItem(item)) {
       skipped++;
       logEl.innerHTML += `<div style="color:var(--dim)">⊘ SKIP ${item.name} (not TCG)</div>`;
       continue;
     }
 
-    const tcgData = await fetchTCGPrice(item.name, item.set, item.tcgCardId);
+    const tcgData = await fetchTCGPrice(item, item.set, item.tcgCardId);
     if(!tcgData) {
       failed++;
       logEl.innerHTML += `<div style="color:var(--red)">✗ NOT FOUND: ${item.name}</div>`;
