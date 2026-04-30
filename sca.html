@@ -3,7 +3,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="version" content="2026.04.30.4">
+<meta name="version" content="2026.04.30.5">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>LBA Scanner</title>
@@ -400,7 +400,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
   <div class="hbtns">
     <span id="show-badge" style="font-family:monospace;font-size:9px;color:rgba(255,209,102,.7);letter-spacing:1px"></span>
     <span id="offline-sync-badge" style="font-family:monospace;font-size:9px;color:rgba(255,255,255,.35);letter-spacing:1px">online</span>
-    <span id="app-version" style="font-family:monospace;font-size:9px;color:rgba(0,255,179,.55);letter-spacing:1px">v2026.04.30.4</span>
+    <span id="app-version" style="font-family:monospace;font-size:9px;color:rgba(0,255,179,.55);letter-spacing:1px">v2026.04.30.5</span>
     <span id="hstatus">READY</span>
     <button class="hbtn" id="flipbtn" onclick="toggleFlip()">FLIP</button>
     <button class="hbtn" id="bulkbtn" onclick="toggleBulk()">BULK</button>
@@ -537,6 +537,12 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
     <div><div class="bulk-label">BUY % OF MARKET</div><input class="bulk-inp" id="bulk-pct" type="number" value="50" min="1" max="100" oninput="updateBulkTotal()"></div>
     <div><div class="bulk-label">MAX OFFER ($)</div><input class="bulk-inp" id="bulk-max" type="number" value="" placeholder="No limit" oninput="updateBulkTotal()"></div>
   </div>
+  <div style="display:flex;gap:6px;margin:-4px 0 10px;flex-wrap:wrap">
+    <button class="bulk-btn secondary" style="padding:7px;font-size:9px" onclick="setBulkPct(70)">70%</button>
+    <button class="bulk-btn secondary" style="padding:7px;font-size:9px" onclick="setBulkPct(75)">75%</button>
+    <button class="bulk-btn secondary" style="padding:7px;font-size:9px" onclick="setBulkPct(80)">80%</button>
+    <button class="bulk-btn secondary" style="padding:7px;font-size:9px" onclick="setBulkPct(85)">85%</button>
+  </div>
   <div class="bulk-list" id="bulk-list"><div class="empty-bulk">Scan cards to add to bulk offer</div></div>
   <div class="bulk-total" id="bulk-total" style="display:none">
     <div class="bulk-total-row"><span>Total Market Value</span><span id="bt-mkt">$0.00</span></div>
@@ -579,7 +585,7 @@ const STORE = {
   wf_status_instock:'f3769d1e15fa0956f98984d6fa36437f',
   wf_status_sold:   'e6b42f14fcb99aa2168a5f5672226f68',
 };
-const APP_VERSION = '2026.04.30.4';
+const APP_VERSION = '2026.04.30.5';
 const WORKER_URL = STORE.worker_url;
 
 function slugifyId(value, fallback) {
@@ -2320,7 +2326,13 @@ async function writeScanHandoffQueue(queue) {
 function buildHandoffItem(el) {
   const item = el?._item || {};
   const print = (el?._prints || [])[el?._bmi || 0] || {};
-  const category = el?._ct === 'sports' ? 'Sports' : el?._ct === 'comic' ? 'Comic' : ['psa','bgs','cgc','sgc'].includes(el?._ct) ? 'Graded' : 'TCG';
+  const textBlob = [item.game, item.name, item.product_line, item.configuration, print.set, item.set_name].filter(Boolean).join(' ').toLowerCase();
+  const isSealed = item.is_sealed || /sealed product|booster|hobby|blaster|mega box|booster box|pack|case|tin|elite trainer| etb\b/.test(textBlob);
+  const category = isSealed ? 'Sealed'
+    : el?._ct === 'sports' ? 'Sports'
+    : el?._ct === 'comic' ? 'Comic'
+    : ['psa','bgs','cgc','sgc'].includes(el?._ct) ? 'Graded'
+    : 'TCG';
   return {
     id: 'phone_scan_' + Date.now(),
     sentAt: new Date().toISOString(),
@@ -2342,6 +2354,15 @@ function buildHandoffItem(el) {
     confidence_reason: item.confidence_reason || '',
     condition: document.getElementById('cs'+el.id)?.value || item.condition || 'NM',
     price: Number(print.mid || item.market_nm || item.market || 0),
+    is_sealed: !!isSealed,
+    manufacturer: item.manufacturer || '',
+    product_line: item.product_line || '',
+    configuration: item.configuration || '',
+    upc: item.upc || '',
+    grading_company: item.grading_company || '',
+    grader: item.grader || item.grading_company || '',
+    grade: item.grade || '',
+    cert_number: item.cert_number || '',
     imageUrl: el?._uploadedPhotoUrl || print.imageUrl || el?._imgUrl || item.imageUrl || item.cover_image || null,
     search_query: item.search_query || [item.player || item.name, item.year, print.set || item.set_name, print.variant || item.parallel].filter(Boolean).join(' '),
   };
@@ -3187,19 +3208,35 @@ function renderBulkList(){
   const total=document.getElementById('bulk-total');
   if(!bulkItems.length){list.innerHTML='<div class="empty-bulk">Scan cards to add to bulk offer</div>';total.style.display='none';return;}
   const pct=(parseFloat(document.getElementById('bulk-pct').value)||50)/100;
-  list.innerHTML=bulkItems.map(item=>`<div class="bulk-item"><div class="bulk-item-name">${item.name}${item.year?' '+item.year:''}</div><div class="bulk-item-mkt">$${Number(item.market_nm).toFixed(2)}</div><div class="bulk-item-offer">$${(item.market_nm*pct).toFixed(2)}</div><button class="bulk-item-rm" onclick="removeBulkItem('${item.id}')">×</button></div>`).join('');
-  total.style.display='block';updateBulkTotal();
+  list.innerHTML=bulkItems.map(item=>{
+    const market = Number(item.market_nm || item.market || item.price || 0);
+    const sub = [item.year, item.set || item.set_name, item.parallel || item.variant, item.card_number ? '#'+item.card_number : ''].filter(Boolean).join(' · ');
+    const img = item.imageUrl || item.image_url || item.cover_image || item.image || '';
+    return `<div class="bulk-item">
+      ${img ? `<img src="${img}" style="width:34px;height:46px;object-fit:contain;background:#050507;border:1px solid rgba(255,255,255,.08);border-radius:4px;margin-right:7px">` : ''}
+      <div class="bulk-item-name">${item.name || item.player || 'Scanned item'}<div style="font-size:8px;color:rgba(255,255,255,.35);font-weight:400">${sub}</div></div>
+      <div class="bulk-item-mkt">$${market.toFixed(2)}</div>
+      <div class="bulk-item-offer">$${(market*pct).toFixed(2)}</div>
+      <button class="bulk-item-rm" onclick="removeBulkItem('${item.id}')">×</button>
+    </div>`;
+  }).join('');
+  total.style.display='block';
 }
 window.updateBulkTotal=function(){
   const pct=(parseFloat(document.getElementById('bulk-pct').value)||50)/100;
   const maxO=parseFloat(document.getElementById('bulk-max').value)||Infinity;
-  const totalMkt=bulkItems.reduce((a,i)=>a+Number(i.market_nm||0),0);
+  const totalMkt=bulkItems.reduce((a,i)=>a+Number(i.market_nm||i.market||i.price||0),0);
   const offer=Math.min(totalMkt*pct,maxO);
   document.getElementById('bt-mkt').textContent='$'+totalMkt.toFixed(2);
   document.getElementById('bt-pct').textContent=Math.round(pct*100);
   document.getElementById('bt-offer').textContent='$'+offer.toFixed(2);
   document.getElementById('bt-profit').textContent='$'+(totalMkt-offer).toFixed(2);
   renderBulkList();
+};
+window.setBulkPct=function(pct){
+  const input=document.getElementById('bulk-pct');
+  if(input) input.value=pct;
+  updateBulkTotal();
 };
 window.removeBulkItem=function(id){bulkItems=bulkItems.filter(i=>i.id!==id);renderBulkList();updateBulkTotal();};
 window.clearBulk=function(){bulkItems=[];renderBulkList();};
@@ -3226,14 +3263,27 @@ window.sendBulkOfferToTablet = async function(){
         source: 'bulk-buy-phone',
         appVersion: APP_VERSION,
         show: getShowContext(),
-        category: i.category || (String(i.game||'').includes('Comic') ? 'Comic' : 'TCG'),
-        name: i.name || 'Bulk scan item',
+        category: i.category || (i.is_sealed || /sealed|box|pack|tin|case|booster|blaster|mega|hobby/i.test([i.game,i.name,i.configuration].filter(Boolean).join(' ')) ? 'Sealed' : (String(i.game||'').includes('Comic') ? 'Comic' : 'TCG')),
+        name: i.player || i.name || 'Bulk scan item',
+        player: i.player || '',
+        team: i.team || '',
         year: i.year || '',
         set: i.set || i.set_name || '',
         variant: i.parallel || i.variant || '',
         card_number: i.card_number || '',
+        serial_number: i.serial_number || '',
         condition: i.condition || 'NM',
         price: Number(i.market_nm || i.market || i.price || 0),
+        imageUrl: i.imageUrl || i.image_url || i.cover_image || i.image || null,
+        is_sealed: !!i.is_sealed,
+        manufacturer: i.manufacturer || '',
+        product_line: i.product_line || '',
+        configuration: i.configuration || '',
+        upc: i.upc || '',
+        grading_company: i.grading_company || '',
+        grader: i.grader || i.grading_company || '',
+        grade: i.grade || '',
+        cert_number: i.cert_number || '',
         priceSource: i.priceSource || 'bulk_ai_estimate',
         confidence: i.confidence || 'medium',
         confidence_reason: i.confidence_reason || 'bulk buy scan',
@@ -6448,7 +6498,10 @@ function renderCompsChart(data) {
   const cards=[['Count',stats.count||0],['Avg','$'+Number(stats.avg||0).toFixed(2)],['Median','$'+Number(stats.median||0).toFixed(2)],['Range','$'+Number(stats.min||0).toFixed(0)+'-$'+Number(stats.max||0).toFixed(0)],['Trend',(stats.trendPct||0)+'%']].map(([k,v])=>'<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:6px;padding:8px"><div style="color:rgba(255,255,255,.35);font-size:8px">'+k+'</div><div style="color:'+(k==='Trend'?trendColor:'#fff')+';font-size:13px;font-weight:700">'+v+'</div></div>').join('');
   const rows=comps.slice(0,12).map(c=>'<div style="display:grid;grid-template-columns:1fr auto;gap:10px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.06)"><div><div style="color:#fff">'+escHtml(c.title)+'</div><div style="color:rgba(255,255,255,.35);font-size:8px">'+escHtml(c.soldAt?new Date(c.soldAt).toLocaleDateString():'sold date unknown')+' ? '+escHtml(c.condition||c.source||'')+'</div></div><a href="'+escHtml(c.url||'#')+'" target="_blank" style="color:#00ffb3;text-decoration:none;font-weight:700">$'+Number(c.total||c.price||0).toFixed(2)+'</a></div>').join('');
   const warnings=data.warnings?.length?'<div style="margin-top:8px;color:#ffd166;font-size:9px">'+escHtml(data.warnings.join(' | '))+'</div>':'';
-  return '<div style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;margin-bottom:10px">'+cards+'</div>'+chart+warnings+'<div style="margin-top:10px">'+(rows||'<div style="color:rgba(255,255,255,.35)">No sold comps returned.</div>')+'</div>';
+  const filterLine = Number(data.filteredOut||0) > 0
+    ? '<div style="margin:8px 0;color:rgba(255,255,255,.38);font-size:9px">Filtered '+Number(data.filteredOut||0)+' noisy result'+(Number(data.filteredOut||0)===1?'':'s')+' before charting. Median is the safest value.</div>'
+    : '<div style="margin:8px 0;color:rgba(255,255,255,.28);font-size:9px">Median is the safest value when sold comps are thin.</div>';
+  return '<div style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;margin-bottom:10px">'+cards+'</div>'+chart+filterLine+warnings+'<div style="margin-top:10px">'+(rows||'<div style="color:rgba(255,255,255,.35)">No sold comps returned.</div>')+'</div>';
 }
 window.openCompsChart = async function(id, preset) {
   const m=ensureCompsModal(), q=compsChartQueryFromBubble(id,preset);
@@ -6457,7 +6510,13 @@ window.openCompsChart = async function(id, preset) {
   m.style.display='flex';
   if(!q){ document.getElementById('comps-modal-body').innerHTML='<div style="color:#ff4d6d">No usable item name was found for comps.</div>'; return; }
   try{
-    const res=await fetch(WORKER_URL + '/comps/sold?' + new URLSearchParams({q,limit:50}).toString());
+    const mode = /\b(psa|bgs|cgc|sgc)\s*(10|9\.5|9|8|8\.5|7|6|5|4|3|2|1|a)\b/i.test(q) ? 'graded'
+      : /\b(raw|ungraded)\b/i.test(q) ? 'raw'
+      : /\b(sealed|box|pack|tin|case|booster|blaster|mega|hobby|etb)\b/i.test(q) ? 'sealed'
+      : '';
+    const params = new URLSearchParams({q,limit:50});
+    if(mode) params.set('mode', mode);
+    const res=await fetch(WORKER_URL + '/comps/sold?' + params.toString());
     const data=await res.json();
     if(!data.ok) throw new Error(data.error || 'sold comps failed');
     document.getElementById('comps-modal-body').innerHTML=renderCompsChart(data);

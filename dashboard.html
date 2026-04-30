@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="2026.04.30.4">
+<meta name="version" content="2026.04.30.5">
 <title>Walk-Off Dashboard</title>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -937,7 +937,7 @@ tr.sold:hover td{opacity:.7;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.04.30.4';
+const APP_VERSION = '2026.04.30.5';
 const STORE_ID = 'walkoff-main';
 const REGISTER_ID = 'front';
 const WF_PRODUCTS = '65eb45a28ff6bf3fe4f17b14';
@@ -1766,17 +1766,32 @@ function getScanPriceSource(scan){
 }
 
 function scanToBuyItem(scan){
+  const categoryText = scan.category || scan.game || 'TCG';
+  const isSealed = !!scan.is_sealed || /sealed|box|pack|tin|case|booster|blaster|mega|hobby|elite trainer|etb/i.test([categoryText, scan.name, scan.set, scan.configuration, scan.product_line].filter(Boolean).join(' '));
   return {
     id: 'bl_scan_' + (scan.id || Date.now()) + '_' + Math.random().toString(36).slice(2,5),
     scanId: scan.id || null,
     name: scan.name || scan.player || 'Phone scan',
     market: getScanMarket(scan),
     condition: scan.condition || 'NM',
-    category: scan.category || scan.game || 'TCG',
+    category: isSealed ? 'Sealed' : categoryText,
     set: scan.set || scan.set_name || '',
     variant: scan.variant || scan.parallel || '',
     year: scan.year || '',
     card_number: scan.card_number || scan.cardNumber || '',
+    serial_number: scan.serial_number || '',
+    player: scan.player || '',
+    team: scan.team || '',
+    manufacturer: scan.manufacturer || '',
+    product_line: scan.product_line || '',
+    configuration: scan.configuration || '',
+    upc: scan.upc || '',
+    grading_company: scan.grading_company || scan.grader || '',
+    grade: scan.grade || '',
+    cert_number: scan.cert_number || '',
+    issue: scan.issue || '',
+    publisher: scan.publisher || '',
+    is_sealed: isSealed,
     imageUrl: getScanImageUrl(scan),
     priceSource: getScanPriceSource(scan),
     scan
@@ -3595,8 +3610,8 @@ function buyItemToInventoryUpdates(item){
   const cost = Math.round(Number(item.market || 0) * pct * 100) / 100;
   return {
     name:item.name,
-    category:item.category === 'Pokemon TCG' ? 'TCG' : (item.category || 'TCG'),
-    set:item.set || '',
+    category:item.category === 'Pokemon TCG' ? 'TCG' : (item.category === 'Sealed' ? 'TCG' : (item.category || 'TCG')),
+    set:item.set || item.product_line || '',
     variant:item.variant || '',
     year:item.year || '',
     condition:item.condition || 'NM',
@@ -3604,9 +3619,21 @@ function buyItemToInventoryUpdates(item){
     cost,
     priceSource:item.priceSource || getScanPriceSource(item.scan) || 'manual',
     card_number:item.card_number || '',
+    serial_number:item.serial_number || '',
+    player:item.player || '',
+    team:item.team || '',
+    manufacturer:item.manufacturer || '',
+    publisher:item.publisher || '',
+    issue:item.issue || '',
+    grading_company:item.grading_company || '',
+    grade:item.grade || '',
+    cert_number:item.cert_number || '',
     location:getShowMode()?.eventName ? 'Show buy - ' + getShowMode().eventName : 'Buy/trade intake',
     key_notes:[
       'Buy/trade intake',
+      item.is_sealed ? 'Sealed product' : '',
+      item.configuration ? 'Configuration: ' + item.configuration : '',
+      item.upc ? 'UPC: ' + item.upc : '',
       'Offer cost: $' + cost.toFixed(2),
       item.priceSource ? 'Price source: ' + priceSourceInfo(item.priceSource, item.category).label : '',
       document.getElementById('bl-customer')?.value.trim() ? 'Customer: ' + document.getElementById('bl-customer').value.trim() : '',

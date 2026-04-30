@@ -299,11 +299,13 @@ function compTokens(s) {
 function compQualityScore(comp, query, mode = '') {
   const title = String(comp.title || '').toLowerCase();
   const q = String(query || '').toLowerCase();
-  const bad = /\b(lot|bundle|pick|choose|custom|proxy|orica|reprint|digital|box|booster|pack|packs|break|case|empty|wrapper)\b/i;
+  const isSealedQuery = /\b(sealed|pack|box|booster|case|tin|etb|elite trainer|bundle|blaster|mega|hobby)\b/i.test(q) || mode === 'sealed';
+  const bad = /\b(lot|bundle|pick|choose|custom|proxy|orica|reprint|replica|facsimile|digital|box|booster|pack|packs|break|case|empty|wrapper|label|stand|display)\b/i;
   let score = 0;
-  if (bad.test(title) && !/\b(sealed|pack|box|booster|case)\b/i.test(q)) return -999;
+  if (bad.test(title) && !isSealedQuery) return -999;
+  if (!isSealedQuery && /\b(unopened|factory sealed|wax|hobby box|blaster box|booster box|booster pack|mega box|etb)\b/i.test(title)) return -999;
   const wanted = compTokens(q)
-    .filter(t => !['raw', 'sold', 'psa', 'bgs', 'cgc', 'sgc'].includes(t));
+    .filter(t => !['raw', 'sold', 'psa', 'bgs', 'cgc', 'sgc', 'ungraded'].includes(t));
   for (const t of wanted) if (title.includes(t)) score += 8;
   if (wanted.length && wanted.every(t => title.includes(t))) score += 18;
   const wantsGrade = (q.match(/\b(psa|bgs|cgc|sgc)\s*(10|9\.5|9|8|8\.5|7|6|5|4|3|2|1|a)\b/i) || [])[0];
@@ -314,8 +316,9 @@ function compQualityScore(comp, query, mode = '') {
     else score -= 18;
     const wantedCompany = (wantsGrade.match(/\b(psa|bgs|cgc|sgc)\b/i) || [])[1]?.toLowerCase();
     const wantedGrade = (wantsGrade.match(/\b(10|9\.5|9|8|8\.5|7|6|5|4|3|2|1|a)\b/i) || [])[1];
-    const actualGrade = normalizedTitle.match(new RegExp('\\\\b' + wantedCompany + '\\\\s*(10|9\\\\.5|9|8\\\\.5|8|7|6|5|4|3|2|1|a)\\\\b', 'i'))?.[1];
+    const actualGrade = normalizedTitle.match(new RegExp('\\b' + wantedCompany + '\\s*(10|9\\.5|9|8\\.5|8|7|6|5|4|3|2|1|a)\\b', 'i'))?.[1];
     if (wantedCompany && wantedGrade && actualGrade && actualGrade !== wantedGrade) score -= 70;
+    if (wantedCompany && wantedGrade && !actualGrade) return -999;
   }
   if (mode === 'raw') {
     if (/\b(psa|bgs|cgc|sgc)\b/i.test(title)) score -= 35;
@@ -329,16 +332,28 @@ function filterSoldComps(comps, query, mode = '') {
   const scored = comps
     .map(c => ({ ...c, qualityScore: compQualityScore(c, query, mode) }))
     .filter(c => c.qualityScore > 0);
-  const values = scored.map(c => Number(c.total || c.price || 0)).filter(v => v > 0).sort((a, b) => a - b);
+  const deduped = [];
+  const seen = new Set();
+  for (const c of scored) {
+    const key = [
+      String(c.url || '').split('?')[0],
+      String(c.title || '').toLowerCase().replace(/\s+/g, ' ').slice(0, 120),
+      Number(c.total || c.price || 0).toFixed(2),
+    ].join('|');
+    if (seen.has(key)) continue;
+    seen.add(key);
+    deduped.push(c);
+  }
+  const values = deduped.map(c => Number(c.total || c.price || 0)).filter(v => v > 0).sort((a, b) => a - b);
   if (values.length >= 5) {
     const q1 = values[Math.floor(values.length * 0.25)];
     const q3 = values[Math.floor(values.length * 0.75)];
     const iqr = Math.max(1, q3 - q1);
     const low = Math.max(0, q1 - iqr * 1.75);
     const high = q3 + iqr * 1.75;
-    return scored.filter(c => Number(c.total || c.price || 0) >= low && Number(c.total || c.price || 0) <= high);
+    return deduped.filter(c => Number(c.total || c.price || 0) >= low && Number(c.total || c.price || 0) <= high);
   }
-  return scored;
+  return deduped;
 }
 
 async function fetchEbaySoldComps(env, query, limit = 40) {
