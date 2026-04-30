@@ -3,7 +3,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="version" content="2026.04.30.1">
+<meta name="version" content="2026.04.30.2">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>LBA Scanner</title>
@@ -400,7 +400,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
   <div class="hbtns">
     <span id="show-badge" style="font-family:monospace;font-size:9px;color:rgba(255,209,102,.7);letter-spacing:1px"></span>
     <span id="offline-sync-badge" style="font-family:monospace;font-size:9px;color:rgba(255,255,255,.35);letter-spacing:1px">online</span>
-    <span id="app-version" style="font-family:monospace;font-size:9px;color:rgba(0,255,179,.55);letter-spacing:1px">v2026.04.29.13</span>
+    <span id="app-version" style="font-family:monospace;font-size:9px;color:rgba(0,255,179,.55);letter-spacing:1px">v2026.04.30.2</span>
     <span id="hstatus">READY</span>
     <button class="hbtn" id="flipbtn" onclick="toggleFlip()">FLIP</button>
     <button class="hbtn" id="bulkbtn" onclick="toggleBulk()">BULK</button>
@@ -546,6 +546,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
   </div>
   <div class="bulk-actions">
     <button class="bulk-btn primary" onclick="copyBulkOffer()">COPY OFFER</button>
+    <button class="bulk-btn primary" onclick="sendBulkOfferToTablet()">SEND TO TABLET</button>
     <button class="bulk-btn secondary" onclick="clearBulk()">CLEAR LIST</button>
   </div>
 </div>
@@ -578,7 +579,7 @@ const STORE = {
   wf_status_instock:'f3769d1e15fa0956f98984d6fa36437f',
   wf_status_sold:   'e6b42f14fcb99aa2168a5f5672226f68',
 };
-const APP_VERSION = '2026.04.30.1';
+const APP_VERSION = '2026.04.30.2';
 const WORKER_URL = STORE.worker_url;
 
 function slugifyId(value, fallback) {
@@ -733,8 +734,12 @@ const AFF = {
     if(!url) return null;
     const condMap = {'NM':'Near Mint','LP':'Lightly Played','MP':'Moderately Played','HP':'Heavily Played','DMG':'Damaged'};
     const tcgCond = condMap[cond || 'NM'] || 'Near Mint';
-    const inner = url + (url.includes('?') ? '&' : '?') + 'Condition=' + encodeURIComponent(tcgCond) + '&condition=' + encodeURIComponent(tcgCond);
-    return this.tcg(inner) || inner;
+    const inner = url + (url.includes('?') ? '&' : '?') +
+      'Condition=' + encodeURIComponent(tcgCond) +
+      '&condition=' + encodeURIComponent(tcgCond) +
+      '&Language=' + encodeURIComponent('English') +
+      '&Printing=' + encodeURIComponent('Normal');
+    return inner;
   },
 
   // Build an eBay sold search URL with affiliate params
@@ -3209,6 +3214,39 @@ TOTAL OFFER: ${offer}`;
   navigator.clipboard?.writeText(text).then(()=>toast('Offer copied!')).catch(()=>toast('Copy failed'));
 };
 
+window.sendBulkOfferToTablet = async function(){
+  if(!bulkItems.length) return toast('Bulk list is empty');
+  try {
+    const queue = await readScanHandoffQueue();
+    const now = Date.now();
+    bulkItems.forEach((i, idx) => {
+      queue.unshift({
+        id: 'bulk_buy_' + now + '_' + idx,
+        sentAt: new Date().toISOString(),
+        source: 'bulk-buy-phone',
+        appVersion: APP_VERSION,
+        show: getShowContext(),
+        category: i.category || (String(i.game||'').includes('Comic') ? 'Comic' : 'TCG'),
+        name: i.name || 'Bulk scan item',
+        year: i.year || '',
+        set: i.set || i.set_name || '',
+        variant: i.parallel || i.variant || '',
+        card_number: i.card_number || '',
+        condition: i.condition || 'NM',
+        price: Number(i.market_nm || i.market || i.price || 0),
+        priceSource: i.priceSource || 'bulk_ai_estimate',
+        confidence: i.confidence || 'medium',
+        confidence_reason: i.confidence_reason || 'bulk buy scan',
+        search_query: i.search_query || [i.name, i.year, i.set || i.set_name].filter(Boolean).join(' '),
+      });
+    });
+    await writeScanHandoffQueue(queue);
+    toast('Sent '+bulkItems.length+' bulk items to tablet');
+  } catch(e) {
+    toast('Tablet send failed: ' + e.message);
+  }
+};
+
 function getType(item){
   const g = (item.game||'').toLowerCase();
   const gr = (item.grading_company||'').toLowerCase();
@@ -3362,11 +3400,11 @@ function addBubble(item,stock,imgUrl,apiPrintings,bestMatchIdx){
     const qBase=[item.player||item.name, item.year, item.set_name].filter(Boolean).join(' ');
     const qBest = item.search_query || qFull;
     actLinks=`
-      ${qSerial?`<a class="bact a-ebay" style="background:rgba(255,77,109,.12);border-color:rgba(255,77,109,.4);color:#ff4d6d;font-weight:700" href="${AFF.ebaySearch(qSerial)}" target="_blank">🔢 Serial ${item.serial_number} Sold ↗</a>`:''}
-      <a class="bact a-ebay" href="${AFF.ebaySearch(qBest)}" target="_blank">eBay Sold ↗</a>
-      <a class="bact a-ebay" style="background:rgba(72,202,228,.08);color:var(--blue);border-color:rgba(72,202,228,.2)" href="${AFF.ebayActive(qBest)}" target="_blank">eBay Active ↗</a>
-      <a class="bact" style="background:rgba(0,180,255,.08);color:#00b4ff;border:1px solid rgba(0,180,255,.25);font-size:8px" href="https://www.google.com/search?q=${encodeURIComponent('site:beckett.com/price-guides ' + qFull)}" target="_blank">📊 Beckett ↗</a>
-      <a class="bact a-ebay" style="background:rgba(255,255,255,.04);color:rgba(255,255,255,.4);border-color:rgba(255,255,255,.08);font-size:8px" href="${AFF.ebaySearch(qBase)}" target="_blank">Broader ↗</a>`;
+      ${qSerial?`<a class="bact a-ebay" style="background:rgba(255,77,109,.12);border-color:rgba(255,77,109,.4);color:#ff4d6d;font-weight:700" href="${AFF.ebaySearch(qSerial)}" target="_blank">Serial ${item.serial_number} Sold</a>`:''}
+      <a class="bact a-ebay" href="${AFF.ebaySearch(qBest)}" target="_blank">eBay Sold</a>
+      <a class="bact a-ebay" style="background:rgba(72,202,228,.08);color:var(--blue);border-color:rgba(72,202,228,.2)" href="${AFF.ebayActive(qBest)}" target="_blank">eBay Active</a>
+      <a class="bact" style="background:rgba(0,180,255,.08);color:#00b4ff;border:1px solid rgba(0,180,255,.25);font-size:8px" href="https://130point.com/sales/?q=${encodeURIComponent(qBest)}" target="_blank">130pt Sold</a>
+      <a class="bact a-ebay" style="background:rgba(255,255,255,.04);color:rgba(255,255,255,.4);border-color:rgba(255,255,255,.08);font-size:8px" href="${AFF.ebaySearch(qBase)}" target="_blank">Broader</a>`;
   }
   else if(ct==='comic'){
     const qgc=encodeURIComponent((item.name||'')+' '+(item.issue||''));
@@ -3555,7 +3593,7 @@ function addBubble(item,stock,imgUrl,apiPrintings,bestMatchIdx){
     <div class="bacts" id="acts${id}">
       ${actLinks}
       ${ct==='sports'?`<button class="bact" style="background:rgba(255,209,102,.06);border:1px solid rgba(255,209,102,.2);color:#ffd166;font-size:9px" onclick="scanBackForBubble('${id}')">⟳ SCAN BACK</button>`:''}
-      ${ct==='tcg'?`<button class="bact" style="background:rgba(0,255,179,.06);border:1px solid rgba(0,255,179,.2);color:var(--g);font-size:9px" onclick="scanBackForBubble('${id}')">⟳ SCAN BACK</button>`:''}
+      ${ct==='tcg'?'' : ''}
       ${ct==='comic'?`<button class="bact" style="background:rgba(199,125,255,.06);border:1px solid rgba(199,125,255,.2);color:var(--purple);font-size:9px" onclick="scanBackForBubble('${id}')">⟳ SCAN BACK</button>`:''}
       ${ct==='comic'?`<button class="bact" style="background:rgba(199,125,255,.06);border:1px solid rgba(199,125,255,.2);color:var(--purple);font-size:9px" onclick="openVariantSearch('${id}')">Browse Covers</button>`:''}
       <button class="bact" style="background:rgba(0,255,179,.1);border:1px solid rgba(0,255,179,.3);color:var(--g);font-weight:700" onclick="addBubbleToCart('${id}')">🛒 Add to Cart</button>

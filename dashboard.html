@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="2026.04.30.1">
+<meta name="version" content="2026.04.30.2">
 <title>Walk-Off Dashboard</title>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -937,7 +937,7 @@ tr.sold:hover td{opacity:.7;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.04.30.1';
+const APP_VERSION = '2026.04.30.2';
 const STORE_ID = 'walkoff-main';
 const REGISTER_ID = 'front';
 const WF_PRODUCTS = '65eb45a28ff6bf3fe4f17b14';
@@ -1260,12 +1260,17 @@ function mapItem(i, skuMap){
     isRookie:f.is_rookie||false,
     is_rookie:f.is_rookie||false,
     grader:f.grader||'', grade:f.grade||'',
+    cert_number:f['cert-number']||f.cert_number||'',
     tags:f.tags||'',
     thumbnail:f.thumbnail?.url||null,
     location:f.location||'',
     player:f['player-card-name']||f.player||'',
     team:f.team||'',
     sport:f.sport||'',
+    manufacturer:f.manufacturer||f.brand||'',
+    product_line:f['product-line']||f.product_line||'',
+    configuration:f.configuration||'',
+    upc:f.upc||f.ean||'',
     issue:f.issue||'',
     publisher:f.publisher||'',
     card_number:f['card-number']||f.card_number||'',
@@ -1895,11 +1900,13 @@ function openEbayFromDash(id){
   const condText = condLabelMap[item.condition] || item.condition || '';
   const lowerName = String(item.name||'').toLowerCase();
   const isSealed = /box|blaster|mega|hobby|pack|case|tin|sealed/.test(lowerName);
+  const inferManufacturer = item.manufacturer || (lowerName.includes('panini') ? 'Panini' : lowerName.includes('upper deck') ? 'Upper Deck' : lowerName.includes('bowman') ? 'Bowman' : lowerName.includes('topps') ? 'Topps' : lowerName.includes('pokemon') ? 'Pokemon' : lowerName.includes('magic') ? 'Wizards of the Coast' : '');
+  const inferConfig = item.configuration || (lowerName.includes('hobby') ? 'Hobby Box' : lowerName.includes('blaster') ? 'Blaster Box' : lowerName.includes('mega') ? 'Mega Box' : lowerName.includes('booster') ? 'Booster Box' : lowerName.includes('etb') || lowerName.includes('elite trainer') ? 'Elite Trainer Box' : lowerName.includes('tin') ? 'Tin' : lowerName.includes('pack') ? 'Pack' : '');
   const cat = item.category || 'Sports';
   const isComic = cat === 'Comic';
   const isTCG = cat === 'TCG';
   const isGraded = cat === 'Graded' || item.grader || item.grade;
-  const catId = isComic ? '259104' : isTCG ? '183454' : '261328';
+  const catId = isComic ? '259104' : (isSealed && cat === 'Sports') ? '261329' : isTCG ? '183454' : '261328';
   const conditionId = isGraded ? '2750' : '3000';
   const title = [item.year && !lowerName.includes(String(item.year)) ? item.year : null,item.name,item.set && !lowerName.includes(String(item.set).toLowerCase()) ? item.set : null,item.variant,item.card_number?'#'+item.card_number:null,isGraded?[item.grader,item.grade].filter(Boolean).join(' '):null,item.isRookie?'RC':null]
     .filter(Boolean).join(' ').replace(/\s+/g,' ').substring(0,80);
@@ -1956,7 +1963,7 @@ function openEbayFromDash(id){
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
           <div><label style="font-family:monospace;font-size:8px;color:var(--dim)">CUSTOM CATEGORY ID</label><input id="dash-eb-category-id" value="${catId}" style="width:100%;margin-top:3px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:7px;border-radius:6px;box-sizing:border-box"></div>
           <div><label style="font-family:monospace;font-size:8px;color:var(--dim)">PRODUCT TYPE</label><select id="dash-eb-product-type" style="width:100%;margin-top:3px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:7px;border-radius:6px"><option value="single" ${!isSealed?'selected':''}>Single card/item</option><option value="sealed" ${isSealed?'selected':''}>Sealed box/pack</option><option value="lot">Lot</option><option value="comic">Comic</option></select></div>
-          <div><label style="font-family:monospace;font-size:8px;color:var(--dim)">BRAND / MANUFACTURER</label><input id="dash-eb-mfr" value="${esc(item.manufacturer || (isSealed ? 'Topps' : ''))}" style="width:100%;margin-top:3px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:7px;border-radius:6px;box-sizing:border-box"></div>
+          <div><label style="font-family:monospace;font-size:8px;color:var(--dim)">BRAND / MANUFACTURER</label><input id="dash-eb-mfr" value="${esc(inferManufacturer)}" style="width:100%;margin-top:3px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:7px;border-radius:6px;box-sizing:border-box"></div>
           <div><label style="font-family:monospace;font-size:8px;color:var(--dim)">SPORT / LEAGUE</label><input id="dash-eb-sport" value="${esc(item.sport || (cat==='Sports'?'Baseball':'') )}" placeholder="Baseball, Basketball, NFL, MLB..." style="width:100%;margin-top:3px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:7px;border-radius:6px;box-sizing:border-box"></div>
           <div><label style="font-family:monospace;font-size:8px;color:var(--dim)">PLAYER / ATHLETE</label><input id="dash-eb-player" value="${esc(item.player || '')}" style="width:100%;margin-top:3px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:7px;border-radius:6px;box-sizing:border-box"></div>
           <div><label style="font-family:monospace;font-size:8px;color:var(--dim)">TEAM</label><input id="dash-eb-team" value="${esc(item.team || '')}" style="width:100%;margin-top:3px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:7px;border-radius:6px;box-sizing:border-box"></div>
@@ -1964,7 +1971,8 @@ function openEbayFromDash(id){
           <div><label style="font-family:monospace;font-size:8px;color:var(--dim)">SET / SERIES</label><input id="dash-eb-set" value="${esc(item.set || '')}" style="width:100%;margin-top:3px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:7px;border-radius:6px;box-sizing:border-box"></div>
           <div><label style="font-family:monospace;font-size:8px;color:var(--dim)">PARALLEL / VARIETY</label><input id="dash-eb-parallel" value="${esc(item.variant || '')}" style="width:100%;margin-top:3px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:7px;border-radius:6px;box-sizing:border-box"></div>
           <div><label style="font-family:monospace;font-size:8px;color:var(--dim)">CARD # / ISSUE #</label><input id="dash-eb-cardnum" value="${esc(item.card_number || item.issue || '')}" style="width:100%;margin-top:3px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:7px;border-radius:6px;box-sizing:border-box"></div>
-          <div><label style="font-family:monospace;font-size:8px;color:var(--dim)">UPC / EAN</label><input id="dash-eb-upc" value="" placeholder="Does not apply or barcode" style="width:100%;margin-top:3px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:7px;border-radius:6px;box-sizing:border-box"></div>
+          <div><label style="font-family:monospace;font-size:8px;color:var(--dim)">UPC / EAN</label><input id="dash-eb-upc" value="${esc(item.upc || '')}" placeholder="Does not apply or barcode" style="width:100%;margin-top:3px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:7px;border-radius:6px;box-sizing:border-box"></div>
+          <div><label style="font-family:monospace;font-size:8px;color:var(--dim)">CONFIGURATION</label><input id="dash-eb-config" value="${esc(inferConfig)}" placeholder="Hobby Box, Blaster, Booster Box..." style="width:100%;margin-top:3px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:7px;border-radius:6px;box-sizing:border-box"></div>
           <div><label style="font-family:monospace;font-size:8px;color:var(--dim)">FEATURES</label><input id="dash-eb-features" value="${esc([item.isRookie?'Rookie':null,item.is_auto?'Autograph':null,isSealed?'Sealed':''].filter(Boolean).join(', '))}" placeholder="Rookie, Sealed, Insert, Autograph" style="width:100%;margin-top:3px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:7px;border-radius:6px;box-sizing:border-box"></div>
           <div><label style="font-family:monospace;font-size:8px;color:var(--dim)">GRADER</label><input id="dash-eb-grader" value="${esc(item.grader || '')}" placeholder="PSA, BGS, CGC..." style="width:100%;margin-top:3px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:7px;border-radius:6px;box-sizing:border-box"></div>
           <div><label style="font-family:monospace;font-size:8px;color:var(--dim)">GRADE / CERT</label><input id="dash-eb-grade" value="${esc([item.grade,item.cert_number].filter(Boolean).join(' Cert '))}" style="width:100%;margin-top:3px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:7px;border-radius:6px;box-sizing:border-box"></div>
@@ -2018,9 +2026,10 @@ async function submitDashboardEbayListing(id){
     upc:document.getElementById('dash-eb-upc')?.value.trim() || '',
     features:document.getElementById('dash-eb-features')?.value.trim() || '',
     productType:document.getElementById('dash-eb-product-type')?.value || '',
+    configuration:document.getElementById('dash-eb-config')?.value.trim() || '',
     customAspects:{
       'Product':document.getElementById('dash-eb-product-type')?.value === 'sealed' ? 'Box' : '',
-      'Configuration':document.getElementById('dash-eb-product-type')?.value === 'sealed' ? 'Box' : '',
+      'Configuration':document.getElementById('dash-eb-config')?.value.trim() || (document.getElementById('dash-eb-product-type')?.value === 'sealed' ? 'Box' : ''),
       'Card Size':'Standard',
       'Language':'English',
     },
@@ -2622,7 +2631,6 @@ async function createWebflowProduct(item, updates) {
             year: String(updates.year||item.year||''),
             variant: updates.variant||item.variant||'',
             'card-number': updates.card_number||item.card_number||'',
-            'price-source': updates.priceSource || item.priceSource || '',
             msrp: Math.round(updates.market||0),
           }
         },
@@ -2636,7 +2644,11 @@ async function createWebflowProduct(item, updates) {
         }
       })
     });
-    if(!res.ok) return null;
+    if(!res.ok) {
+      const errTxt = await res.text().catch(() => '');
+      console.warn('Webflow product create failed', res.status, errTxt.slice(0, 300));
+      return null;
+    }
     const data = await res.json();
     const productId = data.product?.id || data.id;
     if(!productId) return null;
@@ -2650,7 +2662,6 @@ async function createWebflowProduct(item, updates) {
         'card-condition': updates.condition||item.condition||'NM',
         variant: updates.variant||item.variant||'',
         'card-number': updates.card_number||item.card_number||'',
-        'price-source': updates.priceSource || item.priceSource || '',
         'cost-basis': Number(updates.cost||0),
         location: updates.location||'',
         'card-description': updates.key_notes||'',
