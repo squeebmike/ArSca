@@ -225,16 +225,17 @@ function compMoneyValue(v) {
 function normalizeSoldComp(raw, source) {
   if (!raw || typeof raw !== 'object') return null;
   const price = compMoneyValue(raw.price || raw.soldPrice || raw.sold_price || raw.salePrice || raw.amount || raw.currentPrice || raw.sellingStatus?.[0]?.currentPrice?.[0]?.['__value__']);
-  const shipping = compMoneyValue(raw.shipping || raw.shippingCost || raw.shipping_cost || raw.shippingInfo?.[0]?.shippingServiceCost?.[0]?.['__value__']);
+  const shipping = compMoneyValue(raw.shipping || raw.shippingPrice || raw.shippingCost || raw.shipping_cost || raw.shippingInfo?.[0]?.shippingServiceCost?.[0]?.['__value__']);
   const total = compMoneyValue(raw.total || raw.totalPrice || raw.total_price) || price + shipping;
   if (!price && !total) return null;
-  const soldAt = raw.soldAt || raw.sold_at || raw.endTime || raw.end_time || raw.date || raw.timestamp || raw.listingEndedAt || raw.listingInfo?.[0]?.endTime?.[0] || null;
+  const soldAt = raw.soldAt || raw.sold_at || raw.endedAt || raw.endTime || raw.end_time || raw.date || raw.timestamp || raw.listingEndedAt || raw.listingInfo?.[0]?.endTime?.[0] || null;
   return {
     title: String(raw.title || raw.name || raw.itemTitle || raw.item_title || 'Sold comp').trim(),
     price: Math.round(price * 100) / 100,
     shipping: Math.round(shipping * 100) / 100,
     total: Math.round((total || price) * 100) / 100,
     soldAt,
+    currency: raw.soldCurrency || raw.currency || 'USD',
     condition: raw.condition || raw.conditionDisplayName || raw.condition_name || null,
     url: raw.url || raw.itemUrl || raw.item_url || raw.viewItemURL?.[0] || raw.webUrl || null,
     imageUrl: raw.imageUrl || raw.image_url || raw.thumbnail || raw.galleryURL?.[0] || raw.image?.imageUrl || null,
@@ -315,9 +316,13 @@ async function fetchEbaySoldComps(env, query, limit = 40) {
 
 async function fetchSoldCompsProvider(env, query, limit = 40) {
   if (!env.SOLDCOMPS_API_KEY) return { source: 'none', comps: [], warning: 'SOLDCOMPS_API_KEY not set' };
-  const base = (env.SOLDCOMPS_BASE || 'https://api.soldcomps.com').replace(/\/+$/, '');
-  const qs = `q=${encodeURIComponent(query)}&query=${encodeURIComponent(query)}&limit=${Math.min(100, Math.max(10, limit))}`;
+  const base = (env.SOLDCOMPS_BASE || 'https://sold-comps.com').replace(/\/+$/, '');
+  const maxResults = Math.min(240, Math.max(10, limit));
+  const keyword = encodeURIComponent(query);
+  const qs = `q=${keyword}&query=${keyword}&keyword=${keyword}&limit=${maxResults}`;
   const urls = [
+    `${base}/v1/scrape?keyword=${keyword}&limit=${maxResults}`,
+    `${base}/api/v1/scrape?keyword=${keyword}&limit=${maxResults}`,
     `${base}/v1/search?${qs}`,
     `${base}/search?${qs}`,
     `${base}/api/search?${qs}`,
@@ -330,6 +335,8 @@ async function fetchSoldCompsProvider(env, query, limit = 40) {
         headers: {
           'Authorization': 'Bearer ' + env.SOLDCOMPS_API_KEY,
           'x-api-key': env.SOLDCOMPS_API_KEY,
+          'X-API-Key': env.SOLDCOMPS_API_KEY,
+          'api-key': env.SOLDCOMPS_API_KEY,
           'Accept': 'application/json',
         },
       });
