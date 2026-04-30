@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.04.30.10">
+<meta name="version" content="2026.04.30.11">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -420,7 +420,7 @@ tr.sold:hover td{opacity:.7;}
 <div id="tab-pos" class="tab-panel">
   <div class="sec">POS TOOLS</div>
 
-  <div class="panel" style="margin-top:4px;margin-bottom:14px">
+  <div class="panel" id="register-show-panel" style="margin-top:4px;margin-bottom:14px">
     <div class="ph">SHOW MODE <span id="show-mode-status" style="font-size:9px;color:var(--dim)">not started</span></div>
     <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:8px;margin-bottom:10px">
       <input class="tsi" id="show-event-name" placeholder="Tacoma Mall Show" style="margin-bottom:0">
@@ -437,7 +437,7 @@ tr.sold:hover td{opacity:.7;}
     </div>
   </div>
 
-  <div class="panel" style="margin-top:4px;margin-bottom:14px">
+  <div class="panel" id="register-scan-panel" style="margin-top:4px;margin-bottom:14px">
     <div class="ph">PHONE SCANNER INBOX <span id="scan-inbox-count" style="font-size:9px;color:var(--dim)">waiting for scans</span></div>
     <div style="font-family:monospace,monospace;font-size:10px;color:var(--dim);margin-bottom:10px">
       Send a scan from the phone, then add it to a sale cart, a buy offer, or inventory intake.
@@ -452,7 +452,7 @@ tr.sold:hover td{opacity:.7;}
     </div>
   </div>
 
-  <div class="panel" style="margin-top:4px;margin-bottom:14px">
+  <div class="panel" id="backoffice-ebay-panel" style="margin-top:4px;margin-bottom:14px">
     <div class="ph">EBAY CONNECTION <span id="ebay-oauth-status" style="font-size:9px;color:var(--dim)">checking...</span></div>
     <div style="font-family:monospace,monospace;font-size:10px;color:var(--dim);margin-bottom:10px;line-height:1.55">
       Listing inventory needs an eBay seller refresh token. App credentials are stored in the Worker; connect once here after the RuName is set.
@@ -464,7 +464,7 @@ tr.sold:hover td{opacity:.7;}
     </div>
   </div>
 
-  <div class="panel" style="margin-top:4px;margin-bottom:14px">
+  <div class="panel" id="backoffice-system-panel" style="margin-top:4px;margin-bottom:14px">
     <div class="ph">SYSTEM / BACKUP <span id="system-health-status" style="font-size:9px;color:var(--dim)">ready</span></div>
     <div style="font-family:monospace,monospace;font-size:10px;color:var(--dim);margin-bottom:10px;line-height:1.55">
       Run a quick pre-show check, export a support bundle, or make a local backup before a busy event.
@@ -479,7 +479,7 @@ tr.sold:hover td{opacity:.7;}
     <div id="system-health-output" style="font-family:monospace,monospace;font-size:10px;color:var(--dim);display:grid;gap:6px"></div>
   </div>
 
-  <div class="panel" style="margin-top:4px;margin-bottom:14px">
+  <div class="panel" id="backoffice-ops-panel" style="margin-top:4px;margin-bottom:14px">
     <div class="ph">OPERATIONS LOG <span id="ops-log-count" style="font-size:9px;color:var(--dim)">0 events</span></div>
     <div style="font-family:monospace,monospace;font-size:10px;color:var(--dim);margin-bottom:10px;line-height:1.55">
       A show-safe audit trail for inventory adds, eBay listings, system checks, backups, and imports.
@@ -493,7 +493,7 @@ tr.sold:hover td{opacity:.7;}
   </div>
 
   <!-- Row 1: Quick Price Lookup + Cash Drawer -->
-  <div class="two" style="margin-top:4px">
+  <div class="two" id="register-lookup-drawer-row" style="margin-top:4px">
 
     <!-- QUICK PRICE LOOKUP -->
     <div class="panel">
@@ -556,7 +556,7 @@ tr.sold:hover td{opacity:.7;}
   </div>
 
   <!-- Row 2: Buy List / Trade-In + End of Day Report -->
-  <div class="two">
+  <div class="two" id="register-buy-eod-row">
 
     <!-- BUY LIST / TRADE-IN -->
     <div class="panel">
@@ -614,7 +614,7 @@ tr.sold:hover td{opacity:.7;}
     </div>
 
     <!-- TCGPlayer Mass Price Sync -->
-    <div class="panel" style="margin-top:14px;margin-left:20px;margin-right:20px;max-width:calc(1400px - 40px);margin-left:auto;margin-right:auto">
+    <div class="panel" id="backoffice-tcg-sync-panel" style="margin-top:14px;margin-left:20px;margin-right:20px;max-width:calc(1400px - 40px);margin-left:auto;margin-right:auto">
       <div class="ph">🔄 TCGPLAYER MASS PRICE SYNC <span style="font-size:8px;color:var(--dim)">Updates Webflow prices based on condition</span></div>
       <div style="font-family:monospace;font-size:10px;color:var(--dim);margin-bottom:10px;line-height:1.6">
         Pokemon cards use PokemonTCG.io market data as the TCGPlayer-backed source and update Webflow by stored condition.
@@ -646,6 +646,12 @@ tr.sold:hover td{opacity:.7;}
     </div>
 
   </div>
+</div>
+
+<!-- BACK OFFICE TAB -->
+<div id="tab-backoffice" class="tab-panel">
+  <div class="sec">BACK OFFICE</div>
+  <div id="backoffice-panels" style="max-width:1400px;margin:0 auto;padding:0 20px"></div>
 </div>
 
 <!-- CUSTOMER DISPLAY TAB -->
@@ -983,7 +989,7 @@ tr.sold:hover td{opacity:.7;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.04.30.10';
+const APP_VERSION = '2026.04.30.11';
 const STORE_ID = 'walkoff-main';
 const REGISTER_ID = 'front';
 const WF_PRODUCTS = '65eb45a28ff6bf3fe4f17b14';
@@ -1004,12 +1010,13 @@ const PER=50; let page=1;
 const DAILY_TABS = [
   ['overview', 'OVERVIEW'],
   ['inventory', 'INVENTORY'],
-  ['pos', 'POS TOOLS'],
+  ['pos', 'REGISTER'],
   ['sales', 'SALES'],
   ['alerts', 'ALERTS'],
 ];
 const MORE_TABS = [
   ['display', 'CUSTOMER DISPLAY'],
+  ['backoffice', 'BACK OFFICE'],
   ['wantlist', 'WANT LIST'],
   ['consign', 'CONSIGNMENT'],
   ['locations', 'LOCATIONS'],
@@ -1029,6 +1036,8 @@ const LIFECYCLE_LABELS = {
 function setupAppShell(){
   const logo = document.querySelector('.logo span');
   if(logo) logo.textContent = 'DASHBOARD · v' + APP_VERSION;
+  const posSec = document.querySelector('#tab-pos .sec');
+  if(posSec) posSec.textContent = 'REGISTER';
 
   const tabs = document.querySelector('.tabs');
   if(tabs) {
@@ -1079,7 +1088,29 @@ function setupAppShell(){
     document.head.appendChild(link);
   }
   link.href = 'data:application/manifest+json,' + encodeURIComponent(JSON.stringify(manifest));
+  organizeRegisterLayout();
   maybeShowInstallHint();
+}
+
+function moveNode(id, target){
+  const el = document.getElementById(id);
+  if(el && target && el.parentElement !== target) target.appendChild(el);
+}
+
+function organizeRegisterLayout(){
+  const register = document.getElementById('tab-pos');
+  const backoffice = document.getElementById('backoffice-panels');
+  if(!register || !backoffice) return;
+
+  moveNode('register-show-panel', register);
+  moveNode('register-lookup-drawer-row', register);
+  moveNode('register-scan-panel', register);
+  moveNode('register-buy-eod-row', register);
+
+  moveNode('backoffice-ebay-panel', backoffice);
+  moveNode('backoffice-system-panel', backoffice);
+  moveNode('backoffice-ops-panel', backoffice);
+  moveNode('backoffice-tcg-sync-panel', backoffice);
 }
 
 function toggleMoreMenu(event){
@@ -3030,6 +3061,10 @@ switchTab = function(tab, btn){
   if(tab==='restock') renderRestock();
   if(tab==='pos') {
     renderScanInbox();
+    renderOpsLog();
+  }
+  if(tab==='backoffice') {
+    refreshEbayStatus();
     renderOpsLog();
   }
 };
