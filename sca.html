@@ -3,7 +3,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="version" content="2026.04.30.3">
+<meta name="version" content="2026.04.30.4">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>LBA Scanner</title>
@@ -400,7 +400,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
   <div class="hbtns">
     <span id="show-badge" style="font-family:monospace;font-size:9px;color:rgba(255,209,102,.7);letter-spacing:1px"></span>
     <span id="offline-sync-badge" style="font-family:monospace;font-size:9px;color:rgba(255,255,255,.35);letter-spacing:1px">online</span>
-    <span id="app-version" style="font-family:monospace;font-size:9px;color:rgba(0,255,179,.55);letter-spacing:1px">v2026.04.30.3</span>
+    <span id="app-version" style="font-family:monospace;font-size:9px;color:rgba(0,255,179,.55);letter-spacing:1px">v2026.04.30.4</span>
     <span id="hstatus">READY</span>
     <button class="hbtn" id="flipbtn" onclick="toggleFlip()">FLIP</button>
     <button class="hbtn" id="bulkbtn" onclick="toggleBulk()">BULK</button>
@@ -579,7 +579,7 @@ const STORE = {
   wf_status_instock:'f3769d1e15fa0956f98984d6fa36437f',
   wf_status_sold:   'e6b42f14fcb99aa2168a5f5672226f68',
 };
-const APP_VERSION = '2026.04.30.3';
+const APP_VERSION = '2026.04.30.4';
 const WORKER_URL = STORE.worker_url;
 
 function slugifyId(value, fallback) {
@@ -3587,7 +3587,7 @@ function addBubble(item,stock,imgUrl,apiPrintings,bestMatchIdx){
   const slabToggleBtn = showSlabToggle
     ? `<button class="bact" id="slab-tog-${id}" onclick="toggleSlabPanel('${id}')"
         style="background:${isSlab?'rgba(255,209,102,.15)':'rgba(255,255,255,.05)'};border:1px solid ${isSlab?'rgba(255,209,102,.4)':'rgba(255,255,255,.15)'};color:${isSlab?'#ffd166':'rgba(255,255,255,.4)'};font-size:8px;letter-spacing:1px">
-        📋 SLAB${isSlab?' · '+detectedGrader+' '+detectedGrade:''}</button>`
+        ${isSlab?'SLAB ? '+detectedGrader+' '+detectedGrade:'RAW ? GRADED VALUE'}</button>`
     : '';
 
   return `${holoToggle}${slabPanel}${slabToggleBtn}<div class="bsels"><div class="bsels-label">${prints.length > 0 ? prints.length+' PRINTING'+(prints.length!==1?'S':'')+' FOUND' : 'LOADING PRINTINGS...'}</div><select class="bsel" id="ps${id}" onchange="chPrint('${id}')" data-bmi="${bmi}">${printOpts}</select><select class="bsel" id="cs${id}" onchange="chCond('${id}')">${Object.keys(CM).map(c=>`<option>${c}</option>`).join('')}</select></div><div class="bconds">${Object.keys(CM).map((c,i)=>`<span class="bcp${i===0?' on':''}" onclick="cpill('${id}',this,'${c}')">${c}</span>`).join('')}</div>`;
@@ -6397,9 +6397,10 @@ async function fetchGradedResearch(id, q, category, tcgPlayerId) {
     const rows = comps.map(c => {
       const val = c.medianPrice || c.averagePrice || 0;
       const src = c.source === 'pokemonpricetracker' ? (c.population ? 'pop '+c.population : 'PPT')
-        : (c.source === 'ebay_sold' ? 'sold' : (c.source === 'ebay_active' ? 'active' : 'no data'));
+        : (c.source === 'soldcomps' ? 'sold comps' : (c.source === 'ebay_sold' ? 'sold' : (c.source === 'ebay_active' ? 'active' : 'no data')));
       const price = val > 0 ? '$' + Number(val).toFixed(2) : '--';
-      return `<div class="comp-row"><span class="comp-d">${c.label} <span style="color:rgba(255,255,255,.25)">(${c.count||0} ${src})</span></span><span class="comp-p">${price}</span></div>`;
+      const chart = c.query ? `<button onclick="openCompsChart('${id}','${String(c.query).replace(/'/g,"\\'")}')" style="margin-left:6px;background:rgba(0,180,255,.08);border:1px solid rgba(0,180,255,.22);color:#00b4ff;border-radius:4px;font-size:7px;padding:2px 5px;cursor:pointer">chart</button>` : '';
+      return `<div class="comp-row"><span class="comp-d">${c.label} <span style="color:rgba(255,255,255,.25)">(${c.count||0} ${src})</span>${chart}</span><span class="comp-p">${price}</span></div>`;
     }).join('');
     const raw = comps.find(c => c.key === 'raw')?.medianPrice || 0;
     const psa10 = comps.find(c => c.key === 'psa10')?.medianPrice || 0;

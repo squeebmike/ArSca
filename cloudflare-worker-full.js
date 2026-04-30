@@ -288,6 +288,59 @@ function soldCompBuckets(comps) {
     .map(r => ({ date: r.date, count: r.count, avg: Math.round((r.sum / r.count) * 100) / 100 }));
 }
 
+function compTokens(s) {
+  return String(s || '')
+    .toLowerCase()
+    .replace(/[^\w#/. -]+/g, ' ')
+    .split(/\s+/)
+    .filter(t => t && t.length > 1 && !['the', 'and', 'for', 'with', 'card', 'cards', 'tcg'].includes(t));
+}
+
+function compQualityScore(comp, query, mode = '') {
+  const title = String(comp.title || '').toLowerCase();
+  const q = String(query || '').toLowerCase();
+  const bad = /\b(lot|bundle|pick|choose|custom|proxy|orica|reprint|digital|box|booster|pack|packs|break|case|empty|wrapper)\b/i;
+  let score = 0;
+  if (bad.test(title) && !/\b(sealed|pack|box|booster|case)\b/i.test(q)) return -999;
+  const wanted = compTokens(q)
+    .filter(t => !['raw', 'sold', 'psa', 'bgs', 'cgc', 'sgc'].includes(t));
+  for (const t of wanted) if (title.includes(t)) score += 8;
+  if (wanted.length && wanted.every(t => title.includes(t))) score += 18;
+  const wantsGrade = (q.match(/\b(psa|bgs|cgc|sgc)\s*(10|9\.5|9|8|8\.5|7|6|5|4|3|2|1|a)\b/i) || [])[0];
+  if (wantsGrade) {
+    const normalizedTitle = title.replace(/\s+/g, ' ');
+    const normalizedGrade = wantsGrade.toLowerCase().replace(/\s+/, ' ');
+    if (normalizedTitle.includes(normalizedGrade)) score += 32;
+    else score -= 18;
+    const wantedCompany = (wantsGrade.match(/\b(psa|bgs|cgc|sgc)\b/i) || [])[1]?.toLowerCase();
+    const wantedGrade = (wantsGrade.match(/\b(10|9\.5|9|8|8\.5|7|6|5|4|3|2|1|a)\b/i) || [])[1];
+    const actualGrade = normalizedTitle.match(new RegExp('\\\\b' + wantedCompany + '\\\\s*(10|9\\\\.5|9|8\\\\.5|8|7|6|5|4|3|2|1|a)\\\\b', 'i'))?.[1];
+    if (wantedCompany && wantedGrade && actualGrade && actualGrade !== wantedGrade) score -= 70;
+  }
+  if (mode === 'raw') {
+    if (/\b(psa|bgs|cgc|sgc)\b/i.test(title)) score -= 35;
+    else score += 10;
+  }
+  if (mode === 'graded' && /\b(psa|bgs|cgc|sgc)\b/i.test(title)) score += 12;
+  return score;
+}
+
+function filterSoldComps(comps, query, mode = '') {
+  const scored = comps
+    .map(c => ({ ...c, qualityScore: compQualityScore(c, query, mode) }))
+    .filter(c => c.qualityScore > 0);
+  const values = scored.map(c => Number(c.total || c.price || 0)).filter(v => v > 0).sort((a, b) => a - b);
+  if (values.length >= 5) {
+    const q1 = values[Math.floor(values.length * 0.25)];
+    const q3 = values[Math.floor(values.length * 0.75)];
+    const iqr = Math.max(1, q3 - q1);
+    const low = Math.max(0, q1 - iqr * 1.75);
+    const high = q3 + iqr * 1.75;
+    return scored.filter(c => Number(c.total || c.price || 0) >= low && Number(c.total || c.price || 0) <= high);
+  }
+  return scored;
+}
+
 async function fetchEbaySoldComps(env, query, limit = 40) {
   const appId = env.EBAY_APP_ID || await getStoredSecret(env, 'EBAY_CLIENT_ID');
   if (!appId) return { source: 'none', comps: [], warning: 'EBAY_APP_ID not set' };
@@ -1155,17 +1208,19 @@ export default {
     if (url.pathname === '/comps/sold') {
       const q = (url.searchParams.get('q') || '').replace(/\s+/g, ' ').trim();
       const limit = Number(url.searchParams.get('limit') || 40);
+      const mode = (url.searchParams.get('mode') || '').toLowerCase();
       if (!q) return json({ ok: false, error: 'q required' }, 400);
       try {
-        let result = await fetchSoldCompsProvider(env, q, limit);
+        let result = await fetchSoldCompsProvider(env, q, Math.max(limit * 2, 40));
         const warnings = [];
         if (result.warning) warnings.push(result.warning);
         if (!result.comps.length) {
-          const ebay = await fetchEbaySoldComps(env, q, limit);
+          const ebay = await fetchEbaySoldComps(env, q, Math.max(limit * 2, 40));
           if (ebay.warning) warnings.push(ebay.warning);
           if (ebay.comps.length) result = ebay;
         }
-        const comps = result.comps
+        const filtered = filterSoldComps(result.comps, q, mode);
+        const comps = filtered
           .filter(c => Number(c.total || c.price || 0) > 0)
           .sort((a, b) => (Date.parse(b.soldAt || '') || 0) - (Date.parse(a.soldAt || '') || 0))
           .slice(0, Math.min(100, Math.max(10, limit)));
@@ -1173,10 +1228,12 @@ export default {
         return json({
           ok: true,
           query: q,
+          mode,
           source: comps.length ? result.source : 'none',
           comps,
           stats: soldCompStats(comps),
           buckets: soldCompBuckets(comps),
+          filteredOut: Math.max(0, result.comps.length - filtered.length),
           warnings: [...new Set(warnings.filter(Boolean))].slice(0, 3),
           needsProvider: !env.SOLDCOMPS_API_KEY && !ebayAppAvailable,
         });
@@ -1200,7 +1257,7 @@ export default {
 
       const clean = s => String(s || '').replace(/\s+/g, ' ').trim();
       const searches = [
-        { key: 'raw', label: 'Raw sold', query: clean(`${q} raw -PSA -BGS -CGC -SGC`) },
+        { key: 'raw', label: 'Raw sold', query: clean(`${q} ungraded raw`) },
         { key: 'psa9', label: 'PSA 9 sold', query: clean(`${q} PSA 9`) },
         { key: 'psa10', label: 'PSA 10 sold', query: clean(`${q} PSA 10`) },
         { key: 'bgs95', label: 'BGS 9.5 sold', query: clean(`${q} BGS 9.5`) },
@@ -1391,6 +1448,13 @@ export default {
       }
 
       async function completedPrices(query) {
+        const sc = await fetchSoldCompsProvider(env, query, 50);
+        if (sc.comps?.length) {
+          const mode = /\b(raw|ungraded)\b/i.test(query) ? 'raw' : 'graded';
+          const filtered = filterSoldComps(sc.comps, query, mode);
+          const prices = filtered.map(c => Number(c.total || c.price || 0)).filter(p => p > 0);
+          return { source: 'soldcomps', prices, filteredOut: Math.max(0, sc.comps.length - filtered.length) };
+        }
         if (!env.EBAY_APP_ID) return { source: 'none', prices: [] };
         const findRes = await fetch(
           `https://svcs.ebay.com/services/search/FindingService/v1` +
@@ -1413,7 +1477,7 @@ export default {
         const prices = items
           .map(i => Number(i.sellingStatus?.[0]?.currentPrice?.[0]?.['__value__'] || 0))
           .filter(p => p > 0);
-        return { source: 'ebay_sold', prices };
+        return { source: 'ebay_sold', prices: filterSoldComps(items.map(i => normalizeSoldComp(i, 'ebay_sold')).filter(Boolean), query, /\b(raw|ungraded)\b/i.test(query) ? 'raw' : 'graded').map(c => Number(c.total || c.price || 0)).filter(p => p > 0) };
       }
 
       async function activePrices(query) {
