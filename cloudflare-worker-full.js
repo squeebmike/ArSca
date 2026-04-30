@@ -853,12 +853,19 @@ export default {
         if (season) aspects['Season'] = [String(season)];
         if (productType) aspects['Type'] = [productType === 'sealed' ? 'Sports Trading Card Box' : productType];
         if (configuration) aspects['Configuration'] = [configuration];
-        if (features) aspects['Features'] = String(features).split(',').map(s => s.trim()).filter(Boolean);
+        if (features) {
+          const featureList = String(features).split(',').map(s => s.trim()).filter(Boolean);
+          if (featureList.length) aspects['Features'] = featureList;
+        }
         for (const [k, v] of Object.entries(customAspects || {})) {
           if (!k || v == null || v === '') continue;
-          aspects[k] = Array.isArray(v) ? v.map(String) : [String(v)];
+          const values = Array.isArray(v) ? v.map(x => String(x || '').trim()).filter(Boolean) : [String(v || '').trim()].filter(Boolean);
+          if (values.length) aspects[k] = values;
         }
         aspects['Sport'] = aspects['Sport'] || ['Trading Cards'];
+        for (const [k, v] of Object.entries({ ...aspects })) {
+          if (!Array.isArray(v) || !v.length || v.some(x => x == null || String(x).trim() === '')) delete aspects[k];
+        }
 
         const allImgUrls = [];
         if (imageUrl) allImgUrls.push(imageUrl);

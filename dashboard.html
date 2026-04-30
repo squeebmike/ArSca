@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="2026.04.30.5">
+<meta name="version" content="2026.04.30.6">
 <title>Walk-Off Dashboard</title>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -937,7 +937,7 @@ tr.sold:hover td{opacity:.7;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.04.30.5';
+const APP_VERSION = '2026.04.30.6';
 const STORE_ID = 'walkoff-main';
 const REGISTER_ID = 'front';
 const WF_PRODUCTS = '65eb45a28ff6bf3fe4f17b14';
@@ -2624,10 +2624,21 @@ document.getElementById('edit-modal').addEventListener('click', function(e){
 // ══════════════════════════════════════════════════
 async function createWebflowProduct(item, updates) {
   const catMap = {Sports:'891253037409c4fe59854f3c9ef99a6b',TCG:'475ed99cc87de703b543fe9529e2c1da',Comic:'27f1c9c43a61cf03820a31132cfc6b9a',Graded:'891253037409c4fe59854f3c9ef99a6b'};
+  const condMap = {'NM':'05cbd3bb538b65343a8f40c0fbe31282','LP':'80fd49b88449644f4d07b359e1605285','MP':'ca2f2fe8cc18722f0d692fc8085c032b','HP':'db523fd58130ff74075929bccd03a52f','DMG':'42d7ad74836de857454ebe2062d09a40'};
   const nameParts = [item.name||'Card', updates.year||item.year, updates.set||item.set, updates.variant||item.variant].filter(Boolean);
   const displayName = nameParts.join(' ').substring(0, 200);
   const slug = 'inv-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2,6);
   const priceCents = Math.round((updates.market||0) * 100);
+  const desc = [
+    updates.key_notes || '',
+    updates.condition ? 'Condition: ' + updates.condition : '',
+    updates.card_number ? 'Card #: ' + updates.card_number : '',
+    updates.serial_number ? 'Serial #: ' + updates.serial_number : '',
+    updates.manufacturer ? 'Manufacturer: ' + updates.manufacturer : '',
+    updates.publisher ? 'Publisher: ' + updates.publisher : '',
+    updates.issue ? 'Issue: ' + updates.issue : '',
+    updates.grading_company || updates.grade ? 'Grade: ' + [updates.grading_company, updates.grade].filter(Boolean).join(' ') : '',
+  ].filter(Boolean).join('\n');
 
   try {
     const res = await fetch(WORKER+'/proxy/sites/65b15ee0228d06647ca7e4ce/products', {
@@ -2639,14 +2650,11 @@ async function createWebflowProduct(item, updates) {
             name: displayName,
             slug: slug,
             'ec-product-type': 'ff42fee0113744f693a764e3431a9cc2',
-            'card-category': catMap[updates.category||item.category] || catMap['TCG'],
+            shippable: true,
+            'sold-out': false,
+            'tax-category': 'standard-taxable',
+            description: desc || displayName,
             'inventory-count': updates.qty || 1,
-            'cost-basis': Number(updates.cost||0),
-            'set-name': updates.set||item.set||'',
-            year: String(updates.year||item.year||''),
-            variant: updates.variant||item.variant||'',
-            'card-number': updates.card_number||item.card_number||'',
-            msrp: Math.round(updates.market||0),
           }
         },
         sku: {
@@ -2668,21 +2676,33 @@ async function createWebflowProduct(item, updates) {
     const productId = data.product?.id || data.id;
     if(!productId) return null;
     // Patch additional fields
-    await fetch(WORKER+'/proxy/collections/65eb45a28ff6bf3fe4f17b14/items/'+productId, {
+    const patchFields = {
+      name: displayName,
+      slug,
+      'inventory-count': updates.qty || 1,
+      'set-name': updates.set||item.set||'',
+      year: String(updates.year||item.year||''),
+      variant: updates.variant||item.variant||'',
+      'card-number': updates.card_number||item.card_number||'',
+      'cost-basis': Number(updates.cost||0),
+      location: updates.location||'',
+      'card-description': desc || updates.key_notes || '',
+      msrp: Math.round(updates.market||0),
+      'retail-price': Math.round(updates.market||0),
+    };
+    if(catMap[updates.category||item.category]) patchFields['card-category'] = catMap[updates.category||item.category];
+    if(condMap[updates.condition||item.condition]) patchFields.condition = condMap[updates.condition||item.condition];
+    Object.keys(patchFields).forEach(k => {
+      if (patchFields[k] === '' || patchFields[k] == null || Number.isNaN(patchFields[k])) delete patchFields[k];
+    });
+    const patchRes = await fetch(WORKER+'/proxy/collections/65eb45a28ff6bf3fe4f17b14/items/'+productId, {
       method: 'PATCH',
       headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ fieldData: {
-        'set-name': updates.set||item.set||'',
-        year: String(updates.year||item.year||''),
-        'card-condition': updates.condition||item.condition||'NM',
-        variant: updates.variant||item.variant||'',
-        'card-number': updates.card_number||item.card_number||'',
-        'cost-basis': Number(updates.cost||0),
-        location: updates.location||'',
-        'card-description': updates.key_notes||'',
-        msrp: Math.round(updates.market||0),
-      }})
+      body: JSON.stringify({ fieldData: patchFields })
     }).catch(()=>{});
+    if(patchRes && !patchRes.ok) {
+      console.warn('Created product but custom field patch failed', patchRes.status, (await patchRes.text()).slice(0, 200));
+    }
     return productId;
   } catch(e) { return null; }
 }
