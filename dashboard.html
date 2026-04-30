@@ -2,31 +2,45 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="2026.04.30.9">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="version" content="2026.04.30.10">
+<meta name="theme-color" content="#07080a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Walk-Off POS">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Walk-Off Dashboard</title>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root{--g:#00ffb3;--gd:rgba(0,255,179,.1);--gold:#ffd166;--red:#ff4d6d;--blue:#48cae4;--purple:#c77dff;--bg:#07080a;--surf:#0d0f14;--surf2:#141720;--border:rgba(255,255,255,.07);--text:#e4e4e8;--dim:rgba(228,228,232,.4);}
 *{margin:0;padding:0;box-sizing:border-box;}
-body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100vh;padding-bottom:72px;}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100vh;padding-bottom:calc(72px + env(safe-area-inset-bottom));}
 body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse at 15% 15%,rgba(0,255,179,.03) 0,transparent 55%),radial-gradient(ellipse at 85% 85%,rgba(199,125,255,.03) 0,transparent 55%);pointer-events:none;}
 
 /* HEADER */
 header{position:sticky;top:0;z-index:100;background:rgba(7,8,10,.96);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);}
-.hdr{max-width:1400px;margin:0 auto;height:54px;display:flex;align-items:center;justify-content:space-between;padding:0 20px;}
+.hdr{max-width:1400px;margin:0 auto;height:54px;display:flex;align-items:center;justify-content:space-between;padding:0 20px;gap:12px;}
 .logo{font-family:'Orbitron',monospace;font-size:13px;font-weight:900;color:var(--g);letter-spacing:3px;}
 .logo span{color:var(--dim);font-weight:400;font-size:10px;letter-spacing:1px;margin-left:8px;}
-.hdr-right{display:flex;align-items:center;gap:8px;}
+.hdr-right{display:flex;align-items:center;gap:8px;min-width:0;}
 #sync-status{font-family:monospace,monospace;font-size:10px;color:var(--dim);}
 .hbtn{background:var(--gd);border:1px solid rgba(0,255,179,.2);color:var(--g);padding:5px 12px;font-family:'Orbitron',monospace;font-size:9px;letter-spacing:1px;cursor:pointer;border-radius:4px;transition:.15s;}
 .hbtn:hover{background:rgba(0,255,179,.15);}
 .hbtn.danger{background:rgba(255,77,109,.08);border-color:rgba(255,77,109,.2);color:var(--red);}
 
 /* TABS */
-.tabs{max-width:1400px;margin:0 auto;padding:14px 20px 0;display:flex;gap:6px;border-bottom:1px solid var(--border);}
-.tab{font-family:monospace,monospace;font-size:10px;letter-spacing:1px;color:var(--dim);padding:6px 14px;border-bottom:2px solid transparent;cursor:pointer;transition:.15s;user-select:none;}
-.tab.on{color:var(--g);border-color:var(--g);}
+.tabs{max-width:1400px;margin:0 auto;padding:10px 20px 8px;display:flex;gap:6px;border-bottom:1px solid var(--border);align-items:center;overflow-x:auto;scrollbar-width:none;}
+.tabs::-webkit-scrollbar{display:none;}
+.tab{font-family:monospace,monospace;font-size:10px;letter-spacing:1px;color:var(--dim);padding:7px 13px;border:1px solid transparent;border-radius:5px;cursor:pointer;transition:.15s;user-select:none;white-space:nowrap;}
+.tab.on{color:var(--g);border-color:rgba(0,255,179,.28);background:rgba(0,255,179,.07);}
+.tab.primary{color:rgba(228,228,232,.72);}
+.nav-more{margin-left:auto;position:relative;flex-shrink:0;}
+.more-menu{position:absolute;right:0;top:34px;display:none;min-width:190px;background:var(--surf);border:1px solid var(--border);border-radius:8px;padding:6px;box-shadow:0 18px 50px rgba(0,0,0,.45);z-index:300;}
+.more-menu.on{display:grid;gap:4px;}
+.more-item{font-family:monospace,monospace;font-size:10px;color:var(--dim);padding:9px 10px;border-radius:5px;cursor:pointer;letter-spacing:1px;}
+.more-item:hover,.more-item.on{background:rgba(0,255,179,.08);color:var(--g);}
+.install-hint{display:none;max-width:1400px;margin:0 auto;padding:8px 20px;border-top:1px solid rgba(255,255,255,.04);font-family:monospace,monospace;font-size:10px;color:var(--gold);justify-content:space-between;gap:10px;align-items:center;}
+.install-hint.on{display:flex;}
 
 /* SECTION LABELS */
 .sec{font-family:'Orbitron',monospace;font-size:9px;letter-spacing:3px;color:var(--dim);padding:20px 20px 10px;max-width:1400px;margin:0 auto;}
@@ -175,7 +189,7 @@ tr.sold:hover td{opacity:.7;}
 #sell-profit-preview{font-family:monospace,monospace;font-size:10px;margin-top:8px;text-align:center;color:var(--dim);min-height:16px;}
 
 /* NAV */
-#lba-nav{position:fixed;bottom:0;left:0;right:0;height:56px;background:rgba(7,8,10,.96);backdrop-filter:blur(20px);border-top:1px solid var(--border);display:flex;z-index:200;}
+#lba-nav{position:fixed;bottom:0;left:0;right:0;height:calc(56px + env(safe-area-inset-bottom));padding-bottom:env(safe-area-inset-bottom);background:rgba(7,8,10,.96);backdrop-filter:blur(20px);border-top:1px solid var(--border);display:flex;z-index:200;}
 .lba-nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;text-decoration:none;color:var(--dim);font-family:monospace,monospace;font-size:8px;letter-spacing:1px;transition:.15s;}
 .lba-nav-btn.active,.lba-nav-btn:hover{color:var(--g);}
 .nav-ico{font-size:16px;}
@@ -191,6 +205,10 @@ tr.sold:hover td{opacity:.7;}
 @media(max-width:600px){
   .stats{grid-template-columns:1fr 1fr;}
   .hdr{padding:0 12px;}
+  .logo span{display:none;}
+  #sync-status{max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .tabs{padding-left:12px;padding-right:12px;}
+  .hbtn{padding:5px 9px;}
 }
 </style>
 </head>
@@ -965,7 +983,7 @@ tr.sold:hover td{opacity:.7;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.04.30.9';
+const APP_VERSION = '2026.04.30.10';
 const STORE_ID = 'walkoff-main';
 const REGISTER_ID = 'front';
 const WF_PRODUCTS = '65eb45a28ff6bf3fe4f17b14';
@@ -983,6 +1001,20 @@ const CAT_MAP = {
 let all=[], filtered=[], activeF='all', activeTab='overview', soldData=[];
 let ts={col:'name',dir:1};
 const PER=50; let page=1;
+const DAILY_TABS = [
+  ['overview', 'OVERVIEW'],
+  ['inventory', 'INVENTORY'],
+  ['pos', 'POS TOOLS'],
+  ['sales', 'SALES'],
+  ['alerts', 'ALERTS'],
+];
+const MORE_TABS = [
+  ['display', 'CUSTOMER DISPLAY'],
+  ['wantlist', 'WANT LIST'],
+  ['consign', 'CONSIGNMENT'],
+  ['locations', 'LOCATIONS'],
+  ['restock', 'RESTOCK'],
+];
 const LIFECYCLE_LABELS = {
   in_stock: 'In stock',
   at_show: 'At show',
@@ -993,6 +1025,106 @@ const LIFECYCLE_LABELS = {
   returned: 'Returned',
   lost_damaged: 'Lost/damaged',
 };
+
+function setupAppShell(){
+  const logo = document.querySelector('.logo span');
+  if(logo) logo.textContent = 'DASHBOARD · v' + APP_VERSION;
+
+  const tabs = document.querySelector('.tabs');
+  if(tabs) {
+    tabs.innerHTML = DAILY_TABS.map(([id,label]) =>
+      `<div class="tab primary ${id === activeTab ? 'on' : ''}" data-tab="${id}" onclick="switchTab('${id}',this)">${label}</div>`
+    ).join('') + `
+      <div class="nav-more">
+        <div class="tab" id="more-tab-btn" onclick="toggleMoreMenu(event)">MORE</div>
+        <div class="more-menu" id="more-menu">
+          ${MORE_TABS.map(([id,label]) => `<div class="more-item" data-tab="${id}" onclick="switchTab('${id}',this)">${label}</div>`).join('')}
+        </div>
+      </div>`;
+  }
+
+  const hdrRight = document.querySelector('.hdr-right');
+  if(hdrRight && !document.getElementById('fullscreen-btn')) {
+    const btn = document.createElement('button');
+    btn.className = 'hbtn';
+    btn.id = 'fullscreen-btn';
+    btn.textContent = 'FULL SCREEN';
+    btn.onclick = enterAppFullscreen;
+    hdrRight.insertBefore(btn, hdrRight.querySelector('button'));
+  }
+  const refreshBtn = [...document.querySelectorAll('.hdr-right .hbtn')].find(b => b.id !== 'fullscreen-btn');
+  if(refreshBtn) refreshBtn.textContent = 'REFRESH';
+
+  if(!document.getElementById('install-hint')) {
+    const hint = document.createElement('div');
+    hint.className = 'install-hint';
+    hint.id = 'install-hint';
+    hint.innerHTML = '<span id="install-hint-text">For full-screen tablet use, add this dashboard to the tablet home screen.</span><button class="hbtn" onclick="dismissInstallHint()">GOT IT</button>';
+    document.querySelector('header')?.appendChild(hint);
+  }
+
+  const manifest = {
+    name: 'Walk-Off Vendor POS',
+    short_name: 'Walk-Off POS',
+    start_url: 'dashboard.html',
+    display: 'fullscreen',
+    background_color: '#07080a',
+    theme_color: '#07080a',
+    orientation: 'any',
+  };
+  let link = document.querySelector('link[rel="manifest"]');
+  if(!link) {
+    link = document.createElement('link');
+    link.rel = 'manifest';
+    document.head.appendChild(link);
+  }
+  link.href = 'data:application/manifest+json,' + encodeURIComponent(JSON.stringify(manifest));
+  maybeShowInstallHint();
+}
+
+function toggleMoreMenu(event){
+  event?.stopPropagation();
+  document.getElementById('more-menu')?.classList.toggle('on');
+}
+
+function closeMoreMenu(){
+  document.getElementById('more-menu')?.classList.remove('on');
+}
+
+function isStandaloneApp(){
+  return window.matchMedia('(display-mode: fullscreen)').matches
+    || window.matchMedia('(display-mode: standalone)').matches
+    || navigator.standalone === true;
+}
+
+async function enterAppFullscreen(){
+  try {
+    if(document.fullscreenElement) {
+      await document.exitFullscreen();
+      return;
+    }
+    await document.documentElement.requestFullscreen({ navigationUI: 'hide' });
+    screen.orientation?.lock?.('landscape').catch(()=>{});
+  } catch(e) {
+    maybeShowInstallHint(true);
+    toast_dash('Use Add to Home Screen for true tablet full screen');
+  }
+}
+
+function maybeShowInstallHint(force){
+  const hint = document.getElementById('install-hint');
+  if(!hint) return;
+  const dismissed = localStorage.getItem('walkoff_install_hint_dismissed') === '1';
+  const tabletish = Math.min(window.innerWidth, window.innerHeight) >= 600 || /iPad|Tablet|Android/i.test(navigator.userAgent);
+  hint.classList.toggle('on', !!force || (!dismissed && tabletish && !isStandaloneApp()));
+}
+
+function dismissInstallHint(){
+  localStorage.setItem('walkoff_install_hint_dismissed', '1');
+  document.getElementById('install-hint')?.classList.remove('on');
+}
+
+document.addEventListener('click', closeMoreMenu);
 
 function priceSourceInfo(source, category){
   const raw = String(source || '').trim();
@@ -1483,6 +1615,7 @@ async function postCartToWorker(cartData){
 }
 
 window.addEventListener('load', function(){
+  setupAppShell();
   renderShowMode();
   refreshEbayStatus();
   syncLifecycleFromWorker().finally(loadInventory);
@@ -1906,9 +2039,18 @@ function filterSold(){ renderSoldTable(); }
 // Tab switching
 function switchTab(name, btn){
   document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('on'));
-  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));
+  document.querySelectorAll('.tab,.more-item').forEach(t=>t.classList.remove('on'));
   document.getElementById('tab-'+name)?.classList.add('on');
-  if(btn) btn.classList.add('on');
+  const direct = document.querySelector(`.tab[data-tab="${name}"]`);
+  const more = document.querySelector(`.more-item[data-tab="${name}"]`);
+  if(direct) direct.classList.add('on');
+  else if(more) {
+    more.classList.add('on');
+    document.getElementById('more-tab-btn')?.classList.add('on');
+  } else if(btn && btn.dataset?.tab === name) {
+    btn.classList.add('on');
+  }
+  closeMoreMenu();
   activeTab = name;
 }
 
