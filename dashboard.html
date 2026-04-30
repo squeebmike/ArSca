@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="2026.04.30.8">
+<meta name="version" content="2026.04.30.9">
 <title>Walk-Off Dashboard</title>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -459,6 +459,19 @@ tr.sold:hover td{opacity:.7;}
       <input id="backup-import-file" type="file" accept="application/json,.json" style="display:none" onchange="importVendorBackup(event)">
     </div>
     <div id="system-health-output" style="font-family:monospace,monospace;font-size:10px;color:var(--dim);display:grid;gap:6px"></div>
+  </div>
+
+  <div class="panel" style="margin-top:4px;margin-bottom:14px">
+    <div class="ph">OPERATIONS LOG <span id="ops-log-count" style="font-size:9px;color:var(--dim)">0 events</span></div>
+    <div style="font-family:monospace,monospace;font-size:10px;color:var(--dim);margin-bottom:10px;line-height:1.55">
+      A show-safe audit trail for inventory adds, eBay listings, system checks, backups, and imports.
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+      <button class="hbtn" onclick="renderOpsLog()">REFRESH LOG</button>
+      <button class="hbtn" onclick="exportOpsLogCSV()">EXPORT LOG CSV</button>
+      <button class="hbtn" style="background:rgba(255,77,109,.08);border-color:rgba(255,77,109,.2);color:var(--red)" onclick="clearOpsLog()">CLEAR LOG</button>
+    </div>
+    <div id="ops-log-list" style="display:grid;gap:6px;font-family:monospace,monospace;font-size:10px;color:var(--dim)"></div>
   </div>
 
   <!-- Row 1: Quick Price Lookup + Cash Drawer -->
@@ -952,7 +965,7 @@ tr.sold:hover td{opacity:.7;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.04.30.8';
+const APP_VERSION = '2026.04.30.9';
 const STORE_ID = 'walkoff-main';
 const REGISTER_ID = 'front';
 const WF_PRODUCTS = '65eb45a28ff6bf3fe4f17b14';
@@ -1086,12 +1099,18 @@ function startShowMode(){
     document.getElementById('drawer-float').value = show.startCash.toFixed(2);
   }
   toast_dash('Show mode active: ' + show.eventName);
+  logOpsEvent('show_start', 'Started show mode: ' + show.eventName, {
+    booth: show.booth || '',
+    startCash: show.startCash,
+    priceRulePct: show.priceRulePct,
+  });
 }
 
 function endShowMode(){
   if(!confirm('End current show mode? Generate/export closeout first if needed.')) return;
   localStorage.removeItem('pos_show_mode');
   renderShowMode();
+  logOpsEvent('show_end', 'Ended show mode', {});
   toast_dash('Show mode ended');
 }
 
@@ -1171,6 +1190,90 @@ function safeLocalJson(key, fallback){
   catch(e) { return fallback; }
 }
 
+function getOpsLog(){
+  const log = safeLocalJson('pos_ops_log', []);
+  return Array.isArray(log) ? log : [];
+}
+
+function saveOpsLog(log){
+  localStorage.setItem('pos_ops_log', JSON.stringify((log || []).slice(0, 500)));
+}
+
+function logOpsEvent(type, message, detail){
+  const event = {
+    id: 'ops_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
+    ts: new Date().toISOString(),
+    type: type || 'note',
+    message: message || 'Event',
+    detail: detail || {},
+    appVersion: APP_VERSION,
+    show: getShowMode() || null,
+    registerId: REGISTER_ID,
+    storeId: STORE_ID,
+  };
+  const log = getOpsLog();
+  log.unshift(event);
+  saveOpsLog(log);
+  renderOpsLog();
+  return event;
+}
+
+function renderOpsLog(){
+  const list = document.getElementById('ops-log-list');
+  const count = document.getElementById('ops-log-count');
+  if(!list) return;
+  const log = getOpsLog();
+  if(count) count.textContent = log.length + ' events';
+  if(!log.length) {
+    list.innerHTML = '<div style="padding:10px;border:1px dashed var(--border);border-radius:8px;text-align:center;color:var(--dim)">No operations logged yet</div>';
+    return;
+  }
+  list.innerHTML = log.slice(0, 40).map(e => {
+    const dt = new Date(e.ts);
+    const detail = e.detail && Object.keys(e.detail).length ? ' · ' + Object.entries(e.detail).slice(0, 4).map(([k,v]) => `${k}: ${String(v).slice(0, 40)}`).join(' · ') : '';
+    const show = e.show?.eventName ? ` · ${esc(e.show.eventName)}` : '';
+    return `<div style="border:1px solid var(--border);background:var(--surf2);border-radius:6px;padding:8px 9px;display:grid;gap:4px">
+      <div style="display:flex;justify-content:space-between;gap:10px;align-items:center">
+        <span style="color:var(--gold);font-weight:700">${esc((e.type || 'event').replace(/_/g,' ').toUpperCase())}</span>
+        <span style="color:var(--dim);text-align:right">${dt.toLocaleDateString()} ${dt.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</span>
+      </div>
+      <div style="color:var(--text)">${esc(e.message || '')}</div>
+      <div style="color:var(--dim)">${esc('v' + (e.appVersion || '') + show + detail)}</div>
+    </div>`;
+  }).join('');
+}
+
+function exportOpsLogCSV(){
+  const log = getOpsLog();
+  if(!log.length){ toast_dash('No operations to export'); return; }
+  const rows = [['time','type','message','show','booth','register','app_version','detail_json']];
+  log.slice().reverse().forEach(e => rows.push([
+    e.ts || '',
+    e.type || '',
+    e.message || '',
+    e.show?.eventName || '',
+    e.show?.booth || '',
+    e.registerId || '',
+    e.appVersion || '',
+    JSON.stringify(e.detail || {}),
+  ]));
+  const csv = rows.map(r => r.map(v => '"' + String(v).replace(/"/g, '""') + '"').join(',')).join('\n');
+  const blob = new Blob([csv], { type:'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'walkoff-operations-log-' + new Date().toISOString().slice(0,10) + '.csv';
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 500);
+  logOpsEvent('ops_export', 'Exported operations log', { events: log.length });
+}
+
+function clearOpsLog(){
+  if(!confirm('Clear the operations log on this browser? Export it first if you need the record.')) return;
+  localStorage.removeItem('pos_ops_log');
+  renderOpsLog();
+  toast_dash('Operations log cleared');
+}
+
 function systemLine(label, ok, detail){
   const color = ok ? 'var(--g)' : 'var(--red)';
   return `<div style="display:flex;justify-content:space-between;gap:10px;border:1px solid var(--border);background:var(--surf2);border-radius:6px;padding:7px 9px">
@@ -1210,6 +1313,11 @@ async function runSystemCheck(){
   const hasBad = rows.join('').includes('CHECK');
   status.textContent = hasBad ? 'needs review' : 'ready';
   status.style.color = hasBad ? 'var(--gold)' : 'var(--g)';
+  logOpsEvent('system_check', 'Ran system health check', {
+    status: status.textContent,
+    inventory: all.length,
+    buyItems: buyList.length,
+  });
 }
 
 async function buildVendorBackup(){
@@ -1227,6 +1335,7 @@ async function buildVendorBackup(){
       buyOfferItems: buyList.length,
       scanInbox: scanInbox.length,
       transactions: safeLocalJson('pos_transactions', []).length,
+      opsEvents: getOpsLog().length,
     },
     localData: {
       showMode: safeLocalJson('pos_show_mode', null),
@@ -1240,6 +1349,7 @@ async function buildVendorBackup(){
       locations: safeLocalJson('pos_locations', []),
       lifecycle: safeLocalJson('inventory_lifecycle', {}),
       localInventoryCache: safeLocalJson('lba_inventory', []),
+      opsLog: getOpsLog(),
       scanInbox,
     }
   };
@@ -1258,6 +1368,7 @@ function downloadJson(filename, data){
 async function exportVendorBackup(){
   const data = await buildVendorBackup();
   downloadJson('walkoff-backup-' + new Date().toISOString().slice(0,10) + '-v' + APP_VERSION + '.json', data);
+  logOpsEvent('backup_export', 'Exported local vendor backup', data.counts);
   toast_dash('Backup exported');
 }
 
@@ -1272,8 +1383,14 @@ async function copyDebugBundle(){
     online: navigator.onLine,
   };
   navigator.clipboard?.writeText(JSON.stringify(debug, null, 2))
-    .then(()=>toast_dash('Debug bundle copied'))
-    .catch(()=>downloadJson('walkoff-debug-' + Date.now() + '.json', debug));
+    .then(()=>{
+      logOpsEvent('debug_copy', 'Copied debug bundle', debug.counts);
+      toast_dash('Debug bundle copied');
+    })
+    .catch(()=>{
+      downloadJson('walkoff-debug-' + Date.now() + '.json', debug);
+      logOpsEvent('debug_export', 'Exported debug bundle fallback', debug.counts);
+    });
 }
 
 async function importVendorBackup(event){
@@ -1297,6 +1414,7 @@ async function importVendorBackup(event){
       pos_locations:d.locations,
       inventory_lifecycle:d.lifecycle,
       lba_inventory:d.localInventoryCache,
+      pos_ops_log:d.opsLog,
     };
     for(const [k,v] of Object.entries(map)) {
       if(v === undefined) continue;
@@ -1310,6 +1428,8 @@ async function importVendorBackup(event){
     renderWantList();
     renderConsign();
     renderLocations();
+    renderOpsLog();
+    logOpsEvent('backup_import', 'Imported local vendor backup', { version: data.appVersion || '', exportedAt: data.exportedAt || '' });
     toast_dash('Backup imported');
   } catch(e) {
     toast_dash('Import failed: ' + e.message);
@@ -2225,6 +2345,13 @@ async function submitDashboardEbayListing(id){
     status.style.color='var(--g)'; status.style.border='1px solid rgba(0,255,179,.25)'; status.style.background='rgba(0,255,179,.06)';
     status.innerHTML='Listed on eBay<br><a href="https://www.ebay.com/itm/'+data.listingId+'" target="_blank" style="color:var(--g)">View listing</a>';
     setLifecycle(id, 'listed_online', true);
+    logOpsEvent('ebay_listing', 'Listed on eBay: ' + title, {
+      itemId: id,
+      listingId: data.listingId,
+      offerId: data.offerId || '',
+      sku: data.sku || '',
+      price: price.toFixed(2),
+    });
     toast_dash('Inventory status set to Listed online');
   }catch(e){
     status.style.color='var(--red)'; status.style.border='1px solid rgba(255,77,109,.25)'; status.style.background='rgba(255,77,109,.06)';
@@ -2759,7 +2886,10 @@ switchTab = function(tab, btn){
   if(tab==='consign') renderConsign();
   if(tab==='locations') renderLocations();
   if(tab==='restock') renderRestock();
-  if(tab==='pos') renderScanInbox();
+  if(tab==='pos') {
+    renderScanInbox();
+    renderOpsLog();
+  }
 };
 
 // Check want list when inventory loads
@@ -2774,6 +2904,7 @@ setTimeout(()=>{
   renderWantList();
   renderConsign();
   renderLocations();
+  renderOpsLog();
 }, 500);
 
 // Click outside modal to close
@@ -3881,6 +4012,7 @@ async function bulkAddBuyListToInventory(skipConfirm){
   saveBuyList();
   renderBuyList();
   logBuyOffer(ok, fail);
+  logOpsEvent('inventory_bulk_add', 'Bulk inventory add from buy offer', { added: ok, failed: fail });
   toast_dash('Inventory add complete: ' + ok + ' added' + (fail ? ', ' + fail + ' failed: ' + firstError : ''));
   if(ok) loadInventory();
 }
@@ -3906,6 +4038,12 @@ async function addBuyItemToInventory(id){
     await createBuyItemInventoryRecord(item);
     saveBuyList();
     renderBuyList();
+    logOpsEvent('inventory_add', 'Added buy item to inventory: ' + (item.name || 'item'), {
+      productId: item.inventoryId,
+      cost: Number(item.offer || 0).toFixed(2),
+      market: Number(item.market || 0).toFixed(2),
+      category: item.category || '',
+    });
     toast_dash('Added to inventory: ' + (item.name || 'item'));
     loadInventory();
   } catch(e) {
@@ -3988,6 +4126,7 @@ function generateEOD(){
 
   if(!dayTx.length && !daySold.length && !itemsAdded.length && !show) {
     el.innerHTML = `<div style="font-family:monospace,monospace;font-size:10px;color:var(--dim);text-align:center;padding:20px">No transactions found for ${dateLabel}</div>`;
+    logOpsEvent('eod_report', 'Generated empty closeout report', { date: dateStr });
     return;
   }
 
@@ -4052,6 +4191,12 @@ function generateEOD(){
         <div class="eod-row total"><span class="eod-label">EST PROFIT</span><span class="eod-val" style="color:${totalProfit>=0?'var(--g)':'var(--red)'}">${totalProfit>=0?'+':''}$${totalProfit.toFixed(2)}</span></div>
       </div>`:''}
     </div>`;
+  logOpsEvent('eod_report', 'Generated closeout report', {
+    date: dateStr,
+    transactions: dayTx.length,
+    sales: totalRevenue.toFixed(2),
+    buyPaid: buyPaidTotal.toFixed(2),
+  });
 }
 
 function printEOD(){
@@ -4103,6 +4248,10 @@ function exportEODCSV(){
   a.download = (show.eventName||'show-closeout').replace(/[^a-z0-9]+/gi,'-').toLowerCase() + '-' + dateStr + '.csv';
   a.click();
   URL.revokeObjectURL(a.href);
+  logOpsEvent('eod_export', 'Exported closeout CSV', {
+    date: dateStr,
+    rows: rows.length - 1,
+  });
 }
 
 // ══════════════════════════════════════════════════
