@@ -316,13 +316,13 @@ async function fetchEbaySoldComps(env, query, limit = 40) {
 
 async function fetchSoldCompsProvider(env, query, limit = 40) {
   if (!env.SOLDCOMPS_API_KEY) return { source: 'none', comps: [], warning: 'SOLDCOMPS_API_KEY not set' };
-  const base = (env.SOLDCOMPS_BASE || 'https://sold-comps.com').replace(/\/+$/, '');
+  const base = (env.SOLDCOMPS_BASE || 'https://api.sold-comps.com').replace(/\/+$/, '');
   const maxResults = Math.min(240, Math.max(10, limit));
   const keyword = encodeURIComponent(query);
-  const qs = `q=${keyword}&query=${keyword}&keyword=${keyword}&limit=${maxResults}`;
+  const qs = `q=${keyword}&query=${keyword}&keyword=${keyword}&limit=${maxResults}&count=${maxResults}`;
   const urls = [
+    `${base}/v1/scrape?keyword=${keyword}&count=${maxResults}`,
     `${base}/v1/scrape?keyword=${keyword}&limit=${maxResults}`,
-    `${base}/api/v1/scrape?keyword=${keyword}&limit=${maxResults}`,
     `${base}/v1/search?${qs}`,
     `${base}/search?${qs}`,
     `${base}/api/search?${qs}`,
