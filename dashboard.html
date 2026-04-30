@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.04.30.11">
+<meta name="version" content="2026.04.30.12">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -71,6 +71,18 @@ header{position:sticky;top:0;z-index:100;background:rgba(7,8,10,.96);backdrop-fi
 .ph{font-family:monospace,monospace;font-size:9px;letter-spacing:2px;color:var(--dim);margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;}
 .ph b{color:var(--text);font-weight:600;}
 .ph-action{font-size:9px;color:var(--g);cursor:pointer;text-decoration:none;}
+
+/* REGISTER COMMAND CENTER */
+.register-command{max-width:1400px;margin:0 auto 14px;padding:0 20px;display:grid;grid-template-columns:1.3fr .9fr .9fr .9fr;gap:10px;}
+.reg-card{background:var(--surf);border:1px solid var(--border);border-radius:10px;padding:13px 14px;min-height:92px;display:flex;flex-direction:column;justify-content:space-between;}
+.reg-card.main{background:linear-gradient(135deg,rgba(0,255,179,.08),rgba(255,209,102,.04));border-color:rgba(0,255,179,.22);}
+.reg-label{font-family:monospace,monospace;font-size:8px;letter-spacing:2px;color:var(--dim);text-transform:uppercase;}
+.reg-value{font-family:'Orbitron',monospace;font-size:20px;font-weight:900;color:var(--text);line-height:1.1;margin-top:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.reg-value.g{color:var(--g);}
+.reg-value.gold{color:var(--gold);}
+.reg-sub{font-family:monospace,monospace;font-size:9px;color:var(--dim);margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.reg-actions{max-width:1400px;margin:0 auto 14px;padding:0 20px;display:flex;gap:8px;flex-wrap:wrap;}
+.reg-action{min-height:38px;padding:9px 14px;}
 
 /* CATEGORY CARDS */
 .cg{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
@@ -200,10 +212,12 @@ tr.sold:hover td{opacity:.7;}
 
 @media(max-width:900px){
   .stats{grid-template-columns:repeat(3,1fr);}
+  .register-command{grid-template-columns:1fr 1fr;}
   .two,.three{grid-template-columns:1fr;}
 }
 @media(max-width:600px){
   .stats{grid-template-columns:1fr 1fr;}
+  .register-command{grid-template-columns:1fr;}
   .hdr{padding:0 12px;}
   .logo span{display:none;}
   #sync-status{max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
@@ -989,7 +1003,7 @@ tr.sold:hover td{opacity:.7;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.04.30.11';
+const APP_VERSION = '2026.04.30.12';
 const STORE_ID = 'walkoff-main';
 const REGISTER_ID = 'front';
 const WF_PRODUCTS = '65eb45a28ff6bf3fe4f17b14';
@@ -1102,6 +1116,7 @@ function organizeRegisterLayout(){
   const backoffice = document.getElementById('backoffice-panels');
   if(!register || !backoffice) return;
 
+  ensureRegisterCommandCenter(register);
   moveNode('register-show-panel', register);
   moveNode('register-lookup-drawer-row', register);
   moveNode('register-scan-panel', register);
@@ -1111,6 +1126,81 @@ function organizeRegisterLayout(){
   moveNode('backoffice-system-panel', backoffice);
   moveNode('backoffice-ops-panel', backoffice);
   moveNode('backoffice-tcg-sync-panel', backoffice);
+}
+
+function ensureRegisterCommandCenter(register){
+  if(document.getElementById('register-command')) return;
+  const sec = register.querySelector('.sec');
+  const wrap = document.createElement('div');
+  wrap.id = 'register-command-wrap';
+  wrap.innerHTML = `
+    <div class="register-command" id="register-command">
+      <div class="reg-card main">
+        <div>
+          <div class="reg-label">Current Event</div>
+          <div class="reg-value g" id="reg-show-name">No show active</div>
+          <div class="reg-sub" id="reg-show-meta">Start show mode before vending</div>
+        </div>
+      </div>
+      <div class="reg-card">
+        <div>
+          <div class="reg-label">Cash Drawer</div>
+          <div class="reg-value gold" id="reg-cash-total">$0.00</div>
+          <div class="reg-sub" id="reg-cash-meta">Drawer closed</div>
+        </div>
+      </div>
+      <div class="reg-card">
+        <div>
+          <div class="reg-label">Phone Inbox</div>
+          <div class="reg-value" id="reg-scan-count">0</div>
+          <div class="reg-sub" id="reg-scan-meta">Waiting for scans</div>
+        </div>
+      </div>
+      <div class="reg-card">
+        <div>
+          <div class="reg-label">Buy Offer</div>
+          <div class="reg-value gold" id="reg-offer-total">$0.00</div>
+          <div class="reg-sub" id="reg-offer-meta">0 items ready</div>
+        </div>
+      </div>
+    </div>
+    <div class="reg-actions">
+      <button class="hbtn reg-action" onclick="document.getElementById('qpl-input')?.focus()">PRICE CHECK</button>
+      <button class="hbtn reg-action" onclick="renderScanInbox()">REFRESH SCANS</button>
+      <button class="hbtn reg-action" onclick="addAllScansToBuyList()">SCANS TO OFFER</button>
+      <button class="hbtn reg-action" onclick="bulkAddBuyListToInventory()">ADD OFFER TO INV</button>
+      <button class="hbtn reg-action" onclick="generateEOD()">CLOSEOUT</button>
+    </div>`;
+  if(sec?.nextSibling) register.insertBefore(wrap, sec.nextSibling);
+  else register.prepend(wrap);
+}
+
+function updateRegisterCommandCenter(scanCount){
+  const show = getShowMode();
+  const showName = document.getElementById('reg-show-name');
+  const showMeta = document.getElementById('reg-show-meta');
+  if(showName) showName.textContent = show?.eventName || 'No show active';
+  if(showMeta) showMeta.textContent = show ? [show.booth ? 'Booth ' + show.booth : '', show.priceRulePct ? show.priceRulePct + '% show rule' : '', 'Float $' + Number(show.startCash || 0).toFixed(2)].filter(Boolean).join(' · ') : 'Start show mode before vending';
+
+  const cashTotal = document.getElementById('reg-cash-total');
+  const cashMeta = document.getElementById('reg-cash-meta');
+  const expected = drawerState ? getDrawerExpected() : 0;
+  if(cashTotal) cashTotal.textContent = '$' + Number(expected || 0).toFixed(2);
+  if(cashMeta) cashMeta.textContent = drawerState ? 'Open since ' + new Date(drawerState.opened).toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'}) : 'Drawer closed';
+
+  const count = Number.isFinite(scanCount) ? scanCount : Number(document.getElementById('scan-inbox-count')?.dataset.count || 0);
+  const scanEl = document.getElementById('reg-scan-count');
+  const scanMeta = document.getElementById('reg-scan-meta');
+  if(scanEl) scanEl.textContent = count;
+  if(scanMeta) scanMeta.textContent = count ? 'Ready to send to cart, offer, or inventory' : 'Waiting for scans';
+
+  const pct = Number(document.getElementById('bl-pct')?.value || 50);
+  const totalMkt = buyList.reduce((a,i)=>a+(Number(i.market)||0),0);
+  const offer = totalMkt * (pct / 100);
+  const offerTotal = document.getElementById('reg-offer-total');
+  const offerMeta = document.getElementById('reg-offer-meta');
+  if(offerTotal) offerTotal.textContent = '$' + offer.toFixed(2);
+  if(offerMeta) offerMeta.textContent = buyList.length + ' item' + (buyList.length === 1 ? '' : 's') + ' · ' + pct + '% offer';
 }
 
 function toggleMoreMenu(event){
@@ -1238,6 +1328,7 @@ function renderShowMode(){
   if(!show) {
     status.textContent = 'not started';
     status.style.color = 'var(--dim)';
+    updateRegisterCommandCenter();
     return;
   }
   document.getElementById('show-event-name').value = show.eventName || '';
@@ -1246,6 +1337,7 @@ function renderShowMode(){
   document.getElementById('show-price-rule').value = show.priceRulePct || '';
   status.textContent = (show.eventName || 'Show') + (show.booth ? ' · ' + show.booth : '');
   status.style.color = 'var(--gold)';
+  updateRegisterCommandCenter();
 }
 
 function startShowMode(){
@@ -2320,7 +2412,11 @@ async function renderScanInbox(){
   const count = document.getElementById('scan-inbox-count');
   if(!list) return;
   const queue = await readScanInbox();
-  if(count) count.textContent = queue.length ? queue.length + ' incoming' : 'waiting for scans';
+  if(count) {
+    count.textContent = queue.length ? queue.length + ' incoming' : 'waiting for scans';
+    count.dataset.count = String(queue.length);
+  }
+  updateRegisterCommandCenter(queue.length);
   if(!queue.length) {
     list.innerHTML = '<div style="font-family:monospace,monospace;font-size:10px;color:var(--dim);padding:10px;border:1px dashed var(--border);border-radius:8px;text-align:center">No phone scans yet</div>';
     return;
@@ -3913,6 +4009,7 @@ function renderDrawer(){
   if(!drawerState){
     closed.style.display=''; open.style.display='none';
     status.textContent='CLOSED'; status.style.color='var(--red)';
+    updateRegisterCommandCenter();
     return;
   }
   closed.style.display='none'; open.style.display='';
@@ -3938,6 +4035,7 @@ function renderDrawer(){
       <span class="${r.dir>0?'dr-log-amt-in':'dr-log-amt-out'}">${r.dir>0?'+':'-'}$${r.amt.toFixed(2)}</span>
     </div>`).join('');
   }
+  updateRegisterCommandCenter();
 }
 
 // ══════════════════════════════════════════════════
@@ -4034,6 +4132,7 @@ function renderBuyList(){
   const el = document.getElementById('bl-items');
   if(!buyList.length){
     el.innerHTML='<div style="font-family:monospace,monospace;font-size:10px;color:var(--dim);text-align:center;padding:20px">Add cards to build offer</div>';
+    updateRegisterCommandCenter();
     return;
   }
   el.innerHTML = buyList.map(i=>{
@@ -4052,6 +4151,7 @@ function renderBuyList(){
       <button class="bl-item-rm" onclick="removeBuyItem('${i.id}')">Ã—</button>
     </div>`;
   }).join('');
+  updateRegisterCommandCenter();
 }
 
 function printBuyOffer(){
