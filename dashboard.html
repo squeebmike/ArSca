@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="2026.04.29.14">
+<meta name="version" content="2026.04.30.1">
 <title>Walk-Off Dashboard</title>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -937,7 +937,7 @@ tr.sold:hover td{opacity:.7;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.04.29.14';
+const APP_VERSION = '2026.04.30.1';
 const STORE_ID = 'walkoff-main';
 const REGISTER_ID = 'front';
 const WF_PRODUCTS = '65eb45a28ff6bf3fe4f17b14';
@@ -1113,10 +1113,10 @@ async function refreshEbayStatus(){
     const res = await fetch(WORKER + '/ebay/status', { cache:'no-store', signal:AbortSignal.timeout(3500) });
     const d = await res.json();
     if(!res.ok) throw new Error(d.error || 'eBay status failed');
-    if(d.readyToList) {
+    if(d.readyToList && d.refreshConfigured) {
       status.textContent = 'ready to list';
       status.style.color = 'var(--g)';
-      if(hint) hint.textContent = d.refreshConfigured ? 'OAuth refresh token connected' : 'Using legacy token';
+      if(hint) hint.textContent = 'OAuth refresh token connected';
     } else if(!d.clientConfigured) {
       status.textContent = 'app credentials missing';
       status.style.color = 'var(--red)';
@@ -2030,7 +2030,7 @@ async function submitDashboardEbayListing(id){
     const data=await res.json().catch(()=>({}));
     if(!res.ok || !data.listingId) {
       const msg = data.error || ('eBay error '+res.status);
-      if(/invalid access token|authorization/i.test(msg)) throw new Error('eBay token expired or invalid. Refresh EBAY_USER_TOKEN in Cloudflare, then try again. Raw: '+msg);
+      if(/invalid access token|authorization/i.test(msg)) throw new Error('eBay token expired or invalid. Use POS Tools > CONNECT EBAY, approve access, then try again. Raw: '+msg);
       throw new Error(msg);
     }
     status.style.color='var(--g)'; status.style.border='1px solid rgba(0,255,179,.25)'; status.style.background='rgba(0,255,179,.06)';

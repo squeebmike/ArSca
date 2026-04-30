@@ -104,9 +104,8 @@ async function ebayTokenRequest(env, params) {
 }
 
 async function getEbayUserAccessToken(env) {
-  const staticToken = await getStoredSecret(env, 'EBAY_USER_TOKEN');
   const refreshToken = await getStoredSecret(env, 'EBAY_REFRESH_TOKEN');
-  if (!refreshToken) return staticToken;
+  if (!refreshToken) return '';
 
   const cached = env.LBA_KV ? await env.LBA_KV.get('secret:EBAY_ACCESS_TOKEN') : null;
   const exp = env.LBA_KV ? Number(await env.LBA_KV.get('secret:EBAY_ACCESS_EXPIRES') || 0) : 0;
@@ -119,7 +118,7 @@ async function getEbayUserAccessToken(env) {
     await env.LBA_KV.put('secret:EBAY_ACCESS_TOKEN', accessToken, { expirationTtl: Math.max(300, Number(data.expires_in || 7200)) });
     await env.LBA_KV.put('secret:EBAY_ACCESS_EXPIRES', String(Date.now() + Number(data.expires_in || 7200) * 1000));
   }
-  return accessToken || staticToken;
+  return accessToken || '';
 }
 
 function leftRotate(x, c) {
@@ -521,15 +520,14 @@ export default {
     if (url.pathname === '/ebay/status') {
       const hasClient = !!(await getStoredSecret(env, 'EBAY_CLIENT_ID')) && !!(await getStoredSecret(env, 'EBAY_CLIENT_SECRET'));
       const hasRefresh = !!(await getStoredSecret(env, 'EBAY_REFRESH_TOKEN'));
-      const hasLegacyUserToken = !!(await getStoredSecret(env, 'EBAY_USER_TOKEN'));
       const ruName = await getStoredSecret(env, 'EBAY_RU_NAME');
       return json({
         ok: true,
         clientConfigured: hasClient,
         refreshConfigured: hasRefresh,
-        legacyUserToken: hasLegacyUserToken,
+        legacyUserToken: !!(await getStoredSecret(env, 'EBAY_USER_TOKEN')),
         ruNameConfigured: !!ruName,
-        readyToList: hasClient && (hasRefresh || hasLegacyUserToken),
+        readyToList: hasClient && hasRefresh,
       });
     }
 
