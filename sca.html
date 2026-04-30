@@ -3,7 +3,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="version" content="2026.04.30.2">
+<meta name="version" content="2026.04.30.3">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>LBA Scanner</title>
@@ -400,7 +400,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
   <div class="hbtns">
     <span id="show-badge" style="font-family:monospace;font-size:9px;color:rgba(255,209,102,.7);letter-spacing:1px"></span>
     <span id="offline-sync-badge" style="font-family:monospace;font-size:9px;color:rgba(255,255,255,.35);letter-spacing:1px">online</span>
-    <span id="app-version" style="font-family:monospace;font-size:9px;color:rgba(0,255,179,.55);letter-spacing:1px">v2026.04.30.2</span>
+    <span id="app-version" style="font-family:monospace;font-size:9px;color:rgba(0,255,179,.55);letter-spacing:1px">v2026.04.30.3</span>
     <span id="hstatus">READY</span>
     <button class="hbtn" id="flipbtn" onclick="toggleFlip()">FLIP</button>
     <button class="hbtn" id="bulkbtn" onclick="toggleBulk()">BULK</button>
@@ -579,7 +579,7 @@ const STORE = {
   wf_status_instock:'f3769d1e15fa0956f98984d6fa36437f',
   wf_status_sold:   'e6b42f14fcb99aa2168a5f5672226f68',
 };
-const APP_VERSION = '2026.04.30.2';
+const APP_VERSION = '2026.04.30.3';
 const WORKER_URL = STORE.worker_url;
 
 function slugifyId(value, fallback) {
@@ -3017,23 +3017,23 @@ Return ONLY JSON, no markdown:
         hs.textContent = '✓ DUAL SCAN · ' + (c.confidence||'').toUpperCase();
         toast('✓ Both sides combined · #'+(c.card_number||'?')+' '+c.parallel);
 
-        // Inject Beckett direct card lookup after back-scan confirms card# + year
+        // Add direct sold-comps research after back-scan confirms card# + year
         if((c.card_number || it.card_number) && (c.year || it.year)) {
           const actsEl = lastBub.el.querySelector('.bacts');
-          if(actsEl && !actsEl.querySelector('.beckett-direct')) {
-            const bkQ = encodeURIComponent([c.player||it.player||it.name, c.year||it.year, c.set_name||it.set_name, c.card_number||it.card_number].filter(Boolean).join(' '));
+          if(actsEl && !actsEl.querySelector('.comps-direct')) {
+            const bkQ = [c.player||it.player||it.name, c.year||it.year, c.set_name||it.set_name, c.card_number||it.card_number].filter(Boolean).join(' ');
             const bkBtn = document.createElement('a');
-            bkBtn.className = 'bact beckett-direct';
+            bkBtn.className = 'bact comps-direct';
             bkBtn.style.cssText = 'background:rgba(0,180,255,.12);color:#00b4ff;border:1px solid rgba(0,180,255,.35);font-weight:700;font-size:9px';
-            bkBtn.href = `https://www.google.com/search?q=${encodeURIComponent('site:beckett.com/price-guides ' + (item.search_query || item.name || ''))}`;
-            bkBtn.target = '_blank';
-            bkBtn.textContent = '📊 Beckett #'+(c.card_number||it.card_number)+' ↗';
+            bkBtn.href = 'javascript:void(0)';
+            bkBtn.onclick = () => openCompsChart(lastBub.id, bkQ);
+            bkBtn.textContent = 'Sold chart #'+(c.card_number||it.card_number);
             const scanBackBtn = actsEl.querySelector('[onclick*="scanBackForBubble"]');
             if(scanBackBtn) scanBackBtn.after(bkBtn); else actsEl.prepend(bkBtn);
           }
         }
 
-        // Trigger AI price estimate with full info
+                // Trigger AI price estimate with full info
         const ep = `eBay sold prices for: "${qBest}". Return ONLY JSON: {"comps":[{"desc":"NM raw","price":0.00},{"desc":"Good/LP","price":0.00},{"desc":"PSA 9","price":0.00}],"trend":"up|down|flat","note":"brief note"}`;
         callClaude([{role:'user',content:[{type:'text',text:ep}]}],200).then(et=>{
           try {
@@ -3113,22 +3113,22 @@ Return ONLY JSON, no markdown:
         bsub.textContent = parts.join(' · ');
       }
     }
-    // Inject Beckett direct button if card# now known
+    // Add direct sold-comps button if card# now known
     if(back.card_number && item) {
       const actsEl = lastBub.el.querySelector('.bacts');
-      if(actsEl && !actsEl.querySelector('.beckett-direct')) {
-        const bkQ = encodeURIComponent([item.player||item.name, item.year||back.year, item.set_name||back.set_name, back.card_number].filter(Boolean).join(' '));
+      if(actsEl && !actsEl.querySelector('.comps-direct')) {
+        const bkQ = [item.player||item.name, item.year||back.year, item.set_name||back.set_name, back.card_number].filter(Boolean).join(' ');
         const bkBtn = document.createElement('a');
-        bkBtn.className = 'bact beckett-direct';
+        bkBtn.className = 'bact comps-direct';
         bkBtn.style.cssText = 'background:rgba(0,180,255,.12);color:#00b4ff;border:1px solid rgba(0,180,255,.35);font-weight:700;font-size:9px';
-        bkBtn.href = `https://www.google.com/search?q=${encodeURIComponent('site:beckett.com/price-guides ' + (back.search_query || back.name || ''))}`;
-        bkBtn.target = '_blank';
-        bkBtn.textContent = '📊 Beckett #'+back.card_number+' ↗';
+        bkBtn.href = 'javascript:void(0)';
+        bkBtn.onclick = () => openCompsChart(lastBub.id, bkQ);
+        bkBtn.textContent = 'Sold chart #'+back.card_number;
         const scanBackBtn = actsEl.querySelector('[onclick*="scanBackForBubble"]');
         if(scanBackBtn) scanBackBtn.after(bkBtn); else actsEl.prepend(bkBtn);
       }
     }
-    hs.textContent = 'BACK SCANNED';
+        hs.textContent = 'BACK SCANNED';
     toast('✓ Back info added · #'+(back.card_number||'?'));
   } else {
     showBackStandalone(back);
@@ -3384,6 +3384,7 @@ function addBubble(item,stock,imgUrl,apiPrintings,bestMatchIdx){
       : '';
     actLinks=`<a class="bact a-ebay" href="${AFF.ebaySearch(qSlab)}" target="_blank">eBay Sold ↗</a>
       <a class="bact a-ebay" style="background:rgba(72,202,228,.08);color:var(--blue);border-color:rgba(72,202,228,.2)" href="${AFF.ebaySearch(qSlabBase)}" target="_blank">All Sales ↗</a>
+      <button class="bact" onclick="openCompsChart('${id}')" style="background:rgba(0,180,255,.08);color:#00b4ff;border:1px solid rgba(0,180,255,.25);font-size:8px">Trend Chart</button>
       ${psaVerify}${bgsVerify}${cgcVerify}${sgcVerify}`;
   }
   else if(ct==='sports'){
@@ -3403,6 +3404,7 @@ function addBubble(item,stock,imgUrl,apiPrintings,bestMatchIdx){
       ${qSerial?`<a class="bact a-ebay" style="background:rgba(255,77,109,.12);border-color:rgba(255,77,109,.4);color:#ff4d6d;font-weight:700" href="${AFF.ebaySearch(qSerial)}" target="_blank">Serial ${item.serial_number} Sold</a>`:''}
       <a class="bact a-ebay" href="${AFF.ebaySearch(qBest)}" target="_blank">eBay Sold</a>
       <a class="bact a-ebay" style="background:rgba(72,202,228,.08);color:var(--blue);border-color:rgba(72,202,228,.2)" href="${AFF.ebayActive(qBest)}" target="_blank">eBay Active</a>
+      <button class="bact" onclick="openCompsChart('${id}')" style="background:rgba(0,180,255,.08);color:#00b4ff;border:1px solid rgba(0,180,255,.25);font-size:8px">Trend Chart</button>
       <a class="bact" style="background:rgba(0,180,255,.08);color:#00b4ff;border:1px solid rgba(0,180,255,.25);font-size:8px" href="https://130point.com/sales/?q=${encodeURIComponent(qBest)}" target="_blank">130pt Sold</a>
       <a class="bact a-ebay" style="background:rgba(255,255,255,.04);color:rgba(255,255,255,.4);border-color:rgba(255,255,255,.08);font-size:8px" href="${AFF.ebaySearch(qBase)}" target="_blank">Broader</a>`;
   }
@@ -6353,7 +6355,6 @@ function updateSlabSearch(id) {
     links.push(`<a class="bact" href="https://www.psacard.com/cardfacts/?q=${qEnc}" target="_blank" style="${btnSty}">📊 PSA Pop ↗</a>`);
     links.push(`<a class="bact" href="https://www.psacard.com/auctionprices/index.aspx?q=${qEnc}${grade?'&g='+grade:''}" target="_blank" style="${btnSty}">💰 PSA Prices ↗</a>`);
   } else if(grader === 'BGS') {
-    links.push(`<a class="bact" href="https://www.google.com/search?q=${encodeURIComponent('site:beckett.com/price-guides ' + decodeURIComponent(qEnc))}" target="_blank" style="${btnSty}">📊 Beckett Search ↗</a>`);
     links.push(`<a class="bact" href="${AFF.ebaySearch(decodeURIComponent(qEnc) + ' BGS ' + (grade||''))}" target="_blank" style="${btnSty}">💰 BGS Sold ↗</a>`);
   } else if(grader === 'CGC') {
     links.push(`<a class="bact" href="https://www.cgccomics.com/certification/item-lookup/" target="_blank" style="${btnSty}">📊 CGC Census ↗</a>`);
@@ -6413,6 +6414,55 @@ async function fetchGradedResearch(id, q, category, tcgPlayerId) {
   }
 }
 // ════════════════════════════════════════════════════════════════
+
+function compsChartQueryFromBubble(id, preset) {
+  if(preset) return String(preset).replace(/\s+/g,' ').trim();
+  const el = document.getElementById(id);
+  const item = el?._item || {};
+  const pi = parseInt(document.getElementById('ps'+id)?.value)||0;
+  const p = el?._prints?.[pi] || el?._prints?.[0] || {};
+  const ct = el?._ct || getType(item);
+  if(ct === 'comic') return [item.name, item.issue ? '#'+String(item.issue).replace(/^#/,'') : '', item.year, 'comic'].filter(Boolean).join(' ');
+  return [item.search_query, item.player || item.name, item.year || p.year, item.manufacturer, item.set_name || p.set, item.parallel && item.parallel !== 'Base' ? item.parallel : '', p.variant && p.variant !== 'Base' ? p.variant : '', item.card_number ? '#'+item.card_number : '', item.serial_number].filter(Boolean).join(' ').replace(/\s+/g,' ').trim();
+}
+function escHtml(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function ensureCompsModal() {
+  let m = document.getElementById('comps-modal');
+  if(m) return m;
+  m = document.createElement('div');
+  m.id = 'comps-modal';
+  m.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.76);z-index:2600;display:none;align-items:flex-end;justify-content:center;padding:12px;';
+  m.innerHTML = '<div style="width:min(760px,100%);max-height:82vh;overflow:auto;background:#0d1117;border:1px solid rgba(0,255,179,.22);border-radius:8px;box-shadow:0 18px 50px rgba(0,0,0,.65)"><div style="display:flex;align-items:center;gap:8px;padding:12px;border-bottom:1px solid rgba(255,255,255,.08)"><div style="flex:1"><div style="font-family:Orbitron,monospace;font-size:10px;color:#00ffb3;letter-spacing:1.5px">SOLD COMPS TREND</div><div id="comps-modal-q" style="font-family:monospace;font-size:9px;color:rgba(255,255,255,.45);margin-top:3px"></div></div><button onclick="document.getElementById(\'comps-modal\').style.display=\'none\'" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:#fff;border-radius:4px;padding:7px 10px;cursor:pointer">X</button></div><div id="comps-modal-body" style="padding:12px;font-family:monospace;font-size:10px;color:#fff"></div></div>';
+  document.body.appendChild(m);
+  m.addEventListener('click', e => { if(e.target === m) m.style.display='none'; });
+  return m;
+}
+function renderCompsChart(data) {
+  const stats = data.stats || {}, buckets = data.buckets || [], comps = data.comps || [];
+  const w=680,h=190,pad=28, vals=buckets.map(b=>Number(b.avg||0)).filter(v=>v>0);
+  const min=vals.length?Math.min(...vals):0, max=vals.length?Math.max(...vals):1, span=Math.max(1,max-min);
+  const pts=buckets.map((b,i)=>({x:pad+(buckets.length<=1?0:i*((w-pad*2)/(buckets.length-1))),y:h-pad-(((Number(b.avg||0)-min)/span)*(h-pad*2)),b}));
+  const chart=vals.length?'<svg viewBox="0 0 '+w+' '+h+'" style="width:100%;height:210px;background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.08);border-radius:7px"><line x1="'+pad+'" y1="'+(h-pad)+'" x2="'+(w-pad)+'" y2="'+(h-pad)+'" stroke="rgba(255,255,255,.12)"/><line x1="'+pad+'" y1="'+pad+'" x2="'+pad+'" y2="'+(h-pad)+'" stroke="rgba(255,255,255,.12)"/><text x="'+pad+'" y="16" fill="rgba(255,255,255,.45)" font-size="10">$'+max.toFixed(0)+'</text><text x="'+pad+'" y="'+(h-7)+'" fill="rgba(255,255,255,.45)" font-size="10">$'+min.toFixed(0)+'</text><polyline points="'+pts.map(p=>p.x.toFixed(1)+','+p.y.toFixed(1)).join(' ')+'" fill="none" stroke="#00ffb3" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>'+pts.map(p=>'<circle cx="'+p.x.toFixed(1)+'" cy="'+p.y.toFixed(1)+'" r="3" fill="#00ffb3"><title>'+escHtml(p.b.date)+' $'+Number(p.b.avg).toFixed(2)+' ('+p.b.count+')</title></circle>').join('')+'</svg>':'<div style="padding:28px;text-align:center;color:rgba(255,255,255,.35);border:1px solid rgba(255,255,255,.08);border-radius:7px">No dated sales returned for a chart yet.</div>';
+  const trendColor=stats.trendLabel==='up'?'#00ffb3':(stats.trendLabel==='down'?'#ff4d6d':'#ffd166');
+  const cards=[['Count',stats.count||0],['Avg','$'+Number(stats.avg||0).toFixed(2)],['Median','$'+Number(stats.median||0).toFixed(2)],['Range','$'+Number(stats.min||0).toFixed(0)+'-$'+Number(stats.max||0).toFixed(0)],['Trend',(stats.trendPct||0)+'%']].map(([k,v])=>'<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:6px;padding:8px"><div style="color:rgba(255,255,255,.35);font-size:8px">'+k+'</div><div style="color:'+(k==='Trend'?trendColor:'#fff')+';font-size:13px;font-weight:700">'+v+'</div></div>').join('');
+  const rows=comps.slice(0,12).map(c=>'<div style="display:grid;grid-template-columns:1fr auto;gap:10px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.06)"><div><div style="color:#fff">'+escHtml(c.title)+'</div><div style="color:rgba(255,255,255,.35);font-size:8px">'+escHtml(c.soldAt?new Date(c.soldAt).toLocaleDateString():'sold date unknown')+' ? '+escHtml(c.condition||c.source||'')+'</div></div><a href="'+escHtml(c.url||'#')+'" target="_blank" style="color:#00ffb3;text-decoration:none;font-weight:700">$'+Number(c.total||c.price||0).toFixed(2)+'</a></div>').join('');
+  const warnings=data.warnings?.length?'<div style="margin-top:8px;color:#ffd166;font-size:9px">'+escHtml(data.warnings.join(' | '))+'</div>':'';
+  return '<div style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;margin-bottom:10px">'+cards+'</div>'+chart+warnings+'<div style="margin-top:10px">'+(rows||'<div style="color:rgba(255,255,255,.35)">No sold comps returned.</div>')+'</div>';
+}
+window.openCompsChart = async function(id, preset) {
+  const m=ensureCompsModal(), q=compsChartQueryFromBubble(id,preset);
+  document.getElementById('comps-modal-q').textContent=q||'No search query';
+  document.getElementById('comps-modal-body').innerHTML='<div style="padding:30px;text-align:center;color:#00ffb3">Loading sold comps...</div>';
+  m.style.display='flex';
+  if(!q){ document.getElementById('comps-modal-body').innerHTML='<div style="color:#ff4d6d">No usable item name was found for comps.</div>'; return; }
+  try{
+    const res=await fetch(WORKER_URL + '/comps/sold?' + new URLSearchParams({q,limit:50}).toString());
+    const data=await res.json();
+    if(!data.ok) throw new Error(data.error || 'sold comps failed');
+    document.getElementById('comps-modal-body').innerHTML=renderCompsChart(data);
+  }catch(e){ document.getElementById('comps-modal-body').innerHTML='<div style="color:#ff4d6d">Sold comps unavailable: '+escHtml(e.message)+'</div>'; }
+};
+
 // PSA API — real cert lookup, pop counts, auto-fill
 // ════════════════════════════════════════════════════════════════
 
@@ -6587,7 +6637,6 @@ function _ensureVariantModal() {
     <div id="var-tabs" style="display:flex;gap:0;border-bottom:1px solid rgba(255,255,255,.06);flex-shrink:0">
       <button class="var-tab on" onclick="setVarTab('ai',this)" style="flex:1;padding:7px;font-family:monospace;font-size:8px;letter-spacing:1px;background:rgba(0,255,179,.08);border:none;border-bottom:2px solid var(--g,#00ffb3);color:var(--g,#00ffb3);cursor:pointer">AI VARIANTS</button>
       <button class="var-tab" onclick="setVarTab('ebay',this)" style="flex:1;padding:7px;font-family:monospace;font-size:8px;letter-spacing:1px;background:none;border:none;border-bottom:2px solid transparent;color:rgba(255,255,255,.35);cursor:pointer">EBAY SOLD</button>
-      <button class="var-tab" onclick="setVarTab('beckett',this)" style="flex:1;padding:7px;font-family:monospace;font-size:8px;letter-spacing:1px;background:none;border:none;border-bottom:2px solid transparent;color:rgba(255,255,255,.35);cursor:pointer">BECKETT</button>
       <button class="var-tab" onclick="setVarTab('130pt',this)" style="flex:1;padding:7px;font-family:monospace;font-size:8px;letter-spacing:1px;background:none;border:none;border-bottom:2px solid transparent;color:rgba(255,255,255,.35);cursor:pointer">130PT</button>
     </div>
     <div id="var-results" style="overflow-y:auto;padding:10px 12px;flex:1"></div>
@@ -6672,18 +6721,17 @@ window.doVariantSearch = async function() {
     } catch(e) {}
   }
 
-  // ── eBay / Beckett / 130pt tabs = open link ─────────────────
+  // -- eBay / 130pt tabs = open link
   if(tab !== 'ai') {
     const qEnc = encodeURIComponent(q);
     const links = {
       ebay: `https://www.ebay.com/sch/i.html?_nkw=${qEnc}&LH_Complete=1&LH_Sold=1&_sop=13`,
-      beckett: `https://www.google.com/search?q=${encodeURIComponent('site:beckett.com/price-guides ' + q)}`,
       '130pt': `https://130point.com/sales/?q=${qEnc}`,
     };
     res.innerHTML = `
       <div style="padding:8px 0;font-family:monospace;font-size:9px;color:rgba(255,255,255,.3);margin-bottom:8px">Tap to open in new tab:</div>
       <a href="${links[tab]}" target="_blank" style="display:flex;align-items:center;gap:8px;padding:12px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:6px;color:#fff;text-decoration:none;font-family:monospace;font-size:10px">
-        🔗 Search "${q}" on ${tab==='ebay'?'eBay Sold':tab==='beckett'?'Beckett Price Guide':'130pt'} ↗
+        🔗 Search "${q}" on ${tab==='ebay'?'eBay Sold':'130pt'} ↗
       </a>`;
     return;
   }

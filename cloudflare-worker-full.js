@@ -10,6 +10,7 @@
  *   EBAY_USER_TOKEN
  *   EBAY_APP_ID
  *   COMICVINE_API_KEY
+ *   SOLDCOMPS_API_KEY
  *   LBA_KV
  */
 
@@ -207,6 +208,148 @@ async function readApiJson(res) {
   }
 }
 
+function compMoneyValue(v) {
+  if (typeof v === 'number') return v > 0 ? v : 0;
+  if (typeof v === 'string') {
+    const n = Number(v.replace(/[$,]/g, '').trim());
+    return n > 0 ? n : 0;
+  }
+  if (!v || typeof v !== 'object') return 0;
+  for (const key of ['total', 'price', 'value', 'amount', 'soldPrice', 'sold_price', 'salePrice', 'currentPrice']) {
+    const n = compMoneyValue(v[key]);
+    if (n) return n;
+  }
+  return 0;
+}
+
+function normalizeSoldComp(raw, source) {
+  if (!raw || typeof raw !== 'object') return null;
+  const price = compMoneyValue(raw.price || raw.soldPrice || raw.sold_price || raw.salePrice || raw.amount || raw.currentPrice || raw.sellingStatus?.[0]?.currentPrice?.[0]?.['__value__']);
+  const shipping = compMoneyValue(raw.shipping || raw.shippingCost || raw.shipping_cost || raw.shippingInfo?.[0]?.shippingServiceCost?.[0]?.['__value__']);
+  const total = compMoneyValue(raw.total || raw.totalPrice || raw.total_price) || price + shipping;
+  if (!price && !total) return null;
+  const soldAt = raw.soldAt || raw.sold_at || raw.endTime || raw.end_time || raw.date || raw.timestamp || raw.listingEndedAt || raw.listingInfo?.[0]?.endTime?.[0] || null;
+  return {
+    title: String(raw.title || raw.name || raw.itemTitle || raw.item_title || 'Sold comp').trim(),
+    price: Math.round(price * 100) / 100,
+    shipping: Math.round(shipping * 100) / 100,
+    total: Math.round((total || price) * 100) / 100,
+    soldAt,
+    condition: raw.condition || raw.conditionDisplayName || raw.condition_name || null,
+    url: raw.url || raw.itemUrl || raw.item_url || raw.viewItemURL?.[0] || raw.webUrl || null,
+    imageUrl: raw.imageUrl || raw.image_url || raw.thumbnail || raw.galleryURL?.[0] || raw.image?.imageUrl || null,
+    source,
+  };
+}
+
+function soldCompStats(comps) {
+  const values = comps.map(c => Number(c.total || c.price || 0)).filter(v => v > 0).sort((a, b) => a - b);
+  if (!values.length) return { count: 0, avg: 0, median: 0, min: 0, max: 0, trendPct: 0, trendLabel: 'no data' };
+  const avg = values.reduce((a, b) => a + b, 0) / values.length;
+  const mid = Math.floor(values.length / 2);
+  const median = values.length % 2 ? values[mid] : (values[mid - 1] + values[mid]) / 2;
+  const dated = comps
+    .map(c => ({ ...c, time: c.soldAt ? Date.parse(c.soldAt) : 0 }))
+    .filter(c => c.time && Number(c.total || c.price || 0) > 0)
+    .sort((a, b) => a.time - b.time);
+  let trendPct = 0;
+  if (dated.length >= 6) {
+    const slice = Math.max(3, Math.floor(dated.length / 3));
+    const oldAvg = dated.slice(0, slice).reduce((a, c) => a + Number(c.total || c.price || 0), 0) / slice;
+    const newAvg = dated.slice(-slice).reduce((a, c) => a + Number(c.total || c.price || 0), 0) / slice;
+    trendPct = oldAvg > 0 ? ((newAvg - oldAvg) / oldAvg) * 100 : 0;
+  }
+  return {
+    count: values.length,
+    avg: Math.round(avg * 100) / 100,
+    median: Math.round(median * 100) / 100,
+    min: Math.round(values[0] * 100) / 100,
+    max: Math.round(values[values.length - 1] * 100) / 100,
+    trendPct: Math.round(trendPct * 10) / 10,
+    trendLabel: Math.abs(trendPct) < 4 ? 'flat' : (trendPct > 0 ? 'up' : 'down'),
+  };
+}
+
+function soldCompBuckets(comps) {
+  const byDay = new Map();
+  for (const c of comps) {
+    const t = c.soldAt ? Date.parse(c.soldAt) : 0;
+    const val = Number(c.total || c.price || 0);
+    if (!t || !val) continue;
+    const key = new Date(t).toISOString().slice(0, 10);
+    const row = byDay.get(key) || { date: key, count: 0, sum: 0, avg: 0 };
+    row.count += 1;
+    row.sum += val;
+    byDay.set(key, row);
+  }
+  return [...byDay.values()]
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .map(r => ({ date: r.date, count: r.count, avg: Math.round((r.sum / r.count) * 100) / 100 }));
+}
+
+async function fetchEbaySoldComps(env, query, limit = 40) {
+  const appId = env.EBAY_APP_ID || await getStoredSecret(env, 'EBAY_CLIENT_ID');
+  if (!appId) return { source: 'none', comps: [], warning: 'EBAY_APP_ID not set' };
+  const findRes = await fetch(
+    `https://svcs.ebay.com/services/search/FindingService/v1` +
+    `?OPERATION-NAME=findCompletedItems&SERVICE-VERSION=1.0.0` +
+    `&SECURITY-APPNAME=${appId}&RESPONSE-DATA-FORMAT=JSON&REST-PAYLOAD` +
+    `&GLOBAL-ID=EBAY-US` +
+    `&keywords=${encodeURIComponent(query)}` +
+    `&itemFilter%280%29.name=SoldItemsOnly&itemFilter%280%29.value=true` +
+    `&sortOrder=EndTimeSoonest&paginationInput.entriesPerPage=${Math.min(100, Math.max(10, limit))}`
+  );
+  const { data } = await readApiJson(findRes);
+  if (!findRes.ok) return { source: 'ebay_sold', comps: [], warning: 'Finding API ' + findRes.status };
+  const root = data.findCompletedItemsResponse?.[0] || {};
+  const ack = root.ack?.[0] || '';
+  const errMsg = root.errorMessage?.[0]?.error?.[0]?.message?.[0] || '';
+  if (ack && !['Success', 'Warning'].includes(ack)) return { source: 'ebay_sold', comps: [], warning: errMsg || ack };
+  const items = root.searchResult?.[0]?.item || [];
+  return {
+    source: 'ebay_sold',
+    comps: items.map(i => normalizeSoldComp(i, 'ebay_sold')).filter(Boolean),
+    warning: errMsg || null,
+  };
+}
+
+async function fetchSoldCompsProvider(env, query, limit = 40) {
+  if (!env.SOLDCOMPS_API_KEY) return { source: 'none', comps: [], warning: 'SOLDCOMPS_API_KEY not set' };
+  const base = (env.SOLDCOMPS_BASE || 'https://api.soldcomps.com').replace(/\/+$/, '');
+  const qs = `q=${encodeURIComponent(query)}&query=${encodeURIComponent(query)}&limit=${Math.min(100, Math.max(10, limit))}`;
+  const urls = [
+    `${base}/v1/search?${qs}`,
+    `${base}/search?${qs}`,
+    `${base}/api/search?${qs}`,
+    `${base}/v1/sales?${qs}`,
+  ];
+  let lastWarning = '';
+  for (const apiUrl of urls) {
+    try {
+      const res = await fetch(apiUrl, {
+        headers: {
+          'Authorization': 'Bearer ' + env.SOLDCOMPS_API_KEY,
+          'x-api-key': env.SOLDCOMPS_API_KEY,
+          'Accept': 'application/json',
+        },
+      });
+      const { data, text } = await readApiJson(res);
+      if (!res.ok) {
+        lastWarning = 'SoldComps ' + res.status + ': ' + errorMessageFromApi(data, text.slice(0, 80));
+        continue;
+      }
+      const rows = Array.isArray(data) ? data
+        : (data.results || data.items || data.sales || data.comps || data.data || []);
+      const comps = (Array.isArray(rows) ? rows : []).map(r => normalizeSoldComp(r, 'soldcomps')).filter(Boolean);
+      if (comps.length) return { source: 'soldcomps', comps, warning: null };
+      lastWarning = 'SoldComps returned no comps';
+    } catch (e) {
+      lastWarning = e.message;
+    }
+  }
+  return { source: 'soldcomps', comps: [], warning: lastWarning || 'SoldComps unavailable' };
+}
+
 export default {
   async fetch(request, env) {
     if (request.method === 'OPTIONS') {
@@ -230,6 +373,7 @@ export default {
         tcgapi: !!env.TCGAPI_KEY,
         pokemontcg: !!env.POKEMONTCG_API_KEY,
         pokemonprice: !!(env.POKEMONPRICE_API_KEY || env.POKEMON_PRICE_TRACKER_API_KEY),
+        soldcomps: !!env.SOLDCOMPS_API_KEY,
         kv: !!env.LBA_KV,
       });
     }
@@ -998,6 +1142,39 @@ export default {
         return json({ ok: true, variants });
       } catch (e) {
         return json({ variants: [], error: e.message });
+      }
+    }
+
+    if (url.pathname === '/comps/sold') {
+      const q = (url.searchParams.get('q') || '').replace(/\s+/g, ' ').trim();
+      const limit = Number(url.searchParams.get('limit') || 40);
+      if (!q) return json({ ok: false, error: 'q required' }, 400);
+      try {
+        let result = await fetchSoldCompsProvider(env, q, limit);
+        const warnings = [];
+        if (result.warning) warnings.push(result.warning);
+        if (!result.comps.length) {
+          const ebay = await fetchEbaySoldComps(env, q, limit);
+          if (ebay.warning) warnings.push(ebay.warning);
+          if (ebay.comps.length) result = ebay;
+        }
+        const comps = result.comps
+          .filter(c => Number(c.total || c.price || 0) > 0)
+          .sort((a, b) => (Date.parse(b.soldAt || '') || 0) - (Date.parse(a.soldAt || '') || 0))
+          .slice(0, Math.min(100, Math.max(10, limit)));
+        const ebayAppAvailable = !!(env.EBAY_APP_ID || await getStoredSecret(env, 'EBAY_CLIENT_ID'));
+        return json({
+          ok: true,
+          query: q,
+          source: comps.length ? result.source : 'none',
+          comps,
+          stats: soldCompStats(comps),
+          buckets: soldCompBuckets(comps),
+          warnings: [...new Set(warnings.filter(Boolean))].slice(0, 3),
+          needsProvider: !env.SOLDCOMPS_API_KEY && !ebayAppAvailable,
+        });
+      } catch (e) {
+        return json({ ok: false, error: e.message }, 500);
       }
     }
 
