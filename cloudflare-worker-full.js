@@ -304,6 +304,8 @@ function compQualityScore(comp, query, mode = '') {
   let score = 0;
   if (bad.test(title) && !isSealedQuery) return -999;
   if (!isSealedQuery && /\b(unopened|factory sealed|wax|hobby box|blaster box|booster box|booster pack|mega box|etb)\b/i.test(title)) return -999;
+  const queryYear = q.match(/\b(19\d{2}|20\d{2})\b/)?.[1];
+  if (queryYear && !title.includes(queryYear)) return -999;
   const wanted = compTokens(q)
     .filter(t => !['raw', 'sold', 'psa', 'bgs', 'cgc', 'sgc', 'ungraded'].includes(t));
   for (const t of wanted) if (title.includes(t)) score += 8;
