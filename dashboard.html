@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="2026.04.30.7">
+<meta name="version" content="2026.04.30.8">
 <title>Walk-Off Dashboard</title>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -444,6 +444,21 @@ tr.sold:hover td{opacity:.7;}
       <button class="hbtn" onclick="connectEbay()">CONNECT EBAY</button>
       <span id="ebay-oauth-hint" style="font-family:monospace,monospace;font-size:9px;color:var(--dim)"></span>
     </div>
+  </div>
+
+  <div class="panel" style="margin-top:4px;margin-bottom:14px">
+    <div class="ph">SYSTEM / BACKUP <span id="system-health-status" style="font-size:9px;color:var(--dim)">ready</span></div>
+    <div style="font-family:monospace,monospace;font-size:10px;color:var(--dim);margin-bottom:10px;line-height:1.55">
+      Run a quick pre-show check, export a support bundle, or make a local backup before a busy event.
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
+      <button class="hbtn" onclick="runSystemCheck()">RUN HEALTH CHECK</button>
+      <button class="hbtn" onclick="exportVendorBackup()">EXPORT BACKUP</button>
+      <button class="hbtn" onclick="copyDebugBundle()">COPY DEBUG</button>
+      <button class="hbtn" onclick="document.getElementById('backup-import-file').click()">IMPORT BACKUP</button>
+      <input id="backup-import-file" type="file" accept="application/json,.json" style="display:none" onchange="importVendorBackup(event)">
+    </div>
+    <div id="system-health-output" style="font-family:monospace,monospace;font-size:10px;color:var(--dim);display:grid;gap:6px"></div>
   </div>
 
   <!-- Row 1: Quick Price Lookup + Cash Drawer -->
@@ -937,7 +952,7 @@ tr.sold:hover td{opacity:.7;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.04.30.7';
+const APP_VERSION = '2026.04.30.8';
 const STORE_ID = 'walkoff-main';
 const REGISTER_ID = 'front';
 const WF_PRODUCTS = '65eb45a28ff6bf3fe4f17b14';
@@ -1148,6 +1163,156 @@ async function connectEbay(){
   } catch(e) {
     toast_dash(e.message || 'eBay connect failed');
     if(hint) hint.textContent = e.message || 'eBay connect failed';
+  }
+}
+
+function safeLocalJson(key, fallback){
+  try { return JSON.parse(localStorage.getItem(key) || JSON.stringify(fallback)); }
+  catch(e) { return fallback; }
+}
+
+function systemLine(label, ok, detail){
+  const color = ok ? 'var(--g)' : 'var(--red)';
+  return `<div style="display:flex;justify-content:space-between;gap:10px;border:1px solid var(--border);background:var(--surf2);border-radius:6px;padding:7px 9px">
+    <span>${label}</span><span style="color:${color};text-align:right">${ok?'OK':'CHECK'}${detail?' · '+detail:''}</span>
+  </div>`;
+}
+
+async function runSystemCheck(){
+  const status = document.getElementById('system-health-status');
+  const out = document.getElementById('system-health-output');
+  status.textContent = 'checking...';
+  status.style.color = 'var(--gold)';
+  out.innerHTML = systemLine('Worker', true, 'checking');
+  const rows = [];
+  try {
+    const healthRes = await fetch(WORKER + '/health', { cache:'no-store', signal:AbortSignal.timeout(6000) });
+    const h = await healthRes.json();
+    rows.push(systemLine('Cloudflare Worker', healthRes.ok && h.ok, healthRes.ok ? 'live' : 'offline'));
+    rows.push(systemLine('Webflow token', !!h.webflow, h.webflow ? 'connected' : 'missing'));
+    rows.push(systemLine('eBay OAuth', !!h.ebayRefresh, h.ebayRefresh ? 'refresh token saved' : 'connect eBay'));
+    rows.push(systemLine('SoldComps', !!h.soldcomps, h.soldcomps ? 'connected' : 'missing key'));
+    rows.push(systemLine('PokemonPrice', !!h.pokemonprice, h.pokemonprice ? 'connected' : 'missing key'));
+    rows.push(systemLine('TCG API', !!h.tcgapi, h.tcgapi ? 'connected' : 'not configured'));
+  } catch(e) {
+    rows.push(systemLine('Cloudflare Worker', false, e.message));
+  }
+  try {
+    const inbox = await readScanInbox();
+    rows.push(systemLine('Phone scan inbox', true, inbox.length + ' waiting'));
+  } catch(e) {
+    rows.push(systemLine('Phone scan inbox', false, e.message));
+  }
+  rows.push(systemLine('Inventory loaded', all.length > 0, all.length + ' items'));
+  rows.push(systemLine('Buy offer', true, buyList.length + ' items'));
+  rows.push(systemLine('Offline cart', true, (safeLocalJson('pos_cart_v2', {items:[]}).items || []).length + ' items'));
+  out.innerHTML = rows.join('');
+  const hasBad = rows.join('').includes('CHECK');
+  status.textContent = hasBad ? 'needs review' : 'ready';
+  status.style.color = hasBad ? 'var(--gold)' : 'var(--g)';
+}
+
+async function buildVendorBackup(){
+  let scanInbox = [];
+  try { scanInbox = await readScanInbox(); } catch(e) {}
+  return {
+    app: 'Walk-Off Vendor OS',
+    appVersion: APP_VERSION,
+    exportedAt: new Date().toISOString(),
+    storeId: STORE_ID,
+    registerId: REGISTER_ID,
+    counts: {
+      inventoryLoaded: all.length,
+      filteredLoaded: filtered.length,
+      buyOfferItems: buyList.length,
+      scanInbox: scanInbox.length,
+      transactions: safeLocalJson('pos_transactions', []).length,
+    },
+    localData: {
+      showMode: safeLocalJson('pos_show_mode', null),
+      buyList: safeLocalJson('pos_buy_list', []),
+      buyOffers: safeLocalJson('pos_buy_offers', []),
+      cart: safeLocalJson('pos_cart_v2', {items:[]}),
+      drawer: safeLocalJson('pos_drawer', null),
+      transactions: safeLocalJson('pos_transactions', []),
+      wantList: safeLocalJson('pos_wantlist', []),
+      consignments: safeLocalJson('pos_consign', []),
+      locations: safeLocalJson('pos_locations', []),
+      lifecycle: safeLocalJson('inventory_lifecycle', {}),
+      localInventoryCache: safeLocalJson('lba_inventory', []),
+      scanInbox,
+    }
+  };
+}
+
+function downloadJson(filename, data){
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type:'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+}
+
+async function exportVendorBackup(){
+  const data = await buildVendorBackup();
+  downloadJson('walkoff-backup-' + new Date().toISOString().slice(0,10) + '-v' + APP_VERSION + '.json', data);
+  toast_dash('Backup exported');
+}
+
+async function copyDebugBundle(){
+  const data = await buildVendorBackup();
+  const debug = {
+    appVersion: data.appVersion,
+    exportedAt: data.exportedAt,
+    counts: data.counts,
+    healthText: document.getElementById('system-health-output')?.innerText || '',
+    userAgent: navigator.userAgent,
+    online: navigator.onLine,
+  };
+  navigator.clipboard?.writeText(JSON.stringify(debug, null, 2))
+    .then(()=>toast_dash('Debug bundle copied'))
+    .catch(()=>downloadJson('walkoff-debug-' + Date.now() + '.json', debug));
+}
+
+async function importVendorBackup(event){
+  const file = event.target.files?.[0];
+  event.target.value = '';
+  if(!file) return;
+  if(!confirm('Import local POS backup? This replaces local cart, buy offer, show, want list, and report history on this browser.')) return;
+  try {
+    const text = await file.text();
+    const data = JSON.parse(text);
+    const d = data.localData || {};
+    const map = {
+      pos_show_mode:d.showMode,
+      pos_buy_list:d.buyList,
+      pos_buy_offers:d.buyOffers,
+      pos_cart_v2:d.cart,
+      pos_drawer:d.drawer,
+      pos_transactions:d.transactions,
+      pos_wantlist:d.wantList,
+      pos_consign:d.consignments,
+      pos_locations:d.locations,
+      inventory_lifecycle:d.lifecycle,
+      lba_inventory:d.localInventoryCache,
+    };
+    for(const [k,v] of Object.entries(map)) {
+      if(v === undefined) continue;
+      if(v === null) localStorage.removeItem(k);
+      else localStorage.setItem(k, JSON.stringify(v));
+    }
+    loadBuyList();
+    renderBuyList();
+    renderShowMode();
+    renderDrawer();
+    renderWantList();
+    renderConsign();
+    renderLocations();
+    toast_dash('Backup imported');
+  } catch(e) {
+    toast_dash('Import failed: ' + e.message);
   }
 }
 
