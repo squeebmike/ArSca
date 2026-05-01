@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.05.01.2">
+<meta name="version" content="2026.05.01.3">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1010,7 +1010,7 @@ tr.sold:hover td{opacity:.7;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.05.01.2';
+const APP_VERSION = '2026.05.01.3';
 const STORE_ID = 'walkoff-main';
 const REGISTER_ID = 'front';
 const WF_PRODUCTS = '65eb45a28ff6bf3fe4f17b14';
@@ -1150,6 +1150,8 @@ function organizeRegisterLayout(){
   moveNode('backoffice-tcg-sync-panel', backoffice);
   ensureVendorConfigPanel(backoffice);
   ensureSpreadsheetPanel(backoffice);
+  ensureSyncQueuePanel(backoffice);
+  ensureCustomerPanel(backoffice);
   applyVendorConfig();
 }
 
@@ -1388,6 +1390,20 @@ function renderSpreadsheetMapping(){
   const opts = '<option value="">-- ignore --</option>' + pendingCsvHeaders.map(h => `<option value="${h}">${h}</option>`).join('');
   box.style.display = '';
   box.innerHTML = `<div style="font-family:monospace,monospace;font-size:10px;color:var(--dim);margin-bottom:8px">${pendingCsvRows.length} rows found. Map your spreadsheet columns:</div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
+      <label style="font-family:monospace;font-size:9px;color:var(--dim)">IMPORT PRESET
+        <select id="sheet-preset" onchange="applySpreadsheetPreset(this.value)" style="min-width:190px;margin-left:6px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:7px;border-radius:6px">
+          <option value="">Auto / saved mapping</option>
+          <option value="tcgplayer">TCGPlayer</option>
+          <option value="ebay">eBay</option>
+          <option value="square">Square</option>
+          <option value="shopify">Shopify</option>
+          <option value="generic">Generic spreadsheet</option>
+        </select>
+      </label>
+      <button class="hbtn" onclick="showSpreadsheetDuplicatePreview()">CHECK DUPES</button>
+      <span id="sheet-dupe-status" style="font-family:monospace;font-size:9px;color:var(--dim)"></span>
+    </div>
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px">
       ${Object.entries(fields).map(([field, aliases]) => {
         const val = saved[field] || guessColumn(pendingCsvHeaders, aliases);
@@ -1400,6 +1416,103 @@ function renderSpreadsheetMapping(){
       <button class="hbtn danger" onclick="pendingCsvRows=[];document.getElementById('sheet-mapping').style.display='none'">CANCEL</button>
     </div>`;
   preview.innerHTML = pendingCsvRows.slice(0,5).map(r => `<div style="border:1px solid var(--border);background:var(--surf2);border-radius:6px;padding:7px">${pendingCsvHeaders.slice(0,6).map(h => `${h}: ${r[h]}`).join(' · ')}</div>`).join('');
+}
+
+const SPREADSHEET_PRESETS = {
+  generic:{
+    name:['name','title','item','product'],
+    category:['category','type','department'],
+    set:['set','set name','series'],
+    year:['year','season'],
+    variant:['variant','parallel'],
+    condition:['condition','cond'],
+    qty:['qty','quantity','count','stock'],
+    cost:['cost','paid','buy price'],
+    market:['price','market','retail'],
+    location:['location','box','case'],
+    notes:['notes','description','memo']
+  },
+  tcgplayer:{
+    name:['product name','name','title'],
+    category:['product line','category','game'],
+    set:['set name','set'],
+    year:['year'],
+    variant:['printing','variant','foil'],
+    condition:['condition'],
+    qty:['quantity','qty'],
+    cost:['purchase price','cost','my price'],
+    market:['market price','tcg market price','listed median','price'],
+    location:['location'],
+    notes:['notes']
+  },
+  ebay:{
+    name:['title','item title'],
+    category:['category','category name'],
+    set:['set'],
+    year:['year'],
+    variant:['variation','variant'],
+    condition:['condition'],
+    qty:['quantity available','available quantity','quantity'],
+    cost:['cost'],
+    market:['start price','price','buy it now price'],
+    location:['custom label','location'],
+    notes:['description']
+  },
+  square:{
+    name:['item name','name'],
+    category:['category'],
+    set:['variation name','set'],
+    condition:['condition'],
+    qty:['current quantity','stock','quantity'],
+    cost:['unit cost','cost'],
+    market:['price'],
+    location:['location'],
+    notes:['description']
+  },
+  shopify:{
+    name:['title'],
+    category:['type','product category'],
+    set:['vendor','set'],
+    variant:['variant title'],
+    condition:['condition'],
+    qty:['variant inventory qty','inventory qty'],
+    cost:['cost per item','cost'],
+    market:['variant price','price'],
+    location:['location'],
+    notes:['body (html)','description']
+  }
+};
+
+function applySpreadsheetPreset(name){
+  const preset = SPREADSHEET_PRESETS[name];
+  if(!preset) return;
+  Object.entries(preset).forEach(([field, aliases]) => {
+    const el = document.getElementById('map-'+field);
+    if(!el) return;
+    const match = guessColumn(pendingCsvHeaders, aliases);
+    if(match) el.value = match;
+  });
+  showSpreadsheetDuplicatePreview();
+}
+
+function itemMatchKey(i){
+  return [i.name,i.year,i.set,i.card_number,i.issue,i.variant,i.condition]
+    .map(v => String(v||'').toLowerCase().replace(/[^a-z0-9]+/g,''))
+    .join('|');
+}
+
+function findDuplicateItems(items){
+  const existing = new Set([...(all||[]), ...getUniversalInventory()].map(itemMatchKey).filter(k => k.replace(/\|/g,'')));
+  return items.filter(i => existing.has(itemMatchKey(i)));
+}
+
+function showSpreadsheetDuplicatePreview(){
+  const el = document.getElementById('sheet-dupe-status');
+  if(!el) return;
+  const items = mappedSpreadsheetItems();
+  const dupes = findDuplicateItems(items);
+  el.style.color = dupes.length ? 'var(--gold)' : 'var(--g)';
+  el.textContent = dupes.length ? dupes.length + ' possible duplicate(s)' : 'No obvious duplicates';
 }
 
 function mappedSpreadsheetItems(){
@@ -1431,6 +1544,8 @@ function mappedSpreadsheetItems(){
 async function importMappedSpreadsheet(pushWebflow){
   const items = mappedSpreadsheetItems();
   if(!items.length){ toast_dash('No mapped rows to import'); return; }
+  const dupes = findDuplicateItems(items);
+  if(dupes.length && !confirm(dupes.length + ' possible duplicates found. Import anyway?')) return;
   const local = safeLocalJson('walkoff_universal_inventory', []);
   local.unshift(...items);
   localStorage.setItem('walkoff_universal_inventory', JSON.stringify(local.slice(0,5000)));
@@ -1438,7 +1553,10 @@ async function importMappedSpreadsheet(pushWebflow){
   if(pushWebflow) {
     for(const item of items) {
       try { await createWebflowProduct(item, item); webflowOk++; }
-      catch(e) { webflowFail++; }
+      catch(e) {
+        webflowFail++;
+        enqueueSync('webflow-create', 'Create Webflow item: ' + (item.name || 'Imported item'), { item, updates:item }, e.message || 'Webflow create failed');
+      }
     }
   }
   pendingCsvRows = [];
@@ -1492,6 +1610,147 @@ function exportBuyOffersCSV(){
     .concat(offers.flatMap(o => (o.items||[]).map(i => [o.date,o.customer,o.phone,i.name,i.category,i.set,i.year,i.condition,i.market,i.offer,o.pct,o.show?.eventName||''])));
   downloadCSV('walkoff-buy-offers-' + new Date().toISOString().slice(0,10) + '.csv', rows);
 }
+
+function ensureSyncQueuePanel(backoffice){
+  if(document.getElementById('sync-queue-panel')) return;
+  const panel = document.createElement('div');
+  panel.className = 'panel';
+  panel.id = 'sync-queue-panel';
+  panel.style.marginBottom = '14px';
+  panel.innerHTML = `<div class="ph">SYNC QUEUE <span id="sync-queue-count" style="font-size:9px;color:var(--dim)">0 pending</span></div>
+    <div style="font-family:monospace,monospace;font-size:10px;color:var(--dim);margin-bottom:10px;line-height:1.55">Failed imports, Webflow pushes, and future channel syncs land here so nothing silently disappears.</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+      <button class="hbtn" onclick="renderSyncQueue()">REFRESH</button>
+      <button class="hbtn" onclick="retryAllSyncQueue()">RETRY ALL</button>
+      <button class="hbtn danger" onclick="clearCompletedSyncQueue()">CLEAR DONE</button>
+    </div>
+    <div id="sync-queue-list" style="display:grid;gap:6px;font-family:monospace,monospace;font-size:10px;color:var(--dim)"></div>`;
+  backoffice.prepend(panel);
+  renderSyncQueue();
+}
+
+function getSyncQueue(){
+  return safeLocalJson('sync_queue_v1', []);
+}
+
+function saveSyncQueue(q){
+  localStorage.setItem('sync_queue_v1', JSON.stringify((q||[]).slice(0,500)));
+  renderSyncQueue();
+}
+
+function enqueueSync(type, label, payload, error){
+  const q = getSyncQueue();
+  q.unshift({ id:'sync_'+Date.now()+'_'+Math.random().toString(36).slice(2,6), type, label, payload, error:error||'', status:'pending', attempts:0, createdAt:new Date().toISOString(), updatedAt:new Date().toISOString() });
+  saveSyncQueue(q);
+}
+
+function renderSyncQueue(){
+  const list = document.getElementById('sync-queue-list');
+  const count = document.getElementById('sync-queue-count');
+  if(!list) return;
+  const q = getSyncQueue();
+  const pending = q.filter(x => x.status !== 'done').length;
+  if(count) count.textContent = pending + ' pending';
+  if(!q.length){ list.innerHTML = '<div style="padding:10px;border:1px dashed var(--border);border-radius:8px;text-align:center">No queued sync work</div>'; return; }
+  list.innerHTML = q.slice(0,60).map(x => `<div style="border:1px solid var(--border);background:var(--surf2);border-radius:7px;padding:8px;display:grid;gap:4px">
+    <div style="display:flex;justify-content:space-between;gap:8px"><b style="color:${x.status==='done'?'var(--g)':x.status==='failed'?'var(--red)':'var(--gold)'}">${x.status.toUpperCase()} · ${x.type}</b><span>${new Date(x.updatedAt||x.createdAt).toLocaleString()}</span></div>
+    <div style="color:var(--text)">${x.label || 'Sync item'}</div>
+    ${x.error?`<div style="color:var(--red)">${String(x.error).slice(0,180)}</div>`:''}
+    <div style="display:flex;gap:6px;flex-wrap:wrap"><button class="hbtn" onclick="retrySyncItem('${x.id}')">RETRY</button><button class="hbtn danger" onclick="removeSyncItem('${x.id}')">REMOVE</button></div>
+  </div>`).join('');
+}
+
+async function processSyncItem(item){
+  if(item.type === 'webflow-create') {
+    await createWebflowProduct(item.payload.item, item.payload.updates || item.payload.item);
+    return;
+  }
+  if(item.type === 'webflow-patch') {
+    const res = await fetch(WORKER+'/proxy/collections/'+WF_PRODUCTS+'/items/'+item.payload.id, { method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ fieldData:item.payload.fieldData }) });
+    if(!res.ok) throw new Error('Webflow patch '+res.status+': '+(await res.text()).slice(0,160));
+    return;
+  }
+  throw new Error('No retry handler for '+item.type);
+}
+
+async function retrySyncItem(id){
+  const q = getSyncQueue();
+  const item = q.find(x => x.id === id);
+  if(!item) return;
+  item.status = 'running'; item.attempts = (item.attempts||0)+1; item.updatedAt = new Date().toISOString(); saveSyncQueue(q);
+  try {
+    await processSyncItem(item);
+    item.status = 'done'; item.error = ''; item.updatedAt = new Date().toISOString();
+    logOpsEvent('sync_retry', 'Sync retry succeeded: '+item.label, { type:item.type });
+  } catch(e) {
+    item.status = 'failed'; item.error = e.message; item.updatedAt = new Date().toISOString();
+  }
+  saveSyncQueue(q);
+}
+
+async function retryAllSyncQueue(){
+  for(const item of getSyncQueue().filter(x => x.status !== 'done')) await retrySyncItem(item.id);
+}
+
+function removeSyncItem(id){ saveSyncQueue(getSyncQueue().filter(x => x.id !== id)); }
+function clearCompletedSyncQueue(){ saveSyncQueue(getSyncQueue().filter(x => x.status !== 'done')); }
+
+function ensureCustomerPanel(backoffice){
+  if(document.getElementById('customer-panel')) return;
+  const panel = document.createElement('div');
+  panel.className = 'panel';
+  panel.id = 'customer-panel';
+  panel.style.marginBottom = '14px';
+  panel.innerHTML = `<div class="ph">CUSTOMERS / WANT HISTORY <span id="customer-count" style="font-size:9px;color:var(--dim)">0 contacts</span></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+      <input class="tsi" id="cust-name" placeholder="Customer name" style="flex:1;min-width:180px;margin-bottom:0">
+      <input class="tsi" id="cust-contact" placeholder="Phone or email" style="flex:1;min-width:180px;margin-bottom:0">
+      <input class="tsi" id="cust-notes" placeholder="Notes / likes / wants" style="flex:2;min-width:220px;margin-bottom:0">
+      <button class="hbtn" onclick="addCustomerContact()">ADD</button>
+      <button class="hbtn" onclick="exportCustomersCSV()">EXPORT</button>
+    </div>
+    <div id="customer-list" style="display:grid;gap:6px;font-family:monospace,monospace;font-size:10px;color:var(--dim)"></div>`;
+  backoffice.appendChild(panel);
+  renderCustomers();
+}
+
+function getCustomers(){ return safeLocalJson('pos_customers', []); }
+function saveCustomers(c){ localStorage.setItem('pos_customers', JSON.stringify(c.slice(0,1000))); renderCustomers(); }
+function upsertCustomer(name, contact, notes, source){
+  name = String(name || '').trim();
+  contact = String(contact || '').trim();
+  notes = String(notes || '').trim();
+  if(!name && !contact) return;
+  const c = getCustomers();
+  const key = (contact || name).toLowerCase();
+  const idx = c.findIndex(x => String(x.contact || x.name || '').toLowerCase() === key);
+  const entry = idx >= 0 ? c[idx] : { id:'cust_'+Date.now(), name, contact, notes:'', createdAt:new Date().toISOString(), source:source || 'auto' };
+  entry.name = entry.name || name;
+  entry.contact = entry.contact || contact;
+  entry.updatedAt = new Date().toISOString();
+  entry.source = entry.source || source || 'auto';
+  if(notes && !String(entry.notes || '').includes(notes)) entry.notes = [entry.notes, notes].filter(Boolean).join('\n');
+  if(idx >= 0) c.splice(idx, 1);
+  c.unshift(entry);
+  saveCustomers(c);
+}
+function addCustomerContact(){
+  const name = document.getElementById('cust-name')?.value.trim();
+  const contact = document.getElementById('cust-contact')?.value.trim();
+  const notes = document.getElementById('cust-notes')?.value.trim();
+  if(!name && !contact) return;
+  upsertCustomer(name, contact, notes, 'manual');
+  ['cust-name','cust-contact','cust-notes'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
+}
+function renderCustomers(){
+  const list = document.getElementById('customer-list');
+  const count = document.getElementById('customer-count');
+  if(!list) return;
+  const c = getCustomers();
+  if(count) count.textContent = c.length + ' contacts';
+  list.innerHTML = c.length ? c.slice(0,30).map(x => `<div style="border:1px solid var(--border);background:var(--surf2);border-radius:7px;padding:8px"><b style="color:var(--text)">${x.name||'Customer'}</b> · ${x.contact||''}<div>${x.notes||''}</div></div>`).join('') : '<div style="padding:10px;border:1px dashed var(--border);border-radius:8px;text-align:center">No customers yet</div>';
+}
+function exportCustomersCSV(){ downloadCSV('walkoff-customers-'+new Date().toISOString().slice(0,10)+'.csv', [['name','contact','notes','created_at']].concat(getCustomers().map(c => [c.name,c.contact,c.notes,c.createdAt]))); }
 
 function ensureRegisterCommandCenter(register){
   if(document.getElementById('register-command')) return;
@@ -1971,6 +2230,8 @@ async function buildVendorBackup(){
       localInventoryCache: safeLocalJson('lba_inventory', []),
       universalInventory: safeLocalJson('walkoff_universal_inventory', []),
       spreadsheetMapping: safeLocalJson('sheet_mapping_v1', {}),
+      syncQueue: safeLocalJson('sync_queue_v1', []),
+      customers: safeLocalJson('pos_customers', []),
       opsLog: getOpsLog(),
       scanInbox,
     }
@@ -2038,6 +2299,8 @@ async function importVendorBackup(event){
       lba_inventory:d.localInventoryCache,
       walkoff_universal_inventory:d.universalInventory,
       sheet_mapping_v1:d.spreadsheetMapping,
+      sync_queue_v1:d.syncQueue,
+      pos_customers:d.customers,
       pos_ops_log:d.opsLog,
     };
     for(const [k,v] of Object.entries(map)) {
@@ -3077,6 +3340,7 @@ function addWantItem(){
     addedAt: new Date().toISOString(),
     matchedId: null,
   });
+  upsertCustomer(customer, contact, 'Want: ' + item + (maxprice ? ' up to $' + maxprice.toFixed(2) : '') + (notes ? '\n' + notes : ''), 'want-list');
   saveWantList();
   ['wl-item','wl-customer','wl-contact','wl-maxprice','wl-notes'].forEach(id => {
     const el = document.getElementById(id);
@@ -3724,7 +3988,30 @@ function saveEditToLocalStorage(id, updates) {
     filterTable();
     renderStats();
   }
+  if(idx < 0 && updateUniversalInventoryItem(id, updates)) return true;
   return idx >= 0;
+}
+
+function updateUniversalInventoryItem(id, updates) {
+  const inv = safeLocalJson('walkoff_universal_inventory', []);
+  const idx = inv.findIndex(i => i.id === id || i.wfId === id);
+  if(idx < 0) return false;
+  Object.assign(inv[idx], {
+    ...updates,
+    market:Number(updates.market ?? inv[idx].market ?? 0),
+    cost:Number(updates.cost ?? inv[idx].cost ?? 0),
+    qty:Number(updates.qty ?? inv[idx].qty ?? 1),
+    notes:updates.key_notes || updates.notes || inv[idx].notes || '',
+    updatedAt:new Date().toISOString(),
+    appVersion:APP_VERSION,
+  });
+  localStorage.setItem('walkoff_universal_inventory', JSON.stringify(inv.slice(0,5000)));
+  const allIdx = all.findIndex(i => i.id === id);
+  if(allIdx >= 0) Object.assign(all[allIdx], updates, { source:'spreadsheet' });
+  filterTable();
+  renderStats();
+  renderInventoryCategoryFilters?.();
+  return true;
 }
 
 function confirmEdit() {
@@ -3792,12 +4079,31 @@ async function confirmEditAndSync() {
   statusEl.style.color = 'var(--gold)';
   statusEl.textContent = '⟳ Syncing to Webflow...';
 
+  if(item.source === 'spreadsheet') {
+    saveEditToLocalStorage(editingItemId, updates);
+    statusEl.textContent = 'Creating Webflow item...';
+    try {
+      const productId = await createWebflowProduct({...item, ...updates}, updates);
+      updateUniversalInventoryItem(editingItemId, {...updates, wfId:productId, source:'webflow'});
+      statusEl.style.color = 'var(--g)';
+      statusEl.textContent = 'Created in Webflow';
+      logOpsEvent('inventory_sync', 'Created spreadsheet item in Webflow: ' + (item.name || 'item'), { productId });
+      loadInventory();
+    } catch(e) {
+      enqueueSync('webflow-create', 'Create Webflow item: ' + (item.name || 'Imported item'), { item:{...item, ...updates}, updates }, e.message || 'Webflow create failed');
+      statusEl.style.color = 'var(--red)';
+      statusEl.textContent = 'Queued for retry: ' + (e.message || 'Webflow create failed');
+    }
+    return;
+  }
+
   // Dashboard items always come from Webflow so item.id is always the Webflow ID
   // The wfId check above handles the missing ID case
 
   // item.id IS the Webflow product ID (set by mapItem: id:i.id)
   // NEVER create — always PATCH the existing item
   const wfId = item.id;
+  let queuedFieldData = null;
   if(!wfId) {
     statusEl.style.color = 'var(--red)';
     statusEl.textContent = '⚠ No Webflow ID on this item';
@@ -3834,6 +4140,7 @@ async function confirmEditAndSync() {
     if(updates.cost > 0)  fieldData['cost-basis']       = updates.cost;
     if(catMap[updates.category]) fieldData['card-category'] = catMap[updates.category];
     if(condMap[updates.condition]) fieldData['condition'] = condMap[updates.condition];
+    queuedFieldData = fieldData;
     // Update name if set changed
     if(updates.set || updates.year) {
       const nameParts = [item.name, updates.year||item.year, updates.set||item.set].filter(Boolean);
@@ -3871,6 +4178,7 @@ async function confirmEditAndSync() {
       : '⚠ Webflow error'+r2txt;
 
   } catch(e) {
+    if(queuedFieldData) enqueueSync('webflow-patch', 'Patch Webflow item: ' + (item.name || wfId), { id:wfId, fieldData:queuedFieldData }, e.message || 'Webflow patch failed');
     statusEl.style.color = 'var(--red)';
     statusEl.textContent = '⚠ '+e.message;
   }
@@ -4572,12 +4880,14 @@ function getBuyOfferTotals(){
 
 function logBuyOffer(addedCount, failedCount){
   const totals = getBuyOfferTotals();
+  const customer = document.getElementById('bl-customer')?.value.trim() || '';
+  const phone = (document.getElementById('bl-phone')?.value || '').trim();
   const log = JSON.parse(localStorage.getItem('pos_buy_offers') || '[]');
   log.unshift({
     id: 'buy_' + Date.now(),
     date: new Date().toISOString(),
-    customer: document.getElementById('bl-customer')?.value.trim() || '',
-    phone: (document.getElementById('bl-phone')?.value || '').trim(),
+    customer,
+    phone,
     show: getShowMode(),
     pct: totals.pct,
     marketTotal: totals.marketTotal,
@@ -4598,6 +4908,7 @@ function logBuyOffer(addedCount, failedCount){
     })),
   });
   localStorage.setItem('pos_buy_offers', JSON.stringify(log.slice(0,200)));
+  upsertCustomer(customer, phone, 'Buy offer: $' + totals.offerTotal.toFixed(2) + ' for ' + buyList.length + ' item(s)', 'buy-offer');
 }
 
 function buyItemToInventoryUpdates(item){
@@ -4652,6 +4963,7 @@ async function bulkAddBuyListToInventory(skipConfirm){
       if(productId) ok++; else fail++;
     } catch(e) {
       item.inventoryError = e.message || 'Webflow add failed';
+      enqueueSync('webflow-create', 'Create buy inventory item: ' + (item.name || 'Buy item'), { item:item.scan || item, updates:buyItemToInventoryUpdates(item) }, item.inventoryError);
       if(!firstError) firstError = item.inventoryError;
       fail++;
     }
@@ -4695,6 +5007,7 @@ async function addBuyItemToInventory(id){
     loadInventory();
   } catch(e) {
     item.inventoryError = e.message || 'Webflow add failed';
+    enqueueSync('webflow-create', 'Create buy inventory item: ' + (item.name || 'Buy item'), { item:item.scan || item, updates:buyItemToInventoryUpdates(item) }, item.inventoryError);
     saveBuyList();
     renderBuyList();
     toast_dash('Inventory add failed: ' + item.inventoryError);
