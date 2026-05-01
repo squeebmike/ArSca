@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.05.01.4">
+<meta name="version" content="2026.05.01.5">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -88,6 +88,17 @@ header{position:sticky;top:0;z-index:100;background:rgba(7,8,10,.96);backdrop-fi
 .module-toggle input{accent-color:var(--g);}
 .category-chip{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:999px;padding:6px 9px;font-family:monospace,monospace;font-size:10px;color:var(--dim);margin:0 6px 6px 0;}
 .category-chip button{background:none;border:none;color:var(--red);cursor:pointer;font-size:12px;line-height:1;}
+.qol-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px;}
+.qol-card{background:var(--surf2);border:1px solid var(--border);border-radius:8px;padding:12px;min-height:78px;}
+.qol-k{font-family:monospace,monospace;font-size:8px;letter-spacing:2px;color:var(--dim);text-transform:uppercase;}
+.qol-v{font-family:'Orbitron',monospace;font-size:18px;font-weight:900;color:var(--text);margin-top:5px;}
+.qol-s{font-family:monospace,monospace;font-size:9px;color:var(--dim);margin-top:2px;}
+.cmd-row{display:grid;grid-template-columns:1fr auto auto;gap:8px;margin-bottom:10px;}
+.data-pill{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--border);background:rgba(255,255,255,.035);border-radius:999px;padding:5px 8px;margin:0 5px 5px 0;font-family:monospace,monospace;font-size:9px;color:var(--dim);}
+.data-pill.warn{color:var(--gold);border-color:rgba(255,209,102,.22);background:rgba(255,209,102,.06);}
+.data-pill.bad{color:var(--red);border-color:rgba(255,77,109,.22);background:rgba(255,77,109,.06);}
+.timeline-row{border-left:2px solid rgba(0,255,179,.28);padding:0 0 8px 10px;margin-left:4px;font-family:monospace,monospace;font-size:10px;color:var(--dim);}
+.timeline-row b{color:var(--text);font-family:'DM Sans',sans-serif;font-size:12px;}
 
 /* CATEGORY CARDS */
 .cg{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
@@ -1010,7 +1021,7 @@ tr.sold:hover td{opacity:.7;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.05.01.4';
+const APP_VERSION = '2026.05.01.5';
 const STORE_ID = 'walkoff-main';
 const REGISTER_ID = 'front';
 const WF_PRODUCTS = '65eb45a28ff6bf3fe4f17b14';
@@ -1139,6 +1150,7 @@ function organizeRegisterLayout(){
   if(!register || !backoffice) return;
 
   ensureRegisterCommandCenter(register);
+  ensureTodayModePanel(register);
   moveNode('register-show-panel', register);
   moveNode('register-lookup-drawer-row', register);
   moveNode('register-scan-panel', register);
@@ -1152,6 +1164,8 @@ function organizeRegisterLayout(){
   ensureSpreadsheetPanel(backoffice);
   ensureSyncQueuePanel(backoffice);
   ensureCustomerPanel(backoffice);
+  ensureDataHealthPanel(backoffice);
+  ensureInventoryToolsPanel();
   applyVendorConfig();
 }
 
@@ -1784,6 +1798,291 @@ function renderCustomers(){
 }
 function exportCustomersCSV(){ downloadCSV('walkoff-customers-'+new Date().toISOString().slice(0,10)+'.csv', [['name','contact','notes','created_at']].concat(getCustomers().map(c => [c.name,c.contact,c.notes,c.createdAt]))); }
 
+function selectedInventoryItems(){
+  return [...document.querySelectorAll('.inv-select:checked')]
+    .map(cb => all.find(i => i.id === cb.value))
+    .filter(Boolean);
+}
+function toggleAllInventorySelection(on){
+  document.querySelectorAll('.inv-select').forEach(cb => cb.checked = !!on);
+}
+function ensureInventoryToolsPanel(){
+  const tab = document.getElementById('tab-inventory');
+  const tc = tab?.querySelector('.tc');
+  if(!tab || !tc || document.getElementById('inventory-tools-panel')) return;
+  const panel = document.createElement('div');
+  panel.className = 'panel';
+  panel.id = 'inventory-tools-panel';
+  panel.style.maxWidth = '1400px';
+  panel.style.margin = '0 auto 14px';
+  panel.innerHTML = `<div class="ph">INVENTORY TOOLS <span style="font-size:9px;color:var(--dim)">bulk actions, labels, repricing</span></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
+      <button class="hbtn" onclick="toggleAllInventorySelection(true)">SELECT PAGE</button>
+      <button class="hbtn" onclick="toggleAllInventorySelection(false)">CLEAR</button>
+      <select id="bulk-status" class="min" style="min-width:150px">
+        ${Object.entries(LIFECYCLE_LABELS).map(([v,l])=>`<option value="${v}">${l}</option>`).join('')}
+      </select>
+      <button class="hbtn" onclick="bulkSetLifecycle()">SET STATUS</button>
+      <input id="bulk-price-pct" type="number" class="tsi" placeholder="% market" value="85" style="width:90px;margin-bottom:0">
+      <button class="hbtn" onclick="bulkApplyShowPrice()">SHOW PRICE</button>
+      <button class="hbtn" onclick="printSelectedPriceTags()">PRINT TAGS</button>
+      <button class="hbtn" onclick="exportPriceTagsCSV()">TAG CSV</button>
+    </div>
+    <div id="inventory-tools-status" style="font-family:monospace,monospace;font-size:10px;color:var(--dim)">Tip: select rows on the current page, then apply a status or show price.</div>`;
+  tc.insertAdjacentElement('afterend', panel);
+}
+
+function bulkSetLifecycle(){
+  const items = selectedInventoryItems();
+  const state = document.getElementById('bulk-status')?.value || 'in_stock';
+  if(!items.length) return toast_dash('Select inventory rows first');
+  const before = getLifecycleMap();
+  const map = {...before};
+  items.forEach(i => { map[i.id] = state; i.lifecycle = state; });
+  saveLifecycleMap(map);
+  pushUndoAction('bulk status', { type:'local-storage', key:'inventory_lifecycle', value:before });
+  renderAll();
+  toast_dash('Updated ' + items.length + ' item(s)');
+}
+
+function bulkApplyShowPrice(){
+  const items = selectedInventoryItems();
+  const pct = Number(document.getElementById('bulk-price-pct')?.value || 100) / 100;
+  if(!items.length) return toast_dash('Select inventory rows first');
+  const before = all.map(i => ({...i}));
+  items.forEach(i => {
+    i.showPrice = Math.round(Number(i.market || 0) * pct);
+    i.priceSource = i.priceSource || 'show_rule';
+  });
+  pushUndoAction('bulk show price', { type:'local-storage', key:'lba_inventory', value:before });
+  renderAll();
+  toast_dash('Show price set for ' + items.length + ' item(s)');
+}
+
+function priceTagRows(items){
+  return [['name','price','category','condition','location','sku','qr_hint']]
+    .concat(items.map(i => [i.name, Number(i.showPrice || i.market || 0).toFixed(2), i.category, i.condition || '', i.location || '', i.id, 'Open dashboard and search '+i.id]));
+}
+function exportPriceTagsCSV(){
+  const items = selectedInventoryItems().length ? selectedInventoryItems() : filtered.filter(i => i.status === 'in_stock').slice(0,250);
+  downloadCSV('walkoff-price-tags-'+new Date().toISOString().slice(0,10)+'.csv', priceTagRows(items));
+  toast_dash('Exported ' + items.length + ' tag rows');
+}
+function printSelectedPriceTags(){
+  const items = selectedInventoryItems();
+  if(!items.length) return toast_dash('Select inventory rows first');
+  const w = window.open('', '_blank', 'width=800,height=700');
+  w.document.write(`<html><head><title>Price Tags</title><style>body{font-family:Arial,sans-serif}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.tag{border:1px solid #111;padding:8px;min-height:92px;break-inside:avoid}.n{font-weight:700;font-size:11px}.p{font-size:24px;font-weight:900;margin:4px 0}.m{font-size:9px;color:#555}.sku{font-family:monospace;font-size:8px;margin-top:6px}</style></head><body><div class="grid">${items.map(i=>`<div class="tag"><div class="n">${i.name}</div><div class="p">$${Number(i.showPrice || i.market || 0).toFixed(2)}</div><div class="m">${[i.category,i.condition,i.location].filter(Boolean).join(' · ')}</div><div class="sku">${i.id}</div></div>`).join('')}</div><script>print()<\/script></body></html>`);
+  w.document.close();
+}
+
+function dataHealthIssues(){
+  const issues = [];
+  all.forEach(i => {
+    const miss = [];
+    if(!i.cost) miss.push('cost');
+    if(!i.market) miss.push('price');
+    if(!i.condition) miss.push('condition');
+    if(!i.thumbnail) miss.push('image');
+    if(!i.priceSource) miss.push('source');
+    if(miss.length) issues.push({ item:i, miss });
+  });
+  return issues;
+}
+
+function ensureDataHealthPanel(backoffice){
+  if(document.getElementById('data-health-panel')) return;
+  const panel = document.createElement('div');
+  panel.className = 'panel';
+  panel.id = 'data-health-panel';
+  panel.style.marginBottom = '14px';
+  panel.innerHTML = `<div class="ph">DATA HEALTH <span id="data-health-count" style="font-size:9px;color:var(--dim)">checking</span></div>
+    <div id="data-health-list" style="font-family:monospace,monospace;font-size:10px;color:var(--dim)"></div>`;
+  backoffice.appendChild(panel);
+  renderDataHealthPanel();
+}
+
+function renderDataHealthPanel(){
+  const list = document.getElementById('data-health-list');
+  const count = document.getElementById('data-health-count');
+  if(!list) return;
+  const issues = dataHealthIssues();
+  if(count) count.textContent = issues.length + ' items need attention';
+  if(!issues.length){ list.innerHTML = '<span class="data-pill">Inventory data looks clean</span>'; return; }
+  const totals = {};
+  issues.forEach(x => x.miss.forEach(m => totals[m] = (totals[m]||0)+1));
+  list.innerHTML = Object.entries(totals).map(([k,v]) => `<button class="data-pill warn" onclick="filterDataHealth('${k}')">${v} missing ${k}</button>`).join('') +
+    '<div style="margin-top:8px">' + issues.slice(0,12).map(x => `<div style="padding:6px 0;border-top:1px solid var(--border)"><b style="color:var(--text)">${x.item.name}</b> · ${x.miss.join(', ')} <button class="ra" onclick="openEditModal('${x.item.id}')">Fix</button></div>`).join('') + '</div>';
+}
+
+function filterDataHealth(kind){
+  switchTab('inventory');
+  filtered = all.filter(i => {
+    if(kind === 'cost') return !i.cost;
+    if(kind === 'price') return !i.market;
+    if(kind === 'condition') return !i.condition;
+    if(kind === 'image') return !i.thumbnail;
+    if(kind === 'source') return !i.priceSource;
+    return false;
+  });
+  document.getElementById('tbl-count').textContent = filtered.length + ' health item(s)';
+  renderTable();
+}
+
+function getUndoStack(){ return safeLocalJson('pos_undo_stack', []); }
+function pushUndoAction(label, undo){
+  const stack = getUndoStack();
+  stack.unshift({ id:'undo_'+Date.now(), label, undo, createdAt:new Date().toISOString(), appVersion:APP_VERSION });
+  localStorage.setItem('pos_undo_stack', JSON.stringify(stack.slice(0,30)));
+  updateUndoButton();
+}
+function updateUndoButton(){
+  const btn = document.getElementById('undo-last-btn');
+  if(!btn) return;
+  const stack = getUndoStack();
+  btn.disabled = !stack.length;
+  btn.textContent = stack.length ? 'UNDO: ' + stack[0].label.slice(0,24).toUpperCase() : 'UNDO LAST';
+}
+function undoLastAction(){
+  const stack = getUndoStack();
+  const act = stack.shift();
+  if(!act){ toast_dash('Nothing to undo'); return; }
+  localStorage.setItem('pos_undo_stack', JSON.stringify(stack));
+  const u = act.undo || {};
+  if(u.type === 'item-snapshot') {
+    const idx = all.findIndex(i => i.id === u.item.id);
+    if(idx >= 0) all[idx] = u.item;
+    const cache = safeLocalJson('lba_inventory', []);
+    const cidx = cache.findIndex(i => i.id === u.item.id);
+    if(cidx >= 0) { cache[cidx] = u.item; localStorage.setItem('lba_inventory', JSON.stringify(cache)); }
+    if(u.lifecycleMap) localStorage.setItem('inventory_lifecycle', JSON.stringify(u.lifecycleMap));
+    renderAll();
+  } else if(u.type === 'cart-snapshot') {
+    localStorage.setItem('pos_cart_v2', JSON.stringify(u.cart));
+    postCartToWorker(u.cart);
+  } else if(u.type === 'local-storage') {
+    if(u.value === null) localStorage.removeItem(u.key);
+    else localStorage.setItem(u.key, JSON.stringify(u.value));
+    if(u.key === 'lba_inventory' && Array.isArray(u.value)) all = u.value.concat(getUniversalInventory());
+    if(u.key === 'inventory_lifecycle') {
+      const map = u.value || {};
+      all.forEach(i => i.lifecycle = map[i.id] || i.lifecycle);
+    }
+    renderAll();
+    if(u.reload) location.reload();
+  }
+  logOpsEvent('undo', 'Undid: ' + act.label, { type:u.type || '' });
+  updateUndoButton();
+  toast_dash('Undid: ' + act.label);
+}
+
+function itemTimeline(id){
+  const item = all.find(i => i.id === id) || {};
+  const ops = getOpsLog().filter(e => JSON.stringify(e.detail || {}).includes(id) || (e.message || '').includes(item.name || ''));
+  const rows = [];
+  if(item.addedAt) rows.push({time:item.addedAt, label:'Added to inventory', detail:item.category || ''});
+  if(item.soldAt) rows.push({time:item.soldAt, label:'Sold', detail:[item.channel, item.salePrice ? '$'+Number(item.salePrice).toFixed(2) : ''].filter(Boolean).join(' ')});
+  if(item.lifecycle) rows.push({time:item.updatedAt || item.soldAt || item.addedAt || new Date().toISOString(), label:'Current status', detail:LIFECYCLE_LABELS[item.lifecycle] || item.lifecycle});
+  ops.slice(0,10).forEach(e => rows.push({time:e.time, label:e.type, detail:e.message}));
+  return rows.sort((a,b)=>new Date(b.time||0)-new Date(a.time||0));
+}
+
+function openItemTimeline(id){
+  const item = all.find(i => i.id === id);
+  if(!item) return;
+  const rows = itemTimeline(id);
+  const html = rows.length ? rows.map(r => `<div class="timeline-row"><b>${r.label}</b><div>${r.detail || ''}</div><div>${new Date(r.time).toLocaleString()}</div></div>`).join('') : '<div style="color:var(--dim);font-family:monospace;font-size:10px">No history yet</div>';
+  const modal = document.createElement('div');
+  modal.className = 'modal-bg on';
+  modal.id = 'timeline-modal';
+  modal.innerHTML = `<div class="modal" style="max-width:560px"><button class="x" onclick="document.getElementById('timeline-modal')?.remove()">×</button><div class="mh">ITEM TIMELINE</div><div style="font-weight:800;margin-bottom:10px">${item.name}</div>${html}</div>`;
+  document.body.appendChild(modal);
+}
+
+function ensureTodayModePanel(register){
+  if(document.getElementById('today-mode-panel')) return;
+  const panel = document.createElement('div');
+  panel.className = 'panel';
+  panel.id = 'today-mode-panel';
+  panel.style.maxWidth = '1400px';
+  panel.style.margin = '0 auto 14px';
+  panel.innerHTML = `<div class="ph">TODAY MODE <span id="today-mode-status" style="font-size:9px;color:var(--dim)">show-floor snapshot</span></div>
+    <div class="qol-grid" id="today-mode-grid"></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="hbtn" id="undo-last-btn" onclick="undoLastAction()">UNDO LAST</button>
+      <button class="hbtn" onclick="retryAllSyncQueue()">SYNC NOW</button>
+      <button class="hbtn" onclick="runCloseoutChecklist()">CLOSEOUT CHECK</button>
+      <button class="hbtn" onclick="exportPriceTagsCSV()">PRICE TAG CSV</button>
+    </div>`;
+  const anchor = document.getElementById('register-show-panel');
+  if(anchor) register.insertBefore(panel, anchor);
+  else register.appendChild(panel);
+  renderTodayMode();
+}
+
+function renderTodayMode(){
+  const grid = document.getElementById('today-mode-grid');
+  if(!grid) return;
+  const today = new Date().toDateString();
+  const tx = safeLocalJson('pos_transactions', []).filter(t => new Date(t.date).toDateString() === today);
+  const revenue = tx.reduce((a,t)=>a+Number(t.total||0),0);
+  const cash = tx.filter(t => /cash/i.test(t.method || '')).reduce((a,t)=>a+Number(t.total||0),0);
+  const pendingSync = getSyncQueue().filter(x => x.status !== 'done').length;
+  const buys = safeLocalJson('pos_buy_list', []).length;
+  const atShow = all.filter(i => (i.lifecycle || i.status) === 'at_show').length;
+  const sold = tx.reduce((a,t)=>a+(t.items?.length || 0),0);
+  const scanCount = Number(document.getElementById('scan-inbox-count')?.dataset.count || 0);
+  const cards = [
+    ['Sales', '$'+revenue.toFixed(2), tx.length + ' transactions'],
+    ['Cash', '$'+cash.toFixed(2), 'drawer expected'],
+    ['Items Sold', sold, 'today'],
+    ['At Show', atShow, 'items tracked'],
+    ['Buy Queue', buys, 'offer items'],
+    ['Scans', scanCount, 'phone inbox'],
+    ['Sync', pendingSync, navigator.onLine ? 'online' : 'offline'],
+    ['Health', dataHealthIssues().length, 'items need attention'],
+  ];
+  grid.innerHTML = cards.map(([k,v,s]) => `<div class="qol-card"><div class="qol-k">${k}</div><div class="qol-v">${v}</div><div class="qol-s">${s}</div></div>`).join('');
+  updateUndoButton();
+}
+setInterval(renderTodayMode, 10000);
+
+function runCloseoutChecklist(){
+  const issues = [];
+  const pending = getSyncQueue().filter(x => x.status !== 'done').length;
+  if(pending) issues.push(pending + ' sync item(s) pending');
+  if(getShowMode() && !drawerState) issues.push('cash drawer not counted/opened in this browser');
+  const atShow = all.filter(i => (i.lifecycle || i.status) === 'at_show').length;
+  if(atShow) issues.push(atShow + ' item(s) still marked At Show');
+  if(safeLocalJson('pos_buy_list', []).length) issues.push('buy offer still has unsaved items');
+  toast_dash(issues.length ? 'Closeout: ' + issues.join(' · ') : 'Closeout checklist looks clear');
+}
+
+function runCommandBar(){
+  const input = document.getElementById('command-input');
+  const q = input?.value.trim();
+  if(!q) return;
+  const lower = q.toLowerCase();
+  if(lower === 'undo') return undoLastAction();
+  if(lower.includes('sync')) return retryAllSyncQueue();
+  if(lower.includes('closeout')) return generateEOD();
+  if(lower.startsWith('find ') || lower.startsWith('search ')) {
+    switchTab('inventory');
+    const el = document.getElementById('tbl-q');
+    if(el) { el.value = q.replace(/^(find|search)\s+/i,''); filterTable(); }
+    return;
+  }
+  if(lower.startsWith('customer ')) {
+    switchTab('backoffice');
+    const name = q.replace(/^customer\s+/i,'');
+    upsertCustomer(name, '', 'Added from command bar', 'command');
+    return toast_dash('Customer added');
+  }
+  switchTab('inventory');
+  const el = document.getElementById('tbl-q');
+  if(el) { el.value = q; filterTable(); }
+}
+
 function ensureRegisterCommandCenter(register){
   if(document.getElementById('register-command')) return;
   const sec = register.querySelector('.sec');
@@ -1819,6 +2118,11 @@ function ensureRegisterCommandCenter(register){
           <div class="reg-sub" id="reg-offer-meta">0 items ready</div>
         </div>
       </div>
+    </div>
+    <div class="cmd-row">
+      <input class="tsi" id="command-input" placeholder="Command/search: find Charizard, sync, undo, closeout..." onkeydown="if(event.key==='Enter')runCommandBar()" style="margin-bottom:0">
+      <button class="hbtn" onclick="runCommandBar()">RUN</button>
+      <button class="hbtn" onclick="document.getElementById('command-input').value=''">CLEAR</button>
     </div>
     <div class="reg-actions">
       <button class="hbtn reg-action" onclick="document.getElementById('qpl-input')?.focus()">PRICE CHECK</button>
@@ -1961,6 +2265,7 @@ function getLifecycle(id, fallback){
 
 function setLifecycle(id, state, silent){
   const map = getLifecycleMap();
+  if(!silent) pushUndoAction('status change', { type:'local-storage', key:'inventory_lifecycle', value:{...map} });
   map[id] = state;
   saveLifecycleMap(map);
   const item = all.find(i => i.id === id);
@@ -2266,6 +2571,7 @@ async function buildVendorBackup(){
       spreadsheetMapping: safeLocalJson('sheet_mapping_v1', {}),
       syncQueue: safeLocalJson('sync_queue_v1', []),
       customers: safeLocalJson('pos_customers', []),
+      undoStack: safeLocalJson('pos_undo_stack', []),
       opsLog: getOpsLog(),
       scanInbox,
     }
@@ -2335,6 +2641,7 @@ async function importVendorBackup(event){
       sheet_mapping_v1:d.spreadsheetMapping,
       sync_queue_v1:d.syncQueue,
       pos_customers:d.customers,
+      pos_undo_stack:d.undoStack,
       pos_ops_log:d.opsLog,
     };
     for(const [k,v] of Object.entries(map)) {
@@ -2499,6 +2806,7 @@ function renderAll(){
   renderStats(); renderCats(); renderTopVal(); renderFeed();
   renderChannels(); renderTopSold(); renderMonthly();
   renderAlerts(); filterTable(); renderSoldTable();
+  renderTodayMode(); renderDataHealthPanel(); updateUndoButton();
 }
 
 function applyDashboardItemUpdate(id, updates) {
@@ -2794,6 +3102,14 @@ function renderTable(){
   }).join('');
   tb.querySelectorAll('tr[data-item-id]').forEach(tr => {
     const item = rows.find(r => r.id === tr.dataset.itemId);
+    const nameCell = tr.children[0];
+    if(item && nameCell && !nameCell.querySelector('.inv-select')) {
+      nameCell.insertAdjacentHTML('afterbegin', `<input class="inv-select" type="checkbox" value="${item.id}" style="margin-right:6px;accent-color:var(--g)">`);
+    }
+    const actCell = tr.children[8];
+    if(item && actCell && !actCell.querySelector('.history-btn')) {
+      actCell.querySelector('.row-act')?.insertAdjacentHTML('beforeend', `<button class="ra history-btn" onclick="openItemTimeline('${item.id}')">History</button>`);
+    }
     const cell = tr.children[7];
     if(!item || !cell) return;
     const current = item.lifecycle || (item.status === 'sold' ? 'sold' : 'in_stock');
@@ -2851,6 +3167,9 @@ let sellItemId = null;
 function openSellModal(id){
   const item = all.find(i=>i.id===id);
   if(!item) return;
+  if(['listed_online','pulled_ebay'].includes(item.lifecycle || '')) {
+    if(!confirm('This item is marked ' + (LIFECYCLE_LABELS[item.lifecycle] || item.lifecycle) + '. Sell in person anyway?')) return;
+  }
   sellItemId = id;
   document.getElementById('sell-item-name').textContent = item.name;
   document.getElementById('sell-item-meta').textContent = [item.set, item.year, item.category].filter(Boolean).join(' · ');
@@ -2874,6 +3193,7 @@ async function confirmQuickSell(){
   const channel=document.getElementById('sell-channel').value;
   const soldAt = new Date().toISOString();
   if(!salePrice){alert('Enter a sale price');return;}
+  pushUndoAction('quick sell', { type:'item-snapshot', item:{...item}, lifecycleMap:getLifecycleMap() });
   const fieldData = {
     'sold-out':true,
     'inventory-count':0,
@@ -2907,6 +3227,9 @@ function dashAddToCart(id){
   const item = all.find(i => i.id === id);
   if(!item) return;
   if(item.status === 'sold'){ alert('This item is already sold'); return; }
+  if(['listed_online','pulled_ebay'].includes(item.lifecycle || '')) {
+    if(!confirm('This item is marked ' + (LIFECYCLE_LABELS[item.lifecycle] || item.lifecycle) + '. Add to in-person cart anyway?')) return;
+  }
 
   // Read existing cart from localStorage
   let cartData = { items: [], discount: 0 };
@@ -2937,7 +3260,9 @@ function dashAddToCart(id){
   cartData.appVersion = APP_VERSION;
   cartData.show = getShowMode();
 
+  const beforeCart = JSON.parse(localStorage.getItem('pos_cart_v2') || '{"items":[],"discount":0}');
   localStorage.setItem('pos_cart_v2', JSON.stringify(cartData));
+  pushUndoAction('cart add', { type:'cart-snapshot', cart:beforeCart });
   postCartToWorker(cartData).then(ok => {
     if(!ok) toast_dash('Added locally - scanner will sync when opened');
   });
@@ -4056,6 +4381,8 @@ function updateUniversalInventoryItem(id, updates) {
 
 function confirmEdit() {
   if(!editingItemId) return;
+  const before = all.find(i => i.id === editingItemId);
+  if(before) pushUndoAction('inventory edit', { type:'item-snapshot', item:{...before}, lifecycleMap:getLifecycleMap() });
   const updates = {
     cost: parseFloat(document.getElementById('edit-cost').value)||0,
     market: parseFloat(document.getElementById('edit-market').value)||0,
@@ -4089,6 +4416,7 @@ async function confirmEditAndSync() {
   if(!editingItemId) return;
   const item = all.find(i => i.id === editingItemId);
   if(!item) return;
+  pushUndoAction('inventory edit', { type:'item-snapshot', item:{...item}, lifecycleMap:getLifecycleMap() });
 
   const updates = {
     cost: parseFloat(document.getElementById('edit-cost').value)||0,
