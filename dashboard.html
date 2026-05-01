@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.05.01.7">
+<meta name="version" content="2026.05.01.8">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -691,6 +691,18 @@ tr.sold:hover td{opacity:.7;}
   <div id="backoffice-panels" style="max-width:1400px;margin:0 auto;padding:0 20px"></div>
 </div>
 
+<!-- INTAKE TAB -->
+<div id="tab-intake" class="tab-panel">
+  <div class="sec">INTAKE / BUYING</div>
+  <div id="intake-panels" style="max-width:1400px;margin:0 auto;padding:0 20px"></div>
+</div>
+
+<!-- CHANNELS TAB -->
+<div id="tab-channels" class="tab-panel">
+  <div class="sec">ONLINE CHANNELS / PRICING</div>
+  <div id="channels-panels" style="max-width:1400px;margin:0 auto;padding:0 20px"></div>
+</div>
+
 <!-- CUSTOMER DISPLAY TAB -->
 <div id="tab-display" class="tab-panel">
   <div class="sec">CUSTOMER FACING DISPLAY</div>
@@ -1026,7 +1038,7 @@ tr.sold:hover td{opacity:.7;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.05.01.7';
+const APP_VERSION = '2026.05.01.8';
 const STORE_ID = 'walkoff-main';
 const REGISTER_ID = 'front';
 const WF_PRODUCTS = '65eb45a28ff6bf3fe4f17b14';
@@ -1046,18 +1058,20 @@ let ts={col:'name',dir:1};
 const PER=50; let page=1;
 const DAILY_TABS = [
   ['overview', 'OVERVIEW'],
-  ['inventory', 'INVENTORY'],
   ['pos', 'REGISTER'],
-  ['sales', 'SALES'],
-  ['alerts', 'ALERTS'],
+  ['intake', 'INTAKE'],
+  ['inventory', 'INVENTORY'],
+  ['channels', 'CHANNELS'],
 ];
 const MORE_TABS = [
-  ['display', 'CUSTOMER DISPLAY'],
-  ['backoffice', 'BACK OFFICE'],
+  ['sales', 'SALES'],
+  ['alerts', 'ALERTS'],
   ['wantlist', 'WANT LIST'],
   ['consign', 'CONSIGNMENT'],
   ['locations', 'LOCATIONS'],
   ['restock', 'RESTOCK'],
+  ['display', 'CUSTOMER DISPLAY'],
+  ['backoffice', 'SETTINGS / ADMIN'],
 ];
 const DEFAULT_VENDOR_CONFIG = {
   modules: {
@@ -1144,6 +1158,9 @@ function setupAppShell(){
   const posSec = document.querySelector('#tab-pos .sec');
   if(posSec) posSec.textContent = 'REGISTER';
 
+  const backofficeSec = document.querySelector('#tab-backoffice .sec');
+  if(backofficeSec) backofficeSec.textContent = 'SETTINGS / ADMIN';
+
   const tabs = document.querySelector('.tabs');
   if(tabs) {
     tabs.innerHTML = DAILY_TABS.map(([id,label]) =>
@@ -1205,20 +1222,25 @@ function moveNode(id, target){
 
 function organizeRegisterLayout(){
   const register = document.getElementById('tab-pos');
+  const intake = document.getElementById('intake-panels');
+  const channels = document.getElementById('channels-panels');
   const backoffice = document.getElementById('backoffice-panels');
-  if(!register || !backoffice) return;
+  if(!register || !intake || !channels || !backoffice) return;
 
   ensureRegisterCommandCenter(register);
   ensureTodayModePanel(register);
   moveNode('register-show-panel', register);
-  moveNode('register-lookup-drawer-row', register);
-  moveNode('register-scan-panel', register);
-  moveNode('register-buy-eod-row', register);
+  moveNode('register-cash-panel', register);
+  moveNode('register-eod-panel', register);
+  moveNode('register-quick-panel', intake);
+  moveNode('register-scan-panel', intake);
+  moveNode('register-buy-panel', intake);
+  cleanupEmptyWorkflowRows();
 
-  moveNode('backoffice-ebay-panel', backoffice);
+  moveNode('backoffice-ebay-panel', channels);
+  moveNode('backoffice-tcg-sync-panel', channels);
   moveNode('backoffice-system-panel', backoffice);
   moveNode('backoffice-ops-panel', backoffice);
-  moveNode('backoffice-tcg-sync-panel', backoffice);
   ensureVendorProfilePanel(backoffice);
   ensureVendorConfigPanel(backoffice);
   ensureSpreadsheetPanel(backoffice);
@@ -1227,6 +1249,30 @@ function organizeRegisterLayout(){
   ensureDataHealthPanel(backoffice);
   ensureInventoryToolsPanel();
   applyVendorConfig();
+}
+
+function cleanupEmptyWorkflowRows(){
+  ['register-lookup-drawer-row','register-buy-eod-row'].forEach(id => {
+    const row = document.getElementById(id);
+    if(row && !row.querySelector('.panel')) row.style.display = 'none';
+  });
+  const cash = document.getElementById('register-cash-panel');
+  if(cash) {
+    cash.style.maxWidth = '760px';
+    cash.style.margin = '0 auto 14px';
+  }
+  const eod = document.getElementById('register-eod-panel');
+  if(eod) {
+    eod.style.maxWidth = '760px';
+    eod.style.margin = '0 auto 14px';
+  }
+  ['register-quick-panel','register-scan-panel','register-buy-panel','backoffice-ebay-panel','backoffice-tcg-sync-panel'].forEach(id => {
+    const el = document.getElementById(id);
+    if(el) {
+      el.style.margin = '0 0 14px';
+      el.style.maxWidth = '';
+    }
+  });
 }
 
 function getVendorConfig(){
