@@ -3,7 +3,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="version" content="2026.05.01.5">
+<meta name="version" content="2026.05.01.6">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
@@ -404,7 +404,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
   <div class="hbtns">
     <span id="show-badge" style="font-family:monospace;font-size:9px;color:rgba(255,209,102,.7);letter-spacing:1px"></span>
     <span id="offline-sync-badge" style="font-family:monospace;font-size:9px;color:rgba(255,255,255,.35);letter-spacing:1px">online</span>
-    <span id="app-version" style="font-family:monospace;font-size:9px;color:rgba(0,255,179,.55);letter-spacing:1px">v2026.05.01.5</span>
+    <span id="app-version" style="font-family:monospace;font-size:9px;color:rgba(0,255,179,.55);letter-spacing:1px">v2026.05.01.6</span>
     <span id="hstatus">READY</span>
     <button class="hbtn" id="flipbtn" onclick="toggleFlip()">FLIP</button>
     <button class="hbtn" id="bulkbtn" onclick="toggleBulk()">BULK</button>
@@ -589,8 +589,26 @@ const STORE = {
   wf_status_instock:'f3769d1e15fa0956f98984d6fa36437f',
   wf_status_sold:   'e6b42f14fcb99aa2168a5f5672226f68',
 };
-const APP_VERSION = '2026.05.01.5';
+const APP_VERSION = '2026.05.01.6';
 const WORKER_URL = STORE.worker_url;
+
+function applyVendorProfileToScanner(){
+  try {
+    const p = JSON.parse(localStorage.getItem('vendor_profile_v1') || '{}');
+    if(p.storeName) STORE.store_name = p.storeName;
+    if(p.location) STORE.store_location = p.location;
+    if(p.website) STORE.store_website = p.website;
+    if(Number.isFinite(Number(p.taxRate))) STORE.tax_rate = Number(p.taxRate);
+    if(p.venmo !== undefined) STORE.venmo = p.venmo;
+    if(p.paypal !== undefined) STORE.paypal = p.paypal;
+    if(p.cashapp !== undefined) STORE.cashapp = p.cashapp;
+    document.querySelectorAll('.store-name-display').forEach(el => el.textContent = STORE.store_name.toUpperCase());
+    document.querySelectorAll('.store-loc-display').forEach(el => el.textContent = STORE.store_location);
+    const site = document.getElementById('receipt-website');
+    if(site) site.textContent = STORE.store_website || '';
+  } catch(e) {}
+}
+applyVendorProfileToScanner();
 
 function slugifyId(value, fallback) {
   return String(value || fallback || 'default')

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.05.01.5">
+<meta name="version" content="2026.05.01.6">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -99,6 +99,11 @@ header{position:sticky;top:0;z-index:100;background:rgba(7,8,10,.96);backdrop-fi
 .data-pill.bad{color:var(--red);border-color:rgba(255,77,109,.22);background:rgba(255,77,109,.06);}
 .timeline-row{border-left:2px solid rgba(0,255,179,.28);padding:0 0 8px 10px;margin-left:4px;font-family:monospace,monospace;font-size:10px;color:var(--dim);}
 .timeline-row b{color:var(--text);font-family:'DM Sans',sans-serif;font-size:12px;}
+.vendor-logo-preview{width:72px;height:72px;border-radius:10px;border:1px solid var(--border);background:var(--surf2);object-fit:contain;padding:6px;}
+.item-workspace-grid{display:grid;grid-template-columns:180px 1fr;gap:14px;}
+.item-photo{width:180px;aspect-ratio:3/4;border-radius:8px;border:1px solid var(--border);background:var(--surf2);object-fit:cover;}
+.item-metric{background:var(--surf2);border:1px solid var(--border);border-radius:8px;padding:10px;}
+.item-metric b{display:block;font-family:'Orbitron',monospace;font-size:16px;color:var(--g);margin-top:4px;}
 
 /* CATEGORY CARDS */
 .cg{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
@@ -1021,7 +1026,7 @@ tr.sold:hover td{opacity:.7;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.05.01.5';
+const APP_VERSION = '2026.05.01.6';
 const STORE_ID = 'walkoff-main';
 const REGISTER_ID = 'front';
 const WF_PRODUCTS = '65eb45a28ff6bf3fe4f17b14';
@@ -1080,6 +1085,59 @@ const LIFECYCLE_LABELS = {
   lost_damaged: 'Lost/damaged',
 };
 
+function escHtml(v){
+  return String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+const DEFAULT_VENDOR_PROFILE = {
+  storeName:'Walk-Off Sports Cards',
+  shortName:'Walk-Off',
+  location:'Kingston, WA',
+  website:'walkoffsc.com',
+  phone:'',
+  email:'',
+  logo:'',
+  taxRate:0,
+  defaultBuyPct:70,
+  defaultShowMarkdown:0,
+  receiptFooter:'Thank you for shopping with us!',
+  ebayShippingLine:'Ships carefully packed from Walk-Off Sports Cards in Kingston, WA.',
+  paymentMethods:'Cash, card, Venmo, or QR pay accepted',
+  venmo:'Shawn-Warner-84',
+  paypal:'',
+  cashapp:'',
+};
+
+function getVendorProfile(){
+  try { return { ...DEFAULT_VENDOR_PROFILE, ...(JSON.parse(localStorage.getItem('vendor_profile_v1') || '{}')) }; }
+  catch(e) { return {...DEFAULT_VENDOR_PROFILE}; }
+}
+
+function saveVendorProfile(profile){
+  const next = { ...getVendorProfile(), ...profile };
+  localStorage.setItem('vendor_profile_v1', JSON.stringify(next));
+  applyVendorProfile();
+  renderVendorProfilePanel();
+  logOpsEvent('vendor_profile', 'Updated vendor profile/preferences', { storeName:next.storeName });
+}
+
+function applyVendorProfile(){
+  const p = getVendorProfile();
+  const logo = document.querySelector('.logo');
+  if(logo) logo.childNodes[0].nodeValue = (p.shortName || p.storeName || 'Vendor').toUpperCase() + ' ';
+  document.querySelectorAll('[data-vendor-store]').forEach(el => el.textContent = p.storeName);
+  document.querySelectorAll('[data-vendor-location]').forEach(el => el.textContent = p.location);
+  document.querySelectorAll('[data-vendor-website]').forEach(el => el.textContent = p.website);
+  document.querySelectorAll('[data-vendor-logo]').forEach(el => {
+    if(p.logo){ el.src = p.logo; el.style.display = ''; }
+    else el.style.display = 'none';
+  });
+  const buyPct = document.getElementById('bl-pct');
+  if(buyPct && !buyPct.dataset.vendorTouched) buyPct.value = p.defaultBuyPct;
+  const showPct = document.getElementById('show-price-rule');
+  if(showPct && !showPct.value) showPct.value = p.defaultShowMarkdown || '';
+}
+
 function setupAppShell(){
   const logo = document.querySelector('.logo span');
   if(logo) logo.textContent = 'DASHBOARD · v' + APP_VERSION;
@@ -1120,8 +1178,8 @@ function setupAppShell(){
   }
 
   const manifest = {
-    name: 'Walk-Off Vendor POS',
-    short_name: 'Walk-Off POS',
+    name: getVendorProfile().storeName + ' Vendor POS',
+    short_name: getVendorProfile().shortName + ' POS',
     start_url: 'dashboard.html',
     display: 'fullscreen',
     background_color: '#07080a',
@@ -1136,6 +1194,7 @@ function setupAppShell(){
   }
   link.href = 'data:application/manifest+json,' + encodeURIComponent(JSON.stringify(manifest));
   organizeRegisterLayout();
+  applyVendorProfile();
   maybeShowInstallHint();
 }
 
@@ -1160,6 +1219,7 @@ function organizeRegisterLayout(){
   moveNode('backoffice-system-panel', backoffice);
   moveNode('backoffice-ops-panel', backoffice);
   moveNode('backoffice-tcg-sync-panel', backoffice);
+  ensureVendorProfilePanel(backoffice);
   ensureVendorConfigPanel(backoffice);
   ensureSpreadsheetPanel(backoffice);
   ensureSyncQueuePanel(backoffice);
@@ -1187,6 +1247,88 @@ function saveVendorConfig(config){
   renderVendorConfigPanel();
   renderInventoryCategoryFilters();
   logOpsEvent('vendor_config', 'Updated dashboard modules/categories', { categories: config.categories.length });
+}
+
+function ensureVendorProfilePanel(backoffice){
+  if(document.getElementById('vendor-profile-panel')) return;
+  const panel = document.createElement('div');
+  panel.className = 'panel';
+  panel.id = 'vendor-profile-panel';
+  panel.style.marginBottom = '14px';
+  panel.innerHTML = '<div class="ph">VENDOR INFO / PREFERENCES <span style="font-size:9px;color:var(--dim)">brand, receipts, defaults</span></div><div id="vendor-profile-body"></div>';
+  backoffice.prepend(panel);
+  renderVendorProfilePanel();
+}
+
+function renderVendorProfilePanel(){
+  const body = document.getElementById('vendor-profile-body');
+  if(!body) return;
+  const p = getVendorProfile();
+  body.innerHTML = `
+    <div style="display:grid;grid-template-columns:90px 1fr;gap:12px;align-items:start;margin-bottom:12px">
+      <div>
+        ${p.logo ? `<img class="vendor-logo-preview" src="${p.logo}" alt="">` : `<div class="vendor-logo-preview" style="display:flex;align-items:center;justify-content:center;color:var(--dim);font-family:monospace;font-size:9px">LOGO</div>`}
+        <button class="hbtn" style="margin-top:8px;width:72px;padding:5px" onclick="document.getElementById('vendor-logo-file').click()">UPLOAD</button>
+        <input id="vendor-logo-file" type="file" accept="image/*" style="display:none" onchange="handleVendorLogoUpload(event)">
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+        ${vendorInput('storeName','Store name',p.storeName)}
+        ${vendorInput('shortName','Short name',p.shortName)}
+        ${vendorInput('location','Location',p.location)}
+        ${vendorInput('website','Website',p.website)}
+        ${vendorInput('phone','Phone',p.phone)}
+        ${vendorInput('email','Email',p.email)}
+        ${vendorInput('taxRate','Tax %',p.taxRate,'number')}
+        ${vendorInput('defaultBuyPct','Buy % default',p.defaultBuyPct,'number')}
+        ${vendorInput('defaultShowMarkdown','Show markdown %',p.defaultShowMarkdown,'number')}
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+      <label style="font-family:monospace;font-size:9px;color:var(--dim)">RECEIPT FOOTER<textarea id="vp-receiptFooter" class="tsi" style="height:58px">${escHtml(p.receiptFooter)}</textarea></label>
+      <label style="font-family:monospace;font-size:9px;color:var(--dim)">EBAY SHIPPING LINE<textarea id="vp-ebayShippingLine" class="tsi" style="height:58px">${escHtml(p.ebayShippingLine)}</textarea></label>
+      <label style="font-family:monospace;font-size:9px;color:var(--dim)">CUSTOMER PAYMENT TEXT<textarea id="vp-paymentMethods" class="tsi" style="height:58px">${escHtml(p.paymentMethods)}</textarea></label>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">${vendorInput('venmo','Venmo',p.venmo)}${vendorInput('paypal','PayPal',p.paypal)}${vendorInput('cashapp','Cash App',p.cashapp)}</div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="hbtn" onclick="saveVendorProfileFromForm()">SAVE VENDOR PROFILE</button>
+      <button class="hbtn" onclick="exportVendorProfile()">EXPORT PROFILE</button>
+      <button class="hbtn" onclick="document.getElementById('vendor-profile-import').click()">IMPORT PROFILE</button>
+      <input id="vendor-profile-import" type="file" accept="application/json,.json" style="display:none" onchange="importVendorProfile(event)">
+    </div>`;
+}
+
+function vendorInput(key, label, value, type='text'){
+  return `<label style="font-family:monospace;font-size:9px;color:var(--dim)">${label.toUpperCase()}<input id="vp-${key}" class="tsi" type="${type}" value="${escHtml(value)}" style="margin-top:3px;margin-bottom:0"></label>`;
+}
+
+function saveVendorProfileFromForm(){
+  const keys = ['storeName','shortName','location','website','phone','email','taxRate','defaultBuyPct','defaultShowMarkdown','receiptFooter','ebayShippingLine','paymentMethods','venmo','paypal','cashapp'];
+  const profile = {};
+  keys.forEach(k => {
+    const el = document.getElementById('vp-'+k);
+    if(!el) return;
+    profile[k] = ['taxRate','defaultBuyPct','defaultShowMarkdown'].includes(k) ? Number(el.value || 0) : el.value.trim();
+  });
+  saveVendorProfile(profile);
+  toast_dash('Vendor profile saved');
+}
+
+function handleVendorLogoUpload(event){
+  const file = event.target.files?.[0];
+  event.target.value = '';
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = () => saveVendorProfile({ logo: reader.result });
+  reader.readAsDataURL(file);
+}
+
+function exportVendorProfile(){ downloadJson('walkoff-vendor-profile.json', getVendorProfile()); }
+async function importVendorProfile(event){
+  const file = event.target.files?.[0];
+  event.target.value = '';
+  if(!file) return;
+  try { saveVendorProfile(JSON.parse(await file.text())); toast_dash('Vendor profile imported'); }
+  catch(e){ toast_dash('Profile import failed: '+e.message); }
 }
 
 function ensureVendorConfigPanel(backoffice){
@@ -1990,12 +2132,51 @@ function itemTimeline(id){
 function openItemTimeline(id){
   const item = all.find(i => i.id === id);
   if(!item) return;
+  const p = getVendorProfile();
   const rows = itemTimeline(id);
   const html = rows.length ? rows.map(r => `<div class="timeline-row"><b>${r.label}</b><div>${r.detail || ''}</div><div>${new Date(r.time).toLocaleString()}</div></div>`).join('') : '<div style="color:var(--dim);font-family:monospace;font-size:10px">No history yet</div>';
+  const wants = safeLocalJson('pos_wantlist', []).filter(w => [item.name,item.set,item.year].filter(Boolean).join(' ').toLowerCase().includes(String(w.item||'').toLowerCase().split(' ')[0] || '___'));
   const modal = document.createElement('div');
   modal.className = 'modal-bg on';
   modal.id = 'timeline-modal';
-  modal.innerHTML = `<div class="modal" style="max-width:560px"><button class="x" onclick="document.getElementById('timeline-modal')?.remove()">×</button><div class="mh">ITEM TIMELINE</div><div style="font-weight:800;margin-bottom:10px">${item.name}</div>${html}</div>`;
+  modal.innerHTML = `<div class="modal" style="max-width:860px;max-height:90vh;overflow:auto">
+    <button class="x" onclick="document.getElementById('timeline-modal')?.remove()">×</button>
+    <div class="mh">ITEM WORKSPACE</div>
+    <div class="item-workspace-grid">
+      <div>
+        ${item.thumbnail ? `<img class="item-photo" src="${item.thumbnail}" alt="">` : `<div class="item-photo" style="display:flex;align-items:center;justify-content:center;color:var(--dim);font-family:monospace">NO IMAGE</div>`}
+        <div style="display:grid;gap:6px;margin-top:8px">
+          <button class="hbtn" onclick="document.getElementById('timeline-modal')?.remove();openEditModal('${item.id}')">EDIT ITEM</button>
+          <button class="hbtn" onclick="document.getElementById('timeline-modal')?.remove();dashAddToCart('${item.id}')">ADD TO CART</button>
+          <button class="hbtn" onclick="document.getElementById('timeline-modal')?.remove();openEbayFromDash('${item.id}')">LIST / REVIEW EBAY</button>
+        </div>
+      </div>
+      <div>
+        <div style="font-size:18px;font-weight:900;margin-bottom:4px">${escHtml(item.name)}</div>
+        <div style="font-family:monospace;font-size:10px;color:var(--dim);margin-bottom:12px">${escHtml([item.year,item.set,item.variant,item.condition,item.location].filter(Boolean).join(' · '))}</div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px">
+          <div class="item-metric"><span class="qol-k">Market</span><b>$${Number(item.market||0).toFixed(2)}</b></div>
+          <div class="item-metric"><span class="qol-k">Cost</span><b>$${Number(item.cost||0).toFixed(2)}</b></div>
+          <div class="item-metric"><span class="qol-k">Margin</span><b style="color:${(item.market-item.cost)>=0?'var(--g)':'var(--red)'}">${(item.market-item.cost)>=0?'+':''}$${Number((item.market||0)-(item.cost||0)).toFixed(2)}</b></div>
+          <div class="item-metric"><span class="qol-k">Status</span><b>${escHtml(LIFECYCLE_LABELS[item.lifecycle] || item.status || 'In stock')}</b></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div><div class="ph">TIMELINE</div>${html}</div>
+          <div>
+            <div class="ph">CHANNEL / CUSTOMER</div>
+            <div style="font-family:monospace;font-size:10px;color:var(--dim);line-height:1.7">
+              Source: ${priceSourceBadge(item.priceSource, item.category)}<br>
+              Webflow ID: ${escHtml(item.id || '')}<br>
+              SKU: ${escHtml(item.sku || item.card_number || '')}<br>
+              Want matches: ${wants.length}<br>
+              Receipt brand: ${escHtml(p.storeName)}
+            </div>
+            ${wants.length ? '<div style="margin-top:8px">'+wants.slice(0,4).map(w=>`<div class="data-pill warn">${escHtml(w.customer)} wants ${escHtml(w.item)}</div>`).join('')+'</div>' : ''}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>`;
   document.body.appendChild(modal);
 }
 
@@ -2572,6 +2753,7 @@ async function buildVendorBackup(){
       syncQueue: safeLocalJson('sync_queue_v1', []),
       customers: safeLocalJson('pos_customers', []),
       undoStack: safeLocalJson('pos_undo_stack', []),
+      vendorProfile: safeLocalJson('vendor_profile_v1', null),
       opsLog: getOpsLog(),
       scanInbox,
     }
@@ -2642,6 +2824,7 @@ async function importVendorBackup(event){
       sync_queue_v1:d.syncQueue,
       pos_customers:d.customers,
       pos_undo_stack:d.undoStack,
+      vendor_profile_v1:d.vendorProfile,
       pos_ops_log:d.opsLog,
     };
     for(const [k,v] of Object.entries(map)) {
@@ -3494,7 +3677,7 @@ function openEbayFromDash(id){
     item.publisher ? 'Publisher: '+item.publisher : '',
     isGraded ? 'Grade: '+[item.grader,item.grade].filter(Boolean).join(' ') : '',
     '',
-    'Ships carefully packed from Walk-Off Sports Cards in Kingston, WA.'
+    getVendorProfile().ebayShippingLine
   ].filter(Boolean).join('\n');
 
   document.getElementById('dash-ebay-modal')?.remove();
@@ -3767,7 +3950,8 @@ function notifyWant(id){
   const w = wantList.find(x=>x.id===id);
   if(!w) return;
   const inStock = all.filter(i=>i.status==='in_stock'&&i.name.toLowerCase().includes(w.item.toLowerCase().split(' ')[0]));
-  const msg = `Hi ${w.customer}! We have ${w.item} in stock at Walk-Off Sports Cards (Kingston, WA). Come check it out! walkoffsc.com`;
+  const p = getVendorProfile();
+  const msg = `Hi ${w.customer}! We have ${w.item} in stock at ${p.storeName} (${p.location}). Come check it out! ${p.website}`;
   if(w.contact && w.contact.includes('@')) {
     window.open('mailto:'+w.contact+'?subject=Your Want List Item is In Stock!&body='+encodeURIComponent(msg));
   } else if(w.contact) {
@@ -5201,14 +5385,15 @@ function renderBuyList(){
 }
 
 function printBuyOffer(){
+  const p = getVendorProfile();
   const pct = document.getElementById('bl-pct').value;
   const offer = document.getElementById('bl-offer').textContent;
   const mkt = document.getElementById('bl-total-mkt').textContent;
   const lines = buyList.map(i=>'  '+i.name+': '+(i.market?'$'+i.market.toFixed(2):'TBD')).join('\n');
   const w = window.open('','_blank','width=400,height=600');
   w.document.write(`<html><head><title>Buy Offer</title><style>body{font-family:monospace;padding:20px;font-size:12px;}</style></head><body>
-    <h2>Walk-Off Sports Cards</h2>
-    <p>Kingston, WA · walkoffsc.com</p>
+    <h2>${escHtml(p.storeName)}</h2>
+    <p>${escHtml([p.location,p.website].filter(Boolean).join(' - '))}</p>
     <hr>
     <p><b>BUY LIST OFFER (${pct}% of market)</b></p>
     <pre>${lines}</pre>
@@ -5221,12 +5406,13 @@ function printBuyOffer(){
 }
 
 function buildBuyOfferText(){
+  const p = getVendorProfile();
   const pct = document.getElementById('bl-pct').value;
   const offer = document.getElementById('bl-offer').textContent;
   const mkt = document.getElementById('bl-total-mkt').textContent;
   const customer = document.getElementById('bl-customer')?.value.trim();
   const lines = buyList.map(i => `${i.name}: market ${i.market?'$'+Number(i.market).toFixed(2):'TBD'}, offer ${i.market?'$'+(Number(i.market)*(pct/100)).toFixed(2):'TBD'}`).join('\n');
-  return `${customer ? customer + ', ' : ''}Walk-Off offer:\n${lines}\nTotal market: ${mkt}\nOffer (${pct}%): ${offer}\nOffer valid today.`;
+  return `${customer ? customer + ', ' : ''}${p.shortName || p.storeName} offer:\n${lines}\nTotal market: ${mkt}\nOffer (${pct}%): ${offer}\nOffer valid today.`;
 }
 
 function textBuyOffer(){
@@ -5605,6 +5791,7 @@ async function renderCustomerDisplay(){
   }
   const items = cartData.items || [];
   const disc = cartData.discount || 0;
+  const profile = getVendorProfile();
 
   const sub = items.reduce((a,i)=>a+(i.price||0),0);
   const discAmt = sub * (disc/100);
@@ -5618,7 +5805,7 @@ async function renderCustomerDisplay(){
   if(!items.length){
     itemsEl.innerHTML = '';
     totalEl.textContent = '$0.00';
-    countEl.textContent = 'Waiting for items...';
+    countEl.innerHTML = `${escHtml(profile.storeName)}<br>Waiting for items...`;
     return;
   }
 
@@ -5631,7 +5818,9 @@ async function renderCustomerDisplay(){
   </div>`).join('');
 
   totalEl.textContent = '$'+total.toFixed(2);
+  const paymentLine = `<div style="margin-top:8px;color:var(--gold)">${escHtml(profile.paymentMethods)}</div>`;
   countEl.textContent = items.length + ' item' + (items.length>1?'s':'') + (disc>0?' · '+disc+'% discount applied':'') + (tax>0?' · tax included':'');
+  countEl.innerHTML = items.length + ' item' + (items.length>1?'s':'') + (disc>0?' · '+disc+'% discount applied':'') + (tax>0?' · tax included':'') + paymentLine;
 }
 
 // Auto-refresh customer display every 3 seconds
