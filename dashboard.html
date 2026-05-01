@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.04.30.12">
+<meta name="version" content="2026.05.01.1">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -83,6 +83,11 @@ header{position:sticky;top:0;z-index:100;background:rgba(7,8,10,.96);backdrop-fi
 .reg-sub{font-family:monospace,monospace;font-size:9px;color:var(--dim);margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .reg-actions{max-width:1400px;margin:0 auto 14px;padding:0 20px;display:flex;gap:8px;flex-wrap:wrap;}
 .reg-action{min-height:38px;padding:9px 14px;}
+.module-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px;}
+.module-toggle{display:flex;align-items:center;gap:8px;background:var(--surf2);border:1px solid var(--border);border-radius:7px;padding:9px;font-family:monospace,monospace;font-size:10px;color:var(--text);}
+.module-toggle input{accent-color:var(--g);}
+.category-chip{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:999px;padding:6px 9px;font-family:monospace,monospace;font-size:10px;color:var(--dim);margin:0 6px 6px 0;}
+.category-chip button{background:none;border:none;color:var(--red);cursor:pointer;font-size:12px;line-height:1;}
 
 /* CATEGORY CARDS */
 .cg{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
@@ -213,11 +218,13 @@ tr.sold:hover td{opacity:.7;}
 @media(max-width:900px){
   .stats{grid-template-columns:repeat(3,1fr);}
   .register-command{grid-template-columns:1fr 1fr;}
+  .module-grid{grid-template-columns:1fr 1fr;}
   .two,.three{grid-template-columns:1fr;}
 }
 @media(max-width:600px){
   .stats{grid-template-columns:1fr 1fr;}
   .register-command{grid-template-columns:1fr;}
+  .module-grid{grid-template-columns:1fr;}
   .hdr{padding:0 12px;}
   .logo span{display:none;}
   #sync-status{max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
@@ -510,7 +517,7 @@ tr.sold:hover td{opacity:.7;}
   <div class="two" id="register-lookup-drawer-row" style="margin-top:4px">
 
     <!-- QUICK PRICE LOOKUP -->
-    <div class="panel">
+    <div class="panel" id="register-quick-panel">
       <div class="ph">⚡ QUICK PRICE LOOKUP <span style="color:var(--dim);font-size:8px">AI estimate — no scanning needed</span></div>
       <input class="tsi" id="qpl-input" placeholder="e.g. 2021 Umbreon VMAX Evolving Skies..." style="margin-bottom:10px;font-size:12px;padding:10px 14px" oninput="debouncePriceLookup()" onkeydown="if(event.key==='Enter')runPriceLookup()">
       <div style="display:flex;gap:6px;margin-bottom:10px">
@@ -531,7 +538,7 @@ tr.sold:hover td{opacity:.7;}
     </div>
 
     <!-- CASH DRAWER TRACKER -->
-    <div class="panel">
+    <div class="panel" id="register-cash-panel">
       <div class="ph">💵 CASH DRAWER <span id="drawer-status" style="font-size:9px;font-weight:600;color:var(--g)">CLOSED</span></div>
       <div id="drawer-closed-view">
         <div style="font-family:monospace,monospace;font-size:10px;color:var(--dim);margin-bottom:8px">Starting float</div>
@@ -573,7 +580,7 @@ tr.sold:hover td{opacity:.7;}
   <div class="two" id="register-buy-eod-row">
 
     <!-- BUY LIST / TRADE-IN -->
-    <div class="panel">
+    <div class="panel" id="register-buy-panel">
       <div class="ph">🔄 BUY LIST / TRADE-IN <span style="font-size:8px;color:var(--dim)">Build an offer for customer cards</span></div>
       <div style="display:flex;gap:6px;margin-bottom:8px">
         <input class="tsi" id="bl-input" placeholder="Card name..." style="flex:2;margin-bottom:0" onkeydown="if(event.key==='Enter')addBuyListItem()">
@@ -615,7 +622,7 @@ tr.sold:hover td{opacity:.7;}
     </div>
 
     <!-- END OF DAY REPORT -->
-    <div class="panel">
+    <div class="panel" id="register-eod-panel">
       <div class="ph">📊 END OF DAY REPORT</div>
       <div style="display:flex;gap:6px;margin-bottom:12px;align-items:center">
         <input type="date" id="eod-date" style="flex:1;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:7px 10px;border-radius:6px;font-size:12px;font-family:monospace,monospace">
@@ -1003,7 +1010,7 @@ tr.sold:hover td{opacity:.7;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.04.30.12';
+const APP_VERSION = '2026.05.01.1';
 const STORE_ID = 'walkoff-main';
 const REGISTER_ID = 'front';
 const WF_PRODUCTS = '65eb45a28ff6bf3fe4f17b14';
@@ -1036,6 +1043,21 @@ const MORE_TABS = [
   ['locations', 'LOCATIONS'],
   ['restock', 'RESTOCK'],
 ];
+const DEFAULT_VENDOR_CONFIG = {
+  modules: {
+    show: true,
+    cash: true,
+    quick: true,
+    scanner: true,
+    buy: true,
+    closeout: true,
+    ebay: true,
+    backup: true,
+    ops: true,
+    pricingSync: true,
+  },
+  categories: ['TCG','Sports','Comic','Graded','Sealed Product','Collectibles','Supplies'],
+};
 const LIFECYCLE_LABELS = {
   in_stock: 'In stock',
   at_show: 'At show',
@@ -1126,6 +1148,126 @@ function organizeRegisterLayout(){
   moveNode('backoffice-system-panel', backoffice);
   moveNode('backoffice-ops-panel', backoffice);
   moveNode('backoffice-tcg-sync-panel', backoffice);
+  ensureVendorConfigPanel(backoffice);
+  applyVendorConfig();
+}
+
+function getVendorConfig(){
+  try {
+    const saved = JSON.parse(localStorage.getItem('vendor_config_v1') || '{}');
+    return {
+      modules: { ...DEFAULT_VENDOR_CONFIG.modules, ...(saved.modules || {}) },
+      categories: Array.isArray(saved.categories) ? saved.categories.filter(Boolean) : [...DEFAULT_VENDOR_CONFIG.categories],
+    };
+  } catch(e) {
+    return JSON.parse(JSON.stringify(DEFAULT_VENDOR_CONFIG));
+  }
+}
+
+function saveVendorConfig(config){
+  localStorage.setItem('vendor_config_v1', JSON.stringify(config));
+  applyVendorConfig();
+  renderVendorConfigPanel();
+  renderInventoryCategoryFilters();
+  logOpsEvent('vendor_config', 'Updated dashboard modules/categories', { categories: config.categories.length });
+}
+
+function ensureVendorConfigPanel(backoffice){
+  if(document.getElementById('vendor-config-panel')) return;
+  const panel = document.createElement('div');
+  panel.className = 'panel';
+  panel.id = 'vendor-config-panel';
+  panel.style.marginBottom = '14px';
+  panel.innerHTML = '<div class="ph">MODULAR VENDOR CONFIG <span style="font-size:9px;color:var(--dim)">local to this register</span></div><div id="vendor-config-body"></div>';
+  backoffice.prepend(panel);
+  renderVendorConfigPanel();
+}
+
+function renderVendorConfigPanel(){
+  const body = document.getElementById('vendor-config-body');
+  if(!body) return;
+  const cfg = getVendorConfig();
+  const moduleLabels = {
+    show:'Show mode', cash:'Cash drawer', quick:'Quick price lookup', scanner:'Phone scan inbox',
+    buy:'Buy/trade intake', closeout:'End-of-day closeout', ebay:'eBay connection',
+    backup:'System/backup', ops:'Operations log', pricingSync:'TCG price sync',
+  };
+  body.innerHTML = `
+    <div style="font-family:monospace,monospace;font-size:10px;color:var(--dim);margin-bottom:10px;line-height:1.55">
+      Turn screens on/off for this vendor setup. Add custom categories to create inventory filters without changing code.
+    </div>
+    <div class="module-grid">
+      ${Object.entries(moduleLabels).map(([key,label]) => `<label class="module-toggle"><input type="checkbox" ${cfg.modules[key]?'checked':''} onchange="toggleVendorModule('${key}',this.checked)"> ${label}</label>`).join('')}
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+      <input class="tsi" id="new-category-name" placeholder="New category/filter name" style="flex:1;min-width:220px;margin-bottom:0">
+      <button class="hbtn" onclick="addVendorCategory()">ADD CATEGORY</button>
+    </div>
+    <div>${cfg.categories.map(c => `<span class="category-chip">${c}<button onclick="removeVendorCategory('${String(c).replace(/'/g,"\\'")}')">x</button></span>`).join('')}</div>`;
+}
+
+function toggleVendorModule(key, enabled){
+  const cfg = getVendorConfig();
+  cfg.modules[key] = !!enabled;
+  saveVendorConfig(cfg);
+}
+
+function addVendorCategory(){
+  const input = document.getElementById('new-category-name');
+  const name = input?.value.trim();
+  if(!name) return;
+  const cfg = getVendorConfig();
+  cfg.categories = Array.from(new Set([...(cfg.categories || []), name]));
+  if(input) input.value = '';
+  saveVendorConfig(cfg);
+}
+
+function removeVendorCategory(name){
+  const cfg = getVendorConfig();
+  cfg.categories = (cfg.categories || []).filter(c => c !== name);
+  saveVendorConfig(cfg);
+}
+
+function applyVendorConfig(){
+  const cfg = getVendorConfig();
+  const show = (id, on) => { const el = document.getElementById(id); if(el) el.style.display = on ? '' : 'none'; };
+  show('register-show-panel', cfg.modules.show);
+  show('register-cash-panel', cfg.modules.cash);
+  show('register-quick-panel', cfg.modules.quick);
+  show('register-scan-panel', cfg.modules.scanner);
+  show('register-buy-panel', cfg.modules.buy);
+  show('register-eod-panel', cfg.modules.closeout);
+  show('backoffice-ebay-panel', cfg.modules.ebay);
+  show('backoffice-system-panel', cfg.modules.backup);
+  show('backoffice-ops-panel', cfg.modules.ops);
+  show('backoffice-tcg-sync-panel', cfg.modules.pricingSync);
+}
+
+function getInventoryCategories(){
+  const cfg = getVendorConfig();
+  return Array.from(new Set(cfg.categories || [])).filter(Boolean);
+}
+
+function renderInventoryCategoryFilters(){
+  const count = document.getElementById('tbl-count');
+  if(!count) return;
+  document.querySelectorAll('.vendor-cat-filter').forEach(b => b.remove());
+  const configured = getInventoryCategories();
+  document.querySelectorAll('#tab-inventory .fb').forEach(btn => {
+    const txt = btn.textContent.replace(/[^\w\s-]/g,'').trim().toLowerCase();
+    const map = { sports:'Sports', tcg:'TCG', comics:'Comic', graded:'Graded', collectibles:'Collectibles' };
+    const key = Object.keys(map).find(k => txt.includes(k));
+    if(key) btn.style.display = configured.includes(map[key]) ? '' : 'none';
+  });
+  configured.forEach(cat => {
+    const exists = [...document.querySelectorAll('#tab-inventory .fb')].some(b => b.textContent.toLowerCase().includes(cat.toLowerCase()));
+    if(exists) return;
+    const btn = document.createElement('button');
+    btn.className = 'fb vendor-cat-filter';
+    btn.textContent = cat;
+    btn.onclick = function(){ setF(cat, btn); };
+    count.parentElement.insertBefore(btn, count);
+  });
 }
 
 function ensureRegisterCommandCenter(register){
@@ -1769,6 +1911,7 @@ async function loadInventory(){
     soldData = all.filter(i=>i.status==='sold');
     filtered = [...all];
     renderAll();
+    renderInventoryCategoryFilters();
     document.getElementById('sync-status').textContent = 'v'+APP_VERSION+' · '+products.length+' products · '+new Date().toLocaleTimeString();
   } catch(e){
     document.getElementById('sync-status').textContent = '⚠ '+e.message;
@@ -1778,7 +1921,7 @@ async function loadInventory(){
 function mapItem(i, skuMap){
   const f=i.fieldData||{};
   const isSold = f['sold-out']===true || f.status===STATUS_SOLD || (typeof f.status==='string'&&f.status.toLowerCase().includes('sold'));
-  let cat = CAT_MAP[f['card-category']] || 'TCG';
+  let cat = CAT_MAP[f['card-category']] || f.category || f['custom-category'] || f['item-type'] || 'TCG';
   const skuPrice = skuMap[i.id]||0;
   const market = parseFloat(f['retail-price'])||parseFloat(f['msrp'])||skuPrice||0;
   const cost = parseFloat(f['cost-basis'])||parseFloat(f.cost)||0;

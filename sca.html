@@ -3,7 +3,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="version" content="2026.04.30.12">
+<meta name="version" content="2026.05.01.1">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
@@ -404,7 +404,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
   <div class="hbtns">
     <span id="show-badge" style="font-family:monospace;font-size:9px;color:rgba(255,209,102,.7);letter-spacing:1px"></span>
     <span id="offline-sync-badge" style="font-family:monospace;font-size:9px;color:rgba(255,255,255,.35);letter-spacing:1px">online</span>
-    <span id="app-version" style="font-family:monospace;font-size:9px;color:rgba(0,255,179,.55);letter-spacing:1px">v2026.04.30.12</span>
+    <span id="app-version" style="font-family:monospace;font-size:9px;color:rgba(0,255,179,.55);letter-spacing:1px">v2026.05.01.1</span>
     <span id="hstatus">READY</span>
     <button class="hbtn" id="flipbtn" onclick="toggleFlip()">FLIP</button>
     <button class="hbtn" id="bulkbtn" onclick="toggleBulk()">BULK</button>
@@ -589,7 +589,7 @@ const STORE = {
   wf_status_instock:'f3769d1e15fa0956f98984d6fa36437f',
   wf_status_sold:   'e6b42f14fcb99aa2168a5f5672226f68',
 };
-const APP_VERSION = '2026.04.30.12';
+const APP_VERSION = '2026.05.01.1';
 const WORKER_URL = STORE.worker_url;
 
 function slugifyId(value, fallback) {
@@ -3654,6 +3654,7 @@ function addBubble(item,stock,imgUrl,apiPrintings,bestMatchIdx){
       ${ct==='comic'?`<button class="bact" style="background:rgba(199,125,255,.06);border:1px solid rgba(199,125,255,.2);color:var(--purple);font-size:9px" onclick="openVariantSearch('${id}')">Browse Covers</button>`:''}
       <button class="bact" style="background:rgba(0,255,179,.1);border:1px solid rgba(0,255,179,.3);color:var(--g);font-weight:700" onclick="addBubbleToCart('${id}')">🛒 Add to Cart</button>
       <button class="bact" style="background:rgba(72,202,228,.08);border:1px solid rgba(72,202,228,.25);color:var(--blue);font-weight:700" onclick="sendBubbleToTablet('${id}')">Send to Tablet</button>
+      <button class="bact" style="background:rgba(255,209,102,.08);border:1px solid rgba(255,209,102,.22);color:#ffd166;font-weight:700" onclick="openManualRefine('${id}')">Edit / Retry</button>
       <button class="bact a-add" onclick="showAddForm('${id}')">+ Add to Inventory</button>
       ${ct==='sports'||ct==='tcg'?`<button class="bact" style="background:rgba(72,202,228,.06);border:1px solid rgba(72,202,228,.2);color:var(--blue);font-size:9px" onclick="showGradeSubmit('${id}')">📤 Submit to Grader</button>`:''}
       ${si>0?`<button class="bact a-sell" onclick="showSellForm('${id}')">✓ Mark as Sold</button>`:''}
@@ -3674,6 +3675,7 @@ function addBubble(item,stock,imgUrl,apiPrintings,bestMatchIdx){
   el.style.left=safeLeft+'px';el.style.top=safeTop+'px';
   document.body.appendChild(el);
   bubs.push({id,el,ax:cx,ay:cy,ct});
+  el._item = item;
   el._frontB64 = null; // will be set by scanFront caller
 
   // ── AUTO PSA LOOKUP if cert# already known from scan ────────
@@ -3782,6 +3784,88 @@ function addBubble(item,stock,imgUrl,apiPrintings,bestMatchIdx){
   })();
   return el;  // Phase 2 uses this to update bubble after TCGPlayer loads
 }
+
+window.openManualRefine = function(id){
+  const bub = bubs.find(b => b.id === id);
+  const el = bub?.el;
+  const item = el?._item || {};
+  if(!el) return toast('Bubble not found');
+  document.getElementById('manual-refine-modal')?.remove();
+  const m = document.createElement('div');
+  m.id = 'manual-refine-modal';
+  m.style.cssText = 'position:fixed;inset:0;z-index:900;background:rgba(0,0,0,.82);display:flex;align-items:center;justify-content:center;padding:16px';
+  m.innerHTML = `<div style="width:100%;max-width:420px;background:#0d0f14;border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:16px">
+    <div style="font-family:Orbitron,monospace;font-size:12px;color:#ffd166;letter-spacing:2px;margin-bottom:12px">EDIT SCAN / RETRY SEARCH</div>
+    ${[['Name','name'],['Year','year'],['Set / Series','set_name'],['Card # / Issue','card_number'],['Variant / Parallel','parallel'],['Category','game']].map(([label,key]) => `
+      <label style="display:block;font-family:monospace;font-size:8px;color:rgba(255,255,255,.35);letter-spacing:1px;margin:8px 0 3px">${label}</label>
+      <input id="mr-${key}" value="${String(item[key] || item.set || item.issue || '').replace(/"/g,'&quot;')}" style="width:100%;box-sizing:border-box;background:#141720;border:1px solid rgba(255,255,255,.1);color:#fff;border-radius:6px;padding:8px;font-size:12px">
+    `).join('')}
+    <div style="display:flex;gap:8px;margin-top:14px">
+      <button class="bulk-btn primary" style="flex:1" onclick="applyManualRefine('${id}',true)">SAVE + RETRY</button>
+      <button class="bulk-btn secondary" style="flex:1" onclick="applyManualRefine('${id}',false)">SAVE ONLY</button>
+      <button class="bulk-btn secondary" onclick="document.getElementById('manual-refine-modal').remove()">CANCEL</button>
+    </div>
+  </div>`;
+  document.body.appendChild(m);
+};
+
+window.applyManualRefine = async function(id, retry){
+  const bub = bubs.find(b => b.id === id);
+  const el = bub?.el;
+  const item = el?._item || {};
+  if(!el) return;
+  const val = key => document.getElementById('mr-'+key)?.value.trim() || '';
+  item.name = val('name') || item.name;
+  item.year = val('year') || item.year;
+  item.set_name = val('set_name') || item.set_name;
+  item.card_number = val('card_number') || item.card_number;
+  item.issue = item.card_number;
+  item.parallel = val('parallel') || item.parallel;
+  item.variant = item.parallel;
+  item.game = val('game') || item.game;
+  item.search_query = [item.year,item.set_name,item.name,item.parallel,item.card_number ? '#'+item.card_number : ''].filter(Boolean).join(' ');
+  el._item = item;
+  const n = el.querySelector('.bname');
+  if(n) n.textContent = item.name || 'Scanned item';
+  const s = el.querySelector('.bsub');
+  if(s) s.textContent = [item.year,item.set_name,item.parallel,item.card_number ? '#'+item.card_number : ''].filter(Boolean).join(' · ');
+  const ebayLinks = el.querySelectorAll('.a-ebay');
+  ebayLinks.forEach(a => { a.href = AFF.ebaySearch(item.search_query); });
+  document.getElementById('manual-refine-modal')?.remove();
+  toast(retry ? 'Retrying search with edited details...' : 'Scan details updated');
+  if(retry) await retryBubbleTextSearch(id);
+};
+
+window.retryBubbleTextSearch = async function(id){
+  const bub = bubs.find(b => b.id === id);
+  const el = bub?.el;
+  const item = el?._item;
+  if(!el || !item) return;
+  const bp = document.getElementById('bp'+id);
+  const br = document.getElementById('br'+id);
+  if(bp) { bp.textContent = 'SEARCHING...'; bp.style.fontSize = '11px'; }
+  const prompt = `Find current market info for this collectible using text only. Return ONLY JSON: {"name":"", "query":"", "price":0, "low":0, "high":0, "note":""}. Item: ${JSON.stringify({name:item.name,year:item.year,set:item.set_name,card_number:item.card_number,variant:item.parallel,category:item.game})}`;
+  try {
+    const text = await callClaude([{role:'user',content:[{type:'text',text:prompt}]}], 300);
+    const oi = text.indexOf('{');
+    const data = oi >= 0 ? JSON.parse(text.slice(oi)) : null;
+    if(data?.price > 0 && bp) {
+      item.market_nm = data.price;
+      item.market = data.price;
+      item.priceSource = 'manual_retry_ai';
+      bp.textContent = '$' + Number(data.price).toFixed(2);
+      bp.style.color = '';
+      if(br) br.textContent = [data.note || 'Text retry estimate', data.low && data.high ? '$'+Number(data.low).toFixed(2)+' - $'+Number(data.high).toFixed(2) : ''].filter(Boolean).join(' · ');
+      toast('Updated price/search from edited details');
+    } else {
+      if(br) br.textContent = 'No price returned. Use external search links.';
+      toast('No match found from edited details');
+    }
+  } catch(e) {
+    if(br) br.textContent = 'Retry failed: ' + e.message;
+    toast('Retry failed');
+  }
+};
 
 window.setFinish=function(id, finish, printIdx, btn){
   const el = document.getElementById(id); if(!el) return;
