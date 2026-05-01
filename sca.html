@@ -3,7 +3,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="version" content="2026.05.01.3">
+<meta name="version" content="2026.05.01.4">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
@@ -404,7 +404,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
   <div class="hbtns">
     <span id="show-badge" style="font-family:monospace;font-size:9px;color:rgba(255,209,102,.7);letter-spacing:1px"></span>
     <span id="offline-sync-badge" style="font-family:monospace;font-size:9px;color:rgba(255,255,255,.35);letter-spacing:1px">online</span>
-    <span id="app-version" style="font-family:monospace;font-size:9px;color:rgba(0,255,179,.55);letter-spacing:1px">v2026.05.01.3</span>
+    <span id="app-version" style="font-family:monospace;font-size:9px;color:rgba(0,255,179,.55);letter-spacing:1px">v2026.05.01.4</span>
     <span id="hstatus">READY</span>
     <button class="hbtn" id="flipbtn" onclick="toggleFlip()">FLIP</button>
     <button class="hbtn" id="bulkbtn" onclick="toggleBulk()">BULK</button>
@@ -589,7 +589,7 @@ const STORE = {
   wf_status_instock:'f3769d1e15fa0956f98984d6fa36437f',
   wf_status_sold:   'e6b42f14fcb99aa2168a5f5672226f68',
 };
-const APP_VERSION = '2026.05.01.3';
+const APP_VERSION = '2026.05.01.4';
 const WORKER_URL = STORE.worker_url;
 
 function slugifyId(value, fallback) {
@@ -5176,7 +5176,7 @@ function saveCartState() {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
       body: JSON.stringify(cartData),
-    }).catch(() => {});
+    }).catch(e => queueCartSync(cartData, e.message || 'cart sync failed'));
   } catch(e) { console.warn('Cart save error:', e); }
 }
 function clearCartState() {
@@ -5197,9 +5197,28 @@ function saveSyncQueue(queue) {
 
 function queueCheckoutSync(payload, reason) {
   const queue = getSyncQueue();
-  queue.unshift({ id:'sync_'+Date.now(), queuedAt:new Date().toISOString(), reason:reason || 'offline', payload });
+  queue.unshift({ id:'sync_'+Date.now(), type:'checkout', queuedAt:new Date().toISOString(), reason:reason || 'offline', payload });
   saveSyncQueue(queue);
   toast('Checkout saved offline. It will sync when online.');
+}
+
+function queueSoldMarkSync(payload, reason) {
+  const queue = getSyncQueue();
+  const key = 'sold-' + payload.id;
+  const idx = queue.findIndex(j => j.type === 'sold-mark' && j.key === key);
+  const job = { id:idx >= 0 ? queue[idx].id : 'sync_'+Date.now(), key, type:'sold-mark', queuedAt:new Date().toISOString(), reason:reason || 'offline', payload };
+  if(idx >= 0) queue[idx] = job;
+  else queue.unshift(job);
+  saveSyncQueue(queue);
+}
+
+function queueCartSync(cartData, reason) {
+  const queue = getSyncQueue();
+  const idx = queue.findIndex(j => j.type === 'cart-sync' && j.key === 'active-cart');
+  const job = { id:idx >= 0 ? queue[idx].id : 'sync_'+Date.now(), key:'active-cart', type:'cart-sync', queuedAt:new Date().toISOString(), reason:reason || 'offline', payload:{cartData} };
+  if(idx >= 0) queue[idx] = job;
+  else queue.unshift(job);
+  saveSyncQueue(queue);
 }
 
 async function flushSyncQueue() {
@@ -5209,12 +5228,28 @@ async function flushSyncQueue() {
   const remaining = [];
   for(const job of queue.reverse()) {
     try {
-      const res = await fetch(scopedWorkerPath('/pos/checkout'), {
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body: JSON.stringify(job.payload),
-        signal: AbortSignal.timeout(12000),
-      });
+      let res;
+      if(job.type === 'sold-mark') {
+        res = await wfFetch('/collections/'+STORE.wf_products_col+'/items/'+job.payload.id, {
+          method:'PATCH',
+          body: JSON.stringify({ fieldData: job.payload.fieldData }),
+          signal: AbortSignal.timeout(12000),
+        });
+      } else if(job.type === 'cart-sync') {
+        res = await fetch(scopedWorkerPath('/cart'), {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify(job.payload.cartData),
+          signal: AbortSignal.timeout(5000),
+        });
+      } else {
+        res = await fetch(scopedWorkerPath('/pos/checkout'), {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify(job.payload),
+          signal: AbortSignal.timeout(12000),
+        });
+      }
       if(!res.ok) remaining.unshift(job);
     } catch(e) {
       remaining.unshift(job);
@@ -5412,13 +5447,16 @@ function renderCart(){
 async function syncCartToWorker(cartData) {
   // Write cart to Worker KV so any device can read it
   try {
-    await fetch(scopedWorkerPath('/cart'), {
+    const res = await fetch(scopedWorkerPath('/cart'), {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
       body: JSON.stringify(cartData),
       signal: AbortSignal.timeout(2000)
     });
-  } catch(e) {} // Non-critical, silent fail
+    if(!res.ok) throw new Error('cart sync ' + res.status);
+  } catch(e) {
+    queueCartSync(cartData, e.message || 'cart sync failed');
+  }
 }
 
 function updateCartBadge(){
@@ -5858,24 +5896,25 @@ async function recordTransaction(method, total, change){
     }
     if(shopId) {
       const itemCost = item.cost || 0;
+      const fieldData = {
+        'sold-out':        true,
+        'inventory-count': 0,
+        'status':          STORE.wf_status_sold,
+        'sale-price':      item.price,
+        'profit':          item.price - itemCost,
+        'sale-channel':    method,
+        'date-sold':       soldAt2,
+      };
       const job = wfFetch('/collections/'+STORE.wf_products_col+'/items/'+shopId, {
         method: 'PATCH',
-        body: JSON.stringify({ fieldData: {
-          'sold-out':        true,
-          'inventory-count': 0,
-          'status':          STORE.wf_status_sold,
-          'sale-price':      item.price,
-          'profit':          item.price - itemCost,
-          'sale-channel':    method,
-          'date-sold':       soldAt2,
-        }})
+        body: JSON.stringify({ fieldData })
       }).then(async r => {
         if(!r.ok) {
           const detail = await r.text().catch(() => '');
           throw new Error('Webflow ' + r.status + (detail ? ': ' + detail.substring(0,120) : ''));
         }
       });
-      _soldMarkJobs.push({name:item.name || 'Unknown item', job});
+      _soldMarkJobs.push({name:item.name || 'Unknown item', shopId, fieldData, job});
     } else {
       console.warn('No Webflow ID for cart item:', item.name);
       _unsyncedNames.push(item.name || 'Unknown item');
@@ -5886,8 +5925,10 @@ async function recordTransaction(method, total, change){
     const results = await Promise.allSettled(_soldMarkJobs.map(j => j.job));
     results.forEach((r, idx) => {
       if(r.status === 'rejected') {
-        const name = _soldMarkJobs[idx].name;
+        const failedJob = _soldMarkJobs[idx];
+        const name = failedJob.name;
         console.warn('Webflow sold mark failed:', name, r.reason?.message || r.reason);
+        queueSoldMarkSync({ id:failedJob.shopId, fieldData:failedJob.fieldData }, r.reason?.message || 'sold mark failed');
         _unsyncedNames.push(name);
       }
     });
@@ -5895,7 +5936,7 @@ async function recordTransaction(method, total, change){
 
   // Notify user if any items couldn't be marked sold in Webflow
   if(_unsyncedNames.length > 0) {
-    setTimeout(() => toast('⚠ ' + _unsyncedNames.length + ' item(s) not recorded in Webflow — mark sold manually in dashboard: ' + _unsyncedNames.join(', ')), 2500);
+    setTimeout(() => toast('⚠ ' + _unsyncedNames.length + ' item(s) queued for Webflow sold sync: ' + _unsyncedNames.join(', ')), 2500);
   }
 
   // Clear cart from all stores
@@ -5908,7 +5949,7 @@ async function recordTransaction(method, total, change){
     method:'POST',
     headers:{'Content-Type':'application/json'},
     body: JSON.stringify({items:[], discount:0, total:0, clearedAt: soldAt, lastTxId: tx.id})
-  }).catch(()=>{});
+  }).catch(e=>queueCartSync({items:[], discount:0, total:0, clearedAt: soldAt, lastTxId: tx.id}, e.message || 'cart clear failed'));
 
   closeCheckout();
   document.getElementById('pos-cart').classList.remove('on');

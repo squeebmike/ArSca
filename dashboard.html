@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.05.01.3">
+<meta name="version" content="2026.05.01.4">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1010,7 +1010,7 @@ tr.sold:hover td{opacity:.7;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.05.01.3';
+const APP_VERSION = '2026.05.01.4';
 const STORE_ID = 'walkoff-main';
 const REGISTER_ID = 'front';
 const WF_PRODUCTS = '65eb45a28ff6bf3fe4f17b14';
@@ -1617,11 +1617,11 @@ function ensureSyncQueuePanel(backoffice){
   panel.className = 'panel';
   panel.id = 'sync-queue-panel';
   panel.style.marginBottom = '14px';
-  panel.innerHTML = `<div class="ph">SYNC QUEUE <span id="sync-queue-count" style="font-size:9px;color:var(--dim)">0 pending</span></div>
-    <div style="font-family:monospace,monospace;font-size:10px;color:var(--dim);margin-bottom:10px;line-height:1.55">Failed imports, Webflow pushes, and future channel syncs land here so nothing silently disappears.</div>
+  panel.innerHTML = `<div class="ph">SYNC QUEUE <span id="sync-queue-count" style="font-size:9px;color:var(--dim)">0 pending</span> <span id="sync-online-status" style="font-size:9px;color:var(--dim)"></span></div>
+    <div style="font-family:monospace,monospace;font-size:10px;color:var(--dim);margin-bottom:10px;line-height:1.55">Failed cart pushes, item status changes, inventory updates, and channel syncs land here so nothing silently disappears.</div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
       <button class="hbtn" onclick="renderSyncQueue()">REFRESH</button>
-      <button class="hbtn" onclick="retryAllSyncQueue()">RETRY ALL</button>
+      <button class="hbtn" onclick="retryAllSyncQueue()">SYNC NOW</button>
       <button class="hbtn danger" onclick="clearCompletedSyncQueue()">CLEAR DONE</button>
     </div>
     <div id="sync-queue-list" style="display:grid;gap:6px;font-family:monospace,monospace;font-size:10px;color:var(--dim)"></div>`;
@@ -1644,13 +1644,27 @@ function enqueueSync(type, label, payload, error){
   saveSyncQueue(q);
 }
 
+function enqueueOrReplaceSync(type, syncKey, label, payload, error){
+  const q = getSyncQueue();
+  const idx = q.findIndex(x => x.type === type && x.syncKey === syncKey && x.status !== 'done');
+  const next = { id:idx >= 0 ? q[idx].id : 'sync_'+Date.now()+'_'+Math.random().toString(36).slice(2,6), syncKey, type, label, payload, error:error||'', status:'pending', attempts:idx >= 0 ? (q[idx].attempts||0) : 0, createdAt:idx >= 0 ? q[idx].createdAt : new Date().toISOString(), updatedAt:new Date().toISOString() };
+  if(idx >= 0) q[idx] = next;
+  else q.unshift(next);
+  saveSyncQueue(q);
+}
+
 function renderSyncQueue(){
   const list = document.getElementById('sync-queue-list');
   const count = document.getElementById('sync-queue-count');
   if(!list) return;
   const q = getSyncQueue();
   const pending = q.filter(x => x.status !== 'done').length;
+  const online = document.getElementById('sync-online-status');
   if(count) count.textContent = pending + ' pending';
+  if(online) {
+    online.textContent = navigator.onLine ? 'online' : 'offline';
+    online.style.color = navigator.onLine ? 'var(--g)' : 'var(--gold)';
+  }
   if(!q.length){ list.innerHTML = '<div style="padding:10px;border:1px dashed var(--border);border-radius:8px;text-align:center">No queued sync work</div>'; return; }
   list.innerHTML = q.slice(0,60).map(x => `<div style="border:1px solid var(--border);background:var(--surf2);border-radius:7px;padding:8px;display:grid;gap:4px">
     <div style="display:flex;justify-content:space-between;gap:8px"><b style="color:${x.status==='done'?'var(--g)':x.status==='failed'?'var(--red)':'var(--gold)'}">${x.status.toUpperCase()} · ${x.type}</b><span>${new Date(x.updatedAt||x.createdAt).toLocaleString()}</span></div>
@@ -1668,6 +1682,21 @@ async function processSyncItem(item){
   if(item.type === 'webflow-patch') {
     const res = await fetch(WORKER+'/proxy/collections/'+WF_PRODUCTS+'/items/'+item.payload.id, { method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ fieldData:item.payload.fieldData }) });
     if(!res.ok) throw new Error('Webflow patch '+res.status+': '+(await res.text()).slice(0,160));
+    return;
+  }
+  if(item.type === 'cart-sync') {
+    const ok = await postCartToWorker(item.payload.cartData, false);
+    if(!ok) throw new Error('Cart sync failed');
+    return;
+  }
+  if(item.type === 'lifecycle-kv') {
+    const res = await fetch(scopedWorkerPath('/kv/inventory_lifecycle'), { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(item.payload.map) });
+    if(!res.ok) throw new Error('Lifecycle sync '+res.status);
+    return;
+  }
+  if(item.type === 'inventory-sold') {
+    const res = await wfPatch('/collections/'+WF_PRODUCTS+'/items/'+item.payload.id, { fieldData:item.payload.fieldData });
+    if(!res.ok) throw new Error('Sold sync '+res.status+': '+(await res.text()).slice(0,160));
     return;
   }
   throw new Error('No retry handler for '+item.type);
@@ -1694,6 +1723,9 @@ async function retryAllSyncQueue(){
 
 function removeSyncItem(id){ saveSyncQueue(getSyncQueue().filter(x => x.id !== id)); }
 function clearCompletedSyncQueue(){ saveSyncQueue(getSyncQueue().filter(x => x.status !== 'done')); }
+
+window.addEventListener('online', () => { renderSyncQueue(); retryAllSyncQueue(); });
+window.addEventListener('offline', renderSyncQueue);
 
 function ensureCustomerPanel(backoffice){
   if(document.getElementById('customer-panel')) return;
@@ -1906,7 +1938,9 @@ function saveLifecycleMap(map){
     method: 'POST',
     headers: {'Content-Type':'application/json'},
     body: JSON.stringify(map)
-  }).catch(() => {});
+  })
+    .then(res => { if(!res.ok) throw new Error('Lifecycle sync '+res.status); })
+    .catch(e => enqueueOrReplaceSync('lifecycle-kv', 'inventory_lifecycle', 'Sync inventory status map', { map }, e.message || 'Lifecycle sync failed'));
 }
 
 async function syncLifecycleFromWorker(){
@@ -2355,16 +2389,18 @@ async function wfPatch(path, body){
   return fetch(WORKER+'/proxy'+path,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
 }
 
-async function postCartToWorker(cartData){
+async function postCartToWorker(cartData, queueOnFail = true){
   try {
-    await fetch(cartWorkerPath(), {
+    const res = await fetch(cartWorkerPath(), {
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify(cartData),
       signal:AbortSignal.timeout(2500)
     });
+    if(!res.ok) throw new Error('Cart sync '+res.status);
     return true;
   } catch(e) {
+    if(queueOnFail) enqueueOrReplaceSync('cart-sync', 'active-cart', 'Sync active cart to tablet/customer display', { cartData }, e.message || 'Cart sync failed');
     return false;
   }
 }
@@ -2838,27 +2874,31 @@ async function confirmQuickSell(){
   const channel=document.getElementById('sell-channel').value;
   const soldAt = new Date().toISOString();
   if(!salePrice){alert('Enter a sale price');return;}
-  // Update Webflow
+  const fieldData = {
+    'sold-out':true,
+    'inventory-count':0,
+    status:STATUS_SOLD,
+    'sale-price':salePrice,
+    'profit':salePrice-(item.cost||0),
+    'sale-channel':channel,
+    'date-sold':soldAt
+  };
+  const idx=all.findIndex(i=>i.id===item.id);
+  if(idx>=0){all[idx].status='sold';all[idx].lifecycle='sold';all[idx].salePrice=salePrice;all[idx].profit=salePrice-(item.cost||0);all[idx].channel=channel;all[idx].soldAt=soldAt;}
+  setLifecycle(item.id, 'sold', true);
+  soldData=all.filter(i=>i.status==='sold');
+  closeSellModal();
+  renderAll();
+  logOpsEvent('quick_sell', 'Marked sold locally: ' + (item.name || 'item'), { itemId:item.id, salePrice, channel });
+
   try {
-    await wfPatch('/collections/'+WF_PRODUCTS+'/items/'+item.id, {
-      fieldData:{
-        'sold-out':true,
-        'inventory-count':0,
-        status:STATUS_SOLD,
-        'sale-price':salePrice,
-        'profit':salePrice-(item.cost||0),
-        'sale-channel':channel,
-        'date-sold':soldAt
-      }
-    });
-    // Update local
-    const idx=all.findIndex(i=>i.id===item.id);
-    if(idx>=0){all[idx].status='sold';all[idx].lifecycle='sold';all[idx].salePrice=salePrice;all[idx].profit=salePrice-(item.cost||0);all[idx].channel=channel;all[idx].soldAt=soldAt;}
-    setLifecycle(item.id, 'sold', true);
-    soldData=all.filter(i=>i.status==='sold');
-    closeSellModal();
-    renderAll();
-  } catch(e){ alert('Error: '+e.message); }
+    const res = await wfPatch('/collections/'+WF_PRODUCTS+'/items/'+item.id, { fieldData });
+    if(!res.ok) throw new Error('Sold sync '+res.status+': '+(await res.text()).slice(0,160));
+    toast_dash('Sold locally and synced');
+  } catch(e){
+    enqueueOrReplaceSync('inventory-sold', item.id, 'Mark sold in Webflow: ' + (item.name || 'item'), { id:item.id, fieldData }, e.message || 'Sold sync failed');
+    toast_dash('Sold locally - queued Webflow sync');
+  }
 }
 
 // ── CART INTEGRATION FROM DASHBOARD ───────────────────────
