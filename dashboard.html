@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.05.01.1">
+<meta name="version" content="2026.05.01.2">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1010,7 +1010,7 @@ tr.sold:hover td{opacity:.7;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.05.01.1';
+const APP_VERSION = '2026.05.01.2';
 const STORE_ID = 'walkoff-main';
 const REGISTER_ID = 'front';
 const WF_PRODUCTS = '65eb45a28ff6bf3fe4f17b14';
@@ -1149,6 +1149,7 @@ function organizeRegisterLayout(){
   moveNode('backoffice-ops-panel', backoffice);
   moveNode('backoffice-tcg-sync-panel', backoffice);
   ensureVendorConfigPanel(backoffice);
+  ensureSpreadsheetPanel(backoffice);
   applyVendorConfig();
 }
 
@@ -1268,6 +1269,228 @@ function renderInventoryCategoryFilters(){
     btn.onclick = function(){ setF(cat, btn); };
     count.parentElement.insertBefore(btn, count);
   });
+}
+
+function ensureSpreadsheetPanel(backoffice){
+  if(document.getElementById('spreadsheet-panel')) return;
+  const panel = document.createElement('div');
+  panel.className = 'panel';
+  panel.id = 'spreadsheet-panel';
+  panel.style.marginBottom = '14px';
+  panel.innerHTML = `
+    <div class="ph">SPREADSHEET / UNIVERSAL INVENTORY <span id="sheet-status" style="font-size:9px;color:var(--dim)">CSV bridge</span></div>
+    <div style="font-family:monospace,monospace;font-size:10px;color:var(--dim);margin-bottom:10px;line-height:1.55">
+      Import vendor spreadsheets, map columns once, and export clean files for Excel, eBay, or other POS systems. For Excel files, use Save As CSV for now.
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+      <button class="hbtn" onclick="document.getElementById('sheet-import-file').click()">IMPORT CSV</button>
+      <input id="sheet-import-file" type="file" accept=".csv,text/csv" style="display:none" onchange="handleSpreadsheetImport(event)">
+      <button class="hbtn" onclick="exportInventoryCSV()">EXPORT INVENTORY</button>
+      <button class="hbtn" onclick="exportEbayPrepCSV()">EXPORT EBAY PREP</button>
+      <button class="hbtn" onclick="exportBuyOffersCSV()">EXPORT BUY OFFERS</button>
+      <button class="hbtn" onclick="exportUniversalTemplateCSV()">CSV TEMPLATE</button>
+    </div>
+    <div id="sheet-mapping" style="display:none;margin-bottom:10px"></div>
+    <div id="sheet-preview" style="font-family:monospace,monospace;font-size:10px;color:var(--dim);display:grid;gap:6px"></div>`;
+  backoffice.prepend(panel);
+}
+
+let pendingCsvRows = [];
+let pendingCsvHeaders = [];
+
+function parseCSV(text){
+  const rows = [];
+  let row = [], cell = '', quote = false;
+  for(let i=0;i<text.length;i++){
+    const ch = text[i], nx = text[i+1];
+    if(ch === '"' && quote && nx === '"'){ cell += '"'; i++; continue; }
+    if(ch === '"'){ quote = !quote; continue; }
+    if(ch === ',' && !quote){ row.push(cell); cell = ''; continue; }
+    if((ch === '\n' || ch === '\r') && !quote){
+      if(ch === '\r' && nx === '\n') i++;
+      row.push(cell); cell = '';
+      if(row.some(v => String(v).trim() !== '')) rows.push(row);
+      row = [];
+      continue;
+    }
+    cell += ch;
+  }
+  row.push(cell);
+  if(row.some(v => String(v).trim() !== '')) rows.push(row);
+  return rows;
+}
+
+function csvEscape(v){
+  return '"' + String(v ?? '').replace(/"/g,'""') + '"';
+}
+
+function rowsToCSV(rows){
+  return rows.map(r => r.map(csvEscape).join(',')).join('\n');
+}
+
+function downloadCSV(filename, rows){
+  const blob = new Blob([rowsToCSV(rows)], {type:'text/csv'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 500);
+}
+
+function normalizeHeader(h){
+  return String(h || '').toLowerCase().replace(/[^a-z0-9]+/g,'');
+}
+
+function guessColumn(headers, names){
+  const normalized = headers.map(h => normalizeHeader(h));
+  for(const name of names){
+    const n = normalizeHeader(name);
+    const idx = normalized.findIndex(h => h === n || h.includes(n) || n.includes(h));
+    if(idx >= 0) return headers[idx];
+  }
+  return '';
+}
+
+async function handleSpreadsheetImport(event){
+  const file = event.target.files?.[0];
+  event.target.value = '';
+  if(!file) return;
+  const text = await file.text();
+  const rows = parseCSV(text);
+  if(rows.length < 2){ toast_dash('CSV has no inventory rows'); return; }
+  pendingCsvHeaders = rows[0].map(h => String(h || '').trim());
+  pendingCsvRows = rows.slice(1).map(r => {
+    const obj = {};
+    pendingCsvHeaders.forEach((h,i) => obj[h] = r[i] || '');
+    return obj;
+  });
+  renderSpreadsheetMapping();
+}
+
+function renderSpreadsheetMapping(){
+  const box = document.getElementById('sheet-mapping');
+  const preview = document.getElementById('sheet-preview');
+  if(!box) return;
+  const saved = safeLocalJson('sheet_mapping_v1', {});
+  const fields = {
+    name:['name','title','product title','item'],
+    category:['category','type','game','department'],
+    set:['set','set name','series'],
+    year:['year','season'],
+    variant:['variant','parallel'],
+    condition:['condition','cond'],
+    qty:['qty','quantity','inventory count','count'],
+    cost:['cost','paid','cost basis','buy price'],
+    market:['price','market','retail','asking','list price'],
+    location:['location','box','case','binder'],
+    notes:['notes','description','memo'],
+  };
+  const opts = '<option value="">-- ignore --</option>' + pendingCsvHeaders.map(h => `<option value="${h}">${h}</option>`).join('');
+  box.style.display = '';
+  box.innerHTML = `<div style="font-family:monospace,monospace;font-size:10px;color:var(--dim);margin-bottom:8px">${pendingCsvRows.length} rows found. Map your spreadsheet columns:</div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px">
+      ${Object.entries(fields).map(([field, aliases]) => {
+        const val = saved[field] || guessColumn(pendingCsvHeaders, aliases);
+        return `<label style="font-family:monospace;font-size:9px;color:var(--dim)">${field.toUpperCase()}<select id="map-${field}" style="width:100%;margin-top:3px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:7px;border-radius:6px">${opts.replace(`value="${val}"`,`value="${val}" selected`)}</select></label>`;
+      }).join('')}
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="hbtn" onclick="importMappedSpreadsheet(false)">IMPORT LOCAL</button>
+      <button class="hbtn" onclick="importMappedSpreadsheet(true)">IMPORT + ADD TO WEBFLOW</button>
+      <button class="hbtn danger" onclick="pendingCsvRows=[];document.getElementById('sheet-mapping').style.display='none'">CANCEL</button>
+    </div>`;
+  preview.innerHTML = pendingCsvRows.slice(0,5).map(r => `<div style="border:1px solid var(--border);background:var(--surf2);border-radius:6px;padding:7px">${pendingCsvHeaders.slice(0,6).map(h => `${h}: ${r[h]}`).join(' · ')}</div>`).join('');
+}
+
+function mappedSpreadsheetItems(){
+  const fields = ['name','category','set','year','variant','condition','qty','cost','market','location','notes'];
+  const map = {};
+  fields.forEach(f => map[f] = document.getElementById('map-'+f)?.value || '');
+  localStorage.setItem('sheet_mapping_v1', JSON.stringify(map));
+  return pendingCsvRows.map((r, idx) => ({
+    id:'sheet_' + Date.now() + '_' + idx,
+    source:'spreadsheet',
+    name:r[map.name] || 'Imported item',
+    category:r[map.category] || 'Collectibles',
+    set:r[map.set] || '',
+    year:r[map.year] || '',
+    variant:r[map.variant] || '',
+    condition:r[map.condition] || '',
+    qty:parseInt(r[map.qty]) || 1,
+    cost:parseFloat(String(r[map.cost] || '').replace(/[$,]/g,'')) || 0,
+    market:parseFloat(String(r[map.market] || '').replace(/[$,]/g,'')) || 0,
+    location:r[map.location] || '',
+    notes:r[map.notes] || '',
+    status:'in_stock',
+    lifecycle:'in_stock',
+    addedAt:new Date().toISOString(),
+    appVersion:APP_VERSION,
+  })).filter(i => i.name && i.name !== 'Imported item');
+}
+
+async function importMappedSpreadsheet(pushWebflow){
+  const items = mappedSpreadsheetItems();
+  if(!items.length){ toast_dash('No mapped rows to import'); return; }
+  const local = safeLocalJson('walkoff_universal_inventory', []);
+  local.unshift(...items);
+  localStorage.setItem('walkoff_universal_inventory', JSON.stringify(local.slice(0,5000)));
+  let webflowOk = 0, webflowFail = 0;
+  if(pushWebflow) {
+    for(const item of items) {
+      try { await createWebflowProduct(item, item); webflowOk++; }
+      catch(e) { webflowFail++; }
+    }
+  }
+  pendingCsvRows = [];
+  document.getElementById('sheet-mapping').style.display='none';
+  document.getElementById('sheet-preview').innerHTML = `Imported ${items.length} local item${items.length===1?'':'s'}${pushWebflow ? ' · Webflow '+webflowOk+' ok / '+webflowFail+' failed' : ''}`;
+  logOpsEvent('spreadsheet_import', 'Imported spreadsheet inventory', { items:items.length, webflowOk, webflowFail });
+  loadInventory();
+}
+
+function getUniversalInventory(){
+  return safeLocalJson('walkoff_universal_inventory', []).map(i => ({
+    id:i.id, name:i.name||'Imported item', set:i.set||'', variant:i.variant||'', year:i.year||'',
+    category:i.category||'Collectibles', cost:Number(i.cost||0), market:Number(i.market||0), salePrice:Number(i.salePrice||i.market||0),
+    qty:Number(i.qty||1), profit:Number(i.profit||0), condition:i.condition||'', priceSource:i.priceSource||'spreadsheet',
+    status:i.status||'in_stock', lifecycle:i.lifecycle||'in_stock', channel:i.channel||'', addedAt:i.addedAt||'', soldAt:i.soldAt||'',
+    tags:i.tags||'', thumbnail:i.thumbnail||null, location:i.location||'', player:i.player||'', team:i.team||'', sport:i.sport||'',
+    manufacturer:i.manufacturer||'', card_number:i.card_number||'', serial_number:i.serial_number||'', publisher:i.publisher||'',
+    issue:i.issue||'', notes:i.notes||'', source:'spreadsheet',
+  }));
+}
+
+function inventoryExportRows(){
+  return [['id','name','category','set','year','variant','condition','qty','cost','market_price','location','status','source','notes']]
+    .concat(all.map(i => [i.id,i.name,i.category,i.set,i.year,i.variant,i.condition,i.qty,i.cost,i.market,i.location,i.lifecycle||i.status,i.source||'webflow',i.notes||i.tags||'']));
+}
+
+function exportInventoryCSV(){
+  downloadCSV('walkoff-inventory-' + new Date().toISOString().slice(0,10) + '.csv', inventoryExportRows());
+  logOpsEvent('spreadsheet_export', 'Exported inventory CSV', { items:all.length });
+}
+
+function exportUniversalTemplateCSV(){
+  downloadCSV('walkoff-inventory-template.csv', [['name','category','set','year','variant','condition','qty','cost','market_price','location','notes'],['Charizard','TCG','Base Set','1999','Unlimited','NM','1','120.00','250.00','Showcase A','example row']]);
+}
+
+function exportEbayPrepCSV(){
+  const rows = [['title','category','condition','quantity','price','cost','location','description','photo_url','status']]
+    .concat(all.filter(i => (i.lifecycle||i.status) !== 'sold').map(i => [
+      [i.year,i.name,i.set,i.variant].filter(Boolean).join(' ').slice(0,80),
+      i.category,i.condition || 'Very Good',i.qty || 1,Number(i.market||0).toFixed(2),Number(i.cost||0).toFixed(2),i.location || '',
+      [i.name,i.category,i.set,i.year,i.variant,i.notes||i.tags].filter(Boolean).join('\n'),
+      i.thumbnail || '', i.lifecycle || i.status
+    ]));
+  downloadCSV('walkoff-ebay-prep-' + new Date().toISOString().slice(0,10) + '.csv', rows);
+  logOpsEvent('spreadsheet_export', 'Exported eBay prep CSV', { items:rows.length - 1 });
+}
+
+function exportBuyOffersCSV(){
+  const offers = safeLocalJson('pos_buy_offers', []);
+  const rows = [['date','customer','phone','item','category','set','year','condition','market','offer','offer_pct','show']]
+    .concat(offers.flatMap(o => (o.items||[]).map(i => [o.date,o.customer,o.phone,i.name,i.category,i.set,i.year,i.condition,i.market,i.offer,o.pct,o.show?.eventName||''])));
+  downloadCSV('walkoff-buy-offers-' + new Date().toISOString().slice(0,10) + '.csv', rows);
 }
 
 function ensureRegisterCommandCenter(register){
@@ -1746,6 +1969,8 @@ async function buildVendorBackup(){
       locations: safeLocalJson('pos_locations', []),
       lifecycle: safeLocalJson('inventory_lifecycle', {}),
       localInventoryCache: safeLocalJson('lba_inventory', []),
+      universalInventory: safeLocalJson('walkoff_universal_inventory', []),
+      spreadsheetMapping: safeLocalJson('sheet_mapping_v1', {}),
       opsLog: getOpsLog(),
       scanInbox,
     }
@@ -1811,6 +2036,8 @@ async function importVendorBackup(event){
       pos_locations:d.locations,
       inventory_lifecycle:d.lifecycle,
       lba_inventory:d.localInventoryCache,
+      walkoff_universal_inventory:d.universalInventory,
+      sheet_mapping_v1:d.spreadsheetMapping,
       pos_ops_log:d.opsLog,
     };
     for(const [k,v] of Object.entries(map)) {
@@ -1907,7 +2134,7 @@ async function loadInventory(){
     const skuMap={};
     skus.forEach(s=>{ const pid=s.fieldData?.product; const c=s.fieldData?.price?.value||0; if(pid&&c>0) skuMap[pid]=c/100; });
 
-    all = products.map(p=>mapItem(p,skuMap));
+    all = products.map(p=>mapItem(p,skuMap)).concat(getUniversalInventory());
     soldData = all.filter(i=>i.status==='sold');
     filtered = [...all];
     renderAll();
