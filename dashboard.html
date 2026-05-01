@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.05.01.6">
+<meta name="version" content="2026.05.01.7">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -35,7 +35,7 @@ header{position:sticky;top:0;z-index:100;background:rgba(7,8,10,.96);backdrop-fi
 .tab.on{color:var(--g);border-color:rgba(0,255,179,.28);background:rgba(0,255,179,.07);}
 .tab.primary{color:rgba(228,228,232,.72);}
 .nav-more{margin-left:auto;position:relative;flex-shrink:0;}
-.more-menu{position:absolute;right:0;top:34px;display:none;min-width:190px;background:var(--surf);border:1px solid var(--border);border-radius:8px;padding:6px;box-shadow:0 18px 50px rgba(0,0,0,.45);z-index:300;}
+.more-menu{position:fixed;right:20px;top:98px;display:none;min-width:220px;background:var(--surf);border:1px solid var(--border);border-radius:8px;padding:6px;box-shadow:0 18px 50px rgba(0,0,0,.65);z-index:9998;}
 .more-menu.on{display:grid;gap:4px;}
 .more-item{font-family:monospace,monospace;font-size:10px;color:var(--dim);padding:9px 10px;border-radius:5px;cursor:pointer;letter-spacing:1px;}
 .more-item:hover,.more-item.on{background:rgba(0,255,179,.08);color:var(--g);}
@@ -534,7 +534,7 @@ tr.sold:hover td{opacity:.7;}
 
     <!-- QUICK PRICE LOOKUP -->
     <div class="panel" id="register-quick-panel">
-      <div class="ph">⚡ QUICK PRICE LOOKUP <span style="color:var(--dim);font-size:8px">AI estimate — no scanning needed</span></div>
+      <div class="ph">⚡ QUICK PRICE LOOKUP <span style="color:var(--dim);font-size:8px">catalog search — no scanning needed</span></div>
       <input class="tsi" id="qpl-input" placeholder="e.g. 2021 Umbreon VMAX Evolving Skies..." style="margin-bottom:10px;font-size:12px;padding:10px 14px" oninput="debouncePriceLookup()" onkeydown="if(event.key==='Enter')runPriceLookup()">
       <div style="display:flex;gap:6px;margin-bottom:10px">
         <select id="qpl-cat" style="flex:1;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:6px 8px;border-radius:6px;font-family:monospace,monospace;font-size:10px">
@@ -1026,7 +1026,7 @@ tr.sold:hover td{opacity:.7;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.05.01.6';
+const APP_VERSION = '2026.05.01.7';
 const STORE_ID = 'walkoff-main';
 const REGISTER_ID = 'front';
 const WF_PRODUCTS = '65eb45a28ff6bf3fe4f17b14';
@@ -2346,7 +2346,16 @@ function updateRegisterCommandCenter(scanCount){
 
 function toggleMoreMenu(event){
   event?.stopPropagation();
-  document.getElementById('more-menu')?.classList.toggle('on');
+  const menu = document.getElementById('more-menu');
+  const btn = document.getElementById('more-tab-btn');
+  if(!menu) return;
+  menu.onclick = e => e.stopPropagation();
+  if(btn) {
+    const r = btn.getBoundingClientRect();
+    menu.style.top = (r.bottom + 8) + 'px';
+    menu.style.right = Math.max(12, window.innerWidth - r.right) + 'px';
+  }
+  menu.classList.toggle('on');
 }
 
 function closeMoreMenu(){
@@ -3637,8 +3646,9 @@ function toast_dash(msg){
 }
 
 function openEbayFromDash(id){
-  const item=all.find(i=>i.id===id); if(!item) return;
-  if((item.lifecycle || 'in_stock') !== 'listed_online') setLifecycle(id, 'pulled_ebay', true);
+  const item=all.find(i=>i.id===id);
+  if(!item){ toast_dash('Could not find that inventory item'); return; }
+  toast_dash('Opening eBay listing form...');
   const esc = v => String(v||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
   const condLabelMap = {
     '05cbd3bb538b65343a8f40c0fbe31282':'Near Mint',
@@ -3737,6 +3747,12 @@ function openEbayFromDash(id){
       </div>
     </div>`;
   document.body.appendChild(modal);
+  if((item.lifecycle || 'in_stock') !== 'listed_online') {
+    const map = getLifecycleMap();
+    map[id] = 'pulled_ebay';
+    saveLifecycleMap(map);
+    item.lifecycle = 'pulled_ebay';
+  }
   document.getElementById('dash-eb-title').addEventListener('input', function(){
     document.getElementById('dash-eb-title-count').textContent=this.value.length+'/80';
   });
@@ -5108,6 +5124,7 @@ async function runPriceSync() {
 // ══════════════════════════════════════════════════
 let qplTimer = null;
 let qplHistory = [];
+let qplResults = [];
 
 function debouncePriceLookup(){
   clearTimeout(qplTimer);
@@ -5119,57 +5136,351 @@ async function runPriceLookup(){
   const cat = document.getElementById('qpl-cat').value;
   const el = document.getElementById('qpl-result');
   if(!q || q.length < 3) return;
-  el.innerHTML = '<div style="color:var(--gold)">⟳ Looking up prices...</div>';
+  el.innerHTML = '<div style="color:var(--gold)">Searching catalogs...</div>';
   try {
-    const res = await fetch('https://still-resonance-4f87.swarnerauto.workers.dev/anthropic/messages', {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 400,
-        messages: [{role:'user', content:[{type:'text', text:
-          `Price lookup: "${q}"${cat?' ('+cat+')':''}
-Return ONLY JSON:
-{"name":"exact name","tcg_mid":0.00,"ebay_avg":0.00,"low":0.00,"high":0.00,"note":"brief note"}`
-        }]}]
+    const results = await searchQuickCatalog(q, cat);
+    qplResults = results.length ? results : await aiQuickLookupFallback(q, cat);
+    if(!qplResults.length) {
+      el.innerHTML = '<div style="color:var(--red)">No results found. Try a player/card name, set, or card number.</div>';
+      return;
+    }
+    renderQuickLookupResults(qplResults);
+    pushQuickLookupHistory(q, qplResults[0]);
+  } catch(e) {
+    el.innerHTML = '<div style="color:var(--red)">Lookup failed: ' + e.message + '</div>';
+  }
+}
+
+async function searchQuickCatalog(q, cat){
+  const results = [];
+  const wants = String(cat || '').toLowerCase();
+  const search = q.toLowerCase();
+  const seen = new Set();
+  const add = r => {
+    const key = [r.source,r.name,r.set,r.card_number,r.year,r.variant].join('|').toLowerCase();
+    if(seen.has(key)) return;
+    seen.add(key);
+    results.push(r);
+  };
+
+  all.filter(i => {
+    const hay = [i.name,i.set,i.year,i.card_number,i.variant,i.player,i.team].filter(Boolean).join(' ').toLowerCase();
+    return hay.includes(search);
+  }).slice(0, 10).forEach(i => add({
+    source:'inventory',
+    name:i.name || 'Inventory item',
+    category:i.category || 'Collectibles',
+    set:i.set || '',
+    year:i.year || '',
+    variant:i.variant || '',
+    card_number:i.card_number || '',
+    condition:i.condition || 'NM',
+    market:Number(i.market || i.salePrice || 0),
+    cost:Number(i.cost || 0),
+    imageUrl:i.thumbnail || '',
+    priceSource:i.priceSource || 'Current inventory',
+    note:'Already in inventory',
+    raw:i,
+  }));
+
+  if(!wants || wants.includes('pokemon') || wants.includes('tcg')) {
+    try {
+      const ptcg = await fetchPokemonCatalog(q);
+      ptcg.forEach(add);
+    } catch(e) {}
+  }
+  if(!wants || wants.includes('magic') || wants.includes('tcg')) {
+    try {
+      const mtg = await fetchScryfallCatalog(q);
+      mtg.forEach(add);
+    } catch(e) {}
+  }
+
+  return results.slice(0, 30);
+}
+
+async function fetchPokemonCatalog(q){
+  const clean = q.replace(/["\\]/g, ' ').replace(/\s+/g, ' ').trim();
+  const queries = [
+    `name:"${clean}"`,
+    clean.split(/\s+/).map(x => `name:${x}`).join(' ')
+  ];
+  for(const query of queries) {
+    const url = 'https://api.pokemontcg.io/v2/cards?q=' + encodeURIComponent(query) + '&pageSize=24&orderBy=-set.releaseDate';
+    const res = await fetch(url, { headers:{ 'Accept':'application/json' } });
+    if(!res.ok) continue;
+    const data = await res.json();
+    const cards = data.data || [];
+    if(cards.length) {
+      return cards.map(c => {
+        const prices = c.tcgplayer?.prices || {};
+        const p = prices.holofoil || prices.normal || prices.reverseHolofoil || prices['1stEditionHolofoil'] || prices.unlimitedHolofoil || {};
+        return {
+          source:'pokemon',
+          name:c.name || clean,
+          category:'TCG',
+          set:c.set?.name || '',
+          year:(c.set?.releaseDate || '').slice(0,4),
+          variant:[c.rarity, p === prices.reverseHolofoil ? 'Reverse Holo' : '', c.supertype].filter(Boolean).join(' / '),
+          card_number:c.number || '',
+          condition:'NM',
+          market:Number(p.market || p.mid || p.low || c.cardmarket?.prices?.averageSellPrice || 0),
+          low:Number(p.low || 0),
+          high:Number(p.high || 0),
+          imageUrl:c.images?.small || c.images?.large || '',
+          priceSource:'PokemonTCG market',
+          tcgUrl:c.tcgplayer?.url || '',
+          note:c.set?.releaseDate ? 'Released ' + c.set.releaseDate : '',
+          raw:c,
+        };
+      });
+    }
+  }
+  return [];
+}
+
+async function fetchScryfallCatalog(q){
+  const url = 'https://api.scryfall.com/cards/search?q=' + encodeURIComponent(q) + '&unique=prints&order=released&dir=desc';
+  const res = await fetch(url, { headers:{ 'Accept':'application/json' } });
+  if(!res.ok) return [];
+  const data = await res.json();
+  return (data.data || []).slice(0, 24).map(c => ({
+    source:'scryfall',
+    name:c.name || q,
+    category:'TCG',
+    set:c.set_name || '',
+    year:(c.released_at || '').slice(0,4),
+    variant:[c.foil ? 'Foil available' : '', c.rarity].filter(Boolean).join(' / '),
+    card_number:c.collector_number || '',
+    condition:'NM',
+    market:Number(c.prices?.usd || c.prices?.usd_foil || c.prices?.usd_etched || 0),
+    imageUrl:c.image_uris?.small || c.card_faces?.[0]?.image_uris?.small || '',
+    priceSource:'Scryfall market',
+    tcgUrl:c.purchase_uris?.tcgplayer || c.scryfall_uri || '',
+    note:c.type_line || '',
+    raw:c,
+  }));
+}
+
+async function aiQuickLookupFallback(q, cat){
+  try {
+    const res = await fetch(WORKER + '/anthropic/messages', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-haiku-4-5-20251001',
+        max_tokens:350,
+        messages:[{role:'user',content:[{type:'text',text:`Price lookup for a collectibles POS: "${q}"${cat?' in '+cat:''}. Return ONLY JSON: {"name":"item name","category":"TCG/Sports/Comic/Collectibles","year":"","set":"","card_number":"","market":0.00,"low":0.00,"high":0.00,"note":"brief caveat"}`}]}]
       })
     });
     const d = await res.json();
     const text = d.content?.[0]?.text || '';
     const oi = text.indexOf('{');
-    const data = oi >= 0 ? JSON.parse('['+text.slice(oi)+']')[0] : null;
-    if(data) {
-      el.innerHTML = `<div class="qpl-card">
-        <div class="qpl-name">${data.name || q}</div>
-        <div class="qpl-prices">
-          <div class="qpl-p"><div class="qpl-p-label">TCG MID</div><div class="qpl-p-val" style="color:var(--g)">$${(data.tcg_mid||0).toFixed(2)}</div></div>
-          <div class="qpl-p"><div class="qpl-p-label">EBAY AVG</div><div class="qpl-p-val" style="color:var(--gold)">$${(data.ebay_avg||0).toFixed(2)}</div></div>
-          <div class="qpl-p"><div class="qpl-p-label">RANGE</div><div class="qpl-p-val" style="color:var(--blue);font-size:11px">$${(data.low||0).toFixed(2)}–$${(data.high||0).toFixed(2)}</div></div>
-        </div>
-        <div style="font-family:monospace,monospace;font-size:9px;color:var(--dim);margin-top:6px">${data.note||''} · AI estimate</div>
-      </div>`;
-      // Add to history
-      qplHistory.unshift({q, name: data.name||q, tcg: data.tcg_mid||0, ebay: data.ebay_avg||0});
-      if(qplHistory.length > 5) qplHistory.pop();
-      // Render history
-      const histEl = document.getElementById('qpl-history');
-      if(qplHistory.length) {
-        let hHtml = '<div style="font-family:monospace;font-size:8px;color:var(--dim);margin-bottom:4px;letter-spacing:1px">RECENT LOOKUPS</div>';
-        qplHistory.forEach(function(h) {
-          hHtml += '<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--border);font-family:monospace;font-size:9px;cursor:pointer" onclick="document.getElementById(\'qpl-input\').value=this.dataset.q;runPriceLookup()" data-q="' + h.q.replace(/"/g,'') + '">'
-            + '<span style="color:var(--text)">' + h.name.substring(0,30) + '</span>'
-            + '<span style="color:var(--gold)">$' + h.tcg.toFixed(2) + '</span></div>';
-        });
-        histEl.innerHTML = hHtml;
-      } else {
-        histEl.innerHTML = '';
-      }
-    } else {
-      el.innerHTML = '<div style="color:var(--red)">No results — try a more specific name</div>';
-    }
+    const data = oi >= 0 ? JSON.parse(text.slice(oi)) : null;
+    if(!data) return [];
+    return [{
+      source:'ai',
+      name:data.name || q,
+      category:data.category || cat || 'Collectibles',
+      year:data.year || '',
+      set:data.set || '',
+      card_number:data.card_number || '',
+      condition:'NM',
+      market:Number(data.market || 0),
+      low:Number(data.low || 0),
+      high:Number(data.high || 0),
+      imageUrl:'',
+      priceSource:'AI estimate',
+      note:data.note || 'Estimate only; verify before buying high-value items.',
+      raw:data,
+    }];
   } catch(e) {
-    el.innerHTML = '<div style="color:var(--red)">Lookup failed: ' + e.message + '</div>';
+    return [];
   }
+}
+
+function renderQuickLookupResults(results){
+  const el = document.getElementById('qpl-result');
+  el.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <div style="color:var(--g);font-weight:700">${results.length} MATCH${results.length===1?'':'ES'}</div>
+      <div style="color:var(--dim);font-size:8px">select a printing, then add without scanning</div>
+    </div>
+    <div style="display:grid;gap:7px;max-height:420px;overflow:auto;padding-right:3px">
+      ${results.map((r, idx) => quickLookupResultCard(r, idx)).join('')}
+    </div>`;
+}
+
+function quickLookupResultCard(r, idx){
+  const img = r.imageUrl
+    ? `<img src="${escHtml(r.imageUrl)}" style="width:48px;height:64px;object-fit:contain;background:#050507;border:1px solid var(--border);border-radius:5px">`
+    : `<div style="width:48px;height:64px;background:#050507;border:1px solid var(--border);border-radius:5px;display:flex;align-items:center;justify-content:center;color:var(--dim);font-size:8px">NO IMG</div>`;
+  const meta = [r.year,r.set,r.variant,r.card_number ? '#'+r.card_number : ''].filter(Boolean).join(' / ');
+  return `<div style="display:grid;grid-template-columns:48px 1fr auto;gap:9px;align-items:center;background:var(--surf2);border:1px solid var(--border);border-radius:8px;padding:8px">
+    ${img}
+    <div>
+      <div style="color:var(--text);font-weight:700;font-size:11px;line-height:1.3">${escHtml(r.name)}</div>
+      <div style="color:var(--dim);font-size:8px;line-height:1.35;margin-top:3px">${escHtml(meta || r.note || r.category || '')}</div>
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:5px">
+        <span style="color:var(--gold);font-size:12px;font-weight:800">$${Number(r.market || 0).toFixed(2)}</span>
+        <span style="color:var(--dim);font-size:8px">${escHtml(r.priceSource || r.source || '')}</span>
+      </div>
+    </div>
+    <div style="display:grid;gap:5px">
+      <button class="hbtn" style="font-size:8px;padding:6px 8px" onclick="selectQuickLookupResult(${idx})">SELECT</button>
+      <button class="hbtn" style="font-size:8px;padding:6px 8px;color:var(--gold)" onclick="addQuickLookupToInventory(${idx})">ADD INV</button>
+      <button class="hbtn" style="font-size:8px;padding:6px 8px;color:var(--g)" onclick="addQuickLookupToBuyOffer(${idx})">BUY</button>
+    </div>
+  </div>`;
+}
+
+function selectQuickLookupResult(idx){
+  const r = qplResults[idx];
+  if(!r) return;
+  const el = document.getElementById('qpl-result');
+  const cat = normalizeQuickCategory(r.category);
+  el.innerHTML = `<div style="background:var(--surf2);border:1px solid var(--border);border-radius:8px;padding:10px">
+    <div style="display:flex;gap:10px;align-items:flex-start;margin-bottom:10px">
+      ${r.imageUrl ? `<img src="${escHtml(r.imageUrl)}" style="width:64px;height:86px;object-fit:contain;background:#050507;border:1px solid var(--border);border-radius:6px">` : ''}
+      <div style="flex:1">
+        <div style="color:var(--gold);font-weight:800;font-size:11px;margin-bottom:4px">SELECTED PRINTING</div>
+        <div style="color:var(--text);font-weight:700;font-size:12px">${escHtml(r.name)}</div>
+        <div style="color:var(--dim);font-size:8px;margin-top:3px">${escHtml([r.year,r.set,r.card_number?'#'+r.card_number:'',r.priceSource].filter(Boolean).join(' / '))}</div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 100px 80px;gap:7px;margin-bottom:7px">
+      <input id="qpl-edit-name" value="${escHtml(r.name)}" style="background:var(--surf);border:1px solid var(--border);color:var(--text);padding:8px;border-radius:6px;font-size:10px">
+      <select id="qpl-edit-category" style="background:var(--surf);border:1px solid var(--border);color:var(--text);padding:8px;border-radius:6px;font-size:10px">
+        ${['TCG','Sports','Comic','Graded','Collectibles'].map(c => `<option value="${c}" ${cat===c?'selected':''}>${c}</option>`).join('')}
+      </select>
+      <select id="qpl-edit-condition" style="background:var(--surf);border:1px solid var(--border);color:var(--text);padding:8px;border-radius:6px;font-size:10px">
+        ${['NM','LP','MP','HP','DMG'].map(c => `<option value="${c}" ${String(r.condition||'NM')===c?'selected':''}>${c}</option>`).join('')}
+      </select>
+    </div>
+    <div style="display:grid;grid-template-columns:80px 1fr 80px 80px;gap:7px;margin-bottom:7px">
+      <input id="qpl-edit-year" placeholder="Year" value="${escHtml(r.year || '')}" style="background:var(--surf);border:1px solid var(--border);color:var(--text);padding:8px;border-radius:6px;font-size:10px">
+      <input id="qpl-edit-set" placeholder="Set" value="${escHtml(r.set || '')}" style="background:var(--surf);border:1px solid var(--border);color:var(--text);padding:8px;border-radius:6px;font-size:10px">
+      <input id="qpl-edit-cardnum" placeholder="#" value="${escHtml(r.card_number || '')}" style="background:var(--surf);border:1px solid var(--border);color:var(--text);padding:8px;border-radius:6px;font-size:10px">
+      <input id="qpl-edit-market" type="number" step="0.01" placeholder="Market" value="${Number(r.market || 0) || ''}" style="background:var(--surf);border:1px solid var(--border);color:var(--gold);padding:8px;border-radius:6px;font-size:10px">
+    </div>
+    <div style="display:grid;grid-template-columns:80px 1fr;gap:7px;margin-bottom:10px">
+      <input id="qpl-edit-cost" type="number" step="0.01" placeholder="Cost" value="${Number(r.cost || 0) || ''}" style="background:var(--surf);border:1px solid var(--border);color:var(--text);padding:8px;border-radius:6px;font-size:10px">
+      <input id="qpl-edit-location" placeholder="Location" value="${escHtml(getShowMode()?.eventName ? 'At show - ' + getShowMode().eventName : '')}" style="background:var(--surf);border:1px solid var(--border);color:var(--text);padding:8px;border-radius:6px;font-size:10px">
+    </div>
+    <div style="display:flex;gap:7px;flex-wrap:wrap">
+      <button class="hbtn" style="flex:1;color:var(--gold)" onclick="addSelectedQuickLookupToInventory(${idx})">ADD TO INVENTORY</button>
+      <button class="hbtn" style="flex:1;color:var(--g)" onclick="addSelectedQuickLookupToBuyOffer(${idx})">ADD TO BUY OFFER</button>
+      <button class="hbtn" onclick="renderQuickLookupResults(qplResults)">BACK</button>
+    </div>
+    <div id="qpl-add-status" style="margin-top:8px;color:var(--dim);font-size:8px"></div>
+  </div>`;
+}
+
+function normalizeQuickCategory(category){
+  const c = String(category || '').toLowerCase();
+  if(c.includes('pokemon') || c.includes('magic') || c.includes('yugio') || c.includes('tcg')) return 'TCG';
+  if(c.includes('sport')) return 'Sports';
+  if(c.includes('comic')) return 'Comic';
+  if(c.includes('graded') || c.includes('slab')) return 'Graded';
+  return category || 'Collectibles';
+}
+
+function selectedQuickLookupItem(idx){
+  const r = qplResults[idx] || {};
+  return {
+    id:'qpl_' + Date.now() + '_' + Math.random().toString(36).slice(2,6),
+    name:document.getElementById('qpl-edit-name')?.value.trim() || r.name || 'Manual item',
+    category:document.getElementById('qpl-edit-category')?.value || normalizeQuickCategory(r.category),
+    year:document.getElementById('qpl-edit-year')?.value.trim() || r.year || '',
+    set:document.getElementById('qpl-edit-set')?.value.trim() || r.set || '',
+    variant:r.variant || '',
+    card_number:document.getElementById('qpl-edit-cardnum')?.value.trim() || r.card_number || '',
+    condition:document.getElementById('qpl-edit-condition')?.value || r.condition || 'NM',
+    market:parseFloat(document.getElementById('qpl-edit-market')?.value) || Number(r.market || 0),
+    cost:parseFloat(document.getElementById('qpl-edit-cost')?.value) || Number(r.cost || 0),
+    qty:1,
+    location:document.getElementById('qpl-edit-location')?.value.trim() || '',
+    thumbnail:r.imageUrl || '',
+    imageUrl:r.imageUrl || '',
+    priceSource:r.priceSource || r.source || 'manual lookup',
+    source:r.source || 'quick_lookup',
+    notes:r.note || '',
+    lifecycle:'in_stock',
+    status:'in_stock',
+    addedAt:new Date().toISOString(),
+    appVersion:APP_VERSION,
+  };
+}
+
+function saveQuickLookupLocalInventory(item, productId){
+  const inv = safeLocalJson('walkoff_universal_inventory', []);
+  inv.unshift({ ...item, id:productId || item.id, wfId:productId || '', source:'quick_lookup' });
+  localStorage.setItem('walkoff_universal_inventory', JSON.stringify(inv.slice(0,5000)));
+}
+
+async function addSelectedQuickLookupToInventory(idx){
+  const status = document.getElementById('qpl-add-status');
+  const item = selectedQuickLookupItem(idx);
+  if(status) status.textContent = 'Adding inventory...';
+  try {
+    const productId = await createWebflowProduct(item, item);
+    saveQuickLookupLocalInventory(item, productId);
+    logOpsEvent('inventory_add', 'Added quick lookup item: ' + item.name, { productId, category:item.category, market:item.market });
+    if(status) status.innerHTML = '<span style="color:var(--g)">Added to inventory and Webflow.</span>';
+    toast_dash('Added to inventory: ' + item.name);
+    loadInventory();
+  } catch(e) {
+    saveQuickLookupLocalInventory(item, '');
+    enqueueSync('webflow-create', 'Create quick lookup item: ' + item.name, { item, updates:item }, e.message || 'Webflow create failed');
+    if(status) status.innerHTML = '<span style="color:var(--gold)">Saved locally and queued for Webflow sync: ' + escHtml(e.message || 'sync later') + '</span>';
+    toast_dash('Saved locally, queued Webflow sync');
+    loadInventory();
+  }
+}
+
+function addQuickLookupToInventory(idx){
+  selectQuickLookupResult(idx);
+  setTimeout(() => addSelectedQuickLookupToInventory(idx), 0);
+}
+
+function addSelectedQuickLookupToBuyOffer(idx){
+  const item = selectedQuickLookupItem(idx);
+  buyList.push({
+    id:'bl_qpl_' + Date.now(),
+    name:item.name,
+    market:item.market,
+    condition:item.condition,
+    category:item.category,
+    set:item.set,
+    year:item.year,
+    card_number:item.card_number,
+    variant:item.variant,
+    imageUrl:item.imageUrl,
+    priceSource:item.priceSource,
+  });
+  saveBuyList();
+  renderBuyList();
+  toast_dash('Added to buy offer: ' + item.name);
+}
+
+function addQuickLookupToBuyOffer(idx){
+  const r = qplResults[idx];
+  if(!r) return;
+  qplResults[idx] = { ...r, category:normalizeQuickCategory(r.category) };
+  selectQuickLookupResult(idx);
+  setTimeout(() => addSelectedQuickLookupToBuyOffer(idx), 0);
+}
+
+function pushQuickLookupHistory(q, r){
+  qplHistory.unshift({q, name:r.name||q, market:Number(r.market||0), source:r.priceSource||r.source||''});
+  qplHistory = qplHistory.slice(0, 5);
+  const histEl = document.getElementById('qpl-history');
+  if(!histEl) return;
+  histEl.innerHTML = qplHistory.length
+    ? '<div style="font-family:monospace;font-size:8px;color:var(--dim);margin-bottom:4px;letter-spacing:1px">RECENT LOOKUPS</div>' + qplHistory.map(h =>
+        `<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--border);font-family:monospace;font-size:9px;cursor:pointer" onclick="document.getElementById('qpl-input').value=this.dataset.q;runPriceLookup()" data-q="${escHtml(h.q)}"><span style="color:var(--text)">${escHtml(String(h.name).substring(0,34))}</span><span style="color:var(--gold)">$${h.market.toFixed(2)}</span></div>`
+      ).join('')
+    : '';
 }
 
 // ══════════════════════════════════════════════════
@@ -5819,7 +6130,6 @@ async function renderCustomerDisplay(){
 
   totalEl.textContent = '$'+total.toFixed(2);
   const paymentLine = `<div style="margin-top:8px;color:var(--gold)">${escHtml(profile.paymentMethods)}</div>`;
-  countEl.textContent = items.length + ' item' + (items.length>1?'s':'') + (disc>0?' · '+disc+'% discount applied':'') + (tax>0?' · tax included':'');
   countEl.innerHTML = items.length + ' item' + (items.length>1?'s':'') + (disc>0?' · '+disc+'% discount applied':'') + (tax>0?' · tax included':'') + paymentLine;
 }
 
