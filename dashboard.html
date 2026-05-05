@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.05.01.10">
+<meta name="version" content="2026.05.05.1">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1047,7 +1047,7 @@ tr.sold:hover td{opacity:.7;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.05.01.10';
+const APP_VERSION = '2026.05.05.1';
 const STORE_ID = 'walkoff-main';
 const REGISTER_ID = 'front';
 const WF_PRODUCTS = '65eb45a28ff6bf3fe4f17b14';
@@ -1256,6 +1256,7 @@ function organizeRegisterLayout(){
   moveNode('backoffice-ops-panel', backoffice);
   ensureVendorProfilePanel(backoffice);
   ensureVendorConfigPanel(backoffice);
+  ensureLegacyToolsPanel(backoffice);
   ensureSpreadsheetPanel(backoffice);
   ensureSyncQueuePanel(backoffice);
   ensureCustomerPanel(backoffice);
@@ -1325,6 +1326,38 @@ function ensureBuySignalsPanel(intake){
     <div id="buy-signals-list" style="display:grid;gap:6px"></div>`;
   intake.appendChild(panel);
   renderBuySignals();
+}
+
+function ensureLegacyToolsPanel(backoffice){
+  if(document.getElementById('legacy-tools-panel')) return;
+  const panel = document.createElement('div');
+  panel.className = 'panel';
+  panel.id = 'legacy-tools-panel';
+  panel.style.marginBottom = '14px';
+  const tools = [
+    ['overview','Home / command center'],
+    ['pos','Sell / register'],
+    ['intake','Buy / intake'],
+    ['inventory','Inventory'],
+    ['channels','Online listings / pricing'],
+    ['sales','Sales report'],
+    ['alerts','Alerts'],
+    ['wantlist','Want list / set needs'],
+    ['consign','Consignment'],
+    ['locations','Locations'],
+    ['restock','Restock'],
+    ['display','Cart / customer display'],
+    ['backoffice','Settings / admin'],
+  ];
+  panel.innerHTML = `
+    <div class="ph">LEGACY / FULL TOOL MAP <span style="font-size:9px;color:var(--dim)">safety net during UX refactor</span></div>
+    <div style="font-family:monospace,monospace;font-size:10px;color:var(--dim);margin-bottom:10px;line-height:1.55">
+      Every existing tool remains reachable here while the app is reorganized into Home, Buy, Sell, Inventory, Shows, and More.
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px">
+      ${tools.map(([id,label]) => `<button class="hbtn" style="min-height:48px;text-align:left;justify-content:flex-start" onclick="switchTab('${id}')">${label}</button>`).join('')}
+    </div>`;
+  backoffice.appendChild(panel);
 }
 
 function getVendorConfig(){
