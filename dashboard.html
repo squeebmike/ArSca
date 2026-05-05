@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.05.01.8">
+<meta name="version" content="2026.05.01.9">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -100,6 +100,10 @@ header{position:sticky;top:0;z-index:100;background:rgba(7,8,10,.96);backdrop-fi
 .timeline-row{border-left:2px solid rgba(0,255,179,.28);padding:0 0 8px 10px;margin-left:4px;font-family:monospace,monospace;font-size:10px;color:var(--dim);}
 .timeline-row b{color:var(--text);font-family:'DM Sans',sans-serif;font-size:12px;}
 .vendor-logo-preview{width:72px;height:72px;border-radius:10px;border:1px solid var(--border);background:var(--surf2);object-fit:contain;padding:6px;}
+.cd-item{display:flex;align-items:center;gap:12px;background:var(--surf);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:8px;box-shadow:0 8px 26px rgba(0,0,0,.22);}
+.cd-item-name{font-family:'Orbitron',monospace;font-size:13px;font-weight:800;color:var(--text);line-height:1.25;}
+.cd-item-sub{font-family:monospace,monospace;font-size:9px;color:var(--dim);margin-top:4px;}
+.cd-item-price{font-family:'Orbitron',monospace;font-size:18px;font-weight:900;color:var(--gold);white-space:nowrap;}
 .item-workspace-grid{display:grid;grid-template-columns:180px 1fr;gap:14px;}
 .item-photo{width:180px;aspect-ratio:3/4;border-radius:8px;border:1px solid var(--border);background:var(--surf2);object-fit:cover;}
 .item-metric{background:var(--surf2);border:1px solid var(--border);border-radius:8px;padding:10px;}
@@ -535,7 +539,10 @@ tr.sold:hover td{opacity:.7;}
     <!-- QUICK PRICE LOOKUP -->
     <div class="panel" id="register-quick-panel">
       <div class="ph">⚡ QUICK PRICE LOOKUP <span style="color:var(--dim);font-size:8px">catalog search — no scanning needed</span></div>
-      <input class="tsi" id="qpl-input" placeholder="e.g. 2021 Umbreon VMAX Evolving Skies..." style="margin-bottom:10px;font-size:12px;padding:10px 14px" oninput="debouncePriceLookup()" onkeydown="if(event.key==='Enter')runPriceLookup()">
+      <div style="display:flex;gap:6px;margin-bottom:10px">
+        <input class="tsi" id="qpl-input" placeholder="e.g. 2021 Umbreon VMAX Evolving Skies..." style="flex:1;margin-bottom:0;font-size:12px;padding:10px 14px" oninput="debouncePriceLookup()" onkeydown="if(event.key==='Enter')runPriceLookup()">
+        <button class="hbtn" title="Speak search" onclick="startVoiceInput('qpl-input', runPriceLookup)" style="width:42px;padding:0">MIC</button>
+      </div>
       <div style="display:flex;gap:6px;margin-bottom:10px">
         <select id="qpl-cat" style="flex:1;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:6px 8px;border-radius:6px;font-family:monospace,monospace;font-size:10px">
           <option value="">Any Category</option>
@@ -705,10 +712,10 @@ tr.sold:hover td{opacity:.7;}
 
 <!-- CUSTOMER DISPLAY TAB -->
 <div id="tab-display" class="tab-panel">
-  <div class="sec">CUSTOMER FACING DISPLAY</div>
+  <div class="sec">CART / CUSTOMER DISPLAY</div>
   <div style="max-width:1400px;margin:0 auto;padding:0 20px;margin-bottom:14px">
     <div style="background:var(--surf);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:14px">
-      <div class="ph">HOW TO USE</div>
+      <div class="ph">LIVE CART + CUSTOMER DISPLAY</div>
       <div style="font-family:monospace,monospace;font-size:10px;color:var(--dim);line-height:1.8">
         Open this tab on a tablet or second screen facing the customer. It auto-refreshes from your cart every 3 seconds.
         Use your phone as the scanner/POS — the customer sees their items and total in real time on this screen.
@@ -719,7 +726,8 @@ tr.sold:hover td{opacity:.7;}
     <!-- Live customer view rendered here -->
     <div style="max-width:600px;margin:0 auto;padding:0 20px">
       <div style="text-align:center;padding:40px 20px 20px">
-        <div style="font-family:'Orbitron',monospace;font-size:28px;font-weight:900;color:var(--g);letter-spacing:4px;margin-bottom:4px">WALK-OFF</div>
+        <img data-vendor-logo src="" alt="" style="display:none;width:96px;max-height:72px;object-fit:contain;margin:0 auto 12px">
+        <div style="font-family:'Orbitron',monospace;font-size:28px;font-weight:900;color:var(--g);letter-spacing:4px;margin-bottom:4px" data-vendor-store>WALK-OFF</div>
         <div style="font-family:'Orbitron',monospace;font-size:11px;color:var(--dim);letter-spacing:3px">SPORTS CARDS & COMICS · KINGSTON, WA</div>
       </div>
       <div id="cd-items" style="margin-bottom:20px"></div>
@@ -727,6 +735,7 @@ tr.sold:hover td{opacity:.7;}
         <div style="font-family:monospace,monospace;font-size:12px;color:var(--dim);letter-spacing:2px;margin-bottom:8px">TOTAL</div>
         <div style="font-family:'Orbitron',monospace;font-size:52px;font-weight:900;color:var(--g)" id="cd-total">$0.00</div>
         <div style="font-family:monospace,monospace;font-size:10px;color:var(--dim);margin-top:6px" id="cd-items-count">No items</div>
+        <div id="cd-pay-links" style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:16px"></div>
       </div>
       <div style="text-align:center;margin-top:20px;font-family:monospace,monospace;font-size:9px;color:var(--dim)">Thank you for shopping with us! ⚾</div>
     </div>
@@ -1027,9 +1036,9 @@ tr.sold:hover td{opacity:.7;}
 
 <div id="lba-nav">
   <a class="lba-nav-btn" href="sca.html"><span class="nav-ico">⬡</span>SCANNER</a>
-  <a class="lba-nav-btn" href="sca.html" id="dash-cart-nav" style="position:relative">
+  <a class="lba-nav-btn" href="#" onclick="switchTab('display');return false" id="dash-cart-nav" style="position:relative">
     <span class="nav-ico">🛒</span>
-    <span style="font-size:7px">CART</span>
+    <span style="font-size:7px">CART / DISPLAY</span>
     <span id="dash-cart-count" style="display:none;position:absolute;top:4px;right:8px;background:#ff4d6d;color:#fff;font-size:8px;font-weight:700;width:15px;height:15px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:monospace,monospace"></span>
   </a>
   <a class="lba-nav-btn active" href="dashboard.html"><span class="nav-ico">▦</span>DASHBOARD</a>
@@ -1038,7 +1047,7 @@ tr.sold:hover td{opacity:.7;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.05.01.8';
+const APP_VERSION = '2026.05.01.9';
 const STORE_ID = 'walkoff-main';
 const REGISTER_ID = 'front';
 const WF_PRODUCTS = '65eb45a28ff6bf3fe4f17b14';
@@ -1235,6 +1244,8 @@ function organizeRegisterLayout(){
   moveNode('register-quick-panel', intake);
   moveNode('register-scan-panel', intake);
   moveNode('register-buy-panel', intake);
+  ensureSetNeedsPanel(intake);
+  ensureBuySignalsPanel(intake);
   cleanupEmptyWorkflowRows();
 
   moveNode('backoffice-ebay-panel', channels);
@@ -1273,6 +1284,45 @@ function cleanupEmptyWorkflowRows(){
       el.style.maxWidth = '';
     }
   });
+}
+
+function ensureSetNeedsPanel(intake){
+  if(document.getElementById('set-needs-panel')) return;
+  const panel = document.createElement('div');
+  panel.className = 'panel';
+  panel.id = 'set-needs-panel';
+  panel.style.margin = '0 0 14px';
+  panel.innerHTML = `
+    <div class="ph">SET NEEDS / CUSTOMER LOOKING FOR <span id="set-needs-count" style="font-size:9px;color:var(--dim)">0 active</span></div>
+    <div style="font-family:monospace,monospace;font-size:10px;color:var(--dim);margin-bottom:10px;line-height:1.55">
+      Track cards/books someone needs for a set, PC, or want project. Lookup results will flag matches.
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 90px 1fr auto;gap:7px;margin-bottom:10px">
+      <input class="tsi" id="need-name" placeholder="Card/item name or character" style="margin-bottom:0">
+      <input class="tsi" id="need-set" placeholder="Set / title / project" style="margin-bottom:0">
+      <input class="tsi" id="need-number" placeholder="#" style="margin-bottom:0">
+      <input class="tsi" id="need-owner" placeholder="Customer or list name" style="margin-bottom:0">
+      <button class="hbtn" onclick="addSetNeed()">ADD</button>
+    </div>
+    <div id="set-needs-list" style="display:grid;gap:6px"></div>`;
+  intake.appendChild(panel);
+  renderSetNeeds();
+}
+
+function ensureBuySignalsPanel(intake){
+  if(document.getElementById('buy-signals-panel')) return;
+  const panel = document.createElement('div');
+  panel.className = 'panel';
+  panel.id = 'buy-signals-panel';
+  panel.style.margin = '0 0 14px';
+  panel.innerHTML = `
+    <div class="ph">BUY SIGNALS <span style="font-size:9px;color:var(--dim)">past solds, profit, speed, wants</span></div>
+    <div style="font-family:monospace,monospace;font-size:10px;color:var(--dim);margin-bottom:10px;line-height:1.55">
+      Shows items you historically make money on or sell quickly. Lookup cards also show these signals inline.
+    </div>
+    <div id="buy-signals-list" style="display:grid;gap:6px"></div>`;
+  intake.appendChild(panel);
+  renderBuySignals();
 }
 
 function getVendorConfig(){
@@ -3324,7 +3374,7 @@ function renderTable(){
     const ins=i.status==='in_stock';
     const pft=ins?(i.market-i.cost):i.profit;
     const ppc=pft>=0?'pp pos':'pp neg';
-    const cat=(i.category||'TCG').replace(/\s+/g,'');
+    const cat=String(i.category||'TCG').replace(/\s+/g,'');
     const margin=i.cost>0?((pft/i.cost)*100).toFixed(0)+'%':'—';
     return `<tr class="${ins?'':'sold'}" data-item-id="${i.id}">
       <td><span class="dot ${ins?'in_stock':'sold'}"></span><span class="nc" title="${i.tcgCardId?'TCG ID: '+i.tcgCardId:''}">${i.name}${i.isRookie?' <span style="color:var(--gold);font-size:8px">RC</span>':''}${i.tcgCardId?'<span style="font-family:monospace;font-size:7px;color:rgba(0,255,179,.4);margin-left:4px">●</span>':''}</span></td>
@@ -3371,7 +3421,7 @@ function renderSoldTable(){
     return `<tr>
       <td><span class="nc">${i.name}</span></td>
       <td><span class="sc2">${i.set||'—'}</span></td>
-      <td><span class="ct ${(i.category||'').replace(/\s/g,'')}">${i.category}</span></td>
+      <td><span class="ct ${String(i.category||'').replace(/\s/g,'')}">${i.category}</span></td>
       <td class="pp pm">${i.salePrice>0?fd$(i.salePrice):'—'}</td>
       <td class="pp pd">${i.cost>0?fd$(i.cost):'—'}</td>
       <td class="pp ${pft>=0?'pos':'neg'}">${pft?(pft>=0?'+':'')+fd$(pft):'—'}</td>
@@ -5166,6 +5216,134 @@ async function runPriceSync() {
 }
 
 // ══════════════════════════════════════════════════
+// SET NEEDS / BUY SIGNALS / VOICE HELPERS
+// ══════════════════════════════════════════════════
+function getSetNeeds(){
+  return safeLocalJson('set_needs_v1', []);
+}
+
+function saveSetNeeds(list){
+  localStorage.setItem('set_needs_v1', JSON.stringify((list || []).slice(0,1000)));
+  renderSetNeeds();
+}
+
+function addSetNeed(){
+  const name = document.getElementById('need-name')?.value.trim();
+  const set = document.getElementById('need-set')?.value.trim();
+  const number = document.getElementById('need-number')?.value.trim();
+  const owner = document.getElementById('need-owner')?.value.trim();
+  if(!name && !set && !number){ toast_dash('Add a name, set, or card number'); return; }
+  const list = getSetNeeds();
+  list.unshift({ id:'need_'+Date.now(), name, set, number, owner, active:true, addedAt:new Date().toISOString() });
+  saveSetNeeds(list);
+  ['need-name','need-set','need-number','need-owner'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
+  toast_dash('Need tracked');
+}
+
+function removeSetNeed(id){
+  saveSetNeeds(getSetNeeds().filter(n => n.id !== id));
+}
+
+function renderSetNeeds(){
+  const list = getSetNeeds().filter(n => n.active !== false);
+  const count = document.getElementById('set-needs-count');
+  const el = document.getElementById('set-needs-list');
+  if(count) count.textContent = list.length + ' active';
+  if(!el) return;
+  if(!list.length) {
+    el.innerHTML = '<div style="font-family:monospace;font-size:10px;color:var(--dim);padding:10px;border:1px dashed var(--border);border-radius:8px;text-align:center">No set needs yet</div>';
+    return;
+  }
+  el.innerHTML = list.slice(0,40).map(n => `<div style="display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;background:var(--surf2);border:1px solid var(--border);border-radius:8px;padding:8px">
+    <div>
+      <div style="color:var(--text);font-weight:700;font-size:11px">${escHtml([n.name,n.number?'#'+n.number:''].filter(Boolean).join(' '))}</div>
+      <div style="color:var(--dim);font-size:8px">${escHtml([n.set,n.owner].filter(Boolean).join(' / '))}</div>
+    </div>
+    <button class="ra ra-sell" onclick="removeSetNeed('${n.id}')">x</button>
+  </div>`).join('');
+}
+
+function getSetNeedMatches(item){
+  const hay = [item.name,item.set,item.card_number,item.year,item.variant].filter(Boolean).join(' ').toLowerCase();
+  return getSetNeeds().filter(n => n.active !== false).filter(n => {
+    const nameOk = !n.name || hay.includes(String(n.name).toLowerCase());
+    const setOk = !n.set || hay.includes(String(n.set).toLowerCase());
+    const numOk = !n.number || String(item.card_number || '').toLowerCase() === String(n.number).replace(/^#/,'').toLowerCase() || hay.includes('#'+String(n.number).replace(/^#/,'').toLowerCase());
+    return nameOk && setOk && numOk;
+  });
+}
+
+function itemMatchWords(v){
+  return String(v || '').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim().split(/\s+/).filter(w => w.length > 2);
+}
+
+function getSalesSignal(item){
+  const words = itemMatchWords([item.name,item.set,item.card_number].filter(Boolean).join(' '));
+  const sold = all.filter(i => i.status === 'sold' || i.soldAt).filter(i => {
+    const h = [i.name,i.set,i.card_number].filter(Boolean).join(' ').toLowerCase();
+    return words.length && words.slice(0,4).every(w => h.includes(w));
+  });
+  const profits = sold.map(i => Number(i.profit || ((i.salePrice || 0) - (i.cost || 0)) || 0)).filter(Number.isFinite);
+  const avgProfit = profits.length ? profits.reduce((a,b)=>a+b,0) / profits.length : 0;
+  const sellDays = sold.map(i => {
+    const a = new Date(i.addedAt || i.createdOn || 0).getTime();
+    const s = new Date(i.soldAt || 0).getTime();
+    return a && s && s > a ? (s-a)/86400000 : null;
+  }).filter(v => v != null);
+  const avgDays = sellDays.length ? sellDays.reduce((a,b)=>a+b,0)/sellDays.length : null;
+  const wants = wantList.filter(w => w.status === 'active' && words.some(word => String(w.item || '').toLowerCase().includes(word)));
+  return { soldCount:sold.length, avgProfit, avgDays, wants:wants.length };
+}
+
+function renderBuySignals(){
+  const el = document.getElementById('buy-signals-list');
+  if(!el) return;
+  const sold = all.filter(i => i.status === 'sold' || i.soldAt);
+  const byName = {};
+  sold.forEach(i => {
+    const key = [i.name,i.set,i.card_number].filter(Boolean).join(' / ');
+    if(!key) return;
+    byName[key] ||= { name:i.name, set:i.set||'', card_number:i.card_number||'', sold:0, profit:0, days:[] };
+    byName[key].sold++;
+    byName[key].profit += Number(i.profit || ((i.salePrice || 0) - (i.cost || 0)) || 0);
+    const a = new Date(i.addedAt || i.createdOn || 0).getTime();
+    const s = new Date(i.soldAt || 0).getTime();
+    if(a && s && s > a) byName[key].days.push((s-a)/86400000);
+  });
+  const rows = Object.values(byName).map(r => ({...r, avgProfit:r.profit/r.sold, avgDays:r.days.length ? r.days.reduce((a,b)=>a+b,0)/r.days.length : null}))
+    .sort((a,b) => (b.sold*10 + b.avgProfit) - (a.sold*10 + a.avgProfit)).slice(0,12);
+  if(!rows.length) {
+    el.innerHTML = '<div style="font-family:monospace;font-size:10px;color:var(--dim);padding:10px;border:1px dashed var(--border);border-radius:8px;text-align:center">No sold history yet</div>';
+    return;
+  }
+  el.innerHTML = rows.map(r => `<div style="display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;background:var(--surf2);border:1px solid var(--border);border-radius:8px;padding:8px">
+    <div><div style="color:var(--text);font-weight:700;font-size:11px">${escHtml(r.name)}</div><div style="color:var(--dim);font-size:8px">${escHtml([r.set,r.card_number?'#'+r.card_number:''].filter(Boolean).join(' / '))}</div></div>
+    <div style="text-align:right;font-family:monospace;font-size:9px;color:var(--gold)">${r.sold} sold<br><span style="color:var(--g)">+$${r.avgProfit.toFixed(2)} avg</span>${r.avgDays!=null?`<br><span style="color:var(--dim)">${r.avgDays.toFixed(0)}d avg</span>`:''}</div>
+  </div>`).join('');
+}
+
+function startVoiceInput(inputId, done){
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if(!SR){ toast_dash('Voice input not supported in this browser'); return; }
+  const rec = new SR();
+  rec.lang = 'en-US';
+  rec.interimResults = false;
+  rec.maxAlternatives = 1;
+  toast_dash('Listening...');
+  rec.onresult = e => {
+    const text = e.results?.[0]?.[0]?.transcript || '';
+    const el = document.getElementById(inputId);
+    if(el) {
+      el.value = text;
+      el.dispatchEvent(new Event('input', { bubbles:true }));
+    }
+    if(typeof done === 'function') setTimeout(done, 100);
+  };
+  rec.onerror = e => toast_dash('Voice input failed: ' + (e.error || 'unknown'));
+  rec.start();
+}
+
+// ══════════════════════════════════════════════════
 // QUICK PRICE LOOKUP
 // ══════════════════════════════════════════════════
 let qplTimer = null;
@@ -5229,13 +5407,13 @@ async function searchQuickCatalog(q, cat){
     raw:i,
   }));
 
-  if(!wants || wants.includes('pokemon') || wants.includes('tcg')) {
+  if(!wants || wants.includes('pokemon') || wants.includes('tcg') || wants.includes('graded') || wants.includes('slab')) {
     try {
       const ptcg = await fetchPokemonCatalog(q);
       ptcg.forEach(add);
     } catch(e) {}
   }
-  if(!wants || wants.includes('magic') || wants.includes('tcg')) {
+  if(!wants || wants.includes('magic') || wants.includes('tcg') || wants.includes('graded') || wants.includes('slab')) {
     try {
       const mtg = await fetchScryfallCatalog(q);
       mtg.forEach(add);
@@ -5248,11 +5426,11 @@ async function searchQuickCatalog(q, cat){
 async function fetchPokemonCatalog(q){
   const clean = q.replace(/["\\]/g, ' ').replace(/\s+/g, ' ').trim();
   const queries = [
-    `name:"${clean}"`,
-    clean.split(/\s+/).map(x => `name:${x}`).join(' ')
+    clean.split(/\s+/).map(x => `name:${x}`).join(' '),
+    `name:"${clean}"`
   ];
   for(const query of queries) {
-    const url = 'https://api.pokemontcg.io/v2/cards?q=' + encodeURIComponent(query) + '&pageSize=24&orderBy=-set.releaseDate';
+    const url = 'https://api.pokemontcg.io/v2/cards?q=' + encodeURIComponent(query) + '&pageSize=250&orderBy=name,set.releaseDate';
     const res = await fetch(url, { headers:{ 'Accept':'application/json' } });
     if(!res.ok) continue;
     const data = await res.json();
@@ -5362,6 +5540,15 @@ function quickLookupResultCard(r, idx){
     ? `<img src="${escHtml(r.imageUrl)}" style="width:48px;height:64px;object-fit:contain;background:#050507;border:1px solid var(--border);border-radius:5px">`
     : `<div style="width:48px;height:64px;background:#050507;border:1px solid var(--border);border-radius:5px;display:flex;align-items:center;justify-content:center;color:var(--dim);font-size:8px">NO IMG</div>`;
   const meta = [r.year,r.set,r.variant,r.card_number ? '#'+r.card_number : ''].filter(Boolean).join(' / ');
+  const needs = getSetNeedMatches(r);
+  const signal = getSalesSignal(r);
+  const tcg = r.tcgUrl ? `<button class="hbtn" style="font-size:8px;padding:6px 8px" onclick="openQuickExternal(${idx},'tcg')">TCG</button>` : '';
+  const slab = `<button class="hbtn" style="font-size:8px;padding:6px 8px;color:var(--blue)" onclick="openQuickExternal(${idx},'slab')">SLABS</button>`;
+  const signals = [
+    needs.length ? `NEEDED: ${needs.map(n => n.owner || n.set || n.name).slice(0,2).join(', ')}` : '',
+    signal.wants ? `${signal.wants} want match${signal.wants===1?'':'es'}` : '',
+    signal.soldCount ? `${signal.soldCount} sold / +$${signal.avgProfit.toFixed(2)} avg${signal.avgDays!=null?' / '+signal.avgDays.toFixed(0)+'d':''}` : ''
+  ].filter(Boolean);
   return `<div style="display:grid;grid-template-columns:48px 1fr auto;gap:9px;align-items:center;background:var(--surf2);border:1px solid var(--border);border-radius:8px;padding:8px">
     ${img}
     <div>
@@ -5371,13 +5558,27 @@ function quickLookupResultCard(r, idx){
         <span style="color:var(--gold);font-size:12px;font-weight:800">$${Number(r.market || 0).toFixed(2)}</span>
         <span style="color:var(--dim);font-size:8px">${escHtml(r.priceSource || r.source || '')}</span>
       </div>
+      ${signals.length ? `<div style="margin-top:5px;color:${needs.length?'var(--g)':'var(--gold)'};font-size:8px;font-weight:700">${escHtml(signals.join(' / '))}</div>` : ''}
     </div>
     <div style="display:grid;gap:5px">
       <button class="hbtn" style="font-size:8px;padding:6px 8px" onclick="selectQuickLookupResult(${idx})">SELECT</button>
+      ${tcg}
+      ${slab}
       <button class="hbtn" style="font-size:8px;padding:6px 8px;color:var(--gold)" onclick="addQuickLookupToInventory(${idx})">ADD INV</button>
       <button class="hbtn" style="font-size:8px;padding:6px 8px;color:var(--g)" onclick="addQuickLookupToBuyOffer(${idx})">BUY</button>
     </div>
   </div>`;
+}
+
+function openQuickExternal(idx, type){
+  const r = qplResults[idx];
+  if(!r) return;
+  if(type === 'tcg' && r.tcgUrl) {
+    window.open(r.tcgUrl, '_blank');
+    return;
+  }
+  const q = [r.year,r.name,r.set,r.card_number ? '#'+r.card_number : '', type === 'slab' ? 'PSA BGS CGC graded slab' : ''].filter(Boolean).join(' ');
+  window.open('https://www.ebay.com/sch/i.html?_nkw=' + encodeURIComponent(q) + '&LH_Sold=1&LH_Complete=1', '_blank');
 }
 
 function selectQuickLookupResult(idx){
@@ -6158,6 +6359,8 @@ async function renderCustomerDisplay(){
   const itemsEl = document.getElementById('cd-items');
   const totalEl = document.getElementById('cd-total');
   const countEl = document.getElementById('cd-items-count');
+  const payEl = document.getElementById('cd-pay-links');
+  renderCustomerPaymentLinks(total, payEl);
 
   if(!items.length){
     itemsEl.innerHTML = '';
@@ -6179,6 +6382,30 @@ async function renderCustomerDisplay(){
   countEl.innerHTML = items.length + ' item' + (items.length>1?'s':'') + (disc>0?' · '+disc+'% discount applied':'') + (tax>0?' · tax included':'') + paymentLine;
 }
 
+function paymentUrl(kind, handle, total){
+  const h = String(handle || '').trim();
+  if(!h) return '';
+  if(/^https?:\/\//i.test(h)) return h;
+  const clean = h.replace(/^[@$]/,'');
+  if(kind === 'paypal') return 'https://paypal.me/' + encodeURIComponent(clean) + (total > 0 ? '/' + total.toFixed(2) : '');
+  if(kind === 'venmo') return 'https://venmo.com/' + encodeURIComponent(clean) + (total > 0 ? '?txn=pay&amount=' + total.toFixed(2) : '');
+  if(kind === 'cashapp') return 'https://cash.app/$' + encodeURIComponent(clean);
+  return '';
+}
+
+function renderCustomerPaymentLinks(total, el){
+  if(!el) return;
+  const p = getVendorProfile();
+  const links = [
+    ['PayPal', paymentUrl('paypal', p.paypal, total)],
+    ['Venmo', paymentUrl('venmo', p.venmo, total)],
+    ['Cash App', paymentUrl('cashapp', p.cashapp, total)],
+  ].filter(x => x[1]);
+  el.innerHTML = links.length
+    ? links.map(([label,url]) => `<a class="hbtn" style="text-decoration:none;color:var(--g);padding:9px 12px" href="${escHtml(url)}" target="_blank" rel="noopener">${label}</a>`).join('')
+    : '<div style="font-family:monospace;font-size:9px;color:var(--dim)">Add PayPal/Venmo/Cash App in Settings / Admin vendor profile.</div>';
+}
+
 // Auto-refresh customer display every 3 seconds
 setInterval(renderCustomerDisplay, 3000);
 renderCustomerDisplay().catch(()=>{});
@@ -6187,6 +6414,8 @@ renderCustomerDisplay().catch(()=>{});
 renderDrawer();
 loadBuyList();
 renderBuyList();
+renderSetNeeds();
+renderBuySignals();
 
 </script>
 </body>
