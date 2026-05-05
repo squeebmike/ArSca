@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.05.01.9">
+<meta name="version" content="2026.05.01.10">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1047,7 +1047,7 @@ tr.sold:hover td{opacity:.7;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.05.01.9';
+const APP_VERSION = '2026.05.01.10';
 const STORE_ID = 'walkoff-main';
 const REGISTER_ID = 'front';
 const WF_PRODUCTS = '65eb45a28ff6bf3fe4f17b14';
@@ -1234,6 +1234,8 @@ function organizeRegisterLayout(){
   const intake = document.getElementById('intake-panels');
   const channels = document.getElementById('channels-panels');
   const backoffice = document.getElementById('backoffice-panels');
+  const wantsHub = document.querySelector('#tab-wantlist > div') || document.getElementById('tab-wantlist');
+  const overview = document.getElementById('tab-overview');
   if(!register || !intake || !channels || !backoffice) return;
 
   ensureRegisterCommandCenter(register);
@@ -1244,8 +1246,8 @@ function organizeRegisterLayout(){
   moveNode('register-quick-panel', intake);
   moveNode('register-scan-panel', intake);
   moveNode('register-buy-panel', intake);
-  ensureSetNeedsPanel(intake);
-  ensureBuySignalsPanel(intake);
+  ensureSetNeedsPanel(wantsHub);
+  ensureBuySignalsPanel(overview || backoffice);
   cleanupEmptyWorkflowRows();
 
   moveNode('backoffice-ebay-panel', channels);
@@ -6400,10 +6402,49 @@ function renderCustomerPaymentLinks(total, el){
     ['PayPal', paymentUrl('paypal', p.paypal, total)],
     ['Venmo', paymentUrl('venmo', p.venmo, total)],
     ['Cash App', paymentUrl('cashapp', p.cashapp, total)],
-  ].filter(x => x[1]);
-  el.innerHTML = links.length
-    ? links.map(([label,url]) => `<a class="hbtn" style="text-decoration:none;color:var(--g);padding:9px 12px" href="${escHtml(url)}" target="_blank" rel="noopener">${label}</a>`).join('')
-    : '<div style="font-family:monospace;font-size:9px;color:var(--dim)">Add PayPal/Venmo/Cash App in Settings / Admin vendor profile.</div>';
+  ];
+  const base = [
+    `<button class="hbtn" style="color:var(--gold);padding:9px 12px" onclick="recordCustomerDisplayPayment('Cash', ${Number(total||0).toFixed(2)})">CASH</button>`,
+    `<button class="hbtn" style="color:var(--blue);padding:9px 12px" onclick="openScannerCheckout()">CARD / STRIPE</button>`,
+  ];
+  el.innerHTML = base.join('') + links.map(([label,url]) => url
+    ? `<a class="hbtn" style="text-decoration:none;color:var(--g);padding:9px 12px" href="${escHtml(url)}" target="_blank" rel="noopener">${label}</a>`
+    : `<button class="hbtn" style="color:var(--dim);padding:9px 12px" onclick="switchTab('backoffice')">SET ${label.toUpperCase()}</button>`
+  ).join('');
+}
+
+function openScannerCheckout(){
+  window.location.href = 'sca.html#checkout';
+}
+
+function recordCustomerDisplayPayment(method, total){
+  const saved = localStorage.getItem('pos_cart_v2');
+  const cart = saved ? JSON.parse(saved) : { items:[] };
+  const items = cart.items || [];
+  if(!items.length || !total){ toast_dash('No active cart to record'); return; }
+  if(!confirm('Record ' + method + ' payment for $' + Number(total).toFixed(2) + ' and clear the cart?')) return;
+  const tx = {
+    id:'tx_dash_'+Date.now(),
+    date:new Date().toISOString(),
+    method,
+    total:Number(total || 0),
+    items:items.map(i => ({ name:i.name, price:Number(i.price||0), cost:Number(i.cost||0), shopId:i.shopId||i.wfId||'' })),
+    source:'dashboard-cart',
+    appVersion:APP_VERSION,
+  };
+  const log = safeLocalJson('pos_transactions', []);
+  log.unshift(tx);
+  localStorage.setItem('pos_transactions', JSON.stringify(log.slice(0,1000)));
+  if(method === 'Cash' && drawerState) {
+    drawerState.cashSales = Number(drawerState.cashSales || 0) + Number(total || 0);
+    saveDrawer();
+    renderDrawer();
+  }
+  const empty = { items:[], discount:0, savedAt:new Date().toISOString(), storeId:STORE_ID, registerId:REGISTER_ID, appVersion:APP_VERSION };
+  localStorage.setItem('pos_cart_v2', JSON.stringify(empty));
+  postCartToWorker(empty);
+  renderCustomerDisplay();
+  toast_dash(method + ' payment recorded');
 }
 
 // Auto-refresh customer display every 3 seconds
