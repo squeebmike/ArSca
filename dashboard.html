@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.05.05.3">
+<meta name="version" content="2026.05.05.4">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -104,6 +104,15 @@ header{position:sticky;top:0;z-index:100;background:rgba(7,8,10,.96);backdrop-fi
 .cd-item-name{font-family:'Orbitron',monospace;font-size:13px;font-weight:800;color:var(--text);line-height:1.25;}
 .cd-item-sub{font-family:monospace,monospace;font-size:9px;color:var(--dim);margin-top:4px;}
 .cd-item-price{font-family:'Orbitron',monospace;font-size:18px;font-weight:900;color:var(--gold);white-space:nowrap;}
+.sell-shell{max-width:980px;margin:0 auto;padding:0 20px;}
+.sell-cart-card{background:var(--surf);border:1px solid var(--border);border-radius:12px;padding:16px;box-shadow:0 18px 50px rgba(0,0,0,.28);}
+.sell-total-row{display:flex;justify-content:space-between;align-items:center;font-family:monospace,monospace;font-size:11px;color:var(--dim);padding:6px 0;border-bottom:1px solid rgba(255,255,255,.05);}
+.sell-total-row.big{font-family:'Orbitron',monospace;color:var(--text);font-size:16px;border-bottom:0;padding-top:12px;}
+.sell-total-row.big span:last-child{font-size:34px;color:var(--g);font-weight:900;}
+.sell-payment-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-top:14px;}
+.sell-pay-btn{min-height:52px;border-radius:8px;border:1px solid var(--border);background:var(--surf2);color:var(--text);font-family:'Orbitron',monospace;font-size:10px;letter-spacing:1px;cursor:pointer;text-decoration:none;display:flex;align-items:center;justify-content:center;text-align:center;padding:8px;}
+.sell-pay-btn.good{border-color:rgba(0,255,179,.3);color:var(--g);background:rgba(0,255,179,.07);}
+.sell-pay-btn.warn{border-color:rgba(255,209,102,.3);color:var(--gold);background:rgba(255,209,102,.07);}
 .item-workspace-grid{display:grid;grid-template-columns:180px 1fr;gap:14px;}
 .item-photo{width:180px;aspect-ratio:3/4;border-radius:8px;border:1px solid var(--border);background:var(--surf2);object-fit:cover;}
 .item-metric{background:var(--surf2);border:1px solid var(--border);border-radius:8px;padding:10px;}
@@ -259,7 +268,7 @@ tr.sold:hover td{opacity:.7;}
 
 <header>
   <div class="hdr">
-    <div class="logo">WALK-OFF <span>DASHBOARD · v2026.05.05.3</span></div>
+    <div class="logo">WALK-OFF <span>DASHBOARD · v2026.05.05.4</span></div>
     <div class="hdr-right">
       <span id="sync-status">Loading...</span>
       <button class="hbtn" onclick="loadInventory()">↻ REFRESH</button>
@@ -719,7 +728,7 @@ tr.sold:hover td{opacity:.7;}
 <!-- CUSTOMER DISPLAY TAB -->
 <div id="tab-display" class="tab-panel">
   <div class="sec">CART / CUSTOMER DISPLAY</div>
-  <div style="max-width:1400px;margin:0 auto;padding:0 20px;margin-bottom:14px">
+  <div class="sell-shell" style="margin-bottom:14px">
     <div style="background:var(--surf);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:14px">
       <div class="ph">LIVE CART + CUSTOMER DISPLAY</div>
       <div style="font-family:monospace,monospace;font-size:10px;color:var(--dim);line-height:1.8">
@@ -730,18 +739,21 @@ tr.sold:hover td{opacity:.7;}
   </div>
   <div id="customer-display">
     <!-- Live customer view rendered here -->
-    <div style="max-width:600px;margin:0 auto;padding:0 20px">
+    <div class="sell-shell">
       <div style="text-align:center;padding:40px 20px 20px">
         <img data-vendor-logo src="" alt="" style="display:none;width:96px;max-height:72px;object-fit:contain;margin:0 auto 12px">
         <div style="font-family:'Orbitron',monospace;font-size:28px;font-weight:900;color:var(--g);letter-spacing:4px;margin-bottom:4px" data-vendor-store>WALK-OFF</div>
         <div style="font-family:'Orbitron',monospace;font-size:11px;color:var(--dim);letter-spacing:3px">SPORTS CARDS & COMICS · KINGSTON, WA</div>
       </div>
-      <div id="cd-items" style="margin-bottom:20px"></div>
-      <div id="cd-totals" style="background:var(--surf);border:1px solid var(--border);border-radius:12px;padding:20px;text-align:center">
-        <div style="font-family:monospace,monospace;font-size:12px;color:var(--dim);letter-spacing:2px;margin-bottom:8px">TOTAL</div>
-        <div style="font-family:'Orbitron',monospace;font-size:52px;font-weight:900;color:var(--g)" id="cd-total">$0.00</div>
-        <div style="font-family:monospace,monospace;font-size:10px;color:var(--dim);margin-top:6px" id="cd-items-count">No items</div>
-        <div id="cd-pay-links" style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:16px"></div>
+      <div class="sell-cart-card">
+        <div id="cd-items" style="margin-bottom:14px"></div>
+        <div id="cd-totals">
+          <div id="cd-total-breakdown"></div>
+          <div class="sell-total-row big"><span>TOTAL</span><span id="cd-total">$0.00</span></div>
+          <div style="font-family:monospace,monospace;font-size:10px;color:var(--dim);margin-top:6px;text-align:center" id="cd-items-count">No items</div>
+          <div id="cd-pay-links" class="sell-payment-grid"></div>
+          <div id="cd-payment-setup" style="font-family:monospace,monospace;font-size:9px;color:var(--dim);margin-top:10px;line-height:1.5;text-align:center"></div>
+        </div>
       </div>
       <div style="text-align:center;margin-top:20px;font-family:monospace,monospace;font-size:9px;color:var(--dim)">Thank you for shopping with us! ⚾</div>
     </div>
@@ -1053,7 +1065,7 @@ tr.sold:hover td{opacity:.7;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.05.05.3';
+const APP_VERSION = '2026.05.05.4';
 const STORE_ID = 'walkoff-main';
 const REGISTER_ID = 'front';
 const WF_PRODUCTS = '65eb45a28ff6bf3fe4f17b14';
@@ -6410,24 +6422,35 @@ async function renderCustomerDisplay(){
   const totalEl = document.getElementById('cd-total');
   const countEl = document.getElementById('cd-items-count');
   const payEl = document.getElementById('cd-pay-links');
+  const breakdownEl = document.getElementById('cd-total-breakdown');
+  const setupEl = document.getElementById('cd-payment-setup');
   renderCustomerPaymentLinks(total, payEl);
+  renderPaymentSetupStatus(setupEl);
 
   if(!items.length){
     itemsEl.innerHTML = '';
     totalEl.textContent = '$0.00';
+    if(breakdownEl) breakdownEl.innerHTML = '';
     countEl.innerHTML = `${escHtml(profile.storeName)}<br>Waiting for items...`;
     return;
   }
 
   itemsEl.innerHTML = items.map(i=>`<div class="cd-item">
+    ${i.img ? `<img src="${escHtml(i.img)}" style="width:52px;height:64px;object-fit:contain;background:#050507;border:1px solid var(--border);border-radius:6px">` : ''}
     <div style="flex:1">
-      <div class="cd-item-name">${i.name||'Item'}</div>
-      <div class="cd-item-sub">${i.sub||''}</div>
+      <div class="cd-item-name">${escHtml(i.name||'Item')}</div>
+      <div class="cd-item-sub">${escHtml(i.sub||'')}</div>
     </div>
-    <div class="cd-item-price">$${(i.price||0).toFixed(2)}</div>
+    <div class="cd-item-price">$${Number(i.price||0).toFixed(2)}</div>
   </div>`).join('');
 
   totalEl.textContent = '$'+total.toFixed(2);
+  if(breakdownEl) {
+    breakdownEl.innerHTML = `
+      <div class="sell-total-row"><span>Subtotal</span><span>$${sub.toFixed(2)}</span></div>
+      ${discAmt ? `<div class="sell-total-row"><span>Discount ${disc}%</span><span style="color:var(--red)">-$${discAmt.toFixed(2)}</span></div>` : ''}
+      ${tax ? `<div class="sell-total-row"><span>Tax</span><span>$${tax.toFixed(2)}</span></div>` : ''}`;
+  }
   const paymentLine = `<div style="margin-top:8px;color:var(--gold)">${escHtml(profile.paymentMethods)}</div>`;
   countEl.innerHTML = items.length + ' item' + (items.length>1?'s':'') + (disc>0?' · '+disc+'% discount applied':'') + (tax>0?' · tax included':'') + paymentLine;
 }
@@ -6452,13 +6475,26 @@ function renderCustomerPaymentLinks(total, el){
     ['Cash App', paymentUrl('cashapp', p.cashapp, total)],
   ];
   const base = [
-    `<button class="hbtn" style="color:var(--gold);padding:9px 12px" onclick="recordCustomerDisplayPayment('Cash', ${Number(total||0).toFixed(2)})">CASH</button>`,
-    `<button class="hbtn" style="color:var(--blue);padding:9px 12px" onclick="openScannerCheckout()">CARD / STRIPE</button>`,
+    `<button class="sell-pay-btn warn" onclick="recordCustomerDisplayPayment('Cash', ${Number(total||0).toFixed(2)})">CASH</button>`,
+    `<button class="sell-pay-btn good" onclick="openScannerCheckout()">CARD / STRIPE</button>`,
   ];
   el.innerHTML = base.join('') + links.map(([label,url]) => url
-    ? `<a class="hbtn" style="text-decoration:none;color:var(--g);padding:9px 12px" href="${escHtml(url)}" target="_blank" rel="noopener">${label}</a>`
-    : `<button class="hbtn" style="color:var(--dim);padding:9px 12px" onclick="switchTab('backoffice')">SET ${label.toUpperCase()}</button>`
+    ? `<a class="sell-pay-btn good" href="${escHtml(url)}" target="_blank" rel="noopener">${label}</a>`
+    : `<button class="sell-pay-btn" onclick="switchTab('backoffice')">SET ${label.toUpperCase()}</button>`
   ).join('');
+}
+
+function renderPaymentSetupStatus(el){
+  if(!el) return;
+  const p = getVendorProfile();
+  const stripeConfigured = true; // Scanner has the publishable key and Worker endpoint handles the secret key.
+  const bits = [
+    'Stripe: ' + (stripeConfigured ? 'available in scanner checkout' : 'needs key'),
+    'Venmo: ' + (p.venmo ? p.venmo : 'not set'),
+    'PayPal: ' + (p.paypal ? p.paypal : 'not set'),
+    'Cash App: ' + (p.cashapp ? p.cashapp : 'not set'),
+  ];
+  el.textContent = bits.join(' | ');
 }
 
 function openScannerCheckout(){
