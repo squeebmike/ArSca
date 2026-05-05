@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.05.05.2">
+<meta name="version" content="2026.05.05.3">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -259,7 +259,7 @@ tr.sold:hover td{opacity:.7;}
 
 <header>
   <div class="hdr">
-    <div class="logo">WALK-OFF <span>DASHBOARD · v2026.05.05.2</span></div>
+    <div class="logo">WALK-OFF <span>DASHBOARD · v2026.05.05.3</span></div>
     <div class="hdr-right">
       <span id="sync-status">Loading...</span>
       <button class="hbtn" onclick="loadInventory()">↻ REFRESH</button>
@@ -710,6 +710,12 @@ tr.sold:hover td{opacity:.7;}
   <div id="channels-panels" style="max-width:1400px;margin:0 auto;padding:0 20px"></div>
 </div>
 
+<!-- SHOWS TAB -->
+<div id="tab-shows" class="tab-panel">
+  <div class="sec">SHOWS / CASH DRAWER</div>
+  <div id="shows-panels" style="max-width:1400px;margin:0 auto;padding:0 20px"></div>
+</div>
+
 <!-- CUSTOMER DISPLAY TAB -->
 <div id="tab-display" class="tab-panel">
   <div class="sec">CART / CUSTOMER DISPLAY</div>
@@ -1047,7 +1053,7 @@ tr.sold:hover td{opacity:.7;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.05.05.2';
+const APP_VERSION = '2026.05.05.3';
 const STORE_ID = 'walkoff-main';
 const REGISTER_ID = 'front';
 const WF_PRODUCTS = '65eb45a28ff6bf3fe4f17b14';
@@ -1066,20 +1072,21 @@ let all=[], filtered=[], activeF='all', activeTab='overview', soldData=[];
 let ts={col:'name',dir:1};
 const PER=50; let page=1;
 const DAILY_TABS = [
-  ['overview', 'OVERVIEW'],
-  ['pos', 'REGISTER'],
-  ['intake', 'INTAKE'],
+  ['overview', 'HOME'],
+  ['intake', 'BUY'],
+  ['display', 'SELL'],
   ['inventory', 'INVENTORY'],
-  ['channels', 'CHANNELS'],
+  ['shows', 'SHOWS'],
 ];
 const MORE_TABS = [
+  ['pos', 'LEGACY REGISTER'],
+  ['channels', 'ONLINE LISTINGS'],
   ['sales', 'SALES'],
   ['alerts', 'ALERTS'],
   ['wantlist', 'WANT LIST'],
   ['consign', 'CONSIGNMENT'],
   ['locations', 'LOCATIONS'],
   ['restock', 'RESTOCK'],
-  ['display', 'CUSTOMER DISPLAY'],
   ['backoffice', 'SETTINGS / ADMIN'],
 ];
 const DEFAULT_VENDOR_CONFIG = {
@@ -1233,16 +1240,17 @@ function organizeRegisterLayout(){
   const register = document.getElementById('tab-pos');
   const intake = document.getElementById('intake-panels');
   const channels = document.getElementById('channels-panels');
+  const shows = document.getElementById('shows-panels');
   const backoffice = document.getElementById('backoffice-panels');
   const wantsHub = document.querySelector('#tab-wantlist > div') || document.getElementById('tab-wantlist');
   const overview = document.getElementById('tab-overview');
-  if(!register || !intake || !channels || !backoffice) return;
+  if(!register || !intake || !channels || !shows || !backoffice) return;
 
   ensureRegisterCommandCenter(register);
   ensureTodayModePanel(register);
-  moveNode('register-show-panel', register);
-  moveNode('register-cash-panel', register);
-  moveNode('register-eod-panel', register);
+  moveNode('register-show-panel', shows);
+  moveNode('register-cash-panel', shows);
+  moveNode('register-eod-panel', shows);
   moveNode('register-quick-panel', intake);
   moveNode('register-scan-panel', intake);
   moveNode('register-buy-panel', intake);
@@ -1279,6 +1287,11 @@ function cleanupEmptyWorkflowRows(){
   if(eod) {
     eod.style.maxWidth = '760px';
     eod.style.margin = '0 auto 14px';
+  }
+  const show = document.getElementById('register-show-panel');
+  if(show) {
+    show.style.maxWidth = '960px';
+    show.style.margin = '0 auto 14px';
   }
   ['register-quick-panel','register-scan-panel','register-buy-panel','backoffice-ebay-panel','backoffice-tcg-sync-panel'].forEach(id => {
     const el = document.getElementById(id);
@@ -1338,7 +1351,9 @@ function ensureLegacyToolsPanel(backoffice){
     ['overview','Home / command center'],
     ['pos','Sell / register'],
     ['intake','Buy / intake'],
+    ['display','Sell / cart'],
     ['inventory','Inventory'],
+    ['shows','Shows / cash drawer'],
     ['channels','Online listings / pricing'],
     ['sales','Sales report'],
     ['alerts','Alerts'],

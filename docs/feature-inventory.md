@@ -1,6 +1,6 @@
 # Walk-Off Dealer OS Feature Inventory
 
-Version audited: `2026.05.05.1`
+Version audited: `2026.05.05.3`
 
 This file is the safety map for the progressive UX refactor. Do not remove a feature unless it has a new home and is verified reachable.
 
@@ -17,7 +17,7 @@ This file is the safety map for the progressive UX refactor. Do not remove a fea
 | Existing route/tab | Existing features | New home |
 | --- | --- | --- |
 | `overview` | Today stats, category cards, profit meter, top value, recent activity, channels, top sold, monthly profit, alerts | Home |
-| `pos` | Register command center, show mode, cash drawer, closeout/EOD | Sell + Shows + Reports |
+| `pos` | Legacy register command center | More / Legacy Register |
 | `intake` | Quick lookup, phone scanner inbox, buy/trade offer | Buy |
 | `inventory` | Filters, table, lifecycle status, cart add, sell, eBay, edit, history, bulk tools | Inventory |
 | `channels` | eBay connection, TCG price sync | Listing |
@@ -28,6 +28,7 @@ This file is the safety map for the progressive UX refactor. Do not remove a fea
 | `locations` | Location manager, location lookup, inventory by location | Inventory + More |
 | `restock` | Fast sellers, low stock, category performance, restock checklist | Reports + Inventory |
 | `display` | Cart/customer display, payment buttons | Sell |
+| `shows` | Show session, cash drawer, closeout/EOD | Shows |
 | `backoffice` | Vendor profile/logo/payment handles, modules/categories, spreadsheet bridge, sync queue, customer CRM, data health, backup, ops log, legacy map | More / Settings |
 
 ## Dashboard Modals And Drawers
