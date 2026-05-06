@@ -1101,7 +1101,7 @@ tr.sold:hover td{opacity:.7;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.05.06.3';
+const APP_VERSION = '2026.05.06.4';
 const SUPABASE_URL = 'https://vroknjrxubsqyexngwus.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_wbpX2nL8l-4NbXtZNG_bjA_nabSYaJ5';
 const AUTH_REDIRECT_URL = 'https://squeebmike.github.io/ArSca/dashboard.html';
@@ -1129,6 +1129,7 @@ const WALKOFF_AUTH_SESSION_KEY = 'walkoff_auth_session_v1';
 const WALKOFF_ACTIVE_STORE_KEY = 'walkoff_active_store_id';
 const WALKOFF_STORAGE_MIGRATION_KEY = 'walkoff_store_migration_v1';
 let supabaseClient = null;
+let supabaseStoreSettingsLoaded = false;
 
 function getSupabaseClient(){
   if(supabaseClient) return supabaseClient;
@@ -1259,6 +1260,49 @@ async function loadSupabaseStoresForUser(user){
   return (data || []).map(row => ({ ...(row.stores || {}), role:row.role })).filter(s => s.id && s.status !== 'disabled');
 }
 
+async function loadStoreSettingsFromSupabase(){
+  const session = getAuthSession();
+  const sb = getSupabaseClient();
+  const storeId = getActiveStoreId();
+  if(!sb || !session?.supabase || !storeId || supabaseStoreSettingsLoaded) return;
+  const { data, error } = await sb
+    .from('store_settings')
+    .select('payment_settings,modules,theme,receipt_settings')
+    .eq('store_id', storeId)
+    .maybeSingle();
+  supabaseStoreSettingsLoaded = true;
+  if(error) { console.warn('Store settings sync failed:', error.message); return; }
+  if(!data) return;
+  if(data.payment_settings) localStorage.setItem('store_payment_settings_v1', JSON.stringify(data.payment_settings));
+  if(data.modules) {
+    const cfg = {
+      ...getVendorConfig(),
+      ...data.modules,
+      modules:{ ...DEFAULT_VENDOR_CONFIG.modules, ...(data.modules.modules || {}) },
+      categories:Array.isArray(data.modules.categories) ? data.modules.categories.filter(Boolean) : getVendorConfig().categories,
+    };
+    localStorage.setItem('vendor_config_v1', JSON.stringify(cfg));
+  }
+  if(data.receipt_settings) {
+    localStorage.setItem('vendor_profile_v1', JSON.stringify({ ...getVendorProfile(), ...data.receipt_settings }));
+  }
+}
+
+async function saveStoreSettingsToSupabase(patch){
+  const session = getAuthSession();
+  const sb = getSupabaseClient();
+  const storeId = getActiveStoreId();
+  if(!sb || !session?.supabase || !storeId || !requireOwnerAdmin()) return false;
+  const payload = { store_id:storeId, updated_at:new Date().toISOString(), ...patch };
+  const { error } = await sb.from('store_settings').upsert(payload, { onConflict:'store_id' });
+  if(error) {
+    console.warn('Store settings save failed:', error.message);
+    toast_dash('Local saved. Cloud settings sync failed: ' + error.message);
+    return false;
+  }
+  return true;
+}
+
 async function loginSupabaseAccount(){
   const sb = getSupabaseClient();
   if(!sb) { loginDemoAccount(); return; }
@@ -1364,6 +1408,7 @@ const MORE_TABS = [
   ['backoffice', 'SETTINGS / ADMIN'],
 ];
 const DEFAULT_VENDOR_CONFIG = {
+  inventorySource: 'built_in',
   modules: {
     show: true,
     cash: true,
@@ -1469,6 +1514,16 @@ function savePaymentSettings(settings){
   applyVendorProfile();
   renderPaymentSettingsPanel();
   renderCustomerDisplay();
+  saveStoreSettingsToSupabase({
+    payment_settings:settings,
+    receipt_settings:{
+      receiptFooter:settings.receipt?.footer || '',
+      venmo:settings.venmo?.handle || '',
+      paypal:settings.paypal?.emailOrHandle || '',
+      cashapp:settings.cashApp?.cashtag || '',
+      taxRate:Number(settings.tax?.defaultRate || 0),
+    }
+  });
   logOpsEvent('payment_settings', 'Updated store payment settings', { storeId:getActiveStoreId() });
 }
 
@@ -1700,7 +1755,10 @@ function ensureLegacyToolsPanel(backoffice){
 function getVendorConfig(){
   try {
     const saved = JSON.parse(localStorage.getItem('vendor_config_v1') || '{}');
+    const storeName = (getActiveStore()?.displayName || getActiveStoreId() || '').toLowerCase();
+    const defaultSource = storeName.includes('walk-off') || storeName.includes('walkoff') ? 'hybrid' : DEFAULT_VENDOR_CONFIG.inventorySource;
     return {
+      inventorySource: saved.inventorySource || defaultSource,
       modules: { ...DEFAULT_VENDOR_CONFIG.modules, ...(saved.modules || {}) },
       categories: Array.isArray(saved.categories) ? saved.categories.filter(Boolean) : [...DEFAULT_VENDOR_CONFIG.categories],
     };
@@ -1710,11 +1768,19 @@ function getVendorConfig(){
 }
 
 function saveVendorConfig(config){
-  localStorage.setItem('vendor_config_v1', JSON.stringify(config));
+  const next = {
+    ...getVendorConfig(),
+    ...config,
+    modules:{ ...DEFAULT_VENDOR_CONFIG.modules, ...(config.modules || {}) },
+    categories:Array.isArray(config.categories) ? config.categories.filter(Boolean) : getVendorConfig().categories,
+    inventorySource:config.inventorySource || getVendorConfig().inventorySource,
+  };
+  localStorage.setItem('vendor_config_v1', JSON.stringify(next));
   applyVendorConfig();
   renderVendorConfigPanel();
   renderInventoryCategoryFilters();
-  logOpsEvent('vendor_config', 'Updated dashboard modules/categories', { categories: config.categories.length });
+  saveStoreSettingsToSupabase({ modules:next });
+  logOpsEvent('vendor_config', 'Updated dashboard modules/categories', { categories: next.categories.length, inventorySource:next.inventorySource });
 }
 
 function ensureVendorProfilePanel(backoffice){
@@ -1876,7 +1942,20 @@ function renderVendorConfigPanel(){
   };
   body.innerHTML = `
     <div style="font-family:monospace,monospace;font-size:10px;color:var(--dim);margin-bottom:10px;line-height:1.55">
-      Turn screens on/off for this vendor setup. Add custom categories to create inventory filters without changing code.
+      Turn screens on/off for this vendor setup. Pick where inventory lives: built-in, spreadsheet, Webflow, or hybrid.
+    </div>
+    <div style="display:grid;grid-template-columns:minmax(220px,320px) 1fr;gap:10px;align-items:end;margin-bottom:12px">
+      <label style="font-family:monospace;font-size:9px;color:var(--dim)">INVENTORY SOURCE
+        <select id="inventory-source-select" class="tsi" onchange="setInventorySource(this.value)">
+          <option value="built_in" ${cfg.inventorySource==='built_in'?'selected':''}>Built-in inventory</option>
+          <option value="spreadsheet" ${cfg.inventorySource==='spreadsheet'?'selected':''}>Spreadsheet / CSV only</option>
+          <option value="webflow" ${cfg.inventorySource==='webflow'?'selected':''}>Webflow only</option>
+          <option value="hybrid" ${cfg.inventorySource==='hybrid'?'selected':''}>Hybrid: Webflow + built-in</option>
+        </select>
+      </label>
+      <div style="font-family:monospace;font-size:9px;color:var(--dim);line-height:1.5">
+        New vendor stores should use built-in or spreadsheet. Walk-Off can keep Webflow enabled without making everyone else use it.
+      </div>
     </div>
     <div class="module-grid">
       ${Object.entries(moduleLabels).map(([key,label]) => `<label class="module-toggle"><input type="checkbox" ${cfg.modules[key]?'checked':''} onchange="toggleVendorModule('${key}',this.checked)"> ${label}</label>`).join('')}
@@ -1886,6 +1965,14 @@ function renderVendorConfigPanel(){
       <button class="hbtn" onclick="addVendorCategory()">ADD CATEGORY</button>
     </div>
     <div>${cfg.categories.map(c => `<span class="category-chip">${c}<button onclick="removeVendorCategory('${String(c).replace(/'/g,"\\'")}')">x</button></span>`).join('')}</div>`;
+}
+
+function setInventorySource(source){
+  const allowed = ['built_in','spreadsheet','webflow','hybrid'];
+  const cfg = getVendorConfig();
+  cfg.inventorySource = allowed.includes(source) ? source : 'built_in';
+  saveVendorConfig(cfg);
+  loadInventory();
 }
 
 function toggleVendorModule(key, enabled){
@@ -1963,6 +2050,22 @@ function ensureSpreadsheetPanel(backoffice){
     <div style="font-family:monospace,monospace;font-size:10px;color:var(--dim);margin-bottom:10px;line-height:1.55">
       Import vendor spreadsheets, map columns once, and export clean files for Excel, eBay, or other POS systems. For Excel files, use Save As CSV for now.
     </div>
+    <div class="item-metric" style="margin-bottom:10px">
+      <div style="font-family:monospace;font-size:9px;color:var(--dim);margin-bottom:6px">BUILT-IN QUICK ADD</div>
+      <div style="display:grid;grid-template-columns:2fr 1fr 1fr .8fr .8fr;gap:8px">
+        <input id="built-name" class="tsi" placeholder="Item name">
+        <select id="built-category" class="tsi">${getInventoryCategories().map(c => `<option>${escHtml(c)}</option>`).join('')}</select>
+        <input id="built-set" class="tsi" placeholder="Set / issue / product">
+        <input id="built-cost" class="tsi" type="number" step="0.01" placeholder="Cost">
+        <input id="built-price" class="tsi" type="number" step="0.01" placeholder="Price">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:8px;margin-top:8px">
+        <input id="built-year" class="tsi" placeholder="Year">
+        <input id="built-condition" class="tsi" placeholder="Condition">
+        <input id="built-location" class="tsi" placeholder="Location">
+        <button class="hbtn" onclick="addManualBuiltInInventory()">ADD ITEM</button>
+      </div>
+    </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
       <button class="hbtn" onclick="document.getElementById('sheet-import-file').click()">IMPORT CSV</button>
       <input id="sheet-import-file" type="file" accept=".csv,text/csv" style="display:none" onchange="handleSpreadsheetImport(event)">
@@ -1978,6 +2081,31 @@ function ensureSpreadsheetPanel(backoffice){
 
 let pendingCsvRows = [];
 let pendingCsvHeaders = [];
+
+async function addManualBuiltInInventory(){
+  const name = document.getElementById('built-name')?.value.trim();
+  if(!name){ toast_dash('Enter an item name'); return; }
+  const item = {
+    name,
+    category:document.getElementById('built-category')?.value || 'TCG',
+    set:document.getElementById('built-set')?.value.trim() || '',
+    year:document.getElementById('built-year')?.value.trim() || '',
+    condition:document.getElementById('built-condition')?.value.trim() || '',
+    location:document.getElementById('built-location')?.value.trim() || '',
+    cost:Number(document.getElementById('built-cost')?.value || 0),
+    market:Number(document.getElementById('built-price')?.value || 0),
+    qty:1,
+  };
+  try {
+    const id = await createBuiltInInventoryItem(item, item, 'manual_quick_add');
+    ['built-name','built-set','built-year','built-condition','built-location','built-cost','built-price'].forEach(k => { const el=document.getElementById(k); if(el) el.value=''; });
+    logOpsEvent('inventory_add', 'Manual built-in inventory item added: ' + item.name, { id, category:item.category });
+    toast_dash('Added built-in inventory item');
+    loadInventory();
+  } catch(e) {
+    toast_dash('Manual add failed: ' + (e.message || e));
+  }
+}
 
 function parseCSV(text){
   const rows = [];
@@ -2231,17 +2359,17 @@ async function importMappedSpreadsheet(pushWebflow){
   let webflowOk = 0, webflowFail = 0;
   if(pushWebflow) {
     for(const item of items) {
-      try { await createWebflowProduct(item, item); webflowOk++; }
+      try { await createInventoryRecord(item, item); webflowOk++; }
       catch(e) {
         webflowFail++;
-        enqueueSync('webflow-create', 'Create Webflow item: ' + (item.name || 'Imported item'), { item, updates:item }, e.message || 'Webflow create failed');
+        enqueueSync('inventory-create', 'Create inventory item: ' + (item.name || 'Imported item'), { item, updates:item, inventorySource:getInventorySource() }, e.message || 'Inventory create failed');
       }
     }
   }
   pendingCsvRows = [];
   document.getElementById('sheet-mapping').style.display='none';
-  document.getElementById('sheet-preview').innerHTML = `Imported ${items.length} local item${items.length===1?'':'s'}${pushWebflow ? ' · Webflow '+webflowOk+' ok / '+webflowFail+' failed' : ''}`;
-  logOpsEvent('spreadsheet_import', 'Imported spreadsheet inventory', { items:items.length, webflowOk, webflowFail });
+  document.getElementById('sheet-preview').innerHTML = `Imported ${items.length} local item${items.length===1?'':'s'}${pushWebflow ? ' · inventory sync '+webflowOk+' ok / '+webflowFail+' failed' : ''}`;
+  logOpsEvent('spreadsheet_import', 'Imported spreadsheet inventory', { items:items.length, inventorySyncOk:webflowOk, inventorySyncFail:webflowFail, inventorySource:getInventorySource() });
   loadInventory();
 }
 
@@ -2253,7 +2381,7 @@ function getUniversalInventory(){
     status:i.status||'in_stock', lifecycle:i.lifecycle||'in_stock', channel:i.channel||'', addedAt:i.addedAt||'', soldAt:i.soldAt||'',
     tags:i.tags||'', thumbnail:i.thumbnail||null, location:i.location||'', player:i.player||'', team:i.team||'', sport:i.sport||'',
     manufacturer:i.manufacturer||'', card_number:i.card_number||'', serial_number:i.serial_number||'', publisher:i.publisher||'',
-    issue:i.issue||'', notes:i.notes||'', source:'spreadsheet',
+    issue:i.issue||'', notes:i.notes||'', source:i.source||'spreadsheet',
   }));
 }
 
@@ -2358,6 +2486,10 @@ async function processSyncItem(item){
     await createWebflowProduct(item.payload.item, item.payload.updates || item.payload.item);
     return;
   }
+  if(item.type === 'inventory-create') {
+    await createInventoryRecord(item.payload.item, item.payload.updates || item.payload.item);
+    return;
+  }
   if(item.type === 'webflow-patch') {
     const res = await fetch(WORKER+'/proxy/collections/'+WF_PRODUCTS+'/items/'+item.payload.id, { method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ fieldData:item.payload.fieldData }) });
     if(!res.ok) throw new Error('Webflow patch '+res.status+': '+(await res.text()).slice(0,160));
@@ -2374,8 +2506,7 @@ async function processSyncItem(item){
     return;
   }
   if(item.type === 'inventory-sold') {
-    const res = await wfPatch('/collections/'+WF_PRODUCTS+'/items/'+item.payload.id, { fieldData:item.payload.fieldData });
-    if(!res.ok) throw new Error('Sold sync '+res.status+': '+(await res.text()).slice(0,160));
+    await markInventoryRecordSold({ id:item.payload.id, source:item.payload.inventorySource === 'built_in' ? 'built_in' : '' }, item.payload.fieldData, {});
     return;
   }
   throw new Error('No retry handler for '+item.type);
@@ -3417,6 +3548,22 @@ function scanHandoffKey(){
 }
 
 async function readScanInbox(){
+  const sb = getSupabaseClient();
+  const session = getAuthSession();
+  const storeId = getActiveStoreId();
+  if(sb && session?.supabase && storeId) {
+    const { data, error } = await sb
+      .from('scan_queue')
+      .select('id,payload,status,created_at')
+      .eq('store_id', storeId)
+      .eq('status', 'pending')
+      .order('created_at', { ascending:false })
+      .limit(50);
+    if(!error) {
+      return (data || []).map(row => ({ ...(row.payload || {}), _scanQueueId:row.id, sentAt:row.payload?.sentAt || row.created_at }));
+    }
+    console.warn('Supabase scan inbox failed; falling back to Worker KV:', error.message);
+  }
   try {
     const r = await fetch(scopedWorkerPath('/kv/' + encodeURIComponent(scanHandoffKey())), { signal: AbortSignal.timeout(2500) });
     const d = await r.json();
@@ -3427,12 +3574,35 @@ async function readScanInbox(){
 }
 
 async function writeScanInbox(queue){
+  const sb = getSupabaseClient();
+  const session = getAuthSession();
+  const storeId = getActiveStoreId();
+  if(sb && session?.supabase && storeId) {
+    const current = await readScanInbox();
+    const keep = new Set((queue || []).map(x => x._scanQueueId).filter(Boolean));
+    const toClear = current.map(x => x._scanQueueId).filter(id => id && !keep.has(id));
+    if(toClear.length) {
+      const { error } = await sb.from('scan_queue').update({ status:'reviewed' }).in('id', toClear);
+      if(error) console.warn('Supabase scan clear failed:', error.message);
+    }
+    return;
+  }
   await fetch(scopedWorkerPath('/kv/' + encodeURIComponent(scanHandoffKey())), {
     method:'POST',
     headers:{'Content-Type':'application/json'},
     body: JSON.stringify(queue.slice(0,25)),
     signal: AbortSignal.timeout(2500),
   });
+}
+
+async function markScanInboxItem(scan, status='reviewed'){
+  if(!scan?._scanQueueId) return false;
+  const sb = getSupabaseClient();
+  const session = getAuthSession();
+  if(!sb || !session?.supabase) return false;
+  const { error } = await sb.from('scan_queue').update({ status }).eq('id', scan._scanQueueId);
+  if(error) { console.warn('Supabase scan status failed:', error.message); return false; }
+  return true;
 }
 
 async function wfGet(path){
@@ -3460,8 +3630,102 @@ async function postCartToWorker(cartData, queueOnFail = true){
   }
 }
 
+function getInventorySource(){
+  const cfg = getVendorConfig();
+  const source = cfg.inventorySource || DEFAULT_VENDOR_CONFIG.inventorySource;
+  return ['built_in','spreadsheet','webflow','hybrid'].includes(source) ? source : 'built_in';
+}
+
+async function loadWebflowInventoryItems(){
+  let products=[], offset=0, total=999;
+  while(offset < total){
+    const d = await wfGet(`/collections/${WF_PRODUCTS}/items?limit=100&offset=${offset}`);
+    total = d.pagination?.total || 0;
+    products = products.concat(d.items||[]);
+    offset += 100;
+    if((d.items||[]).length < 100) break;
+  }
+  let skus=[], so=0;
+  while(so < 9999){
+    const d = await wfGet(`/collections/${WF_SKUS}/items?limit=100&offset=${so}`);
+    skus = skus.concat(d.items||[]);
+    so += 100;
+    if((d.items||[]).length < 100) break;
+  }
+  const skuMap={};
+  skus.forEach(s=>{ const pid=s.fieldData?.product; const c=s.fieldData?.price?.value||0; if(pid&&c>0) skuMap[pid]=c/100; });
+  return { items:products.map(p=>mapItem(p,skuMap)), count:products.length };
+}
+
+async function loadBuiltInInventoryItems(){
+  const sb = getSupabaseClient();
+  const session = getAuthSession();
+  const storeId = getActiveStoreId();
+  if(!sb || !session?.supabase || !storeId) return [];
+  const { data, error } = await sb
+    .from('inventory_items')
+    .select('id,data,status,created_at,updated_at')
+    .eq('store_id', storeId)
+    .order('updated_at', { ascending:false })
+    .limit(1000);
+  if(error) {
+    console.warn('Built-in inventory load failed:', error.message);
+    toast_dash('Built-in inventory cloud load failed. Showing local rows.');
+    return [];
+  }
+  return (data || []).map(mapBuiltInItem);
+}
+
+function mapBuiltInItem(row){
+  const d = row.data || {};
+  const isSold = row.status === 'sold' || d.status === 'sold';
+  const id = row.id || d.id || ('builtin_' + Date.now());
+  const market = Number(d.market ?? d.price ?? d.askingPrice ?? d.salePrice ?? 0);
+  const cost = Number(d.cost ?? d.costBasis ?? d.cost_basis ?? 0);
+  return {
+    id,
+    source:'built_in',
+    name:d.name || d.title || d.cardName || d.player || 'Inventory item',
+    set:d.set || d.setName || d['set-name'] || '',
+    variant:d.variant || d.parallel || '',
+    year:d.year || '',
+    category:d.category || d.itemType || d.inventoryType || 'TCG',
+    cost,
+    market,
+    salePrice:Number(d.salePrice || d.sale_price || market || 0),
+    qty:Number(d.qty ?? d.quantity ?? d['inventory-count'] ?? 1),
+    profit:isSold ? Number(d.profit || (Number(d.salePrice || market || 0) - cost)) : 0,
+    condition:d.condition || '',
+    priceSource:d.priceSource || d.marketPriceSource || d['price-source'] || '',
+    status:isSold ? 'sold' : (row.status || d.status || 'in_stock'),
+    lifecycle:getLifecycle(id, isSold ? 'sold' : (row.status || d.status || 'in_stock')),
+    channel:d.channel || d.saleChannel || '',
+    addedAt:d.addedAt || row.created_at || '',
+    soldAt:d.soldAt || '',
+    isRookie:!!(d.isRookie || d.rookieCard),
+    is_rookie:!!(d.isRookie || d.rookieCard),
+    grader:d.grader || d.gradingCompany || '',
+    grade:d.grade || '',
+    cert_number:d.cert_number || d.certNumber || '',
+    tags:d.tags || '',
+    thumbnail:d.thumbnail || d.imageUrl || d.image_url || null,
+    location:d.location || d.location_path || '',
+    player:d.player || d.cardName || '',
+    team:d.team || '',
+    sport:d.sport || '',
+    manufacturer:d.manufacturer || d.brand || '',
+    product_line:d.product_line || d.productLine || '',
+    configuration:d.configuration || '',
+    upc:d.upc || '',
+    issue:d.issue || d.issueNumber || '',
+    publisher:d.publisher || '',
+    raw:d,
+  };
+}
+
 window.addEventListener('load', async function(){
   if(!(await ensureAuthReady())) return;
+  await loadStoreSettingsFromSupabase();
   setupAppShell();
   renderShowMode();
   refreshEbayStatus();
@@ -3499,6 +3763,38 @@ async function loadInventory(){
     document.getElementById('sync-status').textContent = '⚠ '+e.message;
   }
 }
+
+async function loadInventoryByConfiguredSource(){
+  document.getElementById('sync-status').textContent = 'Loading...';
+  try {
+    const source = getInventorySource();
+    let parts = [], counts = [];
+    if(source === 'webflow' || source === 'hybrid') {
+      const wf = await loadWebflowInventoryItems();
+      parts = parts.concat(wf.items);
+      counts.push(wf.count + ' Webflow');
+    }
+    if(source === 'built_in' || source === 'hybrid') {
+      const built = await loadBuiltInInventoryItems();
+      parts = parts.concat(built);
+      counts.push(built.length + ' built-in');
+    }
+    if(source === 'spreadsheet' || source === 'built_in' || source === 'hybrid') {
+      const sheet = getUniversalInventory();
+      parts = parts.concat(sheet);
+      counts.push(sheet.length + ' local/CSV');
+    }
+    all = parts;
+    soldData = all.filter(i=>i.status==='sold');
+    filtered = [...all];
+    renderAll();
+    renderInventoryCategoryFilters();
+    document.getElementById('sync-status').textContent = 'v'+APP_VERSION+' · '+source.replace('_',' ')+' · '+counts.join(' · ')+' · '+new Date().toLocaleTimeString();
+  } catch(e){
+    document.getElementById('sync-status').textContent = '⚠ '+e.message;
+  }
+}
+loadInventory = loadInventoryByConfiguredSource;
 
 function mapItem(i, skuMap){
   const f=i.fieldData||{};
@@ -3961,12 +4257,11 @@ async function confirmQuickSell(){
   logOpsEvent('quick_sell', 'Marked sold locally: ' + (item.name || 'item'), { itemId:item.id, salePrice, channel });
 
   try {
-    const res = await wfPatch('/collections/'+WF_PRODUCTS+'/items/'+item.id, { fieldData });
-    if(!res.ok) throw new Error('Sold sync '+res.status+': '+(await res.text()).slice(0,160));
-    toast_dash('Sold locally and synced');
+    const syncMode = await markInventoryRecordSold(item, fieldData, { salePrice, profit:salePrice-(item.cost||0), channel, soldAt });
+    toast_dash(syncMode === 'local-only' ? 'Sold locally' : 'Sold locally and synced');
   } catch(e){
-    enqueueOrReplaceSync('inventory-sold', item.id, 'Mark sold in Webflow: ' + (item.name || 'item'), { id:item.id, fieldData }, e.message || 'Sold sync failed');
-    toast_dash('Sold locally - queued Webflow sync');
+    enqueueOrReplaceSync('inventory-sold', item.id, 'Mark sold in inventory: ' + (item.name || 'item'), { id:item.id, fieldData, inventorySource:getInventorySource() }, e.message || 'Sold sync failed');
+    toast_dash('Sold locally - queued inventory sync');
   }
 }
 
@@ -4106,6 +4401,8 @@ function loadBuyList(){
 
 async function removeScanFromInbox(scanId){
   const queue = await readScanInbox();
+  const scan = queue.find(s => s.id === scanId);
+  if(scan) await markScanInboxItem(scan, 'rejected');
   await writeScanInbox(queue.filter(s => s.id !== scanId));
   renderScanInbox();
 }
@@ -4114,6 +4411,7 @@ async function acceptScanToCart(scanId){
   const queue = await readScanInbox();
   const scan = queue.find(s => s.id === scanId);
   if(scan) addScanToCart(scan);
+  if(scan) await markScanInboxItem(scan, 'added');
   await writeScanInbox(queue.filter(s => s.id !== scanId));
   renderScanInbox();
 }
@@ -4127,6 +4425,7 @@ async function acceptScanToBuyList(scanId){
     renderBuyList();
     toast_dash('Added to buy offer: ' + (scan.name || scan.player || 'item'));
   }
+  if(scan) await markScanInboxItem(scan, 'added');
   await writeScanInbox(queue.filter(s => s.id !== scanId));
   renderScanInbox();
 }
@@ -4137,6 +4436,7 @@ async function addAllScansToBuyList(){
   queue.forEach(scan => buyList.push(scanToBuyItem(scan)));
   saveBuyList();
   renderBuyList();
+  await Promise.all(queue.map(scan => markScanInboxItem(scan, 'added')));
   await writeScanInbox([]);
   renderScanInbox();
   toast_dash('Added ' + queue.length + ' scans to buy offer');
@@ -5033,6 +5333,68 @@ async function createWebflowProduct(item, updates) {
     console.warn('createWebflowProduct failed:', e.message);
     throw e;
   }
+}
+
+async function createBuiltInInventoryItem(item, updates, sourceLabel='built_in') {
+  const sb = getSupabaseClient();
+  const session = getAuthSession();
+  const storeId = getActiveStoreId();
+  const id = 'builtin_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,6);
+  const data = {
+    id,
+    ...item,
+    ...updates,
+    source:sourceLabel,
+    status:'in_stock',
+    createdFrom:'walkoff_dashboard',
+    appVersion:APP_VERSION,
+    addedAt:new Date().toISOString(),
+  };
+  if(sb && session?.supabase && storeId) {
+    const { data:row, error } = await sb
+      .from('inventory_items')
+      .insert({ store_id:storeId, data, status:'in_stock' })
+      .select('id')
+      .single();
+    if(error) throw new Error('Built-in inventory save ' + error.message);
+    return row?.id || id;
+  }
+  const inv = safeLocalJson('walkoff_universal_inventory', []);
+  inv.unshift(mapBuiltInItem({ id, data, status:'in_stock', created_at:data.addedAt }));
+  localStorage.setItem('walkoff_universal_inventory', JSON.stringify(inv.slice(0,5000)));
+  return id;
+}
+
+async function createInventoryRecord(item, updates) {
+  const source = getInventorySource();
+  if(source === 'webflow') return createWebflowProduct(item, updates);
+  if(source === 'hybrid') {
+    try {
+      return await createWebflowProduct(item, updates);
+    } catch(e) {
+      const fallbackId = await createBuiltInInventoryItem(item, updates, 'hybrid_fallback');
+      enqueueSync('webflow-create', 'Create inventory item in Webflow later: ' + (updates.name || item.name || 'item'), { item, updates }, e.message || 'Webflow create failed');
+      return fallbackId;
+    }
+  }
+  return createBuiltInInventoryItem(item, updates, source);
+}
+
+async function markInventoryRecordSold(item, fieldData, saleMeta){
+  if(item.source === 'built_in') {
+    const sb = getSupabaseClient();
+    const session = getAuthSession();
+    if(sb && session?.supabase) {
+      const nextData = { ...(item.raw || {}), ...item, ...saleMeta, status:'sold' };
+      const { error } = await sb.from('inventory_items').update({ status:'sold', data:nextData, updated_at:new Date().toISOString() }).eq('id', item.id);
+      if(error) throw new Error('Built-in sold sync ' + error.message);
+      return 'built-in';
+    }
+  }
+  if(getInventorySource() === 'built_in' || getInventorySource() === 'spreadsheet') return 'local-only';
+  const res = await wfPatch('/collections/'+WF_PRODUCTS+'/items/'+item.id, { fieldData });
+  if(!res.ok) throw new Error('Sold sync '+res.status+': '+(await res.text()).slice(0,160));
+  return 'webflow';
 }
 
 // ══════════════════════════════════════════════════
@@ -6131,17 +6493,17 @@ async function addSelectedQuickLookupToInventory(idx){
   const item = selectedQuickLookupItem(idx);
   if(status) status.textContent = 'Adding inventory...';
   try {
-    const productId = await createWebflowProduct(item, item);
-    saveQuickLookupLocalInventory(item, productId);
-    logOpsEvent('inventory_add', 'Added quick lookup item: ' + item.name, { productId, category:item.category, market:item.market });
-    if(status) status.innerHTML = '<span style="color:var(--g)">Added to inventory and Webflow.</span>';
+    const productId = await createInventoryRecord(item, item);
+    if(getInventorySource() === 'webflow') saveQuickLookupLocalInventory(item, productId);
+    logOpsEvent('inventory_add', 'Added quick lookup item: ' + item.name, { productId, category:item.category, market:item.market, inventorySource:getInventorySource() });
+    if(status) status.innerHTML = '<span style="color:var(--g)">Added to inventory.</span>';
     toast_dash('Added to inventory: ' + item.name);
     loadInventory();
   } catch(e) {
     saveQuickLookupLocalInventory(item, '');
-    enqueueSync('webflow-create', 'Create quick lookup item: ' + item.name, { item, updates:item }, e.message || 'Webflow create failed');
-    if(status) status.innerHTML = '<span style="color:var(--gold)">Saved locally and queued for Webflow sync: ' + escHtml(e.message || 'sync later') + '</span>';
-    toast_dash('Saved locally, queued Webflow sync');
+    enqueueSync('inventory-create', 'Create quick lookup item: ' + item.name, { item, updates:item, inventorySource:getInventorySource() }, e.message || 'Inventory create failed');
+    if(status) status.innerHTML = '<span style="color:var(--gold)">Saved locally and queued for inventory sync: ' + escHtml(e.message || 'sync later') + '</span>';
+    toast_dash('Saved locally, queued inventory sync');
     loadInventory();
   }
 }
@@ -6528,15 +6890,15 @@ function buyItemToInventoryUpdates(item){
 async function bulkAddBuyListToInventory(skipConfirm){
   const pending = buyList.filter(i => !i.inventoryId);
   if(!pending.length){ toast_dash('No buy offer items to add'); return; }
-  if(!skipConfirm && !confirm('Add all buy offer cards to Webflow inventory?')) return;
+  if(!skipConfirm && !confirm('Add all buy offer cards to inventory?')) return;
   let ok = 0, fail = 0, firstError = '';
   for(const item of pending) {
     try {
       const productId = await createBuyItemInventoryRecord(item);
       if(productId) ok++; else fail++;
     } catch(e) {
-      item.inventoryError = e.message || 'Webflow add failed';
-      enqueueSync('webflow-create', 'Create buy inventory item: ' + (item.name || 'Buy item'), { item:item.scan || item, updates:buyItemToInventoryUpdates(item) }, item.inventoryError);
+      item.inventoryError = e.message || 'Inventory add failed';
+      enqueueSync('inventory-create', 'Create buy inventory item: ' + (item.name || 'Buy item'), { item:item.scan || item, updates:buyItemToInventoryUpdates(item), inventorySource:getInventorySource() }, item.inventoryError);
       if(!firstError) firstError = item.inventoryError;
       fail++;
     }
@@ -6551,8 +6913,8 @@ async function bulkAddBuyListToInventory(skipConfirm){
 
 async function createBuyItemInventoryRecord(item){
   const updates = buyItemToInventoryUpdates(item);
-  const productId = await createWebflowProduct(item.scan || item, updates);
-  if(!productId) throw new Error('Webflow did not return a product ID');
+  const productId = await createInventoryRecord(item.scan || item, updates);
+  if(!productId) throw new Error('Inventory save did not return an item ID');
   item.inventoryId = productId;
   item.inventoryError = '';
   item.addedToInventoryAt = new Date().toISOString();
@@ -6579,8 +6941,8 @@ async function addBuyItemToInventory(id){
     toast_dash('Added to inventory: ' + (item.name || 'item'));
     loadInventory();
   } catch(e) {
-    item.inventoryError = e.message || 'Webflow add failed';
-    enqueueSync('webflow-create', 'Create buy inventory item: ' + (item.name || 'Buy item'), { item:item.scan || item, updates:buyItemToInventoryUpdates(item) }, item.inventoryError);
+    item.inventoryError = e.message || 'Inventory add failed';
+    enqueueSync('inventory-create', 'Create buy inventory item: ' + (item.name || 'Buy item'), { item:item.scan || item, updates:buyItemToInventoryUpdates(item), inventorySource:getInventorySource() }, item.inventoryError);
     saveBuyList();
     renderBuyList();
     toast_dash('Inventory add failed: ' + item.inventoryError);
@@ -6590,7 +6952,7 @@ async function addBuyItemToInventory(id){
 async function bulkAddScanInboxToInventory(){
   const queue = await readScanInbox();
   if(!queue.length){ toast_dash('No scans waiting'); return; }
-  if(!confirm('Add all waiting phone scans to Webflow inventory?')) return;
+  if(!confirm('Add all waiting phone scans to inventory?')) return;
   queue.forEach(scan => buyList.push(scanToBuyItem(scan)));
   saveBuyList();
   await writeScanInbox([]);
@@ -7031,10 +7393,9 @@ async function markCartItemsSoldFromPayment(items, method, soldAt){
       setLifecycle(inv.id, 'sold', true);
     }
     try {
-      const res = await wfPatch('/collections/'+WF_PRODUCTS+'/items/'+id, { fieldData });
-      if(!res.ok) throw new Error('Sold sync '+res.status+': '+(await res.text()).slice(0,160));
+      await markInventoryRecordSold(inv || { id, source:cartItem.source || '' }, fieldData, { salePrice, channel:method, soldAt });
     } catch(e) {
-      enqueueOrReplaceSync('inventory-sold', id, 'Mark sold in Webflow: ' + (cartItem.name || 'cart item'), { id, fieldData }, e.message || 'Sold sync failed');
+      enqueueOrReplaceSync('inventory-sold', id, 'Mark sold in inventory: ' + (cartItem.name || 'cart item'), { id, fieldData, inventorySource:getInventorySource() }, e.message || 'Sold sync failed');
     }
   }
   soldData = all.filter(i=>i.status==='sold');

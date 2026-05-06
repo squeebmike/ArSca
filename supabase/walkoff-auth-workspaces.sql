@@ -290,7 +290,7 @@ begin
   values (
     created_store.id,
     '{}'::jsonb,
-    '{}'::jsonb,
+    jsonb_build_object('inventorySource', 'built_in'),
     '{}'::jsonb,
     jsonb_build_object('storeName', created_store.display_name, 'footer', 'Thanks for shopping with us!')
   )

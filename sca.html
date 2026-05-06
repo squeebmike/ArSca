@@ -603,7 +603,7 @@ const STORE = {
   wf_status_instock:'f3769d1e15fa0956f98984d6fa36437f',
   wf_status_sold:   'e6b42f14fcb99aa2168a5f5672226f68',
 };
-const APP_VERSION = '2026.05.06.3';
+const APP_VERSION = '2026.05.06.4';
 const SUPABASE_URL = 'https://vroknjrxubsqyexngwus.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_wbpX2nL8l-4NbXtZNG_bjA_nabSYaJ5';
 const WORKER_URL = STORE.worker_url;
@@ -657,6 +657,24 @@ async function loadScannerSupabaseStores(user){
   if(error) { console.warn('Scanner store lookup failed:', error); return []; }
   return (data || []).map(row => ({ ...(row.stores || {}), role:row.role })).filter(s => s.id && s.status !== 'disabled');
 }
+
+async function loadScannerStoreSettingsFromSupabase(){
+  const sb = getScannerSupabaseClient();
+  const session = getScannerAuthSession();
+  const storeId = getScannerActiveStoreId();
+  if(!sb || !session?.supabase || !storeId) return;
+  const { data, error } = await sb
+    .from('store_settings')
+    .select('payment_settings,receipt_settings')
+    .eq('store_id', storeId)
+    .maybeSingle();
+  if(error) { console.warn('Scanner settings sync failed:', error.message); return; }
+  if(data?.payment_settings) localStorage.setItem('store_payment_settings_v1', JSON.stringify(data.payment_settings));
+  if(data?.receipt_settings) {
+    const prev = JSON.parse(localStorage.getItem('vendor_profile_v1') || '{}');
+    localStorage.setItem('vendor_profile_v1', JSON.stringify({ ...prev, ...data.receipt_settings }));
+  }
+}
 async function ensureScannerAuth(){
   const sb = getScannerSupabaseClient();
   if(sb) {
@@ -683,6 +701,8 @@ async function ensureScannerAuth(){
   localStorage.setItem(WALKOFF_ACTIVE_STORE_KEY, session.activeStoreId || 'walkoff-main');
   document.getElementById('scanner-auth-screen')?.classList.remove('on');
   STORE.store_id = getScannerActiveStoreId();
+  await loadScannerStoreSettingsFromSupabase();
+  applyVendorProfileToScanner();
   return true;
 }
 
@@ -2445,6 +2465,26 @@ async function writeScanHandoffQueue(queue) {
   });
 }
 
+async function sendHandoffToSupabase(handoff) {
+  const sb = getScannerSupabaseClient();
+  const session = getScannerAuthSession();
+  const storeId = getScannerActiveStoreId();
+  if(!sb || !session?.supabase || !storeId) return false;
+  const userId = session.user?.id;
+  const payload = {
+    store_id: storeId,
+    payload: handoff,
+    status: 'pending',
+    created_by: userId || null,
+  };
+  const { error } = await sb.from('scan_queue').insert(payload);
+  if(error) {
+    console.warn('Supabase scan handoff failed; falling back to Worker KV:', error.message);
+    return false;
+  }
+  return true;
+}
+
 function buildHandoffItem(el) {
   const item = el?._item || {};
   const print = (el?._prints || [])[el?._bmi || 0] || {};
@@ -2495,6 +2535,10 @@ window.sendBubbleToTablet = async function(id) {
   if(!el) return toast('Scan not found');
   const handoff = buildHandoffItem(el);
   try {
+    if(await sendHandoffToSupabase(handoff)) {
+      toast('Sent to tablet POS');
+      return;
+    }
     const queue = await readScanHandoffQueue();
     queue.unshift(handoff);
     await writeScanHandoffQueue(queue);
