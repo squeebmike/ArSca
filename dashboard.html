@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.05.05.6">
+<meta name="version" content="2026.05.06.1">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -117,6 +117,14 @@ header{position:sticky;top:0;z-index:100;background:rgba(7,8,10,.96);backdrop-fi
 .sell-pay-btn.warn{border-color:rgba(255,209,102,.3);color:var(--gold);background:rgba(255,209,102,.07);}
 .sell-pay-btn.danger{border-color:rgba(255,77,109,.25);color:var(--red);background:rgba(255,77,109,.06);}
 .sell-payment-note{font-family:monospace,monospace;font-size:9px;color:var(--dim);line-height:1.55;text-align:center;margin-top:10px;}
+.auth-screen{position:fixed;inset:0;z-index:5000;background:radial-gradient(circle at top,rgba(0,255,179,.08),transparent 38%),#07080a;display:none;align-items:center;justify-content:center;padding:24px;}
+.auth-screen.on{display:flex;}
+.auth-card{width:min(460px,100%);background:var(--surf);border:1px solid var(--border);border-radius:14px;padding:22px;box-shadow:0 24px 80px rgba(0,0,0,.5);}
+.auth-title{font-family:'Orbitron',monospace;font-size:18px;font-weight:900;color:var(--g);letter-spacing:2px;margin-bottom:6px;}
+.auth-sub{font-family:monospace,monospace;font-size:10px;color:var(--dim);line-height:1.7;margin-bottom:14px;}
+.auth-row{display:grid;gap:8px;margin-bottom:10px;}
+.auth-meta{font-family:monospace,monospace;font-size:9px;color:var(--dim);line-height:1.6;margin-top:10px;}
+.store-chip{border:1px solid var(--border);background:var(--surf2);color:var(--text);border-radius:8px;padding:7px 10px;font-family:monospace,monospace;font-size:10px;min-height:34px;}
 .item-workspace-grid{display:grid;grid-template-columns:180px 1fr;gap:14px;}
 .item-photo{width:180px;aspect-ratio:3/4;border-radius:8px;border:1px solid var(--border);background:var(--surf2);object-fit:cover;}
 .item-metric{background:var(--surf2);border:1px solid var(--border);border-radius:8px;padding:10px;}
@@ -269,12 +277,27 @@ tr.sold:hover td{opacity:.7;}
 <body>
 
 <div id="setup" style="display:none"></div>
+<div id="auth-screen" class="auth-screen">
+  <div class="auth-card">
+    <div class="auth-title">WALK-OFF LOGIN</div>
+    <div class="auth-sub">Demo auth is local-only for now. It scopes dashboard data by store without deleting old browser data.</div>
+    <div class="auth-row">
+      <label style="font-family:monospace;font-size:9px;color:var(--dim)">EMAIL<input id="auth-email" class="tsi" value="owner@walkoff.local" autocomplete="username"></label>
+      <label style="font-family:monospace;font-size:9px;color:var(--dim)">STORE<select id="auth-store" class="tsi"></select></label>
+      <button class="hbtn" onclick="loginDemoAccount()">LOGIN</button>
+    </div>
+    <div class="auth-meta">Backend auth can replace this shell later. Current mode: browser-local account/session with store-scoped storage migration.</div>
+  </div>
+</div>
 
 <header>
   <div class="hdr">
-    <div class="logo">WALK-OFF <span>DASHBOARD · v2026.05.05.6</span></div>
+    <div class="logo">WALK-OFF <span>DASHBOARD · v2026.05.06.1</span></div>
     <div class="hdr-right">
+      <span id="store-user-chip" class="store-chip" style="display:none"></span>
+      <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="sync-status">Loading...</span>
+      <button class="hbtn" id="logout-btn" style="display:none" onclick="logoutAccount()">LOGOUT</button>
       <button class="hbtn" onclick="loadInventory()">↻ REFRESH</button>
     </div>
   </div>
@@ -1070,7 +1093,7 @@ tr.sold:hover td{opacity:.7;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.05.05.6';
+const APP_VERSION = '2026.05.06.1';
 const STORE_ID = 'walkoff-main';
 const REGISTER_ID = 'front';
 const WF_PRODUCTS = '65eb45a28ff6bf3fe4f17b14';
@@ -1084,6 +1107,104 @@ const CAT_MAP = {
   '27f1c9c43a61cf03820a31132cfc6b9a':'Comic',
   '2c3076cc33bf2f312265bfdc894db265':'Supplies',
 };
+
+const WALKOFF_DEMO_STORES = [
+  { id:'walkoff-main', ownerUserId:'demo-owner', name:'walkoff-main', displayName:'Walk-Off Sports Cards', logoUrl:'', location:'Kingston, WA', timezone:'America/Los_Angeles', currency:'USD', status:'active', createdAt:'2026-05-06T00:00:00.000Z' },
+  { id:'demo-show-store', ownerUserId:'demo-owner', name:'demo-show-store', displayName:'Demo Show Store', logoUrl:'', location:'Card Show', timezone:'America/Los_Angeles', currency:'USD', status:'active', createdAt:'2026-05-06T00:00:00.000Z' },
+];
+const WALKOFF_DEMO_USER = { id:'demo-owner', email:'owner@walkoff.local', displayName:'Store Owner', role:'owner', defaultStoreId:'walkoff-main', createdAt:'2026-05-06T00:00:00.000Z' };
+const WALKOFF_SCOPED_KEYS = new Set(['lba_inventory','walkoff_universal_inventory','pos_cart_v2','pos_buy_list','pos_buy_offers','pos_transactions','pos_drawer','pos_wantlist','set_needs_v1','pos_consign','pos_locations','vendor_profile_v1','vendor_config_v1','store_payment_settings_v1','pos_ops_log','inventory_lifecycle','pos_show_mode','sync_queue_v1','pos_customers','pos_undo_stack','sheet_mapping_v1','grade_submissions','lba_sales']);
+const WALKOFF_AUTH_SESSION_KEY = 'walkoff_auth_session_v1';
+const WALKOFF_ACTIVE_STORE_KEY = 'walkoff_active_store_id';
+const WALKOFF_STORAGE_MIGRATION_KEY = 'walkoff_store_migration_v1';
+
+function getAuthSession(){ try { return JSON.parse(localStorage.getItem(WALKOFF_AUTH_SESSION_KEY) || 'null'); } catch(e) { return null; } }
+function getActiveStoreId(){ return localStorage.getItem(WALKOFF_ACTIVE_STORE_KEY) || getAuthSession()?.activeStoreId || WALKOFF_DEMO_USER.defaultStoreId; }
+function getActiveStore(){ const id = getActiveStoreId(); return WALKOFF_DEMO_STORES.find(s => s.id === id) || WALKOFF_DEMO_STORES[0]; }
+function scopedStorageKey(key, storeId = getActiveStoreId()){ return WALKOFF_SCOPED_KEYS.has(key) && storeId ? 'walkoff:' + storeId + ':' + key : key; }
+
+(function installStoreScopedStorage(){
+  if(window.__walkoffStorageShim) return;
+  window.__walkoffStorageShim = true;
+  const rawGet = Storage.prototype.getItem, rawSet = Storage.prototype.setItem, rawRemove = Storage.prototype.removeItem;
+  Storage.prototype.getItem = function(key){
+    if(this === localStorage && WALKOFF_SCOPED_KEYS.has(key)) {
+      const scoped = scopedStorageKey(key);
+      const scopedVal = rawGet.call(this, scoped);
+      if(scopedVal !== null) return scopedVal;
+      const oldVal = rawGet.call(this, key);
+      if(oldVal !== null && getActiveStoreId() === WALKOFF_DEMO_USER.defaultStoreId) { rawSet.call(this, scoped, oldVal); markStoreMigration(key, scoped); return oldVal; }
+      return null;
+    }
+    return rawGet.call(this, key);
+  };
+  Storage.prototype.setItem = function(key, value){
+    if(this === localStorage && WALKOFF_SCOPED_KEYS.has(key)) return rawSet.call(this, scopedStorageKey(key), value);
+    return rawSet.call(this, key, value);
+  };
+  Storage.prototype.removeItem = function(key){
+    if(this === localStorage && WALKOFF_SCOPED_KEYS.has(key)) return rawRemove.call(this, scopedStorageKey(key));
+    return rawRemove.call(this, key);
+  };
+})();
+
+function markStoreMigration(key, scoped){
+  try {
+    const log = JSON.parse(localStorage.getItem(WALKOFF_STORAGE_MIGRATION_KEY) || '[]');
+    if(!log.some(x => x.key === key && x.scoped === scoped)) {
+      log.unshift({ key, scoped, copiedAt:new Date().toISOString(), appVersion:APP_VERSION });
+      localStorage.setItem(WALKOFF_STORAGE_MIGRATION_KEY, JSON.stringify(log.slice(0,200)));
+    }
+  } catch(e) {}
+}
+function populateLoginStores(){
+  const sel = document.getElementById('auth-store');
+  if(sel && !sel.options.length) sel.innerHTML = WALKOFF_DEMO_STORES.map(s => `<option value="${s.id}">${escHtml(s.displayName)}</option>`).join('');
+}
+function ensureAuthReady(){
+  populateLoginStores();
+  const session = getAuthSession();
+  if(!session) { document.getElementById('auth-screen')?.classList.add('on'); return false; }
+  localStorage.setItem(WALKOFF_ACTIVE_STORE_KEY, session.activeStoreId || session.user.defaultStoreId || WALKOFF_DEMO_USER.defaultStoreId);
+  document.getElementById('auth-screen')?.classList.remove('on');
+  renderAccountHeader();
+  return true;
+}
+function loginDemoAccount(){
+  const email = document.getElementById('auth-email')?.value.trim() || WALKOFF_DEMO_USER.email;
+  const storeId = document.getElementById('auth-store')?.value || WALKOFF_DEMO_USER.defaultStoreId;
+  const user = { ...WALKOFF_DEMO_USER, email, lastLoginAt:new Date().toISOString() };
+  localStorage.setItem(WALKOFF_AUTH_SESSION_KEY, JSON.stringify({ user, stores:WALKOFF_DEMO_STORES, activeStoreId:storeId, demoMode:true, createdAt:new Date().toISOString() }));
+  localStorage.setItem(WALKOFF_ACTIVE_STORE_KEY, storeId);
+  logOpsEvent('auth_login', 'Demo login started store session', { email, storeId });
+  location.reload();
+}
+function logoutAccount(){
+  localStorage.removeItem(WALKOFF_AUTH_SESSION_KEY);
+  document.getElementById('auth-screen')?.classList.add('on');
+  toast_dash('Logged out');
+}
+function switchActiveStore(storeId){
+  const session = getAuthSession();
+  if(!session || !session.stores?.some(s => s.id === storeId)) return;
+  session.activeStoreId = storeId;
+  localStorage.setItem(WALKOFF_AUTH_SESSION_KEY, JSON.stringify(session));
+  localStorage.setItem(WALKOFF_ACTIVE_STORE_KEY, storeId);
+  logOpsEvent('store_switch', 'Switched active store', { storeId });
+  location.reload();
+}
+function renderAccountHeader(){
+  const session = getAuthSession(), store = getActiveStore();
+  const chip = document.getElementById('store-user-chip');
+  if(chip && session) { chip.style.display = ''; chip.textContent = store.displayName + ' | ' + session.user.displayName + ' (' + session.user.role + ')'; }
+  const logout = document.getElementById('logout-btn'); if(logout) logout.style.display = session ? '' : 'none';
+  const switcher = document.getElementById('store-switcher');
+  if(switcher && session?.stores?.length > 1) {
+    switcher.style.display = '';
+    switcher.innerHTML = session.stores.map(s => `<option value="${s.id}" ${s.id===store.id?'selected':''}>${escHtml(s.displayName)}</option>`).join('');
+  }
+}
+function requireOwnerAdmin(){ const role = getAuthSession()?.user?.role || 'owner'; return role === 'owner' || role === 'admin'; }
 
 let all=[], filtered=[], activeF='all', activeTab='overview', soldData=[];
 let ts={col:'name',dir:1};
@@ -1150,9 +1271,20 @@ const DEFAULT_VENDOR_PROFILE = {
   receiptFooter:'Thank you for shopping with us!',
   ebayShippingLine:'Ships carefully packed from Walk-Off Sports Cards in Kingston, WA.',
   paymentMethods:'Cash, card, Venmo, or QR pay accepted',
-  venmo:'Shawn-Warner-84',
+  venmo:'',
   paypal:'',
   cashapp:'',
+};
+const DEFAULT_PAYMENT_SETTINGS = {
+  cash:{ enabled:true, trackCashDrawer:true },
+  venmo:{ enabled:true, handle:'', displayName:'Venmo', qrImageUrl:'' },
+  paypal:{ enabled:true, emailOrHandle:'', displayName:'PayPal', qrImageUrl:'' },
+  cashApp:{ enabled:true, cashtag:'', displayName:'Cash App', qrImageUrl:'' },
+  card:{ enabled:true, provider:'stripe', stripePublishableKey:'', stripeAccountId:'', squareLocationId:'', manualCardNote:'' },
+  tradeCredit:{ enabled:true, defaultBonusMultiplier:1.15 },
+  tax:{ enabled:false, defaultRate:0, label:'Sales Tax' },
+  receipt:{ storeName:'', footer:'Thanks for shopping with us!', showPaymentInstructions:true },
+  customerDisplay:{ showPaymentMethods:true, showQrCodes:true, showStoreLogo:true },
 };
 
 function getVendorProfile(){
@@ -1166,6 +1298,42 @@ function saveVendorProfile(profile){
   applyVendorProfile();
   renderVendorProfilePanel();
   logOpsEvent('vendor_profile', 'Updated vendor profile/preferences', { storeName:next.storeName });
+}
+
+function getPaymentSettings(){
+  const p = getVendorProfile();
+  let saved = {};
+  try { saved = JSON.parse(localStorage.getItem('store_payment_settings_v1') || '{}'); } catch(e) {}
+  const merged = {
+    ...DEFAULT_PAYMENT_SETTINGS,
+    ...saved,
+    cash:{ ...DEFAULT_PAYMENT_SETTINGS.cash, ...(saved.cash || {}) },
+    venmo:{ ...DEFAULT_PAYMENT_SETTINGS.venmo, handle:p.venmo || '', ...(saved.venmo || {}) },
+    paypal:{ ...DEFAULT_PAYMENT_SETTINGS.paypal, emailOrHandle:p.paypal || '', ...(saved.paypal || {}) },
+    cashApp:{ ...DEFAULT_PAYMENT_SETTINGS.cashApp, cashtag:p.cashapp || '', ...(saved.cashApp || {}) },
+    card:{ ...DEFAULT_PAYMENT_SETTINGS.card, ...(saved.card || {}) },
+    tax:{ ...DEFAULT_PAYMENT_SETTINGS.tax, defaultRate:Number(p.taxRate || 0), ...(saved.tax || {}) },
+    receipt:{ ...DEFAULT_PAYMENT_SETTINGS.receipt, storeName:p.storeName || '', footer:p.receiptFooter || DEFAULT_PAYMENT_SETTINGS.receipt.footer, ...(saved.receipt || {}) },
+    customerDisplay:{ ...DEFAULT_PAYMENT_SETTINGS.customerDisplay, ...(saved.customerDisplay || {}) },
+  };
+  return merged;
+}
+
+function savePaymentSettings(settings){
+  if(!requireOwnerAdmin()) { toast_dash('Owner/admin only'); return; }
+  localStorage.setItem('store_payment_settings_v1', JSON.stringify(settings));
+  const profilePatch = {
+    venmo:settings.venmo?.handle || '',
+    paypal:settings.paypal?.emailOrHandle || '',
+    cashapp:settings.cashApp?.cashtag || '',
+    taxRate:Number(settings.tax?.defaultRate || 0),
+    receiptFooter:settings.receipt?.footer || getVendorProfile().receiptFooter,
+  };
+  localStorage.setItem('vendor_profile_v1', JSON.stringify({ ...getVendorProfile(), ...profilePatch }));
+  applyVendorProfile();
+  renderPaymentSettingsPanel();
+  renderCustomerDisplay();
+  logOpsEvent('payment_settings', 'Updated store payment settings', { storeId:getActiveStoreId() });
 }
 
 function applyVendorProfile(){
@@ -1213,7 +1381,7 @@ function setupAppShell(){
     btn.className = 'hbtn';
     btn.id = 'fullscreen-btn';
     btn.textContent = 'FULL SCREEN';
-    btn.onclick = enterAppFullscreen;
+    btn.onclick = () => toggleAppFullscreen(document.documentElement);
     hdrRight.insertBefore(btn, hdrRight.querySelector('button'));
   }
   const refreshBtn = [...document.querySelectorAll('.hdr-right .hbtn')].find(b => b.id !== 'fullscreen-btn');
@@ -1280,6 +1448,7 @@ function organizeRegisterLayout(){
   moveNode('backoffice-system-panel', backoffice);
   moveNode('backoffice-ops-panel', backoffice);
   ensureVendorProfilePanel(backoffice);
+  ensurePaymentSettingsPanel(backoffice);
   ensureVendorConfigPanel(backoffice);
   ensureLegacyToolsPanel(backoffice);
   ensureSpreadsheetPanel(backoffice);
@@ -1492,6 +1661,61 @@ async function importVendorProfile(event){
   if(!file) return;
   try { saveVendorProfile(JSON.parse(await file.text())); toast_dash('Vendor profile imported'); }
   catch(e){ toast_dash('Profile import failed: '+e.message); }
+}
+
+function ensurePaymentSettingsPanel(backoffice){
+  if(document.getElementById('payment-settings-panel')) return;
+  const panel = document.createElement('div');
+  panel.className = 'panel';
+  panel.id = 'payment-settings-panel';
+  panel.style.marginBottom = '14px';
+  panel.innerHTML = '<div class="ph">PAYMENTS <span style="font-size:9px;color:var(--dim)">store-level checkout/customer display settings</span></div><div id="payment-settings-body"></div>';
+  backoffice.prepend(panel);
+  renderPaymentSettingsPanel();
+}
+
+function payToggle(key, label, enabled){
+  return `<label style="display:flex;gap:8px;align-items:center;font-family:monospace;font-size:10px;color:var(--dim)"><input id="pay-${key}-enabled" type="checkbox" ${enabled?'checked':''}> ${label}</label>`;
+}
+
+function renderPaymentSettingsPanel(){
+  const body = document.getElementById('payment-settings-body');
+  if(!body) return;
+  const s = getPaymentSettings();
+  const canEdit = requireOwnerAdmin();
+  body.innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:10px">
+      <div class="item-metric">${payToggle('cash','Cash',s.cash.enabled)}${payToggle('card','Card',s.card.enabled)}<label style="display:flex;gap:8px;align-items:center;font-family:monospace;font-size:10px;color:var(--dim);margin-top:8px"><input id="pay-cash-drawer" type="checkbox" ${s.cash.trackCashDrawer?'checked':''}> track cash drawer</label></div>
+      <div class="item-metric">${payToggle('venmo','Venmo',s.venmo.enabled)}<input id="pay-venmo-handle" class="tsi" placeholder="Venmo handle" value="${escHtml(s.venmo.handle)}" style="margin-top:6px">${payToggle('paypal','PayPal',s.paypal.enabled)}<input id="pay-paypal-handle" class="tsi" placeholder="PayPal.me handle" value="${escHtml(s.paypal.emailOrHandle)}" style="margin-top:6px"></div>
+      <div class="item-metric">${payToggle('cashapp','Cash App',s.cashApp.enabled)}<input id="pay-cashapp-handle" class="tsi" placeholder="$cashtag" value="${escHtml(s.cashApp.cashtag)}" style="margin-top:6px">${payToggle('showmethods','Show on customer display',s.customerDisplay.showPaymentMethods)}</div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:10px">
+      <label style="font-family:monospace;font-size:9px;color:var(--dim)">CARD PROVIDER<select id="pay-card-provider" class="tsi"><option value="stripe" ${s.card.provider==='stripe'?'selected':''}>Stripe</option><option value="square" ${s.card.provider==='square'?'selected':''}>Square</option><option value="manual" ${s.card.provider==='manual'?'selected':''}>Manual card</option></select></label>
+      <label style="font-family:monospace;font-size:9px;color:var(--dim)">STRIPE PUBLISHABLE KEY<input id="pay-stripe-pk" class="tsi" value="${escHtml(s.card.stripePublishableKey)}" placeholder="pk_..."></label>
+      <label style="font-family:monospace;font-size:9px;color:var(--dim)">TAX RATE %<input id="pay-tax-rate" class="tsi" type="number" min="0" step="0.01" value="${Number(s.tax.defaultRate||0)}"></label>
+    </div>
+    <label style="font-family:monospace;font-size:9px;color:var(--dim)">RECEIPT FOOTER<textarea id="pay-receipt-footer" class="tsi" style="height:52px">${escHtml(s.receipt.footer)}</textarea></label>
+    <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+      <button class="hbtn" onclick="savePaymentSettingsFromForm()" ${canEdit?'':'disabled'}>SAVE PAYMENTS</button>
+      <span style="font-family:monospace;font-size:9px;color:var(--dim);align-self:center">${canEdit?'Store scoped to '+escHtml(getActiveStore().displayName):'Owner/admin only'}</span>
+    </div>`;
+}
+
+function savePaymentSettingsFromForm(){
+  const prev = getPaymentSettings();
+  const settings = {
+    ...prev,
+    cash:{ enabled:document.getElementById('pay-cash-enabled')?.checked !== false, trackCashDrawer:!!document.getElementById('pay-cash-drawer')?.checked },
+    venmo:{ ...prev.venmo, enabled:!!document.getElementById('pay-venmo-enabled')?.checked, handle:document.getElementById('pay-venmo-handle')?.value.trim() || '' },
+    paypal:{ ...prev.paypal, enabled:!!document.getElementById('pay-paypal-enabled')?.checked, emailOrHandle:document.getElementById('pay-paypal-handle')?.value.trim() || '' },
+    cashApp:{ ...prev.cashApp, enabled:!!document.getElementById('pay-cashapp-enabled')?.checked, cashtag:document.getElementById('pay-cashapp-handle')?.value.trim() || '' },
+    card:{ ...prev.card, enabled:!!document.getElementById('pay-card-enabled')?.checked, provider:document.getElementById('pay-card-provider')?.value || 'stripe', stripePublishableKey:document.getElementById('pay-stripe-pk')?.value.trim() || '' },
+    tax:{ ...prev.tax, defaultRate:Number(document.getElementById('pay-tax-rate')?.value || 0), enabled:Number(document.getElementById('pay-tax-rate')?.value || 0) > 0 },
+    receipt:{ ...prev.receipt, footer:document.getElementById('pay-receipt-footer')?.value || '' },
+    customerDisplay:{ ...prev.customerDisplay, showPaymentMethods:!!document.getElementById('pay-showmethods-enabled')?.checked },
+  };
+  savePaymentSettings(settings);
+  toast_dash('Payment settings saved');
 }
 
 function ensureVendorConfigPanel(backoffice){
@@ -2531,19 +2755,52 @@ function isStandaloneApp(){
     || navigator.standalone === true;
 }
 
-async function enterAppFullscreen(){
+function getFullscreenElement(){
+  return document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement || null;
+}
+
+async function requestAppFullscreen(targetElement){
+  const target = targetElement || document.documentElement;
+  const fn = target.requestFullscreen || target.webkitRequestFullscreen || target.mozRequestFullScreen || target.msRequestFullscreen;
+  if(!fn) throw new Error('Fullscreen is not supported by this browser');
+  await fn.call(target, { navigationUI:'hide' });
+  screen.orientation?.lock?.('landscape').catch(()=>{});
+  syncFullscreenButtons();
+}
+
+async function exitAppFullscreen(){
+  const fn = document.exitFullscreen || document.webkitExitFullscreen || document.mozCancelFullScreen || document.msExitFullscreen;
+  if(fn) await fn.call(document);
+  syncFullscreenButtons();
+}
+
+async function toggleAppFullscreen(targetElement){
   try {
-    if(document.fullscreenElement) {
-      await document.exitFullscreen();
-      return;
-    }
-    await document.documentElement.requestFullscreen({ navigationUI: 'hide' });
-    screen.orientation?.lock?.('landscape').catch(()=>{});
+    if(getFullscreenElement()) await exitAppFullscreen();
+    else await requestAppFullscreen(targetElement || document.documentElement);
   } catch(e) {
-    maybeShowInstallHint(true);
-    toast_dash('Use Add to Home Screen for true tablet full screen');
+    showFullscreenError(e);
   }
 }
+
+function enterAppFullscreen(){ return toggleAppFullscreen(document.documentElement); }
+
+function syncFullscreenButtons(){
+  const full = !!getFullscreenElement();
+  document.querySelectorAll('#fullscreen-btn,[data-fullscreen-btn]').forEach(btn => {
+    btn.textContent = full ? 'EXIT FULL SCREEN' : 'FULL SCREEN';
+    btn.disabled = false;
+  });
+}
+
+function showFullscreenError(error){
+  maybeShowInstallHint(true);
+  toast_dash('Fullscreen failed. Tap again or use browser menu fullscreen.');
+  console.warn('Fullscreen error:', error);
+  syncFullscreenButtons();
+}
+
+['fullscreenchange','webkitfullscreenchange','mozfullscreenchange','MSFullscreenChange'].forEach(evt => document.addEventListener(evt, syncFullscreenButtons));
 
 function maybeShowInstallHint(force){
   const hint = document.getElementById('install-hint');
@@ -3068,6 +3325,7 @@ async function postCartToWorker(cartData, queueOnFail = true){
 }
 
 window.addEventListener('load', function(){
+  if(!ensureAuthReady()) return;
   setupAppShell();
   renderShowMode();
   refreshEbayStatus();
@@ -6482,16 +6740,20 @@ function paymentUrl(kind, handle, total){
 
 function renderCustomerPaymentLinks(total, el){
   if(!el) return;
-  const p = getVendorProfile();
+  const s = getPaymentSettings();
+  if(!s.customerDisplay.showPaymentMethods) { el.innerHTML = ''; return; }
   const links = [
-    ['PayPal', paymentUrl('paypal', p.paypal, total)],
-    ['Venmo', paymentUrl('venmo', p.venmo, total)],
-    ['Cash App', paymentUrl('cashapp', p.cashapp, total)],
-  ];
-  const base = [
-    `<button class="sell-pay-btn warn" onclick="recordCustomerDisplayPayment('Cash', ${Number(total||0).toFixed(2)}, 'cash')">CASH PAID</button>`,
-    `<button class="sell-pay-btn good" onclick="openScannerCheckout()">CARD / STRIPE</button>`,
-  ];
+    s.paypal.enabled ? [s.paypal.displayName || 'PayPal', paymentUrl('paypal', s.paypal.emailOrHandle, total)] : null,
+    s.venmo.enabled ? [s.venmo.displayName || 'Venmo', paymentUrl('venmo', s.venmo.handle, total)] : null,
+    s.cashApp.enabled ? [s.cashApp.displayName || 'Cash App', paymentUrl('cashapp', s.cashApp.cashtag, total)] : null,
+  ].filter(Boolean);
+  const base = [];
+  if(s.cash.enabled) base.push(`<button class="sell-pay-btn warn" onclick="recordCustomerDisplayPayment('Cash', ${Number(total||0).toFixed(2)}, 'cash')">CASH PAID</button>`);
+  if(s.card.enabled) base.push(`<button class="sell-pay-btn good" onclick="openScannerCheckout()">CARD / ${escHtml((s.card.provider || 'stripe').toUpperCase())}</button>`);
+  if(!base.length && !links.length) {
+    el.innerHTML = `<button class="sell-pay-btn" onclick="switchTab('backoffice')">SET PAYMENT METHODS</button>`;
+    return;
+  }
   el.innerHTML = base.join('') + links.map(([label,url]) => url
     ? `<div style="display:grid;gap:6px">
         <a class="sell-pay-btn good" href="${escHtml(url)}" target="_blank" rel="noopener">OPEN ${label.toUpperCase()}</a>
@@ -6503,13 +6765,13 @@ function renderCustomerPaymentLinks(total, el){
 
 function renderPaymentSetupStatus(el){
   if(!el) return;
-  const p = getVendorProfile();
-  const stripeConfigured = true; // Scanner has the publishable key and Worker endpoint handles the secret key.
+  const s = getPaymentSettings();
+  const stripeConfigured = !!(s.card.stripePublishableKey || true); // Worker handles the secret key; scanner has a fallback publishable key.
   const bits = [
-    'Stripe: ' + (stripeConfigured ? 'available in scanner checkout' : 'needs key'),
-    'Venmo: ' + (p.venmo ? p.venmo : 'not set'),
-    'PayPal: ' + (p.paypal ? p.paypal : 'not set'),
-    'Cash App: ' + (p.cashapp ? p.cashapp : 'not set'),
+    'Card: ' + (s.card.enabled ? (stripeConfigured ? s.card.provider : 'needs key') : 'off'),
+    'Venmo: ' + (s.venmo.enabled ? (s.venmo.handle || 'not set') : 'off'),
+    'PayPal: ' + (s.paypal.enabled ? (s.paypal.emailOrHandle || 'not set') : 'off'),
+    'Cash App: ' + (s.cashApp.enabled ? (s.cashApp.cashtag || 'not set') : 'off'),
   ];
   el.textContent = bits.join(' | ');
 }
@@ -6594,7 +6856,7 @@ async function recordCustomerDisplayPayment(method, total, tenderType){
   const log = safeLocalJson('pos_transactions', []);
   log.unshift(tx);
   localStorage.setItem('pos_transactions', JSON.stringify(log.slice(0,1000)));
-  if(method === 'Cash' && drawerState) {
+  if(method === 'Cash' && getPaymentSettings().cash.trackCashDrawer && drawerState) {
     drawerState.cashSales = Number(drawerState.cashSales || 0) + Number(total || 0);
     saveDrawer();
     renderDrawer();

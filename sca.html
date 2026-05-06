@@ -3,7 +3,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="version" content="2026.05.05.6">
+<meta name="version" content="2026.05.06.1">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
@@ -36,6 +36,11 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
 .hbtn.on{color:var(--red);border-color:var(--red);}
 .hbtn.flip-on{color:var(--gold);border-color:var(--gold);background:rgba(255,209,102,.1);}
 .hbtn.bulk-on{color:var(--purple);border-color:var(--purple);background:rgba(199,125,255,.1);}
+.auth-screen{position:fixed;inset:0;z-index:5000;background:#07080a;display:none;align-items:center;justify-content:center;padding:22px}
+.auth-screen.on{display:flex}
+.auth-card{width:min(420px,100%);background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:22px;box-shadow:0 24px 80px rgba(0,0,0,.55)}
+.auth-title{font-family:'Orbitron',monospace;font-size:18px;font-weight:900;color:var(--g);letter-spacing:2px;margin-bottom:8px}
+.auth-sub{font-family:monospace;font-size:10px;color:var(--dim);line-height:1.7;margin-bottom:14px}
 #scanbar{position:fixed;bottom:52px;left:0;right:0;z-index:30;padding:12px 12px 16px;background:linear-gradient(to top,rgba(0,0,0,.92) 60%,transparent);display:flex;flex-direction:column;align-items:center;gap:7px;}
 #scanbtn{background:var(--g);color:#000;border:none;padding:15px 52px;font-family:'Orbitron',monospace;font-weight:900;font-size:14px;letter-spacing:2px;cursor:pointer;box-shadow:0 0 32px rgba(0,255,179,.5);touch-action:manipulation;}
 #scanbtn.reading{background:var(--gold);}
@@ -321,6 +326,13 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
 </style>
 </head>
 <body>
+<div id="scanner-auth-screen" class="auth-screen">
+  <div class="auth-card">
+    <div class="auth-title">SCANNER LOGIN</div>
+    <div class="auth-sub">Log in on the dashboard first, or start a browser-local demo scanner session.</div>
+    <button class="hbtn" style="width:100%;padding:12px;color:var(--g)" onclick="scannerDemoLogin()">START DEMO SCANNER</button>
+  </div>
+</div>
 <!-- DEBUG PANEL — remove after fixing -->
 <div id="debug-panel" style="display:none;position:fixed;top:0;left:0;right:0;z-index:9999;background:#000;color:#0f0;font-family:monospace;font-size:10px;padding:8px;max-height:40vh;overflow-y:auto;border-bottom:2px solid #0f0;">
   <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
@@ -404,8 +416,9 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
   <div class="hbtns">
     <span id="show-badge" style="font-family:monospace;font-size:9px;color:rgba(255,209,102,.7);letter-spacing:1px"></span>
     <span id="offline-sync-badge" style="font-family:monospace;font-size:9px;color:rgba(255,255,255,.35);letter-spacing:1px">online</span>
-    <span id="app-version" style="font-family:monospace;font-size:9px;color:rgba(0,255,179,.55);letter-spacing:1px">v2026.05.05.6</span>
+    <span id="app-version" style="font-family:monospace;font-size:9px;color:rgba(0,255,179,.55);letter-spacing:1px">v2026.05.06.1</span>
     <span id="hstatus">READY</span>
+    <button class="hbtn" data-fullscreen-btn onclick="toggleAppFullscreen(document.documentElement)">FULL SCREEN</button>
     <button class="hbtn" id="flipbtn" onclick="toggleFlip()">FLIP</button>
     <button class="hbtn" id="bulkbtn" onclick="toggleBulk()">BULK</button>
     <button class="hbtn" id="autobitn" onclick="toggleAuto()">AUTO</button>
@@ -568,7 +581,7 @@ const STORE = {
   store_website:    'walkoffsc.com',
   worker_url:       'https://still-resonance-4f87.swarnerauto.workers.dev',
   stripe_pk:        'pk_live_51OhyA8LHo6HlAYnMuSJGtOtXDbU5I8NIvHqgSpoKfH8PoZ2pIHCFVyO1fkqlpcpTAQ5tgEMGbWYlA81hiwQ2HhB400tlnsrfsw',
-  venmo:            'Shawn-Warner-84',
+  venmo:            '',
   paypal:           '',
   cashapp:          '',
   tax_rate:         0,
@@ -589,12 +602,51 @@ const STORE = {
   wf_status_instock:'f3769d1e15fa0956f98984d6fa36437f',
   wf_status_sold:   'e6b42f14fcb99aa2168a5f5672226f68',
 };
-const APP_VERSION = '2026.05.05.6';
+const APP_VERSION = '2026.05.06.1';
 const WORKER_URL = STORE.worker_url;
+
+const WALKOFF_SCOPED_KEYS = new Set(['lba_inventory','lba_sales','pos_transactions','pos_cart_v2','pos_sync_queue','pos_drawer','pos_wantlist','pos_consign','pos_locations','vendor_profile_v1','store_payment_settings_v1','grade_submissions']);
+const WALKOFF_AUTH_SESSION_KEY = 'walkoff_auth_session_v1';
+const WALKOFF_ACTIVE_STORE_KEY = 'walkoff_active_store_id';
+function getScannerAuthSession(){ try { return JSON.parse(localStorage.getItem(WALKOFF_AUTH_SESSION_KEY) || 'null'); } catch(e) { return null; } }
+function getScannerActiveStoreId(){ return localStorage.getItem(WALKOFF_ACTIVE_STORE_KEY) || getScannerAuthSession()?.activeStoreId || 'walkoff-main'; }
+function scannerScopedKey(key){ return WALKOFF_SCOPED_KEYS.has(key) ? 'walkoff:' + getScannerActiveStoreId() + ':' + key : key; }
+(function installScannerScopedStorage(){
+  if(window.__walkoffScannerStorageShim) return;
+  window.__walkoffScannerStorageShim = true;
+  const rawGet = Storage.prototype.getItem, rawSet = Storage.prototype.setItem, rawRemove = Storage.prototype.removeItem;
+  Storage.prototype.getItem = function(key){
+    if(this === localStorage && WALKOFF_SCOPED_KEYS.has(key)) {
+      const scoped = scannerScopedKey(key);
+      const scopedVal = rawGet.call(this, scoped);
+      if(scopedVal !== null) return scopedVal;
+      const oldVal = rawGet.call(this, key);
+      if(oldVal !== null) rawSet.call(this, scoped, oldVal);
+      return oldVal;
+    }
+    return rawGet.call(this, key);
+  };
+  Storage.prototype.setItem = function(key, value){ return (this === localStorage && WALKOFF_SCOPED_KEYS.has(key)) ? rawSet.call(this, scannerScopedKey(key), value) : rawSet.call(this, key, value); };
+  Storage.prototype.removeItem = function(key){ return (this === localStorage && WALKOFF_SCOPED_KEYS.has(key)) ? rawRemove.call(this, scannerScopedKey(key)) : rawRemove.call(this, key); };
+})();
+function scannerDemoLogin(){
+  localStorage.setItem(WALKOFF_AUTH_SESSION_KEY, JSON.stringify({ user:{id:'demo-owner',email:'owner@walkoff.local',displayName:'Store Owner',role:'owner'}, stores:[{id:'walkoff-main',displayName:'Walk-Off Sports Cards'}], activeStoreId:'walkoff-main', demoMode:true, createdAt:new Date().toISOString() }));
+  localStorage.setItem(WALKOFF_ACTIVE_STORE_KEY, 'walkoff-main');
+  location.reload();
+}
+function ensureScannerAuth(){
+  const session = getScannerAuthSession();
+  if(!session) { document.getElementById('scanner-auth-screen')?.classList.add('on'); return false; }
+  localStorage.setItem(WALKOFF_ACTIVE_STORE_KEY, session.activeStoreId || 'walkoff-main');
+  document.getElementById('scanner-auth-screen')?.classList.remove('on');
+  STORE.store_id = getScannerActiveStoreId();
+  return true;
+}
 
 function applyVendorProfileToScanner(){
   try {
     const p = JSON.parse(localStorage.getItem('vendor_profile_v1') || '{}');
+    const pay = JSON.parse(localStorage.getItem('store_payment_settings_v1') || '{}');
     if(p.storeName) STORE.store_name = p.storeName;
     if(p.location) STORE.store_location = p.location;
     if(p.website) STORE.store_website = p.website;
@@ -602,6 +654,11 @@ function applyVendorProfileToScanner(){
     if(p.venmo !== undefined) STORE.venmo = p.venmo;
     if(p.paypal !== undefined) STORE.paypal = p.paypal;
     if(p.cashapp !== undefined) STORE.cashapp = p.cashapp;
+    if(pay.venmo?.handle !== undefined) STORE.venmo = pay.venmo.handle;
+    if(pay.paypal?.emailOrHandle !== undefined) STORE.paypal = pay.paypal.emailOrHandle;
+    if(pay.cashApp?.cashtag !== undefined) STORE.cashapp = pay.cashApp.cashtag;
+    if(pay.card?.stripePublishableKey) STORE.stripe_pk = pay.card.stripePublishableKey;
+    if(Number.isFinite(Number(pay.tax?.defaultRate))) STORE.tax_rate = Number(pay.tax.defaultRate);
     document.querySelectorAll('.store-name-display').forEach(el => el.textContent = STORE.store_name.toUpperCase());
     document.querySelectorAll('.store-loc-display').forEach(el => el.textContent = STORE.store_location);
     const site = document.getElementById('receipt-website');
@@ -7052,7 +7109,38 @@ window.applyVariant = function(v) {
 
 // ════════════════════════════════════════════════════════════════
 // ═══ LAUNCH ═════════════════════════════════════════════════════
+function getFullscreenElement(){
+  return document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement || null;
+}
+async function requestAppFullscreen(targetElement){
+  const target = targetElement || document.documentElement;
+  const fn = target.requestFullscreen || target.webkitRequestFullscreen || target.mozRequestFullScreen || target.msRequestFullscreen;
+  if(!fn) throw new Error('Fullscreen is not supported');
+  await fn.call(target, { navigationUI:'hide' });
+  syncFullscreenButtons();
+}
+async function exitAppFullscreen(){
+  const fn = document.exitFullscreen || document.webkitExitFullscreen || document.mozCancelFullScreen || document.msExitFullscreen;
+  if(fn) await fn.call(document);
+  syncFullscreenButtons();
+}
+async function toggleAppFullscreen(targetElement){
+  try {
+    if(getFullscreenElement()) await exitAppFullscreen();
+    else await requestAppFullscreen(targetElement || document.documentElement);
+  } catch(e) {
+    toast('Fullscreen failed. Tap again or use browser menu fullscreen.');
+    syncFullscreenButtons();
+  }
+}
+function syncFullscreenButtons(){
+  const full = !!getFullscreenElement();
+  document.querySelectorAll('[data-fullscreen-btn]').forEach(btn => { btn.textContent = full ? 'EXIT FULL SCREEN' : 'FULL SCREEN'; btn.disabled = false; });
+}
+['fullscreenchange','webkitfullscreenchange','mozfullscreenchange','MSFullscreenChange'].forEach(evt => document.addEventListener(evt, syncFullscreenButtons));
+
 window.addEventListener('load', function(){
+  if(!ensureScannerAuth()) return;
   startScanner();
   injectNavButtons();
   if(cart.length > 0){
