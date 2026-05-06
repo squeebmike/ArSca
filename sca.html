@@ -3670,7 +3670,7 @@ function addBubble(item,stock,imgUrl,apiPrintings,bestMatchIdx){
       ${ct==='tcg'?'' : ''}
       ${ct==='comic'?`<button class="bact" style="background:rgba(199,125,255,.06);border:1px solid rgba(199,125,255,.2);color:var(--purple);font-size:9px" onclick="scanBackForBubble('${id}')">⟳ SCAN BACK</button>`:''}
       ${ct==='comic'?`<button class="bact" style="background:rgba(199,125,255,.06);border:1px solid rgba(199,125,255,.2);color:var(--purple);font-size:9px" onclick="openVariantSearch('${id}')">Browse Covers</button>`:''}
-      <button class="bact" style="background:rgba(0,255,179,.1);border:1px solid rgba(0,255,179,.3);color:var(--g);font-weight:700" onclick="addBubbleToCart('${id}')">🛒 Add to Cart</button>
+      <button class="bact" style="background:rgba(0,255,179,.1);border:1px solid rgba(0,255,179,.3);color:var(--g);font-weight:700" onclick="addBubbleToCart('${id}')">Send to Cart</button>
       <button class="bact" style="background:rgba(72,202,228,.08);border:1px solid rgba(72,202,228,.25);color:var(--blue);font-weight:700" onclick="sendBubbleToTablet('${id}')">Send to Tablet</button>
       <button class="bact" style="background:rgba(255,209,102,.08);border:1px solid rgba(255,209,102,.22);color:#ffd166;font-weight:700" onclick="openManualRefine('${id}')">Edit / Retry</button>
       <button class="bact a-add" onclick="showAddForm('${id}')">+ Add to Inventory</button>
@@ -5299,6 +5299,8 @@ setInterval(flushSyncQueue, 30000);
 
 let cart = [];
 let cartDiscount = 0;
+const SCANNER_CART_ROUTE = /^(#checkout|#cart|#pos)$/i.test(window.location.hash || '');
+const SCANNER_CART_NAV_ENABLED = SCANNER_CART_ROUTE || localStorage.getItem('scanner_show_pos_cart') === '1';
 // Restore cart immediately on script load
 loadCartState();
 
@@ -5308,6 +5310,8 @@ loadCartState();
 function injectNavButtons(){
   const nav = document.getElementById('lba-nav');
   if(!nav) return;
+  if(document.getElementById('nav-cart-btn')) return;
+  if(!SCANNER_CART_NAV_ENABLED) return;
 
   const cartBtn = document.createElement('a');
   cartBtn.className = 'lba-nav-btn';
@@ -5323,7 +5327,6 @@ function injectNavButtons(){
     nav.insertBefore(cartBtn, dashBtn);
   } else {
     nav.appendChild(cartBtn);
-    nav.appendChild(priceBtn);
   }
 }  // end injectNavButtons
 
@@ -5334,6 +5337,20 @@ function toggleCart(){
   const el = document.getElementById('pos-cart');
   el.classList.toggle('on');
   renderCart();
+}
+
+function handleScannerCartRoute(){
+  if(!SCANNER_CART_ROUTE) return;
+  setTimeout(function(){
+    renderCart();
+    if(window.location.hash === '#checkout') {
+      if(cart.length) openCheckout();
+      else toast('No cart found yet. Open Sell on the dashboard, then tap Card / Stripe.');
+    } else {
+      const cartEl = document.getElementById('pos-cart');
+      if(cartEl) cartEl.classList.add('on');
+    }
+  }, 1100);
 }
 
 function addToCart(item, imgUrl, price, opts){
@@ -5356,10 +5373,10 @@ function addToCart(item, imgUrl, price, opts){
   saveCartState();
   updateCartBadge();
   renderCart();
-  toast('🛒 Added: ' + cartItem.name);
-  // Auto-show cart briefly so user knows where to find it
+  toast(SCANNER_CART_NAV_ENABLED ? 'Cart updated: ' + cartItem.name : 'Sent to tablet cart: ' + cartItem.name);
+  // Phone scanner stays focused on scanning. Cart only opens in explicit checkout/cart mode.
   const cartEl = document.getElementById('pos-cart');
-  if(cartEl && !cartEl.classList.contains('on')) {
+  if(SCANNER_CART_NAV_ENABLED && cartEl && !cartEl.classList.contains('on')) {
     cartEl.classList.add('on');
     renderCart();
   }
@@ -7047,6 +7064,7 @@ window.addEventListener('load', function(){
   updateShowBadge();
   updateSyncQueueBadge();
   flushSyncQueue();
+  handleScannerCartRoute();
 });
 </script>
 
