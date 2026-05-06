@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.05.05.4">
+<meta name="version" content="2026.05.05.5">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -113,6 +113,8 @@ header{position:sticky;top:0;z-index:100;background:rgba(7,8,10,.96);backdrop-fi
 .sell-pay-btn{min-height:52px;border-radius:8px;border:1px solid var(--border);background:var(--surf2);color:var(--text);font-family:'Orbitron',monospace;font-size:10px;letter-spacing:1px;cursor:pointer;text-decoration:none;display:flex;align-items:center;justify-content:center;text-align:center;padding:8px;}
 .sell-pay-btn.good{border-color:rgba(0,255,179,.3);color:var(--g);background:rgba(0,255,179,.07);}
 .sell-pay-btn.warn{border-color:rgba(255,209,102,.3);color:var(--gold);background:rgba(255,209,102,.07);}
+.sell-pay-btn.danger{border-color:rgba(255,77,109,.25);color:var(--red);background:rgba(255,77,109,.06);}
+.sell-payment-note{font-family:monospace,monospace;font-size:9px;color:var(--dim);line-height:1.55;text-align:center;margin-top:10px;}
 .item-workspace-grid{display:grid;grid-template-columns:180px 1fr;gap:14px;}
 .item-photo{width:180px;aspect-ratio:3/4;border-radius:8px;border:1px solid var(--border);background:var(--surf2);object-fit:cover;}
 .item-metric{background:var(--surf2);border:1px solid var(--border);border-radius:8px;padding:10px;}
@@ -268,7 +270,7 @@ tr.sold:hover td{opacity:.7;}
 
 <header>
   <div class="hdr">
-    <div class="logo">WALK-OFF <span>DASHBOARD · v2026.05.05.4</span></div>
+    <div class="logo">WALK-OFF <span>DASHBOARD · v2026.05.05.5</span></div>
     <div class="hdr-right">
       <span id="sync-status">Loading...</span>
       <button class="hbtn" onclick="loadInventory()">↻ REFRESH</button>
@@ -1065,7 +1067,7 @@ tr.sold:hover td{opacity:.7;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.05.05.4';
+const APP_VERSION = '2026.05.05.5';
 const STORE_ID = 'walkoff-main';
 const REGISTER_ID = 'front';
 const WF_PRODUCTS = '65eb45a28ff6bf3fe4f17b14';
@@ -6235,10 +6237,12 @@ function generateEOD(){
 
   const totalRevenue = dayTx.reduce((a,t)=>a+t.total,0);
   const totalItems = dayTx.reduce((a,t)=>a+t.items.length,0);
-  const cashTotal = dayTx.filter(t=>t.method==='Cash').reduce((a,t)=>a+t.total,0);
-  const cardTotal = dayTx.filter(t=>t.method==='Card (Stripe)').reduce((a,t)=>a+t.total,0);
-  const venmoTotal = dayTx.filter(t=>t.method?.includes('Venmo')||t.method?.includes('venmo')).reduce((a,t)=>a+t.total,0);
-  const otherTotal = totalRevenue - cashTotal - cardTotal - venmoTotal;
+  const cashTotal = dayTx.filter(t=>/^cash$/i.test(t.method || '') || t.tenderType === 'cash').reduce((a,t)=>a+t.total,0);
+  const cardTotal = dayTx.filter(t=>/card|stripe/i.test(t.method || '') || t.tenderType === 'card').reduce((a,t)=>a+t.total,0);
+  const venmoTotal = dayTx.filter(t=>/venmo/i.test(t.method || '')).reduce((a,t)=>a+t.total,0);
+  const paypalTotal = dayTx.filter(t=>/paypal/i.test(t.method || '')).reduce((a,t)=>a+t.total,0);
+  const cashappTotal = dayTx.filter(t=>/cash app|cashapp/i.test(t.method || '')).reduce((a,t)=>a+t.total,0);
+  const otherTotal = Math.max(0, totalRevenue - cashTotal - cardTotal - venmoTotal - paypalTotal - cashappTotal);
   const totalProfit = daySold.reduce((a,i)=>a+(i.profit||0),0);
   const buyMarketTotal = dayBuys.reduce((a,b)=>a+Number(b.marketTotal||0),0);
   const buyPaidTotal = dayBuys.reduce((a,b)=>a+Number(b.offerTotal||0),0);
@@ -6310,6 +6314,8 @@ function generateEOD(){
         ${cashTotal>0?`<div class="eod-row"><span class="eod-label">💵 Cash</span><span class="eod-val">$${cashTotal.toFixed(2)}</span></div>`:''}
         ${cardTotal>0?`<div class="eod-row"><span class="eod-label">💳 Card</span><span class="eod-val">$${cardTotal.toFixed(2)}</span></div>`:''}
         ${venmoTotal>0?`<div class="eod-row"><span class="eod-label">📱 Venmo</span><span class="eod-val">$${venmoTotal.toFixed(2)}</span></div>`:''}
+        ${paypalTotal>0?`<div class="eod-row"><span class="eod-label">PayPal</span><span class="eod-val">$${paypalTotal.toFixed(2)}</span></div>`:''}
+        ${cashappTotal>0?`<div class="eod-row"><span class="eod-label">Cash App</span><span class="eod-val">$${cashappTotal.toFixed(2)}</span></div>`:''}
         ${otherTotal>0?`<div class="eod-row"><span class="eod-label">Other</span><span class="eod-val">$${otherTotal.toFixed(2)}</span></div>`:''}
       </div>
 
@@ -6475,11 +6481,14 @@ function renderCustomerPaymentLinks(total, el){
     ['Cash App', paymentUrl('cashapp', p.cashapp, total)],
   ];
   const base = [
-    `<button class="sell-pay-btn warn" onclick="recordCustomerDisplayPayment('Cash', ${Number(total||0).toFixed(2)})">CASH</button>`,
+    `<button class="sell-pay-btn warn" onclick="recordCustomerDisplayPayment('Cash', ${Number(total||0).toFixed(2)}, 'cash')">CASH PAID</button>`,
     `<button class="sell-pay-btn good" onclick="openScannerCheckout()">CARD / STRIPE</button>`,
   ];
   el.innerHTML = base.join('') + links.map(([label,url]) => url
-    ? `<a class="sell-pay-btn good" href="${escHtml(url)}" target="_blank" rel="noopener">${label}</a>`
+    ? `<div style="display:grid;gap:6px">
+        <a class="sell-pay-btn good" href="${escHtml(url)}" target="_blank" rel="noopener">OPEN ${label.toUpperCase()}</a>
+        <button class="sell-pay-btn warn" onclick="recordCustomerDisplayPayment('${label}', ${Number(total||0).toFixed(2)}, 'manual_external')">MARK ${label.toUpperCase()} PAID</button>
+      </div>`
     : `<button class="sell-pay-btn" onclick="switchTab('backoffice')">SET ${label.toUpperCase()}</button>`
   ).join('');
 }
@@ -6501,19 +6510,26 @@ function openScannerCheckout(){
   window.location.href = 'sca.html#checkout';
 }
 
-function recordCustomerDisplayPayment(method, total){
-  const saved = localStorage.getItem('pos_cart_v2');
-  const cart = saved ? JSON.parse(saved) : { items:[] };
+async function recordCustomerDisplayPayment(method, total, tenderType){
+  let cart = await fetchCartFromWorker();
+  if(!cart) {
+    const saved = localStorage.getItem('pos_cart_v2');
+    cart = saved ? JSON.parse(saved) : { items:[] };
+  }
   const items = cart.items || [];
   if(!items.length || !total){ toast_dash('No active cart to record'); return; }
   if(!confirm('Record ' + method + ' payment for $' + Number(total).toFixed(2) + ' and clear the cart?')) return;
+  const paidAt = new Date().toISOString();
   const tx = {
     id:'tx_dash_'+Date.now(),
-    date:new Date().toISOString(),
+    date:paidAt,
     method,
+    tenderType:tenderType || (method === 'Cash' ? 'cash' : 'manual_external'),
+    paymentStatus:'paid',
     total:Number(total || 0),
     items:items.map(i => ({ name:i.name, price:Number(i.price||0), cost:Number(i.cost||0), shopId:i.shopId||i.wfId||'' })),
     source:'dashboard-cart',
+    show:getShowMode(),
     appVersion:APP_VERSION,
   };
   const log = safeLocalJson('pos_transactions', []);
@@ -6524,11 +6540,49 @@ function recordCustomerDisplayPayment(method, total){
     saveDrawer();
     renderDrawer();
   }
-  const empty = { items:[], discount:0, savedAt:new Date().toISOString(), storeId:STORE_ID, registerId:REGISTER_ID, appVersion:APP_VERSION };
+  await markCartItemsSoldFromPayment(items, method, paidAt);
+  const empty = { items:[], discount:0, savedAt:paidAt, clearedAt:paidAt, lastTxId:tx.id, storeId:STORE_ID, registerId:REGISTER_ID, appVersion:APP_VERSION };
   localStorage.setItem('pos_cart_v2', JSON.stringify(empty));
   postCartToWorker(empty);
   renderCustomerDisplay();
   toast_dash(method + ' payment recorded');
+}
+
+async function markCartItemsSoldFromPayment(items, method, soldAt){
+  const tracked = (items || []).filter(i => i.shopId || i.wfId);
+  if(!tracked.length) return;
+  for(const cartItem of tracked) {
+    const id = cartItem.shopId || cartItem.wfId;
+    const inv = all.find(i => i.id === id);
+    const salePrice = Number(cartItem.price || 0);
+    const fieldData = {
+      'sold-out':true,
+      'inventory-count':0,
+      status:STATUS_SOLD,
+      'sale-price':salePrice,
+      'profit':salePrice - Number(cartItem.cost || inv?.cost || 0),
+      'sale-channel':method,
+      'date-sold':soldAt
+    };
+    if(inv) {
+      inv.status='sold';
+      inv.lifecycle='sold';
+      inv.salePrice=salePrice;
+      inv.profit=salePrice - Number(inv.cost || cartItem.cost || 0);
+      inv.channel=method;
+      inv.soldAt=soldAt;
+      setLifecycle(inv.id, 'sold', true);
+    }
+    try {
+      const res = await wfPatch('/collections/'+WF_PRODUCTS+'/items/'+id, { fieldData });
+      if(!res.ok) throw new Error('Sold sync '+res.status+': '+(await res.text()).slice(0,160));
+    } catch(e) {
+      enqueueOrReplaceSync('inventory-sold', id, 'Mark sold in Webflow: ' + (cartItem.name || 'cart item'), { id, fieldData }, e.message || 'Sold sync failed');
+    }
+  }
+  soldData = all.filter(i=>i.status==='sold');
+  renderAll();
+  logOpsEvent('cart_payment', 'Recorded cart payment and marked inventory sold', { method, count:tracked.length });
 }
 
 // Auto-refresh customer display every 3 seconds

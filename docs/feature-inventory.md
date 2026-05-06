@@ -1,6 +1,6 @@
 # Walk-Off Dealer OS Feature Inventory
 
-Version audited: `2026.05.05.4`
+Version audited: `2026.05.05.5`
 
 This file is the safety map for the progressive UX refactor. Do not remove a feature unless it has a new home and is verified reachable.
 
