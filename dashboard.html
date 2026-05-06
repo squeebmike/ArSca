@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.05.05.5">
+<meta name="version" content="2026.05.05.6">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -104,6 +104,8 @@ header{position:sticky;top:0;z-index:100;background:rgba(7,8,10,.96);backdrop-fi
 .cd-item-name{font-family:'Orbitron',monospace;font-size:13px;font-weight:800;color:var(--text);line-height:1.25;}
 .cd-item-sub{font-family:monospace,monospace;font-size:9px;color:var(--dim);margin-top:4px;}
 .cd-item-price{font-family:'Orbitron',monospace;font-size:18px;font-weight:900;color:var(--gold);white-space:nowrap;}
+.cd-remove{width:34px;height:34px;border-radius:8px;border:1px solid rgba(255,77,109,.25);background:rgba(255,77,109,.07);color:var(--red);font-family:'Orbitron',monospace;font-size:13px;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+.cd-remove:hover{background:rgba(255,77,109,.14);border-color:rgba(255,77,109,.45);}
 .sell-shell{max-width:980px;margin:0 auto;padding:0 20px;}
 .sell-cart-card{background:var(--surf);border:1px solid var(--border);border-radius:12px;padding:16px;box-shadow:0 18px 50px rgba(0,0,0,.28);}
 .sell-total-row{display:flex;justify-content:space-between;align-items:center;font-family:monospace,monospace;font-size:11px;color:var(--dim);padding:6px 0;border-bottom:1px solid rgba(255,255,255,.05);}
@@ -270,7 +272,7 @@ tr.sold:hover td{opacity:.7;}
 
 <header>
   <div class="hdr">
-    <div class="logo">WALK-OFF <span>DASHBOARD · v2026.05.05.5</span></div>
+    <div class="logo">WALK-OFF <span>DASHBOARD · v2026.05.05.6</span></div>
     <div class="hdr-right">
       <span id="sync-status">Loading...</span>
       <button class="hbtn" onclick="loadInventory()">↻ REFRESH</button>
@@ -731,7 +733,7 @@ tr.sold:hover td{opacity:.7;}
 <div id="tab-display" class="tab-panel">
   <div class="sec">CART / CUSTOMER DISPLAY</div>
   <div class="sell-shell" style="margin-bottom:14px">
-    <div style="background:var(--surf);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:14px">
+    <div id="cd-help-panel" style="background:var(--surf);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:14px">
       <div class="ph">LIVE CART + CUSTOMER DISPLAY</div>
       <div style="font-family:monospace,monospace;font-size:10px;color:var(--dim);line-height:1.8">
         Open this tab on a tablet or second screen facing the customer. It auto-refreshes from your cart every 3 seconds.
@@ -753,6 +755,7 @@ tr.sold:hover td{opacity:.7;}
           <div id="cd-total-breakdown"></div>
           <div class="sell-total-row big"><span>TOTAL</span><span id="cd-total">$0.00</span></div>
           <div style="font-family:monospace,monospace;font-size:10px;color:var(--dim);margin-top:6px;text-align:center" id="cd-items-count">No items</div>
+          <button id="cd-clear-cart" class="sell-pay-btn danger" style="width:100%;margin-top:10px;display:none" onclick="clearCustomerDisplayCart()">CLEAR CART</button>
           <div id="cd-pay-links" class="sell-payment-grid"></div>
           <div id="cd-payment-setup" style="font-family:monospace,monospace;font-size:9px;color:var(--dim);margin-top:10px;line-height:1.5;text-align:center"></div>
         </div>
@@ -1067,7 +1070,7 @@ tr.sold:hover td{opacity:.7;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.05.05.5';
+const APP_VERSION = '2026.05.05.6';
 const STORE_ID = 'walkoff-main';
 const REGISTER_ID = 'front';
 const WF_PRODUCTS = '65eb45a28ff6bf3fe4f17b14';
@@ -6430,6 +6433,10 @@ async function renderCustomerDisplay(){
   const payEl = document.getElementById('cd-pay-links');
   const breakdownEl = document.getElementById('cd-total-breakdown');
   const setupEl = document.getElementById('cd-payment-setup');
+  const helpEl = document.getElementById('cd-help-panel');
+  const clearEl = document.getElementById('cd-clear-cart');
+  if(helpEl) helpEl.style.display = items.length ? 'none' : '';
+  if(clearEl) clearEl.style.display = items.length ? 'flex' : 'none';
   renderCustomerPaymentLinks(total, payEl);
   renderPaymentSetupStatus(setupEl);
 
@@ -6441,13 +6448,14 @@ async function renderCustomerDisplay(){
     return;
   }
 
-  itemsEl.innerHTML = items.map(i=>`<div class="cd-item">
+  itemsEl.innerHTML = items.map((i, idx)=>`<div class="cd-item">
     ${i.img ? `<img src="${escHtml(i.img)}" style="width:52px;height:64px;object-fit:contain;background:#050507;border:1px solid var(--border);border-radius:6px">` : ''}
     <div style="flex:1">
       <div class="cd-item-name">${escHtml(i.name||'Item')}</div>
       <div class="cd-item-sub">${escHtml(i.sub||'')}</div>
     </div>
     <div class="cd-item-price">$${Number(i.price||0).toFixed(2)}</div>
+    <button class="cd-remove" title="Remove from cart" onclick="removeCustomerDisplayCartItem('${escHtml(i.id || '')}', ${idx})">X</button>
   </div>`).join('');
 
   totalEl.textContent = '$'+total.toFixed(2);
@@ -6510,12 +6518,63 @@ function openScannerCheckout(){
   window.location.href = 'sca.html#checkout';
 }
 
-async function recordCustomerDisplayPayment(method, total, tenderType){
+async function getActiveCartData(){
   let cart = await fetchCartFromWorker();
   if(!cart) {
     const saved = localStorage.getItem('pos_cart_v2');
-    cart = saved ? JSON.parse(saved) : { items:[] };
+    cart = saved ? JSON.parse(saved) : { items:[], discount:0 };
   }
+  cart.items = Array.isArray(cart.items) ? cart.items : [];
+  return cart;
+}
+
+function normalizeCartTotals(cartData){
+  cartData.items = Array.isArray(cartData.items) ? cartData.items : [];
+  const sub = cartData.items.reduce((a,i)=>a+Number(i.price||0),0);
+  const discount = Number(cartData.discount || 0);
+  const discountAmount = sub * (discount / 100);
+  const tax = Number(cartData.tax || 0);
+  cartData.subtotal = sub;
+  cartData.discountAmount = discountAmount;
+  cartData.total = Math.max(0, sub - discountAmount + tax);
+  return cartData;
+}
+
+async function saveActiveCartData(cartData){
+  normalizeCartTotals(cartData);
+  cartData.savedAt = new Date().toISOString();
+  cartData.storeId = STORE_ID;
+  cartData.registerId = REGISTER_ID;
+  cartData.appVersion = APP_VERSION;
+  localStorage.setItem('pos_cart_v2', JSON.stringify(cartData));
+  await postCartToWorker(cartData);
+  await renderCustomerDisplay();
+}
+
+async function removeCustomerDisplayCartItem(itemId, fallbackIndex){
+  const cart = await getActiveCartData();
+  const before = cart.items.length;
+  const id = String(itemId || '');
+  if(id) cart.items = cart.items.filter(i => String(i.id || '') !== id);
+  if(cart.items.length === before && fallbackIndex >= 0) cart.items.splice(fallbackIndex, 1);
+  await saveActiveCartData(cart);
+  toast_dash('Removed from cart');
+}
+
+async function clearCustomerDisplayCart(){
+  const cart = await getActiveCartData();
+  if(!cart.items.length) return;
+  if(!confirm('Clear the current cart?')) return;
+  cart.items = [];
+  cart.discount = 0;
+  cart.total = 0;
+  cart.clearedAt = new Date().toISOString();
+  await saveActiveCartData(cart);
+  toast_dash('Cart cleared');
+}
+
+async function recordCustomerDisplayPayment(method, total, tenderType){
+  let cart = await getActiveCartData();
   const items = cart.items || [];
   if(!items.length || !total){ toast_dash('No active cart to record'); return; }
   if(!confirm('Record ' + method + ' payment for $' + Number(total).toFixed(2) + ' and clear the cart?')) return;
