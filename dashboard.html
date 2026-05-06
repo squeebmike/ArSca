@@ -1102,7 +1102,7 @@ tr.sold:hover td{opacity:.7;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.05.06.6';
+const APP_VERSION = '2026.05.06.7';
 const SUPABASE_URL = 'https://vroknjrxubsqyexngwus.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_wbpX2nL8l-4NbXtZNG_bjA_nabSYaJ5';
 const AUTH_REDIRECT_URL = 'https://squeebmike.github.io/ArSca/dashboard.html';
@@ -1192,14 +1192,14 @@ function showAuthMode(mode, message){
   const storePick = document.getElementById('auth-store-wrap');
   const primary = document.getElementById('auth-primary-btn');
   const status = document.getElementById('auth-status');
-  if(title) title.textContent = mode === 'signup' ? 'CREATE ACCOUNT' : mode === 'reset' ? 'RESET PASSWORD' : mode === 'create-store' ? 'CREATE STORE' : mode === 'picker' ? 'CHOOSE STORE' : 'WALK-OFF LOGIN';
-  if(sub) sub.textContent = mode === 'create-store' ? 'You are logged in. Create a store workspace to keep your data separate.' : mode === 'picker' ? 'Choose which store workspace to open.' : 'Real Supabase login. Store data is isolated by membership.';
+  if(title) title.textContent = mode === 'signup' ? 'CREATE ACCOUNT' : mode === 'reset' ? 'RESET PASSWORD' : mode === 'create-store' ? 'CREATE STORE' : mode === 'invite' ? 'ACCEPT INVITE' : mode === 'picker' ? 'CHOOSE STORE' : 'WALK-OFF LOGIN';
+  if(sub) sub.textContent = mode === 'create-store' ? 'You are logged in. Create a store workspace to keep your data separate.' : mode === 'invite' ? 'You have a pending store invite. Accept it to join that workspace.' : mode === 'picker' ? 'Choose which store workspace to open.' : 'Real Supabase login. Store data is isolated by membership.';
   if(pass) pass.style.display = mode === 'reset' || mode === 'create-store' || mode === 'picker' ? 'none' : '';
   if(storeName) storeName.style.display = mode === 'create-store' ? '' : 'none';
-  if(storePick) storePick.style.display = mode === 'picker' ? '' : 'none';
+  if(storePick) storePick.style.display = mode === 'picker' || mode === 'invite' ? '' : 'none';
   if(primary) {
-    primary.textContent = mode === 'signup' ? 'SIGN UP' : mode === 'reset' ? 'SEND RESET' : mode === 'create-store' ? 'CREATE STORE' : mode === 'picker' ? 'OPEN STORE' : 'LOGIN';
-    primary.onclick = mode === 'signup' ? signupSupabaseAccount : mode === 'reset' ? resetSupabasePassword : mode === 'create-store' ? createSupabaseStore : mode === 'picker' ? selectPickedStore : loginSupabaseAccount;
+    primary.textContent = mode === 'signup' ? 'SIGN UP' : mode === 'reset' ? 'SEND RESET' : mode === 'create-store' ? 'CREATE STORE' : mode === 'invite' ? 'ACCEPT INVITE' : mode === 'picker' ? 'OPEN STORE' : 'LOGIN';
+    primary.onclick = mode === 'signup' ? signupSupabaseAccount : mode === 'reset' ? resetSupabasePassword : mode === 'create-store' ? createSupabaseStore : mode === 'invite' ? acceptPickedInvite : mode === 'picker' ? selectPickedStore : loginSupabaseAccount;
   }
   if(status) status.textContent = message || 'Supabase connected. Local demo remains available for development.';
   document.getElementById('auth-screen')?.classList.add('on');
@@ -1221,7 +1221,16 @@ async function ensureAuthReady(){
   if(!data?.session?.user) { showAuthMode('login'); return false; }
   const user = data.session.user;
   const stores = await loadSupabaseStoresForUser(user);
-  if(!stores.length) { showAuthMode('create-store', 'Create your store. Testers get their own empty store by default.'); return false; }
+  if(!stores.length) {
+    const invites = await loadPendingInvitesForUser(user);
+    if(invites.length) {
+      renderInvitePickerOptions(invites);
+      showAuthMode('invite', 'Accept an invite, or create your own test store.');
+      return false;
+    }
+    showAuthMode('create-store', 'Create your store. Testers get their own empty store by default.');
+    return false;
+  }
   const preferred = localStorage.getItem(WALKOFF_ACTIVE_STORE_KEY);
   if(stores.length > 1 && !stores.some(s => s.id === preferred)) {
     renderStorePickerOptions(stores);
@@ -1238,6 +1247,10 @@ async function ensureAuthReady(){
     createdAt:new Date().toISOString()
   }));
   localStorage.setItem(WALKOFF_ACTIVE_STORE_KEY, activeStoreId);
+  if((member?.role || '').toLowerCase() === 'scanner_only') {
+    window.location.replace('sca.html');
+    return false;
+  }
   document.getElementById('auth-screen')?.classList.remove('on');
   renderAccountHeader();
   return true;
@@ -1259,6 +1272,35 @@ async function loadSupabaseStoresForUser(user){
     .eq('active', true);
   if(error) { showAuthMode('login', 'Store lookup failed: ' + error.message); return []; }
   return (data || []).map(row => ({ ...(row.stores || {}), role:row.role })).filter(s => s.id && s.status !== 'disabled');
+}
+
+async function loadPendingInvitesForUser(user){
+  const sb = getSupabaseClient();
+  if(!sb || !user?.email) return [];
+  const { data, error } = await sb
+    .from('store_invites')
+    .select('id,store_id,email,role,expires_at,accepted_at')
+    .eq('email', String(user.email).toLowerCase())
+    .is('accepted_at', null)
+    .gt('expires_at', new Date().toISOString());
+  if(error) { console.warn('Invite lookup failed:', error.message); return []; }
+  return data || [];
+}
+
+function renderInvitePickerOptions(invites){
+  const sel = document.getElementById('auth-store');
+  if(!sel) return;
+  sel.innerHTML = (invites || []).map(i => `<option value="${i.store_id}">${escHtml(i.role || 'employee')} invite · ${escHtml(String(i.store_id).slice(0,8))}</option>`).join('');
+}
+
+async function acceptPickedInvite(){
+  const sb = getSupabaseClient();
+  const storeId = document.getElementById('auth-store')?.value;
+  if(!sb || !storeId) { showAuthMode('invite', 'Choose an invite first.'); return; }
+  const { error } = await sb.rpc('accept_store_invite', { target_store_id:storeId });
+  if(error) { showAuthMode('invite', error.message); return; }
+  localStorage.setItem(WALKOFF_ACTIVE_STORE_KEY, storeId);
+  location.reload();
 }
 
 async function loadStoreSettingsFromSupabase(){
@@ -1660,6 +1702,7 @@ function organizeRegisterLayout(){
   moveNode('backoffice-ops-panel', backoffice);
   ensureVendorProfilePanel(backoffice);
   ensurePaymentSettingsPanel(backoffice);
+  ensureStoreMembersPanel(backoffice);
   ensureVendorConfigPanel(backoffice);
   ensureLegacyToolsPanel(backoffice);
   ensureSpreadsheetPanel(backoffice);
@@ -1938,6 +1981,147 @@ function savePaymentSettingsFromForm(){
   };
   savePaymentSettings(settings);
   toast_dash('Payment settings saved');
+}
+
+function ensureStoreMembersPanel(backoffice){
+  if(document.getElementById('store-members-panel')) return;
+  const panel = document.createElement('div');
+  panel.className = 'panel';
+  panel.id = 'store-members-panel';
+  panel.style.marginBottom = '14px';
+  panel.innerHTML = '<div class="ph">STORE MEMBERS / INVITES <span style="font-size:9px;color:var(--dim)">roles, testers, scanner accounts</span></div><div id="store-members-body"></div>';
+  backoffice.prepend(panel);
+  renderStoreMembersPanel();
+}
+
+async function loadStoreMembers(){
+  const sb = getSupabaseClient();
+  const session = getAuthSession();
+  const storeId = getActiveStoreId();
+  if(!sb || !session?.supabase || !storeId) {
+    return [{ id:'demo-member', user_id:session?.user?.id || 'demo-owner', role:session?.user?.role || 'owner', active:true, created_at:session?.createdAt || new Date().toISOString(), displayName:session?.user?.displayName || 'Demo user', email:session?.user?.email || 'owner@walkoff.local' }];
+  }
+  const { data, error } = await sb
+    .from('store_members')
+    .select('id,user_id,role,active,created_at')
+    .eq('store_id', storeId)
+    .order('created_at', { ascending:true });
+  if(error) { toast_dash('Members load failed: ' + error.message); return []; }
+  return data || [];
+}
+
+async function loadStoreInvites(){
+  const sb = getSupabaseClient();
+  const session = getAuthSession();
+  const storeId = getActiveStoreId();
+  if(!sb || !session?.supabase || !storeId || !requireOwnerAdmin()) return [];
+  const { data, error } = await sb
+    .from('store_invites')
+    .select('id,email,role,expires_at,accepted_at,created_at')
+    .eq('store_id', storeId)
+    .order('created_at', { ascending:false });
+  if(error) { console.warn('Invites load failed:', error.message); return []; }
+  return data || [];
+}
+
+async function renderStoreMembersPanel(){
+  const body = document.getElementById('store-members-body');
+  if(!body) return;
+  const canEdit = requireOwnerAdmin();
+  const members = await loadStoreMembers();
+  const invites = await loadStoreInvites();
+  const roles = ['scanner_only','employee','manager','admin'];
+  body.innerHTML = `
+    <div style="font-family:monospace,monospace;font-size:10px;color:var(--dim);line-height:1.55;margin-bottom:10px">
+      Add testers or staff without sharing your login. Scanner-only users get sent to the phone scanner instead of the admin dashboard.
+    </div>
+    <div class="item-metric" style="margin-bottom:10px;display:${canEdit?'block':'none'}">
+      <div style="display:grid;grid-template-columns:2fr 1fr auto;gap:8px;align-items:end">
+        <label style="font-family:monospace;font-size:9px;color:var(--dim)">EMAIL<input id="member-invite-email" class="tsi" placeholder="employee@example.com"></label>
+        <label style="font-family:monospace;font-size:9px;color:var(--dim)">ROLE<select id="member-invite-role" class="tsi">${roles.map(r => `<option value="${r}">${roleLabel(r)}</option>`).join('')}</select></label>
+        <button class="hbtn" onclick="inviteStoreMember()">SEND INVITE</button>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px">
+      <div>
+        <div style="font-family:monospace;font-size:9px;color:var(--dim);margin-bottom:6px">ACTIVE MEMBERS</div>
+        <div style="display:grid;gap:6px">
+          ${members.length ? members.map(m => memberRowHtml(m, canEdit)).join('') : '<div class="empty"><div class="empty-t">NO MEMBERS</div></div>'}
+        </div>
+      </div>
+      <div>
+        <div style="font-family:monospace;font-size:9px;color:var(--dim);margin-bottom:6px">PENDING INVITES</div>
+        <div style="display:grid;gap:6px">
+          ${invites.length ? invites.map(i => inviteRowHtml(i)).join('') : '<div class="empty"><div class="empty-t">NO PENDING INVITES</div></div>'}
+        </div>
+      </div>
+    </div>`;
+}
+
+function roleLabel(role){
+  return String(role || 'employee').replace('_',' ').replace(/\b\w/g, c => c.toUpperCase());
+}
+
+function memberRowHtml(m, canEdit){
+  const isSelf = m.user_id === getAuthSession()?.user?.id;
+  const canChange = canEdit && !isSelf && m.role !== 'owner';
+  const roles = ['scanner_only','employee','manager','admin'];
+  return `<div class="item-metric" style="display:grid;gap:6px">
+    <div style="display:flex;justify-content:space-between;gap:8px">
+      <b style="color:${m.active?'var(--text)':'var(--dim)'}">${escHtml(m.email || m.displayName || ('User ' + String(m.user_id || '').slice(0,8)))}</b>
+      <span style="font-family:monospace;font-size:9px;color:${m.active?'var(--g)':'var(--red)'}">${m.active?'ACTIVE':'OFF'}</span>
+    </div>
+    <div style="font-family:monospace;font-size:9px;color:var(--dim)">ID ${escHtml(String(m.user_id || '').slice(0,12))}${isSelf?' · you':''}</div>
+    <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+      <select class="tsi" style="margin:0;flex:1;min-width:130px" ${canChange?'':'disabled'} onchange="updateStoreMemberRole('${m.id}', this.value)">
+        ${['owner',...roles].map(r => `<option value="${r}" ${m.role===r?'selected':''}>${roleLabel(r)}</option>`).join('')}
+      </select>
+      ${canChange ? `<button class="hbtn danger" onclick="setStoreMemberActive('${m.id}', ${m.active?'false':'true'})">${m.active?'DISABLE':'ENABLE'}</button>` : ''}
+    </div>
+  </div>`;
+}
+
+function inviteRowHtml(i){
+  const accepted = !!i.accepted_at;
+  const expired = i.expires_at && new Date(i.expires_at) < new Date();
+  return `<div class="item-metric" style="display:grid;gap:5px">
+    <div style="display:flex;justify-content:space-between;gap:8px"><b>${escHtml(i.email)}</b><span style="font-family:monospace;font-size:9px;color:${accepted?'var(--g)':expired?'var(--red)':'var(--gold)'}">${accepted?'ACCEPTED':expired?'EXPIRED':'PENDING'}</span></div>
+    <div style="font-family:monospace;font-size:9px;color:var(--dim)">${roleLabel(i.role)} · expires ${i.expires_at ? new Date(i.expires_at).toLocaleDateString() : 'soon'}</div>
+  </div>`;
+}
+
+async function inviteStoreMember(){
+  if(!requireOwnerAdmin()) { toast_dash('Owner/admin only'); return; }
+  const sb = getSupabaseClient();
+  const email = document.getElementById('member-invite-email')?.value.trim().toLowerCase();
+  const role = document.getElementById('member-invite-role')?.value || 'employee';
+  if(!sb || !email) { toast_dash('Enter an email'); return; }
+  const { error } = await sb.rpc('invite_store_member', { target_store_id:getActiveStoreId(), target_email:email, target_role:role });
+  if(error) { toast_dash('Invite failed: ' + error.message); return; }
+  document.getElementById('member-invite-email').value = '';
+  logOpsEvent('member_invite', 'Invited store member', { email, role });
+  toast_dash('Invite saved. Tester signs up/logs in with that email to accept.');
+  renderStoreMembersPanel();
+}
+
+async function updateStoreMemberRole(memberId, role){
+  const sb = getSupabaseClient();
+  if(!sb || !requireOwnerAdmin()) return;
+  const { error } = await sb.from('store_members').update({ role }).eq('id', memberId);
+  if(error) { toast_dash('Role update failed: ' + error.message); return; }
+  logOpsEvent('member_role', 'Changed member role', { memberId, role });
+  toast_dash('Role updated');
+  renderStoreMembersPanel();
+}
+
+async function setStoreMemberActive(memberId, active){
+  const sb = getSupabaseClient();
+  if(!sb || !requireOwnerAdmin()) return;
+  const { error } = await sb.from('store_members').update({ active:!!active }).eq('id', memberId);
+  if(error) { toast_dash('Member update failed: ' + error.message); return; }
+  logOpsEvent('member_active', 'Changed member active state', { memberId, active:!!active });
+  toast_dash(active ? 'Member enabled' : 'Member disabled');
+  renderStoreMembersPanel();
 }
 
 function ensureVendorConfigPanel(backoffice){
