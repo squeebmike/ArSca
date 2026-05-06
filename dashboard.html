@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.05.06.3">
+<meta name="version" content="2026.05.06.10">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -24,14 +24,14 @@ header{position:sticky;top:0;z-index:100;background:rgba(7,8,10,.96);backdrop-fi
 .logo span{color:var(--dim);font-weight:400;font-size:10px;letter-spacing:1px;margin-left:8px;}
 .hdr-right{display:flex;align-items:center;gap:8px;min-width:0;}
 #sync-status{font-family:monospace,monospace;font-size:10px;color:var(--dim);}
-.hbtn{background:var(--gd);border:1px solid rgba(0,255,179,.2);color:var(--g);padding:5px 12px;font-family:'Orbitron',monospace;font-size:9px;letter-spacing:1px;cursor:pointer;border-radius:4px;transition:.15s;}
+.hbtn{background:var(--gd);border:1px solid rgba(0,255,179,.2);color:var(--g);padding:8px 13px;min-height:38px;font-family:'Orbitron',monospace;font-size:9px;letter-spacing:1px;cursor:pointer;border-radius:6px;transition:.15s;touch-action:manipulation;}
 .hbtn:hover{background:rgba(0,255,179,.15);}
 .hbtn.danger{background:rgba(255,77,109,.08);border-color:rgba(255,77,109,.2);color:var(--red);}
 
 /* TABS */
 .tabs{max-width:1400px;margin:0 auto;padding:10px 20px 8px;display:flex;gap:6px;border-bottom:1px solid var(--border);align-items:center;overflow-x:auto;scrollbar-width:none;}
 .tabs::-webkit-scrollbar{display:none;}
-.tab{font-family:monospace,monospace;font-size:10px;letter-spacing:1px;color:var(--dim);padding:7px 13px;border:1px solid transparent;border-radius:5px;cursor:pointer;transition:.15s;user-select:none;white-space:nowrap;}
+.tab{font-family:monospace,monospace;font-size:10px;letter-spacing:1px;color:var(--dim);padding:10px 14px;min-height:40px;border:1px solid transparent;border-radius:6px;cursor:pointer;transition:.15s;user-select:none;white-space:nowrap;display:flex;align-items:center;}
 .tab.on{color:var(--g);border-color:rgba(0,255,179,.28);background:rgba(0,255,179,.07);}
 .tab.primary{color:rgba(228,228,232,.72);}
 .nav-more{margin-left:auto;position:relative;flex-shrink:0;}
@@ -181,9 +181,9 @@ header{position:sticky;top:0;z-index:100;background:rgba(7,8,10,.96);backdrop-fi
 
 /* TABLE */
 .tc{padding:0 20px;max-width:1400px;margin:0 auto 10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
-.tsi{background:var(--surf);border:1px solid var(--border);color:var(--text);padding:7px 12px;font-family:monospace,monospace;font-size:11px;outline:none;border-radius:6px;width:200px;}
+.tsi{background:var(--surf);border:1px solid var(--border);color:var(--text);padding:10px 12px;min-height:42px;font-family:monospace,monospace;font-size:12px;outline:none;border-radius:7px;width:200px;}
 .tsi:focus{border-color:rgba(0,255,179,.3);}
-.fb{background:transparent;border:1px solid var(--border);color:var(--dim);padding:5px 12px;font-family:monospace,monospace;font-size:9px;letter-spacing:1px;cursor:pointer;border-radius:4px;transition:.15s;}
+.fb{background:transparent;border:1px solid var(--border);color:var(--dim);padding:8px 12px;min-height:38px;font-family:monospace,monospace;font-size:9px;letter-spacing:1px;cursor:pointer;border-radius:6px;transition:.15s;touch-action:manipulation;}
 .fb.on,.fb:hover{border-color:rgba(0,255,179,.4);color:var(--g);}
 .tbl-wrap{max-width:1400px;margin:0 auto;padding:0 20px;overflow-x:auto;}
 table{width:100%;border-collapse:collapse;font-size:12px;}
@@ -257,12 +257,21 @@ tr.sold:hover td{opacity:.7;}
 .tab-panel.on{display:block;}
 
 @media(max-width:900px){
+  body{font-size:15px;}
+  .panel{padding:18px;}
+  .hbtn,.fb,.ra,.pg,.modal-btn,.sell-pay-btn{min-height:48px;}
+  .reg-action,.sell-pay-btn{min-height:56px;}
+  .tc{position:sticky;top:104px;z-index:90;background:rgba(7,8,10,.95);backdrop-filter:blur(16px);padding-top:10px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+  .tsi{font-size:14px;min-height:48px;}
+  .tbl-wrap{overflow:visible;}
+  table{font-size:13px;}
   .stats{grid-template-columns:repeat(3,1fr);}
   .register-command{grid-template-columns:1fr 1fr;}
   .module-grid{grid-template-columns:1fr 1fr;}
   .two,.three{grid-template-columns:1fr;}
 }
 @media(max-width:600px){
+  body{font-size:16px;}
   .stats{grid-template-columns:1fr 1fr;}
   .register-command{grid-template-columns:1fr;}
   .module-grid{grid-template-columns:1fr;}
@@ -270,7 +279,8 @@ tr.sold:hover td{opacity:.7;}
   .logo span{display:none;}
   #sync-status{max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .tabs{padding-left:12px;padding-right:12px;}
-  .hbtn{padding:5px 9px;}
+  .hbtn{padding:10px 12px;min-height:48px;}
+  .tc .tsi{width:100%;flex:1 1 100%;}
 }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -300,7 +310,7 @@ tr.sold:hover td{opacity:.7;}
 
 <header>
   <div class="hdr">
-    <div class="logo">WALK-OFF <span>DASHBOARD · v2026.05.06.3</span></div>
+    <div class="logo">WALK-OFF <span>DASHBOARD · v2026.05.06.10</span></div>
     <div class="hdr-right">
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
@@ -414,7 +424,8 @@ tr.sold:hover td{opacity:.7;}
 <div id="tab-inventory" class="tab-panel">
   <div class="sec">FULL INVENTORY</div>
   <div class="tc">
-    <input class="tsi" id="tbl-q" placeholder="Search name, set, year..." oninput="filterTable()">
+    <input class="tsi" id="tbl-q" placeholder="Search name, set, year, #, SIR, player..." oninput="filterTable()">
+    <button class="fb" aria-label="Voice search inventory" onclick="startVoiceInput('tbl-q', filterTable)">MIC</button>
     <button class="fb on" onclick="setF('all',this)">All</button>
     <button class="fb" onclick="setF('in_stock',this)">In Stock</button>
     <button class="fb" onclick="setF('sold',this)">Sold</button>
@@ -585,7 +596,7 @@ tr.sold:hover td{opacity:.7;}
       <div class="ph">⚡ QUICK PRICE LOOKUP <span style="color:var(--dim);font-size:8px">catalog search — no scanning needed</span></div>
       <div style="display:flex;gap:6px;margin-bottom:10px">
         <input class="tsi" id="qpl-input" placeholder="e.g. 2021 Umbreon VMAX Evolving Skies..." style="flex:1;margin-bottom:0;font-size:12px;padding:10px 14px" oninput="debouncePriceLookup()" onkeydown="if(event.key==='Enter')runPriceLookup()">
-        <button class="hbtn" title="Speak search" onclick="startVoiceInput('qpl-input', runPriceLookup)" style="width:42px;padding:0">MIC</button>
+        <button class="hbtn" title="Speak search" aria-label="Voice price search" onclick="startVoiceInput('qpl-input', runPriceLookup)" style="width:54px;padding:0">MIC</button>
       </div>
       <div style="display:flex;gap:6px;margin-bottom:10px">
         <select id="qpl-cat" style="flex:1;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:6px 8px;border-radius:6px;font-family:monospace,monospace;font-size:10px">
@@ -1102,7 +1113,7 @@ tr.sold:hover td{opacity:.7;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.05.06.9';
+const APP_VERSION = '2026.05.06.10';
 const SUPABASE_URL = 'https://vroknjrxubsqyexngwus.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_wbpX2nL8l-4NbXtZNG_bjA_nabSYaJ5';
 const AUTH_REDIRECT_URL = 'https://squeebmike.github.io/ArSca/dashboard.html';
@@ -4568,21 +4579,43 @@ function filterAndSwitch(f){
   const btn = [...document.querySelectorAll('.fb')].find(b=>b.textContent.includes(f));
   if(btn) setF(f, btn);
 }
+
+function inventoryEmptySearchState(q){
+  const safeQ = escHtml(q || '');
+  return `<div class="empty" style="padding:18px;text-align:left">
+    <div class="empty-t" style="color:var(--gold);margin-bottom:8px">NO EXACT MATCH FOUND</div>
+    <div style="font-family:monospace,monospace;font-size:11px;color:var(--dim);line-height:1.6;margin-bottom:12px">
+      Try a card number like <b style="color:var(--text)">199/165</b>, set name, player, issue number, or rarity like <b style="color:var(--text)">SIR</b>.
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="hbtn" onclick="document.getElementById('qpl-input').value='${safeQ}';switchTab('pos',document.querySelector('[data-tab=pos]'));setTimeout(runPriceLookup,100)">SEARCH PRICING SOURCES</button>
+      <button class="hbtn" onclick="document.getElementById('qpl-input').value='${safeQ}';switchTab('pos',document.querySelector('[data-tab=pos]'));document.getElementById('qpl-input')?.focus()">CREATE MANUAL ITEM</button>
+      <button class="hbtn" onclick="startVoiceInput('tbl-q', filterTable)">TRY VOICE SEARCH</button>
+    </div>
+  </div>`;
+}
+
 function filterTable(){
-  const q=(document.getElementById('tbl-q')?.value||'').toLowerCase();
+  const q=(document.getElementById('tbl-q')?.value||'').trim();
+  const smartRows = q ? smartSearchLocalItems(q, all, all.length) : [];
+  const smartMap = new Map(smartRows.map(r => [r.item.id, r]));
   filtered=all.filter(i=>{
-    const mq=!q||(i.name||'').toLowerCase().includes(q)||(i.set||'').toLowerCase().includes(q)||(i.year||'').includes(q)||(i.tags||'').toLowerCase().includes(q);
+    const mq=!q || smartMap.has(i.id);
     if(activeF==='all') return mq;
     if(activeF==='in_stock') return mq&&i.status==='in_stock';
     if(activeF==='sold') return mq&&i.status==='sold';
     if(LIFECYCLE_LABELS[activeF]) return mq&&i.lifecycle===activeF;
     return mq&&i.category===activeF;
   });
-  filtered.sort((a,b)=>{
-    let av=a[ts2.col]||'',bv=b[ts2.col]||'';
-    if(typeof av==='string'){av=av.toLowerCase();bv=bv.toLowerCase();}
-    return av<bv?-ts2.dir:av>bv?ts2.dir:0;
-  });
+  if(q) {
+    filtered.sort((a,b)=>(smartMap.get(b.id)?.score||0)-(smartMap.get(a.id)?.score||0));
+  } else {
+    filtered.sort((a,b)=>{
+      let av=a[ts2.col]||'',bv=b[ts2.col]||'';
+      if(typeof av==='string'){av=av.toLowerCase();bv=bv.toLowerCase();}
+      return av<bv?-ts2.dir:av>bv?ts2.dir:0;
+    });
+  }
   document.getElementById('tbl-count').textContent=filtered.length+' items';
   renderTable();
 }
@@ -4591,7 +4624,8 @@ function renderTable(){
   const rows=filtered.slice(start,end);
   const tb=document.getElementById('tbody');
   if(!filtered.length){
-    tb.innerHTML=`<tr><td colspan="9"><div class="empty"><div class="empty-t">NO ITEMS FOUND</div></div></td></tr>`;
+    const q = document.getElementById('tbl-q')?.value || '';
+    tb.innerHTML=`<tr><td colspan="9">${inventoryEmptySearchState(q)}</td></tr>`;
     document.getElementById('pager').innerHTML=''; return;
   }
   tb.innerHTML=rows.map(i=>{
@@ -6714,6 +6748,117 @@ function renderBuySignals(){
   </div>`).join('');
 }
 
+const SMART_SEARCH_SYNONYMS = {
+  sir:'special illustration rare',
+  ir:'illustration rare',
+  sar:'special art rare',
+  ar:'art rare',
+  alt:'alternate art',
+  aa:'alternate art',
+  rc:'rookie card',
+  rookie:'rookie card',
+  jrod:'julio rodriguez',
+  asm:'amazing spider-man',
+  spidey:'spider-man',
+  xmen:'x-men',
+  'evo skies':'evolving skies',
+  es:'evolving skies'
+};
+
+const SMART_NUMBER_WORDS = { zero:0, oh:0, one:1, two:2, three:3, four:4, five:5, six:6, seven:7, eight:8, nine:9, ten:10, eleven:11, twelve:12, thirteen:13, fourteen:14, fifteen:15, sixteen:16, seventeen:17, eighteen:18, nineteen:19, twenty:20, thirty:30, forty:40, fifty:50, sixty:60, seventy:70, eighty:80, ninety:90, hundred:100 };
+
+function wordsToSmallNumber(text){
+  const parts = String(text || '').trim().split(/\s+/).filter(Boolean);
+  if(!parts.length) return '';
+  let total = 0, current = 0, used = false;
+  for(const p of parts) {
+    if(!(p in SMART_NUMBER_WORDS)) return '';
+    used = true;
+    const n = SMART_NUMBER_WORDS[p];
+    if(n === 100) current = Math.max(1, current) * 100;
+    else current += n;
+  }
+  total += current;
+  return used ? String(total) : '';
+}
+
+function cleanupVoiceTranscript(text){
+  let out = String(text || '').toLowerCase().trim();
+  out = out.replace(/\bslash\b/g, ' / ').replace(/\bhashtag\b|\bhash tag\b|\bnumber\b/g, '#');
+  out = out.replace(/\b(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred)(?:\s+(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred))*\s*\/\s*(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred)(?:\s+(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred))*/g, m => {
+    const [a,b] = m.split('/');
+    return wordsToSmallNumber(a) + '/' + wordsToSmallNumber(b);
+  });
+  out = out.replace(/#\s*(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred)(?:\s+(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred))*/g, m => '#' + wordsToSmallNumber(m.replace('#','')));
+  return out.replace(/\s+/g, ' ').trim();
+}
+
+function smartNormalizeText(value){
+  return String(value || '')
+    .normalize('NFKD').replace(/[\u0300-\u036f]/g,'')
+    .toLowerCase()
+    .replace(/[#:_\-–—'".,!?()[\]{}]/g, ' ')
+    .replace(/[^\w\s/]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function expandSmartQuery(q){
+  let expanded = smartNormalizeText(q);
+  Object.entries(SMART_SEARCH_SYNONYMS).forEach(([abbr, full]) => {
+    const re = new RegExp('(^|\\s)' + abbr.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?=\\s|$)', 'g');
+    expanded = expanded.replace(re, ' ' + abbr + ' ' + full + ' ');
+  });
+  return expanded.replace(/\s+/g, ' ').trim();
+}
+
+function smartSearchNeedles(q){
+  const clean = expandSmartQuery(q);
+  const tokens = clean.split(/\s+/).filter(t => t.length > 1);
+  const cardNumbers = String(q || '').match(/\b\d{1,4}\s*\/\s*\d{1,4}\b|\b#?\d{1,4}\b/g) || [];
+  return { clean, tokens:[...new Set(tokens)], cardNumbers:cardNumbers.map(n => n.replace(/\s+/g,'').replace(/^#/,'')) };
+}
+
+function levenshtein(a,b){
+  a=String(a||''); b=String(b||'');
+  if(a===b) return 0;
+  const dp = Array.from({length:a.length+1},(_,i)=>[i]);
+  for(let j=1;j<=b.length;j++) dp[0][j]=j;
+  for(let i=1;i<=a.length;i++) for(let j=1;j<=b.length;j++) dp[i][j]=Math.min(dp[i-1][j]+1, dp[i][j-1]+1, dp[i-1][j-1]+(a[i-1]===b[j-1]?0:1));
+  return dp[a.length][b.length];
+}
+
+function scoreSmartItem(item, q){
+  const needle = typeof q === 'string' ? smartSearchNeedles(q) : q;
+  const fields = [item.name,item.set,item.year,item.card_number,item.variant,item.rarity,item.finish,item.category,item.player,item.team,item.issue,item.publisher,item.notes,item.key_notes,item.tags].filter(Boolean);
+  const hay = smartNormalizeText(fields.join(' '));
+  const words = hay.split(/\s+/);
+  let score = 0;
+  const why = [];
+  if(!needle.clean) return { score:0, why };
+  if(hay.includes(needle.clean)) { score += 120; why.push('exact phrase'); }
+  needle.cardNumbers.forEach(num => {
+    const cardNum = smartNormalizeText(item.card_number || item.issue || '');
+    if(cardNum && (cardNum === num || cardNum.includes(num) || num.includes(cardNum))) { score += 90; why.push('number'); }
+    else if(hay.includes(num)) { score += 45; why.push('number text'); }
+  });
+  needle.tokens.forEach(tok => {
+    if(hay.includes(tok)) { score += 18; why.push(tok); return; }
+    const close = words.some(w => w.length > 3 && Math.abs(w.length - tok.length) <= 2 && levenshtein(w, tok) <= 2);
+    if(close) { score += 8; why.push('fuzzy ' + tok); }
+  });
+  if(needle.tokens.length && needle.tokens.every(tok => hay.includes(tok) || words.some(w => w.length > 3 && levenshtein(w, tok) <= 2))) score += 30;
+  return { score, why:[...new Set(why)].slice(0,4) };
+}
+
+function smartSearchLocalItems(q, items = all, limit = 12){
+  const needle = smartSearchNeedles(q);
+  return (items || []).map(item => ({ item, ...scoreSmartItem(item, needle) }))
+    .filter(r => r.score > 0)
+    .sort((a,b) => b.score - a.score)
+    .slice(0, limit);
+}
+
 function startVoiceInput(inputId, done){
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if(!SR){ toast_dash('Voice input not supported in this browser'); return; }
@@ -6723,7 +6868,7 @@ function startVoiceInput(inputId, done){
   rec.maxAlternatives = 1;
   toast_dash('Listening...');
   rec.onresult = e => {
-    const text = e.results?.[0]?.[0]?.transcript || '';
+    const text = cleanupVoiceTranscript(e.results?.[0]?.[0]?.transcript || '');
     const el = document.getElementById(inputId);
     if(el) {
       el.value = text;
@@ -6752,12 +6897,12 @@ async function runPriceLookup(){
   const cat = document.getElementById('qpl-cat').value;
   const el = document.getElementById('qpl-result');
   if(!q || q.length < 3) return;
-  el.innerHTML = '<div style="color:var(--gold)">Searching catalogs...</div>';
+  el.innerHTML = '<div style="color:var(--gold)">Searching local inventory, catalog matches, and closest printings...</div>';
   try {
     const results = await searchQuickCatalog(q, cat);
     qplResults = results.length ? results : await aiQuickLookupFallback(q, cat);
     if(!qplResults.length) {
-      el.innerHTML = '<div style="color:var(--red)">No results found. Try a player/card name, set, or card number.</div>';
+      el.innerHTML = noQuickLookupResults(q, cat);
       return;
     }
     renderQuickLookupResults(qplResults);
@@ -6770,7 +6915,8 @@ async function runPriceLookup(){
 async function searchQuickCatalog(q, cat){
   const results = [];
   const wants = String(cat || '').toLowerCase();
-  const search = q.toLowerCase();
+  const needle = smartSearchNeedles(q);
+  const search = needle.clean;
   const seen = new Set();
   const add = r => {
     const key = [r.source,r.name,r.set,r.card_number,r.year,r.variant].join('|').toLowerCase();
@@ -6779,10 +6925,9 @@ async function searchQuickCatalog(q, cat){
     results.push(r);
   };
 
-  all.filter(i => {
-    const hay = [i.name,i.set,i.year,i.card_number,i.variant,i.player,i.team].filter(Boolean).join(' ').toLowerCase();
-    return hay.includes(search);
-  }).slice(0, 10).forEach(i => add({
+  smartSearchLocalItems(q, all, 15).forEach(hit => {
+    const i = hit.item;
+    add({
     source:'inventory',
     name:i.name || 'Inventory item',
     category:i.category || 'Collectibles',
@@ -6795,9 +6940,12 @@ async function searchQuickCatalog(q, cat){
     cost:Number(i.cost || 0),
     imageUrl:i.thumbnail || '',
     priceSource:i.priceSource || 'Current inventory',
-    note:'Already in inventory',
+    note:'Already in inventory - matched by ' + (hit.why.join(', ') || 'smart search'),
+    confidence:Math.min(99, Math.round(hit.score)),
+    matchWhy:hit.why,
     raw:i,
-  }));
+  });
+  });
 
   if(!wants || wants.includes('pokemon') || wants.includes('tcg') || wants.includes('graded') || wants.includes('slab')) {
     try {
@@ -6817,10 +6965,13 @@ async function searchQuickCatalog(q, cat){
 
 async function fetchPokemonCatalog(q){
   const clean = q.replace(/["\\]/g, ' ').replace(/\s+/g, ' ').trim();
+  const needle = smartSearchNeedles(q);
+  const baseName = needle.tokens.filter(t => !/^\d/.test(t) && !['special','illustration','rare','alternate','art','rookie','card'].includes(t)).slice(0, 5).join(' ') || clean;
   const queries = [
-    clean.split(/\s+/).map(x => `name:${x}`).join(' '),
-    `name:"${clean}"`
-  ];
+    clean.split(/\s+/).filter(x => !/^\d/.test(x)).map(x => `name:${x}`).join(' '),
+    `name:"${baseName}"`,
+    needle.cardNumbers[0] ? `number:${needle.cardNumbers[0].split('/')[0]}` : ''
+  ].filter(Boolean);
   for(const query of queries) {
     const url = 'https://api.pokemontcg.io/v2/cards?q=' + encodeURIComponent(query) + '&pageSize=250&orderBy=name,set.releaseDate';
     const res = await fetch(url, { headers:{ 'Accept':'application/json' } });
@@ -6831,6 +6982,7 @@ async function fetchPokemonCatalog(q){
       return cards.map(c => {
         const prices = c.tcgplayer?.prices || {};
         const p = prices.holofoil || prices.normal || prices.reverseHolofoil || prices['1stEditionHolofoil'] || prices.unlimitedHolofoil || {};
+        const hit = scoreSmartItem({ name:c.name, set:c.set?.name, year:(c.set?.releaseDate||'').slice(0,4), card_number:c.number, rarity:c.rarity, variant:c.supertype }, q);
         return {
           source:'pokemon',
           name:c.name || clean,
@@ -6846,7 +6998,9 @@ async function fetchPokemonCatalog(q){
           imageUrl:c.images?.small || c.images?.large || '',
           priceSource:'PokemonTCG market',
           tcgUrl:c.tcgplayer?.url || '',
-          note:c.set?.releaseDate ? 'Released ' + c.set.releaseDate : '',
+          note:hit.why.length ? 'Matched by ' + hit.why.join(', ') : (c.set?.releaseDate ? 'Released ' + c.set.releaseDate : ''),
+          confidence:Math.min(99, Math.round(hit.score || 50)),
+          matchWhy:hit.why,
           raw:c,
         };
       });
@@ -6856,26 +7010,31 @@ async function fetchPokemonCatalog(q){
 }
 
 async function fetchScryfallCatalog(q){
-  const url = 'https://api.scryfall.com/cards/search?q=' + encodeURIComponent(q) + '&unique=prints&order=released&dir=desc';
+  const url = 'https://api.scryfall.com/cards/search?q=' + encodeURIComponent(expandSmartQuery(q)) + '&unique=prints&order=released&dir=desc';
   const res = await fetch(url, { headers:{ 'Accept':'application/json' } });
   if(!res.ok) return [];
   const data = await res.json();
-  return (data.data || []).slice(0, 24).map(c => ({
-    source:'scryfall',
-    name:c.name || q,
-    category:'TCG',
-    set:c.set_name || '',
-    year:(c.released_at || '').slice(0,4),
-    variant:[c.foil ? 'Foil available' : '', c.rarity].filter(Boolean).join(' / '),
-    card_number:c.collector_number || '',
-    condition:'NM',
-    market:Number(c.prices?.usd || c.prices?.usd_foil || c.prices?.usd_etched || 0),
-    imageUrl:c.image_uris?.small || c.card_faces?.[0]?.image_uris?.small || '',
-    priceSource:'Scryfall market',
-    tcgUrl:c.purchase_uris?.tcgplayer || c.scryfall_uri || '',
-    note:c.type_line || '',
-    raw:c,
-  }));
+  return (data.data || []).slice(0, 24).map(c => {
+    const hit = scoreSmartItem({ name:c.name, set:c.set_name, year:(c.released_at||'').slice(0,4), card_number:c.collector_number, rarity:c.rarity, variant:c.type_line }, q);
+    return {
+      source:'scryfall',
+      name:c.name || q,
+      category:'TCG',
+      set:c.set_name || '',
+      year:(c.released_at || '').slice(0,4),
+      variant:[c.foil ? 'Foil available' : '', c.rarity].filter(Boolean).join(' / '),
+      card_number:c.collector_number || '',
+      condition:'NM',
+      market:Number(c.prices?.usd || c.prices?.usd_foil || c.prices?.usd_etched || 0),
+      imageUrl:c.image_uris?.small || c.card_faces?.[0]?.image_uris?.small || '',
+      priceSource:'Scryfall market',
+      tcgUrl:c.purchase_uris?.tcgplayer || c.scryfall_uri || '',
+      note:hit.why.length ? 'Matched by ' + hit.why.join(', ') : (c.type_line || ''),
+      confidence:Math.min(99, Math.round(hit.score || 50)),
+      matchWhy:hit.why,
+      raw:c,
+    };
+  });
 }
 
 async function aiQuickLookupFallback(q, cat){
@@ -6915,6 +7074,32 @@ async function aiQuickLookupFallback(q, cat){
   }
 }
 
+function noQuickLookupResults(q, cat){
+  const safeQ = escHtml(q || '');
+  const links = [
+    `<button class="hbtn" onclick="window.open('https://www.tcgplayer.com/search/all/product?q=${encodeURIComponent(q || '')}','_blank')">SEARCH TCGPLAYER</button>`,
+    `<button class="hbtn" onclick="window.open('https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(q || '')}&LH_Sold=1&LH_Complete=1','_blank')">SOLD COMPS</button>`,
+    `<button class="hbtn" onclick="selectQuickLookupResult(0)">CREATE MANUAL ITEM</button>`,
+    `<button class="hbtn" onclick="startVoiceInput('qpl-input', runPriceLookup)">TRY VOICE SEARCH</button>`
+  ].join('');
+  qplResults = [{
+    source:'manual',
+    name:q || 'Manual item',
+    category:cat || 'Collectibles',
+    condition:'NM',
+    market:0,
+    priceSource:'manual lookup',
+    note:'Created from no-result search',
+  }];
+  return `<div style="border:1px dashed rgba(255,209,102,.35);border-radius:10px;padding:14px;background:rgba(255,209,102,.05)">
+    <div style="font-family:'Orbitron',monospace;font-size:11px;color:var(--gold);margin-bottom:8px">NO EXACT MATCH FOUND</div>
+    <div style="font-family:monospace,monospace;font-size:10px;color:var(--dim);line-height:1.6;margin-bottom:12px">
+      I searched for <b style="color:var(--text)">${safeQ}</b>. Try card number, set name, player, issue number, or rarity shorthand like SIR / IR / RC.
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">${links}</div>
+  </div>`;
+}
+
 function renderQuickLookupResults(results){
   const el = document.getElementById('qpl-result');
   el.innerHTML = `
@@ -6934,6 +7119,10 @@ function quickLookupResultCard(r, idx){
   const meta = [r.year,r.set,r.variant,r.card_number ? '#'+r.card_number : ''].filter(Boolean).join(' / ');
   const needs = getSetNeedMatches(r);
   const signal = getSalesSignal(r);
+  const conf = Number(r.confidence || 0);
+  const confLabel = conf >= 85 ? 'HIGH' : conf >= 60 ? 'MED' : conf > 0 ? 'LOW' : 'CHECK';
+  const confColor = conf >= 85 ? 'var(--g)' : conf >= 60 ? 'var(--gold)' : 'var(--red)';
+  const why = (r.matchWhy || []).length ? `Matched: ${(r.matchWhy || []).join(', ')}` : (r.note || '');
   const tcg = r.tcgUrl ? `<button class="hbtn" style="font-size:8px;padding:6px 8px" onclick="openQuickExternal(${idx},'tcg')">TCG</button>` : '';
   const slab = `<button class="hbtn" style="font-size:8px;padding:6px 8px;color:var(--blue)" onclick="openQuickExternal(${idx},'slab')">SLABS</button>`;
   const signals = [
@@ -6949,7 +7138,9 @@ function quickLookupResultCard(r, idx){
       <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:5px">
         <span style="color:var(--gold);font-size:12px;font-weight:800">$${Number(r.market || 0).toFixed(2)}</span>
         <span style="color:var(--dim);font-size:8px">${escHtml(r.priceSource || r.source || '')}</span>
+        <span style="color:${confColor};border:1px solid ${confColor};border-radius:999px;padding:2px 6px;font-size:8px;font-family:monospace">${confLabel}${conf?` ${conf}`:''}</span>
       </div>
+      ${why ? `<div style="margin-top:4px;color:var(--dim);font-size:8px">${escHtml(why)}</div>` : ''}
       ${signals.length ? `<div style="margin-top:5px;color:${needs.length?'var(--g)':'var(--gold)'};font-size:8px;font-weight:700">${escHtml(signals.join(' / '))}</div>` : ''}
     </div>
     <div style="display:grid;gap:5px">
