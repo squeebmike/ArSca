@@ -255,6 +255,74 @@ as $$
   select public.current_store_role(check_store_id) in ('owner','admin','manager');
 $$;
 
+create or replace function public.list_store_members(target_store_id uuid)
+returns table (
+  member_id uuid,
+  user_id uuid,
+  email text,
+  display_name text,
+  role public.store_role,
+  active boolean,
+  created_at timestamptz
+)
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select
+    sm.id as member_id,
+    sm.user_id,
+    coalesce(p.email, au.email) as email,
+    coalesce(p.display_name, au.raw_user_meta_data->>'display_name', au.email) as display_name,
+    sm.role,
+    sm.active,
+    sm.created_at
+  from public.store_members sm
+  left join public.profiles p on p.id = sm.user_id
+  left join auth.users au on au.id = sm.user_id
+  where sm.store_id = target_store_id
+    and public.can_manage_store(target_store_id)
+  order by
+    case sm.role
+      when 'owner' then 1
+      when 'admin' then 2
+      when 'manager' then 3
+      when 'employee' then 4
+      when 'scanner_only' then 5
+    end,
+    sm.created_at;
+$$;
+
+create or replace function public.pending_store_invites_for_current_user()
+returns table (
+  invite_id uuid,
+  store_id uuid,
+  store_display_name text,
+  email text,
+  role public.store_role,
+  expires_at timestamptz
+)
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select
+    si.id as invite_id,
+    si.store_id,
+    s.display_name as store_display_name,
+    si.email,
+    si.role,
+    si.expires_at
+  from public.store_invites si
+  join public.stores s on s.id = si.store_id
+  where lower(si.email) = lower(coalesce((select au.email from auth.users au where au.id = auth.uid()), ''))
+    and si.accepted_at is null
+    and si.expires_at > now()
+  order by si.created_at desc;
+$$;
+
 create or replace function public.create_store_for_current_user(
   store_display_name text,
   store_name text default null
@@ -491,6 +559,8 @@ grant select, insert, update, delete on all tables in schema public to authentic
 grant execute on function public.create_store_for_current_user(text, text) to authenticated;
 grant execute on function public.invite_store_member(uuid, text, public.store_role) to authenticated;
 grant execute on function public.accept_store_invite(uuid) to authenticated;
+grant execute on function public.list_store_members(uuid) to authenticated;
+grant execute on function public.pending_store_invites_for_current_user() to authenticated;
 
 commit;
 

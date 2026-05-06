@@ -1102,7 +1102,7 @@ tr.sold:hover td{opacity:.7;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.05.06.7';
+const APP_VERSION = '2026.05.06.8';
 const SUPABASE_URL = 'https://vroknjrxubsqyexngwus.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_wbpX2nL8l-4NbXtZNG_bjA_nabSYaJ5';
 const AUTH_REDIRECT_URL = 'https://squeebmike.github.io/ArSca/dashboard.html';
@@ -1145,6 +1145,18 @@ function getAuthSession(){ try { return JSON.parse(localStorage.getItem(WALKOFF_
 function getActiveStoreId(){ return localStorage.getItem(WALKOFF_ACTIVE_STORE_KEY) || getAuthSession()?.activeStoreId || WALKOFF_DEMO_USER.defaultStoreId; }
 function getActiveStore(){ const session = getAuthSession(); const id = getActiveStoreId(); return session?.stores?.find(s => s.id === id) || WALKOFF_DEMO_STORES.find(s => s.id === id) || WALKOFF_DEMO_STORES[0]; }
 function scopedStorageKey(key, storeId = getActiveStoreId()){ return WALKOFF_SCOPED_KEYS.has(key) && storeId ? 'walkoff:' + storeId + ':' + key : key; }
+function currentRole(){ return getAuthSession()?.user?.role || 'owner'; }
+function requireOwnerAdmin(){ const role = currentRole(); return role === 'owner' || role === 'admin'; }
+function requireManager(){ return ['owner','admin','manager'].includes(currentRole()); }
+function requireEmployee(){ return ['owner','admin','manager','employee'].includes(currentRole()); }
+function roleCanAccessTab(tab){
+  const role = currentRole();
+  if(role === 'owner' || role === 'admin') return true;
+  if(role === 'manager') return !['backoffice'].includes(tab);
+  if(role === 'employee') return ['overview','display','inventory','pos','alerts','wantlist','locations','restock'].includes(tab);
+  if(role === 'scanner_only') return false;
+  return false;
+}
 
 (function installStoreScopedStorage(){
   if(window.__walkoffStorageShim) return;
@@ -1226,6 +1238,7 @@ async function ensureAuthReady(){
     if(invites.length) {
       renderInvitePickerOptions(invites);
       showAuthMode('invite', 'Accept an invite, or create your own test store.');
+      showInviteRoleHint(invites);
       return false;
     }
     showAuthMode('create-store', 'Create your store. Testers get their own empty store by default.');
@@ -1277,6 +1290,17 @@ async function loadSupabaseStoresForUser(user){
 async function loadPendingInvitesForUser(user){
   const sb = getSupabaseClient();
   if(!sb || !user?.email) return [];
+  const rpc = await sb.rpc('pending_store_invites_for_current_user');
+  if(!rpc.error && Array.isArray(rpc.data)) {
+    return rpc.data.map(i => ({
+      id:i.invite_id,
+      store_id:i.store_id,
+      storeDisplayName:i.store_display_name,
+      email:i.email,
+      role:i.role,
+      expires_at:i.expires_at,
+    }));
+  }
   const { data, error } = await sb
     .from('store_invites')
     .select('id,store_id,email,role,expires_at,accepted_at')
@@ -1290,7 +1314,17 @@ async function loadPendingInvitesForUser(user){
 function renderInvitePickerOptions(invites){
   const sel = document.getElementById('auth-store');
   if(!sel) return;
-  sel.innerHTML = (invites || []).map(i => `<option value="${i.store_id}">${escHtml(i.role || 'employee')} invite · ${escHtml(String(i.store_id).slice(0,8))}</option>`).join('');
+  sel.innerHTML = (invites || []).map(i => `<option value="${i.store_id}">${escHtml(i.storeDisplayName || ('Store ' + String(i.store_id).slice(0,8)))} · ${roleLabel(i.role || 'employee')}</option>`).join('');
+  sel.onchange = () => showInviteRoleHint(invites);
+  window._pendingInviteChoices = invites || [];
+  showInviteRoleHint(invites);
+}
+
+function showInviteRoleHint(invites){
+  const status = document.getElementById('auth-status');
+  const storeId = document.getElementById('auth-store')?.value;
+  const invite = (invites || window._pendingInviteChoices || []).find(i => i.store_id === storeId);
+  if(status && invite) status.textContent = 'Invited to ' + (invite.storeDisplayName || 'this store') + ' as ' + roleLabel(invite.role) + '.';
 }
 
 async function acceptPickedInvite(){
@@ -1428,8 +1462,6 @@ function renderAccountHeader(){
     switcher.innerHTML = session.stores.map(s => `<option value="${s.id}" ${s.id===store.id?'selected':''}>${escHtml(s.displayName)}</option>`).join('');
   }
 }
-function requireOwnerAdmin(){ const role = getAuthSession()?.user?.role || 'owner'; return role === 'owner' || role === 'admin'; }
-
 let all=[], filtered=[], activeF='all', activeTab='overview', soldData=[];
 let ts={col:'name',dir:1};
 const PER=50; let page=1;
@@ -1615,13 +1647,15 @@ function setupAppShell(){
 
   const tabs = document.querySelector('.tabs');
   if(tabs) {
-    tabs.innerHTML = DAILY_TABS.map(([id,label]) =>
+    const daily = DAILY_TABS.filter(([id]) => roleCanAccessTab(id));
+    const moreTabs = MORE_TABS.filter(([id]) => roleCanAccessTab(id));
+    tabs.innerHTML = daily.map(([id,label]) =>
       `<div class="tab primary ${id === activeTab ? 'on' : ''}" data-tab="${id}" onclick="switchTab('${id}',this)">${label}</div>`
     ).join('') + `
       <div class="nav-more">
         <div class="tab" id="more-tab-btn" onclick="toggleMoreMenu(event)">MORE</div>
         <div class="more-menu" id="more-menu">
-          ${MORE_TABS.map(([id,label]) => `<div class="more-item" data-tab="${id}" onclick="switchTab('${id}',this)">${label}</div>`).join('')}
+          ${moreTabs.map(([id,label]) => `<div class="more-item" data-tab="${id}" onclick="switchTab('${id}',this)">${label}</div>`).join('')}
         </div>
       </div>`;
   }
@@ -1710,7 +1744,23 @@ function organizeRegisterLayout(){
   ensureCustomerPanel(backoffice);
   ensureDataHealthPanel(backoffice);
   ensureInventoryToolsPanel();
+  ensurePermissionLockPanels(backoffice, shows, channels);
   applyVendorConfig();
+}
+
+function ensurePermissionLockPanels(backoffice, shows, channels){
+  const add = (id, target, text) => {
+    if(!target || document.getElementById(id)) return;
+    const panel = document.createElement('div');
+    panel.className = 'panel';
+    panel.id = id;
+    panel.style.marginBottom = '14px';
+    panel.innerHTML = `<div class="ph">LOCKED <span style="font-size:9px;color:var(--dim)">role access</span></div><div style="font-family:monospace;font-size:10px;color:var(--dim);line-height:1.55">${text}</div>`;
+    target.prepend(panel);
+  };
+  add('admin-lock-panel', backoffice, 'Owner/admin role required for store profile, payment settings, members, modules, backups, and connector administration.');
+  add('manager-lock-panel', shows, 'Manager or admin role required for show sessions, cash drawer closeout, buy offers, and operational reports.');
+  add('channel-lock-panel', channels, 'Manager or admin role required for marketplace listings and channel sync.');
 }
 
 function cleanupEmptyWorkflowRows(){
@@ -2001,6 +2051,20 @@ async function loadStoreMembers(){
   if(!sb || !session?.supabase || !storeId) {
     return [{ id:'demo-member', user_id:session?.user?.id || 'demo-owner', role:session?.user?.role || 'owner', active:true, created_at:session?.createdAt || new Date().toISOString(), displayName:session?.user?.displayName || 'Demo user', email:session?.user?.email || 'owner@walkoff.local' }];
   }
+  if(requireOwnerAdmin()) {
+    const rpc = await sb.rpc('list_store_members', { target_store_id:storeId });
+    if(!rpc.error && Array.isArray(rpc.data)) {
+      return rpc.data.map(m => ({
+        id:m.member_id,
+        user_id:m.user_id,
+        role:m.role,
+        active:m.active,
+        created_at:m.created_at,
+        displayName:m.display_name,
+        email:m.email,
+      }));
+    }
+  }
   const { data, error } = await sb
     .from('store_members')
     .select('id,user_id,role,active,created_at')
@@ -2033,7 +2097,7 @@ async function renderStoreMembersPanel(){
   const roles = ['scanner_only','employee','manager','admin'];
   body.innerHTML = `
     <div style="font-family:monospace,monospace;font-size:10px;color:var(--dim);line-height:1.55;margin-bottom:10px">
-      Add testers or staff without sharing your login. Scanner-only users get sent to the phone scanner instead of the admin dashboard.
+      ${canEdit ? 'Add testers or staff without sharing your login. Scanner-only users get sent to the phone scanner instead of the admin dashboard.' : 'Owner/admin role required to invite staff or change member roles.'}
     </div>
     <div class="item-metric" style="margin-bottom:10px;display:${canEdit?'block':'none'}">
       <div style="display:grid;grid-template-columns:2fr 1fr auto;gap:8px;align-items:end">
@@ -2222,16 +2286,23 @@ function removeVendorCategory(name){
 function applyVendorConfig(){
   const cfg = getVendorConfig();
   const show = (id, on) => { const el = document.getElementById(id); if(el) el.style.display = on ? '' : 'none'; };
-  show('register-show-panel', cfg.modules.show);
-  show('register-cash-panel', cfg.modules.cash);
+  const ownerAdmin = requireOwnerAdmin();
+  const manager = requireManager();
+  show('register-show-panel', cfg.modules.show && manager);
+  show('register-cash-panel', cfg.modules.cash && manager);
   show('register-quick-panel', cfg.modules.quick);
   show('register-scan-panel', cfg.modules.scanner);
-  show('register-buy-panel', cfg.modules.buy);
-  show('register-eod-panel', cfg.modules.closeout);
-  show('backoffice-ebay-panel', cfg.modules.ebay);
-  show('backoffice-system-panel', cfg.modules.backup);
-  show('backoffice-ops-panel', cfg.modules.ops);
-  show('backoffice-tcg-sync-panel', cfg.modules.pricingSync);
+  show('register-buy-panel', cfg.modules.buy && manager);
+  show('register-eod-panel', cfg.modules.closeout && manager);
+  show('backoffice-ebay-panel', cfg.modules.ebay && manager);
+  show('backoffice-system-panel', cfg.modules.backup && ownerAdmin);
+  show('backoffice-ops-panel', cfg.modules.ops && manager);
+  show('backoffice-tcg-sync-panel', cfg.modules.pricingSync && manager);
+  show('admin-lock-panel', !ownerAdmin);
+  show('manager-lock-panel', !manager);
+  show('channel-lock-panel', !manager);
+  document.querySelectorAll('[data-admin-only]').forEach(el => el.style.display = ownerAdmin ? '' : 'none');
+  document.querySelectorAll('[data-manager-only]').forEach(el => el.style.display = manager ? '' : 'none');
   updateConnectorVisibility();
 }
 
@@ -4585,6 +4656,10 @@ function filterSold(){ renderSoldTable(); }
 
 // Tab switching
 function switchTab(name, btn){
+  if(!roleCanAccessTab(name)) {
+    toast_dash('Role access required');
+    name = 'overview';
+  }
   document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('on'));
   document.querySelectorAll('.tab,.more-item').forEach(t=>t.classList.remove('on'));
   document.getElementById('tab-'+name)?.classList.add('on');
