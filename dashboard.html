@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.05.06.2">
+<meta name="version" content="2026.05.06.3">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -300,13 +300,13 @@ tr.sold:hover td{opacity:.7;}
 
 <header>
   <div class="hdr">
-    <div class="logo">WALK-OFF <span>DASHBOARD · v2026.05.06.2</span></div>
+    <div class="logo">WALK-OFF <span>DASHBOARD · v2026.05.06.3</span></div>
     <div class="hdr-right">
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="sync-status">Loading...</span>
       <button class="hbtn" id="logout-btn" style="display:none" onclick="logoutAccount()">LOGOUT</button>
-      <button class="hbtn" onclick="loadInventory()">↻ REFRESH</button>
+      <button class="hbtn" id="refresh-btn" onclick="loadInventory()">REFRESH</button>
     </div>
   </div>
   <div class="tabs">
@@ -1101,9 +1101,10 @@ tr.sold:hover td{opacity:.7;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.05.06.2';
+const APP_VERSION = '2026.05.06.3';
 const SUPABASE_URL = 'https://vroknjrxubsqyexngwus.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_wbpX2nL8l-4NbXtZNG_bjA_nabSYaJ5';
+const AUTH_REDIRECT_URL = 'https://squeebmike.github.io/ArSca/dashboard.html';
 const STORE_ID = 'walkoff-main';
 const REGISTER_ID = 'front';
 const WF_PRODUCTS = '65eb45a28ff6bf3fe4f17b14';
@@ -1274,7 +1275,7 @@ async function signupSupabaseAccount(){
   const email = document.getElementById('auth-email')?.value.trim();
   const password = document.getElementById('auth-password')?.value || '';
   if(!sb || !email || !password) { showAuthMode('signup', 'Enter email and password.'); return; }
-  const { error } = await sb.auth.signUp({ email, password, options:{ data:{ display_name:email.split('@')[0] } } });
+  const { error } = await sb.auth.signUp({ email, password, options:{ data:{ display_name:email.split('@')[0] }, emailRedirectTo:AUTH_REDIRECT_URL } });
   if(error) { showAuthMode('signup', error.message); return; }
   showAuthMode('login', 'Account created. If email confirmation is on, verify first. Then log in.');
 }
@@ -1283,7 +1284,7 @@ async function resetSupabasePassword(){
   const sb = getSupabaseClient();
   const email = document.getElementById('auth-email')?.value.trim();
   if(!sb || !email) { showAuthMode('reset', 'Enter your email first.'); return; }
-  const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: location.href.split('#')[0] });
+  const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: AUTH_REDIRECT_URL });
   showAuthMode('login', error ? error.message : 'Password reset email sent.');
 }
 
@@ -1517,9 +1518,9 @@ function setupAppShell(){
     btn.id = 'fullscreen-btn';
     btn.textContent = 'FULL SCREEN';
     btn.onclick = () => toggleAppFullscreen(document.documentElement);
-    hdrRight.insertBefore(btn, hdrRight.querySelector('button'));
+    hdrRight.insertBefore(btn, document.getElementById('refresh-btn') || hdrRight.querySelector('button'));
   }
-  const refreshBtn = [...document.querySelectorAll('.hdr-right .hbtn')].find(b => b.id !== 'fullscreen-btn');
+  const refreshBtn = document.getElementById('refresh-btn');
   if(refreshBtn) refreshBtn.textContent = 'REFRESH';
 
   if(!document.getElementById('install-hint')) {
