@@ -1102,7 +1102,7 @@ tr.sold:hover td{opacity:.7;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.05.06.5';
+const APP_VERSION = '2026.05.06.6';
 const SUPABASE_URL = 'https://vroknjrxubsqyexngwus.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_wbpX2nL8l-4NbXtZNG_bjA_nabSYaJ5';
 const AUTH_REDIRECT_URL = 'https://squeebmike.github.io/ArSca/dashboard.html';
@@ -1125,7 +1125,7 @@ const WALKOFF_DEMO_STORES = [
   { id:'demo-show-store', ownerUserId:'demo-owner', name:'demo-show-store', displayName:'Demo Show Store', logoUrl:'', location:'Card Show', timezone:'America/Los_Angeles', currency:'USD', status:'active', createdAt:'2026-05-06T00:00:00.000Z' },
 ];
 const WALKOFF_DEMO_USER = { id:'demo-owner', email:'owner@walkoff.local', displayName:'Store Owner', role:'owner', defaultStoreId:'walkoff-main', createdAt:'2026-05-06T00:00:00.000Z' };
-const WALKOFF_SCOPED_KEYS = new Set(['lba_inventory','walkoff_universal_inventory','pos_cart_v2','pos_buy_list','pos_buy_offers','pos_transactions','pos_drawer','pos_wantlist','set_needs_v1','pos_consign','pos_locations','vendor_profile_v1','vendor_config_v1','store_payment_settings_v1','pos_ops_log','inventory_lifecycle','pos_show_mode','sync_queue_v1','pos_customers','pos_undo_stack','sheet_mapping_v1','grade_submissions','lba_sales']);
+const WALKOFF_SCOPED_KEYS = new Set(['lba_inventory','walkoff_universal_inventory','pos_cart_v2','pos_buy_list','pos_buy_offers','pos_transactions','pos_drawer','pos_wantlist','set_needs_v1','pos_consign','pos_locations','vendor_profile_v1','vendor_config_v1','store_payment_settings_v1','store_onboarding_v1','pos_ops_log','inventory_lifecycle','pos_show_mode','sync_queue_v1','pos_customers','pos_undo_stack','sheet_mapping_v1','grade_submissions','lba_sales']);
 const WALKOFF_AUTH_SESSION_KEY = 'walkoff_auth_session_v1';
 const WALKOFF_ACTIVE_STORE_KEY = 'walkoff_active_store_id';
 const WALKOFF_STORAGE_MIGRATION_KEY = 'walkoff_store_migration_v1';
@@ -1340,6 +1340,7 @@ async function createSupabaseStore(){
   const { data, error } = await sb.rpc('create_store_for_current_user', { store_display_name:storeName, store_name:null });
   if(error) { showAuthMode('create-store', error.message); return; }
   localStorage.setItem(WALKOFF_ACTIVE_STORE_KEY, data.id);
+  localStorage.setItem('store_onboarding_v1', JSON.stringify({ startedAt:new Date().toISOString(), dismissed:false, createdStore:true, appVersion:APP_VERSION }));
   location.reload();
 }
 
@@ -1650,6 +1651,7 @@ function organizeRegisterLayout(){
   moveNode('register-buy-panel', intake);
   ensureSetNeedsPanel(wantsHub);
   ensureBuySignalsPanel(overview || backoffice);
+  ensureOnboardingPanel(overview || backoffice);
   cleanupEmptyWorkflowRows();
 
   moveNode('backoffice-ebay-panel', channels);
@@ -2142,6 +2144,138 @@ async function addManualBuiltInInventory(){
   } catch(e) {
     toast_dash('Manual add failed: ' + (e.message || e));
   }
+}
+
+function getOnboardingState(){
+  try { return JSON.parse(localStorage.getItem('store_onboarding_v1') || '{}'); }
+  catch(e) { return {}; }
+}
+
+function saveOnboardingState(patch){
+  const next = { ...getOnboardingState(), ...patch, updatedAt:new Date().toISOString(), appVersion:APP_VERSION };
+  localStorage.setItem('store_onboarding_v1', JSON.stringify(next));
+  renderOnboardingPanel();
+}
+
+function onboardingTasks(){
+  const cfg = getVendorConfig();
+  const pay = getPaymentSettings();
+  const profile = getVendorProfile();
+  const paymentSaved = !!localStorage.getItem('store_payment_settings_v1');
+  const hasPayment = !!(
+    paymentSaved && (pay.cash?.enabled ||
+    pay.card?.enabled ||
+    pay.venmo?.handle ||
+    pay.paypal?.emailOrHandle ||
+    pay.cashApp?.cashtag)
+  );
+  const hasItem = (Array.isArray(all) && all.length > 0) || getUniversalInventory().length > 0;
+  const hasScanner = !!getOnboardingState().scannerTested || Number(document.getElementById('scan-inbox-count')?.dataset.count || 0) > 0;
+  return [
+    {
+      key:'source',
+      title:'Choose inventory source',
+      detail:(cfg.inventorySource || 'built_in').replace('_',' ') + ' selected',
+      done:!!cfg.inventorySource,
+      action:'SET SOURCE',
+      run:() => { switchTab('backoffice'); document.getElementById('vendor-config-panel')?.scrollIntoView({behavior:'smooth', block:'start'}); }
+    },
+    {
+      key:'payments',
+      title:'Set payment options',
+      detail:hasPayment ? 'Checkout has at least one tender enabled' : 'Add Venmo, PayPal, Cash App, card, or cash settings',
+      done:hasPayment,
+      action:'PAYMENTS',
+      run:() => { switchTab('backoffice'); document.getElementById('payment-settings-panel')?.scrollIntoView({behavior:'smooth', block:'start'}); }
+    },
+    {
+      key:'profile',
+      title:'Store profile',
+      detail:profile.storeName ? profile.storeName : 'Add store name, logo, receipt footer',
+      done:!!profile.storeName,
+      action:'PROFILE',
+      run:() => { switchTab('backoffice'); document.getElementById('vendor-profile-panel')?.scrollIntoView({behavior:'smooth', block:'start'}); }
+    },
+    {
+      key:'firstItem',
+      title:'Add first item',
+      detail:hasItem ? 'Inventory has items' : 'Use built-in quick add or import CSV',
+      done:hasItem,
+      action:'ADD ITEM',
+      run:() => { switchTab('backoffice'); document.getElementById('spreadsheet-panel')?.scrollIntoView({behavior:'smooth', block:'start'}); setTimeout(()=>document.getElementById('built-name')?.focus(), 250); }
+    },
+    {
+      key:'scanner',
+      title:'Pair/test scanner',
+      detail:hasScanner ? 'Scanner handoff seen for this store' : 'Open phone scanner and send a scan to this store',
+      done:hasScanner,
+      action:'SCANNER',
+      run:() => { window.open('sca.html', '_blank'); saveOnboardingState({ scannerOpened:true }); }
+    },
+  ];
+}
+
+function ensureOnboardingPanel(target){
+  if(document.getElementById('store-onboarding-panel') || !target) return;
+  const panel = document.createElement('div');
+  panel.className = 'panel';
+  panel.id = 'store-onboarding-panel';
+  panel.style.maxWidth = '1400px';
+  panel.style.margin = '14px auto';
+  panel.style.padding = '14px';
+  const stats = target.querySelector('.stats');
+  if(stats) target.insertBefore(panel, stats);
+  else target.prepend(panel);
+  renderOnboardingPanel();
+}
+
+function renderOnboardingPanel(){
+  const panel = document.getElementById('store-onboarding-panel');
+  if(!panel) return;
+  const state = getOnboardingState();
+  const tasks = onboardingTasks();
+  const done = tasks.filter(t => t.done).length;
+  const complete = done === tasks.length;
+  if(state.dismissed) { panel.style.display = 'none'; return; }
+  panel.style.display = '';
+  panel.innerHTML = `
+    <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:12px">
+      <div>
+        <div class="ph" style="margin:0 0 4px">STORE SETUP <span style="font-size:9px;color:var(--dim)">${done}/${tasks.length} complete · ${escHtml(getActiveStore().displayName || 'active store')}</span></div>
+        <div style="font-family:monospace,monospace;font-size:10px;color:var(--dim);line-height:1.55">Get this workspace ready for a real vendor: inventory, payments, store profile, first item, and phone scanner handoff.</div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
+        <button class="hbtn" onclick="runNextOnboardingStep()">${complete?'REVIEW SETUP':'CONTINUE SETUP'}</button>
+        <button class="hbtn" onclick="dismissOnboarding()">DISMISS</button>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:8px">
+      ${tasks.map(t => `
+        <div class="item-metric" style="border-color:${t.done?'rgba(0,255,179,.28)':'rgba(255,209,102,.22)'}">
+          <div style="display:flex;justify-content:space-between;gap:8px;margin-bottom:6px">
+            <b style="font-family:monospace;font-size:10px;color:${t.done?'var(--g)':'var(--gold)'}">${t.done?'DONE':'TODO'}</b>
+            <span style="font-size:14px">${t.done?'✓':'·'}</span>
+          </div>
+          <div style="font-weight:700;color:var(--text);font-size:12px;margin-bottom:4px">${escHtml(t.title)}</div>
+          <div style="font-family:monospace;font-size:9px;color:var(--dim);min-height:30px;line-height:1.4">${escHtml(t.detail)}</div>
+          <button class="hbtn" style="width:100%;margin-top:8px;min-height:38px" onclick="runOnboardingStep('${t.key}')">${t.action}</button>
+        </div>`).join('')}
+    </div>`;
+}
+
+function runOnboardingStep(key){
+  const task = onboardingTasks().find(t => t.key === key);
+  if(task) task.run();
+}
+
+function runNextOnboardingStep(){
+  const task = onboardingTasks().find(t => !t.done) || onboardingTasks()[0];
+  if(task) task.run();
+}
+
+function dismissOnboarding(){
+  saveOnboardingState({ dismissed:true, dismissedAt:new Date().toISOString() });
+  toast_dash('Setup panel dismissed');
 }
 
 function parseCSV(text){
@@ -3926,7 +4060,7 @@ function renderAll(){
   renderStats(); renderCats(); renderTopVal(); renderFeed();
   renderChannels(); renderTopSold(); renderMonthly();
   renderAlerts(); filterTable(); renderSoldTable();
-  renderTodayMode(); renderDataHealthPanel(); updateUndoButton();
+  renderTodayMode(); renderDataHealthPanel(); renderOnboardingPanel(); updateUndoButton();
 }
 
 function applyDashboardItemUpdate(id, updates) {
@@ -4540,6 +4674,7 @@ async function renderScanInbox(){
     count.textContent = (queue.length ? queue.length + ' incoming' : 'waiting for scans') + ' · ' + (store.displayName || store.id || 'active store');
     count.dataset.count = String(queue.length);
   }
+  if(queue.length && !getOnboardingState().scannerTested) saveOnboardingState({ scannerTested:true, lastScannerSeenAt:new Date().toISOString() });
   updateRegisterCommandCenter(queue.length);
   if(!queue.length) {
     list.innerHTML = '<div style="font-family:monospace,monospace;font-size:10px;color:var(--dim);padding:10px;border:1px dashed var(--border);border-radius:8px;text-align:center">No phone scans for '+escHtml(store.displayName || 'this store')+'</div>';
