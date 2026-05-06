@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.05.06.10">
+<meta name="version" content="2026.05.06.11">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -218,6 +218,38 @@ tr.sold:hover td{opacity:.7;}
 .src-badge.ebay{border-color:rgba(255,209,102,.25);color:var(--gold);background:rgba(255,209,102,.06);}
 .src-badge.ai{border-color:rgba(199,125,255,.22);color:var(--purple);background:rgba(199,125,255,.06);}
 .src-badge.manual{border-color:rgba(255,255,255,.12);color:rgba(255,255,255,.42);}
+.qpl-results{display:grid;gap:16px;max-height:72vh;overflow:auto;padding:2px 4px 4px 0;scroll-behavior:smooth;}
+.qpl-hero-card{display:grid;grid-template-columns:minmax(220px,280px) minmax(0,1fr) minmax(160px,190px);gap:18px;align-items:stretch;background:linear-gradient(135deg,rgba(255,255,255,.045),rgba(0,255,179,.025));border:1px solid rgba(255,255,255,.10);border-radius:14px;padding:16px;box-shadow:0 18px 45px rgba(0,0,0,.28);}
+.qpl-img-shell{min-height:260px;background:#050507;border:1px solid rgba(255,255,255,.12);border-radius:12px;display:flex;align-items:center;justify-content:center;overflow:hidden;cursor:zoom-in;position:relative;}
+.qpl-img-shell img{width:100%;height:100%;max-height:320px;object-fit:contain;display:block;}
+.qpl-img-shell::after{content:'TAP TO ZOOM';position:absolute;left:10px;bottom:10px;font-family:monospace,monospace;font-size:9px;letter-spacing:1px;color:rgba(255,255,255,.55);background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.12);border-radius:999px;padding:5px 8px;}
+.qpl-no-img{font-family:monospace,monospace;font-size:12px;color:var(--dim);letter-spacing:2px;}
+.qpl-title{font-size:clamp(22px,2.1vw,30px);line-height:1.12;font-weight:900;color:var(--text);margin-bottom:10px;}
+.qpl-meta{font-size:clamp(14px,1.4vw,17px);line-height:1.45;color:rgba(228,228,232,.74);margin-bottom:12px;}
+.qpl-badges{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 14px;}
+.qpl-badge{font-family:monospace,monospace;font-size:11px;letter-spacing:1px;border:1px solid var(--border);border-radius:999px;padding:6px 9px;background:rgba(255,255,255,.04);color:var(--dim);}
+.qpl-badge.good{color:var(--g);border-color:rgba(0,255,179,.35);background:rgba(0,255,179,.08);}
+.qpl-badge.warn{color:var(--gold);border-color:rgba(255,209,102,.35);background:rgba(255,209,102,.08);}
+.qpl-badge.bad{color:var(--red);border-color:rgba(255,77,109,.32);background:rgba(255,77,109,.07);}
+.qpl-price{font-family:'Orbitron',monospace;font-size:clamp(30px,3vw,42px);font-weight:900;color:var(--gold);line-height:1;margin-bottom:6px;}
+.qpl-price-sub{font-family:monospace,monospace;font-size:13px;color:var(--dim);line-height:1.45;}
+.qpl-signal{font-size:13px;line-height:1.45;margin-top:14px;color:var(--gold);font-weight:700;}
+.qpl-actions{display:grid;gap:10px;align-content:start;}
+.qpl-actions .hbtn{width:100%;min-height:56px;font-size:11px;padding:12px 10px;}
+.qpl-actions .primary{background:rgba(0,255,179,.16);border-color:rgba(0,255,179,.45);color:var(--g);}
+.qpl-actions .buy{background:rgba(255,209,102,.13);border-color:rgba(255,209,102,.38);color:var(--gold);}
+.qpl-quick-controls{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px;max-width:340px;}
+.qpl-quick-controls select,.qpl-quick-controls input{background:var(--surf);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:10px;font-size:13px;min-height:44px;}
+.qpl-lightbox{position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.92);display:none;align-items:center;justify-content:center;padding:22px;}
+.qpl-lightbox.on{display:flex;}
+.qpl-lightbox img{max-width:96vw;max-height:92vh;object-fit:contain;touch-action:pinch-zoom;border-radius:10px;}
+.qpl-lightbox-btn{position:fixed;min-width:52px;min-height:52px;border-radius:999px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:#fff;font-size:24px;cursor:pointer;}
+.qpl-lightbox-close{top:18px;right:18px;}
+.qpl-lightbox-prev{left:18px;top:50%;}
+.qpl-lightbox-next{right:18px;top:50%;}
+.qpl-selected-card{background:linear-gradient(135deg,rgba(0,255,179,.06),rgba(255,209,102,.04));border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:16px;}
+.qpl-selected-top{display:grid;grid-template-columns:minmax(180px,240px) 1fr;gap:16px;align-items:start;margin-bottom:14px;}
+.qpl-selected-top img{width:100%;max-height:300px;object-fit:contain;background:#050507;border:1px solid var(--border);border-radius:12px;cursor:zoom-in;}
 .src-badge.slab{border-color:rgba(230,57,70,.26);color:#ff6b75;background:rgba(230,57,70,.06);}
 .row-act{display:flex;gap:4px;}
 .ra{font-family:monospace,monospace;font-size:8px;padding:3px 7px;border-radius:3px;cursor:pointer;border:1px solid;transition:.15s;white-space:nowrap;}
@@ -269,6 +301,11 @@ tr.sold:hover td{opacity:.7;}
   .register-command{grid-template-columns:1fr 1fr;}
   .module-grid{grid-template-columns:1fr 1fr;}
   .two,.three{grid-template-columns:1fr;}
+  .qpl-hero-card{grid-template-columns:minmax(220px,300px) minmax(0,1fr);grid-template-areas:'image info' 'actions actions';}
+  .qpl-hero-card .qpl-img-shell{grid-area:image;}
+  .qpl-hero-card .qpl-info{grid-area:info;}
+  .qpl-hero-card .qpl-actions{grid-area:actions;grid-template-columns:repeat(3,1fr);}
+  .qpl-selected-top{grid-template-columns:minmax(180px,240px) 1fr;}
 }
 @media(max-width:600px){
   body{font-size:16px;}
@@ -281,6 +318,10 @@ tr.sold:hover td{opacity:.7;}
   .tabs{padding-left:12px;padding-right:12px;}
   .hbtn{padding:10px 12px;min-height:48px;}
   .tc .tsi{width:100%;flex:1 1 100%;}
+  .qpl-hero-card{grid-template-columns:1fr;grid-template-areas:'image' 'info' 'actions';padding:12px;}
+  .qpl-img-shell{min-height:280px;}
+  .qpl-hero-card .qpl-actions{grid-template-columns:1fr;}
+  .qpl-selected-top{grid-template-columns:1fr;}
 }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -310,7 +351,7 @@ tr.sold:hover td{opacity:.7;}
 
 <header>
   <div class="hdr">
-    <div class="logo">WALK-OFF <span>DASHBOARD · v2026.05.06.10</span></div>
+    <div class="logo">WALK-OFF <span>DASHBOARD · v2026.05.06.11</span></div>
     <div class="hdr-right">
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
@@ -1113,7 +1154,7 @@ tr.sold:hover td{opacity:.7;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.05.06.10';
+const APP_VERSION = '2026.05.06.11';
 const SUPABASE_URL = 'https://vroknjrxubsqyexngwus.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_wbpX2nL8l-4NbXtZNG_bjA_nabSYaJ5';
 const AUTH_REDIRECT_URL = 'https://squeebmike.github.io/ArSca/dashboard.html';
@@ -2399,7 +2440,7 @@ async function addManualBuiltInInventory(){
     location:document.getElementById('built-location')?.value.trim() || '',
     cost:Number(document.getElementById('built-cost')?.value || 0),
     market:Number(document.getElementById('built-price')?.value || 0),
-    qty:1,
+    qty:Number(r.qty || 1),
   };
   try {
     const id = await createBuiltInInventoryItem(item, item, 'manual_quick_add');
@@ -7103,54 +7144,101 @@ function noQuickLookupResults(q, cat){
 function renderQuickLookupResults(results){
   const el = document.getElementById('qpl-result');
   el.innerHTML = `
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-      <div style="color:var(--g);font-weight:700">${results.length} MATCH${results.length===1?'':'ES'}</div>
-      <div style="color:var(--dim);font-size:8px">select a printing, then add without scanning</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:10px;flex-wrap:wrap">
+      <div style="color:var(--g);font-weight:800;font-size:13px">${results.length} MATCH${results.length===1?'':'ES'}</div>
+      <div style="color:var(--dim);font-size:11px">Large cards for live buying - tap image to inspect</div>
     </div>
-    <div style="display:grid;gap:7px;max-height:420px;overflow:auto;padding-right:3px">
+    <div class="qpl-results">
       ${results.map((r, idx) => quickLookupResultCard(r, idx)).join('')}
     </div>`;
 }
 
 function quickLookupResultCard(r, idx){
   const img = r.imageUrl
-    ? `<img src="${escHtml(r.imageUrl)}" style="width:48px;height:64px;object-fit:contain;background:#050507;border:1px solid var(--border);border-radius:5px">`
-    : `<div style="width:48px;height:64px;background:#050507;border:1px solid var(--border);border-radius:5px;display:flex;align-items:center;justify-content:center;color:var(--dim);font-size:8px">NO IMG</div>`;
-  const meta = [r.year,r.set,r.variant,r.card_number ? '#'+r.card_number : ''].filter(Boolean).join(' / ');
+    ? `<div class="qpl-img-shell" onclick="openQplImageLightbox(${idx})"><img src="${escHtml(r.imageUrl)}" alt="${escHtml(r.name || 'Card image')}"></div>`
+    : `<div class="qpl-img-shell"><div class="qpl-no-img">NO IMAGE</div></div>`;
+  const meta = [r.set,r.year,r.card_number ? '#'+r.card_number : ''].filter(Boolean).join(' / ');
   const needs = getSetNeedMatches(r);
   const signal = getSalesSignal(r);
   const conf = Number(r.confidence || 0);
-  const confLabel = conf >= 85 ? 'HIGH' : conf >= 60 ? 'MED' : conf > 0 ? 'LOW' : 'CHECK';
-  const confColor = conf >= 85 ? 'var(--g)' : conf >= 60 ? 'var(--gold)' : 'var(--red)';
+  const confLabel = conf >= 85 ? 'HIGH CONFIDENCE' : conf >= 60 ? 'MEDIUM CONFIDENCE' : conf > 0 ? 'LOW CONFIDENCE' : 'CHECK MATCH';
+  const confClass = conf >= 85 ? 'good' : conf >= 60 ? 'warn' : 'bad';
   const why = (r.matchWhy || []).length ? `Matched: ${(r.matchWhy || []).join(', ')}` : (r.note || '');
-  const tcg = r.tcgUrl ? `<button class="hbtn" style="font-size:8px;padding:6px 8px" onclick="openQuickExternal(${idx},'tcg')">TCG</button>` : '';
-  const slab = `<button class="hbtn" style="font-size:8px;padding:6px 8px;color:var(--blue)" onclick="openQuickExternal(${idx},'slab')">SLABS</button>`;
+  const tcg = r.tcgUrl ? `<button class="hbtn" onclick="openQuickExternal(${idx},'tcg')">TCG</button>` : '';
+  const slab = `<button class="hbtn" style="color:var(--blue)" onclick="openQuickExternal(${idx},'slab')">VIEW SLAB</button>`;
   const signals = [
     needs.length ? `NEEDED: ${needs.map(n => n.owner || n.set || n.name).slice(0,2).join(', ')}` : '',
     signal.wants ? `${signal.wants} want match${signal.wants===1?'':'es'}` : '',
     signal.soldCount ? `${signal.soldCount} sold / +$${signal.avgProfit.toFixed(2)} avg${signal.avgDays!=null?' / '+signal.avgDays.toFixed(0)+'d':''}` : ''
   ].filter(Boolean);
-  return `<div style="display:grid;grid-template-columns:48px 1fr auto;gap:9px;align-items:center;background:var(--surf2);border:1px solid var(--border);border-radius:8px;padding:8px">
+  const recentSold = Number(r.recentSold || r.ebay_avg || r.sold || 0);
+  return `<div class="qpl-hero-card">
     ${img}
-    <div>
-      <div style="color:var(--text);font-weight:700;font-size:11px;line-height:1.3">${escHtml(r.name)}</div>
-      <div style="color:var(--dim);font-size:8px;line-height:1.35;margin-top:3px">${escHtml(meta || r.note || r.category || '')}</div>
-      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:5px">
-        <span style="color:var(--gold);font-size:12px;font-weight:800">$${Number(r.market || 0).toFixed(2)}</span>
-        <span style="color:var(--dim);font-size:8px">${escHtml(r.priceSource || r.source || '')}</span>
-        <span style="color:${confColor};border:1px solid ${confColor};border-radius:999px;padding:2px 6px;font-size:8px;font-family:monospace">${confLabel}${conf?` ${conf}`:''}</span>
+    <div class="qpl-info">
+      <div class="qpl-title">${escHtml(r.name || 'Unknown item')}</div>
+      <div class="qpl-meta">${escHtml(meta || r.note || r.category || '')}</div>
+      <div class="qpl-badges">
+        <span class="qpl-badge ${confClass}">${confLabel}${conf?` ${conf}`:''}</span>
+        <span class="qpl-badge">${escHtml(r.category || 'ITEM')}</span>
+        ${r.source === 'inventory' ? '<span class="qpl-badge good">IN INVENTORY</span>' : ''}
+        ${r.variant ? `<span class="qpl-badge warn">${escHtml(r.variant)}</span>` : ''}
       </div>
-      ${why ? `<div style="margin-top:4px;color:var(--dim);font-size:8px">${escHtml(why)}</div>` : ''}
-      ${signals.length ? `<div style="margin-top:5px;color:${needs.length?'var(--g)':'var(--gold)'};font-size:8px;font-weight:700">${escHtml(signals.join(' / '))}</div>` : ''}
+      <div class="qpl-price">$${Number(r.market || 0).toFixed(2)}</div>
+      <div class="qpl-price-sub">
+        ${recentSold ? `Recent sold: $${recentSold.toFixed(2)}<br>` : ''}
+        Source: ${escHtml(r.priceSource || r.source || 'manual')}
+      </div>
+      ${why ? `<div style="margin-top:12px;color:var(--dim);font-size:13px;line-height:1.45">${escHtml(why)}</div>` : ''}
+      ${signals.length ? `<div class="qpl-signal" style="color:${needs.length?'var(--g)':'var(--gold)'}">${escHtml(signals.join(' / '))}</div>` : ''}
+      <div class="qpl-quick-controls">
+        <select onchange="qplResults[${idx}].condition=this.value" aria-label="Condition">
+          ${['NM','LP','MP','HP','DMG'].map(c => `<option value="${c}" ${String(r.condition||'NM')===c?'selected':''}>${c}</option>`).join('')}
+        </select>
+        <input type="number" min="1" step="1" value="${Number(r.qty || 1)}" onchange="qplResults[${idx}].qty=parseInt(this.value,10)||1" aria-label="Quantity">
+      </div>
     </div>
-    <div style="display:grid;gap:5px">
-      <button class="hbtn" style="font-size:8px;padding:6px 8px" onclick="selectQuickLookupResult(${idx})">SELECT</button>
+    <div class="qpl-actions">
+      <button class="hbtn primary" onclick="selectQuickLookupResult(${idx})">SELECT</button>
+      <button class="hbtn buy" onclick="addQuickLookupToBuyOffer(${idx})">ADD TO BUY</button>
+      <button class="hbtn" style="color:var(--gold)" onclick="addQuickLookupToInventory(${idx})">ADD INVENTORY</button>
       ${tcg}
       ${slab}
-      <button class="hbtn" style="font-size:8px;padding:6px 8px;color:var(--gold)" onclick="addQuickLookupToInventory(${idx})">ADD INV</button>
-      <button class="hbtn" style="font-size:8px;padding:6px 8px;color:var(--g)" onclick="addQuickLookupToBuyOffer(${idx})">BUY</button>
+      <button class="hbtn" onclick="openQuickExternal(${idx},'sold')">COMPS</button>
     </div>
   </div>`;
+}
+
+function openQplImageLightbox(idx, imageIdx = 0){
+  const r = qplResults[idx];
+  if(!r?.imageUrl) return;
+  const imgs = [r.imageUrl, r.backImageUrl, r.backImage, r.raw?.images?.large].filter(Boolean);
+  window._qplLightbox = { idx, imageIdx, imgs };
+  let lb = document.getElementById('qpl-lightbox');
+  if(!lb) {
+    lb = document.createElement('div');
+    lb.id = 'qpl-lightbox';
+    lb.className = 'qpl-lightbox';
+    lb.innerHTML = `
+      <button class="qpl-lightbox-btn qpl-lightbox-close" onclick="closeQplImageLightbox()">×</button>
+      <button class="qpl-lightbox-btn qpl-lightbox-prev" onclick="stepQplImageLightbox(-1)">‹</button>
+      <img id="qpl-lightbox-img" ondblclick="this.style.maxHeight=this.style.maxHeight==='none'?'92vh':'none';this.style.maxWidth=this.style.maxWidth==='none'?'96vw':'none'">
+      <button class="qpl-lightbox-btn qpl-lightbox-next" onclick="stepQplImageLightbox(1)">›</button>`;
+    lb.addEventListener('click', e => { if(e.target === lb) closeQplImageLightbox(); });
+    document.body.appendChild(lb);
+  }
+  document.getElementById('qpl-lightbox-img').src = imgs[imageIdx] || imgs[0];
+  lb.classList.add('on');
+}
+
+function stepQplImageLightbox(dir){
+  const s = window._qplLightbox;
+  if(!s?.imgs?.length) return;
+  s.imageIdx = (s.imageIdx + dir + s.imgs.length) % s.imgs.length;
+  document.getElementById('qpl-lightbox-img').src = s.imgs[s.imageIdx];
+}
+
+function closeQplImageLightbox(){
+  document.getElementById('qpl-lightbox')?.classList.remove('on');
 }
 
 function openQuickExternal(idx, type){
@@ -7169,38 +7257,40 @@ function selectQuickLookupResult(idx){
   if(!r) return;
   const el = document.getElementById('qpl-result');
   const cat = normalizeQuickCategory(r.category);
-  el.innerHTML = `<div style="background:var(--surf2);border:1px solid var(--border);border-radius:8px;padding:10px">
-    <div style="display:flex;gap:10px;align-items:flex-start;margin-bottom:10px">
-      ${r.imageUrl ? `<img src="${escHtml(r.imageUrl)}" style="width:64px;height:86px;object-fit:contain;background:#050507;border:1px solid var(--border);border-radius:6px">` : ''}
-      <div style="flex:1">
-        <div style="color:var(--gold);font-weight:800;font-size:11px;margin-bottom:4px">SELECTED PRINTING</div>
-        <div style="color:var(--text);font-weight:700;font-size:12px">${escHtml(r.name)}</div>
-        <div style="color:var(--dim);font-size:8px;margin-top:3px">${escHtml([r.year,r.set,r.card_number?'#'+r.card_number:'',r.priceSource].filter(Boolean).join(' / '))}</div>
+  el.innerHTML = `<div class="qpl-selected-card">
+    <div class="qpl-selected-top">
+      ${r.imageUrl ? `<img src="${escHtml(r.imageUrl)}" onclick="openQplImageLightbox(${idx})" alt="${escHtml(r.name || 'Selected item')}">` : '<div class="qpl-img-shell"><div class="qpl-no-img">NO IMAGE</div></div>'}
+      <div>
+        <div style="color:var(--gold);font-weight:800;font-size:13px;margin-bottom:8px">SELECTED PRINTING</div>
+        <div class="qpl-title">${escHtml(r.name)}</div>
+        <div class="qpl-meta">${escHtml([r.year,r.set,r.card_number?'#'+r.card_number:'',r.variant,r.priceSource].filter(Boolean).join(' / '))}</div>
+        <div class="qpl-price">$${Number(r.market || 0).toFixed(2)}</div>
+        <div class="qpl-price-sub">${escHtml(r.note || 'Review details, then add to inventory or buy offer.')}</div>
       </div>
     </div>
-    <div style="display:grid;grid-template-columns:1fr 100px 80px;gap:7px;margin-bottom:7px">
-      <input id="qpl-edit-name" value="${escHtml(r.name)}" style="background:var(--surf);border:1px solid var(--border);color:var(--text);padding:8px;border-radius:6px;font-size:10px">
-      <select id="qpl-edit-category" style="background:var(--surf);border:1px solid var(--border);color:var(--text);padding:8px;border-radius:6px;font-size:10px">
+    <div style="display:grid;grid-template-columns:1fr 140px 110px;gap:9px;margin-bottom:9px">
+      <input id="qpl-edit-name" value="${escHtml(r.name)}" style="background:var(--surf);border:1px solid var(--border);color:var(--text);padding:12px;border-radius:8px;font-size:14px;min-height:48px">
+      <select id="qpl-edit-category" style="background:var(--surf);border:1px solid var(--border);color:var(--text);padding:12px;border-radius:8px;font-size:14px;min-height:48px">
         ${['TCG','Sports','Comic','Graded','Collectibles'].map(c => `<option value="${c}" ${cat===c?'selected':''}>${c}</option>`).join('')}
       </select>
-      <select id="qpl-edit-condition" style="background:var(--surf);border:1px solid var(--border);color:var(--text);padding:8px;border-radius:6px;font-size:10px">
+      <select id="qpl-edit-condition" style="background:var(--surf);border:1px solid var(--border);color:var(--text);padding:12px;border-radius:8px;font-size:14px;min-height:48px">
         ${['NM','LP','MP','HP','DMG'].map(c => `<option value="${c}" ${String(r.condition||'NM')===c?'selected':''}>${c}</option>`).join('')}
       </select>
     </div>
-    <div style="display:grid;grid-template-columns:80px 1fr 80px 80px;gap:7px;margin-bottom:7px">
-      <input id="qpl-edit-year" placeholder="Year" value="${escHtml(r.year || '')}" style="background:var(--surf);border:1px solid var(--border);color:var(--text);padding:8px;border-radius:6px;font-size:10px">
-      <input id="qpl-edit-set" placeholder="Set" value="${escHtml(r.set || '')}" style="background:var(--surf);border:1px solid var(--border);color:var(--text);padding:8px;border-radius:6px;font-size:10px">
-      <input id="qpl-edit-cardnum" placeholder="#" value="${escHtml(r.card_number || '')}" style="background:var(--surf);border:1px solid var(--border);color:var(--text);padding:8px;border-radius:6px;font-size:10px">
-      <input id="qpl-edit-market" type="number" step="0.01" placeholder="Market" value="${Number(r.market || 0) || ''}" style="background:var(--surf);border:1px solid var(--border);color:var(--gold);padding:8px;border-radius:6px;font-size:10px">
+    <div style="display:grid;grid-template-columns:100px 1fr 110px 120px;gap:9px;margin-bottom:9px">
+      <input id="qpl-edit-year" placeholder="Year" value="${escHtml(r.year || '')}" style="background:var(--surf);border:1px solid var(--border);color:var(--text);padding:12px;border-radius:8px;font-size:14px;min-height:48px">
+      <input id="qpl-edit-set" placeholder="Set" value="${escHtml(r.set || '')}" style="background:var(--surf);border:1px solid var(--border);color:var(--text);padding:12px;border-radius:8px;font-size:14px;min-height:48px">
+      <input id="qpl-edit-cardnum" placeholder="#" value="${escHtml(r.card_number || '')}" style="background:var(--surf);border:1px solid var(--border);color:var(--text);padding:12px;border-radius:8px;font-size:14px;min-height:48px">
+      <input id="qpl-edit-market" type="number" step="0.01" placeholder="Market" value="${Number(r.market || 0) || ''}" style="background:var(--surf);border:1px solid var(--border);color:var(--gold);padding:12px;border-radius:8px;font-size:14px;min-height:48px">
     </div>
-    <div style="display:grid;grid-template-columns:80px 1fr;gap:7px;margin-bottom:10px">
-      <input id="qpl-edit-cost" type="number" step="0.01" placeholder="Cost" value="${Number(r.cost || 0) || ''}" style="background:var(--surf);border:1px solid var(--border);color:var(--text);padding:8px;border-radius:6px;font-size:10px">
-      <input id="qpl-edit-location" placeholder="Location" value="${escHtml(getShowMode()?.eventName ? 'At show - ' + getShowMode().eventName : '')}" style="background:var(--surf);border:1px solid var(--border);color:var(--text);padding:8px;border-radius:6px;font-size:10px">
+    <div style="display:grid;grid-template-columns:120px 1fr;gap:9px;margin-bottom:12px">
+      <input id="qpl-edit-cost" type="number" step="0.01" placeholder="Cost" value="${Number(r.cost || 0) || ''}" style="background:var(--surf);border:1px solid var(--border);color:var(--text);padding:12px;border-radius:8px;font-size:14px;min-height:48px">
+      <input id="qpl-edit-location" placeholder="Location" value="${escHtml(getShowMode()?.eventName ? 'At show - ' + getShowMode().eventName : '')}" style="background:var(--surf);border:1px solid var(--border);color:var(--text);padding:12px;border-radius:8px;font-size:14px;min-height:48px">
     </div>
     <div style="display:flex;gap:7px;flex-wrap:wrap">
-      <button class="hbtn" style="flex:1;color:var(--gold)" onclick="addSelectedQuickLookupToInventory(${idx})">ADD TO INVENTORY</button>
-      <button class="hbtn" style="flex:1;color:var(--g)" onclick="addSelectedQuickLookupToBuyOffer(${idx})">ADD TO BUY OFFER</button>
-      <button class="hbtn" onclick="renderQuickLookupResults(qplResults)">BACK</button>
+      <button class="hbtn" style="flex:1;color:var(--gold);min-height:56px" onclick="addSelectedQuickLookupToInventory(${idx})">ADD TO INVENTORY</button>
+      <button class="hbtn" style="flex:1;color:var(--g);min-height:56px" onclick="addSelectedQuickLookupToBuyOffer(${idx})">ADD TO BUY OFFER</button>
+      <button class="hbtn" style="min-height:56px" onclick="renderQuickLookupResults(qplResults)">BACK</button>
     </div>
     <div id="qpl-add-status" style="margin-top:8px;color:var(--dim);font-size:8px"></div>
   </div>`;
