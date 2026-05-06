@@ -1102,7 +1102,7 @@ tr.sold:hover td{opacity:.7;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.05.06.8';
+const APP_VERSION = '2026.05.06.9';
 const SUPABASE_URL = 'https://vroknjrxubsqyexngwus.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_wbpX2nL8l-4NbXtZNG_bjA_nabSYaJ5';
 const AUTH_REDIRECT_URL = 'https://squeebmike.github.io/ArSca/dashboard.html';
@@ -1125,7 +1125,7 @@ const WALKOFF_DEMO_STORES = [
   { id:'demo-show-store', ownerUserId:'demo-owner', name:'demo-show-store', displayName:'Demo Show Store', logoUrl:'', location:'Card Show', timezone:'America/Los_Angeles', currency:'USD', status:'active', createdAt:'2026-05-06T00:00:00.000Z' },
 ];
 const WALKOFF_DEMO_USER = { id:'demo-owner', email:'owner@walkoff.local', displayName:'Store Owner', role:'owner', defaultStoreId:'walkoff-main', createdAt:'2026-05-06T00:00:00.000Z' };
-const WALKOFF_SCOPED_KEYS = new Set(['lba_inventory','walkoff_universal_inventory','pos_cart_v2','pos_buy_list','pos_buy_offers','pos_transactions','pos_drawer','pos_wantlist','set_needs_v1','pos_consign','pos_locations','vendor_profile_v1','vendor_config_v1','store_payment_settings_v1','store_onboarding_v1','pos_ops_log','inventory_lifecycle','pos_show_mode','sync_queue_v1','pos_customers','pos_undo_stack','sheet_mapping_v1','grade_submissions','lba_sales']);
+const WALKOFF_SCOPED_KEYS = new Set(['lba_inventory','walkoff_universal_inventory','pos_cart_v2','pos_buy_list','pos_buy_offers','pos_transactions','pos_drawer','pos_drawer_closeouts','pos_wantlist','set_needs_v1','pos_consign','pos_locations','vendor_profile_v1','vendor_config_v1','store_payment_settings_v1','store_onboarding_v1','pos_ops_log','inventory_lifecycle','pos_show_mode','sync_queue_v1','pos_customers','pos_undo_stack','sheet_mapping_v1','grade_submissions','lba_sales']);
 const WALKOFF_AUTH_SESSION_KEY = 'walkoff_auth_session_v1';
 const WALKOFF_ACTIVE_STORE_KEY = 'walkoff_active_store_id';
 const WALKOFF_STORAGE_MIGRATION_KEY = 'walkoff_store_migration_v1';
@@ -3856,6 +3856,7 @@ async function buildVendorBackup(){
       buyOfferItems: buyList.length,
       scanInbox: scanInbox.length,
       transactions: safeLocalJson('pos_transactions', []).length,
+      drawerCloseouts: safeLocalJson('pos_drawer_closeouts', []).length,
       opsEvents: getOpsLog().length,
     },
     localData: {
@@ -3864,6 +3865,7 @@ async function buildVendorBackup(){
       buyOffers: safeLocalJson('pos_buy_offers', []),
       cart: safeLocalJson('pos_cart_v2', {items:[]}),
       drawer: safeLocalJson('pos_drawer', null),
+      drawerCloseouts: safeLocalJson('pos_drawer_closeouts', []),
       transactions: safeLocalJson('pos_transactions', []),
       wantList: safeLocalJson('pos_wantlist', []),
       consignments: safeLocalJson('pos_consign', []),
@@ -3935,6 +3937,7 @@ async function importVendorBackup(event){
       pos_buy_offers:d.buyOffers,
       pos_cart_v2:d.cart,
       pos_drawer:d.drawer,
+      pos_drawer_closeouts:d.drawerCloseouts,
       pos_transactions:d.transactions,
       pos_wantlist:d.wantList,
       pos_consign:d.consignments,
@@ -7124,10 +7127,98 @@ function pushQuickLookupHistory(q, r){
 // ══════════════════════════════════════════════════
 let drawerState = JSON.parse(localStorage.getItem('pos_drawer') || 'null');
 
+function createDrawerSessionId(){
+  return 'drawer_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 6);
+}
+
+function getShowSessionId(show = getShowMode()){
+  return show?.id || show?.started || '';
+}
+
+function normalizeTenderType(method = '', tenderType = ''){
+  const raw = String(tenderType || method || '').toLowerCase();
+  if(raw.includes('cash app') || raw.includes('cashapp')) return 'cashapp';
+  if(raw.includes('venmo')) return 'venmo';
+  if(raw.includes('paypal')) return 'paypal';
+  if(raw.includes('stripe') || raw.includes('card')) return 'card';
+  if(raw.includes('trade')) return 'trade_credit';
+  if(raw.includes('cash')) return 'cash';
+  return raw || 'manual_external';
+}
+
+function formatTenderLabel(key){
+  return ({ cash:'Cash', card:'Card / Stripe', venmo:'Venmo', paypal:'PayPal', cashapp:'Cash App', trade_credit:'Trade Credit', manual_external:'Other' })[key] || String(key).replace(/_/g, ' ');
+}
+
+function transactionTenderTotals(transactions = []){
+  const totals = { cash:0, card:0, venmo:0, paypal:0, cashapp:0, trade_credit:0, manual_external:0 };
+  transactions.forEach(t => {
+    const key = normalizeTenderType(t.method, t.tenderType);
+    totals[key] = Number(totals[key] || 0) + Number(t.total || 0);
+  });
+  return totals;
+}
+
+function getDrawerAdjustments(state = drawerState){
+  const entries = Array.isArray(state?.log) ? state.log : [];
+  return {
+    in: entries.filter(e => Number(e.dir) > 0).reduce((a,e) => a + Number(e.amt || 0), 0),
+    out: entries.filter(e => Number(e.dir) < 0).reduce((a,e) => a + Number(e.amt || 0), 0),
+    net: entries.reduce((a,e) => a + (Number(e.dir || 0) * Number(e.amt || 0)), 0)
+  };
+}
+
+function getDrawerTransactions(state = drawerState, txLog = safeLocalJson('pos_transactions', [])){
+  if(!state) return [];
+  const opened = new Date(state.opened || 0).getTime();
+  const closed = state.closedAt ? new Date(state.closedAt).getTime() : Date.now() + 86400000;
+  return (txLog || []).filter(t => {
+    if(t.drawerSessionId && state.id) return t.drawerSessionId === state.id;
+    const ts = new Date(t.date || t.paidAt || 0).getTime();
+    return ts >= opened && ts <= closed;
+  });
+}
+
+function getDrawerSnapshot(state = drawerState, txLog = safeLocalJson('pos_transactions', [])){
+  const tx = getDrawerTransactions(state, txLog);
+  const tender = transactionTenderTotals(tx);
+  const adj = getDrawerAdjustments(state);
+  const expected = Number(state?.float || 0) + Number(tender.cash || 0) + Number(adj.net || 0);
+  return { tx, tender, adj, expected };
+}
+
+function getDrawerCloseouts(){
+  const log = safeLocalJson('pos_drawer_closeouts', []);
+  return Array.isArray(log) ? log : [];
+}
+
+function saveDrawerCloseout(summary){
+  const log = getDrawerCloseouts();
+  log.unshift(summary);
+  localStorage.setItem('pos_drawer_closeouts', JSON.stringify(log.slice(0, 200)));
+}
+
 function openDrawer(){
   const float = parseFloat(document.getElementById('drawer-float').value) || 0;
-  drawerState = { float, opened: new Date().toISOString(), log: [], cashSales: 0 };
+  const show = getShowMode();
+  const session = getAuthSession();
+  drawerState = {
+    id: createDrawerSessionId(),
+    storeId: getActiveStoreId(),
+    registerId: REGISTER_ID,
+    showSessionId: getShowSessionId(show),
+    eventName: show?.eventName || '',
+    booth: show?.booth || '',
+    float,
+    opened: new Date().toISOString(),
+    openedBy: session?.user?.email || session?.user?.displayName || '',
+    log: [],
+    cashSales: 0,
+    status: 'open',
+    appVersion: APP_VERSION
+  };
   saveDrawer();
+  logOpsEvent('drawer_open', 'Opened cash drawer', { drawerSessionId:drawerState.id, float });
   renderDrawer();
 }
 
@@ -7147,22 +7238,65 @@ function addDrawerAdj(dir){
   const amt = parseFloat(document.getElementById('drawer-adj-amt').value)||0;
   const note = document.getElementById('drawer-adj-note').value || (dir>0?'Cash in':'Cash out');
   if(!amt) return;
-  drawerState.log.push({ dir, amt, note, time: new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'}) });
+  drawerState.log.push({
+    id:'adj_' + Date.now(),
+    drawerSessionId: drawerState.id || '',
+    dir,
+    amt,
+    note,
+    type: dir > 0 ? 'cash_in' : 'cash_out',
+    time: new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'}),
+    createdAt: new Date().toISOString()
+  });
   document.getElementById('drawer-adj-amt').value = '';
   document.getElementById('drawer-adj-note').value = '';
   saveDrawer();
+  logOpsEvent(dir > 0 ? 'drawer_cash_in' : 'drawer_cash_out', note, { drawerSessionId:drawerState.id, amount:amt });
   renderDrawer();
 }
 
 function closeDrawer(){
   if(!drawerState) return;
-  const expected = getDrawerExpected();
+  const snapshot = getDrawerSnapshot(drawerState);
+  const expected = snapshot.expected;
   const counted = parseFloat(prompt(`Expected: $${expected.toFixed(2)}
 Count your drawer and enter actual amount:`) || '0');
   const diff = counted - expected;
+  const summary = {
+    id:'drawer_close_' + Date.now(),
+    drawerSessionId: drawerState.id || '',
+    storeId: getActiveStoreId(),
+    registerId: REGISTER_ID,
+    showSessionId: drawerState.showSessionId || '',
+    eventName: drawerState.eventName || '',
+    booth: drawerState.booth || '',
+    opened: drawerState.opened,
+    closedAt: new Date().toISOString(),
+    float: Number(drawerState.float || 0),
+    cashSales: Number(snapshot.tender.cash || 0),
+    tenderTotals: snapshot.tender,
+    cashIn: Number(snapshot.adj.in || 0),
+    cashOut: Number(snapshot.adj.out || 0),
+    adjustmentNet: Number(snapshot.adj.net || 0),
+    expected,
+    counted,
+    difference: diff,
+    transactionCount: snapshot.tx.length,
+    log: drawerState.log || [],
+    appVersion: APP_VERSION
+  };
+  saveDrawerCloseout(summary);
+  logOpsEvent('drawer_close', 'Closed cash drawer', {
+    drawerSessionId: summary.drawerSessionId,
+    expected: expected.toFixed(2),
+    counted: counted.toFixed(2),
+    difference: diff.toFixed(2)
+  });
   alert(`DRAWER CLOSE SUMMARY
 Float: $${drawerState.float.toFixed(2)}
-Cash Sales: $${drawerState.cashSales.toFixed(2)}
+Cash Sales: $${Number(snapshot.tender.cash || 0).toFixed(2)}
+Cash In: $${Number(snapshot.adj.in || 0).toFixed(2)}
+Cash Out: $${Number(snapshot.adj.out || 0).toFixed(2)}
 Expected: $${expected.toFixed(2)}
 Counted: $${counted.toFixed(2)}
 Difference: ${diff>=0?'+':''}$${diff.toFixed(2)}
@@ -7175,8 +7309,7 @@ ${Math.abs(diff)<0.5?'✓ DRAWER BALANCED':'⚠ DRAWER '+Math.abs(diff).toFixed(
 
 function getDrawerExpected(){
   if(!drawerState) return 0;
-  const adjs = drawerState.log.reduce((a,e)=>a+(e.dir*e.amt),0);
-  return drawerState.float + drawerState.cashSales + adjs;
+  return getDrawerSnapshot(drawerState).expected;
 }
 
 function renderDrawer(){
@@ -7192,15 +7325,32 @@ function renderDrawer(){
   closed.style.display='none'; open.style.display='';
   status.textContent='OPEN · '+new Date(drawerState.opened).toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
   status.style.color='var(--g)';
-  // Pull today's cash sales from POS transaction log
-  const txLog = JSON.parse(localStorage.getItem('pos_transactions')||'[]');
-  const today = new Date().toDateString();
-  const cashSales = txLog.filter(t=>new Date(t.date).toDateString()===today&&t.method==='Cash').reduce((a,t)=>a+t.total,0);
+  const snapshot = getDrawerSnapshot(drawerState);
+  const cashSales = Number(snapshot.tender.cash || 0);
   drawerState.cashSales = cashSales;
   document.getElementById('drawer-float-disp').textContent = '$'+drawerState.float.toFixed(2);
   document.getElementById('drawer-sales-disp').textContent = '$'+cashSales.toFixed(2);
-  document.getElementById('drawer-expected-disp').textContent = '$'+getDrawerExpected().toFixed(2);
+  document.getElementById('drawer-expected-disp').textContent = '$'+snapshot.expected.toFixed(2);
   const logEl = document.getElementById('drawer-log');
+  if(logEl && !document.getElementById('drawer-session-meta')) {
+    logEl.insertAdjacentHTML('beforebegin', `
+      <div id="drawer-session-meta" style="font-family:monospace,monospace;font-size:9px;color:var(--dim);border:1px solid var(--border);border-radius:6px;padding:7px;margin-bottom:8px"></div>
+      <div id="drawer-tender-breakdown" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(95px,1fr));gap:6px;margin-bottom:8px"></div>
+    `);
+    logEl.insertAdjacentHTML('afterend', `<div id="drawer-closeout-history" style="font-family:monospace,monospace;font-size:9px;color:var(--dim);margin-top:8px"></div>`);
+  }
+  const meta = document.getElementById('drawer-session-meta');
+  if(meta) {
+    meta.innerHTML = `SESSION ${String(drawerState.id || '').slice(-10).toUpperCase()} - ${snapshot.tx.length} TX${drawerState.eventName ? ' - ' + escHtml(drawerState.eventName) : ''}${drawerState.booth ? ' - BOOTH ' + escHtml(drawerState.booth) : ''}`;
+  }
+  const tenderEl = document.getElementById('drawer-tender-breakdown');
+  if(tenderEl) {
+    tenderEl.innerHTML = Object.entries(snapshot.tender).map(([key,val]) => `
+      <div style="background:var(--surf2);border:1px solid var(--border);border-radius:6px;padding:7px">
+        <div style="font-family:monospace,monospace;font-size:8px;color:var(--dim);text-transform:uppercase">${formatTenderLabel(key)}</div>
+        <div style="font-family:'Orbitron',monospace;font-size:11px;color:${key==='cash'?'var(--g)':'var(--text)'}">$${Number(val||0).toFixed(2)}</div>
+      </div>`).join('');
+  }
   if(!drawerState.log.length && cashSales===0){
     logEl.innerHTML='<div style="color:var(--dim);text-align:center;padding:8px">No entries yet</div>';
   } else {
@@ -7211,6 +7361,15 @@ function renderDrawer(){
       <span class="dr-log-note">${r.note}</span>
       <span class="${r.dir>0?'dr-log-amt-in':'dr-log-amt-out'}">${r.dir>0?'+':'-'}$${r.amt.toFixed(2)}</span>
     </div>`).join('');
+  }
+  const history = document.getElementById('drawer-closeout-history');
+  if(history) {
+    const rows = getDrawerCloseouts().slice(0, 3);
+    history.innerHTML = rows.length ? `<div style="margin-top:6px;color:var(--dim)">RECENT CLOSEOUTS</div>` + rows.map(c => `
+      <div style="display:flex;justify-content:space-between;border-top:1px solid var(--border);padding:5px 0">
+        <span>${new Date(c.closedAt).toLocaleDateString()} ${new Date(c.closedAt).toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'})}</span>
+        <span style="color:${Math.abs(Number(c.difference||0))<0.5?'var(--g)':'var(--gold)'}">${Number(c.difference||0)>=0?'+':''}$${Number(c.difference||0).toFixed(2)}</span>
+      </div>`).join('') : '';
   }
   updateRegisterCommandCenter();
 }
@@ -7562,18 +7721,22 @@ function generateEOD(){
 
   const totalRevenue = dayTx.reduce((a,t)=>a+t.total,0);
   const totalItems = dayTx.reduce((a,t)=>a+t.items.length,0);
-  const cashTotal = dayTx.filter(t=>/^cash$/i.test(t.method || '') || t.tenderType === 'cash').reduce((a,t)=>a+t.total,0);
-  const cardTotal = dayTx.filter(t=>/card|stripe/i.test(t.method || '') || t.tenderType === 'card').reduce((a,t)=>a+t.total,0);
-  const venmoTotal = dayTx.filter(t=>/venmo/i.test(t.method || '')).reduce((a,t)=>a+t.total,0);
-  const paypalTotal = dayTx.filter(t=>/paypal/i.test(t.method || '')).reduce((a,t)=>a+t.total,0);
-  const cashappTotal = dayTx.filter(t=>/cash app|cashapp/i.test(t.method || '')).reduce((a,t)=>a+t.total,0);
+  const tenderTotals = transactionTenderTotals(dayTx);
+  const cashTotal = Number(tenderTotals.cash || 0);
+  const cardTotal = Number(tenderTotals.card || 0);
+  const venmoTotal = Number(tenderTotals.venmo || 0);
+  const paypalTotal = Number(tenderTotals.paypal || 0);
+  const cashappTotal = Number(tenderTotals.cashapp || 0);
   const otherTotal = Math.max(0, totalRevenue - cashTotal - cardTotal - venmoTotal - paypalTotal - cashappTotal);
   const totalProfit = daySold.reduce((a,i)=>a+(i.profit||0),0);
   const buyMarketTotal = dayBuys.reduce((a,b)=>a+Number(b.marketTotal||0),0);
   const buyPaidTotal = dayBuys.reduce((a,b)=>a+Number(b.offerTotal||0),0);
   const buyItemCount = dayBuys.reduce((a,b)=>a+(b.items?.length || b.addedCount || 0),0);
   const avgSale = dayTx.length ? totalRevenue/dayTx.length : 0;
-  const expectedCash = Number(show?.startCash || 0) + cashTotal - buyPaidTotal;
+  const dayCloseouts = getDrawerCloseouts().filter(c => new Date(c.closedAt || c.opened || 0).toDateString() === targetDay);
+  const openDrawerSnapshot = drawerState && new Date(drawerState.opened || 0).toDateString() === targetDay ? getDrawerSnapshot(drawerState) : null;
+  const drawerExpected = dayCloseouts.length ? dayCloseouts.reduce((a,c)=>a+Number(c.expected||0),0) : (openDrawerSnapshot ? openDrawerSnapshot.expected : 0);
+  const expectedCash = drawerExpected || (Number(show?.startCash || 0) + cashTotal - buyPaidTotal);
 
   // Category breakdown
   const cats = {};
@@ -7587,7 +7750,7 @@ function generateEOD(){
   const dateLabel = targetDate.toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
   const el = document.getElementById('eod-report');
 
-  if(!dayTx.length && !daySold.length && !itemsAdded.length && !show) {
+  if(!dayTx.length && !daySold.length && !itemsAdded.length && !show && !dayCloseouts.length && !openDrawerSnapshot) {
     el.innerHTML = `<div style="font-family:monospace,monospace;font-size:10px;color:var(--dim);text-align:center;padding:20px">No transactions found for ${dateLabel}</div>`;
     logOpsEvent('eod_report', 'Generated empty closeout report', { date: dateStr });
     return;
@@ -7605,6 +7768,26 @@ function generateEOD(){
         <div class="eod-row"><span class="eod-label">Starting Cash</span><span class="eod-val">$${Number(show.startCash||0).toFixed(2)}</span></div>
         <div class="eod-row"><span class="eod-label">Expected Cash</span><span class="eod-val">$${expectedCash.toFixed(2)}</span></div>
         ${show.priceRulePct?`<div class="eod-row"><span class="eod-label">Show Price Rule</span><span class="eod-val">${show.priceRulePct}% off</span></div>`:''}
+      </div>`:''}
+
+      ${(dayCloseouts.length || openDrawerSnapshot)?`<div class="eod-section">
+        <div class="eod-hdr">CASH DRAWER</div>
+        ${dayCloseouts.map(c => `<div style="border:1px solid var(--border);border-radius:6px;padding:8px;margin-bottom:8px">
+          <div class="eod-row"><span class="eod-label">Session</span><span class="eod-val">${String(c.drawerSessionId||'').slice(-10).toUpperCase()}</span></div>
+          <div class="eod-row"><span class="eod-label">Opened</span><span class="eod-val">${new Date(c.opened).toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'})}</span></div>
+          <div class="eod-row"><span class="eod-label">Float</span><span class="eod-val">$${Number(c.float||0).toFixed(2)}</span></div>
+          <div class="eod-row"><span class="eod-label">Cash Sales</span><span class="eod-val">$${Number(c.cashSales||0).toFixed(2)}</span></div>
+          <div class="eod-row"><span class="eod-label">Cash In / Out</span><span class="eod-val">+$${Number(c.cashIn||0).toFixed(2)} / -$${Number(c.cashOut||0).toFixed(2)}</span></div>
+          <div class="eod-row"><span class="eod-label">Expected</span><span class="eod-val">$${Number(c.expected||0).toFixed(2)}</span></div>
+          <div class="eod-row"><span class="eod-label">Counted</span><span class="eod-val">$${Number(c.counted||0).toFixed(2)}</span></div>
+          <div class="eod-row total"><span class="eod-label">OVER / SHORT</span><span class="eod-val" style="color:${Math.abs(Number(c.difference||0))<0.5?'var(--g)':'var(--gold)'}">${Number(c.difference||0)>=0?'+':''}$${Number(c.difference||0).toFixed(2)}</span></div>
+        </div>`).join('')}
+        ${openDrawerSnapshot?`<div style="border:1px solid rgba(255,210,92,.35);border-radius:6px;padding:8px">
+          <div class="eod-row"><span class="eod-label">Open Session</span><span class="eod-val">${String(drawerState.id||'').slice(-10).toUpperCase()}</span></div>
+          <div class="eod-row"><span class="eod-label">Float</span><span class="eod-val">$${Number(drawerState.float||0).toFixed(2)}</span></div>
+          <div class="eod-row"><span class="eod-label">Cash Sales</span><span class="eod-val">$${Number(openDrawerSnapshot.tender.cash||0).toFixed(2)}</span></div>
+          <div class="eod-row total"><span class="eod-label">EXPECTED NOW</span><span class="eod-val">$${Number(openDrawerSnapshot.expected||0).toFixed(2)}</span></div>
+        </div>`:''}
       </div>`:''}
 
       <div class="eod-section">
@@ -7695,7 +7878,7 @@ function exportEODCSV(){
   const rows = [['event','booth','date','record_type','tx_id','time','method','item','category','price','cost','profit','tx_total','market_total','offer_pct','inventory_sold_count','items_added_count','show_price_rule_pct','price_source','app_version']];
   dayTx.forEach(t => (t.items||[]).forEach(item => rows.push([
     show.eventName||'', show.booth||'', dateStr, 'sale', t.id||'', new Date(t.date).toLocaleTimeString(),
-    t.method||'', item.name||'', item.category||'', Number(item.price||0).toFixed(2),
+    t.method ? `${t.method} (${formatTenderLabel(normalizeTenderType(t.method, t.tenderType))})` : formatTenderLabel(normalizeTenderType('', t.tenderType)), item.name||'', item.category||'', Number(item.price||0).toFixed(2),
     Number(item.cost || soldByName[item.name]?.cost || 0).toFixed(2),
     Number((item.price || 0) - (item.cost || soldByName[item.name]?.cost || 0)).toFixed(2),
     Number(t.total||0).toFixed(2), '', '', daySold.length, itemsAdded.length, show.priceRulePct || '', item.priceSource || '', APP_VERSION
@@ -7705,6 +7888,11 @@ function exportEODCSV(){
     'Buy/Trade', item.name || '', item.category || '', '', Number(item.offer||0).toFixed(2), '', Number(b.offerTotal||0).toFixed(2),
     Number(item.market||0).toFixed(2), b.pct || '', daySold.length, itemsAdded.length, show.priceRulePct || '', item.priceSource || '', APP_VERSION
   ])));
+  getDrawerCloseouts().filter(c => new Date(c.closedAt || c.opened || 0).toDateString() === targetDay).forEach(c => rows.push([
+    c.eventName || show.eventName || '', c.booth || show.booth || '', dateStr, 'drawer_closeout', c.drawerSessionId || c.id || '', new Date(c.closedAt || c.opened).toLocaleTimeString(),
+    'Cash Drawer', 'Expected / counted / over-short', '', Number(c.expected || 0).toFixed(2), '', Number(c.difference || 0).toFixed(2),
+    Number(c.counted || 0).toFixed(2), '', '', daySold.length, itemsAdded.length, show.priceRulePct || '', 'drawer_closeout', APP_VERSION
+  ]));
   if(rows.length===1) rows.push([show.eventName||'', show.booth||'', dateStr, 'none', '', '', 'NO ACTIVITY', '', '', '', '', '', '', '', '', daySold.length, itemsAdded.length, show.priceRulePct || '', '', APP_VERSION]);
   const csv = rows.map(r => r.map(v => '"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\n');
   const blob = new Blob([csv], {type:'text/csv'});
@@ -7915,22 +8103,30 @@ async function recordCustomerDisplayPayment(method, total, tenderType){
   if(!items.length || !total){ toast_dash('No active cart to record'); return; }
   if(!confirm('Record ' + method + ' payment for $' + Number(total).toFixed(2) + ' and clear the cart?')) return;
   const paidAt = new Date().toISOString();
+  const show = getShowMode();
+  const normalizedTender = normalizeTenderType(method, tenderType);
   const tx = {
     id:'tx_dash_'+Date.now(),
     date:paidAt,
     method,
-    tenderType:tenderType || (method === 'Cash' ? 'cash' : 'manual_external'),
+    tenderType:normalizedTender,
+    paymentBreakdown:[{ method, tenderType:normalizedTender, amount:Number(total || 0) }],
     paymentStatus:'paid',
     total:Number(total || 0),
     items:items.map(i => ({ name:i.name, price:Number(i.price||0), cost:Number(i.cost||0), shopId:i.shopId||i.wfId||'' })),
     source:'dashboard-cart',
-    show:getShowMode(),
+    show,
+    showSessionId:getShowSessionId(show),
+    drawerSessionId:drawerState?.id || '',
+    cashTracked:normalizedTender === 'cash' && !!drawerState && !!getPaymentSettings().cash.trackCashDrawer,
+    storeId:getActiveStoreId(),
+    registerId:REGISTER_ID,
     appVersion:APP_VERSION,
   };
   const log = safeLocalJson('pos_transactions', []);
   log.unshift(tx);
   localStorage.setItem('pos_transactions', JSON.stringify(log.slice(0,1000)));
-  if(method === 'Cash' && getPaymentSettings().cash.trackCashDrawer && drawerState) {
+  if(normalizedTender === 'cash' && getPaymentSettings().cash.trackCashDrawer && drawerState) {
     drawerState.cashSales = Number(drawerState.cashSales || 0) + Number(total || 0);
     saveDrawer();
     renderDrawer();

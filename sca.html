@@ -603,12 +603,12 @@ const STORE = {
   wf_status_instock:'f3769d1e15fa0956f98984d6fa36437f',
   wf_status_sold:   'e6b42f14fcb99aa2168a5f5672226f68',
 };
-const APP_VERSION = '2026.05.06.8';
+const APP_VERSION = '2026.05.06.9';
 const SUPABASE_URL = 'https://vroknjrxubsqyexngwus.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_wbpX2nL8l-4NbXtZNG_bjA_nabSYaJ5';
 const WORKER_URL = STORE.worker_url;
 
-const WALKOFF_SCOPED_KEYS = new Set(['lba_inventory','lba_sales','pos_transactions','pos_cart_v2','pos_sync_queue','pos_drawer','pos_wantlist','pos_consign','pos_locations','vendor_profile_v1','store_payment_settings_v1','grade_submissions']);
+const WALKOFF_SCOPED_KEYS = new Set(['lba_inventory','lba_sales','pos_transactions','pos_cart_v2','pos_sync_queue','pos_drawer','pos_drawer_closeouts','pos_wantlist','pos_consign','pos_locations','vendor_profile_v1','store_payment_settings_v1','grade_submissions']);
 const WALKOFF_AUTH_SESSION_KEY = 'walkoff_auth_session_v1';
 const WALKOFF_ACTIVE_STORE_KEY = 'walkoff_active_store_id';
 let scannerSupabaseClient = null;
@@ -785,6 +785,22 @@ function getShowContext() {
     boothName: STORE.booth_name || '',
     appVersion: APP_VERSION,
   };
+}
+
+function normalizeScannerTenderType(method = '') {
+  const raw = String(method || '').toLowerCase();
+  if(raw.includes('cash app') || raw.includes('cashapp')) return 'cashapp';
+  if(raw.includes('venmo')) return 'venmo';
+  if(raw.includes('paypal')) return 'paypal';
+  if(raw.includes('stripe') || raw.includes('card')) return 'card';
+  if(raw.includes('trade')) return 'trade_credit';
+  if(raw.includes('cash')) return 'cash';
+  return 'manual_external';
+}
+
+function getActiveDrawerSessionId() {
+  try { return JSON.parse(localStorage.getItem('pos_drawer') || 'null')?.id || ''; }
+  catch(e) { return ''; }
 }
 
 function updateShowBadge() {
@@ -5997,11 +6013,15 @@ async function recordTransaction(method, total, change){
   const totals = getCartTotals();
   const show = getShowContext();
   const cartSnapshot = [...cart];
+  const tenderType = normalizeScannerTenderType(method);
   const tx = {
     id: 'tx_'+Date.now(),
     date: soldAt,
     items: cartSnapshot,
     method,
+    tenderType,
+    paymentBreakdown:[{ method, tenderType, amount:Number(total || 0) }],
+    paymentStatus:'paid',
     subtotal: totals.sub,
     discount: totals.disc,
     tax: totals.tax,
@@ -6009,6 +6029,9 @@ async function recordTransaction(method, total, change){
     total,
     change,
     show,
+    showSessionId: show.eventName || show.storeId || '',
+    drawerSessionId: getActiveDrawerSessionId(),
+    cashTracked: tenderType === 'cash' && !!getActiveDrawerSessionId(),
     vendorId: show.vendorId,
     storeId: show.storeId,
     registerId: show.registerId,
@@ -6496,7 +6519,7 @@ function importInventoryJSON() {
 function clearAllData() {
   if(!confirm('CLEAR ALL DATA? Cannot be undone.')) return;
   if(!confirm('Are you absolutely sure?')) return;
-  ['lba_inventory','lba_sales','pos_transactions','pos_cart_v2','pos_sync_queue','pos_drawer','pos_wantlist','pos_consign','pos_locations'].forEach(function(k){localStorage.removeItem(k);});
+  ['lba_inventory','lba_sales','pos_transactions','pos_cart_v2','pos_sync_queue','pos_drawer','pos_drawer_closeouts','pos_wantlist','pos_consign','pos_locations'].forEach(function(k){localStorage.removeItem(k);});
   toast('All data cleared');
   location.reload();
 }
