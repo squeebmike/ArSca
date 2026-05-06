@@ -702,7 +702,7 @@ tr.sold:hover td{opacity:.7;}
     </div>
 
     <!-- TCGPlayer Mass Price Sync -->
-    <div class="panel" id="backoffice-tcg-sync-panel" style="margin-top:14px;margin-left:20px;margin-right:20px;max-width:calc(1400px - 40px);margin-left:auto;margin-right:auto">
+    <div class="panel" id="backoffice-tcg-sync-panel" data-webflow-required style="margin-top:14px;margin-left:20px;margin-right:20px;max-width:calc(1400px - 40px);margin-left:auto;margin-right:auto">
       <div class="ph">🔄 TCGPLAYER MASS PRICE SYNC <span style="font-size:8px;color:var(--dim)">Updates Webflow prices based on condition</span></div>
       <div style="font-family:monospace;font-size:10px;color:var(--dim);margin-bottom:10px;line-height:1.6">
         Pokemon cards use PokemonTCG.io market data as the TCGPlayer-backed source and update Webflow by stored condition.
@@ -876,7 +876,8 @@ tr.sold:hover td{opacity:.7;}
 
     <div class="modal-btns">
       <button class="modal-btn confirm" onclick="confirmEdit()">SAVE CHANGES</button>
-      <button class="modal-btn" style="background:rgba(255,209,102,.08);border-color:rgba(255,209,102,.2);color:var(--gold)" onclick="confirmEditAndSync()">SAVE + SYNC WEBFLOW</button>
+      <button class="modal-btn" id="edit-sync-btn" style="background:rgba(255,209,102,.08);border-color:rgba(255,209,102,.2);color:var(--gold)" onclick="confirmEditAndSync()">SAVE + SYNC</button>
+      <button class="modal-btn danger" onclick="deleteEditingInventoryItem()">DELETE</button>
       <button class="modal-btn cancel" onclick="closeEditModal()">Cancel</button>
     </div>
     <div id="edit-sync-status" style="font-family:'DM Mono',monospace;font-size:9px;margin-top:8px;text-align:center"></div>
@@ -1101,7 +1102,7 @@ tr.sold:hover td{opacity:.7;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.05.06.4';
+const APP_VERSION = '2026.05.06.5';
 const SUPABASE_URL = 'https://vroknjrxubsqyexngwus.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_wbpX2nL8l-4NbXtZNG_bjA_nabSYaJ5';
 const AUTH_REDIRECT_URL = 'https://squeebmike.github.io/ArSca/dashboard.html';
@@ -1478,6 +1479,22 @@ function saveVendorProfile(profile){
   localStorage.setItem('vendor_profile_v1', JSON.stringify(next));
   applyVendorProfile();
   renderVendorProfilePanel();
+  saveStoreSettingsToSupabase({
+    receipt_settings:{
+      storeName:next.storeName,
+      shortName:next.shortName,
+      location:next.location,
+      website:next.website,
+      phone:next.phone,
+      email:next.email,
+      logo:next.logo,
+      receiptFooter:next.receiptFooter,
+      ebayShippingLine:next.ebayShippingLine,
+      paymentMethods:next.paymentMethods,
+      taxRate:Number(next.taxRate || 0),
+    },
+    theme:{ accent:next.themeAccent || '#00ffb3', logo:next.logo || '' }
+  });
   logOpsEvent('vendor_profile', 'Updated vendor profile/preferences', { storeName:next.storeName });
 }
 
@@ -1577,6 +1594,7 @@ function setupAppShell(){
   }
   const refreshBtn = document.getElementById('refresh-btn');
   if(refreshBtn) refreshBtn.textContent = 'REFRESH';
+  updateConnectorVisibility();
 
   if(!document.getElementById('install-hint')) {
     const hint = document.createElement('div');
@@ -1972,7 +1990,25 @@ function setInventorySource(source){
   const cfg = getVendorConfig();
   cfg.inventorySource = allowed.includes(source) ? source : 'built_in';
   saveVendorConfig(cfg);
+  updateConnectorVisibility();
   loadInventory();
+}
+
+function usesWebflowInventory(){
+  const source = getInventorySource();
+  return source === 'webflow' || source === 'hybrid';
+}
+
+function updateConnectorVisibility(){
+  const source = getInventorySource();
+  const webflowOn = usesWebflowInventory();
+  document.body?.setAttribute('data-inventory-source', source);
+  document.querySelectorAll('[data-webflow-required]').forEach(el => {
+    el.style.display = webflowOn ? '' : 'none';
+  });
+  document.querySelectorAll('[data-webflow-optional-note]').forEach(el => {
+    el.textContent = webflowOn ? 'Webflow connector enabled for this store.' : 'Webflow is off for this store. Built-in/spreadsheet inventory is active.';
+  });
 }
 
 function toggleVendorModule(key, enabled){
@@ -2010,6 +2046,7 @@ function applyVendorConfig(){
   show('backoffice-system-panel', cfg.modules.backup);
   show('backoffice-ops-panel', cfg.modules.ops);
   show('backoffice-tcg-sync-panel', cfg.modules.pricingSync);
+  updateConnectorVisibility();
 }
 
 function getInventoryCategories(){
@@ -3685,6 +3722,7 @@ function mapBuiltInItem(row){
   return {
     id,
     source:'built_in',
+    supabaseRowId:row.id || '',
     name:d.name || d.title || d.cardName || d.player || 'Inventory item',
     set:d.set || d.setName || d['set-name'] || '',
     variant:d.variant || d.parallel || '',
@@ -3720,6 +3758,43 @@ function mapBuiltInItem(row){
     issue:d.issue || d.issueNumber || '',
     publisher:d.publisher || '',
     raw:d,
+  };
+}
+
+function builtInDataFromItem(item, updates={}){
+  return {
+    ...(item.raw || {}),
+    id:item.id,
+    name:updates.name ?? item.name ?? '',
+    title:updates.name ?? item.name ?? '',
+    category:updates.category ?? item.category ?? 'TCG',
+    set:updates.set ?? item.set ?? '',
+    year:updates.year ?? item.year ?? '',
+    variant:updates.variant ?? item.variant ?? '',
+    condition:updates.condition ?? item.condition ?? '',
+    qty:Number(updates.qty ?? item.qty ?? 1),
+    cost:Number(updates.cost ?? item.cost ?? 0),
+    market:Number(updates.market ?? item.market ?? 0),
+    salePrice:Number(updates.salePrice ?? item.salePrice ?? updates.market ?? item.market ?? 0),
+    location:updates.location ?? item.location ?? '',
+    status:updates.status ?? item.status ?? 'in_stock',
+    priceSource:updates.priceSource ?? item.priceSource ?? '',
+    key_notes:updates.key_notes ?? item.key_notes ?? item.notes ?? '',
+    player:updates.player ?? item.player ?? '',
+    team:updates.team ?? item.team ?? '',
+    issue:updates.issue ?? item.issue ?? '',
+    serial_number:updates.serial_number ?? item.serial_number ?? '',
+    card_number:updates.card_number ?? item.card_number ?? '',
+    comic_grade:updates.comic_grade ?? item.comic_grade ?? '',
+    grade:updates.comic_grade ?? updates.grade ?? item.grade ?? '',
+    is_rookie:!!(updates.is_rookie ?? item.is_rookie ?? item.isRookie),
+    is_auto:!!(updates.is_auto ?? item.is_auto),
+    is_patch:!!(updates.is_patch ?? item.is_patch),
+    is_key:!!(updates.is_key ?? item.is_key),
+    is_signed:!!(updates.is_signed ?? item.is_signed),
+    source:'built_in',
+    appVersion:APP_VERSION,
+    updatedAt:new Date().toISOString(),
   };
 }
 
@@ -4150,6 +4225,7 @@ function renderTable(){
     const nameCell = tr.children[0];
     if(item && nameCell && !nameCell.querySelector('.inv-select')) {
       nameCell.insertAdjacentHTML('afterbegin', `<input class="inv-select" type="checkbox" value="${item.id}" style="margin-right:6px;accent-color:var(--g)">`);
+      nameCell.insertAdjacentHTML('beforeend', `<br><span style="font-family:monospace;font-size:8px;color:var(--dim)">${String(item.source||getInventorySource()).replace('_',' ').toUpperCase()}</span>`);
     }
     const actCell = tr.children[8];
     if(item && actCell && !actCell.querySelector('.history-btn')) {
@@ -4459,13 +4535,14 @@ async function renderScanInbox(){
   const count = document.getElementById('scan-inbox-count');
   if(!list) return;
   const queue = await readScanInbox();
+  const store = getActiveStore();
   if(count) {
-    count.textContent = queue.length ? queue.length + ' incoming' : 'waiting for scans';
+    count.textContent = (queue.length ? queue.length + ' incoming' : 'waiting for scans') + ' · ' + (store.displayName || store.id || 'active store');
     count.dataset.count = String(queue.length);
   }
   updateRegisterCommandCenter(queue.length);
   if(!queue.length) {
-    list.innerHTML = '<div style="font-family:monospace,monospace;font-size:10px;color:var(--dim);padding:10px;border:1px dashed var(--border);border-radius:8px;text-align:center">No phone scans yet</div>';
+    list.innerHTML = '<div style="font-family:monospace,monospace;font-size:10px;color:var(--dim);padding:10px;border:1px dashed var(--border);border-radius:8px;text-align:center">No phone scans for '+escHtml(store.displayName || 'this store')+'</div>';
     return;
   }
   list.innerHTML = queue.slice(0,8).map(s => {
@@ -5365,6 +5442,56 @@ async function createBuiltInInventoryItem(item, updates, sourceLabel='built_in')
   return id;
 }
 
+async function updateBuiltInInventoryItem(item, updates){
+  const sb = getSupabaseClient();
+  const session = getAuthSession();
+  const nextData = builtInDataFromItem(item, updates);
+  if(sb && session?.supabase) {
+    const { error } = await sb
+      .from('inventory_items')
+      .update({ data:nextData, status:nextData.status || 'in_stock', updated_at:new Date().toISOString() })
+      .eq('id', item.supabaseRowId || item.id);
+    if(error) throw new Error('Built-in inventory update ' + error.message);
+    applyDashboardItemUpdate(item.id, updates);
+    return true;
+  }
+  return updateUniversalInventoryItem(item.id, { ...updates, source:'built_in' });
+}
+
+async function deleteInventoryRecord(id){
+  const item = all.find(i => i.id === id);
+  if(!item) return false;
+  if(!confirm('Delete this inventory item from this store?')) return false;
+  if(item.source === 'built_in') {
+    const sb = getSupabaseClient();
+    const session = getAuthSession();
+    if(sb && session?.supabase) {
+      const { error } = await sb.from('inventory_items').delete().eq('id', item.supabaseRowId || item.id);
+      if(error) { toast_dash('Delete failed: ' + error.message); return false; }
+    } else {
+      removeUniversalInventoryItem(item.id);
+    }
+  } else if(item.source === 'spreadsheet') {
+    removeUniversalInventoryItem(item.id);
+  } else if(usesWebflowInventory()) {
+    toast_dash('Webflow delete is disabled here. Mark sold/damaged or remove in Webflow.');
+    return false;
+  } else {
+    removeUniversalInventoryItem(item.id);
+  }
+  all = all.filter(i => i.id !== id);
+  filtered = filtered.filter(i => i.id !== id);
+  renderAll();
+  logOpsEvent('inventory_delete', 'Deleted inventory item: ' + (item.name || id), { id, source:item.source || getInventorySource() });
+  toast_dash('Inventory item deleted');
+  return true;
+}
+
+function removeUniversalInventoryItem(id){
+  const inv = safeLocalJson('walkoff_universal_inventory', []);
+  localStorage.setItem('walkoff_universal_inventory', JSON.stringify(inv.filter(i => i.id !== id && i.wfId !== id).slice(0,5000)));
+}
+
 async function createInventoryRecord(item, updates) {
   const source = getInventorySource();
   if(source === 'webflow') return createWebflowProduct(item, updates);
@@ -5390,6 +5517,8 @@ async function markInventoryRecordSold(item, fieldData, saleMeta){
       if(error) throw new Error('Built-in sold sync ' + error.message);
       return 'built-in';
     }
+    updateUniversalInventoryItem(item.id, { ...saleMeta, status:'sold', lifecycle:'sold' });
+    return 'built-in-local';
   }
   if(getInventorySource() === 'built_in' || getInventorySource() === 'spreadsheet') return 'local-only';
   const res = await wfPatch('/collections/'+WF_PRODUCTS+'/items/'+item.id, { fieldData });
@@ -5428,6 +5557,11 @@ function openEditModal(id) {
   document.getElementById('edit-key').checked = item.is_key || false;
   document.getElementById('edit-signed').checked = item.is_signed || false;
   document.getElementById('edit-sync-status').textContent = '';
+  const syncBtn = document.getElementById('edit-sync-btn');
+  if(syncBtn) {
+    const source = item.source || getInventorySource();
+    syncBtn.textContent = source === 'built_in' ? 'SAVE BUILT-IN' : source === 'spreadsheet' ? 'SAVE / PROMOTE' : usesWebflowInventory() ? 'SAVE + SYNC WEBFLOW' : 'SAVE INVENTORY';
+  }
 
   const condSel = document.getElementById('edit-condition');
   const cond = item.condition || 'NM';
@@ -5443,6 +5577,13 @@ function openEditModal(id) {
 function closeEditModal() {
   document.getElementById('edit-modal').classList.remove('on');
   editingItemId = null;
+}
+
+async function deleteEditingInventoryItem(){
+  if(!editingItemId) return;
+  const id = editingItemId;
+  await deleteInventoryRecord(id);
+  closeEditModal();
 }
 
 function updateEditProfit() {
@@ -5498,7 +5639,7 @@ function updateUniversalInventoryItem(id, updates) {
   return true;
 }
 
-function confirmEdit() {
+async function confirmEdit() {
   if(!editingItemId) return;
   const before = all.find(i => i.id === editingItemId);
   if(before) pushUndoAction('inventory edit', { type:'item-snapshot', item:{...before}, lifecycleMap:getLifecycleMap() });
@@ -5526,8 +5667,9 @@ function confirmEdit() {
     is_key: document.getElementById('edit-key').checked,
     is_signed: document.getElementById('edit-signed').checked,
   };
-  saveEditToLocalStorage(editingItemId, updates);
+  if(before) await saveInventoryEdit(before, updates);
   toast_dash('✓ Saved: ' + (all.find(i=>i.id===editingItemId)?.name||'item'));
+  applyDashboardItemUpdate(editingItemId, updates);
   closeEditModal();
 }
 
@@ -5564,10 +5706,32 @@ async function confirmEditAndSync() {
 
   const statusEl = document.getElementById('edit-sync-status');
   statusEl.style.color = 'var(--gold)';
+  statusEl.textContent = item.source === 'built_in' ? 'Saving built-in inventory...' : usesWebflowInventory() ? 'Syncing to Webflow...' : 'Saving inventory...';
   statusEl.textContent = '⟳ Syncing to Webflow...';
+
+  statusEl.textContent = item.source === 'built_in' ? 'Saving built-in inventory...' : usesWebflowInventory() ? 'Syncing to Webflow...' : 'Saving inventory...';
+
+  if(item.source === 'built_in' || getInventorySource() === 'built_in') {
+    try {
+      await updateBuiltInInventoryItem(item, updates);
+      statusEl.style.color = 'var(--g)';
+      statusEl.textContent = 'Saved to built-in inventory';
+      logOpsEvent('inventory_edit', 'Updated built-in inventory item: ' + (item.name || 'item'), { itemId:item.id });
+      loadInventory();
+    } catch(e) {
+      statusEl.style.color = 'var(--red)';
+      statusEl.textContent = 'Built-in save failed: ' + (e.message || e);
+    }
+    return;
+  }
 
   if(item.source === 'spreadsheet') {
     saveEditToLocalStorage(editingItemId, updates);
+    if(!usesWebflowInventory()) {
+      statusEl.style.color = 'var(--g)';
+      statusEl.textContent = 'Saved to spreadsheet/local inventory';
+      return;
+    }
     statusEl.textContent = 'Creating Webflow item...';
     try {
       const productId = await createWebflowProduct({...item, ...updates}, updates);
@@ -5594,6 +5758,14 @@ async function confirmEditAndSync() {
   if(!wfId) {
     statusEl.style.color = 'var(--red)';
     statusEl.textContent = '⚠ No Webflow ID on this item';
+    return;
+  }
+
+  if(!usesWebflowInventory()) {
+    saveEditToLocalStorage(editingItemId, updates);
+    applyDashboardItemUpdate(editingItemId, updates);
+    statusEl.style.color = 'var(--g)';
+    statusEl.textContent = 'Saved locally';
     return;
   }
 
@@ -7272,6 +7444,16 @@ function renderPaymentSetupStatus(el){
     'Cash App: ' + (s.cashApp.enabled ? (s.cashApp.cashtag || 'not set') : 'off'),
   ];
   el.textContent = bits.join(' | ');
+}
+
+async function saveInventoryEdit(item, updates){
+  if(item.source === 'built_in') return updateBuiltInInventoryItem(item, updates);
+  if(item.source === 'spreadsheet' || getInventorySource() === 'spreadsheet') {
+    saveEditToLocalStorage(item.id, updates);
+    return true;
+  }
+  saveEditToLocalStorage(item.id, updates);
+  return true;
 }
 
 function openScannerCheckout(){
