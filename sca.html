@@ -3,7 +3,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="version" content="2026.05.06.1">
+<meta name="version" content="2026.05.06.2">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
@@ -324,6 +324,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
 .htog-on{background:rgba(255,209,102,.25)!important;border-color:var(--gold)!important;color:var(--gold)!important;}
 .holo-tog{transition:.15s;}
 </style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 <div id="scanner-auth-screen" class="auth-screen">
@@ -416,7 +417,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
   <div class="hbtns">
     <span id="show-badge" style="font-family:monospace;font-size:9px;color:rgba(255,209,102,.7);letter-spacing:1px"></span>
     <span id="offline-sync-badge" style="font-family:monospace;font-size:9px;color:rgba(255,255,255,.35);letter-spacing:1px">online</span>
-    <span id="app-version" style="font-family:monospace;font-size:9px;color:rgba(0,255,179,.55);letter-spacing:1px">v2026.05.06.1</span>
+    <span id="app-version" style="font-family:monospace;font-size:9px;color:rgba(0,255,179,.55);letter-spacing:1px">v2026.05.06.2</span>
     <span id="hstatus">READY</span>
     <button class="hbtn" data-fullscreen-btn onclick="toggleAppFullscreen(document.documentElement)">FULL SCREEN</button>
     <button class="hbtn" id="flipbtn" onclick="toggleFlip()">FLIP</button>
@@ -602,12 +603,23 @@ const STORE = {
   wf_status_instock:'f3769d1e15fa0956f98984d6fa36437f',
   wf_status_sold:   'e6b42f14fcb99aa2168a5f5672226f68',
 };
-const APP_VERSION = '2026.05.06.1';
+const APP_VERSION = '2026.05.06.2';
+const SUPABASE_URL = 'https://vroknjrxubsqyexngwus.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_wbpX2nL8l-4NbXtZNG_bjA_nabSYaJ5';
 const WORKER_URL = STORE.worker_url;
 
 const WALKOFF_SCOPED_KEYS = new Set(['lba_inventory','lba_sales','pos_transactions','pos_cart_v2','pos_sync_queue','pos_drawer','pos_wantlist','pos_consign','pos_locations','vendor_profile_v1','store_payment_settings_v1','grade_submissions']);
 const WALKOFF_AUTH_SESSION_KEY = 'walkoff_auth_session_v1';
 const WALKOFF_ACTIVE_STORE_KEY = 'walkoff_active_store_id';
+let scannerSupabaseClient = null;
+function getScannerSupabaseClient(){
+  if(scannerSupabaseClient) return scannerSupabaseClient;
+  if(!window.supabase?.createClient) return null;
+  scannerSupabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    auth:{ persistSession:true, autoRefreshToken:true, detectSessionInUrl:true }
+  });
+  return scannerSupabaseClient;
+}
 function getScannerAuthSession(){ try { return JSON.parse(localStorage.getItem(WALKOFF_AUTH_SESSION_KEY) || 'null'); } catch(e) { return null; } }
 function getScannerActiveStoreId(){ return localStorage.getItem(WALKOFF_ACTIVE_STORE_KEY) || getScannerAuthSession()?.activeStoreId || 'walkoff-main'; }
 function scannerScopedKey(key){ return WALKOFF_SCOPED_KEYS.has(key) ? 'walkoff:' + getScannerActiveStoreId() + ':' + key : key; }
@@ -634,7 +646,38 @@ function scannerDemoLogin(){
   localStorage.setItem(WALKOFF_ACTIVE_STORE_KEY, 'walkoff-main');
   location.reload();
 }
-function ensureScannerAuth(){
+async function loadScannerSupabaseStores(user){
+  const sb = getScannerSupabaseClient();
+  if(!sb || !user) return [];
+  const { data, error } = await sb
+    .from('store_members')
+    .select('role, stores(id,name,display_name,logo_url,owner_user_id,timezone,currency,status,created_at)')
+    .eq('user_id', user.id)
+    .eq('active', true);
+  if(error) { console.warn('Scanner store lookup failed:', error); return []; }
+  return (data || []).map(row => ({ ...(row.stores || {}), role:row.role })).filter(s => s.id && s.status !== 'disabled');
+}
+async function ensureScannerAuth(){
+  const sb = getScannerSupabaseClient();
+  if(sb) {
+    const { data } = await sb.auth.getSession();
+    if(data?.session?.user) {
+      const stores = await loadScannerSupabaseStores(data.session.user);
+      if(stores.length) {
+        const preferred = localStorage.getItem(WALKOFF_ACTIVE_STORE_KEY);
+        const activeStoreId = stores.some(s => s.id === preferred) ? preferred : stores[0].id;
+        const active = stores.find(s => s.id === activeStoreId);
+        localStorage.setItem(WALKOFF_AUTH_SESSION_KEY, JSON.stringify({
+          user:{ id:data.session.user.id, email:data.session.user.email || '', displayName:data.session.user.user_metadata?.display_name || data.session.user.email || 'User', role:active?.role || 'scanner_only', defaultStoreId:activeStoreId },
+          stores,
+          activeStoreId,
+          supabase:true,
+          createdAt:new Date().toISOString()
+        }));
+        localStorage.setItem(WALKOFF_ACTIVE_STORE_KEY, activeStoreId);
+      }
+    }
+  }
   const session = getScannerAuthSession();
   if(!session) { document.getElementById('scanner-auth-screen')?.classList.add('on'); return false; }
   localStorage.setItem(WALKOFF_ACTIVE_STORE_KEY, session.activeStoreId || 'walkoff-main');
@@ -7139,8 +7182,8 @@ function syncFullscreenButtons(){
 }
 ['fullscreenchange','webkitfullscreenchange','mozfullscreenchange','MSFullscreenChange'].forEach(evt => document.addEventListener(evt, syncFullscreenButtons));
 
-window.addEventListener('load', function(){
-  if(!ensureScannerAuth()) return;
+window.addEventListener('load', async function(){
+  if(!(await ensureScannerAuth())) return;
   startScanner();
   injectNavButtons();
   if(cart.length > 0){

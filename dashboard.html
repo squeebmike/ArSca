@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.05.06.1">
+<meta name="version" content="2026.05.06.2">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -273,26 +273,34 @@ tr.sold:hover td{opacity:.7;}
   .hbtn{padding:5px 9px;}
 }
 </style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 
 <div id="setup" style="display:none"></div>
 <div id="auth-screen" class="auth-screen">
   <div class="auth-card">
-    <div class="auth-title">WALK-OFF LOGIN</div>
-    <div class="auth-sub">Demo auth is local-only for now. It scopes dashboard data by store without deleting old browser data.</div>
+    <div class="auth-title" id="auth-title">WALK-OFF LOGIN</div>
+    <div class="auth-sub" id="auth-sub">Log in with Supabase. Your store data is isolated by workspace membership.</div>
     <div class="auth-row">
-      <label style="font-family:monospace;font-size:9px;color:var(--dim)">EMAIL<input id="auth-email" class="tsi" value="owner@walkoff.local" autocomplete="username"></label>
-      <label style="font-family:monospace;font-size:9px;color:var(--dim)">STORE<select id="auth-store" class="tsi"></select></label>
-      <button class="hbtn" onclick="loginDemoAccount()">LOGIN</button>
+      <label id="auth-email-wrap" style="font-family:monospace;font-size:9px;color:var(--dim)">EMAIL<input id="auth-email" class="tsi" value="swarnerauto1@yahoo.com" autocomplete="username"></label>
+      <label id="auth-password-wrap" style="font-family:monospace;font-size:9px;color:var(--dim)">PASSWORD<input id="auth-password" class="tsi" type="password" autocomplete="current-password"></label>
+      <label id="auth-store-name-wrap" style="display:none;font-family:monospace;font-size:9px;color:var(--dim)">STORE NAME<input id="auth-store-name" class="tsi" value="Walk-Off Sports Cards & Comics"></label>
+      <label id="auth-store-wrap" style="display:none;font-family:monospace;font-size:9px;color:var(--dim)">STORE<select id="auth-store" class="tsi"></select></label>
+      <button class="hbtn" id="auth-primary-btn" onclick="loginSupabaseAccount()">LOGIN</button>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="hbtn" onclick="showAuthMode('signup')">SIGN UP</button>
+        <button class="hbtn" onclick="showAuthMode('reset')">RESET PASSWORD</button>
+        <button class="hbtn" onclick="loginDemoAccount()">LOCAL DEMO</button>
+      </div>
     </div>
-    <div class="auth-meta">Backend auth can replace this shell later. Current mode: browser-local account/session with store-scoped storage migration.</div>
+    <div class="auth-meta" id="auth-status">Supabase connected after login. Local demo remains available for development.</div>
   </div>
 </div>
 
 <header>
   <div class="hdr">
-    <div class="logo">WALK-OFF <span>DASHBOARD · v2026.05.06.1</span></div>
+    <div class="logo">WALK-OFF <span>DASHBOARD · v2026.05.06.2</span></div>
     <div class="hdr-right">
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
@@ -1093,7 +1101,9 @@ tr.sold:hover td{opacity:.7;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.05.06.1';
+const APP_VERSION = '2026.05.06.2';
+const SUPABASE_URL = 'https://vroknjrxubsqyexngwus.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_wbpX2nL8l-4NbXtZNG_bjA_nabSYaJ5';
 const STORE_ID = 'walkoff-main';
 const REGISTER_ID = 'front';
 const WF_PRODUCTS = '65eb45a28ff6bf3fe4f17b14';
@@ -1117,10 +1127,20 @@ const WALKOFF_SCOPED_KEYS = new Set(['lba_inventory','walkoff_universal_inventor
 const WALKOFF_AUTH_SESSION_KEY = 'walkoff_auth_session_v1';
 const WALKOFF_ACTIVE_STORE_KEY = 'walkoff_active_store_id';
 const WALKOFF_STORAGE_MIGRATION_KEY = 'walkoff_store_migration_v1';
+let supabaseClient = null;
+
+function getSupabaseClient(){
+  if(supabaseClient) return supabaseClient;
+  if(!window.supabase?.createClient) return null;
+  supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    auth:{ persistSession:true, autoRefreshToken:true, detectSessionInUrl:true }
+  });
+  return supabaseClient;
+}
 
 function getAuthSession(){ try { return JSON.parse(localStorage.getItem(WALKOFF_AUTH_SESSION_KEY) || 'null'); } catch(e) { return null; } }
 function getActiveStoreId(){ return localStorage.getItem(WALKOFF_ACTIVE_STORE_KEY) || getAuthSession()?.activeStoreId || WALKOFF_DEMO_USER.defaultStoreId; }
-function getActiveStore(){ const id = getActiveStoreId(); return WALKOFF_DEMO_STORES.find(s => s.id === id) || WALKOFF_DEMO_STORES[0]; }
+function getActiveStore(){ const session = getAuthSession(); const id = getActiveStoreId(); return session?.stores?.find(s => s.id === id) || WALKOFF_DEMO_STORES.find(s => s.id === id) || WALKOFF_DEMO_STORES[0]; }
 function scopedStorageKey(key, storeId = getActiveStoreId()){ return WALKOFF_SCOPED_KEYS.has(key) && storeId ? 'walkoff:' + storeId + ':' + key : key; }
 
 (function installStoreScopedStorage(){
@@ -1161,14 +1181,125 @@ function populateLoginStores(){
   const sel = document.getElementById('auth-store');
   if(sel && !sel.options.length) sel.innerHTML = WALKOFF_DEMO_STORES.map(s => `<option value="${s.id}">${escHtml(s.displayName)}</option>`).join('');
 }
-function ensureAuthReady(){
-  populateLoginStores();
-  const session = getAuthSession();
-  if(!session) { document.getElementById('auth-screen')?.classList.add('on'); return false; }
-  localStorage.setItem(WALKOFF_ACTIVE_STORE_KEY, session.activeStoreId || session.user.defaultStoreId || WALKOFF_DEMO_USER.defaultStoreId);
+function showAuthMode(mode, message){
+  const title = document.getElementById('auth-title');
+  const sub = document.getElementById('auth-sub');
+  const pass = document.getElementById('auth-password-wrap');
+  const storeName = document.getElementById('auth-store-name-wrap');
+  const storePick = document.getElementById('auth-store-wrap');
+  const primary = document.getElementById('auth-primary-btn');
+  const status = document.getElementById('auth-status');
+  if(title) title.textContent = mode === 'signup' ? 'CREATE ACCOUNT' : mode === 'reset' ? 'RESET PASSWORD' : mode === 'create-store' ? 'CREATE STORE' : mode === 'picker' ? 'CHOOSE STORE' : 'WALK-OFF LOGIN';
+  if(sub) sub.textContent = mode === 'create-store' ? 'You are logged in. Create a store workspace to keep your data separate.' : mode === 'picker' ? 'Choose which store workspace to open.' : 'Real Supabase login. Store data is isolated by membership.';
+  if(pass) pass.style.display = mode === 'reset' || mode === 'create-store' || mode === 'picker' ? 'none' : '';
+  if(storeName) storeName.style.display = mode === 'create-store' ? '' : 'none';
+  if(storePick) storePick.style.display = mode === 'picker' ? '' : 'none';
+  if(primary) {
+    primary.textContent = mode === 'signup' ? 'SIGN UP' : mode === 'reset' ? 'SEND RESET' : mode === 'create-store' ? 'CREATE STORE' : mode === 'picker' ? 'OPEN STORE' : 'LOGIN';
+    primary.onclick = mode === 'signup' ? signupSupabaseAccount : mode === 'reset' ? resetSupabasePassword : mode === 'create-store' ? createSupabaseStore : mode === 'picker' ? selectPickedStore : loginSupabaseAccount;
+  }
+  if(status) status.textContent = message || 'Supabase connected. Local demo remains available for development.';
+  document.getElementById('auth-screen')?.classList.add('on');
+}
+
+async function ensureAuthReady(){
+  const sb = getSupabaseClient();
+  if(!sb) {
+    populateLoginStores();
+    const fallback = getAuthSession();
+    if(!fallback) { showAuthMode('login', 'Supabase library did not load. You can use local demo mode.'); return false; }
+    localStorage.setItem(WALKOFF_ACTIVE_STORE_KEY, fallback.activeStoreId || fallback.user.defaultStoreId || WALKOFF_DEMO_USER.defaultStoreId);
+    document.getElementById('auth-screen')?.classList.remove('on');
+    renderAccountHeader();
+    return true;
+  }
+  const { data, error } = await sb.auth.getSession();
+  if(error) console.warn('Supabase session error:', error);
+  if(!data?.session?.user) { showAuthMode('login'); return false; }
+  const user = data.session.user;
+  const stores = await loadSupabaseStoresForUser(user);
+  if(!stores.length) { showAuthMode('create-store', 'Create your store. Testers get their own empty store by default.'); return false; }
+  const preferred = localStorage.getItem(WALKOFF_ACTIVE_STORE_KEY);
+  if(stores.length > 1 && !stores.some(s => s.id === preferred)) {
+    renderStorePickerOptions(stores);
+    showAuthMode('picker', 'Choose which store to open.');
+    return false;
+  }
+  const activeStoreId = stores.some(s => s.id === preferred) ? preferred : stores[0].id;
+  const member = stores.find(s => s.id === activeStoreId);
+  localStorage.setItem(WALKOFF_AUTH_SESSION_KEY, JSON.stringify({
+    user:{ id:user.id, email:user.email || '', displayName:user.user_metadata?.display_name || user.email || 'User', role:member?.role || 'employee', defaultStoreId:activeStoreId },
+    stores,
+    activeStoreId,
+    supabase:true,
+    createdAt:new Date().toISOString()
+  }));
+  localStorage.setItem(WALKOFF_ACTIVE_STORE_KEY, activeStoreId);
   document.getElementById('auth-screen')?.classList.remove('on');
   renderAccountHeader();
   return true;
+}
+
+function renderStorePickerOptions(stores){
+  const sel = document.getElementById('auth-store');
+  if(!sel) return;
+  sel.innerHTML = (stores || []).map(s => `<option value="${s.id}">${escHtml(s.displayName || s.name || 'Store')}</option>`).join('');
+}
+
+async function loadSupabaseStoresForUser(user){
+  const sb = getSupabaseClient();
+  if(!sb || !user) return [];
+  const { data, error } = await sb
+    .from('store_members')
+    .select('role, stores(id,name,display_name,logo_url,owner_user_id,timezone,currency,status,created_at)')
+    .eq('user_id', user.id)
+    .eq('active', true);
+  if(error) { showAuthMode('login', 'Store lookup failed: ' + error.message); return []; }
+  return (data || []).map(row => ({ ...(row.stores || {}), role:row.role })).filter(s => s.id && s.status !== 'disabled');
+}
+
+async function loginSupabaseAccount(){
+  const sb = getSupabaseClient();
+  if(!sb) { loginDemoAccount(); return; }
+  const email = document.getElementById('auth-email')?.value.trim();
+  const password = document.getElementById('auth-password')?.value || '';
+  if(!email || !password) { showAuthMode('login', 'Enter email and password.'); return; }
+  const { error } = await sb.auth.signInWithPassword({ email, password });
+  if(error) { showAuthMode('login', error.message); return; }
+  location.reload();
+}
+
+async function signupSupabaseAccount(){
+  const sb = getSupabaseClient();
+  const email = document.getElementById('auth-email')?.value.trim();
+  const password = document.getElementById('auth-password')?.value || '';
+  if(!sb || !email || !password) { showAuthMode('signup', 'Enter email and password.'); return; }
+  const { error } = await sb.auth.signUp({ email, password, options:{ data:{ display_name:email.split('@')[0] } } });
+  if(error) { showAuthMode('signup', error.message); return; }
+  showAuthMode('login', 'Account created. If email confirmation is on, verify first. Then log in.');
+}
+
+async function resetSupabasePassword(){
+  const sb = getSupabaseClient();
+  const email = document.getElementById('auth-email')?.value.trim();
+  if(!sb || !email) { showAuthMode('reset', 'Enter your email first.'); return; }
+  const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: location.href.split('#')[0] });
+  showAuthMode('login', error ? error.message : 'Password reset email sent.');
+}
+
+async function createSupabaseStore(){
+  const sb = getSupabaseClient();
+  const storeName = document.getElementById('auth-store-name')?.value.trim() || 'My Store';
+  if(!sb) return;
+  const { data, error } = await sb.rpc('create_store_for_current_user', { store_display_name:storeName, store_name:null });
+  if(error) { showAuthMode('create-store', error.message); return; }
+  localStorage.setItem(WALKOFF_ACTIVE_STORE_KEY, data.id);
+  location.reload();
+}
+
+function selectPickedStore(){
+  const storeId = document.getElementById('auth-store')?.value;
+  if(storeId) switchActiveStore(storeId);
 }
 function loginDemoAccount(){
   const email = document.getElementById('auth-email')?.value.trim() || WALKOFF_DEMO_USER.email;
@@ -1179,7 +1310,9 @@ function loginDemoAccount(){
   logOpsEvent('auth_login', 'Demo login started store session', { email, storeId });
   location.reload();
 }
-function logoutAccount(){
+async function logoutAccount(){
+  const sb = getSupabaseClient();
+  if(sb) await sb.auth.signOut().catch(()=>{});
   localStorage.removeItem(WALKOFF_AUTH_SESSION_KEY);
   document.getElementById('auth-screen')?.classList.add('on');
   toast_dash('Logged out');
@@ -1188,6 +1321,8 @@ function switchActiveStore(storeId){
   const session = getAuthSession();
   if(!session || !session.stores?.some(s => s.id === storeId)) return;
   session.activeStoreId = storeId;
+  const member = session.stores.find(s => s.id === storeId);
+  if(member) session.user.role = member.role || session.user.role;
   localStorage.setItem(WALKOFF_AUTH_SESSION_KEY, JSON.stringify(session));
   localStorage.setItem(WALKOFF_ACTIVE_STORE_KEY, storeId);
   logOpsEvent('store_switch', 'Switched active store', { storeId });
@@ -3324,8 +3459,8 @@ async function postCartToWorker(cartData, queueOnFail = true){
   }
 }
 
-window.addEventListener('load', function(){
-  if(!ensureAuthReady()) return;
+window.addEventListener('load', async function(){
+  if(!(await ensureAuthReady())) return;
   setupAppShell();
   renderShowMode();
   refreshEbayStatus();
