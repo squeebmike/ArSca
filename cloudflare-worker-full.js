@@ -994,16 +994,111 @@ export default {
 
     // Universal TCG pricing proxy.
     // Optional secret: TCGAPI_KEY from https://tcgapi.dev
-    // GET /pricing/tcg?q=&game=&set=&condition=&sealed=true
+    // GET /pricing/tcg?q=&game=&set=&condition=&finish=&language=&sealed=true
     if (url.pathname === '/pricing/tcg') {
       const q = (url.searchParams.get('q') || '').trim();
       const game = (url.searchParams.get('game') || '').trim().toLowerCase();
       const setName = (url.searchParams.get('set') || '').trim().toLowerCase();
       const condition = (url.searchParams.get('condition') || 'NM').toUpperCase();
+      const finishFilter = (url.searchParams.get('finish') || '').trim().toLowerCase();
+      const languageFilter = (url.searchParams.get('language') || 'English').trim();
       const sealed = /^(1|true|yes)$/i.test(url.searchParams.get('sealed') || '');
       if (q.length < 2) return json({ ok: false, error: 'q required' }, 400);
 
       const condMult = { NM: 1, LP: 0.8, MP: 0.64, HP: 0.4, DMG: 0.25 };
+      const conditions = ['NM', 'LP', 'MP', 'HP', 'DMG'];
+      const conditionNames = { NM: 'Near Mint', LP: 'Lightly Played', MP: 'Moderately Played', HP: 'Heavily Played', DMG: 'Damaged' };
+      const normalizeFinish = value => {
+        const raw = String(value || 'normal').toLowerCase();
+        if (/reverse/.test(raw)) return 'reverse_holo';
+        if (/holo/.test(raw)) return 'holofoil';
+        if (/etched/.test(raw)) return 'etched_foil';
+        if (/surge/.test(raw)) return 'surge_foil';
+        if (/textured/.test(raw)) return 'textured_foil';
+        if (/serial/.test(raw)) return 'serialized';
+        if (/foil/.test(raw)) return 'foil';
+        if (/1st|first/.test(raw)) return 'first_edition';
+        if (/unlimited/.test(raw)) return 'unlimited';
+        return raw.replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '') || 'normal';
+      };
+      const pickPrice = p => Number(p?.marketPrice ?? p?.market_price ?? p?.market ?? p?.price ?? p?.midPrice ?? p?.median_price ?? p?.mid ?? p?.lowPrice ?? p?.low_price ?? p?.low ?? 0);
+      const makeVariants = (priceMap, productId = '', productConditionIdPrefix = '') => {
+        const entries = Array.isArray(priceMap)
+          ? priceMap.map((p, i) => [p.printing || p.finish || p.sub_type || 'normal', p, i])
+          : Object.entries(priceMap || {}).map(([k, p], i) => [k, p, i]);
+        const variants = [];
+        entries.forEach(([finishRaw, p, i]) => {
+          const finish = normalizeFinish(finishRaw);
+          const baseMarket = pickPrice(p);
+          const low = Number(p?.lowPrice ?? p?.low_price ?? p?.low ?? p?.directLowPrice ?? p?.direct_low_price ?? 0) || null;
+          const mid = Number(p?.midPrice ?? p?.median_price ?? p?.mid ?? p?.price ?? 0) || null;
+          const high = Number(p?.highPrice ?? p?.high_price ?? p?.high ?? 0) || null;
+          conditions.forEach(cond => {
+            const skuId = p?.skuId || p?.sku_id || p?.id || `${productId || 'product'}-${finish}-${cond}`;
+            const hasSkuMarket = Number(p?.[cond]?.marketPrice || p?.[cond]?.market || 0) > 0;
+            const condMarket = hasSkuMarket ? Number(p[cond].marketPrice || p[cond].market) : null;
+            const fallback = cond === 'NM' ? baseMarket : Math.round(baseMarket * (condMult[cond] || 1) * 100) / 100;
+            variants.push({
+              skuId: `${skuId}-${cond}`,
+              productConditionId: p?.productConditionId || p?.product_condition_id || `${productConditionIdPrefix || productId || 'pc'}-${i}-${cond}`,
+              condition: cond,
+              conditionName: conditionNames[cond],
+              finish,
+              foilType: finish,
+              language: languageFilter || 'English',
+              printing: String(finishRaw || finish),
+              marketPrice: condMarket,
+              productLevelMarketPrice: baseMarket || null,
+              estimatedMarketPrice: condMarket || (baseMarket ? fallback : null),
+              lowPrice: low,
+              midPrice: mid,
+              highPrice: high,
+              directLowPrice: Number(p?.directLowPrice ?? p?.direct_low_price ?? 0) || null,
+              lowestListingPrice: Number(p?.lowestListingPrice ?? p?.lowest_listing_price ?? p?.low ?? 0) || null,
+              lowestShipping: Number(p?.lowestShipping ?? p?.lowest_shipping ?? 0) || null,
+              recentSoldPrice: Number(p?.recentSoldPrice ?? p?.recent_sold_price ?? 0) || null,
+              lastUpdated: p?.lastUpdated || p?.last_updated || null,
+              priceConfidence: condMarket ? 'high' : baseMarket ? (cond === 'NM' ? 'medium' : 'low') : 'unknown',
+              priceSource: condMarket ? 'TCGplayer SKU Market' : baseMarket ? (cond === 'NM' ? 'Product-Level Estimate' : 'Estimated fallback') : 'Needs Research',
+            });
+          });
+        });
+        return variants.filter(v => !finishFilter || v.finish === finishFilter || String(v.printing || '').toLowerCase().includes(finishFilter));
+      };
+      const matchResponse = (match, variants, source, selectedVariant) => ({
+        success: true,
+        query: q,
+        source,
+        matches: [{
+          productId: match.id || match.productId || match.tcgplayer_id || '',
+          name: match.name || q,
+          cleanName: match.clean_name || match.cleanName || match.name || q,
+          groupId: match.group_id || match.groupId || '',
+          groupName: match.group_name || match.set_name || match.set?.name || '',
+          setName: match.set_name || match.set?.name || '',
+          setCode: match.set_code || match.set?.id || '',
+          cardNumber: match.number || match.cardNumber || '',
+          rarity: match.rarity || '',
+          productLine: match.product_line || match.supertype || game || '',
+          categoryName: match.category_name || game || '',
+          imageUrl: match.image_url || match.images?.small || match.images?.large || '',
+          productUrl: match.url || match.tcgplayer?.url || '',
+          confidenceScore: 80,
+          matchReasons: ['pricing proxy match'],
+          availableVariants: variants,
+          extraInfo: {
+            productLine: match.product_line || match.supertype || '',
+            categoryName: match.category_name || game || '',
+            manaCost: match.mana_cost || '',
+            typeLine: match.type_line || '',
+            oracleText: match.oracle_text || '',
+            artist: match.artist || '',
+            releaseDate: match.releaseDate || match.set?.releaseDate || '',
+          }
+        }],
+        selectedVariant,
+        errors: []
+      });
       const gameSlug = (() => {
         if (/magic|mtg/.test(game)) return 'magic-the-gathering';
         if (/yu|yugioh|yu-gi-oh/.test(game)) return 'yu-gi-oh';
@@ -1050,15 +1145,18 @@ export default {
             normalPrice.low_price ||
             0
           );
-          const price = Math.max(0, Math.round(nm * (condMult[condition] || 1) * 100) / 100);
+          const variants = makeVariants(priceRows.length ? priceRows : [{ printing:'normal', market_price:nm }], best.id || best.productId || '', best.product_condition_id || '');
+          const selectedVariant = variants.find(v => v.condition === condition && (!finishFilter || v.finish === finishFilter)) || variants.find(v => v.condition === condition) || variants[0] || null;
+          const price = Number(selectedVariant?.marketPrice || selectedVariant?.estimatedMarketPrice || selectedVariant?.productLevelMarketPrice || 0);
           return json({
             ok: true,
+            ...matchResponse(best, variants, 'tcgapi', selectedVariant),
             source: 'tcgapi',
             match: best,
             price,
             condition,
             nmMarket: nm,
-            matches: rows.slice(0, 8),
+            rawMatches: rows.slice(0, 8),
           });
         } catch (e) {
           return json({ ok: false, source: 'tcgapi', error: e.message }, 500);
@@ -1080,7 +1178,18 @@ export default {
           const prices = card?.tcgplayer?.prices || {};
           const nm = Object.values(prices).find(p => p?.market > 0 || p?.mid > 0)?.market || Object.values(prices).find(p => p?.mid > 0)?.mid || 0;
           if (!card || !nm) return json({ ok: false, source: 'pokemontcg', error: 'No price match' }, 404);
-          return json({ ok: true, source: 'pokemontcg', match: card, price: Math.round(nm * (condMult[condition] || 1) * 100) / 100, condition, nmMarket: nm, matches: d.data || [] });
+          const variants = makeVariants(prices, card.id || '', card.id || '');
+          const selectedVariant = variants.find(v => v.condition === condition && (!finishFilter || v.finish === finishFilter)) || variants.find(v => v.condition === condition) || variants[0] || null;
+          return json({
+            ok: true,
+            ...matchResponse(card, variants, 'pokemontcg', selectedVariant),
+            source: 'pokemontcg',
+            match: card,
+            price: Number(selectedVariant?.marketPrice || selectedVariant?.estimatedMarketPrice || selectedVariant?.productLevelMarketPrice || 0),
+            condition,
+            nmMarket: nm,
+            rawMatches: d.data || []
+          });
         } catch (e) {
           return json({ ok: false, source: 'pokemontcg', error: e.message }, 500);
         }

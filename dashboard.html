@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.05.06.11">
+<meta name="version" content="2026.05.06.12">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -335,7 +335,12 @@ tr.sold:hover td{opacity:.7;}
     <div class="auth-sub" id="auth-sub">Log in with Supabase. Your store data is isolated by workspace membership.</div>
     <div class="auth-row">
       <label id="auth-email-wrap" style="font-family:monospace;font-size:9px;color:var(--dim)">EMAIL<input id="auth-email" class="tsi" value="swarnerauto1@yahoo.com" autocomplete="username"></label>
-      <label id="auth-password-wrap" style="font-family:monospace;font-size:9px;color:var(--dim)">PASSWORD<input id="auth-password" class="tsi" type="password" autocomplete="current-password"></label>
+      <label id="auth-password-wrap" style="font-family:monospace;font-size:9px;color:var(--dim)">PASSWORD
+        <span style="display:flex;gap:6px;align-items:center">
+          <input id="auth-password" class="tsi" type="password" autocomplete="current-password" style="flex:1">
+          <button class="hbtn" type="button" id="auth-password-eye" aria-label="Show password" onclick="toggleAuthPasswordVisibility()" style="width:54px;padding:0">EYE</button>
+        </span>
+      </label>
       <label id="auth-store-name-wrap" style="display:none;font-family:monospace;font-size:9px;color:var(--dim)">STORE NAME<input id="auth-store-name" class="tsi" value="Walk-Off Sports Cards & Comics"></label>
       <label id="auth-store-wrap" style="display:none;font-family:monospace;font-size:9px;color:var(--dim)">STORE<select id="auth-store" class="tsi"></select></label>
       <button class="hbtn" id="auth-primary-btn" onclick="loginSupabaseAccount()">LOGIN</button>
@@ -351,7 +356,7 @@ tr.sold:hover td{opacity:.7;}
 
 <header>
   <div class="hdr">
-    <div class="logo">WALK-OFF <span>DASHBOARD · v2026.05.06.11</span></div>
+    <div class="logo">WALK-OFF <span>DASHBOARD · v2026.05.06.12</span></div>
     <div class="hdr-right">
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
@@ -1154,7 +1159,7 @@ tr.sold:hover td{opacity:.7;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.05.06.11';
+const APP_VERSION = '2026.05.06.12';
 const SUPABASE_URL = 'https://vroknjrxubsqyexngwus.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_wbpX2nL8l-4NbXtZNG_bjA_nabSYaJ5';
 const AUTH_REDIRECT_URL = 'https://squeebmike.github.io/ArSca/dashboard.html';
@@ -1248,22 +1253,39 @@ function populateLoginStores(){
   const sel = document.getElementById('auth-store');
   if(sel && !sel.options.length) sel.innerHTML = WALKOFF_DEMO_STORES.map(s => `<option value="${s.id}">${escHtml(s.displayName)}</option>`).join('');
 }
+
+function toggleAuthPasswordVisibility(){
+  const input = document.getElementById('auth-password');
+  const btn = document.getElementById('auth-password-eye');
+  if(!input) return;
+  const showing = input.type === 'text';
+  input.type = showing ? 'password' : 'text';
+  if(btn) {
+    btn.textContent = showing ? 'EYE' : 'HIDE';
+    btn.setAttribute('aria-label', showing ? 'Show password' : 'Hide password');
+  }
+}
+
 function showAuthMode(mode, message){
   const title = document.getElementById('auth-title');
   const sub = document.getElementById('auth-sub');
+  const emailWrap = document.getElementById('auth-email-wrap');
   const pass = document.getElementById('auth-password-wrap');
   const storeName = document.getElementById('auth-store-name-wrap');
   const storePick = document.getElementById('auth-store-wrap');
   const primary = document.getElementById('auth-primary-btn');
   const status = document.getElementById('auth-status');
-  if(title) title.textContent = mode === 'signup' ? 'CREATE ACCOUNT' : mode === 'reset' ? 'RESET PASSWORD' : mode === 'create-store' ? 'CREATE STORE' : mode === 'invite' ? 'ACCEPT INVITE' : mode === 'picker' ? 'CHOOSE STORE' : 'WALK-OFF LOGIN';
-  if(sub) sub.textContent = mode === 'create-store' ? 'You are logged in. Create a store workspace to keep your data separate.' : mode === 'invite' ? 'You have a pending store invite. Accept it to join that workspace.' : mode === 'picker' ? 'Choose which store workspace to open.' : 'Real Supabase login. Store data is isolated by membership.';
+  if(title) title.textContent = mode === 'signup' ? 'CREATE ACCOUNT' : mode === 'reset' ? 'RESET PASSWORD' : mode === 'update-password' ? 'UPDATE PASSWORD' : mode === 'create-store' ? 'CREATE STORE' : mode === 'invite' ? 'ACCEPT INVITE' : mode === 'picker' ? 'CHOOSE STORE' : 'WALK-OFF LOGIN';
+  if(sub) sub.textContent = mode === 'update-password' ? 'Enter a new password for this Walk-Off account.' : mode === 'create-store' ? 'You are logged in. Create a store workspace to keep your data separate.' : mode === 'invite' ? 'You have a pending store invite. Accept it to join that workspace.' : mode === 'picker' ? 'Choose which store workspace to open.' : 'Real Supabase login. Store data is isolated by membership.';
+  if(emailWrap) emailWrap.style.display = mode === 'update-password' || mode === 'create-store' || mode === 'picker' ? 'none' : '';
   if(pass) pass.style.display = mode === 'reset' || mode === 'create-store' || mode === 'picker' ? 'none' : '';
+  const passInput = document.getElementById('auth-password');
+  if(passInput) passInput.autocomplete = mode === 'update-password' ? 'new-password' : 'current-password';
   if(storeName) storeName.style.display = mode === 'create-store' ? '' : 'none';
   if(storePick) storePick.style.display = mode === 'picker' || mode === 'invite' ? '' : 'none';
   if(primary) {
-    primary.textContent = mode === 'signup' ? 'SIGN UP' : mode === 'reset' ? 'SEND RESET' : mode === 'create-store' ? 'CREATE STORE' : mode === 'invite' ? 'ACCEPT INVITE' : mode === 'picker' ? 'OPEN STORE' : 'LOGIN';
-    primary.onclick = mode === 'signup' ? signupSupabaseAccount : mode === 'reset' ? resetSupabasePassword : mode === 'create-store' ? createSupabaseStore : mode === 'invite' ? acceptPickedInvite : mode === 'picker' ? selectPickedStore : loginSupabaseAccount;
+    primary.textContent = mode === 'signup' ? 'SIGN UP' : mode === 'reset' ? 'SEND RESET' : mode === 'update-password' ? 'SAVE PASSWORD' : mode === 'create-store' ? 'CREATE STORE' : mode === 'invite' ? 'ACCEPT INVITE' : mode === 'picker' ? 'OPEN STORE' : 'LOGIN';
+    primary.onclick = mode === 'signup' ? signupSupabaseAccount : mode === 'reset' ? resetSupabasePassword : mode === 'update-password' ? updateSupabasePassword : mode === 'create-store' ? createSupabaseStore : mode === 'invite' ? acceptPickedInvite : mode === 'picker' ? selectPickedStore : loginSupabaseAccount;
   }
   if(status) status.textContent = message || 'Supabase connected. Local demo remains available for development.';
   document.getElementById('auth-screen')?.classList.add('on');
@@ -1458,7 +1480,31 @@ async function resetSupabasePassword(){
   const email = document.getElementById('auth-email')?.value.trim();
   if(!sb || !email) { showAuthMode('reset', 'Enter your email first.'); return; }
   const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: AUTH_REDIRECT_URL });
-  showAuthMode('login', error ? error.message : 'Password reset email sent.');
+  showAuthMode('login', error ? error.message : 'Password reset email sent. If the email opens localhost, set Supabase Auth Site URL and Redirect URL to ' + AUTH_REDIRECT_URL);
+}
+
+async function updateSupabasePassword(){
+  const sb = getSupabaseClient();
+  const password = document.getElementById('auth-password')?.value || '';
+  if(!sb || password.length < 8) { showAuthMode('update-password', 'Use at least 8 characters.'); return; }
+  const { error } = await sb.auth.updateUser({ password });
+  if(error) { showAuthMode('update-password', error.message); return; }
+  history.replaceState(null, document.title, location.pathname);
+  showAuthMode('login', 'Password updated. Log in with your new password.');
+}
+
+async function handleAuthRecoveryRedirect(){
+  const sb = getSupabaseClient();
+  if(!sb) return false;
+  const params = new URLSearchParams(location.search);
+  const hash = new URLSearchParams(String(location.hash || '').replace(/^#/, ''));
+  const isRecovery = params.get('auth') === 'recovery' || params.get('type') === 'recovery' || hash.get('type') === 'recovery';
+  if(!isRecovery) return false;
+  const code = params.get('code');
+  if(code) await sb.auth.exchangeCodeForSession(code).catch(() => null);
+  await sb.auth.getSession().catch(() => null);
+  showAuthMode('update-password', 'Reset link accepted. Enter your new password.');
+  return true;
 }
 
 async function createSupabaseStore(){
@@ -4243,6 +4289,7 @@ function builtInDataFromItem(item, updates={}){
 }
 
 window.addEventListener('load', async function(){
+  if(await handleAuthRecoveryRedirect()) return;
   if(!(await ensureAuthReady())) return;
   await loadStoreSettingsFromSupabase();
   setupAppShell();
@@ -6988,6 +7035,13 @@ async function searchQuickCatalog(q, cat){
   });
   });
 
+  if(!wants || wants.includes('tcg') || wants.includes('pokemon') || wants.includes('magic') || wants.includes('yugioh') || wants.includes('yu-gi-oh')) {
+    try {
+      const workerRows = await fetchWorkerTcgCatalog(q, cat);
+      workerRows.forEach(add);
+    } catch(e) {}
+  }
+
   if(!wants || wants.includes('pokemon') || wants.includes('tcg') || wants.includes('graded') || wants.includes('slab')) {
     try {
       const ptcg = await fetchPokemonCatalog(q);
@@ -7002,6 +7056,172 @@ async function searchQuickCatalog(q, cat){
   }
 
   return results.slice(0, 30);
+}
+
+function normalizeQplFinish(value){
+  const raw = String(value || 'normal').toLowerCase();
+  if(raw.includes('reverse')) return 'reverse_holo';
+  if(raw.includes('holo')) return 'holofoil';
+  if(raw.includes('etched')) return 'etched_foil';
+  if(raw.includes('surge')) return 'surge_foil';
+  if(raw.includes('textured')) return 'textured_foil';
+  if(raw.includes('serial')) return 'serialized';
+  if(raw.includes('foil')) return 'foil';
+  if(raw.includes('1st') || raw.includes('first')) return 'first_edition';
+  if(raw.includes('unlimited')) return 'unlimited';
+  return raw.replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '') || 'normal';
+}
+
+function qplFinishLabel(value){
+  return ({
+    normal:'Normal',
+    foil:'Foil',
+    reverse_holo:'Reverse Holo',
+    holofoil:'Holofoil',
+    etched_foil:'Etched Foil',
+    surge_foil:'Surge Foil',
+    textured_foil:'Textured Foil',
+    serialized:'Serialized',
+    first_edition:'First Edition',
+    unlimited:'Unlimited'
+  })[value] || String(value || 'Other').replace(/_/g, ' ');
+}
+
+function qplPriceValue(v){
+  return Number(v?.marketPrice ?? v?.estimatedMarketPrice ?? v?.productLevelMarketPrice ?? v?.lowPrice ?? v?.lowestListingPrice ?? 0) || 0;
+}
+
+function qplPriceSourceLabel(v){
+  if(!v) return 'Needs Research';
+  if(Number(v.marketPrice || 0) > 0) return v.priceSource || 'TCGplayer SKU Market';
+  if(v.priceSource) return v.priceSource;
+  if(Number(v.estimatedMarketPrice || 0) > 0) return 'Estimated fallback';
+  if(Number(v.productLevelMarketPrice || 0) > 0) return 'Product-Level Estimate';
+  if(Number(v.lowPrice || v.lowestListingPrice || 0) > 0) return 'Lowest listing fallback';
+  return 'Needs Research';
+}
+
+function buildQplVariantsFromPrices(priceMap, productId = ''){
+  const entries = Object.entries(priceMap || {});
+  const conds = ['NM','LP','MP','HP','DMG'];
+  const condMult = { NM:1, LP:.8, MP:.64, HP:.4, DMG:.25 };
+  const variants = [];
+  entries.forEach(([finishRaw, p], i) => {
+    const finish = normalizeQplFinish(finishRaw);
+    const base = Number(p?.market || p?.mid || p?.low || 0) || 0;
+    conds.forEach(condition => variants.push({
+      skuId:`${productId || 'product'}-${finish}-${condition}`,
+      productConditionId:`${productId || 'pc'}-${i}-${condition}`,
+      condition,
+      finish,
+      foilType:finish,
+      language:'English',
+      printing:qplFinishLabel(finish),
+      marketPrice: condition === 'NM' ? base || null : null,
+      productLevelMarketPrice: base || null,
+      estimatedMarketPrice: base ? Math.round(base * (condMult[condition] || 1) * 100) / 100 : null,
+      lowPrice:Number(p?.low || 0) || null,
+      midPrice:Number(p?.mid || 0) || null,
+      highPrice:Number(p?.high || 0) || null,
+      directLowPrice:Number(p?.directLow || 0) || null,
+      lowestListingPrice:Number(p?.low || 0) || null,
+      recentSoldPrice:null,
+      lastUpdated:null,
+      priceConfidence: condition === 'NM' && base ? 'medium' : base ? 'low' : 'unknown',
+      priceSource: condition === 'NM' && base ? 'Product-Level Estimate' : base ? 'Estimated fallback' : 'Needs Research',
+    }));
+  });
+  return variants;
+}
+
+function qplSelectedVariant(r){
+  if(!r?.availableVariants?.length) return null;
+  const condition = r.selectedCondition || r.condition || 'NM';
+  const finish = r.selectedFinish || r.finish || r.availableVariants[0]?.finish || '';
+  const language = r.selectedLanguage || r.language || 'English';
+  return r.availableVariants.find(v => v.condition === condition && v.finish === finish && String(v.language || 'English') === language)
+    || r.availableVariants.find(v => v.condition === condition && v.finish === finish)
+    || r.availableVariants.find(v => v.condition === condition)
+    || r.availableVariants[0];
+}
+
+function applyQplSelectedVariant(r){
+  const v = qplSelectedVariant(r);
+  if(!v) return r;
+  r.selectedVariant = v;
+  r.selectedCondition = v.condition;
+  r.selectedFinish = v.finish;
+  r.selectedLanguage = v.language || 'English';
+  r.selectedPrinting = v.printing || qplFinishLabel(v.finish);
+  r.condition = v.condition;
+  r.finish = v.finish;
+  r.language = v.language || 'English';
+  r.market = qplPriceValue(v);
+  r.low = Number(v.lowPrice || v.lowestListingPrice || 0) || r.low || 0;
+  r.high = Number(v.highPrice || 0) || r.high || 0;
+  r.priceSource = qplPriceSourceLabel(v);
+  r.priceConfidence = v.priceConfidence || r.priceConfidence || 'unknown';
+  r.skuId = v.skuId || r.skuId || '';
+  r.productConditionId = v.productConditionId || r.productConditionId || '';
+  r.lastPriceSyncAt = v.lastUpdated || r.lastPriceSyncAt || new Date().toISOString();
+  return r;
+}
+
+function qplVariantSelectOptions(r, key, current){
+  const vals = [...new Set((r.availableVariants || []).map(v => v[key] || (key === 'language' ? 'English' : '')).filter(Boolean))];
+  return vals.map(v => `<option value="${escHtml(v)}" ${String(current||'')===String(v)?'selected':''}>${escHtml(key === 'finish' ? qplFinishLabel(v) : v)}</option>`).join('');
+}
+
+function updateQplVariant(idx, patch = {}, rerender = true){
+  const r = qplResults[idx];
+  if(!r) return;
+  Object.assign(r, patch);
+  applyQplSelectedVariant(r);
+  if(rerender) renderQuickLookupResults(qplResults);
+}
+
+async function fetchWorkerTcgCatalog(q, cat){
+  const game = cat || '';
+  const res = await fetch(WORKER + '/pricing/tcg?' + new URLSearchParams({ q, game, condition:'NM' }).toString());
+  const data = await res.json().catch(() => ({}));
+  if(!res.ok || !(data.success || data.ok)) return [];
+  const matches = data.matches || (data.match ? [data.match] : []);
+  return matches.map((m, idx) => {
+    let variants = m.availableVariants || data.availableVariants || [];
+    if(!variants.length && Number(data.price || data.nmMarket || 0) > 0) {
+      variants = buildQplVariantsFromPrices({ normal:{ market:Number(data.nmMarket || data.price || 0), low:Number(data.price || 0) } }, m.productId || m.id || 'tcg');
+    }
+    if(!variants.length && !m.imageUrl && !m.image_url && !Number(data.price || 0)) return null;
+    const selected = data.selectedVariant || variants[0] || null;
+    const row = {
+      source:data.source || 'tcgplayer',
+      productId:m.productId || m.id || '',
+      name:m.name || q,
+      category:'TCG',
+      set:m.setName || m.groupName || m.set_name || '',
+      year:m.extraInfo?.releaseDate ? String(m.extraInfo.releaseDate).slice(0,4) : '',
+      variant:m.rarity || '',
+      card_number:m.cardNumber || m.number || '',
+      condition:selected?.condition || 'NM',
+      finish:selected?.finish || '',
+      language:selected?.language || 'English',
+      market:qplPriceValue(selected) || Number(data.price || 0),
+      low:Number(selected?.lowPrice || selected?.lowestListingPrice || 0),
+      high:Number(selected?.highPrice || 0),
+      imageUrl:m.imageUrl || m.image_url || '',
+      priceSource:qplPriceSourceLabel(selected),
+      productUrl:m.productUrl || '',
+      tcgUrl:m.productUrl || '',
+      note:(m.matchReasons || []).join(', ') || 'TCG pricing proxy match',
+      confidence:m.confidenceScore || 80,
+      matchWhy:m.matchReasons || ['tcg proxy'],
+      availableVariants:variants,
+      selectedVariant:selected,
+      extraInfo:m.extraInfo || {},
+      raw:m,
+    };
+    return applyQplSelectedVariant(row);
+  }).filter(Boolean);
 }
 
 async function fetchPokemonCatalog(q){
@@ -7024,7 +7244,7 @@ async function fetchPokemonCatalog(q){
         const prices = c.tcgplayer?.prices || {};
         const p = prices.holofoil || prices.normal || prices.reverseHolofoil || prices['1stEditionHolofoil'] || prices.unlimitedHolofoil || {};
         const hit = scoreSmartItem({ name:c.name, set:c.set?.name, year:(c.set?.releaseDate||'').slice(0,4), card_number:c.number, rarity:c.rarity, variant:c.supertype }, q);
-        return {
+        return applyQplSelectedVariant({
           source:'pokemon',
           name:c.name || clean,
           category:'TCG',
@@ -7043,7 +7263,10 @@ async function fetchPokemonCatalog(q){
           confidence:Math.min(99, Math.round(hit.score || 50)),
           matchWhy:hit.why,
           raw:c,
-        };
+          productId:c.id || '',
+          availableVariants:buildQplVariantsFromPrices(prices, c.id || ''),
+          extraInfo:{ productLine:'Pokemon', categoryName:'Pokemon', releaseDate:c.set?.releaseDate || '' },
+        });
       });
     }
   }
@@ -7057,7 +7280,12 @@ async function fetchScryfallCatalog(q){
   const data = await res.json();
   return (data.data || []).slice(0, 24).map(c => {
     const hit = scoreSmartItem({ name:c.name, set:c.set_name, year:(c.released_at||'').slice(0,4), card_number:c.collector_number, rarity:c.rarity, variant:c.type_line }, q);
-    return {
+    const priceMap = {
+      normal:{ market:c.prices?.usd, low:c.prices?.usd },
+      foil:{ market:c.prices?.usd_foil, low:c.prices?.usd_foil },
+      etched_foil:{ market:c.prices?.usd_etched, low:c.prices?.usd_etched }
+    };
+    return applyQplSelectedVariant({
       source:'scryfall',
       name:c.name || q,
       category:'TCG',
@@ -7074,7 +7302,10 @@ async function fetchScryfallCatalog(q){
       confidence:Math.min(99, Math.round(hit.score || 50)),
       matchWhy:hit.why,
       raw:c,
-    };
+      productId:c.id || '',
+      availableVariants:buildQplVariantsFromPrices(priceMap, c.id || ''),
+      extraInfo:{ productLine:'Magic', categoryName:'Magic', manaCost:c.mana_cost || '', typeLine:c.type_line || '', oracleText:c.oracle_text || '', artist:c.artist || '', releaseDate:c.released_at || '' },
+    });
   });
 }
 
@@ -7191,11 +7422,18 @@ function quickLookupResultCard(r, idx){
       ${why ? `<div style="margin-top:12px;color:var(--dim);font-size:13px;line-height:1.45">${escHtml(why)}</div>` : ''}
       ${signals.length ? `<div class="qpl-signal" style="color:${needs.length?'var(--g)':'var(--gold)'}">${escHtml(signals.join(' / '))}</div>` : ''}
       <div class="qpl-quick-controls">
-        <select onchange="qplResults[${idx}].condition=this.value" aria-label="Condition">
-          ${['NM','LP','MP','HP','DMG'].map(c => `<option value="${c}" ${String(r.condition||'NM')===c?'selected':''}>${c}</option>`).join('')}
+        <select onchange="updateQplVariant(${idx},{selectedCondition:this.value})" aria-label="Condition">
+          ${(r.availableVariants?.length ? [...new Set(r.availableVariants.map(v=>v.condition).filter(Boolean))] : ['NM','LP','MP','HP','DMG']).map(c => `<option value="${c}" ${String(r.selectedCondition||r.condition||'NM')===c?'selected':''}>${c}</option>`).join('')}
+        </select>
+        <select onchange="updateQplVariant(${idx},{selectedFinish:this.value})" aria-label="Finish">
+          ${r.availableVariants?.length ? qplVariantSelectOptions(r, 'finish', r.selectedFinish || r.finish) : `<option value="${escHtml(r.finish||'normal')}">${escHtml(qplFinishLabel(r.finish||'normal'))}</option>`}
+        </select>
+        <select onchange="updateQplVariant(${idx},{selectedLanguage:this.value})" aria-label="Language">
+          ${r.availableVariants?.length ? qplVariantSelectOptions(r, 'language', r.selectedLanguage || r.language || 'English') : `<option value="English">English</option>`}
         </select>
         <input type="number" min="1" step="1" value="${Number(r.qty || 1)}" onchange="qplResults[${idx}].qty=parseInt(this.value,10)||1" aria-label="Quantity">
       </div>
+      ${r.skuId || r.productConditionId ? `<div style="margin-top:8px;font-family:monospace,monospace;font-size:10px;color:var(--dim)">SKU ${escHtml(r.skuId || 'n/a')} / PCID ${escHtml(r.productConditionId || 'n/a')}</div>` : ''}
     </div>
     <div class="qpl-actions">
       <button class="hbtn primary" onclick="selectQuickLookupResult(${idx})">SELECT</button>
@@ -7253,7 +7491,7 @@ function openQuickExternal(idx, type){
 }
 
 function selectQuickLookupResult(idx){
-  const r = qplResults[idx];
+  const r = applyQplSelectedVariant(qplResults[idx]);
   if(!r) return;
   const el = document.getElementById('qpl-result');
   const cat = normalizeQuickCategory(r.category);
@@ -7273,9 +7511,18 @@ function selectQuickLookupResult(idx){
       <select id="qpl-edit-category" style="background:var(--surf);border:1px solid var(--border);color:var(--text);padding:12px;border-radius:8px;font-size:14px;min-height:48px">
         ${['TCG','Sports','Comic','Graded','Collectibles'].map(c => `<option value="${c}" ${cat===c?'selected':''}>${c}</option>`).join('')}
       </select>
-      <select id="qpl-edit-condition" style="background:var(--surf);border:1px solid var(--border);color:var(--text);padding:12px;border-radius:8px;font-size:14px;min-height:48px">
-        ${['NM','LP','MP','HP','DMG'].map(c => `<option value="${c}" ${String(r.condition||'NM')===c?'selected':''}>${c}</option>`).join('')}
+      <select id="qpl-edit-condition" onchange="updateSelectedQplEditVariant(${idx})" style="background:var(--surf);border:1px solid var(--border);color:var(--text);padding:12px;border-radius:8px;font-size:14px;min-height:48px">
+        ${(r.availableVariants?.length ? [...new Set(r.availableVariants.map(v=>v.condition).filter(Boolean))] : ['NM','LP','MP','HP','DMG']).map(c => `<option value="${c}" ${String(r.selectedCondition||r.condition||'NM')===c?'selected':''}>${c}</option>`).join('')}
       </select>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px;margin-bottom:9px">
+      <select id="qpl-edit-finish" onchange="updateSelectedQplEditVariant(${idx})" style="background:var(--surf);border:1px solid var(--border);color:var(--text);padding:12px;border-radius:8px;font-size:14px;min-height:48px">
+        ${r.availableVariants?.length ? qplVariantSelectOptions(r, 'finish', r.selectedFinish || r.finish) : `<option value="${escHtml(r.finish||'normal')}">${escHtml(qplFinishLabel(r.finish||'normal'))}</option>`}
+      </select>
+      <select id="qpl-edit-language" onchange="updateSelectedQplEditVariant(${idx})" style="background:var(--surf);border:1px solid var(--border);color:var(--text);padding:12px;border-radius:8px;font-size:14px;min-height:48px">
+        ${r.availableVariants?.length ? qplVariantSelectOptions(r, 'language', r.selectedLanguage || r.language || 'English') : `<option value="English">English</option>`}
+      </select>
+      <input id="qpl-edit-sku" value="${escHtml(r.skuId || r.productConditionId || '')}" readonly placeholder="SKU / productConditionId" style="background:var(--surf);border:1px solid var(--border);color:var(--dim);padding:12px;border-radius:8px;font-size:12px;min-height:48px">
     </div>
     <div style="display:grid;grid-template-columns:100px 1fr 110px 120px;gap:9px;margin-bottom:9px">
       <input id="qpl-edit-year" placeholder="Year" value="${escHtml(r.year || '')}" style="background:var(--surf);border:1px solid var(--border);color:var(--text);padding:12px;border-radius:8px;font-size:14px;min-height:48px">
@@ -7306,7 +7553,8 @@ function normalizeQuickCategory(category){
 }
 
 function selectedQuickLookupItem(idx){
-  const r = qplResults[idx] || {};
+  const r = applyQplSelectedVariant(qplResults[idx] || {});
+  const selectedVariant = r.selectedVariant || qplSelectedVariant(r) || {};
   return {
     id:'qpl_' + Date.now() + '_' + Math.random().toString(36).slice(2,6),
     name:document.getElementById('qpl-edit-name')?.value.trim() || r.name || 'Manual item',
@@ -7316,6 +7564,13 @@ function selectedQuickLookupItem(idx){
     variant:r.variant || '',
     card_number:document.getElementById('qpl-edit-cardnum')?.value.trim() || r.card_number || '',
     condition:document.getElementById('qpl-edit-condition')?.value || r.condition || 'NM',
+    selectedCondition:document.getElementById('qpl-edit-condition')?.value || r.selectedCondition || r.condition || 'NM',
+    selectedFinish:document.getElementById('qpl-edit-finish')?.value || r.selectedFinish || r.finish || '',
+    selectedLanguage:document.getElementById('qpl-edit-language')?.value || r.selectedLanguage || r.language || 'English',
+    selectedPrinting:selectedVariant.printing || r.selectedPrinting || qplFinishLabel(r.selectedFinish || r.finish || ''),
+    productId:r.productId || '',
+    skuId:r.skuId || selectedVariant.skuId || '',
+    productConditionId:r.productConditionId || selectedVariant.productConditionId || '',
     market:parseFloat(document.getElementById('qpl-edit-market')?.value) || Number(r.market || 0),
     cost:parseFloat(document.getElementById('qpl-edit-cost')?.value) || Number(r.cost || 0),
     qty:1,
@@ -7323,6 +7578,9 @@ function selectedQuickLookupItem(idx){
     thumbnail:r.imageUrl || '',
     imageUrl:r.imageUrl || '',
     priceSource:r.priceSource || r.source || 'manual lookup',
+    pricingSource:r.priceSource || r.source || 'manual lookup',
+    priceConfidence:r.priceConfidence || selectedVariant.priceConfidence || 'unknown',
+    lastPriceSyncAt:r.lastPriceSyncAt || selectedVariant.lastUpdated || new Date().toISOString(),
     source:r.source || 'quick_lookup',
     notes:r.note || '',
     lifecycle:'in_stock',
@@ -7370,6 +7628,13 @@ function addSelectedQuickLookupToBuyOffer(idx){
     name:item.name,
     market:item.market,
     condition:item.condition,
+    selectedCondition:item.selectedCondition,
+    selectedFinish:item.selectedFinish,
+    selectedLanguage:item.selectedLanguage,
+    selectedPrinting:item.selectedPrinting,
+    productId:item.productId,
+    skuId:item.skuId,
+    productConditionId:item.productConditionId,
     category:item.category,
     set:item.set,
     year:item.year,
@@ -7377,6 +7642,9 @@ function addSelectedQuickLookupToBuyOffer(idx){
     variant:item.variant,
     imageUrl:item.imageUrl,
     priceSource:item.priceSource,
+    pricingSource:item.pricingSource,
+    priceConfidence:item.priceConfidence,
+    lastPriceSyncAt:item.lastPriceSyncAt,
   });
   saveBuyList();
   renderBuyList();
@@ -7410,6 +7678,23 @@ let drawerState = JSON.parse(localStorage.getItem('pos_drawer') || 'null');
 
 function createDrawerSessionId(){
   return 'drawer_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 6);
+}
+
+function updateSelectedQplEditVariant(idx){
+  const r = qplResults[idx];
+  if(!r) return;
+  updateQplVariant(idx, {
+    selectedCondition:document.getElementById('qpl-edit-condition')?.value || r.condition,
+    selectedFinish:document.getElementById('qpl-edit-finish')?.value || r.finish,
+    selectedLanguage:document.getElementById('qpl-edit-language')?.value || r.language || 'English'
+  }, false);
+  const next = qplResults[idx];
+  const marketEl = document.getElementById('qpl-edit-market');
+  const skuEl = document.getElementById('qpl-edit-sku');
+  if(marketEl) marketEl.value = Number(next.market || 0) || '';
+  if(skuEl) skuEl.value = next.skuId || next.productConditionId || '';
+  const status = document.getElementById('qpl-add-status');
+  if(status) status.innerHTML = `<span style="color:${next.priceConfidence==='high'?'var(--g)':next.priceConfidence==='low'?'var(--gold)':'var(--dim)'}">${escHtml(next.priceSource || 'Price updated')}</span>`;
 }
 
 function getShowSessionId(show = getShowMode()){
