@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.05.07.01">
+<meta name="version" content="2026.05.07.02">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -356,7 +356,7 @@ tr.sold:hover td{opacity:.7;}
 
 <header>
   <div class="hdr">
-    <div class="logo">WALK-OFF <span>DASHBOARD · v2026.05.07.01</span></div>
+    <div class="logo">WALK-OFF <span>DASHBOARD · v2026.05.07.02</span></div>
     <div class="hdr-right">
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
@@ -1159,7 +1159,7 @@ tr.sold:hover td{opacity:.7;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.05.07.01';
+const APP_VERSION = '2026.05.07.02';
 const SUPABASE_URL = 'https://vroknjrxubsqyexngwus.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_wbpX2nL8l-4NbXtZNG_bjA_nabSYaJ5';
 const AUTH_REDIRECT_URL = 'https://squeebmike.github.io/ArSca/dashboard.html';
@@ -3915,6 +3915,7 @@ async function runSystemCheck(){
     rows.push(systemLine('eBay OAuth', !!h.ebayRefresh, h.ebayRefresh ? 'refresh token saved' : 'connect eBay'));
     rows.push(systemLine('SoldComps', !!h.soldcomps, h.soldcomps ? 'connected' : 'missing key'));
     rows.push(systemLine('PokemonPrice', !!h.pokemonprice, h.pokemonprice ? 'connected' : 'missing key'));
+    rows.push(systemLine('JustTCG', !!h.justtcg, h.justtcg ? 'connected' : 'missing key'));
     rows.push(systemLine('TCG API', !!h.tcgapi, h.tcgapi ? 'connected' : 'not configured'));
   } catch(e) {
     rows.push(systemLine('Cloudflare Worker', false, e.message));
@@ -7002,11 +7003,12 @@ async function runPriceLookup(){
 
 async function searchQuickCatalog(q, cat){
   const results = [];
-  const wants = String(cat || '').toLowerCase();
+  const wants = qplCategoryKey(cat);
   const needle = smartSearchNeedles(q);
   const search = needle.clean;
   const seen = new Set();
   const add = r => {
+    if(!qplCategoryAllows(r, wants)) return;
     const key = [r.source,r.name,r.set,r.card_number,r.year,r.variant].join('|').toLowerCase();
     if(seen.has(key)) return;
     seen.add(key);
@@ -7035,20 +7037,20 @@ async function searchQuickCatalog(q, cat){
   });
   });
 
-  if(!wants || wants.includes('tcg') || wants.includes('pokemon') || wants.includes('magic') || wants.includes('yugioh') || wants.includes('yu-gi-oh')) {
+  if(!wants || ['tcg','pokemon','mtg','yugioh'].includes(wants)) {
     try {
       const workerRows = await fetchWorkerTcgCatalog(q, cat);
       workerRows.forEach(add);
     } catch(e) {}
   }
 
-  if(!wants || wants.includes('pokemon') || wants.includes('tcg') || wants.includes('graded') || wants.includes('slab')) {
+  if(!wants || wants === 'tcg' || wants === 'pokemon' || wants === 'graded') {
     try {
       const ptcg = await fetchPokemonCatalog(q);
       ptcg.forEach(add);
     } catch(e) {}
   }
-  if(!wants || wants.includes('magic') || wants.includes('tcg') || wants.includes('graded') || wants.includes('slab')) {
+  if(!wants || wants === 'tcg' || wants === 'mtg' || wants === 'graded') {
     try {
       const mtg = await fetchScryfallCatalog(q);
       mtg.forEach(add);
@@ -7056,6 +7058,36 @@ async function searchQuickCatalog(q, cat){
   }
 
   return results.slice(0, 30);
+}
+
+function qplCategoryKey(category){
+  const c = String(category || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  if(!c || c === 'any category' || c === 'any') return '';
+  if(c.includes('magic') || /\bmtg\b/.test(c)) return 'mtg';
+  if(c.includes('pokemon') || c.includes('poke')) return 'pokemon';
+  if(c.includes('yu') || c.includes('yugioh')) return 'yugioh';
+  if(c.includes('comic')) return 'comic';
+  if(c.includes('sport') || c.includes('baseball') || c.includes('football') || c.includes('basketball')) return 'sports';
+  if(c.includes('graded') || c.includes('slab')) return 'graded';
+  if(c.includes('tcg')) return 'tcg';
+  if(c.includes('collect')) return 'collectibles';
+  return c.replace(/[^a-z0-9]+/g, '_');
+}
+
+function qplResultCategoryKey(r){
+  const text = [r?.category, r?.game, r?.extraInfo?.game, r?.extraInfo?.productLine, r?.extraInfo?.categoryName, r?.source, r?.raw?.game, r?.raw?.game_id].filter(Boolean).join(' ');
+  const key = qplCategoryKey(text);
+  if(key) return key;
+  return qplCategoryKey(r?.category);
+}
+
+function qplCategoryAllows(r, wants){
+  if(!wants) return true;
+  const key = qplResultCategoryKey(r);
+  if(wants === 'tcg') return ['tcg','pokemon','mtg','yugioh'].includes(key) || normalizeQuickCategory(r?.category) === 'TCG';
+  if(wants === 'graded') return key === 'graded' || /psa|bgs|cgc|sgc|slab|graded/i.test([r?.name,r?.variant,r?.category,r?.note].filter(Boolean).join(' '));
+  if(wants === 'collectibles') return key === 'collectibles';
+  return key === wants;
 }
 
 function normalizeQplFinish(value){
@@ -7093,7 +7125,7 @@ function qplPriceValue(v){
 
 function qplPriceSourceLabel(v){
   if(!v) return 'Needs Research';
-  if(Number(v.marketPrice || 0) > 0) return v.priceSource || 'TCGplayer SKU Market';
+  if(Number(v.marketPrice || 0) > 0) return v.priceSource || 'Variant Market';
   if(v.priceSource) return v.priceSource;
   if(Number(v.estimatedMarketPrice || 0) > 0) return 'Estimated fallback';
   if(Number(v.productLevelMarketPrice || 0) > 0) return 'Product-Level Estimate';
@@ -7141,6 +7173,9 @@ function qplSelectedVariant(r){
   const language = r.selectedLanguage || r.language || 'English';
   return r.availableVariants.find(v => v.condition === condition && v.finish === finish && String(v.language || 'English') === language)
     || r.availableVariants.find(v => v.condition === condition && v.finish === finish)
+    || r.availableVariants.find(v => v.finish === finish && String(v.language || 'English') === language)
+    || r.availableVariants.find(v => v.finish === finish)
+    || r.availableVariants.find(v => v.condition === condition && String(v.language || 'English') === language)
     || r.availableVariants.find(v => v.condition === condition)
     || r.availableVariants[0];
 }
@@ -7167,21 +7202,107 @@ function applyQplSelectedVariant(r){
   return r;
 }
 
+function qplVariantOptionValues(r, key){
+  const selected = {
+    condition:r.selectedCondition || r.condition || '',
+    finish:r.selectedFinish || r.finish || '',
+    language:r.selectedLanguage || r.language || 'English'
+  };
+  const vals = [];
+  (r.availableVariants || []).forEach(v => {
+    if(key !== 'condition' && selected.condition && v.condition !== selected.condition) return;
+    if(key !== 'finish' && selected.finish && v.finish !== selected.finish) return;
+    if(key !== 'language' && selected.language && String(v.language || 'English') !== String(selected.language)) return;
+    const val = v[key] || (key === 'language' ? 'English' : '');
+    if(val && !vals.includes(val)) vals.push(val);
+  });
+  if(!vals.length) {
+    (r.availableVariants || []).forEach(v => {
+      const val = v[key] || (key === 'language' ? 'English' : '');
+      if(val && !vals.includes(val)) vals.push(val);
+    });
+  }
+  return vals;
+}
+
 function qplVariantSelectOptions(r, key, current){
-  const vals = [...new Set((r.availableVariants || []).map(v => v[key] || (key === 'language' ? 'English' : '')).filter(Boolean))];
+  const vals = qplVariantOptionValues(r, key);
   return vals.map(v => `<option value="${escHtml(v)}" ${String(current||'')===String(v)?'selected':''}>${escHtml(key === 'finish' ? qplFinishLabel(v) : v)}</option>`).join('');
 }
 
-function updateQplVariant(idx, patch = {}, rerender = true){
+async function updateQplVariant(idx, patch = {}, rerender = true){
   const r = qplResults[idx];
   if(!r) return;
   Object.assign(r, patch);
   applyQplSelectedVariant(r);
-  if(rerender) renderQuickLookupResults(qplResults);
+  if(r.selectedVariant?.skuId && !Number(r.selectedVariant.marketPrice || 0) && r.source === 'justtcg') {
+    await refreshQplSkuPrice(idx);
+  }
+  if(rerender) updateQplResultCard(idx);
+}
+
+async function refreshQplSkuPrice(idx){
+  const r = qplResults[idx];
+  const sku = r?.selectedVariant?.tcgplayerSkuId || r?.selectedVariant?.skuId || r?.skuId;
+  if(!sku) return;
+  try {
+    const res = await fetch(WORKER + '/pricing/justtcg/sku/' + encodeURIComponent(sku), { cache:'no-store' });
+    const data = await res.json().catch(() => ({}));
+    const v = data.selectedVariant || data.card?.selectedVariant;
+    if(res.ok && v) {
+      r.availableVariants = (r.availableVariants || []).map(old => String(old.skuId) === String(sku) || String(old.tcgplayerSkuId) === String(sku) ? { ...old, ...v } : old);
+      r.selectedVariant = { ...r.selectedVariant, ...v };
+      applyQplSelectedVariant(r);
+    }
+  } catch(e) {}
+}
+
+function updateQplResultCard(idx){
+  const scroller = document.querySelector('.qpl-results');
+  const top = scroller ? scroller.scrollTop : 0;
+  const card = document.querySelector(`.qpl-hero-card[data-qpl-idx="${idx}"]`);
+  if(card) card.outerHTML = quickLookupResultCard(qplResults[idx], idx);
+  if(scroller) scroller.scrollTop = top;
 }
 
 async function fetchWorkerTcgCatalog(q, cat){
   const game = cat || '';
+  const just = await fetch(WORKER + '/pricing/justtcg/search?' + new URLSearchParams({ q, category:game, storeId:STORE_ID }).toString()).catch(() => null);
+  if(just?.ok) {
+    const jd = await just.json().catch(() => ({}));
+    if(Array.isArray(jd.matches) && jd.matches.length) return jd.matches.map(m => applyQplSelectedVariant({
+      source:'justtcg',
+      productId:m.productId || m.id || '',
+      justtcgCardId:m.productId || m.id || '',
+      name:m.name || q,
+      category:'TCG',
+      game:m.game || m.category || '',
+      set:m.setName || '',
+      year:m.releaseDate ? String(m.releaseDate).slice(0,4) : '',
+      variant:m.rarity || '',
+      card_number:m.cardNumber || '',
+      condition:m.selectedVariant?.condition || 'NM',
+      finish:m.selectedVariant?.finish || '',
+      language:m.selectedVariant?.language || 'English',
+      market:qplPriceValue(m.selectedVariant),
+      low:Number(m.selectedVariant?.lowPrice || 0),
+      high:Number(m.selectedVariant?.highPrice || 0),
+      imageUrl:m.imageUrl || '',
+      priceSource:qplPriceSourceLabel(m.selectedVariant),
+      productUrl:m.productUrl || '',
+      tcgUrl:m.productUrl || '',
+      note:(m.matchReasons || []).join(', ') || 'JustTCG variant pricing',
+      confidence:m.confidenceScore || 85,
+      matchWhy:m.matchReasons || ['JustTCG'],
+      availableVariants:m.availableVariants || [],
+      selectedVariant:m.selectedVariant || null,
+      priceChange7d:m.priceChange7d,
+      priceChange30d:m.priceChange30d,
+      priceHistory:m.priceHistory || [],
+      extraInfo:{ productLine:m.game || '', categoryName:m.category || '', game:m.game || '', releaseDate:m.releaseDate || '' },
+      raw:m,
+    }));
+  }
   const res = await fetch(WORKER + '/pricing/tcg?' + new URLSearchParams({ q, game, condition:'NM' }).toString());
   const data = await res.json().catch(() => ({}));
   if(!res.ok || !(data.success || data.ok)) return [];
@@ -7280,11 +7401,10 @@ async function fetchScryfallCatalog(q){
   const data = await res.json();
   return (data.data || []).slice(0, 24).map(c => {
     const hit = scoreSmartItem({ name:c.name, set:c.set_name, year:(c.released_at||'').slice(0,4), card_number:c.collector_number, rarity:c.rarity, variant:c.type_line }, q);
-    const priceMap = {
-      normal:{ market:c.prices?.usd, low:c.prices?.usd },
-      foil:{ market:c.prices?.usd_foil, low:c.prices?.usd_foil },
-      etched_foil:{ market:c.prices?.usd_etched, low:c.prices?.usd_etched }
-    };
+    const priceMap = {};
+    if(Number(c.prices?.usd || 0) > 0) priceMap.normal = { market:c.prices.usd, low:c.prices.usd };
+    if(Number(c.prices?.usd_foil || 0) > 0) priceMap.foil = { market:c.prices.usd_foil, low:c.prices.usd_foil };
+    if(Number(c.prices?.usd_etched || 0) > 0) priceMap.etched_foil = { market:c.prices.usd_etched, low:c.prices.usd_etched };
     return applyQplSelectedVariant({
       source:'scryfall',
       name:c.name || q,
@@ -7396,14 +7516,14 @@ function quickLookupResultCard(r, idx){
   const confClass = conf >= 85 ? 'good' : conf >= 60 ? 'warn' : 'bad';
   const why = (r.matchWhy || []).length ? `Matched: ${(r.matchWhy || []).join(', ')}` : (r.note || '');
   const tcg = r.tcgUrl ? `<button class="hbtn" onclick="openQuickExternal(${idx},'tcg')">TCG</button>` : '';
-  const slab = `<button class="hbtn" style="color:var(--blue)" onclick="openQuickExternal(${idx},'slab')">VIEW SLAB</button>`;
+  const slab = `<button class="hbtn" style="color:var(--blue)" onclick="openSlabCertPanel(${idx})">SLAB / CERT</button>`;
   const signals = [
     needs.length ? `NEEDED: ${needs.map(n => n.owner || n.set || n.name).slice(0,2).join(', ')}` : '',
     signal.wants ? `${signal.wants} want match${signal.wants===1?'':'es'}` : '',
     signal.soldCount ? `${signal.soldCount} sold / +$${signal.avgProfit.toFixed(2)} avg${signal.avgDays!=null?' / '+signal.avgDays.toFixed(0)+'d':''}` : ''
   ].filter(Boolean);
   const recentSold = Number(r.recentSold || r.ebay_avg || r.sold || 0);
-  return `<div class="qpl-hero-card">
+  return `<div class="qpl-hero-card" data-qpl-idx="${idx}">
     ${img}
     <div class="qpl-info">
       <div class="qpl-title">${escHtml(r.name || 'Unknown item')}</div>
@@ -7423,7 +7543,7 @@ function quickLookupResultCard(r, idx){
       ${signals.length ? `<div class="qpl-signal" style="color:${needs.length?'var(--g)':'var(--gold)'}">${escHtml(signals.join(' / '))}</div>` : ''}
       <div class="qpl-quick-controls">
         <select onchange="updateQplVariant(${idx},{selectedCondition:this.value})" aria-label="Condition">
-          ${(r.availableVariants?.length ? [...new Set(r.availableVariants.map(v=>v.condition).filter(Boolean))] : ['NM','LP','MP','HP','DMG']).map(c => `<option value="${c}" ${String(r.selectedCondition||r.condition||'NM')===c?'selected':''}>${c}</option>`).join('')}
+          ${(r.availableVariants?.length ? qplVariantOptionValues(r, 'condition') : ['NM','LP','MP','HP','DMG']).map(c => `<option value="${c}" ${String(r.selectedCondition||r.condition||'NM')===c?'selected':''}>${c}</option>`).join('')}
         </select>
         <select onchange="updateQplVariant(${idx},{selectedFinish:this.value})" aria-label="Finish">
           ${r.availableVariants?.length ? qplVariantSelectOptions(r, 'finish', r.selectedFinish || r.finish) : `<option value="${escHtml(r.finish||'normal')}">${escHtml(qplFinishLabel(r.finish||'normal'))}</option>`}
@@ -7486,8 +7606,77 @@ function openQuickExternal(idx, type){
     window.open(r.tcgUrl, '_blank');
     return;
   }
-  const q = [r.year,r.name,r.set,r.card_number ? '#'+r.card_number : '', type === 'slab' ? 'PSA BGS CGC graded slab' : ''].filter(Boolean).join(' ');
+  if(type === 'slab') {
+    openSlabCertPanel(idx);
+    return;
+  }
+  const q = [r.year,r.name,r.set,r.card_number ? '#'+r.card_number : ''].filter(Boolean).join(' ');
   window.open('https://www.ebay.com/sch/i.html?_nkw=' + encodeURIComponent(q) + '&LH_Sold=1&LH_Complete=1', '_blank');
+}
+
+function openSlabCertPanel(idx){
+  const r = qplResults[idx] || {};
+  let modal = document.getElementById('qpl-slab-modal');
+  if(!modal) {
+    modal = document.createElement('div');
+    modal.id = 'qpl-slab-modal';
+    modal.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.78);display:none;align-items:center;justify-content:center;padding:18px';
+    document.body.appendChild(modal);
+  }
+  modal.innerHTML = `<div style="width:min(760px,96vw);max-height:90vh;overflow:auto;background:var(--surf);border:1px solid var(--border);border-radius:14px;padding:18px;box-shadow:0 22px 70px rgba(0,0,0,.55)">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px">
+      <div>
+        <div style="font-family:'Orbitron',monospace;color:var(--blue);font-size:14px">SLAB / CERT LOOKUP</div>
+        <div style="color:var(--dim);font-size:11px;margin-top:4px">${escHtml([r.name,r.set,r.card_number ? '#'+r.card_number : ''].filter(Boolean).join(' / '))}</div>
+      </div>
+      <button class="hbtn" onclick="closeSlabCertPanel()">CLOSE</button>
+    </div>
+    <div style="display:grid;grid-template-columns:140px 1fr auto;gap:8px;align-items:end">
+      <label style="font-family:monospace;font-size:9px;color:var(--dim)">GRADER
+        <select id="qpl-slab-grader" class="tsi" style="margin-top:4px"><option value="PSA">PSA</option><option value="BGS">BGS</option><option value="CGC">CGC</option><option value="SGC">SGC</option></select>
+      </label>
+      <label style="font-family:monospace;font-size:9px;color:var(--dim)">CERT NUMBER
+        <input id="qpl-slab-cert" class="tsi" style="margin-top:4px" placeholder="Enter PSA cert number">
+      </label>
+      <button class="hbtn" style="min-height:48px;color:var(--g)" onclick="verifyQplPsaCert(${idx})">VERIFY</button>
+    </div>
+    <div id="qpl-slab-output" style="margin-top:14px;font-family:monospace;font-size:11px;color:var(--dim)">PSA cert lookup stays inside Walk-Off. Use COMPS separately for eBay sold data.</div>
+  </div>`;
+  modal.style.display = 'flex';
+}
+
+function closeSlabCertPanel(){
+  const modal = document.getElementById('qpl-slab-modal');
+  if(modal) modal.style.display = 'none';
+}
+
+async function verifyQplPsaCert(idx){
+  const out = document.getElementById('qpl-slab-output');
+  const grader = document.getElementById('qpl-slab-grader')?.value || 'PSA';
+  const cert = (document.getElementById('qpl-slab-cert')?.value || '').replace(/\D+/g, '');
+  if(!cert) { if(out) out.innerHTML = '<span style="color:var(--red)">Enter a cert number.</span>'; return; }
+  if(grader !== 'PSA') { if(out) out.innerHTML = '<span style="color:var(--gold)">Internal cert API is wired for PSA first. Use COMPS for BGS/CGC/SGC pricing until those providers are added.</span>'; return; }
+  if(out) out.textContent = 'Checking PSA cert...';
+  try {
+    const res = await fetch(WORKER + '/psa/cert/' + encodeURIComponent(cert), { cache:'no-store' });
+    const data = await res.json().catch(() => ({}));
+    if(!res.ok || !data.ok) throw new Error(data.error || 'PSA lookup failed');
+    const c = data.cert || {};
+    const r = qplResults[idx] || {};
+    const subject = [c.year,c.brand,c.series,c.subject,c.cardNumber ? '#'+c.cardNumber : ''].filter(Boolean).join(' ');
+    const mismatch = r.name && c.subject && !String(subject).toLowerCase().includes(String(r.name).split(/\s+/)[0].toLowerCase());
+    qplResults[idx] = { ...r, grader:'PSA', grade:c.grade || c.gradeDesc || '', cert_number:c.certNumber || cert, psaCert:c, slabVerified:true };
+    if(out) out.innerHTML = `<div style="display:grid;gap:8px">
+      <div style="color:var(--g);font-family:'Orbitron',monospace">PSA CERT VERIFIED</div>
+      ${mismatch ? '<div style="color:var(--gold)">Possible mismatch: compare cert subject against selected item before buying.</div>' : ''}
+      <div><b style="color:var(--text)">Subject:</b> ${escHtml(subject || c.subject || '')}</div>
+      <div><b style="color:var(--text)">Grade:</b> ${escHtml([c.gradeDesc,c.grade].filter(Boolean).join(' ') || '')}</div>
+      <div><b style="color:var(--text)">Cert:</b> ${escHtml(c.certNumber || cert)}</div>
+      <div><b style="color:var(--text)">Population:</b> total ${Number(c.totalPop || 0)} / higher ${Number(c.popHigher || 0)}</div>
+    </div>`;
+  } catch(e) {
+    if(out) out.innerHTML = '<span style="color:var(--red)">' + escHtml(e.message) + '</span>';
+  }
 }
 
 function selectQuickLookupResult(idx){
@@ -7512,7 +7701,7 @@ function selectQuickLookupResult(idx){
         ${['TCG','Sports','Comic','Graded','Collectibles'].map(c => `<option value="${c}" ${cat===c?'selected':''}>${c}</option>`).join('')}
       </select>
       <select id="qpl-edit-condition" onchange="updateSelectedQplEditVariant(${idx})" style="background:var(--surf);border:1px solid var(--border);color:var(--text);padding:12px;border-radius:8px;font-size:14px;min-height:48px">
-        ${(r.availableVariants?.length ? [...new Set(r.availableVariants.map(v=>v.condition).filter(Boolean))] : ['NM','LP','MP','HP','DMG']).map(c => `<option value="${c}" ${String(r.selectedCondition||r.condition||'NM')===c?'selected':''}>${c}</option>`).join('')}
+        ${(r.availableVariants?.length ? qplVariantOptionValues(r, 'condition') : ['NM','LP','MP','HP','DMG']).map(c => `<option value="${c}" ${String(r.selectedCondition||r.condition||'NM')===c?'selected':''}>${c}</option>`).join('')}
       </select>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px;margin-bottom:9px">
@@ -7569,8 +7758,20 @@ function selectedQuickLookupItem(idx){
     selectedLanguage:document.getElementById('qpl-edit-language')?.value || r.selectedLanguage || r.language || 'English',
     selectedPrinting:selectedVariant.printing || r.selectedPrinting || qplFinishLabel(r.selectedFinish || r.finish || ''),
     productId:r.productId || '',
+    justtcgCardId:r.justtcgCardId || r.productId || '',
+    justtcgVariantId:selectedVariant.justtcgVariantId || '',
+    tcgplayerId:r.tcgplayerId || '',
+    tcgplayerSkuId:selectedVariant.tcgplayerSkuId || r.skuId || '',
+    game:r.game || r.extraInfo?.game || '',
+    setName:document.getElementById('qpl-edit-set')?.value.trim() || r.set || '',
+    rarity:r.variant || '',
     skuId:r.skuId || selectedVariant.skuId || '',
     productConditionId:r.productConditionId || selectedVariant.productConditionId || '',
+    printing:selectedVariant.printing || r.selectedPrinting || qplFinishLabel(r.selectedFinish || r.finish || ''),
+    priceChange7d:r.priceChange7d || selectedVariant.priceChange7d || 0,
+    priceChange30d:r.priceChange30d || selectedVariant.priceChange30d || 0,
+    priceChange90d:r.priceChange90d || selectedVariant.priceChange90d || 0,
+    priceHistory:r.priceHistory || selectedVariant.priceHistory || [],
     market:parseFloat(document.getElementById('qpl-edit-market')?.value) || Number(r.market || 0),
     cost:parseFloat(document.getElementById('qpl-edit-cost')?.value) || Number(r.cost || 0),
     qty:1,
@@ -7680,10 +7881,10 @@ function createDrawerSessionId(){
   return 'drawer_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 6);
 }
 
-function updateSelectedQplEditVariant(idx){
+async function updateSelectedQplEditVariant(idx){
   const r = qplResults[idx];
   if(!r) return;
-  updateQplVariant(idx, {
+  await updateQplVariant(idx, {
     selectedCondition:document.getElementById('qpl-edit-condition')?.value || r.condition,
     selectedFinish:document.getElementById('qpl-edit-finish')?.value || r.finish,
     selectedLanguage:document.getElementById('qpl-edit-language')?.value || r.language || 'English'
@@ -7691,6 +7892,12 @@ function updateSelectedQplEditVariant(idx){
   const next = qplResults[idx];
   const marketEl = document.getElementById('qpl-edit-market');
   const skuEl = document.getElementById('qpl-edit-sku');
+  const condEl = document.getElementById('qpl-edit-condition');
+  const finishEl = document.getElementById('qpl-edit-finish');
+  const langEl = document.getElementById('qpl-edit-language');
+  if(condEl && next.availableVariants?.length) condEl.innerHTML = qplVariantSelectOptions(next, 'condition', next.selectedCondition || next.condition);
+  if(finishEl && next.availableVariants?.length) finishEl.innerHTML = qplVariantSelectOptions(next, 'finish', next.selectedFinish || next.finish);
+  if(langEl && next.availableVariants?.length) langEl.innerHTML = qplVariantSelectOptions(next, 'language', next.selectedLanguage || next.language || 'English');
   if(marketEl) marketEl.value = Number(next.market || 0) || '';
   if(skuEl) skuEl.value = next.skuId || next.productConditionId || '';
   const status = document.getElementById('qpl-add-status');

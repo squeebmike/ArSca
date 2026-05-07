@@ -447,6 +447,7 @@ export default {
         ebayClient: !!(env.EBAY_CLIENT_ID || (env.LBA_KV && await env.LBA_KV.get('secret:EBAY_CLIENT_ID'))),
         ebayRefresh: !!(env.EBAY_REFRESH_TOKEN || (env.LBA_KV && await env.LBA_KV.get('secret:EBAY_REFRESH_TOKEN'))),
         comicvine: !!env.COMICVINE_API_KEY,
+        justtcg: !!env.JUSTTCG_API_KEY,
         tcgapi: !!env.TCGAPI_KEY,
         pokemontcg: !!env.POKEMONTCG_API_KEY,
         pokemonprice: !!(env.POKEMONPRICE_API_KEY || env.POKEMON_PRICE_TRACKER_API_KEY),
@@ -989,6 +990,157 @@ export default {
         return json({ clientSecret: data.client_secret, paymentIntentId: data.id });
       } catch (e) {
         return json({ error: e.message }, 500);
+      }
+    }
+
+    // JustTCG pricing proxy. Keep JUSTTCG_API_KEY in Worker secrets only.
+    if (url.pathname.startsWith('/pricing/justtcg')) {
+      const key = env.JUSTTCG_API_KEY;
+      if (!key) return json({ ok: false, needsKey: true, source: 'justtcg', error: 'JUSTTCG_API_KEY not set in Worker secrets' }, 501);
+
+      const conditionCode = s => {
+        const v = String(s || '').toLowerCase();
+        if (/light/.test(v) || v === 'lp') return 'LP';
+        if (/moderate/.test(v) || v === 'mp') return 'MP';
+        if (/heavy/.test(v) || v === 'hp') return 'HP';
+        if (/damage/.test(v) || v === 'dmg') return 'DMG';
+        return 'NM';
+      };
+      const finishCode = s => {
+        const v = String(s || 'normal').toLowerCase();
+        if (/reverse/.test(v)) return 'reverse_holo';
+        if (/etched/.test(v)) return 'etched_foil';
+        if (/surge/.test(v)) return 'surge_foil';
+        if (/textured/.test(v)) return 'textured_foil';
+        if (/holo/.test(v)) return 'holofoil';
+        if (/foil/.test(v)) return 'foil';
+        if (/first|1st/.test(v)) return 'first_edition';
+        if (/unlimited/.test(v)) return 'unlimited';
+        return v.replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '') || 'normal';
+      };
+      const justGame = s => {
+        const v = String(s || '').toLowerCase();
+        if (/magic|mtg/.test(v)) return 'Magic: The Gathering';
+        if (/pokemon|pokémon/.test(v)) return 'Pokemon';
+        if (/yu|yugioh|yu-gi-oh/.test(v)) return 'Yu-Gi-Oh!';
+        if (/lorcana/.test(v)) return 'Lorcana';
+        if (/one piece/.test(v)) return 'One Piece';
+        return s || '';
+      };
+      const money = v => Number(String(v ?? '').replace(/[$,]/g, '')) || 0;
+      const priceFrom = v => money(v?.price || v?.marketPrice || v?.market_price || v?.averagePrice || v?.avgPrice || v?.tcgplayerMarketPrice || v?.lowPrice || v?.low);
+      const normalizeJustVariant = (v, card = {}, i = 0) => {
+        const conditionName = v.condition || v.conditionName || v.name || 'Near Mint';
+        const finishName = v.printing || v.printingName || v.variant || v.variantName || v.finish || v.finishName || 'Normal';
+        const market = priceFrom(v);
+        return {
+          justtcgVariantId: v.id || v.variantId || v.cardVariantId || '',
+          skuId: v.tcgplayerSkuId || v.skuId || v.tcgplayer_sku_id || v.id || `${card.id || card.cardId || 'just'}-${i}`,
+          tcgplayerSkuId: v.tcgplayerSkuId || v.skuId || v.tcgplayer_sku_id || '',
+          productConditionId: v.productConditionId || v.tcgplayerProductConditionId || '',
+          conditionId: Number(v.conditionId || 0) || null,
+          condition: conditionCode(conditionName),
+          conditionName,
+          variantId: Number(v.variantId || 0) || null,
+          finish: finishCode(finishName),
+          finishName,
+          languageId: Number(v.languageId || 0) || null,
+          language: v.language || v.languageName || 'English',
+          languageName: v.language || v.languageName || 'English',
+          printing: finishName,
+          marketPrice: market || null,
+          lowPrice: money(v.lowPrice || v.minPrice || v.min || v.low) || null,
+          midPrice: money(v.midPrice || v.averagePrice || v.avgPrice) || null,
+          highPrice: money(v.highPrice || v.maxPrice || v.max) || null,
+          recentSoldPrice: money(v.lastSoldPrice || v.recentSoldPrice) || null,
+          priceChange7d: Number(v.priceChange7d || v.change7d || v.change_7d || 0) || 0,
+          priceChange30d: Number(v.priceChange30d || v.change30d || v.change_30d || 0) || 0,
+          priceChange90d: Number(v.priceChange90d || v.change90d || v.change_90d || 0) || 0,
+          priceHistory: v.priceHistory || v.history || [],
+          lastUpdated: v.lastUpdated || v.updatedAt || v.priceUpdatedAt || null,
+          priceSource: market ? 'JustTCG Variant Market' : 'JustTCG Product Estimate',
+          priceConfidence: market ? 'high' : 'medium',
+        };
+      };
+      const normalizeJustCard = card => {
+        const rawVariants = card.variants || card.printings || card.skus || card.prices || card.conditions || [];
+        const variants = Array.isArray(rawVariants)
+          ? rawVariants.map((v, i) => normalizeJustVariant(v, card, i)).filter(v => v.finish && v.condition)
+          : Object.entries(rawVariants || {}).flatMap(([finish, p], i) => normalizeJustVariant({ ...p, printing: finish }, card, i));
+        const selectedVariant = variants.find(v => v.condition === 'NM') || variants[0] || null;
+        return {
+          productId: card.id || card.cardId || card.justtcgCardId || '',
+          justtcgCardId: card.id || card.cardId || '',
+          tcgplayerId: card.tcgplayerId || card.tcgplayerProductId || '',
+          name: card.name || card.title || '',
+          setName: card.setName || card.set || card.groupName || '',
+          cardNumber: card.cardNumber || card.number || card.collectorNumber || '',
+          category: card.game || card.gameName || card.category || '',
+          game: card.game || card.gameName || card.category || '',
+          rarity: card.rarity || '',
+          imageUrl: card.imageUrl || card.image || card.image_url || card.images?.small || card.images?.large || '',
+          productUrl: card.url || card.productUrl || '',
+          releaseDate: card.releaseDate || card.releasedAt || '',
+          confidenceScore: 86,
+          matchReasons: ['JustTCG match'],
+          availableVariants: variants,
+          selectedVariant,
+          priceChange7d: selectedVariant?.priceChange7d || 0,
+          priceChange30d: selectedVariant?.priceChange30d || 0,
+          priceChange90d: selectedVariant?.priceChange90d || 0,
+          priceHistory: selectedVariant?.priceHistory || [],
+          raw: card,
+        };
+      };
+      async function justFetch(path, params = {}) {
+        const qs = new URLSearchParams(params);
+        const res = await fetch('https://api.justtcg.com/v1' + path + (qs.toString() ? '?' + qs.toString() : ''), {
+          headers: { 'x-api-key': key, 'Accept': 'application/json' },
+        });
+        const text = await res.text();
+        let data; try { data = JSON.parse(text); } catch (_) { data = { raw: text }; }
+        if (!res.ok) throw new Error(errorMessageFromApi(data, 'JustTCG ' + res.status));
+        return data;
+      }
+      try {
+        const searchMatch = url.pathname === '/pricing/justtcg/search';
+        const cardMatch = url.pathname.match(/^\/pricing\/justtcg\/card\/([^/]+)$/);
+        const productVariantMatch = url.pathname.match(/^\/pricing\/justtcg\/product\/([^/]+)\/(?:variants|sku-prices)$/);
+        const tcgplayerMatch = url.pathname.match(/^\/pricing\/justtcg\/tcgplayer\/([^/]+)$/);
+        const skuMatch = url.pathname.match(/^\/pricing\/justtcg\/sku\/([^/]+)$/);
+        let cards = [];
+        if (searchMatch) {
+          const q = (url.searchParams.get('q') || '').trim();
+          const category = justGame(url.searchParams.get('category') || url.searchParams.get('game') || '');
+          if (!q) return json({ ok: false, error: 'q required' }, 400);
+          const data = await justFetch('/cards', { q, name: q, search: q, game: category, limit: 24, priceHistory: 'true', priceHistoryDuration: '30d' });
+          cards = Array.isArray(data) ? data : (data.data || data.cards || data.results || []);
+        } else if (cardMatch || productVariantMatch) {
+          const id = decodeURIComponent(cardMatch?.[1] || productVariantMatch?.[1]);
+          const data = await justFetch('/cards/' + encodeURIComponent(id), { priceHistory: 'true', priceHistoryDuration: '30d' }).catch(() => justFetch('/cards', { id, cardId: id, limit: 1, priceHistory: 'true', priceHistoryDuration: '30d' }));
+          cards = Array.isArray(data) ? data : [data.card || data.data?.[0] || data.data || data].filter(Boolean);
+        } else if (tcgplayerMatch) {
+          const tcgplayerId = decodeURIComponent(tcgplayerMatch[1]);
+          const data = await justFetch('/cards', { tcgplayerId, tcgplayerProductId: tcgplayerId, limit: 1, priceHistory: 'true', priceHistoryDuration: '30d' });
+          cards = Array.isArray(data) ? data : (data.data || data.cards || data.results || []);
+        } else if (skuMatch) {
+          const sku = decodeURIComponent(skuMatch[1]);
+          const data = await justFetch('/cards', { tcgplayerSkuId: sku, skuId: sku, limit: 1, priceHistory: 'true', priceHistoryDuration: '30d' });
+          cards = Array.isArray(data) ? data : (data.data || data.cards || data.results || []);
+        } else {
+          return json({ ok: false, error: 'Unknown JustTCG route' }, 404);
+        }
+        const matches = cards.map(normalizeJustCard).filter(c => c.name);
+        if (!matches.length) return json({ ok: false, source: 'justtcg', error: 'No match', matches: [] }, 404);
+        if (skuMatch) {
+          const sku = decodeURIComponent(skuMatch[1]);
+          const card = matches[0];
+          const selectedVariant = card.availableVariants.find(v => String(v.skuId) === sku || String(v.tcgplayerSkuId) === sku) || card.selectedVariant;
+          return json({ ok: true, success: true, source: 'justtcg', card, selectedVariant, price: selectedVariant?.marketPrice || 0 });
+        }
+        return json({ ok: true, success: true, source: 'justtcg', matches, selectedVariant: matches[0]?.selectedVariant || null });
+      } catch (e) {
+        return json({ ok: false, source: 'justtcg', error: e.message }, 500);
       }
     }
 
