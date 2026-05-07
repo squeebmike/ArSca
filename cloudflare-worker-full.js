@@ -1153,7 +1153,7 @@ export default {
         const n = Number(v);
         return n > 0 ? Math.round(n) / 100 : null;
       };
-      const PC_CSV_CATEGORIES = ['Pokemon Cards', 'Magic Cards', 'YuGiOh Cards', 'One Piece Cards', 'Comics', 'Sports Cards'];
+      const PC_CSV_CATEGORIES = ['Pokemon Cards', 'Magic Cards', 'YuGiOh Cards', 'One Piece Cards', 'Lorcana Cards', 'Digimon Cards', 'Dragon Ball Cards', 'Garbage Pail Cards', 'Marvel Cards', 'Star Wars Cards', 'Other TCG Cards', 'Comics', 'Video Games', 'Funko Pops', 'LEGO Sets', 'Coins', 'Amiibo', 'Strategy Guides', 'Gaming Magazines', 'Sports Cards'];
       const pcCategoryKey = c => String(c || 'General').replace(/[^a-zA-Z0-9._ -]/g, '').trim().slice(0, 80) || 'General';
       const kvKey = (kind, category) => `pc_csv_${kind}:${pcCategoryKey(category)}`;
       const pcUrl = path => 'https://www.pricecharting.com' + path;
@@ -1244,6 +1244,12 @@ export default {
         return 'ungraded';
       };
       async function pcFetch(path, params = {}) {
+        if (env.LBA_KV) {
+          const last = Number(await env.LBA_KV.get('pc_live_last_call') || 0);
+          const now = Date.now();
+          if (last && now - last < 1000) throw new Error('PriceCharting live API throttle: wait 1 second between calls');
+          await env.LBA_KV.put('pc_live_last_call', String(now), { expirationTtl: 60 });
+        }
         const qs = new URLSearchParams({ t: token, ...params });
         const res = await fetch(pcUrl(path) + '?' + qs.toString(), { headers: { 'Accept': 'application/json' } });
         const text = await res.text();

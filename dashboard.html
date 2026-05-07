@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.05.07.04">
+<meta name="version" content="2026.05.07.05">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -356,7 +356,7 @@ tr.sold:hover td{opacity:.7;}
 
 <header>
   <div class="hdr">
-    <div class="logo">WALK-OFF <span>DASHBOARD · v2026.05.07.04</span></div>
+    <div class="logo">WALK-OFF <span>DASHBOARD · v2026.05.07.05</span></div>
     <div class="hdr-right">
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
@@ -1159,7 +1159,7 @@ tr.sold:hover td{opacity:.7;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.05.07.04';
+const APP_VERSION = '2026.05.07.05';
 const SUPABASE_URL = 'https://vroknjrxubsqyexngwus.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_wbpX2nL8l-4NbXtZNG_bjA_nabSYaJ5';
 const AUTH_REDIRECT_URL = 'https://squeebmike.github.io/ArSca/dashboard.html';
@@ -1642,7 +1642,11 @@ const DEFAULT_PAYMENT_SETTINGS = {
   customerDisplay:{ showPaymentMethods:true, showQrCodes:true, showStoreLogo:true },
 };
 
-const PRICECHARTING_CSV_CATEGORIES = ['Pokemon Cards','Magic Cards','YuGiOh Cards','One Piece Cards','Comics','Sports Cards'];
+const PRICECHARTING_CSV_CATEGORIES = [
+  'Pokemon Cards','Magic Cards','YuGiOh Cards','One Piece Cards','Lorcana Cards','Digimon Cards','Dragon Ball Cards',
+  'Garbage Pail Cards','Marvel Cards','Star Wars Cards','Other TCG Cards','Comics','Video Games','Funko Pops',
+  'LEGO Sets','Coins','Amiibo','Strategy Guides','Gaming Magazines','Sports Cards'
+];
 function getPriceChartingCsvUrls(){
   try { return JSON.parse(localStorage.getItem('pricecharting_csv_urls_v1') || '{}'); } catch(e) { return {}; }
 }
@@ -2169,6 +2173,7 @@ function renderPriceChartingDataPanel(status = null){
   body.innerHTML = `
     <div style="font-family:monospace;font-size:10px;color:var(--dim);line-height:1.55;margin-bottom:10px">
       CSV URLs are sent to the Cloudflare Worker and cached in KV. The browser does not fetch PriceCharting CSV directly. Manual sync respects the 10 minute CSV call limit.
+      Photo search is a website fallback button unless PriceCharting confirms a documented API endpoint.
     </div>
     ${rows}
     <div id="pc-csv-status-note" style="font-family:monospace;font-size:10px;color:var(--dim)"></div>`;
@@ -7149,7 +7154,7 @@ async function searchQuickCatalog(q, cat){
     } catch(e) {}
   }
 
-  return results.slice(0, 30);
+  return results.slice(0, 100);
 }
 
 function qplCategoryKey(category){
@@ -7159,6 +7164,18 @@ function qplCategoryKey(category){
   if(c.includes('pokemon') || c.includes('poke')) return 'pokemon';
   if(c.includes('yu') || c.includes('yugioh')) return 'yugioh';
   if(c.includes('comic')) return 'comic';
+  if(c.includes('lorcana')) return 'lorcana';
+  if(c.includes('digimon')) return 'digimon';
+  if(c.includes('dragon ball')) return 'dragon_ball';
+  if(c.includes('garbage pail')) return 'garbage_pail';
+  if(c.includes('marvel')) return 'marvel';
+  if(c.includes('star wars')) return 'star_wars';
+  if(c.includes('video') || c.includes('game') || c.includes('n64') || c.includes('nes') || c.includes('playstation') || c.includes('xbox')) return 'video_games';
+  if(c.includes('funko') || c.includes('pop')) return 'funko';
+  if(c.includes('lego')) return 'lego';
+  if(c.includes('coin')) return 'coins';
+  if(c.includes('amiibo')) return 'amiibo';
+  if(c.includes('guide') || c.includes('magazine')) return 'books_guides';
   if(c.includes('sport') || c.includes('baseball') || c.includes('football') || c.includes('basketball')) return 'sports';
   if(c.includes('graded') || c.includes('slab')) return 'graded';
   if(c.includes('tcg')) return 'tcg';
@@ -7212,17 +7229,21 @@ function qplFinishLabel(value){
 }
 
 function qplPriceValue(v){
-  return Number(v?.marketPrice ?? v?.estimatedMarketPrice ?? v?.productLevelMarketPrice ?? v?.lowPrice ?? v?.lowestListingPrice ?? 0) || 0;
+  return Number(v?.marketPrice || 0) || 0;
 }
 
 function qplPriceSourceLabel(v){
   if(!v) return 'Needs Research';
-  if(Number(v.marketPrice || 0) > 0) return v.priceSource || 'Variant Market';
-  if(v.priceSource) return v.priceSource;
-  if(Number(v.estimatedMarketPrice || 0) > 0) return 'Estimated fallback';
-  if(Number(v.productLevelMarketPrice || 0) > 0) return 'Product-Level Estimate';
-  if(Number(v.lowPrice || v.lowestListingPrice || 0) > 0) return 'Lowest listing fallback';
-  return 'Needs Research';
+  if(Number(v.marketPrice || 0) > 0) return v.priceSource || 'Real Variant Price';
+  return 'No Real Price Available';
+}
+
+function qplTruthLabel(r){
+  if(r?.source === 'justtcg') return Number(r.selectedVariant?.marketPrice || r.market || 0) > 0 ? 'Real Variant Price' : 'No Real Price';
+  if(r?.pricecharting || r?.source === 'pricecharting_csv') return Number(r.pricecharting?.prices?.ungraded || r.market || 0) > 0 ? 'Guide Value' : 'No Guide Value';
+  if(r?.source === 'inventory') return 'Inventory Price';
+  if(Number(r?.recentSold || r?.ebay_avg || 0) > 0) return 'Sold Comp';
+  return Number(r?.market || 0) > 0 ? 'Manual Price' : 'Needs Review';
 }
 
 function qplPriceChartingCategory(category){
@@ -7230,7 +7251,19 @@ function qplPriceChartingCategory(category){
   if(key === 'pokemon' || key === 'tcg') return 'Pokemon Cards';
   if(key === 'mtg') return 'Magic Cards';
   if(key === 'yugioh') return 'YuGiOh Cards';
+  if(key === 'lorcana') return 'Lorcana Cards';
+  if(key === 'digimon') return 'Digimon Cards';
+  if(key === 'dragon_ball') return 'Dragon Ball Cards';
+  if(key === 'garbage_pail') return 'Garbage Pail Cards';
+  if(key === 'marvel') return 'Marvel Cards';
+  if(key === 'star_wars') return 'Star Wars Cards';
   if(key === 'comic') return 'Comics';
+  if(key === 'video_games') return 'Video Games';
+  if(key === 'funko') return 'Funko Pops';
+  if(key === 'lego') return 'LEGO Sets';
+  if(key === 'coins') return 'Coins';
+  if(key === 'amiibo') return 'Amiibo';
+  if(key === 'books_guides') return 'Strategy Guides';
   if(key === 'sports' || key === 'graded') return 'Sports Cards';
   return '';
 }
@@ -7511,13 +7544,22 @@ function qplDealerDecisionPanel(r){
   const soldSource = Number(r.recentSold || r.ebay_avg || 0) > 0 ? 'Sold comps available' : 'No sold comps loaded';
   const basis = r.pricingMode === 'slab' ? Number(qplSelectedSlabPrice(r) || 0) : Number(selected.marketPrice || r.market || 0);
   const safeOffer = basis > 0 ? Math.floor(basis * 0.55 * 4) / 4 : 0;
+  const demand = r.pricecharting?.demand || {};
+  const retail = r.pricecharting?.retail || {};
+  const needsReview = !basis || (r.source === 'justtcg' && !Number(selected.marketPrice || 0)) || (r.pricingMode === 'slab' && !Number(qplSelectedSlabPrice(r) || 0));
   return `<div style="margin-top:10px;border-top:1px solid rgba(255,255,255,.08);padding-top:10px">
     <div style="font-family:'Orbitron',monospace;color:var(--g);font-size:11px">DEALER DECISION</div>
+    ${needsReview ? `<div style="margin-top:8px;color:var(--gold);font-size:11px;font-weight:800">NEEDS REVIEW: ${r.source === 'justtcg' ? 'No Real Price Available for selected variant' : 'No Guide Value Available'}</div>` : ''}
     <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin-top:8px;color:var(--dim);font-size:10px">
       <div>Raw value source: <b style="color:var(--text)">${escHtml(rawSource)}</b></div>
       <div>Slab value source: <b style="color:var(--text)">${escHtml(slabSource)}</b></div>
       <div>Sold comps source: <b style="color:var(--text)">${escHtml(soldSource)}</b></div>
       <div>Safe offer basis: <b style="color:var(--gold)">${safeOffer ? '$'+safeOffer.toFixed(2) : 'Needs Research'}</b></div>
+    </div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">
+      ${demand.salesVolume ? `<span class="qpl-badge good">Demand ${Number(demand.salesVolume).toLocaleString()} sales</span>` : ''}
+      ${retail.looseBuy ? `<span class="qpl-badge">Retail buy $${Number(retail.looseBuy).toFixed(2)}</span>` : ''}
+      ${retail.looseSell ? `<span class="qpl-badge">Retail sell $${Number(retail.looseSell).toFixed(2)}</span>` : ''}
     </div>
   </div>`;
 }
@@ -7865,6 +7907,9 @@ function quickLookupResultCard(r, idx){
   const why = (r.matchWhy || []).length ? `Matched: ${(r.matchWhy || []).join(', ')}` : (r.note || '');
   const tcg = r.tcgUrl ? `<button class="hbtn" onclick="openQuickExternal(${idx},'tcg')">TCG</button>` : '';
   const slab = `<button class="hbtn" style="color:var(--blue)" onclick="openSlabCertPanel(${idx})">SLAB / CERT</button>`;
+  const truth = qplTruthLabel(r);
+  const displayPrice = Number(r.market || 0);
+  const priceText = displayPrice ? '$' + displayPrice.toFixed(2) : (truth.includes('Guide') ? 'No Guide Value Available' : truth.includes('Real') ? 'No Real Price Available' : 'Needs Review');
   const signals = [
     needs.length ? `NEEDED: ${needs.map(n => n.owner || n.set || n.name).slice(0,2).join(', ')}` : '',
     signal.wants ? `${signal.wants} want match${signal.wants===1?'':'es'}` : '',
@@ -7879,10 +7924,12 @@ function quickLookupResultCard(r, idx){
       <div class="qpl-badges">
         <span class="qpl-badge ${confClass}">${confLabel}${conf?` ${conf}`:''}</span>
         <span class="qpl-badge">${escHtml(r.category || 'ITEM')}</span>
+        <span class="qpl-badge ${truth.includes('No ') || truth.includes('Needs') ? 'bad' : truth.includes('Guide') ? 'warn' : 'good'}">${escHtml(truth)}</span>
+        <span class="qpl-badge">${escHtml(r.source === 'justtcg' ? 'JustTCG' : r.source === 'pricecharting_csv' ? 'PriceCharting' : r.source || 'Source')}</span>
         ${r.source === 'inventory' ? '<span class="qpl-badge good">IN INVENTORY</span>' : ''}
         ${r.variant ? `<span class="qpl-badge warn">${escHtml(r.variant)}</span>` : ''}
       </div>
-      <div class="qpl-price">$${Number(r.market || 0).toFixed(2)}</div>
+      <div class="qpl-price">${escHtml(priceText)}</div>
       <div class="qpl-price-sub">
         ${recentSold ? `Recent sold: $${recentSold.toFixed(2)}<br>` : ''}
         Source: ${escHtml(r.priceSource || r.source || 'manual')}
@@ -7911,6 +7958,9 @@ function quickLookupResultCard(r, idx){
       ${tcg}
       ${slab}
       <button class="hbtn" onclick="openQuickExternal(${idx},'sold')">COMPS</button>
+      <button class="hbtn" onclick="openQuickExternal(${idx},'pricecharting')">PRICECHARTING</button>
+      <button class="hbtn" onclick="openQuickExternal(${idx},'pcphoto')">PHOTO SEARCH</button>
+      <button class="hbtn" style="color:var(--gold)" onclick="markQplNeedsReview(${idx})">NEEDS REVIEW</button>
     </div>
   </div>`;
 }
@@ -7960,7 +8010,25 @@ function openQuickExternal(idx, type){
     return;
   }
   const q = [r.year,r.name,r.set,r.card_number ? '#'+r.card_number : ''].filter(Boolean).join(' ');
+  if(type === 'pricecharting') {
+    window.open(r.pricecharting?.url || r.productUrl || ('https://www.pricecharting.com/search-products?q=' + encodeURIComponent(q)), '_blank');
+    return;
+  }
+  if(type === 'pcphoto') {
+    window.open('https://www.pricecharting.com/photo-search', '_blank');
+    toast_dash('PriceCharting photo search opens as a website fallback; no documented API is wired.');
+    return;
+  }
   window.open('https://www.ebay.com/sch/i.html?_nkw=' + encodeURIComponent(q) + '&LH_Sold=1&LH_Complete=1', '_blank');
+}
+
+function markQplNeedsReview(idx){
+  const r = qplResults[idx];
+  if(!r) return;
+  r.needsReview = true;
+  r.priceSource = r.priceSource || 'Needs Review';
+  updateQplResultCard(idx);
+  toast_dash('Marked needs review: ' + (r.name || 'item'));
 }
 
 function openSlabCertPanel(idx){
@@ -8127,8 +8195,8 @@ function selectedQuickLookupItem(idx){
     location:document.getElementById('qpl-edit-location')?.value.trim() || '',
     thumbnail:r.imageUrl || '',
     imageUrl:r.imageUrl || '',
-    priceSource:r.pricingMode === 'slab' ? 'PriceCharting slab guide' : (r.priceSource || r.source || 'manual lookup'),
-    pricingSource:r.pricingMode === 'slab' ? 'PriceCharting slab guide' : (r.priceSource || r.source || 'manual lookup'),
+    priceSource:r.pricingMode === 'slab' ? (Number(qplSelectedSlabPrice(r) || 0) ? 'PriceCharting slab guide' : 'No Guide Value Available') : (Number(r.selectedVariant?.marketPrice || r.market || 0) ? (r.priceSource || r.source || 'manual lookup') : (r.source === 'justtcg' ? 'No Real Price Available' : (r.priceSource || 'Needs Review'))),
+    pricingSource:r.pricingMode === 'slab' ? (Number(qplSelectedSlabPrice(r) || 0) ? 'PriceCharting slab guide' : 'No Guide Value Available') : (Number(r.selectedVariant?.marketPrice || r.market || 0) ? (r.priceSource || r.source || 'manual lookup') : (r.source === 'justtcg' ? 'No Real Price Available' : (r.priceSource || 'Needs Review'))),
     pricingMode:r.pricingMode || 'raw',
     slabCompany:r.slabCompany || '',
     slabGrade:r.slabGrade || '',
@@ -8182,6 +8250,11 @@ function addQuickLookupToInventory(idx){
 
 function addSelectedQuickLookupToBuyOffer(idx){
   const item = selectedQuickLookupItem(idx);
+  const needsManual = !Number(item.market || 0) || item.priceSource === 'No Real Price Available' || item.priceSource === 'No Guide Value Available';
+  if(needsManual && !confirm('No trustworthy price is available for this item. Add to buy offer for manual review with $0 market value?')) {
+    toast_dash('Manual review required before adding to offer');
+    return;
+  }
   buyList.push({
     id:'bl_qpl_' + Date.now(),
     name:item.name,
@@ -8203,6 +8276,7 @@ function addSelectedQuickLookupToBuyOffer(idx){
     priceSource:item.priceSource,
     pricingSource:item.pricingSource,
     priceConfidence:item.priceConfidence,
+    needsReview:needsManual,
     lastPriceSyncAt:item.lastPriceSyncAt,
   });
   saveBuyList();
