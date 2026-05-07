@@ -1145,15 +1145,17 @@ export default {
       }
     }
 
-    // PriceCharting slab price guide proxy. Token stays in Worker secrets only.
+    // PriceCharting guide proxy. Token and CSV URLs stay in Worker/KV only.
     if (url.pathname.startsWith('/pricing/pricecharting')) {
       const token = env.PRICECHARTING_TOKEN || env.PRICECHARTING_API_KEY;
-      if (!token) return json({ ok: false, needsKey: true, source: 'PriceCharting', error: 'PRICECHARTING_TOKEN not set in Worker secrets' }, 501);
 
       const pennies = v => {
         const n = Number(v);
         return n > 0 ? Math.round(n) / 100 : null;
       };
+      const PC_CSV_CATEGORIES = ['Pokemon Cards', 'Magic Cards', 'YuGiOh Cards', 'One Piece Cards', 'Comics', 'Sports Cards'];
+      const pcCategoryKey = c => String(c || 'General').replace(/[^a-zA-Z0-9._ -]/g, '').trim().slice(0, 80) || 'General';
+      const kvKey = (kind, category) => `pc_csv_${kind}:${pcCategoryKey(category)}`;
       const pcUrl = path => 'https://www.pricecharting.com' + path;
       const matchReasonsFor = (p, q) => {
         const reasons = [];
@@ -1180,6 +1182,32 @@ export default {
           cgc10: pennies(p['condition-17-price']),
           sgc10: pennies(p['condition-18-price']),
         },
+        comicPrices: {
+          ungraded: pennies(p['loose-price']),
+          grade4: pennies(p['cib-price']),
+          grade6: pennies(p['new-price']),
+          grade8: pennies(p['graded-price']),
+          grade9_2: pennies(p['box-only-price']),
+          grade9_4: pennies(p['condition-17-price']),
+          grade9_8: pennies(p['manual-only-price']),
+          grade10: pennies(p['bgs-10-price']),
+        },
+        retail: {
+          looseBuy: pennies(p['retail-loose-buy']),
+          looseSell: pennies(p['retail-loose-sell']),
+          cibBuy: pennies(p['retail-cib-buy']),
+          cibSell: pennies(p['retail-cib-sell']),
+          newBuy: pennies(p['retail-new-buy']),
+          newSell: pennies(p['retail-new-sell']),
+        },
+        demand: {
+          salesVolume: Number(p['sales-volume'] || p.salesVolume || 0) || null,
+          genre: p.genre || '',
+          consoleName: p['console-name'] || p.consoleName || '',
+          releaseDate: p['release-date'] || p.releaseDate || null,
+          upc: p.upc || p.UPC || '',
+          epid: p.epid || p.ePID || p.EPID || '',
+        },
         rawApiPricesPennies: {
           'loose-price': p['loose-price'] ?? null,
           'cib-price': p['cib-price'] ?? null,
@@ -1190,6 +1218,12 @@ export default {
           'bgs-10-price': p['bgs-10-price'] ?? null,
           'condition-17-price': p['condition-17-price'] ?? null,
           'condition-18-price': p['condition-18-price'] ?? null,
+          'retail-loose-buy': p['retail-loose-buy'] ?? null,
+          'retail-loose-sell': p['retail-loose-sell'] ?? null,
+          'retail-cib-buy': p['retail-cib-buy'] ?? null,
+          'retail-cib-sell': p['retail-cib-sell'] ?? null,
+          'retail-new-buy': p['retail-new-buy'] ?? null,
+          'retail-new-sell': p['retail-new-sell'] ?? null,
         },
         lastUpdated: p['updated-at'] || p.updatedAt || null,
         confidence: matchReasonsFor(p, q).length >= 3 ? 'high' : matchReasonsFor(p, q).length >= 1 ? 'medium' : 'low',
@@ -1217,10 +1251,104 @@ export default {
         if (!res.ok || data.status === 'error') throw new Error(data['error-message'] || data.error || 'PriceCharting ' + res.status);
         return data;
       }
+      function parseCsvLine(line) {
+        const out = [];
+        let cur = '', quoted = false;
+        for (let i = 0; i < line.length; i++) {
+          const ch = line[i];
+          if (ch === '"') {
+            if (quoted && line[i + 1] === '"') { cur += '"'; i++; }
+            else quoted = !quoted;
+          } else if (ch === ',' && !quoted) {
+            out.push(cur);
+            cur = '';
+          } else cur += ch;
+        }
+        out.push(cur);
+        return out;
+      }
+      function parsePcCsv(text) {
+        const lines = String(text || '').replace(/^\uFEFF/, '').split(/\r?\n/).filter(l => l.trim());
+        if (lines.length < 2) return [];
+        const headers = parseCsvLine(lines[0]).map(h => h.trim());
+        return lines.slice(1).map(line => {
+          const vals = parseCsvLine(line);
+          const row = {};
+          headers.forEach((h, i) => row[h] = vals[i] ?? '');
+          return row;
+        });
+      }
+      function csvMatches(rows, q) {
+        const terms = String(q || '').toLowerCase().split(/\s+/).filter(Boolean);
+        return (rows || []).map(row => {
+          const hay = [row['product-name'], row['console-name'], row.genre, row.upc, row.epid].filter(Boolean).join(' ').toLowerCase();
+          const score = terms.reduce((n, t) => n + (hay.includes(t) ? 1 : 0), 0);
+          return { row, score };
+        }).filter(x => x.score > 0).sort((a, b) => b.score - a.score).slice(0, 25).map(x => normalizePcProduct(x.row, q));
+      }
       try {
+        if (url.pathname === '/pricing/pricecharting/csv/status') {
+          if (!env.LBA_KV) return json({ ok: false, error: 'LBA_KV binding required for CSV cache' }, 501);
+          const categories = PC_CSV_CATEGORIES;
+          const status = {};
+          for (const cat of categories) {
+            const meta = await env.LBA_KV.get(kvKey('meta', cat), 'json');
+            status[cat] = meta || { category: cat, configured: !!(await env.LBA_KV.get(kvKey('url', cat))), rowCount: 0, lastSyncedAt: null };
+          }
+          return json({ ok: true, source: 'PriceCharting CSV', categories: status });
+        }
+        if (url.pathname === '/pricing/pricecharting/csv/sync') {
+          if (request.method !== 'POST') return json({ ok: false, error: 'POST only' }, 405);
+          if (!env.LBA_KV) return json({ ok: false, error: 'LBA_KV binding required for CSV cache' }, 501);
+          const body = await request.json().catch(() => ({}));
+          const category = pcCategoryKey(body.category || 'General');
+          if (body.url) await env.LBA_KV.put(kvKey('url', category), String(body.url));
+          const csvUrl = body.url || await env.LBA_KV.get(kvKey('url', category));
+          if (!csvUrl) return json({ ok: false, error: 'CSV URL required first sync' }, 400);
+          const prior = await env.LBA_KV.get(kvKey('meta', category), 'json');
+          const now = Date.now();
+          if (prior?.lastSyncedAt && now - Date.parse(prior.lastSyncedAt) < 10 * 60 * 1000) {
+            return json({ ok: true, skipped: true, reason: 'PriceCharting CSV limit: wait 10 minutes between CSV calls', meta: prior });
+          }
+          if (!body.force && prior?.lastSyncedAt && new Date(prior.lastSyncedAt).toISOString().slice(0, 10) === new Date(now).toISOString().slice(0, 10)) {
+            return json({ ok: true, skipped: true, reason: 'Already synced today', meta: prior });
+          }
+          const res = await fetch(csvUrl, { headers: { 'Accept': 'text/csv,*/*' } });
+          const text = await res.text();
+          if (!res.ok) throw new Error('CSV fetch failed ' + res.status + ': ' + text.slice(0, 120));
+          const rows = parsePcCsv(text).slice(0, 50000);
+          const meta = { category, configured: true, rowCount: rows.length, lastSyncedAt: new Date(now).toISOString(), source: 'PriceCharting CSV' };
+          await env.LBA_KV.put(kvKey('rows', category), JSON.stringify(rows), { expirationTtl: 60 * 60 * 24 * 14 });
+          await env.LBA_KV.put(kvKey('meta', category), JSON.stringify(meta), { expirationTtl: 60 * 60 * 24 * 30 });
+          return json({ ok: true, meta });
+        }
+        if (url.pathname === '/pricing/pricecharting/csv/search') {
+          if (!env.LBA_KV) return json({ ok: false, error: 'LBA_KV binding required for CSV cache' }, 501);
+          const q = (url.searchParams.get('q') || '').trim();
+          const category = url.searchParams.get('category') || '';
+          if (!q) return json({ ok: false, error: 'q required' }, 400);
+          const cats = category ? [pcCategoryKey(category)] : PC_CSV_CATEGORIES;
+          const matches = [];
+          for (const cat of cats) {
+            const rows = await env.LBA_KV.get(kvKey('rows', cat), 'json');
+            if (Array.isArray(rows)) matches.push(...csvMatches(rows, q).map(m => ({ ...m, csvCategory: cat })));
+          }
+          return json({ ok: true, source: 'PriceCharting CSV', query: q, matches: matches.slice(0, 25), products: matches.slice(0, 25) });
+        }
+        if (!token) return json({ ok: false, needsKey: true, source: 'PriceCharting', error: 'PRICECHARTING_TOKEN not set in Worker secrets' }, 501);
         if (url.pathname === '/pricing/pricecharting/search') {
           const q = (url.searchParams.get('q') || '').trim();
           if (!q) return json({ ok: false, error: 'q required' }, 400);
+          if (env.LBA_KV && url.searchParams.get('live') !== 'true') {
+            const category = url.searchParams.get('category') || '';
+            const cats = category ? [pcCategoryKey(category)] : PC_CSV_CATEGORIES;
+            let cached = [];
+            for (const cat of cats) {
+              const rows = await env.LBA_KV.get(kvKey('rows', cat), 'json');
+              if (Array.isArray(rows)) cached.push(...csvMatches(rows, q).map(m => ({ ...m, csvCategory: cat })));
+            }
+            if (cached.length) return json({ ok: true, source: 'PriceCharting CSV', query: q, products: cached.slice(0, 25), matches: cached.slice(0, 25), cached: true });
+          }
           const data = await pcFetch('/api/products', { q });
           const products = (data.products || []).map(p => normalizePcProduct(p, q));
           return json({ ok: true, source: 'PriceCharting', query: q, products, matches: products });

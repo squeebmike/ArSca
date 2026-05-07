@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.05.07.03">
+<meta name="version" content="2026.05.07.04">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -356,7 +356,7 @@ tr.sold:hover td{opacity:.7;}
 
 <header>
   <div class="hdr">
-    <div class="logo">WALK-OFF <span>DASHBOARD · v2026.05.07.03</span></div>
+    <div class="logo">WALK-OFF <span>DASHBOARD · v2026.05.07.04</span></div>
     <div class="hdr-right">
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
@@ -1159,7 +1159,7 @@ tr.sold:hover td{opacity:.7;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.05.07.03';
+const APP_VERSION = '2026.05.07.04';
 const SUPABASE_URL = 'https://vroknjrxubsqyexngwus.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_wbpX2nL8l-4NbXtZNG_bjA_nabSYaJ5';
 const AUTH_REDIRECT_URL = 'https://squeebmike.github.io/ArSca/dashboard.html';
@@ -1642,6 +1642,14 @@ const DEFAULT_PAYMENT_SETTINGS = {
   customerDisplay:{ showPaymentMethods:true, showQrCodes:true, showStoreLogo:true },
 };
 
+const PRICECHARTING_CSV_CATEGORIES = ['Pokemon Cards','Magic Cards','YuGiOh Cards','One Piece Cards','Comics','Sports Cards'];
+function getPriceChartingCsvUrls(){
+  try { return JSON.parse(localStorage.getItem('pricecharting_csv_urls_v1') || '{}'); } catch(e) { return {}; }
+}
+function savePriceChartingCsvUrls(urls){
+  localStorage.setItem('pricecharting_csv_urls_v1', JSON.stringify(urls || {}));
+}
+
 function getVendorProfile(){
   try { return { ...DEFAULT_VENDOR_PROFILE, ...(JSON.parse(localStorage.getItem('vendor_profile_v1') || '{}')) }; }
   catch(e) { return {...DEFAULT_VENDOR_PROFILE}; }
@@ -1834,6 +1842,7 @@ function organizeRegisterLayout(){
   moveNode('backoffice-ops-panel', backoffice);
   ensureVendorProfilePanel(backoffice);
   ensurePaymentSettingsPanel(backoffice);
+  ensurePriceChartingDataPanel(backoffice);
   ensureStoreMembersPanel(backoffice);
   ensureVendorConfigPanel(backoffice);
   ensureLegacyToolsPanel(backoffice);
@@ -2129,6 +2138,81 @@ function savePaymentSettingsFromForm(){
   };
   savePaymentSettings(settings);
   toast_dash('Payment settings saved');
+}
+
+function ensurePriceChartingDataPanel(backoffice){
+  if(document.getElementById('pricecharting-data-panel')) return;
+  const panel = document.createElement('div');
+  panel.className = 'panel';
+  panel.id = 'pricecharting-data-panel';
+  panel.style.marginBottom = '14px';
+  panel.innerHTML = '<div class="ph">PRICECHARTING DATA <span style="font-size:9px;color:var(--dim)">CSV cache, grade guides, dealer buy/sell values</span></div><div id="pricecharting-data-body"></div>';
+  backoffice.prepend(panel);
+  renderPriceChartingDataPanel();
+}
+
+function renderPriceChartingDataPanel(status = null){
+  const body = document.getElementById('pricecharting-data-body');
+  if(!body) return;
+  const urls = getPriceChartingCsvUrls();
+  const rows = PRICECHARTING_CSV_CATEGORIES.map(cat => {
+    const meta = status?.[cat] || {};
+    return `<div class="item-metric" style="display:grid;grid-template-columns:170px 1fr 112px 112px;gap:8px;align-items:end;margin-bottom:8px">
+      <label style="font-family:monospace;font-size:9px;color:var(--dim)">${escHtml(cat)}
+        <div style="font-size:9px;color:var(--dim);margin-top:4px">${meta.lastSyncedAt ? `${Number(meta.rowCount||0).toLocaleString()} rows · ${new Date(meta.lastSyncedAt).toLocaleString()}` : (meta.configured ? 'Configured, not synced' : 'No cache yet')}</div>
+      </label>
+      <input id="pc-csv-url-${escHtml(cat)}" class="tsi" placeholder="PriceCharting CSV download URL (saved in Worker/KV on sync)" value="${escHtml(urls[cat] || '')}">
+      <button class="hbtn" onclick="syncPriceChartingCsv('${escHtml(cat)}')">SYNC NOW</button>
+      <button class="hbtn" onclick="checkPriceChartingCsvStatus()">STATUS</button>
+    </div>`;
+  }).join('');
+  body.innerHTML = `
+    <div style="font-family:monospace;font-size:10px;color:var(--dim);line-height:1.55;margin-bottom:10px">
+      CSV URLs are sent to the Cloudflare Worker and cached in KV. The browser does not fetch PriceCharting CSV directly. Manual sync respects the 10 minute CSV call limit.
+    </div>
+    ${rows}
+    <div id="pc-csv-status-note" style="font-family:monospace;font-size:10px;color:var(--dim)"></div>`;
+}
+
+async function checkPriceChartingCsvStatus(){
+  const note = document.getElementById('pc-csv-status-note');
+  if(note) note.textContent = 'Checking PriceCharting CSV cache...';
+  try {
+    const res = await fetch(WORKER + '/pricing/pricecharting/csv/status', { cache:'no-store' });
+    const data = await res.json().catch(() => ({}));
+    if(!res.ok || !data.ok) throw new Error(data.error || 'Status failed');
+    renderPriceChartingDataPanel(data.categories || {});
+    const note2 = document.getElementById('pc-csv-status-note');
+    if(note2) note2.textContent = 'PriceCharting CSV status updated ' + new Date().toLocaleTimeString();
+  } catch(e) {
+    if(note) note.textContent = 'CSV status failed: ' + e.message;
+    toast_dash('PriceCharting CSV status failed: ' + e.message);
+  }
+}
+
+async function syncPriceChartingCsv(category){
+  const urls = getPriceChartingCsvUrls();
+  const input = document.getElementById('pc-csv-url-' + category);
+  const url = input?.value.trim() || urls[category] || '';
+  if(!url) { toast_dash('Paste the PriceCharting CSV URL first'); return; }
+  urls[category] = url;
+  savePriceChartingCsvUrls(urls);
+  const note = document.getElementById('pc-csv-status-note');
+  if(note) note.textContent = 'Syncing ' + category + '...';
+  try {
+    const res = await fetch(WORKER + '/pricing/pricecharting/csv/sync', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json' },
+      body:JSON.stringify({ category, url, force:true })
+    });
+    const data = await res.json().catch(() => ({}));
+    if(!res.ok || !data.ok) throw new Error(data.error || data.reason || 'Sync failed');
+    if(note) note.textContent = data.skipped ? data.reason : `${category} synced: ${Number(data.meta?.rowCount||0).toLocaleString()} rows`;
+    await checkPriceChartingCsvStatus();
+  } catch(e) {
+    if(note) note.textContent = category + ' sync failed: ' + e.message;
+    toast_dash('PriceCharting sync failed: ' + e.message);
+  }
 }
 
 function ensureStoreMembersPanel(backoffice){
@@ -7038,6 +7122,13 @@ async function searchQuickCatalog(q, cat){
   });
   });
 
+  if(!wants || ['tcg','pokemon','mtg','yugioh','comic','sports','graded','collectibles'].includes(wants)) {
+    try {
+      const pcRows = await fetchPriceChartingCsvCatalog(q, cat);
+      pcRows.forEach(add);
+    } catch(e) {}
+  }
+
   if(!wants || ['tcg','pokemon','mtg','yugioh'].includes(wants)) {
     try {
       const workerRows = await fetchWorkerTcgCatalog(q, cat);
@@ -7132,6 +7223,46 @@ function qplPriceSourceLabel(v){
   if(Number(v.productLevelMarketPrice || 0) > 0) return 'Product-Level Estimate';
   if(Number(v.lowPrice || v.lowestListingPrice || 0) > 0) return 'Lowest listing fallback';
   return 'Needs Research';
+}
+
+function qplPriceChartingCategory(category){
+  const key = qplCategoryKey(category);
+  if(key === 'pokemon' || key === 'tcg') return 'Pokemon Cards';
+  if(key === 'mtg') return 'Magic Cards';
+  if(key === 'yugioh') return 'YuGiOh Cards';
+  if(key === 'comic') return 'Comics';
+  if(key === 'sports' || key === 'graded') return 'Sports Cards';
+  return '';
+}
+
+async function fetchPriceChartingCsvCatalog(q, cat){
+  const params = new URLSearchParams({ q });
+  const pcCat = qplPriceChartingCategory(cat);
+  if(pcCat) params.set('category', pcCat);
+  const res = await fetch(WORKER + '/pricing/pricecharting/csv/search?' + params.toString(), { cache:'no-store' });
+  const data = await res.json().catch(() => ({}));
+  if(!res.ok || !data.ok) return [];
+  return (data.matches || []).map(m => ({
+    source:'pricecharting_csv',
+    name:m.productName || q,
+    category:m.csvCategory || m.consoleName || cat || 'Collectibles',
+    set:m.consoleName || '',
+    year:m.releaseDate ? String(m.releaseDate).slice(0,4) : '',
+    variant:m.genre || '',
+    card_number:'',
+    condition:'NM',
+    market:Number(m.prices?.ungraded || 0),
+    low:Number(m.retail?.looseBuy || 0),
+    high:Number(m.retail?.looseSell || m.prices?.psa10 || 0),
+    imageUrl:'',
+    priceSource:'PriceCharting CSV guide',
+    note:'Cached PriceCharting guide value. Current guide data only, not sold comps.',
+    confidence:m.confidence === 'high' ? 90 : m.confidence === 'medium' ? 72 : 55,
+    matchWhy:m.matchReasons || ['PriceCharting CSV'],
+    pricecharting:m,
+    productUrl:m.url || '',
+    raw:m,
+  }));
 }
 
 function buildQplVariantsFromPrices(priceMap, productId = ''){
@@ -7280,6 +7411,117 @@ function qplGradeLabel(key){
   })[key] || key;
 }
 
+function qplComicGradeLabel(key){
+  return ({
+    ungraded:'Ungraded Comic',
+    grade4:'Graded 4.0/4.5',
+    grade6:'Graded 6.0/6.5',
+    grade8:'Graded 8.0/8.5',
+    grade9_2:'Graded 9.2',
+    grade9_4:'Graded 9.4',
+    grade9_8:'Graded 9.8',
+    grade10:'Graded 10.0'
+  })[key] || key;
+}
+
+function qplPriceChartingTableRows(r){
+  const pc = r.pricecharting || {};
+  const isComic = qplCategoryKey(r.category) === 'comic' || /comic/i.test([r.category, pc.consoleName, pc.genre].filter(Boolean).join(' '));
+  const source = isComic ? (pc.comicPrices || {}) : (pc.prices || {});
+  const keys = isComic ? ['ungraded','grade4','grade6','grade8','grade9_2','grade9_4','grade9_8','grade10'] : ['ungraded','grade7','grade8','grade9','grade9_5','psa10','bgs10','cgc10','sgc10'];
+  return keys.map(k => {
+    const v = Number(source[k] || 0);
+    const label = isComic ? qplComicGradeLabel(k) : qplGradeLabel(k);
+    return `<tr><td>${label}</td><td>${v ? '$'+v.toFixed(2) : '-'}</td><td>-</td><td>-</td><td>${escHtml(pc.confidence || 'guide')}</td><td>${escHtml(pc.lastUpdated || 'current')}</td></tr>`;
+  }).join('');
+}
+
+function qplPriceChartingGuidePanel(r){
+  const pc = r.pricecharting;
+  if(!pc) return '';
+  const retail = pc.retail || {};
+  const demand = pc.demand || {};
+  const retailRows = [
+    ['Loose buy', retail.looseBuy], ['Loose sell', retail.looseSell],
+    ['CIB buy', retail.cibBuy], ['CIB sell', retail.cibSell],
+    ['New buy', retail.newBuy], ['New sell', retail.newSell]
+  ].filter(x => Number(x[1] || 0) > 0).map(([label, value]) => `<span class="qpl-badge">${label}: $${Number(value).toFixed(2)}</span>`).join('');
+  const demandBits = [
+    demand.salesVolume ? `Sales volume ${demand.salesVolume}` : '',
+    demand.upc ? `UPC ${demand.upc}` : '',
+    demand.epid ? `ePID ${demand.epid}` : '',
+    demand.releaseDate ? `Released ${demand.releaseDate}` : ''
+  ].filter(Boolean).join(' / ');
+  return `<div style="margin-top:10px;border-top:1px solid rgba(255,255,255,.08);padding-top:10px">
+    <div style="font-family:'Orbitron',monospace;color:var(--gold);font-size:11px">PRICECHARTING GUIDE PANEL</div>
+    <div style="color:var(--dim);font-size:10px;margin-top:4px">${escHtml(pc.productName || '')} ${pc.productId ? '(ID '+escHtml(pc.productId)+')' : ''} · Current guide values only</div>
+    ${retailRows ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">${retailRows}</div>` : ''}
+    ${demandBits ? `<div style="color:var(--dim);font-size:10px;margin-top:8px">${escHtml(demandBits)}</div>` : ''}
+  </div>`;
+}
+
+function qplJustTcgChartPanel(r){
+  const points = r.selectedVariant?.priceHistory || r.priceHistory || [];
+  if(!Array.isArray(points) || !points.length) {
+    return `<div style="margin-top:10px;color:var(--dim);font-size:10px">JustTCG chart: No price history available for this selected condition/finish/language variant.</div>`;
+  }
+  const vals = points.map(p => Number(p.price ?? p.marketPrice ?? p.value ?? p[1] ?? 0)).filter(v => v > 0).slice(-24);
+  if(!vals.length) return `<div style="margin-top:10px;color:var(--dim);font-size:10px">JustTCG chart: No price history available.</div>`;
+  const max = Math.max(...vals), min = Math.min(...vals);
+  const bars = vals.map(v => {
+    const h = max === min ? 50 : Math.max(8, Math.round(((v - min) / (max - min)) * 70 + 8));
+    return `<span title="$${v.toFixed(2)}" style="display:inline-block;width:7px;height:${h}px;background:var(--blue);border-radius:2px"></span>`;
+  }).join('');
+  return `<div style="margin-top:10px;border-top:1px solid rgba(255,255,255,.08);padding-top:10px">
+    <div style="font-family:'Orbitron',monospace;color:var(--blue);font-size:11px">JUSTTCG SELECTED VARIANT PRICE HISTORY</div>
+    <div style="display:flex;align-items:flex-end;gap:3px;height:88px;margin-top:8px">${bars}</div>
+    <div style="color:var(--dim);font-size:10px;margin-top:4px">Chart uses JustTCG history only. PriceCharting is not used for historical chart points.</div>
+  </div>`;
+}
+
+function qplGradingRoiPanel(r, idx){
+  const pc = r.pricecharting;
+  if(!pc) return '';
+  const raw = Number(pc.prices?.ungraded || r.market || 0);
+  const psa9 = Number(pc.prices?.grade9 || 0);
+  const psa10 = Number(pc.prices?.psa10 || 0);
+  const cost = Number(r.gradingCost ?? 25);
+  const roi9 = psa9 ? psa9 - raw - cost : null;
+  const roi10 = psa10 ? psa10 - raw - cost : null;
+  return `<div style="margin-top:10px;border-top:1px solid rgba(255,255,255,.08);padding-top:10px">
+    <div style="display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap">
+      <div style="font-family:'Orbitron',monospace;color:var(--gold);font-size:11px">GRADING ROI</div>
+      <label style="font-family:monospace;font-size:9px;color:var(--dim)">GRADING COST
+        <input class="tsi" type="number" min="0" step="1" value="${cost}" style="width:92px" onchange="qplResults[${idx}].gradingCost=Number(this.value||0); updateQplResultCard(${idx})">
+      </label>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+      <span class="qpl-badge">Raw guide: ${raw ? '$'+raw.toFixed(2) : '-'}</span>
+      <span class="qpl-badge">PSA 9 upside: ${roi9 == null ? '-' : (roi9 >= 0 ? '+$' : '-$') + Math.abs(roi9).toFixed(2)}</span>
+      <span class="qpl-badge">PSA 10 upside: ${roi10 == null ? '-' : (roi10 >= 0 ? '+$' : '-$') + Math.abs(roi10).toFixed(2)}</span>
+    </div>
+    <div style="color:var(--dim);font-size:10px;margin-top:6px">Guide value is not a guaranteed sale price. Verify certs and sold comps before buying expensive slabs.</div>
+  </div>`;
+}
+
+function qplDealerDecisionPanel(r){
+  const selected = r.selectedVariant || {};
+  const rawSource = r.source === 'justtcg' ? 'JustTCG selected variant' : (r.priceSource || 'No raw source');
+  const slabSource = r.pricecharting ? 'PriceCharting guide value' : 'No slab guide loaded';
+  const soldSource = Number(r.recentSold || r.ebay_avg || 0) > 0 ? 'Sold comps available' : 'No sold comps loaded';
+  const basis = r.pricingMode === 'slab' ? Number(qplSelectedSlabPrice(r) || 0) : Number(selected.marketPrice || r.market || 0);
+  const safeOffer = basis > 0 ? Math.floor(basis * 0.55 * 4) / 4 : 0;
+  return `<div style="margin-top:10px;border-top:1px solid rgba(255,255,255,.08);padding-top:10px">
+    <div style="font-family:'Orbitron',monospace;color:var(--g);font-size:11px">DEALER DECISION</div>
+    <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin-top:8px;color:var(--dim);font-size:10px">
+      <div>Raw value source: <b style="color:var(--text)">${escHtml(rawSource)}</b></div>
+      <div>Slab value source: <b style="color:var(--text)">${escHtml(slabSource)}</b></div>
+      <div>Sold comps source: <b style="color:var(--text)">${escHtml(soldSource)}</b></div>
+      <div>Safe offer basis: <b style="color:var(--gold)">${safeOffer ? '$'+safeOffer.toFixed(2) : 'Needs Research'}</b></div>
+    </div>
+  </div>`;
+}
+
 function qplSelectedSlabPrice(r){
   const company = String(r.slabCompany || 'PSA').toLowerCase();
   const grade = String(r.slabGrade || '10');
@@ -7344,10 +7586,7 @@ function qplSlabControls(r, idx){
   const mode = r.pricingMode || 'raw';
   const slabValue = Number(qplSelectedSlabPrice(r) || 0);
   const pc = r.pricecharting;
-  const rows = ['ungraded','grade7','grade8','grade9','grade9_5','psa10','bgs10','cgc10','sgc10'].map(k => {
-    const v = Number(pc?.prices?.[k] || 0);
-    return `<tr><td>${qplGradeLabel(k)}</td><td>${v ? '$'+v.toFixed(2) : '-'}</td><td>-</td><td>-</td><td>${escHtml(pc?.confidence || 'guide')}</td><td>${escHtml(pc?.lastUpdated || 'current')}</td></tr>`;
-  }).join('');
+  const rows = pc ? qplPriceChartingTableRows(r) : '';
   return `<div style="margin-top:12px;border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:10px;background:rgba(255,255,255,.025)">
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
       <button class="hbtn ${mode==='raw'?'primary':''}" onclick="toggleQplPricingMode(${idx},'raw')">RAW</button>
@@ -7357,7 +7596,7 @@ function qplSlabControls(r, idx){
       <button class="hbtn" onclick="setQplSlabGrade(${idx},'PSA','8')">PSA 8</button>
       ${mode === 'slab' ? `<button class="hbtn" onclick="fetchQplPriceCharting(${idx})">REFRESH GUIDE</button>` : ''}
     </div>
-    ${mode === 'raw' ? `<div style="color:var(--dim);font-size:11px">Raw mode uses JustTCG/TCG selected condition, finish, language, and variant pricing.</div>` : `
+    ${mode === 'raw' ? `<div style="color:var(--dim);font-size:11px">Raw mode uses JustTCG/TCG selected condition, finish, language, and variant pricing.</div>${qplJustTcgChartPanel(r)}${qplDealerDecisionPanel(r)}` : `
       <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap">
         <div>
           <div style="font-family:'Orbitron',monospace;color:var(--gold);font-size:12px">${escHtml(r.slabCompany || 'PSA')} ${escHtml(r.slabGrade || '10')} GUIDE VALUE</div>
@@ -7367,6 +7606,9 @@ function qplSlabControls(r, idx){
         <div style="color:${r.pcError?'var(--red)':'var(--dim)'};font-size:11px">${r.pcLoading?'Checking PriceCharting...':escHtml(r.pcError || pc?.productName || 'No guide loaded yet')}</div>
       </div>
       ${pc ? `<div style="overflow:auto;margin-top:10px"><table style="width:100%;border-collapse:collapse;font-size:10px;color:var(--dim)"><thead><tr><th>Grade</th><th>PriceCharting Value</th><th>Sold Comps Avg</th><th>Comp Count</th><th>Confidence</th><th>Last Checked</th></tr></thead><tbody>${rows}</tbody></table></div>` : ''}
+      ${qplPriceChartingGuidePanel(r)}
+      ${qplGradingRoiPanel(r, idx)}
+      ${qplDealerDecisionPanel(r)}
     `}
   </div>`;
 }
@@ -7893,6 +8135,9 @@ function selectedQuickLookupItem(idx){
     pricechartingProductId:r.pricecharting?.productId || '',
     pricechartingProductName:r.pricecharting?.productName || '',
     pricechartingPrices:r.pricecharting?.prices || null,
+    pricechartingComicPrices:r.pricecharting?.comicPrices || null,
+    pricechartingRetail:r.pricecharting?.retail || null,
+    pricechartingDemand:r.pricecharting?.demand || null,
     priceConfidence:r.priceConfidence || selectedVariant.priceConfidence || 'unknown',
     lastPriceSyncAt:r.lastPriceSyncAt || selectedVariant.lastUpdated || new Date().toISOString(),
     source:r.source || 'quick_lookup',
