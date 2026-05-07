@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.05.07.05">
+<meta name="version" content="2026.05.07.06">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -356,7 +356,7 @@ tr.sold:hover td{opacity:.7;}
 
 <header>
   <div class="hdr">
-    <div class="logo">WALK-OFF <span>DASHBOARD · v2026.05.07.05</span></div>
+    <div class="logo">WALK-OFF <span>DASHBOARD · v2026.05.07.06</span></div>
     <div class="hdr-right">
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
@@ -1159,7 +1159,7 @@ tr.sold:hover td{opacity:.7;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.05.07.05';
+const APP_VERSION = '2026.05.07.06';
 const SUPABASE_URL = 'https://vroknjrxubsqyexngwus.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_wbpX2nL8l-4NbXtZNG_bjA_nabSYaJ5';
 const AUTH_REDIRECT_URL = 'https://squeebmike.github.io/ArSca/dashboard.html';
@@ -2173,7 +2173,7 @@ function renderPriceChartingDataPanel(status = null){
   body.innerHTML = `
     <div style="font-family:monospace;font-size:10px;color:var(--dim);line-height:1.55;margin-bottom:10px">
       CSV URLs are sent to the Cloudflare Worker and cached in KV. The browser does not fetch PriceCharting CSV directly. Manual sync respects the 10 minute CSV call limit.
-      Photo search is a website fallback button unless PriceCharting confirms a documented API endpoint.
+      PriceCharting photo search is not wired here unless PriceCharting confirms a documented API endpoint.
     </div>
     ${rows}
     <div id="pc-csv-status-note" style="font-family:monospace;font-size:10px;color:var(--dim)"></div>`;
@@ -6938,10 +6938,15 @@ const SMART_SEARCH_SYNONYMS = {
   rookie:'rookie card',
   jrod:'julio rodriguez',
   asm:'amazing spider-man',
+  uxm:'uncanny x-men',
   spidey:'spider-man',
   xmen:'x-men',
   'evo skies':'evolving skies',
-  es:'evolving skies'
+  es:'evolving skies',
+  '151':'scarlet violet 151 pokemon 151',
+  paf:'paldean fates',
+  obf:'obsidian flames',
+  ssp:'surging sparks'
 };
 
 const SMART_NUMBER_WORDS = { zero:0, oh:0, one:1, two:2, three:3, four:4, five:5, six:6, seven:7, eight:8, nine:9, ten:10, eleven:11, twelve:12, thirteen:13, fourteen:14, fifteen:15, sixteen:16, seventeen:17, eighteen:18, nineteen:19, twenty:20, thirty:30, forty:40, fifty:50, sixty:60, seventy:70, eighty:80, ninety:90, hundred:100 };
@@ -6996,6 +7001,26 @@ function smartSearchNeedles(q){
   const tokens = clean.split(/\s+/).filter(t => t.length > 1);
   const cardNumbers = String(q || '').match(/\b\d{1,4}\s*\/\s*\d{1,4}\b|\b#?\d{1,4}\b/g) || [];
   return { clean, tokens:[...new Set(tokens)], cardNumbers:cardNumbers.map(n => n.replace(/\s+/g,'').replace(/^#/,'')) };
+}
+
+function detectQuickQueryIntent(q, selectedCategory = ''){
+  const cat = qplCategoryKey(selectedCategory);
+  const clean = expandSmartQuery(q);
+  const original = smartNormalizeText(q);
+  const hasSlashNumber = /\b\d{1,4}\s*\/\s*\d{1,4}\b/.test(String(q || ''));
+  const issueLike = /\b(asm|uxm|x men|x-men|spider man|spider-man|batman|superman|wolverine|venom|spawn|hulk|avengers|fantastic four|tmnt|teenage mutant ninja turtles)\b.*\b\d{1,4}\b/i.test(String(q || ''));
+  const pokemonSet = /\b(151|evolving skies|evo skies|paldean fates|obsidian flames|surging sparks|scarlet|violet|lost origin|shining fates|destined rivals)\b/i.test(String(q || ''));
+  const gameLike = /\b(n64|nes|snes|gamecube|playstation|xbox|zelda|mario|pokemon red|pokemon blue)\b/i.test(String(q || ''));
+  const funkoLike = /\bfunko|pop\b/i.test(String(q || ''));
+  const intents = [];
+  if(cat) intents.push(cat);
+  if(issueLike || cat === 'comic') intents.push('comic');
+  if(hasSlashNumber || pokemonSet || cat === 'pokemon') intents.push('pokemon');
+  if(cat === 'mtg' || /\b(mtg|magic)\b/i.test(String(q || ''))) intents.push('mtg');
+  if(gameLike) intents.push('video_games');
+  if(funkoLike) intents.push('funko');
+  if(!intents.length) intents.push('');
+  return { primary:intents[0] || '', intents:[...new Set(intents)], clean, original, hasSlashNumber, issueLike, pokemonSet };
 }
 
 function levenshtein(a,b){
@@ -7094,6 +7119,7 @@ async function runPriceLookup(){
 async function searchQuickCatalog(q, cat){
   const results = [];
   const wants = qplCategoryKey(cat);
+  const intent = detectQuickQueryIntent(q, cat);
   const needle = smartSearchNeedles(q);
   const search = needle.clean;
   const seen = new Set();
@@ -7127,10 +7153,17 @@ async function searchQuickCatalog(q, cat){
   });
   });
 
-  if(!wants || ['tcg','pokemon','mtg','yugioh','comic','sports','graded','collectibles'].includes(wants)) {
+  if(!wants || ['tcg','pokemon','mtg','yugioh','comic','sports','graded','collectibles','video_games','funko','lego','coins'].includes(wants)) {
     try {
       const pcRows = await fetchPriceChartingCsvCatalog(q, cat);
       pcRows.forEach(add);
+    } catch(e) {}
+  }
+
+  if(!wants || intent.intents.some(x => ['comic','video_games','funko','lego','coins','sports','graded','collectibles'].includes(x))) {
+    try {
+      const pcLive = await fetchPriceChartingLiveCatalog(q, cat);
+      pcLive.forEach(add);
     } catch(e) {}
   }
 
@@ -7154,7 +7187,30 @@ async function searchQuickCatalog(q, cat){
     } catch(e) {}
   }
 
-  return results.slice(0, 100);
+  return rankQuickLookupResults(results, q, cat).slice(0, 100);
+}
+
+function rankQuickLookupResults(results, q, cat){
+  const intent = detectQuickQueryIntent(q, cat);
+  const needle = smartSearchNeedles(q);
+  return (results || []).map((r, idx) => {
+    let score = Number(r.confidence || 0) + Math.max(0, 100 - idx);
+    const key = qplResultCategoryKey(r);
+    const itemScore = scoreSmartItem({
+      name:r.name, set:r.set, year:r.year, card_number:r.card_number, variant:r.variant, category:r.category,
+      issue:r.issue || r.card_number, publisher:r.publisher, notes:r.note
+    }, needle);
+    score += itemScore.score;
+    if(intent.intents.includes(key)) score += 220;
+    if(intent.issueLike && key === 'comic') score += 320;
+    if(intent.pokemonSet && key === 'pokemon') score += 260;
+    if(intent.hasSlashNumber && key === 'pokemon') score += 240;
+    if(intent.issueLike && key === 'mtg') score -= 250;
+    if(intent.primary && key && key !== intent.primary && !intent.intents.includes(key)) score -= 30;
+    if(r.source === 'pricecharting_csv' && key === 'comic' && intent.issueLike) score += 120;
+    if(r.source === 'justtcg' && ['pokemon','mtg','yugioh'].includes(key)) score += 70;
+    return { r:{ ...r, rankScore:score, matchWhy:[...(r.matchWhy || []), ...itemScore.why].filter(Boolean).slice(0,5) }, score };
+  }).sort((a,b) => b.score - a.score).map(x => x.r);
 }
 
 function qplCategoryKey(category){
@@ -7185,6 +7241,24 @@ function qplCategoryKey(category){
 
 function qplResultCategoryKey(r){
   const text = [r?.category, r?.game, r?.extraInfo?.game, r?.extraInfo?.productLine, r?.extraInfo?.categoryName, r?.source, r?.raw?.game, r?.raw?.game_id].filter(Boolean).join(' ');
+  if(r?.source === 'pokemon') return 'pokemon';
+  if(r?.source === 'scryfall') return 'mtg';
+  if(r?.source === 'justtcg') {
+    const jt = String([r?.game, r?.category, r?.set, r?.raw?.game, r?.raw?.category].filter(Boolean).join(' ')).toLowerCase();
+    if(jt.includes('pokemon')) return 'pokemon';
+    if(jt.includes('magic') || jt.includes('mtg')) return 'mtg';
+    if(jt.includes('yu')) return 'yugioh';
+  }
+  if(r?.source === 'pricecharting_csv' || r?.source === 'PriceCharting') {
+    const pc = String([r?.csvCategory, r?.category, r?.pricecharting?.consoleName, r?.set].filter(Boolean).join(' ')).toLowerCase();
+    if(pc.includes('comic')) return 'comic';
+    if(pc.includes('pokemon')) return 'pokemon';
+    if(pc.includes('magic')) return 'mtg';
+    if(pc.includes('funko')) return 'funko';
+    if(pc.includes('lego')) return 'lego';
+    if(pc.includes('coin')) return 'coins';
+    if(pc.includes('video')) return 'video_games';
+  }
   const key = qplCategoryKey(text);
   if(key) return key;
   return qplCategoryKey(r?.category);
@@ -7196,6 +7270,7 @@ function qplCategoryAllows(r, wants){
   if(wants === 'tcg') return ['tcg','pokemon','mtg','yugioh'].includes(key) || normalizeQuickCategory(r?.category) === 'TCG';
   if(wants === 'graded') return key === 'graded' || /psa|bgs|cgc|sgc|slab|graded/i.test([r?.name,r?.variant,r?.category,r?.note].filter(Boolean).join(' '));
   if(wants === 'collectibles') return key === 'collectibles';
+  if(['video_games','funko','lego','coins'].includes(wants)) return key === wants || qplCategoryKey(r?.category) === wants;
   return key === wants;
 }
 
@@ -7298,6 +7373,34 @@ async function fetchPriceChartingCsvCatalog(q, cat){
   }));
 }
 
+async function fetchPriceChartingLiveCatalog(q, cat){
+  const params = new URLSearchParams({ q, live:'true' });
+  const pcCat = qplPriceChartingCategory(cat);
+  if(pcCat) params.set('category', pcCat);
+  const res = await fetch(WORKER + '/pricing/pricecharting/search?' + params.toString(), { cache:'no-store' });
+  const data = await res.json().catch(() => ({}));
+  if(!res.ok || !data.ok) return [];
+  return (data.matches || data.products || []).map(m => ({
+    source:'PriceCharting',
+    name:m.productName || q,
+    category:m.consoleName || cat || 'Collectibles',
+    set:m.consoleName || '',
+    year:m.releaseDate ? String(m.releaseDate).slice(0,4) : '',
+    variant:m.genre || '',
+    card_number:'',
+    condition:'NM',
+    market:Number(m.prices?.ungraded || 0),
+    imageUrl:'',
+    priceSource:Number(m.prices?.ungraded || 0) ? 'PriceCharting Guide Value' : 'No Guide Value Available',
+    note:'Live PriceCharting guide value. Current guide data only, not sold comps.',
+    confidence:m.confidence === 'high' ? 92 : m.confidence === 'medium' ? 74 : 56,
+    matchWhy:m.matchReasons || ['PriceCharting API'],
+    pricecharting:m,
+    productUrl:m.url || '',
+    raw:m,
+  }));
+}
+
 function buildQplVariantsFromPrices(priceMap, productId = ''){
   const entries = Object.entries(priceMap || {});
   const conds = ['NM','LP','MP','HP','DMG'];
@@ -7336,18 +7439,25 @@ function qplSelectedVariant(r){
   const condition = r.selectedCondition || r.condition || 'NM';
   const finish = r.selectedFinish || r.finish || r.availableVariants[0]?.finish || '';
   const language = r.selectedLanguage || r.language || 'English';
-  return r.availableVariants.find(v => v.condition === condition && v.finish === finish && String(v.language || 'English') === language)
-    || r.availableVariants.find(v => v.condition === condition && v.finish === finish)
-    || r.availableVariants.find(v => v.finish === finish && String(v.language || 'English') === language)
-    || r.availableVariants.find(v => v.finish === finish)
-    || r.availableVariants.find(v => v.condition === condition && String(v.language || 'English') === language)
-    || r.availableVariants.find(v => v.condition === condition)
-    || r.availableVariants[0];
+  const same = (a,b) => String(a || '').toLowerCase() === String(b || '').toLowerCase();
+  const exact = r.availableVariants.find(v => same(v.condition, condition) && same(v.finish, finish) && same(v.language || 'English', language));
+  if(exact) return exact;
+  const noExplicitChoice = !r.selectedCondition && !r.selectedFinish && !r.selectedLanguage;
+  if(noExplicitChoice) return r.availableVariants[0];
+  return null;
 }
 
 function applyQplSelectedVariant(r){
   const v = qplSelectedVariant(r);
-  if(!v) return r;
+  if(!v) {
+    if(r?.availableVariants?.length) {
+      r.selectedVariant = null;
+      r.market = 0;
+      r.priceSource = 'No Matching Variant';
+      r.priceConfidence = 'unknown';
+    }
+    return r;
+  }
   r.selectedVariant = v;
   r.selectedCondition = v.condition;
   r.selectedFinish = v.finish;
@@ -7493,21 +7603,40 @@ function qplPriceChartingGuidePanel(r){
   </div>`;
 }
 
-function qplJustTcgChartPanel(r){
+function qplJustTcgChartPanel(r, idx){
   const points = r.selectedVariant?.priceHistory || r.priceHistory || [];
   if(!Array.isArray(points) || !points.length) {
-    return `<div style="margin-top:10px;color:var(--dim);font-size:10px">JustTCG chart: No price history available for this selected condition/finish/language variant.</div>`;
+    return `<div style="margin-top:10px;border-top:1px solid rgba(255,255,255,.08);padding-top:10px">
+      <div style="font-family:'Orbitron',monospace;color:var(--blue);font-size:11px">PRICE GRAPH</div>
+      <div style="margin-top:6px;color:var(--dim);font-size:10px">No price graph available for this exact variant.</div>
+    </div>`;
   }
-  const vals = points.map(p => Number(p.price ?? p.marketPrice ?? p.value ?? p[1] ?? 0)).filter(v => v > 0).slice(-24);
-  if(!vals.length) return `<div style="margin-top:10px;color:var(--dim);font-size:10px">JustTCG chart: No price history available.</div>`;
+  const range = Number(r.graphRange || 30);
+  const vals = points.map(p => Number(p.price ?? p.marketPrice ?? p.value ?? p[1] ?? 0)).filter(v => v > 0).slice(-(range || 30));
+  if(!vals.length) return `<div style="margin-top:10px;color:var(--dim);font-size:10px">No price graph available for this exact variant.</div>`;
   const max = Math.max(...vals), min = Math.min(...vals);
+  const avg = vals.reduce((a,b)=>a+b,0) / vals.length;
+  const current = vals[vals.length - 1];
+  const first = vals[0];
+  const change = current - first;
+  const changePct = first ? (change / first) * 100 : 0;
   const bars = vals.map(v => {
     const h = max === min ? 50 : Math.max(8, Math.round(((v - min) / (max - min)) * 70 + 8));
     return `<span title="$${v.toFixed(2)}" style="display:inline-block;width:7px;height:${h}px;background:var(--blue);border-radius:2px"></span>`;
   }).join('');
   return `<div style="margin-top:10px;border-top:1px solid rgba(255,255,255,.08);padding-top:10px">
-    <div style="font-family:'Orbitron',monospace;color:var(--blue);font-size:11px">JUSTTCG SELECTED VARIANT PRICE HISTORY</div>
+    <div style="display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap">
+      <div style="font-family:'Orbitron',monospace;color:var(--blue);font-size:11px">PRICE GRAPH</div>
+      <div style="display:flex;gap:4px;flex-wrap:wrap">${[7,30,90,180].map(d => `<button class="hbtn" style="min-height:30px;padding:4px 8px;font-size:9px" onclick="qplResults[${idx}].graphRange=${d}; updateQplResultCard(${idx})">${d}D</button>`).join('')}</div>
+    </div>
     <div style="display:flex;align-items:flex-end;gap:3px;height:88px;margin-top:8px">${bars}</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">
+      <span class="qpl-badge">Current $${current.toFixed(2)}</span>
+      <span class="qpl-badge ${change >= 0 ? 'good' : 'bad'}">${range}D ${change >= 0 ? '+' : '-'}$${Math.abs(change).toFixed(2)} (${changePct.toFixed(1)}%)</span>
+      <span class="qpl-badge">Low $${min.toFixed(2)}</span>
+      <span class="qpl-badge">High $${max.toFixed(2)}</span>
+      <span class="qpl-badge">Avg $${avg.toFixed(2)}</span>
+    </div>
     <div style="color:var(--dim);font-size:10px;margin-top:4px">Chart uses JustTCG history only. PriceCharting is not used for historical chart points.</div>
   </div>`;
 }
@@ -7638,7 +7767,7 @@ function qplSlabControls(r, idx){
       <button class="hbtn" onclick="setQplSlabGrade(${idx},'PSA','8')">PSA 8</button>
       ${mode === 'slab' ? `<button class="hbtn" onclick="fetchQplPriceCharting(${idx})">REFRESH GUIDE</button>` : ''}
     </div>
-    ${mode === 'raw' ? `<div style="color:var(--dim);font-size:11px">Raw mode uses JustTCG/TCG selected condition, finish, language, and variant pricing.</div>${qplJustTcgChartPanel(r)}${qplDealerDecisionPanel(r)}` : `
+    ${mode === 'raw' ? `<div style="color:var(--dim);font-size:11px">Raw mode uses JustTCG/TCG selected condition, finish, language, and variant pricing.</div>${qplJustTcgChartPanel(r, idx)}${qplDealerDecisionPanel(r)}` : `
       <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap">
         <div>
           <div style="font-family:'Orbitron',monospace;color:var(--gold);font-size:12px">${escHtml(r.slabCompany || 'PSA')} ${escHtml(r.slabGrade || '10')} GUIDE VALUE</div>
@@ -7959,7 +8088,6 @@ function quickLookupResultCard(r, idx){
       ${slab}
       <button class="hbtn" onclick="openQuickExternal(${idx},'sold')">COMPS</button>
       <button class="hbtn" onclick="openQuickExternal(${idx},'pricecharting')">PRICECHARTING</button>
-      <button class="hbtn" onclick="openQuickExternal(${idx},'pcphoto')">PHOTO SEARCH</button>
       <button class="hbtn" style="color:var(--gold)" onclick="markQplNeedsReview(${idx})">NEEDS REVIEW</button>
     </div>
   </div>`;
@@ -8014,11 +8142,6 @@ function openQuickExternal(idx, type){
     window.open(r.pricecharting?.url || r.productUrl || ('https://www.pricecharting.com/search-products?q=' + encodeURIComponent(q)), '_blank');
     return;
   }
-  if(type === 'pcphoto') {
-    window.open('https://www.pricecharting.com/photo-search', '_blank');
-    toast_dash('PriceCharting photo search opens as a website fallback; no documented API is wired.');
-    return;
-  }
   window.open('https://www.ebay.com/sch/i.html?_nkw=' + encodeURIComponent(q) + '&LH_Sold=1&LH_Complete=1', '_blank');
 }
 
@@ -8048,13 +8171,14 @@ function openSlabCertPanel(idx){
       </div>
       <button class="hbtn" onclick="closeSlabCertPanel()">CLOSE</button>
     </div>
-    <div style="display:grid;grid-template-columns:140px 1fr auto;gap:8px;align-items:end">
+    <div style="display:grid;grid-template-columns:140px 1fr auto auto;gap:8px;align-items:end">
       <label style="font-family:monospace;font-size:9px;color:var(--dim)">GRADER
         <select id="qpl-slab-grader" class="tsi" style="margin-top:4px"><option value="PSA">PSA</option><option value="BGS">BGS</option><option value="CGC">CGC</option><option value="SGC">SGC</option></select>
       </label>
       <label style="font-family:monospace;font-size:9px;color:var(--dim)">CERT NUMBER
         <input id="qpl-slab-cert" class="tsi" style="margin-top:4px" placeholder="Enter PSA cert number">
       </label>
+      <button class="hbtn" style="min-height:48px" onclick="startCertVoiceInput()">MIC</button>
       <button class="hbtn" style="min-height:48px;color:var(--g)" onclick="verifyQplPsaCert(${idx})">VERIFY</button>
     </div>
     <div id="qpl-slab-output" style="margin-top:14px;font-family:monospace;font-size:11px;color:var(--dim)">PSA cert lookup stays inside Walk-Off. Use COMPS separately for eBay sold data.</div>
@@ -8065,6 +8189,15 @@ function openSlabCertPanel(idx){
 function closeSlabCertPanel(){
   const modal = document.getElementById('qpl-slab-modal');
   if(modal) modal.style.display = 'none';
+}
+
+function startCertVoiceInput(){
+  const input = document.getElementById('qpl-slab-cert');
+  if(!input) return;
+  startVoiceInput('qpl-slab-cert', () => {
+    input.value = cleanupVoiceTranscript(input.value).replace(/\D+/g, '');
+    input.focus();
+  });
 }
 
 async function verifyQplPsaCert(idx){
@@ -8599,18 +8732,21 @@ function addBuyListItem(){
 
 async function autoLookupBuyItem(item){
   try {
-    const res = await fetch('https://still-resonance-4f87.swarnerauto.workers.dev/anthropic/messages', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ model:'claude-haiku-4-5-20251001', max_tokens:150,
-        messages:[{role:'user',content:[{type:'text',text:`Quick price: "${item.name}". Return ONLY JSON: {"price":0.00}`}]}]})
-    });
-    const d = await res.json();
-    const text = d.content?.[0]?.text||'';
-    const oi = text.indexOf('{');
-    const data = oi>=0 ? JSON.parse('['+text.slice(oi)+']')[0] : null;
-    if(data && data.price>0){
-      item.market = data.price;
-      item.priceSource = 'ai_estimate';
+    const matches = await searchQuickCatalog(item.name, '');
+    const best = matches.find(m => Number(m.market || 0) > 0) || matches[0];
+    if(best){
+      item.market = Number(best.market || 0);
+      item.priceSource = best.priceSource || best.source || (item.market ? 'catalog lookup' : 'Needs Review');
+      item.category = normalizeQuickCategory(best.category || item.category);
+      item.set = best.set || item.set || '';
+      item.year = best.year || item.year || '';
+      item.card_number = best.card_number || item.card_number || '';
+      item.variant = best.variant || item.variant || '';
+      item.imageUrl = best.imageUrl || item.imageUrl || '';
+      item.productId = best.productId || item.productId || '';
+      item.skuId = best.skuId || item.skuId || '';
+      item.productConditionId = best.productConditionId || item.productConditionId || '';
+      item.needsReview = !Number(item.market || 0);
       saveBuyList();
       renderBuyList();
     }
