@@ -1157,6 +1157,13 @@ export default {
       const pcCategoryKey = c => String(c || 'General').replace(/[^a-zA-Z0-9._ -]/g, '').trim().slice(0, 80) || 'General';
       const kvKey = (kind, category) => `pc_csv_${kind}:${pcCategoryKey(category)}`;
       const pcUrl = path => 'https://www.pricecharting.com' + path;
+      const pcImageUrl = p => {
+        const raw = p['image-url'] || p.imageUrl || p.image || p.coverUrl || p.thumbnail || p['box-art-url'] || p['image'] || '';
+        if (!raw) return '';
+        if (/^\/\//.test(raw)) return 'https:' + raw;
+        if (/^\//.test(raw)) return 'https://www.pricecharting.com' + raw;
+        return raw;
+      };
       const matchReasonsFor = (p, q) => {
         const reasons = [];
         const hay = [p['product-name'], p['console-name'], p.genre].filter(Boolean).join(' ').toLowerCase();
@@ -1171,6 +1178,7 @@ export default {
         genre: p.genre || '',
         releaseDate: p['release-date'] || p.releaseDate || null,
         url: p['product-url'] || p.url || (p.id ? `https://www.pricecharting.com/game/${p.id}` : null),
+        imageUrl: pcImageUrl(p),
         prices: {
           ungraded: pennies(p['loose-price']),
           grade7: pennies(p['cib-price']),
@@ -1244,17 +1252,26 @@ export default {
         return 'ungraded';
       };
       async function pcFetch(path, params = {}) {
+        const qs = new URLSearchParams({ t: token, ...params });
+        const publicQs = new URLSearchParams(params);
+        const cacheKey = 'pc_api_cache:' + btoa(path + '?' + publicQs.toString()).replace(/=+$/,'').slice(0, 180);
+        const ttl = path.includes('/api/products') ? 60 * 60 * 6 : 60 * 60 * 24;
+        if (env.LBA_KV) {
+          const cached = await env.LBA_KV.get(cacheKey, 'json');
+          if (cached) return { ...cached, _cacheHit: true };
+        }
         if (env.LBA_KV) {
           const last = Number(await env.LBA_KV.get('pc_live_last_call') || 0);
           const now = Date.now();
-          if (last && now - last < 1000) throw new Error('PriceCharting live API throttle: wait 1 second between calls');
-          await env.LBA_KV.put('pc_live_last_call', String(now), { expirationTtl: 60 });
+          const wait = last ? Math.max(0, 1100 - (now - last)) : 0;
+          if (wait > 0) await new Promise(resolve => setTimeout(resolve, wait));
+          await env.LBA_KV.put('pc_live_last_call', String(Date.now()), { expirationTtl: 60 });
         }
-        const qs = new URLSearchParams({ t: token, ...params });
         const res = await fetch(pcUrl(path) + '?' + qs.toString(), { headers: { 'Accept': 'application/json' } });
         const text = await res.text();
         let data; try { data = JSON.parse(text); } catch (_) { data = { raw: text }; }
         if (!res.ok || data.status === 'error') throw new Error(data['error-message'] || data.error || 'PriceCharting ' + res.status);
+        if (env.LBA_KV) await env.LBA_KV.put(cacheKey, JSON.stringify(data), { expirationTtl: ttl });
         return data;
       }
       function parseCsvLine(line) {

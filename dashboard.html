@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.05.07.06">
+<meta name="version" content="2026.05.07.07">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -356,7 +356,7 @@ tr.sold:hover td{opacity:.7;}
 
 <header>
   <div class="hdr">
-    <div class="logo">WALK-OFF <span>DASHBOARD · v2026.05.07.06</span></div>
+    <div class="logo">WALK-OFF <span>DASHBOARD · v2026.05.07.07</span></div>
     <div class="hdr-right">
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
@@ -1159,7 +1159,7 @@ tr.sold:hover td{opacity:.7;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.05.07.06';
+const APP_VERSION = '2026.05.07.07';
 const SUPABASE_URL = 'https://vroknjrxubsqyexngwus.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_wbpX2nL8l-4NbXtZNG_bjA_nabSYaJ5';
 const AUTH_REDIRECT_URL = 'https://squeebmike.github.io/ArSca/dashboard.html';
@@ -7343,14 +7343,42 @@ function qplPriceChartingCategory(category){
   return '';
 }
 
+function qplQueryVariants(q, cat = ''){
+  const intent = detectQuickQueryIntent(q, cat);
+  const clean = String(q || '').trim();
+  const variants = [clean, expandSmartQuery(clean)];
+  const lower = clean.toLowerCase();
+  if(intent.issueLike) {
+    variants.push(
+      lower.replace(/\basm\b/g, 'amazing spider-man').replace(/\buxm\b/g, 'uncanny x-men').replace(/\s+(\d{1,4})\b/, ' #$1'),
+      lower.replace(/\basm\b/g, 'amazing spiderman') + ' comic',
+      lower + ' issue',
+      lower + ' marvel'
+    );
+  }
+  if(intent.pokemonSet || intent.hasSlashNumber) {
+    variants.push(
+      lower.replace(/\b151\b/g, 'scarlet violet 151'),
+      lower.replace(/\b151\b/g, 'pokemon 151'),
+      lower.replace(/\bevo skies\b/g, 'evolving skies'),
+      lower.replace(/\bes\b/g, 'evolving skies')
+    );
+  }
+  return [...new Set(variants.map(v => v.replace(/\s+/g, ' ').trim()).filter(Boolean))].slice(0, 5);
+}
+
 async function fetchPriceChartingCsvCatalog(q, cat){
-  const params = new URLSearchParams({ q });
   const pcCat = qplPriceChartingCategory(cat);
-  if(pcCat) params.set('category', pcCat);
-  const res = await fetch(WORKER + '/pricing/pricecharting/csv/search?' + params.toString(), { cache:'no-store' });
-  const data = await res.json().catch(() => ({}));
-  if(!res.ok || !data.ok) return [];
-  return (data.matches || []).map(m => ({
+  const rows = [];
+  for(const query of qplQueryVariants(q, cat).slice(0, 4)) {
+    const params = new URLSearchParams({ q:query });
+    if(pcCat) params.set('category', pcCat);
+    const res = await fetch(WORKER + '/pricing/pricecharting/csv/search?' + params.toString(), { cache:'no-store' });
+    const data = await res.json().catch(() => ({}));
+    if(res.ok && data.ok) rows.push(...(data.matches || []));
+    if(rows.length >= 12) break;
+  }
+  return rows.map(m => ({
     source:'pricecharting_csv',
     name:m.productName || q,
     category:m.csvCategory || m.consoleName || cat || 'Collectibles',
@@ -7362,7 +7390,7 @@ async function fetchPriceChartingCsvCatalog(q, cat){
     market:Number(m.prices?.ungraded || 0),
     low:Number(m.retail?.looseBuy || 0),
     high:Number(m.retail?.looseSell || m.prices?.psa10 || 0),
-    imageUrl:'',
+    imageUrl:m.imageUrl || '',
     priceSource:'PriceCharting CSV guide',
     note:'Cached PriceCharting guide value. Current guide data only, not sold comps.',
     confidence:m.confidence === 'high' ? 90 : m.confidence === 'medium' ? 72 : 55,
@@ -7374,13 +7402,17 @@ async function fetchPriceChartingCsvCatalog(q, cat){
 }
 
 async function fetchPriceChartingLiveCatalog(q, cat){
-  const params = new URLSearchParams({ q, live:'true' });
   const pcCat = qplPriceChartingCategory(cat);
-  if(pcCat) params.set('category', pcCat);
-  const res = await fetch(WORKER + '/pricing/pricecharting/search?' + params.toString(), { cache:'no-store' });
-  const data = await res.json().catch(() => ({}));
-  if(!res.ok || !data.ok) return [];
-  return (data.matches || data.products || []).map(m => ({
+  const rows = [];
+  for(const query of qplQueryVariants(q, cat).slice(0, 2)) {
+    const params = new URLSearchParams({ q:query, live:'true' });
+    if(pcCat) params.set('category', pcCat);
+    const res = await fetch(WORKER + '/pricing/pricecharting/search?' + params.toString(), { cache:'no-store' });
+    const data = await res.json().catch(() => ({}));
+    if(res.ok && data.ok) rows.push(...(data.matches || data.products || []));
+    if(rows.length >= 8) break;
+  }
+  return rows.map(m => ({
     source:'PriceCharting',
     name:m.productName || q,
     category:m.consoleName || cat || 'Collectibles',
@@ -7390,7 +7422,7 @@ async function fetchPriceChartingLiveCatalog(q, cat){
     card_number:'',
     condition:'NM',
     market:Number(m.prices?.ungraded || 0),
-    imageUrl:'',
+    imageUrl:m.imageUrl || '',
     priceSource:Number(m.prices?.ungraded || 0) ? 'PriceCharting Guide Value' : 'No Guide Value Available',
     note:'Live PriceCharting guide value. Current guide data only, not sold comps.',
     confidence:m.confidence === 'high' ? 92 : m.confidence === 'medium' ? 74 : 56,
@@ -7675,10 +7707,13 @@ function qplDealerDecisionPanel(r){
   const safeOffer = basis > 0 ? Math.floor(basis * 0.55 * 4) / 4 : 0;
   const demand = r.pricecharting?.demand || {};
   const retail = r.pricecharting?.retail || {};
-  const needsReview = !basis || (r.source === 'justtcg' && !Number(selected.marketPrice || 0)) || (r.pricingMode === 'slab' && !Number(qplSelectedSlabPrice(r) || 0));
+  const rawMissing = r.source === 'justtcg' && !Number(selected.marketPrice || 0);
+  const guideMissing = r.pricingMode === 'slab' && !Number(qplSelectedSlabPrice(r) || 0);
+  const state = r.pcState || (rawMissing ? 'No Real Variant Price' : guideMissing ? 'No Guide Value for Selected Grade' : basis ? 'Ready' : 'Manual Review Required');
+  const stateColor = state === 'Guide Delayed' ? 'var(--blue)' : /No |Manual|Required/i.test(state) ? 'var(--gold)' : 'var(--g)';
   return `<div style="margin-top:10px;border-top:1px solid rgba(255,255,255,.08);padding-top:10px">
     <div style="font-family:'Orbitron',monospace;color:var(--g);font-size:11px">DEALER DECISION</div>
-    ${needsReview ? `<div style="margin-top:8px;color:var(--gold);font-size:11px;font-weight:800">NEEDS REVIEW: ${r.source === 'justtcg' ? 'No Real Price Available for selected variant' : 'No Guide Value Available'}</div>` : ''}
+    <div style="margin-top:8px;color:${stateColor};font-size:11px;font-weight:800">${escHtml(state)}</div>
     <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin-top:8px;color:var(--dim);font-size:10px">
       <div>Raw value source: <b style="color:var(--text)">${escHtml(rawSource)}</b></div>
       <div>Slab value source: <b style="color:var(--text)">${escHtml(slabSource)}</b></div>
@@ -7745,8 +7780,20 @@ async function fetchQplPriceCharting(idx){
     if(!res.ok || !data.ok) throw new Error(data.error || 'PriceCharting failed');
     r.pricecharting = data.product || data.matches?.[0] || data;
     r.pcError = '';
+    r.pcState = 'Guide Value Available';
   } catch(e) {
-    r.pcError = e.message;
+    const msg = String(e.message || '');
+    if(/throttle|wait 1 second|delayed/i.test(msg)) {
+      r.pcState = 'Guide Delayed';
+      r.pcError = 'Guide temporarily delayed. Try again.';
+      logOpsEvent('pricecharting_throttle', 'PriceCharting guide delayed', { item:r.name, query:q });
+    } else if(/no match/i.test(msg)) {
+      r.pcState = 'No PriceCharting Match';
+      r.pcError = 'No PriceCharting match.';
+    } else {
+      r.pcState = 'No Guide Value';
+      r.pcError = 'Guide value unavailable.';
+    }
   } finally {
     r.pcLoading = false;
     updateQplResultCard(idx);
@@ -7774,7 +7821,7 @@ function qplSlabControls(r, idx){
           <div style="font-size:28px;color:var(--gold);font-weight:900">${slabValue ? '$'+slabValue.toFixed(2) : '-'}</div>
           <div style="color:var(--dim);font-size:10px">PriceCharting grade-bucket guide value, not exact sold comps.</div>
         </div>
-        <div style="color:${r.pcError?'var(--red)':'var(--dim)'};font-size:11px">${r.pcLoading?'Checking PriceCharting...':escHtml(r.pcError || pc?.productName || 'No guide loaded yet')}</div>
+        <div style="color:${r.pcState==='Guide Delayed'?'var(--blue)':r.pcError?'var(--gold)':'var(--dim)'};font-size:11px">${r.pcLoading?'Checking PriceCharting...':escHtml(r.pcError || pc?.productName || 'No guide loaded yet')}</div>
       </div>
       ${pc ? `<div style="overflow:auto;margin-top:10px"><table style="width:100%;border-collapse:collapse;font-size:10px;color:var(--dim)"><thead><tr><th>Grade</th><th>PriceCharting Value</th><th>Sold Comps Avg</th><th>Comp Count</th><th>Confidence</th><th>Last Checked</th></tr></thead><tbody>${rows}</tbody></table></div>` : ''}
       ${qplPriceChartingGuidePanel(r)}
@@ -7786,10 +7833,16 @@ function qplSlabControls(r, idx){
 
 async function fetchWorkerTcgCatalog(q, cat){
   const game = cat || '';
-  const just = await fetch(WORKER + '/pricing/justtcg/search?' + new URLSearchParams({ q, category:game, storeId:STORE_ID }).toString()).catch(() => null);
-  if(just?.ok) {
+  const justRows = [];
+  for(const query of qplQueryVariants(q, cat).slice(0, 3)) {
+    const just = await fetch(WORKER + '/pricing/justtcg/search?' + new URLSearchParams({ q:query, category:game, storeId:STORE_ID }).toString()).catch(() => null);
+    if(!just?.ok) continue;
     const jd = await just.json().catch(() => ({}));
-    if(Array.isArray(jd.matches) && jd.matches.length) return jd.matches.map(m => applyQplSelectedVariant({
+    if(Array.isArray(jd.matches) && jd.matches.length) justRows.push(...jd.matches);
+    if(justRows.length >= 12) break;
+  }
+  if(justRows.length) {
+    return justRows.map(m => applyQplSelectedVariant({
       source:'justtcg',
       productId:m.productId || m.id || '',
       justtcgCardId:m.productId || m.id || '',
@@ -8026,7 +8079,7 @@ function renderQuickLookupResults(results){
 function quickLookupResultCard(r, idx){
   const img = r.imageUrl
     ? `<div class="qpl-img-shell" onclick="openQplImageLightbox(${idx})"><img src="${escHtml(r.imageUrl)}" alt="${escHtml(r.name || 'Card image')}"></div>`
-    : `<div class="qpl-img-shell"><div class="qpl-no-img">NO IMAGE</div></div>`;
+    : `<div class="qpl-img-shell"><div class="qpl-no-img">${qplResultCategoryKey(r)==='comic'?'NO COVER IMAGE':'NO IMAGE'}</div></div>`;
   const meta = [r.set,r.year,r.card_number ? '#'+r.card_number : ''].filter(Boolean).join(' / ');
   const needs = getSetNeedMatches(r);
   const signal = getSalesSignal(r);
@@ -8088,6 +8141,7 @@ function quickLookupResultCard(r, idx){
       ${slab}
       <button class="hbtn" onclick="openQuickExternal(${idx},'sold')">COMPS</button>
       <button class="hbtn" onclick="openQuickExternal(${idx},'pricecharting')">PRICECHARTING</button>
+      ${!r.imageUrl ? `<button class="hbtn" onclick="selectQuickLookupResult(${idx});setTimeout(()=>document.getElementById('qpl-edit-image-url')?.focus(),50)">ADD IMAGE</button>` : ''}
       <button class="hbtn" style="color:var(--gold)" onclick="markQplNeedsReview(${idx})">NEEDS REVIEW</button>
     </div>
   </div>`;
@@ -8273,6 +8327,9 @@ function selectQuickLookupResult(idx){
       <input id="qpl-edit-cost" type="number" step="0.01" placeholder="Cost" value="${Number(r.cost || 0) || ''}" style="background:var(--surf);border:1px solid var(--border);color:var(--text);padding:12px;border-radius:8px;font-size:14px;min-height:48px">
       <input id="qpl-edit-location" placeholder="Location" value="${escHtml(getShowMode()?.eventName ? 'At show - ' + getShowMode().eventName : '')}" style="background:var(--surf);border:1px solid var(--border);color:var(--text);padding:12px;border-radius:8px;font-size:14px;min-height:48px">
     </div>
+    <div style="display:grid;grid-template-columns:1fr;gap:9px;margin-bottom:12px">
+      <input id="qpl-edit-image-url" placeholder="Image / cover URL" value="${escHtml(r.imageUrl || '')}" style="background:var(--surf);border:1px solid var(--border);color:var(--text);padding:12px;border-radius:8px;font-size:14px;min-height:48px">
+    </div>
     <div style="display:flex;gap:7px;flex-wrap:wrap">
       <button class="hbtn" style="flex:1;color:var(--gold);min-height:56px" onclick="addSelectedQuickLookupToInventory(${idx})">ADD TO INVENTORY</button>
       <button class="hbtn" style="flex:1;color:var(--g);min-height:56px" onclick="addSelectedQuickLookupToBuyOffer(${idx})">ADD TO BUY OFFER</button>
@@ -8326,8 +8383,8 @@ function selectedQuickLookupItem(idx){
     cost:parseFloat(document.getElementById('qpl-edit-cost')?.value) || Number(r.cost || 0),
     qty:1,
     location:document.getElementById('qpl-edit-location')?.value.trim() || '',
-    thumbnail:r.imageUrl || '',
-    imageUrl:r.imageUrl || '',
+    thumbnail:document.getElementById('qpl-edit-image-url')?.value.trim() || r.imageUrl || '',
+    imageUrl:document.getElementById('qpl-edit-image-url')?.value.trim() || r.imageUrl || '',
     priceSource:r.pricingMode === 'slab' ? (Number(qplSelectedSlabPrice(r) || 0) ? 'PriceCharting slab guide' : 'No Guide Value Available') : (Number(r.selectedVariant?.marketPrice || r.market || 0) ? (r.priceSource || r.source || 'manual lookup') : (r.source === 'justtcg' ? 'No Real Price Available' : (r.priceSource || 'Needs Review'))),
     pricingSource:r.pricingMode === 'slab' ? (Number(qplSelectedSlabPrice(r) || 0) ? 'PriceCharting slab guide' : 'No Guide Value Available') : (Number(r.selectedVariant?.marketPrice || r.market || 0) ? (r.priceSource || r.source || 'manual lookup') : (r.source === 'justtcg' ? 'No Real Price Available' : (r.priceSource || 'Needs Review'))),
     pricingMode:r.pricingMode || 'raw',
