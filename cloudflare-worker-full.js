@@ -448,6 +448,7 @@ export default {
         ebayRefresh: !!(env.EBAY_REFRESH_TOKEN || (env.LBA_KV && await env.LBA_KV.get('secret:EBAY_REFRESH_TOKEN'))),
         comicvine: !!env.COMICVINE_API_KEY,
         justtcg: !!env.JUSTTCG_API_KEY,
+        pricecharting: !!(env.PRICECHARTING_TOKEN || env.PRICECHARTING_API_KEY),
         tcgapi: !!env.TCGAPI_KEY,
         pokemontcg: !!env.POKEMONTCG_API_KEY,
         pokemonprice: !!(env.POKEMONPRICE_API_KEY || env.POKEMON_PRICE_TRACKER_API_KEY),
@@ -1141,6 +1142,122 @@ export default {
         return json({ ok: true, success: true, source: 'justtcg', matches, selectedVariant: matches[0]?.selectedVariant || null });
       } catch (e) {
         return json({ ok: false, source: 'justtcg', error: e.message }, 500);
+      }
+    }
+
+    // PriceCharting slab price guide proxy. Token stays in Worker secrets only.
+    if (url.pathname.startsWith('/pricing/pricecharting')) {
+      const token = env.PRICECHARTING_TOKEN || env.PRICECHARTING_API_KEY;
+      if (!token) return json({ ok: false, needsKey: true, source: 'PriceCharting', error: 'PRICECHARTING_TOKEN not set in Worker secrets' }, 501);
+
+      const pennies = v => {
+        const n = Number(v);
+        return n > 0 ? Math.round(n) / 100 : null;
+      };
+      const pcUrl = path => 'https://www.pricecharting.com' + path;
+      const matchReasonsFor = (p, q) => {
+        const reasons = [];
+        const hay = [p['product-name'], p['console-name'], p.genre].filter(Boolean).join(' ').toLowerCase();
+        String(q || '').toLowerCase().split(/\s+/).filter(Boolean).forEach(t => { if (hay.includes(t)) reasons.push(t); });
+        return reasons.length ? reasons.slice(0, 6) : ['PriceCharting search match'];
+      };
+      const normalizePcProduct = (p, q = '') => ({
+        source: 'PriceCharting',
+        productId: String(p.id || ''),
+        productName: p['product-name'] || p.productName || '',
+        consoleName: p['console-name'] || p.consoleName || '',
+        genre: p.genre || '',
+        releaseDate: p['release-date'] || p.releaseDate || null,
+        url: p['product-url'] || p.url || (p.id ? `https://www.pricecharting.com/game/${p.id}` : null),
+        prices: {
+          ungraded: pennies(p['loose-price']),
+          grade7: pennies(p['cib-price']),
+          grade8: pennies(p['new-price']),
+          grade9: pennies(p['graded-price']),
+          grade9_5: pennies(p['box-only-price']),
+          psa10: pennies(p['manual-only-price']),
+          bgs10: pennies(p['bgs-10-price']),
+          cgc10: pennies(p['condition-17-price']),
+          sgc10: pennies(p['condition-18-price']),
+        },
+        rawApiPricesPennies: {
+          'loose-price': p['loose-price'] ?? null,
+          'cib-price': p['cib-price'] ?? null,
+          'new-price': p['new-price'] ?? null,
+          'graded-price': p['graded-price'] ?? null,
+          'box-only-price': p['box-only-price'] ?? null,
+          'manual-only-price': p['manual-only-price'] ?? null,
+          'bgs-10-price': p['bgs-10-price'] ?? null,
+          'condition-17-price': p['condition-17-price'] ?? null,
+          'condition-18-price': p['condition-18-price'] ?? null,
+        },
+        lastUpdated: p['updated-at'] || p.updatedAt || null,
+        confidence: matchReasonsFor(p, q).length >= 3 ? 'high' : matchReasonsFor(p, q).length >= 1 ? 'medium' : 'low',
+        matchReasons: matchReasonsFor(p, q),
+        raw: p,
+      });
+      const gradeKey = (company = 'PSA', grade = '') => {
+        const g = String(grade || '').toLowerCase().replace(/^psa|^bgs|^cgc|^sgc/g, '').trim();
+        const c = String(company || '').toLowerCase();
+        if (c.includes('bgs') && g === '10') return 'bgs10';
+        if (c.includes('cgc') && g === '10') return 'cgc10';
+        if (c.includes('sgc') && g === '10') return 'sgc10';
+        if (g === '10') return 'psa10';
+        if (g === '9.5') return 'grade9_5';
+        if (g.startsWith('9')) return 'grade9';
+        if (g.startsWith('8')) return 'grade8';
+        if (g.startsWith('7')) return 'grade7';
+        return 'ungraded';
+      };
+      async function pcFetch(path, params = {}) {
+        const qs = new URLSearchParams({ t: token, ...params });
+        const res = await fetch(pcUrl(path) + '?' + qs.toString(), { headers: { 'Accept': 'application/json' } });
+        const text = await res.text();
+        let data; try { data = JSON.parse(text); } catch (_) { data = { raw: text }; }
+        if (!res.ok || data.status === 'error') throw new Error(data['error-message'] || data.error || 'PriceCharting ' + res.status);
+        return data;
+      }
+      try {
+        if (url.pathname === '/pricing/pricecharting/search') {
+          const q = (url.searchParams.get('q') || '').trim();
+          if (!q) return json({ ok: false, error: 'q required' }, 400);
+          const data = await pcFetch('/api/products', { q });
+          const products = (data.products || []).map(p => normalizePcProduct(p, q));
+          return json({ ok: true, source: 'PriceCharting', query: q, products, matches: products });
+        }
+        const productMatch = url.pathname.match(/^\/pricing\/pricecharting\/product\/([^/]+)$/);
+        if (productMatch) {
+          const data = await pcFetch('/api/product', { id: decodeURIComponent(productMatch[1]) });
+          const product = normalizePcProduct(data, data['product-name'] || '');
+          return json({ ok: true, source: 'PriceCharting', product, ...product });
+        }
+        if (url.pathname === '/pricing/pricecharting/slab-prices') {
+          const q = [url.searchParams.get('q'), url.searchParams.get('setName'), url.searchParams.get('cardNumber') ? '#' + url.searchParams.get('cardNumber') : ''].filter(Boolean).join(' ').trim();
+          const company = url.searchParams.get('company') || 'PSA';
+          const grade = url.searchParams.get('grade') || '10';
+          if (!q) return json({ ok: false, error: 'q required' }, 400);
+          const data = await pcFetch('/api/products', { q });
+          const first = (data.products || [])[0];
+          if (!first) return json({ ok: false, source: 'PriceCharting', error: 'No match', matches: [] }, 404);
+          const productData = await pcFetch('/api/product', { id: first.id });
+          const product = normalizePcProduct(productData, q);
+          const selectedKey = gradeKey(company, grade);
+          return json({
+            ok: true,
+            source: 'PriceCharting',
+            query: q,
+            company,
+            grade,
+            selectedKey,
+            selectedValue: product.prices[selectedKey] || null,
+            product,
+            matches: [product],
+            note: 'PriceCharting values are grade-bucket guide values, not exact sold comps.',
+          });
+        }
+        return json({ ok: false, error: 'Unknown PriceCharting route' }, 404);
+      } catch (e) {
+        return json({ ok: false, source: 'PriceCharting', error: e.message }, 500);
       }
     }
 

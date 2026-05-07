@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.05.07.02">
+<meta name="version" content="2026.05.07.03">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -356,7 +356,7 @@ tr.sold:hover td{opacity:.7;}
 
 <header>
   <div class="hdr">
-    <div class="logo">WALK-OFF <span>DASHBOARD · v2026.05.07.02</span></div>
+    <div class="logo">WALK-OFF <span>DASHBOARD · v2026.05.07.03</span></div>
     <div class="hdr-right">
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
@@ -1159,7 +1159,7 @@ tr.sold:hover td{opacity:.7;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.05.07.02';
+const APP_VERSION = '2026.05.07.03';
 const SUPABASE_URL = 'https://vroknjrxubsqyexngwus.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_wbpX2nL8l-4NbXtZNG_bjA_nabSYaJ5';
 const AUTH_REDIRECT_URL = 'https://squeebmike.github.io/ArSca/dashboard.html';
@@ -3916,6 +3916,7 @@ async function runSystemCheck(){
     rows.push(systemLine('SoldComps', !!h.soldcomps, h.soldcomps ? 'connected' : 'missing key'));
     rows.push(systemLine('PokemonPrice', !!h.pokemonprice, h.pokemonprice ? 'connected' : 'missing key'));
     rows.push(systemLine('JustTCG', !!h.justtcg, h.justtcg ? 'connected' : 'missing key'));
+    rows.push(systemLine('PriceCharting', !!h.pricecharting, h.pricecharting ? 'connected' : 'missing key'));
     rows.push(systemLine('TCG API', !!h.tcgapi, h.tcgapi ? 'connected' : 'not configured'));
   } catch(e) {
     rows.push(systemLine('Cloudflare Worker', false, e.message));
@@ -7265,6 +7266,111 @@ function updateQplResultCard(idx){
   if(scroller) scroller.scrollTop = top;
 }
 
+function qplGradeLabel(key){
+  return ({
+    ungraded:'Ungraded',
+    grade7:'PSA/BGS 7',
+    grade8:'PSA/BGS 8',
+    grade9:'PSA 9',
+    grade9_5:'BGS 9.5',
+    psa10:'PSA 10',
+    bgs10:'BGS 10',
+    cgc10:'CGC 10',
+    sgc10:'SGC 10'
+  })[key] || key;
+}
+
+function qplSelectedSlabPrice(r){
+  const company = String(r.slabCompany || 'PSA').toLowerCase();
+  const grade = String(r.slabGrade || '10');
+  const prices = r.pricecharting?.prices || {};
+  if(company.includes('bgs') && grade === '10') return prices.bgs10;
+  if(company.includes('cgc') && grade === '10') return prices.cgc10;
+  if(company.includes('sgc') && grade === '10') return prices.sgc10;
+  if(grade === '10') return prices.psa10;
+  if(grade === '9.5') return prices.grade9_5;
+  if(grade.startsWith('9')) return prices.grade9;
+  if(grade.startsWith('8')) return prices.grade8;
+  if(grade.startsWith('7')) return prices.grade7;
+  return prices.ungraded;
+}
+
+async function toggleQplPricingMode(idx, mode){
+  const r = qplResults[idx];
+  if(!r) return;
+  r.pricingMode = mode;
+  if(mode === 'slab' && !r.pricecharting) await fetchQplPriceCharting(idx);
+  applyQplSelectedVariant(r);
+  updateQplResultCard(idx);
+}
+
+async function setQplSlabGrade(idx, company = 'PSA', grade = '10'){
+  const r = qplResults[idx];
+  if(!r) return;
+  r.pricingMode = 'slab';
+  r.slabCompany = company;
+  r.slabGrade = grade;
+  if(!r.pricecharting) await fetchQplPriceCharting(idx);
+  updateQplResultCard(idx);
+}
+
+async function fetchQplPriceCharting(idx){
+  const r = qplResults[idx];
+  if(!r) return;
+  r.pcLoading = true;
+  updateQplResultCard(idx);
+  const q = [r.name, r.set, r.card_number ? '#'+r.card_number : ''].filter(Boolean).join(' ');
+  try {
+    const res = await fetch(WORKER + '/pricing/pricecharting/slab-prices?' + new URLSearchParams({
+      q,
+      company:r.slabCompany || 'PSA',
+      grade:r.slabGrade || '10',
+      cardNumber:r.card_number || '',
+      setName:r.set || ''
+    }).toString(), { cache:'no-store' });
+    const data = await res.json().catch(() => ({}));
+    if(!res.ok || !data.ok) throw new Error(data.error || 'PriceCharting failed');
+    r.pricecharting = data.product || data.matches?.[0] || data;
+    r.pcError = '';
+  } catch(e) {
+    r.pcError = e.message;
+  } finally {
+    r.pcLoading = false;
+    updateQplResultCard(idx);
+  }
+}
+
+function qplSlabControls(r, idx){
+  const mode = r.pricingMode || 'raw';
+  const slabValue = Number(qplSelectedSlabPrice(r) || 0);
+  const pc = r.pricecharting;
+  const rows = ['ungraded','grade7','grade8','grade9','grade9_5','psa10','bgs10','cgc10','sgc10'].map(k => {
+    const v = Number(pc?.prices?.[k] || 0);
+    return `<tr><td>${qplGradeLabel(k)}</td><td>${v ? '$'+v.toFixed(2) : '-'}</td><td>-</td><td>-</td><td>${escHtml(pc?.confidence || 'guide')}</td><td>${escHtml(pc?.lastUpdated || 'current')}</td></tr>`;
+  }).join('');
+  return `<div style="margin-top:12px;border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:10px;background:rgba(255,255,255,.025)">
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
+      <button class="hbtn ${mode==='raw'?'primary':''}" onclick="toggleQplPricingMode(${idx},'raw')">RAW</button>
+      <button class="hbtn ${mode==='slab'?'primary':''}" onclick="toggleQplPricingMode(${idx},'slab')">SLAB</button>
+      <button class="hbtn" onclick="setQplSlabGrade(${idx},'PSA','10')">PSA 10</button>
+      <button class="hbtn" onclick="setQplSlabGrade(${idx},'PSA','9')">PSA 9</button>
+      <button class="hbtn" onclick="setQplSlabGrade(${idx},'PSA','8')">PSA 8</button>
+      ${mode === 'slab' ? `<button class="hbtn" onclick="fetchQplPriceCharting(${idx})">REFRESH GUIDE</button>` : ''}
+    </div>
+    ${mode === 'raw' ? `<div style="color:var(--dim);font-size:11px">Raw mode uses JustTCG/TCG selected condition, finish, language, and variant pricing.</div>` : `
+      <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap">
+        <div>
+          <div style="font-family:'Orbitron',monospace;color:var(--gold);font-size:12px">${escHtml(r.slabCompany || 'PSA')} ${escHtml(r.slabGrade || '10')} GUIDE VALUE</div>
+          <div style="font-size:28px;color:var(--gold);font-weight:900">${slabValue ? '$'+slabValue.toFixed(2) : '-'}</div>
+          <div style="color:var(--dim);font-size:10px">PriceCharting grade-bucket guide value, not exact sold comps.</div>
+        </div>
+        <div style="color:${r.pcError?'var(--red)':'var(--dim)'};font-size:11px">${r.pcLoading?'Checking PriceCharting...':escHtml(r.pcError || pc?.productName || 'No guide loaded yet')}</div>
+      </div>
+      ${pc ? `<div style="overflow:auto;margin-top:10px"><table style="width:100%;border-collapse:collapse;font-size:10px;color:var(--dim)"><thead><tr><th>Grade</th><th>PriceCharting Value</th><th>Sold Comps Avg</th><th>Comp Count</th><th>Confidence</th><th>Last Checked</th></tr></thead><tbody>${rows}</tbody></table></div>` : ''}
+    `}
+  </div>`;
+}
+
 async function fetchWorkerTcgCatalog(q, cat){
   const game = cat || '';
   const just = await fetch(WORKER + '/pricing/justtcg/search?' + new URLSearchParams({ q, category:game, storeId:STORE_ID }).toString()).catch(() => null);
@@ -7541,6 +7647,7 @@ function quickLookupResultCard(r, idx){
       </div>
       ${why ? `<div style="margin-top:12px;color:var(--dim);font-size:13px;line-height:1.45">${escHtml(why)}</div>` : ''}
       ${signals.length ? `<div class="qpl-signal" style="color:${needs.length?'var(--g)':'var(--gold)'}">${escHtml(signals.join(' / '))}</div>` : ''}
+      ${qplSlabControls(r, idx)}
       <div class="qpl-quick-controls">
         <select onchange="updateQplVariant(${idx},{selectedCondition:this.value})" aria-label="Condition">
           ${(r.availableVariants?.length ? qplVariantOptionValues(r, 'condition') : ['NM','LP','MP','HP','DMG']).map(c => `<option value="${c}" ${String(r.selectedCondition||r.condition||'NM')===c?'selected':''}>${c}</option>`).join('')}
@@ -7772,14 +7879,20 @@ function selectedQuickLookupItem(idx){
     priceChange30d:r.priceChange30d || selectedVariant.priceChange30d || 0,
     priceChange90d:r.priceChange90d || selectedVariant.priceChange90d || 0,
     priceHistory:r.priceHistory || selectedVariant.priceHistory || [],
-    market:parseFloat(document.getElementById('qpl-edit-market')?.value) || Number(r.market || 0),
+    market:r.pricingMode === 'slab' ? Number(qplSelectedSlabPrice(r) || 0) : (parseFloat(document.getElementById('qpl-edit-market')?.value) || Number(r.market || 0)),
     cost:parseFloat(document.getElementById('qpl-edit-cost')?.value) || Number(r.cost || 0),
     qty:1,
     location:document.getElementById('qpl-edit-location')?.value.trim() || '',
     thumbnail:r.imageUrl || '',
     imageUrl:r.imageUrl || '',
-    priceSource:r.priceSource || r.source || 'manual lookup',
-    pricingSource:r.priceSource || r.source || 'manual lookup',
+    priceSource:r.pricingMode === 'slab' ? 'PriceCharting slab guide' : (r.priceSource || r.source || 'manual lookup'),
+    pricingSource:r.pricingMode === 'slab' ? 'PriceCharting slab guide' : (r.priceSource || r.source || 'manual lookup'),
+    pricingMode:r.pricingMode || 'raw',
+    slabCompany:r.slabCompany || '',
+    slabGrade:r.slabGrade || '',
+    pricechartingProductId:r.pricecharting?.productId || '',
+    pricechartingProductName:r.pricecharting?.productName || '',
+    pricechartingPrices:r.pricecharting?.prices || null,
     priceConfidence:r.priceConfidence || selectedVariant.priceConfidence || 'unknown',
     lastPriceSyncAt:r.lastPriceSyncAt || selectedVariant.lastUpdated || new Date().toISOString(),
     source:r.source || 'quick_lookup',
