@@ -1109,24 +1109,43 @@ export default {
         const productVariantMatch = url.pathname.match(/^\/pricing\/justtcg\/product\/([^/]+)\/(?:variants|sku-prices)$/);
         const tcgplayerMatch = url.pathname.match(/^\/pricing\/justtcg\/tcgplayer\/([^/]+)$/);
         const skuMatch = url.pathname.match(/^\/pricing\/justtcg\/sku\/([^/]+)$/);
+        const batchVariantMatch = url.pathname === '/pricing/justtcg/variants/batch';
         let cards = [];
+        if (batchVariantMatch) {
+          if (request.method !== 'POST') return json({ ok: false, error: 'POST only' }, 405);
+          const body = await request.json().catch(() => ({}));
+          const ids = Array.isArray(body.cardIds) ? body.cardIds : [];
+          const duration = body.priceHistoryDuration || url.searchParams.get('priceHistoryDuration') || '90d';
+          const out = [];
+          for (const id of ids.slice(0, 10)) {
+            const data = await justFetch('/cards/' + encodeURIComponent(id), { priceHistory: 'true', priceHistoryDuration: duration, includeVariants: 'true' })
+              .catch(() => justFetch('/cards', { id, cardId: id, limit: 1, priceHistory: 'true', priceHistoryDuration: duration, includeVariants: 'true' }));
+            const card = Array.isArray(data) ? data[0] : (data.card || data.data?.[0] || data.data || data);
+            if (card) out.push(normalizeJustCard(card));
+          }
+          return json({ ok: true, success: true, source: 'justtcg', matches: out });
+        }
         if (searchMatch) {
           const q = (url.searchParams.get('q') || '').trim();
           const category = justGame(url.searchParams.get('category') || url.searchParams.get('game') || '');
           if (!q) return json({ ok: false, error: 'q required' }, 400);
-          const data = await justFetch('/cards', { q, name: q, search: q, game: category, limit: 24, priceHistory: 'true', priceHistoryDuration: '30d' });
+          const duration = url.searchParams.get('priceHistoryDuration') || '90d';
+          const data = await justFetch('/cards', { q, name: q, search: q, game: category, limit: 24, priceHistory: 'true', priceHistoryDuration: duration, includeVariants: 'true' });
           cards = Array.isArray(data) ? data : (data.data || data.cards || data.results || []);
         } else if (cardMatch || productVariantMatch) {
           const id = decodeURIComponent(cardMatch?.[1] || productVariantMatch?.[1]);
-          const data = await justFetch('/cards/' + encodeURIComponent(id), { priceHistory: 'true', priceHistoryDuration: '30d' }).catch(() => justFetch('/cards', { id, cardId: id, limit: 1, priceHistory: 'true', priceHistoryDuration: '30d' }));
+          const duration = url.searchParams.get('priceHistoryDuration') || '90d';
+          const data = await justFetch('/cards/' + encodeURIComponent(id), { priceHistory: 'true', priceHistoryDuration: duration, includeVariants: 'true' }).catch(() => justFetch('/cards', { id, cardId: id, limit: 1, priceHistory: 'true', priceHistoryDuration: duration, includeVariants: 'true' }));
           cards = Array.isArray(data) ? data : [data.card || data.data?.[0] || data.data || data].filter(Boolean);
         } else if (tcgplayerMatch) {
           const tcgplayerId = decodeURIComponent(tcgplayerMatch[1]);
-          const data = await justFetch('/cards', { tcgplayerId, tcgplayerProductId: tcgplayerId, limit: 1, priceHistory: 'true', priceHistoryDuration: '30d' });
+          const duration = url.searchParams.get('priceHistoryDuration') || '90d';
+          const data = await justFetch('/cards', { tcgplayerId, tcgplayerProductId: tcgplayerId, limit: 1, priceHistory: 'true', priceHistoryDuration: duration, includeVariants: 'true' });
           cards = Array.isArray(data) ? data : (data.data || data.cards || data.results || []);
         } else if (skuMatch) {
           const sku = decodeURIComponent(skuMatch[1]);
-          const data = await justFetch('/cards', { tcgplayerSkuId: sku, skuId: sku, limit: 1, priceHistory: 'true', priceHistoryDuration: '30d' });
+          const duration = url.searchParams.get('priceHistoryDuration') || '90d';
+          const data = await justFetch('/cards', { tcgplayerSkuId: sku, skuId: sku, limit: 1, priceHistory: 'true', priceHistoryDuration: duration, includeVariants: 'true' });
           cards = Array.isArray(data) ? data : (data.data || data.cards || data.results || []);
         } else {
           return json({ ok: false, error: 'Unknown JustTCG route' }, 404);
@@ -1156,6 +1175,16 @@ export default {
       const PC_CSV_CATEGORIES = ['Pokemon Cards', 'Magic Cards', 'YuGiOh Cards', 'One Piece Cards', 'Lorcana Cards', 'Digimon Cards', 'Dragon Ball Cards', 'Garbage Pail Cards', 'Marvel Cards', 'Star Wars Cards', 'Other TCG Cards', 'Comics', 'Video Games', 'Funko Pops', 'LEGO Sets', 'Coins', 'Amiibo', 'Strategy Guides', 'Gaming Magazines', 'Sports Cards'];
       const pcCategoryKey = c => String(c || 'General').replace(/[^a-zA-Z0-9._ -]/g, '').trim().slice(0, 80) || 'General';
       const kvKey = (kind, category) => `pc_csv_${kind}:${pcCategoryKey(category)}`;
+      const maskPcUrl = raw => {
+        try {
+          const u = new URL(String(raw || ''));
+          ['t','token','api_key','apikey','key'].forEach(k => { if (u.searchParams.has(k)) u.searchParams.set(k, '***'); });
+          return u.toString();
+        } catch (_) {
+          return String(raw || '').replace(/([?&](?:t|token|api_key|apikey|key)=)[^&]+/ig, '$1***');
+        }
+      };
+      const csvState = (category, patch = {}) => ({ category, state: patch.state || 'ready', configured: !!patch.configured, urlMasked: patch.url ? maskPcUrl(patch.url) : undefined, ...patch, url: undefined });
       const pcUrl = path => 'https://www.pricecharting.com' + path;
       const pcImageUrl = p => {
         const raw = p['image-url'] || p.imageUrl || p.image || p.coverUrl || p.thumbnail || p['box-art-url'] || p['image'] || '';
@@ -1214,6 +1243,27 @@ export default {
           consoleName: p['console-name'] || p.consoleName || '',
           releaseDate: p['release-date'] || p.releaseDate || null,
           upc: p.upc || p.UPC || '',
+          asin: p.asin || p.ASIN || '',
+          epid: p.epid || p.ePID || p.EPID || '',
+        },
+        videoGame: {
+          productName: p['product-name'] || p.productName || '',
+          consoleName: p['console-name'] || p.consoleName || '',
+          loosePrice: pennies(p['loose-price']),
+          cibPrice: pennies(p['cib-price']),
+          newPrice: pennies(p['new-price']),
+          gradedPrice: pennies(p['graded-price']),
+          boxOnlyPrice: pennies(p['box-only-price']),
+          manualOnlyPrice: pennies(p['manual-only-price']),
+          retailLooseBuy: pennies(p['retail-loose-buy']),
+          retailLooseSell: pennies(p['retail-loose-sell']),
+          retailCibBuy: pennies(p['retail-cib-buy']),
+          retailCibSell: pennies(p['retail-cib-sell']),
+          retailNewBuy: pennies(p['retail-new-buy']),
+          retailNewSell: pennies(p['retail-new-sell']),
+          salesVolume: Number(p['sales-volume'] || p.salesVolume || 0) || null,
+          upc: p.upc || p.UPC || '',
+          asin: p.asin || p.ASIN || '',
           epid: p.epid || p.ePID || p.EPID || '',
         },
         rawApiPricesPennies: {
@@ -1291,15 +1341,32 @@ export default {
         return out;
       }
       function parsePcCsv(text) {
-        const lines = String(text || '').replace(/^\uFEFF/, '').split(/\r?\n/).filter(l => l.trim());
+        const src = String(text || '').replace(/^\uFEFF/, '');
+        const lines = [];
+        let cur = '', quoted = false;
+        for (let i = 0; i < src.length; i++) {
+          const ch = src[i], next = src[i + 1];
+          if (ch === '"' && quoted && next === '"') { cur += '"'; i++; continue; }
+          if (ch === '"') { quoted = !quoted; cur += ch; continue; }
+          if ((ch === '\n' || ch === '\r') && !quoted) {
+            if (cur.trim()) lines.push(cur);
+            cur = '';
+            if (ch === '\r' && next === '\n') i++;
+            continue;
+          }
+          cur += ch;
+        }
+        if (cur.trim()) lines.push(cur);
+        if (quoted) throw new Error('parse_error: unterminated quoted CSV field');
         if (lines.length < 2) return [];
         const headers = parseCsvLine(lines[0]).map(h => h.trim());
+        if (!headers.includes('product-name') && !headers.includes('id')) throw new Error('parse_error: missing expected PriceCharting headers');
         return lines.slice(1).map(line => {
           const vals = parseCsvLine(line);
           const row = {};
           headers.forEach((h, i) => row[h] = vals[i] ?? '');
           return row;
-        });
+        }).filter(row => row['product-name'] || row.id);
       }
       function csvMatches(rows, q) {
         const terms = String(q || '').toLowerCase().split(/\s+/).filter(Boolean);
@@ -1316,7 +1383,8 @@ export default {
           const status = {};
           for (const cat of categories) {
             const meta = await env.LBA_KV.get(kvKey('meta', cat), 'json');
-            status[cat] = meta || { category: cat, configured: !!(await env.LBA_KV.get(kvKey('url', cat))), rowCount: 0, lastSyncedAt: null };
+            const savedUrl = await env.LBA_KV.get(kvKey('url', cat));
+            status[cat] = meta || { category: cat, state: savedUrl ? 'ready' : 'not_configured', configured: !!savedUrl, urlPresent: !!savedUrl, urlMasked: savedUrl ? maskPcUrl(savedUrl) : '', rowCount: 0, lastAttemptedAt: null, lastSuccessAt: null, lastSyncedAt: null, lastError: '' };
           }
           return json({ ok: true, source: 'PriceCharting CSV', categories: status });
         }
@@ -1325,25 +1393,66 @@ export default {
           if (!env.LBA_KV) return json({ ok: false, error: 'LBA_KV binding required for CSV cache' }, 501);
           const body = await request.json().catch(() => ({}));
           const category = pcCategoryKey(body.category || 'General');
-          if (body.url) await env.LBA_KV.put(kvKey('url', category), String(body.url));
+          const attemptAt = new Date().toISOString();
+          if (body.url) {
+            try {
+              const parsed = new URL(String(body.url));
+              if (!/^https?:$/.test(parsed.protocol)) throw new Error('invalid protocol');
+              await env.LBA_KV.put(kvKey('url', category), String(body.url));
+            } catch (_) {
+              const meta = csvState(category, { state: 'invalid_url', configured: false, lastAttemptedAt: attemptAt, lastError: 'Invalid CSV URL' });
+              await env.LBA_KV.put(kvKey('meta', category), JSON.stringify(meta), { expirationTtl: 60 * 60 * 24 * 30 });
+              return json({ ok: false, state: 'invalid_url', error: 'Invalid CSV URL', meta }, 400);
+            }
+          }
           const csvUrl = body.url || await env.LBA_KV.get(kvKey('url', category));
-          if (!csvUrl) return json({ ok: false, error: 'CSV URL required first sync' }, 400);
+          if (!csvUrl) {
+            const meta = csvState(category, { state: 'not_configured', configured: false, lastAttemptedAt: attemptAt, lastError: 'CSV URL required first sync' });
+            return json({ ok: false, state: 'not_configured', error: 'CSV URL required first sync', meta }, 400);
+          }
           const prior = await env.LBA_KV.get(kvKey('meta', category), 'json');
           const now = Date.now();
           if (prior?.lastSyncedAt && now - Date.parse(prior.lastSyncedAt) < 10 * 60 * 1000) {
-            return json({ ok: true, skipped: true, reason: 'PriceCharting CSV limit: wait 10 minutes between CSV calls', meta: prior });
+            const retryAt = new Date(Date.parse(prior.lastSyncedAt) + 10 * 60 * 1000).toISOString();
+            const meta = { ...prior, state: 'rate_limited', lastAttemptedAt: attemptAt, retryAt };
+            await env.LBA_KV.put(kvKey('meta', category), JSON.stringify(meta), { expirationTtl: 60 * 60 * 24 * 30 });
+            return json({ ok: true, skipped: true, state: 'rate_limited', reason: 'PriceCharting CSV limit: wait 10 minutes between CSV calls', retryAt, meta });
           }
           if (!body.force && prior?.lastSyncedAt && new Date(prior.lastSyncedAt).toISOString().slice(0, 10) === new Date(now).toISOString().slice(0, 10)) {
             return json({ ok: true, skipped: true, reason: 'Already synced today', meta: prior });
           }
-          const res = await fetch(csvUrl, { headers: { 'Accept': 'text/csv,*/*' } });
-          const text = await res.text();
-          if (!res.ok) throw new Error('CSV fetch failed ' + res.status + ': ' + text.slice(0, 120));
-          const rows = parsePcCsv(text).slice(0, 50000);
-          const meta = { category, configured: true, rowCount: rows.length, lastSyncedAt: new Date(now).toISOString(), source: 'PriceCharting CSV' };
+          let res, text = '';
+          try {
+            res = await fetch(csvUrl, { headers: { 'Accept': 'text/csv,*/*' } });
+            text = await res.text();
+          } catch (e) {
+            const meta = csvState(category, { state: 'worker_error', configured: true, url: csvUrl, lastAttemptedAt: attemptAt, lastError: e.message || 'Worker fetch failed' });
+            await env.LBA_KV.put(kvKey('meta', category), JSON.stringify(meta), { expirationTtl: 60 * 60 * 24 * 30 });
+            return json({ ok: false, state: 'worker_error', error: meta.lastError, meta }, 502);
+          }
+          if (!res.ok) {
+            const state = res.status === 401 || res.status === 403 ? 'auth_error' : res.status === 429 ? 'rate_limited' : 'worker_error';
+            const meta = csvState(category, { state, configured: true, url: csvUrl, lastAttemptedAt: attemptAt, lastError: 'CSV fetch failed ' + res.status + ': ' + text.slice(0, 120) });
+            await env.LBA_KV.put(kvKey('meta', category), JSON.stringify(meta), { expirationTtl: 60 * 60 * 24 * 30 });
+            return json({ ok: false, state, error: meta.lastError, meta }, res.status);
+          }
+          let rows;
+          try {
+            rows = parsePcCsv(text).slice(0, 50000);
+          } catch (e) {
+            const meta = csvState(category, { state: 'parse_error', configured: true, url: csvUrl, lastAttemptedAt: attemptAt, lastError: e.message || 'Malformed CSV' });
+            await env.LBA_KV.put(kvKey('meta', category), JSON.stringify(meta), { expirationTtl: 60 * 60 * 24 * 30 });
+            return json({ ok: false, state: 'parse_error', error: meta.lastError, meta }, 422);
+          }
+          if (!rows.length) {
+            const meta = csvState(category, { state: 'empty_csv', configured: true, url: csvUrl, rowCount: 0, lastAttemptedAt: attemptAt, lastError: 'CSV parsed but contained no product rows' });
+            await env.LBA_KV.put(kvKey('meta', category), JSON.stringify(meta), { expirationTtl: 60 * 60 * 24 * 30 });
+            return json({ ok: false, state: 'empty_csv', error: meta.lastError, meta }, 422);
+          }
+          const meta = csvState(category, { state: 'synced', configured: true, url: csvUrl, urlPresent: true, rowCount: rows.length, lastAttemptedAt: attemptAt, lastSuccessAt: new Date(now).toISOString(), lastSyncedAt: new Date(now).toISOString(), lastError: '', source: 'PriceCharting CSV', sample: rows[0] });
           await env.LBA_KV.put(kvKey('rows', category), JSON.stringify(rows), { expirationTtl: 60 * 60 * 24 * 14 });
           await env.LBA_KV.put(kvKey('meta', category), JSON.stringify(meta), { expirationTtl: 60 * 60 * 24 * 30 });
-          return json({ ok: true, meta });
+          return json({ ok: true, state: 'synced', meta, sample: rows[0] });
         }
         if (url.pathname === '/pricing/pricecharting/csv/search') {
           if (!env.LBA_KV) return json({ ok: false, error: 'LBA_KV binding required for CSV cache' }, 501);
