@@ -8176,7 +8176,9 @@ async function fetchQplPriceCharting(idx){
 function filterQplMasterResults(results, cat){
   const wants = qplCategoryKey(cat);
   const strict = getStrictTcgIntent(qplLastSearch || document.getElementById('qpl-input')?.value || '');
-  return (results || []).filter(r => qplCategoryAllows(r, wants)).filter(r => qplStrictAllows(r, strict, true));
+  return (results || [])
+    .filter(r => qplCategoryAllows(r, wants))
+    .filter(r => r.closestStrictFallback || qplStrictAllows(r, strict, true));
 }
 
 function handleQplCategoryChange(){
@@ -8465,14 +8467,28 @@ function noQuickLookupResults(q, cat){
 
 function renderQuickLookupResults(results){
   const el = document.getElementById('qpl-result');
+  const indexed = (results || []).map((r, idx) => ({ r, idx }));
+  const primary = indexed.filter(x => !x.r.closestStrictFallback);
+  const fallback = indexed.filter(x => x.r.closestStrictFallback);
+  const fallbackHtml = fallback.length ? `
+    <details class="qpl-card" style="padding:0;margin-top:12px">
+      <summary style="cursor:pointer;padding:14px 16px;font-family:'Orbitron',monospace;font-size:11px;color:var(--gold)">
+        CLOSEST MATCHES (${fallback.length}) - no exact strict match
+      </summary>
+      <div class="qpl-results" style="padding:0 14px 14px">
+        ${fallback.map(x => quickLookupResultCard(x.r, x.idx)).join('')}
+      </div>
+    </details>` : '';
+  const shownCount = primary.length || fallback.length;
   el.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:10px;flex-wrap:wrap">
-      <div style="color:var(--g);font-weight:800;font-size:13px">${results.length} MATCH${results.length===1?'':'ES'}</div>
+      <div style="color:var(--g);font-weight:800;font-size:13px">${shownCount} MATCH${shownCount===1?'':'ES'}</div>
       <div style="color:var(--dim);font-size:11px">Large cards for live buying - tap image to inspect</div>
     </div>
     <div class="qpl-results">
-      ${results.map((r, idx) => quickLookupResultCard(r, idx)).join('')}
-    </div>`;
+      ${primary.map(x => quickLookupResultCard(x.r, x.idx)).join('')}
+    </div>
+    ${fallbackHtml}`;
 }
 
 function quickLookupResultCard(r, idx){
