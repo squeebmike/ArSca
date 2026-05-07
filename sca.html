@@ -603,12 +603,12 @@ const STORE = {
   wf_status_instock:'f3769d1e15fa0956f98984d6fa36437f',
   wf_status_sold:   'e6b42f14fcb99aa2168a5f5672226f68',
 };
-const APP_VERSION = '2026.05.07.07';
+const APP_VERSION = '2026.05.07.08';
 const SUPABASE_URL = 'https://vroknjrxubsqyexngwus.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_wbpX2nL8l-4NbXtZNG_bjA_nabSYaJ5';
 const WORKER_URL = STORE.worker_url;
 
-const WALKOFF_SCOPED_KEYS = new Set(['lba_inventory','lba_sales','pos_transactions','pos_cart_v2','pos_sync_queue','pos_drawer','pos_drawer_closeouts','pos_wantlist','pos_consign','pos_locations','vendor_profile_v1','store_payment_settings_v1','grade_submissions']);
+const WALKOFF_SCOPED_KEYS = new Set(['lba_inventory','lba_sales','pos_transactions','pos_cart_v2','pos_buy_list','pos_active_buy_session','pos_buy_sessions','pos_sync_queue','pos_drawer','pos_drawer_closeouts','pos_wantlist','pos_consign','pos_locations','vendor_profile_v1','store_payment_settings_v1','grade_submissions']);
 const WALKOFF_AUTH_SESSION_KEY = 'walkoff_auth_session_v1';
 const WALKOFF_ACTIVE_STORE_KEY = 'walkoff_active_store_id';
 let scannerSupabaseClient = null;
@@ -778,7 +778,7 @@ function scopedWorkerPath(path) {
 function getShowContext() {
   return {
     vendorId: slugifyId(STORE.vendor_id || STORE.store_name, 'walkoff'),
-    storeId: getStoreId(),
+    storeId: getScannerActiveStoreId(),
     registerId: getRegisterId(),
     eventName: STORE.event_name || '',
     eventType: STORE.event_type || 'card-show',
@@ -2499,7 +2499,7 @@ If the front is missing card number/serial, leave it null and say "scan back rec
 }
 
 function scanHandoffKey() {
-  return 'scan_handoff_' + getStoreId() + '_' + getRegisterId();
+  return 'scan_handoff_' + getScannerActiveStoreId() + '_' + getRegisterId();
 }
 
 async function readScanHandoffQueue() {
@@ -2541,6 +2541,31 @@ async function sendHandoffToSupabase(handoff) {
   return true;
 }
 
+function getScannerActiveBuySessionId(){
+  try { return JSON.parse(localStorage.getItem('pos_active_buy_session') || 'null')?.buySessionId || ''; }
+  catch(e) { return ''; }
+}
+
+function getScannerModeForCategory(category){
+  const configured = localStorage.getItem('scanner_default_mode') || '';
+  if(configured) return configured;
+  if(category === 'Graded') return 'Slab Scan';
+  if(category === 'Comic') return 'Comic Scan';
+  if(category === 'Sealed') return 'Inventory Scan';
+  return 'Buy Scan';
+}
+
+function scannerBuyDecision(item, price){
+  const conf = String(item.confidence || '').toLowerCase();
+  const certMismatch = /mismatch|does not match/i.test(item.confidence_reason || '');
+  if(certMismatch) return 'PASS';
+  if(!Number(price || 0)) return 'MANUAL PRICE REQUIRED';
+  if(conf.includes('low')) return 'RESEARCH';
+  if(Number(price || 0) < 2) return 'PASS';
+  if(conf.includes('medium')) return 'MAYBE';
+  return 'BUY';
+}
+
 function buildHandoffItem(el) {
   const item = el?._item || {};
   const print = (el?._prints || [])[el?._bmi || 0] || {};
@@ -2551,8 +2576,14 @@ function buildHandoffItem(el) {
     : el?._ct === 'comic' ? 'Comic'
     : ['psa','bgs','cgc','sgc'].includes(el?._ct) ? 'Graded'
     : 'TCG';
+  const price = Number(print.mid || item.market_nm || item.market || 0);
+  const decision = scannerBuyDecision(item, price);
   return {
     id: 'phone_scan_' + Date.now(),
+    storeId: getStoreId(),
+    buySessionId: getScannerActiveBuySessionId(),
+    scannerMode: getScannerModeForCategory(category),
+    scanMode: getScannerModeForCategory(category),
     sentAt: new Date().toISOString(),
     source: 'phone-scanner',
     appVersion: APP_VERSION,
@@ -2583,6 +2614,12 @@ function buildHandoffItem(el) {
     cert_number: item.cert_number || '',
     imageUrl: el?._uploadedPhotoUrl || print.imageUrl || el?._imgUrl || item.imageUrl || item.cover_image || null,
     search_query: item.search_query || [item.player || item.name, item.year, print.set || item.set_name, print.variant || item.parallel].filter(Boolean).join(' '),
+    price,
+    priceUsed: price,
+    priceSource: item.priceSource || item.pricingSource || (price ? 'scanner_estimate' : 'Needs Review'),
+    buyDecision: decision,
+    decision,
+    matchReasons: [item.confidence_reason, item.cert_number ? 'cert captured' : '', price ? 'price captured' : 'manual price required'].filter(Boolean),
   };
 }
 
@@ -3481,6 +3518,10 @@ window.sendBulkOfferToTablet = async function(){
     bulkItems.forEach((i, idx) => {
       queue.unshift({
         id: 'bulk_buy_' + now + '_' + idx,
+        storeId: getScannerActiveStoreId(),
+        buySessionId: getScannerActiveBuySessionId(),
+        scannerMode: 'Bulk Lot Scan',
+        scanMode: 'Bulk Lot Scan',
         sentAt: new Date().toISOString(),
         source: 'bulk-buy-phone',
         appVersion: APP_VERSION,
@@ -3509,6 +3550,8 @@ window.sendBulkOfferToTablet = async function(){
         priceSource: i.priceSource || 'bulk_ai_estimate',
         confidence: i.confidence || 'medium',
         confidence_reason: i.confidence_reason || 'bulk buy scan',
+        buyDecision: scannerBuyDecision(i, Number(i.market_nm || i.market || i.price || 0)),
+        decision: scannerBuyDecision(i, Number(i.market_nm || i.market || i.price || 0)),
         search_query: i.search_query || [i.name, i.year, i.set || i.set_name].filter(Boolean).join(' '),
       });
     });

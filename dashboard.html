@@ -475,6 +475,7 @@ tr.sold:hover td{opacity:.7;}
     <button class="fb on" onclick="setF('all',this)">All</button>
     <button class="fb" onclick="setF('in_stock',this)">In Stock</button>
     <button class="fb" onclick="setF('sold',this)">Sold</button>
+    <button class="fb" onclick="setF('archived',this)">Archived</button>
     <button class="fb" onclick="setF('at_show',this)">At Show</button>
     <button class="fb" onclick="setF('listed_online',this)">Listed</button>
     <button class="fb" onclick="setF('pulled_ebay',this)">Pulled</button>
@@ -726,6 +727,7 @@ tr.sold:hover td{opacity:.7;}
         <input class="tsi" id="bl-customer" placeholder="Customer name" style="flex:1;margin-bottom:0">
         <input class="tsi" id="bl-phone" placeholder="Phone for text offer" style="flex:1;margin-bottom:0">
       </div>
+      <div id="buy-session-panel"></div>
       <div id="bl-items" style="min-height:80px;margin-bottom:10px"></div>
       <div style="background:var(--surf2);border:1px solid var(--border);border-radius:8px;padding:10px;display:flex;justify-content:space-between;align-items:center">
         <div>
@@ -832,6 +834,16 @@ tr.sold:hover td{opacity:.7;}
   <div id="customer-display">
     <!-- Live customer view rendered here -->
     <div class="sell-shell">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+        <button class="hbtn" onclick="addQuickSaleShortcut('$1 Binder Card',1,'Binder')">$1 Binder</button>
+        <button class="hbtn" onclick="addQuickSaleShortcut('$2 Binder Card',2,'Binder')">$2 Binder</button>
+        <button class="hbtn" onclick="addQuickSaleShortcut('$5 Binder Card',5,'Binder')">$5 Binder</button>
+        <button class="hbtn" onclick="addQuickSaleShortcut('2 for $1',1,'Binder',2)">2 for $1</button>
+        <button class="hbtn" onclick="addQuickSaleShortcut('3 for $5',5,'Binder',3)">3 for $5</button>
+        <button class="hbtn" onclick="addQuickSaleShortcut('$1 Comic Box',1,'Comic')">$1 Comic</button>
+        <button class="hbtn" onclick="addQuickSaleShortcut('$5 Comic Box',5,'Comic')">$5 Comic</button>
+        <button class="hbtn" onclick="addCustomBulkLotToCart()">Custom Bulk Lot</button>
+      </div>
       <div style="text-align:center;padding:40px 20px 20px">
         <img data-vendor-logo src="" alt="" style="display:none;width:96px;max-height:72px;object-fit:contain;margin:0 auto 12px">
         <div style="font-family:'Orbitron',monospace;font-size:28px;font-weight:900;color:var(--g);letter-spacing:4px;margin-bottom:4px" data-vendor-store>WALK-OFF</div>
@@ -1159,7 +1171,7 @@ tr.sold:hover td{opacity:.7;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.05.07.07';
+const APP_VERSION = '2026.05.07.08';
 const SUPABASE_URL = 'https://vroknjrxubsqyexngwus.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_wbpX2nL8l-4NbXtZNG_bjA_nabSYaJ5';
 const AUTH_REDIRECT_URL = 'https://squeebmike.github.io/ArSca/dashboard.html';
@@ -1182,7 +1194,7 @@ const WALKOFF_DEMO_STORES = [
   { id:'demo-show-store', ownerUserId:'demo-owner', name:'demo-show-store', displayName:'Demo Show Store', logoUrl:'', location:'Card Show', timezone:'America/Los_Angeles', currency:'USD', status:'active', createdAt:'2026-05-06T00:00:00.000Z' },
 ];
 const WALKOFF_DEMO_USER = { id:'demo-owner', email:'owner@walkoff.local', displayName:'Store Owner', role:'owner', defaultStoreId:'walkoff-main', createdAt:'2026-05-06T00:00:00.000Z' };
-const WALKOFF_SCOPED_KEYS = new Set(['lba_inventory','walkoff_universal_inventory','pos_cart_v2','pos_buy_list','pos_buy_offers','pos_transactions','pos_drawer','pos_drawer_closeouts','pos_wantlist','set_needs_v1','pos_consign','pos_locations','vendor_profile_v1','vendor_config_v1','store_payment_settings_v1','store_onboarding_v1','pos_ops_log','inventory_lifecycle','pos_show_mode','sync_queue_v1','pos_customers','pos_undo_stack','sheet_mapping_v1','grade_submissions','lba_sales']);
+const WALKOFF_SCOPED_KEYS = new Set(['lba_inventory','walkoff_universal_inventory','pos_cart_v2','pos_buy_list','pos_buy_offers','pos_active_buy_session','pos_buy_sessions','pos_transactions','pos_drawer','pos_drawer_closeouts','pos_wantlist','set_needs_v1','pos_consign','pos_locations','vendor_profile_v1','vendor_config_v1','store_payment_settings_v1','store_onboarding_v1','pos_ops_log','inventory_lifecycle','pos_show_mode','sync_queue_v1','pos_customers','pos_undo_stack','sheet_mapping_v1','grade_submissions','lba_sales']);
 const WALKOFF_AUTH_SESSION_KEY = 'walkoff_auth_session_v1';
 const WALKOFF_ACTIVE_STORE_KEY = 'walkoff_active_store_id';
 const WALKOFF_STORAGE_MIGRATION_KEY = 'walkoff_store_migration_v1';
@@ -1606,6 +1618,7 @@ const LIFECYCLE_LABELS = {
   consigned: 'Consigned',
   returned: 'Returned',
   lost_damaged: 'Lost/damaged',
+  archived: 'Archived',
 };
 
 function escHtml(v){
@@ -2991,10 +3004,10 @@ function getUniversalInventory(){
     id:i.id, name:i.name||'Imported item', set:i.set||'', variant:i.variant||'', year:i.year||'',
     category:i.category||'Collectibles', cost:Number(i.cost||0), market:Number(i.market||0), salePrice:Number(i.salePrice||i.market||0),
     qty:Number(i.qty||1), profit:Number(i.profit||0), condition:i.condition||'', priceSource:i.priceSource||'spreadsheet',
-    status:i.status||'in_stock', lifecycle:i.lifecycle||'in_stock', channel:i.channel||'', addedAt:i.addedAt||'', soldAt:i.soldAt||'',
+    status:i.status||'in_stock', lifecycle:i.archivedAt ? 'archived' : (i.lifecycle||'in_stock'), archivedAt:i.archivedAt||'', archiveReason:i.archiveReason||'', channel:i.channel||'', addedAt:i.addedAt||'', soldAt:i.soldAt||'',
     tags:i.tags||'', thumbnail:i.thumbnail||null, location:i.location||'', player:i.player||'', team:i.team||'', sport:i.sport||'',
     manufacturer:i.manufacturer||'', card_number:i.card_number||'', serial_number:i.serial_number||'', publisher:i.publisher||'',
-    issue:i.issue||'', notes:i.notes||'', source:i.source||'spreadsheet',
+    issue:i.issue||'', notes:i.notes||'', buySessionId:i.buySessionId||'', sourceProductId:i.sourceProductId||'', sourceVariantId:i.sourceVariantId||'', tcgplayerSkuId:i.tcgplayerSkuId||'', priceLabel:i.priceLabel||'', source:i.source||'spreadsheet',
   }));
 }
 
@@ -3718,7 +3731,7 @@ function priceSourceBadge(source, category){
 }
 
 function cartWorkerPath(){
-  return WORKER + '/cart?store=' + encodeURIComponent(STORE_ID) + '&register=' + encodeURIComponent(REGISTER_ID);
+  return WORKER + '/cart?store=' + encodeURIComponent(getActiveStoreId()) + '&register=' + encodeURIComponent(REGISTER_ID);
 }
 
 function getLifecycleMap(){
@@ -3842,7 +3855,7 @@ function applyShowPriceRule(price){
 
 function scopedWorkerPath(path){
   const sep = path.includes('?') ? '&' : '?';
-  return WORKER + path + sep + 'store=' + encodeURIComponent(STORE_ID) + '&register=' + encodeURIComponent(REGISTER_ID);
+  return WORKER + path + sep + 'store=' + encodeURIComponent(getActiveStoreId()) + '&register=' + encodeURIComponent(REGISTER_ID);
 }
 
 async function refreshEbayStatus(){
@@ -3917,7 +3930,7 @@ function logOpsEvent(type, message, detail){
     appVersion: APP_VERSION,
     show: getShowMode() || null,
     registerId: REGISTER_ID,
-    storeId: STORE_ID,
+    storeId: getActiveStoreId(),
   };
   const log = getOpsLog();
   log.unshift(event);
@@ -4162,7 +4175,7 @@ async function importVendorBackup(event){
 }
 
 function scanHandoffKey(){
-  return 'scan_handoff_' + STORE_ID + '_' + REGISTER_ID;
+  return 'scan_handoff_' + getActiveStoreId() + '_' + REGISTER_ID;
 }
 
 async function readScanInbox(){
@@ -4297,6 +4310,7 @@ async function loadBuiltInInventoryItems(){
 function mapBuiltInItem(row){
   const d = row.data || {};
   const isSold = row.status === 'sold' || d.status === 'sold';
+  const isArchived = row.status === 'archived' || d.status === 'archived' || !!d.archivedAt;
   const id = row.id || d.id || ('builtin_' + Date.now());
   const market = Number(d.market ?? d.price ?? d.askingPrice ?? d.salePrice ?? 0);
   const cost = Number(d.cost ?? d.costBasis ?? d.cost_basis ?? 0);
@@ -4316,11 +4330,18 @@ function mapBuiltInItem(row){
     profit:isSold ? Number(d.profit || (Number(d.salePrice || market || 0) - cost)) : 0,
     condition:d.condition || '',
     priceSource:d.priceSource || d.marketPriceSource || d['price-source'] || '',
-    status:isSold ? 'sold' : (row.status || d.status || 'in_stock'),
-    lifecycle:getLifecycle(id, isSold ? 'sold' : (row.status || d.status || 'in_stock')),
+    status:isArchived ? 'archived' : (isSold ? 'sold' : (row.status || d.status || 'in_stock')),
+    lifecycle:getLifecycle(id, isArchived ? 'archived' : (isSold ? 'sold' : (row.status || d.status || 'in_stock'))),
     channel:d.channel || d.saleChannel || '',
     addedAt:d.addedAt || row.created_at || '',
     soldAt:d.soldAt || '',
+    archivedAt:d.archivedAt || '',
+    archiveReason:d.archiveReason || '',
+    buySessionId:d.buySessionId || '',
+    sourceProductId:d.sourceProductId || '',
+    sourceVariantId:d.sourceVariantId || '',
+    tcgplayerSkuId:d.tcgplayerSkuId || '',
+    priceLabel:d.priceLabel || '',
     isRookie:!!(d.isRookie || d.rookieCard),
     is_rookie:!!(d.isRookie || d.rookieCard),
     grader:d.grader || d.gradingCompany || '',
@@ -4359,6 +4380,17 @@ function builtInDataFromItem(item, updates={}){
     salePrice:Number(updates.salePrice ?? item.salePrice ?? updates.market ?? item.market ?? 0),
     location:updates.location ?? item.location ?? '',
     status:updates.status ?? item.status ?? 'in_stock',
+    lifecycle:updates.lifecycle ?? item.lifecycle ?? updates.status ?? item.status ?? 'in_stock',
+    archivedAt:updates.archivedAt ?? item.archivedAt ?? '',
+    archivedBy:updates.archivedBy ?? item.archivedBy ?? '',
+    archiveReason:updates.archiveReason ?? item.archiveReason ?? '',
+    buySessionId:updates.buySessionId ?? item.buySessionId ?? '',
+    sourceProductId:updates.sourceProductId ?? item.sourceProductId ?? '',
+    sourceVariantId:updates.sourceVariantId ?? item.sourceVariantId ?? '',
+    tcgplayerSkuId:updates.tcgplayerSkuId ?? item.tcgplayerSkuId ?? '',
+    priceLabel:updates.priceLabel ?? item.priceLabel ?? '',
+    priceUsed:Number(updates.priceUsed ?? item.priceUsed ?? updates.market ?? item.market ?? 0),
+    expectedProfit:Number(updates.expectedProfit ?? item.expectedProfit ?? 0),
     priceSource:updates.priceSource ?? item.priceSource ?? '',
     key_notes:updates.key_notes ?? item.key_notes ?? item.notes ?? '',
     player:updates.player ?? item.player ?? '',
@@ -4780,6 +4812,9 @@ function filterTable(){
   const smartMap = new Map(smartRows.map(r => [r.item.id, r]));
   filtered=all.filter(i=>{
     const mq=!q || smartMap.has(i.id);
+    const isArchived = i.lifecycle === 'archived' || i.status === 'archived' || !!i.archivedAt;
+    if(activeF==='archived') return mq&&isArchived;
+    if(isArchived) return false;
     if(activeF==='all') return mq;
     if(activeF==='in_stock') return mq&&i.status==='in_stock';
     if(activeF==='sold') return mq&&i.status==='sold';
@@ -4835,6 +4870,12 @@ function renderTable(){
     const actCell = tr.children[8];
     if(item && actCell && !actCell.querySelector('.history-btn')) {
       actCell.querySelector('.row-act')?.insertAdjacentHTML('beforeend', `<button class="ra history-btn" onclick="openItemTimeline('${item.id}')">History</button>`);
+    }
+    if(item && actCell && !actCell.querySelector('.archive-btn')) {
+      const archived = item.lifecycle === 'archived' || item.status === 'archived' || item.archivedAt;
+      actCell.querySelector('.row-act')?.insertAdjacentHTML('beforeend', archived
+        ? `<button class="ra archive-btn" style="background:rgba(0,255,179,.08);border-color:rgba(0,255,179,.22);color:var(--g)" onclick="restoreInventoryItem('${item.id}')">Restore</button><button class="ra" style="background:rgba(255,77,109,.08);border-color:rgba(255,77,109,.24);color:var(--red)" onclick="hardDeleteInventoryItem('${item.id}')">Hard Delete</button>`
+        : `<button class="ra archive-btn" style="background:rgba(255,209,102,.08);border-color:rgba(255,209,102,.22);color:var(--gold)" onclick="archiveInventoryItem('${item.id}')">Archive</button>`);
     }
     const cell = tr.children[7];
     if(!item || !cell) return;
@@ -4984,7 +5025,7 @@ function dashAddToCart(id){
   };
   cartData.items.push(cartItem);
   cartData.savedAt = new Date().toISOString();
-  cartData.storeId = STORE_ID;
+  cartData.storeId = getActiveStoreId();
   cartData.registerId = REGISTER_ID;
   cartData.appVersion = APP_VERSION;
   cartData.show = getShowMode();
@@ -5021,13 +5062,60 @@ function addScanToCart(scan){
     year: scan.year || '',
   });
   cartData.savedAt = new Date().toISOString();
-  cartData.storeId = STORE_ID;
+  cartData.storeId = getActiveStoreId();
   cartData.registerId = REGISTER_ID;
   cartData.appVersion = APP_VERSION;
   cartData.show = getShowMode();
   localStorage.setItem('pos_cart_v2', JSON.stringify(cartData));
   postCartToWorker(cartData);
   toast_dash('Added phone scan to cart: ' + (scan.name || 'item'));
+}
+
+function getCartDataLocal(){
+  try { return JSON.parse(localStorage.getItem('pos_cart_v2') || '{"items":[],"discount":0}'); }
+  catch(e) { return {items:[], discount:0}; }
+}
+
+function saveCartDataLocal(cartData, undoLabel){
+  const beforeCart = getCartDataLocal();
+  cartData.savedAt = new Date().toISOString();
+  cartData.storeId = getActiveStoreId();
+  cartData.registerId = REGISTER_ID;
+  cartData.appVersion = APP_VERSION;
+  cartData.show = getShowMode();
+  localStorage.setItem('pos_cart_v2', JSON.stringify(cartData));
+  if(undoLabel) pushUndoAction(undoLabel, { type:'cart-snapshot', cart:beforeCart });
+  postCartToWorker(cartData);
+  renderCustomerDisplay?.();
+}
+
+function addQuickSaleShortcut(name, price, category='Quick Sale', quantity=1){
+  const cartData = getCartDataLocal();
+  cartData.items = cartData.items || [];
+  cartData.items.push({
+    id:'ci_quick_' + Date.now() + '_' + Math.random().toString(36).slice(2,5),
+    name,
+    sub:quantity > 1 ? quantity + ' item bundle' : 'Quick sale shortcut',
+    price:Number(price || 0),
+    cost:0,
+    qty:quantity,
+    img:null,
+    shopId:null,
+    wfId:null,
+    category,
+    isBulkShortcut:true,
+    inventoryType:'binder_card',
+  });
+  saveCartDataLocal(cartData, 'quick sale');
+  logOpsEvent('cart_item_added', 'Added quick sale shortcut: ' + name, { price:Number(price || 0), quantity, category });
+  toast_dash('Added quick sale: ' + name);
+}
+
+function addCustomBulkLotToCart(){
+  const label = prompt('Bulk lot label?', 'Custom Bulk Lot');
+  if(label === null) return;
+  const price = parseFloat(prompt('Bulk lot sale price?', '10') || '0') || 0;
+  addQuickSaleShortcut(label || 'Custom Bulk Lot', price, 'Bulk Lot', 1);
 }
 
 function getScanImageUrl(scan){
@@ -5045,11 +5133,15 @@ function getScanPriceSource(scan){
 function scanToBuyItem(scan){
   const categoryText = scan.category || scan.game || 'TCG';
   const isSealed = !!scan.is_sealed || /sealed|box|pack|tin|case|booster|blaster|mega|hobby|elite trainer|etb/i.test([categoryText, scan.name, scan.set, scan.configuration, scan.product_line].filter(Boolean).join(' '));
+  const session = getActiveBuySession();
+  const market = getScanMarket(scan);
   return {
     id: 'bl_scan_' + (scan.id || Date.now()) + '_' + Math.random().toString(36).slice(2,5),
     scanId: scan.id || null,
     name: scan.name || scan.player || 'Phone scan',
-    market: getScanMarket(scan),
+    market,
+    priceUsed:market,
+    priceLabel:scan.priceLabel || scan.priceSource || getScanPriceSource(scan) || 'Scan Price',
     condition: scan.condition || 'NM',
     category: isSealed ? 'Sealed' : categoryText,
     set: scan.set || scan.set_name || '',
@@ -5071,6 +5163,14 @@ function scanToBuyItem(scan){
     is_sealed: isSealed,
     imageUrl: getScanImageUrl(scan),
     priceSource: getScanPriceSource(scan),
+    buySessionId:scan.buySessionId || session?.buySessionId || '',
+    storeId:scan.storeId || getActiveStoreId(),
+    scannerMode:scan.scannerMode || scan.scanMode || '',
+    buyDecision:scan.buyDecision || scan.decision || '',
+    sourceProductId:scan.sourceProductId || scan.productId || scan.pricechartingProductId || '',
+    sourceVariantId:scan.sourceVariantId || scan.variantId || scan.productConditionId || '',
+    tcgplayerSkuId:scan.tcgplayerSkuId || scan.skuId || '',
+    status:'offered',
     scan
   };
 }
@@ -5105,8 +5205,10 @@ async function acceptScanToBuyList(scanId){
   const queue = await readScanInbox();
   const scan = queue.find(s => s.id === scanId);
   if(scan) {
-    buyList.push(scanToBuyItem(scan));
+    const item = scanToBuyItem(scan);
+    buyList.push(item);
     saveBuyList();
+    logOpsEvent('buy_item_added', 'Added phone scan to buy offer: ' + (item.name || 'scan'), { buySessionId:item.buySessionId || '', scanId:scan.id || '', decision:item.buyDecision || '' });
     renderBuyList();
     toast_dash('Added to buy offer: ' + (scan.name || scan.player || 'item'));
   }
@@ -5118,7 +5220,11 @@ async function acceptScanToBuyList(scanId){
 async function addAllScansToBuyList(){
   const queue = await readScanInbox();
   if(!queue.length){ toast_dash('No scans waiting'); return; }
-  queue.forEach(scan => buyList.push(scanToBuyItem(scan)));
+  queue.forEach(scan => {
+    const item = scanToBuyItem(scan);
+    buyList.push(item);
+    logOpsEvent('buy_item_added', 'Added phone scan to buy offer: ' + (item.name || 'scan'), { buySessionId:item.buySessionId || '', scanId:scan.id || '', decision:item.buyDecision || '' });
+  });
   saveBuyList();
   renderBuyList();
   await Promise.all(queue.map(scan => markScanInboxItem(scan, 'added')));
@@ -5158,11 +5264,14 @@ async function renderScanInbox(){
   list.innerHTML = queue.slice(0,8).map(s => {
     const meta = [s.category, s.year, s.set, s.variant, s.issue ? '#'+s.issue : '', s.card_number ? '#'+s.card_number : ''].filter(Boolean).join(' · ');
     const img = getScanImageUrl(s);
+    const decision = s.buyDecision || s.decision || (Number(s.price || 0) ? 'MAYBE' : 'MANUAL PRICE REQUIRED');
+    const decisionColor = decision === 'BUY' ? 'var(--g)' : decision === 'PASS' ? 'var(--red)' : /MANUAL|RESEARCH/i.test(decision) ? 'var(--gold)' : 'var(--blue)';
     return `<div style="display:grid;grid-template-columns:52px 1fr auto;gap:10px;align-items:center;background:var(--surf2);border:1px solid var(--border);border-radius:8px;padding:8px">
       ${img ? `<img src="${img}" style="width:52px;height:52px;object-fit:cover;border-radius:6px;border:1px solid var(--border)">` : `<div style="width:52px;height:52px;border-radius:6px;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;color:var(--dim);font-size:9px">SCAN</div>`}
       <div>
         <div style="font-weight:700;color:var(--text);font-size:12px">${s.name || 'Phone scan'}</div>
         <div style="font-family:monospace,monospace;font-size:9px;color:var(--dim);margin-top:2px">${meta || 'No details'}</div>
+        <div style="font-family:monospace,monospace;font-size:8px;color:${decisionColor};margin-top:2px">${escHtml(decision)}${s.scannerMode ? ' · '+escHtml(s.scannerMode) : ''}${s.buySessionId ? ' · SESSION' : ''}</div>
         <div style="font-family:monospace,monospace;font-size:8px;color:${s.confidence==='low'?'var(--red)':s.confidence==='high'?'var(--g)':'var(--gold)'};margin-top:2px">${(s.confidence || 'medium').toUpperCase()} ${s.confidence_reason ? '· '+s.confidence_reason : ''}</div>
       </div>
       <div style="display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end">
@@ -6095,6 +6204,57 @@ async function deleteInventoryRecord(id){
   logOpsEvent('inventory_delete', 'Deleted inventory item: ' + (item.name || id), { id, source:item.source || getInventorySource() });
   toast_dash('Inventory item deleted');
   return true;
+}
+
+async function archiveInventoryItem(id){
+  const item = all.find(i => i.id === id);
+  if(!item) return toast_dash('Item not found');
+  const reason = prompt('Archive reason? This hides the item from active inventory but keeps history and reports intact.', item.archiveReason || '');
+  if(reason === null) return;
+  const archivedAt = new Date().toISOString();
+  const updates = { lifecycle:'archived', status:'archived', archivedAt, archivedBy:getAuthSession()?.user?.id || 'local-user', archiveReason:reason || 'Archived from inventory' };
+  try {
+    if(item.source === 'built_in') await updateBuiltInInventoryItem(item, updates);
+    else updateUniversalInventoryItem(item.id, updates) || setLifecycle(item.id, 'archived', true);
+  } catch(e) {
+    updateUniversalInventoryItem(item.id, updates);
+  }
+  item.lifecycle = 'archived';
+  item.status = 'archived';
+  item.archivedAt = archivedAt;
+  item.archiveReason = updates.archiveReason;
+  logOpsEvent('inventory_archived', 'Archived inventory item: ' + (item.name || id), { id, reason:updates.archiveReason, source:item.source || getInventorySource() });
+  renderAll();
+  toast_dash('Archived item');
+}
+
+async function restoreInventoryItem(id){
+  const item = all.find(i => i.id === id);
+  if(!item) return toast_dash('Item not found');
+  const updates = { lifecycle:'in_stock', status:'in_stock', archivedAt:'', archivedBy:'', archiveReason:'', restoredAt:new Date().toISOString(), restoredBy:getAuthSession()?.user?.id || 'local-user' };
+  try {
+    if(item.source === 'built_in') await updateBuiltInInventoryItem(item, updates);
+    else updateUniversalInventoryItem(item.id, updates) || setLifecycle(item.id, 'in_stock', true);
+  } catch(e) {
+    updateUniversalInventoryItem(item.id, updates);
+  }
+  item.lifecycle = 'in_stock';
+  item.status = 'in_stock';
+  item.archivedAt = '';
+  item.archiveReason = '';
+  logOpsEvent('inventory_restored', 'Restored archived inventory item: ' + (item.name || id), { id, source:item.source || getInventorySource() });
+  renderAll();
+  toast_dash('Restored item');
+}
+
+async function hardDeleteInventoryItem(id){
+  const item = all.find(i => i.id === id);
+  if(!item) return toast_dash('Item not found');
+  const hasHistory = item.soldAt || item.buySessionId || item.consignmentId || item.payoutLineId || item.saleId;
+  const warning = hasHistory ? 'This item has sale, consignment, payout, or buy-session history. ' : '';
+  if(prompt(warning + 'Type DELETE to permanently remove this item. Archive is safer.') !== 'DELETE') return;
+  const ok = await deleteInventoryRecord(id);
+  if(ok) logOpsEvent('inventory_hard_deleted', 'Hard deleted inventory item: ' + (item.name || id), { id, hadHistory:!!hasHistory, source:item.source || getInventorySource() });
 }
 
 function removeUniversalInventoryItem(id){
@@ -7835,7 +7995,7 @@ async function fetchWorkerTcgCatalog(q, cat){
   const game = cat || '';
   const justRows = [];
   for(const query of qplQueryVariants(q, cat).slice(0, 3)) {
-    const just = await fetch(WORKER + '/pricing/justtcg/search?' + new URLSearchParams({ q:query, category:game, storeId:STORE_ID }).toString()).catch(() => null);
+    const just = await fetch(WORKER + '/pricing/justtcg/search?' + new URLSearchParams({ q:query, category:game, storeId:getActiveStoreId() }).toString()).catch(() => null);
     if(!just?.ok) continue;
     const jd = await just.json().catch(() => ({}));
     if(Array.isArray(jd.matches) && jd.matches.length) justRows.push(...jd.matches);
@@ -8445,10 +8605,13 @@ function addSelectedQuickLookupToBuyOffer(idx){
     toast_dash('Manual review required before adding to offer');
     return;
   }
+  const session = getActiveBuySession();
   buyList.push({
     id:'bl_qpl_' + Date.now(),
     name:item.name,
     market:item.market,
+    priceUsed:Number(item.market || 0),
+    priceLabel:item.priceLabel || item.priceSource || item.pricingSource || 'Market Price',
     condition:item.condition,
     selectedCondition:item.selectedCondition,
     selectedFinish:item.selectedFinish,
@@ -8457,6 +8620,9 @@ function addSelectedQuickLookupToBuyOffer(idx){
     productId:item.productId,
     skuId:item.skuId,
     productConditionId:item.productConditionId,
+    sourceProductId:item.pricechartingProductId || item.productId || '',
+    sourceVariantId:item.variantId || item.productConditionId || '',
+    tcgplayerSkuId:item.tcgplayerSkuId || item.skuId || '',
     category:item.category,
     set:item.set,
     year:item.year,
@@ -8468,8 +8634,12 @@ function addSelectedQuickLookupToBuyOffer(idx){
     priceConfidence:item.priceConfidence,
     needsReview:needsManual,
     lastPriceSyncAt:item.lastPriceSyncAt,
+    buySessionId:session?.buySessionId || '',
+    storeId:getActiveStoreId(),
+    status:'offered',
   });
   saveBuyList();
+  logOpsEvent('buy_item_added', 'Added research result to buy offer: ' + item.name, { buySessionId:session?.buySessionId || '', source:item.priceSource || item.pricingSource || '', market:Number(item.market || 0) });
   renderBuyList();
   toast_dash('Added to buy offer: ' + item.name);
 }
@@ -8774,12 +8944,175 @@ function renderDrawer(){
 // ══════════════════════════════════════════════════
 let buyList = [];
 
+const BUY_SESSION_LOCATIONS = ['Intake Tray','Showcase','Binder','Comic Box','Slab Case','Backstock','Needs Photos','Needs Research'];
+const BUY_SESSION_PAYMENTS = ['Cash','Card','Venmo','PayPal','Cash App','Trade Credit','Mixed'];
+
+function makeBuySessionId(){ return 'buy_session_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,6); }
+function getActiveBuySession(){ try { return JSON.parse(localStorage.getItem('pos_active_buy_session') || 'null'); } catch(e) { return null; } }
+function saveActiveBuySession(session){
+  if(!session) return;
+  session.storeId = getActiveStoreId();
+  session.updatedAt = new Date().toISOString();
+  localStorage.setItem('pos_active_buy_session', JSON.stringify(session));
+  renderBuySessionPanel();
+}
+function clearActiveBuySession(){ localStorage.removeItem('pos_active_buy_session'); renderBuySessionPanel(); }
+function getBuySessionHistory(){ return safeLocalJson('pos_buy_sessions', []); }
+function saveBuySessionHistory(session){
+  if(!session) return;
+  const log = getBuySessionHistory().filter(s => s.buySessionId !== session.buySessionId);
+  log.unshift(session);
+  localStorage.setItem('pos_buy_sessions', JSON.stringify(log.slice(0,300)));
+}
+function currentBuySessionCustomer(){
+  return {
+    customerName:document.getElementById('bl-customer')?.value.trim() || '',
+    customerPhone:(document.getElementById('bl-phone')?.value || '').trim(),
+    customerEmail:document.getElementById('buy-session-email')?.value.trim() || '',
+  };
+}
+function buyItemOfferValue(item){
+  if(Number(item.cashOffer) > 0) return Math.round(Number(item.cashOffer) * 100) / 100;
+  const pct = parseFloat(document.getElementById('bl-pct')?.value || 50) / 100;
+  return Math.round(Number(item.market || item.priceUsed || 0) * pct * 100) / 100;
+}
+function snapshotBuySession(status){
+  const existing = getActiveBuySession() || {};
+  const totals = getBuyOfferTotals();
+  const customer = currentBuySessionCustomer();
+  const items = buyList.map(i => ({
+    ...i,
+    storeId:getActiveStoreId(),
+    buySessionId:existing.buySessionId || i.buySessionId || '',
+    priceUsed:Number(i.priceUsed || i.market || 0),
+    priceLabel:i.priceLabel || (i.priceSource || i.pricingSource || 'Manual Price'),
+    cashOffer:buyItemOfferValue(i),
+    tradeCreditOffer:Math.round(buyItemOfferValue(i) * 1.15 * 100) / 100,
+    status:i.inventoryId ? 'converted_to_inventory' : 'offered',
+  }));
+  const marketTotal = Math.round(items.reduce((a,i)=>a+Number(i.market || i.priceUsed || 0),0) * 100) / 100;
+  const cashOfferTotal = Math.round(items.reduce((a,i)=>a+Number(i.cashOffer || 0),0) * 100) / 100;
+  const tradeCreditTotal = Math.round(cashOfferTotal * 1.15 * 100) / 100;
+  return {
+    buySessionId:existing.buySessionId || makeBuySessionId(),
+    storeId:getActiveStoreId(),
+    customerName:customer.customerName,
+    customerPhone:customer.customerPhone,
+    customerEmail:customer.customerEmail,
+    source:existing.source || 'walk_up',
+    status:status || existing.status || 'open',
+    createdBy:existing.createdBy || getAuthSession()?.user?.id || 'local-user',
+    createdAt:existing.createdAt || new Date().toISOString(),
+    updatedAt:new Date().toISOString(),
+    marketTotal,
+    guideTotal:marketTotal,
+    cashOfferTotal,
+    tradeCreditTotal,
+    expectedProfitTotal:Math.round(items.reduce((a,i)=>a+Math.max(0, Number(i.market || 0) - Number(i.cashOffer || 0)),0) * 100) / 100,
+    pct:totals.pct,
+    paymentType:existing.paymentType || '',
+    location:document.getElementById('buy-session-location')?.value || existing.location || 'Intake Tray',
+    notes:document.getElementById('buy-session-notes')?.value.trim() || existing.notes || '',
+    items,
+    appVersion:APP_VERSION,
+  };
+}
+function startBuySession(){
+  if(getActiveBuySession() && !confirm('A buy session is already open. Start a new one?')) return;
+  const session = snapshotBuySession('open');
+  saveActiveBuySession(session);
+  logOpsEvent('buy_session_started', 'Started walk-up buy session', { buySessionId:session.buySessionId, customer:session.customerName });
+  toast_dash('Buy session started');
+}
+function saveBuySessionOnly(){
+  const session = snapshotBuySession(getActiveBuySession()?.status || 'saved');
+  saveActiveBuySession(session);
+  saveBuySessionHistory(session);
+  logOpsEvent('buy_session_saved', 'Saved buy session', { buySessionId:session.buySessionId, items:session.items.length, cashOfferTotal:session.cashOfferTotal });
+  toast_dash('Buy session saved');
+}
+function rejectBuySession(){
+  if(!getActiveBuySession() && !buyList.length){ toast_dash('No active buy session'); return; }
+  if(!confirm('Reject this buy offer? The session history will be kept.')) return;
+  const session = snapshotBuySession('rejected');
+  saveBuySessionHistory(session);
+  clearActiveBuySession();
+  logOpsEvent('buy_session_rejected', 'Rejected buy session', { buySessionId:session.buySessionId, items:session.items.length });
+  toast_dash('Buy session rejected');
+}
+function payCustomerForBuySession(method){
+  const session = snapshotBuySession(getActiveBuySession()?.status || 'open');
+  session.paymentType = method || document.getElementById('buy-session-pay-method')?.value || 'Cash';
+  session.customerPaidAt = new Date().toISOString();
+  saveActiveBuySession(session);
+  saveBuySessionHistory(session);
+  logOpsEvent('customer_paid', 'Recorded customer payout for buy session', { buySessionId:session.buySessionId, method:session.paymentType, amount:session.cashOfferTotal });
+  toast_dash('Customer payout recorded: ' + session.paymentType);
+}
+async function acceptBuySession(){
+  if(!buyList.length){ toast_dash('No buy offer items'); return; }
+  const missing = buyList.filter(i => !Number(i.market || i.priceUsed || 0));
+  if(missing.length) {
+    alert('Manual price required before accepting: ' + missing.map(i => i.name || 'Unnamed item').slice(0,5).join(', '));
+    return;
+  }
+  const session = snapshotBuySession('accepted');
+  saveActiveBuySession(session);
+  saveBuySessionHistory(session);
+  logOpsEvent('buy_session_accepted', 'Accepted buy session', { buySessionId:session.buySessionId, items:session.items.length, cashOfferTotal:session.cashOfferTotal });
+  await bulkAddBuyListToInventory(true);
+  saveBuySessionHistory(snapshotBuySession('accepted'));
+  toast_dash('Buy accepted and converted to inventory');
+}
+function updateBuySessionField(field, value){
+  const session = getActiveBuySession();
+  if(!session) return;
+  session[field] = value;
+  saveActiveBuySession(session);
+}
+function renderBuySessionPanel(){
+  const el = document.getElementById('buy-session-panel');
+  if(!el) return;
+  const session = getActiveBuySession();
+  const totals = getBuyOfferTotals();
+  const location = session?.location || 'Intake Tray';
+  const payment = session?.paymentType || 'Cash';
+  el.innerHTML = `<div style="border:1px solid ${session?'rgba(0,255,179,.28)':'var(--border)'};background:${session?'rgba(0,255,179,.045)':'var(--surf2)'};border-radius:8px;padding:10px;margin-bottom:10px">
+    <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap">
+      <div>
+        <div class="ph" style="margin:0 0 4px">${session?'ACTIVE BUY SESSION':'WALK-UP BUY SESSION'} <span style="font-size:8px;color:var(--dim)">${session ? escHtml(session.buySessionId) : 'start when customer walks up'}</span></div>
+        <div style="font-family:monospace,monospace;font-size:10px;color:var(--dim)">Items ${buyList.length} · Cash $${totals.offerTotal.toFixed(2)} · Trade $${(totals.offerTotal*1.15).toFixed(2)}</div>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="hbtn" onclick="startBuySession()" style="color:var(--g)">${session?'NEW':'START BUY SESSION'}</button>
+        <button class="hbtn" onclick="saveBuySessionOnly()">SAVE</button>
+        <button class="hbtn" onclick="acceptBuySession()" style="color:var(--gold)">ACCEPT</button>
+        <button class="hbtn danger" onclick="rejectBuySession()">REJECT</button>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-top:10px">
+      <input class="tsi" id="buy-session-email" placeholder="Customer email" value="${escHtml(session?.customerEmail || '')}" onchange="updateBuySessionField('customerEmail', this.value)" style="margin-bottom:0">
+      <select id="buy-session-location" onchange="updateBuySessionField('location', this.value)" style="background:var(--surf);border:1px solid var(--border);color:var(--text);padding:8px;border-radius:6px;font-size:11px">
+        ${BUY_SESSION_LOCATIONS.map(v=>`<option value="${v}" ${location===v?'selected':''}>${v}</option>`).join('')}
+      </select>
+      <select id="buy-session-pay-method" onchange="updateBuySessionField('paymentType', this.value)" style="background:var(--surf);border:1px solid var(--border);color:var(--text);padding:8px;border-radius:6px;font-size:11px">
+        ${BUY_SESSION_PAYMENTS.map(v=>`<option value="${v}" ${payment===v?'selected':''}>Pay: ${v}</option>`).join('')}
+      </select>
+      <button class="hbtn" onclick="payCustomerForBuySession()" style="color:var(--blue)">PAY CUSTOMER</button>
+    </div>
+    <textarea id="buy-session-notes" placeholder="Session notes / override reasons" onchange="updateBuySessionField('notes', this.value)" style="width:100%;min-height:42px;margin-top:8px;background:var(--surf);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:8px;font-size:11px">${escHtml(session?.notes || '')}</textarea>
+  </div>`;
+}
+
 function addBuyListItem(){
   const name = document.getElementById('bl-input').value.trim();
   const price = parseFloat(document.getElementById('bl-price').value)||0;
   if(!name) return;
-  buyList.push({id:'bl'+Date.now(), name, market: price, condition:'NM', priceSource: price ? 'manual' : 'ai_estimate'});
+  const session = getActiveBuySession();
+  const item = {id:'bl'+Date.now(), name, market: price, priceUsed:price, priceLabel:price?'Manual Price':'Needs Manual Review', condition:'NM', priceSource: price ? 'manual' : 'Needs Review', pricingSource:price ? 'Manual Price' : 'Needs Review', buySessionId:session?.buySessionId || '', storeId:getActiveStoreId(), status:'offered'};
+  buyList.push(item);
   saveBuyList();
+  logOpsEvent('buy_item_added', 'Added item to buy offer: ' + name, { buySessionId:item.buySessionId, price:price, source:item.priceSource });
   document.getElementById('bl-input').value='';
   document.getElementById('bl-price').value='';
   renderBuyList();
@@ -8793,6 +9126,8 @@ async function autoLookupBuyItem(item){
     const best = matches.find(m => Number(m.market || 0) > 0) || matches[0];
     if(best){
       item.market = Number(best.market || 0);
+      item.priceUsed = item.market;
+      item.priceLabel = best.priceLabel || best.priceSource || best.source || (item.market ? 'Market Price' : 'Needs Manual Review');
       item.priceSource = best.priceSource || best.source || (item.market ? 'catalog lookup' : 'Needs Review');
       item.category = normalizeQuickCategory(best.category || item.category);
       item.set = best.set || item.set || '';
@@ -8804,6 +9139,9 @@ async function autoLookupBuyItem(item){
       item.skuId = best.skuId || item.skuId || '';
       item.productConditionId = best.productConditionId || item.productConditionId || '';
       item.needsReview = !Number(item.market || 0);
+      item.sourceProductId = best.pricechartingProductId || best.productId || item.sourceProductId || '';
+      item.sourceVariantId = best.variantId || best.productConditionId || item.sourceVariantId || '';
+      item.tcgplayerSkuId = best.tcgplayerSkuId || best.skuId || item.tcgplayerSkuId || '';
       saveBuyList();
       renderBuyList();
     }
@@ -8811,15 +9149,26 @@ async function autoLookupBuyItem(item){
 }
 
 function removeBuyItem(id){
+  const item = buyList.find(i=>i.id===id);
   buyList = buyList.filter(i=>i.id!==id);
   saveBuyList();
+  if(item) logOpsEvent('buy_item_removed', 'Removed item from buy offer: ' + (item.name || id), { buySessionId:item.buySessionId || getActiveBuySession()?.buySessionId || '' });
   renderBuyList();
 }
 
 function updateBuyItem(id, field, value){
   const item = buyList.find(i => i.id === id);
   if(!item) return;
-  if(field === 'market') item.market = parseFloat(value) || 0;
+  if(field === 'market') {
+    item.market = parseFloat(value) || 0;
+    item.priceUsed = item.market;
+    item.priceLabel = item.priceSource === 'manual' ? 'Manual Price' : (item.priceLabel || item.priceSource || 'Market Price');
+  }
+  else if(field === 'cashOffer') {
+    item.cashOffer = parseFloat(value) || 0;
+    item.overrideReason = item.overrideReason || 'Manual offer override';
+    logOpsEvent('offer_overridden', 'Overrode buy offer for ' + (item.name || id), { buySessionId:item.buySessionId || getActiveBuySession()?.buySessionId || '', itemId:id, cashOffer:item.cashOffer });
+  }
   else item[field] = value;
   saveBuyList();
   renderBuyList();
@@ -8860,9 +9209,10 @@ function renderBuyList(){
 function renderBuyList(){
   const pct = parseFloat(document.getElementById('bl-pct').value||50)/100;
   const totalMkt = buyList.reduce((a,i)=>a+(Number(i.market)||0),0);
-  const offer = totalMkt * pct;
+  const offer = buyList.reduce((a,i)=>a+buyItemOfferValue(i),0);
   document.getElementById('bl-total-mkt').textContent = '$'+totalMkt.toFixed(2);
   document.getElementById('bl-offer').textContent = '$'+offer.toFixed(2);
+  renderBuySessionPanel();
   const el = document.getElementById('bl-items');
   if(!buyList.length){
     el.innerHTML='<div style="font-family:monospace,monospace;font-size:10px;color:var(--dim);text-align:center;padding:20px">Add cards to build offer</div>';
@@ -8880,7 +9230,8 @@ function renderBuyList(){
         ${['NM','LP','MP','HP','DMG'].map(c=>`<option value="${c}" ${String(i.condition||'NM')===c?'selected':''}>${c}</option>`).join('')}
       </select>
       <input type="number" step="0.01" value="${i.market||''}" placeholder="market" onchange="updateBuyItem('${i.id}','market',this.value)" ${added?'disabled':''} style="width:82px;background:var(--surf);border:1px solid var(--border);color:var(--text);padding:5px;border-radius:5px;font-size:10px">
-      <span class="bl-item-offer">${i.market?('$'+(Number(i.market)*pct).toFixed(2)):'...'}</span>
+      <input type="number" step="0.01" value="${Number(i.cashOffer || 0) ? Number(i.cashOffer).toFixed(2) : ''}" placeholder="$offer" title="Override cash offer" onchange="updateBuyItem('${i.id}','cashOffer',this.value)" ${added?'disabled':''} style="width:74px;background:var(--surf);border:1px solid var(--border);color:var(--gold);padding:5px;border-radius:5px;font-size:10px">
+      <span class="bl-item-offer">${i.market||i.cashOffer?('$'+buyItemOfferValue(i).toFixed(2)):'...'}</span>
       <button class="hbtn" onclick="addBuyItemToInventory('${i.id}')" ${added?'disabled':''} style="font-size:8px;padding:5px 7px;color:${added?'var(--g)':'var(--gold)'}">${added?'ADDED':'INV'}</button>
       <button class="bl-item-rm" onclick="removeBuyItem('${i.id}')">Ã—</button>
     </div>`;
@@ -8929,10 +9280,11 @@ function textBuyOffer(){
 function getBuyOfferTotals(){
   const pct = parseFloat(document.getElementById('bl-pct')?.value || 50) / 100;
   const marketTotal = buyList.reduce((a,i)=>a+Number(i.market||0),0);
+  const offerTotal = buyList.reduce((a,i)=>a+buyItemOfferValue(i),0);
   return {
     pct: Math.round(pct * 100),
     marketTotal: Math.round(marketTotal * 100) / 100,
-    offerTotal: Math.round(marketTotal * pct * 100) / 100,
+    offerTotal: Math.round(offerTotal * 100) / 100,
   };
 }
 
@@ -8956,13 +9308,14 @@ function logBuyOffer(addedCount, failedCount){
     items: buyList.map(i => ({
       name:i.name,
       market:Number(i.market||0),
-      offer:Math.round(Number(i.market||0) * (totals.pct/100) * 100) / 100,
+      offer:buyItemOfferValue(i),
       condition:i.condition || 'NM',
       category:i.category || '',
       set:i.set || '',
       year:i.year || '',
       card_number:i.card_number || '',
       priceSource:i.priceSource || '',
+      buySessionId:i.buySessionId || getActiveBuySession()?.buySessionId || '',
     })),
   });
   localStorage.setItem('pos_buy_offers', JSON.stringify(log.slice(0,200)));
@@ -8970,8 +9323,10 @@ function logBuyOffer(addedCount, failedCount){
 }
 
 function buyItemToInventoryUpdates(item){
-  const pct = parseFloat(document.getElementById('bl-pct')?.value || 50) / 100;
-  const cost = Math.round(Number(item.market || 0) * pct * 100) / 100;
+  const session = getActiveBuySession();
+  const cost = buyItemOfferValue(item);
+  const market = Number(item.market || item.priceUsed || 0);
+  const location = document.getElementById('buy-session-location')?.value || session?.location || (getShowMode()?.eventName ? 'Show buy - ' + getShowMode().eventName : 'Intake Tray');
   return {
     name:item.name,
     category:item.category === 'Pokemon TCG' ? 'TCG' : (item.category === 'Sealed' ? 'TCG' : (item.category || 'TCG')),
@@ -8979,9 +9334,17 @@ function buyItemToInventoryUpdates(item){
     variant:item.variant || '',
     year:item.year || '',
     condition:item.condition || 'NM',
-    market:Number(item.market || 0),
+    market,
     cost,
-    priceSource:item.priceSource || getScanPriceSource(item.scan) || 'manual',
+    priceSource:item.priceSource || item.pricingSource || getScanPriceSource(item.scan) || 'manual',
+    priceLabel:item.priceLabel || item.priceSource || item.pricingSource || 'Manual Price',
+    priceUsed:market,
+    buySessionId:session?.buySessionId || item.buySessionId || '',
+    sourceType:item.sourceType || item.source || 'walk_up_buy',
+    sourceProductId:item.sourceProductId || item.productId || item.pricechartingProductId || '',
+    sourceVariantId:item.sourceVariantId || item.variantId || item.productConditionId || '',
+    tcgplayerSkuId:item.tcgplayerSkuId || item.skuId || '',
+    expectedProfit:Math.round((market - cost) * 100) / 100,
     card_number:item.card_number || '',
     serial_number:item.serial_number || '',
     player:item.player || '',
@@ -8992,7 +9355,7 @@ function buyItemToInventoryUpdates(item){
     grading_company:item.grading_company || '',
     grade:item.grade || '',
     cert_number:item.cert_number || '',
-    location:getShowMode()?.eventName ? 'Show buy - ' + getShowMode().eventName : 'Buy/trade intake',
+    location,
     key_notes:[
       'Buy/trade intake',
       item.is_sealed ? 'Sealed product' : '',
@@ -9000,6 +9363,7 @@ function buyItemToInventoryUpdates(item){
       item.upc ? 'UPC: ' + item.upc : '',
       'Offer cost: $' + cost.toFixed(2),
       item.priceSource ? 'Price source: ' + priceSourceInfo(item.priceSource, item.category).label : '',
+      session?.buySessionId ? 'Buy session: ' + session.buySessionId : '',
       document.getElementById('bl-customer')?.value.trim() ? 'Customer: ' + document.getElementById('bl-customer').value.trim() : '',
       document.getElementById('bl-phone')?.value.trim() ? 'Phone: ' + document.getElementById('bl-phone').value.trim() : '',
       item.scan?.confidence ? 'Scan confidence: '+item.scan.confidence : '',
@@ -9041,6 +9405,7 @@ async function createBuyItemInventoryRecord(item){
   item.inventoryId = productId;
   item.inventoryError = '';
   item.addedToInventoryAt = new Date().toISOString();
+  logOpsEvent('inventory_created_from_buy', 'Created inventory from buy item: ' + (item.name || productId), { buySessionId:updates.buySessionId || '', inventoryId:productId, cost:updates.cost, market:updates.market, source:updates.priceSource });
   return productId;
 }
 
@@ -9465,7 +9830,7 @@ function normalizeCartTotals(cartData){
 async function saveActiveCartData(cartData){
   normalizeCartTotals(cartData);
   cartData.savedAt = new Date().toISOString();
-  cartData.storeId = STORE_ID;
+  cartData.storeId = getActiveStoreId();
   cartData.registerId = REGISTER_ID;
   cartData.appVersion = APP_VERSION;
   localStorage.setItem('pos_cart_v2', JSON.stringify(cartData));
@@ -9528,12 +9893,14 @@ async function recordCustomerDisplayPayment(method, total, tenderType){
     drawerState.cashSales = Number(drawerState.cashSales || 0) + Number(total || 0);
     saveDrawer();
     renderDrawer();
+    logOpsEvent('cash_drawer_updated', 'Cash drawer updated from sale', { txId:tx.id, amount:Number(total || 0), drawerSessionId:drawerState.id || '' });
   }
   await markCartItemsSoldFromPayment(items, method, paidAt);
-  const empty = { items:[], discount:0, savedAt:paidAt, clearedAt:paidAt, lastTxId:tx.id, storeId:STORE_ID, registerId:REGISTER_ID, appVersion:APP_VERSION };
+  const empty = { items:[], discount:0, savedAt:paidAt, clearedAt:paidAt, lastTxId:tx.id, storeId:getActiveStoreId(), registerId:REGISTER_ID, appVersion:APP_VERSION };
   localStorage.setItem('pos_cart_v2', JSON.stringify(empty));
   postCartToWorker(empty);
   renderCustomerDisplay();
+  logOpsEvent('sale_completed', 'Completed sale from dashboard cart', { txId:tx.id, method, tenderType:normalizedTender, total:Number(total || 0), items:items.length });
   toast_dash(method + ' payment recorded');
 }
 
