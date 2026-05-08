@@ -19,12 +19,39 @@ test('dashboard html and worker scripts parse', async () => {
 test('dashboard loads current build with primary nav and Research tab', async ({ page }) => {
   const guard = await openDashboard(page);
   await expect(page.locator('.logo')).toContainText(/WALK-OFF/i);
-  await expect(page.locator('.logo')).toContainText(/2026\.05\.08\.02/);
+  await expect(page.locator('.logo')).toContainText(/2026\.05\.08\.03/);
   await expect(page.locator('[data-tab="overview"]')).toBeVisible();
   await expect(page.locator('[data-tab="research"]')).toBeVisible();
+  await expect(page.locator('[data-tab="authcheck"]')).toBeVisible();
   await page.locator('[data-tab="research"]').click();
   await expect(page.locator('#tab-research.on')).toBeVisible();
   await expect(page.locator('#research-queue-panel')).toBeVisible();
   await expect(page.locator('#register-quick-panel')).toBeVisible();
+  guard.assertClean();
+});
+
+test('auth check workbench uses risk language and missing-check evidence', async ({ page }) => {
+  const guard = await openDashboard(page);
+  await page.evaluate(() => {
+    const item = window.upsertDealerItem({
+      identity: {
+        category: 'Pokemon',
+        title: 'Charizard ex SIR',
+        setName: 'Scarlet & Violet 151',
+        cardNumber: '199/165',
+        printing: 'Special Illustration Rare',
+        language: 'English',
+      },
+      workflow: { stage: 'auth_pending', queueMembership: ['authQueue'] },
+    }, 'qa_auth_item_created');
+    window.enqueueDealerItem(item.itemId, 'authQueue', 'auth_pending');
+    window.openItemInAuthCheck(item.itemId);
+  });
+  await expect(page.locator('#tab-authcheck.on')).toBeVisible();
+  await page.getByRole('button', { name: /run auth check/i }).click();
+  await expect(page.locator('#auth-decision-body')).toContainText(/Manual Review Required|High Risk|Medium Risk/);
+  await expect(page.locator('#auth-decision-body')).toContainText(/Confidence:/);
+  await expect(page.locator('#auth-decision-body')).toContainText(/Front photo|Back photo/);
+  await expect(page.locator('#auth-decision-body')).not.toContainText(/\bFake\b|\bReal\b/);
   guard.assertClean();
 });

@@ -228,6 +228,18 @@ tr.sold:hover td{opacity:.7;}
 .research-queue-img{width:54px;height:64px;border-radius:6px;border:1px solid var(--border);object-fit:cover;background:#050507;}
 .research-queue-actions{grid-column:1 / -1;display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:4px;}
 .research-queue-actions .ra{min-height:34px;}
+.auth-grid{max-width:1540px;margin:0 auto;padding:0 20px;display:grid;grid-template-columns:minmax(260px,.9fr) minmax(0,2.2fr) minmax(270px,.95fr);gap:14px;align-items:start;}
+.auth-panel-sticky{position:sticky;top:112px;}
+.auth-risk{border-radius:12px;border:1px solid var(--border);padding:14px;background:var(--surf2);}
+.auth-risk.low{border-color:rgba(0,255,179,.32);background:rgba(0,255,179,.06);}
+.auth-risk.medium{border-color:rgba(255,209,102,.35);background:rgba(255,209,102,.07);}
+.auth-risk.high{border-color:rgba(255,77,109,.38);background:rgba(255,77,109,.08);}
+.auth-risk.manual{border-color:rgba(72,202,228,.35);background:rgba(72,202,228,.07);}
+.auth-check-row{display:flex;justify-content:space-between;gap:8px;align-items:center;border:1px solid var(--border);background:var(--surf2);border-radius:8px;padding:8px;margin-bottom:7px;}
+.auth-compare{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.auth-compare-pane{min-height:280px;border:1px solid var(--border);border-radius:12px;background:#050507;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative;}
+.auth-compare-pane img{max-width:100%;max-height:340px;object-fit:contain;}
+.auth-source-label{position:absolute;left:8px;bottom:8px;font-family:monospace,monospace;font-size:9px;color:var(--dim);background:rgba(0,0,0,.58);border:1px solid rgba(255,255,255,.12);border-radius:999px;padding:5px 8px;}
 .qpl-img-shell{min-height:260px;background:#050507;border:1px solid rgba(255,255,255,.12);border-radius:12px;display:flex;align-items:center;justify-content:center;overflow:hidden;cursor:zoom-in;position:relative;}
 .qpl-img-shell img{width:100%;height:100%;max-height:320px;object-fit:contain;display:block;}
 .qpl-img-shell::after{content:'TAP TO ZOOM';position:absolute;left:10px;bottom:10px;font-family:monospace,monospace;font-size:9px;letter-spacing:1px;color:rgba(255,255,255,.55);background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.12);border-radius:999px;padding:5px 8px;}
@@ -323,6 +335,9 @@ tr.sold:hover td{opacity:.7;}
   .qpl-selected-top{grid-template-columns:minmax(180px,240px) 1fr;}
   .research-grid{grid-template-columns:1fr;max-width:900px;}
   .research-grid #register-quick-panel,.research-grid #research-queue-panel,.research-grid #research-actions-panel{grid-column:1;grid-row:auto;}
+  .auth-grid{grid-template-columns:1fr;max-width:900px;}
+  .auth-panel-sticky{position:static;}
+  .auth-compare{grid-template-columns:1fr;}
 }
 @media(max-width:600px){
   body{font-size:16px;}
@@ -841,9 +856,51 @@ tr.sold:hover td{opacity:.7;}
         <button class="hbtn buy" onclick="addSelectedResearchResultToBuyOffer()">ADD SELECTED TO BUY OFFER</button>
         <button class="hbtn" onclick="addSelectedResearchResultToInventory()">ADD SELECTED TO INVENTORY</button>
         <button class="hbtn" onclick="addSelectedResearchResultToSaleCart()">ADD SELECTED TO SALE CART</button>
+        <button class="hbtn" style="color:var(--blue)" onclick="sendSelectedResearchResultToAuthCheck()">AUTH CHECK SELECTED</button>
         <button class="hbtn" style="color:var(--gold)" onclick="markSelectedResearchNeedsReview()">MARK NEEDS REVIEW</button>
       </div>
       <div id="research-action-status" style="font-family:monospace,monospace;font-size:10px;color:var(--dim);margin-top:12px;line-height:1.45"></div>
+    </div>
+  </div>
+</div>
+
+<!-- AUTH CHECK TAB -->
+<div id="tab-authcheck" class="tab-panel">
+  <div class="sec">AUTH CHECK</div>
+  <div style="max-width:1540px;margin:0 auto 14px;padding:0 20px">
+    <div class="panel" style="border-color:rgba(255,209,102,.22);background:rgba(255,209,102,.045)">
+      <div class="ph">AUTHENTICITY RISK WORKBENCH <span style="font-size:9px;color:var(--dim)">Pokemon / MTG evidence review</span></div>
+      <div style="font-family:monospace,monospace;font-size:11px;color:var(--dim);line-height:1.55">
+        This tool assesses authenticity risk and highlights suspicious signals. It does not guarantee authenticity. Results use risk language and become more conservative when evidence is missing.
+      </div>
+    </div>
+  </div>
+  <div id="authcheck-panels" class="auth-grid">
+    <div class="panel" id="auth-queue-panel">
+      <div class="ph">AUTH QUEUE <span id="auth-queue-count" style="font-size:9px;color:var(--dim)">0 queued</span></div>
+      <div style="font-family:monospace,monospace;font-size:10px;color:var(--dim);line-height:1.55;margin-bottom:10px">
+        Scanner, Research, and Inventory items that need trust review.
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+        <button class="hbtn" onclick="renderAuthCheckWorkbench()">REFRESH</button>
+        <button class="hbtn" onclick="createManualAuthItem()">MANUAL ITEM</button>
+      </div>
+      <div id="auth-queue-list" style="display:grid;gap:8px"></div>
+      <div style="margin-top:12px">
+        <div class="ph" style="font-size:10px">PHOTO CHECKLIST</div>
+        <div id="auth-photo-checklist"></div>
+      </div>
+    </div>
+    <div class="panel" id="auth-workspace-panel">
+      <div id="auth-workspace-body" style="font-family:monospace,monospace;font-size:10px;color:var(--dim);line-height:1.55">
+        Choose an item from the Auth Queue, or send one here from Research.
+      </div>
+    </div>
+    <div class="panel auth-panel-sticky" id="auth-decision-panel">
+      <div class="ph">RISK VERDICT <span style="font-size:9px;color:var(--dim)">explainable / conservative</span></div>
+      <div id="auth-decision-body" style="font-family:monospace,monospace;font-size:10px;color:var(--dim);line-height:1.55">
+        No item selected.
+      </div>
     </div>
   </div>
 </div>
@@ -1224,7 +1281,7 @@ tr.sold:hover td{opacity:.7;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.05.08.02';
+const APP_VERSION = '2026.05.08.03';
 const SUPABASE_URL = 'https://vroknjrxubsqyexngwus.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_wbpX2nL8l-4NbXtZNG_bjA_nabSYaJ5';
 const AUTH_REDIRECT_URL = 'https://squeebmike.github.io/ArSca/dashboard.html';
@@ -1247,7 +1304,7 @@ const WALKOFF_DEMO_STORES = [
   { id:'demo-show-store', ownerUserId:'demo-owner', name:'demo-show-store', displayName:'Demo Show Store', logoUrl:'', location:'Card Show', timezone:'America/Los_Angeles', currency:'USD', status:'active', createdAt:'2026-05-06T00:00:00.000Z' },
 ];
 const WALKOFF_DEMO_USER = { id:'demo-owner', email:'owner@walkoff.local', displayName:'Store Owner', role:'owner', defaultStoreId:'walkoff-main', createdAt:'2026-05-06T00:00:00.000Z' };
-const WALKOFF_SCOPED_KEYS = new Set(['lba_inventory','walkoff_universal_inventory','pos_cart_v2','pos_buy_list','pos_buy_offers','pos_active_buy_session','pos_buy_sessions','pos_transactions','pos_drawer','pos_drawer_closeouts','pos_wantlist','set_needs_v1','pos_consign','pos_locations','vendor_profile_v1','vendor_config_v1','store_payment_settings_v1','store_onboarding_v1','pos_ops_log','inventory_lifecycle','pos_show_mode','sync_queue_v1','pos_customers','pos_undo_stack','sheet_mapping_v1','grade_submissions','research_needs_review_v1','lba_sales']);
+const WALKOFF_SCOPED_KEYS = new Set(['lba_inventory','walkoff_universal_inventory','pos_cart_v2','pos_buy_list','pos_buy_offers','pos_active_buy_session','pos_buy_sessions','pos_transactions','pos_drawer','pos_drawer_closeouts','pos_wantlist','set_needs_v1','pos_consign','pos_locations','vendor_profile_v1','vendor_config_v1','store_payment_settings_v1','store_onboarding_v1','pos_ops_log','inventory_lifecycle','pos_show_mode','sync_queue_v1','pos_customers','pos_undo_stack','sheet_mapping_v1','grade_submissions','research_needs_review_v1','dealer_items_v1','dealer_photos_v1','dealer_auth_checks_v1','dealer_queues_v1','lba_sales']);
 const WALKOFF_AUTH_SESSION_KEY = 'walkoff_auth_session_v1';
 const WALKOFF_ACTIVE_STORE_KEY = 'walkoff_active_store_id';
 const WALKOFF_STORAGE_MIGRATION_KEY = 'walkoff_store_migration_v1';
@@ -1275,7 +1332,7 @@ function roleCanAccessTab(tab){
   const role = currentRole();
   if(role === 'owner' || role === 'admin') return true;
   if(role === 'manager') return !['backoffice'].includes(tab);
-  if(role === 'employee') return ['overview','display','inventory','research','pos','alerts','wantlist','locations','restock'].includes(tab);
+  if(role === 'employee') return ['overview','display','inventory','research','authcheck','pos','alerts','wantlist','locations','restock'].includes(tab);
   if(role === 'scanner_only') return false;
   return false;
 }
@@ -1625,6 +1682,108 @@ function renderAccountHeader(){
     switcher.innerHTML = session.stores.map(s => `<option value="${s.id}" ${s.id===store.id?'selected':''}>${escHtml(s.displayName)}</option>`).join('');
   }
 }
+
+function normalizedIdentityKey(parts = {}){
+  return [parts.category, parts.title || parts.name, parts.setName || parts.set, parts.cardNumber || parts.card_number, parts.printing, parts.language]
+    .map(v => String(v || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim())
+    .filter(Boolean)
+    .join('|') || 'unidentified';
+}
+
+function getDealerItems(){
+  return safeLocalJson('dealer_items_v1', { itemsById:{}, photosById:{}, authChecksById:{}, queuesById:{ scannerInbox:[], researchQueue:[], authQueue:[], buyOfferQueue:[], inventoryDraftQueue:[], needsReviewQueue:[] } });
+}
+
+function saveDealerItems(state){
+  const next = {
+    itemsById:{ ...(state.itemsById || {}) },
+    photosById:{ ...(state.photosById || {}) },
+    authChecksById:{ ...(state.authChecksById || {}) },
+    queuesById:{ scannerInbox:[], researchQueue:[], authQueue:[], buyOfferQueue:[], inventoryDraftQueue:[], needsReviewQueue:[], ...(state.queuesById || {}) },
+    updatedAt:new Date().toISOString(),
+    appVersion:APP_VERSION,
+  };
+  localStorage.setItem('dealer_items_v1', JSON.stringify(next));
+  return next;
+}
+
+function auditItemEvent(item, type, detail = {}){
+  const entry = { type, detail, ts:new Date().toISOString(), userId:getAuthSession()?.user?.id || 'local-user', appVersion:APP_VERSION };
+  item.audit = item.audit || { history:[] };
+  item.audit.history = [entry, ...(item.audit.history || [])].slice(0,100);
+}
+
+function upsertDealerItem(patch, eventType = 'item_updated'){
+  const state = getDealerItems();
+  const existing = patch.itemId ? state.itemsById[patch.itemId] : null;
+  const itemId = patch.itemId || existing?.itemId || 'item_' + Date.now() + '_' + Math.random().toString(36).slice(2,6);
+  const item = {
+    itemId,
+    storeId:getActiveStoreId(),
+    identity:{ category:'', title:'', setName:'', cardNumber:'', printing:'', language:'English', normalizedIdentityKey:'' },
+    images:[],
+    research:{ source:null, priceState:null, selectedVariant:null },
+    auth:{ latestAuthCheckId:null, riskLevel:null, confidencePercent:null, redFlags:[], missingChecks:[], watchlistHits:[], slabStatus:null, managerOverride:null },
+    workflow:{ stage:'scanned', queueMembership:[] },
+    audit:{ history:[] },
+    createdAt:new Date().toISOString(),
+    ...(existing || {}),
+    ...patch,
+    identity:{ ...(existing?.identity || {}), ...(patch.identity || {}) },
+    research:{ ...(existing?.research || {}), ...(patch.research || {}) },
+    auth:{ ...(existing?.auth || {}), ...(patch.auth || {}) },
+    workflow:{ ...(existing?.workflow || {}), ...(patch.workflow || {}) },
+    updatedAt:new Date().toISOString(),
+  };
+  item.identity.normalizedIdentityKey = item.identity.normalizedIdentityKey || normalizedIdentityKey(item.identity);
+  auditItemEvent(item, eventType, { stage:item.workflow?.stage || '' });
+  state.itemsById[itemId] = item;
+  saveDealerItems(state);
+  return item;
+}
+
+function enqueueDealerItem(itemId, queueId, stage){
+  const state = getDealerItems();
+  state.queuesById = state.queuesById || {};
+  state.queuesById[queueId] = [itemId, ...(state.queuesById[queueId] || []).filter(id => id !== itemId)].slice(0,200);
+  const item = state.itemsById[itemId];
+  if(item) {
+    item.workflow = item.workflow || {};
+    item.workflow.stage = stage || item.workflow.stage || 'needs_review';
+    item.workflow.queueMembership = [...new Set([...(item.workflow.queueMembership || []), queueId])];
+    auditItemEvent(item, 'queued_' + queueId, { queueId, stage:item.workflow.stage });
+  }
+  saveDealerItems(state);
+  return item;
+}
+
+function dealerItemFromResearchResult(r = {}, source = 'research'){
+  const selectedVariant = r.selectedVariant || {};
+  const item = upsertDealerItem({
+    itemId:r.normalizedItemId || '',
+    identity:{
+      category:normalizeQuickCategory(r.category || selectedVariant.game || ''),
+      title:r.name || 'Unidentified item',
+      setName:r.set || r.setName || '',
+      cardNumber:r.card_number || r.cardNumber || '',
+      printing:selectedVariant.finish || selectedVariant.printing || r.selectedFinish || r.finish || '',
+      language:selectedVariant.language || r.selectedLanguage || 'English',
+    },
+    images:[r.imageUrl].filter(Boolean),
+    research:{
+      source:r.priceSource || r.source || source,
+      priceState:typeof qplTruthLabel === 'function' ? qplTruthLabel(r) : '',
+      selectedVariant:selectedVariant || null,
+      market:Number(r.market || selectedVariant.marketPrice || 0),
+      sourceProductId:r.productId || r.pricecharting?.productId || '',
+      sourceVariantId:selectedVariant.variantId || selectedVariant.productConditionId || '',
+    },
+    workflow:{ stage:'researched', queueMembership:['researchQueue'] },
+    sourcePayload:r,
+  }, 'research_identity_saved');
+  enqueueDealerItem(item.itemId, 'researchQueue', 'researched');
+  return item;
+}
 let all=[], filtered=[], activeF='all', activeTab='overview', soldData=[];
 let ts={col:'name',dir:1};
 const PER=50; let page=1;
@@ -1633,6 +1792,7 @@ const DAILY_TABS = [
   ['intake', 'BUY'],
   ['display', 'SELL'],
   ['research', 'RESEARCH'],
+  ['authcheck', 'AUTH CHECK'],
   ['inventory', 'INVENTORY'],
   ['shows', 'SHOWS'],
 ];
@@ -1908,6 +2068,7 @@ function organizeRegisterLayout(){
   moveNode('register-buy-panel', intake);
   ensureBuyResearchBridge(intake);
   renderResearchQueue();
+  renderAuthCheckWorkbench();
   ensureSetNeedsPanel(wantsHub);
   ensureBuySignalsPanel(overview || backoffice);
   ensureOnboardingPanel(overview || backoffice);
@@ -2027,6 +2188,7 @@ function ensureLegacyToolsPanel(backoffice){
     ['pos','Sell / register'],
     ['intake','Buy / intake'],
     ['research','Research / lookup'],
+    ['authcheck','Auth Check / risk workbench'],
     ['display','Sell / cart'],
     ['inventory','Inventory'],
     ['shows','Shows / cash drawer'],
@@ -5037,6 +5199,9 @@ function renderTable(){
     if(item && actCell && !actCell.querySelector('.history-btn')) {
       actCell.querySelector('.row-act')?.insertAdjacentHTML('beforeend', `<button class="ra history-btn" onclick="openItemTimeline('${item.id}')">History</button>`);
     }
+    if(item && actCell && !actCell.querySelector('.auth-btn')) {
+      actCell.querySelector('.row-act')?.insertAdjacentHTML('beforeend', `<button class="ra auth-btn" style="background:rgba(72,202,228,.08);border-color:rgba(72,202,228,.24);color:var(--blue)" onclick="sendInventoryItemToAuthCheck('${item.id}')">Auth</button>`);
+    }
     if(item && actCell && !actCell.querySelector('.archive-btn')) {
       const archived = item.lifecycle === 'archived' || item.status === 'archived' || item.archivedAt;
       actCell.querySelector('.row-act')?.insertAdjacentHTML('beforeend', archived
@@ -5459,6 +5624,21 @@ function scanMatchToQuickLookupResult(match, scan){
   });
 }
 
+function dealerItemFromScan(scan = {}){
+  const match = scan.bestMatch || scan.possibleMatches?.[0] || {};
+  const r = scanMatchToQuickLookupResult(match, scan);
+  const item = dealerItemFromResearchResult(r, 'scanner');
+  item.scanId = scan.id || scan.scanId || '';
+  item.images = [...new Set([...(item.images || []), getScanImageUrl(scan)].filter(Boolean))];
+  item.workflow.stage = 'scanned';
+  auditItemEvent(item, 'scanner_payload_linked', { scanId:item.scanId });
+  const state = getDealerItems();
+  state.itemsById[item.itemId] = item;
+  saveDealerItems(state);
+  enqueueDealerItem(item.itemId, 'scannerInbox', 'scanned');
+  return item;
+}
+
 async function openScanInResearch(scanId){
   const queue = await readScanInbox();
   const review = getResearchNeedsReviewQueue();
@@ -5474,6 +5654,7 @@ async function openScanInResearch(scanId){
   const matches = [scan.bestMatch, ...(scan.possibleMatches || [])].filter(Boolean);
   if(matches.length) {
     qplMasterResults = matches.map(m => scanMatchToQuickLookupResult(m, scan));
+    qplMasterResults.forEach(r => { r.normalizedItemId = dealerItemFromResearchResult(r, 'scanner').itemId; });
     qplResults = filterQplMasterResults(qplMasterResults, cat?.value || '');
     renderQuickLookupResults(qplResults);
   } else if(q) {
@@ -5573,12 +5754,479 @@ async function renderResearchQueue(){
       </div>
       <div class="research-queue-actions">
         <button class="ra" onclick="openScanInResearch('${id}')">Open</button>
+        <button class="ra" onclick="sendScanToAuthCheck('${id}')">Auth</button>
         <button class="ra" onclick="addResearchQueueItemToBuy('${id}')">Buy</button>
         <button class="ra" onclick="addResearchQueueItemToCart('${id}')">Cart</button>
         <button class="ra" onclick="markResearchScanNeedsReview('${id}')">Review</button>
       </div>
     </div>`;
   }).join('');
+}
+
+let activeAuthItemId = '';
+const AUTH_REQUIRED_PHOTOS = ['front','back'];
+const AUTH_CONDITIONAL_PHOTOS = {
+  holo_angle:'Foil / holo angle',
+  texture_closeup:'Texture close-up',
+  corner_macro_top_left:'Corner macro',
+  surface_macro_art_box:'Surface / print close-up',
+};
+const AUTH_WATCHLIST_DEFAULTS = [
+  { name:'Umbreon VMAX Alt Art', set:'Evolving Skies', cardNumber:'215/203', riskReason:'Common high-value counterfeit target', suspicionWeight:18, requiresManagerReview:true },
+  { name:'Charizard SIR', set:'', cardNumber:'', riskReason:'High-value modern hit family', suspicionWeight:14, requiresManagerReview:true },
+  { name:'Base Set Charizard', set:'Base Set', cardNumber:'4/102', riskReason:'High-value vintage counterfeit target', suspicionWeight:20, requiresManagerReview:true },
+  { name:'Force of Will', set:'', cardNumber:'', riskReason:'High-value MTG staple', suspicionWeight:18, requiresManagerReview:true },
+  { name:'Mana Crypt', set:'', cardNumber:'', riskReason:'High-value MTG staple', suspicionWeight:16, requiresManagerReview:true },
+  { name:'Dual Lands', set:'', cardNumber:'', riskReason:'High-value vintage MTG family', suspicionWeight:20, requiresManagerReview:true },
+];
+
+function getAuthWatchlist(){
+  const saved = safeLocalJson('auth_watchlist_v1', null);
+  return Array.isArray(saved) && saved.length ? saved : AUTH_WATCHLIST_DEFAULTS;
+}
+
+function getDealerItem(itemId){
+  return getDealerItems().itemsById?.[itemId] || null;
+}
+
+function itemAuthCategory(item = {}){
+  const txt = [
+    item.identity?.category,
+    item.identity?.title,
+    item.identity?.setName,
+    item.research?.source,
+    item.sourcePayload?.category,
+    item.sourcePayload?.game,
+  ].join(' ').toLowerCase();
+  if(txt.includes('pokemon') || txt.includes('pokémon')) return 'Pokemon';
+  if(txt.includes('magic') || txt.includes('mtg')) return 'Magic: The Gathering';
+  if(txt.includes('tcg')) return 'Trading Card';
+  if(txt.includes('slab') || txt.includes('graded')) return 'Slab';
+  if(txt.includes('comic')) return 'Comic';
+  return item.identity?.category || 'Collectibles';
+}
+
+function authCategorySupported(item){
+  const cat = itemAuthCategory(item).toLowerCase();
+  return cat.includes('pokemon') || cat.includes('magic') || cat.includes('trading card') || cat.includes('slab');
+}
+
+function getItemPhotoMap(item = {}, state = getDealerItems()){
+  const map = {};
+  (item.images || []).forEach(idOrUrl => {
+    const p = state.photosById?.[idOrUrl];
+    if(p?.captureType) map[p.captureType] = p;
+  });
+  Object.values(state.photosById || {}).forEach(p => {
+    if(p.itemId === item.itemId && p.captureType) map[p.captureType] = p;
+  });
+  return map;
+}
+
+function authPhotoChecklistForItem(item = {}, state = getDealerItems()){
+  const photos = getItemPhotoMap(item, state);
+  const text = [item.identity?.title, item.identity?.setName, item.identity?.printing, item.sourcePayload?.variant, item.sourcePayload?.rarity].join(' ').toLowerCase();
+  const highValue = getAuthWatchlist().some(w => authWatchlistMatch(item, w));
+  const wantsTexture = /sir|special illustration|alt art|secret|rainbow|textured|moonbreon|charizard|vmax|rare|mythic/.test(text) || highValue;
+  const wanted = [
+    ...AUTH_REQUIRED_PHOTOS.map(type => ({ type, label:type === 'front' ? 'Front photo' : 'Back photo', required:true })),
+    ...(wantsTexture ? [
+      { type:'holo_angle', label:'Holo / finish angle', required:false },
+      { type:'texture_closeup', label:'Texture close-up', required:false },
+      { type:'corner_macro_top_left', label:'Corner macro', required:false },
+      { type:'surface_macro_art_box', label:'Surface / print close-up', required:false },
+    ] : []),
+  ];
+  return wanted.map(x => ({ ...x, captured:!!photos[x.type], qualityScore:Number(photos[x.type]?.qualityScore || 0), photo:photos[x.type] || null }));
+}
+
+function authWatchlistMatch(item = {}, watch = {}){
+  const title = String(item.identity?.title || '').toLowerCase();
+  const set = String(item.identity?.setName || '').toLowerCase();
+  const num = String(item.identity?.cardNumber || '').toLowerCase();
+  const wName = String(watch.name || '').toLowerCase();
+  if(!wName) return false;
+  const nameHit = title.includes(wName) || wName.split(/\s+/).filter(Boolean).some(t => t.length > 4 && title.includes(t));
+  const setHit = !watch.set || set.includes(String(watch.set).toLowerCase());
+  const numHit = !watch.cardNumber || num === String(watch.cardNumber).toLowerCase();
+  return nameHit && setHit && numHit;
+}
+
+function analyzeAuthRisk(item = {}){
+  const state = getDealerItems();
+  const checklist = authPhotoChecklistForItem(item, state);
+  const missingRequired = checklist.filter(x => x.required && !x.captured).map(x => x.label);
+  const missingOptional = checklist.filter(x => !x.required && !x.captured).map(x => x.label);
+  const poorQuality = checklist.filter(x => x.captured && x.qualityScore && x.qualityScore < 60).map(x => x.label + ' low quality');
+  const watchHits = getAuthWatchlist().filter(w => authWatchlistMatch(item, w));
+  const category = itemAuthCategory(item);
+  const supported = authCategorySupported(item);
+  const matchingSignals = [];
+  const redFlags = [];
+  const missingChecks = [...missingRequired, ...poorQuality];
+  if(missingOptional.length) missingChecks.push(...missingOptional.map(x => x + ' missing'));
+  if(item.identity?.title) matchingSignals.push('Selected identity is attached to the item record.');
+  if(item.identity?.setName || item.identity?.cardNumber) matchingSignals.push('Set/card number metadata is available for comparison.');
+  if(checklist.some(x => x.captured)) matchingSignals.push('Candidate photos are saved with capture labels.');
+  if(item.research?.selectedVariant || item.research?.sourceProductId) matchingSignals.push('Research source data is linked.');
+  if(!supported) redFlags.push('Category is outside the current Pokemon / MTG auth profile.');
+  if(watchHits.length) redFlags.push('High-risk watchlist hit: ' + watchHits.map(w => w.name).join(', '));
+  if(poorQuality.length) redFlags.push('One or more captured photos are too low quality for confident review.');
+  let confidence = 82;
+  confidence -= missingRequired.length * 22;
+  confidence -= missingOptional.length * 6;
+  confidence -= poorQuality.length * 12;
+  confidence -= watchHits.reduce((n,w) => n + Number(w.suspicionWeight || 10), 0);
+  if(!supported) confidence -= 24;
+  confidence = Math.max(8, Math.min(92, Math.round(confidence)));
+  let riskLevel = 'Low Risk';
+  if(!supported || missingRequired.length) riskLevel = 'Manual Review Required';
+  else if(watchHits.length && (missingOptional.length || poorQuality.length)) riskLevel = 'Manual Review Required';
+  else if(watchHits.length || redFlags.length || confidence < 68) riskLevel = 'Medium Risk';
+  if(confidence < 35 && redFlags.length > 1) riskLevel = 'High Risk';
+  const slabStatus = item.auth?.slabStatus || { grader:item.sourcePayload?.grader || '', certNumber:item.sourcePayload?.cert_number || item.sourcePayload?.certNumber || '', status:item.sourcePayload?.slabVerified ? 'Verified lookup attached' : 'Not verified in this auth check' };
+  const referenceSourcesUsed = [
+    category === 'Pokemon' ? 'Official Pokemon metadata / reference when configured' : '',
+    category === 'Magic: The Gathering' ? 'Gatherer / official Magic metadata when configured' : '',
+    'Store-owned authentic photo library when available',
+  ].filter(Boolean);
+  const would = riskLevel === 'High Risk' ? 'No' : riskLevel === 'Manual Review Required' ? 'Maybe' : riskLevel === 'Medium Risk' ? 'Maybe' : 'Yes';
+  const recommendedNextAction = riskLevel === 'Low Risk'
+    ? 'Proceed only after normal condition and price review.'
+    : riskLevel === 'Medium Risk'
+      ? 'Capture missing evidence or have a manager review before buying high value items.'
+      : riskLevel === 'High Risk'
+        ? 'Do not buy without manager override and documented manual review.'
+        : 'Capture required front/back evidence and complete manual review.';
+  return {
+    authCheckId:'auth_' + Date.now() + '_' + Math.random().toString(36).slice(2,6),
+    itemId:item.itemId,
+    storeId:getActiveStoreId(),
+    createdAt:new Date().toISOString(),
+    riskLevel,
+    confidencePercent:confidence,
+    matchingSignals,
+    redFlags,
+    missingChecks,
+    referenceSourcesUsed,
+    slabStatus,
+    watchlistHits:watchHits.map(w => ({ name:w.name, reason:w.riskReason || '', requiresManagerReview:!!w.requiresManagerReview })),
+    recommendedNextAction,
+    wouldYouBuyThis:{ answer:would, reason: would === 'Yes' ? 'Current evidence is consistent enough for normal dealer review.' : 'Risk, missing evidence, or watchlist status keeps this from a clean buy recommendation.' },
+  };
+}
+
+function runAuthCheck(itemId){
+  const state = getDealerItems();
+  const item = state.itemsById?.[itemId];
+  if(!item) return toast_dash('Auth item not found');
+  const result = analyzeAuthRisk(item);
+  state.authChecksById[result.authCheckId] = result;
+  item.auth = {
+    ...(item.auth || {}),
+    latestAuthCheckId:result.authCheckId,
+    riskLevel:result.riskLevel,
+    confidencePercent:result.confidencePercent,
+    redFlags:result.redFlags,
+    missingChecks:result.missingChecks,
+    watchlistHits:result.watchlistHits.map(w => w.name),
+    slabStatus:result.slabStatus,
+  };
+  item.workflow = item.workflow || {};
+  item.workflow.stage = 'auth_reviewed';
+  auditItemEvent(item, 'auth_check_run', { riskLevel:result.riskLevel, confidencePercent:result.confidencePercent });
+  state.itemsById[itemId] = item;
+  saveDealerItems(state);
+  logOpsEvent('auth_check_run', 'Auth risk check: ' + (item.identity?.title || 'item') + ' - ' + result.riskLevel, { itemId, riskLevel:result.riskLevel, confidence:result.confidencePercent });
+  activeAuthItemId = itemId;
+  renderAuthCheckWorkbench(itemId);
+  toast_dash('Auth check complete: ' + result.riskLevel);
+}
+
+function authRiskClass(level = ''){
+  const l = String(level).toLowerCase();
+  if(l.includes('low')) return 'low';
+  if(l.includes('medium')) return 'medium';
+  if(l.includes('high')) return 'high';
+  return 'manual';
+}
+
+function renderAuthChecklist(item){
+  if(!item) return '<div style="color:var(--dim)">Select an item to see required captures.</div>';
+  const checklist = authPhotoChecklistForItem(item);
+  return checklist.map(x => `<div class="auth-check-row">
+    <div>
+      <div style="color:${x.captured?'var(--g)':x.required?'var(--gold)':'var(--dim)'};font-weight:800">${x.captured?'DONE':'MISSING'} - ${escHtml(x.label)}</div>
+      <div style="font-size:9px;color:var(--dim)">${x.required?'Required evidence':'Conditional evidence'}${x.qualityScore?' / quality '+x.qualityScore+'%':''}</div>
+    </div>
+    <button class="ra" onclick="captureAuthPhoto('${item.itemId}','${x.type}')">${x.captured?'Replace':'Capture'}</button>
+  </div>`).join('');
+}
+
+function latestAuthResult(item, state = getDealerItems()){
+  return item?.auth?.latestAuthCheckId ? state.authChecksById?.[item.auth.latestAuthCheckId] || null : null;
+}
+
+function renderAuthCheckWorkbench(selectedItemId = activeAuthItemId){
+  const state = getDealerItems();
+  const queue = (state.queuesById?.authQueue || []).filter(id => state.itemsById?.[id]);
+  activeAuthItemId = selectedItemId && state.itemsById?.[selectedItemId] ? selectedItemId : (queue[0] || '');
+  const item = activeAuthItemId ? state.itemsById[activeAuthItemId] : null;
+  const queueEl = document.getElementById('auth-queue-list');
+  const countEl = document.getElementById('auth-queue-count');
+  const checklistEl = document.getElementById('auth-photo-checklist');
+  const workspaceEl = document.getElementById('auth-workspace-body');
+  const decisionEl = document.getElementById('auth-decision-body');
+  if(countEl) countEl.textContent = queue.length ? queue.length + ' queued' : '0 queued';
+  if(queueEl) queueEl.innerHTML = queue.length ? queue.map(id => {
+    const qItem = state.itemsById[id];
+    const risk = qItem.auth?.riskLevel || 'Not checked';
+    const on = id === activeAuthItemId;
+    return `<button class="auth-check-row" style="width:100%;text-align:left;cursor:pointer;${on?'border-color:rgba(0,255,179,.42)':''}" onclick="openItemInAuthCheck('${id}')">
+      <div>
+        <div style="color:var(--text);font-weight:800">${escHtml(qItem.identity?.title || 'Unidentified item')}</div>
+        <div style="font-size:9px;color:var(--dim)">${escHtml([itemAuthCategory(qItem), qItem.identity?.setName, qItem.identity?.cardNumber ? '#'+qItem.identity.cardNumber : ''].filter(Boolean).join(' / '))}</div>
+      </div>
+      <span class="qpl-badge ${authRiskClass(risk)==='low'?'good':authRiskClass(risk)==='high'?'bad':'warn'}">${escHtml(risk)}</span>
+    </button>`;
+  }).join('') : '<div style="font-family:monospace,monospace;font-size:10px;color:var(--dim);padding:12px;border:1px dashed var(--border);border-radius:8px;text-align:center">No auth queue items yet.</div>';
+  if(checklistEl) checklistEl.innerHTML = renderAuthChecklist(item);
+  if(!item) {
+    if(workspaceEl) workspaceEl.innerHTML = 'Choose an item from the Auth Queue, or send one here from Research.';
+    if(decisionEl) decisionEl.innerHTML = 'No item selected.';
+    return;
+  }
+  const result = latestAuthResult(item, state);
+  const firstImage = (item.images || []).map(id => state.photosById?.[id]?.url || id).find(Boolean) || '';
+  const history = (item.audit?.history || []).slice(0,8).map(h => `<div style="border-top:1px solid var(--border);padding:7px 0"><b style="color:var(--text)">${escHtml(h.type)}</b><br>${escHtml(new Date(h.ts).toLocaleString())}</div>`).join('');
+  if(workspaceEl) workspaceEl.innerHTML = `
+    <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:12px;flex-wrap:wrap">
+      <div>
+        <div class="ph">ITEM WORKSPACE <span style="font-size:9px;color:var(--dim)">single item state</span></div>
+        <div style="font-family:'Orbitron',monospace;color:var(--text);font-size:18px;line-height:1.25">${escHtml(item.identity?.title || 'Unidentified item')}</div>
+        <div style="color:var(--dim);font-size:11px;margin-top:5px">${escHtml([itemAuthCategory(item), item.identity?.setName, item.identity?.cardNumber ? '#'+item.identity.cardNumber : '', item.identity?.printing, item.identity?.language].filter(Boolean).join(' / '))}</div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="hbtn" onclick="runAuthCheck('${item.itemId}')">RUN AUTH CHECK</button>
+        <button class="hbtn" onclick="openItemInResearchFromAuth('${item.itemId}')">OPEN IN RESEARCH</button>
+      </div>
+    </div>
+    <div class="auth-compare">
+      <div class="auth-compare-pane">${firstImage ? `<img src="${escHtml(firstImage)}" alt="">` : '<div style="color:var(--dim);font-size:12px">No candidate image yet</div>'}<span class="auth-source-label">Your Card - user/store photo</span></div>
+      <div class="auth-compare-pane"><div style="padding:18px;text-align:center;color:var(--dim);font-size:12px;line-height:1.5">Official reference render, official cert image, or store-owned authentic photo can be attached here. No third-party scan library is scraped.</div><span class="auth-source-label">Reference source required</span></div>
+    </div>
+    <div style="margin-top:14px" class="panel">
+      <div class="ph">EVIDENCE TIMELINE</div>
+      ${history || '<div style="color:var(--dim)">No item history yet.</div>'}
+    </div>`;
+  const risk = result?.riskLevel || item.auth?.riskLevel || 'Manual Review Required';
+  const confidence = result?.confidencePercent ?? item.auth?.confidencePercent ?? 0;
+  if(decisionEl) decisionEl.innerHTML = `
+    <div class="auth-risk ${authRiskClass(risk)}">
+      <div style="font-family:'Orbitron',monospace;color:var(--text);font-size:18px">${escHtml(risk)}</div>
+      <div style="color:var(--dim);margin-top:5px">Confidence: ${Number(confidence || 0)}%</div>
+    </div>
+    <div style="margin-top:12px">
+      <div class="ph" style="font-size:10px">WHY</div>
+      ${(result?.matchingSignals || []).map(x => `<div style="color:var(--g);margin-bottom:5px">+ ${escHtml(x)}</div>`).join('') || '<div style="color:var(--dim)">Run Auth Check to generate reasons.</div>'}
+      ${(result?.redFlags || item.auth?.redFlags || []).map(x => `<div style="color:var(--red);margin-bottom:5px">! ${escHtml(x)}</div>`).join('')}
+    </div>
+    <div style="margin-top:12px">
+      <div class="ph" style="font-size:10px">MISSING CHECKS</div>
+      ${(result?.missingChecks || item.auth?.missingChecks || []).map(x => `<div style="color:var(--gold);margin-bottom:5px">${escHtml(x)}</div>`).join('') || '<div style="color:var(--dim)">No missing checks recorded.</div>'}
+    </div>
+    <div style="margin-top:12px">
+      <div class="ph" style="font-size:10px">SLAB STATUS</div>
+      <div>${escHtml(result?.slabStatus?.status || item.auth?.slabStatus?.status || 'Not verified in this auth check')}</div>
+      <div style="color:var(--dim);margin-top:4px">PSA, CGC, and Beckett hooks are reserved for cert verification. Cert lookup is not market pricing.</div>
+    </div>
+    <div style="margin-top:12px">
+      <div class="ph" style="font-size:10px">WOULD YOU BUY THIS?</div>
+      <div style="font-family:'Orbitron',monospace;color:${result?.wouldYouBuyThis?.answer === 'Yes' ? 'var(--g)' : result?.wouldYouBuyThis?.answer === 'No' ? 'var(--red)' : 'var(--gold)'};font-size:16px">${escHtml(result?.wouldYouBuyThis?.answer || 'Maybe')}</div>
+      <div style="color:var(--dim);margin-top:5px">${escHtml(result?.wouldYouBuyThis?.reason || 'Run the auth check and review evidence before buying.')}</div>
+    </div>
+    <div style="display:grid;gap:8px;margin-top:14px">
+      <button class="hbtn buy" onclick="sendAuthItemToBuyOffer('${item.itemId}')">SEND TO BUY OFFER</button>
+      <button class="hbtn" onclick="sendAuthItemToInventoryDraft('${item.itemId}')">SEND TO INVENTORY DRAFT</button>
+      <button class="hbtn" style="color:var(--gold)" onclick="markAuthItemNeedsReview('${item.itemId}')">MARK NEEDS REVIEW</button>
+      <button class="hbtn" onclick="managerOverrideAuthItem('${item.itemId}')">MANAGER OVERRIDE</button>
+    </div>
+    <div style="margin-top:10px;color:var(--dim)">${escHtml(result?.recommendedNextAction || 'Capture front/back photos before relying on this result.')}</div>`;
+}
+
+function openItemInAuthCheck(itemId){
+  activeAuthItemId = itemId;
+  switchTab('authcheck');
+  renderAuthCheckWorkbench(itemId);
+}
+
+function captureAuthPhoto(itemId, captureType){
+  const state = getDealerItems();
+  const item = state.itemsById?.[itemId];
+  if(!item) return toast_dash('Auth item not found');
+  const url = prompt('Paste image URL for ' + captureType.replace(/_/g, ' ') + ' capture. Leave blank to record checklist placeholder.');
+  const q = Number(prompt('Quality score 1-100?', '85') || 85);
+  const photoId = 'photo_' + Date.now() + '_' + Math.random().toString(36).slice(2,5);
+  state.photosById[photoId] = { imageId:photoId, itemId, captureType, url:url || '', qualityScore:Math.max(1, Math.min(100, q || 85)), capturedAt:new Date().toISOString(), deviceSource:'dashboard', notes:'' };
+  item.images = [...new Set([...(item.images || []), photoId])];
+  auditItemEvent(item, 'auth_photo_captured', { captureType, qualityScore:state.photosById[photoId].qualityScore });
+  state.itemsById[itemId] = item;
+  saveDealerItems(state);
+  renderAuthCheckWorkbench(itemId);
+}
+
+async function findResearchScanById(scanId){
+  const queue = await readScanInbox();
+  const review = getResearchNeedsReviewQueue();
+  return queue.find(s => String(s.id || s.scanId || s._scanQueueId) === String(scanId))
+    || review.find(s => String(s.id || s.originalScanId || s.scanId) === String(scanId))
+    || null;
+}
+
+async function sendScanToAuthCheck(scanId){
+  const scan = await findResearchScanById(scanId);
+  if(!scan) return toast_dash('Research item not found');
+  const item = dealerItemFromScan(scan);
+  enqueueDealerItem(item.itemId, 'authQueue', 'auth_pending');
+  logOpsEvent('auth_queue_added', 'Sent scanner item to Auth Check: ' + (item.identity?.title || scan.name || 'scan'), { scanId, itemId:item.itemId });
+  openItemInAuthCheck(item.itemId);
+  toast_dash('Sent to Auth Check');
+}
+
+function qplItemToAuth(idx){
+  const r = applyQplSelectedVariant(qplResults[idx] || {});
+  if(!r?.name) return null;
+  const item = dealerItemFromResearchResult(r, 'research');
+  qplResults[idx].normalizedItemId = item.itemId;
+  enqueueDealerItem(item.itemId, 'authQueue', 'auth_pending');
+  return item;
+}
+
+function sendQuickLookupToAuthCheck(idx){
+  const item = qplItemToAuth(idx);
+  if(!item) return toast_dash('Select a research result first');
+  logOpsEvent('auth_queue_added', 'Sent research result to Auth Check: ' + (item.identity?.title || 'item'), { itemId:item.itemId });
+  openItemInAuthCheck(item.itemId);
+}
+
+function sendSelectedResearchResultToAuthCheck(){
+  const idx = selectedResearchIndex();
+  if(idx < 0) return setResearchActionStatus('Select a research result first.', 'var(--gold)');
+  const item = qplItemToAuth(idx);
+  if(!item) return setResearchActionStatus('Could not send item to Auth Check.', 'var(--red)');
+  setResearchActionStatus('Sent selected item to Auth Check.', 'var(--blue)');
+  openItemInAuthCheck(item.itemId);
+}
+
+function sendInventoryItemToAuthCheck(id){
+  const inv = all.find(x => String(x.id) === String(id));
+  if(!inv) return toast_dash('Inventory item not found');
+  const item = upsertDealerItem({
+    identity:{ category:inv.category || '', title:inv.name || 'Inventory item', setName:inv.set || inv.setName || '', cardNumber:inv.card_number || inv.cardNumber || '', printing:inv.printing || inv.variant || '', language:inv.language || 'English' },
+    images:[inv.imageUrl || inv.thumbnail || inv.img || ''].filter(Boolean),
+    research:{ source:inv.priceSource || inv.source || 'inventory', priceState:inv.market ? 'Inventory price' : 'No price', selectedVariant:null, market:Number(inv.market || 0), sourceProductId:inv.productId || inv.pricechartingProductId || '', sourceVariantId:inv.justtcgVariantId || inv.productConditionId || '' },
+    inventoryId:inv.id,
+    sourcePayload:inv,
+    workflow:{ stage:'auth_pending', queueMembership:['authQueue'] },
+  }, 'inventory_sent_to_auth');
+  enqueueDealerItem(item.itemId, 'authQueue', 'auth_pending');
+  logOpsEvent('auth_queue_added', 'Sent inventory item to Auth Check: ' + (inv.name || 'item'), { inventoryId:id, itemId:item.itemId });
+  openItemInAuthCheck(item.itemId);
+}
+
+function createManualAuthItem(){
+  const title = prompt('Item title for Auth Check?');
+  if(!title) return;
+  const category = prompt('Category? Pokemon, Magic, MTG, Slab, etc.', 'Pokemon') || 'Pokemon';
+  const item = upsertDealerItem({
+    identity:{ category, title, setName:'', cardNumber:'', printing:'', language:'English' },
+    workflow:{ stage:'auth_pending', queueMembership:['authQueue'] },
+  }, 'manual_auth_item_created');
+  enqueueDealerItem(item.itemId, 'authQueue', 'auth_pending');
+  openItemInAuthCheck(item.itemId);
+}
+
+function authBlocksDestination(itemId){
+  const item = getDealerItem(itemId);
+  if(!item) return false;
+  const risk = item.auth?.riskLevel || '';
+  return (risk === 'High Risk' || risk === 'Manual Review Required') && !item.auth?.managerOverride;
+}
+
+function managerOverrideAuthItem(itemId){
+  if(!requireManager()) {
+    toast_dash('Manager role required for auth override');
+    return false;
+  }
+  const reason = prompt('Manager override reason?');
+  if(!reason) return false;
+  const state = getDealerItems();
+  const item = state.itemsById?.[itemId];
+  if(!item) return false;
+  item.auth = item.auth || {};
+  item.auth.managerOverride = { reason, userId:getAuthSession()?.user?.id || 'local-user', at:new Date().toISOString(), riskLevel:item.auth.riskLevel || '' };
+  auditItemEvent(item, 'manager_auth_override', item.auth.managerOverride);
+  state.itemsById[itemId] = item;
+  saveDealerItems(state);
+  logOpsEvent('manager_auth_override', 'Manager override saved for Auth Check item: ' + (item.identity?.title || 'item'), { itemId, reason });
+  renderAuthCheckWorkbench(itemId);
+  toast_dash('Manager override saved');
+  return true;
+}
+
+function ensureAuthDestinationAllowed(itemId, destination){
+  if(!authBlocksDestination(itemId)) return true;
+  const item = getDealerItem(itemId);
+  const risk = item?.auth?.riskLevel || 'Manual Review Required';
+  if(!confirm(risk + ' blocks auto-send to ' + destination + '. Manager override required. Add override now?')) return false;
+  return managerOverrideAuthItem(itemId);
+}
+
+function qplAuthDestinationAllowed(idx, destination){
+  const r = qplResults[idx] || {};
+  if(!r.normalizedItemId) return true;
+  return ensureAuthDestinationAllowed(r.normalizedItemId, destination);
+}
+
+function sendAuthItemToBuyOffer(itemId){
+  if(!ensureAuthDestinationAllowed(itemId, 'Buy Offer')) return;
+  const item = getDealerItem(itemId);
+  if(!item) return;
+  const r = item.sourcePayload || {};
+  qplResults.unshift({ ...r, normalizedItemId:itemId, name:item.identity?.title || r.name || 'Auth item', category:item.identity?.category || r.category || 'TCG', set:item.identity?.setName || r.set || '', card_number:item.identity?.cardNumber || r.card_number || '', market:item.research?.market || r.market || 0, imageUrl:(item.images || [])[0] || r.imageUrl || '', priceSource:item.research?.source || r.priceSource || 'Auth Check' });
+  addSelectedQuickLookupToBuyOffer(0);
+}
+
+function sendAuthItemToInventoryDraft(itemId){
+  if(!ensureAuthDestinationAllowed(itemId, 'Inventory')) return;
+  const item = getDealerItem(itemId);
+  if(!item) return;
+  const r = item.sourcePayload || {};
+  qplResults.unshift({ ...r, normalizedItemId:itemId, name:item.identity?.title || r.name || 'Auth item', category:item.identity?.category || r.category || 'TCG', set:item.identity?.setName || r.set || '', card_number:item.identity?.cardNumber || r.card_number || '', market:item.research?.market || r.market || 0, imageUrl:(item.images || [])[0] || r.imageUrl || '', priceSource:item.research?.source || r.priceSource || 'Auth Check' });
+  selectQuickLookupResult(0);
+  addSelectedQuickLookupToInventory(0);
+}
+
+function markAuthItemNeedsReview(itemId){
+  const state = getDealerItems();
+  const item = state.itemsById?.[itemId];
+  if(!item) return;
+  enqueueDealerItem(itemId, 'needsReviewQueue', 'needs_review');
+  logOpsEvent('auth_needs_review', 'Auth item marked Needs Review: ' + (item.identity?.title || 'item'), { itemId });
+  toast_dash('Auth item marked Needs Review');
+  renderAuthCheckWorkbench(itemId);
+}
+
+function openItemInResearchFromAuth(itemId){
+  const item = getDealerItem(itemId);
+  if(!item) return;
+  switchTab('research');
+  const input = document.getElementById('qpl-input');
+  if(input) input.value = [item.identity?.title, item.identity?.setName, item.identity?.cardNumber].filter(Boolean).join(' ');
+  const r = item.sourcePayload || { name:item.identity?.title, category:item.identity?.category, set:item.identity?.setName, card_number:item.identity?.cardNumber, market:item.research?.market || 0, imageUrl:(item.images || [])[0] || '', priceSource:item.research?.source || 'Auth Check' };
+  qplMasterResults = [{ ...r, normalizedItemId:itemId }];
+  qplResults = qplMasterResults;
+  renderQuickLookupResults(qplResults);
 }
 
 async function searchScanInInventory(scanId){
@@ -8920,6 +9568,7 @@ function quickLookupResultCard(r, idx){
       <button class="hbtn buy" onclick="addQuickLookupToBuyOffer(${idx})">ADD TO BUY</button>
       <button class="hbtn" onclick="addQuickLookupToSaleCart(${idx})">ADD TO CART</button>
       <button class="hbtn" style="color:var(--gold)" onclick="addQuickLookupToInventory(${idx})">ADD INVENTORY</button>
+      <button class="hbtn" style="color:var(--blue)" onclick="sendQuickLookupToAuthCheck(${idx})">AUTH CHECK</button>
       ${tcg}
       ${slab}
       <button class="hbtn" onclick="openQuickExternal(${idx},'sold')">COMPS</button>
@@ -9117,6 +9766,7 @@ function selectQuickLookupResult(idx){
       <button class="hbtn" style="flex:1;color:var(--gold);min-height:56px" onclick="addSelectedQuickLookupToInventory(${idx})">ADD TO INVENTORY</button>
       <button class="hbtn" style="flex:1;color:var(--g);min-height:56px" onclick="addSelectedQuickLookupToBuyOffer(${idx})">ADD TO BUY OFFER</button>
       <button class="hbtn" style="flex:1;min-height:56px" onclick="addSelectedQuickLookupToSaleCart(${idx})">ADD TO SALE CART</button>
+      <button class="hbtn" style="flex:1;color:var(--blue);min-height:56px" onclick="sendQuickLookupToAuthCheck(${idx})">AUTH CHECK</button>
       <button class="hbtn" style="min-height:56px" onclick="renderQuickLookupResults(qplResults)">BACK</button>
     </div>
     <div id="qpl-add-status" style="margin-top:8px;color:var(--dim);font-size:8px"></div>
@@ -9200,6 +9850,10 @@ function saveQuickLookupLocalInventory(item, productId){
 async function addSelectedQuickLookupToInventory(idx){
   const status = document.getElementById('qpl-add-status');
   const item = selectedQuickLookupItem(idx);
+  if(!qplAuthDestinationAllowed(idx, 'Inventory')) {
+    if(status) status.innerHTML = '<span style="color:var(--gold)">Auth Check requires manager override before inventory.</span>';
+    return;
+  }
   if(status) status.textContent = 'Adding inventory...';
   try {
     const productId = await createInventoryRecord(item, item);
@@ -9304,6 +9958,10 @@ function markSelectedResearchNeedsReview(){
 
 function addSelectedQuickLookupToBuyOffer(idx){
   const item = selectedQuickLookupItem(idx);
+  if(!qplAuthDestinationAllowed(idx, 'Buy Offer')) {
+    toast_dash('Auth Check requires manager override before Buy Offer');
+    return;
+  }
   const needsManual = !Number(item.market || 0) || item.priceSource === 'No Real Price Available' || item.priceSource === 'No Guide Value Available';
   if(needsManual && !confirm('No trustworthy price is available for this item. Add to buy offer for manual review with $0 market value?')) {
     toast_dash('Manual review required before adding to offer');
