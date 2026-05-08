@@ -603,7 +603,7 @@ const STORE = {
   wf_status_instock:'f3769d1e15fa0956f98984d6fa36437f',
   wf_status_sold:   'e6b42f14fcb99aa2168a5f5672226f68',
 };
-const APP_VERSION = '2026.05.07.09';
+const APP_VERSION = '2026.05.08.01';
 const SUPABASE_URL = 'https://vroknjrxubsqyexngwus.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_wbpX2nL8l-4NbXtZNG_bjA_nabSYaJ5';
 const WORKER_URL = STORE.worker_url;
@@ -746,6 +746,8 @@ function tcgProductIdFromUrl(url) {
 function priceSourceInfo(source, itemType){
   const raw = String(source || '').trim();
   const s = raw.toLowerCase();
+  if(s.includes('justtcg') || s.includes('exact variant')) return { label:'JustTCG exact', cls:'tcg' };
+  if(s.includes('pricecharting')) return { label:'PC guide', cls:'slab' };
   if(s.includes('tcg') || s.includes('market')) return { label:'TCG market', cls:'tcg' };
   if(s.includes('pokemonprice') || s.includes('pokeprice')) return { label:'PokePrice', cls:'slab' };
   if(s.includes('pokemon')) return { label:'PokemonTCG', cls:'pokemon' };
@@ -2566,6 +2568,161 @@ function scannerBuyDecision(item, price){
   return 'BUY';
 }
 
+function scannerCategoryIntent(item, fallback = ''){
+  const raw = String(fallback || item?.game || item?.category || '').toLowerCase();
+  if(/comic|issue/.test(raw)) return 'Comics';
+  if(/video game|n64|nintendo|playstation|xbox|sega|game boy/.test(raw)) return 'Video Games';
+  if(/psa|bgs|cgc|sgc|slab|graded/.test(raw)) return 'Graded';
+  if(/pokemon|pokÃ©mon/.test(raw)) return 'Pokemon';
+  if(/magic|mtg/.test(raw)) return 'Magic';
+  if(/yu|yugioh/.test(raw)) return 'YuGiOh';
+  if(/sport|baseball|football|basketball|hockey/.test(raw)) return 'Sports';
+  if(/funko/.test(raw)) return 'Funko Pops';
+  if(/lego/.test(raw)) return 'LEGO Sets';
+  return fallback || 'Any';
+}
+
+function scannerQueryFromItem(item, print = {}){
+  return (item.search_query || [
+    item.player || item.name,
+    item.issue ? '#' + String(item.issue).replace(/^#/, '') : '',
+    item.year,
+    print.set || item.set_name || item.set,
+    print.variant || item.parallel,
+    item.card_number ? '#' + item.card_number : '',
+    item.cert_number ? item.grading_company + ' ' + item.grade + ' cert ' + item.cert_number : '',
+    item.upc,
+  ].filter(Boolean).join(' ')).replace(/\s+/g, ' ').trim();
+}
+
+function scannerNormalizeResult(row){
+  const selected = row.selectedVariant || row.availableVariants?.[0] || {};
+  const market = Number(selected.marketPrice || row.market || row.pricecharting?.prices?.ungraded || 0) || 0;
+  const source = row.source === 'justtcg' ? 'JustTCG'
+    : row.source === 'pricecharting_csv' ? 'PriceCharting CSV'
+    : row.source === 'PriceCharting' ? 'PriceCharting Live'
+    : row.source || 'Manual';
+  return {
+    source,
+    name: row.name || row.productName || 'Lookup match',
+    category: row.category || row.game || row.csvCategory || '',
+    set: row.set || row.setName || row.consoleName || '',
+    card_number: row.card_number || row.cardNumber || '',
+    imageUrl: row.imageUrl || '',
+    confidenceScore: Number(row.confidence || row.confidenceScore || 0) || 0,
+    matchReasons: row.matchWhy || row.matchReasons || [],
+    marketPrice: market,
+    priceSource: market ? (source === 'JustTCG' ? 'JustTCG Exact Variant' : source + ' Guide Value') : (source === 'JustTCG' ? 'No Real Price Available' : 'No Guide Value Available'),
+    selectedVariant: selected,
+    availableVariantCount: row.availableVariants?.length || 0,
+    priceHistoryCount: selected.priceHistory?.length || row.priceHistory?.length || 0,
+    raw: row,
+  };
+}
+
+function scannerStrictIntent(q){
+  const raw = String(q || '').toLowerCase();
+  const mods = [
+    ['sir', ['special illustration rare','sir']],
+    ['ir', ['illustration rare','ir']],
+    ['ex', [' ex','-ex','pokemon ex']],
+    ['vmax', ['vmax']],
+    ['vstar', ['vstar']],
+    ['gx', ['gx']],
+    ['full art', ['full art']],
+    ['alt art', ['alternate art','alt art']]
+  ].filter(([key]) => key === 'ex' ? /\bex\b/.test(raw) : key === 'ir' ? /\bir\b/.test(raw) && !/\bsir\b/.test(raw) : raw.includes(key))
+    .map(([key, aliases]) => ({ key, aliases }));
+  const nameTokens = raw.replace(/\b(sir|ir|ex|vmax|vstar|gx|full art|alt art)\b/g, ' ').split(/\s+/).filter(t => t.length > 1 && !/^\d/.test(t));
+  return { mods, nameTokens };
+}
+
+function scannerStrictAllows(match, strict, primaryOnly){
+  if(!strict.mods.length) return true;
+  const text = [match.name, match.category, match.set, match.raw?.rarity, match.raw?.raw?.rarity, match.raw?.note, match.raw?.variant].filter(Boolean).join(' ').toLowerCase();
+  const name = String(match.name || '').toLowerCase();
+  if(strict.nameTokens.length && !strict.nameTokens.some(t => name.includes(t))) return !primaryOnly;
+  const ok = strict.mods.every(mod => mod.key === 'ex' ? /\bex\b/.test(name) || /\bex\b/.test(text) : mod.aliases.some(a => text.includes(a.trim())));
+  return ok || !primaryOnly;
+}
+
+async function scannerFetchJson(path, options = {}){
+  const res = await fetch(WORKER_URL + path, { cache:'no-store', signal:AbortSignal.timeout(7000), ...options });
+  const data = await res.json().catch(() => ({}));
+  if(!res.ok || data.ok === false) throw new Error(data.error || data.reason || 'lookup failed');
+  return data;
+}
+
+async function scannerUnifiedSearch(query, category = ''){
+  const q = String(query || '').trim();
+  if(!q) return [];
+  const matches = [];
+  const seen = new Set();
+  const addRows = rows => (rows || []).forEach(r => {
+    const item = scannerNormalizeResult(r);
+    const key = [item.source,item.name,item.set,item.card_number].join('|').toLowerCase();
+    if(seen.has(key)) return;
+    seen.add(key);
+    matches.push(item);
+  });
+  const pcCategory = scannerCategoryIntent({}, category);
+  const pcParams = (extra = {}) => {
+    const params = new URLSearchParams({ q, ...extra });
+    if(pcCategory && pcCategory !== 'Any') params.set('category', pcCategory);
+    return params.toString();
+  };
+  try {
+    const pc = await scannerFetchJson('/pricing/pricecharting/csv/search?' + pcParams());
+    addRows(pc.matches || pc.products || []);
+  } catch(e) {}
+  if(/comic|video games|funko|lego|coins|sports|graded|any/i.test(pcCategory)) {
+    try {
+      const live = await scannerFetchJson('/pricing/pricecharting/search?' + pcParams({ live:'true' }));
+      addRows(live.matches || live.products || []);
+    } catch(e) {}
+  }
+  if(!/comic|video games|funko|lego|coins/i.test(pcCategory)) {
+    try {
+      const just = await scannerFetchJson('/pricing/justtcg/search?' + new URLSearchParams({ q, category:pcCategory, storeId:getScannerActiveStoreId(), include_variants:'true', include_price_history:'true', priceHistoryDuration:'90d' }).toString());
+      addRows(just.matches || []);
+    } catch(e) {}
+  }
+  const strict = scannerStrictIntent(q);
+  const primary = matches.filter(m => scannerStrictAllows(m, strict, true));
+  const fallback = strict.mods.length && !primary.length ? matches.filter(m => scannerStrictAllows(m, strict, false)).map(m => ({ ...m, closestStrictFallback:true })) : [];
+  return [...primary, ...fallback].sort((a,b) => (b.confidenceScore + (b.marketPrice?30:0) + (b.availableVariantCount?20:0) - (b.closestStrictFallback?100:0)) - (a.confidenceScore + (a.marketPrice?30:0) + (a.availableVariantCount?20:0) - (a.closestStrictFallback?100:0))).slice(0, 12);
+}
+
+async function enrichScannerHandoff(handoff){
+  const query = handoff.queryUsed || handoff.search_query || handoff.rawExtractedText || handoff.name || '';
+  const category = handoff.categoryIntent || handoff.category || '';
+  handoff.queryUsed = query;
+  handoff.categoryIntent = scannerCategoryIntent(handoff, category);
+  handoff.rawExtractedText = handoff.rawExtractedText || query;
+  handoff.possibleMatches = handoff.possibleMatches || [];
+  try {
+    const matches = await scannerUnifiedSearch(query, handoff.categoryIntent);
+    handoff.possibleMatches = matches;
+    handoff.bestMatch = matches[0] || null;
+    if(matches[0]) {
+      handoff.confidenceScore = Math.max(Number(handoff.confidenceScore || 0), Number(matches[0].confidenceScore || 0));
+      handoff.selectedVariant = matches[0].selectedVariant || null;
+      handoff.priceSource = matches[0].priceSource || handoff.priceSource;
+      handoff.priceState = matches[0].marketPrice ? 'real_variant_or_guide_price' : matches[0].priceSource || 'manual_review_required';
+      if(matches[0].marketPrice && !Number(handoff.price || 0)) {
+        handoff.price = matches[0].marketPrice;
+        handoff.priceUsed = matches[0].marketPrice;
+      }
+    } else {
+      handoff.priceState = handoff.priceState || 'manual_review_required';
+    }
+  } catch(e) {
+    handoff.lookupError = e.message;
+    handoff.priceState = handoff.priceState || 'lookup_failed';
+  }
+  return handoff;
+}
+
 function buildHandoffItem(el) {
   const item = el?._item || {};
   const print = (el?._prints || [])[el?._bmi || 0] || {};
@@ -2578,9 +2735,12 @@ function buildHandoffItem(el) {
     : 'TCG';
   const price = Number(print.mid || item.market_nm || item.market || 0);
   const decision = scannerBuyDecision(item, price);
+  const queryUsed = scannerQueryFromItem(item, print);
+  const handoffId = 'phone_scan_' + Date.now();
   return {
-    id: 'phone_scan_' + Date.now(),
-    storeId: getStoreId(),
+    id: handoffId,
+    scanId: handoffId,
+    storeId: getScannerActiveStoreId(),
     buySessionId: getScannerActiveBuySessionId(),
     scannerMode: getScannerModeForCategory(category),
     scanMode: getScannerModeForCategory(category),
@@ -2589,6 +2749,7 @@ function buildHandoffItem(el) {
     appVersion: APP_VERSION,
     show: getShowContext(),
     category,
+    categoryIntent: scannerCategoryIntent(item, category),
     name: item.player || item.name || 'Scanned item',
     player: item.player || '',
     team: item.team || item.publisher || '',
@@ -2613,10 +2774,17 @@ function buildHandoffItem(el) {
     grade: item.grade || '',
     cert_number: item.cert_number || '',
     imageUrl: el?._uploadedPhotoUrl || print.imageUrl || el?._imgUrl || item.imageUrl || item.cover_image || null,
-    search_query: item.search_query || [item.player || item.name, item.year, print.set || item.set_name, print.variant || item.parallel].filter(Boolean).join(' '),
+    rawExtractedText: queryUsed,
+    queryUsed,
+    search_query: queryUsed,
     price,
     priceUsed: price,
     priceSource: item.priceSource || item.pricingSource || (price ? 'scanner_estimate' : 'Needs Review'),
+    selectedVariant: null,
+    possibleMatches: [],
+    bestMatch: null,
+    confidenceScore: item.confidence === 'high' ? 90 : item.confidence === 'medium' ? 65 : item.confidence === 'low' ? 35 : 0,
+    priceState: price ? 'scanner_price_present' : 'manual_review_required',
     buyDecision: decision,
     decision,
     matchReasons: [item.confidence_reason, item.cert_number ? 'cert captured' : '', price ? 'price captured' : 'manual price required'].filter(Boolean),
@@ -2626,7 +2794,9 @@ function buildHandoffItem(el) {
 window.sendBubbleToTablet = async function(id) {
   const el = document.getElementById(id);
   if(!el) return toast('Scan not found');
-  const handoff = buildHandoffItem(el);
+  let handoff = buildHandoffItem(el);
+  toast('Researching match before tablet handoff...');
+  handoff = await enrichScannerHandoff(handoff);
   try {
     if(await sendHandoffToSupabase(handoff)) {
       toast('Sent to tablet POS');
@@ -2639,6 +2809,32 @@ window.sendBubbleToTablet = async function(id) {
   } catch(e) {
     toast('Could not send to tablet: ' + e.message);
   }
+};
+
+window.markBubbleNeedsReview = async function(id) {
+  const el = document.getElementById(id);
+  if(!el || !el._item) return toast('Scan not found');
+  el._item.status = 'needs_review';
+  el._item.priceSource = 'Needs Review';
+  await sendBubbleToTablet(id);
+};
+
+window.researchBubbleMatch = async function(id) {
+  const el = document.getElementById(id);
+  if(!el) return toast('Scan not found');
+  const acts = el.querySelector('.bacts');
+  const handoff = await enrichScannerHandoff(buildHandoffItem(el));
+  el._scannerMatches = handoff.possibleMatches || [];
+  let box = el.querySelector('.scanner-match-panel');
+  if(!box) {
+    box = document.createElement('div');
+    box.className = 'scanner-match-panel';
+    box.style.cssText = 'background:rgba(72,202,228,.06);border:1px solid rgba(72,202,228,.22);border-radius:8px;padding:7px;margin:6px 0;font-family:monospace;font-size:8px;color:rgba(255,255,255,.68)';
+    if(acts) el.insertBefore(box, acts); else el.appendChild(box);
+  }
+  const rows = (handoff.possibleMatches || []).slice(0, 3).map(m => `<div style="border-top:1px solid rgba(255,255,255,.08);padding-top:4px;margin-top:4px"><b style="color:#48cae4">${String(m.source || '').replace(/</g,'&lt;')}</b> ${String(m.name || '').replace(/</g,'&lt;')} ${m.marketPrice ? ' / $' + Number(m.marketPrice).toFixed(2) : ''}<br><span style="color:rgba(255,255,255,.4)">${String(m.priceSource || '').replace(/</g,'&lt;')} / variants ${m.availableVariantCount || 0} / graph ${m.priceHistoryCount || 0}</span></div>`).join('');
+  box.innerHTML = rows || 'No lookup matches yet. Send to tablet as Needs Review.';
+  toast(rows ? 'Research matches loaded' : 'No research matches found');
 };
 
 async function doScan(){
@@ -3913,8 +4109,11 @@ function addBubble(item,stock,imgUrl,apiPrintings,bestMatchIdx){
       ${ct==='tcg'?'' : ''}
       ${ct==='comic'?`<button class="bact" style="background:rgba(199,125,255,.06);border:1px solid rgba(199,125,255,.2);color:var(--purple);font-size:9px" onclick="scanBackForBubble('${id}')">⟳ SCAN BACK</button>`:''}
       ${ct==='comic'?`<button class="bact" style="background:rgba(199,125,255,.06);border:1px solid rgba(199,125,255,.2);color:var(--purple);font-size:9px" onclick="openVariantSearch('${id}')">Browse Covers</button>`:''}
+      <button class="bact" style="background:rgba(72,202,228,.09);border:1px solid rgba(72,202,228,.28);color:var(--blue);font-weight:700" onclick="researchBubbleMatch('${id}')">Research</button>
+      <button class="bact" style="background:rgba(255,209,102,.10);border:1px solid rgba(255,209,102,.28);color:#ffd166;font-weight:700" onclick="sendBubbleToTablet('${id}')">Add to Buy Offer</button>
       <button class="bact" style="background:rgba(0,255,179,.1);border:1px solid rgba(0,255,179,.3);color:var(--g);font-weight:700" onclick="addBubbleToCart('${id}')">Send to Cart</button>
       <button class="bact" style="background:rgba(72,202,228,.08);border:1px solid rgba(72,202,228,.25);color:var(--blue);font-weight:700" onclick="sendBubbleToTablet('${id}')">Send to Tablet</button>
+      <button class="bact" style="background:rgba(255,77,109,.08);border:1px solid rgba(255,77,109,.22);color:#ff4d6d;font-weight:700" onclick="markBubbleNeedsReview('${id}')">Needs Review</button>
       <button class="bact" style="background:rgba(255,209,102,.08);border:1px solid rgba(255,209,102,.22);color:#ffd166;font-weight:700" onclick="openManualRefine('${id}')">Edit / Retry</button>
       <button class="bact a-add" onclick="showAddForm('${id}')">+ Add to Inventory</button>
       ${ct==='sports'||ct==='tcg'?`<button class="bact" style="background:rgba(72,202,228,.06);border:1px solid rgba(72,202,228,.2);color:var(--blue);font-size:9px" onclick="showGradeSubmit('${id}')">📤 Submit to Grader</button>`:''}

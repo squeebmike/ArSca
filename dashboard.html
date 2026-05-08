@@ -1181,7 +1181,7 @@ tr.sold:hover td{opacity:.7;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.05.07.09';
+const APP_VERSION = '2026.05.08.01';
 const SUPABASE_URL = 'https://vroknjrxubsqyexngwus.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_wbpX2nL8l-4NbXtZNG_bjA_nabSYaJ5';
 const AUTH_REDIRECT_URL = 'https://squeebmike.github.io/ArSca/dashboard.html';
@@ -1870,6 +1870,7 @@ function organizeRegisterLayout(){
   ensureVendorProfilePanel(backoffice);
   ensurePaymentSettingsPanel(backoffice);
   ensurePriceChartingDataPanel(backoffice);
+  ensurePricingQaPanel(backoffice);
   ensureStoreMembersPanel(backoffice);
   ensureVendorConfigPanel(backoffice);
   ensureLegacyToolsPanel(backoffice);
@@ -2241,6 +2242,76 @@ async function syncPriceChartingCsv(category){
     if(note) note.textContent = category + ' sync failed: ' + e.message;
     toast_dash('PriceCharting sync failed: ' + e.message);
   }
+}
+
+const PRICING_QA_QUERIES = ['pikachu sir','pikachu ex','pikachu 151','umbreon vmax evolving skies','charizard 199/165','wolverine 1','asm 300','zelda ocarina n64'];
+
+function ensurePricingQaPanel(backoffice){
+  if(document.getElementById('pricing-qa-panel')) return;
+  const panel = document.createElement('div');
+  panel.className = 'panel';
+  panel.id = 'pricing-qa-panel';
+  panel.style.marginBottom = '14px';
+  panel.innerHTML = '<div class="ph">QA TESTS <span style="font-size:9px;color:var(--dim)">repeatable search, pricing, graph checks</span></div><div id="pricing-qa-body"></div>';
+  backoffice.prepend(panel);
+  renderPricingQaPanel();
+}
+
+function renderPricingQaPanel(results = null){
+  const body = document.getElementById('pricing-qa-body');
+  if(!body) return;
+  const rows = results ? results.map(r => `
+    <div class="item-metric" style="margin-bottom:8px">
+      <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap">
+        <b style="color:var(--text)">${escHtml(r.query)}</b>
+        <span style="color:${r.error?'var(--red)':'var(--g)'};font-family:monospace;font-size:10px">${r.error ? 'ERROR' : r.count + ' results'}</span>
+      </div>
+      ${r.error ? `<div style="color:var(--red);font-size:10px;margin-top:6px">${escHtml(r.error)}</div>` : `
+        <div style="font-family:monospace;font-size:10px;color:var(--dim);margin-top:5px">Intent: ${escHtml((r.intent || []).join(', ') || 'general')} / Top category: ${escHtml(r.topCategory || 'none')} / Variants: ${r.variantCount} / Graph: ${escHtml(r.graphState)}</div>
+        <div style="display:grid;gap:4px;margin-top:7px">${(r.top || []).map(t => `<div style="display:grid;grid-template-columns:1fr 100px 120px 90px;gap:6px;font-family:monospace;font-size:9px;border-top:1px solid var(--border);padding-top:4px"><span>${escHtml(t.name)}</span><span>${escHtml(t.category)}</span><span>${escHtml(t.source)}</span><span>${escHtml(t.priceState)}</span></div>`).join('')}</div>
+      `}
+    </div>`).join('') : '<div style="font-family:monospace;font-size:10px;color:var(--dim);line-height:1.55">Runs the dealer-critical searches against the same Research/Buy lookup engine. Use this after API or CSV changes to catch search ranking, source badges, variant prices, and graph availability.</div>';
+  body.innerHTML = `
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+      <button class="hbtn" onclick="runPricingQaTests()">RUN QA TESTS</button>
+      <button class="hbtn" onclick="document.getElementById('pricing-qa-output').innerHTML=''">CLEAR</button>
+      <span style="font-family:monospace;font-size:9px;color:var(--dim);align-self:center">${PRICING_QA_QUERIES.length} built-in checks</span>
+    </div>
+    <div id="pricing-qa-output">${rows}</div>`;
+}
+
+async function runPricingQaTests(){
+  const out = document.getElementById('pricing-qa-output');
+  if(out) out.innerHTML = '<div style="font-family:monospace;color:var(--gold);font-size:10px">Running pricing/search QA...</div>';
+  const reports = [];
+  for(const query of PRICING_QA_QUERIES) {
+    try {
+      const category = /wolverine|asm/.test(query) ? 'Comics' : /zelda|n64/.test(query) ? 'Video Games' : /pikachu|umbreon|charizard/.test(query) ? 'Pokemon' : '';
+      const results = await searchQuickCatalog(query, category);
+      const top = results.slice(0, 5).map(r => ({
+        name:r.name || 'Untitled',
+        category:qplResultCategoryKey(r) || r.category || '',
+        source:r.source === 'justtcg' ? 'JustTCG' : r.source === 'pricecharting_csv' ? 'PriceCharting CSV' : r.source || '',
+        priceState:qplTruthLabel(r),
+      }));
+      const first = results[0] || {};
+      const firstApplied = applyQplSelectedVariant({ ...first });
+      const graphPoints = firstApplied.selectedVariant?.priceHistory?.length || firstApplied.priceHistory?.length || 0;
+      reports.push({
+        query,
+        count:results.length,
+        top,
+        intent:detectQuickQueryIntent(query, category).intents,
+        topCategory:qplResultCategoryKey(first),
+        variantCount:first.availableVariants?.length || 0,
+        graphState:graphPoints ? graphPoints + ' points' : 'No graph for exact variant',
+      });
+    } catch(e) {
+      reports.push({ query, error:e.message, count:0, top:[] });
+    }
+  }
+  renderPricingQaPanel(reports);
+  logOpsEvent('pricing_qa', 'Ran pricing/search QA tests', { count:reports.length, errors:reports.filter(r=>r.error).length });
 }
 
 function ensureStoreMembersPanel(backoffice){
@@ -7836,6 +7907,28 @@ async function refreshQplSkuPrice(idx){
   } catch(e) {}
 }
 
+async function hydrateQplVariantHistoryBySku(idx, duration='90d'){
+  const r = qplResults[idx];
+  const sku = r?.selectedVariant?.tcgplayerSkuId || r?.selectedVariant?.skuId || r?.skuId;
+  if(!sku || r?.source !== 'justtcg') return;
+  r.chartLastFetchStatus = 'fetching sku ' + sku;
+  try {
+    const res = await fetch(WORKER + '/pricing/justtcg/sku/' + encodeURIComponent(sku) + '?' + new URLSearchParams({ priceHistoryDuration:duration }).toString(), { cache:'no-store' });
+    const data = await res.json().catch(() => ({}));
+    const v = data.selectedVariant || data.card?.selectedVariant;
+    if(res.ok && v) {
+      r.availableVariants = (r.availableVariants || []).map(old => String(old.skuId) === String(sku) || String(old.tcgplayerSkuId) === String(sku) ? { ...old, ...v } : old);
+      r.selectedVariant = { ...r.selectedVariant, ...v };
+      r.chartLastFetchStatus = 'sku history loaded';
+      applyQplSelectedVariant(r);
+    } else {
+      r.chartLastFetchStatus = data.error || 'sku history unavailable';
+    }
+  } catch(e) {
+    r.chartLastFetchStatus = e.message;
+  }
+}
+
 function updateQplResultCard(idx){
   const scroller = document.querySelector('.qpl-results');
   const top = scroller ? scroller.scrollTop : 0;
@@ -7960,15 +8053,14 @@ function qplVariantPriceTable(r, idx){
     const price = v ? Number(v.marketPrice || v.price || 0) : 0;
     return `<tr class="${selected?'on':''}" onclick="updateQplVariant(${idx},{selectedCondition:'${cond}'})" style="cursor:pointer">
       <td>${cond}</td>
-      <td>${v ? escHtml(qplFinishLabel(v.finish || finish)) : 'No Matching Variant'}</td>
-      <td>${v ? escHtml(v.language || 'English') : '-'}</td>
       <td>${price ? '$'+price.toFixed(2) : (v ? 'No Real Price' : '-')}</td>
-      <td>${v?.tcgplayerSkuId || v?.skuId ? escHtml(v.tcgplayerSkuId || v.skuId) : '-'}</td>
+      <td>${v ? escHtml(v.lastUpdated || r.lastPriceSyncAt || '-') : '-'}</td>
+      <td>${v ? escHtml(v.priceSource || qplPriceSourceLabel(v)) : 'No Matching Variant'}</td>
     </tr>`;
   }).join('');
   return `<div style="margin-top:10px">
     <div style="font-family:'Orbitron',monospace;color:var(--g);font-size:10px">AVAILABLE PRICES · ${escHtml(qplFinishLabel(finish))} · ${escHtml(language)}</div>
-    <table class="qpl-price-table"><thead><tr><th>Condition</th><th>Finish</th><th>Language</th><th>Price</th><th>SKU</th></tr></thead><tbody>${rows}</tbody></table>
+    <table class="qpl-price-table"><thead><tr><th>Condition</th><th>Selected Finish/Language Price</th><th>Last Updated</th><th>Source</th></tr></thead><tbody>${rows}</tbody></table>
   </div>`;
 }
 
@@ -7983,6 +8075,10 @@ async function openQplChartModal(idx, range='3M'){
   r.graphDuration = qplChartRangeToDuration(range);
   if(r.source === 'justtcg' && (!r.selectedVariant?.priceHistory?.length || range === '1Y')) {
     await hydrateQplVariantMatrix(idx, r.graphDuration);
+    r = qplResults[idx];
+  }
+  if(r.source === 'justtcg' && !r.selectedVariant?.priceHistory?.length) {
+    await hydrateQplVariantHistoryBySku(idx, r.graphDuration);
     r = qplResults[idx];
   }
   let modal = document.getElementById('qpl-chart-modal');
@@ -8012,6 +8108,7 @@ function qplChartModalHtml(r, idx){
       <div style="display:flex;justify-content:space-between;gap:12px;align-items:center"><div><div style="font-family:'Orbitron',monospace;color:var(--blue);font-size:15px">PRICE GRAPH</div><div style="color:var(--dim);font-size:11px;margin-top:4px">${escHtml(title)}</div></div><button class="hbtn" onclick="closeQplChartModal()">CLOSE</button></div>
       <div style="display:grid;grid-template-columns:80px 1fr;gap:12px;margin-top:14px;align-items:center">${r.imageUrl ? `<img src="${escHtml(r.imageUrl)}" style="width:80px;max-height:110px;object-fit:contain;background:#050507;border:1px solid var(--border);border-radius:8px">` : '<div></div>'}<div><div class="qpl-price">${current ? '$'+current.toFixed(2) : 'No Real Price Available'}</div><div class="qpl-price-sub">${escHtml([v.condition || r.condition, qplFinishLabel(v.finish || r.finish), v.language || r.language || 'English'].filter(Boolean).join(' / '))}<br>Source: ${escHtml(v.priceSource || r.priceSource || 'JustTCG')}</div></div></div>
       <div style="margin-top:16px;border:1px dashed rgba(255,209,102,.35);border-radius:12px;padding:18px;color:var(--dim);font-size:13px">No price graph available for this exact variant.</div>
+      <div style="margin-top:10px;font-family:monospace;font-size:10px;color:var(--dim)">Debug: variant ${escHtml(v.variantId || v.justtcgVariantId || '')} / SKU ${escHtml(v.tcgplayerSkuId || v.skuId || r.skuId || '')} / ${escHtml(v.condition || r.condition || '')} / ${escHtml(qplFinishLabel(v.finish || r.finish || ''))} / ${escHtml(v.language || r.language || 'English')} / history 0 / ${escHtml(r.graphDuration || '')} / ${escHtml(r.chartLastFetchStatus || 'not fetched')}</div>
     </div>`;
   }
   const prices = vals.map(p => p.price);
@@ -8040,6 +8137,7 @@ function qplChartModalHtml(r, idx){
       <span class="qpl-badge">Points ${vals.length}</span>
     </div>
     <div style="color:var(--dim);font-size:10px;margin-top:8px">No fake chart data. PriceCharting guide values are not used as history.</div>
+    <div style="margin-top:6px;font-family:monospace;font-size:10px;color:var(--dim)">Debug: variant ${escHtml(v.variantId || v.justtcgVariantId || '')} / SKU ${escHtml(v.tcgplayerSkuId || v.skuId || r.skuId || '')} / ${escHtml(v.condition || r.condition || '')} / ${escHtml(qplFinishLabel(v.finish || r.finish || ''))} / ${escHtml(v.language || r.language || 'English')} / history ${vals.length} / ${escHtml(r.graphDuration || '')} / ${escHtml(r.chartLastFetchStatus || 'matrix')}</div>
   </div>`;
 }
 
