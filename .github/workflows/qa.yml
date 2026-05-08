@@ -1,0 +1,27 @@
+name: Walk-Off QA
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm install
+      - run: npm run test:parse
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:qa
+        env:
+          WALKOFF_BASE_URL: https://squeebmike.github.io/ArSca
+          RUN_LIVE_API: "1"
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-artifacts
+          path: test-results/

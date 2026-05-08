@@ -2296,6 +2296,7 @@ async function syncPriceChartingCsv(category){
 }
 
 const PRICING_QA_QUERIES = ['pikachu sir','pikachu ex','pikachu 151','umbreon vmax evolving skies','charizard 199/165','wolverine 1','asm 300','zelda ocarina n64'];
+let lastPricingQaReport = [];
 
 function ensurePricingQaPanel(backoffice){
   if(document.getElementById('pricing-qa-panel')) return;
@@ -2311,6 +2312,7 @@ function ensurePricingQaPanel(backoffice){
 function renderPricingQaPanel(results = null){
   const body = document.getElementById('pricing-qa-body');
   if(!body) return;
+  if(results) lastPricingQaReport = results;
   const rows = results ? results.map(r => `
     <div class="item-metric" style="margin-bottom:8px">
       <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap">
@@ -2325,10 +2327,28 @@ function renderPricingQaPanel(results = null){
   body.innerHTML = `
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
       <button class="hbtn" onclick="runPricingQaTests()">RUN QA TESTS</button>
+      <button class="hbtn" onclick="copyPricingQaReport()">COPY QA REPORT</button>
       <button class="hbtn" onclick="document.getElementById('pricing-qa-output').innerHTML=''">CLEAR</button>
       <span style="font-family:monospace;font-size:9px;color:var(--dim);align-self:center">${PRICING_QA_QUERIES.length} built-in checks</span>
     </div>
     <div id="pricing-qa-output">${rows}</div>`;
+}
+
+async function copyPricingQaReport(){
+  const payload = {
+    appVersion:APP_VERSION,
+    storeId:getActiveStoreId(),
+    generatedAt:new Date().toISOString(),
+    results:lastPricingQaReport || [],
+  };
+  const text = JSON.stringify(payload, null, 2);
+  try {
+    await navigator.clipboard.writeText(text);
+    toast_dash('QA report copied');
+  } catch(e) {
+    const out = document.getElementById('pricing-qa-output');
+    if(out) out.innerHTML = '<pre style="white-space:pre-wrap;font-size:10px;color:var(--dim);border:1px solid var(--border);border-radius:8px;padding:10px;max-height:320px;overflow:auto">' + escHtml(text) + '</pre>';
+  }
 }
 
 async function runPricingQaTests(){
@@ -4098,14 +4118,14 @@ function renderOpsLog(){
   list.innerHTML = log.slice(0, 40).map(e => {
     const dt = new Date(e.ts);
     const detail = e.detail && Object.keys(e.detail).length ? ' · ' + Object.entries(e.detail).slice(0, 4).map(([k,v]) => `${k}: ${String(v).slice(0, 40)}`).join(' · ') : '';
-    const show = e.show?.eventName ? ` · ${esc(e.show.eventName)}` : '';
+    const show = e.show?.eventName ? ` · ${escHtml(e.show.eventName)}` : '';
     return `<div style="border:1px solid var(--border);background:var(--surf2);border-radius:6px;padding:8px 9px;display:grid;gap:4px">
       <div style="display:flex;justify-content:space-between;gap:10px;align-items:center">
-        <span style="color:var(--gold);font-weight:700">${esc((e.type || 'event').replace(/_/g,' ').toUpperCase())}</span>
+        <span style="color:var(--gold);font-weight:700">${escHtml((e.type || 'event').replace(/_/g,' ').toUpperCase())}</span>
         <span style="color:var(--dim);text-align:right">${dt.toLocaleDateString()} ${dt.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</span>
       </div>
-      <div style="color:var(--text)">${esc(e.message || '')}</div>
-      <div style="color:var(--dim)">${esc('v' + (e.appVersion || '') + show + detail)}</div>
+      <div style="color:var(--text)">${escHtml(e.message || '')}</div>
+      <div style="color:var(--dim)">${escHtml('v' + (e.appVersion || '') + show + detail)}</div>
     </div>`;
   }).join('');
 }
@@ -9325,6 +9345,7 @@ function addSelectedQuickLookupToBuyOffer(idx){
   saveBuyList();
   logOpsEvent('buy_item_added', 'Added research result to buy offer: ' + item.name, { buySessionId:session?.buySessionId || '', source:item.priceSource || item.pricingSource || '', market:Number(item.market || 0) });
   renderBuyList();
+  setTimeout(renderBuyList, 75);
   toast_dash('Added to buy offer: ' + item.name);
 }
 

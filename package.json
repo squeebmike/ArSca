@@ -1,0 +1,14 @@
+{
+  "name": "walkoff-dashboard-qa",
+  "version": "2026.05.08.02",
+  "private": true,
+  "scripts": {
+    "test": "playwright test --config=tests/playwright.config.js",
+    "test:qa": "playwright test --config=tests/playwright.config.js",
+    "test:headed": "playwright test --config=tests/playwright.config.js --headed",
+    "test:parse": "node tests/parse-check.js"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.52.0"
+  }
+}
