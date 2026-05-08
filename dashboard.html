@@ -220,6 +220,14 @@ tr.sold:hover td{opacity:.7;}
 .src-badge.manual{border-color:rgba(255,255,255,.12);color:rgba(255,255,255,.42);}
 .qpl-results{display:grid;gap:16px;max-height:72vh;overflow:auto;padding:2px 4px 4px 0;scroll-behavior:smooth;}
 .qpl-hero-card{display:grid;grid-template-columns:minmax(220px,280px) minmax(0,1fr) minmax(160px,190px);gap:18px;align-items:stretch;background:linear-gradient(135deg,rgba(255,255,255,.045),rgba(0,255,179,.025));border:1px solid rgba(255,255,255,.10);border-radius:14px;padding:16px;box-shadow:0 18px 45px rgba(0,0,0,.28);}
+.research-grid{max-width:1540px;margin:0 auto;padding:0 20px;display:grid;grid-template-columns:minmax(250px,.85fr) minmax(0,2.3fr) minmax(230px,.8fr);gap:14px;align-items:start;}
+.research-grid #register-quick-panel{grid-column:2;grid-row:1 / span 2;}
+.research-grid #research-queue-panel{grid-column:1;}
+.research-grid #research-actions-panel{grid-column:3;}
+.research-queue-item{display:grid;grid-template-columns:54px 1fr;gap:10px;align-items:start;background:var(--surf2);border:1px solid var(--border);border-radius:8px;padding:8px;}
+.research-queue-img{width:54px;height:64px;border-radius:6px;border:1px solid var(--border);object-fit:cover;background:#050507;}
+.research-queue-actions{grid-column:1 / -1;display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:4px;}
+.research-queue-actions .ra{min-height:34px;}
 .qpl-img-shell{min-height:260px;background:#050507;border:1px solid rgba(255,255,255,.12);border-radius:12px;display:flex;align-items:center;justify-content:center;overflow:hidden;cursor:zoom-in;position:relative;}
 .qpl-img-shell img{width:100%;height:100%;max-height:320px;object-fit:contain;display:block;}
 .qpl-img-shell::after{content:'TAP TO ZOOM';position:absolute;left:10px;bottom:10px;font-family:monospace,monospace;font-size:9px;letter-spacing:1px;color:rgba(255,255,255,.55);background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.12);border-radius:999px;padding:5px 8px;}
@@ -313,6 +321,8 @@ tr.sold:hover td{opacity:.7;}
   .qpl-hero-card .qpl-info{grid-area:info;}
   .qpl-hero-card .qpl-actions{grid-area:actions;grid-template-columns:repeat(3,1fr);}
   .qpl-selected-top{grid-template-columns:minmax(180px,240px) 1fr;}
+  .research-grid{grid-template-columns:1fr;max-width:900px;}
+  .research-grid #register-quick-panel,.research-grid #research-queue-panel,.research-grid #research-actions-panel{grid-column:1;grid-row:auto;}
 }
 @media(max-width:600px){
   body{font-size:16px;}
@@ -667,8 +677,10 @@ tr.sold:hover td{opacity:.7;}
           <option value="Collectibles">Collectibles</option>
         </select>
         <button class="hbtn" onclick="runPriceLookup()" style="white-space:nowrap">LOOK UP</button>
+        <button class="hbtn" onclick="importScannerQueueToResearch()" style="white-space:nowrap">IMPORT SCANS</button>
+        <button class="hbtn" onclick="clearResearchLookup()" style="white-space:nowrap">CLEAR</button>
       </div>
-      <div id="qpl-result" style="font-family:monospace,monospace;font-size:10px;color:var(--dim);min-height:60px">Enter a card name above to get an instant price estimate.</div>
+      <div id="qpl-result" style="font-family:monospace,monospace;font-size:10px;color:var(--dim);min-height:60px">Enter a card, comic, slab, game, or collectible to identify it and route it into Buy, Inventory, or Sale.</div>
       <div id="qpl-history" style="margin-top:10px;border-top:1px solid var(--border);padding-top:8px"></div>
     </div>
 
@@ -802,6 +814,37 @@ tr.sold:hover td{opacity:.7;}
       </div>
     </div>
 
+  </div>
+</div>
+
+<!-- RESEARCH TAB -->
+<div id="tab-research" class="tab-panel">
+  <div class="sec">RESEARCH</div>
+  <div id="research-panels" class="research-grid">
+    <div class="panel" id="research-queue-panel">
+      <div class="ph">RESEARCH QUEUE <span id="research-queue-count" style="font-size:9px;color:var(--dim)">waiting for scans</span></div>
+      <div style="font-family:monospace,monospace;font-size:10px;color:var(--dim);line-height:1.55;margin-bottom:10px">
+        Scanner handoffs, manual research, and needs-review items land here before they become buy offer lines, inventory, or sale cart items.
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+        <button class="hbtn" onclick="renderResearchQueue()">REFRESH</button>
+        <button class="hbtn" onclick="focusResearchSearch()">MANUAL SEARCH</button>
+      </div>
+      <div id="research-queue-list" style="display:grid;gap:8px"></div>
+    </div>
+    <div class="panel" id="research-actions-panel">
+      <div class="ph">ACTIONS <span style="font-size:9px;color:var(--dim)">route selected item</span></div>
+      <div style="font-family:monospace,monospace;font-size:10px;color:var(--dim);line-height:1.55;margin-bottom:10px">
+        Select a result in the workspace, then send it into the dealer workflow without retyping.
+      </div>
+      <div style="display:grid;gap:8px">
+        <button class="hbtn buy" onclick="addSelectedResearchResultToBuyOffer()">ADD SELECTED TO BUY OFFER</button>
+        <button class="hbtn" onclick="addSelectedResearchResultToInventory()">ADD SELECTED TO INVENTORY</button>
+        <button class="hbtn" onclick="addSelectedResearchResultToSaleCart()">ADD SELECTED TO SALE CART</button>
+        <button class="hbtn" style="color:var(--gold)" onclick="markSelectedResearchNeedsReview()">MARK NEEDS REVIEW</button>
+      </div>
+      <div id="research-action-status" style="font-family:monospace,monospace;font-size:10px;color:var(--dim);margin-top:12px;line-height:1.45"></div>
+    </div>
   </div>
 </div>
 
@@ -1181,7 +1224,7 @@ tr.sold:hover td{opacity:.7;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.05.08.01';
+const APP_VERSION = '2026.05.08.02';
 const SUPABASE_URL = 'https://vroknjrxubsqyexngwus.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_wbpX2nL8l-4NbXtZNG_bjA_nabSYaJ5';
 const AUTH_REDIRECT_URL = 'https://squeebmike.github.io/ArSca/dashboard.html';
@@ -1204,7 +1247,7 @@ const WALKOFF_DEMO_STORES = [
   { id:'demo-show-store', ownerUserId:'demo-owner', name:'demo-show-store', displayName:'Demo Show Store', logoUrl:'', location:'Card Show', timezone:'America/Los_Angeles', currency:'USD', status:'active', createdAt:'2026-05-06T00:00:00.000Z' },
 ];
 const WALKOFF_DEMO_USER = { id:'demo-owner', email:'owner@walkoff.local', displayName:'Store Owner', role:'owner', defaultStoreId:'walkoff-main', createdAt:'2026-05-06T00:00:00.000Z' };
-const WALKOFF_SCOPED_KEYS = new Set(['lba_inventory','walkoff_universal_inventory','pos_cart_v2','pos_buy_list','pos_buy_offers','pos_active_buy_session','pos_buy_sessions','pos_transactions','pos_drawer','pos_drawer_closeouts','pos_wantlist','set_needs_v1','pos_consign','pos_locations','vendor_profile_v1','vendor_config_v1','store_payment_settings_v1','store_onboarding_v1','pos_ops_log','inventory_lifecycle','pos_show_mode','sync_queue_v1','pos_customers','pos_undo_stack','sheet_mapping_v1','grade_submissions','lba_sales']);
+const WALKOFF_SCOPED_KEYS = new Set(['lba_inventory','walkoff_universal_inventory','pos_cart_v2','pos_buy_list','pos_buy_offers','pos_active_buy_session','pos_buy_sessions','pos_transactions','pos_drawer','pos_drawer_closeouts','pos_wantlist','set_needs_v1','pos_consign','pos_locations','vendor_profile_v1','vendor_config_v1','store_payment_settings_v1','store_onboarding_v1','pos_ops_log','inventory_lifecycle','pos_show_mode','sync_queue_v1','pos_customers','pos_undo_stack','sheet_mapping_v1','grade_submissions','research_needs_review_v1','lba_sales']);
 const WALKOFF_AUTH_SESSION_KEY = 'walkoff_auth_session_v1';
 const WALKOFF_ACTIVE_STORE_KEY = 'walkoff_active_store_id';
 const WALKOFF_STORAGE_MIGRATION_KEY = 'walkoff_store_migration_v1';
@@ -1232,7 +1275,7 @@ function roleCanAccessTab(tab){
   const role = currentRole();
   if(role === 'owner' || role === 'admin') return true;
   if(role === 'manager') return !['backoffice'].includes(tab);
-  if(role === 'employee') return ['overview','display','inventory','pos','alerts','wantlist','locations','restock'].includes(tab);
+  if(role === 'employee') return ['overview','display','inventory','research','pos','alerts','wantlist','locations','restock'].includes(tab);
   if(role === 'scanner_only') return false;
   return false;
 }
@@ -1589,6 +1632,7 @@ const DAILY_TABS = [
   ['overview', 'HOME'],
   ['intake', 'BUY'],
   ['display', 'SELL'],
+  ['research', 'RESEARCH'],
   ['inventory', 'INVENTORY'],
   ['shows', 'SHOWS'],
 ];
@@ -1843,21 +1887,27 @@ function moveNode(id, target){
 function organizeRegisterLayout(){
   const register = document.getElementById('tab-pos');
   const intake = document.getElementById('intake-panels');
+  const research = document.getElementById('research-panels');
   const channels = document.getElementById('channels-panels');
   const shows = document.getElementById('shows-panels');
   const backoffice = document.getElementById('backoffice-panels');
   const wantsHub = document.querySelector('#tab-wantlist > div') || document.getElementById('tab-wantlist');
   const overview = document.getElementById('tab-overview');
-  if(!register || !intake || !channels || !shows || !backoffice) return;
+  if(!register || !intake || !research || !channels || !shows || !backoffice) return;
 
   ensureRegisterCommandCenter(register);
   ensureTodayModePanel(register);
   moveNode('register-show-panel', shows);
   moveNode('register-cash-panel', shows);
   moveNode('register-eod-panel', shows);
-  moveNode('register-quick-panel', intake);
-  moveNode('register-scan-panel', intake);
+  moveNode('register-quick-panel', research);
+  moveNode('register-scan-panel', research);
+  const qpl = document.getElementById('register-quick-panel');
+  const actions = document.getElementById('research-actions-panel');
+  if(qpl && actions && qpl.parentElement === research) research.insertBefore(qpl, actions);
   moveNode('register-buy-panel', intake);
+  ensureBuyResearchBridge(intake);
+  renderResearchQueue();
   ensureSetNeedsPanel(wantsHub);
   ensureBuySignalsPanel(overview || backoffice);
   ensureOnboardingPanel(overview || backoffice);
@@ -1976,6 +2026,7 @@ function ensureLegacyToolsPanel(backoffice){
     ['overview','Home / command center'],
     ['pos','Sell / register'],
     ['intake','Buy / intake'],
+    ['research','Research / lookup'],
     ['display','Sell / cart'],
     ['inventory','Inventory'],
     ['shows','Shows / cash drawer'],
@@ -2540,6 +2591,20 @@ function updateConnectorVisibility(){
   document.querySelectorAll('[data-webflow-optional-note]').forEach(el => {
     el.textContent = webflowOn ? 'Webflow connector enabled for this store.' : 'Webflow is off for this store. Built-in/spreadsheet inventory is active.';
   });
+}
+
+function ensureBuyResearchBridge(intake){
+  const buyPanel = document.getElementById('register-buy-panel');
+  if(!buyPanel || document.getElementById('buy-research-bridge')) return;
+  const bridge = document.createElement('div');
+  bridge.id = 'buy-research-bridge';
+  bridge.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;margin:0 0 10px';
+  bridge.innerHTML = `
+    <button class="hbtn buy" onclick="switchTab('research');focusResearchSearch()">ADD ITEM FROM RESEARCH</button>
+    <button class="hbtn" onclick="switchTab('research');importScannerQueueToResearch()">OPEN SCANNER QUEUE</button>
+  `;
+  const sessionPanel = document.getElementById('buy-session-panel');
+  buyPanel.insertBefore(bridge, sessionPanel || buyPanel.firstChild);
 }
 
 function toggleVendorModule(key, enabled){
@@ -5271,6 +5336,7 @@ async function removeScanFromInbox(scanId){
   if(scan) await markScanInboxItem(scan, 'rejected');
   await writeScanInbox(queue.filter(s => s.id !== scanId));
   renderScanInbox();
+  renderResearchQueue();
 }
 
 async function acceptScanToCart(scanId){
@@ -5280,6 +5346,7 @@ async function acceptScanToCart(scanId){
   if(scan) await markScanInboxItem(scan, 'added');
   await writeScanInbox(queue.filter(s => s.id !== scanId));
   renderScanInbox();
+  renderResearchQueue();
 }
 
 async function acceptScanToBuyList(scanId){
@@ -5296,6 +5363,7 @@ async function acceptScanToBuyList(scanId){
   if(scan) await markScanInboxItem(scan, 'added');
   await writeScanInbox(queue.filter(s => s.id !== scanId));
   renderScanInbox();
+  renderResearchQueue();
 }
 
 async function addAllScansToBuyList(){
@@ -5311,7 +5379,186 @@ async function addAllScansToBuyList(){
   await Promise.all(queue.map(scan => markScanInboxItem(scan, 'added')));
   await writeScanInbox([]);
   renderScanInbox();
+  renderResearchQueue();
   toast_dash('Added ' + queue.length + ' scans to buy offer');
+}
+
+function focusResearchSearch(){
+  setTimeout(() => document.getElementById('qpl-input')?.focus(), 80);
+}
+
+function clearResearchLookup(){
+  const input = document.getElementById('qpl-input');
+  const result = document.getElementById('qpl-result');
+  if(input) input.value = '';
+  qplResults = [];
+  qplMasterResults = [];
+  qplLastSearch = '';
+  if(result) result.innerHTML = 'Enter a card, comic, slab, game, or collectible to identify it and route it into Buy, Inventory, or Sale.';
+  focusResearchSearch();
+}
+
+async function importScannerQueueToResearch(){
+  switchTab('research');
+  await renderResearchQueue();
+  focusResearchSearch();
+}
+
+function scanMatchToQuickLookupResult(match, scan){
+  const m = match || {};
+  const raw = m.raw || m;
+  const selectedVariant = m.selectedVariant || raw.selectedVariant || null;
+  const availableVariants = m.availableVariants || raw.availableVariants || raw.variants || (selectedVariant ? [selectedVariant] : []);
+  const source = String(m.source || raw.source || '').toLowerCase();
+  return applyQplSelectedVariant({
+    source: source.includes('just') ? 'justtcg' : source.includes('pricechart') ? 'pricecharting_csv' : (m.source || raw.source || 'scanner'),
+    name:m.name || raw.name || scan.name || scan.queryUsed || 'Scanner match',
+    category:m.category || raw.category || scan.category || scan.categoryIntent || 'Collectibles',
+    set:m.set || m.setName || raw.set || raw.setName || scan.set || '',
+    year:m.year || raw.year || scan.year || '',
+    variant:m.variant || raw.rarity || raw.variant || scan.variant || '',
+    card_number:m.card_number || m.cardNumber || raw.card_number || raw.cardNumber || scan.card_number || '',
+    condition:selectedVariant?.condition || scan.condition || 'NM',
+    selectedCondition:selectedVariant?.condition || scan.condition || 'NM',
+    selectedFinish:selectedVariant?.finish || selectedVariant?.printing || m.finish || 'normal',
+    selectedLanguage:selectedVariant?.language || m.language || 'English',
+    market:Number(m.marketPrice || m.market || selectedVariant?.marketPrice || selectedVariant?.price || scan.price || scan.priceUsed || 0),
+    imageUrl:m.imageUrl || raw.imageUrl || getScanImageUrl(scan) || '',
+    priceSource:m.priceSource || raw.priceSource || scan.priceSource || 'Scanner research',
+    priceConfidence:m.priceConfidence || raw.priceConfidence || '',
+    note:(m.matchReasons || raw.matchReasons || scan.matchReasons || []).join(', ') || scan.rawExtractedText || '',
+    confidence:Number(m.confidenceScore || m.confidence || scan.confidenceScore || 0),
+    matchWhy:m.matchReasons || raw.matchReasons || scan.matchReasons || [],
+    raw,
+    productId:m.productId || raw.productId || '',
+    skuId:m.skuId || selectedVariant?.skuId || '',
+    tcgplayerSkuId:m.tcgplayerSkuId || selectedVariant?.tcgplayerSkuId || '',
+    availableVariants,
+    selectedVariant,
+    scanPayload:scan,
+  });
+}
+
+async function openScanInResearch(scanId){
+  const queue = await readScanInbox();
+  const review = getResearchNeedsReviewQueue();
+  const scan = queue.find(s => String(s.id || s.scanId || s._scanQueueId) === String(scanId))
+    || review.find(s => String(s.id || s.originalScanId || s.scanId) === String(scanId));
+  if(!scan) return toast_dash('Scan not found');
+  switchTab('research');
+  const q = scan.queryUsed || scan.search_query || scan.rawExtractedText || scan.name || scan.player || '';
+  const input = document.getElementById('qpl-input');
+  const cat = document.getElementById('qpl-cat');
+  if(input) input.value = q;
+  if(cat && scan.categoryIntent) cat.value = [...cat.options].some(o => o.value === scan.categoryIntent) ? scan.categoryIntent : cat.value;
+  const matches = [scan.bestMatch, ...(scan.possibleMatches || [])].filter(Boolean);
+  if(matches.length) {
+    qplMasterResults = matches.map(m => scanMatchToQuickLookupResult(m, scan));
+    qplResults = filterQplMasterResults(qplMasterResults, cat?.value || '');
+    renderQuickLookupResults(qplResults);
+  } else if(q) {
+    await runPriceLookup();
+  }
+  await renderResearchQueue();
+}
+
+async function addResearchQueueItemToBuy(scanId){
+  const queue = await readScanInbox();
+  const review = getResearchNeedsReviewQueue();
+  const scan = queue.find(s => String(s.id || s.scanId || s._scanQueueId) === String(scanId))
+    || review.find(s => String(s.id || s.originalScanId || s.scanId) === String(scanId));
+  if(!scan) return toast_dash('Research item not found');
+  const item = scanToBuyItem(scan);
+  buyList.push(item);
+  saveBuyList();
+  renderBuyList();
+  logOpsEvent('buy_item_added', 'Added research queue item to buy offer: ' + (item.name || 'scan'), { buySessionId:item.buySessionId || '', scanId:scan.id || scanId });
+  toast_dash('Added to buy offer: ' + (scan.name || scan.queryUsed || 'item'));
+  const live = queue.find(s => String(s.id || s.scanId || s._scanQueueId) === String(scanId));
+  if(live) {
+    await markScanInboxItem(live, 'added');
+    await writeScanInbox(queue.filter(s => String(s.id || s.scanId || s._scanQueueId) !== String(scanId)));
+  }
+  renderScanInbox();
+  renderResearchQueue();
+}
+
+async function addResearchQueueItemToCart(scanId){
+  const queue = await readScanInbox();
+  const review = getResearchNeedsReviewQueue();
+  const scan = queue.find(s => String(s.id || s.scanId || s._scanQueueId) === String(scanId))
+    || review.find(s => String(s.id || s.originalScanId || s.scanId) === String(scanId));
+  if(!scan) return toast_dash('Research item not found');
+  addScanToCart(scan);
+  const live = queue.find(s => String(s.id || s.scanId || s._scanQueueId) === String(scanId));
+  if(live) {
+    await markScanInboxItem(live, 'added');
+    await writeScanInbox(queue.filter(s => String(s.id || s.scanId || s._scanQueueId) !== String(scanId)));
+  }
+  renderScanInbox();
+  renderResearchQueue();
+}
+
+function getResearchNeedsReviewQueue(){
+  return safeLocalJson('research_needs_review_v1', []);
+}
+
+function saveResearchNeedsReviewQueue(queue){
+  localStorage.setItem('research_needs_review_v1', JSON.stringify((queue || []).slice(0,200)));
+}
+
+async function markResearchScanNeedsReview(scanId){
+  const queue = await readScanInbox();
+  const scan = queue.find(s => String(s.id || s.scanId || s._scanQueueId) === String(scanId));
+  if(!scan) return;
+  const review = getResearchNeedsReviewQueue();
+  review.unshift({ ...scan, id:'review_' + (scan.id || scanId || Date.now()), originalScanId:scan.id || scanId, reviewStatus:'needs_review', savedAt:new Date().toISOString(), storeId:getActiveStoreId() });
+  saveResearchNeedsReviewQueue(review);
+  await markScanInboxItem(scan, 'reviewed');
+  await writeScanInbox(queue.filter(s => String(s.id || s.scanId || s._scanQueueId) !== String(scanId)));
+  renderScanInbox();
+  renderResearchQueue();
+  logOpsEvent('research_needs_review', 'Saved scanner item for research review: ' + (scan.name || scan.queryUsed || 'scan'), { scanId:scan.id || scanId });
+  toast_dash('Saved to Research Needs Review');
+}
+
+async function renderResearchQueue(){
+  const list = document.getElementById('research-queue-list');
+  const count = document.getElementById('research-queue-count');
+  if(!list) return;
+  const scans = await readScanInbox();
+  const review = getResearchNeedsReviewQueue();
+  const items = [
+    ...scans.map(x => ({ ...x, _queueType:'scan' })),
+    ...review.slice(0,10).map(x => ({ ...x, _queueType:'review' }))
+  ];
+  if(count) count.textContent = items.length ? items.length + ' queued' : 'waiting for scans';
+  if(!items.length) {
+    list.innerHTML = '<div style="font-family:monospace,monospace;font-size:10px;color:var(--dim);padding:12px;border:1px dashed var(--border);border-radius:8px;text-align:center">No research queue items for this store.</div>';
+    return;
+  }
+  list.innerHTML = items.slice(0,18).map(s => {
+    const id = escHtml(String(s.id || s.scanId || s._scanQueueId || ''));
+    const img = getScanImageUrl(s);
+    const title = s.name || s.queryUsed || s.rawExtractedText || 'Research item';
+    const meta = [s.categoryIntent || s.category, s.set, s.card_number ? '#'+s.card_number : '', s.issue ? '#'+s.issue : '', s.priceSource].filter(Boolean).join(' / ');
+    const confidence = Number(s.confidenceScore || 0);
+    const price = Number(s.priceUsed || s.price || s.marketPrice || 0);
+    return `<div class="research-queue-item">
+      ${img ? `<img class="research-queue-img" src="${escHtml(img)}" alt="">` : `<div class="research-queue-img" style="display:flex;align-items:center;justify-content:center;color:var(--dim);font-size:9px">SCAN</div>`}
+      <div>
+        <div style="font-weight:800;color:var(--text);font-size:12px;line-height:1.25">${escHtml(title)}</div>
+        <div style="font-family:monospace,monospace;font-size:9px;color:var(--dim);margin-top:3px;line-height:1.35">${escHtml(meta || 'Scanner handoff')}</div>
+        <div style="font-family:monospace,monospace;font-size:9px;color:${price?'var(--gold)':'var(--dim)'};margin-top:3px">${price ? '$' + price.toFixed(2) : 'No price yet'}${confidence ? ' / ' + confidence + '% match' : ''}</div>
+      </div>
+      <div class="research-queue-actions">
+        <button class="ra" onclick="openScanInResearch('${id}')">Open</button>
+        <button class="ra" onclick="addResearchQueueItemToBuy('${id}')">Buy</button>
+        <button class="ra" onclick="addResearchQueueItemToCart('${id}')">Cart</button>
+        <button class="ra" onclick="markResearchScanNeedsReview('${id}')">Review</button>
+      </div>
+    </div>`;
+  }).join('');
 }
 
 async function searchScanInInventory(scanId){
@@ -5356,6 +5603,7 @@ async function renderScanInbox(){
         <div style="font-family:monospace,monospace;font-size:8px;color:${s.confidence==='low'?'var(--red)':s.confidence==='high'?'var(--g)':'var(--gold)'};margin-top:2px">${(s.confidence || 'medium').toUpperCase()} ${s.confidence_reason ? '· '+s.confidence_reason : ''}</div>
       </div>
       <div style="display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end">
+        <button class="ra" style="background:rgba(72,202,228,.08);border-color:rgba(72,202,228,.25);color:var(--blue)" onclick="openScanInResearch('${s.id}')">Research</button>
         <button class="ra" style="background:rgba(0,255,179,.08);border-color:rgba(0,255,179,.25);color:var(--g)" onclick="acceptScanToCart('${s.id}')">Cart</button>
         <button class="ra" style="background:rgba(255,209,102,.08);border-color:rgba(255,209,102,.25);color:var(--gold)" onclick="acceptScanToBuyList('${s.id}')">Offer</button>
         <button class="ra" onclick="searchScanInInventory('${s.id}')">Find</button>
@@ -8650,6 +8898,7 @@ function quickLookupResultCard(r, idx){
     <div class="qpl-actions">
       <button class="hbtn primary" onclick="selectQuickLookupResult(${idx})">SELECT</button>
       <button class="hbtn buy" onclick="addQuickLookupToBuyOffer(${idx})">ADD TO BUY</button>
+      <button class="hbtn" onclick="addQuickLookupToSaleCart(${idx})">ADD TO CART</button>
       <button class="hbtn" style="color:var(--gold)" onclick="addQuickLookupToInventory(${idx})">ADD INVENTORY</button>
       ${tcg}
       ${slab}
@@ -8802,7 +9051,7 @@ function selectQuickLookupResult(idx){
   if(!r) return;
   const el = document.getElementById('qpl-result');
   const cat = normalizeQuickCategory(r.category);
-  el.innerHTML = `<div class="qpl-selected-card">
+  el.innerHTML = `<div class="qpl-selected-card" data-qpl-idx="${idx}">
     <div class="qpl-selected-top">
       ${r.imageUrl ? `<img src="${escHtml(r.imageUrl)}" onclick="openQplImageLightbox(${idx})" alt="${escHtml(r.name || 'Selected item')}">` : '<div class="qpl-img-shell"><div class="qpl-no-img">NO IMAGE</div></div>'}
       <div>
@@ -8847,6 +9096,7 @@ function selectQuickLookupResult(idx){
     <div style="display:flex;gap:7px;flex-wrap:wrap">
       <button class="hbtn" style="flex:1;color:var(--gold);min-height:56px" onclick="addSelectedQuickLookupToInventory(${idx})">ADD TO INVENTORY</button>
       <button class="hbtn" style="flex:1;color:var(--g);min-height:56px" onclick="addSelectedQuickLookupToBuyOffer(${idx})">ADD TO BUY OFFER</button>
+      <button class="hbtn" style="flex:1;min-height:56px" onclick="addSelectedQuickLookupToSaleCart(${idx})">ADD TO SALE CART</button>
       <button class="hbtn" style="min-height:56px" onclick="renderQuickLookupResults(qplResults)">BACK</button>
     </div>
     <div id="qpl-add-status" style="margin-top:8px;color:var(--dim);font-size:8px"></div>
@@ -8950,6 +9200,86 @@ async function addSelectedQuickLookupToInventory(idx){
 function addQuickLookupToInventory(idx){
   selectQuickLookupResult(idx);
   setTimeout(() => addSelectedQuickLookupToInventory(idx), 0);
+}
+
+function addSelectedQuickLookupToSaleCart(idx){
+  const item = selectedQuickLookupItem(idx);
+  const price = Number(item.market || 0);
+  if(!price && !confirm('This research result has no trusted sale price. Add to sale cart at $0 for manual price override?')) {
+    toast_dash('Sale cart needs a price first');
+    return;
+  }
+  const cartData = getCartDataLocal();
+  cartData.items = cartData.items || [];
+  cartData.items.push({
+    id:'ci_research_' + Date.now() + '_' + Math.random().toString(36).slice(2,5),
+    name:item.name || 'Research item',
+    sub:[item.year, item.setName || item.set, item.card_number ? '#'+item.card_number : '', item.condition, item.printing || item.selectedFinish].filter(Boolean).join(' / '),
+    price,
+    cost:Number(item.cost || 0),
+    img:item.imageUrl || item.thumbnail || '',
+    shopId:item.id && item.source === 'inventory' ? item.id : null,
+    wfId:item.wfId || null,
+    category:item.category || 'Research',
+    condition:item.condition || item.selectedCondition || '',
+    set:item.setName || item.set || '',
+    year:item.year || '',
+    priceSource:item.priceSource || item.pricingSource || '',
+    source:'research',
+    sourceProductId:item.pricechartingProductId || item.productId || '',
+    sourceVariantId:item.justtcgVariantId || item.productConditionId || '',
+    tcgplayerSkuId:item.tcgplayerSkuId || item.skuId || '',
+  });
+  saveCartDataLocal(cartData, 'research cart add');
+  logOpsEvent('cart_item_added', 'Added research item to sale cart: ' + (item.name || 'item'), { price, source:item.priceSource || item.pricingSource || '' });
+  toast_dash('Added to sale cart: ' + (item.name || 'item'));
+}
+
+function addQuickLookupToSaleCart(idx){
+  selectQuickLookupResult(idx);
+  setTimeout(() => addSelectedQuickLookupToSaleCart(idx), 0);
+}
+
+function selectedResearchIndex(){
+  const selected = document.querySelector('.qpl-selected-card')?.dataset?.qplIdx;
+  if(selected != null && selected !== '') return Number(selected);
+  return qplResults.length ? 0 : -1;
+}
+
+function setResearchActionStatus(message, tone=''){
+  const el = document.getElementById('research-action-status');
+  if(el) {
+    el.textContent = message || '';
+    el.style.color = tone || 'var(--dim)';
+  }
+}
+
+function addSelectedResearchResultToBuyOffer(){
+  const idx = selectedResearchIndex();
+  if(idx < 0) return setResearchActionStatus('Select a research result first.', 'var(--gold)');
+  addQuickLookupToBuyOffer(idx);
+  setResearchActionStatus('Sent selected item to Buy Offer.', 'var(--g)');
+}
+
+function addSelectedResearchResultToInventory(){
+  const idx = selectedResearchIndex();
+  if(idx < 0) return setResearchActionStatus('Select a research result first.', 'var(--gold)');
+  addQuickLookupToInventory(idx);
+  setResearchActionStatus('Creating inventory record from selected item...', 'var(--g)');
+}
+
+function addSelectedResearchResultToSaleCart(){
+  const idx = selectedResearchIndex();
+  if(idx < 0) return setResearchActionStatus('Select a research result first.', 'var(--gold)');
+  addQuickLookupToSaleCart(idx);
+  setResearchActionStatus('Sent selected item to Sale Cart.', 'var(--g)');
+}
+
+function markSelectedResearchNeedsReview(){
+  const idx = selectedResearchIndex();
+  if(idx < 0) return setResearchActionStatus('Select a research result first.', 'var(--gold)');
+  markQplNeedsReview(idx);
+  setResearchActionStatus('Marked selected item Needs Review.', 'var(--gold)');
 }
 
 function addSelectedQuickLookupToBuyOffer(idx){
