@@ -19,10 +19,12 @@ test('dashboard html and worker scripts parse', async () => {
 test('dashboard loads current build with primary nav and Research tab', async ({ page }) => {
   const guard = await openDashboard(page);
   await expect(page.locator('.logo')).toContainText(/WALK-OFF/i);
-  await expect(page.locator('.logo')).toContainText(/2026\.05\.08\.03/);
+  await expect(page.locator('.logo')).toContainText(/2026\.05\.12\.01/);
   await expect(page.locator('[data-tab="overview"]')).toBeVisible();
   await expect(page.locator('[data-tab="research"]')).toBeVisible();
   await expect(page.locator('[data-tab="authcheck"]')).toBeVisible();
+  await expect(page.locator('#top-show-chip')).toContainText(/NO SHOW ACTIVE|SHOW ACTIVE/);
+  await expect(page.locator('#top-drawer-chip')).toContainText(/DRAWER/);
   await page.locator('[data-tab="research"]').click();
   await expect(page.locator('#tab-research.on')).toBeVisible();
   await expect(page.locator('#research-queue-panel')).toBeVisible();

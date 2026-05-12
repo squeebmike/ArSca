@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.05.07.07">
+<meta name="version" content="2026.05.12.01">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -125,6 +125,11 @@ header{position:sticky;top:0;z-index:100;background:rgba(7,8,10,.96);backdrop-fi
 .auth-row{display:grid;gap:8px;margin-bottom:10px;}
 .auth-meta{font-family:monospace,monospace;font-size:9px;color:var(--dim);line-height:1.6;margin-top:10px;}
 .store-chip{border:1px solid var(--border);background:var(--surf2);color:var(--text);border-radius:8px;padding:7px 10px;font-family:monospace,monospace;font-size:10px;min-height:34px;}
+.top-state-chip{border:1px solid var(--border);background:rgba(255,255,255,.035);color:var(--dim);border-radius:8px;padding:7px 10px;font-family:monospace,monospace;font-size:9px;min-height:34px;display:flex;align-items:center;white-space:nowrap;}
+.top-state-chip.on{color:var(--g);border-color:rgba(0,255,179,.24);background:rgba(0,255,179,.06);}
+.top-state-chip.warn{color:var(--gold);border-color:rgba(255,209,102,.24);background:rgba(255,209,102,.06);}
+body.show-active .panel{border-color:rgba(255,209,102,.09);}
+body.show-active .tab{min-height:44px;}
 .item-workspace-grid{display:grid;grid-template-columns:180px 1fr;gap:14px;}
 .item-photo{width:180px;aspect-ratio:3/4;border-radius:8px;border:1px solid var(--border);background:var(--surf2);object-fit:cover;}
 .item-metric{background:var(--surf2);border:1px solid var(--border);border-radius:8px;padding:10px;}
@@ -392,6 +397,8 @@ tr.sold:hover td{opacity:.7;}
     <div class="hdr-right">
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
+      <span id="top-show-chip" class="top-state-chip">NO SHOW ACTIVE</span>
+      <span id="top-drawer-chip" class="top-state-chip">DRAWER CLOSED</span>
       <span id="sync-status">Loading...</span>
       <button class="hbtn" id="logout-btn" style="display:none" onclick="logoutAccount()">LOGOUT</button>
       <button class="hbtn" id="refresh-btn" onclick="loadInventory()">REFRESH</button>
@@ -726,8 +733,14 @@ tr.sold:hover td{opacity:.7;}
         <div style="display:flex;gap:6px;margin-bottom:8px">
           <input type="number" id="drawer-adj-amt" placeholder="Amount" step="0.01" style="flex:1;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:7px 10px;border-radius:6px;font-size:12px">
           <input type="text" id="drawer-adj-note" placeholder="Note (e.g. Change given)" style="flex:2;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:7px 10px;border-radius:6px;font-size:12px">
-          <button class="hbtn" onclick="addDrawerAdj(1)" style="white-space:nowrap">+ IN</button>
-          <button class="hbtn" onclick="addDrawerAdj(-1)" style="background:rgba(255,77,109,.08);border-color:rgba(255,77,109,.2);color:var(--red);white-space:nowrap">- OUT</button>
+          <button class="hbtn" onclick="addDrawerMovement('paid_in')" style="white-space:nowrap">PAID IN</button>
+          <button class="hbtn" onclick="addDrawerMovement('paid_out')" style="background:rgba(255,77,109,.08);border-color:rgba(255,77,109,.2);color:var(--red);white-space:nowrap">PAID OUT</button>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:8px">
+          <button class="hbtn" onclick="addDrawerMovement('drop')">DROP</button>
+          <button class="hbtn" onclick="addDrawerMovement('refund')">REFUND</button>
+          <button class="hbtn" onclick="addDrawerMovement('buy_payout')">BUY PAYOUT</button>
+          <button class="hbtn" onclick="addDrawerMovement('no_sale')">NO SALE</button>
         </div>
         <div id="drawer-log" style="font-family:monospace,monospace;font-size:9px;max-height:120px;overflow-y:auto;border:1px solid var(--border);border-radius:6px;padding:6px"></div>
         <div style="display:flex;gap:6px;margin-top:10px">
@@ -1281,7 +1294,7 @@ tr.sold:hover td{opacity:.7;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.05.08.03';
+const APP_VERSION = '2026.05.12.01';
 const SUPABASE_URL = 'https://vroknjrxubsqyexngwus.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_wbpX2nL8l-4NbXtZNG_bjA_nabSYaJ5';
 const AUTH_REDIRECT_URL = 'https://squeebmike.github.io/ArSca/dashboard.html';
@@ -1681,6 +1694,28 @@ function renderAccountHeader(){
     switcher.style.display = '';
     switcher.innerHTML = session.stores.map(s => `<option value="${s.id}" ${s.id===store.id?'selected':''}>${escHtml(s.displayName)}</option>`).join('');
   }
+  updateTopStateChips();
+}
+
+function updateTopStateChips(){
+  const show = getShowMode();
+  const showChip = document.getElementById('top-show-chip');
+  if(showChip) {
+    showChip.textContent = show ? ('SHOW ACTIVE: ' + (show.eventName || 'Show') + (show.booth ? ' / ' + show.booth : '')) : 'NO SHOW ACTIVE';
+    showChip.className = 'top-state-chip' + (show ? ' on' : '');
+  }
+  document.body?.classList.toggle('show-active', !!show);
+  const drawerChip = document.getElementById('top-drawer-chip');
+  if(drawerChip) {
+    if(drawerState) {
+      const expected = getDrawerExpected();
+      drawerChip.textContent = 'DRAWER OPEN: $' + Number(expected || 0).toFixed(2);
+      drawerChip.className = 'top-state-chip warn';
+    } else {
+      drawerChip.textContent = 'DRAWER CLOSED';
+      drawerChip.className = 'top-state-chip';
+    }
+  }
 }
 
 function normalizedIdentityKey(parts = {}){
@@ -1723,7 +1758,15 @@ function upsertDealerItem(patch, eventType = 'item_updated'){
     identity:{ category:'', title:'', setName:'', cardNumber:'', printing:'', language:'English', normalizedIdentityKey:'' },
     images:[],
     research:{ source:null, priceState:null, selectedVariant:null },
+    variant:{ selected:null, available:[], intelligence:null },
+    pricing:{ source:null, priceState:null, market:null, guide:null, chartSource:null, snapshotHistory:[] },
     auth:{ latestAuthCheckId:null, riskLevel:null, confidencePercent:null, redFlags:[], missingChecks:[], watchlistHits:[], slabStatus:null, managerOverride:null },
+    inventory:{ inventoryId:null, status:null, location:null, quantity:null },
+    buyState:{ buySessionId:null, status:null, offer:null },
+    sellState:{ cartLineId:null, status:null, price:null },
+    showState:{ showSessionId:null, status:null },
+    scannerState:{ scanId:null, ocrText:null, confidence:null },
+    auditState:{ lastEvent:null },
     workflow:{ stage:'scanned', queueMembership:[] },
     audit:{ history:[] },
     createdAt:new Date().toISOString(),
@@ -1731,12 +1774,21 @@ function upsertDealerItem(patch, eventType = 'item_updated'){
     ...patch,
     identity:{ ...(existing?.identity || {}), ...(patch.identity || {}) },
     research:{ ...(existing?.research || {}), ...(patch.research || {}) },
+    variant:{ ...(existing?.variant || {}), ...(patch.variant || {}) },
+    pricing:{ ...(existing?.pricing || {}), ...(patch.pricing || {}) },
     auth:{ ...(existing?.auth || {}), ...(patch.auth || {}) },
+    inventory:{ ...(existing?.inventory || {}), ...(patch.inventory || {}) },
+    buyState:{ ...(existing?.buyState || {}), ...(patch.buyState || {}) },
+    sellState:{ ...(existing?.sellState || {}), ...(patch.sellState || {}) },
+    showState:{ ...(existing?.showState || {}), ...(patch.showState || {}) },
+    scannerState:{ ...(existing?.scannerState || {}), ...(patch.scannerState || {}) },
+    auditState:{ ...(existing?.auditState || {}), ...(patch.auditState || {}) },
     workflow:{ ...(existing?.workflow || {}), ...(patch.workflow || {}) },
     updatedAt:new Date().toISOString(),
   };
   item.identity.normalizedIdentityKey = item.identity.normalizedIdentityKey || normalizedIdentityKey(item.identity);
   auditItemEvent(item, eventType, { stage:item.workflow?.stage || '' });
+  item.auditState = { ...(item.auditState || {}), lastEvent:eventType, lastEventAt:new Date().toISOString() };
   state.itemsById[itemId] = item;
   saveDealerItems(state);
   return item;
@@ -1759,6 +1811,7 @@ function enqueueDealerItem(itemId, queueId, stage){
 
 function dealerItemFromResearchResult(r = {}, source = 'research'){
   const selectedVariant = r.selectedVariant || {};
+  const variantIntel = getVariantIntelligence(r);
   const item = upsertDealerItem({
     itemId:r.normalizedItemId || '',
     identity:{
@@ -1778,6 +1831,20 @@ function dealerItemFromResearchResult(r = {}, source = 'research'){
       sourceProductId:r.productId || r.pricecharting?.productId || '',
       sourceVariantId:selectedVariant.variantId || selectedVariant.productConditionId || '',
     },
+    variant:{
+      selected:selectedVariant || null,
+      available:r.availableVariants || [],
+      intelligence:variantIntel,
+    },
+    pricing:{
+      source:r.priceSource || r.source || source,
+      priceState:typeof qplTruthLabel === 'function' ? qplTruthLabel(r) : '',
+      market:Number(r.market || selectedVariant.marketPrice || 0) || null,
+      guide:Number(r.pricecharting?.prices?.ungraded || 0) || null,
+      chartSource:(selectedVariant?.priceHistory || r.priceHistory || []).length ? 'JustTCG exact variant history' : '',
+      snapshotHistory:r.source === 'pricecharting_csv' || r.pricecharting ? [{ at:new Date().toISOString(), source:'PriceCharting current guide', value:Number(r.market || r.pricecharting?.prices?.ungraded || 0) }] : [],
+    },
+    showState:{ showSessionId:getShowSessionId(), status:getShowMode() ? 'show_active' : '' },
     workflow:{ stage:'researched', queueMembership:['researchQueue'] },
     sourcePayload:r,
   }, 'research_identity_saved');
@@ -4122,6 +4189,7 @@ function renderShowMode(){
   if(!show) {
     status.textContent = 'not started';
     status.style.color = 'var(--dim)';
+    updateTopStateChips();
     updateRegisterCommandCenter();
     return;
   }
@@ -4131,6 +4199,7 @@ function renderShowMode(){
   document.getElementById('show-price-rule').value = show.priceRulePct || '';
   status.textContent = (show.eventName || 'Show') + (show.booth ? ' · ' + show.booth : '');
   status.style.color = 'var(--gold)';
+  updateTopStateChips();
   updateRegisterCommandCenter();
 }
 
@@ -5770,6 +5839,7 @@ const AUTH_CONDITIONAL_PHOTOS = {
   texture_closeup:'Texture close-up',
   corner_macro_top_left:'Corner macro',
   surface_macro_art_box:'Surface / print close-up',
+  optional_light_test:'Optional light test',
 };
 const AUTH_WATCHLIST_DEFAULTS = [
   { name:'Umbreon VMAX Alt Art', set:'Evolving Skies', cardNumber:'215/203', riskReason:'Common high-value counterfeit target', suspicionWeight:18, requiresManagerReview:true },
@@ -5830,12 +5900,13 @@ function authPhotoChecklistForItem(item = {}, state = getDealerItems()){
   const wantsTexture = /sir|special illustration|alt art|secret|rainbow|textured|moonbreon|charizard|vmax|rare|mythic/.test(text) || highValue;
   const wanted = [
     ...AUTH_REQUIRED_PHOTOS.map(type => ({ type, label:type === 'front' ? 'Front photo' : 'Back photo', required:true })),
-    ...(wantsTexture ? [
+    ...[
       { type:'holo_angle', label:'Holo / finish angle', required:false },
       { type:'texture_closeup', label:'Texture close-up', required:false },
       { type:'corner_macro_top_left', label:'Corner macro', required:false },
       { type:'surface_macro_art_box', label:'Surface / print close-up', required:false },
-    ] : []),
+      { type:'optional_light_test', label:'Optional light test', required:false },
+    ].filter(x => wantsTexture || ['corner_macro_top_left','optional_light_test'].includes(x.type)),
   ];
   return wanted.map(x => ({ ...x, captured:!!photos[x.type], qualityScore:Number(photos[x.type]?.qualityScore || 0), photo:photos[x.type] || null }));
 }
@@ -5859,6 +5930,7 @@ function analyzeAuthRisk(item = {}){
   const missingOptional = checklist.filter(x => !x.required && !x.captured).map(x => x.label);
   const poorQuality = checklist.filter(x => x.captured && x.qualityScore && x.qualityScore < 60).map(x => x.label + ' low quality');
   const watchHits = getAuthWatchlist().filter(w => authWatchlistMatch(item, w));
+  const variantIntel = item.variant?.intelligence || getVariantIntelligence(item.sourcePayload || {});
   const category = itemAuthCategory(item);
   const supported = authCategorySupported(item);
   const matchingSignals = [];
@@ -5869,14 +5941,17 @@ function analyzeAuthRisk(item = {}){
   if(item.identity?.setName || item.identity?.cardNumber) matchingSignals.push('Set/card number metadata is available for comparison.');
   if(checklist.some(x => x.captured)) matchingSignals.push('Candidate photos are saved with capture labels.');
   if(item.research?.selectedVariant || item.research?.sourceProductId) matchingSignals.push('Research source data is linked.');
+  (variantIntel.signals || []).forEach(s => matchingSignals.push(s));
   if(!supported) redFlags.push('Category is outside the current Pokemon / MTG auth profile.');
   if(watchHits.length) redFlags.push('High-risk watchlist hit: ' + watchHits.map(w => w.name).join(', '));
+  (variantIntel.warnings || []).forEach(w => redFlags.push(w));
   if(poorQuality.length) redFlags.push('One or more captured photos are too low quality for confident review.');
   let confidence = 82;
   confidence -= missingRequired.length * 22;
   confidence -= missingOptional.length * 6;
   confidence -= poorQuality.length * 12;
   confidence -= watchHits.reduce((n,w) => n + Number(w.suspicionWeight || 10), 0);
+  confidence -= (variantIntel.warnings || []).length * 14;
   if(!supported) confidence -= 24;
   confidence = Math.max(8, Math.min(92, Math.round(confidence)));
   let riskLevel = 'Low Risk';
@@ -5911,6 +5986,8 @@ function analyzeAuthRisk(item = {}){
     referenceSourcesUsed,
     slabStatus,
     watchlistHits:watchHits.map(w => ({ name:w.name, reason:w.riskReason || '', requiresManagerReview:!!w.requiresManagerReview })),
+    variantConfidence:variantIntel.confidence || 'unknown',
+    variantWarnings:variantIntel.warnings || [],
     recommendedNextAction,
     wouldYouBuyThis:{ answer:would, reason: would === 'Yes' ? 'Current evidence is consistent enough for normal dealer review.' : 'Risk, missing evidence, or watchlist status keeps this from a clean buy recommendation.' },
   };
@@ -6025,6 +6102,7 @@ function renderAuthCheckWorkbench(selectedItemId = activeAuthItemId){
     <div class="auth-risk ${authRiskClass(risk)}">
       <div style="font-family:'Orbitron',monospace;color:var(--text);font-size:18px">${escHtml(risk)}</div>
       <div style="color:var(--dim);margin-top:5px">Confidence: ${Number(confidence || 0)}%</div>
+      <div style="color:var(--dim);margin-top:5px">Variant confidence: ${escHtml(result?.variantConfidence || item.variant?.intelligence?.confidence || 'unknown')} / Price confidence: ${escHtml(item.sourcePayload?.priceConfidence || item.pricing?.priceState || item.research?.priceState || 'unknown')}</div>
     </div>
     <div style="margin-top:12px">
       <div class="ph" style="font-size:10px">WHY</div>
@@ -8535,6 +8613,59 @@ function qplTruthLabel(r){
   return Number(r?.market || 0) > 0 ? 'Manual Price' : 'Needs Review';
 }
 
+function variantCategoryKey(row = {}){
+  const txt = [row.category, row.game, row.productLine, row.name, row.set, row.setName].join(' ').toLowerCase();
+  if(txt.includes('pokemon') || txt.includes('pokémon')) return 'pokemon';
+  if(txt.includes('magic') || txt.includes('mtg')) return 'mtg';
+  return qplCategoryKey(row.category || '');
+}
+
+function getVariantIntelligence(row = {}){
+  const variants = row.availableVariants || [];
+  const finishSet = new Set(variants.map(v => normalizeQplFinish(v.finish || v.printing || v.foilType || '')).filter(Boolean));
+  const actualFinishes = [...finishSet];
+  const selectedFinish = normalizeQplFinish(row.selectedFinish || row.finish || row.printing || row.variant || '');
+  const rarityText = [row.variant, row.rarity, row.note, row.name, row.set, row.setName].join(' ').toLowerCase();
+  const cat = variantCategoryKey(row);
+  const expected = new Set(actualFinishes);
+  const warnings = [];
+  const signals = [];
+  if(cat === 'pokemon') {
+    if(/sir|special illustration|illustration rare|full art|alt art|textured/.test(rarityText)) expected.add('textured_foil');
+    if(/rainbow/.test(rarityText)) expected.add('rainbow_rare');
+    if(/reverse/.test(rarityText)) expected.add('reverse_holo');
+    if(/holo/.test(rarityText)) expected.add('holofoil');
+    signals.push('Pokemon finish expectations checked from variants and rarity text.');
+  } else if(cat === 'mtg') {
+    if(/etched/.test(rarityText)) expected.add('etched_foil');
+    if(/surge/.test(rarityText)) expected.add('surge_foil');
+    if(/textured/.test(rarityText)) expected.add('textured_foil');
+    if(/serialized/.test(rarityText)) expected.add('serialized');
+    if(/retro|borderless|extended|showcase/.test(rarityText)) signals.push('MTG frame treatment needs collector-number/frame validation.');
+    signals.push('MTG foil/frame expectations checked from variants and treatment text.');
+  }
+  if(variants.length && selectedFinish && !finishSet.has(selectedFinish)) warnings.push('Selected finish is not present in the loaded exact variant matrix.');
+  if(cat === 'pokemon' && /sir|special illustration/.test(rarityText) && variants.length && !actualFinishes.some(f => /textured|holo|foil/.test(f))) warnings.push('High-rarity Pokemon card has no textured/foil-capable variant data loaded.');
+  if(cat === 'mtg' && /etched|surge|serialized/.test(rarityText) && variants.length && !actualFinishes.includes(selectedFinish)) warnings.push('Selected MTG treatment does not match loaded variant availability.');
+  return {
+    category:cat,
+    selectedFinish,
+    actualFinishes,
+    expectedFinishes:[...expected].filter(Boolean),
+    warnings,
+    signals,
+    confidence:variants.length ? (warnings.length ? 'medium' : 'high') : 'low',
+  };
+}
+
+function renderVariantIntelligenceBadge(row = {}){
+  const intel = row.variantIntelligence || getVariantIntelligence(row);
+  if(!intel.actualFinishes.length && !intel.expectedFinishes.length) return '';
+  const tone = intel.warnings.length ? 'bad' : intel.confidence === 'high' ? 'good' : 'warn';
+  const label = intel.warnings.length ? 'VARIANT WARNING' : 'VARIANT OK';
+  return `<span class="qpl-badge ${tone}" title="${escHtml((intel.warnings[0] || intel.signals[0] || 'Variant intelligence').toString())}">${label}</span>`;
+}
+
 function normalizeQplVariantMatrix(card){
   const row = { ...card };
   row.productId = row.productId || row.justtcgCardId || row.id || '';
@@ -8743,6 +8874,7 @@ function applyQplSelectedVariant(r){
       r.market = 0;
       r.priceSource = 'No Matching Variant';
       r.priceConfidence = 'unknown';
+      r.variantIntelligence = getVariantIntelligence(r);
     }
     return r;
   }
@@ -8762,6 +8894,7 @@ function applyQplSelectedVariant(r){
   r.skuId = v.skuId || r.skuId || '';
   r.productConditionId = v.productConditionId || r.productConditionId || '';
   r.lastPriceSyncAt = v.lastUpdated || r.lastPriceSyncAt || new Date().toISOString();
+  r.variantIntelligence = getVariantIntelligence(r);
   return r;
 }
 
@@ -9537,6 +9670,7 @@ function quickLookupResultCard(r, idx){
         <span class="qpl-badge">${escHtml(r.category || 'ITEM')}</span>
         <span class="qpl-badge ${truth.includes('No ') || truth.includes('Needs') ? 'bad' : truth.includes('Guide') ? 'warn' : 'good'}">${escHtml(truth)}</span>
         <span class="qpl-badge">${escHtml(r.source === 'justtcg' ? 'JustTCG' : r.source === 'pricecharting_csv' ? 'PriceCharting' : r.source || 'Source')}</span>
+        ${renderVariantIntelligenceBadge(r)}
         ${r.source === 'inventory' ? '<span class="qpl-badge good">IN INVENTORY</span>' : ''}
         ${r.variant ? `<span class="qpl-badge warn">${escHtml(r.variant)}</span>` : ''}
       </div>
@@ -10030,7 +10164,7 @@ function pushQuickLookupHistory(q, r){
 // ══════════════════════════════════════════════════
 // CASH DRAWER TRACKER
 // ══════════════════════════════════════════════════
-let drawerState = JSON.parse(localStorage.getItem('pos_drawer') || 'null');
+var drawerState = JSON.parse(localStorage.getItem('pos_drawer') || 'null');
 
 function createDrawerSessionId(){
   return 'drawer_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 6);
@@ -10161,26 +10295,48 @@ function resetDrawer(){
   renderDrawer();
 }
 
-function addDrawerAdj(dir){
-  if(!drawerState) return;
-  const amt = parseFloat(document.getElementById('drawer-adj-amt').value)||0;
-  const note = document.getElementById('drawer-adj-note').value || (dir>0?'Cash in':'Cash out');
-  if(!amt) return;
+function drawerMovementMeta(type){
+  return {
+    paid_in:{ dir:1, label:'Paid In', event:'drawer_paid_in' },
+    paid_out:{ dir:-1, label:'Paid Out', event:'drawer_paid_out' },
+    drop:{ dir:-1, label:'Cash Drop', event:'drawer_cash_drop' },
+    refund:{ dir:-1, label:'Cash Refund', event:'drawer_cash_refund' },
+    buy_payout:{ dir:-1, label:'Buy Payout', event:'drawer_buy_payout' },
+    no_sale:{ dir:0, label:'No Sale', event:'drawer_no_sale' },
+    cash_in:{ dir:1, label:'Cash In', event:'drawer_cash_in' },
+    cash_out:{ dir:-1, label:'Cash Out', event:'drawer_cash_out' },
+  }[type] || { dir:0, label:'Drawer Note', event:'drawer_note' };
+}
+
+function addDrawerMovement(type){
+  if(!drawerState) return toast_dash('Open drawer first');
+  const meta = drawerMovementMeta(type);
+  const amtInput = document.getElementById('drawer-adj-amt');
+  const noteInput = document.getElementById('drawer-adj-note');
+  const amt = meta.dir === 0 ? 0 : (parseFloat(amtInput?.value) || 0);
+  const note = noteInput?.value || meta.label;
+  if(meta.dir !== 0 && !amt) return toast_dash('Enter an amount for ' + meta.label);
   drawerState.log.push({
     id:'adj_' + Date.now(),
     drawerSessionId: drawerState.id || '',
-    dir,
+    dir:meta.dir,
     amt,
     note,
-    type: dir > 0 ? 'cash_in' : 'cash_out',
+    type,
+    label:meta.label,
     time: new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'}),
     createdAt: new Date().toISOString()
   });
-  document.getElementById('drawer-adj-amt').value = '';
-  document.getElementById('drawer-adj-note').value = '';
+  if(amtInput) amtInput.value = '';
+  if(noteInput) noteInput.value = '';
   saveDrawer();
-  logOpsEvent(dir > 0 ? 'drawer_cash_in' : 'drawer_cash_out', note, { drawerSessionId:drawerState.id, amount:amt });
+  logOpsEvent(meta.event, meta.label + ': ' + note, { drawerSessionId:drawerState.id, amount:amt, movementType:type });
   renderDrawer();
+}
+
+function addDrawerAdj(dir){
+  if(!drawerState) return;
+  addDrawerMovement(dir > 0 ? 'cash_in' : 'cash_out');
 }
 
 function closeDrawer(){
@@ -10247,6 +10403,7 @@ function renderDrawer(){
   if(!drawerState){
     closed.style.display=''; open.style.display='none';
     status.textContent='CLOSED'; status.style.color='var(--red)';
+    updateTopStateChips();
     updateRegisterCommandCenter();
     return;
   }
@@ -10299,6 +10456,7 @@ function renderDrawer(){
         <span style="color:${Math.abs(Number(c.difference||0))<0.5?'var(--g)':'var(--gold)'}">${Number(c.difference||0)>=0?'+':''}$${Number(c.difference||0).toFixed(2)}</span>
       </div>`).join('') : '';
   }
+  updateTopStateChips();
   updateRegisterCommandCenter();
 }
 
@@ -10409,6 +10567,22 @@ function payCustomerForBuySession(method){
   session.customerPaidAt = new Date().toISOString();
   saveActiveBuySession(session);
   saveBuySessionHistory(session);
+  if(normalizeTenderType(session.paymentType) === 'cash' && drawerState) {
+    drawerState.log.push({
+      id:'buy_payout_' + Date.now(),
+      drawerSessionId:drawerState.id || '',
+      dir:-1,
+      amt:Number(session.cashOfferTotal || 0),
+      note:'Customer buy payout' + (session.customerName ? ': ' + session.customerName : ''),
+      type:'buy_payout',
+      label:'Buy Payout',
+      buySessionId:session.buySessionId,
+      time:new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'}),
+      createdAt:new Date().toISOString()
+    });
+    saveDrawer();
+    renderDrawer();
+  }
   logOpsEvent('customer_paid', 'Recorded customer payout for buy session', { buySessionId:session.buySessionId, method:session.paymentType, amount:session.cashOfferTotal });
   toast_dash('Customer payout recorded: ' + session.paymentType);
 }
