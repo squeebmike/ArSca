@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.05.12.01">
+<meta name="version" content="2026.05.15.01">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -12,9 +12,9 @@
 <title>Walk-Off Dashboard</title>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-:root{--g:#00ffb3;--gd:rgba(0,255,179,.1);--gold:#ffd166;--red:#ff4d6d;--blue:#48cae4;--purple:#c77dff;--bg:#07080a;--surf:#0d0f14;--surf2:#141720;--border:rgba(255,255,255,.07);--text:#e4e4e8;--dim:rgba(228,228,232,.4);}
+:root{--brand-primary:#00ffb3;--brand-secondary:#ffd166;--brand-accent:#c77dff;--brand-background:#07080a;--brand-surface:#0d0f14;--brand-surface-2:#141720;--brand-text:#e4e4e8;--brand-muted:rgba(228,228,232,.4);--brand-success:#00ffb3;--brand-warning:#ffd166;--brand-danger:#ff4d6d;--brand-info:#48cae4;--brand-border:rgba(255,255,255,.07);--brand-card-radius:10px;--brand-button-radius:6px;--brand-font-family:'DM Sans',sans-serif;--g:var(--brand-primary);--gd:rgba(0,255,179,.1);--gold:var(--brand-warning);--red:var(--brand-danger);--blue:var(--brand-info);--purple:var(--brand-accent);--bg:var(--brand-background);--surf:var(--brand-surface);--surf2:var(--brand-surface-2);--border:var(--brand-border);--text:var(--brand-text);--dim:var(--brand-muted);}
 *{margin:0;padding:0;box-sizing:border-box;}
-body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100vh;padding-bottom:calc(72px + env(safe-area-inset-bottom));}
+body{background:var(--bg);color:var(--text);font-family:var(--brand-font-family);min-height:100vh;padding-bottom:calc(72px + env(safe-area-inset-bottom));}
 body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse at 15% 15%,rgba(0,255,179,.03) 0,transparent 55%),radial-gradient(ellipse at 85% 85%,rgba(199,125,255,.03) 0,transparent 55%);pointer-events:none;}
 
 /* HEADER */
@@ -24,14 +24,14 @@ header{position:sticky;top:0;z-index:100;background:rgba(7,8,10,.96);backdrop-fi
 .logo span{color:var(--dim);font-weight:400;font-size:10px;letter-spacing:1px;margin-left:8px;}
 .hdr-right{display:flex;align-items:center;gap:8px;min-width:0;}
 #sync-status{font-family:monospace,monospace;font-size:10px;color:var(--dim);}
-.hbtn{background:var(--gd);border:1px solid rgba(0,255,179,.2);color:var(--g);padding:8px 13px;min-height:38px;font-family:'Orbitron',monospace;font-size:9px;letter-spacing:1px;cursor:pointer;border-radius:6px;transition:.15s;touch-action:manipulation;}
+.hbtn{background:var(--gd);border:1px solid rgba(0,255,179,.2);color:var(--g);padding:8px 13px;min-height:38px;font-family:'Orbitron',monospace;font-size:9px;letter-spacing:1px;cursor:pointer;border-radius:var(--brand-button-radius);transition:.15s;touch-action:manipulation;}
 .hbtn:hover{background:rgba(0,255,179,.15);}
 .hbtn.danger{background:rgba(255,77,109,.08);border-color:rgba(255,77,109,.2);color:var(--red);}
 
 /* TABS */
 .tabs{max-width:1400px;margin:0 auto;padding:10px 20px 8px;display:flex;gap:6px;border-bottom:1px solid var(--border);align-items:center;overflow-x:auto;scrollbar-width:none;}
 .tabs::-webkit-scrollbar{display:none;}
-.tab{font-family:monospace,monospace;font-size:10px;letter-spacing:1px;color:var(--dim);padding:10px 14px;min-height:40px;border:1px solid transparent;border-radius:6px;cursor:pointer;transition:.15s;user-select:none;white-space:nowrap;display:flex;align-items:center;}
+.tab{font-family:monospace,monospace;font-size:10px;letter-spacing:1px;color:var(--dim);padding:10px 14px;min-height:40px;border:1px solid transparent;border-radius:var(--brand-button-radius);cursor:pointer;transition:.15s;user-select:none;white-space:nowrap;display:flex;align-items:center;}
 .tab.on{color:var(--g);border-color:rgba(0,255,179,.28);background:rgba(0,255,179,.07);}
 .tab.primary{color:rgba(228,228,232,.72);}
 .nav-more{margin-left:auto;position:relative;flex-shrink:0;}
@@ -67,7 +67,7 @@ header{position:sticky;top:0;z-index:100;background:rgba(7,8,10,.96);backdrop-fi
 /* TWO COLUMN */
 .two{max-width:1400px;margin:0 auto;padding:0 20px;display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;}
 .three{max-width:1400px;margin:0 auto;padding:0 20px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px;}
-.panel{background:var(--surf);border:1px solid var(--border);border-radius:10px;padding:16px;}
+.panel{background:var(--surf);border:1px solid var(--border);border-radius:var(--brand-card-radius);padding:16px;}
 .ph{font-family:monospace,monospace;font-size:9px;letter-spacing:2px;color:var(--dim);margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;}
 .ph b{color:var(--text);font-weight:600;}
 .ph-action{font-size:9px;color:var(--g);cursor:pointer;text-decoration:none;}
@@ -117,6 +117,54 @@ header{position:sticky;top:0;z-index:100;background:rgba(7,8,10,.96);backdrop-fi
 .sell-pay-btn.warn{border-color:rgba(255,209,102,.3);color:var(--gold);background:rgba(255,209,102,.07);}
 .sell-pay-btn.danger{border-color:rgba(255,77,109,.25);color:var(--red);background:rgba(255,77,109,.06);}
 .sell-payment-note{font-family:monospace,monospace;font-size:9px;color:var(--dim);line-height:1.55;text-align:center;margin-top:10px;}
+.checkout-stage{display:grid;gap:14px;}
+.dealer-checkout-panel{background:var(--surf);border:1px solid var(--border);border-radius:10px;padding:16px;}
+.checkout-state-strip{display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap;border:1px solid var(--border);border-radius:8px;background:var(--surf2);padding:9px 10px;margin-bottom:12px;font-family:monospace,monospace;font-size:10px;color:var(--dim);}
+.checkout-state-pill{border:1px solid rgba(0,255,179,.24);background:rgba(0,255,179,.07);color:var(--g);border-radius:999px;padding:5px 9px;font-family:'Orbitron',monospace;font-size:9px;}
+.checkout-state-pill.warn{border-color:rgba(255,209,102,.28);background:rgba(255,209,102,.08);color:var(--gold);}
+.checkout-state-pill.bad{border-color:rgba(255,77,109,.28);background:rgba(255,77,109,.08);color:var(--red);}
+.dealer-line{display:grid;grid-template-columns:minmax(0,1fr) 92px 78px 38px;gap:8px;align-items:center;background:var(--surf2);border:1px solid var(--border);border-radius:8px;padding:10px;}
+.dealer-line.locked{grid-template-columns:minmax(0,1fr) 92px 78px;}
+.dealer-line-name{font-weight:700;color:var(--text);line-height:1.25;overflow:hidden;text-overflow:ellipsis;}
+.dealer-line-sub{font-family:monospace,monospace;font-size:9px;color:var(--dim);margin-top:3px;}
+.dealer-profit{font-family:monospace,monospace;font-size:9px;color:var(--dim);text-align:right;}
+.dealer-total{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:12px;padding-top:12px;border-top:1px solid var(--border);}
+.dealer-total b{font-family:'Orbitron',monospace;font-size:34px;color:var(--g);}
+.checkout-action-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;}
+.checkout-action-row .hbtn{min-height:48px;}
+.customer-payment-screen{display:none;min-height:calc(100vh - 170px);background:#f7f8fa;color:#101319;border-radius:0;padding:24px;box-shadow:0 18px 60px rgba(0,0,0,.35);}
+.customer-payment-screen.on{display:grid;grid-template-rows:auto 1fr auto;gap:18px;}
+.customer-pay-brand{text-align:center;}
+.customer-pay-brand img{display:none;width:110px;max-height:82px;object-fit:contain;margin:0 auto 10px;}
+.customer-pay-store{font-family:'Orbitron',monospace;font-size:28px;font-weight:900;letter-spacing:2px;color:#0b0d12;}
+.customer-pay-safe{font-family:monospace,monospace;font-size:11px;color:#657080;margin-top:5px;}
+.customer-pay-lines{display:grid;gap:10px;align-content:start;max-width:860px;width:100%;margin:0 auto;}
+.customer-pay-line{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:18px;align-items:center;border-bottom:1px solid #dce1e8;padding:12px 0;}
+.customer-pay-name{font-size:20px;font-weight:800;color:#101319;line-height:1.25;}
+.customer-pay-sub{font-family:monospace,monospace;font-size:11px;color:#657080;margin-top:4px;}
+.customer-pay-price{font-family:'Orbitron',monospace;font-size:23px;font-weight:900;color:#111827;}
+.customer-pay-total{text-align:center;}
+.customer-pay-total span{display:block;font-family:monospace,monospace;font-size:12px;color:#657080;letter-spacing:2px;}
+.customer-pay-total b{display:block;font-family:'Orbitron',monospace;font-size:68px;color:#05835f;line-height:1;}
+.customer-method-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;max-width:860px;width:100%;margin:16px auto 0;}
+.customer-method-btn{min-height:74px;border-radius:8px;border:2px solid #cfd7e3;background:#fff;color:#101319;font-family:'Orbitron',monospace;font-size:13px;font-weight:900;letter-spacing:1px;cursor:pointer;}
+.customer-method-btn.on{border-color:#05835f;background:#e9fff7;color:#056044;}
+.payment-workbench{display:none;max-width:860px;width:100%;margin:12px auto 0;border:1px solid #cfd7e3;background:#fff;border-radius:8px;padding:14px;color:#101319;}
+.payment-workbench.on{display:block;}
+.payment-qr{width:220px;height:220px;border:1px solid #cfd7e3;border-radius:8px;background:#fff;object-fit:contain;margin:10px auto;display:block;}
+.payment-qr-fallback{width:220px;height:220px;border:1px dashed #9aa5b1;border-radius:8px;margin:10px auto;display:flex;align-items:center;justify-content:center;text-align:center;padding:12px;font-family:monospace,monospace;font-size:12px;color:#475569;word-break:break-word;}
+.payment-confirm-row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:12px;}
+.payment-confirm-row .hbtn{min-height:50px;}
+.receipt-capture-screen,.wants-capture-screen{display:none;max-width:620px;margin:20px auto;background:#fff;color:#101319;border-radius:8px;padding:22px;border:1px solid #cfd7e3;}
+.receipt-capture-screen.on,.wants-capture-screen.on{display:block;}
+.receipt-capture-screen h2,.wants-capture-screen h2{font-family:'Orbitron',monospace;font-size:22px;margin-bottom:12px;color:#101319;}
+.receipt-capture-screen input,.wants-capture-screen input,.wants-capture-screen textarea{width:100%;min-height:48px;border:1px solid #cfd7e3;border-radius:7px;padding:10px 12px;font-size:16px;margin-bottom:10px;}
+.offline-queued-banner{display:none;border:1px solid rgba(255,209,102,.35);background:rgba(255,209,102,.09);color:var(--gold);border-radius:8px;padding:10px;margin-bottom:12px;font-family:monospace,monospace;font-size:10px;}
+.offline-queued-banner.on{display:block;}
+.drawer-ledger-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-bottom:10px;}
+.drawer-ledger-metric{background:var(--surf2);border:1px solid var(--border);border-radius:8px;padding:10px;}
+.drawer-ledger-metric span{display:block;font-family:monospace,monospace;font-size:8px;letter-spacing:1px;color:var(--dim);text-transform:uppercase;}
+.drawer-ledger-metric b{display:block;font-family:'Orbitron',monospace;font-size:16px;color:var(--text);margin-top:4px;}
 .auth-screen{position:fixed;inset:0;z-index:5000;background:radial-gradient(circle at top,rgba(0,255,179,.08),transparent 38%),#07080a;display:none;align-items:center;justify-content:center;padding:24px;}
 .auth-screen.on{display:flex;}
 .auth-card{width:min(460px,100%);background:var(--surf);border:1px solid var(--border);border-radius:14px;padding:22px;box-shadow:0 24px 80px rgba(0,0,0,.5);}
@@ -320,8 +368,39 @@ tr.sold:hover td{opacity:.7;}
 .tab-panel{display:none;}
 .tab-panel.on{display:block;}
 
+@media(max-width:1100px){
+  .qpl-hero-card{grid-template-columns:minmax(220px,280px) minmax(0,1fr);grid-template-areas:'image info' 'actions actions';}
+  .qpl-hero-card .qpl-img-shell{grid-area:image;}
+  .qpl-hero-card .qpl-info{grid-area:info;}
+  .qpl-hero-card .qpl-actions{grid-area:actions;grid-template-columns:repeat(4,minmax(0,1fr));}
+  .qpl-hero-card .qpl-actions .hbtn{min-height:50px;white-space:normal;line-height:1.25;}
+}
+
+#header-actions-btn,#header-actions-menu{display:none;}
+#header-actions-wrap{position:relative;display:flex;align-items:center;}
+#header-actions-menu{position:absolute;right:0;top:calc(100% + 6px);min-width:190px;background:var(--surf);border:1px solid var(--border);border-radius:var(--brand-card-radius);padding:6px;box-shadow:0 18px 50px rgba(0,0,0,.65);z-index:10001;}
+#header-actions-menu.on{display:grid;gap:5px;}
+#customer-display-exit{display:none;position:fixed;top:12px;right:12px;z-index:100000;opacity:.34;}
+body.customer-display-mode{padding-bottom:0;background:#020304;}
+body.customer-display-mode header,body.customer-display-mode #dealer-cart-tools,body.customer-display-mode #cd-help-panel,body.customer-display-mode .sec{display:none!important;}
+body.customer-display-mode .tab-panel{display:none!important;}
+body.customer-display-mode #tab-display{display:block!important;}
+body.customer-display-mode #customer-display{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:18px;}
+body.customer-display-mode #customer-display .sell-shell{width:min(920px,100%);padding:0;}
+body.customer-display-mode #customer-display-exit{display:block;}
+
 @media(max-width:900px){
   body{font-size:15px;}
+  .hdr{height:auto;min-height:54px;align-items:flex-start;flex-wrap:wrap;padding:8px 12px;}
+  .logo{line-height:1.4;padding-top:6px;}
+  .logo span{display:none;}
+  .hdr-right{flex:1 1 100%;flex-wrap:wrap;gap:6px;}
+  .store-chip,.top-state-chip,#sync-status{min-height:40px;font-size:9px;}
+  #sync-status,#refresh-btn,#fullscreen-btn,#logout-btn{display:none!important;}
+  #header-actions-btn{display:inline-flex;align-items:center;justify-content:center;}
+  #store-switcher{max-width:150px;}
+  .tabs{position:sticky;top:0;z-index:99;padding:8px 12px;background:rgba(7,8,10,.97);border-bottom:1px solid var(--border);}
+  .tab{min-height:44px;padding:10px 12px;}
   .panel{padding:18px;}
   .hbtn,.fb,.ra,.pg,.modal-btn,.sell-pay-btn{min-height:48px;}
   .reg-action,.sell-pay-btn{min-height:56px;}
@@ -343,6 +422,21 @@ tr.sold:hover td{opacity:.7;}
   .auth-grid{grid-template-columns:1fr;max-width:900px;}
   .auth-panel-sticky{position:static;}
   .auth-compare{grid-template-columns:1fr;}
+  #tab-inventory .tbl-wrap{overflow:visible;}
+  #tab-inventory table,#tab-inventory tbody,#tab-inventory tr,#tab-inventory td{display:block;width:100%;}
+  #tab-inventory thead{display:none;}
+  #tab-inventory tr{background:var(--surf);border:1px solid var(--border);border-radius:10px;margin:0 0 10px;padding:10px;}
+  #tab-inventory td{border:0!important;padding:6px 4px!important;text-align:left!important;}
+  #tab-inventory td:nth-child(1){font-size:15px;font-weight:700;}
+  #tab-inventory td:nth-child(2)::before{content:'Set / Variant: ';color:var(--dim);font-family:monospace,monospace;font-size:9px;}
+  #tab-inventory td:nth-child(3)::before{content:'Category: ';color:var(--dim);font-family:monospace,monospace;font-size:9px;}
+  #tab-inventory td:nth-child(4)::before{content:'Qty: ';color:var(--dim);font-family:monospace,monospace;font-size:9px;}
+  #tab-inventory td:nth-child(5)::before{content:'Market: ';color:var(--dim);font-family:monospace,monospace;font-size:9px;}
+  #tab-inventory td:nth-child(6)::before{content:'Cost: ';color:var(--dim);font-family:monospace,monospace;font-size:9px;}
+  #tab-inventory td:nth-child(7)::before{content:'Margin: ';color:var(--dim);font-family:monospace,monospace;font-size:9px;}
+  #tab-inventory td:nth-child(8)::before{content:'Status: ';color:var(--dim);font-family:monospace,monospace;font-size:9px;}
+  #tab-inventory .row-act{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;}
+  #tab-inventory .row-act .ra{width:100%;min-height:48px;padding:8px 6px;font-size:9px;}
 }
 @media(max-width:600px){
   body{font-size:16px;}
@@ -393,7 +487,7 @@ tr.sold:hover td{opacity:.7;}
 
 <header>
   <div class="hdr">
-    <div class="logo">WALK-OFF <span>DASHBOARD · v2026.05.07.07</span></div>
+    <div class="logo">WALK-OFF <span>DASHBOARD · v2026.05.15.01</span></div>
     <div class="hdr-right">
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
@@ -944,20 +1038,29 @@ tr.sold:hover td{opacity:.7;}
 
 <!-- CUSTOMER DISPLAY TAB -->
 <div id="tab-display" class="tab-panel">
-  <div class="sec">CART / CUSTOMER DISPLAY</div>
+  <div class="sec">SELL / LOCKED CHECKOUT</div>
   <div class="sell-shell" style="margin-bottom:14px">
     <div id="cd-help-panel" style="background:var(--surf);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:14px">
-      <div class="ph">LIVE CART + CUSTOMER DISPLAY</div>
+      <div class="ph">DEALER CHECKOUT WORKFLOW</div>
       <div style="font-family:monospace,monospace;font-size:10px;color:var(--dim);line-height:1.8">
         Open this tab on a tablet or second screen facing the customer. It auto-refreshes from your cart every 3 seconds.
         Use your phone as the scanner/POS — the customer sees their items and total in real time on this screen.
       </div>
     </div>
+    <div id="checkout-offline-banner" class="offline-queued-banner">OFFLINE QUEUED: payment was confirmed, and the complete transaction bundle is waiting to sync.</div>
+    <div class="dealer-checkout-panel" id="dealer-cart-tools" style="margin-bottom:14px">
+      <div class="ph">DEALER CHECKOUT PANEL <span style="font-size:9px;color:var(--dim)">private controls</span></div>
+      <div id="dealer-checkout-state" class="checkout-state-strip"></div>
+      <div id="dealer-cart-lines" style="display:grid;gap:8px;font-family:monospace,monospace;font-size:10px;color:var(--dim)"></div>
+      <div id="dealer-cart-total" class="dealer-total"></div>
+      <div id="dealer-checkout-actions" class="checkout-action-row"></div>
+    </div>
   </div>
+  <button id="customer-display-exit" class="hbtn danger" onclick="exitCustomerDisplayMode()">EXIT CUSTOMER DISPLAY</button>
   <div id="customer-display">
     <!-- Live customer view rendered here -->
     <div class="sell-shell">
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+      <div style="display:none;gap:8px;flex-wrap:wrap;margin-bottom:12px" data-dealer-only>
         <button class="hbtn" onclick="addQuickSaleShortcut('$1 Binder Card',1,'Binder')">$1 Binder</button>
         <button class="hbtn" onclick="addQuickSaleShortcut('$2 Binder Card',2,'Binder')">$2 Binder</button>
         <button class="hbtn" onclick="addQuickSaleShortcut('$5 Binder Card',5,'Binder')">$5 Binder</button>
@@ -1294,7 +1397,7 @@ tr.sold:hover td{opacity:.7;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.05.12.01';
+const APP_VERSION = '2026.05.15.01';
 const SUPABASE_URL = 'https://vroknjrxubsqyexngwus.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_wbpX2nL8l-4NbXtZNG_bjA_nabSYaJ5';
 const AUTH_REDIRECT_URL = 'https://squeebmike.github.io/ArSca/dashboard.html';
@@ -1317,7 +1420,7 @@ const WALKOFF_DEMO_STORES = [
   { id:'demo-show-store', ownerUserId:'demo-owner', name:'demo-show-store', displayName:'Demo Show Store', logoUrl:'', location:'Card Show', timezone:'America/Los_Angeles', currency:'USD', status:'active', createdAt:'2026-05-06T00:00:00.000Z' },
 ];
 const WALKOFF_DEMO_USER = { id:'demo-owner', email:'owner@walkoff.local', displayName:'Store Owner', role:'owner', defaultStoreId:'walkoff-main', createdAt:'2026-05-06T00:00:00.000Z' };
-const WALKOFF_SCOPED_KEYS = new Set(['lba_inventory','walkoff_universal_inventory','pos_cart_v2','pos_buy_list','pos_buy_offers','pos_active_buy_session','pos_buy_sessions','pos_transactions','pos_drawer','pos_drawer_closeouts','pos_wantlist','set_needs_v1','pos_consign','pos_locations','vendor_profile_v1','vendor_config_v1','store_payment_settings_v1','store_onboarding_v1','pos_ops_log','inventory_lifecycle','pos_show_mode','sync_queue_v1','pos_customers','pos_undo_stack','sheet_mapping_v1','grade_submissions','research_needs_review_v1','dealer_items_v1','dealer_photos_v1','dealer_auth_checks_v1','dealer_queues_v1','lba_sales']);
+const WALKOFF_SCOPED_KEYS = new Set(['lba_inventory','walkoff_universal_inventory','pos_cart_v2','pos_buy_list','pos_buy_offers','pos_active_buy_session','pos_buy_sessions','pos_transactions','pos_drawer','pos_drawer_closeouts','pos_wantlist','set_needs_v1','pos_consign','pos_locations','vendor_profile_v1','vendor_config_v1','store_payment_settings_v1','store_theme_v1','store_onboarding_v1','pos_ops_log','inventory_lifecycle','pos_show_mode','sync_queue_v1','pos_customers','pos_undo_stack','sheet_mapping_v1','grade_submissions','research_needs_review_v1','dealer_items_v1','dealer_photos_v1','dealer_auth_checks_v1','dealer_queues_v1','lba_sales']);
 const WALKOFF_AUTH_SESSION_KEY = 'walkoff_auth_session_v1';
 const WALKOFF_ACTIVE_STORE_KEY = 'walkoff_active_store_id';
 const WALKOFF_STORAGE_MIGRATION_KEY = 'walkoff_store_migration_v1';
@@ -1546,6 +1649,71 @@ async function acceptPickedInvite(){
   location.reload();
 }
 
+const DEFAULT_STORE_THEME = { themeName:'Walk-Off Dark', primaryColor:'#00ffb3', secondaryColor:'#ffd166', accentColor:'#c77dff', backgroundColor:'#07080a', surfaceColor:'#0d0f14', surface2Color:'#141720', textColor:'#e4e4e8', mutedTextColor:'rgba(228,228,232,.4)', successColor:'#00ffb3', warningColor:'#ffd166', dangerColor:'#ff4d6d', infoColor:'#48cae4', borderColor:'rgba(255,255,255,.07)', fontFamily:"'DM Sans',sans-serif", cardRadius:'10px', buttonRadius:'6px' };
+const STORE_THEME_PRESETS = {
+  'Walk-Off Dark': DEFAULT_STORE_THEME,
+  'Seahawks': { ...DEFAULT_STORE_THEME, themeName:'Seahawks', primaryColor:'#69be28', secondaryColor:'#a5acaf', accentColor:'#002244', backgroundColor:'#06121f', surfaceColor:'#0b1f34', surface2Color:'#102b47', infoColor:'#6bd6ff' },
+  'Classic Card Shop': { ...DEFAULT_STORE_THEME, themeName:'Classic Card Shop', primaryColor:'#d8b26e', secondaryColor:'#a54848', accentColor:'#5fa8d3', backgroundColor:'#101113', surfaceColor:'#18191d', surface2Color:'#22242a', warningColor:'#d8b26e' },
+  'Light Mode': { ...DEFAULT_STORE_THEME, themeName:'Light Mode', primaryColor:'#0c6b52', secondaryColor:'#835a00', accentColor:'#5d4a9c', backgroundColor:'#f6f7f9', surfaceColor:'#ffffff', surface2Color:'#eef1f4', textColor:'#14171d', mutedTextColor:'#5d6673', borderColor:'rgba(0,0,0,.12)' },
+  'High Contrast': { ...DEFAULT_STORE_THEME, themeName:'High Contrast', primaryColor:'#00ff66', secondaryColor:'#ffff00', accentColor:'#00d8ff', backgroundColor:'#000000', surfaceColor:'#080808', surface2Color:'#111111', textColor:'#ffffff', mutedTextColor:'#cfcfcf', borderColor:'rgba(255,255,255,.35)' }
+};
+function getStoreTheme(){ try { return { ...DEFAULT_STORE_THEME, ...JSON.parse(localStorage.getItem('store_theme_v1') || '{}') }; } catch(e) { return { ...DEFAULT_STORE_THEME }; } }
+function hexToRgb(hex){ const h = String(hex || '').replace('#','').trim(); return /^[0-9a-f]{6}$/i.test(h) ? { r:parseInt(h.slice(0,2),16), g:parseInt(h.slice(2,4),16), b:parseInt(h.slice(4,6),16) } : null; }
+function rgbaFromHex(hex, alpha){ const c = hexToRgb(hex); return c ? `rgba(${c.r},${c.g},${c.b},${alpha})` : `rgba(0,255,179,${alpha})`; }
+function applyStoreTheme(theme = getStoreTheme(), persist = false){
+  const t = { ...DEFAULT_STORE_THEME, ...(theme || {}) };
+  const root = document.documentElement;
+  const vars = {
+    '--brand-primary':t.primaryColor,'--brand-secondary':t.secondaryColor,'--brand-accent':t.accentColor,'--brand-background':t.backgroundColor,'--brand-surface':t.surfaceColor,'--brand-surface-2':t.surface2Color,'--brand-text':t.textColor,'--brand-muted':t.mutedTextColor,'--brand-success':t.successColor,'--brand-warning':t.warningColor,'--brand-danger':t.dangerColor,'--brand-info':t.infoColor,'--brand-border':t.borderColor,'--brand-card-radius':t.cardRadius,'--brand-button-radius':t.buttonRadius,'--brand-font-family':t.fontFamily,
+    '--g':t.primaryColor,'--gd':rgbaFromHex(t.primaryColor,.1),'--gold':t.warningColor,'--red':t.dangerColor,'--blue':t.infoColor,'--purple':t.accentColor,'--bg':t.backgroundColor,'--surf':t.surfaceColor,'--surf2':t.surface2Color,'--border':t.borderColor,'--text':t.textColor,'--dim':t.mutedTextColor
+  };
+  Object.entries(vars).forEach(([k,v]) => root.style.setProperty(k, v));
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', t.backgroundColor);
+  if(persist) localStorage.setItem('store_theme_v1', JSON.stringify(t));
+}
+function themeFormValue(id, fallback){ return document.getElementById(id)?.value || fallback; }
+function readThemeForm(){
+  return { themeName:themeFormValue('theme-name','Custom'), primaryColor:themeFormValue('theme-primary','#00ffb3'), secondaryColor:themeFormValue('theme-secondary','#ffd166'), accentColor:themeFormValue('theme-accent','#c77dff'), backgroundColor:themeFormValue('theme-bg','#07080a'), surfaceColor:themeFormValue('theme-surface','#0d0f14'), surface2Color:themeFormValue('theme-surface2','#141720'), textColor:themeFormValue('theme-text','#e4e4e8'), mutedTextColor:themeFormValue('theme-muted','rgba(228,228,232,.4)'), successColor:themeFormValue('theme-success','#00ffb3'), warningColor:themeFormValue('theme-warning','#ffd166'), dangerColor:themeFormValue('theme-danger','#ff4d6d'), infoColor:themeFormValue('theme-info','#48cae4'), borderColor:themeFormValue('theme-border','rgba(255,255,255,.07)'), fontFamily:themeFormValue('theme-font',"'DM Sans',sans-serif"), cardRadius:themeFormValue('theme-card-radius','10px'), buttonRadius:themeFormValue('theme-button-radius','6px') };
+}
+function setThemeForm(theme){
+  const t = { ...DEFAULT_STORE_THEME, ...(theme || {}) };
+  [['theme-name',t.themeName],['theme-primary',t.primaryColor],['theme-secondary',t.secondaryColor],['theme-accent',t.accentColor],['theme-bg',t.backgroundColor],['theme-surface',t.surfaceColor],['theme-surface2',t.surface2Color],['theme-text',t.textColor],['theme-muted',t.mutedTextColor],['theme-success',t.successColor],['theme-warning',t.warningColor],['theme-danger',t.dangerColor],['theme-info',t.infoColor],['theme-border',t.borderColor],['theme-font',t.fontFamily],['theme-card-radius',t.cardRadius],['theme-button-radius',t.buttonRadius]].forEach(([id,val]) => { const el = document.getElementById(id); if(el) el.value = val; });
+}
+function previewBrandTheme(){ applyStoreTheme(readThemeForm(), false); }
+async function saveBrandTheme(){ const theme = readThemeForm(); applyStoreTheme(theme, true); const cloudSaved = await saveStoreSettingsToSupabase({ theme }); toast_dash(cloudSaved ? 'Theme saved' : 'Theme saved locally'); }
+function applyThemePreset(name){ const theme = { ...(STORE_THEME_PRESETS[name] || DEFAULT_STORE_THEME) }; setThemeForm(theme); applyStoreTheme(theme, false); }
+async function resetBrandTheme(){ setThemeForm(DEFAULT_STORE_THEME); applyStoreTheme(DEFAULT_STORE_THEME, true); await saveStoreSettingsToSupabase({ theme:DEFAULT_STORE_THEME }); toast_dash('Default theme restored'); }
+function ensureBrandingPanel(backoffice){
+  if(!backoffice || document.getElementById('branding-theme-panel')) return;
+  const panel = document.createElement('div');
+  panel.className = 'panel';
+  panel.id = 'branding-theme-panel';
+  panel.style.marginBottom = '14px';
+  const fields = [['Primary','theme-primary'],['Secondary','theme-secondary'],['Accent','theme-accent'],['Background','theme-bg'],['Panel','theme-surface'],['Panel 2','theme-surface2'],['Text','theme-text'],['Success','theme-success'],['Warning','theme-warning'],['Danger','theme-danger'],['Info','theme-info']];
+  panel.innerHTML = `
+    <div class="ph">BRANDING / THEME <span style="font-size:9px;color:var(--dim)">store colors</span></div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:8px;margin-bottom:10px">
+      <select id="theme-preset" class="tsi" onchange="applyThemePreset(this.value)" style="margin-bottom:0">${Object.keys(STORE_THEME_PRESETS).map(n=>`<option value="${escHtml(n)}">${escHtml(n)}</option>`).join('')}</select>
+      <input id="theme-name" class="tsi" placeholder="Theme name" oninput="previewBrandTheme()" style="margin-bottom:0">
+      <input id="theme-font" class="tsi" placeholder="Font family" oninput="previewBrandTheme()" style="margin-bottom:0">
+      <input id="theme-card-radius" class="tsi" placeholder="Card radius" oninput="previewBrandTheme()" style="margin-bottom:0">
+      <input id="theme-button-radius" class="tsi" placeholder="Button radius" oninput="previewBrandTheme()" style="margin-bottom:0">
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-bottom:10px">
+      ${fields.map(([label,id])=>`<label style="font-family:monospace,monospace;font-size:9px;color:var(--dim);display:grid;gap:4px">${label}<input id="${id}" type="color" oninput="previewBrandTheme()" style="width:100%;height:42px;background:var(--surf2);border:1px solid var(--border);border-radius:8px;padding:3px"></label>`).join('')}
+      <label style="font-family:monospace,monospace;font-size:9px;color:var(--dim);display:grid;gap:4px">Muted<input id="theme-muted" class="tsi" oninput="previewBrandTheme()" style="margin-bottom:0"></label>
+      <label style="font-family:monospace,monospace;font-size:9px;color:var(--dim);display:grid;gap:4px">Border<input id="theme-border" class="tsi" oninput="previewBrandTheme()" style="margin-bottom:0"></label>
+    </div>
+    <div style="background:var(--surf2);border:1px solid var(--border);border-radius:var(--brand-card-radius);padding:14px;margin-bottom:10px">
+      <div style="font-family:'Orbitron',monospace;font-size:14px;color:var(--g);margin-bottom:6px">Live Preview</div>
+      <div style="font-family:monospace,monospace;font-size:10px;color:var(--dim);margin-bottom:10px">Buttons, price text, badges, and panels update as you edit.</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><button class="hbtn">PRIMARY</button><button class="hbtn danger">DANGER</button><span class="data-pill warn">WARNING</span><span style="font-family:'Orbitron',monospace;font-size:24px;color:var(--g);font-weight:900">$42.00</span></div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="hbtn" onclick="saveBrandTheme()">SAVE THEME</button><button class="hbtn" onclick="resetBrandTheme()">RESET TO WALK-OFF</button></div>`;
+  backoffice.prepend(panel);
+  setThemeForm(getStoreTheme());
+}
+
 async function loadStoreSettingsFromSupabase(){
   const session = getAuthSession();
   const sb = getSupabaseClient();
@@ -1560,6 +1728,10 @@ async function loadStoreSettingsFromSupabase(){
   if(error) { console.warn('Store settings sync failed:', error.message); return; }
   if(!data) return;
   if(data.payment_settings) localStorage.setItem('store_payment_settings_v1', JSON.stringify(data.payment_settings));
+  if(data.theme) {
+    localStorage.setItem('store_theme_v1', JSON.stringify(data.theme));
+    applyStoreTheme(data.theme);
+  }
   if(data.modules) {
     const cfg = {
       ...getVendorConfig(),
@@ -1687,7 +1859,14 @@ function switchActiveStore(storeId){
 function renderAccountHeader(){
   const session = getAuthSession(), store = getActiveStore();
   const chip = document.getElementById('store-user-chip');
-  if(chip && session) { chip.style.display = ''; chip.textContent = store.displayName + ' | ' + session.user.displayName + ' (' + session.user.role + ')'; }
+  if(chip && session) {
+    const profile = getVendorProfile();
+    const storeName = store?.displayName || store?.name || profile.storeName || 'Walk-Off Sports Cards & Comics';
+    const userName = session.user?.displayName || session.user?.email || 'User';
+    const role = session.user?.role || 'employee';
+    chip.style.display = '';
+    chip.textContent = storeName + ' | ' + userName + ' (' + role + ')';
+  }
   const logout = document.getElementById('logout-btn'); if(logout) logout.style.display = session ? '' : 'none';
   const switcher = document.getElementById('store-switcher');
   if(switcher && session?.stores?.length > 1) {
@@ -1707,6 +1886,9 @@ function updateTopStateChips(){
   document.body?.classList.toggle('show-active', !!show);
   const drawerChip = document.getElementById('top-drawer-chip');
   if(drawerChip) {
+    drawerChip.onclick = openDrawerPanelFromHeader;
+    drawerChip.style.cursor = 'pointer';
+    drawerChip.title = 'Open cash drawer management';
     if(drawerState) {
       const expected = getDrawerExpected();
       drawerChip.textContent = 'DRAWER OPEN: $' + Number(expected || 0).toFixed(2);
@@ -1716,6 +1898,14 @@ function updateTopStateChips(){
       drawerChip.className = 'top-state-chip';
     }
   }
+}
+
+function openDrawerPanelFromHeader(){
+  switchTab('shows', document.querySelector('[data-tab="shows"]'));
+  setTimeout(() => {
+    document.getElementById('register-cash-panel')?.scrollIntoView({ block:'center', behavior:'smooth' });
+    document.getElementById('drawer-float')?.focus();
+  }, 80);
 }
 
 function normalizedIdentityKey(parts = {}){
@@ -1932,8 +2122,8 @@ const DEFAULT_PAYMENT_SETTINGS = {
   card:{ enabled:true, provider:'stripe', stripePublishableKey:'', stripeAccountId:'', squareLocationId:'', manualCardNote:'' },
   tradeCredit:{ enabled:true, defaultBonusMultiplier:1.15 },
   tax:{ enabled:false, defaultRate:0, label:'Sales Tax' },
-  receipt:{ storeName:'', footer:'Thanks for shopping with us!', showPaymentInstructions:true },
-  customerDisplay:{ showPaymentMethods:true, showQrCodes:true, showStoreLogo:true },
+  receipt:{ storeName:'', footer:'Thanks for shopping with us!', showPaymentInstructions:true, captureEnabled:true },
+  customerDisplay:{ showPaymentMethods:true, showQrCodes:true, showStoreLogo:true, wantsCaptureEnabled:true, checkoutTimeoutMinutes:10 },
 };
 
 const PRICECHARTING_CSV_CATEGORIES = [
@@ -2041,6 +2231,7 @@ function applyVendorProfile(){
 }
 
 function setupAppShell(){
+  applyStoreTheme();
   const logo = document.querySelector('.logo span');
   if(logo) logo.textContent = 'DASHBOARD · v' + APP_VERSION;
   const posSec = document.querySelector('#tab-pos .sec');
@@ -2075,6 +2266,17 @@ function setupAppShell(){
   }
   const refreshBtn = document.getElementById('refresh-btn');
   if(refreshBtn) refreshBtn.textContent = 'REFRESH';
+  if(hdrRight && !document.getElementById('header-actions-btn')) {
+    const wrap = document.createElement('div');
+    wrap.id = 'header-actions-wrap';
+    wrap.innerHTML = `<button class="hbtn" id="header-actions-btn" onclick="toggleHeaderActionsMenu(event)">MENU</button>
+      <div id="header-actions-menu">
+        <button class="hbtn" onclick="loadInventory();toggleHeaderActionsMenu()">REFRESH</button>
+        <button class="hbtn" onclick="toggleAppFullscreen(document.documentElement);toggleHeaderActionsMenu()">FULL SCREEN</button>
+        <button class="hbtn danger" onclick="if(window.logoutSupabaseAccount) window.logoutSupabaseAccount();toggleHeaderActionsMenu()">LOGOUT</button>
+      </div>`;
+    hdrRight.appendChild(wrap);
+  }
   updateConnectorVisibility();
 
   if(!document.getElementById('install-hint')) {
@@ -2103,8 +2305,26 @@ function setupAppShell(){
   link.href = 'data:application/manifest+json,' + encodeURIComponent(JSON.stringify(manifest));
   organizeRegisterLayout();
   applyVendorProfile();
+  setThemeForm?.(getStoreTheme());
   maybeShowInstallHint();
 }
+
+function toggleHeaderActionsMenu(event){
+  if(event) event.stopPropagation();
+  document.getElementById('header-actions-menu')?.classList.toggle('on');
+}
+document.addEventListener('click', e => {
+  if(!e.target.closest?.('#header-actions-wrap')) document.getElementById('header-actions-menu')?.classList.remove('on');
+});
+function enterCustomerDisplayMode(){
+  document.body.classList.add('customer-display-mode');
+  switchTab('display');
+  renderCustomerDisplay?.();
+}
+function exitCustomerDisplayMode(){
+  document.body.classList.remove('customer-display-mode');
+}
+document.addEventListener('keydown', e => { if(e.key === 'Escape') exitCustomerDisplayMode(); });
 
 function moveNode(id, target){
   const el = document.getElementById(id);
@@ -2146,6 +2366,7 @@ function organizeRegisterLayout(){
   moveNode('backoffice-system-panel', backoffice);
   moveNode('backoffice-ops-panel', backoffice);
   ensureVendorProfilePanel(backoffice);
+  ensureBrandingPanel(backoffice);
   ensurePaymentSettingsPanel(backoffice);
   ensurePriceChartingDataPanel(backoffice);
   ensurePricingQaPanel(backoffice);
@@ -2420,9 +2641,19 @@ function renderPaymentSettingsPanel(){
       <div class="item-metric">${payToggle('cashapp','Cash App',s.cashApp.enabled)}<input id="pay-cashapp-handle" class="tsi" placeholder="$cashtag" value="${escHtml(s.cashApp.cashtag)}" style="margin-top:6px">${payToggle('showmethods','Show on customer display',s.customerDisplay.showPaymentMethods)}</div>
     </div>
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:10px">
+      <label style="font-family:monospace;font-size:9px;color:var(--dim)">VENMO QR IMAGE<input id="pay-venmo-qr" class="tsi" placeholder="https://..." value="${escHtml(s.venmo.qrImageUrl || '')}"></label>
+      <label style="font-family:monospace;font-size:9px;color:var(--dim)">PAYPAL QR IMAGE<input id="pay-paypal-qr" class="tsi" placeholder="https://..." value="${escHtml(s.paypal.qrImageUrl || '')}"></label>
+      <label style="font-family:monospace;font-size:9px;color:var(--dim)">CASH APP QR IMAGE<input id="pay-cashapp-qr" class="tsi" placeholder="https://..." value="${escHtml(s.cashApp.qrImageUrl || '')}"></label>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:10px">
       <label style="font-family:monospace;font-size:9px;color:var(--dim)">CARD PROVIDER<select id="pay-card-provider" class="tsi"><option value="stripe" ${s.card.provider==='stripe'?'selected':''}>Stripe</option><option value="square" ${s.card.provider==='square'?'selected':''}>Square</option><option value="manual" ${s.card.provider==='manual'?'selected':''}>Manual card</option></select></label>
       <label style="font-family:monospace;font-size:9px;color:var(--dim)">STRIPE PUBLISHABLE KEY<input id="pay-stripe-pk" class="tsi" value="${escHtml(s.card.stripePublishableKey)}" placeholder="pk_..."></label>
       <label style="font-family:monospace;font-size:9px;color:var(--dim)">TAX RATE %<input id="pay-tax-rate" class="tsi" type="number" min="0" step="0.01" value="${Number(s.tax.defaultRate||0)}"></label>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:10px">
+      <label style="display:flex;gap:8px;align-items:center;font-family:monospace;font-size:10px;color:var(--dim)"><input id="pay-tax-enabled" type="checkbox" ${s.tax.enabled?'checked':''}> tax enabled</label>
+      <label style="display:flex;gap:8px;align-items:center;font-family:monospace;font-size:10px;color:var(--dim)"><input id="pay-receipt-capture" type="checkbox" ${s.receipt.captureEnabled!==false?'checked':''}> receipt capture</label>
+      <label style="display:flex;gap:8px;align-items:center;font-family:monospace;font-size:10px;color:var(--dim)"><input id="pay-wants-capture" type="checkbox" ${s.customerDisplay.wantsCaptureEnabled!==false?'checked':''}> wants capture</label>
     </div>
     <label style="font-family:monospace;font-size:9px;color:var(--dim)">RECEIPT FOOTER<textarea id="pay-receipt-footer" class="tsi" style="height:52px">${escHtml(s.receipt.footer)}</textarea></label>
     <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
@@ -2436,13 +2667,13 @@ function savePaymentSettingsFromForm(){
   const settings = {
     ...prev,
     cash:{ enabled:document.getElementById('pay-cash-enabled')?.checked !== false, trackCashDrawer:!!document.getElementById('pay-cash-drawer')?.checked },
-    venmo:{ ...prev.venmo, enabled:!!document.getElementById('pay-venmo-enabled')?.checked, handle:document.getElementById('pay-venmo-handle')?.value.trim() || '' },
-    paypal:{ ...prev.paypal, enabled:!!document.getElementById('pay-paypal-enabled')?.checked, emailOrHandle:document.getElementById('pay-paypal-handle')?.value.trim() || '' },
-    cashApp:{ ...prev.cashApp, enabled:!!document.getElementById('pay-cashapp-enabled')?.checked, cashtag:document.getElementById('pay-cashapp-handle')?.value.trim() || '' },
+    venmo:{ ...prev.venmo, enabled:!!document.getElementById('pay-venmo-enabled')?.checked, handle:document.getElementById('pay-venmo-handle')?.value.trim() || '', qrImageUrl:document.getElementById('pay-venmo-qr')?.value.trim() || '' },
+    paypal:{ ...prev.paypal, enabled:!!document.getElementById('pay-paypal-enabled')?.checked, emailOrHandle:document.getElementById('pay-paypal-handle')?.value.trim() || '', qrImageUrl:document.getElementById('pay-paypal-qr')?.value.trim() || '' },
+    cashApp:{ ...prev.cashApp, enabled:!!document.getElementById('pay-cashapp-enabled')?.checked, cashtag:document.getElementById('pay-cashapp-handle')?.value.trim() || '', qrImageUrl:document.getElementById('pay-cashapp-qr')?.value.trim() || '' },
     card:{ ...prev.card, enabled:!!document.getElementById('pay-card-enabled')?.checked, provider:document.getElementById('pay-card-provider')?.value || 'stripe', stripePublishableKey:document.getElementById('pay-stripe-pk')?.value.trim() || '' },
-    tax:{ ...prev.tax, defaultRate:Number(document.getElementById('pay-tax-rate')?.value || 0), enabled:Number(document.getElementById('pay-tax-rate')?.value || 0) > 0 },
-    receipt:{ ...prev.receipt, footer:document.getElementById('pay-receipt-footer')?.value || '' },
-    customerDisplay:{ ...prev.customerDisplay, showPaymentMethods:!!document.getElementById('pay-showmethods-enabled')?.checked },
+    tax:{ ...prev.tax, defaultRate:Number(document.getElementById('pay-tax-rate')?.value || 0), enabled:!!document.getElementById('pay-tax-enabled')?.checked },
+    receipt:{ ...prev.receipt, footer:document.getElementById('pay-receipt-footer')?.value || '', captureEnabled:!!document.getElementById('pay-receipt-capture')?.checked },
+    customerDisplay:{ ...prev.customerDisplay, showPaymentMethods:!!document.getElementById('pay-showmethods-enabled')?.checked, wantsCaptureEnabled:!!document.getElementById('pay-wants-capture')?.checked },
   };
   savePaymentSettings(settings);
   toast_dash('Payment settings saved');
@@ -3528,6 +3759,46 @@ async function processSyncItem(item){
   }
   if(item.type === 'inventory-sold') {
     await markInventoryRecordSold({ id:item.payload.id, source:item.payload.inventorySource === 'built_in' ? 'built_in' : '' }, item.payload.fieldData, {});
+    return;
+  }
+  if(item.type === 'pos-ledger-transaction') {
+    await MoneyLedgerService().commitTransactionBundle(item.payload);
+    return;
+  }
+  if(item.type === 'customer-receipt') {
+    const sb = getSupabaseClient();
+    if(!sb) throw new Error('Supabase client unavailable');
+    const { error } = await sb.from('customer_receipts').insert(item.payload);
+    if(error) throw error;
+    return;
+  }
+  if(item.type === 'customer-wants') {
+    const sb = getSupabaseClient();
+    if(!sb) throw new Error('Supabase client unavailable');
+    const { error } = await sb.from('customer_wants').insert(item.payload);
+    if(error) throw error;
+    return;
+  }
+  if(item.type === 'drawer-session-open') {
+    await MoneyLedgerService().openDrawerSession({
+      id:item.payload.drawerState.id,
+      store_id:item.payload.drawerState.storeId,
+      show_session_id:item.payload.drawerState.showSessionId || null,
+      register_name:item.payload.drawerState.registerId || REGISTER_ID,
+      status:'open',
+      starting_cash:Number(item.payload.drawerState.float || 0),
+      expected_cash:Number(item.payload.drawerState.expectedCash || item.payload.drawerState.float || 0),
+      counted_cash:null,
+      over_short:null,
+      opened_by:getCurrentUserId(),
+      closed_by:null,
+      opened_at:item.payload.drawerState.opened,
+      closed_at:null
+    });
+    return;
+  }
+  if(item.type === 'drawer-movement') {
+    await MoneyLedgerService().writeDrawerMovement(item.payload);
     return;
   }
   throw new Error('No retry handler for '+item.type);
@@ -4839,7 +5110,7 @@ async function loadInventory(){
     const skuMap={};
     skus.forEach(s=>{ const pid=s.fieldData?.product; const c=s.fieldData?.price?.value||0; if(pid&&c>0) skuMap[pid]=c/100; });
 
-    all = products.map(p=>mapItem(p,skuMap)).concat(getUniversalInventory());
+    all = applyInventoryEditOverrides(products.map(p=>mapItem(p,skuMap)).concat(getUniversalInventory()));
     soldData = all.filter(i=>i.status==='sold');
     filtered = [...all];
     renderAll();
@@ -4870,7 +5141,7 @@ async function loadInventoryByConfiguredSource(){
       parts = parts.concat(sheet);
       counts.push(sheet.length + ' local/CSV');
     }
-    all = parts;
+    all = applyInventoryEditOverrides(parts);
     soldData = all.filter(i=>i.status==='sold');
     filtered = [...all];
     renderAll();
@@ -4988,9 +5259,32 @@ setInterval(refreshInventoryQuietly, 60000);
 const f$=n=>'$'+Number(n||0).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0});
 const fd$=n=>'$'+Number(n||0).toFixed(2);
 
+function transactionSoldRows(){
+  return safeLocalJson('pos_transactions', []).flatMap(t => (t.items || []).map(i => {
+    const salePrice = Number(i.adjustedPrice ?? i.price ?? 0);
+    const cost = Number(i.cost || 0);
+    return {
+      id:(t.id || 'tx') + '_' + (i.shopId || i.name || Math.random()),
+      name:i.name || 'Sale item',
+      set:i.set || '',
+      category:i.categoryName || i.category || 'Unknown',
+      categoryName:i.categoryName || i.category || 'Unknown',
+      cost,
+      salePrice,
+      adjustedPrice:salePrice,
+      originalPrice:Number(i.originalPrice ?? salePrice),
+      profit:salePrice - cost,
+      channel:t.method || t.tenderType || '',
+      soldAt:i.soldAt || t.date || t.paidAt || '',
+      status:'sold',
+      source:'pos_transaction'
+    };
+  }));
+}
+
 function renderStats(){
   const ins=all.filter(i=>i.status==='in_stock');
-  const sol=all.filter(i=>i.status==='sold');
+  const sol=all.filter(i=>i.status==='sold').concat(transactionSoldRows());
   const totalQty=ins.reduce((a,i)=>a+(i.qty||1),0);
   const mkt=ins.reduce((a,i)=>a+(i.market||0)*(i.qty||1),0);
   const pft=sol.reduce((a,i)=>a+(i.profit||0),0);
@@ -5037,7 +5331,7 @@ function renderCats(){
   document.getElementById('ct-total').textContent=ins.length+' in stock';
 
   // Profit meter
-  const sol=all.filter(i=>i.status==='sold');
+  const sol=all.filter(i=>i.status==='sold').concat(transactionSoldRows());
   const catColors={'Sports':'var(--gold)','TCG':'var(--g)','Comic':'var(--purple)','Graded':'var(--blue)','Collectibles':'#ff9500'};
   const profitMeter=document.getElementById('profit-meter');
   const catProfits=cats.map(c=>({c,p:sol.filter(i=>i.category===c).reduce((a,i)=>a+(i.profit||0),0)}));
@@ -5290,17 +5584,17 @@ function renderTable(){
 
 function renderSoldTable(){
   const q=(document.getElementById('sold-q')?.value||'').toLowerCase();
-  const rows=soldData.filter(i=>!q||(i.name||'').toLowerCase().includes(q)).sort((a,b)=>new Date(b.soldAt||0)-new Date(a.soldAt||0));
+  const rows=soldData.concat(transactionSoldRows()).filter(i=>!q||(i.name||'').toLowerCase().includes(q)).sort((a,b)=>new Date(b.soldAt||0)-new Date(a.soldAt||0));
   const tb=document.getElementById('sold-body');
   if(!rows.length){tb.innerHTML=`<tr><td colspan="8"><div class="empty"><div class="empty-t">NO SALES YET</div></div></td></tr>`;return;}
   tb.innerHTML=rows.slice(0,100).map(i=>{
     const d=new Date(i.soldAt||0);
     const ds=d.getFullYear()>2000?d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'2-digit'}):'—';
-    const pft=i.profit||0;
+    const pft=Number(i.profit || ((i.salePrice || 0) - (i.cost || 0)) || 0);
     return `<tr>
       <td><span class="nc">${i.name}</span></td>
       <td><span class="sc2">${i.set||'—'}</span></td>
-      <td><span class="ct ${String(i.category||'').replace(/\s/g,'')}">${i.category}</span></td>
+      <td><span class="ct ${String(i.categoryName || i.category || '').replace(/\s/g,'')}">${i.categoryName || i.category || 'Unknown'}</span></td>
       <td class="pp pm">${i.salePrice>0?fd$(i.salePrice):'—'}</td>
       <td class="pp pd">${i.cost>0?fd$(i.cost):'—'}</td>
       <td class="pp ${pft>=0?'pos':'neg'}">${pft?(pft>=0?'+':'')+fd$(pft):'—'}</td>
@@ -5495,7 +5789,7 @@ function addQuickSaleShortcut(name, price, category='Quick Sale', quantity=1){
   cartData.items.push({
     id:'ci_quick_' + Date.now() + '_' + Math.random().toString(36).slice(2,5),
     name,
-    sub:quantity > 1 ? quantity + ' item bundle' : 'Quick sale shortcut',
+    sub:quantity > 1 ? quantity + ' item bundle' : 'Manual sale',
     price:Number(price || 0),
     cost:0,
     qty:quantity,
@@ -6059,13 +6353,13 @@ function renderAuthCheckWorkbench(selectedItemId = activeAuthItemId){
     const qItem = state.itemsById[id];
     const risk = qItem.auth?.riskLevel || 'Not checked';
     const on = id === activeAuthItemId;
-    return `<button class="auth-check-row" style="width:100%;text-align:left;cursor:pointer;${on?'border-color:rgba(0,255,179,.42)':''}" onclick="openItemInAuthCheck('${id}')">
+    return `<div class="auth-check-row" role="button" tabindex="0" style="width:100%;text-align:left;cursor:pointer;${on?'border-color:rgba(0,255,179,.42);background:rgba(0,255,179,.06)':''}" onclick="openItemInAuthCheck('${id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openItemInAuthCheck('${id}')}">
       <div>
         <div style="color:var(--text);font-weight:800">${escHtml(qItem.identity?.title || 'Unidentified item')}</div>
         <div style="font-size:9px;color:var(--dim)">${escHtml([itemAuthCategory(qItem), qItem.identity?.setName, qItem.identity?.cardNumber ? '#'+qItem.identity.cardNumber : ''].filter(Boolean).join(' / '))}</div>
       </div>
       <span class="qpl-badge ${authRiskClass(risk)==='low'?'good':authRiskClass(risk)==='high'?'bad':'warn'}">${escHtml(risk)}</span>
-    </button>`;
+    </div>`;
   }).join('') : '<div style="font-family:monospace,monospace;font-size:10px;color:var(--dim);padding:12px;border:1px dashed var(--border);border-radius:8px;text-align:center">No auth queue items yet.</div>';
   if(checklistEl) checklistEl.innerHTML = renderAuthChecklist(item);
   if(!item) {
@@ -7465,7 +7759,11 @@ function saveEditToLocalStorage(id, updates) {
 function updateUniversalInventoryItem(id, updates) {
   const inv = safeLocalJson('walkoff_universal_inventory', []);
   const idx = inv.findIndex(i => i.id === id || i.wfId === id);
-  if(idx < 0) return false;
+  if(idx < 0) {
+    inv.unshift({ id, wfId:id, source:'local_override', ...updates, updatedAt:new Date().toISOString(), appVersion:APP_VERSION });
+    localStorage.setItem('walkoff_universal_inventory', JSON.stringify(inv.slice(0,5000)));
+    return true;
+  }
   Object.assign(inv[idx], {
     ...updates,
     market:Number(updates.market ?? inv[idx].market ?? 0),
@@ -7482,6 +7780,25 @@ function updateUniversalInventoryItem(id, updates) {
   renderStats();
   renderInventoryCategoryFilters?.();
   return true;
+}
+
+function getInventoryEditOverrides(){
+  return safeLocalJson('inventory_edit_overrides_v1', {});
+}
+
+function saveInventoryEditOverride(id, updates){
+  if(!id) return;
+  const map = getInventoryEditOverrides();
+  map[id] = { ...(map[id] || {}), ...updates, id, updatedAt:new Date().toISOString(), appVersion:APP_VERSION };
+  localStorage.setItem('inventory_edit_overrides_v1', JSON.stringify(map));
+}
+
+function applyInventoryEditOverrides(items){
+  const map = getInventoryEditOverrides();
+  return (items || []).map(item => {
+    const patch = map[item.id] || map[item.wfId];
+    return patch ? { ...item, ...patch, id:item.id, wfId:item.wfId || patch.wfId || item.id } : item;
+  });
 }
 
 async function confirmEdit() {
@@ -7512,7 +7829,14 @@ async function confirmEdit() {
     is_key: document.getElementById('edit-key').checked,
     is_signed: document.getElementById('edit-signed').checked,
   };
-  if(before) await saveInventoryEdit(before, updates);
+  if(!before) { toast_dash('Save failed: item not found'); return; }
+  try {
+    await saveInventoryEdit(before, updates);
+    saveInventoryEditOverride(editingItemId, updates);
+  } catch(e) {
+    toast_dash('Save failed: ' + (e.message || e));
+    return;
+  }
   toast_dash('✓ Saved: ' + (all.find(i=>i.id===editingItemId)?.name||'item'));
   applyDashboardItemUpdate(editingItemId, updates);
   closeEditModal();
@@ -7559,6 +7883,8 @@ async function confirmEditAndSync() {
   if(item.source === 'built_in' || getInventorySource() === 'built_in') {
     try {
       await updateBuiltInInventoryItem(item, updates);
+      saveInventoryEditOverride(editingItemId, updates);
+      applyDashboardItemUpdate(editingItemId, updates);
       statusEl.style.color = 'var(--g)';
       statusEl.textContent = 'Saved to built-in inventory';
       logOpsEvent('inventory_edit', 'Updated built-in inventory item: ' + (item.name || 'item'), { itemId:item.id });
@@ -7572,6 +7898,8 @@ async function confirmEditAndSync() {
 
   if(item.source === 'spreadsheet') {
     saveEditToLocalStorage(editingItemId, updates);
+    saveInventoryEditOverride(editingItemId, updates);
+    applyDashboardItemUpdate(editingItemId, updates);
     if(!usesWebflowInventory()) {
       statusEl.style.color = 'var(--g)';
       statusEl.textContent = 'Saved to spreadsheet/local inventory';
@@ -7581,6 +7909,7 @@ async function confirmEditAndSync() {
     try {
       const productId = await createWebflowProduct({...item, ...updates}, updates);
       updateUniversalInventoryItem(editingItemId, {...updates, wfId:productId, source:'webflow'});
+      saveInventoryEditOverride(productId || editingItemId, {...updates, wfId:productId, source:'webflow'});
       statusEl.style.color = 'var(--g)';
       statusEl.textContent = 'Created in Webflow';
       logOpsEvent('inventory_sync', 'Created spreadsheet item in Webflow: ' + (item.name || 'item'), { productId });
@@ -7608,6 +7937,7 @@ async function confirmEditAndSync() {
 
   if(!usesWebflowInventory()) {
     saveEditToLocalStorage(editingItemId, updates);
+    saveInventoryEditOverride(editingItemId, updates);
     applyDashboardItemUpdate(editingItemId, updates);
     statusEl.style.color = 'var(--g)';
     statusEl.textContent = 'Saved locally';
@@ -7673,6 +8003,7 @@ async function confirmEditAndSync() {
     }).catch(()=>{});
 
     // Update the tablet view immediately so a reload is not needed.
+    saveInventoryEditOverride(wfId, updates);
     applyDashboardItemUpdate(wfId, updates);
 
     const r2txt = r2.ok ? '' : ' (CMS: '+(await r2.text()).substring(0,40)+')';
@@ -8138,7 +8469,16 @@ function getSalesSignal(item){
 function renderBuySignals(){
   const el = document.getElementById('buy-signals-list');
   if(!el) return;
-  const sold = all.filter(i => i.status === 'sold' || i.soldAt);
+  const txSold = safeLocalJson('pos_transactions', []).flatMap(t => (t.items || []).map(i => ({
+    ...i,
+    salePrice:Number(i.adjustedPrice ?? i.price ?? 0),
+    cost:Number(i.cost || 0),
+    soldAt:t.date,
+    channel:t.method || '',
+    set:i.set || '',
+    card_number:i.card_number || '',
+  })));
+  const sold = all.filter(i => i.status === 'sold' || i.soldAt).concat(txSold);
   const byName = {};
   sold.forEach(i => {
     const key = [i.name,i.set,i.card_number].filter(Boolean).join(' / ');
@@ -8435,7 +8775,7 @@ function rankQuickLookupResults(results, q, cat){
   const strict = getStrictTcgIntent(q);
   const rows = (results || []);
   const primary = rows.filter(r => qplStrictAllows(r, strict, true));
-  const closest = strict.modifiers.length && !primary.length ? rows.filter(r => qplStrictAllows(r, strict, false)).map(r => ({ ...r, closestStrictFallback:true })) : [];
+  const closest = (strict.modifiers.length || strict.collectorNumber) && !primary.length ? rows.filter(r => qplStrictAllows(r, strict, false)).map(r => ({ ...r, closestStrictFallback:true })) : [];
   return [...primary, ...closest].map((r, idx) => {
     let score = Number(r.confidence || 0) + Math.max(0, 100 - idx);
     const key = qplResultCategoryKey(r);
@@ -8448,8 +8788,18 @@ function rankQuickLookupResults(results, q, cat){
     if(intent.issueLike && key === 'comic') score += 320;
     if(intent.pokemonSet && key === 'pokemon') score += 260;
     if(intent.hasSlashNumber && key === 'pokemon') score += 240;
+    if(strict.collectorNumber) {
+      const n = String(r.card_number || '').replace(/\s+/g,'').toLowerCase();
+      if(n === strict.collectorNumber) score += 900;
+      else if(n.split('/')[0] === strict.collectorNumerator && n.includes('/' + strict.collectorDenominator)) score += 650;
+      else score -= 900;
+    }
     if(intent.issueLike && key === 'mtg') score -= 250;
     if(intent.primary && key && key !== intent.primary && !intent.intents.includes(key)) score -= 30;
+    if(intent.intents.includes('sports') || /\b(topps|panini|prizm|rookie|rc|mike trout|lebron|jordan|brady|mahomes|ohtani)\b/i.test(q)) {
+      if(key === 'sports' && String(r.source || '').includes('pricecharting')) score += 210;
+      if(r.source === 'inventory') score -= 170;
+    }
     if(r.source === 'pricecharting_csv' && key === 'comic' && intent.issueLike) score += 120;
     if(r.source === 'justtcg' && ['pokemon','mtg','yugioh'].includes(key)) score += 70;
     if(r.closestStrictFallback) score -= 500;
@@ -8459,12 +8809,17 @@ function rankQuickLookupResults(results, q, cat){
 
 function getStrictTcgIntent(q){
   const raw = String(q || '').toLowerCase();
+  const collector = raw.match(/\b(\d{1,4})\s*\/\s*(\d{1,4})\b/);
   const dict = [
     ['sir', ['special illustration rare','sir']],
     ['ir', ['illustration rare','ir']],
     ['sar', ['special art rare','sar']],
     ['ar', ['art rare','ar']],
+    ['tg', ['trainer gallery','tg']],
+    ['gg', ['galarian gallery','gg']],
+    ['ace spec', ['ace spec','acespec']],
     ['ex', [' ex',' ex ','-ex','pokemon ex']],
+    ['v', [' v','pokemon v']],
     ['vmax', ['vmax']],
     ['vstar', ['vstar']],
     ['gx', ['gx']],
@@ -8477,13 +8832,17 @@ function getStrictTcgIntent(q){
   ];
   const modifiers = dict.filter(([key]) => {
     if(key === 'ex') return /\bex\b/i.test(raw);
+    if(key === 'v') return /\bv\b/i.test(raw) && !/\bvmax\b|\bvstar\b/i.test(raw);
     if(key === 'ir') return /\bir\b/i.test(raw) && !/\bsir\b|\bsar\b/i.test(raw);
     if(key === 'ar') return /\bar\b/i.test(raw) && !/\bsar\b/i.test(raw);
+    if(key === 'tg') return /\btg\b/i.test(raw);
+    if(key === 'gg') return /\bgg\b/i.test(raw);
     return raw.includes(key);
   }).map(([key, aliases]) => ({ key, aliases }));
-  const nameTokens = raw.replace(/\b(sir|ir|sar|ar|ex|vmax|vstar|gx|full art|alt art|rainbow|gold|promo|first edition)\b/g, ' ')
+  const nameTokens = raw.replace(/\b(sir|ir|sar|ar|tg|gg|ace spec|ex|v|vmax|vstar|gx|full art|alt art|rainbow|gold|promo|first edition)\b/g, ' ')
+    .replace(/\b\d{1,4}\s*\/\s*\d{1,4}\b/g, ' ')
     .split(/\s+/).filter(t => t.length > 1 && !/^\d/.test(t));
-  return { modifiers, nameTokens };
+  return { modifiers, nameTokens, collectorNumber:collector ? collector[1] + '/' + collector[2] : '', collectorNumerator:collector?.[1] || '', collectorDenominator:collector?.[2] || '' };
 }
 
 function qplStrictText(r){
@@ -8491,11 +8850,18 @@ function qplStrictText(r){
 }
 
 function qplStrictAllows(r, strict, primaryOnly){
-  if(!strict?.modifiers?.length) return true;
+  if(!strict?.modifiers?.length && !strict?.collectorNumber) return true;
   const key = qplResultCategoryKey(r);
   if(!['tcg','pokemon','mtg','yugioh'].includes(key)) return !primaryOnly;
   const text = qplStrictText(r);
   const name = String(r?.name || '').toLowerCase();
+  if(strict.collectorNumber) {
+    const n = String(r?.card_number || r?.cardNumber || '').replace(/\s+/g,'').toLowerCase();
+    const numerator = n.split('/')[0] || '';
+    const exact = n === strict.collectorNumber;
+    const numOnly = numerator === strict.collectorNumerator && n.includes('/' + strict.collectorDenominator);
+    if(!exact && !numOnly) return !primaryOnly;
+  }
   if(strict.nameTokens.length && !strict.nameTokens.some(t => name.includes(t))) return !primaryOnly;
   const allMatch = strict.modifiers.every(mod => {
     if(mod.key === 'ex') return /\bex\b/i.test(name) || /\bex\b/i.test(text);
@@ -8605,7 +8971,42 @@ function qplPriceSourceLabel(v){
   return 'No Real Price Available';
 }
 
+function parseMtgFinishIntent(q){
+  const raw = String(q || '').toLowerCase();
+  let finish = '';
+  if(/\betched\s+foil\b|\betched\b/.test(raw)) finish = 'etched_foil';
+  else if(/\bsurge\s+foil\b|\bsurge\b/.test(raw)) finish = 'surge_foil';
+  else if(/\btextured\s+foil\b|\btextured\b/.test(raw)) finish = 'textured_foil';
+  else if(/\bnon[-\s]?foil\b|\bnonfoil\b/.test(raw)) finish = 'normal';
+  else if(/\bfoil\b/.test(raw)) finish = 'foil';
+  const clean = raw
+    .replace(/\b(non[-\s]?foil|nonfoil|etched foil|etched|textured foil|textured|surge foil|surge|foil|borderless|retro frame|retro|showcase|extended art|extended)\b/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return { finish, clean: clean || String(q || '').trim() || q };
+}
+
+function getConditionEstimateRates(){
+  return { NM:1, LP:0.8, MP:0.6, HP:0.4, DMG:0.25, ...safeLocalJson('condition_estimate_rates_v1', {}) };
+}
+
+function estimateConditionValue(row, condition){
+  const rates = getConditionEstimateRates();
+  const cond = String(condition || row.selectedCondition || row.condition || 'NM').toUpperCase();
+  const sameFinishLang = (row.availableVariants || []).filter(v =>
+    normalizeQplFinish(v.finish) === normalizeQplFinish(row.selectedFinish || row.finish) &&
+    String(v.language || 'English').toLowerCase() === String(row.selectedLanguage || row.language || 'English').toLowerCase()
+  );
+  const nm = sameFinishLang.find(v => String(v.condition).toUpperCase() === 'NM' && Number(v.marketPrice || v.price || 0) > 0)
+    || (row.availableVariants || []).find(v => String(v.condition).toUpperCase() === 'NM' && Number(v.marketPrice || v.price || 0) > 0)
+    || (row.availableVariants || []).find(v => Number(v.marketPrice || v.price || 0) > 0);
+  const base = Number(nm?.marketPrice || nm?.price || row.market || 0);
+  if(!base) return 0;
+  return Math.round(base * Number(rates[cond] ?? rates.NM ?? 1) * 100) / 100;
+}
+
 function qplTruthLabel(r){
+  if(r?.priceSource === 'Estimated Condition Value' || r?.priceConfidence === 'estimate') return 'Estimated Condition Value';
   if(r?.source === 'justtcg') return Number(r.selectedVariant?.marketPrice || r.market || 0) > 0 ? 'Real Variant Price' : 'No Real Price';
   if(r?.pricecharting || r?.source === 'pricecharting_csv') return Number(r.pricecharting?.prices?.ungraded || r.market || 0) > 0 ? 'Guide Value' : 'No Guide Value';
   if(r?.source === 'inventory') return 'Inventory Price';
@@ -8871,9 +9272,10 @@ function applyQplSelectedVariant(r){
   if(!v) {
     if(r?.availableVariants?.length) {
       r.selectedVariant = null;
-      r.market = 0;
-      r.priceSource = 'No Matching Variant';
-      r.priceConfidence = 'unknown';
+      const est = estimateConditionValue(r, r.selectedCondition || r.condition);
+      r.market = est;
+      r.priceSource = est ? 'Estimated Condition Value' : 'No Matching Variant';
+      r.priceConfidence = est ? 'estimate' : 'unknown';
       r.variantIntelligence = getVariantIntelligence(r);
     }
     return r;
@@ -8886,11 +9288,13 @@ function applyQplSelectedVariant(r){
   r.condition = v.condition;
   r.finish = v.finish;
   r.language = v.language || 'English';
-  r.market = qplPriceValue(v);
+  const realPrice = qplPriceValue(v);
+  const estPrice = realPrice ? 0 : estimateConditionValue(r, v.condition);
+  r.market = realPrice || estPrice;
   r.low = Number(v.lowPrice || v.lowestListingPrice || 0) || r.low || 0;
   r.high = Number(v.highPrice || 0) || r.high || 0;
-  r.priceSource = qplPriceSourceLabel(v);
-  r.priceConfidence = v.priceConfidence || r.priceConfidence || 'unknown';
+  r.priceSource = realPrice ? qplPriceSourceLabel(v) : (estPrice ? 'Estimated Condition Value' : qplPriceSourceLabel(v));
+  r.priceConfidence = realPrice ? (v.priceConfidence || r.priceConfidence || 'unknown') : (estPrice ? 'estimate' : 'unknown');
   r.skuId = v.skuId || r.skuId || '';
   r.productConditionId = v.productConditionId || r.productConditionId || '';
   r.lastPriceSyncAt = v.lastUpdated || r.lastPriceSyncAt || new Date().toISOString();
@@ -9097,7 +9501,7 @@ function qplVariantPriceTable(r, idx){
   const finish = r.selectedFinish || r.finish || r.availableVariants[0]?.finish || '';
   const language = r.selectedLanguage || r.language || 'English';
   const rows = ['NM','LP','MP','HP','DMG'].map(cond => {
-    const v = r.availableVariants.find(x => x.condition === cond && String(x.finish || '') === String(finish || '') && String(x.language || 'English') === String(language));
+    const v = r.availableVariants.find(x => String(x.condition).toUpperCase() === cond && normalizeQplFinish(x.finish) === normalizeQplFinish(finish) && String(x.language || 'English').toLowerCase() === String(language || 'English').toLowerCase());
     const selected = String(r.selectedCondition || r.condition || '') === cond;
     const price = v ? Number(v.marketPrice || v.price || 0) : 0;
     return `<tr class="${selected?'on':''}" onclick="updateQplVariant(${idx},{selectedCondition:'${cond}'})" style="cursor:pointer">
@@ -9113,8 +9517,66 @@ function qplVariantPriceTable(r, idx){
   </div>`;
 }
 
+function qplConditionOptionsFor(r){
+  if(qplResultCategoryKey(r) === 'video_games') return ['Loose','CIB','New/Sealed','Box Only','Manual Only','Graded'];
+  return ['NM','LP','MP','HP','DMG'];
+}
+
 function qplChartRangeToDuration(range){
   return ({ '1M':'30d', '3M':'90d', '6M':'180d', '1Y':'1y' })[range] || '90d';
+}
+
+function showAdminDebug(){
+  return requireOwnerAdmin() && localStorage.getItem('qa_debug') === '1';
+}
+
+function normalizeChartPoints(rows){
+  return (Array.isArray(rows) ? rows : []).map(p => ({
+    date:p.date || p.timestamp || p.recordedAt || p[0] || '',
+    price:Number(p.price ?? p.marketPrice ?? p.value ?? p.avg ?? p[1] ?? 0),
+    volume:Number(p.volume ?? p.sales ?? p.count ?? 0)
+  })).filter(p => p.date && p.price > 0);
+}
+
+function isPokemonChartCandidate(r){
+  const key = qplResultCategoryKey(r);
+  return key === 'pokemon' || /pokemon/i.test([r?.category,r?.set,r?.extraInfo?.productLine,r?.source].filter(Boolean).join(' '));
+}
+
+async function fetchPokemonPriceTrackerHistory(idx, duration){
+  const r = qplResults[idx];
+  if(!r || !isPokemonChartCandidate(r)) return false;
+  r.chartLastFetchStatus = 'fetching';
+  const params = new URLSearchParams({
+    name:r.name || '',
+    set:r.set || '',
+    cardNumber:r.card_number || '',
+    duration:duration || '90d'
+  });
+  const endpoints = [
+    WORKER + '/pricing/pokemonpricetracker/history?' + params.toString(),
+    WORKER + '/pricing/pokemon-price-tracker/history?' + params.toString()
+  ];
+  for(const url of endpoints) {
+    try {
+      const res = await fetch(url);
+      if(res.status === 404) continue;
+      if(res.status === 429) { r.chartLastFetchStatus = 'rate_limited'; return true; }
+      if(!res.ok) { r.chartLastFetchStatus = 'failed'; continue; }
+      const data = await res.json();
+      if(data.noMapping || data.status === 'no_mapping') { r.chartLastFetchStatus = 'no_mapping'; return true; }
+      const points = normalizeChartPoints(data.points || data.history || data.chart || data.data || []);
+      if(!points.length) { r.chartLastFetchStatus = 'no_data'; return true; }
+      r.selectedVariant = r.selectedVariant || {};
+      r.selectedVariant.priceHistory = points;
+      r.selectedVariant.priceSource = r.selectedVariant.priceSource || 'PokemonPriceTracker history';
+      r.chartLastFetchStatus = 'fetched';
+      return true;
+    } catch(e) {
+      r.chartLastFetchStatus = 'failed';
+    }
+  }
+  return false;
 }
 
 async function openQplChartModal(idx, range='3M'){
@@ -9128,6 +9590,10 @@ async function openQplChartModal(idx, range='3M'){
   }
   if(r.source === 'justtcg' && !r.selectedVariant?.priceHistory?.length) {
     await hydrateQplVariantHistoryBySku(idx, r.graphDuration);
+    r = qplResults[idx];
+  }
+  if(!r.selectedVariant?.priceHistory?.length && isPokemonChartCandidate(r)) {
+    await fetchPokemonPriceTrackerHistory(idx, r.graphDuration);
     r = qplResults[idx];
   }
   let modal = document.getElementById('qpl-chart-modal');
@@ -9152,12 +9618,19 @@ function qplChartModalHtml(r, idx){
   const current = Number(v.marketPrice || r.market || 0);
   const range = r.graphRangeLabel || '3M';
   const ranges = ['1M','3M','6M','1Y'];
+  const status = r.chartLastFetchStatus || (points.length ? 'matrix' : 'no_data');
+  const statusMessage = status === 'no_mapping' ? 'No PokemonPriceTracker match found for this card.'
+    : status === 'rate_limited' ? 'Chart temporarily delayed by rate limit. Try again shortly.'
+    : status === 'failed' ? 'Chart history request failed. Try again.'
+    : status === 'no_data' ? 'No historical chart data available.'
+    : 'No price graph available for this exact variant.';
+  const debugLine = showAdminDebug() ? `<div style="margin-top:10px;font-family:monospace;font-size:10px;color:var(--dim)">Debug: variant ${escHtml(v.variantId || v.justtcgVariantId || '')} / SKU ${escHtml(v.tcgplayerSkuId || v.skuId || r.skuId || '')} / ${escHtml(v.condition || r.condition || '')} / ${escHtml(qplFinishLabel(v.finish || r.finish || ''))} / ${escHtml(v.language || r.language || 'English')} / history ${vals.length} / ${escHtml(r.graphDuration || '')} / ${escHtml(status)}</div>` : '';
   if(!vals.length) {
     return `<div class="qpl-chart-card">
       <div style="display:flex;justify-content:space-between;gap:12px;align-items:center"><div><div style="font-family:'Orbitron',monospace;color:var(--blue);font-size:15px">PRICE GRAPH</div><div style="color:var(--dim);font-size:11px;margin-top:4px">${escHtml(title)}</div></div><button class="hbtn" onclick="closeQplChartModal()">CLOSE</button></div>
       <div style="display:grid;grid-template-columns:80px 1fr;gap:12px;margin-top:14px;align-items:center">${r.imageUrl ? `<img src="${escHtml(r.imageUrl)}" style="width:80px;max-height:110px;object-fit:contain;background:#050507;border:1px solid var(--border);border-radius:8px">` : '<div></div>'}<div><div class="qpl-price">${current ? '$'+current.toFixed(2) : 'No Real Price Available'}</div><div class="qpl-price-sub">${escHtml([v.condition || r.condition, qplFinishLabel(v.finish || r.finish), v.language || r.language || 'English'].filter(Boolean).join(' / '))}<br>Source: ${escHtml(v.priceSource || r.priceSource || 'JustTCG')}</div></div></div>
-      <div style="margin-top:16px;border:1px dashed rgba(255,209,102,.35);border-radius:12px;padding:18px;color:var(--dim);font-size:13px">No price graph available for this exact variant.</div>
-      <div style="margin-top:10px;font-family:monospace;font-size:10px;color:var(--dim)">Debug: variant ${escHtml(v.variantId || v.justtcgVariantId || '')} / SKU ${escHtml(v.tcgplayerSkuId || v.skuId || r.skuId || '')} / ${escHtml(v.condition || r.condition || '')} / ${escHtml(qplFinishLabel(v.finish || r.finish || ''))} / ${escHtml(v.language || r.language || 'English')} / history 0 / ${escHtml(r.graphDuration || '')} / ${escHtml(r.chartLastFetchStatus || 'not fetched')}</div>
+      <div style="margin-top:16px;border:1px dashed rgba(255,209,102,.35);border-radius:12px;padding:18px;color:var(--dim);font-size:13px">${escHtml(statusMessage)}</div>
+      ${debugLine}
     </div>`;
   }
   const prices = vals.map(p => p.price);
@@ -9186,7 +9659,7 @@ function qplChartModalHtml(r, idx){
       <span class="qpl-badge">Points ${vals.length}</span>
     </div>
     <div style="color:var(--dim);font-size:10px;margin-top:8px">No fake chart data. PriceCharting guide values are not used as history.</div>
-    <div style="margin-top:6px;font-family:monospace;font-size:10px;color:var(--dim)">Debug: variant ${escHtml(v.variantId || v.justtcgVariantId || '')} / SKU ${escHtml(v.tcgplayerSkuId || v.skuId || r.skuId || '')} / ${escHtml(v.condition || r.condition || '')} / ${escHtml(qplFinishLabel(v.finish || r.finish || ''))} / ${escHtml(v.language || r.language || 'English')} / history ${vals.length} / ${escHtml(r.graphDuration || '')} / ${escHtml(r.chartLastFetchStatus || 'matrix')}</div>
+    ${debugLine}
   </div>`;
 }
 
@@ -9515,7 +9988,8 @@ async function fetchPokemonCatalog(q){
 }
 
 async function fetchScryfallCatalog(q){
-  const url = 'https://api.scryfall.com/cards/search?q=' + encodeURIComponent(expandSmartQuery(q)) + '&unique=prints&order=released&dir=desc';
+  const finishIntent = parseMtgFinishIntent(q);
+  const url = 'https://api.scryfall.com/cards/search?q=' + encodeURIComponent(expandSmartQuery(finishIntent.clean || q)) + '&unique=prints&order=released&dir=desc';
   const res = await fetch(url, { headers:{ 'Accept':'application/json' } });
   if(!res.ok) return [];
   const data = await res.json();
@@ -9525,7 +9999,9 @@ async function fetchScryfallCatalog(q){
     if(Number(c.prices?.usd || 0) > 0) priceMap.normal = { market:c.prices.usd, low:c.prices.usd };
     if(Number(c.prices?.usd_foil || 0) > 0) priceMap.foil = { market:c.prices.usd_foil, low:c.prices.usd_foil };
     if(Number(c.prices?.usd_etched || 0) > 0) priceMap.etched_foil = { market:c.prices.usd_etched, low:c.prices.usd_etched };
-    return applyQplSelectedVariant({
+    const titleFinish = /\betched\b/i.test(c.name) ? 'etched_foil' : /\bfoil\b/i.test([c.name,c.finishes?.join(' ')].filter(Boolean).join(' ')) ? 'foil' : '';
+    const selectedFinish = finishIntent.finish || titleFinish || (Number(c.prices?.usd || 0) > 0 ? 'normal' : Number(c.prices?.usd_foil || 0) > 0 ? 'foil' : Number(c.prices?.usd_etched || 0) > 0 ? 'etched_foil' : 'normal');
+    const row = applyQplSelectedVariant({
       source:'scryfall',
       name:c.name || q,
       category:'TCG',
@@ -9534,6 +10010,8 @@ async function fetchScryfallCatalog(q){
       variant:[c.foil ? 'Foil available' : '', c.rarity].filter(Boolean).join(' / '),
       card_number:c.collector_number || '',
       condition:'NM',
+      selectedFinish,
+      finish:selectedFinish,
       market:Number(c.prices?.usd || c.prices?.usd_foil || c.prices?.usd_etched || 0),
       imageUrl:c.image_uris?.small || c.card_faces?.[0]?.image_uris?.small || '',
       priceSource:'Scryfall market',
@@ -9546,6 +10024,13 @@ async function fetchScryfallCatalog(q){
       availableVariants:buildQplVariantsFromPrices(priceMap, c.id || ''),
       extraInfo:{ productLine:'Magic', categoryName:'Magic', manaCost:c.mana_cost || '', typeLine:c.type_line || '', oracleText:c.oracle_text || '', artist:c.artist || '', releaseDate:c.released_at || '' },
     });
+    if(finishIntent.finish && row.availableVariants?.some(v => normalizeQplFinish(v.finish) === finishIntent.finish)) {
+      row.selectedFinish = finishIntent.finish;
+      row.finish = finishIntent.finish;
+      applyQplSelectedVariant(row);
+      row.matchWhy = [...(row.matchWhy || []), qplFinishLabel(finishIntent.finish) + ' intent'].slice(0,5);
+    }
+    return row;
   });
 }
 
@@ -9685,7 +10170,7 @@ function quickLookupResultCard(r, idx){
       ${qplSlabControls(r, idx)}
       <div class="qpl-quick-controls">
         <select onchange="updateQplVariant(${idx},{selectedCondition:this.value})" aria-label="Condition">
-          ${(r.availableVariants?.length ? qplVariantOptionValues(r, 'condition') : ['NM','LP','MP','HP','DMG']).map(c => `<option value="${c}" ${String(r.selectedCondition||r.condition||'NM')===c?'selected':''}>${c}</option>`).join('')}
+          ${(r.availableVariants?.length ? qplVariantOptionValues(r, 'condition') : qplConditionOptionsFor(r)).map(c => `<option value="${c}" ${String(r.selectedCondition||r.condition||qplConditionOptionsFor(r)[0])===c?'selected':''}>${c}</option>`).join('')}
         </select>
         <select onchange="updateQplVariant(${idx},{selectedFinish:this.value})" aria-label="Finish">
           ${r.availableVariants?.length ? qplVariantSelectOptions(r, 'finish', r.selectedFinish || r.finish) : `<option value="${escHtml(r.finish||'normal')}">${escHtml(qplFinishLabel(r.finish||'normal'))}</option>`}
@@ -9695,7 +10180,7 @@ function quickLookupResultCard(r, idx){
         </select>
         <input type="number" min="1" step="1" value="${Number(r.qty || 1)}" onchange="qplResults[${idx}].qty=parseInt(this.value,10)||1" aria-label="Quantity">
       </div>
-      ${r.skuId || r.productConditionId ? `<div style="margin-top:8px;font-family:monospace,monospace;font-size:10px;color:var(--dim)">SKU ${escHtml(r.skuId || 'n/a')} / PCID ${escHtml(r.productConditionId || 'n/a')}</div>` : ''}
+      ${showAdminDebug() && (r.skuId || r.productConditionId) ? `<div style="margin-top:8px;font-family:monospace,monospace;font-size:10px;color:var(--dim)">SKU ${escHtml(r.skuId || 'n/a')} / PCID ${escHtml(r.productConditionId || 'n/a')}</div>` : ''}
     </div>
     <div class="qpl-actions">
       <button class="hbtn primary" onclick="selectQuickLookupResult(${idx})">SELECT</button>
@@ -10260,19 +10745,21 @@ function saveDrawerCloseout(summary){
   localStorage.setItem('pos_drawer_closeouts', JSON.stringify(log.slice(0, 200)));
 }
 
-function openDrawer(){
+async function openDrawer(){
   const float = parseFloat(document.getElementById('drawer-float').value) || 0;
   const show = getShowMode();
   const session = getAuthSession();
+  const openedAt = new Date().toISOString();
   drawerState = {
-    id: createDrawerSessionId(),
+    id: makeUuid('drawer'),
     storeId: getActiveStoreId(),
     registerId: REGISTER_ID,
     showSessionId: getShowSessionId(show),
     eventName: show?.eventName || '',
     booth: show?.booth || '',
     float,
-    opened: new Date().toISOString(),
+    expectedCash:float,
+    opened: openedAt,
     openedBy: session?.user?.email || session?.user?.displayName || '',
     log: [],
     cashSales: 0,
@@ -10280,6 +10767,26 @@ function openDrawer(){
     appVersion: APP_VERSION
   };
   saveDrawer();
+  try {
+    await MoneyLedgerService().openDrawerSession({
+      id:drawerState.id,
+      store_id:getActiveStoreId(),
+      show_session_id:drawerState.showSessionId || null,
+      register_name:REGISTER_ID,
+      status:'open',
+      starting_cash:float,
+      expected_cash:float,
+      counted_cash:null,
+      over_short:null,
+      opened_by:getCurrentUserId(),
+      closed_by:null,
+      opened_at:openedAt,
+      closed_at:null
+    });
+  } catch(e) {
+    enqueueSync('drawer-session-open', 'Queued drawer open session', { drawerState }, e.message);
+    toast_dash('Drawer opened offline queued');
+  }
   logOpsEvent('drawer_open', 'Opened cash drawer', { drawerSessionId:drawerState.id, float });
   renderDrawer();
 }
@@ -10308,7 +10815,7 @@ function drawerMovementMeta(type){
   }[type] || { dir:0, label:'Drawer Note', event:'drawer_note' };
 }
 
-function addDrawerMovement(type){
+async function addDrawerMovement(type){
   if(!drawerState) return toast_dash('Open drawer first');
   const meta = drawerMovementMeta(type);
   const amtInput = document.getElementById('drawer-adj-amt');
@@ -10329,7 +10836,24 @@ function addDrawerMovement(type){
   });
   if(amtInput) amtInput.value = '';
   if(noteInput) noteInput.value = '';
+  drawerState.expectedCash = Number(drawerState.expectedCash ?? drawerState.float ?? 0) + Number(meta.dir * amt);
   saveDrawer();
+  const movement = {
+    id:makeUuid('move'),
+    drawer_session_id:drawerState.id || '',
+    store_id:getActiveStoreId(),
+    sale_id:null,
+    movement_type:type,
+    amount:meta.dir === 0 ? 0 : Number(meta.dir * amt),
+    note,
+    created_by:getCurrentUserId(),
+    created_at:new Date().toISOString()
+  };
+  try {
+    await MoneyLedgerService().writeDrawerMovement(movement);
+  } catch(e) {
+    enqueueSync('drawer-movement', 'Queued drawer movement: ' + meta.label, movement, e.message);
+  }
   logOpsEvent(meta.event, meta.label + ': ' + note, { drawerSessionId:drawerState.id, amount:amt, movementType:type });
   renderDrawer();
 }
@@ -10614,10 +11138,12 @@ function renderBuySessionPanel(){
   const totals = getBuyOfferTotals();
   const location = session?.location || 'Intake Tray';
   const payment = session?.paymentType || 'Cash';
+  const sessionLabel = session ? ('Session #' + String(session.buySessionId || '').replace(/[^a-z0-9]/gi,'').slice(-6).toUpperCase()) : 'start when customer walks up';
+  const sessionTitle = session?.customerName ? 'ACTIVE BUY SESSION - ' + session.customerName : (session ? 'ACTIVE BUY SESSION' : 'WALK-UP BUY SESSION');
   el.innerHTML = `<div style="border:1px solid ${session?'rgba(0,255,179,.28)':'var(--border)'};background:${session?'rgba(0,255,179,.045)':'var(--surf2)'};border-radius:8px;padding:10px;margin-bottom:10px">
     <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap">
       <div>
-        <div class="ph" style="margin:0 0 4px">${session?'ACTIVE BUY SESSION':'WALK-UP BUY SESSION'} <span style="font-size:8px;color:var(--dim)">${session ? escHtml(session.buySessionId) : 'start when customer walks up'}</span></div>
+        <div class="ph" style="margin:0 0 4px">${escHtml(sessionTitle)} <span style="font-size:8px;color:var(--dim)">${escHtml(sessionLabel)}</span></div>
         <div style="font-family:monospace,monospace;font-size:10px;color:var(--dim)">Items ${buyList.length} · Cash $${totals.offerTotal.toFixed(2)} · Trade $${(totals.offerTotal*1.15).toFixed(2)}</div>
       </div>
       <div style="display:flex;gap:6px;flex-wrap:wrap">
@@ -11229,6 +11755,7 @@ async function renderCustomerDisplay(){
     cartData = saved ? JSON.parse(saved) : {items:[], discount:0};
   }
   const items = cartData.items || [];
+  renderDealerCartTools(cartData);
   const disc = cartData.discount || 0;
   const profile = getVendorProfile();
 
@@ -11246,7 +11773,7 @@ async function renderCustomerDisplay(){
   const helpEl = document.getElementById('cd-help-panel');
   const clearEl = document.getElementById('cd-clear-cart');
   if(helpEl) helpEl.style.display = items.length ? 'none' : '';
-  if(clearEl) clearEl.style.display = items.length ? 'flex' : 'none';
+  if(clearEl) clearEl.style.display = 'none';
   renderCustomerPaymentLinks(total, payEl);
   renderPaymentSetupStatus(setupEl);
 
@@ -11265,7 +11792,6 @@ async function renderCustomerDisplay(){
       <div class="cd-item-sub">${escHtml(i.sub||'')}</div>
     </div>
     <div class="cd-item-price">$${Number(i.price||0).toFixed(2)}</div>
-    <button class="cd-remove" title="Remove from cart" onclick="removeCustomerDisplayCartItem('${escHtml(i.id || '')}', ${idx})">X</button>
   </div>`).join('');
 
   totalEl.textContent = '$'+total.toFixed(2);
@@ -11275,7 +11801,7 @@ async function renderCustomerDisplay(){
       ${discAmt ? `<div class="sell-total-row"><span>Discount ${disc}%</span><span style="color:var(--red)">-$${discAmt.toFixed(2)}</span></div>` : ''}
       ${tax ? `<div class="sell-total-row"><span>Tax</span><span>$${tax.toFixed(2)}</span></div>` : ''}`;
   }
-  const paymentLine = `<div style="margin-top:8px;color:var(--gold)">${escHtml(profile.paymentMethods)}</div>`;
+  const paymentLine = '';
   countEl.innerHTML = items.length + ' item' + (items.length>1?'s':'') + (disc>0?' · '+disc+'% discount applied':'') + (tax>0?' · tax included':'') + paymentLine;
 }
 
@@ -11300,41 +11826,77 @@ function renderCustomerPaymentLinks(total, el){
     s.cashApp.enabled ? [s.cashApp.displayName || 'Cash App', paymentUrl('cashapp', s.cashApp.cashtag, total)] : null,
   ].filter(Boolean);
   const base = [];
-  if(s.cash.enabled) base.push(`<button class="sell-pay-btn warn" onclick="recordCustomerDisplayPayment('Cash', ${Number(total||0).toFixed(2)}, 'cash')">CASH PAID</button>`);
-  if(s.card.enabled) base.push(`<button class="sell-pay-btn good" onclick="openScannerCheckout()">CARD / ${escHtml((s.card.provider || 'stripe').toUpperCase())}</button>`);
+  if(s.cash.enabled) base.push(`<div class="sell-pay-btn warn">CASH ACCEPTED</div>`);
+  if(s.card.enabled) base.push(`<div class="sell-pay-btn good">CARD ACCEPTED</div>`);
   if(!base.length && !links.length) {
-    el.innerHTML = `<button class="sell-pay-btn" onclick="switchTab('backoffice')">SET PAYMENT METHODS</button>`;
+    el.innerHTML = '';
     return;
   }
   el.innerHTML = base.join('') + links.map(([label,url]) => url
     ? `<div style="display:grid;gap:6px">
-        <a class="sell-pay-btn good" href="${escHtml(url)}" target="_blank" rel="noopener">OPEN ${label.toUpperCase()}</a>
-        <button class="sell-pay-btn warn" onclick="recordCustomerDisplayPayment('${label}', ${Number(total||0).toFixed(2)}, 'manual_external')">MARK ${label.toUpperCase()} PAID</button>
+        <a class="sell-pay-btn good" href="${escHtml(url)}" target="_blank" rel="noopener">${label.toUpperCase()}</a>
       </div>`
-    : `<button class="sell-pay-btn" onclick="switchTab('backoffice')">SET ${label.toUpperCase()}</button>`
+    : `<div class="sell-pay-btn">${label.toUpperCase()} ACCEPTED</div>`
   ).join('');
 }
 
 function renderPaymentSetupStatus(el){
   if(!el) return;
-  const s = getPaymentSettings();
-  const stripeConfigured = !!(s.card.stripePublishableKey || true); // Worker handles the secret key; scanner has a fallback publishable key.
-  const bits = [
-    'Card: ' + (s.card.enabled ? (stripeConfigured ? s.card.provider : 'needs key') : 'off'),
-    'Venmo: ' + (s.venmo.enabled ? (s.venmo.handle || 'not set') : 'off'),
-    'PayPal: ' + (s.paypal.enabled ? (s.paypal.emailOrHandle || 'not set') : 'off'),
-    'Cash App: ' + (s.cashApp.enabled ? (s.cashApp.cashtag || 'not set') : 'off'),
-  ];
-  el.textContent = bits.join(' | ');
+  el.textContent = '';
+}
+
+function renderDealerCartTools(cartData = getCartDataLocal()){
+  const el = document.getElementById('dealer-cart-lines');
+  if(!el) return;
+  const items = cartData.items || [];
+  if(!items.length) {
+    el.innerHTML = '<div style="border:1px dashed var(--border);border-radius:8px;padding:10px;text-align:center">Cart is empty.</div>';
+    return;
+  }
+  el.innerHTML = items.map((i, idx) => `<div style="display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;background:var(--surf2);border:1px solid var(--border);border-radius:8px;padding:9px">
+    <div><b style="color:var(--text)">${escHtml(i.name || 'Item')}</b><br>${escHtml([i.sub, i.category, i.adjustmentReason ? 'Adjusted: '+i.adjustmentReason : ''].filter(Boolean).join(' / '))}</div>
+    <div style="font-family:'Orbitron',monospace;color:var(--gold)">$${Number(i.price || 0).toFixed(2)}</div>
+    <button class="ra" onclick="editCartLinePrice(${idx})">Edit Price</button>
+  </div>`).join('');
+}
+
+async function editCartLinePrice(idx){
+  const cart = await getActiveCartData();
+  const item = cart.items?.[idx];
+  if(!item) return;
+  const original = Number(item.originalPrice ?? item.price ?? 0);
+  const value = prompt('Final sale price?', String(Number(item.price || 0).toFixed(2)));
+  if(value === null) return;
+  const next = Number(value);
+  if(!Number.isFinite(next) || next < 0) return toast_dash('Invalid price override');
+  if(next === 0 && !confirm('Zero price requires an explicit comp/freebie reason. Continue?')) return;
+  const reason = prompt('Reason for price override?');
+  if(!reason) return toast_dash('Price override reason required');
+  item.originalPrice = original;
+  item.adjustedPrice = next;
+  item.price = next;
+  item.adjustmentType = next < original ? 'discount' : next > original ? 'markup' : 'manual';
+  item.adjustmentReason = reason;
+  item.adjustedBy = getAuthSession()?.user?.email || getAuthSession()?.user?.displayName || 'local-user';
+  item.adjustedAt = new Date().toISOString();
+  await saveActiveCartData(cart);
+  logOpsEvent('cart_price_override', 'Adjusted cart line price: ' + (item.name || 'item'), { cartLineId:item.id || '', originalPrice:original, adjustedPrice:next, reason });
+  toast_dash('Cart price updated');
 }
 
 async function saveInventoryEdit(item, updates){
-  if(item.source === 'built_in') return updateBuiltInInventoryItem(item, updates);
+  if(item.source === 'built_in') {
+    await updateBuiltInInventoryItem(item, updates);
+    saveInventoryEditOverride(item.id, updates);
+    return true;
+  }
   if(item.source === 'spreadsheet' || getInventorySource() === 'spreadsheet') {
     saveEditToLocalStorage(item.id, updates);
+    saveInventoryEditOverride(item.id, updates);
     return true;
   }
   saveEditToLocalStorage(item.id, updates);
+  saveInventoryEditOverride(item.id, updates);
   return true;
 }
 
@@ -11413,7 +11975,23 @@ async function recordCustomerDisplayPayment(method, total, tenderType){
     paymentBreakdown:[{ method, tenderType:normalizedTender, amount:Number(total || 0) }],
     paymentStatus:'paid',
     total:Number(total || 0),
-    items:items.map(i => ({ name:i.name, price:Number(i.price||0), cost:Number(i.cost||0), shopId:i.shopId||i.wfId||'' })),
+    items:items.map(i => ({
+      name:i.name,
+      price:Number(i.price||0),
+      originalPrice:Number(i.originalPrice ?? i.price ?? 0),
+      adjustedPrice:Number(i.adjustedPrice ?? i.price ?? 0),
+      adjustmentType:i.adjustmentType || '',
+      adjustmentReason:i.adjustmentReason || '',
+      adjustedBy:i.adjustedBy || '',
+      adjustedAt:i.adjustedAt || '',
+      cost:Number(i.cost||0),
+      category:i.category || '',
+      categoryName:i.categoryName || i.category || '',
+      set:i.set || '',
+      condition:i.condition || '',
+      soldAt:paidAt,
+      shopId:i.shopId||i.wfId||''
+    })),
     source:'dashboard-cart',
     show,
     showSessionId:getShowSessionId(show),
@@ -11437,6 +12015,9 @@ async function recordCustomerDisplayPayment(method, total, tenderType){
   localStorage.setItem('pos_cart_v2', JSON.stringify(empty));
   postCartToWorker(empty);
   renderCustomerDisplay();
+  renderStats();
+  renderTodayMode();
+  renderBuySignals();
   logOpsEvent('sale_completed', 'Completed sale from dashboard cart', { txId:tx.id, method, tenderType:normalizedTender, total:Number(total || 0), items:items.length });
   toast_dash(method + ' payment recorded');
 }
@@ -11475,6 +12056,515 @@ async function markCartItemsSoldFromPayment(items, method, soldAt){
   soldData = all.filter(i=>i.status==='sold');
   renderAll();
   logOpsEvent('cart_payment', 'Recorded cart payment and marked inventory sold', { method, count:tracked.length });
+}
+
+// Locked Checkout Mode v2 - Supabase money ledger, customer-safe payment screen.
+const CHECKOUT_STATES = {
+  IDLE:'IDLE',
+  BUILDING_CART:'BUILDING_CART',
+  CHECKOUT_LOCKED:'CHECKOUT_LOCKED',
+  PAYMENT_METHOD_SELECTED:'PAYMENT_METHOD_SELECTED',
+  PAYMENT_PENDING:'PAYMENT_PENDING',
+  PAYMENT_CONFIRMED:'PAYMENT_CONFIRMED',
+  RECEIPT_CAPTURE:'RECEIPT_CAPTURE',
+  WANTS_CAPTURE:'WANTS_CAPTURE',
+  COMPLETE:'COMPLETE',
+  CANCELED:'CANCELED',
+  OFFLINE_QUEUED:'OFFLINE_QUEUED'
+};
+let checkoutState = CHECKOUT_STATES.IDLE;
+let lockedCheckoutSnapshot = null;
+let selectedTenderLines = [];
+let confirmedSaleContext = null;
+
+function CheckoutStateManager(){
+  return {
+    state:checkoutState,
+    snapshot:lockedCheckoutSnapshot,
+    set(next){ checkoutState = next; this.state = next; renderLockedCheckout().catch(()=>{}); },
+    canEditCart(){ return ![CHECKOUT_STATES.CHECKOUT_LOCKED,CHECKOUT_STATES.PAYMENT_METHOD_SELECTED,CHECKOUT_STATES.PAYMENT_PENDING,CHECKOUT_STATES.PAYMENT_CONFIRMED,CHECKOUT_STATES.RECEIPT_CAPTURE,CHECKOUT_STATES.WANTS_CAPTURE, CHECKOUT_STATES.OFFLINE_QUEUED].includes(checkoutState); }
+  };
+}
+
+function OfflineSyncQueue(){
+  return {
+    enqueueTransaction(bundle, error){
+      enqueueOrReplaceSync('pos-ledger-transaction', bundle.sale.id, 'Queued completed checkout: $' + Number(bundle.sale.total || 0).toFixed(2), bundle, error || 'Supabase write failed');
+      checkoutState = CHECKOUT_STATES.OFFLINE_QUEUED;
+      const banner = document.getElementById('checkout-offline-banner');
+      if(banner) banner.classList.add('on');
+    },
+    async sync(bundle){ return MoneyLedgerService().commitTransactionBundle(bundle); }
+  };
+}
+
+function getEnabledPaymentMethods(){
+  const s = getPaymentSettings();
+  return [
+    s.cash?.enabled ? { key:'cash', label:'Cash' } : null,
+    s.card?.enabled ? { key:'card', label:(s.card.provider === 'manual' ? 'Card' : 'Card / Stripe') } : null,
+    s.venmo?.enabled ? { key:'venmo', label:s.venmo.displayName || 'Venmo', handle:s.venmo.handle, qr:s.venmo.qrImageUrl } : null,
+    s.paypal?.enabled ? { key:'paypal', label:s.paypal.displayName || 'PayPal', handle:s.paypal.emailOrHandle, qr:s.paypal.qrImageUrl } : null,
+    s.cashApp?.enabled ? { key:'cashapp', label:s.cashApp.displayName || 'Cash App', handle:s.cashApp.cashtag, qr:s.cashApp.qrImageUrl } : null
+  ].filter(Boolean);
+}
+
+function getCurrentUserId(){
+  return getAuthSession()?.user?.id || null;
+}
+
+function getCurrentUserLabel(){
+  const user = getAuthSession()?.user || {};
+  return user.email || user.displayName || 'local-user';
+}
+
+function makeUuid(prefix = 'local'){
+  if(window.crypto?.randomUUID) return crypto.randomUUID();
+  return prefix + '_' + Date.now() + '_' + Math.random().toString(36).slice(2, 10);
+}
+
+function customerSafeLine(item){
+  return {
+    item_id:item.shopId || item.wfId || item.id || '',
+    title:item.name || 'Item',
+    category:item.categoryName || item.category || '',
+    quantity:Number(item.qty || item.quantity || 1),
+    unit_price:Number(item.price || 0),
+    original_price:Number(item.originalPrice ?? item.price ?? 0),
+    adjusted_price:Number(item.adjustedPrice ?? item.price ?? 0),
+    discount_amount:Math.max(0, Number(item.originalPrice ?? item.price ?? 0) - Number(item.price || 0)),
+    cost_basis:Number(item.cost || 0),
+    profit:Number(item.price || 0) - Number(item.cost || 0),
+    condition:item.condition || '',
+    finish:item.finish || '',
+    source_id:item.sourceId || item.source_id || item.shopId || item.wfId || '',
+    image_url:item.img || item.image || ''
+  };
+}
+
+function createLockedCheckoutSnapshot(cartData){
+  const normalized = normalizeCartTotals(JSON.parse(JSON.stringify(cartData || { items:[] })));
+  const settings = getPaymentSettings();
+  const subtotal = Number(normalized.subtotal || 0);
+  const discountTotal = Number(normalized.discountAmount || 0);
+  const taxTotal = settings.tax?.enabled && !Number(normalized.tax || 0) ? Math.max(0, subtotal - discountTotal) * (Number(settings.tax.defaultRate || 0) / 100) : Number(normalized.tax || 0);
+  const total = Math.max(0, subtotal - discountTotal + taxTotal);
+  return Object.freeze({
+    id:makeUuid('checkout'),
+    store_id:getActiveStoreId(),
+    show_session_id:getShowSessionId(getShowMode()),
+    drawer_session_id:drawerState?.id || null,
+    register_id:REGISTER_ID,
+    lines:(normalized.items || []).map(customerSafeLine),
+    subtotal,
+    discount_total:discountTotal,
+    tax_total:taxTotal,
+    total,
+    locked_at:new Date().toISOString(),
+    locked_by:getCurrentUserLabel(),
+    appVersion:APP_VERSION
+  });
+}
+
+function buildLedgerBundle(snapshot, tenderLines){
+  const saleId = makeUuid('sale');
+  const now = new Date().toISOString();
+  const storeId = snapshot.store_id;
+  const drawerId = snapshot.drawer_session_id || null;
+  const sale = {
+    id:saleId,
+    store_id:storeId,
+    show_session_id:snapshot.show_session_id || null,
+    drawer_session_id:drawerId,
+    checkout_snapshot_id:snapshot.id,
+    subtotal:snapshot.subtotal,
+    discount_total:snapshot.discount_total,
+    tax_total:snapshot.tax_total,
+    total:snapshot.total,
+    status:'completed',
+    created_by:getCurrentUserId(),
+    created_at:now,
+    completed_at:now
+  };
+  const saleLines = snapshot.lines.map(line => ({ id:makeUuid('line'), sale_id:saleId, store_id:storeId, ...line }));
+  const payments = tenderLines.map(t => ({
+    id:makeUuid('pay'),
+    sale_id:saleId,
+    store_id:storeId,
+    drawer_session_id:drawerId,
+    method:t.method,
+    amount:Number(t.amount || 0),
+    reference:t.reference || '',
+    status:'confirmed',
+    confirmed_by:getCurrentUserId(),
+    confirmed_at:now,
+    created_at:now
+  }));
+  const drawerMovements = payments.filter(p => normalizeTenderType(p.method) === 'cash' && drawerId).map(p => ({
+    id:makeUuid('move'),
+    drawer_session_id:drawerId,
+    store_id:storeId,
+    sale_id:saleId,
+    movement_type:'cash_sale',
+    amount:Number(p.amount || 0),
+    note:'Cash sale payment',
+    created_by:getCurrentUserId(),
+    created_at:now
+  }));
+  const inventoryUpdates = snapshot.lines.filter(l => l.item_id).map(l => ({ item_id:l.item_id, status:'sold', quantity_delta:-Number(l.quantity || 1), sale_id:saleId, sold_at:now }));
+  const audit = [
+    { id:makeUuid('audit'), store_id:storeId, event_type:'checkout_locked', entity_type:'checkout_snapshot', entity_id:snapshot.id, details:snapshot, created_by:getCurrentUserId(), created_at:snapshot.locked_at },
+    { id:makeUuid('audit'), store_id:storeId, event_type:'payment_confirmed', entity_type:'pos_sale', entity_id:saleId, details:{ tenderLines }, created_by:getCurrentUserId(), created_at:now },
+    { id:makeUuid('audit'), store_id:storeId, event_type:'sale_completed', entity_type:'pos_sale', entity_id:saleId, details:{ total:snapshot.total, lineCount:snapshot.lines.length }, created_by:getCurrentUserId(), created_at:now }
+  ];
+  return { sale, saleLines, payments, drawerMovements, inventoryUpdates, audit, snapshot };
+}
+
+function MoneyLedgerService(){
+  return {
+    async commitTransactionBundle(bundle){
+      const sb = getSupabaseClient();
+      if(!sb) throw new Error('Supabase client unavailable; transaction must stay queued.');
+      const inserts = [
+        ['pos_sales', bundle.sale],
+        ['pos_sale_lines', bundle.saleLines],
+        ['pos_payments', bundle.payments],
+        ['pos_drawer_movements', bundle.drawerMovements],
+        ['pos_audit_log', bundle.audit]
+      ];
+      for(const [table, payload] of inserts) {
+        if(Array.isArray(payload) && !payload.length) continue;
+        const { error } = await sb.from(table).insert(payload);
+        if(error) throw new Error(table + ': ' + error.message);
+      }
+      if(bundle.drawerMovements.length && bundle.sale.drawer_session_id) {
+        const expected = Number(drawerState?.expectedCash ?? drawerState?.float ?? 0) + Number(bundle.drawerMovements.reduce((a,m) => a + Number(m.amount || 0), 0));
+        await sb.from('pos_drawer_sessions').update({ expected_cash:expected }).eq('id', bundle.sale.drawer_session_id);
+      }
+      return { ok:true };
+    },
+    async openDrawerSession(session){
+      const sb = getSupabaseClient();
+      if(!sb) throw new Error('Supabase client unavailable');
+      const { error } = await sb.from('pos_drawer_sessions').insert(session);
+      if(error) throw error;
+      await sb.from('pos_audit_log').insert({ id:makeUuid('audit'), store_id:session.store_id, event_type:'drawer_open', entity_type:'pos_drawer_session', entity_id:session.id, details:session, created_by:getCurrentUserId(), created_at:new Date().toISOString() });
+      return true;
+    },
+    async writeDrawerMovement(movement){
+      const sb = getSupabaseClient();
+      if(!sb) throw new Error('Supabase client unavailable');
+      const { error } = await sb.from('pos_drawer_movements').insert(movement);
+      if(error) throw error;
+      await sb.from('pos_audit_log').insert({ id:makeUuid('audit'), store_id:movement.store_id, event_type:'drawer_movement', entity_type:'pos_drawer_movement', entity_id:movement.id, details:movement, created_by:movement.created_by, created_at:new Date().toISOString() });
+      return true;
+    }
+  };
+}
+
+function ensureCheckoutRuntimeMarkup(){
+  const display = document.getElementById('customer-display');
+  if(display && !display.classList.contains('customer-payment-screen')) {
+    display.className = 'customer-payment-screen';
+    display.innerHTML = `
+      <div class="customer-pay-brand">
+        <img data-vendor-logo src="" alt="">
+        <div class="customer-pay-store" data-vendor-store>WALK-OFF</div>
+        <div class="customer-pay-safe">Review your locked checkout total and choose a payment method.</div>
+      </div>
+      <div>
+        <div id="cd-items" class="customer-pay-lines"></div>
+        <div id="cd-total-breakdown" style="max-width:860px;margin:8px auto 0;color:#657080;font-family:monospace,monospace;font-size:12px"></div>
+        <div class="customer-pay-total"><span>TOTAL DUE</span><b id="cd-total">$0.00</b></div>
+        <div id="cd-items-count" style="text-align:center;font-family:monospace,monospace;font-size:11px;color:#657080;margin-top:7px">No locked checkout</div>
+        <div id="cd-pay-links" class="customer-method-grid"></div>
+        <div id="customer-payment-workbench" class="payment-workbench"></div>
+        <div id="cd-payment-setup" style="font-family:monospace,monospace;font-size:11px;color:#657080;margin-top:10px;line-height:1.5;text-align:center"></div>
+        <div id="receipt-capture-screen" class="receipt-capture-screen"></div>
+        <div id="wants-capture-screen" class="wants-capture-screen"></div>
+      </div>
+      <div style="text-align:center;font-family:monospace,monospace;font-size:11px;color:#657080">Thank you for shopping with us.</div>`;
+  }
+  const tools = document.getElementById('dealer-cart-tools');
+  if(tools && !document.getElementById('dealer-checkout-state')) {
+    tools.className = 'dealer-checkout-panel';
+    tools.innerHTML = `<div class="ph">DEALER CHECKOUT PANEL <span style="font-size:9px;color:var(--dim)">private controls</span></div>
+      <div id="dealer-checkout-state" class="checkout-state-strip"></div>
+      <div id="dealer-cart-lines" style="display:grid;gap:8px;font-family:monospace,monospace;font-size:10px;color:var(--dim)"></div>
+      <div id="dealer-cart-total" class="dealer-total"></div>
+      <div id="dealer-checkout-actions" class="checkout-action-row"></div>`;
+  }
+}
+
+async function renderLockedCheckout(){
+  ensureCheckoutRuntimeMarkup();
+  const cartData = lockedCheckoutSnapshot ? { items:lockedCheckoutSnapshot.lines.map(l => ({ name:l.title, category:l.category, price:l.adjusted_price, cost:l.cost_basis, condition:l.condition, originalPrice:l.original_price, adjustmentReason:l.discount_amount ? 'Locked adjustment' : '' })), discount:0, subtotal:lockedCheckoutSnapshot.subtotal, tax:lockedCheckoutSnapshot.tax_total, total:lockedCheckoutSnapshot.total } : await getActiveCartData();
+  renderDealerCartTools(cartData);
+  renderCustomerDisplaySnapshot();
+  const banner = document.getElementById('checkout-offline-banner');
+  if(banner) banner.classList.toggle('on', checkoutState === CHECKOUT_STATES.OFFLINE_QUEUED || getSyncQueue().some(x => x.type === 'pos-ledger-transaction' && x.status !== 'done'));
+}
+
+async function renderCustomerDisplay(){
+  if([CHECKOUT_STATES.CHECKOUT_LOCKED,CHECKOUT_STATES.PAYMENT_METHOD_SELECTED,CHECKOUT_STATES.PAYMENT_PENDING,CHECKOUT_STATES.PAYMENT_CONFIRMED,CHECKOUT_STATES.RECEIPT_CAPTURE,CHECKOUT_STATES.WANTS_CAPTURE,CHECKOUT_STATES.OFFLINE_QUEUED].includes(checkoutState)) {
+    renderCustomerDisplaySnapshot();
+    return;
+  }
+  const cartData = await getActiveCartData();
+  checkoutState = (cartData.items || []).length ? CHECKOUT_STATES.BUILDING_CART : CHECKOUT_STATES.IDLE;
+  renderDealerCartTools(cartData);
+  const display = document.getElementById('customer-display');
+  if(display) display.classList.remove('on');
+}
+
+function renderDealerCartTools(cartData = getCartDataLocal()){
+  ensureCheckoutRuntimeMarkup();
+  const el = document.getElementById('dealer-cart-lines');
+  const stateEl = document.getElementById('dealer-checkout-state');
+  const totalEl = document.getElementById('dealer-cart-total');
+  const actions = document.getElementById('dealer-checkout-actions');
+  if(!el) return;
+  const items = cartData.items || [];
+  const locked = !CheckoutStateManager().canEditCart();
+  const total = Number(cartData.total || cartData.items?.reduce((a,i)=>a+Number(i.price||0),0) || 0);
+  if(stateEl) stateEl.innerHTML = `<span class="checkout-state-pill ${checkoutState===CHECKOUT_STATES.OFFLINE_QUEUED?'bad':locked?'warn':''}">${checkoutState}</span><span>${lockedCheckoutSnapshot ? 'Snapshot ' + String(lockedCheckoutSnapshot.id).slice(0,8) : 'No locked snapshot'}</span><span>${items.length} line${items.length===1?'':'s'}</span>`;
+  if(!items.length) el.innerHTML = '<div style="border:1px dashed var(--border);border-radius:8px;padding:10px;text-align:center">Cart is empty.</div>';
+  else el.innerHTML = items.map((i, idx) => `<div class="dealer-line ${locked?'locked':''}">
+    <div><div class="dealer-line-name">${escHtml(i.name || i.title || 'Item')}</div><div class="dealer-line-sub">${escHtml([i.sub, i.category, i.condition, i.adjustmentReason ? 'Adjusted: '+i.adjustmentReason : ''].filter(Boolean).join(' / '))}</div></div>
+    <div style="font-family:'Orbitron',monospace;color:var(--gold);text-align:right">$${Number(i.price ?? i.adjusted_price ?? 0).toFixed(2)}</div>
+    <div class="dealer-profit">Cost $${Number(i.cost ?? i.cost_basis ?? 0).toFixed(2)}<br>Profit $${(Number(i.price ?? i.adjusted_price ?? 0)-Number(i.cost ?? i.cost_basis ?? 0)).toFixed(2)}</div>
+    ${locked ? '' : `<button class="ra" onclick="editCartLinePrice(${idx})">Edit</button>`}
+  </div>`).join('');
+  if(totalEl) totalEl.innerHTML = `<span style="font-family:monospace,monospace;font-size:11px;color:var(--dim)">DEALER TOTAL</span><b>$${total.toFixed(2)}</b>`;
+  if(actions) {
+    actions.innerHTML = locked
+      ? `<button class="hbtn danger" onclick="cancelLockedCheckout()">CANCEL CHECKOUT</button><button class="hbtn" onclick="enterCustomerDisplayMode()">SHOW CUSTOMER PAYMENT</button>`
+      : `<button class="hbtn" onclick="lockCheckoutForPayment()" ${items.length?'':'disabled'}>PROCEED TO PAYMENT</button><button class="hbtn danger" onclick="clearCustomerDisplayCart()" ${items.length?'':'disabled'}>CLEAR CART</button><button class="hbtn" onclick="openScannerCheckout()">PHONE SCANNER CHECKOUT</button>`;
+  }
+}
+
+async function lockCheckoutForPayment(){
+  const cart = await getActiveCartData();
+  if(!(cart.items || []).length) return toast_dash('Add items before checkout');
+  lockedCheckoutSnapshot = createLockedCheckoutSnapshot(cart);
+  selectedTenderLines = [];
+  CheckoutStateManager().set(CHECKOUT_STATES.CHECKOUT_LOCKED);
+  logOpsEvent('checkout_locked', 'Locked checkout snapshot', { checkoutSnapshotId:lockedCheckoutSnapshot.id, total:lockedCheckoutSnapshot.total, items:lockedCheckoutSnapshot.lines.length });
+  enterCustomerDisplayMode();
+}
+
+function cancelLockedCheckout(){
+  if([CHECKOUT_STATES.PAYMENT_CONFIRMED,CHECKOUT_STATES.RECEIPT_CAPTURE,CHECKOUT_STATES.WANTS_CAPTURE, CHECKOUT_STATES.COMPLETE, CHECKOUT_STATES.OFFLINE_QUEUED].includes(checkoutState)) return toast_dash('Payment was confirmed; this checkout cannot be restored as unpaid');
+  if(!confirm('Cancel locked checkout and return to editable cart?')) return;
+  lockedCheckoutSnapshot = null;
+  selectedTenderLines = [];
+  confirmedSaleContext = null;
+  CheckoutStateManager().set(CHECKOUT_STATES.BUILDING_CART);
+  exitCustomerDisplayMode();
+}
+
+function enterCustomerDisplayMode(){
+  ensureCheckoutRuntimeMarkup();
+  document.body.classList.add('customer-display-mode');
+  document.getElementById('customer-display')?.classList.add('on');
+  renderCustomerDisplaySnapshot();
+}
+
+function exitCustomerDisplayMode(){
+  document.body.classList.remove('customer-display-mode');
+  document.getElementById('customer-display')?.classList.remove('on');
+}
+
+function renderCustomerDisplaySnapshot(){
+  ensureCheckoutRuntimeMarkup();
+  const s = lockedCheckoutSnapshot;
+  const itemsEl = document.getElementById('cd-items');
+  const totalEl = document.getElementById('cd-total');
+  const countEl = document.getElementById('cd-items-count');
+  const breakdownEl = document.getElementById('cd-total-breakdown');
+  const payEl = document.getElementById('cd-pay-links');
+  const setupEl = document.getElementById('cd-payment-setup');
+  const workbench = document.getElementById('customer-payment-workbench');
+  if(!s) {
+    if(itemsEl) itemsEl.innerHTML = '';
+    if(totalEl) totalEl.textContent = '$0.00';
+    if(countEl) countEl.textContent = 'Waiting for dealer to proceed to payment';
+    if(payEl) payEl.innerHTML = '';
+    if(workbench) workbench.classList.remove('on');
+    return;
+  }
+  if(itemsEl) itemsEl.innerHTML = s.lines.map(l => `<div class="customer-pay-line"><div><div class="customer-pay-name">${escHtml(l.title)}</div><div class="customer-pay-sub">${escHtml([l.category,l.condition].filter(Boolean).join(' / '))}</div></div><div class="customer-pay-price">$${Number(l.adjusted_price || 0).toFixed(2)}</div></div>`).join('');
+  if(totalEl) totalEl.textContent = '$' + Number(s.total || 0).toFixed(2);
+  if(countEl) countEl.textContent = s.lines.length + ' item' + (s.lines.length===1?'':'s') + ' locked for checkout';
+  if(breakdownEl) breakdownEl.innerHTML = `Subtotal $${s.subtotal.toFixed(2)}${s.discount_total ? ' / Discount -$' + s.discount_total.toFixed(2) : ''}${s.tax_total ? ' / Tax $' + s.tax_total.toFixed(2) : ''}`;
+  renderCustomerPaymentLinks(s.total, payEl);
+  if(setupEl) setupEl.textContent = checkoutState === CHECKOUT_STATES.PAYMENT_PENDING ? 'Payment pending dealer confirmation.' : '';
+}
+
+function renderCustomerPaymentLinks(total, el){
+  if(!el) return;
+  const methods = getEnabledPaymentMethods();
+  el.innerHTML = methods.map(m => `<button class="customer-method-btn ${selectedTenderLines.some(t => t.method === m.key)?'on':''}" onclick="selectLockedPaymentMethod('${m.key}')">${escHtml(m.label)}</button>`).join('');
+}
+
+function selectLockedPaymentMethod(method){
+  if(!lockedCheckoutSnapshot) return toast_dash('Lock checkout first');
+  checkoutState = CHECKOUT_STATES.PAYMENT_METHOD_SELECTED;
+  const wb = document.getElementById('customer-payment-workbench');
+  if(!wb) return;
+  const total = Number(lockedCheckoutSnapshot.total || 0);
+  const settings = getPaymentSettings();
+  const cfg = method === 'venmo' ? settings.venmo : method === 'paypal' ? settings.paypal : method === 'cashapp' ? settings.cashApp : {};
+  if(method === 'cash') {
+    wb.innerHTML = `<div style="font-weight:800;text-align:center;margin-bottom:8px">Cash payment</div>
+      <div style="text-align:center;color:#657080;font-family:monospace,monospace">Amount due $${total.toFixed(2)}</div>
+      <input id="locked-cash-received" type="number" step="0.01" min="0" placeholder="Amount received" oninput="updateLockedCashChange()" style="width:100%;min-height:50px;border:1px solid #cfd7e3;border-radius:7px;padding:10px 12px;font-size:18px;margin-top:10px">
+      <div id="locked-cash-change" style="text-align:center;font-family:'Orbitron',monospace;font-size:24px;color:#05835f;margin-top:10px">Enter amount received</div>
+      <div class="payment-confirm-row"><button class="hbtn" onclick="confirmLockedPayment('cash')">CONFIRM CASH PAYMENT</button></div>`;
+  } else if(['venmo','paypal','cashapp'].includes(method)) {
+    const handle = cfg.handle || cfg.emailOrHandle || cfg.cashtag || '';
+    const qr = cfg.qrImageUrl ? `<img class="payment-qr" src="${escHtml(cfg.qrImageUrl)}" alt="${escHtml(method)} QR">` : `<div class="payment-qr-fallback">${escHtml(paymentUrl(method, handle, total) || handle || method)}</div>`;
+    wb.innerHTML = `<div style="font-weight:800;text-align:center;margin-bottom:8px">${escHtml(formatTenderLabel(method))}</div>${qr}
+      <div style="text-align:center;font-family:'Orbitron',monospace;font-size:18px">${escHtml(handle || 'Payment handle not configured')}</div>
+      <div class="payment-confirm-row"><button class="hbtn" onclick="confirmLockedPayment('${method}')">PAYMENT RECEIVED</button></div>`;
+  } else {
+    wb.innerHTML = `<div style="font-weight:800;text-align:center;margin-bottom:8px">Card payment</div>
+      <div style="text-align:center;color:#657080;font-family:monospace,monospace">Use Stripe confirmation when configured. Manual mode requires dealer confirmation.</div>
+      <div class="payment-confirm-row"><button class="hbtn" onclick="confirmLockedPayment('card')">CONFIRM CARD PAYMENT</button></div>`;
+  }
+  wb.classList.add('on');
+  renderCustomerDisplaySnapshot();
+}
+
+function updateLockedCashChange(){
+  const due = Number(lockedCheckoutSnapshot?.total || 0);
+  const received = Number(document.getElementById('locked-cash-received')?.value || 0);
+  const el = document.getElementById('locked-cash-change');
+  if(el) el.textContent = received >= due ? 'Change due $' + (received - due).toFixed(2) : 'Still due $' + (due - received).toFixed(2);
+}
+
+async function confirmLockedPayment(method){
+  if(!lockedCheckoutSnapshot) return toast_dash('No locked checkout');
+  const total = Number(lockedCheckoutSnapshot.total || 0);
+  let amount = total;
+  let reference = '';
+  if(method === 'cash') {
+    const received = Number(document.getElementById('locked-cash-received')?.value || 0);
+    if(received < total) return toast_dash('Cash received is less than amount due');
+    reference = 'received:' + received.toFixed(2) + ' change:' + (received - total).toFixed(2);
+  }
+  selectedTenderLines = [{ method, amount, reference }];
+  checkoutState = CHECKOUT_STATES.PAYMENT_PENDING;
+  await completeLockedCheckout();
+}
+
+async function completeLockedCheckout(){
+  const snapshot = lockedCheckoutSnapshot;
+  if(!snapshot) return;
+  const tenderTotal = selectedTenderLines.reduce((a,t) => a + Number(t.amount || 0), 0);
+  if(Math.abs(tenderTotal - Number(snapshot.total || 0)) > 0.009) return toast_dash('Tender total must equal checkout total');
+  checkoutState = CHECKOUT_STATES.PAYMENT_CONFIRMED;
+  const bundle = buildLedgerBundle(snapshot, selectedTenderLines);
+  try {
+    await MoneyLedgerService().commitTransactionBundle(bundle);
+    await finalizeCompletedCheckout(bundle, false);
+  } catch(e) {
+    OfflineSyncQueue().enqueueTransaction(bundle, e.message);
+    await finalizeCompletedCheckout(bundle, true);
+  }
+}
+
+async function finalizeCompletedCheckout(bundle, queued){
+  const paidAt = bundle.sale.completed_at;
+  const method = bundle.payments.map(p => p.method).join('+');
+  await markCartItemsSoldFromPayment((lockedCheckoutSnapshot?.lines || []).map(l => ({ name:l.title, price:l.adjusted_price, cost:l.cost_basis, category:l.category, condition:l.condition, shopId:l.item_id })), method, paidAt);
+  const txLog = safeLocalJson('pos_transactions', []);
+  txLog.unshift({ id:bundle.sale.id, date:paidAt, method, tenderType:normalizeTenderType(method), total:bundle.sale.total, items:bundle.saleLines.map(l => ({ name:l.title, price:l.adjusted_price, cost:l.cost_basis, category:l.category, soldAt:paidAt })), source:queued?'offline-queued-ledger':'supabase-ledger', drawerSessionId:bundle.sale.drawer_session_id, storeId:bundle.sale.store_id });
+  localStorage.setItem('pos_transactions', JSON.stringify(txLog.slice(0,1000)));
+  const empty = { items:[], discount:0, savedAt:paidAt, clearedAt:paidAt, lastTxId:bundle.sale.id, storeId:getActiveStoreId(), registerId:REGISTER_ID, appVersion:APP_VERSION };
+  localStorage.setItem('pos_cart_v2', JSON.stringify(empty));
+  postCartToWorker(empty);
+  if(drawerState && bundle.drawerMovements.length) {
+    const cashAdded = bundle.drawerMovements.reduce((a,m) => a + Number(m.amount || 0), 0);
+    drawerState.cashSales = Number(drawerState.cashSales || 0) + cashAdded;
+    drawerState.expectedCash = Number(drawerState.expectedCash ?? drawerState.float ?? 0) + cashAdded;
+    saveDrawer();
+    renderDrawer();
+  }
+  confirmedSaleContext = bundle;
+  logOpsEvent(queued ? 'sale_offline_queued' : 'sale_completed', queued ? 'Completed sale queued for Supabase sync' : 'Completed sale in Supabase ledger', { saleId:bundle.sale.id, total:bundle.sale.total });
+  renderStats(); renderTodayMode(); renderBuySignals(); renderSales?.();
+  if(queued) toast_dash('OFFLINE QUEUED - transaction saved for sync');
+  else toast_dash('Payment complete');
+  showReceiptCaptureScreen();
+}
+
+function showReceiptCaptureScreen(){
+  checkoutState = CHECKOUT_STATES.RECEIPT_CAPTURE;
+  const s = getPaymentSettings();
+  const el = document.getElementById('receipt-capture-screen');
+  const wants = document.getElementById('wants-capture-screen');
+  if(wants) wants.classList.remove('on');
+  if(!el) return showWantsCaptureScreen();
+  if(s.receipt?.captureEnabled === false) return showWantsCaptureScreen();
+  el.innerHTML = `<h2>Want a text receipt?</h2><input id="receipt-phone" placeholder="Phone number"><div class="payment-confirm-row"><button class="hbtn" onclick="saveReceiptCapture()">SEND RECEIPT</button><button class="hbtn danger" onclick="showWantsCaptureScreen()">SKIP</button></div>`;
+  el.classList.add('on');
+}
+
+async function saveReceiptCapture(){
+  const phone = document.getElementById('receipt-phone')?.value.trim() || '';
+  if(phone && confirmedSaleContext) {
+    const payload = { id:makeUuid('receipt'), store_id:getActiveStoreId(), sale_id:confirmedSaleContext.sale.id, phone, sms_status:'requested', created_at:new Date().toISOString() };
+    try {
+      const sb = getSupabaseClient();
+      if(!sb) throw new Error('Supabase unavailable');
+      const { error } = await sb.from('customer_receipts').insert(payload);
+      if(error) throw error;
+    } catch(e) {
+      enqueueSync('customer-receipt', 'Queued text receipt request', payload, e.message);
+    }
+  }
+  showWantsCaptureScreen();
+}
+
+function showWantsCaptureScreen(){
+  checkoutState = CHECKOUT_STATES.WANTS_CAPTURE;
+  const receipt = document.getElementById('receipt-capture-screen');
+  const el = document.getElementById('wants-capture-screen');
+  if(receipt) receipt.classList.remove('on');
+  const s = getPaymentSettings();
+  if(!el) return finishLockedCheckout();
+  if(s.customerDisplay?.wantsCaptureEnabled === false) return finishLockedCheckout();
+  el.innerHTML = `<h2>Looking for specific cards?</h2><input id="wants-name" placeholder="Name"><input id="wants-phone" placeholder="Phone number"><textarea id="wants-text" placeholder="What are you looking for?" style="height:92px"></textarea><label style="display:flex;gap:8px;align-items:center;font-size:13px;margin:8px 0"><input id="wants-marketing" type="checkbox"> Want us to text you if we find them?</label><div class="payment-confirm-row"><button class="hbtn" onclick="saveWantsCapture()">FINISH</button><button class="hbtn danger" onclick="finishLockedCheckout()">SKIP</button></div>`;
+  el.classList.add('on');
+}
+
+async function saveWantsCapture(){
+  const wantText = document.getElementById('wants-text')?.value.trim() || '';
+  const phone = document.getElementById('wants-phone')?.value.trim() || '';
+  if(wantText && confirmedSaleContext) {
+    const payload = { id:makeUuid('want'), store_id:getActiveStoreId(), sale_id:confirmedSaleContext.sale.id, phone, customer_name:document.getElementById('wants-name')?.value.trim() || '', want_text:wantText, categories:[], marketing_opt_in:!!document.getElementById('wants-marketing')?.checked, created_at:new Date().toISOString() };
+    try {
+      const sb = getSupabaseClient();
+      if(!sb) throw new Error('Supabase unavailable');
+      const { error } = await sb.from('customer_wants').insert(payload);
+      if(error) throw error;
+    } catch(e) {
+      enqueueSync('customer-wants', 'Queued customer wants request', payload, e.message);
+    }
+  }
+  finishLockedCheckout();
+}
+
+function finishLockedCheckout(){
+  checkoutState = CHECKOUT_STATES.COMPLETE;
+  lockedCheckoutSnapshot = null;
+  selectedTenderLines = [];
+  confirmedSaleContext = null;
+  document.getElementById('receipt-capture-screen')?.classList.remove('on');
+  document.getElementById('wants-capture-screen')?.classList.remove('on');
+  exitCustomerDisplayMode();
+  renderLockedCheckout().catch(()=>{});
 }
 
 // Auto-refresh customer display every 3 seconds

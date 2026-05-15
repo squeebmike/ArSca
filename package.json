@@ -1,6 +1,6 @@
 {
   "name": "walkoff-dashboard-qa",
-  "version": "2026.05.12.01",
+  "version": "2026.05.15.01",
   "private": true,
   "scripts": {
     "test": "playwright test --config=tests/playwright.config.js",
