@@ -3,7 +3,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="version" content="2026.05.15.02">
+<meta name="version" content="2026.05.15.04">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
@@ -41,20 +41,42 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
 .auth-card{width:min(420px,100%);background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:22px;box-shadow:0 24px 80px rgba(0,0,0,.55)}
 .auth-title{font-family:'Orbitron',monospace;font-size:18px;font-weight:900;color:var(--g);letter-spacing:2px;margin-bottom:8px}
 .auth-sub{font-family:monospace;font-size:10px;color:var(--dim);line-height:1.7;margin-bottom:14px}
-#scanbar{position:fixed;bottom:52px;left:0;right:0;z-index:30;padding:12px 12px 16px;background:linear-gradient(to top,rgba(0,0,0,.92) 60%,transparent);display:flex;flex-direction:column;align-items:center;gap:7px;}
-#scanner-searchbar{width:min(560px,calc(100vw - 24px));display:grid;grid-template-columns:1fr auto auto;gap:7px;align-items:center;}
+#scanbar{position:fixed;bottom:52px;left:0;right:0;z-index:30;padding:12px 12px 16px;background:linear-gradient(to top,rgba(0,0,0,.92) 60%,transparent);display:flex;flex-direction:column;align-items:center;gap:8px;}
+#scanner-searchbar{width:min(620px,calc(100vw - 24px));display:grid;grid-template-columns:minmax(0,1fr) 58px 90px;gap:8px;align-items:center;}
 #scanner-main-search{width:100%;min-height:52px;background:rgba(5,5,7,.92);border:1px solid rgba(0,255,179,.28);border-radius:var(--brand-button-radius);color:#fff;padding:12px 14px;font-family:monospace;font-size:14px;outline:none;}
 #scanner-main-search:focus{border-color:var(--g);box-shadow:0 0 0 2px rgba(0,255,179,.12);}
 #scanner-more-wrap{position:relative;display:flex;}
 #scanner-more-menu{display:none;position:absolute;right:0;top:calc(100% + 6px);min-width:160px;background:var(--surface);border:1px solid var(--brand-border);border-radius:var(--brand-card-radius);padding:6px;box-shadow:0 18px 50px rgba(0,0,0,.65);}
 #scanner-more-menu.on{display:grid;gap:5px;}
-#scanbtn{background:var(--g);color:var(--app-button-text,#000);border:none;padding:17px 56px;min-height:56px;font-family:'Orbitron',monospace;font-weight:900;font-size:15px;letter-spacing:2px;cursor:pointer;box-shadow:0 0 32px rgba(0,255,179,.5);touch-action:manipulation;border-radius:8px;}
+#scanbtn{width:min(620px,calc(100vw - 24px));background:var(--g);color:var(--app-button-text,#000);border:none;padding:17px 56px;min-height:60px;font-family:'Orbitron',monospace;font-weight:900;font-size:15px;letter-spacing:2px;cursor:pointer;box-shadow:0 0 32px rgba(0,255,179,.5);touch-action:manipulation;border-radius:8px;}
 #scanbtn.reading{background:var(--gold);}
 #scanbtn.autoon{background:var(--red);}
 #scanbtn.backmode{background:var(--gold);}
 #scanbtn.bulkmode{background:var(--purple);}
 .shint{font-family:monospace;font-size:10px;color:rgba(255,255,255,.25);letter-spacing:1px;text-align:center;}
 .shint.back{color:var(--gold);}.shint.bulk{color:var(--purple);}
+.scanner-progress-card{position:fixed;left:50%;bottom:190px;transform:translateX(-50%);z-index:38;width:min(420px,calc(100vw - 24px));display:none;background:linear-gradient(180deg,rgba(12,15,20,.96),rgba(5,5,7,.94));border:1px solid rgba(0,255,179,.28);border-radius:18px;padding:16px;box-shadow:0 22px 70px rgba(0,0,0,.58),0 0 28px rgba(0,255,179,.12);}
+.scanner-progress-card.on{display:block;}
+.scanner-progress-card.warn{border-color:rgba(255,209,102,.4);}
+.scanner-progress-card.error{border-color:rgba(255,77,109,.42);}
+.scanner-progress-title{font-family:'Orbitron',monospace;font-size:15px;font-weight:900;letter-spacing:1px;color:var(--g);margin-bottom:4px;}
+.scanner-progress-copy{font-family:monospace;font-size:10px;color:rgba(255,255,255,.62);line-height:1.45;min-height:30px;}
+.card-sorter{position:relative;height:66px;margin:12px 0 10px;border:1px solid rgba(255,255,255,.08);border-radius:12px;overflow:hidden;background:radial-gradient(circle at 50% 50%,rgba(0,255,179,.16),transparent 55%),rgba(255,255,255,.035);}
+.card-sorter::before{content:'';position:absolute;left:50%;top:8px;bottom:8px;width:86px;transform:translateX(-50%);border:1px solid rgba(0,255,179,.35);border-radius:10px;box-shadow:0 0 18px rgba(0,255,179,.22) inset;}
+.card-sorter::after{content:'';position:absolute;left:50%;top:10px;bottom:10px;width:2px;transform:translateX(-50%);background:linear-gradient(transparent,var(--g),transparent);box-shadow:0 0 10px var(--g);}
+.sort-card{position:absolute;top:15px;width:30px;height:40px;border-radius:5px;border:1px solid rgba(255,255,255,.18);background:linear-gradient(135deg,rgba(255,255,255,.82),rgba(0,255,179,.2));animation:sortCard 1.8s linear infinite;}
+.sort-card:nth-child(1){animation-delay:-1.2s}.sort-card:nth-child(2){animation-delay:-.6s}.sort-card:nth-child(3){animation-delay:0s}
+@keyframes sortCard{0%{left:-42px;transform:rotate(-6deg);opacity:.2}22%{opacity:1}55%{transform:rotate(2deg)}100%{left:calc(100% + 42px);opacity:.25}}
+.scanner-step-list{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:8px 0;}
+.scanner-step{font-family:monospace;font-size:9px;color:rgba(255,255,255,.32);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:6px 7px;background:rgba(255,255,255,.03);}
+.scanner-step.done{color:var(--g);border-color:rgba(0,255,179,.24);background:rgba(0,255,179,.07);}
+.scanner-step.active{color:var(--gold);border-color:rgba(255,209,102,.28);background:rgba(255,209,102,.07);}
+.scanner-progress-track{height:7px;background:rgba(255,255,255,.08);border-radius:99px;overflow:hidden;margin-top:9px;}
+#scanner-progress-bar{height:100%;width:0%;background:linear-gradient(90deg,var(--g),var(--gold));border-radius:99px;transition:width .28s ease;}
+.scanner-progress-actions{display:flex;gap:8px;margin-top:10px;align-items:center;flex-wrap:wrap;}
+.scanner-progress-actions .hbtn{flex:1;min-height:44px;}
+#scanner-progress-elapsed{font-family:monospace;font-size:9px;color:rgba(255,255,255,.36);min-width:80px;text-align:right;}
+@media (prefers-reduced-motion: reduce){.sort-card{animation:none;left:calc(50% - 15px);opacity:.8}.card-sorter::after{display:none}#scanner-progress-bar{transition:none}}
 #brackets{position:fixed;inset:0;z-index:4;pointer-events:none;}
 .br{position:absolute;width:44px;height:44px;border-color:var(--g);border-style:solid;opacity:.5;}
 .br.gold{border-color:var(--gold);}.br.purple{border-color:var(--purple);}
@@ -145,9 +167,11 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
   #show-badge,#offline-sync-badge,#hstatus{font-size:8px;max-width:86px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .hbtn{min-height:44px;padding:8px 9px;font-size:9px;}
   #scanbar{bottom:44px;padding:10px;}
-  #scanner-searchbar{grid-template-columns:1fr 52px 70px;width:calc(100vw - 20px);}
+  #scanner-searchbar{grid-template-columns:1fr 58px 84px;width:calc(100vw - 20px);}
   #scanner-main-search{min-height:56px;font-size:13px;}
   #scanbtn{width:calc(100vw - 20px);padding-left:12px;padding-right:12px;}
+  .scanner-progress-card{bottom:186px;}
+  .scanner-step-list{grid-template-columns:1fr;}
 }
 @media(max-width:699px){
   #hud{gap:8px;max-width:100vw;overflow:visible;}
@@ -451,7 +475,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
   <div class="hbtns">
     <span id="show-badge" style="font-family:monospace;font-size:9px;color:rgba(255,209,102,.7);letter-spacing:1px"></span>
     <span id="offline-sync-badge" style="font-family:monospace;font-size:9px;color:rgba(255,255,255,.35);letter-spacing:1px">online</span>
-    <span id="app-version" style="font-family:monospace;font-size:9px;color:rgba(0,255,179,.55);letter-spacing:1px">v2026.05.15.02</span>
+    <span id="app-version" style="font-family:monospace;font-size:9px;color:rgba(0,255,179,.55);letter-spacing:1px">v2026.05.15.04</span>
     <span id="hstatus">READY</span>
     <button class="hbtn scanner-secondary-control" data-fullscreen-btn onclick="toggleAppFullscreen(document.documentElement)">FULL SCREEN</button>
     <button class="hbtn" id="flipbtn" onclick="toggleFlip()">FLIP</button>
@@ -594,6 +618,20 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
   <div class="shint" id="scanhint">TCG · Sports · Comics · Slabs</div>
 </div>
 
+<div id="scanner-progress-card" class="scanner-progress-card" aria-live="polite">
+  <div class="scanner-progress-title" id="scanner-progress-title">Card sorter warming up</div>
+  <div class="scanner-progress-copy" id="scanner-progress-copy">Ready for the next lookup.</div>
+  <div class="card-sorter" aria-hidden="true"><span class="sort-card"></span><span class="sort-card"></span><span class="sort-card"></span></div>
+  <div class="scanner-step-list" id="scanner-progress-steps"></div>
+  <div class="scanner-progress-track"><div id="scanner-progress-bar"></div></div>
+  <div class="scanner-progress-actions">
+    <button class="hbtn" id="scanner-progress-cancel" onclick="cancelScannerProgress()">CANCEL</button>
+    <button class="hbtn" id="scanner-progress-retry" onclick="retryScannerProgress()" style="display:none;color:var(--gold)">RETRY</button>
+    <button class="hbtn" id="scanner-progress-send" onclick="sendScannerProgressAnyway()" style="display:none;color:var(--blue)">SEND ANYWAY</button>
+    <span id="scanner-progress-elapsed"></span>
+  </div>
+</div>
+
 <div id="bulkpanel">
   <div class="bulk-hdr">
     <span>BULK BUY CALCULATOR</span>
@@ -651,7 +689,7 @@ const STORE = {
   wf_status_instock:'f3769d1e15fa0956f98984d6fa36437f',
   wf_status_sold:   'e6b42f14fcb99aa2168a5f5672226f68',
 };
-const APP_VERSION = '2026.05.15.02';
+const APP_VERSION = '2026.05.15.04';
 const SUPABASE_URL = 'https://vroknjrxubsqyexngwus.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_wbpX2nL8l-4NbXtZNG_bjA_nabSYaJ5';
 const WORKER_URL = STORE.worker_url;
@@ -907,24 +945,147 @@ document.addEventListener('click', e => {
   if(!e.target.closest?.('#scanner-more-wrap')) document.getElementById('scanner-more-menu')?.classList.remove('on');
 });
 document.addEventListener('DOMContentLoaded', applyScannerTheme);
+
+const SCANNER_PROGRESS_STEPS = ['capturing_image','reading_text','detecting_category','matching_card','checking_prices','checking_variants','sending_to_tablet','done'];
+const SCANNER_PROGRESS_COPY = {
+  capturing_image:'Capturing card...',
+  reading_text:'Reading name, set, and number...',
+  detecting_category:'Detecting category...',
+  matching_card:'Matching card...',
+  checking_prices:'Checking prices...',
+  checking_variants:'Checking finishes and conditions...',
+  sending_to_tablet:'Sending to tablet...',
+  done:'Results ready.',
+  error:'Could not complete lookup.',
+  timeout:'Lookup is taking too long.',
+  listening:'Listening...',
+  transcript:'Heard:'
+};
+const SCANNER_STEP_LABELS = {
+  capturing_image:'Image captured',
+  reading_text:'Text read',
+  detecting_category:'Category detected',
+  matching_card:'Possible matches found',
+  checking_prices:'Prices checked',
+  checking_variants:'Ready to review',
+  sending_to_tablet:'Tablet handoff',
+  done:'Done'
+};
+let scannerProgress = { active:false, step:'done', started:0, timers:[], interval:null, retry:null, sendAnyway:null };
+
+function clearScannerProgressTimers(){
+  (scannerProgress.timers || []).forEach(t => clearTimeout(t));
+  scannerProgress.timers = [];
+  if(scannerProgress.interval) clearInterval(scannerProgress.interval);
+  scannerProgress.interval = null;
+}
+
+function renderScannerProgress(){
+  const card = document.getElementById('scanner-progress-card');
+  if(!card) return;
+  const step = scannerProgress.step || 'done';
+  const isTerminal = ['done','error','timeout'].includes(step);
+  card.classList.toggle('on', scannerProgress.active || isTerminal);
+  card.classList.toggle('warn', step === 'timeout');
+  card.classList.toggle('error', step === 'error');
+  const title = document.getElementById('scanner-progress-title');
+  const copy = document.getElementById('scanner-progress-copy');
+  const idx = Math.max(0, SCANNER_PROGRESS_STEPS.indexOf(step));
+  if(title) title.textContent = step === 'done' ? 'Results ready' : step === 'error' ? 'Lookup needs attention' : step === 'timeout' ? 'Lookup still running' : 'Card sorter working';
+  if(copy) copy.textContent = SCANNER_PROGRESS_COPY[step] || SCANNER_PROGRESS_COPY.matching_card;
+  const steps = document.getElementById('scanner-progress-steps');
+  if(steps) {
+    steps.innerHTML = SCANNER_PROGRESS_STEPS.slice(0, 6).map((s, i) => {
+      const cls = step === s ? 'active' : i < idx || step === 'done' ? 'done' : '';
+      return `<div class="scanner-step ${cls}">${SCANNER_STEP_LABELS[s]}</div>`;
+    }).join('');
+  }
+  const bar = document.getElementById('scanner-progress-bar');
+  if(bar) bar.style.width = step === 'timeout' || step === 'error' ? '100%' : Math.min(100, Math.max(12, ((idx + 1) / 7) * 100)) + '%';
+  const retry = document.getElementById('scanner-progress-retry');
+  const send = document.getElementById('scanner-progress-send');
+  if(retry) retry.style.display = ['error','timeout'].includes(step) && scannerProgress.retry ? '' : 'none';
+  if(send) send.style.display = ['error','timeout'].includes(step) && scannerProgress.sendAnyway ? '' : 'none';
+}
+
+function beginScannerProgress(step = 'capturing_image', options = {}){
+  clearScannerProgressTimers();
+  scannerProgress = { active:true, step, started:Date.now(), timers:[], interval:null, retry:options.retry || null, sendAnyway:options.sendAnyway || null };
+  const elapsed = document.getElementById('scanner-progress-elapsed');
+  if(elapsed) elapsed.textContent = '';
+  scannerProgress.interval = setInterval(() => {
+    const seconds = Math.floor((Date.now() - scannerProgress.started) / 1000);
+    const el = document.getElementById('scanner-progress-elapsed');
+    if(el) el.textContent = seconds >= 5 ? seconds + 's elapsed' : '';
+  }, 1000);
+  scannerProgress.timers.push(setTimeout(() => {
+    const copy = document.getElementById('scanner-progress-copy');
+    if(scannerProgress.active && copy) copy.textContent = (SCANNER_PROGRESS_COPY[scannerProgress.step] || 'Working...') + ' Still working...';
+  }, 8000));
+  scannerProgress.timers.push(setTimeout(() => updateScannerProgress('timeout'), 20000));
+  renderScannerProgress();
+}
+
+function updateScannerProgress(step, options = {}){
+  if(!scannerProgress.active && !['error','timeout','done','listening','transcript'].includes(step)) return;
+  if(options.soft && ['done','error','timeout'].includes(scannerProgress.step)) return;
+  scannerProgress.step = step;
+  if(['done','error','timeout'].includes(step)) {
+    scannerProgress.active = false;
+    clearScannerProgressTimers();
+  }
+  renderScannerProgress();
+  if(step === 'done') setTimeout(() => {
+    if(scannerProgress.step === 'done') {
+      const card = document.getElementById('scanner-progress-card');
+      card?.classList.remove('on');
+    }
+  }, 900);
+}
+
+function cancelScannerProgress(){
+  clearScannerProgressTimers();
+  scannerProgress.active = false;
+  scannerProgress.step = 'done';
+  document.getElementById('scanner-progress-card')?.classList.remove('on','warn','error');
+}
+
+function retryScannerProgress(){
+  const retry = scannerProgress.retry;
+  cancelScannerProgress();
+  if(typeof retry === 'function') retry();
+}
+
+function sendScannerProgressAnyway(){
+  const fn = scannerProgress.sendAnyway;
+  cancelScannerProgress();
+  if(typeof fn === 'function') fn();
+  else toast('No scan ready to send yet');
+}
+
 function startScannerVoiceInput(inputId, done){
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if(!SR){ toast('Voice search not supported in this browser'); return; }
+  if(!SR){ beginScannerProgress('error'); document.getElementById('scanner-progress-copy').textContent = 'Voice search unavailable in this browser'; toast('Voice search not supported in this browser'); return; }
   const rec = new SR();
   rec.lang = 'en-US';
   rec.interimResults = false;
   rec.maxAlternatives = 1;
+  beginScannerProgress('listening');
   toast('Listening...');
   rec.onresult = e => {
     const text = cleanupScannerVoice(e.results?.[0]?.[0]?.transcript || '');
+    const copy = document.getElementById('scanner-progress-copy');
+    if(copy) copy.textContent = 'Heard: ' + text;
     const el = document.getElementById(inputId);
     if(el) {
       el.value = text;
       el.dispatchEvent(new Event('input', { bubbles:true }));
     }
     if(typeof done === 'function') setTimeout(done, 80);
+    else if(auto) setTimeout(runScannerManualSearch, 120);
+    else updateScannerProgress('done');
   };
-  rec.onerror = e => toast('Voice failed: ' + (e.error || 'unknown'));
+  rec.onerror = e => { updateScannerProgress('error'); toast((e.error === 'not-allowed' ? 'Voice permission denied' : 'Voice failed: ' + (e.error || 'unknown'))); };
   rec.start();
 }
 
@@ -2782,8 +2943,11 @@ async function runScannerManualSearch(){
   if(!query) { toast('Type or speak a search first'); return; }
   const hs = document.getElementById('hstatus');
   if(hs) hs.textContent = 'SEARCHING...';
+  beginScannerProgress('reading_text', { retry:runScannerManualSearch });
   try {
+    updateScannerProgress('detecting_category');
     const matches = await scannerUnifiedSearch(query, 'Any');
+    updateScannerProgress('matching_card');
     const best = matches[0] || {};
     const game = /comic/i.test(best.category || best.source || '') ? 'Comic'
       : /video game/i.test(best.category || '') ? 'Video Game'
@@ -2812,12 +2976,15 @@ async function runScannerManualSearch(){
     if(bbl) {
       bbl._scannerMatches = matches;
       bbl._manualSearch = true;
+      updateScannerProgress('checking_prices');
       await researchBubbleMatch(bbl.id);
     }
     if(hs) hs.textContent = matches.length ? 'MATCHES' : 'NEEDS REVIEW';
+    updateScannerProgress('done');
     toast(matches.length ? 'Manual search ready' : 'No exact match found');
   } catch(e) {
     if(hs) hs.textContent = 'SEARCH ERROR';
+    updateScannerProgress('error');
     toast('Search failed: ' + e.message);
   }
 }
@@ -2925,19 +3092,31 @@ window.sendBubbleToTablet = async function(id) {
   const el = document.getElementById(id);
   if(!el) return toast('Scan not found');
   let handoff = buildHandoffItem(el);
+  beginScannerProgress('sending_to_tablet', { retry:() => sendBubbleToTablet(id), sendAnyway:() => sendBubbleToTablet(id) });
   toast('Researching match before tablet handoff...');
   handoff = await enrichScannerHandoff(handoff);
   try {
     if(await sendHandoffToSupabase(handoff)) {
+      updateScannerProgress('done');
       toast('Sent to tablet POS');
       return;
     }
     const queue = await readScanHandoffQueue();
     queue.unshift(handoff);
     await writeScanHandoffQueue(queue);
+    updateScannerProgress('done');
     toast('Sent to tablet POS');
   } catch(e) {
-    toast('Could not send to tablet: ' + e.message);
+    try {
+      const queue = await readScanHandoffQueue();
+      queue.unshift({ ...handoff, localQueueReason:e.message, queuedAt:new Date().toISOString() });
+      await writeScanHandoffQueue(queue);
+      updateScannerProgress('error');
+      toast('Could not send. Kept locally queued.');
+    } catch(queueErr) {
+      updateScannerProgress('error');
+      toast('Could not send to tablet: ' + e.message);
+    }
   }
 };
 
@@ -2972,12 +3151,15 @@ async function doScan(){
   const btn=document.getElementById('scanbtn'),hs=document.getElementById('hstatus');
   const orig=btn.innerHTML;
   btn.textContent='READING...';btn.classList.add('reading');hs.textContent='SCANNING...';
+  beginScannerProgress('capturing_image', { retry:doScan, sendAnyway:() => bubs[0] && sendBubbleToTablet(bubs[0].id) });
   try{
     const img=capture();
+    updateScannerProgress('reading_text');
     if(flipMode)await scanBack(img);
     else if(bulkMode)await scanBulk(img);
     else { window._lastFrontB64 = img; await scanFront(img); }
-  }catch(e){hs.textContent='ERROR';toast('Error: '+e.message);}
+    updateScannerProgress('done');
+  }catch(e){hs.textContent='ERROR';updateScannerProgress('error');toast('Error: '+e.message);}
   scanning=false;btn.innerHTML=orig;btn.classList.remove('reading');
 }
 
@@ -3031,6 +3213,7 @@ Return array only, no markdown.`;
 
   let items = [];
   try {
+    updateScannerProgress('detecting_category');
     // Strip markdown, find first [ or {
     let raw = text.replace(/```json/gi,'').replace(/```/g,'').trim();
     const ai = raw.indexOf('[');
@@ -3044,18 +3227,21 @@ Return array only, no markdown.`;
   } catch(e) {
     console.error('[v8] Parse error:', e.message, 'raw was:', text ? text.slice(0,300) : 'empty');
     hs.textContent = 'PARSE ERR';
+    updateScannerProgress('error');
     toast('Scan error — try again');
     return;
   }
 
   if(!items.length) {
     hs.textContent = 'NONE';
+    updateScannerProgress('error');
     toast('Nothing detected — move card closer');
     return;
   }
 
   if(items.some(isSpecialScanItem)) {
     hs.textContent = 'VERIFYING...';
+    updateScannerProgress('matching_card');
     items = await Promise.all(items.map(item => refineSpecialScan(item, img).catch(() => item)));
   }
 
@@ -3076,6 +3262,7 @@ Return array only, no markdown.`;
     item.cy = typeof item.cy === 'number' ? item.cy : 50;
 
     console.log('[v8] addBubble:', item.name, item.game, 'cx='+item.cx, 'cy='+item.cy);
+    updateScannerProgress('matching_card');
     const bbl = addBubble(item, stock, null, null, 0);
     console.log('[v8] bubble result:', bbl ? 'OK '+bbl.id+' left='+bbl.style.left+' top='+bbl.style.top : 'FAILED');
 
@@ -3094,7 +3281,9 @@ Return array only, no markdown.`;
 
         if(isTCGLocal) {
           hs.textContent = 'LOADING PRICES...';
+          updateScannerProgress('checking_prices');
           const fetched = await fetchAllPrintings(_item);
+          updateScannerProgress('checking_variants');
           if(fetched.printings && fetched.printings.length) {
             _bbl._prints = fetched.printings;
             // Store TCGPlayer card ID for fast price lookups later

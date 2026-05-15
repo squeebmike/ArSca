@@ -19,7 +19,7 @@ test('dashboard html and worker scripts parse', async () => {
 test('dashboard loads current build with primary nav and Research tab', async ({ page }) => {
   const guard = await openDashboard(page);
   await expect(page.locator('.logo')).toContainText(/WALK-OFF/i);
-  await expect(page.locator('.logo')).toContainText(/2026\.05\.15\.03/);
+  await expect(page.locator('.logo')).toContainText(/2026\.05\.15\.04/);
   await expect(page.locator('[data-tab="overview"]')).toBeVisible();
   await expect(page.locator('[data-tab="research"]')).toBeVisible();
   await expect(page.locator('[data-tab="authcheck"]')).toBeVisible();
@@ -51,6 +51,11 @@ test('research and drawer use contextual actions and starting cash wording', asy
   await expect(page.locator('#drawer-open-view')).toContainText('COUNTED CASH');
   await expect(page.locator('#drawer-float-disp')).toHaveText('$200.00');
   await expect(page.locator('#drawer-expected-disp')).toHaveText('$200.00');
+  await expect(page.locator('#top-drawer-chip')).toContainText('$200.00');
+  await page.getByRole('button', { name: 'HIDE TOTALS' }).click();
+  await expect(page.locator('#top-drawer-chip')).toHaveText('DRAWER OPEN');
+  await expect(page.locator('#drawer-float-disp')).toHaveClass(/drawer-money-hidden/);
+  await expect(page.locator('#drawer-expected-disp')).toHaveClass(/drawer-money-hidden/);
   guard.assertClean();
 });
 

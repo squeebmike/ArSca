@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.05.15.03">
+<meta name="version" content="2026.05.15.04">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -167,6 +167,7 @@ header{position:sticky;top:0;z-index:100;background:rgba(7,8,10,.96);backdrop-fi
 .drawer-ledger-metric{background:var(--surf2);border:1px solid var(--border);border-radius:8px;padding:10px;}
 .drawer-ledger-metric span{display:block;font-family:monospace,monospace;font-size:8px;letter-spacing:1px;color:var(--dim);text-transform:uppercase;}
 .drawer-ledger-metric b{display:block;font-family:'Orbitron',monospace;font-size:16px;color:var(--text);margin-top:4px;}
+.drawer-money-hidden{filter:blur(7px);user-select:none;}
 .auth-screen{position:fixed;inset:0;z-index:5000;background:radial-gradient(circle at top,rgba(0,255,179,.08),transparent 38%),#07080a;display:none;align-items:center;justify-content:center;padding:24px;}
 .auth-screen.on{display:flex;}
 .auth-card{width:min(460px,100%);background:var(--surf);border:1px solid var(--border);border-radius:14px;padding:22px;box-shadow:0 24px 80px rgba(0,0,0,.5);}
@@ -510,7 +511,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
 
 <header>
   <div class="hdr">
-    <div class="logo">WALK-OFF <span>DASHBOARD · v2026.05.15.03</span></div>
+    <div class="logo">WALK-OFF <span>DASHBOARD · v2026.05.15.04</span></div>
     <div class="hdr-right">
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
@@ -825,7 +826,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
 
     <!-- CASH DRAWER TRACKER -->
     <div class="panel" id="register-cash-panel">
-      <div class="ph">💵 CASH DRAWER <span id="drawer-status" style="font-size:9px;font-weight:600;color:var(--g)">CLOSED</span></div>
+      <div class="ph">💵 CASH DRAWER <span id="drawer-status" style="font-size:9px;font-weight:600;color:var(--g)">CLOSED</span> <button class="hbtn" id="drawer-totals-toggle" onclick="toggleDrawerTotals()" style="float:right;min-height:28px;padding:4px 8px;font-size:9px">HIDE TOTALS</button></div>
       <div id="drawer-closed-view">
         <div style="font-family:monospace,monospace;font-size:10px;color:var(--dim);margin-bottom:8px">Starting Cash</div>
         <input type="number" id="drawer-float" step="0.01" placeholder="200.00" aria-label="Starting Cash" style="width:100%;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:6px;font-size:16px;font-family:'Orbitron',monospace;margin-bottom:8px">
@@ -835,23 +836,23 @@ body.customer-display-mode #customer-display-exit{display:block;}
         <div class="drawer-ledger-grid">
           <div style="background:var(--surf2);border:1px solid var(--border);border-radius:8px;padding:10px;text-align:center">
             <div style="font-family:monospace,monospace;font-size:8px;color:var(--dim);margin-bottom:4px">STARTING CASH</div>
-            <div style="font-family:'Orbitron',monospace;font-size:14px;color:var(--text)" id="drawer-float-disp">$0</div>
+            <div class="drawer-money" style="font-family:'Orbitron',monospace;font-size:14px;color:var(--text)" id="drawer-float-disp">$0</div>
           </div>
           <div style="background:var(--surf2);border:1px solid var(--border);border-radius:8px;padding:10px;text-align:center">
             <div style="font-family:monospace,monospace;font-size:8px;color:var(--dim);margin-bottom:4px">SALES</div>
-            <div style="font-family:'Orbitron',monospace;font-size:14px;color:var(--g)" id="drawer-sales-disp">$0</div>
+            <div class="drawer-money" style="font-family:'Orbitron',monospace;font-size:14px;color:var(--g)" id="drawer-sales-disp">$0</div>
           </div>
           <div style="background:var(--surf2);border:1px solid rgba(0,255,179,.3);border-radius:8px;padding:10px;text-align:center">
             <div style="font-family:monospace,monospace;font-size:8px;color:var(--dim);margin-bottom:4px">EXPECTED CASH</div>
-            <div style="font-family:'Orbitron',monospace;font-size:14px;color:var(--gold)" id="drawer-expected-disp">$0</div>
+            <div class="drawer-money" style="font-family:'Orbitron',monospace;font-size:14px;color:var(--gold)" id="drawer-expected-disp">$0</div>
           </div>
           <div style="background:var(--surf2);border:1px solid var(--border);border-radius:8px;padding:10px;text-align:center">
             <div style="font-family:monospace,monospace;font-size:8px;color:var(--dim);margin-bottom:4px">COUNTED CASH</div>
-            <div style="font-family:'Orbitron',monospace;font-size:14px;color:var(--text)" id="drawer-counted-disp">Not counted</div>
+            <div class="drawer-money" style="font-family:'Orbitron',monospace;font-size:14px;color:var(--text)" id="drawer-counted-disp">Not counted</div>
           </div>
           <div style="background:var(--surf2);border:1px solid var(--border);border-radius:8px;padding:10px;text-align:center">
             <div style="font-family:monospace,monospace;font-size:8px;color:var(--dim);margin-bottom:4px">OVER / SHORT</div>
-            <div style="font-family:'Orbitron',monospace;font-size:14px;color:var(--text)" id="drawer-over-short-disp">$0.00</div>
+            <div class="drawer-money" style="font-family:'Orbitron',monospace;font-size:14px;color:var(--text)" id="drawer-over-short-disp">$0.00</div>
           </div>
         </div>
         <div style="font-family:monospace,monospace;font-size:9px;color:var(--dim);margin-bottom:6px">DRAWER MOVEMENTS</div>
@@ -1420,7 +1421,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.05.15.03';
+const APP_VERSION = '2026.05.15.04';
 const SUPABASE_URL = 'https://vroknjrxubsqyexngwus.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_wbpX2nL8l-4NbXtZNG_bjA_nabSYaJ5';
 const AUTH_REDIRECT_URL = 'https://squeebmike.github.io/ArSca/dashboard.html';
@@ -1931,13 +1932,22 @@ function updateTopStateChips(){
     drawerChip.title = 'Open cash drawer management';
     if(drawerState) {
       const expected = getDrawerExpected();
-      drawerChip.textContent = 'DRAWER OPEN: $' + Number(expected || 0).toFixed(2);
+      drawerChip.textContent = getDrawerTotalsVisible() ? 'DRAWER OPEN: $' + Number(expected || 0).toFixed(2) : 'DRAWER OPEN';
       drawerChip.className = 'top-state-chip warn';
     } else {
       drawerChip.textContent = 'DRAWER CLOSED';
       drawerChip.className = 'top-state-chip';
     }
   }
+}
+
+function getDrawerTotalsVisible(){
+  return localStorage.getItem('drawer_totals_visible') !== '0';
+}
+
+function toggleDrawerTotals(){
+  localStorage.setItem('drawer_totals_visible', getDrawerTotalsVisible() ? '0' : '1');
+  renderDrawer();
 }
 
 function openDrawerPanelFromHeader(){
@@ -11032,9 +11042,12 @@ function getDrawerExpected(){
 
 function renderDrawer(){
   if(drawerState) migrateDrawerStartingCash(drawerState);
+  const totalsVisible = getDrawerTotalsVisible();
   const closed = document.getElementById('drawer-closed-view');
   const open = document.getElementById('drawer-open-view');
   const status = document.getElementById('drawer-status');
+  const totalsToggle = document.getElementById('drawer-totals-toggle');
+  if(totalsToggle) totalsToggle.textContent = totalsVisible ? 'HIDE TOTALS' : 'SHOW TOTALS';
   if(!drawerState){
     closed.style.display=''; open.style.display='none';
     status.textContent='CLOSED'; status.style.color='var(--red)';
@@ -11059,6 +11072,10 @@ function renderDrawer(){
     overShortEl.textContent = drawerState.countedCash == null ? '$0.00' : (diff >= 0 ? '+' : '') + '$' + diff.toFixed(2);
     overShortEl.style.color = drawerState.countedCash == null ? 'var(--text)' : Math.abs(diff) < 0.5 ? 'var(--g)' : 'var(--gold)';
   }
+  document.querySelectorAll('#register-cash-panel .drawer-money').forEach(el => {
+    el.classList.toggle('drawer-money-hidden', !totalsVisible);
+    el.setAttribute('aria-label', totalsVisible ? (el.textContent || '') : 'Hidden');
+  });
   const logEl = document.getElementById('drawer-log');
   if(logEl && !document.getElementById('drawer-session-meta')) {
     logEl.insertAdjacentHTML('beforebegin', `
