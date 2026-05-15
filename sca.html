@@ -3,7 +3,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="version" content="2026.05.07.07">
+<meta name="version" content="2026.05.15.02">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
@@ -14,8 +14,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
-:root{--g:#00ffb3;--gd:rgba(0,255,179,0.15);--gold:#ffd166;--red:#ff4d6d;--blue:#48cae4;--purple:#c77dff;--psa:#e63946;--bg:#050507;--surface:rgba(5,5,7,0.97);}
-html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-family:'DM Sans',sans-serif;color:#fff;}
+:root{--app-bg:#050507;--app-surface:rgba(5,5,7,0.97);--app-surface-2:#141720;--app-text:#ffffff;--app-muted:rgba(255,255,255,.45);--app-primary:#00ffb3;--app-secondary:#ffd166;--app-accent:#c77dff;--app-success:#00ffb3;--app-warning:#ffd166;--app-danger:#ff4d6d;--app-border:rgba(255,255,255,.12);--app-button-text:#050507;--app-radius:10px;--app-font:'DM Sans',sans-serif;--brand-primary:var(--app-primary);--brand-secondary:var(--app-secondary);--brand-accent:var(--app-accent);--brand-background:var(--app-bg);--brand-surface:var(--app-surface);--brand-surface-2:var(--app-surface-2);--brand-text:var(--app-text);--brand-muted:var(--app-muted);--brand-success:var(--app-success);--brand-warning:var(--app-warning);--brand-danger:var(--app-danger);--brand-info:#48cae4;--brand-border:var(--app-border);--brand-card-radius:var(--app-radius);--brand-button-radius:6px;--brand-font-family:var(--app-font);--g:var(--brand-primary);--gd:rgba(0,255,179,0.15);--gold:var(--brand-warning);--red:var(--brand-danger);--blue:var(--brand-info);--purple:var(--brand-accent);--psa:#e63946;--bg:var(--brand-background);--surface:var(--brand-surface);--panel:var(--brand-surface);--border:var(--brand-border);--dim:var(--brand-muted);}
+html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-family:var(--brand-font-family);color:var(--brand-text);}
 #video{position:fixed;inset:0;width:100%;height:100%;object-fit:cover;z-index:0;}
 #canvas{display:none;}
 #oc{position:fixed;inset:0;width:100%;height:100%;z-index:5;pointer-events:none;}
@@ -28,11 +28,11 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
 .s-inp:focus{border-color:var(--g);}
 .s-btn{width:100%;max-width:340px;background:var(--g);color:#000;border:none;padding:15px;font-family:'Orbitron',monospace;font-weight:700;font-size:13px;letter-spacing:2px;cursor:pointer;}
 .s-btn2{width:100%;max-width:340px;background:rgba(255,209,102,.15);color:var(--gold);border:1px solid rgba(255,209,102,.4);padding:13px;font-family:'Orbitron',monospace;font-weight:700;font-size:12px;letter-spacing:2px;cursor:pointer;}
-#hud{position:fixed;top:0;left:0;right:0;z-index:30;padding:10px 12px;background:linear-gradient(to bottom,rgba(0,0,0,.9),transparent);display:flex;justify-content:space-between;align-items:center;}
+#hud{position:fixed;top:0;left:0;right:0;z-index:30;padding:10px 12px;background:linear-gradient(to bottom,rgba(0,0,0,.9),transparent);display:flex;justify-content:space-between;align-items:center;gap:10px;}
 .hl{font-family:'Orbitron',monospace;font-size:13px;font-weight:900;color:var(--g);letter-spacing:3px;text-shadow:0 0 16px var(--g);}
-.hbtns{display:flex;gap:5px;align-items:center;}
+.hbtns{display:flex;gap:5px;align-items:center;justify-content:flex-end;min-width:0;}
 #hstatus{font-family:monospace;font-size:10px;color:rgba(255,255,255,.35);letter-spacing:1px;margin-right:2px;}
-.hbtn{background:rgba(255,255,255,.08);color:rgba(255,255,255,.5);border:1px solid rgba(255,255,255,.15);padding:9px 11px;min-height:42px;font-family:monospace;font-size:10px;cursor:pointer;touch-action:manipulation;border-radius:5px;}
+.hbtn{background:rgba(255,255,255,.08);color:rgba(255,255,255,.5);border:1px solid rgba(255,255,255,.15);padding:9px 11px;min-height:42px;font-family:monospace;font-size:10px;cursor:pointer;touch-action:manipulation;border-radius:var(--brand-button-radius);}
 .hbtn.on{color:var(--red);border-color:var(--red);}
 .hbtn.flip-on{color:var(--gold);border-color:var(--gold);background:rgba(255,209,102,.1);}
 .hbtn.bulk-on{color:var(--purple);border-color:var(--purple);background:rgba(199,125,255,.1);}
@@ -42,7 +42,13 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
 .auth-title{font-family:'Orbitron',monospace;font-size:18px;font-weight:900;color:var(--g);letter-spacing:2px;margin-bottom:8px}
 .auth-sub{font-family:monospace;font-size:10px;color:var(--dim);line-height:1.7;margin-bottom:14px}
 #scanbar{position:fixed;bottom:52px;left:0;right:0;z-index:30;padding:12px 12px 16px;background:linear-gradient(to top,rgba(0,0,0,.92) 60%,transparent);display:flex;flex-direction:column;align-items:center;gap:7px;}
-#scanbtn{background:var(--g);color:#000;border:none;padding:17px 56px;min-height:56px;font-family:'Orbitron',monospace;font-weight:900;font-size:15px;letter-spacing:2px;cursor:pointer;box-shadow:0 0 32px rgba(0,255,179,.5);touch-action:manipulation;border-radius:8px;}
+#scanner-searchbar{width:min(560px,calc(100vw - 24px));display:grid;grid-template-columns:1fr auto auto;gap:7px;align-items:center;}
+#scanner-main-search{width:100%;min-height:52px;background:rgba(5,5,7,.92);border:1px solid rgba(0,255,179,.28);border-radius:var(--brand-button-radius);color:#fff;padding:12px 14px;font-family:monospace;font-size:14px;outline:none;}
+#scanner-main-search:focus{border-color:var(--g);box-shadow:0 0 0 2px rgba(0,255,179,.12);}
+#scanner-more-wrap{position:relative;display:flex;}
+#scanner-more-menu{display:none;position:absolute;right:0;top:calc(100% + 6px);min-width:160px;background:var(--surface);border:1px solid var(--brand-border);border-radius:var(--brand-card-radius);padding:6px;box-shadow:0 18px 50px rgba(0,0,0,.65);}
+#scanner-more-menu.on{display:grid;gap:5px;}
+#scanbtn{background:var(--g);color:var(--app-button-text,#000);border:none;padding:17px 56px;min-height:56px;font-family:'Orbitron',monospace;font-weight:900;font-size:15px;letter-spacing:2px;cursor:pointer;box-shadow:0 0 32px rgba(0,255,179,.5);touch-action:manipulation;border-radius:8px;}
 #scanbtn.reading{background:var(--gold);}
 #scanbtn.autoon{background:var(--red);}
 #scanbtn.backmode{background:var(--gold);}
@@ -131,6 +137,34 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
 .comp-d{font-family:monospace;font-size:9px;color:rgba(255,255,255,.5);flex:1;margin-right:4px;line-height:1.35;}
 .comp-p{font-family:'Orbitron',monospace;font-size:11px;color:var(--g);white-space:nowrap;}
 @media (min-width:700px){.bub{width:380px}.card-img{height:170px}}
+@media(max-width:520px){
+  #hud{align-items:flex-start;padding:8px 10px;}
+  .hl{font-size:12px;letter-spacing:2px;line-height:1.2;}
+  .hbtns{flex-wrap:wrap;max-width:72vw;}
+  .scanner-secondary-control,#settingsbtn,#app-version{display:none!important;}
+  #show-badge,#offline-sync-badge,#hstatus{font-size:8px;max-width:86px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .hbtn{min-height:44px;padding:8px 9px;font-size:9px;}
+  #scanbar{bottom:44px;padding:10px;}
+  #scanner-searchbar{grid-template-columns:1fr 52px 70px;width:calc(100vw - 20px);}
+  #scanner-main-search{min-height:56px;font-size:13px;}
+  #scanbtn{width:calc(100vw - 20px);padding-left:12px;padding-right:12px;}
+}
+@media(max-width:699px){
+  #hud{gap:8px;max-width:100vw;overflow:visible;}
+  .hbtns{display:grid;grid-template-columns:auto auto auto auto;gap:5px;justify-content:end;}
+  #show-badge,#offline-sync-badge,#hstatus{grid-column:auto;align-self:center;}
+  #scanner-more-menu{position:fixed;right:10px;top:56px;min-width:190px;z-index:60;}
+  #scanner-searchbar .hbtn{min-height:56px;}
+  .bacts{grid-template-columns:1fr;}
+  .bact{min-height:44px;font-size:8px;}
+  .bulk-settings,.bulk-actions{grid-template-columns:1fr;}
+}
+@media(max-width:430px){
+  .hl{max-width:96px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .hbtns{grid-template-columns:auto auto auto;}
+  #show-badge,#offline-sync-badge,#hstatus{max-width:74px;}
+  #scanner-searchbar{grid-template-columns:minmax(0,1fr) 52px 74px;}
+}
 .backinfo{background:rgba(255,209,102,.05);border:1px solid rgba(255,209,102,.2);padding:6px 8px;margin-bottom:6px;}
 .backinfo-hdr{font-family:'Orbitron',monospace;font-size:7px;letter-spacing:1px;color:var(--gold);margin-bottom:4px;}
 .backinfo-row{display:flex;justify-content:space-between;font-family:monospace;font-size:8px;color:rgba(255,255,255,.5);padding:1px 0;}
@@ -413,18 +447,27 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
 </div>
 
 <div id="hud" style="display:none">
-  <span class="hl">Walk-Off</span>
+  <span class="hl">Scanner Ready</span>
   <div class="hbtns">
     <span id="show-badge" style="font-family:monospace;font-size:9px;color:rgba(255,209,102,.7);letter-spacing:1px"></span>
     <span id="offline-sync-badge" style="font-family:monospace;font-size:9px;color:rgba(255,255,255,.35);letter-spacing:1px">online</span>
-    <span id="app-version" style="font-family:monospace;font-size:9px;color:rgba(0,255,179,.55);letter-spacing:1px">v2026.05.07.07</span>
+    <span id="app-version" style="font-family:monospace;font-size:9px;color:rgba(0,255,179,.55);letter-spacing:1px">v2026.05.15.02</span>
     <span id="hstatus">READY</span>
-    <button class="hbtn" data-fullscreen-btn onclick="toggleAppFullscreen(document.documentElement)">FULL SCREEN</button>
+    <button class="hbtn scanner-secondary-control" data-fullscreen-btn onclick="toggleAppFullscreen(document.documentElement)">FULL SCREEN</button>
     <button class="hbtn" id="flipbtn" onclick="toggleFlip()">FLIP</button>
     <button class="hbtn" id="bulkbtn" onclick="toggleBulk()">BULK</button>
-    <button class="hbtn" id="autobitn" onclick="toggleAuto()">AUTO</button>
-    <button class="hbtn" onclick="clearAll()">CLR</button>
-    <button class="hbtn" id="debugbtn" onclick="toggleDebugLog()">LOG</button>
+    <button class="hbtn scanner-secondary-control" id="autobitn" onclick="toggleAuto()">AUTO</button>
+    <button class="hbtn scanner-secondary-control" onclick="clearAll()">CLR</button>
+    <button class="hbtn scanner-secondary-control" id="debugbtn" onclick="toggleDebugLog()">LOG</button>
+    <div id="scanner-more-wrap">
+      <button class="hbtn" onclick="toggleScannerMore(event)">MORE</button>
+      <div id="scanner-more-menu">
+        <button class="hbtn" onclick="toggleAuto();toggleScannerMore()">AUTO</button>
+        <button class="hbtn" onclick="clearAll();toggleScannerMore()">CLEAR</button>
+        <button class="hbtn" onclick="toggleDebugLog();toggleScannerMore()">LOG</button>
+        <button class="hbtn" onclick="showSettings();toggleScannerMore()">SETTINGS</button>
+      </div>
+    </div>
     <button class="hbtn" id="settingsbtn" onclick="showSettings()" style="color:rgba(255,255,255,.3)">⚙</button>
   </div>
 </div>
@@ -542,6 +585,11 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
   </div>
 </div>
 <div id="scanbar" style="display:none">
+  <div id="scanner-searchbar">
+    <input id="scanner-main-search" placeholder="Search before scanning..." onkeydown="if(event.key==='Enter')runScannerManualSearch()">
+    <button class="hbtn" title="Voice search" onclick="startScannerVoiceInput('scanner-main-search')">MIC</button>
+    <button class="hbtn" onclick="runScannerManualSearch()">SEARCH</button>
+  </div>
   <button id="scanbtn" onclick="doScan()">&#9654; SCAN CARDS</button>
   <div class="shint" id="scanhint">TCG · Sports · Comics · Slabs</div>
 </div>
@@ -603,12 +651,12 @@ const STORE = {
   wf_status_instock:'f3769d1e15fa0956f98984d6fa36437f',
   wf_status_sold:   'e6b42f14fcb99aa2168a5f5672226f68',
 };
-const APP_VERSION = '2026.05.12.01';
+const APP_VERSION = '2026.05.15.02';
 const SUPABASE_URL = 'https://vroknjrxubsqyexngwus.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_wbpX2nL8l-4NbXtZNG_bjA_nabSYaJ5';
 const WORKER_URL = STORE.worker_url;
 
-const WALKOFF_SCOPED_KEYS = new Set(['lba_inventory','lba_sales','pos_transactions','pos_cart_v2','pos_buy_list','pos_active_buy_session','pos_buy_sessions','pos_sync_queue','pos_drawer','pos_drawer_closeouts','pos_wantlist','pos_consign','pos_locations','vendor_profile_v1','store_payment_settings_v1','grade_submissions']);
+const WALKOFF_SCOPED_KEYS = new Set(['lba_inventory','lba_sales','pos_transactions','pos_cart_v2','pos_buy_list','pos_active_buy_session','pos_buy_sessions','pos_sync_queue','pos_drawer','pos_drawer_closeouts','pos_wantlist','pos_consign','pos_locations','vendor_profile_v1','store_payment_settings_v1','store_theme_v1','grade_submissions']);
 const WALKOFF_AUTH_SESSION_KEY = 'walkoff_auth_session_v1';
 const WALKOFF_ACTIVE_STORE_KEY = 'walkoff_active_store_id';
 let scannerSupabaseClient = null;
@@ -665,11 +713,15 @@ async function loadScannerStoreSettingsFromSupabase(){
   if(!sb || !session?.supabase || !storeId) return;
   const { data, error } = await sb
     .from('store_settings')
-    .select('payment_settings,receipt_settings')
+    .select('payment_settings,receipt_settings,theme')
     .eq('store_id', storeId)
     .maybeSingle();
   if(error) { console.warn('Scanner settings sync failed:', error.message); return; }
   if(data?.payment_settings) localStorage.setItem('store_payment_settings_v1', JSON.stringify(data.payment_settings));
+  if(data?.theme) {
+    localStorage.setItem('store_theme_v1', JSON.stringify(data.theme));
+    applyScannerTheme();
+  }
   if(data?.receipt_settings) {
     const prev = JSON.parse(localStorage.getItem('vendor_profile_v1') || '{}');
     localStorage.setItem('vendor_profile_v1', JSON.stringify({ ...prev, ...data.receipt_settings }));
@@ -702,6 +754,7 @@ async function ensureScannerAuth(){
   document.getElementById('scanner-auth-screen')?.classList.remove('on');
   STORE.store_id = getScannerActiveStoreId();
   await loadScannerStoreSettingsFromSupabase();
+  applyScannerTheme();
   applyVendorProfileToScanner();
   return true;
 }
@@ -824,6 +877,36 @@ function cleanupScannerVoice(text){
   });
   return out.replace(/\s+/g,' ').trim();
 }
+function scannerHexToRgb(hex){
+  const h = String(hex || '').replace('#','').trim();
+  return /^[0-9a-f]{6}$/i.test(h) ? { r:parseInt(h.slice(0,2),16), g:parseInt(h.slice(2,4),16), b:parseInt(h.slice(4,6),16) } : null;
+}
+function scannerRgba(hex, alpha){
+  const c = scannerHexToRgb(hex);
+  return c ? `rgba(${c.r},${c.g},${c.b},${alpha})` : `rgba(0,255,179,${alpha})`;
+}
+function applyScannerTheme(){
+  let theme = {};
+  try { theme = JSON.parse(localStorage.getItem('store_theme_v1') || '{}'); } catch(e) {}
+  if(!theme || !Object.keys(theme).length) return;
+  const root = document.documentElement;
+  const primary = theme.primaryColor || '#00ffb3';
+  const vars = {
+    '--app-bg':theme.backgroundColor || '#050507','--app-surface':theme.surfaceColor || 'rgba(5,5,7,0.97)','--app-surface-2':theme.surface2Color || '#141720','--app-text':theme.textColor || '#ffffff','--app-muted':theme.mutedTextColor || 'rgba(255,255,255,.45)','--app-primary':primary,'--app-secondary':theme.secondaryColor || '#ffd166','--app-accent':theme.accentColor || '#c77dff','--app-success':theme.successColor || primary,'--app-warning':theme.warningColor || '#ffd166','--app-danger':theme.dangerColor || '#ff4d6d','--app-border':theme.borderColor || 'rgba(255,255,255,.12)','--app-button-text':theme.buttonTextColor || '#050507','--app-radius':theme.cardRadius || '10px','--app-font':theme.fontFamily || "'DM Sans',sans-serif",
+    '--brand-primary':primary,'--brand-secondary':theme.secondaryColor || '#ffd166','--brand-accent':theme.accentColor || '#c77dff','--brand-background':theme.backgroundColor || '#050507','--brand-surface':theme.surfaceColor || 'rgba(5,5,7,0.97)','--brand-surface-2':theme.surface2Color || '#141720','--brand-text':theme.textColor || '#ffffff','--brand-muted':theme.mutedTextColor || 'rgba(255,255,255,.45)','--brand-success':theme.successColor || primary,'--brand-warning':theme.warningColor || '#ffd166','--brand-danger':theme.dangerColor || '#ff4d6d','--brand-info':theme.infoColor || '#48cae4','--brand-border':theme.borderColor || 'rgba(255,255,255,.12)','--brand-card-radius':theme.cardRadius || '10px','--brand-button-radius':theme.buttonRadius || '6px','--brand-font-family':theme.fontFamily || "'DM Sans',sans-serif",
+    '--g':primary,'--gd':scannerRgba(primary,.15),'--gold':theme.warningColor || '#ffd166','--red':theme.dangerColor || '#ff4d6d','--blue':theme.infoColor || '#48cae4','--purple':theme.accentColor || '#c77dff','--bg':theme.backgroundColor || '#050507','--surface':theme.surfaceColor || 'rgba(5,5,7,0.97)','--panel':theme.surfaceColor || 'rgba(5,5,7,0.97)','--border':theme.borderColor || 'rgba(255,255,255,.12)','--dim':theme.mutedTextColor || 'rgba(255,255,255,.45)'
+  };
+  Object.entries(vars).forEach(([k,v]) => root.style.setProperty(k, v));
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme.backgroundColor || '#050507');
+}
+function toggleScannerMore(event){
+  if(event) event.stopPropagation();
+  document.getElementById('scanner-more-menu')?.classList.toggle('on');
+}
+document.addEventListener('click', e => {
+  if(!e.target.closest?.('#scanner-more-wrap')) document.getElementById('scanner-more-menu')?.classList.remove('on');
+});
+document.addEventListener('DOMContentLoaded', applyScannerTheme);
 function startScannerVoiceInput(inputId, done){
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if(!SR){ toast('Voice search not supported in this browser'); return; }
@@ -849,7 +932,7 @@ function updateShowBadge() {
   const el = document.getElementById('show-badge');
   if(!el) return;
   const ctx = getShowContext();
-  const event = ctx.eventName || ctx.storeId;
+  const event = ctx.eventName || STORE.store_name || 'Scanner';
   el.textContent = (event + (ctx.boothName ? ' · ' + ctx.boothName : '')).toUpperCase();
 }
 
@@ -2691,6 +2774,52 @@ async function scannerUnifiedSearch(query, category = ''){
   const primary = matches.filter(m => scannerStrictAllows(m, strict, true));
   const fallback = strict.mods.length && !primary.length ? matches.filter(m => scannerStrictAllows(m, strict, false)).map(m => ({ ...m, closestStrictFallback:true })) : [];
   return [...primary, ...fallback].sort((a,b) => (b.confidenceScore + (b.marketPrice?30:0) + (b.availableVariantCount?20:0) - (b.closestStrictFallback?100:0)) - (a.confidenceScore + (a.marketPrice?30:0) + (a.availableVariantCount?20:0) - (a.closestStrictFallback?100:0))).slice(0, 12);
+}
+
+async function runScannerManualSearch(){
+  const input = document.getElementById('scanner-main-search');
+  const query = String(input?.value || '').trim();
+  if(!query) { toast('Type or speak a search first'); return; }
+  const hs = document.getElementById('hstatus');
+  if(hs) hs.textContent = 'SEARCHING...';
+  try {
+    const matches = await scannerUnifiedSearch(query, 'Any');
+    const best = matches[0] || {};
+    const game = /comic/i.test(best.category || best.source || '') ? 'Comic'
+      : /video game/i.test(best.category || '') ? 'Video Game'
+      : /sports/i.test(best.category || '') ? 'Sports Card'
+      : /magic|mtg/i.test(best.category || best.set || best.name || '') ? 'Magic: The Gathering'
+      : /pokemon|pokémon/i.test(best.category || best.set || best.name || '') ? 'Pokemon TCG'
+      : 'Collectible';
+    const item = {
+      game,
+      name:best.name || query,
+      set_name:best.set || best.setName || best.consoleName || '',
+      card_number:best.card_number || best.cardNumber || '',
+      issue:best.issue || '',
+      year:best.year || '',
+      cx:50,
+      cy:42,
+      confidence:best.confidenceScore >= 80 ? 'high' : best.confidenceScore >= 55 ? 'medium' : 'low',
+      confidence_reason:best.matchReasons?.[0] || (best.name ? 'manual search match' : 'manual search needs review'),
+      search_query:query,
+      priceSource:best.priceSource || best.source || '',
+      market:best.marketPrice || best.price || 0,
+      comps:[]
+    };
+    if(auto) clearAll();
+    const bbl = addBubble(item, checkStock(item), best.imageUrl || best.coverUrl || '', null, 0);
+    if(bbl) {
+      bbl._scannerMatches = matches;
+      bbl._manualSearch = true;
+      await researchBubbleMatch(bbl.id);
+    }
+    if(hs) hs.textContent = matches.length ? 'MATCHES' : 'NEEDS REVIEW';
+    toast(matches.length ? 'Manual search ready' : 'No exact match found');
+  } catch(e) {
+    if(hs) hs.textContent = 'SEARCH ERROR';
+    toast('Search failed: ' + e.message);
+  }
 }
 
 async function enrichScannerHandoff(handoff){

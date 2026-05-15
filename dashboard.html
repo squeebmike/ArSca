@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.05.15.01">
+<meta name="version" content="2026.05.15.02">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -12,7 +12,7 @@
 <title>Walk-Off Dashboard</title>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-:root{--brand-primary:#00ffb3;--brand-secondary:#ffd166;--brand-accent:#c77dff;--brand-background:#07080a;--brand-surface:#0d0f14;--brand-surface-2:#141720;--brand-text:#e4e4e8;--brand-muted:rgba(228,228,232,.4);--brand-success:#00ffb3;--brand-warning:#ffd166;--brand-danger:#ff4d6d;--brand-info:#48cae4;--brand-border:rgba(255,255,255,.07);--brand-card-radius:10px;--brand-button-radius:6px;--brand-font-family:'DM Sans',sans-serif;--g:var(--brand-primary);--gd:rgba(0,255,179,.1);--gold:var(--brand-warning);--red:var(--brand-danger);--blue:var(--brand-info);--purple:var(--brand-accent);--bg:var(--brand-background);--surf:var(--brand-surface);--surf2:var(--brand-surface-2);--border:var(--brand-border);--text:var(--brand-text);--dim:var(--brand-muted);}
+:root{--app-bg:#07080a;--app-surface:#0d0f14;--app-surface-2:#141720;--app-text:#e4e4e8;--app-muted:rgba(228,228,232,.4);--app-primary:#00ffb3;--app-secondary:#ffd166;--app-accent:#c77dff;--app-success:#00ffb3;--app-warning:#ffd166;--app-danger:#ff4d6d;--app-border:rgba(255,255,255,.07);--app-button-text:#050507;--app-radius:10px;--app-font:'DM Sans',sans-serif;--customer-bg-image:none;--brand-primary:var(--app-primary);--brand-secondary:var(--app-secondary);--brand-accent:var(--app-accent);--brand-background:var(--app-bg);--brand-surface:var(--app-surface);--brand-surface-2:var(--app-surface-2);--brand-text:var(--app-text);--brand-muted:var(--app-muted);--brand-success:var(--app-success);--brand-warning:var(--app-warning);--brand-danger:var(--app-danger);--brand-info:#48cae4;--brand-border:var(--app-border);--brand-card-radius:var(--app-radius);--brand-button-radius:6px;--brand-font-family:var(--app-font);--g:var(--brand-primary);--gd:rgba(0,255,179,.1);--gold:var(--brand-warning);--red:var(--brand-danger);--blue:var(--brand-info);--purple:var(--brand-accent);--bg:var(--brand-background);--surf:var(--brand-surface);--surf2:var(--brand-surface-2);--border:var(--brand-border);--text:var(--brand-text);--dim:var(--brand-muted);}
 *{margin:0;padding:0;box-sizing:border-box;}
 body{background:var(--bg);color:var(--text);font-family:var(--brand-font-family);min-height:100vh;padding-bottom:calc(72px + env(safe-area-inset-bottom));}
 body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse at 15% 15%,rgba(0,255,179,.03) 0,transparent 55%),radial-gradient(ellipse at 85% 85%,rgba(199,125,255,.03) 0,transparent 55%);pointer-events:none;}
@@ -123,7 +123,7 @@ header{position:sticky;top:0;z-index:100;background:rgba(7,8,10,.96);backdrop-fi
 .checkout-state-pill{border:1px solid rgba(0,255,179,.24);background:rgba(0,255,179,.07);color:var(--g);border-radius:999px;padding:5px 9px;font-family:'Orbitron',monospace;font-size:9px;}
 .checkout-state-pill.warn{border-color:rgba(255,209,102,.28);background:rgba(255,209,102,.08);color:var(--gold);}
 .checkout-state-pill.bad{border-color:rgba(255,77,109,.28);background:rgba(255,77,109,.08);color:var(--red);}
-.dealer-line{display:grid;grid-template-columns:minmax(0,1fr) 92px 78px 38px;gap:8px;align-items:center;background:var(--surf2);border:1px solid var(--border);border-radius:8px;padding:10px;}
+.dealer-line{display:grid;grid-template-columns:minmax(0,1fr) 92px 78px 44px 44px;gap:8px;align-items:center;background:var(--surf2);border:1px solid var(--border);border-radius:8px;padding:10px;}
 .dealer-line.locked{grid-template-columns:minmax(0,1fr) 92px 78px;}
 .dealer-line-name{font-weight:700;color:var(--text);line-height:1.25;overflow:hidden;text-overflow:ellipsis;}
 .dealer-line-sub{font-family:monospace,monospace;font-size:9px;color:var(--dim);margin-top:3px;}
@@ -132,7 +132,9 @@ header{position:sticky;top:0;z-index:100;background:rgba(7,8,10,.96);backdrop-fi
 .dealer-total b{font-family:'Orbitron',monospace;font-size:34px;color:var(--g);}
 .checkout-action-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;}
 .checkout-action-row .hbtn{min-height:48px;}
-.customer-payment-screen{display:none;min-height:calc(100vh - 170px);background:#f7f8fa;color:#101319;border-radius:0;padding:24px;box-shadow:0 18px 60px rgba(0,0,0,.35);}
+.customer-payment-screen{display:none;position:relative;min-height:calc(100vh - 170px);background:#f7f8fa;color:#101319;border-radius:0;padding:24px;box-shadow:0 18px 60px rgba(0,0,0,.35);overflow:hidden;}
+.customer-payment-screen::before{content:'';position:absolute;inset:0;background-image:var(--customer-bg-image);background-size:cover;background-position:center;opacity:.16;pointer-events:none;}
+.customer-payment-screen>*{position:relative;z-index:1;}
 .customer-payment-screen.on{display:grid;grid-template-rows:auto 1fr auto;gap:18px;}
 .customer-pay-brand{text-align:center;}
 .customer-pay-brand img{display:none;width:110px;max-height:82px;object-fit:contain;margin:0 auto 10px;}
@@ -385,9 +387,15 @@ body.customer-display-mode{padding-bottom:0;background:#020304;}
 body.customer-display-mode header,body.customer-display-mode #dealer-cart-tools,body.customer-display-mode #cd-help-panel,body.customer-display-mode .sec{display:none!important;}
 body.customer-display-mode .tab-panel{display:none!important;}
 body.customer-display-mode #tab-display{display:block!important;}
-body.customer-display-mode #customer-display{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:18px;}
+body.customer-display-mode #customer-display{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:18px;background-color:#f7f8fa;background-image:linear-gradient(rgba(247,248,250,.88),rgba(247,248,250,.88)),var(--customer-bg-image);background-size:cover;background-position:center;}
 body.customer-display-mode #customer-display .sell-shell{width:min(920px,100%);padding:0;}
 body.customer-display-mode #customer-display-exit{display:block;}
+.responsive-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(320px,100%),1fr));gap:14px;}
+.sticky-action-bar{position:sticky;bottom:0;z-index:80;background:linear-gradient(to top,var(--bg) 78%,transparent);padding:10px 0;}
+
+@container (max-width:760px){
+  .panel{padding:14px;}
+}
 
 @media(max-width:900px){
   body{font-size:15px;}
@@ -416,6 +424,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
   .qpl-hero-card .qpl-img-shell{grid-area:image;}
   .qpl-hero-card .qpl-info{grid-area:info;}
   .qpl-hero-card .qpl-actions{grid-area:actions;grid-template-columns:repeat(3,1fr);}
+  .qpl-quick-controls{grid-template-columns:1fr 1fr;max-width:none;}
   .qpl-selected-top{grid-template-columns:minmax(180px,240px) 1fr;}
   .research-grid{grid-template-columns:1fr;max-width:900px;}
   .research-grid #register-quick-panel,.research-grid #research-queue-panel,.research-grid #research-actions-panel{grid-column:1;grid-row:auto;}
@@ -437,6 +446,10 @@ body.customer-display-mode #customer-display-exit{display:block;}
   #tab-inventory td:nth-child(8)::before{content:'Status: ';color:var(--dim);font-family:monospace,monospace;font-size:9px;}
   #tab-inventory .row-act{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;}
   #tab-inventory .row-act .ra{width:100%;min-height:48px;padding:8px 6px;font-size:9px;}
+  .dealer-line,.dealer-line.locked{grid-template-columns:minmax(0,1fr) 88px;align-items:start;}
+  .dealer-profit{grid-column:1 / -1;text-align:left;}
+  .dealer-line .ra,.dealer-line .cd-remove{min-height:46px;width:100%;}
+  #dealer-checkout-actions{position:sticky;bottom:0;background:linear-gradient(to top,var(--bg) 78%,transparent);padding-top:10px;z-index:12;}
 }
 @media(max-width:600px){
   body{font-size:16px;}
@@ -452,6 +465,10 @@ body.customer-display-mode #customer-display-exit{display:block;}
   .qpl-hero-card{grid-template-columns:1fr;grid-template-areas:'image' 'info' 'actions';padding:12px;}
   .qpl-img-shell{min-height:280px;}
   .qpl-hero-card .qpl-actions{grid-template-columns:1fr;}
+  .qpl-quick-controls{grid-template-columns:1fr;}
+  .customer-pay-total b{font-size:clamp(42px,15vw,68px);}
+  .customer-method-grid{grid-template-columns:1fr;}
+  .customer-pay-line{grid-template-columns:1fr;gap:6px;}
   .qpl-selected-top{grid-template-columns:1fr;}
 }
 </style>
@@ -487,7 +504,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
 
 <header>
   <div class="hdr">
-    <div class="logo">WALK-OFF <span>DASHBOARD · v2026.05.15.01</span></div>
+    <div class="logo">WALK-OFF <span>DASHBOARD · v2026.05.15.02</span></div>
     <div class="hdr-right">
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
@@ -1397,7 +1414,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.05.15.01';
+const APP_VERSION = '2026.05.15.02';
 const SUPABASE_URL = 'https://vroknjrxubsqyexngwus.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_wbpX2nL8l-4NbXtZNG_bjA_nabSYaJ5';
 const AUTH_REDIRECT_URL = 'https://squeebmike.github.io/ArSca/dashboard.html';
@@ -1649,13 +1666,13 @@ async function acceptPickedInvite(){
   location.reload();
 }
 
-const DEFAULT_STORE_THEME = { themeName:'Walk-Off Dark', primaryColor:'#00ffb3', secondaryColor:'#ffd166', accentColor:'#c77dff', backgroundColor:'#07080a', surfaceColor:'#0d0f14', surface2Color:'#141720', textColor:'#e4e4e8', mutedTextColor:'rgba(228,228,232,.4)', successColor:'#00ffb3', warningColor:'#ffd166', dangerColor:'#ff4d6d', infoColor:'#48cae4', borderColor:'rgba(255,255,255,.07)', fontFamily:"'DM Sans',sans-serif", cardRadius:'10px', buttonRadius:'6px' };
+const DEFAULT_STORE_THEME = { themeName:'Walk-Off Dark', primaryColor:'#00ffb3', secondaryColor:'#ffd166', accentColor:'#c77dff', backgroundColor:'#07080a', surfaceColor:'#0d0f14', surface2Color:'#141720', textColor:'#e4e4e8', mutedTextColor:'rgba(228,228,232,.4)', successColor:'#00ffb3', warningColor:'#ffd166', dangerColor:'#ff4d6d', infoColor:'#48cae4', borderColor:'rgba(255,255,255,.07)', buttonTextColor:'#050507', fontFamily:"'DM Sans',sans-serif", cardRadius:'10px', buttonRadius:'6px', logoUrl:'', customerBgImageUrl:'' };
 const STORE_THEME_PRESETS = {
   'Walk-Off Dark': DEFAULT_STORE_THEME,
+  'Clean Light': { ...DEFAULT_STORE_THEME, themeName:'Clean Light', primaryColor:'#0c6b52', secondaryColor:'#835a00', accentColor:'#5d4a9c', backgroundColor:'#f6f7f9', surfaceColor:'#ffffff', surface2Color:'#eef1f4', textColor:'#14171d', mutedTextColor:'#5d6673', borderColor:'rgba(0,0,0,.12)', buttonTextColor:'#ffffff' },
+  'High Contrast': { ...DEFAULT_STORE_THEME, themeName:'High Contrast', primaryColor:'#00ff66', secondaryColor:'#ffff00', accentColor:'#00d8ff', backgroundColor:'#000000', surfaceColor:'#080808', surface2Color:'#111111', textColor:'#ffffff', mutedTextColor:'#cfcfcf', borderColor:'rgba(255,255,255,.35)', buttonTextColor:'#000000' },
   'Seahawks': { ...DEFAULT_STORE_THEME, themeName:'Seahawks', primaryColor:'#69be28', secondaryColor:'#a5acaf', accentColor:'#002244', backgroundColor:'#06121f', surfaceColor:'#0b1f34', surface2Color:'#102b47', infoColor:'#6bd6ff' },
-  'Classic Card Shop': { ...DEFAULT_STORE_THEME, themeName:'Classic Card Shop', primaryColor:'#d8b26e', secondaryColor:'#a54848', accentColor:'#5fa8d3', backgroundColor:'#101113', surfaceColor:'#18191d', surface2Color:'#22242a', warningColor:'#d8b26e' },
-  'Light Mode': { ...DEFAULT_STORE_THEME, themeName:'Light Mode', primaryColor:'#0c6b52', secondaryColor:'#835a00', accentColor:'#5d4a9c', backgroundColor:'#f6f7f9', surfaceColor:'#ffffff', surface2Color:'#eef1f4', textColor:'#14171d', mutedTextColor:'#5d6673', borderColor:'rgba(0,0,0,.12)' },
-  'High Contrast': { ...DEFAULT_STORE_THEME, themeName:'High Contrast', primaryColor:'#00ff66', secondaryColor:'#ffff00', accentColor:'#00d8ff', backgroundColor:'#000000', surfaceColor:'#080808', surface2Color:'#111111', textColor:'#ffffff', mutedTextColor:'#cfcfcf', borderColor:'rgba(255,255,255,.35)' }
+  'Card Shop Neon': { ...DEFAULT_STORE_THEME, themeName:'Card Shop Neon', primaryColor:'#00f5d4', secondaryColor:'#fee440', accentColor:'#f15bb5', backgroundColor:'#090812', surfaceColor:'#11101d', surface2Color:'#1a1830', warningColor:'#fee440', dangerColor:'#ff4d6d' }
 };
 function getStoreTheme(){ try { return { ...DEFAULT_STORE_THEME, ...JSON.parse(localStorage.getItem('store_theme_v1') || '{}') }; } catch(e) { return { ...DEFAULT_STORE_THEME }; } }
 function hexToRgb(hex){ const h = String(hex || '').replace('#','').trim(); return /^[0-9a-f]{6}$/i.test(h) ? { r:parseInt(h.slice(0,2),16), g:parseInt(h.slice(2,4),16), b:parseInt(h.slice(4,6),16) } : null; }
@@ -1664,23 +1681,25 @@ function applyStoreTheme(theme = getStoreTheme(), persist = false){
   const t = { ...DEFAULT_STORE_THEME, ...(theme || {}) };
   const root = document.documentElement;
   const vars = {
+    '--app-bg':t.backgroundColor,'--app-surface':t.surfaceColor,'--app-surface-2':t.surface2Color,'--app-text':t.textColor,'--app-muted':t.mutedTextColor,'--app-primary':t.primaryColor,'--app-secondary':t.secondaryColor,'--app-accent':t.accentColor,'--app-success':t.successColor,'--app-warning':t.warningColor,'--app-danger':t.dangerColor,'--app-border':t.borderColor,'--app-button-text':t.buttonTextColor,'--app-radius':t.cardRadius,'--app-font':t.fontFamily,'--customer-bg-image':t.customerBgImageUrl ? `url("${String(t.customerBgImageUrl).replace(/"/g, '%22')}")` : 'none',
     '--brand-primary':t.primaryColor,'--brand-secondary':t.secondaryColor,'--brand-accent':t.accentColor,'--brand-background':t.backgroundColor,'--brand-surface':t.surfaceColor,'--brand-surface-2':t.surface2Color,'--brand-text':t.textColor,'--brand-muted':t.mutedTextColor,'--brand-success':t.successColor,'--brand-warning':t.warningColor,'--brand-danger':t.dangerColor,'--brand-info':t.infoColor,'--brand-border':t.borderColor,'--brand-card-radius':t.cardRadius,'--brand-button-radius':t.buttonRadius,'--brand-font-family':t.fontFamily,
     '--g':t.primaryColor,'--gd':rgbaFromHex(t.primaryColor,.1),'--gold':t.warningColor,'--red':t.dangerColor,'--blue':t.infoColor,'--purple':t.accentColor,'--bg':t.backgroundColor,'--surf':t.surfaceColor,'--surf2':t.surface2Color,'--border':t.borderColor,'--text':t.textColor,'--dim':t.mutedTextColor
   };
   Object.entries(vars).forEach(([k,v]) => root.style.setProperty(k, v));
   document.querySelector('meta[name="theme-color"]')?.setAttribute('content', t.backgroundColor);
+  if(t.logoUrl) document.querySelectorAll('[data-vendor-logo]').forEach(el => { el.src = t.logoUrl; el.style.display = ''; });
   if(persist) localStorage.setItem('store_theme_v1', JSON.stringify(t));
 }
 function themeFormValue(id, fallback){ return document.getElementById(id)?.value || fallback; }
 function readThemeForm(){
-  return { themeName:themeFormValue('theme-name','Custom'), primaryColor:themeFormValue('theme-primary','#00ffb3'), secondaryColor:themeFormValue('theme-secondary','#ffd166'), accentColor:themeFormValue('theme-accent','#c77dff'), backgroundColor:themeFormValue('theme-bg','#07080a'), surfaceColor:themeFormValue('theme-surface','#0d0f14'), surface2Color:themeFormValue('theme-surface2','#141720'), textColor:themeFormValue('theme-text','#e4e4e8'), mutedTextColor:themeFormValue('theme-muted','rgba(228,228,232,.4)'), successColor:themeFormValue('theme-success','#00ffb3'), warningColor:themeFormValue('theme-warning','#ffd166'), dangerColor:themeFormValue('theme-danger','#ff4d6d'), infoColor:themeFormValue('theme-info','#48cae4'), borderColor:themeFormValue('theme-border','rgba(255,255,255,.07)'), fontFamily:themeFormValue('theme-font',"'DM Sans',sans-serif"), cardRadius:themeFormValue('theme-card-radius','10px'), buttonRadius:themeFormValue('theme-button-radius','6px') };
+  return { themeName:themeFormValue('theme-name','Custom'), primaryColor:themeFormValue('theme-primary','#00ffb3'), secondaryColor:themeFormValue('theme-secondary','#ffd166'), accentColor:themeFormValue('theme-accent','#c77dff'), backgroundColor:themeFormValue('theme-bg','#07080a'), surfaceColor:themeFormValue('theme-surface','#0d0f14'), surface2Color:themeFormValue('theme-surface2','#141720'), textColor:themeFormValue('theme-text','#e4e4e8'), mutedTextColor:themeFormValue('theme-muted','rgba(228,228,232,.4)'), successColor:themeFormValue('theme-success','#00ffb3'), warningColor:themeFormValue('theme-warning','#ffd166'), dangerColor:themeFormValue('theme-danger','#ff4d6d'), infoColor:themeFormValue('theme-info','#48cae4'), borderColor:themeFormValue('theme-border','rgba(255,255,255,.07)'), buttonTextColor:themeFormValue('theme-button-text','#050507'), fontFamily:themeFormValue('theme-font',"'DM Sans',sans-serif"), cardRadius:themeFormValue('theme-card-radius','10px'), buttonRadius:themeFormValue('theme-button-radius','6px'), logoUrl:themeFormValue('theme-logo-url',''), customerBgImageUrl:themeFormValue('theme-customer-bg','') };
 }
 function setThemeForm(theme){
   const t = { ...DEFAULT_STORE_THEME, ...(theme || {}) };
-  [['theme-name',t.themeName],['theme-primary',t.primaryColor],['theme-secondary',t.secondaryColor],['theme-accent',t.accentColor],['theme-bg',t.backgroundColor],['theme-surface',t.surfaceColor],['theme-surface2',t.surface2Color],['theme-text',t.textColor],['theme-muted',t.mutedTextColor],['theme-success',t.successColor],['theme-warning',t.warningColor],['theme-danger',t.dangerColor],['theme-info',t.infoColor],['theme-border',t.borderColor],['theme-font',t.fontFamily],['theme-card-radius',t.cardRadius],['theme-button-radius',t.buttonRadius]].forEach(([id,val]) => { const el = document.getElementById(id); if(el) el.value = val; });
+  [['theme-name',t.themeName],['theme-primary',t.primaryColor],['theme-secondary',t.secondaryColor],['theme-accent',t.accentColor],['theme-bg',t.backgroundColor],['theme-surface',t.surfaceColor],['theme-surface2',t.surface2Color],['theme-text',t.textColor],['theme-muted',t.mutedTextColor],['theme-success',t.successColor],['theme-warning',t.warningColor],['theme-danger',t.dangerColor],['theme-info',t.infoColor],['theme-border',t.borderColor],['theme-button-text',t.buttonTextColor],['theme-font',t.fontFamily],['theme-card-radius',t.cardRadius],['theme-button-radius',t.buttonRadius],['theme-logo-url',t.logoUrl || getVendorProfile().logo || ''],['theme-customer-bg',t.customerBgImageUrl || '']].forEach(([id,val]) => { const el = document.getElementById(id); if(el) el.value = val; });
 }
-function previewBrandTheme(){ applyStoreTheme(readThemeForm(), false); }
-async function saveBrandTheme(){ const theme = readThemeForm(); applyStoreTheme(theme, true); const cloudSaved = await saveStoreSettingsToSupabase({ theme }); toast_dash(cloudSaved ? 'Theme saved' : 'Theme saved locally'); }
+function previewBrandTheme(){ const theme = readThemeForm(); applyStoreTheme(theme, false); const dirty = document.getElementById('theme-unsaved'); if(dirty) dirty.textContent = 'Unsaved changes'; const name = document.getElementById('theme-current-name'); if(name) name.textContent = theme.themeName || 'Custom'; }
+async function saveBrandTheme(){ const theme = readThemeForm(); applyStoreTheme(theme, true); if(theme.logoUrl) localStorage.setItem('vendor_profile_v1', JSON.stringify({ ...getVendorProfile(), logo:theme.logoUrl })); applyVendorProfile(); const cloudSaved = await saveStoreSettingsToSupabase({ theme, receipt_settings:{ ...getVendorProfile(), logo:theme.logoUrl || getVendorProfile().logo || '' } }); const status = document.getElementById('theme-save-status'); if(status) status.textContent = 'Saved ' + theme.themeName + ' at ' + new Date().toLocaleTimeString(); const dirty = document.getElementById('theme-unsaved'); if(dirty) dirty.textContent = ''; toast_dash(cloudSaved ? 'Theme saved' : 'Theme saved locally'); }
 function applyThemePreset(name){ const theme = { ...(STORE_THEME_PRESETS[name] || DEFAULT_STORE_THEME) }; setThemeForm(theme); applyStoreTheme(theme, false); }
 async function resetBrandTheme(){ setThemeForm(DEFAULT_STORE_THEME); applyStoreTheme(DEFAULT_STORE_THEME, true); await saveStoreSettingsToSupabase({ theme:DEFAULT_STORE_THEME }); toast_dash('Default theme restored'); }
 function ensureBrandingPanel(backoffice){
@@ -1691,7 +1710,12 @@ function ensureBrandingPanel(backoffice){
   panel.style.marginBottom = '14px';
   const fields = [['Primary','theme-primary'],['Secondary','theme-secondary'],['Accent','theme-accent'],['Background','theme-bg'],['Panel','theme-surface'],['Panel 2','theme-surface2'],['Text','theme-text'],['Success','theme-success'],['Warning','theme-warning'],['Danger','theme-danger'],['Info','theme-info']];
   panel.innerHTML = `
-    <div class="ph">BRANDING / THEME <span style="font-size:9px;color:var(--dim)">store colors</span></div>
+    <div class="ph">BRANDING & THEME <span style="font-size:9px;color:var(--dim)">store colors and customer screen branding</span></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;font-family:monospace,monospace;font-size:10px;color:var(--dim)">
+      <span>Current: <b style="color:var(--text)" id="theme-current-name">${escHtml(getStoreTheme().themeName || 'Custom')}</b></span>
+      <span id="theme-unsaved" style="color:var(--gold)"></span>
+      <span id="theme-save-status"></span>
+    </div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:8px;margin-bottom:10px">
       <select id="theme-preset" class="tsi" onchange="applyThemePreset(this.value)" style="margin-bottom:0">${Object.keys(STORE_THEME_PRESETS).map(n=>`<option value="${escHtml(n)}">${escHtml(n)}</option>`).join('')}</select>
       <input id="theme-name" class="tsi" placeholder="Theme name" oninput="previewBrandTheme()" style="margin-bottom:0">
@@ -1703,11 +1727,21 @@ function ensureBrandingPanel(backoffice){
       ${fields.map(([label,id])=>`<label style="font-family:monospace,monospace;font-size:9px;color:var(--dim);display:grid;gap:4px">${label}<input id="${id}" type="color" oninput="previewBrandTheme()" style="width:100%;height:42px;background:var(--surf2);border:1px solid var(--border);border-radius:8px;padding:3px"></label>`).join('')}
       <label style="font-family:monospace,monospace;font-size:9px;color:var(--dim);display:grid;gap:4px">Muted<input id="theme-muted" class="tsi" oninput="previewBrandTheme()" style="margin-bottom:0"></label>
       <label style="font-family:monospace,monospace;font-size:9px;color:var(--dim);display:grid;gap:4px">Border<input id="theme-border" class="tsi" oninput="previewBrandTheme()" style="margin-bottom:0"></label>
+      <label style="font-family:monospace,monospace;font-size:9px;color:var(--dim);display:grid;gap:4px">Button Text<input id="theme-button-text" type="color" oninput="previewBrandTheme()" style="width:100%;height:42px;background:var(--surf2);border:1px solid var(--border);border-radius:8px;padding:3px"></label>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:8px;margin-bottom:10px">
+      <label style="font-family:monospace,monospace;font-size:9px;color:var(--dim)">STORE LOGO URL<input id="theme-logo-url" class="tsi" placeholder="https://..." oninput="previewBrandTheme()" style="margin-top:4px"></label>
+      <label style="font-family:monospace,monospace;font-size:9px;color:var(--dim)">CUSTOMER SCREEN BACKGROUND IMAGE<input id="theme-customer-bg" class="tsi" placeholder="https://..." oninput="previewBrandTheme()" style="margin-top:4px"></label>
     </div>
     <div style="background:var(--surf2);border:1px solid var(--border);border-radius:var(--brand-card-radius);padding:14px;margin-bottom:10px">
       <div style="font-family:'Orbitron',monospace;font-size:14px;color:var(--g);margin-bottom:6px">Live Preview</div>
       <div style="font-family:monospace,monospace;font-size:10px;color:var(--dim);margin-bottom:10px">Buttons, price text, badges, and panels update as you edit.</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><button class="hbtn">PRIMARY</button><button class="hbtn danger">DANGER</button><span class="data-pill warn">WARNING</span><span style="font-family:'Orbitron',monospace;font-size:24px;color:var(--g);font-weight:900">$42.00</span></div>
+      <div style="margin-top:10px;border:1px solid var(--border);border-radius:8px;min-height:100px;background-image:linear-gradient(rgba(247,248,250,.86),rgba(247,248,250,.86)),var(--customer-bg-image);background-size:cover;background-position:center;color:#101319;padding:12px">
+        <b style="font-family:'Orbitron',monospace">Customer Screen Preview</b>
+        <div style="font-family:monospace,monospace;font-size:12px;margin-top:8px">Total Due</div>
+        <div style="font-family:'Orbitron',monospace;font-size:28px;color:#05835f">$42.00</div>
+      </div>
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="hbtn" onclick="saveBrandTheme()">SAVE THEME</button><button class="hbtn" onclick="resetBrandTheme()">RESET TO WALK-OFF</button></div>`;
   backoffice.prepend(panel);
@@ -12333,7 +12367,7 @@ function renderDealerCartTools(cartData = getCartDataLocal()){
     <div><div class="dealer-line-name">${escHtml(i.name || i.title || 'Item')}</div><div class="dealer-line-sub">${escHtml([i.sub, i.category, i.condition, i.adjustmentReason ? 'Adjusted: '+i.adjustmentReason : ''].filter(Boolean).join(' / '))}</div></div>
     <div style="font-family:'Orbitron',monospace;color:var(--gold);text-align:right">$${Number(i.price ?? i.adjusted_price ?? 0).toFixed(2)}</div>
     <div class="dealer-profit">Cost $${Number(i.cost ?? i.cost_basis ?? 0).toFixed(2)}<br>Profit $${(Number(i.price ?? i.adjusted_price ?? 0)-Number(i.cost ?? i.cost_basis ?? 0)).toFixed(2)}</div>
-    ${locked ? '' : `<button class="ra" onclick="editCartLinePrice(${idx})">Edit</button>`}
+    ${locked ? '' : `<button class="ra" onclick="editCartLinePrice(${idx})">Edit</button><button class="cd-remove" title="Remove from cart" onclick="removeCustomerDisplayCartItem('${escHtml(i.id || '')}', ${idx})">X</button>`}
   </div>`).join('');
   if(totalEl) totalEl.innerHTML = `<span style="font-family:monospace,monospace;font-size:11px;color:var(--dim)">DEALER TOTAL</span><b>$${total.toFixed(2)}</b>`;
   if(actions) {
