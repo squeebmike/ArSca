@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.05.15.02">
+<meta name="version" content="2026.05.15.03">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -275,10 +275,16 @@ tr.sold:hover td{opacity:.7;}
 .src-badge.manual{border-color:rgba(255,255,255,.12);color:rgba(255,255,255,.42);}
 .qpl-results{display:grid;gap:16px;max-height:72vh;overflow:auto;padding:2px 4px 4px 0;scroll-behavior:smooth;}
 .qpl-hero-card{display:grid;grid-template-columns:minmax(220px,280px) minmax(0,1fr) minmax(160px,190px);gap:18px;align-items:stretch;background:linear-gradient(135deg,rgba(255,255,255,.045),rgba(0,255,179,.025));border:1px solid rgba(255,255,255,.10);border-radius:14px;padding:16px;box-shadow:0 18px 45px rgba(0,0,0,.28);}
-.research-grid{max-width:1540px;margin:0 auto;padding:0 20px;display:grid;grid-template-columns:minmax(250px,.85fr) minmax(0,2.3fr) minmax(230px,.8fr);gap:14px;align-items:start;}
+.research-grid{max-width:1540px;margin:0 auto;padding:0 20px;display:grid;grid-template-columns:minmax(250px,.85fr) minmax(0,2.3fr);gap:14px;align-items:start;}
 .research-grid #register-quick-panel{grid-column:2;grid-row:1 / span 2;}
 .research-grid #research-queue-panel{grid-column:1;}
-.research-grid #research-actions-panel{grid-column:3;}
+.research-grid #research-actions-panel{grid-column:2;display:none;}
+.research-context-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;padding-top:12px;border-top:1px solid var(--border);}
+.research-context-actions .hbtn{min-height:52px;flex:1 1 150px;}
+.research-secondary-actions{margin-top:10px;border:1px solid var(--border);border-radius:8px;background:var(--surf2);overflow:hidden;}
+.research-secondary-actions summary{cursor:pointer;list-style:none;padding:10px 12px;font-family:monospace,monospace;font-size:10px;color:var(--dim);}
+.research-secondary-actions summary::-webkit-details-marker{display:none;}
+.research-secondary-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;padding:0 10px 10px;}
 .research-queue-item{display:grid;grid-template-columns:54px 1fr;gap:10px;align-items:start;background:var(--surf2);border:1px solid var(--border);border-radius:8px;padding:8px;}
 .research-queue-img{width:54px;height:64px;border-radius:6px;border:1px solid var(--border);object-fit:cover;background:#050507;}
 .research-queue-actions{grid-column:1 / -1;display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:4px;}
@@ -504,7 +510,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
 
 <header>
   <div class="hdr">
-    <div class="logo">WALK-OFF <span>DASHBOARD · v2026.05.15.02</span></div>
+    <div class="logo">WALK-OFF <span>DASHBOARD · v2026.05.15.03</span></div>
     <div class="hdr-right">
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
@@ -821,14 +827,14 @@ body.customer-display-mode #customer-display-exit{display:block;}
     <div class="panel" id="register-cash-panel">
       <div class="ph">💵 CASH DRAWER <span id="drawer-status" style="font-size:9px;font-weight:600;color:var(--g)">CLOSED</span></div>
       <div id="drawer-closed-view">
-        <div style="font-family:monospace,monospace;font-size:10px;color:var(--dim);margin-bottom:8px">Starting float</div>
-        <input type="number" id="drawer-float" step="0.01" placeholder="200.00" style="width:100%;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:6px;font-size:16px;font-family:'Orbitron',monospace;margin-bottom:8px">
+        <div style="font-family:monospace,monospace;font-size:10px;color:var(--dim);margin-bottom:8px">Starting Cash</div>
+        <input type="number" id="drawer-float" step="0.01" placeholder="200.00" aria-label="Starting Cash" style="width:100%;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:6px;font-size:16px;font-family:'Orbitron',monospace;margin-bottom:8px">
         <button class="hbtn" style="width:100%;padding:10px" onclick="openDrawer()">OPEN DRAWER</button>
       </div>
       <div id="drawer-open-view" style="display:none">
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px">
+        <div class="drawer-ledger-grid">
           <div style="background:var(--surf2);border:1px solid var(--border);border-radius:8px;padding:10px;text-align:center">
-            <div style="font-family:monospace,monospace;font-size:8px;color:var(--dim);margin-bottom:4px">FLOAT</div>
+            <div style="font-family:monospace,monospace;font-size:8px;color:var(--dim);margin-bottom:4px">STARTING CASH</div>
             <div style="font-family:'Orbitron',monospace;font-size:14px;color:var(--text)" id="drawer-float-disp">$0</div>
           </div>
           <div style="background:var(--surf2);border:1px solid var(--border);border-radius:8px;padding:10px;text-align:center">
@@ -836,14 +842,22 @@ body.customer-display-mode #customer-display-exit{display:block;}
             <div style="font-family:'Orbitron',monospace;font-size:14px;color:var(--g)" id="drawer-sales-disp">$0</div>
           </div>
           <div style="background:var(--surf2);border:1px solid rgba(0,255,179,.3);border-radius:8px;padding:10px;text-align:center">
-            <div style="font-family:monospace,monospace;font-size:8px;color:var(--dim);margin-bottom:4px">EXPECTED</div>
+            <div style="font-family:monospace,monospace;font-size:8px;color:var(--dim);margin-bottom:4px">EXPECTED CASH</div>
             <div style="font-family:'Orbitron',monospace;font-size:14px;color:var(--gold)" id="drawer-expected-disp">$0</div>
           </div>
+          <div style="background:var(--surf2);border:1px solid var(--border);border-radius:8px;padding:10px;text-align:center">
+            <div style="font-family:monospace,monospace;font-size:8px;color:var(--dim);margin-bottom:4px">COUNTED CASH</div>
+            <div style="font-family:'Orbitron',monospace;font-size:14px;color:var(--text)" id="drawer-counted-disp">Not counted</div>
+          </div>
+          <div style="background:var(--surf2);border:1px solid var(--border);border-radius:8px;padding:10px;text-align:center">
+            <div style="font-family:monospace,monospace;font-size:8px;color:var(--dim);margin-bottom:4px">OVER / SHORT</div>
+            <div style="font-family:'Orbitron',monospace;font-size:14px;color:var(--text)" id="drawer-over-short-disp">$0.00</div>
+          </div>
         </div>
-        <div style="font-family:monospace,monospace;font-size:9px;color:var(--dim);margin-bottom:6px">MANUAL ADJUSTMENTS</div>
+        <div style="font-family:monospace,monospace;font-size:9px;color:var(--dim);margin-bottom:6px">DRAWER MOVEMENTS</div>
         <div style="display:flex;gap:6px;margin-bottom:8px">
           <input type="number" id="drawer-adj-amt" placeholder="Amount" step="0.01" style="flex:1;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:7px 10px;border-radius:6px;font-size:12px">
-          <input type="text" id="drawer-adj-note" placeholder="Note (e.g. Change given)" style="flex:2;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:7px 10px;border-radius:6px;font-size:12px">
+          <input type="text" id="drawer-adj-note" placeholder="Required note for payouts, drops, refunds, corrections" style="flex:2;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:7px 10px;border-radius:6px;font-size:12px">
           <button class="hbtn" onclick="addDrawerMovement('paid_in')" style="white-space:nowrap">PAID IN</button>
           <button class="hbtn" onclick="addDrawerMovement('paid_out')" style="background:rgba(255,77,109,.08);border-color:rgba(255,77,109,.2);color:var(--red);white-space:nowrap">PAID OUT</button>
         </div>
@@ -852,11 +866,12 @@ body.customer-display-mode #customer-display-exit{display:block;}
           <button class="hbtn" onclick="addDrawerMovement('refund')">REFUND</button>
           <button class="hbtn" onclick="addDrawerMovement('buy_payout')">BUY PAYOUT</button>
           <button class="hbtn" onclick="addDrawerMovement('no_sale')">NO SALE</button>
+          <button class="hbtn" onclick="addDrawerMovement('correction')">CORRECTION</button>
         </div>
         <div id="drawer-log" style="font-family:monospace,monospace;font-size:9px;max-height:120px;overflow-y:auto;border:1px solid var(--border);border-radius:6px;padding:6px"></div>
         <div style="display:flex;gap:6px;margin-top:10px">
-          <button class="hbtn" onclick="closeDrawer()" style="flex:1">COUNT &amp; CLOSE</button>
-          <button class="hbtn danger" onclick="resetDrawer()" style="flex:1">RESET</button>
+          <button class="hbtn" onclick="countDrawer()" style="flex:1">COUNT DRAWER</button>
+          <button class="hbtn danger" onclick="closeDrawer()" style="flex:1">CLOSE DRAWER</button>
         </div>
       </div>
     </div>
@@ -971,18 +986,9 @@ body.customer-display-mode #customer-display-exit{display:block;}
       </div>
       <div id="research-queue-list" style="display:grid;gap:8px"></div>
     </div>
-    <div class="panel" id="research-actions-panel">
-      <div class="ph">ACTIONS <span style="font-size:9px;color:var(--dim)">route selected item</span></div>
-      <div style="font-family:monospace,monospace;font-size:10px;color:var(--dim);line-height:1.55;margin-bottom:10px">
-        Select a result in the workspace, then send it into the dealer workflow without retyping.
-      </div>
-      <div style="display:grid;gap:8px">
-        <button class="hbtn buy" onclick="addSelectedResearchResultToBuyOffer()">ADD SELECTED TO BUY OFFER</button>
-        <button class="hbtn" onclick="addSelectedResearchResultToInventory()">ADD SELECTED TO INVENTORY</button>
-        <button class="hbtn" onclick="addSelectedResearchResultToSaleCart()">ADD SELECTED TO SALE CART</button>
-        <button class="hbtn" style="color:var(--blue)" onclick="sendSelectedResearchResultToAuthCheck()">AUTH CHECK SELECTED</button>
-        <button class="hbtn" style="color:var(--gold)" onclick="markSelectedResearchNeedsReview()">MARK NEEDS REVIEW</button>
-      </div>
+    <div class="panel" id="research-actions-panel" aria-hidden="true">
+      <div class="ph">ITEM ACTIONS</div>
+      <div style="font-family:monospace,monospace;font-size:10px;color:var(--dim);line-height:1.55">Select an item to see actions.</div>
       <div id="research-action-status" style="font-family:monospace,monospace;font-size:10px;color:var(--dim);margin-top:12px;line-height:1.45"></div>
     </div>
   </div>
@@ -1414,7 +1420,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.05.15.02';
+const APP_VERSION = '2026.05.15.03';
 const SUPABASE_URL = 'https://vroknjrxubsqyexngwus.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_wbpX2nL8l-4NbXtZNG_bjA_nabSYaJ5';
 const AUTH_REDIRECT_URL = 'https://squeebmike.github.io/ArSca/dashboard.html';
@@ -2386,6 +2392,7 @@ function organizeRegisterLayout(){
   const qpl = document.getElementById('register-quick-panel');
   const actions = document.getElementById('research-actions-panel');
   if(qpl && actions && qpl.parentElement === research) research.insertBefore(qpl, actions);
+  if(actions) actions.style.display = 'none';
   moveNode('register-buy-panel', intake);
   ensureBuyResearchBridge(intake);
   renderResearchQueue();
@@ -3820,8 +3827,8 @@ async function processSyncItem(item){
       show_session_id:item.payload.drawerState.showSessionId || null,
       register_name:item.payload.drawerState.registerId || REGISTER_ID,
       status:'open',
-      starting_cash:Number(item.payload.drawerState.float || 0),
-      expected_cash:Number(item.payload.drawerState.expectedCash || item.payload.drawerState.float || 0),
+      starting_cash:Number(item.payload.drawerState.startingCash ?? item.payload.drawerState.float ?? 0),
+      expected_cash:Number(item.payload.drawerState.expectedCash ?? item.payload.drawerState.startingCash ?? item.payload.drawerState.float ?? 0),
       counted_cash:null,
       over_short:null,
       opened_by:getCurrentUserId(),
@@ -4301,7 +4308,7 @@ function updateRegisterCommandCenter(scanCount){
   const showName = document.getElementById('reg-show-name');
   const showMeta = document.getElementById('reg-show-meta');
   if(showName) showName.textContent = show?.eventName || 'No show active';
-  if(showMeta) showMeta.textContent = show ? [show.booth ? 'Booth ' + show.booth : '', show.priceRulePct ? show.priceRulePct + '% show rule' : '', 'Float $' + Number(show.startCash || 0).toFixed(2)].filter(Boolean).join(' · ') : 'Start show mode before vending';
+  if(showMeta) showMeta.textContent = show ? [show.booth ? 'Booth ' + show.booth : '', show.priceRulePct ? show.priceRulePct + '% show rule' : '', 'Starting Cash $' + Number(show.startCash || 0).toFixed(2)].filter(Boolean).join(' · ') : 'Start show mode before vending';
 
   const cashTotal = document.getElementById('reg-cash-total');
   const cashMeta = document.getElementById('reg-cash-meta');
@@ -10415,13 +10422,23 @@ function selectQuickLookupResult(idx){
     <div style="display:grid;grid-template-columns:1fr;gap:9px;margin-bottom:12px">
       <input id="qpl-edit-image-url" placeholder="Image / cover URL" value="${escHtml(r.imageUrl || '')}" style="background:var(--surf);border:1px solid var(--border);color:var(--text);padding:12px;border-radius:8px;font-size:14px;min-height:48px">
     </div>
-    <div style="display:flex;gap:7px;flex-wrap:wrap">
-      <button class="hbtn" style="flex:1;color:var(--gold);min-height:56px" onclick="addSelectedQuickLookupToInventory(${idx})">ADD TO INVENTORY</button>
-      <button class="hbtn" style="flex:1;color:var(--g);min-height:56px" onclick="addSelectedQuickLookupToBuyOffer(${idx})">ADD TO BUY OFFER</button>
-      <button class="hbtn" style="flex:1;min-height:56px" onclick="addSelectedQuickLookupToSaleCart(${idx})">ADD TO SALE CART</button>
-      <button class="hbtn" style="flex:1;color:var(--blue);min-height:56px" onclick="sendQuickLookupToAuthCheck(${idx})">AUTH CHECK</button>
-      <button class="hbtn" style="min-height:56px" onclick="renderQuickLookupResults(qplResults)">BACK</button>
+    <div class="research-context-actions">
+      <button class="hbtn buy" onclick="addSelectedQuickLookupToBuyOffer(${idx})">ADD TO BUY</button>
+      <button class="hbtn" style="color:var(--gold)" onclick="addSelectedQuickLookupToInventory(${idx})">ADD INVENTORY</button>
+      <button class="hbtn" onclick="addSelectedQuickLookupToSaleCart(${idx})">SELL</button>
+      <button class="hbtn" onclick="renderQuickLookupResults(qplResults)">BACK</button>
     </div>
+    <details class="research-secondary-actions">
+      <summary>MORE ACTIONS</summary>
+      <div class="research-secondary-grid">
+        <button class="hbtn" style="color:var(--blue)" onclick="sendQuickLookupToAuthCheck(${idx})">AUTH CHECK</button>
+        <button class="hbtn" style="color:var(--gold)" onclick="markQplNeedsReview(${idx})">NEEDS REVIEW</button>
+        <button class="hbtn" onclick="openQplChartModal(${idx})">CHART</button>
+        <button class="hbtn" onclick="openQuickExternal(${idx},'sold')">COMPS</button>
+        ${r.tcgUrl ? `<button class="hbtn" onclick="openQuickExternal(${idx},'tcg')">OPEN TCG</button>` : ''}
+        <button class="hbtn" onclick="openQuickExternal(${idx},'pricecharting')">PRICECHARTING</button>
+      </div>
+    </details>
     <div id="qpl-add-status" style="margin-top:8px;color:var(--dim);font-size:8px"></div>
   </div>`;
 }
@@ -10749,6 +10766,20 @@ function getDrawerAdjustments(state = drawerState){
   };
 }
 
+function migrateDrawerStartingCash(state = drawerState){
+  if(!state) return state;
+  if(state.startingCash == null) {
+    state.startingCash = Number(state.float || 0);
+    state.float = Number(state.float || state.startingCash || 0);
+    if(!state.startingCashMigratedAt) {
+      state.startingCashMigratedAt = new Date().toISOString();
+      logOpsEvent('drawer_starting_cash_migrated', 'Migrated legacy drawer float to Starting Cash', { drawerSessionId:state.id || '', startingCash:state.startingCash });
+    }
+    saveDrawer();
+  }
+  return state;
+}
+
 function getDrawerTransactions(state = drawerState, txLog = safeLocalJson('pos_transactions', [])){
   if(!state) return [];
   const opened = new Date(state.opened || 0).getTime();
@@ -10761,10 +10792,11 @@ function getDrawerTransactions(state = drawerState, txLog = safeLocalJson('pos_t
 }
 
 function getDrawerSnapshot(state = drawerState, txLog = safeLocalJson('pos_transactions', [])){
+  state = migrateDrawerStartingCash(state);
   const tx = getDrawerTransactions(state, txLog);
   const tender = transactionTenderTotals(tx);
   const adj = getDrawerAdjustments(state);
-  const expected = Number(state?.float || 0) + Number(tender.cash || 0) + Number(adj.net || 0);
+  const expected = Number(state?.startingCash ?? state?.float ?? 0) + Number(tender.cash || 0) + Number(adj.net || 0);
   return { tx, tender, adj, expected };
 }
 
@@ -10792,6 +10824,7 @@ async function openDrawer(){
     eventName: show?.eventName || '',
     booth: show?.booth || '',
     float,
+    startingCash:float,
     expectedCash:float,
     opened: openedAt,
     openedBy: session?.user?.email || session?.user?.displayName || '',
@@ -10821,11 +10854,15 @@ async function openDrawer(){
     enqueueSync('drawer-session-open', 'Queued drawer open session', { drawerState }, e.message);
     toast_dash('Drawer opened offline queued');
   }
-  logOpsEvent('drawer_open', 'Opened cash drawer', { drawerSessionId:drawerState.id, float });
+  logOpsEvent('drawer_open', 'Opened cash drawer', { drawerSessionId:drawerState.id, startingCash:float });
   renderDrawer();
 }
 
 function saveDrawer(){
+  if(drawerState) {
+    if(drawerState.startingCash == null) drawerState.startingCash = Number(drawerState.float || 0);
+    drawerState.float = Number(drawerState.startingCash || 0);
+  }
   localStorage.setItem('pos_drawer', JSON.stringify(drawerState));
 }
 
@@ -10846,21 +10883,30 @@ function drawerMovementMeta(type){
     no_sale:{ dir:0, label:'No Sale', event:'drawer_no_sale' },
     cash_in:{ dir:1, label:'Cash In', event:'drawer_cash_in' },
     cash_out:{ dir:-1, label:'Cash Out', event:'drawer_cash_out' },
+    correction:{ dir:1, label:'Correction', event:'drawer_correction' },
   }[type] || { dir:0, label:'Drawer Note', event:'drawer_note' };
 }
 
 async function addDrawerMovement(type){
   if(!drawerState) return toast_dash('Open drawer first');
+  migrateDrawerStartingCash(drawerState);
   const meta = drawerMovementMeta(type);
   const amtInput = document.getElementById('drawer-adj-amt');
   const noteInput = document.getElementById('drawer-adj-note');
   const amt = meta.dir === 0 ? 0 : (parseFloat(amtInput?.value) || 0);
   const note = noteInput?.value || meta.label;
   if(meta.dir !== 0 && !amt) return toast_dash('Enter an amount for ' + meta.label);
+  if(['paid_out','drop','refund','buy_payout','correction'].includes(type) && (!noteInput?.value || noteInput.value.trim().length < 3)) return toast_dash('Note required for ' + meta.label);
+  let direction = meta.dir;
+  if(type === 'correction') {
+    const raw = prompt('Correction direction: enter + for cash added or - for cash removed', '+');
+    if(raw === null) return;
+    direction = String(raw).trim().startsWith('-') ? -1 : 1;
+  }
   drawerState.log.push({
     id:'adj_' + Date.now(),
     drawerSessionId: drawerState.id || '',
-    dir:meta.dir,
+    dir:direction,
     amt,
     note,
     type,
@@ -10870,7 +10916,7 @@ async function addDrawerMovement(type){
   });
   if(amtInput) amtInput.value = '';
   if(noteInput) noteInput.value = '';
-  drawerState.expectedCash = Number(drawerState.expectedCash ?? drawerState.float ?? 0) + Number(meta.dir * amt);
+  drawerState.expectedCash = Number(drawerState.expectedCash ?? drawerState.startingCash ?? drawerState.float ?? 0) + Number(direction * amt);
   saveDrawer();
   const movement = {
     id:makeUuid('move'),
@@ -10878,7 +10924,7 @@ async function addDrawerMovement(type){
     store_id:getActiveStoreId(),
     sale_id:null,
     movement_type:type,
-    amount:meta.dir === 0 ? 0 : Number(meta.dir * amt),
+    amount:direction === 0 ? 0 : Number(direction * amt),
     note,
     created_by:getCurrentUserId(),
     created_at:new Date().toISOString()
@@ -10897,12 +10943,41 @@ function addDrawerAdj(dir){
   addDrawerMovement(dir > 0 ? 'cash_in' : 'cash_out');
 }
 
-function closeDrawer(){
+function countDrawer(){
   if(!drawerState) return;
+  migrateDrawerStartingCash(drawerState);
   const snapshot = getDrawerSnapshot(drawerState);
   const expected = snapshot.expected;
   const counted = parseFloat(prompt(`Expected: $${expected.toFixed(2)}
-Count your drawer and enter actual amount:`) || '0');
+Count your drawer and enter actual amount:`) || '');
+  if(!Number.isFinite(counted)) return;
+  const diff = counted - expected;
+  drawerState.countedCash = counted;
+  drawerState.overShort = diff;
+  drawerState.countedAt = new Date().toISOString();
+  saveDrawer();
+  logOpsEvent('drawer_count', 'Counted cash drawer', {
+    drawerSessionId:drawerState.id || '',
+    expected: expected.toFixed(2),
+    counted: counted.toFixed(2),
+    difference: diff.toFixed(2)
+  });
+  renderDrawer();
+  alert(`DRAWER COUNT
+Expected Cash: $${expected.toFixed(2)}
+Counted Cash: $${counted.toFixed(2)}
+Over/Short: ${diff>=0?'+':''}$${diff.toFixed(2)}
+
+Expected Cash was not changed. Use Correction if you need to document a cash adjustment.`);
+}
+
+function closeDrawer(){
+  if(!drawerState) return;
+  migrateDrawerStartingCash(drawerState);
+  const snapshot = getDrawerSnapshot(drawerState);
+  const expected = snapshot.expected;
+  if(drawerState.countedCash == null) return toast_dash('Count drawer before closing');
+  const counted = Number(drawerState.countedCash || 0);
   const diff = counted - expected;
   const summary = {
     id:'drawer_close_' + Date.now(),
@@ -10914,7 +10989,8 @@ Count your drawer and enter actual amount:`) || '0');
     booth: drawerState.booth || '',
     opened: drawerState.opened,
     closedAt: new Date().toISOString(),
-    float: Number(drawerState.float || 0),
+    float: Number(drawerState.startingCash ?? drawerState.float ?? 0),
+    startingCash: Number(drawerState.startingCash ?? drawerState.float ?? 0),
     cashSales: Number(snapshot.tender.cash || 0),
     tenderTotals: snapshot.tender,
     cashIn: Number(snapshot.adj.in || 0),
@@ -10935,12 +11011,12 @@ Count your drawer and enter actual amount:`) || '0');
     difference: diff.toFixed(2)
   });
   alert(`DRAWER CLOSE SUMMARY
-Float: $${drawerState.float.toFixed(2)}
+Starting Cash: $${Number(drawerState.startingCash ?? drawerState.float ?? 0).toFixed(2)}
 Cash Sales: $${Number(snapshot.tender.cash || 0).toFixed(2)}
 Cash In: $${Number(snapshot.adj.in || 0).toFixed(2)}
 Cash Out: $${Number(snapshot.adj.out || 0).toFixed(2)}
-Expected: $${expected.toFixed(2)}
-Counted: $${counted.toFixed(2)}
+Expected Cash: $${expected.toFixed(2)}
+Counted Cash: $${counted.toFixed(2)}
 Difference: ${diff>=0?'+':''}$${diff.toFixed(2)}
 
 ${Math.abs(diff)<0.5?'✓ DRAWER BALANCED':'⚠ DRAWER '+Math.abs(diff).toFixed(2)+' '+( diff>0?'OVER':'SHORT')}`);
@@ -10955,6 +11031,7 @@ function getDrawerExpected(){
 }
 
 function renderDrawer(){
+  if(drawerState) migrateDrawerStartingCash(drawerState);
   const closed = document.getElementById('drawer-closed-view');
   const open = document.getElementById('drawer-open-view');
   const status = document.getElementById('drawer-status');
@@ -10971,9 +11048,17 @@ function renderDrawer(){
   const snapshot = getDrawerSnapshot(drawerState);
   const cashSales = Number(snapshot.tender.cash || 0);
   drawerState.cashSales = cashSales;
-  document.getElementById('drawer-float-disp').textContent = '$'+drawerState.float.toFixed(2);
+  document.getElementById('drawer-float-disp').textContent = '$'+Number(drawerState.startingCash ?? drawerState.float ?? 0).toFixed(2);
   document.getElementById('drawer-sales-disp').textContent = '$'+cashSales.toFixed(2);
   document.getElementById('drawer-expected-disp').textContent = '$'+snapshot.expected.toFixed(2);
+  const countedEl = document.getElementById('drawer-counted-disp');
+  if(countedEl) countedEl.textContent = drawerState.countedCash == null ? 'Not counted' : '$' + Number(drawerState.countedCash || 0).toFixed(2);
+  const overShortEl = document.getElementById('drawer-over-short-disp');
+  if(overShortEl) {
+    const diff = Number(drawerState.overShort || 0);
+    overShortEl.textContent = drawerState.countedCash == null ? '$0.00' : (diff >= 0 ? '+' : '') + '$' + diff.toFixed(2);
+    overShortEl.style.color = drawerState.countedCash == null ? 'var(--text)' : Math.abs(diff) < 0.5 ? 'var(--g)' : 'var(--gold)';
+  }
   const logEl = document.getElementById('drawer-log');
   if(logEl && !document.getElementById('drawer-session-meta')) {
     logEl.insertAdjacentHTML('beforebegin', `
@@ -11635,7 +11720,7 @@ function generateEOD(){
         ${dayCloseouts.map(c => `<div style="border:1px solid var(--border);border-radius:6px;padding:8px;margin-bottom:8px">
           <div class="eod-row"><span class="eod-label">Session</span><span class="eod-val">${String(c.drawerSessionId||'').slice(-10).toUpperCase()}</span></div>
           <div class="eod-row"><span class="eod-label">Opened</span><span class="eod-val">${new Date(c.opened).toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'})}</span></div>
-          <div class="eod-row"><span class="eod-label">Float</span><span class="eod-val">$${Number(c.float||0).toFixed(2)}</span></div>
+          <div class="eod-row"><span class="eod-label">Starting Cash</span><span class="eod-val">$${Number(c.startingCash ?? c.float ?? 0).toFixed(2)}</span></div>
           <div class="eod-row"><span class="eod-label">Cash Sales</span><span class="eod-val">$${Number(c.cashSales||0).toFixed(2)}</span></div>
           <div class="eod-row"><span class="eod-label">Cash In / Out</span><span class="eod-val">+$${Number(c.cashIn||0).toFixed(2)} / -$${Number(c.cashOut||0).toFixed(2)}</span></div>
           <div class="eod-row"><span class="eod-label">Expected</span><span class="eod-val">$${Number(c.expected||0).toFixed(2)}</span></div>
@@ -11644,7 +11729,7 @@ function generateEOD(){
         </div>`).join('')}
         ${openDrawerSnapshot?`<div style="border:1px solid rgba(255,210,92,.35);border-radius:6px;padding:8px">
           <div class="eod-row"><span class="eod-label">Open Session</span><span class="eod-val">${String(drawerState.id||'').slice(-10).toUpperCase()}</span></div>
-          <div class="eod-row"><span class="eod-label">Float</span><span class="eod-val">$${Number(drawerState.float||0).toFixed(2)}</span></div>
+          <div class="eod-row"><span class="eod-label">Starting Cash</span><span class="eod-val">$${Number(drawerState.startingCash ?? drawerState.float ?? 0).toFixed(2)}</span></div>
           <div class="eod-row"><span class="eod-label">Cash Sales</span><span class="eod-val">$${Number(openDrawerSnapshot.tender.cash||0).toFixed(2)}</span></div>
           <div class="eod-row total"><span class="eod-label">EXPECTED NOW</span><span class="eod-val">$${Number(openDrawerSnapshot.expected||0).toFixed(2)}</span></div>
         </div>`:''}
@@ -12272,7 +12357,7 @@ function MoneyLedgerService(){
         if(error) throw new Error(table + ': ' + error.message);
       }
       if(bundle.drawerMovements.length && bundle.sale.drawer_session_id) {
-        const expected = Number(drawerState?.expectedCash ?? drawerState?.float ?? 0) + Number(bundle.drawerMovements.reduce((a,m) => a + Number(m.amount || 0), 0));
+        const expected = Number(drawerState?.expectedCash ?? drawerState?.startingCash ?? drawerState?.float ?? 0) + Number(bundle.drawerMovements.reduce((a,m) => a + Number(m.amount || 0), 0));
         await sb.from('pos_drawer_sessions').update({ expected_cash:expected }).eq('id', bundle.sale.drawer_session_id);
       }
       return { ok:true };
@@ -12290,6 +12375,11 @@ function MoneyLedgerService(){
       if(!sb) throw new Error('Supabase client unavailable');
       const { error } = await sb.from('pos_drawer_movements').insert(movement);
       if(error) throw error;
+      if(movement.drawer_session_id && movement.movement_type !== 'no_sale' && drawerState?.id === movement.drawer_session_id) {
+        const expectedCash = getDrawerExpected();
+        const { error:updateError } = await sb.from('pos_drawer_sessions').update({ expected_cash:expectedCash }).eq('id', movement.drawer_session_id);
+        if(updateError) throw updateError;
+      }
       await sb.from('pos_audit_log').insert({ id:makeUuid('audit'), store_id:movement.store_id, event_type:'drawer_movement', entity_type:'pos_drawer_movement', entity_id:movement.id, details:movement, created_by:movement.created_by, created_at:new Date().toISOString() });
       return true;
     }
@@ -12521,7 +12611,7 @@ async function finalizeCompletedCheckout(bundle, queued){
   if(drawerState && bundle.drawerMovements.length) {
     const cashAdded = bundle.drawerMovements.reduce((a,m) => a + Number(m.amount || 0), 0);
     drawerState.cashSales = Number(drawerState.cashSales || 0) + cashAdded;
-    drawerState.expectedCash = Number(drawerState.expectedCash ?? drawerState.float ?? 0) + cashAdded;
+    drawerState.expectedCash = Number(drawerState.expectedCash ?? drawerState.startingCash ?? drawerState.float ?? 0) + cashAdded;
     saveDrawer();
     renderDrawer();
   }

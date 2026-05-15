@@ -19,7 +19,7 @@ test('dashboard html and worker scripts parse', async () => {
 test('dashboard loads current build with primary nav and Research tab', async ({ page }) => {
   const guard = await openDashboard(page);
   await expect(page.locator('.logo')).toContainText(/WALK-OFF/i);
-  await expect(page.locator('.logo')).toContainText(/2026\.05\.15\.02/);
+  await expect(page.locator('.logo')).toContainText(/2026\.05\.15\.03/);
   await expect(page.locator('[data-tab="overview"]')).toBeVisible();
   await expect(page.locator('[data-tab="research"]')).toBeVisible();
   await expect(page.locator('[data-tab="authcheck"]')).toBeVisible();
@@ -29,6 +29,28 @@ test('dashboard loads current build with primary nav and Research tab', async ({
   await expect(page.locator('#tab-research.on')).toBeVisible();
   await expect(page.locator('#research-queue-panel')).toBeVisible();
   await expect(page.locator('#register-quick-panel')).toBeVisible();
+  guard.assertClean();
+});
+
+test('research and drawer use contextual actions and starting cash wording', async ({ page }) => {
+  const guard = await openDashboard(page);
+  await page.locator('[data-tab="research"]').click();
+  await expect(page.locator('#research-actions-panel')).toBeHidden();
+  await expect(page.locator('#tab-research')).not.toContainText('ADD SELECTED TO BUY OFFER');
+  await expect(page.locator('#tab-research')).not.toContainText('ADD SELECTED TO INVENTORY');
+  await expect(page.locator('#tab-research')).not.toContainText('ADD SELECTED TO SALE CART');
+
+  await page.locator('#top-drawer-chip').click();
+  await expect(page.locator('#tab-shows.on')).toBeVisible();
+  await expect(page.locator('#drawer-closed-view')).toContainText('Starting Cash');
+  await page.locator('#drawer-float').fill('200');
+  await page.getByRole('button', { name: 'OPEN DRAWER' }).click();
+  await expect(page.locator('#drawer-open-view')).toBeVisible();
+  await expect(page.locator('#drawer-open-view')).toContainText('STARTING CASH');
+  await expect(page.locator('#drawer-open-view')).toContainText('EXPECTED CASH');
+  await expect(page.locator('#drawer-open-view')).toContainText('COUNTED CASH');
+  await expect(page.locator('#drawer-float-disp')).toHaveText('$200.00');
+  await expect(page.locator('#drawer-expected-disp')).toHaveText('$200.00');
   guard.assertClean();
 });
 
