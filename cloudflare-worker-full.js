@@ -1247,6 +1247,13 @@ export default {
         }
       };
       const csvState = (category, patch = {}) => ({ category, state: patch.state || 'ready', configured: !!patch.configured, urlMasked: patch.url ? maskPcUrl(patch.url) : undefined, ...patch, url: undefined });
+      const mergeCsvMeta = (prior = {}, category, patch = {}) => csvState(category, {
+        ...prior,
+        ...patch,
+        lastSuccessAt: patch.lastSuccessAt || prior?.lastSuccessAt || null,
+        lastSyncedAt: patch.lastSyncedAt || prior?.lastSyncedAt || null,
+        lastSuccessfulRowCount: patch.lastSuccessfulRowCount ?? prior?.lastSuccessfulRowCount ?? prior?.rowCount ?? 0,
+      });
       const csvFetchOptions = () => ({
         headers: { 'Accept': 'text/csv,*/*' },
         signal: AbortSignal.timeout ? AbortSignal.timeout(15000) : undefined,
@@ -1555,42 +1562,59 @@ export default {
             return json({ ok: true, skipped: true, reason: 'Already synced today', meta: prior });
           }
           let res, text = '';
+          const fetchStartedMeta = mergeCsvMeta(prior, category, { state: 'fetch_started', configured: true, url: csvUrl, lastAttemptedAt: attemptAt, lastError: '' });
+          await env.LBA_KV.put(kvKey('meta', category), JSON.stringify(fetchStartedMeta), { expirationTtl: 60 * 60 * 24 * 30 });
           try {
             res = await fetch(csvUrl, csvFetchOptions());
+            const downloadedMeta = mergeCsvMeta(fetchStartedMeta, category, { state: 'downloaded', configured: true, url: csvUrl, lastAttemptedAt: attemptAt });
+            await env.LBA_KV.put(kvKey('meta', category), JSON.stringify(downloadedMeta), { expirationTtl: 60 * 60 * 24 * 30 });
             text = await res.text();
           } catch (e) {
-            const meta = csvState(category, { state: 'worker_error', configured: true, url: csvUrl, lastAttemptedAt: attemptAt, lastError: e.message || 'Worker fetch failed' });
+            const timeout = e.name === 'TimeoutError' || /abort|timeout/i.test(e.message || '');
+            const meta = mergeCsvMeta(prior, category, {
+              state: timeout ? 'TIMEOUT_TOO_LARGE' : 'failed',
+              configured: true,
+              url: csvUrl,
+              lastAttemptedAt: attemptAt,
+              lastFailedAt: attemptAt,
+              lastFailedError: timeout ? 'TIMEOUT_TOO_LARGE: CSV is too large to download/import in one Worker request. Existing cache was preserved.' : (e.message || 'Worker fetch failed'),
+              lastError: timeout ? 'TIMEOUT_TOO_LARGE: CSV is too large to download/import in one Worker request. Existing cache was preserved.' : (e.message || 'Worker fetch failed')
+            });
             await env.LBA_KV.put(kvKey('meta', category), JSON.stringify(meta), { expirationTtl: 60 * 60 * 24 * 30 });
-            return json({ ok: false, state: 'worker_error', error: meta.lastError, meta }, 502);
+            return json({ ok: false, state: meta.state, error: meta.lastError, cachePreserved: true, meta }, timeout ? 413 : 502);
           }
           if (!res.ok) {
             const state = res.status === 401 || res.status === 403 ? 'auth_error' : res.status === 429 ? 'rate_limited' : 'worker_error';
-            const meta = csvState(category, { state, configured: true, url: csvUrl, lastAttemptedAt: attemptAt, lastError: 'CSV fetch failed ' + res.status + ': ' + text.slice(0, 120) });
+            const meta = mergeCsvMeta(prior, category, { state, configured: true, url: csvUrl, lastAttemptedAt: attemptAt, lastFailedAt: attemptAt, lastFailedError: 'CSV fetch failed ' + res.status + ': ' + text.slice(0, 120), lastError: 'CSV fetch failed ' + res.status + ': ' + text.slice(0, 120) });
             await env.LBA_KV.put(kvKey('meta', category), JSON.stringify(meta), { expirationTtl: 60 * 60 * 24 * 30 });
-            return json({ ok: false, state, error: meta.lastError, meta }, res.status);
+            return json({ ok: false, state, error: meta.lastError, cachePreserved: true, meta }, res.status);
           }
           const contentType = res.headers.get('content-type') || '';
           const responsePreview = text.slice(0, 200).replace(/([?&](?:t|token|api_key|apikey|key)=)[^&\\s"']+/ig, '$1***');
           if (/text\/html/i.test(contentType) || /<!doctype html|<html/i.test(text.slice(0, 500))) {
-            const meta = csvState(category, { state: 'HTML_RETURNED', configured: true, url: csvUrl, lastAttemptedAt: attemptAt, lastError: 'HTML_RETURNED: PriceCharting returned an HTML page instead of CSV', responseStatus: res.status, responseContentType: contentType, responsePreview });
+            const meta = mergeCsvMeta(prior, category, { state: 'HTML_RETURNED', configured: true, url: csvUrl, lastAttemptedAt: attemptAt, lastFailedAt: attemptAt, lastFailedError: 'HTML_RETURNED: PriceCharting returned an HTML page instead of CSV', lastError: 'HTML_RETURNED: PriceCharting returned an HTML page instead of CSV', responseStatus: res.status, responseContentType: contentType, responsePreview });
             await env.LBA_KV.put(kvKey('meta', category), JSON.stringify(meta), { expirationTtl: 60 * 60 * 24 * 30 });
-            return json({ ok: false, state: 'HTML_RETURNED', responseType: 'HTML_RETURNED', responseStatus: res.status, responseContentType: contentType, responsePreview, error: meta.lastError, meta }, 422);
+            return json({ ok: false, state: 'HTML_RETURNED', responseType: 'HTML_RETURNED', responseStatus: res.status, responseContentType: contentType, responsePreview, error: meta.lastError, cachePreserved: true, meta }, 422);
           }
           let rows;
           try {
+            const parsingMeta = mergeCsvMeta(prior, category, { state: 'parsing', configured: true, url: csvUrl, lastAttemptedAt: attemptAt, responseStatus: res.status, responseContentType: contentType });
+            await env.LBA_KV.put(kvKey('meta', category), JSON.stringify(parsingMeta), { expirationTtl: 60 * 60 * 24 * 30 });
             rows = parsePcCsv(text).slice(0, 50000);
           } catch (e) {
-            const meta = csvState(category, { state: 'parse_error', configured: true, url: csvUrl, lastAttemptedAt: attemptAt, lastError: e.message || 'Malformed CSV' });
+            const meta = mergeCsvMeta(prior, category, { state: 'parse_error', configured: true, url: csvUrl, lastAttemptedAt: attemptAt, lastFailedAt: attemptAt, lastFailedError: e.message || 'Malformed CSV', lastError: e.message || 'Malformed CSV' });
             await env.LBA_KV.put(kvKey('meta', category), JSON.stringify(meta), { expirationTtl: 60 * 60 * 24 * 30 });
-            return json({ ok: false, state: 'parse_error', error: meta.lastError, meta }, 422);
+            return json({ ok: false, state: 'parse_error', error: meta.lastError, cachePreserved: true, meta }, 422);
           }
           if (!rows.length) {
-            const meta = csvState(category, { state: 'empty_csv', configured: true, url: csvUrl, rowCount: 0, lastAttemptedAt: attemptAt, lastError: 'CSV parsed but contained no product rows' });
+            const meta = mergeCsvMeta(prior, category, { state: 'empty_csv', configured: true, url: csvUrl, rowCount: 0, lastAttemptedAt: attemptAt, lastFailedAt: attemptAt, lastFailedError: 'CSV parsed but contained no product rows', lastError: 'CSV parsed but contained no product rows' });
             await env.LBA_KV.put(kvKey('meta', category), JSON.stringify(meta), { expirationTtl: 60 * 60 * 24 * 30 });
-            return json({ ok: false, state: 'empty_csv', error: meta.lastError, meta }, 422);
+            return json({ ok: false, state: 'empty_csv', error: meta.lastError, cachePreserved: true, meta }, 422);
           }
           const normalizedRowCount = rows.map(r => normalizePcProduct(r)).filter(r => r.productName || r.productId).length;
-          const meta = csvState(category, { state: 'synced', configured: true, url: csvUrl, urlPresent: true, rowCount: rows.length, normalizedRowCount, cacheRowCount: rows.length, lastAttemptedAt: attemptAt, lastSuccessAt: new Date(now).toISOString(), lastSyncedAt: new Date(now).toISOString(), lastError: '', source: 'PriceCharting CSV', sample: rows[0], responseStatus: res.status, responseContentType: contentType, cacheKey: kvKey('rows', category) });
+          const writingMeta = mergeCsvMeta(prior, category, { state: 'writing_cache', configured: true, url: csvUrl, urlPresent: true, rowCount: rows.length, normalizedRowCount, lastAttemptedAt: attemptAt, responseStatus: res.status, responseContentType: contentType });
+          await env.LBA_KV.put(kvKey('meta', category), JSON.stringify(writingMeta), { expirationTtl: 60 * 60 * 24 * 30 });
+          const meta = csvState(category, { state: 'complete', configured: true, url: csvUrl, urlPresent: true, rowCount: rows.length, normalizedRowCount, cacheRowCount: rows.length, lastAttemptedAt: attemptAt, lastSuccessAt: new Date(now).toISOString(), lastSyncedAt: new Date(now).toISOString(), lastSuccessfulRowCount: rows.length, lastError: '', lastFailedAt: prior?.lastFailedAt || null, lastFailedError: prior?.lastFailedError || '', source: 'PriceCharting CSV', sample: rows[0], responseStatus: res.status, responseContentType: contentType, cacheKey: kvKey('rows', category) });
           await env.LBA_KV.put(kvKey('rows', category), JSON.stringify(rows), { expirationTtl: 60 * 60 * 24 * 14 });
           await env.LBA_KV.put(kvKey('meta', category), JSON.stringify(meta), { expirationTtl: 60 * 60 * 24 * 30 });
           return json({ ok: true, state: 'synced', responseType: 'CSV_RETURNED', responseStatus: res.status, responseContentType: contentType, parsedRowCount: rows.length, normalizedRowCount, cacheWriteSuccess: true, cacheKey: kvKey('rows', category), headers: rows[0] ? Object.keys(rows[0]) : [], firstParsedRows: rows.slice(0, 3), meta, sample: rows[0] });

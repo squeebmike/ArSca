@@ -4,7 +4,7 @@ const { openDashboard, openScanner } = require('./helpers');
 test('scanner page loads without fatal console errors', async ({ page }) => {
   const guard = await openScanner(page);
   await expect(page.locator('body')).toContainText(/SCAN|READY|Walk-Off/i);
-  await expect(page.locator('#app-version')).toContainText('2026.05.19.05');
+  await expect(page.locator('#app-version')).toContainText('2026.05.19.06');
   await expect(page.locator('#hud')).not.toContainText(/[0-9a-f]{8}-[0-9a-f]{4}/i);
   guard.assertClean();
 });

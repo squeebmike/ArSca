@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.05.19.05">
+<meta name="version" content="2026.05.19.06">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -522,7 +522,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
 
 <header>
   <div class="hdr">
-    <div class="logo">WALK-OFF <span>DASHBOARD · v2026.05.19.05</span></div>
+    <div class="logo">WALK-OFF <span>DASHBOARD · v2026.05.19.06</span></div>
     <div class="hdr-right">
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
@@ -1433,7 +1433,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.05.19.05';
+const APP_VERSION = '2026.05.19.06';
 const SUPABASE_URL = 'https://vroknjrxubsqyexngwus.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_wbpX2nL8l-4NbXtZNG_bjA_nabSYaJ5';
 const AUTH_REDIRECT_URL = 'https://squeebmike.github.io/ArSca/dashboard.html';
@@ -2940,6 +2940,7 @@ async function syncPriceChartingCsv(category){
   } catch(e) {
     if(note) note.textContent = category + ' sync failed: ' + e.message;
     toast_dash('PriceCharting sync failed: ' + e.message);
+    await checkPriceChartingCsvStatus();
   }
 }
 
@@ -9532,6 +9533,69 @@ function pokemonPptObjectMatch(obj, wanted){
   return found ? found[1] : null;
 }
 
+function pokemonPptMatrixRows(row = {}){
+  const card = row.pokemonPriceTracker || row.pokemonPriceTrackerCard || row.pptCard || null;
+  const prices = card?.prices || {};
+  const variants = prices.variants || {};
+  const lastUpdated = prices.lastUpdated || card?.lastUpdated || card?.updatedAt || row.pokemonPriceTrackerLastUpdated || '';
+  const rows = [];
+  Object.entries(variants).forEach(([finishRaw, conditionMap]) => {
+    const finishLabel = pokemonPptFinishLabel(finishRaw);
+    if(!conditionMap || typeof conditionMap !== 'object') return;
+    Object.entries(conditionMap).forEach(([conditionRaw, value]) => {
+      const price = pokemonPptPriceValue(value);
+      rows.push({
+        condition:pokemonPptConditionCode(conditionRaw),
+        conditionLabel:pokemonPptConditionLabel(conditionRaw),
+        finish:normalizeQplFinish(finishLabel),
+        finishLabel,
+        price,
+        lastUpdated:value?.lastUpdated || lastUpdated,
+        source:price > 0 ? 'PokemonPriceTracker variant' : 'No Real Price Available',
+        path:`prices.variants[${finishLabel}][${pokemonPptConditionLabel(conditionRaw)}].price`
+      });
+    });
+  });
+  Object.entries(prices.conditions || {}).forEach(([conditionRaw, value]) => {
+    const condition = pokemonPptConditionCode(conditionRaw);
+    const exists = rows.some(r => r.condition === condition);
+    if(exists) return;
+    const price = pokemonPptPriceValue(value);
+    const finishLabel = pokemonPptFinishLabel(prices.primaryPrinting || row.selectedFinish || row.finish || 'Normal');
+    rows.push({
+      condition,
+      conditionLabel:pokemonPptConditionLabel(conditionRaw),
+      finish:normalizeQplFinish(finishLabel),
+      finishLabel,
+      price,
+      lastUpdated:value?.lastUpdated || lastUpdated,
+      source:price > 0 ? 'PokemonPriceTracker condition' : 'No Real Price Available',
+      path:`prices.conditions[${pokemonPptConditionLabel(conditionRaw)}].price`
+    });
+  });
+  const order = { NM:0, LP:1, MP:2, HP:3, DMG:4 };
+  return rows.sort((a,b) => String(a.finishLabel).localeCompare(String(b.finishLabel)) || (order[a.condition] ?? 99) - (order[b.condition] ?? 99));
+}
+
+function pokemonPptOptionValues(row = {}, key = 'condition'){
+  const rows = pokemonPptMatrixRows(row);
+  if(!rows.length) return [];
+  const selectedCondition = row.selectedCondition || row.condition || '';
+  const selectedFinish = normalizeQplFinish(row.selectedFinish || row.finish || '');
+  const vals = [];
+  rows.forEach(r => {
+    if(key === 'condition' && selectedFinish && r.finish !== selectedFinish) return;
+    if(key === 'finish' && selectedCondition && r.condition !== selectedCondition) return;
+    const val = key === 'condition' ? r.condition : key === 'finish' ? r.finish : 'English';
+    if(val && !vals.includes(val)) vals.push(val);
+  });
+  if(!vals.length) rows.forEach(r => {
+    const val = key === 'condition' ? r.condition : key === 'finish' ? r.finish : 'English';
+    if(val && !vals.includes(val)) vals.push(val);
+  });
+  return vals;
+}
+
 function resolvePokemonPriceTrackerPrice(row = {}){
   const card = row.pokemonPriceTracker || row.pokemonPriceTrackerCard || row.pptCard || null;
   if(!card?.prices) return null;
@@ -9981,6 +10045,8 @@ function applyQplSelectedVariant(r){
 }
 
 function qplVariantOptionValues(r, key){
+  const pptVals = pokemonPptOptionValues(r, key);
+  if(pptVals.length) return pptVals;
   const selected = {
     condition:r.selectedCondition || r.condition || '',
     finish:r.selectedFinish || r.finish || '',
@@ -10177,6 +10243,25 @@ function qplJustTcgChartPanel(r, idx){
 }
 
 function qplVariantPriceTable(r, idx){
+  const pptRows = pokemonPptMatrixRows(r);
+  if(pptRows.length) {
+    const selectedCondition = r.selectedCondition || r.condition || '';
+    const selectedFinish = normalizeQplFinish(r.selectedFinish || r.finish || '');
+    const rows = pptRows.map(row => {
+      const selected = row.condition === selectedCondition && (!selectedFinish || row.finish === selectedFinish);
+      return `<tr class="${selected?'on':''}" onclick="updateQplVariant(${idx},{selectedCondition:'${escHtml(row.condition)}',selectedFinish:'${escHtml(row.finish)}'})" style="cursor:pointer">
+        <td>${escHtml(row.condition)}</td>
+        <td>${escHtml(row.finishLabel)}</td>
+        <td>${row.price ? '$'+Number(row.price).toFixed(2) : 'No Real Price'}</td>
+        <td>${escHtml(row.lastUpdated || r.lastPriceSyncAt || '-')}</td>
+        <td>${escHtml(row.source)}</td>
+      </tr>`;
+    }).join('');
+    return `<div style="margin-top:10px">
+      <div style="font-family:'Orbitron',monospace;color:var(--g);font-size:10px">AVAILABLE PRICES · PokemonPriceTracker</div>
+      <table class="qpl-price-table"><thead><tr><th>Condition</th><th>Finish</th><th>Actual API Price</th><th>Last Updated</th><th>Source</th></tr></thead><tbody>${rows}</tbody></table>
+    </div>`;
+  }
   if(!r?.availableVariants?.length) return '';
   const finish = r.selectedFinish || r.finish || r.availableVariants[0]?.finish || '';
   const language = r.selectedLanguage || r.language || 'English';
@@ -10219,6 +10304,19 @@ function tcgPlayerProductIdFromUrl(value = ''){
   return m ? m[1] : '';
 }
 
+function tcgPlayerProductSlug(item = {}){
+  return [item.category || 'pokemon', item.set || item.setName || '', item.name || '', item.card_number || item.cardNumber || '']
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase()
+    .normalize('NFKD')
+    .replace(/[^\w\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, 120) || 'product';
+}
+
 function encodeTcgParam(value = ''){
   return encodeURIComponent(String(value || '')).replace(/%20/g, '+');
 }
@@ -10244,7 +10342,7 @@ function buildTcgExternalLink(item = {}){
     ];
     url = base + '?' + params.map(([k,v]) => `${encodeURIComponent(k)}=${encodeTcgParam(v)}`).join('&');
   } else if(productId) {
-    url = `https://www.tcgplayer.com/product/${encodeURIComponent(productId)}?page=1&Language=${encodeTcgParam(language || 'English')}&Condition=${encodeTcgParam(conditionLabel)}`;
+    url = `https://www.tcgplayer.com/product/${encodeURIComponent(productId)}/${encodeURIComponent(tcgPlayerProductSlug(item))}?page=1&Language=${encodeTcgParam(language || 'English')}&Condition=${encodeTcgParam(conditionLabel)}`;
   } else {
     note = activeSkuId ? 'Marketplace SKU captured; search includes selected condition because direct SKU deep-link is not guaranteed.' : 'Marketplace cannot deep-link to exact condition here; opening a selected-condition search.';
     url = 'https://www.tcgplayer.com/search/all/product?q=' + encodeURIComponent(query || item.name || '');
