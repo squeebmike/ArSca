@@ -1245,6 +1245,10 @@ export default {
         }
       };
       const csvState = (category, patch = {}) => ({ category, state: patch.state || 'ready', configured: !!patch.configured, urlMasked: patch.url ? maskPcUrl(patch.url) : undefined, ...patch, url: undefined });
+      const csvFetchOptions = () => ({
+        headers: { 'Accept': 'text/csv,*/*' },
+        signal: AbortSignal.timeout ? AbortSignal.timeout(15000) : undefined,
+      });
       const pcUrl = path => 'https://www.pricecharting.com' + path;
       const pcImageUrl = p => {
         const raw = p['image-url'] || p.imageUrl || p.image || p.coverUrl || p.thumbnail || p['box-art-url'] || p['image'] || '';
@@ -1483,7 +1487,12 @@ export default {
           } catch (_) {
             return json({ ok: false, state: 'invalid_url', error: 'Invalid CSV URL' }, 400);
           }
-          const res = await fetch(csvUrl, { headers: { 'Accept': 'text/csv,*/*' } });
+          let res;
+          try {
+            res = await fetch(csvUrl, csvFetchOptions());
+          } catch (e) {
+            return json({ ok: false, state: 'worker_error', responseType: 'FETCH_FAILED', error: e.name === 'TimeoutError' || /abort/i.test(e.message || '') ? 'CSV fetch timed out before import could start' : (e.message || 'CSV fetch failed'), urlMasked: maskPcUrl(csvUrl) }, 502);
+          }
           const contentType = res.headers.get('content-type') || '';
           const text = await res.text();
           const responsePreview = text.slice(0, 200).replace(/([?&](?:t|token|api_key|apikey|key)=)[^&\\s"']+/ig, '$1***');
@@ -1545,7 +1554,7 @@ export default {
           }
           let res, text = '';
           try {
-            res = await fetch(csvUrl, { headers: { 'Accept': 'text/csv,*/*' } });
+            res = await fetch(csvUrl, csvFetchOptions());
             text = await res.text();
           } catch (e) {
             const meta = csvState(category, { state: 'worker_error', configured: true, url: csvUrl, lastAttemptedAt: attemptAt, lastError: e.message || 'Worker fetch failed' });

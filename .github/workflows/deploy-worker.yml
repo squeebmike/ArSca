@@ -134,7 +134,7 @@ jobs:
           await request('PriceCharting CSV sync route', '/pricing/pricecharting/csv/sync', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ categoryKey: 'pokemon-cards' }),
+            body: JSON.stringify({ categoryKey: 'deploy-probe-' + Date.now() }),
           }, res => res.status === 400 || res.ok);
           await request('offline cache manifest', '/offline/cache/manifest');
           await request('PokemonPriceTracker cards route', '/pricing/pokemonpricetracker/cards?search=charizard&language=english&limit=1', {}, res => res.status !== 404);
