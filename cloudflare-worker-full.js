@@ -1173,7 +1173,26 @@ export default {
         return n > 0 ? Math.round(n) / 100 : null;
       };
       const PC_CSV_CATEGORIES = ['Pokemon Cards', 'Magic Cards', 'YuGiOh Cards', 'One Piece Cards', 'Lorcana Cards', 'Digimon Cards', 'Dragon Ball Cards', 'Garbage Pail Cards', 'Marvel Cards', 'Star Wars Cards', 'Other TCG Cards', 'Comics', 'Video Games', 'Funko Pops', 'LEGO Sets', 'Coins', 'Amiibo', 'Strategy Guides', 'Gaming Magazines', 'Sports Cards'];
-      const pcCategoryKey = c => String(c || 'General').replace(/[^a-zA-Z0-9._ -]/g, '').trim().slice(0, 80) || 'General';
+      const pcCategoryKey = c => {
+        const raw = String(c || 'General').trim();
+        const slug = raw.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+        const alias = {
+          'pokemon-card':'Pokemon Cards',
+          'pokemon-cards':'Pokemon Cards',
+          'magic-card':'Magic Cards',
+          'magic-cards':'Magic Cards',
+          'mtg':'Magic Cards',
+          'yugioh-cards':'YuGiOh Cards',
+          'yu-gi-oh-cards':'YuGiOh Cards',
+          'video-game':'Video Games',
+          'video-games':'Video Games',
+          'sport-cards':'Sports Cards',
+          'sports-cards':'Sports Cards'
+        }[slug];
+        if (alias) return alias;
+        const exact = PC_CSV_CATEGORIES.find(x => x.toLowerCase() === raw.toLowerCase());
+        return exact || raw.replace(/[^a-zA-Z0-9._ -]/g, '').trim().slice(0, 80) || 'General';
+      };
       const kvKey = (kind, category) => `pc_csv_${kind}:${pcCategoryKey(category)}`;
       const maskPcUrl = raw => {
         try {
@@ -1359,8 +1378,28 @@ export default {
         if (cur.trim()) lines.push(cur);
         if (quoted) throw new Error('parse_error: unterminated quoted CSV field');
         if (lines.length < 2) return [];
-        const headers = parseCsvLine(lines[0]).map(h => h.trim());
-        if (!headers.includes('product-name') && !headers.includes('id')) throw new Error('parse_error: missing expected PriceCharting headers');
+        const headersRaw = parseCsvLine(lines[0]).map(h => h.trim());
+        const canonical = h => String(h || '').trim().toLowerCase().replace(/\s+/g, '-').replace(/_/g, '-');
+        const alias = {
+          'product-name':'product-name',
+          'product name':'product-name',
+          'console-name':'console-name',
+          'console name':'console-name',
+          'loose-price':'loose-price',
+          'loose price':'loose-price',
+          'cib-price':'cib-price',
+          'cib price':'cib-price',
+          'new-price':'new-price',
+          'new price':'new-price',
+          'graded-price':'graded-price',
+          'graded price':'graded-price',
+          'image-url':'image-url',
+          'image url':'image-url',
+          'product-url':'product-url',
+          'product url':'product-url'
+        };
+        const headers = headersRaw.map(h => alias[canonical(h)] || canonical(h));
+        if (!headers.includes('product-name') && !headers.includes('id')) throw new Error('parse_error: missing expected PriceCharting headers. Saw: ' + headersRaw.slice(0, 8).join(', '));
         return lines.slice(1).map(line => {
           const vals = parseCsvLine(line);
           const row = {};
@@ -1384,28 +1423,70 @@ export default {
           for (const cat of categories) {
             const meta = await env.LBA_KV.get(kvKey('meta', cat), 'json');
             const savedUrl = await env.LBA_KV.get(kvKey('url', cat));
-            status[cat] = meta || { category: cat, state: savedUrl ? 'ready' : 'not_configured', configured: !!savedUrl, urlPresent: !!savedUrl, urlMasked: savedUrl ? maskPcUrl(savedUrl) : '', rowCount: 0, lastAttemptedAt: null, lastSuccessAt: null, lastSyncedAt: null, lastError: '' };
+            const rows = await env.LBA_KV.get(kvKey('rows', cat), 'json');
+            const cacheRowCount = Array.isArray(rows) ? rows.length : 0;
+            status[cat] = meta ? { ...meta, cacheRowCount, rowCount: Number(meta.rowCount || cacheRowCount || 0), cacheKey: kvKey('rows', cat) } : { category: cat, state: savedUrl ? (cacheRowCount ? 'synced' : 'ready') : 'not_configured', configured: !!savedUrl, urlPresent: !!savedUrl, urlMasked: savedUrl ? maskPcUrl(savedUrl) : '', rowCount: cacheRowCount, cacheRowCount, lastAttemptedAt: null, lastSuccessAt: null, lastSyncedAt: null, lastError: '', cacheKey: kvKey('rows', cat) };
           }
           return json({ ok: true, source: 'PriceCharting CSV', categories: status });
+        }
+        if (url.pathname === '/pricing/pricecharting/csv/test-url') {
+          if (request.method !== 'POST') return json({ ok: false, error: 'POST only' }, 405);
+          const body = await request.json().catch(() => ({}));
+          const category = pcCategoryKey(body.categoryKey || body.category || 'General');
+          const csvUrl = String(body.fullUrl || body.url || '').trim();
+          if (!csvUrl) return json({ ok: false, state: 'not_configured', error: 'fullUrl required in POST JSON body' }, 400);
+          let parsedUrl;
+          try {
+            parsedUrl = new URL(csvUrl);
+            if (!/^https?:$/.test(parsedUrl.protocol)) throw new Error('invalid protocol');
+          } catch (_) {
+            return json({ ok: false, state: 'invalid_url', error: 'Invalid CSV URL' }, 400);
+          }
+          const res = await fetch(csvUrl, { headers: { 'Accept': 'text/csv,*/*' } });
+          const contentType = res.headers.get('content-type') || '';
+          const text = await res.text();
+          const responsePreview = text.slice(0, 200).replace(/([?&](?:t|token|api_key|apikey|key)=)[^&\\s"']+/ig, '$1***');
+          if (!res.ok) return json({ ok: false, state: 'fetch_failed', responseStatus: res.status, responseContentType: contentType, error: 'CSV fetch failed ' + res.status + ': ' + responsePreview, urlMasked: maskPcUrl(csvUrl) }, res.status);
+          if (/text\/html/i.test(contentType) || /<!doctype html|<html/i.test(text.slice(0, 500))) {
+            return json({ ok: false, state: 'HTML_RETURNED', responseType: 'HTML_RETURNED', responseStatus: res.status, responseContentType: contentType, responsePreview, urlMasked: maskPcUrl(csvUrl) }, 422);
+          }
+          const rows = parsePcCsv(text);
+          const normalized = rows.map(r => normalizePcProduct(r)).filter(r => r.productName || r.productId);
+          return json({
+            ok: true,
+            state: 'CSV_RETURNED',
+            responseType: 'CSV_RETURNED',
+            responseStatus: res.status,
+            responseContentType: contentType,
+            urlMasked: maskPcUrl(csvUrl),
+            detectedCategory: category,
+            headers: rows[0] ? Object.keys(rows[0]) : [],
+            firstParsedRows: rows.slice(0, 3),
+            parsedRowCount: rows.length,
+            normalizedRowCount: normalized.length,
+            cacheWriteSuccess: false,
+            cacheKey: kvKey('rows', category),
+          });
         }
         if (url.pathname === '/pricing/pricecharting/csv/sync') {
           if (request.method !== 'POST') return json({ ok: false, error: 'POST only' }, 405);
           if (!env.LBA_KV) return json({ ok: false, error: 'LBA_KV binding required for CSV cache' }, 501);
           const body = await request.json().catch(() => ({}));
-          const category = pcCategoryKey(body.category || 'General');
+          const category = pcCategoryKey(body.categoryKey || body.category || 'General');
           const attemptAt = new Date().toISOString();
-          if (body.url) {
+          const incomingUrl = String(body.fullUrl || body.url || '').trim();
+          if (incomingUrl) {
             try {
-              const parsed = new URL(String(body.url));
+              const parsed = new URL(incomingUrl);
               if (!/^https?:$/.test(parsed.protocol)) throw new Error('invalid protocol');
-              await env.LBA_KV.put(kvKey('url', category), String(body.url));
+              await env.LBA_KV.put(kvKey('url', category), incomingUrl);
             } catch (_) {
               const meta = csvState(category, { state: 'invalid_url', configured: false, lastAttemptedAt: attemptAt, lastError: 'Invalid CSV URL' });
               await env.LBA_KV.put(kvKey('meta', category), JSON.stringify(meta), { expirationTtl: 60 * 60 * 24 * 30 });
               return json({ ok: false, state: 'invalid_url', error: 'Invalid CSV URL', meta }, 400);
             }
           }
-          const csvUrl = body.url || await env.LBA_KV.get(kvKey('url', category));
+          const csvUrl = incomingUrl || await env.LBA_KV.get(kvKey('url', category));
           if (!csvUrl) {
             const meta = csvState(category, { state: 'not_configured', configured: false, lastAttemptedAt: attemptAt, lastError: 'CSV URL required first sync' });
             return json({ ok: false, state: 'not_configured', error: 'CSV URL required first sync', meta }, 400);
@@ -1436,6 +1517,13 @@ export default {
             await env.LBA_KV.put(kvKey('meta', category), JSON.stringify(meta), { expirationTtl: 60 * 60 * 24 * 30 });
             return json({ ok: false, state, error: meta.lastError, meta }, res.status);
           }
+          const contentType = res.headers.get('content-type') || '';
+          const responsePreview = text.slice(0, 200).replace(/([?&](?:t|token|api_key|apikey|key)=)[^&\\s"']+/ig, '$1***');
+          if (/text\/html/i.test(contentType) || /<!doctype html|<html/i.test(text.slice(0, 500))) {
+            const meta = csvState(category, { state: 'HTML_RETURNED', configured: true, url: csvUrl, lastAttemptedAt: attemptAt, lastError: 'HTML_RETURNED: PriceCharting returned an HTML page instead of CSV', responseStatus: res.status, responseContentType: contentType, responsePreview });
+            await env.LBA_KV.put(kvKey('meta', category), JSON.stringify(meta), { expirationTtl: 60 * 60 * 24 * 30 });
+            return json({ ok: false, state: 'HTML_RETURNED', responseType: 'HTML_RETURNED', responseStatus: res.status, responseContentType: contentType, responsePreview, error: meta.lastError, meta }, 422);
+          }
           let rows;
           try {
             rows = parsePcCsv(text).slice(0, 50000);
@@ -1449,10 +1537,11 @@ export default {
             await env.LBA_KV.put(kvKey('meta', category), JSON.stringify(meta), { expirationTtl: 60 * 60 * 24 * 30 });
             return json({ ok: false, state: 'empty_csv', error: meta.lastError, meta }, 422);
           }
-          const meta = csvState(category, { state: 'synced', configured: true, url: csvUrl, urlPresent: true, rowCount: rows.length, lastAttemptedAt: attemptAt, lastSuccessAt: new Date(now).toISOString(), lastSyncedAt: new Date(now).toISOString(), lastError: '', source: 'PriceCharting CSV', sample: rows[0] });
+          const normalizedRowCount = rows.map(r => normalizePcProduct(r)).filter(r => r.productName || r.productId).length;
+          const meta = csvState(category, { state: 'synced', configured: true, url: csvUrl, urlPresent: true, rowCount: rows.length, normalizedRowCount, cacheRowCount: rows.length, lastAttemptedAt: attemptAt, lastSuccessAt: new Date(now).toISOString(), lastSyncedAt: new Date(now).toISOString(), lastError: '', source: 'PriceCharting CSV', sample: rows[0], responseStatus: res.status, responseContentType: contentType, cacheKey: kvKey('rows', category) });
           await env.LBA_KV.put(kvKey('rows', category), JSON.stringify(rows), { expirationTtl: 60 * 60 * 24 * 14 });
           await env.LBA_KV.put(kvKey('meta', category), JSON.stringify(meta), { expirationTtl: 60 * 60 * 24 * 30 });
-          return json({ ok: true, state: 'synced', meta, sample: rows[0] });
+          return json({ ok: true, state: 'synced', responseType: 'CSV_RETURNED', responseStatus: res.status, responseContentType: contentType, parsedRowCount: rows.length, normalizedRowCount, cacheWriteSuccess: true, cacheKey: kvKey('rows', category), headers: rows[0] ? Object.keys(rows[0]) : [], firstParsedRows: rows.slice(0, 3), meta, sample: rows[0] });
         }
         if (url.pathname === '/pricing/pricecharting/csv/search') {
           if (!env.LBA_KV) return json({ ok: false, error: 'LBA_KV binding required for CSV cache' }, 501);
@@ -1519,6 +1608,32 @@ export default {
       } catch (e) {
         return json({ ok: false, source: 'PriceCharting', error: e.message }, 500);
       }
+    }
+
+    if (url.pathname === '/pricing/tcg/resolve-product') {
+      const params = new URLSearchParams({
+        q: url.searchParams.get('query') || url.searchParams.get('q') || '',
+        category: url.searchParams.get('category') || '',
+        include_variants: 'true',
+        include_price_history: 'true'
+      });
+      const upstream = await fetch(new URL('/pricing/justtcg/search?' + params.toString(), url.origin), { headers: request.headers });
+      return new Response(upstream.body, upstream);
+    }
+    if (url.pathname === '/pricing/tcg/product-variants') {
+      const productId = url.searchParams.get('productId') || '';
+      if (!productId) return json({ ok: false, error: 'productId required' }, 400);
+      const params = new URLSearchParams({ include_variants: 'true', include_price_history: 'true', priceHistoryDuration: url.searchParams.get('priceHistoryDuration') || '90d' });
+      const upstream = await fetch(new URL('/pricing/justtcg/card/' + encodeURIComponent(productId) + '?' + params.toString(), url.origin), { headers: request.headers });
+      const data = await upstream.json().catch(() => ({}));
+      const card = data.card || data.matches?.[0] || null;
+      return json({ ok: upstream.ok && !!card, source: 'JustTCG', productId, variantMatrix: card ? { productId: card.productId || productId, source: 'JustTCG', name: card.name || '', setName: card.setName || '', cardNumber: card.cardNumber || '', variants: card.availableVariants || [] } : null, card, error: data.error || '' }, upstream.status);
+    }
+    if (url.pathname === '/pricing/tcg/sku-price') {
+      const skuId = url.searchParams.get('skuId') || '';
+      if (!skuId) return json({ ok: false, error: 'skuId required' }, 400);
+      const upstream = await fetch(new URL('/pricing/justtcg/sku/' + encodeURIComponent(skuId), url.origin), { headers: request.headers });
+      return new Response(upstream.body, upstream);
     }
 
     // Universal TCG pricing proxy.

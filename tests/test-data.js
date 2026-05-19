@@ -215,7 +215,10 @@ async function mockWalkoffApis(page) {
   await page.route(/still-resonance-4f87\.swarnerauto\.workers\.dev\/ebay\/status/, route => route.fulfill({ json: { ok: true, connected: false } }));
   await page.route(/still-resonance-4f87\.swarnerauto\.workers\.dev\/sync/, route => route.fulfill({ json: { ok: true } }));
   await page.route('**/pricing/pricecharting/csv/status**', route => route.fulfill({
-    json: { ok: true, categories: [{ category: 'Comics', status: 'synced', rowCount: 2 }, { category: 'Video Games', status: 'synced', rowCount: 1 }] }
+    json: { ok: true, categories: { Comics: { category: 'Comics', state: 'synced', configured: true, rowCount: 2, cacheRowCount: 2, lastSyncedAt: '2026-05-19T00:00:00.000Z' }, 'Video Games': { category: 'Video Games', state: 'synced', configured: true, rowCount: 1, cacheRowCount: 1, lastSyncedAt: '2026-05-19T00:00:00.000Z' } } }
+  }));
+  await page.route('**/pricing/pricecharting/csv/test-url**', route => route.fulfill({
+    json: { ok: true, state: 'CSV_RETURNED', responseType: 'CSV_RETURNED', parsedRowCount: 2, normalizedRowCount: 2, cacheWriteSuccess: false, cacheKey: 'pc_csv_rows:Pokemon Cards', headers: ['id', 'product-name', 'console-name', 'loose-price'], firstParsedRows: [{ id: '1', 'product-name': 'Pikachu 151', 'console-name': 'Pokemon Cards', 'loose-price': '1234' }] }
   }));
   await page.route('**/pricing/pricecharting/csv/search**', route => {
     const url = new URL(route.request().url());

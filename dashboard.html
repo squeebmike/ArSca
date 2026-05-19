@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.05.19.01">
+<meta name="version" content="2026.05.19.02">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -522,7 +522,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
 
 <header>
   <div class="hdr">
-    <div class="logo">WALK-OFF <span>DASHBOARD · v2026.05.19.01</span></div>
+    <div class="logo">WALK-OFF <span>DASHBOARD · v2026.05.19.02</span></div>
     <div class="hdr-right">
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
@@ -1433,7 +1433,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.05.19.01';
+const APP_VERSION = '2026.05.19.02';
 const SUPABASE_URL = 'https://vroknjrxubsqyexngwus.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_wbpX2nL8l-4NbXtZNG_bjA_nabSYaJ5';
 const AUTH_REDIRECT_URL = 'https://squeebmike.github.io/ArSca/dashboard.html';
@@ -2871,11 +2871,12 @@ function renderPriceChartingDataPanel(status = null){
   const urls = getPriceChartingCsvUrls();
   const rows = PRICECHARTING_CSV_CATEGORIES.map(cat => {
     const meta = status?.[cat] || {};
-    return `<div class="item-metric" style="display:grid;grid-template-columns:170px 1fr 112px 112px;gap:8px;align-items:end;margin-bottom:8px">
+    return `<div class="item-metric" style="display:grid;grid-template-columns:170px 1fr 96px 96px 96px;gap:8px;align-items:end;margin-bottom:8px">
       <label style="font-family:monospace;font-size:9px;color:var(--dim)">${escHtml(cat)}
         <div style="font-size:9px;color:var(--dim);margin-top:4px">${meta.lastSyncedAt ? `${Number(meta.rowCount||0).toLocaleString()} rows · ${new Date(meta.lastSyncedAt).toLocaleString()}` : (meta.configured ? 'Configured, not synced' : 'No cache yet')}</div>
       </label>
       <input id="pc-csv-url-${escHtml(cat)}" class="tsi" placeholder="PriceCharting CSV download URL (saved in Worker/KV on sync)" value="${escHtml(urls[cat] || '')}">
+      <button class="hbtn" onclick="testPriceChartingCsv('${escHtml(cat)}')">TEST URL</button>
       <button class="hbtn" onclick="syncPriceChartingCsv('${escHtml(cat)}')">SYNC NOW</button>
       <button class="hbtn" onclick="checkPriceChartingCsvStatus()">STATUS</button>
     </div>`;
@@ -2885,8 +2886,13 @@ function renderPriceChartingDataPanel(status = null){
       CSV URLs are sent to the Cloudflare Worker and cached in KV. The browser does not fetch PriceCharting CSV directly. Manual sync respects the 10 minute CSV call limit.
       PriceCharting photo search is not wired here unless PriceCharting confirms a documented API endpoint.
     </div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px;font-family:monospace;font-size:10px;color:var(--dim)">
+      <label><input type="checkbox" ${allowEstimatedConditionValues() ? 'checked' : ''} onchange="setAllowEstimatedConditionValues(this.checked);renderPriceChartingDataPanel()"> Allow estimated condition values when exact SKU price is missing</label>
+      <label><input type="checkbox" ${localStorage.getItem('qa_debug') === '1' ? 'checked' : ''} onchange="localStorage.setItem('qa_debug',this.checked?'1':'0');renderPriceChartingDataPanel()"> Show external SKU ids in admin/debug</label>
+    </div>
     ${rows}
-    <div id="pc-csv-status-note" style="font-family:monospace;font-size:10px;color:var(--dim)"></div>`;
+    <div id="pc-csv-status-note" style="font-family:monospace;font-size:10px;color:var(--dim)"></div>
+    <div id="pc-csv-preview" style="font-family:monospace;font-size:10px;color:var(--dim);line-height:1.5;margin-top:8px"></div>`;
 }
 
 async function checkPriceChartingCsvStatus(){
@@ -2918,7 +2924,7 @@ async function syncPriceChartingCsv(category){
     const res = await fetch(WORKER + '/pricing/pricecharting/csv/sync', {
       method:'POST',
       headers:{ 'Content-Type':'application/json' },
-      body:JSON.stringify({ category, url, force:true })
+      body:JSON.stringify({ categoryKey:category, fullUrl:url, force:true })
     });
     const data = await res.json().catch(() => ({}));
     if(!res.ok || !data.ok) throw new Error([data.state, data.error || data.reason || 'Sync failed'].filter(Boolean).join(': '));
@@ -2928,6 +2934,45 @@ async function syncPriceChartingCsv(category){
     if(note) note.textContent = category + ' sync failed: ' + e.message;
     toast_dash('PriceCharting sync failed: ' + e.message);
   }
+}
+
+async function testPriceChartingCsv(category){
+  const urls = getPriceChartingCsvUrls();
+  const input = document.getElementById('pc-csv-url-' + category);
+  const url = input?.value.trim() || urls[category] || '';
+  if(!url) { toast_dash('Paste the PriceCharting CSV URL first'); return; }
+  urls[category] = url;
+  savePriceChartingCsvUrls(urls);
+  const note = document.getElementById('pc-csv-status-note');
+  if(note) note.textContent = 'Testing ' + category + ' CSV URL...';
+  try {
+    const res = await fetch(WORKER + '/pricing/pricecharting/csv/test-url', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json' },
+      body:JSON.stringify({ categoryKey:category, fullUrl:url })
+    });
+    const data = await res.json().catch(() => ({}));
+    if(!res.ok || !data.ok) throw new Error([data.state, data.error || 'Test URL failed'].filter(Boolean).join(': '));
+    if(note) note.textContent = category + ' test OK: ' + (data.responseType || 'CSV_RETURNED') + ' / ' + Number(data.parsedRowCount || 0).toLocaleString() + ' parsed rows / cache key ' + (data.cacheKey || '');
+    renderPriceChartingCsvPreview(data);
+  } catch(e) {
+    if(note) note.textContent = category + ' test failed: ' + e.message;
+    toast_dash('PriceCharting test failed: ' + e.message);
+  }
+}
+
+function renderPriceChartingCsvPreview(data = {}){
+  const el = document.getElementById('pc-csv-preview');
+  if(!el) return;
+  const headers = (data.headers || []).slice(0, 12).join(' / ');
+  const first = data.firstParsedRows?.[0] || data.sample || null;
+  el.innerHTML = `
+    <div><b style="color:var(--text)">Last Sync Status:</b> ${escHtml(data.state || data.responseType || 'ready')}</div>
+    <div><b style="color:var(--text)">Parsed:</b> ${Number(data.parsedRowCount || 0).toLocaleString()} / <b style="color:var(--text)">Normalized:</b> ${Number(data.normalizedRowCount || 0).toLocaleString()} / <b style="color:var(--text)">Cache write:</b> ${data.cacheWriteSuccess ? 'yes' : 'no'}</div>
+    ${headers ? `<div><b style="color:var(--text)">Headers:</b> ${escHtml(headers)}</div>` : ''}
+    ${first ? `<div><b style="color:var(--text)">First row:</b> ${escHtml(Object.values(first).slice(0, 6).join(' / '))}</div>` : ''}
+    ${data.detectedCategory ? `<div><b style="color:var(--text)">Detected category:</b> ${escHtml(data.detectedCategory)}</div>` : ''}
+    ${data.error ? `<div style="color:var(--red)"><b>Error:</b> ${escHtml(data.error)}</div>` : ''}`;
 }
 
 const PRICING_QA_QUERIES = ['pikachu sir','pikachu ex','pikachu 151','umbreon vmax evolving skies','charizard 199/165','wolverine 1','asm 300','zelda ocarina n64'];
@@ -5199,6 +5244,8 @@ function mapBuiltInItem(row){
     sourceProductId:d.sourceProductId || '',
     sourceVariantId:d.sourceVariantId || '',
     tcgplayerSkuId:d.tcgplayerSkuId || '',
+    inventorySku:d.inventorySku || d.sku || '',
+    externalRefs:d.externalRefs || null,
     priceLabel:d.priceLabel || '',
     isRookie:!!(d.isRookie || d.rookieCard),
     is_rookie:!!(d.isRookie || d.rookieCard),
@@ -5246,6 +5293,9 @@ function builtInDataFromItem(item, updates={}){
     sourceProductId:updates.sourceProductId ?? item.sourceProductId ?? '',
     sourceVariantId:updates.sourceVariantId ?? item.sourceVariantId ?? '',
     tcgplayerSkuId:updates.tcgplayerSkuId ?? item.tcgplayerSkuId ?? '',
+    inventorySku:updates.inventorySku ?? item.inventorySku ?? '',
+    sku:updates.inventorySku ?? item.inventorySku ?? updates.sku ?? item.sku ?? '',
+    externalRefs:updates.externalRefs ?? item.externalRefs ?? null,
     priceLabel:updates.priceLabel ?? item.priceLabel ?? '',
     priceUsed:Number(updates.priceUsed ?? item.priceUsed ?? updates.market ?? item.market ?? 0),
     expectedProfit:Number(updates.expectedProfit ?? item.expectedProfit ?? 0),
@@ -9417,7 +9467,7 @@ function qplPriceValue(v){
 
 function qplPriceSourceLabel(v){
   if(!v) return 'Needs Research';
-  if(Number(v.marketPrice || 0) > 0) return 'JustTCG Exact Variant';
+  if(Number(v.marketPrice || 0) > 0) return 'Real SKU Market Price';
   return 'No Real Price Available';
 }
 
@@ -9440,7 +9490,16 @@ function getConditionEstimateRates(){
   return { NM:1, LP:0.8, MP:0.6, HP:0.4, DMG:0.25, ...safeLocalJson('condition_estimate_rates_v1', {}) };
 }
 
+function allowEstimatedConditionValues(){
+  return localStorage.getItem('allow_condition_estimates_v1') === '1';
+}
+
+function setAllowEstimatedConditionValues(on){
+  localStorage.setItem('allow_condition_estimates_v1', on ? '1' : '0');
+}
+
 function estimateConditionValue(row, condition){
+  if(!allowEstimatedConditionValues()) return 0;
   const rates = getConditionEstimateRates();
   const cond = String(condition || row.selectedCondition || row.condition || 'NM').toUpperCase();
   const sameFinishLang = (row.availableVariants || []).filter(v =>
@@ -9457,7 +9516,7 @@ function estimateConditionValue(row, condition){
 
 function qplTruthLabel(r){
   if(r?.priceSource === 'Estimated Condition Value' || r?.priceConfidence === 'estimate') return 'Estimated Condition Value';
-  if(r?.source === 'justtcg') return Number(r.selectedVariant?.marketPrice || r.market || 0) > 0 ? 'Real Variant Price' : 'No Real Price';
+  if(r?.source === 'justtcg') return Number(r.selectedVariant?.marketPrice || 0) > 0 ? 'Real SKU Market Price' : 'No Real Price';
   if(r?.pricecharting || r?.source === 'pricecharting_csv') return Number(r.pricecharting?.prices?.ungraded || r.market || 0) > 0 ? 'Guide Value' : 'No Guide Value';
   if(r?.source === 'inventory') return 'Inventory Price';
   if(Number(r?.recentSold || r?.ebay_avg || 0) > 0) return 'Sold Comp';
@@ -9533,7 +9592,7 @@ function normalizeQplVariantMatrix(card){
     marketPrice:Number(v.marketPrice ?? v.price ?? v.market ?? 0) || null,
     price:Number(v.price ?? v.marketPrice ?? v.market ?? 0) || null,
     priceHistory:Array.isArray(v.priceHistory) ? v.priceHistory : [],
-    priceSource:Number(v.marketPrice ?? v.price ?? v.market ?? 0) > 0 ? 'JustTCG Exact Variant' : 'No Real Price Available',
+    priceSource:Number(v.marketPrice ?? v.price ?? v.market ?? 0) > 0 ? 'Real SKU Market Price' : 'No Real Price Available',
     priceConfidence:Number(v.marketPrice ?? v.price ?? v.market ?? 0) > 0 ? 'high' : 'unknown',
   }));
   return row;
@@ -9970,6 +10029,13 @@ function qplVariantPriceTable(r, idx){
 function qplConditionOptionsFor(r){
   if(qplResultCategoryKey(r) === 'video_games') return ['Loose','CIB','New/Sealed','Box Only','Manual Only','Graded'];
   return ['NM','LP','MP','HP','DMG'];
+}
+
+function qplVariantResolverStatus(r = {}){
+  if(!r.availableVariants?.length) return { label:'Variant Matrix Unavailable', cls:'warn' };
+  if(r.selectedVariant && Number(r.selectedVariant.marketPrice || 0) > 0) return { label:'Exact SKU matched', cls:'good' };
+  if(r.selectedVariant) return { label:'No real price', cls:'bad' };
+  return { label:'No exact SKU', cls:'bad' };
 }
 
 function qplChartRangeToDuration(range){
@@ -10587,6 +10653,7 @@ function quickLookupResultCard(r, idx){
   const tcg = `<button class="hbtn" onclick="openQplChartModal(${idx})">CHART</button>${r.tcgUrl ? `<button class="hbtn" onclick="openQuickExternal(${idx},'tcg')">TCG</button>` : ''}`;
   const slab = `<button class="hbtn" style="color:var(--blue)" onclick="openSlabCertPanel(${idx})">SLAB / CERT</button>`;
   const truth = qplTruthLabel(r);
+  const variantStatus = qplVariantResolverStatus(r);
   const displayPrice = Number(r.market || 0);
   const priceText = displayPrice ? '$' + displayPrice.toFixed(2) : (truth.includes('Guide') ? 'No Guide Value Available' : truth.includes('Real') ? 'No Real Price Available' : 'Needs Review');
   const signals = [
@@ -10604,6 +10671,7 @@ function quickLookupResultCard(r, idx){
         <span class="qpl-badge ${confClass}">${confLabel}${conf?` ${conf}`:''}</span>
         <span class="qpl-badge">${escHtml(r.category || 'ITEM')}</span>
         <span class="qpl-badge ${truth.includes('No ') || truth.includes('Needs') ? 'bad' : truth.includes('Guide') ? 'warn' : 'good'}">${escHtml(truth)}</span>
+        <span class="qpl-badge ${variantStatus.cls}">Variant Resolver: ${escHtml(variantStatus.label)}</span>
         <span class="qpl-badge">${escHtml(r.source === 'justtcg' ? 'JustTCG' : r.source === 'pricecharting_csv' ? 'PriceCharting' : r.source || 'Source')}</span>
         ${r.cache ? `<span class="qpl-badge warn">${escHtml(r.cache.state === 'offline' ? 'Offline' : 'Cached')}</span><span class="qpl-badge">${escHtml('Last updated ' + pokemonCacheAgeLabel(r.cache.updatedAt))}</span>` : ''}
         ${renderVariantIntelligenceBadge(r)}
@@ -10978,6 +11046,37 @@ function normalizeQuickCategory(category){
   return category || 'Collectibles';
 }
 
+function walkoffSkuPrefix(category = '', item = {}){
+  const txt = [category, item.game, item.name, item.set].filter(Boolean).join(' ').toLowerCase();
+  if(/pokemon|pokémon/.test(txt)) return 'WO-PKM';
+  if(/magic|mtg/.test(txt)) return 'WO-MTG';
+  if(/slab|graded|psa|bgs|cgc|sgc/.test(txt)) return 'WO-SLAB';
+  if(/comic/.test(txt)) return 'WO-COMIC';
+  if(/sport|baseball|football|basketball|hockey/.test(txt)) return 'WO-SPT';
+  return 'WO-INV';
+}
+
+function generateWalkoffInventorySku(category = '', item = {}){
+  const prefix = walkoffSkuPrefix(category, item);
+  const key = 'walkoff_inventory_sku_counter_v1';
+  const counters = safeLocalJson(key, {});
+  counters[prefix] = Number(counters[prefix] || 0) + 1;
+  localStorage.setItem(key, JSON.stringify(counters));
+  return prefix + '-' + String(counters[prefix]).padStart(6, '0');
+}
+
+function externalRefsFromQuickLookup(item = {}, selectedVariant = {}){
+  return {
+    tcgplayerProductId:item.tcgplayerId || item.productId || null,
+    tcgplayerSkuId:selectedVariant.tcgplayerSkuId || item.tcgplayerSkuId || item.skuId || null,
+    tcgplayerConditionId:selectedVariant.productConditionId || item.productConditionId || null,
+    justTcgProductId:item.justtcgCardId || item.productId || null,
+    justTcgVariantId:selectedVariant.justtcgVariantId || item.justtcgVariantId || null,
+    pokemonPriceTrackerCardId:item.pokemonPriceTrackerCardId || null,
+    pricechartingProductId:item.pricechartingProductId || null
+  };
+}
+
 function selectedQuickLookupItem(idx){
   const r = applyQplSelectedVariant(qplResults[idx] || {});
   const selectedVariant = r.selectedVariant || qplSelectedVariant(r) || {};
@@ -11026,6 +11125,7 @@ function selectedQuickLookupItem(idx){
     pricechartingComicPrices:r.pricecharting?.comicPrices || null,
     pricechartingRetail:r.pricecharting?.retail || null,
     pricechartingDemand:r.pricecharting?.demand || null,
+    externalRefs:externalRefsFromQuickLookup(r, selectedVariant),
     priceConfidence:r.priceConfidence || selectedVariant.priceConfidence || 'unknown',
     lastPriceSyncAt:r.lastPriceSyncAt || selectedVariant.lastUpdated || new Date().toISOString(),
     source:r.source || 'quick_lookup',
@@ -11046,6 +11146,8 @@ function saveQuickLookupLocalInventory(item, productId){
 async function addSelectedQuickLookupToInventory(idx){
   const status = document.getElementById('qpl-add-status');
   const item = selectedQuickLookupItem(idx);
+  item.inventorySku = item.inventorySku || generateWalkoffInventorySku(item.category, item);
+  item.sku = item.inventorySku;
   if(!qplAuthDestinationAllowed(idx, 'Inventory')) {
     if(status) status.innerHTML = '<span style="color:var(--gold)">Auth Check requires manager override before inventory.</span>';
     return;
@@ -11099,6 +11201,8 @@ function addSelectedQuickLookupToSaleCart(idx){
     sourceProductId:item.pricechartingProductId || item.productId || '',
     sourceVariantId:item.justtcgVariantId || item.productConditionId || '',
     tcgplayerSkuId:item.tcgplayerSkuId || item.skuId || '',
+    inventorySku:item.inventorySku || '',
+    externalRefs:item.externalRefs || null,
   });
   saveCartDataLocal(cartData, 'research cart add');
   logOpsEvent('cart_item_added', 'Added research item to sale cart: ' + (item.name || 'item'), { price, source:item.priceSource || item.pricingSource || '' });

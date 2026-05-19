@@ -1,0 +1,11 @@
+{
+  "name": "still-resonance-4f87",
+  "main": "cloudflare-worker-full.js",
+  "compatibility_date": "2026-05-19",
+  "kv_namespaces": [
+    {
+      "binding": "LBA_KV",
+      "id": "3cfb05e353364f1ab89df23f058374a9"
+    }
+  ]
+}

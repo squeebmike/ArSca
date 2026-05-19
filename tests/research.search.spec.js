@@ -47,12 +47,12 @@ test('category dropdown refilters already-loaded results', async ({ page }) => {
 test('variant selectors use exact variant matrix and chart button opens graph modal', async ({ page }) => {
   const cards = await runResearchSearch(page, 'pikachu 151', 'Pokemon TCG');
   const first = cards.first();
-  await expect(first).toContainText(/Real Variant Price|JustTCG/i);
+  await expect(first).toContainText(/Real SKU Market Price|JustTCG/i);
   await first.locator('select[aria-label="Condition"]').selectOption('LP');
-  await expect(first).toContainText(/\$18\.04|Real Variant Price|JustTCG/i);
+  await expect(first).toContainText(/\$18\.04|Real SKU Market Price|JustTCG/i);
   await first.locator('select[aria-label="Condition"]').selectOption('NM');
   await first.locator('select[aria-label="Finish"]').selectOption({ label: 'Foil' });
-  await expect(first).toContainText(/\$30\.80|Real Variant Price|JustTCG/i);
+  await expect(first).toContainText(/\$30\.80|Real SKU Market Price|JustTCG/i);
   await first.getByRole('button', { name: /^CHART$/i }).click();
   await expect(page.locator('#qpl-chart-modal, .qpl-chart-modal')).toBeVisible();
   await expect(page.locator('body')).toContainText(/price graph|No price graph|JustTCG|Pikachu/i);
