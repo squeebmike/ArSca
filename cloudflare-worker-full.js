@@ -532,9 +532,11 @@ export default {
       for (const category of categories) {
         const meta = await env.LBA_KV.get(kvKey('meta', category), 'json');
         const rows = await env.LBA_KV.get(kvKey('rows', category), 'json');
+        const savedUrl = await env.LBA_KV.get(kvKey('url', category));
+        const configured = !!(meta?.configured || savedUrl);
         priceCharting[category] = {
-          configured: !!(meta?.configured || await env.LBA_KV.get(kvKey('url', category))),
-          state: meta?.state || (Array.isArray(rows) && rows.length ? 'synced' : 'not_configured'),
+          configured,
+          state: meta?.state || (Array.isArray(rows) && rows.length ? 'synced' : configured ? 'ready' : 'not_configured'),
           rowCount: Array.isArray(rows) ? rows.length : Number(meta?.rowCount || 0),
           lastSyncedAt: meta?.lastSyncedAt || meta?.lastSuccessAt || null,
           cacheKey: kvKey('rows', category),
