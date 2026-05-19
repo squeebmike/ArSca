@@ -531,15 +531,19 @@ export default {
       const priceCharting = {};
       for (const category of categories) {
         const meta = await env.LBA_KV.get(kvKey('meta', category), 'json');
+        const manifest = await env.LBA_KV.get(kvKey('manifest', category), 'json');
         const rows = await env.LBA_KV.get(kvKey('rows', category), 'json');
         const savedUrl = await env.LBA_KV.get(kvKey('url', category));
         const configured = !!(meta?.configured || savedUrl);
+        const chunkRowCount = Number(manifest?.cachedRowCount || 0);
+        const legacyRowCount = Array.isArray(rows) ? rows.length : 0;
         priceCharting[category] = {
           configured,
-          state: meta?.state || (Array.isArray(rows) && rows.length ? 'synced' : configured ? 'ready' : 'not_configured'),
-          rowCount: Array.isArray(rows) ? rows.length : Number(meta?.rowCount || 0),
-          lastSyncedAt: meta?.lastSyncedAt || meta?.lastSuccessAt || null,
-          cacheKey: kvKey('rows', category),
+          state: manifest?.syncStatus || meta?.state || (legacyRowCount ? 'synced' : configured ? 'ready' : 'not_configured'),
+          rowCount: chunkRowCount || legacyRowCount || Number(meta?.rowCount || 0),
+          lastSyncedAt: manifest?.lastSuccessfulSync || meta?.lastSyncedAt || meta?.lastSuccessAt || null,
+          cacheKey: manifest?.cacheKey || kvKey('rows', category),
+          manifest: manifest || null,
         };
       }
       return json({
@@ -1237,6 +1241,8 @@ export default {
         return exact || raw.replace(/[^a-zA-Z0-9._ -]/g, '').trim().slice(0, 80) || 'General';
       };
       const kvKey = (kind, category) => `pc_csv_${kind}:${pcCategoryKey(category)}`;
+      const chunkKey = (category, cacheVersion, chunkIndex) => `pc_csv_chunk:${pcCategoryKey(category)}:${String(cacheVersion || '').replace(/[^a-zA-Z0-9._-]/g, '').slice(0, 80)}:${Number(chunkIndex) || 0}`;
+      const manifestKey = category => kvKey('manifest', category);
       const maskPcUrl = raw => {
         try {
           const u = new URL(String(raw || ''));
@@ -1464,10 +1470,30 @@ export default {
       function csvMatches(rows, q) {
         const terms = String(q || '').toLowerCase().split(/\s+/).filter(Boolean);
         return (rows || []).map(row => {
-          const hay = [row['product-name'], row['console-name'], row.genre, row.upc, row.epid].filter(Boolean).join(' ').toLowerCase();
+          const hay = [
+            row['product-name'], row.productName,
+            row['console-name'], row.consoleName,
+            row.genre, row.upc, row.UPC, row.epid, row.ePID,
+            row.productId, row.id
+          ].filter(Boolean).join(' ').toLowerCase();
           const score = terms.reduce((n, t) => n + (hay.includes(t) ? 1 : 0), 0);
           return { row, score };
         }).filter(x => x.score > 0).sort((a, b) => b.score - a.score).slice(0, 25).map(x => normalizePcProduct(x.row, q));
+      }
+      async function chunkedCsvMatches(category, q) {
+        if (!env.LBA_KV) return [];
+        const manifest = await env.LBA_KV.get(manifestKey(category), 'json');
+        if (!manifest || manifest.syncStatus !== 'complete' || !manifest.cacheVersion || !Number(manifest.totalChunks || 0)) return [];
+        const matches = [];
+        for (let i = 0; i < Number(manifest.totalChunks || 0); i++) {
+          const rows = await env.LBA_KV.get(chunkKey(category, manifest.cacheVersion, i), 'json');
+          if (Array.isArray(rows) && rows.length) {
+            matches.push(...csvMatches(rows, q).map(m => ({ ...m, csvCategory: pcCategoryKey(category), cacheVersion: manifest.cacheVersion, cachedAt: manifest.lastSuccessfulSync })));
+          }
+          matches.sort((a, b) => (b.confidence === 'high') - (a.confidence === 'high'));
+          if (matches.length >= 75) break;
+        }
+        return matches.slice(0, 25);
       }
       try {
         if (url.pathname === '/pricing/pricecharting/csv/status') {
@@ -1476,10 +1502,13 @@ export default {
           const status = {};
           for (const cat of categories) {
             const meta = await env.LBA_KV.get(kvKey('meta', cat), 'json');
+            const manifest = await env.LBA_KV.get(manifestKey(cat), 'json');
             const savedUrl = await env.LBA_KV.get(kvKey('url', cat));
             const rows = await env.LBA_KV.get(kvKey('rows', cat), 'json');
-            const cacheRowCount = Array.isArray(rows) ? rows.length : 0;
-            status[cat] = meta ? { ...meta, cacheRowCount, rowCount: Number(meta.rowCount || cacheRowCount || 0), cacheKey: kvKey('rows', cat) } : { category: cat, state: savedUrl ? (cacheRowCount ? 'synced' : 'ready') : 'not_configured', configured: !!savedUrl, urlPresent: !!savedUrl, urlMasked: savedUrl ? maskPcUrl(savedUrl) : '', rowCount: cacheRowCount, cacheRowCount, lastAttemptedAt: null, lastSuccessAt: null, lastSyncedAt: null, lastError: '', cacheKey: kvKey('rows', cat) };
+            const legacyRowCount = Array.isArray(rows) ? rows.length : 0;
+            const chunkRowCount = Number(manifest?.cachedRowCount || 0);
+            const cacheRowCount = chunkRowCount || legacyRowCount;
+            status[cat] = meta ? { ...meta, manifest: manifest || null, cacheRowCount, rowCount: Number(meta.rowCount || cacheRowCount || 0), chunkRowCount, legacyRowCount, cacheKey: manifest?.cacheKey || kvKey('rows', cat) } : { category: cat, state: savedUrl ? (cacheRowCount ? 'synced' : 'ready') : 'not_configured', configured: !!savedUrl, urlPresent: !!savedUrl, urlMasked: savedUrl ? maskPcUrl(savedUrl) : '', rowCount: cacheRowCount, cacheRowCount, chunkRowCount, legacyRowCount, lastAttemptedAt: null, lastSuccessAt: manifest?.lastSuccessfulSync || null, lastSyncedAt: manifest?.lastSuccessfulSync || null, lastError: manifest?.lastError || '', cacheKey: manifest?.cacheKey || kvKey('rows', cat), manifest: manifest || null };
           }
           return json({ ok: true, source: 'PriceCharting CSV', categories: status });
         }
@@ -1526,6 +1555,166 @@ export default {
             cacheWriteSuccess: false,
             cacheKey: kvKey('rows', category),
           });
+        }
+        if (url.pathname === '/pricing/pricecharting/csv/chunk/start') {
+          if (request.method !== 'POST') return json({ ok: false, error: 'POST only' }, 405);
+          if (!env.LBA_KV) return json({ ok: false, error: 'LBA_KV binding required for CSV cache' }, 501);
+          const body = await request.json().catch(() => ({}));
+          const category = pcCategoryKey(body.categoryKey || body.category || 'General');
+          const cacheVersion = String(body.cacheVersion || ('browser-' + Date.now())).replace(/[^a-zA-Z0-9._-]/g, '').slice(0, 80);
+          const startedAt = new Date().toISOString();
+          const incomingUrl = String(body.fullUrl || body.url || '').trim();
+          if (incomingUrl) await env.LBA_KV.put(kvKey('url', category), incomingUrl);
+          const prior = await env.LBA_KV.get(kvKey('meta', category), 'json');
+          const priorManifest = await env.LBA_KV.get(manifestKey(category), 'json');
+          const manifest = {
+            ...(priorManifest || {}),
+            category,
+            cacheVersion,
+            syncStatus: 'uploading_chunks',
+            sourceType: 'browser_chunked_pricecharting_csv',
+            lastAttemptedSync: startedAt,
+            lastAttemptedAt: startedAt,
+            lastSuccessfulSync: priorManifest?.lastSuccessfulSync || prior?.lastSyncedAt || null,
+            cachedRowCount: Number(priorManifest?.cachedRowCount || prior?.rowCount || 0),
+            expectedRowCount: Number(body.totalRows || 0),
+            rowsPerChunk: Number(body.rowsPerChunk || body.chunkSize || 500),
+            totalChunks: Number(body.totalChunks || 0),
+            uploadedChunks: [],
+            failedChunks: [],
+            lastError: '',
+            urlMasked: incomingUrl ? maskPcUrl(incomingUrl) : prior?.urlMasked || '',
+            cacheKey: `pc_csv_chunk:${category}:${cacheVersion}:*`
+          };
+          const meta = mergeCsvMeta(prior, category, {
+            state: 'uploading_chunks',
+            configured: true,
+            url: incomingUrl || undefined,
+            urlPresent: true,
+            rowCount: manifest.cachedRowCount,
+            cacheRowCount: manifest.cachedRowCount,
+            lastAttemptedAt: startedAt,
+            lastError: '',
+            source: 'PriceCharting CSV browser chunks',
+            cacheKey: manifest.cacheKey,
+          });
+          await env.LBA_KV.put(manifestKey(category), JSON.stringify(manifest), { expirationTtl: 60 * 60 * 24 * 45 });
+          await env.LBA_KV.put(kvKey('meta', category), JSON.stringify(meta), { expirationTtl: 60 * 60 * 24 * 45 });
+          return json({ ok: true, state: 'uploading_chunks', manifest, meta });
+        }
+        if (url.pathname === '/pricing/pricecharting/csv/chunk/upload') {
+          if (request.method !== 'POST') return json({ ok: false, error: 'POST only' }, 405);
+          if (!env.LBA_KV) return json({ ok: false, error: 'LBA_KV binding required for CSV cache' }, 501);
+          const body = await request.json().catch(() => ({}));
+          const category = pcCategoryKey(body.categoryKey || body.category || 'General');
+          const cacheVersion = String(body.cacheVersion || '').replace(/[^a-zA-Z0-9._-]/g, '').slice(0, 80);
+          const chunkIndex = Number(body.chunkIndex);
+          const rows = Array.isArray(body.rows) ? body.rows : [];
+          if (!cacheVersion) return json({ ok: false, error: 'cacheVersion required' }, 400);
+          if (!Number.isFinite(chunkIndex) || chunkIndex < 0) return json({ ok: false, error: 'valid chunkIndex required' }, 400);
+          if (!rows.length) return json({ ok: false, error: 'rows required' }, 400);
+          const manifest = await env.LBA_KV.get(manifestKey(category), 'json') || { category, cacheVersion, uploadedChunks: [] };
+          if (manifest.cacheVersion && manifest.cacheVersion !== cacheVersion) return json({ ok: false, error: 'cacheVersion mismatch', activeCacheVersion: manifest.cacheVersion }, 409);
+          await env.LBA_KV.put(chunkKey(category, cacheVersion, chunkIndex), JSON.stringify(rows), { expirationTtl: 60 * 60 * 24 * 45 });
+          const uploaded = new Set(Array.isArray(manifest.uploadedChunks) ? manifest.uploadedChunks : []);
+          uploaded.add(chunkIndex);
+          const next = {
+            ...manifest,
+            category,
+            cacheVersion,
+            syncStatus: 'uploading_chunks',
+            uploadedChunks: [...uploaded].sort((a, b) => a - b),
+            uploadedRowCount: Number(manifest.uploadedRowCount || 0) + rows.length,
+            totalChunks: Math.max(Number(manifest.totalChunks || 0), Number(body.totalChunks || 0), chunkIndex + 1),
+            updatedAt: new Date().toISOString(),
+            lastError: ''
+          };
+          await env.LBA_KV.put(manifestKey(category), JSON.stringify(next), { expirationTtl: 60 * 60 * 24 * 45 });
+          return json({ ok: true, state: 'chunk_uploaded', category, cacheVersion, chunkIndex, rowCount: rows.length, uploadedChunks: next.uploadedChunks.length, manifest: next });
+        }
+        if (url.pathname === '/pricing/pricecharting/csv/chunk/complete') {
+          if (request.method !== 'POST') return json({ ok: false, error: 'POST only' }, 405);
+          if (!env.LBA_KV) return json({ ok: false, error: 'LBA_KV binding required for CSV cache' }, 501);
+          const body = await request.json().catch(() => ({}));
+          const category = pcCategoryKey(body.categoryKey || body.category || 'General');
+          const cacheVersion = String(body.cacheVersion || '').replace(/[^a-zA-Z0-9._-]/g, '').slice(0, 80);
+          const totalChunks = Number(body.totalChunks || 0);
+          const totalRows = Number(body.totalRows || 0);
+          const manifest = await env.LBA_KV.get(manifestKey(category), 'json');
+          if (!manifest || manifest.cacheVersion !== cacheVersion) return json({ ok: false, error: 'No active chunk upload for cacheVersion' }, 404);
+          const uploaded = new Set(Array.isArray(manifest.uploadedChunks) ? manifest.uploadedChunks : []);
+          const missing = [];
+          for (let i = 0; i < totalChunks; i++) if (!uploaded.has(i)) missing.push(i);
+          if (missing.length) return json({ ok: false, state: 'missing_chunks', error: 'Missing chunk uploads', missingChunks: missing.slice(0, 50), manifest }, 409);
+          const completedAt = new Date().toISOString();
+          const nextManifest = {
+            ...manifest,
+            syncStatus: 'complete',
+            state: 'complete',
+            lastSuccessfulSync: completedAt,
+            lastSuccessfulSyncAt: completedAt,
+            lastSuccessfulRowCount: totalRows,
+            cachedRowCount: totalRows,
+            totalRows,
+            totalChunks,
+            priceAgeHours: 0,
+            lastError: '',
+            cacheKey: `pc_csv_chunk:${category}:${cacheVersion}:*`
+          };
+          const prior = await env.LBA_KV.get(kvKey('meta', category), 'json');
+          const meta = mergeCsvMeta(prior, category, {
+            state: 'complete',
+            configured: true,
+            urlPresent: true,
+            rowCount: totalRows,
+            normalizedRowCount: totalRows,
+            cacheRowCount: totalRows,
+            lastAttemptedAt: manifest.lastAttemptedAt || manifest.lastAttemptedSync || completedAt,
+            lastSuccessAt: completedAt,
+            lastSyncedAt: completedAt,
+            lastSuccessfulRowCount: totalRows,
+            lastError: '',
+            source: 'PriceCharting CSV browser chunks',
+            cacheKey: nextManifest.cacheKey
+          });
+          await env.LBA_KV.put(manifestKey(category), JSON.stringify(nextManifest), { expirationTtl: 60 * 60 * 24 * 45 });
+          await env.LBA_KV.put(kvKey('meta', category), JSON.stringify(meta), { expirationTtl: 60 * 60 * 24 * 45 });
+          return json({ ok: true, state: 'complete', manifest: nextManifest, meta });
+        }
+        if (url.pathname === '/pricing/pricecharting/csv/chunk/fail') {
+          if (request.method !== 'POST') return json({ ok: false, error: 'POST only' }, 405);
+          if (!env.LBA_KV) return json({ ok: false, error: 'LBA_KV binding required for CSV cache' }, 501);
+          const body = await request.json().catch(() => ({}));
+          const category = pcCategoryKey(body.categoryKey || body.category || 'General');
+          const failedAt = new Date().toISOString();
+          const priorManifest = await env.LBA_KV.get(manifestKey(category), 'json') || {};
+          const prior = await env.LBA_KV.get(kvKey('meta', category), 'json');
+          const error = String(body.error || 'Browser chunk sync failed').slice(0, 500);
+          const manifest = { ...priorManifest, syncStatus: 'failed', state: 'failed', lastFailedSync: failedAt, lastError: error, failedChunks: Array.isArray(body.failedChunkIndexes) ? body.failedChunkIndexes.slice(0, 200) : [] };
+          const meta = mergeCsvMeta(prior, category, { state: 'failed', configured: true, lastAttemptedAt: failedAt, lastFailedAt: failedAt, lastFailedError: error, lastError: error, rowCount: Number(prior?.rowCount || priorManifest.cachedRowCount || 0), cacheRowCount: Number(prior?.cacheRowCount || priorManifest.cachedRowCount || 0) });
+          await env.LBA_KV.put(manifestKey(category), JSON.stringify(manifest), { expirationTtl: 60 * 60 * 24 * 45 });
+          await env.LBA_KV.put(kvKey('meta', category), JSON.stringify(meta), { expirationTtl: 60 * 60 * 24 * 45 });
+          return json({ ok: true, state: 'failed', cachePreserved: true, manifest, meta });
+        }
+        if (url.pathname === '/pricing/pricecharting/csv/chunk/clear') {
+          if (request.method !== 'POST') return json({ ok: false, error: 'POST only' }, 405);
+          if (!env.LBA_KV) return json({ ok: false, error: 'LBA_KV binding required for CSV cache' }, 501);
+          const body = await request.json().catch(() => ({}));
+          const category = pcCategoryKey(body.categoryKey || body.category || 'General');
+          const manifest = await env.LBA_KV.get(manifestKey(category), 'json');
+          let deletedChunks = 0;
+          if (manifest?.cacheVersion && Number(manifest.totalChunks || 0)) {
+            for (let i = 0; i < Number(manifest.totalChunks || 0); i++) {
+              await env.LBA_KV.delete(chunkKey(category, manifest.cacheVersion, i));
+              deletedChunks++;
+            }
+          }
+          await env.LBA_KV.delete(kvKey('rows', category));
+          await env.LBA_KV.delete(manifestKey(category));
+          const savedUrl = await env.LBA_KV.get(kvKey('url', category));
+          const meta = csvState(category, { state: savedUrl ? 'ready' : 'not_configured', configured: !!savedUrl, url: savedUrl || '', urlPresent: !!savedUrl, rowCount: 0, cacheRowCount: 0, lastAttemptedAt: new Date().toISOString(), lastError: '', cacheKey: kvKey('rows', category) });
+          await env.LBA_KV.put(kvKey('meta', category), JSON.stringify(meta), { expirationTtl: 60 * 60 * 24 * 45 });
+          return json({ ok: true, state: 'cleared', category, deletedChunks, meta });
         }
         if (url.pathname === '/pricing/pricecharting/csv/sync') {
           if (request.method !== 'POST') return json({ ok: false, error: 'POST only' }, 405);
@@ -1656,6 +1845,7 @@ export default {
           for (const cat of cats) {
             const rows = await env.LBA_KV.get(kvKey('rows', cat), 'json');
             if (Array.isArray(rows)) matches.push(...csvMatches(rows, q).map(m => ({ ...m, csvCategory: cat })));
+            matches.push(...await chunkedCsvMatches(cat, q));
           }
           return json({ ok: true, source: 'PriceCharting CSV', query: q, matches: matches.slice(0, 25), products: matches.slice(0, 25) });
         }
@@ -1670,6 +1860,7 @@ export default {
             for (const cat of cats) {
               const rows = await env.LBA_KV.get(kvKey('rows', cat), 'json');
               if (Array.isArray(rows)) cached.push(...csvMatches(rows, q).map(m => ({ ...m, csvCategory: cat })));
+              cached.push(...await chunkedCsvMatches(cat, q));
             }
             if (cached.length) return json({ ok: true, source: 'PriceCharting CSV', query: q, products: cached.slice(0, 25), matches: cached.slice(0, 25), cached: true });
           }

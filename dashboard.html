@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.05.19.06">
+<meta name="version" content="2026.05.19.07">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -522,7 +522,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
 
 <header>
   <div class="hdr">
-    <div class="logo">WALK-OFF <span>DASHBOARD · v2026.05.19.06</span></div>
+    <div class="logo">WALK-OFF <span>DASHBOARD · v2026.05.19.07</span></div>
     <div class="hdr-right">
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
@@ -1433,7 +1433,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.05.19.06';
+const APP_VERSION = '2026.05.19.07';
 const SUPABASE_URL = 'https://vroknjrxubsqyexngwus.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_wbpX2nL8l-4NbXtZNG_bjA_nabSYaJ5';
 const AUTH_REDIRECT_URL = 'https://squeebmike.github.io/ArSca/dashboard.html';
@@ -2202,6 +2202,141 @@ function savePriceChartingCsvUrls(urls){
 function maskPriceChartingCsvUrl(raw = ''){
   return String(raw || '').replace(/([?&](?:t|token|api_key|apikey|key)=)[^&]+/ig, '$1***');
 }
+const PRICE_SYNC_DEFAULTS = { auto:false, intervalHours:24, syncOnOpen:false, backgroundWhileOpen:true, wifiOnly:false, rowsPerChunk:500, parallelUploads:2 };
+let priceSyncRuntime = { running:false, category:'', state:'idle', pct:0, message:'', startedAt:null, failedChunks:[] };
+function getPriceSyncSettings(){
+  try { return { ...PRICE_SYNC_DEFAULTS, ...(JSON.parse(localStorage.getItem('price_sync_settings_v1') || '{}')) }; }
+  catch(e) { return { ...PRICE_SYNC_DEFAULTS }; }
+}
+function savePriceSyncSettings(patch = {}){
+  const next = { ...getPriceSyncSettings(), ...patch };
+  localStorage.setItem('price_sync_settings_v1', JSON.stringify(next));
+  renderPriceChartingDataPanel();
+  schedulePriceSyncChecks();
+}
+function priceSyncMeta(){
+  try { return JSON.parse(localStorage.getItem('price_sync_meta_v1') || '{}'); } catch(e) { return {}; }
+}
+function savePriceSyncMeta(meta = {}){
+  localStorage.setItem('price_sync_meta_v1', JSON.stringify({ ...priceSyncMeta(), ...meta }));
+}
+function nextPriceSyncTime(lastIso, hours){
+  const last = lastIso ? Date.parse(lastIso) : 0;
+  if(!last) return new Date().toISOString();
+  return new Date(last + Number(hours || 24) * 60 * 60 * 1000).toISOString();
+}
+function priceSyncConnectionAllowed(){
+  const s = getPriceSyncSettings();
+  if(!s.wifiOnly) return true;
+  const c = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+  if(!c) return true;
+  return c.type === 'wifi' || c.effectiveType === '4g';
+}
+function setPriceSyncProgress(state, pct = 0, message = '', category = ''){
+  priceSyncRuntime = { ...priceSyncRuntime, state, pct:Math.max(0, Math.min(100, Number(pct || 0))), message, category:category || priceSyncRuntime.category };
+  const el = document.getElementById('pc-browser-sync-progress');
+  if(el) {
+    const running = ['checking_schedule','downloading','parsing','uploading_chunks','updating_manifest'].includes(state);
+    el.innerHTML = `
+      <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap">
+        <b style="color:${state === 'failed' ? 'var(--red)' : state === 'complete' ? 'var(--g)' : 'var(--text)'}">${escHtml((category || priceSyncRuntime.category || 'Price sync') + ': ' + state.replace(/_/g,' '))}</b>
+        <span style="font-family:monospace;font-size:9px;color:var(--dim)">${Math.round(priceSyncRuntime.pct)}%</span>
+      </div>
+      <div style="height:8px;background:var(--surface2);border:1px solid var(--border);border-radius:999px;overflow:hidden;margin:7px 0">
+        <div style="height:100%;width:${priceSyncRuntime.pct}%;background:linear-gradient(90deg,var(--blue),var(--g));transition:width .2s"></div>
+      </div>
+      <div style="font-family:monospace;font-size:10px;color:var(--dim);line-height:1.45">${escHtml(message || 'Ready.')}</div>
+      ${running ? `<button class="hbtn" style="margin-top:8px" onclick="priceSyncRuntime.cancelRequested=true">CANCEL AFTER CURRENT STEP</button>` : ''}`;
+  }
+}
+function pcCanonicalHeader(h = ''){
+  const c = String(h || '').trim().toLowerCase().replace(/\s+/g, '-').replace(/_/g, '-');
+  return ({
+    'product name':'product-name','product-name':'product-name',
+    'console name':'console-name','console-name':'console-name',
+    'loose price':'loose-price','loose-price':'loose-price',
+    'cib price':'cib-price','cib-price':'cib-price',
+    'new price':'new-price','new-price':'new-price',
+    'graded price':'graded-price','graded-price':'graded-price',
+    'image url':'image-url','image-url':'image-url',
+    'product url':'product-url','product-url':'product-url'
+  })[c] || c;
+}
+function parsePriceChartingCsvLine(line){
+  const out = [];
+  let cur = '', quoted = false;
+  for(let i = 0; i < String(line || '').length; i++) {
+    const ch = line[i];
+    if(ch === '"') {
+      if(quoted && line[i + 1] === '"') { cur += '"'; i++; }
+      else quoted = !quoted;
+    } else if(ch === ',' && !quoted) {
+      out.push(cur); cur = '';
+    } else cur += ch;
+  }
+  out.push(cur);
+  return out;
+}
+async function parsePriceChartingCsvClient(text, onProgress){
+  const src = String(text || '').replace(/^\uFEFF/, '');
+  const lines = [];
+  let cur = '', quoted = false;
+  for(let i = 0; i < src.length; i++) {
+    const ch = src[i], next = src[i + 1];
+    if(ch === '"' && quoted && next === '"') { cur += '"'; i++; continue; }
+    if(ch === '"') { quoted = !quoted; cur += ch; continue; }
+    if((ch === '\n' || ch === '\r') && !quoted) {
+      if(cur.trim()) lines.push(cur);
+      cur = '';
+      if(ch === '\r' && next === '\n') i++;
+      if(lines.length % 5000 === 0) { onProgress?.(Math.min(70, Math.round(i / Math.max(src.length, 1) * 70))); await new Promise(r => setTimeout(r, 0)); }
+      continue;
+    }
+    cur += ch;
+  }
+  if(cur.trim()) lines.push(cur);
+  if(quoted) throw new Error('CSV parse error: unterminated quoted field');
+  if(lines.length < 2) return [];
+  const headers = parsePriceChartingCsvLine(lines[0]).map(pcCanonicalHeader);
+  if(!headers.includes('product-name') && !headers.includes('id')) throw new Error('CSV parse error: missing PriceCharting product headers');
+  const rows = [];
+  for(let i = 1; i < lines.length; i++) {
+    const vals = parsePriceChartingCsvLine(lines[i]);
+    const row = {};
+    headers.forEach((h, idx) => row[h] = vals[idx] ?? '');
+    if(row['product-name'] || row.id) rows.push(row);
+    if(i % 2500 === 0) { onProgress?.(70 + Math.round(i / Math.max(lines.length, 1) * 20)); await new Promise(r => setTimeout(r, 0)); }
+  }
+  return rows;
+}
+function pcPennies(v){ const n = Number(v); return n > 0 ? Math.round(n) / 100 : null; }
+function normalizePriceChartingCsvRowClient(p = {}, q = ''){
+  const img = p['image-url'] || p.imageUrl || p.image || '';
+  const imageUrl = /^\/\//.test(img) ? 'https:' + img : /^\//.test(img) ? 'https://www.pricecharting.com' + img : img;
+  const name = p['product-name'] || p.productName || '';
+  const consoleName = p['console-name'] || p.consoleName || '';
+  const hay = [name, consoleName, p.genre, p.upc, p.epid].filter(Boolean).join(' ').toLowerCase();
+  const matchReasons = String(q || '').toLowerCase().split(/\s+/).filter(Boolean).filter(t => hay.includes(t)).slice(0, 6);
+  return {
+    source:'PriceCharting',
+    productId:String(p.id || p.productId || ''),
+    productName:name,
+    consoleName,
+    genre:p.genre || '',
+    releaseDate:p['release-date'] || p.releaseDate || null,
+    url:p['product-url'] || p.url || (p.id ? `https://www.pricecharting.com/game/${p.id}` : null),
+    imageUrl,
+    prices:{ ungraded:pcPennies(p['loose-price']), grade7:pcPennies(p['cib-price']), grade8:pcPennies(p['new-price']), grade9:pcPennies(p['graded-price']), grade9_5:pcPennies(p['box-only-price']), psa10:pcPennies(p['manual-only-price']), bgs10:pcPennies(p['bgs-10-price']), cgc10:pcPennies(p['condition-17-price']), sgc10:pcPennies(p['condition-18-price']) },
+    comicPrices:{ ungraded:pcPennies(p['loose-price']), grade4:pcPennies(p['cib-price']), grade6:pcPennies(p['new-price']), grade8:pcPennies(p['graded-price']), grade9_2:pcPennies(p['box-only-price']), grade9_4:pcPennies(p['condition-17-price']), grade9_8:pcPennies(p['manual-only-price']), grade10:pcPennies(p['bgs-10-price']) },
+    retail:{ looseBuy:pcPennies(p['retail-loose-buy']), looseSell:pcPennies(p['retail-loose-sell']), cibBuy:pcPennies(p['retail-cib-buy']), cibSell:pcPennies(p['retail-cib-sell']), newBuy:pcPennies(p['retail-new-buy']), newSell:pcPennies(p['retail-new-sell']) },
+    demand:{ salesVolume:Number(p['sales-volume'] || p.salesVolume || 0) || null, genre:p.genre || '', consoleName, releaseDate:p['release-date'] || p.releaseDate || null, upc:p.upc || '', asin:p.asin || '', epid:p.epid || '' },
+    rawApiPricesPennies:{ 'loose-price':p['loose-price'] ?? null, 'cib-price':p['cib-price'] ?? null, 'new-price':p['new-price'] ?? null, 'graded-price':p['graded-price'] ?? null, 'box-only-price':p['box-only-price'] ?? null, 'manual-only-price':p['manual-only-price'] ?? null },
+    lastUpdated:p['updated-at'] || p.updatedAt || new Date().toISOString(),
+    confidence:matchReasons.length >= 3 ? 'high' : matchReasons.length ? 'medium' : 'low',
+    matchReasons:matchReasons.length ? matchReasons : ['PriceCharting CSV'],
+    raw:p,
+  };
+}
 
 function getVendorProfile(){
   try { return { ...DEFAULT_VENDOR_PROFILE, ...(JSON.parse(localStorage.getItem('vendor_profile_v1') || '{}')) }; }
@@ -2872,26 +3007,57 @@ function renderPriceChartingDataPanel(status = null){
   const body = document.getElementById('pricecharting-data-body');
   if(!body) return;
   const urls = getPriceChartingCsvUrls();
+  const syncSettings = getPriceSyncSettings();
+  const syncMeta = priceSyncMeta();
+  const lastSync = syncMeta.lastSuccessfulSync || '';
+  const nextSync = nextPriceSyncTime(lastSync, syncSettings.intervalHours);
   const rows = PRICECHARTING_CSV_CATEGORIES.map(cat => {
     const meta = status?.[cat] || {};
     const savedUrl = urls[cat] || '';
     const configured = !!savedUrl || !!meta.configured || !!meta.urlPresent;
     const urlPreview = meta.urlMasked || maskPriceChartingCsvUrl(savedUrl);
+    const manifest = meta.manifest || {};
+    const rowCount = Number(meta.cacheRowCount || meta.rowCount || manifest.cachedRowCount || syncMeta[cat]?.cachedRowCount || 0);
+    const lastAt = manifest.lastSuccessfulSync || meta.lastSyncedAt || meta.lastSuccessAt || syncMeta[cat]?.lastSuccessfulSync || '';
     return `<div class="item-metric" style="display:grid;grid-template-columns:170px 220px 1fr 96px 96px 96px;gap:8px;align-items:end;margin-bottom:8px">
       <label style="font-family:monospace;font-size:9px;color:var(--dim)">${escHtml(cat)}
-        <div style="font-size:9px;color:var(--dim);margin-top:4px">${meta.lastSyncedAt ? `${Number(meta.rowCount||0).toLocaleString()} rows · ${new Date(meta.lastSyncedAt).toLocaleString()}` : (meta.configured ? 'Configured, not synced' : 'No cache yet')}</div>
+        <div style="font-size:9px;color:var(--dim);margin-top:4px">${lastAt ? `${rowCount.toLocaleString()} rows - ${new Date(lastAt).toLocaleString()}` : (configured ? 'Configured, not synced' : 'No cache yet')}</div>
       </label>
       <div style="font-family:monospace;font-size:8px;color:${configured?'var(--g)':'var(--gold)'};align-self:center">${configured ? 'Configured: ' + escHtml(urlPreview || 'saved in Worker') : 'Paste full download-custom URL here'}</div>
       <input id="pc-csv-url-${escHtml(cat)}" class="tsi" placeholder="PriceCharting CSV download URL (saved in Worker/KV on sync)" value="${escHtml(urls[cat] || '')}">
       <button class="hbtn" onclick="testPriceChartingCsv('${escHtml(cat)}')">TEST URL</button>
       <button class="hbtn" onclick="syncPriceChartingCsv('${escHtml(cat)}')">SYNC NOW</button>
-      <button class="hbtn" onclick="checkPriceChartingCsvStatus()">STATUS</button>
+      <button class="hbtn" onclick="clearPriceChartingCsvCache('${escHtml(cat)}')">CLEAR</button>
     </div>`;
   }).join('');
   body.innerHTML = `
     <div style="font-family:monospace;font-size:10px;color:var(--dim);line-height:1.55;margin-bottom:10px">
-      CSV URLs are sent to the Cloudflare Worker and cached in KV. The browser does not fetch PriceCharting CSV directly. Manual sync respects the 10 minute CSV call limit.
-      PriceCharting photo search is not wired here unless PriceCharting confirms a documented API endpoint.
+      Browser-based sync downloads and parses PriceCharting CSV files on this device, then uploads safe chunks to Worker/KV. The Worker no longer tries to fetch or parse giant CSV files in one request.
+      Failed syncs preserve the last successful cache for offline show mode.
+    </div>
+    <div class="item-metric" style="margin-bottom:12px">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px;align-items:end">
+        <label style="font-family:monospace;font-size:10px;color:var(--dim)"><input type="checkbox" ${syncSettings.auto ? 'checked' : ''} onchange="savePriceSyncSettings({auto:this.checked})"> Auto Price Updates</label>
+        <label style="font-family:monospace;font-size:10px;color:var(--dim)">Sync Interval
+          <select class="tsi" style="margin-top:4px" onchange="savePriceSyncSettings({intervalHours:Number(this.value)})">
+            ${[[6,'Every 6 hours'],[12,'Every 12 hours'],[24,'Every 24 hours'],[72,'Every 3 days'],[168,'Weekly']].map(([v,l]) => `<option value="${v}" ${Number(syncSettings.intervalHours)===v?'selected':''}>${l}</option>`).join('')}
+          </select>
+        </label>
+        <label style="font-family:monospace;font-size:10px;color:var(--dim)"><input type="checkbox" ${syncSettings.syncOnOpen ? 'checked' : ''} onchange="savePriceSyncSettings({syncOnOpen:this.checked})"> Sync on App Open</label>
+        <label style="font-family:monospace;font-size:10px;color:var(--dim)"><input type="checkbox" ${syncSettings.backgroundWhileOpen ? 'checked' : ''} onchange="savePriceSyncSettings({backgroundWhileOpen:this.checked})"> Background Sync While Open</label>
+        <label style="font-family:monospace;font-size:10px;color:var(--dim)"><input type="checkbox" ${syncSettings.wifiOnly ? 'checked' : ''} onchange="savePriceSyncSettings({wifiOnly:this.checked})"> Wi-Fi Only</label>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px;margin-top:10px;font-family:monospace;font-size:10px;color:var(--dim)">
+        <div>Last successful sync: <b style="color:var(--text)">${lastSync ? new Date(lastSync).toLocaleString() : 'Never'}</b></div>
+        <div>Next scheduled sync: <b style="color:var(--text)">${syncSettings.auto ? new Date(nextSync).toLocaleString() : 'Auto off'}</b></div>
+        <div>Chunk size: <b style="color:var(--text)">${Number(syncSettings.rowsPerChunk || 500).toLocaleString()} rows</b></div>
+        <div>Last error: <b style="color:${syncMeta.lastError?'var(--red)':'var(--dim)'}">${escHtml(syncMeta.lastError || 'None')}</b></div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+        <button class="hbtn" onclick="checkPriceChartingCsvStatus()">REFRESH CACHE COUNTS</button>
+        <button class="hbtn" onclick="clearPriceSyncStatus()">CLEAR LOCAL SYNC STATUS</button>
+      </div>
+      <div id="pc-browser-sync-progress" style="margin-top:10px"></div>
     </div>
     <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px;font-family:monospace;font-size:10px;color:var(--dim)">
       <label><input type="checkbox" ${allowEstimatedConditionValues() ? 'checked' : ''} onchange="setAllowEstimatedConditionValues(this.checked);renderPriceChartingDataPanel()"> Allow estimated condition values when exact SKU price is missing</label>
@@ -2925,6 +3091,9 @@ async function syncPriceChartingCsv(category){
   if(!url) { toast_dash('Paste the PriceCharting CSV URL first'); return; }
   urls[category] = url;
   savePriceChartingCsvUrls(urls);
+  if(priceSyncRuntime.running) { toast_dash('Price sync already running'); return; }
+  await browserPriceChartingCsvSync(category, url, { manual:true });
+  return;
   const note = document.getElementById('pc-csv-status-note');
   if(note) note.textContent = 'Syncing ' + category + '...';
   try {
@@ -2942,6 +3111,98 @@ async function syncPriceChartingCsv(category){
     toast_dash('PriceCharting sync failed: ' + e.message);
     await checkPriceChartingCsvStatus();
   }
+}
+
+async function browserPriceChartingCsvSync(category, url, opts = {}){
+  const settings = getPriceSyncSettings();
+  const note = document.getElementById('pc-csv-status-note');
+  if(!navigator.onLine) { setPriceSyncProgress('offline', 0, 'Offline now. Existing cache stays available.', category); return; }
+  if(!priceSyncConnectionAllowed()) { setPriceSyncProgress('offline', 0, 'Wi-Fi Only is enabled. Sync waits for a Wi-Fi/fast connection.', category); return; }
+  priceSyncRuntime = { running:true, category, state:'checking_schedule', pct:1, message:'Starting browser sync...', startedAt:new Date().toISOString(), failedChunks:[], cancelRequested:false };
+  try {
+    const cacheVersion = 'browser-' + Date.now();
+    setPriceSyncProgress('downloading', 5, 'Downloading CSV in this browser. Worker will only receive small chunks.', category);
+    const response = await fetch(url, { cache:'no-store' });
+    if(!response.ok) throw new Error('CSV download failed ' + response.status);
+    const contentType = response.headers.get('content-type') || '';
+    if(/text\/html/i.test(contentType)) throw new Error('PriceCharting returned HTML instead of CSV. Check the saved URL/token.');
+    const totalBytes = Number(response.headers.get('content-length') || 0);
+    let text = '';
+    if(response.body?.getReader) {
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let received = 0;
+      while(true) {
+        const { value, done } = await reader.read();
+        if(done) break;
+        received += value.byteLength;
+        text += decoder.decode(value, { stream:true });
+        if(totalBytes) setPriceSyncProgress('downloading', 5 + Math.round(received / totalBytes * 25), `Downloaded ${(received/1024/1024).toFixed(1)} MB of ${(totalBytes/1024/1024).toFixed(1)} MB.`, category);
+        if(priceSyncRuntime.cancelRequested) throw new Error('Sync canceled by dealer');
+        await new Promise(r => setTimeout(r, 0));
+      }
+      text += decoder.decode();
+    } else {
+      text = await response.text();
+    }
+    if(/<!doctype html|<html/i.test(text.slice(0, 500))) throw new Error('PriceCharting returned HTML instead of CSV. Check the saved URL/token.');
+    setPriceSyncProgress('parsing', 35, 'Parsing CSV locally without blocking checkout/research.', category);
+    const rawRows = await parsePriceChartingCsvClient(text, pct => setPriceSyncProgress('parsing', Math.min(90, 30 + pct * 0.55), 'Parsing PriceCharting rows in browser...', category));
+    const rows = rawRows.map(r => normalizePriceChartingCsvRowClient(r)).filter(r => r.productName || r.productId);
+    if(!rows.length) throw new Error('CSV parsed but no usable PriceCharting rows were found.');
+    const rowsPerChunk = Math.max(100, Number(settings.rowsPerChunk || 500));
+    const chunks = [];
+    for(let i = 0; i < rows.length; i += rowsPerChunk) chunks.push(rows.slice(i, i + rowsPerChunk));
+    setPriceSyncProgress('uploading_chunks', 90, `Uploading ${chunks.length} chunks to Worker/KV.`, category);
+    await postPriceChartingChunk('/pricing/pricecharting/csv/chunk/start', { categoryKey:category, fullUrl:url, cacheVersion, rowsPerChunk, totalRows:rows.length, totalChunks:chunks.length });
+    const failed = [];
+    for(let i = 0; i < chunks.length; i++) {
+      if(priceSyncRuntime.cancelRequested) throw new Error('Sync canceled by dealer');
+      let ok = false, lastErr = '';
+      for(let attempt = 1; attempt <= 3 && !ok; attempt++) {
+        try {
+          await postPriceChartingChunk('/pricing/pricecharting/csv/chunk/upload', { categoryKey:category, cacheVersion, chunkIndex:i, totalChunks:chunks.length, rows:chunks[i] });
+          ok = true;
+        } catch(e) {
+          lastErr = e.message;
+          await new Promise(r => setTimeout(r, 500 * attempt));
+        }
+      }
+      if(!ok) failed.push({ chunkIndex:i, error:lastErr });
+      setPriceSyncProgress('uploading_chunks', 90 + Math.round((i + 1) / chunks.length * 8), `Uploaded ${i + 1}/${chunks.length} chunks.`, category);
+    }
+    if(failed.length) {
+      priceSyncRuntime.failedChunks = failed;
+      throw new Error('Failed chunks: ' + failed.map(f => f.chunkIndex).slice(0, 12).join(', '));
+    }
+    setPriceSyncProgress('updating_manifest', 99, 'Finalizing cache manifest.', category);
+    await postPriceChartingChunk('/pricing/pricecharting/csv/chunk/complete', { categoryKey:category, cacheVersion, totalRows:rows.length, totalChunks:chunks.length });
+    const completedAt = new Date().toISOString();
+    savePriceSyncMeta({ lastSuccessfulSync:completedAt, lastCategory:category, [category]:{ lastSuccessfulSync:completedAt, cachedRowCount:rows.length, totalChunks:chunks.length, cacheVersion } });
+    setPriceSyncProgress('complete', 100, `${category} browser sync complete. Cached ${rows.length.toLocaleString()} rows in ${chunks.length} chunks.`, category);
+    if(note) note.textContent = `${category} browser sync complete: ${rows.length.toLocaleString()} rows / ${chunks.length} chunks.`;
+    await checkPriceChartingCsvStatus();
+  } catch(e) {
+    try { await postPriceChartingChunk('/pricing/pricecharting/csv/chunk/fail', { categoryKey:category, error:e.message, failedChunkIndexes:(priceSyncRuntime.failedChunks || []).map(x => x.chunkIndex) }); } catch(_) {}
+    savePriceSyncMeta({ lastFailedSync:new Date().toISOString(), lastError:e.message });
+    setPriceSyncProgress('failed', priceSyncRuntime.pct || 0, e.message + '. Existing cache was preserved.', category);
+    if(note) note.textContent = category + ' browser sync failed: ' + e.message;
+    toast_dash('PriceCharting sync failed: ' + e.message);
+    await checkPriceChartingCsvStatus();
+  } finally {
+    priceSyncRuntime.running = false;
+  }
+}
+
+async function postPriceChartingChunk(path, payload){
+  const res = await fetch(WORKER + path, {
+    method:'POST',
+    headers:{ 'Content-Type':'application/json' },
+    body:JSON.stringify(payload)
+  });
+  const data = await res.json().catch(() => ({}));
+  if(!res.ok || !data.ok) throw new Error([data.state, data.error || data.reason || 'Chunk sync failed'].filter(Boolean).join(': '));
+  return data;
 }
 
 async function testPriceChartingCsv(category){
@@ -2981,6 +3242,53 @@ function renderPriceChartingCsvPreview(data = {}){
     ${first ? `<div><b style="color:var(--text)">First row:</b> ${escHtml(Object.values(first).slice(0, 6).join(' / '))}</div>` : ''}
     ${data.detectedCategory ? `<div><b style="color:var(--text)">Detected category:</b> ${escHtml(data.detectedCategory)}</div>` : ''}
     ${data.error ? `<div style="color:var(--red)"><b>Error:</b> ${escHtml(data.error)}</div>` : ''}`;
+}
+
+let priceSyncTimer = null;
+function schedulePriceSyncChecks(){
+  if(priceSyncTimer) clearInterval(priceSyncTimer);
+  const settings = getPriceSyncSettings();
+  if(!settings.auto) return;
+  const check = () => maybeRunScheduledPriceSync(false);
+  priceSyncTimer = setInterval(check, 5 * 60 * 1000);
+}
+
+async function maybeRunScheduledPriceSync(fromOpen = false){
+  const settings = getPriceSyncSettings();
+  if(!settings.auto || priceSyncRuntime.running) return;
+  if(fromOpen && !settings.syncOnOpen) return;
+  if(!fromOpen && !settings.backgroundWhileOpen) return;
+  const meta = priceSyncMeta();
+  const dueAt = Date.parse(nextPriceSyncTime(meta.lastSuccessfulSync, settings.intervalHours));
+  if(!fromOpen && Date.now() < dueAt) return;
+  if(!navigator.onLine || !priceSyncConnectionAllowed()) return;
+  const urls = getPriceChartingCsvUrls();
+  const category = Object.keys(urls).find(cat => urls[cat]);
+  if(!category) return;
+  await browserPriceChartingCsvSync(category, urls[category], { scheduled:true });
+}
+
+function clearPriceSyncStatus(){
+  localStorage.removeItem('price_sync_meta_v1');
+  renderPriceChartingDataPanel();
+  toast_dash('Price sync status cleared on this device. Worker cache remains intact.');
+}
+
+async function clearPriceChartingCsvCache(category){
+  if(!confirm('Clear cached PriceCharting rows for ' + category + '? The saved CSV URL stays configured.')) return;
+  const note = document.getElementById('pc-csv-status-note');
+  if(note) note.textContent = 'Clearing ' + category + ' cache...';
+  try {
+    await postPriceChartingChunk('/pricing/pricecharting/csv/chunk/clear', { categoryKey:category });
+    const meta = priceSyncMeta();
+    delete meta[category];
+    localStorage.setItem('price_sync_meta_v1', JSON.stringify(meta));
+    await checkPriceChartingCsvStatus();
+    toast_dash(category + ' cache cleared');
+  } catch(e) {
+    if(note) note.textContent = 'Clear cache failed: ' + e.message;
+    toast_dash('Clear cache failed: ' + e.message);
+  }
 }
 
 const PRICING_QA_QUERIES = ['pikachu sir','pikachu ex','pikachu 151','umbreon vmax evolving skies','charizard 199/165','wolverine 1','asm 300','zelda ocarina n64'];
@@ -5332,6 +5640,8 @@ window.addEventListener('load', async function(){
   if(!(await ensureAuthReady())) return;
   await loadStoreSettingsFromSupabase();
   setupAppShell();
+  schedulePriceSyncChecks();
+  maybeRunScheduledPriceSync(true).catch(console.warn);
   renderShowMode();
   refreshEbayStatus();
   syncLifecycleFromWorker().finally(loadInventory);
