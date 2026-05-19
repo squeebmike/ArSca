@@ -9470,11 +9470,13 @@ function qplFinishLabel(value){
 }
 
 function qplPriceValue(v){
+  if(/estimate/i.test(String(v?.priceSource || '')) && !allowEstimatedConditionValues()) return 0;
   return Number(v?.marketPrice || 0) || 0;
 }
 
 function qplPriceSourceLabel(v){
   if(!v) return 'Needs Research';
+  if(/estimate/i.test(String(v.priceSource || ''))) return allowEstimatedConditionValues() ? 'Estimated Condition Value' : 'No Real Price Available';
   if(Number(v.marketPrice || 0) > 0) return 'Real SKU Market Price';
   return 'No Real Price Available';
 }
@@ -9735,7 +9737,7 @@ function estimateConditionValue(row, condition){
 function qplTruthLabel(r){
   if(r?.priceSource === 'Estimated Condition Value' || r?.priceConfidence === 'estimate') return 'Estimated Condition Value';
   if(r?.pokemonPriceTracker || /^PokemonPriceTracker/i.test(r?.priceSource || '')) return Number(r?.market || 0) > 0 ? 'Real SKU Market Price' : 'No Real Price';
-  if(r?.source === 'justtcg') return Number(r.selectedVariant?.marketPrice || 0) > 0 ? 'Real SKU Market Price' : 'No Real Price';
+  if(r?.source === 'justtcg') return qplPriceValue(r.selectedVariant) > 0 ? 'Real SKU Market Price' : (/estimate/i.test(String(r.selectedVariant?.priceSource || r.priceSource || '')) ? 'Estimated Condition Value' : 'No Real Price');
   if(r?.pricecharting || r?.source === 'pricecharting_csv') return Number(r.pricecharting?.prices?.ungraded || r.market || 0) > 0 ? 'Guide Value' : 'No Guide Value';
   if(r?.source === 'inventory') return 'Inventory Price';
   if(Number(r?.recentSold || r?.ebay_avg || 0) > 0) return 'Sold Comp';
@@ -10290,7 +10292,8 @@ function qplConditionOptionsFor(r){
 function qplVariantResolverStatus(r = {}){
   if(r.pokemonPriceTracker) return Number(r.market || 0) > 0 ? { label:'PokemonPriceTracker exact price', cls:'good' } : { label:'No real price', cls:'bad' };
   if(!r.availableVariants?.length) return { label:'Variant Matrix Unavailable', cls:'warn' };
-  if(r.selectedVariant && Number(r.selectedVariant.marketPrice || 0) > 0) return { label:'Exact SKU matched', cls:'good' };
+  if(r.selectedVariant && qplPriceValue(r.selectedVariant) > 0) return { label:'Exact SKU matched', cls:'good' };
+  if(r.selectedVariant && /estimate/i.test(String(r.selectedVariant.priceSource || r.priceSource || ''))) return { label:'Estimate only', cls:'warn' };
   if(r.selectedVariant) return { label:'No real price', cls:'bad' };
   return { label:'No exact SKU', cls:'bad' };
 }
