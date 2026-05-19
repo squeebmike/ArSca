@@ -1551,6 +1551,33 @@ export default {
             return json({ ok: false, state: 'not_configured', error: 'CSV URL required first sync', meta }, 400);
           }
           const prior = await env.LBA_KV.get(kvKey('meta', category), 'json');
+          const looksLikeHugeDownload = /price-guide\/download-custom/i.test(csvUrl);
+          if (looksLikeHugeDownload && body.blockingImport !== true) {
+            const rows = await env.LBA_KV.get(kvKey('rows', category), 'json');
+            const preservedRows = Array.isArray(rows) ? rows.length : Number(prior?.rowCount || 0);
+            const meta = mergeCsvMeta(prior, category, {
+              state: 'TIMEOUT_TOO_LARGE',
+              configured: true,
+              url: csvUrl,
+              urlPresent: true,
+              rowCount: preservedRows,
+              cacheRowCount: preservedRows,
+              lastAttemptedAt: attemptAt,
+              lastFailedAt: attemptAt,
+              lastFailedError: 'TIMEOUT_TOO_LARGE: PriceCharting download-custom CSV is too large for one Worker request. Existing cache was preserved. Use Test URL for validation and a future chunk/background importer for full refresh.',
+              lastError: 'TIMEOUT_TOO_LARGE: PriceCharting download-custom CSV is too large for one Worker request. Existing cache was preserved.',
+              cacheKey: kvKey('rows', category)
+            });
+            await env.LBA_KV.put(kvKey('meta', category), JSON.stringify(meta), { expirationTtl: 60 * 60 * 24 * 30 });
+            return json({
+              ok: false,
+              state: 'TIMEOUT_TOO_LARGE',
+              error: meta.lastError,
+              cachePreserved: true,
+              preservedRowCount: preservedRows,
+              meta
+            }, 413);
+          }
           const now = Date.now();
           if (prior?.lastSyncedAt && now - Date.parse(prior.lastSyncedAt) < 10 * 60 * 1000) {
             const retryAt = new Date(Date.parse(prior.lastSyncedAt) + 10 * 60 * 1000).toISOString();
