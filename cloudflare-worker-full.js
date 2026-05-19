@@ -1272,6 +1272,15 @@ export default {
         if (/^\//.test(raw)) return 'https://www.pricecharting.com' + raw;
         return raw;
       };
+      const pcMoney = (p, key, normalizedPath = '') => {
+        const fromCsv = pennies(p[key]);
+        if (fromCsv !== null && fromCsv !== undefined) return fromCsv;
+        const parts = String(normalizedPath || '').split('.').filter(Boolean);
+        let cur = p;
+        for (const part of parts) cur = cur?.[part];
+        const n = Number(cur);
+        return n > 0 ? n : null;
+      };
       const matchReasonsFor = (p, q) => {
         const reasons = [];
         const hay = [p['product-name'], p['console-name'], p.genre].filter(Boolean).join(' ').toLowerCase();
@@ -1280,7 +1289,7 @@ export default {
       };
       const normalizePcProduct = (p, q = '') => ({
         source: 'PriceCharting',
-        productId: String(p.id || ''),
+        productId: String(p.id || p.productId || ''),
         productName: p['product-name'] || p.productName || '',
         consoleName: p['console-name'] || p.consoleName || '',
         genre: p.genre || '',
@@ -1288,33 +1297,33 @@ export default {
         url: p['product-url'] || p.url || (p.id ? `https://www.pricecharting.com/game/${p.id}` : null),
         imageUrl: pcImageUrl(p),
         prices: {
-          ungraded: pennies(p['loose-price']),
-          grade7: pennies(p['cib-price']),
-          grade8: pennies(p['new-price']),
-          grade9: pennies(p['graded-price']),
-          grade9_5: pennies(p['box-only-price']),
-          psa10: pennies(p['manual-only-price']),
-          bgs10: pennies(p['bgs-10-price']),
-          cgc10: pennies(p['condition-17-price']),
-          sgc10: pennies(p['condition-18-price']),
+          ungraded: pcMoney(p, 'loose-price', 'prices.ungraded'),
+          grade7: pcMoney(p, 'cib-price', 'prices.grade7'),
+          grade8: pcMoney(p, 'new-price', 'prices.grade8'),
+          grade9: pcMoney(p, 'graded-price', 'prices.grade9'),
+          grade9_5: pcMoney(p, 'box-only-price', 'prices.grade9_5'),
+          psa10: pcMoney(p, 'manual-only-price', 'prices.psa10'),
+          bgs10: pcMoney(p, 'bgs-10-price', 'prices.bgs10'),
+          cgc10: pcMoney(p, 'condition-17-price', 'prices.cgc10'),
+          sgc10: pcMoney(p, 'condition-18-price', 'prices.sgc10'),
         },
         comicPrices: {
-          ungraded: pennies(p['loose-price']),
-          grade4: pennies(p['cib-price']),
-          grade6: pennies(p['new-price']),
-          grade8: pennies(p['graded-price']),
-          grade9_2: pennies(p['box-only-price']),
-          grade9_4: pennies(p['condition-17-price']),
-          grade9_8: pennies(p['manual-only-price']),
-          grade10: pennies(p['bgs-10-price']),
+          ungraded: pcMoney(p, 'loose-price', 'comicPrices.ungraded'),
+          grade4: pcMoney(p, 'cib-price', 'comicPrices.grade4'),
+          grade6: pcMoney(p, 'new-price', 'comicPrices.grade6'),
+          grade8: pcMoney(p, 'graded-price', 'comicPrices.grade8'),
+          grade9_2: pcMoney(p, 'box-only-price', 'comicPrices.grade9_2'),
+          grade9_4: pcMoney(p, 'condition-17-price', 'comicPrices.grade9_4'),
+          grade9_8: pcMoney(p, 'manual-only-price', 'comicPrices.grade9_8'),
+          grade10: pcMoney(p, 'bgs-10-price', 'comicPrices.grade10'),
         },
         retail: {
-          looseBuy: pennies(p['retail-loose-buy']),
-          looseSell: pennies(p['retail-loose-sell']),
-          cibBuy: pennies(p['retail-cib-buy']),
-          cibSell: pennies(p['retail-cib-sell']),
-          newBuy: pennies(p['retail-new-buy']),
-          newSell: pennies(p['retail-new-sell']),
+          looseBuy: pcMoney(p, 'retail-loose-buy', 'retail.looseBuy'),
+          looseSell: pcMoney(p, 'retail-loose-sell', 'retail.looseSell'),
+          cibBuy: pcMoney(p, 'retail-cib-buy', 'retail.cibBuy'),
+          cibSell: pcMoney(p, 'retail-cib-sell', 'retail.cibSell'),
+          newBuy: pcMoney(p, 'retail-new-buy', 'retail.newBuy'),
+          newSell: pcMoney(p, 'retail-new-sell', 'retail.newSell'),
         },
         demand: {
           salesVolume: Number(p['sales-volume'] || p.salesVolume || 0) || null,
