@@ -1,0 +1,142 @@
+name: Deploy Cloudflare Worker
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - cloudflare-worker-full.js
+      - wrangler.deploy.jsonc
+      - .github/workflows/deploy-worker.yml
+  workflow_dispatch:
+
+jobs:
+  deploy-worker:
+    name: Validate, deploy, and probe Worker
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      WORKER_URL: https://still-resonance-4f87.swarnerauto.workers.dev
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Validate required GitHub secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          missing=0
+          if [ -z "${CLOUDFLARE_API_TOKEN:-}" ]; then
+            echo "::error title=Missing GitHub secret::CLOUDFLARE_API_TOKEN is undefined. Add it in repo Settings > Secrets and variables > Actions."
+            missing=1
+          fi
+          if [ -z "${CLOUDFLARE_ACCOUNT_ID:-}" ]; then
+            echo "::error title=Missing GitHub secret::CLOUDFLARE_ACCOUNT_ID is undefined. Add it in repo Settings > Secrets and variables > Actions."
+            missing=1
+          fi
+          if [ "$missing" -ne 0 ]; then
+            exit 1
+          fi
+          echo "Cloudflare secrets are present."
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Parse check, non-blocking for Worker deploy
+        continue-on-error: true
+        run: npm run test:parse
+
+      - name: Smoke tests are manual only
+        run: |
+          echo "::notice title=Smoke tests skipped::Playwright smoke tests are available through npm run test:smoke:manual and are not a deploy gate."
+
+      - name: Validate Wrangler config
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs = require('fs');
+          const config = JSON.parse(fs.readFileSync('wrangler.deploy.jsonc', 'utf8'));
+          const required = [];
+          if (!config.name) required.push('name');
+          if (config.name !== 'still-resonance-4f87') throw new Error(`Worker name mismatch: ${config.name}`);
+          if (!config.main) required.push('main');
+          if (!config.compatibility_date) required.push('compatibility_date');
+          if (!Array.isArray(config.kv_namespaces) || !config.kv_namespaces.length) required.push('kv_namespaces');
+          if (required.length) throw new Error('Missing required wrangler fields: ' + required.join(', '));
+          const kv = config.kv_namespaces.find(k => k.binding === 'LBA_KV');
+          if (!kv) throw new Error('Missing LBA_KV namespace binding');
+          if (!kv.id || /placeholder|changeme|todo/i.test(kv.id)) throw new Error('LBA_KV namespace id is missing or placeholder');
+          if (config.account_id && config.account_id !== process.env.CLOUDFLARE_ACCOUNT_ID) {
+            throw new Error('wrangler account_id does not match CLOUDFLARE_ACCOUNT_ID secret');
+          }
+          if (!config.account_id) {
+            console.log('wrangler account_id is intentionally omitted; Wrangler will use CLOUDFLARE_ACCOUNT_ID from the GitHub Actions environment.');
+          }
+          console.log(JSON.stringify({
+            workerName: config.name,
+            main: config.main,
+            compatibilityDate: config.compatibility_date,
+            kvBindings: config.kv_namespaces.map(k => ({ binding: k.binding, id: k.id })),
+          }, null, 2));
+          NODE
+          npx wrangler deploy --config wrangler.deploy.jsonc --dry-run
+
+      - name: Validate Wrangler authentication
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx wrangler whoami
+
+      - name: Deploy Worker
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx wrangler deploy --config wrangler.deploy.jsonc --keep-vars
+          echo "Deployed Worker URL: ${WORKER_URL}"
+
+      - name: Validate live endpoints
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const workerUrl = process.env.WORKER_URL;
+          async function request(label, path, options = {}, accept = r => r.ok) {
+            const res = await fetch(workerUrl + path, options);
+            const text = await res.text();
+            let body;
+            try { body = JSON.parse(text); } catch { body = { raw: text.slice(0, 300) }; }
+            const ok = accept(res, body);
+            const item = { label, path, status: res.status, ok, body };
+            console.log(JSON.stringify(item));
+            if (!ok) throw new Error(`${label} failed with HTTP ${res.status}: ${text.slice(0, 300)}`);
+            return item;
+          }
+
+          const probeKey = 'deploy_probe_' + Date.now();
+          await request('health', '/health');
+          await request('kv write', '/kv/' + probeKey, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ok: true, probeKey, at: new Date().toISOString() }),
+          });
+          await request('kv read', '/kv/' + probeKey, {}, (res, body) => res.ok && body.probeKey === probeKey);
+          await request('PriceCharting CSV status', '/pricing/pricecharting/csv/status');
+          await request('PriceCharting CSV test route', '/pricing/pricecharting/csv/test-url', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ categoryKey: 'pokemon-cards' }),
+          }, res => res.status === 400);
+          await request('PriceCharting CSV sync route', '/pricing/pricecharting/csv/sync', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ categoryKey: 'pokemon-cards' }),
+          }, res => res.status === 400 || res.ok);
+          await request('offline cache manifest', '/offline/cache/manifest');
+          await request('PokemonPriceTracker cards route', '/pricing/pokemonpricetracker/cards?search=charizard&language=english&limit=1', {}, res => res.status !== 404);
+          console.log(JSON.stringify({ ok: true, workerUrl, checkedAt: new Date().toISOString() }));
+          NODE

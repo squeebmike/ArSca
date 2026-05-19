@@ -508,6 +508,47 @@ export default {
       return json({ error: 'GET or POST only' }, 405);
     }
 
+    if (url.pathname === '/offline/cache/manifest') {
+      if (!env.LBA_KV) return json({ ok: false, error: 'LBA_KV binding required for offline cache manifest' }, 501);
+      const categories = ['Pokemon Cards', 'Magic Cards', 'YuGiOh Cards', 'One Piece Cards', 'Lorcana Cards', 'Digimon Cards', 'Dragon Ball Cards', 'Sports Cards'];
+      const pcCategoryKey = c => {
+        const raw = String(c || 'General').trim();
+        const slug = raw.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+        const alias = {
+          'pokemon-card':'Pokemon Cards',
+          'pokemon-cards':'Pokemon Cards',
+          'magic-card':'Magic Cards',
+          'magic-cards':'Magic Cards',
+          'mtg':'Magic Cards',
+          'yugioh-cards':'YuGiOh Cards',
+          'yu-gi-oh-cards':'YuGiOh Cards',
+          'sport-cards':'Sports Cards',
+          'sports-cards':'Sports Cards',
+        }[slug];
+        return alias || raw;
+      };
+      const kvKey = (kind, category) => `pc_csv_${kind}:${pcCategoryKey(category)}`;
+      const priceCharting = {};
+      for (const category of categories) {
+        const meta = await env.LBA_KV.get(kvKey('meta', category), 'json');
+        const rows = await env.LBA_KV.get(kvKey('rows', category), 'json');
+        priceCharting[category] = {
+          configured: !!(meta?.configured || await env.LBA_KV.get(kvKey('url', category))),
+          state: meta?.state || (Array.isArray(rows) && rows.length ? 'synced' : 'not_configured'),
+          rowCount: Array.isArray(rows) ? rows.length : Number(meta?.rowCount || 0),
+          lastSyncedAt: meta?.lastSyncedAt || meta?.lastSuccessAt || null,
+          cacheKey: kvKey('rows', category),
+        };
+      }
+      return json({
+        ok: true,
+        source: 'walkoff-worker',
+        kv: true,
+        generatedAt: new Date().toISOString(),
+        priceCharting,
+      });
+    }
+
     if (url.pathname === '/anthropic/messages') {
       if (request.method !== 'POST') return json({ error: 'POST only' }, 405);
       if (!env.ANTHROPIC_API_KEY) return json({ error: 'ANTHROPIC_API_KEY not set' }, 500);
