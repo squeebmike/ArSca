@@ -124,7 +124,10 @@ jobs:
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ ok: true, probeKey, at: new Date().toISOString() }),
           });
-          await request('kv read', '/kv/' + probeKey, {}, (res, body) => res.ok && body.probeKey === probeKey);
+          await request('kv read', '/kv/' + probeKey, {}, (res, body) => {
+            const value = typeof body.value === 'string' ? JSON.parse(body.value) : body.value;
+            return res.ok && value?.probeKey === probeKey;
+          });
           await request('PriceCharting CSV status', '/pricing/pricecharting/csv/status');
           await request('PriceCharting CSV test route', '/pricing/pricecharting/csv/test-url', {
             method: 'POST',
