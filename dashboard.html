@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.05.15.04">
+<meta name="version" content="2026.05.19.01">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -313,6 +313,17 @@ tr.sold:hover td{opacity:.7;}
 .qpl-badge.good{color:var(--g);border-color:rgba(0,255,179,.35);background:rgba(0,255,179,.08);}
 .qpl-badge.warn{color:var(--gold);border-color:rgba(255,209,102,.35);background:rgba(255,209,102,.08);}
 .qpl-badge.bad{color:var(--red);border-color:rgba(255,77,109,.32);background:rgba(255,77,109,.07);}
+.pokemon-offline-banner{display:none;border:1px solid rgba(255,209,102,.35);background:rgba(255,209,102,.08);color:var(--gold);border-radius:8px;padding:9px 10px;margin:10px 0;font-family:monospace,monospace;font-size:10px;line-height:1.45;}
+.pokemon-offline-banner.on{display:block;}
+.pokemon-cache-meta{font-family:monospace,monospace;font-size:10px;color:var(--dim);line-height:1.45;margin-top:6px;}
+.pokemon-comps-panel{margin-top:12px;border:1px solid var(--border);border-radius:10px;padding:12px;background:rgba(255,255,255,.035);}
+.pokemon-comp-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;margin-top:8px;}
+.pokemon-comp-card{border:1px solid var(--border);background:var(--surf2);border-radius:8px;padding:9px;font-family:monospace,monospace;font-size:10px;color:var(--dim);line-height:1.45;}
+.pokemon-comp-card b{display:block;color:var(--text);font-family:'Orbitron',monospace;font-size:14px;margin-bottom:3px;}
+.pokemon-comp-card.guide b{color:var(--gold);}
+.pokemon-comp-card.sold b{color:var(--g);}
+.pokemon-comp-card.manual b{color:var(--blue);}
+.pokemon-comp-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;}
 .qpl-price{font-family:'Orbitron',monospace;font-size:clamp(30px,3vw,42px);font-weight:900;color:var(--gold);line-height:1;margin-bottom:6px;}
 .qpl-price-sub{font-family:monospace,monospace;font-size:13px;color:var(--dim);line-height:1.45;}
 .qpl-signal{font-size:13px;line-height:1.45;margin-top:14px;color:var(--gold);font-weight:700;}
@@ -511,7 +522,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
 
 <header>
   <div class="hdr">
-    <div class="logo">WALK-OFF <span>DASHBOARD · v2026.05.15.04</span></div>
+    <div class="logo">WALK-OFF <span>DASHBOARD · v2026.05.19.01</span></div>
     <div class="hdr-right">
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
@@ -820,6 +831,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
         <button class="hbtn" onclick="importScannerQueueToResearch()" style="white-space:nowrap">IMPORT SCANS</button>
         <button class="hbtn" onclick="clearResearchLookup()" style="white-space:nowrap">CLEAR</button>
       </div>
+      <div id="pokemon-offline-banner" class="pokemon-offline-banner"></div>
       <div id="qpl-result" style="font-family:monospace,monospace;font-size:10px;color:var(--dim);min-height:60px">Enter a card, comic, slab, game, or collectible to identify it and route it into Buy, Inventory, or Sale.</div>
       <div id="qpl-history" style="margin-top:10px;border-top:1px solid var(--border);padding-top:8px"></div>
     </div>
@@ -1421,7 +1433,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.05.15.04';
+const APP_VERSION = '2026.05.19.01';
 const SUPABASE_URL = 'https://vroknjrxubsqyexngwus.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_wbpX2nL8l-4NbXtZNG_bjA_nabSYaJ5';
 const AUTH_REDIRECT_URL = 'https://squeebmike.github.io/ArSca/dashboard.html';
@@ -2420,6 +2432,7 @@ function organizeRegisterLayout(){
   ensureBrandingPanel(backoffice);
   ensurePaymentSettingsPanel(backoffice);
   ensurePriceChartingDataPanel(backoffice);
+  ensureOfflineCachePanel(backoffice);
   ensurePricingQaPanel(backoffice);
   ensureStoreMembersPanel(backoffice);
   ensureVendorConfigPanel(backoffice);
@@ -2728,6 +2741,117 @@ function savePaymentSettingsFromForm(){
   };
   savePaymentSettings(settings);
   toast_dash('Payment settings saved');
+}
+
+function ensureOfflineCachePanel(backoffice){
+  if(document.getElementById('offline-cache-panel')) return;
+  const panel = document.createElement('div');
+  panel.className = 'panel';
+  panel.id = 'offline-cache-panel';
+  panel.style.marginBottom = '14px';
+  panel.innerHTML = '<div class="ph">OFFLINE CACHE <span style="font-size:9px;color:var(--dim)">Pokemon show mode cache</span></div><div id="offline-cache-body">Loading cache status...</div>';
+  backoffice.prepend(panel);
+  renderOfflineCachePanel();
+}
+
+async function getOfflineCacheStats(){
+  const cards = await pokemonDbAll('cards').catch(() => []);
+  const comps = await pokemonDbAll('comps').catch(() => []);
+  const images = await pokemonDbAll('images').catch(() => []);
+  const storeId = getActiveStoreId();
+  const mineCards = cards.filter(c => c.storeId === storeId);
+  const mineComps = comps.filter(c => c.storeId === storeId);
+  const metaRows = await pokemonDbAll('meta').catch(() => []);
+  const lastSync = metaRows.find(m => m.key === 'lastPokemonSyncAt')?.value || mineCards.map(c => c.updatedAt).sort().pop() || '';
+  const estimate = navigator.storage?.estimate ? await navigator.storage.estimate().catch(() => ({})) : {};
+  return {
+    cachedPokemonCardsCount:mineCards.length,
+    cachedPokemonImagesCount:images.length,
+    cachedPokemonCompsCount:mineComps.length,
+    cachedVariantCount:mineCards.reduce((a,c) => a + Number(c.card?.availableVariants?.length || 0), 0),
+    lastPokemonSyncAt:lastSync,
+    cacheStorageEstimate:estimate.usage ? Math.round(estimate.usage / 1024 / 1024 * 10) / 10 + ' MB' : 'Unknown',
+    lastSyncError:localStorage.getItem('pokemon_cache_last_error') || ''
+  };
+}
+
+async function renderOfflineCachePanel(status = ''){
+  const body = document.getElementById('offline-cache-body');
+  if(!body) return;
+  const s = await getOfflineCacheStats();
+  body.innerHTML = `
+    <div class="pokemon-offline-banner on" style="display:block;color:${navigator.onLine?'var(--g)':'var(--gold)'}">${navigator.onLine ? 'Online: live refresh and cache sync available.' : 'Offline Mode: cached Pokemon data is used first.'}</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:10px">
+      ${[
+        ['Cards', s.cachedPokemonCardsCount],
+        ['Images', s.cachedPokemonImagesCount],
+        ['Comps', s.cachedPokemonCompsCount],
+        ['Variants', s.cachedVariantCount],
+        ['Storage', s.cacheStorageEstimate],
+        ['Last sync', s.lastPokemonSyncAt ? new Date(s.lastPokemonSyncAt).toLocaleString() : 'Never']
+      ].map(([k,v]) => `<div class="item-metric"><div class="metric-label">${escHtml(k)}</div><div class="metric-val" style="font-size:18px">${escHtml(String(v))}</div></div>`).join('')}
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+      <button class="hbtn" onclick="syncPokemonCacheSeeds()">SYNC POKEMON CACHE</button>
+      <button class="hbtn" onclick="syncRecentPokemonSearches()">SYNC RECENT SEARCHES</button>
+      <button class="hbtn" onclick="syncInventoryPokemonCache()">SYNC INVENTORY POKEMON</button>
+      <button class="hbtn" onclick="syncWantListPokemonCache()">SYNC WANT LIST CARDS</button>
+      <button class="hbtn" style="color:var(--red)" onclick="clearPokemonOfflineCache()">CLEAR CACHE</button>
+    </div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:10px;font-family:monospace;font-size:10px;color:var(--dim)">
+      <label><input type="checkbox" id="pokemon-cache-images-toggle" ${localStorage.getItem('pokemon_cache_images') !== '0' ? 'checked' : ''} onchange="localStorage.setItem('pokemon_cache_images',this.checked?'1':'0')"> Cache Images</label>
+      <label><input type="checkbox" id="pokemon-cache-charts-toggle" ${localStorage.getItem('pokemon_cache_charts') !== '0' ? 'checked' : ''} onchange="localStorage.setItem('pokemon_cache_charts',this.checked?'1':'0')"> Cache Charts</label>
+      <label><input type="checkbox" id="pokemon-cache-slabs-toggle" ${localStorage.getItem('pokemon_cache_slabs') !== '0' ? 'checked' : ''} onchange="localStorage.setItem('pokemon_cache_slabs',this.checked?'1':'0')"> Cache Slab Guides</label>
+    </div>
+    <div id="offline-cache-status" style="font-family:monospace;font-size:10px;color:${s.lastSyncError?'var(--red)':'var(--dim)'};line-height:1.5">${escHtml(status || s.lastSyncError || 'Pokemon cache is ready for show mode.')}</div>`;
+}
+
+async function syncPokemonQueries(queries = [], label = 'Pokemon cache'){
+  const status = document.getElementById('offline-cache-status');
+  let saved = 0;
+  for(const q of [...new Set(queries.filter(Boolean))]) {
+    if(status) status.textContent = label + ': syncing ' + q + '...';
+    try {
+      const rows = await searchQuickCatalog(q, 'Pokemon TCG');
+      await savePokemonCacheResults(q, rows, label);
+      saved += rows.filter(r => qplResultCategoryKey(r) === 'pokemon').length;
+    } catch(e) {
+      localStorage.setItem('pokemon_cache_last_error', e.message);
+      if(status) status.textContent = label + ' failed on ' + q + ': ' + e.message;
+    }
+  }
+  localStorage.removeItem('pokemon_cache_last_error');
+  await pokemonDbPut('meta', { key:'lastPokemonSyncAt', value:new Date().toISOString() });
+  renderOfflineCachePanel(label + ' complete. Cached ' + saved + ' Pokemon rows.');
+}
+
+function syncPokemonCacheSeeds(){
+  const seeds = ['pikachu 151','charizard 199/165','alakazam ex 201/165','bulbasaur 151','umbreon vmax evolving skies','mew ex 151','squirtle 151'];
+  syncPokemonQueries(seeds, 'Top Pokemon sync');
+}
+
+function syncRecentPokemonSearches(){
+  syncPokemonQueries((qplHistory || []).map(h => h.q).filter(q => isPokemonLookupIntent(q, 'Pokemon TCG')), 'Recent Pokemon sync');
+}
+
+function syncInventoryPokemonCache(){
+  const queries = (all || []).filter(i => isPokemonLookupIntent([i.name,i.set,i.card_number].join(' '), i.category)).map(i => [i.name, i.set, i.card_number].filter(Boolean).join(' '));
+  syncPokemonQueries(queries.slice(0, 80), 'Inventory Pokemon sync');
+}
+
+function syncWantListPokemonCache(){
+  const wants = [...safeLocalJson('set_needs_v1', []), ...safeLocalJson('pos_wantlist', [])];
+  const queries = wants.map(w => [w.name || w.item || w.want_text, w.set, w.cardNumber || w.card_number].filter(Boolean).join(' ')).filter(q => isPokemonLookupIntent(q, 'Pokemon TCG'));
+  syncPokemonQueries(queries.slice(0, 80), 'Want list Pokemon sync');
+}
+
+async function clearPokemonOfflineCache(){
+  if(!confirm('Clear cached Pokemon cards and comps on this device?')) return;
+  await pokemonDbClear('cards');
+  await pokemonDbClear('comps');
+  await pokemonDbClear('images');
+  await pokemonDbClear('meta');
+  renderOfflineCachePanel('Pokemon cache cleared on this device.');
 }
 
 function ensurePriceChartingDataPanel(backoffice){
@@ -3850,6 +3974,21 @@ async function processSyncItem(item){
   }
   if(item.type === 'drawer-movement') {
     await MoneyLedgerService().writeDrawerMovement(item.payload);
+    return;
+  }
+  if(item.type === 'pokemon-manual-comp') {
+    const sb = getSupabaseClient();
+    if(!sb) throw new Error('Supabase client unavailable');
+    await sb.from('pos_audit_log').insert({
+      id:makeUuid('audit'),
+      store_id:getActiveStoreId(),
+      event_type:'pokemon_manual_comp',
+      entity_type:'pokemon_comp_cache',
+      entity_id:item.payload.id,
+      details:item.payload,
+      created_by:getCurrentUserId(),
+      created_at:new Date().toISOString()
+    });
     return;
   }
   throw new Error('No retry handler for '+item.type);
@@ -8718,6 +8857,232 @@ let qplHistory = [];
 let qplResults = [];
 let qplMasterResults = [];
 let qplLastSearch = '';
+let pokemonConnectionState = navigator.onLine ? 'online' : 'offline';
+
+function normalizePokemonText(value = ''){
+  return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9/]+/g, ' ').trim();
+}
+
+function pokemonSlug(value = ''){
+  return normalizePokemonText(value).replace(/\s+/g, '-').replace(/^-|-$/g, '');
+}
+
+function isPokemonLookupIntent(q = '', cat = ''){
+  const text = normalizePokemonText([q, cat].join(' '));
+  return qplCategoryKey(cat) === 'pokemon' || /\bpokemon\b|\bpikachu\b|\bcharizard\b|\bumbreon\b|\bbulbasaur\b|\bsquirtle\b|\bcharmander\b|\bmew\b|\bmewtwo\b|\balakazam\b|\bevolving skies\b|\bsv151\b|\b151\b/.test(text);
+}
+
+function pokemonCardKey(row = {}, query = ''){
+  const key = [
+    'pokemon',
+    pokemonSlug(row.setId || row.setCode || row.set || row.setName || row.raw?.set?.id || row.raw?.set?.name || ''),
+    pokemonSlug(row.name || row.cardName || query || ''),
+    normalizePokemonText(row.card_number || row.cardNumber || row.number || row.raw?.number || ''),
+    pokemonSlug(row.language || row.selectedLanguage || 'english'),
+    pokemonSlug(row.selectedFinish || row.finish || row.variant || row.rarity || '')
+  ].filter(Boolean).join('|');
+  return key.replace(/\|+/g, '|');
+}
+
+function pokemonCacheAgeLabel(iso){
+  if(!iso) return 'unknown age';
+  const ms = Date.now() - new Date(iso).getTime();
+  if(ms < 0) return 'just updated';
+  const mins = Math.floor(ms / 60000);
+  if(mins < 1) return 'just updated';
+  if(mins < 60) return mins + 'm ago';
+  const hrs = Math.floor(mins / 60);
+  if(hrs < 24) return hrs + 'h ago';
+  const days = Math.floor(hrs / 24);
+  return days + 'd ago';
+}
+
+function pokemonCompFreshness(iso){
+  const days = (Date.now() - new Date(iso || 0).getTime()) / 86400000;
+  if(days <= 1) return 'Fresh';
+  if(days <= 7) return 'Recent';
+  if(days <= 30) return 'Stale';
+  return 'Very Stale';
+}
+
+function pokemonOfflineDb(){
+  if(!('indexedDB' in window)) return Promise.reject(new Error('IndexedDB unavailable'));
+  if(window._pokemonOfflineDb) return window._pokemonOfflineDb;
+  window._pokemonOfflineDb = new Promise((resolve, reject) => {
+    const req = indexedDB.open('walkoff_pokemon_cache_v1', 1);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if(!db.objectStoreNames.contains('cards')) {
+        const s = db.createObjectStore('cards', { keyPath:'cardKey' });
+        s.createIndex('storeId', 'storeId');
+        s.createIndex('updatedAt', 'updatedAt');
+      }
+      if(!db.objectStoreNames.contains('comps')) {
+        const s = db.createObjectStore('comps', { keyPath:'id' });
+        s.createIndex('cardKey', 'cardKey');
+        s.createIndex('storeId', 'storeId');
+        s.createIndex('capturedAt', 'capturedAt');
+      }
+      if(!db.objectStoreNames.contains('meta')) db.createObjectStore('meta', { keyPath:'key' });
+      if(!db.objectStoreNames.contains('images')) db.createObjectStore('images', { keyPath:'cardKey' });
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+  return window._pokemonOfflineDb;
+}
+
+async function pokemonDbPut(store, value){
+  const db = await pokemonOfflineDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(store, 'readwrite');
+    tx.objectStore(store).put(value);
+    tx.oncomplete = () => resolve(value);
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+async function pokemonDbAll(store){
+  const db = await pokemonOfflineDb();
+  return new Promise((resolve, reject) => {
+    const req = db.transaction(store, 'readonly').objectStore(store).getAll();
+    req.onsuccess = () => resolve(req.result || []);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function pokemonDbClear(store){
+  const db = await pokemonOfflineDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(store, 'readwrite');
+    tx.objectStore(store).clear();
+    tx.oncomplete = () => resolve(true);
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+function pokemonBlobToDataUrl(blob){
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(blob);
+  });
+}
+
+async function cachePokemonImage(cardKey, imageUrl){
+  if(!cardKey || !imageUrl || localStorage.getItem('pokemon_cache_images') === '0') return;
+  try{
+    let dataUrl = imageUrl;
+    if(!imageUrl.startsWith('data:')){
+      const res = await fetch(imageUrl, { cache:'force-cache' });
+      if(!res.ok) throw new Error('Pokemon image cache fetch failed');
+      dataUrl = await pokemonBlobToDataUrl(await res.blob());
+    }
+    await pokemonDbPut('images', {
+      cardKey,
+      storeId:getActiveStoreId(),
+      imageUrl,
+      dataUrl,
+      capturedAt:new Date().toISOString()
+    });
+  }catch(err){
+    console.warn('Pokemon image cache skipped', err);
+  }
+}
+
+function normalizePokemonCacheRecord(row = {}, query = ''){
+  const cardKey = pokemonCardKey(row, query);
+  const updatedAt = row.cache?.updatedAt || row.updatedAt || new Date().toISOString();
+  const searchText = normalizePokemonText([
+    query, row.name, row.set, row.setName, row.card_number, row.cardNumber, row.variant, row.rarity, row.selectedFinish, row.language,
+    ...(row.availableVariants || []).map(v => [v.condition, v.finish, v.language].join(' '))
+  ].join(' '));
+  return {
+    cardKey,
+    storeId:getActiveStoreId(),
+    query,
+    searchText,
+    card:{ ...row, cache:{ state:'cached', updatedAt, source:row.priceSource || row.source || 'Pokemon cache' } },
+    updatedAt,
+    source:row.priceSource || row.source || 'Pokemon cache',
+    imageUrl:row.imageUrl || ''
+  };
+}
+
+async function savePokemonCacheResults(query, rows = [], source = 'Live lookup'){
+  const pokemonRows = (rows || []).filter(r => qplResultCategoryKey(r) === 'pokemon' || isPokemonLookupIntent(query, r.category));
+  if(!pokemonRows.length) return;
+  await Promise.all(pokemonRows.slice(0, 80).map(async row => {
+    const normalized = normalizePokemonCacheRecord({ ...row, priceSource:row.priceSource || source }, query);
+    await pokemonDbPut('cards', normalized);
+    await cachePokemonImage(normalized.cardKey, normalized.imageUrl || normalized.card?.imageUrl);
+    await savePokemonCompsFromRow(normalized.card, normalized.cardKey);
+  }));
+  await pokemonDbPut('meta', { key:'lastPokemonSyncAt', value:new Date().toISOString() });
+}
+
+async function searchPokemonOfflineCache(query, cat = ''){
+  if(!isPokemonLookupIntent(query, cat)) return [];
+  const terms = normalizePokemonText(query).split(/\s+/).filter(Boolean);
+  const cards = await pokemonDbAll('cards').catch(() => []);
+  const imageRows = await pokemonDbAll('images').catch(() => []);
+  const imageMap = new Map(imageRows.filter(i => !i.storeId || i.storeId === getActiveStoreId()).map(i => [i.cardKey, i.dataUrl || i.imageUrl]));
+  return cards.filter(c => c.storeId === getActiveStoreId()).filter(c => {
+    const hay = c.searchText || normalizePokemonText(JSON.stringify(c.card || {}));
+    return terms.every(t => hay.includes(t));
+  }).sort((a,b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0)).slice(0, 50).map(c => ({
+    ...(c.card || {}),
+    imageUrl:imageMap.get(c.cardKey) || c.card?.imageUrl || c.imageUrl || '',
+    cache:{ state:navigator.onLine ? 'cached' : 'offline', updatedAt:c.updatedAt, source:c.source || 'Pokemon cache', cardKey:c.cardKey },
+    priceSource:(c.card?.priceSource || c.source || 'Pokemon cache') + ' (cached)'
+  }));
+}
+
+async function savePokemonCompsFromRow(row = {}, cardKey = pokemonCardKey(row)){
+  const capturedAt = new Date().toISOString();
+  const comps = [];
+  const price = Number(row.market || row.selectedVariant?.marketPrice || 0);
+  if(price > 0) {
+    comps.push({
+      id:'guide_' + cardKey + '_' + Date.now(),
+      storeId:getActiveStoreId(),
+      cardKey,
+      source:row.source === 'pricecharting_csv' || row.pricecharting ? 'pricecharting_guide' : row.source === 'inventory' ? 'internal_sale' : 'pokemonpricetracker_history',
+      title:row.name || 'Pokemon card',
+      price,
+      currency:'USD',
+      soldDate:null,
+      capturedAt,
+      condition:row.selectedCondition || row.condition || 'Unknown',
+      finish:qplFinishLabel(row.selectedFinish || row.finish || 'Unknown'),
+      grade:row.pricingMode === 'slab' ? (row.grade || 'Unknown') : 'Raw',
+      imageUrl:row.imageUrl || '',
+      url:row.productUrl || row.tcgUrl || row.pricecharting?.url || '',
+      notes:row.priceSource || row.source || 'Cached lookup value'
+    });
+  }
+  (row.snapshotHistory || []).forEach((h, i) => comps.push({
+    id:'history_' + cardKey + '_' + Date.now() + '_' + i,
+    storeId:getActiveStoreId(), cardKey, source:'pokemonpricetracker_history',
+    title:row.name || 'Pokemon history snapshot', price:Number(h.value || h.price || 0), currency:'USD',
+    soldDate:h.date || null, capturedAt:h.at || capturedAt, condition:'Unknown', finish:'Unknown', grade:'Raw',
+    imageUrl:row.imageUrl || '', url:row.productUrl || '', notes:h.source || 'Cached history snapshot'
+  }));
+  await Promise.all(comps.filter(c => Number(c.price || 0) > 0).map(c => pokemonDbPut('comps', c)));
+}
+
+async function getPokemonComps(cardKey){
+  return (await pokemonDbAll('comps').catch(() => [])).filter(c => c.storeId === getActiveStoreId() && c.cardKey === cardKey).sort((a,b) => new Date(b.capturedAt || 0) - new Date(a.capturedAt || 0));
+}
+
+function setPokemonOfflineBanner(message = '', tone = 'warn'){
+  const banner = document.getElementById('pokemon-offline-banner');
+  if(!banner) return;
+  banner.textContent = message;
+  banner.classList.toggle('on', !!message);
+  banner.style.color = tone === 'bad' ? 'var(--red)' : tone === 'good' ? 'var(--g)' : 'var(--gold)';
+}
 
 function debouncePriceLookup(){
   clearTimeout(qplTimer);
@@ -8729,9 +9094,32 @@ async function runPriceLookup(){
   const cat = document.getElementById('qpl-cat').value;
   const el = document.getElementById('qpl-result');
   if(!q || q.length < 3) return;
-  el.innerHTML = '<div style="color:var(--gold)">Searching local inventory, catalog matches, and closest printings...</div>';
+  const wantsPokemon = isPokemonLookupIntent(q, cat);
+  setPokemonOfflineBanner('');
+  el.innerHTML = '<div style="color:var(--gold)">Searching local cache first, then live catalog sources...</div>';
+  let cachedResults = [];
+  if(wantsPokemon) {
+    cachedResults = await searchPokemonOfflineCache(q, cat);
+    if(cachedResults.length) {
+      qplMasterResults = cachedResults;
+      qplLastSearch = q;
+      qplResults = filterQplMasterResults(qplMasterResults, cat);
+      renderQuickLookupResults(qplResults);
+      setPokemonOfflineBanner((navigator.onLine ? 'Cached Pokemon results shown while live refresh runs.' : 'Offline Mode: showing cached Pokemon data.') + ' Last updated ' + pokemonCacheAgeLabel(cachedResults[0]?.cache?.updatedAt) + '.');
+    } else if(!navigator.onLine) {
+      el.innerHTML = `<div style="color:var(--gold);line-height:1.6">No cached comps for this card yet. Search online before show or sync Pokemon cache.<br><button class="hbtn" style="margin-top:10px" onclick="switchTab('backoffice');document.getElementById('offline-cache-panel')?.scrollIntoView({behavior:'smooth',block:'start'})">OPEN OFFLINE CACHE</button></div>`;
+      setPokemonOfflineBanner('Offline Mode: no cached Pokemon lookup found for "' + q + '".', 'bad');
+      return;
+    }
+  }
   try {
-    const results = await searchQuickCatalog(q, cat);
+    let slowWarn = null;
+    if(wantsPokemon) slowWarn = setTimeout(() => setPokemonOfflineBanner(cachedResults.length ? 'Slow Internet: still showing cached Pokemon data while live refresh continues.' : 'Slow Internet: still trying live Pokemon sources.'), 8000);
+    const results = await Promise.race([
+      searchQuickCatalog(q, cat),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Lookup timed out after 20 seconds')), 20000))
+    ]);
+    if(slowWarn) clearTimeout(slowWarn);
     qplMasterResults = results.length ? results : await aiQuickLookupFallback(q, cat);
     qplLastSearch = q;
     qplResults = filterQplMasterResults(qplMasterResults, cat);
@@ -8741,8 +9129,17 @@ async function runPriceLookup(){
     }
     renderQuickLookupResults(qplResults);
     pushQuickLookupHistory(q, qplResults[0]);
+    if(wantsPokemon) {
+      savePokemonCacheResults(q, qplMasterResults, 'Live Pokemon lookup').then(renderOfflineCachePanel).catch(console.warn);
+      setPokemonOfflineBanner(cachedResults.length ? 'Live Pokemon refresh updated results. Cached copy saved.' : 'Live Pokemon results saved for offline use.', 'good');
+    }
   } catch(e) {
-    el.innerHTML = '<div style="color:var(--red)">Lookup failed: ' + e.message + '</div>';
+    if(cachedResults.length) {
+      setPokemonOfflineBanner('Live refresh failed: ' + e.message + '. Cached Pokemon data remains visible.', 'bad');
+    } else {
+      el.innerHTML = '<div style="color:var(--red)">Lookup failed: ' + e.message + '</div>';
+      if(wantsPokemon) setPokemonOfflineBanner('No cached Pokemon data found. Search online before show or sync Pokemon cache.', 'bad');
+    }
   }
 }
 
@@ -8817,7 +9214,9 @@ async function searchQuickCatalog(q, cat){
     } catch(e) {}
   }
 
-  return rankQuickLookupResults(results, q, cat).slice(0, 100);
+  const ranked = rankQuickLookupResults(results, q, cat).slice(0, 100);
+  if(isPokemonLookupIntent(q, cat)) savePokemonCacheResults(q, ranked, 'Live Pokemon lookup').catch(console.warn);
+  return ranked;
 }
 
 function rankQuickLookupResults(results, q, cat){
@@ -10206,6 +10605,7 @@ function quickLookupResultCard(r, idx){
         <span class="qpl-badge">${escHtml(r.category || 'ITEM')}</span>
         <span class="qpl-badge ${truth.includes('No ') || truth.includes('Needs') ? 'bad' : truth.includes('Guide') ? 'warn' : 'good'}">${escHtml(truth)}</span>
         <span class="qpl-badge">${escHtml(r.source === 'justtcg' ? 'JustTCG' : r.source === 'pricecharting_csv' ? 'PriceCharting' : r.source || 'Source')}</span>
+        ${r.cache ? `<span class="qpl-badge warn">${escHtml(r.cache.state === 'offline' ? 'Offline' : 'Cached')}</span><span class="qpl-badge">${escHtml('Last updated ' + pokemonCacheAgeLabel(r.cache.updatedAt))}</span>` : ''}
         ${renderVariantIntelligenceBadge(r)}
         ${r.source === 'inventory' ? '<span class="qpl-badge good">IN INVENTORY</span>' : ''}
         ${r.variant ? `<span class="qpl-badge warn">${escHtml(r.variant)}</span>` : ''}
@@ -10214,6 +10614,7 @@ function quickLookupResultCard(r, idx){
       <div class="qpl-price-sub">
         ${recentSold ? `Recent sold: $${recentSold.toFixed(2)}<br>` : ''}
         Source: ${escHtml(r.priceSource || r.source || 'manual')}
+        ${r.cache ? `<div class="pokemon-cache-meta">Cached source: ${escHtml(r.cache.source || 'Pokemon cache')} / ${escHtml(pokemonCacheAgeLabel(r.cache.updatedAt))}</div>` : ''}
       </div>
       ${why ? `<div style="margin-top:12px;color:var(--dim);font-size:13px;line-height:1.45">${escHtml(why)}</div>` : ''}
       ${signals.length ? `<div class="qpl-signal" style="color:${needs.length?'var(--g)':'var(--gold)'}">${escHtml(signals.join(' / '))}</div>` : ''}
@@ -10347,6 +10748,118 @@ function closeSlabCertPanel(){
   if(modal) modal.style.display = 'none';
 }
 
+function pokemonCompSourceLabel(source){
+  return ({
+    ebay_sold:'Sold Comp',
+    manual_comp:'Manual',
+    pricecharting_guide:'Guide Value',
+    pokemonpricetracker_history:'History Snapshot',
+    internal_sale:'Walk-Off Sold'
+  })[source] || String(source || 'Comp').replace(/_/g, ' ');
+}
+
+function pokemonCompGroup(source = '', grade = ''){
+  if(source === 'pricecharting_guide') return 'Guide Values';
+  if(source === 'internal_sale') return 'Internal Sales';
+  if(/psa 10/i.test(grade)) return 'PSA 10';
+  if(/psa 9/i.test(grade)) return 'PSA 9';
+  if(/bgs|cgc|sgc|psa/i.test(grade)) return 'Other Grades';
+  return 'Raw';
+}
+
+async function renderPokemonCompsPanel(idx){
+  const r = qplResults[idx];
+  const el = document.getElementById('pokemon-comps-panel-' + idx);
+  if(!r || !el) return;
+  const cardKey = r.cache?.cardKey || pokemonCardKey(r, qplLastSearch);
+  const comps = await getPokemonComps(cardKey);
+  const sales = safeLocalJson('pos_transactions', []).flatMap(tx => (tx.items || []).filter(i => normalizePokemonText([i.name,i.category].join(' ')).includes(normalizePokemonText(r.name).split(' ')[0] || '')).map(i => ({
+    id:'sale_' + (tx.id || Date.now()) + '_' + i.name,
+    storeId:getActiveStoreId(),
+    cardKey,
+    source:'internal_sale',
+    title:i.name || r.name,
+    price:Number(i.price || 0),
+    currency:'USD',
+    soldDate:tx.date || null,
+    capturedAt:tx.date || new Date().toISOString(),
+    condition:i.condition || 'Unknown',
+    finish:i.finish || 'Unknown',
+    grade:'Raw',
+    imageUrl:r.imageUrl || '',
+    url:'',
+    notes:'Walk-Off sale history'
+  }))).filter(c => Number(c.price || 0) > 0);
+  const allComps = [...comps, ...sales];
+  if(!allComps.length) {
+    el.innerHTML = `<div class="ph">POKEMON COMPS <span style="font-size:9px;color:var(--dim)">offline cache</span></div>
+      <div style="color:var(--gold);line-height:1.6">No cached comps for this card yet. Search online before show or sync Pokemon cache.</div>
+      <div class="pokemon-comp-actions">
+        <button class="hbtn" onclick="saveManualPokemonComp(${idx})">SAVE MANUAL COMP</button>
+        <button class="hbtn" onclick="runPriceLookup()">REFRESH LIVE</button>
+      </div>`;
+    return;
+  }
+  const groups = {};
+  allComps.forEach(c => {
+    const g = pokemonCompGroup(c.source, c.grade);
+    groups[g] = groups[g] || [];
+    groups[g].push(c);
+  });
+  const sold = allComps.filter(c => !['pricecharting_guide','pokemonpricetracker_history'].includes(c.source));
+  const prices = sold.map(c => Number(c.price || 0)).filter(Boolean).sort((a,b) => a-b);
+  const median = prices.length ? prices[Math.floor(prices.length / 2)] : 0;
+  const avg = prices.length ? prices.reduce((a,b) => a+b, 0) / prices.length : 0;
+  el.innerHTML = `<div class="ph">POKEMON COMPS <span style="font-size:9px;color:var(--dim)">cached/offline-ready</span></div>
+    <div style="font-family:monospace;font-size:10px;color:var(--dim);line-height:1.5">
+      ${prices.length ? `Sold comps median $${median.toFixed(2)} / avg $${avg.toFixed(2)}. ` : 'No real sold comps cached yet. '}
+      Guide values are separated and are not sold comps.
+    </div>
+    ${Object.entries(groups).map(([group, rows]) => `<div style="margin-top:10px">
+      <div style="font-family:'Orbitron',monospace;font-size:11px;color:var(--text);letter-spacing:1px">${escHtml(group)}</div>
+      <div class="pokemon-comp-grid">${rows.slice(0,8).map(c => `<div class="pokemon-comp-card ${c.source === 'manual_comp' ? 'manual' : c.source === 'pricecharting_guide' ? 'guide' : 'sold'}">
+        <b>$${Number(c.price || 0).toFixed(2)}</b>
+        <div>${escHtml(pokemonCompSourceLabel(c.source))} / ${escHtml(pokemonCompFreshness(c.capturedAt))}</div>
+        <div>${escHtml(c.title || r.name || 'Pokemon card')}</div>
+        <div>${escHtml([c.condition,c.finish,c.grade].filter(Boolean).join(' / '))}</div>
+        <div>Captured ${escHtml(pokemonCacheAgeLabel(c.capturedAt))}</div>
+      </div>`).join('')}</div>
+    </div>`).join('')}
+    <div class="pokemon-comp-actions">
+      <button class="hbtn" onclick="saveManualPokemonComp(${idx})">SAVE MANUAL COMP</button>
+      <button class="hbtn" onclick="${navigator.onLine ? 'runPriceLookup()' : "toast_dash('Requires Internet')"}">${navigator.onLine ? 'REFRESH LIVE' : 'REQUIRES INTERNET'}</button>
+    </div>`;
+}
+
+async function saveManualPokemonComp(idx){
+  const r = qplResults[idx];
+  if(!r) return;
+  const price = Number(prompt('Manual comp price?', '') || 0);
+  if(!price) return toast_dash('Manual comp needs a price');
+  const comp = {
+    id:'manual_' + Date.now(),
+    storeId:getActiveStoreId(),
+    cardKey:r.cache?.cardKey || pokemonCardKey(r, qplLastSearch),
+    source:'manual_comp',
+    title:prompt('Comp title/source note?', r.name || 'Manual Pokemon comp') || r.name || 'Manual Pokemon comp',
+    price,
+    currency:'USD',
+    soldDate:prompt('Sold/listed date? YYYY-MM-DD', new Date().toISOString().slice(0,10)) || null,
+    capturedAt:new Date().toISOString(),
+    condition:prompt('Condition? NM/LP/MP/HP/DMG', r.selectedCondition || r.condition || 'NM') || 'Unknown',
+    finish:prompt('Finish?', qplFinishLabel(r.selectedFinish || r.finish || 'Normal')) || 'Unknown',
+    grade:prompt('Grade? Raw / PSA 10 / PSA 9 / etc.', 'Raw') || 'Unknown',
+    imageUrl:r.imageUrl || '',
+    url:'',
+    notes:'Manual comp saved offline; sync queued when online.'
+  };
+  await pokemonDbPut('comps', comp);
+  enqueueSync('pokemon-manual-comp', 'Manual Pokemon comp: ' + comp.title, comp, 'queued for backend sync');
+  renderPokemonCompsPanel(idx);
+  renderOfflineCachePanel();
+  toast_dash('Manual Pokemon comp saved locally');
+}
+
 function startCertVoiceInput(){
   const input = document.getElementById('qpl-slab-cert');
   if(!input) return;
@@ -10397,10 +10910,12 @@ function selectQuickLookupResult(idx){
         <div style="color:var(--gold);font-weight:800;font-size:13px;margin-bottom:8px">SELECTED PRINTING</div>
         <div class="qpl-title">${escHtml(r.name)}</div>
         <div class="qpl-meta">${escHtml([r.year,r.set,r.card_number?'#'+r.card_number:'',r.variant,r.priceSource].filter(Boolean).join(' / '))}</div>
+        ${r.cache ? `<div class="qpl-badges"><span class="qpl-badge warn">${escHtml(r.cache.state === 'offline' ? 'Offline Cached' : 'Cached')}</span><span class="qpl-badge">${escHtml('Last updated ' + pokemonCacheAgeLabel(r.cache.updatedAt))}</span></div>` : ''}
         <div class="qpl-price">$${Number(r.market || 0).toFixed(2)}</div>
         <div class="qpl-price-sub">${escHtml(r.note || 'Review details, then add to inventory or buy offer.')}</div>
       </div>
     </div>
+    ${isPokemonLookupIntent(r.name || '', r.category) || qplResultCategoryKey(r) === 'pokemon' ? `<div id="pokemon-comps-panel-${idx}" class="pokemon-comps-panel">Loading cached Pokemon comps...</div>` : ''}
     <div style="display:grid;grid-template-columns:1fr 140px 110px;gap:9px;margin-bottom:9px">
       <input id="qpl-edit-name" value="${escHtml(r.name)}" style="background:var(--surf);border:1px solid var(--border);color:var(--text);padding:12px;border-radius:8px;font-size:14px;min-height:48px">
       <select id="qpl-edit-category" style="background:var(--surf);border:1px solid var(--border);color:var(--text);padding:12px;border-radius:8px;font-size:14px;min-height:48px">
@@ -10451,6 +10966,7 @@ function selectQuickLookupResult(idx){
     </details>
     <div id="qpl-add-status" style="margin-top:8px;color:var(--dim);font-size:8px"></div>
   </div>`;
+  if(isPokemonLookupIntent(r.name || '', r.category) || qplResultCategoryKey(r) === 'pokemon') setTimeout(() => renderPokemonCompsPanel(idx), 0);
 }
 
 function normalizeQuickCategory(category){

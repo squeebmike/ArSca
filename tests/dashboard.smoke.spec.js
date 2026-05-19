@@ -19,7 +19,7 @@ test('dashboard html and worker scripts parse', async () => {
 test('dashboard loads current build with primary nav and Research tab', async ({ page }) => {
   const guard = await openDashboard(page);
   await expect(page.locator('.logo')).toContainText(/WALK-OFF/i);
-  await expect(page.locator('.logo')).toContainText(/2026\.05\.15\.04/);
+  await expect(page.locator('.logo')).toContainText(/2026\.05\.19\.01/);
   await expect(page.locator('[data-tab="overview"]')).toBeVisible();
   await expect(page.locator('[data-tab="research"]')).toBeVisible();
   await expect(page.locator('[data-tab="authcheck"]')).toBeVisible();
@@ -56,6 +56,34 @@ test('research and drawer use contextual actions and starting cash wording', asy
   await expect(page.locator('#top-drawer-chip')).toHaveText('DRAWER OPEN');
   await expect(page.locator('#drawer-float-disp')).toHaveClass(/drawer-money-hidden/);
   await expect(page.locator('#drawer-expected-disp')).toHaveClass(/drawer-money-hidden/);
+  guard.assertClean();
+});
+
+test('Pokemon lookup uses cached results while offline', async ({ page }) => {
+  const guard = await openDashboard(page);
+  await page.evaluate(async () => {
+    const row = {
+      source: 'justtcg',
+      name: 'Pikachu',
+      category: 'Pokemon TCG',
+      set: 'Scarlet & Violet 151',
+      card_number: '025/165',
+      market: 12.34,
+      imageUrl: 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22120%22 height=%22168%22%3E%3Crect width=%22120%22 height=%22168%22 fill=%22%2307080a%22/%3E%3Ctext x=%2210%22 y=%2284%22 fill=%22%2300ffb3%22 font-size=%2212%22%3EPikachu%3C/text%3E%3C/svg%3E',
+      priceSource: 'JustTCG Exact Variant',
+      availableVariants: [{ condition: 'NM', finish: 'normal', language: 'English', marketPrice: 12.34 }]
+    };
+    await window.savePokemonCacheResults('pikachu 151', [row], 'QA cached Pokemon');
+  });
+  await page.context().setOffline(true);
+  await page.locator('[data-tab="research"]').click();
+  await page.locator('#qpl-cat').selectOption('Pokemon TCG');
+  await page.locator('#qpl-input').fill('pikachu 151');
+  await page.getByRole('button', { name: 'LOOK UP' }).click();
+  await expect(page.locator('#pokemon-offline-banner')).toContainText(/Offline Mode|cached/i);
+  await expect(page.locator('#qpl-result')).toContainText('Pikachu');
+  await expect(page.locator('#qpl-result')).toContainText(/Cached|Offline/i);
+  await page.context().setOffline(false);
   guard.assertClean();
 });
 

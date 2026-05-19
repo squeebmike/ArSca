@@ -4,7 +4,7 @@ const { openDashboard, openScanner } = require('./helpers');
 test('scanner page loads without fatal console errors', async ({ page }) => {
   const guard = await openScanner(page);
   await expect(page.locator('body')).toContainText(/SCAN|READY|Walk-Off/i);
-  await expect(page.locator('#app-version')).toContainText('2026.05.15.04');
+  await expect(page.locator('#app-version')).toContainText('2026.05.19.01');
   await expect(page.locator('#hud')).not.toContainText(/[0-9a-f]{8}-[0-9a-f]{4}/i);
   guard.assertClean();
 });
@@ -23,6 +23,30 @@ test('scanner progress card shows card sorter states and timeout actions', async
   await expect(page.locator('#scanner-progress-send')).toBeVisible();
   await page.evaluate(() => window.cancelScannerProgress());
   await expect(page.locator('#scanner-progress-card')).toBeHidden();
+  guard.assertClean();
+});
+
+test('scanner Pokemon search can return cached rows offline', async ({ page }) => {
+  const guard = await openScanner(page);
+  await page.evaluate(async () => {
+    await window.scannerSavePokemonCache('pikachu 151', [{
+      source: 'justtcg',
+      name: 'Pikachu',
+      category: 'Pokemon TCG',
+      set: 'Scarlet & Violet 151',
+      card_number: '025/165',
+      marketPrice: 11.11,
+      priceSource: 'JustTCG Exact Variant',
+      confidenceScore: 95,
+      availableVariantCount: 1
+    }]);
+  });
+  await page.context().setOffline(true);
+  const rows = await page.evaluate(() => window.scannerUnifiedSearch('pikachu 151', 'Pokemon TCG'));
+  expect(rows.length).toBeGreaterThan(0);
+  expect(rows[0].name).toContain('Pikachu');
+  expect(rows[0].cache.state).toBe('offline');
+  await page.context().setOffline(false);
   guard.assertClean();
 });
 
