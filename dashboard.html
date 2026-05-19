@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.05.19.02">
+<meta name="version" content="2026.05.19.03">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -522,7 +522,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
 
 <header>
   <div class="hdr">
-    <div class="logo">WALK-OFF <span>DASHBOARD · v2026.05.19.02</span></div>
+    <div class="logo">WALK-OFF <span>DASHBOARD · v2026.05.19.03</span></div>
     <div class="hdr-right">
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
@@ -1433,7 +1433,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.05.19.02';
+const APP_VERSION = '2026.05.19.03';
 const SUPABASE_URL = 'https://vroknjrxubsqyexngwus.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_wbpX2nL8l-4NbXtZNG_bjA_nabSYaJ5';
 const AUTH_REDIRECT_URL = 'https://squeebmike.github.io/ArSca/dashboard.html';
@@ -2199,6 +2199,9 @@ function getPriceChartingCsvUrls(){
 function savePriceChartingCsvUrls(urls){
   localStorage.setItem('pricecharting_csv_urls_v1', JSON.stringify(urls || {}));
 }
+function maskPriceChartingCsvUrl(raw = ''){
+  return String(raw || '').replace(/([?&](?:t|token|api_key|apikey|key)=)[^&]+/ig, '$1***');
+}
 
 function getVendorProfile(){
   try { return { ...DEFAULT_VENDOR_PROFILE, ...(JSON.parse(localStorage.getItem('vendor_profile_v1') || '{}')) }; }
@@ -2871,10 +2874,14 @@ function renderPriceChartingDataPanel(status = null){
   const urls = getPriceChartingCsvUrls();
   const rows = PRICECHARTING_CSV_CATEGORIES.map(cat => {
     const meta = status?.[cat] || {};
-    return `<div class="item-metric" style="display:grid;grid-template-columns:170px 1fr 96px 96px 96px;gap:8px;align-items:end;margin-bottom:8px">
+    const savedUrl = urls[cat] || '';
+    const configured = !!savedUrl || !!meta.configured || !!meta.urlPresent;
+    const urlPreview = meta.urlMasked || maskPriceChartingCsvUrl(savedUrl);
+    return `<div class="item-metric" style="display:grid;grid-template-columns:170px 220px 1fr 96px 96px 96px;gap:8px;align-items:end;margin-bottom:8px">
       <label style="font-family:monospace;font-size:9px;color:var(--dim)">${escHtml(cat)}
         <div style="font-size:9px;color:var(--dim);margin-top:4px">${meta.lastSyncedAt ? `${Number(meta.rowCount||0).toLocaleString()} rows · ${new Date(meta.lastSyncedAt).toLocaleString()}` : (meta.configured ? 'Configured, not synced' : 'No cache yet')}</div>
       </label>
+      <div style="font-family:monospace;font-size:8px;color:${configured?'var(--g)':'var(--gold)'};align-self:center">${configured ? 'Configured: ' + escHtml(urlPreview || 'saved in Worker') : 'Paste full download-custom URL here'}</div>
       <input id="pc-csv-url-${escHtml(cat)}" class="tsi" placeholder="PriceCharting CSV download URL (saved in Worker/KV on sync)" value="${escHtml(urls[cat] || '')}">
       <button class="hbtn" onclick="testPriceChartingCsv('${escHtml(cat)}')">TEST URL</button>
       <button class="hbtn" onclick="syncPriceChartingCsv('${escHtml(cat)}')">SYNC NOW</button>
@@ -9181,7 +9188,7 @@ async function runPriceLookup(){
     pushQuickLookupHistory(q, qplResults[0]);
     if(wantsPokemon) {
       savePokemonCacheResults(q, qplMasterResults, 'Live Pokemon lookup').then(renderOfflineCachePanel).catch(console.warn);
-      setPokemonOfflineBanner(cachedResults.length ? 'Live Pokemon refresh updated results. Cached copy saved.' : 'Live Pokemon results saved for offline use.', 'good');
+      setPokemonOfflineBanner((cachedResults.length ? 'Live Pokemon refresh updated the cached copy.' : 'Saved this Pokémon lookup for offline use.') + ' Cached results may be stale; live refresh updates when online. Last cached ' + pokemonCacheAgeLabel(new Date().toISOString()) + '.', 'good');
     }
   } catch(e) {
     if(cachedResults.length) {
@@ -9844,6 +9851,7 @@ async function updateQplVariant(idx, patch = {}, rerender = true){
   if(!r) return;
   Object.assign(r, patch);
   applyQplSelectedVariant(r);
+  if(rerender) updateQplResultCard(idx);
   if(r.source === 'justtcg' && (!r.availableVariants?.length || !r.selectedVariant?.priceHistory?.length)) {
     await hydrateQplVariantMatrix(idx, r.graphDuration || '90d');
   }
@@ -10036,6 +10044,26 @@ function qplVariantResolverStatus(r = {}){
   if(r.selectedVariant && Number(r.selectedVariant.marketPrice || 0) > 0) return { label:'Exact SKU matched', cls:'good' };
   if(r.selectedVariant) return { label:'No real price', cls:'bad' };
   return { label:'No exact SKU', cls:'bad' };
+}
+
+function tcgConditionSearchLabel(condition = ''){
+  return ({ NM:'Near Mint', LP:'Lightly Played', MP:'Moderately Played', HP:'Heavily Played', DMG:'Damaged' })[String(condition || '').toUpperCase()] || condition || '';
+}
+
+function buildTcgExternalLink(item = {}){
+  const selected = item.selectedVariant || qplSelectedVariant(item) || {};
+  const condition = selected.condition || item.selectedCondition || item.condition || '';
+  const finish = qplFinishLabel(selected.finish || item.selectedFinish || item.finish || '');
+  const language = selected.language || item.selectedLanguage || item.language || 'English';
+  const activeSkuId = selected.tcgplayerSkuId || selected.skuId || item.tcgplayerSkuId || item.skuId || '';
+  const query = [item.name, item.set || item.setName, item.card_number || item.cardNumber, tcgConditionSearchLabel(condition) || condition, finish, language && language !== 'English' ? language : ''].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
+  const note = activeSkuId ? 'Marketplace SKU captured; search includes selected condition because direct SKU deep-link is not guaranteed.' : 'Marketplace cannot deep-link to exact condition here; opening a selected-condition search.';
+  return {
+    activeSkuId,
+    query,
+    note,
+    url:'https://www.tcgplayer.com/search/all/product?q=' + encodeURIComponent(query || item.name || '')
+  };
 }
 
 function qplChartRangeToDuration(range){
@@ -10640,6 +10668,7 @@ function renderQuickLookupResults(results){
 }
 
 function quickLookupResultCard(r, idx){
+  const builtTcgLink = buildTcgExternalLink(r);
   const img = r.imageUrl
     ? `<div class="qpl-img-shell" onclick="openQplImageLightbox(${idx})"><img src="${escHtml(r.imageUrl)}" alt="${escHtml(r.name || 'Card image')}"></div>`
     : `<div class="qpl-img-shell"><div class="qpl-no-img">${qplResultCategoryKey(r)==='comic'?'NO COVER IMAGE':'NO IMAGE'}</div></div>`;
@@ -10650,7 +10679,7 @@ function quickLookupResultCard(r, idx){
   const confLabel = conf >= 85 ? 'HIGH CONFIDENCE' : conf >= 60 ? 'MEDIUM CONFIDENCE' : conf > 0 ? 'LOW CONFIDENCE' : 'CHECK MATCH';
   const confClass = conf >= 85 ? 'good' : conf >= 60 ? 'warn' : 'bad';
   const why = (r.matchWhy || []).length ? `Matched: ${(r.matchWhy || []).join(', ')}` : (r.note || '');
-  const tcg = `<button class="hbtn" onclick="openQplChartModal(${idx})">CHART</button>${r.tcgUrl ? `<button class="hbtn" onclick="openQuickExternal(${idx},'tcg')">TCG</button>` : ''}`;
+  const tcg = `<button class="hbtn" onclick="openQplChartModal(${idx})">CHART</button>${qplResultCategoryKey(r) === 'pokemon' || qplResultCategoryKey(r) === 'mtg' || r.tcgUrl ? `<button class="hbtn" onclick="openQuickExternal(${idx},'tcg')">TCG</button>` : ''}`;
   const slab = `<button class="hbtn" style="color:var(--blue)" onclick="openSlabCertPanel(${idx})">SLAB / CERT</button>`;
   const truth = qplTruthLabel(r);
   const variantStatus = qplVariantResolverStatus(r);
@@ -10700,7 +10729,7 @@ function quickLookupResultCard(r, idx){
         </select>
         <input type="number" min="1" step="1" value="${Number(r.qty || 1)}" onchange="qplResults[${idx}].qty=parseInt(this.value,10)||1" aria-label="Quantity">
       </div>
-      ${showAdminDebug() && (r.skuId || r.productConditionId) ? `<div style="margin-top:8px;font-family:monospace,monospace;font-size:10px;color:var(--dim)">SKU ${escHtml(r.skuId || 'n/a')} / PCID ${escHtml(r.productConditionId || 'n/a')}</div>` : ''}
+      ${showAdminDebug() ? `<div style="margin-top:8px;font-family:monospace,monospace;font-size:10px;color:var(--dim)">Debug: selectedCondition ${escHtml(r.selectedCondition || r.condition || '')} / selectedFinish ${escHtml(qplFinishLabel(r.selectedFinish || r.finish || ''))} / activeSkuId ${escHtml(builtTcgLink.activeSkuId || 'n/a')} / activeVariantPrice ${Number(r.selectedVariant?.marketPrice || 0) ? '$'+Number(r.selectedVariant.marketPrice).toFixed(2) : 'No Real Price'} / externalLinkQuery ${escHtml(builtTcgLink.query || '')}</div>` : ''}
     </div>
     <div class="qpl-actions">
       <button class="hbtn primary" onclick="selectQuickLookupResult(${idx})">SELECT</button>
@@ -10754,8 +10783,11 @@ function closeQplImageLightbox(){
 function openQuickExternal(idx, type){
   const r = qplResults[idx];
   if(!r) return;
-  if(type === 'tcg' && r.tcgUrl) {
-    window.open(r.tcgUrl, '_blank');
+  if(type === 'tcg') {
+    const built = buildTcgExternalLink(r);
+    r.externalLinkQuery = built.query;
+    r.externalLinkNote = built.note;
+    window.open(built.url, '_blank');
     return;
   }
   if(type === 'slab') {
@@ -11028,7 +11060,7 @@ function selectQuickLookupResult(idx){
         <button class="hbtn" style="color:var(--gold)" onclick="markQplNeedsReview(${idx})">NEEDS REVIEW</button>
         <button class="hbtn" onclick="openQplChartModal(${idx})">CHART</button>
         <button class="hbtn" onclick="openQuickExternal(${idx},'sold')">COMPS</button>
-        ${r.tcgUrl ? `<button class="hbtn" onclick="openQuickExternal(${idx},'tcg')">OPEN TCG</button>` : ''}
+        ${['pokemon','mtg','tcg'].includes(qplResultCategoryKey(r)) || r.tcgUrl ? `<button class="hbtn" onclick="openQuickExternal(${idx},'tcg')">OPEN TCG</button>` : ''}
         <button class="hbtn" onclick="openQuickExternal(${idx},'pricecharting')">PRICECHARTING</button>
       </div>
     </details>
