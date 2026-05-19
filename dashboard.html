@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.05.19.03">
+<meta name="version" content="2026.05.19.04">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -522,7 +522,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
 
 <header>
   <div class="hdr">
-    <div class="logo">WALK-OFF <span>DASHBOARD · v2026.05.19.03</span></div>
+    <div class="logo">WALK-OFF <span>DASHBOARD · v2026.05.19.04</span></div>
     <div class="hdr-right">
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
@@ -1433,7 +1433,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.05.19.03';
+const APP_VERSION = '2026.05.19.04';
 const SUPABASE_URL = 'https://vroknjrxubsqyexngwus.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_wbpX2nL8l-4NbXtZNG_bjA_nabSYaJ5';
 const AUTH_REDIRECT_URL = 'https://squeebmike.github.io/ArSca/dashboard.html';
@@ -9478,6 +9478,153 @@ function qplPriceSourceLabel(v){
   return 'No Real Price Available';
 }
 
+function pokemonPptConditionLabel(condition = ''){
+  const raw = String(condition || '').trim();
+  const upper = raw.toUpperCase();
+  return ({ NM:'Near Mint', LP:'Lightly Played', MP:'Moderately Played', HP:'Heavily Played', DMG:'Damaged' })[upper]
+    || (/near/.test(raw.toLowerCase()) ? 'Near Mint'
+      : /light/.test(raw.toLowerCase()) ? 'Lightly Played'
+      : /moderate/.test(raw.toLowerCase()) ? 'Moderately Played'
+      : /heavy/.test(raw.toLowerCase()) ? 'Heavily Played'
+      : /damage|dmg/.test(raw.toLowerCase()) ? 'Damaged'
+      : raw || 'Near Mint');
+}
+
+function pokemonPptConditionCode(condition = ''){
+  const label = pokemonPptConditionLabel(condition).toLowerCase();
+  if(label.includes('light')) return 'LP';
+  if(label.includes('moderate')) return 'MP';
+  if(label.includes('heavy')) return 'HP';
+  if(label.includes('damage')) return 'DMG';
+  return 'NM';
+}
+
+function pokemonPptFinishLabel(value = ''){
+  const raw = String(value || 'Normal').toLowerCase();
+  if(raw.includes('reverse')) return 'Reverse Holofoil';
+  if(raw.includes('textured')) return 'Textured Foil';
+  if(raw.includes('holo') || raw.includes('foil')) return 'Holofoil';
+  if(raw.includes('normal')) return 'Normal';
+  return qplFinishLabel(normalizeQplFinish(value || 'normal'));
+}
+
+function normalizePokemonPptKey(value = ''){
+  return String(value || '').toLowerCase().replace(/holofoil/g, 'holo').replace(/[^a-z0-9]+/g, '');
+}
+
+function pokemonPptPriceValue(value){
+  if(value == null) return 0;
+  if(typeof value === 'number') return Number(value || 0);
+  if(typeof value === 'string') return Number(value.replace(/[$,]/g, '') || 0);
+  return Number(value.price ?? value.market ?? value.marketPrice ?? value.value ?? value.mid ?? 0) || 0;
+}
+
+function pokemonPptObjectMatch(obj, wanted){
+  if(!obj || typeof obj !== 'object') return null;
+  const exact = obj[wanted] ?? obj[pokemonPptConditionCode(wanted)];
+  if(exact != null) return exact;
+  const target = normalizePokemonPptKey(wanted);
+  const code = normalizePokemonPptKey(pokemonPptConditionCode(wanted));
+  const found = Object.entries(obj).find(([key]) => {
+    const k = normalizePokemonPptKey(key);
+    return k === target || k === code || target.includes(k) || k.includes(target);
+  });
+  return found ? found[1] : null;
+}
+
+function resolvePokemonPriceTrackerPrice(row = {}){
+  const card = row.pokemonPriceTracker || row.pokemonPriceTrackerCard || row.pptCard || null;
+  if(!card?.prices) return null;
+  const prices = card.prices || {};
+  const selectedCondition = pokemonPptConditionLabel(row.selectedCondition || row.condition || prices.primaryCondition || 'Near Mint');
+  const selectedFinish = pokemonPptFinishLabel(row.selectedFinish || row.finish || row.selectedPrinting || prices.primaryPrinting || 'Normal');
+  const variants = prices.variants || {};
+  const variantFinish = pokemonPptObjectMatch(variants, selectedFinish);
+  const variantCondition = pokemonPptObjectMatch(variantFinish, selectedCondition);
+  const variantPrice = pokemonPptPriceValue(variantCondition);
+  const lastUpdated = prices.lastUpdated || card.lastUpdated || card.updatedAt || row.pokemonPriceTrackerLastUpdated || '';
+  if(variantPrice > 0) {
+    return {
+      ok:true,
+      price:variantPrice,
+      path:`prices.variants[${selectedFinish}][${selectedCondition}].price`,
+      source:'PokemonPriceTracker exact variant',
+      condition:selectedCondition,
+      finish:selectedFinish,
+      lastUpdated,
+      card
+    };
+  }
+  const conditionEntry = pokemonPptObjectMatch(prices.conditions || {}, selectedCondition);
+  const conditionPrice = pokemonPptPriceValue(conditionEntry);
+  if(conditionPrice > 0) {
+    return {
+      ok:true,
+      price:conditionPrice,
+      path:`prices.conditions[${selectedCondition}].price`,
+      source:'PokemonPriceTracker condition price',
+      condition:selectedCondition,
+      finish:selectedFinish,
+      lastUpdated,
+      card
+    };
+  }
+  const primaryCondition = pokemonPptConditionLabel(prices.primaryCondition || 'Near Mint');
+  const primaryFinish = pokemonPptFinishLabel(prices.primaryPrinting || 'Normal');
+  const marketPrice = pokemonPptPriceValue(prices.market);
+  if(marketPrice > 0 && normalizePokemonPptKey(selectedCondition) === normalizePokemonPptKey(primaryCondition) && normalizePokemonPptKey(selectedFinish) === normalizePokemonPptKey(primaryFinish)) {
+    return {
+      ok:true,
+      price:marketPrice,
+      path:'prices.market',
+      source:'PokemonPriceTracker market',
+      condition:selectedCondition,
+      finish:selectedFinish,
+      lastUpdated,
+      card
+    };
+  }
+  return {
+    ok:false,
+    price:0,
+    path:`missing PokemonPriceTracker price for ${selectedFinish} / ${selectedCondition}`,
+    source:'No Real Price Available',
+    condition:selectedCondition,
+    finish:selectedFinish,
+    lastUpdated,
+    card
+  };
+}
+
+function applyPokemonPriceTrackerPrice(row = {}){
+  const resolved = resolvePokemonPriceTrackerPrice(row);
+  if(!resolved) return false;
+  row.resolvedPricePath = resolved.path;
+  row.resolvedPrice = resolved.price || 0;
+  row.selectedCondition = pokemonPptConditionCode(resolved.condition);
+  row.condition = row.selectedCondition;
+  row.selectedFinish = normalizeQplFinish(resolved.finish);
+  row.finish = row.selectedFinish;
+  row.selectedPrinting = resolved.finish;
+  row.pokemonPriceTrackerLastUpdated = resolved.lastUpdated || row.pokemonPriceTrackerLastUpdated || '';
+  row.tcgPlayerId = resolved.card?.tcgPlayerId || row.tcgPlayerId || row.tcgplayerId || '';
+  row.tcgplayerId = row.tcgPlayerId || row.tcgplayerId || '';
+  row.tcgPlayerUrl = resolved.card?.tcgPlayerUrl || row.tcgPlayerUrl || row.tcgUrl || '';
+  row.tcgUrl = row.tcgPlayerUrl || row.tcgUrl || '';
+  if(resolved.ok) {
+    row.market = resolved.price;
+    row.priceSource = resolved.source;
+    row.priceConfidence = 'high';
+  } else {
+    const est = estimateConditionValue(row, row.selectedCondition);
+    row.market = est || 0;
+    row.priceSource = est ? 'Estimated Condition Value' : 'No Real Price Available';
+    row.priceConfidence = est ? 'estimate' : 'unknown';
+  }
+  row.lastPriceSyncAt = resolved.lastUpdated || row.lastPriceSyncAt || new Date().toISOString();
+  return true;
+}
+
 function parseMtgFinishIntent(q){
   const raw = String(q || '').toLowerCase();
   let finish = '';
@@ -9523,6 +9670,7 @@ function estimateConditionValue(row, condition){
 
 function qplTruthLabel(r){
   if(r?.priceSource === 'Estimated Condition Value' || r?.priceConfidence === 'estimate') return 'Estimated Condition Value';
+  if(r?.pokemonPriceTracker || /^PokemonPriceTracker/i.test(r?.priceSource || '')) return Number(r?.market || 0) > 0 ? 'Real SKU Market Price' : 'No Real Price';
   if(r?.source === 'justtcg') return Number(r.selectedVariant?.marketPrice || 0) > 0 ? 'Real SKU Market Price' : 'No Real Price';
   if(r?.pricecharting || r?.source === 'pricecharting_csv') return Number(r.pricecharting?.prices?.ungraded || r.market || 0) > 0 ? 'Guide Value' : 'No Guide Value';
   if(r?.source === 'inventory') return 'Inventory Price';
@@ -9786,12 +9934,21 @@ function qplSelectedVariant(r){
 function applyQplSelectedVariant(r){
   const v = qplSelectedVariant(r);
   if(!v) {
+    if(applyPokemonPriceTrackerPrice(r)) {
+      r.selectedVariant = null;
+      r.variantIntelligence = getVariantIntelligence(r);
+      return r;
+    }
     if(r?.availableVariants?.length) {
       r.selectedVariant = null;
-      const est = estimateConditionValue(r, r.selectedCondition || r.condition);
-      r.market = est;
-      r.priceSource = est ? 'Estimated Condition Value' : 'No Matching Variant';
-      r.priceConfidence = est ? 'estimate' : 'unknown';
+      if(!applyPokemonPriceTrackerPrice(r)) {
+        const est = estimateConditionValue(r, r.selectedCondition || r.condition);
+        r.market = est;
+        r.priceSource = est ? 'Estimated Condition Value' : 'No Matching Variant';
+        r.priceConfidence = est ? 'estimate' : 'unknown';
+        r.resolvedPricePath = est ? 'admin estimate fallback' : 'no matching variant';
+        r.resolvedPrice = est || 0;
+      }
       r.variantIntelligence = getVariantIntelligence(r);
     }
     return r;
@@ -9804,13 +9961,18 @@ function applyQplSelectedVariant(r){
   r.condition = v.condition;
   r.finish = v.finish;
   r.language = v.language || 'English';
-  const realPrice = qplPriceValue(v);
-  const estPrice = realPrice ? 0 : estimateConditionValue(r, v.condition);
-  r.market = realPrice || estPrice;
+  const pptApplied = applyPokemonPriceTrackerPrice(r);
+  const realPrice = pptApplied ? Number(r.market || 0) : qplPriceValue(v);
+  const estPrice = pptApplied ? 0 : (realPrice ? 0 : estimateConditionValue(r, v.condition));
+  if(!pptApplied) r.market = realPrice || estPrice;
   r.low = Number(v.lowPrice || v.lowestListingPrice || 0) || r.low || 0;
   r.high = Number(v.highPrice || 0) || r.high || 0;
-  r.priceSource = realPrice ? qplPriceSourceLabel(v) : (estPrice ? 'Estimated Condition Value' : qplPriceSourceLabel(v));
-  r.priceConfidence = realPrice ? (v.priceConfidence || r.priceConfidence || 'unknown') : (estPrice ? 'estimate' : 'unknown');
+  if(!pptApplied) {
+    r.priceSource = realPrice ? qplPriceSourceLabel(v) : (estPrice ? 'Estimated Condition Value' : qplPriceSourceLabel(v));
+    r.priceConfidence = realPrice ? (v.priceConfidence || r.priceConfidence || 'unknown') : (estPrice ? 'estimate' : 'unknown');
+    r.resolvedPricePath = realPrice ? 'selectedVariant.marketPrice' : (estPrice ? 'admin estimate fallback' : 'selectedVariant has no real price');
+    r.resolvedPrice = realPrice || estPrice || 0;
+  }
   r.skuId = v.skuId || r.skuId || '';
   r.productConditionId = v.productConditionId || r.productConditionId || '';
   r.lastPriceSyncAt = v.lastUpdated || r.lastPriceSyncAt || new Date().toISOString();
@@ -9852,6 +10014,7 @@ async function updateQplVariant(idx, patch = {}, rerender = true){
   Object.assign(r, patch);
   applyQplSelectedVariant(r);
   if(rerender) updateQplResultCard(idx);
+  if(isPokemonChartCandidate(r)) hydratePokemonPriceTrackerPricing(idx, rerender);
   if(r.source === 'justtcg' && (!r.availableVariants?.length || !r.selectedVariant?.priceHistory?.length)) {
     await hydrateQplVariantMatrix(idx, r.graphDuration || '90d');
   }
@@ -10040,6 +10203,7 @@ function qplConditionOptionsFor(r){
 }
 
 function qplVariantResolverStatus(r = {}){
+  if(r.pokemonPriceTracker) return Number(r.market || 0) > 0 ? { label:'PokemonPriceTracker exact price', cls:'good' } : { label:'No real price', cls:'bad' };
   if(!r.availableVariants?.length) return { label:'Variant Matrix Unavailable', cls:'warn' };
   if(r.selectedVariant && Number(r.selectedVariant.marketPrice || 0) > 0) return { label:'Exact SKU matched', cls:'good' };
   if(r.selectedVariant) return { label:'No real price', cls:'bad' };
@@ -10050,6 +10214,15 @@ function tcgConditionSearchLabel(condition = ''){
   return ({ NM:'Near Mint', LP:'Lightly Played', MP:'Moderately Played', HP:'Heavily Played', DMG:'Damaged' })[String(condition || '').toUpperCase()] || condition || '';
 }
 
+function tcgPlayerProductIdFromUrl(value = ''){
+  const m = String(value || '').match(/tcgplayer\.com\/product\/(\d+)/i);
+  return m ? m[1] : '';
+}
+
+function encodeTcgParam(value = ''){
+  return encodeURIComponent(String(value || '')).replace(/%20/g, '+');
+}
+
 function buildTcgExternalLink(item = {}){
   const selected = item.selectedVariant || qplSelectedVariant(item) || {};
   const condition = selected.condition || item.selectedCondition || item.condition || '';
@@ -10057,12 +10230,30 @@ function buildTcgExternalLink(item = {}){
   const language = selected.language || item.selectedLanguage || item.language || 'English';
   const activeSkuId = selected.tcgplayerSkuId || selected.skuId || item.tcgplayerSkuId || item.skuId || '';
   const query = [item.name, item.set || item.setName, item.card_number || item.cardNumber, tcgConditionSearchLabel(condition) || condition, finish, language && language !== 'English' ? language : ''].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
-  const note = activeSkuId ? 'Marketplace SKU captured; search includes selected condition because direct SKU deep-link is not guaranteed.' : 'Marketplace cannot deep-link to exact condition here; opening a selected-condition search.';
+  const conditionLabel = tcgConditionSearchLabel(condition) || 'Near Mint';
+  const productUrl = item.tcgPlayerUrl || item.tcgUrl || item.productUrl || '';
+  const productId = item.tcgPlayerId || item.tcgplayerId || tcgPlayerProductIdFromUrl(productUrl);
+  let url = '';
+  let note = activeSkuId ? 'Marketplace SKU captured; product link includes selected condition.' : 'Product link includes selected condition when available.';
+  if(/tcgplayer\.com\/product\//i.test(productUrl || '')) {
+    const [base] = productUrl.split('?');
+    const params = [
+      ['page', '1'],
+      ['Language', language || 'English'],
+      ['Condition', conditionLabel]
+    ];
+    url = base + '?' + params.map(([k,v]) => `${encodeURIComponent(k)}=${encodeTcgParam(v)}`).join('&');
+  } else if(productId) {
+    url = `https://www.tcgplayer.com/product/${encodeURIComponent(productId)}?page=1&Language=${encodeTcgParam(language || 'English')}&Condition=${encodeTcgParam(conditionLabel)}`;
+  } else {
+    note = activeSkuId ? 'Marketplace SKU captured; search includes selected condition because direct SKU deep-link is not guaranteed.' : 'Marketplace cannot deep-link to exact condition here; opening a selected-condition search.';
+    url = 'https://www.tcgplayer.com/search/all/product?q=' + encodeURIComponent(query || item.name || '');
+  }
   return {
     activeSkuId,
     query,
     note,
-    url:'https://www.tcgplayer.com/search/all/product?q=' + encodeURIComponent(query || item.name || '')
+    url
   };
 }
 
@@ -10153,6 +10344,117 @@ async function openQplChartModal(idx, range='3M'){
 }
 
 function closeQplChartModal(){ document.getElementById('qpl-chart-modal')?.classList.remove('on'); }
+
+function pokemonPriceTrackerSearchText(row = {}){
+  return [row.name, row.set || row.setName, row.card_number || row.cardNumber].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
+}
+
+function pokemonPriceTrackerId(row = {}){
+  return row.tcgPlayerId || row.tcgplayerId || row.tcgplayerProductId || row.externalRefs?.tcgplayerProductId || tcgPlayerProductIdFromUrl(row.tcgPlayerUrl || row.tcgUrl || row.productUrl || '') || '';
+}
+
+function pokemonPriceTrackerCardsFromPayload(data = {}){
+  const rows = data.cards || data.matches || data.data || data.results || [];
+  if(Array.isArray(rows)) return rows;
+  if(data.card && typeof data.card === 'object') return [data.card];
+  return [];
+}
+
+function pickPokemonPriceTrackerCard(row = {}, cards = []){
+  const wantedId = String(pokemonPriceTrackerId(row) || '');
+  if(wantedId) {
+    const byId = cards.find(c => String(c.tcgPlayerId || c.tcgplayerId || c.tcgplayerProductId || '') === wantedId);
+    if(byId) return byId;
+  }
+  const wantedName = normalizePokemonText(row.name || '');
+  const wantedSet = normalizePokemonText(row.set || row.setName || '');
+  const wantedNumber = normalizePokemonText(row.card_number || row.cardNumber || '');
+  return cards.find(c => {
+    const sameName = !wantedName || normalizePokemonText(c.name || c.cardName || '').includes(wantedName) || wantedName.includes(normalizePokemonText(c.name || c.cardName || ''));
+    const sameSet = !wantedSet || normalizePokemonText(c.setName || c.set?.name || c.set || '').includes(wantedSet) || wantedSet.includes(normalizePokemonText(c.setName || c.set?.name || c.set || ''));
+    const sameNumber = !wantedNumber || normalizePokemonText(c.cardNumber || c.number || '').includes(wantedNumber);
+    return sameName && sameSet && sameNumber;
+  }) || cards[0] || null;
+}
+
+async function cachedPokemonPriceTrackerCard(row = {}){
+  const cardKey = row.cache?.cardKey || pokemonCardKey(row, qplLastSearch);
+  const rows = await pokemonDbAll('cards').catch(() => []);
+  const wantedId = String(pokemonPriceTrackerId(row) || '');
+  const hit = rows.find(c => c.storeId === getActiveStoreId() && c.cardKey === cardKey)
+    || rows.find(c => c.storeId === getActiveStoreId() && wantedId && String(c.card?.tcgPlayerId || c.card?.tcgplayerId || c.card?.pokemonPriceTracker?.tcgPlayerId || '') === wantedId);
+  return hit?.card?.pokemonPriceTracker || hit?.card?.pokemonPriceTrackerCard || null;
+}
+
+async function cachePokemonPriceTrackerCard(row = {}, card = null){
+  if(!card) return;
+  const cardKey = row.cache?.cardKey || pokemonCardKey(row, qplLastSearch);
+  const normalized = normalizePokemonCacheRecord({
+    ...row,
+    pokemonPriceTracker:card,
+    tcgPlayerId:card.tcgPlayerId || row.tcgPlayerId || row.tcgplayerId || '',
+    tcgplayerId:card.tcgPlayerId || row.tcgplayerId || '',
+    tcgPlayerUrl:card.tcgPlayerUrl || row.tcgPlayerUrl || row.tcgUrl || '',
+    priceSource:row.priceSource || 'PokemonPriceTracker'
+  }, qplLastSearch);
+  normalized.cardKey = cardKey;
+  normalized.card.cache = { state:'cached', updatedAt:new Date().toISOString(), source:'PokemonPriceTracker' };
+  await pokemonDbPut('cards', normalized);
+  await pokemonDbPut('meta', { key:'lastPokemonSyncAt', value:new Date().toISOString() });
+}
+
+async function fetchPokemonPriceTrackerCard(row = {}){
+  const params = new URLSearchParams({ language:String(row.selectedLanguage || row.language || 'English').toLowerCase().startsWith('j') ? 'japanese' : 'english', limit:'10' });
+  const tcgPlayerId = pokemonPriceTrackerId(row);
+  if(tcgPlayerId) params.set('tcgPlayerId', tcgPlayerId);
+  else params.set('search', pokemonPriceTrackerSearchText(row));
+  if(!params.get('tcgPlayerId') && !params.get('search')) return null;
+  const res = await fetch(WORKER + '/pricing/pokemonpricetracker/cards?' + params.toString(), { cache:'no-store' });
+  const data = await res.json().catch(() => ({}));
+  if(!res.ok || !data.ok) throw new Error(data.error || data.message || 'PokemonPriceTracker lookup failed');
+  return pickPokemonPriceTrackerCard(row, pokemonPriceTrackerCardsFromPayload(data));
+}
+
+async function hydratePokemonPriceTrackerPricing(idx, rerender = true){
+  const row = qplResults[idx];
+  if(!row || !isPokemonChartCandidate(row)) return;
+  if(row._pptHydrating) return;
+  row._pptHydrating = true;
+  try {
+    const cached = await cachedPokemonPriceTrackerCard(row);
+    if(cached && !row.pokemonPriceTracker) {
+      row.pokemonPriceTracker = cached;
+      row.cache = row.cache || { state:navigator.onLine ? 'cached' : 'offline', updatedAt:cached.prices?.lastUpdated || cached.lastUpdated || new Date().toISOString(), source:'PokemonPriceTracker' };
+      applyQplSelectedVariant(row);
+      if(rerender) updateQplResultCard(idx);
+    }
+    if(!navigator.onLine) return;
+    const card = await fetchPokemonPriceTrackerCard(row);
+    if(card) {
+      row.pokemonPriceTracker = card;
+      row.tcgPlayerId = card.tcgPlayerId || row.tcgPlayerId || row.tcgplayerId || '';
+      row.tcgplayerId = row.tcgPlayerId || row.tcgplayerId || '';
+      row.tcgPlayerUrl = card.tcgPlayerUrl || row.tcgPlayerUrl || row.tcgUrl || '';
+      row.tcgUrl = row.tcgPlayerUrl || row.tcgUrl || '';
+      row.cache = { state:'cached', updatedAt:new Date().toISOString(), source:'PokemonPriceTracker' };
+      applyQplSelectedVariant(row);
+      await cachePokemonPriceTrackerCard(row, card).catch(() => {});
+      await savePokemonCompsFromRow(row, row.cache?.cardKey || pokemonCardKey(row, qplLastSearch)).catch(() => {});
+      if(rerender) updateQplResultCard(idx);
+    }
+  } catch(err) {
+    row.pokemonPriceTrackerError = err.message || 'PokemonPriceTracker unavailable';
+  } finally {
+    row._pptHydrating = false;
+  }
+}
+
+function hydrateVisiblePokemonPriceTrackerResults(indexes = []){
+  indexes.slice(0, 8).forEach(idx => {
+    const row = qplResults[idx];
+    if(row && isPokemonChartCandidate(row) && !row._pptHydrating) hydratePokemonPriceTrackerPricing(idx, true);
+  });
+}
 
 function qplChartModalHtml(r, idx){
   const v = r.selectedVariant || {};
@@ -10517,6 +10819,9 @@ async function fetchPokemonCatalog(q){
           imageUrl:c.images?.small || c.images?.large || '',
           priceSource:'PokemonTCG market',
           tcgUrl:c.tcgplayer?.url || '',
+          tcgPlayerUrl:c.tcgplayer?.url || '',
+          tcgPlayerId:tcgPlayerProductIdFromUrl(c.tcgplayer?.url || ''),
+          tcgplayerId:tcgPlayerProductIdFromUrl(c.tcgplayer?.url || ''),
           note:hit.why.length ? 'Matched by ' + hit.why.join(', ') : (c.set?.releaseDate ? 'Released ' + c.set.releaseDate : ''),
           confidence:Math.min(99, Math.round(hit.score || 50)),
           matchWhy:hit.why,
@@ -10665,6 +10970,7 @@ function renderQuickLookupResults(results){
       ${primary.map(x => quickLookupResultCard(x.r, x.idx)).join('')}
     </div>
     ${fallbackHtml}`;
+  setTimeout(() => hydrateVisiblePokemonPriceTrackerResults(primary.map(x => x.idx)), 0);
 }
 
 function quickLookupResultCard(r, idx){
@@ -10685,6 +10991,7 @@ function quickLookupResultCard(r, idx){
   const variantStatus = qplVariantResolverStatus(r);
   const displayPrice = Number(r.market || 0);
   const priceText = displayPrice ? '$' + displayPrice.toFixed(2) : (truth.includes('Guide') ? 'No Guide Value Available' : truth.includes('Real') ? 'No Real Price Available' : 'Needs Review');
+  const priceVariantLine = [r.selectedCondition || r.condition ? pokemonPptConditionLabel(r.selectedCondition || r.condition) : '', r.selectedFinish || r.finish ? pokemonPptFinishLabel(r.selectedFinish || r.finish) : ''].filter(Boolean).join(' / ');
   const signals = [
     needs.length ? `NEEDED: ${needs.map(n => n.owner || n.set || n.name).slice(0,2).join(', ')}` : '',
     signal.wants ? `${signal.wants} want match${signal.wants===1?'':'es'}` : '',
@@ -10710,7 +11017,9 @@ function quickLookupResultCard(r, idx){
       <div class="qpl-price">${escHtml(priceText)}</div>
       <div class="qpl-price-sub">
         ${recentSold ? `Recent sold: $${recentSold.toFixed(2)}<br>` : ''}
+        ${priceVariantLine ? `${escHtml(priceVariantLine)}<br>` : ''}
         Source: ${escHtml(r.priceSource || r.source || 'manual')}
+        ${r.pokemonPriceTrackerLastUpdated ? `<div class="pokemon-cache-meta">PokemonPriceTracker updated ${escHtml(pokemonCacheAgeLabel(r.pokemonPriceTrackerLastUpdated))}</div>` : ''}
         ${r.cache ? `<div class="pokemon-cache-meta">Cached source: ${escHtml(r.cache.source || 'Pokemon cache')} / ${escHtml(pokemonCacheAgeLabel(r.cache.updatedAt))}</div>` : ''}
       </div>
       ${why ? `<div style="margin-top:12px;color:var(--dim);font-size:13px;line-height:1.45">${escHtml(why)}</div>` : ''}
@@ -10729,7 +11038,7 @@ function quickLookupResultCard(r, idx){
         </select>
         <input type="number" min="1" step="1" value="${Number(r.qty || 1)}" onchange="qplResults[${idx}].qty=parseInt(this.value,10)||1" aria-label="Quantity">
       </div>
-      ${showAdminDebug() ? `<div style="margin-top:8px;font-family:monospace,monospace;font-size:10px;color:var(--dim)">Debug: selectedCondition ${escHtml(r.selectedCondition || r.condition || '')} / selectedFinish ${escHtml(qplFinishLabel(r.selectedFinish || r.finish || ''))} / activeSkuId ${escHtml(builtTcgLink.activeSkuId || 'n/a')} / activeVariantPrice ${Number(r.selectedVariant?.marketPrice || 0) ? '$'+Number(r.selectedVariant.marketPrice).toFixed(2) : 'No Real Price'} / externalLinkQuery ${escHtml(builtTcgLink.query || '')}</div>` : ''}
+      ${showAdminDebug() ? `<div style="margin-top:8px;font-family:monospace,monospace;font-size:10px;color:var(--dim)">Debug: selectedCondition ${escHtml(r.selectedCondition || r.condition || '')} / selectedFinish ${escHtml(qplFinishLabel(r.selectedFinish || r.finish || ''))} / resolvedPricePath ${escHtml(r.resolvedPricePath || 'n/a')} / resolvedPrice ${Number(r.resolvedPrice || r.market || 0) ? '$'+Number(r.resolvedPrice || r.market || 0).toFixed(2) : 'No Real Price'} / generatedTcgUrl ${escHtml(builtTcgLink.url || '')}</div>` : ''}
     </div>
     <div class="qpl-actions">
       <button class="hbtn primary" onclick="selectQuickLookupResult(${idx})">SELECT</button>
@@ -11099,12 +11408,12 @@ function generateWalkoffInventorySku(category = '', item = {}){
 
 function externalRefsFromQuickLookup(item = {}, selectedVariant = {}){
   return {
-    tcgplayerProductId:item.tcgplayerId || item.productId || null,
+    tcgplayerProductId:item.tcgPlayerId || item.tcgplayerId || item.productId || null,
     tcgplayerSkuId:selectedVariant.tcgplayerSkuId || item.tcgplayerSkuId || item.skuId || null,
     tcgplayerConditionId:selectedVariant.productConditionId || item.productConditionId || null,
     justTcgProductId:item.justtcgCardId || item.productId || null,
     justTcgVariantId:selectedVariant.justtcgVariantId || item.justtcgVariantId || null,
-    pokemonPriceTrackerCardId:item.pokemonPriceTrackerCardId || null,
+    pokemonPriceTrackerCardId:item.pokemonPriceTrackerCardId || item.pokemonPriceTracker?.id || item.pokemonPriceTracker?.cardId || null,
     pricechartingProductId:item.pricechartingProductId || null
   };
 }
@@ -11128,7 +11437,9 @@ function selectedQuickLookupItem(idx){
     productId:r.productId || '',
     justtcgCardId:r.justtcgCardId || r.productId || '',
     justtcgVariantId:selectedVariant.justtcgVariantId || '',
-    tcgplayerId:r.tcgplayerId || '',
+    tcgplayerId:r.tcgPlayerId || r.tcgplayerId || '',
+    tcgPlayerId:r.tcgPlayerId || r.tcgplayerId || '',
+    tcgPlayerUrl:r.tcgPlayerUrl || r.tcgUrl || '',
     tcgplayerSkuId:selectedVariant.tcgplayerSkuId || r.skuId || '',
     game:r.game || r.extraInfo?.game || '',
     setName:document.getElementById('qpl-edit-set')?.value.trim() || r.set || '',
@@ -11157,6 +11468,10 @@ function selectedQuickLookupItem(idx){
     pricechartingComicPrices:r.pricecharting?.comicPrices || null,
     pricechartingRetail:r.pricecharting?.retail || null,
     pricechartingDemand:r.pricecharting?.demand || null,
+    resolvedPricePath:r.resolvedPricePath || '',
+    resolvedPrice:Number(r.resolvedPrice || r.market || 0),
+    pokemonPriceTrackerLastUpdated:r.pokemonPriceTrackerLastUpdated || '',
+    pokemonPriceTrackerCardId:r.pokemonPriceTrackerCardId || r.pokemonPriceTracker?.id || r.pokemonPriceTracker?.cardId || '',
     externalRefs:externalRefsFromQuickLookup(r, selectedVariant),
     priceConfidence:r.priceConfidence || selectedVariant.priceConfidence || 'unknown',
     lastPriceSyncAt:r.lastPriceSyncAt || selectedVariant.lastUpdated || new Date().toISOString(),
@@ -11233,6 +11548,11 @@ function addSelectedQuickLookupToSaleCart(idx){
     sourceProductId:item.pricechartingProductId || item.productId || '',
     sourceVariantId:item.justtcgVariantId || item.productConditionId || '',
     tcgplayerSkuId:item.tcgplayerSkuId || item.skuId || '',
+    tcgPlayerId:item.tcgPlayerId || item.tcgplayerId || '',
+    tcgPlayerUrl:item.tcgPlayerUrl || '',
+    resolvedPricePath:item.resolvedPricePath || '',
+    resolvedPrice:Number(item.resolvedPrice || item.market || 0),
+    pokemonPriceTrackerLastUpdated:item.pokemonPriceTrackerLastUpdated || '',
     inventorySku:item.inventorySku || '',
     externalRefs:item.externalRefs || null,
   });
@@ -11317,6 +11637,11 @@ function addSelectedQuickLookupToBuyOffer(idx){
     sourceProductId:item.pricechartingProductId || item.productId || '',
     sourceVariantId:item.variantId || item.productConditionId || '',
     tcgplayerSkuId:item.tcgplayerSkuId || item.skuId || '',
+    tcgPlayerId:item.tcgPlayerId || item.tcgplayerId || '',
+    tcgPlayerUrl:item.tcgPlayerUrl || '',
+    resolvedPricePath:item.resolvedPricePath || '',
+    resolvedPrice:Number(item.resolvedPrice || item.market || 0),
+    pokemonPriceTrackerLastUpdated:item.pokemonPriceTrackerLastUpdated || '',
     category:item.category,
     set:item.set,
     year:item.year,

@@ -1636,6 +1636,57 @@ export default {
       return new Response(upstream.body, upstream);
     }
 
+    if (url.pathname === '/pricing/pokemonpricetracker/cards') {
+      const key = env.POKEMONPRICE_API_KEY || env.POKEMON_PRICE_TRACKER_API_KEY;
+      if (!key) return json({ ok: false, source: 'pokemonpricetracker', error: 'POKEMONPRICE_API_KEY not configured' }, 501);
+      const params = new URLSearchParams();
+      const allowed = ['tcgPlayerId', 'cardId', 'search', 'language', 'printing', 'condition', 'includeHistory', 'includeEbay', 'days', 'limit'];
+      for (const name of allowed) {
+        const value = url.searchParams.get(name);
+        if (value != null && value !== '') params.set(name, value);
+      }
+      if (!params.get('tcgPlayerId') && !params.get('cardId') && !params.get('search')) {
+        return json({ ok: false, source: 'pokemonpricetracker', error: 'tcgPlayerId, cardId, or search required' }, 400);
+      }
+      if (!params.get('language')) params.set('language', 'english');
+      if (!params.get('limit')) params.set('limit', '10');
+      const upstreamUrl = 'https://www.pokemonpricetracker.com/api/v2/cards?' + params.toString();
+      const upstream = await fetch(upstreamUrl, {
+        headers: {
+          'Authorization': 'Bearer ' + key,
+          'Accept': 'application/json',
+        },
+      });
+      const text = await upstream.text();
+      let data;
+      try { data = JSON.parse(text); } catch (e) { data = { raw: text.slice(0, 300) }; }
+      const cards = Array.isArray(data?.data) ? data.data
+        : Array.isArray(data?.cards) ? data.cards
+        : Array.isArray(data?.results) ? data.results
+        : data?.card ? [data.card]
+        : [];
+      if (!upstream.ok) {
+        return json({
+          ok: false,
+          source: 'pokemonpricetracker',
+          error: errorMessageFromApi(data, 'PokemonPriceTracker API ' + upstream.status),
+          providerStatus: upstream.status,
+          detail: data,
+        }, upstream.status);
+      }
+      return json({
+        ok: true,
+        source: 'pokemonpricetracker',
+        cards,
+        card: cards[0] || null,
+        count: cards.length,
+        usage: {
+          remaining: upstream.headers.get('X-RateLimit-Daily-Remaining') || null,
+          consumed: upstream.headers.get('X-API-Calls-Consumed') || null,
+        },
+      });
+    }
+
     // Universal TCG pricing proxy.
     // Optional secret: TCGAPI_KEY from https://tcgapi.dev
     // GET /pricing/tcg?q=&game=&set=&condition=&finish=&language=&sealed=true
