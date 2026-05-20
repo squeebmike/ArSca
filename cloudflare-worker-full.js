@@ -1995,13 +1995,15 @@ export default {
         : data?.card ? [data.card]
         : [];
       if (!upstream.ok) {
-        if (upstream.status === 429 && env.LBA_KV) await env.LBA_KV.put('ppt_quota_exhausted_until', String(Date.now() + 60 * 60 * 1000), { expirationTtl: 60 * 60 });
+        const providerMessage = errorMessageFromApi(data, 'PokemonPriceTracker API ' + upstream.status);
+        const quotaBlocked = upstream.status === 429 || (upstream.status === 403 && /429|quota|rate|blocked/i.test(providerMessage));
+        if (quotaBlocked && env.LBA_KV) await env.LBA_KV.put('ppt_quota_exhausted_until', String(Date.now() + 60 * 60 * 1000), { expirationTtl: 60 * 60 });
         return json({
           ok: false,
           source: 'pokemonpricetracker',
-          error: errorMessageFromApi(data, 'PokemonPriceTracker API ' + upstream.status),
+          error: providerMessage,
           providerStatus: upstream.status,
-          providerQuotaState: upstream.status === 429 ? 'exhausted' : 'available',
+          providerQuotaState: quotaBlocked ? 'exhausted' : 'available',
           detail: data,
           usage: {
             remaining: upstream.headers.get('X-RateLimit-Remaining') || upstream.headers.get('X-RateLimit-Daily-Remaining') || null,

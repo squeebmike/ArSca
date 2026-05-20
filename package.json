@@ -1,6 +1,6 @@
 {
   "name": "walkoff-dashboard-qa",
-  "version": "2026.05.20.01",
+  "version": "2026.05.20.02",
   "private": true,
   "scripts": {
     "test": "npm run test:parse",
