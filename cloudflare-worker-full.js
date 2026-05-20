@@ -1939,26 +1939,52 @@ export default {
       return new Response(upstream.body, upstream);
     }
 
-    if (url.pathname === '/pricing/pokemonpricetracker/cards') {
+    if (url.pathname.startsWith('/pricing/pokemonpricetracker/')) {
       const key = env.POKEMONPRICE_API_KEY || env.POKEMON_PRICE_TRACKER_API_KEY;
       if (!key) return json({ ok: false, source: 'pokemonpricetracker', error: 'POKEMONPRICE_API_KEY not configured' }, 501);
+      const routeMap = {
+        '/pricing/pokemonpricetracker/cards': { upstream:'/cards', method:'GET', requiredAny:['tcgPlayerId','cardId','search','setId','set','setName'] },
+        '/pricing/pokemonpricetracker/sets': { upstream:'/sets', method:'GET', requiredAny:[] },
+        '/pricing/pokemonpricetracker/sealed-products': { upstream:'/sealed-products', method:'GET', requiredAny:[] },
+        '/pricing/pokemonpricetracker/parse-title': { upstream:'/parse-title', method:'POST', requiredAny:[] },
+        '/pricing/pokemonpricetracker/population': { upstream:'/population', method:'GET', requiredAny:[] },
+      };
+      const spec = routeMap[url.pathname];
+      if (!spec) return json({ ok: false, source: 'pokemonpricetracker', error: 'Unknown PokemonPriceTracker route' }, 404);
+      if (request.method !== spec.method) return json({ ok: false, source: 'pokemonpricetracker', error: spec.method + ' only' }, 405);
+      if (env.LBA_KV) {
+        const quotaUntil = Number(await env.LBA_KV.get('ppt_quota_exhausted_until') || 0);
+        if (quotaUntil && Date.now() < quotaUntil) {
+          return json({ ok: false, source: 'pokemonpricetracker', error: 'PokemonPriceTracker quota exhausted', providerStatus: 429, providerQuotaState: 'exhausted', retryAt: new Date(quotaUntil).toISOString() }, 429);
+        }
+      }
       const params = new URLSearchParams();
-      const allowed = ['tcgPlayerId', 'cardId', 'search', 'language', 'printing', 'condition', 'includeHistory', 'includeEbay', 'days', 'limit'];
+      const allowed = ['language', 'tcgPlayerId', 'cardId', 'setId', 'set', 'setName', 'search', 'rarity', 'cardType', 'artist', 'minPrice', 'maxPrice', 'printing', 'condition', 'includeHistory', 'includeEbay', 'includeBoth', 'days', 'maxDataPoints', 'fetchAllInSet', 'sortBy', 'sortOrder', 'limit', 'offset', 'name'];
       for (const name of allowed) {
         const value = url.searchParams.get(name);
         if (value != null && value !== '') params.set(name, value);
       }
-      if (!params.get('tcgPlayerId') && !params.get('cardId') && !params.get('search')) {
-        return json({ ok: false, source: 'pokemonpricetracker', error: 'tcgPlayerId, cardId, or search required' }, 400);
+      if (spec.requiredAny?.length && !spec.requiredAny.some(name => params.get(name))) {
+        return json({ ok: false, source: 'pokemonpricetracker', error: spec.requiredAny.join(', ') + ' required' }, 400);
       }
       if (!params.get('language')) params.set('language', 'english');
-      if (!params.get('limit')) params.set('limit', '10');
-      const upstreamUrl = 'https://www.pokemonpricetracker.com/api/v2/cards?' + params.toString();
+      if (url.pathname === '/pricing/pokemonpricetracker/cards' && !params.get('limit')) params.set('limit', '10');
+      const bodyText = spec.method === 'POST' ? await request.text() : '';
+      const stableKeySource = spec.method + ':' + spec.upstream + '?' + [...params.entries()].sort((a,b) => a[0].localeCompare(b[0]) || String(a[1]).localeCompare(String(b[1]))).map(([k,v]) => k + '=' + v).join('&') + ':' + bodyText;
+      const cacheKey = 'ppt_api_cache:' + btoa(stableKeySource).replace(/=+$/,'').slice(0, 180);
+      if (env.LBA_KV && spec.method === 'GET' && url.searchParams.get('fresh') !== 'true') {
+        const cached = await env.LBA_KV.get(cacheKey, 'json');
+        if (cached) return json({ ...cached, cache:{ state:'hit', source:'worker-kv', cacheKey, cachedAt:cached.cache?.cachedAt || null } });
+      }
+      const upstreamUrl = 'https://www.pokemonpricetracker.com/api/v2' + spec.upstream + (params.toString() ? '?' + params.toString() : '');
       const upstream = await fetch(upstreamUrl, {
+        method: spec.method,
         headers: {
           'Authorization': 'Bearer ' + key,
           'Accept': 'application/json',
+          'Content-Type': 'application/json',
         },
+        body: spec.method === 'POST' ? bodyText : undefined,
       });
       const text = await upstream.text();
       let data;
@@ -1969,25 +1995,38 @@ export default {
         : data?.card ? [data.card]
         : [];
       if (!upstream.ok) {
+        if (upstream.status === 429 && env.LBA_KV) await env.LBA_KV.put('ppt_quota_exhausted_until', String(Date.now() + 60 * 60 * 1000), { expirationTtl: 60 * 60 });
         return json({
           ok: false,
           source: 'pokemonpricetracker',
           error: errorMessageFromApi(data, 'PokemonPriceTracker API ' + upstream.status),
           providerStatus: upstream.status,
+          providerQuotaState: upstream.status === 429 ? 'exhausted' : 'available',
           detail: data,
+          usage: {
+            remaining: upstream.headers.get('X-RateLimit-Remaining') || upstream.headers.get('X-RateLimit-Daily-Remaining') || null,
+            consumed: upstream.headers.get('X-API-Calls-Consumed') || null,
+            breakdown: upstream.headers.get('X-API-Calls-Breakdown') || null,
+          },
         }, upstream.status);
       }
-      return json({
+      const payload = {
         ok: true,
         source: 'pokemonpricetracker',
+        route: spec.upstream,
+        data: data?.data ?? data,
         cards,
         card: cards[0] || null,
         count: cards.length,
         usage: {
-          remaining: upstream.headers.get('X-RateLimit-Daily-Remaining') || null,
+          remaining: upstream.headers.get('X-RateLimit-Remaining') || upstream.headers.get('X-RateLimit-Daily-Remaining') || null,
           consumed: upstream.headers.get('X-API-Calls-Consumed') || null,
+          breakdown: upstream.headers.get('X-API-Calls-Breakdown') || null,
         },
-      });
+        cache:{ state:'miss', source:'live', cacheKey, cachedAt:new Date().toISOString() },
+      };
+      if (env.LBA_KV && upstream.ok) await env.LBA_KV.put(cacheKey, JSON.stringify(payload), { expirationTtl: 60 * 60 * 6 });
+      return json(payload);
     }
 
     // Universal TCG pricing proxy.

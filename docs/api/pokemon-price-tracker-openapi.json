@@ -1,0 +1,3665 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Pokemon Price Tracker API",
+    "version": "2.0.0",
+    "description": "# Pokemon Price Tracker API\n\nAccess real-time and historical Pokemon card pricing data from TCGPlayer, plus graded card sales from eBay (PSA, CGC, BGS, SGC, and more).\n\n## Features\n- **23,000+ English cards** with daily price updates\n- **Japanese card support** with dedicated collections\n- **Sealed products** (booster boxes, ETBs, bundles)\n- **Graded card sales** from eBay (PSA, CGC, BGS, SGC, and more)\n- **Price history** with gap-filling interpolation\n- **eBay title parsing** for card identification\n\n## Authentication\nAll API requests require a Bearer token in the Authorization header:\n```\nAuthorization: Bearer YOUR_API_KEY\n```\n\nGet your free API key at [pokemonpricetracker.com/api](https://www.pokemonpricetracker.com/api).\n\n## Rate Limiting\nThe API uses a credit-based rate limiting system:\n\n| Plan | Price | Daily Credits | Per-Minute Calls |\n|------|-------|---------------|------------------|\n| Free | $0/mo | 100 | 60 |\n| API | $9.99/mo | 20,000 | 60 |\n| Business | $99/mo | 200,000 | 500 |\n\n### Credit Costs\n- Basic card query: **1 credit per card**\n- With price history: **+1 credit per card**\n- With eBay data: **+1 credit per card**\n- Parse title: **2 credits** (+1 for fuzzy matching, +1 for long titles)\n\n### Plan Features\n| Feature | Free | API | Business |\n|---------|------|-----|----------|\n| History window | 3 days | 6 months | 12+ months |\n| API keys | 1 | Up to 5 | Unlimited |\n| Japanese cards | No | Yes | Yes |\n| Graded prices (PSA, CGC, BGS, SGC) | No | Yes | Yes |\n| eBay sold listings (auction/BIN details) | No | No | Yes |\n| Population reports | No | No | Yes |\n| Commercial use | No | No | Yes |\n| Support | Community | Email (24h) | Priority |\n\n## Multi-Word Search\nThe search parameter supports natural language queries:\n- `search=charizard base set` - Find Charizard from Base Set\n- `search=pikachu 4/102` - Find card by number\n- `search=umbreon ex unseen forces` - Find specific card variants",
+    "contact": {
+      "name": "API Support",
+      "url": "https://discord.com/invite/gRA6CF5sTz",
+      "email": "pokepricetracker@proton.me"
+    },
+    "license": {
+      "name": "Proprietary",
+      "url": "https://www.pokemonpricetracker.com/terms"
+    }
+  },
+  "servers": [
+    {
+      "url": "https://www.pokemonpricetracker.com/api/v2",
+      "description": "Production server"
+    },
+    {
+      "url": "http://localhost:3000/api/v2",
+      "description": "Local development"
+    }
+  ],
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "tags": [
+    {
+      "name": "Cards",
+      "description": "Pokemon card data and pricing"
+    },
+    {
+      "name": "Sets",
+      "description": "Pokemon TCG set information"
+    },
+    {
+      "name": "Sealed Products",
+      "description": "Booster boxes, ETBs, and sealed products"
+    },
+    {
+      "name": "Population",
+      "description": "GemRate grading population data (PSA, BGS, CGC, SGC)"
+    },
+    {
+      "name": "Exports",
+      "description": "Daily bulk price dump exports (Business plan only)"
+    },
+    {
+      "name": "Utilities",
+      "description": "Helper endpoints for card identification"
+    }
+  ],
+  "paths": {
+    "/cards": {
+      "get": {
+        "summary": "Get Pokemon cards",
+        "description": "Retrieve Pokemon cards with filtering, sorting, and optional historical/eBay data.\n\n**Credit Cost Formula:**\n`cards_returned × (1 + includeHistory + includeEbay)`\n\n**Response Limits:**\n- Standard: 200 cards max\n- With history: 100 cards max\n- With eBay data: 50 cards max\n- With both history AND eBay: 50 cards max",
+        "operationId": "getCards",
+        "tags": [
+          "Cards"
+        ],
+        "parameters": [
+          {
+            "name": "language",
+            "in": "query",
+            "description": "Card language database to query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "english",
+                "japanese"
+              ],
+              "default": "english"
+            }
+          },
+          {
+            "name": "tcgPlayerId",
+            "in": "query",
+            "description": "Get specific card by TCGPlayer ID. Returns single card object instead of array.",
+            "schema": {
+              "type": "string"
+            },
+            "example": "233294"
+          },
+          {
+            "name": "cardId",
+            "in": "query",
+            "description": "Alias for tcgPlayerId. Get specific card by TCGPlayer ID.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "setId",
+            "in": "query",
+            "description": "Filter by set using numeric TCGPlayer GroupId (e.g., \"1407\") from the /v2/sets response field tcgPlayerNumericId. For name-based filtering, use the \"set\" parameter instead.",
+            "schema": {
+              "type": "string"
+            },
+            "example": "1407"
+          },
+          {
+            "name": "set",
+            "in": "query",
+            "description": "Search sets by name (partial match)",
+            "schema": {
+              "type": "string"
+            },
+            "example": "base set"
+          },
+          {
+            "name": "setName",
+            "in": "query",
+            "description": "Legacy parameter for set name filter. Use \"set\" instead.",
+            "schema": {
+              "type": "string"
+            },
+            "deprecated": true
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "description": "Multi-word search across name, setName, cardNumber, rarity, cardType. Supports \"X/Y\" card number format.",
+            "schema": {
+              "type": "string"
+            },
+            "example": "charizard base set holo"
+          },
+          {
+            "name": "rarity",
+            "in": "query",
+            "description": "Filter by rarity",
+            "schema": {
+              "type": "string"
+            },
+            "example": "Holo Rare"
+          },
+          {
+            "name": "cardType",
+            "in": "query",
+            "description": "Filter by card type",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "Pokemon",
+                "Trainer",
+                "Energy"
+              ]
+            }
+          },
+          {
+            "name": "artist",
+            "in": "query",
+            "description": "Filter by card artist",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "minPrice",
+            "in": "query",
+            "description": "Minimum market price filter (USD)",
+            "schema": {
+              "type": "number",
+              "minimum": 0
+            }
+          },
+          {
+            "name": "maxPrice",
+            "in": "query",
+            "description": "Maximum market price filter (USD)",
+            "schema": {
+              "type": "number",
+              "minimum": 0
+            }
+          },
+          {
+            "name": "printing",
+            "in": "query",
+            "description": "Filter by printing variant (e.g., \"1st Edition\", \"Unlimited\", \"Holofoil\", \"Reverse Holofoil\", \"Normal\")",
+            "schema": {
+              "type": "string"
+            },
+            "example": "1st Edition"
+          },
+          {
+            "name": "condition",
+            "in": "query",
+            "description": "Filter by condition (e.g., \"Near Mint\", \"Lightly Played\", \"Moderately Played\", \"Heavily Played\", \"Damaged\")",
+            "schema": {
+              "type": "string"
+            },
+            "example": "Near Mint"
+          },
+          {
+            "name": "includeHistory",
+            "in": "query",
+            "description": "Include price history data (+1 credit per card). Free plan limited to 3 days.",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          {
+            "name": "includeEbay",
+            "in": "query",
+            "description": "Include eBay graded card sales data (PSA, CGC, BGS, SGC, etc.). +1 credit per card. Limits response to 50 cards max.",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          {
+            "name": "includeBoth",
+            "in": "query",
+            "description": "Shorthand for includeHistory=true and includeEbay=true",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          {
+            "name": "days",
+            "in": "query",
+            "description": "Days of historical data to return. Free plan limited to 3 days.",
+            "schema": {
+              "type": "integer",
+              "default": 30,
+              "minimum": 1,
+              "maximum": 365
+            }
+          },
+          {
+            "name": "maxDataPoints",
+            "in": "query",
+            "description": "Maximum data points per condition in price history. Higher values (>365) cost +1 credit per card. Plan limits: Free (30), Pro (730), Business (1000).",
+            "schema": {
+              "type": "integer",
+              "default": 365,
+              "minimum": 1,
+              "maximum": 1000
+            }
+          },
+          {
+            "name": "fetchAllInSet",
+            "in": "query",
+            "description": "Fetch all cards in set (requires set filter). Increases limit to 200.",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          {
+            "name": "sortBy",
+            "in": "query",
+            "description": "Sort field",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "name",
+                "cardNumber",
+                "price"
+              ],
+              "default": "cardNumber"
+            }
+          },
+          {
+            "name": "sortOrder",
+            "in": "query",
+            "description": "Sort direction",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "asc",
+                "desc"
+              ],
+              "default": "desc"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Maximum results per page",
+            "schema": {
+              "type": "integer",
+              "default": 50,
+              "minimum": 1,
+              "maximum": 200
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "description": "Number of results to skip for pagination",
+            "schema": {
+              "type": "integer",
+              "default": 0,
+              "minimum": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "headers": {
+              "X-API-Calls-Consumed": {
+                "description": "Credits consumed",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-API-Calls-Breakdown": {
+                "description": "Credit breakdown",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "description": "Remaining calls",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CardsResponse"
+                },
+                "examples": {
+                  "simpleCard": {
+                    "summary": "Basic card response",
+                    "value": {
+                      "data": {
+                        "id": "507f1f77bcf86cd799439011",
+                        "tcgPlayerId": "233294",
+                        "name": "Charizard",
+                        "setName": "Base Set",
+                        "cardNumber": "4",
+                        "totalSetNumber": "102",
+                        "rarity": "Holo Rare",
+                        "cardType": "Pokemon",
+                        "pokemonType": "Fire",
+                        "energyType": [
+                          "Fire",
+                          "Colorless"
+                        ],
+                        "hp": 120,
+                        "stage": "Stage 2",
+                        "flavorText": "Spits fire that is hot enough to melt boulders. Known to cause forest fires unintentionally.",
+                        "artist": "Mitsuhiro Arita",
+                        "tcgPlayerUrl": "https://www.tcgplayer.com/product/233294",
+                        "prices": {
+                          "market": 420,
+                          "low": 350,
+                          "listings": 156,
+                          "sellers": 42,
+                          "primaryCondition": "Near Mint",
+                          "primaryPrinting": "Holofoil",
+                          "lastUpdated": "2024-01-15T12:00:00Z"
+                        },
+                        "imageCdnUrl": "https://tcgplayer-cdn.tcgplayer.com/product/233294_in_800x800.jpg",
+                        "imageCdnUrl200": "https://tcgplayer-cdn.tcgplayer.com/product/233294_in_200x200.jpg",
+                        "imageCdnUrl400": "https://tcgplayer-cdn.tcgplayer.com/product/233294_in_400x400.jpg",
+                        "imageCdnUrl800": "https://tcgplayer-cdn.tcgplayer.com/product/233294_in_800x800.jpg"
+                      },
+                      "metadata": {
+                        "total": 1,
+                        "count": 1,
+                        "limit": 1,
+                        "offset": 0,
+                        "hasMore": false,
+                        "language": "english",
+                        "includes": {
+                          "priceHistory": false,
+                          "ebayData": false
+                        }
+                      }
+                    }
+                  },
+                  "cardWithFullPricing": {
+                    "summary": "Card with full pricing breakdown (variants × conditions)",
+                    "value": {
+                      "data": {
+                        "tcgPlayerId": "516771",
+                        "name": "Charizard ex",
+                        "setName": "Obsidian Flames",
+                        "cardNumber": "223",
+                        "rarity": "Special Illustration Rare",
+                        "prices": {
+                          "market": 89.99,
+                          "listings": 245,
+                          "primaryCondition": "Near Mint",
+                          "primaryPrinting": "Normal",
+                          "conditions": {
+                            "Near Mint": {
+                              "price": 89.99,
+                              "listings": 156,
+                              "priceString": "$89.99"
+                            },
+                            "Lightly Played": {
+                              "price": 79.99,
+                              "listings": 45,
+                              "priceString": "$79.99"
+                            },
+                            "Moderately Played": {
+                              "price": 65,
+                              "listings": 23,
+                              "priceString": "$65.00"
+                            },
+                            "Heavily Played": {
+                              "price": 50,
+                              "listings": 12,
+                              "priceString": "$50.00"
+                            },
+                            "Damaged": {
+                              "price": 35,
+                              "listings": 9,
+                              "priceString": "$35.00"
+                            }
+                          },
+                          "variants": {
+                            "Normal": {
+                              "Near Mint": {
+                                "price": 89.99,
+                                "listings": 156,
+                                "priceString": "$89.99"
+                              },
+                              "Lightly Played": {
+                                "price": 79.99,
+                                "listings": 45,
+                                "priceString": "$79.99"
+                              }
+                            },
+                            "Holofoil": {
+                              "Near Mint": {
+                                "price": 125,
+                                "listings": 34,
+                                "priceString": "$125.00"
+                              },
+                              "Lightly Played": {
+                                "price": 110,
+                                "listings": 12,
+                                "priceString": "$110.00"
+                              }
+                            }
+                          },
+                          "lastUpdated": "2024-01-15T12:00:00Z",
+                          "priceWasCorrected": false
+                        }
+                      }
+                    }
+                  },
+                  "cardWithPriceHistory": {
+                    "summary": "Card with price history (includeHistory=true)",
+                    "value": {
+                      "data": {
+                        "tcgPlayerId": "233294",
+                        "name": "Charizard",
+                        "setName": "Base Set",
+                        "prices": {
+                          "market": 420,
+                          "listings": 156
+                        },
+                        "priceHistory": {
+                          "conditions": {
+                            "Near Mint": {
+                              "history": [
+                                {
+                                  "date": "2024-01-15T00:00:00Z",
+                                  "market": 420,
+                                  "volume": 12
+                                },
+                                {
+                                  "date": "2024-01-14T00:00:00Z",
+                                  "market": 415,
+                                  "volume": 8
+                                },
+                                {
+                                  "date": "2024-01-13T00:00:00Z",
+                                  "market": 410,
+                                  "volume": 15
+                                }
+                              ],
+                              "dataPoints": 30,
+                              "latestPrice": 420,
+                              "latestDate": "2024-01-15T00:00:00Z",
+                              "priceRange": {
+                                "min": 380,
+                                "max": 450
+                              }
+                            }
+                          },
+                          "variants": {
+                            "Holofoil": {
+                              "Near Mint": {
+                                "history": [
+                                  {
+                                    "date": "2024-01-15T00:00:00Z",
+                                    "market": 420,
+                                    "volume": 12
+                                  },
+                                  {
+                                    "date": "2024-01-14T00:00:00Z",
+                                    "market": 415,
+                                    "volume": 8
+                                  }
+                                ],
+                                "dataPoints": 30,
+                                "latestPrice": 420
+                              }
+                            }
+                          },
+                          "conditions_tracked": [
+                            "Near Mint",
+                            "Lightly Played"
+                          ],
+                          "variants_tracked": [
+                            "Holofoil"
+                          ],
+                          "totalDataPoints": 180,
+                          "earliestDate": "2023-12-15T00:00:00Z",
+                          "latestDate": "2024-01-15T00:00:00Z"
+                        }
+                      },
+                      "metadata": {
+                        "total": 1,
+                        "count": 1,
+                        "includes": {
+                          "priceHistory": true,
+                          "ebayData": false
+                        },
+                        "historyWindow": {
+                          "days": 30,
+                          "from": "2023-12-16",
+                          "to": "2024-01-15"
+                        }
+                      }
+                    }
+                  },
+                  "cardWithEbayData": {
+                    "summary": "Card with eBay graded sales (includeEbay=true). Note: soldListings is Business tier only.",
+                    "value": {
+                      "data": {
+                        "tcgPlayerId": "233294",
+                        "name": "Charizard",
+                        "setName": "Base Set",
+                        "prices": {
+                          "market": 420
+                        },
+                        "ebay": {
+                          "updatedAt": "2024-01-15T12:00:00Z",
+                          "lastScrapedDate": "2024-01-15T00:00:00Z",
+                          "lastEbayCheck": "2024-01-15T12:00:00Z",
+                          "salesByGrade": {
+                            "psa8": {
+                              "count": 45,
+                              "totalValue": 22500,
+                              "averagePrice": 500,
+                              "medianPrice": 485,
+                              "minPrice": 350,
+                              "maxPrice": 750,
+                              "marketPrice7Day": 495,
+                              "marketPriceMedian7Day": 480,
+                              "dailyVolume7Day": 2.5,
+                              "marketTrend": "stable",
+                              "lastMarketUpdate": "2024-01-15T00:00:00Z",
+                              "smartMarketPrice": {
+                                "price": 492,
+                                "confidence": "high",
+                                "method": "volume-weighted-median",
+                                "daysUsed": 14
+                              }
+                            },
+                            "psa9": {
+                              "count": 78,
+                              "totalValue": 117000,
+                              "averagePrice": 1500,
+                              "medianPrice": 1450,
+                              "minPrice": 1100,
+                              "maxPrice": 2200,
+                              "marketPrice7Day": 1480,
+                              "marketTrend": "rising",
+                              "smartMarketPrice": {
+                                "price": 1475,
+                                "confidence": "high",
+                                "method": "volume-weighted-median",
+                                "daysUsed": 14
+                              }
+                            },
+                            "psa10": {
+                              "count": 23,
+                              "totalValue": 345000,
+                              "averagePrice": 15000,
+                              "medianPrice": 14500,
+                              "minPrice": 10000,
+                              "maxPrice": 25000,
+                              "marketPrice7Day": 14800,
+                              "marketTrend": "stable",
+                              "smartMarketPrice": {
+                                "price": 14650,
+                                "confidence": "medium",
+                                "method": "rolling-median",
+                                "daysUsed": 30
+                              }
+                            }
+                          },
+                          "salesVelocity": {
+                            "dailyAverage": 1.2,
+                            "weeklyAverage": 8.5,
+                            "monthlyTotal": 35
+                          },
+                          "soldListings": {
+                            "psa10": [
+                              {
+                                "listingId": "123456789012",
+                                "title": "PSA 10 GEM MINT Charizard Base Set #4 Pokemon",
+                                "price": 15500,
+                                "soldDate": "2024-01-14T18:45:00Z",
+                                "url": "https://www.ebay.com/itm/123456789012",
+                                "listingType": "auction",
+                                "bestOfferAccepted": false,
+                                "shippingCost": 0,
+                                "currency": "USD",
+                                "scrapedAt": "2024-01-15T00:00:00Z"
+                              },
+                              {
+                                "listingId": "123456789013",
+                                "title": "Charizard Base Set PSA 10 Gem Mint Pokemon Card",
+                                "price": 14200,
+                                "soldDate": "2024-01-12T09:15:00Z",
+                                "url": "https://www.ebay.com/itm/123456789013",
+                                "listingType": "buy_it_now",
+                                "bestOfferAccepted": true,
+                                "shippingCost": 25,
+                                "currency": "USD",
+                                "scrapedAt": "2024-01-15T00:00:00Z"
+                              }
+                            ],
+                            "psa9": [
+                              {
+                                "listingId": "123456789014",
+                                "title": "PSA 9 MINT Charizard Base Set Pokemon Card",
+                                "price": 1450,
+                                "soldDate": "2024-01-13T14:22:00Z",
+                                "url": "https://www.ebay.com/itm/123456789014",
+                                "listingType": "buy_it_now",
+                                "bestOfferAccepted": false,
+                                "shippingCost": 10,
+                                "currency": "USD",
+                                "scrapedAt": "2024-01-15T00:00:00Z"
+                              }
+                            ]
+                          },
+                          "priceHistory": {
+                            "psa10": {
+                              "2024-01-15": {
+                                "average": 14800,
+                                "count": 2,
+                                "totalValue": 29600,
+                                "sevenDayAverage": 14650,
+                                "sevenDayVolumeAvg": 0.5
+                              },
+                              "2024-01-14": {
+                                "average": 15500,
+                                "count": 1,
+                                "totalValue": 15500
+                              }
+                            }
+                          },
+                          "totalSales": 146,
+                          "totalValue": 484500,
+                          "gradesTracked": [
+                            "psa8",
+                            "psa9",
+                            "psa10"
+                          ],
+                          "dateRangeStart": "2023-10-15T00:00:00Z",
+                          "dateRangeEnd": "2024-01-15T00:00:00Z"
+                        }
+                      },
+                      "metadata": {
+                        "total": 1,
+                        "count": 1,
+                        "includes": {
+                          "priceHistory": false,
+                          "ebayData": true
+                        },
+                        "historyWindow": {
+                          "days": 30,
+                          "from": "2023-12-16",
+                          "to": "2024-01-15"
+                        }
+                      }
+                    }
+                  },
+                  "cardWithBothHistoryAndEbay": {
+                    "summary": "Card with both history and eBay data (includeBoth=true)",
+                    "value": {
+                      "data": {
+                        "tcgPlayerId": "233294",
+                        "name": "Charizard",
+                        "setName": "Base Set",
+                        "rarity": "Holo Rare",
+                        "prices": {
+                          "market": 420,
+                          "listings": 156,
+                          "primaryCondition": "Near Mint",
+                          "primaryPrinting": "Holofoil"
+                        },
+                        "priceHistory": {
+                          "conditions": {
+                            "Near Mint": {
+                              "history": [
+                                {
+                                  "date": "2024-01-15T00:00:00Z",
+                                  "market": 420
+                                },
+                                {
+                                  "date": "2024-01-14T00:00:00Z",
+                                  "market": 415
+                                }
+                              ],
+                              "latestPrice": 420,
+                              "priceRange": {
+                                "min": 380,
+                                "max": 450
+                              }
+                            }
+                          }
+                        },
+                        "ebay": {
+                          "salesByGrade": {
+                            "psa9": {
+                              "averagePrice": 1500,
+                              "marketTrend": "rising"
+                            },
+                            "psa10": {
+                              "averagePrice": 15000,
+                              "marketTrend": "stable"
+                            }
+                          }
+                        }
+                      },
+                      "metadata": {
+                        "total": 1,
+                        "count": 1,
+                        "includes": {
+                          "priceHistory": true,
+                          "ebayData": true
+                        },
+                        "historyWindow": {
+                          "days": 30,
+                          "from": "2023-12-16",
+                          "to": "2024-01-15"
+                        },
+                        "apiCallsConsumed": {
+                          "total": 3,
+                          "breakdown": {
+                            "cards": 1,
+                            "history": 1,
+                            "ebay": 1
+                          },
+                          "costPerCard": 3
+                        }
+                      }
+                    }
+                  },
+                  "multipleCardsWithPagination": {
+                    "summary": "Multiple cards with pagination metadata",
+                    "value": {
+                      "data": [
+                        {
+                          "tcgPlayerId": "233294",
+                          "name": "Charizard",
+                          "setName": "Base Set",
+                          "cardNumber": "4",
+                          "rarity": "Holo Rare",
+                          "prices": {
+                            "market": 420,
+                            "listings": 156
+                          }
+                        },
+                        {
+                          "tcgPlayerId": "233295",
+                          "name": "Blastoise",
+                          "setName": "Base Set",
+                          "cardNumber": "2",
+                          "rarity": "Holo Rare",
+                          "prices": {
+                            "market": 180,
+                            "listings": 89
+                          }
+                        }
+                      ],
+                      "metadata": {
+                        "total": 102,
+                        "count": 2,
+                        "limit": 50,
+                        "offset": 0,
+                        "hasMore": true,
+                        "language": "english",
+                        "includes": {
+                          "priceHistory": false,
+                          "ebayData": false
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request - missing required filter or invalid parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - invalid or missing API key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sets": {
+      "get": {
+        "summary": "Get Pokemon sets",
+        "description": "Retrieve Pokemon TCG sets with optional filtering and sorting.",
+        "operationId": "getSets",
+        "tags": [
+          "Sets"
+        ],
+        "parameters": [
+          {
+            "name": "language",
+            "in": "query",
+            "description": "Set language database to query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "english",
+                "japanese"
+              ],
+              "default": "english"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "description": "Search sets by name",
+            "schema": {
+              "type": "string"
+            },
+            "example": "scarlet violet"
+          },
+          {
+            "name": "series",
+            "in": "query",
+            "description": "Filter by series name",
+            "schema": {
+              "type": "string"
+            },
+            "example": "Scarlet & Violet"
+          },
+          {
+            "name": "sortBy",
+            "in": "query",
+            "description": "Sort field",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "name",
+                "releaseDate",
+                "cardCount",
+                "createdAt"
+              ],
+              "default": "releaseDate"
+            }
+          },
+          {
+            "name": "sortOrder",
+            "in": "query",
+            "description": "Sort direction",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "asc",
+                "desc"
+              ],
+              "default": "desc"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Maximum results per page",
+            "schema": {
+              "type": "integer",
+              "default": 100,
+              "minimum": 1,
+              "maximum": 500
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "description": "Number of results to skip",
+            "schema": {
+              "type": "integer",
+              "default": 0,
+              "minimum": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SetsResponse"
+                },
+                "example": {
+                  "data": [
+                    {
+                      "id": "507f1f77bcf86cd799439011",
+                      "tcgPlayerId": "2974",
+                      "name": "Scarlet & Violet",
+                      "series": "Scarlet & Violet",
+                      "releaseDate": "2023-03-31",
+                      "cardCount": 258
+                    }
+                  ],
+                  "metadata": {
+                    "total": 150,
+                    "count": 1,
+                    "limit": 100,
+                    "offset": 0,
+                    "hasMore": true
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sealed-products": {
+      "get": {
+        "summary": "Get sealed products",
+        "description": "Retrieve sealed Pokemon products (booster boxes, ETBs, bundles) with pricing.\n\n**Credit Cost Formula:**\n`products_returned × (1 + includeHistory)`",
+        "operationId": "getSealedProducts",
+        "tags": [
+          "Sealed Products"
+        ],
+        "parameters": [
+          {
+            "name": "language",
+            "in": "query",
+            "description": "Product language database to query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "english",
+                "japanese"
+              ],
+              "default": "english"
+            }
+          },
+          {
+            "name": "tcgPlayerId",
+            "in": "query",
+            "description": "Get specific product by TCGPlayer ID",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "setId",
+            "in": "query",
+            "description": "Filter by set ID (NOT product ID)",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "set",
+            "in": "query",
+            "description": "Search sets by name",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "description": "Search products by name",
+            "schema": {
+              "type": "string"
+            },
+            "example": "booster box"
+          },
+          {
+            "name": "minPrice",
+            "in": "query",
+            "description": "Minimum price filter (USD)",
+            "schema": {
+              "type": "number",
+              "minimum": 0
+            }
+          },
+          {
+            "name": "maxPrice",
+            "in": "query",
+            "description": "Maximum price filter (USD)",
+            "schema": {
+              "type": "number",
+              "minimum": 0
+            }
+          },
+          {
+            "name": "includeHistory",
+            "in": "query",
+            "description": "Include price history (+1 credit per product)",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          {
+            "name": "days",
+            "in": "query",
+            "description": "Days of historical data",
+            "schema": {
+              "type": "integer",
+              "default": 30,
+              "minimum": 1,
+              "maximum": 365
+            }
+          },
+          {
+            "name": "fetchAllInSet",
+            "in": "query",
+            "description": "Fetch all products in set (requires set filter)",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          {
+            "name": "sortBy",
+            "in": "query",
+            "description": "Sort field",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "name",
+                "price",
+                "lastScrapedAt"
+              ],
+              "default": "name"
+            }
+          },
+          {
+            "name": "sortOrder",
+            "in": "query",
+            "description": "Sort direction",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "asc",
+                "desc"
+              ],
+              "default": "desc"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Maximum results per page",
+            "schema": {
+              "type": "integer",
+              "default": 50,
+              "minimum": 1,
+              "maximum": 200
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "description": "Number of results to skip",
+            "schema": {
+              "type": "integer",
+              "default": 0,
+              "minimum": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "headers": {
+              "X-API-Calls-Consumed": {
+                "description": "Credits consumed",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SealedProductsResponse"
+                },
+                "example": {
+                  "data": [
+                    {
+                      "tcgPlayerId": "471234",
+                      "name": "Scarlet & Violet Booster Box",
+                      "setName": "Scarlet & Violet",
+                      "unopenedPrice": 119.99
+                    }
+                  ],
+                  "metadata": {
+                    "total": 50,
+                    "count": 1,
+                    "limit": 50,
+                    "offset": 0,
+                    "hasMore": true
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/parse-title": {
+      "post": {
+        "summary": "Parse eBay listing title",
+        "description": "Parse eBay-style listing titles to extract card information and match against the database.\n\n**Credit Cost:**\n- Base: 2 credits\n- Fuzzy matching: +1 credit\n- Long title (>100 chars): +1 credit\n- Max suggestions > 5: +1 credit\n\n**Use Cases:**\n- Identify cards from eBay listings\n- Extract PSA/BGS/CGC grades\n- Match card variants and editions",
+        "operationId": "parseTitle",
+        "tags": [
+          "Utilities"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ParseTitleRequest"
+              },
+              "examples": {
+                "psaCard": {
+                  "summary": "PSA graded card",
+                  "value": {
+                    "title": "Pokemon PSA 10 Charizard VMAX Rainbow Rare 074/073 Champions Path",
+                    "options": {
+                      "fuzzyMatching": true,
+                      "maxSuggestions": 5
+                    }
+                  }
+                },
+                "rawCard": {
+                  "summary": "Raw card listing",
+                  "value": {
+                    "title": "Pikachu VMAX 044/185 Vivid Voltage Ultra Rare NM",
+                    "options": {
+                      "fuzzyMatching": true
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful parse",
+            "headers": {
+              "X-Processing-Time-Ms": {
+                "description": "Processing time",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-Parse-Confidence": {
+                "description": "Parse confidence",
+                "schema": {
+                  "type": "number"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParseTitleResponse"
+                },
+                "example": {
+                  "data": {
+                    "originalTitle": "Pokemon PSA 10 Charizard VMAX Rainbow Rare 074/073 Champions Path",
+                    "sanitizedTitle": "charizard vmax rainbow rare 074/073 champions path",
+                    "parsed": {
+                      "cardName": "Charizard VMAX",
+                      "setName": "Champions Path",
+                      "cardNumber": "074",
+                      "variant": "Rainbow Rare",
+                      "psaGrade": 10,
+                      "confidence": 0.95
+                    },
+                    "matches": [
+                      {
+                        "tcgPlayerId": "233294",
+                        "name": "Charizard VMAX",
+                        "setName": "Champions Path",
+                        "matchScore": 0.98
+                      }
+                    ]
+                  },
+                  "metadata": {
+                    "processingTimeMs": 45,
+                    "confidence": 0.95,
+                    "apiCallsConsumed": 3
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Parsing failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/population": {
+      "get": {
+        "summary": "Get GemRate population data",
+        "description": "Retrieve grading population data from GemRate for Pokemon cards. Includes PSA, BGS, SGC, and CGC grade counts, gem rates, and population statistics.\n\n**Credit Cost:** 2 credits per card (premium data)\n\n**Response Limits:**\n- Max 100 cards per request\n- Bulk queries (tcgPlayerIds) max 50 IDs\n\n**Use Cases:**\n- Grading ROI calculations\n- Population report analysis\n- Market scarcity assessment\n- Investment decisions based on gem rates",
+        "operationId": "getPopulation",
+        "tags": [
+          "Population"
+        ],
+        "parameters": [
+          {
+            "name": "tcgPlayerId",
+            "in": "query",
+            "description": "Get population data for a specific card by TCGPlayer ID. Returns single object instead of array.",
+            "schema": {
+              "type": "string"
+            },
+            "example": "490294"
+          },
+          {
+            "name": "tcgPlayerIds",
+            "in": "query",
+            "description": "Comma-separated TCGPlayer IDs for bulk queries (max 50)",
+            "schema": {
+              "type": "string"
+            },
+            "example": "490294,490295,490296"
+          },
+          {
+            "name": "language",
+            "in": "query",
+            "description": "Card language to filter by",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "english",
+                "japanese"
+              ],
+              "default": "english"
+            }
+          },
+          {
+            "name": "minPopulation",
+            "in": "query",
+            "description": "Filter by minimum total population across all graders",
+            "schema": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          {
+            "name": "grader",
+            "in": "query",
+            "description": "Filter by grading company having data",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "PSA",
+                "BGS",
+                "CGC",
+                "SGC"
+              ]
+            }
+          },
+          {
+            "name": "minGemRate",
+            "in": "query",
+            "description": "Filter by minimum combined gem rate percentage (0-100)",
+            "schema": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Maximum results per page",
+            "schema": {
+              "type": "integer",
+              "default": 20,
+              "minimum": 1,
+              "maximum": 100
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "description": "Number of results to skip for pagination",
+            "schema": {
+              "type": "integer",
+              "default": 0,
+              "minimum": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "headers": {
+              "X-Response-Time": {
+                "description": "Response time in ms",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "X-RateLimit-Cost": {
+                "description": "Credits consumed",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PopulationResponse"
+                },
+                "examples": {
+                  "singleCard": {
+                    "summary": "Single card population data",
+                    "value": {
+                      "data": {
+                        "tcgPlayerId": "490294",
+                        "populationByGrader": {
+                          "PSA": {
+                            "g8": 1500,
+                            "g9": 8000,
+                            "g10": 2500,
+                            "totalPopulation": 12000,
+                            "gemRate": 20.83
+                          },
+                          "BGS": {
+                            "g8": 200,
+                            "g9": 1000,
+                            "g9_5": 500,
+                            "g10": 100,
+                            "pristine": 25,
+                            "perfect": 5,
+                            "totalPopulation": 1830,
+                            "gemRate": 7.1
+                          },
+                          "CGC": {
+                            "g9": 400,
+                            "g9_5": 200,
+                            "g10": 50,
+                            "totalPopulation": 650,
+                            "gemRate": 7.69
+                          },
+                          "SGC": {
+                            "g9": 100,
+                            "g10": 30,
+                            "totalPopulation": 130,
+                            "gemRate": 23.08
+                          }
+                        },
+                        "totalPopulation": 14610,
+                        "totalGems": 2710,
+                        "combinedGemRate": 18.55,
+                        "gradersTracked": [
+                          "PSA",
+                          "BGS",
+                          "CGC",
+                          "SGC"
+                        ],
+                        "combinedTotals": {
+                          "g8": 1700,
+                          "g9": 9500,
+                          "g10": 2685
+                        },
+                        "percentHigher": {
+                          "g8": 45.2,
+                          "g9": 19.3,
+                          "g10": 0
+                        },
+                        "matchConfidence": "high",
+                        "matchScore": 0.98,
+                        "lastFetchedDate": "2024-01-15T12:00:00Z",
+                        "updatedAt": "2024-01-15T12:00:00Z"
+                      },
+                      "metadata": {
+                        "total": 1,
+                        "count": 1,
+                        "limit": 1,
+                        "offset": 0,
+                        "hasMore": false,
+                        "language": "english",
+                        "apiCallsConsumed": {
+                          "total": 2,
+                          "breakdown": {
+                            "cards": 1,
+                            "population": 1
+                          },
+                          "costPerCard": 2
+                        }
+                      }
+                    }
+                  },
+                  "multipleCards": {
+                    "summary": "Multiple cards population data",
+                    "value": {
+                      "data": [
+                        {
+                          "tcgPlayerId": "490294",
+                          "populationByGrader": {
+                            "PSA": {
+                              "g10": 2500,
+                              "totalPopulation": 12000,
+                              "gemRate": 20.83
+                            }
+                          },
+                          "totalPopulation": 14610,
+                          "combinedGemRate": 18.55,
+                          "gradersTracked": [
+                            "PSA",
+                            "BGS",
+                            "CGC",
+                            "SGC"
+                          ],
+                          "updatedAt": "2024-01-15T12:00:00Z"
+                        },
+                        {
+                          "tcgPlayerId": "490295",
+                          "populationByGrader": {
+                            "PSA": {
+                              "g10": 500,
+                              "totalPopulation": 3000,
+                              "gemRate": 16.67
+                            }
+                          },
+                          "totalPopulation": 4200,
+                          "combinedGemRate": 14.29,
+                          "gradersTracked": [
+                            "PSA",
+                            "BGS"
+                          ],
+                          "updatedAt": "2024-01-15T12:00:00Z"
+                        }
+                      ],
+                      "metadata": {
+                        "total": 2,
+                        "count": 2,
+                        "limit": 20,
+                        "offset": 0,
+                        "hasMore": false,
+                        "language": "english",
+                        "apiCallsConsumed": {
+                          "total": 4,
+                          "breakdown": {
+                            "cards": 2,
+                            "population": 2
+                          },
+                          "costPerCard": 2
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request - invalid parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - invalid or missing API key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "/export": {
+    "get": {
+      "summary": "Download daily price dump (Business plan only)",
+      "description": "Download a gzip-compressed CSV snapshot of all card prices, sealed product prices, eBay graded sales, or grading population data.\n\n**Business plan required.** Free and API plan users receive a `403` response.\n\nThe dump is regenerated daily at **6:00 AM UTC**. Each call redirects (`302`) to a Vercel Blob URL — download the file directly from there. No per-card API credits are consumed; downloads are tracked via a separate daily quota of **2 downloads per day**.\n\n### CSV columns by type\n| type | Columns |\n|------|---------|\n| `cards` | tcgPlayerId, name, setName, setId, cardNumber, rarity, language, printing, marketPrice, lowPrice, sellers, lastPriceUpdate |\n| `sealed` | tcgPlayerId, name, setName, setId, productType, language, marketPrice, lowPrice, sellers, lastPriceUpdate |\n| `ebay` | tcgPlayerId, grade, salesCount, averagePrice, medianPrice, smartMarketPrice, smartMarketConfidence, marketPrice7Day, marketTrend, salesVelocityWeekly |\n| `population` | tcgPlayerId, grader, totalPopulation, gemRate, g1, g2, g3, g4, g5, g6, g7, g8, g9, g9_5, g10, auth, qualifiers, pristine, perfect, matchConfidence |\n\nAll CSV files include a header row and are UTF-8 encoded with RFC 4180 quoting.",
+      "operationId": "getExport",
+      "tags": [
+        "Exports"
+      ],
+      "parameters": [
+        {
+          "name": "type",
+          "in": "query",
+          "description": "Which dataset to download",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "cards",
+              "sealed",
+              "ebay",
+              "population"
+            ],
+            "default": "cards"
+          }
+        }
+      ],
+      "responses": {
+        "302": {
+          "description": "Redirect to the gzip-compressed CSV file on Vercel Blob",
+          "headers": {
+            "Location": {
+              "description": "Direct URL to the .csv.gz file",
+              "schema": {
+                "type": "string",
+                "format": "uri"
+              }
+            },
+            "X-Export-Downloads-Remaining": {
+              "description": "Downloads remaining today (max 2/day)",
+              "schema": {
+                "type": "integer"
+              }
+            },
+            "X-Export-Reset-At": {
+              "description": "ISO 8601 timestamp when the download quota resets (UTC midnight)",
+              "schema": {
+                "type": "string",
+                "format": "date-time"
+              }
+            },
+            "X-Dump-Generated-At": {
+              "description": "ISO 8601 timestamp when the dump was generated",
+              "schema": {
+                "type": "string",
+                "format": "date-time"
+              }
+            }
+          }
+        },
+        "400": {
+          "description": "Invalid type parameter",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Error"
+              }
+            }
+          }
+        },
+        "401": {
+          "description": "Unauthorized — invalid or missing API key",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Error"
+              }
+            }
+          }
+        },
+        "403": {
+          "description": "Forbidden — Business plan required",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Error"
+              },
+              "example": {
+                "error": "Forbidden",
+                "message": "Price dump exports are available on the Business plan ($99/mo). Upgrade at pokemonpricetracker.com/pricing"
+              }
+            }
+          }
+        },
+        "429": {
+          "description": "Daily download limit reached (2 downloads per day)",
+          "headers": {
+            "X-Export-Downloads-Remaining": {
+              "schema": {
+                "type": "integer",
+                "example": 0
+              }
+            },
+            "X-Export-Reset-At": {
+              "schema": {
+                "type": "string",
+                "format": "date-time"
+              }
+            },
+            "Retry-After": {
+              "schema": {
+                "type": "integer",
+                "description": "Seconds until quota resets"
+              }
+            }
+          },
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Error"
+              },
+              "example": {
+                "error": "Daily export limit reached",
+                "message": "Business plan allows 2 price dump downloads per day.",
+                "remaining": 0,
+                "resetAt": "2026-04-21T00:00:00.000Z"
+              }
+            }
+          }
+        },
+        "503": {
+          "description": "Dump not yet available — generated daily at 6:00 AM UTC",
+          "headers": {
+            "Retry-After": {
+              "schema": {
+                "type": "integer",
+                "example": 3600
+              }
+            }
+          },
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Error"
+              },
+              "example": {
+                "error": "Dump not yet available",
+                "message": "The daily price dump is generated at 6:00 AM UTC. Please try again later."
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "API key authentication. Get your key at pokemonpricetracker.com/api"
+      }
+    },
+    "schemas": {
+      "Pagination": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "integer",
+            "description": "Total number of results matching the query"
+          },
+          "count": {
+            "type": "integer",
+            "description": "Number of results in this response"
+          },
+          "limit": {
+            "type": "integer",
+            "description": "Maximum results per page"
+          },
+          "offset": {
+            "type": "integer",
+            "description": "Number of results skipped"
+          },
+          "hasMore": {
+            "type": "boolean",
+            "description": "Whether more results exist beyond this page"
+          },
+          "language": {
+            "type": "string",
+            "enum": [
+              "english",
+              "japanese"
+            ],
+            "description": "Language of the returned data"
+          }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "required": [
+          "error",
+          "message"
+        ],
+        "properties": {
+          "error": {
+            "type": "string",
+            "description": "Error code or type"
+          },
+          "message": {
+            "type": "string",
+            "description": "Human-readable error message"
+          },
+          "details": {
+            "type": "object",
+            "description": "Additional error context"
+          }
+        }
+      },
+      "ApiCallsConsumed": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "integer",
+            "description": "Total credits consumed"
+          },
+          "breakdown": {
+            "type": "object",
+            "properties": {
+              "cards": {
+                "type": "integer"
+              },
+              "history": {
+                "type": "integer"
+              },
+              "ebay": {
+                "type": "integer"
+              },
+              "products": {
+                "type": "integer"
+              }
+            }
+          },
+          "costPerCard": {
+            "type": "number",
+            "description": "Average cost per card returned"
+          },
+          "costPerProduct": {
+            "type": "number",
+            "description": "Average cost per product returned"
+          }
+        }
+      },
+      "HistoryWindow": {
+        "type": "object",
+        "properties": {
+          "days": {
+            "type": "integer",
+            "description": "Number of days of historical data"
+          },
+          "from": {
+            "type": "string",
+            "format": "date",
+            "description": "Start date of history window"
+          },
+          "to": {
+            "type": "string",
+            "format": "date",
+            "description": "End date of history window"
+          }
+        }
+      },
+      "ConditionPrice": {
+        "type": "object",
+        "properties": {
+          "price": {
+            "type": "number",
+            "description": "Price in USD"
+          },
+          "listings": {
+            "type": "integer",
+            "nullable": true,
+            "description": "Number of active listings"
+          },
+          "priceString": {
+            "type": "string",
+            "description": "Formatted price string (e.g., \"$12.99\")"
+          },
+          "lastUpdated": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When this price was last updated"
+          }
+        }
+      },
+      "VariantPricing": {
+        "type": "object",
+        "description": "Printing variant prices (e.g., Normal, Holofoil, Reverse Holofoil)",
+        "additionalProperties": {
+          "type": "object",
+          "description": "Condition prices for this variant",
+          "additionalProperties": {
+            "$ref": "#/components/schemas/ConditionPrice"
+          }
+        }
+      },
+      "PriceData": {
+        "type": "object",
+        "properties": {
+          "market": {
+            "type": "number",
+            "nullable": true,
+            "description": "Current market price in USD"
+          },
+          "listings": {
+            "type": "integer",
+            "nullable": true,
+            "description": "Number of active listings"
+          },
+          "sellers": {
+            "type": "integer",
+            "nullable": true,
+            "description": "Number of unique sellers offering this card"
+          },
+          "lowPrice": {
+            "type": "number",
+            "nullable": true,
+            "description": "Lowest available listing price"
+          },
+          "primaryCondition": {
+            "type": "string",
+            "description": "Condition the market price represents (e.g., \"Near Mint\")"
+          },
+          "primaryPrinting": {
+            "type": "string",
+            "description": "Printing variant the market price represents (e.g., \"Holofoil\")"
+          },
+          "conditions": {
+            "type": "object",
+            "description": "Legacy condition-based pricing",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/ConditionPrice"
+            }
+          },
+          "variants": {
+            "$ref": "#/components/schemas/VariantPricing"
+          },
+          "lastUpdated": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "priceWasCorrected": {
+            "type": "boolean",
+            "description": "Whether an automated price correction was applied"
+          }
+        }
+      },
+      "Attack": {
+        "type": "string",
+        "description": "Attack name (e.g., \"Thunder Shock\", \"Volt Tackle\")"
+      },
+      "Weakness": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "nullable": true,
+            "description": "Weakness type (e.g., \"Water\")"
+          },
+          "value": {
+            "type": "string",
+            "nullable": true,
+            "description": "Weakness modifier (e.g., \"×2\")"
+          }
+        }
+      },
+      "Resistance": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "nullable": true,
+            "description": "Resistance type (e.g., \"Fighting\")"
+          },
+          "value": {
+            "type": "string",
+            "nullable": true,
+            "description": "Resistance modifier (e.g., \"-30\")"
+          }
+        }
+      },
+      "PricePoint": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Date of price point"
+          },
+          "market": {
+            "type": "number",
+            "description": "Market price on this date"
+          },
+          "volume": {
+            "type": "integer",
+            "nullable": true,
+            "description": "Sales volume"
+          },
+          "condition": {
+            "type": "string",
+            "description": "Condition context for this price point"
+          }
+        }
+      },
+      "ConditionHistory": {
+        "type": "object",
+        "description": "Price history for a specific condition",
+        "properties": {
+          "history": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PricePoint"
+            },
+            "description": "Array of daily price points"
+          },
+          "dataPoints": {
+            "type": "integer",
+            "description": "Number of data points in history"
+          },
+          "latestPrice": {
+            "type": "number",
+            "nullable": true,
+            "description": "Most recent price"
+          },
+          "latestDate": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "Date of most recent price"
+          },
+          "priceRange": {
+            "type": "object",
+            "properties": {
+              "min": {
+                "type": "number",
+                "description": "Minimum price in range"
+              },
+              "max": {
+                "type": "number",
+                "description": "Maximum price in range"
+              }
+            }
+          }
+        }
+      },
+      "PriceHistory": {
+        "type": "object",
+        "description": "Complete price history data (when includeHistory=true)",
+        "properties": {
+          "conditions": {
+            "type": "object",
+            "description": "Price history organized by condition (Near Mint, Lightly Played, etc.)",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/ConditionHistory"
+            },
+            "example": {
+              "Near Mint": {
+                "history": [
+                  {
+                    "date": "2024-01-15",
+                    "market": 420
+                  }
+                ],
+                "latestPrice": 420
+              }
+            }
+          },
+          "variants": {
+            "type": "object",
+            "description": "Price history organized by printing variant, then condition",
+            "additionalProperties": {
+              "type": "object",
+              "additionalProperties": {
+                "$ref": "#/components/schemas/ConditionHistory"
+              }
+            },
+            "example": {
+              "Holofoil": {
+                "Near Mint": {
+                  "history": [
+                    {
+                      "date": "2024-01-15",
+                      "market": 420
+                    }
+                  ],
+                  "latestPrice": 420
+                }
+              }
+            }
+          },
+          "conditions_tracked": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of conditions being tracked"
+          },
+          "variants_tracked": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of printing variants being tracked"
+          },
+          "totalDataPoints": {
+            "type": "integer",
+            "description": "Total number of price data points across all conditions"
+          },
+          "earliestDate": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Earliest date in price history"
+          },
+          "latestDate": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Most recent date in price history"
+          },
+          "lastUpdated": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When price history was last updated"
+          }
+        }
+      },
+      "EbayGradeData": {
+        "type": "object",
+        "properties": {
+          "count": {
+            "type": "integer",
+            "description": "Number of sales tracked"
+          },
+          "totalValue": {
+            "type": "number",
+            "description": "Total value of all sales"
+          },
+          "averagePrice": {
+            "type": "number",
+            "description": "Average sale price"
+          },
+          "medianPrice": {
+            "type": "number",
+            "description": "Median sale price"
+          },
+          "minPrice": {
+            "type": "number",
+            "description": "Minimum sale price"
+          },
+          "maxPrice": {
+            "type": "number",
+            "description": "Maximum sale price"
+          },
+          "marketPrice7Day": {
+            "type": "number",
+            "description": "7-day rolling market price"
+          },
+          "marketPriceMedian7Day": {
+            "type": "number",
+            "description": "7-day rolling median price"
+          },
+          "dailyVolume7Day": {
+            "type": "number",
+            "description": "7-day average daily volume"
+          },
+          "marketTrend": {
+            "type": "string",
+            "enum": [
+              "rising",
+              "falling",
+              "stable"
+            ],
+            "description": "Price trend direction"
+          },
+          "lastMarketUpdate": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "smartMarketPrice": {
+            "type": "object",
+            "properties": {
+              "price": {
+                "type": "number",
+                "description": "AI-calculated smart market price"
+              },
+              "confidence": {
+                "type": "string",
+                "enum": [
+                  "high",
+                  "medium",
+                  "low"
+                ]
+              },
+              "method": {
+                "type": "string",
+                "description": "Calculation method used"
+              },
+              "daysUsed": {
+                "type": "integer",
+                "description": "Days of data used in calculation"
+              }
+            }
+          }
+        }
+      },
+      "IndividualListing": {
+        "type": "object",
+        "description": "Individual eBay sold listing details (Business tier only)",
+        "properties": {
+          "listingId": {
+            "type": "string",
+            "description": "eBay listing ID"
+          },
+          "title": {
+            "type": "string",
+            "description": "Original eBay listing title"
+          },
+          "price": {
+            "type": "number",
+            "description": "Final sale price in USD"
+          },
+          "soldDate": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the item sold"
+          },
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "description": "eBay listing URL"
+          },
+          "listingType": {
+            "type": "string",
+            "enum": [
+              "auction",
+              "buy_it_now"
+            ],
+            "description": "Whether sold via auction or Buy It Now"
+          },
+          "bestOfferAccepted": {
+            "type": "boolean",
+            "description": "Whether the sale was through Best Offer"
+          },
+          "shippingCost": {
+            "type": "number",
+            "description": "Shipping cost in USD (0 = free shipping)"
+          },
+          "currency": {
+            "type": "string",
+            "default": "USD",
+            "description": "Currency of the sale"
+          },
+          "scrapedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When this listing was scraped"
+          }
+        }
+      },
+      "EbayPriceHistoryPoint": {
+        "type": "object",
+        "description": "Daily price aggregation for a specific grade",
+        "properties": {
+          "average": {
+            "type": "number",
+            "description": "Average sale price for the day"
+          },
+          "count": {
+            "type": "integer",
+            "description": "Number of sales on this day"
+          },
+          "totalValue": {
+            "type": "number",
+            "description": "Total value of sales on this day"
+          },
+          "sevenDayAverage": {
+            "type": "number",
+            "description": "7-day rolling average price"
+          },
+          "sevenDayVolumeAvg": {
+            "type": "number",
+            "description": "7-day rolling average daily volume"
+          },
+          "sevenDayValueAvg": {
+            "type": "number",
+            "description": "7-day rolling average daily value"
+          },
+          "rollingWindow": {
+            "type": "object",
+            "properties": {
+              "startDate": {
+                "type": "string",
+                "format": "date"
+              },
+              "endDate": {
+                "type": "string",
+                "format": "date"
+              },
+              "daysIncluded": {
+                "type": "integer"
+              }
+            }
+          }
+        }
+      },
+      "EbayData": {
+        "type": "object",
+        "description": "eBay graded card sales data (PSA, CGC, BGS, SGC, and more)",
+        "properties": {
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "lastScrapedDate": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "lastEbayCheck": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "salesByGrade": {
+            "type": "object",
+            "description": "Sales data by grading company and grade. Keys are formatted as {company}{grade} (e.g., psa10, cgc9.5, bgs10). Supported companies: PSA, CGC, BGS, SGC, TAG, ACE, MNT, CGA, AGS.",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/EbayGradeData"
+            },
+            "example": {
+              "psa10": {
+                "count": 432,
+                "averagePrice": 1499.46
+              },
+              "psa9": {
+                "count": 501,
+                "averagePrice": 557.83
+              },
+              "cgc9.5": {
+                "count": 156,
+                "averagePrice": 899
+              },
+              "bgs10": {
+                "count": 12,
+                "averagePrice": 1850
+              }
+            }
+          },
+          "salesVelocity": {
+            "type": "object",
+            "properties": {
+              "dailyAverage": {
+                "type": "number",
+                "description": "Average sales per day"
+              },
+              "weeklyAverage": {
+                "type": "number",
+                "description": "Average sales per week"
+              },
+              "monthlyTotal": {
+                "type": "number",
+                "description": "Total sales in the last 30 days"
+              }
+            }
+          },
+          "soldListings": {
+            "type": "object",
+            "description": "Individual sold listings with full details (BUSINESS TIER ONLY). Keys are grade codes (psa10, cgc9.5, etc.)",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "$ref": "#/components/schemas/IndividualListing"
+              }
+            },
+            "example": {
+              "psa10": [
+                {
+                  "listingId": "123456789012",
+                  "title": "PSA 10 GEM MINT Charizard Base Set Pokemon",
+                  "price": 15500,
+                  "soldDate": "2024-01-14T18:45:00Z",
+                  "listingType": "auction",
+                  "bestOfferAccepted": false,
+                  "shippingCost": 0
+                }
+              ]
+            }
+          },
+          "priceHistory": {
+            "type": "object",
+            "description": "Daily price history by grade. Keys are grade codes, values are objects with date keys.",
+            "additionalProperties": {
+              "type": "object",
+              "additionalProperties": {
+                "$ref": "#/components/schemas/EbayPriceHistoryPoint"
+              }
+            },
+            "example": {
+              "psa10": {
+                "2024-01-15": {
+                  "average": 14800,
+                  "count": 2,
+                  "totalValue": 29600
+                },
+                "2024-01-14": {
+                  "average": 15500,
+                  "count": 1,
+                  "totalValue": 15500
+                }
+              }
+            }
+          },
+          "totalSales": {
+            "type": "integer",
+            "description": "Total number of sales tracked across all grades"
+          },
+          "totalValue": {
+            "type": "number",
+            "description": "Total value of all sales tracked"
+          },
+          "gradesTracked": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of grade keys being tracked (e.g., [\"psa8\", \"psa9\", \"psa10\", \"cgc9.5\"])"
+          },
+          "dateRangeStart": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Earliest date in the tracked sales data"
+          },
+          "dateRangeEnd": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Most recent date in the tracked sales data"
+          }
+        }
+      },
+      "Card": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "MongoDB document ID"
+          },
+          "tcgPlayerId": {
+            "type": "string",
+            "description": "TCGPlayer unique identifier"
+          },
+          "setId": {
+            "type": "string",
+            "description": "Set identifier"
+          },
+          "setName": {
+            "type": "string",
+            "description": "Name of the set this card belongs to"
+          },
+          "name": {
+            "type": "string",
+            "description": "Card name"
+          },
+          "cardNumber": {
+            "type": "string",
+            "description": "Card number within the set"
+          },
+          "totalSetNumber": {
+            "type": "string",
+            "description": "Total cards in the set (e.g., \"102\" for base set)"
+          },
+          "rarity": {
+            "type": "string",
+            "description": "Card rarity (e.g., \"Holo Rare\", \"Ultra Rare\")"
+          },
+          "cardType": {
+            "type": "string",
+            "description": "Card type (e.g., \"Pokemon\", \"Trainer\", \"Energy\")"
+          },
+          "pokemonType": {
+            "type": "string",
+            "description": "Pokemon type (e.g., \"Darkness\", \"Fire\", \"Water\", \"Lightning\")"
+          },
+          "energyType": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Array of energy types for this card"
+          },
+          "flavorText": {
+            "type": "string",
+            "nullable": true,
+            "description": "Card flavor/Pokedex text"
+          },
+          "hp": {
+            "type": "integer",
+            "nullable": true,
+            "description": "Hit points (for Pokemon cards)"
+          },
+          "stage": {
+            "type": "string",
+            "nullable": true,
+            "description": "Evolution stage (e.g., \"Basic\", \"Stage 1\")"
+          },
+          "attacks": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of attack names (e.g., [\"Thunder Shock\", \"Thunderbolt\"])"
+          },
+          "weakness": {
+            "$ref": "#/components/schemas/Weakness"
+          },
+          "resistance": {
+            "$ref": "#/components/schemas/Resistance"
+          },
+          "retreatCost": {
+            "type": "integer",
+            "nullable": true,
+            "description": "Retreat cost in colorless energy"
+          },
+          "artist": {
+            "type": "string",
+            "nullable": true,
+            "description": "Card illustrator"
+          },
+          "tcgPlayerUrl": {
+            "type": "string",
+            "format": "uri",
+            "description": "Direct link to TCGPlayer listing"
+          },
+          "prices": {
+            "$ref": "#/components/schemas/PriceData"
+          },
+          "imageCdnUrl": {
+            "type": "string",
+            "format": "uri",
+            "description": "CDN URL for card image (800x800)"
+          },
+          "imageCdnUrl200": {
+            "type": "string",
+            "format": "uri",
+            "description": "CDN URL for card image (200x200)"
+          },
+          "imageCdnUrl400": {
+            "type": "string",
+            "format": "uri",
+            "description": "CDN URL for card image (400x400)"
+          },
+          "imageCdnUrl800": {
+            "type": "string",
+            "format": "uri",
+            "description": "CDN URL for card image (800x800)"
+          },
+          "imageUrl": {
+            "type": "string",
+            "format": "uri",
+            "nullable": true,
+            "description": "Legacy image URL (deprecated)"
+          },
+          "needsDetailedScrape": {
+            "type": "boolean",
+            "description": "Whether card needs additional data collection"
+          },
+          "dataCompleteness": {
+            "type": "number",
+            "description": "Data completeness score (0-1)"
+          },
+          "lastScrapedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "priceHistory": {
+            "$ref": "#/components/schemas/PriceHistory",
+            "description": "Historical price data (when includeHistory=true)"
+          },
+          "ebay": {
+            "$ref": "#/components/schemas/EbayData",
+            "description": "eBay graded card sales data (when includeEbay=true)"
+          }
+        }
+      },
+      "CardsResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/Card"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/Card"
+                }
+              }
+            ],
+            "description": "Single card object when querying by tcgPlayerId, array otherwise"
+          },
+          "metadata": {
+            "type": "object",
+            "properties": {
+              "total": {
+                "type": "integer",
+                "description": "Total matching cards"
+              },
+              "count": {
+                "type": "integer",
+                "description": "Cards in this response"
+              },
+              "limit": {
+                "type": "integer"
+              },
+              "offset": {
+                "type": "integer"
+              },
+              "hasMore": {
+                "type": "boolean"
+              },
+              "language": {
+                "type": "string",
+                "enum": [
+                  "english",
+                  "japanese"
+                ]
+              },
+              "includes": {
+                "type": "object",
+                "properties": {
+                  "priceHistory": {
+                    "type": "boolean"
+                  },
+                  "ebayData": {
+                    "type": "boolean"
+                  }
+                }
+              },
+              "historyWindow": {
+                "$ref": "#/components/schemas/HistoryWindow"
+              },
+              "fetchAllInSet": {
+                "type": "boolean"
+              },
+              "fetchedAllCards": {
+                "type": "boolean"
+              },
+              "apiCallsConsumed": {
+                "$ref": "#/components/schemas/ApiCallsConsumed"
+              },
+              "planRestrictions": {
+                "type": "object",
+                "properties": {
+                  "message": {
+                    "type": "string"
+                  },
+                  "limitedTo": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "Set": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "MongoDB document ID"
+          },
+          "tcgPlayerId": {
+            "type": "string",
+            "description": "TCGPlayer unique identifier for the set (URL slug format)"
+          },
+          "tcgPlayerNumericId": {
+            "type": "integer",
+            "nullable": true,
+            "description": "Numeric TCGPlayer GroupId. Use this value with the cards endpoint setId parameter. May be null for inactive/upcoming sets."
+          },
+          "name": {
+            "type": "string",
+            "description": "Set name"
+          },
+          "series": {
+            "type": "string",
+            "description": "Series name (e.g., \"Scarlet & Violet\", \"Sword & Shield\")"
+          },
+          "imageCdnUrl": {
+            "type": "string",
+            "format": "uri",
+            "description": "CDN URL for set icon (800x800)"
+          },
+          "imageCdnUrl200": {
+            "type": "string",
+            "format": "uri",
+            "description": "CDN URL for set icon (200x200)"
+          },
+          "imageCdnUrl400": {
+            "type": "string",
+            "format": "uri",
+            "description": "CDN URL for set icon (400x400)"
+          },
+          "imageCdnUrl800": {
+            "type": "string",
+            "format": "uri",
+            "description": "CDN URL for set icon (800x800)"
+          },
+          "imageUrl": {
+            "type": "string",
+            "format": "uri",
+            "nullable": true,
+            "description": "Legacy image URL (deprecated)"
+          },
+          "priceGuideUrl": {
+            "type": "string",
+            "format": "uri",
+            "description": "TCGPlayer price guide URL"
+          },
+          "hasPriceGuide": {
+            "type": "boolean",
+            "description": "Whether pricing data is available"
+          },
+          "noPriceGuideReason": {
+            "type": "string",
+            "description": "Reason if price guide unavailable"
+          },
+          "releaseDate": {
+            "type": "string",
+            "format": "date",
+            "nullable": true,
+            "description": "Set release date"
+          },
+          "cardCount": {
+            "type": "integer",
+            "description": "Number of cards in the set"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "SetsResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Set"
+            }
+          },
+          "metadata": {
+            "type": "object",
+            "properties": {
+              "total": {
+                "type": "integer",
+                "description": "Total matching sets"
+              },
+              "count": {
+                "type": "integer",
+                "description": "Sets in this response"
+              },
+              "limit": {
+                "type": "integer"
+              },
+              "offset": {
+                "type": "integer"
+              },
+              "hasMore": {
+                "type": "boolean"
+              },
+              "language": {
+                "type": "string",
+                "enum": [
+                  "english",
+                  "japanese"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "SealedProductPriceHistory": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Date of price point"
+          },
+          "unopenedPrice": {
+            "type": "number",
+            "nullable": true,
+            "description": "Unopened product price on this date"
+          }
+        }
+      },
+      "SealedProduct": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "MongoDB document ID"
+          },
+          "tcgPlayerId": {
+            "type": "string",
+            "description": "TCGPlayer unique identifier"
+          },
+          "tcgPlayerUrl": {
+            "type": "string",
+            "format": "uri",
+            "description": "Direct link to TCGPlayer listing"
+          },
+          "name": {
+            "type": "string",
+            "description": "Product name (e.g., \"Scarlet & Violet Booster Box\")"
+          },
+          "setId": {
+            "type": "string",
+            "description": "Set identifier this product belongs to"
+          },
+          "setName": {
+            "type": "string",
+            "description": "Name of the associated set"
+          },
+          "unopenedPrice": {
+            "type": "number",
+            "nullable": true,
+            "description": "Current market price in USD"
+          },
+          "imageCdnUrl": {
+            "type": "string",
+            "format": "uri",
+            "description": "CDN URL for product image (800x800)"
+          },
+          "imageCdnUrl200": {
+            "type": "string",
+            "format": "uri",
+            "description": "CDN URL for product image (200x200)"
+          },
+          "imageCdnUrl400": {
+            "type": "string",
+            "format": "uri",
+            "description": "CDN URL for product image (400x400)"
+          },
+          "imageCdnUrl800": {
+            "type": "string",
+            "format": "uri",
+            "description": "CDN URL for product image (800x800)"
+          },
+          "imageUrl": {
+            "type": "string",
+            "format": "uri",
+            "nullable": true,
+            "description": "Legacy image URL (deprecated)"
+          },
+          "priceHistory": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SealedProductPriceHistory"
+            },
+            "description": "Historical price data (when includeHistory=true)"
+          },
+          "lastScrapedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "SealedProductsResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/SealedProduct"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/SealedProduct"
+                }
+              }
+            ],
+            "description": "Single product when querying by tcgPlayerId, array otherwise"
+          },
+          "metadata": {
+            "type": "object",
+            "properties": {
+              "total": {
+                "type": "integer",
+                "description": "Total matching products"
+              },
+              "count": {
+                "type": "integer",
+                "description": "Products in this response"
+              },
+              "limit": {
+                "type": "integer"
+              },
+              "offset": {
+                "type": "integer"
+              },
+              "hasMore": {
+                "type": "boolean"
+              },
+              "language": {
+                "type": "string",
+                "enum": [
+                  "english",
+                  "japanese"
+                ]
+              },
+              "includes": {
+                "type": "object",
+                "properties": {
+                  "priceHistory": {
+                    "type": "boolean"
+                  }
+                }
+              },
+              "historyWindow": {
+                "$ref": "#/components/schemas/HistoryWindow"
+              },
+              "apiCallsConsumed": {
+                "$ref": "#/components/schemas/ApiCallsConsumed"
+              },
+              "planRestrictions": {
+                "type": "object",
+                "properties": {
+                  "message": {
+                    "type": "string"
+                  },
+                  "limitedTo": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "ParseOptions": {
+        "type": "object",
+        "properties": {
+          "fuzzyMatching": {
+            "type": "boolean",
+            "default": true,
+            "description": "Enable fuzzy matching against card database (+1 credit)"
+          },
+          "includeConfidence": {
+            "type": "boolean",
+            "default": true,
+            "description": "Include confidence scores in response"
+          },
+          "maxSuggestions": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 10,
+            "default": 5,
+            "description": "Maximum card matches to return (+1 credit if > 5)"
+          },
+          "strictMode": {
+            "type": "boolean",
+            "default": false,
+            "description": "Require higher confidence threshold for matches"
+          },
+          "includeMetadata": {
+            "type": "boolean",
+            "default": true,
+            "description": "Include parsing metadata in response"
+          }
+        }
+      },
+      "ParseTitleRequest": {
+        "type": "object",
+        "required": [
+          "title"
+        ],
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 500,
+            "description": "eBay listing title to parse",
+            "example": "Pokemon PSA 10 Charizard VMAX Rainbow Rare 074/073 Champions Path"
+          },
+          "options": {
+            "$ref": "#/components/schemas/ParseOptions"
+          }
+        }
+      },
+      "FieldConfidence": {
+        "type": "object",
+        "properties": {
+          "cardName": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Confidence in card name extraction"
+          },
+          "setName": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Confidence in set name extraction"
+          },
+          "cardNumber": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Confidence in card number extraction"
+          },
+          "variant": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Confidence in variant identification"
+          },
+          "grade": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Confidence in grade extraction"
+          }
+        }
+      },
+      "ParsedCardData": {
+        "type": "object",
+        "properties": {
+          "cardName": {
+            "type": "string",
+            "description": "Extracted card name"
+          },
+          "setName": {
+            "type": "string",
+            "description": "Extracted set name"
+          },
+          "setId": {
+            "type": "string",
+            "description": "Matched set ID"
+          },
+          "cardNumber": {
+            "type": "string",
+            "description": "Extracted card number"
+          },
+          "variant": {
+            "type": "string",
+            "description": "Card variant (e.g., \"Full Art\", \"Rainbow Rare\", \"Secret Rare\")"
+          },
+          "psaGrade": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 10,
+            "description": "PSA grade if detected"
+          },
+          "bgsGrade": {
+            "type": "number",
+            "description": "BGS grade if detected"
+          },
+          "cgcGrade": {
+            "type": "number",
+            "description": "CGC grade if detected"
+          },
+          "year": {
+            "type": "integer",
+            "description": "Year if detected"
+          },
+          "language": {
+            "type": "string",
+            "enum": [
+              "JPN",
+              "ENG",
+              "GER",
+              "FRE",
+              "ITA",
+              "SPA",
+              "KOR",
+              "CHI",
+              "POR"
+            ],
+            "description": "Card language code"
+          },
+          "edition": {
+            "type": "string",
+            "description": "Edition type (e.g., \"1st Edition\", \"Unlimited\")"
+          },
+          "condition": {
+            "type": "string",
+            "description": "Condition for non-graded cards"
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Overall parsing confidence score"
+          },
+          "fieldConfidence": {
+            "$ref": "#/components/schemas/FieldConfidence"
+          }
+        }
+      },
+      "CardMatch": {
+        "type": "object",
+        "properties": {
+          "tcgPlayerId": {
+            "type": "string",
+            "description": "TCGPlayer ID of matched card"
+          },
+          "name": {
+            "type": "string",
+            "description": "Card name"
+          },
+          "setName": {
+            "type": "string",
+            "description": "Set name"
+          },
+          "setId": {
+            "type": "string",
+            "description": "Set ID"
+          },
+          "cardNumber": {
+            "type": "string",
+            "description": "Card number"
+          },
+          "rarity": {
+            "type": "string",
+            "description": "Card rarity"
+          },
+          "artist": {
+            "type": "string",
+            "description": "Card artist"
+          },
+          "cardType": {
+            "type": "string",
+            "description": "Card type"
+          },
+          "prices": {
+            "type": "object",
+            "properties": {
+              "market": {
+                "type": "number",
+                "description": "Current market price"
+              },
+              "low": {
+                "type": "number"
+              },
+              "mid": {
+                "type": "number"
+              },
+              "high": {
+                "type": "number"
+              }
+            }
+          },
+          "matchScore": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "How well this card matches the parsed data"
+          },
+          "matchReasons": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Reasons why this card was matched"
+          },
+          "language": {
+            "type": "string",
+            "enum": [
+              "english",
+              "japanese"
+            ],
+            "description": "Which database the match came from"
+          }
+        }
+      },
+      "ParseTitleResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "originalTitle": {
+                "type": "string",
+                "description": "Original input title"
+              },
+              "sanitizedTitle": {
+                "type": "string",
+                "description": "Cleaned/normalized title"
+              },
+              "parsed": {
+                "$ref": "#/components/schemas/ParsedCardData"
+              },
+              "matches": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/CardMatch"
+                },
+                "description": "Matched cards from database"
+              },
+              "suggestions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Alternative title interpretations"
+              }
+            }
+          },
+          "metadata": {
+            "type": "object",
+            "properties": {
+              "parseTime": {
+                "type": "string",
+                "format": "date-time",
+                "description": "When parsing occurred"
+              },
+              "processingTimeMs": {
+                "type": "integer",
+                "description": "Processing time in milliseconds"
+              },
+              "confidence": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1,
+                "description": "Overall confidence score"
+              },
+              "apiCallsConsumed": {
+                "type": "integer",
+                "description": "API credits consumed"
+              },
+              "parsingMethod": {
+                "type": "string",
+                "description": "Parsing strategy used"
+              },
+              "warnings": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Parsing warnings"
+              }
+            }
+          }
+        }
+      },
+      "GraderPopulation": {
+        "type": "object",
+        "description": "Population data for a single grading company (PSA, BGS, SGC, CGC)",
+        "properties": {
+          "g1": {
+            "type": "integer",
+            "description": "Grade 1 count"
+          },
+          "g2": {
+            "type": "integer",
+            "description": "Grade 2 count"
+          },
+          "g3": {
+            "type": "integer",
+            "description": "Grade 3 count"
+          },
+          "g4": {
+            "type": "integer",
+            "description": "Grade 4 count"
+          },
+          "g5": {
+            "type": "integer",
+            "description": "Grade 5 count"
+          },
+          "g6": {
+            "type": "integer",
+            "description": "Grade 6 count"
+          },
+          "g7": {
+            "type": "integer",
+            "description": "Grade 7 count"
+          },
+          "g8": {
+            "type": "integer",
+            "description": "Grade 8 count"
+          },
+          "g9": {
+            "type": "integer",
+            "description": "Grade 9 count"
+          },
+          "g10": {
+            "type": "integer",
+            "description": "Grade 10 count (Gem Mint for PSA)"
+          },
+          "g1_5": {
+            "type": "integer",
+            "description": "Grade 1.5 count (BGS/CGC)"
+          },
+          "g2_5": {
+            "type": "integer",
+            "description": "Grade 2.5 count (BGS/CGC)"
+          },
+          "g3_5": {
+            "type": "integer",
+            "description": "Grade 3.5 count (BGS/CGC)"
+          },
+          "g4_5": {
+            "type": "integer",
+            "description": "Grade 4.5 count (BGS/CGC)"
+          },
+          "g5_5": {
+            "type": "integer",
+            "description": "Grade 5.5 count (BGS/CGC)"
+          },
+          "g6_5": {
+            "type": "integer",
+            "description": "Grade 6.5 count (BGS/CGC)"
+          },
+          "g7_5": {
+            "type": "integer",
+            "description": "Grade 7.5 count (BGS/CGC)"
+          },
+          "g8_5": {
+            "type": "integer",
+            "description": "Grade 8.5 count (BGS/CGC)"
+          },
+          "g9_5": {
+            "type": "integer",
+            "description": "Grade 9.5 count (BGS Gem Mint / CGC 9.5)"
+          },
+          "auth": {
+            "type": "integer",
+            "description": "Authentic/Altered count"
+          },
+          "qualifiers": {
+            "type": "integer",
+            "description": "Cards with qualifiers (MK, OC, ST, PD)"
+          },
+          "pristine": {
+            "type": "integer",
+            "description": "BGS 10 Pristine count"
+          },
+          "perfect": {
+            "type": "integer",
+            "description": "BGS 10 Black Label / Perfect count"
+          },
+          "totalPopulation": {
+            "type": "integer",
+            "description": "Total graded cards for this company"
+          },
+          "gemRate": {
+            "type": "number",
+            "nullable": true,
+            "description": "Percentage of 10s (0-100)"
+          }
+        },
+        "example": {
+          "g8": 1500,
+          "g9": 8000,
+          "g10": 2500,
+          "g9_5": 0,
+          "pristine": 0,
+          "perfect": 0,
+          "totalPopulation": 12000,
+          "gemRate": 20.83
+        }
+      },
+      "GemrateData": {
+        "type": "object",
+        "description": "GemRate population data for a card",
+        "properties": {
+          "tcgPlayerId": {
+            "type": "string",
+            "description": "TCGPlayer unique identifier"
+          },
+          "populationByGrader": {
+            "type": "object",
+            "description": "Population breakdown by grading company",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/GraderPopulation"
+            },
+            "example": {
+              "PSA": {
+                "g10": 5000,
+                "g9": 12000,
+                "totalPopulation": 25000,
+                "gemRate": 20
+              },
+              "BGS": {
+                "g10": 500,
+                "g9_5": 1200,
+                "pristine": 50,
+                "perfect": 10,
+                "totalPopulation": 3000,
+                "gemRate": 18.67
+              },
+              "CGC": {
+                "g10": 200,
+                "g9_5": 800,
+                "totalPopulation": 1500,
+                "gemRate": 13.33
+              },
+              "SGC": {
+                "g10": 100,
+                "g9": 400,
+                "totalPopulation": 600,
+                "gemRate": 16.67
+              }
+            }
+          },
+          "totalPopulation": {
+            "type": "integer",
+            "description": "Total graded cards across all companies"
+          },
+          "totalGems": {
+            "type": "integer",
+            "description": "Total 10s (including pristine/perfect) across all companies"
+          },
+          "combinedGemRate": {
+            "type": "number",
+            "nullable": true,
+            "description": "Combined gem rate percentage across all graders"
+          },
+          "gradersTracked": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of grading companies with data for this card",
+            "example": [
+              "PSA",
+              "BGS",
+              "CGC",
+              "SGC"
+            ]
+          },
+          "combinedTotals": {
+            "type": "object",
+            "description": "Combined grade totals across all graders",
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "example": {
+              "g8": 3000,
+              "g9": 15000,
+              "g10": 5800
+            }
+          },
+          "percentHigher": {
+            "type": "object",
+            "description": "Percentage of cards graded higher than each grade (useful for ROI calculations)",
+            "additionalProperties": {
+              "type": "number"
+            },
+            "example": {
+              "g8": 45.2,
+              "g9": 19.3,
+              "g10": 0
+            }
+          },
+          "matchConfidence": {
+            "type": "string",
+            "enum": [
+              "high",
+              "medium",
+              "low"
+            ],
+            "description": "Confidence level of the card match in GemRate database"
+          },
+          "matchScore": {
+            "type": "number",
+            "description": "Match score (0-1) indicating how closely the card matched",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "lastFetchedDate": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When population data was last fetched"
+          },
+          "lastPopulationChange": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When population data last changed (from GemRate)"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When this record was last updated"
+          }
+        },
+        "required": [
+          "tcgPlayerId",
+          "populationByGrader",
+          "totalPopulation",
+          "totalGems",
+          "gradersTracked",
+          "updatedAt"
+        ]
+      },
+      "PopulationResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/GemrateData"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/GemrateData"
+                }
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Single object when querying by tcgPlayerId, array otherwise, null if not found"
+          },
+          "metadata": {
+            "type": "object",
+            "properties": {
+              "total": {
+                "type": "integer",
+                "description": "Total matching cards"
+              },
+              "count": {
+                "type": "integer",
+                "description": "Cards in this response"
+              },
+              "limit": {
+                "type": "integer"
+              },
+              "offset": {
+                "type": "integer"
+              },
+              "hasMore": {
+                "type": "boolean"
+              },
+              "language": {
+                "type": "string",
+                "enum": [
+                  "english",
+                  "japanese"
+                ]
+              },
+              "apiCallsConsumed": {
+                "type": "object",
+                "properties": {
+                  "total": {
+                    "type": "integer",
+                    "description": "Total credits consumed"
+                  },
+                  "breakdown": {
+                    "type": "object",
+                    "properties": {
+                      "cards": {
+                        "type": "integer"
+                      },
+                      "population": {
+                        "type": "integer"
+                      }
+                    }
+                  },
+                  "costPerCard": {
+                    "type": "integer",
+                    "description": "Credit cost per card (2)"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

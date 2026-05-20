@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.05.19.08">
+<meta name="version" content="2026.05.20.01">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -522,7 +522,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
 
 <header>
   <div class="hdr">
-    <div class="logo">WALK-OFF <span>DASHBOARD · v2026.05.19.08</span></div>
+    <div class="logo">WALK-OFF <span>DASHBOARD · v2026.05.20.01</span></div>
     <div class="hdr-right">
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
@@ -1433,7 +1433,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.05.19.08';
+const APP_VERSION = '2026.05.20.01';
 const SUPABASE_URL = 'https://vroknjrxubsqyexngwus.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_wbpX2nL8l-4NbXtZNG_bjA_nabSYaJ5';
 const AUTH_REDIRECT_URL = 'https://squeebmike.github.io/ArSca/dashboard.html';
@@ -3062,6 +3062,18 @@ function renderPriceChartingDataPanel(status = null){
     <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px;font-family:monospace;font-size:10px;color:var(--dim)">
       <label><input type="checkbox" ${allowEstimatedConditionValues() ? 'checked' : ''} onchange="setAllowEstimatedConditionValues(this.checked);renderPriceChartingDataPanel()"> Allow estimated condition values when exact SKU price is missing</label>
       <label><input type="checkbox" ${localStorage.getItem('qa_debug') === '1' ? 'checked' : ''} onchange="localStorage.setItem('qa_debug',this.checked?'1':'0');renderPriceChartingDataPanel()"> Show external SKU ids in admin/debug</label>
+    </div>
+    <div class="item-metric" style="margin-bottom:12px">
+      <div style="font-family:'Orbitron',monospace;color:var(--blue);font-size:10px;margin-bottom:8px">PRICING APIS - PokemonPriceTracker</div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;font-family:monospace;font-size:10px;color:var(--dim)">
+        <label><input type="checkbox" ${localStorage.getItem('ppt_fetch_history_default') === '1' ? 'checked' : ''} onchange="localStorage.setItem('ppt_fetch_history_default',this.checked?'1':'0');renderPriceChartingDataPanel()"> Fetch history by default</label>
+        <label><input type="checkbox" ${localStorage.getItem('ppt_fetch_ebay_default') !== '0' ? 'checked' : ''} onchange="localStorage.setItem('ppt_fetch_ebay_default',this.checked?'1':'0');renderPriceChartingDataPanel()"> Fetch graded/eBay data by default</label>
+        <label><input type="checkbox" ${localStorage.getItem('ppt_fetch_population_default') === '1' ? 'checked' : ''} onchange="localStorage.setItem('ppt_fetch_population_default',this.checked?'1':'0');renderPriceChartingDataPanel()"> Fetch population by default</label>
+        <label>History days <input class="tsi" style="width:74px;margin:0 0 0 4px" type="number" min="3" max="365" value="${escHtml(localStorage.getItem('ppt_history_days') || '90')}" onchange="localStorage.setItem('ppt_history_days',this.value)"></label>
+        <span>Remaining credits: ${escHtml(localStorage.getItem('ppt_remaining_credits') || 'unknown')}</span>
+        <span>Last consumed: ${escHtml(localStorage.getItem('ppt_last_consumed') || 'unknown')}</span>
+        <span style="color:${pokemonPriceTrackerQuotaBlocked()?'var(--red)':'var(--dim)'}">Quota: ${pokemonPriceTrackerQuotaBlocked() ? 'Exhausted until ' + new Date(Number(localStorage.getItem('ppt_quota_exhausted_until'))).toLocaleTimeString() : 'Available'}</span>
+      </div>
     </div>
     ${rows}
     <div id="pc-csv-status-note" style="font-family:monospace;font-size:10px;color:var(--dim)"></div>
@@ -9832,6 +9844,12 @@ function pokemonPptPriceValue(value){
   return Number(value.price ?? value.market ?? value.marketPrice ?? value.value ?? value.mid ?? 0) || 0;
 }
 
+function pokemonPptListingCount(value){
+  if(!value || typeof value !== 'object') return null;
+  const n = Number(value.listings ?? value.sellers ?? value.count ?? 0);
+  return n > 0 ? n : null;
+}
+
 function pokemonPptObjectMatch(obj, wanted){
   if(!obj || typeof obj !== 'object') return null;
   const exact = obj[wanted] ?? obj[pokemonPptConditionCode(wanted)];
@@ -9851,42 +9869,138 @@ function pokemonPptMatrixRows(row = {}){
   const variants = prices.variants || {};
   const lastUpdated = prices.lastUpdated || card?.lastUpdated || card?.updatedAt || row.pokemonPriceTrackerLastUpdated || '';
   const rows = [];
+  const standardConditions = ['Near Mint','Lightly Played','Moderately Played','Heavily Played','Damaged'];
   Object.entries(variants).forEach(([finishRaw, conditionMap]) => {
     const finishLabel = pokemonPptFinishLabel(finishRaw);
     if(!conditionMap || typeof conditionMap !== 'object') return;
-    Object.entries(conditionMap).forEach(([conditionRaw, value]) => {
+    const conditionLabels = [...new Set([...standardConditions, ...Object.keys(conditionMap).map(pokemonPptConditionLabel)])];
+    conditionLabels.forEach(conditionRaw => {
+      const value = pokemonPptObjectMatch(conditionMap, conditionRaw);
       const price = pokemonPptPriceValue(value);
       rows.push({
+        basisType:'raw',
         condition:pokemonPptConditionCode(conditionRaw),
         conditionLabel:pokemonPptConditionLabel(conditionRaw),
         finish:normalizeQplFinish(finishLabel),
         finishLabel,
         price,
+        listings:pokemonPptListingCount(value),
         lastUpdated:value?.lastUpdated || lastUpdated,
         source:price > 0 ? 'PokemonPriceTracker variant' : 'No Real Price Available',
-        path:`prices.variants[${finishLabel}][${pokemonPptConditionLabel(conditionRaw)}].price`
+        path:`prices.variants[${finishLabel}][${pokemonPptConditionLabel(conditionRaw)}].price`,
+        label:`Raw ${pokemonPptConditionCode(conditionRaw)} ${finishLabel}`
       });
     });
   });
-  Object.entries(prices.conditions || {}).forEach(([conditionRaw, value]) => {
+  const conditionLabels = [...new Set([...standardConditions, ...Object.keys(prices.conditions || {}).map(pokemonPptConditionLabel)])];
+  conditionLabels.forEach(conditionRaw => {
     const condition = pokemonPptConditionCode(conditionRaw);
-    const exists = rows.some(r => r.condition === condition);
+    const exists = rows.some(r => r.condition === condition && pokemonPptObjectMatch(variants, r.finishLabel));
     if(exists) return;
+    const value = pokemonPptObjectMatch(prices.conditions || {}, conditionRaw);
     const price = pokemonPptPriceValue(value);
     const finishLabel = pokemonPptFinishLabel(prices.primaryPrinting || row.selectedFinish || row.finish || 'Normal');
     rows.push({
+      basisType:'raw',
       condition,
       conditionLabel:pokemonPptConditionLabel(conditionRaw),
       finish:normalizeQplFinish(finishLabel),
       finishLabel,
       price,
+      listings:pokemonPptListingCount(value),
       lastUpdated:value?.lastUpdated || lastUpdated,
       source:price > 0 ? 'PokemonPriceTracker condition' : 'No Real Price Available',
-      path:`prices.conditions[${pokemonPptConditionLabel(conditionRaw)}].price`
+      path:`prices.conditions[${pokemonPptConditionLabel(conditionRaw)}].price`,
+      label:`Raw ${condition} ${finishLabel}`
     });
   });
+  if(!rows.length && pokemonPptPriceValue(prices.market) > 0) {
+    const conditionLabel = pokemonPptConditionLabel(prices.primaryCondition || 'Near Mint');
+    const finishLabel = pokemonPptFinishLabel(prices.primaryPrinting || 'Normal');
+    rows.push({
+      basisType:'raw',
+      condition:pokemonPptConditionCode(conditionLabel),
+      conditionLabel,
+      finish:normalizeQplFinish(finishLabel),
+      finishLabel,
+      price:pokemonPptPriceValue(prices.market),
+      listings:Number(prices.listings || 0) || null,
+      lastUpdated,
+      source:'PokemonPriceTracker market',
+      path:'prices.market',
+      label:`Raw ${pokemonPptConditionCode(conditionLabel)} ${finishLabel}`
+    });
+  }
   const order = { NM:0, LP:1, MP:2, HP:3, DMG:4 };
   return rows.sort((a,b) => String(a.finishLabel).localeCompare(String(b.finishLabel)) || (order[a.condition] ?? 99) - (order[b.condition] ?? 99));
+}
+
+function pokemonPptGradeRows(row = {}){
+  const card = row.pokemonPriceTracker || row.pokemonPriceTrackerCard || row.pptCard || null;
+  const grades = card?.ebay?.salesByGrade || {};
+  const updated = card?.ebay?.updatedAt || card?.ebay?.lastEbayCheck || card?.ebay?.lastScrapedDate || '';
+  return Object.entries(grades).map(([gradeKey, value]) => {
+    const smart = Number(value?.smartMarketPrice?.price || 0) || 0;
+    const median = Number(value?.medianPrice || 0) || 0;
+    const average = Number(value?.averagePrice || 0) || 0;
+    const price = smart || median || average || 0;
+    const label = String(gradeKey || '').replace(/^([a-z]+)([\d.]+)$/i, (_, g, n) => g.toUpperCase() + ' ' + n).replace(/_/g, ' ').toUpperCase();
+    return {
+      basisType:'graded',
+      gradeKey,
+      gradeLabel:label,
+      price,
+      averagePrice:average,
+      medianPrice:median,
+      minPrice:Number(value?.minPrice || 0) || null,
+      maxPrice:Number(value?.maxPrice || 0) || null,
+      count:Number(value?.count || 0) || null,
+      marketTrend:value?.marketTrend || '',
+      confidence:value?.smartMarketPrice?.confidence || '',
+      lastUpdated:value?.lastMarketUpdate || updated,
+      source:'Graded eBay Market',
+      path: smart ? `ebay.salesByGrade[${gradeKey}].smartMarketPrice.price` : median ? `ebay.salesByGrade[${gradeKey}].medianPrice` : average ? `ebay.salesByGrade[${gradeKey}].averagePrice` : `ebay.salesByGrade[${gradeKey}] missing price`,
+      label:'Graded ' + label
+    };
+  }).sort((a,b) => {
+    const rank = g => (/PSA 10/.test(g) ? 0 : /PSA 9/.test(g) ? 1 : /PSA 8/.test(g) ? 2 : /CGC 10/.test(g) ? 3 : /CGC 9\.5/.test(g) ? 4 : /BGS 10/.test(g) ? 5 : /BGS 9\.5/.test(g) ? 6 : /SGC 10/.test(g) ? 7 : 99);
+    return rank(a.gradeLabel) - rank(b.gradeLabel) || a.gradeLabel.localeCompare(b.gradeLabel);
+  });
+}
+
+function makePokemonActivePriceBasis(row, resolved){
+  const card = resolved?.card || row.pokemonPriceTracker || null;
+  return {
+    basisType: resolved?.basisType || 'raw',
+    source: resolved?.source?.includes('Grade') ? 'PokemonPriceTracker eBay graded' : 'PokemonPriceTracker',
+    price: Number(resolved?.price || 0) > 0 ? Number(resolved.price) : null,
+    condition: resolved?.condition || null,
+    finish: resolved?.finish || null,
+    grade: resolved?.grade || null,
+    tcgPlayerId: card?.tcgPlayerId || row.tcgPlayerId || row.tcgplayerId || null,
+    pricePath: resolved?.path || '',
+    isExact: !!resolved?.ok,
+    lastUpdated: resolved?.lastUpdated || null,
+    label: resolved?.label || resolved?.source || 'No Real Price Available'
+  };
+}
+
+function pokemonPptHistoryForBasis(row = {}, basis = row.activePriceBasis || {}){
+  const card = row.pokemonPriceTracker || row.pokemonPriceTrackerCard || row.pptCard || null;
+  if(!card) return { path:'', points:[] };
+  if(basis.basisType === 'graded' && basis.grade) {
+    const ebayHistory = card.ebay?.priceHistory || {};
+    const found = pokemonPptObjectMatch(ebayHistory, basis.grade) || pokemonPptObjectMatch(ebayHistory, row.selectedGradeKey || '');
+    return { path:`ebay.priceHistory[${basis.grade}]`, points:normalizeChartPoints(found?.history || found || []) };
+  }
+  const hist = card.priceHistory || {};
+  const finish = basis.finish || pokemonPptFinishLabel(row.selectedFinish || row.finish || card.prices?.primaryPrinting || 'Normal');
+  const condition = basis.condition || pokemonPptConditionLabel(row.selectedCondition || row.condition || card.prices?.primaryCondition || 'Near Mint');
+  const variantHist = pokemonPptObjectMatch(pokemonPptObjectMatch(hist.variants || {}, finish), condition);
+  if(variantHist) return { path:`priceHistory.variants[${finish}][${condition}]`, points:normalizeChartPoints(variantHist.history || variantHist) };
+  const conditionHist = pokemonPptObjectMatch(hist.conditions || {}, condition);
+  if(conditionHist) return { path:`priceHistory.conditions[${condition}]`, points:normalizeChartPoints(conditionHist.history || conditionHist) };
+  return { path:`missing history for ${finish} / ${condition}`, points:[] };
 }
 
 function pokemonPptOptionValues(row = {}, key = 'condition'){
@@ -9910,6 +10024,25 @@ function pokemonPptOptionValues(row = {}, key = 'condition'){
 
 function resolvePokemonPriceTrackerPrice(row = {}){
   const card = row.pokemonPriceTracker || row.pokemonPriceTrackerCard || row.pptCard || null;
+  if(!card?.prices && !card?.ebay) return null;
+  if(row.pricingMode === 'graded' || (row.selectedGrade && row.pricingMode !== 'raw')) {
+    const wanted = row.selectedGradeKey || row.selectedGrade || row.slabGrade || '';
+    const gradeRows = pokemonPptGradeRows(row);
+    const gradeRow = gradeRows.find(g => normalizePokemonPptKey(g.gradeKey) === normalizePokemonPptKey(wanted) || normalizePokemonPptKey(g.gradeLabel) === normalizePokemonPptKey(wanted)) || gradeRows[0] || null;
+    if(gradeRow) return {
+      ok:gradeRow.price > 0,
+      basisType:'graded',
+      price:gradeRow.price,
+      path:gradeRow.path,
+      source:gradeRow.price > 0 ? 'Graded eBay Market' : 'No Real Grade Price Available',
+      grade:gradeRow.gradeLabel,
+      condition:null,
+      finish:null,
+      lastUpdated:gradeRow.lastUpdated,
+      label:gradeRow.label,
+      card
+    };
+  }
   if(!card?.prices) return null;
   const prices = card.prices || {};
   const selectedCondition = pokemonPptConditionLabel(row.selectedCondition || row.condition || prices.primaryCondition || 'Near Mint');
@@ -9928,6 +10061,7 @@ function resolvePokemonPriceTrackerPrice(row = {}){
       condition:selectedCondition,
       finish:selectedFinish,
       lastUpdated,
+      label:`Raw ${pokemonPptConditionCode(selectedCondition)} ${selectedFinish}`,
       card
     };
   }
@@ -9942,6 +10076,7 @@ function resolvePokemonPriceTrackerPrice(row = {}){
       condition:selectedCondition,
       finish:selectedFinish,
       lastUpdated,
+      label:`Raw ${pokemonPptConditionCode(selectedCondition)} ${selectedFinish}`,
       card
     };
   }
@@ -9957,6 +10092,7 @@ function resolvePokemonPriceTrackerPrice(row = {}){
       condition:selectedCondition,
       finish:selectedFinish,
       lastUpdated,
+      label:`Raw ${pokemonPptConditionCode(selectedCondition)} ${selectedFinish}`,
       card
     };
   }
@@ -9968,6 +10104,7 @@ function resolvePokemonPriceTrackerPrice(row = {}){
     condition:selectedCondition,
     finish:selectedFinish,
     lastUpdated,
+    label:`Raw ${pokemonPptConditionCode(selectedCondition)} ${selectedFinish}`,
     card
   };
 }
@@ -9977,11 +10114,19 @@ function applyPokemonPriceTrackerPrice(row = {}){
   if(!resolved) return false;
   row.resolvedPricePath = resolved.path;
   row.resolvedPrice = resolved.price || 0;
-  row.selectedCondition = pokemonPptConditionCode(resolved.condition);
-  row.condition = row.selectedCondition;
-  row.selectedFinish = normalizeQplFinish(resolved.finish);
-  row.finish = row.selectedFinish;
-  row.selectedPrinting = resolved.finish;
+  row.activePriceBasis = makePokemonActivePriceBasis(row, resolved);
+  if(resolved.basisType === 'graded') {
+    row.selectedGrade = resolved.grade;
+    row.selectedGradeKey = resolved.grade;
+    row.pricingMode = 'graded';
+  } else {
+    row.selectedCondition = pokemonPptConditionCode(resolved.condition);
+    row.condition = row.selectedCondition;
+    row.selectedFinish = normalizeQplFinish(resolved.finish);
+    row.finish = row.selectedFinish;
+    row.selectedPrinting = resolved.finish;
+    row.pricingMode = 'raw';
+  }
   row.pokemonPriceTrackerLastUpdated = resolved.lastUpdated || row.pokemonPriceTrackerLastUpdated || '';
   row.tcgPlayerId = resolved.card?.tcgPlayerId || row.tcgPlayerId || row.tcgplayerId || '';
   row.tcgplayerId = row.tcgPlayerId || row.tcgplayerId || '';
@@ -9994,10 +10139,17 @@ function applyPokemonPriceTrackerPrice(row = {}){
   } else {
     const est = estimateConditionValue(row, row.selectedCondition);
     row.market = est || 0;
-    row.priceSource = est ? 'Estimated Condition Value' : 'No Real Price Available';
+    row.priceSource = est ? 'Estimated Condition Value' : (resolved.basisType === 'graded' ? 'No Real Grade Price Available' : 'No Real Price Available');
     row.priceConfidence = est ? 'estimate' : 'unknown';
+    if(est) row.activePriceBasis = { ...row.activePriceBasis, basisType:'manual', source:'Manual', price:est, isExact:false, label:'Estimated Condition Value' };
   }
   row.lastPriceSyncAt = resolved.lastUpdated || row.lastPriceSyncAt || new Date().toISOString();
+  const history = pokemonPptHistoryForBasis(row, row.activePriceBasis);
+  row.chartPath = history.path;
+  row.selectedVariant = row.selectedVariant || {};
+  row.selectedVariant.priceHistory = history.points;
+  row.selectedVariant.priceSource = row.activePriceBasis?.label || row.priceSource || row.selectedVariant.priceSource;
+  row.selectedVariant.marketPrice = Number(row.market || 0) || null;
   return true;
 }
 
@@ -10311,7 +10463,7 @@ function applyQplSelectedVariant(r){
   const v = qplSelectedVariant(r);
   if(!v) {
     if(applyPokemonPriceTrackerPrice(r)) {
-      r.selectedVariant = null;
+      r.selectedVariant = r.selectedVariant || null;
       r.variantIntelligence = getVariantIntelligence(r);
       return r;
     }
@@ -10556,22 +10708,40 @@ function qplJustTcgChartPanel(r, idx){
 
 function qplVariantPriceTable(r, idx){
   const pptRows = pokemonPptMatrixRows(r);
-  if(pptRows.length) {
+  const gradeRows = pokemonPptGradeRows(r);
+  if(pptRows.length || gradeRows.length) {
     const selectedCondition = r.selectedCondition || r.condition || '';
     const selectedFinish = normalizeQplFinish(r.selectedFinish || r.finish || '');
     const rows = pptRows.map(row => {
-      const selected = row.condition === selectedCondition && (!selectedFinish || row.finish === selectedFinish);
-      return `<tr class="${selected?'on':''}" onclick="updateQplVariant(${idx},{selectedCondition:'${escHtml(row.condition)}',selectedFinish:'${escHtml(row.finish)}'})" style="cursor:pointer">
+      const selected = r.activePriceBasis?.basisType !== 'graded' && row.condition === selectedCondition && (!selectedFinish || row.finish === selectedFinish);
+      return `<tr class="${selected?'on':''}" onclick="updateQplVariant(${idx},{selectedCondition:'${escHtml(row.condition)}',selectedFinish:'${escHtml(row.finish)}',selectedGrade:'',selectedGradeKey:'',pricingMode:'raw'})" style="cursor:pointer">
         <td>${escHtml(row.condition)}</td>
         <td>${escHtml(row.finishLabel)}</td>
         <td>${row.price ? '$'+Number(row.price).toFixed(2) : 'No Real Price'}</td>
+        <td>${row.listings == null ? '-' : Number(row.listings).toLocaleString()}</td>
         <td>${escHtml(row.lastUpdated || r.lastPriceSyncAt || '-')}</td>
         <td>${escHtml(row.source)}</td>
       </tr>`;
     }).join('');
+    const gradeHtml = gradeRows.length ? `
+      <div style="font-family:'Orbitron',monospace;color:var(--blue);font-size:10px;margin-top:12px">GRADED PRICES - eBay via PokemonPriceTracker</div>
+      <table class="qpl-price-table"><thead><tr><th>Grade</th><th>Selected Price</th><th>Median</th><th>Avg</th><th>Count</th><th>Trend</th><th>Confidence</th></tr></thead><tbody>${gradeRows.map(g => {
+        const selected = r.activePriceBasis?.basisType === 'graded' && normalizePokemonPptKey(r.selectedGrade || '') === normalizePokemonPptKey(g.gradeLabel);
+        return `<tr class="${selected?'on':''}" onclick="updateQplVariant(${idx},{selectedGrade:'${escHtml(g.gradeLabel)}',selectedGradeKey:'${escHtml(g.gradeKey)}',pricingMode:'graded'})" style="cursor:pointer">
+          <td>${escHtml(g.gradeLabel)}</td>
+          <td>${g.price ? '$'+Number(g.price).toFixed(2) : 'No Real Grade Price'}</td>
+          <td>${g.medianPrice ? '$'+Number(g.medianPrice).toFixed(2) : '-'}</td>
+          <td>${g.averagePrice ? '$'+Number(g.averagePrice).toFixed(2) : '-'}</td>
+          <td>${g.count == null ? '-' : Number(g.count).toLocaleString()}</td>
+          <td>${escHtml(g.marketTrend || '-')}</td>
+          <td>${escHtml(g.confidence || '-')}</td>
+        </tr>`;
+      }).join('')}</tbody></table>
+      ${r.pokemonPriceTracker?.ebay?.soldListings?.length ? `<div style="font-family:monospace;font-size:10px;color:var(--dim);margin-top:6px">${r.pokemonPriceTracker.ebay.soldListings.slice(0,3).map(s => escHtml([s.title, s.price ? '$'+Number(s.price).toFixed(2) : '', s.soldDate ? new Date(s.soldDate).toLocaleDateString() : ''].filter(Boolean).join(' / '))).join('<br>')}</div>` : `<div style="font-family:monospace;font-size:10px;color:var(--dim);margin-top:6px">Recent sold listing preview requires Business tier data.</div>`}` : '';
     return `<div style="margin-top:10px">
       <div style="font-family:'Orbitron',monospace;color:var(--g);font-size:10px">AVAILABLE PRICES · PokemonPriceTracker</div>
-      <table class="qpl-price-table"><thead><tr><th>Condition</th><th>Finish</th><th>Actual API Price</th><th>Last Updated</th><th>Source</th></tr></thead><tbody>${rows}</tbody></table>
+      <table class="qpl-price-table"><thead><tr><th>Condition</th><th>Finish</th><th>Actual API Price</th><th>Listings</th><th>Last Updated</th><th>Source</th></tr></thead><tbody>${rows}</tbody></table>
+      ${gradeHtml}
     </div>`;
   }
   if(!r?.availableVariants?.length) return '';
@@ -10600,6 +10770,7 @@ function qplConditionOptionsFor(r){
 }
 
 function qplVariantResolverStatus(r = {}){
+  if(r.activePriceBasis?.basisType === 'graded') return Number(r.activePriceBasis.price || r.market || 0) > 0 ? { label:'Graded eBay market selected', cls:'good' } : { label:'No real grade price', cls:'bad' };
   if(r.pokemonPriceTracker) return Number(r.market || 0) > 0 ? { label:'PokemonPriceTracker exact price', cls:'good' } : { label:'No real price', cls:'bad' };
   if(!r.availableVariants?.length) return { label:'Variant Matrix Unavailable', cls:'warn' };
   if(r.selectedVariant && qplPriceValue(r.selectedVariant) > 0) return { label:'Exact SKU matched', cls:'good' };
@@ -10635,6 +10806,11 @@ function encodeTcgParam(value = ''){
 }
 
 function buildTcgExternalLink(item = {}){
+  if(item.activePriceBasis?.basisType === 'graded') {
+    const grade = item.activePriceBasis.grade || item.selectedGrade || '';
+    const q = [item.name, item.set || item.setName, item.card_number || item.cardNumber, grade].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
+    return { activeSkuId:'', query:q, note:'Selected basis is graded; opening eBay sold comps instead of TCGPlayer raw condition pricing.', url:'https://www.ebay.com/sch/i.html?_nkw=' + encodeURIComponent(q) + '&LH_Sold=1&LH_Complete=1' };
+  }
   const selected = item.selectedVariant || qplSelectedVariant(item) || {};
   const condition = selected.condition || item.selectedCondition || item.condition || '';
   const finish = qplFinishLabel(selected.finish || item.selectedFinish || item.finish || '');
@@ -10771,6 +10947,21 @@ function pokemonPriceTrackerCardsFromPayload(data = {}){
   return [];
 }
 
+function pokemonPriceTrackerApiSettings(){
+  return {
+    includeHistory:localStorage.getItem('ppt_fetch_history_default') === '1',
+    includeEbay:localStorage.getItem('ppt_fetch_ebay_default') !== '0',
+    includePopulation:localStorage.getItem('ppt_fetch_population_default') === '1',
+    days:Number(localStorage.getItem('ppt_history_days') || 90) || 90,
+    maxDataPoints:Number(localStorage.getItem('ppt_history_points') || 120) || 120,
+  };
+}
+
+function pokemonPriceTrackerQuotaBlocked(){
+  const until = Number(localStorage.getItem('ppt_quota_exhausted_until') || 0);
+  return until && Date.now() < until;
+}
+
 function pickPokemonPriceTrackerCard(row = {}, cards = []){
   const wantedId = String(pokemonPriceTrackerId(row) || '');
   if(wantedId) {
@@ -10816,12 +11007,23 @@ async function cachePokemonPriceTrackerCard(row = {}, card = null){
 
 async function fetchPokemonPriceTrackerCard(row = {}){
   const params = new URLSearchParams({ language:String(row.selectedLanguage || row.language || 'English').toLowerCase().startsWith('j') ? 'japanese' : 'english', limit:'10' });
+  const settings = pokemonPriceTrackerApiSettings();
   const tcgPlayerId = pokemonPriceTrackerId(row);
   if(tcgPlayerId) params.set('tcgPlayerId', tcgPlayerId);
   else params.set('search', pokemonPriceTrackerSearchText(row));
   if(!params.get('tcgPlayerId') && !params.get('search')) return null;
+  params.set('includeEbay', settings.includeEbay ? 'true' : 'false');
+  params.set('includeHistory', settings.includeHistory ? 'true' : 'false');
+  params.set('includeBoth', settings.includeEbay && settings.includeHistory ? 'true' : 'false');
+  params.set('days', String(settings.days));
+  params.set('maxDataPoints', String(settings.maxDataPoints));
+  if(row.selectedCondition || row.condition) params.set('condition', pokemonPptConditionLabel(row.selectedCondition || row.condition));
+  if(row.selectedFinish || row.finish) params.set('printing', pokemonPptFinishLabel(row.selectedFinish || row.finish));
   const res = await fetch(WORKER + '/pricing/pokemonpricetracker/cards?' + params.toString(), { cache:'no-store' });
   const data = await res.json().catch(() => ({}));
+  if(res.status === 429 || data.providerQuotaState === 'exhausted') localStorage.setItem('ppt_quota_exhausted_until', String(Date.now() + 60 * 60 * 1000));
+  if(data.usage?.remaining != null) localStorage.setItem('ppt_remaining_credits', String(data.usage.remaining));
+  if(data.usage?.consumed != null) localStorage.setItem('ppt_last_consumed', String(data.usage.consumed));
   if(!res.ok || !data.ok) throw new Error(data.error || data.message || 'PokemonPriceTracker lookup failed');
   return pickPokemonPriceTrackerCard(row, pokemonPriceTrackerCardsFromPayload(data));
 }
@@ -10839,7 +11041,10 @@ async function hydratePokemonPriceTrackerPricing(idx, rerender = true){
       applyQplSelectedVariant(row);
       if(rerender) updateQplResultCard(idx);
     }
-    if(!navigator.onLine) return;
+    if(!navigator.onLine || pokemonPriceTrackerQuotaBlocked()) {
+      if(pokemonPriceTrackerQuotaBlocked()) row.pokemonPriceTrackerError = 'Quota Exhausted - using cached PokemonPriceTracker data';
+      return;
+    }
     const card = await fetchPokemonPriceTrackerCard(row);
     if(card) {
       row.pokemonPriceTracker = card;
@@ -11402,7 +11607,9 @@ function quickLookupResultCard(r, idx){
   const variantStatus = qplVariantResolverStatus(r);
   const displayPrice = Number(r.market || 0);
   const priceText = displayPrice ? '$' + displayPrice.toFixed(2) : (truth.includes('Guide') ? 'No Guide Value Available' : truth.includes('Real') ? 'No Real Price Available' : 'Needs Review');
-  const priceVariantLine = [r.selectedCondition || r.condition ? pokemonPptConditionLabel(r.selectedCondition || r.condition) : '', r.selectedFinish || r.finish ? pokemonPptFinishLabel(r.selectedFinish || r.finish) : ''].filter(Boolean).join(' / ');
+  const priceVariantLine = r.activePriceBasis?.basisType === 'graded'
+    ? [r.activePriceBasis.grade || r.selectedGrade, 'Graded eBay Market'].filter(Boolean).join(' / ')
+    : [r.selectedCondition || r.condition ? pokemonPptConditionLabel(r.selectedCondition || r.condition) : '', r.selectedFinish || r.finish ? pokemonPptFinishLabel(r.selectedFinish || r.finish) : ''].filter(Boolean).join(' / ');
   const signals = [
     needs.length ? `NEEDED: ${needs.map(n => n.owner || n.set || n.name).slice(0,2).join(', ')}` : '',
     signal.wants ? `${signal.wants} want match${signal.wants===1?'':'es'}` : '',
@@ -11429,7 +11636,7 @@ function quickLookupResultCard(r, idx){
       <div class="qpl-price-sub">
         ${recentSold ? `Recent sold: $${recentSold.toFixed(2)}<br>` : ''}
         ${priceVariantLine ? `${escHtml(priceVariantLine)}<br>` : ''}
-        Source: ${escHtml(r.priceSource || r.source || 'manual')}
+        Source: ${escHtml(r.activePriceBasis?.source || r.priceSource || r.source || 'manual')}
         ${r.pokemonPriceTrackerLastUpdated ? `<div class="pokemon-cache-meta">PokemonPriceTracker updated ${escHtml(pokemonCacheAgeLabel(r.pokemonPriceTrackerLastUpdated))}</div>` : ''}
         ${r.cache ? `<div class="pokemon-cache-meta">Cached source: ${escHtml(r.cache.source || 'Pokemon cache')} / ${escHtml(pokemonCacheAgeLabel(r.cache.updatedAt))}</div>` : ''}
       </div>
@@ -11449,7 +11656,7 @@ function quickLookupResultCard(r, idx){
         </select>
         <input type="number" min="1" step="1" value="${Number(r.qty || 1)}" onchange="qplResults[${idx}].qty=parseInt(this.value,10)||1" aria-label="Quantity">
       </div>
-      ${showAdminDebug() ? `<div style="margin-top:8px;font-family:monospace,monospace;font-size:10px;color:var(--dim)">Debug: selectedCondition ${escHtml(r.selectedCondition || r.condition || '')} / selectedFinish ${escHtml(qplFinishLabel(r.selectedFinish || r.finish || ''))} / resolvedPricePath ${escHtml(r.resolvedPricePath || 'n/a')} / resolvedPrice ${Number(r.resolvedPrice || r.market || 0) ? '$'+Number(r.resolvedPrice || r.market || 0).toFixed(2) : 'No Real Price'} / generatedTcgUrl ${escHtml(builtTcgLink.url || '')}</div>` : ''}
+      ${showAdminDebug() ? `<div style="margin-top:8px;font-family:monospace,monospace;font-size:10px;color:var(--dim)">Debug: selectedCondition ${escHtml(r.selectedCondition || r.condition || '')} / selectedFinish ${escHtml(qplFinishLabel(r.selectedFinish || r.finish || ''))} / selectedGrade ${escHtml(r.selectedGrade || '')} / activePriceBasis ${escHtml(JSON.stringify(r.activePriceBasis || {}))} / resolvedPricePath ${escHtml(r.activePriceBasis?.pricePath || r.resolvedPricePath || 'n/a')} / chartPath ${escHtml(r.chartPath || 'n/a')} / resolvedPrice ${Number(r.resolvedPrice || r.market || 0) ? '$'+Number(r.resolvedPrice || r.market || 0).toFixed(2) : 'No Real Price'} / generatedTcgUrl ${escHtml(builtTcgLink.url || '')} / cache ${escHtml(r.cache?.source || 'live/none')}</div>` : ''}
     </div>
     <div class="qpl-actions">
       <button class="hbtn primary" onclick="selectQuickLookupResult(${idx})">SELECT</button>
@@ -11832,6 +12039,20 @@ function externalRefsFromQuickLookup(item = {}, selectedVariant = {}){
 function selectedQuickLookupItem(idx){
   const r = applyQplSelectedVariant(qplResults[idx] || {});
   const selectedVariant = r.selectedVariant || qplSelectedVariant(r) || {};
+  const activePriceBasis = r.activePriceBasis || {
+    basisType:r.pricingMode === 'slab' ? 'guide' : 'manual',
+    source:r.priceSource || r.source || 'Manual',
+    price:Number(r.market || 0) || null,
+    condition:r.selectedCondition || r.condition || null,
+    finish:r.selectedFinish || r.finish || null,
+    grade:r.selectedGrade || r.slabGrade || null,
+    tcgPlayerId:r.tcgPlayerId || r.tcgplayerId || null,
+    pricePath:r.resolvedPricePath || '',
+    isExact:Number(r.market || 0) > 0,
+    lastUpdated:r.lastPriceSyncAt || null,
+    label:r.priceSource || 'Manual Price'
+  };
+  const activePrice = Number(activePriceBasis.price || r.market || 0) || 0;
   return {
     id:'qpl_' + Date.now() + '_' + Math.random().toString(36).slice(2,6),
     name:document.getElementById('qpl-edit-name')?.value.trim() || r.name || 'Manual item',
@@ -11862,15 +12083,16 @@ function selectedQuickLookupItem(idx){
     priceChange30d:r.priceChange30d || selectedVariant.priceChange30d || 0,
     priceChange90d:r.priceChange90d || selectedVariant.priceChange90d || 0,
     priceHistory:r.priceHistory || selectedVariant.priceHistory || [],
-    market:r.pricingMode === 'slab' ? Number(qplSelectedSlabPrice(r) || 0) : (parseFloat(document.getElementById('qpl-edit-market')?.value) || Number(r.market || 0)),
+    market:activePrice || (parseFloat(document.getElementById('qpl-edit-market')?.value) || 0),
     cost:parseFloat(document.getElementById('qpl-edit-cost')?.value) || Number(r.cost || 0),
     qty:1,
     location:document.getElementById('qpl-edit-location')?.value.trim() || '',
     thumbnail:document.getElementById('qpl-edit-image-url')?.value.trim() || r.imageUrl || '',
     imageUrl:document.getElementById('qpl-edit-image-url')?.value.trim() || r.imageUrl || '',
-    priceSource:r.pricingMode === 'slab' ? (Number(qplSelectedSlabPrice(r) || 0) ? 'PriceCharting slab guide' : 'No Guide Value Available') : (Number(r.selectedVariant?.marketPrice || r.market || 0) ? (r.priceSource || r.source || 'manual lookup') : (r.source === 'justtcg' ? 'No Real Price Available' : (r.priceSource || 'Needs Review'))),
-    pricingSource:r.pricingMode === 'slab' ? (Number(qplSelectedSlabPrice(r) || 0) ? 'PriceCharting slab guide' : 'No Guide Value Available') : (Number(r.selectedVariant?.marketPrice || r.market || 0) ? (r.priceSource || r.source || 'manual lookup') : (r.source === 'justtcg' ? 'No Real Price Available' : (r.priceSource || 'Needs Review'))),
-    pricingMode:r.pricingMode || 'raw',
+    priceSource:activePriceBasis.label || r.priceSource || 'No Real Price Available',
+    pricingSource:activePriceBasis.source || r.pricingSource || r.priceSource || 'No Real Price Available',
+    pricingMode:activePriceBasis.basisType || r.pricingMode || 'raw',
+    activePriceBasis,
     slabCompany:r.slabCompany || '',
     slabGrade:r.slabGrade || '',
     pricechartingProductId:r.pricecharting?.productId || '',
@@ -11879,8 +12101,8 @@ function selectedQuickLookupItem(idx){
     pricechartingComicPrices:r.pricecharting?.comicPrices || null,
     pricechartingRetail:r.pricecharting?.retail || null,
     pricechartingDemand:r.pricecharting?.demand || null,
-    resolvedPricePath:r.resolvedPricePath || '',
-    resolvedPrice:Number(r.resolvedPrice || r.market || 0),
+    resolvedPricePath:activePriceBasis.pricePath || r.resolvedPricePath || '',
+    resolvedPrice:Number(activePriceBasis.price || r.resolvedPrice || r.market || 0),
     pokemonPriceTrackerLastUpdated:r.pokemonPriceTrackerLastUpdated || '',
     pokemonPriceTrackerCardId:r.pokemonPriceTrackerCardId || r.pokemonPriceTracker?.id || r.pokemonPriceTracker?.cardId || '',
     externalRefs:externalRefsFromQuickLookup(r, selectedVariant),
@@ -11963,6 +12185,7 @@ function addSelectedQuickLookupToSaleCart(idx){
     tcgPlayerUrl:item.tcgPlayerUrl || '',
     resolvedPricePath:item.resolvedPricePath || '',
     resolvedPrice:Number(item.resolvedPrice || item.market || 0),
+    activePriceBasis:item.activePriceBasis || null,
     pokemonPriceTrackerLastUpdated:item.pokemonPriceTrackerLastUpdated || '',
     inventorySku:item.inventorySku || '',
     externalRefs:item.externalRefs || null,
@@ -12052,6 +12275,7 @@ function addSelectedQuickLookupToBuyOffer(idx){
     tcgPlayerUrl:item.tcgPlayerUrl || '',
     resolvedPricePath:item.resolvedPricePath || '',
     resolvedPrice:Number(item.resolvedPrice || item.market || 0),
+    activePriceBasis:item.activePriceBasis || null,
     pokemonPriceTrackerLastUpdated:item.pokemonPriceTrackerLastUpdated || '',
     category:item.category,
     set:item.set,
@@ -12926,11 +13150,20 @@ function buyItemToInventoryUpdates(item){
     priceSource:item.priceSource || item.pricingSource || getScanPriceSource(item.scan) || 'manual',
     priceLabel:item.priceLabel || item.priceSource || item.pricingSource || 'Manual Price',
     priceUsed:market,
+    activePriceBasis:item.activePriceBasis || null,
+    selectedCondition:item.selectedCondition || item.condition || '',
+    selectedFinish:item.selectedFinish || '',
+    selectedLanguage:item.selectedLanguage || 'English',
+    selectedGrade:item.activePriceBasis?.grade || item.selectedGrade || item.slabGrade || '',
+    resolvedPricePath:item.activePriceBasis?.pricePath || item.resolvedPricePath || '',
+    resolvedPrice:Number(item.activePriceBasis?.price || item.resolvedPrice || market || 0),
     buySessionId:session?.buySessionId || item.buySessionId || '',
     sourceType:item.sourceType || item.source || 'walk_up_buy',
     sourceProductId:item.sourceProductId || item.productId || item.pricechartingProductId || '',
     sourceVariantId:item.sourceVariantId || item.variantId || item.productConditionId || '',
     tcgplayerSkuId:item.tcgplayerSkuId || item.skuId || '',
+    tcgPlayerId:item.tcgPlayerId || item.tcgplayerId || '',
+    tcgPlayerUrl:item.tcgPlayerUrl || '',
     expectedProfit:Math.round((market - cost) * 100) / 100,
     card_number:item.card_number || '',
     serial_number:item.serial_number || '',
