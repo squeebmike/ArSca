@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.05.20.02">
+<meta name="version" content="2026.05.20.03">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -522,7 +522,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
 
 <header>
   <div class="hdr">
-    <div class="logo">WALK-OFF <span>DASHBOARD · v2026.05.20.02</span></div>
+    <div class="logo">WALK-OFF <span>DASHBOARD · v2026.05.20.03</span></div>
     <div class="hdr-right">
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
@@ -1433,7 +1433,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.05.20.02';
+const APP_VERSION = '2026.05.20.03';
 const SUPABASE_URL = 'https://vroknjrxubsqyexngwus.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_wbpX2nL8l-4NbXtZNG_bjA_nabSYaJ5';
 const AUTH_REDIRECT_URL = 'https://squeebmike.github.io/ArSca/dashboard.html';
@@ -8764,21 +8764,21 @@ async function fetchTCGPrice(name, setName, tcgCardId) {
       if(itemSet) qParts.push(`set.name:"${itemSet}"`);
       if(lookupNumber) qParts.push(`number:"${lookupNumber}"`);
       const q = qParts.join(' ');
-      const r = await fetch(`https://api.pokemontcg.io/v2/cards?q=${encodeURIComponent(q)}&pageSize=20`);
+      const r = await fetch(`https://api.pokemontcg.io/v2/cards?q=${encodeURIComponent(q)}&pageSize=5`);
       const d = await r.json();
       if(d.data && d.data.length) card = chooseBestPokemonCard(d.data, itemCtx || {name:cleanName,set:itemSet,card_number:lookupNumber}, itemSet);
     }
 
     // Final fallback: name only
     if(!card) {
-      const r2 = await fetch(`https://api.pokemontcg.io/v2/cards?q=${encodeURIComponent('name:"'+cleanName+'"')}&pageSize=20`);
+      const r2 = await fetch(`https://api.pokemontcg.io/v2/cards?q=${encodeURIComponent('name:"'+cleanName+'"')}&pageSize=5`);
       const d2 = await r2.json();
       if(d2.data && d2.data.length) card = chooseBestPokemonCard(d2.data, itemCtx || {name:cleanName,set:itemSet,card_number:lookupNumber}, itemSet);
     }
 
     // Last-chance fuzzy search catches new/alternate inventory names.
     if(!card && cleanName) {
-      const r3 = await fetch(`https://api.pokemontcg.io/v2/cards?q=${encodeURIComponent('name:'+cleanName)}&pageSize=30`);
+      const r3 = await fetch(`https://api.pokemontcg.io/v2/cards?q=${encodeURIComponent('name:'+cleanName)}&pageSize=5`);
       const d3 = await r3.json();
       if(d3.data && d3.data.length) card = chooseBestPokemonCard(d3.data, itemCtx || {name:cleanName,set:itemSet,card_number:lookupNumber}, itemSet);
     }
@@ -9538,6 +9538,31 @@ async function searchQuickCatalog(q, cat){
     results.push(r);
   };
 
+  if(isPokemonLookupIntent(q, cat)) {
+    const seed = {
+      name:q,
+      category:'Pokemon',
+      set:intent.pokemonSet ? q : '',
+      card_number:needle.cardNumbers[0] || '',
+      rawTitle:q,
+    };
+    try {
+      const exactCard = await resolveExactPokemonPriceTrackerCard(seed, q);
+      if(exactCard) {
+        const exactRow = pokemonPriceTrackerCardToQplRow(exactCard, q, exactCard.lookupDebug?.parseTitle || null);
+        add(exactRow);
+        const exactConfidence = Number(exactCard.lookupDebug?.exactConfidence || exactRow.confidence / 100 || 0);
+        const exactPath = exactCard.lookupDebug?.path === 'cards.tcgPlayerId.limit1' || !!exactCard.lookupDebug?.parseTitle?.tcgPlayerId;
+        if(exactPath || exactConfidence >= 0.95 || needle.cardNumbers.length) {
+          await savePokemonCacheResults(q, [exactRow], 'PokemonPriceTracker exact').catch(console.warn);
+          return [exactRow];
+        }
+      }
+    } catch(e) {
+      console.warn('Pokemon exact resolver skipped', e);
+    }
+  }
+
   smartSearchLocalItems(q, all, 15).forEach(hit => {
     const i = hit.item;
     add({
@@ -9594,7 +9619,7 @@ async function searchQuickCatalog(q, cat){
     } catch(e) {}
   }
 
-  const ranked = rankQuickLookupResults(results, q, cat).slice(0, 100);
+  const ranked = rankQuickLookupResults(results, q, cat).slice(0, isPokemonLookupIntent(q, cat) ? 20 : 100);
   if(isPokemonLookupIntent(q, cat)) savePokemonCacheResults(q, ranked, 'Live Pokemon lookup').catch(console.warn);
   return ranked;
 }
@@ -10936,6 +10961,28 @@ function pokemonPriceTrackerSearchText(row = {}){
   return [row.name, row.set || row.setName, row.card_number || row.cardNumber].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
 }
 
+function pokemonLookupParts(row = {}, query = qplLastSearch){
+  const text = [query, row.name, row.set || row.setName, row.card_number || row.cardNumber, row.variant, row.finish, row.language].filter(Boolean).join(' ');
+  const clean = normalizePokemonText(text);
+  const slash = String(text || '').match(/\b\d{1,4}\s*\/\s*\d{1,4}\b/);
+  const grade = String(text || '').match(/\b(PSA|BGS|CGC|SGC)\s*(10|9\.5|9|8\.5|8|7\.5|7|6|5|4|3|2|1)\b/i);
+  const finish = /\breverse\b/i.test(text) ? 'Reverse Holofoil'
+    : /\b(textured|texture)\b/i.test(text) ? 'Textured Foil'
+    : /\b(holo|foil)\b/i.test(text) ? 'Holofoil'
+    : row.selectedFinish || row.finish || '';
+  const language = /\bjapanese\b/i.test(text) ? 'japanese' : 'english';
+  return {
+    normalizedQuery: clean,
+    cardNumber: slash ? slash[0].replace(/\s+/g, '') : String(row.card_number || row.cardNumber || '').trim(),
+    setName: row.set || row.setName || '',
+    gradeCompany: grade ? grade[1].toUpperCase() : '',
+    slabGrade: grade ? grade[2] : '',
+    finish,
+    language,
+    shouldParseTitle: !!(slash || grade || row.ocrText || row.scanText || row.slabText || row.rawTitle),
+  };
+}
+
 function pokemonPriceTrackerId(row = {}){
   return row.tcgPlayerId || row.tcgplayerId || row.tcgplayerProductId || row.externalRefs?.tcgplayerProductId || tcgPlayerProductIdFromUrl(row.tcgPlayerUrl || row.tcgUrl || row.productUrl || '') || '';
 }
@@ -10962,6 +11009,12 @@ function pokemonPriceTrackerQuotaBlocked(){
   return until && Date.now() < until;
 }
 
+function pokemonPriceCacheFresh(card = null){
+  const stamp = card?.cache?.updatedAt || card?.prices?.lastUpdated || card?.lastUpdated || card?.updatedAt || '';
+  if(!stamp) return false;
+  return Date.now() - new Date(stamp).getTime() < 24 * 60 * 60 * 1000;
+}
+
 function pickPokemonPriceTrackerCard(row = {}, cards = []){
   const wantedId = String(pokemonPriceTrackerId(row) || '');
   if(wantedId) {
@@ -10971,7 +11024,16 @@ function pickPokemonPriceTrackerCard(row = {}, cards = []){
   const wantedName = normalizePokemonText(row.name || '');
   const wantedSet = normalizePokemonText(row.set || row.setName || '');
   const wantedNumber = normalizePokemonText(row.card_number || row.cardNumber || '');
-  return cards.find(c => {
+  return cards.map(c => {
+    let score = 0;
+    const cName = normalizePokemonText(c.name || c.cardName || '');
+    const cSet = normalizePokemonText(c.setName || c.set?.name || c.set || '');
+    const cNumber = normalizePokemonText(c.cardNumber || c.number || '');
+    if(wantedNumber && (cNumber === wantedNumber || cNumber.includes(wantedNumber) || wantedNumber.includes(cNumber))) score += 900;
+    if(wantedSet && (cSet === wantedSet || cSet.includes(wantedSet) || wantedSet.includes(cSet))) score += 450;
+    if(wantedName && (cName === wantedName || cName.includes(wantedName) || wantedName.includes(cName))) score += 250;
+    return { c, score };
+  }).sort((a,b) => b.score - a.score).map(x => x.c).find(c => {
     const sameName = !wantedName || normalizePokemonText(c.name || c.cardName || '').includes(wantedName) || wantedName.includes(normalizePokemonText(c.name || c.cardName || ''));
     const sameSet = !wantedSet || normalizePokemonText(c.setName || c.set?.name || c.set || '').includes(wantedSet) || wantedSet.includes(normalizePokemonText(c.setName || c.set?.name || c.set || ''));
     const sameNumber = !wantedNumber || normalizePokemonText(c.cardNumber || c.number || '').includes(wantedNumber);
@@ -10984,13 +11046,15 @@ async function cachedPokemonPriceTrackerCard(row = {}){
   const rows = await pokemonDbAll('cards').catch(() => []);
   const wantedId = String(pokemonPriceTrackerId(row) || '');
   const hit = rows.find(c => c.storeId === getActiveStoreId() && c.cardKey === cardKey)
+    || rows.find(c => c.storeId === getActiveStoreId() && wantedId && c.cardKey === 'pokemon:' + wantedId)
     || rows.find(c => c.storeId === getActiveStoreId() && wantedId && String(c.card?.tcgPlayerId || c.card?.tcgplayerId || c.card?.pokemonPriceTracker?.tcgPlayerId || '') === wantedId);
   return hit?.card?.pokemonPriceTracker || hit?.card?.pokemonPriceTrackerCard || null;
 }
 
 async function cachePokemonPriceTrackerCard(row = {}, card = null){
   if(!card) return;
-  const cardKey = row.cache?.cardKey || pokemonCardKey(row, qplLastSearch);
+  const exactId = card.tcgPlayerId || row.tcgPlayerId || row.tcgplayerId || '';
+  const cardKey = exactId ? 'pokemon:' + exactId : (row.cache?.cardKey || pokemonCardKey(row, qplLastSearch));
   const normalized = normalizePokemonCacheRecord({
     ...row,
     pokemonPriceTracker:card,
@@ -11006,11 +11070,17 @@ async function cachePokemonPriceTrackerCard(row = {}, card = null){
 }
 
 async function fetchPokemonPriceTrackerCard(row = {}){
-  const params = new URLSearchParams({ language:String(row.selectedLanguage || row.language || 'English').toLowerCase().startsWith('j') ? 'japanese' : 'english', limit:'10' });
+  const parts = pokemonLookupParts(row, qplLastSearch);
+  const params = new URLSearchParams({ language:parts.language, limit:'5' });
   const settings = pokemonPriceTrackerApiSettings();
   const tcgPlayerId = pokemonPriceTrackerId(row);
-  if(tcgPlayerId) params.set('tcgPlayerId', tcgPlayerId);
-  else params.set('search', pokemonPriceTrackerSearchText(row));
+  if(tcgPlayerId) {
+    params.set('tcgPlayerId', tcgPlayerId);
+    params.set('limit', '1');
+  } else {
+    params.set('search', pokemonPriceTrackerSearchText(row));
+    params.set('limit', '5');
+  }
   if(!params.get('tcgPlayerId') && !params.get('search')) return null;
   params.set('includeEbay', settings.includeEbay ? 'true' : 'false');
   params.set('includeHistory', settings.includeHistory ? 'true' : 'false');
@@ -11025,7 +11095,121 @@ async function fetchPokemonPriceTrackerCard(row = {}){
   if(data.usage?.remaining != null) localStorage.setItem('ppt_remaining_credits', String(data.usage.remaining));
   if(data.usage?.consumed != null) localStorage.setItem('ppt_last_consumed', String(data.usage.consumed));
   if(!res.ok || !data.ok) throw new Error(data.error || data.message || 'PokemonPriceTracker lookup failed');
-  return pickPokemonPriceTrackerCard(row, pokemonPriceTrackerCardsFromPayload(data));
+  const picked = pickPokemonPriceTrackerCard(row, pokemonPriceTrackerCardsFromPayload(data));
+  if(picked) picked.lookupDebug = { ...(picked.lookupDebug || {}), normalizedQuery:parts.normalizedQuery, cache:'miss', apiLimit:params.get('limit'), path:params.get('tcgPlayerId') ? 'cards.tcgPlayerId.limit1' : 'cards.search.limit5' };
+  return picked;
+}
+
+async function parsePokemonPriceTrackerTitle(row = {}, query = qplLastSearch){
+  const parts = pokemonLookupParts(row, query);
+  if(!parts.shouldParseTitle || pokemonPriceTrackerQuotaBlocked() || !navigator.onLine) return null;
+  const title = [row.rawTitle, row.ocrText, row.scanText, row.slabText, query, row.name, row.set || row.setName, row.card_number || row.cardNumber].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
+  if(!title || title.length < 4) return null;
+  const res = await fetch(WORKER + '/pricing/pokemonpricetracker/parse-title', {
+    method:'POST',
+    headers:{ 'Content-Type':'application/json' },
+    body:JSON.stringify({ title, options:{ fuzzyMatching:true, maxSuggestions:3 } })
+  });
+  const data = await res.json().catch(() => ({}));
+  if(res.status === 429 || data.providerQuotaState === 'exhausted' || (res.status === 403 && /429|quota|rate|blocked/i.test(String(data.error || data.message || '')))) localStorage.setItem('ppt_quota_exhausted_until', String(Date.now() + 60 * 60 * 1000));
+  if(data.usage?.remaining != null) localStorage.setItem('ppt_remaining_credits', String(data.usage.remaining));
+  if(data.usage?.consumed != null) localStorage.setItem('ppt_last_consumed', String(data.usage.consumed));
+  if(!res.ok || !data.ok) return null;
+  const payload = data.data?.data || data.data || {};
+  const parsed = payload.parsed || data.parsed || {};
+  const matches = payload.matches || data.matches || [];
+  const match = matches[0] || {};
+  const confidence = Number(match.matchScore || parsed.confidence || payload.confidence || data.metadata?.confidence || 0);
+  return {
+    parsed,
+    match,
+    confidence,
+    tcgPlayerId:match.tcgPlayerId || parsed.tcgPlayerId || payload.tcgPlayerId || '',
+    cardName:parsed.cardName || match.name || '',
+    setName:parsed.setName || match.setName || '',
+    cardNumber:parsed.cardNumber || match.cardNumber || '',
+    variant:parsed.variant || '',
+    grade:parsed.psaGrade || parsed.bgsGrade || parsed.cgcGrade || parsed.sgcGrade || '',
+    language:parsed.language || parts.language,
+    raw:payload,
+  };
+}
+
+async function resolveExactPokemonPriceTrackerCard(row = {}, query = qplLastSearch){
+  const cached = await cachedPokemonPriceTrackerCard(row);
+  if(cached && pokemonPriceCacheFresh(cached)) {
+    cached.lookupDebug = { ...(cached.lookupDebug || {}), normalizedQuery:pokemonLookupParts(row, query).normalizedQuery, cache:'hit', path:'indexeddb.exact.24h' };
+    return cached;
+  }
+  let exactRow = { ...row };
+  const parsed = await parsePokemonPriceTrackerTitle(row, query).catch(() => null);
+  if(parsed?.tcgPlayerId) {
+    exactRow = {
+      ...exactRow,
+      tcgPlayerId:parsed.tcgPlayerId,
+      tcgplayerId:parsed.tcgPlayerId,
+      name:exactRow.name || parsed.cardName,
+      set:exactRow.set || parsed.setName,
+      setName:exactRow.setName || parsed.setName,
+      card_number:exactRow.card_number || parsed.cardNumber,
+      cardNumber:exactRow.cardNumber || parsed.cardNumber,
+      variant:exactRow.variant || parsed.variant,
+      selectedGrade:exactRow.selectedGrade || parsed.grade || '',
+      pptParseTitle:parsed,
+      pptExactConfidence:parsed.confidence,
+    };
+  }
+  const exactCached = await cachedPokemonPriceTrackerCard(exactRow);
+  if(exactCached && pokemonPriceCacheFresh(exactCached)) {
+    exactCached.lookupDebug = { ...(exactCached.lookupDebug || {}), normalizedQuery:pokemonLookupParts(exactRow, query).normalizedQuery, parseTitle:parsed, cache:'hit', path:'indexeddb.tcgPlayerId.24h' };
+    return exactCached;
+  }
+  if(!navigator.onLine || pokemonPriceTrackerQuotaBlocked()) return null;
+  const card = await fetchPokemonPriceTrackerCard(exactRow);
+  if(card) {
+    card.lookupDebug = { ...(card.lookupDebug || {}), parseTitle:parsed, exactConfidence:parsed?.confidence || 0 };
+    await cachePokemonPriceTrackerCard(exactRow, card).catch(() => {});
+  }
+  return card;
+}
+
+function pokemonPriceTrackerCardToQplRow(card = {}, query = qplLastSearch, parseResult = null){
+  const prices = card.prices || {};
+  const imageUrl = card.imageCdnUrl400 || card.imageCdnUrl800 || card.imageCdnUrl200 || card.imageCdnUrl || card.imageUrl || '';
+  const row = {
+    source:'pokemonpricetracker',
+    name:card.name || parseResult?.cardName || query,
+    category:'Pokemon',
+    set:card.setName || parseResult?.setName || '',
+    setName:card.setName || parseResult?.setName || '',
+    year:card.releaseDate ? String(card.releaseDate).slice(0,4) : '',
+    variant:card.rarity || parseResult?.variant || prices.primaryPrinting || '',
+    card_number:card.cardNumber || parseResult?.cardNumber || '',
+    cardNumber:card.cardNumber || parseResult?.cardNumber || '',
+    condition:pokemonPptConditionCode(prices.primaryCondition || 'Near Mint'),
+    selectedCondition:pokemonPptConditionCode(prices.primaryCondition || 'Near Mint'),
+    finish:pokemonPptFinishLabel(prices.primaryPrinting || parseResult?.variant || 'Normal'),
+    selectedFinish:pokemonPptFinishLabel(prices.primaryPrinting || parseResult?.variant || 'Normal'),
+    selectedGrade:parseResult?.grade ? 'PSA ' + parseResult.grade : '',
+    language:card.language || parseResult?.language || 'English',
+    market:Number(prices.market || prices.lowPrice || 0),
+    low:Number(prices.lowPrice || 0),
+    imageUrl,
+    priceSource:'PokemonPriceTracker',
+    tcgUrl:card.tcgPlayerUrl || '',
+    tcgPlayerUrl:card.tcgPlayerUrl || '',
+    tcgPlayerId:card.tcgPlayerId || '',
+    tcgplayerId:card.tcgPlayerId || '',
+    note:'Exact PokemonPriceTracker card resolved with credit-safe lookup.',
+    confidence:Math.round(Number(parseResult?.confidence || card.lookupDebug?.exactConfidence || 0.98) * 100) || 98,
+    matchWhy:['PokemonPriceTracker exact', card.lookupDebug?.path || 'exact resolver'].filter(Boolean),
+    pokemonPriceTracker:card,
+    pokemonPriceTrackerLastUpdated:prices.lastUpdated || card.lastUpdated || '',
+    cache:{ state:card.lookupDebug?.cache === 'hit' ? 'cached' : 'live', updatedAt:new Date().toISOString(), source:'PokemonPriceTracker', cardKey:card.tcgPlayerId ? 'pokemon:' + card.tcgPlayerId : pokemonCardKey(card, query) },
+    lookupDebug:card.lookupDebug || {},
+    raw:card,
+  };
+  return applyQplSelectedVariant(row);
 }
 
 async function hydratePokemonPriceTrackerPricing(idx, rerender = true){
@@ -11041,11 +11225,12 @@ async function hydratePokemonPriceTrackerPricing(idx, rerender = true){
       applyQplSelectedVariant(row);
       if(rerender) updateQplResultCard(idx);
     }
+    if(cached && pokemonPriceCacheFresh(cached)) return;
     if(!navigator.onLine || pokemonPriceTrackerQuotaBlocked()) {
       if(pokemonPriceTrackerQuotaBlocked()) row.pokemonPriceTrackerError = 'Quota Exhausted - using cached PokemonPriceTracker data';
       return;
     }
-    const card = await fetchPokemonPriceTrackerCard(row);
+    const card = await resolveExactPokemonPriceTrackerCard(row, qplLastSearch);
     if(card) {
       row.pokemonPriceTracker = card;
       row.tcgPlayerId = card.tcgPlayerId || row.tcgPlayerId || row.tcgplayerId || '';
@@ -11066,7 +11251,7 @@ async function hydratePokemonPriceTrackerPricing(idx, rerender = true){
 }
 
 function hydrateVisiblePokemonPriceTrackerResults(indexes = []){
-  indexes.slice(0, 8).forEach(idx => {
+  indexes.slice(0, 1).forEach(idx => {
     const row = qplResults[idx];
     if(row && isPokemonChartCandidate(row) && !row._pptHydrating) hydratePokemonPriceTrackerPricing(idx, true);
   });
@@ -11410,7 +11595,7 @@ async function fetchPokemonCatalog(q){
     needle.cardNumbers[0] ? `number:${needle.cardNumbers[0].split('/')[0]}` : ''
   ].filter(Boolean);
   for(const query of queries) {
-    const url = 'https://api.pokemontcg.io/v2/cards?q=' + encodeURIComponent(query) + '&pageSize=250&orderBy=name,set.releaseDate';
+    const url = 'https://api.pokemontcg.io/v2/cards?q=' + encodeURIComponent(query) + '&pageSize=10&orderBy=name,set.releaseDate';
     const res = await fetch(url, { headers:{ 'Accept':'application/json' } });
     if(!res.ok) continue;
     const data = await res.json();
@@ -11656,7 +11841,7 @@ function quickLookupResultCard(r, idx){
         </select>
         <input type="number" min="1" step="1" value="${Number(r.qty || 1)}" onchange="qplResults[${idx}].qty=parseInt(this.value,10)||1" aria-label="Quantity">
       </div>
-      ${showAdminDebug() ? `<div style="margin-top:8px;font-family:monospace,monospace;font-size:10px;color:var(--dim)">Debug: selectedCondition ${escHtml(r.selectedCondition || r.condition || '')} / selectedFinish ${escHtml(qplFinishLabel(r.selectedFinish || r.finish || ''))} / selectedGrade ${escHtml(r.selectedGrade || '')} / activePriceBasis ${escHtml(JSON.stringify(r.activePriceBasis || {}))} / resolvedPricePath ${escHtml(r.activePriceBasis?.pricePath || r.resolvedPricePath || 'n/a')} / chartPath ${escHtml(r.chartPath || 'n/a')} / resolvedPrice ${Number(r.resolvedPrice || r.market || 0) ? '$'+Number(r.resolvedPrice || r.market || 0).toFixed(2) : 'No Real Price'} / generatedTcgUrl ${escHtml(builtTcgLink.url || '')} / cache ${escHtml(r.cache?.source || 'live/none')}</div>` : ''}
+      ${showAdminDebug() ? `<div style="margin-top:8px;font-family:monospace,monospace;font-size:10px;color:var(--dim)">Debug: normalizedQuery ${escHtml(r.lookupDebug?.normalizedQuery || '')} / parseTitle ${escHtml(JSON.stringify(r.lookupDebug?.parseTitle || r.pptParseTitle || null))} / selectedTcgPlayerId ${escHtml(r.tcgPlayerId || r.tcgplayerId || '')} / selectedCondition ${escHtml(r.selectedCondition || r.condition || '')} / selectedFinish ${escHtml(qplFinishLabel(r.selectedFinish || r.finish || ''))} / selectedGrade ${escHtml(r.selectedGrade || '')} / activePriceBasis ${escHtml(JSON.stringify(r.activePriceBasis || {}))} / resolvedPricePath ${escHtml(r.activePriceBasis?.pricePath || r.resolvedPricePath || 'n/a')} / chartPath ${escHtml(r.chartPath || 'n/a')} / resolvedPrice ${Number(r.resolvedPrice || r.market || 0) ? '$'+Number(r.resolvedPrice || r.market || 0).toFixed(2) : 'No Real Price'} / generatedTcgUrl ${escHtml(builtTcgLink.url || '')} / cache ${escHtml(r.lookupDebug?.cache || r.cache?.source || 'live/none')} / apiCallsConsumed ${escHtml(localStorage.getItem('ppt_last_consumed') || '')}</div>` : ''}
     </div>
     <div class="qpl-actions">
       <button class="hbtn primary" onclick="selectQuickLookupResult(${idx})">SELECT</button>

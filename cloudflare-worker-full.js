@@ -1968,11 +1968,20 @@ export default {
         return json({ ok: false, source: 'pokemonpricetracker', error: spec.requiredAny.join(', ') + ' required' }, 400);
       }
       if (!params.get('language')) params.set('language', 'english');
-      if (url.pathname === '/pricing/pokemonpricetracker/cards' && !params.get('limit')) params.set('limit', '10');
+      if (url.pathname === '/pricing/pokemonpricetracker/cards') {
+        const exactLookup = !!(params.get('tcgPlayerId') || params.get('cardId'));
+        const requestedLimit = Number(params.get('limit') || (exactLookup ? 1 : 5));
+        params.set('limit', String(exactLookup ? 1 : Math.min(5, Math.max(1, requestedLimit || 5))));
+        if (String(params.get('fetchAllInSet') || '').toLowerCase() === 'true') {
+          return json({ ok: false, source: 'pokemonpricetracker', error: 'fetchAllInSet is disabled for credit-safe Research lookups. Use explicit Admin cache tools for full-set sync.' }, 400);
+        }
+      }
       const bodyText = spec.method === 'POST' ? await request.text() : '';
       const stableKeySource = spec.method + ':' + spec.upstream + '?' + [...params.entries()].sort((a,b) => a[0].localeCompare(b[0]) || String(a[1]).localeCompare(String(b[1]))).map(([k,v]) => k + '=' + v).join('&') + ':' + bodyText;
-      const cacheKey = 'ppt_api_cache:' + btoa(stableKeySource).replace(/=+$/,'').slice(0, 180);
-      if (env.LBA_KV && spec.method === 'GET' && url.searchParams.get('fresh') !== 'true') {
+      const cacheKey = url.pathname === '/pricing/pokemonpricetracker/cards' && (params.get('tcgPlayerId') || params.get('cardId'))
+        ? 'pokemon:' + (params.get('tcgPlayerId') || params.get('cardId'))
+        : 'ppt_api_cache:' + btoa(stableKeySource).replace(/=+$/,'').slice(0, 180);
+      if (env.LBA_KV && (spec.method === 'GET' || url.pathname === '/pricing/pokemonpricetracker/parse-title') && url.searchParams.get('fresh') !== 'true') {
         const cached = await env.LBA_KV.get(cacheKey, 'json');
         if (cached) return json({ ...cached, cache:{ state:'hit', source:'worker-kv', cacheKey, cachedAt:cached.cache?.cachedAt || null } });
       }
@@ -2027,7 +2036,7 @@ export default {
         },
         cache:{ state:'miss', source:'live', cacheKey, cachedAt:new Date().toISOString() },
       };
-      if (env.LBA_KV && upstream.ok) await env.LBA_KV.put(cacheKey, JSON.stringify(payload), { expirationTtl: 60 * 60 * 6 });
+      if (env.LBA_KV && upstream.ok) await env.LBA_KV.put(cacheKey, JSON.stringify(payload), { expirationTtl: cacheKey.startsWith('pokemon:') ? 60 * 60 * 24 : 60 * 60 * 6 });
       return json(payload);
     }
 
