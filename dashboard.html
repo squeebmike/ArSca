@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.05.20.05-pokemon-v2-core">
+<meta name="version" content="2026.05.20.06-pokemon-v2-core">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -523,9 +523,9 @@ body.customer-display-mode #customer-display-exit{display:block;}
 
 <header>
   <div class="hdr">
-    <div class="logo">WALK-OFF <span>DASHBOARD · Branch: pokemon-v2-core · v2026.05.20.05-pokemon-v2-core</span></div>
+    <div class="logo">WALK-OFF <span>DASHBOARD · Branch: pokemon-v2-core · v2026.05.20.06-pokemon-v2-core</span></div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp" data-branch-name="pokemon-v2-core">Branch: pokemon-v2-core · v2026.05.20.05-pokemon-v2-core</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp" data-branch-name="pokemon-v2-core">Branch: pokemon-v2-core · v2026.05.20.06-pokemon-v2-core</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip">NO SHOW ACTIVE</span>
@@ -1435,9 +1435,10 @@ body.customer-display-mode #customer-display-exit{display:block;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.05.20.05-pokemon-v2-core';
+const APP_VERSION = '2026.05.20.06-pokemon-v2-core';
 const branchName = 'pokemon-v2-core';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
+const POKEMON_EXACT_CACHE_VERSION = 'pokemon-exact-v3-price-matrix';
 const SUPABASE_URL = 'https://vroknjrxubsqyexngwus.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_wbpX2nL8l-4NbXtZNG_bjA_nabSYaJ5';
 const AUTH_REDIRECT_URL = 'https://squeebmike.github.io/ArSca/dashboard.html';
@@ -3013,6 +3014,15 @@ async function clearPokemonSearchCache(){
   if(document.getElementById('pricecharting-data-body')) renderPriceChartingDataPanel('Pokemon search cache cleared.');
 }
 
+async function clearPokemonExactCache(){
+  const rows = await pokemonDbAll('cards').catch(() => []);
+  await pokemonDbClear('cards');
+  await Promise.all(rows.filter(r => !String(r.cardKey || '').startsWith('pokemon:')).map(r => pokemonDbPut('cards', r)));
+  await pokemonDbPut('meta', { key:'pokemonExactCacheClearedAt', value:new Date().toISOString() });
+  renderOfflineCachePanel('Pokemon exact card cache cleared on this device.');
+  if(document.getElementById('pricecharting-data-body')) renderPriceChartingDataPanel('Pokemon exact cache cleared.');
+}
+
 function ensurePriceChartingDataPanel(backoffice){
   if(document.getElementById('pricecharting-data-panel')) return;
   const panel = document.createElement('div');
@@ -3095,6 +3105,7 @@ function renderPriceChartingDataPanel(status = null){
         <span>Last consumed: ${escHtml(localStorage.getItem('ppt_last_consumed') || 'unknown')}</span>
         <span style="color:${pokemonPriceTrackerQuotaBlocked()?'var(--red)':'var(--dim)'}">Quota: ${pokemonPriceTrackerQuotaBlocked() ? 'Exhausted until ' + new Date(Number(localStorage.getItem('ppt_quota_exhausted_until'))).toLocaleTimeString() : 'Available'}</span>
         <button class="hbtn" onclick="clearPokemonSearchCache()">CLEAR POKEMON SEARCH CACHE</button>
+        <button class="hbtn" onclick="clearPokemonExactCache()">CLEAR POKEMON EXACT CACHE</button>
       </div>
     </div>
     ${rows}
@@ -9948,7 +9959,7 @@ function pokemonPptConditionCode(condition = ''){
   const label = pokemonPptConditionLabel(condition).toLowerCase();
   if(label.includes('light')) return 'LP';
   if(label.includes('moderate')) return 'MP';
-  if(label.includes('heavy')) return 'HP';
+  if(label.includes('heav')) return 'HP';
   if(label.includes('damage')) return 'DMG';
   return 'NM';
 }
@@ -9977,6 +9988,15 @@ function pokemonPptListingCount(value){
   if(!value || typeof value !== 'object') return null;
   const n = Number(value.listings ?? value.sellers ?? value.count ?? 0);
   return n > 0 ? n : null;
+}
+
+function pokemonHydratedPriceMatrixReady(card = null){
+  const prices = card?.prices || {};
+  return !!(prices && typeof prices === 'object' && (
+    (prices.variants && Object.keys(prices.variants).length) ||
+    (prices.conditions && Object.keys(prices.conditions).length) ||
+    pokemonPptPriceValue(prices.market) > 0
+  ));
 }
 
 function pokemonPptObjectMatch(obj, wanted){
@@ -10015,7 +10035,7 @@ function pokemonPptMatrixRows(row = {}){
         price,
         listings:pokemonPptListingCount(value),
         lastUpdated:value?.lastUpdated || lastUpdated,
-        source:price > 0 ? 'PokemonPriceTracker variant' : 'No Real Price Available',
+        source:price > 0 ? 'Actual API Price' : 'No Real Price Available',
         path:`prices.variants[${finishLabel}][${pokemonPptConditionLabel(conditionRaw)}].price`,
         label:`Raw ${pokemonPptConditionCode(conditionRaw)} ${finishLabel}`
       });
@@ -10038,7 +10058,7 @@ function pokemonPptMatrixRows(row = {}){
       price,
       listings:pokemonPptListingCount(value),
       lastUpdated:value?.lastUpdated || lastUpdated,
-      source:price > 0 ? 'PokemonPriceTracker condition' : 'No Real Price Available',
+      source:price > 0 ? 'Actual API Price' : 'No Real Price Available',
       path:`prices.conditions[${pokemonPptConditionLabel(conditionRaw)}].price`,
       label:`Raw ${condition} ${finishLabel}`
     });
@@ -10055,7 +10075,7 @@ function pokemonPptMatrixRows(row = {}){
       price:pokemonPptPriceValue(prices.market),
       listings:Number(prices.listings || 0) || null,
       lastUpdated,
-      source:'PokemonPriceTracker market',
+      source:'Actual API Price',
       path:'prices.market',
       label:`Raw ${pokemonPptConditionCode(conditionLabel)} ${finishLabel}`
     });
@@ -10261,6 +10281,7 @@ function applyPokemonPriceTrackerPrice(row = {}){
   row.tcgplayerId = row.tcgPlayerId || row.tcgplayerId || '';
   row.tcgPlayerUrl = resolved.card?.tcgPlayerUrl || row.tcgPlayerUrl || row.tcgUrl || '';
   row.tcgUrl = row.tcgPlayerUrl || row.tcgUrl || '';
+  row.noRealPriceReason = resolved.ok ? '' : resolved.path;
   if(resolved.ok) {
     row.market = resolved.price;
     row.priceSource = resolved.source;
@@ -10840,6 +10861,15 @@ function qplVariantPriceTable(r, idx){
   const pptRows = pokemonPptMatrixRows(r);
   const gradeRows = pokemonPptGradeRows(r);
   if(pptRows.length || gradeRows.length) {
+    const card = r.pokemonPriceTracker || r.pokemonPriceTrackerCard || r.pptCard || null;
+    const prices = card?.prices || {};
+    const variantKeys = Object.keys(prices.variants || {});
+    const conditionKeys = Object.keys(prices.conditions || {});
+    const positiveRows = pptRows.filter(row => Number(row.price || 0) > 0);
+    const onlyNmPositive = positiveRows.length > 0 && positiveRows.every(row => row.condition === 'NM');
+    const matrixDebugNote = onlyNmPositive && showAdminDebug()
+      ? `<div style="font-family:monospace;font-size:10px;color:var(--gold);margin-top:6px">Debug: API returned only NM priced rows for this hydrated card/finish. variants=${escHtml(variantKeys.join(', ') || 'none')} conditions=${escHtml(conditionKeys.join(', ') || 'none')}</div>`
+      : '';
     const selectedCondition = r.selectedCondition || r.condition || '';
     const selectedFinish = normalizeQplFinish(r.selectedFinish || r.finish || '');
     const rows = pptRows.map(row => {
@@ -10871,6 +10901,7 @@ function qplVariantPriceTable(r, idx){
     return `<div style="margin-top:10px">
       <div style="font-family:'Orbitron',monospace;color:var(--g);font-size:10px">AVAILABLE PRICES · PokemonPriceTracker</div>
       <table class="qpl-price-table"><thead><tr><th>Condition</th><th>Finish</th><th>Actual API Price</th><th>Listings</th><th>Last Updated</th><th>Source</th></tr></thead><tbody>${rows}</tbody></table>
+      ${matrixDebugNote}
       ${gradeHtml}
     </div>`;
   }
@@ -11140,7 +11171,7 @@ async function fetchPokemonPriceTrackerExactDetail(tcgPlayerId, language = 'engl
   params.set('maxDataPoints', String(settings.maxDataPoints));
   const result = await pokemonPriceTrackerCardsRequest(params, 'cards.tcgPlayerId.limit1');
   const card = result.cards[0] || null;
-  if(card) card.lookupDebug = { ...(card.lookupDebug || {}), path:'cards.tcgPlayerId.limit1', requestPath:result.requestPath, cache:result.cacheStatus, apiLimit:'1', exactHydrated:true, usage:result.data.usage || {} };
+  if(card) card.lookupDebug = { ...(card.lookupDebug || {}), path:'cards.tcgPlayerId.limit1', requestPath:result.requestPath, hydrationRequestUrl:result.requestPath, cache:result.cacheStatus, hydratedFromCache:result.cacheStatus === 'hit' || result.cacheStatus === 'stale', apiLimit:'1', exactHydrated:true, exactCacheVersion:POKEMON_EXACT_CACHE_VERSION, usage:result.data.usage || {} };
   return card;
 }
 
@@ -11211,7 +11242,12 @@ async function cachedPokemonPriceTrackerCard(row = {}){
   const hit = rows.find(c => c.storeId === getActiveStoreId() && c.cardKey === cardKey)
     || rows.find(c => c.storeId === getActiveStoreId() && wantedId && c.cardKey === 'pokemon:' + wantedId)
     || rows.find(c => c.storeId === getActiveStoreId() && wantedId && String(c.card?.tcgPlayerId || c.card?.tcgplayerId || c.card?.pokemonPriceTracker?.tcgPlayerId || '') === wantedId);
-  return hit?.card?.pokemonPriceTracker || hit?.card?.pokemonPriceTrackerCard || null;
+  const card = hit?.card?.pokemonPriceTracker || hit?.card?.pokemonPriceTrackerCard || null;
+  if(!card) return null;
+  const exactVersion = hit.exactCacheVersion || hit.cacheVersion || card.cache?.exactCacheVersion || card.lookupDebug?.exactCacheVersion || '';
+  if(navigator.onLine && exactVersion !== POKEMON_EXACT_CACHE_VERSION && !pokemonHydratedPriceMatrixReady(card)) return null;
+  if(card.lookupDebug) card.lookupDebug.hydratedFromCache = true;
+  return card;
 }
 
 async function cachePokemonPriceTrackerCard(row = {}, card = null){
@@ -11227,7 +11263,10 @@ async function cachePokemonPriceTrackerCard(row = {}, card = null){
     priceSource:row.priceSource || 'PokemonPriceTracker'
   }, qplLastSearch);
   normalized.cardKey = cardKey;
-  normalized.card.cache = { state:'cached', updatedAt:new Date().toISOString(), source:'PokemonPriceTracker' };
+  normalized.cacheVersion = POKEMON_EXACT_CACHE_VERSION;
+  normalized.exactCacheVersion = POKEMON_EXACT_CACHE_VERSION;
+  normalized.card.cache = { state:'cached', updatedAt:new Date().toISOString(), source:'PokemonPriceTracker', exactCacheVersion:POKEMON_EXACT_CACHE_VERSION };
+  normalized.card.pokemonPriceTracker.lookupDebug = { ...(normalized.card.pokemonPriceTracker.lookupDebug || {}), exactCacheVersion:POKEMON_EXACT_CACHE_VERSION };
   await pokemonDbPut('cards', normalized);
   await pokemonDbPut('meta', { key:'lastPokemonSyncAt', value:new Date().toISOString() });
 }
@@ -12042,7 +12081,7 @@ function quickLookupResultCard(r, idx){
         </select>
         <input type="number" min="1" step="1" value="${Number(r.qty || 1)}" onchange="qplResults[${idx}].qty=parseInt(this.value,10)||1" aria-label="Quantity">
       </div>
-      ${showAdminDebug() ? `<div style="margin-top:8px;font-family:monospace,monospace;font-size:10px;color:var(--dim)">Debug: rawQuerySent ${escHtml(r.lookupDebug?.rawQuerySent || '')} / requestPath ${escHtml(r.lookupDebug?.requestPath || '')} / resultCount ${escHtml(String(r.lookupDebug?.searchResultCount ?? ''))} / candidates ${escHtml(JSON.stringify(r.lookupDebug?.returnedCandidates || []))} / normalizedQuery ${escHtml(r.lookupDebug?.normalizedQuery || '')} / lookupPath ${escHtml(r.lookupDebug?.path || r.lookupDebug?.sourcePath || 'n/a')} / exactHydrated ${escHtml(String(!!r.lookupDebug?.exactHydrated))} / parseTitle ${escHtml(JSON.stringify(r.lookupDebug?.parseTitle || r.pptParseTitle || null))} / selectedTcgPlayerId ${escHtml(r.tcgPlayerId || r.tcgplayerId || '')} / confidence ${escHtml(String(r.lookupDebug?.confidence || r.confidence || ''))} / autoSelect ${escHtml(String(!!(r.lookupDebug?.autoSelect || r.autoSelect)))} / selectedCondition ${escHtml(r.selectedCondition || r.condition || '')} / selectedFinish ${escHtml(qplFinishLabel(r.selectedFinish || r.finish || ''))} / selectedGrade ${escHtml(r.selectedGrade || '')} / activePriceBasis ${escHtml(JSON.stringify(r.activePriceBasis || {}))} / resolvedPricePath ${escHtml(r.activePriceBasis?.pricePath || r.resolvedPricePath || 'n/a')} / chartPath ${escHtml(r.chartPath || 'n/a')} / resolvedPrice ${Number(r.resolvedPrice || r.market || 0) ? '$'+Number(r.resolvedPrice || r.market || 0).toFixed(2) : 'No Real Price'} / generatedTcgUrl ${escHtml(builtTcgLink.url || '')} / cache ${escHtml(r.lookupDebug?.cache || r.cache?.source || 'live/none')} / quotaCooldown ${escHtml(String(pokemonPriceTrackerQuotaBlocked()))} / apiCallsConsumed ${escHtml(localStorage.getItem('ppt_last_consumed') || '')}</div>` : ''}
+      ${showAdminDebug() ? `<div style="margin-top:8px;font-family:monospace,monospace;font-size:10px;color:var(--dim)">Debug: rawSearchQuerySent ${escHtml(r.lookupDebug?.rawQuerySent || '')} / workerRequestUrl ${escHtml(r.lookupDebug?.requestPath || '')} / searchResultCount ${escHtml(String(r.lookupDebug?.searchResultCount ?? ''))} / candidates ${escHtml(JSON.stringify(r.lookupDebug?.returnedCandidates || []))} / selectedTcgPlayerId ${escHtml(r.tcgPlayerId || r.tcgplayerId || '')} / hydrationRequestUrl ${escHtml(r.pokemonPriceTracker?.lookupDebug?.hydrationRequestUrl || r.lookupDebug?.hydrationRequestUrl || '')} / hydratedFromCache ${escHtml(String(!!(r.pokemonPriceTracker?.lookupDebug?.hydratedFromCache || r.lookupDebug?.hydratedFromCache)))} / prices.conditions keys ${escHtml(Object.keys(r.pokemonPriceTracker?.prices?.conditions || {}).join(', ') || 'none')} / prices.variants keys ${escHtml(Object.keys(r.pokemonPriceTracker?.prices?.variants || {}).join(', ') || 'none')} / selected price path ${escHtml(r.activePriceBasis?.pricePath || r.resolvedPricePath || 'n/a')} / noRealPriceReason ${escHtml(r.noRealPriceReason || '')} / normalizedQuery ${escHtml(r.lookupDebug?.normalizedQuery || '')} / lookupPath ${escHtml(r.lookupDebug?.path || r.lookupDebug?.sourcePath || 'n/a')} / exactHydrated ${escHtml(String(!!r.lookupDebug?.exactHydrated))} / parseTitle ${escHtml(JSON.stringify(r.lookupDebug?.parseTitle || r.pptParseTitle || null))} / confidence ${escHtml(String(r.lookupDebug?.confidence || r.confidence || ''))} / autoSelect ${escHtml(String(!!(r.lookupDebug?.autoSelect || r.autoSelect)))} / selectedCondition ${escHtml(r.selectedCondition || r.condition || '')} / selectedFinish ${escHtml(qplFinishLabel(r.selectedFinish || r.finish || ''))} / activePriceBasis ${escHtml(JSON.stringify(r.activePriceBasis || {}))} / generatedTcgUrl ${escHtml(builtTcgLink.url || '')} / cache ${escHtml(r.lookupDebug?.cache || r.cache?.source || 'live/none')} / quotaCooldown ${escHtml(String(pokemonPriceTrackerQuotaBlocked()))} / apiCallsConsumed ${escHtml(localStorage.getItem('ppt_last_consumed') || '')}</div>` : ''}
     </div>
     <div class="qpl-actions">
       <button class="hbtn primary" onclick="selectQuickLookupResult(${idx})">SELECT</button>
@@ -12314,7 +12353,10 @@ async function verifyQplPsaCert(idx){
 async function selectQuickLookupResult(idx){
   let r = qplResults[idx];
   if(r && qplResultCategoryKey(r) === 'pokemon' && !r.pokemonPriceTracker?.lookupDebug?.exactHydrated && (r.tcgPlayerId || r.tcgplayerId) && navigator.onLine && !pokemonPriceTrackerQuotaBlocked()) {
-    const exact = await fetchPokemonPriceTrackerExactDetail(r.tcgPlayerId || r.tcgplayerId, r.language || 'english').catch(() => null);
+    const cachedExact = await cachedPokemonPriceTrackerCard(r).catch(() => null);
+    const exact = cachedExact && pokemonPriceCacheFresh(cachedExact) && pokemonHydratedPriceMatrixReady(cachedExact)
+      ? (cachedExact.lookupDebug = { ...(cachedExact.lookupDebug || {}), exactHydrated:true, hydratedFromCache:true, exactCacheVersion:POKEMON_EXACT_CACHE_VERSION }, cachedExact)
+      : await fetchPokemonPriceTrackerExactDetail(r.tcgPlayerId || r.tcgplayerId, r.language || 'english').catch(() => null);
     if(exact) {
       qplResults[idx] = { ...pokemonPriceTrackerCardToQplRow(exact, qplLastSearch, r.lookupDebug?.parseTitle || null), lookupDebug:{ ...(r.lookupDebug || {}), ...(exact.lookupDebug || {}), exactHydrated:true }, confidence:Math.max(Number(r.confidence || 0), 98), autoSelect:true };
       await cachePokemonPriceTrackerCard(qplResults[idx], exact).catch(() => {});
