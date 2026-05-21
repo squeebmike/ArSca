@@ -10193,52 +10193,127 @@ function pokemonPptAllHistorySeries(row = {}){
   return series.sort((a,b) => Number(b.selected) - Number(a.selected) || a.label.localeCompare(b.label));
 }
 
+// Filter chart points to the selected time range client-side (PPT returns all-time data in one call)
+function pokemonPptFilterPointsByRange(points, range){
+  if(!points.length) return points;
+  const sorted = [...points].sort((a,b) => new Date(a.date) - new Date(b.date));
+  const days = {'1M':30,'3M':90,'6M':180,'1Y':365}[range];
+  if(!days) return sorted;
+  const last = new Date(sorted[sorted.length-1].date);
+  const cutoff = new Date(last.getTime() - days*86400000);
+  const filtered = sorted.filter(p => new Date(p.date) >= cutoff);
+  return filtered.length >= 2 ? filtered : sorted;
+}
+
+// Render a SVG line+volume chart matching the financial chart style (line over ghost volume bars)
+function pokemonPptSvgLineChart(vals, chartW, chartH){
+  chartW = chartW || 580; chartH = chartH || 170;
+  if(!vals || !vals.length) return '<div style="color:var(--dim);font-size:12px;padding:20px 0;text-align:center">No price data for this range</div>';
+  const mL=56, mR=8, mT=14, mB=32;
+  const W = chartW - mL - mR, H = chartH - mT - mB;
+  const prices = vals.map(v=>v.price);
+  const vols = vals.map(v=>v.volume||0);
+  const rawMin = Math.min(...prices), rawMax = Math.max(...prices);
+  const pad = (rawMax - rawMin) * 0.1 || rawMax * 0.06 || 1;
+  const minP = rawMin - pad, maxP = rawMax + pad;
+  const maxVol = Math.max(...vols, 1);
+  const px = i => mL + (vals.length < 2 ? W/2 : (i/(vals.length-1))*W);
+  const py = p => mT + H - ((p - minP)/(maxP - minP))*H;
+  // grid + price labels
+  const ticks = 4;
+  let grid = '', pLabels = '';
+  for(let i=0;i<=ticks;i++){
+    const p = minP + (maxP-minP)*(i/ticks);
+    const y = py(p).toFixed(1);
+    grid += `<line x1="${mL}" y1="${y}" x2="${mL+W}" y2="${y}" stroke="rgba(255,255,255,0.055)" stroke-width="1"/>`;
+    pLabels += `<text x="${mL-6}" y="${(parseFloat(y)+3.5).toFixed(0)}" text-anchor="end" fill="rgba(155,168,185,.9)" font-size="10.5" font-family="ui-monospace,monospace">$${p>=1000?(p/1000).toFixed(1)+'k':p.toFixed(p<10?2:0)}</text>`;
+  }
+  // date labels (up to 6 evenly spaced)
+  const dateCount = Math.min(6, vals.length);
+  let dLabels = '';
+  for(let i=0;i<dateCount;i++){
+    const di = Math.round(i*(vals.length-1)/Math.max(dateCount-1,1));
+    const v = vals[di];
+    const x = px(di).toFixed(1);
+    let ds = '';
+    try { const dt=new Date(v.date); if(!isNaN(dt)) ds = (dt.getMonth()+1)+'/'+dt.getDate(); } catch(e){}
+    dLabels += `<text x="${x}" y="${mT+H+22}" text-anchor="middle" fill="rgba(155,168,185,.8)" font-size="10" font-family="ui-monospace,monospace">${ds}</text>`;
+  }
+  // volume bars (drawn first, behind line)
+  const bw = Math.max(1.5, (W/vals.length)*0.6);
+  const maxVolH = H * 0.30;
+  let vBars = '';
+  vals.forEach((v,i) => {
+    const bh = maxVolH*((v.volume||0)/maxVol);
+    if(bh < 1) return;
+    vBars += `<rect x="${(px(i)-bw/2).toFixed(1)}" y="${(mT+H-bh).toFixed(1)}" width="${bw.toFixed(1)}" height="${bh.toFixed(1)}" fill="rgba(147,197,253,.28)" rx="1"/>`;
+  });
+  // line path + gradient fill
+  const pathD = vals.map((v,i)=>`${i===0?'M':'L'}${px(i).toFixed(1)},${py(v.price).toFixed(1)}`).join(' ');
+  const fillD = pathD+` L${px(vals.length-1).toFixed(1)},${(mT+H).toFixed(0)} L${mL},${(mT+H).toFixed(0)} Z`;
+  const uid = 'pptg'+Math.abs(chartW*17+chartH*31|0);
+  const lastX = px(vals.length-1).toFixed(1), lastY = py(vals[vals.length-1].price).toFixed(1);
+  return `<svg viewBox="0 0 ${chartW} ${chartH}" width="100%" style="display:block;overflow:visible" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="${uid}" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="rgba(59,130,246,.32)"/>
+        <stop offset="100%" stop-color="rgba(59,130,246,0)"/>
+      </linearGradient>
+    </defs>
+    ${grid}${vBars}
+    <path d="${fillD}" fill="url(#${uid})"/>
+    <path d="${pathD}" stroke="#3b82f6" stroke-width="2" fill="none" stroke-linejoin="round" stroke-linecap="round"/>
+    <circle cx="${lastX}" cy="${lastY}" r="3.5" fill="#3b82f6" stroke="rgba(255,255,255,.85)" stroke-width="1.5"/>
+    ${pLabels}${dLabels}
+  </svg>`;
+}
+
 function pokemonPptAllHistoryChartHtml(r = {}, idx = 0){
   const series = pokemonPptAllHistorySeries(r);
   const title = [r.name, r.set, r.card_number ? '#'+r.card_number : ''].filter(Boolean).join(' / ');
-  const current = Number(r.market || r.activePriceBasis?.price || 0);
   const range = r.graphRangeLabel || '3M';
   const ranges = ['1M','3M','6M','1Y'];
-  const allPrices = series.flatMap(s => s.points.map(p => Number(p.price ?? p.marketPrice ?? p.value ?? p[1] ?? 0)).filter(n => n > 0));
-  const globalMax = allPrices.length ? Math.max(...allPrices) : 0;
-  const globalMin = allPrices.length ? Math.min(...allPrices) : 0;
-  const debugLine = showAdminDebug() ? `<div style="margin-top:10px;font-family:monospace;font-size:10px;color:var(--dim)">Debug: priceHistory.conditions keys ${escHtml(Object.keys(r.pokemonPriceTracker?.priceHistory?.conditions || {}).join(', ') || 'none')} / priceHistory.variants keys ${escHtml(Object.keys(r.pokemonPriceTracker?.priceHistory?.variants || {}).join(', ') || 'none')} / selected price path ${escHtml(r.activePriceBasis?.pricePath || '')} / series ${series.length}</div>` : '';
-  if(!series.length) {
+  const debugLine = showAdminDebug() ? `<div style="margin-top:10px;font-family:monospace;font-size:10px;color:var(--dim)">Debug: conditions ${escHtml(Object.keys(r.pokemonPriceTracker?.priceHistory?.conditions||{}).join(', ')||'none')} / variants ${escHtml(Object.keys(r.pokemonPriceTracker?.priceHistory?.variants||{}).join(', ')||'none')} / series ${series.length} / range ${range}</div>` : '';
+  if(!series.length){
+    const current = Number(r.market || r.activePriceBasis?.price || 0);
     return `<div class="qpl-chart-card">
-      <div style="display:flex;justify-content:space-between;gap:12px;align-items:center"><div><div style="font-family:'Orbitron',monospace;color:var(--blue);font-size:15px">PRICE GRAPH</div><div style="color:var(--dim);font-size:11px;margin-top:4px">${escHtml(title)}</div></div><button class="hbtn" onclick="closeQplChartModal()">CLOSE</button></div>
-      <div style="display:grid;grid-template-columns:80px 1fr;gap:12px;margin-top:14px;align-items:center">${r.imageUrl ? `<img src="${escHtml(r.imageUrl)}" style="width:80px;max-height:110px;object-fit:contain;background:#050507;border:1px solid var(--border);border-radius:8px">` : '<div></div>'}<div><div class="qpl-price">${current ? '$'+current.toFixed(2) : 'No Real Price Available'}</div><div class="qpl-price-sub">${escHtml([r.selectedCondition || r.condition, pokemonPptFinishLabel(r.selectedFinish || r.finish || '')].filter(Boolean).join(' / '))}<br>Source: PokemonPriceTracker exact detail</div></div></div>
-      <div style="margin-top:16px;border:1px dashed rgba(255,209,102,.35);border-radius:12px;padding:18px;color:var(--dim);font-size:13px">Missing priceHistory.variants and priceHistory.conditions on hydrated PokemonPriceTracker detail.</div>
+      <div style="display:flex;justify-content:space-between;gap:12px;align-items:center">
+        <div><div style="font-family:'Orbitron',monospace;color:var(--blue);font-size:15px">PRICE GRAPH</div><div style="color:var(--dim);font-size:11px;margin-top:4px">${escHtml(title)}</div></div>
+        <button class="hbtn" onclick="closeQplChartModal()">CLOSE</button>
+      </div>
+      ${r.imageUrl ? `<div style="display:flex;align-items:center;gap:10px;margin-top:12px"><img src="${escHtml(r.imageUrl)}" style="width:56px;height:78px;object-fit:contain;border-radius:6px;border:1px solid var(--border)"><div><div style="font-size:22px;font-weight:700;color:var(--text)">${current ? '$'+current.toFixed(2) : '—'}</div><div style="color:var(--dim);font-size:11px;margin-top:2px">${escHtml([r.selectedCondition||r.condition, pokemonPptFinishLabel(r.selectedFinish||r.finish||'')].filter(Boolean).join(' · '))}</div></div></div>` : ''}
+      <div style="margin-top:16px;border:1px dashed rgba(255,209,102,.35);border-radius:12px;padding:18px;color:var(--dim);font-size:13px">No price history available. Select the card first to load full detail data.</div>
       ${debugLine}
     </div>`;
   }
-  const rows = series.map((s, i) => {
-    const vals = s.points.map(p => ({ price:Number(p.price ?? p.marketPrice ?? p.value ?? p[1] ?? 0), volume:Number(p.volume ?? p.sales ?? p.count ?? 0), date:p.date || p.timestamp || p[0] || '' })).filter(p => p.price > 0);
-    const first = vals[0]?.price || 0;
-    const last = vals[vals.length - 1]?.price || 0;
-    const change = first && last ? last - first : 0;
-    const bars = vals.map(p => {
-      const h = globalMax === globalMin ? 56 : Math.max(8, Math.round(((p.price - globalMin) / (globalMax - globalMin)) * 72 + 10));
-      const color = s.selected ? 'var(--blue)' : (i % 2 ? 'var(--g)' : 'var(--gold)');
-      return `<span title="${escHtml(s.path)} ${escHtml(p.date)} $${p.price.toFixed(2)}" style="display:inline-flex;align-items:flex-end;flex:1;min-width:4px;height:${h}px;background:${color};border-radius:3px;opacity:${s.selected ? '.95' : '.65'}">${p.volume ? `<i style="width:100%;height:${Math.max(3, Math.min(24, p.volume))}px;background:rgba(255,255,255,.22);display:block;border-radius:2px"></i>` : ''}</span>`;
-    }).join('');
-    return `<div style="border:1px solid ${s.selected?'rgba(60,200,255,.45)':'rgba(255,255,255,.08)'};border-radius:8px;padding:10px;background:rgba(255,255,255,.025)">
-      <div style="display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap"><b style="color:${s.selected?'var(--blue)':'var(--text)'}">${escHtml(s.label)}${s.selected?' selected':''}</b><span class="qpl-badge">${vals.length} points</span><span class="qpl-badge">${last ? '$'+last.toFixed(2) : 'No Real Price'}</span>${first && last ? `<span class="qpl-badge ${change >= 0 ? 'good':'bad'}">${change >= 0 ? '+':'-'}$${Math.abs(change).toFixed(2)}</span>` : ''}</div>
-      <div class="qpl-chart-bars" style="height:92px;margin-top:8px">${bars}</div>
-      <div style="margin-top:6px;font-family:monospace;font-size:9px;color:var(--dim)">${escHtml(s.path)}</div>
-    </div>`;
-  }).join('');
+  // Show selected series; if none is flagged selected, use first
+  const sel = series.find(s=>s.selected) || series[0];
+  const allPts = pokemonPptFilterPointsByRange(sel.points, range);
+  const first = allPts[0]?.price || 0, last = allPts[allPts.length-1]?.price || 0;
+  const change = first && last ? last - first : 0;
+  const changePct = first ? (change/first*100) : 0;
+  const otherSeries = series.filter(s=>s!==sel);
   return `<div class="qpl-chart-card">
     <div style="display:flex;justify-content:space-between;gap:12px;align-items:center">
       <div><div style="font-family:'Orbitron',monospace;color:var(--blue);font-size:15px">PRICE GRAPH</div><div style="color:var(--dim);font-size:11px;margin-top:4px">${escHtml(title)}</div></div>
       <button class="hbtn" onclick="closeQplChartModal()">CLOSE</button>
     </div>
-    <div style="display:grid;grid-template-columns:80px 1fr auto;gap:12px;margin-top:14px;align-items:center">
-      ${r.imageUrl ? `<img src="${escHtml(r.imageUrl)}" style="width:80px;max-height:110px;object-fit:contain;background:#050507;border:1px solid var(--border);border-radius:8px">` : '<div></div>'}
-      <div><div class="qpl-price">${current ? '$'+current.toFixed(2) : 'No Real Price Available'}</div><div class="qpl-price-sub">${escHtml([r.selectedCondition || r.condition, pokemonPptFinishLabel(r.selectedFinish || r.finish || '')].filter(Boolean).join(' / '))}<br>Source: PokemonPriceTracker priceHistory variants/conditions</div></div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">${ranges.map(label => `<button class="hbtn" style="min-height:36px;color:${range===label?'var(--g)':'var(--text)'}" onclick="openQplChartModal(${idx},'${label}')">${label}</button>`).join('')}</div>
+    <div style="display:flex;align-items:center;gap:12px;margin-top:12px;flex-wrap:wrap">
+      ${r.imageUrl ? `<img src="${escHtml(r.imageUrl)}" style="width:52px;height:72px;object-fit:contain;border-radius:6px;border:1px solid var(--border);flex-shrink:0">` : ''}
+      <div style="flex:1;min-width:0">
+        <div style="font-size:11px;font-family:'Orbitron',monospace;color:var(--dim);letter-spacing:.04em;margin-bottom:2px">${escHtml(sel.label)}</div>
+        <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">
+          <span style="font-size:24px;font-weight:700;color:var(--text)">$${last ? last.toFixed(2) : (Number(r.market||r.activePriceBasis?.price||0)||0).toFixed(2)}</span>
+          ${first && last ? `<span style="font-size:13px;font-weight:600;color:${change>=0?'#22c55e':'#ef4444'}">(${change>=0?'+':''}${changePct.toFixed(2)}%)</span>` : ''}
+        </div>
+      </div>
     </div>
-    <div style="display:grid;gap:10px;margin-top:16px">${rows}</div>
-    <div style="color:var(--dim);font-size:10px;margin-top:8px">All chart lines come from the hydrated exact PokemonPriceTracker priceHistory response.</div>
+    <div style="margin-top:14px">${pokemonPptSvgLineChart(allPts)}</div>
+    <div style="display:flex;gap:5px;margin-top:10px;align-items:center;flex-wrap:wrap">
+      ${ranges.map(label=>`<button class="hbtn" style="min-height:32px;padding:4px 14px;font-weight:${range===label?'700':'400'};background:${range===label?'rgba(59,130,246,.15)':'rgba(255,255,255,.04)'};color:${range===label?'var(--blue)':'var(--text)'};border:1px solid ${range===label?'rgba(59,130,246,.5)':'rgba(255,255,255,.1)'};border-radius:6px" onclick="openQplChartModal(${idx},'${label}')">${label}</button>`).join('')}
+      ${otherSeries.length ? `<div style="flex:1"></div><div style="font-size:10px;color:var(--dim);white-space:nowrap">Other: ${otherSeries.slice(0,4).map(s=>`<button class="hbtn" style="min-height:26px;font-size:10px;padding:2px 7px;color:var(--dim);margin-left:3px" onclick="(function(){var rr=qplResults[${idx}];if(rr){rr.selectedCondition='${escHtml(s.condition)}';rr.selectedFinish='${escHtml(s.finish)}';rr.activePriceBasis=Object.assign(rr.activePriceBasis||{},{condition:'${escHtml(s.condition)}',finish:'${escHtml(s.finish)}'});openQplChartModal(${idx},'${range}');}})()">${escHtml(s.label)}</button>`).join('')}</div>` : ''}
+    </div>
+    <div style="color:var(--dim);font-size:10px;margin-top:6px">${allPts.length} points · ${escHtml(allPts[0]?.date?.slice(0,10)||'')} → ${escHtml(allPts[allPts.length-1]?.date?.slice(0,10)||'')} · PokemonPriceTracker</div>
     ${debugLine}
   </div>`;
 }
@@ -10276,33 +10351,28 @@ function pokemonPptSelectedInlinePanelHtml(r = {}, idx = 0){
     </div>`;
   }
 
-  // --- Mini sparkline chart (selected condition/finish series) ---
+  // --- Inline price chart (selected condition/finish, 3M default) ---
   const series = pokemonPptAllHistorySeries(r);
   let chartHtml = '';
   if(series.length){
     const sel = series.find(s => s.selected) || series[0];
-    const vals = sel.points.map(p => ({
-      price: Number(p.price ?? p.marketPrice ?? p.value ?? p[1] ?? 0),
-      date: p.date || p.timestamp || p[0] || ''
-    })).filter(p => p.price > 0);
-    if(vals.length){
-      const prices = vals.map(v => v.price);
-      const max = Math.max(...prices), min = Math.min(...prices);
-      const bars = vals.map(p => {
-        const h = max === min ? 40 : Math.max(4, Math.round(((p.price - min)/(max - min)) * 52 + 8));
-        return `<span title="${escHtml(p.date)} $${p.price.toFixed(2)}" style="display:inline-flex;align-items:flex-end;flex:1;min-width:3px;height:${h}px;background:var(--blue);border-radius:2px;opacity:.85"></span>`;
-      }).join('');
-      const first = vals[0].price, last = vals[vals.length-1].price, change = last - first;
-      chartHtml = `<div style="margin:8px 0 12px;border:1px solid rgba(60,200,255,.2);border-radius:8px;padding:10px">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:6px">
-          <div style="font-family:'Orbitron',monospace;color:var(--blue);font-size:11px;letter-spacing:.05em">PRICE TREND · ${escHtml(sel.label)}</div>
-          <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-            ${first&&last ? `<span class="qpl-badge ${change>=0?'good':'bad'}">${change>=0?'+':''}$${Math.abs(change).toFixed(2)}</span>` : ''}
-            <button class="hbtn" style="min-height:28px;font-size:10px;padding:4px 10px" onclick="openQplChartModal(${idx})">ALL CONDITIONS</button>
+    const allPts = pokemonPptFilterPointsByRange(sel.points, '3M');
+    if(allPts.length >= 2){
+      const first = allPts[0].price, last = allPts[allPts.length-1].price;
+      const change = last - first, changePct = first ? change/first*100 : 0;
+      chartHtml = `<div style="margin:8px 0 12px;border:1px solid rgba(59,130,246,.2);border-radius:10px;padding:12px;background:rgba(59,130,246,.03)">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;flex-wrap:wrap;gap:6px">
+          <div>
+            <div style="font-family:'Orbitron',monospace;color:var(--blue);font-size:10px;letter-spacing:.05em">PRICE TREND · ${escHtml(sel.label)}</div>
+            <div style="display:flex;align-items:baseline;gap:7px;margin-top:2px">
+              <span style="font-size:18px;font-weight:700;color:var(--text)">$${last.toFixed(2)}</span>
+              ${first&&last ? `<span style="font-size:12px;font-weight:600;color:${change>=0?'#22c55e':'#ef4444'}">(${change>=0?'+':''}${changePct.toFixed(2)}%)</span>` : ''}
+            </div>
           </div>
+          <button class="hbtn" style="min-height:28px;font-size:10px;padding:4px 10px" onclick="openQplChartModal(${idx})">OPEN CHART</button>
         </div>
-        <div style="display:flex;gap:1px;align-items:flex-end;height:64px">${bars}</div>
-        <div style="margin-top:5px;font-size:9px;color:var(--dim)">${vals.length} data points · ${escHtml(vals[0]?.date?.slice(0,10)||'')} → ${escHtml(vals[vals.length-1]?.date?.slice(0,10)||'')}</div>
+        ${pokemonPptSvgLineChart(allPts, 480, 120)}
+        <div style="margin-top:4px;font-size:9px;color:var(--dim)">${allPts.length} pts · 3M · ${escHtml(allPts[0]?.date?.slice(0,10)||'')} → ${escHtml(allPts[allPts.length-1]?.date?.slice(0,10)||'')}</div>
       </div>`;
     }
   }
