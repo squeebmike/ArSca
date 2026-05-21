@@ -11422,8 +11422,19 @@ async function pokemonPriceTrackerCardsRequest(params, pathLabel){
   return { data, cards:pokemonPriceTrackerCardsFromPayload(data).slice(0, 5), requestPath, pathLabel, cacheStatus:data.cache?.state === 'hit' ? 'hit' : data.cache?.state === 'stale' ? 'stale' : 'miss' };
 }
 
+// Expand common Pokemon rarity abbreviations before sending to PPT API
+// (the API doesn't understand 'sir', 'ir', etc. — must send the full name)
+function pokemonExpandSearchAbbreviations(q){
+  return String(q || '')
+    .replace(/\bsir\b/gi, 'special illustration rare')
+    .replace(/\bsar\b/gi, 'special art rare')
+    .replace(/\bir\b/gi, 'illustration rare')
+    .replace(/\bar\b/gi, 'art rare')
+    .replace(/\s+/g, ' ').trim();
+}
+
 async function searchPokemonPriceTrackerCards(rawQuery = '', language = 'english'){
-  const query = String(rawQuery || '').replace(/\s+/g, ' ').trim();
+  const query = pokemonExpandSearchAbbreviations(String(rawQuery || '').replace(/\s+/g, ' ').trim());
   if(!query) return { cards:[], data:{}, requestPath:'', cacheStatus:'miss' };
   const params = new URLSearchParams({ search:query, language:language || 'english', limit:'5' });
   const result = await pokemonPriceTrackerCardsRequest(params, 'cards.search.limit5');
@@ -12366,7 +12377,8 @@ function quickLookupResultCard(r, idx){
       ${showAdminDebug() ? `<div style="margin-top:8px;font-family:monospace,monospace;font-size:10px;color:var(--dim)">Debug: rawSearchQuerySent ${escHtml(r.lookupDebug?.rawQuerySent || '')} / workerRequestUrl ${escHtml(r.lookupDebug?.requestPath || '')} / searchResultCount ${escHtml(String(r.lookupDebug?.searchResultCount ?? ''))} / candidates ${escHtml(JSON.stringify(r.lookupDebug?.returnedCandidates || []))} / selectedTcgPlayerId ${escHtml(r.tcgPlayerId || r.tcgplayerId || '')} / hydrationRequestUrl ${escHtml(r.pokemonPriceTracker?.lookupDebug?.hydrationRequestUrl || r.lookupDebug?.hydrationRequestUrl || '')} / hydratedFromCache ${escHtml(String(!!(r.pokemonPriceTracker?.lookupDebug?.hydratedFromCache || r.lookupDebug?.hydratedFromCache)))} / prices.conditions keys ${escHtml(Object.keys(r.pokemonPriceTracker?.prices?.conditions || {}).join(', ') || 'none')} / prices.variants keys ${escHtml(Object.keys(r.pokemonPriceTracker?.prices?.variants || {}).join(', ') || 'none')} / priceHistory.conditions keys ${escHtml(Object.keys(r.pokemonPriceTracker?.priceHistory?.conditions || {}).join(', ') || 'none')} / priceHistory.variants keys ${escHtml(Object.keys(r.pokemonPriceTracker?.priceHistory?.variants || {}).join(', ') || 'none')} / active price path ${escHtml(r.activePriceBasis?.pricePath || r.resolvedPricePath || 'n/a')} / reason a row says No Real Price ${escHtml(r.noRealPriceReason || '')} / normalizedQuery ${escHtml(r.lookupDebug?.normalizedQuery || '')} / lookupPath ${escHtml(r.lookupDebug?.path || r.lookupDebug?.sourcePath || 'n/a')} / exactHydrated ${escHtml(String(!!r.lookupDebug?.exactHydrated))} / parseTitle ${escHtml(JSON.stringify(r.lookupDebug?.parseTitle || r.pptParseTitle || null))} / confidence ${escHtml(String(r.lookupDebug?.confidence || r.confidence || ''))} / autoSelect ${escHtml(String(!!(r.lookupDebug?.autoSelect || r.autoSelect)))} / selectedCondition ${escHtml(r.selectedCondition || r.condition || '')} / selectedFinish ${escHtml(qplFinishLabel(r.selectedFinish || r.finish || ''))} / activePriceBasis ${escHtml(JSON.stringify(r.activePriceBasis || {}))} / generatedTcgUrl ${escHtml(builtTcgLink.url || '')} / cache ${escHtml(r.lookupDebug?.cache || r.cache?.source || 'live/none')} / quotaCooldown ${escHtml(String(pokemonPriceTrackerQuotaBlocked()))} / apiCallsConsumed ${escHtml(localStorage.getItem('ppt_last_consumed') || '')}</div>` : ''}
     </div>
     <div class="qpl-actions">
-      <button class="hbtn primary" onclick="selectQuickLookupResult(${idx})">SELECT</button>
+      <button class="hbtn primary qpl-select-btn" onclick="selectQuickLookupResult(${idx})">SELECT</button>
+      ${qplResultCategoryKey(r) === 'pokemon' && !r.pokemonPriceTracker?.lookupDebug?.exactHydrated ? `<button class="hbtn ppt-get-prices-btn" style="color:var(--blue)" onclick="loadPricesForResultCard(${idx})">GET PRICES</button>` : ''}
       <button class="hbtn buy" onclick="addQuickLookupToBuyOffer(${idx})">ADD TO BUY</button>
       <button class="hbtn" onclick="addQuickLookupToSaleCart(${idx})">ADD TO CART</button>
       <button class="hbtn" style="color:var(--gold)" onclick="addQuickLookupToInventory(${idx})">ADD INVENTORY</button>
@@ -12632,9 +12644,44 @@ async function verifyQplPsaCert(idx){
   }
 }
 
+// Re-render a single result card in the list without re-rendering everything
+function refreshQplResultCard(idx){
+  const card = document.querySelector(`.qpl-hero-card[data-qpl-idx="${idx}"]`);
+  if(!card || !qplResults[idx]) return;
+  const tmp = document.createElement('div');
+  tmp.innerHTML = quickLookupResultCard(qplResults[idx], idx);
+  card.replaceWith(tmp.firstElementChild);
+}
+
+// Fetch PPT exact detail for a result card and re-render it inline (no navigation)
+async function loadPricesForResultCard(idx){
+  const r = qplResults[idx];
+  if(!r || !navigator.onLine || pokemonPriceTrackerQuotaBlocked()) return;
+  if(r.pokemonPriceTracker?.lookupDebug?.exactHydrated) { refreshQplResultCard(idx); return; }
+  const btn = document.querySelector(`.qpl-hero-card[data-qpl-idx="${idx}"] .ppt-get-prices-btn`);
+  if(btn) { btn.textContent = 'LOADING...'; btn.disabled = true; }
+  const existingId = r.tcgPlayerId || r.tcgplayerId || '';
+  let exact = null;
+  try {
+    exact = existingId
+      ? await fetchPokemonPriceTrackerExactDetail(existingId, r.language || 'english')
+      : await resolveExactPokemonPriceTrackerCard(r, qplLastSearch);
+  } catch(e) { exact = null; }
+  if(exact) {
+    qplResults[idx] = { ...pokemonPriceTrackerCardToQplRow(exact, qplLastSearch, r.lookupDebug?.parseTitle || null), lookupDebug:{ ...(r.lookupDebug || {}), ...(exact.lookupDebug || {}), exactHydrated:true }, confidence:Math.max(Number(r.confidence || 0), 98) };
+    await cachePokemonPriceTrackerCard(qplResults[idx], exact).catch(() => {});
+    refreshQplResultCard(idx);
+  } else {
+    if(btn) { btn.textContent = 'GET PRICES'; btn.disabled = false; }
+  }
+}
+
 async function selectQuickLookupResult(idx){
   let r = qplResults[idx];
   if(r && qplResultCategoryKey(r) === 'pokemon' && !r.pokemonPriceTracker?.lookupDebug?.exactHydrated && navigator.onLine && !pokemonPriceTrackerQuotaBlocked()) {
+    // Show loading state on the SELECT button
+    const selectBtn = document.querySelector(`.qpl-hero-card[data-qpl-idx="${idx}"] .qpl-select-btn`);
+    if(selectBtn) { selectBtn.textContent = 'LOADING...'; selectBtn.disabled = true; }
     const existingId = r.tcgPlayerId || r.tcgplayerId || '';
     let exact = null;
     if(existingId) {
