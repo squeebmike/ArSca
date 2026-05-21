@@ -11212,7 +11212,7 @@ function showAdminDebug(){
 function normalizeChartPoints(rows){
   return (Array.isArray(rows) ? rows : []).map(p => ({
     date:p.date || p.timestamp || p.recordedAt || p[0] || '',
-    price:Number(p.price ?? p.marketPrice ?? p.value ?? p.avg ?? p[1] ?? 0),
+    price:Number(p.price ?? p.marketPrice ?? p.market ?? p.value ?? p.avg ?? p[1] ?? 0),
     volume:Number(p.volume ?? p.sales ?? p.count ?? 0)
   })).filter(p => p.date && p.price > 0);
 }
