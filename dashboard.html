@@ -11471,7 +11471,7 @@ async function parsePokemonPriceTrackerTitle(row = {}, query = qplLastSearch){
 
 async function resolveExactPokemonPriceTrackerCard(row = {}, query = qplLastSearch){
   const cached = await cachedPokemonPriceTrackerCard(row);
-  if(cached && pokemonPriceCacheFresh(cached)) {
+  if(cached && pokemonPriceCacheFresh(cached) && cached.lookupDebug?.exactHydrated) {
     cached.lookupDebug = { ...(cached.lookupDebug || {}), normalizedQuery:pokemonLookupParts(row, query).normalizedQuery, cache:'hit', path:'indexeddb.exact.24h' };
     return cached;
   }
@@ -11495,12 +11495,18 @@ async function resolveExactPokemonPriceTrackerCard(row = {}, query = qplLastSear
     };
   }
   const exactCached = await cachedPokemonPriceTrackerCard(exactRow);
-  if(exactCached && pokemonPriceCacheFresh(exactCached)) {
+  if(exactCached && pokemonPriceCacheFresh(exactCached) && exactCached.lookupDebug?.exactHydrated) {
     exactCached.lookupDebug = { ...(exactCached.lookupDebug || {}), normalizedQuery:pokemonLookupParts(exactRow, query).normalizedQuery, parseTitle:parsed, cache:'hit', path:'indexeddb.tcgPlayerId.24h' };
     return exactCached;
   }
   if(!navigator.onLine || pokemonPriceTrackerQuotaBlocked()) return null;
-  const card = await fetchPokemonPriceTrackerCard(exactRow);
+  let card = await fetchPokemonPriceTrackerCard(exactRow);
+  // If search path found a card with tcgPlayerId but we didn't do exact detail,
+  // upgrade now to get all conditions (not just NM from search results).
+  if(card?.tcgPlayerId && !card.lookupDebug?.exactHydrated && !pokemonPriceTrackerId(exactRow)) {
+    const exactCard = await fetchPokemonPriceTrackerExactDetail(card.tcgPlayerId, pokemonLookupParts(exactRow, query).language).catch(() => null);
+    if(exactCard) card = exactCard;
+  }
   if(card) {
     card.lookupDebug = { ...(card.lookupDebug || {}), parseTitle:parsed, exactConfidence:parsed?.confidence || 0 };
     await cachePokemonPriceTrackerCard(exactRow, card).catch(() => {});
@@ -11598,7 +11604,7 @@ async function hydratePokemonPriceTrackerPricing(idx, rerender = true){
       applyQplSelectedVariant(row);
       if(rerender) updateQplResultCard(idx);
     }
-    if(cached && pokemonPriceCacheFresh(cached)) return;
+    if(cached && pokemonPriceCacheFresh(cached) && cached.lookupDebug?.exactHydrated) return;
     if(!navigator.onLine || pokemonPriceTrackerQuotaBlocked()) {
       if(pokemonPriceTrackerQuotaBlocked()) row.pokemonPriceTrackerError = 'Quota Exhausted - using cached PokemonPriceTracker data';
       return;
