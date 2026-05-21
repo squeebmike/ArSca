@@ -10243,6 +10243,76 @@ function pokemonPptAllHistoryChartHtml(r = {}, idx = 0){
   </div>`;
 }
 
+function pokemonPptSelectedInlinePanelHtml(r = {}, idx = 0){
+  if(!r.pokemonPriceTracker) return '';
+  const selectedCond = r.selectedCondition || r.condition || 'NM';
+  const selectedFinish = normalizeQplFinish(r.selectedFinish || r.finish || 'normal');
+
+  // --- Condition price matrix ---
+  const matrixRows = pokemonPptMatrixRows(r);
+  let matrixHtml = '';
+  if(matrixRows.length){
+    const trs = matrixRows.map(mr => {
+      const sel = mr.condition === selectedCond && mr.finish === selectedFinish;
+      const priceStr = mr.price > 0 ? '$' + mr.price.toFixed(2) : '-';
+      return `<tr style="${sel ? 'background:rgba(60,200,255,.12)' : ''}">
+        <td style="padding:5px 8px;font-weight:${sel?'700':'400'};color:${sel?'var(--blue)':'var(--text)'}">${escHtml(mr.condition)}</td>
+        <td style="padding:5px 8px;color:var(--dim)">${escHtml(mr.finishLabel)}</td>
+        <td style="padding:5px 8px;text-align:right;color:${mr.price>0?'var(--gold)':'var(--dim)'}">${priceStr}</td>
+        <td style="padding:5px 8px;text-align:right;font-size:10px;color:var(--dim)">${escHtml(mr.source)}</td>
+      </tr>`;
+    }).join('');
+    matrixHtml = `<div style="margin:12px 0 8px">
+      <div style="font-family:'Orbitron',monospace;color:var(--g);font-size:11px;margin-bottom:6px;letter-spacing:.05em">AVAILABLE PRICES · PokemonPriceTracker</div>
+      <table style="width:100%;border-collapse:collapse;font-size:12px">
+        <thead><tr style="color:var(--dim);font-size:10px;border-bottom:1px solid var(--border)">
+          <th style="text-align:left;padding:4px 8px;font-weight:400">Condition</th>
+          <th style="text-align:left;padding:4px 8px;font-weight:400">Finish</th>
+          <th style="text-align:right;padding:4px 8px;font-weight:400">Price</th>
+          <th style="text-align:right;padding:4px 8px;font-weight:400">Source</th>
+        </tr></thead>
+        <tbody>${trs}</tbody>
+      </table>
+    </div>`;
+  }
+
+  // --- Mini sparkline chart (selected condition/finish series) ---
+  const series = pokemonPptAllHistorySeries(r);
+  let chartHtml = '';
+  if(series.length){
+    const sel = series.find(s => s.selected) || series[0];
+    const vals = sel.points.map(p => ({
+      price: Number(p.price ?? p.marketPrice ?? p.value ?? p[1] ?? 0),
+      date: p.date || p.timestamp || p[0] || ''
+    })).filter(p => p.price > 0);
+    if(vals.length){
+      const prices = vals.map(v => v.price);
+      const max = Math.max(...prices), min = Math.min(...prices);
+      const bars = vals.map(p => {
+        const h = max === min ? 40 : Math.max(4, Math.round(((p.price - min)/(max - min)) * 52 + 8));
+        return `<span title="${escHtml(p.date)} $${p.price.toFixed(2)}" style="display:inline-flex;align-items:flex-end;flex:1;min-width:3px;height:${h}px;background:var(--blue);border-radius:2px;opacity:.85"></span>`;
+      }).join('');
+      const first = vals[0].price, last = vals[vals.length-1].price, change = last - first;
+      chartHtml = `<div style="margin:8px 0 12px;border:1px solid rgba(60,200,255,.2);border-radius:8px;padding:10px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:6px">
+          <div style="font-family:'Orbitron',monospace;color:var(--blue);font-size:11px;letter-spacing:.05em">PRICE TREND · ${escHtml(sel.label)}</div>
+          <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+            ${first&&last ? `<span class="qpl-badge ${change>=0?'good':'bad'}">${change>=0?'+':''}$${Math.abs(change).toFixed(2)}</span>` : ''}
+            <button class="hbtn" style="min-height:28px;font-size:10px;padding:4px 10px" onclick="openQplChartModal(${idx})">ALL CONDITIONS</button>
+          </div>
+        </div>
+        <div style="display:flex;gap:1px;align-items:flex-end;height:64px">${bars}</div>
+        <div style="margin-top:5px;font-size:9px;color:var(--dim)">${vals.length} data points · ${escHtml(vals[0]?.date?.slice(0,10)||'')} → ${escHtml(vals[vals.length-1]?.date?.slice(0,10)||'')}</div>
+      </div>`;
+    }
+  }
+  if(!chartHtml){
+    chartHtml = `<button class="hbtn" style="margin:8px 0 12px;width:100%;color:var(--blue)" onclick="openQplChartModal(${idx})">OPEN PRICE CHART</button>`;
+  }
+
+  return matrixHtml + chartHtml;
+}
+
 function pokemonPptOptionValues(row = {}, key = 'condition'){
   const rows = pokemonPptMatrixRows(row);
   if(!rows.length) return [];
@@ -12530,6 +12600,7 @@ async function selectQuickLookupResult(idx){
       </div>
     </div>
     ${isPokemonLookupIntent(r.name || '', r.category) || qplResultCategoryKey(r) === 'pokemon' ? `<div id="pokemon-comps-panel-${idx}" class="pokemon-comps-panel">Loading cached Pokemon comps...</div>` : ''}
+    ${qplResultCategoryKey(r) === 'pokemon' && r.pokemonPriceTracker ? pokemonPptSelectedInlinePanelHtml(r, idx) : ''}
     <div style="display:grid;grid-template-columns:1fr 140px 110px;gap:9px;margin-bottom:9px">
       <input id="qpl-edit-name" value="${escHtml(r.name)}" style="background:var(--surf);border:1px solid var(--border);color:var(--text);padding:12px;border-radius:8px;font-size:14px;min-height:48px">
       <select id="qpl-edit-category" style="background:var(--surf);border:1px solid var(--border);color:var(--text);padding:12px;border-radius:8px;font-size:14px;min-height:48px">
