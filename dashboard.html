@@ -2956,6 +2956,11 @@ async function renderOfflineCachePanel(status = ''){
       <label><input type="checkbox" id="pokemon-cache-slabs-toggle" ${localStorage.getItem('pokemon_cache_slabs') !== '0' ? 'checked' : ''} onchange="localStorage.setItem('pokemon_cache_slabs',this.checked?'1':'0')"> Cache Slab Guides</label>
     </div>
     <div id="offline-cache-status" style="font-family:monospace;font-size:10px;color:${s.lastSyncError?'var(--red)':'var(--dim)'};line-height:1.5">${escHtml(status || s.lastSyncError || 'Pokemon cache is ready for show mode.')}</div>`;
+  // Append image catalog section async
+  pokemonImageCatalogPanelHtml().then(html => {
+    const b = document.getElementById('offline-cache-body');
+    if(b && !b.querySelector('#pokemon-catalog-sync-btn')) b.insertAdjacentHTML('beforeend', html);
+  }).catch(() => {});
 }
 
 async function syncPokemonQueries(queries = [], label = 'Pokemon cache'){
@@ -3021,6 +3026,264 @@ async function clearPokemonExactCache(){
   await pokemonDbPut('meta', { key:'pokemonExactCacheClearedAt', value:new Date().toISOString() });
   renderOfflineCachePanel('Pokemon exact card cache cleared on this device.');
   if(document.getElementById('pricecharting-data-body')) renderPriceChartingDataPanel('Pokemon exact cache cleared.');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// POKEMON IMAGE CATALOG  (Pokemon TCG API → local IndexedDB)
+// Separate DB from the search/price cache — catalog of all cards.
+// ═══════════════════════════════════════════════════════════════
+const POKEMON_CATALOG_DB_NAME = 'walkoff_pokemon_catalog_v1';
+let _pokemonCatalogDbPromise = null;
+let _pokemonCatalogSyncStop = false;
+let _pokemonCatalogCache = null; // in-memory LRU (Map) for recent lookups
+
+function pokemonCatalogOpenDb(){
+  if(_pokemonCatalogDbPromise) return _pokemonCatalogDbPromise;
+  _pokemonCatalogDbPromise = new Promise((resolve, reject) => {
+    const req = indexedDB.open(POKEMON_CATALOG_DB_NAME, 1);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if(!db.objectStoreNames.contains('catalog')){
+        const s = db.createObjectStore('catalog', { keyPath:'id' });
+        s.createIndex('name', 'normalizedName');
+        s.createIndex('lookupKey', 'lookupKey');
+        s.createIndex('setId', 'setId');
+      }
+      if(!db.objectStoreNames.contains('meta')) db.createObjectStore('meta', { keyPath:'key' });
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => { _pokemonCatalogDbPromise = null; reject(req.error); };
+  });
+  return _pokemonCatalogDbPromise;
+}
+
+async function pokemonCatalogDbCount(){
+  try {
+    const db = await pokemonCatalogOpenDb();
+    return new Promise((resolve, reject) => {
+      const req = db.transaction('catalog','readonly').objectStore('catalog').count();
+      req.onsuccess = () => resolve(req.result || 0);
+      req.onerror = () => reject(req.error);
+    });
+  } catch(e){ return 0; }
+}
+
+async function pokemonCatalogMetaGet(key){
+  try {
+    const db = await pokemonCatalogOpenDb();
+    return new Promise((resolve, reject) => {
+      const req = db.transaction('meta','readonly').objectStore('meta').get(key);
+      req.onsuccess = () => resolve(req.result?.value ?? null);
+      req.onerror = () => reject(req.error);
+    });
+  } catch(e){ return null; }
+}
+
+async function pokemonCatalogMetaPut(key, value){
+  const db = await pokemonCatalogOpenDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('meta','readwrite');
+    tx.objectStore('meta').put({ key, value });
+    tx.oncomplete = resolve;
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+async function pokemonCatalogDbClearAll(){
+  const db = await pokemonCatalogOpenDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(['catalog','meta'],'readwrite');
+    tx.objectStore('catalog').clear();
+    tx.objectStore('meta').clear();
+    tx.oncomplete = resolve;
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+// Build the lookup key used for name+number index
+function pokemonCatalogLookupKey(name, number){
+  return normalizePokemonText(String(name||'')).trim() + '|' + String(number||'').replace(/\s+/g,'').toLowerCase();
+}
+
+// Async lookup: find catalog record for a card row (by name+number)
+async function lookupPokemonCatalogCard(r){
+  if(!r || !r.name) return null;
+  const key = pokemonCatalogLookupKey(r.name, r.card_number || r.cardNumber || '');
+  if(!_pokemonCatalogCache) _pokemonCatalogCache = new Map();
+  if(_pokemonCatalogCache.has(key)) return _pokemonCatalogCache.get(key);
+  try {
+    const db = await pokemonCatalogOpenDb();
+    const result = await new Promise((resolve, reject) => {
+      const req = db.transaction('catalog','readonly').objectStore('catalog').index('lookupKey').get(key);
+      req.onsuccess = () => resolve(req.result || null);
+      req.onerror = () => reject(req.error);
+    });
+    // Limit cache size to 500 entries
+    if(_pokemonCatalogCache.size > 500) _pokemonCatalogCache.delete(_pokemonCatalogCache.keys().next().value);
+    _pokemonCatalogCache.set(key, result);
+    return result;
+  } catch(e){ return null; }
+}
+
+// Get best image URL for a card from catalog (null if not found)
+async function resolvePokemonCatalogImageUrl(r, size){
+  size = size || 'small';
+  const cat = await lookupPokemonCatalogCard(r).catch(() => null);
+  if(!cat) return null;
+  return size === 'large' ? (cat.imageLarge || cat.imageSmall || null) : (cat.imageSmall || cat.imageLarge || null);
+}
+
+// After rendering result cards, async-swap in catalog images where present
+function resolvePokemonCatalogImagesForVisibleCards(){
+  const cards = document.querySelectorAll('.qpl-hero-card[data-qpl-idx]');
+  cards.forEach(card => {
+    const idx = parseInt(card.getAttribute('data-qpl-idx'), 10);
+    const r = qplResults[idx];
+    if(!r || qplResultCategoryKey(r) !== 'pokemon') return;
+    const img = card.querySelector('.qpl-img-shell img');
+    if(!img) return;
+    resolvePokemonCatalogImageUrl(r, 'small').then(url => {
+      if(url && img && !img.dataset.catalogResolved) {
+        img.dataset.catalogResolved = '1';
+        if(!img.src || img.src === window.location.href) img.src = url; // only set if missing
+        img.onerror = () => { img.onerror = null; if(img.dataset.origSrc) img.src = img.dataset.origSrc; };
+        if(!img.dataset.origSrc) img.dataset.origSrc = img.src;
+      }
+    }).catch(() => {});
+  });
+}
+
+// Main sync — pages through the Pokemon TCG API and stores metadata+URLs
+async function syncPokemonImageCatalog(){
+  if(!navigator.onLine){ toast_dash('Need internet to sync Pokemon image catalog.'); return; }
+  _pokemonCatalogSyncStop = false;
+  _pokemonCatalogCache = null; // clear in-memory cache so stale hits are gone
+
+  const statusEl = document.getElementById('pokemon-catalog-status');
+  const barEl = document.getElementById('pokemon-catalog-bar');
+  const countEl = document.getElementById('pokemon-catalog-count');
+  const syncBtn = document.getElementById('pokemon-catalog-sync-btn');
+  const stopBtn = document.getElementById('pokemon-catalog-stop-btn');
+  if(syncBtn){ syncBtn.disabled = true; syncBtn.textContent = 'SYNCING...'; }
+  if(stopBtn){ stopBtn.style.display = ''; stopBtn.disabled = false; stopBtn.textContent = 'STOP'; }
+
+  const API = 'https://api.pokemontcg.io/v2/cards';
+  const PAGE_SIZE = 250;
+  const FIELDS = 'id,name,number,rarity,images,tcgplayer,set';
+  let page = 1, totalSaved = 0, totalCount = 0, stopped = false;
+
+  const setStatus = (msg, pct) => {
+    if(statusEl) statusEl.textContent = msg;
+    if(barEl && pct != null) barEl.style.width = Math.min(100, pct) + '%';
+  };
+
+  try {
+    while(true){
+      if(_pokemonCatalogSyncStop){ stopped = true; break; }
+      setStatus(`Fetching page ${page}… (${totalSaved} saved so far)`, totalCount ? totalSaved/totalCount*100 : 0);
+      const url = `${API}?page=${page}&pageSize=${PAGE_SIZE}&select=${encodeURIComponent(FIELDS)}`;
+      const res = await fetch(url, { cache:'no-store' });
+      if(!res.ok) throw new Error(`Pokemon TCG API HTTP ${res.status} on page ${page}`);
+      const json = await res.json();
+      const cards = Array.isArray(json.data) ? json.data : [];
+      if(totalCount === 0) totalCount = json.totalCount || 0;
+      if(!cards.length) break;
+
+      // Batch write to IDB in one transaction
+      const db = await pokemonCatalogOpenDb();
+      await new Promise((resolve, reject) => {
+        const tx = db.transaction('catalog','readwrite');
+        const store = tx.objectStore('catalog');
+        const now = new Date().toISOString();
+        for(const c of cards){
+          const normName = normalizePokemonText(c.name || '');
+          const normNum = String(c.number || '').replace(/\s+/g,'').toLowerCase();
+          store.put({
+            id: c.id || '',
+            name: c.name || '',
+            normalizedName: normName,
+            number: c.number || '',
+            rarity: c.rarity || '',
+            setId: c.set?.id || '',
+            setName: c.set?.name || '',
+            imageSmall: c.images?.small || '',
+            imageLarge: c.images?.large || '',
+            tcgplayerUrl: c.tcgplayer?.url || '',
+            lookupKey: normName + '|' + normNum,
+            syncedAt: now
+          });
+        }
+        tx.oncomplete = resolve;
+        tx.onerror = () => reject(tx.error);
+      });
+
+      totalSaved += cards.length;
+      const pct = totalCount ? Math.round(totalSaved / totalCount * 100) : 0;
+      if(countEl) countEl.textContent = totalSaved.toLocaleString() + (totalCount ? ' / ' + totalCount.toLocaleString() : '') + ' cards';
+      setStatus(`Page ${page} done — ${totalSaved.toLocaleString()} cards saved (${pct}%)`, pct);
+
+      if(cards.length < PAGE_SIZE) break; // last page
+      page++;
+      await new Promise(r => setTimeout(r, 80)); // gentle rate-limit pause
+    }
+
+    const now = new Date().toISOString();
+    await pokemonCatalogMetaPut('lastImageCatalogSyncAt', now);
+    await pokemonCatalogMetaPut('imageCatalogSavedCount', totalSaved);
+    setStatus(stopped ? `Stopped — ${totalSaved.toLocaleString()} cards saved.` : `✓ Complete — ${totalSaved.toLocaleString()} cards saved.`, 100);
+  } catch(e){
+    setStatus('Error: ' + e.message, null);
+  }
+
+  if(syncBtn){ syncBtn.disabled = false; syncBtn.textContent = 'SYNC POKEMON IMAGES'; }
+  if(stopBtn){ stopBtn.style.display = 'none'; }
+  // Refresh panel stats
+  const lastSyncEl = document.getElementById('pokemon-catalog-last-sync');
+  const totalCountEl = document.getElementById('pokemon-catalog-total');
+  if(lastSyncEl) lastSyncEl.textContent = new Date().toLocaleString();
+  const fresh = await pokemonCatalogDbCount().catch(() => 0);
+  if(totalCountEl) totalCountEl.textContent = fresh.toLocaleString();
+  if(countEl) countEl.textContent = fresh.toLocaleString();
+}
+
+function stopPokemonImageCatalogSync(){
+  _pokemonCatalogSyncStop = true;
+  const btn = document.getElementById('pokemon-catalog-stop-btn');
+  if(btn){ btn.textContent = 'STOPPING…'; btn.disabled = true; }
+}
+
+async function clearPokemonImageCatalog(){
+  if(!confirm('Clear the local Pokemon image catalog? (~20k entries will be deleted. You can re-sync anytime.)')) return;
+  await pokemonCatalogDbClearAll();
+  _pokemonCatalogCache = null;
+  const countEl = document.getElementById('pokemon-catalog-total');
+  if(countEl) countEl.textContent = '0';
+  const statusEl = document.getElementById('pokemon-catalog-status');
+  if(statusEl) statusEl.textContent = 'Image catalog cleared.';
+  renderOfflineCachePanel('Pokemon image catalog cleared.');
+}
+
+// Render the Image Catalog sub-panel HTML (called inside renderOfflineCachePanel)
+async function pokemonImageCatalogPanelHtml(){
+  const count = await pokemonCatalogDbCount().catch(() => 0);
+  const lastSync = await pokemonCatalogMetaGet('lastImageCatalogSyncAt').catch(() => null);
+  return `<div style="margin-top:14px;border-top:1px solid var(--border);padding-top:12px">
+    <div style="font-family:'Orbitron',monospace;color:var(--blue);font-size:11px;letter-spacing:.05em;margin-bottom:8px">POKEMON IMAGE CATALOG · Pokemon TCG API</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:10px">
+      <div class="item-metric"><div class="metric-label">Cached Cards</div><div class="metric-val" id="pokemon-catalog-total" style="font-size:18px">${count.toLocaleString()}</div></div>
+      <div class="item-metric"><div class="metric-label">Last Image Sync</div><div class="metric-val" id="pokemon-catalog-last-sync" style="font-size:11px">${lastSync ? new Date(lastSync).toLocaleString() : 'Never'}</div></div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;align-items:center">
+      <button id="pokemon-catalog-sync-btn" class="hbtn" style="color:var(--blue)" onclick="syncPokemonImageCatalog()">SYNC POKEMON IMAGES</button>
+      <button id="pokemon-catalog-stop-btn" class="hbtn" style="color:var(--gold);display:none" onclick="stopPokemonImageCatalogSync()">STOP</button>
+      <button class="hbtn" style="color:var(--red)" onclick="clearPokemonImageCatalog()">CLEAR IMAGE CATALOG</button>
+    </div>
+    <div style="background:rgba(255,255,255,.06);border-radius:4px;height:6px;margin-bottom:6px;overflow:hidden">
+      <div id="pokemon-catalog-bar" style="height:100%;background:var(--blue);width:0%;transition:width .3s;border-radius:4px"></div>
+    </div>
+    <div id="pokemon-catalog-count" style="font-family:monospace;font-size:10px;color:var(--dim);margin-bottom:4px">${count ? count.toLocaleString() + ' cards cached' : 'Not yet synced — click Sync to download ~20k card metadata + image URLs'}</div>
+    <div id="pokemon-catalog-status" style="font-family:monospace;font-size:10px;color:var(--dim);min-height:16px"></div>
+  </div>`;
 }
 
 function ensurePriceChartingDataPanel(backoffice){
@@ -12304,6 +12567,7 @@ function renderQuickLookupResults(results){
     </div>
     ${fallbackHtml}`;
   setTimeout(() => hydrateVisiblePokemonPriceTrackerResults(primary.map(x => x.idx)), 0);
+  setTimeout(() => resolvePokemonCatalogImagesForVisibleCards(), 200);
 }
 
 function quickLookupResultCard(r, idx){
@@ -12651,6 +12915,7 @@ function refreshQplResultCard(idx){
   const tmp = document.createElement('div');
   tmp.innerHTML = quickLookupResultCard(qplResults[idx], idx);
   card.replaceWith(tmp.firstElementChild);
+  setTimeout(() => resolvePokemonCatalogImagesForVisibleCards(), 150);
 }
 
 // Fetch PPT exact detail for a result card and re-render it inline (no navigation)
@@ -12702,6 +12967,12 @@ async function selectQuickLookupResult(idx){
   }
   r = applyQplSelectedVariant(r);
   if(!r) return;
+  // If no image yet, try to fill from catalog (async, updates img after render)
+  if(!r.imageUrl && qplResultCategoryKey(r) === 'pokemon'){
+    resolvePokemonCatalogImageUrl(r, 'large').then(url => {
+      if(url){ const img = document.querySelector('.qpl-selected-card img'); if(!img){ const shell = document.querySelector('.qpl-selected-card .qpl-no-img'); if(shell){ const i = document.createElement('img'); i.src = url; i.alt = r.name || ''; i.onclick = () => openQplImageLightbox(idx); shell.closest('.qpl-img-shell')?.replaceWith(i); } } }
+    }).catch(() => {});
+  }
   const el = document.getElementById('qpl-result');
   const cat = normalizeQuickCategory(r.category);
   el.innerHTML = `<div class="qpl-selected-card" data-qpl-idx="${idx}">
