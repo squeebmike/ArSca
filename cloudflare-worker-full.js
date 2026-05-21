@@ -2022,6 +2022,7 @@ export default {
       let data;
       try { data = JSON.parse(text); } catch (e) { data = { raw: text.slice(0, 300) }; }
       const cards = Array.isArray(data?.data) ? data.data
+        : (data?.data && typeof data.data === 'object') ? [data.data]
         : Array.isArray(data?.cards) ? data.cards
         : Array.isArray(data?.results) ? data.results
         : data?.card ? [data.card]

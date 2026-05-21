@@ -11250,8 +11250,13 @@ function pokemonPriceTrackerId(row = {}){
 }
 
 function pokemonPriceTrackerCardsFromPayload(data = {}){
-  const rows = data.cards || data.matches || data.data || data.results || [];
+  const rows = (data.cards?.length ? data.cards : null)
+    || data.matches
+    || data.data
+    || data.results
+    || [];
   if(Array.isArray(rows)) return rows;
+  if(rows && typeof rows === 'object') return [rows];
   if(data.card && typeof data.card === 'object') return [data.card];
   return [];
 }
