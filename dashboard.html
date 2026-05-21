@@ -10688,6 +10688,40 @@ function buildQplVariantsFromPrices(priceMap, productId = ''){
   return variants;
 }
 
+function pokemonTcgIoBuildNmVariants(priceMap, productId = ''){
+  // For Pokemon (TCG.io) source cards only: build real NM variants per finish.
+  // LP/MP/HP/DMG must come from PokemonPriceTracker after hydration — never estimate them.
+  // This prevents estimated "No Real Price" rows from blocking real PPT condition prices.
+  const variants = [];
+  Object.entries(priceMap || {}).forEach(([finishRaw, p], i) => {
+    const finish = normalizeQplFinish(finishRaw);
+    const base = Number(p?.market || p?.mid || p?.low || 0) || 0;
+    if(!base) return;
+    variants.push({
+      skuId:`${productId || 'product'}-${finish}-NM`,
+      productConditionId:`${productId || 'pc'}-${i}-NM`,
+      condition:'NM',
+      finish,
+      foilType:finish,
+      language:'English',
+      printing:qplFinishLabel(finish),
+      marketPrice:base,
+      productLevelMarketPrice:base,
+      estimatedMarketPrice:null,
+      lowPrice:Number(p?.low || 0) || null,
+      midPrice:Number(p?.mid || 0) || null,
+      highPrice:Number(p?.high || 0) || null,
+      directLowPrice:Number(p?.directLow || 0) || null,
+      lowestListingPrice:Number(p?.low || 0) || null,
+      recentSoldPrice:null,
+      lastUpdated:null,
+      priceConfidence:'medium',
+      priceSource:'PokemonTCG market',
+    });
+  });
+  return variants;
+}
+
 function qplSelectedVariant(r){
   if(!r?.availableVariants?.length) return null;
   const condition = r.selectedCondition || r.condition || 'NM';
@@ -11964,7 +11998,7 @@ async function fetchPokemonCatalog(q){
           matchWhy:hit.why,
           raw:c,
           productId:c.id || '',
-          availableVariants:buildQplVariantsFromPrices(prices, c.id || ''),
+          availableVariants:pokemonTcgIoBuildNmVariants(prices, c.id || ''),
           extraInfo:{ productLine:'Pokemon', categoryName:'Pokemon', releaseDate:c.set?.releaseDate || '' },
         });
       });
