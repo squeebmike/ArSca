@@ -12494,11 +12494,19 @@ async function verifyQplPsaCert(idx){
 
 async function selectQuickLookupResult(idx){
   let r = qplResults[idx];
-  if(r && qplResultCategoryKey(r) === 'pokemon' && !r.pokemonPriceTracker?.lookupDebug?.exactHydrated && (r.tcgPlayerId || r.tcgplayerId) && navigator.onLine && !pokemonPriceTrackerQuotaBlocked()) {
-    const cachedExact = await cachedPokemonPriceTrackerCard(r).catch(() => null);
-    const exact = cachedExact && pokemonPriceCacheFresh(cachedExact) && pokemonHydratedPriceMatrixReady(cachedExact)
-      ? (cachedExact.lookupDebug = { ...(cachedExact.lookupDebug || {}), exactHydrated:true, hydratedFromCache:true, exactCacheVersion:POKEMON_EXACT_CACHE_VERSION }, cachedExact)
-      : await fetchPokemonPriceTrackerExactDetail(r.tcgPlayerId || r.tcgplayerId, r.language || 'english').catch(() => null);
+  if(r && qplResultCategoryKey(r) === 'pokemon' && !r.pokemonPriceTracker?.lookupDebug?.exactHydrated && navigator.onLine && !pokemonPriceTrackerQuotaBlocked()) {
+    const existingId = r.tcgPlayerId || r.tcgplayerId || '';
+    let exact = null;
+    if(existingId) {
+      // Fast path: we already have the tcgPlayerId — just do exact detail.
+      const cachedExact = await cachedPokemonPriceTrackerCard(r).catch(() => null);
+      exact = cachedExact && pokemonPriceCacheFresh(cachedExact) && pokemonHydratedPriceMatrixReady(cachedExact)
+        ? (cachedExact.lookupDebug = { ...(cachedExact.lookupDebug || {}), exactHydrated:true, hydratedFromCache:true, exactCacheVersion:POKEMON_EXACT_CACHE_VERSION }, cachedExact)
+        : await fetchPokemonPriceTrackerExactDetail(existingId, r.language || 'english').catch(() => null);
+    } else {
+      // No tcgPlayerId yet — run full resolve: PPT search finds the id, then exact detail.
+      exact = await resolveExactPokemonPriceTrackerCard(r, qplLastSearch).catch(() => null);
+    }
     if(exact) {
       qplResults[idx] = { ...pokemonPriceTrackerCardToQplRow(exact, qplLastSearch, r.lookupDebug?.parseTitle || null), lookupDebug:{ ...(r.lookupDebug || {}), ...(exact.lookupDebug || {}), exactHydrated:true }, confidence:Math.max(Number(r.confidence || 0), 98), autoSelect:true };
       await cachePokemonPriceTrackerCard(qplResults[idx], exact).catch(() => {});
