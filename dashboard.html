@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.05.20.06-pokemon-v2-core">
+<meta name="version" content="2026.05.22.01-comics-fix">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -533,7 +533,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
 
 <header>
   <div class="hdr">
-    <div class="logo">WALK-OFF <span>DASHBOARD · Branch: pokemon-v2-core · v2026.05.20.06-pokemon-v2-core</span></div>
+    <div class="logo">WALK-OFF <span>DASHBOARD · v2026.05.22.01-comics-fix</span></div>
     <div class="hdr-right">
       <div id="v2-branch-stamp" class="v2-branch-stamp" data-branch-name="pokemon-v2-core">Branch: pokemon-v2-core · v2026.05.20.06-pokemon-v2-core</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
@@ -1445,7 +1445,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.05.21.01-pokemon-v2-core';
+const APP_VERSION = '2026.05.22.01-comics-fix';
 const branchName = 'pokemon-v2-core';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
 const POKEMON_EXACT_CACHE_VERSION = 'pokemon-exact-v3-price-matrix';
@@ -11493,6 +11493,7 @@ async function fetchPriceChartingCsvCatalog(q, cat){
     source:'pricecharting_csv',
     name:m.productName || q,
     category:m.csvCategory || m.consoleName || cat || 'Collectibles',
+    csvCategory:pcCat || m.csvCategory || '',
     set:m.consoleName || '',
     year:m.releaseDate ? String(m.releaseDate).slice(0,4) : '',
     variant:m.genre || '',
@@ -11501,7 +11502,7 @@ async function fetchPriceChartingCsvCatalog(q, cat){
     market:Number(m.prices?.ungraded || 0),
     low:Number(m.retail?.looseBuy || 0),
     high:Number(m.retail?.looseSell || m.prices?.psa10 || 0),
-    imageUrl:m.imageUrl || '',
+    imageUrl:(()=>{ const raw=m.imageUrl||m['image-url']||m.image||m.image_url||''; return /^\/\//.test(raw)?'https:'+raw:/^\//.test(raw)?'https://www.pricecharting.com'+raw:raw; })(),
     priceSource:'PriceCharting CSV guide',
     note:'Cached PriceCharting guide value. Current guide data only, not sold comps.',
     confidence:m.confidence === 'high' ? 90 : m.confidence === 'medium' ? 72 : 55,
@@ -11527,13 +11528,14 @@ async function fetchPriceChartingLiveCatalog(q, cat){
     source:'PriceCharting',
     name:m.productName || q,
     category:m.consoleName || cat || 'Collectibles',
+    csvCategory:pcCat || '',
     set:m.consoleName || '',
     year:m.releaseDate ? String(m.releaseDate).slice(0,4) : '',
     variant:m.genre || '',
     card_number:'',
     condition:'NM',
     market:Number(m.prices?.ungraded || 0),
-    imageUrl:m.imageUrl || '',
+    imageUrl:(()=>{ const raw=m.imageUrl||m['image-url']||m.image||m.image_url||''; return /^\/\//.test(raw)?'https:'+raw:/^\//.test(raw)?'https://www.pricecharting.com'+raw:raw; })(),
     priceSource:Number(m.prices?.ungraded || 0) ? 'PriceCharting Guide Value' : 'No Guide Value Available',
     note:'Live PriceCharting guide value. Current guide data only, not sold comps.',
     confidence:m.confidence === 'high' ? 92 : m.confidence === 'medium' ? 74 : 56,
