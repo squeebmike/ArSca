@@ -1285,6 +1285,20 @@ body.show-mode .inv-sync-badge{display:none;}
       <div id="pokemon-offline-banner" class="pokemon-offline-banner"></div>
       <div id="mtg-offline-banner" class="mtg-offline-banner"></div>
       <div id="comics-offline-banner" class="comics-offline-banner"></div>
+      <!-- Comic helper row — shown only when Comics category is selected -->
+      <div id="qpl-comic-helper" style="display:none;margin-bottom:10px;padding:9px 12px;background:rgba(199,125,255,.06);border:1px solid rgba(199,125,255,.22);border-radius:8px">
+        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:6px">
+          <span style="font-family:'Orbitron',monospace;font-size:9px;color:var(--purple);letter-spacing:.05em">COMIC</span>
+          <input id="qpl-comic-issue" type="text" placeholder="Issue # (optional)" style="width:130px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:5px 9px;border-radius:6px;font-family:monospace;font-size:11px" oninput="buildComicQuery()" onkeydown="if(event.key==='Enter')runPriceLookup()">
+          <button class="hbtn" style="font-size:9px;padding:3px 9px" onclick="appendComicPublisher('Marvel')">Marvel</button>
+          <button class="hbtn" style="font-size:9px;padding:3px 9px" onclick="appendComicPublisher('DC')">DC</button>
+          <button class="hbtn" style="font-size:9px;padding:3px 9px" onclick="appendComicPublisher('Image')">Image</button>
+          <button class="hbtn" style="font-size:9px;padding:3px 9px" onclick="appendComicPublisher('Dark Horse')">Dark Horse</button>
+          <button class="hbtn" style="font-size:9px;padding:3px 9px" onclick="appendComicPublisher('IDW')">IDW</button>
+          <button class="hbtn" style="font-size:9px;padding:3px 9px;color:var(--dim)" onclick="clearComicHelper()">✕ clear</button>
+        </div>
+        <div style="font-family:monospace;font-size:10px;color:var(--dim);line-height:1.5">Variant tips: <em>newsstand · direct · foil · sketch · facsimile · incentive · 2nd print · virgin</em></div>
+      </div>
       <div id="qpl-result" style="font-family:var(--font-mono);font-size:10px;color:var(--dim);min-height:60px">Enter a card, comic, slab, game, or collectible to identify it and route it into Buy, Inventory, or Sale.</div>
       <div id="qpl-history" style="margin-top:10px;border-top:1px solid var(--border);padding-top:8px"></div>
     </div>
@@ -13769,6 +13783,87 @@ function isComicLookupIntent(q = '', cat = ''){
   return false;
 }
 
+function isComicLookupIntent(q = '', cat = ''){
+  if(qplCategoryKey(cat) === 'comic') return true;
+  const t = String(q || '').toLowerCase();
+  // Issue-number pattern: series name + #N or "issue N"
+  if(/\b(asm|uxm)\b/.test(t)) return true;
+  if(/\b(spawn|batman|superman|wonder\s?woman|x.?men|spider.?man|wolverine|hulk|thor|avengers|fantastic\s?four|daredevil|venom|carnage|deadpool|iron\s?man|captain\s?america|black\s?panther|action\s?comics|detective\s?comics|walking\s?dead|invincible|saga|hellboy|sandman|preacher|tmnt|teenage\s?mutant\s?ninja)\b.{0,40}#?\d{1,4}/i.test(t)) return true;
+  return false;
+}
+
+// ── Comic helper UI functions ─────────────────────────────────────
+function appendComicPublisher(pub){
+  const inp = document.getElementById('qpl-input');
+  if(!inp) return;
+  const cur = inp.value.trim();
+  const pubLower = pub.toLowerCase();
+  if(!cur.toLowerCase().includes(pubLower)){
+    inp.value = (cur ? cur + ' ' : '') + pub;
+  }
+  inp.focus();
+}
+
+function buildComicQuery(){
+  // Optionally append issue# from helper field to main search query
+  // Called on issue input — does NOT modify qpl-input, just ensures issue gets
+  // included when runPriceLookup fires (done in comicSearchQuery helper)
+}
+
+function comicSearchQuery(){
+  // Build combined query from qpl-input + optional issue field
+  const base = (document.getElementById('qpl-input')?.value || '').trim();
+  const issue = (document.getElementById('qpl-comic-issue')?.value || '').trim();
+  if(!issue) return base;
+  // Avoid duplicate issue numbers
+  if(/[#\d]/.test(base.slice(-10)) && /^\d/.test(issue)) return base;
+  const issueStr = /^\d/.test(issue) ? '#' + issue : issue;
+  return base.includes(issueStr) ? base : base + ' ' + issueStr;
+}
+
+function clearComicHelper(){
+  const inp = document.getElementById('qpl-comic-issue');
+  if(inp) inp.value = '';
+}
+
+// ── Comic inline price panel (shown in result card instead of slab controls) ─
+function qplComicPricePanel(r, idx){
+  const pc = r.pricecharting || {};
+  const cp = pc.comicPrices || {};
+  const demand = pc.demand || {};
+  const grades = [
+    { key:'ungraded', label:'Raw / Ungraded' },
+    { key:'grade4',   label:'CGC 4.0–4.5' },
+    { key:'grade6',   label:'CGC 6.0–6.5' },
+    { key:'grade8',   label:'CGC 8.0–8.5' },
+    { key:'grade9_2', label:'CGC 9.2' },
+    { key:'grade9_4', label:'CGC 9.4' },
+    { key:'grade9_8', label:'CGC 9.8' },
+    { key:'grade10',  label:'CGC 10 (Perfect)' },
+  ];
+  const rows = grades.map(g => {
+    const v = Number(cp[g.key] || 0);
+    return `<tr style="border-top:1px solid rgba(255,255,255,.05)">
+      <td style="padding:4px 8px;color:var(--dim)">${g.label}</td>
+      <td style="padding:4px 8px;text-align:right;color:${v?'var(--text)':'var(--dim)'};font-weight:${g.key==='ungraded'?'700':'400'}">${v ? '$'+v.toFixed(2) : '—'}</td>
+    </tr>`;
+  }).join('');
+  const anyPrice = grades.some(g => Number(cp[g.key] || 0) > 0);
+  const pcUrl = pc.url || pc.productUrl || '';
+  const vol = demand.salesVolume;
+  const genre = demand.genre || pc.genre || '';
+  return `<div style="margin-top:12px;border:1px solid rgba(199,125,255,.22);border-radius:10px;padding:12px;background:rgba(199,125,255,.04)">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:6px">
+      <div style="font-family:'Orbitron',monospace;font-size:10px;color:var(--purple);letter-spacing:.04em">PRICECHARTING GUIDE</div>
+      ${pcUrl ? `<a href="${escHtml(pcUrl)}" target="_blank" style="font-size:10px;color:var(--blue)">View →</a>` : ''}
+    </div>
+    ${anyPrice ? `<table style="width:100%;border-collapse:collapse;font-size:11px">${rows}</table>` : '<div style="color:var(--dim);font-size:11px">No guide pricing on PriceCharting yet for this comic.</div>'}
+    <div style="margin-top:8px;font-family:monospace;font-size:10px;color:var(--dim);line-height:1.5">
+      ${vol ? `Sales vol: ${vol} &nbsp;·&nbsp; ` : ''}${genre ? `Genre: ${escHtml(genre)} &nbsp;·&nbsp; ` : ''}Source: PriceCharting${pc.confidence ? ' · ' + escHtml(pc.confidence) + ' confidence' : ''}
+    </div>
+  </div>`;
+}
+
 function pokemonCardKey(row = {}, query = ''){
   const key = [
     'pokemon',
@@ -14393,8 +14488,10 @@ function debouncePriceLookup(){
 }
 
 async function runPriceLookup(){
-  const q = document.getElementById('qpl-input').value.trim();
+  // If comics selected, combine main input + optional issue# helper
+  const rawQ = document.getElementById('qpl-input').value.trim();
   const cat = document.getElementById('qpl-cat').value;
+  const q = qplCategoryKey(cat) === 'comic' ? (comicSearchQuery() || rawQ) : rawQ;
   const el = document.getElementById('qpl-result');
   if(!q || q.length < 3) return;
   const wantsPokemon = isPokemonLookupIntent(q, cat);
@@ -16123,6 +16220,7 @@ async function fetchSportsCardsProProduct(scpId){
 
 function qplQueryVariants(q, cat = ''){
   const intent = detectQuickQueryIntent(q, cat);
+  const wants = qplCategoryKey(cat);
   const clean = String(q || '').trim();
   const lower = clean.toLowerCase();
 
@@ -16139,6 +16237,32 @@ function qplQueryVariants(q, cat = ''){
       lower + ' issue',
       lower + ' marvel'
     );
+  }
+  // Comic-specific query expansion when category is forced to Comic
+  if(wants === 'comic' || isComicLookupIntent(q, cat)){
+    // Normalise issue number: "spawn 1" → "spawn #1", "spawn issue 1" → "spawn #1"
+    const issueNorm = lower
+      .replace(/\basm\b/g, 'amazing spider-man')
+      .replace(/\buxm\b/g, 'uncanny x-men')
+      .replace(/\bdetective\s?comics\b/gi, 'detective comics')
+      .replace(/\baction\s?comics\b/gi, 'action comics')
+      .replace(/\btmnt\b/g, 'teenage mutant ninja turtles')
+      .replace(/\bissue\s+(\d{1,4})\b/, '#$1')
+      .replace(/\bno\.?\s*(\d{1,4})\b/, '#$1')
+      .replace(/\s+(\d{1,4})(?:\s|$)/, ' #$1 ');
+    const noHash = lower.replace(/#(\d)/g, '$1');
+    if(issueNorm !== lower) variants.push(issueNorm.trim());
+    variants.push(noHash.trim()); // without # for broader match
+    // Ensure ' comic' suffix variant exists for disambiguation
+    if(!lower.includes('comic') && !lower.includes('comics')) variants.push(lower + ' comic');
+    // Publisher hints for known series without explicit publisher
+    const hasPublisher = /(marvel|dc comics|dc\b|image comics|image\b|dark horse|idw|boom|valiant|dynamite|archie|boom studios)/i.test(lower);
+    if(!hasPublisher){
+      if(/(spawn|walking dead|invincible|saga|black hammer|east of west|deadly class|descender|lazarus)/i.test(lower)) variants.push(lower + ' image comics');
+      else if(/(batman|superman|wonder woman|green lantern|flash|aquaman|justice league|detective comics|action comics)/i.test(lower)) variants.push(lower + ' dc');
+      else if(/(spider.?man|x.?men|wolverine|hulk|thor|avengers|iron man|captain america|daredevil|venom|carnage|deadpool|black panther)/i.test(lower)) variants.push(lower + ' marvel');
+      else if(/(hellboy|sin city|usagi yojimbo|conan)/i.test(lower)) variants.push(lower + ' dark horse');
+    }
   }
   if(intent.pokemonSet || intent.hasSlashNumber) {
     variants.push(
@@ -17594,10 +17718,18 @@ function filterQplMasterResults(results, cat){
 function handleQplCategoryChange(){
   const q = document.getElementById('qpl-input')?.value.trim() || qplLastSearch || '';
   const cat = document.getElementById('qpl-cat')?.value || '';
+  const isComic = qplCategoryKey(cat) === 'comic';
+  const helper = document.getElementById('qpl-comic-helper');
+  if(helper) helper.style.display = isComic ? '' : 'none';
+  const inp = document.getElementById('qpl-input');
+  if(inp) inp.placeholder = isComic
+    ? 'e.g. Spawn #1, Amazing Spider-Man 300, Batman #251 newsstand…'
+    : 'e.g. 2021 Umbreon VMAX Evolving Skies…';
   if(getResearchSettings().rememberLastCategory) localStorage.setItem('qpl_last_category', cat);
   if(!qplMasterResults.length) {
     const el = document.getElementById('qpl-result');
     if(q && el) el.innerHTML = `<div style="color:var(--gold);line-height:1.6">Category changed to ${escHtml(cat || 'Any Category')}. Press LOOK UP to search this category.</div>`;
+    else if(isComic && el) el.innerHTML = `<div style="color:var(--purple);line-height:1.7;font-family:monospace;font-size:10px">📖 Comics selected. Enter a series title and issue number above, then hit LOOK UP.<br><span style="color:var(--dim)">PriceCharting covers raw, CGC, CBCS grades and more.</span></div>`;
     return;
   }
   qplResults = filterQplMasterResults(qplMasterResults, cat);
@@ -18097,9 +18229,10 @@ function qplGradedQuickChips(r, idx){
 
 function quickLookupResultCard(r, idx){
   const builtTcgLink = buildTcgExternalLink(r);
+  const isComic = qplResultCategoryKey(r) === 'comic';
   const img = r.imageUrl
-    ? `<div class="qpl-img-shell" onclick="openQplImageLightbox(${idx})"><img src="${escHtml(r.imageUrl)}" alt="${escHtml(r.name || 'Card image')}"></div>`
-    : `<div class="qpl-img-shell"><div class="qpl-no-img">${qplResultCategoryKey(r)==='comic'?'NO COVER IMAGE':'NO IMAGE'}</div></div>`;
+    ? `<div class="qpl-img-shell" onclick="openQplImageLightbox(${idx})"${isComic?' style="aspect-ratio:2/3;max-height:220px"':''}><img src="${escHtml(r.imageUrl)}" alt="${escHtml(r.name || 'Card image')}" style="${isComic?'object-fit:cover;width:100%;height:100%':''}"></div>`
+    : `<div class="qpl-img-shell"${isComic?' style="aspect-ratio:2/3;max-height:220px;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(199,125,255,.06);border:1px dashed rgba(199,125,255,.3)"':''}><div class="qpl-no-img" style="${isComic?'color:var(--purple);font-size:10px':''}">📖<br>${isComic?'NO COVER YET':'NO IMAGE'}</div></div>`;
   const meta = [r.set,r.year,r.card_number ? '#'+r.card_number : ''].filter(Boolean).join(' / ');
   const needs = getSetNeedMatches(r);
   const signal = getSalesSignal(r);
@@ -18107,8 +18240,10 @@ function quickLookupResultCard(r, idx){
   const confLabel = conf >= 85 ? 'HIGH CONFIDENCE' : conf >= 60 ? 'MEDIUM CONFIDENCE' : conf > 0 ? 'LOW CONFIDENCE' : 'CHECK MATCH';
   const confClass = conf >= 85 ? 'good' : conf >= 60 ? 'warn' : 'bad';
   const why = (r.matchWhy || []).length ? `Matched: ${(r.matchWhy || []).join(', ')}` : (r.note || '');
-  const tcg = `<button class="hbtn" onclick="openQplChartModal(${idx})">CHART</button>${qplResultCategoryKey(r) === 'pokemon' || qplResultCategoryKey(r) === 'mtg' || r.tcgUrl ? `<button class="hbtn" onclick="openQuickExternal(${idx},'tcg')">TCG</button>` : ''}`;
-  const slab = `<button class="hbtn" style="color:var(--blue)" onclick="openSlabCertPanel(${idx})">SLAB / CERT</button>`;
+  const tcg = isComic
+    ? `<button class="hbtn" style="color:var(--purple)" onclick="openQuickExternal(${idx},'pricecharting')">PRICECHARTING</button>`
+    : `<button class="hbtn" onclick="openQplChartModal(${idx})">CHART</button>${qplResultCategoryKey(r) === 'pokemon' || qplResultCategoryKey(r) === 'mtg' || r.tcgUrl ? `<button class="hbtn" onclick="openQuickExternal(${idx},'tcg')">TCG</button>` : ''}`;
+  const slab = isComic ? '' : `<button class="hbtn" style="color:var(--blue)" onclick="openSlabCertPanel(${idx})">SLAB / CERT</button>`;
   const truth = qplTruthLabel(r);
   const variantStatus = qplVariantResolverStatus(r);
   const variantBadgeLabel = r.pokemonPriceTracker ? 'API Matrix' : 'Variant Resolver';
@@ -18201,6 +18336,21 @@ function quickLookupResultCard(r, idx){
       ${qplGradedQuickChips(r, idx)}
       <!-- Finish / Language / Qty controls -->
       <div class="qpl-quick-controls">
+        ${isComic ? `
+          <select onchange="qplResults[${idx}].comicGrade=this.value" aria-label="Comic Grade" title="Comic grade for buy/sell pricing">
+            <option value="raw">Raw / Ungraded</option>
+            <option value="grade9_8">CGC 9.8</option>
+            <option value="grade9_4">CGC 9.4</option>
+            <option value="grade9_2">CGC 9.2</option>
+            <option value="grade8">CGC 8.0</option>
+            <option value="grade6">CGC 6.0</option>
+            <option value="grade4">CGC 4.0</option>
+          </select>
+          <input type="number" min="1" step="1" value="${Number(r.qty || 1)}" onchange="qplResults[${idx}].qty=parseInt(this.value,10)||1" aria-label="Quantity">
+        ` : `
+        <select onchange="updateQplVariant(${idx},{selectedCondition:this.value})" aria-label="Condition">
+          ${(r.availableVariants?.length ? qplVariantOptionValues(r, 'condition') : qplConditionOptionsFor(r)).map(c => `<option value="${c}" ${String(r.selectedCondition||r.condition||qplConditionOptionsFor(r)[0])===c?'selected':''}>${c}</option>`).join('')}
+        </select>
         <select onchange="updateQplVariant(${idx},{selectedFinish:this.value})" aria-label="Finish">
           ${r.availableVariants?.length ? qplVariantSelectOptions(r, 'finish', r.selectedFinish || r.finish) : `<option value="${escHtml(r.finish||'normal')}">${escHtml(qplFinishLabel(r.finish||'normal'))}</option>`}
         </select>
@@ -18208,6 +18358,7 @@ function quickLookupResultCard(r, idx){
           ${r.availableVariants?.length ? qplVariantSelectOptions(r, 'language', r.selectedLanguage || r.language || 'English') : `<option value="English">English</option>`}
         </select>
         <input type="number" min="1" step="1" value="${Number(r.qty || 1)}" onchange="qplResults[${idx}].qty=parseInt(this.value,10)||1" aria-label="Quantity">
+        `}
       </div>
       <div class="qpl-price-sub" style="margin-top:8px">
         ${recentSold ? `Recent sold: $${recentSold.toFixed(2)}<br>` : ''}
@@ -18219,8 +18370,8 @@ function quickLookupResultCard(r, idx){
       <details class="research-secondary-actions" style="margin-top:12px" ${qplResultCategoryKey(r) === 'pokemon' ? 'open' : ''}>
         <summary>▸ All Prices + Graded</summary>
         <div style="padding:8px 0">
-          ${qplVariantPriceTable(r, idx)}
-          ${qplSlabControls(r, idx)}
+          ${isComic ? qplComicPricePanel(r, idx) : qplVariantPriceTable(r, idx)}
+          ${isComic ? '' : qplSlabControls(r, idx)}
         </div>
       </details>
       <!-- Action buttons — inside info column, no separate column that causes overlap -->
@@ -18252,14 +18403,14 @@ function quickLookupResultCard(r, idx){
               ${slab}
               ${qplResultCategoryKey(r) === 'pokemon' ? `<button class="hbtn" onclick="openQuickExternal(${idx},'tcg')">TCG ↗</button>` : ''}
               <button class="hbtn" onclick="openQuickExternal(${idx},'sold')">COMPS</button>
-              <button class="hbtn" onclick="openQuickExternal(${idx},'pricecharting')">PRICECHARTING</button>
+              ${isComic ? '' : `<button class="hbtn" onclick="openQuickExternal(${idx},'pricecharting')">PRICECHARTING</button>`}
               ${!r.imageUrl ? `<button class="hbtn" onclick="selectQuickLookupResult(${idx});setTimeout(()=>document.getElementById('qpl-edit-image-url')?.focus(),50)">ADD IMAGE</button>` : ''}
               <button class="hbtn" style="color:var(--gold)" onclick="markQplNeedsReview(${idx})">NEEDS REVIEW</button>
             </div>
           </details>
         </div>
       </div>
-      ${showAdminDebug() ? `<div class="dev-only" style="margin-top:8px;font-family:var(--font-mono);font-size:10px;color:var(--dim)">Debug: rawSearchQuerySent ${escHtml(r.lookupDebug?.rawQuerySent || '')} / workerRequestUrl ${escHtml(r.lookupDebug?.requestPath || '')} / searchResultCount ${escHtml(String(r.lookupDebug?.searchResultCount ?? ''))} / candidates ${escHtml(JSON.stringify(r.lookupDebug?.returnedCandidates || []))} / selectedTcgPlayerId ${escHtml(r.tcgPlayerId || r.tcgplayerId || '')} / hydrationRequestUrl ${escHtml(r.pokemonPriceTracker?.lookupDebug?.hydrationRequestUrl || r.lookupDebug?.hydrationRequestUrl || '')} / hydratedFromCache ${escHtml(String(!!(r.pokemonPriceTracker?.lookupDebug?.hydratedFromCache || r.lookupDebug?.hydratedFromCache)))} / prices.conditions keys ${escHtml(Object.keys(r.pokemonPriceTracker?.prices?.conditions || {}).join(', ') || 'none')} / prices.variants keys ${escHtml(Object.keys(r.pokemonPriceTracker?.prices?.variants || {}).join(', ') || 'none')} / priceHistory.conditions keys ${escHtml(Object.keys(r.pokemonPriceTracker?.priceHistory?.conditions || {}).join(', ') || 'none')} / priceHistory.variants keys ${escHtml(Object.keys(r.pokemonPriceTracker?.priceHistory?.variants || {}).join(', ') || 'none')} / active price path ${escHtml(r.activePriceBasis?.pricePath || r.resolvedPricePath || 'n/a')} / reason a row says No Real Price ${escHtml(r.noRealPriceReason || '')} / normalizedQuery ${escHtml(r.lookupDebug?.normalizedQuery || '')} / lookupPath ${escHtml(r.lookupDebug?.path || r.lookupDebug?.sourcePath || 'n/a')} / exactHydrated ${escHtml(String(!!r.lookupDebug?.exactHydrated))} / parseTitle ${escHtml(JSON.stringify(r.lookupDebug?.parseTitle || r.pptParseTitle || null))} / confidence ${escHtml(String(r.lookupDebug?.confidence || r.confidence || ''))} / autoSelect ${escHtml(String(!!(r.lookupDebug?.autoSelect || r.autoSelect)))} / selectedCondition ${escHtml(r.selectedCondition || r.condition || '')} / selectedFinish ${escHtml(qplFinishLabel(r.selectedFinish || r.finish || ''))} / activePriceBasis ${escHtml(JSON.stringify(r.activePriceBasis || {}))} / generatedTcgUrl ${escHtml(builtTcgLink.url || '')} / cache ${escHtml(r.lookupDebug?.cache || r.cache?.source || 'live/none')} / quotaCooldown ${escHtml(String(pokemonPriceTrackerQuotaBlocked()))} / apiCallsConsumed ${escHtml(localStorage.getItem('ppt_last_consumed') || '')}</div>` : ''}
+      ${showAdminDebug() ? (isComic ? `<div class="dev-only" style="margin-top:8px;font-family:var(--font-mono);font-size:10px;color:var(--dim)">Comic debug: query=${escHtml(r.lookupDebug?.rawQuerySent||r.raw?.query||'')} / source=${escHtml(r.source||'')} / pcProductId=${escHtml(String(r.pricecharting?.productId||''))} / pcProductName=${escHtml(r.pricecharting?.productName||'')} / imageUrl=${escHtml(r.imageUrl||'none')} / comicPrices.ungraded=${escHtml(String(r.pricecharting?.comicPrices?.ungraded||0))} / comicPrices.grade9_8=${escHtml(String(r.pricecharting?.comicPrices?.grade9_8||0))} / salesVolume=${escHtml(String(r.pricecharting?.demand?.salesVolume||0))} / consoleName=${escHtml(r.pricecharting?.demand?.consoleName||'')} / genre=${escHtml(r.pricecharting?.demand?.genre||'')} / pcUrl=${escHtml(r.pricecharting?.url||r.productUrl||'')}</div>` : `<div class="dev-only" style="margin-top:8px;font-family:var(--font-mono);font-size:10px;color:var(--dim)">Debug: rawSearchQuerySent ${escHtml(r.lookupDebug?.rawQuerySent || '')} / workerRequestUrl ${escHtml(r.lookupDebug?.requestPath || '')} / searchResultCount ${escHtml(String(r.lookupDebug?.searchResultCount ?? ''))} / candidates ${escHtml(JSON.stringify(r.lookupDebug?.returnedCandidates || []))} / selectedTcgPlayerId ${escHtml(r.tcgPlayerId || r.tcgplayerId || '')} / hydrationRequestUrl ${escHtml(r.pokemonPriceTracker?.lookupDebug?.hydrationRequestUrl || r.lookupDebug?.hydrationRequestUrl || '')} / hydratedFromCache ${escHtml(String(!!(r.pokemonPriceTracker?.lookupDebug?.hydratedFromCache || r.lookupDebug?.hydratedFromCache)))} / prices.conditions keys ${escHtml(Object.keys(r.pokemonPriceTracker?.prices?.conditions || {}).join(', ') || 'none')} / prices.variants keys ${escHtml(Object.keys(r.pokemonPriceTracker?.prices?.variants || {}).join(', ') || 'none')} / priceHistory.conditions keys ${escHtml(Object.keys(r.pokemonPriceTracker?.priceHistory?.conditions || {}).join(', ') || 'none')} / priceHistory.variants keys ${escHtml(Object.keys(r.pokemonPriceTracker?.priceHistory?.variants || {}).join(', ') || 'none')} / active price path ${escHtml(r.activePriceBasis?.pricePath || r.resolvedPricePath || 'n/a')} / reason a row says No Real Price ${escHtml(r.noRealPriceReason || '')} / normalizedQuery ${escHtml(r.lookupDebug?.normalizedQuery || '')} / lookupPath ${escHtml(r.lookupDebug?.path || r.lookupDebug?.sourcePath || 'n/a')} / exactHydrated ${escHtml(String(!!r.lookupDebug?.exactHydrated))} / parseTitle ${escHtml(JSON.stringify(r.lookupDebug?.parseTitle || r.pptParseTitle || null))} / confidence ${escHtml(String(r.lookupDebug?.confidence || r.confidence || ''))} / autoSelect ${escHtml(String(!!(r.lookupDebug?.autoSelect || r.autoSelect)))} / selectedCondition ${escHtml(r.selectedCondition || r.condition || '')} / selectedFinish ${escHtml(qplFinishLabel(r.selectedFinish || r.finish || ''))} / activePriceBasis ${escHtml(JSON.stringify(r.activePriceBasis || {}))} / generatedTcgUrl ${escHtml(builtTcgLink.url || '')} / cache ${escHtml(r.lookupDebug?.cache || r.cache?.source || 'live/none')} / quotaCooldown ${escHtml(String(pokemonPriceTrackerQuotaBlocked()))} / apiCallsConsumed ${escHtml(localStorage.getItem('ppt_last_consumed') || '')}</div>`) : ''}
     </div>
   </div>`;
 }
