@@ -3307,6 +3307,7 @@ let _pstSyncStop = false;
 let _pstFilter = 'latest';        // latest | popular | synced | all
 let _pstSearchQ = '';
 let _pstSyncMeta = {};            // setId → { syncedAt, cardCount, failed, … }
+let _pstTcgSetMap = null;         // catalog setName → setId map (built once)
 
 const PST_POPULAR_SET_NAMES = [
   'Scarlet & Violet 151','Paldean Fates','Twilight Masquerade','Shrouded Fable',
@@ -3487,75 +3488,166 @@ async function pstSyncSets(setsToSync, label){
   renderOfflineCachePanel();
 }
 
+// ── Catalog helpers for set sync ────────────────────────────────
+async function pstBuildTcgSetMap(){
+  // Scan image catalog once to build setName→setId map; cached in _pstTcgSetMap
+  if(_pstTcgSetMap) return _pstTcgSetMap;
+  const map = new Map();
+  try {
+    const db = await pokemonCatalogOpenDb();
+    await new Promise(res => {
+      const tx = db.transaction('catalog','readonly');
+      const req = tx.objectStore('catalog').openCursor();
+      req.onsuccess = e => {
+        const c = e.target.result;
+        if(!c){ res(); return; }
+        if(c.value.setName && !map.has(c.value.setName)) map.set(c.value.setName, c.value.setId);
+        c.continue();
+      };
+      req.onerror = res;
+    });
+  } catch(e){}
+  _pstTcgSetMap = map;
+  return map;
+}
+
+async function pstFindTcgSetId(pptSetName){
+  // Match a PPT set name (e.g. "SV: Scarlet & Violet 151") to a TCG API setId (e.g. "sv3pt5")
+  // PPT names often prepend a series tag like "SV: " or "SV08: " — strip it for matching
+  const map = await pstBuildTcgSetMap();
+  const norm = pptSetName.toLowerCase();
+  // First try: exact match after stripping "XX: " or "XX0N: " prefix
+  const stripped = pptSetName.replace(/^[A-Z0-9]+:\s*/,'').toLowerCase();
+  for(const [catName, catId] of map){
+    if(catName.toLowerCase() === stripped) return catId;
+  }
+  // Second try: longest catalog setName that is a substring of the PPT name
+  let bestId = null, bestLen = 0;
+  for(const [catName, catId] of map){
+    const n = catName.toLowerCase();
+    if(n.length > 2 && norm.includes(n) && n.length > bestLen){ bestId = catId; bestLen = n.length; }
+  }
+  return bestId;
+}
+
+async function pstGetCatalogCardsBySetId(tcgSetId){
+  const db = await pokemonCatalogOpenDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('catalog','readonly');
+    const idx = tx.objectStore('catalog').index('setId');
+    const req = idx.getAll(tcgSetId);
+    req.onsuccess = () => resolve(req.result || []);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+// ── Core per-set sync (card-by-card via tcgPlayerId) ────────────
 async function pstSyncOneSet(s, { staleOnly, incHistory, incEbay, dlImages, progText }){
   // Set-level stale check
   if(staleOnly && _pstSyncMeta[s.id]?.syncedAt && !_pstSyncMeta[s.id]?.failed){
     const age = (Date.now() - new Date(_pstSyncMeta[s.id].syncedAt)) / 86400000;
     if(age < 1){ if(progText) progText.textContent = s.name+': fresh, skipped'; return 0; }
   }
-  const params = new URLSearchParams({ fetchAllInSet:'true', limit:'200', language:'english' });
-  if(s.tcgplayerGroupId) params.set('setId', String(s.tcgplayerGroupId));
-  else params.set('set', s.name);
-  if(incHistory){ params.set('include_price_history','true'); params.set('priceHistoryDuration','90d'); }
-  if(incEbay) params.set('includeEbay','true');
-  const requestPath = '/pricing/pokemonpricetracker/cards?' + params.toString().replace(/\+/g,'%20');
-  if(progText) progText.textContent = `${s.name}: ${requestPath}`;
-  const res = await fetch(WORKER + requestPath, { cache:'no-store' });
-  if(res.status === 429 || res.status === 403){
-    localStorage.setItem('ppt_quota_exhausted_until', String(Date.now()+3600000));
-    throw new Error('PPT quota exhausted (429). Try again in 1 hour.');
+  // Resolve TCG set ID from image catalog
+  if(progText) progText.textContent = `${s.name}: looking up in catalog…`;
+  const tcgSetId = await pstFindTcgSetId(s.name);
+  if(!tcgSetId) throw new Error(`"${s.name}" not in image catalog — run SYNC POKEMON IMAGES first.`);
+  const catalogCards = await pstGetCatalogCardsBySetId(tcgSetId);
+  if(!catalogCards.length) throw new Error(`Catalog has no cards for ${s.name} (${tcgSetId})`);
+
+  // Optional card-level stale filter
+  let toSync = catalogCards;
+  if(staleOnly){
+    const priceDb = await pokemonOfflineDb();
+    const freshKeys = new Set();
+    await new Promise(res => {
+      const tx = priceDb.transaction('cards','readonly');
+      const req = tx.objectStore('cards').openCursor();
+      req.onsuccess = e => {
+        const c = e.target.result;
+        if(!c){ res(); return; }
+        const age = (Date.now() - new Date(c.value.updatedAt||0)) / 86400000;
+        if(age < 1 && c.value.card?.lookupDebug?.exactHydrated) freshKeys.add(c.value.cardKey);
+        c.continue();
+      };
+      req.onerror = res;
+    });
+    toSync = catalogCards.filter(c => !freshKeys.has('pokemon:'+c.id));
+    if(!toSync.length){ if(progText) progText.textContent = `${s.name}: all cards fresh, skipped`; return 0; }
   }
-  if(!res.ok) throw new Error(`HTTP ${res.status} for ${s.name}`);
-  const data = await res.json().catch(() => ({}));
-  if(data.usage?.remaining != null) localStorage.setItem('ppt_remaining_credits', String(data.usage.remaining));
-  if(data.usage?.consumed != null) localStorage.setItem('ppt_last_consumed', String(data.usage.consumed));
-  if(data.providerQuotaState === 'exhausted'){ localStorage.setItem('ppt_quota_exhausted_until', String(Date.now()+3600000)); throw new Error('PPT quota exhausted.'); }
-  const cards = pokemonPriceTrackerCardsFromPayload(data);
-  if(progText) progText.textContent = `${s.name}: ${cards.length} cards received, writing…`;
-  // Batch upsert into IDB
-  const db = await pokemonOfflineDb();
+
+  const priceDb = await pokemonOfflineDb();
   const storeId = getActiveStoreId();
   const now = new Date().toISOString();
-  const BATCH = 50;
   let written = 0;
-  for(let b=0; b<cards.length; b+=BATCH){
-    const chunk = cards.slice(b, b+BATCH);
-    await new Promise((resolve, reject) => {
-      const tx = db.transaction('cards','readwrite');
-      const store = tx.objectStore('cards');
-      for(const card of chunk){
-        if(!card?.tcgPlayerId) continue;
-        store.put({
-          cardKey: 'pokemon:'+card.tcgPlayerId,
-          storeId,
-          source: 'PokemonPriceTracker set sync',
-          cacheVersion: POKEMON_EXACT_CACHE_VERSION,
-          searchText: normalizePokemonText([card.name, card.setName, card.cardNumber, card.rarity].filter(Boolean).join(' ')),
-          normalizedQuery: normalizePokemonText(card.name||''),
-          updatedAt: now,
-          card: { ...card, lookupDebug:{ ...(card.lookupDebug||{}), exactHydrated:true, path:'set-sync.fetchAllInSet', syncedAt:now } },
-          imageUrl: card.imageCdnUrl400||card.imageCdnUrl800||card.imageCdnUrl200||card.imageCdnUrl||card.imageUrl||'',
-        });
-        written++;
-      }
-      tx.oncomplete = resolve;
-      tx.onerror = () => reject(tx.error);
-    });
-    if(progText) progText.textContent = `${s.name}: saved ${Math.min(b+BATCH, cards.length)}/${cards.length} cards`;
+  const PARALLEL = 3; // fetch 3 cards at a time
+
+  for(let i = 0; i < toSync.length; i += PARALLEL){
     if(_pstSyncStop) break;
-  }
-  // Download images (limited to avoid storage bloat — 30 per set max)
-  if(dlImages && localStorage.getItem('pokemon_cache_images') !== '0'){
-    let imgCount = 0;
-    for(const card of cards.slice(0, 30)){
-      if(_pstSyncStop) break;
-      const imgUrl = card.imageCdnUrl400||card.imageCdnUrl200||card.imageCdnUrl800||card.imageUrl||'';
-      if(imgUrl && card.tcgPlayerId){
-        await cachePokemonImage('pokemon:'+card.tcgPlayerId, imgUrl).catch(()=>{});
-        imgCount++;
+    const batch = toSync.slice(i, i + PARALLEL);
+    if(progText) progText.textContent = `${s.name}: ${i+1}–${Math.min(i+PARALLEL, toSync.length)} / ${toSync.length}`;
+    let quotaHit = false;
+
+    await Promise.all(batch.map(async catCard => {
+      if(quotaHit) return;
+      try {
+        const params = new URLSearchParams({
+          tcgPlayerId: catCard.id,
+          language: 'english',
+          limit: '1',
+          includeHistory: incHistory ? 'true' : 'false',
+          includeEbay: incEbay ? 'true' : 'false',
+        });
+        const res = await fetch(WORKER + '/pricing/pokemonpricetracker/cards?' + params.toString(), { cache:'no-store' });
+        if(res.status === 429 || res.status === 403){
+          localStorage.setItem('ppt_quota_exhausted_until', String(Date.now()+3600000));
+          quotaHit = true;
+          throw new Error('PPT quota exhausted (429). Try again in 1 hour.');
+        }
+        if(!res.ok) return; // skip individual card failures silently
+        const data = await res.json().catch(() => ({}));
+        if(data.usage?.remaining != null) localStorage.setItem('ppt_remaining_credits', String(data.usage.remaining));
+        if(data.usage?.consumed != null) localStorage.setItem('ppt_last_consumed', String(data.usage.consumed));
+        if(data.providerQuotaState === 'exhausted'){
+          localStorage.setItem('ppt_quota_exhausted_until', String(Date.now()+3600000));
+          quotaHit = true;
+          throw new Error('PPT quota exhausted.');
+        }
+        const cards = pokemonPriceTrackerCardsFromPayload(data);
+        const card = cards[0];
+        if(!card?.tcgPlayerId) return;
+        await new Promise((resolve, reject) => {
+          const tx = priceDb.transaction('cards','readwrite');
+          const store = tx.objectStore('cards');
+          store.put({
+            cardKey: 'pokemon:'+card.tcgPlayerId,
+            storeId,
+            source: 'PokemonPriceTracker set sync',
+            cacheVersion: POKEMON_EXACT_CACHE_VERSION,
+            searchText: normalizePokemonText([card.name, card.setName, card.cardNumber, card.rarity].filter(Boolean).join(' ')),
+            normalizedQuery: normalizePokemonText(card.name||''),
+            updatedAt: now,
+            card: { ...card, lookupDebug:{ ...(card.lookupDebug||{}), exactHydrated:true, path:'set-sync.card-by-card', syncedAt:now } },
+            imageUrl: card.imageCdnUrl400||card.imageCdnUrl800||card.imageCdnUrl200||card.imageCdnUrl||card.imageUrl||'',
+          });
+          written++;
+          tx.oncomplete = resolve;
+          tx.onerror = () => reject(tx.error);
+        });
+        // Cache image blob if requested
+        if(dlImages && localStorage.getItem('pokemon_cache_images') !== '0'){
+          const imgUrl = card.imageCdnUrl400||card.imageCdnUrl200||card.imageCdnUrl800||card.imageUrl||'';
+          if(imgUrl) await cachePokemonImage('pokemon:'+card.tcgPlayerId, imgUrl).catch(()=>{});
+        }
+      } catch(e){
+        if(/quota/i.test(e.message)) throw e;
+        // individual card errors are silently skipped
       }
-    }
-    if(progText) progText.textContent = `${s.name}: cached ${imgCount} images`;
+    }));
+
+    if(quotaHit) throw new Error('PPT quota exhausted. Try again in 1 hour.');
+    // Small pause between batches to avoid hammering the API
+    if(i + PARALLEL < toSync.length) await new Promise(r => setTimeout(r, 150));
   }
   return written;
 }
