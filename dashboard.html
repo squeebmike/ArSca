@@ -10501,13 +10501,14 @@ async function searchQuickCatalog(q, cat){
   if(wants === 'comic'){
     const comicRows = results.filter(r => qplResultCategoryKey(r) === 'comic' && !r.imageUrl);
     const groups = new Map();
-    comicRows.slice(0, 8).forEach(r => {
+    comicRows.forEach(r => {
       const title = r.name.replace(/\s*\[.*?\]\s*/g,' ').replace(/\s*#\d[\w.]*.*$/,'').trim();
       const key = title + '|' + (r.year||'');
       if(!groups.has(key)) groups.set(key, { title, issue:(r.name.match(/#(\d+)/)||[])[1]||r.issue||'', year:r.year||'', rows:[] });
       groups.get(key).rows.push(r);
     });
-    await Promise.all([...groups.values()].map(async g => {
+    // Limit to 8 unique CV calls — all variants in each group still get the image
+    await Promise.all([...groups.values()].slice(0, 8).map(async g => {
       const img = await fetchComicVineCover(g.title, g.issue, g.year);
       if(img) g.rows.forEach(r => r.imageUrl = img);
     }));
