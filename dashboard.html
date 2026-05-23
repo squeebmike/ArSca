@@ -10357,6 +10357,20 @@ async function runPriceLookup(){
   }
 }
 
+async function fetchComicVineCover(name, issue, year){
+  try {
+    const title = name.replace(/\s*\[.*?\]\s*/g,' ').replace(/\s*#\d[\w.]*.*$/,'').trim();
+    if(!title) return '';
+    const issueNum = issue || (name.match(/#(\d+)/)||[])[1] || '';
+    const params = new URLSearchParams({ title });
+    if(issueNum) params.set('issue', issueNum);
+    if(year) params.set('year', year);
+    const res = await fetch(WORKER + '/comic/variants?' + params.toString());
+    const data = await res.json().catch(() => ({}));
+    return (data.variants||[])[0]?.cover_image || '';
+  } catch(e){ return ''; }
+}
+
 async function searchQuickCatalog(q, cat){
   const results = [];
   const wants = qplCategoryKey(cat);
@@ -10481,6 +10495,22 @@ async function searchQuickCatalog(q, cat){
       const mtg = await fetchScryfallCatalog(q);
       mtg.forEach(add);
     } catch(e) {}
+  }
+
+  // ── Comic Vine cover enrichment — parallel, deduplicated by series+year ──
+  if(wants === 'comic'){
+    const comicRows = results.filter(r => qplResultCategoryKey(r) === 'comic' && !r.imageUrl);
+    const groups = new Map();
+    comicRows.slice(0, 8).forEach(r => {
+      const title = r.name.replace(/\s*\[.*?\]\s*/g,' ').replace(/\s*#\d[\w.]*.*$/,'').trim();
+      const key = title + '|' + (r.year||'');
+      if(!groups.has(key)) groups.set(key, { title, issue:(r.name.match(/#(\d+)/)||[])[1]||r.issue||'', year:r.year||'', rows:[] });
+      groups.get(key).rows.push(r);
+    });
+    await Promise.all([...groups.values()].map(async g => {
+      const img = await fetchComicVineCover(g.title, g.issue, g.year);
+      if(img) g.rows.forEach(r => r.imageUrl = img);
+    }));
   }
 
   const ranked = rankQuickLookupResults(results, q, cat).slice(0, isPokemonLookupIntent(q, cat) ? 20 : 100);
