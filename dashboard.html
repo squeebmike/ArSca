@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.05.22.01-comics-fix">
+<meta name="version" content="2026.05.27.01-pokemon-offline-fix">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -533,7 +533,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
 
 <header>
   <div class="hdr">
-    <div class="logo">WALK-OFF <span>DASHBOARD · v2026.05.22.01-comics-fix</span></div>
+    <div class="logo">WALK-OFF <span>DASHBOARD · v2026.05.27.01-pokemon-offline-fix</span></div>
     <div class="hdr-right">
       <div id="v2-branch-stamp" class="v2-branch-stamp" data-branch-name="pokemon-v2-core">Branch: pokemon-v2-core · v2026.05.20.06-pokemon-v2-core</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
@@ -1445,7 +1445,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.05.22.01-comics-fix';
+const APP_VERSION = '2026.05.27.01-pokemon-offline-fix';
 const branchName = 'pokemon-v2-core';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
 const POKEMON_EXACT_CACHE_VERSION = 'pokemon-exact-v3-price-matrix';
@@ -3436,7 +3436,9 @@ async function pstLoadSetsBackground(){
   const el = document.getElementById('pst-tiles');
   if(el) el.innerHTML = '<div style="color:var(--dim);font-size:12px;padding:20px;text-align:center">Loading Pokémon sets…</div>';
   try { _pstSets = await pstFetchSets(); pstRenderTiles(); }
-  catch(e){ if(el) el.innerHTML = `<div style="color:var(--red);font-size:12px;padding:12px">Failed to load sets: ${escHtml(e.message)}</div>`; }
+  catch(e){ if(el) el.innerHTML = !navigator.onLine
+    ? `<div style="color:var(--gold);font-size:12px;padding:12px">Offline — set list requires internet. Previously synced sets still work for lookup.</div>`
+    : `<div style="color:var(--red);font-size:12px;padding:12px">Failed to load sets: ${escHtml(e.message)}</div>`; }
 }
 
 // ─── Core sync engine ───────────────────────────────────────────
@@ -10326,6 +10328,8 @@ async function runPriceLookup(){
       return;
     }
   }
+  // ── Offline guard: cached results already rendered above — do not fire live API ──
+  if(wantsPokemon && !navigator.onLine) return;
   try {
     let slowWarn = null;
     if(wantsPokemon) slowWarn = setTimeout(() => setPokemonOfflineBanner(cachedResults.length ? 'Slow Internet: still showing cached Pokemon data while live refresh continues.' : 'Slow Internet: still trying live Pokemon sources.'), 8000);
@@ -12309,7 +12313,8 @@ async function cachedPokemonPriceTrackerCard(row = {}){
   const card = hit?.card?.pokemonPriceTracker || hit?.card?.pokemonPriceTrackerCard || null;
   if(!card) return null;
   const exactVersion = hit.exactCacheVersion || hit.cacheVersion || card.cache?.exactCacheVersion || card.lookupDebug?.exactCacheVersion || '';
-  if(navigator.onLine && exactVersion !== POKEMON_EXACT_CACHE_VERSION && !pokemonHydratedPriceMatrixReady(card)) return null;
+  const isSetSynced = hit?.source === 'PokemonPriceTracker set sync' || hit?.card?.lookupDebug?.path === 'set-sync.card-by-card';
+  if(navigator.onLine && !isSetSynced && exactVersion !== POKEMON_EXACT_CACHE_VERSION && !pokemonHydratedPriceMatrixReady(card)) return null;
   if(card.lookupDebug) card.lookupDebug.hydratedFromCache = true;
   return card;
 }
