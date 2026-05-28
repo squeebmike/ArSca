@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.05.27.01-pokemon-offline-fix">
+<meta name="version" content="2026.05.27.02-pokemon-offline-center">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -533,7 +533,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
 
 <header>
   <div class="hdr">
-    <div class="logo">WALK-OFF <span>DASHBOARD · v2026.05.27.01-pokemon-offline-fix</span></div>
+    <div class="logo">WALK-OFF <span>DASHBOARD · v2026.05.27.02-pokemon-offline-center</span></div>
     <div class="hdr-right">
       <div id="v2-branch-stamp" class="v2-branch-stamp" data-branch-name="pokemon-v2-core">Branch: pokemon-v2-core · v2026.05.20.06-pokemon-v2-core</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
@@ -1445,7 +1445,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.05.27.01-pokemon-offline-fix';
+const APP_VERSION = '2026.05.27.02-pokemon-offline-center';
 const branchName = 'pokemon-v2-core';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
 const POKEMON_EXACT_CACHE_VERSION = 'pokemon-exact-v3-price-matrix';
@@ -2911,7 +2911,7 @@ function ensureOfflineCachePanel(backoffice){
   panel.className = 'panel';
   panel.id = 'offline-cache-panel';
   panel.style.marginBottom = '14px';
-  panel.innerHTML = '<div class="ph">OFFLINE CACHE <span style="font-size:9px;color:var(--dim)">Pokemon show mode cache</span></div><div id="offline-cache-body">Loading cache status...</div>';
+  panel.innerHTML = '<div class="ph">OFFLINE POKÉMON CENTER <span style="font-size:9px;color:var(--dim)">show mode · synced data · offline lookup</span></div><div id="offline-cache-body">Loading...</div>';
   backoffice.prepend(panel);
   renderOfflineCachePanel();
 }
@@ -2926,6 +2926,11 @@ async function getOfflineCacheStats(){
   const metaRows = await pokemonDbAll('meta').catch(() => []);
   const lastSync = metaRows.find(m => m.key === 'lastPokemonSyncAt')?.value || mineCards.map(c => c.updatedAt).sort().pop() || '';
   const estimate = navigator.storage?.estimate ? await navigator.storage.estimate().catch(() => ({})) : {};
+  const historyCachedCount = mineCards.filter(c => {
+    const ph = c.card?.pokemonPriceTracker?.priceHistory || c.card?.pokemonPriceTrackerCard?.priceHistory || {};
+    return Object.keys(ph.variants || {}).length > 0 || Object.keys(ph.conditions || {}).length > 0;
+  }).length;
+  const pendingQueueCount = getSyncQueue().filter(x => x.status !== 'done').length;
   return {
     cachedPokemonCardsCount:mineCards.length,
     cachedPokemonImagesCount:images.length,
@@ -2933,7 +2938,9 @@ async function getOfflineCacheStats(){
     cachedVariantCount:mineCards.reduce((a,c) => a + Number(c.card?.availableVariants?.length || 0), 0),
     lastPokemonSyncAt:lastSync,
     cacheStorageEstimate:estimate.usage ? Math.round(estimate.usage / 1024 / 1024 * 10) / 10 + ' MB' : 'Unknown',
-    lastSyncError:localStorage.getItem('pokemon_cache_last_error') || ''
+    lastSyncError:localStorage.getItem('pokemon_cache_last_error') || '',
+    historyCachedCount,
+    pendingQueueCount,
   };
 }
 
@@ -2941,37 +2948,108 @@ async function renderOfflineCachePanel(status = ''){
   const body = document.getElementById('offline-cache-body');
   if(!body) return;
   const s = await getOfflineCacheStats();
+  const isOnline = navigator.onLine;
+  const lastSyncStr = s.lastPokemonSyncAt ? pokemonCacheAgeLabel(s.lastPokemonSyncAt) : 'Never';
+  const blobPct = s.cachedPokemonCardsCount ? Math.round(s.cachedPokemonImagesCount / s.cachedPokemonCardsCount * 100) : 0;
+
+  // Offline queue — synchronous from localStorage
+  const pendingItems = getSyncQueue().filter(x => x.status !== 'done');
+  const queueRows = pendingItems.length
+    ? pendingItems.slice(0, 12).map(x => `<div style="border:1px solid var(--border);background:var(--surf2);border-radius:6px;padding:7px 8px;display:grid;gap:3px">
+        <div style="display:flex;justify-content:space-between;gap:8px;align-items:center">
+          <b style="color:${x.status==='failed'?'var(--red)':'var(--gold)'}">${escHtml(x.type)}</b>
+          <span style="font-size:9px;color:var(--dim)">${new Date(x.updatedAt||x.createdAt).toLocaleTimeString()}</span>
+        </div>
+        <div style="color:var(--text);font-size:10px">${escHtml((x.label||'Sync item').slice(0,120))}</div>
+        ${x.error ? `<div style="color:var(--red);font-size:9px">${escHtml(String(x.error).slice(0,160))}</div>` : ''}
+        <div style="display:flex;gap:5px;margin-top:2px">
+          <button class="hbtn" style="min-height:24px;font-size:9px" onclick="retrySyncItem('${x.id}')">RETRY</button>
+          <button class="hbtn danger" style="min-height:24px;font-size:9px" onclick="removeSyncItem('${x.id}');renderOfflineCachePanel()">REMOVE</button>
+        </div>
+      </div>`).join('')
+    : `<div style="padding:8px;border:1px dashed var(--border);border-radius:8px;text-align:center;color:var(--dim);font-size:10px">No pending items — all caught up</div>`;
+
   body.innerHTML = `
-    <div class="pokemon-offline-banner on" style="display:block;color:${navigator.onLine?'var(--g)':'var(--gold)'}">${navigator.onLine ? 'Online: live refresh and cache sync available.' : 'Offline Mode: cached Pokemon data is used first.'}</div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:10px">
+    <!-- ── Status Banner ── -->
+    <div class="pokemon-offline-banner on" style="display:block;color:${isOnline?'var(--g)':'var(--gold)'}">
+      ${isOnline ? '● ONLINE' : '◆ OFFLINE MODE'} &nbsp;·&nbsp; ${s.cachedPokemonCardsCount.toLocaleString()} cards cached &nbsp;·&nbsp; Last sync: ${escHtml(lastSyncStr)}${s.pendingQueueCount ? ` &nbsp;·&nbsp; <b>${s.pendingQueueCount} pending sync</b>` : ''}
+    </div>
+
+    <!-- ── Primary Action ── -->
+    <div style="margin:10px 0 12px">
+      <button class="hbtn" style="color:var(--gold);font-weight:700;min-height:40px;font-size:12px;letter-spacing:.04em" onclick="pokemonPrepForShow()">⚡ PREP FOR SHOW</button>
+      <span style="font-family:monospace;font-size:9px;color:var(--dim);margin-left:10px">Syncs latest 8 sets · recent searches · inventory · wantlist</span>
+    </div>
+
+    <!-- ── Stats Grid ── -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-bottom:14px">
       ${[
-        ['Cards', s.cachedPokemonCardsCount],
-        ['Images', s.cachedPokemonImagesCount],
-        ['Comps', s.cachedPokemonCompsCount],
-        ['Variants', s.cachedVariantCount],
-        ['Storage', s.cacheStorageEstimate],
-        ['Last sync', s.lastPokemonSyncAt ? new Date(s.lastPokemonSyncAt).toLocaleString() : 'Never']
-      ].map(([k,v]) => `<div class="item-metric"><div class="metric-label">${escHtml(k)}</div><div class="metric-val" style="font-size:18px">${escHtml(String(v))}</div></div>`).join('')}
+        ['Cards', s.cachedPokemonCardsCount.toLocaleString(), s.cachedPokemonCardsCount > 0 ? 'var(--g)' : 'var(--dim)', 'price-cached cards ready offline'],
+        ['Blob Images', s.cachedPokemonImagesCount.toLocaleString() + (s.cachedPokemonCardsCount ? ' (' + blobPct + '%)' : ''), s.cachedPokemonImagesCount > 0 ? 'var(--blue)' : 'var(--dim)', 'images stored as data URLs — fully offline-safe'],
+        ['Charts', s.historyCachedCount.toLocaleString(), s.historyCachedCount > 0 ? 'var(--blue)' : 'var(--dim)', 'cards with priceHistory cached'],
+        ['Comps', s.cachedPokemonCompsCount.toLocaleString(), 'var(--dim)', 'comparable sale records'],
+        ['Storage', s.cacheStorageEstimate, 'var(--dim)', 'estimated IndexedDB usage'],
+        ['Queue', s.pendingQueueCount.toLocaleString(), s.pendingQueueCount > 0 ? 'var(--gold)' : 'var(--g)', 'pending offline writes'],
+      ].map(([k,v,c,tip]) => `<div class="item-metric" title="${escHtml(tip)}"><div class="metric-label">${escHtml(k)}</div><div class="metric-val" style="font-size:16px;color:${c}">${escHtml(String(v))}</div></div>`).join('')}
     </div>
+
+    <!-- ── Quick Sync ── -->
+    <div style="font-family:'Orbitron',monospace;color:var(--dim);font-size:9px;letter-spacing:.05em;margin-bottom:6px">QUICK SYNC</div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
-      <button class="hbtn" onclick="syncPokemonCacheSeeds()">SYNC POKEMON CACHE</button>
-      <button class="hbtn" onclick="syncRecentPokemonSearches()">SYNC RECENT SEARCHES</button>
-      <button class="hbtn" onclick="syncInventoryPokemonCache()">SYNC INVENTORY POKEMON</button>
-      <button class="hbtn" onclick="syncWantListPokemonCache()">SYNC WANT LIST CARDS</button>
-      <button class="hbtn" style="color:var(--red)" onclick="clearPokemonOfflineCache()">CLEAR CACHE</button>
+      <button class="hbtn" onclick="syncRecentPokemonSearches()">RECENT SEARCHES</button>
+      <button class="hbtn" onclick="syncInventoryPokemonCache()">INVENTORY CARDS</button>
+      <button class="hbtn" onclick="syncWantListPokemonCache()">WANT LIST</button>
+      <button class="hbtn" onclick="syncPokemonCacheSeeds()">POPULAR SEEDS</button>
     </div>
-    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:10px;font-family:monospace;font-size:10px;color:var(--dim)">
-      <label><input type="checkbox" id="pokemon-cache-images-toggle" ${localStorage.getItem('pokemon_cache_images') !== '0' ? 'checked' : ''} onchange="localStorage.setItem('pokemon_cache_images',this.checked?'1':'0')"> Cache Images</label>
-      <label><input type="checkbox" id="pokemon-cache-charts-toggle" ${localStorage.getItem('pokemon_cache_charts') !== '0' ? 'checked' : ''} onchange="localStorage.setItem('pokemon_cache_charts',this.checked?'1':'0')"> Cache Charts</label>
-      <label><input type="checkbox" id="pokemon-cache-slabs-toggle" ${localStorage.getItem('pokemon_cache_slabs') !== '0' ? 'checked' : ''} onchange="localStorage.setItem('pokemon_cache_slabs',this.checked?'1':'0')"> Cache Slab Guides</label>
+
+    <!-- ── Options ── -->
+    <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:12px;font-family:monospace;font-size:10px;color:var(--dim)">
+      <label title="Store card images as offline-safe data URLs"><input type="checkbox" id="pokemon-cache-images-toggle" ${localStorage.getItem('pokemon_cache_images') !== '0' ? 'checked' : ''} onchange="localStorage.setItem('pokemon_cache_images',this.checked?'1':'0')"> Cache Images</label>
+      <label title="Store price history for offline charts"><input type="checkbox" id="pokemon-cache-charts-toggle" ${localStorage.getItem('pokemon_cache_charts') !== '0' ? 'checked' : ''} onchange="localStorage.setItem('pokemon_cache_charts',this.checked?'1':'0')"> Cache Charts</label>
+      <label title="Cache PSA/BGS grading guides offline"><input type="checkbox" id="pokemon-cache-slabs-toggle" ${localStorage.getItem('pokemon_cache_slabs') !== '0' ? 'checked' : ''} onchange="localStorage.setItem('pokemon_cache_slabs',this.checked?'1':'0')"> Cache Slabs</label>
     </div>
-    <div id="offline-cache-status" style="font-family:monospace;font-size:10px;color:${s.lastSyncError?'var(--red)':'var(--dim)'};line-height:1.5">${escHtml(status || s.lastSyncError || 'Pokemon cache is ready for show mode.')}</div>`;
-  // Append image catalog section async
+
+    <!-- ── Status Line ── -->
+    <div id="offline-cache-status" style="font-family:monospace;font-size:10px;color:${s.lastSyncError?'var(--red)':'var(--dim)'};line-height:1.5;margin-bottom:4px">${escHtml(status || s.lastSyncError || 'Pokémon cache ready for show mode.')}</div>
+
+    <!-- ── Set Sync placeholder (replaced by renderPokemonSetSyncPanel) ── -->
+    <div id="pokemon-set-sync-panel" style="margin-top:16px;border-top:1px solid var(--border);padding-top:14px">
+      <div style="font-family:monospace;font-size:10px;color:var(--dim)">Loading set sync…</div>
+    </div>
+
+    <!-- ── Image Catalog placeholder (replaced by pokemonImageCatalogPanelHtml) ── -->
+    <div id="pokemon-image-catalog-section" style="margin-top:14px;border-top:1px solid var(--border);padding-top:12px">
+      <div style="font-family:monospace;font-size:10px;color:var(--dim)">Loading image catalog…</div>
+    </div>
+
+    <!-- ── Offline Queue ── -->
+    <div style="margin-top:14px;border-top:1px solid var(--border);padding-top:12px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <div style="font-family:'Orbitron',monospace;color:${s.pendingQueueCount ? 'var(--gold)' : 'var(--dim)'};font-size:10px;letter-spacing:.05em">OFFLINE QUEUE &nbsp;<span style="font-size:9px;font-family:monospace">${s.pendingQueueCount} pending</span></div>
+        <div style="display:flex;gap:6px">
+          <button class="hbtn" style="min-height:26px;font-size:9px" onclick="retryAllSyncQueue().then(()=>renderOfflineCachePanel())">RETRY ALL</button>
+          <button class="hbtn danger" style="min-height:26px;font-size:9px" onclick="clearCompletedSyncQueue();renderOfflineCachePanel()">CLEAR DONE</button>
+        </div>
+      </div>
+      <div style="display:grid;gap:6px;font-family:monospace;font-size:10px;color:var(--dim)">${queueRows}</div>
+    </div>
+
+    <!-- ── Cache Management ── -->
+    <div style="margin-top:14px;border-top:1px dashed rgba(255,77,109,.3);padding-top:12px">
+      <div style="font-family:'Orbitron',monospace;color:var(--red);font-size:9px;letter-spacing:.05em;margin-bottom:8px">CACHE MANAGEMENT</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="hbtn" style="color:var(--red)" onclick="clearPokemonOfflineCache()">CLEAR ALL</button>
+        <button class="hbtn" style="color:var(--gold);font-size:10px" onclick="clearPokemonExactCache()">CLEAR EXACT CACHE</button>
+        <button class="hbtn" style="font-size:10px" onclick="clearPokemonSearchCache()">CLEAR SEARCH CACHE</button>
+      </div>
+    </div>`;
+
+  // Replace image catalog placeholder with live data
   pokemonImageCatalogPanelHtml().then(html => {
-    const b = document.getElementById('offline-cache-body');
-    if(b && !b.querySelector('#pokemon-catalog-sync-btn')) b.insertAdjacentHTML('beforeend', html);
+    const placeholder = document.getElementById('pokemon-image-catalog-section');
+    if(placeholder) placeholder.outerHTML = html;
   }).catch(() => {});
-  // Append Set Sync panel async (preserves existing panel state if already rendered)
+  // Replace set sync placeholder with live panel
   renderPokemonSetSyncPanel().catch(() => {});
 }
 
@@ -3279,21 +3357,33 @@ async function clearPokemonImageCatalog(){
 async function pokemonImageCatalogPanelHtml(){
   const count = await pokemonCatalogDbCount().catch(() => 0);
   const lastSync = await pokemonCatalogMetaGet('lastImageCatalogSyncAt').catch(() => null);
-  return `<div style="margin-top:14px;border-top:1px solid var(--border);padding-top:12px">
-    <div style="font-family:'Orbitron',monospace;color:var(--blue);font-size:11px;letter-spacing:.05em;margin-bottom:8px">POKEMON IMAGE CATALOG · Pokemon TCG API</div>
+  const blobImages = await pokemonDbAll('images').catch(() => []);
+  const blobCount = blobImages.length;
+  // Blob-cached images are fully offline-safe (stored as data URLs in IndexedDB).
+  // The image catalog stores CDN URLs — those require internet to load.
+  const statusLine = count > 0
+    ? `${count.toLocaleString()} CDN-linked &nbsp;·&nbsp; <span style="color:${blobCount > 0 ? 'var(--blue)' : 'var(--dim)'}">${blobCount.toLocaleString()} blob-cached (offline-safe)</span>`
+    : 'Not yet synced — click SYNC IMAGES to download ~20k card metadata + image URLs';
+  return `<div id="pokemon-image-catalog-section" style="margin-top:14px;border-top:1px solid var(--border);padding-top:12px">
+    <div style="font-family:'Orbitron',monospace;color:var(--blue);font-size:10px;letter-spacing:.05em;margin-bottom:8px">IMAGE CATALOG &nbsp;<span style="font-size:8px;font-family:monospace;color:var(--dim)">Pokemon TCG API · ~20k cards</span></div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:10px">
-      <div class="item-metric"><div class="metric-label">Cached Cards</div><div class="metric-val" id="pokemon-catalog-total" style="font-size:18px">${count.toLocaleString()}</div></div>
-      <div class="item-metric"><div class="metric-label">Last Image Sync</div><div class="metric-val" id="pokemon-catalog-last-sync" style="font-size:11px">${lastSync ? new Date(lastSync).toLocaleString() : 'Never'}</div></div>
+      <div class="item-metric" title="CDN URL cards — requires internet to display images"><div class="metric-label">Catalog Cards</div><div class="metric-val" id="pokemon-catalog-total" style="font-size:18px;color:${count>0?'var(--g)':'var(--dim)'}">${count.toLocaleString()}</div></div>
+      <div class="item-metric" title="Images stored as data URLs in IndexedDB — load fully offline"><div class="metric-label">Blob-Cached</div><div class="metric-val" style="font-size:18px;color:${blobCount>0?'var(--blue)':'var(--dim)'}">${blobCount.toLocaleString()}</div></div>
+      <div class="item-metric"><div class="metric-label">Last Synced</div><div class="metric-val" id="pokemon-catalog-last-sync" style="font-size:11px">${lastSync ? pokemonCacheAgeLabel(lastSync) : 'Never'}</div></div>
+    </div>
+    <div style="font-family:monospace;font-size:9px;color:var(--dim);margin-bottom:8px;line-height:1.5">
+      ${statusLine}<br>
+      <span style="color:var(--dim)">Blob images (from set sync with Download Images on) load without internet. CDN images require connection.</span>
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;align-items:center">
-      <button id="pokemon-catalog-sync-btn" class="hbtn" style="color:var(--blue)" onclick="syncPokemonImageCatalog()">SYNC POKEMON IMAGES</button>
+      <button id="pokemon-catalog-sync-btn" class="hbtn" style="color:var(--blue)" onclick="syncPokemonImageCatalog()">SYNC IMAGES</button>
       <button id="pokemon-catalog-stop-btn" class="hbtn" style="color:var(--gold);display:none" onclick="stopPokemonImageCatalogSync()">STOP</button>
-      <button class="hbtn" style="color:var(--red)" onclick="clearPokemonImageCatalog()">CLEAR IMAGE CATALOG</button>
+      <button class="hbtn" style="color:var(--red);font-size:10px" onclick="clearPokemonImageCatalog()">CLEAR CATALOG</button>
     </div>
     <div style="background:rgba(255,255,255,.06);border-radius:4px;height:6px;margin-bottom:6px;overflow:hidden">
       <div id="pokemon-catalog-bar" style="height:100%;background:var(--blue);width:0%;transition:width .3s;border-radius:4px"></div>
     </div>
-    <div id="pokemon-catalog-count" style="font-family:monospace;font-size:10px;color:var(--dim);margin-bottom:4px">${count ? count.toLocaleString() + ' cards cached' : 'Not yet synced — click Sync to download ~20k card metadata + image URLs'}</div>
+    <div id="pokemon-catalog-count" style="font-family:monospace;font-size:10px;color:var(--dim);margin-bottom:4px"></div>
     <div id="pokemon-catalog-status" style="font-family:monospace;font-size:10px;color:var(--dim);min-height:16px"></div>
   </div>`;
 }
