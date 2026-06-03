@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.06.03.05-supabase-first">
+<meta name="version" content="2026.06.03.06-inv-dedup">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -533,7 +533,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
 
 <header>
   <div class="hdr">
-    <div class="logo">WALK-OFF <span>DASHBOARD · v2026.06.03.05-supabase-first</span></div>
+    <div class="logo">WALK-OFF <span>DASHBOARD · v2026.06.03.06-inv-dedup</span></div>
     <div class="hdr-right">
       <div id="v2-branch-stamp" class="v2-branch-stamp" data-branch-name="pokemon-v2-core">Branch: pokemon-v2-core · v2026.05.20.06-pokemon-v2-core</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
@@ -1445,7 +1445,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.06.03.05-supabase-first';
+const APP_VERSION = '2026.06.03.06-inv-dedup';
 const branchName = 'pokemon-v2-core';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
 const POKEMON_EXACT_CACHE_VERSION = 'pokemon-exact-v3-price-matrix';
@@ -6598,21 +6598,54 @@ async function loadInventoryByConfiguredSource(){
   try {
     const source = getInventorySource();
     let parts = [], counts = [];
-    if(source === 'webflow' || source === 'hybrid') {
-      const wf = await loadWebflowInventoryItems();
-      parts = parts.concat(wf.items);
-      counts.push(wf.count + ' Webflow');
-    }
-    if(source === 'built_in' || source === 'hybrid') {
-      const built = await loadBuiltInInventoryItems();
-      parts = parts.concat(built);
-      counts.push(built.length + ' built-in');
-    }
-    if(source === 'spreadsheet' || source === 'built_in' || source === 'hybrid') {
+
+    if(source === 'hybrid') {
+      // ── Hybrid: parallel load → dedup Webflow mirrors already in Supabase ──
+      const [wf, built] = await Promise.all([
+        loadWebflowInventoryItems(),
+        loadBuiltInInventoryItems(),
+      ]);
+      // Webflow product IDs already linked from Supabase records (stored as wfId/webflowId in data JSON)
+      const supabaseWfIds = new Set(
+        built.map(i => i.raw?.wfId || i.raw?.webflowId).filter(Boolean)
+      );
+      // Keep Supabase record as authoritative; suppress duplicate Webflow mirror row
+      const wfOnly = wf.items.filter(i => !supabaseWfIds.has(i.id));
+      const dedupCount = wf.items.length - wfOnly.length;
+      if(localStorage.getItem('inv_debug') === '1') {
+        console.log('[INV DEDUP]', {
+          supabase:      built.length,
+          webflow:       wf.count,
+          deduplicated:  dedupCount,
+          wfOnlyKept:    wfOnly.length,
+        });
+      }
       const sheet = getUniversalInventory();
-      parts = parts.concat(sheet);
-      counts.push(sheet.length + ' local/CSV');
+      parts = [...built, ...wfOnly, ...sheet];
+      counts = [
+        built.length + ' built-in',
+        wfOnly.length + '/' + wf.count + ' Webflow' + (dedupCount ? ' (' + dedupCount + ' deduped)' : ''),
+        sheet.length + ' local/CSV',
+      ];
+    } else {
+      // ── Non-hybrid: original logic unchanged ──────────────────────────────
+      if(source === 'webflow') {
+        const wf = await loadWebflowInventoryItems();
+        parts = parts.concat(wf.items);
+        counts.push(wf.count + ' Webflow');
+      }
+      if(source === 'built_in') {
+        const built = await loadBuiltInInventoryItems();
+        parts = parts.concat(built);
+        counts.push(built.length + ' built-in');
+      }
+      if(source === 'spreadsheet' || source === 'built_in') {
+        const sheet = getUniversalInventory();
+        parts = parts.concat(sheet);
+        counts.push(sheet.length + ' local/CSV');
+      }
     }
+
     all = applyInventoryEditOverrides(parts);
     soldData = all.filter(i=>i.status==='sold');
     filtered = [...all];
