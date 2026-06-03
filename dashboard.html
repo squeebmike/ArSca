@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.06.03.10-dealer-ui-v1">
+<meta name="version" content="2026.06.03.11-dealer-ui-v1.1">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -409,26 +409,62 @@ body.show-mode .show-mode-toggle { border-color:rgba(0,255,179,.4); color:var(--
 
 /* Tablet portrait (768–1024px) */
 @media(max-width:1024px) and (min-width:768px) {
-  .qpl-hero-card { grid-template-columns:minmax(180px,240px) minmax(0,1fr) minmax(140px,160px); gap:12px; }
-  .qpl-img-sticky .qpl-img-shell { max-height:260px; }
+  .qpl-hero-card { grid-template-columns:minmax(160px,220px) minmax(0,1fr) minmax(130px,150px); gap:10px; padding:12px; }
+  .qpl-img-sticky .qpl-img-shell { max-height:240px; min-height:180px; }
   .research-grid { grid-template-columns:minmax(0,1fr); }
   .research-grid #research-queue-panel { display:none; }
   .hbtn, button.hbtn { min-height:48px; }
   .qpl-actions .hbtn { min-height:48px; }
+  .qpl-actions-primary .hbtn { min-height:52px; }
+  .qpl-condition-chips { gap:6px; }
+  .qpl-cond-chip { min-width:56px; padding:7px 10px; }
   .ra { min-height:40px; min-width:40px; font-size:11px; }
+  .inv-card-grid { grid-template-columns:repeat(3,1fr) !important; }
+  .tbl-wrap { overflow-x:auto; }
 }
 @media(max-width:767px) {
-  .qpl-hero-card { grid-template-columns:1fr; }
+  .qpl-hero-card { grid-template-columns:1fr; gap:10px; }
   .qpl-img-sticky { position:static; }
-  .qpl-actions { position:static; grid-template-columns:1fr 1fr; }
-  .qpl-actions-primary { grid-template-columns:1fr; }
-  .qpl-actions-secondary { grid-template-columns:1fr 1fr; }
+  .qpl-img-sticky .qpl-img-shell { max-height:200px; }
+  .qpl-actions { position:static; }
+  .qpl-actions-primary { grid-template-columns:1fr 1fr; }
+  .qpl-actions-primary .hbtn:first-child { grid-column:1 / -1; }
+  .qpl-actions-secondary { grid-template-columns:1fr 1fr 1fr; }
   .research-grid { grid-template-columns:1fr; }
   .research-grid #research-queue-panel { display:none; }
   .hdr-right .dev-info { display:none; }
-  .dealer-status-bar { padding:4px 12px; gap:10px; font-size:9px; }
+  .dealer-status-bar { padding:4px 12px; gap:10px; font-size:9px; flex-wrap:wrap; }
+  .inv-card-grid { grid-template-columns:repeat(2,1fr) !important; }
+  .tbl-wrap { overflow-x:auto; }
 }
 
+/* ══ DEALER UI v1.1 ═══════════════════════════════════════════════════════ */
+
+/* Inventory view toggle */
+.inv-view-toggle { display:flex; gap:6px; align-items:center; }
+.inv-view-btn { border:1px solid var(--border); border-radius:8px; background:var(--surf); color:var(--dim); padding:6px 12px; font-size:12px; cursor:pointer; min-height:34px; }
+.inv-view-btn.active { border-color:rgba(0,255,179,.5); background:rgba(0,255,179,.1); color:var(--g); }
+
+/* Inventory card grid */
+.inv-card-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; padding:4px 0 12px; }
+.inv-card { background:var(--surf2); border:1px solid var(--border); border-radius:12px; overflow:hidden; display:flex; flex-direction:column; transition:border-color .15s; }
+.inv-card:hover { border-color:rgba(255,255,255,.22); }
+.inv-card-img { width:100%; aspect-ratio:3/4; object-fit:contain; background:#050507; display:block; }
+.inv-card-nimg { width:100%; aspect-ratio:3/4; background:#050507; display:flex; align-items:center; justify-content:center; font-family:monospace; font-size:9px; color:var(--dim); letter-spacing:1px; }
+.inv-card-body { padding:10px; flex:1; display:flex; flex-direction:column; gap:6px; }
+.inv-card-name { font-size:12px; font-weight:700; color:var(--text); line-height:1.3; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.inv-card-meta { font-family:monospace; font-size:10px; color:var(--dim); }
+.inv-card-price { font-family:'Orbitron',monospace; font-size:16px; font-weight:900; color:var(--gold); }
+.inv-card-actions { display:flex; gap:6px; margin-top:auto; padding-top:6px; }
+.inv-card-actions .ra { flex:1; min-height:38px; font-size:11px; }
+
+/* Simplified table action row */
+.row-act-v1 { display:flex; gap:4px; }
+.row-act-v1 .ra-primary { background:rgba(0,255,179,.1); border:1px solid rgba(0,255,179,.3); color:var(--g); border-radius:6px; padding:5px 10px; font-size:10px; cursor:pointer; min-height:32px; font-family:monospace; white-space:nowrap; }
+.row-act-v1 .ra-edit { background:rgba(199,125,255,.08); border:1px solid rgba(199,125,255,.25); color:var(--purple); border-radius:6px; padding:5px 10px; font-size:10px; cursor:pointer; min-height:32px; font-family:monospace; }
+.row-act-v1 .ra-more { background:var(--surf2); border:1px solid var(--border); color:var(--dim); border-radius:6px; padding:5px 8px; font-size:13px; cursor:pointer; min-height:32px; font-family:monospace; position:relative; }
+
+/* ══ END DEALER UI v1.1 ════════════════════════════════════════════════════ */
 /* ══ END DEALER UI v1 ═══════════════════════════════════════════════════════ */
 .qpl-lightbox{position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.92);display:none;align-items:center;justify-content:center;padding:22px;}
 .qpl-lightbox.on{display:flex;}
@@ -619,7 +655,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
 
 <header>
   <div class="hdr">
-    <div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.03.10-dealer-ui-v1</span>
+    <div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.03.11-dealer-ui-v1.1</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
@@ -639,7 +675,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
     <div class="dsb-chip" id="dsb-drawer">🏦 <span>DRAWER:</span> <b id="dsb-drawer-val">CLOSED</b></div>
     <div class="dsb-chip">📦 <span>INV:</span> <b id="dsb-inv-val">—</b></div>
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
-    <div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.03.10-dealer-ui-v1</div>
+    <div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.03.11-dealer-ui-v1.1</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -744,7 +780,13 @@ body.customer-display-mode #customer-display-exit{display:block;}
 
 <!-- INVENTORY TAB -->
 <div id="tab-inventory" class="tab-panel">
-  <div class="sec">FULL INVENTORY</div>
+  <div class="sec" style="display:flex;align-items:center;gap:12px">
+    FULL INVENTORY
+    <div class="inv-view-toggle">
+      <button class="inv-view-btn active" id="inv-btn-table" onclick="setInvView('table')" title="Table view">≡ Table</button>
+      <button class="inv-view-btn" id="inv-btn-cards" onclick="setInvView('cards')" title="Card grid view">⊞ Cards</button>
+    </div>
+  </div>
   <div class="tc">
     <input class="tsi" id="tbl-q" placeholder="Search name, set, year, #, SIR, player..." oninput="filterTable()">
     <button class="fb" aria-label="Voice search inventory" onclick="startVoiceInput('tbl-q', filterTable)">MIC</button>
@@ -762,7 +804,13 @@ body.customer-display-mode #customer-display-exit{display:block;}
     <button class="fb" onclick="setF('Collectibles',this)">🏷 Collectibles</button>
     <span id="tbl-count" style="font-family:monospace,monospace;font-size:9px;color:var(--dim);margin-left:4px"></span>
   </div>
-  <div class="tbl-wrap">
+  <!-- Card grid view — hidden in table mode -->
+  <div id="inv-card-grid-container" style="display:none">
+    <div class="inv-card-grid" id="inv-card-grid"></div>
+    <div class="pager" id="pager-cards"></div>
+  </div>
+  <!-- Table view -->
+  <div class="tbl-wrap" id="inv-table-wrap">
     <table>
       <thead><tr>
         <th class="th-thumb"></th>
@@ -779,6 +827,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
       <tbody id="tbody"></tbody>
     </table>
   </div>
+  </div><!-- end inv-table-wrap -->
   <div class="pager" id="pager"></div>
 </div>
 
@@ -1116,15 +1165,13 @@ body.customer-display-mode #customer-display-exit{display:block;}
     <div id="research-queue-list" style="display:grid;gap:8px"></div>
     <!-- Phone scanner inbox -->
     <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border)">
-      <div style="font-family:monospace;font-size:9px;color:var(--dim);margin-bottom:8px">PHONE SCANNER INBOX</div>
+      <div style="font-family:monospace;font-size:9px;color:var(--dim);margin-bottom:8px">PHONE SCANNER INBOX <span id="rq-scan-count" style="color:var(--gold)"></span></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
-        <button class="hbtn" onclick="addAllFromScannerQueue()">ADD ALL TO BUY OFFER</button>
+        <button class="hbtn" onclick="addAllFromScannerQueue()">ADD ALL TO BUY</button>
+        <button class="hbtn" onclick="bulkAddScanInboxToInventory()">ADD ALL TO INV</button>
+        <button class="hbtn" style="font-size:10px" onclick="renderScanInboxInDrawer()">↻</button>
       </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
-        <button class="hbtn" onclick="bulkAddScanInboxToInventory()">BULK ADD TO INVENTORY</button>
-        <button class="hbtn" onclick="refreshScanInbox()">REFRESH INBOX</button>
-      </div>
-      <div id="scan-inbox-list" style="font-family:monospace;font-size:10px;color:var(--dim)">No phone scans for this store</div>
+      <div id="rq-scan-inbox-list" style="font-family:monospace;font-size:10px;color:var(--dim)">No phone scans for this store</div>
     </div>
   </div>
   <div id="research-panels" class="research-grid queue-hidden">
@@ -1590,7 +1637,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.06.03.10-dealer-ui-v1';
+const APP_VERSION = '2026.06.03.11-dealer-ui-v1.1';
 const branchName = 'pokemon-v2-core';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
 const POKEMON_EXACT_CACHE_VERSION = 'pokemon-exact-v3-price-matrix';
@@ -2095,7 +2142,8 @@ function updateTopStateChips(){
   const showChip = document.getElementById('top-show-chip');
   if(showChip) {
     showChip.textContent = show ? ('SHOW ACTIVE: ' + (show.eventName || 'Show') + (show.booth ? ' / ' + show.booth : '')) : 'NO SHOW ACTIVE';
-    showChip.className = 'top-state-chip' + (show ? ' on' : '');
+    // Preserve dev-only class so Show Mode can hide these chips
+    showChip.className = 'top-state-chip dev-only' + (show ? ' on' : '');
   }
   document.body?.classList.toggle('show-active', !!show);
   const drawerChip = document.getElementById('top-drawer-chip');
@@ -2106,12 +2154,14 @@ function updateTopStateChips(){
     if(drawerState) {
       const expected = getDrawerExpected();
       drawerChip.textContent = getDrawerTotalsVisible() ? 'DRAWER OPEN: $' + Number(expected || 0).toFixed(2) : 'DRAWER OPEN';
-      drawerChip.className = 'top-state-chip warn';
+      drawerChip.className = 'top-state-chip dev-only warn';
     } else {
       drawerChip.textContent = 'DRAWER CLOSED';
-      drawerChip.className = 'top-state-chip';
+      drawerChip.className = 'top-state-chip dev-only';
     }
   }
+  // Always refresh dealer status bar alongside state chips
+  if(typeof updateDealerStatusBar === 'function') updateDealerStatusBar();
 }
 
 function getDrawerTotalsVisible(){
@@ -5895,6 +5945,103 @@ function updateDealerStatusBar(){
 }
 setInterval(updateDealerStatusBar, 5000);
 
+// ── Inventory view toggle ─────────────────────────────────────────────────
+let _invView = localStorage.getItem('inv_view') || 'table';
+
+function setInvView(view){
+  _invView = view;
+  localStorage.setItem('inv_view', view);
+  document.getElementById('inv-btn-table')?.classList.toggle('active', view === 'table');
+  document.getElementById('inv-btn-cards')?.classList.toggle('active', view === 'cards');
+  document.getElementById('inv-table-wrap')?.style.setProperty('display', view === 'table' ? '' : 'none');
+  document.getElementById('pager')?.style.setProperty('display', view === 'table' ? '' : 'none');
+  document.getElementById('inv-card-grid-container')?.style.setProperty('display', view === 'cards' ? '' : 'none');
+  if(view === 'cards') renderCardView();
+}
+
+function renderCardView(){
+  const grid = document.getElementById('inv-card-grid');
+  if(!grid) return;
+  const PAGE = 40;
+  const rows = filtered.slice(0, PAGE);
+  if(!rows.length){ grid.innerHTML = '<div style="color:var(--dim);font-family:monospace;font-size:12px;padding:20px;text-align:center">No items</div>'; return; }
+  grid.innerHTML = rows.map(i => {
+    const ins = i.status === 'in_stock';
+    const thumb = i.thumbnail || i.imageUrl || '';
+    const imgEl = thumb
+      ? `<img class="inv-card-img" src="${escHtml(thumb)}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
+        + `<div class="inv-card-nimg" style="display:none">NO IMAGE</div>`
+      : `<div class="inv-card-nimg">NO IMAGE</div>`;
+    return `<div class="inv-card${ins?'':' sold'}" data-item-id="${i.id}">
+      ${imgEl}
+      <div class="inv-card-body">
+        <div class="inv-card-name" title="${escHtml(i.name)}">${escHtml(i.name)}</div>
+        <div class="inv-card-meta">${escHtml([i.set, i.year, i.condition].filter(Boolean).join(' · ') || i.category || '')}</div>
+        <div class="inv-card-price">${i.market > 0 ? '$' + Number(i.market).toFixed(2) : '—'}</div>
+        ${i.qty > 1 ? `<div class="inv-card-meta" style="color:var(--g)">Qty: ${i.qty}</div>` : ''}
+        <div class="inv-card-actions">
+          ${ins ? `<button class="ra ra-sell" onclick="openSellModal('${i.id}')" style="flex:1;min-height:38px;font-size:11px">Sell</button>` : '<div style="flex:1;text-align:center;font-family:monospace;font-size:9px;color:var(--dim)">SOLD</div>'}
+          <button class="ra" style="background:rgba(199,125,255,.08);border-color:rgba(199,125,255,.25);color:var(--purple);min-height:38px;width:44px;font-size:11px" onclick="openEditModal('${i.id}')">✏</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+  const cardPager = document.getElementById('pager-cards');
+  if(cardPager) cardPager.innerHTML = filtered.length > PAGE
+    ? `<div style="font-family:monospace;font-size:11px;color:var(--dim);text-align:center;padding:10px">Showing ${PAGE} of ${filtered.length} — switch to Table view for full list</div>`
+    : '';
+}
+
+// Patch renderTable to also refresh card view if active
+const _origRenderTable = renderTable;
+function renderTable(){
+  _origRenderTable();
+  if(_invView === 'cards') renderCardView();
+  // Apply correct toggle state
+  setInvView(_invView);
+}
+
+// Inventory row ⋯ more menu
+function showInvRowMenu(e, id, isInStock){
+  e.stopPropagation();
+  document.querySelectorAll('.inv-row-menu').forEach(m => m.remove());
+  const btn = e.currentTarget;
+  const rect = btn.getBoundingClientRect();
+  const menu = document.createElement('div');
+  menu.className = 'inv-row-menu';
+  menu.style.cssText = `position:fixed;left:${rect.left}px;top:${rect.bottom+4}px;z-index:600;background:var(--surf);border:1px solid var(--border);border-radius:8px;padding:6px;min-width:140px;box-shadow:0 8px 24px rgba(0,0,0,.4);`;
+  menu.innerHTML = [
+    isInStock ? `<button class="hbtn" style="width:100%;min-height:36px;font-size:11px;margin-bottom:4px" onclick="dashAddToCart('${id}');this.closest('.inv-row-menu').remove()">🛒 Add to Cart</button>` : '',
+    `<button class="hbtn" style="width:100%;min-height:36px;font-size:11px;margin-bottom:4px" onclick="openEbayFromDash('${id}');this.closest('.inv-row-menu').remove()">eBay List</button>`,
+    `<button class="hbtn" style="width:100%;min-height:36px;font-size:11px;color:var(--gold)" onclick="archiveInventoryItem('${id}');this.closest('.inv-row-menu').remove()">Archive</button>`,
+  ].filter(Boolean).join('');
+  document.body.appendChild(menu);
+  const close = () => menu.remove();
+  setTimeout(() => document.addEventListener('click', close, { once:true }), 10);
+}
+
+// Research drawer scanner inbox renderer
+function renderScanInboxInDrawer(){
+  const el = document.getElementById('rq-scan-inbox-list');
+  const countEl = document.getElementById('rq-scan-count');
+  if(!el) return;
+  readScanInbox().then(inbox => {
+    if(!inbox || !inbox.length){
+      el.innerHTML = '<div style="color:var(--dim);padding:8px 0">No phone scans for this store</div>';
+      if(countEl) countEl.textContent = '';
+      return;
+    }
+    if(countEl) countEl.textContent = inbox.length + ' scan' + (inbox.length===1?'':'s');
+    el.innerHTML = inbox.slice(0,20).map(s => {
+      const m = s.bestMatch || s.possibleMatches?.[0] || {};
+      return `<div style="border:1px solid var(--border);border-radius:8px;padding:8px;margin-bottom:6px;font-family:monospace;font-size:10px">
+        <div style="color:var(--text);font-weight:700;margin-bottom:4px">${escHtml(m.name || s.search_query || 'Scan item')}</div>
+        <div style="color:var(--dim)">${escHtml([m.set,m.year].filter(Boolean).join(' / ') || '')}</div>
+      </div>`;
+    }).join('');
+  }).catch(() => { if(el) el.innerHTML = '<div style="color:var(--dim)">Could not load scans</div>'; });
+}
+
 function runCloseoutChecklist(){
   const issues = [];
   const pending = getSyncQueue().filter(x => x.status !== 'done').length;
@@ -7316,7 +7463,11 @@ function renderTable(){
       <td class="pp pd">${i.cost>0?fd$(i.cost):'—'}</td>
       <td class="${ppc}">${i.cost>0||i.profit?(pft>=0?'+':'')+fd$(pft)+(i.cost>0?' ('+margin+')':''):'—'}</td>
       <td><span style="font-family:monospace,monospace;font-size:9px;color:${ins?'var(--g)':'var(--dim)'}">${ins?'IN STOCK':'SOLD'+(i.channel?' · '+i.channel:'')}</span></td>
-      <td><div class="row-act">${ins?`<button class="ra ra-sell" onclick="openSellModal('${i.id}')">Sell</button>`:''}<button class="ra" style="background:rgba(0,255,179,.08);border-color:rgba(0,255,179,.25);color:#00ffb3" onclick="dashAddToCart('${i.id}')">🛒</button><button class="ra ra-ebay" onclick="openEbayFromDash('${i.id}')">eBay</button><button class="ra" style="background:rgba(199,125,255,.08);border-color:rgba(199,125,255,.25);color:var(--purple)" onclick="openEditModal('${i.id}')">✏️ Edit</button></div></td>
+      <td><div class="row-act-v1">
+        ${ins?`<button class="ra-primary" onclick="openSellModal('${i.id}')">Sell</button>`:''}
+        <button class="ra-edit" onclick="openEditModal('${i.id}')">Edit</button>
+        <button class="ra-more" title="More actions" onclick="showInvRowMenu(event,'${i.id}',${ins})">⋯</button>
+      </div></td>
     </tr>`;
   }).join('');
   tb.querySelectorAll('tr[data-item-id]').forEach(tr => {
@@ -13896,7 +14047,7 @@ function quickLookupResultCard(r, idx){
           ${qplSlabControls(r, idx)}
         </div>
       </details>
-      ${showAdminDebug() ? `<div style="margin-top:8px;font-family:monospace,monospace;font-size:10px;color:var(--dim)">Debug: rawSearchQuerySent ${escHtml(r.lookupDebug?.rawQuerySent || '')} / workerRequestUrl ${escHtml(r.lookupDebug?.requestPath || '')} / searchResultCount ${escHtml(String(r.lookupDebug?.searchResultCount ?? ''))} / candidates ${escHtml(JSON.stringify(r.lookupDebug?.returnedCandidates || []))} / selectedTcgPlayerId ${escHtml(r.tcgPlayerId || r.tcgplayerId || '')} / hydrationRequestUrl ${escHtml(r.pokemonPriceTracker?.lookupDebug?.hydrationRequestUrl || r.lookupDebug?.hydrationRequestUrl || '')} / hydratedFromCache ${escHtml(String(!!(r.pokemonPriceTracker?.lookupDebug?.hydratedFromCache || r.lookupDebug?.hydratedFromCache)))} / prices.conditions keys ${escHtml(Object.keys(r.pokemonPriceTracker?.prices?.conditions || {}).join(', ') || 'none')} / prices.variants keys ${escHtml(Object.keys(r.pokemonPriceTracker?.prices?.variants || {}).join(', ') || 'none')} / priceHistory.conditions keys ${escHtml(Object.keys(r.pokemonPriceTracker?.priceHistory?.conditions || {}).join(', ') || 'none')} / priceHistory.variants keys ${escHtml(Object.keys(r.pokemonPriceTracker?.priceHistory?.variants || {}).join(', ') || 'none')} / active price path ${escHtml(r.activePriceBasis?.pricePath || r.resolvedPricePath || 'n/a')} / reason a row says No Real Price ${escHtml(r.noRealPriceReason || '')} / normalizedQuery ${escHtml(r.lookupDebug?.normalizedQuery || '')} / lookupPath ${escHtml(r.lookupDebug?.path || r.lookupDebug?.sourcePath || 'n/a')} / exactHydrated ${escHtml(String(!!r.lookupDebug?.exactHydrated))} / parseTitle ${escHtml(JSON.stringify(r.lookupDebug?.parseTitle || r.pptParseTitle || null))} / confidence ${escHtml(String(r.lookupDebug?.confidence || r.confidence || ''))} / autoSelect ${escHtml(String(!!(r.lookupDebug?.autoSelect || r.autoSelect)))} / selectedCondition ${escHtml(r.selectedCondition || r.condition || '')} / selectedFinish ${escHtml(qplFinishLabel(r.selectedFinish || r.finish || ''))} / activePriceBasis ${escHtml(JSON.stringify(r.activePriceBasis || {}))} / generatedTcgUrl ${escHtml(builtTcgLink.url || '')} / cache ${escHtml(r.lookupDebug?.cache || r.cache?.source || 'live/none')} / quotaCooldown ${escHtml(String(pokemonPriceTrackerQuotaBlocked()))} / apiCallsConsumed ${escHtml(localStorage.getItem('ppt_last_consumed') || '')}</div>` : ''}
+      ${showAdminDebug() ? `<div class="dev-only" style="margin-top:8px;font-family:monospace,monospace;font-size:10px;color:var(--dim)">Debug: rawSearchQuerySent ${escHtml(r.lookupDebug?.rawQuerySent || '')} / workerRequestUrl ${escHtml(r.lookupDebug?.requestPath || '')} / searchResultCount ${escHtml(String(r.lookupDebug?.searchResultCount ?? ''))} / candidates ${escHtml(JSON.stringify(r.lookupDebug?.returnedCandidates || []))} / selectedTcgPlayerId ${escHtml(r.tcgPlayerId || r.tcgplayerId || '')} / hydrationRequestUrl ${escHtml(r.pokemonPriceTracker?.lookupDebug?.hydrationRequestUrl || r.lookupDebug?.hydrationRequestUrl || '')} / hydratedFromCache ${escHtml(String(!!(r.pokemonPriceTracker?.lookupDebug?.hydratedFromCache || r.lookupDebug?.hydratedFromCache)))} / prices.conditions keys ${escHtml(Object.keys(r.pokemonPriceTracker?.prices?.conditions || {}).join(', ') || 'none')} / prices.variants keys ${escHtml(Object.keys(r.pokemonPriceTracker?.prices?.variants || {}).join(', ') || 'none')} / priceHistory.conditions keys ${escHtml(Object.keys(r.pokemonPriceTracker?.priceHistory?.conditions || {}).join(', ') || 'none')} / priceHistory.variants keys ${escHtml(Object.keys(r.pokemonPriceTracker?.priceHistory?.variants || {}).join(', ') || 'none')} / active price path ${escHtml(r.activePriceBasis?.pricePath || r.resolvedPricePath || 'n/a')} / reason a row says No Real Price ${escHtml(r.noRealPriceReason || '')} / normalizedQuery ${escHtml(r.lookupDebug?.normalizedQuery || '')} / lookupPath ${escHtml(r.lookupDebug?.path || r.lookupDebug?.sourcePath || 'n/a')} / exactHydrated ${escHtml(String(!!r.lookupDebug?.exactHydrated))} / parseTitle ${escHtml(JSON.stringify(r.lookupDebug?.parseTitle || r.pptParseTitle || null))} / confidence ${escHtml(String(r.lookupDebug?.confidence || r.confidence || ''))} / autoSelect ${escHtml(String(!!(r.lookupDebug?.autoSelect || r.autoSelect)))} / selectedCondition ${escHtml(r.selectedCondition || r.condition || '')} / selectedFinish ${escHtml(qplFinishLabel(r.selectedFinish || r.finish || ''))} / activePriceBasis ${escHtml(JSON.stringify(r.activePriceBasis || {}))} / generatedTcgUrl ${escHtml(builtTcgLink.url || '')} / cache ${escHtml(r.lookupDebug?.cache || r.cache?.source || 'live/none')} / quotaCooldown ${escHtml(String(pokemonPriceTrackerQuotaBlocked()))} / apiCallsConsumed ${escHtml(localStorage.getItem('ppt_last_consumed') || '')}</div>` : ''}
     </div>
     <div class="qpl-actions">
       <!-- PRIMARY actions — large, color-coded -->
