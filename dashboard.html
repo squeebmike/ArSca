@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.06.03.08-pos-ledger-integrity">
+<meta name="version" content="2026.06.03.09-dealer-polish">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -533,7 +533,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
 
 <header>
   <div class="hdr">
-    <div class="logo">WALK-OFF <span>DASHBOARD · v2026.06.03.08-pos-ledger-integrity</span></div>
+    <div class="logo">WALK-OFF <span>DASHBOARD · v2026.06.03.09-dealer-polish</span></div>
     <div class="hdr-right">
       <div id="v2-branch-stamp" class="v2-branch-stamp" data-branch-name="pokemon-v2-core">Branch: pokemon-v2-core · v2026.05.20.06-pokemon-v2-core</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
@@ -1227,6 +1227,23 @@ body.customer-display-mode #customer-display-exit{display:block;}
   </div>
 </div>
 
+<!-- DRAWER COUNT MODAL -->
+<div class="modal-bg" id="drawer-count-modal">
+  <div class="modal">
+    <h3>COUNT DRAWER</h3>
+    <div id="drawer-count-expected" style="font-family:monospace;font-size:13px;color:var(--dim);margin-bottom:12px"></div>
+    <label>Counted Cash ($)</label>
+    <input type="number" id="drawer-count-input" step="0.01" min="0" placeholder="0.00"
+           onkeydown="if(event.key==='Enter') submitDrawerCount()"
+           style="font-size:18px;font-weight:700">
+    <div id="drawer-count-preview" style="font-family:monospace;font-size:11px;margin-top:8px;min-height:18px"></div>
+    <div class="modal-btns">
+      <button class="modal-btn confirm" onclick="submitDrawerCount()">CONFIRM COUNT</button>
+      <button class="modal-btn cancel" onclick="document.getElementById('drawer-count-modal').classList.remove('on')">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <!-- QUICK SELL MODAL -->
 <div class="modal-bg" id="sell-modal">
   <div class="modal">
@@ -1235,10 +1252,18 @@ body.customer-display-mode #customer-display-exit{display:block;}
     <div id="sell-item-meta" style="font-family:monospace,monospace;font-size:9px;color:var(--dim);margin-bottom:8px"></div>
     <label>Sale Price ($)</label>
     <input type="number" id="sell-price" step="0.01" min="0" placeholder="0.00" oninput="previewSellProfit()">
-    <label>Channel</label>
+    <label>Payment Method</label>
     <select id="sell-channel">
-      <option>In-Store</option><option>eBay</option>
-      <option>Whatnot</option><option>Website</option><option>Other</option>
+      <option>Cash</option>
+      <option>Credit/Debit</option>
+      <option>PayPal</option>
+      <option>Venmo</option>
+      <option>Trade</option>
+      <option>In-Store</option>
+      <option>eBay</option>
+      <option>Whatnot</option>
+      <option>Website</option>
+      <option>Other</option>
     </select>
     <div id="sell-profit-preview"></div>
     <div class="modal-btns">
@@ -1445,7 +1470,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.06.03.08-pos-ledger-integrity';
+const APP_VERSION = '2026.06.03.09-dealer-polish';
 const branchName = 'pokemon-v2-core';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
 const POKEMON_EXACT_CACHE_VERSION = 'pokemon-exact-v3-price-matrix';
@@ -4609,7 +4634,7 @@ function ensureSpreadsheetPanel(backoffice){
       <div style="font-family:monospace;font-size:9px;color:var(--dim);margin-bottom:6px">BUILT-IN QUICK ADD</div>
       <div style="display:grid;grid-template-columns:2fr 1fr 1fr .8fr .8fr;gap:8px">
         <input id="built-name" class="tsi" placeholder="Item name">
-        <select id="built-category" class="tsi">${getInventoryCategories().map(c => `<option>${escHtml(c)}</option>`).join('')}</select>
+        <select id="built-category" class="tsi" onchange="toggleBuiltGradedRow()">${getInventoryCategories().map(c => `<option>${escHtml(c)}</option>`).join('')}</select>
         <input id="built-set" class="tsi" placeholder="Set / issue / product">
         <input id="built-cost" class="tsi" type="number" step="0.01" placeholder="Cost">
         <input id="built-price" class="tsi" type="number" step="0.01" placeholder="Price">
@@ -4619,6 +4644,11 @@ function ensureSpreadsheetPanel(backoffice){
         <input id="built-condition" class="tsi" placeholder="Condition">
         <input id="built-location" class="tsi" placeholder="Location">
         <button class="hbtn" onclick="addManualBuiltInInventory()">ADD ITEM</button>
+      </div>
+      <div id="built-graded-row" style="display:none;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:8px">
+        <input id="built-grader" class="tsi" placeholder="Grader (PSA / BGS / CGC)">
+        <input id="built-grade" class="tsi" placeholder="Grade (e.g. 9.5)">
+        <input id="built-cert" class="tsi" placeholder="Cert #">
       </div>
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
@@ -4637,25 +4667,36 @@ function ensureSpreadsheetPanel(backoffice){
 let pendingCsvRows = [];
 let pendingCsvHeaders = [];
 
+function toggleBuiltGradedRow(){
+  const cat = document.getElementById('built-category')?.value || '';
+  const row = document.getElementById('built-graded-row');
+  if(row) row.style.display = cat === 'Graded' ? 'grid' : 'none';
+}
+
 async function addManualBuiltInInventory(){
   const name = document.getElementById('built-name')?.value.trim();
   if(!name){ toast_dash('Enter an item name'); return; }
+  const cat = document.getElementById('built-category')?.value || 'TCG';
   const item = {
     name,
-    category:document.getElementById('built-category')?.value || 'TCG',
+    category:cat,
     set:document.getElementById('built-set')?.value.trim() || '',
     year:document.getElementById('built-year')?.value.trim() || '',
     condition:document.getElementById('built-condition')?.value.trim() || '',
     location:document.getElementById('built-location')?.value.trim() || '',
     cost:Number(document.getElementById('built-cost')?.value || 0),
     market:Number(document.getElementById('built-price')?.value || 0),
-    qty:1, // A2 fix: r was an undefined reference here, causing ReferenceError on every manual add
+    qty:1,
+    // Graded fields — populated when category is Graded
+    grader:document.getElementById('built-grader')?.value.trim() || '',
+    grade:document.getElementById('built-grade')?.value.trim() || '',
+    cert_number:document.getElementById('built-cert')?.value.trim() || '',
   };
   try {
     const id = await createBuiltInInventoryItem(item, item, 'manual_quick_add');
-    ['built-name','built-set','built-year','built-condition','built-location','built-cost','built-price'].forEach(k => { const el=document.getElementById(k); if(el) el.value=''; });
+    ['built-name','built-set','built-year','built-condition','built-location','built-cost','built-price','built-grader','built-grade','built-cert'].forEach(k => { const el=document.getElementById(k); if(el) el.value=''; });
     logOpsEvent('inventory_add', 'Manual built-in inventory item added: ' + item.name, { id, category:item.category });
-    toast_dash('Added built-in inventory item');
+    toast_dash('Added: ' + item.name);
     loadInventory();
   } catch(e) {
     toast_dash('Manual add failed: ' + (e.message || e));
@@ -5634,23 +5675,32 @@ function renderTodayMode(){
   const today = new Date().toDateString();
   const tx = safeLocalJson('pos_transactions', []).filter(t => new Date(t.date).toDateString() === today);
   const revenue = tx.reduce((a,t)=>a+Number(t.total||0),0);
-  const cash = tx.filter(t => /cash/i.test(t.method || '')).reduce((a,t)=>a+Number(t.total||0),0);
+  const profit = tx.reduce((a,t)=>a+(t.items||[]).reduce((b,i)=>b+Number(i.price||0)-Number(i.cost||0),0),0);
+  const cash = tx.filter(t => normalizeTenderType(t.method,t.tenderType)==='cash').reduce((a,t)=>a+Number(t.total||0),0);
   const pendingSync = getSyncQueue().filter(x => x.status !== 'done').length;
   const buys = safeLocalJson('pos_buy_list', []).length;
-  const atShow = all.filter(i => (i.lifecycle || i.status) === 'at_show').length;
-  const sold = tx.reduce((a,t)=>a+(t.items?.length || 0),0);
-  const scanCount = Number(document.getElementById('scan-inbox-count')?.dataset.count || 0);
+  const soldToday = tx.reduce((a,t)=>a+(t.items?.length||0),0);
+  // Cards bought today: from buy offers accepted today
+  const boughtToday = safeLocalJson('pos_buy_offers',[]).filter(o=>new Date(o.date).toDateString()===today).reduce((a,o)=>a+(o.addedCount||o.items?.length||0),0);
+  // Inventory added today
+  const addedToday = (all||[]).filter(i=>i.addedAt&&new Date(i.addedAt).toDateString()===today).length;
+  // Drawer
+  const drawerStatus = drawerState ? '▲ $'+getDrawerExpected().toFixed(2) : '▼ CLOSED';
+  const drawerColor = drawerState ? 'var(--g)' : 'var(--dim)';
   const cards = [
-    ['Sales', '$'+revenue.toFixed(2), tx.length + ' transactions'],
-    ['Cash', '$'+cash.toFixed(2), 'drawer expected'],
-    ['Items Sold', sold, 'today'],
-    ['At Show', atShow, 'items tracked'],
-    ['Buy Queue', buys, 'offer items'],
-    ['Scans', scanCount, 'phone inbox'],
-    ['Sync', pendingSync, navigator.onLine ? 'online' : 'offline'],
-    ['Health', dataHealthIssues().length, 'items need attention'],
+    ['Sales Today',    '$'+revenue.toFixed(2),  tx.length + ' transactions'],
+    ['Profit Today',   (profit>=0?'+':'')+'$'+Math.abs(profit).toFixed(2), 'gross margin'],
+    ['Cards Sold',     soldToday,               'today'],
+    ['Cards Bought',   boughtToday,             'today'],
+    ['Inv Added',      addedToday,              'today'],
+    ['Buy Queue',      buys,                    'offer items'],
+    ['Sync Queue',     pendingSync,             pendingSync>0?'pending':navigator.onLine?'online':'offline'],
+    ['Drawer',         drawerStatus,            drawerState?'open':'closed'],
   ];
-  grid.innerHTML = cards.map(([k,v,s]) => `<div class="qol-card"><div class="qol-k">${k}</div><div class="qol-v">${v}</div><div class="qol-s">${s}</div></div>`).join('');
+  grid.innerHTML = cards.map(([k,v,s],i) => {
+    const color = i===7?drawerColor:i===1?(profit>=0?'var(--g)':'var(--red)'):'';
+    return `<div class="qol-card"><div class="qol-k">${k}</div><div class="qol-v"${color?` style="color:${color}"`:''}>${v}</div><div class="qol-s">${s}</div></div>`;
+  }).join('');
   updateUndoButton();
 }
 setInterval(renderTodayMode, 10000);
@@ -14606,14 +14656,37 @@ function countDrawer(){
   migrateDrawerStartingCash(drawerState);
   const snapshot = getDrawerSnapshot(drawerState);
   const expected = snapshot.expected;
-  const counted = parseFloat(prompt(`Expected: $${expected.toFixed(2)}
-Count your drawer and enter actual amount:`) || '');
-  if(!Number.isFinite(counted)) return;
+  const modal = document.getElementById('drawer-count-modal');
+  const expEl = document.getElementById('drawer-count-expected');
+  const input = document.getElementById('drawer-count-input');
+  const preview = document.getElementById('drawer-count-preview');
+  if(expEl) expEl.textContent = 'Expected: $' + expected.toFixed(2);
+  if(input){ input.value = ''; }
+  if(preview) preview.textContent = '';
+  // Live over/short preview
+  if(input) input.oninput = () => {
+    const v = parseFloat(input.value)||0;
+    const d = v - expected;
+    if(preview) preview.innerHTML = `<span style="color:${Math.abs(d)<0.01?'var(--g)':d>0?'var(--blue)':'var(--red)'}">${d>=0?'+':''}$${d.toFixed(2)} ${Math.abs(d)<0.01?'✓ BALANCED':d>0?'OVER':'SHORT'}</span>`;
+  };
+  if(modal) modal.classList.add('on');
+  setTimeout(() => input?.focus(), 80);
+  // Store expected for submit
+  modal._expected = expected;
+}
+
+function submitDrawerCount(){
+  const modal = document.getElementById('drawer-count-modal');
+  const input = document.getElementById('drawer-count-input');
+  const expected = modal?._expected ?? getDrawerExpected();
+  const counted = parseFloat(input?.value || '');
+  if(!Number.isFinite(counted)){ toast_dash('Enter a valid amount'); return; }
   const diff = counted - expected;
   drawerState.countedCash = counted;
   drawerState.overShort = diff;
   drawerState.countedAt = new Date().toISOString();
   saveDrawer();
+  if(modal) modal.classList.remove('on');
   logOpsEvent('drawer_count', 'Counted cash drawer', {
     drawerSessionId:drawerState.id || '',
     expected: expected.toFixed(2),
@@ -14621,12 +14694,7 @@ Count your drawer and enter actual amount:`) || '');
     difference: diff.toFixed(2)
   });
   renderDrawer();
-  alert(`DRAWER COUNT
-Expected Cash: $${expected.toFixed(2)}
-Counted Cash: $${counted.toFixed(2)}
-Over/Short: ${diff>=0?'+':''}$${diff.toFixed(2)}
-
-Expected Cash was not changed. Use Correction if you need to document a cash adjustment.`);
+  toast_dash(`Drawer counted · Expected $${expected.toFixed(2)} · Counted $${counted.toFixed(2)} · ${diff>=0?'+':''}$${diff.toFixed(2)}`);
 }
 
 function closeDrawer(){
@@ -14688,19 +14756,31 @@ function closeDrawer(){
     counted: counted.toFixed(2),
     difference: diff.toFixed(2)
   });
-  alert(`DRAWER CLOSE SUMMARY
-Starting Cash: $${Number(drawerState.startingCash ?? drawerState.float ?? 0).toFixed(2)}
-Cash Sales: $${Number(snapshot.tender.cash || 0).toFixed(2)}
-Cash In: $${Number(snapshot.adj.in || 0).toFixed(2)}
-Cash Out: $${Number(snapshot.adj.out || 0).toFixed(2)}
-Expected Cash: $${expected.toFixed(2)}
-Counted Cash: $${counted.toFixed(2)}
-Difference: ${diff>=0?'+':''}$${diff.toFixed(2)}
-
-${Math.abs(diff)<0.5?'✓ DRAWER BALANCED':'⚠ DRAWER '+Math.abs(diff).toFixed(2)+' '+( diff>0?'OVER':'SHORT')}`);
+  // Show in-page closeout summary via toast + inline render (no blocking alert)
+  const balanced = Math.abs(diff) < 0.5;
+  const summaryLines = [
+    `Starting: $${Number(summary.startingCash).toFixed(2)}`,
+    `Cash Sales: $${Number(summary.cashSales).toFixed(2)}`,
+    `Expected: $${expected.toFixed(2)}`,
+    `Counted: $${counted.toFixed(2)}`,
+    `${diff>=0?'+':''}$${diff.toFixed(2)} ${balanced?'✓ BALANCED':'⚠ '+( diff>0?'OVER':'SHORT')}`,
+  ].join('  ·  ');
   drawerState = null;
   localStorage.removeItem('pos_drawer');
   renderDrawer();
+  // Inject summary into the newly-rendered closed-drawer area
+  setTimeout(() => {
+    const closedView = document.getElementById('drawer-closed-view');
+    if(closedView && !closedView.querySelector('#drawer-closeout-summary')) {
+      const el = document.createElement('div');
+      el.id = 'drawer-closeout-summary';
+      el.style.cssText = 'font-family:monospace;font-size:11px;line-height:1.6;padding:10px 12px;border-radius:8px;margin-bottom:10px;' +
+        (balanced ? 'background:rgba(0,255,179,.08);border:1px solid rgba(0,255,179,.3);color:var(--g)' : 'background:rgba(255,209,102,.08);border:1px solid rgba(255,209,102,.3);color:var(--gold)');
+      el.innerHTML = `<b>DRAWER CLOSED</b><br>${summaryLines.split('  ·  ').join('<br>')}`;
+      closedView.prepend(el);
+    }
+  }, 50);
+  toast_dash((balanced?'✓ Drawer balanced':'⚠ Drawer '+Math.abs(diff).toFixed(2)+(diff>0?' over':' short')) + ' · Closed successfully');
 }
 
 function getDrawerExpected(){
