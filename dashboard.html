@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.05.27.03-pst-direct-setid">
+<meta name="version" content="2026.06.03.01-pos-critical-fixes">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -533,7 +533,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
 
 <header>
   <div class="hdr">
-    <div class="logo">WALK-OFF <span>DASHBOARD · v2026.05.27.03-pst-direct-setid</span></div>
+    <div class="logo">WALK-OFF <span>DASHBOARD · v2026.06.03.01-pos-critical-fixes</span></div>
     <div class="hdr-right">
       <div id="v2-branch-stamp" class="v2-branch-stamp" data-branch-name="pokemon-v2-core">Branch: pokemon-v2-core · v2026.05.20.06-pokemon-v2-core</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
@@ -1445,7 +1445,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.05.27.03-pst-direct-setid';
+const APP_VERSION = '2026.06.03.01-pos-critical-fixes';
 const branchName = 'pokemon-v2-core';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
 const POKEMON_EXACT_CACHE_VERSION = 'pokemon-exact-v3-price-matrix';
@@ -4648,7 +4648,7 @@ async function addManualBuiltInInventory(){
     location:document.getElementById('built-location')?.value.trim() || '',
     cost:Number(document.getElementById('built-cost')?.value || 0),
     market:Number(document.getElementById('built-price')?.value || 0),
-    qty:Number(r.qty || 1),
+    qty:1, // A2 fix: r was an undefined reference here, causing ReferenceError on every manual add
   };
   try {
     const id = await createBuiltInInventoryItem(item, item, 'manual_quick_add');
@@ -5233,6 +5233,13 @@ async function processSyncItem(item){
   }
   if(item.type === 'drawer-movement') {
     await MoneyLedgerService().writeDrawerMovement(item.payload);
+    return;
+  }
+  if(item.type === 'drawer-session-close') {
+    const sb = getSupabaseClient();
+    if(!sb) throw new Error('Supabase client unavailable');
+    const { error } = await sb.from('pos_drawer_sessions').update(item.payload).eq('id', item.payload.id);
+    if(error) throw new Error('drawer-session-close: ' + error.message);
     return;
   }
   if(item.type === 'pokemon-manual-comp') {
@@ -13725,8 +13732,13 @@ function selectedQuickLookupItem(idx){
     label:r.priceSource || 'Manual Price'
   };
   const activePrice = Number(activePriceBasis.price || r.market || 0) || 0;
+  // A3 fix: when the QPL result came from the local inventory (source === 'inventory'),
+  // preserve the real item ID so the cart can set shopId correctly and
+  // markCartItemsSoldFromPayment can find + mark the item sold after checkout.
+  // For all other sources, generate an ephemeral qpl_ ID as before.
+  const inventorySourceId = r.source === 'inventory' ? (r.raw?.id || '') : '';
   return {
-    id:'qpl_' + Date.now() + '_' + Math.random().toString(36).slice(2,6),
+    id: inventorySourceId || ('qpl_' + Date.now() + '_' + Math.random().toString(36).slice(2,6)),
     name:document.getElementById('qpl-edit-name')?.value.trim() || r.name || 'Manual item',
     category:document.getElementById('qpl-edit-category')?.value || normalizeQuickCategory(r.category),
     year:document.getElementById('qpl-edit-year')?.value.trim() || r.year || '',
@@ -13807,12 +13819,15 @@ async function addSelectedQuickLookupToInventory(idx){
   if(status) status.textContent = 'Adding inventory...';
   try {
     const productId = await createInventoryRecord(item, item);
-    if(getInventorySource() === 'webflow') saveQuickLookupLocalInventory(item, productId);
+    // A1 fix: do NOT also write to walkoff_universal_inventory on success —
+    // loadInventory already fetches the live source (Webflow/Supabase) which now has the item.
+    // Writing here AND fetching Webflow created a duplicate entry in the inventory list.
     logOpsEvent('inventory_add', 'Added quick lookup item: ' + item.name, { productId, category:item.category, market:item.market, inventorySource:getInventorySource() });
     if(status) status.innerHTML = '<span style="color:var(--g)">Added to inventory.</span>';
     toast_dash('Added to inventory: ' + item.name);
     loadInventory();
   } catch(e) {
+    // Only fall back to local write when the primary create failed (offline / API error).
     saveQuickLookupLocalInventory(item, '');
     enqueueSync('inventory-create', 'Create quick lookup item: ' + item.name, { item, updates:item, inventorySource:getInventorySource() }, e.message || 'Inventory create failed');
     if(status) status.innerHTML = '<span style="color:var(--gold)">Saved locally and queued for inventory sync: ' + escHtml(e.message || 'sync later') + '</span>';
@@ -14298,6 +14313,26 @@ function closeDrawer(){
     appVersion: APP_VERSION
   };
   saveDrawerCloseout(summary);
+  // A4 fix: update pos_drawer_sessions in Supabase so drawer history shows a proper close.
+  // Fire-and-forget with queue fallback — does not block the close alert or UI.
+  const _drawerClosePayload = {
+    id: drawerState.id,
+    status: 'closed',
+    closed_at: summary.closedAt,
+    counted_cash: counted,
+    over_short: diff,
+    expected_cash: expected,
+    closed_by: getCurrentUserId ? getCurrentUserId() : (getAuthSession()?.user?.id || 'local-user'),
+  };
+  (async () => {
+    const _sb = getSupabaseClient();
+    if(_sb) {
+      const { error:_ce } = await _sb.from('pos_drawer_sessions').update(_drawerClosePayload).eq('id', _drawerClosePayload.id);
+      if(_ce) enqueueSync('drawer-session-close', 'Close drawer session: ' + _drawerClosePayload.id, _drawerClosePayload, _ce.message);
+    } else {
+      enqueueSync('drawer-session-close', 'Close drawer session: ' + _drawerClosePayload.id, _drawerClosePayload, 'Supabase unavailable at close time');
+    }
+  })();
   logOpsEvent('drawer_close', 'Closed cash drawer', {
     drawerSessionId: summary.drawerSessionId,
     expected: expected.toFixed(2),
