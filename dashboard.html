@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.06.03.03-wf-patch-repair">
+<meta name="version" content="2026.06.03.04-wf-new-fields">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -533,7 +533,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
 
 <header>
   <div class="hdr">
-    <div class="logo">WALK-OFF <span>DASHBOARD · v2026.06.03.03-wf-patch-repair</span></div>
+    <div class="logo">WALK-OFF <span>DASHBOARD · v2026.06.03.04-wf-new-fields</span></div>
     <div class="hdr-right">
       <div id="v2-branch-stamp" class="v2-branch-stamp" data-branch-name="pokemon-v2-core">Branch: pokemon-v2-core · v2026.05.20.06-pokemon-v2-core</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
@@ -1445,7 +1445,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.06.03.03-wf-patch-repair';
+const APP_VERSION = '2026.06.03.04-wf-new-fields';
 const branchName = 'pokemon-v2-core';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
 const POKEMON_EXACT_CACHE_VERSION = 'pokemon-exact-v3-price-matrix';
@@ -6645,7 +6645,8 @@ function mapItem(i, skuMap){
     grader:f.grader||'', grade:f.grade||'',
     cert_number:f['cert-number']||f.cert_number||'',
     tags:f.tags||'',
-    thumbnail:f.thumbnail?.url||null,
+    thumbnail:f.thumbnail?.url||f['image-url']||null,
+    imageUrl:f['image-url']||'',
     location:f.location||'',
     player:f['player-card-name']||f.player||'',
     team:f.team||'',
@@ -8973,6 +8974,12 @@ async function createWebflowProduct(item, updates) {
       brand:     updates.manufacturer || updates.brand || item.manufacturer || item.brand || '',
       'card-sku': updates.inventorySku || updates.sku || item.inventorySku || '',
       tags:       updates.tags || item.tags || '',
+      // Newly confirmed schema fields (added to Webflow CMS 2026-06-03)
+      'card-number': updates.card_number || item.card_number || '',
+      location:      updates.location    || item.location    || '',
+      variant:       updates.variant     || item.variant     || '',
+      'image-url':   updates.imageUrl    || updates.thumbnail || item.imageUrl || item.thumbnail || '',
+      'cert-number': updates.cert_number || item.cert_number  || '',
     };
     const cat = updates.category || item.category;
     if(catMap[cat]) patchFields['card-category'] = catMap[cat];
@@ -9477,12 +9484,14 @@ async function confirmEditAndSync() {
       'msrp': Math.round(updates.market||0),
       'retail-price': Math.round(updates.market||0),
     };
-    if(updates.set)       fieldData['set-name']        = updates.set;
-    if(updates.year)      fieldData['year']             = String(updates.year);
-    if(updates.variant)   fieldData['variant']          = updates.variant;
-    if(updates.location)  fieldData['location']         = updates.location;
-    if(updates.key_notes) fieldData['card-description'] = updates.key_notes;
-    if(updates.cost > 0)  fieldData['cost-basis']       = updates.cost;
+    if(updates.set)        fieldData['set-name']        = updates.set;
+    if(updates.year)       fieldData['year']             = String(updates.year);
+    if(updates.variant)    fieldData['variant']          = updates.variant;
+    if(updates.location)   fieldData['location']         = updates.location;
+    if(updates.key_notes)  fieldData['card-description'] = updates.key_notes;
+    if(updates.cost > 0)   fieldData['cost-basis']       = updates.cost;
+    if(updates.card_number)fieldData['card-number']      = updates.card_number;
+    if(updates.imageUrl || updates.thumbnail) fieldData['image-url'] = updates.imageUrl || updates.thumbnail || '';
     if(catMap[updates.category]) fieldData['card-category'] = catMap[updates.category];
     if(condMap[updates.condition]) fieldData['condition'] = condMap[updates.condition];
     queuedFieldData = fieldData;
