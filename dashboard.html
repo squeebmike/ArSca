@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.06.03.07-edit-supabase-first">
+<meta name="version" content="2026.06.03.08-pos-ledger-integrity">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -533,7 +533,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
 
 <header>
   <div class="hdr">
-    <div class="logo">WALK-OFF <span>DASHBOARD · v2026.06.03.07-edit-supabase-first</span></div>
+    <div class="logo">WALK-OFF <span>DASHBOARD · v2026.06.03.08-pos-ledger-integrity</span></div>
     <div class="hdr-right">
       <div id="v2-branch-stamp" class="v2-branch-stamp" data-branch-name="pokemon-v2-core">Branch: pokemon-v2-core · v2026.05.20.06-pokemon-v2-core</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
@@ -1445,7 +1445,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.06.03.07-edit-supabase-first';
+const APP_VERSION = '2026.06.03.08-pos-ledger-integrity';
 const branchName = 'pokemon-v2-core';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
 const POKEMON_EXACT_CACHE_VERSION = 'pokemon-exact-v3-price-matrix';
@@ -7174,6 +7174,91 @@ function previewSellProfit(){
   el.textContent=sale>0?`Profit: ${profit>=0?'+':''}${fd$(profit)} (${item.cost>0?((profit/item.cost)*100).toFixed(0)+'% ROI':'no cost'})`: '';
   el.style.color=profit>=0?'var(--g)':'var(--red)';
 }
+// ── Shared sale finalization — called by every sale path that completes a sale ───
+// Records a transaction in pos_transactions (localStorage) + Supabase pos_sales ledger.
+// Updates the cash drawer when the tender is cash.
+// Falls back to offline queue ('pos-ledger-transaction') when Supabase is unavailable.
+// This is the single source of truth for all quick-sell transaction recording.
+async function recordQuickSellTransaction(item, salePrice, channel, soldAt){
+  const saleId  = makeUuid('sale');
+  const storeId = getActiveStoreId();
+  const drawerId = drawerState?.id || null;
+  const tenderType = normalizeTenderType(channel || 'In-Store');
+
+  // ── 1. pos_transactions localStorage — immediate, never fails ──
+  const txLog = safeLocalJson('pos_transactions', []);
+  txLog.unshift({
+    id: saleId,
+    date: soldAt,
+    method: channel || 'In-Store',
+    tenderType,
+    total: salePrice,
+    items: [{ name:item.name||'', price:salePrice, cost:item.cost||0, category:item.category||'', soldAt }],
+    source: 'quick-sell',
+    drawerSessionId: drawerId || '',
+    storeId,
+    appVersion: APP_VERSION,
+  });
+  localStorage.setItem('pos_transactions', JSON.stringify(txLog.slice(0,1000)));
+
+  // ── 2. Drawer expected-cash update ──
+  const cashSettings = getPaymentSettings()?.cash;
+  if(tenderType === 'cash' && drawerState && cashSettings?.trackCashDrawer !== false) {
+    drawerState.cashSales    = Number(drawerState.cashSales    || 0) + salePrice;
+    drawerState.expectedCash = Number(drawerState.expectedCash ?? drawerState.startingCash ?? drawerState.float ?? 0) + salePrice;
+    saveDrawer();
+    renderDrawer();
+  }
+
+  // ── 3. Supabase ledger bundle — same tables as locked checkout ──
+  const drawerMovements = (tenderType === 'cash' && drawerId) ? [{
+    id:makeUuid('move'), drawer_session_id:drawerId, store_id:storeId, sale_id:saleId,
+    movement_type:'cash_sale', amount:salePrice,
+    note:'Quick sell: ' + (item.name||'item'),
+    created_by:getCurrentUserId(), created_at:soldAt,
+  }] : [];
+
+  const supabaseBundle = {
+    sale: {
+      id:saleId, store_id:storeId,
+      show_session_id:getShowSessionId(getShowMode())||null,
+      drawer_session_id:drawerId, checkout_snapshot_id:null,
+      subtotal:salePrice, discount_total:0, tax_total:0, total:salePrice,
+      status:'completed',
+      created_by:getCurrentUserId(), created_at:soldAt, completed_at:soldAt,
+    },
+    saleLines: [{
+      id:makeUuid('line'), sale_id:saleId, store_id:storeId,
+      item_id:item.supabaseRowId||item.id||'',
+      title:item.name||'Item', category:item.category||'',
+      quantity:1, unit_price:salePrice, original_price:salePrice,
+      adjusted_price:salePrice, discount_amount:0,
+      cost_basis:item.cost||0, profit:salePrice-(item.cost||0),
+      condition:item.condition||'', finish:'',
+      source_id:item.id||'', image_url:item.thumbnail||'',
+    }],
+    payments: [{
+      id:makeUuid('pay'), sale_id:saleId, store_id:storeId,
+      drawer_session_id:drawerId,
+      method:channel||'In-Store', amount:salePrice, reference:'',
+      status:'confirmed', confirmed_by:getCurrentUserId(),
+      confirmed_at:soldAt, created_at:soldAt,
+    }],
+    drawerMovements,
+    audit: [],
+    snapshot: {},
+  };
+
+  try {
+    await MoneyLedgerService().commitTransactionBundle(supabaseBundle);
+  } catch(e) {
+    // Queue for retry — same handler as locked-checkout offline path
+    enqueueOrReplaceSync('pos-ledger-transaction', saleId,
+      'Quick sell ledger: ' + (item.name||'item'),
+      supabaseBundle, e.message || 'Supabase write failed');
+  }
+}
+
 async function confirmQuickSell(){
   const item=all.find(i=>i.id===sellItemId); if(!item) return;
   const salePrice=parseFloat(document.getElementById('sell-price').value)||0;
@@ -7188,21 +7273,27 @@ async function confirmQuickSell(){
     'inventory-count': 0,
     status:            STATUS_SOLD,
   };
+  // Update in-memory state immediately
   const idx=all.findIndex(i=>i.id===item.id);
   if(idx>=0){all[idx].status='sold';all[idx].lifecycle='sold';all[idx].salePrice=salePrice;all[idx].profit=salePrice-(item.cost||0);all[idx].channel=channel;all[idx].soldAt=soldAt;}
   setLifecycle(item.id, 'sold', true);
   soldData=all.filter(i=>i.status==='sold');
   closeSellModal();
   renderAll();
-  logOpsEvent('quick_sell', 'Marked sold locally: ' + (item.name || 'item'), { itemId:item.id, salePrice, channel });
+  logOpsEvent('quick_sell', 'Marked sold: ' + (item.name||'item'), { itemId:item.id, salePrice, channel });
 
-  try {
-    const syncMode = await markInventoryRecordSold(item, fieldData, { salePrice, profit:salePrice-(item.cost||0), channel, soldAt });
-    toast_dash(syncMode === 'local-only' ? 'Sold locally' : 'Sold locally and synced');
-  } catch(e){
-    enqueueOrReplaceSync('inventory-sold', item.id, 'Mark sold in inventory: ' + (item.name || 'item'), { id:item.id, fieldData, inventorySource:getInventorySource() }, e.message || 'Sold sync failed');
-    toast_dash('Sold locally - queued inventory sync');
-  }
+  // Run inventory sync + transaction recording concurrently.
+  // recordQuickSellTransaction always writes pos_transactions immediately (no await needed).
+  // Both are fire-and-forget with their own error handling / queue fallbacks.
+  const inventorySync = markInventoryRecordSold(item, fieldData, { salePrice, profit:salePrice-(item.cost||0), channel, soldAt })
+    .catch(e => {
+      enqueueOrReplaceSync('inventory-sold', item.id, 'Mark sold in inventory: ' + (item.name||'item'), { id:item.id, fieldData, inventorySource:getInventorySource() }, e.message||'Sold sync failed');
+      return 'queued';
+    });
+  const txRecord = recordQuickSellTransaction(item, salePrice, channel, soldAt);
+
+  await Promise.allSettled([inventorySync, txRecord]);
+  toast_dash('Sold · $' + salePrice.toFixed(2) + ' · ' + (channel||'In-Store'));
 }
 
 // ── CART INTEGRATION FROM DASHBOARD ───────────────────────
