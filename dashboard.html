@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.06.03.02-b-series-inv-polish">
+<meta name="version" content="2026.06.03.03-wf-patch-repair">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -533,7 +533,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
 
 <header>
   <div class="hdr">
-    <div class="logo">WALK-OFF <span>DASHBOARD · v2026.06.03.02-b-series-inv-polish</span></div>
+    <div class="logo">WALK-OFF <span>DASHBOARD · v2026.06.03.03-wf-patch-repair</span></div>
     <div class="hdr-right">
       <div id="v2-branch-stamp" class="v2-branch-stamp" data-branch-name="pokemon-v2-core">Branch: pokemon-v2-core · v2026.05.20.06-pokemon-v2-core</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
@@ -1445,7 +1445,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.06.03.02-b-series-inv-polish';
+const APP_VERSION = '2026.06.03.03-wf-patch-repair';
 const branchName = 'pokemon-v2-core';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
 const POKEMON_EXACT_CACHE_VERSION = 'pokemon-exact-v3-price-matrix';
@@ -1463,6 +1463,7 @@ const CAT_MAP = {
   '891253037409c4fe59854f3c9ef99a6b':'Sports',
   '475ed99cc87de703b543fe9529e2c1da':'TCG',
   '27f1c9c43a61cf03820a31132cfc6b9a':'Comic',
+  '2c3076cc33bf2f312265bfdc894db265':'Supplies', // added from live schema
   '2c3076cc33bf2f312265bfdc894db265':'Supplies',
 };
 
@@ -7122,14 +7123,12 @@ async function confirmQuickSell(){
   const soldAt = new Date().toISOString();
   if(!salePrice){alert('Enter a sale price');return;}
   pushUndoAction('quick sell', { type:'item-snapshot', item:{...item}, lifecycleMap:getLifecycleMap() });
+  // fieldData for Webflow mirror: schema-confirmed fields only.
+  // sale-price/profit/sale-channel/date-sold are NOT in Webflow schema — those go to Supabase POS tables.
   const fieldData = {
-    'sold-out':true,
-    'inventory-count':0,
-    status:STATUS_SOLD,
-    'sale-price':salePrice,
-    'profit':salePrice-(item.cost||0),
-    'sale-channel':channel,
-    'date-sold':soldAt
+    'sold-out':        true,
+    'inventory-count': 0,
+    status:            STATUS_SOLD,
   };
   const idx=all.findIndex(i=>i.id===item.id);
   if(idx>=0){all[idx].status='sold';all[idx].lifecycle='sold';all[idx].salePrice=salePrice;all[idx].profit=salePrice-(item.cost||0);all[idx].channel=channel;all[idx].soldAt=soldAt;}
@@ -8876,8 +8875,28 @@ document.getElementById('edit-modal').addEventListener('click', function(e){
 // WEBFLOW PRODUCT CREATE (for unsynced items)
 // ══════════════════════════════════════════════════
 async function createWebflowProduct(item, updates) {
-  const catMap = {Sports:'891253037409c4fe59854f3c9ef99a6b',TCG:'475ed99cc87de703b543fe9529e2c1da',Comic:'27f1c9c43a61cf03820a31132cfc6b9a',Graded:'891253037409c4fe59854f3c9ef99a6b'};
+  // catMap: schema-confirmed Option IDs from live Webflow Products collection.
+  // 'Graded' removed — graded cards use their real category (TCG/Sports) + graded:true Switch.
+  const catMap = {
+    'Sports':       '891253037409c4fe59854f3c9ef99a6b',
+    'Sports Cards': '891253037409c4fe59854f3c9ef99a6b',
+    'TCG':          '475ed99cc87de703b543fe9529e2c1da',
+    'Pokemon':      '475ed99cc87de703b543fe9529e2c1da',
+    'MTG':          '475ed99cc87de703b543fe9529e2c1da',
+    'Comic':        '27f1c9c43a61cf03820a31132cfc6b9a',
+    'Comics':       '27f1c9c43a61cf03820a31132cfc6b9a',
+    'Supplies':     '2c3076cc33bf2f312265bfdc894db265',
+  };
+  // condMap: schema-confirmed Option IDs (raw conditions only; graded conditions set via grader/grade fields)
   const condMap = {'NM':'05cbd3bb538b65343a8f40c0fbe31282','LP':'80fd49b88449644f4d07b359e1605285','MP':'ca2f2fe8cc18722f0d692fc8085c032b','HP':'db523fd58130ff74075929bccd03a52f','DMG':'42d7ad74836de857454ebe2062d09a40'};
+  // sportMap: schema-confirmed Option IDs for the sport field
+  const sportMap = {
+    'Baseball':   'e45a7313644967946a4c31433ee38600',
+    'Basketball': 'da6a66f7042e014dca2dcb233846d44e',
+    'Football':   '78efb48c800973ab2aaf2ccd0b9ec086',
+    'Hockey':     '6e34ff4eaf384557dc3faf9d5686e199',
+    'Other':      '1b6de817c9717e6ba15e1bb21a2c9f0c',
+  };
   const nameParts = [item.name||'Card', updates.year||item.year, updates.set||item.set, updates.variant||item.variant].filter(Boolean);
   const displayName = nameParts.join(' ').substring(0, 200);
   const slug = 'inv-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2,6);
@@ -8928,32 +8947,39 @@ async function createWebflowProduct(item, updates) {
     const data = await res.json();
     const productId = data.product?.id || data.id;
     if(!productId) throw new Error('Webflow created product but returned no product ID');
-    // Patch additional fields
+    // Patch additional fields — ONLY slugs confirmed in live Webflow Products schema.
+    // Unknown slugs cause Webflow to 400-reject the entire PATCH, losing all valid fields.
+    // Fields not in schema (card-number, location, variant, serial-number, sale-price, etc.)
+    // are intentionally omitted. Add them to Webflow CMS first, then add here.
+    const isGraded = !!(updates.grade || updates.grader || updates.grading_company ||
+                        updates.slabCompany || updates.cert_number ||
+                        item.grade || item.grader || item.cert_number);
     const patchFields = {
-      name: displayName,
+      name:             displayName,
       slug,
       'inventory-count': updates.qty || 1,
-      'set-name': updates.set||item.set||'',
-      year: String(updates.year||item.year||''),
-      variant: updates.variant||item.variant||'',
-      'card-number': updates.card_number||item.card_number||'',
-      'cost-basis': Number(updates.cost||0),
-      location: updates.location||'',
+      'set-name':        updates.set  || item.set  || '',
+      year:              String(updates.year || item.year || ''),
+      'cost-basis':      Number(updates.cost || 0),
       'card-description': desc || updates.key_notes || '',
-      msrp: Math.round(updates.market||0),
-      'retail-price': Math.round(updates.market||0),
-      // B1: graded / sports / tracking fields — slugs confirmed via mapItem field reads
-      'serial-number':    updates.serial_number   || item.serial_number   || '',
-      'player-card-name': updates.player          || item.player          || '',
-      'grader':           updates.grader          || updates.grading_company || updates.slabCompany || item.grader || '',
-      'grade':            updates.grade           || updates.slabGrade    || item.grade           || '',
-      'cert-number':      updates.cert_number     || item.cert_number     || '',
-      'price-source':     updates.priceSource     || updates.price_source || item.priceSource     || '',
-      'date-added':       updates.addedAt         || item.addedAt         || new Date().toISOString(),
-      'key-notes':        updates.key_notes       || updates.notes        || item.key_notes       || '',
+      msrp:              Math.round(updates.market || 0),
+      'retail-price':    Math.round(updates.market || 0),
+      // Grading — schema slugs confirmed: grader (PlainText), grade (PlainText), graded (Switch)
+      grader:  updates.grader || updates.grading_company || updates.slabCompany || item.grader || '',
+      grade:   updates.grade  || updates.slabGrade || item.grade || '',
+      graded:  isGraded,  // boolean Switch — set true when any grading data present
+      // Additional schema fields
+      publisher: updates.publisher  || item.publisher  || '',
+      brand:     updates.manufacturer || updates.brand || item.manufacturer || item.brand || '',
+      'card-sku': updates.inventorySku || updates.sku || item.inventorySku || '',
+      tags:       updates.tags || item.tags || '',
     };
-    if(catMap[updates.category||item.category]) patchFields['card-category'] = catMap[updates.category||item.category];
-    if(condMap[updates.condition||item.condition]) patchFields.condition = condMap[updates.condition||item.condition];
+    const cat = updates.category || item.category;
+    if(catMap[cat]) patchFields['card-category'] = catMap[cat];
+    const cond = updates.condition || item.condition;
+    if(condMap[cond]) patchFields.condition = condMap[cond];
+    const sport = updates.sport || item.sport || '';
+    if(sportMap[sport]) patchFields.sport = sportMap[sport];
     Object.keys(patchFields).forEach(k => {
       if (patchFields[k] === '' || patchFields[k] == null || Number.isNaN(patchFields[k])) delete patchFields[k];
     });
@@ -9132,7 +9158,15 @@ async function markInventoryRecordSold(item, fieldData, saleMeta){
     return 'built-in-local';
   }
   if(getInventorySource() === 'built_in' || getInventorySource() === 'spreadsheet') return 'local-only';
-  const res = await wfPatch('/collections/'+WF_PRODUCTS+'/items/'+item.id, { fieldData });
+  // Only send schema-confirmed fields. Non-schema fields (sale-price, profit, sale-channel,
+  // date-sold) are NOT in the Webflow Products schema and cause 400 rejection of the whole PATCH.
+  // Sale details live in Supabase pos_sales / pos_sale_lines, not Webflow product fields.
+  const wfSoldFields = {
+    'sold-out':       true,
+    'inventory-count': 0,
+    status:           STATUS_SOLD,
+  };
+  const res = await wfPatch('/collections/'+WF_PRODUCTS+'/items/'+item.id, { fieldData: wfSoldFields });
   if(!res.ok) throw new Error('Sold sync '+res.status+': '+(await res.text()).slice(0,160));
   return 'webflow';
 }
@@ -9419,10 +9453,15 @@ async function confirmEditAndSync() {
   try {
     const priceCents = Math.round((updates.market||0) * 100);
     const catMap = {
-      'Sports':'891253037409c4fe59854f3c9ef99a6b',
-      'TCG':'475ed99cc87de703b543fe9529e2c1da',
-      'Comic':'27f1c9c43a61cf03820a31132cfc6b9a',
-      'Graded':'891253037409c4fe59854f3c9ef99a6b'
+      'Sports':       '891253037409c4fe59854f3c9ef99a6b',
+      'Sports Cards': '891253037409c4fe59854f3c9ef99a6b',
+      'TCG':          '475ed99cc87de703b543fe9529e2c1da',
+      'Pokemon':      '475ed99cc87de703b543fe9529e2c1da',
+      'MTG':          '475ed99cc87de703b543fe9529e2c1da',
+      'Comic':        '27f1c9c43a61cf03820a31132cfc6b9a',
+      'Comics':       '27f1c9c43a61cf03820a31132cfc6b9a',
+      'Supplies':     '2c3076cc33bf2f312265bfdc894db265',
+      // 'Graded' removed — use graded:true Switch + real category instead
     };
     const condMap = {
       'NM':'05cbd3bb538b65343a8f40c0fbe31282',
