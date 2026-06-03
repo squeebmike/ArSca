@@ -14446,7 +14446,7 @@ function normalizeTenderType(method = '', tenderType = ''){
   if(raw.includes('cash app') || raw.includes('cashapp')) return 'cashapp';
   if(raw.includes('venmo')) return 'venmo';
   if(raw.includes('paypal')) return 'paypal';
-  if(raw.includes('stripe') || raw.includes('card')) return 'card';
+  if(raw.includes('stripe') || raw.includes('card') || raw.includes('credit') || raw.includes('debit')) return 'card';
   if(raw.includes('trade')) return 'trade_credit';
   if(raw.includes('cash')) return 'cash';
   return raw || 'manual_external';
