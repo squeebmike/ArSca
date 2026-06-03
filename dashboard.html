@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.06.03.06-inv-dedup">
+<meta name="version" content="2026.06.03.07-edit-supabase-first">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -533,7 +533,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
 
 <header>
   <div class="hdr">
-    <div class="logo">WALK-OFF <span>DASHBOARD · v2026.06.03.06-inv-dedup</span></div>
+    <div class="logo">WALK-OFF <span>DASHBOARD · v2026.06.03.07-edit-supabase-first</span></div>
     <div class="hdr-right">
       <div id="v2-branch-stamp" class="v2-branch-stamp" data-branch-name="pokemon-v2-core">Branch: pokemon-v2-core · v2026.05.20.06-pokemon-v2-core</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
@@ -1445,7 +1445,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.06.03.06-inv-dedup';
+const APP_VERSION = '2026.06.03.07-edit-supabase-first';
 const branchName = 'pokemon-v2-core';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
 const POKEMON_EXACT_CACHE_VERSION = 'pokemon-exact-v3-price-matrix';
@@ -5178,6 +5178,22 @@ async function processSyncItem(item){
     const wfId = await createWebflowProduct(item.payload.item, item.payload.updates || item.payload.item);
     if(wfId && item.payload.supabaseId) {
       await storeWfIdOnSupabaseRecord(item.payload.supabaseId, wfId).catch(()=>{});
+    }
+    return;
+  }
+  if(item.type === 'webflow-mirror-update') {
+    await mirrorUpdateToWebflow(item.payload.wfId, item.payload.item, item.payload.updates || item.payload.item);
+    return;
+  }
+  if(item.type === 'supabase-inventory-update') {
+    await updateBuiltInInventoryItem(item.payload.item, item.payload.updates || {});
+    // After Supabase update succeeds, mirror to Webflow if linked
+    const wfId = item.payload.item?.raw?.wfId || item.payload.item?.raw?.webflowId;
+    if(wfId) {
+      await mirrorUpdateToWebflow(wfId, item.payload.item, item.payload.updates || {}).catch(wfErr => {
+        enqueueSync('webflow-mirror-update', 'Mirror edit to Webflow: ' + (item.payload.item?.name || 'item'),
+          { wfId, item:item.payload.item, updates:item.payload.updates }, wfErr.message);
+      });
     }
     return;
   }
@@ -9193,6 +9209,63 @@ async function storeWfIdOnSupabaseRecord(supabaseRowId, wfId){
   } catch(e){ /* non-critical — wfId stored on next sync if needed */ }
 }
 
+// Mirror an inventory edit to Webflow using only schema-confirmed field slugs.
+// Call fire-and-forget; queue on failure via 'webflow-mirror-update'.
+async function mirrorUpdateToWebflow(wfId, item, updates){
+  if(!wfId) return;
+  const catMap = {
+    'Sports':'891253037409c4fe59854f3c9ef99a6b','Sports Cards':'891253037409c4fe59854f3c9ef99a6b',
+    'TCG':'475ed99cc87de703b543fe9529e2c1da','Pokemon':'475ed99cc87de703b543fe9529e2c1da','MTG':'475ed99cc87de703b543fe9529e2c1da',
+    'Comic':'27f1c9c43a61cf03820a31132cfc6b9a','Comics':'27f1c9c43a61cf03820a31132cfc6b9a',
+    'Supplies':'2c3076cc33bf2f312265bfdc894db265',
+  };
+  const condMap = {'NM':'05cbd3bb538b65343a8f40c0fbe31282','LP':'80fd49b88449644f4d07b359e1605285','MP':'ca2f2fe8cc18722f0d692fc8085c032b','HP':'db523fd58130ff74075929bccd03a52f','DMG':'42d7ad74836de857454ebe2062d09a40'};
+  const sportMap = {'Baseball':'e45a7313644967946a4c31433ee38600','Basketball':'da6a66f7042e014dca2dcb233846d44e','Football':'78efb48c800973ab2aaf2ccd0b9ec086','Hockey':'6e34ff4eaf384557dc3faf9d5686e199','Other':'1b6de817c9717e6ba15e1bb21a2c9f0c'};
+  const u = updates || {}, i = item || {};
+  const isGraded = !!(u.grade || u.grader || u.grading_company || u.cert_number || i.grade || i.grader || i.cert_number);
+  const fieldData = {
+    'inventory-count': u.qty    ?? i.qty    ?? 1,
+    'set-name':        u.set    || i.set    || '',
+    year:              String(u.year    || i.year    || ''),
+    'cost-basis':      Number(u.cost    || i.cost    || 0),
+    msrp:              Math.round(Number(u.market || i.market || 0)),
+    'retail-price':    Math.round(Number(u.market || i.market || 0)),
+    'card-description': u.key_notes || i.key_notes || '',
+    grader:     u.grader  || i.grader  || '',
+    grade:      u.grade   || i.grade   || '',
+    graded:     isGraded,
+    publisher:  u.publisher  || i.publisher  || '',
+    brand:      u.manufacturer || u.brand || i.manufacturer || '',
+    'card-sku': u.inventorySku || i.inventorySku || '',
+    tags:       u.tags || i.tags || '',
+    'card-number': u.card_number || i.card_number || '',
+    location:      u.location  || i.location  || '',
+    variant:       u.variant   || i.variant   || '',
+    'image-url':   u.imageUrl  || u.thumbnail || i.imageUrl || i.thumbnail || '',
+    'cert-number': u.cert_number || i.cert_number || '',
+  };
+  const cat = u.category || i.category;
+  if(catMap[cat]) fieldData['card-category'] = catMap[cat];
+  const cond = u.condition || i.condition;
+  if(condMap[cond]) fieldData.condition = condMap[cond];
+  const sport = u.sport || i.sport || '';
+  if(sportMap[sport]) fieldData.sport = sportMap[sport];
+  Object.keys(fieldData).forEach(k => {
+    if(fieldData[k] === '' || fieldData[k] == null || Number.isNaN(fieldData[k])) delete fieldData[k];
+  });
+  const priceCents = Math.round(Number(u.market || i.market || 0) * 100);
+  const r1 = await fetch(WORKER + '/proxy/collections/' + WF_PRODUCTS + '/items/' + wfId, {
+    method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ fieldData })
+  });
+  if(!r1.ok) throw new Error('Webflow item PATCH ' + r1.status + ': ' + (await r1.text()).slice(0,120));
+  if(priceCents > 0) {
+    await fetch(WORKER + '/proxy/sites/' + WF_SITE_ID + '/products/' + wfId, {
+      method:'PATCH', headers:{'Content-Type':'application/json','accept':'application/json'},
+      body:JSON.stringify({ sku:{ fieldData:{ price:{ value:priceCents, unit:'USD' } } } })
+    }).catch(()=>{});
+  }
+}
+
 async function createInventoryRecord(item, updates) {
   const source = getInventorySource();
   if(source === 'webflow') return createWebflowProduct(item, updates);
@@ -9472,17 +9545,34 @@ async function confirmEditAndSync() {
   statusEl.textContent = item.source === 'built_in' ? 'Saving built-in inventory...' : usesWebflowInventory() ? 'Syncing to Webflow...' : 'Saving inventory...';
 
   if(item.source === 'built_in' || getInventorySource() === 'built_in') {
+    const wfMirrorId = item.raw?.wfId || item.raw?.webflowId || null;
     try {
       await updateBuiltInInventoryItem(item, updates);
       saveInventoryEditOverride(editingItemId, updates);
       applyDashboardItemUpdate(editingItemId, updates);
       statusEl.style.color = 'var(--g)';
-      statusEl.textContent = 'Saved to built-in inventory';
-      logOpsEvent('inventory_edit', 'Updated built-in inventory item: ' + (item.name || 'item'), { itemId:item.id });
+      statusEl.textContent = wfMirrorId ? 'Saved — mirroring to Webflow…' : 'Saved to built-in inventory';
+      logOpsEvent('inventory_edit', 'Updated built-in inventory item: ' + (item.name || 'item'), { itemId:item.id, wfMirrorId });
+      // Mirror update to Webflow fire-and-forget if this is a Supabase-first hybrid item
+      if(wfMirrorId) {
+        mirrorUpdateToWebflow(wfMirrorId, item, updates)
+          .then(() => { if(statusEl) statusEl.textContent = 'Saved + Webflow mirrored'; })
+          .catch(wfErr => {
+            enqueueSync('webflow-mirror-update', 'Mirror edit to Webflow: ' + (item.name || 'item'),
+              { wfId:wfMirrorId, item:{ ...item, ...updates }, updates }, wfErr.message || 'Mirror update failed');
+            if(statusEl) statusEl.textContent = 'Saved · Webflow mirror queued';
+          });
+      }
       loadInventory();
     } catch(e) {
-      statusEl.style.color = 'var(--red)';
-      statusEl.textContent = 'Built-in save failed: ' + (e.message || e);
+      // Offline or Supabase error — persist edit locally and queue Supabase retry
+      saveInventoryEditOverride(editingItemId, updates);
+      applyDashboardItemUpdate(editingItemId, updates);
+      enqueueSync('supabase-inventory-update', 'Update inventory: ' + (item.name || 'item'),
+        { item:{ id:item.id, supabaseRowId:item.supabaseRowId, source:'built_in', raw:item.raw },
+          updates }, e.message || 'Supabase offline');
+      statusEl.style.color = 'var(--gold)';
+      statusEl.textContent = 'Saved locally — queued for sync: ' + (e.message || 'offline');
     }
     return;
   }
