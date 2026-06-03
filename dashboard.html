@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.06.03.01-pos-critical-fixes">
+<meta name="version" content="2026.06.03.02-b-series-inv-polish">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -533,7 +533,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
 
 <header>
   <div class="hdr">
-    <div class="logo">WALK-OFF <span>DASHBOARD · v2026.06.03.01-pos-critical-fixes</span></div>
+    <div class="logo">WALK-OFF <span>DASHBOARD · v2026.06.03.02-b-series-inv-polish</span></div>
     <div class="hdr-right">
       <div id="v2-branch-stamp" class="v2-branch-stamp" data-branch-name="pokemon-v2-core">Branch: pokemon-v2-core · v2026.05.20.06-pokemon-v2-core</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
@@ -1445,7 +1445,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.06.03.01-pos-critical-fixes';
+const APP_VERSION = '2026.06.03.02-b-series-inv-polish';
 const branchName = 'pokemon-v2-core';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
 const POKEMON_EXACT_CACHE_VERSION = 'pokemon-exact-v3-price-matrix';
@@ -8942,6 +8942,15 @@ async function createWebflowProduct(item, updates) {
       'card-description': desc || updates.key_notes || '',
       msrp: Math.round(updates.market||0),
       'retail-price': Math.round(updates.market||0),
+      // B1: graded / sports / tracking fields — slugs confirmed via mapItem field reads
+      'serial-number':    updates.serial_number   || item.serial_number   || '',
+      'player-card-name': updates.player          || item.player          || '',
+      'grader':           updates.grader          || updates.grading_company || updates.slabCompany || item.grader || '',
+      'grade':            updates.grade           || updates.slabGrade    || item.grade           || '',
+      'cert-number':      updates.cert_number     || item.cert_number     || '',
+      'price-source':     updates.priceSource     || updates.price_source || item.priceSource     || '',
+      'date-added':       updates.addedAt         || item.addedAt         || new Date().toISOString(),
+      'key-notes':        updates.key_notes       || updates.notes        || item.key_notes       || '',
     };
     if(catMap[updates.category||item.category]) patchFields['card-category'] = catMap[updates.category||item.category];
     if(condMap[updates.condition||item.condition]) patchFields.condition = condMap[updates.condition||item.condition];
@@ -13203,6 +13212,33 @@ function renderQuickLookupResults(results){
   setTimeout(() => resolvePokemonCatalogImagesForVisibleCards(), 200);
 }
 
+// B4: count matching inventory items (in-stock and sold) for a search result.
+// Uses normalized name + optional set + optional card_number matching.
+// Runs synchronously against the in-memory all[] and soldData arrays — no DB cost.
+function getInventoryCountsForResult(r){
+  if(!r || !r.name || !(all && all.length)) return { inStock:0, sold:0 };
+  const n  = normalizePokemonText(r.name);
+  const s  = normalizePokemonText(r.set || '');
+  const cn = String(r.card_number || '').replace(/\s+/g,'').toLowerCase();
+  if(!n || n.length < 3) return { inStock:0, sold:0 };
+  function matches(i){
+    if(!i || !i.name) return false;
+    const iN = normalizePokemonText(i.name);
+    // Name: one must contain the other, and the shorter must be at least 3 chars
+    if(!iN || !(iN.includes(n) || n.includes(iN)) || Math.min(iN.length, n.length) < 3) return false;
+    // Set: if both provided, at least one must be a substring of the other
+    if(s && i.set && normalizePokemonText(i.set) &&
+       !normalizePokemonText(i.set).includes(s) && !s.includes(normalizePokemonText(i.set))) return false;
+    // Card number: exact match when both provided
+    if(cn && i.card_number && String(i.card_number).replace(/\s+/g,'').toLowerCase() !== cn) return false;
+    return true;
+  }
+  return {
+    inStock: (all     || []).filter(i => i.status === 'in_stock' && matches(i)).length,
+    sold:    (soldData|| []).filter(i => matches(i)).length,
+  };
+}
+
 function quickLookupResultCard(r, idx){
   const builtTcgLink = buildTcgExternalLink(r);
   const img = r.imageUrl
@@ -13231,6 +13267,11 @@ function quickLookupResultCard(r, idx){
     signal.soldCount ? `${signal.soldCount} sold / +$${signal.avgProfit.toFixed(2)} avg${signal.avgDays!=null?' / '+signal.avgDays.toFixed(0)+'d':''}` : ''
   ].filter(Boolean);
   const recentSold = Number(r.recentSold || r.ebay_avg || r.sold || 0);
+  // B4: live inventory counts for this result
+  const invCounts = getInventoryCountsForResult(r);
+  const invCountBadge = (invCounts.inStock || invCounts.sold)
+    ? `<span class="qpl-badge ${invCounts.inStock ? 'good' : 'warn'}" title="Counts from your inventory">${escHtml([invCounts.inStock ? 'In Stock: ' + invCounts.inStock : '', invCounts.sold ? 'Sold: ' + invCounts.sold : ''].filter(Boolean).join(' · '))}</span>`
+    : '';
   return `<div class="qpl-hero-card" data-qpl-idx="${idx}">
     ${img}
     <div class="qpl-info">
@@ -13245,6 +13286,7 @@ function quickLookupResultCard(r, idx){
         ${r.cache ? `<span class="qpl-badge warn">${escHtml(r.cache.state === 'offline' ? 'Offline' : 'Cached')}</span><span class="qpl-badge">${escHtml('Last updated ' + pokemonCacheAgeLabel(r.cache.updatedAt))}</span>` : ''}
         ${renderVariantIntelligenceBadge(r)}
         ${r.source === 'inventory' ? '<span class="qpl-badge good">IN INVENTORY</span>' : ''}
+        ${invCountBadge}
         ${r.variant ? `<span class="qpl-badge warn">${escHtml(r.variant)}</span>` : ''}
       </div>
       <div class="qpl-price">${escHtml(priceText)}</div>
