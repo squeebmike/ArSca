@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.06.03.09-dealer-polish">
+<meta name="version" content="2026.06.03.10-dealer-ui-v1">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -344,6 +344,92 @@ tr.sold:hover td{opacity:.7;}
 .qpl-actions .buy{background:rgba(255,209,102,.13);border-color:rgba(255,209,102,.38);color:var(--gold);}
 .qpl-quick-controls{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px;max-width:340px;}
 .qpl-quick-controls select,.qpl-quick-controls input{background:var(--surf);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:10px;font-size:13px;min-height:44px;}
+/* ══ DEALER UI v1 ═══════════════════════════════════════════════════════════ */
+
+/* 1. Sticky card image — image + actions stick as info column scrolls */
+.qpl-hero-card { align-items:start; }
+.qpl-img-sticky { position:sticky; top:8px; display:flex; flex-direction:column; gap:10px; }
+.qpl-img-sticky .qpl-img-shell { max-height:320px; }
+.qpl-sticky-price { font-family:'Orbitron',monospace; font-size:22px; font-weight:900; color:var(--gold); text-align:center; padding:6px 0 2px; }
+.qpl-sticky-cond { font-family:monospace; font-size:11px; color:var(--dim); text-align:center; padding-bottom:4px; }
+.qpl-sticky-stock { font-family:monospace; font-size:10px; color:var(--g); text-align:center; }
+.qpl-actions { position:sticky; top:8px; }
+
+/* 2. Condition chips */
+.qpl-condition-chips { display:flex; gap:8px; flex-wrap:wrap; margin:12px 0 8px; }
+.qpl-cond-chip { border:1px solid var(--border); border-radius:10px; padding:8px 12px; font-family:monospace; font-size:11px; cursor:pointer; background:var(--surf); color:var(--dim); min-height:52px; min-width:64px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; transition:border-color .15s, background .15s, color .15s; }
+.qpl-cond-chip:hover { border-color:rgba(255,255,255,.3); color:var(--text); }
+.qpl-cond-chip.active { border-color:rgba(0,255,179,.55); background:rgba(0,255,179,.12); color:var(--g); }
+.qpl-cond-chip .cchip-label { font-weight:700; font-size:12px; letter-spacing:.04em; }
+.qpl-cond-chip .cchip-price { font-size:13px; font-weight:900; }
+.qpl-cond-chip .cchip-na { font-size:9px; color:var(--dim); }
+
+/* 3. Research queue drawer */
+.rq-toggle-btn { display:flex; align-items:center; gap:8px; font-family:'Orbitron',monospace; font-size:10px; letter-spacing:.05em; cursor:pointer; padding:10px 14px; border:1px solid var(--border); border-radius:8px; background:var(--surf2); color:var(--dim); white-space:nowrap; }
+.rq-toggle-btn .rq-badge { background:var(--gold); color:#000; border-radius:999px; padding:2px 7px; font-size:9px; font-weight:700; display:none; }
+.rq-toggle-btn .rq-badge.on { display:inline; }
+.research-grid.queue-hidden { grid-template-columns:auto minmax(0,1fr); gap:8px; }
+.research-grid.queue-hidden #research-queue-panel { display:none; }
+#rq-drawer-panel { position:fixed; left:0; top:0; bottom:0; width:320px; background:var(--surf); border-right:1px solid var(--border); z-index:500; padding:18px 16px; overflow-y:auto; transform:translateX(-100%); transition:transform .2s; }
+#rq-drawer-panel.open { transform:translateX(0); box-shadow:4px 0 24px rgba(0,0,0,.4); }
+#rq-drawer-overlay { position:fixed; inset:0; z-index:499; background:rgba(0,0,0,.45); display:none; }
+#rq-drawer-overlay.on { display:block; }
+
+/* 4. Inventory thumbnails */
+.inv-thumb { width:48px; height:48px; object-fit:contain; border-radius:6px; border:1px solid var(--border); background:#050507; display:block; }
+.inv-thumb-placeholder { width:48px; height:48px; border-radius:6px; border:1px solid var(--border); background:#050507; display:flex; align-items:center; justify-content:center; font-size:7px; font-family:monospace; color:var(--dim); text-align:center; line-height:1.2; }
+th.th-thumb, td.td-thumb { width:56px; padding:4px 4px 4px 8px; }
+
+/* 5. Dealer header */
+.dealer-status-bar { display:flex; gap:16px; align-items:center; padding:4px 20px; background:rgba(0,0,0,.3); border-bottom:1px solid var(--border); font-family:monospace; font-size:10px; letter-spacing:.04em; }
+.dsb-chip { display:flex; align-items:center; gap:5px; color:var(--dim); }
+.dsb-chip b { color:var(--text); }
+.dsb-chip.open b { color:var(--g); }
+.dsb-chip.closed b { color:var(--dim); }
+.dsb-chip.warn b { color:var(--gold); }
+.dev-info { font-size:8px; opacity:.45; }
+
+/* 6. Show Mode */
+body.show-mode .dev-only { display:none !important; }
+body.show-mode .admin-only { display:none !important; }
+body.show-mode .logo span { display:none; }
+.show-mode-indicator { display:none; font-family:monospace; font-size:9px; color:var(--g); letter-spacing:.08em; padding:2px 8px; border:1px solid rgba(0,255,179,.3); border-radius:999px; }
+body.show-mode .show-mode-indicator { display:inline; }
+.show-mode-toggle { cursor:pointer; font-family:monospace; font-size:9px; letter-spacing:.05em; padding:4px 10px; border:1px solid var(--border); border-radius:999px; background:transparent; color:var(--dim); }
+body.show-mode .show-mode-toggle { border-color:rgba(0,255,179,.4); color:var(--g); }
+
+/* 7. Button hierarchy in QPL */
+.qpl-actions-primary { display:grid; gap:8px; margin-bottom:8px; }
+.qpl-actions-primary .hbtn { min-height:52px; font-size:12px; font-weight:700; }
+.qpl-actions-secondary { display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-bottom:6px; }
+.qpl-actions-secondary .hbtn { min-height:40px; font-size:10px; }
+.qpl-actions-tertiary details summary { font-family:monospace; font-size:9px; color:var(--dim); cursor:pointer; padding:6px 0; list-style:none; }
+.qpl-actions-tertiary details summary::-webkit-details-marker { display:none; }
+.qpl-actions-tertiary .hbtn { min-height:36px; font-size:10px; width:100%; margin-bottom:4px; }
+
+/* Tablet portrait (768–1024px) */
+@media(max-width:1024px) and (min-width:768px) {
+  .qpl-hero-card { grid-template-columns:minmax(180px,240px) minmax(0,1fr) minmax(140px,160px); gap:12px; }
+  .qpl-img-sticky .qpl-img-shell { max-height:260px; }
+  .research-grid { grid-template-columns:minmax(0,1fr); }
+  .research-grid #research-queue-panel { display:none; }
+  .hbtn, button.hbtn { min-height:48px; }
+  .qpl-actions .hbtn { min-height:48px; }
+  .ra { min-height:40px; min-width:40px; font-size:11px; }
+}
+@media(max-width:767px) {
+  .qpl-hero-card { grid-template-columns:1fr; }
+  .qpl-img-sticky { position:static; }
+  .qpl-actions { position:static; grid-template-columns:1fr 1fr; }
+  .qpl-actions-primary { grid-template-columns:1fr; }
+  .qpl-actions-secondary { grid-template-columns:1fr 1fr; }
+  .research-grid { grid-template-columns:1fr; }
+  .research-grid #research-queue-panel { display:none; }
+  .hdr-right .dev-info { display:none; }
+  .dealer-status-bar { padding:4px 12px; gap:10px; font-size:9px; }
+}
+
+/* ══ END DEALER UI v1 ═══════════════════════════════════════════════════════ */
 .qpl-lightbox{position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.92);display:none;align-items:center;justify-content:center;padding:22px;}
 .qpl-lightbox.on{display:flex;}
 .qpl-lightbox img{max-width:96vw;max-height:92vh;object-fit:contain;touch-action:pinch-zoom;border-radius:10px;}
@@ -533,17 +619,27 @@ body.customer-display-mode #customer-display-exit{display:block;}
 
 <header>
   <div class="hdr">
-    <div class="logo">WALK-OFF <span>DASHBOARD · v2026.06.03.09-dealer-polish</span></div>
+    <div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.03.10-dealer-ui-v1</span>
+      <span class="show-mode-indicator">SHOW MODE</span>
+    </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp" data-branch-name="pokemon-v2-core">Branch: pokemon-v2-core · v2026.05.20.06-pokemon-v2-core</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="pokemon-v2-core">Branch: pokemon-v2-core</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
-      <span id="top-show-chip" class="top-state-chip">NO SHOW ACTIVE</span>
-      <span id="top-drawer-chip" class="top-state-chip">DRAWER CLOSED</span>
-      <span id="sync-status">Loading...</span>
+      <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
+      <span id="top-drawer-chip" class="top-state-chip dev-only">DRAWER CLOSED</span>
+      <span id="sync-status" class="dev-only">Loading...</span>
+      <button class="show-mode-toggle" onclick="toggleShowMode()" title="Toggle Show Mode — hides developer info">SHOW MODE</button>
       <button class="hbtn" id="logout-btn" style="display:none" onclick="logoutAccount()">LOGOUT</button>
       <button class="hbtn" id="refresh-btn" onclick="loadInventory()">REFRESH</button>
     </div>
+  </div>
+  <!-- Dealer status bar — always visible, shows key info at a glance -->
+  <div class="dealer-status-bar" id="dealer-status-bar">
+    <div class="dsb-chip" id="dsb-drawer">🏦 <span>DRAWER:</span> <b id="dsb-drawer-val">CLOSED</b></div>
+    <div class="dsb-chip">📦 <span>INV:</span> <b id="dsb-inv-val">—</b></div>
+    <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
+    <div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.03.10-dealer-ui-v1</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -669,6 +765,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
   <div class="tbl-wrap">
     <table>
       <thead><tr>
+        <th class="th-thumb"></th>
         <th onclick="srt('name')">NAME</th>
         <th onclick="srt('set')">SET / VARIANT</th>
         <th>CAT</th>
@@ -998,18 +1095,41 @@ body.customer-display-mode #customer-display-exit{display:block;}
 
 <!-- RESEARCH TAB -->
 <div id="tab-research" class="tab-panel">
-  <div class="sec">RESEARCH</div>
-  <div id="research-panels" class="research-grid">
-    <div class="panel" id="research-queue-panel">
-      <div class="ph">RESEARCH QUEUE <span id="research-queue-count" style="font-size:9px;color:var(--dim)">waiting for scans</span></div>
-      <div style="font-family:monospace,monospace;font-size:10px;color:var(--dim);line-height:1.55;margin-bottom:10px">
-        Scanner handoffs, manual research, and needs-review items land here before they become buy offer lines, inventory, or sale cart items.
+  <div class="sec" style="display:flex;align-items:center;gap:10px">
+    RESEARCH
+    <!-- Queue toggle button — collapsed by default -->
+    <button class="rq-toggle-btn" id="rq-toggle-btn" onclick="toggleResearchQueue()" title="Show/hide research queue">
+      ☰ Queue <span class="rq-badge" id="rq-badge">0</span>
+    </button>
+  </div>
+  <!-- Queue slide-out drawer -->
+  <div id="rq-drawer-overlay" onclick="closeResearchQueue()"></div>
+  <div id="rq-drawer-panel">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <div style="font-family:'Orbitron',monospace;font-size:11px;letter-spacing:.05em">RESEARCH QUEUE <span id="research-queue-count" style="font-size:9px;color:var(--dim)">waiting for scans</span></div>
+      <button class="hbtn" style="min-height:30px;font-size:10px;padding:4px 10px" onclick="closeResearchQueue()">✕ Close</button>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+      <button class="hbtn" onclick="renderResearchQueue()">REFRESH</button>
+      <button class="hbtn" onclick="focusResearchSearch();closeResearchQueue()">MANUAL SEARCH</button>
+    </div>
+    <div id="research-queue-list" style="display:grid;gap:8px"></div>
+    <!-- Phone scanner inbox -->
+    <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border)">
+      <div style="font-family:monospace;font-size:9px;color:var(--dim);margin-bottom:8px">PHONE SCANNER INBOX</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+        <button class="hbtn" onclick="addAllFromScannerQueue()">ADD ALL TO BUY OFFER</button>
       </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
-        <button class="hbtn" onclick="renderResearchQueue()">REFRESH</button>
-        <button class="hbtn" onclick="focusResearchSearch()">MANUAL SEARCH</button>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+        <button class="hbtn" onclick="bulkAddScanInboxToInventory()">BULK ADD TO INVENTORY</button>
+        <button class="hbtn" onclick="refreshScanInbox()">REFRESH INBOX</button>
       </div>
-      <div id="research-queue-list" style="display:grid;gap:8px"></div>
+      <div id="scan-inbox-list" style="font-family:monospace;font-size:10px;color:var(--dim)">No phone scans for this store</div>
+    </div>
+  </div>
+  <div id="research-panels" class="research-grid queue-hidden">
+    <div class="panel" id="research-queue-panel" style="display:none">
+      <!-- kept in DOM for backward compatibility, content moved to drawer -->
     </div>
     <div class="panel" id="research-actions-panel" aria-hidden="true">
       <div class="ph">ITEM ACTIONS</div>
@@ -1470,7 +1590,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.06.03.09-dealer-polish';
+const APP_VERSION = '2026.06.03.10-dealer-ui-v1';
 const branchName = 'pokemon-v2-core';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
 const POKEMON_EXACT_CACHE_VERSION = 'pokemon-exact-v3-price-matrix';
@@ -5705,6 +5825,76 @@ function renderTodayMode(){
 }
 setInterval(renderTodayMode, 10000);
 
+// ── Dealer UI v1 Functions ────────────────────────────────────────────────
+
+// Show Mode — hides dev info, shows only dealer-relevant UI
+function toggleShowMode(){
+  const isOn = document.body.classList.toggle('show-mode');
+  localStorage.setItem('dealer_show_mode', isOn ? '1' : '0');
+}
+function initShowMode(){
+  if(localStorage.getItem('dealer_show_mode') === '1') document.body.classList.add('show-mode');
+}
+initShowMode();
+
+// Research Queue drawer
+function toggleResearchQueue(){
+  const panel = document.getElementById('rq-drawer-panel');
+  const overlay = document.getElementById('rq-drawer-overlay');
+  const isOpen = panel?.classList.contains('open');
+  if(isOpen) closeResearchQueue();
+  else openResearchQueue();
+}
+function openResearchQueue(){
+  document.getElementById('rq-drawer-panel')?.classList.add('open');
+  document.getElementById('rq-drawer-overlay')?.classList.add('on');
+}
+function closeResearchQueue(){
+  document.getElementById('rq-drawer-panel')?.classList.remove('open');
+  document.getElementById('rq-drawer-overlay')?.classList.remove('on');
+}
+
+// Dealer Status Bar updater — called on inventory load + drawer changes
+function updateDealerStatusBar(){
+  const drawerVal = document.getElementById('dsb-drawer-val');
+  const invVal    = document.getElementById('dsb-inv-val');
+  const syncVal   = document.getElementById('dsb-sync-val');
+  const drawerChip = document.getElementById('dsb-drawer');
+  if(drawerVal) {
+    if(drawerState) {
+      drawerVal.textContent = 'OPEN $' + getDrawerExpected().toFixed(2);
+      drawerChip?.classList.remove('closed'); drawerChip?.classList.add('open');
+    } else {
+      drawerVal.textContent = 'CLOSED';
+      drawerChip?.classList.remove('open'); drawerChip?.classList.add('closed');
+    }
+  }
+  if(invVal) invVal.textContent = (all||[]).filter(i=>i.status==='in_stock').length;
+  if(syncVal) {
+    const pending = getSyncQueue().filter(x=>x.status!=='done').length;
+    const syncChip = document.getElementById('dsb-sync');
+    if(pending > 0) {
+      syncVal.textContent = pending + ' pending';
+      syncChip?.classList.add('warn');
+    } else {
+      syncVal.textContent = navigator.onLine ? '✓' : 'OFFLINE';
+      syncChip?.classList.remove('warn');
+    }
+  }
+  // Update research queue badge count
+  const badge = document.getElementById('rq-badge');
+  if(badge) {
+    const researchCount = document.getElementById('research-queue-list')?.children?.length || 0;
+    badge.textContent = researchCount;
+    badge.classList.toggle('on', researchCount > 0);
+    // Auto-open drawer if items arrive
+    if(researchCount > 0 && !document.getElementById('rq-drawer-panel')?.classList.contains('open')) {
+      // Don't auto-open, just make badge visible
+    }
+  }
+}
+setInterval(updateDealerStatusBar, 5000);
+
 function runCloseoutChecklist(){
   const issues = [];
   const pending = getSyncQueue().filter(x => x.status !== 'done').length;
@@ -6780,6 +6970,7 @@ function renderAll(){
   renderStats(); renderCats(); renderTopVal(); renderFeed();
   renderChannels(); renderTopSold(); renderMonthly();
   renderAlerts(); filterTable(); renderSoldTable();
+  if(typeof updateDealerStatusBar === 'function') setTimeout(updateDealerStatusBar, 50);
   renderTodayMode(); renderDataHealthPanel(); renderOnboardingPanel(); updateUndoButton();
 }
 
@@ -7102,7 +7293,7 @@ function renderTable(){
   const tb=document.getElementById('tbody');
   if(!filtered.length){
     const q = document.getElementById('tbl-q')?.value || '';
-    tb.innerHTML=`<tr><td colspan="9">${inventoryEmptySearchState(q)}</td></tr>`;
+    tb.innerHTML=`<tr><td colspan="10">${inventoryEmptySearchState(q)}</td></tr>`;
     document.getElementById('pager').innerHTML=''; return;
   }
   tb.innerHTML=rows.map(i=>{
@@ -7111,7 +7302,12 @@ function renderTable(){
     const ppc=pft>=0?'pp pos':'pp neg';
     const cat=String(i.category||'TCG').replace(/\s+/g,'');
     const margin=i.cost>0?((pft/i.cost)*100).toFixed(0)+'%':'—';
+    const thumbSrc = i.thumbnail || i.imageUrl || '';
+    const thumbCell = thumbSrc
+      ? `<td class="td-thumb"><img class="inv-thumb" src="${escHtml(thumbSrc)}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><div class="inv-thumb-placeholder" style="display:none">NO IMG</div></td>`
+      : `<td class="td-thumb"><div class="inv-thumb-placeholder">NO IMG</div></td>`;
     return `<tr class="${ins?'':'sold'}" data-item-id="${i.id}">
+      ${thumbCell}
       <td><span class="dot ${ins?'in_stock':'sold'}"></span><span class="nc" title="${i.tcgCardId?'TCG ID: '+i.tcgCardId:''}">${i.name}${i.isRookie?' <span style="color:var(--gold);font-size:8px">RC</span>':''}${i.tcgCardId?'<span style="font-family:monospace;font-size:7px;color:rgba(0,255,179,.4);margin-left:4px">●</span>':''}</span></td>
       <td><span class="sc2">${[i.set,i.variant].filter(Boolean).join(' · ')||'—'}</span></td>
       <td><span class="ct ${cat}">${i.category}</span></td>
@@ -13629,39 +13825,55 @@ function quickLookupResultCard(r, idx){
   const invCountBadge = (invCounts.inStock || invCounts.sold)
     ? `<span class="qpl-badge ${invCounts.inStock ? 'good' : 'warn'}" title="Counts from your inventory">${escHtml([invCounts.inStock ? 'In Stock: ' + invCounts.inStock : '', invCounts.sold ? 'Sold: ' + invCounts.sold : ''].filter(Boolean).join(' · '))}</span>`
     : '';
+  // Condition chips — derive from availableVariants or fallback conditions
+  const condChips = (() => {
+    const activeCond = r.selectedCondition || r.condition || 'NM';
+    const activeFinish = r.selectedFinish || r.finish || '';
+    if(r.availableVariants?.length) {
+      const finishVars = r.availableVariants.filter(v => !activeFinish || normalizePokemonText(v.finish||'') === normalizePokemonText(activeFinish));
+      const seen = new Set();
+      return (finishVars.length ? finishVars : r.availableVariants).filter(v => {
+        const k = v.condition; if(seen.has(k)) return false; seen.add(k); return true;
+      }).slice(0,6).map(v => {
+        const p = Number(v.marketPrice || v.market || 0);
+        const isActive = String(v.condition||'').toLowerCase() === String(activeCond||'').toLowerCase();
+        return `<button class="qpl-cond-chip${isActive?' active':''}" onclick="updateQplVariant(${idx},{selectedCondition:'${escHtml(v.condition||'')}'})">
+          <span class="cchip-label">${escHtml(v.condition||'')}</span>
+          <span class="${p?'cchip-price':'cchip-na'}">${p?'$'+p.toFixed(2):'—'}</span>
+        </button>`;
+      }).join('');
+    }
+    // Fallback: raw conditions
+    return ['NM','LP','MP','HP','DMG'].map(c => {
+      const isActive = c === (activeCond || 'NM');
+      const p = displayPrice && isActive ? displayPrice : 0;
+      return `<button class="qpl-cond-chip${isActive?' active':''}" onclick="updateQplVariant(${idx},{selectedCondition:'${c}'})">
+        <span class="cchip-label">${c}</span>
+        ${p ? `<span class="cchip-price">$${p.toFixed(2)}</span>` : '<span class="cchip-na">—</span>'}
+      </button>`;
+    }).join('');
+  })();
+
   return `<div class="qpl-hero-card" data-qpl-idx="${idx}">
-    ${img}
+    <div class="qpl-img-sticky">
+      ${img}
+      <div class="qpl-sticky-price">${escHtml(priceText)}</div>
+      <div class="qpl-sticky-cond">${escHtml(priceVariantLine || (r.selectedCondition || r.condition || 'NM'))}</div>
+      ${(invCounts.inStock || invCounts.sold) ? `<div class="qpl-sticky-stock">${invCounts.inStock ? '▲ '+invCounts.inStock+' in stock' : ''}${invCounts.sold ? ' · '+invCounts.sold+' sold' : ''}</div>` : ''}
+    </div>
     <div class="qpl-info">
       <div class="qpl-title">${escHtml(r.name || 'Unknown item')}</div>
       <div class="qpl-meta">${escHtml(meta || r.note || r.category || '')}</div>
       <div class="qpl-badges">
         <span class="qpl-badge ${confClass}">${confLabel}${conf?` ${conf}`:''}</span>
-        <span class="qpl-badge">${escHtml(r.category || 'ITEM')}</span>
         <span class="qpl-badge ${truth.includes('No ') || truth.includes('Needs') ? 'bad' : truth.includes('Guide') ? 'warn' : 'good'}">${escHtml(truth)}</span>
-        <span class="qpl-badge ${variantStatus.cls}">${escHtml(variantBadgeLabel)}: ${escHtml(variantStatus.label)}</span>
-        <span class="qpl-badge">${escHtml(r.source === 'justtcg' ? 'JustTCG' : r.source === 'pricecharting_csv' ? 'PriceCharting' : r.source || 'Source')}</span>
-        ${r.cache ? `<span class="qpl-badge warn">${escHtml(r.cache.state === 'offline' ? 'Offline' : 'Cached')}</span><span class="qpl-badge">${escHtml('Last updated ' + pokemonCacheAgeLabel(r.cache.updatedAt))}</span>` : ''}
-        ${renderVariantIntelligenceBadge(r)}
-        ${r.source === 'inventory' ? '<span class="qpl-badge good">IN INVENTORY</span>' : ''}
-        ${invCountBadge}
-        ${r.variant ? `<span class="qpl-badge warn">${escHtml(r.variant)}</span>` : ''}
+        ${r.source === 'inventory' ? '<span class="qpl-badge good">IN INVENTORY</span>' : `<span class="qpl-badge">${escHtml(r.source === 'justtcg' ? 'JustTCG' : r.source === 'pricecharting_csv' ? 'PriceCharting' : r.source || 'Source')}</span>`}
+        ${r.cache?.state === 'offline' ? `<span class="qpl-badge warn">Offline Cache</span>` : ''}
       </div>
-      <div class="qpl-price">${escHtml(priceText)}</div>
-      <div class="qpl-price-sub">
-        ${recentSold ? `Recent sold: $${recentSold.toFixed(2)}<br>` : ''}
-        ${priceVariantLine ? `${escHtml(priceVariantLine)}<br>` : ''}
-        Source: ${escHtml(r.activePriceBasis?.source || r.priceSource || r.source || 'manual')}
-        ${r.pokemonPriceTrackerLastUpdated ? `<div class="pokemon-cache-meta">PokemonPriceTracker updated ${escHtml(pokemonCacheAgeLabel(r.pokemonPriceTrackerLastUpdated))}</div>` : ''}
-        ${r.cache ? `<div class="pokemon-cache-meta">Cached source: ${escHtml(r.cache.source || 'Pokemon cache')} / ${escHtml(pokemonCacheAgeLabel(r.cache.updatedAt))}</div>` : ''}
-      </div>
-      ${why ? `<div style="margin-top:12px;color:var(--dim);font-size:13px;line-height:1.45">${escHtml(why)}</div>` : ''}
-      ${signals.length ? `<div class="qpl-signal" style="color:${needs.length?'var(--g)':'var(--gold)'}">${escHtml(signals.join(' / '))}</div>` : ''}
-      ${qplVariantPriceTable(r, idx)}
-      ${qplSlabControls(r, idx)}
+      <!-- Condition chips — large touch targets -->
+      <div class="qpl-condition-chips">${condChips}</div>
+      <!-- Finish / Language / Qty controls -->
       <div class="qpl-quick-controls">
-        <select onchange="updateQplVariant(${idx},{selectedCondition:this.value})" aria-label="Condition">
-          ${(r.availableVariants?.length ? qplVariantOptionValues(r, 'condition') : qplConditionOptionsFor(r)).map(c => `<option value="${c}" ${String(r.selectedCondition||r.condition||qplConditionOptionsFor(r)[0])===c?'selected':''}>${c}</option>`).join('')}
-        </select>
         <select onchange="updateQplVariant(${idx},{selectedFinish:this.value})" aria-label="Finish">
           ${r.availableVariants?.length ? qplVariantSelectOptions(r, 'finish', r.selectedFinish || r.finish) : `<option value="${escHtml(r.finish||'normal')}">${escHtml(qplFinishLabel(r.finish||'normal'))}</option>`}
         </select>
@@ -13670,21 +13882,50 @@ function quickLookupResultCard(r, idx){
         </select>
         <input type="number" min="1" step="1" value="${Number(r.qty || 1)}" onchange="qplResults[${idx}].qty=parseInt(this.value,10)||1" aria-label="Quantity">
       </div>
+      <div class="qpl-price-sub" style="margin-top:8px">
+        ${recentSold ? `Recent sold: $${recentSold.toFixed(2)}<br>` : ''}
+        Source: ${escHtml(r.activePriceBasis?.source || r.priceSource || r.source || 'manual')}
+        ${r.pokemonPriceTrackerLastUpdated ? `<div class="pokemon-cache-meta">PPT updated ${escHtml(pokemonCacheAgeLabel(r.pokemonPriceTrackerLastUpdated))}</div>` : ''}
+      </div>
+      ${signals.length ? `<div class="qpl-signal" style="color:${needs.length?'var(--g)':'var(--gold)'}">${escHtml(signals.join(' / '))}</div>` : ''}
+      <!-- Advanced pricing table — collapsed by default -->
+      <details class="research-secondary-actions" style="margin-top:12px">
+        <summary>▸ Advanced Pricing</summary>
+        <div style="padding:8px 0">
+          ${qplVariantPriceTable(r, idx)}
+          ${qplSlabControls(r, idx)}
+        </div>
+      </details>
       ${showAdminDebug() ? `<div style="margin-top:8px;font-family:monospace,monospace;font-size:10px;color:var(--dim)">Debug: rawSearchQuerySent ${escHtml(r.lookupDebug?.rawQuerySent || '')} / workerRequestUrl ${escHtml(r.lookupDebug?.requestPath || '')} / searchResultCount ${escHtml(String(r.lookupDebug?.searchResultCount ?? ''))} / candidates ${escHtml(JSON.stringify(r.lookupDebug?.returnedCandidates || []))} / selectedTcgPlayerId ${escHtml(r.tcgPlayerId || r.tcgplayerId || '')} / hydrationRequestUrl ${escHtml(r.pokemonPriceTracker?.lookupDebug?.hydrationRequestUrl || r.lookupDebug?.hydrationRequestUrl || '')} / hydratedFromCache ${escHtml(String(!!(r.pokemonPriceTracker?.lookupDebug?.hydratedFromCache || r.lookupDebug?.hydratedFromCache)))} / prices.conditions keys ${escHtml(Object.keys(r.pokemonPriceTracker?.prices?.conditions || {}).join(', ') || 'none')} / prices.variants keys ${escHtml(Object.keys(r.pokemonPriceTracker?.prices?.variants || {}).join(', ') || 'none')} / priceHistory.conditions keys ${escHtml(Object.keys(r.pokemonPriceTracker?.priceHistory?.conditions || {}).join(', ') || 'none')} / priceHistory.variants keys ${escHtml(Object.keys(r.pokemonPriceTracker?.priceHistory?.variants || {}).join(', ') || 'none')} / active price path ${escHtml(r.activePriceBasis?.pricePath || r.resolvedPricePath || 'n/a')} / reason a row says No Real Price ${escHtml(r.noRealPriceReason || '')} / normalizedQuery ${escHtml(r.lookupDebug?.normalizedQuery || '')} / lookupPath ${escHtml(r.lookupDebug?.path || r.lookupDebug?.sourcePath || 'n/a')} / exactHydrated ${escHtml(String(!!r.lookupDebug?.exactHydrated))} / parseTitle ${escHtml(JSON.stringify(r.lookupDebug?.parseTitle || r.pptParseTitle || null))} / confidence ${escHtml(String(r.lookupDebug?.confidence || r.confidence || ''))} / autoSelect ${escHtml(String(!!(r.lookupDebug?.autoSelect || r.autoSelect)))} / selectedCondition ${escHtml(r.selectedCondition || r.condition || '')} / selectedFinish ${escHtml(qplFinishLabel(r.selectedFinish || r.finish || ''))} / activePriceBasis ${escHtml(JSON.stringify(r.activePriceBasis || {}))} / generatedTcgUrl ${escHtml(builtTcgLink.url || '')} / cache ${escHtml(r.lookupDebug?.cache || r.cache?.source || 'live/none')} / quotaCooldown ${escHtml(String(pokemonPriceTrackerQuotaBlocked()))} / apiCallsConsumed ${escHtml(localStorage.getItem('ppt_last_consumed') || '')}</div>` : ''}
     </div>
     <div class="qpl-actions">
-      <button class="hbtn primary qpl-select-btn" onclick="selectQuickLookupResult(${idx})">SELECT</button>
-      ${qplResultCategoryKey(r) === 'pokemon' && !r.pokemonPriceTracker?.lookupDebug?.exactHydrated ? `<button class="hbtn ppt-get-prices-btn" style="color:var(--blue)" onclick="loadPricesForResultCard(${idx})">GET PRICES</button>` : ''}
-      <button class="hbtn buy" onclick="addQuickLookupToBuyOffer(${idx})">ADD TO BUY</button>
-      <button class="hbtn" onclick="addQuickLookupToSaleCart(${idx})">ADD TO CART</button>
-      <button class="hbtn" style="color:var(--gold)" onclick="addQuickLookupToInventory(${idx})">ADD INVENTORY</button>
-      <button class="hbtn" style="color:var(--blue)" onclick="sendQuickLookupToAuthCheck(${idx})">AUTH CHECK</button>
-      ${tcg}
-      ${slab}
-      <button class="hbtn" onclick="openQuickExternal(${idx},'sold')">COMPS</button>
-      <button class="hbtn" onclick="openQuickExternal(${idx},'pricecharting')">PRICECHARTING</button>
-      ${!r.imageUrl ? `<button class="hbtn" onclick="selectQuickLookupResult(${idx});setTimeout(()=>document.getElementById('qpl-edit-image-url')?.focus(),50)">ADD IMAGE</button>` : ''}
-      <button class="hbtn" style="color:var(--gold)" onclick="markQplNeedsReview(${idx})">NEEDS REVIEW</button>
+      <!-- PRIMARY actions — large, color-coded -->
+      <div class="qpl-actions-primary">
+        <button class="hbtn buy" style="font-size:13px" onclick="addQuickLookupToBuyOffer(${idx})">ADD TO BUY</button>
+        <button class="hbtn primary" style="font-size:13px" onclick="addQuickLookupToInventory(${idx})">ADD INVENTORY</button>
+        <button class="hbtn" style="font-size:13px;color:var(--text)" onclick="addQuickLookupToSaleCart(${idx})">ADD TO CART</button>
+      </div>
+      <!-- SECONDARY actions -->
+      <div class="qpl-actions-secondary">
+        <button class="hbtn primary qpl-select-btn" onclick="selectQuickLookupResult(${idx})">SELECT</button>
+        ${qplResultCategoryKey(r) === 'pokemon' && !r.pokemonPriceTracker?.lookupDebug?.exactHydrated ? `<button class="hbtn ppt-get-prices-btn" style="color:var(--blue)" onclick="loadPricesForResultCard(${idx})">GET PRICES</button>` : `<span></span>`}
+        <button class="hbtn" onclick="openQplChartModal(${idx})">CHART</button>
+        ${qplResultCategoryKey(r) === 'pokemon' || qplResultCategoryKey(r) === 'mtg' || r.tcgUrl ? `<button class="hbtn" onclick="openQuickExternal(${idx},'tcg')">TCG ↗</button>` : `<span></span>`}
+        <button class="hbtn" style="color:var(--blue)" onclick="sendQuickLookupToAuthCheck(${idx})">AUTH</button>
+      </div>
+      <!-- TERTIARY — collapsed -->
+      <div class="qpl-actions-tertiary">
+        <details>
+          <summary>▸ More Actions</summary>
+          <div style="padding-top:6px">
+            ${slab}
+            <button class="hbtn" onclick="openQuickExternal(${idx},'sold')">COMPS</button>
+            <button class="hbtn" onclick="openQuickExternal(${idx},'pricecharting')">PRICECHARTING</button>
+            ${!r.imageUrl ? `<button class="hbtn" onclick="selectQuickLookupResult(${idx});setTimeout(()=>document.getElementById('qpl-edit-image-url')?.focus(),50)">ADD IMAGE</button>` : ''}
+            <button class="hbtn" style="color:var(--gold)" onclick="markQplNeedsReview(${idx})">NEEDS REVIEW</button>
+          </div>
+        </details>
+      </div>
     </div>
   </div>`;
 }
