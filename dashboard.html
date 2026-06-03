@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.06.03.04-wf-new-fields">
+<meta name="version" content="2026.06.03.05-supabase-first">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -533,7 +533,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
 
 <header>
   <div class="hdr">
-    <div class="logo">WALK-OFF <span>DASHBOARD · v2026.06.03.04-wf-new-fields</span></div>
+    <div class="logo">WALK-OFF <span>DASHBOARD · v2026.06.03.05-supabase-first</span></div>
     <div class="hdr-right">
       <div id="v2-branch-stamp" class="v2-branch-stamp" data-branch-name="pokemon-v2-core">Branch: pokemon-v2-core · v2026.05.20.06-pokemon-v2-core</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
@@ -1445,7 +1445,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.06.03.04-wf-new-fields';
+const APP_VERSION = '2026.06.03.05-supabase-first';
 const branchName = 'pokemon-v2-core';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
 const POKEMON_EXACT_CACHE_VERSION = 'pokemon-exact-v3-price-matrix';
@@ -5171,6 +5171,14 @@ function renderSyncQueue(){
 async function processSyncItem(item){
   if(item.type === 'webflow-create') {
     await createWebflowProduct(item.payload.item, item.payload.updates || item.payload.item);
+    return;
+  }
+  if(item.type === 'webflow-mirror-create') {
+    // Mirror an existing Supabase inventory record to Webflow, then store the wfId back.
+    const wfId = await createWebflowProduct(item.payload.item, item.payload.updates || item.payload.item);
+    if(wfId && item.payload.supabaseId) {
+      await storeWfIdOnSupabaseRecord(item.payload.supabaseId, wfId).catch(()=>{});
+    }
     return;
   }
   if(item.type === 'inventory-create') {
@@ -9136,18 +9144,55 @@ function removeUniversalInventoryItem(id){
   localStorage.setItem('walkoff_universal_inventory', JSON.stringify(inv.filter(i => i.id !== id && i.wfId !== id).slice(0,5000)));
 }
 
+// Stores the Webflow product ID back onto the Supabase inventory record after a
+// successful mirror. Non-critical — failure is silently swallowed.
+async function storeWfIdOnSupabaseRecord(supabaseRowId, wfId){
+  if(!supabaseRowId || !wfId) return;
+  try {
+    const sb = getSupabaseClient();
+    const session = getAuthSession();
+    if(!sb || !session?.supabase) return;
+    const { data:row } = await sb.from('inventory_items').select('data').eq('id', supabaseRowId).single();
+    if(!row) return;
+    await sb.from('inventory_items')
+      .update({ data:{ ...(row.data || {}), wfId, webflowId:wfId } })
+      .eq('id', supabaseRowId);
+  } catch(e){ /* non-critical — wfId stored on next sync if needed */ }
+}
+
 async function createInventoryRecord(item, updates) {
   const source = getInventorySource();
   if(source === 'webflow') return createWebflowProduct(item, updates);
+
   if(source === 'hybrid') {
-    try {
-      return await createWebflowProduct(item, updates);
-    } catch(e) {
-      const fallbackId = await createBuiltInInventoryItem(item, updates, 'hybrid_fallback');
-      enqueueSync('webflow-create', 'Create inventory item in Webflow later: ' + (updates.name || item.name || 'item'), { item, updates }, e.message || 'Webflow create failed');
-      return fallbackId;
+    // ── Supabase first (authoritative) ──────────────────────────────────────
+    // Require Supabase to be reachable. If offline, throw so the caller can
+    // save locally + enqueue inventory-create for when connectivity returns.
+    const sb   = getSupabaseClient();
+    const sess = getAuthSession();
+    if(!navigator.onLine || !sb || !sess?.supabase || !getActiveStoreId()) {
+      throw new Error('Offline — inventory queued and will sync to Supabase when connection returns.');
     }
+
+    const supabaseRowId = await createBuiltInInventoryItem(item, updates, 'hybrid');
+
+    // ── Webflow mirror (fire-and-forget) ────────────────────────────────────
+    createWebflowProduct(item, updates)
+      .then(wfId => {
+        if(wfId) storeWfIdOnSupabaseRecord(supabaseRowId, wfId).catch(()=>{});
+      })
+      .catch(wfErr => {
+        enqueueSync(
+          'webflow-mirror-create',
+          'Mirror to Webflow: ' + (updates.name || item.name || 'item'),
+          { item:{ ...item, ...updates }, updates, supabaseId:supabaseRowId },
+          wfErr.message || 'Webflow mirror failed'
+        );
+      });
+
+    return supabaseRowId;
   }
+
   return createBuiltInInventoryItem(item, updates, source);
 }
 
