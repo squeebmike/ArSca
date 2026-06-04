@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.06.03.15-qpl-2col-fullwidth">
+<meta name="version" content="2026.06.03.16-debug-toggle-no-left-panel">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -370,8 +370,13 @@ tr.sold:hover td{opacity:.7;}
 .rq-toggle-btn { display:flex; align-items:center; gap:8px; font-family:'Orbitron',monospace; font-size:10px; letter-spacing:.05em; cursor:pointer; padding:10px 14px; border:1px solid var(--border); border-radius:8px; background:var(--surf2); color:var(--dim); white-space:nowrap; }
 .rq-toggle-btn .rq-badge { background:var(--gold); color:#000; border-radius:999px; padding:2px 7px; font-size:9px; font-weight:700; display:none; }
 .rq-toggle-btn .rq-badge.on { display:inline; }
-.research-grid.queue-hidden { grid-template-columns:auto minmax(0,1fr); gap:8px; }
+/* queue-hidden: single column — no left gap from the hidden queue panel */
+.research-grid.queue-hidden { grid-template-columns:minmax(0,1fr) !important; gap:0; }
 .research-grid.queue-hidden #research-queue-panel { display:none; }
+/* scanner inbox moved to drawer — hide it if it lands in the research grid */
+.research-grid #register-scan-panel { display:none !important; }
+/* QPL panel always takes full width when queue is hidden */
+.research-grid.queue-hidden #register-quick-panel { grid-column:1 !important; grid-row:auto !important; }
 #rq-drawer-panel { position:fixed; left:0; top:0; bottom:0; width:320px; background:var(--surf); border-right:1px solid var(--border); z-index:500; padding:18px 16px; overflow-y:auto; transform:translateX(-100%); transition:transform .2s; }
 #rq-drawer-panel.open { transform:translateX(0); box-shadow:4px 0 24px rgba(0,0,0,.4); }
 #rq-drawer-overlay { position:fixed; inset:0; z-index:499; background:rgba(0,0,0,.45); display:none; }
@@ -694,7 +699,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
 
 <header>
   <div class="hdr">
-    <div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.03.15-qpl-2col-fullwidth</span>
+    <div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.03.16-debug-toggle-no-left-panel</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
@@ -714,7 +719,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
     <div class="dsb-chip" id="dsb-drawer">🏦 <span>DRAWER:</span> <b id="dsb-drawer-val">CLOSED</b></div>
     <div class="dsb-chip">📦 <span>INV:</span> <b id="dsb-inv-val">—</b></div>
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
-    <div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.03.15-qpl-2col-fullwidth</div>
+    <div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.03.16-debug-toggle-no-left-panel</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -1697,7 +1702,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.06.03.15-qpl-2col-fullwidth';
+const APP_VERSION = '2026.06.03.16-debug-toggle-no-left-panel';
 const branchName = 'pokemon-v2-core';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
 const POKEMON_EXACT_CACHE_VERSION = 'pokemon-exact-v3-price-matrix';
@@ -4734,7 +4739,17 @@ function renderVendorConfigPanel(){
       <input class="tsi" id="new-category-name" placeholder="New category/filter name" style="flex:1;min-width:220px;margin-bottom:0">
       <button class="hbtn" onclick="addVendorCategory()">ADD CATEGORY</button>
     </div>
-    <div>${cfg.categories.map(c => `<span class="category-chip">${c}<button onclick="removeVendorCategory('${String(c).replace(/'/g,"\\'")}')">x</button></span>`).join('')}</div>`;
+    <div>${cfg.categories.map(c => `<span class="category-chip">${c}<button onclick="removeVendorCategory('${String(c).replace(/'/g,"\\'")}')">x</button></span>`).join('')}</div>
+    <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border);display:flex;gap:16px;align-items:center;flex-wrap:wrap">
+      <label style="display:flex;align-items:center;gap:8px;font-family:monospace;font-size:10px;color:var(--dim);cursor:pointer">
+        <input type="checkbox" ${localStorage.getItem('qa_debug')==='1'?'checked':''} onchange="localStorage.setItem('qa_debug',this.checked?'1':'0');toast_dash(this.checked?'Debug mode ON':'Debug mode OFF')">
+        <span>Debug Mode <span style="color:var(--dim);font-size:9px">(shows pricing IDs, cache paths, lookup details — off by default)</span></span>
+      </label>
+      <label style="display:flex;align-items:center;gap:8px;font-family:monospace;font-size:10px;color:var(--dim);cursor:pointer">
+        <input type="checkbox" ${localStorage.getItem('inv_debug')==='1'?'checked':''} onchange="localStorage.setItem('inv_debug',this.checked?'1':'0');toast_dash(this.checked?'Inventory debug ON':'Inventory debug OFF')">
+        <span>Inventory Debug <span style="color:var(--dim);font-size:9px">(shows dedup counts in status bar)</span></span>
+      </label>
+    </div>`;
 }
 
 function setInventorySource(source){
