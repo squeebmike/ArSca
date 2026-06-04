@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.06.03.12-dealer-ui-v1.2">
+<meta name="version" content="2026.06.03.13-stripe-qr-checkout">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -485,6 +485,23 @@ body.show-mode .show-mode-toggle { border-color:rgba(0,255,179,.4); color:var(--
 .row-act-v1 .ra-more { background:var(--surf2); border:1px solid var(--border); color:var(--dim); border-radius:6px; padding:5px 8px; font-size:13px; cursor:pointer; min-height:32px; font-family:monospace; position:relative; }
 
 /* ══ END DEALER UI v1.1 ════════════════════════════════════════════════════ */
+/* ── Stripe QR Checkout Modal ───────────────────────────────────────────── */
+#stripe-qr-modal { position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,.88); display:none; align-items:center; justify-content:center; padding:20px; }
+#stripe-qr-modal.on { display:flex; }
+.sqr-card { background:#0d1117; border:1px solid rgba(0,255,179,.2); border-radius:20px; padding:32px 28px; max-width:420px; width:100%; text-align:center; box-shadow:0 24px 80px rgba(0,0,0,.6); }
+.sqr-amount { font-family:'Orbitron',monospace; font-size:42px; font-weight:900; color:#00ffb3; margin:12px 0 20px; }
+.sqr-label { font-family:monospace; font-size:11px; letter-spacing:.08em; color:rgba(0,255,179,.6); margin-bottom:4px; }
+.sqr-qr-wrap { width:260px; height:260px; margin:0 auto 16px; border-radius:12px; overflow:hidden; background:#fff; display:flex; align-items:center; justify-content:center; }
+.sqr-qr-wrap img { width:100%; height:100%; display:block; }
+.sqr-url { font-family:monospace; font-size:11px; color:rgba(255,255,255,.4); margin-bottom:20px; word-break:break-all; }
+.sqr-status { font-family:'Orbitron',monospace; font-size:14px; letter-spacing:.06em; color:rgba(255,255,255,.5); margin-bottom:20px; display:flex; align-items:center; justify-content:center; gap:8px; }
+.sqr-spinner { width:16px; height:16px; border:2px solid rgba(0,255,179,.3); border-top-color:var(--g); border-radius:50%; animation:sqr-spin .8s linear infinite; }
+@keyframes sqr-spin { to { transform:rotate(360deg); } }
+.sqr-status.paid { color:#00ffb3; font-size:18px; }
+.sqr-status.paid .sqr-spinner { display:none; }
+.sqr-btn-row { display:flex; gap:10px; justify-content:center; }
+.sqr-btn-row .hbtn { min-height:48px; flex:1; font-size:13px; }
+.sqr-error { color:#ff4d6d; font-family:monospace; font-size:11px; margin-top:8px; }
 /* ══ END DEALER UI v1 ═══════════════════════════════════════════════════════ */
 .qpl-lightbox{position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.92);display:none;align-items:center;justify-content:center;padding:22px;}
 .qpl-lightbox.on{display:flex;}
@@ -675,7 +692,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
 
 <header>
   <div class="hdr">
-    <div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.03.12-dealer-ui-v1.2</span>
+    <div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.03.13-stripe-qr-checkout</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
@@ -695,7 +712,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
     <div class="dsb-chip" id="dsb-drawer">🏦 <span>DRAWER:</span> <b id="dsb-drawer-val">CLOSED</b></div>
     <div class="dsb-chip">📦 <span>INV:</span> <b id="dsb-inv-val">—</b></div>
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
-    <div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.03.12-dealer-ui-v1.2</div>
+    <div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.03.13-stripe-qr-checkout</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -1414,6 +1431,27 @@ body.customer-display-mode #customer-display-exit{display:block;}
   </div>
 </div>
 
+<!-- STRIPE QR CHECKOUT MODAL -->
+<div id="stripe-qr-modal">
+  <div class="sqr-card">
+    <div class="sqr-label">SCAN TO PAY</div>
+    <div class="sqr-amount" id="sqr-amount">$0.00</div>
+    <div class="sqr-qr-wrap">
+      <img id="sqr-qr-img" src="" alt="Stripe QR Code">
+    </div>
+    <div class="sqr-url" id="sqr-url"></div>
+    <div class="sqr-status" id="sqr-status">
+      <div class="sqr-spinner"></div>
+      <span id="sqr-status-text">Waiting for payment…</span>
+    </div>
+    <div class="sqr-error" id="sqr-error" style="display:none"></div>
+    <div class="sqr-btn-row">
+      <button class="hbtn" id="sqr-complete-btn" style="display:none;background:rgba(0,255,179,.16);border-color:rgba(0,255,179,.5);color:var(--g)" onclick="stripeQrComplete()">✓ COMPLETE SALE</button>
+      <button class="hbtn" id="sqr-cancel-btn" onclick="stripeQrCancel()">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <!-- DRAWER COUNT MODAL -->
 <div class="modal-bg" id="drawer-count-modal">
   <div class="modal">
@@ -1657,7 +1695,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.06.03.12-dealer-ui-v1.2';
+const APP_VERSION = '2026.06.03.13-stripe-qr-checkout';
 const branchName = 'pokemon-v2-core';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
 const POKEMON_EXACT_CACHE_VERSION = 'pokemon-exact-v3-price-matrix';
@@ -6044,6 +6082,114 @@ function showInvRowMenu(e, id, isInStock){
   const close = () => menu.remove();
   setTimeout(() => document.addEventListener('click', close, { once:true }), 10);
 }
+
+// ── Stripe QR Checkout v1 ─────────────────────────────────────────────────
+
+let _stripeQrSessionId = null;
+let _stripeQrPollTimer = null;
+let _stripeQrAmount = 0;
+
+async function launchStripeQrCheckout(totalDollars){
+  const modal = document.getElementById('stripe-qr-modal');
+  const amountEl = document.getElementById('sqr-amount');
+  const qrImg = document.getElementById('sqr-qr-img');
+  const urlEl = document.getElementById('sqr-url');
+  const statusEl = document.getElementById('sqr-status');
+  const statusText = document.getElementById('sqr-status-text');
+  const errEl = document.getElementById('sqr-error');
+  const completeBtn = document.getElementById('sqr-complete-btn');
+  const cancelBtn = document.getElementById('sqr-cancel-btn');
+
+  // Reset state
+  _stripeQrSessionId = null;
+  _stripeQrAmount = Math.round(totalDollars * 100);
+  clearInterval(_stripeQrPollTimer);
+  if(errEl) { errEl.textContent = ''; errEl.style.display='none'; }
+  if(completeBtn) completeBtn.style.display = 'none';
+  if(cancelBtn) cancelBtn.style.display = '';
+  if(amountEl) amountEl.textContent = '$' + totalDollars.toFixed(2);
+  if(statusEl) statusEl.className = 'sqr-status';
+  if(statusText) statusText.textContent = 'Creating checkout session…';
+  if(qrImg) qrImg.src = '';
+  if(urlEl) urlEl.textContent = '';
+  modal?.classList.add('on');
+
+  try {
+    const profile = getVendorProfile();
+    const res = await fetch(WORKER + '/stripe/create-checkout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        amount_cents: _stripeQrAmount,
+        description: 'Card show purchase',
+        store_name: profile.storeName || 'Walk-Off Sports Cards',
+      }),
+    });
+    const data = await res.json();
+    if(!res.ok || !data.checkout_url) throw new Error(data.error || 'Stripe error');
+
+    _stripeQrSessionId = data.session_id;
+    const checkoutUrl = data.checkout_url;
+
+    // Display QR — using qrserver.com (free, no API key)
+    const qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=260x260&margin=10&data=' + encodeURIComponent(checkoutUrl);
+    if(qrImg) qrImg.src = qrUrl;
+    if(urlEl) urlEl.textContent = checkoutUrl.replace('https://checkout.stripe.com/', 'stripe.com/…');
+    if(statusText) statusText.textContent = 'Waiting for payment…';
+
+    // Start polling every 3 seconds
+    _stripeQrPollTimer = setInterval(() => stripeQrPoll(), 3000);
+
+  } catch(e) {
+    if(statusText) statusText.textContent = 'Error';
+    if(errEl) { errEl.textContent = e.message; errEl.style.display = ''; }
+    if(statusEl) statusEl.className = 'sqr-status';
+    console.error('Stripe QR checkout error:', e);
+  }
+}
+
+async function stripeQrPoll(){
+  if(!_stripeQrSessionId) return;
+  try {
+    const res = await fetch(WORKER + '/stripe/session-status?id=' + encodeURIComponent(_stripeQrSessionId));
+    const data = await res.json();
+    if(data.paid || data.payment_status === 'paid') {
+      clearInterval(_stripeQrPollTimer);
+      stripeQrMarkPaid();
+    }
+  } catch(e) {
+    // Silently retry — network blip shouldn't abort the poll
+  }
+}
+
+function stripeQrMarkPaid(){
+  const statusEl = document.getElementById('sqr-status');
+  const statusText = document.getElementById('sqr-status-text');
+  const completeBtn = document.getElementById('sqr-complete-btn');
+  const cancelBtn = document.getElementById('sqr-cancel-btn');
+  if(statusEl) statusEl.className = 'sqr-status paid';
+  if(statusText) statusText.textContent = '✓ PAYMENT RECEIVED';
+  if(completeBtn) completeBtn.style.display = '';
+  if(cancelBtn) cancelBtn.style.display = 'none';
+  toast_dash('✓ Stripe payment received — $' + (_stripeQrAmount / 100).toFixed(2));
+  logOpsEvent('stripe_payment_received', 'Stripe QR checkout payment received', { sessionId: _stripeQrSessionId, amount: _stripeQrAmount });
+}
+
+function stripeQrComplete(){
+  clearInterval(_stripeQrPollTimer);
+  document.getElementById('stripe-qr-modal')?.classList.remove('on');
+  // Route through the existing locked-checkout confirmation
+  confirmLockedPayment('card');
+}
+
+function stripeQrCancel(){
+  clearInterval(_stripeQrPollTimer);
+  _stripeQrSessionId = null;
+  document.getElementById('stripe-qr-modal')?.classList.remove('on');
+  toast_dash('Stripe checkout cancelled');
+}
+
+// ── END Stripe QR Checkout v1 ─────────────────────────────────────────────
 
 // Research drawer scanner inbox renderer
 function renderScanInboxInDrawer(){
@@ -16744,9 +16890,20 @@ function selectLockedPaymentMethod(method){
       <div style="text-align:center;font-family:'Orbitron',monospace;font-size:18px">${escHtml(handle || 'Payment handle not configured')}</div>
       <div class="payment-confirm-row"><button class="hbtn" onclick="confirmLockedPayment('${method}')">PAYMENT RECEIVED</button></div>`;
   } else {
-    wb.innerHTML = `<div style="font-weight:800;text-align:center;margin-bottom:8px">Card payment</div>
-      <div style="text-align:center;color:#657080;font-family:monospace,monospace">Use Stripe confirmation when configured. Manual mode requires dealer confirmation.</div>
-      <div class="payment-confirm-row"><button class="hbtn" onclick="confirmLockedPayment('card')">CONFIRM CARD PAYMENT</button></div>`;
+    // Card / Stripe — show QR checkout launcher or manual fallback
+    const stripeKey = getPaymentSettings()?.card?.stripePublishableKey || '';
+    if(stripeKey) {
+      wb.innerHTML = `<div style="font-weight:800;text-align:center;margin-bottom:12px">Card — Stripe QR Checkout</div>
+        <div style="text-align:center;color:#657080;font-family:monospace;font-size:12px;margin-bottom:16px">Tap to generate QR code — customer scans and pays on their device.</div>
+        <div class="payment-confirm-row" style="flex-direction:column;gap:8px">
+          <button class="hbtn" style="min-height:52px;font-size:14px;font-weight:800;background:rgba(0,255,179,.14);border-color:rgba(0,255,179,.45);color:var(--g)" onclick="launchStripeQrCheckout(${total.toFixed(2)})">⬛ GENERATE QR CODE</button>
+          <button class="hbtn" style="font-size:11px;color:var(--dim)" onclick="confirmLockedPayment('card')">Manual confirm (reader processed)</button>
+        </div>`;
+    } else {
+      wb.innerHTML = `<div style="font-weight:800;text-align:center;margin-bottom:8px">Card payment</div>
+        <div style="text-align:center;color:#657080;font-family:monospace;font-size:12px;margin-bottom:12px">Add your Stripe publishable key in Settings → Payments to enable QR checkout.</div>
+        <div class="payment-confirm-row"><button class="hbtn" onclick="confirmLockedPayment('card')">CONFIRM CARD PAYMENT</button></div>`;
+    }
   }
   wb.classList.add('on');
   renderCustomerDisplaySnapshot();
