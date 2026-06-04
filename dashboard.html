@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.06.03.14-p2p-qr-amount">
+<meta name="version" content="2026.06.03.15-qpl-2col-fullwidth">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -275,9 +275,10 @@ tr.sold:hover td{opacity:.7;}
 .src-badge.ebay{border-color:rgba(255,209,102,.25);color:var(--gold);background:rgba(255,209,102,.06);}
 .src-badge.ai{border-color:rgba(199,125,255,.22);color:var(--purple);background:rgba(199,125,255,.06);}
 .src-badge.manual{border-color:rgba(255,255,255,.12);color:rgba(255,255,255,.42);}
-.qpl-results{display:grid;gap:16px;max-height:72vh;overflow:auto;padding:2px 4px 4px 0;scroll-behavior:smooth;}
-.qpl-hero-card{display:grid;grid-template-columns:minmax(220px,280px) minmax(0,1fr) minmax(160px,190px);gap:18px;align-items:stretch;background:linear-gradient(135deg,rgba(255,255,255,.045),rgba(0,255,179,.025));border:1px solid rgba(255,255,255,.10);border-radius:14px;padding:16px;box-shadow:0 18px 45px rgba(0,0,0,.28);}
-.research-grid{max-width:1540px;margin:0 auto;padding:0 20px;display:grid;grid-template-columns:minmax(250px,.85fr) minmax(0,2.3fr);gap:14px;align-items:start;}
+.qpl-results{display:grid;gap:16px;padding:2px 4px 4px 0;scroll-behavior:smooth;}
+/* 2-col layout: sticky image | info+actions — no separate actions column that causes overlap */
+.qpl-hero-card{display:grid;grid-template-columns:minmax(200px,240px) minmax(0,1fr);gap:16px;align-items:start;background:linear-gradient(135deg,rgba(255,255,255,.045),rgba(0,255,179,.025));border:1px solid rgba(255,255,255,.10);border-radius:14px;padding:16px;box-shadow:0 18px 45px rgba(0,0,0,.28);}
+.research-grid{max-width:100%;margin:0;padding:0 12px;display:grid;grid-template-columns:minmax(250px,.85fr) minmax(0,2.3fr);gap:14px;align-items:start;}
 .research-grid #register-quick-panel{grid-column:2;grid-row:1 / span 2;}
 .research-grid #research-queue-panel{grid-column:1;}
 .research-grid #research-actions-panel{grid-column:2;display:none;}
@@ -346,14 +347,15 @@ tr.sold:hover td{opacity:.7;}
 .qpl-quick-controls select,.qpl-quick-controls input{background:var(--surf);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:10px;font-size:13px;min-height:44px;}
 /* ══ DEALER UI v1 ═══════════════════════════════════════════════════════════ */
 
-/* 1. Sticky card image — image + actions stick as info column scrolls */
+/* 1. Sticky card image — image column sticks while info column scrolls */
 .qpl-hero-card { align-items:start; }
 .qpl-img-sticky { position:sticky; top:8px; display:flex; flex-direction:column; gap:10px; }
 .qpl-img-sticky .qpl-img-shell { max-height:320px; }
 .qpl-sticky-price { font-family:'Orbitron',monospace; font-size:22px; font-weight:900; color:var(--gold); text-align:center; padding:6px 0 2px; }
 .qpl-sticky-cond { font-family:monospace; font-size:11px; color:var(--dim); text-align:center; padding-bottom:4px; }
 .qpl-sticky-stock { font-family:monospace; font-size:10px; color:var(--g); text-align:center; }
-.qpl-actions { position:sticky; top:8px; }
+/* Actions now live inside info column — no separate column, no sticky needed */
+.qpl-actions { position:static; margin-top:16px; padding-top:14px; border-top:1px solid var(--border); }
 
 /* 2. Condition chips */
 .qpl-condition-chips { display:flex; gap:8px; flex-wrap:wrap; margin:12px 0 8px; }
@@ -409,7 +411,7 @@ body.show-mode .show-mode-toggle { border-color:rgba(0,255,179,.4); color:var(--
 
 /* Tablet portrait (768–1024px) */
 @media(max-width:1024px) and (min-width:768px) {
-  .qpl-hero-card { grid-template-columns:minmax(160px,210px) minmax(0,1fr) minmax(150px,165px); gap:10px; padding:12px; }
+  .qpl-hero-card { grid-template-columns:minmax(160px,200px) minmax(0,1fr); gap:12px; padding:12px; }
   .qpl-img-sticky .qpl-img-shell { max-height:230px; min-height:160px; }
   .research-grid { grid-template-columns:minmax(0,1fr); }
   .research-grid #research-queue-panel { display:none; }
@@ -426,7 +428,7 @@ body.show-mode .show-mode-toggle { border-color:rgba(0,255,179,.4); color:var(--
   .qpl-hero-card { grid-template-columns:1fr; gap:10px; }
   .qpl-img-sticky { position:static; }
   .qpl-img-sticky .qpl-img-shell { max-height:200px; }
-  .qpl-actions { position:static; }
+  .qpl-actions { margin-top:12px; }
   .qpl-actions-primary { grid-template-columns:1fr; }
   .qpl-actions-secondary { grid-template-columns:1fr 1fr; }
   .research-grid { grid-template-columns:1fr; }
@@ -692,7 +694,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
 
 <header>
   <div class="hdr">
-    <div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.03.14-p2p-qr-amount</span>
+    <div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.03.15-qpl-2col-fullwidth</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
@@ -712,7 +714,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
     <div class="dsb-chip" id="dsb-drawer">🏦 <span>DRAWER:</span> <b id="dsb-drawer-val">CLOSED</b></div>
     <div class="dsb-chip">📦 <span>INV:</span> <b id="dsb-inv-val">—</b></div>
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
-    <div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.03.14-p2p-qr-amount</div>
+    <div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.03.15-qpl-2col-fullwidth</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -1695,7 +1697,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.06.03.14-p2p-qr-amount';
+const APP_VERSION = '2026.06.03.15-qpl-2col-fullwidth';
 const branchName = 'pokemon-v2-core';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
 const POKEMON_EXACT_CACHE_VERSION = 'pokemon-exact-v3-price-matrix';
@@ -14269,36 +14271,37 @@ function quickLookupResultCard(r, idx){
           ${qplSlabControls(r, idx)}
         </div>
       </details>
+      <!-- Action buttons — inside info column, no separate column that causes overlap -->
+      <div class="qpl-actions">
+        <!-- PRIMARY actions — full width, large, color-coded -->
+        <div class="qpl-actions-primary">
+          <button class="hbtn buy" onclick="addQuickLookupToBuyOffer(${idx})">ADD TO BUY</button>
+          <button class="hbtn primary" onclick="addQuickLookupToInventory(${idx})">ADD INVENTORY</button>
+          <button class="hbtn" style="min-height:56px;font-size:14px;font-weight:800;background:rgba(255,209,102,.12);border-color:rgba(255,209,102,.4);color:var(--gold)" onclick="addQuickLookupToSaleCart(${idx})">ADD TO CART</button>
+        </div>
+        <!-- SECONDARY actions — 2-column, smaller -->
+        <div class="qpl-actions-secondary">
+          <button class="hbtn primary qpl-select-btn" onclick="selectQuickLookupResult(${idx})">SELECT</button>
+          ${qplResultCategoryKey(r) === 'pokemon' && !r.pokemonPriceTracker?.lookupDebug?.exactHydrated ? `<button class="hbtn ppt-get-prices-btn" style="color:var(--blue)" onclick="loadPricesForResultCard(${idx})">GET PRICES</button>` : `<span></span>`}
+          <button class="hbtn" onclick="openQplChartModal(${idx})">CHART</button>
+          ${qplResultCategoryKey(r) === 'pokemon' || qplResultCategoryKey(r) === 'mtg' || r.tcgUrl ? `<button class="hbtn" onclick="openQuickExternal(${idx},'tcg')">TCG ↗</button>` : `<span></span>`}
+          <button class="hbtn" style="color:var(--blue)" onclick="sendQuickLookupToAuthCheck(${idx})">AUTH</button>
+        </div>
+        <!-- TERTIARY — collapsed -->
+        <div class="qpl-actions-tertiary">
+          <details>
+            <summary>▸ More Actions</summary>
+            <div style="padding-top:6px">
+              ${slab}
+              <button class="hbtn" onclick="openQuickExternal(${idx},'sold')">COMPS</button>
+              <button class="hbtn" onclick="openQuickExternal(${idx},'pricecharting')">PRICECHARTING</button>
+              ${!r.imageUrl ? `<button class="hbtn" onclick="selectQuickLookupResult(${idx});setTimeout(()=>document.getElementById('qpl-edit-image-url')?.focus(),50)">ADD IMAGE</button>` : ''}
+              <button class="hbtn" style="color:var(--gold)" onclick="markQplNeedsReview(${idx})">NEEDS REVIEW</button>
+            </div>
+          </details>
+        </div>
+      </div>
       ${showAdminDebug() ? `<div class="dev-only" style="margin-top:8px;font-family:monospace,monospace;font-size:10px;color:var(--dim)">Debug: rawSearchQuerySent ${escHtml(r.lookupDebug?.rawQuerySent || '')} / workerRequestUrl ${escHtml(r.lookupDebug?.requestPath || '')} / searchResultCount ${escHtml(String(r.lookupDebug?.searchResultCount ?? ''))} / candidates ${escHtml(JSON.stringify(r.lookupDebug?.returnedCandidates || []))} / selectedTcgPlayerId ${escHtml(r.tcgPlayerId || r.tcgplayerId || '')} / hydrationRequestUrl ${escHtml(r.pokemonPriceTracker?.lookupDebug?.hydrationRequestUrl || r.lookupDebug?.hydrationRequestUrl || '')} / hydratedFromCache ${escHtml(String(!!(r.pokemonPriceTracker?.lookupDebug?.hydratedFromCache || r.lookupDebug?.hydratedFromCache)))} / prices.conditions keys ${escHtml(Object.keys(r.pokemonPriceTracker?.prices?.conditions || {}).join(', ') || 'none')} / prices.variants keys ${escHtml(Object.keys(r.pokemonPriceTracker?.prices?.variants || {}).join(', ') || 'none')} / priceHistory.conditions keys ${escHtml(Object.keys(r.pokemonPriceTracker?.priceHistory?.conditions || {}).join(', ') || 'none')} / priceHistory.variants keys ${escHtml(Object.keys(r.pokemonPriceTracker?.priceHistory?.variants || {}).join(', ') || 'none')} / active price path ${escHtml(r.activePriceBasis?.pricePath || r.resolvedPricePath || 'n/a')} / reason a row says No Real Price ${escHtml(r.noRealPriceReason || '')} / normalizedQuery ${escHtml(r.lookupDebug?.normalizedQuery || '')} / lookupPath ${escHtml(r.lookupDebug?.path || r.lookupDebug?.sourcePath || 'n/a')} / exactHydrated ${escHtml(String(!!r.lookupDebug?.exactHydrated))} / parseTitle ${escHtml(JSON.stringify(r.lookupDebug?.parseTitle || r.pptParseTitle || null))} / confidence ${escHtml(String(r.lookupDebug?.confidence || r.confidence || ''))} / autoSelect ${escHtml(String(!!(r.lookupDebug?.autoSelect || r.autoSelect)))} / selectedCondition ${escHtml(r.selectedCondition || r.condition || '')} / selectedFinish ${escHtml(qplFinishLabel(r.selectedFinish || r.finish || ''))} / activePriceBasis ${escHtml(JSON.stringify(r.activePriceBasis || {}))} / generatedTcgUrl ${escHtml(builtTcgLink.url || '')} / cache ${escHtml(r.lookupDebug?.cache || r.cache?.source || 'live/none')} / quotaCooldown ${escHtml(String(pokemonPriceTrackerQuotaBlocked()))} / apiCallsConsumed ${escHtml(localStorage.getItem('ppt_last_consumed') || '')}</div>` : ''}
-    </div>
-    <div class="qpl-actions">
-      <!-- PRIMARY actions — full width, large, color-coded -->
-      <div class="qpl-actions-primary">
-        <button class="hbtn buy" onclick="addQuickLookupToBuyOffer(${idx})">ADD TO BUY</button>
-        <button class="hbtn primary" onclick="addQuickLookupToInventory(${idx})">ADD INVENTORY</button>
-        <button class="hbtn" style="min-height:56px;font-size:14px;font-weight:800;background:rgba(255,209,102,.12);border-color:rgba(255,209,102,.4);color:var(--gold)" onclick="addQuickLookupToSaleCart(${idx})">ADD TO CART</button>
-      </div>
-      <!-- SECONDARY actions — 2-column, smaller -->
-      <div class="qpl-actions-secondary">
-        <button class="hbtn primary qpl-select-btn" onclick="selectQuickLookupResult(${idx})">SELECT</button>
-        ${qplResultCategoryKey(r) === 'pokemon' && !r.pokemonPriceTracker?.lookupDebug?.exactHydrated ? `<button class="hbtn ppt-get-prices-btn" style="color:var(--blue)" onclick="loadPricesForResultCard(${idx})">GET PRICES</button>` : `<span></span>`}
-        <button class="hbtn" onclick="openQplChartModal(${idx})">CHART</button>
-        ${qplResultCategoryKey(r) === 'pokemon' || qplResultCategoryKey(r) === 'mtg' || r.tcgUrl ? `<button class="hbtn" onclick="openQuickExternal(${idx},'tcg')">TCG ↗</button>` : `<span></span>`}
-        <button class="hbtn" style="color:var(--blue)" onclick="sendQuickLookupToAuthCheck(${idx})">AUTH</button>
-      </div>
-      <!-- TERTIARY — collapsed -->
-      <div class="qpl-actions-tertiary">
-        <details>
-          <summary>▸ More Actions</summary>
-          <div style="padding-top:6px">
-            ${slab}
-            <button class="hbtn" onclick="openQuickExternal(${idx},'sold')">COMPS</button>
-            <button class="hbtn" onclick="openQuickExternal(${idx},'pricecharting')">PRICECHARTING</button>
-            ${!r.imageUrl ? `<button class="hbtn" onclick="selectQuickLookupResult(${idx});setTimeout(()=>document.getElementById('qpl-edit-image-url')?.focus(),50)">ADD IMAGE</button>` : ''}
-            <button class="hbtn" style="color:var(--gold)" onclick="markQplNeedsReview(${idx})">NEEDS REVIEW</button>
-          </div>
-        </details>
-      </div>
     </div>
   </div>`;
 }
