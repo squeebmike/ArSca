@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.06.03.17-pokemon-chart-fix">
+<meta name="version" content="2026.06.03.18-chart-cond-chips">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -699,7 +699,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
 
 <header>
   <div class="hdr">
-    <div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.03.17-pokemon-chart-fix</span>
+    <div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.03.18-chart-cond-chips</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
@@ -719,7 +719,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
     <div class="dsb-chip" id="dsb-drawer">🏦 <span>DRAWER:</span> <b id="dsb-drawer-val">CLOSED</b></div>
     <div class="dsb-chip">📦 <span>INV:</span> <b id="dsb-inv-val">—</b></div>
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
-    <div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.03.17-pokemon-chart-fix</div>
+    <div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.03.18-chart-cond-chips</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -1702,7 +1702,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.06.03.17-pokemon-chart-fix';
+const APP_VERSION = '2026.06.03.18-chart-cond-chips';
 const branchName = 'pokemon-v2-core';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
 const POKEMON_EXACT_CACHE_VERSION = 'pokemon-exact-v3-price-matrix';
@@ -12155,7 +12155,25 @@ function pokemonPptAllHistoryChartHtml(r = {}, idx = 0){
   const first = allPts[0]?.price || 0, last = allPts[allPts.length-1]?.price || 0;
   const change = first && last ? last - first : 0;
   const changePct = first ? (change/first*100) : 0;
-  const otherSeries = series.filter(s=>s!==sel);
+  const activeCondCode = sel.condition; // NM / LP / MP / HP / DMG
+  const activeFinish = sel.finish || normalizeQplFinish(r.selectedFinish || r.finish || '');
+
+  // Build simple condition chips — only from variant-level (priority 2), deduplicated by condition code.
+  // Shows NM/LP/MP/HP/DMG buttons; avoids confusing "Holofoil / Near Mint" labels and duplicates.
+  const condChipOrder = ['NM','LP','MP','HP','DMG'];
+  const variantSeriesByCode = {};
+  series.filter(s => s.priority === 2).forEach(s => {
+    if(!variantSeriesByCode[s.condition]) variantSeriesByCode[s.condition] = s;
+  });
+  const condChips = condChipOrder
+    .filter(code => variantSeriesByCode[code])
+    .map(code => {
+      const isActive = code === activeCondCode;
+      const pts = variantSeriesByCode[code].points.length;
+      const condFull = pokemonPptConditionLabel(code);  // 'Near Mint' etc for activePriceBasis
+      return `<button style="min-height:44px;padding:4px 16px;font-family:monospace;font-weight:${isActive?'800':'400'};font-size:13px;background:${isActive?'rgba(0,255,179,.15)':'rgba(255,255,255,.04)'};color:${isActive?'var(--g)':'var(--dim)'};border:1px solid ${isActive?'rgba(0,255,179,.5)':'rgba(255,255,255,.1)'};border-radius:8px;cursor:pointer" title="${pts} history points" onclick="(function(){var rr=qplResults[${idx}];if(rr){rr.selectedCondition='${code}';rr.activePriceBasis=Object.assign(rr.activePriceBasis||{},{condition:'${condFull}',finish:'${activeFinish}',basisType:'raw'});openQplChartModal(${idx},'${range}');}})()">${code}</button>`;
+    }).join('');
+
   return `<div class="qpl-chart-card">
     <div style="display:flex;justify-content:space-between;gap:12px;align-items:center">
       <div><div style="font-family:'Orbitron',monospace;color:var(--blue);font-size:15px">PRICE GRAPH</div><div style="color:var(--dim);font-size:11px;margin-top:4px">${escHtml(title)}</div></div>
@@ -12164,7 +12182,7 @@ function pokemonPptAllHistoryChartHtml(r = {}, idx = 0){
     <div style="display:flex;align-items:center;gap:12px;margin-top:12px;flex-wrap:wrap">
       ${r.imageUrl ? `<img src="${escHtml(r.imageUrl)}" style="width:52px;height:72px;object-fit:contain;border-radius:6px;border:1px solid var(--border);flex-shrink:0">` : ''}
       <div style="flex:1;min-width:0">
-        <div style="font-size:11px;font-family:'Orbitron',monospace;color:var(--dim);letter-spacing:.04em;margin-bottom:2px">${escHtml(sel.label)}</div>
+        <div style="font-size:11px;font-family:'Orbitron',monospace;color:var(--dim);letter-spacing:.04em;margin-bottom:2px">${escHtml(activeCondCode)} · ${escHtml(pokemonPptFinishLabel(activeFinish || 'Holofoil'))}</div>
         <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">
           <span style="font-size:24px;font-weight:700;color:var(--text)">$${last ? last.toFixed(2) : (Number(r.market||r.activePriceBasis?.price||0)||0).toFixed(2)}</span>
           ${first && last ? `<span style="font-size:13px;font-weight:600;color:${change>=0?'#22c55e':'#ef4444'}">(${change>=0?'+':''}${changePct.toFixed(2)}%)</span>` : ''}
@@ -12172,9 +12190,11 @@ function pokemonPptAllHistoryChartHtml(r = {}, idx = 0){
       </div>
     </div>
     <div style="margin-top:14px">${pokemonPptSvgLineChart(allPts)}</div>
-    <div style="display:flex;gap:5px;margin-top:10px;align-items:center;flex-wrap:wrap">
+    <!-- Condition chips — simple NM/LP/MP/HP/DMG, no duplicates, all visible -->
+    ${condChips ? `<div style="display:flex;gap:6px;margin-top:12px;flex-wrap:wrap">${condChips}</div>` : ''}
+    <!-- Time range buttons -->
+    <div style="display:flex;gap:5px;margin-top:8px;align-items:center;flex-wrap:wrap">
       ${ranges.map(label=>`<button class="hbtn" style="min-height:32px;padding:4px 14px;font-weight:${range===label?'700':'400'};background:${range===label?'rgba(59,130,246,.15)':'rgba(255,255,255,.04)'};color:${range===label?'var(--blue)':'var(--text)'};border:1px solid ${range===label?'rgba(59,130,246,.5)':'rgba(255,255,255,.1)'};border-radius:6px" onclick="openQplChartModal(${idx},'${label}')">${label}</button>`).join('')}
-      ${otherSeries.length ? `<div style="flex:1"></div><div style="font-size:10px;color:var(--dim);white-space:nowrap">Other: ${otherSeries.slice(0,4).map(s=>`<button class="hbtn" style="min-height:26px;font-size:10px;padding:2px 7px;color:var(--dim);margin-left:3px" onclick="(function(){var rr=qplResults[${idx}];if(rr){rr.selectedCondition='${escHtml(s.condition)}';rr.selectedFinish='${escHtml(s.finish)}';rr.activePriceBasis=Object.assign(rr.activePriceBasis||{},{condition:'${escHtml(s.condition)}',finish:'${escHtml(s.finish)}'});openQplChartModal(${idx},'${range}');}})()">${escHtml(s.label)}</button>`).join('')}</div>` : ''}
     </div>
     <div style="color:var(--dim);font-size:10px;margin-top:6px">${allPts.length} points · ${escHtml(allPts[0]?.date?.slice(0,10)||'')} → ${escHtml(allPts[allPts.length-1]?.date?.slice(0,10)||'')} · PokemonPriceTracker</div>
     ${debugLine}
