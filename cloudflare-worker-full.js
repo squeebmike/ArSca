@@ -1023,6 +1023,106 @@ export default {
       }
     }
 
+    // ── Stripe QR Checkout v1 ────────────────────────────────────────────────
+
+    // POST /stripe/create-checkout
+    // Creates a Stripe Checkout Session (hosted page) for QR-code payment flow.
+    // Returns { session_id, checkout_url }.
+    if (url.pathname === '/stripe/create-checkout' && request.method === 'POST') {
+      if (!env.STRIPE_SECRET_KEY) return json({ error: 'STRIPE_SECRET_KEY not configured in Worker secrets' }, 500);
+      try {
+        const body = await request.json();
+        const { amount_cents, description, store_name } = body;
+        if (!amount_cents || amount_cents < 50) return json({ error: 'Minimum amount is $0.50' }, 400);
+        const origin = url.origin;
+        const params = new URLSearchParams({
+          mode: 'payment',
+          'payment_method_types[]': 'card',
+          success_url: `${origin}/stripe/checkout-success?session_id={CHECKOUT_SESSION_ID}`,
+          cancel_url: `${origin}/stripe/checkout-cancel`,
+          'line_items[0][price_data][currency]': 'usd',
+          'line_items[0][price_data][product_data][name]': description || (store_name ? `${store_name} — Card Purchase` : 'Card Show Purchase'),
+          'line_items[0][price_data][unit_amount]': String(Math.round(amount_cents)),
+          'line_items[0][quantity]': '1',
+          'metadata[source]': 'walkoff-pos',
+          'metadata[store]': store_name || '',
+        });
+        const r = await fetch('https://api.stripe.com/v1/checkout/sessions', {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + env.STRIPE_SECRET_KEY, 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: params.toString(),
+        });
+        const data = await r.json();
+        if (!r.ok) return json({ error: data.error?.message || 'Stripe error', code: data.error?.code }, r.status);
+        // Cache pending status in KV (TTL 1 hour)
+        if (env.LBA_KV) {
+          await env.LBA_KV.put(`stripe_checkout:${data.id}`, JSON.stringify({ status: 'pending', amount: amount_cents, created: Date.now() }), { expirationTtl: 3600 });
+        }
+        return json({ session_id: data.id, checkout_url: data.url });
+      } catch (e) { return json({ error: e.message }, 500); }
+    }
+
+    // GET /stripe/session-status?id=cs_xxx
+    // Checks payment status — first checks KV cache (webhook may have updated it),
+    // then falls back to polling Stripe directly.
+    if (url.pathname === '/stripe/session-status' && request.method === 'GET') {
+      const id = url.searchParams.get('id');
+      if (!id) return json({ error: 'session id required' }, 400);
+      try {
+        // Check KV cache first
+        if (env.LBA_KV) {
+          const cached = await env.LBA_KV.get(`stripe_checkout:${id}`);
+          if (cached) {
+            const d = JSON.parse(cached);
+            if (d.status === 'paid') return json({ status: 'complete', payment_status: 'paid', paid: true, amount_total: d.amount });
+          }
+        }
+        // Poll Stripe API
+        if (!env.STRIPE_SECRET_KEY) return json({ error: 'STRIPE_SECRET_KEY not configured' }, 500);
+        const r = await fetch(`https://api.stripe.com/v1/checkout/sessions/${encodeURIComponent(id)}`, {
+          headers: { 'Authorization': 'Bearer ' + env.STRIPE_SECRET_KEY },
+        });
+        const data = await r.json();
+        if (!r.ok) return json({ error: data.error?.message || 'Stripe error' }, r.status);
+        const paid = data.payment_status === 'paid';
+        // Update KV if paid
+        if (paid && env.LBA_KV) {
+          await env.LBA_KV.put(`stripe_checkout:${id}`, JSON.stringify({ status: 'paid', amount: data.amount_total, created: Date.now() }), { expirationTtl: 86400 });
+        }
+        return json({ status: data.status, payment_status: data.payment_status, paid, amount_total: data.amount_total });
+      } catch (e) { return json({ error: e.message }, 500); }
+    }
+
+    // POST /stripe/webhook
+    // Receives Stripe events. Updates KV on checkout.session.completed.
+    // Add STRIPE_WEBHOOK_SECRET to Worker secrets and enable signature verification in v2.
+    if (url.pathname === '/stripe/webhook' && request.method === 'POST') {
+      const body = await request.text();
+      let event;
+      try { event = JSON.parse(body); } catch { return new Response('Bad JSON', { status: 400 }); }
+      if (event.type === 'checkout.session.completed') {
+        const session = event.data?.object;
+        if (session?.id && env.LBA_KV) {
+          await env.LBA_KV.put(`stripe_checkout:${session.id}`, JSON.stringify({ status: 'paid', amount: session.amount_total, created: Date.now() }), { expirationTtl: 86400 }).catch(() => {});
+        }
+      }
+      return new Response('ok', { status: 200 });
+    }
+
+    // GET /stripe/checkout-success  (Stripe redirects customer here after payment)
+    if (url.pathname === '/stripe/checkout-success') {
+      const html = `<!DOCTYPE html><html><head><meta charset=utf-8><title>Payment Complete</title><meta name="viewport" content="width=device-width,initial-scale=1"><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:-apple-system,sans-serif;background:#050709;color:#fff;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px}.c{background:#0d1117;border:1px solid rgba(0,255,179,.25);border-radius:20px;padding:40px 32px;max-width:380px;width:100%;text-align:center}.ic{font-size:72px;margin-bottom:20px}.ti{font-size:26px;font-weight:900;color:#00ffb3;margin-bottom:12px}.su{color:#657080;font-size:14px;line-height:1.6}</style></head><body><div class="c"><div class="ic">✓</div><div class="ti">Payment Complete!</div><div class="su">Thank you. The dealer has been notified.<br>You may now close this window.</div></div></body></html>`;
+      return new Response(html, { headers: { 'Content-Type': 'text/html;charset=UTF-8' } });
+    }
+
+    // GET /stripe/checkout-cancel  (Stripe redirects customer here if they cancel)
+    if (url.pathname === '/stripe/checkout-cancel') {
+      const html = `<!DOCTYPE html><html><head><meta charset=utf-8><title>Payment Cancelled</title><meta name="viewport" content="width=device-width,initial-scale=1"><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:-apple-system,sans-serif;background:#050709;color:#fff;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px}.c{background:#0d1117;border:1px solid rgba(255,77,109,.25);border-radius:20px;padding:40px 32px;max-width:380px;width:100%;text-align:center}.ic{font-size:72px;margin-bottom:20px}.ti{font-size:26px;font-weight:900;color:#ff4d6d;margin-bottom:12px}.su{color:#657080;font-size:14px;line-height:1.6}</style></head><body><div class="c"><div class="ic">✗</div><div class="ti">Payment Cancelled</div><div class="su">Please return to the dealer to try again or choose a different payment method.</div></div></body></html>`;
+      return new Response(html, { headers: { 'Content-Type': 'text/html;charset=UTF-8' } });
+    }
+
+    // ── END Stripe QR Checkout v1 ─────────────────────────────────────────────
+
     if (url.pathname === '/stripe/create-payment-intent') {
       if (request.method !== 'POST') return json({ error: 'POST only' }, 405);
       if (!env.STRIPE_SECRET_KEY) return json({ error: 'STRIPE_SECRET_KEY not set in Worker secrets' }, 500);
