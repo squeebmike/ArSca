@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.06.03.16-debug-toggle-no-left-panel">
+<meta name="version" content="2026.06.03.17-pokemon-chart-fix">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -699,7 +699,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
 
 <header>
   <div class="hdr">
-    <div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.03.16-debug-toggle-no-left-panel</span>
+    <div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.03.17-pokemon-chart-fix</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
@@ -719,7 +719,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
     <div class="dsb-chip" id="dsb-drawer">🏦 <span>DRAWER:</span> <b id="dsb-drawer-val">CLOSED</b></div>
     <div class="dsb-chip">📦 <span>INV:</span> <b id="dsb-inv-val">—</b></div>
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
-    <div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.03.16-debug-toggle-no-left-panel</div>
+    <div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.03.17-pokemon-chart-fix</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -1702,7 +1702,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.06.03.16-debug-toggle-no-left-panel';
+const APP_VERSION = '2026.06.03.17-pokemon-chart-fix';
 const branchName = 'pokemon-v2-core';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
 const POKEMON_EXACT_CACHE_VERSION = 'pokemon-exact-v3-price-matrix';
@@ -12006,6 +12006,8 @@ function pokemonPptAllHistorySeries(row = {}){
   const selectedCondition = pokemonPptConditionCode(row.activePriceBasis?.condition || row.selectedCondition || row.condition || '');
   const selectedFinish = normalizeQplFinish(row.activePriceBasis?.finish || row.selectedFinish || row.finish || '');
   const series = [];
+
+  // Variant-level entries (finish + condition) — priority 2 (most specific, preferred when selected)
   Object.entries(hist.variants || {}).forEach(([finishRaw, conditionMap]) => {
     const finishLabel = pokemonPptFinishLabel(finishRaw);
     Object.entries(conditionMap || {}).forEach(([conditionRaw, entry]) => {
@@ -12018,11 +12020,19 @@ function pokemonPptAllHistorySeries(row = {}){
         condition:pokemonPptConditionCode(conditionLabel),
         path:`priceHistory.variants[${finishLabel}][${conditionLabel}]`,
         points,
+        priority:2,  // variant-level wins over condition-level when both selected
         selected:(!selectedFinish || normalizeQplFinish(finishLabel) === selectedFinish) && (!selectedCondition || pokemonPptConditionCode(conditionLabel) === selectedCondition)
       });
     });
   });
+
+  // Condition-level entries (no finish specificity) — priority 1
+  // Skip keys that are actually finish names (API sometimes puts 'Holofoil' here as a condition).
+  // Such entries map to NM via the default pokemonPptConditionCode fallthrough, causing NM
+  // to incorrectly show 51-point finish-summary data instead of 90-point NM variant data.
+  const FINISH_KEYWORDS = /holofoil|reverse|textured|etched|foil|normal|prism/i;
   Object.entries(hist.conditions || {}).forEach(([conditionRaw, entry]) => {
+    if(FINISH_KEYWORDS.test(conditionRaw)) return; // skip finish-named keys
     const conditionLabel = pokemonPptConditionLabel(conditionRaw);
     const points = pokemonPptHistoryEntryPoints(entry);
     if(!points.length) return;
@@ -12032,10 +12042,18 @@ function pokemonPptAllHistorySeries(row = {}){
       condition:pokemonPptConditionCode(conditionLabel),
       path:`priceHistory.conditions[${conditionLabel}]`,
       points,
+      priority:1,  // condition-level, lower priority than variant-level
       selected:!selectedCondition || pokemonPptConditionCode(conditionLabel) === selectedCondition
     });
   });
-  return series.sort((a,b) => Number(b.selected) - Number(a.selected) || a.label.localeCompare(b.label));
+
+  // Sort: selected first, then by priority desc (variant > condition), then alphabetically.
+  // This ensures series.find(s=>s.selected) returns the most specific match first.
+  return series.sort((a,b) =>
+    Number(b.selected) - Number(a.selected) ||
+    (b.priority||0) - (a.priority||0) ||
+    a.label.localeCompare(b.label)
+  );
 }
 
 // Filter chart points to the selected time range client-side (PPT returns all-time data in one call)
