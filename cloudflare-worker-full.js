@@ -7,6 +7,7 @@
  *   WEBFLOW_TOKEN
  *   PSA_TOKEN
  *   STRIPE_SECRET_KEY
+ *   STRIPE_WEBHOOK_SECRET
  *   EBAY_USER_TOKEN
  *   EBAY_APP_ID
  *   COMICVINE_API_KEY
@@ -1094,16 +1095,59 @@ export default {
     }
 
     // POST /stripe/webhook
-    // Receives Stripe events. Updates KV on checkout.session.completed.
-    // Add STRIPE_WEBHOOK_SECRET to Worker secrets and enable signature verification in v2.
+    // Receives Stripe events with HMAC-SHA256 signature verification.
+    // Requires STRIPE_WEBHOOK_SECRET in Worker secrets (whsec_...).
     if (url.pathname === '/stripe/webhook' && request.method === 'POST') {
       const body = await request.text();
+      const sigHeader = request.headers.get('stripe-signature') || '';
+
+      // Verify Stripe signature using Web Crypto API
+      if (env.STRIPE_WEBHOOK_SECRET && sigHeader) {
+        try {
+          const parts = Object.fromEntries(sigHeader.split(',').map(p => p.split('=')));
+          const t = parts.t;
+          const v1 = parts.v1;
+          if (!t || !v1) return new Response('Invalid signature header', { status: 400 });
+
+          // Reject events older than 5 minutes (replay protection)
+          if (Math.abs(Date.now() / 1000 - Number(t)) > 300) {
+            return new Response('Webhook timestamp too old', { status: 400 });
+          }
+
+          const signedPayload = `${t}.${body}`;
+          const secret = env.STRIPE_WEBHOOK_SECRET.startsWith('whsec_')
+            ? env.STRIPE_WEBHOOK_SECRET.slice(6)
+            : env.STRIPE_WEBHOOK_SECRET;
+
+          // Decode base64 secret
+          const secretBytes = Uint8Array.from(atob(secret), c => c.charCodeAt(0));
+          const key = await crypto.subtle.importKey(
+            'raw', secretBytes,
+            { name: 'HMAC', hash: 'SHA-256' },
+            false, ['sign']
+          );
+          const sigBytes = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(signedPayload));
+          const computed = Array.from(new Uint8Array(sigBytes)).map(b => b.toString(16).padStart(2, '0')).join('');
+
+          if (computed !== v1) return new Response('Signature mismatch', { status: 401 });
+        } catch (e) {
+          console.error('Webhook signature error:', e.message);
+          return new Response('Signature verification failed', { status: 401 });
+        }
+      }
+      // (If STRIPE_WEBHOOK_SECRET not yet set, accept without verification — remove after key is confirmed working)
+
       let event;
       try { event = JSON.parse(body); } catch { return new Response('Bad JSON', { status: 400 }); }
+
       if (event.type === 'checkout.session.completed') {
         const session = event.data?.object;
         if (session?.id && env.LBA_KV) {
-          await env.LBA_KV.put(`stripe_checkout:${session.id}`, JSON.stringify({ status: 'paid', amount: session.amount_total, created: Date.now() }), { expirationTtl: 86400 }).catch(() => {});
+          await env.LBA_KV.put(
+            `stripe_checkout:${session.id}`,
+            JSON.stringify({ status: 'paid', amount: session.amount_total, created: Date.now() }),
+            { expirationTtl: 86400 }
+          ).catch(() => {});
         }
       }
       return new Response('ok', { status: 200 });

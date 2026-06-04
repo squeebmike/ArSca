@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.06.03.13-stripe-qr-checkout">
+<meta name="version" content="2026.06.03.14-p2p-qr-amount">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -692,7 +692,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
 
 <header>
   <div class="hdr">
-    <div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.03.13-stripe-qr-checkout</span>
+    <div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.03.14-p2p-qr-amount</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
@@ -712,7 +712,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
     <div class="dsb-chip" id="dsb-drawer">🏦 <span>DRAWER:</span> <b id="dsb-drawer-val">CLOSED</b></div>
     <div class="dsb-chip">📦 <span>INV:</span> <b id="dsb-inv-val">—</b></div>
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
-    <div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.03.13-stripe-qr-checkout</div>
+    <div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.03.14-p2p-qr-amount</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -1695,7 +1695,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.06.03.13-stripe-qr-checkout';
+const APP_VERSION = '2026.06.03.14-p2p-qr-amount';
 const branchName = 'pokemon-v2-core';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
 const POKEMON_EXACT_CACHE_VERSION = 'pokemon-exact-v3-price-matrix';
@@ -6187,6 +6187,56 @@ function stripeQrCancel(){
   _stripeQrSessionId = null;
   document.getElementById('stripe-qr-modal')?.classList.remove('on');
   toast_dash('Stripe checkout cancelled');
+}
+
+// ── P2P QR Modal (Venmo / PayPal / Cash App) ─────────────────────────────
+// Same modal as Stripe QR but no polling — dealer confirms manually after
+// seeing payment arrive in their app. Deep link pre-fills amount + recipient.
+
+function launchP2pQrModal(method, handle, totalDollars, deepLink){
+  const icons = { venmo:'💙', paypal:'🅿️', cashapp:'💵' };
+  const labels = { venmo:'Venmo', paypal:'PayPal', cashapp:'Cash App' };
+  const modal = document.getElementById('stripe-qr-modal');
+  const amountEl = document.getElementById('sqr-amount');
+  const qrImg = document.getElementById('sqr-qr-img');
+  const urlEl = document.getElementById('sqr-url');
+  const statusEl = document.getElementById('sqr-status');
+  const statusText = document.getElementById('sqr-status-text');
+  const errEl = document.getElementById('sqr-error');
+  const completeBtn = document.getElementById('sqr-complete-btn');
+  const cancelBtn = document.getElementById('sqr-cancel-btn');
+  const labelEl = modal?.querySelector('.sqr-label');
+
+  // Clear any Stripe polling
+  clearInterval(_stripeQrPollTimer);
+  _stripeQrSessionId = null;
+
+  if(labelEl) labelEl.textContent = (icons[method]||'') + ' SCAN TO PAY WITH ' + (labels[method]||method).toUpperCase();
+  if(amountEl) amountEl.textContent = '$' + totalDollars.toFixed(2);
+  if(errEl){ errEl.textContent=''; errEl.style.display='none'; }
+
+  // QR from the deep link — amount + recipient pre-filled in the app
+  if(qrImg) qrImg.src = 'https://api.qrserver.com/v1/create-qr-code/?size=260x260&margin=10&data=' + encodeURIComponent(deepLink);
+
+  if(urlEl) {
+    const hints = { venmo:'opens Venmo with amount pre-filled', cashapp:'opens Cash App with amount pre-filled', paypal:'opens PayPal with amount pre-filled' };
+    urlEl.textContent = handle + ' · ' + (hints[method] || 'amount pre-filled');
+  }
+
+  if(statusEl) statusEl.className = 'sqr-status';
+  if(statusText) statusText.textContent = 'Customer scans → confirm when payment appears in your app';
+
+  // PAYMENT RECEIVED visible immediately — dealer confirms after seeing it in their app
+  if(completeBtn){
+    completeBtn.textContent = '✓ PAYMENT RECEIVED';
+    completeBtn.style.display = '';
+    completeBtn.onclick = () => {
+      document.getElementById('stripe-qr-modal')?.classList.remove('on');
+      confirmLockedPayment(method);
+    };
+  }
+  if(cancelBtn) cancelBtn.style.display = '';
+  modal?.classList.add('on');
 }
 
 // ── END Stripe QR Checkout v1 ─────────────────────────────────────────────
@@ -16267,9 +16317,12 @@ function paymentUrl(kind, handle, total){
   if(!h) return '';
   if(/^https?:\/\//i.test(h)) return h;
   const clean = h.replace(/^[@$]/,'');
+  // PayPal.me — amount in path pre-fills on open
   if(kind === 'paypal') return 'https://paypal.me/' + encodeURIComponent(clean) + (total > 0 ? '/' + total.toFixed(2) : '');
-  if(kind === 'venmo') return 'https://venmo.com/' + encodeURIComponent(clean) + (total > 0 ? '?txn=pay&amount=' + total.toFixed(2) : '');
-  if(kind === 'cashapp') return 'https://cash.app/$' + encodeURIComponent(clean);
+  // Venmo — /u/ prefix + txn=pay pre-fills recipient, amount, and note in the app
+  if(kind === 'venmo') return 'https://venmo.com/u/' + encodeURIComponent(clean) + (total > 0 ? '?txn=pay&amount=' + total.toFixed(2) + '&note=Card+Purchase' : '');
+  // Cash App — amount in path pre-fills on open
+  if(kind === 'cashapp') return 'https://cash.app/$' + encodeURIComponent(clean) + (total > 0 ? '/' + total.toFixed(2) : '');
   return '';
 }
 
@@ -16885,10 +16938,15 @@ function selectLockedPaymentMethod(method){
       <div class="payment-confirm-row"><button class="hbtn" onclick="confirmLockedPayment('cash')">CONFIRM CASH PAYMENT</button></div>`;
   } else if(['venmo','paypal','cashapp'].includes(method)) {
     const handle = cfg.handle || cfg.emailOrHandle || cfg.cashtag || '';
-    const qr = cfg.qrImageUrl ? `<img class="payment-qr" src="${escHtml(cfg.qrImageUrl)}" alt="${escHtml(method)} QR">` : `<div class="payment-qr-fallback">${escHtml(paymentUrl(method, handle, total) || handle || method)}</div>`;
-    wb.innerHTML = `<div style="font-weight:800;text-align:center;margin-bottom:8px">${escHtml(formatTenderLabel(method))}</div>${qr}
-      <div style="text-align:center;font-family:'Orbitron',monospace;font-size:18px">${escHtml(handle || 'Payment handle not configured')}</div>
-      <div class="payment-confirm-row"><button class="hbtn" onclick="confirmLockedPayment('${method}')">PAYMENT RECEIVED</button></div>`;
+    const deepLink = paymentUrl(method, handle, total);
+    // Show QR modal with dynamic amount-aware deep link — reuses same modal as Stripe
+    if(handle && deepLink) {
+      launchP2pQrModal(method, handle, total, deepLink);
+    } else {
+      wb.innerHTML = `<div style="font-weight:800;text-align:center;margin-bottom:8px">${escHtml(formatTenderLabel(method))}</div>
+        <div style="text-align:center;color:#657080;font-family:monospace;font-size:12px;margin-bottom:12px">Add your ${escHtml(formatTenderLabel(method))} handle in Settings → Payments.</div>
+        <div class="payment-confirm-row"><button class="hbtn" onclick="confirmLockedPayment('${method}')">PAYMENT RECEIVED</button></div>`;
+    }
   } else {
     // Card / Stripe — show QR checkout launcher or manual fallback
     const stripeKey = getPaymentSettings()?.card?.stripePublishableKey || '';
