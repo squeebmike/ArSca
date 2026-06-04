@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.06.03.11-dealer-ui-v1.1">
+<meta name="version" content="2026.06.03.12-dealer-ui-v1.2">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -409,33 +409,34 @@ body.show-mode .show-mode-toggle { border-color:rgba(0,255,179,.4); color:var(--
 
 /* Tablet portrait (768–1024px) */
 @media(max-width:1024px) and (min-width:768px) {
-  .qpl-hero-card { grid-template-columns:minmax(160px,220px) minmax(0,1fr) minmax(130px,150px); gap:10px; padding:12px; }
-  .qpl-img-sticky .qpl-img-shell { max-height:240px; min-height:180px; }
+  .qpl-hero-card { grid-template-columns:minmax(160px,210px) minmax(0,1fr) minmax(150px,165px); gap:10px; padding:12px; }
+  .qpl-img-sticky .qpl-img-shell { max-height:230px; min-height:160px; }
   .research-grid { grid-template-columns:minmax(0,1fr); }
   .research-grid #research-queue-panel { display:none; }
   .hbtn, button.hbtn { min-height:48px; }
-  .qpl-actions .hbtn { min-height:48px; }
-  .qpl-actions-primary .hbtn { min-height:52px; }
+  .qpl-actions-primary .hbtn { min-height:52px; font-size:13px; }
   .qpl-condition-chips { gap:6px; }
-  .qpl-cond-chip { min-width:56px; padding:7px 10px; }
-  .ra { min-height:40px; min-width:40px; font-size:11px; }
+  .qpl-cond-chip { min-width:52px; padding:7px 8px; }
+  .rab { min-height:48px; font-size:11px; padding:0 8px; }
   .inv-card-grid { grid-template-columns:repeat(3,1fr) !important; }
-  .tbl-wrap { overflow-x:auto; }
+  .tbl-wrap { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+  .row-act-v2 { flex-wrap:wrap; gap:4px; }
 }
 @media(max-width:767px) {
   .qpl-hero-card { grid-template-columns:1fr; gap:10px; }
   .qpl-img-sticky { position:static; }
   .qpl-img-sticky .qpl-img-shell { max-height:200px; }
   .qpl-actions { position:static; }
-  .qpl-actions-primary { grid-template-columns:1fr 1fr; }
-  .qpl-actions-primary .hbtn:first-child { grid-column:1 / -1; }
-  .qpl-actions-secondary { grid-template-columns:1fr 1fr 1fr; }
+  .qpl-actions-primary { grid-template-columns:1fr; }
+  .qpl-actions-secondary { grid-template-columns:1fr 1fr; }
   .research-grid { grid-template-columns:1fr; }
   .research-grid #research-queue-panel { display:none; }
   .hdr-right .dev-info { display:none; }
   .dealer-status-bar { padding:4px 12px; gap:10px; font-size:9px; flex-wrap:wrap; }
   .inv-card-grid { grid-template-columns:repeat(2,1fr) !important; }
-  .tbl-wrap { overflow-x:auto; }
+  .tbl-wrap { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+  .row-act-v2 { flex-wrap:wrap; gap:4px; }
+  .rab { min-height:44px; font-size:10px; padding:0 8px; }
 }
 
 /* ══ DEALER UI v1.1 ═══════════════════════════════════════════════════════ */
@@ -458,7 +459,26 @@ body.show-mode .show-mode-toggle { border-color:rgba(0,255,179,.4); color:var(--
 .inv-card-actions { display:flex; gap:6px; margin-top:auto; padding-top:6px; }
 .inv-card-actions .ra { flex:1; min-height:38px; font-size:11px; }
 
-/* Simplified table action row */
+/* ── Inventory action row v2 — SELL + CART + EDIT always visible ──────────── */
+.row-act-v2 { display:flex; gap:5px; align-items:center; flex-wrap:nowrap; }
+.rab { border-radius:8px; padding:0 12px; font-size:11px; font-family:monospace; font-weight:700; cursor:pointer; min-height:48px; white-space:nowrap; border:1px solid; letter-spacing:.03em; transition:opacity .12s; }
+.rab:active { opacity:.75; }
+.rab-sell { background:rgba(0,255,179,.14); border-color:rgba(0,255,179,.45); color:var(--g); }
+.rab-cart { background:rgba(255,209,102,.12); border-color:rgba(255,209,102,.4); color:var(--gold); }
+.rab-edit { background:rgba(199,125,255,.1); border-color:rgba(199,125,255,.35); color:var(--purple); }
+.rab-more { background:var(--surf2); border-color:var(--border); color:var(--dim); min-width:42px; padding:0 10px; font-size:16px; }
+
+/* ── Inventory card view — 3 buttons ──────────────────────────────────────── */
+.inv-card-actions { display:grid; grid-template-columns:1fr 1fr; gap:5px; margin-top:auto; padding-top:8px; }
+.inv-card-actions .rab { min-height:44px; font-size:11px; padding:0 8px; width:100%; }
+.inv-card-actions .rab-edit { grid-column:1 / -1; background:var(--surf2); border-color:var(--border); color:var(--dim); font-size:10px; min-height:36px; }
+
+/* ── Research QPL — primary buttons fill full width ──────────────────────── */
+.qpl-actions-primary { display:grid; grid-template-columns:1fr; gap:8px; margin-bottom:10px; }
+.qpl-actions-primary .hbtn { min-height:56px; font-size:14px; font-weight:800; letter-spacing:.04em; width:100%; }
+.qpl-actions-primary .hbtn.buy { font-size:14px; }
+
+/* Deprecated v1 row — kept for safety */
 .row-act-v1 { display:flex; gap:4px; }
 .row-act-v1 .ra-primary { background:rgba(0,255,179,.1); border:1px solid rgba(0,255,179,.3); color:var(--g); border-radius:6px; padding:5px 10px; font-size:10px; cursor:pointer; min-height:32px; font-family:monospace; white-space:nowrap; }
 .row-act-v1 .ra-edit { background:rgba(199,125,255,.08); border:1px solid rgba(199,125,255,.25); color:var(--purple); border-radius:6px; padding:5px 10px; font-size:10px; cursor:pointer; min-height:32px; font-family:monospace; }
@@ -655,7 +675,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
 
 <header>
   <div class="hdr">
-    <div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.03.11-dealer-ui-v1.1</span>
+    <div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.03.12-dealer-ui-v1.2</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
@@ -675,7 +695,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
     <div class="dsb-chip" id="dsb-drawer">🏦 <span>DRAWER:</span> <b id="dsb-drawer-val">CLOSED</b></div>
     <div class="dsb-chip">📦 <span>INV:</span> <b id="dsb-inv-val">—</b></div>
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
-    <div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.03.11-dealer-ui-v1.1</div>
+    <div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.03.12-dealer-ui-v1.2</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -1637,7 +1657,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.06.03.11-dealer-ui-v1.1';
+const APP_VERSION = '2026.06.03.12-dealer-ui-v1.2';
 const branchName = 'pokemon-v2-core';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
 const POKEMON_EXACT_CACHE_VERSION = 'pokemon-exact-v3-price-matrix';
@@ -5980,8 +6000,9 @@ function renderCardView(){
         <div class="inv-card-price">${i.market > 0 ? '$' + Number(i.market).toFixed(2) : '—'}</div>
         ${i.qty > 1 ? `<div class="inv-card-meta" style="color:var(--g)">Qty: ${i.qty}</div>` : ''}
         <div class="inv-card-actions">
-          ${ins ? `<button class="ra ra-sell" onclick="openSellModal('${i.id}')" style="flex:1;min-height:38px;font-size:11px">Sell</button>` : '<div style="flex:1;text-align:center;font-family:monospace;font-size:9px;color:var(--dim)">SOLD</div>'}
-          <button class="ra" style="background:rgba(199,125,255,.08);border-color:rgba(199,125,255,.25);color:var(--purple);min-height:38px;width:44px;font-size:11px" onclick="openEditModal('${i.id}')">✏</button>
+          ${ins ? `<button class="rab rab-sell" onclick="openSellModal('${i.id}')">SELL</button>` : '<div style="grid-column:1/-1;text-align:center;font-family:monospace;font-size:10px;color:var(--dim);padding:8px">SOLD</div>'}
+          ${ins ? `<button class="rab rab-cart" onclick="dashAddToCart('${i.id}')">+ CART</button>` : ''}
+          <button class="rab rab-edit" onclick="openEditModal('${i.id}')">EDIT</button>
         </div>
       </div>
     </div>`;
@@ -6010,10 +6031,14 @@ function showInvRowMenu(e, id, isInStock){
   const menu = document.createElement('div');
   menu.className = 'inv-row-menu';
   menu.style.cssText = `position:fixed;left:${rect.left}px;top:${rect.bottom+4}px;z-index:600;background:var(--surf);border:1px solid var(--border);border-radius:8px;padding:6px;min-width:140px;box-shadow:0 8px 24px rgba(0,0,0,.4);`;
+  // Secondary actions only — Sell/Cart/Edit are always visible in row
+  const btnStyle = 'width:100%;min-height:40px;font-size:11px;margin-bottom:4px;text-align:left;padding:0 12px';
   menu.innerHTML = [
-    isInStock ? `<button class="hbtn" style="width:100%;min-height:36px;font-size:11px;margin-bottom:4px" onclick="dashAddToCart('${id}');this.closest('.inv-row-menu').remove()">🛒 Add to Cart</button>` : '',
-    `<button class="hbtn" style="width:100%;min-height:36px;font-size:11px;margin-bottom:4px" onclick="openEbayFromDash('${id}');this.closest('.inv-row-menu').remove()">eBay List</button>`,
-    `<button class="hbtn" style="width:100%;min-height:36px;font-size:11px;color:var(--gold)" onclick="archiveInventoryItem('${id}');this.closest('.inv-row-menu').remove()">Archive</button>`,
+    `<div style="font-family:monospace;font-size:8px;color:var(--dim);padding:2px 6px 6px;letter-spacing:.06em">MORE ACTIONS</div>`,
+    `<button class="hbtn" style="${btnStyle}" onclick="openEbayFromDash('${id}');this.closest('.inv-row-menu').remove()">📦 eBay List</button>`,
+    `<button class="hbtn" style="${btnStyle}" onclick="showItemHistory?.('${id}');this.closest('.inv-row-menu').remove()">📋 History</button>`,
+    `<button class="hbtn" style="${btnStyle}" onclick="sendQuickLookupToAuthCheck?.(0);switchTab('authcheck');this.closest('.inv-row-menu').remove()">🔐 Auth Check</button>`,
+    `<button class="hbtn" style="${btnStyle}color:var(--gold)" onclick="archiveInventoryItem('${id}');this.closest('.inv-row-menu').remove()">Archive</button>`,
   ].filter(Boolean).join('');
   document.body.appendChild(menu);
   const close = () => menu.remove();
@@ -7463,10 +7488,11 @@ function renderTable(){
       <td class="pp pd">${i.cost>0?fd$(i.cost):'—'}</td>
       <td class="${ppc}">${i.cost>0||i.profit?(pft>=0?'+':'')+fd$(pft)+(i.cost>0?' ('+margin+')':''):'—'}</td>
       <td><span style="font-family:monospace,monospace;font-size:9px;color:${ins?'var(--g)':'var(--dim)'}">${ins?'IN STOCK':'SOLD'+(i.channel?' · '+i.channel:'')}</span></td>
-      <td><div class="row-act-v1">
-        ${ins?`<button class="ra-primary" onclick="openSellModal('${i.id}')">Sell</button>`:''}
-        <button class="ra-edit" onclick="openEditModal('${i.id}')">Edit</button>
-        <button class="ra-more" title="More actions" onclick="showInvRowMenu(event,'${i.id}',${ins})">⋯</button>
+      <td><div class="row-act-v2">
+        ${ins?`<button class="rab rab-sell" onclick="openSellModal('${i.id}')">SELL</button>`:''}
+        ${ins?`<button class="rab rab-cart" onclick="dashAddToCart('${i.id}')">+ CART</button>`:''}
+        <button class="rab rab-edit" onclick="openEditModal('${i.id}')">EDIT</button>
+        <button class="rab rab-more" title="More: eBay, History, Archive" onclick="showInvRowMenu(event,'${i.id}',${ins})">⋯</button>
       </div></td>
     </tr>`;
   }).join('');
@@ -14050,13 +14076,13 @@ function quickLookupResultCard(r, idx){
       ${showAdminDebug() ? `<div class="dev-only" style="margin-top:8px;font-family:monospace,monospace;font-size:10px;color:var(--dim)">Debug: rawSearchQuerySent ${escHtml(r.lookupDebug?.rawQuerySent || '')} / workerRequestUrl ${escHtml(r.lookupDebug?.requestPath || '')} / searchResultCount ${escHtml(String(r.lookupDebug?.searchResultCount ?? ''))} / candidates ${escHtml(JSON.stringify(r.lookupDebug?.returnedCandidates || []))} / selectedTcgPlayerId ${escHtml(r.tcgPlayerId || r.tcgplayerId || '')} / hydrationRequestUrl ${escHtml(r.pokemonPriceTracker?.lookupDebug?.hydrationRequestUrl || r.lookupDebug?.hydrationRequestUrl || '')} / hydratedFromCache ${escHtml(String(!!(r.pokemonPriceTracker?.lookupDebug?.hydratedFromCache || r.lookupDebug?.hydratedFromCache)))} / prices.conditions keys ${escHtml(Object.keys(r.pokemonPriceTracker?.prices?.conditions || {}).join(', ') || 'none')} / prices.variants keys ${escHtml(Object.keys(r.pokemonPriceTracker?.prices?.variants || {}).join(', ') || 'none')} / priceHistory.conditions keys ${escHtml(Object.keys(r.pokemonPriceTracker?.priceHistory?.conditions || {}).join(', ') || 'none')} / priceHistory.variants keys ${escHtml(Object.keys(r.pokemonPriceTracker?.priceHistory?.variants || {}).join(', ') || 'none')} / active price path ${escHtml(r.activePriceBasis?.pricePath || r.resolvedPricePath || 'n/a')} / reason a row says No Real Price ${escHtml(r.noRealPriceReason || '')} / normalizedQuery ${escHtml(r.lookupDebug?.normalizedQuery || '')} / lookupPath ${escHtml(r.lookupDebug?.path || r.lookupDebug?.sourcePath || 'n/a')} / exactHydrated ${escHtml(String(!!r.lookupDebug?.exactHydrated))} / parseTitle ${escHtml(JSON.stringify(r.lookupDebug?.parseTitle || r.pptParseTitle || null))} / confidence ${escHtml(String(r.lookupDebug?.confidence || r.confidence || ''))} / autoSelect ${escHtml(String(!!(r.lookupDebug?.autoSelect || r.autoSelect)))} / selectedCondition ${escHtml(r.selectedCondition || r.condition || '')} / selectedFinish ${escHtml(qplFinishLabel(r.selectedFinish || r.finish || ''))} / activePriceBasis ${escHtml(JSON.stringify(r.activePriceBasis || {}))} / generatedTcgUrl ${escHtml(builtTcgLink.url || '')} / cache ${escHtml(r.lookupDebug?.cache || r.cache?.source || 'live/none')} / quotaCooldown ${escHtml(String(pokemonPriceTrackerQuotaBlocked()))} / apiCallsConsumed ${escHtml(localStorage.getItem('ppt_last_consumed') || '')}</div>` : ''}
     </div>
     <div class="qpl-actions">
-      <!-- PRIMARY actions — large, color-coded -->
+      <!-- PRIMARY actions — full width, large, color-coded -->
       <div class="qpl-actions-primary">
-        <button class="hbtn buy" style="font-size:13px" onclick="addQuickLookupToBuyOffer(${idx})">ADD TO BUY</button>
-        <button class="hbtn primary" style="font-size:13px" onclick="addQuickLookupToInventory(${idx})">ADD INVENTORY</button>
-        <button class="hbtn" style="font-size:13px;color:var(--text)" onclick="addQuickLookupToSaleCart(${idx})">ADD TO CART</button>
+        <button class="hbtn buy" onclick="addQuickLookupToBuyOffer(${idx})">ADD TO BUY</button>
+        <button class="hbtn primary" onclick="addQuickLookupToInventory(${idx})">ADD INVENTORY</button>
+        <button class="hbtn" style="min-height:56px;font-size:14px;font-weight:800;background:rgba(255,209,102,.12);border-color:rgba(255,209,102,.4);color:var(--gold)" onclick="addQuickLookupToSaleCart(${idx})">ADD TO CART</button>
       </div>
-      <!-- SECONDARY actions -->
+      <!-- SECONDARY actions — 2-column, smaller -->
       <div class="qpl-actions-secondary">
         <button class="hbtn primary qpl-select-btn" onclick="selectQuickLookupResult(${idx})">SELECT</button>
         ${qplResultCategoryKey(r) === 'pokemon' && !r.pokemonPriceTracker?.lookupDebug?.exactHydrated ? `<button class="hbtn ppt-get-prices-btn" style="color:var(--blue)" onclick="loadPricesForResultCard(${idx})">GET PRICES</button>` : `<span></span>`}
