@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.06.05.01-buy-flow-ux">
+<meta name="version" content="2026.06.05.02-show-workflow-v1">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -415,7 +415,7 @@ tr.sold:hover td{opacity:.7;}
 .buy-advanced-content{padding:12px;display:flex;flex-direction:column;gap:8px;}
 .buy-advanced-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
 .buy-tertiary-actions{display:flex;gap:6px;flex-wrap:wrap;}
-body.show-mode-active .buy-advanced{display:none;}
+body.show-mode .buy-advanced{display:none;}
 @media(max-width:640px){
   .buy-offer-panel{grid-template-columns:1fr 1fr;}
   .buy-tray-item{grid-template-columns:44px 1fr 62px 74px 56px 28px;gap:5px;}
@@ -451,6 +451,25 @@ th.th-thumb, td.td-thumb { width:56px; padding:4px 4px 4px 8px; }
 .dsb-chip.closed b { color:var(--dim); }
 .dsb-chip.warn b { color:var(--gold); }
 .dev-info { font-size:8px; opacity:.45; }
+/* Network badge */
+.dsb-net-online b { color:var(--g); }
+.dsb-net-slow b { color:var(--gold); animation:dsb-pulse 1.4s ease-in-out infinite; }
+.dsb-net-offline b { color:var(--red); }
+.dsb-net-cached b { color:var(--blue); }
+@keyframes dsb-pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
+/* Intake chip */
+.dsb-intake-active b { color:var(--gold); }
+/* Stale data badge */
+.stale-badge { display:inline-block; font-family:monospace; font-size:8px; padding:2px 6px; border-radius:999px; border:1px solid rgba(255,209,102,.4); color:var(--gold); background:rgba(255,209,102,.08); letter-spacing:.04em; vertical-align:middle; }
+.cached-badge { display:inline-block; font-family:monospace; font-size:8px; padding:2px 6px; border-radius:999px; border:1px solid rgba(0,160,255,.4); color:var(--blue); background:rgba(0,160,255,.08); letter-spacing:.04em; vertical-align:middle; }
+/* Quick sell pay buttons */
+.sell-pay-row { display:flex; gap:8px; flex-wrap:wrap; margin:10px 0 6px; }
+.sell-pay-btn { flex:1; min-width:80px; min-height:52px; font-family:monospace; font-size:11px; font-weight:700; border-radius:10px; cursor:pointer; border:1px solid var(--border); background:var(--surf2); color:var(--dim); transition:all .14s; }
+.sell-pay-btn:hover, .sell-pay-btn.active { border-color:rgba(0,255,179,.5); background:rgba(0,255,179,.13); color:var(--g); }
+/* Post-accept inventory CTA */
+.buy-accept-cta { background:rgba(0,255,179,.08); border:1px solid rgba(0,255,179,.3); border-radius:10px; padding:12px 14px; margin-bottom:12px; display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; }
+.buy-accept-cta-msg { font-family:monospace; font-size:11px; color:var(--g); }
+.buy-accept-cta-btn { background:rgba(0,255,179,.18); border:1px solid rgba(0,255,179,.5); color:var(--g); border-radius:8px; padding:8px 16px; font-family:monospace; font-weight:700; font-size:11px; cursor:pointer; min-height:40px; white-space:nowrap; }
 
 /* 6. Show Mode */
 body.show-mode .dev-only { display:none !important; }
@@ -755,7 +774,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.05.01-buy-flow-ux</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.05.02-show-workflow-v1</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
@@ -775,7 +794,9 @@ body.customer-display-mode #customer-display-exit{display:block;}
     <div class="dsb-chip" id="dsb-drawer">🏦 <span>DRAWER:</span> <b id="dsb-drawer-val">CLOSED</b></div>
     <div class="dsb-chip">📦 <span>INV:</span> <b id="dsb-inv-val">—</b></div>
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.05.01-buy-flow-ux</div>
+<div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
+    <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
+    <div class="dsb-chip dev-only" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.05.02-show-workflow-v1</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -1201,6 +1222,12 @@ body.customer-display-mode #customer-display-exit{display:block;}
         <button class="hbtn" onclick="addBuyListItem()" style="white-space:nowrap;min-height:40px">+ ADD</button>
       </div>
 
+      <!-- ③b Post-accept CTA — shows after accept if items still need inventory -->
+      <div id="bl-accept-cta" class="buy-accept-cta" style="display:none">
+        <div class="buy-accept-cta-msg" id="bl-accept-cta-msg">Items waiting for inventory</div>
+        <button class="buy-accept-cta-btn" onclick="bulkAddBuyListToInventory(true)">+ ADD TO INVENTORY NOW</button>
+      </div>
+
       <!-- ④ BUY TRAY ITEMS -->
       <div id="bl-items" class="buy-tray"></div>
 
@@ -1582,6 +1609,14 @@ body.customer-display-mode #customer-display-exit{display:block;}
     <label>Sale Price ($)</label>
     <input type="number" id="sell-price" step="0.01" min="0" placeholder="0.00" oninput="previewSellProfit()">
     <label>Payment Method</label>
+    <!-- Quick-tap payment buttons for show speed -->
+    <div class="sell-pay-row" id="sell-pay-btns">
+      <button class="sell-pay-btn" onclick="setSellPayMethod('Cash')" data-method="Cash">💵 Cash</button>
+      <button class="sell-pay-btn" onclick="setSellPayMethod('Credit/Debit')" data-method="Credit/Debit">💳 Card</button>
+      <button class="sell-pay-btn" onclick="setSellPayMethod('Venmo')" data-method="Venmo">📱 Venmo</button>
+      <button class="sell-pay-btn" onclick="setSellPayMethod('PayPal')" data-method="PayPal">🅿 PayPal</button>
+      <button class="sell-pay-btn" onclick="setSellPayMethod('Trade')" data-method="Trade">🔄 Trade</button>
+    </div>
     <select id="sell-channel">
       <option>Cash</option>
       <option>Credit/Debit</option>
@@ -1799,7 +1834,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.06.05.01-buy-flow-ux';
+const APP_VERSION = '2026.06.05.02-show-workflow-v1';
 const branchName = 'pokemon-v2-core';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
 const POKEMON_EXACT_CACHE_VERSION = 'pokemon-exact-v3-price-matrix';
@@ -6076,6 +6111,51 @@ function closeResearchQueue(){
   document.getElementById('rq-drawer-overlay')?.classList.remove('on');
 }
 
+// ── Phase 5: Network Speed Probe ──────────────────────────────────────────
+let _netStatus = 'online'; // 'online' | 'slow' | 'offline' | 'cached'
+let _lastNetProbe = 0;
+
+async function probeNetwork(){
+  if(!navigator.onLine){ _netStatus = 'offline'; updateNetBadge(); return; }
+  const start = Date.now();
+  try {
+    // Lightweight ping: HEAD to the worker health endpoint with short timeout
+    const ctrl = new AbortController();
+    const timeout = setTimeout(() => ctrl.abort(), 3000);
+    await fetch(WORKER + '/ping', { method:'HEAD', signal:ctrl.signal, cache:'no-store' });
+    clearTimeout(timeout);
+    const ms = Date.now() - start;
+    _netStatus = ms < 1500 ? 'online' : 'slow';
+  } catch(e) {
+    _netStatus = navigator.onLine ? 'slow' : 'offline';
+  }
+  _lastNetProbe = Date.now();
+  updateNetBadge();
+}
+
+function updateNetBadge(){
+  const chip = document.getElementById('dsb-net');
+  const val  = document.getElementById('dsb-net-val');
+  if(!val) return;
+  const labels = { online:'ONLINE', slow:'SLOW', offline:'OFFLINE', cached:'CACHED' };
+  val.textContent = labels[_netStatus] || _netStatus.toUpperCase();
+  if(chip){
+    chip.className = 'dsb-chip dsb-net-' + _netStatus;
+  }
+}
+
+// Start network probing — immediately and every 30s
+probeNetwork();
+setInterval(probeNetwork, 30000);
+
+// ── Phase 3: Intake count ──────────────────────────────────────────────────
+function getPendingIntakeCount(){
+  // Items in buyList that belong to accepted sessions (bought, not yet cleared)
+  return (typeof buyList !== 'undefined' ? buyList : []).filter(i =>
+    i.inventoryId || i.status === 'offered' || i.status === 'accepted'
+  ).length;
+}
+
 // Dealer Status Bar updater — called on inventory load + drawer changes
 function updateDealerStatusBar(){
   const drawerVal = document.getElementById('dsb-drawer-val');
@@ -6103,16 +6183,22 @@ function updateDealerStatusBar(){
       syncChip?.classList.remove('warn');
     }
   }
+  // Intake count
+  const intakeVal  = document.getElementById('dsb-intake-val');
+  const intakeChip = document.getElementById('dsb-intake');
+  if(intakeVal) {
+    const cnt = getPendingIntakeCount();
+    intakeVal.textContent = cnt;
+    intakeChip?.classList.toggle('dsb-intake-active', cnt > 0);
+  }
+  // Network badge (just refresh label — probeNetwork updates the class separately)
+  updateNetBadge();
   // Update research queue badge count
   const badge = document.getElementById('rq-badge');
   if(badge) {
     const researchCount = document.getElementById('research-queue-list')?.children?.length || 0;
     badge.textContent = researchCount;
     badge.classList.toggle('on', researchCount > 0);
-    // Auto-open drawer if items arrive
-    if(researchCount > 0 && !document.getElementById('rq-drawer-panel')?.classList.contains('open')) {
-      // Don't auto-open, just make badge visible
-    }
   }
 }
 setInterval(updateDealerStatusBar, 5000);
@@ -7895,10 +7981,20 @@ function openSellModal(id){
   document.getElementById('sell-item-meta').textContent = [item.set, item.year, item.category].filter(Boolean).join(' · ');
   document.getElementById('sell-price').value = item.market > 0 ? item.market.toFixed(2) : '';
   document.getElementById('sell-profit-preview').textContent = '';
+  // Reset payment buttons
+  document.querySelectorAll('.sell-pay-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('sell-modal').classList.add('on');
   setTimeout(()=>document.getElementById('sell-price').focus(), 100);
 }
 function closeSellModal(){ document.getElementById('sell-modal').classList.remove('on'); sellItemId=null; }
+// Phase 7: quick-tap payment method selection
+function setSellPayMethod(method){
+  const sel = document.getElementById('sell-channel');
+  if(sel) sel.value = method;
+  document.querySelectorAll('.sell-pay-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.method === method);
+  });
+}
 function previewSellProfit(){
   const item=all.find(i=>i.id===sellItemId); if(!item) return;
   const sale=parseFloat(document.getElementById('sell-price').value)||0;
@@ -11490,11 +11586,17 @@ async function runPriceLookup(){
   if(wantsPokemon && !navigator.onLine) return;
   try {
     let slowWarn = null;
-    if(wantsPokemon) slowWarn = setTimeout(() => setPokemonOfflineBanner(cachedResults.length ? 'Slow Internet: still showing cached Pokemon data while live refresh continues.' : 'Slow Internet: still trying live Pokemon sources.'), 8000);
+    // Phase 5: mark network slow if lookup is taking too long
+    const slowTimer = setTimeout(() => {
+      if(_netStatus === 'online') { _netStatus = 'slow'; updateNetBadge(); }
+      if(wantsPokemon) setPokemonOfflineBanner(cachedResults.length ? 'Slow Internet: still showing cached Pokemon data while live refresh continues.' : 'Slow Internet: still trying live Pokemon sources.');
+    }, 5000);
+    if(wantsPokemon) slowWarn = slowTimer;
     const results = await Promise.race([
       searchQuickCatalog(q, cat),
-      new Promise((_, reject) => setTimeout(() => reject(new Error('Lookup timed out after 20 seconds')), 20000))
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Lookup timed out after 15 seconds')), 15000))
     ]);
+    clearTimeout(slowTimer);
     if(slowWarn) clearTimeout(slowWarn);
     qplMasterResults = results.length ? results : await aiQuickLookupFallback(q, cat);
     qplLastSearch = q;
@@ -11510,10 +11612,15 @@ async function runPriceLookup(){
       setPokemonOfflineBanner((cachedResults.length ? 'Live Pokemon refresh updated the cached copy.' : 'Saved this Pokémon lookup for offline use.') + ' Cached results may be stale; live refresh updates when online. Last cached ' + pokemonCacheAgeLabel(new Date().toISOString()) + '.', 'good');
     }
   } catch(e) {
+    // Phase 5: timeout/failure → update network badge
+    if(e.message?.includes('timed out') || e.name === 'AbortError'){
+      _netStatus = navigator.onLine ? 'slow' : 'offline';
+      updateNetBadge();
+    }
     if(cachedResults.length) {
       setPokemonOfflineBanner('Live refresh failed: ' + e.message + '. Cached Pokemon data remains visible.', 'bad');
     } else {
-      el.innerHTML = '<div style="color:var(--red)">Lookup failed: ' + e.message + '</div>';
+      el.innerHTML = '<div style="color:var(--red)">Lookup failed: ' + e.message + (e.message?.includes('timed out') ? ' — network may be slow.' : '') + '</div>';
       if(wantsPokemon) setPokemonOfflineBanner('No cached Pokemon data found. Search online before show or sync Pokemon cache.', 'bad');
     }
   }
@@ -16060,22 +16167,43 @@ function renderBuyList(){
 
   const el = document.getElementById('bl-items');
   if(!el) return;
+
+  // Post-accept CTA: show how many items need inventory + quick bulk-add button
+  const sessionAccepted = getActiveBuySession()?.status === 'accepted';
+  const unadded = buyList.filter(i => !i.inventoryId && !i.inventoryError);
+  const ctaEl = document.getElementById('bl-accept-cta');
+  if(ctaEl) {
+    if(sessionAccepted && unadded.length > 0) {
+      ctaEl.style.display = '';
+      const ctaMsg = document.getElementById('bl-accept-cta-msg');
+      if(ctaMsg) ctaMsg.textContent = unadded.length + ' item' + (unadded.length === 1 ? '' : 's') + ' not yet in inventory';
+    } else {
+      ctaEl.style.display = 'none';
+    }
+  }
+
   if(!buyList.length){
     el.innerHTML = '<div class="buy-tray-empty">Add cards to build a buy offer — use the field above or SELECT from Research</div>';
     return;
   }
+  // Grid adjusts to 7 columns when INV button needed
   el.innerHTML = buyList.map(i => {
     const added = !!i.inventoryId;
     const err   = i.inventoryError ? `<div style="color:var(--red);font-size:8px;margin-top:2px">${escHtml(String(i.inventoryError).slice(0,120))}</div>` : '';
     const sub   = [i.year, i.set, i.variant, i.card_number ? '#' + i.card_number : ''].filter(Boolean).join(' · ');
     const offerVal = (i.market || i.cashOffer) ? '$' + buyItemOfferValue(i).toFixed(2) : '…';
-    const addedBadge = added ? ' <span style="color:var(--g);font-size:8px">✓ IN INV</span>' : '';
-    return `<div class="buy-tray-item">
-      ${i.imageUrl
-        ? `<img src="${escHtml(i.imageUrl)}" class="buy-tray-thumb" alt="">`
-        : '<div class="buy-tray-thumb-ph">IMG</div>'}
+    const invBtn = added
+      ? `<span style="font-family:monospace;font-size:9px;color:var(--g);white-space:nowrap">✓ INV</span>`
+      : `<button class="hbtn" onclick="addBuyItemToInventory('${i.id}')" style="font-size:9px;padding:4px 8px;min-height:32px;color:var(--gold);white-space:nowrap" title="Add to inventory">+INV</button>`;
+    // Phase 4: lazy image with error fallback
+    const imgEl = i.imageUrl
+      ? `<img src="${escHtml(i.imageUrl)}" class="buy-tray-thumb" alt="" loading="lazy" onerror="this.style.display='none';this.nextSibling.style.display='flex'">`
+        + `<div class="buy-tray-thumb-ph" style="display:none">IMG</div>`
+      : '<div class="buy-tray-thumb-ph">IMG</div>';
+    return `<div class="buy-tray-item" style="grid-template-columns:48px 1fr 70px 80px 62px 42px 30px">
+      ${imgEl}
       <div class="buy-tray-info">
-        <div class="buy-tray-name">${escHtml(i.name || 'Phone scan')}${addedBadge}</div>
+        <div class="buy-tray-name">${escHtml(i.name || 'Phone scan')}</div>
         <div class="buy-tray-sub">${escHtml(sub)}</div>
         ${err}
       </div>
@@ -16085,6 +16213,7 @@ function renderBuyList(){
       <input type="number" step="0.01" value="${i.market||''}" placeholder="$mkt"
              class="buy-tray-mkt" onchange="updateBuyItem('${i.id}','market',this.value)" ${added ? 'disabled' : ''}>
       <span class="buy-tray-offer-val">${offerVal}</span>
+      ${invBtn}
       <button class="buy-tray-rm" onclick="removeBuyItem('${i.id}')" aria-label="Remove">×</button>
     </div>`;
   }).join('');
