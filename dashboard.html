@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.06.05.02-show-workflow-v1">
+<meta name="version" content="2026.06.05.03-live-price-refresh">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -585,6 +585,21 @@ body.show-mode .show-mode-toggle { border-color:rgba(0,255,179,.4); color:var(--
 .sqr-btn-row .hbtn { min-height:48px; flex:1; font-size:13px; }
 .sqr-error { color:#ff4d6d; font-family:monospace; font-size:11px; margin-top:8px; }
 /* ══ END DEALER UI v1 ═══════════════════════════════════════════════════════ */
+
+/* ── Live Price Refresh ─────────────────────────────────────────────────── */
+.ppt-refresh-btn{font-family:monospace,monospace;font-size:10px;font-weight:700;letter-spacing:.04em;cursor:pointer;border-radius:8px;padding:5px 10px;min-height:32px;white-space:nowrap;transition:all .15s;border:1px solid rgba(0,160,255,.35);background:rgba(0,160,255,.08);color:var(--blue);}
+.ppt-refresh-btn:hover:not(:disabled){background:rgba(0,160,255,.18);border-color:rgba(0,160,255,.6);}
+.ppt-refresh-btn:disabled{opacity:.5;cursor:not-allowed;}
+.ppt-refresh-btn.loading{border-color:rgba(255,209,102,.45);background:rgba(255,209,102,.08);color:var(--gold);animation:refresh-pulse .8s ease-in-out infinite;}
+.ppt-refresh-btn.success{border-color:rgba(0,255,179,.5);background:rgba(0,255,179,.12);color:var(--g);}
+.ppt-refresh-btn.error{border-color:rgba(255,77,109,.4);background:rgba(255,77,109,.08);color:var(--red);}
+@keyframes refresh-pulse{0%,100%{opacity:1}50%{opacity:.55}}
+/* Full-width variant for selected-card view */
+.ppt-refresh-btn-wide{width:100%;min-height:40px;font-size:11px;display:block;margin-bottom:8px;}
+/* Stale / live source badges */
+.qpl-badge.stale{background:rgba(255,77,109,.1);border:1px solid rgba(255,77,109,.3);color:var(--red);}
+.qpl-badge.live-updated{background:rgba(0,255,179,.1);border:1px solid rgba(0,255,179,.4);color:var(--g);}
+
 .qpl-lightbox{position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.92);display:none;align-items:center;justify-content:center;padding:22px;}
 .qpl-lightbox.on{display:flex;}
 .qpl-lightbox img{max-width:96vw;max-height:92vh;object-fit:contain;touch-action:pinch-zoom;border-radius:10px;}
@@ -774,7 +789,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.05.02-show-workflow-v1</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.05.03-live-price-refresh</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
@@ -796,7 +811,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-    <div class="dsb-chip dev-only" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.05.02-show-workflow-v1</div>
+    <div class="dsb-chip dev-only" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.05.03-live-price-refresh</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -1834,7 +1849,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.06.05.02-show-workflow-v1';
+const APP_VERSION = '2026.06.05.03-live-price-refresh';
 const branchName = 'pokemon-v2-core';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
 const POKEMON_EXACT_CACHE_VERSION = 'pokemon-exact-v3-price-matrix';
@@ -14608,6 +14623,7 @@ function quickLookupResultCard(r, idx){
         <span class="qpl-badge ${truth.includes('No ') || truth.includes('Needs') ? 'bad' : truth.includes('Guide') ? 'warn' : 'good'}">${escHtml(truth)}</span>
         ${r.source === 'inventory' ? '<span class="qpl-badge good">IN INVENTORY</span>' : `<span class="qpl-badge">${escHtml(r.source === 'justtcg' ? 'JustTCG' : r.source === 'pricecharting_csv' ? 'PriceCharting' : r.source || 'Source')}</span>`}
         ${r.cache?.state === 'offline' ? `<span class="qpl-badge warn">Offline Cache</span>` : ''}
+        ${_qplStaleBadge(r)}
       </div>
       <!-- Condition chips — large touch targets -->
       <div class="qpl-condition-chips">${condChips}</div>
@@ -14646,7 +14662,11 @@ function quickLookupResultCard(r, idx){
         <!-- SECONDARY actions — 2-column, smaller -->
         <div class="qpl-actions-secondary">
           <button class="hbtn primary qpl-select-btn" onclick="selectQuickLookupResult(${idx})">SELECT</button>
-          ${qplResultCategoryKey(r) === 'pokemon' && !r.pokemonPriceTracker?.lookupDebug?.exactHydrated ? `<button class="hbtn ppt-get-prices-btn" style="color:var(--blue)" onclick="loadPricesForResultCard(${idx})">GET PRICES</button>` : `<span></span>`}
+          ${qplResultCategoryKey(r) === 'pokemon'
+            ? (r.pokemonPriceTracker?.lookupDebug?.exactHydrated
+                ? `<button class="hbtn ppt-refresh-btn" data-qpl-idx="${idx}" onclick="refreshLivePriceForCard(${idx})" title="Bypass cache and fetch fresh live pricing">↻ REFRESH</button>`
+                : `<button class="hbtn ppt-get-prices-btn" style="color:var(--blue)" onclick="loadPricesForResultCard(${idx})">GET PRICES</button>`)
+            : `<span></span>`}
           <button class="hbtn" onclick="openQplChartModal(${idx})">CHART</button>
           ${qplResultCategoryKey(r) === 'pokemon' || qplResultCategoryKey(r) === 'mtg' || r.tcgUrl ? `<button class="hbtn" onclick="openQuickExternal(${idx},'tcg')">TCG ↗</button>` : `<span></span>`}
           <button class="hbtn" style="color:var(--blue)" onclick="sendQuickLookupToAuthCheck(${idx})">AUTH</button>
@@ -14954,6 +14974,131 @@ async function loadPricesForResultCard(idx){
   }
 }
 
+// ── Live Price Refresh ────────────────────────────────────────────────────
+// Tracks in-flight refreshes per result index to prevent spam
+const _refreshLiveInFlight = new Set();
+const _refreshLiveCooldown = new Map(); // idx → last-triggered ms
+
+// Update all REFRESH buttons for a given result index
+function updateRefreshBtn(idx, state){
+  const cfg = {
+    default: { text:'↻ REFRESH LIVE PRICE', cls:'', disabled:false },
+    loading: { text:'⟳ REFRESHING…',        cls:'loading', disabled:true },
+    success: { text:'✓ LIVE UPDATED',        cls:'success', disabled:true },
+    error:   { text:'✕ FAILED — USING CACHE', cls:'error',  disabled:false },
+  };
+  const s = cfg[state] || cfg.default;
+  document.querySelectorAll(`.ppt-refresh-btn[data-qpl-idx="${idx}"]`).forEach(btn => {
+    btn.textContent = s.text;
+    btn.className = btn.className.replace(/\b(loading|success|error)\b/g, '').trim()
+                  + (s.cls ? ' ' + s.cls : '');
+    btn.disabled = s.disabled;
+  });
+}
+
+// Helper: stale/cached/live badge HTML for a result row
+function _qplStaleBadge(r){
+  if(!r || qplResultCategoryKey(r) !== 'pokemon') return '';
+  const stamp = r.pokemonPriceTrackerLastUpdated || r.cache?.updatedAt || '';
+  if(!stamp) return '';
+  const isFresh = pokemonPriceCacheFresh({ cache:{ updatedAt:stamp } });
+  const isLive  = r.pokemonPriceTracker?.lookupDebug?.hydratedFromCache === false
+               || r.cache?.state === 'live';
+  if(isLive) return `<span class="qpl-badge live-updated">LIVE</span>`;
+  if(isFresh) return `<span class="qpl-badge warn">CACHED · ${escHtml(pokemonCacheAgeLabel(stamp))}</span>`;
+  return `<span class="qpl-badge stale">STALE · ${escHtml(pokemonCacheAgeLabel(stamp))}</span>`;
+}
+
+// Bypass IndexedDB cache and fetch a fresh live price for one card
+async function refreshLivePriceForCard(idx){
+  if(_refreshLiveInFlight.has(idx)) return; // already running
+  // Debounce: 3s cooldown per card
+  const now = Date.now();
+  if((now - (_refreshLiveCooldown.get(idx) || 0)) < 3000) return;
+  _refreshLiveCooldown.set(idx, now);
+
+  const r = qplResults[idx];
+  if(!r || qplResultCategoryKey(r) !== 'pokemon') return;
+  if(!navigator.onLine){ toast_dash('Cannot refresh — you are offline'); return; }
+  if(pokemonPriceTrackerQuotaBlocked()){ toast_dash('API quota temporarily blocked'); return; }
+
+  _refreshLiveInFlight.add(idx);
+  updateRefreshBtn(idx, 'loading');
+
+  // Save user's current condition/finish selection to restore after refresh
+  const savedCondition = r.selectedCondition || r.condition || 'NM';
+  const savedFinish    = r.selectedFinish    || r.finish    || '';
+  const tcgPlayerId    = r.tcgPlayerId || r.tcgplayerId || '';
+
+  try {
+    // Go directly to live API — skip cachedPokemonPriceTrackerCard entirely
+    const exact = tcgPlayerId
+      ? await fetchPokemonPriceTrackerExactDetail(tcgPlayerId, r.language || 'english')
+      : await resolveExactPokemonPriceTrackerCard(r, qplLastSearch);
+
+    if(!exact) throw new Error('No data returned from API');
+
+    // Build fresh result row — preserve condition/finish selection
+    const freshRow = {
+      ...pokemonPriceTrackerCardToQplRow(exact, qplLastSearch, r.lookupDebug?.parseTitle || null),
+      lookupDebug:{ ...(r.lookupDebug || {}), ...(exact.lookupDebug || {}), exactHydrated:true, hydratedFromCache:false },
+      confidence: Math.max(Number(r.confidence || 0), 98),
+      selectedCondition: savedCondition,
+      selectedFinish:    savedFinish,
+    };
+
+    // Verify saved condition still exists in fresh matrix; clear it if not
+    if(savedCondition && savedCondition !== 'NM') {
+      const condFull = pokemonPptConditionLabel(savedCondition);
+      const variants = exact.prices?.variants || {};
+      let condFound = false;
+      for(const finishMap of Object.values(variants)){
+        if(typeof finishMap === 'object' && pokemonPptObjectMatch(finishMap, condFull)){
+          condFound = true; break;
+        }
+      }
+      if(!condFound) {
+        freshRow.selectedCondition = 'NM';
+        toast_dash(savedCondition + ' not in fresh data — reverted to NM');
+      }
+    }
+
+    // Write fresh record back to IndexedDB (updates timestamp)
+    await cachePokemonPriceTrackerCard(freshRow, exact).catch(() => {});
+
+    // Stamp live source on the cache field so badge shows LIVE
+    freshRow.cache = { state:'live', updatedAt:new Date().toISOString(), source:'PokemonPriceTracker' };
+
+    // Update in-memory result and re-apply selected variant
+    qplResults[idx] = applyQplSelectedVariant(freshRow);
+
+    // Re-render the result card in the list
+    refreshQplResultCard(idx);
+
+    // If this card's selected-card panel is showing → re-render it
+    if(document.querySelector(`.qpl-selected-card[data-qpl-idx="${idx}"]`)){
+      selectQuickLookupResult(idx); // safe: exactHydrated=true so no extra API call
+    }
+
+    // If chart modal is open → refresh it
+    if(document.getElementById('qpl-chart-modal')?.classList.contains('on')){
+      openQplChartModal(idx);
+    }
+
+    updateRefreshBtn(idx, 'success');
+    setTimeout(() => updateRefreshBtn(idx, 'default'), 4000);
+    toast_dash('Live price updated');
+
+  } catch(e) {
+    updateRefreshBtn(idx, 'error');
+    setTimeout(() => updateRefreshBtn(idx, 'default'), 6000);
+    toast_dash('Live refresh failed — using cached data');
+    console.warn('refreshLivePriceForCard error:', e);
+  } finally {
+    _refreshLiveInFlight.delete(idx);
+  }
+}
+
 async function selectQuickLookupResult(idx){
   let r = qplResults[idx];
   if(r && qplResultCategoryKey(r) === 'pokemon' && !r.pokemonPriceTracker?.lookupDebug?.exactHydrated && navigator.onLine && !pokemonPriceTrackerQuotaBlocked()) {
@@ -14995,7 +15140,21 @@ async function selectQuickLookupResult(idx){
         <div style="color:var(--gold);font-weight:800;font-size:13px;margin-bottom:8px">SELECTED PRINTING</div>
         <div class="qpl-title">${escHtml(r.name)}</div>
         <div class="qpl-meta">${escHtml([r.year,r.set,r.card_number?'#'+r.card_number:'',r.variant,r.priceSource].filter(Boolean).join(' / '))}</div>
-        ${r.cache ? `<div class="qpl-badges"><span class="qpl-badge warn">${escHtml(r.cache.state === 'offline' ? 'Offline Cached' : 'Cached')}</span><span class="qpl-badge">${escHtml('Last updated ' + pokemonCacheAgeLabel(r.cache.updatedAt))}</span></div>` : ''}
+        ${(() => {
+          if(!r.cache) return '';
+          const stamp = r.pokemonPriceTrackerLastUpdated || r.cache.updatedAt || '';
+          const isOffline = r.cache.state === 'offline';
+          const isLive = r.cache.state === 'live' || r.pokemonPriceTracker?.lookupDebug?.hydratedFromCache === false;
+          const isFresh = pokemonPriceCacheFresh({ cache:{ updatedAt:stamp } });
+          const isStale = !isFresh && !isLive && !!stamp;
+          const badgeCls = isLive ? 'live-updated' : isStale ? 'stale' : 'warn';
+          const badgeLbl = isLive ? 'LIVE' : isOffline ? 'Offline Cached' : isStale ? 'STALE' : 'CACHED';
+          return `<div class="qpl-badges" style="flex-wrap:wrap;gap:5px;margin-bottom:6px">
+            <span class="qpl-badge ${badgeCls}">${escHtml(badgeLbl)}</span>
+            ${stamp ? `<span class="qpl-badge">${escHtml('Updated ' + pokemonCacheAgeLabel(stamp))}</span>` : ''}
+          </div>`;
+        })()}
+        ${qplResultCategoryKey(r) === 'pokemon' && r.pokemonPriceTracker ? `<button class="hbtn ppt-refresh-btn ppt-refresh-btn-wide" data-qpl-idx="${idx}" onclick="refreshLivePriceForCard(${idx})" title="Bypass cache and fetch fresh live pricing from PokemonPriceTracker">↻ REFRESH LIVE PRICE</button>` : ''}
         <div class="qpl-price">$${Number(r.market || 0).toFixed(2)}</div>
         <div class="qpl-price-sub">${escHtml(r.note || 'Review details, then add to inventory or buy offer.')}</div>
       </div>
