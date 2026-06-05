@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.06.04.01-sports-category-filter">
+<meta name="version" content="2026.06.04.02-sports-junk-filter">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -699,7 +699,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
 
 <header>
   <div class="hdr">
-    <div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.04.01-sports-category-filter</span>
+    <div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.04.02-sports-junk-filter</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
@@ -719,7 +719,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
     <div class="dsb-chip" id="dsb-drawer">🏦 <span>DRAWER:</span> <b id="dsb-drawer-val">CLOSED</b></div>
     <div class="dsb-chip">📦 <span>INV:</span> <b id="dsb-inv-val">—</b></div>
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
-    <div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.04.01-sports-category-filter</div>
+    <div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.04.02-sports-junk-filter</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -1702,7 +1702,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.06.04.01-sports-category-filter';
+const APP_VERSION = '2026.06.04.02-sports-junk-filter';
 const branchName = 'pokemon-v2-core';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
 const POKEMON_EXACT_CACHE_VERSION = 'pokemon-exact-v3-price-matrix';
@@ -12743,12 +12743,15 @@ async function fetchPriceChartingLiveCatalog(q, cat){
   // PriceCharting's full-text search returns Funko POP, comics, video games, etc. alongside
   // actual sports cards. Only keep results whose consoleName looks like a sports card set.
   if(isSports){
-    const SPORTS_CARD_RE = /\b(baseball|football|basketball|hockey|soccer|nfl|nba|mlb|nhl|mls|topps|panini|prizm|bowman|upper\s*deck|fleer|donruss|score|leaf|select|mosaic|chronicles|optic|obsidian|spectra|chrome|heritage|stadium\s*club|finest|gypsy|allen\s*ginter|sport[s]?\s*card|trading\s*card|graded|psa|bgs|cgc)\b/i;
-    const JUNK_RE = /\b(funko|comic|lego|pok[eé]mon|magic\s+(the|commander|battle|premier|murder)|riftbound|wii\b|nintendo|n64|gamecube|xbox|playstation|ps[0-9]|sega|atari|dreamcast|game\s*boy|digimon|yu-?gi-?oh|anime|star\s*wars|marvel|dc\s+(comic|special|vs|connect|pride|2000)|television|movie|film|music|rock[s]?\s+(pop|vinyl))\b/i;
+    // Sports card category whitelist — explicit sport/league words OR major card brand names
+    const SPORTS_CARD_RE = /\b(baseball|football|basketball|hockey|soccer|nfl|nba|mlb|nhl|mls|sport[s]?\s*card|trading\s*card|graded|psa|bgs|cgc|topps|panini|prizm|bowman|upper\s*deck|fleer|donruss|score|leaf|select|mosaic|chronicles|optic|obsidian|spectra|chrome|heritage|stadium\s*club|finest|gypsy|allen\s*ginter)\b/i;
+    // Exclusion list — Topps/Panini also make Disney, Star Wars, anime, etc. products.
+    // These consoleName patterns mean it is NOT an actual sports trading card.
+    const JUNK_RE = /\b(funko|comic|lego|pok[eé]mon|magic\s+(the|commander|battle|premier|murder)|riftbound|wii\b|nintendo|n64|gamecube|xbox|playstation|ps[0-9]|sega|atari|dreamcast|game\s*boy|digimon|yu-?gi-?oh|anime|star\s*wars|marvel|dc\s+(comic|special|vs|connect|pride|2000)|television|movie|film|music|rock[s]?\s+(pop|vinyl)|disney|pixar|toy\s*story|simpsons|family\s*guy|batman|superman|spider[\s-]?man|avengers|pokemon|fortnite|minecraft|harry\s*potter)\b/i;
     return mapped.filter(r => {
       const cn = r.category || '';
-      if(JUNK_RE.test(cn)) return false;                          // definitely not a sports card
-      if(!cn || cn === 'Sports Card' || cn === 'Sports Cards' || cn === 'Collectibles') return true; // no category / generic → keep
+      if(JUNK_RE.test(cn)) return false;                          // explicitly not a sports card
+      if(!cn || cn === 'Sports Card' || cn === 'Sports Cards' || cn === 'Collectibles') return true; // generic/none → keep
       return SPORTS_CARD_RE.test(cn);                             // must match a sports card indicator
     });
   }
