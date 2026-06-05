@@ -2032,7 +2032,11 @@ export default {
             }
             if (cached.length) return json({ ok: true, source: 'PriceCharting CSV', query: q, products: cached.slice(0, 25), matches: cached.slice(0, 25), cached: true });
           }
-          const data = await pcFetch('/api/products', { q });
+          // Forward console filter to PriceCharting so category-specific searches work
+          const consoleFilter = url.searchParams.get('console') || '';
+          const apiParams = { q };
+          if (consoleFilter) apiParams['console'] = consoleFilter;
+          const data = await pcFetch('/api/products', apiParams);
           const products = (data.products || []).map(p => normalizePcProduct(p, q));
           return json({ ok: true, source: 'PriceCharting', query: q, products, matches: products });
         }
