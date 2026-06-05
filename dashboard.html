@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.06.03.19-sports-search-fix">
+<meta name="version" content="2026.06.05.01-buy-flow-ux">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -366,6 +366,62 @@ tr.sold:hover td{opacity:.7;}
 .qpl-cond-chip .cchip-price { font-size:13px; font-weight:900; }
 .qpl-cond-chip .cchip-na { font-size:9px; color:var(--dim); }
 
+/* ─── BUY FLOW UX ─── */
+.buy-offer-panel{display:grid;grid-template-columns:1fr 1fr 1.5fr 1fr;gap:1px;background:var(--border);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:14px;}
+.buy-offer-stat{background:var(--surf2);padding:14px 16px;display:flex;flex-direction:column;gap:4px;}
+.buy-offer-stat-label{font-family:monospace,monospace;font-size:8px;color:var(--dim);letter-spacing:1px;text-transform:uppercase;}
+.buy-offer-stat-value{font-family:'Orbitron',monospace;font-size:18px;font-weight:700;color:var(--text);}
+.buy-offer-amount{color:var(--gold)!important;font-size:28px!important;font-weight:900!important;}
+.buy-offer-spread{color:var(--g)!important;font-size:18px!important;}
+.buy-offer-pct-large{font-family:'Orbitron',monospace;font-size:24px;font-weight:700;color:var(--text);}
+.buy-slider-section{margin-bottom:14px;}
+.buy-stepper-row{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:8px;}
+.buy-step-btn{width:48px;height:48px;font-size:24px;font-weight:700;background:var(--surf2);border:1px solid var(--border);color:var(--text);border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;user-select:none;transition:background .12s;flex-shrink:0;}
+.buy-step-btn:hover{background:rgba(255,255,255,.09);}
+.buy-step-btn:active{background:rgba(255,255,255,.18);}
+.buy-pct-input{width:76px;font-family:'Orbitron',monospace;font-size:22px;font-weight:700;color:var(--gold);background:var(--surf);border:1px solid var(--border);border-radius:8px;padding:8px 6px;text-align:center;-moz-appearance:textfield;}
+.buy-pct-input::-webkit-inner-spin-button,.buy-pct-input::-webkit-outer-spin-button{-webkit-appearance:none;}
+.buy-pct-slider{width:100%;margin-bottom:10px;accent-color:var(--gold);}
+.buy-preset-chips{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;}
+.buy-preset{padding:9px 16px;font-size:11px;font-family:monospace,monospace;font-weight:700;background:var(--surf2);border:1px solid var(--border);color:var(--dim);border-radius:20px;cursor:pointer;min-height:38px;transition:all .14s;}
+.buy-preset:hover{border-color:rgba(255,209,102,.4);color:var(--gold);}
+.buy-preset.active{background:rgba(255,209,102,.15);border-color:rgba(255,209,102,.6);color:var(--gold);}
+.buy-add-row{display:flex;gap:6px;margin-bottom:12px;align-items:center;}
+.buy-price-input{width:90px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:7px 10px;border-radius:6px;font-size:12px;font-family:monospace;flex-shrink:0;}
+.buy-tray{min-height:60px;margin-bottom:12px;}
+.buy-tray-empty{font-family:monospace,monospace;font-size:10px;color:var(--dim);text-align:center;padding:20px;border:1px dashed var(--border);border-radius:8px;}
+.buy-tray-item{display:grid;grid-template-columns:48px 1fr 70px 80px 62px 30px;align-items:center;gap:7px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;background:var(--surf2);}
+.buy-tray-thumb{width:44px;height:44px;object-fit:cover;border-radius:5px;border:1px solid var(--border);}
+.buy-tray-thumb-ph{width:44px;height:44px;border-radius:5px;border:1px solid var(--border);background:var(--surf);display:flex;align-items:center;justify-content:center;font-family:monospace;font-size:7px;color:var(--dim);}
+.buy-tray-name{font-family:monospace,monospace;font-size:11px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.buy-tray-sub{font-family:monospace,monospace;font-size:8px;color:var(--dim);margin-top:2px;}
+.buy-tray-cond{width:70px;background:var(--surf);border:1px solid var(--border);color:var(--text);padding:5px 4px;border-radius:5px;font-size:10px;font-family:monospace;}
+.buy-tray-mkt{width:80px;background:var(--surf);border:1px solid var(--border);color:var(--text);padding:5px;border-radius:5px;font-size:10px;font-family:monospace;}
+.buy-tray-offer-val{font-family:'Orbitron',monospace;font-size:12px;font-weight:700;color:var(--gold);text-align:right;white-space:nowrap;}
+.buy-tray-rm{width:28px;height:28px;background:none;border:1px solid rgba(255,77,109,.22);color:var(--red);border-radius:6px;cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center;}
+.buy-primary-actions{display:grid;grid-template-columns:1fr auto;gap:8px;margin-bottom:8px;}
+.buy-action-accept{height:60px;font-family:'Orbitron',monospace;font-size:14px;font-weight:800;background:rgba(0,255,179,.13);border:2px solid rgba(0,255,179,.45);color:var(--g);border-radius:12px;cursor:pointer;letter-spacing:1px;transition:all .14s;}
+.buy-action-accept:hover{background:rgba(0,255,179,.22);}
+.buy-action-reject{height:60px;padding:0 22px;font-family:'Orbitron',monospace;font-size:13px;font-weight:700;background:rgba(255,77,109,.1);border:2px solid rgba(255,77,109,.32);color:var(--red);border-radius:12px;cursor:pointer;letter-spacing:1px;transition:all .14s;}
+.buy-action-reject:hover{background:rgba(255,77,109,.2);}
+.buy-pay-row{margin-bottom:10px;}
+.buy-action-pay{width:100%;height:50px;font-family:'Orbitron',monospace;font-size:13px;font-weight:700;background:rgba(0,160,255,.1);border:2px solid rgba(0,160,255,.25);color:var(--blue);border-radius:12px;cursor:pointer;opacity:.4;pointer-events:none;transition:all .14s;}
+.buy-action-pay.enabled{opacity:1;pointer-events:auto;}
+.buy-action-pay.enabled:hover{background:rgba(0,160,255,.2);}
+.buy-advanced{border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-top:4px;}
+.buy-advanced>summary{padding:10px 14px;font-family:monospace,monospace;font-size:10px;color:var(--dim);cursor:pointer;background:var(--surf2);user-select:none;list-style:none;}
+.buy-advanced>summary::-webkit-details-marker{display:none;}
+.buy-advanced>summary:hover{color:var(--text);}
+.buy-advanced-content{padding:12px;display:flex;flex-direction:column;gap:8px;}
+.buy-advanced-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
+.buy-tertiary-actions{display:flex;gap:6px;flex-wrap:wrap;}
+body.show-mode-active .buy-advanced{display:none;}
+@media(max-width:640px){
+  .buy-offer-panel{grid-template-columns:1fr 1fr;}
+  .buy-tray-item{grid-template-columns:44px 1fr 62px 74px 56px 28px;gap:5px;}
+  .buy-advanced-grid{grid-template-columns:1fr;}
+}
+
 /* 3. Research queue drawer */
 .rq-toggle-btn { display:flex; align-items:center; gap:8px; font-family:'Orbitron',monospace; font-size:10px; letter-spacing:.05em; cursor:pointer; padding:10px 14px; border:1px solid var(--border); border-radius:8px; background:var(--surf2); color:var(--dim); white-space:nowrap; }
 .rq-toggle-btn .rq-badge { background:var(--gold); color:#000; border-radius:999px; padding:2px 7px; font-size:9px; font-weight:700; display:none; }
@@ -699,7 +755,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
 
 <header>
   <div class="hdr">
-    <div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.03.19-sports-search-fix</span>
+    <div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.05.01-buy-flow-ux</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
@@ -719,7 +775,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
     <div class="dsb-chip" id="dsb-drawer">🏦 <span>DRAWER:</span> <b id="dsb-drawer-val">CLOSED</b></div>
     <div class="dsb-chip">📦 <span>INV:</span> <b id="dsb-inv-val">—</b></div>
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
-    <div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.03.19-sports-search-fix</div>
+    <div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.05.01-buy-flow-ux</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -1095,47 +1151,88 @@ body.customer-display-mode #customer-display-exit{display:block;}
   <!-- Row 2: Buy List / Trade-In + End of Day Report -->
   <div class="two" id="register-buy-eod-row">
 
-    <!-- BUY LIST / TRADE-IN -->
+    <!-- BUY LIST / TRADE-IN — redesigned for dealer workflow -->
     <div class="panel" id="register-buy-panel">
-      <div class="ph">🔄 BUY LIST / TRADE-IN <span style="font-size:8px;color:var(--dim)">Build an offer for customer cards</span></div>
-      <div style="display:flex;gap:6px;margin-bottom:8px">
-        <input class="tsi" id="bl-input" placeholder="Card name..." style="flex:2;margin-bottom:0" onkeydown="if(event.key==='Enter')addBuyListItem()">
-        <input type="number" id="bl-price" placeholder="$market" step="0.01" style="flex:1;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:7px 10px;border-radius:6px;font-size:12px">
-        <button class="hbtn" onclick="addBuyListItem()" style="white-space:nowrap">ADD</button>
-      </div>
-      <div style="display:flex;gap:6px;margin-bottom:10px;align-items:center">
-        <span style="font-family:monospace,monospace;font-size:9px;color:var(--dim)">OFFER %</span>
-        <input type="range" id="bl-pct" min="0" max="100" value="50" step="5" oninput="updateBuyListOffer()" style="flex:1">
-        <span id="bl-pct-lbl" style="font-family:'Orbitron',monospace;font-size:12px;color:var(--gold);min-width:36px;text-align:right">50%</span>
-      </div>
-      <div style="display:flex;gap:5px;margin-bottom:10px;flex-wrap:wrap">
-        <button class="hbtn" onclick="setBuyOfferPct(70)" style="font-size:8px;padding:6px 9px">70%</button>
-        <button class="hbtn" onclick="setBuyOfferPct(75)" style="font-size:8px;padding:6px 9px">75%</button>
-        <button class="hbtn" onclick="setBuyOfferPct(80)" style="font-size:8px;padding:6px 9px">80%</button>
-        <button class="hbtn" onclick="setBuyOfferPct(85)" style="font-size:8px;padding:6px 9px">85%</button>
-      </div>
-      <div style="display:flex;gap:6px;margin-bottom:10px">
-        <input class="tsi" id="bl-customer" placeholder="Customer name" style="flex:1;margin-bottom:0">
-        <input class="tsi" id="bl-phone" placeholder="Phone for text offer" style="flex:1;margin-bottom:0">
-      </div>
-      <div id="buy-session-panel"></div>
-      <div id="bl-items" style="min-height:80px;margin-bottom:10px"></div>
-      <div style="background:var(--surf2);border:1px solid var(--border);border-radius:8px;padding:10px;display:flex;justify-content:space-between;align-items:center">
-        <div>
-          <div style="font-family:monospace,monospace;font-size:8px;color:var(--dim)">TOTAL MARKET</div>
-          <div style="font-family:'Orbitron',monospace;font-size:16px;color:var(--text)" id="bl-total-mkt">$0.00</div>
+
+      <!-- ① OFFER PANEL — most prominent area, visible immediately -->
+      <div class="buy-offer-panel">
+        <div class="buy-offer-stat">
+          <div class="buy-offer-stat-label">Market Value</div>
+          <div class="buy-offer-stat-value" id="bl-total-mkt">$0.00</div>
         </div>
-        <div style="text-align:center">
-          <div style="font-family:monospace,monospace;font-size:8px;color:var(--dim)">YOUR OFFER</div>
-          <div style="font-family:'Orbitron',monospace;font-size:22px;font-weight:900;color:var(--gold)" id="bl-offer">$0.00</div>
+        <div class="buy-offer-stat">
+          <div class="buy-offer-stat-label">Offer %</div>
+          <div class="buy-offer-pct-large" id="bl-pct-lbl">50%</div>
         </div>
-        <div style="display:flex;flex-direction:column;gap:4px">
-          <button class="hbtn" onclick="printBuyOffer()" style="font-size:8px">🖨 PRINT</button>
-          <button class="hbtn" onclick="textBuyOffer()" style="font-size:8px">TEXT</button>
-          <button class="hbtn" onclick="bulkAddBuyListToInventory()" style="font-size:8px">ADD ALL INV</button>
-          <button class="hbtn" onclick="clearBuyList()" style="background:rgba(255,77,109,.08);border-color:rgba(255,77,109,.2);color:var(--red);font-size:8px">CLEAR</button>
+        <div class="buy-offer-stat">
+          <div class="buy-offer-stat-label">Your Offer</div>
+          <div class="buy-offer-stat-value buy-offer-amount" id="bl-offer">$0.00</div>
+        </div>
+        <div class="buy-offer-stat">
+          <div class="buy-offer-stat-label">Profit Spread</div>
+          <div class="buy-offer-stat-value buy-offer-spread" id="bl-spread">$0.00</div>
         </div>
       </div>
+
+      <!-- ② SLIDER + STEPPER — 1% increments, keyboard editable, presets -->
+      <div class="buy-slider-section">
+        <div class="buy-stepper-row">
+          <button class="buy-step-btn" onclick="stepBuyPct(-1)" aria-label="Decrease 1%">−</button>
+          <input type="number" id="bl-pct-num" class="buy-pct-input" min="0" max="100" value="50"
+                 oninput="syncBuyPctFromNum()" onchange="syncBuyPctFromNum()" aria-label="Offer percent">
+          <button class="buy-step-btn" onclick="stepBuyPct(1)" aria-label="Increase 1%">+</button>
+        </div>
+        <input type="range" id="bl-pct" class="buy-pct-slider" min="0" max="100" value="50" step="1"
+               oninput="updateBuyListOffer()" aria-label="Offer percent slider">
+        <div class="buy-preset-chips">
+          <button class="buy-preset" onclick="setBuyOfferPct(70)" data-pct="70">70%</button>
+          <button class="buy-preset" onclick="setBuyOfferPct(75)" data-pct="75">75%</button>
+          <button class="buy-preset" onclick="setBuyOfferPct(80)" data-pct="80">80%</button>
+          <button class="buy-preset" onclick="setBuyOfferPct(85)" data-pct="85">85%</button>
+          <button class="buy-preset" onclick="setBuyOfferPct(90)" data-pct="90">90%</button>
+        </div>
+      </div>
+
+      <!-- ③ ADD CARD ROW -->
+      <div class="buy-add-row">
+        <input class="tsi" id="bl-input" placeholder="Card name — press Enter to add"
+               style="flex:1;margin-bottom:0" onkeydown="if(event.key==='Enter')addBuyListItem()">
+        <input type="number" id="bl-price" placeholder="$market" step="0.01" class="buy-price-input">
+        <button class="hbtn" onclick="addBuyListItem()" style="white-space:nowrap;min-height:40px">+ ADD</button>
+      </div>
+
+      <!-- ④ BUY TRAY ITEMS -->
+      <div id="bl-items" class="buy-tray"></div>
+
+      <!-- ⑤ PRIMARY ACTIONS — always visible, large touch targets -->
+      <div class="buy-primary-actions">
+        <button class="buy-action-accept" id="bl-accept-btn" onclick="acceptBuySession()">✓ ACCEPT OFFER</button>
+        <button class="buy-action-reject" id="bl-reject-btn" onclick="rejectBuySession()">✕ REJECT</button>
+      </div>
+
+      <!-- ⑥ PAY CUSTOMER — enabled only after accept -->
+      <div class="buy-pay-row">
+        <button class="buy-action-pay" id="bl-pay-btn" onclick="payCustomerForBuySession()">💵 PAY CUSTOMER</button>
+      </div>
+
+      <!-- ⑦ ADVANCED OPTIONS — collapsed by default, show mode hides entirely -->
+      <details class="buy-advanced" id="buy-advanced-options">
+        <summary>▸ Advanced Options &amp; Session Details</summary>
+        <div class="buy-advanced-content">
+          <div class="buy-advanced-grid">
+            <input class="tsi" id="bl-customer" placeholder="Customer name" style="margin-bottom:0">
+            <input class="tsi" id="bl-phone" placeholder="Phone (text offer)" style="margin-bottom:0">
+          </div>
+          <div id="buy-session-panel"></div>
+          <div class="buy-tertiary-actions">
+            <button class="hbtn" onclick="printBuyOffer()" style="font-size:10px">🖨 Print Offer</button>
+            <button class="hbtn" onclick="textBuyOffer()" style="font-size:10px">📱 Text Offer</button>
+            <button class="hbtn" onclick="bulkAddBuyListToInventory()" style="font-size:10px;color:var(--gold)">Add All to Inventory</button>
+            <button class="hbtn" onclick="clearBuyList()" style="font-size:10px;color:var(--red)">Clear List</button>
+          </div>
+        </div>
+      </details>
+
     </div>
 
     <!-- END OF DAY REPORT -->
@@ -1702,7 +1799,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.06.03.19-sports-search-fix';
+const APP_VERSION = '2026.06.05.01-buy-flow-ux';
 const branchName = 'pokemon-v2-core';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
 const POKEMON_EXACT_CACHE_VERSION = 'pokemon-exact-v3-price-matrix';
@@ -15760,30 +15857,29 @@ function renderBuySessionPanel(){
   const payment = session?.paymentType || 'Cash';
   const sessionLabel = session ? ('Session #' + String(session.buySessionId || '').replace(/[^a-z0-9]/gi,'').slice(-6).toUpperCase()) : 'start when customer walks up';
   const sessionTitle = session?.customerName ? 'ACTIVE BUY SESSION - ' + session.customerName : (session ? 'ACTIVE BUY SESSION' : 'WALK-UP BUY SESSION');
-  el.innerHTML = `<div style="border:1px solid ${session?'rgba(0,255,179,.28)':'var(--border)'};background:${session?'rgba(0,255,179,.045)':'var(--surf2)'};border-radius:8px;padding:10px;margin-bottom:10px">
-    <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap">
+  // Session panel lives inside Advanced Options — show session metadata and start/save actions.
+  // ACCEPT and REJECT are promoted to large top-level buttons; PAY CUSTOMER is its own row.
+  el.innerHTML = `<div style="border:1px solid ${session?'rgba(0,255,179,.28)':'var(--border)'};background:${session?'rgba(0,255,179,.045)':'var(--surf2)'};border-radius:8px;padding:10px;">
+    <div style="display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
       <div>
-        <div class="ph" style="margin:0 0 4px">${escHtml(sessionTitle)} <span style="font-size:8px;color:var(--dim)">${escHtml(sessionLabel)}</span></div>
-        <div style="font-family:monospace,monospace;font-size:10px;color:var(--dim)">Items ${buyList.length} · Cash $${totals.offerTotal.toFixed(2)} · Trade $${(totals.offerTotal*1.15).toFixed(2)}</div>
+        <div style="font-family:monospace;font-size:9px;font-weight:700;color:${session?'var(--g)':'var(--dim)'}">${escHtml(sessionTitle)}</div>
+        <div style="font-family:monospace;font-size:9px;color:var(--dim)">${escHtml(sessionLabel)} · ${buyList.length} item${buyList.length===1?'':'s'} · Cash $${totals.offerTotal.toFixed(2)} · Trade $${(totals.offerTotal*1.15).toFixed(2)}</div>
       </div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap">
-        <button class="hbtn" onclick="startBuySession()" style="color:var(--g)">${session?'NEW':'START BUY SESSION'}</button>
-        <button class="hbtn" onclick="saveBuySessionOnly()">SAVE</button>
-        <button class="hbtn" onclick="acceptBuySession()" style="color:var(--gold)">ACCEPT</button>
-        <button class="hbtn danger" onclick="rejectBuySession()">REJECT</button>
+      <div style="display:flex;gap:5px">
+        <button class="hbtn" onclick="startBuySession()" style="font-size:10px;color:var(--g)">${session?'NEW SESSION':'START SESSION'}</button>
+        <button class="hbtn" onclick="saveBuySessionOnly()" style="font-size:10px">SAVE</button>
       </div>
     </div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-top:10px">
-      <input class="tsi" id="buy-session-email" placeholder="Customer email" value="${escHtml(session?.customerEmail || '')}" onchange="updateBuySessionField('customerEmail', this.value)" style="margin-bottom:0">
-      <select id="buy-session-location" onchange="updateBuySessionField('location', this.value)" style="background:var(--surf);border:1px solid var(--border);color:var(--text);padding:8px;border-radius:6px;font-size:11px">
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
+      <input class="tsi" id="buy-session-email" placeholder="Customer email" value="${escHtml(session?.customerEmail || '')}" onchange="updateBuySessionField('customerEmail', this.value)" style="margin-bottom:0;font-size:10px">
+      <select id="buy-session-location" onchange="updateBuySessionField('location', this.value)" style="background:var(--surf);border:1px solid var(--border);color:var(--text);padding:7px;border-radius:6px;font-size:10px;font-family:monospace">
         ${BUY_SESSION_LOCATIONS.map(v=>`<option value="${v}" ${location===v?'selected':''}>${v}</option>`).join('')}
       </select>
-      <select id="buy-session-pay-method" onchange="updateBuySessionField('paymentType', this.value)" style="background:var(--surf);border:1px solid var(--border);color:var(--text);padding:8px;border-radius:6px;font-size:11px">
+      <select id="buy-session-pay-method" onchange="updateBuySessionField('paymentType', this.value)" style="background:var(--surf);border:1px solid var(--border);color:var(--text);padding:7px;border-radius:6px;font-size:10px;font-family:monospace">
         ${BUY_SESSION_PAYMENTS.map(v=>`<option value="${v}" ${payment===v?'selected':''}>Pay: ${v}</option>`).join('')}
       </select>
-      <button class="hbtn" onclick="payCustomerForBuySession()" style="color:var(--blue)">PAY CUSTOMER</button>
     </div>
-    <textarea id="buy-session-notes" placeholder="Session notes / override reasons" onchange="updateBuySessionField('notes', this.value)" style="width:100%;min-height:42px;margin-top:8px;background:var(--surf);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:8px;font-size:11px">${escHtml(session?.notes || '')}</textarea>
+    <textarea id="buy-session-notes" placeholder="Session notes / override reasons" onchange="updateBuySessionField('notes', this.value)" style="width:100%;min-height:38px;margin-top:6px;background:var(--surf);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:7px;font-size:10px;font-family:monospace;box-sizing:border-box">${escHtml(session?.notes || '')}</textarea>
   </div>`;
 }
 
@@ -15858,68 +15954,99 @@ function updateBuyItem(id, field, value){
 }
 
 function updateBuyListOffer(){
-  const pct = document.getElementById('bl-pct').value;
-  document.getElementById('bl-pct-lbl').textContent = pct+'%';
+  const pct = document.getElementById('bl-pct')?.value || '50';
+  const lbl = document.getElementById('bl-pct-lbl');
+  const num = document.getElementById('bl-pct-num');
+  if(lbl) lbl.textContent = pct + '%';
+  if(num && num !== document.activeElement) num.value = pct;
+  // Highlight matching preset chip
+  document.querySelectorAll('.buy-preset').forEach(btn => {
+    btn.classList.toggle('active', String(btn.dataset.pct) === String(pct));
+  });
   renderBuyList();
 }
 
 function setBuyOfferPct(pct){
   const slider = document.getElementById('bl-pct');
+  const num = document.getElementById('bl-pct-num');
   if(slider) slider.value = pct;
+  if(num) num.value = pct;
+  updateBuyListOffer();
+}
+
+function stepBuyPct(delta){
+  const slider = document.getElementById('bl-pct');
+  if(!slider) return;
+  let val = Math.max(0, Math.min(100, parseInt(slider.value || '50') + delta));
+  slider.value = val;
+  updateBuyListOffer();
+}
+
+function syncBuyPctFromNum(){
+  const num = document.getElementById('bl-pct-num');
+  const slider = document.getElementById('bl-pct');
+  if(!num || !slider) return;
+  let val = parseInt(num.value);
+  if(isNaN(val)) return;
+  val = Math.max(0, Math.min(100, val));
+  slider.value = val;
   updateBuyListOffer();
 }
 
 function renderBuyList(){
-  const pct = parseFloat(document.getElementById('bl-pct').value||50)/100;
-  const totalMkt = buyList.reduce((a,i)=>a+(i.market||0),0);
-  const offer = totalMkt * pct;
-  document.getElementById('bl-total-mkt').textContent = '$'+totalMkt.toFixed(2);
-  document.getElementById('bl-offer').textContent = '$'+offer.toFixed(2);
-  const el = document.getElementById('bl-items');
-  if(!buyList.length){ el.innerHTML='<div style="font-family:monospace,monospace;font-size:10px;color:var(--dim);text-align:center;padding:20px">Add cards to build offer</div>'; return; }
-  el.innerHTML = buyList.map(i=>`<div class="bl-item">
-    ${i.imageUrl ? `<img src="${i.imageUrl}" style="width:34px;height:34px;object-fit:cover;border-radius:4px;border:1px solid var(--border);margin-right:6px">` : ''}
-    <span class="bl-item-name">${i.name}<div style="font-family:monospace;font-size:8px;color:var(--dim);font-weight:400">${[i.year,i.set,i.variant,i.card_number?'#'+i.card_number:''].filter(Boolean).join(' · ')}</div>${priceSourceBadge(i.priceSource, i.category)}</span>
-    <select onchange="updateBuyItem('${i.id}','condition',this.value)" style="width:62px;background:var(--surf);border:1px solid var(--border);color:var(--text);padding:5px;border-radius:5px;font-size:10px">
-      ${['NM','LP','MP','HP','DMG'].map(c=>`<option value="${c}" ${String(i.condition||'NM')===c?'selected':''}>${c}</option>`).join('')}
-    </select>
-    <input type="number" step="0.01" value="${i.market||''}" placeholder="market" onchange="updateBuyItem('${i.id}','market',this.value)" style="width:82px;background:var(--surf);border:1px solid var(--border);color:var(--text);padding:5px;border-radius:5px;font-size:10px">
-    <span class="bl-item-offer">${i.market?('$'+(i.market*pct).toFixed(2)):'...'}</span>
-    <button class="bl-item-rm" onclick="removeBuyItem('${i.id}')">×</button>
-  </div>`).join('');
-}
+  const pct = parseFloat(document.getElementById('bl-pct')?.value || '50') / 100;
+  const totalMkt = buyList.reduce((a,i) => a + (Number(i.market) || 0), 0);
+  const offer    = buyList.reduce((a,i) => a + buyItemOfferValue(i), 0);
+  const spread   = Math.max(0, totalMkt - offer);
 
-function renderBuyList(){
-  const pct = parseFloat(document.getElementById('bl-pct').value||50)/100;
-  const totalMkt = buyList.reduce((a,i)=>a+(Number(i.market)||0),0);
-  const offer = buyList.reduce((a,i)=>a+buyItemOfferValue(i),0);
-  document.getElementById('bl-total-mkt').textContent = '$'+totalMkt.toFixed(2);
-  document.getElementById('bl-offer').textContent = '$'+offer.toFixed(2);
+  // Update offer panel numbers
+  const mktEl = document.getElementById('bl-total-mkt');
+  const offerEl = document.getElementById('bl-offer');
+  const spreadEl = document.getElementById('bl-spread');
+  if(mktEl)   mktEl.textContent   = '$' + totalMkt.toFixed(2);
+  if(offerEl) offerEl.textContent = '$' + offer.toFixed(2);
+  if(spreadEl) spreadEl.textContent = '$' + spread.toFixed(2);
+
+  // Enable / disable PAY CUSTOMER based on session status
+  const payBtn = document.getElementById('bl-pay-btn');
+  if(payBtn) {
+    const sessionStatus = getActiveBuySession()?.status;
+    payBtn.classList.toggle('enabled', sessionStatus === 'accepted');
+  }
+
   renderBuySessionPanel();
+  updateRegisterCommandCenter();
+
   const el = document.getElementById('bl-items');
+  if(!el) return;
   if(!buyList.length){
-    el.innerHTML='<div style="font-family:monospace,monospace;font-size:10px;color:var(--dim);text-align:center;padding:20px">Add cards to build offer</div>';
-    updateRegisterCommandCenter();
+    el.innerHTML = '<div class="buy-tray-empty">Add cards to build a buy offer — use the field above or SELECT from Research</div>';
     return;
   }
-  el.innerHTML = buyList.map(i=>{
+  el.innerHTML = buyList.map(i => {
     const added = !!i.inventoryId;
-    const err = i.inventoryError ? `<div style="color:var(--red);font-size:8px;margin-top:2px">${String(i.inventoryError).replace(/</g,'&lt;').slice(0,120)}</div>` : '';
-    const sub = [i.year,i.set,i.variant,i.card_number?'#'+i.card_number:''].filter(Boolean).join(' Â· ');
-    return `<div class="bl-item">
-      ${i.imageUrl ? `<img src="${i.imageUrl}" style="width:34px;height:34px;object-fit:cover;border-radius:4px;border:1px solid var(--border);margin-right:6px">` : ''}
-      <span class="bl-item-name">${i.name || 'Phone scan'}<div style="font-family:monospace;font-size:8px;color:var(--dim);font-weight:400">${sub}</div>${priceSourceBadge(i.priceSource, i.category)}${added?'<span style="margin-left:5px;color:var(--g);font-family:monospace;font-size:8px">IN INV</span>':''}${err}</span>
-      <select onchange="updateBuyItem('${i.id}','condition',this.value)" ${added?'disabled':''} style="width:62px;background:var(--surf);border:1px solid var(--border);color:var(--text);padding:5px;border-radius:5px;font-size:10px">
-        ${['NM','LP','MP','HP','DMG'].map(c=>`<option value="${c}" ${String(i.condition||'NM')===c?'selected':''}>${c}</option>`).join('')}
+    const err   = i.inventoryError ? `<div style="color:var(--red);font-size:8px;margin-top:2px">${escHtml(String(i.inventoryError).slice(0,120))}</div>` : '';
+    const sub   = [i.year, i.set, i.variant, i.card_number ? '#' + i.card_number : ''].filter(Boolean).join(' · ');
+    const offerVal = (i.market || i.cashOffer) ? '$' + buyItemOfferValue(i).toFixed(2) : '…';
+    const addedBadge = added ? ' <span style="color:var(--g);font-size:8px">✓ IN INV</span>' : '';
+    return `<div class="buy-tray-item">
+      ${i.imageUrl
+        ? `<img src="${escHtml(i.imageUrl)}" class="buy-tray-thumb" alt="">`
+        : '<div class="buy-tray-thumb-ph">IMG</div>'}
+      <div class="buy-tray-info">
+        <div class="buy-tray-name">${escHtml(i.name || 'Phone scan')}${addedBadge}</div>
+        <div class="buy-tray-sub">${escHtml(sub)}</div>
+        ${err}
+      </div>
+      <select class="buy-tray-cond" onchange="updateBuyItem('${i.id}','condition',this.value)" ${added ? 'disabled' : ''}>
+        ${['NM','LP','MP','HP','DMG'].map(c => `<option value="${c}" ${String(i.condition||'NM')===c?'selected':''}>${c}</option>`).join('')}
       </select>
-      <input type="number" step="0.01" value="${i.market||''}" placeholder="market" onchange="updateBuyItem('${i.id}','market',this.value)" ${added?'disabled':''} style="width:82px;background:var(--surf);border:1px solid var(--border);color:var(--text);padding:5px;border-radius:5px;font-size:10px">
-      <input type="number" step="0.01" value="${Number(i.cashOffer || 0) ? Number(i.cashOffer).toFixed(2) : ''}" placeholder="$offer" title="Override cash offer" onchange="updateBuyItem('${i.id}','cashOffer',this.value)" ${added?'disabled':''} style="width:74px;background:var(--surf);border:1px solid var(--border);color:var(--gold);padding:5px;border-radius:5px;font-size:10px">
-      <span class="bl-item-offer">${i.market||i.cashOffer?('$'+buyItemOfferValue(i).toFixed(2)):'...'}</span>
-      <button class="hbtn" onclick="addBuyItemToInventory('${i.id}')" ${added?'disabled':''} style="font-size:8px;padding:5px 7px;color:${added?'var(--g)':'var(--gold)'}">${added?'ADDED':'INV'}</button>
-      <button class="bl-item-rm" onclick="removeBuyItem('${i.id}')">Ã—</button>
+      <input type="number" step="0.01" value="${i.market||''}" placeholder="$mkt"
+             class="buy-tray-mkt" onchange="updateBuyItem('${i.id}','market',this.value)" ${added ? 'disabled' : ''}>
+      <span class="buy-tray-offer-val">${offerVal}</span>
+      <button class="buy-tray-rm" onclick="removeBuyItem('${i.id}')" aria-label="Remove">×</button>
     </div>`;
   }).join('');
-  updateRegisterCommandCenter();
 }
 
 function printBuyOffer(){
