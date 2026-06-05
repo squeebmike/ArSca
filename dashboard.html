@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.06.05.03-live-price-refresh">
+<meta name="version" content="2026.06.05.05-inv-research-img-fix">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -304,8 +304,8 @@ tr.sold:hover td{opacity:.7;}
 .auth-compare-pane{min-height:280px;border:1px solid var(--border);border-radius:12px;background:#050507;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative;}
 .auth-compare-pane img{max-width:100%;max-height:340px;object-fit:contain;}
 .auth-source-label{position:absolute;left:8px;bottom:8px;font-family:monospace,monospace;font-size:9px;color:var(--dim);background:rgba(0,0,0,.58);border:1px solid rgba(255,255,255,.12);border-radius:999px;padding:5px 8px;}
-.qpl-img-shell{min-height:260px;background:#050507;border:1px solid rgba(255,255,255,.12);border-radius:12px;display:flex;align-items:center;justify-content:center;overflow:hidden;cursor:zoom-in;position:relative;}
-.qpl-img-shell img{width:100%;height:100%;max-height:320px;object-fit:contain;display:block;}
+.qpl-img-shell{min-height:180px;background:#050507;border:1px solid rgba(255,255,255,.12);border-radius:12px;display:flex;align-items:center;justify-content:center;overflow:visible;cursor:zoom-in;position:relative;}
+.qpl-img-shell img{width:100%;height:auto;max-height:400px;object-fit:contain;display:block;border-radius:10px;}
 .qpl-img-shell::after{content:'TAP TO ZOOM';position:absolute;left:10px;bottom:10px;font-family:monospace,monospace;font-size:9px;letter-spacing:1px;color:rgba(255,255,255,.55);background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.12);border-radius:999px;padding:5px 8px;}
 .qpl-no-img{font-family:monospace,monospace;font-size:12px;color:var(--dim);letter-spacing:2px;}
 .qpl-title{font-size:clamp(22px,2.1vw,30px);line-height:1.12;font-weight:900;color:var(--text);margin-bottom:10px;}
@@ -350,7 +350,7 @@ tr.sold:hover td{opacity:.7;}
 /* 1. Sticky card image — image column sticks while info column scrolls */
 .qpl-hero-card { align-items:start; }
 .qpl-img-sticky { position:sticky; top:8px; display:flex; flex-direction:column; gap:10px; }
-.qpl-img-sticky .qpl-img-shell { max-height:320px; }
+.qpl-img-sticky .qpl-img-shell { max-height:420px; }
 .qpl-sticky-price { font-family:'Orbitron',monospace; font-size:22px; font-weight:900; color:var(--gold); text-align:center; padding:6px 0 2px; }
 .qpl-sticky-cond { font-family:monospace; font-size:11px; color:var(--dim); text-align:center; padding-bottom:4px; }
 .qpl-sticky-stock { font-family:monospace; font-size:10px; color:var(--g); text-align:center; }
@@ -789,7 +789,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
 
 <header>
   <div class="hdr">
-    <div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.05.03-live-price-refresh</span>
+    <div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.05.05-inv-research-img-fix</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
@@ -811,7 +811,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
     <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-    <div class="dsb-chip dev-only" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.05.03-live-price-refresh</div>
+    <div class="dsb-chip dev-only" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.05.05-inv-research-img-fix</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -1849,7 +1849,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.06.05.03-live-price-refresh';
+const APP_VERSION = '2026.06.05.05-inv-research-img-fix';
 const branchName = 'pokemon-v2-core';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
 const POKEMON_EXACT_CACHE_VERSION = 'pokemon-exact-v3-price-matrix';
@@ -6246,9 +6246,9 @@ function renderCardView(){
         + `<div class="inv-card-nimg" style="display:none">NO IMAGE</div>`
       : `<div class="inv-card-nimg">NO IMAGE</div>`;
     return `<div class="inv-card${ins?'':' sold'}" data-item-id="${i.id}">
-      ${imgEl}
+      <div onclick="openInventoryItemInResearch('${i.id}')" style="cursor:pointer" title="Open in Research">${imgEl}</div>
       <div class="inv-card-body">
-        <div class="inv-card-name" title="${escHtml(i.name)}">${escHtml(i.name)}</div>
+        <div class="inv-card-name" title="${escHtml(i.name)}" onclick="openInventoryItemInResearch('${i.id}')" style="cursor:pointer">${escHtml(i.name)}</div>
         <div class="inv-card-meta">${escHtml([i.set, i.year, i.condition].filter(Boolean).join(' · ') || i.category || '')}</div>
         <div class="inv-card-price">${i.market > 0 ? '$' + Number(i.market).toFixed(2) : '—'}</div>
         ${i.qty > 1 ? `<div class="inv-card-meta" style="color:var(--g)">Qty: ${i.qty}</div>` : ''}
@@ -6256,6 +6256,7 @@ function renderCardView(){
           ${ins ? `<button class="rab rab-sell" onclick="openSellModal('${i.id}')">SELL</button>` : '<div style="grid-column:1/-1;text-align:center;font-family:monospace;font-size:10px;color:var(--dim);padding:8px">SOLD</div>'}
           ${ins ? `<button class="rab rab-cart" onclick="dashAddToCart('${i.id}')">+ CART</button>` : ''}
           <button class="rab rab-edit" onclick="openEditModal('${i.id}')">EDIT</button>
+          <button class="rab" onclick="openInventoryItemInResearch('${i.id}')" style="grid-column:1/-1;border-color:rgba(0,160,255,.3);color:var(--blue);font-size:10px;min-height:36px">🔍 RESEARCH</button>
         </div>
       </div>
     </div>`;
@@ -6288,6 +6289,7 @@ function showInvRowMenu(e, id, isInStock){
   const btnStyle = 'width:100%;min-height:40px;font-size:11px;margin-bottom:4px;text-align:left;padding:0 12px';
   menu.innerHTML = [
     `<div style="font-family:monospace;font-size:8px;color:var(--dim);padding:2px 6px 6px;letter-spacing:.06em">MORE ACTIONS</div>`,
+    `<button class="hbtn" style="${btnStyle};color:var(--blue)" onclick="openInventoryItemInResearch('${id}');this.closest('.inv-row-menu').remove()">🔍 Research</button>`,
     `<button class="hbtn" style="${btnStyle}" onclick="openEbayFromDash('${id}');this.closest('.inv-row-menu').remove()">📦 eBay List</button>`,
     `<button class="hbtn" style="${btnStyle}" onclick="showItemHistory?.('${id}');this.closest('.inv-row-menu').remove()">📋 History</button>`,
     `<button class="hbtn" style="${btnStyle}" onclick="sendQuickLookupToAuthCheck?.(0);switchTab('authcheck');this.closest('.inv-row-menu').remove()">🔐 Auth Check</button>`,
@@ -7886,12 +7888,13 @@ function renderTable(){
     const cat=String(i.category||'TCG').replace(/\s+/g,'');
     const margin=i.cost>0?((pft/i.cost)*100).toFixed(0)+'%':'—';
     const thumbSrc = i.thumbnail || i.imageUrl || '';
+    const researchClick = `openInventoryItemInResearch('${i.id}')`;
     const thumbCell = thumbSrc
-      ? `<td class="td-thumb"><img class="inv-thumb" src="${escHtml(thumbSrc)}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><div class="inv-thumb-placeholder" style="display:none">NO IMG</div></td>`
-      : `<td class="td-thumb"><div class="inv-thumb-placeholder">NO IMG</div></td>`;
+      ? `<td class="td-thumb" onclick="${researchClick}" style="cursor:pointer" title="Open in Research"><img class="inv-thumb" src="${escHtml(thumbSrc)}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><div class="inv-thumb-placeholder" style="display:none">NO IMG</div></td>`
+      : `<td class="td-thumb" onclick="${researchClick}" style="cursor:pointer" title="Open in Research"><div class="inv-thumb-placeholder">🔍</div></td>`;
     return `<tr class="${ins?'':'sold'}" data-item-id="${i.id}">
       ${thumbCell}
-      <td><span class="dot ${ins?'in_stock':'sold'}"></span><span class="nc" title="${i.tcgCardId?'TCG ID: '+i.tcgCardId:''}">${i.name}${i.isRookie?' <span style="color:var(--gold);font-size:8px">RC</span>':''}${i.tcgCardId?'<span style="font-family:monospace;font-size:7px;color:rgba(0,255,179,.4);margin-left:4px">●</span>':''}</span></td>
+      <td><span class="dot ${ins?'in_stock':'sold'}"></span><span class="nc" title="${i.tcgCardId?'TCG ID: '+i.tcgCardId:''}" onclick="${researchClick}" style="cursor:pointer">${i.name}${i.isRookie?' <span style="color:var(--gold);font-size:8px">RC</span>':''}${i.tcgCardId?'<span style="font-family:monospace;font-size:7px;color:rgba(0,255,179,.4);margin-left:4px">●</span>':''}</span></td>
       <td><span class="sc2">${[i.set,i.variant].filter(Boolean).join(' · ')||'—'}</span></td>
       <td><span class="ct ${cat}">${i.category}</span></td>
       <td style="text-align:center;font-family:monospace,monospace;font-size:11px;color:${(i.qty||1)>1?'var(--g)':'var(--dim)'}">${i.qty||1}</td>
@@ -9042,6 +9045,65 @@ function markAuthItemNeedsReview(itemId){
   logOpsEvent('auth_needs_review', 'Auth item marked Needs Review: ' + (item.identity?.title || 'item'), { itemId });
   toast_dash('Auth item marked Needs Review');
   renderAuthCheckWorkbench(itemId);
+}
+
+// ── Inventory → Research fast path ───────────────────────────────────────
+// Tap any inventory item to open it in the Research tab with full price lookup.
+// Preserves all cached PPT data so prices show immediately. If not hydrated,
+// selectQuickLookupResult will auto-fetch live PPT data via tcgPlayerId.
+async function openInventoryItemInResearch(itemId){
+  const inv = all.find(i => String(i.id) === String(itemId));
+  if(!inv) return toast_dash('Item not found');
+
+  // Build a QPL-compatible row from the inventory item
+  const row = {
+    source: 'inventory',
+    name:  inv.name || 'Inventory item',
+    category: inv.category || 'TCG',
+    set:  inv.set || inv.setName || '',
+    year: inv.year || '',
+    card_number: inv.card_number || inv.cardNumber || '',
+    variant: inv.variant || inv.printing || '',
+    condition: inv.condition || 'NM',
+    selectedCondition: inv.condition || 'NM',
+    finish: inv.variant || inv.printing || '',
+    selectedFinish: inv.variant || inv.printing || '',
+    market: Number(inv.market || 0),
+    cost: Number(inv.cost || 0),
+    imageUrl: inv.thumbnail || inv.imageUrl || '',
+    priceSource: inv.priceSource || 'Inventory',
+    note: 'From your inventory — market price from original lookup.',
+    confidence: 90,
+    matchWhy: ['Inventory item'],
+    tcgPlayerId: inv.tcgPlayerId || inv.tcgplayerId || inv.raw?.tcgPlayerId || '',
+    tcgplayerId: inv.tcgPlayerId || inv.tcgplayerId || inv.raw?.tcgPlayerId || '',
+    tcgPlayerUrl: inv.tcgPlayerUrl || inv.tcgUrl || '',
+    // Preserve any cached PPT data for instant price matrix display
+    pokemonPriceTracker: inv.pokemonPriceTracker || inv.raw?.pokemonPriceTracker || null,
+    pokemonPriceTrackerLastUpdated: inv.pokemonPriceTrackerLastUpdated || '',
+    availableVariants: inv.availableVariants || [],
+    cache: (inv.pokemonPriceTrackerLastUpdated || inv.priceSource)
+      ? { state:'cached', updatedAt:inv.pokemonPriceTrackerLastUpdated || '', source:inv.priceSource || 'inventory' }
+      : null,
+    lookupDebug: inv.pokemonPriceTracker ? { exactHydrated:true, hydratedFromCache:true } : {},
+    inventoryId: inv.id,   // so Research shows "IN INVENTORY" badge
+    raw: inv.raw || inv,
+  };
+
+  // Switch to Research and load the result
+  switchTab('research');
+  const input = document.getElementById('qpl-input');
+  if(input) input.value = inv.name || '';
+  const el = document.getElementById('qpl-result');
+  if(el) el.innerHTML = '<div style="color:var(--gold);font-family:monospace;font-size:11px;padding:10px">Loading prices for ' + escHtml(inv.name || 'item') + '…</div>';
+
+  qplMasterResults = [row];
+  qplLastSearch = inv.name || '';
+  qplResults = [row];
+
+  // selectQuickLookupResult shows the full panel. If tcgPlayerId exists it will
+  // attempt to use cached PPT data or fetch fresh — no extra search cost.
+  await selectQuickLookupResult(0);
 }
 
 function openItemInResearchFromAuth(itemId){
