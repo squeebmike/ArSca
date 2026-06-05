@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.06.05.03-live-price-refresh">
+<meta name="version" content="2026.06.05.04-fix-settings-blank">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -789,7 +789,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.05.03-live-price-refresh</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.05.04-fix-settings-blank</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
@@ -811,7 +811,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-    <div class="dsb-chip dev-only" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.05.03-live-price-refresh</div>
+    <div class="dsb-chip dev-only" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.05.04-fix-settings-blank</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -1849,7 +1849,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.06.05.03-live-price-refresh';
+const APP_VERSION = '2026.06.05.04-fix-settings-blank';
 const branchName = 'pokemon-v2-core';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
 const POKEMON_EXACT_CACHE_VERSION = 'pokemon-exact-v3-price-matrix';
@@ -4936,7 +4936,9 @@ function ensureBuyResearchBridge(intake){
     <button class="hbtn" onclick="switchTab('research');importScannerQueueToResearch()">OPEN SCANNER QUEUE</button>
   `;
   const sessionPanel = document.getElementById('buy-session-panel');
-  buyPanel.insertBefore(bridge, sessionPanel || buyPanel.firstChild);
+  // buy-session-panel may now be inside Advanced Options (not a direct child of buyPanel)
+  const insertRef = (sessionPanel?.parentElement === buyPanel) ? sessionPanel : buyPanel.firstChild;
+  buyPanel.insertBefore(bridge, insertRef);
 }
 
 function toggleVendorModule(key, enabled){
