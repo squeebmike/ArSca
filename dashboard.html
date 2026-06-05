@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.06.05.05-inv-research-img-fix">
+<meta name="version" content="2026.06.05.06-pop-count-img-align">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -608,8 +608,22 @@ body.show-mode .show-mode-toggle { border-color:rgba(0,255,179,.4); color:var(--
 .qpl-lightbox-prev{left:18px;top:50%;}
 .qpl-lightbox-next{right:18px;top:50%;}
 .qpl-selected-card{background:linear-gradient(135deg,rgba(0,255,179,.06),rgba(255,209,102,.04));border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:16px;}
-.qpl-selected-top{display:grid;grid-template-columns:minmax(180px,240px) 1fr;gap:16px;align-items:start;margin-bottom:14px;}
-.qpl-selected-top img{width:100%;max-height:300px;object-fit:contain;background:#050507;border:1px solid var(--border);border-radius:12px;cursor:zoom-in;}
+.qpl-selected-top{display:grid;grid-template-columns:minmax(180px,240px) 1fr;gap:16px;align-items:stretch;margin-bottom:14px;}
+/* Image fills exact height of info column — no overflow above or below */
+.qpl-selected-top img{width:100%;height:100%;max-height:420px;object-fit:contain;background:#050507;border:1px solid var(--border);border-radius:12px;cursor:zoom-in;display:block;}
+/* Quick-stats bar on selected card */
+.qpl-card-stats{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 10px;}
+.qpl-stat-pill{font-family:monospace,monospace;font-size:10px;padding:4px 10px;border-radius:999px;border:1px solid var(--border);background:var(--surf2);color:var(--dim);white-space:nowrap;}
+.qpl-stat-pill b{color:var(--text);}
+/* Pop count panel */
+.pop-panel{background:var(--surf2);border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin:8px 0;font-family:monospace,monospace;font-size:11px;}
+.pop-panel-title{color:var(--blue);font-size:9px;letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px;}
+.pop-row{display:flex;gap:8px;flex-wrap:wrap;}
+.pop-chip{text-align:center;background:var(--surf);border:1px solid var(--border);border-radius:8px;padding:6px 10px;min-width:52px;}
+.pop-chip-grade{font-size:9px;color:var(--dim);}
+.pop-chip-count{font-size:14px;font-weight:700;color:var(--text);}
+.pop-chip.psa10 .pop-chip-count{color:var(--gold);}
+.pop-chip.total .pop-chip-count{color:var(--g);}
 .qpl-chart-modal{position:fixed;inset:0;z-index:99998;background:rgba(0,0,0,.82);display:none;align-items:center;justify-content:center;padding:18px;}
 .qpl-chart-modal.on{display:flex;}
 .qpl-chart-card{width:min(980px,96vw);max-height:92vh;overflow:auto;background:var(--surf);border:1px solid var(--border);border-radius:14px;padding:18px;box-shadow:0 24px 80px rgba(0,0,0,.58);}
@@ -789,7 +803,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.05.05-inv-research-img-fix</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.05.06-pop-count-img-align</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
@@ -811,7 +825,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip dev-only" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.05.05-inv-research-img-fix</div>
+<div class="dsb-chip dev-only" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.05.06-pop-count-img-align</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -1849,7 +1863,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.06.05.05-inv-research-img-fix';
+const APP_VERSION = '2026.06.05.06-pop-count-img-align';
 const branchName = 'pokemon-v2-core';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
 const POKEMON_EXACT_CACHE_VERSION = 'pokemon-exact-v3-price-matrix';
@@ -15038,7 +15052,63 @@ async function loadPricesForResultCard(idx){
   }
 }
 
-// ── Live Price Refresh ────────────────────────────────────────────────────
+// ── PSA Pop Count ─────────────────────────────────────────────────────────
+// Fetches PPT population data (includePopulation=true) for a specific card.
+// Falls back to a direct PSA population report link if PPT has no data.
+async function fetchPopCountForCard(idx){
+  const r = qplResults[idx];
+  if(!r) return;
+  const panelId = `pop-panel-${idx}`;
+  const el = document.getElementById(panelId);
+  if(!el) return;
+  el.style.display = '';  // make visible
+  el.innerHTML = `<div class="pop-panel pop-panel-loading"><div class="pop-panel-title">PSA / BGS POP COUNT</div><div style="color:var(--dim);font-size:10px">Loading…</div></div>`;
+  const tcgPlayerId = r.tcgPlayerId || r.tcgplayerId || '';
+  if(!tcgPlayerId || !navigator.onLine || pokemonPriceTrackerQuotaBlocked()){
+    el.innerHTML = _popCountFallbackHtml(r);
+    return;
+  }
+  try {
+    const params = new URLSearchParams({ tcgPlayerId:String(tcgPlayerId), language:r.language || 'english', limit:'1', includePopulation:'true', includeHistory:'false', includeEbay:'false', days:'1', maxDataPoints:'1' });
+    const result = await pokemonPriceTrackerCardsRequest(params, 'cards.pop.limit1');
+    const card = result.cards[0] || null;
+    const pop = card?.population || card?.prices?.population || card?.gradedPopulation || null;
+    if(pop && typeof pop === 'object' && Object.keys(pop).length){
+      el.innerHTML = _popCountHtml(pop, r);
+    } else {
+      el.innerHTML = _popCountFallbackHtml(r);
+    }
+  } catch(e){
+    el.innerHTML = _popCountFallbackHtml(r);
+  }
+}
+
+function _popCountHtml(pop, r){
+  const grades = [
+    { key:'psa10', label:'PSA 10', cls:'psa10' },
+    { key:'psa9',  label:'PSA 9',  cls:'' },
+    { key:'psa8',  label:'PSA 8',  cls:'' },
+    { key:'bgs10', label:'BGS 10', cls:'psa10' },
+    { key:'bgs9_5',label:'BGS 9.5',cls:'' },
+    { key:'cgc10', label:'CGC 10', cls:'psa10' },
+    { key:'total', label:'TOTAL',  cls:'total' },
+  ].filter(g => pop[g.key] != null);
+  const chips = grades.map(g => `<div class="pop-chip ${g.cls}">
+    <div class="pop-chip-grade">${escHtml(g.label)}</div>
+    <div class="pop-chip-count">${Number(pop[g.key]).toLocaleString()}</div>
+  </div>`).join('');
+  const psaLink = `https://www.psacard.com/search#q=${encodeURIComponent((r.name||'')+' '+(r.set||''))}`;
+  return `<div class="pop-panel"><div class="pop-panel-title">PSA / BGS POP COUNT</div><div class="pop-row">${chips}</div><a href="${escHtml(psaLink)}" target="_blank" rel="noopener" style="font-size:10px;color:var(--blue);text-decoration:none;display:block;margin-top:8px">Full PSA Pop Report ↗</a></div>`;
+}
+
+function _popCountFallbackHtml(r){
+  const query = encodeURIComponent([(r.name||''),(r.set||''),(r.card_number?'#'+r.card_number:'')].filter(Boolean).join(' '));
+  const psaLink = `https://www.psacard.com/search#q=${query}`;
+  const ptwLink = `https://www.ptcgocode.com/population/?q=${query}`;
+  return `<div class="pop-panel"><div class="pop-panel-title">PSA POP COUNT</div><div style="font-size:10px;color:var(--dim);margin-bottom:8px">No inline data — view directly:</div><div style="display:flex;gap:8px;flex-wrap:wrap"><a href="${escHtml(psaLink)}" target="_blank" rel="noopener" class="hbtn" style="font-size:10px;min-height:34px;color:var(--blue);text-decoration:none">PSA Pop Search ↗</a><a href="${escHtml(ptwLink)}" target="_blank" rel="noopener" class="hbtn" style="font-size:10px;min-height:34px;text-decoration:none">PTCGO Pop ↗</a></div></div>`;
+}
+
+// ── Live Price Refresh ─────────────────────────────────────────────────────
 // Tracks in-flight refreshes per result index to prevent spam
 const _refreshLiveInFlight = new Set();
 const _refreshLiveCooldown = new Map(); // idx → last-triggered ms
@@ -15203,7 +15273,17 @@ async function selectQuickLookupResult(idx){
       <div>
         <div style="color:var(--gold);font-weight:800;font-size:13px;margin-bottom:8px">SELECTED PRINTING</div>
         <div class="qpl-title">${escHtml(r.name)}</div>
-        <div class="qpl-meta">${escHtml([r.year,r.set,r.card_number?'#'+r.card_number:'',r.variant,r.priceSource].filter(Boolean).join(' / '))}</div>
+        <div class="qpl-meta">${escHtml([r.set, r.year].filter(Boolean).join(' · '))}</div>
+        <!-- Quick stats pills -->
+        <div class="qpl-card-stats">
+          ${r.card_number ? `<span class="qpl-stat-pill">#<b>${escHtml(r.card_number)}</b></span>` : ''}
+          ${r.variant ? `<span class="qpl-stat-pill"><b>${escHtml(r.variant)}</b></span>` : ''}
+          ${r.condition ? `<span class="qpl-stat-pill">Cond <b>${escHtml(r.condition)}</b></span>` : ''}
+          ${r.year ? `<span class="qpl-stat-pill"><b>${escHtml(r.year)}</b></span>` : ''}
+          ${r.pokemonPriceTracker?.rarity ? `<span class="qpl-stat-pill">✦ <b>${escHtml(r.pokemonPriceTracker.rarity)}</b></span>` : ''}
+          ${r.pokemonPriceTracker?.setName ? `<span class="qpl-stat-pill">${escHtml(r.pokemonPriceTracker.setName)}</span>` : ''}
+          ${r.pokemonPriceTracker?.cardNumber ? `<span class="qpl-stat-pill">#<b>${escHtml(r.pokemonPriceTracker.cardNumber)}</b></span>` : ''}
+        </div>
         ${(() => {
           if(!r.cache) return '';
           const stamp = r.pokemonPriceTrackerLastUpdated || r.cache.updatedAt || '';
@@ -15269,9 +15349,11 @@ async function selectQuickLookupResult(idx){
         <button class="hbtn" style="color:var(--gold)" onclick="markQplNeedsReview(${idx})">NEEDS REVIEW</button>
         <button class="hbtn" onclick="openQplChartModal(${idx})">CHART</button>
         <button class="hbtn" onclick="openQuickExternal(${idx},'sold')">COMPS</button>
+        ${qplResultCategoryKey(r) === 'pokemon' ? `<button class="hbtn" style="color:var(--blue)" onclick="fetchPopCountForCard(${idx});this.closest('details').open=true;document.getElementById('pop-panel-${idx}')?.scrollIntoView({block:'nearest'})">PSA POP COUNT</button>` : ''}
         ${['pokemon','mtg','tcg'].includes(qplResultCategoryKey(r)) || r.tcgUrl ? `<button class="hbtn" onclick="openQuickExternal(${idx},'tcg')">OPEN TCG</button>` : ''}
         <button class="hbtn" onclick="openQuickExternal(${idx},'pricecharting')">PRICECHARTING</button>
       </div>
+      ${qplResultCategoryKey(r) === 'pokemon' ? `<div id="pop-panel-${idx}" style="padding:0 10px 10px;display:none"></div>` : ''}
     </details>
     <div id="qpl-add-status" style="margin-top:8px;color:var(--dim);font-size:8px"></div>
   </div>`;
