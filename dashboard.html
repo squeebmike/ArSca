@@ -871,6 +871,17 @@ body.wt-show-help.show-mode .help-q-btn{display:inline-flex;}
   outline-offset:3px;border-radius:4px;
   box-shadow:0 0 0 4px rgba(0,255,179,.12) !important;
 }
+/* ── INVENTORY SYNC BADGES ── */
+.inv-sync-badge{
+  display:inline-flex;align-items:center;
+  font-family:monospace;font-size:8px;padding:2px 5px;
+  border-radius:3px;margin-left:4px;vertical-align:middle;line-height:1;
+}
+.inv-sync-badge.pending{background:rgba(255,200,0,.12);color:var(--gold,#ffd700);border:1px solid rgba(255,200,0,.25);}
+.inv-sync-badge.failed{background:rgba(255,77,109,.1);color:var(--red,#ff4d6d);border:1px solid rgba(255,77,109,.2);}
+.inv-sync-badge.conflict{background:rgba(255,77,109,.15);color:var(--red,#ff4d6d);border:1px solid rgba(255,77,109,.3);}
+.inv-sync-badge.synced{}
+body.show-mode .inv-sync-badge{display:none;}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -2019,7 +2030,7 @@ body.wt-show-help.show-mode .help-q-btn{display:inline-flex;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.06.08.07-walkthrough-setup-wizard-v1';
+const APP_VERSION = '2026.06.08.08-offline-inv-sync-v1';
 const branchName = 'pokemon-v2-core';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
 const POKEMON_EXACT_CACHE_VERSION = 'pokemon-exact-v3-price-matrix';
@@ -3760,6 +3771,7 @@ function organizeRegisterLayout(){
   ensureStoreMembersPanel(backoffice);
   ensureVendorConfigPanel(backoffice);
   ensureHelpWalkthroughPanel(backoffice);
+  ensureInventorySyncPanel(backoffice);
   ensureLegacyToolsPanel(backoffice);
   ensureSpreadsheetPanel(backoffice);
   ensureSyncQueuePanel(backoffice);
@@ -6372,6 +6384,334 @@ function enqueueOrReplaceSync(type, syncKey, label, payload, error){
   saveSyncQueue(q);
 }
 
+// ═══════════════════════════════════════════════════════════════════
+// OFFLINE LOCAL-FIRST INVENTORY SYNC — v1
+// ═══════════════════════════════════════════════════════════════════
+
+// ── Stable device ID ─────────────────────────────────────────────
+function getDealerDeviceId(){
+  let id = localStorage.getItem('dealer_device_id_v1');
+  if(!id){
+    id = 'dev_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,8);
+    localStorage.setItem('dealer_device_id_v1', id);
+  }
+  return id;
+}
+
+// ── Per-item sync metadata ────────────────────────────────────────
+// Stored separately from inventory data — does not touch Supabase schema.
+// Keys: localId → { supabaseRowId, syncStatus, dirty, lastSyncAt, lastLocalChangeAt, lastSyncError }
+function getInventorySyncMeta(){
+  try{ return JSON.parse(localStorage.getItem('walkoff_inv_sync_meta_v1')||'{}'); }
+  catch(e){ return {}; }
+}
+function _saveInvSyncMeta(m){ localStorage.setItem('walkoff_inv_sync_meta_v1', JSON.stringify(m)); }
+function markItemSynced(localId, supabaseRowId){
+  const m = getInventorySyncMeta();
+  m[localId] = {...(m[localId]||{}), supabaseRowId, syncStatus:'synced', dirty:false, lastSyncAt:new Date().toISOString()};
+  _saveInvSyncMeta(m);
+}
+function markItemPending(localId){
+  const m = getInventorySyncMeta();
+  m[localId] = {...(m[localId]||{}), syncStatus:'pending', dirty:true, lastLocalChangeAt:new Date().toISOString()};
+  _saveInvSyncMeta(m);
+}
+function markItemFailed(localId, errMsg){
+  const m = getInventorySyncMeta();
+  m[localId] = {...(m[localId]||{}), syncStatus:'failed', lastSyncError:errMsg||'Unknown error'};
+  _saveInvSyncMeta(m);
+}
+function markItemConflict(localId){
+  const m = getInventorySyncMeta();
+  m[localId] = {...(m[localId]||{}), syncStatus:'conflict'};
+  _saveInvSyncMeta(m);
+}
+function getItemSyncStatus(localId){
+  return getInventorySyncMeta()[localId]?.syncStatus || null;
+}
+function getConflictItemIds(){
+  return Object.entries(getInventorySyncMeta()).filter(([,v])=>v.syncStatus==='conflict').map(([id])=>id);
+}
+function getPendingInventoryQueueItems(){
+  return getSyncQueue().filter(x => x.status!=='done' && ['supabase-inventory-update','inventory-create'].includes(x.type));
+}
+function getFailedInventoryQueueItems(){
+  return getSyncQueue().filter(x => x.status==='failed' && ['supabase-inventory-update','inventory-create'].includes(x.type));
+}
+
+// ── Small sync badge HTML helper ──────────────────────────────────
+function invSyncBadgeHtml(localId){
+  const status = getItemSyncStatus(localId);
+  if(!status || status === 'synced') return '';
+  const label = status === 'pending' ? '↑ pending' : status === 'failed' ? '⚠ failed' : status === 'conflict' ? '⚡ conflict' : '';
+  return `<span class="inv-sync-badge ${status}" title="Sync status: ${status}">${label}</span>`;
+}
+
+// ── Local-first save wrapper ──────────────────────────────────────
+// Applies change to in-memory all[] FIRST, then attempts Supabase write.
+// If offline, write lands in walkoff_universal_inventory and a queue entry is created.
+// Callers don't need to wait for network — returns after local apply.
+async function saveInventoryLocalFirst(item, updates, options={}){
+  // 1. Apply to in-memory array immediately (instant UI feedback)
+  const idx = all.findIndex(i => i.id === item.id);
+  if(idx >= 0) Object.assign(all[idx], updates);
+  // 2. Stamp device + time
+  const stamped = {...updates, lastLocalChangeAt:new Date().toISOString(), deviceId:getDealerDeviceId()};
+  // 3. Mark pending sync
+  markItemPending(item.id);
+  // 4. Attempt Supabase write (updateBuiltInInventoryItem now enqueues on offline)
+  try{
+    if(item.source === 'built_in'){
+      const ok = await updateBuiltInInventoryItem({...item}, stamped);
+      if(ok !== false) markItemSynced(item.id, item.supabaseRowId || item.id);
+    } else {
+      updateUniversalInventoryItem(item.id, stamped);
+      markItemSynced(item.id, null);
+    }
+  }catch(e){
+    console.warn('[INV LOCAL-FIRST] queued for retry:', item.id, e.message);
+    markItemFailed(item.id, e.message);
+  }
+  // 5. Re-render
+  if(!options.skipRender) renderAll();
+}
+
+// ── Pull from Supabase ────────────────────────────────────────────
+// Fetches inventory_items, merges into in-memory all[] without overwriting pending local changes.
+async function pullInventoryFromSupabase(){
+  const sb = getSupabaseClient();
+  const session = getAuthSession();
+  const storeId = getActiveStoreId();
+  if(!sb || !session?.supabase || !storeId){
+    toast_dash('Supabase not reachable — pull skipped');
+    return {pulled:0, conflicts:0};
+  }
+  const {data, error} = await sb
+    .from('inventory_items')
+    .select('id,data,status,updated_at')
+    .eq('store_id', storeId)
+    .order('updated_at', {ascending:false})
+    .limit(1000);
+  if(error){ toast_dash('Pull failed: '+error.message); return {pulled:0, conflicts:0}; }
+  const rows = data || [];
+  const meta = getInventorySyncMeta();
+  let pulled = 0, conflicts = 0;
+  for(const row of rows){
+    const localId = row.data?.id || row.id;
+    const m = meta[localId] || {};
+    const localPending = m.dirty === true || m.syncStatus === 'pending';
+    const remoteTs = row.updated_at ? new Date(row.updated_at).getTime() : 0;
+    const lastSyncTs = m.lastSyncAt ? new Date(m.lastSyncAt).getTime() : 0;
+    // Conflict: local has unsaved changes AND remote changed after last sync
+    if(localPending && remoteTs > lastSyncTs && lastSyncTs > 0){
+      markItemConflict(localId);
+      conflicts++;
+      continue;
+    }
+    if(!localPending){
+      // Safe to update local with remote version
+      const mapped = mapBuiltInItem(row);
+      const idx = all.findIndex(i => i.id === localId || i.supabaseRowId === row.id);
+      if(idx >= 0){
+        Object.assign(all[idx], mapped);
+        pulled++;
+      }
+      markItemSynced(localId, row.id);
+    }
+  }
+  if(pulled > 0){ filtered = [...all]; }
+  return {pulled, conflicts};
+}
+
+// ── Push pending inventory jobs to Supabase ───────────────────────
+async function pushPendingInventoryToSupabase(){
+  const pending = getPendingInventoryQueueItems();
+  let pushed = 0, failed = 0;
+  for(const job of pending.slice(0,30)){
+    try{
+      await retrySyncItem(job.id);
+      const itemId = job.payload?.item?.id;
+      if(itemId) markItemSynced(itemId, job.payload?.item?.supabaseRowId || job.payload?.item?.id);
+      pushed++;
+    }catch(e){
+      const itemId = job.payload?.item?.id;
+      if(itemId) markItemFailed(itemId, e.message);
+      failed++;
+    }
+  }
+  return {pushed, failed};
+}
+
+// ── Manual sync actions ───────────────────────────────────────────
+let _isSyncing = false;
+
+async function manualSyncInventoryNow(){
+  if(_isSyncing){ toast_dash('Sync already running'); return; }
+  if(!navigator.onLine){ toast_dash('Offline — changes are queued and will sync when you reconnect'); return; }
+  _isSyncing = true;
+  const label = document.getElementById('inv-sync-status-label');
+  if(label) label.textContent = 'Syncing...';
+  try{
+    const {pushed, failed} = await pushPendingInventoryToSupabase();
+    const {pulled, conflicts} = await pullInventoryFromSupabase();
+    if(pulled > 0) renderAll();
+    const parts = [];
+    if(pushed) parts.push(pushed+' pushed');
+    if(pulled) parts.push(pulled+' pulled');
+    if(failed) parts.push(failed+' failed');
+    if(conflicts) parts.push(conflicts+' conflicts');
+    toast_dash('Sync complete'+(parts.length?' — '+parts.join(', '):''));
+  }catch(e){
+    toast_dash('Sync error: '+e.message);
+  }finally{
+    _isSyncing = false;
+    renderSyncQueue();
+    renderInventorySyncPanel();
+  }
+}
+
+async function manualPullInventory(){
+  if(!navigator.onLine){ toast_dash('Offline — cannot pull'); return; }
+  const {pulled, conflicts} = await pullInventoryFromSupabase();
+  if(pulled > 0) renderAll();
+  toast_dash('Pulled '+pulled+' item'+(pulled!==1?'s':'')+(conflicts?' · '+conflicts+' conflict'+(conflicts!==1?'s':''):''));
+  renderInventorySyncPanel();
+}
+
+async function manualPushInventory(){
+  if(!navigator.onLine){ toast_dash('Offline — changes are queued'); return; }
+  const {pushed, failed} = await pushPendingInventoryToSupabase();
+  toast_dash('Pushed '+pushed+' pending change'+(pushed!==1?'s':'')+(failed?' · '+failed+' failed':''));
+  renderSyncQueue();
+  renderInventorySyncPanel();
+}
+
+// ── Auto-sync engine ─────────────────────────────────────────────
+let _invAutoSyncThrottle = 0;
+
+function startInventoryAutoSync(){
+  // Reconnect event
+  window.addEventListener('online', () => {
+    toast_dash('Back online — syncing inventory...');
+    setTimeout(_autoSyncIfPending, 3500);
+  });
+  // Tab/window focus
+  document.addEventListener('visibilitychange', () => {
+    if(!document.hidden) _autoSyncIfPending();
+  });
+  // Periodic — every 60 seconds while app is open
+  setInterval(_autoSyncIfPending, 60000);
+}
+
+function _autoSyncIfPending(){
+  if(!navigator.onLine) return;
+  const now = Date.now();
+  if(now - _invAutoSyncThrottle < 15000) return; // minimum 15s gap
+  const pending = getPendingInventoryQueueItems();
+  if(!pending.length) return;
+  _invAutoSyncThrottle = now;
+  pushPendingInventoryToSupabase()
+    .then(({pushed}) => {
+      if(pushed > 0){ renderSyncQueue(); renderInventorySyncPanel(); }
+    })
+    .catch(()=>{});
+}
+
+// ── Conflict resolution ───────────────────────────────────────────
+async function resolveInventoryConflict(localId, resolution){
+  const m = getInventorySyncMeta();
+  if(resolution === 'local'){
+    m[localId] = {...(m[localId]||{}), syncStatus:'pending', dirty:true};
+    _saveInvSyncMeta(m);
+    const item = all.find(i => i.id === localId);
+    if(item) enqueueOrReplaceSync('supabase-inventory-update', 'inv-update-'+localId, 'Sync: '+(item.name||localId), {item, updates:item}, 'Conflict resolved — keeping local');
+    toast_dash('Will push local version on next sync');
+  } else {
+    m[localId] = {...(m[localId]||{}), syncStatus:'synced', dirty:false};
+    _saveInvSyncMeta(m);
+    toast_dash('Cloud version will apply on next pull');
+  }
+  renderInventorySyncPanel();
+}
+
+// ── Inventory Sync Panel ─────────────────────────────────────────
+function ensureInventorySyncPanel(backoffice){
+  if(!backoffice || document.getElementById('inventory-sync-panel')) return;
+  const panel = document.createElement('div');
+  panel.className = 'panel';
+  panel.id = 'inventory-sync-panel';
+  panel.style.marginBottom = '14px';
+  panel.innerHTML = '<div class="ph">INVENTORY SYNC <span id="inv-sync-status-label" style="font-size:9px;color:var(--dim)">checking...</span></div><div id="inventory-sync-body"></div>';
+  const hwp = document.getElementById('help-walkthrough-panel');
+  if(hwp) hwp.insertAdjacentElement('afterend', panel);
+  else backoffice.prepend(panel);
+  renderInventorySyncPanel();
+}
+
+function renderInventorySyncPanel(){
+  const body = document.getElementById('inventory-sync-body');
+  if(!body) return;
+  const pending  = getPendingInventoryQueueItems();
+  const failedQ  = getFailedInventoryQueueItems();
+  const conflicts = getConflictItemIds();
+  const online   = navigator.onLine;
+  const meta     = getInventorySyncMeta();
+  const lastSync = Object.values(meta).map(m=>m.lastSyncAt).filter(Boolean).sort().reverse()[0];
+  const deviceId = getDealerDeviceId();
+  const label    = document.getElementById('inv-sync-status-label');
+  if(label) label.textContent = online ? (pending.length ? pending.length+' pending' : 'Synced') : 'Offline';
+
+  let conflictHtml = '';
+  if(conflicts.length){
+    const rows = conflicts.slice(0,3).map(id => {
+      const item = all.find(i => i.id === id);
+      return `<div style="display:flex;align-items:center;gap:8px;padding:4px 0;font-size:10px">
+        <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(item?.name||id)}</span>
+        <button class="hbtn" onclick="resolveInventoryConflict('${id}','local')">KEEP LOCAL</button>
+        <button class="hbtn" onclick="resolveInventoryConflict('${id}','cloud')">USE CLOUD</button>
+      </div>`;
+    }).join('');
+    conflictHtml = `<div style="margin-bottom:10px;padding:8px;background:rgba(255,77,109,.06);border:1px solid rgba(255,77,109,.2);border-radius:6px;font-family:monospace">
+      <div style="font-size:9px;color:var(--red);margin-bottom:4px">⚡ ${conflicts.length} CONFLICT${conflicts.length>1?'S':''}</div>
+      ${rows}
+      ${conflicts.length>3?`<div style="font-size:9px;color:var(--dim);margin-top:4px">+${conflicts.length-3} more</div>`:''}
+    </div>`;
+  }
+
+  body.innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;margin-bottom:12px;font-family:monospace;font-size:10px">
+      <div style="padding:8px;background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:6px">
+        <div style="font-size:9px;color:var(--dim)">STATUS</div>
+        <div style="font-weight:700;color:${online?'var(--g)':'var(--red)'}">${online?'Online':'Offline'}</div>
+      </div>
+      <div style="padding:8px;background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:6px">
+        <div style="font-size:9px;color:var(--dim)">PENDING</div>
+        <div style="font-weight:700;color:${pending.length?'var(--gold)':'var(--dim)'}">${pending.length}</div>
+      </div>
+      <div style="padding:8px;background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:6px">
+        <div style="font-size:9px;color:var(--dim)">FAILED</div>
+        <div style="font-weight:700;color:${failedQ.length?'var(--red)':'var(--dim)'}">${failedQ.length}</div>
+      </div>
+      <div style="padding:8px;background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:6px">
+        <div style="font-size:9px;color:var(--dim)">CONFLICTS</div>
+        <div style="font-weight:700;color:${conflicts.length?'var(--red)':'var(--dim)'}">${conflicts.length}</div>
+      </div>
+    </div>
+    <div style="font-family:monospace;font-size:9px;color:var(--dim);margin-bottom:10px;line-height:1.55">
+      Last sync: ${lastSync ? new Date(lastSync).toLocaleString() : 'Never'}<br>
+      Device: ${escHtml(deviceId.slice(0,24))}
+    </div>
+    ${conflictHtml}
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+      <button class="hbtn" onclick="manualSyncInventoryNow()" style="font-weight:700">SYNC INVENTORY NOW</button>
+      <button class="hbtn" onclick="manualPullInventory()">PULL LATEST FROM CLOUD</button>
+      <button class="hbtn" onclick="manualPushInventory()">PUSH PENDING CHANGES</button>
+      <button class="hbtn" onclick="retryAllSyncQueue()">RETRY FAILED</button>
+      <button class="hbtn" onclick="switchTab('backoffice');setTimeout(()=>document.getElementById('sync-queue-panel')?.scrollIntoView({behavior:'smooth'}),200)">VIEW SYNC QUEUE</button>
+    </div>
+    <div style="font-family:monospace;font-size:9px;color:var(--dim)">Auto-syncs when online. Minimum 15s between auto-sync attempts.</div>`;
+}
+
 function renderSyncQueue(){
   const list = document.getElementById('sync-queue-list');
   const count = document.getElementById('sync-queue-count');
@@ -8234,6 +8574,7 @@ window.addEventListener('load', async function(){
   applyResearchDefaultCategory();
   maybeShowSetupPrompt();
   initHelpButtons();
+  startInventoryAutoSync();
   refreshEbayStatus();
   syncLifecycleFromWorker().finally(loadInventory);
 });
@@ -11017,9 +11358,17 @@ async function createBuiltInInventoryItem(item, updates, sourceLabel='built_in')
     if(error) throw new Error('Built-in inventory save ' + error.message);
     return row?.id || id;
   }
+  // LOCAL-FIRST OFFLINE FALLBACK: save locally + queue Supabase create for retry
   const inv = safeLocalJson('walkoff_universal_inventory', []);
   inv.unshift(mapBuiltInItem({ id, data, status:'in_stock', created_at:data.addedAt }));
   localStorage.setItem('walkoff_universal_inventory', JSON.stringify(inv.slice(0,5000)));
+  enqueueSync(
+    'inventory-create',
+    'Create inventory item: ' + (data.name || 'Item'),
+    { item:data, updates:data, inventorySource:getInventorySource() },
+    'Offline — will create in Supabase when connected'
+  );
+  if(typeof markItemPending === 'function') markItemPending(id);
   return id;
 }
 
@@ -11036,7 +11385,19 @@ async function updateBuiltInInventoryItem(item, updates){
     applyDashboardItemUpdate(item.id, updates);
     return true;
   }
-  return updateUniversalInventoryItem(item.id, { ...updates, source:'built_in' });
+  // LOCAL-FIRST OFFLINE FALLBACK: save locally + queue Supabase sync for retry
+  updateUniversalInventoryItem(item.id, { ...updates, source:'built_in' });
+  if(item.supabaseRowId || item.id){
+    enqueueOrReplaceSync(
+      'supabase-inventory-update',
+      'inv-update-' + (item.supabaseRowId || item.id),
+      'Sync inventory update: ' + (item.name || item.id),
+      { item, updates },
+      'Offline — will sync to Supabase when connected'
+    );
+    if(typeof markItemPending === 'function') markItemPending(item.id);
+  }
+  return false; // false = local-only, pending remote sync
 }
 
 async function deleteInventoryRecord(id){
