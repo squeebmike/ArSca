@@ -169,6 +169,11 @@ header{position:sticky;top:0;z-index:100;background:rgba(7,8,10,.96);backdrop-fi
 .drawer-ledger-metric span{display:block;font-family:monospace,monospace;font-size:8px;letter-spacing:1px;color:var(--dim);text-transform:uppercase;}
 .drawer-ledger-metric b{display:block;font-family:'Orbitron',monospace;font-size:16px;color:var(--text);margin-top:4px;}
 .drawer-money-hidden{filter:blur(7px);user-select:none;}
+/* ── Demo mode banner ── */
+.demo-mode-banner{display:none;position:sticky;top:0;z-index:4800;background:linear-gradient(90deg,#ff6b00 0%,#ffd600 100%);color:#000;font-family:'Orbitron',monospace;font-size:10px;font-weight:900;letter-spacing:.12em;text-align:center;padding:5px 12px;cursor:default;}
+.demo-mode-banner.on{display:block;}
+.demo-data-badge{display:inline-block;background:#ff6b00;color:#fff;font-family:monospace;font-size:9px;font-weight:800;border-radius:4px;padding:1px 5px;letter-spacing:.05em;margin-left:4px;vertical-align:middle;}
+/* ── Auth screen ── */
 .auth-screen{position:fixed;inset:0;z-index:5000;background:radial-gradient(circle at top,rgba(0,255,179,.08),transparent 38%),#07080a;display:none;align-items:center;justify-content:center;padding:24px;}
 .auth-screen.on{display:flex;}
 .auth-card{width:min(460px,100%);background:var(--surf);border:1px solid var(--border);border-radius:14px;padding:22px;box-shadow:0 24px 80px rgba(0,0,0,.5);}
@@ -947,6 +952,10 @@ body.show-mode .inv-sync-badge{display:none;}
       <button class="hbtn" id="logout-btn" style="display:none" onclick="logoutAccount()">LOGOUT</button>
       <button class="hbtn" id="refresh-btn" onclick="loadInventory()">REFRESH</button>
     </div>
+  </div>
+  <!-- Demo mode banner — shown when isDemo is true -->
+  <div id="demo-mode-banner" class="demo-mode-banner">
+    ⚠ DEMO MODE — Fake data only &nbsp;·&nbsp; No Walk-Off data &nbsp;·&nbsp; No cloud sync &nbsp;·&nbsp; Nothing you do here affects real records
   </div>
   <!-- Dealer status bar — always visible, shows key info at a glance -->
   <div class="dealer-status-bar" id="dealer-status-bar">
@@ -2070,12 +2079,39 @@ const CAT_MAP = {
   '2c3076cc33bf2f312265bfdc894db265':'Supplies',
 };
 
+// ── Demo store uses id:'demo' — NEVER 'walkoff-main' — so scoped keys
+// (walkoff:demo:*) are physically separate from real Walk-Off keys (walkoff:walkoff-main:*).
 const WALKOFF_DEMO_STORES = [
-  { id:'walkoff-main', ownerUserId:'demo-owner', name:'walkoff-main', displayName:'Walk-Off Sports Cards', logoUrl:'', location:'Kingston, WA', timezone:'America/Los_Angeles', currency:'USD', status:'active', createdAt:'2026-05-06T00:00:00.000Z' },
-  { id:'demo-show-store', ownerUserId:'demo-owner', name:'demo-show-store', displayName:'Demo Show Store', logoUrl:'', location:'Card Show', timezone:'America/Los_Angeles', currency:'USD', status:'active', createdAt:'2026-05-06T00:00:00.000Z' },
+  { id:'demo', ownerUserId:'demo-owner', name:'demo', displayName:'Demo Store', logoUrl:'', location:'Demo Location', timezone:'America/Los_Angeles', currency:'USD', status:'active', createdAt:'2026-05-06T00:00:00.000Z' },
+  { id:'demo-show-store', ownerUserId:'demo-owner', name:'demo-show-store', displayName:'Demo Show Store', logoUrl:'', location:'Card Show Demo', timezone:'America/Los_Angeles', currency:'USD', status:'active', createdAt:'2026-05-06T00:00:00.000Z' },
 ];
-const WALKOFF_DEMO_USER = { id:'demo-owner', email:'owner@walkoff.local', displayName:'Store Owner', role:'owner', defaultStoreId:'walkoff-main', createdAt:'2026-05-06T00:00:00.000Z' };
-const WALKOFF_SCOPED_KEYS = new Set(['lba_inventory','walkoff_universal_inventory','pos_cart_v2','pos_buy_list','pos_buy_offers','pos_active_buy_session','pos_buy_sessions','pos_transactions','pos_drawer','pos_drawer_closeouts','pos_wantlist','set_needs_v1','pos_consign','pos_locations','vendor_profile_v1','vendor_config_v1','store_payment_settings_v1','store_theme_v1','store_onboarding_v1','pos_ops_log','inventory_lifecycle','pos_show_mode','sync_queue_v1','pos_customers','pos_undo_stack','sheet_mapping_v1','grade_submissions','research_needs_review_v1','dealer_items_v1','dealer_photos_v1','dealer_auth_checks_v1','dealer_queues_v1','lba_sales']);
+const WALKOFF_DEMO_USER = { id:'demo-owner', email:'demo@walkoff.local', displayName:'Demo Owner', role:'owner', defaultStoreId:'demo', createdAt:'2026-05-06T00:00:00.000Z' };
+// Keys in this set are transparently scoped to the active store by the storage shim below.
+// Rule: any key that contains per-store business data belongs here.
+const WALKOFF_SCOPED_KEYS = new Set([
+  // Core inventory / transactions
+  'lba_inventory','walkoff_universal_inventory','pos_cart_v2',
+  'pos_buy_list','pos_buy_offers','pos_active_buy_session','pos_buy_sessions',
+  'pos_transactions','pos_drawer','pos_drawer_closeouts',
+  // POS / operations
+  'pos_wantlist','set_needs_v1','pos_consign','pos_locations',
+  'pos_ops_log','pos_show_mode','pos_customers','pos_undo_stack',
+  // Store settings / profile
+  'vendor_profile_v1','vendor_config_v1','store_payment_settings_v1',
+  'store_theme_v1','store_onboarding_v1',
+  // Research / price sync
+  'research_settings_v1','price_sync_settings_v1','price_sync_meta_v1',
+  'pricecharting_csv_urls_v1',
+  // Walkthrough / setup
+  'walkthrough_progress_v1','walkthrough_settings_v1','walkthrough_seen_v1',
+  'dealer_settings_v1',
+  // Sync & inventory metadata
+  'sync_queue_v1','inventory_lifecycle','walkoff_inv_sync_meta_v1',
+  // Mapping / dealer
+  'sheet_mapping_v1','grade_submissions','research_needs_review_v1',
+  'dealer_items_v1','dealer_photos_v1','dealer_auth_checks_v1',
+  'dealer_queues_v1','lba_sales',
+]);
 const WALKOFF_AUTH_SESSION_KEY = 'walkoff_auth_session_v1';
 const WALKOFF_ACTIVE_STORE_KEY = 'walkoff_active_store_id';
 const WALKOFF_STORAGE_MIGRATION_KEY = 'walkoff_store_migration_v1';
@@ -2099,6 +2135,61 @@ function currentRole(){ return getAuthSession()?.user?.role || 'owner'; }
 function requireOwnerAdmin(){ const role = currentRole(); return role === 'owner' || role === 'admin'; }
 function requireManager(){ return ['owner','admin','manager'].includes(currentRole()); }
 function requireEmployee(){ return ['owner','admin','manager','employee'].includes(currentRole()); }
+
+// ── Phase 2: Account / Store Context ─────────────────────────────────────────
+// Single authoritative source for data-access mode. Call before ANY business-
+// data read or write to decide demo-safe vs real-data path.
+//
+// Return shape:
+//   { mode, accountId, storeId, storeSlug, role,
+//     isDemo, isOwner, canReadRealData, canWriteRealData }
+//
+// Modes:
+//   'demo'       – no real data, no Supabase writes, no worker sync
+//   'owner'      – direct local session (Walk-Off owner, no Supabase auth yet)
+//   'subscriber' – Supabase-authenticated store (future paid user)
+//
+// IMPORTANT: if context is missing/invalid, defaults to demo-safe (no real data).
+function getAccountContext(){
+  const session = getAuthSession();
+  const storeId = session?.activeStoreId || localStorage.getItem('walkoff_active_store_id') || WALKOFF_DEMO_USER.defaultStoreId;
+  if(!session || session.demoMode) {
+    return { mode:'demo', accountId:'demo', storeId:'demo', storeSlug:'demo',
+             role:'demo', isDemo:true, isOwner:false,
+             canReadRealData:false, canWriteRealData:false };
+  }
+  if(session.supabase) {
+    const role = session.user?.role || 'employee';
+    const canWrite = ['owner','admin','manager','employee'].includes(role);
+    return { mode:'subscriber', accountId:storeId, storeId, storeSlug:storeId,
+             role, isDemo:false, isOwner:role==='owner'||role==='admin',
+             canReadRealData:true, canWriteRealData:canWrite };
+  }
+  // Local/owner session — no Supabase auth yet (Walk-Off operator direct mode)
+  return { mode:'owner', accountId:storeId, storeId, storeSlug:storeId,
+           role:session.user?.role||'owner', isDemo:false, isOwner:true,
+           canReadRealData:true, canWriteRealData:true };
+}
+
+// ── Phase 10: Auth / Subscription Roadmap placeholder ────────────────────────
+// When real multi-tenant auth ships, this function will inject an authenticated
+// user + store context from Supabase into AccountContext.  For now it falls back
+// to getAccountContext() so call sites are already wired correctly.
+//
+// Remaining work required for full multi-tenant subscriptions:
+//   1. Supabase Auth (email/password or OAuth) — user identity
+//   2. store_users table: user_id, store_id, role, status
+//   3. Row Level Security policies on ALL business tables (see Phase 8 report)
+//   4. Account + store creation / onboarding flow
+//   5. Subscription billing (Stripe) + paywall enforcement
+//   6. Multi-store switcher for staff with access to multiple stores
+//   7. Staff invitation + role management UI
+//   8. SQL migrations: add store_id to any tables still missing it
+//
+// DO NOT claim client-side filtering is subscription-secure.
+// RLS is required before paid isolation can be guaranteed.
+function resolveAccountContextFromAuth(){ return getAccountContext(); }
+
 function roleCanAccessTab(tab){
   const role = currentRole();
   if(role === 'owner' || role === 'admin') return true;
@@ -2118,7 +2209,10 @@ function roleCanAccessTab(tab){
       const scopedVal = rawGet.call(this, scoped);
       if(scopedVal !== null) return scopedVal;
       const oldVal = rawGet.call(this, key);
-      if(oldVal !== null && getActiveStoreId() === WALKOFF_DEMO_USER.defaultStoreId) { rawSet.call(this, scoped, oldVal); markStoreMigration(key, scoped); return oldVal; }
+      // Migrate old global key into scoped store namespace — but NEVER for demo mode.
+      // This is how Walk-Off owner data transitions from pre-scoping (global keys) to
+      // the new per-store namespace without losing data.
+      if(oldVal !== null && !getAuthSession()?.demoMode) { rawSet.call(this, scoped, oldVal); markStoreMigration(key, scoped); return oldVal; }
       return null;
     }
     return rawGet.call(this, key);
@@ -2518,12 +2612,12 @@ function selectPickedStore(){
 }
 function loginDemoAccount(){
   try {
-    const email = document.getElementById('auth-email')?.value.trim() || WALKOFF_DEMO_USER.email;
-    const storeId = document.getElementById('auth-store')?.value || WALKOFF_DEMO_USER.defaultStoreId;
-    const user = { ...WALKOFF_DEMO_USER, email, lastLoginAt:new Date().toISOString() };
+    // Always use the demo email — never the real Walk-Off email in the input field.
+    const storeId = WALKOFF_DEMO_USER.defaultStoreId; // always 'demo'
+    const user = { ...WALKOFF_DEMO_USER, lastLoginAt:new Date().toISOString() };
     localStorage.setItem(WALKOFF_AUTH_SESSION_KEY, JSON.stringify({ user, stores:WALKOFF_DEMO_STORES, activeStoreId:storeId, demoMode:true, createdAt:new Date().toISOString() }));
     localStorage.setItem(WALKOFF_ACTIVE_STORE_KEY, storeId);
-    try { logOpsEvent('auth_login', 'Demo login started store session', { email, storeId }); } catch(e) {}
+    try { logOpsEvent('auth_login', 'Demo session started', { storeId }); } catch(e) {}
   } catch(e) {
     console.error('[demo] Failed to write demo session:', e);
   }
@@ -2533,6 +2627,8 @@ function loginDemoAccount(){
     try {
       document.getElementById('auth-screen')?.classList.remove('on');
       renderAccountHeader();
+      showDemoModeBanner();
+      seedDemoDataIfNeeded();
       await loadStoreSettingsFromSupabase();
       setupAppShell();
       if(typeof schedulePriceSyncChecks === 'function') schedulePriceSyncChecks();
@@ -2569,6 +2665,18 @@ function switchActiveStore(storeId){
   logOpsEvent('store_switch', 'Switched active store', { storeId });
   location.reload();
 }
+// ── Phase 9: Demo / data-mode UI helpers ─────────────────────────────────────
+function showDemoModeBanner(){
+  document.getElementById('demo-mode-banner')?.classList.add('on');
+}
+function hideDemoModeBanner(){
+  document.getElementById('demo-mode-banner')?.classList.remove('on');
+}
+function updateDataModeBanner(){
+  if(getAccountContext().isDemo) showDemoModeBanner();
+  else hideDemoModeBanner();
+}
+
 function renderAccountHeader(){
   const session = getAuthSession(), store = getActiveStore();
   const chip = document.getElementById('store-user-chip');
@@ -2822,6 +2930,60 @@ function escHtml(v){
   return String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
+// ── Phase 4: Demo-safe vendor profile defaults ───────────────────────────────
+// Used as the base for getVendorProfile() in demo mode so Walk-Off's real store
+// name, location, and payment handles never appear to a demo user.
+const DEMO_VENDOR_PROFILE_DEFAULTS = {
+  storeName:'Demo Store',
+  shortName:'Demo',
+  location:'Demo Location',
+  website:'',
+  phone:'',
+  email:'demo@walkoff.local',
+  logo:'',
+  taxRate:0,
+  defaultBuyPct:70,
+  defaultShowMarkdown:0,
+  receiptFooter:'Thank you for shopping with us!',
+  ebayShippingLine:'',
+  paymentMethods:'Cash accepted',
+  venmo:'', paypal:'', cashapp:'',
+};
+
+// Demo inventory items — fake data only, clearly labelled
+const DEMO_INVENTORY_SEED = [
+  { id:'demo-charizard-ex', name:'Demo Charizard ex', set:'Scarlet & Violet Base', year:'2023', category:'TCG', cost:45, price:120, status:'in_stock', source:'spreadsheet', condition:'Near Mint', _demo:true },
+  { id:'demo-booster-pack', name:'Demo Pokémon Booster Pack', set:'Scarlet & Violet Base', year:'2023', category:'TCG', cost:4, price:6, status:'in_stock', source:'spreadsheet', condition:'Factory Sealed', _demo:true },
+  { id:'demo-comic', name:'Demo Amazing Spider-Man #1 (Reprint)', set:'', year:'1999', category:'Comics', cost:10, price:25, status:'in_stock', source:'spreadsheet', condition:'Very Fine', _demo:true },
+  { id:'demo-sports-card', name:'Demo Mike Trout Rookie Card', set:'2011 Topps Update', year:'2011', category:'Sports Cards', cost:30, price:85, status:'in_stock', source:'spreadsheet', condition:'Excellent', _demo:true },
+  { id:'demo-sealed-box', name:'Demo Sealed Pokémon Box', set:'Paldea Evolved', year:'2023', category:'TCG', cost:90, price:130, status:'in_stock', source:'spreadsheet', condition:'Factory Sealed', _demo:true },
+];
+
+// Seed demo-scoped localStorage with blank settings + fake inventory on first demo run.
+// Only runs when getAccountContext().isDemo is true.  Never touches Walk-Off keys.
+function seedDemoDataIfNeeded(){
+  if(!getAccountContext().isDemo) return;
+  // Vendor profile — demo defaults, no real store name/handles
+  if(!safeLocalJson('vendor_profile_v1', null)){
+    localStorage.setItem('vendor_profile_v1', JSON.stringify(DEMO_VENDOR_PROFILE_DEFAULTS));
+  }
+  // Payment settings — blank handles so no real Venmo/PayPal/CashApp appears
+  if(!safeLocalJson('store_payment_settings_v1', null)){
+    localStorage.setItem('store_payment_settings_v1', JSON.stringify({
+      ...DEFAULT_PAYMENT_SETTINGS,
+      venmo:   { ...DEFAULT_PAYMENT_SETTINGS.venmo,   handle:'',           enabled:true },
+      paypal:  { ...DEFAULT_PAYMENT_SETTINGS.paypal,  emailOrHandle:'',    enabled:true },
+      cashApp: { ...DEFAULT_PAYMENT_SETTINGS.cashApp, cashtag:'',          enabled:true },
+      receipt: { ...DEFAULT_PAYMENT_SETTINGS.receipt, storeName:'Demo Store' },
+    }));
+  }
+  // Inventory — fake items so demo isn't a blank screen
+  const inv = safeLocalJson('walkoff_universal_inventory', null);
+  if(!inv || inv.length === 0){
+    localStorage.setItem('walkoff_universal_inventory', JSON.stringify(DEMO_INVENTORY_SEED));
+  }
+}
+
 const DEFAULT_VENDOR_PROFILE = {
   storeName:'Walk-Off Sports Cards',
   shortName:'Walk-Off',
@@ -3003,8 +3165,10 @@ function normalizePriceChartingCsvRowClient(p = {}, q = ''){
 }
 
 function getVendorProfile(){
-  try { return { ...DEFAULT_VENDOR_PROFILE, ...(JSON.parse(localStorage.getItem('vendor_profile_v1') || '{}')) }; }
-  catch(e) { return {...DEFAULT_VENDOR_PROFILE}; }
+  // Demo mode falls back to blank demo defaults — never Walk-Off's real store info.
+  const base = getAccountContext().isDemo ? DEMO_VENDOR_PROFILE_DEFAULTS : DEFAULT_VENDOR_PROFILE;
+  try { return { ...base, ...(JSON.parse(localStorage.getItem('vendor_profile_v1') || '{}')) }; }
+  catch(e) { return { ...base }; }
 }
 
 function saveVendorProfile(profile){
@@ -3828,6 +3992,7 @@ function organizeRegisterLayout(){
   ensureOfflineCachePanel(backoffice);
   ensurePricingQaPanel(backoffice);
   ensureStoreMembersPanel(backoffice);
+  ensureDataModePanel(backoffice);
   ensureVendorConfigPanel(backoffice);
   ensureHelpWalkthroughPanel(backoffice);
   ensureInventorySyncPanel(backoffice);
@@ -5667,6 +5832,65 @@ async function setStoreMemberActive(memberId, active){
   renderStoreMembersPanel();
 }
 
+// ── Phase 9: Account / Data Mode panel ───────────────────────────────────────
+function ensureDataModePanel(backoffice){
+  if(!backoffice || document.getElementById('data-mode-panel')) return;
+  const panel = document.createElement('div');
+  panel.id = 'data-mode-panel';
+  panel.className = 'panel';
+  panel.innerHTML = `
+    <div class="panel-title">ACCOUNT / DATA MODE</div>
+    <div id="data-mode-content" style="font-family:monospace;font-size:11px;line-height:1.8"></div>
+    <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap" id="data-mode-actions"></div>
+    <div style="margin-top:14px;background:var(--surf2);border:1px solid var(--border);border-radius:8px;padding:10px">
+      <div style="font-family:'Orbitron',monospace;font-size:10px;color:var(--g);margin-bottom:6px">RLS / SUBSCRIPTION READINESS</div>
+      <div style="font-family:monospace;font-size:10px;color:var(--dim);line-height:1.7">
+        ⚠ Client-side store_id filtering is <b>NOT</b> subscription-secure.<br>
+        Supabase Row Level Security (RLS) policies are required before any paid plan can guarantee data isolation.<br>
+        <br>
+        Required SQL (add to Supabase dashboard &gt; Auth &gt; Policies):<br>
+        <code style="background:var(--surf);padding:2px 4px;border-radius:3px;font-size:9px;display:block;margin:4px 0;white-space:pre-wrap">-- inventory_items
+CREATE POLICY "store_members_only" ON inventory_items
+  USING (EXISTS (
+    SELECT 1 FROM store_members sm
+    WHERE sm.store_id = inventory_items.store_id
+      AND sm.user_id  = auth.uid()
+  ));</code>
+        Same pattern for: pos_sales, pos_sale_lines, pos_payments,<br>
+        pos_drawer_sessions, pos_drawer_movements, pos_audit_log,<br>
+        store_settings, scan_queue, customer_receipts, customer_wants.
+      </div>
+    </div>`;
+  backoffice.prepend(panel);
+  renderDataModePanel();
+}
+
+function renderDataModePanel(){
+  const content = document.getElementById('data-mode-content');
+  const actions = document.getElementById('data-mode-actions');
+  if(!content) return;
+  const ctx = getAccountContext();
+  const rows = [
+    ['Mode',              ctx.mode.toUpperCase()],
+    ['Account ID',        ctx.accountId],
+    ['Store ID',          ctx.storeId],
+    ['Role',              ctx.role],
+    ['Is Demo',           ctx.isDemo ? '⚠ YES — fake data only' : 'No'],
+    ['Can Read Real Data',  ctx.canReadRealData  ? '✓ Yes' : '✗ No'],
+    ['Can Write Real Data', ctx.canWriteRealData ? '✓ Yes' : '✗ No'],
+    ['localStorage prefix', ctx.isDemo ? 'walkoff:demo:*' : 'walkoff:'+ctx.storeId+':*'],
+    ['Supabase tenant-safe','store_id column exists on key tables (see RLS note below)'],
+  ];
+  content.innerHTML = rows.map(([k,v]) =>
+    `<div style="display:grid;grid-template-columns:180px 1fr;gap:4px;border-bottom:1px solid var(--border);padding:2px 0"><span style="color:var(--dim)">${k}</span><span>${escHtml(String(v))}</span></div>`
+  ).join('');
+  if(actions) {
+    actions.innerHTML = ctx.isDemo
+      ? `<button class="hbtn" onclick="if(confirm('Reset demo data? This clears all demo inventory, drawer, and sales from this browser.')){['vendor_profile_v1','store_payment_settings_v1','walkoff_universal_inventory','pos_transactions','pos_drawer','pos_cart_v2','sync_queue_v1'].forEach(k=>localStorage.removeItem(k));seedDemoDataIfNeeded();toast_dash('Demo data reset');renderDataModePanel();}">RESET DEMO DATA</button>`
+      : `<button class="hbtn" onclick="loginDemoAccount()">SWITCH TO DEMO MODE</button>`;
+  }
+}
+
 function ensureVendorConfigPanel(backoffice){
   if(document.getElementById('vendor-config-panel')) return;
   const panel = document.createElement('div');
@@ -6793,6 +7017,11 @@ function renderSyncQueue(){
 }
 
 async function processSyncItem(item){
+  // ── Demo guard: demo mode never pushes anything to real backends ──
+  if(getAccountContext().isDemo){
+    console.log('[DEMO] Sync blocked in demo mode — item type:', item.type);
+    return;
+  }
   if(item.type === 'webflow-create') {
     await createWebflowProduct(item.payload.item, item.payload.updates || item.payload.item);
     return;
@@ -7922,6 +8151,7 @@ function getLifecycleMap(){
 
 function saveLifecycleMap(map){
   localStorage.setItem('inventory_lifecycle', JSON.stringify(map));
+  if(getAccountContext().isDemo) return; // Demo: local only, no worker KV writes
   fetch(scopedWorkerPath('/kv/inventory_lifecycle'), {
     method: 'POST',
     headers: {'Content-Type':'application/json'},
@@ -8449,6 +8679,7 @@ async function wfPatch(path, body){
 }
 
 async function postCartToWorker(cartData, queueOnFail = true){
+  if(getAccountContext().isDemo) return true; // Demo: no worker cart sync
   try {
     const res = await fetch(cartWorkerPath(), {
       method:'POST',
@@ -8625,6 +8856,9 @@ function builtInDataFromItem(item, updates={}){
 window.addEventListener('load', async function(){
   if(await handleAuthRecoveryRedirect()) return;
   if(!(await ensureAuthReady())) return;
+  // Seed demo data and show banner before any UI renders in demo mode
+  updateDataModeBanner();
+  seedDemoDataIfNeeded();
   await loadStoreSettingsFromSupabase();
   setupAppShell();
   schedulePriceSyncChecks();
@@ -18960,6 +19194,11 @@ function buildLedgerBundle(snapshot, tenderLines){
 function MoneyLedgerService(){
   return {
     async commitTransactionBundle(bundle){
+      // ── Demo guard: demo mode NEVER writes to real Supabase tables ──
+      if(getAccountContext().isDemo){
+        console.log('[DEMO] Transaction blocked — demo mode writes stay local only.');
+        return { ok:true, demo:true };
+      }
       const sb = getSupabaseClient();
       if(!sb) throw new Error('Supabase client unavailable; transaction must stay queued.');
       const inserts = [
@@ -18981,6 +19220,7 @@ function MoneyLedgerService(){
       return { ok:true };
     },
     async openDrawerSession(session){
+      if(getAccountContext().isDemo){ console.log('[DEMO] Drawer open blocked in demo mode'); return true; }
       const sb = getSupabaseClient();
       if(!sb) throw new Error('Supabase client unavailable');
       const { error } = await sb.from('pos_drawer_sessions').insert(session);
@@ -18989,6 +19229,7 @@ function MoneyLedgerService(){
       return true;
     },
     async writeDrawerMovement(movement){
+      if(getAccountContext().isDemo){ console.log('[DEMO] Drawer movement blocked in demo mode'); return true; }
       const sb = getSupabaseClient();
       if(!sb) throw new Error('Supabase client unavailable');
       const { error } = await sb.from('pos_drawer_movements').insert(movement);
@@ -19302,7 +19543,7 @@ function showReceiptCaptureScreen(){
 
 async function saveReceiptCapture(){
   const phone = document.getElementById('receipt-phone')?.value.trim() || '';
-  if(phone && confirmedSaleContext) {
+  if(phone && confirmedSaleContext && !getAccountContext().isDemo) {
     const payload = { id:makeUuid('receipt'), store_id:getActiveStoreId(), sale_id:confirmedSaleContext.sale.id, phone, sms_status:'requested', created_at:new Date().toISOString() };
     try {
       const sb = getSupabaseClient();
@@ -19331,7 +19572,7 @@ function showWantsCaptureScreen(){
 async function saveWantsCapture(){
   const wantText = document.getElementById('wants-text')?.value.trim() || '';
   const phone = document.getElementById('wants-phone')?.value.trim() || '';
-  if(wantText && confirmedSaleContext) {
+  if(wantText && confirmedSaleContext && !getAccountContext().isDemo) {
     const payload = { id:makeUuid('want'), store_id:getActiveStoreId(), sale_id:confirmedSaleContext.sale.id, phone, customer_name:document.getElementById('wants-name')?.value.trim() || '', want_text:wantText, categories:[], marketing_opt_in:!!document.getElementById('wants-marketing')?.checked, created_at:new Date().toISOString() };
     try {
       const sb = getSupabaseClient();
