@@ -777,6 +777,100 @@ body.customer-display-mode #customer-display-exit{display:block;}
   .customer-pay-line{grid-template-columns:1fr;gap:6px;}
   .qpl-selected-top{grid-template-columns:1fr;}
 }
+
+/* ── WALKTHROUGH & HELP SYSTEM (v1) ─────────────────────────── */
+.setup-prompt-bar{
+  position:sticky;top:0;z-index:200;
+  background:var(--g,#00ffb3);color:#000;
+  padding:8px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+  font-family:monospace;font-size:11px;font-weight:600;
+}
+.setup-prompt-bar button{color:#000;border-color:rgba(0,0,0,.2);}
+.swiz-modal{
+  display:none;position:fixed;inset:0;z-index:900;
+  background:rgba(0,0,0,.72);align-items:center;justify-content:center;
+}
+.swiz-modal.on{display:flex;}
+.swiz-content{
+  background:var(--surf2,#1e1e35);
+  border:1px solid var(--border,rgba(255,255,255,.1));
+  border-radius:12px;width:min(480px,96vw);
+  max-height:88vh;overflow-y:auto;
+  padding:22px;display:flex;flex-direction:column;gap:14px;
+}
+.swiz-header{display:flex;align-items:center;justify-content:space-between;}
+.swiz-title{font-family:monospace;font-size:13px;font-weight:800;letter-spacing:.04em;}
+.swiz-close{background:none;border:none;color:var(--dim);cursor:pointer;font-size:18px;padding:2px 8px;border-radius:4px;}
+.swiz-close:hover{color:var(--text);}
+.swiz-dots{display:flex;gap:6px;justify-content:center;}
+.swiz-dot{width:9px;height:9px;border-radius:50%;background:var(--border,rgba(255,255,255,.15));transition:background .2s;}
+.swiz-dot.active{background:var(--g,#00ffb3);}
+.swiz-dot.done{background:var(--dim,rgba(255,255,255,.4));}
+.swiz-body{display:flex;flex-direction:column;gap:10px;}
+.swiz-desc{font-family:monospace;font-size:10px;color:var(--dim);line-height:1.6;margin:0;}
+.swiz-label{display:flex;flex-direction:column;gap:4px;font-family:monospace;font-size:9px;color:var(--dim);letter-spacing:.04em;}
+.swiz-label input,.swiz-label select{margin-top:2px;}
+.swiz-check{flex-direction:row;align-items:center;gap:8px;font-size:10px;cursor:pointer;}
+.swiz-opt{opacity:.6;font-size:8px;font-weight:normal;}
+.swiz-note{font-family:monospace;font-size:9px;color:var(--dim);line-height:1.55;padding:8px;background:rgba(255,255,255,.03);border-radius:4px;}
+.swiz-stripe-note{font-family:monospace;font-size:9px;padding:8px;border-radius:4px;border:1px solid var(--border);color:var(--dim);}
+.swiz-done-icon{font-size:46px;text-align:center;}
+.swiz-summary-row{display:flex;justify-content:space-between;font-family:monospace;font-size:10px;padding:4px 0;border-bottom:1px solid var(--border);}
+.swiz-cta-wrap{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;}
+.swiz-footer{display:flex;justify-content:space-between;align-items:center;padding-top:10px;border-top:1px solid var(--border);}
+/* Help ? buttons */
+.help-q-btn{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:17px;height:17px;border-radius:50%;
+  background:rgba(255,255,255,.07);border:1px solid var(--border);
+  color:var(--dim);font-family:monospace;font-size:9px;font-weight:700;
+  cursor:pointer;margin-left:8px;vertical-align:middle;
+  transition:background .15s,color .15s;line-height:1;padding:0;
+}
+.help-q-btn:hover{background:rgba(255,255,255,.16);color:var(--text);}
+body.show-mode .help-q-btn{display:none;}
+body.wt-show-help.show-mode .help-q-btn{display:inline-flex;}
+/* Help popover */
+.help-popover{
+  position:fixed;z-index:950;
+  background:var(--surf2,#1e1e35);
+  border:1px solid var(--border);border-radius:8px;
+  width:min(300px,90vw);
+  box-shadow:0 8px 32px rgba(0,0,0,.55);overflow:hidden;
+}
+.help-pop-header{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:8px 12px;border-bottom:1px solid var(--border);
+  font-family:monospace;font-size:11px;
+}
+.help-pop-close{background:none;border:none;color:var(--dim);cursor:pointer;font-size:14px;padding:2px 6px;}
+.help-pop-body{padding:10px 12px;font-family:monospace;font-size:10px;line-height:1.6;color:var(--dim);}
+/* Walkthrough overlay */
+.wt-overlay{position:fixed;inset:0;z-index:800;background:rgba(0,0,0,.4);pointer-events:none;}
+.wt-tooltip{
+  background:var(--surf2,#1e1e35);
+  border:2px solid var(--g,#00ffb3);
+  border-radius:10px;padding:16px;
+  box-shadow:0 8px 40px rgba(0,0,0,.65);
+  pointer-events:all;display:flex;flex-direction:column;gap:10px;
+}
+.wt-step-title{font-family:monospace;font-size:12px;font-weight:800;}
+.wt-step-body{font-family:monospace;font-size:10px;color:var(--dim);line-height:1.6;}
+.wt-progress{display:flex;gap:4px;}
+.wt-prog-dot{width:6px;height:6px;border-radius:50%;background:var(--border);}
+.wt-prog-dot.active{background:var(--g,#00ffb3);}
+.wt-prog-dot.done{background:var(--dim);}
+.wt-btns{display:flex;justify-content:space-between;align-items:center;}
+.wt-skip{text-align:center;}
+.wt-skip button{background:none;border:none;color:var(--dim);font-family:monospace;font-size:9px;cursor:pointer;padding:2px 6px;}
+.wt-skip button:hover{color:var(--text);}
+/* Target highlight ring */
+.wt-highlight{
+  position:relative;z-index:801;
+  outline:2px solid var(--g,#00ffb3) !important;
+  outline-offset:3px;border-radius:4px;
+  box-shadow:0 0 0 4px rgba(0,255,179,.12) !important;
+}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -1925,7 +2019,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.06.08.06-buy-offer-rounding-v1';
+const APP_VERSION = '2026.06.08.07-walkthrough-setup-wizard-v1';
 const branchName = 'pokemon-v2-core';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
 const POKEMON_EXACT_CACHE_VERSION = 'pokemon-exact-v3-price-matrix';
@@ -2886,6 +2980,525 @@ function saveResearchSettings(patch){
   localStorage.setItem('research_settings_v1', JSON.stringify(merged));
   return merged;
 }
+
+// ═══════════════════════════════════════════════════════════════════
+// WALKTHROUGH & SETUP WIZARD — v1
+// Keys: dealer_settings_v1  walkthrough_settings_v1
+//       walkthrough_progress_v1  walkthrough_seen_v1
+// ═══════════════════════════════════════════════════════════════════
+
+const DEFAULT_DEALER_SETTINGS = {
+  setupCompleted:false, setupVersion:0,
+  storeName:'', publicDisplayName:'', contactEmail:'', location:'', website:'',
+  defaultCategory:'', rememberLastCategory:false,
+  venmoHandle:'', paypalHandle:'', cashAppTag:'',
+};
+const DEFAULT_WALKTHROUGH_SETTINGS = {
+  showHelpButtons:false, enablePrompts:true, showInShowMode:false,
+};
+
+function getDealerSettings(){
+  try{ return {...DEFAULT_DEALER_SETTINGS, ...JSON.parse(localStorage.getItem('dealer_settings_v1')||'{}')}; }
+  catch(e){ return {...DEFAULT_DEALER_SETTINGS}; }
+}
+function saveDealerSettings(patch){
+  const next = {...getDealerSettings(), ...patch, updatedAt:new Date().toISOString()};
+  localStorage.setItem('dealer_settings_v1', JSON.stringify(next));
+  return next;
+}
+function getWalkthroughSettings(){
+  try{ return {...DEFAULT_WALKTHROUGH_SETTINGS, ...JSON.parse(localStorage.getItem('walkthrough_settings_v1')||'{}')}; }
+  catch(e){ return {...DEFAULT_WALKTHROUGH_SETTINGS}; }
+}
+function saveWalkthroughSettings(patch){
+  const next = {...getWalkthroughSettings(), ...patch};
+  localStorage.setItem('walkthrough_settings_v1', JSON.stringify(next));
+  renderHelpWalkthroughPanel();
+  return next;
+}
+function getWalkthroughProgress(){
+  try{ return JSON.parse(localStorage.getItem('walkthrough_progress_v1')||'{}'); }
+  catch(e){ return {}; }
+}
+function saveWalkthroughProgress(patch){
+  localStorage.setItem('walkthrough_progress_v1', JSON.stringify({...getWalkthroughProgress(), ...patch}));
+}
+function resetWalkthroughProgress(){
+  localStorage.removeItem('walkthrough_progress_v1');
+  localStorage.removeItem('walkthrough_seen_v1');
+  toast_dash('Walkthrough progress reset');
+}
+function isSetupComplete(){ return !!getDealerSettings().setupCompleted; }
+
+// ── Setup Wizard ─────────────────────────────────────────────────
+
+let _swizCurrentStep = 1;
+const SWIZ_TOTAL_STEPS = 5;
+
+function openSetupWizard(startStep){
+  _swizCurrentStep = startStep || 1;
+  let modal = document.getElementById('setup-wizard-modal');
+  if(!modal){
+    modal = document.createElement('div');
+    modal.id = 'setup-wizard-modal';
+    modal.className = 'swiz-modal';
+    document.body.appendChild(modal);
+  }
+  renderSetupWizardStep(_swizCurrentStep);
+  modal.classList.add('on');
+}
+function closeSetupWizard(){
+  document.getElementById('setup-wizard-modal')?.classList.remove('on');
+}
+
+function renderSetupWizardStep(step){
+  const modal = document.getElementById('setup-wizard-modal');
+  if(!modal) return;
+  const ds = getDealerSettings();
+  const rs = getResearchSettings();
+  const ps = getPaymentSettings();
+  const p  = getVendorProfile();
+  const wts = getWalkthroughSettings();
+
+  const dots = Array.from({length:SWIZ_TOTAL_STEPS}, (_,i) =>
+    `<div class="swiz-dot ${i+1===step?'active':i+1<step?'done':''}" title="Step ${i+1}"></div>`
+  ).join('');
+
+  let title='', body='';
+
+  if(step===1){
+    title='Step 1 — Store Info';
+    body=`
+      <p class="swiz-desc">Enter your store's basic information. This shows on receipts and the customer display.</p>
+      <label class="swiz-label">STORE / BUSINESS NAME
+        <input id="swiz-storeName" class="tsi" type="text" value="${escHtml(p.storeName||ds.storeName||'')}" placeholder="Walk-Off Sports Cards &amp; Comics">
+      </label>
+      <label class="swiz-label">PUBLIC DISPLAY NAME <span class="swiz-opt">optional — defaults to store name</span>
+        <input id="swiz-displayName" class="tsi" type="text" value="${escHtml(ds.publicDisplayName||p.shortName||'')}" placeholder="Walk-Off">
+      </label>
+      <label class="swiz-label">CONTACT EMAIL <span class="swiz-opt">optional</span>
+        <input id="swiz-email" class="tsi" type="email" value="${escHtml(p.email||ds.contactEmail||'')}" placeholder="you@example.com">
+      </label>
+      <label class="swiz-label">LOCATION <span class="swiz-opt">optional</span>
+        <input id="swiz-location" class="tsi" type="text" value="${escHtml(p.location||ds.location||'')}" placeholder="Kingston, WA">
+      </label>
+      <label class="swiz-label">WEBSITE <span class="swiz-opt">optional</span>
+        <input id="swiz-website" class="tsi" type="text" value="${escHtml(p.website||ds.website||'')}" placeholder="walkoffsc.com">
+      </label>`;
+  } else if(step===2){
+    title='Step 2 — Search Defaults';
+    body=`
+      <p class="swiz-desc">Set your default research category so you don't have to change it every search.</p>
+      <label class="swiz-label">DEFAULT RESEARCH CATEGORY
+        <select id="swiz-defaultCategory" class="tsi">
+          ${RESEARCH_CATEGORY_OPTIONS.map(o=>`<option value="${escHtml(o.value)}" ${(rs.defaultCategory||ds.defaultCategory)===o.value?'selected':''}>${escHtml(o.label)}</option>`).join('')}
+        </select>
+      </label>
+      <label class="swiz-check swiz-label">
+        <input type="checkbox" id="swiz-rememberLast" ${(rs.rememberLastCategory||ds.rememberLastCategory)?'checked':''}>
+        Remember last used category across sessions
+      </label>`;
+  } else if(step===3){
+    title='Step 3 — Payment Handles';
+    body=`
+      <p class="swiz-desc">Enter your payment handles. These generate QR codes for customers at checkout. Stripe is managed separately in Settings → Payments.</p>
+      <label class="swiz-label">PAYPAL HANDLE / PAYPAL.ME LINK
+        <input id="swiz-paypal" class="tsi" type="text" value="${escHtml(ps.paypal?.emailOrHandle||ds.paypalHandle||'')}" placeholder="paypal.me/yourname or email@example.com">
+      </label>
+      <label class="swiz-label">VENMO HANDLE <span class="swiz-opt">without @</span>
+        <input id="swiz-venmo" class="tsi" type="text" value="${escHtml(ps.venmo?.handle||ds.venmoHandle||'')}" placeholder="YourVenmoHandle">
+      </label>
+      <label class="swiz-label">CASH APP CASHTAG <span class="swiz-opt">without $</span>
+        <input id="swiz-cashapp" class="tsi" type="text" value="${escHtml(ps.cashApp?.cashtag||ds.cashAppTag||'')}" placeholder="YourCashtag">
+      </label>
+      ${ps.card?.stripePublishableKey?'<div class="swiz-stripe-note">✓ Stripe is configured — manage keys in Settings → Payments</div>':'<div class="swiz-stripe-note">Stripe: not configured — set up in Settings → Payments after wizard</div>'}`;
+  } else if(step===4){
+    title='Step 4 — Show Preferences';
+    body=`
+      <p class="swiz-desc">Configure how much help text appears and how the app behaves.</p>
+      <label class="swiz-check swiz-label">
+        <input type="checkbox" id="swiz-showHelp" ${wts.showHelpButtons?'checked':''}>
+        Show <strong>?</strong> help buttons on major sections
+      </label>
+      <label class="swiz-check swiz-label">
+        <input type="checkbox" id="swiz-enablePrompts" ${wts.enablePrompts?'checked':''}>
+        Enable walkthrough prompts on first load
+      </label>
+      <label class="swiz-check swiz-label">
+        <input type="checkbox" id="swiz-showInShowMode" ${wts.showInShowMode?'checked':''}>
+        Show help buttons in Show Mode (usually hidden to keep screen clean)
+      </label>
+      <div class="swiz-note">Sell price rounding (up to nearest dollar) and buy offer rounding (down to nearest dollar) are always active — no setting needed.</div>`;
+  } else if(step===5){
+    const ds2 = getDealerSettings();
+    title='Setup Complete!';
+    body=`
+      <div class="swiz-done-icon">✓</div>
+      <p class="swiz-desc">Your store info, search defaults, and payment handles are saved and active.</p>
+      ${ds2.storeName?`<div class="swiz-summary-row"><span>Store</span><span>${escHtml(ds2.storeName)}</span></div>`:''}
+      ${ds2.defaultCategory?`<div class="swiz-summary-row"><span>Default category</span><span>${escHtml(ds2.defaultCategory)}</span></div>`:''}
+      ${(ds2.venmoHandle||ds2.paypalHandle||ds2.cashAppTag)?`<div class="swiz-summary-row"><span>Payment handles</span><span>saved ✓</span></div>`:''}
+      <div class="swiz-cta-wrap">
+        <button class="hbtn" onclick="closeSetupWizard();startWalkthrough('first-time')">START WALKTHROUGH</button>
+        <button class="hbtn" onclick="closeSetupWizard();switchTab('inventory')">GO TO DASHBOARD</button>
+        <button class="hbtn" onclick="openSetupWizard(1)">EDIT SETTINGS</button>
+      </div>`;
+  }
+
+  const isComplete = step === SWIZ_TOTAL_STEPS;
+  modal.innerHTML = `
+    <div class="swiz-content">
+      <div class="swiz-header">
+        <div class="swiz-title">${escHtml(title)}</div>
+        <button class="swiz-close" onclick="closeSetupWizard()" title="Close">✕</button>
+      </div>
+      <div class="swiz-dots">${dots}</div>
+      <div class="swiz-body">${body}</div>
+      ${!isComplete?`
+      <div class="swiz-footer">
+        ${step>1?`<button class="hbtn" onclick="swizBack()">← BACK</button>`:'<span></span>'}
+        <button class="hbtn" onclick="swizNext()" style="font-weight:800">${step===4?'SAVE &amp; FINISH ✓':'NEXT →'}</button>
+      </div>`:''}
+    </div>`;
+}
+
+function swizNext(){
+  if(!swizSaveStep(_swizCurrentStep)) return;
+  if(_swizCurrentStep < SWIZ_TOTAL_STEPS){ _swizCurrentStep++; renderSetupWizardStep(_swizCurrentStep); }
+}
+function swizBack(){
+  if(_swizCurrentStep > 1){ _swizCurrentStep--; renderSetupWizardStep(_swizCurrentStep); }
+}
+
+function swizSaveStep(step){
+  if(step===1){
+    const storeName   = document.getElementById('swiz-storeName')?.value.trim()||'';
+    const displayName = document.getElementById('swiz-displayName')?.value.trim()||'';
+    const email       = document.getElementById('swiz-email')?.value.trim()||'';
+    const location    = document.getElementById('swiz-location')?.value.trim()||'';
+    const website     = document.getElementById('swiz-website')?.value.trim()||'';
+    saveVendorProfile({storeName, shortName:displayName||storeName, email, location, website});
+    saveDealerSettings({storeName, publicDisplayName:displayName, contactEmail:email, location, website});
+    return true;
+  }
+  if(step===2){
+    const cat      = document.getElementById('swiz-defaultCategory')?.value||'';
+    const remember = !!document.getElementById('swiz-rememberLast')?.checked;
+    saveResearchSettings({defaultCategory:cat, rememberLastCategory:remember});
+    applyResearchDefaultCategory();
+    saveDealerSettings({defaultCategory:cat, rememberLastCategory:remember});
+    return true;
+  }
+  if(step===3){
+    const paypal  = document.getElementById('swiz-paypal')?.value.trim()||'';
+    const venmo   = (document.getElementById('swiz-venmo')?.value.trim()||'').replace(/^@/,'');
+    const cashapp = (document.getElementById('swiz-cashapp')?.value.trim()||'').replace(/^\$/,'');
+    const prev = getPaymentSettings();
+    // Only update handles — do NOT touch Stripe keys, cash settings, or any other field
+    savePaymentSettings({
+      ...prev,
+      venmo:   {...prev.venmo,   handle:venmo,   enabled:prev.venmo?.enabled!==false},
+      paypal:  {...prev.paypal,  emailOrHandle:paypal, enabled:prev.paypal?.enabled!==false},
+      cashApp: {...prev.cashApp, cashtag:cashapp, enabled:prev.cashApp?.enabled!==false},
+    });
+    saveDealerSettings({venmoHandle:venmo, paypalHandle:paypal, cashAppTag:cashapp});
+    return true;
+  }
+  if(step===4){
+    const showHelp      = !!document.getElementById('swiz-showHelp')?.checked;
+    const enablePrompts = !!document.getElementById('swiz-enablePrompts')?.checked;
+    const showInShowMode= !!document.getElementById('swiz-showInShowMode')?.checked;
+    saveWalkthroughSettings({showHelpButtons:showHelp, enablePrompts, showInShowMode});
+    saveDealerSettings({setupCompleted:true, setupVersion:1});
+    initHelpButtons();
+    toast_dash('Setup saved ✓');
+    return true;
+  }
+  return true;
+}
+
+function maybeShowSetupPrompt(){
+  if(isSetupComplete()) return;
+  if(!getWalkthroughSettings().enablePrompts) return;
+  if(document.body.classList.contains('show-mode')) return;
+  if(sessionStorage.getItem('swiz_prompt_dismissed')) return;
+  let bar = document.getElementById('setup-prompt-bar');
+  if(bar){ bar.style.display=''; return; }
+  bar = document.createElement('div');
+  bar.id = 'setup-prompt-bar';
+  bar.className = 'setup-prompt-bar';
+  bar.innerHTML = `
+    <span>Want to set up your store? <strong>Store name, payment handles &amp; search defaults.</strong></span>
+    <button class="hbtn" onclick="openSetupWizard(1);document.getElementById('setup-prompt-bar').style.display='none'">START SETUP</button>
+    <button class="hbtn" style="opacity:.6" onclick="sessionStorage.setItem('swiz_prompt_dismissed','1');document.getElementById('setup-prompt-bar').style.display='none'">NOT NOW</button>`;
+  const hdr = document.querySelector('.hdr');
+  if(hdr) hdr.insertAdjacentElement('afterend', bar);
+  else document.body.insertAdjacentElement('afterbegin', bar);
+}
+
+// ── Help / Question-Mark System ──────────────────────────────────
+
+const HELP_CONTENT = {
+  research:{title:'Research',body:'Use this to look up cards or sealed products. Pokémon can be searched by name, card number, or set. Use <strong>Refresh Live Price</strong> only when you need current pricing — cached results load faster and don\'t use API credits.'},
+  buy:{title:'Buy / Trade Intake',body:'Use this when buying cards from customers. Market price may show cents, but buy offers always round <strong>down</strong> to whole dollars. Set your offer percentage and the app calculates automatically.'},
+  inventory:{title:'Inventory',body:'Everything you own and can sell. "In Stock" is the default view. <strong>SELL TO CART</strong> sends items to checkout — inventory only updates to Sold after you <strong>Finalize Sale</strong>.'},
+  cart:{title:'Cart / Sell',body:'Every sale goes through the cart. Add items from Inventory or Research. Review cart totals before proceeding to payment. Cart persists across tabs and page refreshes.'},
+  payments:{title:'Payments',body:'QR payment codes (Venmo, PayPal, Cash App) are generated from your saved handles. Confirm payment received before finalizing. Stripe card payments are handled separately and are not affected by these settings.'},
+  drawer:{title:'Cash Drawer',body:'The drawer tracks expected cash on hand. Cash sales add to drawer cash. Venmo, PayPal, Cash App, and Stripe sales do <strong>not</strong> — only physical cash changes the drawer total.'},
+  shows:{title:'Shows',body:'Start a show to track which items are at the event. <strong>Show Mode</strong> hides admin/debug clutter so your screen stays clean for customers. End Show to generate a closeout report.'},
+  priceSync:{title:'Price Sync',body:'Download price data from external sources. Always review before applying — a big increase or drop triggers an alert. Update selected items only, not everything at once.'},
+  settings:{title:'Settings / Admin',body:'Store name, payment handles, default category, modules, and branding all live here. <strong>Setup Wizard</strong> walks through the essentials. Debug mode is off by default — turn it on to see pricing IDs.'},
+};
+
+let _helpLongPressTimer = null;
+
+function initHelpButtons(){
+  const wts = getWalkthroughSettings();
+  const inShowMode = document.body.classList.contains('show-mode');
+  const enabled = wts.showHelpButtons;
+  // Body class for show-mode override
+  document.body.classList.toggle('wt-show-help', enabled && wts.showInShowMode);
+  // Remove existing buttons
+  document.querySelectorAll('.help-q-btn').forEach(b => b.remove());
+  if(!enabled) return;
+
+  const targets = [
+    {selectors:['#register-quick-panel .ph'], section:'research'},
+    {selectors:['#register-buy-panel .ph'],   section:'buy'},
+    {selectors:['#tab-inventory .sec'],        section:'inventory'},
+    {selectors:['#tab-pos .sec','#register-pos-panel .ph'], section:'cart'},
+    {selectors:['#payment-settings-panel .ph'],section:'payments'},
+    {selectors:['#register-cash-panel .ph'],   section:'drawer'},
+    {selectors:['#register-show-panel .ph'],   section:'shows'},
+    {selectors:['#backoffice-tcg-sync-panel .ph'], section:'priceSync'},
+    {selectors:['#tab-backoffice .sec','#help-walkthrough-panel .ph'], section:'settings'},
+  ];
+
+  targets.forEach(({selectors, section}) => {
+    selectors.forEach(sel => {
+      document.querySelectorAll(sel).forEach(el => {
+        if(el.querySelector('.help-q-btn')) return;
+        const btn = document.createElement('button');
+        btn.className = 'help-q-btn';
+        btn.textContent = '?';
+        btn.title = 'Help (click or long-press)';
+        btn.setAttribute('data-help-section', section);
+        btn.addEventListener('click', e => { e.stopPropagation(); openHelpPopover(section, btn); });
+        btn.addEventListener('pointerdown', () => { _helpLongPressTimer = setTimeout(() => openHelpPopover(section, btn), 600); });
+        btn.addEventListener('pointerup',     () => clearTimeout(_helpLongPressTimer));
+        btn.addEventListener('pointercancel', () => clearTimeout(_helpLongPressTimer));
+        el.appendChild(btn);
+      });
+    });
+  });
+}
+
+function openHelpPopover(section, anchorEl){
+  closeHelpPopover();
+  const c = HELP_CONTENT[section];
+  if(!c) return;
+  const pop = document.createElement('div');
+  pop.id = 'help-popover';
+  pop.className = 'help-popover';
+  pop.innerHTML = `
+    <div class="help-pop-header">
+      <strong>${escHtml(c.title)}</strong>
+      <button class="help-pop-close" onclick="closeHelpPopover()">✕</button>
+    </div>
+    <div class="help-pop-body">${c.body}</div>`;
+  document.body.appendChild(pop);
+  if(anchorEl){
+    const r = anchorEl.getBoundingClientRect();
+    const tipW = Math.min(300, window.innerWidth - 20);
+    let top  = r.bottom + 6;
+    let left = Math.max(10, Math.min(r.left, window.innerWidth - tipW - 10));
+    if(top + 180 > window.innerHeight) top = Math.max(10, r.top - 186);
+    pop.style.top  = top  + 'px';
+    pop.style.left = left + 'px';
+    pop.style.width = tipW + 'px';
+  }
+  setTimeout(() => document.addEventListener('click', _helpPopoverOutside, {once:true, capture:true}), 60);
+}
+function _helpPopoverOutside(e){
+  if(!document.getElementById('help-popover')?.contains(e.target)) closeHelpPopover();
+}
+function closeHelpPopover(){
+  document.getElementById('help-popover')?.remove();
+}
+
+// ── Walkthrough Engine ────────────────────────────────────────────
+
+let _wtState = null; // { moduleId, stepIdx, steps }
+
+const WALKTHROUGH_STEPS = {
+  'first-time':[
+    {id:'ft-1', title:'Welcome to Walk-Off Dashboard', body:'This quick tour covers the basics in about 2 minutes. Use Back / Next to move through steps, or Skip to exit anytime.', targetSelector:null, nextLabel:'Let\'s go →'},
+    {id:'ft-2', title:'Settings / Admin', body:'Your store name, payment handles, and defaults live here. Run Setup Wizard to fill these in quickly.', targetSelector:'[data-tab="backoffice"]', tabToOpen:'backoffice', nextLabel:'Next →'},
+    {id:'ft-3', title:'Research', body:'Look up card prices before buying or listing. Cached results are fast — use Refresh Live Price only when you need current data.', targetSelector:'[data-tab="research"]', tabToOpen:'research', nextLabel:'Next →'},
+    {id:'ft-4', title:'Inventory', body:'Everything you own. Filter by In Stock. SELL TO CART starts a sale — inventory doesn\'t change until you Finalize.', targetSelector:'[data-tab="inventory"]', tabToOpen:'inventory', nextLabel:'Next →'},
+    {id:'ft-5', title:'Sell / Cart', body:'Every sale goes through the cart before finalizing. Choose payment method, confirm received, then Finalize Sale.', targetSelector:'[data-tab="pos"]', tabToOpen:'pos', nextLabel:'Next →'},
+    {id:'ft-6', title:'You\'re all set!', body:'Use the ? help buttons on any section for quick tips. Run Setup Wizard in Settings to enter your store name and payment handles.', targetSelector:null, nextLabel:'Done ✓'},
+  ],
+  'start-show':[
+    {id:'ss-1', title:'Starting a Show', body:'First, go to Settings to make sure your store is set up.', targetSelector:'[data-tab="backoffice"]', tabToOpen:'backoffice', nextLabel:'Next →'},
+    {id:'ss-2', title:'Show Mode', body:'Click the SHOWS tab to find Show Mode controls. Enter your event name and location.', targetSelector:'[data-tab="shows"]', tabToOpen:'shows', nextLabel:'Next →'},
+    {id:'ss-3', title:'Start the Show', body:'Click START / SAVE SHOW to begin. This logs the event start time and links your drawer session to the show.', targetSelector:'#register-show-panel', nextLabel:'Next →'},
+    {id:'ss-4', title:'Show Mode Toggle', body:'Hit SHOW MODE in the header to hide admin clutter. Your screen looks clean for customers — prices and checkout remain fully functional.', targetSelector:'.show-mode-toggle', nextLabel:'Next →'},
+    {id:'ss-5', title:'You\'re live!', body:'Inventory, cart, and payments all work normally. When done, click END SHOW to generate your closeout report.', targetSelector:null, nextLabel:'Done ✓'},
+  ],
+  'research':[
+    {id:'rw-1', title:'Research', body:'Switch to the Research tab to look up card prices.', targetSelector:'[data-tab="research"]', tabToOpen:'research', nextLabel:'Next →'},
+    {id:'rw-2', title:'Pick a Category', body:'Select Pokémon, Sports, Comics, or MTG. The category filters your search results and changes which pricing source is used.', targetSelector:'#qpl-cat', nextLabel:'Next →'},
+    {id:'rw-3', title:'Search', body:'Type a card name, card number (e.g. 199/165), or set name. Press LOOK UP to search.', targetSelector:'#qpl-input', nextLabel:'Next →'},
+    {id:'rw-4', title:'Cached vs Live', body:'Results show cached prices by default. Use REFRESH LIVE PRICE only when you need the very latest — it costs API credits and may be slower.', targetSelector:null, nextLabel:'Done ✓'},
+  ],
+  'selling':[
+    {id:'sv-1', title:'Selling from Inventory', body:'Go to Inventory to find items to sell.', targetSelector:'[data-tab="inventory"]', tabToOpen:'inventory', nextLabel:'Next →'},
+    {id:'sv-2', title:'Filter In Stock', body:'Use the status filter to show only In Stock items. This keeps the view clean during a show.', targetSelector:'#inv-status-filter', nextLabel:'Next →'},
+    {id:'sv-3', title:'SELL TO CART', body:'Click SELL TO CART on any item. It goes into the cart — inventory is NOT updated yet.', targetSelector:null, nextLabel:'Next →'},
+    {id:'sv-4', title:'Cart / Sell Tab', body:'Switch to the Sell tab to review your cart, apply discounts, and proceed to payment.', targetSelector:'[data-tab="pos"]', tabToOpen:'pos', nextLabel:'Next →'},
+    {id:'sv-5', title:'Finalize Sale', body:'After confirming payment is received, click FINALIZE SALE. This is when inventory updates to Sold and the cash drawer logs the transaction.', targetSelector:null, nextLabel:'Done ✓'},
+  ],
+};
+
+function startWalkthrough(moduleId){
+  const steps = WALKTHROUGH_STEPS[moduleId];
+  if(!steps){ toast_dash('Walkthrough "'+moduleId+'" not found'); return; }
+  _wtState = {moduleId, stepIdx:0, steps};
+  saveWalkthroughProgress({activeModule:moduleId, stepIdx:0, startedAt:new Date().toISOString()});
+  renderWalkthroughOverlay(_wtState);
+}
+function nextWalkthroughStep(){
+  if(!_wtState) return;
+  _wtState.stepIdx++;
+  if(_wtState.stepIdx >= _wtState.steps.length){ endWalkthrough(); return; }
+  saveWalkthroughProgress({stepIdx:_wtState.stepIdx});
+  renderWalkthroughOverlay(_wtState);
+}
+function prevWalkthroughStep(){
+  if(!_wtState || _wtState.stepIdx<=0) return;
+  _wtState.stepIdx--;
+  saveWalkthroughProgress({stepIdx:_wtState.stepIdx});
+  renderWalkthroughOverlay(_wtState);
+}
+function endWalkthrough(){
+  clearWalkthroughHighlight();
+  document.getElementById('wt-overlay')?.remove();
+  if(_wtState?.moduleId){
+    let seen={};
+    try{ seen=JSON.parse(localStorage.getItem('walkthrough_seen_v1')||'{}'); }catch(e){}
+    seen[_wtState.moduleId] = new Date().toISOString();
+    localStorage.setItem('walkthrough_seen_v1', JSON.stringify(seen));
+  }
+  saveWalkthroughProgress({activeModule:null, completedAt:new Date().toISOString()});
+  _wtState = null;
+}
+function skipWalkthrough(){ endWalkthrough(); }
+
+function renderWalkthroughOverlay(state){
+  clearWalkthroughHighlight();
+  let overlay = document.getElementById('wt-overlay');
+  if(!overlay){
+    overlay = document.createElement('div');
+    overlay.id = 'wt-overlay';
+    overlay.className = 'wt-overlay';
+    document.body.appendChild(overlay);
+  }
+  const step  = state.steps[state.stepIdx];
+  const total = state.steps.length;
+  const idx   = state.stepIdx;
+  // Switch tab if specified
+  if(step.tabToOpen){ try{ switchTab(step.tabToOpen); }catch(e){} }
+  // Highlight target
+  let rect = null;
+  if(step.targetSelector){
+    const target = document.querySelector(step.targetSelector);
+    if(target){ rect = highlightWalkthroughTarget(target); }
+  }
+  const tooltipStyle = rect ? positionWtTooltip(rect) : 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:300px';
+  overlay.innerHTML = `
+    <div class="wt-tooltip" style="${tooltipStyle}">
+      <div class="wt-progress">${Array.from({length:total},(_,i)=>`<div class="wt-prog-dot ${i===idx?'active':i<idx?'done':''}"></div>`).join('')}</div>
+      <div class="wt-step-title">${escHtml(step.title)}</div>
+      <div class="wt-step-body">${escHtml(step.body)}</div>
+      <div class="wt-btns">
+        ${idx>0?`<button class="hbtn" onclick="prevWalkthroughStep()" style="opacity:.7">← BACK</button>`:'<span></span>'}
+        <span style="font-family:monospace;font-size:9px;color:var(--dim)">${idx+1}/${total}</span>
+        <button class="hbtn" onclick="nextWalkthroughStep()" style="font-weight:800">${escHtml(step.nextLabel||'NEXT →')}</button>
+      </div>
+      <div class="wt-skip"><button onclick="skipWalkthrough()">Skip / Exit</button></div>
+    </div>`;
+}
+
+function positionWtTooltip(rect){
+  const margin=16, tipW=300, tipH=200;
+  let top, left;
+  if(rect.bottom + tipH + margin < window.innerHeight){
+    top  = rect.bottom + margin;
+    left = Math.min(Math.max(margin, rect.left), window.innerWidth - tipW - margin);
+  } else {
+    top  = Math.max(margin, rect.top - tipH - margin);
+    left = Math.min(Math.max(margin, rect.left), window.innerWidth - tipW - margin);
+  }
+  return `position:fixed;top:${top}px;left:${left}px;width:${tipW}px`;
+}
+
+function highlightWalkthroughTarget(el){
+  el.classList.add('wt-highlight');
+  try{ el.scrollIntoView({behavior:'smooth', block:'center'}); }catch(e){}
+  return el.getBoundingClientRect();
+}
+function clearWalkthroughHighlight(){
+  document.querySelectorAll('.wt-highlight').forEach(el => el.classList.remove('wt-highlight'));
+}
+
+// ── Help & Walkthrough Panel (backoffice) ────────────────────────
+
+function ensureHelpWalkthroughPanel(backoffice){
+  if(!backoffice || document.getElementById('help-walkthrough-panel')) return;
+  const panel = document.createElement('div');
+  panel.className = 'panel';
+  panel.id = 'help-walkthrough-panel';
+  panel.style.marginBottom = '14px';
+  panel.innerHTML = '<div class="ph">HELP &amp; WALKTHROUGH <span style="font-size:9px;color:var(--dim)">tutorial, help buttons, setup wizard</span></div><div id="help-walkthrough-body"></div>';
+  backoffice.prepend(panel);
+  renderHelpWalkthroughPanel();
+}
+
+function renderHelpWalkthroughPanel(){
+  const body = document.getElementById('help-walkthrough-body');
+  if(!body) return;
+  const wts = getWalkthroughSettings();
+  const isComplete = isSetupComplete();
+  body.innerHTML = `
+    <div style="display:flex;flex-direction:column;gap:10px;font-family:monospace;font-size:10px;color:var(--dim);margin-bottom:12px">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+        <input type="checkbox" ${wts.showHelpButtons?'checked':''} onchange="saveWalkthroughSettings({showHelpButtons:this.checked});initHelpButtons();toast_dash(this.checked?'? help buttons ON':'? help buttons OFF')">
+        Show <strong>?</strong> help buttons on major sections
+      </label>
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+        <input type="checkbox" ${wts.enablePrompts?'checked':''} onchange="saveWalkthroughSettings({enablePrompts:this.checked});toast_dash(this.checked?'Walkthrough prompts ON':'Walkthrough prompts OFF')">
+        Enable walkthrough prompts (auto-prompt setup on first load)
+      </label>
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+        <input type="checkbox" ${wts.showInShowMode?'checked':''} onchange="saveWalkthroughSettings({showInShowMode:this.checked});initHelpButtons()">
+        Show help buttons in Show Mode (usually hidden to keep screen clean)
+      </label>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+      <button class="hbtn" onclick="openSetupWizard(1)">${isComplete?'EDIT SETUP':'SETUP WIZARD'}</button>
+      <button class="hbtn" onclick="startWalkthrough('first-time')">START FULL WALKTHROUGH</button>
+      <button class="hbtn" onclick="startWalkthrough('start-show')">WALKTHROUGH: START SHOW</button>
+      <button class="hbtn" onclick="startWalkthrough('selling')">WALKTHROUGH: SELLING</button>
+      <button class="hbtn" onclick="startWalkthrough('research')">WALKTHROUGH: RESEARCH</button>
+      <button class="hbtn" onclick="resetWalkthroughProgress()">RESET PROGRESS</button>
+    </div>
+    <div style="margin-top:4px;padding:8px;background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:6px">
+      <div style="font-size:9px;color:var(--dim);font-family:monospace;margin-bottom:2px">PRACTICE MODE</div>
+      <div style="font-size:10px;color:var(--dim);font-family:monospace">Coming soon — safe simulated transactions for training without affecting real data.</div>
+    </div>`;
+}
+
 function applyResearchDefaultCategory(){
   const sel = document.getElementById('qpl-cat');
   if(!sel) return;
@@ -3146,6 +3759,7 @@ function organizeRegisterLayout(){
   ensurePricingQaPanel(backoffice);
   ensureStoreMembersPanel(backoffice);
   ensureVendorConfigPanel(backoffice);
+  ensureHelpWalkthroughPanel(backoffice);
   ensureLegacyToolsPanel(backoffice);
   ensureSpreadsheetPanel(backoffice);
   ensureSyncQueuePanel(backoffice);
@@ -5036,6 +5650,10 @@ function renderVendorConfigPanel(){
         <input type="checkbox" ${localStorage.getItem('inv_debug')==='1'?'checked':''} onchange="localStorage.setItem('inv_debug',this.checked?'1':'0');toast_dash(this.checked?'Inventory debug ON':'Inventory debug OFF')">
         <span>Inventory Debug <span style="color:var(--dim);font-size:9px">(shows dedup counts in status bar)</span></span>
       </label>
+    </div>
+    <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);display:flex;gap:8px;flex-wrap:wrap">
+      <button class="hbtn" onclick="openSetupWizard(1)">${isSetupComplete()?'EDIT SETUP':'SETUP WIZARD'}</button>
+      <button class="hbtn" onclick="startWalkthrough('first-time')">START WALKTHROUGH</button>
     </div>`;
 }
 
@@ -7614,6 +8232,8 @@ window.addEventListener('load', async function(){
   maybeRunScheduledPriceSync(true).catch(console.warn);
   renderShowMode();
   applyResearchDefaultCategory();
+  maybeShowSetupPrompt();
+  initHelpButtons();
   refreshEbayStatus();
   syncLifecycleFromWorker().finally(loadInventory);
 });
