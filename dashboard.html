@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.06.08.04-cart-unify-finalize-fix">
+<meta name="version" content="2026.06.08.05-cart-unify-addtocart-reroute">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -810,7 +810,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.08.04-cart-unify-finalize-fix</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.08.05-cart-unify-addtocart-reroute</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
@@ -832,7 +832,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip dev-only" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.08.04-cart-unify-finalize-fix</div>
+<div class="dsb-chip dev-only" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.08.05-cart-unify-addtocart-reroute</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -1924,7 +1924,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.06.08.04-cart-unify-finalize-fix';
+const APP_VERSION = '2026.06.08.05-cart-unify-addtocart-reroute';
 const branchName = 'pokemon-v2-core';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
 const POKEMON_EXACT_CACHE_VERSION = 'pokemon-exact-v3-price-matrix';
@@ -8404,39 +8404,23 @@ function dashAddToCart(id){
     if(!confirm('This item is marked ' + (LIFECYCLE_LABELS[item.lifecycle] || item.lifecycle) + '. Add to in-person cart anyway?')) return;
   }
 
-  // Read existing cart from localStorage
-  let cartData = { items: [], discount: 0 };
-  try {
-    const saved = localStorage.getItem('pos_cart_v2');
-    if(saved) cartData = JSON.parse(saved);
-  } catch(e) {}
+  // CART-UNIFICATION: route through the single shared cart helper
+  // (addSaleItemToCart) so every sale entry point produces the same cart
+  // line shape and there is only one cart write path. Do not invent a
+  // second cart — this preserves the unitPrice/applyShowPriceRule and
+  // legacy field behavior the rest of the app expects.
+  const unitPrice = applyShowPriceRule(item.market || item.salePrice || 0);
+  addSaleItemToCart(item, {
+    sourceType: isSealedProduct(item) ? 'sealed' : 'inventory',
+    inventoryId: item.id, name: item.name, category: item.category,
+    condition: item.condition || '', imageUrl: item.thumbnail || null,
+    unitPrice, costBasis: item.cost || 0, quantity: 1,
+    productType: isSealedProduct(item) ? (item.category || 'Sealed') : '',
+    metadata: { set:item.set || '', year:item.year || '' },
+    undoLabel:'cart add'
+  });
 
-  // Add item to cart
-  const cartItem = {
-    id: 'ci_dash_' + Date.now(),
-    name: item.name,
-    sub: [item.set, item.year, item.category].filter(Boolean).join(' · '),
-    price: applyShowPriceRule(item.market || item.salePrice || 0),
-    cost: item.cost || 0,
-    img: item.thumbnail || null,
-    shopId: item.id,
-    wfId: item.id,
-    category: item.category,
-    condition: item.condition || '',
-    set: item.set || '',
-    year: item.year || '',
-  };
-  cartData.items.push(cartItem);
-  cartData.savedAt = new Date().toISOString();
-  cartData.storeId = getActiveStoreId();
-  cartData.registerId = REGISTER_ID;
-  cartData.appVersion = APP_VERSION;
-  cartData.show = getShowMode();
-
-  const beforeCart = JSON.parse(localStorage.getItem('pos_cart_v2') || '{"items":[],"discount":0}');
-  localStorage.setItem('pos_cart_v2', JSON.stringify(cartData));
-  pushUndoAction('cart add', { type:'cart-snapshot', cart:beforeCart });
-  postCartToWorker(cartData).then(ok => {
+  postCartToWorker(getCartDataLocal()).then(ok => {
     if(!ok) toast_dash('Added locally - scanner will sync when opened');
   });
 
