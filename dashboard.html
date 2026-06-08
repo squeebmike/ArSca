@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.06.08.02-p2p-qr-rebuild">
+<meta name="version" content="2026.06.08.03-cart-unify-v1">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -810,7 +810,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.08.02-p2p-qr-rebuild</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.08.03-cart-unify-v1</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
@@ -832,7 +832,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip dev-only" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.08.02-p2p-qr-rebuild</div>
+<div class="dsb-chip dev-only" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.08.03-cart-unify-v1</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -944,7 +944,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
       <button class="inv-view-btn active" id="inv-btn-table" onclick="setInvView('table')" title="Table view">≡ Table</button>
       <button class="inv-view-btn" id="inv-btn-cards" onclick="setInvView('cards')" title="Card grid view">⊞ Cards</button>
     </div>
-    <button class="hbtn" style="margin-left:auto" onclick="openOneOffSellModal()" title="Sell an item that isn't in inventory yet">⚡ SELL ONE-OFF ITEM</button>
+    <button class="hbtn" style="margin-left:auto" onclick="openOneOffSellModal()" title="Add an item that isn't in inventory yet to the cart">⚡ ADD ONE-OFF TO CART</button>
   </div>
   <div class="tc">
     <input class="tsi" id="tbl-q" placeholder="Search name, set, year, #, SIR, player..." oninput="filterTable()">
@@ -1646,21 +1646,24 @@ body.customer-display-mode #customer-display-exit{display:block;}
 <!-- QUICK SELL MODAL -->
 <div class="modal-bg" id="sell-modal">
   <div class="modal">
-    <h3>✓ RECORD SALE</h3>
+    <h3>🛒 SELL TO CART</h3>
     <div id="sell-item-name" style="font-size:12px;font-weight:600;margin-bottom:4px;color:var(--text)"></div>
     <div id="sell-item-meta" style="font-family:monospace,monospace;font-size:9px;color:var(--dim);margin-bottom:8px"></div>
+    <div style="font-family:monospace,monospace;font-size:9px;color:var(--dim);margin-bottom:8px">Adds this item to the cart at the price below. Payment method is chosen during checkout — this does not finalize a sale.</div>
     <label>Sale Price ($)</label>
     <input type="number" id="sell-price" step="0.01" min="0" placeholder="0.00" oninput="previewSellProfit()">
-    <label>Payment Method</label>
-    <!-- Quick-tap payment buttons for show speed -->
-    <div class="sell-pay-row" id="sell-pay-btns">
+    <!-- Cart-unification: payment method is selected at checkout, not here.
+         Legacy quick-tap buttons + select are kept in the DOM (hidden) so
+         setSellPayMethod()/sell-channel references elsewhere don't break,
+         but they no longer drive any finalize behavior. -->
+    <div class="sell-pay-row" id="sell-pay-btns" style="display:none">
       <button class="sell-pay-btn" onclick="setSellPayMethod('Cash')" data-method="Cash">💵 Cash</button>
       <button class="sell-pay-btn" onclick="setSellPayMethod('Credit/Debit')" data-method="Credit/Debit">💳 Card</button>
       <button class="sell-pay-btn" onclick="setSellPayMethod('Venmo')" data-method="Venmo">📱 Venmo</button>
       <button class="sell-pay-btn" onclick="setSellPayMethod('PayPal')" data-method="PayPal">🅿 PayPal</button>
       <button class="sell-pay-btn" onclick="setSellPayMethod('Trade')" data-method="Trade">🔄 Trade</button>
     </div>
-    <select id="sell-channel">
+    <select id="sell-channel" style="display:none">
       <option>Cash</option>
       <option>Credit/Debit</option>
       <option>PayPal</option>
@@ -1674,7 +1677,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
     </select>
     <div id="sell-profit-preview"></div>
     <div class="modal-btns">
-      <button class="modal-btn confirm" onclick="confirmQuickSell()">RECORD SALE</button>
+      <button class="modal-btn confirm" onclick="confirmQuickSell()">SELL TO CART</button>
       <button class="modal-btn cancel" onclick="closeSellModal()">Cancel</button>
     </div>
   </div>
@@ -1683,12 +1686,13 @@ body.customer-display-mode #customer-display-exit{display:block;}
 <!-- Show Operations v1: one-off sale for items not (yet) in inventory -->
 <div class="modal-bg" id="oneoff-sell-modal">
   <div class="modal">
-    <h3>✓ SELL ONE-OFF ITEM</h3>
-    <div style="font-family:monospace,monospace;font-size:9px;color:var(--dim);margin-bottom:8px">For items not in inventory yet — records a sale without an inventory record.</div>
+    <h3>🛒 ADD ONE-OFF TO CART</h3>
+    <div style="font-family:monospace,monospace;font-size:9px;color:var(--dim);margin-bottom:8px">For items not in inventory yet — adds a one-off line to the cart. Payment is chosen at checkout; this does not finalize a sale.</div>
     <label>Item Name *</label>
     <input type="text" id="oneoff-name" placeholder="e.g. Charizard ex 199/197">
     <label>Category *</label>
     <select id="oneoff-category">
+      <option value="">Select category…</option>
       <option value="Pokemon TCG">Pokémon</option>
       <option value="Sports Card">Sports Card</option>
       <option value="Comic">Comic</option>
@@ -1699,10 +1703,15 @@ body.customer-display-mode #customer-display-exit{display:block;}
     </select>
     <label>Sale Price ($) *</label>
     <input type="number" id="oneoff-price" step="0.01" min="0" placeholder="0.00">
+    <label>Quantity</label>
+    <input type="number" id="oneoff-qty" step="1" min="1" value="1" placeholder="1">
     <label>Cost (optional)</label>
     <input type="number" id="oneoff-cost" step="0.01" min="0" placeholder="0.00">
-    <label>Payment Method *</label>
-    <select id="oneoff-channel">
+    <label>Notes (optional)</label>
+    <input type="text" id="oneoff-notes" placeholder="Notes for this line item">
+    <!-- Cart-unification: payment is chosen at checkout, not in this modal.
+         Legacy select kept hidden so any stray reference doesn't break. -->
+    <select id="oneoff-channel" style="display:none">
       <option>Cash</option>
       <option>Credit/Debit</option>
       <option>PayPal</option>
@@ -1712,7 +1721,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
       <option>Other</option>
     </select>
     <div class="modal-btns">
-      <button class="modal-btn confirm" onclick="confirmOneOffSell()">RECORD SALE</button>
+      <button class="modal-btn confirm" onclick="confirmOneOffSell()">ADD ONE-OFF TO CART</button>
       <button class="modal-btn cancel" onclick="closeOneOffSellModal()">Cancel</button>
     </div>
   </div>
@@ -1915,7 +1924,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.06.08.02-p2p-qr-rebuild';
+const APP_VERSION = '2026.06.08.03-cart-unify-v1';
 const branchName = 'pokemon-v2-core';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
 const POKEMON_EXACT_CACHE_VERSION = 'pokemon-exact-v3-price-matrix';
@@ -6417,7 +6426,7 @@ function renderCardView(){
         <div class="inv-card-price">${i.market > 0 ? '$' + Number(i.market).toFixed(2) : '—'}</div>
         ${i.qty > 1 ? `<div class="inv-card-meta" style="color:var(--g)">Qty: ${i.qty}</div>` : ''}
         <div class="inv-card-actions">
-          ${ins ? `<button class="rab rab-sell" onclick="openSellModal('${i.id}')">SELL</button>` : '<div style="grid-column:1/-1;text-align:center;font-family:monospace;font-size:10px;color:var(--dim);padding:8px">SOLD</div>'}
+          ${ins ? `<button class="rab rab-sell" onclick="openSellModal('${i.id}')">SELL TO CART</button>` : '<div style="grid-column:1/-1;text-align:center;font-family:monospace;font-size:10px;color:var(--dim);padding:8px">SOLD</div>'}
           ${ins ? `<button class="rab rab-cart" onclick="dashAddToCart('${i.id}')">+ CART</button>` : ''}
           <button class="rab rab-edit" onclick="openEditModal('${i.id}')">EDIT</button>
           <button class="rab" onclick="openInventoryItemInResearch('${i.id}')" style="grid-column:1/-1;border-color:rgba(0,160,255,.3);color:var(--blue);font-size:10px;min-height:36px">🔍 RESEARCH</button>
@@ -8094,7 +8103,7 @@ function renderTable(){
       <td class="${ppc}">${i.cost>0||i.profit?(pft>=0?'+':'')+fd$(pft)+(i.cost>0?' ('+margin+')':''):'—'}</td>
       <td><span style="font-family:monospace,monospace;font-size:9px;color:${ins?'var(--g)':'var(--dim)'}">${ins?'IN STOCK':'SOLD'+(i.channel?' · '+i.channel:'')}</span></td>
       <td><div class="row-act-v2">
-        ${ins?`<button class="rab rab-sell" onclick="openSellModal('${i.id}')">SELL</button>`:''}
+        ${ins?`<button class="rab rab-sell" onclick="openSellModal('${i.id}')">SELL TO CART</button>`:''}
         ${ins?`<button class="rab rab-cart" onclick="dashAddToCart('${i.id}')">+ CART</button>`:''}
         <button class="rab rab-edit" onclick="openEditModal('${i.id}')">EDIT</button>
         <button class="rab rab-more" title="More: eBay, History, Archive" onclick="showInvRowMenu(event,'${i.id}',${ins})">⋯</button>
@@ -8218,6 +8227,13 @@ function previewSellProfit(){
 // Falls back to offline queue ('pos-ledger-transaction') when Supabase is unavailable.
 // This is the single source of truth for all quick-sell transaction recording.
 async function recordQuickSellTransaction(item, salePrice, channel, soldAt){
+  // Phase 5 (cart unification): this function used to be the shared direct-finalize
+  // engine for confirmQuickSell() and confirmOneOffSell(). Both now route through
+  // the cart and finalize exclusively via lockCheckoutForPayment -> ... ->
+  // finishLockedCheckout, so this should no longer be reachable from any live UI
+  // path. Left in place (not deleted) in case an offline-queue retry or other
+  // legacy caller still references it — but its invocation is now unexpected.
+  console.warn('Deprecated direct sale path called — sales must route through cart', { item:item?.name, salePrice, channel });
   const saleId  = makeUuid('sale');
   const storeId = getActiveStoreId();
   const drawerId = drawerState?.id || null;
@@ -8301,68 +8317,81 @@ async function recordQuickSellTransaction(item, salePrice, channel, soldAt){
 // Records a transaction (and drawer movement when cash) WITHOUT touching inventory records.
 function openOneOffSellModal(){
   document.getElementById('oneoff-name').value = '';
-  document.getElementById('oneoff-category').value = 'Pokemon TCG';
+  document.getElementById('oneoff-category').value = '';
   document.getElementById('oneoff-price').value = '';
+  document.getElementById('oneoff-qty').value = '1';
   document.getElementById('oneoff-cost').value = '';
-  document.getElementById('oneoff-channel').value = 'Cash';
+  const notesEl = document.getElementById('oneoff-notes');
+  if(notesEl) notesEl.value = '';
   document.getElementById('oneoff-sell-modal').classList.add('on');
   setTimeout(() => document.getElementById('oneoff-name')?.focus(), 100);
 }
 function closeOneOffSellModal(){
   document.getElementById('oneoff-sell-modal').classList.remove('on');
 }
+// Phase 3 reroute: "Sell One-Off Item" no longer finalizes anything itself.
+// It builds a one_off cart line and adds it to the cart via the unified
+// addSaleItemToCart helper. The sale only becomes real when the dealer runs
+// it through the standard locked-checkout finalize flow (FINALIZE SALE).
+// Does NOT write pos_transactions, does NOT touch the drawer, does NOT mark
+// anything sold — all of that now happens exclusively in
+// finalizeCompletedCheckout / markCartItemsSoldFromPayment post-payment.
 async function confirmOneOffSell(){
   const name = document.getElementById('oneoff-name')?.value.trim() || '';
-  const category = document.getElementById('oneoff-category')?.value || 'Other';
-  const salePrice = parseFloat(document.getElementById('oneoff-price')?.value) || 0;
+  const category = document.getElementById('oneoff-category')?.value || '';
+  const price = parseFloat(document.getElementById('oneoff-price')?.value) || 0;
+  const quantity = Math.max(1, parseInt(document.getElementById('oneoff-qty')?.value, 10) || 1);
   const cost = parseFloat(document.getElementById('oneoff-cost')?.value) || 0;
-  const channel = document.getElementById('oneoff-channel')?.value || 'Cash';
+  const notes = document.getElementById('oneoff-notes')?.value.trim() || '';
   if(!name) return alert('Enter an item name');
-  if(!salePrice) return alert('Enter a sale price');
-  const soldAt = new Date().toISOString();
-  const pseudoItem = { id:'oneoff_' + Date.now(), name, category, cost, market:salePrice };
+  if(!category) return alert('Select a category');
+  if(!price) return alert('Enter a sale price');
+
+  addSaleItemToCart({ name, category, cost, notes }, {
+    sourceType:'one_off',
+    name, category, notes,
+    unitPrice:price,
+    costBasis:cost,
+    quantity,
+    undoLabel:'one-off add to cart'
+  });
+
   closeOneOffSellModal();
-  await recordQuickSellTransaction(pseudoItem, salePrice, channel, soldAt);
-  logOpsEvent('one_off_sale', 'Recorded one-off sale: ' + name, { name, category, salePrice, cost, channel });
-  renderAll();
-  toast_dash('One-off sale recorded · $' + salePrice.toFixed(2) + ' · ' + channel);
+  toast_dash('Added one-off item to cart');
 }
 
+// Phase 4 reroute: the Inventory "SELL" button no longer finalizes a sale by
+// itself. It now only adds the inventory item to the cart (sourceType:
+// 'inventory', or 'sealed' for sealed/pack products — both ride this same
+// path). It does NOT mark the item sold, does NOT deduct inventory, does NOT
+// touch the drawer, and does NOT write a transaction. The sale only becomes
+// real when FINALIZE SALE runs the standard locked-checkout flow, which is
+// the only place markCartItemsSoldFromPayment / markInventoryRecordSold /
+// drawer updates / pos_transactions writes happen.
 async function confirmQuickSell(){
   const item=all.find(i=>i.id===sellItemId); if(!item) return;
-  const salePrice=parseFloat(document.getElementById('sell-price').value)||0;
-  const channel=document.getElementById('sell-channel').value;
-  const soldAt = new Date().toISOString();
-  if(!salePrice){alert('Enter a sale price');return;}
-  pushUndoAction('quick sell', { type:'item-snapshot', item:{...item}, lifecycleMap:getLifecycleMap() });
-  // fieldData for Webflow mirror: schema-confirmed fields only.
-  // sale-price/profit/sale-channel/date-sold are NOT in Webflow schema — those go to Supabase POS tables.
-  const fieldData = {
-    'sold-out':        true,
-    'inventory-count': 0,
-    status:            STATUS_SOLD,
-  };
-  // Update in-memory state immediately
-  const idx=all.findIndex(i=>i.id===item.id);
-  if(idx>=0){all[idx].status='sold';all[idx].lifecycle='sold';all[idx].salePrice=salePrice;all[idx].profit=salePrice-(item.cost||0);all[idx].channel=channel;all[idx].soldAt=soldAt;}
-  setLifecycle(item.id, 'sold', true);
-  soldData=all.filter(i=>i.status==='sold');
+  const price=parseFloat(document.getElementById('sell-price').value)||0;
+  if(!price){alert('Enter a sale price');return;}
+  if(item.status === 'sold'){ alert('This item is already sold'); return; }
+
+  addSaleItemToCart(item, {
+    sourceType: isSealedProduct(item) ? 'sealed' : 'inventory',
+    inventoryId: item.id,
+    name: item.name,
+    category: item.category,
+    condition: item.condition || '',
+    imageUrl: item.thumbnail || null,
+    unitPrice: price,
+    costBasis: item.cost || 0,
+    quantity: 1,
+    productType: isSealedProduct(item) ? (item.category || 'Sealed') : '',
+    metadata: { set:item.set || '', year:item.year || '' },
+    undoLabel:'sell to cart'
+  });
+
   closeSellModal();
-  renderAll();
-  logOpsEvent('quick_sell', 'Marked sold: ' + (item.name||'item'), { itemId:item.id, salePrice, channel });
-
-  // Run inventory sync + transaction recording concurrently.
-  // recordQuickSellTransaction always writes pos_transactions immediately (no await needed).
-  // Both are fire-and-forget with their own error handling / queue fallbacks.
-  const inventorySync = markInventoryRecordSold(item, fieldData, { salePrice, profit:salePrice-(item.cost||0), channel, soldAt })
-    .catch(e => {
-      enqueueOrReplaceSync('inventory-sold', item.id, 'Mark sold in inventory: ' + (item.name||'item'), { id:item.id, fieldData, inventorySource:getInventorySource() }, e.message||'Sold sync failed');
-      return 'queued';
-    });
-  const txRecord = recordQuickSellTransaction(item, salePrice, channel, soldAt);
-
-  await Promise.allSettled([inventorySync, txRecord]);
-  toast_dash('Sold · $' + salePrice.toFixed(2) + ' · ' + (channel||'In-Store'));
+  logOpsEvent('cart_sell_added', 'Added inventory item to cart for sale: ' + (item.name||'item'), { itemId:item.id, price });
+  toast_dash('Added to cart · $' + price.toFixed(2));
 }
 
 // ── CART INTEGRATION FROM DASHBOARD ───────────────────────
@@ -8483,6 +8512,68 @@ function addQuickSaleShortcut(name, price, category='Quick Sale', quantity=1){
   saveCartDataLocal(cartData, 'quick sale');
   logOpsEvent('cart_item_added', 'Added quick sale shortcut: ' + name, { price:Number(price || 0), quantity, category });
   toast_dash('Added quick sale: ' + name);
+}
+
+// ── Unified cart-add helper (Phase 2: standardized cart item model) ──────
+// Single entry point for ALL "this becomes a sale" actions. Builds one
+// consistent cart line shape across sourceTypes (inventory/one_off/sealed)
+// while preserving the legacy field names (price/cost/img/shopId/wfId/etc.)
+// that existing cart render + finalize code (renderDealerCartTools,
+// customerSafeLine, markCartItemsSoldFromPayment) already expect.
+// NOTHING here finalizes a sale — it only ever appends to the cart and
+// persists via the existing getCartDataLocal/saveCartDataLocal helpers.
+function addSaleItemToCart(item = {}, options = {}){
+  const sourceType = options.sourceType || item.sourceType || 'inventory';
+  const cartData = getCartDataLocal();
+  cartData.items = Array.isArray(cartData.items) ? cartData.items : [];
+
+  const cartLineId = 'ci_' + sourceType + '_' + Date.now() + '_' + Math.random().toString(36).slice(2,6);
+  const quantity = Math.max(1, Number(options.quantity ?? item.quantity ?? item.qty ?? 1));
+  const unitPrice = Number(options.unitPrice ?? item.unitPrice ?? item.price ?? item.market ?? item.salePrice ?? 0);
+  const costBasis = Number(options.costBasis ?? item.costBasis ?? item.cost ?? 0);
+  const inventoryId = options.inventoryId ?? item.inventoryId ?? (sourceType === 'one_off' ? null : (item.id ?? null));
+  const name = options.name ?? item.name ?? 'Item';
+  const category = options.category ?? item.category ?? '';
+  const imageUrl = options.imageUrl ?? item.imageUrl ?? item.thumbnail ?? item.img ?? null;
+  const condition = options.condition ?? item.condition ?? '';
+  const productType = options.productType ?? item.productType ?? '';
+  const notes = options.notes ?? item.notes ?? '';
+  const taxable = options.taxable ?? item.taxable ?? true;
+  const metadata = Object.assign({}, item.metadata || {}, options.metadata || {});
+
+  const cartItem = {
+    // ── Unified cart item model fields (Phase 2) ──
+    cartLineId,
+    sourceType,                 // 'inventory' | 'one_off' | 'sealed'
+    inventoryId: (sourceType === 'one_off') ? null : inventoryId,
+    name,
+    category,
+    imageUrl,
+    condition,
+    quantity,
+    unitPrice,
+    costBasis,
+    taxable,
+    metadata,
+    productType,
+    notes,
+    // ── Legacy fields kept in sync for existing cart render / finalize code ──
+    id: cartLineId,
+    sub: options.sub ?? [item.set, item.year, category].filter(Boolean).join(' · ') ?? '',
+    price: unitPrice,
+    cost: costBasis,
+    img: imageUrl,
+    qty: quantity,
+    shopId: (sourceType === 'one_off') ? null : inventoryId,
+    wfId: (sourceType === 'one_off') ? null : inventoryId,
+    set: item.set || '',
+    year: item.year || '',
+  };
+
+  cartData.items.push(cartItem);
+  saveCartDataLocal(cartData, options.undoLabel || (sourceType === 'one_off' ? 'one-off add' : 'cart add'));
+  logOpsEvent('cart_item_added', 'Added to cart: ' + name, { sourceType, name, unitPrice, quantity, category, inventoryId: cartItem.inventoryId });
+  return cartItem;
 }
 
 function addCustomBulkLotToCart(){
