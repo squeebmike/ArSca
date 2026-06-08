@@ -2206,6 +2206,17 @@ function roleCanAccessTab(tab){
   Storage.prototype.getItem = function(key){
     if(this === localStorage && WALKOFF_SCOPED_KEYS.has(key)) {
       const scoped = scopedStorageKey(key);
+      // ── NUCLEAR DEMO SHIELD ───────────────────────────────────────────────
+      // Demo context MUST NEVER read a key scoped to a real store (e.g.
+      // walkoff:walkoff-main:pos_drawer from an old contaminated session).
+      // Check performed BEFORE any read so no real data can bleed through.
+      // getAuthSession() reads 'walkoff_auth_session_v1' — NOT a scoped key,
+      // so no recursion risk.
+      if(scoped.startsWith('walkoff:') && !scoped.startsWith('walkoff:demo:') && getAuthSession()?.demoMode){
+        // Silently return null — demo gets its own fresh key or nothing
+        return null;
+      }
+      // ─────────────────────────────────────────────────────────────────────
       const scopedVal = rawGet.call(this, scoped);
       if(scopedVal !== null) return scopedVal;
       const oldVal = rawGet.call(this, key);
@@ -2952,11 +2963,12 @@ const DEMO_VENDOR_PROFILE_DEFAULTS = {
 
 // Demo inventory items — fake data only, clearly labelled
 const DEMO_INVENTORY_SEED = [
-  { id:'demo-charizard-ex', name:'Demo Charizard ex', set:'Scarlet & Violet Base', year:'2023', category:'TCG', cost:45, price:120, status:'in_stock', source:'spreadsheet', condition:'Near Mint', _demo:true },
-  { id:'demo-booster-pack', name:'Demo Pokémon Booster Pack', set:'Scarlet & Violet Base', year:'2023', category:'TCG', cost:4, price:6, status:'in_stock', source:'spreadsheet', condition:'Factory Sealed', _demo:true },
-  { id:'demo-comic', name:'Demo Amazing Spider-Man #1 (Reprint)', set:'', year:'1999', category:'Comics', cost:10, price:25, status:'in_stock', source:'spreadsheet', condition:'Very Fine', _demo:true },
-  { id:'demo-sports-card', name:'Demo Mike Trout Rookie Card', set:'2011 Topps Update', year:'2011', category:'Sports Cards', cost:30, price:85, status:'in_stock', source:'spreadsheet', condition:'Excellent', _demo:true },
-  { id:'demo-sealed-box', name:'Demo Sealed Pokémon Box', set:'Paldea Evolved', year:'2023', category:'TCG', cost:90, price:130, status:'in_stock', source:'spreadsheet', condition:'Factory Sealed', _demo:true },
+  // NOTE: must use `market:` not `price:` — getUniversalInventory() maps i.market||0 for market value
+  { id:'demo-charizard-ex',  name:'Demo Charizard ex',                    set:'Scarlet & Violet Base', year:'2023', category:'TCG',          cost:45, market:120, salePrice:120, status:'in_stock', source:'spreadsheet', condition:'Near Mint',       _demo:true },
+  { id:'demo-booster-pack',  name:'Demo Pokémon Booster Pack',             set:'Scarlet & Violet Base', year:'2023', category:'TCG',          cost:4,  market:6,   salePrice:6,   status:'in_stock', source:'spreadsheet', condition:'Factory Sealed',  _demo:true },
+  { id:'demo-comic',         name:'Demo Amazing Spider-Man #1 (Reprint)',  set:'',                      year:'1999', category:'Comics',        cost:10, market:25,  salePrice:25,  status:'in_stock', source:'spreadsheet', condition:'Very Fine',       _demo:true },
+  { id:'demo-sports-card',   name:'Demo Mike Trout Rookie Card',           set:'2011 Topps Update',     year:'2011', category:'Sports Cards',  cost:30, market:85,  salePrice:85,  status:'in_stock', source:'spreadsheet', condition:'Excellent',       _demo:true },
+  { id:'demo-sealed-box',    name:'Demo Sealed Pokémon Box',               set:'Paldea Evolved',        year:'2023', category:'TCG',          cost:90, market:130, salePrice:130, status:'in_stock', source:'spreadsheet', condition:'Factory Sealed',  _demo:true },
 ];
 
 // Seed demo-scoped localStorage with blank settings + fake inventory on first demo run.
@@ -2982,6 +2994,61 @@ function seedDemoDataIfNeeded(){
   if(!inv || inv.length === 0){
     localStorage.setItem('walkoff_universal_inventory', JSON.stringify(DEMO_INVENTORY_SEED));
   }
+}
+
+// ─── Demo session hard repair ───────────────────────────────────────────────
+// Detects old contaminated demo sessions where activeStoreId was set to
+// a real store ('walkoff-main') instead of 'demo'.  Rewrites the session in-place
+// and clears the already-loaded drawerState so the Walk-Off cash drawer never
+// shows in demo mode.  Safe to call any time — returns false and does nothing
+// when the session is already clean or is a real Supabase session.
+function repairDemoSessionIfNeeded(){
+  const session = getAuthSession();
+  if(!session?.demoMode) return false;          // Not a demo session — nothing to do
+
+  const currentStoreId = session.activeStoreId ||
+    (function(){ try{ return localStorage.getItem(WALKOFF_ACTIVE_STORE_KEY); }catch(e){ return null; } })();
+
+  if(currentStoreId === 'demo') return false;   // Already clean
+
+  // Contaminated: demo flag set but storeId points at a real store namespace
+  console.warn('[DEMO REPAIR] Contaminated demo session detected — storeId was', JSON.stringify(currentStoreId), ', rewriting to "demo" namespace...');
+
+  const repairedSession = {
+    user: { ...WALKOFF_DEMO_USER, lastLoginAt: new Date().toISOString() },
+    stores: WALKOFF_DEMO_STORES,
+    activeStoreId: 'demo',
+    demoMode: true,
+    createdAt: session.createdAt || new Date().toISOString(),
+    repairedAt: new Date().toISOString(),
+  };
+
+  // These are unscoped keys — write goes through shim but bypasses scopedStorageKey check
+  try { localStorage.setItem(WALKOFF_AUTH_SESSION_KEY, JSON.stringify(repairedSession)); } catch(e) {}
+  try { localStorage.setItem(WALKOFF_ACTIVE_STORE_KEY, 'demo'); } catch(e) {}
+
+  // drawerState is a var declared at module level (reads at script parse time from the
+  // then-active scoped key).  Null it out so the repaired demo session starts with a
+  // closed drawer instead of Walk-Off's real open drawer balance.
+  try { drawerState = null; } catch(e) {}
+
+  // Seed demo inventory + settings under the now-correct walkoff:demo:* namespace
+  try { seedDemoDataIfNeeded(); } catch(e) {}
+
+  console.log('[DEMO REPAIR] Session repaired — demo is now isolated to walkoff:demo:* keys.');
+  return true;  // Caller can show a toast if desired
+}
+
+// ─── Real-data assertion guard ───────────────────────────────────────────────
+// Call before any Supabase read/write that must never run in demo mode.
+// Throws a clearly-labelled error so the call stack aborts cleanly.
+function assertRealDataAllowed(operationName){
+  if(getAccountContext().isDemo){
+    const msg = '[DEMO] Real-data operation "' + (operationName||'?') + '" blocked in demo mode.';
+    console.error(msg);
+    throw new Error(msg);
+  }
+  return true;
 }
 
 const DEFAULT_VENDOR_PROFILE = {
@@ -5886,7 +5953,17 @@ function renderDataModePanel(){
   ).join('');
   if(actions) {
     actions.innerHTML = ctx.isDemo
-      ? `<button class="hbtn" onclick="if(confirm('Reset demo data? This clears all demo inventory, drawer, and sales from this browser.')){['vendor_profile_v1','store_payment_settings_v1','walkoff_universal_inventory','pos_transactions','pos_drawer','pos_cart_v2','sync_queue_v1'].forEach(k=>localStorage.removeItem(k));seedDemoDataIfNeeded();toast_dash('Demo data reset');renderDataModePanel();}">RESET DEMO DATA</button>`
+      ? `<div style="display:flex;gap:8px;flex-wrap:wrap">
+           <button class="hbtn" onclick="if(confirm('Reset demo data? This clears all demo inventory, drawer, and sales from this browser.')){
+             ['vendor_profile_v1','store_payment_settings_v1','walkoff_universal_inventory',
+              'pos_transactions','pos_drawer','pos_cart_v2','sync_queue_v1','pos_drawer_closeouts'].forEach(k=>localStorage.removeItem(k));
+             try{drawerState=null;}catch(e){}
+             seedDemoDataIfNeeded();
+             toast_dash('Demo data reset — fresh demo inventory loaded');
+             renderDataModePanel();
+           }">RESET DEMO DATA</button>
+           <button class="hbtn" onclick="var repaired=repairDemoSessionIfNeeded();toast_dash(repaired?'Demo session repaired — contamination cleared':'Demo session is already clean');renderDataModePanel();" title="Fix old sessions that had the wrong store ID">REPAIR SESSION</button>
+         </div>`
       : `<button class="hbtn" onclick="loginDemoAccount()">SWITCH TO DEMO MODE</button>`;
   }
 }
@@ -8855,6 +8932,10 @@ function builtInDataFromItem(item, updates={}){
 
 window.addEventListener('load', async function(){
   if(await handleAuthRecoveryRedirect()) return;
+  // Repair contaminated demo sessions BEFORE ensureAuthReady() touches any storeId.
+  // Must run here so drawerState (set at module parse time) gets nulled before drawer UI
+  // renders, preventing Walk-Off's real cash drawer from showing in demo mode.
+  repairDemoSessionIfNeeded();
   if(!(await ensureAuthReady())) return;
   // Seed demo data and show banner before any UI renders in demo mode
   updateDataModeBanner();
@@ -8873,6 +8954,24 @@ window.addEventListener('load', async function(){
 });
 
 async function loadInventory(){
+  // Demo mode: skip Webflow entirely — only show locally-seeded demo items.
+  // This prevents real Walk-Off Webflow products from mixing into the demo inventory.
+  if(getAccountContext().isDemo){
+    try {
+      const demoItems = getUniversalInventory();  // reads from walkoff:demo:walkoff_universal_inventory
+      all = applyInventoryEditOverrides(demoItems);
+      soldData = all.filter(i => i.status === 'sold');
+      filtered = [...all];
+      renderAll();
+      renderInventoryCategoryFilters();
+      const el = document.getElementById('sync-status');
+      if(el) el.textContent = 'DEMO — ' + demoItems.length + ' demo items (local only)';
+    } catch(e){
+      const el = document.getElementById('sync-status');
+      if(el) el.textContent = '⚠ demo load error: ' + e.message;
+    }
+    return;
+  }
   document.getElementById('sync-status').textContent = 'Loading...';
   try {
     let products=[], offset=0, total=999;
