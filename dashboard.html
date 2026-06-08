@@ -17347,7 +17347,9 @@ function normalizeVenmoHandle(value){
   if(!v) return '';
   v = v.replace(/^https?:\/\/(www\.)?venmo\.com\/u\//i, '');
   v = v.replace(/^https?:\/\/(www\.)?venmo\.com\//i, '');
-  v = v.replace(/^@/, '');
+  v = v.replace(/^(www\.)?venmo\.com\/u\//i, '');
+  v = v.replace(/^(www\.)?venmo\.com\//i, '');
+  v = v.replace(/^[@]/, '');
   v = v.split(/[\/?#]/)[0];
   return v.trim();
 }
@@ -17355,6 +17357,7 @@ function normalizeCashAppHandle(value){
   let v = String(value || '').trim();
   if(!v) return '';
   v = v.replace(/^https?:\/\/(www\.)?cash\.app\/\$?/i, '');
+  v = v.replace(/^(www\.)?cash\.app\/\$?/i, '');
   v = v.replace(/^\$/, '');
   v = v.split(/[\/?#]/)[0];
   return v.trim();
