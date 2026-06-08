@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.06.05.06-pop-count-img-align">
+<meta name="version" content="2026.06.08.01-show-ops-v1">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -474,6 +474,13 @@ th.th-thumb, td.td-thumb { width:56px; padding:4px 4px 4px 8px; }
 /* 6. Show Mode */
 body.show-mode .dev-only { display:none !important; }
 body.show-mode .admin-only { display:none !important; }
+/* Show Operations v1: keep schema/sync/admin tooling out of the cashier-facing Show Mode view */
+body.show-mode [data-webflow-required],
+body.show-mode [data-admin-only],
+body.show-mode #backoffice-research-panel,
+body.show-mode #backoffice-system-panel,
+body.show-mode #backoffice-ops-panel,
+body.show-mode #backoffice-tcg-sync-panel { display:none !important; }
 body.show-mode .logo span { display:none; }
 .show-mode-indicator { display:none; font-family:monospace; font-size:9px; color:var(--g); letter-spacing:.08em; padding:2px 8px; border:1px solid rgba(0,255,179,.3); border-radius:999px; }
 body.show-mode .show-mode-indicator { display:inline; }
@@ -803,7 +810,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.05.06-pop-count-img-align</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.08.01-show-ops-v1</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
@@ -825,7 +832,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip dev-only" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.05.06-pop-count-img-align</div>
+<div class="dsb-chip dev-only" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.08.01-show-ops-v1</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -930,18 +937,20 @@ body.customer-display-mode #customer-display-exit{display:block;}
 
 <!-- INVENTORY TAB -->
 <div id="tab-inventory" class="tab-panel">
+  <div id="price-change-alerts"></div>
   <div class="sec" style="display:flex;align-items:center;gap:12px">
     FULL INVENTORY
     <div class="inv-view-toggle">
       <button class="inv-view-btn active" id="inv-btn-table" onclick="setInvView('table')" title="Table view">≡ Table</button>
       <button class="inv-view-btn" id="inv-btn-cards" onclick="setInvView('cards')" title="Card grid view">⊞ Cards</button>
     </div>
+    <button class="hbtn" style="margin-left:auto" onclick="openOneOffSellModal()" title="Sell an item that isn't in inventory yet">⚡ SELL ONE-OFF ITEM</button>
   </div>
   <div class="tc">
     <input class="tsi" id="tbl-q" placeholder="Search name, set, year, #, SIR, player..." oninput="filterTable()">
     <button class="fb" aria-label="Voice search inventory" onclick="startVoiceInput('tbl-q', filterTable)">MIC</button>
-    <button class="fb on" onclick="setF('all',this)">All</button>
-    <button class="fb" onclick="setF('in_stock',this)">In Stock</button>
+    <button class="fb" onclick="setF('all',this)">All</button>
+    <button class="fb on" onclick="setF('in_stock',this)">In Stock</button>
     <button class="fb" onclick="setF('sold',this)">Sold</button>
     <button class="fb" onclick="setF('archived',this)">Archived</button>
     <button class="fb" onclick="setF('at_show',this)">At Show</button>
@@ -1129,6 +1138,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
           <option value="Sports Card">Sports Card</option>
           <option value="Yu-Gi-Oh!">Yu-Gi-Oh!</option>
           <option value="Comic">Comic</option>
+          <option value="Sealed">Sealed / Packs</option>
           <option value="Graded">Graded Slab</option>
           <option value="Video Games">Video Games</option>
           <option value="Funko Pops">Funko Pops</option>
@@ -1666,6 +1676,44 @@ body.customer-display-mode #customer-display-exit{display:block;}
   </div>
 </div>
 
+<!-- Show Operations v1: one-off sale for items not (yet) in inventory -->
+<div class="modal-bg" id="oneoff-sell-modal">
+  <div class="modal">
+    <h3>✓ SELL ONE-OFF ITEM</h3>
+    <div style="font-family:monospace,monospace;font-size:9px;color:var(--dim);margin-bottom:8px">For items not in inventory yet — records a sale without an inventory record.</div>
+    <label>Item Name *</label>
+    <input type="text" id="oneoff-name" placeholder="e.g. Charizard ex 199/197">
+    <label>Category *</label>
+    <select id="oneoff-category">
+      <option value="Pokemon TCG">Pokémon</option>
+      <option value="Sports Card">Sports Card</option>
+      <option value="Comic">Comic</option>
+      <option value="Magic: The Gathering">MTG</option>
+      <option value="Sealed">Sealed / Pack</option>
+      <option value="Collectibles">Collectibles</option>
+      <option value="Other">Other</option>
+    </select>
+    <label>Sale Price ($) *</label>
+    <input type="number" id="oneoff-price" step="0.01" min="0" placeholder="0.00">
+    <label>Cost (optional)</label>
+    <input type="number" id="oneoff-cost" step="0.01" min="0" placeholder="0.00">
+    <label>Payment Method *</label>
+    <select id="oneoff-channel">
+      <option>Cash</option>
+      <option>Credit/Debit</option>
+      <option>PayPal</option>
+      <option>Venmo</option>
+      <option>Trade</option>
+      <option>In-Store</option>
+      <option>Other</option>
+    </select>
+    <div class="modal-btns">
+      <button class="modal-btn confirm" onclick="confirmOneOffSell()">RECORD SALE</button>
+      <button class="modal-btn cancel" onclick="closeOneOffSellModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <!-- WANT LIST TAB -->
 <div id="tab-wantlist" class="tab-panel">
   <div class="sec">CUSTOMER WANT LIST / PULL LIST</div>
@@ -1863,7 +1911,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.06.05.06-pop-count-img-align';
+const APP_VERSION = '2026.06.08.01-show-ops-v1';
 const branchName = 'pokemon-v2-core';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
 const POKEMON_EXACT_CACHE_VERSION = 'pokemon-exact-v3-price-matrix';
@@ -2540,7 +2588,8 @@ function dealerItemFromResearchResult(r = {}, source = 'research'){
   enqueueDealerItem(item.itemId, 'researchQueue', 'researched');
   return item;
 }
-let all=[], filtered=[], activeF='all', activeTab='overview', soldData=[];
+// Show Operations v1: default Inventory view to "In Stock" so Sold items don't clutter the floor view
+let all=[], filtered=[], activeF='in_stock', activeTab='overview', soldData=[];
 let ts={col:'name',dir:1};
 const PER=50; let page=1;
 const DAILY_TABS = [
@@ -2804,6 +2853,68 @@ function saveVendorProfile(profile){
   logOpsEvent('vendor_profile', 'Updated vendor profile/preferences', { storeName:next.storeName });
 }
 
+// Show Operations v1 — Default Research Category setting
+const RESEARCH_CATEGORY_OPTIONS = [
+  { value:'', label:'All / Any Category' },
+  { value:'Pokemon TCG', label:'Pokémon' },
+  { value:'Sports Card', label:'Sports Cards' },
+  { value:'Comic', label:'Comics' },
+  { value:'Magic: The Gathering', label:'MTG' },
+  { value:'Sealed', label:'Sealed / Packs' },
+];
+function getResearchSettings(){
+  let saved = {};
+  try { saved = JSON.parse(localStorage.getItem('research_settings_v1') || '{}'); } catch(e) {}
+  return { defaultCategory:'', rememberLastCategory:false, ...saved };
+}
+function saveResearchSettings(patch){
+  const merged = { ...getResearchSettings(), ...patch };
+  localStorage.setItem('research_settings_v1', JSON.stringify(merged));
+  return merged;
+}
+function applyResearchDefaultCategory(){
+  const sel = document.getElementById('qpl-cat');
+  if(!sel) return;
+  const settings = getResearchSettings();
+  let value = settings.defaultCategory || '';
+  if(settings.rememberLastCategory) {
+    const last = localStorage.getItem('qpl_last_category');
+    if(last != null) value = last;
+  }
+  if(value && [...sel.options].some(o => o.value === value)) sel.value = value;
+}
+function saveResearchSettingsFromForm(){
+  const cat = document.getElementById('research-default-category')?.value || '';
+  const remember = !!document.getElementById('research-remember-last')?.checked;
+  saveResearchSettings({ defaultCategory:cat, rememberLastCategory:remember });
+  toast_dash('Research defaults saved');
+  applyResearchDefaultCategory();
+}
+function ensureResearchSettingsPanel(backoffice){
+  if(!backoffice || document.getElementById('backoffice-research-panel')) return;
+  const settings = getResearchSettings();
+  const panel = document.createElement('div');
+  panel.className = 'panel';
+  panel.id = 'backoffice-research-panel';
+  panel.style.marginTop = '4px';
+  panel.style.marginBottom = '14px';
+  panel.innerHTML = `<div class="ph">RESEARCH DEFAULTS</div>
+    <div style="font-family:monospace,monospace;font-size:10px;color:var(--dim);margin-bottom:10px;line-height:1.55">
+      Choose which category Research/Quick Price Lookup opens with so dealers don't have to reselect it every search.
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
+      <select id="research-default-category" style="background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:6px 10px;border-radius:6px;font-family:monospace,monospace;font-size:10px">
+        ${RESEARCH_CATEGORY_OPTIONS.map(o => `<option value="${escHtml(o.value)}" ${settings.defaultCategory===o.value?'selected':''}>${escHtml(o.label)}</option>`).join('')}
+      </select>
+      <label style="display:flex;gap:6px;align-items:center;font-family:monospace,monospace;font-size:10px;color:var(--dim)">
+        <input type="checkbox" id="research-remember-last" ${settings.rememberLastCategory?'checked':''}> Remember last used category
+      </label>
+      <button class="hbtn" onclick="saveResearchSettingsFromForm()">SAVE</button>
+    </div>
+    <div style="font-family:monospace,monospace;font-size:9px;color:var(--dim)">Manually changing the category in Research only affects the current session unless "Remember last used category" is on, or you Save a new default here.</div>`;
+  backoffice.appendChild(panel);
+}
+
 function getPaymentSettings(){
   const p = getVendorProfile();
   let saved = {};
@@ -3015,6 +3126,7 @@ function organizeRegisterLayout(){
   ensureVendorProfilePanel(backoffice);
   ensureBrandingPanel(backoffice);
   ensurePaymentSettingsPanel(backoffice);
+  ensureResearchSettingsPanel(backoffice);
   ensurePriceChartingDataPanel(backoffice);
   ensureOfflineCachePanel(backoffice);
   ensurePricingQaPanel(backoffice);
@@ -5043,15 +5155,29 @@ function ensureSpreadsheetPanel(backoffice){
       <div style="display:grid;grid-template-columns:2fr 1fr 1fr .8fr .8fr;gap:8px">
         <input id="built-name" class="tsi" placeholder="Item name">
         <select id="built-category" class="tsi" onchange="toggleBuiltGradedRow()">${getInventoryCategories().map(c => `<option>${escHtml(c)}</option>`).join('')}</select>
-        <input id="built-set" class="tsi" placeholder="Set / issue / product">
+        <select id="built-product-type" class="tsi" onchange="toggleBuiltSealedFields()" title="Single card vs sealed/pack product">
+          <option value="single">Single / card</option>
+          <option value="sealed">Sealed / pack / box</option>
+          <option value="lot">Lot</option>
+        </select>
         <input id="built-cost" class="tsi" type="number" step="0.01" placeholder="Cost">
-        <input id="built-price" class="tsi" type="number" step="0.01" placeholder="Price">
+        <input id="built-price" class="tsi" type="number" step="0.01" placeholder="Price / market">
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:8px;margin-top:8px">
+      <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr auto;gap:8px;margin-top:8px">
+        <input id="built-set" class="tsi" placeholder="Set / product line">
+        <input id="built-qty" class="tsi" type="number" step="1" min="1" placeholder="Qty" value="1">
         <input id="built-year" class="tsi" placeholder="Year">
-        <input id="built-condition" class="tsi" placeholder="Condition">
         <input id="built-location" class="tsi" placeholder="Location">
         <button class="hbtn" onclick="addManualBuiltInInventory()">ADD ITEM</button>
+      </div>
+      <div id="built-single-row" style="display:grid;grid-template-columns:1fr 2fr 2fr;gap:8px;margin-top:8px">
+        <input id="built-condition" class="tsi" placeholder="Condition (e.g. NM)">
+        <input id="built-image" class="tsi" placeholder="Image URL (optional)">
+        <input id="built-notes" class="tsi" placeholder="Notes (optional)">
+      </div>
+      <div id="built-sealed-row" style="display:none;grid-template-columns:1fr 2fr;gap:8px;margin-top:8px">
+        <input id="built-image-sealed" class="tsi" placeholder="Image URL (optional)">
+        <input id="built-notes-sealed" class="tsi" placeholder="Notes (optional)">
       </div>
       <div id="built-graded-row" style="display:none;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:8px">
         <input id="built-grader" class="tsi" placeholder="Grader (PSA / BGS / CGC)">
@@ -5081,20 +5207,38 @@ function toggleBuiltGradedRow(){
   if(row) row.style.display = cat === 'Graded' ? 'grid' : 'none';
 }
 
+// Show Operations v1: sealed/pack products skip card-number + condition-matrix fields —
+// they get a simpler row (just image/notes) since cost + sale price are what matter for show speed.
+function toggleBuiltSealedFields(){
+  const type = document.getElementById('built-product-type')?.value || 'single';
+  const isSealed = type === 'sealed' || type === 'lot';
+  const singleRow = document.getElementById('built-single-row');
+  const sealedRow = document.getElementById('built-sealed-row');
+  if(singleRow) singleRow.style.display = isSealed ? 'none' : 'grid';
+  if(sealedRow) sealedRow.style.display = isSealed ? 'grid' : 'none';
+}
+
 async function addManualBuiltInInventory(){
   const name = document.getElementById('built-name')?.value.trim();
   if(!name){ toast_dash('Enter an item name'); return; }
   const cat = document.getElementById('built-category')?.value || 'TCG';
+  const productType = document.getElementById('built-product-type')?.value || 'single';
+  const isSealed = productType === 'sealed' || productType === 'lot';
   const item = {
     name,
-    category:cat,
+    category:isSealed ? 'Sealed' : cat,
+    productType,
     set:document.getElementById('built-set')?.value.trim() || '',
     year:document.getElementById('built-year')?.value.trim() || '',
-    condition:document.getElementById('built-condition')?.value.trim() || '',
+    // Sealed/pack/lot products skip condition + card-number matrices entirely — cost/price matter most.
+    condition:isSealed ? '' : (document.getElementById('built-condition')?.value.trim() || ''),
     location:document.getElementById('built-location')?.value.trim() || '',
     cost:Number(document.getElementById('built-cost')?.value || 0),
     market:Number(document.getElementById('built-price')?.value || 0),
-    qty:1,
+    qty:Math.max(1, Number(document.getElementById('built-qty')?.value || 1)),
+    image:(isSealed ? document.getElementById('built-image-sealed')?.value.trim() : document.getElementById('built-image')?.value.trim()) || '',
+    notes:(isSealed ? document.getElementById('built-notes-sealed')?.value.trim() : document.getElementById('built-notes')?.value.trim()) || '',
+    is_sealed:isSealed,
     // Graded fields — populated when category is Graded
     grader:document.getElementById('built-grader')?.value.trim() || '',
     grade:document.getElementById('built-grade')?.value.trim() || '',
@@ -5102,8 +5246,8 @@ async function addManualBuiltInInventory(){
   };
   try {
     const id = await createBuiltInInventoryItem(item, item, 'manual_quick_add');
-    ['built-name','built-set','built-year','built-condition','built-location','built-cost','built-price','built-grader','built-grade','built-cert'].forEach(k => { const el=document.getElementById(k); if(el) el.value=''; });
-    logOpsEvent('inventory_add', 'Manual built-in inventory item added: ' + item.name, { id, category:item.category });
+    ['built-name','built-set','built-year','built-condition','built-location','built-cost','built-price','built-qty','built-image','built-notes','built-image-sealed','built-notes-sealed','built-grader','built-grade','built-cert'].forEach(k => { const el=document.getElementById(k); if(el) el.value=k==='built-qty' ? '1' : ''; });
+    logOpsEvent('inventory_add', 'Manual built-in inventory item added: ' + item.name, { id, category:item.category, productType, cost:item.cost, price:item.market });
     toast_dash('Added: ' + item.name);
     loadInventory();
   } catch(e) {
@@ -6806,8 +6950,12 @@ function startShowMode(){
     startedAt: getShowMode()?.startedAt || new Date().toISOString(),
   };
   saveShowMode(show);
-  if(show.startCash > 0 && !drawerState) {
-    document.getElementById('drawer-float').value = show.startCash.toFixed(2);
+  // Show Operations v1: always sync the drawer's starting-cash field to this show's
+  // entered amount (or clear it to $0) so a stale value from a prior show/session
+  // can never leak into a fresh drawer open.
+  const drawerFloatInput = document.getElementById('drawer-float');
+  if(drawerFloatInput && !drawerState) {
+    drawerFloatInput.value = show.startCash > 0 ? show.startCash.toFixed(2) : '';
   }
   toast_dash('Show mode active: ' + show.eventName);
   logOpsEvent('show_start', 'Started show mode: ' + show.eventName, {
@@ -7340,7 +7488,10 @@ function mapBuiltInItem(row){
     grade:d.grade || '',
     cert_number:d.cert_number || d.certNumber || '',
     tags:d.tags || '',
-    thumbnail:d.thumbnail || d.imageUrl || d.image_url || null,
+    thumbnail:d.thumbnail || d.imageUrl || d.image_url || d.image || null,
+    notes:d.notes || '',
+    productType:d.productType || '',
+    is_sealed:!!d.is_sealed,
     location:d.location || d.location_path || '',
     player:d.player || d.cardName || '',
     team:d.team || '',
@@ -7414,6 +7565,7 @@ window.addEventListener('load', async function(){
   schedulePriceSyncChecks();
   maybeRunScheduledPriceSync(true).catch(console.warn);
   renderShowMode();
+  applyResearchDefaultCategory();
   refreshEbayStatus();
   syncLifecycleFromWorker().finally(loadInventory);
 });
@@ -7568,6 +7720,7 @@ function mapItem(i, skuMap){
 }
 
 function renderAll(){
+  renderPriceChangeAlerts();
   renderStats(); renderCats(); renderTopVal(); renderFeed();
   renderChannels(); renderTopSold(); renderMonthly();
   renderAlerts(); filterTable(); renderSoldTable();
@@ -8120,6 +8273,37 @@ async function recordQuickSellTransaction(item, salePrice, channel, soldAt){
       'Quick sell ledger: ' + (item.name||'item'),
       supabaseBundle, e.message || 'Supabase write failed');
   }
+}
+
+// Show Operations v1: fast path for "Sell as one-off item" — for items not cleanly in inventory.
+// Records a transaction (and drawer movement when cash) WITHOUT touching inventory records.
+function openOneOffSellModal(){
+  document.getElementById('oneoff-name').value = '';
+  document.getElementById('oneoff-category').value = 'Pokemon TCG';
+  document.getElementById('oneoff-price').value = '';
+  document.getElementById('oneoff-cost').value = '';
+  document.getElementById('oneoff-channel').value = 'Cash';
+  document.getElementById('oneoff-sell-modal').classList.add('on');
+  setTimeout(() => document.getElementById('oneoff-name')?.focus(), 100);
+}
+function closeOneOffSellModal(){
+  document.getElementById('oneoff-sell-modal').classList.remove('on');
+}
+async function confirmOneOffSell(){
+  const name = document.getElementById('oneoff-name')?.value.trim() || '';
+  const category = document.getElementById('oneoff-category')?.value || 'Other';
+  const salePrice = parseFloat(document.getElementById('oneoff-price')?.value) || 0;
+  const cost = parseFloat(document.getElementById('oneoff-cost')?.value) || 0;
+  const channel = document.getElementById('oneoff-channel')?.value || 'Cash';
+  if(!name) return alert('Enter an item name');
+  if(!salePrice) return alert('Enter a sale price');
+  const soldAt = new Date().toISOString();
+  const pseudoItem = { id:'oneoff_' + Date.now(), name, category, cost, market:salePrice };
+  closeOneOffSellModal();
+  await recordQuickSellTransaction(pseudoItem, salePrice, channel, soldAt);
+  logOpsEvent('one_off_sale', 'Recorded one-off sale: ' + name, { name, category, salePrice, cost, channel });
+  renderAll();
+  toast_dash('One-off sale recorded · $' + salePrice.toFixed(2) + ' · ' + channel);
 }
 
 async function confirmQuickSell(){
@@ -12038,6 +12222,9 @@ function qplResultCategoryKey(r){
     if(pc.includes('coin')) return 'coins';
     if(pc.includes('video') || /\b(nintendo|n64|nes|snes|gamecube|wii|switch|playstation|ps1|ps2|ps3|ps4|ps5|xbox|sega|genesis|dreamcast|game boy|gameboy|atari)\b/.test(pc)) return 'video_games';
   }
+  // Show Operations v1: detect sealed/pack/promo product so it routes away from singles
+  const sealedText = String([r?.name, r?.title, r?.productName, text].filter(Boolean).join(' ')).toLowerCase();
+  if(/\b(booster box|booster bundle|booster pack|elite trainer box|\betb\b|sealed|blister|collection box|tin\b|bundle|sealed case|fat pack|theme deck|battle deck|premium collection|build ?& ?battle)\b/.test(sealedText)) return 'sealed';
   const key = qplCategoryKey(text);
   if(key) return key;
   return qplCategoryKey(r?.category);
@@ -12049,6 +12236,7 @@ function qplCategoryAllows(r, wants){
   if(wants === 'tcg') return ['tcg','pokemon','mtg','yugioh'].includes(key) || normalizeQuickCategory(r?.category) === 'TCG';
   if(wants === 'graded') return key === 'graded' || /psa|bgs|cgc|sgc|slab|graded/i.test([r?.name,r?.variant,r?.category,r?.note].filter(Boolean).join(' '));
   if(wants === 'collectibles') return key === 'collectibles';
+  if(wants === 'sealed') return key === 'sealed' || /\b(booster|elite trainer|\betb\b|sealed|blister|bundle|collection box|tin\b|fat pack|theme deck|battle deck|premium collection)\b/i.test([r?.name,r?.title,r?.category,r?.note].filter(Boolean).join(' '));
   if(['video_games','funko','lego','coins'].includes(wants)) return key === wants || qplCategoryKey(r?.category) === wants;
   return key === wants;
 }
@@ -13553,6 +13741,9 @@ function qplChartRangeToDuration(range){
 }
 
 function showAdminDebug(){
+  // Show Operations v1: never surface raw debug blocks while Show Mode is active,
+  // even for owner/admin accounts with qa_debug enabled — keep the floor view clean.
+  if(document.body.classList.contains('show-mode')) return false;
   return requireOwnerAdmin() && localStorage.getItem('qa_debug') === '1';
 }
 
@@ -14260,6 +14451,7 @@ function filterQplMasterResults(results, cat){
 function handleQplCategoryChange(){
   const q = document.getElementById('qpl-input')?.value.trim() || qplLastSearch || '';
   const cat = document.getElementById('qpl-cat')?.value || '';
+  if(getResearchSettings().rememberLastCategory) localStorage.setItem('qpl_last_category', cat);
   if(!qplMasterResults.length) {
     const el = document.getElementById('qpl-result');
     if(q && el) el.innerHTML = `<div style="color:var(--gold);line-height:1.6">Category changed to ${escHtml(cat || 'Any Category')}. Press LOOK UP to search this category.</div>`;
@@ -15144,6 +15336,79 @@ function _qplStaleBadge(r){
 }
 
 // Bypass IndexedDB cache and fetch a fresh live price for one card
+// ── Show Operations v1: Huge Price Change Alert framework ───────────────────────
+// Triggered when a live/manual price refresh finds the new market price differs
+// significantly from the price stored on an inventory record. Does NOT auto-overwrite
+// the inventory price — surfaces an alert with Update/Ignore actions instead.
+const PRICE_ALERT_PCT_THRESHOLD = 0.20;   // 20%
+const PRICE_ALERT_DOLLAR_THRESHOLD = 25;  // $25
+
+function getPriceChangeAlerts(){
+  return safeLocalJson('price_change_alerts', []);
+}
+function savePriceChangeAlerts(list){
+  localStorage.setItem('price_change_alerts', JSON.stringify((list || []).slice(0, 200)));
+  renderPriceChangeAlerts();
+}
+function maybeRaisePriceChangeAlert(inventoryItem, oldPrice, newPrice){
+  if(!inventoryItem || !(oldPrice > 0) || !(newPrice > 0)) return;
+  const dollarChange = newPrice - oldPrice;
+  const pctChange = oldPrice > 0 ? (dollarChange / oldPrice) : 0;
+  if(Math.abs(pctChange) < PRICE_ALERT_PCT_THRESHOLD && Math.abs(dollarChange) < PRICE_ALERT_DOLLAR_THRESHOLD) return;
+  const alerts = getPriceChangeAlerts().filter(a => a.itemId !== inventoryItem.id);
+  const alert = {
+    id: makeUuid('pricealert'),
+    itemId: inventoryItem.id,
+    name: inventoryItem.name || 'Item',
+    oldPrice, newPrice,
+    dollarChange, pctChange,
+    lastChecked: new Date().toISOString(),
+    status: 'open',
+  };
+  alerts.unshift(alert);
+  savePriceChangeAlerts(alerts);
+  const dir = dollarChange >= 0 ? 'up' : 'down';
+  toast_dash(`PRICE CHANGE: ${alert.name} ${dir} $${Math.abs(dollarChange).toFixed(2)} / ${pctChange>=0?'+':''}${(pctChange*100).toFixed(0)}%`);
+  return alert;
+}
+function dismissPriceChangeAlert(id){
+  savePriceChangeAlerts(getPriceChangeAlerts().filter(a => a.id !== id));
+}
+async function applyPriceChangeAlert(id){
+  const alerts = getPriceChangeAlerts();
+  const alert = alerts.find(a => a.id === id);
+  if(!alert) return;
+  const item = all.find(i => String(i.id) === String(alert.itemId));
+  if(!item) { toast_dash('Item no longer in inventory'); dismissPriceChangeAlert(id); return; }
+  try {
+    if(typeof updateBuiltInInventoryItem === 'function' && item.source === 'built_in') {
+      await updateBuiltInInventoryItem(item, { market:alert.newPrice });
+    }
+    item.market = alert.newPrice;
+    logOpsEvent('price_alert_applied', 'Updated inventory price for ' + alert.name, { itemId:item.id, oldPrice:alert.oldPrice, newPrice:alert.newPrice });
+    toast_dash('Updated ' + alert.name + ' to $' + alert.newPrice.toFixed(2));
+  } catch(e) {
+    toast_dash('Price update failed: ' + (e.message || e));
+  }
+  dismissPriceChangeAlert(id);
+  loadInventory();
+}
+function renderPriceChangeAlerts(){
+  const host = document.getElementById('price-change-alerts');
+  if(!host) return;
+  const alerts = getPriceChangeAlerts().filter(a => a.status === 'open');
+  if(!alerts.length) { host.innerHTML = ''; return; }
+  host.innerHTML = alerts.map(a => `
+    <div class="panel" style="border-color:rgba(255,184,0,.35);background:rgba(255,184,0,.06);margin-bottom:8px;padding:10px 12px">
+      <div style="font-family:monospace,monospace;font-size:11px;font-weight:800;color:var(--gold)">PRICE CHANGE: ${escHtml(a.name)} ${a.dollarChange>=0?'up':'down'} $${Math.abs(a.dollarChange).toFixed(2)} / ${a.pctChange>=0?'+':''}${(a.pctChange*100).toFixed(0)}%</div>
+      <div style="font-family:monospace,monospace;font-size:9px;color:var(--dim);margin:4px 0">Old $${a.oldPrice.toFixed(2)} → New $${a.newPrice.toFixed(2)} · Last checked ${escHtml(pokemonCacheAgeLabel(a.lastChecked))}</div>
+      <div style="display:flex;gap:8px">
+        <button class="hbtn" onclick="applyPriceChangeAlert('${a.id}')">UPDATE INVENTORY PRICE</button>
+        <button class="hbtn" style="color:var(--dim)" onclick="dismissPriceChangeAlert('${a.id}')">IGNORE</button>
+      </div>
+    </div>`).join('');
+}
+
 async function refreshLivePriceForCard(idx){
   if(_refreshLiveInFlight.has(idx)) return; // already running
   // Debounce: 3s cooldown per card
@@ -15195,6 +15460,14 @@ async function refreshLivePriceForCard(idx){
         freshRow.selectedCondition = 'NM';
         toast_dash(savedCondition + ' not in fresh data — reverted to NM');
       }
+    }
+
+    // Show Operations v1: if this row is linked to an inventory item, compare the
+    // freshly-fetched market price to the stored inventory price and raise an alert
+    // when the change is huge (>=20% or >=$25). Never auto-overwrites the price.
+    if(r.inventoryId) {
+      const invItem = all.find(i => String(i.id) === String(r.inventoryId));
+      if(invItem) maybeRaisePriceChangeAlert(invItem, Number(invItem.market || 0), Number(freshRow.market || 0));
     }
 
     // Write fresh record back to IndexedDB (updates timestamp)
@@ -15864,6 +16137,8 @@ function resetDrawer(){
   if(!confirm('Reset drawer? This clears all entries.')) return;
   drawerState = null;
   localStorage.removeItem('pos_drawer');
+  const floatInput = document.getElementById('drawer-float');
+  if(floatInput) floatInput.value = '';
   renderDrawer();
 }
 
@@ -16053,6 +16328,10 @@ function closeDrawer(){
   ].join('  ·  ');
   drawerState = null;
   localStorage.removeItem('pos_drawer');
+  // Show Operations v1: clear the starting-cash field so the prior session's amount
+  // can never pre-fill the next drawer open.
+  const _floatInput = document.getElementById('drawer-float');
+  if(_floatInput) _floatInput.value = '';
   renderDrawer();
   // Inject summary into the newly-rendered closed-drawer area
   setTimeout(() => {
