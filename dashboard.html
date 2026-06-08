@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.06.08.05-cart-unify-addtocart-reroute">
+<meta name="version" content="2026.06.08.06-buy-offer-rounding-v1">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -810,7 +810,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.08.05-cart-unify-addtocart-reroute</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.08.06-buy-offer-rounding-v1</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
@@ -832,7 +832,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip dev-only" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.08.05-cart-unify-addtocart-reroute</div>
+<div class="dsb-chip dev-only" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.08.06-buy-offer-rounding-v1</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -1251,6 +1251,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
           <button class="buy-preset" onclick="setBuyOfferPct(85)" data-pct="85">85%</button>
           <button class="buy-preset" onclick="setBuyOfferPct(90)" data-pct="90">90%</button>
         </div>
+        <div style="font-family:monospace;font-size:9px;color:var(--dim);margin-top:4px;text-align:center">Offers round down to whole dollars.</div>
       </div>
 
       <!-- ③ ADD CARD ROW -->
@@ -1924,7 +1925,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.06.08.05-cart-unify-addtocart-reroute';
+const APP_VERSION = '2026.06.08.06-buy-offer-rounding-v1';
 const branchName = 'pokemon-v2-core';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
 const POKEMON_EXACT_CACHE_VERSION = 'pokemon-exact-v3-price-matrix';
@@ -7012,6 +7013,22 @@ function markAllVisibleAtShow(){
   saveLifecycleMap(map);
   renderAll();
   toast_dash('Marked ' + filtered.length + ' filtered items At Show');
+}
+
+// PRICE ROUNDING HELPERS (whole-dollar rounding for sell prices and buy offers)
+// We do not use cents for sell/list prices or buy offers/cost basis.
+// Sell/list prices always round UP to the nearest whole dollar.
+// Buy offers and cost basis always round DOWN to the nearest whole dollar.
+// Raw market/reference prices are left untouched (may still show cents).
+function roundSellPrice(value){
+  const n = Number(value || 0);
+  if(!isFinite(n) || n <= 0) return 0;
+  return Math.ceil(n - 1e-9);
+}
+function roundBuyOffer(value){
+  const n = Number(value || 0);
+  if(!isFinite(n) || n <= 0) return 0;
+  return Math.floor(n + 1e-9);
 }
 
 function applyShowPriceRule(price){
@@ -16563,9 +16580,13 @@ function currentBuySessionCustomer(){
   };
 }
 function buyItemOfferValue(item){
-  if(Number(item.cashOffer) > 0) return Math.round(Number(item.cashOffer) * 100) / 100;
+  // BUY OFFER ROUNDING: offers/cost basis are whole dollars, rounded DOWN
+  // (roundBuyOffer). This is the single chokepoint for buy offer math —
+  // tray display, totals, accepted cost basis, Pay Customer amount, and
+  // printed/texted offers all flow through here.
+  if(Number(item.cashOffer) > 0) return roundBuyOffer(Number(item.cashOffer));
   const pct = parseFloat(document.getElementById('bl-pct')?.value || 50) / 100;
-  return Math.round(Number(item.market || item.priceUsed || 0) * pct * 100) / 100;
+  return roundBuyOffer(Number(item.market || item.priceUsed || 0) * pct);
 }
 function snapshotBuySession(status){
   const existing = getActiveBuySession() || {};
@@ -16692,7 +16713,7 @@ function renderBuySessionPanel(){
     <div style="display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
       <div>
         <div style="font-family:monospace;font-size:9px;font-weight:700;color:${session?'var(--g)':'var(--dim)'}">${escHtml(sessionTitle)}</div>
-        <div style="font-family:monospace;font-size:9px;color:var(--dim)">${escHtml(sessionLabel)} · ${buyList.length} item${buyList.length===1?'':'s'} · Cash $${totals.offerTotal.toFixed(2)} · Trade $${(totals.offerTotal*1.15).toFixed(2)}</div>
+        <div style="font-family:monospace;font-size:9px;color:var(--dim)">${escHtml(sessionLabel)} · ${buyList.length} item${buyList.length===1?'':'s'} · Cash $${Math.round(totals.offerTotal)} · Trade $${Math.round(totals.offerTotal*1.15)}</div>
       </div>
       <div style="display:flex;gap:5px">
         <button class="hbtn" onclick="startBuySession()" style="font-size:10px;color:var(--g)">${session?'NEW SESSION':'START SESSION'}</button>
@@ -16833,7 +16854,8 @@ function renderBuyList(){
   const offerEl = document.getElementById('bl-offer');
   const spreadEl = document.getElementById('bl-spread');
   if(mktEl)   mktEl.textContent   = '$' + totalMkt.toFixed(2);
-  if(offerEl) offerEl.textContent = '$' + offer.toFixed(2);
+  // Buy offers are whole-dollar (rounded down) — display without cents.
+  if(offerEl) offerEl.textContent = '$' + Math.round(offer);
   if(spreadEl) spreadEl.textContent = '$' + spread.toFixed(2);
 
   // Enable / disable PAY CUSTOMER based on session status
@@ -16872,7 +16894,7 @@ function renderBuyList(){
     const added = !!i.inventoryId;
     const err   = i.inventoryError ? `<div style="color:var(--red);font-size:8px;margin-top:2px">${escHtml(String(i.inventoryError).slice(0,120))}</div>` : '';
     const sub   = [i.year, i.set, i.variant, i.card_number ? '#' + i.card_number : ''].filter(Boolean).join(' · ');
-    const offerVal = (i.market || i.cashOffer) ? '$' + buyItemOfferValue(i).toFixed(2) : '…';
+    const offerVal = (i.market || i.cashOffer) ? '$' + Math.round(buyItemOfferValue(i)) : '…';
     const invBtn = added
       ? `<span style="font-family:monospace;font-size:9px;color:var(--g);white-space:nowrap">✓ INV</span>`
       : `<button class="hbtn" onclick="addBuyItemToInventory('${i.id}')" style="font-size:9px;padding:4px 8px;min-height:32px;color:var(--gold);white-space:nowrap" title="Add to inventory">+INV</button>`;
@@ -16927,7 +16949,9 @@ function buildBuyOfferText(){
   const offer = document.getElementById('bl-offer').textContent;
   const mkt = document.getElementById('bl-total-mkt').textContent;
   const customer = document.getElementById('bl-customer')?.value.trim();
-  const lines = buyList.map(i => `${i.name}: market ${i.market?'$'+Number(i.market).toFixed(2):'TBD'}, offer ${i.market?'$'+(Number(i.market)*(pct/100)).toFixed(2):'TBD'}`).join('\n');
+  // Route through buyItemOfferValue (whole-dollar, rounded down) so the texted/printed
+  // offer always matches the displayed/accepted/stored offer — no separate calculation.
+  const lines = buyList.map(i => `${i.name}: market ${i.market?'$'+Number(i.market).toFixed(2):'TBD'}, offer ${i.market?'$'+Math.round(buyItemOfferValue(i)):'TBD'}`).join('\n');
   return `${customer ? customer + ', ' : ''}${p.shortName || p.storeName} offer:\n${lines}\nTotal market: ${mkt}\nOffer (${pct}%): ${offer}\nOffer valid today.`;
 }
 
@@ -16980,7 +17004,7 @@ function logBuyOffer(addedCount, failedCount){
     })),
   });
   localStorage.setItem('pos_buy_offers', JSON.stringify(log.slice(0,200)));
-  upsertCustomer(customer, phone, 'Buy offer: $' + totals.offerTotal.toFixed(2) + ' for ' + buyList.length + ' item(s)', 'buy-offer');
+  upsertCustomer(customer, phone, 'Buy offer: $' + Math.round(totals.offerTotal) + ' for ' + buyList.length + ' item(s)', 'buy-offer');
 }
 
 function buyItemToInventoryUpdates(item){
