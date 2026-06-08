@@ -2048,7 +2048,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.06.08.09-demo-cta-prominent';
+const APP_VERSION = '2026.06.08.10-fix-demo-login';
 const branchName = 'pokemon-v2-core';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
 const POKEMON_EXACT_CACHE_VERSION = 'pokemon-exact-v3-price-matrix';
@@ -2197,7 +2197,18 @@ async function ensureAuthReady(){
   }
   const { data, error } = await sb.auth.getSession();
   if(error) console.warn('Supabase session error:', error);
-  if(!data?.session?.user) { showAuthMode('login'); return false; }
+  if(!data?.session?.user) {
+    // Before showing login, honour an existing local demo session
+    const localSession = getAuthSession();
+    if(localSession?.demoMode) {
+      localStorage.setItem(WALKOFF_ACTIVE_STORE_KEY, localSession.activeStoreId || localSession.user?.defaultStoreId || WALKOFF_DEMO_USER.defaultStoreId);
+      document.getElementById('auth-screen')?.classList.remove('on');
+      renderAccountHeader();
+      return true;
+    }
+    showAuthMode('login');
+    return false;
+  }
   const user = data.session.user;
   const stores = await loadSupabaseStoresForUser(user);
   if(!stores.length) {
