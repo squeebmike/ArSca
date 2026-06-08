@@ -6569,7 +6569,16 @@ function stripeQrCancel(){
   clearInterval(_stripeQrPollTimer);
   _stripeQrSessionId = null;
   document.getElementById('stripe-qr-modal')?.classList.remove('on');
-  toast_dash('Stripe checkout cancelled');
+  // QR rebuild: wipe QR image/url/link-row immediately on cancel so a stale
+  // QR/amount/link can never be shown if the modal reopens for a different
+  // method or amount before the next launch* call repopulates it.
+  const qrImg = document.getElementById('sqr-qr-img');
+  const urlEl = document.getElementById('sqr-url');
+  const linkRow = document.getElementById('sqr-link-row');
+  if(qrImg) qrImg.src = '';
+  if(urlEl) urlEl.textContent = '';
+  if(linkRow) linkRow.style.display = 'none';
+  toast_dash('Checkout cancelled');
 }
 
 // ── P2P QR Modal (Venmo / PayPal / Cash App) ─────────────────────────────
