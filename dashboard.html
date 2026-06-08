@@ -906,10 +906,28 @@ body.show-mode .inv-sync-badge{display:none;}
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button class="hbtn" onclick="showAuthMode('signup')">SIGN UP</button>
         <button class="hbtn" onclick="showAuthMode('reset')">RESET PASSWORD</button>
-        <button class="hbtn" onclick="loginDemoAccount()">LOCAL DEMO</button>
       </div>
     </div>
-    <div class="auth-meta" id="auth-status">Supabase connected after login. Local demo remains available for development.</div>
+    <div style="margin:14px 0 6px;display:flex;align-items:center;gap:10px">
+      <div style="flex:1;height:1px;background:var(--border,rgba(255,255,255,.1))"></div>
+      <span style="font-family:monospace;font-size:9px;color:var(--dim);letter-spacing:.08em">OR</span>
+      <div style="flex:1;height:1px;background:var(--border,rgba(255,255,255,.1))"></div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <button onclick="loginDemoAccount()" style="
+        background:var(--g,#00ffb3);color:#000;
+        border:none;border-radius:8px;
+        font-family:monospace;font-size:13px;font-weight:800;
+        padding:14px 20px;cursor:pointer;letter-spacing:.04em;
+        width:100%;transition:opacity .15s;
+      " onmouseover="this.style.opacity='.88'" onmouseout="this.style.opacity='1'">
+        TRY DEMO — NO ACCOUNT NEEDED
+      </button>
+      <div style="font-family:monospace;font-size:9px;color:var(--dim);text-align:center;line-height:1.55">
+        Full access. No sign-up. Your data stays on this device until you subscribe.
+      </div>
+    </div>
+    <div class="auth-meta" id="auth-status">Supabase connected after login. Demo mode is always available.</div>
   </div>
 </div>
 
@@ -2030,7 +2048,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.06.08.08-offline-inv-sync-v1';
+const APP_VERSION = '2026.06.08.09-demo-cta-prominent';
 const branchName = 'pokemon-v2-core';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
 const POKEMON_EXACT_CACHE_VERSION = 'pokemon-exact-v3-price-matrix';
