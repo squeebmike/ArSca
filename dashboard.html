@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.06.08.01-show-ops-v1">
+<meta name="version" content="2026.06.08.02-p2p-qr-rebuild">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -810,7 +810,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.08.01-show-ops-v1</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.08.02-p2p-qr-rebuild</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
@@ -832,7 +832,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip dev-only" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.08.01-show-ops-v1</div>
+<div class="dsb-chip dev-only" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.08.02-p2p-qr-rebuild</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -1610,6 +1610,10 @@ body.customer-display-mode #customer-display-exit{display:block;}
       <img id="sqr-qr-img" src="" alt="Stripe QR Code">
     </div>
     <div class="sqr-url" id="sqr-url"></div>
+    <div class="sqr-btn-row" id="sqr-link-row" style="display:none;margin-bottom:10px">
+      <button class="hbtn" id="sqr-copy-btn" style="font-size:10px">📋 COPY LINK</button>
+      <button class="hbtn" id="sqr-open-btn" style="font-size:10px">↗ OPEN LINK</button>
+    </div>
     <div class="sqr-status" id="sqr-status">
       <div class="sqr-spinner"></div>
       <span id="sqr-status-text">Waiting for payment…</span>
@@ -1911,7 +1915,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.06.08.01-show-ops-v1';
+const APP_VERSION = '2026.06.08.02-p2p-qr-rebuild';
 const branchName = 'pokemon-v2-core';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
 const POKEMON_EXACT_CACHE_VERSION = 'pokemon-exact-v3-price-matrix';
@@ -6489,6 +6493,8 @@ async function launchStripeQrCheckout(totalDollars){
   if(statusText) statusText.textContent = 'Creating checkout session…';
   if(qrImg) qrImg.src = '';
   if(urlEl) urlEl.textContent = '';
+  const _stripeLinkRow = document.getElementById('sqr-link-row');
+  if(_stripeLinkRow) _stripeLinkRow.style.display = 'none'; // P2P-only copy/open controls — keep hidden for Stripe
   modal?.classList.add('on');
 
   try {
@@ -6595,10 +6601,17 @@ function launchP2pQrModal(method, handle, totalDollars, deepLink){
   // QR from the deep link — amount + recipient pre-filled in the app
   if(qrImg) qrImg.src = 'https://api.qrserver.com/v1/create-qr-code/?size=260x260&margin=10&data=' + encodeURIComponent(deepLink);
 
-  if(urlEl) {
-    const hints = { venmo:'opens Venmo with amount pre-filled', cashapp:'opens Cash App with amount pre-filled', paypal:'opens PayPal with amount pre-filled' };
-    urlEl.textContent = handle + ' · ' + (hints[method] || 'amount pre-filled');
-  }
+  // Show the EXACT generated URL (small debug text) plus copy/open actions so the
+  // dealer can verify the amount made it into the link before handing it to a customer.
+  if(urlEl) urlEl.textContent = deepLink;
+  const linkRow = document.getElementById('sqr-link-row');
+  const copyBtn = document.getElementById('sqr-copy-btn');
+  const openBtn = document.getElementById('sqr-open-btn');
+  if(linkRow) linkRow.style.display = deepLink ? 'flex' : 'none';
+  if(copyBtn) copyBtn.onclick = () => {
+    navigator.clipboard?.writeText(deepLink).then(() => toast_dash('Link copied')).catch(() => toast_dash('Copy failed — select the link text manually'));
+  };
+  if(openBtn) openBtn.onclick = () => window.open(deepLink, '_blank', 'noopener');
 
   if(statusEl) statusEl.className = 'sqr-status';
   if(statusText) statusText.textContent = 'Customer scans → confirm when payment appears in your app';
@@ -17315,18 +17328,78 @@ async function renderCustomerDisplay(){
   countEl.innerHTML = items.length + ' item' + (items.length>1?'s':'') + (disc>0?' · '+disc+'% discount applied':'') + (tax>0?' · tax included':'') + paymentLine;
 }
 
+// ── Amount-based P2P QR payment links (PayPal / Venmo / Cash App) ───────────
+// Rebuilt to: (a) accept handles saved in any common shape (bare handle, @handle,
+// $cashtag, or full profile URL) and (b) ALWAYS produce an amount-based URL —
+// the old code returned the raw saved URL verbatim when it looked like a URL,
+// which silently dropped the amount and broke the "scan → pay this amount" flow.
+function normalizePayPalHandle(value){
+  let v = String(value || '').trim();
+  if(!v) return '';
+  v = v.replace(/^https?:\/\/(www\.)?paypal\.me\//i, '');
+  v = v.replace(/^paypal\.me\//i, '');
+  v = v.replace(/^[@$]/, '');
+  v = v.split(/[\/?#]/)[0];
+  return v.trim();
+}
+function normalizeVenmoHandle(value){
+  let v = String(value || '').trim();
+  if(!v) return '';
+  v = v.replace(/^https?:\/\/(www\.)?venmo\.com\/u\//i, '');
+  v = v.replace(/^https?:\/\/(www\.)?venmo\.com\//i, '');
+  v = v.replace(/^@/, '');
+  v = v.split(/[\/?#]/)[0];
+  return v.trim();
+}
+function normalizeCashAppHandle(value){
+  let v = String(value || '').trim();
+  if(!v) return '';
+  v = v.replace(/^https?:\/\/(www\.)?cash\.app\/\$?/i, '');
+  v = v.replace(/^\$/, '');
+  v = v.split(/[\/?#]/)[0];
+  return v.trim();
+}
+
+// buildAmountPaymentUrl(method, settings, amountDue, memo)
+// Returns { url, handle, error } — never returns undefined/null/blank.
+// `settings` is the per-method settings object (e.g. settings.venmo / settings.paypal / settings.cashApp).
+function buildAmountPaymentUrl(method, settings, amountDue, memo){
+  const amount = Number(amountDue || 0);
+  const amountStr = amount > 0 ? amount.toFixed(2) : '';
+  const note = memo ? encodeURIComponent(String(memo)) : '';
+  const cfg = settings || {};
+  if(method === 'paypal') {
+    const handle = normalizePayPalHandle(cfg.handle || cfg.emailOrHandle || cfg.paypalMe || '');
+    if(!handle) return { url:'', handle:'', error:'No PayPal handle saved' };
+    const url = 'https://paypal.me/' + encodeURIComponent(handle) + (amountStr ? '/' + amountStr : '');
+    return { url, handle, error:'' };
+  }
+  if(method === 'venmo') {
+    const handle = normalizeVenmoHandle(cfg.handle || cfg.username || '');
+    if(!handle) return { url:'', handle:'', error:'No Venmo handle saved' };
+    let url = 'https://venmo.com/u/' + encodeURIComponent(handle);
+    const params = [];
+    if(amountStr) { params.push('txn=pay'); params.push('amount=' + amountStr); }
+    if(note) params.push('note=' + note);
+    if(params.length) url += '?' + params.join('&');
+    return { url, handle, error:'' };
+  }
+  if(method === 'cashapp') {
+    const handle = normalizeCashAppHandle(cfg.cashtag || cfg.handle || cfg.cashTag || '');
+    if(!handle) return { url:'', handle:'', error:'No Cash App cashtag saved' };
+    let url = 'https://cash.app/$' + encodeURIComponent(handle);
+    if(amountStr) url += '/' + amountStr;
+    return { url, handle, error:'' };
+  }
+  return { url:'', handle:'', error:'Unsupported payment method: ' + method };
+}
+
+// Back-compat shim — older call sites pass (kind, handle, total) and expect a bare URL string.
+// Routes through buildAmountPaymentUrl so behavior (and the amount-always-included fix) is unified.
 function paymentUrl(kind, handle, total){
-  const h = String(handle || '').trim();
-  if(!h) return '';
-  if(/^https?:\/\//i.test(h)) return h;
-  const clean = h.replace(/^[@$]/,'');
-  // PayPal.me — amount in path pre-fills on open
-  if(kind === 'paypal') return 'https://paypal.me/' + encodeURIComponent(clean) + (total > 0 ? '/' + total.toFixed(2) : '');
-  // Venmo — /u/ prefix + txn=pay pre-fills recipient, amount, and note in the app
-  if(kind === 'venmo') return 'https://venmo.com/u/' + encodeURIComponent(clean) + (total > 0 ? '?txn=pay&amount=' + total.toFixed(2) + '&note=Card+Purchase' : '');
-  // Cash App — amount in path pre-fills on open
-  if(kind === 'cashapp') return 'https://cash.app/$' + encodeURIComponent(clean) + (total > 0 ? '/' + total.toFixed(2) : '');
-  return '';
+  const cfgKey = kind === 'paypal' ? 'handle' : kind === 'cashapp' ? 'cashtag' : 'handle';
+  const result = buildAmountPaymentUrl(kind, { [cfgKey]: handle, handle }, total, '');
+  return result.url || '';
 }
 
 function renderCustomerPaymentLinks(total, el){
@@ -17878,7 +17951,23 @@ function cancelLockedCheckout(){
   selectedTenderLines = [];
   confirmedSaleContext = null;
   CheckoutStateManager().set(CHECKOUT_STATES.BUILDING_CART);
+  closeP2pQrModal(); // never let a stale QR survive a cancelled checkout
   exitCustomerDisplayMode();
+}
+
+// QR rebuild: single place to fully reset the P2P/Stripe QR modal so a stale
+// amount, method, or URL can never be shown on the next open.
+function closeP2pQrModal(){
+  const modal = document.getElementById('stripe-qr-modal');
+  modal?.classList.remove('on');
+  clearInterval(_stripeQrPollTimer);
+  _stripeQrSessionId = null;
+  const qrImg = document.getElementById('sqr-qr-img');
+  const urlEl = document.getElementById('sqr-url');
+  const linkRow = document.getElementById('sqr-link-row');
+  if(qrImg) qrImg.src = '';
+  if(urlEl) urlEl.textContent = '';
+  if(linkRow) linkRow.style.display = 'none';
 }
 
 function enterCustomerDisplayMode(){
@@ -17933,6 +18022,8 @@ function selectLockedPaymentMethod(method){
   const total = Number(lockedCheckoutSnapshot.total || 0);
   const settings = getPaymentSettings();
   const cfg = method === 'venmo' ? settings.venmo : method === 'paypal' ? settings.paypal : method === 'cashapp' ? settings.cashApp : {};
+  // QR rebuild: switching to Cash or Credit/Debit must never leave a stale P2P QR open
+  if(['cash','card'].includes(method)) closeP2pQrModal();
   if(method === 'cash') {
     wb.innerHTML = `<div style="font-weight:800;text-align:center;margin-bottom:8px">Cash payment</div>
       <div style="text-align:center;color:#657080;font-family:monospace,monospace">Amount due $${total.toFixed(2)}</div>
@@ -17940,15 +18031,19 @@ function selectLockedPaymentMethod(method){
       <div id="locked-cash-change" style="text-align:center;font-family:'Orbitron',monospace;font-size:24px;color:#05835f;margin-top:10px">Enter amount received</div>
       <div class="payment-confirm-row"><button class="hbtn" onclick="confirmLockedPayment('cash')">CONFIRM CASH PAYMENT</button></div>`;
   } else if(['venmo','paypal','cashapp'].includes(method)) {
-    const handle = cfg.handle || cfg.emailOrHandle || cfg.cashtag || '';
-    const deepLink = paymentUrl(method, handle, total);
-    // Show QR modal with dynamic amount-aware deep link — reuses same modal as Stripe
-    if(handle && deepLink) {
-      launchP2pQrModal(method, handle, total, deepLink);
+    // Amount-based QR rebuild: buildAmountPaymentUrl always normalizes the saved
+    // handle (bare / @handle / $cashtag / full profile URL all accepted) and returns
+    // either a usable amount URL or a clear { error } — never a blank/stale QR.
+    const built = buildAmountPaymentUrl(method, cfg, total, 'Order ' + (lockedCheckoutSnapshot?.id || ''));
+    if(built.url) {
+      launchP2pQrModal(method, built.handle, total, built.url);
     } else {
       wb.innerHTML = `<div style="font-weight:800;text-align:center;margin-bottom:8px">${escHtml(formatTenderLabel(method))}</div>
-        <div style="text-align:center;color:#657080;font-family:monospace;font-size:12px;margin-bottom:12px">Add your ${escHtml(formatTenderLabel(method))} handle in Settings → Payments.</div>
-        <div class="payment-confirm-row"><button class="hbtn" onclick="confirmLockedPayment('${method}')">PAYMENT RECEIVED</button></div>`;
+        <div style="text-align:center;color:var(--gold);font-family:monospace;font-size:12px;margin-bottom:12px">${escHtml(built.error || ('No ' + formatTenderLabel(method) + ' handle saved'))}</div>
+        <div class="payment-confirm-row" style="flex-direction:column;gap:8px">
+          <button class="hbtn" onclick="switchTab('backoffice');setTimeout(()=>document.getElementById('payment-settings-panel')?.scrollIntoView({behavior:'smooth'}),150)">⚙ OPEN PAYMENT SETTINGS</button>
+          <button class="hbtn" style="font-size:11px;color:var(--dim)" onclick="confirmLockedPayment('${method}')">Manual confirm (handled outside the app)</button>
+        </div>`;
     }
   } else {
     // Card / Stripe — show QR checkout launcher or manual fallback
@@ -18097,6 +18192,7 @@ function finishLockedCheckout(){
   confirmedSaleContext = null;
   document.getElementById('receipt-capture-screen')?.classList.remove('on');
   document.getElementById('wants-capture-screen')?.classList.remove('on');
+  closeP2pQrModal(); // checkout closed — make sure no QR survives into the next sale
   exitCustomerDisplayMode();
   renderLockedCheckout().catch(()=>{});
 }
