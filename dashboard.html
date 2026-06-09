@@ -15939,23 +15939,15 @@ function pokemonExpandSearchAbbreviations(q){
     .replace(/\bsar\b/gi, 'special art rare')
     .replace(/\bir\b/gi, 'illustration rare')
     .replace(/\bar\b/gi, 'art rare')
-    // Promo codes with numbers — must expand BEFORE generic shorthands below
-    // so "swsh147" → "Sword Shield Black Star Promo SWSH147" (the API searches by name/set)
-    .replace(/\bswsh(\d{2,3})\b/gi, 'Sword Shield Black Star Promo SWSH$1')
-    .replace(/\bsvp(\d{2,3})\b/gi,  'Scarlet Violet Black Star Promo SVP$1')
-    .replace(/\bhgss(\d{2,3})\b/gi, 'HeartGold SoulSilver Black Star Promo HGSS$1')
-    .replace(/\bbw(\d{2,3})\b/gi,   'Black White Black Star Promo BW$1')
-    .replace(/\bxy(\d{2,3})\b/gi,   'XY Black Star Promo XY$1')
-    .replace(/\bsm(\d{2,3})\b/gi,   'Sun Moon Black Star Promo SM$1')
-    .replace(/\bdp(\d{2,3})\b/gi,   'Diamond Pearl Black Star Promo DP$1')
-    // Generic promo set shorthands (no number suffix)
-    .replace(/\bsv\s*promo\b/gi,    'Scarlet Violet Black Star Promo')
-    .replace(/\bswsh\s*promo\b/gi,  'Sword Shield Black Star Promo')
-    .replace(/\bsm\s*promo\b/gi,    'Sun Moon Black Star Promo')
-    .replace(/\bxy\s*promo\b/gi,    'XY Black Star Promo')
-    .replace(/\bbw\s*promo\b/gi,    'Black White Black Star Promo')
-    .replace(/\bdp\s*promo\b/gi,    'Diamond Pearl Black Star Promo')
-    .replace(/\bhgss\s*promo\b/gi,  'HeartGold SoulSilver Black Star Promo')
+    // Generic promo set shorthands (no number — PPT searches by card name, so sending the set
+    // name alone lets the API filter to the right set when the user adds a name too)
+    .replace(/\bsv\s*promo\b/gi,   'Scarlet Violet Black Star Promo')
+    .replace(/\bswsh\s*promo\b/gi, 'Sword Shield Black Star Promo')
+    .replace(/\bsm\s*promo\b/gi,   'Sun Moon Black Star Promo')
+    .replace(/\bxy\s*promo\b/gi,   'XY Black Star Promo')
+    .replace(/\bbw\s*promo\b/gi,   'Black White Black Star Promo')
+    .replace(/\bdp\s*promo\b/gi,   'Diamond Pearl Black Star Promo')
+    .replace(/\bhgss\s*promo\b/gi, 'HeartGold SoulSilver Black Star Promo')
     .replace(/\s+/g, ' ').trim();
 }
 
