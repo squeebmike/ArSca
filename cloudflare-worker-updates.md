@@ -289,3 +289,61 @@ await fetch(WORKER_URL + '/pos/checkout', {
 
 That can replace the per-item browser PATCH loop in `recordTransaction(...)`.
 
+---
+
+## 5. Add SportsCardsPro Proxy Routes
+
+Place **both blocks** before the generic `/proxy/...` catch-all route.  These are read-only GET proxies — no API key needed, Cloudflare edge cache keeps traffic low.
+
+```js
+// ── SportsCardsPro: candidate list ────────────────────────────────────────
+// dashboard.html calls: GET /pricing/sportscardspro/products?q=QUERY
+if (url.pathname === '/pricing/sportscardspro/products') {
+  const q = url.searchParams.get('q') || '';
+  if (!q) return json({ ok: false, error: 'q required' }, 400);
+
+  const upstream = 'https://www.sportscardspro.com/api/products?' +
+    new URLSearchParams({ q });
+
+  const res = await fetch(upstream, {
+    headers: {
+      'User-Agent': 'Walk-Off Sports Cards Dealer App/2026',
+      'Accept': 'application/json',
+    },
+    // Cloudflare edge cache — 5 min for searches
+    cf: { cacheTtl: 300, cacheEverything: false },
+  });
+
+  const text = await res.text();
+  let data;
+  try { data = JSON.parse(text); } catch (_) { data = { raw: text }; }
+
+  return json({ ok: res.ok, status: res.status, ...data });
+}
+
+// ── SportsCardsPro: single-product hydration ──────────────────────────────
+// dashboard.html calls: GET /pricing/sportscardspro/product?id=ID
+if (url.pathname === '/pricing/sportscardspro/product') {
+  const id = url.searchParams.get('id') || '';
+  if (!id) return json({ ok: false, error: 'id required' }, 400);
+
+  const upstream = 'https://www.sportscardspro.com/api/product?' +
+    new URLSearchParams({ id });
+
+  const res = await fetch(upstream, {
+    headers: {
+      'User-Agent': 'Walk-Off Sports Cards Dealer App/2026',
+      'Accept': 'application/json',
+    },
+    // Longer cache for exact-product data — 15 min
+    cf: { cacheTtl: 900, cacheEverything: false },
+  });
+
+  const text = await res.text();
+  let data;
+  try { data = JSON.parse(text); } catch (_) { data = { raw: text }; }
+
+  return json({ ok: res.ok, status: res.status, ...data });
+}
+```
+

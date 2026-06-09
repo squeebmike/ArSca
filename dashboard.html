@@ -13815,6 +13815,14 @@ async function searchQuickCatalog(q, cat){
     } catch(e) {}
   }
 
+  // SportsCardsPro — step 1 candidate search (step 2 hydration fires on result selection)
+  if(!wants || wants === 'sports' || wants === 'graded') {
+    try {
+      const scpRows = await searchSportsCardsPro(q);
+      scpRows.forEach(add);
+    } catch(e) {}
+  }
+
   if(!wants || ['tcg','pokemon','mtg','yugioh'].includes(wants)) {
     try {
       const workerRows = await fetchWorkerTcgCatalog(q, cat);
@@ -14914,6 +14922,171 @@ function buildSportsQueryVariants(q){
   if(!playerFull && brand) variants.push(q.replace(brand, '').trim() + ' ' + brand + ' baseball card');
 
   return [...new Set(variants.map(v => v.replace(/\s+/g,' ').trim()).filter(Boolean))].slice(0,5);
+}
+
+// ── SportsCardsPro integration ────────────────────────────────────────────
+// Two-step flow:
+//   1. searchSportsCardsPro(q)          → /api/products candidate list
+//   2. fetchSportsCardsProProduct(id)   → /api/product?id=  full hydration
+// Worker proxies both to avoid CORS.  No scraping — API only.
+
+// SCP price keys → human-readable grade labels for the condition matrix
+const SCP_GRADE_TIERS = [
+  { key:'grade-10',  label:'PSA 10 / GEM-MT',    grade:'10'  },
+  { key:'grade-9.5', label:'BGS 9.5 / PRISTINE', grade:'9.5' },
+  { key:'grade-9',   label:'PSA 9 / MINT',        grade:'9'   },
+  { key:'grade-8',   label:'PSA 8 / NM-MT',       grade:'8'   },
+  { key:'grade-7',   label:'PSA 7 / NM',          grade:'7'   },
+  { key:'grade-6',   label:'PSA 6 / EX-MT',       grade:'6'   },
+  { key:'grade-5',   label:'PSA 5 / EX',          grade:'5'   },
+];
+
+// Build QPL availableVariants from an SCP prices object.
+// Raw section: NM + condition-discounted tiers.
+// Graded section: one row per grade tier that has a real price.
+function buildScpVariants(prices, productId){
+  if(!prices || typeof prices !== 'object') return [];
+  const pid    = String(productId || 'scp');
+  const rawNM  = Number(prices.ungraded || 0);
+  const variants = [];
+
+  // Raw / ungraded tiers
+  const RAW_CONDS = [
+    { condition:'NM',   mult:1.00 },
+    { condition:'LP',   mult:0.80 },
+    { condition:'MP',   mult:0.64 },
+    { condition:'HP',   mult:0.40 },
+    { condition:'Poor', mult:0.20 },
+  ];
+  RAW_CONDS.forEach(({ condition, mult }) => {
+    const est = rawNM > 0 ? Math.round(rawNM * mult * 100) / 100 : null;
+    variants.push({
+      skuId:                 pid + '-raw-' + condition.toLowerCase(),
+      condition,
+      finish:                'normal',
+      foilType:              'normal',
+      language:              'English',
+      marketPrice:           condition === 'NM' ? (rawNM || null) : null,
+      estimatedMarketPrice:  est,
+      productLevelMarketPrice: rawNM || null,
+      priceSource:           rawNM > 0
+        ? (condition === 'NM' ? 'SportsCardsPro ungraded guide' : 'Estimated (' + condition + ' discount)')
+        : 'No price available',
+      priceConfidence:       rawNM > 0 ? (condition === 'NM' ? 'high' : 'estimate') : 'unknown',
+      scpPriceTier:          'raw',
+    });
+  });
+
+  // Graded tiers — only rows with an actual price
+  SCP_GRADE_TIERS.forEach(({ key, label, grade }) => {
+    const p = Number(prices[key] || 0);
+    if(!p) return;
+    variants.push({
+      skuId:                 pid + '-graded-' + grade,
+      condition:             'Graded',
+      finish:                'graded',
+      foilType:              'graded',
+      language:              'English',
+      grade,
+      gradeLabel:            label,
+      marketPrice:           p,
+      estimatedMarketPrice:  p,
+      productLevelMarketPrice: p,
+      priceSource:           'SportsCardsPro ' + label,
+      priceConfidence:       'high',
+      scpPriceTier:          'graded',
+      scpGrade:              grade,
+    });
+  });
+
+  return variants;
+}
+
+// Map one SCP /api/products item to a QPL row.
+function scpProductToQplRow(p, rawQuery){
+  const id     = String(p.id || p['product-id'] || '');
+  const name   = String(p['product-name'] || p.name || rawQuery || '');
+  const set    = String(p['console-name'] || p.consoleName || p.console_name || '');
+  const prices = p.prices || {};
+  const market = Number(prices.ungraded || 0);
+  const yearM  = name.match(/\b(19|20)\d{2}\b/);
+  const numM   = name.match(/#\s*(\w+)/);
+  const imgRaw = p.imageUrl || p['image-url'] || p.image_url || '';
+  const imageUrl = /^\/\//.test(imgRaw) ? 'https:' + imgRaw
+    : /^\//.test(imgRaw) ? 'https://www.sportscardspro.com' + imgRaw
+    : imgRaw;
+
+  return {
+    source:            'sportscardspro',
+    name,
+    category:          'Sports Cards',
+    set,
+    year:              yearM ? yearM[0] : '',
+    variant:           '',
+    card_number:       numM ? numM[1] : '',
+    condition:         'NM',
+    market,
+    imageUrl,
+    priceSource:       market ? 'SportsCardsPro Guide' : 'SportsCardsPro — No Guide Price',
+    note:              'SportsCardsPro guide price (ungraded NM).',
+    confidence:        market ? 72 : 48,
+    matchWhy:          ['SportsCardsPro /api/products'],
+    productUrl:        id ? 'https://www.sportscardspro.com/game/' + id : '',
+    scpId:             id,
+    scpHydrated:       false,
+    availableVariants: buildScpVariants(prices, id),
+    pricecharting:     null,
+    raw:               p,
+  };
+}
+
+// Apply a fully hydrated SCP /api/product response on top of an existing QPL row.
+function scpDetailToQplRow(data, baseRow){
+  const p = data?.product || data || {};
+  if(!p || !p.id) return { ...baseRow, scpHydrated:true };
+
+  const id     = String(p.id || p['product-id'] || baseRow.scpId || '');
+  const name   = String(p['product-name'] || p.name || baseRow.name || '');
+  const set    = String(p['console-name'] || p.consoleName || p.console_name || baseRow.set || '');
+  const prices = p.prices || {};
+  const market = Number(prices.ungraded || 0);
+  const imgRaw = p.imageUrl || p['image-url'] || p.image_url || baseRow.imageUrl || '';
+  const imageUrl = /^\/\//.test(imgRaw) ? 'https:' + imgRaw
+    : /^\//.test(imgRaw) ? 'https://www.sportscardspro.com' + imgRaw
+    : imgRaw;
+
+  return {
+    ...baseRow,
+    name:              name || baseRow.name,
+    set:               set  || baseRow.set,
+    market:            market || baseRow.market,
+    imageUrl:          imageUrl || baseRow.imageUrl,
+    priceSource:       market ? 'SportsCardsPro Guide' : 'SportsCardsPro — No Guide Price',
+    availableVariants: buildScpVariants(prices, id),
+    scpHydrated:       true,
+    scpPrices:         prices,
+    raw:               p,
+  };
+}
+
+// Step 1: candidate search → QPL rows (no hydration yet)
+async function searchSportsCardsPro(q){
+  if(!q) return [];
+  const params = new URLSearchParams({ q: String(q).trim() });
+  const res  = await fetch(WORKER + '/pricing/sportscardspro/products?' + params, { cache:'no-store' });
+  const data = await res.json().catch(() => ({}));
+  if(!res.ok || data.error) return [];
+  const products = data.products || data.matches || [];
+  return products.slice(0, 8).map(p => scpProductToQplRow(p, q));
+}
+
+// Step 2: hydrate a selected result with full price detail
+async function fetchSportsCardsProProduct(scpId){
+  if(!scpId) return null;
+  const params = new URLSearchParams({ id: String(scpId) });
+  const res  = await fetch(WORKER + '/pricing/sportscardspro/product?' + params, { cache:'no-store' });
+  const data = await res.json().catch(() => ({}));
+  return res.ok ? (data.product || data) : null;
 }
 
 function qplQueryVariants(q, cat = ''){
@@ -17332,6 +17505,30 @@ async function selectQuickLookupResult(idx){
       r = qplResults[idx];
     }
   }
+
+  // SportsCardsPro step-2 hydration: fetch /api/product?id= to get full grade price matrix
+  if(r && r.source === 'sportscardspro' && !r.scpHydrated && r.scpId && navigator.onLine) {
+    const selectBtn = document.querySelector(`.qpl-hero-card[data-qpl-idx="${idx}"] .qpl-select-btn`);
+    if(selectBtn){ selectBtn.textContent = 'LOADING...'; selectBtn.disabled = true; }
+    try {
+      const detail = await fetchSportsCardsProProduct(r.scpId);
+      if(detail && detail.id) {
+        qplResults[idx] = applyQplSelectedVariant(scpDetailToQplRow(detail, r));
+        r = qplResults[idx];
+      } else {
+        // hydration returned nothing useful — mark done so we don't retry
+        qplResults[idx] = { ...r, scpHydrated:true };
+        r = qplResults[idx];
+      }
+    } catch(e) {
+      console.warn('[SCP] Hydration failed for id', r.scpId, e);
+      qplResults[idx] = { ...r, scpHydrated:true };
+      r = qplResults[idx];
+    } finally {
+      if(selectBtn){ selectBtn.textContent = 'SELECT'; selectBtn.disabled = false; }
+    }
+  }
+
   r = applyQplSelectedVariant(r);
   if(!r) return;
   // If no image yet, try to fill from catalog (async, updates img after render)
