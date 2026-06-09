@@ -15967,7 +15967,9 @@ async function searchPokemonSealedProducts(rawQuery = ''){
   const res = await fetch(WORKER + requestPath, { cache:'no-store' });
   const data = await res.json().catch(() => ({}));
   if(!res.ok || !data.ok) throw new Error(data.error || data.message || 'Pokemon sealed-products lookup failed');
-  const products = data.products || data.sealed_products || data.sealedProducts || data.data || data.results || [];
+  // Worker normalises PPT data.data array into data.cards
+  const products = data.cards || data.products || data.sealed_products || data.sealedProducts
+    || (Array.isArray(data.data) ? data.data : []);
   return { products: Array.isArray(products) ? products : [], data };
 }
 
@@ -16268,9 +16270,8 @@ function pokemonPriceTrackerCardToQplRow(card = {}, query = qplLastSearch, parse
 }
 
 function pokemonSealedProductToQplRow(product = {}, query = ''){
-  const prices = product.prices || {};
-  const imageUrl = product.imageCdnUrl400 || product.imageCdnUrl || product.imageUrl || '';
-  const market = Number(prices.market || prices.marketPrice || prices.lowPrice || product.marketPrice || 0);
+  const imageUrl = product.imageCdnUrl400 || product.imageCdnUrl800 || product.imageCdnUrl200 || product.imageCdnUrl || product.imageUrl || '';
+  const market = Number(product.unopenedPrice || 0);
   const tcgPlayerId = String(product.tcgPlayerId || product.tcgplayerId || product.id || '');
   const name = product.name || product.productName || query;
   const setName = product.setName || (product.set && typeof product.set === 'string' ? product.set : product.set?.name) || '';
@@ -16290,7 +16291,7 @@ function pokemonSealedProductToQplRow(product = {}, query = ''){
     selectedFinish:'sealed',
     language:product.language || 'English',
     market,
-    low:Number(prices.lowPrice || 0),
+    low:market,
     imageUrl,
     priceSource:'PokemonPriceTracker',
     tcgUrl,
