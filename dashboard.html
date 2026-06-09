@@ -13728,22 +13728,21 @@ async function searchQuickCatalog(q, cat){
   };
 
   if(isPokemonLookupIntent(q, cat)) {
-    // For sealed product queries, hit the sealed-products endpoint first
-    if(isPokemonSealedIntent(q)) {
-      try {
-        const sealedResult = await searchPokemonSealedProducts(q);
-        if(sealedResult.products.length) {
-          const sealedRows = sealedResult.products.slice(0, 5).map(p => pokemonSealedProductToQplRow(p, q));
-          sealedRows.forEach(add);
-          await savePokemonCacheResults(q, sealedRows, 'PokemonPriceTracker sealed search').catch(console.warn);
-          return sealedRows;
-        }
-      } catch(e) {
-        console.warn('Pokemon sealed-products search failed, falling back to card search', e);
-      }
-    }
+    // Kick off sealed-products fetch in parallel with cards — no sequential wait
+    const sealedPromise = isPokemonSealedIntent(q)
+      ? searchPokemonSealedProducts(q).catch(() => ({ products:[] }))
+      : null;
     try {
-      const searchResult = await searchPokemonPriceTrackerCards(q, 'english');
+      const [searchResult, sealedResult] = await Promise.all([
+        searchPokemonPriceTrackerCards(q, 'english'),
+        sealedPromise || Promise.resolve({ products:[] }),
+      ]);
+      if(sealedResult.products.length) {
+        const sealedRows = sealedResult.products.slice(0, 5).map(p => pokemonSealedProductToQplRow(p, q));
+        sealedRows.forEach(add);
+        await savePokemonCacheResults(q, sealedRows, 'PokemonPriceTracker sealed search').catch(console.warn);
+        return sealedRows;
+      }
       const queryNumber = pokemonQueryCardNumber(q);
       const ranked = searchResult.ranked || pokemonRankApiCards(searchResult.cards, q);
       const rows = [];
@@ -15940,14 +15939,23 @@ function pokemonExpandSearchAbbreviations(q){
     .replace(/\bsar\b/gi, 'special art rare')
     .replace(/\bir\b/gi, 'illustration rare')
     .replace(/\bar\b/gi, 'art rare')
-    // Promo set shorthands (expand so the API finds the right set)
-    .replace(/\bsv\s*promo\b/gi, 'Scarlet Violet Black Star Promo')
-    .replace(/\bswsh\s*promo\b/gi, 'Sword Shield Black Star Promo')
-    .replace(/\bsm\s*promo\b/gi, 'Sun Moon Black Star Promo')
-    .replace(/\bxy\s*promo\b/gi, 'XY Black Star Promo')
-    .replace(/\bbw\s*promo\b/gi, 'Black White Black Star Promo')
-    .replace(/\bdp\s*promo\b/gi, 'Diamond Pearl Black Star Promo')
-    .replace(/\bhgss\s*promo\b/gi, 'HeartGold SoulSilver Black Star Promo')
+    // Promo codes with numbers — must expand BEFORE generic shorthands below
+    // so "swsh147" → "Sword Shield Black Star Promo SWSH147" (the API searches by name/set)
+    .replace(/\bswsh(\d{2,3})\b/gi, 'Sword Shield Black Star Promo SWSH$1')
+    .replace(/\bsvp(\d{2,3})\b/gi,  'Scarlet Violet Black Star Promo SVP$1')
+    .replace(/\bhgss(\d{2,3})\b/gi, 'HeartGold SoulSilver Black Star Promo HGSS$1')
+    .replace(/\bbw(\d{2,3})\b/gi,   'Black White Black Star Promo BW$1')
+    .replace(/\bxy(\d{2,3})\b/gi,   'XY Black Star Promo XY$1')
+    .replace(/\bsm(\d{2,3})\b/gi,   'Sun Moon Black Star Promo SM$1')
+    .replace(/\bdp(\d{2,3})\b/gi,   'Diamond Pearl Black Star Promo DP$1')
+    // Generic promo set shorthands (no number suffix)
+    .replace(/\bsv\s*promo\b/gi,    'Scarlet Violet Black Star Promo')
+    .replace(/\bswsh\s*promo\b/gi,  'Sword Shield Black Star Promo')
+    .replace(/\bsm\s*promo\b/gi,    'Sun Moon Black Star Promo')
+    .replace(/\bxy\s*promo\b/gi,    'XY Black Star Promo')
+    .replace(/\bbw\s*promo\b/gi,    'Black White Black Star Promo')
+    .replace(/\bdp\s*promo\b/gi,    'Diamond Pearl Black Star Promo')
+    .replace(/\bhgss\s*promo\b/gi,  'HeartGold SoulSilver Black Star Promo')
     .replace(/\s+/g, ' ').trim();
 }
 
