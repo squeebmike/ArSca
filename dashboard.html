@@ -13396,8 +13396,8 @@ function isPokemonLookupIntent(q = '', cat = ''){
   if(qplCategoryKey(cat) === 'pokemon') return true;
   // B6: promo prefix patterns imply a Pokemon lookup
   if(isPokemonPromoIntent(q)) return true;
-  // B7: sealed product queries with Pokemon keywords
-  if(isPokemonSealedIntent(q) && /\bpokemon\b|\bpaldea\b|\bsv\b|\bswsh\b|\bscarlet\b|\bviolet\b|\bsword\b|\bshield\b|\bsun\b|\bmoon\b|\bxy\b|\bblack\b|\bwhite\b|\bheartgold\b|\bsoulsilver\b|\bdiamond\b|\bpearl\b|\bpikachu\b|\bcharizard\b|\bpokeball\b/i.test(String(q))) return true;
+  // B7: sealed product queries with Pokemon keywords (includes set numbers like 151, 165, sv1, swsh1, etc.)
+  if(isPokemonSealedIntent(q) && /\bpokemon\b|\bpaldea\b|\bsv\b|\bswsh\b|\bscarlet\b|\bviolet\b|\bsword\b|\bshield\b|\bsun\b|\bmoon\b|\bxy\b|\bblack\b|\bwhite\b|\bheartgold\b|\bsoulsilver\b|\bdiamond\b|\bpearl\b|\bpikachu\b|\bcharizard\b|\bpokeball\b|\b151\b|\b165\b|\b193\b|\bsv\d[a-z]?\b|\bswsh\d[a-z]?\b|\bbase\s*set\b|\bjungle\b|\bfossil\b|\bcelebrations\b|\bevolving\s*skies\b|\bchilling\s*reign\b|\bbattle\s*styles\b|\bfusion\s*strike\b|\bbrilliant\s*stars\b|\bastral\s*radiance\b|\blost\s*origin\b|\bsilver\s*tempest\b|\bpaldea\s*evolved\b|\bobsidian\s*flames\b|\bparadox\s*rift\b|\btemporal\s*forces\b|\btwilight\s*masquerade\b|\bshrouded\s*fable\b|\bstellar\s*crown\b|\bsurging\s*sparks\b|\bprismatic\s*evolutions\b/i.test(String(q))) return true;
   // Expanded Pokemon name / set recognition (B3)
   return /\bpokemon\b|\bpikachu\b|\bcharizard\b|\bumbreon\b|\bbulbasaur\b|\bsquirtle\b|\bcharmander\b|\bmew\b|\bmewtwo\b|\balakazam\b|\bevolving skies\b|\bsv151\b|\b151\b|\bspirittomb\b|\beevee\b|\braichu\b|\bsnorlax\b|\blucario\b|\bgardevoir\b|\bgreninja\b|\bgengar\b|\bzacian\b|\brayquaza\b|\beldegoss\b|\bpidgeot\b|\bmimikyu\b|\blillie\b|\bpalkia\b|\bdialga\b|\barceus\b|\bgirafarig\b|\bflareon\b|\bjolteon\b|\bvaporeon\b|\bsilvereon\b|\bglaceon\b|\bespeon\b|\bleafeon\b|\bsylveon\b/.test(text);
 }
@@ -13727,6 +13727,20 @@ async function searchQuickCatalog(q, cat){
   };
 
   if(isPokemonLookupIntent(q, cat)) {
+    // For sealed product queries, hit the sealed-products endpoint first
+    if(isPokemonSealedIntent(q)) {
+      try {
+        const sealedResult = await searchPokemonSealedProducts(q);
+        if(sealedResult.products.length) {
+          const sealedRows = sealedResult.products.slice(0, 5).map(p => pokemonSealedProductToQplRow(p, q));
+          sealedRows.forEach(add);
+          await savePokemonCacheResults(q, sealedRows, 'PokemonPriceTracker sealed search').catch(console.warn);
+          return sealedRows;
+        }
+      } catch(e) {
+        console.warn('Pokemon sealed-products search failed, falling back to card search', e);
+      }
+    }
     try {
       const searchResult = await searchPokemonPriceTrackerCards(q, 'english');
       const queryNumber = pokemonQueryCardNumber(q);
@@ -15945,6 +15959,18 @@ async function searchPokemonPriceTrackerCards(rawQuery = '', language = 'english
   return result;
 }
 
+async function searchPokemonSealedProducts(rawQuery = ''){
+  const q = String(rawQuery || '').replace(/\s+/g, ' ').trim();
+  if(!q) return { products:[] };
+  const params = new URLSearchParams({ search:q, limit:'5' });
+  const requestPath = '/pricing/pokemonpricetracker/sealed-products?' + params.toString().replace(/\+/g, '%20');
+  const res = await fetch(WORKER + requestPath, { cache:'no-store' });
+  const data = await res.json().catch(() => ({}));
+  if(!res.ok || !data.ok) throw new Error(data.error || data.message || 'Pokemon sealed-products lookup failed');
+  const products = data.products || data.sealed_products || data.sealedProducts || data.data || data.results || [];
+  return { products: Array.isArray(products) ? products : [], data };
+}
+
 async function fetchPokemonPriceTrackerExactDetail(tcgPlayerId, language = 'english'){
   if(!tcgPlayerId) return null;
   const settings = pokemonPriceTrackerApiSettings();
@@ -16239,6 +16265,45 @@ function pokemonPriceTrackerCardToQplRow(card = {}, query = qplLastSearch, parse
     raw:card,
   };
   return applyQplSelectedVariant(row);
+}
+
+function pokemonSealedProductToQplRow(product = {}, query = ''){
+  const prices = product.prices || {};
+  const imageUrl = product.imageCdnUrl400 || product.imageCdnUrl || product.imageUrl || '';
+  const market = Number(prices.market || prices.marketPrice || prices.lowPrice || product.marketPrice || 0);
+  const tcgPlayerId = String(product.tcgPlayerId || product.tcgplayerId || product.id || '');
+  const name = product.name || product.productName || query;
+  const setName = product.setName || (product.set && typeof product.set === 'string' ? product.set : product.set?.name) || '';
+  const tcgUrl = product.tcgPlayerUrl || (tcgPlayerId ? 'https://www.tcgplayer.com/product/' + tcgPlayerId : '');
+  return {
+    source:'pokemonpricetracker',
+    name,
+    category:'Pokemon',
+    set:setName,
+    setName,
+    year:product.releaseDate ? String(product.releaseDate).slice(0,4) : '',
+    variant:'Sealed',
+    card_number:'',
+    condition:'Factory Sealed',
+    selectedCondition:'Factory Sealed',
+    finish:'sealed',
+    selectedFinish:'sealed',
+    language:product.language || 'English',
+    market,
+    low:Number(prices.lowPrice || 0),
+    imageUrl,
+    priceSource:'PokemonPriceTracker',
+    tcgUrl,
+    tcgPlayerUrl:tcgUrl,
+    tcgPlayerId,
+    tcgplayerId:tcgPlayerId,
+    note:'Sealed Pokemon product — TCGPlayer market price.',
+    confidence:market > 0 ? 92 : 60,
+    matchWhy:['PokemonPriceTracker /sealed-products'],
+    pokemonPriceTracker:product,
+    is_sealed:true,
+    raw:product,
+  };
 }
 
 async function hydratePokemonPriceTrackerPricing(idx, rerender = true){
