@@ -13897,8 +13897,14 @@ function rankQuickLookupResults(results, q, cat){
     if(intent.issueLike && key === 'mtg') score -= 250;
     if(intent.primary && key && key !== intent.primary && !intent.intents.includes(key)) score -= 30;
     if(intent.intents.includes('sports') || qplCategoryKey(cat) === 'sports' || /\b(topps|panini|prizm|rookie|rc|mike trout|lebron|jordan|brady|mahomes|ohtani)\b/i.test(q)) {
-      if(key === 'sports' && String(r.source || '').includes('pricecharting')) score += 210;
-      // Inventory penalty: large (-500) when external sports results exist so PC results always win.
+      // SCP is primary source for sports — boost it heavily
+      const hasSCPResults = rows.some(x => x.source === 'sportscardspro');
+      if(r.source === 'sportscardspro' && key === 'sports') score += 350;
+      // PriceCharting is fallback — give it a small boost only when no SCP results exist
+      if(key === 'sports' && String(r.source || '').includes('pricecharting')) score += (hasSCPResults ? 0 : 210);
+      // Heavily penalise PC results when SCP has returned matching sports results
+      if(String(r.source || '').includes('pricecharting') && key === 'sports' && hasSCPResults) score -= 180;
+      // Inventory penalty: large (-500) when external sports results exist so external always wins.
       // Small (-50) when no external sports data found — let inventory show with its "IN INVENTORY" badge.
       if(r.source === 'inventory') score -= (qplCategoryKey(cat) === 'sports' ? (hasSportsExternalResults ? 500 : 50) : 170);
     }
@@ -15073,20 +15079,39 @@ function scpDetailToQplRow(data, baseRow){
 async function searchSportsCardsPro(q){
   if(!q) return [];
   const params = new URLSearchParams({ q: String(q).trim() });
-  const res  = await fetch(WORKER + '/pricing/sportscardspro/products?' + params, { cache:'no-store' });
-  const data = await res.json().catch(() => ({}));
-  if(!res.ok || data.error) return [];
-  const products = data.products || data.matches || [];
-  return products.slice(0, 8).map(p => scpProductToQplRow(p, q));
+  let data = {};
+  try {
+    const res = await fetch(WORKER + '/pricing/sportscardspro/products?' + params, { cache:'no-store' });
+    data = await res.json().catch(() => ({}));
+    // needsKey = SCP_ACCESS_TOKEN not yet configured in worker secrets
+    if(data.needsKey) {
+      console.warn('[SCP] SCP_ACCESS_TOKEN not set in Worker secrets — SportsCardsPro search unavailable. Set it with: wrangler secret put SCP_ACCESS_TOKEN');
+      return [];
+    }
+    if(!data.ok) return [];
+  } catch(e) {
+    console.warn('[SCP] fetch error:', e);
+    return [];
+  }
+  // Worker now always returns { ok, products: [] } — safe to read directly
+  const products = data.products || data.matches || data.data || data.results || (Array.isArray(data) ? data : []);
+  return products.slice(0, 10).map(p => scpProductToQplRow(p, q));
 }
 
 // Step 2: hydrate a selected result with full price detail
 async function fetchSportsCardsProProduct(scpId){
   if(!scpId) return null;
   const params = new URLSearchParams({ id: String(scpId) });
-  const res  = await fetch(WORKER + '/pricing/sportscardspro/product?' + params, { cache:'no-store' });
-  const data = await res.json().catch(() => ({}));
-  return res.ok ? (data.product || data) : null;
+  try {
+    const res = await fetch(WORKER + '/pricing/sportscardspro/product?' + params, { cache:'no-store' });
+    const data = await res.json().catch(() => ({}));
+    if(!data.ok) return null;
+    // Worker normalises to { ok, product: {...} }
+    return data.product || (data.id ? data : null);
+  } catch(e) {
+    console.warn('[SCP] hydration fetch error:', e);
+    return null;
+  }
 }
 
 function qplQueryVariants(q, cat = ''){

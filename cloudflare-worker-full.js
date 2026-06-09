@@ -775,12 +775,16 @@ export default {
 
     // ── SportsCardsPro: candidate list ───────────────────────────────────────
     // dashboard.html calls: GET /pricing/sportscardspro/products?q=QUERY
+    // Requires SCP_ACCESS_TOKEN worker secret (set via: wrangler secret put SCP_ACCESS_TOKEN)
     if (url.pathname === '/pricing/sportscardspro/products') {
       const q = url.searchParams.get('q') || '';
       if (!q) return json({ ok: false, error: 'q required' }, 400);
 
-      const upstream = 'https://www.sportscardspro.com/api/products?' +
-        new URLSearchParams({ q });
+      const scpToken = await getStoredSecret(env, 'SCP_ACCESS_TOKEN');
+      if (!scpToken) return json({ ok: false, needsKey: true, source: 'sportscardspro', error: 'SCP_ACCESS_TOKEN not set in Worker secrets. Set it with: wrangler secret put SCP_ACCESS_TOKEN' }, 501);
+
+      const upstreamParams = new URLSearchParams({ q, access_token: scpToken });
+      const upstream = 'https://www.sportscardspro.com/api/products?' + upstreamParams;
 
       const res = await fetch(upstream, {
         headers: {
@@ -795,7 +799,9 @@ export default {
       let data;
       try { data = JSON.parse(text); } catch (_) { data = { raw: text }; }
 
-      return json({ ok: res.ok, status: res.status, ...data });
+      // Normalise to a consistent shape: always { ok, products: [] }
+      const products = data.products || data.matches || data.data || data.results || (Array.isArray(data) ? data : []);
+      return json({ ok: res.ok && !data.error, status: res.status, products, _raw: data.error ? data : undefined });
     }
 
     // ── SportsCardsPro: single-product hydration ──────────────────────────────
@@ -804,8 +810,11 @@ export default {
       const id = url.searchParams.get('id') || '';
       if (!id) return json({ ok: false, error: 'id required' }, 400);
 
-      const upstream = 'https://www.sportscardspro.com/api/product?' +
-        new URLSearchParams({ id });
+      const scpToken = await getStoredSecret(env, 'SCP_ACCESS_TOKEN');
+      if (!scpToken) return json({ ok: false, needsKey: true, source: 'sportscardspro', error: 'SCP_ACCESS_TOKEN not set in Worker secrets.' }, 501);
+
+      const upstreamParams = new URLSearchParams({ id, access_token: scpToken });
+      const upstream = 'https://www.sportscardspro.com/api/product?' + upstreamParams;
 
       const res = await fetch(upstream, {
         headers: {
@@ -820,7 +829,9 @@ export default {
       let data;
       try { data = JSON.parse(text); } catch (_) { data = { raw: text }; }
 
-      return json({ ok: res.ok, status: res.status, ...data });
+      // Normalise: always return { ok, product: {...} }
+      const product = data.product || data.data || (!data.error && data.id ? data : null);
+      return json({ ok: res.ok && !data.error, status: res.status, product, _raw: data.error ? data : undefined });
     }
 
     if (url.pathname.startsWith('/proxy/')) {
