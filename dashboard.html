@@ -951,6 +951,7 @@ body.show-mode .inv-sync-badge{display:none;}
       <button class="show-mode-toggle" onclick="toggleShowMode()" title="Toggle Show Mode — hides developer info">SHOW MODE</button>
       <button class="hbtn" id="logout-btn" style="display:none" onclick="logoutAccount()">LOGOUT</button>
       <button class="hbtn" id="refresh-btn" onclick="loadInventory()">REFRESH</button>
+      <button class="hbtn dev-only" id="sync-prices-btn" onclick="openPriceSyncModal()" title="Compare inventory prices against your cached price lookups">SYNC PRICES</button>
     </div>
   </div>
   <!-- Demo mode banner — shown when isDemo is true -->
@@ -1731,6 +1732,27 @@ body.show-mode .inv-sync-badge{display:none;}
       <button class="modal-btn cancel" onclick="closeEditModal()">Cancel</button>
     </div>
     <div id="edit-sync-status" style="font-family:'DM Mono',monospace;font-size:9px;margin-top:8px;text-align:center"></div>
+  </div>
+</div>
+
+<!-- PRICE SYNC MODAL (A7) -->
+<div class="modal-bg" id="price-sync-modal">
+  <div class="modal" style="max-width:600px;max-height:82vh;display:flex;flex-direction:column">
+    <h3>💹 SYNC LATEST PRICES</h3>
+    <p style="font-size:11px;color:var(--dim);margin:0 0 12px">Compares your inventory market prices against prices stored in your local lookup cache. No API calls — runs offline too.</p>
+    <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:12px;align-items:center">
+      <label style="display:flex;align-items:center;gap:5px;font-size:11px;cursor:pointer"><input type="checkbox" id="pso-tcg" checked> TCG / Pokémon</label>
+      <label style="display:flex;align-items:center;gap:5px;font-size:11px;cursor:pointer"><input type="checkbox" id="pso-sports" checked> Sports Cards</label>
+      <label style="display:flex;align-items:center;gap:5px;font-size:11px;cursor:pointer"><input type="checkbox" id="pso-comics"> Comics</label>
+      <label style="display:flex;align-items:center;gap:5px;font-size:11px;cursor:pointer"><input type="number" id="pso-limit" value="50" min="5" max="200" style="width:52px;padding:3px 5px;font-family:monospace;font-size:11px;background:var(--bg2);border:1px solid var(--border);color:var(--text);border-radius:4px"> max items</label>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+      <button class="hbtn" id="price-sync-scan-btn" onclick="runPriceSyncScan()">🔍 SCAN INVENTORY</button>
+      <button class="hbtn" id="price-sync-apply-btn" onclick="applySelectedPriceSyncUpdates()" style="display:none;background:rgba(0,255,179,.12);border-color:rgba(0,255,179,.4);color:var(--g)">✓ UPDATE SELECTED</button>
+      <button class="modal-btn cancel" onclick="closePriceSyncModal()" style="margin-left:auto">CLOSE</button>
+    </div>
+    <div id="price-sync-status" style="font-size:11px;color:var(--dim);min-height:16px;margin-bottom:8px"></div>
+    <div id="price-sync-proposal" style="flex:1;overflow-y:auto;min-height:80px"></div>
   </div>
 </div>
 
@@ -8103,11 +8125,11 @@ function updateRegisterCommandCenter(scanCount){
   if(scanMeta) scanMeta.textContent = count ? 'Ready to send to cart, offer, or inventory' : 'Waiting for scans';
 
   const pct = Number(document.getElementById('bl-pct')?.value || 50);
-  const totalMkt = buyList.reduce((a,i)=>a+(Number(i.market)||0),0);
-  const offer = totalMkt * (pct / 100);
+  // A4 FIX: use buyItemOfferValue (rounds down to whole dollar, honors manual cashOffer overrides)
+  const offerRounded = buyList.reduce((a,i) => a + buyItemOfferValue(i), 0);
   const offerTotal = document.getElementById('reg-offer-total');
   const offerMeta = document.getElementById('reg-offer-meta');
-  if(offerTotal) offerTotal.textContent = '$' + offer.toFixed(2);
+  if(offerTotal) offerTotal.textContent = '$' + offerRounded;
   if(offerMeta) offerMeta.textContent = buyList.length + ' item' + (buyList.length === 1 ? '' : 's') + ' · ' + pct + '% offer';
 }
 
@@ -8353,6 +8375,258 @@ function roundBuyOffer(value){
   const n = Number(value || 0);
   if(!isFinite(n) || n <= 0) return 0;
   return Math.floor(n + 1e-9);
+}
+
+// ── PRICE SYNC ENGINE (A5-A8) ─────────────────────────────────────────────
+// Compares in-stock inventory market prices against the local IndexedDB Pokemon
+// price cache.  No live API calls — runs offline.  User reviews proposed changes
+// in a modal before anything is written.
+
+function isBigPriceChange(oldPrice, newPrice){
+  if(!oldPrice || !newPrice || oldPrice <= 0) return false;
+  const delta = Math.abs(newPrice - oldPrice);
+  const pct = (delta / oldPrice) * 100;
+  return pct >= 20 || delta >= 25;
+}
+
+function findCachedCardForInventoryItem(item, storeCards){
+  const tcgPlayerId = String(item.tcgPlayerId || item.tcgplayerId || '');
+  if(tcgPlayerId) {
+    // Try pstWriteCard format: cardKey = 'pokemon:<tcgPlayerId>'
+    const byKey = storeCards.find(c => c.cardKey === 'pokemon:' + tcgPlayerId);
+    if(byKey) return byKey;
+    // Try scanning card.tcgPlayerId on cached search results
+    const byId = storeCards.find(c => {
+      const cd = c.card || {};
+      const cid = String(cd.tcgPlayerId || cd.tcgplayerId || cd.tcgplayerProductId || '');
+      return cid && cid === tcgPlayerId;
+    });
+    if(byId) return byId;
+  }
+  // Fuzzy match by name + set + card number
+  const normName = normalizePokemonText(item.name || '');
+  const normSet  = normalizePokemonText(item.set  || '');
+  const normNum  = normalizePokemonText(item.card_number || '');
+  if(!normName) return null;
+  return storeCards.find(c => {
+    const cd = c.card || {};
+    const cName = normalizePokemonText(cd.name || '');
+    const cSet  = normalizePokemonText(cd.setName || cd.set || '');
+    const cNum  = normalizePokemonText(cd.cardNumber || cd.number || '');
+    const nameOk = cName === normName || cName.includes(normName) || normName.includes(cName);
+    const setOk  = !normSet || cSet === normSet || cSet.includes(normSet) || normSet.includes(cSet);
+    const numOk  = !normNum || cNum === normNum || cNum.includes(normNum);
+    return nameOk && setOk && numOk;
+  }) || null;
+}
+
+function getCachedCardMarketPrice(cached){
+  if(!cached) return 0;
+  const cd = cached.card || cached;
+  return Number(
+    cd.market ||
+    cd.selectedVariant?.marketPrice ||
+    cd.resolvedPrice ||
+    (cd.pokemonPriceTracker?.prices?.market?.price) ||
+    (cd.prices?.market?.price) ||
+    0
+  );
+}
+
+async function buildPriceSyncProposal(options = {}){
+  const { limit = 50, categories = null } = options;
+  // Read raw items (preserves tcgPlayerId not exposed by getUniversalInventory)
+  const rawItems = safeLocalJson('walkoff_universal_inventory', []);
+  const overrides = getInventoryEditOverrides();
+  let items = rawItems.map(i => {
+    const patch = overrides[i.id] || overrides[i.wfId];
+    return patch ? { ...i, ...patch } : i;
+  });
+  items = items.filter(i => {
+    const st = i.lifecycle || i.status || 'in_stock';
+    return (st === 'in_stock' || !st) && Number(i.market || 0) > 0;
+  });
+  if(categories && categories.length) {
+    const normCats = categories.map(c => normalizePokemonText(c));
+    items = items.filter(i => normCats.some(nc => normalizePokemonText(i.category || '').includes(nc)));
+  }
+  // Prioritise highest-value items first
+  items = items.sort((a, b) => Number(b.market || 0) - Number(a.market || 0)).slice(0, limit);
+
+  const allCards  = await pokemonDbAll('cards').catch(() => []);
+  const storeId   = getActiveStoreId();
+  const storeCards = allCards.filter(c => !c.storeId || c.storeId === storeId);
+
+  const proposal = [];
+  for(const item of items) {
+    try {
+      const cached = findCachedCardForInventoryItem(item, storeCards);
+      if(!cached) continue;
+      const freshPrice = getCachedCardMarketPrice(cached);
+      if(!freshPrice || freshPrice <= 0) continue;
+      const oldPrice = Number(item.market || 0);
+      if(Math.abs(freshPrice - oldPrice) < 0.50) continue; // ignore rounding noise
+      const delta      = freshPrice - oldPrice;
+      const deltaPct   = Math.abs(delta / oldPrice) * 100;
+      const big        = isBigPriceChange(oldPrice, freshPrice);
+      const direction  = delta > 0 ? 'up' : 'down';
+      const newRounded = roundSellPrice(freshPrice);
+      proposal.push({
+        item:      { ...item },
+        oldPrice,
+        newPrice:  newRounded,
+        rawNewPrice: freshPrice,
+        delta,
+        deltaPct,
+        isBig:     big,
+        direction,
+        label:     big ? (direction === 'up' ? 'BIG INCREASE' : 'BIG DROP') : (direction === 'up' ? 'increase' : 'drop'),
+        cacheAge:  pokemonCacheAgeLabel(cached.updatedAt),
+        selected:  true,
+      });
+    } catch(e){ console.warn('[syncPrices] Skip:', item.name, e.message); }
+  }
+  // Big changes first, then by magnitude
+  return proposal.sort((a, b) => (b.isBig ? 1 : 0) - (a.isBig ? 1 : 0) || Math.abs(b.delta) - Math.abs(a.delta));
+}
+
+let _priceSyncProposal = [];
+
+function openPriceSyncModal(){
+  const modal = document.getElementById('price-sync-modal');
+  if(!modal) return;
+  modal.classList.add('on');
+  const propEl  = document.getElementById('price-sync-proposal');
+  const statusEl = document.getElementById('price-sync-status');
+  const applyBtn = document.getElementById('price-sync-apply-btn');
+  if(propEl)   propEl.innerHTML   = '<div style="color:var(--dim);font-size:11px;padding:12px 0">Click SCAN INVENTORY to check prices against your cached lookups.</div>';
+  if(statusEl) statusEl.textContent = '';
+  if(applyBtn) applyBtn.style.display = 'none';
+  _priceSyncProposal = [];
+}
+
+function closePriceSyncModal(){
+  document.getElementById('price-sync-modal')?.classList.remove('on');
+}
+
+async function runPriceSyncScan(){
+  const btn      = document.getElementById('price-sync-scan-btn');
+  const statusEl = document.getElementById('price-sync-status');
+  const propEl   = document.getElementById('price-sync-proposal');
+  const applyBtn = document.getElementById('price-sync-apply-btn');
+  if(!btn || !statusEl || !propEl) return;
+  btn.disabled  = true;
+  btn.textContent = 'Scanning...';
+  statusEl.textContent = 'Reading inventory and cached prices...';
+  propEl.innerHTML = '';
+  if(applyBtn) applyBtn.style.display = 'none';
+  const cats = [];
+  if(document.getElementById('pso-tcg')?.checked)    cats.push('TCG', 'Pokemon');
+  if(document.getElementById('pso-sports')?.checked) cats.push('Sports');
+  if(document.getElementById('pso-comics')?.checked) cats.push('Comics');
+  const limit = Math.max(5, Math.min(200, Number(document.getElementById('pso-limit')?.value || 50)));
+  try {
+    _priceSyncProposal = await buildPriceSyncProposal({ limit, categories: cats.length ? cats : null });
+    if(!_priceSyncProposal.length) {
+      statusEl.textContent = 'No price changes found. Prices come from cached lookups — search cards in the Research tab to refresh the cache.';
+      propEl.innerHTML = '<div style="color:var(--dim);font-size:12px;padding:12px 0">✓ All cached prices match your current inventory pricing.</div>';
+    } else {
+      const bigCount = _priceSyncProposal.filter(p => p.isBig).length;
+      statusEl.textContent = _priceSyncProposal.length + ' price change' + (_priceSyncProposal.length === 1 ? '' : 's') + ' found'
+        + (bigCount ? ' · ' + bigCount + ' big change' + (bigCount === 1 ? '' : 's') : '')
+        + '. Review below, then click UPDATE SELECTED.';
+      if(applyBtn) applyBtn.style.display = '';
+      renderPriceSyncProposal();
+      updatePriceAlertBanner();
+    }
+  } catch(e) {
+    statusEl.textContent = 'Scan failed: ' + (e.message || e);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🔍 SCAN INVENTORY';
+  }
+}
+
+function renderPriceSyncProposal(){
+  const el = document.getElementById('price-sync-proposal');
+  if(!el) return;
+  if(!_priceSyncProposal.length){ el.innerHTML = ''; return; }
+  const rows = _priceSyncProposal.map((p, idx) => {
+    const col   = p.direction === 'up' ? 'var(--g)' : 'var(--red)';
+    const arrow = p.direction === 'up' ? '▲' : '▼';
+    const bigBadge = p.isBig
+      ? `<span style="display:inline-block;background:${p.direction==='up'?'rgba(255,180,0,.18)':'rgba(255,60,60,.18)'};color:${col};border-radius:4px;padding:1px 5px;font-size:9px;font-weight:700;letter-spacing:.5px;margin-right:4px">${escHtml(p.label.toUpperCase())}</span>`
+      : '';
+    return `<div style="background:var(--bg2);border:1px solid ${p.isBig?col:'var(--border)'};border-radius:8px;padding:9px 12px;display:flex;align-items:center;gap:10px;margin-bottom:6px">
+      <input type="checkbox" data-pso-idx="${idx}" ${p.selected?'checked':''} onchange="togglePriceSyncItem(${idx},this.checked)" style="width:16px;height:16px;flex-shrink:0">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(p.item.name||'Item')}</div>
+        <div style="font-size:10px;color:var(--dim)">${escHtml(p.item.set||'')}${p.item.card_number?' · #'+escHtml(p.item.card_number):''} · cached ${escHtml(p.cacheAge)}</div>
+      </div>
+      <div style="text-align:right;white-space:nowrap">
+        ${bigBadge}
+        <div style="font-size:13px;font-weight:700;color:${col}">${arrow} $${p.newPrice}</div>
+        <div style="font-size:10px;color:var(--dim)">was $${p.oldPrice}</div>
+      </div>
+    </div>`;
+  }).join('');
+  el.innerHTML = `<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+    <label style="font-size:11px;cursor:pointer"><input type="checkbox" id="pso-select-all" checked onchange="toggleAllPriceSyncItems(this.checked)"> SELECT ALL</label>
+    <span style="font-size:10px;color:var(--dim)">${_priceSyncProposal.length} item${_priceSyncProposal.length===1?'':'s'}</span>
+  </div>` + rows;
+}
+
+function toggleAllPriceSyncItems(checked){
+  _priceSyncProposal.forEach(p => { p.selected = checked; });
+  document.querySelectorAll('[data-pso-idx]').forEach(cb => { cb.checked = checked; });
+}
+
+function togglePriceSyncItem(idx, checked){
+  if(_priceSyncProposal[idx]) _priceSyncProposal[idx].selected = checked;
+  const allChecked = _priceSyncProposal.every(p => p.selected);
+  const cb = document.getElementById('pso-select-all');
+  if(cb) cb.checked = allChecked;
+}
+
+async function applySelectedPriceSyncUpdates(){
+  const selected = _priceSyncProposal.filter(p => p.selected);
+  if(!selected.length){ toast_dash('No items selected'); return; }
+  let ok = 0;
+  for(const p of selected){
+    try{
+      const fullItem = (all||[]).find(i => i.id === p.item.id) || p.item;
+      await saveInventoryEdit(fullItem, {
+        market:      p.newPrice,
+        salePrice:   p.newPrice,
+        priceSource: 'PPT cache sync ' + new Date().toLocaleDateString(),
+      });
+      ok++;
+    } catch(e){ console.warn('[syncPrices] Apply failed:', p.item.name, e); }
+  }
+  _priceSyncProposal = _priceSyncProposal.filter(p => !p.selected);
+  renderPriceSyncProposal();
+  updatePriceAlertBanner();
+  const statusEl = document.getElementById('price-sync-status');
+  if(statusEl) statusEl.textContent = ok + ' price' + (ok===1?'':'s') + ' updated.'
+    + (_priceSyncProposal.length ? '  ' + _priceSyncProposal.length + ' remaining.' : '  All done. ✓');
+  const applyBtn = document.getElementById('price-sync-apply-btn');
+  if(applyBtn && !_priceSyncProposal.length) applyBtn.style.display = 'none';
+  toast_dash('Updated ' + ok + ' price' + (ok===1?'':'s'));
+  loadInventory();
+}
+
+function updatePriceAlertBanner(){
+  const bigChanges = _priceSyncProposal.filter(p => p.isBig);
+  const banner     = document.getElementById('price-change-alerts');
+  if(!banner) return;
+  if(bigChanges.length){
+    banner.style.cssText = 'display:flex;align-items:center;gap:10px;background:rgba(255,60,60,.12);border:1px solid rgba(255,60,60,.35);border-radius:8px;padding:9px 14px;margin-bottom:12px;font-size:12px;color:var(--text)';
+    banner.innerHTML = `<span style="color:var(--red);font-weight:700">⚠ ${bigChanges.length} big price change${bigChanges.length===1?'':'s'} need review</span>
+      <button class="hbtn" style="margin-left:auto;font-size:9px;padding:5px 10px" onclick="openPriceSyncModal()">SYNC PRICES</button>`;
+  } else {
+    banner.style.display = 'none';
+    banner.innerHTML = '';
+  }
 }
 
 function applyShowPriceRule(price){
@@ -13047,18 +13321,31 @@ function normalizePokemonText(value = ''){
 
 function pokemonQueryCardNumber(query = ''){
   const text = String(query || '');
+  // 1. Slash format: 148/132 or 148 / 132 (standard set numbers)
   const slash = text.match(/\b\d{1,4}\s*\/\s*\d{1,4}\b/);
   if(slash) return slash[0].replace(/\s+/g, '');
+  // 2. Promo prefix formats: SV074, SVP074, SWSH050, TG05, GG70, RC32, XY122, BW100
+  //    Use (0\d\d|\d\d) — zero-padded 3-digit OR exactly 2-digit — so "sv151" (a
+  //    set shorthand that doesn't start with 0) is NOT captured here.
+  //    SM promos over 100 (e.g. SM210) are handled as plain numbers by step 3.
+  const promo = text.match(/\b(SVP|SWSH|HGSS|POP|SM|SV|XY|BW|TG|GG|RC|DP)(0\d{2}|\d{2})\b/i);
+  if(promo) return promo[0].toUpperCase();
+  // 3. Plain number: 148
   const plain = text.match(/\b\d{1,4}\b/);
   return plain ? plain[0] : '';
 }
 
 function pokemonCardNumberMatches(card = {}, queryNumber = ''){
   if(!queryNumber) return true;
-  const cardNumber = String(card.cardNumber || card.number || card.card_number || '').replace(/\s+/g, '');
+  // Normalize to uppercase for promo prefix comparisons (SV074, SWSH050, etc.)
+  const cardNumber = String(card.cardNumber || card.number || card.card_number || '').replace(/\s+/g, '').toUpperCase();
   if(!cardNumber) return false;
-  const wanted = String(queryNumber).replace(/\s+/g, '');
-  return cardNumber === wanted || cardNumber.split('/')[0] === wanted || wanted.split('/')[0] === cardNumber || cardNumber.includes(wanted);
+  const wanted = String(queryNumber).replace(/\s+/g, '').toUpperCase();
+  return cardNumber === wanted
+    || cardNumber.split('/')[0] === wanted
+    || wanted.split('/')[0] === cardNumber
+    || cardNumber.includes(wanted)
+    || wanted.includes(cardNumber);
 }
 
 function pokemonRankApiCards(cards = [], rawQuery = ''){
@@ -13092,9 +13379,27 @@ function pokemonSlug(value = ''){
   return normalizePokemonText(value).replace(/\s+/g, '-').replace(/^-|-$/g, '');
 }
 
+// B6: Detect promo-number queries like SV074, SWSH050, SVP074, XY122, etc.
+function isPokemonPromoIntent(q = ''){
+  const t = String(q || '').toLowerCase();
+  return /\bpromo\b|\bblack[\s-]*star\b/.test(t)
+    || /\b(svp|swsh|hgss|pop|sm\d?|sv|xy|bw|tg|gg|rc|dp)\d{2,3}\b/i.test(t);
+}
+
+// B7: Detect sealed product queries (ETB, booster box, bundle, etc.)
+function isPokemonSealedIntent(q = ''){
+  return /\b(etb|elite[\s-]*trainer[\s-]*box|booster[\s-]*box|booster[\s-]*pack|sealed|blister|collection[\s-]*box|bundle|battle[\s-]*deck|theme[\s-]*deck|starter[\s-]*set|fat[\s-]*pack|tin\b|premium[\s-]*collection|build[\s-]*&?[\s-]*battle)\b/i.test(String(q || ''));
+}
+
 function isPokemonLookupIntent(q = '', cat = ''){
   const text = normalizePokemonText([q, cat].join(' '));
-  return qplCategoryKey(cat) === 'pokemon' || /\bpokemon\b|\bpikachu\b|\bcharizard\b|\bumbreon\b|\bbulbasaur\b|\bsquirtle\b|\bcharmander\b|\bmew\b|\bmewtwo\b|\balakazam\b|\bevolving skies\b|\bsv151\b|\b151\b/.test(text);
+  if(qplCategoryKey(cat) === 'pokemon') return true;
+  // B6: promo prefix patterns imply a Pokemon lookup
+  if(isPokemonPromoIntent(q)) return true;
+  // B7: sealed product queries with Pokemon keywords
+  if(isPokemonSealedIntent(q) && /\bpokemon\b|\bpaldea\b|\bsv\b|\bswsh\b|\bscarlet\b|\bviolet\b|\bsword\b|\bshield\b|\bsun\b|\bmoon\b|\bxy\b|\bblack\b|\bwhite\b|\bheartgold\b|\bsoulsilver\b|\bdiamond\b|\bpearl\b|\bpikachu\b|\bcharizard\b|\bpokeball\b/i.test(String(q))) return true;
+  // Expanded Pokemon name / set recognition (B3)
+  return /\bpokemon\b|\bpikachu\b|\bcharizard\b|\bumbreon\b|\bbulbasaur\b|\bsquirtle\b|\bcharmander\b|\bmew\b|\bmewtwo\b|\balakazam\b|\bevolving skies\b|\bsv151\b|\b151\b|\bspirittomb\b|\beevee\b|\braichu\b|\bsnorlax\b|\blucario\b|\bgardevoir\b|\bgreninja\b|\bgengar\b|\bzacian\b|\brayquaza\b|\beldegoss\b|\bpidgeot\b|\bmimikyu\b|\blillie\b|\bpalkia\b|\bdialga\b|\barceus\b|\bgirafarig\b|\bflareon\b|\bjolteon\b|\bvaporeon\b|\bsilvereon\b|\bglaceon\b|\bespeon\b|\bleafeon\b|\bsylveon\b/.test(text);
 }
 
 function pokemonCardKey(row = {}, query = ''){
@@ -15379,12 +15684,22 @@ async function pokemonPriceTrackerCardsRequest(params, pathLabel){
 
 // Expand common Pokemon rarity abbreviations before sending to PPT API
 // (the API doesn't understand 'sir', 'ir', etc. — must send the full name)
+// B6: also expand promo set shorthands so the API can route them correctly.
 function pokemonExpandSearchAbbreviations(q){
   return String(q || '')
+    // Rarity abbreviations
     .replace(/\bsir\b/gi, 'special illustration rare')
     .replace(/\bsar\b/gi, 'special art rare')
     .replace(/\bir\b/gi, 'illustration rare')
     .replace(/\bar\b/gi, 'art rare')
+    // Promo set shorthands (expand so the API finds the right set)
+    .replace(/\bsv\s*promo\b/gi, 'Scarlet Violet Black Star Promo')
+    .replace(/\bswsh\s*promo\b/gi, 'Sword Shield Black Star Promo')
+    .replace(/\bsm\s*promo\b/gi, 'Sun Moon Black Star Promo')
+    .replace(/\bxy\s*promo\b/gi, 'XY Black Star Promo')
+    .replace(/\bbw\s*promo\b/gi, 'Black White Black Star Promo')
+    .replace(/\bdp\s*promo\b/gi, 'Diamond Pearl Black Star Promo')
+    .replace(/\bhgss\s*promo\b/gi, 'HeartGold SoulSilver Black Star Promo')
     .replace(/\s+/g, ' ').trim();
 }
 
