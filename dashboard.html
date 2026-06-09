@@ -13324,11 +13324,12 @@ function pokemonQueryCardNumber(query = ''){
   // 1. Slash format: 148/132 or 148 / 132 (standard set numbers)
   const slash = text.match(/\b\d{1,4}\s*\/\s*\d{1,4}\b/);
   if(slash) return slash[0].replace(/\s+/g, '');
-  // 2. Promo prefix formats: SV074, SVP074, SWSH050, TG05, GG70, RC32, XY122, BW100
-  //    Use (0\d\d|\d\d) — zero-padded 3-digit OR exactly 2-digit — so "sv151" (a
-  //    set shorthand that doesn't start with 0) is NOT captured here.
-  //    SM promos over 100 (e.g. SM210) are handled as plain numbers by step 3.
-  const promo = text.match(/\b(SVP|SWSH|HGSS|POP|SM|SV|XY|BW|TG|GG|RC|DP)(0\d{2}|\d{2})\b/i);
+  // 2. Promo prefix formats: SVP074, SWSH147, SWSH050, TG05, GG70, XY122, BW100
+  //    Non-SV prefixes allow 2-3 digits (SWSH promos run past SWSH150, e.g. SWSH147).
+  //    Bare SV is restricted to 2-digit or 0-padded 3-digit to avoid treating the
+  //    "sv151" set shorthand as a card number SV151.
+  const promo = text.match(/\b(SVP|SWSH|HGSS|POP|SM|XY|BW|TG|GG|RC|DP)\d{2,3}\b/i)
+    || text.match(/\bSV(0\d{2}|\d{2})\b/i);
   if(promo) return promo[0].toUpperCase();
   // 3. Plain number: 148
   const plain = text.match(/\b\d{1,4}\b/);
