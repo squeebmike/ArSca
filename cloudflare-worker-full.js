@@ -773,6 +773,41 @@ export default {
       }
     }
 
+    // ── SportsCardsPro: card image lookup ─────────────────────────────────────
+    // GET /pricing/sportscardspro/image?console=CONSOLE_NAME&name=PRODUCT_NAME
+    // Fetches the PriceCharting product page with a browser UA and extracts the
+    // first storage.googleapis.com image URL. Cached 2 hours at the edge.
+    if (url.pathname === '/pricing/sportscardspro/image') {
+      const consoleName = url.searchParams.get('console') || '';
+      const productName = url.searchParams.get('name') || '';
+      if (!consoleName || !productName) return json({ ok: false, error: 'console and name required' }, 400);
+
+      const toSlug = s => String(s).toLowerCase()
+        .replace(/['']/g, '')
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '');
+
+      const pageUrl = `https://www.pricecharting.com/game/${toSlug(consoleName)}/${toSlug(productName)}`;
+
+      const pageRes = await fetch(pageUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+          'Accept': 'text/html,application/xhtml+xml',
+          'Accept-Language': 'en-US,en;q=0.9',
+        },
+        cf: { cacheTtl: 7200, cacheEverything: true },
+      });
+
+      if (!pageRes.ok) return json({ ok: false, imageUrl: null, status: pageRes.status });
+
+      const html = await pageRes.text();
+      const m = html.match(/storage\.googleapis\.com\/images\.pricecharting\.com\/([^/"']+)\/(?:240|300|400|1600)\.jpg/);
+      if (!m) return json({ ok: false, imageUrl: null });
+
+      const imageUrl = `https://storage.googleapis.com/images.pricecharting.com/${m[1]}/240.jpg`;
+      return json({ ok: true, imageUrl });
+    }
+
     // ── SportsCardsPro: candidate list ───────────────────────────────────────
     // dashboard.html calls: GET /pricing/sportscardspro/products?q=QUERY
     // Requires SCP_ACCESS_TOKEN worker secret (set via: wrangler secret put SCP_ACCESS_TOKEN)

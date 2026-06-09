@@ -13676,6 +13676,8 @@ async function runPriceLookup(){
     }
     renderQuickLookupResults(qplResults);
     pushQuickLookupHistory(q, qplResults[0]);
+    // Async image enrichment for SCP sports results (non-blocking)
+    if(qplResults.some(r => r.source === 'sportscardspro' && !r.imageUrl)) enrichScpImagesAsync();
     if(wantsPokemon) {
       savePokemonCacheResults(q, qplMasterResults, 'Live Pokemon lookup').then(renderOfflineCachePanel).catch(console.warn);
       setPokemonOfflineBanner((cachedResults.length ? 'Live Pokemon refresh updated the cached copy.' : 'Saved this Pokémon lookup for offline use.') + ' Cached results may be stale; live refresh updates when online. Last cached ' + pokemonCacheAgeLabel(new Date().toISOString()) + '.', 'good');
@@ -15104,6 +15106,31 @@ async function searchSportsCardsPro(q){
   // Worker now always returns { ok, products: [] } — safe to read directly
   const products = data.products || data.matches || data.data || data.results || (Array.isArray(data) ? data : []);
   return products.slice(0, 10).map(p => scpProductToQplRow(p, q));
+}
+
+// Step 1b: async image enrichment — fires after results render, patches images in place.
+// No-op if image already populated or row has no set/name.
+async function fetchScpImageAsync(idx){
+  const r = qplResults[idx];
+  if(!r || r.source !== 'sportscardspro' || r.imageUrl || !r.set || !r.name) return;
+  try {
+    const params = new URLSearchParams({ console: r.set, name: r.name });
+    const res = await fetch(WORKER + '/pricing/sportscardspro/image?' + params);
+    const data = await res.json().catch(() => ({}));
+    if(data.ok && data.imageUrl) {
+      qplResults[idx] = { ...r, imageUrl: data.imageUrl };
+      // Patch the img element in the already-rendered card without full re-render
+      const shell = document.querySelector(`.qpl-hero-card[data-qpl-idx="${idx}"] .qpl-img-shell`);
+      if(shell) shell.innerHTML = `<img src="${data.imageUrl}" alt="${r.name}" loading="lazy" style="width:100%;height:100%;object-fit:contain">`;
+    }
+  } catch(_){}
+}
+
+// Kick off image fetches for all SCP rows after results are rendered.
+function enrichScpImagesAsync(){
+  qplResults.forEach((r, idx) => {
+    if(r && r.source === 'sportscardspro' && !r.imageUrl) fetchScpImageAsync(idx);
+  });
 }
 
 // Step 2: hydrate a selected result with full price detail
