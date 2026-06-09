@@ -15952,11 +15952,19 @@ function pokemonExpandSearchAbbreviations(q){
 }
 
 async function searchPokemonPriceTrackerCards(rawQuery = '', language = 'english'){
-  const query = pokemonExpandSearchAbbreviations(String(rawQuery || '').replace(/\s+/g, ' ').trim());
+  const expanded = pokemonExpandSearchAbbreviations(String(rawQuery || '').replace(/\s+/g, ' ').trim());
+  // PPT searches by card NAME only — strip promo-set abbreviations and standalone "promo"
+  // so natural queries like "rayquaza swsh promo" or "rayquaza promo" send just "rayquaza".
+  // Negative lookbehind keeps "Promo" that is part of expanded set names like "Black Star Promo".
+  const query = (expanded
+    .replace(/\bswsh\b|\bsvp\b|\bhgss\b/gi, '')
+    .replace(/(?<!black[\s-]*star\s+)\bpromo\b/gi, '')
+    .replace(/\s+/g, ' ').trim()) || expanded;
   if(!query) return { cards:[], data:{}, requestPath:'', cacheStatus:'miss' };
+  // Pass the ORIGINAL raw query to the ranker so set-word scoring still uses "swsh", "promo" etc.
   const params = new URLSearchParams({ search:query, language:language || 'english', limit:'5' });
   const result = await pokemonPriceTrackerCardsRequest(params, 'cards.search.limit5');
-  result.ranked = pokemonRankApiCards(result.cards, query);
+  result.ranked = pokemonRankApiCards(result.cards, rawQuery);
   return result;
 }
 
