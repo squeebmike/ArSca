@@ -14936,27 +14936,20 @@ function buildSportsQueryVariants(q){
 //   2. fetchSportsCardsProProduct(id)   → /api/product?id=  full hydration
 // Worker proxies both to avoid CORS.  No scraping — API only.
 
-// SCP price keys → human-readable grade labels for the condition matrix
-const SCP_GRADE_TIERS = [
-  { key:'grade-10',  label:'PSA 10 / GEM-MT',    grade:'10'  },
-  { key:'grade-9.5', label:'BGS 9.5 / PRISTINE', grade:'9.5' },
-  { key:'grade-9',   label:'PSA 9 / MINT',        grade:'9'   },
-  { key:'grade-8',   label:'PSA 8 / NM-MT',       grade:'8'   },
-  { key:'grade-7',   label:'PSA 7 / NM',          grade:'7'   },
-  { key:'grade-6',   label:'PSA 6 / EX-MT',       grade:'6'   },
-  { key:'grade-5',   label:'PSA 5 / EX',          grade:'5'   },
-];
+// SportsCardsPro/PriceCharting API returns flat cent-based price fields on the product object.
+// Condition IDs: loose=raw/NM, graded=overall slab, condition-17=PSA 10, condition-18=PSA 9
+// All prices are in CENTS — divide by 100 for dollars.
+function scpCents(p, key){ return Math.round(Number(p[key] || 0)) / 100; }
 
-// Build QPL availableVariants from an SCP prices object.
-// Raw section: NM + condition-discounted tiers.
-// Graded section: one row per grade tier that has a real price.
-function buildScpVariants(prices, productId){
-  if(!prices || typeof prices !== 'object') return [];
-  const pid    = String(productId || 'scp');
-  const rawNM  = Number(prices.ungraded || 0);
+// Build QPL availableVariants from a raw SCP product object (flat cent fields).
+function buildScpVariants(p, productId){
+  if(!p || typeof p !== 'object') return [];
+  const pid   = String(productId || p.id || 'scp');
+  // NM raw price (loose-price = ungraded NM in cents)
+  const rawNM = scpCents(p, 'loose-price');
   const variants = [];
 
-  // Raw / ungraded tiers
+  // Raw / ungraded tiers — NM from API, others estimated by condition discount
   const RAW_CONDS = [
     { condition:'NM',   mult:1.00 },
     { condition:'LP',   mult:0.80 },
@@ -14967,41 +14960,51 @@ function buildScpVariants(prices, productId){
   RAW_CONDS.forEach(({ condition, mult }) => {
     const est = rawNM > 0 ? Math.round(rawNM * mult * 100) / 100 : null;
     variants.push({
-      skuId:                 pid + '-raw-' + condition.toLowerCase(),
+      skuId:                   pid + '-raw-' + condition.toLowerCase(),
       condition,
-      finish:                'normal',
-      foilType:              'normal',
-      language:              'English',
-      marketPrice:           condition === 'NM' ? (rawNM || null) : null,
-      estimatedMarketPrice:  est,
+      finish:                  'normal',
+      foilType:                'normal',
+      language:                'English',
+      marketPrice:             condition === 'NM' ? (rawNM || null) : null,
+      estimatedMarketPrice:    est,
       productLevelMarketPrice: rawNM || null,
-      priceSource:           rawNM > 0
+      priceSource:             rawNM > 0
         ? (condition === 'NM' ? 'SportsCardsPro ungraded guide' : 'Estimated (' + condition + ' discount)')
         : 'No price available',
-      priceConfidence:       rawNM > 0 ? (condition === 'NM' ? 'high' : 'estimate') : 'unknown',
-      scpPriceTier:          'raw',
+      priceConfidence:         rawNM > 0 ? (condition === 'NM' ? 'high' : 'estimate') : 'unknown',
+      scpPriceTier:            'raw',
     });
   });
 
-  // Graded tiers — only rows with an actual price
-  SCP_GRADE_TIERS.forEach(({ key, label, grade }) => {
-    const p = Number(prices[key] || 0);
-    if(!p) return;
+  // Graded tiers — PriceCharting condition IDs for sports cards:
+  //   condition-17 = PSA 10 (GEM-MT)
+  //   condition-18 = PSA 9  (MINT)
+  //   bgs-10-price = BGS 10 (PRISTINE)
+  //   graded-price = generic graded (used when specific tiers are absent)
+  const GRADED_TIERS = [
+    { key:'condition-17-price', label:'PSA 10 / GEM-MT',    grade:'10'  },
+    { key:'bgs-10-price',       label:'BGS 10 / PRISTINE',  grade:'BGS10' },
+    { key:'condition-18-price', label:'PSA 9 / MINT',        grade:'9'   },
+    { key:'graded-price',       label:'Graded (avg)',         grade:'Graded' },
+  ];
+  GRADED_TIERS.forEach(({ key, label, grade }) => {
+    const p2 = scpCents(p, key);
+    if(!p2) return;
     variants.push({
-      skuId:                 pid + '-graded-' + grade,
-      condition:             'Graded',
-      finish:                'graded',
-      foilType:              'graded',
-      language:              'English',
+      skuId:                   pid + '-graded-' + grade,
+      condition:               'Graded',
+      finish:                  'graded',
+      foilType:                'graded',
+      language:                'English',
       grade,
-      gradeLabel:            label,
-      marketPrice:           p,
-      estimatedMarketPrice:  p,
-      productLevelMarketPrice: p,
-      priceSource:           'SportsCardsPro ' + label,
-      priceConfidence:       'high',
-      scpPriceTier:          'graded',
-      scpGrade:              grade,
+      gradeLabel:              label,
+      marketPrice:             p2,
+      estimatedMarketPrice:    p2,
+      productLevelMarketPrice: p2,
+      priceSource:             'SportsCardsPro ' + label,
+      priceConfidence:         'high',
+      scpPriceTier:            'graded',
+      scpGrade:                grade,
     });
   });
 
@@ -15010,11 +15013,11 @@ function buildScpVariants(prices, productId){
 
 // Map one SCP /api/products item to a QPL row.
 function scpProductToQplRow(p, rawQuery){
-  const id     = String(p.id || p['product-id'] || '');
-  const name   = String(p['product-name'] || p.name || rawQuery || '');
-  const set    = String(p['console-name'] || p.consoleName || p.console_name || '');
-  const prices = p.prices || {};
-  const market = Number(prices.ungraded || 0);
+  const id    = String(p.id || p['product-id'] || '');
+  const name  = String(p['product-name'] || p.name || rawQuery || '');
+  const set   = String(p['console-name'] || p.consoleName || p.console_name || '');
+  // loose-price = NM ungraded, in cents
+  const market = scpCents(p, 'loose-price');
   const yearM  = name.match(/\b(19|20)\d{2}\b/);
   const numM   = name.match(/#\s*(\w+)/);
   const imgRaw = p.imageUrl || p['image-url'] || p.image_url || '';
@@ -15027,20 +15030,22 @@ function scpProductToQplRow(p, rawQuery){
     name,
     category:          'Sports Cards',
     set,
-    year:              yearM ? yearM[0] : '',
-    variant:           '',
+    year:              yearM ? yearM[0] : (String(set).match(/\b(19|20)\d{2}\b/)||[])[0] || '',
+    variant:           String(p.genre || ''),
     card_number:       numM ? numM[1] : '',
     condition:         'NM',
     market,
+    low:               scpCents(p, 'retail-loose-buy'),
+    high:              scpCents(p, 'retail-loose-sell'),
     imageUrl,
     priceSource:       market ? 'SportsCardsPro Guide' : 'SportsCardsPro — No Guide Price',
-    note:              'SportsCardsPro guide price (ungraded NM).',
-    confidence:        market ? 72 : 48,
+    note:              'SportsCardsPro guide price (ungraded NM). Click SELECT to load full grade matrix.',
+    confidence:        market ? 78 : 48,
     matchWhy:          ['SportsCardsPro /api/products'],
     productUrl:        id ? 'https://www.sportscardspro.com/game/' + id : '',
     scpId:             id,
     scpHydrated:       false,
-    availableVariants: buildScpVariants(prices, id),
+    availableVariants: buildScpVariants(p, id),
     pricecharting:     null,
     raw:               p,
   };
@@ -15048,14 +15053,15 @@ function scpProductToQplRow(p, rawQuery){
 
 // Apply a fully hydrated SCP /api/product response on top of an existing QPL row.
 function scpDetailToQplRow(data, baseRow){
+  // Worker normalises to { ok, product: {...} } — unwrap it
   const p = data?.product || data || {};
   if(!p || !p.id) return { ...baseRow, scpHydrated:true };
 
   const id     = String(p.id || p['product-id'] || baseRow.scpId || '');
   const name   = String(p['product-name'] || p.name || baseRow.name || '');
   const set    = String(p['console-name'] || p.consoleName || p.console_name || baseRow.set || '');
-  const prices = p.prices || {};
-  const market = Number(prices.ungraded || 0);
+  // Flat cent-based fields — same shape as /api/products
+  const market = scpCents(p, 'loose-price');
   const imgRaw = p.imageUrl || p['image-url'] || p.image_url || baseRow.imageUrl || '';
   const imageUrl = /^\/\//.test(imgRaw) ? 'https:' + imgRaw
     : /^\//.test(imgRaw) ? 'https://www.sportscardspro.com' + imgRaw
@@ -15066,11 +15072,13 @@ function scpDetailToQplRow(data, baseRow){
     name:              name || baseRow.name,
     set:               set  || baseRow.set,
     market:            market || baseRow.market,
+    low:               scpCents(p, 'retail-loose-buy') || baseRow.low,
+    high:              scpCents(p, 'retail-loose-sell') || baseRow.high,
     imageUrl:          imageUrl || baseRow.imageUrl,
     priceSource:       market ? 'SportsCardsPro Guide' : 'SportsCardsPro — No Guide Price',
-    availableVariants: buildScpVariants(prices, id),
+    availableVariants: buildScpVariants(p, id),
     scpHydrated:       true,
-    scpPrices:         prices,
+    scpPrices:         p,
     raw:               p,
   };
 }

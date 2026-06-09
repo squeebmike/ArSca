@@ -783,7 +783,8 @@ export default {
       const scpToken = await getStoredSecret(env, 'SCP_ACCESS_TOKEN');
       if (!scpToken) return json({ ok: false, needsKey: true, source: 'sportscardspro', error: 'SCP_ACCESS_TOKEN not set in Worker secrets. Set it with: wrangler secret put SCP_ACCESS_TOKEN' }, 501);
 
-      const upstreamParams = new URLSearchParams({ q, access_token: scpToken });
+      // SportsCardsPro/PriceCharting uses "t" as the token param (same as PC download URLs)
+      const upstreamParams = new URLSearchParams({ q, t: scpToken });
       const upstream = 'https://www.sportscardspro.com/api/products?' + upstreamParams;
 
       const res = await fetch(upstream, {
@@ -813,7 +814,7 @@ export default {
       const scpToken = await getStoredSecret(env, 'SCP_ACCESS_TOKEN');
       if (!scpToken) return json({ ok: false, needsKey: true, source: 'sportscardspro', error: 'SCP_ACCESS_TOKEN not set in Worker secrets.' }, 501);
 
-      const upstreamParams = new URLSearchParams({ id, access_token: scpToken });
+      const upstreamParams = new URLSearchParams({ id, t: scpToken });
       const upstream = 'https://www.sportscardspro.com/api/product?' + upstreamParams;
 
       const res = await fetch(upstream, {
