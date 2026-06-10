@@ -15926,7 +15926,7 @@ async function pokemonPriceTrackerCardsRequest(params, pathLabel){
   if(data.usage?.remaining != null) localStorage.setItem('ppt_remaining_credits', String(data.usage.remaining));
   if(data.usage?.consumed != null) localStorage.setItem('ppt_last_consumed', String(data.usage.consumed));
   if(!res.ok || !data.ok) throw new Error(data.error || data.message || 'PokemonPriceTracker lookup failed');
-  return { data, cards:pokemonPriceTrackerCardsFromPayload(data).slice(0, 5), requestPath, pathLabel, cacheStatus:data.cache?.state === 'hit' ? 'hit' : data.cache?.state === 'stale' ? 'stale' : 'miss' };
+  return { data, cards:pokemonPriceTrackerCardsFromPayload(data).slice(0, 20), requestPath, pathLabel, cacheStatus:data.cache?.state === 'hit' ? 'hit' : data.cache?.state === 'stale' ? 'stale' : 'miss' };
 }
 
 // Expand common Pokemon rarity abbreviations before sending to PPT API
@@ -15971,7 +15971,7 @@ async function searchPokemonPriceTrackerCards(rawQuery = '', language = 'english
 async function searchPokemonSealedProducts(rawQuery = ''){
   const q = String(rawQuery || '').replace(/\s+/g, ' ').trim();
   if(!q) return { products:[] };
-  const params = new URLSearchParams({ search:q, limit:'5' });
+  const params = new URLSearchParams({ search:q, limit:'20' });
   const requestPath = '/pricing/pokemon/sealed-products?' + params.toString().replace(/\+/g, '%20');
   const res = await fetch(WORKER + requestPath, { cache:'no-store' });
   const data = await res.json().catch(() => ({}));
