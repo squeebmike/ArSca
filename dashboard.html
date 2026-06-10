@@ -15919,7 +15919,7 @@ function pokemonPriceTrackerApiSettings(){
 }
 
 async function pokemonPriceTrackerCardsRequest(params, pathLabel){
-  const requestPath = '/pricing/pokemonpricetracker/cards?' + params.toString().replace(/\+/g, '%20');
+  const requestPath = '/pricing/pokemon/cards?' + params.toString().replace(/\+/g, '%20');
   const res = await fetch(WORKER + requestPath, { cache:'no-store' });
   const data = await res.json().catch(() => ({}));
   if(res.status === 429 || data.providerQuotaState === 'exhausted' || (res.status === 403 && /429|quota|rate|blocked/i.test(String(data.error || data.message || '')))) localStorage.setItem('ppt_quota_exhausted_until', String(Date.now() + 60 * 60 * 1000));
@@ -15972,7 +15972,7 @@ async function searchPokemonSealedProducts(rawQuery = ''){
   const q = String(rawQuery || '').replace(/\s+/g, ' ').trim();
   if(!q) return { products:[] };
   const params = new URLSearchParams({ search:q, limit:'5' });
-  const requestPath = '/pricing/pokemonpricetracker/sealed-products?' + params.toString().replace(/\+/g, '%20');
+  const requestPath = '/pricing/pokemon/sealed-products?' + params.toString().replace(/\+/g, '%20');
   const res = await fetch(WORKER + requestPath, { cache:'no-store' });
   const data = await res.json().catch(() => ({}));
   if(!res.ok || !data.ok) throw new Error(data.error || data.message || 'Pokemon sealed-products lookup failed');
@@ -15995,6 +15995,17 @@ async function fetchPokemonPriceTrackerExactDetail(tcgPlayerId, language = 'engl
   const card = result.cards[0] || null;
   if(card) card.lookupDebug = { ...(card.lookupDebug || {}), path:'cards.tcgPlayerId.limit1', requestPath:result.requestPath, hydrationRequestUrl:result.requestPath, cache:result.cacheStatus, hydratedFromCache:result.cacheStatus === 'hit' || result.cacheStatus === 'stale', apiLimit:'1', exactHydrated:true, exactCacheVersion:POKEMON_EXACT_CACHE_VERSION, usage:result.data.usage || {} };
   return card;
+}
+
+async function fetchPokemonPopulation(tcgPlayerId, language = 'english'){
+  if(!tcgPlayerId) return null;
+  const params = new URLSearchParams({ tcgPlayerId:String(tcgPlayerId), language:language || 'english' });
+  const requestPath = '/pricing/pokemon/population?' + params.toString().replace(/\+/g, '%20');
+  const res = await fetch(WORKER + requestPath, { cache:'no-store' });
+  const data = await res.json().catch(() => ({}));
+  if(!res.ok || !data.ok) return null;
+  const card = data.card || (Array.isArray(data.cards) ? data.cards[0] : null) || null;
+  return card?.population || card?.gradedPopulation || data.data?.population || null;
 }
 
 function pokemonPriceTrackerQuotaBlocked(){
@@ -16131,7 +16142,7 @@ async function parsePokemonPriceTrackerTitle(row = {}, query = qplLastSearch){
   if(!parts.shouldParseTitle || pokemonPriceTrackerQuotaBlocked() || !navigator.onLine) return null;
   const title = [row.rawTitle, row.ocrText, row.scanText, row.slabText, query, row.name, row.set || row.setName, row.card_number || row.cardNumber].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
   if(!title || title.length < 4) return null;
-  const res = await fetch(WORKER + '/pricing/pokemonpricetracker/parse-title', {
+  const res = await fetch(WORKER + '/pricing/pokemon/parse-title', {
     method:'POST',
     headers:{ 'Content-Type':'application/json' },
     body:JSON.stringify({ title, options:{ fuzzyMatching:true, maxSuggestions:3 } })
@@ -16283,7 +16294,7 @@ function pokemonSealedProductToQplRow(product = {}, query = ''){
   const market = Number(product.unopenedPrice || 0);
   const tcgPlayerId = String(product.tcgPlayerId || product.tcgplayerId || product.id || '');
   const name = product.name || product.productName || query;
-  const setName = product.setName || (product.set && typeof product.set === 'string' ? product.set : product.set?.name) || '';
+  const setName = product.setName || '';
   const tcgUrl = product.tcgPlayerUrl || (tcgPlayerId ? 'https://www.tcgplayer.com/product/' + tcgPlayerId : '');
   return {
     source:'pokemonpricetracker',
@@ -16291,7 +16302,7 @@ function pokemonSealedProductToQplRow(product = {}, query = ''){
     category:'Pokemon',
     set:setName,
     setName,
-    year:product.releaseDate ? String(product.releaseDate).slice(0,4) : '',
+    year:product.lastScrapedAt ? String(product.lastScrapedAt).slice(0,4) : (product.updatedAt ? String(product.updatedAt).slice(0,4) : ''),
     variant:'Sealed',
     card_number:'',
     condition:'Factory Sealed',
