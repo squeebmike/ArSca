@@ -13354,7 +13354,7 @@ function pokemonRankApiCards(cards = [], rawQuery = ''){
   const queryNumber = pokemonQueryCardNumber(rawQuery);
   const words = normalizedQuery.split(/\s+/).filter(w => w && w !== queryNumber && !/^\d+$/.test(w));
   const nameLead = words[0] || '';
-  return (cards || []).slice(0, 5).map((card, originalIndex) => {
+  return (cards || []).slice(0, 20).map((card, originalIndex) => {
     const name = normalizePokemonText(card.name || card.cardName || '');
     const setName = normalizePokemonText(card.setName || card.set?.name || card.set || '');
     const numberMatch = pokemonCardNumberMatches(card, queryNumber);
@@ -13389,7 +13389,7 @@ function isPokemonPromoIntent(q = ''){
 
 // B7: Detect sealed product queries (ETB, booster box, bundle, etc.)
 function isPokemonSealedIntent(q = ''){
-  return /\b(etb|elite[\s-]*trainer[\s-]*box|booster[\s-]*box|booster[\s-]*pack|sealed|blister|collection[\s-]*box|bundle|battle[\s-]*deck|theme[\s-]*deck|starter[\s-]*set|fat[\s-]*pack|tin\b|premium[\s-]*collection|build[\s-]*&?[\s-]*battle)\b/i.test(String(q || ''));
+  return /\b(etb|elite[\s-]*trainer[\s-]*box|booster[\s-]*box|booster[\s-]*bundle|booster[\s-]*pack|sealed|blister|collection[\s-]*box|bundle|battle[\s-]*deck|theme[\s-]*deck|starter[\s-]*set|fat[\s-]*pack|tin\b|premium[\s-]*collection|build[\s-]*&?[\s-]*battle|sleeved[\s-]*pack|\bpack\b|prerelease|\bcase\b)\b/i.test(String(q || ''));
 }
 
 function isPokemonLookupIntent(q = '', cat = ''){
@@ -13728,29 +13728,61 @@ async function searchQuickCatalog(q, cat){
   };
 
   if(isPokemonLookupIntent(q, cat)) {
-    // Kick off sealed-products fetch in parallel with cards — no sequential wait
-    const sealedPromise = isPokemonSealedIntent(q)
+    // Intent signals
+    const isJapanese = /\bjapanese?\b|\bjpn\b/i.test(q);
+    const searchLanguage = isJapanese ? 'japanese' : 'english';
+    const isPromoQuery = isPokemonPromoIntent(q);
+    const isSealedQuery = isPokemonSealedIntent(q);
+    // Parse-title intent: PSA/BGS slab or long graded listing title
+    const isParseTitleQuery = /\b(psa|bgs|cgc|sgc|gem[\s-]*mint|graded)\b/i.test(q)
+      || (q.length > 50 && /\b\d{1,4}\s*\/\s*\d{1,4}\b/.test(q))
+      || (/\b(jpn|japanese)\b.{0,40}\d/i.test(q) && q.length > 30);
+    // Kick off sealed-products fetch in parallel with cards — skip cards when parse-title
+    const sealedPromise = isSealedQuery
       ? searchPokemonSealedProducts(q).catch(() => ({ products:[] }))
       : null;
     try {
       const [searchResult, sealedResult] = await Promise.all([
-        searchPokemonPriceTrackerCards(q, 'english'),
+        isParseTitleQuery ? Promise.resolve({ cards:[], ranked:[], requestPath:'', cacheStatus:'skip' }) : searchPokemonPriceTrackerCards(q, searchLanguage),
         sealedPromise || Promise.resolve({ products:[] }),
       ]);
+      // Parse-title path: slab/listing titles route directly to parse-title API
+      if(isParseTitleQuery) {
+        try {
+          const fakeRow = { rawTitle:q, name:q, category:'Pokemon' };
+          const parsed = await parsePokemonPriceTrackerTitle(fakeRow, q);
+          if(parsed) {
+            const parseTitleRows = pokemonParseTitleToQplRows(parsed, q);
+            if(parseTitleRows.length) {
+              parseTitleRows.forEach(add);
+              await savePokemonCacheResults(q, parseTitleRows, 'PokemonPriceTracker parse-title').catch(console.warn);
+              return parseTitleRows;
+            }
+          }
+        } catch(e) {
+          console.warn('PokemonPriceTracker parse-title skipped', e);
+        }
+      }
+      // Sealed path: return all sealed products, no single-card condition matrix
       if(sealedResult.products.length) {
-        const sealedRows = sealedResult.products.slice(0, 5).map(p => pokemonSealedProductToQplRow(p, q));
+        const sealedRows = sealedResult.products.slice(0, 20).map(p => {
+          const r = pokemonSealedProductToQplRow(p, q);
+          r._pokemonGroup = 'sealed';
+          return r;
+        });
         sealedRows.forEach(add);
         await savePokemonCacheResults(q, sealedRows, 'PokemonPriceTracker sealed search').catch(console.warn);
         return sealedRows;
       }
+      // Cards path: rank up to 20 results, group by match quality
       const queryNumber = pokemonQueryCardNumber(q);
       const ranked = searchResult.ranked || pokemonRankApiCards(searchResult.cards, q);
       const rows = [];
-      for(const rankedCard of ranked.slice(0, 5)) {
+      for(const rankedCard of ranked.slice(0, 20)) {
         let card = rankedCard.card;
         let exactHydrated = false;
         if(rankedCard.autoSelect && card?.tcgPlayerId) {
-          card = await fetchPokemonPriceTrackerExactDetail(card.tcgPlayerId, card.language || 'english').catch(() => card);
+          card = await fetchPokemonPriceTrackerExactDetail(card.tcgPlayerId, card.language || searchLanguage).catch(() => card);
           exactHydrated = !!card?.lookupDebug?.exactHydrated;
           await cachePokemonPriceTrackerCard({ name:q, rawTitle:q, tcgPlayerId:card.tcgPlayerId, setName:card.setName, cardNumber:card.cardNumber, category:'Pokemon' }, card).catch(() => {});
         }
@@ -13761,8 +13793,8 @@ async function searchQuickCatalog(q, cat){
           rawQuerySent:q,
           requestPath:searchResult.requestPath,
           searchResultCount:searchResult.cards.length,
-          returnedCandidates:searchResult.cards.map(c => ({ tcgPlayerId:c.tcgPlayerId || '', cardNumber:c.cardNumber || c.number || '', setName:c.setName || c.set?.name || '' })),
-          path:'cards.search.limit5',
+          returnedCandidates:searchResult.cards.slice(0, 5).map(c => ({ tcgPlayerId:c.tcgPlayerId || '', cardNumber:c.cardNumber || '', setName:c.setName || '' })),
+          path:'cards.search.limit20',
           exactHydrated,
           cache:searchResult.cacheStatus,
           confidence:rankedCard.confidence,
@@ -13773,14 +13805,20 @@ async function searchQuickCatalog(q, cat){
         row.matchWhy = [
           'PokemonPriceTracker /cards search',
           queryNumber ? (rankedCard.numberMatch ? 'card number match' : 'card number mismatch') : '',
-          rankedCard.setHits ? 'set words matched' : ''
+          rankedCard.setHits ? 'set words matched' : '',
+          isPromoQuery ? 'promo query' : '',
+          isJapanese ? 'japanese' : '',
         ].filter(Boolean);
         if(queryNumber && !rankedCard.numberMatch) {
           row.closestStrictFallback = true;
+          row._pokemonGroup = 'other';
           row.note = 'Candidate returned by PokemonPriceTracker, but card number does not match the typed query. Select only after manual review.';
           row.market = 0;
           row.priceSource = 'Needs exact card selection';
         } else {
+          row._pokemonGroup = queryNumber && rankedCard.numberMatch
+            ? (isPromoQuery ? 'promo' : 'number')
+            : (isPromoQuery ? 'promo' : 'best');
           applyPokemonPriceTrackerPrice(row);
         }
         rows.push(row);
@@ -15961,9 +15999,11 @@ async function searchPokemonPriceTrackerCards(rawQuery = '', language = 'english
     .replace(/(?<!black[\s-]*star\s+)\bpromo\b/gi, '')
     .replace(/\s+/g, ' ').trim()) || expanded;
   if(!query) return { cards:[], data:{}, requestPath:'', cacheStatus:'miss' };
+  // Detect Japanese intent from rawQuery; caller can also pass language explicitly
+  const lang = language === 'japanese' ? 'japanese' : (/\bjapanese?\b|\bjpn\b/i.test(rawQuery) ? 'japanese' : 'english');
   // Pass the ORIGINAL raw query to the ranker so set-word scoring still uses "swsh", "promo" etc.
-  const params = new URLSearchParams({ search:query, language:language || 'english', limit:'5' });
-  const result = await pokemonPriceTrackerCardsRequest(params, 'cards.search.limit5');
+  const params = new URLSearchParams({ search:query, language:lang, limit:'20' });
+  const result = await pokemonPriceTrackerCardsRequest(params, 'cards.search.limit20');
   result.ranked = pokemonRankApiCards(result.cards, rawQuery);
   return result;
 }
@@ -16145,7 +16185,7 @@ async function parsePokemonPriceTrackerTitle(row = {}, query = qplLastSearch){
   const res = await fetch(WORKER + '/pricing/pokemon/parse-title', {
     method:'POST',
     headers:{ 'Content-Type':'application/json' },
-    body:JSON.stringify({ title, options:{ fuzzyMatching:true, maxSuggestions:3 } })
+    body:JSON.stringify({ title, options:{ fuzzyMatching:true, maxSuggestions:3, includeConfidence:true } })
   });
   const data = await res.json().catch(() => ({}));
   if(res.status === 429 || data.providerQuotaState === 'exhausted' || (res.status === 403 && /429|quota|rate|blocked/i.test(String(data.error || data.message || '')))) localStorage.setItem('ppt_quota_exhausted_until', String(Date.now() + 60 * 60 * 1000));
@@ -16325,6 +16365,53 @@ function pokemonSealedProductToQplRow(product = {}, query = ''){
     is_sealed:true,
     raw:product,
   };
+}
+
+function pokemonParseTitleToQplRows(parsedResult = {}, query = ''){
+  const p = parsedResult.parsed || {};
+  const match = parsedResult.match || {};
+  const matches = Array.isArray(parsedResult.raw?.matches) ? parsedResult.raw.matches : [];
+  const gradeCompany = p.psaGrade ? 'PSA' : p.bgsGrade ? 'BGS' : p.cgcGrade ? 'CGC' : p.sgcGrade ? 'SGC' : '';
+  const gradeVal = p.psaGrade || p.bgsGrade || p.cgcGrade || p.sgcGrade || '';
+  const grade = gradeCompany && gradeVal ? gradeCompany + ' ' + gradeVal : '';
+  const confNorm = c => c > 1 ? Math.round(c) : Math.round((c || 0) * 100);
+  const makeRow = (m, label) => {
+    const tcgId = m.tcgPlayerId || parsedResult.tcgPlayerId || '';
+    return {
+      source:'pokemonpricetracker',
+      name:m.name || parsedResult.cardName || p.cardName || query,
+      category:'Pokemon',
+      set:m.setName || parsedResult.setName || p.setName || '',
+      setName:m.setName || parsedResult.setName || p.setName || '',
+      year:p.year ? String(p.year) : '',
+      variant:m.rarity || parsedResult.variant || p.variant || '',
+      card_number:m.cardNumber || parsedResult.cardNumber || p.cardNumber || '',
+      cardNumber:m.cardNumber || parsedResult.cardNumber || p.cardNumber || '',
+      condition:'NM', selectedCondition:'NM',
+      finish:'Normal', selectedFinish:'Normal',
+      selectedGrade:grade,
+      language:parsedResult.language || p.language || 'English',
+      market:Number(m.prices?.market || m.prices?.low || 0),
+      low:Number(m.prices?.low || 0),
+      imageUrl:'',
+      priceSource:'PokemonPriceTracker',
+      tcgUrl:tcgId ? 'https://www.tcgplayer.com/product/' + tcgId : '',
+      tcgPlayerUrl:tcgId ? 'https://www.tcgplayer.com/product/' + tcgId : '',
+      tcgPlayerId:tcgId, tcgplayerId:tcgId,
+      confidence:confNorm(m.matchScore || parsedResult.confidence),
+      matchWhy:['PokemonPriceTracker parse-title', label, ...(m.matchReasons || [])].filter(Boolean),
+      note:'Parse-title: ' + (grade || parsedResult.cardName || p.cardName || 'card') + ' — conf ' + confNorm(m.matchScore || parsedResult.confidence) + '%',
+      _pokemonGroup:'parseTitle',
+      is_parse_title:true,
+      pokemonPriceTracker:{ ...p, prices:m.prices || {}, parsedFrom:query },
+      pptParseTitle:parsedResult,
+      raw:parsedResult,
+    };
+  };
+  const rows = [];
+  if(match.tcgPlayerId || parsedResult.tcgPlayerId) rows.push(makeRow(match, 'best match'));
+  matches.slice(1, 3).forEach((m, i) => { if(m?.tcgPlayerId) rows.push(makeRow(m, 'alt match ' + (i + 2))); });
+  return rows;
 }
 
 async function hydratePokemonPriceTrackerPricing(idx, rerender = true){
@@ -16873,6 +16960,47 @@ function noQuickLookupResults(q, cat){
 function renderQuickLookupResults(results){
   const el = document.getElementById('qpl-result');
   const indexed = (results || []).map((r, idx) => ({ r, idx }));
+  // Pokemon grouped rendering — triggered when any result has _pokemonGroup tag
+  const hasPokemonGroup = indexed.some(x => x.r._pokemonGroup);
+  if(hasPokemonGroup) {
+    const groupOrder = ['parseTitle','sealed','number','promo','best','inventory','other'];
+    const groupLabels = { parseTitle:'PARSED TITLE MATCH', sealed:'SEALED PRODUCTS', number:'EXACT NUMBER MATCHES', promo:'PROMO MATCHES', best:'BEST MATCHES', inventory:'MATCHING INVENTORY', other:'OTHER CANDIDATES' };
+    const groups = {};
+    groupOrder.forEach(g => groups[g] = []);
+    indexed.forEach(x => {
+      const g = x.r._pokemonGroup || (x.r.source === 'inventory' ? 'inventory' : 'best');
+      if(groups[g]) groups[g].push(x); else groups.other.push(x);
+    });
+    const fallback = indexed.filter(x => x.r.closestStrictFallback);
+    const primary = indexed.filter(x => !x.r.closestStrictFallback);
+    const totalShown = primary.length;
+    const groupHtml = (items, label) => {
+      const visible = items.filter(x => !x.r.closestStrictFallback);
+      if(!visible.length) return '';
+      return `<div style="font-family:'Orbitron',monospace;font-size:10px;color:var(--gold);letter-spacing:.08em;margin:16px 0 6px;padding:0 2px">${label} (${visible.length})</div>
+      <div class="qpl-results">${visible.map(x => quickLookupResultCard(x.r, x.idx)).join('')}</div>`;
+    };
+    const fallbackHtml = fallback.length ? `
+      <details class="qpl-card" style="padding:0;margin-top:12px">
+        <summary style="cursor:pointer;padding:14px 16px;font-family:'Orbitron',monospace;font-size:11px;color:var(--gold)">
+          OTHER CANDIDATES (${fallback.length}) — number mismatch, review before selecting
+        </summary>
+        <div class="qpl-results" style="padding:0 14px 14px">
+          ${fallback.map(x => quickLookupResultCard(x.r, x.idx)).join('')}
+        </div>
+      </details>` : '';
+    el.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:10px;flex-wrap:wrap">
+        <div style="color:var(--g);font-weight:800;font-size:13px">${totalShown} MATCH${totalShown===1?'':'ES'}</div>
+        <div style="color:var(--dim);font-size:11px">Large cards for live buying — tap image to inspect</div>
+      </div>
+      ${groupOrder.map(g => groupHtml(groups[g], groupLabels[g])).join('')}
+      ${fallbackHtml}`;
+    setTimeout(() => hydrateVisiblePokemonPriceTrackerResults(primary.map(x => x.idx)), 0);
+    setTimeout(() => resolvePokemonCatalogImagesForVisibleCards(), 200);
+    return;
+  }
+  // Non-Pokemon flat rendering (sports, comics, etc.)
   const primary = indexed.filter(x => !x.r.closestStrictFallback);
   const fallback = indexed.filter(x => x.r.closestStrictFallback);
   const fallbackHtml = fallback.length ? `
@@ -16960,6 +17088,7 @@ function quickLookupResultCard(r, idx){
     : '';
   // Condition chips — derive from availableVariants or fallback conditions
   const condChips = (() => {
+    if(r.is_sealed) return '<span style="font-size:11px;color:var(--g);font-weight:600;letter-spacing:.04em">FACTORY SEALED</span>';
     const activeCond = r.selectedCondition || r.condition || 'NM';
     const activeFinish = r.selectedFinish || r.finish || '';
     if(r.availableVariants?.length) {
@@ -17015,6 +17144,10 @@ function quickLookupResultCard(r, idx){
         ${r.source === 'inventory' ? '<span class="qpl-badge good">IN INVENTORY</span>' : `<span class="qpl-badge">${escHtml(r.source === 'justtcg' ? 'JustTCG' : r.source === 'pricecharting_csv' ? 'PriceCharting' : r.source || 'Source')}</span>`}
         ${r.cache?.state === 'offline' ? `<span class="qpl-badge warn">Offline Cache</span>` : ''}
         ${_qplStaleBadge(r)}
+        ${r.is_sealed ? `<span class="qpl-badge good">SEALED</span>` : ''}
+        ${r._pokemonGroup === 'promo' || /\bblack[\s-]*star\b|\bpromo\b/i.test(r.setName || r.set || '') ? `<span class="qpl-badge" style="background:var(--gold);color:#000">PROMO</span>` : ''}
+        ${r.is_parse_title ? `<span class="qpl-badge">PARSED TITLE</span>` : ''}
+        ${/^japanese$/i.test(r.language || '') ? `<span class="qpl-badge" style="background:#e63;color:#fff">JAPANESE</span>` : ''}
       </div>
       <!-- Condition chips — large touch targets -->
       <div class="qpl-condition-chips">${condChips}</div>
