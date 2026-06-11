@@ -360,6 +360,20 @@ tr.sold:hover td{opacity:.7;}
 .qpl-cond-chip .cchip-na { font-size:9px; color:var(--dim); }
 .qpl-cond-chip .cchip-est { font-size:11px; font-weight:700; color:rgba(255,200,60,.55); }
 
+/* ─── SUBSCRIPTION GATE ─── */
+.sub-trial-banner{position:fixed;top:0;left:0;right:0;z-index:8000;background:linear-gradient(90deg,rgba(255,180,0,.18),rgba(255,140,0,.12));border-bottom:1px solid rgba(255,180,0,.4);padding:8px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;font-family:var(--font-mono);font-size:11px;color:var(--gold);}
+.sub-trial-banner .sub-banner-msg{font-weight:700;letter-spacing:.04em;}
+.sub-trial-banner .sub-banner-actions{display:flex;gap:8px;flex-shrink:0;}
+.sub-past-due-banner{position:fixed;top:0;left:0;right:0;z-index:8000;background:rgba(220,40,40,.18);border-bottom:1px solid rgba(220,40,40,.5);padding:8px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;font-family:var(--font-mono);font-size:11px;color:#ff6060;}
+.sub-gate-overlay{position:fixed;inset:0;z-index:9500;background:rgba(5,7,9,.92);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:24px;}
+.sub-gate-card{background:var(--surf2);border:1px solid rgba(0,255,179,.2);border-radius:20px;padding:40px 32px;max-width:440px;width:100%;text-align:center;}
+.sub-gate-icon{font-size:56px;margin-bottom:16px;}
+.sub-gate-title{font-family:'Orbitron',monospace;font-size:20px;font-weight:900;color:var(--g);margin-bottom:10px;letter-spacing:.04em;}
+.sub-gate-body{color:var(--dim);font-size:13px;line-height:1.7;margin-bottom:24px;}
+.sub-gate-actions{display:flex;flex-direction:column;gap:10px;}
+.sub-gate-btn{background:var(--g);color:#000;font-family:var(--font-mono);font-weight:900;font-size:13px;letter-spacing:.08em;padding:14px 24px;border-radius:10px;border:none;cursor:pointer;width:100%;}
+.sub-gate-btn:hover{opacity:.88;}
+.sub-gate-link{color:var(--dim);font-size:11px;cursor:pointer;text-decoration:underline;}
 /* ─── BUY FLOW UX ─── */
 .buy-offer-panel{display:grid;grid-template-columns:1fr 1fr 1.5fr 1fr;gap:1px;background:var(--border);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:14px;}
 .buy-offer-stat{background:var(--surf2);padding:14px 16px;display:flex;flex-direction:column;gap:4px;}
@@ -2324,6 +2338,128 @@ async function ensureAuthReady(){
   return true;
 }
 
+// ── Subscription gate ────────────────────────────────────────────────────────
+// Pass A: KV-backed soft gate. Hard RLS enforcement comes in Pass B.
+// Only owner/admin role is checked — employees inherit the store's subscription.
+// Demo mode is never gated.
+
+async function checkAndApplySubscriptionState(){
+  const ctx = getAccountContext();
+  if(ctx.isDemo) return;
+  const role = (ctx.role || '').toLowerCase();
+  if(role !== 'owner' && role !== 'admin') return; // employees pass through
+  const storeId = ctx.storeId || ctx.activeStoreId || getActiveStoreId();
+  if(!storeId) return;
+
+  // Initialise trial if this store has never been seen (idempotent)
+  try {
+    await fetch(WORKER + '/subscription/init-trial', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({ store_id:storeId })
+    });
+  } catch(_){}
+
+  let sub = { status:'none', active:false, daysRemaining:0 };
+  try {
+    const res = await fetch(WORKER + `/subscription/status?store_id=${encodeURIComponent(storeId)}`, { cache:'no-store' });
+    if(res.ok) sub = await res.json();
+  } catch(_){}
+
+  window._subStatus = sub;
+  renderSubscriptionPanel();
+  _removeSubBanners();
+
+  if(sub.status === 'trialing' && sub.active) {
+    _showTrialBanner(sub.daysRemaining, storeId);
+  } else if(sub.status === 'past_due') {
+    _showPastDueBanner(storeId);
+  } else if(!sub.active) {
+    _showSubGate(sub, storeId, ctx.user?.email || '');
+  }
+}
+
+function _removeSubBanners(){
+  document.getElementById('sub-trial-banner')?.remove();
+  document.getElementById('sub-pastdue-banner')?.remove();
+  document.getElementById('sub-gate-overlay')?.remove();
+}
+
+function _showTrialBanner(days, storeId){
+  const b = document.createElement('div');
+  b.id = 'sub-trial-banner';
+  b.className = 'sub-trial-banner';
+  const label = days <= 1 ? 'Trial expires today' : `Trial: ${days} day${days===1?'':'s'} remaining`;
+  b.innerHTML = `<span class="sub-banner-msg">⏱ ${escHtml(label)} — subscribe to keep access after trial ends.</span>
+    <span class="sub-banner-actions">
+      <button class="hbtn" style="min-height:28px;font-size:10px;color:var(--gold)" onclick="openSubscriptionCheckout('${escHtml(storeId)}')">SUBSCRIBE NOW</button>
+      <button class="hbtn" style="min-height:28px;font-size:10px" onclick="document.getElementById('sub-trial-banner')?.remove()">✕</button>
+    </span>`;
+  document.body.prepend(b);
+}
+
+function _showPastDueBanner(storeId){
+  const b = document.createElement('div');
+  b.id = 'sub-pastdue-banner';
+  b.className = 'sub-past-due-banner';
+  b.innerHTML = `<span class="sub-banner-msg">⚠ Payment failed — update your billing to avoid losing access.</span>
+    <span class="sub-banner-actions">
+      <button class="hbtn" style="min-height:28px;font-size:10px;color:#ff6060" onclick="openSubscriptionPortal('${escHtml(storeId)}')">UPDATE BILLING</button>
+    </span>`;
+  document.body.prepend(b);
+}
+
+function _showSubGate(sub, storeId, email){
+  _removeSubBanners();
+  const expired = sub.status === 'trialing_expired' || sub.status === 'expired' || sub.status === 'canceled';
+  const overlay = document.createElement('div');
+  overlay.id = 'sub-gate-overlay';
+  overlay.className = 'sub-gate-overlay';
+  overlay.innerHTML = `<div class="sub-gate-card">
+    <div class="sub-gate-icon">${expired ? '🔒' : '🚀'}</div>
+    <div class="sub-gate-title">${expired ? 'SUBSCRIPTION ENDED' : 'SUBSCRIPTION REQUIRED'}</div>
+    <div class="sub-gate-body">${expired
+      ? 'Your trial or subscription has ended. Subscribe to restore full access to the dashboard.'
+      : 'This store requires an active subscription. Start your 14-day free trial or subscribe now.'
+    }</div>
+    <div class="sub-gate-actions">
+      <button class="sub-gate-btn" onclick="openSubscriptionCheckout('${escHtml(storeId)}','${escHtml(email)}')">
+        ${expired ? 'RESUBSCRIBE →' : 'START FREE TRIAL →'}
+      </button>
+      <span class="sub-gate-link" onclick="checkAndApplySubscriptionState()">I already subscribed — refresh status</span>
+    </div>
+  </div>`;
+  document.body.appendChild(overlay);
+}
+
+async function openSubscriptionCheckout(storeId, email){
+  const ctx = getAccountContext();
+  const storeName = ctx.stores?.find(s => s.id === storeId)?.displayName || ctx.stores?.[0]?.displayName || '';
+  try {
+    const res = await fetch(WORKER + '/subscription/checkout', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({ store_id:storeId, store_name:storeName, email:email || ctx.user?.email || '' })
+    });
+    const data = await res.json();
+    if(data.ok && data.checkout_url) {
+      window.open(data.checkout_url, '_blank');
+    } else {
+      alert('Checkout error: ' + (data.error || 'Unknown error. Check Worker secrets: STRIPE_SECRET_KEY and STRIPE_SUBSCRIPTION_PRICE_ID.'));
+    }
+  } catch(e){ alert('Could not start checkout: ' + e.message); }
+}
+
+async function openSubscriptionPortal(storeId){
+  try {
+    const res = await fetch(WORKER + '/subscription/customer-portal', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({ store_id:storeId })
+    });
+    const data = await res.json();
+    if(data.ok && data.url) window.open(data.url, '_blank');
+    else alert('Portal error: ' + (data.error || 'No billing portal found.'));
+  } catch(e){ alert('Could not open portal: ' + e.message); }
+}
+
 function renderStorePickerOptions(stores){
   const sel = document.getElementById('auth-store');
   if(!sel) return;
@@ -4025,6 +4161,7 @@ function organizeRegisterLayout(){
   ensureStoreMembersPanel(backoffice);
   ensureDataModePanel(backoffice);
   ensureVendorConfigPanel(backoffice);
+  ensureSubscriptionPanel(backoffice);
   ensureHelpWalkthroughPanel(backoffice);
   ensureInventorySyncPanel(backoffice);
   ensureLegacyToolsPanel(backoffice);
@@ -5941,6 +6078,81 @@ function ensureVendorConfigPanel(backoffice){
   panel.innerHTML = '<div class="ph">MODULAR VENDOR CONFIG <span style="font-size:9px;color:var(--dim)">local to this register</span></div><div id="vendor-config-body"></div>';
   backoffice.prepend(panel);
   renderVendorConfigPanel();
+}
+
+function ensureSubscriptionPanel(backoffice){
+  if(document.getElementById('subscription-panel')) return;
+  const ctx = getAccountContext();
+  if(ctx.isDemo) return;
+  const role = (ctx.role || '').toLowerCase();
+  if(role !== 'owner' && role !== 'admin') return;
+  const panel = document.createElement('div');
+  panel.className = 'panel';
+  panel.id = 'subscription-panel';
+  panel.style.marginBottom = '14px';
+  panel.innerHTML = '<div class="ph">SUBSCRIPTION <span style="font-size:9px;color:var(--dim)">billing &amp; plan</span></div><div id="subscription-panel-body"><div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);padding:8px 0">Loading subscription status…</div></div>';
+  backoffice.prepend(panel);
+  renderSubscriptionPanel();
+}
+
+function renderSubscriptionPanel(){
+  const body = document.getElementById('subscription-panel-body');
+  if(!body) return;
+  const ctx = getAccountContext();
+  const storeId = ctx.storeId || ctx.activeStoreId || getActiveStoreId();
+  const sub = window._subStatus || null;
+
+  const fmt = iso => {
+    if(!iso) return '—';
+    const d = new Date(typeof iso === 'number' ? iso * 1000 : iso);
+    return isNaN(d) ? '—' : d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+  };
+
+  const statusColor = s => {
+    if(s === 'active') return 'color:#4caf50';
+    if(s === 'trialing') return 'color:var(--gold)';
+    if(s === 'past_due') return 'color:#ff6060';
+    return 'color:var(--dim)';
+  };
+
+  if(!sub) {
+    body.innerHTML = `<div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);padding:8px 0">
+      No subscription data — <a href="#" style="color:var(--gold)" onclick="checkAndApplySubscriptionState().then(()=>renderSubscriptionPanel());return false">refresh</a>
+    </div>`;
+    return;
+  }
+
+  const statusLabel = {
+    active:'Active', trialing:'Trial', past_due:'Past Due', canceled:'Canceled',
+    trialing_expired:'Trial Expired', expired:'Expired', none:'No Subscription'
+  }[sub.status] || sub.status;
+
+  let detailLine = '';
+  if(sub.status === 'trialing' && sub.daysRemaining > 0) {
+    detailLine = `<div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);margin-top:4px">${sub.daysRemaining} day${sub.daysRemaining===1?'':'s'} remaining in trial${sub.trial_end ? ' · ends '+fmt(sub.trial_end) : ''}</div>`;
+  } else if(sub.status === 'active' && sub.current_period_end) {
+    const label = sub.cancel_at_period_end ? 'Cancels' : 'Renews';
+    detailLine = `<div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);margin-top:4px">${label} ${fmt(sub.current_period_end)}</div>`;
+  } else if(sub.status === 'past_due') {
+    detailLine = `<div style="font-family:var(--font-mono);font-size:10px;color:#ff6060;margin-top:4px">Payment failed — update billing to restore access.</div>`;
+  }
+
+  const primaryBtn = (!sub.active || sub.status === 'trialing')
+    ? `<button class="hbtn" style="color:var(--gold)" onclick="openSubscriptionCheckout('${escHtml(storeId)}','${escHtml(ctx.user?.email||'')}')">SUBSCRIBE NOW</button>`
+    : '';
+  const portalBtn = sub.stripe_customer_id
+    ? `<button class="hbtn" onclick="openSubscriptionPortal('${escHtml(storeId)}')">MANAGE BILLING</button>`
+    : '';
+  const refreshBtn = `<button class="hbtn" onclick="checkAndApplySubscriptionState().then(()=>renderSubscriptionPanel())">REFRESH STATUS</button>`;
+
+  body.innerHTML = `
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:6px">
+      <div style="font-family:var(--font-mono);font-size:13px;font-weight:700;${statusColor(sub.status)}">${escHtml(statusLabel)}</div>
+    </div>
+    ${detailLine}
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+      ${primaryBtn}${portalBtn}${refreshBtn}
+    </div>`;
 }
 
 function renderVendorConfigPanel(){
@@ -9157,6 +9369,7 @@ window.addEventListener('load', async function(){
   seedDemoDataIfNeeded();
   await loadStoreSettingsFromSupabase();
   setupAppShell();
+  checkAndApplySubscriptionState().catch(console.warn);
   schedulePriceSyncChecks();
   maybeRunScheduledPriceSync(true).catch(console.warn);
   renderShowMode();
