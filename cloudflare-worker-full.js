@@ -2382,6 +2382,33 @@ export default {
         : url.pathname;
       const key = env.POKEMONPRICE_API_KEY || env.POKEMON_PRICE_TRACKER_API_KEY;
       if (!key) return json({ ok: false, source: 'pokemonpricetracker', error: 'POKEMONPRICE_API_KEY not configured' }, 501);
+
+      // Pass E: subscription gate + daily usage counter
+      const pptStoreId = request.headers.get('X-Store-Id') || '';
+      const isDemo = !pptStoreId || pptStoreId.startsWith('demo');
+      if (!isDemo && env.LBA_KV) {
+        const subRaw = await env.LBA_KV.get(`sub:store:${pptStoreId}`);
+        const sub = subRaw ? JSON.parse(subRaw) : null;
+        const subStatus = sub?.status || 'none';
+        const subActive = sub?.active === true && (subStatus === 'active' || subStatus === 'trialing');
+        if (!subActive) {
+          return json({
+            ok: false,
+            source: 'pokemonpricetracker',
+            error: 'Subscription required — start your free trial or subscribe to use Pokemon price lookups.',
+            subscriptionRequired: true,
+            status: subStatus,
+          }, 402);
+        }
+        // Track daily PPT usage (non-blocking, best-effort)
+        const day = new Date().toISOString().slice(0, 10);
+        const usageKey = `usage:ppt:${pptStoreId}:${day}`;
+        try {
+          const prev = Number(await env.LBA_KV.get(usageKey) || '0');
+          await env.LBA_KV.put(usageKey, String(prev + 1), { expirationTtl: 172800 }); // 48h TTL
+        } catch (_) {}
+      }
+
       const routeMap = {
         '/pricing/pokemonpricetracker/cards': { upstream:'/cards', method:'GET', requiredAny:['tcgPlayerId','cardId','search','setId','set','setName'] },
         '/pricing/pokemonpricetracker/sets': { upstream:'/sets', method:'GET', requiredAny:[] },

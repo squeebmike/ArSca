@@ -13870,6 +13870,13 @@ async function runPriceLookup(){
       _netStatus = navigator.onLine ? 'slow' : 'offline';
       updateNetBadge();
     }
+    if(e.subscriptionRequired){
+      el.innerHTML = `<div style="font-family:var(--font-mono);font-size:11px;color:var(--gold);line-height:1.6;padding:8px 0">
+        Subscription required to use Pokemon price lookups.
+        <br><button class="hbtn" style="margin-top:10px;color:var(--gold)" onclick="switchTab('backoffice');setTimeout(()=>document.getElementById('subscription-panel')?.scrollIntoView({behavior:'smooth',block:'start'}),150)">OPEN SUBSCRIPTION SETTINGS</button>
+      </div>`;
+      return;
+    }
     if(cachedResults.length) {
       setPokemonOfflineBanner('Live refresh failed: ' + e.message + '. Cached Pokemon data remains visible.', 'bad');
     } else {
@@ -16156,8 +16163,14 @@ function pokemonPriceTrackerApiSettings(){
 
 async function pokemonPriceTrackerCardsRequest(params, pathLabel){
   const requestPath = '/pricing/pokemon/cards?' + params.toString().replace(/\+/g, '%20');
-  const res = await fetch(WORKER + requestPath, { cache:'no-store' });
+  const storeId = getActiveStoreId();
+  const res = await fetch(WORKER + requestPath, { cache:'no-store', headers: storeId ? { 'X-Store-Id': storeId } : {} });
   const data = await res.json().catch(() => ({}));
+  if(res.status === 402 && data.subscriptionRequired){
+    const err = new Error('Subscription required — open Settings to subscribe or start your free trial.');
+    err.subscriptionRequired = true;
+    throw err;
+  }
   if(res.status === 429 || data.providerQuotaState === 'exhausted' || (res.status === 403 && /429|quota|rate|blocked/i.test(String(data.error || data.message || '')))) localStorage.setItem('ppt_quota_exhausted_until', String(Date.now() + 60 * 60 * 1000));
   if(data.usage?.remaining != null) localStorage.setItem('ppt_remaining_credits', String(data.usage.remaining));
   if(data.usage?.consumed != null) localStorage.setItem('ppt_last_consumed', String(data.usage.consumed));
@@ -16239,7 +16252,8 @@ async function fetchPokemonPopulation(tcgPlayerId, language = 'english'){
   if(!tcgPlayerId) return null;
   const params = new URLSearchParams({ tcgPlayerId:String(tcgPlayerId), language:language || 'english' });
   const requestPath = '/pricing/pokemon/population?' + params.toString().replace(/\+/g, '%20');
-  const res = await fetch(WORKER + requestPath, { cache:'no-store' });
+  const storeId = getActiveStoreId();
+  const res = await fetch(WORKER + requestPath, { cache:'no-store', headers: storeId ? { 'X-Store-Id': storeId } : {} });
   const data = await res.json().catch(() => ({}));
   if(!res.ok || !data.ok) return null;
   const card = data.card || (Array.isArray(data.cards) ? data.cards[0] : null) || null;
