@@ -2372,6 +2372,7 @@ async function checkAndApplySubscriptionState(){
 
   window._subStatus = sub;
   renderSubscriptionPanel();
+  renderOnboardingPanel();
   _removeSubBanners();
 
   if(sub.status === 'trialing' && sub.active) {
@@ -6455,6 +6456,7 @@ function onboardingTasks(){
   const cfg = getVendorConfig();
   const pay = getPaymentSettings();
   const profile = getVendorProfile();
+  const ctx = getAccountContext();
   const paymentSaved = !!localStorage.getItem('store_payment_settings_v1');
   const hasPayment = !!(
     paymentSaved && (pay.cash?.enabled ||
@@ -6465,7 +6467,15 @@ function onboardingTasks(){
   );
   const hasItem = (Array.isArray(all) && all.length > 0) || getUniversalInventory().length > 0;
   const hasScanner = !!getOnboardingState().scannerTested || Number(document.getElementById('scan-inbox-count')?.dataset.count || 0) > 0;
-  return [
+  const sub = window._subStatus || null;
+  const subActive = sub?.active && (sub?.status === 'active' || sub?.status === 'trialing');
+  const subDone = ctx.isDemo || subActive;
+  const subDetail = ctx.isDemo ? 'Demo account — no subscription needed'
+    : sub?.status === 'trialing' ? `Trial active · ${sub.daysRemaining || 0} day${sub.daysRemaining===1?'':'s'} left`
+    : sub?.status === 'active' ? 'Subscription active'
+    : sub ? 'Start your 14-day free trial or subscribe'
+    : 'Check subscription status in Settings';
+  const tasks = [
     {
       key:'source',
       title:'Choose inventory source',
@@ -6506,7 +6516,19 @@ function onboardingTasks(){
       action:'SCANNER',
       run:() => { window.open('sca.html', '_blank'); saveOnboardingState({ scannerOpened:true }); }
     },
+    {
+      key:'subscription',
+      title:'Activate plan',
+      detail:subDetail,
+      done:subDone,
+      action:ctx.isDemo ? 'DEMO' : (sub?.status === 'active' ? 'MANAGE' : 'SUBSCRIBE'),
+      run:() => {
+        switchTab('backoffice');
+        setTimeout(()=>document.getElementById('subscription-panel')?.scrollIntoView({behavior:'smooth',block:'start'}), 150);
+      }
+    },
   ];
+  return tasks;
 }
 
 function ensureOnboardingPanel(target){
