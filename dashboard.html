@@ -2483,13 +2483,41 @@ function renderStorePickerOptions(stores){
 async function loadSupabaseStoresForUser(user){
   const sb = getSupabaseClient();
   if(!sb || !user) return [];
+
+  // Primary path: joined query (works when stores_select uses is_store_member — no recursion)
   const { data, error } = await sb
     .from('store_members')
     .select('role, stores(id,name,display_name,logo_url,owner_user_id,timezone,currency,status,created_at)')
     .eq('user_id', user.id)
     .eq('active', true);
-  if(error) { showAuthMode('login', 'Store lookup failed: ' + error.message); return []; }
-  return (data || []).map(row => ({ ...(row.stores || {}), role:row.role })).filter(s => s.id && s.status !== 'disabled');
+
+  if(!error) {
+    const joined = (data || []).map(row => ({ ...(row.stores || {}), role:row.role })).filter(s => s.id && s.status !== 'disabled');
+    if(joined.length) return joined;
+  }
+
+  // Fallback: two-step query in case the join is blocked by a stores RLS policy that
+  // hasn't been updated yet (avoids stranding the user on the create-store screen).
+  const { data: memberRows, error: memberErr } = await sb
+    .from('store_members')
+    .select('store_id, role')
+    .eq('user_id', user.id)
+    .eq('active', true);
+
+  if(memberErr || !memberRows?.length) {
+    if(error) showAuthMode('login', 'Store lookup failed: ' + error.message);
+    return [];
+  }
+
+  const storeIds = memberRows.map(r => r.store_id).filter(Boolean);
+  const roleMap = Object.fromEntries(memberRows.map(r => [r.store_id, r.role]));
+  const { data: storeRows, error: storeErr } = await sb
+    .from('stores')
+    .select('id,name,display_name,logo_url,owner_user_id,timezone,currency,status,created_at')
+    .in('id', storeIds);
+
+  if(storeErr) { showAuthMode('login', 'Store lookup failed: ' + storeErr.message); return []; }
+  return (storeRows || []).filter(s => s.id && s.status !== 'disabled').map(s => ({ ...s, role: roleMap[s.id] || 'employee' }));
 }
 
 async function loadPendingInvitesForUser(user){
