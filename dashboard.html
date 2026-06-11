@@ -6199,7 +6199,9 @@ function renderSubscriptionPanel(){
 
   const fmt = iso => {
     if(!iso) return '—';
-    const d = new Date(typeof iso === 'number' ? iso * 1000 : iso);
+    // Worker stores trial_end as ms (Date.now()); Stripe sends current_period_end as seconds.
+    // Detect by magnitude: numbers > 1e11 are already ms, smaller numbers are seconds.
+    const d = new Date(typeof iso === 'number' ? (iso > 1e11 ? iso : iso * 1000) : iso);
     return isNaN(d) ? '—' : d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
   };
 
