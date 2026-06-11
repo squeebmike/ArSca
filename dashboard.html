@@ -908,7 +908,7 @@ body.show-mode .inv-sync-badge{display:none;}
       <label id="auth-store-name-wrap" style="display:none;font-family:monospace;font-size:9px;color:var(--dim)">STORE NAME<input id="auth-store-name" class="tsi" value="Walk-Off Sports Cards & Comics"></label>
       <label id="auth-store-wrap" style="display:none;font-family:monospace;font-size:9px;color:var(--dim)">STORE<select id="auth-store" class="tsi"></select></label>
       <button class="hbtn" id="auth-primary-btn" onclick="loginSupabaseAccount()">LOGIN</button>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <div id="auth-secondary-btns" style="display:flex;gap:8px;flex-wrap:wrap">
         <button class="hbtn" onclick="showAuthMode('signup')">SIGN UP</button>
         <button class="hbtn" onclick="showAuthMode('reset')">RESET PASSWORD</button>
       </div>
@@ -2266,6 +2266,14 @@ function showAuthMode(mode, message){
   if(primary) {
     primary.textContent = mode === 'signup' ? 'SIGN UP' : mode === 'reset' ? 'SEND RESET' : mode === 'update-password' ? 'SAVE PASSWORD' : mode === 'create-store' ? 'CREATE STORE' : mode === 'invite' ? 'ACCEPT INVITE' : mode === 'picker' ? 'OPEN STORE' : 'LOGIN';
     primary.onclick = mode === 'signup' ? signupSupabaseAccount : mode === 'reset' ? resetSupabasePassword : mode === 'update-password' ? updateSupabasePassword : mode === 'create-store' ? createSupabaseStore : mode === 'invite' ? acceptPickedInvite : mode === 'picker' ? selectPickedStore : loginSupabaseAccount;
+  }
+  const secBtns = document.getElementById('auth-secondary-btns');
+  if(secBtns) {
+    if(mode === 'create-store' || mode === 'picker' || mode === 'invite') {
+      secBtns.innerHTML = '<button class="hbtn" onclick="logoutAccount()">SIGN OUT</button>';
+    } else {
+      secBtns.innerHTML = '<button class="hbtn" onclick="showAuthMode(\'signup\')">SIGN UP</button><button class="hbtn" onclick="showAuthMode(\'reset\')">RESET PASSWORD</button>';
+    }
   }
   if(status) status.textContent = message || 'Supabase connected. Local demo remains available for development.';
   document.getElementById('auth-screen')?.classList.add('on');
