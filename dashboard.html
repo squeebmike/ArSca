@@ -16003,7 +16003,14 @@ async function fetchPokemonPopulation(tcgPlayerId, language = 'english'){
   const data = await res.json().catch(() => ({}));
   if(!res.ok || !data.ok) return null;
   const card = data.card || (Array.isArray(data.cards) ? data.cards[0] : null) || null;
-  return card?.population || card?.gradedPopulation || data.data?.population || null;
+  const POP_KEYS = ['psa10','psa9','psa8','bgs10','bgs9_5','cgc10','total'];
+  // Try standard nested paths first
+  const nested = card?.population || card?.gradedPopulation || data.data?.population || data.population || null;
+  if(nested && typeof nested === 'object' && POP_KEYS.some(k => nested[k] != null)) return nested;
+  // Some PPT responses return the population data as the top-level card/data object itself
+  if(card && typeof card === 'object' && POP_KEYS.some(k => card[k] != null)) return card;
+  if(data.data && typeof data.data === 'object' && POP_KEYS.some(k => data.data[k] != null)) return data.data;
+  return null;
 }
 
 function pokemonPriceTrackerQuotaBlocked(){
@@ -17526,8 +17533,17 @@ async function fetchPopCountForCard(idx){
     return;
   }
   try {
-    const pop = await fetchPokemonPopulation(tcgPlayerId, r.language || 'english');
-    if(pop && typeof pop === 'object' && Object.keys(pop).length){
+    const POP_KEYS = ['psa10','psa9','psa8','bgs10','bgs9_5','cgc10','total'];
+    let pop = await fetchPokemonPopulation(tcgPlayerId, r.language || 'english');
+    // Fallback: /cards?includePopulation=true (worker allowlist now includes this param)
+    if(!pop) {
+      const p2 = new URLSearchParams({ tcgPlayerId:String(tcgPlayerId), language:r.language || 'english', limit:'1', includePopulation:'true', includeHistory:'false', includeEbay:'false', days:'1', maxDataPoints:'1' });
+      const result = await pokemonPriceTrackerCardsRequest(p2, 'cards.pop.limit1');
+      const card = result.cards[0] || null;
+      const cand = card?.population || card?.prices?.population || card?.gradedPopulation || null;
+      if(cand && typeof cand === 'object' && POP_KEYS.some(k => cand[k] != null)) pop = cand;
+    }
+    if(pop && typeof pop === 'object' && POP_KEYS.some(k => pop[k] != null)){
       el.innerHTML = _popCountHtml(pop, r);
     } else {
       el.innerHTML = _popCountFallbackHtml(r);

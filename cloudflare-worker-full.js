@@ -1237,17 +1237,192 @@ export default {
       let event;
       try { event = JSON.parse(body); } catch { return new Response('Bad JSON', { status: 400 }); }
 
+      // Helper: read/write subscription KV record
+      const subKvKey = id => `sub:store:${id}`;
+      const custKvKey = id => `sub:cust:${id}`;
+      const getSubRec = async id => { try { const r = await env.LBA_KV?.get(subKvKey(id)); return r ? JSON.parse(r) : null; } catch { return null; } };
+      const putSubRec = async (id, rec) => env.LBA_KV?.put(subKvKey(id), JSON.stringify({ ...rec, updatedAt: Date.now() }), { expirationTtl: 400 * 24 * 3600 }).catch(() => {});
+      const storeFromCust = async custId => { try { const r = await env.LBA_KV?.get(custKvKey(custId)); return r ? JSON.parse(r).store_id : null; } catch { return null; } };
+
+      // checkout.session.completed — POS payment AND subscription checkout
       if (event.type === 'checkout.session.completed') {
         const session = event.data?.object;
         if (session?.id && env.LBA_KV) {
-          await env.LBA_KV.put(
-            `stripe_checkout:${session.id}`,
-            JSON.stringify({ status: 'paid', amount: session.amount_total, created: Date.now() }),
-            { expirationTtl: 86400 }
-          ).catch(() => {});
+          if (session.metadata?.source === 'walkoff-subscription' || session.mode === 'subscription') {
+            // Subscription checkout completed — activate the store
+            const storeId = session.metadata?.store_id
+              || await storeFromCust(session.customer)
+              || (await env.LBA_KV.get(`sub:session:${session.id}`).then(r => r ? JSON.parse(r).store_id : null).catch(() => null));
+            if (storeId) {
+              const existing = await getSubRec(storeId) || {};
+              await putSubRec(storeId, { ...existing, status: 'active', stripe_customer_id: session.customer, stripe_subscription_id: session.subscription });
+              if (session.customer) await env.LBA_KV.put(custKvKey(session.customer), JSON.stringify({ store_id: storeId }), { expirationTtl: 400 * 24 * 3600 }).catch(() => {});
+              await env.LBA_KV.delete(`sub:session:${session.id}`).catch(() => {});
+            }
+          } else {
+            // POS one-time payment — update checkout cache (existing behavior)
+            await env.LBA_KV.put(`stripe_checkout:${session.id}`, JSON.stringify({ status: 'paid', amount: session.amount_total, created: Date.now() }), { expirationTtl: 86400 }).catch(() => {});
+          }
         }
       }
+
+      // customer.subscription.created / .updated — sync status + period
+      if (event.type === 'customer.subscription.created' || event.type === 'customer.subscription.updated') {
+        const sub = event.data?.object;
+        if (sub && env.LBA_KV) {
+          const storeId = await storeFromCust(sub.customer);
+          if (storeId) {
+            const existing = await getSubRec(storeId) || {};
+            await putSubRec(storeId, { ...existing, status: sub.status, stripe_customer_id: sub.customer, stripe_subscription_id: sub.id, current_period_end: sub.current_period_end ? sub.current_period_end * 1000 : existing.current_period_end, cancel_at_period_end: sub.cancel_at_period_end || false });
+          }
+        }
+      }
+
+      // customer.subscription.deleted — canceled
+      if (event.type === 'customer.subscription.deleted') {
+        const sub = event.data?.object;
+        if (sub && env.LBA_KV) {
+          const storeId = await storeFromCust(sub.customer);
+          if (storeId) {
+            const existing = await getSubRec(storeId) || {};
+            await putSubRec(storeId, { ...existing, status: 'canceled' });
+          }
+        }
+      }
+
+      // invoice.payment_succeeded — refresh period end
+      if (event.type === 'invoice.payment_succeeded') {
+        const inv = event.data?.object;
+        if (inv?.customer && env.LBA_KV) {
+          const storeId = await storeFromCust(inv.customer);
+          if (storeId) {
+            const existing = await getSubRec(storeId) || {};
+            const periodEnd = inv.lines?.data?.[0]?.period?.end;
+            await putSubRec(storeId, { ...existing, status: 'active', current_period_end: periodEnd ? periodEnd * 1000 : existing.current_period_end });
+          }
+        }
+      }
+
+      // invoice.payment_failed — mark past_due
+      if (event.type === 'invoice.payment_failed') {
+        const inv = event.data?.object;
+        if (inv?.customer && env.LBA_KV) {
+          const storeId = await storeFromCust(inv.customer);
+          if (storeId) {
+            const existing = await getSubRec(storeId) || {};
+            await putSubRec(storeId, { ...existing, status: 'past_due' });
+          }
+        }
+      }
+
       return new Response('ok', { status: 200 });
+    }
+
+    // ── Subscription Management ───────────────────────────────────────────────
+
+    // POST /subscription/init-trial
+    // Idempotent — writes a 14-day trial record if no subscription exists yet.
+    if (url.pathname === '/subscription/init-trial' && request.method === 'POST') {
+      if (!env.LBA_KV) return json({ ok: false, error: 'KV not configured' }, 500);
+      try {
+        const { store_id } = await request.json().catch(() => ({}));
+        if (!store_id) return json({ ok: false, error: 'store_id required' }, 400);
+        const existing = await env.LBA_KV.get(`sub:store:${store_id}`);
+        if (existing) return json({ ok: true, new: false, status: JSON.parse(existing).status });
+        const trial_end = Date.now() + 14 * 24 * 60 * 60 * 1000;
+        await env.LBA_KV.put(`sub:store:${store_id}`, JSON.stringify({ status: 'trialing', trial_end, created_at: Date.now(), updatedAt: Date.now() }), { expirationTtl: 400 * 24 * 3600 });
+        return json({ ok: true, new: true, status: 'trialing', trial_end });
+      } catch (e) { return json({ ok: false, error: e.message }, 500); }
+    }
+
+    // GET /subscription/status?store_id=X
+    if (url.pathname === '/subscription/status' && request.method === 'GET') {
+      const storeId = (url.searchParams.get('store_id') || '').trim();
+      if (!storeId) return json({ ok: false, error: 'store_id required' }, 400);
+      if (!env.LBA_KV) return json({ ok: true, status: 'none', active: false, daysRemaining: 0 });
+      const raw = await env.LBA_KV.get(`sub:store:${storeId}`);
+      if (!raw) return json({ ok: true, status: 'none', active: false, daysRemaining: 0 });
+      const rec = JSON.parse(raw);
+      const now = Date.now();
+      let status = rec.status || 'none';
+      const endMs = status === 'trialing' ? rec.trial_end : rec.current_period_end;
+      if ((status === 'trialing' || status === 'active') && endMs && endMs < now) {
+        status = status === 'trialing' ? 'trialing_expired' : 'expired';
+        await env.LBA_KV.put(`sub:store:${storeId}`, JSON.stringify({ ...rec, status, updatedAt: now }), { expirationTtl: 400 * 24 * 3600 }).catch(() => {});
+      }
+      const active = status === 'active' || status === 'trialing';
+      const daysRemaining = endMs && endMs > now ? Math.ceil((endMs - now) / 86400000) : 0;
+      return json({ ok: true, status, active, daysRemaining, trial_end: rec.trial_end || null, current_period_end: rec.current_period_end || null, stripe_customer_id: rec.stripe_customer_id || null, cancel_at_period_end: rec.cancel_at_period_end || false });
+    }
+
+    // POST /subscription/checkout
+    // Body: { store_id, store_name, email }
+    // Creates a Stripe subscription checkout session.
+    // Requires STRIPE_SECRET_KEY + STRIPE_SUBSCRIPTION_PRICE_ID in Worker secrets.
+    if (url.pathname === '/subscription/checkout' && request.method === 'POST') {
+      if (!env.STRIPE_SECRET_KEY) return json({ ok: false, error: 'STRIPE_SECRET_KEY not configured' }, 500);
+      if (!env.STRIPE_SUBSCRIPTION_PRICE_ID) return json({ ok: false, error: 'STRIPE_SUBSCRIPTION_PRICE_ID not configured — add recurring Stripe price ID to Worker secrets' }, 500);
+      try {
+        const { store_id, store_name, email } = await request.json().catch(() => ({}));
+        if (!store_id) return json({ ok: false, error: 'store_id required' }, 400);
+        const origin = url.origin;
+        const params = new URLSearchParams({
+          mode: 'subscription',
+          'payment_method_types[]': 'card',
+          'line_items[0][price]': env.STRIPE_SUBSCRIPTION_PRICE_ID,
+          'line_items[0][quantity]': '1',
+          success_url: `${origin}/subscription/success?store_id=${encodeURIComponent(store_id)}&session_id={CHECKOUT_SESSION_ID}`,
+          cancel_url: `${origin}/subscription/cancel`,
+          'metadata[store_id]': store_id,
+          'metadata[source]': 'walkoff-subscription',
+          allow_promotion_codes: 'true',
+        });
+        if (email) params.set('customer_email', email);
+        if (store_name) params.set('metadata[store_name]', store_name);
+        const r = await fetch('https://api.stripe.com/v1/checkout/sessions', {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + env.STRIPE_SECRET_KEY, 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: params.toString(),
+        });
+        const data = await r.json();
+        if (!r.ok) return json({ ok: false, error: data.error?.message || 'Stripe error' }, r.status);
+        if (env.LBA_KV) await env.LBA_KV.put(`sub:session:${data.id}`, JSON.stringify({ store_id }), { expirationTtl: 86400 });
+        return json({ ok: true, checkout_url: data.url, session_id: data.id });
+      } catch (e) { return json({ ok: false, error: e.message }, 500); }
+    }
+
+    // POST /subscription/customer-portal
+    // Body: { store_id } — opens Stripe billing portal for the store's customer
+    if (url.pathname === '/subscription/customer-portal' && request.method === 'POST') {
+      if (!env.STRIPE_SECRET_KEY) return json({ ok: false, error: 'STRIPE_SECRET_KEY not configured' }, 500);
+      try {
+        const { store_id } = await request.json().catch(() => ({}));
+        if (!store_id || !env.LBA_KV) return json({ ok: false, error: 'store_id required' }, 400);
+        const raw = await env.LBA_KV.get(`sub:store:${store_id}`);
+        if (!raw) return json({ ok: false, error: 'No subscription found' }, 404);
+        const { stripe_customer_id } = JSON.parse(raw);
+        if (!stripe_customer_id) return json({ ok: false, error: 'No Stripe customer — subscribe first' }, 400);
+        const r = await fetch('https://api.stripe.com/v1/billing_portal/sessions', {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + env.STRIPE_SECRET_KEY, 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({ customer: stripe_customer_id, return_url: url.origin + '/dashboard.html' }).toString(),
+        });
+        const data = await r.json();
+        if (!r.ok) return json({ ok: false, error: data.error?.message || 'Stripe error' }, r.status);
+        return json({ ok: true, url: data.url });
+      } catch (e) { return json({ ok: false, error: e.message }, 500); }
+    }
+
+    // GET /subscription/success — redirect page shown after subscription checkout
+    if (url.pathname === '/subscription/success') {
+      const html = `<!DOCTYPE html><html><head><meta charset=utf-8><title>Subscribed</title><meta name="viewport" content="width=device-width,initial-scale=1"><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:-apple-system,sans-serif;background:#050709;color:#fff;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px}.c{background:#0d1117;border:1px solid rgba(0,255,179,.25);border-radius:20px;padding:40px 32px;max-width:420px;width:100%;text-align:center}.ic{font-size:64px;margin-bottom:20px}.ti{font-size:24px;font-weight:900;color:#00ffb3;margin-bottom:12px}.su{color:#8892a4;font-size:13px;line-height:1.7;margin-bottom:24px}.btn{display:inline-block;background:#00ffb3;color:#000;font-weight:900;padding:13px 28px;border-radius:10px;text-decoration:none;font-size:13px;letter-spacing:.08em}</style></head><body><div class="c"><div class="ic">🎉</div><div class="ti">You're Subscribed!</div><div class="su">Your store subscription is now active.<br>Return to the dashboard to get started.</div><a href="dashboard.html" class="btn">OPEN DASHBOARD →</a></div></body></html>`;
+      return new Response(html, { headers: { 'Content-Type': 'text/html;charset=UTF-8' } });
+    }
+
+    // GET /subscription/cancel — redirect page shown after cancelled checkout
+    if (url.pathname === '/subscription/cancel') {
+      const html = `<!DOCTYPE html><html><head><meta charset=utf-8><title>Checkout Cancelled</title><meta name="viewport" content="width=device-width,initial-scale=1"><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:-apple-system,sans-serif;background:#050709;color:#fff;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px}.c{background:#0d1117;border:1px solid rgba(255,100,50,.25);border-radius:20px;padding:40px 32px;max-width:420px;width:100%;text-align:center}.ic{font-size:64px;margin-bottom:20px}.ti{font-size:24px;font-weight:900;color:#ff6432;margin-bottom:12px}.su{color:#8892a4;font-size:13px;line-height:1.7;margin-bottom:24px}.btn{display:inline-block;background:#00ffb3;color:#000;font-weight:900;padding:13px 28px;border-radius:10px;text-decoration:none;font-size:13px;letter-spacing:.08em}</style></head><body><div class="c"><div class="ic">✕</div><div class="ti">Checkout Cancelled</div><div class="su">No charge was made. You can subscribe when ready.</div><a href="dashboard.html" class="btn">RETURN TO DASHBOARD →</a></div></body></html>`;
+      return new Response(html, { headers: { 'Content-Type': 'text/html;charset=UTF-8' } });
     }
 
     // GET /stripe/checkout-success  (Stripe redirects customer here after payment)
