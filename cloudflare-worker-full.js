@@ -2374,6 +2374,81 @@ export default {
       return new Response(upstream.body, upstream);
     }
 
+    // GET /pricing/pokemon/export?type=cards|sealed|ebay|population
+    // Business-tier bulk export — decompresses gzip, returns CSV text
+    if (url.pathname === '/pricing/pokemon/export' && request.method === 'GET') {
+      const type = url.searchParams.get('type') || 'cards';
+      const validTypes = ['cards', 'sealed', 'ebay', 'population'];
+      if (!validTypes.includes(type)) {
+        return json({ ok: false, error: 'Invalid type. Use: ' + validTypes.join(', ') }, 400);
+      }
+      const apiKey = env.POKEMONPRICE_API_KEY || env.POKEMON_PRICE_TRACKER_API_KEY;
+      if (!apiKey) return json({ ok: false, error: 'POKEMONPRICE_API_KEY not configured' }, 501);
+
+      // Pass E bypass still applies — check subscription unless demo/bypass
+      const pptStoreId2 = request.headers.get('X-Store-Id') || '';
+      const isDemo2 = !pptStoreId2 || pptStoreId2.startsWith('demo');
+      const bypassIds2 = (env.BYPASS_STORE_IDS || '').split(',').map(s => s.trim()).filter(Boolean);
+      if (!isDemo2 && !bypassIds2.includes(pptStoreId2) && env.LBA_KV) {
+        const subRaw2 = await env.LBA_KV.get(`sub:store:${pptStoreId2}`);
+        const sub2 = subRaw2 ? JSON.parse(subRaw2) : null;
+        const s2 = sub2?.status || 'none';
+        if (!(sub2?.active === true && (s2 === 'active' || s2 === 'trialing'))) {
+          return json({ ok: false, error: 'Subscription required.', subscriptionRequired: true, status: s2 }, 402);
+        }
+      }
+
+      let upRes;
+      try {
+        upRes = await fetch(`https://www.pokemonpricetracker.com/api/v2/export?type=${type}`, {
+          headers: { 'Authorization': `Bearer ${apiKey}`, 'Accept': 'text/csv, application/gzip, */*' },
+          redirect: 'follow',
+        });
+      } catch (e) {
+        return json({ ok: false, error: 'Export request failed: ' + e.message }, 502);
+      }
+
+      if (upRes.status === 403) return json({ ok: false, error: 'Business plan required for bulk exports. Upgrade at pokemonpricetracker.com', businessRequired: true }, 403);
+      if (upRes.status === 429) return json({ ok: false, error: 'Daily export limit reached (2 per day). Resets at 6:00 AM UTC.', limitReached: true }, 429);
+      if (upRes.status === 503 || upRes.status === 404) return json({ ok: false, error: 'Export not yet available — dumps regenerate daily at 6:00 AM UTC.', notReady: true }, 503);
+      if (!upRes.ok) return json({ ok: false, error: 'Export failed: HTTP ' + upRes.status }, upRes.status);
+
+      const generatedAt = upRes.headers.get('x-generated-at') || upRes.headers.get('last-modified') || '';
+      const downloadsRemaining = upRes.headers.get('x-downloads-remaining') || '';
+      const resetAt = upRes.headers.get('x-reset-at') || '';
+      const contentType = upRes.headers.get('content-type') || '';
+      const contentEncoding = upRes.headers.get('content-encoding') || '';
+      const isGzip = contentEncoding.includes('gzip') || contentType.includes('gzip') || upRes.url.endsWith('.gz');
+
+      let csvText;
+      try {
+        if (isGzip) {
+          const ds = new DecompressionStream('gzip');
+          const decompressed = upRes.body.pipeThrough(ds);
+          csvText = await new Response(decompressed).text();
+        } else {
+          csvText = await upRes.text();
+        }
+      } catch (e) {
+        return json({ ok: false, error: 'Decompression failed: ' + e.message }, 500);
+      }
+
+      const rowCount = Math.max(0, csvText.split('\n').length - 2); // minus header + trailing newline
+      return new Response(csvText, {
+        status: 200,
+        headers: {
+          'Content-Type': 'text/csv; charset=utf-8',
+          'X-Generated-At': generatedAt,
+          'X-Downloads-Remaining': downloadsRemaining,
+          'X-Reset-At': resetAt,
+          'X-Row-Count': String(rowCount),
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Expose-Headers': 'X-Generated-At,X-Downloads-Remaining,X-Reset-At,X-Row-Count',
+          'Cache-Control': 'no-store',
+        },
+      });
+    }
+
     if (url.pathname.startsWith('/pricing/pokemonpricetracker/') || url.pathname.startsWith('/pricing/pokemon/')) {
       // Docs: docs/api/pokemon-price-tracker-openapi.json
       // Clean aliases: /pricing/pokemon/* → canonical /pricing/pokemonpricetracker/*

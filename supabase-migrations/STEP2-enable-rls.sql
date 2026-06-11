@@ -13,10 +13,11 @@
 -- minimum role.  Role levels: viewer < employee < manager < admin < owner
 
 -- Drop old TEXT version if it exists, then create UUID version
-DROP FUNCTION IF EXISTS public.is_store_member(TEXT, TEXT);
+DROP FUNCTION IF EXISTS public.is_store_member(UUID, TEXT) CASCADE;
+DROP FUNCTION IF EXISTS public.is_store_member(TEXT, TEXT) CASCADE;
 
 CREATE OR REPLACE FUNCTION public.is_store_member(
-  _store_id  UUID,
+  _store_id  TEXT,
   _min_role  TEXT DEFAULT 'viewer'
 )
 RETURNS BOOLEAN

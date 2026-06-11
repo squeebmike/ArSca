@@ -3191,9 +3191,7 @@ const DEFAULT_PAYMENT_SETTINGS = {
 };
 
 const PRICECHARTING_CSV_CATEGORIES = [
-  'Pokemon Cards','Magic Cards','YuGiOh Cards','One Piece Cards','Lorcana Cards','Digimon Cards','Dragon Ball Cards',
-  'Garbage Pail Cards','Marvel Cards','Star Wars Cards','Other TCG Cards','Comics','Video Games','Funko Pops',
-  'LEGO Sets','Coins','Amiibo','Strategy Guides','Gaming Magazines','Sports Cards'
+  'Video Games','Magic Cards','YuGiOh Cards','One Piece Cards'
 ];
 function getPriceChartingCsvUrls(){
   try { return JSON.parse(localStorage.getItem('pricecharting_csv_urls_v1') || '{}'); } catch(e) { return {}; }
@@ -4163,6 +4161,7 @@ function organizeRegisterLayout(){
   ensureResearchSettingsPanel(backoffice);
   ensurePriceChartingDataPanel(backoffice);
   ensureOfflineCachePanel(backoffice);
+  ensurePokemonExportPanel(backoffice);
   ensurePricingQaPanel(backoffice);
   ensureStoreMembersPanel(backoffice);
   ensureDataModePanel(backoffice);
@@ -4614,6 +4613,60 @@ async function renderOfflineCachePanel(status = ''){
   }).catch(() => {});
   // Replace set sync placeholder with live panel
   renderPokemonSetSyncPanel().catch(() => {});
+}
+
+function ensurePokemonExportPanel(backoffice){
+  if(document.getElementById('pokemon-export-panel')) return;
+  const ctx = getAccountContext();
+  if(ctx.isDemo) return;
+  const panel = document.createElement('div');
+  panel.id = 'pokemon-export-panel';
+  panel.className = 'settings-panel';
+  panel.innerHTML = `
+    <div class="settings-panel-header">
+      <h3 class="settings-panel-title">PokémonPriceTracker Business Export</h3>
+      <p class="settings-panel-desc">Download full pricing catalogs from PokémonPriceTracker for offline research. Refreshed daily at 6:00 AM UTC. Limit: 2 downloads per type per day.</p>
+    </div>
+    <div id="ppt-export-rows"></div>`;
+  const ref = document.getElementById('pokemon-export-panel-anchor') || backoffice.querySelector('#offline-cache-panel') || backoffice.lastElementChild;
+  ref.after ? ref.after(panel) : backoffice.appendChild(panel);
+  renderPokemonExportPanel();
+}
+
+async function renderPokemonExportPanel(){
+  const container = document.getElementById('ppt-export-rows');
+  if(!container) return;
+  const metaRows = await Promise.all(PPT_EXPORT_TYPES.map(({ type }) =>
+    catalogDbGet('meta', `export_${type}`).catch(() => null)
+  ));
+  container.innerHTML = PPT_EXPORT_TYPES.map(({ type, label, icon }, i) => {
+    const m = metaRows[i] || {};
+    const statusKey = `ppt_export_${type}_status`;
+    const downloading = localStorage.getItem(statusKey) === 'downloading';
+    const rowCount = m.rowCount ? m.rowCount.toLocaleString() : '—';
+    const syncedAt = m.downloadedAt ? new Date(m.downloadedAt).toLocaleString() : 'Never';
+    const generatedAt = m.generatedAt ? new Date(m.generatedAt).toLocaleString() : '—';
+    const downloadsLeft = m.downloadsLeft !== undefined && m.downloadsLeft !== '' ? m.downloadsLeft : '—';
+    const hasData = m.rowCount > 0;
+    const errHtml = m.error ? `<div class="setting-row-note" style="color:var(--c-warn,#f90)">${escHtml(m.error)}</div>` : '';
+    return `<div class="setting-row" style="display:flex;flex-direction:column;gap:4px;padding:10px 0;border-bottom:1px solid var(--c-border,#e5e5e5)">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
+        <span style="font-weight:600">${icon} ${escHtml(label)}</span>
+        <span style="font-size:12px;color:var(--c-muted,#888)">
+          ${hasData ? `${rowCount} rows · synced ${syncedAt}` : 'Not downloaded'}
+          ${hasData ? ` · generated ${generatedAt}` : ''}
+          ${downloadsLeft !== '—' ? ` · <b>${downloadsLeft}</b> download${downloadsLeft === '1' ? '' : 's'} left today` : ''}
+        </span>
+        <div style="display:flex;gap:6px;flex-shrink:0">
+          <button class="btn btn-sm btn-primary" onclick="downloadPokemonExport('${type}')" ${downloading ? 'disabled' : ''}>
+            ${downloading ? 'Downloading…' : hasData ? '↻ Refresh' : '⬇ Download'}
+          </button>
+          ${hasData ? `<button class="btn btn-sm btn-ghost" onclick="clearPokemonExport('${type}')">Clear</button>` : ''}
+        </div>
+      </div>
+      ${errHtml}
+    </div>`;
+  }).join('');
 }
 
 async function syncPokemonQueries(queries = [], label = 'Pokemon cache'){
@@ -13673,6 +13726,298 @@ async function pokemonDbClear(store){
   });
 }
 
+// ─── PPT Business Export Catalog ──────────────────────────────────────────────
+// Separate IDB from the per-query search cache — catalog is global reference
+// data, not owned inventory.
+
+const PPT_EXPORT_TYPES = [
+  { type:'cards',      label:'Pokémon Cards',           icon:'🃏' },
+  { type:'sealed',     label:'Pokémon Sealed Products', icon:'📦' },
+  { type:'ebay',       label:'Pokémon eBay / Graded',   icon:'📊' },
+  { type:'population', label:'Population Reports',      icon:'🏆' },
+];
+
+function catalogDb(){
+  if(window._catalogDb) return window._catalogDb;
+  window._catalogDb = new Promise((resolve, reject) => {
+    const req = indexedDB.open('walkoff_catalog_v1', 1);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      ['ppt_cards','ppt_sealed','ppt_ebay','ppt_population'].forEach(store => {
+        if(!db.objectStoreNames.contains(store)){
+          const s = db.createObjectStore(store, { keyPath:'tcgPlayerId' });
+          if(store === 'ppt_cards' || store === 'ppt_sealed') s.createIndex('name','name');
+        }
+      });
+      if(!db.objectStoreNames.contains('meta')) db.createObjectStore('meta', { keyPath:'key' });
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+  return window._catalogDb;
+}
+
+async function catalogDbPut(store, value){
+  const db = await catalogDb();
+  return new Promise((res, rej) => {
+    const tx = db.transaction(store, 'readwrite');
+    tx.objectStore(store).put(value);
+    tx.oncomplete = () => res(value);
+    tx.onerror = () => rej(tx.error);
+  });
+}
+
+async function catalogDbAll(store){
+  const db = await catalogDb();
+  return new Promise((res, rej) => {
+    const req = db.transaction(store, 'readonly').objectStore(store).getAll();
+    req.onsuccess = () => res(req.result || []);
+    req.onerror = () => rej(req.error);
+  });
+}
+
+async function catalogDbGet(store, key){
+  const db = await catalogDb();
+  return new Promise((res, rej) => {
+    const req = db.transaction(store, 'readonly').objectStore(store).get(key);
+    req.onsuccess = () => res(req.result || null);
+    req.onerror = () => rej(req.error);
+  });
+}
+
+async function catalogDbCount(store){
+  const db = await catalogDb();
+  return new Promise((res, rej) => {
+    const req = db.transaction(store, 'readonly').objectStore(store).count();
+    req.onsuccess = () => res(req.result || 0);
+    req.onerror = () => rej(req.error);
+  });
+}
+
+async function catalogDbClear(store){
+  const db = await catalogDb();
+  return new Promise((res, rej) => {
+    const tx = db.transaction(store, 'readwrite');
+    tx.objectStore(store).clear();
+    tx.oncomplete = () => res(true);
+    tx.onerror = () => rej(tx.error);
+  });
+}
+
+async function catalogDbPutBatch(store, rows){
+  if(!rows.length) return;
+  const db = await catalogDb();
+  const CHUNK = 500;
+  for(let i = 0; i < rows.length; i += CHUNK){
+    await new Promise((res, rej) => {
+      const tx = db.transaction(store, 'readwrite');
+      const os = tx.objectStore(store);
+      rows.slice(i, i + CHUNK).forEach(r => os.put(r));
+      tx.oncomplete = res;
+      tx.onerror = () => rej(tx.error);
+    });
+  }
+}
+
+function parseCsvWithHeaders(text){
+  const lines = text.split('\n').filter(l => l.trim());
+  if(lines.length < 2) return { headers:[], rows:[] };
+  const parseRow = line => {
+    const cells = []; let cell = '', q = false;
+    for(let i = 0; i < line.length; i++){
+      const ch = line[i];
+      if(ch === '"' && !q){ q = true; continue; }
+      if(ch === '"' && q && line[i+1] === '"'){ cell += '"'; i++; continue; }
+      if(ch === '"' && q){ q = false; continue; }
+      if(ch === ',' && !q){ cells.push(cell.trim()); cell = ''; continue; }
+      cell += ch;
+    }
+    cells.push(cell.trim());
+    return cells;
+  };
+  const headers = parseRow(lines[0]);
+  const rows = lines.slice(1).map(l => {
+    const vals = parseRow(l);
+    const obj = {};
+    headers.forEach((h, i) => { obj[h] = vals[i] !== undefined ? vals[i] : ''; });
+    return obj;
+  });
+  return { headers, rows };
+}
+
+function normalizePptExportRow(row, type){
+  const num = v => { const n = parseFloat(String(v || '').replace(/[^0-9.-]/g,'')); return isNaN(n) ? null : n; };
+  const id = String(row.tcgPlayerId || '').trim();
+  if(!id) return null;
+  const base = { tcgPlayerId: id, _exportType: type };
+  if(type === 'cards') return { ...base,
+    name:        row.name || '',
+    setName:     row.setName || '',
+    setId:       row.setId || '',
+    cardNumber:  row.cardNumber || '',
+    rarity:      row.rarity || '',
+    language:    row.language || 'english',
+    printing:    row.printing || '',
+    marketPrice: num(row.marketPrice),
+    lowPrice:    num(row.lowPrice),
+    sellers:     num(row.sellers),
+    lastUpdate:  row.lastPriceUpdate || '',
+    searchText:  normalizePokemonText((row.name || '') + ' ' + (row.setName || '') + ' ' + (row.cardNumber || '') + ' ' + (row.rarity || '')),
+  };
+  if(type === 'sealed') return { ...base,
+    name:        row.name || '',
+    setName:     row.setName || '',
+    setId:       row.setId || '',
+    productType: row.productType || '',
+    language:    row.language || 'english',
+    marketPrice: num(row.marketPrice),
+    lowPrice:    num(row.lowPrice),
+    sellers:     num(row.sellers),
+    lastUpdate:  row.lastPriceUpdate || '',
+    searchText:  normalizePokemonText((row.name || '') + ' ' + (row.setName || '') + ' ' + (row.productType || '')),
+  };
+  if(type === 'ebay') return { ...base,
+    grade:            row.grade || '',
+    salesCount:       num(row.salesCount),
+    averagePrice:     num(row.averagePrice),
+    medianPrice:      num(row.medianPrice),
+    smartMarket:      num(row.smartMarketPrice),
+    confidence:       row.smartMarketConfidence || '',
+    market7Day:       num(row.marketPrice7Day),
+    trend:            row.marketTrend || '',
+    velocityWeekly:   num(row.salesVelocityWeekly),
+  };
+  if(type === 'population') return { ...base,
+    grader:       row.grader || '',
+    total:        num(row.totalPopulation),
+    gemRate:      num(row.gemRate),
+    g10:          num(row.g10),
+    g9:           num(row.g9),
+    g9_5:         num(row.g9_5),
+    g8:           num(row.g8),
+    matchConf:    row.matchConfidence || '',
+  };
+  return base;
+}
+
+async function downloadPokemonExport(type){
+  const storeId = getActiveStoreId();
+  const statusKey = `ppt_export_${type}_status`;
+  localStorage.setItem(statusKey, 'downloading');
+  renderPokemonExportPanel();
+  try {
+    const res = await fetch(WORKER + `/pricing/pokemon/export?type=${type}`, {
+      cache: 'no-store',
+      headers: storeId ? { 'X-Store-Id': storeId } : {},
+    });
+    const generatedAt     = res.headers.get('X-Generated-At') || '';
+    const downloadsLeft   = res.headers.get('X-Downloads-Remaining') || '';
+    const resetAt         = res.headers.get('X-Reset-At') || '';
+
+    if(res.status === 402){ const d = await res.json().catch(()=>({error:'Subscription required'})); throw Object.assign(new Error(d.error || 'Subscription required'), { subscriptionRequired:true }); }
+    if(res.status === 403){ const d = await res.json().catch(()=>({error:'Business plan required'})); throw Object.assign(new Error(d.error || 'Business plan required'), { businessRequired:true }); }
+    if(res.status === 429){ const d = await res.json().catch(()=>({error:'Daily limit reached'})); throw Object.assign(new Error(d.error || 'Daily limit reached (2/day). Resets at 6:00 AM UTC.'), { limitReached:true }); }
+    if(res.status === 503){ throw Object.assign(new Error('Export not ready — dumps regenerate daily at 6:00 AM UTC.'), { notReady:true }); }
+    if(!res.ok){ const d = await res.json().catch(()=>({error:'HTTP '+res.status})); throw new Error(d.error || 'Export failed'); }
+
+    const csvText = await res.text();
+    const { rows: rawRows } = parseCsvWithHeaders(csvText);
+    const store = `ppt_${type}`;
+    const idbStore = type === 'population' ? 'ppt_population' : store;
+    await catalogDbClear(idbStore);
+    const rows = rawRows.map(r => normalizePptExportRow(r, type)).filter(Boolean);
+    await catalogDbPutBatch(idbStore, rows);
+
+    const meta = { key:`export_${type}`, type, rowCount:rows.length, downloadedAt:new Date().toISOString(), generatedAt, downloadsLeft, resetAt, error:null };
+    await catalogDbPut('meta', meta);
+    localStorage.removeItem(statusKey);
+    toast_dash(`${PPT_EXPORT_TYPES.find(x=>x.type===type)?.label || type}: ${rows.length.toLocaleString()} rows downloaded`);
+  } catch(e){
+    await catalogDbPut('meta', { key:`export_${type}`, type, error:e.message, downloadedAt:null, rowCount:0 }).catch(()=>{});
+    localStorage.removeItem(statusKey);
+    toast_dash('Export failed: ' + e.message);
+  }
+  renderPokemonExportPanel();
+}
+
+async function clearPokemonExport(type){
+  const idbStore = `ppt_${type}`;
+  await catalogDbClear(idbStore).catch(()=>{});
+  await catalogDbPut('meta', { key:`export_${type}`, type, rowCount:0, downloadedAt:null, generatedAt:'', error:null }).catch(()=>{});
+  renderPokemonExportPanel();
+  toast_dash(`${type} export cache cleared`);
+}
+
+// ── Catalog search / lookup ────────────────────────────────────────────────────
+
+async function searchPokemonCatalogExport(query){
+  if(!query || !isPokemonLookupIntent(query, '')) return [];
+  try {
+    const terms = normalizePokemonText(query).split(/\s+/).filter(Boolean);
+    const queryNumber = pokemonQueryCardNumber(query);
+    const rows = await catalogDbAll('ppt_cards').catch(() => []);
+    return rows.filter(r => {
+      if(!r.searchText) return false;
+      if(queryNumber && r.cardNumber && !pokemonCardNumberMatches(r, queryNumber)) return false;
+      return terms.every(t => r.searchText.includes(t));
+    }).slice(0, 40).map(r => ({
+      name:        r.name,
+      set:         r.setName,
+      card_number: r.cardNumber,
+      rarity:      r.rarity,
+      language:    r.language || 'english',
+      finish:      r.printing || '',
+      tcgPlayerId: r.tcgPlayerId,
+      marketPrice: r.marketPrice || 0,
+      displayPrice:r.marketPrice || 0,
+      priceSource: 'PPT Export (catalog)',
+      source:      'ppt_export',
+      category:    'Pokemon TCG',
+      imageUrl:    '',
+      cache:       { state:'catalog', source:'PokemonPriceTracker Export' },
+    }));
+  } catch(e){ return []; }
+}
+
+async function getPokemonCatalogByTcgPlayerId(tcgPlayerId){
+  if(!tcgPlayerId) return null;
+  return catalogDbGet('ppt_cards', String(tcgPlayerId)).catch(() => null);
+}
+
+async function getPokemonSealedCatalogByTcgPlayerId(tcgPlayerId){
+  if(!tcgPlayerId) return null;
+  return catalogDbGet('ppt_sealed', String(tcgPlayerId)).catch(() => null);
+}
+
+async function getPokemonEbayByTcgPlayerId(tcgPlayerId){
+  if(!tcgPlayerId) return null;
+  return catalogDbGet('ppt_ebay', String(tcgPlayerId)).catch(() => null);
+}
+
+async function getPokemonPopulationByTcgPlayerId(tcgPlayerId){
+  if(!tcgPlayerId) return null;
+  return catalogDbGet('ppt_population', String(tcgPlayerId)).catch(() => null);
+}
+
+async function searchPokemonSealedCatalogLocal(query){
+  if(!query) return [];
+  try {
+    const terms = normalizePokemonText(query).split(/\s+/).filter(Boolean);
+    const rows = await catalogDbAll('ppt_sealed').catch(() => []);
+    return rows.filter(r => r.searchText && terms.every(t => r.searchText.includes(t))).slice(0, 20).map(r => ({
+      name:        r.name,
+      set:         r.setName,
+      productType: r.productType,
+      tcgPlayerId: r.tcgPlayerId,
+      marketPrice: r.marketPrice || 0,
+      displayPrice:r.marketPrice || 0,
+      priceSource: 'PPT Export (sealed catalog)',
+      source:      'ppt_export_sealed',
+      category:    'Pokemon TCG',
+    }));
+  } catch(e){ return []; }
+}
+
 function pokemonBlobToDataUrl(blob){
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -13746,7 +14091,7 @@ async function searchPokemonOfflineCache(query, cat = ''){
   const cards = await pokemonDbAll('cards').catch(() => []);
   const imageRows = await pokemonDbAll('images').catch(() => []);
   const imageMap = new Map(imageRows.filter(i => !i.storeId || i.storeId === getActiveStoreId()).map(i => [i.cardKey, i.dataUrl || i.imageUrl]));
-  return cards.filter(c => c.storeId === getActiveStoreId()).filter(c => {
+  const cacheResults = cards.filter(c => c.storeId === getActiveStoreId()).filter(c => {
     if(c.cacheVersion !== POKEMON_SEARCH_CACHE_VERSION) return false;
     if(c.normalizedQuery && c.normalizedQuery !== normalizedQuery && queryNumber) return false;
     if(queryNumber && !pokemonCardNumberMatches(c.card || {}, queryNumber)) return false;
@@ -13758,6 +14103,15 @@ async function searchPokemonOfflineCache(query, cat = ''){
     cache:{ state:navigator.onLine ? 'cached' : 'offline', updatedAt:c.updatedAt, source:c.source || 'Pokemon cache', cardKey:c.cardKey },
     priceSource:(c.card?.priceSource || c.source || 'Pokemon cache') + ' (cached)'
   }));
+
+  // Supplement with catalog export results when cache is sparse or offline
+  if(cacheResults.length < 8 || !navigator.onLine){
+    const catalogHits = await searchPokemonCatalogExport(query).catch(() => []);
+    const seenIds = new Set(cacheResults.map(r => String(r.tcgPlayerId || '')).filter(Boolean));
+    const fresh = catalogHits.filter(r => !seenIds.has(String(r.tcgPlayerId || '')));
+    return [...cacheResults, ...fresh].slice(0, 60);
+  }
+  return cacheResults;
 }
 
 async function savePokemonCompsFromRow(row = {}, cardKey = pokemonCardKey(row)){
@@ -13826,10 +14180,16 @@ async function runPriceLookup(){
       qplLastSearch = q;
       qplResults = filterQplMasterResults(qplMasterResults, cat);
       renderQuickLookupResults(qplResults);
-      setPokemonOfflineBanner((navigator.onLine ? 'Cached Pokemon results shown while live refresh runs.' : 'Offline Mode: showing cached Pokemon data.') + ' Last updated ' + pokemonCacheAgeLabel(cachedResults[0]?.cache?.updatedAt) + '.');
+      const fromCatalog = cachedResults.some(r => r.source === 'ppt_export');
+      const cacheAge = pokemonCacheAgeLabel(cachedResults.find(r => r.cache?.updatedAt)?.cache?.updatedAt);
+      if(navigator.onLine){
+        setPokemonOfflineBanner(fromCatalog ? 'Catalog export results shown while live refresh runs.' : 'Cached Pokémon results shown while live refresh runs. Last updated ' + cacheAge + '.');
+      } else {
+        setPokemonOfflineBanner(fromCatalog ? 'Offline Mode: showing PPT catalog export data.' : 'Offline Mode: showing cached Pokémon data. Last updated ' + cacheAge + '.');
+      }
     } else if(!navigator.onLine) {
-      el.innerHTML = `<div style="color:var(--gold);line-height:1.6">No cached comps for this card yet. Search online before show or sync Pokemon cache.<br><button class="hbtn" style="margin-top:10px" onclick="switchTab('backoffice');document.getElementById('offline-cache-panel')?.scrollIntoView({behavior:'smooth',block:'start'})">OPEN OFFLINE CACHE</button></div>`;
-      setPokemonOfflineBanner('Offline Mode: no cached Pokemon lookup found for "' + q + '".', 'bad');
+      el.innerHTML = `<div style="color:var(--gold);line-height:1.6">No cached or catalog data found for this search.<br>To enable full offline research, download the PPT export catalog in Settings.<br><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><button class="hbtn" onclick="switchTab('backoffice');document.getElementById('offline-cache-panel')?.scrollIntoView({behavior:'smooth',block:'start'})">OPEN OFFLINE CACHE</button><button class="hbtn" onclick="switchTab('backoffice');document.getElementById('pokemon-export-panel')?.scrollIntoView({behavior:'smooth',block:'start'})">DOWNLOAD CATALOG</button></div></div>`;
+      setPokemonOfflineBanner('Offline Mode: no cached Pokémon data found for "' + q + '".', 'bad');
       return;
     }
   }
