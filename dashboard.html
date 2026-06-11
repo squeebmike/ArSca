@@ -15645,30 +15645,26 @@ function qplVariantPriceTable(r, idx){
       return `<tr class="${selected?'on':''}" onclick="updateQplVariant(${idx},{selectedCondition:'${escHtml(row.condition)}',selectedFinish:'${escHtml(row.finish)}',selectedGrade:'',selectedGradeKey:'',pricingMode:'raw'})" style="cursor:pointer">
         <td>${escHtml(row.condition)}</td>
         <td>${escHtml(row.finishLabel)}</td>
-        <td>${row.price ? '$'+Number(row.price).toFixed(2) : 'No Real Price'}</td>
+        <td>${row.price ? '$'+Number(row.price).toFixed(2) : '—'}</td>
         <td>${row.listings == null ? '-' : Number(row.listings).toLocaleString()}</td>
-        <td>${escHtml(row.lastUpdated || r.lastPriceSyncAt || '-')}</td>
-        <td>${escHtml(row.source)}</td>
+        <td style="font-size:9px;color:var(--dim)">${escHtml(row.lastUpdated || r.lastPriceSyncAt || '-')}</td>
       </tr>`;
     }).join('');
     const gradeHtml = gradeRows.length ? `
-      <div style="font-family:'Orbitron',monospace;color:var(--blue);font-size:10px;margin-top:12px">GRADED PRICES - eBay via PokemonPriceTracker</div>
-      <table class="qpl-price-table"><thead><tr><th>Grade</th><th>Selected Price</th><th>Median</th><th>Avg</th><th>Count</th><th>Trend</th><th>Confidence</th></tr></thead><tbody>${gradeRows.map(g => {
+      <div style="font-family:'Orbitron',monospace;color:var(--blue);font-size:10px;margin-top:12px">GRADED · eBay Market</div>
+      <table class="qpl-price-table"><thead><tr><th>Grade</th><th>Price</th><th>Sales</th><th>Trend</th></tr></thead><tbody>${gradeRows.map(g => {
         const selected = r.activePriceBasis?.basisType === 'graded' && normalizePokemonPptKey(r.selectedGrade || '') === normalizePokemonPptKey(g.gradeLabel);
         return `<tr class="${selected?'on':''}" onclick="updateQplVariant(${idx},{selectedGrade:'${escHtml(g.gradeLabel)}',selectedGradeKey:'${escHtml(g.gradeKey)}',pricingMode:'graded'})" style="cursor:pointer">
           <td>${escHtml(g.gradeLabel)}</td>
-          <td>${g.price ? '$'+Number(g.price).toFixed(2) : 'No Real Grade Price'}</td>
-          <td>${g.medianPrice ? '$'+Number(g.medianPrice).toFixed(2) : '-'}</td>
-          <td>${g.averagePrice ? '$'+Number(g.averagePrice).toFixed(2) : '-'}</td>
+          <td>${g.price ? '$'+Number(g.price).toFixed(2) : '—'}</td>
           <td>${g.count == null ? '-' : Number(g.count).toLocaleString()}</td>
           <td>${escHtml(g.marketTrend || '-')}</td>
-          <td>${escHtml(g.confidence || '-')}</td>
         </tr>`;
       }).join('')}</tbody></table>
-      ${r.pokemonPriceTracker?.ebay?.soldListings?.length ? `<div style="font-family:monospace;font-size:10px;color:var(--dim);margin-top:6px">${r.pokemonPriceTracker.ebay.soldListings.slice(0,3).map(s => escHtml([s.title, s.price ? '$'+Number(s.price).toFixed(2) : '', s.soldDate ? new Date(s.soldDate).toLocaleDateString() : ''].filter(Boolean).join(' / '))).join('<br>')}</div>` : `<div style="font-family:monospace;font-size:10px;color:var(--dim);margin-top:6px">Recent sold listing preview requires Business tier data.</div>`}` : '';
+      ${r.pokemonPriceTracker?.ebay?.soldListings?.length ? `<div style="font-family:monospace;font-size:10px;color:var(--dim);margin-top:6px">${r.pokemonPriceTracker.ebay.soldListings.slice(0,3).map(s => escHtml([s.title, s.price ? '$'+Number(s.price).toFixed(2) : '', s.soldDate ? new Date(s.soldDate).toLocaleDateString() : ''].filter(Boolean).join(' / '))).join('<br>')}</div>` : ''}` : '';
     return `<div style="margin-top:10px">
-      <div style="font-family:'Orbitron',monospace;color:var(--g);font-size:10px">AVAILABLE PRICES · PokemonPriceTracker</div>
-      <table class="qpl-price-table"><thead><tr><th>Condition</th><th>Finish</th><th>Actual API Price</th><th>Listings</th><th>Last Updated</th><th>Source</th></tr></thead><tbody>${rows}</tbody></table>
+      <div style="font-family:'Orbitron',monospace;color:var(--g);font-size:10px">RAW PRICES · PokemonPriceTracker</div>
+      <table class="qpl-price-table"><thead><tr><th>Condition</th><th>Finish</th><th>Price</th><th>Listings</th><th>Updated</th></tr></thead><tbody>${rows}</tbody></table>
       ${matrixDebugNote}
       ${gradeHtml}
     </div>`;
@@ -16644,25 +16640,25 @@ function qplSlabControls(r, idx){
   const slabValue = Number(qplSelectedSlabPrice(r) || 0);
   const pc = r.pricecharting;
   const rows = pc ? qplPriceChartingTableRows(r) : '';
-  return `<div style="margin-top:12px;border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:10px;background:rgba(255,255,255,.025)">
-    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
-      <button class="hbtn ${mode==='raw'?'primary':''}" onclick="toggleQplPricingMode(${idx},'raw')">RAW</button>
-      <button class="hbtn ${mode==='slab'?'primary':''}" onclick="toggleQplPricingMode(${idx},'slab')">SLAB</button>
-      <button class="hbtn" onclick="setQplSlabGrade(${idx},'PSA','10')">PSA 10</button>
-      <button class="hbtn" onclick="setQplSlabGrade(${idx},'PSA','9')">PSA 9</button>
-      <button class="hbtn" onclick="setQplSlabGrade(${idx},'PSA','8')">PSA 8</button>
-      ${mode === 'slab' ? `<button class="hbtn" onclick="fetchQplPriceCharting(${idx})">REFRESH GUIDE</button>` : ''}
+  return `<div style="margin-top:10px;border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:8px;background:rgba(255,255,255,.02)">
+    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:8px">
+      <button class="hbtn ${mode==='raw'?'primary':''}" style="min-height:32px;padding:4px 10px;font-size:9px" onclick="toggleQplPricingMode(${idx},'raw')">RAW</button>
+      <button class="hbtn ${mode==='slab'?'primary':''}" style="min-height:32px;padding:4px 10px;font-size:9px" onclick="toggleQplPricingMode(${idx},'slab')">SLAB</button>
+      <button class="hbtn" style="min-height:32px;padding:4px 10px;font-size:9px" onclick="setQplSlabGrade(${idx},'PSA','10')">PSA 10</button>
+      <button class="hbtn" style="min-height:32px;padding:4px 10px;font-size:9px" onclick="setQplSlabGrade(${idx},'PSA','9')">PSA 9</button>
+      <button class="hbtn" style="min-height:32px;padding:4px 10px;font-size:9px" onclick="setQplSlabGrade(${idx},'PSA','8')">PSA 8</button>
+      <button class="hbtn" style="min-height:32px;padding:4px 10px;font-size:9px;color:var(--blue)" onclick="openQplChartModal(${idx})">PRICE GRAPH</button>
+      ${mode === 'slab' ? `<button class="hbtn" style="min-height:32px;padding:4px 10px;font-size:9px" onclick="fetchQplPriceCharting(${idx})">REFRESH GUIDE</button>` : ''}
     </div>
-      ${mode === 'raw' ? `<div style="color:var(--dim);font-size:11px">Raw mode uses JustTCG/TCG selected condition, finish, language, and variant pricing.</div><button class="hbtn" style="margin-top:8px;color:var(--blue)" onclick="openQplChartModal(${idx})">OPEN PRICE GRAPH</button>${qplDealerDecisionPanel(r)}` : `
-      <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap">
+    ${mode === 'raw' ? qplDealerDecisionPanel(r) : `
+      <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
         <div>
-          <div style="font-family:'Orbitron',monospace;color:var(--gold);font-size:12px">${escHtml(r.slabCompany || 'PSA')} ${escHtml(r.slabGrade || '10')} GUIDE VALUE</div>
-          <div style="font-size:28px;color:var(--gold);font-weight:900">${slabValue ? '$'+slabValue.toFixed(2) : '-'}</div>
-          <div style="color:var(--dim);font-size:10px">PriceCharting grade-bucket guide value, not exact sold comps.</div>
+          <div style="font-family:'Orbitron',monospace;color:var(--gold);font-size:10px">${escHtml(r.slabCompany || 'PSA')} ${escHtml(r.slabGrade || '10')} GUIDE</div>
+          <div style="font-size:18px;color:var(--gold);font-weight:900;line-height:1.2">${slabValue ? '$'+slabValue.toFixed(2) : '—'}</div>
         </div>
-        <div style="color:${r.pcState==='Guide Delayed'?'var(--blue)':r.pcError?'var(--gold)':'var(--dim)'};font-size:11px">${r.pcLoading?'Checking PriceCharting...':escHtml(r.pcError || pc?.productName || 'No guide loaded yet')}</div>
+        <div style="color:${r.pcState==='Guide Delayed'?'var(--blue)':r.pcError?'var(--gold)':'var(--dim)'};font-size:10px">${r.pcLoading?'Checking PriceCharting...':escHtml(r.pcError || pc?.productName || 'No guide loaded')}</div>
       </div>
-      ${pc ? `<div style="overflow:auto;margin-top:10px"><table style="width:100%;border-collapse:collapse;font-size:10px;color:var(--dim)"><thead><tr><th>Grade</th><th>PriceCharting Value</th><th>Sold Comps Avg</th><th>Comp Count</th><th>Confidence</th><th>Last Checked</th></tr></thead><tbody>${rows}</tbody></table></div>` : ''}
+      ${pc ? `<div style="overflow:auto"><table style="width:100%;border-collapse:collapse;font-size:10px;color:var(--dim)"><thead><tr><th>Grade</th><th>Guide Value</th><th>Comp Avg</th><th>Count</th><th>Last Checked</th></tr></thead><tbody>${rows}</tbody></table></div>` : ''}
       ${qplPriceChartingGuidePanel(r)}
       ${qplGradingRoiPanel(r, idx)}
       ${qplDealerDecisionPanel(r)}
@@ -17155,7 +17151,7 @@ function quickLookupResultCard(r, idx){
       ${signals.length ? `<div class="qpl-signal" style="color:${needs.length?'var(--g)':'var(--gold)'}">${escHtml(signals.join(' / '))}</div>` : ''}
       <!-- Advanced pricing table — collapsed by default -->
       <details class="research-secondary-actions" style="margin-top:12px">
-        <summary>▸ Advanced Pricing</summary>
+        <summary>▸ All Prices + Graded</summary>
         <div style="padding:8px 0">
           ${qplVariantPriceTable(r, idx)}
           ${qplSlabControls(r, idx)}
