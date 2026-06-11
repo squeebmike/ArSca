@@ -2386,7 +2386,9 @@ export default {
       // Pass E: subscription gate + daily usage counter
       const pptStoreId = request.headers.get('X-Store-Id') || '';
       const isDemo = !pptStoreId || pptStoreId.startsWith('demo');
-      if (!isDemo && env.LBA_KV) {
+      const bypassIds = (env.BYPASS_STORE_IDS || '').split(',').map(s => s.trim()).filter(Boolean);
+      const isBypassed = bypassIds.includes(pptStoreId);
+      if (!isDemo && !isBypassed && env.LBA_KV) {
         const subRaw = await env.LBA_KV.get(`sub:store:${pptStoreId}`);
         const sub = subRaw ? JSON.parse(subRaw) : null;
         const subStatus = sub?.status || 'none';
