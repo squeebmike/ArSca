@@ -12,7 +12,7 @@
 <title>Walk-Off Dashboard</title>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-:root{--app-bg:#07080a;--app-surface:#0d0f14;--app-surface-2:#141720;--app-text:#e4e4e8;--app-muted:rgba(228,228,232,.4);--app-primary:#00ffb3;--app-secondary:#ffd166;--app-accent:#c77dff;--app-success:#00ffb3;--app-warning:#ffd166;--app-danger:#ff4d6d;--app-border:rgba(255,255,255,.07);--app-button-text:#050507;--app-radius:10px;--app-font:'DM Sans',sans-serif;--customer-bg-image:none;--brand-primary:var(--app-primary);--brand-secondary:var(--app-secondary);--brand-accent:var(--app-accent);--brand-background:var(--app-bg);--brand-surface:var(--app-surface);--brand-surface-2:var(--app-surface-2);--brand-text:var(--app-text);--brand-muted:var(--app-muted);--brand-success:var(--app-success);--brand-warning:var(--app-warning);--brand-danger:var(--app-danger);--brand-info:#48cae4;--brand-border:var(--app-border);--brand-card-radius:var(--app-radius);--brand-button-radius:6px;--brand-font-family:var(--app-font);--g:var(--brand-primary);--gd:rgba(0,255,179,.1);--gold:var(--brand-warning);--red:var(--brand-danger);--blue:var(--brand-info);--purple:var(--brand-accent);--bg:var(--brand-background);--surf:var(--brand-surface);--surf2:var(--brand-surface-2);--border:var(--brand-border);--text:var(--brand-text);--dim:var(--brand-muted);}
+:root{--app-bg:#07080a;--app-surface:#0d0f14;--app-surface-2:#141720;--app-text:#e4e4e8;--app-muted:rgba(228,228,232,.4);--app-primary:#00ffb3;--app-secondary:#ffd166;--app-accent:#c77dff;--app-success:#00ffb3;--app-warning:#ffd166;--app-danger:#ff4d6d;--app-border:rgba(255,255,255,.07);--app-button-text:#050507;--app-radius:10px;--app-font:'DM Sans',sans-serif;--customer-bg-image:none;--brand-primary:var(--app-primary);--brand-secondary:var(--app-secondary);--brand-accent:var(--app-accent);--brand-background:var(--app-bg);--brand-surface:var(--app-surface);--brand-surface-2:var(--app-surface-2);--brand-text:var(--app-text);--brand-muted:var(--app-muted);--brand-success:var(--app-success);--brand-warning:var(--app-warning);--brand-danger:var(--app-danger);--brand-info:#48cae4;--brand-border:var(--app-border);--brand-card-radius:var(--app-radius);--brand-button-radius:6px;--brand-font-family:var(--app-font);--btn-height:38px;--btn-height-lg:52px;--font-mono:'DM Mono',monospace;--g:var(--brand-primary);--gd:rgba(0,255,179,.1);--gold:var(--brand-warning);--red:var(--brand-danger);--blue:var(--brand-info);--purple:var(--brand-accent);--bg:var(--brand-background);--surf:var(--brand-surface);--surf2:var(--brand-surface-2);--border:var(--brand-border);--text:var(--brand-text);--dim:var(--brand-muted);}
 *{margin:0;padding:0;box-sizing:border-box;}
 body{background:var(--bg);color:var(--text);font-family:var(--brand-font-family);min-height:100vh;padding-bottom:calc(72px + env(safe-area-inset-bottom));}
 body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse at 15% 15%,rgba(0,255,179,.03) 0,transparent 55%),radial-gradient(ellipse at 85% 85%,rgba(199,125,255,.03) 0,transparent 55%);pointer-events:none;}
@@ -22,25 +22,25 @@ header{position:sticky;top:0;z-index:100;background:rgba(7,8,10,.96);backdrop-fi
 .hdr{max-width:1400px;margin:0 auto;height:54px;display:flex;align-items:center;justify-content:space-between;padding:0 20px;gap:12px;}
 .logo{font-family:'Orbitron',monospace;font-size:13px;font-weight:900;color:var(--g);letter-spacing:3px;}
 .logo span{color:var(--dim);font-weight:400;font-size:10px;letter-spacing:1px;margin-left:8px;}
-.v2-branch-stamp{border:1px solid rgba(255,209,102,.32);background:rgba(255,209,102,.08);color:var(--gold);border-radius:6px;padding:6px 9px;font-family:monospace,monospace;font-size:10px;line-height:1.2;white-space:nowrap;}
+.v2-branch-stamp{border:1px solid rgba(255,209,102,.32);background:rgba(255,209,102,.08);color:var(--gold);border-radius:6px;padding:6px 9px;font-family:var(--font-mono);font-size:10px;line-height:1.2;white-space:nowrap;}
 .hdr-right{display:flex;align-items:center;gap:8px;min-width:0;}
-#sync-status{font-family:monospace,monospace;font-size:10px;color:var(--dim);}
-.hbtn{background:var(--gd);border:1px solid rgba(0,255,179,.2);color:var(--g);padding:8px 13px;min-height:38px;font-family:'Orbitron',monospace;font-size:9px;letter-spacing:1px;cursor:pointer;border-radius:var(--brand-button-radius);transition:.15s;touch-action:manipulation;}
+#sync-status{font-family:var(--font-mono);font-size:10px;color:var(--dim);}
+.hbtn{background:var(--gd);border:1px solid rgba(0,255,179,.2);color:var(--g);padding:8px 13px;min-height:var(--btn-height);font-family:'Orbitron',monospace;font-size:9px;letter-spacing:1px;cursor:pointer;border-radius:var(--brand-button-radius);transition:.15s;touch-action:manipulation;}
 .hbtn:hover{background:rgba(0,255,179,.15);}
 .hbtn.danger{background:rgba(255,77,109,.08);border-color:rgba(255,77,109,.2);color:var(--red);}
 
 /* TABS */
 .tabs{max-width:1400px;margin:0 auto;padding:10px 20px 8px;display:flex;gap:6px;border-bottom:1px solid var(--border);align-items:center;overflow-x:auto;scrollbar-width:none;}
 .tabs::-webkit-scrollbar{display:none;}
-.tab{font-family:monospace,monospace;font-size:10px;letter-spacing:1px;color:var(--dim);padding:10px 14px;min-height:40px;border:1px solid transparent;border-radius:var(--brand-button-radius);cursor:pointer;transition:.15s;user-select:none;white-space:nowrap;display:flex;align-items:center;}
+.tab{font-family:var(--font-mono);font-size:10px;letter-spacing:1px;color:var(--dim);padding:10px 14px;min-height:40px;border:1px solid transparent;border-radius:var(--brand-button-radius);cursor:pointer;transition:.15s;user-select:none;white-space:nowrap;display:flex;align-items:center;}
 .tab.on{color:var(--g);border-color:rgba(0,255,179,.28);background:rgba(0,255,179,.07);}
 .tab.primary{color:rgba(228,228,232,.72);}
 .nav-more{margin-left:auto;position:relative;flex-shrink:0;}
 .more-menu{position:fixed;right:20px;top:98px;display:none;min-width:220px;background:var(--surf);border:1px solid var(--border);border-radius:8px;padding:6px;box-shadow:0 18px 50px rgba(0,0,0,.65);z-index:9998;}
 .more-menu.on{display:grid;gap:4px;}
-.more-item{font-family:monospace,monospace;font-size:10px;color:var(--dim);padding:9px 10px;border-radius:5px;cursor:pointer;letter-spacing:1px;}
+.more-item{font-family:var(--font-mono);font-size:10px;color:var(--dim);padding:9px 10px;border-radius:5px;cursor:pointer;letter-spacing:1px;}
 .more-item:hover,.more-item.on{background:rgba(0,255,179,.08);color:var(--g);}
-.install-hint{display:none;max-width:1400px;margin:0 auto;padding:8px 20px;border-top:1px solid rgba(255,255,255,.04);font-family:monospace,monospace;font-size:10px;color:var(--gold);justify-content:space-between;gap:10px;align-items:center;}
+.install-hint{display:none;max-width:1400px;margin:0 auto;padding:8px 20px;border-top:1px solid rgba(255,255,255,.04);font-family:var(--font-mono);font-size:10px;color:var(--gold);justify-content:space-between;gap:10px;align-items:center;}
 .install-hint.on{display:flex;}
 
 /* SECTION LABELS */
@@ -50,9 +50,9 @@ header{position:sticky;top:0;z-index:100;background:rgba(7,8,10,.96);backdrop-fi
 .stats{max-width:1400px;margin:0 auto;padding:0 20px;display:grid;grid-template-columns:repeat(6,1fr);gap:10px;}
 .sc{background:var(--surf);border:1px solid var(--border);border-radius:10px;padding:14px 16px;position:relative;overflow:hidden;}
 .sc::after{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.02),transparent);pointer-events:none;}
-.sc-l{font-family:monospace,monospace;font-size:8px;letter-spacing:2px;color:var(--dim);margin-bottom:6px;text-transform:uppercase;}
+.sc-l{font-family:var(--font-mono);font-size:8px;letter-spacing:2px;color:var(--dim);margin-bottom:6px;text-transform:uppercase;}
 .sc-v{font-family:'Orbitron',monospace;font-size:20px;font-weight:900;margin-bottom:2px;}
-.sc-s{font-family:monospace,monospace;font-size:9px;color:var(--dim);}
+.sc-s{font-family:var(--font-mono);font-size:9px;color:var(--dim);}
 .sc.g .sc-v{color:var(--g);}
 .sc.gold .sc-v{color:var(--gold);}
 .sc.r .sc-v{color:var(--red);}
@@ -63,13 +63,13 @@ header{position:sticky;top:0;z-index:100;background:rgba(7,8,10,.96);backdrop-fi
 
 /* ALERT BANNER */
 .alert-wrap{max-width:1400px;margin:0 auto;padding:0 20px;}
-.alert{background:rgba(255,209,102,.06);border:1px solid rgba(255,209,102,.2);border-radius:8px;padding:10px 14px;font-family:monospace,monospace;font-size:10px;color:var(--gold);margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;}
+.alert{background:rgba(255,209,102,.06);border:1px solid rgba(255,209,102,.2);border-radius:8px;padding:10px 14px;font-family:var(--font-mono);font-size:10px;color:var(--gold);margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;}
 
 /* TWO COLUMN */
 .two{max-width:1400px;margin:0 auto;padding:0 20px;display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;}
 .three{max-width:1400px;margin:0 auto;padding:0 20px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px;}
 .panel{background:var(--surf);border:1px solid var(--border);border-radius:var(--brand-card-radius);padding:16px;}
-.ph{font-family:monospace,monospace;font-size:9px;letter-spacing:2px;color:var(--dim);margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;}
+.ph{font-family:var(--font-mono);font-size:9px;letter-spacing:2px;color:var(--dim);margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;}
 .ph b{color:var(--text);font-weight:600;}
 .ph-action{font-size:9px;color:var(--g);cursor:pointer;text-decoration:none;}
 
@@ -77,58 +77,58 @@ header{position:sticky;top:0;z-index:100;background:rgba(7,8,10,.96);backdrop-fi
 .register-command{max-width:1400px;margin:0 auto 14px;padding:0 20px;display:grid;grid-template-columns:1.3fr .9fr .9fr .9fr;gap:10px;}
 .reg-card{background:var(--surf);border:1px solid var(--border);border-radius:10px;padding:13px 14px;min-height:92px;display:flex;flex-direction:column;justify-content:space-between;}
 .reg-card.main{background:linear-gradient(135deg,rgba(0,255,179,.08),rgba(255,209,102,.04));border-color:rgba(0,255,179,.22);}
-.reg-label{font-family:monospace,monospace;font-size:8px;letter-spacing:2px;color:var(--dim);text-transform:uppercase;}
+.reg-label{font-family:var(--font-mono);font-size:8px;letter-spacing:2px;color:var(--dim);text-transform:uppercase;}
 .reg-value{font-family:'Orbitron',monospace;font-size:20px;font-weight:900;color:var(--text);line-height:1.1;margin-top:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .reg-value.g{color:var(--g);}
 .reg-value.gold{color:var(--gold);}
-.reg-sub{font-family:monospace,monospace;font-size:9px;color:var(--dim);margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.reg-sub{font-family:var(--font-mono);font-size:9px;color:var(--dim);margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .reg-actions{max-width:1400px;margin:0 auto 14px;padding:0 20px;display:flex;gap:8px;flex-wrap:wrap;}
 .reg-action{min-height:38px;padding:9px 14px;}
 .module-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px;}
-.module-toggle{display:flex;align-items:center;gap:8px;background:var(--surf2);border:1px solid var(--border);border-radius:7px;padding:9px;font-family:monospace,monospace;font-size:10px;color:var(--text);}
+.module-toggle{display:flex;align-items:center;gap:8px;background:var(--surf2);border:1px solid var(--border);border-radius:7px;padding:9px;font-family:var(--font-mono);font-size:10px;color:var(--text);}
 .module-toggle input{accent-color:var(--g);}
-.category-chip{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:999px;padding:6px 9px;font-family:monospace,monospace;font-size:10px;color:var(--dim);margin:0 6px 6px 0;}
+.category-chip{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:999px;padding:6px 9px;font-family:var(--font-mono);font-size:10px;color:var(--dim);margin:0 6px 6px 0;}
 .category-chip button{background:none;border:none;color:var(--red);cursor:pointer;font-size:12px;line-height:1;}
 .qol-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px;}
 .qol-card{background:var(--surf2);border:1px solid var(--border);border-radius:8px;padding:12px;min-height:78px;}
-.qol-k{font-family:monospace,monospace;font-size:8px;letter-spacing:2px;color:var(--dim);text-transform:uppercase;}
+.qol-k{font-family:var(--font-mono);font-size:8px;letter-spacing:2px;color:var(--dim);text-transform:uppercase;}
 .qol-v{font-family:'Orbitron',monospace;font-size:18px;font-weight:900;color:var(--text);margin-top:5px;}
-.qol-s{font-family:monospace,monospace;font-size:9px;color:var(--dim);margin-top:2px;}
+.qol-s{font-family:var(--font-mono);font-size:9px;color:var(--dim);margin-top:2px;}
 .cmd-row{display:grid;grid-template-columns:1fr auto auto;gap:8px;margin-bottom:10px;}
-.data-pill{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--border);background:rgba(255,255,255,.035);border-radius:999px;padding:5px 8px;margin:0 5px 5px 0;font-family:monospace,monospace;font-size:9px;color:var(--dim);}
+.data-pill{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--border);background:rgba(255,255,255,.035);border-radius:999px;padding:5px 8px;margin:0 5px 5px 0;font-family:var(--font-mono);font-size:9px;color:var(--dim);}
 .data-pill.warn{color:var(--gold);border-color:rgba(255,209,102,.22);background:rgba(255,209,102,.06);}
 .data-pill.bad{color:var(--red);border-color:rgba(255,77,109,.22);background:rgba(255,77,109,.06);}
-.timeline-row{border-left:2px solid rgba(0,255,179,.28);padding:0 0 8px 10px;margin-left:4px;font-family:monospace,monospace;font-size:10px;color:var(--dim);}
+.timeline-row{border-left:2px solid rgba(0,255,179,.28);padding:0 0 8px 10px;margin-left:4px;font-family:var(--font-mono);font-size:10px;color:var(--dim);}
 .timeline-row b{color:var(--text);font-family:'DM Sans',sans-serif;font-size:12px;}
 .vendor-logo-preview{width:72px;height:72px;border-radius:10px;border:1px solid var(--border);background:var(--surf2);object-fit:contain;padding:6px;}
 .cd-item{display:flex;align-items:center;gap:12px;background:var(--surf);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:8px;box-shadow:0 8px 26px rgba(0,0,0,.22);}
 .cd-item-name{font-family:'Orbitron',monospace;font-size:13px;font-weight:800;color:var(--text);line-height:1.25;}
-.cd-item-sub{font-family:monospace,monospace;font-size:9px;color:var(--dim);margin-top:4px;}
+.cd-item-sub{font-family:var(--font-mono);font-size:9px;color:var(--dim);margin-top:4px;}
 .cd-item-price{font-family:'Orbitron',monospace;font-size:18px;font-weight:900;color:var(--gold);white-space:nowrap;}
 .cd-remove{width:34px;height:34px;border-radius:8px;border:1px solid rgba(255,77,109,.25);background:rgba(255,77,109,.07);color:var(--red);font-family:'Orbitron',monospace;font-size:13px;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center;}
 .cd-remove:hover{background:rgba(255,77,109,.14);border-color:rgba(255,77,109,.45);}
 .sell-shell{max-width:980px;margin:0 auto;padding:0 20px;}
 .sell-cart-card{background:var(--surf);border:1px solid var(--border);border-radius:12px;padding:16px;box-shadow:0 18px 50px rgba(0,0,0,.28);}
-.sell-total-row{display:flex;justify-content:space-between;align-items:center;font-family:monospace,monospace;font-size:11px;color:var(--dim);padding:6px 0;border-bottom:1px solid rgba(255,255,255,.05);}
+.sell-total-row{display:flex;justify-content:space-between;align-items:center;font-family:var(--font-mono);font-size:11px;color:var(--dim);padding:6px 0;border-bottom:1px solid rgba(255,255,255,.05);}
 .sell-total-row.big{font-family:'Orbitron',monospace;color:var(--text);font-size:16px;border-bottom:0;padding-top:12px;}
 .sell-total-row.big span:last-child{font-size:34px;color:var(--g);font-weight:900;}
 .sell-payment-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-top:14px;}
-.sell-pay-btn{min-height:52px;border-radius:8px;border:1px solid var(--border);background:var(--surf2);color:var(--text);font-family:'Orbitron',monospace;font-size:10px;letter-spacing:1px;cursor:pointer;text-decoration:none;display:flex;align-items:center;justify-content:center;text-align:center;padding:8px;}
+.sell-pay-btn{min-height:var(--btn-height-lg);border-radius:8px;border:1px solid var(--border);background:var(--surf2);color:var(--text);font-family:'Orbitron',monospace;font-size:10px;letter-spacing:1px;cursor:pointer;text-decoration:none;display:flex;align-items:center;justify-content:center;text-align:center;padding:8px;}
 .sell-pay-btn.good{border-color:rgba(0,255,179,.3);color:var(--g);background:rgba(0,255,179,.07);}
 .sell-pay-btn.warn{border-color:rgba(255,209,102,.3);color:var(--gold);background:rgba(255,209,102,.07);}
 .sell-pay-btn.danger{border-color:rgba(255,77,109,.25);color:var(--red);background:rgba(255,77,109,.06);}
-.sell-payment-note{font-family:monospace,monospace;font-size:9px;color:var(--dim);line-height:1.55;text-align:center;margin-top:10px;}
+.sell-payment-note{font-family:var(--font-mono);font-size:9px;color:var(--dim);line-height:1.55;text-align:center;margin-top:10px;}
 .checkout-stage{display:grid;gap:14px;}
 .dealer-checkout-panel{background:var(--surf);border:1px solid var(--border);border-radius:10px;padding:16px;}
-.checkout-state-strip{display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap;border:1px solid var(--border);border-radius:8px;background:var(--surf2);padding:9px 10px;margin-bottom:12px;font-family:monospace,monospace;font-size:10px;color:var(--dim);}
+.checkout-state-strip{display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap;border:1px solid var(--border);border-radius:8px;background:var(--surf2);padding:9px 10px;margin-bottom:12px;font-family:var(--font-mono);font-size:10px;color:var(--dim);}
 .checkout-state-pill{border:1px solid rgba(0,255,179,.24);background:rgba(0,255,179,.07);color:var(--g);border-radius:999px;padding:5px 9px;font-family:'Orbitron',monospace;font-size:9px;}
 .checkout-state-pill.warn{border-color:rgba(255,209,102,.28);background:rgba(255,209,102,.08);color:var(--gold);}
 .checkout-state-pill.bad{border-color:rgba(255,77,109,.28);background:rgba(255,77,109,.08);color:var(--red);}
 .dealer-line{display:grid;grid-template-columns:minmax(0,1fr) 92px 78px 44px 44px;gap:8px;align-items:center;background:var(--surf2);border:1px solid var(--border);border-radius:8px;padding:10px;}
 .dealer-line.locked{grid-template-columns:minmax(0,1fr) 92px 78px;}
 .dealer-line-name{font-weight:700;color:var(--text);line-height:1.25;overflow:hidden;text-overflow:ellipsis;}
-.dealer-line-sub{font-family:monospace,monospace;font-size:9px;color:var(--dim);margin-top:3px;}
-.dealer-profit{font-family:monospace,monospace;font-size:9px;color:var(--dim);text-align:right;}
+.dealer-line-sub{font-family:var(--font-mono);font-size:9px;color:var(--dim);margin-top:3px;}
+.dealer-profit{font-family:var(--font-mono);font-size:9px;color:var(--dim);text-align:right;}
 .dealer-total{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:12px;padding-top:12px;border-top:1px solid var(--border);}
 .dealer-total b{font-family:'Orbitron',monospace;font-size:34px;color:var(--g);}
 .checkout-action-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;}
@@ -140,14 +140,14 @@ header{position:sticky;top:0;z-index:100;background:rgba(7,8,10,.96);backdrop-fi
 .customer-pay-brand{text-align:center;}
 .customer-pay-brand img{display:none;width:110px;max-height:82px;object-fit:contain;margin:0 auto 10px;}
 .customer-pay-store{font-family:'Orbitron',monospace;font-size:28px;font-weight:900;letter-spacing:2px;color:#0b0d12;}
-.customer-pay-safe{font-family:monospace,monospace;font-size:11px;color:#657080;margin-top:5px;}
+.customer-pay-safe{font-family:var(--font-mono);font-size:11px;color:#657080;margin-top:5px;}
 .customer-pay-lines{display:grid;gap:10px;align-content:start;max-width:860px;width:100%;margin:0 auto;}
 .customer-pay-line{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:18px;align-items:center;border-bottom:1px solid #dce1e8;padding:12px 0;}
 .customer-pay-name{font-size:20px;font-weight:800;color:#101319;line-height:1.25;}
-.customer-pay-sub{font-family:monospace,monospace;font-size:11px;color:#657080;margin-top:4px;}
+.customer-pay-sub{font-family:var(--font-mono);font-size:11px;color:#657080;margin-top:4px;}
 .customer-pay-price{font-family:'Orbitron',monospace;font-size:23px;font-weight:900;color:#111827;}
 .customer-pay-total{text-align:center;}
-.customer-pay-total span{display:block;font-family:monospace,monospace;font-size:12px;color:#657080;letter-spacing:2px;}
+.customer-pay-total span{display:block;font-family:var(--font-mono);font-size:12px;color:#657080;letter-spacing:2px;}
 .customer-pay-total b{display:block;font-family:'Orbitron',monospace;font-size:68px;color:#05835f;line-height:1;}
 .customer-method-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;max-width:860px;width:100%;margin:16px auto 0;}
 .customer-method-btn{min-height:74px;border-radius:8px;border:2px solid #cfd7e3;background:#fff;color:#101319;font-family:'Orbitron',monospace;font-size:13px;font-weight:900;letter-spacing:1px;cursor:pointer;}
@@ -155,18 +155,18 @@ header{position:sticky;top:0;z-index:100;background:rgba(7,8,10,.96);backdrop-fi
 .payment-workbench{display:none;max-width:860px;width:100%;margin:12px auto 0;border:1px solid #cfd7e3;background:#fff;border-radius:8px;padding:14px;color:#101319;}
 .payment-workbench.on{display:block;}
 .payment-qr{width:220px;height:220px;border:1px solid #cfd7e3;border-radius:8px;background:#fff;object-fit:contain;margin:10px auto;display:block;}
-.payment-qr-fallback{width:220px;height:220px;border:1px dashed #9aa5b1;border-radius:8px;margin:10px auto;display:flex;align-items:center;justify-content:center;text-align:center;padding:12px;font-family:monospace,monospace;font-size:12px;color:#475569;word-break:break-word;}
+.payment-qr-fallback{width:220px;height:220px;border:1px dashed #9aa5b1;border-radius:8px;margin:10px auto;display:flex;align-items:center;justify-content:center;text-align:center;padding:12px;font-family:var(--font-mono);font-size:12px;color:#475569;word-break:break-word;}
 .payment-confirm-row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:12px;}
 .payment-confirm-row .hbtn{min-height:50px;}
 .receipt-capture-screen,.wants-capture-screen{display:none;max-width:620px;margin:20px auto;background:#fff;color:#101319;border-radius:8px;padding:22px;border:1px solid #cfd7e3;}
 .receipt-capture-screen.on,.wants-capture-screen.on{display:block;}
 .receipt-capture-screen h2,.wants-capture-screen h2{font-family:'Orbitron',monospace;font-size:22px;margin-bottom:12px;color:#101319;}
 .receipt-capture-screen input,.wants-capture-screen input,.wants-capture-screen textarea{width:100%;min-height:48px;border:1px solid #cfd7e3;border-radius:7px;padding:10px 12px;font-size:16px;margin-bottom:10px;}
-.offline-queued-banner{display:none;border:1px solid rgba(255,209,102,.35);background:rgba(255,209,102,.09);color:var(--gold);border-radius:8px;padding:10px;margin-bottom:12px;font-family:monospace,monospace;font-size:10px;}
+.offline-queued-banner{display:none;border:1px solid rgba(255,209,102,.35);background:rgba(255,209,102,.09);color:var(--gold);border-radius:8px;padding:10px;margin-bottom:12px;font-family:var(--font-mono);font-size:10px;}
 .offline-queued-banner.on{display:block;}
 .drawer-ledger-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-bottom:10px;}
 .drawer-ledger-metric{background:var(--surf2);border:1px solid var(--border);border-radius:8px;padding:10px;}
-.drawer-ledger-metric span{display:block;font-family:monospace,monospace;font-size:8px;letter-spacing:1px;color:var(--dim);text-transform:uppercase;}
+.drawer-ledger-metric span{display:block;font-family:var(--font-mono);font-size:8px;letter-spacing:1px;color:var(--dim);text-transform:uppercase;}
 .drawer-ledger-metric b{display:block;font-family:'Orbitron',monospace;font-size:16px;color:var(--text);margin-top:4px;}
 .drawer-money-hidden{filter:blur(7px);user-select:none;}
 /* ── Demo mode banner ── */
@@ -178,11 +178,11 @@ header{position:sticky;top:0;z-index:100;background:rgba(7,8,10,.96);backdrop-fi
 .auth-screen.on{display:flex;}
 .auth-card{width:min(460px,100%);background:var(--surf);border:1px solid var(--border);border-radius:14px;padding:22px;box-shadow:0 24px 80px rgba(0,0,0,.5);}
 .auth-title{font-family:'Orbitron',monospace;font-size:18px;font-weight:900;color:var(--g);letter-spacing:2px;margin-bottom:6px;}
-.auth-sub{font-family:monospace,monospace;font-size:10px;color:var(--dim);line-height:1.7;margin-bottom:14px;}
+.auth-sub{font-family:var(--font-mono);font-size:10px;color:var(--dim);line-height:1.7;margin-bottom:14px;}
 .auth-row{display:grid;gap:8px;margin-bottom:10px;}
-.auth-meta{font-family:monospace,monospace;font-size:9px;color:var(--dim);line-height:1.6;margin-top:10px;}
-.store-chip{border:1px solid var(--border);background:var(--surf2);color:var(--text);border-radius:8px;padding:7px 10px;font-family:monospace,monospace;font-size:10px;min-height:34px;}
-.top-state-chip{border:1px solid var(--border);background:rgba(255,255,255,.035);color:var(--dim);border-radius:8px;padding:7px 10px;font-family:monospace,monospace;font-size:9px;min-height:34px;display:flex;align-items:center;white-space:nowrap;}
+.auth-meta{font-family:var(--font-mono);font-size:9px;color:var(--dim);line-height:1.6;margin-top:10px;}
+.store-chip{border:1px solid var(--border);background:var(--surf2);color:var(--text);border-radius:8px;padding:7px 10px;font-family:var(--font-mono);font-size:10px;min-height:34px;}
+.top-state-chip{border:1px solid var(--border);background:rgba(255,255,255,.035);color:var(--dim);border-radius:8px;padding:7px 10px;font-family:var(--font-mono);font-size:9px;min-height:34px;display:flex;align-items:center;white-space:nowrap;}
 .top-state-chip.on{color:var(--g);border-color:rgba(0,255,179,.24);background:rgba(0,255,179,.06);}
 .top-state-chip.warn{color:var(--gold);border-color:rgba(255,209,102,.24);background:rgba(255,209,102,.06);}
 body.show-active .panel{border-color:rgba(255,209,102,.09);}
@@ -196,18 +196,18 @@ body.show-active .tab{min-height:44px;}
 .cg{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
 .cp{background:var(--surf2);border:1px solid var(--border);border-radius:8px;padding:12px;cursor:pointer;transition:.15s;}
 .cp:hover{border-color:rgba(0,255,179,.2);}
-.cp-n{font-family:monospace,monospace;font-size:8px;letter-spacing:2px;color:var(--dim);margin-bottom:4px;}
+.cp-n{font-family:var(--font-mono);font-size:8px;letter-spacing:2px;color:var(--dim);margin-bottom:4px;}
 .cp-v{font-family:'Orbitron',monospace;font-size:18px;font-weight:900;color:var(--g);margin-bottom:2px;}
-.cp-s{font-family:monospace,monospace;font-size:9px;color:var(--dim);}
+.cp-s{font-family:var(--font-mono);font-size:9px;color:var(--dim);}
 .cp-bar{height:3px;background:rgba(0,255,179,.15);border-radius:2px;margin-top:8px;}
 .cp-bar-fill{height:3px;background:var(--g);border-radius:2px;transition:width .4s;}
 
 /* BAR CHARTS */
 .br{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
-.br-l{font-family:monospace,monospace;font-size:10px;color:var(--text);width:120px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.br-l{font-family:var(--font-mono);font-size:10px;color:var(--text);width:120px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .br-t{flex:1;background:rgba(255,255,255,.04);border-radius:3px;height:6px;}
 .br-f{height:6px;border-radius:3px;transition:width .4s;}
-.br-v{font-family:monospace,monospace;font-size:10px;color:var(--gold);width:60px;text-align:right;flex-shrink:0;}
+.br-v{font-family:var(--font-mono);font-size:10px;color:var(--gold);width:60px;text-align:right;flex-shrink:0;}
 
 /* ACTIVITY FEED */
 .fi{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);}
@@ -217,7 +217,7 @@ body.show-active .tab{min-height:44px;}
 .fi-i.sale{background:rgba(255,209,102,.1);color:var(--gold);}
 .fi-b{flex:1;min-width:0;}
 .fi-n{font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.fi-m{font-family:monospace,monospace;font-size:9px;color:var(--dim);margin-top:1px;}
+.fi-m{font-family:var(--font-mono);font-size:9px;color:var(--dim);margin-top:1px;}
 .fi-a{font-family:'Orbitron',monospace;font-size:11px;font-weight:700;flex-shrink:0;}
 .fi-a.pos{color:var(--g);}
 .fi-a.cost{color:var(--gold);}
@@ -230,26 +230,26 @@ body.show-active .tab{min-height:44px;}
 .attn-dot.sold{background:var(--red);}
 .attn-dot.high{background:var(--g);}
 .attn-name{flex:1;font-size:11px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.attn-val{font-family:monospace,monospace;font-size:10px;color:var(--dim);}
-.attn-act{font-family:monospace,monospace;font-size:9px;color:var(--gold);cursor:pointer;flex-shrink:0;}
+.attn-val{font-family:var(--font-mono);font-size:10px;color:var(--dim);}
+.attn-act{font-family:var(--font-mono);font-size:9px;color:var(--gold);cursor:pointer;flex-shrink:0;}
 
 /* PROFIT METER */
 .profit-meter{display:flex;flex-direction:column;gap:8px;}
 .pm-row{display:flex;align-items:center;gap:8px;}
-.pm-label{font-family:monospace,monospace;font-size:9px;color:var(--dim);width:70px;flex-shrink:0;}
+.pm-label{font-family:var(--font-mono);font-size:9px;color:var(--dim);width:70px;flex-shrink:0;}
 .pm-bar{flex:1;background:rgba(255,255,255,.04);border-radius:3px;height:8px;}
 .pm-fill{height:8px;border-radius:3px;}
-.pm-val{font-family:monospace,monospace;font-size:10px;width:50px;text-align:right;flex-shrink:0;}
+.pm-val{font-family:var(--font-mono);font-size:10px;width:50px;text-align:right;flex-shrink:0;}
 
 /* TABLE */
 .tc{padding:0 20px;max-width:1400px;margin:0 auto 10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
-.tsi{background:var(--surf);border:1px solid var(--border);color:var(--text);padding:10px 12px;min-height:42px;font-family:monospace,monospace;font-size:12px;outline:none;border-radius:7px;width:200px;}
+.tsi{background:var(--surf);border:1px solid var(--border);color:var(--text);padding:10px 12px;min-height:42px;font-family:var(--font-mono);font-size:12px;outline:none;border-radius:7px;width:200px;}
 .tsi:focus{border-color:rgba(0,255,179,.3);}
-.fb{background:transparent;border:1px solid var(--border);color:var(--dim);padding:8px 12px;min-height:38px;font-family:monospace,monospace;font-size:9px;letter-spacing:1px;cursor:pointer;border-radius:6px;transition:.15s;touch-action:manipulation;}
+.fb{background:transparent;border:1px solid var(--border);color:var(--dim);padding:8px 12px;min-height:38px;font-family:var(--font-mono);font-size:9px;letter-spacing:1px;cursor:pointer;border-radius:6px;transition:.15s;touch-action:manipulation;}
 .fb.on,.fb:hover{border-color:rgba(0,255,179,.4);color:var(--g);}
 .tbl-wrap{max-width:1400px;margin:0 auto;padding:0 20px;overflow-x:auto;}
 table{width:100%;border-collapse:collapse;font-size:12px;}
-th{font-family:monospace,monospace;font-size:9px;letter-spacing:2px;color:var(--dim);padding:8px 10px;text-align:left;border-bottom:1px solid var(--border);cursor:pointer;user-select:none;white-space:nowrap;}
+th{font-family:var(--font-mono);font-size:9px;letter-spacing:2px;color:var(--dim);padding:8px 10px;text-align:left;border-bottom:1px solid var(--border);cursor:pointer;user-select:none;white-space:nowrap;}
 th:hover{color:var(--text);}
 th.asc::after{content:' ↑';}
 th.desc::after{content:' ↓';}
@@ -261,20 +261,20 @@ tr.sold:hover td{opacity:.7;}
 .dot.in_stock{background:var(--g);}
 .dot.sold{background:var(--red);}
 .nc{font-weight:600;}
-.sc2{font-family:monospace,monospace;font-size:9px;color:var(--dim);}
-.ct{font-family:monospace,monospace;font-size:8px;letter-spacing:1px;padding:2px 6px;border-radius:3px;}
+.sc2{font-family:var(--font-mono);font-size:9px;color:var(--dim);}
+.ct{font-family:var(--font-mono);font-size:8px;letter-spacing:1px;padding:2px 6px;border-radius:3px;}
 .ct.Sports{background:rgba(255,209,102,.1);color:var(--gold);}
 .ct.TCG{background:rgba(0,255,179,.1);color:var(--g);}
 .ct.Comic{background:rgba(199,125,255,.1);color:var(--purple);}
 .ct.Graded{background:rgba(72,202,228,.1);color:var(--blue);}
 .ct.Supplies{background:rgba(255,255,255,.06);color:var(--dim);}
 .ct.Collectibles{background:rgba(255,149,0,.1);color:#ff9500;}
-.pp{font-family:monospace,monospace;font-size:11px;text-align:right;}
+.pp{font-family:var(--font-mono);font-size:11px;text-align:right;}
 .pm{color:var(--gold);}
 .pd{color:var(--blue);}
 .pp.pos{color:var(--g);}
 .pp.neg{color:var(--red);}
-.src-badge{display:inline-block;margin-top:3px;font-family:monospace,monospace;font-size:7px;letter-spacing:.8px;text-transform:uppercase;padding:2px 5px;border-radius:3px;border:1px solid rgba(255,255,255,.1);color:var(--dim);background:rgba(255,255,255,.03);white-space:nowrap;}
+.src-badge{display:inline-block;margin-top:3px;font-family:var(--font-mono);font-size:7px;letter-spacing:.8px;text-transform:uppercase;padding:2px 5px;border-radius:3px;border:1px solid rgba(255,255,255,.1);color:var(--dim);background:rgba(255,255,255,.03);white-space:nowrap;}
 .src-badge.tcg{border-color:rgba(0,255,179,.22);color:var(--g);background:rgba(0,255,179,.06);}
 .src-badge.pokemon{border-color:rgba(72,202,228,.22);color:var(--blue);background:rgba(72,202,228,.06);}
 .src-badge.ebay{border-color:rgba(255,209,102,.25);color:var(--gold);background:rgba(255,209,102,.06);}
@@ -290,39 +290,27 @@ tr.sold:hover td{opacity:.7;}
 .research-context-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;padding-top:12px;border-top:1px solid var(--border);}
 .research-context-actions .hbtn{min-height:52px;flex:1 1 150px;}
 .research-secondary-actions{margin-top:10px;border:1px solid var(--border);border-radius:8px;background:var(--surf2);overflow:hidden;}
-.research-secondary-actions summary{cursor:pointer;list-style:none;padding:10px 12px;font-family:monospace,monospace;font-size:10px;color:var(--dim);}
+.research-secondary-actions summary{cursor:pointer;list-style:none;padding:10px 12px;font-family:var(--font-mono);font-size:10px;color:var(--dim);}
 .research-secondary-actions summary::-webkit-details-marker{display:none;}
 .research-secondary-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;padding:0 10px 10px;}
 .research-queue-item{display:grid;grid-template-columns:54px 1fr;gap:10px;align-items:start;background:var(--surf2);border:1px solid var(--border);border-radius:8px;padding:8px;}
 .research-queue-img{width:54px;height:64px;border-radius:6px;border:1px solid var(--border);object-fit:cover;background:#050507;}
 .research-queue-actions{grid-column:1 / -1;display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:4px;}
 .research-queue-actions .ra{min-height:34px;}
-.auth-grid{max-width:1540px;margin:0 auto;padding:0 20px;display:grid;grid-template-columns:minmax(260px,.9fr) minmax(0,2.2fr) minmax(270px,.95fr);gap:14px;align-items:start;}
-.auth-panel-sticky{position:sticky;top:112px;}
-.auth-risk{border-radius:12px;border:1px solid var(--border);padding:14px;background:var(--surf2);}
-.auth-risk.low{border-color:rgba(0,255,179,.32);background:rgba(0,255,179,.06);}
-.auth-risk.medium{border-color:rgba(255,209,102,.35);background:rgba(255,209,102,.07);}
-.auth-risk.high{border-color:rgba(255,77,109,.38);background:rgba(255,77,109,.08);}
-.auth-risk.manual{border-color:rgba(72,202,228,.35);background:rgba(72,202,228,.07);}
-.auth-check-row{display:flex;justify-content:space-between;gap:8px;align-items:center;border:1px solid var(--border);background:var(--surf2);border-radius:8px;padding:8px;margin-bottom:7px;}
-.auth-compare{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
-.auth-compare-pane{min-height:280px;border:1px solid var(--border);border-radius:12px;background:#050507;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative;}
-.auth-compare-pane img{max-width:100%;max-height:340px;object-fit:contain;}
-.auth-source-label{position:absolute;left:8px;bottom:8px;font-family:monospace,monospace;font-size:9px;color:var(--dim);background:rgba(0,0,0,.58);border:1px solid rgba(255,255,255,.12);border-radius:999px;padding:5px 8px;}
 .qpl-img-shell{min-height:180px;background:#050507;border:1px solid rgba(255,255,255,.12);border-radius:12px;display:flex;align-items:center;justify-content:center;overflow:visible;cursor:zoom-in;position:relative;}
 .qpl-img-shell img{width:100%;height:auto;max-height:400px;object-fit:contain;display:block;border-radius:10px;}
-.qpl-img-shell::after{content:'TAP TO ZOOM';position:absolute;left:10px;bottom:10px;font-family:monospace,monospace;font-size:9px;letter-spacing:1px;color:rgba(255,255,255,.55);background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.12);border-radius:999px;padding:5px 8px;}
-.qpl-no-img{font-family:monospace,monospace;font-size:12px;color:var(--dim);letter-spacing:2px;}
+.qpl-img-shell::after{content:'TAP TO ZOOM';position:absolute;left:10px;bottom:10px;font-family:var(--font-mono);font-size:9px;letter-spacing:1px;color:rgba(255,255,255,.55);background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.12);border-radius:999px;padding:5px 8px;}
+.qpl-no-img{font-family:var(--font-mono);font-size:12px;color:var(--dim);letter-spacing:2px;}
 .qpl-title{font-size:clamp(22px,2.1vw,30px);line-height:1.12;font-weight:900;color:var(--text);margin-bottom:10px;}
 .qpl-meta{font-size:clamp(14px,1.4vw,17px);line-height:1.45;color:rgba(228,228,232,.74);margin-bottom:12px;}
 .qpl-badges{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 14px;}
-.qpl-badge{font-family:monospace,monospace;font-size:11px;letter-spacing:1px;border:1px solid var(--border);border-radius:999px;padding:6px 9px;background:rgba(255,255,255,.04);color:var(--dim);}
+.qpl-badge{font-family:var(--font-mono);font-size:11px;letter-spacing:1px;border:1px solid var(--border);border-radius:999px;padding:6px 9px;background:rgba(255,255,255,.04);color:var(--dim);}
 .qpl-badge.good{color:var(--g);border-color:rgba(0,255,179,.35);background:rgba(0,255,179,.08);}
 .qpl-badge.warn{color:var(--gold);border-color:rgba(255,209,102,.35);background:rgba(255,209,102,.08);}
 .qpl-badge.bad{color:var(--red);border-color:rgba(255,77,109,.32);background:rgba(255,77,109,.07);}
-.pokemon-offline-banner{display:none;border:1px solid rgba(255,209,102,.35);background:rgba(255,209,102,.08);color:var(--gold);border-radius:8px;padding:9px 10px;margin:10px 0;font-family:monospace,monospace;font-size:10px;line-height:1.45;}
+.pokemon-offline-banner{display:none;border:1px solid rgba(255,209,102,.35);background:rgba(255,209,102,.08);color:var(--gold);border-radius:8px;padding:9px 10px;margin:10px 0;font-family:var(--font-mono);font-size:10px;line-height:1.45;}
 .pokemon-offline-banner.on{display:block;}
-.pokemon-cache-meta{font-family:monospace,monospace;font-size:10px;color:var(--dim);line-height:1.45;margin-top:6px;}
+.pokemon-cache-meta{font-family:var(--font-mono);font-size:10px;color:var(--dim);line-height:1.45;margin-top:6px;}
 .pokemon-comps-panel{margin-top:12px;border:1px solid var(--border);border-radius:10px;padding:12px;background:rgba(255,255,255,.035);}
 .pokemon-comp-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;margin-top:8px;}
 /* Pokemon Set Sync tiles */
@@ -335,14 +323,14 @@ tr.sold:hover td{opacity:.7;}
 .pst-tile-name{font-size:11px;font-weight:700;color:var(--text);line-height:1.3;}
 .pst-tile-meta{font-family:monospace;font-size:9px;color:var(--dim);line-height:1.4;}
 .pst-tile .qpl-badge{font-size:9px;padding:3px 7px;align-self:flex-start;margin-top:auto;}
-.pokemon-comp-card{border:1px solid var(--border);background:var(--surf2);border-radius:8px;padding:9px;font-family:monospace,monospace;font-size:10px;color:var(--dim);line-height:1.45;}
+.pokemon-comp-card{border:1px solid var(--border);background:var(--surf2);border-radius:8px;padding:9px;font-family:var(--font-mono);font-size:10px;color:var(--dim);line-height:1.45;}
 .pokemon-comp-card b{display:block;color:var(--text);font-family:'Orbitron',monospace;font-size:14px;margin-bottom:3px;}
 .pokemon-comp-card.guide b{color:var(--gold);}
 .pokemon-comp-card.sold b{color:var(--g);}
 .pokemon-comp-card.manual b{color:var(--blue);}
 .pokemon-comp-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;}
 .qpl-price{font-family:'Orbitron',monospace;font-size:clamp(30px,3vw,42px);font-weight:900;color:var(--gold);line-height:1;margin-bottom:6px;}
-.qpl-price-sub{font-family:monospace,monospace;font-size:13px;color:var(--dim);line-height:1.45;}
+.qpl-price-sub{font-family:var(--font-mono);font-size:13px;color:var(--dim);line-height:1.45;}
 .qpl-signal{font-size:13px;line-height:1.45;margin-top:14px;color:var(--gold);font-weight:700;}
 .qpl-actions{display:grid;gap:10px;align-content:start;}
 .qpl-actions .hbtn{width:100%;min-height:56px;font-size:11px;padding:12px 10px;}
@@ -374,7 +362,7 @@ tr.sold:hover td{opacity:.7;}
 /* ─── BUY FLOW UX ─── */
 .buy-offer-panel{display:grid;grid-template-columns:1fr 1fr 1.5fr 1fr;gap:1px;background:var(--border);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:14px;}
 .buy-offer-stat{background:var(--surf2);padding:14px 16px;display:flex;flex-direction:column;gap:4px;}
-.buy-offer-stat-label{font-family:monospace,monospace;font-size:8px;color:var(--dim);letter-spacing:1px;text-transform:uppercase;}
+.buy-offer-stat-label{font-family:var(--font-mono);font-size:8px;color:var(--dim);letter-spacing:1px;text-transform:uppercase;}
 .buy-offer-stat-value{font-family:'Orbitron',monospace;font-size:18px;font-weight:700;color:var(--text);}
 .buy-offer-amount{color:var(--gold)!important;font-size:28px!important;font-weight:900!important;}
 .buy-offer-spread{color:var(--g)!important;font-size:18px!important;}
@@ -388,18 +376,18 @@ tr.sold:hover td{opacity:.7;}
 .buy-pct-input::-webkit-inner-spin-button,.buy-pct-input::-webkit-outer-spin-button{-webkit-appearance:none;}
 .buy-pct-slider{width:100%;margin-bottom:10px;accent-color:var(--gold);}
 .buy-preset-chips{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;}
-.buy-preset{padding:9px 16px;font-size:11px;font-family:monospace,monospace;font-weight:700;background:var(--surf2);border:1px solid var(--border);color:var(--dim);border-radius:20px;cursor:pointer;min-height:38px;transition:all .14s;}
+.buy-preset{padding:9px 16px;font-size:11px;font-family:var(--font-mono);font-weight:700;background:var(--surf2);border:1px solid var(--border);color:var(--dim);border-radius:20px;cursor:pointer;min-height:38px;transition:all .14s;}
 .buy-preset:hover{border-color:rgba(255,209,102,.4);color:var(--gold);}
 .buy-preset.active{background:rgba(255,209,102,.15);border-color:rgba(255,209,102,.6);color:var(--gold);}
 .buy-add-row{display:flex;gap:6px;margin-bottom:12px;align-items:center;}
 .buy-price-input{width:90px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:7px 10px;border-radius:6px;font-size:12px;font-family:monospace;flex-shrink:0;}
 .buy-tray{min-height:60px;margin-bottom:12px;}
-.buy-tray-empty{font-family:monospace,monospace;font-size:10px;color:var(--dim);text-align:center;padding:20px;border:1px dashed var(--border);border-radius:8px;}
+.buy-tray-empty{font-family:var(--font-mono);font-size:10px;color:var(--dim);text-align:center;padding:20px;border:1px dashed var(--border);border-radius:8px;}
 .buy-tray-item{display:grid;grid-template-columns:48px 1fr 70px 80px 62px 30px;align-items:center;gap:7px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;background:var(--surf2);}
 .buy-tray-thumb{width:44px;height:44px;object-fit:cover;border-radius:5px;border:1px solid var(--border);}
 .buy-tray-thumb-ph{width:44px;height:44px;border-radius:5px;border:1px solid var(--border);background:var(--surf);display:flex;align-items:center;justify-content:center;font-family:monospace;font-size:7px;color:var(--dim);}
-.buy-tray-name{font-family:monospace,monospace;font-size:11px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.buy-tray-sub{font-family:monospace,monospace;font-size:8px;color:var(--dim);margin-top:2px;}
+.buy-tray-name{font-family:var(--font-mono);font-size:11px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.buy-tray-sub{font-family:var(--font-mono);font-size:8px;color:var(--dim);margin-top:2px;}
 .buy-tray-cond{width:70px;background:var(--surf);border:1px solid var(--border);color:var(--text);padding:5px 4px;border-radius:5px;font-size:10px;font-family:monospace;}
 .buy-tray-mkt{width:80px;background:var(--surf);border:1px solid var(--border);color:var(--text);padding:5px;border-radius:5px;font-size:10px;font-family:monospace;}
 .buy-tray-offer-val{font-family:'Orbitron',monospace;font-size:12px;font-weight:700;color:var(--gold);text-align:right;white-space:nowrap;}
@@ -414,7 +402,7 @@ tr.sold:hover td{opacity:.7;}
 .buy-action-pay.enabled{opacity:1;pointer-events:auto;}
 .buy-action-pay.enabled:hover{background:rgba(0,160,255,.2);}
 .buy-advanced{border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-top:4px;}
-.buy-advanced>summary{padding:10px 14px;font-family:monospace,monospace;font-size:10px;color:var(--dim);cursor:pointer;background:var(--surf2);user-select:none;list-style:none;}
+.buy-advanced>summary{padding:10px 14px;font-family:var(--font-mono);font-size:10px;color:var(--dim);cursor:pointer;background:var(--surf2);user-select:none;list-style:none;}
 .buy-advanced>summary::-webkit-details-marker{display:none;}
 .buy-advanced>summary:hover{color:var(--text);}
 .buy-advanced-content{padding:12px;display:flex;flex-direction:column;gap:8px;}
@@ -495,7 +483,7 @@ body.show-mode .show-mode-toggle { border-color:rgba(0,255,179,.4); color:var(--
 /* 7. Button hierarchy in QPL */
 .qpl-actions-primary { display:grid; gap:8px; margin-bottom:8px; }
 .qpl-actions-primary .hbtn { min-height:52px; font-size:12px; font-weight:700; }
-.qpl-actions-secondary { display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-bottom:6px; }
+.qpl-actions-secondary { display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; margin-bottom:6px; }
 .qpl-actions-secondary .hbtn { min-height:40px; font-size:10px; }
 .qpl-actions-tertiary details summary { font-family:monospace; font-size:9px; color:var(--dim); cursor:pointer; padding:6px 0; list-style:none; }
 .qpl-actions-tertiary details summary::-webkit-details-marker { display:none; }
@@ -599,7 +587,7 @@ body.show-mode .show-mode-toggle { border-color:rgba(0,255,179,.4); color:var(--
 /* ══ END DEALER UI v1 ═══════════════════════════════════════════════════════ */
 
 /* ── Live Price Refresh ─────────────────────────────────────────────────── */
-.ppt-refresh-btn{font-family:monospace,monospace;font-size:10px;font-weight:700;letter-spacing:.04em;cursor:pointer;border-radius:8px;padding:5px 10px;min-height:32px;white-space:nowrap;transition:all .15s;border:1px solid rgba(0,160,255,.35);background:rgba(0,160,255,.08);color:var(--blue);}
+.ppt-refresh-btn{font-family:var(--font-mono);font-size:10px;font-weight:700;letter-spacing:.04em;cursor:pointer;border-radius:8px;padding:5px 10px;min-height:32px;white-space:nowrap;transition:all .15s;border:1px solid rgba(0,160,255,.35);background:rgba(0,160,255,.08);color:var(--blue);}
 .ppt-refresh-btn:hover:not(:disabled){background:rgba(0,160,255,.18);border-color:rgba(0,160,255,.6);}
 .ppt-refresh-btn:disabled{opacity:.5;cursor:not-allowed;}
 .ppt-refresh-btn.loading{border-color:rgba(255,209,102,.45);background:rgba(255,209,102,.08);color:var(--gold);animation:refresh-pulse .8s ease-in-out infinite;}
@@ -625,10 +613,10 @@ body.show-mode .show-mode-toggle { border-color:rgba(0,255,179,.4); color:var(--
 .qpl-selected-top img{width:100%;height:100%;max-height:420px;object-fit:contain;background:#050507;border:1px solid var(--border);border-radius:12px;cursor:zoom-in;display:block;}
 /* Quick-stats bar on selected card */
 .qpl-card-stats{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 10px;}
-.qpl-stat-pill{font-family:monospace,monospace;font-size:10px;padding:4px 10px;border-radius:999px;border:1px solid var(--border);background:var(--surf2);color:var(--dim);white-space:nowrap;}
+.qpl-stat-pill{font-family:var(--font-mono);font-size:10px;padding:4px 10px;border-radius:999px;border:1px solid var(--border);background:var(--surf2);color:var(--dim);white-space:nowrap;}
 .qpl-stat-pill b{color:var(--text);}
 /* Pop count panel */
-.pop-panel{background:var(--surf2);border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin:8px 0;font-family:monospace,monospace;font-size:11px;}
+.pop-panel{background:var(--surf2);border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin:8px 0;font-family:var(--font-mono);font-size:11px;}
 .pop-panel-title{color:var(--blue);font-size:9px;letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px;}
 .pop-row{display:flex;gap:8px;flex-wrap:wrap;}
 .pop-chip{text-align:center;background:var(--surf);border:1px solid var(--border);border-radius:8px;padding:6px 10px;min-width:52px;}
@@ -640,40 +628,40 @@ body.show-mode .show-mode-toggle { border-color:rgba(0,255,179,.4); color:var(--
 .qpl-chart-modal.on{display:flex;}
 .qpl-chart-card{width:min(980px,96vw);max-height:92vh;overflow:auto;background:var(--surf);border:1px solid var(--border);border-radius:14px;padding:18px;box-shadow:0 24px 80px rgba(0,0,0,.58);}
 .qpl-chart-bars{display:flex;align-items:flex-end;gap:5px;height:260px;padding:12px;background:#050507;border:1px solid var(--border);border-radius:12px;overflow:hidden;}
-.qpl-price-table{width:100%;border-collapse:collapse;margin-top:10px;font-family:monospace,monospace;font-size:10px;color:var(--dim);}
+.qpl-price-table{width:100%;border-collapse:collapse;margin-top:10px;font-family:var(--font-mono);font-size:10px;color:var(--dim);}
 .qpl-price-table th,.qpl-price-table td{border-bottom:1px solid rgba(255,255,255,.08);padding:7px;text-align:left;}
 .qpl-price-table tr.on td{color:var(--g);background:rgba(0,255,179,.045);}
 .src-badge.slab{border-color:rgba(230,57,70,.26);color:#ff6b75;background:rgba(230,57,70,.06);}
 .row-act{display:flex;gap:4px;}
-.ra{font-family:monospace,monospace;font-size:8px;padding:3px 7px;border-radius:3px;cursor:pointer;border:1px solid;transition:.15s;white-space:nowrap;}
+.ra{font-family:var(--font-mono);font-size:8px;padding:3px 7px;border-radius:3px;cursor:pointer;border:1px solid;transition:.15s;white-space:nowrap;}
 .ra-sell{background:rgba(255,77,109,.08);border-color:rgba(255,77,109,.2);color:var(--red);}
 .ra-sell:hover{background:rgba(255,77,109,.15);}
 .ra-ebay{background:rgba(255,209,102,.06);border-color:rgba(255,209,102,.15);color:var(--gold);}
 .ra-ebay:hover{background:rgba(255,209,102,.12);}
 .pager{text-align:center;padding:16px;display:flex;gap:6px;justify-content:center;flex-wrap:wrap;max-width:1400px;margin:0 auto;}
-.pg{background:var(--surf);border:1px solid var(--border);color:var(--dim);padding:5px 10px;font-family:monospace,monospace;font-size:10px;cursor:pointer;border-radius:4px;}
+.pg{background:var(--surf);border:1px solid var(--border);color:var(--dim);padding:5px 10px;font-family:var(--font-mono);font-size:10px;cursor:pointer;border-radius:4px;}
 .pg.on{border-color:rgba(0,255,179,.4);color:var(--g);}
 .empty{text-align:center;padding:40px 20px;}
 .empty-t{font-family:'Orbitron',monospace;font-size:11px;letter-spacing:2px;color:var(--dim);margin-bottom:6px;}
-.empty-s{font-family:monospace,monospace;font-size:10px;color:rgba(255,255,255,.15);}
+.empty-s{font-family:var(--font-mono);font-size:10px;color:rgba(255,255,255,.15);}
 
 /* QUICK SELL MODAL */
 .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:500;display:none;align-items:center;justify-content:center;padding:20px;}
 .modal-bg.on{display:flex;}
 .modal{background:var(--surf);border:1px solid var(--border);border-radius:12px;padding:20px;width:100%;max-width:380px;}
 .modal h3{font-family:'Orbitron',monospace;font-size:12px;letter-spacing:2px;color:var(--g);margin-bottom:14px;}
-.modal label{font-family:monospace,monospace;font-size:9px;color:var(--dim);display:block;margin-bottom:4px;margin-top:10px;}
-.modal input,.modal select{width:100%;background:rgba(0,0,0,.4);border:1px solid var(--border);color:var(--text);padding:9px 12px;font-family:monospace,monospace;font-size:12px;outline:none;border-radius:6px;}
+.modal label{font-family:var(--font-mono);font-size:9px;color:var(--dim);display:block;margin-bottom:4px;margin-top:10px;}
+.modal input,.modal select{width:100%;background:rgba(0,0,0,.4);border:1px solid var(--border);color:var(--text);padding:9px 12px;font-family:var(--font-mono);font-size:12px;outline:none;border-radius:6px;}
 .modal input:focus,.modal select:focus{border-color:rgba(0,255,179,.3);}
 .modal-btns{display:flex;gap:8px;margin-top:16px;}
 .modal-btn{flex:1;padding:11px;font-family:'Orbitron',monospace;font-size:10px;font-weight:700;letter-spacing:1px;cursor:pointer;border:none;border-radius:6px;}
 .modal-btn.confirm{background:var(--g);color:#000;}
 .modal-btn.cancel{background:rgba(255,255,255,.06);color:var(--dim);}
-#sell-profit-preview{font-family:monospace,monospace;font-size:10px;margin-top:8px;text-align:center;color:var(--dim);min-height:16px;}
+#sell-profit-preview{font-family:var(--font-mono);font-size:10px;margin-top:8px;text-align:center;color:var(--dim);min-height:16px;}
 
 /* NAV */
 #lba-nav{position:fixed;bottom:0;left:0;right:0;height:calc(56px + env(safe-area-inset-bottom));padding-bottom:env(safe-area-inset-bottom);background:rgba(7,8,10,.96);backdrop-filter:blur(20px);border-top:1px solid var(--border);display:flex;z-index:200;}
-.lba-nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;text-decoration:none;color:var(--dim);font-family:monospace,monospace;font-size:8px;letter-spacing:1px;transition:.15s;}
+.lba-nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;text-decoration:none;color:var(--dim);font-family:var(--font-mono);font-size:8px;letter-spacing:1px;transition:.15s;}
 .lba-nav-btn.active,.lba-nav-btn:hover{color:var(--g);}
 .nav-ico{font-size:16px;}
 
@@ -739,22 +727,19 @@ body.customer-display-mode #customer-display-exit{display:block;}
   .qpl-selected-top{grid-template-columns:minmax(180px,240px) 1fr;}
   .research-grid{grid-template-columns:1fr;max-width:900px;}
   .research-grid #register-quick-panel,.research-grid #research-queue-panel,.research-grid #research-actions-panel{grid-column:1;grid-row:auto;}
-  .auth-grid{grid-template-columns:1fr;max-width:900px;}
-  .auth-panel-sticky{position:static;}
-  .auth-compare{grid-template-columns:1fr;}
   #tab-inventory .tbl-wrap{overflow:visible;}
   #tab-inventory table,#tab-inventory tbody,#tab-inventory tr,#tab-inventory td{display:block;width:100%;}
   #tab-inventory thead{display:none;}
   #tab-inventory tr{background:var(--surf);border:1px solid var(--border);border-radius:10px;margin:0 0 10px;padding:10px;}
   #tab-inventory td{border:0!important;padding:6px 4px!important;text-align:left!important;}
   #tab-inventory td:nth-child(1){font-size:15px;font-weight:700;}
-  #tab-inventory td:nth-child(2)::before{content:'Set / Variant: ';color:var(--dim);font-family:monospace,monospace;font-size:9px;}
-  #tab-inventory td:nth-child(3)::before{content:'Category: ';color:var(--dim);font-family:monospace,monospace;font-size:9px;}
-  #tab-inventory td:nth-child(4)::before{content:'Qty: ';color:var(--dim);font-family:monospace,monospace;font-size:9px;}
-  #tab-inventory td:nth-child(5)::before{content:'Market: ';color:var(--dim);font-family:monospace,monospace;font-size:9px;}
-  #tab-inventory td:nth-child(6)::before{content:'Cost: ';color:var(--dim);font-family:monospace,monospace;font-size:9px;}
-  #tab-inventory td:nth-child(7)::before{content:'Margin: ';color:var(--dim);font-family:monospace,monospace;font-size:9px;}
-  #tab-inventory td:nth-child(8)::before{content:'Status: ';color:var(--dim);font-family:monospace,monospace;font-size:9px;}
+  #tab-inventory td:nth-child(2)::before{content:'Set / Variant: ';color:var(--dim);font-family:var(--font-mono);font-size:9px;}
+  #tab-inventory td:nth-child(3)::before{content:'Category: ';color:var(--dim);font-family:var(--font-mono);font-size:9px;}
+  #tab-inventory td:nth-child(4)::before{content:'Qty: ';color:var(--dim);font-family:var(--font-mono);font-size:9px;}
+  #tab-inventory td:nth-child(5)::before{content:'Market: ';color:var(--dim);font-family:var(--font-mono);font-size:9px;}
+  #tab-inventory td:nth-child(6)::before{content:'Cost: ';color:var(--dim);font-family:var(--font-mono);font-size:9px;}
+  #tab-inventory td:nth-child(7)::before{content:'Margin: ';color:var(--dim);font-family:var(--font-mono);font-size:9px;}
+  #tab-inventory td:nth-child(8)::before{content:'Status: ';color:var(--dim);font-family:var(--font-mono);font-size:9px;}
   #tab-inventory .row-act{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;}
   #tab-inventory .row-act .ra{width:100%;min-height:48px;padding:8px 6px;font-size:9px;}
   .dealer-line,.dealer-line.locked{grid-template-columns:minmax(0,1fr) 88px;align-items:start;}
@@ -1094,7 +1079,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <button class="fb" onclick="setF('Comic',this)">📖 Comics</button>
     <button class="fb" onclick="setF('Graded',this)">🏆 Graded</button>
     <button class="fb" onclick="setF('Collectibles',this)">🏷 Collectibles</button>
-    <span id="tbl-count" style="font-family:monospace,monospace;font-size:9px;color:var(--dim);margin-left:4px"></span>
+    <span id="tbl-count" style="font-family:var(--font-mono);font-size:9px;color:var(--dim);margin-left:4px"></span>
   </div>
   <!-- Card grid view — hidden in table mode -->
   <div id="inv-card-grid-container" style="display:none">
@@ -1200,7 +1185,7 @@ body.show-mode .inv-sync-badge{display:none;}
 
   <div class="panel" id="register-scan-panel" style="margin-top:4px;margin-bottom:14px">
     <div class="ph">PHONE SCANNER INBOX <span id="scan-inbox-count" style="font-size:9px;color:var(--dim)">waiting for scans</span></div>
-    <div style="font-family:monospace,monospace;font-size:10px;color:var(--dim);margin-bottom:10px">
+    <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);margin-bottom:10px">
       Send a scan from the phone, then add it to a sale cart, a buy offer, or inventory intake.
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
@@ -1209,25 +1194,25 @@ body.show-mode .inv-sync-badge{display:none;}
       <button class="hbtn" onclick="renderScanInbox()">REFRESH INBOX</button>
     </div>
     <div id="scan-inbox-list" style="display:grid;gap:8px">
-      <div style="font-family:monospace,monospace;font-size:10px;color:var(--dim);padding:10px;border:1px dashed var(--border);border-radius:8px;text-align:center">No phone scans yet</div>
+      <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);padding:10px;border:1px dashed var(--border);border-radius:8px;text-align:center">No phone scans yet</div>
     </div>
   </div>
 
   <div class="panel" id="backoffice-ebay-panel" style="margin-top:4px;margin-bottom:14px">
     <div class="ph">EBAY CONNECTION <span id="ebay-oauth-status" style="font-size:9px;color:var(--dim)">checking...</span></div>
-    <div style="font-family:monospace,monospace;font-size:10px;color:var(--dim);margin-bottom:10px;line-height:1.55">
+    <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);margin-bottom:10px;line-height:1.55">
       Listing inventory needs an eBay seller refresh token. App credentials are stored in the Worker; connect once here after the RuName is set.
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
       <button class="hbtn" onclick="refreshEbayStatus()">CHECK STATUS</button>
       <button class="hbtn" onclick="connectEbay()">CONNECT EBAY</button>
-      <span id="ebay-oauth-hint" style="font-family:monospace,monospace;font-size:9px;color:var(--dim)"></span>
+      <span id="ebay-oauth-hint" style="font-family:var(--font-mono);font-size:9px;color:var(--dim)"></span>
     </div>
   </div>
 
   <div class="panel" id="backoffice-system-panel" style="margin-top:4px;margin-bottom:14px">
     <div class="ph">SYSTEM / BACKUP <span id="system-health-status" style="font-size:9px;color:var(--dim)">ready</span></div>
-    <div style="font-family:monospace,monospace;font-size:10px;color:var(--dim);margin-bottom:10px;line-height:1.55">
+    <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);margin-bottom:10px;line-height:1.55">
       Run a quick pre-show check, export a support bundle, or make a local backup before a busy event.
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
@@ -1237,12 +1222,12 @@ body.show-mode .inv-sync-badge{display:none;}
       <button class="hbtn" onclick="document.getElementById('backup-import-file').click()">IMPORT BACKUP</button>
       <input id="backup-import-file" type="file" accept="application/json,.json" style="display:none" onchange="importVendorBackup(event)">
     </div>
-    <div id="system-health-output" style="font-family:monospace,monospace;font-size:10px;color:var(--dim);display:grid;gap:6px"></div>
+    <div id="system-health-output" style="font-family:var(--font-mono);font-size:10px;color:var(--dim);display:grid;gap:6px"></div>
   </div>
 
   <div class="panel" id="backoffice-ops-panel" style="margin-top:4px;margin-bottom:14px">
     <div class="ph">OPERATIONS LOG <span id="ops-log-count" style="font-size:9px;color:var(--dim)">0 events</span></div>
-    <div style="font-family:monospace,monospace;font-size:10px;color:var(--dim);margin-bottom:10px;line-height:1.55">
+    <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);margin-bottom:10px;line-height:1.55">
       A show-safe audit trail for inventory adds, eBay listings, system checks, backups, and imports.
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
@@ -1250,7 +1235,7 @@ body.show-mode .inv-sync-badge{display:none;}
       <button class="hbtn" onclick="exportOpsLogCSV()">EXPORT LOG CSV</button>
       <button class="hbtn" style="background:rgba(255,77,109,.08);border-color:rgba(255,77,109,.2);color:var(--red)" onclick="clearOpsLog()">CLEAR LOG</button>
     </div>
-    <div id="ops-log-list" style="display:grid;gap:6px;font-family:monospace,monospace;font-size:10px;color:var(--dim)"></div>
+    <div id="ops-log-list" style="display:grid;gap:6px;font-family:var(--font-mono);font-size:10px;color:var(--dim)"></div>
   </div>
 
   <!-- Row 1: Quick Price Lookup + Cash Drawer -->
@@ -1264,7 +1249,7 @@ body.show-mode .inv-sync-badge{display:none;}
         <button class="hbtn" title="Speak search" aria-label="Voice price search" onclick="startVoiceInput('qpl-input', runPriceLookup)" style="width:54px;padding:0">MIC</button>
       </div>
       <div style="display:flex;gap:6px;margin-bottom:10px">
-        <select id="qpl-cat" onchange="handleQplCategoryChange()" style="flex:1;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:6px 8px;border-radius:6px;font-family:monospace,monospace;font-size:10px">
+        <select id="qpl-cat" onchange="handleQplCategoryChange()" style="flex:1;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:6px 8px;border-radius:6px;font-family:var(--font-mono);font-size:10px">
           <option value="">Any Category</option>
           <option value="Pokemon TCG">Pokemon TCG</option>
           <option value="Magic: The Gathering">Magic: The Gathering</option>
@@ -1283,7 +1268,7 @@ body.show-mode .inv-sync-badge{display:none;}
         <button class="hbtn" onclick="clearResearchLookup()" style="white-space:nowrap">CLEAR</button>
       </div>
       <div id="pokemon-offline-banner" class="pokemon-offline-banner"></div>
-      <div id="qpl-result" style="font-family:monospace,monospace;font-size:10px;color:var(--dim);min-height:60px">Enter a card, comic, slab, game, or collectible to identify it and route it into Buy, Inventory, or Sale.</div>
+      <div id="qpl-result" style="font-family:var(--font-mono);font-size:10px;color:var(--dim);min-height:60px">Enter a card, comic, slab, game, or collectible to identify it and route it into Buy, Inventory, or Sale.</div>
       <div id="qpl-history" style="margin-top:10px;border-top:1px solid var(--border);padding-top:8px"></div>
     </div>
 
@@ -1291,34 +1276,34 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="panel" id="register-cash-panel">
       <div class="ph">💵 CASH DRAWER <span id="drawer-status" style="font-size:9px;font-weight:600;color:var(--g)">CLOSED</span> <button class="hbtn" id="drawer-totals-toggle" onclick="toggleDrawerTotals()" style="float:right;min-height:28px;padding:4px 8px;font-size:9px">HIDE TOTALS</button></div>
       <div id="drawer-closed-view">
-        <div style="font-family:monospace,monospace;font-size:10px;color:var(--dim);margin-bottom:8px">Starting Cash</div>
+        <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);margin-bottom:8px">Starting Cash</div>
         <input type="number" id="drawer-float" step="0.01" placeholder="200.00" aria-label="Starting Cash" style="width:100%;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:6px;font-size:16px;font-family:'Orbitron',monospace;margin-bottom:8px">
         <button class="hbtn" style="width:100%;padding:10px" onclick="openDrawer()">OPEN DRAWER</button>
       </div>
       <div id="drawer-open-view" style="display:none">
         <div class="drawer-ledger-grid">
           <div style="background:var(--surf2);border:1px solid var(--border);border-radius:8px;padding:10px;text-align:center">
-            <div style="font-family:monospace,monospace;font-size:8px;color:var(--dim);margin-bottom:4px">STARTING CASH</div>
+            <div style="font-family:var(--font-mono);font-size:8px;color:var(--dim);margin-bottom:4px">STARTING CASH</div>
             <div class="drawer-money" style="font-family:'Orbitron',monospace;font-size:14px;color:var(--text)" id="drawer-float-disp">$0</div>
           </div>
           <div style="background:var(--surf2);border:1px solid var(--border);border-radius:8px;padding:10px;text-align:center">
-            <div style="font-family:monospace,monospace;font-size:8px;color:var(--dim);margin-bottom:4px">SALES</div>
+            <div style="font-family:var(--font-mono);font-size:8px;color:var(--dim);margin-bottom:4px">SALES</div>
             <div class="drawer-money" style="font-family:'Orbitron',monospace;font-size:14px;color:var(--g)" id="drawer-sales-disp">$0</div>
           </div>
           <div style="background:var(--surf2);border:1px solid rgba(0,255,179,.3);border-radius:8px;padding:10px;text-align:center">
-            <div style="font-family:monospace,monospace;font-size:8px;color:var(--dim);margin-bottom:4px">EXPECTED CASH</div>
+            <div style="font-family:var(--font-mono);font-size:8px;color:var(--dim);margin-bottom:4px">EXPECTED CASH</div>
             <div class="drawer-money" style="font-family:'Orbitron',monospace;font-size:14px;color:var(--gold)" id="drawer-expected-disp">$0</div>
           </div>
           <div style="background:var(--surf2);border:1px solid var(--border);border-radius:8px;padding:10px;text-align:center">
-            <div style="font-family:monospace,monospace;font-size:8px;color:var(--dim);margin-bottom:4px">COUNTED CASH</div>
+            <div style="font-family:var(--font-mono);font-size:8px;color:var(--dim);margin-bottom:4px">COUNTED CASH</div>
             <div class="drawer-money" style="font-family:'Orbitron',monospace;font-size:14px;color:var(--text)" id="drawer-counted-disp">Not counted</div>
           </div>
           <div style="background:var(--surf2);border:1px solid var(--border);border-radius:8px;padding:10px;text-align:center">
-            <div style="font-family:monospace,monospace;font-size:8px;color:var(--dim);margin-bottom:4px">OVER / SHORT</div>
+            <div style="font-family:var(--font-mono);font-size:8px;color:var(--dim);margin-bottom:4px">OVER / SHORT</div>
             <div class="drawer-money" style="font-family:'Orbitron',monospace;font-size:14px;color:var(--text)" id="drawer-over-short-disp">$0.00</div>
           </div>
         </div>
-        <div style="font-family:monospace,monospace;font-size:9px;color:var(--dim);margin-bottom:6px">DRAWER MOVEMENTS</div>
+        <div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);margin-bottom:6px">DRAWER MOVEMENTS</div>
         <div style="display:flex;gap:6px;margin-bottom:8px">
           <input type="number" id="drawer-adj-amt" placeholder="Amount" step="0.01" style="flex:1;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:7px 10px;border-radius:6px;font-size:12px">
           <input type="text" id="drawer-adj-note" placeholder="Required note for payouts, drops, refunds, corrections" style="flex:2;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:7px 10px;border-radius:6px;font-size:12px">
@@ -1332,7 +1317,7 @@ body.show-mode .inv-sync-badge{display:none;}
           <button class="hbtn" onclick="addDrawerMovement('no_sale')">NO SALE</button>
           <button class="hbtn" onclick="addDrawerMovement('correction')">CORRECTION</button>
         </div>
-        <div id="drawer-log" style="font-family:monospace,monospace;font-size:9px;max-height:120px;overflow-y:auto;border:1px solid var(--border);border-radius:6px;padding:6px"></div>
+        <div id="drawer-log" style="font-family:var(--font-mono);font-size:9px;max-height:120px;overflow-y:auto;border:1px solid var(--border);border-radius:6px;padding:6px"></div>
         <div style="display:flex;gap:6px;margin-top:10px">
           <button class="hbtn" onclick="countDrawer()" style="flex:1">COUNT DRAWER</button>
           <button class="hbtn danger" onclick="closeDrawer()" style="flex:1">CLOSE DRAWER</button>
@@ -1439,12 +1424,12 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="panel" id="register-eod-panel">
       <div class="ph">📊 END OF DAY REPORT</div>
       <div style="display:flex;gap:6px;margin-bottom:12px;align-items:center">
-        <input type="date" id="eod-date" style="flex:1;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:7px 10px;border-radius:6px;font-size:12px;font-family:monospace,monospace">
+        <input type="date" id="eod-date" style="flex:1;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:7px 10px;border-radius:6px;font-size:12px;font-family:var(--font-mono)">
         <button class="hbtn" onclick="generateEOD()" style="white-space:nowrap">GENERATE</button>
         <button class="hbtn" onclick="printEOD()" style="white-space:nowrap">🖨 PRINT</button>
       </div>
       <div id="eod-report">
-        <div style="font-family:monospace,monospace;font-size:10px;color:var(--dim);text-align:center;padding:20px">Select a date and tap GENERATE</div>
+        <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);text-align:center;padding:20px">Select a date and tap GENERATE</div>
       </div>
     </div>
 
@@ -1521,52 +1506,12 @@ body.show-mode .inv-sync-badge{display:none;}
     </div>
     <div class="panel" id="research-actions-panel" aria-hidden="true">
       <div class="ph">ITEM ACTIONS</div>
-      <div style="font-family:monospace,monospace;font-size:10px;color:var(--dim);line-height:1.55">Select an item to see actions.</div>
-      <div id="research-action-status" style="font-family:monospace,monospace;font-size:10px;color:var(--dim);margin-top:12px;line-height:1.45"></div>
+      <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);line-height:1.55">Select an item to see actions.</div>
+      <div id="research-action-status" style="font-family:var(--font-mono);font-size:10px;color:var(--dim);margin-top:12px;line-height:1.45"></div>
     </div>
   </div>
 </div>
 
-<!-- AUTH CHECK TAB -->
-<div id="tab-authcheck" class="tab-panel">
-  <div class="sec">AUTH CHECK</div>
-  <div style="max-width:1540px;margin:0 auto 14px;padding:0 20px">
-    <div class="panel" style="border-color:rgba(255,209,102,.22);background:rgba(255,209,102,.045)">
-      <div class="ph">AUTHENTICITY RISK WORKBENCH <span style="font-size:9px;color:var(--dim)">Pokemon / MTG evidence review</span></div>
-      <div style="font-family:monospace,monospace;font-size:11px;color:var(--dim);line-height:1.55">
-        This tool assesses authenticity risk and highlights suspicious signals. It does not guarantee authenticity. Results use risk language and become more conservative when evidence is missing.
-      </div>
-    </div>
-  </div>
-  <div id="authcheck-panels" class="auth-grid">
-    <div class="panel" id="auth-queue-panel">
-      <div class="ph">AUTH QUEUE <span id="auth-queue-count" style="font-size:9px;color:var(--dim)">0 queued</span></div>
-      <div style="font-family:monospace,monospace;font-size:10px;color:var(--dim);line-height:1.55;margin-bottom:10px">
-        Scanner, Research, and Inventory items that need trust review.
-      </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
-        <button class="hbtn" onclick="renderAuthCheckWorkbench()">REFRESH</button>
-        <button class="hbtn" onclick="createManualAuthItem()">MANUAL ITEM</button>
-      </div>
-      <div id="auth-queue-list" style="display:grid;gap:8px"></div>
-      <div style="margin-top:12px">
-        <div class="ph" style="font-size:10px">PHOTO CHECKLIST</div>
-        <div id="auth-photo-checklist"></div>
-      </div>
-    </div>
-    <div class="panel" id="auth-workspace-panel">
-      <div id="auth-workspace-body" style="font-family:monospace,monospace;font-size:10px;color:var(--dim);line-height:1.55">
-        Choose an item from the Auth Queue, or send one here from Research.
-      </div>
-    </div>
-    <div class="panel auth-panel-sticky" id="auth-decision-panel">
-      <div class="ph">RISK VERDICT <span style="font-size:9px;color:var(--dim)">explainable / conservative</span></div>
-      <div id="auth-decision-body" style="font-family:monospace,monospace;font-size:10px;color:var(--dim);line-height:1.55">
-        No item selected.
-      </div>
-    </div>
-  </div>
-</div>
 
 <!-- BACK OFFICE TAB -->
 <div id="tab-backoffice" class="tab-panel">
@@ -1598,7 +1543,7 @@ body.show-mode .inv-sync-badge{display:none;}
   <div class="sell-shell" style="margin-bottom:14px">
     <div id="cd-help-panel" style="background:var(--surf);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:14px">
       <div class="ph">DEALER CHECKOUT WORKFLOW</div>
-      <div style="font-family:monospace,monospace;font-size:10px;color:var(--dim);line-height:1.8">
+      <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);line-height:1.8">
         Open this tab on a tablet or second screen facing the customer. It auto-refreshes from your cart every 3 seconds.
         Use your phone as the scanner/POS — the customer sees their items and total in real time on this screen.
       </div>
@@ -1607,7 +1552,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dealer-checkout-panel" id="dealer-cart-tools" style="margin-bottom:14px">
       <div class="ph">DEALER CHECKOUT PANEL <span style="font-size:9px;color:var(--dim)">private controls</span></div>
       <div id="dealer-checkout-state" class="checkout-state-strip"></div>
-      <div id="dealer-cart-lines" style="display:grid;gap:8px;font-family:monospace,monospace;font-size:10px;color:var(--dim)"></div>
+      <div id="dealer-cart-lines" style="display:grid;gap:8px;font-family:var(--font-mono);font-size:10px;color:var(--dim)"></div>
       <div id="dealer-cart-total" class="dealer-total"></div>
       <div id="dealer-checkout-actions" class="checkout-action-row"></div>
     </div>
@@ -1636,13 +1581,13 @@ body.show-mode .inv-sync-badge{display:none;}
         <div id="cd-totals">
           <div id="cd-total-breakdown"></div>
           <div class="sell-total-row big"><span>TOTAL</span><span id="cd-total">$0.00</span></div>
-          <div style="font-family:monospace,monospace;font-size:10px;color:var(--dim);margin-top:6px;text-align:center" id="cd-items-count">No items</div>
+          <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);margin-top:6px;text-align:center" id="cd-items-count">No items</div>
           <button id="cd-clear-cart" class="sell-pay-btn danger" style="width:100%;margin-top:10px;display:none" onclick="clearCustomerDisplayCart()">CLEAR CART</button>
           <div id="cd-pay-links" class="sell-payment-grid"></div>
-          <div id="cd-payment-setup" style="font-family:monospace,monospace;font-size:9px;color:var(--dim);margin-top:10px;line-height:1.5;text-align:center"></div>
+          <div id="cd-payment-setup" style="font-family:var(--font-mono);font-size:9px;color:var(--dim);margin-top:10px;line-height:1.5;text-align:center"></div>
         </div>
       </div>
-      <div style="text-align:center;margin-top:20px;font-family:monospace,monospace;font-size:9px;color:var(--dim)">Thank you for shopping with us! ⚾</div>
+      <div style="text-align:center;margin-top:20px;font-family:var(--font-mono);font-size:9px;color:var(--dim)">Thank you for shopping with us! ⚾</div>
     </div>
   </div>
 </div>
@@ -1803,8 +1748,8 @@ body.show-mode .inv-sync-badge{display:none;}
   <div class="modal">
     <h3>🛒 SELL TO CART</h3>
     <div id="sell-item-name" style="font-size:12px;font-weight:600;margin-bottom:4px;color:var(--text)"></div>
-    <div id="sell-item-meta" style="font-family:monospace,monospace;font-size:9px;color:var(--dim);margin-bottom:8px"></div>
-    <div style="font-family:monospace,monospace;font-size:9px;color:var(--dim);margin-bottom:8px">Adds this item to the cart at the price below. Payment method is chosen during checkout — this does not finalize a sale.</div>
+    <div id="sell-item-meta" style="font-family:var(--font-mono);font-size:9px;color:var(--dim);margin-bottom:8px"></div>
+    <div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);margin-bottom:8px">Adds this item to the cart at the price below. Payment method is chosen during checkout — this does not finalize a sale.</div>
     <label>Sale Price ($)</label>
     <input type="number" id="sell-price" step="0.01" min="0" placeholder="0.00" oninput="previewSellProfit()">
     <!-- Cart-unification: payment method is selected at checkout, not here.
@@ -1842,7 +1787,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <div class="modal-bg" id="oneoff-sell-modal">
   <div class="modal">
     <h3>🛒 ADD ONE-OFF TO CART</h3>
-    <div style="font-family:monospace,monospace;font-size:9px;color:var(--dim);margin-bottom:8px">For items not in inventory yet — adds a one-off line to the cart. Payment is chosen at checkout; this does not finalize a sale.</div>
+    <div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);margin-bottom:8px">For items not in inventory yet — adds a one-off line to the cart. Payment is chosen at checkout; this does not finalize a sale.</div>
     <label>Item Name *</label>
     <input type="text" id="oneoff-name" placeholder="e.g. Charizard ex 199/197">
     <label>Category *</label>
@@ -2071,7 +2016,7 @@ body.show-mode .inv-sync-badge{display:none;}
   <a class="lba-nav-btn" href="#" onclick="switchTab('display');return false" id="dash-cart-nav" style="position:relative">
     <span class="nav-ico">🛒</span>
     <span style="font-size:7px">CART / DISPLAY</span>
-    <span id="dash-cart-count" style="display:none;position:absolute;top:4px;right:8px;background:#ff4d6d;color:#fff;font-size:8px;font-weight:700;width:15px;height:15px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:monospace,monospace"></span>
+    <span id="dash-cart-count" style="display:none;position:absolute;top:4px;right:8px;background:#ff4d6d;color:#fff;font-size:8px;font-weight:700;width:15px;height:15px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--font-mono)"></span>
   </a>
   <a class="lba-nav-btn active" href="dashboard.html"><span class="nav-ico">▦</span>DASHBOARD</a>
 </div>
@@ -2131,7 +2076,7 @@ const WALKOFF_SCOPED_KEYS = new Set([
   'sync_queue_v1','inventory_lifecycle','walkoff_inv_sync_meta_v1',
   // Mapping / dealer
   'sheet_mapping_v1','grade_submissions','research_needs_review_v1',
-  'dealer_items_v1','dealer_photos_v1','dealer_auth_checks_v1',
+  'dealer_items_v1','dealer_photos_v1',
   'dealer_queues_v1','lba_sales',
 ]);
 const WALKOFF_AUTH_SESSION_KEY = 'walkoff_auth_session_v1';
@@ -2216,7 +2161,7 @@ function roleCanAccessTab(tab){
   const role = currentRole();
   if(role === 'owner' || role === 'admin') return true;
   if(role === 'manager') return !['backoffice'].includes(tab);
-  if(role === 'employee') return ['overview','display','inventory','research','authcheck','pos','alerts','wantlist','locations','restock'].includes(tab);
+  if(role === 'employee') return ['overview','display','inventory','research','pos','alerts','wantlist','locations','restock'].includes(tab);
   if(role === 'scanner_only') return false;
   return false;
 }
@@ -2491,7 +2436,7 @@ function ensureBrandingPanel(backoffice){
   const fields = [['Primary','theme-primary'],['Secondary','theme-secondary'],['Accent','theme-accent'],['Background','theme-bg'],['Panel','theme-surface'],['Panel 2','theme-surface2'],['Text','theme-text'],['Success','theme-success'],['Warning','theme-warning'],['Danger','theme-danger'],['Info','theme-info']];
   panel.innerHTML = `
     <div class="ph">BRANDING & THEME <span style="font-size:9px;color:var(--dim)">store colors and customer screen branding</span></div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;font-family:monospace,monospace;font-size:10px;color:var(--dim)">
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;font-family:var(--font-mono);font-size:10px;color:var(--dim)">
       <span>Current: <b style="color:var(--text)" id="theme-current-name">${escHtml(getStoreTheme().themeName || 'Custom')}</b></span>
       <span id="theme-unsaved" style="color:var(--gold)"></span>
       <span id="theme-save-status"></span>
@@ -2504,22 +2449,22 @@ function ensureBrandingPanel(backoffice){
       <input id="theme-button-radius" class="tsi" placeholder="Button radius" oninput="previewBrandTheme()" style="margin-bottom:0">
     </div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-bottom:10px">
-      ${fields.map(([label,id])=>`<label style="font-family:monospace,monospace;font-size:9px;color:var(--dim);display:grid;gap:4px">${label}<input id="${id}" type="color" oninput="previewBrandTheme()" style="width:100%;height:42px;background:var(--surf2);border:1px solid var(--border);border-radius:8px;padding:3px"></label>`).join('')}
-      <label style="font-family:monospace,monospace;font-size:9px;color:var(--dim);display:grid;gap:4px">Muted<input id="theme-muted" class="tsi" oninput="previewBrandTheme()" style="margin-bottom:0"></label>
-      <label style="font-family:monospace,monospace;font-size:9px;color:var(--dim);display:grid;gap:4px">Border<input id="theme-border" class="tsi" oninput="previewBrandTheme()" style="margin-bottom:0"></label>
-      <label style="font-family:monospace,monospace;font-size:9px;color:var(--dim);display:grid;gap:4px">Button Text<input id="theme-button-text" type="color" oninput="previewBrandTheme()" style="width:100%;height:42px;background:var(--surf2);border:1px solid var(--border);border-radius:8px;padding:3px"></label>
+      ${fields.map(([label,id])=>`<label style="font-family:var(--font-mono);font-size:9px;color:var(--dim);display:grid;gap:4px">${label}<input id="${id}" type="color" oninput="previewBrandTheme()" style="width:100%;height:42px;background:var(--surf2);border:1px solid var(--border);border-radius:8px;padding:3px"></label>`).join('')}
+      <label style="font-family:var(--font-mono);font-size:9px;color:var(--dim);display:grid;gap:4px">Muted<input id="theme-muted" class="tsi" oninput="previewBrandTheme()" style="margin-bottom:0"></label>
+      <label style="font-family:var(--font-mono);font-size:9px;color:var(--dim);display:grid;gap:4px">Border<input id="theme-border" class="tsi" oninput="previewBrandTheme()" style="margin-bottom:0"></label>
+      <label style="font-family:var(--font-mono);font-size:9px;color:var(--dim);display:grid;gap:4px">Button Text<input id="theme-button-text" type="color" oninput="previewBrandTheme()" style="width:100%;height:42px;background:var(--surf2);border:1px solid var(--border);border-radius:8px;padding:3px"></label>
     </div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:8px;margin-bottom:10px">
-      <label style="font-family:monospace,monospace;font-size:9px;color:var(--dim)">STORE LOGO URL<input id="theme-logo-url" class="tsi" placeholder="https://..." oninput="previewBrandTheme()" style="margin-top:4px"></label>
-      <label style="font-family:monospace,monospace;font-size:9px;color:var(--dim)">CUSTOMER SCREEN BACKGROUND IMAGE<input id="theme-customer-bg" class="tsi" placeholder="https://..." oninput="previewBrandTheme()" style="margin-top:4px"></label>
+      <label style="font-family:var(--font-mono);font-size:9px;color:var(--dim)">STORE LOGO URL<input id="theme-logo-url" class="tsi" placeholder="https://..." oninput="previewBrandTheme()" style="margin-top:4px"></label>
+      <label style="font-family:var(--font-mono);font-size:9px;color:var(--dim)">CUSTOMER SCREEN BACKGROUND IMAGE<input id="theme-customer-bg" class="tsi" placeholder="https://..." oninput="previewBrandTheme()" style="margin-top:4px"></label>
     </div>
     <div style="background:var(--surf2);border:1px solid var(--border);border-radius:var(--brand-card-radius);padding:14px;margin-bottom:10px">
       <div style="font-family:'Orbitron',monospace;font-size:14px;color:var(--g);margin-bottom:6px">Live Preview</div>
-      <div style="font-family:monospace,monospace;font-size:10px;color:var(--dim);margin-bottom:10px">Buttons, price text, badges, and panels update as you edit.</div>
+      <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);margin-bottom:10px">Buttons, price text, badges, and panels update as you edit.</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><button class="hbtn">PRIMARY</button><button class="hbtn danger">DANGER</button><span class="data-pill warn">WARNING</span><span style="font-family:'Orbitron',monospace;font-size:24px;color:var(--g);font-weight:900">$42.00</span></div>
       <div style="margin-top:10px;border:1px solid var(--border);border-radius:8px;min-height:100px;background-image:linear-gradient(rgba(247,248,250,.86),rgba(247,248,250,.86)),var(--customer-bg-image);background-size:cover;background-position:center;color:#101319;padding:12px">
         <b style="font-family:'Orbitron',monospace">Customer Screen Preview</b>
-        <div style="font-family:monospace,monospace;font-size:12px;margin-top:8px">Total Due</div>
+        <div style="font-family:var(--font-mono);font-size:12px;margin-top:8px">Total Due</div>
         <div style="font-family:'Orbitron',monospace;font-size:28px;color:#05835f">$42.00</div>
       </div>
     </div>
@@ -2913,10 +2858,9 @@ let ts={col:'name',dir:1};
 const PER=50; let page=1;
 const DAILY_TABS = [
   ['overview', 'HOME'],
+  ['research', 'RESEARCH'],
   ['intake', 'BUY'],
   ['display', 'SELL'],
-  ['research', 'RESEARCH'],
-  ['authcheck', 'AUTH CHECK'],
   ['inventory', 'INVENTORY'],
   ['shows', 'SHOWS'],
 ];
@@ -3816,10 +3760,7 @@ function renderHelpWalkthroughPanel(){
       <button class="hbtn" onclick="startWalkthrough('research')">WALKTHROUGH: RESEARCH</button>
       <button class="hbtn" onclick="resetWalkthroughProgress()">RESET PROGRESS</button>
     </div>
-    <div style="margin-top:4px;padding:8px;background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:6px">
-      <div style="font-size:9px;color:var(--dim);font-family:monospace;margin-bottom:2px">PRACTICE MODE</div>
-      <div style="font-size:10px;color:var(--dim);font-family:monospace">Coming soon — safe simulated transactions for training without affecting real data.</div>
-    </div>`;
+`;
 }
 
 function applyResearchDefaultCategory(){
@@ -3849,19 +3790,19 @@ function ensureResearchSettingsPanel(backoffice){
   panel.style.marginTop = '4px';
   panel.style.marginBottom = '14px';
   panel.innerHTML = `<div class="ph">RESEARCH DEFAULTS</div>
-    <div style="font-family:monospace,monospace;font-size:10px;color:var(--dim);margin-bottom:10px;line-height:1.55">
+    <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);margin-bottom:10px;line-height:1.55">
       Choose which category Research/Quick Price Lookup opens with so dealers don't have to reselect it every search.
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
-      <select id="research-default-category" style="background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:6px 10px;border-radius:6px;font-family:monospace,monospace;font-size:10px">
+      <select id="research-default-category" style="background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:6px 10px;border-radius:6px;font-family:var(--font-mono);font-size:10px">
         ${RESEARCH_CATEGORY_OPTIONS.map(o => `<option value="${escHtml(o.value)}" ${settings.defaultCategory===o.value?'selected':''}>${escHtml(o.label)}</option>`).join('')}
       </select>
-      <label style="display:flex;gap:6px;align-items:center;font-family:monospace,monospace;font-size:10px;color:var(--dim)">
+      <label style="display:flex;gap:6px;align-items:center;font-family:var(--font-mono);font-size:10px;color:var(--dim)">
         <input type="checkbox" id="research-remember-last" ${settings.rememberLastCategory?'checked':''}> Remember last used category
       </label>
       <button class="hbtn" onclick="saveResearchSettingsFromForm()">SAVE</button>
     </div>
-    <div style="font-family:monospace,monospace;font-size:9px;color:var(--dim)">Manually changing the category in Research only affects the current session unless "Remember last used category" is on, or you Save a new default here.</div>`;
+    <div style="font-family:var(--font-mono);font-size:9px;color:var(--dim)">Manually changing the category in Research only affects the current session unless "Remember last used category" is on, or you Save a new default here.</div>`;
   backoffice.appendChild(panel);
 }
 
@@ -4147,7 +4088,7 @@ function ensureSetNeedsPanel(intake){
   panel.style.margin = '0 0 14px';
   panel.innerHTML = `
     <div class="ph">SET NEEDS / CUSTOMER LOOKING FOR <span id="set-needs-count" style="font-size:9px;color:var(--dim)">0 active</span></div>
-    <div style="font-family:monospace,monospace;font-size:10px;color:var(--dim);margin-bottom:10px;line-height:1.55">
+    <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);margin-bottom:10px;line-height:1.55">
       Track cards/books someone needs for a set, PC, or want project. Lookup results will flag matches.
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr 90px 1fr auto;gap:7px;margin-bottom:10px">
@@ -4170,7 +4111,7 @@ function ensureBuySignalsPanel(intake){
   panel.style.margin = '0 0 14px';
   panel.innerHTML = `
     <div class="ph">BUY SIGNALS <span style="font-size:9px;color:var(--dim)">past solds, profit, speed, wants</span></div>
-    <div style="font-family:monospace,monospace;font-size:10px;color:var(--dim);margin-bottom:10px;line-height:1.55">
+    <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);margin-bottom:10px;line-height:1.55">
       Shows items you historically make money on or sell quickly. Lookup cards also show these signals inline.
     </div>
     <div id="buy-signals-list" style="display:grid;gap:6px"></div>`;
@@ -4189,7 +4130,6 @@ function ensureLegacyToolsPanel(backoffice){
     ['pos','Sell / register'],
     ['intake','Buy / intake'],
     ['research','Research / lookup'],
-    ['authcheck','Auth Check / risk workbench'],
     ['display','Sell / cart'],
     ['inventory','Inventory'],
     ['shows','Shows / cash drawer'],
@@ -4205,7 +4145,7 @@ function ensureLegacyToolsPanel(backoffice){
   ];
   panel.innerHTML = `
     <div class="ph">LEGACY / FULL TOOL MAP <span style="font-size:9px;color:var(--dim)">safety net during UX refactor</span></div>
-    <div style="font-family:monospace,monospace;font-size:10px;color:var(--dim);margin-bottom:10px;line-height:1.55">
+    <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);margin-bottom:10px;line-height:1.55">
       Every existing tool remains reachable here while the app is reorganized into Home, Buy, Sell, Inventory, Shows, and More.
     </div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px">
@@ -4350,8 +4290,8 @@ function renderPaymentSettingsPanel(){
   body.innerHTML = `
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:10px">
       <div class="item-metric">${payToggle('cash','Cash',s.cash.enabled)}${payToggle('card','Card',s.card.enabled)}<label style="display:flex;gap:8px;align-items:center;font-family:monospace;font-size:10px;color:var(--dim);margin-top:8px"><input id="pay-cash-drawer" type="checkbox" ${s.cash.trackCashDrawer?'checked':''}> track cash drawer</label></div>
-      <div class="item-metric">${payToggle('venmo','Venmo',s.venmo.enabled)}<input id="pay-venmo-handle" class="tsi" placeholder="Venmo handle" value="${escHtml(s.venmo.handle)}" style="margin-top:6px">${payToggle('paypal','PayPal',s.paypal.enabled)}<input id="pay-paypal-handle" class="tsi" placeholder="PayPal.me handle" value="${escHtml(s.paypal.emailOrHandle)}" style="margin-top:6px"></div>
-      <div class="item-metric">${payToggle('cashapp','Cash App',s.cashApp.enabled)}<input id="pay-cashapp-handle" class="tsi" placeholder="$cashtag" value="${escHtml(s.cashApp.cashtag)}" style="margin-top:6px">${payToggle('showmethods','Show on customer display',s.customerDisplay.showPaymentMethods)}</div>
+      <div class="item-metric">${payToggle('venmo','Venmo',s.venmo.enabled)}${payToggle('paypal','PayPal',s.paypal.enabled)}<span style="font-family:monospace;font-size:9px;color:var(--dim);display:block;margin-top:6px">Handles set in Vendor Info</span></div>
+      <div class="item-metric">${payToggle('cashapp','Cash App',s.cashApp.enabled)}${payToggle('showmethods','Show on customer display',s.customerDisplay.showPaymentMethods)}</div>
     </div>
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:10px">
       <label style="font-family:monospace;font-size:9px;color:var(--dim)">VENMO QR IMAGE<input id="pay-venmo-qr" class="tsi" placeholder="https://..." value="${escHtml(s.venmo.qrImageUrl || '')}"></label>
@@ -4361,14 +4301,14 @@ function renderPaymentSettingsPanel(){
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:10px">
       <label style="font-family:monospace;font-size:9px;color:var(--dim)">CARD PROVIDER<select id="pay-card-provider" class="tsi"><option value="stripe" ${s.card.provider==='stripe'?'selected':''}>Stripe</option><option value="square" ${s.card.provider==='square'?'selected':''}>Square</option><option value="manual" ${s.card.provider==='manual'?'selected':''}>Manual card</option></select></label>
       <label style="font-family:monospace;font-size:9px;color:var(--dim)">STRIPE PUBLISHABLE KEY<input id="pay-stripe-pk" class="tsi" value="${escHtml(s.card.stripePublishableKey)}" placeholder="pk_..."></label>
-      <label style="font-family:monospace;font-size:9px;color:var(--dim)">TAX RATE %<input id="pay-tax-rate" class="tsi" type="number" min="0" step="0.01" value="${Number(s.tax.defaultRate||0)}"></label>
+      <span style="font-family:monospace;font-size:9px;color:var(--dim);display:flex;align-items:center">Tax rate set in Vendor Info</span>
     </div>
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:10px">
       <label style="display:flex;gap:8px;align-items:center;font-family:monospace;font-size:10px;color:var(--dim)"><input id="pay-tax-enabled" type="checkbox" ${s.tax.enabled?'checked':''}> tax enabled</label>
       <label style="display:flex;gap:8px;align-items:center;font-family:monospace;font-size:10px;color:var(--dim)"><input id="pay-receipt-capture" type="checkbox" ${s.receipt.captureEnabled!==false?'checked':''}> receipt capture</label>
       <label style="display:flex;gap:8px;align-items:center;font-family:monospace;font-size:10px;color:var(--dim)"><input id="pay-wants-capture" type="checkbox" ${s.customerDisplay.wantsCaptureEnabled!==false?'checked':''}> wants capture</label>
     </div>
-    <label style="font-family:monospace;font-size:9px;color:var(--dim)">RECEIPT FOOTER<textarea id="pay-receipt-footer" class="tsi" style="height:52px">${escHtml(s.receipt.footer)}</textarea></label>
+    <div style="font-family:monospace;font-size:9px;color:var(--dim);padding:4px 0">Receipt footer set in Vendor Info</div>
     <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
       <button class="hbtn" onclick="savePaymentSettingsFromForm()" ${canEdit?'':'disabled'}>SAVE PAYMENTS</button>
       <span style="font-family:monospace;font-size:9px;color:var(--dim);align-self:center">${canEdit?'Store scoped to '+escHtml(getActiveStore().displayName):'Owner/admin only'}</span>
@@ -4377,15 +4317,16 @@ function renderPaymentSettingsPanel(){
 
 function savePaymentSettingsFromForm(){
   const prev = getPaymentSettings();
+  const vp = getVendorProfile();
   const settings = {
     ...prev,
     cash:{ enabled:document.getElementById('pay-cash-enabled')?.checked !== false, trackCashDrawer:!!document.getElementById('pay-cash-drawer')?.checked },
-    venmo:{ ...prev.venmo, enabled:!!document.getElementById('pay-venmo-enabled')?.checked, handle:document.getElementById('pay-venmo-handle')?.value.trim() || '', qrImageUrl:document.getElementById('pay-venmo-qr')?.value.trim() || '' },
-    paypal:{ ...prev.paypal, enabled:!!document.getElementById('pay-paypal-enabled')?.checked, emailOrHandle:document.getElementById('pay-paypal-handle')?.value.trim() || '', qrImageUrl:document.getElementById('pay-paypal-qr')?.value.trim() || '' },
-    cashApp:{ ...prev.cashApp, enabled:!!document.getElementById('pay-cashapp-enabled')?.checked, cashtag:document.getElementById('pay-cashapp-handle')?.value.trim() || '', qrImageUrl:document.getElementById('pay-cashapp-qr')?.value.trim() || '' },
+    venmo:{ ...prev.venmo, enabled:!!document.getElementById('pay-venmo-enabled')?.checked, handle:vp.venmo?.trim() || prev.venmo.handle, qrImageUrl:document.getElementById('pay-venmo-qr')?.value.trim() || '' },
+    paypal:{ ...prev.paypal, enabled:!!document.getElementById('pay-paypal-enabled')?.checked, emailOrHandle:vp.paypal?.trim() || prev.paypal.emailOrHandle, qrImageUrl:document.getElementById('pay-paypal-qr')?.value.trim() || '' },
+    cashApp:{ ...prev.cashApp, enabled:!!document.getElementById('pay-cashapp-enabled')?.checked, cashtag:vp.cashapp?.trim() || prev.cashApp.cashtag, qrImageUrl:document.getElementById('pay-cashapp-qr')?.value.trim() || '' },
     card:{ ...prev.card, enabled:!!document.getElementById('pay-card-enabled')?.checked, provider:document.getElementById('pay-card-provider')?.value || 'stripe', stripePublishableKey:document.getElementById('pay-stripe-pk')?.value.trim() || '' },
-    tax:{ ...prev.tax, defaultRate:Number(document.getElementById('pay-tax-rate')?.value || 0), enabled:!!document.getElementById('pay-tax-enabled')?.checked },
-    receipt:{ ...prev.receipt, footer:document.getElementById('pay-receipt-footer')?.value || '', captureEnabled:!!document.getElementById('pay-receipt-capture')?.checked },
+    tax:{ ...prev.tax, defaultRate:Number(vp.taxRate || 0) || Number(prev.tax.defaultRate || 0), enabled:!!document.getElementById('pay-tax-enabled')?.checked },
+    receipt:{ ...prev.receipt, footer:vp.receiptFooter?.trim() || prev.receipt.footer, captureEnabled:!!document.getElementById('pay-receipt-capture')?.checked },
     customerDisplay:{ ...prev.customerDisplay, showPaymentMethods:!!document.getElementById('pay-showmethods-enabled')?.checked, wantsCaptureEnabled:!!document.getElementById('pay-wants-capture')?.checked },
   };
   savePaymentSettings(settings);
@@ -5829,7 +5770,7 @@ async function renderStoreMembersPanel(){
   const invites = await loadStoreInvites();
   const roles = ['scanner_only','employee','manager','admin'];
   body.innerHTML = `
-    <div style="font-family:monospace,monospace;font-size:10px;color:var(--dim);line-height:1.55;margin-bottom:10px">
+    <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);line-height:1.55;margin-bottom:10px">
       ${canEdit ? 'Add testers or staff without sharing your login. Scanner-only users get sent to the phone scanner instead of the admin dashboard.' : 'Owner/admin role required to invite staff or change member roles.'}
     </div>
     <div class="item-metric" style="margin-bottom:10px;display:${canEdit?'block':'none'}">
@@ -6011,7 +5952,7 @@ function renderVendorConfigPanel(){
     backup:'System/backup', ops:'Operations log', pricingSync:'TCG price sync',
   };
   body.innerHTML = `
-    <div style="font-family:monospace,monospace;font-size:10px;color:var(--dim);margin-bottom:10px;line-height:1.55">
+    <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);margin-bottom:10px;line-height:1.55">
       Turn screens on/off for this vendor setup. Pick where inventory lives: built-in, spreadsheet, Webflow, or hybrid.
     </div>
     <div style="display:grid;grid-template-columns:minmax(220px,320px) 1fr;gap:10px;align-items:end;margin-bottom:12px">
@@ -6173,7 +6114,7 @@ function ensureSpreadsheetPanel(backoffice){
   panel.style.marginBottom = '14px';
   panel.innerHTML = `
     <div class="ph">SPREADSHEET / UNIVERSAL INVENTORY <span id="sheet-status" style="font-size:9px;color:var(--dim)">CSV bridge</span></div>
-    <div style="font-family:monospace,monospace;font-size:10px;color:var(--dim);margin-bottom:10px;line-height:1.55">
+    <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);margin-bottom:10px;line-height:1.55">
       Import vendor spreadsheets, map columns once, and export clean files for Excel, eBay, or other POS systems. For Excel files, use Save As CSV for now.
     </div>
     <div class="item-metric" style="margin-bottom:10px">
@@ -6220,7 +6161,7 @@ function ensureSpreadsheetPanel(backoffice){
       <button class="hbtn" onclick="exportUniversalTemplateCSV()">CSV TEMPLATE</button>
     </div>
     <div id="sheet-mapping" style="display:none;margin-bottom:10px"></div>
-    <div id="sheet-preview" style="font-family:monospace,monospace;font-size:10px;color:var(--dim);display:grid;gap:6px"></div>`;
+    <div id="sheet-preview" style="font-family:var(--font-mono);font-size:10px;color:var(--dim);display:grid;gap:6px"></div>`;
   backoffice.prepend(panel);
 }
 
@@ -6377,7 +6318,7 @@ function renderOnboardingPanel(){
     <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:12px">
       <div>
         <div class="ph" style="margin:0 0 4px">STORE SETUP <span style="font-size:9px;color:var(--dim)">${done}/${tasks.length} complete · ${escHtml(getActiveStore().displayName || 'active store')}</span></div>
-        <div style="font-family:monospace,monospace;font-size:10px;color:var(--dim);line-height:1.55">Get this workspace ready for a real vendor: inventory, payments, store profile, first item, and phone scanner handoff.</div>
+        <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);line-height:1.55">Get this workspace ready for a real vendor: inventory, payments, store profile, first item, and phone scanner handoff.</div>
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
         <button class="hbtn" onclick="runNextOnboardingStep()">${complete?'REVIEW SETUP':'CONTINUE SETUP'}</button>
@@ -6502,7 +6443,7 @@ function renderSpreadsheetMapping(){
   };
   const opts = '<option value="">-- ignore --</option>' + pendingCsvHeaders.map(h => `<option value="${h}">${h}</option>`).join('');
   box.style.display = '';
-  box.innerHTML = `<div style="font-family:monospace,monospace;font-size:10px;color:var(--dim);margin-bottom:8px">${pendingCsvRows.length} rows found. Map your spreadsheet columns:</div>
+  box.innerHTML = `<div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);margin-bottom:8px">${pendingCsvRows.length} rows found. Map your spreadsheet columns:</div>
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
       <label style="font-family:monospace;font-size:9px;color:var(--dim)">IMPORT PRESET
         <select id="sheet-preset" onchange="applySpreadsheetPreset(this.value)" style="min-width:190px;margin-left:6px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:7px;border-radius:6px">
@@ -6731,13 +6672,13 @@ function ensureSyncQueuePanel(backoffice){
   panel.id = 'sync-queue-panel';
   panel.style.marginBottom = '14px';
   panel.innerHTML = `<div class="ph">SYNC QUEUE <span id="sync-queue-count" style="font-size:9px;color:var(--dim)">0 pending</span> <span id="sync-online-status" style="font-size:9px;color:var(--dim)"></span></div>
-    <div style="font-family:monospace,monospace;font-size:10px;color:var(--dim);margin-bottom:10px;line-height:1.55">Failed cart pushes, item status changes, inventory updates, and channel syncs land here so nothing silently disappears.</div>
+    <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);margin-bottom:10px;line-height:1.55">Failed cart pushes, item status changes, inventory updates, and channel syncs land here so nothing silently disappears.</div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
       <button class="hbtn" onclick="renderSyncQueue()">REFRESH</button>
       <button class="hbtn" onclick="retryAllSyncQueue()">SYNC NOW</button>
       <button class="hbtn danger" onclick="clearCompletedSyncQueue()">CLEAR DONE</button>
     </div>
-    <div id="sync-queue-list" style="display:grid;gap:6px;font-family:monospace,monospace;font-size:10px;color:var(--dim)"></div>`;
+    <div id="sync-queue-list" style="display:grid;gap:6px;font-family:var(--font-mono);font-size:10px;color:var(--dim)"></div>`;
   backoffice.prepend(panel);
   renderSyncQueue();
 }
@@ -7276,7 +7217,7 @@ function ensureCustomerPanel(backoffice){
       <button class="hbtn" onclick="addCustomerContact()">ADD</button>
       <button class="hbtn" onclick="exportCustomersCSV()">EXPORT</button>
     </div>
-    <div id="customer-list" style="display:grid;gap:6px;font-family:monospace,monospace;font-size:10px;color:var(--dim)"></div>`;
+    <div id="customer-list" style="display:grid;gap:6px;font-family:var(--font-mono);font-size:10px;color:var(--dim)"></div>`;
   backoffice.appendChild(panel);
   renderCustomers();
 }
@@ -7349,7 +7290,7 @@ function ensureInventoryToolsPanel(){
       <button class="hbtn" onclick="printSelectedPriceTags()">PRINT TAGS</button>
       <button class="hbtn" onclick="exportPriceTagsCSV()">TAG CSV</button>
     </div>
-    <div id="inventory-tools-status" style="font-family:monospace,monospace;font-size:10px;color:var(--dim)">Tip: select rows on the current page, then apply a status or show price.</div>`;
+    <div id="inventory-tools-status" style="font-family:var(--font-mono);font-size:10px;color:var(--dim)">Tip: select rows on the current page, then apply a status or show price.</div>`;
   tc.insertAdjacentElement('afterend', panel);
 }
 
@@ -7418,7 +7359,7 @@ function ensureDataHealthPanel(backoffice){
   panel.id = 'data-health-panel';
   panel.style.marginBottom = '14px';
   panel.innerHTML = `<div class="ph">DATA HEALTH <span id="data-health-count" style="font-size:9px;color:var(--dim)">checking</span></div>
-    <div id="data-health-list" style="font-family:monospace,monospace;font-size:10px;color:var(--dim)"></div>`;
+    <div id="data-health-list" style="font-family:var(--font-mono);font-size:10px;color:var(--dim)"></div>`;
   backoffice.appendChild(panel);
   renderDataHealthPanel();
 }
@@ -7811,7 +7752,6 @@ function showInvRowMenu(e, id, isInStock){
     `<button class="hbtn" style="${btnStyle};color:var(--blue)" onclick="openInventoryItemInResearch('${id}');this.closest('.inv-row-menu').remove()">🔍 Research</button>`,
     `<button class="hbtn" style="${btnStyle}" onclick="openEbayFromDash('${id}');this.closest('.inv-row-menu').remove()">📦 eBay List</button>`,
     `<button class="hbtn" style="${btnStyle}" onclick="showItemHistory?.('${id}');this.closest('.inv-row-menu').remove()">📋 History</button>`,
-    `<button class="hbtn" style="${btnStyle}" onclick="sendQuickLookupToAuthCheck?.(0);switchTab('authcheck');this.closest('.inv-row-menu').remove()">🔐 Auth Check</button>`,
     `<button class="hbtn" style="${btnStyle}color:var(--gold)" onclick="archiveInventoryItem('${id}');this.closest('.inv-row-menu').remove()">Archive</button>`,
   ].filter(Boolean).join('');
   document.body.appendChild(menu);
@@ -9678,7 +9618,7 @@ function inventoryEmptySearchState(q){
   const safeQ = escHtml(q || '');
   return `<div class="empty" style="padding:18px;text-align:left">
     <div class="empty-t" style="color:var(--gold);margin-bottom:8px">NO EXACT MATCH FOUND</div>
-    <div style="font-family:monospace,monospace;font-size:11px;color:var(--dim);line-height:1.6;margin-bottom:12px">
+    <div style="font-family:var(--font-mono);font-size:11px;color:var(--dim);line-height:1.6;margin-bottom:12px">
       Try a card number like <b style="color:var(--text)">199/165</b>, set name, player, issue number, or rarity like <b style="color:var(--text)">SIR</b>.
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
@@ -9741,11 +9681,11 @@ function renderTable(){
       <td><span class="dot ${ins?'in_stock':'sold'}"></span><span class="nc" title="${i.tcgCardId?'TCG ID: '+i.tcgCardId:''}" onclick="${researchClick}" style="cursor:pointer">${i.name}${i.isRookie?' <span style="color:var(--gold);font-size:8px">RC</span>':''}${i.tcgCardId?'<span style="font-family:monospace;font-size:7px;color:rgba(0,255,179,.4);margin-left:4px">●</span>':''}</span></td>
       <td><span class="sc2">${[i.set,i.variant].filter(Boolean).join(' · ')||'—'}</span></td>
       <td><span class="ct ${cat}">${i.category}</span></td>
-      <td style="text-align:center;font-family:monospace,monospace;font-size:11px;color:${(i.qty||1)>1?'var(--g)':'var(--dim)'}">${i.qty||1}</td>
+      <td style="text-align:center;font-family:var(--font-mono);font-size:11px;color:${(i.qty||1)>1?'var(--g)':'var(--dim)'}">${i.qty||1}</td>
       <td class="pp pm">${i.market>0?fd$(i.market):'—'}<br>${priceSourceBadge(i.priceSource, i.category)}</td>
       <td class="pp pd">${i.cost>0?fd$(i.cost):'—'}</td>
       <td class="${ppc}">${i.cost>0||i.profit?(pft>=0?'+':'')+fd$(pft)+(i.cost>0?' ('+margin+')':''):'—'}</td>
-      <td><span style="font-family:monospace,monospace;font-size:9px;color:${ins?'var(--g)':'var(--dim)'}">${ins?'IN STOCK':'SOLD'+(i.channel?' · '+i.channel:'')}</span></td>
+      <td><span style="font-family:var(--font-mono);font-size:9px;color:${ins?'var(--g)':'var(--dim)'}">${ins?'IN STOCK':'SOLD'+(i.channel?' · '+i.channel:'')}</span></td>
       <td><div class="row-act-v2">
         ${ins?`<button class="rab rab-sell" onclick="openSellModal('${i.id}')">SELL TO CART</button>`:''}
         ${ins?`<button class="rab rab-cart" onclick="dashAddToCart('${i.id}')">+ CART</button>`:''}
@@ -9801,8 +9741,8 @@ function renderSoldTable(){
       <td class="pp pm">${i.salePrice>0?fd$(i.salePrice):'—'}</td>
       <td class="pp pd">${i.cost>0?fd$(i.cost):'—'}</td>
       <td class="pp ${pft>=0?'pos':'neg'}">${pft?(pft>=0?'+':'')+fd$(pft):'—'}</td>
-      <td style="font-family:monospace,monospace;font-size:9px;color:var(--dim)">${i.channel||'—'}</td>
-      <td style="font-family:monospace,monospace;font-size:9px;color:var(--dim)">${ds}</td>
+      <td style="font-family:var(--font-mono);font-size:9px;color:var(--dim)">${i.channel||'—'}</td>
+      <td style="font-family:var(--font-mono);font-size:9px;color:var(--dim)">${ds}</td>
     </tr>`;
   }).join('');
 }
@@ -10497,7 +10437,7 @@ async function renderResearchQueue(){
   ];
   if(count) count.textContent = items.length ? items.length + ' queued' : 'waiting for scans';
   if(!items.length) {
-    list.innerHTML = '<div style="font-family:monospace,monospace;font-size:10px;color:var(--dim);padding:12px;border:1px dashed var(--border);border-radius:8px;text-align:center">No research queue items for this store.</div>';
+    list.innerHTML = '<div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);padding:12px;border:1px dashed var(--border);border-radius:8px;text-align:center">No research queue items for this store.</div>';
     return;
   }
   list.innerHTML = items.slice(0,18).map(s => {
@@ -10511,8 +10451,8 @@ async function renderResearchQueue(){
       ${img ? `<img class="research-queue-img" src="${escHtml(img)}" alt="">` : `<div class="research-queue-img" style="display:flex;align-items:center;justify-content:center;color:var(--dim);font-size:9px">SCAN</div>`}
       <div>
         <div style="font-weight:800;color:var(--text);font-size:12px;line-height:1.25">${escHtml(title)}</div>
-        <div style="font-family:monospace,monospace;font-size:9px;color:var(--dim);margin-top:3px;line-height:1.35">${escHtml(meta || 'Scanner handoff')}</div>
-        <div style="font-family:monospace,monospace;font-size:9px;color:${price?'var(--gold)':'var(--dim)'};margin-top:3px">${price ? '$' + price.toFixed(2) : 'No price yet'}${confidence ? ' / ' + confidence + '% match' : ''}</div>
+        <div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);margin-top:3px;line-height:1.35">${escHtml(meta || 'Scanner handoff')}</div>
+        <div style="font-family:var(--font-mono);font-size:9px;color:${price?'var(--gold)':'var(--dim)'};margin-top:3px">${price ? '$' + price.toFixed(2) : 'No price yet'}${confidence ? ' / ' + confidence + '% match' : ''}</div>
       </div>
       <div class="research-queue-actions">
         <button class="ra" onclick="openScanInResearch('${id}')">Open</button>
@@ -10759,7 +10699,7 @@ function renderAuthCheckWorkbench(selectedItemId = activeAuthItemId){
       </div>
       <span class="qpl-badge ${authRiskClass(risk)==='low'?'good':authRiskClass(risk)==='high'?'bad':'warn'}">${escHtml(risk)}</span>
     </div>`;
-  }).join('') : '<div style="font-family:monospace,monospace;font-size:10px;color:var(--dim);padding:12px;border:1px dashed var(--border);border-radius:8px;text-align:center">No auth queue items yet.</div>';
+  }).join('') : '<div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);padding:12px;border:1px dashed var(--border);border-radius:8px;text-align:center">No auth queue items yet.</div>';
   if(checklistEl) checklistEl.innerHTML = renderAuthChecklist(item);
   if(!item) {
     if(workspaceEl) workspaceEl.innerHTML = 'Choose an item from the Auth Queue, or send one here from Research.';
@@ -11084,7 +11024,7 @@ async function renderScanInbox(){
   if(queue.length && !getOnboardingState().scannerTested) saveOnboardingState({ scannerTested:true, lastScannerSeenAt:new Date().toISOString() });
   updateRegisterCommandCenter(queue.length);
   if(!queue.length) {
-    list.innerHTML = '<div style="font-family:monospace,monospace;font-size:10px;color:var(--dim);padding:10px;border:1px dashed var(--border);border-radius:8px;text-align:center">No phone scans for '+escHtml(store.displayName || 'this store')+'</div>';
+    list.innerHTML = '<div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);padding:10px;border:1px dashed var(--border);border-radius:8px;text-align:center">No phone scans for '+escHtml(store.displayName || 'this store')+'</div>';
     return;
   }
   list.innerHTML = queue.slice(0,8).map(s => {
@@ -11096,9 +11036,9 @@ async function renderScanInbox(){
       ${img ? `<img src="${img}" style="width:52px;height:52px;object-fit:cover;border-radius:6px;border:1px solid var(--border)">` : `<div style="width:52px;height:52px;border-radius:6px;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;color:var(--dim);font-size:9px">SCAN</div>`}
       <div>
         <div style="font-weight:700;color:var(--text);font-size:12px">${s.name || 'Phone scan'}</div>
-        <div style="font-family:monospace,monospace;font-size:9px;color:var(--dim);margin-top:2px">${meta || 'No details'}</div>
-        <div style="font-family:monospace,monospace;font-size:8px;color:${decisionColor};margin-top:2px">${escHtml(decision)}${s.scannerMode ? ' · '+escHtml(s.scannerMode) : ''}${s.buySessionId ? ' · SESSION' : ''}</div>
-        <div style="font-family:monospace,monospace;font-size:8px;color:${s.confidence==='low'?'var(--red)':s.confidence==='high'?'var(--g)':'var(--gold)'};margin-top:2px">${(s.confidence || 'medium').toUpperCase()} ${s.confidence_reason ? '· '+s.confidence_reason : ''}</div>
+        <div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);margin-top:2px">${meta || 'No details'}</div>
+        <div style="font-family:var(--font-mono);font-size:8px;color:${decisionColor};margin-top:2px">${escHtml(decision)}${s.scannerMode ? ' · '+escHtml(s.scannerMode) : ''}${s.buySessionId ? ' · SESSION' : ''}</div>
+        <div style="font-family:var(--font-mono);font-size:8px;color:${s.confidence==='low'?'var(--red)':s.confidence==='high'?'var(--g)':'var(--gold)'};margin-top:2px">${(s.confidence || 'medium').toUpperCase()} ${s.confidence_reason ? '· '+s.confidence_reason : ''}</div>
       </div>
       <div style="display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end">
         <button class="ra" style="background:rgba(72,202,228,.08);border-color:rgba(72,202,228,.25);color:var(--blue)" onclick="openScanInResearch('${s.id}')">Research</button>
@@ -11119,7 +11059,7 @@ function toast_dash(msg){
   if(existing) existing.remove();
   const t = document.createElement('div');
   t.id = 'dash-toast';
-  t.style.cssText = 'position:fixed;bottom:72px;left:50%;transform:translateX(-50%);background:#00ffb3;color:#000;font-family:monospace,monospace;font-size:10px;font-weight:700;padding:8px 16px;border-radius:6px;z-index:9999;letter-spacing:1px;white-space:nowrap;pointer-events:none';
+  t.style.cssText = 'position:fixed;bottom:72px;left:50%;transform:translateX(-50%);background:#00ffb3;color:#000;font-family:var(--font-mono);font-size:10px;font-weight:700;padding:8px 16px;border-radius:6px;z-index:9999;letter-spacing:1px;white-space:nowrap;pointer-events:none';
   t.textContent = msg;
   document.body.appendChild(t);
   setTimeout(() => t.remove(), 2500);
@@ -16694,7 +16634,7 @@ function handleQplCategoryChange(){
 function qplNoCategoryResults(q, cat){
   return `<div style="border:1px dashed rgba(255,209,102,.35);border-radius:10px;padding:14px;background:rgba(255,209,102,.05)">
     <div style="font-family:'Orbitron',monospace;font-size:11px;color:var(--gold);margin-bottom:8px">NO ${escHtml(cat || 'CATEGORY')} RESULTS IN CURRENT SEARCH</div>
-    <div style="font-family:monospace,monospace;font-size:10px;color:var(--dim);line-height:1.6;margin-bottom:12px">Loaded results did not include this category. Search this category directly to hit the right source/cache.</div>
+    <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);line-height:1.6;margin-bottom:12px">Loaded results did not include this category. Search this category directly to hit the right source/cache.</div>
     <button class="hbtn" onclick="runPriceLookup()">SEARCH THIS CATEGORY</button>
   </div>`;
 }
@@ -16971,7 +16911,7 @@ function noQuickLookupResults(q, cat){
   }];
   return `<div style="border:1px dashed rgba(255,209,102,.35);border-radius:10px;padding:14px;background:rgba(255,209,102,.05)">
     <div style="font-family:'Orbitron',monospace;font-size:11px;color:var(--gold);margin-bottom:8px">NO EXACT MATCH FOUND</div>
-    <div style="font-family:monospace,monospace;font-size:10px;color:var(--dim);line-height:1.6;margin-bottom:12px">
+    <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);line-height:1.6;margin-bottom:12px">
       I searched for <b style="color:var(--text)">${safeQ}</b>. Try card number, set name, player, issue number, or rarity shorthand like SIR / IR / RC.
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">${links}</div>
@@ -17074,6 +17014,30 @@ function getInventoryCountsForResult(r){
   };
 }
 
+function qplGradedQuickChips(r, idx){
+  if(qplResultCategoryKey(r) !== 'pokemon') return '';
+  const gradeRows = pokemonPptGradeRows(r);
+  if(!gradeRows.length) return '';
+  const psa10 = gradeRows.find(g => /^PSA 10$/i.test(g.gradeLabel));
+  const psa9  = gradeRows.find(g => /^PSA 9$/i.test(g.gradeLabel));
+  if(!psa10 && !psa9) return '';
+  const chip = (g, label) => {
+    if(!g) return '';
+    const isActive = r.activePriceBasis?.basisType === 'graded' && normalizePokemonPptKey(r.selectedGrade||'') === normalizePokemonPptKey(g.gradeLabel);
+    return `<button class="qpl-cond-chip${isActive?' active':''}" style="border-color:rgba(72,202,228,.4);${isActive?'':'color:var(--blue)'}" onclick="updateQplVariant(${idx},{selectedGrade:'${escHtml(g.gradeLabel)}',selectedGradeKey:'${escHtml(g.gradeKey)}',pricingMode:'graded'})">
+      <span class="cchip-label">${label}</span>
+      <span class="${g.price?'cchip-price':'cchip-na'}">${g.price?'$'+Number(g.price).toFixed(2):'—'}</span>
+    </button>`;
+  };
+  return `<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:6px;padding-top:6px;border-top:1px solid rgba(72,202,228,.15)">
+    <span style="font-family:var(--font-mono);font-size:9px;color:var(--blue);letter-spacing:1px;flex-shrink:0">GRADED</span>
+    ${chip(psa10,'PSA 10')}
+    ${chip(psa9,'PSA 9')}
+    <button class="hbtn" style="min-height:28px;padding:3px 10px;font-size:9px;letter-spacing:.5px;color:var(--dim)" onclick="fetchPopCountForCard(${idx})" title="Load PSA population count">POP</button>
+  </div>
+  <div id="pop-panel-${idx}" style="display:none"></div>`;
+}
+
 function quickLookupResultCard(r, idx){
   const builtTcgLink = buildTcgExternalLink(r);
   const img = r.imageUrl
@@ -17172,6 +17136,7 @@ function quickLookupResultCard(r, idx){
       </div>
       <!-- Condition chips — large touch targets -->
       <div class="qpl-condition-chips">${condChips}</div>
+      ${qplGradedQuickChips(r, idx)}
       <!-- Finish / Language / Qty controls -->
       <div class="qpl-quick-controls">
         <select onchange="updateQplVariant(${idx},{selectedFinish:this.value})" aria-label="Finish">
@@ -17204,9 +17169,8 @@ function quickLookupResultCard(r, idx){
           <button class="hbtn primary" onclick="addQuickLookupToInventory(${idx})">ADD INVENTORY</button>
           <button class="hbtn" style="min-height:56px;font-size:14px;font-weight:800;background:rgba(255,209,102,.12);border-color:rgba(255,209,102,.4);color:var(--gold)" onclick="addQuickLookupToSaleCart(${idx})">ADD TO CART</button>
         </div>
-        <!-- SECONDARY actions — 2-column, smaller -->
+        <!-- SECONDARY actions — 3-column -->
         <div class="qpl-actions-secondary">
-          <button class="hbtn primary qpl-select-btn" onclick="selectQuickLookupResult(${idx})">SELECT</button>
           ${qplResultCategoryKey(r) === 'pokemon'
             ? (r.pokemonPriceTracker?.lookupDebug?.exactHydrated
                 ? `<button class="hbtn ppt-refresh-btn" data-qpl-idx="${idx}" onclick="refreshLivePriceForCard(${idx})" title="Bypass cache and fetch fresh live pricing">↻ REFRESH</button>`
@@ -17214,7 +17178,6 @@ function quickLookupResultCard(r, idx){
             : `<span></span>`}
           <button class="hbtn" onclick="openQplChartModal(${idx})">CHART</button>
           ${qplResultCategoryKey(r) === 'pokemon' || qplResultCategoryKey(r) === 'mtg' || r.tcgUrl ? `<button class="hbtn" onclick="openQuickExternal(${idx},'tcg')">TCG ↗</button>` : `<span></span>`}
-          <button class="hbtn" style="color:var(--blue)" onclick="sendQuickLookupToAuthCheck(${idx})">AUTH</button>
         </div>
         <!-- TERTIARY — collapsed -->
         <div class="qpl-actions-tertiary">
@@ -17230,7 +17193,7 @@ function quickLookupResultCard(r, idx){
           </details>
         </div>
       </div>
-      ${showAdminDebug() ? `<div class="dev-only" style="margin-top:8px;font-family:monospace,monospace;font-size:10px;color:var(--dim)">Debug: rawSearchQuerySent ${escHtml(r.lookupDebug?.rawQuerySent || '')} / workerRequestUrl ${escHtml(r.lookupDebug?.requestPath || '')} / searchResultCount ${escHtml(String(r.lookupDebug?.searchResultCount ?? ''))} / candidates ${escHtml(JSON.stringify(r.lookupDebug?.returnedCandidates || []))} / selectedTcgPlayerId ${escHtml(r.tcgPlayerId || r.tcgplayerId || '')} / hydrationRequestUrl ${escHtml(r.pokemonPriceTracker?.lookupDebug?.hydrationRequestUrl || r.lookupDebug?.hydrationRequestUrl || '')} / hydratedFromCache ${escHtml(String(!!(r.pokemonPriceTracker?.lookupDebug?.hydratedFromCache || r.lookupDebug?.hydratedFromCache)))} / prices.conditions keys ${escHtml(Object.keys(r.pokemonPriceTracker?.prices?.conditions || {}).join(', ') || 'none')} / prices.variants keys ${escHtml(Object.keys(r.pokemonPriceTracker?.prices?.variants || {}).join(', ') || 'none')} / priceHistory.conditions keys ${escHtml(Object.keys(r.pokemonPriceTracker?.priceHistory?.conditions || {}).join(', ') || 'none')} / priceHistory.variants keys ${escHtml(Object.keys(r.pokemonPriceTracker?.priceHistory?.variants || {}).join(', ') || 'none')} / active price path ${escHtml(r.activePriceBasis?.pricePath || r.resolvedPricePath || 'n/a')} / reason a row says No Real Price ${escHtml(r.noRealPriceReason || '')} / normalizedQuery ${escHtml(r.lookupDebug?.normalizedQuery || '')} / lookupPath ${escHtml(r.lookupDebug?.path || r.lookupDebug?.sourcePath || 'n/a')} / exactHydrated ${escHtml(String(!!r.lookupDebug?.exactHydrated))} / parseTitle ${escHtml(JSON.stringify(r.lookupDebug?.parseTitle || r.pptParseTitle || null))} / confidence ${escHtml(String(r.lookupDebug?.confidence || r.confidence || ''))} / autoSelect ${escHtml(String(!!(r.lookupDebug?.autoSelect || r.autoSelect)))} / selectedCondition ${escHtml(r.selectedCondition || r.condition || '')} / selectedFinish ${escHtml(qplFinishLabel(r.selectedFinish || r.finish || ''))} / activePriceBasis ${escHtml(JSON.stringify(r.activePriceBasis || {}))} / generatedTcgUrl ${escHtml(builtTcgLink.url || '')} / cache ${escHtml(r.lookupDebug?.cache || r.cache?.source || 'live/none')} / quotaCooldown ${escHtml(String(pokemonPriceTrackerQuotaBlocked()))} / apiCallsConsumed ${escHtml(localStorage.getItem('ppt_last_consumed') || '')}</div>` : ''}
+      ${showAdminDebug() ? `<div class="dev-only" style="margin-top:8px;font-family:var(--font-mono);font-size:10px;color:var(--dim)">Debug: rawSearchQuerySent ${escHtml(r.lookupDebug?.rawQuerySent || '')} / workerRequestUrl ${escHtml(r.lookupDebug?.requestPath || '')} / searchResultCount ${escHtml(String(r.lookupDebug?.searchResultCount ?? ''))} / candidates ${escHtml(JSON.stringify(r.lookupDebug?.returnedCandidates || []))} / selectedTcgPlayerId ${escHtml(r.tcgPlayerId || r.tcgplayerId || '')} / hydrationRequestUrl ${escHtml(r.pokemonPriceTracker?.lookupDebug?.hydrationRequestUrl || r.lookupDebug?.hydrationRequestUrl || '')} / hydratedFromCache ${escHtml(String(!!(r.pokemonPriceTracker?.lookupDebug?.hydratedFromCache || r.lookupDebug?.hydratedFromCache)))} / prices.conditions keys ${escHtml(Object.keys(r.pokemonPriceTracker?.prices?.conditions || {}).join(', ') || 'none')} / prices.variants keys ${escHtml(Object.keys(r.pokemonPriceTracker?.prices?.variants || {}).join(', ') || 'none')} / priceHistory.conditions keys ${escHtml(Object.keys(r.pokemonPriceTracker?.priceHistory?.conditions || {}).join(', ') || 'none')} / priceHistory.variants keys ${escHtml(Object.keys(r.pokemonPriceTracker?.priceHistory?.variants || {}).join(', ') || 'none')} / active price path ${escHtml(r.activePriceBasis?.pricePath || r.resolvedPricePath || 'n/a')} / reason a row says No Real Price ${escHtml(r.noRealPriceReason || '')} / normalizedQuery ${escHtml(r.lookupDebug?.normalizedQuery || '')} / lookupPath ${escHtml(r.lookupDebug?.path || r.lookupDebug?.sourcePath || 'n/a')} / exactHydrated ${escHtml(String(!!r.lookupDebug?.exactHydrated))} / parseTitle ${escHtml(JSON.stringify(r.lookupDebug?.parseTitle || r.pptParseTitle || null))} / confidence ${escHtml(String(r.lookupDebug?.confidence || r.confidence || ''))} / autoSelect ${escHtml(String(!!(r.lookupDebug?.autoSelect || r.autoSelect)))} / selectedCondition ${escHtml(r.selectedCondition || r.condition || '')} / selectedFinish ${escHtml(qplFinishLabel(r.selectedFinish || r.finish || ''))} / activePriceBasis ${escHtml(JSON.stringify(r.activePriceBasis || {}))} / generatedTcgUrl ${escHtml(builtTcgLink.url || '')} / cache ${escHtml(r.lookupDebug?.cache || r.cache?.source || 'live/none')} / quotaCooldown ${escHtml(String(pokemonPriceTrackerQuotaBlocked()))} / apiCallsConsumed ${escHtml(localStorage.getItem('ppt_last_consumed') || '')}</div>` : ''}
     </div>
   </div>`;
 }
@@ -17675,8 +17638,8 @@ function renderPriceChangeAlerts(){
   if(!alerts.length) { host.innerHTML = ''; return; }
   host.innerHTML = alerts.map(a => `
     <div class="panel" style="border-color:rgba(255,184,0,.35);background:rgba(255,184,0,.06);margin-bottom:8px;padding:10px 12px">
-      <div style="font-family:monospace,monospace;font-size:11px;font-weight:800;color:var(--gold)">PRICE CHANGE: ${escHtml(a.name)} ${a.dollarChange>=0?'up':'down'} $${Math.abs(a.dollarChange).toFixed(2)} / ${a.pctChange>=0?'+':''}${(a.pctChange*100).toFixed(0)}%</div>
-      <div style="font-family:monospace,monospace;font-size:9px;color:var(--dim);margin:4px 0">Old $${a.oldPrice.toFixed(2)} → New $${a.newPrice.toFixed(2)} · Last checked ${escHtml(pokemonCacheAgeLabel(a.lastChecked))}</div>
+      <div style="font-family:var(--font-mono);font-size:11px;font-weight:800;color:var(--gold)">PRICE CHANGE: ${escHtml(a.name)} ${a.dollarChange>=0?'up':'down'} $${Math.abs(a.dollarChange).toFixed(2)} / ${a.pctChange>=0?'+':''}${(a.pctChange*100).toFixed(0)}%</div>
+      <div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);margin:4px 0">Old $${a.oldPrice.toFixed(2)} → New $${a.newPrice.toFixed(2)} · Last checked ${escHtml(pokemonCacheAgeLabel(a.lastChecked))}</div>
       <div style="display:flex;gap:8px">
         <button class="hbtn" onclick="applyPriceChangeAlert('${a.id}')">UPDATE INVENTORY PRICE</button>
         <button class="hbtn" style="color:var(--dim)" onclick="dismissPriceChangeAlert('${a.id}')">IGNORE</button>
@@ -17917,7 +17880,6 @@ async function selectQuickLookupResult(idx){
     <details class="research-secondary-actions">
       <summary>MORE ACTIONS</summary>
       <div class="research-secondary-grid">
-        <button class="hbtn" style="color:var(--blue)" onclick="sendQuickLookupToAuthCheck(${idx})">AUTH CHECK</button>
         <button class="hbtn" style="color:var(--gold)" onclick="markQplNeedsReview(${idx})">NEEDS REVIEW</button>
         <button class="hbtn" onclick="openQplChartModal(${idx})">CHART</button>
         <button class="hbtn" onclick="openQuickExternal(${idx},'sold')">COMPS</button>
@@ -18691,10 +18653,10 @@ function renderDrawer(){
   const logEl = document.getElementById('drawer-log');
   if(logEl && !document.getElementById('drawer-session-meta')) {
     logEl.insertAdjacentHTML('beforebegin', `
-      <div id="drawer-session-meta" style="font-family:monospace,monospace;font-size:9px;color:var(--dim);border:1px solid var(--border);border-radius:6px;padding:7px;margin-bottom:8px"></div>
+      <div id="drawer-session-meta" style="font-family:var(--font-mono);font-size:9px;color:var(--dim);border:1px solid var(--border);border-radius:6px;padding:7px;margin-bottom:8px"></div>
       <div id="drawer-tender-breakdown" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(95px,1fr));gap:6px;margin-bottom:8px"></div>
     `);
-    logEl.insertAdjacentHTML('afterend', `<div id="drawer-closeout-history" style="font-family:monospace,monospace;font-size:9px;color:var(--dim);margin-top:8px"></div>`);
+    logEl.insertAdjacentHTML('afterend', `<div id="drawer-closeout-history" style="font-family:var(--font-mono);font-size:9px;color:var(--dim);margin-top:8px"></div>`);
   }
   const meta = document.getElementById('drawer-session-meta');
   if(meta) {
@@ -18704,7 +18666,7 @@ function renderDrawer(){
   if(tenderEl) {
     tenderEl.innerHTML = Object.entries(snapshot.tender).map(([key,val]) => `
       <div style="background:var(--surf2);border:1px solid var(--border);border-radius:6px;padding:7px">
-        <div style="font-family:monospace,monospace;font-size:8px;color:var(--dim);text-transform:uppercase">${formatTenderLabel(key)}</div>
+        <div style="font-family:var(--font-mono);font-size:8px;color:var(--dim);text-transform:uppercase">${formatTenderLabel(key)}</div>
         <div style="font-family:'Orbitron',monospace;font-size:11px;color:${key==='cash'?'var(--g)':'var(--text)'}">$${Number(val||0).toFixed(2)}</div>
       </div>`).join('');
   }
@@ -19393,7 +19355,7 @@ function generateEOD(){
   const el = document.getElementById('eod-report');
 
   if(!dayTx.length && !daySold.length && !itemsAdded.length && !show && !dayCloseouts.length && !openDrawerSnapshot) {
-    el.innerHTML = `<div style="font-family:monospace,monospace;font-size:10px;color:var(--dim);text-align:center;padding:20px">No transactions found for ${dateLabel}</div>`;
+    el.innerHTML = `<div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);text-align:center;padding:20px">No transactions found for ${dateLabel}</div>`;
     logOpsEvent('eod_report', 'Generated empty closeout report', { date: dateStr });
     return;
   }
@@ -19401,7 +19363,7 @@ function generateEOD(){
   el.innerHTML = `
     <div id="eod-printable">
       <div style="font-family:'Orbitron',monospace;font-size:11px;font-weight:900;color:var(--g);margin-bottom:4px;letter-spacing:2px">WALK-OFF SPORTS CARDS</div>
-      <div style="font-family:monospace,monospace;font-size:9px;color:var(--dim);margin-bottom:14px">END OF DAY · ${dateLabel}</div>
+      <div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);margin-bottom:14px">END OF DAY · ${dateLabel}</div>
 
       ${show?`<div class="eod-section">
         <div class="eod-hdr">SHOW</div>
@@ -20168,23 +20130,23 @@ function ensureCheckoutRuntimeMarkup(){
       </div>
       <div>
         <div id="cd-items" class="customer-pay-lines"></div>
-        <div id="cd-total-breakdown" style="max-width:860px;margin:8px auto 0;color:#657080;font-family:monospace,monospace;font-size:12px"></div>
+        <div id="cd-total-breakdown" style="max-width:860px;margin:8px auto 0;color:#657080;font-family:var(--font-mono);font-size:12px"></div>
         <div class="customer-pay-total"><span>TOTAL DUE</span><b id="cd-total">$0.00</b></div>
-        <div id="cd-items-count" style="text-align:center;font-family:monospace,monospace;font-size:11px;color:#657080;margin-top:7px">No locked checkout</div>
+        <div id="cd-items-count" style="text-align:center;font-family:var(--font-mono);font-size:11px;color:#657080;margin-top:7px">No locked checkout</div>
         <div id="cd-pay-links" class="customer-method-grid"></div>
         <div id="customer-payment-workbench" class="payment-workbench"></div>
-        <div id="cd-payment-setup" style="font-family:monospace,monospace;font-size:11px;color:#657080;margin-top:10px;line-height:1.5;text-align:center"></div>
+        <div id="cd-payment-setup" style="font-family:var(--font-mono);font-size:11px;color:#657080;margin-top:10px;line-height:1.5;text-align:center"></div>
         <div id="receipt-capture-screen" class="receipt-capture-screen"></div>
         <div id="wants-capture-screen" class="wants-capture-screen"></div>
       </div>
-      <div style="text-align:center;font-family:monospace,monospace;font-size:11px;color:#657080">Thank you for shopping with us.</div>`;
+      <div style="text-align:center;font-family:var(--font-mono);font-size:11px;color:#657080">Thank you for shopping with us.</div>`;
   }
   const tools = document.getElementById('dealer-cart-tools');
   if(tools && !document.getElementById('dealer-checkout-state')) {
     tools.className = 'dealer-checkout-panel';
     tools.innerHTML = `<div class="ph">DEALER CHECKOUT PANEL <span style="font-size:9px;color:var(--dim)">private controls</span></div>
       <div id="dealer-checkout-state" class="checkout-state-strip"></div>
-      <div id="dealer-cart-lines" style="display:grid;gap:8px;font-family:monospace,monospace;font-size:10px;color:var(--dim)"></div>
+      <div id="dealer-cart-lines" style="display:grid;gap:8px;font-family:var(--font-mono);font-size:10px;color:var(--dim)"></div>
       <div id="dealer-cart-total" class="dealer-total"></div>
       <div id="dealer-checkout-actions" class="checkout-action-row"></div>`;
   }
@@ -20229,7 +20191,7 @@ function renderDealerCartTools(cartData = getCartDataLocal()){
     <div class="dealer-profit">Cost $${Number(i.cost ?? i.cost_basis ?? 0).toFixed(2)}<br>Profit $${(Number(i.price ?? i.adjusted_price ?? 0)-Number(i.cost ?? i.cost_basis ?? 0)).toFixed(2)}</div>
     ${locked ? '' : `<button class="ra" onclick="editCartLinePrice(${idx})">Edit</button><button class="cd-remove" title="Remove from cart" onclick="removeCustomerDisplayCartItem('${escHtml(i.id || '')}', ${idx})">X</button>`}
   </div>`).join('');
-  if(totalEl) totalEl.innerHTML = `<span style="font-family:monospace,monospace;font-size:11px;color:var(--dim)">DEALER TOTAL</span><b>$${total.toFixed(2)}</b>`;
+  if(totalEl) totalEl.innerHTML = `<span style="font-family:var(--font-mono);font-size:11px;color:var(--dim)">DEALER TOTAL</span><b>$${total.toFixed(2)}</b>`;
   if(actions) {
     actions.innerHTML = locked
       ? `<button class="hbtn danger" onclick="cancelLockedCheckout()">CANCEL CHECKOUT</button><button class="hbtn" onclick="enterCustomerDisplayMode()">SHOW CUSTOMER PAYMENT</button>`
@@ -20329,7 +20291,7 @@ function selectLockedPaymentMethod(method){
   if(['cash','card'].includes(method)) closeP2pQrModal();
   if(method === 'cash') {
     wb.innerHTML = `<div style="font-weight:800;text-align:center;margin-bottom:8px">Cash payment</div>
-      <div style="text-align:center;color:#657080;font-family:monospace,monospace">Amount due $${total.toFixed(2)}</div>
+      <div style="text-align:center;color:#657080;font-family:var(--font-mono)">Amount due $${total.toFixed(2)}</div>
       <input id="locked-cash-received" type="number" step="0.01" min="0" placeholder="Amount received" oninput="updateLockedCashChange()" style="width:100%;min-height:50px;border:1px solid #cfd7e3;border-radius:7px;padding:10px 12px;font-size:18px;margin-top:10px">
       <div id="locked-cash-change" style="text-align:center;font-family:'Orbitron',monospace;font-size:24px;color:#05835f;margin-top:10px">Enter amount received</div>
       <div class="payment-confirm-row"><button class="hbtn" onclick="confirmLockedPayment('cash')">CONFIRM CASH PAYMENT</button></div>`;
