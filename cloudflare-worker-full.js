@@ -2199,9 +2199,12 @@ export default {
       return new Response(upstream.body, upstream);
     }
 
-    if (url.pathname.startsWith('/pricing/pokemonpricetracker/')) {
-      // Source of truth for supported PokemonPriceTracker fields/routes:
-      // docs/api/pokemon-price-tracker-openapi.json
+    if (url.pathname.startsWith('/pricing/pokemonpricetracker/') || url.pathname.startsWith('/pricing/pokemon/')) {
+      // Docs: docs/api/pokemon-price-tracker-openapi.json
+      // Clean aliases: /pricing/pokemon/* → canonical /pricing/pokemonpricetracker/*
+      const pptPath = url.pathname.startsWith('/pricing/pokemon/') && !url.pathname.startsWith('/pricing/pokemonpricetracker/')
+        ? url.pathname.replace('/pricing/pokemon/', '/pricing/pokemonpricetracker/')
+        : url.pathname;
       const key = env.POKEMONPRICE_API_KEY || env.POKEMON_PRICE_TRACKER_API_KEY;
       if (!key) return json({ ok: false, source: 'pokemonpricetracker', error: 'POKEMONPRICE_API_KEY not configured' }, 501);
       const routeMap = {
@@ -2211,11 +2214,11 @@ export default {
         '/pricing/pokemonpricetracker/parse-title': { upstream:'/parse-title', method:'POST', requiredAny:[] },
         '/pricing/pokemonpricetracker/population': { upstream:'/population', method:'GET', requiredAny:[] },
       };
-      const spec = routeMap[url.pathname];
+      const spec = routeMap[pptPath];
       if (!spec) return json({ ok: false, source: 'pokemonpricetracker', error: 'Unknown PokemonPriceTracker route' }, 404);
       if (request.method !== spec.method) return json({ ok: false, source: 'pokemonpricetracker', error: spec.method + ' only' }, 405);
       const params = new URLSearchParams();
-      const allowed = ['language', 'tcgPlayerId', 'cardId', 'setId', 'set', 'setName', 'search', 'rarity', 'cardType', 'artist', 'minPrice', 'maxPrice', 'printing', 'condition', 'includeHistory', 'includeEbay', 'includeBoth', 'days', 'maxDataPoints', 'fetchAllInSet', 'sortBy', 'sortOrder', 'limit', 'offset', 'name'];
+      const allowed = ['language', 'tcgPlayerId', 'cardId', 'setId', 'set', 'setName', 'search', 'rarity', 'cardType', 'artist', 'minPrice', 'maxPrice', 'printing', 'condition', 'includeHistory', 'includeEbay', 'includeBoth', 'includePopulation', 'days', 'maxDataPoints', 'fetchAllInSet', 'sortBy', 'sortOrder', 'limit', 'offset', 'name'];
       for (const name of allowed) {
         const value = url.searchParams.get(name);
         if (value != null && value !== '') params.set(name, value);
@@ -2224,24 +2227,25 @@ export default {
         return json({ ok: false, source: 'pokemonpricetracker', error: spec.requiredAny.join(', ') + ' required' }, 400);
       }
       if (!params.get('language')) params.set('language', 'english');
-      if (url.pathname === '/pricing/pokemonpricetracker/cards') {
+      if (pptPath === '/pricing/pokemonpricetracker/cards') {
         const exactLookup = !!(params.get('tcgPlayerId') || params.get('cardId'));
-        const requestedLimit = Number(params.get('limit') || (exactLookup ? 1 : 5));
-        params.set('limit', String(exactLookup ? 1 : Math.min(5, Math.max(1, requestedLimit || 5))));
+        const requestedLimit = Number(params.get('limit') || (exactLookup ? 1 : 20));
+        params.set('limit', String(exactLookup ? 1 : Math.min(20, Math.max(1, requestedLimit || 20))));
         if (String(params.get('fetchAllInSet') || '').toLowerCase() === 'true') {
-          return json({ ok: false, source: 'pokemonpricetracker', error: 'fetchAllInSet is disabled for credit-safe Research lookups. Use explicit Admin cache tools for full-set sync.' }, 400);
+          const hasSetFilter = !!(params.get('set') || params.get('setName') || params.get('setId'));
+          if (!hasSetFilter) return json({ ok: false, source: 'pokemonpricetracker', error: 'fetchAllInSet requires set, setName, or setId param.' }, 400);
         }
       }
       const bodyText = spec.method === 'POST' ? await request.text() : '';
       const stableKeySource = spec.method + ':' + spec.upstream + '?' + [...params.entries()].sort((a,b) => a[0].localeCompare(b[0]) || String(a[1]).localeCompare(String(b[1]))).map(([k,v]) => k + '=' + v).join('&') + ':' + bodyText;
-      const cacheKey = url.pathname === '/pricing/pokemonpricetracker/cards' && (params.get('tcgPlayerId') || params.get('cardId'))
+      const cacheKey = pptPath === '/pricing/pokemonpricetracker/cards' && (params.get('tcgPlayerId') || params.get('cardId'))
         ? 'pokemon:' + (params.get('tcgPlayerId') || params.get('cardId'))
-        : url.pathname === '/pricing/pokemonpricetracker/cards' && params.get('search')
+        : pptPath === '/pricing/pokemonpricetracker/cards' && params.get('search')
         ? 'ppt_search:' + md5Hex(new TextEncoder().encode(String(params.get('language') || 'english').toLowerCase() + ':' + String(params.get('search') || '').trim().toLowerCase().replace(/\s+/g, ' ')))
-        : url.pathname === '/pricing/pokemonpricetracker/parse-title'
+        : pptPath === '/pricing/pokemonpricetracker/parse-title'
         ? 'ppt_parse:' + md5Hex(new TextEncoder().encode(String(bodyText || '').trim().toLowerCase().replace(/\s+/g, ' ')))
         : 'ppt_api_cache:' + btoa(stableKeySource).replace(/=+$/,'').slice(0, 180);
-      if (env.LBA_KV && (spec.method === 'GET' || url.pathname === '/pricing/pokemonpricetracker/parse-title') && url.searchParams.get('fresh') !== 'true') {
+      if (env.LBA_KV && (spec.method === 'GET' || pptPath === '/pricing/pokemonpricetracker/parse-title') && url.searchParams.get('fresh') !== 'true') {
         const cached = await env.LBA_KV.get(cacheKey, 'json');
         if (cached) return json({ ...cached, cache:{ state:'hit', source:'worker-kv', cacheKey, cachedAt:cached.cache?.cachedAt || null } });
       }
