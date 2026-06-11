@@ -358,6 +358,7 @@ tr.sold:hover td{opacity:.7;}
 .qpl-cond-chip .cchip-label { font-weight:700; font-size:12px; letter-spacing:.04em; }
 .qpl-cond-chip .cchip-price { font-size:13px; font-weight:900; }
 .qpl-cond-chip .cchip-na { font-size:9px; color:var(--dim); }
+.qpl-cond-chip .cchip-est { font-size:11px; font-weight:700; color:rgba(255,200,60,.55); }
 
 /* ─── BUY FLOW UX ─── */
 .buy-offer-panel{display:grid;grid-template-columns:1fr 1fr 1.5fr 1fr;gap:1px;background:var(--border);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:14px;}
@@ -17020,7 +17021,7 @@ function qplGradedQuickChips(r, idx){
   const chip = (g, label) => {
     if(!g) return '';
     const isActive = r.activePriceBasis?.basisType === 'graded' && normalizePokemonPptKey(r.selectedGrade||'') === normalizePokemonPptKey(g.gradeLabel);
-    return `<button class="qpl-cond-chip${isActive?' active':''}" style="border-color:rgba(72,202,228,.4);${isActive?'':'color:var(--blue)'}" onclick="updateQplVariant(${idx},{selectedGrade:'${escHtml(g.gradeLabel)}',selectedGradeKey:'${escHtml(g.gradeKey)}',pricingMode:'graded'})">
+    return `<button class="qpl-cond-chip${isActive?' active':''}" style="border-color:rgba(72,202,228,.4);${isActive?'':'color:var(--blue)'}" onclick="(async()=>{await updateQplVariant(${idx},{selectedGrade:'${escHtml(g.gradeLabel)}',selectedGradeKey:'${escHtml(g.gradeKey)}',pricingMode:'graded'});fetchPopCountForCard(${idx});})()">
       <span class="cchip-label">${label}</span>
       <span class="${g.price?'cchip-price':'cchip-na'}">${g.price?'$'+Number(g.price).toFixed(2):'—'}</span>
     </button>`;
@@ -17029,7 +17030,6 @@ function qplGradedQuickChips(r, idx){
     <span style="font-family:var(--font-mono);font-size:9px;color:var(--blue);letter-spacing:1px;flex-shrink:0">GRADED</span>
     ${chip(psa10,'PSA 10')}
     ${chip(psa9,'PSA 9')}
-    <button class="hbtn" style="min-height:28px;padding:3px 10px;font-size:9px;letter-spacing:.5px;color:var(--dim)" onclick="fetchPopCountForCard(${idx})" title="Load PSA population count">POP</button>
   </div>
   <div id="pop-panel-${idx}" style="display:none"></div>`;
 }
@@ -17079,6 +17079,7 @@ function quickLookupResultCard(r, idx){
         const k = v.condition; if(seen.has(k)) return false; seen.add(k); return true;
       }).slice(0,6).map(v => {
         let p = Number(v.marketPrice || v.market || 0);
+        let isEst = false;
         // For PPT-hydrated cards, availableVariants only stores NM price.
         // Read LP/MP/HP/DMG prices directly from the PPT price matrix.
         if(!p && r.pokemonPriceTracker) {
@@ -17090,21 +17091,51 @@ function quickLookupResultCard(r, idx){
             const condEntry = pokemonPptObjectMatch(r.pokemonPriceTracker.prices?.conditions || {}, condFull);
             p = Number(condEntry?.price || 0);
           }
+          // Condition rate estimate when exact data unavailable — shown as ~$X in dim gold
+          if(!p) {
+            const nmRef = Number(r.pokemonPriceTracker.prices?.marketPrice || 0)
+              || Number((r.availableVariants||[]).find(v2 => v2.condition === 'NM')?.marketPrice || 0);
+            if(nmRef > 0) {
+              const rates = getConditionEstimateRates();
+              p = nmRef * (rates[v.condition] || 1);
+              isEst = true;
+            }
+          }
         }
         const isActive = String(v.condition||'').toLowerCase() === String(activeCond||'').toLowerCase();
-        return `<button class="qpl-cond-chip${isActive?' active':''}" onclick="updateQplVariant(${idx},{selectedCondition:'${escHtml(v.condition||'')}'})">
+        return `<button class="qpl-cond-chip${isActive?' active':''}" onclick="updateQplVariant(${idx},{selectedCondition:'${escHtml(v.condition||'')}',pricingMode:'raw',selectedGrade:'',selectedGradeKey:''})">
           <span class="cchip-label">${escHtml(v.condition||'')}</span>
-          <span class="${p?'cchip-price':'cchip-na'}">${p?'$'+p.toFixed(2):'—'}</span>
+          <span class="${p?(isEst?'cchip-est':'cchip-price'):'cchip-na'}">${p?(isEst?'~':'')+'$'+p.toFixed(2):'—'}</span>
         </button>`;
       }).join('');
     }
     // Fallback: raw conditions
     return ['NM','LP','MP','HP','DMG'].map(c => {
       const isActive = c === (activeCond || 'NM');
-      const p = displayPrice && isActive ? displayPrice : 0;
-      return `<button class="qpl-cond-chip${isActive?' active':''}" onclick="updateQplVariant(${idx},{selectedCondition:'${c}'})">
+      let p = 0, isEst = false;
+      if(r.pokemonPriceTracker) {
+        const condFull = pokemonPptConditionLabel(c);
+        const finishMap = pokemonPptObjectMatch(r.pokemonPriceTracker.prices?.variants || {}, activeFinish || 'Holofoil');
+        const entry = pokemonPptObjectMatch(finishMap || {}, condFull);
+        p = Number(entry?.price || 0);
+        if(!p) {
+          const condEntry = pokemonPptObjectMatch(r.pokemonPriceTracker.prices?.conditions || {}, condFull);
+          p = Number(condEntry?.price || 0);
+        }
+        if(!p) {
+          const nmRef = Number(r.pokemonPriceTracker.prices?.marketPrice || 0);
+          if(nmRef > 0) {
+            const rates = getConditionEstimateRates();
+            p = nmRef * (rates[c] || 1);
+            isEst = true;
+          }
+        }
+      } else {
+        p = isActive ? displayPrice : 0;
+      }
+      return `<button class="qpl-cond-chip${isActive?' active':''}" onclick="updateQplVariant(${idx},{selectedCondition:'${c}',pricingMode:'raw',selectedGrade:'',selectedGradeKey:''})">
         <span class="cchip-label">${c}</span>
-        ${p ? `<span class="cchip-price">$${p.toFixed(2)}</span>` : '<span class="cchip-na">—</span>'}
+        <span class="${p?(isEst?'cchip-est':'cchip-price'):'cchip-na'}">${p?(isEst?'~':'')+'$'+p.toFixed(2):'—'}</span>
       </button>`;
     }).join('');
   })();
