@@ -2360,10 +2360,15 @@ async function checkAndApplySubscriptionState(){
   } catch(_){}
 
   let sub = { status:'none', active:false, daysRemaining:0 };
+  let subCheckFailed = false;
   try {
     const res = await fetch(WORKER + `/subscription/status?store_id=${encodeURIComponent(storeId)}`, { cache:'no-store' });
     if(res.ok) sub = await res.json();
-  } catch(_){}
+    else subCheckFailed = true;
+  } catch(_){ subCheckFailed = true; }
+  if(subCheckFailed && navigator.onLine){
+    toast_dash('Subscription status unavailable — check your connection or try refreshing.');
+  }
 
   window._subStatus = sub;
   renderSubscriptionPanel();
@@ -17741,8 +17746,16 @@ async function fetchPopCountForCard(idx){
   el.style.display = '';
   el.innerHTML = `<div class="pop-panel pop-panel-loading"><div class="pop-panel-title">PSA / BGS POP COUNT</div><div style="color:var(--dim);font-size:10px">Loading…</div></div>`;
   const tcgPlayerId = r.tcgPlayerId || r.tcgplayerId || '';
-  if(!tcgPlayerId || !navigator.onLine || pokemonPriceTrackerQuotaBlocked()){
-    el.innerHTML = _popCountFallbackHtml(r);
+  if(!tcgPlayerId){
+    el.innerHTML = _popCountFallbackHtml(r, 'No card ID available for graded population lookup.');
+    return;
+  }
+  if(!navigator.onLine){
+    el.innerHTML = _popCountFallbackHtml(r, 'Offline — pop count unavailable. Check these links when back online:');
+    return;
+  }
+  if(pokemonPriceTrackerQuotaBlocked()){
+    el.innerHTML = _popCountFallbackHtml(r, 'API quota temporarily exceeded — pop count unavailable until quota resets. Links below:');
     return;
   }
   try {
@@ -17759,10 +17772,13 @@ async function fetchPopCountForCard(idx){
     if(pop && typeof pop === 'object' && POP_KEYS.some(k => pop[k] != null)){
       el.innerHTML = _popCountHtml(pop, r);
     } else {
-      el.innerHTML = _popCountFallbackHtml(r);
+      el.innerHTML = _popCountFallbackHtml(r, 'Graded population data not found for this card — check directly:');
     }
   } catch(e){
-    el.innerHTML = _popCountFallbackHtml(r);
+    const reason = /quota|429|rate/i.test(e.message)
+      ? 'API quota error — pop count unavailable. Links below:'
+      : 'Pop count lookup failed — check directly:';
+    el.innerHTML = _popCountFallbackHtml(r, reason);
   }
 }
 
@@ -17784,11 +17800,12 @@ function _popCountHtml(pop, r){
   return `<div class="pop-panel"><div class="pop-panel-title">PSA / BGS POP COUNT</div><div class="pop-row">${chips}</div><a href="${escHtml(psaLink)}" target="_blank" rel="noopener" style="font-size:10px;color:var(--blue);text-decoration:none;display:block;margin-top:8px">Full PSA Pop Report ↗</a></div>`;
 }
 
-function _popCountFallbackHtml(r){
+function _popCountFallbackHtml(r, reason){
   const query = encodeURIComponent([(r.name||''),(r.set||''),(r.card_number?'#'+r.card_number:'')].filter(Boolean).join(' '));
   const psaLink = `https://www.psacard.com/search#q=${query}`;
   const ptwLink = `https://www.ptcgocode.com/population/?q=${query}`;
-  return `<div class="pop-panel"><div class="pop-panel-title">PSA POP COUNT</div><div style="font-size:10px;color:var(--dim);margin-bottom:8px">No inline data — view directly:</div><div style="display:flex;gap:8px;flex-wrap:wrap"><a href="${escHtml(psaLink)}" target="_blank" rel="noopener" class="hbtn" style="font-size:10px;min-height:34px;color:var(--blue);text-decoration:none">PSA Pop Search ↗</a><a href="${escHtml(ptwLink)}" target="_blank" rel="noopener" class="hbtn" style="font-size:10px;min-height:34px;text-decoration:none">PTCGO Pop ↗</a></div></div>`;
+  const msg = escHtml(reason || 'No inline data — view directly:');
+  return `<div class="pop-panel"><div class="pop-panel-title">PSA POP COUNT</div><div style="font-size:10px;color:var(--dim);margin-bottom:8px">${msg}</div><div style="display:flex;gap:8px;flex-wrap:wrap"><a href="${escHtml(psaLink)}" target="_blank" rel="noopener" class="hbtn" style="font-size:10px;min-height:34px;color:var(--blue);text-decoration:none">PSA Pop Search ↗</a><a href="${escHtml(ptwLink)}" target="_blank" rel="noopener" class="hbtn" style="font-size:10px;min-height:34px;text-decoration:none">PTCGO Pop ↗</a></div></div>`;
 }
 
 // ── Live Price Refresh ─────────────────────────────────────────────────────
