@@ -17510,7 +17510,7 @@ async function loadPricesForResultCard(idx){
 }
 
 // ── PSA Pop Count ─────────────────────────────────────────────────────────
-// Fetches PPT population data (includePopulation=true) for a specific card.
+// Uses the dedicated /population endpoint via fetchPokemonPopulation().
 // Falls back to a direct PSA population report link if PPT has no data.
 async function fetchPopCountForCard(idx){
   const r = qplResults[idx];
@@ -17518,7 +17518,7 @@ async function fetchPopCountForCard(idx){
   const panelId = `pop-panel-${idx}`;
   const el = document.getElementById(panelId);
   if(!el) return;
-  el.style.display = '';  // make visible
+  el.style.display = '';
   el.innerHTML = `<div class="pop-panel pop-panel-loading"><div class="pop-panel-title">PSA / BGS POP COUNT</div><div style="color:var(--dim);font-size:10px">Loading…</div></div>`;
   const tcgPlayerId = r.tcgPlayerId || r.tcgplayerId || '';
   if(!tcgPlayerId || !navigator.onLine || pokemonPriceTrackerQuotaBlocked()){
@@ -17526,10 +17526,7 @@ async function fetchPopCountForCard(idx){
     return;
   }
   try {
-    const params = new URLSearchParams({ tcgPlayerId:String(tcgPlayerId), language:r.language || 'english', limit:'1', includePopulation:'true', includeHistory:'false', includeEbay:'false', days:'1', maxDataPoints:'1' });
-    const result = await pokemonPriceTrackerCardsRequest(params, 'cards.pop.limit1');
-    const card = result.cards[0] || null;
-    const pop = card?.population || card?.prices?.population || card?.gradedPopulation || null;
+    const pop = await fetchPokemonPopulation(tcgPlayerId, r.language || 'english');
     if(pop && typeof pop === 'object' && Object.keys(pop).length){
       el.innerHTML = _popCountHtml(pop, r);
     } else {
