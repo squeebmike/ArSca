@@ -13754,9 +13754,27 @@ async function searchQuickCatalog(q, cat){
           if(parsed) {
             const parseTitleRows = pokemonParseTitleToQplRows(parsed, q);
             if(parseTitleRows.length) {
-              parseTitleRows.forEach(add);
-              await savePokemonCacheResults(q, parseTitleRows, 'PokemonPriceTracker parse-title').catch(console.warn);
-              return parseTitleRows;
+              // Immediately hydrate rows that have tcgPlayerId — gets image + full price matrix
+              // without waiting for user selection (parse-title rarely returns prices itself)
+              const hydratedRows = await Promise.all(parseTitleRows.map(async row => {
+                if(!row.tcgPlayerId) return row;
+                try {
+                  const card = await fetchPokemonPriceTrackerExactDetail(row.tcgPlayerId, row.language || searchLanguage);
+                  if(!card) return row;
+                  const h = pokemonPriceTrackerCardToQplRow(card, q, null);
+                  h._pokemonGroup = 'parseTitle';
+                  h.is_parse_title = true;
+                  h.pptParseTitle = row.pptParseTitle;
+                  h.confidence = row.confidence;
+                  h.matchWhy = row.matchWhy;
+                  h.note = row.note;
+                  applyPokemonPriceTrackerPrice(h);
+                  return h;
+                } catch(e) { return row; }
+              }));
+              hydratedRows.forEach(add);
+              await savePokemonCacheResults(q, hydratedRows, 'PokemonPriceTracker parse-title').catch(console.warn);
+              return hydratedRows;
             }
           }
         } catch(e) {
@@ -13775,6 +13793,8 @@ async function searchQuickCatalog(q, cat){
         return sealedRows;
       }
       // Cards path: rank up to 20 results, group by match quality
+      // If sealed was the intent but no sealed products found, note it on card results
+      const sealedFallthrough = isSealedQuery && !sealedResult.products.length;
       const queryNumber = pokemonQueryCardNumber(q);
       const ranked = searchResult.ranked || pokemonRankApiCards(searchResult.cards, q);
       const rows = [];
@@ -13819,6 +13839,7 @@ async function searchQuickCatalog(q, cat){
           row._pokemonGroup = queryNumber && rankedCard.numberMatch
             ? (isPromoQuery ? 'promo' : 'number')
             : (isPromoQuery ? 'promo' : 'best');
+          if(sealedFallthrough) row.note = 'No sealed products found for this query — showing related cards instead.';
           applyPokemonPriceTrackerPrice(row);
         }
         rows.push(row);
@@ -17145,7 +17166,7 @@ function quickLookupResultCard(r, idx){
         ${r.cache?.state === 'offline' ? `<span class="qpl-badge warn">Offline Cache</span>` : ''}
         ${_qplStaleBadge(r)}
         ${r.is_sealed ? `<span class="qpl-badge good">SEALED</span>` : ''}
-        ${r._pokemonGroup === 'promo' || /\bblack[\s-]*star\b|\bpromo\b/i.test(r.setName || r.set || '') ? `<span class="qpl-badge" style="background:var(--gold);color:#000">PROMO</span>` : ''}
+        ${r._pokemonGroup === 'promo' || (r.source === 'pokemonpricetracker' && /\bblack[\s-]*star\b|\bpromo\b/i.test(r.setName || r.set || '')) ? `<span class="qpl-badge" style="background:var(--gold);color:#000">PROMO</span>` : ''}
         ${r.is_parse_title ? `<span class="qpl-badge">PARSED TITLE</span>` : ''}
         ${/^japanese$/i.test(r.language || '') ? `<span class="qpl-badge" style="background:#e63;color:#fff">JAPANESE</span>` : ''}
       </div>
