@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.06.12.02-pokemon-research-fixes">
+<meta name="version" content="2026.06.12.03-pokemon-chip-chart-fixes">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -938,7 +938,7 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.12.02-pokemon-research-fixes</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.12.03-pokemon-chip-chart-fixes</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
@@ -965,7 +965,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip dev-only" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.12.02-pokemon-research-fixes</div>
+<div class="dsb-chip dev-only" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.12.03-pokemon-chip-chart-fixes</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -2055,7 +2055,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.06.12.02-pokemon-research-fixes';
+const APP_VERSION = '2026.06.12.03-pokemon-chip-chart-fixes';
 const branchName = 'pokemon-v2-core';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
 const POKEMON_EXACT_CACHE_VERSION = 'pokemon-exact-v3-price-matrix';
@@ -15339,6 +15339,12 @@ function pokemonPptHistoryForBasis(row = {}, basis = row.activePriceBasis || {})
   if(variantHist) return { path:`priceHistory.variants[${finish}][${condition}]`, points:normalizeChartPoints(variantHist.history || variantHist) };
   const conditionHist = pokemonPptObjectMatch(hist.conditions || {}, condition);
   if(conditionHist) return { path:`priceHistory.conditions[${condition}]`, points:normalizeChartPoints(conditionHist.history || conditionHist) };
+  // Fallback: flat priceHistory array or top-level history/points key
+  const flatPoints = normalizeChartPoints(
+    Array.isArray(card.priceHistory) ? card.priceHistory
+    : card.priceHistory?.history || card.priceHistory?.points || []
+  );
+  if(flatPoints.length) return { path:'priceHistory.flat', points:flatPoints };
   return { path:`missing history for ${finish} / ${condition}`, points:[] };
 }
 
@@ -15392,6 +15398,18 @@ function pokemonPptAllHistorySeries(row = {}){
       selected:!selectedCondition || pokemonPptConditionCode(conditionLabel) === selectedCondition
     });
   });
+
+  // Fallback: PPT may return priceHistory as a flat array or with a top-level history/points key
+  // instead of the nested variants/conditions structure. Treat it as NM data so the chart works.
+  if(!series.length) {
+    const flatPoints = pokemonPptHistoryEntryPoints(card.priceHistory);
+    if(flatPoints.length) {
+      series.push({
+        label:'NM', finish:'', condition:'NM',
+        path:'priceHistory.flat', points:flatPoints, priority:0, selected:true
+      });
+    }
+  }
 
   // Sort: selected first, then by priority desc (variant > condition), then alphabetically.
   // This ensures series.find(s=>s.selected) returns the most specific match first.
@@ -18317,7 +18335,9 @@ function quickLookupResultCard(r, idx){
     // Pokemon (and fallback): always show NM/LP/MP/HP/DMG using real PPT prices only.
     // For NM: also accept r.market as fallback when PPT loaded but returned prices.market only
     // (no variants/conditions breakdown), which makes pokemonPptMatrixRows return empty.
-    const nmFallback = !pptMatrix.length ? Number(displayPrice || 0) : 0;
+    // Use displayPrice as NM fallback whenever PPT has no real NM price — covers both
+    // "pptMatrix is empty" and "pptMatrix has zero-price entries" cases.
+    const nmFallback = !pptPriceFor('NM') ? Number(displayPrice || 0) : 0;
     return ['NM','LP','MP','HP','DMG'].map(c => {
       const isActive = c === (activeCond || 'NM');
       const p = pptPriceFor(c) || (c === 'NM' ? nmFallback : 0);
