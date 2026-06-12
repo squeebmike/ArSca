@@ -17369,7 +17369,7 @@ function hydrateVisiblePokemonPriceTrackerResults(indexes = []){
 }
 
 function qplChartModalHtml(r, idx){
-  if(r.pokemonPriceTracker || r.pokemonPriceTrackerCard || r.pptCard) return pokemonPptAllHistoryChartHtml(r, idx);
+  if((r.pokemonPriceTracker || r.pokemonPriceTrackerCard || r.pptCard) && pokemonPptAllHistorySeries(r).length) return pokemonPptAllHistoryChartHtml(r, idx);
   const v = r.selectedVariant || {};
   const points = Array.isArray(v.priceHistory) ? v.priceHistory : [];
   const vals = points.map(p => ({ price:Number(p.price ?? p.marketPrice ?? p.value ?? p[1] ?? 0), volume:Number(p.volume ?? p.sales ?? p.count ?? 0), date:p.date || p.timestamp || p[0] || '' })).filter(p => p.price > 0);
@@ -18154,7 +18154,7 @@ function quickLookupResultCard(r, idx){
           p = Number(condEntry?.price || 0);
         }
         if(!p) {
-          const nmRef = Number(r.pokemonPriceTracker.prices?.marketPrice || 0);
+          const nmRef = Number(r.pokemonPriceTracker.prices?.marketPrice || 0) || Number(r.market || displayPrice || 0);
           if(nmRef > 0) {
             const rates = getConditionEstimateRates();
             p = nmRef * (rates[c] || 1);
