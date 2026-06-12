@@ -18101,9 +18101,9 @@ function quickLookupResultCard(r, idx){
     if(r.is_sealed) return '<span style="font-size:11px;color:var(--g);font-weight:600;letter-spacing:.04em">FACTORY SEALED</span>';
     const activeCond = r.selectedCondition || r.condition || 'NM';
     const activeFinish = r.selectedFinish || r.finish || '';
-    // When PPT data is loaded, always render the full 5-condition row with real/estimated prices.
-    // The TCG.io availableVariants path only has NM which would hide LP/MP/HP/DMG chips.
-    if(!r.pokemonPriceTracker && r.availableVariants?.length) {
+    // For Pokemon, always use the 5-condition path so NM/LP/MP/HP/DMG chips are always visible.
+    // The TCG.io availableVariants path only has NM which would hide the other condition chips.
+    if(qplResultCategoryKey(r) !== 'pokemon' && r.availableVariants?.length) {
       const finishVars = r.availableVariants.filter(v => !activeFinish || normalizePokemonText(v.finish||'') === normalizePokemonText(activeFinish));
       const seen = new Set();
       return (finishVars.length ? finishVars : r.availableVariants).filter(v => {
