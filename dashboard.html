@@ -308,8 +308,8 @@ tr.sold:hover td{opacity:.7;}
 .qpl-badge.good{color:var(--g);border-color:rgba(0,255,179,.35);background:rgba(0,255,179,.08);}
 .qpl-badge.warn{color:var(--gold);border-color:rgba(255,209,102,.35);background:rgba(255,209,102,.08);}
 .qpl-badge.bad{color:var(--red);border-color:rgba(255,77,109,.32);background:rgba(255,77,109,.07);}
-.pokemon-offline-banner{display:none;border:1px solid rgba(255,209,102,.35);background:rgba(255,209,102,.08);color:var(--gold);border-radius:8px;padding:9px 10px;margin:10px 0;font-family:var(--font-mono);font-size:10px;line-height:1.45;}
-.pokemon-offline-banner.on{display:block;}
+.pokemon-offline-banner,.mtg-offline-banner,.comics-offline-banner{display:none;border:1px solid rgba(255,209,102,.35);background:rgba(255,209,102,.08);color:var(--gold);border-radius:8px;padding:9px 10px;margin:10px 0;font-family:var(--font-mono);font-size:10px;line-height:1.45;}
+.pokemon-offline-banner.on,.mtg-offline-banner.on,.comics-offline-banner.on{display:block;}
 .pokemon-cache-meta{font-family:var(--font-mono);font-size:10px;color:var(--dim);line-height:1.45;margin-top:6px;}
 .pokemon-comps-panel{margin-top:12px;border:1px solid var(--border);border-radius:10px;padding:12px;background:rgba(255,255,255,.035);}
 .pokemon-comp-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;margin-top:8px;}
@@ -1283,6 +1283,8 @@ body.show-mode .inv-sync-badge{display:none;}
         <button class="hbtn" onclick="clearResearchLookup()" style="white-space:nowrap">CLEAR</button>
       </div>
       <div id="pokemon-offline-banner" class="pokemon-offline-banner"></div>
+      <div id="mtg-offline-banner" class="mtg-offline-banner"></div>
+      <div id="comics-offline-banner" class="comics-offline-banner"></div>
       <div id="qpl-result" style="font-family:var(--font-mono);font-size:10px;color:var(--dim);min-height:60px">Enter a card, comic, slab, game, or collectible to identify it and route it into Buy, Inventory, or Sale.</div>
       <div id="qpl-history" style="margin-top:10px;border-top:1px solid var(--border);padding-top:8px"></div>
     </div>
@@ -13501,15 +13503,15 @@ function detectQuickQueryIntent(q, selectedCategory = ''){
   const clean = expandSmartQuery(q);
   const original = smartNormalizeText(q);
   const hasSlashNumber = /\b\d{1,4}\s*\/\s*\d{1,4}\b/.test(String(q || ''));
-  const issueLike = /\b(asm|uxm|x men|x-men|spider man|spider-man|batman|superman|wolverine|venom|spawn|hulk|avengers|fantastic four|tmnt|teenage mutant ninja turtles)\b.*\b\d{1,4}\b/i.test(String(q || ''));
+  const issueLike = isComicLookupIntent(q, selectedCategory);
   const pokemonSet = /\b(151|evolving skies|evo skies|paldean fates|obsidian flames|surging sparks|scarlet|violet|lost origin|shining fates|destined rivals)\b/i.test(String(q || ''));
   const gameLike = /\b(n64|nes|snes|gamecube|playstation|xbox|zelda|mario|pokemon red|pokemon blue)\b/i.test(String(q || ''));
   const funkoLike = /\bfunko|pop\b/i.test(String(q || ''));
   const intents = [];
   if(cat) intents.push(cat);
-  if(issueLike || cat === 'comic') intents.push('comic');
-  if(hasSlashNumber || pokemonSet || cat === 'pokemon') intents.push('pokemon');
-  if(cat === 'mtg' || /\b(mtg|magic)\b/i.test(String(q || ''))) intents.push('mtg');
+  if(issueLike) intents.push('comic');
+  if(hasSlashNumber || pokemonSet || isPokemonLookupIntent(q, selectedCategory)) intents.push('pokemon');
+  if(isMtgLookupIntent(q, selectedCategory)) intents.push('mtg');
   if(gameLike) intents.push('video_games');
   if(funkoLike) intents.push('funko');
   if(!intents.length) intents.push('');
@@ -13673,6 +13675,34 @@ function isPokemonLookupIntent(q = '', cat = ''){
   if(isPokemonSealedIntent(q) && /\bpokemon\b|\bpaldea\b|\bsv\b|\bswsh\b|\bscarlet\b|\bviolet\b|\bsword\b|\bshield\b|\bsun\b|\bmoon\b|\bxy\b|\bblack\b|\bwhite\b|\bheartgold\b|\bsoulsilver\b|\bdiamond\b|\bpearl\b|\bpikachu\b|\bcharizard\b|\bpokeball\b|\b151\b|\b165\b|\b193\b|\bsv\d[a-z]?\b|\bswsh\d[a-z]?\b|\bbase\s*set\b|\bjungle\b|\bfossil\b|\bcelebrations\b|\bevolving\s*skies\b|\bchilling\s*reign\b|\bbattle\s*styles\b|\bfusion\s*strike\b|\bbrilliant\s*stars\b|\bastral\s*radiance\b|\blost\s*origin\b|\bsilver\s*tempest\b|\bpaldea\s*evolved\b|\bobsidian\s*flames\b|\bparadox\s*rift\b|\btemporal\s*forces\b|\btwilight\s*masquerade\b|\bshrouded\s*fable\b|\bstellar\s*crown\b|\bsurging\s*sparks\b|\bprismatic\s*evolutions\b/i.test(String(q))) return true;
   // Expanded Pokemon name / set recognition (B3)
   return /\bpokemon\b|\bpikachu\b|\bcharizard\b|\bumbreon\b|\bbulbasaur\b|\bsquirtle\b|\bcharmander\b|\bmew\b|\bmewtwo\b|\balakazam\b|\bevolving skies\b|\bsv151\b|\b151\b|\bspirittomb\b|\beevee\b|\braichu\b|\bsnorlax\b|\blucario\b|\bgardevoir\b|\bgreninja\b|\bgengar\b|\bzacian\b|\brayquaza\b|\beldegoss\b|\bpidgeot\b|\bmimikyu\b|\blillie\b|\bpalkia\b|\bdialga\b|\barceus\b|\bgirafarig\b|\bflareon\b|\bjolteon\b|\bvaporeon\b|\bsilvereon\b|\bglaceon\b|\bespeon\b|\bleafeon\b|\bsylveon\b/.test(text);
+}
+
+function isMtgLookupIntent(q = '', cat = ''){
+  if(qplCategoryKey(cat) === 'mtg') return true;
+  const raw = String(q || '');
+  // Explicit MTG keywords
+  if(/\b(mtg|magic[\s-]*the[\s-]*gathering)\b/i.test(raw)) return true;
+  // MTG set codes — 2-3 uppercase letters (optional trailing digit): MH2, OTJ, ONE, LTR, WOE, BLB, DSK
+  if(/\b[A-Z]{2,3}\d\b/.test(raw)) return true;
+  // MTG-specific frame treatments and premium finishes — very unlikely in Pokemon/sports context
+  if(/\b(showcase|borderless|extended[\s-]*art|retro[\s-]*frame|oil[\s-]*slick|halo[\s-]*foil|surge[\s-]*foil|etched[\s-]*foil|textured[\s-]*foil|rainbow[\s-]*foil|confetti[\s-]*foil|serialized)\b/i.test(raw)) return true;
+  // MTG type-line terms paired with foil — indicates a specific card search
+  if(/\b(planeswalker|sorcery|enchantment|artifact creature|legendary creature|legendary enchantment)\b/i.test(raw)) return true;
+  return false;
+}
+
+function isComicLookupIntent(q = '', cat = ''){
+  if(qplCategoryKey(cat) === 'comic') return true;
+  const t = String(q || '').toLowerCase();
+  // Publishers
+  if(/\b(marvel|dc comics|image comics?|dark horse|idw publishing|boom[\s!]*studios|valiant|dynamite|aftershock|zenescope|fantagraphics|drawn\s*&\s*quarterly)\b/i.test(t)) return true;
+  // Comic-specific structural patterns
+  if(/\b(vol\.?\s*\d+|volume\s*\d+|annual\s*#?\d+|giant[\s-]*size|one[\s-]*shot|trade[\s-]*paperback|tpb|graphic[\s-]*novel|omnibus|compendium|hardcover[\s-]*edition)\b/i.test(t)) return true;
+  // Issue number with series context
+  if(/\b(issue\s*#?\d+|#\s*\d{1,4}\b)/.test(t) && /\b(comic|series|run|arc|print|variant)\b/i.test(t)) return true;
+  // Known characters/series
+  if(/\b(spider[\s-]?man|batman|superman|wolverine|x[\s-]?men|avengers|venom|carnage|deadpool|iron[\s-]*man|captain[\s-]*america|thor\b|incredible[\s-]*hulk|fantastic[\s-]*four|punisher|daredevil|green[\s-]*lantern|flash\b|wonder[\s-]*woman|aquaman|spawn\b|invincible\b|saga\b|walking[\s-]*dead|tmnt|teenage[\s-]*mutant|sandman|watchmen|hellboy|bone\b|preacher\b|east[\s-]*of[\s-]*west|black[\s-]*panther|ms\.?\s*marvel|moon[\s-]*knight|ghost[\s-]*rider)\b/i.test(t)) return true;
+  return false;
 }
 
 function pokemonCardKey(row = {}, query = ''){
@@ -14189,6 +14219,102 @@ async function getPokemonComps(cardKey){
   return (await pokemonDbAll('comps').catch(() => [])).filter(c => c.storeId === getActiveStoreId() && c.cardKey === cardKey).sort((a,b) => new Date(b.capturedAt || 0) - new Date(a.capturedAt || 0));
 }
 
+// ── MTG IDB cache (walkoff_mtg_cache_v1) ──────────────────────────────────────
+const MTG_CACHE_VERSION = 1;
+function mtgDb(){
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open('walkoff_mtg_cache_v1', 1);
+    req.onupgradeneeded = e => {
+      const db = e.target.result;
+      if(!db.objectStoreNames.contains('cards')) { const s = db.createObjectStore('cards', { keyPath:'cacheKey' }); s.createIndex('query','query',{unique:false}); s.createIndex('updatedAt','updatedAt',{unique:false}); }
+      if(!db.objectStoreNames.contains('meta')) db.createObjectStore('meta', { keyPath:'key' });
+    };
+    req.onsuccess = e => resolve(e.target.result);
+    req.onerror = e => reject(e.target.error);
+  });
+}
+async function mtgDbPut(store, record){ const db = await mtgDb(); return new Promise((res,rej)=>{ const tx = db.transaction(store,'readwrite'); tx.objectStore(store).put(record).onsuccess = () => res(); tx.onerror = e => rej(e.target.error); }); }
+async function mtgDbAll(store){ const db = await mtgDb(); return new Promise((res,rej)=>{ const tx = db.transaction(store,'readonly'); const req = tx.objectStore(store).getAll(); req.onsuccess = e => res(e.target.result || []); req.onerror = e => rej(e.target.error); }); }
+
+async function saveMtgCacheResults(query, rows = [], source = 'Scryfall'){
+  const mtgRows = (rows || []).filter(r => r.source === 'scryfall' || qplCategoryKey(r.category) === 'mtg' || isMtgLookupIntent(query, r.category));
+  if(!mtgRows.length) return;
+  await Promise.all(mtgRows.slice(0, 60).map(async row => {
+    const cacheKey = ['mtg', row.scryfallId || row.productId || '', (row.selectedFinish || row.finish || 'normal'), (row.set || '').toLowerCase().replace(/\s+/g,'_')].filter(Boolean).join('|');
+    await mtgDbPut('cards', { cacheKey, query: (query||'').toLowerCase().trim(), storeId: getActiveStoreId(), cacheVersion: MTG_CACHE_VERSION, updatedAt: new Date().toISOString(), source: source || 'Scryfall', card: row, searchText: [row.name, row.set, row.year, row.variant, row.card_number, row.extraInfo?.typeLine, row.extraInfo?.treatment].filter(Boolean).join(' ').toLowerCase() });
+  }));
+  await mtgDbPut('meta', { key:'lastMtgSyncAt', value: new Date().toISOString() });
+}
+
+async function searchMtgOfflineCache(query, cat = ''){
+  if(!isMtgLookupIntent(query, cat)) return [];
+  const terms = (query||'').toLowerCase().replace(/[^a-z0-9\s]/g,' ').split(/\s+/).filter(Boolean);
+  const cards = await mtgDbAll('cards').catch(() => []);
+  const finishIntent = parseMtgFinishIntent(query);
+  return cards
+    .filter(c => c.storeId === getActiveStoreId() && c.cacheVersion === MTG_CACHE_VERSION)
+    .filter(c => terms.every(t => (c.searchText || '').includes(t)))
+    .filter(c => !finishIntent.finish || (c.card?.finish || c.card?.selectedFinish || '').includes(finishIntent.finish.replace('_foil','').replace('_','')) || true)
+    .sort((a,b) => new Date(b.updatedAt||0) - new Date(a.updatedAt||0))
+    .slice(0, 40)
+    .map(c => ({ ...(c.card||{}), cache:{ state: navigator.onLine ? 'cached' : 'offline', updatedAt: c.updatedAt, source: c.source||'MTG cache' }, priceSource: ((c.card?.priceSource)||'Scryfall') + ' (cached)' }));
+}
+
+// ── Comics IDB cache (walkoff_comics_cache_v1) ────────────────────────────────
+const COMICS_CACHE_VERSION = 1;
+function comicsDb(){
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open('walkoff_comics_cache_v1', 1);
+    req.onupgradeneeded = e => {
+      const db = e.target.result;
+      if(!db.objectStoreNames.contains('issues')) { const s = db.createObjectStore('issues', { keyPath:'cacheKey' }); s.createIndex('query','query',{unique:false}); s.createIndex('updatedAt','updatedAt',{unique:false}); }
+      if(!db.objectStoreNames.contains('meta')) db.createObjectStore('meta', { keyPath:'key' });
+    };
+    req.onsuccess = e => resolve(e.target.result);
+    req.onerror = e => reject(e.target.error);
+  });
+}
+async function comicsDbPut(store, record){ const db = await comicsDb(); return new Promise((res,rej)=>{ const tx = db.transaction(store,'readwrite'); tx.objectStore(store).put(record).onsuccess = () => res(); tx.onerror = e => rej(e.target.error); }); }
+async function comicsDbAll(store){ const db = await comicsDb(); return new Promise((res,rej)=>{ const tx = db.transaction(store,'readonly'); const req = tx.objectStore(store).getAll(); req.onsuccess = e => res(e.target.result || []); req.onerror = e => rej(e.target.error); }); }
+
+async function saveComicsCacheResults(query, rows = [], source = 'Live lookup'){
+  const comicRows = (rows || []).filter(r => qplCategoryKey(r.category) === 'comic' || isComicLookupIntent(query, r.category));
+  if(!comicRows.length) return;
+  await Promise.all(comicRows.slice(0, 60).map(async row => {
+    const cacheKey = ['comic', (row.name||'').toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,''), (row.issue||row.card_number||''), (row.year||''), (row.variant||'').toLowerCase().replace(/\s+/g,'_')].filter(Boolean).join('|');
+    await comicsDbPut('issues', { cacheKey, query: (query||'').toLowerCase().trim(), storeId: getActiveStoreId(), cacheVersion: COMICS_CACHE_VERSION, updatedAt: new Date().toISOString(), source: source||'Live lookup', issue: row, searchText: [row.name, row.set, row.year, row.variant, row.card_number, row.issue, row.publisher, row.note].filter(Boolean).join(' ').toLowerCase() });
+  }));
+  await comicsDbPut('meta', { key:'lastComicsSyncAt', value: new Date().toISOString() });
+}
+
+async function searchComicsOfflineCache(query, cat = ''){
+  if(!isComicLookupIntent(query, cat)) return [];
+  const terms = (query||'').toLowerCase().replace(/[^a-z0-9\s#]/g,' ').split(/\s+/).filter(Boolean);
+  const issues = await comicsDbAll('issues').catch(() => []);
+  return issues
+    .filter(c => c.storeId === getActiveStoreId() && c.cacheVersion === COMICS_CACHE_VERSION)
+    .filter(c => terms.length < 2 || terms.some(t => (c.searchText||'').includes(t)))
+    .sort((a,b) => new Date(b.updatedAt||0) - new Date(a.updatedAt||0))
+    .slice(0, 40)
+    .map(c => ({ ...(c.issue||{}), cache:{ state: navigator.onLine ? 'cached' : 'offline', updatedAt: c.updatedAt, source: c.source||'Comics cache' }, priceSource: ((c.issue?.priceSource)||'Comics cache') + ' (cached)' }));
+}
+
+function setMtgOfflineBanner(message = '', tone = 'warn'){
+  const banner = document.getElementById('mtg-offline-banner');
+  if(!banner) return;
+  banner.textContent = message;
+  banner.classList.toggle('on', !!message);
+  banner.style.color = tone === 'bad' ? 'var(--red)' : tone === 'good' ? 'var(--g)' : 'var(--gold)';
+}
+
+function setComicsOfflineBanner(message = '', tone = 'warn'){
+  const banner = document.getElementById('comics-offline-banner');
+  if(!banner) return;
+  banner.textContent = message;
+  banner.classList.toggle('on', !!message);
+  banner.style.color = tone === 'bad' ? 'var(--red)' : tone === 'good' ? 'var(--g)' : 'var(--gold)';
+}
+
 function setPokemonOfflineBanner(message = '', tone = 'warn'){
   const banner = document.getElementById('pokemon-offline-banner');
   if(!banner) return;
@@ -14208,14 +14334,19 @@ async function runPriceLookup(){
   const el = document.getElementById('qpl-result');
   if(!q || q.length < 3) return;
   const wantsPokemon = isPokemonLookupIntent(q, cat);
+  const wantsMtg = !wantsPokemon && isMtgLookupIntent(q, cat);
+  const wantsComic = !wantsPokemon && !wantsMtg && isComicLookupIntent(q, cat);
   setPokemonOfflineBanner('');
+  setMtgOfflineBanner('');
+  setComicsOfflineBanner('');
   el.innerHTML = '<div style="color:var(--gold)">Searching local cache first, then live catalog sources...</div>';
   let cachedResults = [];
+
+  // ── Pokemon offline cache ──────────────────────────────────────────────────
   if(wantsPokemon) {
     cachedResults = await searchPokemonOfflineCache(q, cat);
     if(cachedResults.length) {
-      qplMasterResults = cachedResults;
-      qplLastSearch = q;
+      qplMasterResults = cachedResults; qplLastSearch = q;
       qplResults = filterQplMasterResults(qplMasterResults, cat);
       renderQuickLookupResults(qplResults);
       const fromCatalog = cachedResults.some(r => r.source === 'ppt_export');
@@ -14231,22 +14362,54 @@ async function runPriceLookup(){
       return;
     }
   }
-  // ── Offline guard: cached results already rendered above — do not fire live API ──
-  if(wantsPokemon && !navigator.onLine) return;
+
+  // ── MTG offline cache ──────────────────────────────────────────────────────
+  if(wantsMtg) {
+    cachedResults = await searchMtgOfflineCache(q, cat);
+    if(cachedResults.length) {
+      qplMasterResults = cachedResults; qplLastSearch = q;
+      qplResults = filterQplMasterResults(qplMasterResults, cat);
+      renderQuickLookupResults(qplResults);
+      const cacheAge = pokemonCacheAgeLabel(cachedResults.find(r => r.cache?.updatedAt)?.cache?.updatedAt);
+      setMtgOfflineBanner(navigator.onLine ? 'Cached MTG results shown while Scryfall refresh runs. Last updated ' + cacheAge + '.' : 'Offline Mode: showing cached MTG data. Last updated ' + cacheAge + '.');
+    } else if(!navigator.onLine) {
+      el.innerHTML = `<div style="color:var(--gold);line-height:1.6">No cached MTG data found for this search.<br>Search while online to build your MTG cache for use at shows.<br><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><button class="hbtn" onclick="document.getElementById('qpl-input').focus()">TRY ANOTHER SEARCH</button></div></div>`;
+      setMtgOfflineBanner('Offline Mode: no cached MTG data found for "' + q + '".', 'bad');
+      return;
+    }
+  }
+
+  // ── Comics offline cache ───────────────────────────────────────────────────
+  if(wantsComic) {
+    cachedResults = await searchComicsOfflineCache(q, cat);
+    if(cachedResults.length) {
+      qplMasterResults = cachedResults; qplLastSearch = q;
+      qplResults = filterQplMasterResults(qplMasterResults, cat);
+      renderQuickLookupResults(qplResults);
+      const cacheAge = pokemonCacheAgeLabel(cachedResults.find(r => r.cache?.updatedAt)?.cache?.updatedAt);
+      setComicsOfflineBanner(navigator.onLine ? 'Cached comics results shown while live refresh runs. Last updated ' + cacheAge + '.' : 'Offline Mode: showing cached comics data. Last updated ' + cacheAge + '.');
+    } else if(!navigator.onLine) {
+      el.innerHTML = `<div style="color:var(--gold);line-height:1.6">No cached comics data found for this search.<br>Search while online to build your comics cache for use at shows.<br><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><button class="hbtn" onclick="document.getElementById('qpl-input').focus()">TRY ANOTHER SEARCH</button></div></div>`;
+      setComicsOfflineBanner('Offline Mode: no cached comics data found for "' + q + '".', 'bad');
+      return;
+    }
+  }
+
+  // ── Offline guard: cached results already rendered — do not fire live API ──
+  if((wantsPokemon || wantsMtg || wantsComic) && !navigator.onLine) return;
+
   try {
-    let slowWarn = null;
-    // Phase 5: mark network slow if lookup is taking too long
     const slowTimer = setTimeout(() => {
       if(_netStatus === 'online') { _netStatus = 'slow'; updateNetBadge(); }
-      if(wantsPokemon) setPokemonOfflineBanner(cachedResults.length ? 'Slow Internet: still showing cached Pokemon data while live refresh continues.' : 'Slow Internet: still trying live Pokemon sources.');
+      if(wantsPokemon) setPokemonOfflineBanner(cachedResults.length ? 'Slow Internet: still showing cached Pokémon data while live refresh continues.' : 'Slow Internet: still trying live Pokémon sources.');
+      if(wantsMtg) setMtgOfflineBanner(cachedResults.length ? 'Slow Internet: still showing cached MTG data while Scryfall refresh continues.' : 'Slow Internet: still trying live MTG sources.');
+      if(wantsComic) setComicsOfflineBanner(cachedResults.length ? 'Slow Internet: still showing cached comics data while live refresh continues.' : 'Slow Internet: still trying live comics sources.');
     }, 5000);
-    if(wantsPokemon) slowWarn = slowTimer;
     const results = await Promise.race([
       searchQuickCatalog(q, cat),
       new Promise((_, reject) => setTimeout(() => reject(new Error('Lookup timed out after 15 seconds')), 15000))
     ]);
     clearTimeout(slowTimer);
-    if(slowWarn) clearTimeout(slowWarn);
     qplMasterResults = results.length ? results : await aiQuickLookupFallback(q, cat);
     qplLastSearch = q;
     qplResults = filterQplMasterResults(qplMasterResults, cat);
@@ -14256,14 +14419,20 @@ async function runPriceLookup(){
     }
     renderQuickLookupResults(qplResults);
     pushQuickLookupHistory(q, qplResults[0]);
-    // Async image enrichment for SCP sports results (non-blocking)
     if(qplResults.some(r => r.source === 'sportscardspro' && !r.imageUrl)) enrichScpImagesAsync();
     if(wantsPokemon) {
       savePokemonCacheResults(q, qplMasterResults, 'Live Pokemon lookup').then(renderOfflineCachePanel).catch(console.warn);
-      setPokemonOfflineBanner((cachedResults.length ? 'Live Pokemon refresh updated the cached copy.' : 'Saved this Pokémon lookup for offline use.') + ' Cached results may be stale; live refresh updates when online. Last cached ' + pokemonCacheAgeLabel(new Date().toISOString()) + '.', 'good');
+      setPokemonOfflineBanner((cachedResults.length ? 'Live Pokémon refresh updated the cached copy.' : 'Saved this Pokémon lookup for offline use.') + ' Last cached ' + pokemonCacheAgeLabel(new Date().toISOString()) + '.', 'good');
+    }
+    if(wantsMtg) {
+      saveMtgCacheResults(q, qplMasterResults, 'Scryfall live lookup').catch(console.warn);
+      setMtgOfflineBanner((cachedResults.length ? 'Live MTG refresh updated the cached copy.' : 'Saved this MTG lookup for offline use.') + ' Last cached ' + pokemonCacheAgeLabel(new Date().toISOString()) + '.', 'good');
+    }
+    if(wantsComic) {
+      saveComicsCacheResults(q, qplMasterResults, 'Live comics lookup').catch(console.warn);
+      setComicsOfflineBanner((cachedResults.length ? 'Live comics refresh updated the cached copy.' : 'Saved this comics lookup for offline use.') + ' Last cached ' + pokemonCacheAgeLabel(new Date().toISOString()) + '.', 'good');
     }
   } catch(e) {
-    // Phase 5: timeout/failure → update network badge
     if(e.message?.includes('timed out') || e.name === 'AbortError'){
       _netStatus = navigator.onLine ? 'slow' : 'offline';
       updateNetBadge();
@@ -14276,10 +14445,14 @@ async function runPriceLookup(){
       return;
     }
     if(cachedResults.length) {
-      setPokemonOfflineBanner('Live refresh failed: ' + e.message + '. Cached Pokemon data remains visible.', 'bad');
+      if(wantsPokemon) setPokemonOfflineBanner('Live refresh failed: ' + e.message + '. Cached Pokémon data remains visible.', 'bad');
+      if(wantsMtg) setMtgOfflineBanner('Live refresh failed: ' + e.message + '. Cached MTG data remains visible.', 'bad');
+      if(wantsComic) setComicsOfflineBanner('Live refresh failed: ' + e.message + '. Cached comics data remains visible.', 'bad');
     } else {
       el.innerHTML = '<div style="color:var(--red)">Lookup failed: ' + e.message + (e.message?.includes('timed out') ? ' — network may be slow.' : '') + '</div>';
-      if(wantsPokemon) setPokemonOfflineBanner('No cached Pokemon data found. Search online before show or sync Pokemon cache.', 'bad');
+      if(wantsPokemon) setPokemonOfflineBanner('No cached Pokémon data found. Search online to build offline cache.', 'bad');
+      if(wantsMtg) setMtgOfflineBanner('No cached MTG data found. Search online to build offline cache.', 'bad');
+      if(wantsComic) setComicsOfflineBanner('No cached comics data found. Search online to build offline cache.', 'bad');
     }
   }
 }
@@ -14497,7 +14670,7 @@ async function searchQuickCatalog(q, cat){
       ptcg.forEach(add);
     } catch(e) {}
   }
-  if(!wants || wants === 'tcg' || wants === 'mtg' || wants === 'graded') {
+  if(!wants || wants === 'tcg' || wants === 'mtg' || wants === 'graded' || isMtgLookupIntent(q, cat)) {
     try {
       const mtg = await fetchScryfallCatalog(q);
       mtg.forEach(add);
@@ -14710,12 +14883,34 @@ function qplCategoryAllows(r, wants){
 
 function normalizeQplFinish(value){
   const raw = String(value || 'normal').toLowerCase();
+  // Pokemon-specific (order matters — check specific before generic)
+  if(raw.includes('master ball') || raw.includes('masterball')) return 'master_ball_holo';
+  if(raw.includes('poke ball') || raw.includes('pokeball')) return 'poke_ball_holo';
+  if(raw.includes('cosmos')) return 'cosmos_holo';
+  if(raw.includes('galaxy')) return 'galaxy_holo';
+  if(raw.includes('patterned')) return 'patterned_holo';
+  if(raw.includes('special illustration') || raw.includes('sar')) return 'special_illustration_rare';
+  if(raw.includes('illustration rare') || raw.includes('ir ')) return 'illustration_rare';
+  if(raw.includes('hyper')) return 'hyper_rare';
+  if(raw.includes('ace spec')) return 'ace_spec_rare';
+  if(raw.includes('gold star')) return 'gold_star';
+  if(raw.includes('double rainbow')) return 'double_rainbow';
+  if(raw.includes('play promo') || raw.includes('stamped')) return 'play_promo';
   if(raw.includes('reverse')) return 'reverse_holo';
   if(raw.includes('holo')) return 'holofoil';
-  if(raw.includes('etched')) return 'etched_foil';
+  // MTG-specific
+  if(raw.includes('oil slick') || raw.includes('oil-slick')) return 'oil_slick';
+  if(raw.includes('rainbow') || raw.includes('confetti')) return 'rainbow_foil';
+  if(raw.includes('halo')) return 'halo_foil';
   if(raw.includes('surge')) return 'surge_foil';
+  if(raw.includes('etched')) return 'etched_foil';
   if(raw.includes('textured')) return 'textured_foil';
   if(raw.includes('serial')) return 'serialized';
+  // Treatments (different printings, not finishes)
+  if(raw.includes('borderless')) return 'borderless';
+  if(raw.includes('showcase')) return 'showcase';
+  if(raw.includes('extended art') || raw.includes('extended_art')) return 'extended_art';
+  if(raw.includes('retro') || raw.includes('old frame')) return 'retro_frame';
   if(raw.includes('foil')) return 'foil';
   if(raw.includes('1st') || raw.includes('first')) return 'first_edition';
   if(raw.includes('unlimited')) return 'unlimited';
@@ -14724,17 +14919,21 @@ function normalizeQplFinish(value){
 
 function qplFinishLabel(value){
   return ({
-    normal:'Normal',
-    foil:'Foil',
-    reverse_holo:'Reverse Holo',
-    holofoil:'Holofoil',
-    etched_foil:'Etched Foil',
-    surge_foil:'Surge Foil',
-    textured_foil:'Textured Foil',
-    serialized:'Serialized',
-    first_edition:'First Edition',
-    unlimited:'Unlimited'
-  })[value] || String(value || 'Other').replace(/_/g, ' ');
+    // Standard
+    normal:'Normal', foil:'Foil', first_edition:'1st Edition', unlimited:'Unlimited', serialized:'Serialized',
+    // Pokemon holos
+    reverse_holo:'Reverse Holo', holofoil:'Holofoil', cosmos_holo:'Cosmos Holo',
+    master_ball_holo:'Master Ball Holo', poke_ball_holo:'Poké Ball Holo',
+    galaxy_holo:'Galaxy Holo', patterned_holo:'Patterned Holo',
+    illustration_rare:'Illustration Rare', special_illustration_rare:'Special Illustration Rare',
+    hyper_rare:'Hyper Rare', ace_spec_rare:'ACE SPEC Rare',
+    gold_star:'Gold Star', double_rainbow:'Double Rainbow', play_promo:'Play Promo / Stamped',
+    // MTG finishes
+    etched_foil:'Etched Foil', surge_foil:'Surge Foil', textured_foil:'Textured Foil',
+    halo_foil:'Halo Foil', rainbow_foil:'Rainbow / Confetti Foil', oil_slick:'Oil-Slick Raised Foil',
+    // MTG treatments (different printings)
+    borderless:'Borderless', showcase:'Showcase', extended_art:'Extended Art', retro_frame:'Retro Frame',
+  })[value] || String(value || 'Other').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 }
 
 function qplPriceValue(v){
@@ -14772,6 +14971,17 @@ function pokemonPptConditionCode(condition = ''){
 
 function pokemonPptFinishLabel(value = ''){
   const raw = String(value || 'Normal').toLowerCase();
+  if(raw.includes('master ball') || raw.includes('masterball')) return 'Master Ball Holo';
+  if(raw.includes('poke ball') || raw.includes('pokeball')) return 'Poké Ball Holo';
+  if(raw.includes('cosmos')) return 'Cosmos Holo';
+  if(raw.includes('galaxy')) return 'Galaxy Holo';
+  if(raw.includes('patterned')) return 'Patterned Holo';
+  if(raw.includes('special illustration') || raw.includes('sar')) return 'Special Illustration Rare';
+  if(raw.includes('illustration rare')) return 'Illustration Rare';
+  if(raw.includes('hyper')) return 'Hyper Rare';
+  if(raw.includes('ace spec')) return 'ACE SPEC Rare';
+  if(raw.includes('double rainbow')) return 'Double Rainbow';
+  if(raw.includes('gold star')) return 'Gold Star';
   if(raw.includes('reverse')) return 'Reverse Holofoil';
   if(raw.includes('textured')) return 'Textured Foil';
   if(raw.includes('holo') || raw.includes('foil')) return 'Holofoil';
@@ -15381,16 +15591,23 @@ function applyPokemonPriceTrackerPrice(row = {}){
 function parseMtgFinishIntent(q){
   const raw = String(q || '').toLowerCase();
   let finish = '';
-  if(/\betched\s+foil\b|\betched\b/.test(raw)) finish = 'etched_foil';
+  let treatment = '';
+  if(/\boil\s*slick\b/.test(raw)) finish = 'oil_slick';
+  else if(/\bhalo\s*foil\b|\bhalo\b/.test(raw)) finish = 'halo_foil';
+  else if(/\brain?bow\s*foil\b|\bconfetti\s*foil\b/.test(raw)) finish = 'rainbow_foil';
+  else if(/\betched\s+foil\b|\betched\b/.test(raw)) finish = 'etched_foil';
   else if(/\bsurge\s+foil\b|\bsurge\b/.test(raw)) finish = 'surge_foil';
   else if(/\btextured\s+foil\b|\btextured\b/.test(raw)) finish = 'textured_foil';
   else if(/\bnon[-\s]?foil\b|\bnonfoil\b/.test(raw)) finish = 'normal';
   else if(/\bfoil\b/.test(raw)) finish = 'foil';
+  if(/\bborderless\b/.test(raw)) treatment = 'borderless';
+  else if(/\bshowcase\b/.test(raw)) treatment = 'showcase';
+  else if(/\bextended\s*art\b/.test(raw)) treatment = 'extended_art';
+  else if(/\bretro\s*frame\b|\bretro\b|\bold\s*frame\b/.test(raw)) treatment = 'retro_frame';
   const clean = raw
-    .replace(/\b(non[-\s]?foil|nonfoil|etched foil|etched|textured foil|textured|surge foil|surge|foil|borderless|retro frame|retro|showcase|extended art|extended)\b/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-  return { finish, clean: clean || String(q || '').trim() || q };
+    .replace(/\b(oil slick|halo foil|halo|rainbow foil|confetti foil|non[-\s]?foil|nonfoil|etched foil|etched|textured foil|textured|surge foil|surge|foil|borderless|retro frame|retro|old frame|showcase|extended art|extended)\b/g, ' ')
+    .replace(/\s+/g, ' ').trim();
+  return { finish, treatment, clean: clean || String(q || '').trim() };
 }
 
 function getConditionEstimateRates(){
@@ -17464,51 +17681,110 @@ async function fetchPokemonCatalog(q){
   return [];
 }
 
+function scryfallTreatmentLabel(c){
+  const fe = c.frame_effects || [];
+  const pt = c.promo_types || [];
+  if(fe.includes('showcase')) return 'showcase';
+  if(fe.includes('extendedart')) return 'extended_art';
+  if(fe.includes('inverted')) return 'borderless';
+  if(fe.includes('etched')) return 'etched_foil';
+  if(fe.includes('surge')) return 'surge_foil';
+  if(pt.includes('halofoil')) return 'halo_foil';
+  if(pt.includes('oilslick')) return 'oil_slick';
+  if(pt.includes('serialized')) return 'serialized';
+  if(pt.includes('confettiFoil') || pt.includes('rainbowFoil')) return 'rainbow_foil';
+  if(c.border_color === 'borderless' || fe.includes('borderless')) return 'borderless';
+  if(fe.includes('retro') || c.frame === '1993' || c.frame === '1997') return 'retro_frame';
+  return '';
+}
+
 async function fetchScryfallCatalog(q){
   const finishIntent = parseMtgFinishIntent(q);
-  const url = 'https://api.scryfall.com/cards/search?q=' + encodeURIComponent(expandSmartQuery(finishIntent.clean || q)) + '&unique=prints&order=released&dir=desc';
-  const res = await fetch(url, { headers:{ 'Accept':'application/json' } });
-  if(!res.ok) return [];
-  const data = await res.json();
+  const searchQ = finishIntent.clean || q;
+  // Build Scryfall query — if treatment specified, filter on the Scryfall side
+  let sfQ = expandSmartQuery(searchQ);
+  if(finishIntent.treatment === 'borderless') sfQ += ' is:borderless';
+  else if(finishIntent.treatment === 'showcase') sfQ += ' is:showcase';
+  else if(finishIntent.treatment === 'extended_art') sfQ += ' is:extendedart';
+  const url = 'https://api.scryfall.com/cards/search?q=' + encodeURIComponent(sfQ) + '&unique=prints&order=released&dir=desc';
+  const res = await fetch(url, { headers:{ 'Accept':'application/json' } }).catch(() => null);
+  if(!res?.ok) return [];
+  const data = await res.json().catch(() => ({}));
   return (data.data || []).slice(0, 24).map(c => {
     const hit = scoreSmartItem({ name:c.name, set:c.set_name, year:(c.released_at||'').slice(0,4), card_number:c.collector_number, rarity:c.rarity, variant:c.type_line }, q);
+    // Build all available finishes from prices + Scryfall finishes array
     const priceMap = {};
-    if(Number(c.prices?.usd || 0) > 0) priceMap.normal = { market:c.prices.usd, low:c.prices.usd };
-    if(Number(c.prices?.usd_foil || 0) > 0) priceMap.foil = { market:c.prices.usd_foil, low:c.prices.usd_foil };
-    if(Number(c.prices?.usd_etched || 0) > 0) priceMap.etched_foil = { market:c.prices.usd_etched, low:c.prices.usd_etched };
-    const titleFinish = /\betched\b/i.test(c.name) ? 'etched_foil' : /\bfoil\b/i.test([c.name,c.finishes?.join(' ')].filter(Boolean).join(' ')) ? 'foil' : '';
-    const selectedFinish = finishIntent.finish || titleFinish || (Number(c.prices?.usd || 0) > 0 ? 'normal' : Number(c.prices?.usd_foil || 0) > 0 ? 'foil' : Number(c.prices?.usd_etched || 0) > 0 ? 'etched_foil' : 'normal');
+    const scryfallFinishes = Array.isArray(c.finishes) ? c.finishes : [];
+    if(Number(c.prices?.usd || 0) > 0 || scryfallFinishes.includes('nonfoil')) priceMap.normal = { market:Number(c.prices?.usd || 0), low:Number(c.prices?.usd || 0) };
+    if(Number(c.prices?.usd_foil || 0) > 0 || scryfallFinishes.includes('foil')) priceMap.foil = { market:Number(c.prices?.usd_foil || 0), low:Number(c.prices?.usd_foil || 0) };
+    if(Number(c.prices?.usd_etched || 0) > 0 || scryfallFinishes.includes('etched')) priceMap.etched_foil = { market:Number(c.prices?.usd_etched || 0), low:Number(c.prices?.usd_etched || 0) };
+    // Detect treatment from frame_effects / promo_types
+    const treatment = scryfallTreatmentLabel(c);
+    // If a special treatment finish maps to a finish key, add it
+    if(treatment && treatment !== 'etched_foil' && treatment !== 'surge_foil' && !priceMap[treatment]){
+      const treatPrice = Number(c.prices?.usd_foil || c.prices?.usd || 0);
+      if(treatPrice > 0) priceMap[treatment] = { market:treatPrice, low:treatPrice };
+    }
+    const titleFinish = /\betched\b/i.test(c.name) ? 'etched_foil' : '';
+    const autoFinish = Number(c.prices?.usd || 0) > 0 ? 'normal' : Number(c.prices?.usd_foil || 0) > 0 ? 'foil' : Number(c.prices?.usd_etched || 0) > 0 ? 'etched_foil' : 'normal';
+    const selectedFinish = finishIntent.finish || titleFinish || (treatment && priceMap[treatment] ? treatment : autoFinish);
+    const treatmentLabel = treatment ? qplFinishLabel(treatment) : '';
+    const variantNote = [treatmentLabel, c.rarity ? c.rarity.charAt(0).toUpperCase() + c.rarity.slice(1) : ''].filter(Boolean).join(' · ');
     const row = applyQplSelectedVariant({
       source:'scryfall',
       name:c.name || q,
       category:'TCG',
       set:c.set_name || '',
       year:(c.released_at || '').slice(0,4),
-      variant:[c.foil ? 'Foil available' : '', c.rarity].filter(Boolean).join(' / '),
+      variant:variantNote,
       card_number:c.collector_number || '',
       condition:'NM',
       selectedFinish,
       finish:selectedFinish,
       market:Number(c.prices?.usd || c.prices?.usd_foil || c.prices?.usd_etched || 0),
-      imageUrl:c.image_uris?.small || c.card_faces?.[0]?.image_uris?.small || '',
+      imageUrl:c.image_uris?.normal || c.image_uris?.small || c.card_faces?.[0]?.image_uris?.normal || c.card_faces?.[0]?.image_uris?.small || '',
       priceSource:'Scryfall market',
       tcgUrl:c.purchase_uris?.tcgplayer || c.scryfall_uri || '',
-      note:hit.why.length ? 'Matched by ' + hit.why.join(', ') : (c.type_line || ''),
+      note:hit.why.length ? 'Matched: ' + hit.why.join(', ') : (c.type_line || ''),
       confidence:Math.min(99, Math.round(hit.score || 50)),
       matchWhy:hit.why,
       raw:c,
       productId:c.id || '',
+      scryfallId:c.id || '',
       availableVariants:buildQplVariantsFromPrices(priceMap, c.id || ''),
-      extraInfo:{ productLine:'Magic', categoryName:'Magic', manaCost:c.mana_cost || '', typeLine:c.type_line || '', oracleText:c.oracle_text || '', artist:c.artist || '', releaseDate:c.released_at || '' },
+      extraInfo:{ productLine:'Magic', categoryName:'Magic', game:'Magic: The Gathering', manaCost:c.mana_cost || '', typeLine:c.type_line || '', oracleText:c.oracle_text || '', artist:c.artist || '', releaseDate:c.released_at || '', treatment, scryfallFinishes },
     });
-    if(finishIntent.finish && row.availableVariants?.some(v => normalizeQplFinish(v.finish) === finishIntent.finish)) {
-      row.selectedFinish = finishIntent.finish;
-      row.finish = finishIntent.finish;
+    if(finishIntent.finish && row.availableVariants?.some(v => normalizeQplFinish(v.finish) === finishIntent.finish)){
+      row.selectedFinish = finishIntent.finish; row.finish = finishIntent.finish;
       applyQplSelectedVariant(row);
       row.matchWhy = [...(row.matchWhy || []), qplFinishLabel(finishIntent.finish) + ' intent'].slice(0,5);
     }
+    if(finishIntent.treatment && treatment === finishIntent.treatment) row.matchWhy = [...(row.matchWhy || []), qplFinishLabel(treatment) + ' print'].slice(0,5);
     return row;
-  });
+  }).filter(Boolean);
+}
+
+// Fetch ALL printings of a named MTG card — used for "show all variants" expander
+async function fetchScryfallAllPrintings(cardName){
+  if(!cardName) return [];
+  const url = 'https://api.scryfall.com/cards/search?q=' + encodeURIComponent('!"' + cardName + '"') + '&unique=prints&order=released&dir=desc';
+  const res = await fetch(url, { headers:{ 'Accept':'application/json' } }).catch(() => null);
+  if(!res?.ok) return [];
+  const data = await res.json().catch(() => ({}));
+  return (data.data || []).map(c => ({
+    scryfallId: c.id,
+    name: c.name,
+    set: c.set_name,
+    setCode: c.set?.toUpperCase(),
+    year: (c.released_at || '').slice(0,4),
+    collectorNumber: c.collector_number,
+    rarity: c.rarity,
+    treatment: scryfallTreatmentLabel(c),
+    finishes: Array.isArray(c.finishes) ? c.finishes : [],
+    prices: { normal: Number(c.prices?.usd || 0), foil: Number(c.prices?.usd_foil || 0), etched: Number(c.prices?.usd_etched || 0) },
+    imageUrl: c.image_uris?.small || c.card_faces?.[0]?.image_uris?.small || '',
+    tcgUrl: c.purchase_uris?.tcgplayer || c.scryfall_uri || '',
+  }));
 }
 
 async function aiQuickLookupFallback(q, cat){
@@ -17550,8 +17826,26 @@ async function aiQuickLookupFallback(q, cat){
 
 function noQuickLookupResults(q, cat){
   const safeQ = escHtml(q || '');
+  const catKey = qplCategoryKey(cat) || (isMtgLookupIntent(q, cat) ? 'mtg' : isComicLookupIntent(q, cat) ? 'comic' : isPokemonLookupIntent(q, cat) ? 'pokemon' : '');
+  // Category-specific hint and external links
+  const hints = {
+    pokemon: 'Try card number + set (e.g. "Charizard 4/102 Base Set"), promo code (SVP074), or rarity shorthand (SIR / IR / Holo).',
+    mtg: 'Try card name + set code (e.g. "Lightning Bolt MH2") or add a finish like "foil", "etched", "showcase", or "borderless".',
+    comic: 'Try title + issue number (e.g. "Amazing Spider-Man #300") or add publisher, year, or variant (e.g. "newsstand").',
+    sports: 'Try player name + year + brand (e.g. "Trout 2011 Topps Update RC") or add grade (PSA 10).',
+    graded: 'Try item name + grade (e.g. "Charizard 4/102 PSA 10" or "Mickey Mantle 1952 Topps SGC 8").',
+    video_games: 'Try game + platform (e.g. "Super Mario Bros NES CIB") or add condition (CIB, loose, complete).',
+    funko: 'Try character + line + number (e.g. "Funko Pop Batman #01") or add exclusivity (Chase, Glow, GameStop).',
+  };
+  const hint = hints[catKey] || 'Try card number, set name, player, issue number, or rarity shorthand like SIR / IR / RC.';
+  const extLinks = {
+    mtg: `<button class="hbtn" onclick="window.open('https://scryfall.com/search?q=${encodeURIComponent(q||'')}','_blank')">SEARCH SCRYFALL</button>`,
+    comic: `<button class="hbtn" onclick="window.open('https://www.mycomicshop.com/search?q=${encodeURIComponent(q||'')}','_blank')">MY COMIC SHOP</button>`,
+    pokemon: `<button class="hbtn" onclick="window.open('https://www.tcgplayer.com/search/pokemon/product?q=${encodeURIComponent(q||'')}','_blank')">SEARCH TCGPLAYER</button>`,
+  };
+  const primaryExtLink = extLinks[catKey] || `<button class="hbtn" onclick="window.open('https://www.tcgplayer.com/search/all/product?q=${encodeURIComponent(q || '')}','_blank')">SEARCH TCGPLAYER</button>`;
   const links = [
-    `<button class="hbtn" onclick="window.open('https://www.tcgplayer.com/search/all/product?q=${encodeURIComponent(q || '')}','_blank')">SEARCH TCGPLAYER</button>`,
+    primaryExtLink,
     `<button class="hbtn" onclick="window.open('https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(q || '')}&LH_Sold=1&LH_Complete=1','_blank')">SOLD COMPS</button>`,
     `<button class="hbtn" onclick="selectQuickLookupResult(0)">CREATE MANUAL ITEM</button>`,
     `<button class="hbtn" onclick="startVoiceInput('qpl-input', runPriceLookup)">TRY VOICE SEARCH</button>`
@@ -17568,7 +17862,7 @@ function noQuickLookupResults(q, cat){
   return `<div style="border:1px dashed rgba(255,209,102,.35);border-radius:10px;padding:14px;background:rgba(255,209,102,.05)">
     <div style="font-family:'Orbitron',monospace;font-size:11px;color:var(--gold);margin-bottom:8px">NO EXACT MATCH FOUND</div>
     <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);line-height:1.6;margin-bottom:12px">
-      I searched for <b style="color:var(--text)">${safeQ}</b>. Try card number, set name, player, issue number, or rarity shorthand like SIR / IR / RC.
+      No results for <b style="color:var(--text)">${safeQ}</b>. ${escHtml(hint)}
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">${links}</div>
   </div>`;
