@@ -2376,21 +2376,34 @@ async function checkAndApplySubscriptionState(){
     if(res.ok) sub = await res.json();
     else subCheckFailed = true;
   } catch(_){ subCheckFailed = true; }
-  if(subCheckFailed && navigator.onLine){
-    toast_dash('Subscription status unavailable — check your connection or try refreshing.');
-  }
 
   window._subStatus = sub;
   renderSubscriptionPanel();
   renderOnboardingPanel();
   _removeSubBanners();
 
-  if(sub.status === 'trialing' && sub.active) {
+  // If the check failed (network/worker error), show a toast but don't gate —
+  // a stale check should never lock out an active session.
+  if(subCheckFailed) {
+    if(navigator.onLine) toast_dash('Subscription status unavailable — showing cached access. Refresh to retry.');
+    return;
+  }
+
+  // Active subscriber or active trial
+  if(sub.active && sub.status === 'trialing') {
     _showTrialBanner(sub.daysRemaining, storeId);
   } else if(sub.status === 'past_due') {
     _showPastDueBanner(storeId);
   } else if(!sub.active) {
-    _showSubGate(sub, storeId, ctx.user?.email || '');
+    // For a user who is actively logged into Supabase with a real store, show a
+    // soft renewal prompt instead of the full hard gate — the KV record may be
+    // stale if the Stripe webhook didn't fire.
+    const hasSupabaseSession = !!(ctx.mode === 'subscriber' && ctx.storeId && ctx.storeId !== 'demo');
+    if(hasSupabaseSession) {
+      _showSoftSubPrompt(sub, storeId, ctx.user?.email || '');
+    } else {
+      _showSubGate(sub, storeId, ctx.user?.email || '');
+    }
   }
 }
 
@@ -2445,6 +2458,21 @@ function _showSubGate(sub, storeId, email){
     </div>
   </div>`;
   document.body.appendChild(overlay);
+}
+
+function _showSoftSubPrompt(sub, storeId, email){
+  _removeSubBanners();
+  const b = document.createElement('div');
+  b.id = 'sub-trial-banner';
+  b.className = 'sub-trial-banner';
+  const expired = sub.status === 'trialing_expired' || sub.status === 'expired' || sub.status === 'canceled';
+  b.innerHTML = `<span class="sub-banner-msg">⚠ ${expired ? 'Subscription ended — subscribe to restore full access.' : 'No active subscription found. Subscribe or contact support if this is an error.'}</span>
+    <span class="sub-banner-actions">
+      <button class="hbtn" style="min-height:28px;font-size:10px;color:var(--gold)" onclick="openSubscriptionCheckout('${escHtml(storeId)}','${escHtml(email)}')">SUBSCRIBE NOW</button>
+      <button class="hbtn" style="min-height:28px;font-size:10px" onclick="checkAndApplySubscriptionState()">REFRESH STATUS</button>
+      <button class="hbtn" style="min-height:28px;font-size:10px" onclick="document.getElementById('sub-trial-banner')?.remove()">✕</button>
+    </span>`;
+  document.body.prepend(b);
 }
 
 async function openSubscriptionCheckout(storeId, email){
@@ -9743,20 +9771,30 @@ function transactionSoldRows(){
       channel:t.method || t.tenderType || '',
       soldAt:i.soldAt || t.date || t.paidAt || '',
       status:'sold',
-      source:'pos_transaction'
+      source:'pos_transaction',
+      shopId:i.shopId || '',
     };
   }));
 }
 
+// Returns POS transaction rows that are NOT already represented in the inventory
+// sold array — prevents double-counting when a POS sale updates the item's status.
+function dedupeTransactionRows(txRows, inventorySoldItems){
+  const inventoryIds = new Set(inventorySoldItems.map(i => i.id || i.localId || i.shopId).filter(Boolean));
+  return txRows.filter(r => !r.shopId || !inventoryIds.has(r.shopId));
+}
+
 function renderStats(){
   const ins=all.filter(i=>i.status==='in_stock');
-  const sol=all.filter(i=>i.status==='sold').concat(transactionSoldRows());
+  const inventorySold=all.filter(i=>i.status==='sold');
+  const sol=inventorySold.concat(dedupeTransactionRows(transactionSoldRows(), inventorySold));
   const totalQty=ins.reduce((a,i)=>a+(i.qty||1),0);
   const mkt=ins.reduce((a,i)=>a+(i.market||0)*(i.qty||1),0);
   const pft=sol.reduce((a,i)=>a+(i.profit||0),0);
-  const cost=all.reduce((a,i)=>a+(i.cost||0)*(i.qty||1),0);
+  const cost=ins.reduce((a,i)=>a+(i.cost||0)*(i.qty||1),0); // cost of items still in stock
   const avg=sol.length?pft/sol.length:0;
-  const roi=cost>0?((mkt-cost)/cost*100):0;
+  const soldCost=sol.reduce((a,i)=>a+(i.cost||0),0);
+  const roi=soldCost>0?(pft/soldCost*100):0;
   document.getElementById('s1').textContent=ins.length;
   document.getElementById('s1b').textContent=totalQty+' units · '+all.length+' SKUs';
   document.getElementById('s2').textContent=f$(mkt);
@@ -9797,7 +9835,8 @@ function renderCats(){
   document.getElementById('ct-total').textContent=ins.length+' in stock';
 
   // Profit meter
-  const sol=all.filter(i=>i.status==='sold').concat(transactionSoldRows());
+  const invSold=all.filter(i=>i.status==='sold');
+  const sol=invSold.concat(dedupeTransactionRows(transactionSoldRows(), invSold));
   const catColors={'Sports':'var(--gold)','TCG':'var(--g)','Comic':'var(--purple)','Graded':'var(--blue)','Collectibles':'#ff9500'};
   const profitMeter=document.getElementById('profit-meter');
   const catProfits=cats.map(c=>({c,p:sol.filter(i=>i.category===c).reduce((a,i)=>a+(i.profit||0),0)}));
@@ -10061,7 +10100,8 @@ function renderTable(){
 
 function renderSoldTable(){
   const q=(document.getElementById('sold-q')?.value||'').toLowerCase();
-  const rows=soldData.concat(transactionSoldRows()).filter(i=>!q||(i.name||'').toLowerCase().includes(q)).sort((a,b)=>new Date(b.soldAt||0)-new Date(a.soldAt||0));
+  const txRows=dedupeTransactionRows(transactionSoldRows(), soldData);
+  const rows=soldData.concat(txRows).filter(i=>!q||(i.name||'').toLowerCase().includes(q)).sort((a,b)=>new Date(b.soldAt||0)-new Date(a.soldAt||0));
   const tb=document.getElementById('sold-body');
   if(!rows.length){tb.innerHTML=`<tr><td colspan="8"><div class="empty"><div class="empty-t">NO SALES YET</div></div></td></tr>`;return;}
   tb.innerHTML=rows.slice(0,100).map(i=>{
