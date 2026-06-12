@@ -18203,8 +18203,8 @@ function quickLookupResultCard(r, idx){
         ${r.pokemonPriceTrackerLastUpdated ? `<div class="pokemon-cache-meta">PPT updated ${escHtml(pokemonCacheAgeLabel(r.pokemonPriceTrackerLastUpdated))}</div>` : ''}
       </div>
       ${signals.length ? `<div class="qpl-signal" style="color:${needs.length?'var(--g)':'var(--gold)'}">${escHtml(signals.join(' / '))}</div>` : ''}
-      <!-- Advanced pricing table — collapsed by default -->
-      <details class="research-secondary-actions" style="margin-top:12px">
+      <!-- Advanced pricing table — open by default for Pokemon so conditions + graded are immediately visible -->
+      <details class="research-secondary-actions" style="margin-top:12px" ${qplResultCategoryKey(r) === 'pokemon' ? 'open' : ''}>
         <summary>▸ All Prices + Graded</summary>
         <div style="padding:8px 0">
           ${qplVariantPriceTable(r, idx)}
@@ -18219,7 +18219,7 @@ function quickLookupResultCard(r, idx){
           <button class="hbtn primary" onclick="addQuickLookupToInventory(${idx})">ADD INVENTORY</button>
           <button class="hbtn" style="min-height:56px;font-size:14px;font-weight:800;background:rgba(255,209,102,.12);border-color:rgba(255,209,102,.4);color:var(--gold)" onclick="addQuickLookupToSaleCart(${idx})">ADD TO CART</button>
         </div>
-        <!-- SECONDARY actions — 3-column -->
+        <!-- SECONDARY actions — 3-column; PSA POP COUNT visible for Pokemon -->
         <div class="qpl-actions-secondary">
           ${qplResultCategoryKey(r) === 'pokemon'
             ? (r.pokemonPriceTracker?.lookupDebug?.exactHydrated
@@ -18227,7 +18227,9 @@ function quickLookupResultCard(r, idx){
                 : `<button class="hbtn ppt-get-prices-btn" style="color:var(--blue)" onclick="loadPricesForResultCard(${idx})">GET PRICES</button>`)
             : `<span></span>`}
           <button class="hbtn" onclick="openQplChartModal(${idx})">CHART</button>
-          ${qplResultCategoryKey(r) === 'pokemon' || qplResultCategoryKey(r) === 'mtg' || r.tcgUrl ? `<button class="hbtn" onclick="openQuickExternal(${idx},'tcg')">TCG ↗</button>` : `<span></span>`}
+          ${qplResultCategoryKey(r) === 'pokemon'
+            ? `<button class="hbtn" style="color:var(--blue)" onclick="fetchPopCountForCard(${idx})">POP COUNT</button>`
+            : (qplResultCategoryKey(r) === 'mtg' || r.tcgUrl ? `<button class="hbtn" onclick="openQuickExternal(${idx},'tcg')">TCG ↗</button>` : `<span></span>`)}
         </div>
         <!-- TERTIARY — collapsed -->
         <div class="qpl-actions-tertiary">
@@ -18235,6 +18237,7 @@ function quickLookupResultCard(r, idx){
             <summary>▸ More Actions</summary>
             <div style="padding-top:6px">
               ${slab}
+              ${qplResultCategoryKey(r) === 'pokemon' ? `<button class="hbtn" onclick="openQuickExternal(${idx},'tcg')">TCG ↗</button>` : ''}
               <button class="hbtn" onclick="openQuickExternal(${idx},'sold')">COMPS</button>
               <button class="hbtn" onclick="openQuickExternal(${idx},'pricecharting')">PRICECHARTING</button>
               ${!r.imageUrl ? `<button class="hbtn" onclick="selectQuickLookupResult(${idx});setTimeout(()=>document.getElementById('qpl-edit-image-url')?.focus(),50)">ADD IMAGE</button>` : ''}
