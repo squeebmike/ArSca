@@ -9787,11 +9787,17 @@ function dedupeTransactionRows(txRows, inventorySoldItems){
 function renderStats(){
   const ins=all.filter(i=>i.status==='in_stock');
   const inventorySold=all.filter(i=>i.status==='sold');
-  const sol=inventorySold.concat(dedupeTransactionRows(transactionSoldRows(), inventorySold));
+  // When Supabase items are loaded, sold status + profit come from Supabase inventory_items.
+  // Don't add pos_transactions localStorage — those same sales are already in inventorySold,
+  // and old/corrupt test transactions in localStorage would inflate stats permanently.
+  const hasSupabaseItems = all.some(i => i.source === 'built_in');
+  const sol = hasSupabaseItems
+    ? inventorySold
+    : inventorySold.concat(dedupeTransactionRows(transactionSoldRows(), inventorySold));
   const totalQty=ins.reduce((a,i)=>a+(i.qty||1),0);
   const mkt=ins.reduce((a,i)=>a+(i.market||0)*(i.qty||1),0);
   const pft=sol.reduce((a,i)=>a+(i.profit||0),0);
-  const cost=ins.reduce((a,i)=>a+(i.cost||0)*(i.qty||1),0); // cost of items still in stock
+  const cost=ins.reduce((a,i)=>a+(i.cost||0)*(i.qty||1),0);
   const avg=sol.length?pft/sol.length:0;
   const soldCost=sol.reduce((a,i)=>a+(i.cost||0),0);
   const roi=soldCost>0?(pft/soldCost*100):0;
@@ -9834,9 +9840,10 @@ function renderCats(){
   });
   document.getElementById('ct-total').textContent=ins.length+' in stock';
 
-  // Profit meter
+  // Profit meter — same Supabase-first logic as renderStats
   const invSold=all.filter(i=>i.status==='sold');
-  const sol=invSold.concat(dedupeTransactionRows(transactionSoldRows(), invSold));
+  const hasSupabaseItems2=all.some(i=>i.source==='built_in');
+  const sol=hasSupabaseItems2 ? invSold : invSold.concat(dedupeTransactionRows(transactionSoldRows(), invSold));
   const catColors={'Sports':'var(--gold)','TCG':'var(--g)','Comic':'var(--purple)','Graded':'var(--blue)','Collectibles':'#ff9500'};
   const profitMeter=document.getElementById('profit-meter');
   const catProfits=cats.map(c=>({c,p:sol.filter(i=>i.category===c).reduce((a,i)=>a+(i.profit||0),0)}));
@@ -10100,7 +10107,8 @@ function renderTable(){
 
 function renderSoldTable(){
   const q=(document.getElementById('sold-q')?.value||'').toLowerCase();
-  const txRows=dedupeTransactionRows(transactionSoldRows(), soldData);
+  const hasSupabaseItems3=all.some(i=>i.source==='built_in');
+  const txRows=hasSupabaseItems3 ? [] : dedupeTransactionRows(transactionSoldRows(), soldData);
   const rows=soldData.concat(txRows).filter(i=>!q||(i.name||'').toLowerCase().includes(q)).sort((a,b)=>new Date(b.soldAt||0)-new Date(a.soldAt||0));
   const tb=document.getElementById('sold-body');
   if(!rows.length){tb.innerHTML=`<tr><td colspan="8"><div class="empty"><div class="empty-t">NO SALES YET</div></div></td></tr>`;return;}
