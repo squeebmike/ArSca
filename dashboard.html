@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.06.12.09-comic-images-cdn-fix">
+<meta name="version" content="2026.06.12.10-comic-lazy-images">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -938,7 +938,7 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.12.09-comic-images-cdn-fix</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.12.10-comic-lazy-images</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
@@ -965,7 +965,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip dev-only" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.12.09-comic-images-cdn-fix</div>
+<div class="dsb-chip dev-only" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.12.10-comic-lazy-images</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -2055,7 +2055,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.06.12.09-comic-images-cdn-fix';
+const APP_VERSION = '2026.06.12.10-comic-lazy-images';
 const branchName = 'pokemon-v2-core';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
 const POKEMON_EXACT_CACHE_VERSION = 'pokemon-exact-v3-price-matrix';
@@ -18185,6 +18185,7 @@ function renderQuickLookupResults(results){
       ${fallbackHtml}`;
     setTimeout(() => hydrateVisiblePokemonPriceTrackerResults(primary.map(x => x.idx)), 0);
     setTimeout(() => resolvePokemonCatalogImagesForVisibleCards(), 200);
+    setTimeout(() => lazyLoadComicImages([...primary,...fallback].map(x=>x.idx)), 100);
     return;
   }
   // Non-Pokemon flat rendering (sports, comics, etc.)
@@ -18211,6 +18212,7 @@ function renderQuickLookupResults(results){
     ${fallbackHtml}`;
   setTimeout(() => hydrateVisiblePokemonPriceTrackerResults(primary.map(x => x.idx)), 0);
   setTimeout(() => resolvePokemonCatalogImagesForVisibleCards(), 200);
+  setTimeout(() => lazyLoadComicImages([...primary,...fallback].map(x=>x.idx)), 100);
 }
 
 // B4: count matching inventory items (in-stock and sold) for a search result.
@@ -18702,6 +18704,41 @@ async function verifyQplPsaCert(idx){
   } catch(e) {
     if(out) out.innerHTML = '<span style="color:var(--red)">' + escHtml(e.message) + '</span>';
   }
+}
+
+// Lazy-load PriceCharting cover images for comic result cards.
+// The search endpoint never returns image URLs — only the product detail endpoint does.
+// Fires concurrently for all comic results missing an image, then patches just the
+// img shell in the DOM without re-rendering the whole card.
+async function lazyLoadComicImages(indices){
+  const toLoad = (indices || []).filter(idx => {
+    const r = qplResults[idx];
+    if(!r || r.imageUrl) return false;
+    if(qplResultCategoryKey(r) !== 'comic') return false;
+    return !!(r.pricecharting?.productId || r.raw?.productId);
+  });
+  if(!toLoad.length) return;
+  await Promise.all(toLoad.map(async idx => {
+    const r = qplResults[idx];
+    const productId = String(r.pricecharting?.productId || r.raw?.productId || '');
+    if(!productId) return;
+    try {
+      const res = await fetch(WORKER + '/pricing/pricecharting/product/' + encodeURIComponent(productId), { cache:'no-store' });
+      if(!res.ok) return;
+      const data = await res.json().catch(() => ({}));
+      const imageUrl = data.imageUrl || data.product?.imageUrl || '';
+      if(!imageUrl) return;
+      // Store on result so refreshQplResultCard picks it up later
+      if(qplResults[idx]) qplResults[idx].imageUrl = imageUrl;
+      // Patch only the img shell — no full re-render
+      const card = document.querySelector(`.qpl-hero-card[data-qpl-idx="${idx}"]`);
+      const shell = card?.querySelector('.qpl-img-shell');
+      if(!shell) return;
+      shell.style.cssText = 'aspect-ratio:2/3;max-height:220px;cursor:pointer';
+      shell.onclick = () => openQplImageLightbox(idx);
+      shell.innerHTML = `<img src="${escHtml(imageUrl)}" alt="" style="object-fit:cover;width:100%;height:100%" onerror="this.closest('.qpl-img-shell').innerHTML='<div class=qpl-no-img style=\\'color:var(--purple);font-size:10px\\'>📖<br>NO COVER</div>'">`;
+    } catch(e){}
+  }));
 }
 
 // Re-render a single result card in the list without re-rendering everything
