@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.06.12.06-exact-detail-500-fix">
+<meta name="version" content="2026.06.12.07-ux-polish">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -938,7 +938,7 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.12.06-exact-detail-500-fix</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.12.07-ux-polish</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
@@ -965,7 +965,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip dev-only" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.12.06-exact-detail-500-fix</div>
+<div class="dsb-chip dev-only" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.12.07-ux-polish</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -2055,7 +2055,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.06.12.06-exact-detail-500-fix';
+const APP_VERSION = '2026.06.12.07-ux-polish';
 const branchName = 'pokemon-v2-core';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
 const POKEMON_EXACT_CACHE_VERSION = 'pokemon-exact-v3-price-matrix';
@@ -16861,7 +16861,8 @@ function buildTcgExternalLink(item = {}){
     ];
     url = base + '?' + params.map(([k,v]) => `${encodeURIComponent(k)}=${encodeTcgParam(v)}`).join('&');
   } else if(productId) {
-    url = `https://www.tcgplayer.com/product/${encodeURIComponent(productId)}/${encodeURIComponent(tcgPlayerProductSlug(item))}?page=1&Language=${encodeTcgParam(language || 'English')}&Condition=${encodeTcgParam(conditionLabel)}`;
+    // Use bare numeric product ID — no slug — so TCGPlayer doesn't redirect (which drops query params)
+    url = `https://www.tcgplayer.com/product/${encodeURIComponent(productId)}?Language=${encodeTcgParam(language || 'English')}&Condition=${encodeTcgParam(conditionLabel)}`;
   } else {
     note = activeSkuId ? 'Marketplace SKU captured; search includes selected condition because direct SKU deep-link is not guaranteed.' : 'Marketplace cannot deep-link to exact condition here; opening a selected-condition search.';
     const isPokeItem = (typeof qplResultCategoryKey === 'function' && qplResultCategoryKey(item) === 'pokemon') || /pokemon/i.test([item.category, item.source, item.set].filter(Boolean).join(' '));
@@ -18403,8 +18404,8 @@ function quickLookupResultCard(r, idx){
         ${r.pokemonPriceTrackerLastUpdated ? `<div class="pokemon-cache-meta">PPT updated ${escHtml(pokemonCacheAgeLabel(r.pokemonPriceTrackerLastUpdated))}</div>` : ''}
       </div>
       ${signals.length ? `<div class="qpl-signal" style="color:${needs.length?'var(--g)':'var(--gold)'}">${escHtml(signals.join(' / '))}</div>` : ''}
-      <!-- Advanced pricing table — open by default for Pokemon so conditions + graded are immediately visible -->
-      <details class="research-secondary-actions" style="margin-top:12px" ${qplResultCategoryKey(r) === 'pokemon' ? 'open' : ''}>
+      <!-- Advanced pricing table — starts collapsed; user opens to see conditions + graded -->
+      <details class="research-secondary-actions" style="margin-top:12px">
         <summary>▸ All Prices + Graded</summary>
         <div style="padding:8px 0">
           ${isComic ? qplComicPricePanel(r, idx) : qplVariantPriceTable(r, idx)}
