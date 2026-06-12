@@ -1698,10 +1698,15 @@ export default {
       const pcUrl = path => 'https://www.pricecharting.com' + path;
       const pcImageUrl = p => {
         const raw = p['image-url'] || p.imageUrl || p.image || p.coverUrl || p.thumbnail || p['box-art-url'] || p['image'] || '';
-        if (!raw) return '';
-        if (/^\/\//.test(raw)) return 'https:' + raw;
-        if (/^\//.test(raw)) return 'https://www.pricecharting.com' + raw;
-        return raw;
+        if (raw) {
+          if (/^\/\//.test(raw)) return 'https:' + raw;
+          if (/^\//.test(raw)) return 'https://www.pricecharting.com' + raw;
+          return raw;
+        }
+        // Derive thumbnail from product URL slug — PriceCharting CDN serves covers at this path
+        const productUrl = p['product-url'] || p.url || '';
+        const slug = productUrl.split('/').filter(s => s && s !== 'game').pop() || '';
+        return slug ? `https://static.pricecharting.com/cache/p/0-0-0-0-0/${slug}.jpg` : '';
       };
       const pcMoney = (p, key, normalizedPath = '') => {
         const fromCsv = pennies(p[key]);
