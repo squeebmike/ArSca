@@ -32,7 +32,7 @@ const EBAY_SCOPES = [
 const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, PATCH, PUT, DELETE, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, accept',
+  'Access-Control-Allow-Headers': 'Content-Type, accept, x-store-id, X-Store-Id',
   'Access-Control-Max-Age': '86400',
 };
 
