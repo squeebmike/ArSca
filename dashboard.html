@@ -16719,9 +16719,11 @@ function buildTcgExternalLink(item = {}){
     url = `https://www.tcgplayer.com/product/${encodeURIComponent(productId)}/${encodeURIComponent(tcgPlayerProductSlug(item))}?page=1&Language=${encodeTcgParam(language || 'English')}&Condition=${encodeTcgParam(conditionLabel)}`;
   } else {
     note = activeSkuId ? 'Marketplace SKU captured; search includes selected condition because direct SKU deep-link is not guaranteed.' : 'Marketplace cannot deep-link to exact condition here; opening a selected-condition search.';
-    const isPokeItem = /pokemon/i.test([item.category, item.source, item.set].filter(Boolean).join(' '));
+    const isPokeItem = (typeof qplResultCategoryKey === 'function' && qplResultCategoryKey(item) === 'pokemon') || /pokemon/i.test([item.category, item.source, item.set].filter(Boolean).join(' '));
     const searchCat = isPokeItem ? 'pokemon' : 'all';
-    const searchBase = `https://www.tcgplayer.com/search/${searchCat}/product?q=` + encodeURIComponent(query || item.name || '');
+    // Use only name+set+number in q= — including condition/finish in the query string returns 0 results on TCGPlayer
+    const cleanSearchQ = [item.name, item.set || item.setName, item.card_number || item.cardNumber].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
+    const searchBase = `https://www.tcgplayer.com/search/${searchCat}/product?q=` + encodeURIComponent(cleanSearchQ || item.name || '');
     url = searchBase + (conditionLabel ? '&Condition=' + encodeTcgParam(conditionLabel) : '') + (language && language !== 'English' ? '&Language=' + encodeTcgParam(language) : '');
   }
   return {
@@ -18162,7 +18164,7 @@ function quickLookupResultCard(r, idx){
     // Pokemon (and fallback): always show NM/LP/MP/HP/DMG using real PPT prices only.
     // For NM: also accept r.market as fallback when PPT loaded but returned prices.market only
     // (no variants/conditions breakdown), which makes pokemonPptMatrixRows return empty.
-    const nmFallback = (!pptMatrix.length && r.pokemonPriceTracker) ? Number(displayPrice || 0) : 0;
+    const nmFallback = !pptMatrix.length ? Number(displayPrice || 0) : 0;
     return ['NM','LP','MP','HP','DMG'].map(c => {
       const isActive = c === (activeCond || 'NM');
       const p = pptPriceFor(c) || (c === 'NM' ? nmFallback : 0);
