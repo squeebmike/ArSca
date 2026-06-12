@@ -15645,7 +15645,16 @@ function applyPokemonPriceTrackerPrice(row = {}){
     row.priceSource = resolved.source;
     row.priceConfidence = 'high';
   } else {
-    const est = estimateConditionValue(row, row.selectedCondition);
+    let est = estimateConditionValue(row, row.selectedCondition);
+    if(!est) {
+      // estimateConditionValue requires a feature flag; always allow estimate from PPT market price × condition rate
+      const nmBase = Number(resolved.card?.prices?.marketPrice || 0) || Number(row.market || 0);
+      if(nmBase > 0) {
+        const rates = getConditionEstimateRates();
+        const cond = String(row.selectedCondition || 'NM').toUpperCase();
+        est = Math.round(nmBase * (rates[cond] || 1) * 100) / 100;
+      }
+    }
     row.market = est || 0;
     row.priceSource = est ? 'Estimated Condition Value' : (resolved.basisType === 'graded' ? 'No Real Grade Price Available' : 'No Real Price Available');
     row.priceConfidence = est ? 'estimate' : 'unknown';
@@ -16696,7 +16705,10 @@ function buildTcgExternalLink(item = {}){
     url = `https://www.tcgplayer.com/product/${encodeURIComponent(productId)}/${encodeURIComponent(tcgPlayerProductSlug(item))}?page=1&Language=${encodeTcgParam(language || 'English')}&Condition=${encodeTcgParam(conditionLabel)}`;
   } else {
     note = activeSkuId ? 'Marketplace SKU captured; search includes selected condition because direct SKU deep-link is not guaranteed.' : 'Marketplace cannot deep-link to exact condition here; opening a selected-condition search.';
-    url = 'https://www.tcgplayer.com/search/all/product?q=' + encodeURIComponent(query || item.name || '');
+    const isPokeItem = /pokemon/i.test([item.category, item.source, item.set].filter(Boolean).join(' '));
+    const searchCat = isPokeItem ? 'pokemon' : 'all';
+    const searchBase = `https://www.tcgplayer.com/search/${searchCat}/product?q=` + encodeURIComponent(query || item.name || '');
+    url = searchBase + (conditionLabel ? '&Condition=' + encodeTcgParam(conditionLabel) : '') + (language && language !== 'English' ? '&Language=' + encodeTcgParam(language) : '');
   }
   return {
     activeSkuId,
@@ -18053,7 +18065,7 @@ function qplGradedQuickChips(r, idx){
   const chip = (gradeLabel, gradeKey, g) => {
     const isActive = r.activePriceBasis?.basisType === 'graded' && normalizePokemonPptKey(r.selectedGrade||'') === normalizePokemonPptKey(gradeLabel);
     const price = g?.price || 0;
-    return `<button class="qpl-cond-chip${isActive?' active':''}" style="border-color:rgba(72,202,228,.4);${isActive?'':'color:var(--blue)'}" onclick="(async()=>{${g ? `await updateQplVariant(${idx},{selectedGrade:'${escHtml(gradeLabel)}',selectedGradeKey:'${escHtml(gradeKey)}',pricingMode:'graded'});` : `loadPricesForResultCard(${idx});`}fetchPopCountForCard(${idx});})()">
+    return `<button class="qpl-cond-chip${isActive?' active':''}" style="border-color:rgba(72,202,228,.4);${isActive?'':'color:var(--blue)'}" onclick="(async()=>{${g ? `await updateQplVariant(${idx},{selectedGrade:'${escHtml(gradeLabel)}',selectedGradeKey:'${escHtml(gradeKey)}',pricingMode:'graded'});` : `await loadPricesForResultCard(${idx});`}fetchPopCountForCard(${idx});})()">
       <span class="cchip-label">${gradeLabel}</span>
       <span class="${price?'cchip-price':'cchip-na'}">${price?'$'+Number(price).toFixed(2):'—'}</span>
     </button>`;
