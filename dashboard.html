@@ -9378,7 +9378,11 @@ async function loadBuiltInInventoryItems(){
   const sb = getSupabaseClient();
   const session = getAuthSession();
   const storeId = getActiveStoreId();
-  if(!sb || !session?.supabase || !storeId) return [];
+  if(!sb || !storeId) return [];
+  if(!session?.supabase) {
+    console.warn('[INV] session.supabase not set — Supabase inventory skipped. Re-login may be needed.');
+    return [];
+  }
   const { data, error } = await sb
     .from('inventory_items')
     .select('id,data,status,created_at,updated_at')
@@ -9386,10 +9390,14 @@ async function loadBuiltInInventoryItems(){
     .order('updated_at', { ascending:false })
     .limit(1000);
   if(error) {
-    console.warn('Built-in inventory load failed:', error.message);
-    toast_dash('Built-in inventory cloud load failed. Showing local rows.');
+    console.warn('[INV] Built-in inventory load failed:', error.message, { storeId, code:error.code });
+    toast_dash('Supabase inventory load failed (' + error.code + '): ' + error.message + ' — re-login may fix this.');
     return [];
   }
+  if(data && data.length === 0) {
+    console.info('[INV] Supabase returned 0 inventory_items for store_id=' + storeId + '. RLS or empty store.');
+  }
+  console.info('[INV] Loaded ' + (data||[]).length + ' built-in items from Supabase for store ' + storeId);
   return (data || []).map(mapBuiltInItem);
 }
 
@@ -9753,10 +9761,18 @@ setInterval(refreshInventoryQuietly, 60000);
 const f$=n=>'$'+Number(n||0).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0});
 const fd$=n=>'$'+Number(n||0).toFixed(2);
 
+const MAX_SANE_ITEM_PRICE = 25000; // flag any single item priced above this as suspect
+
 function transactionSoldRows(){
   return safeLocalJson('pos_transactions', []).flatMap(t => (t.items || []).map(i => {
     const salePrice = Number(i.adjustedPrice ?? i.price ?? 0);
     const cost = Number(i.cost || 0);
+    // Guard: skip items whose price looks like a test/corrupt value (> $25k is extremely rare
+    // for a card/comic shop and almost certainly bad data from a dev or import mistake).
+    if(salePrice > MAX_SANE_ITEM_PRICE) {
+      console.warn('[TX] Skipping suspect transaction item with price $' + salePrice, { name:i.name, txId:t.id });
+      return null;
+    }
     return {
       id:(t.id || 'tx') + '_' + (i.shopId || i.name || Math.random()),
       name:i.name || 'Sale item',
@@ -9774,7 +9790,7 @@ function transactionSoldRows(){
       source:'pos_transaction',
       shopId:i.shopId || '',
     };
-  }));
+  })).filter(Boolean);
 }
 
 // Returns POS transaction rows that are NOT already represented in the inventory
@@ -17681,13 +17697,19 @@ async function fetchPokemonCatalog(q){
   const clean = q.replace(/["\\]/g, ' ').replace(/\s+/g, ' ').trim();
   const needle = smartSearchNeedles(q);
   const baseName = needle.tokens.filter(t => !/^\d/.test(t) && !['special','illustration','rare','alternate','art','rookie','card'].includes(t)).slice(0, 5).join(' ') || clean;
+  const nameTokens = clean.split(/\s+/).filter(x => !/^\d/.test(x));
+  const numRaw = needle.cardNumbers[0] ? needle.cardNumbers[0].split('/')[0] : '';
+  // When a collector number is present, try name+number combined first so e.g.
+  // "bulbasaur 143/142" finds the secret rare, not Base Set #44.
   const queries = [
-    clean.split(/\s+/).filter(x => !/^\d/.test(x)).map(x => `name:${x}`).join(' '),
+    numRaw && baseName ? `name:"${baseName}" number:${numRaw}` : '',
+    numRaw && nameTokens.length ? nameTokens.map(x => `name:${x}`).join(' ') + ` number:${numRaw}` : '',
+    nameTokens.map(x => `name:${x}`).join(' '),
     `name:"${baseName}"`,
-    needle.cardNumbers[0] ? `number:${needle.cardNumbers[0].split('/')[0]}` : ''
+    numRaw ? `number:${numRaw}` : ''
   ].filter(Boolean);
   for(const query of queries) {
-    const url = 'https://api.pokemontcg.io/v2/cards?q=' + encodeURIComponent(query) + '&pageSize=10&orderBy=name,set.releaseDate';
+    const url = 'https://api.pokemontcg.io/v2/cards?q=' + encodeURIComponent(query) + '&pageSize=20&orderBy=-set.releaseDate';
     const res = await fetch(url, { headers:{ 'Accept':'application/json' } });
     if(!res.ok) continue;
     const data = await res.json();
