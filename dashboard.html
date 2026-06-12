@@ -15648,7 +15648,7 @@ function applyPokemonPriceTrackerPrice(row = {}){
     let est = estimateConditionValue(row, row.selectedCondition);
     if(!est) {
       // estimateConditionValue requires a feature flag; always allow estimate from PPT market price × condition rate
-      const nmBase = Number(resolved.card?.prices?.marketPrice || 0) || Number(row.market || 0);
+      const nmBase = pokemonPptPriceValue(resolved.card?.prices?.market) || Number(row.market || 0);
       if(nmBase > 0) {
         const rates = getConditionEstimateRates();
         const cond = String(row.selectedCondition || 'NM').toUpperCase();
@@ -16334,8 +16334,18 @@ function applyQplSelectedVariant(r){
     if(r?.availableVariants?.length) {
       r.selectedVariant = null;
       if(!applyPokemonPriceTrackerPrice(r)) {
-        const est = estimateConditionValue(r, r.selectedCondition || r.condition);
-        r.market = est;
+        let est = estimateConditionValue(r, r.selectedCondition || r.condition);
+        if(!est) {
+          // estimateConditionValue requires a feature flag; fall back to NM variant × condition rate
+          const nmV = (r.availableVariants || []).find(v => String(v.condition||'').toUpperCase() === 'NM' && Number(v.marketPrice||v.price||0) > 0);
+          const nmBase = Number(nmV?.marketPrice || nmV?.price || r.market || 0);
+          if(nmBase > 0) {
+            const rates = getConditionEstimateRates();
+            const cond = String(r.selectedCondition || r.condition || 'NM').toUpperCase();
+            est = Math.round(nmBase * (rates[cond] || 1) * 100) / 100;
+          }
+        }
+        r.market = est || 0;
         r.priceSource = est ? 'Estimated Condition Value' : 'No Matching Variant';
         r.priceConfidence = est ? 'estimate' : 'unknown';
         r.resolvedPricePath = est ? 'admin estimate fallback' : 'no matching variant';
@@ -18139,8 +18149,9 @@ function quickLookupResultCard(r, idx){
           }
           // Condition rate estimate when exact data unavailable — shown as ~$X in dim gold
           if(!p) {
-            const nmRef = Number(r.pokemonPriceTracker.prices?.marketPrice || 0)
-              || Number((r.availableVariants||[]).find(v2 => v2.condition === 'NM')?.marketPrice || 0);
+            const nmRef = pokemonPptPriceValue(r.pokemonPriceTracker.prices?.market)
+              || Number((r.availableVariants||[]).find(v2 => v2.condition === 'NM')?.marketPrice || 0)
+              || Number(r.market || displayPrice || 0);
             if(nmRef > 0) {
               const rates = getConditionEstimateRates();
               p = nmRef * (rates[v.condition] || 1);
@@ -18169,7 +18180,7 @@ function quickLookupResultCard(r, idx){
           p = Number(condEntry?.price || 0);
         }
         if(!p) {
-          const nmRef = Number(r.pokemonPriceTracker.prices?.marketPrice || 0) || Number(r.market || displayPrice || 0);
+          const nmRef = pokemonPptPriceValue(r.pokemonPriceTracker.prices?.market) || Number(r.market || displayPrice || 0);
           if(nmRef > 0) {
             const rates = getConditionEstimateRates();
             p = nmRef * (rates[c] || 1);
