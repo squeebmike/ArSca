@@ -18043,22 +18043,22 @@ function getInventoryCountsForResult(r){
 function qplGradedQuickChips(r, idx){
   if(qplResultCategoryKey(r) !== 'pokemon') return '';
   const gradeRows = pokemonPptGradeRows(r);
-  if(!gradeRows.length) return '';
   const psa10 = gradeRows.find(g => /^PSA 10$/i.test(g.gradeLabel));
   const psa9  = gradeRows.find(g => /^PSA 9$/i.test(g.gradeLabel));
-  if(!psa10 && !psa9) return '';
-  const chip = (g, label) => {
-    if(!g) return '';
-    const isActive = r.activePriceBasis?.basisType === 'graded' && normalizePokemonPptKey(r.selectedGrade||'') === normalizePokemonPptKey(g.gradeLabel);
-    return `<button class="qpl-cond-chip${isActive?' active':''}" style="border-color:rgba(72,202,228,.4);${isActive?'':'color:var(--blue)'}" onclick="(async()=>{await updateQplVariant(${idx},{selectedGrade:'${escHtml(g.gradeLabel)}',selectedGradeKey:'${escHtml(g.gradeKey)}',pricingMode:'graded'});fetchPopCountForCard(${idx});})()">
-      <span class="cchip-label">${label}</span>
-      <span class="${g.price?'cchip-price':'cchip-na'}">${g.price?'$'+Number(g.price).toFixed(2):'—'}</span>
+  // Always show PSA 10 and PSA 9 chips for Pokemon — with real prices when PPT is loaded,
+  // or tappable placeholders (—) before PPT hydrates that trigger GET PRICES + pop count.
+  const chip = (gradeLabel, gradeKey, g) => {
+    const isActive = r.activePriceBasis?.basisType === 'graded' && normalizePokemonPptKey(r.selectedGrade||'') === normalizePokemonPptKey(gradeLabel);
+    const price = g?.price || 0;
+    return `<button class="qpl-cond-chip${isActive?' active':''}" style="border-color:rgba(72,202,228,.4);${isActive?'':'color:var(--blue)'}" onclick="(async()=>{${g ? `await updateQplVariant(${idx},{selectedGrade:'${escHtml(gradeLabel)}',selectedGradeKey:'${escHtml(gradeKey)}',pricingMode:'graded'});` : `loadPricesForResultCard(${idx});`}fetchPopCountForCard(${idx});})()">
+      <span class="cchip-label">${gradeLabel}</span>
+      <span class="${price?'cchip-price':'cchip-na'}">${price?'$'+Number(price).toFixed(2):'—'}</span>
     </button>`;
   };
   return `<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:6px;padding-top:6px;border-top:1px solid rgba(72,202,228,.15)">
     <span style="font-family:var(--font-mono);font-size:9px;color:var(--blue);letter-spacing:1px;flex-shrink:0">GRADED</span>
-    ${chip(psa10,'PSA 10')}
-    ${chip(psa9,'PSA 9')}
+    ${chip('PSA 10','psa10',psa10)}
+    ${chip('PSA 9','psa9',psa9)}
   </div>
   <div id="pop-panel-${idx}" style="display:none"></div>`;
 }
@@ -18161,8 +18161,11 @@ function quickLookupResultCard(r, idx){
             isEst = true;
           }
         }
-      } else {
-        p = isActive ? displayPrice : 0;
+      } else if(displayPrice > 0) {
+        // No PPT data yet — estimate from NM using standard condition discount rates
+        const rates = getConditionEstimateRates();
+        p = displayPrice * (rates[c] || 1);
+        isEst = true;
       }
       return `<button class="qpl-cond-chip${isActive?' active':''}" onclick="updateQplVariant(${idx},{selectedCondition:'${c}',pricingMode:'raw',selectedGrade:'',selectedGradeKey:''})">
         <span class="cchip-label">${c}</span>
