@@ -14487,6 +14487,12 @@ async function runPriceLookup(){
     if(wantsPokemon) {
       savePokemonCacheResults(q, qplMasterResults, 'Live Pokemon lookup').then(renderOfflineCachePanel).catch(console.warn);
       setPokemonOfflineBanner((cachedResults.length ? 'Live Pokémon refresh updated the cached copy.' : 'Saved this Pokémon lookup for offline use.') + ' Last cached ' + pokemonCacheAgeLabel(new Date().toISOString()) + '.', 'good');
+      // Auto-fetch full condition prices (NM/LP/MP/HP/DMG + PSA grades) for the top result
+      // so the condition matrix is immediately visible without requiring a manual GET PRICES click.
+      const topIdx = qplResults.findIndex(r => qplResultCategoryKey(r) === 'pokemon' && !r.pokemonPriceTracker?.lookupDebug?.exactHydrated);
+      if(topIdx !== -1 && navigator.onLine && !pokemonPriceTrackerQuotaBlocked()) {
+        setTimeout(() => loadPricesForResultCard(topIdx), 400);
+      }
     }
     if(wantsMtg) {
       saveMtgCacheResults(q, qplMasterResults, 'Scryfall live lookup').catch(console.warn);
