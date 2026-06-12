@@ -2389,11 +2389,13 @@ export default {
       const pptStoreId2 = request.headers.get('X-Store-Id') || '';
       const isDemo2 = !pptStoreId2 || pptStoreId2.startsWith('demo');
       const bypassIds2 = (env.BYPASS_STORE_IDS || '').split(',').map(s => s.trim()).filter(Boolean);
-      if (!isDemo2 && !bypassIds2.includes(pptStoreId2) && env.LBA_KV) {
+      const ownerIds2 = (env.OWNER_STORE_IDS || env.OWNER_STORE_ID || '').split(',').map(s => s.trim()).filter(Boolean);
+      if (!isDemo2 && !bypassIds2.includes(pptStoreId2) && !ownerIds2.includes(pptStoreId2) && env.LBA_KV) {
         const subRaw2 = await env.LBA_KV.get(`sub:store:${pptStoreId2}`);
         const sub2 = subRaw2 ? JSON.parse(subRaw2) : null;
         const s2 = sub2?.status || 'none';
-        if (!(sub2?.active === true && (s2 === 'active' || s2 === 'trialing'))) {
+        const endMs2 = s2 === 'trialing' ? sub2?.trial_end : sub2?.current_period_end;
+        if (!((s2 === 'active' || s2 === 'trialing') && (!endMs2 || endMs2 > Date.now()))) {
           return json({ ok: false, error: 'Subscription required.', subscriptionRequired: true, status: s2 }, 402);
         }
       }
@@ -2462,12 +2464,14 @@ export default {
       const pptStoreId = request.headers.get('X-Store-Id') || '';
       const isDemo = !pptStoreId || pptStoreId.startsWith('demo');
       const bypassIds = (env.BYPASS_STORE_IDS || '').split(',').map(s => s.trim()).filter(Boolean);
-      const isBypassed = bypassIds.includes(pptStoreId);
+      const ownerIds = (env.OWNER_STORE_IDS || env.OWNER_STORE_ID || '').split(',').map(s => s.trim()).filter(Boolean);
+      const isBypassed = bypassIds.includes(pptStoreId) || ownerIds.includes(pptStoreId);
       if (!isDemo && !isBypassed && env.LBA_KV) {
         const subRaw = await env.LBA_KV.get(`sub:store:${pptStoreId}`);
         const sub = subRaw ? JSON.parse(subRaw) : null;
         const subStatus = sub?.status || 'none';
-        const subActive = sub?.active === true && (subStatus === 'active' || subStatus === 'trialing');
+        const endMs = subStatus === 'trialing' ? sub?.trial_end : sub?.current_period_end;
+        const subActive = (subStatus === 'active' || subStatus === 'trialing') && (!endMs || endMs > Date.now());
         if (!subActive) {
           return json({
             ok: false,
