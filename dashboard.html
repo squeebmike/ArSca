@@ -17756,6 +17756,7 @@ async function fetchPokemonCatalog(q){
         const hit = scoreSmartItem({ name:c.name, set:c.set?.name, year:(c.set?.releaseDate||'').slice(0,4), card_number:c.number, rarity:c.rarity, variant:c.supertype }, q);
         return applyQplSelectedVariant({
           source:'pokemon',
+          _pokemonGroup:'best',
           name:c.name || clean,
           category:'TCG',
           set:c.set?.name || '',
@@ -17997,7 +17998,7 @@ function renderQuickLookupResults(results){
       <div class="qpl-results">${visible.map(x => quickLookupResultCard(x.r, x.idx)).join('')}</div>`;
     };
     const fallbackHtml = fallback.length ? `
-      <details class="qpl-card" style="padding:0;margin-top:12px">
+      <details ${primary.length === 0 ? 'open' : ''} class="qpl-card" style="padding:0;margin-top:12px">
         <summary style="cursor:pointer;padding:14px 16px;font-family:'Orbitron',monospace;font-size:11px;color:var(--gold)">
           OTHER CANDIDATES (${fallback.length}) — number mismatch, review before selecting
         </summary>
@@ -18020,7 +18021,7 @@ function renderQuickLookupResults(results){
   const primary = indexed.filter(x => !x.r.closestStrictFallback);
   const fallback = indexed.filter(x => x.r.closestStrictFallback);
   const fallbackHtml = fallback.length ? `
-    <details class="qpl-card" style="padding:0;margin-top:12px">
+    <details ${primary.length === 0 ? 'open' : ''} class="qpl-card" style="padding:0;margin-top:12px">
       <summary style="cursor:pointer;padding:14px 16px;font-family:'Orbitron',monospace;font-size:11px;color:var(--gold)">
         CLOSEST MATCHES (${fallback.length}) - no exact strict match
       </summary>
