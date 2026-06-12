@@ -15572,6 +15572,26 @@ function resolvePokemonPriceTrackerPrice(row = {}){
       card
     };
   }
+  // Finish lookup missed — try every finish key for the selected condition (handles unknown finish).
+  for(const [finKey, condMap] of Object.entries(variants)) {
+    if(!condMap || typeof condMap !== 'object') continue;
+    const c = pokemonPptObjectMatch(condMap, selectedCondition);
+    const cv = pokemonPptPriceValue(c);
+    if(cv > 0) {
+      const resolvedFinish = pokemonPptFinishLabel(finKey);
+      return {
+        ok:true,
+        price:cv,
+        path:`prices.variants[${resolvedFinish}][${selectedCondition}].price`,
+        source:'PokemonPriceTracker exact variant',
+        condition:selectedCondition,
+        finish:resolvedFinish,
+        lastUpdated,
+        label:`Raw ${pokemonPptConditionCode(selectedCondition)} ${resolvedFinish}`,
+        card
+      };
+    }
+  }
   const conditionEntry = pokemonPptObjectMatch(prices.conditions || {}, selectedCondition);
   const conditionPrice = pokemonPptPriceValue(conditionEntry);
   if(conditionPrice > 0) {
@@ -15645,20 +15665,11 @@ function applyPokemonPriceTrackerPrice(row = {}){
     row.priceSource = resolved.source;
     row.priceConfidence = 'high';
   } else {
-    let est = estimateConditionValue(row, row.selectedCondition);
-    if(!est) {
-      // estimateConditionValue requires a feature flag; always allow estimate from PPT market price × condition rate
-      const nmBase = pokemonPptPriceValue(resolved.card?.prices?.market) || Number(row.market || 0);
-      if(nmBase > 0) {
-        const rates = getConditionEstimateRates();
-        const cond = String(row.selectedCondition || 'NM').toUpperCase();
-        est = Math.round(nmBase * (rates[cond] || 1) * 100) / 100;
-      }
-    }
-    row.market = est || 0;
-    row.priceSource = est ? 'Estimated Condition Value' : (resolved.basisType === 'graded' ? 'No Real Grade Price Available' : 'No Real Price Available');
-    row.priceConfidence = est ? 'estimate' : 'unknown';
-    if(est) row.activePriceBasis = { ...row.activePriceBasis, basisType:'manual', source:'Manual', price:est, isExact:false, label:'Estimated Condition Value' };
+    // No real price for this condition — preserve existing market, just update labels.
+    // Real LP/MP/HP/DMG prices come from PPT after hydration; don't zero the display while loading.
+    row.priceSource = resolved.basisType === 'graded' ? 'No Real Grade Price Available' : 'No Real Price Available';
+    row.priceConfidence = 'unknown';
+    row.noRealPriceReason = resolved.path;
   }
   row.lastPriceSyncAt = resolved.lastUpdated || row.lastPriceSyncAt || new Date().toISOString();
   const history = pokemonPptHistoryForBasis(row, row.activePriceBasis);
@@ -16334,22 +16345,12 @@ function applyQplSelectedVariant(r){
     if(r?.availableVariants?.length) {
       r.selectedVariant = null;
       if(!applyPokemonPriceTrackerPrice(r)) {
-        let est = estimateConditionValue(r, r.selectedCondition || r.condition);
-        if(!est) {
-          // estimateConditionValue requires a feature flag; fall back to NM variant × condition rate
-          const nmV = (r.availableVariants || []).find(v => String(v.condition||'').toUpperCase() === 'NM' && Number(v.marketPrice||v.price||0) > 0);
-          const nmBase = Number(nmV?.marketPrice || nmV?.price || r.market || 0);
-          if(nmBase > 0) {
-            const rates = getConditionEstimateRates();
-            const cond = String(r.selectedCondition || r.condition || 'NM').toUpperCase();
-            est = Math.round(nmBase * (rates[cond] || 1) * 100) / 100;
-          }
-        }
-        r.market = est || 0;
-        r.priceSource = est ? 'Estimated Condition Value' : 'No Matching Variant';
-        r.priceConfidence = est ? 'estimate' : 'unknown';
-        r.resolvedPricePath = est ? 'admin estimate fallback' : 'no matching variant';
-        r.resolvedPrice = est || 0;
+        // No real PPT price for this condition — preserve existing market, don't blank the display.
+        // Real condition prices come from PPT hydration; loading may still be in flight.
+        r.priceSource = 'No Matching Variant';
+        r.priceConfidence = 'unknown';
+        r.resolvedPricePath = 'no matching variant';
+        r.resolvedPrice = r.market || 0;
       }
       r.variantIntelligence = getVariantIntelligence(r);
     }
@@ -18126,6 +18127,17 @@ function quickLookupResultCard(r, idx){
     if(r.is_sealed) return '<span style="font-size:11px;color:var(--g);font-weight:600;letter-spacing:.04em">FACTORY SEALED</span>';
     const activeCond = r.selectedCondition || r.condition || 'NM';
     const activeFinish = r.selectedFinish || r.finish || '';
+    // Use PPT matrix rows (iterates all finish keys correctly — no finish-key guessing).
+    // This is the same source used by pokemonPptSelectedInlinePanelHtml so the two stay in sync.
+    const pptMatrix = r.pokemonPriceTracker ? pokemonPptMatrixRows(r) : [];
+    const pptPriceFor = condCode => {
+      if(!pptMatrix.length) return 0;
+      const rows = pptMatrix.filter(mr => mr.condition === condCode);
+      if(!rows.length) return 0;
+      const normActive = activeFinish ? normalizeQplFinish(activeFinish) : '';
+      return ((normActive ? rows.find(mr => mr.finish === normActive && mr.price > 0) : null)
+        || rows.find(mr => mr.price > 0))?.price || 0;
+    };
     // For Pokemon, always use the 5-condition path so NM/LP/MP/HP/DMG chips are always visible.
     // The TCG.io availableVariants path only has NM which would hide the other condition chips.
     if(qplResultCategoryKey(r) !== 'pokemon' && r.availableVariants?.length) {
@@ -18134,68 +18146,22 @@ function quickLookupResultCard(r, idx){
       return (finishVars.length ? finishVars : r.availableVariants).filter(v => {
         const k = v.condition; if(seen.has(k)) return false; seen.add(k); return true;
       }).slice(0,6).map(v => {
-        let p = Number(v.marketPrice || v.market || 0);
-        let isEst = false;
-        // For PPT-hydrated cards, availableVariants only stores NM price.
-        // Read LP/MP/HP/DMG prices directly from the PPT price matrix.
-        if(!p && r.pokemonPriceTracker) {
-          const condFull = pokemonPptConditionLabel(v.condition || '');
-          const finishMap = pokemonPptObjectMatch(r.pokemonPriceTracker.prices?.variants || {}, activeFinish || 'Holofoil');
-          const entry = pokemonPptObjectMatch(finishMap || {}, condFull);
-          p = Number(entry?.price || 0);
-          if(!p) {
-            const condEntry = pokemonPptObjectMatch(r.pokemonPriceTracker.prices?.conditions || {}, condFull);
-            p = Number(condEntry?.price || 0);
-          }
-          // Condition rate estimate when exact data unavailable — shown as ~$X in dim gold
-          if(!p) {
-            const nmRef = pokemonPptPriceValue(r.pokemonPriceTracker.prices?.market)
-              || Number((r.availableVariants||[]).find(v2 => v2.condition === 'NM')?.marketPrice || 0)
-              || Number(r.market || displayPrice || 0);
-            if(nmRef > 0) {
-              const rates = getConditionEstimateRates();
-              p = nmRef * (rates[v.condition] || 1);
-              isEst = true;
-            }
-          }
-        }
+        const condCode = pokemonPptConditionCode(pokemonPptConditionLabel(v.condition || ''));
+        const p = Number(v.marketPrice || v.market || 0) || pptPriceFor(condCode);
         const isActive = String(v.condition||'').toLowerCase() === String(activeCond||'').toLowerCase();
         return `<button class="qpl-cond-chip${isActive?' active':''}" onclick="updateQplVariant(${idx},{selectedCondition:'${escHtml(v.condition||'')}',pricingMode:'raw',selectedGrade:'',selectedGradeKey:''})">
           <span class="cchip-label">${escHtml(v.condition||'')}</span>
-          <span class="${p?(isEst?'cchip-est':'cchip-price'):'cchip-na'}">${p?(isEst?'~':'')+'$'+p.toFixed(2):'—'}</span>
+          <span class="${p?'cchip-price':'cchip-na'}">${p?'$'+p.toFixed(2):'—'}</span>
         </button>`;
       }).join('');
     }
-    // Fallback: raw conditions
+    // Pokemon (and fallback): always show NM/LP/MP/HP/DMG using real PPT prices only.
     return ['NM','LP','MP','HP','DMG'].map(c => {
       const isActive = c === (activeCond || 'NM');
-      let p = 0, isEst = false;
-      if(r.pokemonPriceTracker) {
-        const condFull = pokemonPptConditionLabel(c);
-        const finishMap = pokemonPptObjectMatch(r.pokemonPriceTracker.prices?.variants || {}, activeFinish || 'Holofoil');
-        const entry = pokemonPptObjectMatch(finishMap || {}, condFull);
-        p = Number(entry?.price || 0);
-        if(!p) {
-          const condEntry = pokemonPptObjectMatch(r.pokemonPriceTracker.prices?.conditions || {}, condFull);
-          p = Number(condEntry?.price || 0);
-        }
-        if(!p) {
-          const nmRef = pokemonPptPriceValue(r.pokemonPriceTracker.prices?.market) || Number(r.market || displayPrice || 0);
-          if(nmRef > 0) {
-            const rates = getConditionEstimateRates();
-            p = nmRef * (rates[c] || 1);
-            isEst = true;
-          }
-        }
-      } else if(displayPrice > 0) {
-        // No PPT data yet — estimate from NM using standard condition discount rates
-        const rates = getConditionEstimateRates();
-        p = displayPrice * (rates[c] || 1);
-        isEst = true;
-      }
+      const p = pptPriceFor(c);
       return `<button class="qpl-cond-chip${isActive?' active':''}" onclick="updateQplVariant(${idx},{selectedCondition:'${c}',pricingMode:'raw',selectedGrade:'',selectedGradeKey:''})">
         <span class="cchip-label">${c}</span>
-        <span class="${p?(isEst?'cchip-est':'cchip-price'):'cchip-na'}">${p?(isEst?'~':'')+'$'+p.toFixed(2):'—'}</span>
+        <span class="${p?'cchip-price':'cchip-na'}">${p?'$'+p.toFixed(2):'—'}</span>
       </button>`;
     }).join('');
   })();
