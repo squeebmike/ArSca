@@ -13720,8 +13720,8 @@ function pokemonRankApiCards(cards = [], rawQuery = ''){
       card,
       originalIndex,
       score,
-      confidence:queryNumber && numberMatch && nameMatch ? 98 : queryNumber && !numberMatch ? 25 : nameMatch && setHits ? 88 : nameMatch ? 72 : 50,
-      autoSelect:!!(queryNumber && numberMatch && nameMatch),
+      confidence:queryNumber && numberMatch && (nameMatch || !nameLead) ? 98 : queryNumber && !numberMatch ? 25 : nameMatch && setHits ? 88 : nameMatch ? 72 : 50,
+      autoSelect:!!(queryNumber && numberMatch && (nameMatch || !nameLead)),
       numberMatch,
       setHits,
     };
@@ -15834,8 +15834,9 @@ function estimateConditionValue(row, condition){
 function qplTruthLabel(r){
   if(r?.priceSource === 'Needs exact card selection') return 'Needs exact card selection';
   if(r?.priceSource === 'Estimated Condition Value' || r?.priceConfidence === 'estimate') return 'Estimated Condition Value';
-  if(r?.pokemonPriceTracker || /^PokemonPriceTracker/i.test(r?.priceSource || '')) return Number(r?.market || 0) > 0 ? 'Real SKU Market Price' : 'No Real Price';
-  if(r?.source === 'justtcg') return qplPriceValue(r.selectedVariant) > 0 ? 'Real SKU Market Price' : (/estimate/i.test(String(r.selectedVariant?.priceSource || r.priceSource || '')) ? 'Estimated Condition Value' : 'No Real Price');
+  if(r?.pokemonPriceTracker || /^PokemonPriceTracker/i.test(r?.priceSource || '')) return Number(r?.market || 0) > 0 ? 'PokemonPriceTracker Price' : 'No PPT Price';
+  if(r?.source === 'justtcg') return qplPriceValue(r.selectedVariant) > 0 ? 'TCGPlayer Market' : (/estimate/i.test(String(r.selectedVariant?.priceSource || r.priceSource || '')) ? 'Estimated Condition Value' : 'No TCGPlayer Price');
+  if(/^TCG\.io/i.test(r?.priceSource || '')) return Number(r?.market || 0) > 0 ? 'TCG.io Market' : 'No TCG.io Price';
   if(r?.pricecharting || r?.source === 'pricecharting_csv') return Number(r.pricecharting?.prices?.ungraded || r.market || 0) > 0 ? 'Guide Value' : 'No Guide Value';
   if(r?.source === 'inventory') return 'Inventory Price';
   if(Number(r?.recentSold || r?.ebay_avg || 0) > 0) return 'Sold Comp';
@@ -16442,7 +16443,7 @@ function pokemonTcgIoBuildNmVariants(priceMap, productId = ''){
       recentSoldPrice:null,
       lastUpdated:null,
       priceConfidence:'medium',
-      priceSource:'PokemonTCG market',
+      priceSource:'TCG.io market',
     });
   });
   return variants;
@@ -16886,35 +16887,50 @@ async function fetchPokemonPriceTrackerHistory(idx, duration){
   const r = qplResults[idx];
   if(!r || !isPokemonChartCandidate(r)) return false;
   r.chartLastFetchStatus = 'fetching';
-  const params = new URLSearchParams({
-    name:r.name || '',
-    set:r.set || '',
-    cardNumber:r.card_number || '',
-    duration:duration || '90d'
-  });
-  const endpoints = [
-    WORKER + '/pricing/pokemonpricetracker/history?' + params.toString(),
-    WORKER + '/pricing/pokemon-price-tracker/history?' + params.toString()
-  ];
-  for(const url of endpoints) {
+  const tcgPlayerId = r.tcgPlayerId || r.tcgplayerId || '';
+  // Primary path: fetch exact detail (always includes includeHistory:true) and inject priceHistory
+  if(tcgPlayerId) {
     try {
-      const res = await fetch(url);
-      if(res.status === 404) continue;
-      if(res.status === 429) { r.chartLastFetchStatus = 'rate_limited'; return true; }
-      if(!res.ok) { r.chartLastFetchStatus = 'failed'; continue; }
-      const data = await res.json();
-      if(data.noMapping || data.status === 'no_mapping') { r.chartLastFetchStatus = 'no_mapping'; return true; }
-      const points = normalizeChartPoints(data.points || data.history || data.chart || data.data || []);
-      if(!points.length) { r.chartLastFetchStatus = 'no_data'; return true; }
-      r.selectedVariant = r.selectedVariant || {};
-      r.selectedVariant.priceHistory = points;
-      r.selectedVariant.priceSource = r.selectedVariant.priceSource || 'PokemonPriceTracker history';
-      r.chartLastFetchStatus = 'fetched';
-      return true;
-    } catch(e) {
-      r.chartLastFetchStatus = 'failed';
-    }
+      const exact = await fetchPokemonPriceTrackerExactDetail(tcgPlayerId, r.language || 'english');
+      if(exact) {
+        if(!r.pokemonPriceTracker) r.pokemonPriceTracker = exact;
+        else if(exact.priceHistory) r.pokemonPriceTracker.priceHistory = exact.priceHistory;
+        // Also surface flattened history on selectedVariant for the legacy chart path
+        const series = pokemonPptAllHistorySeries(r);
+        if(series.length) {
+          r.selectedVariant = r.selectedVariant || {};
+          r.selectedVariant.priceHistory = series[0].points;
+          r.selectedVariant.priceSource = 'PokemonPriceTracker';
+          r.chartLastFetchStatus = 'fetched';
+          return true;
+        }
+      }
+    } catch(e) {}
   }
+  // Fallback: search-by-params via /pricing/pokemon/cards with includeHistory
+  try {
+    const params = new URLSearchParams({
+      name:r.name || '', set:r.set || r.setName || '',
+      cardNumber:r.card_number || r.cardNumber || '',
+      includeHistory:'true', limit:'1', days:'180', maxDataPoints:'120'
+    });
+    if(tcgPlayerId) params.set('tcgPlayerId', tcgPlayerId);
+    const result = await pokemonPriceTrackerCardsRequest(params, 'cards.history.fallback');
+    const card = result.cards[0] || null;
+    if(card?.priceHistory) {
+      if(!r.pokemonPriceTracker) r.pokemonPriceTracker = card;
+      else r.pokemonPriceTracker.priceHistory = card.priceHistory;
+      const series = pokemonPptAllHistorySeries(r);
+      if(series.length) {
+        r.selectedVariant = r.selectedVariant || {};
+        r.selectedVariant.priceHistory = series[0].points;
+        r.selectedVariant.priceSource = 'PokemonPriceTracker';
+        r.chartLastFetchStatus = 'fetched';
+        return true;
+      }
+    }
+  } catch(e) {}
+  r.chartLastFetchStatus = 'no_data';
   return false;
 }
 
@@ -17902,7 +17918,7 @@ async function fetchPokemonCatalog(q){
           low:Number(p.low || 0),
           high:Number(p.high || 0),
           imageUrl:c.images?.small || c.images?.large || '',
-          priceSource:'PokemonTCG market',
+          priceSource:'TCG.io market',
           tcgUrl:c.tcgplayer?.url || '',
           tcgPlayerUrl:c.tcgplayer?.url || '',
           tcgPlayerId:tcgPlayerProductIdFromUrl(c.tcgplayer?.url || ''),
