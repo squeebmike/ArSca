@@ -1703,10 +1703,10 @@ export default {
           if (/^\//.test(raw)) return 'https://www.pricecharting.com' + raw;
           return raw;
         }
-        // Derive thumbnail from product URL slug — PriceCharting CDN serves covers at this path
-        const productUrl = p['product-url'] || p.url || '';
-        const slug = productUrl.split('/').filter(s => s && s !== 'game').pop() || '';
-        return slug ? `https://static.pricecharting.com/cache/p/0-0-0-0-0/${slug}.jpg` : '';
+        // Derive thumbnail from product name — gamevault CDN uses name-based slugs
+        const name = p['product-name'] || p.productName || '';
+        const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+        return slug ? `https://gamevault.pricecharting.com/cache/p/0-0-0-0-0/${slug}.jpg` : '';
       };
       const pcMoney = (p, key, normalizedPath = '') => {
         const fromCsv = pennies(p[key]);
