@@ -14487,11 +14487,14 @@ async function runPriceLookup(){
     if(wantsPokemon) {
       savePokemonCacheResults(q, qplMasterResults, 'Live Pokemon lookup').then(renderOfflineCachePanel).catch(console.warn);
       setPokemonOfflineBanner((cachedResults.length ? 'Live Pokémon refresh updated the cached copy.' : 'Saved this Pokémon lookup for offline use.') + ' Last cached ' + pokemonCacheAgeLabel(new Date().toISOString()) + '.', 'good');
-      // Auto-fetch full condition prices (NM/LP/MP/HP/DMG + PSA grades) for the top result
-      // so the condition matrix is immediately visible without requiring a manual GET PRICES click.
-      const topIdx = qplResults.findIndex(r => qplResultCategoryKey(r) === 'pokemon' && !r.pokemonPriceTracker?.lookupDebug?.exactHydrated);
-      if(topIdx !== -1 && navigator.onLine && !pokemonPriceTrackerQuotaBlocked()) {
-        setTimeout(() => loadPricesForResultCard(topIdx), 400);
+      // Auto-fetch full condition prices for the top 3 Pokemon results so chips/PSA grades are
+      // immediately visible without requiring a manual GET PRICES click.
+      if(navigator.onLine && !pokemonPriceTrackerQuotaBlocked()) {
+        const toLoad = [];
+        for(let i = 0; i < qplResults.length && toLoad.length < 3; i++) {
+          if(qplResultCategoryKey(qplResults[i]) === 'pokemon' && !qplResults[i].pokemonPriceTracker?.lookupDebug?.exactHydrated) toLoad.push(i);
+        }
+        toLoad.forEach((idx, n) => setTimeout(() => loadPricesForResultCard(idx), 400 + n * 700));
       }
     }
     if(wantsMtg) {
@@ -18230,8 +18233,8 @@ function quickLookupResultCard(r, idx){
           <button class="hbtn primary" onclick="addQuickLookupToInventory(${idx})">ADD INVENTORY</button>
           <button class="hbtn" style="min-height:56px;font-size:14px;font-weight:800;background:rgba(255,209,102,.12);border-color:rgba(255,209,102,.4);color:var(--gold)" onclick="addQuickLookupToSaleCart(${idx})">ADD TO CART</button>
         </div>
-        <!-- SECONDARY actions — 3-column; PSA POP COUNT visible for Pokemon -->
-        <div class="qpl-actions-secondary">
+        <!-- SECONDARY actions — 3-col normally, 4-col for Pokemon (adds TCG ↗) -->
+        <div class="qpl-actions-secondary" ${qplResultCategoryKey(r) === 'pokemon' ? 'style="grid-template-columns:1fr 1fr 1fr 1fr"' : ''}>
           ${qplResultCategoryKey(r) === 'pokemon'
             ? (r.pokemonPriceTracker?.lookupDebug?.exactHydrated
                 ? `<button class="hbtn ppt-refresh-btn" data-qpl-idx="${idx}" onclick="refreshLivePriceForCard(${idx})" title="Bypass cache and fetch fresh live pricing">↻ REFRESH</button>`
@@ -18241,6 +18244,7 @@ function quickLookupResultCard(r, idx){
           ${qplResultCategoryKey(r) === 'pokemon'
             ? `<button class="hbtn" style="color:var(--blue)" onclick="fetchPopCountForCard(${idx})">POP COUNT</button>`
             : (qplResultCategoryKey(r) === 'mtg' || r.tcgUrl ? `<button class="hbtn" onclick="openQuickExternal(${idx},'tcg')">TCG ↗</button>` : `<span></span>`)}
+          ${qplResultCategoryKey(r) === 'pokemon' ? `<button class="hbtn" onclick="openQuickExternal(${idx},'tcg')">TCG ↗</button>` : ''}
         </div>
         <!-- TERTIARY — collapsed -->
         <div class="qpl-actions-tertiary">
