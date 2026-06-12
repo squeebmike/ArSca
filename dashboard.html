@@ -14874,8 +14874,11 @@ function qplStrictAllows(r, strict, primaryOnly){
     const n = String(r?.card_number || r?.cardNumber || '').replace(/\s+/g,'').toLowerCase();
     const numerator = n.split('/')[0] || '';
     const exact = n === strict.collectorNumber;
+    // numOnly: card has full X/Y number and both parts match
     const numOnly = numerator === strict.collectorNumerator && n.includes('/' + strict.collectorDenominator);
-    if(!exact && !numOnly) return !primaryOnly;
+    // numeratorOnly: card stored without denominator (e.g. PPT returns "143" for a "143/142" query)
+    const numeratorOnly = numerator === strict.collectorNumerator && !n.includes('/');
+    if(!exact && !numOnly && !numeratorOnly) return !primaryOnly;
   }
   if(strict.nameTokens.length && !strict.nameTokens.some(t => name.includes(t))) return !primaryOnly;
   const allMatch = strict.modifiers.every(mod => {
@@ -18156,9 +18159,12 @@ function quickLookupResultCard(r, idx){
       }).join('');
     }
     // Pokemon (and fallback): always show NM/LP/MP/HP/DMG using real PPT prices only.
+    // For NM: also accept r.market as fallback when PPT loaded but returned prices.market only
+    // (no variants/conditions breakdown), which makes pokemonPptMatrixRows return empty.
+    const nmFallback = (!pptMatrix.length && r.pokemonPriceTracker) ? Number(displayPrice || 0) : 0;
     return ['NM','LP','MP','HP','DMG'].map(c => {
       const isActive = c === (activeCond || 'NM');
-      const p = pptPriceFor(c);
+      const p = pptPriceFor(c) || (c === 'NM' ? nmFallback : 0);
       return `<button class="qpl-cond-chip${isActive?' active':''}" onclick="updateQplVariant(${idx},{selectedCondition:'${c}',pricingMode:'raw',selectedGrade:'',selectedGradeKey:''})">
         <span class="cchip-label">${c}</span>
         <span class="${p?'cchip-price':'cchip-na'}">${p?'$'+p.toFixed(2):'—'}</span>
