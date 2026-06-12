@@ -1703,10 +1703,7 @@ export default {
           if (/^\//.test(raw)) return 'https://www.pricecharting.com' + raw;
           return raw;
         }
-        // Derive thumbnail from product name — gamevault CDN uses name-based slugs
-        const name = p['product-name'] || p.productName || '';
-        const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-        return slug ? `https://gamevault.pricecharting.com/cache/p/0-0-0-0-0/${slug}.jpg` : '';
+        return '';
       };
       const pcMoney = (p, key, normalizedPath = '') => {
         const fromCsv = pennies(p[key]);

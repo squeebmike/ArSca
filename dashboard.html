@@ -938,7 +938,7 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.12.10-comic-lazy-images</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.12.11-comicvine-covers</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
@@ -965,7 +965,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip dev-only" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.12.10-comic-lazy-images</div>
+<div class="dsb-chip dev-only" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.12.11-comicvine-covers</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -16320,7 +16320,7 @@ async function fetchPriceChartingCsvCatalog(q, cat){
     market:Number(m.prices?.ungraded || 0),
     low:Number(m.retail?.looseBuy || 0),
     high:Number(m.retail?.looseSell || m.prices?.psa10 || 0),
-    imageUrl:(()=>{ const raw=m.imageUrl||m['image-url']||m.image||m.image_url||''; if(raw) return /^\/\//.test(raw)?'https:'+raw:/^\//.test(raw)?'https://www.pricecharting.com'+raw:raw; const slug=(m.productName||m.productName||'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,''); return slug?`https://gamevault.pricecharting.com/cache/p/0-0-0-0-0/${slug}.jpg`:''; })(),
+    imageUrl:(()=>{ const raw=m.imageUrl||m['image-url']||m.image||m.image_url||''; if(!raw) return ''; if(/^\/\//.test(raw)) return 'https:'+raw; if(/^\//.test(raw)) return 'https://www.pricecharting.com'+raw; return raw; })(),
     priceSource:'PriceCharting CSV guide',
     note:'Cached PriceCharting guide value. Current guide data only, not sold comps.',
     confidence:m.confidence === 'high' ? 90 : m.confidence === 'medium' ? 72 : 55,
@@ -16374,7 +16374,7 @@ async function fetchPriceChartingLiveCatalog(q, cat){
     card_number:'',
     condition:'NM',
     market:Number(m.prices?.ungraded || 0),
-    imageUrl:(()=>{ const raw=m.imageUrl||m['image-url']||m.image||m.image_url||''; if(raw) return /^\/\//.test(raw)?'https:'+raw:/^\//.test(raw)?'https://www.pricecharting.com'+raw:raw; const slug=(m.productName||'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,''); return slug?`https://gamevault.pricecharting.com/cache/p/0-0-0-0-0/${slug}.jpg`:''; })(),
+    imageUrl:(()=>{ const raw=m.imageUrl||m['image-url']||m.image||m.image_url||''; if(!raw) return ''; if(/^\/\//.test(raw)) return 'https:'+raw; if(/^\//.test(raw)) return 'https://www.pricecharting.com'+raw; return raw; })(),
     priceSource:Number(m.prices?.ungraded || 0) ? 'PriceCharting Guide Value' : 'No Guide Value Available',
     note:'Live PriceCharting guide value. Current guide data only, not sold comps.',
     confidence:m.confidence === 'high' ? 92 : m.confidence === 'medium' ? 74 : 56,
@@ -18714,23 +18714,29 @@ async function lazyLoadComicImages(indices){
   const toLoad = (indices || []).filter(idx => {
     const r = qplResults[idx];
     if(!r || r.imageUrl) return false;
-    if(qplResultCategoryKey(r) !== 'comic') return false;
-    return !!(r.pricecharting?.productId || r.raw?.productId);
+    return qplResultCategoryKey(r) === 'comic';
   });
   if(!toLoad.length) return;
   await Promise.all(toLoad.map(async idx => {
     const r = qplResults[idx];
-    const productId = String(r.pricecharting?.productId || r.raw?.productId || '');
-    if(!productId) return;
+    const name = r.name || r.raw?.productName || '';
+    if(!name) return;
+    // Parse "Amazing Spider-Man #300" -> title="Amazing Spider-Man", issue="300"
+    const issueMatch = name.match(/^(.+?)\s+#(\d+[a-z]?)(?:\s|$)/i);
+    const title = issueMatch ? issueMatch[1].trim() : name;
+    const issue = issueMatch ? issueMatch[2] : '';
+    const year = r.year || '';
     try {
-      const res = await fetch(WORKER + '/pricing/pricecharting/product/' + encodeURIComponent(productId), { cache:'no-store' });
+      const params = new URLSearchParams({ title });
+      if(issue) params.set('issue', issue);
+      if(year) params.set('year', year);
+      const res = await fetch(WORKER + '/comic/variants?' + params.toString(), { cache:'no-store' });
       if(!res.ok) return;
       const data = await res.json().catch(() => ({}));
-      const imageUrl = data.imageUrl || data.product?.imageUrl || '';
+      const best = (data.variants || []).find(v => v.cover_image) || null;
+      const imageUrl = best?.cover_image || '';
       if(!imageUrl) return;
-      // Store on result so refreshQplResultCard picks it up later
       if(qplResults[idx]) qplResults[idx].imageUrl = imageUrl;
-      // Patch only the img shell — no full re-render
       const card = document.querySelector(`.qpl-hero-card[data-qpl-idx="${idx}"]`);
       const shell = card?.querySelector('.qpl-img-shell');
       if(!shell) return;
