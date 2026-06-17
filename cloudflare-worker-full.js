@@ -2514,8 +2514,9 @@ export default {
       if (!params.get('language')) params.set('language', 'english');
       if (pptPath === '/pricing/pokemonpricetracker/cards') {
         const exactLookup = !!(params.get('tcgPlayerId') || params.get('cardId'));
-        const requestedLimit = Number(params.get('limit') || (exactLookup ? 1 : 20));
-        params.set('limit', String(exactLookup ? 1 : Math.min(20, Math.max(1, requestedLimit || 20))));
+        const isFetchAll = String(params.get('fetchAllInSet') || '').toLowerCase() === 'true';
+        const requestedLimit = Number(params.get('limit') || (exactLookup ? 1 : isFetchAll ? 300 : 20));
+        params.set('limit', String(exactLookup ? 1 : isFetchAll ? Math.min(500, requestedLimit || 300) : Math.min(20, Math.max(1, requestedLimit || 20))));
         if (String(params.get('fetchAllInSet') || '').toLowerCase() === 'true') {
           const hasSetFilter = !!(params.get('set') || params.get('setName') || params.get('setId'));
           if (!hasSetFilter) return json({ ok: false, source: 'pokemonpricetracker', error: 'fetchAllInSet requires set, setName, or setId param.' }, 400);

@@ -838,6 +838,70 @@ body.customer-display-mode #customer-display-exit{display:block;}
 }
 /* ── END PASS A ─────────────────────────────────────────────────── */
 
+/* ── POKÉMON SET BROWSER (Pass B) ───────────────────────────── */
+.ppsb-modal{position:fixed;inset:0;z-index:4000;background:rgba(0,0,0,.88);display:none;align-items:flex-start;justify-content:center;overflow:hidden;}
+.ppsb-modal.on{display:flex;}
+.ppsb-inner{background:var(--surf);border:1px solid var(--border);width:100%;max-width:1100px;height:100vh;max-height:100vh;display:flex;flex-direction:column;overflow:hidden;}
+@media(min-width:641px){
+  .ppsb-inner{border-radius:12px;margin:16px;max-height:calc(100vh - 32px);height:auto;}
+}
+.ppsb-header{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--border);flex-shrink:0;gap:10px;}
+.ppsb-title{font-family:'Orbitron',monospace;font-size:13px;font-weight:900;letter-spacing:.04em;color:var(--g);}
+.ppsb-set-row{display:flex;gap:8px;padding:12px 18px;border-bottom:1px solid var(--border);flex-shrink:0;flex-wrap:wrap;}
+.ppsb-set-sel{flex:1;min-width:200px;background:var(--surf2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:10px 12px;font-family:monospace;font-size:12px;min-height:44px;}
+.ppsb-set-search{width:170px;background:var(--surf2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:10px 12px;font-family:monospace;font-size:12px;min-height:44px;}
+.ppsb-toolbar{display:flex;gap:10px;align-items:center;justify-content:space-between;padding:10px 18px;border-bottom:1px solid var(--border);flex-wrap:wrap;flex-shrink:0;}
+.ppsb-stats{display:flex;gap:12px;font-family:monospace;font-size:11px;color:var(--dim);flex-wrap:wrap;align-items:center;}
+.ppsb-sort-row{display:flex;gap:4px;align-items:center;flex-wrap:wrap;font-family:monospace;font-size:9px;color:var(--dim);}
+.ppsb-sort-btn{min-height:32px!important;padding:4px 10px!important;font-size:9px!important;}
+.ppsb-sort-btn.active{border-color:rgba(0,255,179,.5)!important;color:var(--g)!important;}
+.ppsb-filters{display:flex;gap:6px;padding:8px 18px;border-bottom:1px solid var(--border);flex-wrap:wrap;align-items:center;flex-shrink:0;}
+.ppsb-filter-input{background:var(--surf2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:6px 10px;font-family:monospace;font-size:11px;min-height:36px;}
+.ppsb-filter-chip{font-family:monospace;font-size:10px;letter-spacing:.04em;padding:6px 10px;border:1px solid var(--border);border-radius:6px;cursor:pointer;color:var(--dim);background:var(--surf2);min-height:36px;display:flex;align-items:center;user-select:none;}
+.ppsb-filter-chip.active{border-color:rgba(0,255,179,.5);color:var(--g);background:rgba(0,255,179,.08);}
+.ppsb-empty{padding:40px 20px;text-align:center;font-family:monospace;font-size:11px;color:var(--dim);}
+.ppsb-loading{color:var(--g)!important;}
+.ppsb-cards-area{flex:1;overflow-y:auto;padding:12px 18px;display:grid;gap:10px;align-content:start;}
+.ppsb-cards-area.ppsb-table-mode{grid-template-columns:1fr;}
+@media(min-width:641px){
+  .ppsb-cards-area:not(.ppsb-table-mode){grid-template-columns:repeat(auto-fill,minmax(300px,1fr));}
+}
+.ppsb-card{display:flex;gap:10px;background:var(--surf2);border:1px solid var(--border);border-radius:10px;padding:10px;transition:border-color .15s;}
+.ppsb-card.ppsb-owned{border-color:rgba(0,255,179,.3);background:rgba(0,255,179,.03);}
+.ppsb-card-img-wrap{width:72px;flex-shrink:0;}
+.ppsb-card-img{width:72px;height:auto;border-radius:6px;display:block;}
+.ppsb-no-img{width:72px;height:100px;background:var(--surf);border:1px solid var(--border);border-radius:6px;}
+.ppsb-card-body{flex:1;display:flex;flex-direction:column;gap:4px;min-width:0;}
+.ppsb-card-name{font-size:13px;font-weight:700;color:var(--text);line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ppsb-card-num{font-family:monospace;font-size:10px;color:var(--dim);font-weight:400;}
+.ppsb-card-meta{font-family:monospace;font-size:10px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ppsb-card-prices{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:2px;}
+.ppsb-price{font-family:'Orbitron',monospace;font-size:15px;font-weight:900;color:var(--gold);}
+.ppsb-price-low{font-family:monospace;font-size:10px;color:var(--dim);}
+.ppsb-owned-badge{font-family:monospace;font-size:9px;letter-spacing:.04em;padding:2px 7px;border-radius:999px;background:rgba(0,255,179,.12);border:1px solid rgba(0,255,179,.3);color:var(--g);}
+.ppsb-card-actions{display:flex;gap:5px;margin-top:auto;padding-top:6px;flex-wrap:wrap;}
+.ppsb-tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%;}
+.ppsb-table{width:100%;border-collapse:collapse;font-family:monospace;font-size:11px;}
+.ppsb-th{padding:8px 10px;text-align:left;color:var(--dim);font-size:9px;letter-spacing:.04em;border-bottom:2px solid var(--border);white-space:nowrap;}
+.ppsb-th-sort{cursor:pointer;}
+.ppsb-th-sort:hover{color:var(--text);}
+.ppsb-th-active{color:var(--g)!important;}
+.ppsb-td{padding:7px 10px;border-bottom:1px solid rgba(255,255,255,.04);vertical-align:middle;}
+.ppsb-td-num{color:var(--dim);font-size:10px;white-space:nowrap;}
+.ppsb-td-dim{color:var(--dim);}
+.ppsb-td-price{font-family:'Orbitron',monospace;font-size:13px;color:var(--gold);white-space:nowrap;}
+.ppsb-tr-owned td:first-child{border-left:3px solid rgba(0,255,179,.35);}
+@media(max-width:640px){
+  .ppsb-cards-area{grid-template-columns:1fr;padding:10px 12px;}
+  .ppsb-header{padding:12px 14px;}
+  .ppsb-set-row,.ppsb-toolbar,.ppsb-filters{padding:8px 12px;}
+  .ppsb-set-search{width:100%;flex:1 1 100%;}
+  .ppsb-card-img-wrap{width:60px;}
+  .ppsb-card-img{width:60px;}
+  .ppsb-no-img{width:60px;height:82px;}
+}
+/* ── END PASS B ─────────────────────────────────────────────────── */
+
 /* ── WALKTHROUGH & HELP SYSTEM (v1) ─────────────────────────── */
 .setup-prompt-bar{
   position:sticky;top:0;z-index:200;
@@ -993,7 +1057,7 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.17.01-mobile-ui-pass-a</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.17.02-pokemon-set-browser</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
@@ -1020,7 +1084,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip dev-only" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.17.01-mobile-ui-pass-a</div>
+<div class="dsb-chip dev-only" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.17.02-pokemon-set-browser</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -1353,6 +1417,14 @@ body.show-mode .inv-sync-badge{display:none;}
           <button class="hbtn" style="font-size:9px;padding:3px 9px;color:var(--dim)" onclick="clearComicHelper()">✕ clear</button>
         </div>
         <div style="font-family:monospace;font-size:10px;color:var(--dim);line-height:1.5">Variant tips: <em>newsstand · direct · foil · sketch · facsimile · incentive · 2nd print · virgin</em></div>
+      </div>
+      <!-- Pokémon helper row — shown only when Pokemon TCG category is selected -->
+      <div id="qpl-pokemon-helper" style="display:none;margin-bottom:10px;padding:9px 12px;background:rgba(255,209,102,.06);border:1px solid rgba(255,209,102,.22);border-radius:8px">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <span style="font-family:'Orbitron',monospace;font-size:9px;color:var(--gold);letter-spacing:.05em">POKÉMON</span>
+          <button class="hbtn" onclick="openSetBrowser()" style="font-size:10px;min-height:36px;padding:4px 14px;background:rgba(255,209,102,.1);border-color:rgba(255,209,102,.4);color:var(--gold)">⚡ SET BROWSER</button>
+          <span style="font-family:monospace;font-size:9px;color:var(--dim)">Browse full sets · filter by artist · track owned cards</span>
+        </div>
       </div>
       <div id="qpl-result" style="font-family:var(--font-mono);font-size:10px;color:var(--dim);min-height:60px">Enter a card, comic, slab, game, or collectible to identify it and route it into Buy, Inventory, or Sale.</div>
       <div id="qpl-history" style="margin-top:10px;border-top:1px solid var(--border);padding-top:8px"></div>
@@ -17817,17 +17889,22 @@ function handleQplCategoryChange(){
   const q = document.getElementById('qpl-input')?.value.trim() || qplLastSearch || '';
   const cat = document.getElementById('qpl-cat')?.value || '';
   const isComic = qplCategoryKey(cat) === 'comic';
+  const isPokemon = qplCategoryKey(cat) === 'pokemon';
   const helper = document.getElementById('qpl-comic-helper');
   if(helper) helper.style.display = isComic ? '' : 'none';
+  const pokemonHelper = document.getElementById('qpl-pokemon-helper');
+  if(pokemonHelper) pokemonHelper.style.display = isPokemon ? '' : 'none';
   const inp = document.getElementById('qpl-input');
   if(inp) inp.placeholder = isComic
     ? 'e.g. Spawn #1, Amazing Spider-Man 300, Batman #251 newsstand…'
+    : isPokemon ? 'e.g. Charizard VMAX 074/073 Shining Fates…'
     : 'e.g. 2021 Umbreon VMAX Evolving Skies…';
   if(getResearchSettings().rememberLastCategory) localStorage.setItem('qpl_last_category', cat);
   if(!qplMasterResults.length) {
     const el = document.getElementById('qpl-result');
     if(q && el) el.innerHTML = `<div style="color:var(--gold);line-height:1.6">Category changed to ${escHtml(cat || 'Any Category')}. Press LOOK UP to search this category.</div>`;
     else if(isComic && el) el.innerHTML = `<div style="color:var(--purple);line-height:1.7;font-family:monospace;font-size:10px">📖 Comics selected. Enter a series title and issue number above, then hit LOOK UP.<br><span style="color:var(--dim)">PriceCharting covers raw, CGC, CBCS grades and more.</span></div>`;
+    else if(isPokemon && el) el.innerHTML = `<div style="color:var(--gold);line-height:1.7;font-family:monospace;font-size:10px">⚡ Pokémon TCG selected. Search a card above, or use <strong>SET BROWSER</strong> to browse all cards in a set with prices, filters, and inventory tracking.</div>`;
     return;
   }
   qplResults = filterQplMasterResults(qplMasterResults, cat);
@@ -21859,6 +21936,413 @@ loadBuyList();
 renderBuyList();
 renderSetNeeds();
 renderBuySignals();
+
+// ── POKÉMON SET BROWSER (Pass B) ────────────────────────────────
+const _sbState = {
+  sets: null, setsLoadedAt: 0,
+  selectedSet: null,
+  cards: [], filteredCards: [],
+  sortField: 'number', sortDir: 1,
+  filters: { name:'', artist:'', rarity:'', minPrice:'', maxPrice:'', owned:false, missing:false },
+  loading: false, view: 'cards',
+};
+
+function sbParseCollectorNum(n){
+  const s = String(n || '').trim();
+  if(!s) return ['zzz', 999999];
+  const slash = s.match(/^(\d+)\//);
+  if(slash) return ['', parseInt(slash[1], 10)];
+  const prefix = s.match(/^([A-Za-z]+)(\d+)/);
+  if(prefix) return [prefix[1].toUpperCase(), parseInt(prefix[2], 10)];
+  const num = s.match(/^(\d+)/);
+  if(num) return ['', parseInt(num[1], 10)];
+  return [s.toUpperCase(), 0];
+}
+
+function sbCompareCards(a, b){
+  const { sortField, sortDir } = _sbState;
+  let r = 0;
+  if(sortField === 'number'){
+    const [ap, an] = sbParseCollectorNum(a.cardNumber);
+    const [bp, bn] = sbParseCollectorNum(b.cardNumber);
+    r = ap !== bp ? (ap < bp ? -1 : 1) : an - bn;
+  } else if(sortField === 'price'){
+    r = Number(b.prices?.market || 0) - Number(a.prices?.market || 0);
+  } else if(sortField === 'name'){
+    r = (a.name || '').localeCompare(b.name || '');
+  } else if(sortField === 'artist'){
+    r = (a.artist || '').localeCompare(b.artist || '');
+  } else if(sortField === 'rarity'){
+    r = (a.rarity || '').localeCompare(b.rarity || '');
+  }
+  return r * sortDir;
+}
+
+function sbIsOwned(card){
+  if(!card || !Array.isArray(all) || !all.length) return false;
+  const tid = String(card.tcgPlayerId || '');
+  if(tid && all.some(i => String(i.tcgPlayerId || i.tcgplayerId || i.raw?.tcgPlayerId || '') === tid)) return true;
+  const name = (card.name || '').toLowerCase().trim();
+  const set = (card.setName || '').toLowerCase().trim();
+  const num = (card.cardNumber || '').toLowerCase().trim();
+  return all.some(i => {
+    const iname = (i.name || '').toLowerCase();
+    const iset = (i.set || i.setName || '').toLowerCase();
+    const inum = (i.card_number || i.cardNumber || '').toLowerCase();
+    return iname === name && iset === set && (!num || inum === num);
+  });
+}
+
+function sbOwnedQty(card){
+  if(!card || !Array.isArray(all)) return 0;
+  const tid = String(card.tcgPlayerId || '');
+  return all.filter(i => {
+    if(tid && String(i.tcgPlayerId || i.tcgplayerId || i.raw?.tcgPlayerId || '') === tid) return true;
+    return (i.name || '').toLowerCase() === (card.name || '').toLowerCase() &&
+      (i.set || i.setName || '').toLowerCase() === (card.setName || '').toLowerCase();
+  }).reduce((s, i) => s + Number(i.quantity || 1), 0);
+}
+
+async function sbFetchSets(){
+  const cacheKey = 'sb_sets_v1';
+  try {
+    const cached = JSON.parse(sessionStorage.getItem(cacheKey) || 'null');
+    if(cached && (Date.now() - (cached.ts || 0)) < 86400000) return cached.sets;
+  } catch(e){}
+  const params = new URLSearchParams({ sortBy:'releaseDate', sortOrder:'desc', limit:'300' });
+  const res = await fetch(WORKER + '/pricing/pokemon/sets?' + params.toString(), { cache:'no-store' });
+  if(!res.ok) throw new Error('Sets fetch failed: ' + res.status);
+  const data = await res.json();
+  const sets = data.data || data.sets || [];
+  try { sessionStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), sets })); } catch(e){}
+  return sets;
+}
+
+async function sbFetchSetCards(setId, setName){
+  const params = new URLSearchParams({ fetchAllInSet:'true', limit:'500' });
+  if(setId) params.set('setId', setId);
+  else if(setName) params.set('set', setName);
+  const res = await fetch(WORKER + '/pricing/pokemon/cards?' + params.toString(), { cache:'no-store' });
+  if(!res.ok) throw new Error('Cards fetch failed: ' + res.status);
+  const data = await res.json();
+  return data.data || data.cards || [];
+}
+
+function sbApplyFilters(){
+  const { cards, filters } = _sbState;
+  let f = [...cards];
+  const q = (filters.name || '').toLowerCase().trim();
+  if(q) f = f.filter(c => (c.name || '').toLowerCase().includes(q));
+  const a = (filters.artist || '').toLowerCase().trim();
+  if(a) f = f.filter(c => (c.artist || '').toLowerCase().includes(a));
+  const r = (filters.rarity || '').toLowerCase().trim();
+  if(r) f = f.filter(c => (c.rarity || '').toLowerCase() === r);
+  const minP = Number(filters.minPrice);
+  if(minP > 0) f = f.filter(c => Number(c.prices?.market || 0) >= minP);
+  const maxP = Number(filters.maxPrice);
+  if(maxP > 0) f = f.filter(c => Number(c.prices?.market || 0) <= maxP);
+  if(filters.owned) f = f.filter(c => sbIsOwned(c));
+  if(filters.missing) f = f.filter(c => !sbIsOwned(c));
+  f.sort(sbCompareCards);
+  _sbState.filteredCards = f;
+}
+
+function openSetBrowser(){
+  let modal = document.getElementById('ppsb-modal');
+  if(!modal){
+    modal = document.createElement('div');
+    modal.id = 'ppsb-modal';
+    modal.className = 'ppsb-modal';
+    modal.innerHTML = '<div class="ppsb-inner" id="ppsb-inner"></div>';
+    modal.addEventListener('click', e => { if(e.target === modal) closeSetBrowser(); });
+    document.body.appendChild(modal);
+  }
+  modal.classList.add('on');
+  renderSetBrowserShell();
+}
+
+function closeSetBrowser(){
+  document.getElementById('ppsb-modal')?.classList.remove('on');
+}
+
+function renderSetBrowserShell(){
+  const inner = document.getElementById('ppsb-inner');
+  if(!inner) return;
+  inner.innerHTML = `
+    <div class="ppsb-header">
+      <div style="display:flex;align-items:center;gap:10px;min-width:0">
+        <span class="ppsb-title">⚡ SET BROWSER</span>
+        <span style="font-family:monospace;font-size:9px;color:var(--dim);white-space:nowrap">artist search within set · inventory tracking</span>
+      </div>
+      <button class="hbtn" style="min-height:36px;padding:4px 14px;font-size:10px;flex-shrink:0" onclick="closeSetBrowser()">✕ CLOSE</button>
+    </div>
+    <div class="ppsb-set-row">
+      <select id="ppsb-set-sel" class="ppsb-set-sel" onchange="sbSelectSet()">
+        <option value="">— Choose a set —</option>
+      </select>
+      <input id="ppsb-set-search" class="ppsb-set-search" placeholder="Search sets…" oninput="sbFilterSetDropdown(this.value)">
+    </div>
+    <div id="ppsb-content">
+      <div class="ppsb-empty">Select a Pokémon set above to load all cards with prices.</div>
+    </div>`;
+  sbPopulateSets();
+}
+
+async function sbPopulateSets(){
+  const sel = document.getElementById('ppsb-set-sel');
+  if(!sel) return;
+  sel.innerHTML = '<option value="">Loading sets…</option>';
+  try {
+    const sets = await sbFetchSets();
+    _sbState.sets = sets;
+    sel.innerHTML = '<option value="">— Choose a set —</option>' +
+      sets.map(s => {
+        const id = s.id || s.setId || '';
+        const name = s.name || '';
+        const year = s.releaseDate ? ' ('+String(s.releaseDate).slice(0,4)+')' : '';
+        const count = s.cardCount ? ' · '+s.cardCount+' cards' : '';
+        return `<option value="${escHtml(id)}" data-name="${escHtml(name)}">${escHtml(name)}${year}${count}</option>`;
+      }).join('');
+    const lastSetId = sessionStorage.getItem('sb_last_set_id');
+    if(lastSetId && sets.some(s => (s.id || s.setId) === lastSetId)){
+      sel.value = lastSetId;
+      sbSelectSet();
+    }
+  } catch(e){
+    sel.innerHTML = '<option value="">Error loading sets — try again</option>';
+    console.warn('[SetBrowser] sets error', e);
+  }
+}
+
+function sbFilterSetDropdown(q){
+  const sets = _sbState.sets || [];
+  const sel = document.getElementById('ppsb-set-sel');
+  if(!sel || !sets.length) return;
+  const fq = (q || '').toLowerCase().trim();
+  const filtered = fq ? sets.filter(s => (s.name || '').toLowerCase().includes(fq)) : sets;
+  sel.innerHTML = '<option value="">— Choose a set —</option>' +
+    filtered.map(s => {
+      const id = s.id || s.setId || '';
+      const name = s.name || '';
+      const year = s.releaseDate ? ' ('+String(s.releaseDate).slice(0,4)+')' : '';
+      const count = s.cardCount ? ' · '+s.cardCount+' cards' : '';
+      return `<option value="${escHtml(id)}" data-name="${escHtml(name)}">${escHtml(name)}${year}${count}</option>`;
+    }).join('');
+}
+
+async function sbSelectSet(){
+  const sel = document.getElementById('ppsb-set-sel');
+  const setId = sel?.value;
+  const setName = sel?.options[sel.selectedIndex]?.getAttribute('data-name') || '';
+  if(!setId && !setName) return;
+  _sbState.selectedSet = { id:setId, name:setName };
+  _sbState.cards = [];
+  _sbState.filteredCards = [];
+  _sbState.filters = { name:'', artist:'', rarity:'', minPrice:'', maxPrice:'', owned:false, missing:false };
+  _sbState.sortField = 'number';
+  _sbState.sortDir = 1;
+  if(setId) sessionStorage.setItem('sb_last_set_id', setId);
+  sbRenderContent(true);
+  try {
+    _sbState.loading = true;
+    const cards = await sbFetchSetCards(setId, setName);
+    _sbState.cards = cards;
+    _sbState.loading = false;
+    sbApplyFilters();
+    sbRenderContent(false);
+  } catch(e){
+    _sbState.loading = false;
+    const content = document.getElementById('ppsb-content');
+    if(content) content.innerHTML = `<div class="ppsb-empty" style="color:var(--red)">Error loading cards: ${escHtml(e.message)}</div>`;
+  }
+}
+
+function sbSetSort(field){
+  if(_sbState.sortField === field) _sbState.sortDir *= -1;
+  else { _sbState.sortField = field; _sbState.sortDir = field === 'price' ? -1 : 1; }
+  sbApplyFilters();
+  sbRenderContent(false);
+}
+
+function sbSetFilter(key, val){
+  if(key === 'owned' || key === 'missing'){
+    _sbState.filters[key] = val === true || val === 'true' || val === 1;
+    if(key === 'owned' && _sbState.filters.owned) _sbState.filters.missing = false;
+    if(key === 'missing' && _sbState.filters.missing) _sbState.filters.owned = false;
+  } else {
+    _sbState.filters[key] = val;
+  }
+  sbApplyFilters();
+  sbRenderContent(false);
+}
+
+function sbClearFilters(){
+  _sbState.filters = { name:'', artist:'', rarity:'', minPrice:'', maxPrice:'', owned:false, missing:false };
+  sbApplyFilters();
+  sbRenderContent(false);
+}
+
+function sbToggleView(){
+  _sbState.view = _sbState.view === 'cards' ? 'table' : 'cards';
+  sbRenderContent(false);
+}
+
+function sbRenderContent(loading){
+  const content = document.getElementById('ppsb-content');
+  if(!content) return;
+  const { selectedSet, filteredCards, cards, filters, sortField, sortDir, view } = _sbState;
+  if(!selectedSet){ content.innerHTML = '<div class="ppsb-empty">Select a set above.</div>'; return; }
+  if(loading){ content.innerHTML = '<div class="ppsb-empty ppsb-loading">⚡ Loading cards…</div>'; return; }
+
+  const isMobile = window.innerWidth <= 640;
+  const isTable = !isMobile && view === 'table';
+  const artists = [...new Set(cards.map(c => c.artist).filter(Boolean))].sort();
+  const rarities = [...new Set(cards.map(c => c.rarity).filter(Boolean))].sort();
+  const ownedCount = cards.filter(c => sbIsOwned(c)).length;
+
+  const sortBtn = (f, label) => {
+    const active = sortField === f;
+    const dir = active ? (sortDir > 0 ? ' ↑' : ' ↓') : '';
+    return `<button class="hbtn ppsb-sort-btn${active?' active':''}" onclick="sbSetSort('${f}')">${label}${dir}</button>`;
+  };
+
+  const hasFilter = Object.values(filters).some(v => v && v !== false);
+
+  content.innerHTML = `
+    <div class="ppsb-toolbar">
+      <div class="ppsb-stats">
+        <span style="color:var(--text)">${filteredCards.length}${filteredCards.length !== cards.length ? '/'+cards.length : ''} cards</span>
+        ${ownedCount ? `<span style="color:var(--g)">✓ ${ownedCount} owned</span>` : ''}
+        <span>${escHtml(selectedSet.name || '')}</span>
+      </div>
+      <div class="ppsb-sort-row">
+        SORT: ${sortBtn('number','#')} ${sortBtn('price','PRICE')} ${sortBtn('name','NAME')} ${sortBtn('artist','ARTIST')} ${sortBtn('rarity','RARITY')}
+        ${!isMobile ? `<button class="hbtn ppsb-sort-btn" style="margin-left:6px" onclick="sbToggleView()">${isTable?'CARDS':'TABLE'}</button>` : ''}
+      </div>
+    </div>
+    <div class="ppsb-filters">
+      <input class="ppsb-filter-input" style="flex:1;min-width:120px" placeholder="Filter name…" value="${escHtml(filters.name||'')}" oninput="sbSetFilter('name',this.value)">
+      <select class="ppsb-filter-input" onchange="sbSetFilter('artist',this.value)">
+        <option value="">All artists${artists.length?' ('+artists.length+')':''}</option>
+        ${artists.map(a=>`<option value="${escHtml(a)}"${filters.artist===a?' selected':''}>${escHtml(a)}</option>`).join('')}
+      </select>
+      <select class="ppsb-filter-input" onchange="sbSetFilter('rarity',this.value)">
+        <option value="">All rarities</option>
+        ${rarities.map(r=>`<option value="${escHtml(r)}"${filters.rarity===r?' selected':''}>${escHtml(r)}</option>`).join('')}
+      </select>
+      <input class="ppsb-filter-input" type="number" placeholder="Min $" value="${escHtml(String(filters.minPrice||''))}" oninput="sbSetFilter('minPrice',this.value)" style="width:72px">
+      <input class="ppsb-filter-input" type="number" placeholder="Max $" value="${escHtml(String(filters.maxPrice||''))}" oninput="sbSetFilter('maxPrice',this.value)" style="width:72px">
+      <label class="ppsb-filter-chip${filters.owned?' active':''}"><input type="checkbox"${filters.owned?' checked':''} onchange="sbSetFilter('owned',this.checked)" style="display:none"> OWNED</label>
+      <label class="ppsb-filter-chip${filters.missing?' active':''}"><input type="checkbox"${filters.missing?' checked':''} onchange="sbSetFilter('missing',this.checked)" style="display:none"> MISSING</label>
+      ${hasFilter ? `<button class="hbtn" style="min-height:36px;padding:4px 10px;font-size:9px;color:var(--dim)" onclick="sbClearFilters()">CLEAR ✕</button>` : ''}
+    </div>
+    <div class="ppsb-cards-area${isTable?' ppsb-table-mode':''}" id="ppsb-cards-area">
+      ${!filteredCards.length
+        ? '<div class="ppsb-empty" style="grid-column:1/-1">No cards match filters.</div>'
+        : isTable ? sbRenderTable(filteredCards) : sbRenderCardList(filteredCards)}
+    </div>`;
+}
+
+function sbRenderCardList(cards){
+  return cards.map((c, i) => {
+    const market = Number(c.prices?.market || 0);
+    const low = Number(c.prices?.lowPrice || 0);
+    const owned = sbIsOwned(c);
+    const qty = owned ? sbOwnedQty(c) : 0;
+    const img = c.imageCdnUrl200 || c.imageCdnUrl || '';
+    return `<div class="ppsb-card${owned?' ppsb-owned':''}">
+      <div class="ppsb-card-img-wrap">
+        ${img ? `<img src="${escHtml(img)}" class="ppsb-card-img" alt="${escHtml(c.name||'')}" loading="lazy" onerror="this.closest('.ppsb-card-img-wrap').innerHTML='<div class=ppsb-no-img></div>'">` : '<div class="ppsb-no-img"></div>'}
+      </div>
+      <div class="ppsb-card-body">
+        <div class="ppsb-card-name">${escHtml(c.name||'?')} <span class="ppsb-card-num">#${escHtml(c.cardNumber||'?')}</span></div>
+        <div class="ppsb-card-meta">${escHtml(c.rarity||'')}${c.artist?' · '+escHtml(c.artist):''}</div>
+        <div class="ppsb-card-prices">
+          <span class="ppsb-price">${market?'$'+market.toFixed(2):'—'}</span>
+          ${low?`<span class="ppsb-price-low">Low $${low.toFixed(2)}</span>`:''}
+          ${owned?`<span class="ppsb-owned-badge">✓ OWNED${qty>1?' ×'+qty:''}</span>`:''}
+        </div>
+        <div class="ppsb-card-actions">
+          <button class="hbtn" style="min-height:34px;font-size:9px;padding:3px 9px" onclick="sbSelectCard(${i})">SELECT</button>
+          <button class="hbtn" style="min-height:34px;font-size:9px;padding:3px 9px" onclick="sbOpenTcg(${i})">TCG</button>
+          <button class="hbtn" style="min-height:34px;font-size:9px;padding:3px 9px" onclick="sbAddToResearch(${i},this)">+ ADD</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function sbRenderTable(cards){
+  const hdr = (f, label) => {
+    const active = _sbState.sortField === f;
+    const dir = active ? (_sbState.sortDir > 0 ? ' ↑' : ' ↓') : '';
+    return `<th class="ppsb-th ppsb-th-sort${active?' ppsb-th-active':''}" onclick="sbSetSort('${f}')">${label}${dir}</th>`;
+  };
+  const rows = cards.map((c, i) => {
+    const market = Number(c.prices?.market || 0);
+    const low = Number(c.prices?.lowPrice || 0);
+    const owned = sbIsOwned(c);
+    const img = c.imageCdnUrl200 || c.imageCdnUrl || '';
+    return `<tr class="ppsb-tr${owned?' ppsb-tr-owned':''}">
+      <td class="ppsb-td">${img?`<img src="${escHtml(img)}" style="width:38px;height:auto;border-radius:4px;vertical-align:middle;display:block" loading="lazy" onerror="this.style.display='none'">`:''}</td>
+      <td class="ppsb-td ppsb-td-num">${escHtml(c.cardNumber||'?')}</td>
+      <td class="ppsb-td" style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(c.name||'?')}</td>
+      <td class="ppsb-td ppsb-td-dim" style="white-space:nowrap">${escHtml(c.rarity||'—')}</td>
+      <td class="ppsb-td ppsb-td-dim">${escHtml(c.artist||'—')}</td>
+      <td class="ppsb-td ppsb-td-price">${market?'$'+market.toFixed(2):'—'}</td>
+      <td class="ppsb-td ppsb-td-dim">${low?'$'+low.toFixed(2):'—'}</td>
+      <td class="ppsb-td">${owned?`<span class="ppsb-owned-badge">✓</span>`:'—'}</td>
+      <td class="ppsb-td">
+        <div style="display:flex;gap:4px">
+          <button class="hbtn" style="min-height:28px;font-size:8px;padding:2px 7px" onclick="sbSelectCard(${i})">SEL</button>
+          <button class="hbtn" style="min-height:28px;font-size:8px;padding:2px 7px" onclick="sbOpenTcg(${i})">TCG</button>
+          <button class="hbtn" style="min-height:28px;font-size:8px;padding:2px 7px" onclick="sbAddToResearch(${i},this)">+ADD</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+  return `<div class="ppsb-tbl-wrap"><table class="ppsb-table">
+    <thead><tr>
+      <th class="ppsb-th" style="width:46px">IMG</th>
+      ${hdr('number','#')}
+      ${hdr('name','NAME')}
+      ${hdr('rarity','RARITY')}
+      ${hdr('artist','ARTIST')}
+      ${hdr('price','MARKET')}
+      <th class="ppsb-th">LOW</th>
+      <th class="ppsb-th">OWN</th>
+      <th class="ppsb-th">ACTIONS</th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table></div>`;
+}
+
+function sbSelectCard(idx){
+  const card = _sbState.filteredCards[idx];
+  if(!card) return;
+  closeSetBrowser();
+  const row = pokemonPriceTrackerCardToQplRow(card, card.name || '', null);
+  qplResults = [row, ...qplResults.slice(0, 19)];
+  renderQuickLookupResults(qplResults);
+  setTimeout(() => document.getElementById('register-quick-panel')?.scrollIntoView({ behavior:'smooth', block:'start' }), 100);
+}
+
+function sbOpenTcg(idx){
+  const card = _sbState.filteredCards[idx];
+  if(!card) return;
+  const url = card.tcgPlayerUrl || (card.tcgPlayerId ? 'https://www.tcgplayer.com/product/'+card.tcgPlayerId : '');
+  if(url) window.open(url, '_blank', 'noopener');
+}
+
+function sbAddToResearch(idx, btn){
+  const card = _sbState.filteredCards[idx];
+  if(!card) return;
+  const row = pokemonPriceTrackerCardToQplRow(card, card.name || '', null);
+  const tid = row.tcgPlayerId || '';
+  qplResults = [row, ...qplResults.filter(r => !tid || (r.tcgPlayerId || '') !== tid)];
+  if(btn){ const orig = btn.textContent; btn.textContent = '✓'; setTimeout(() => { btn.textContent = orig; }, 1200); }
+}
+// ── END POKÉMON SET BROWSER ─────────────────────────────────────
 
 </script>
 </body>
