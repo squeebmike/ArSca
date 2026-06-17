@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.06.17.05-mtg-set-browser">
+<meta name="version" content="2026.06.17.06-mtg-interactions-search">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -930,7 +930,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
 .mtsb-cards-area{flex:1;overflow-y:auto;padding:12px 18px;display:grid;gap:10px;align-content:start;}
 .mtsb-cards-area.mtsb-table-mode{grid-template-columns:1fr;}
 @media(min-width:641px){
-  .mtsb-cards-area:not(.mtsb-table-mode){grid-template-columns:repeat(auto-fill,minmax(300px,1fr));}
+  .mtsb-cards-area:not(.mtsb-table-mode){grid-template-columns:repeat(auto-fill,minmax(var(--mtsb-card-min,300px),1fr));}
 }
 .mtsb-card{display:flex;gap:10px;background:var(--surf2);border:1px solid var(--border);border-radius:10px;padding:10px;transition:border-color .15s;}
 .mtsb-card.mtsb-owned{border-color:rgba(0,255,179,.3);background:rgba(0,255,179,.03);}
@@ -1128,7 +1128,7 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.17.05-mtg-set-browser</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.17.06-mtg-interactions-search</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
@@ -1155,7 +1155,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip dev-only" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.17.05-mtg-set-browser</div>
+<div class="dsb-chip dev-only" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.17.06-mtg-interactions-search</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -2260,7 +2260,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.06.17.05-mtg-set-browser';
+const APP_VERSION = '2026.06.17.06-mtg-interactions-search';
 const branchName = 'pokemon-v2-core';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
 const POKEMON_EXACT_CACHE_VERSION = 'pokemon-exact-v3-price-matrix';
@@ -9753,6 +9753,7 @@ window.addEventListener('load', async function(){
   seedDemoDataIfNeeded();
   await loadStoreSettingsFromSupabase();
   setupAppShell();
+  setInvView(_invView);
   checkAndApplySubscriptionState().catch(console.warn);
   schedulePriceSyncChecks();
   maybeRunScheduledPriceSync(true).catch(console.warn);
@@ -14942,7 +14943,7 @@ async function searchQuickCatalog(q, cat){
       const ranked = searchResult.ranked || pokemonRankApiCards(searchResult.cards, q);
       const rows = [];
       let autoSelectDone = false;
-      for(const rankedCard of ranked.slice(0, 20)) {
+      for(const rankedCard of ranked.slice(0, 50)) {
         let card = rankedCard.card;
         let exactHydrated = false;
         if(!autoSelectDone && rankedCard.autoSelect && card?.tcgPlayerId) {
@@ -15080,7 +15081,7 @@ async function searchQuickCatalog(q, cat){
     }));
   }
 
-  const ranked = rankQuickLookupResults(results, q, cat).slice(0, isPokemonLookupIntent(q, cat) ? 20 : 100);
+  const ranked = rankQuickLookupResults(results, q, cat).slice(0, isPokemonLookupIntent(q, cat) ? 50 : 100);
   if(isPokemonLookupIntent(q, cat)) savePokemonCacheResults(q, ranked, 'Live Pokemon lookup').catch(console.warn);
   return ranked;
 }
@@ -17304,8 +17305,8 @@ async function searchPokemonPriceTrackerCards(rawQuery = '', language = 'english
   // Detect Japanese intent from rawQuery; caller can also pass language explicitly
   const lang = language === 'japanese' ? 'japanese' : (/\bjapanese?\b|\bjpn\b/i.test(rawQuery) ? 'japanese' : 'english');
   // Pass the ORIGINAL raw query to the ranker so set-word scoring still uses "swsh", "promo" etc.
-  const params = new URLSearchParams({ search:query, language:lang, limit:'20' });
-  const result = await pokemonPriceTrackerCardsRequest(params, 'cards.search.limit20');
+  const params = new URLSearchParams({ search:query, language:lang, limit:'50' });
+  const result = await pokemonPriceTrackerCardsRequest(params, 'cards.search.limit50');
   result.ranked = pokemonRankApiCards(result.cards, rawQuery);
   return result;
 }
@@ -18210,7 +18211,14 @@ async function fetchScryfallCatalog(q){
   const res = await fetch(url, { headers:{ 'Accept':'application/json' } }).catch(() => null);
   if(!res?.ok) return [];
   const data = await res.json().catch(() => ({}));
-  return (data.data || []).slice(0, 24).map(c => {
+  let allScryfallCards = data.data || [];
+  if(data.has_more && allScryfallCards.length < 175){
+    try {
+      const res2 = await fetch(data.next_page, { headers:{ 'Accept':'application/json' } }).catch(() => null);
+      if(res2?.ok){ const d2 = await res2.json().catch(() => ({})); allScryfallCards = allScryfallCards.concat(d2.data || []); }
+    } catch(e){}
+  }
+  return allScryfallCards.slice(0, 200).map(c => {
     const hit = scoreSmartItem({ name:c.name, set:c.set_name, year:(c.released_at||'').slice(0,4), card_number:c.collector_number, rarity:c.rarity, variant:c.type_line }, q);
     // Build all available finishes from prices + Scryfall finishes array
     const priceMap = {};
@@ -22445,7 +22453,8 @@ const _mtgsbState = {
   cards: [], filteredCards: [],
   sortField: 'number', sortDir: 1,
   filters: { name:'', artist:'', rarity:'', color:'', minPrice:'', maxPrice:'', owned:false, missing:false },
-  loading: false, view: 'cards',
+  loading: false, view: localStorage.getItem('mtsb_view') || 'cards',
+  cardSize: Number(localStorage.getItem('mtsb_card_size') || 300),
 };
 
 function mtgsbRarityOrder(r){
@@ -22594,6 +22603,7 @@ function mtgsbRenderContent(loading){
 
   const hasFilter = Object.entries(_mtgsbState.filters).some(([k,v]) => v === true || (v !== false && v !== ''));
 
+  const cardSize = _mtgsbState.cardSize || 300;
   const toolbar = `
     <div class="mtsb-toolbar">
       <div class="mtsb-stats">
@@ -22605,6 +22615,7 @@ function mtgsbRenderContent(loading){
         SORT:
         ${['number','name','rarity','price'].map(f=>`<button class="hbtn mtsb-sort-btn${_mtgsbState.sortField===f?' active':''}" onclick="mtgsbSetSort('${f}')">${f.toUpperCase()}${_mtgsbState.sortField===f?(_mtgsbState.sortDir>0?' ↑':' ↓'):''}</button>`).join('')}
         <button class="hbtn mtsb-sort-btn" style="margin-left:6px" onclick="mtgsbToggleView()">${view==='cards'?'⊞ TABLE':'⊟ GRID'}</button>
+        ${view==='cards'?`<label style="display:flex;align-items:center;gap:5px;font-family:monospace;font-size:9px;color:var(--dim);margin-left:8px">SIZE<input type="range" min="160" max="480" step="20" value="${cardSize}" style="width:72px;accent-color:#5ba3f5;cursor:pointer" oninput="mtgsbSetCardSize(this.value)"></label>`:''}
       </div>
     </div>
     <div class="mtsb-filters">
@@ -22623,7 +22634,7 @@ function mtgsbRenderContent(loading){
   if(!filteredCards.length){
     cardsHtml = `<div class="mtsb-empty">No cards match filters.</div>`;
   } else if(view === 'table'){
-    const rows = filteredCards.map(c => {
+    const rows = filteredCards.map((c, i) => {
       const owned = mtgsbIsOwned(c);
       const img = mtgsbCardImgSrc(c);
       const cols = c.colors || c.card_faces?.[0]?.colors || [];
@@ -22641,6 +22652,13 @@ function mtgsbRenderContent(loading){
         <td class="mtsb-td mtsb-td-dim">${escHtml(c.artist||'')}</td>
         <td class="mtsb-td mtsb-td-price">${usd>0?'$'+usd.toFixed(2):'—'}</td>
         <td class="mtsb-td" style="color:#c0a0ff;font-family:monospace;font-size:10px">${foil>0?'✦$'+foil.toFixed(2):''}</td>
+        <td class="mtsb-td">
+          <div style="display:flex;gap:4px">
+            <button class="hbtn" style="min-height:28px;font-size:8px;padding:2px 7px" onclick="mtgsbSelectCard(${i})">SEL</button>
+            <button class="hbtn" style="min-height:28px;font-size:8px;padding:2px 7px" onclick="mtgsbOpenTcg(${i})">TCG</button>
+            <button class="hbtn" style="min-height:28px;font-size:8px;padding:2px 7px" onclick="mtgsbAddToResearch(${i},this)">+ADD</button>
+          </div>
+        </td>
       </tr>`;
     }).join('');
     cardsHtml = `<div class="mtsb-tbl-wrap"><table class="mtsb-table">
@@ -22652,11 +22670,12 @@ function mtgsbRenderContent(loading){
         <th class="mtsb-th">ARTIST</th>
         <th class="mtsb-th mtsb-th-sort${_mtgsbState.sortField==='price'?' mtsb-th-active':''}" onclick="mtgsbSetSort('price')">PRICE</th>
         <th class="mtsb-th">FOIL</th>
+        <th class="mtsb-th">ACTIONS</th>
       </tr></thead>
       <tbody>${rows}</tbody>
     </table></div>`;
   } else {
-    cardsHtml = filteredCards.map(c => {
+    cardsHtml = filteredCards.map((c, i) => {
       const img = mtgsbCardImgSrc(c);
       const owned = mtgsbIsOwned(c);
       const cols = c.colors || c.card_faces?.[0]?.colors || [];
@@ -22671,12 +22690,17 @@ function mtgsbRenderContent(loading){
           <div class="mtsb-card-meta" style="color:var(--text)">✏ ${escHtml(c.artist||'')}</div>
           <div class="mtsb-card-prices">${mtgsbPriceHtml(c)}</div>
           ${owned ? `<div style="margin-top:4px"><span class="mtsb-owned-badge">OWNED ×${mtgsbOwnedQty(c)}</span></div>` : ''}
+          <div class="mtsb-card-actions">
+            <button class="hbtn" style="min-height:34px;font-size:9px;padding:3px 9px" onclick="mtgsbSelectCard(${i})">SELECT</button>
+            <button class="hbtn" style="min-height:34px;font-size:9px;padding:3px 9px" onclick="mtgsbOpenTcg(${i})">TCG</button>
+            <button class="hbtn" style="min-height:34px;font-size:9px;padding:3px 9px" onclick="mtgsbAddToResearch(${i},this)">+ ADD</button>
+          </div>
         </div>
       </div>`;
     }).join('');
   }
 
-  content.innerHTML = toolbar + `<div class="mtsb-cards-area${view==='table'?' mtsb-table-mode':''}">${cardsHtml}</div>`;
+  content.innerHTML = toolbar + `<div class="mtsb-cards-area${view==='table'?' mtsb-table-mode':''}" style="--mtsb-card-min:${cardSize}px">${cardsHtml}</div>`;
 }
 
 function openMtgSetBrowser(){
@@ -22813,7 +22837,76 @@ function mtgsbClearFilters(){
 
 function mtgsbToggleView(){
   _mtgsbState.view = _mtgsbState.view === 'cards' ? 'table' : 'cards';
+  localStorage.setItem('mtsb_view', _mtgsbState.view);
   mtgsbRenderContent(false);
+}
+
+function mtgsbSetCardSize(val){
+  _mtgsbState.cardSize = Number(val);
+  localStorage.setItem('mtsb_card_size', val);
+  const area = document.querySelector('#mtsb-content .mtsb-cards-area');
+  if(area) area.style.setProperty('--mtsb-card-min', val + 'px');
+}
+
+function scryfallCardToQplRow(c){
+  if(!c) return null;
+  const priceMap = {};
+  const finishes = Array.isArray(c.finishes) ? c.finishes : [];
+  if(Number(c.prices?.usd || 0) > 0 || finishes.includes('nonfoil')) priceMap.normal = { market:Number(c.prices?.usd || 0), low:Number(c.prices?.usd || 0) };
+  if(Number(c.prices?.usd_foil || 0) > 0 || finishes.includes('foil')) priceMap.foil = { market:Number(c.prices?.usd_foil || 0), low:Number(c.prices?.usd_foil || 0) };
+  if(Number(c.prices?.usd_etched || 0) > 0 || finishes.includes('etched')) priceMap.etched_foil = { market:Number(c.prices?.usd_etched || 0), low:Number(c.prices?.usd_etched || 0) };
+  const autoFinish = Number(c.prices?.usd || 0) > 0 ? 'normal' : Number(c.prices?.usd_foil || 0) > 0 ? 'foil' : 'normal';
+  return applyQplSelectedVariant({
+    source: 'scryfall',
+    name: c.name || '',
+    category: 'TCG',
+    set: c.set_name || '',
+    year: (c.released_at || '').slice(0, 4),
+    variant: c.rarity ? c.rarity[0].toUpperCase() + c.rarity.slice(1) : '',
+    card_number: c.collector_number || '',
+    condition: 'NM',
+    selectedFinish: autoFinish,
+    finish: autoFinish,
+    market: Number(c.prices?.usd || c.prices?.usd_foil || 0),
+    imageUrl: c.image_uris?.normal || c.card_faces?.[0]?.image_uris?.normal || '',
+    priceSource: 'Scryfall market',
+    tcgUrl: c.purchase_uris?.tcgplayer || c.scryfall_uri || '',
+    note: c.type_line || '',
+    confidence: 90,
+    raw: c,
+    productId: c.id || '',
+    scryfallId: c.id || '',
+    availableVariants: buildQplVariantsFromPrices(priceMap, c.id || ''),
+    extraInfo: { productLine:'Magic', categoryName:'Magic', game:'Magic: The Gathering', manaCost:c.mana_cost||'', typeLine:c.type_line||'', artist:c.artist||'', releaseDate:c.released_at||'' },
+  });
+}
+
+function mtgsbSelectCard(idx){
+  const card = _mtgsbState.filteredCards[idx];
+  if(!card) return;
+  closeMtgSetBrowser();
+  const row = scryfallCardToQplRow(card);
+  if(!row) return;
+  qplResults = [row, ...qplResults.slice(0, 19)];
+  renderQuickLookupResults(qplResults);
+  setTimeout(() => document.getElementById('register-quick-panel')?.scrollIntoView({ behavior:'smooth', block:'start' }), 100);
+}
+
+function mtgsbOpenTcg(idx){
+  const card = _mtgsbState.filteredCards[idx];
+  if(!card) return;
+  const url = card.purchase_uris?.tcgplayer || card.scryfall_uri || '';
+  if(url) window.open(url, '_blank', 'noopener');
+}
+
+function mtgsbAddToResearch(idx, btn){
+  const card = _mtgsbState.filteredCards[idx];
+  if(!card) return;
+  const row = scryfallCardToQplRow(card);
+  if(!row) return;
+  const sid = row.scryfallId || '';
+  qplResults = [row, ...qplResults.filter(r => !sid || (r.scryfallId || '') !== sid)];
+  if(btn){ const orig = btn.textContent; btn.textContent = '✓'; setTimeout(() => { btn.textContent = orig; }, 1200); }
 }
 
 // ── END MTG SET BROWSER ──────────────────────────────────────────
