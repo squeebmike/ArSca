@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.06.17.04-set-browser-fetch-fix">
+<meta name="version" content="2026.06.17.05-mtg-set-browser">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -903,6 +903,76 @@ body.customer-display-mode #customer-display-exit{display:block;}
 }
 /* ── END PASS B ─────────────────────────────────────────────────── */
 
+/* ── MTG SET BROWSER ─────────────────────────────────────────────── */
+.mtsb-modal{position:fixed;inset:0;z-index:4000;background:rgba(0,0,0,.88);display:none;align-items:flex-start;justify-content:center;overflow:hidden;}
+.mtsb-modal.on{display:flex;}
+.mtsb-inner{background:var(--surf);border:1px solid var(--border);width:100%;max-width:1100px;height:100vh;max-height:100vh;display:flex;flex-direction:column;overflow:hidden;}
+@media(min-width:641px){
+  .mtsb-inner{border-radius:12px;margin:16px;max-height:calc(100vh - 32px);height:auto;}
+}
+#mtsb-content{flex:1;overflow:hidden;display:flex;flex-direction:column;min-height:0;}
+.mtsb-header{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--border);flex-shrink:0;gap:10px;}
+.mtsb-title{font-family:'Orbitron',monospace;font-size:13px;font-weight:900;letter-spacing:.04em;color:#5ba3f5;}
+.mtsb-set-row{display:flex;gap:8px;padding:12px 18px;border-bottom:1px solid var(--border);flex-shrink:0;flex-wrap:wrap;}
+.mtsb-set-sel{flex:1;min-width:200px;background:var(--surf2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:10px 12px;font-family:monospace;font-size:12px;min-height:44px;}
+.mtsb-set-search{width:170px;background:var(--surf2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:10px 12px;font-family:monospace;font-size:12px;min-height:44px;}
+.mtsb-toolbar{display:flex;gap:10px;align-items:center;justify-content:space-between;padding:10px 18px;border-bottom:1px solid var(--border);flex-wrap:wrap;flex-shrink:0;}
+.mtsb-stats{display:flex;gap:12px;font-family:monospace;font-size:11px;color:var(--dim);flex-wrap:wrap;align-items:center;}
+.mtsb-sort-row{display:flex;gap:4px;align-items:center;flex-wrap:wrap;font-family:monospace;font-size:9px;color:var(--dim);}
+.mtsb-sort-btn{min-height:32px!important;padding:4px 10px!important;font-size:9px!important;}
+.mtsb-sort-btn.active{border-color:rgba(91,163,245,.5)!important;color:#5ba3f5!important;}
+.mtsb-filters{display:flex;gap:6px;padding:8px 18px;border-bottom:1px solid var(--border);flex-wrap:wrap;align-items:center;flex-shrink:0;}
+.mtsb-filter-input{background:var(--surf2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:6px 10px;font-family:monospace;font-size:11px;min-height:36px;}
+.mtsb-filter-chip{font-family:monospace;font-size:10px;letter-spacing:.04em;padding:6px 10px;border:1px solid var(--border);border-radius:6px;cursor:pointer;color:var(--dim);background:var(--surf2);min-height:36px;display:flex;align-items:center;user-select:none;}
+.mtsb-filter-chip.active{border-color:rgba(91,163,245,.5);color:#5ba3f5;background:rgba(91,163,245,.08);}
+.mtsb-empty{padding:40px 20px;text-align:center;font-family:monospace;font-size:11px;color:var(--dim);}
+.mtsb-loading{color:#5ba3f5!important;}
+.mtsb-cards-area{flex:1;overflow-y:auto;padding:12px 18px;display:grid;gap:10px;align-content:start;}
+.mtsb-cards-area.mtsb-table-mode{grid-template-columns:1fr;}
+@media(min-width:641px){
+  .mtsb-cards-area:not(.mtsb-table-mode){grid-template-columns:repeat(auto-fill,minmax(300px,1fr));}
+}
+.mtsb-card{display:flex;gap:10px;background:var(--surf2);border:1px solid var(--border);border-radius:10px;padding:10px;transition:border-color .15s;}
+.mtsb-card.mtsb-owned{border-color:rgba(0,255,179,.3);background:rgba(0,255,179,.03);}
+.mtsb-card-img-wrap{width:72px;flex-shrink:0;}
+.mtsb-card-img{width:72px;height:auto;border-radius:6px;display:block;}
+.mtsb-no-img{width:72px;height:100px;background:var(--surf);border:1px solid var(--border);border-radius:6px;}
+.mtsb-card-body{flex:1;display:flex;flex-direction:column;gap:4px;min-width:0;}
+.mtsb-card-name{font-size:13px;font-weight:700;color:var(--text);line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.mtsb-card-num{font-family:monospace;font-size:10px;color:var(--dim);}
+.mtsb-card-meta{font-family:monospace;font-size:10px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.mtsb-card-prices{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:2px;}
+.mtsb-price{font-family:'Orbitron',monospace;font-size:15px;font-weight:900;color:var(--gold);}
+.mtsb-price-foil{font-family:monospace;font-size:10px;color:#c0a0ff;}
+.mtsb-owned-badge{font-family:monospace;font-size:9px;letter-spacing:.04em;padding:2px 7px;border-radius:999px;background:rgba(0,255,179,.12);border:1px solid rgba(0,255,179,.3);color:var(--g);}
+.mtsb-card-actions{display:flex;gap:5px;margin-top:auto;padding-top:6px;flex-wrap:wrap;}
+.mtsb-tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%;}
+.mtsb-table{width:100%;border-collapse:collapse;font-family:monospace;font-size:11px;}
+.mtsb-th{padding:8px 10px;text-align:left;color:var(--dim);font-size:9px;letter-spacing:.04em;border-bottom:2px solid var(--border);white-space:nowrap;}
+.mtsb-th-sort{cursor:pointer;}
+.mtsb-th-sort:hover{color:var(--text);}
+.mtsb-th-active{color:#5ba3f5!important;}
+.mtsb-td{padding:7px 10px;border-bottom:1px solid rgba(255,255,255,.04);vertical-align:middle;}
+.mtsb-td-num{color:var(--dim);font-size:10px;white-space:nowrap;}
+.mtsb-td-dim{color:var(--dim);}
+.mtsb-td-price{font-family:'Orbitron',monospace;font-size:13px;color:var(--gold);white-space:nowrap;}
+.mtsb-tr-owned td:first-child{border-left:3px solid rgba(0,255,179,.35);}
+.mtsb-rarity-common{color:#aaa;}
+.mtsb-rarity-uncommon{color:#9bafc0;}
+.mtsb-rarity-rare{color:#c8a84b;}
+.mtsb-rarity-mythic{color:#e8742b;}
+.mtsb-color-pip{display:inline-block;width:14px;height:14px;border-radius:50%;font-size:8px;line-height:14px;text-align:center;font-weight:700;flex-shrink:0;}
+@media(max-width:640px){
+  .mtsb-cards-area{grid-template-columns:1fr;padding:10px 12px;}
+  .mtsb-header{padding:12px 14px;}
+  .mtsb-set-row,.mtsb-toolbar,.mtsb-filters{padding:8px 12px;}
+  .mtsb-set-search{width:100%;flex:1 1 100%;}
+  .mtsb-card-img-wrap{width:60px;}
+  .mtsb-card-img{width:60px;}
+  .mtsb-no-img{width:60px;height:82px;}
+}
+/* ── END MTG SET BROWSER ─────────────────────────────────────────── */
+
 /* ── WALKTHROUGH & HELP SYSTEM (v1) ─────────────────────────── */
 .setup-prompt-bar{
   position:sticky;top:0;z-index:200;
@@ -1058,7 +1128,7 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.17.04-set-browser-fetch-fix</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.17.05-mtg-set-browser</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
@@ -1085,7 +1155,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip dev-only" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.17.04-set-browser-fetch-fix</div>
+<div class="dsb-chip dev-only" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.17.05-mtg-set-browser</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -1424,6 +1494,13 @@ body.show-mode .inv-sync-badge{display:none;}
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
           <span style="font-family:'Orbitron',monospace;font-size:9px;color:var(--gold);letter-spacing:.05em">POKÉMON</span>
           <button class="hbtn" onclick="openSetBrowser()" style="font-size:10px;min-height:36px;padding:4px 14px;background:rgba(255,209,102,.1);border-color:rgba(255,209,102,.4);color:var(--gold)">⚡ SET BROWSER</button>
+          <span style="font-family:monospace;font-size:9px;color:var(--dim)">Browse full sets · filter by artist · track owned cards</span>
+        </div>
+      </div>
+      <div id="qpl-mtg-helper" style="display:none;margin-bottom:10px;padding:9px 12px;background:rgba(91,163,245,.06);border:1px solid rgba(91,163,245,.22);border-radius:8px">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <span style="font-family:'Orbitron',monospace;font-size:9px;color:#5ba3f5;letter-spacing:.05em">MAGIC: THE GATHERING</span>
+          <button class="hbtn" onclick="openMtgSetBrowser()" style="font-size:10px;min-height:36px;padding:4px 14px;background:rgba(91,163,245,.1);border-color:rgba(91,163,245,.4);color:#5ba3f5">🔮 SET BROWSER</button>
           <span style="font-family:monospace;font-size:9px;color:var(--dim)">Browse full sets · filter by artist · track owned cards</span>
         </div>
       </div>
@@ -2183,7 +2260,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.06.17.04-set-browser-fetch-fix';
+const APP_VERSION = '2026.06.17.05-mtg-set-browser';
 const branchName = 'pokemon-v2-core';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
 const POKEMON_EXACT_CACHE_VERSION = 'pokemon-exact-v3-price-matrix';
@@ -17897,10 +17974,14 @@ function handleQplCategoryChange(){
   if(helper) helper.style.display = isComic ? '' : 'none';
   const pokemonHelper = document.getElementById('qpl-pokemon-helper');
   if(pokemonHelper) pokemonHelper.style.display = isPokemon ? '' : 'none';
+  const isMtg = qplCategoryKey(cat) === 'mtg';
+  const mtgHelper = document.getElementById('qpl-mtg-helper');
+  if(mtgHelper) mtgHelper.style.display = isMtg ? '' : 'none';
   const inp = document.getElementById('qpl-input');
   if(inp) inp.placeholder = isComic
     ? 'e.g. Spawn #1, Amazing Spider-Man 300, Batman #251 newsstand…'
     : isPokemon ? 'e.g. Charizard VMAX 074/073 Shining Fates…'
+    : isMtg ? 'e.g. Black Lotus, Lightning Bolt, Counterspell…'
     : 'e.g. 2021 Umbreon VMAX Evolving Skies…';
   if(getResearchSettings().rememberLastCategory) localStorage.setItem('qpl_last_category', cat);
   if(!qplMasterResults.length) {
@@ -17908,6 +17989,7 @@ function handleQplCategoryChange(){
     if(q && el) el.innerHTML = `<div style="color:var(--gold);line-height:1.6">Category changed to ${escHtml(cat || 'Any Category')}. Press LOOK UP to search this category.</div>`;
     else if(isComic && el) el.innerHTML = `<div style="color:var(--purple);line-height:1.7;font-family:monospace;font-size:10px">📖 Comics selected. Enter a series title and issue number above, then hit LOOK UP.<br><span style="color:var(--dim)">PriceCharting covers raw, CGC, CBCS grades and more.</span></div>`;
     else if(isPokemon && el) el.innerHTML = `<div style="color:var(--gold);line-height:1.7;font-family:monospace;font-size:10px">⚡ Pokémon TCG selected. Search a card above, or use <strong>SET BROWSER</strong> to browse all cards in a set with prices, filters, and inventory tracking.</div>`;
+    else if(isMtg && el) el.innerHTML = `<div style="color:#5ba3f5;line-height:1.7;font-family:monospace;font-size:10px">🔮 Magic: The Gathering selected. Search a card above, or use <strong>SET BROWSER</strong> to browse all cards in a set — filter by artist, rarity, color, and price.</div>`;
     return;
   }
   qplResults = filterQplMasterResults(qplMasterResults, cat);
@@ -22354,6 +22436,387 @@ function sbAddToResearch(idx, btn){
   if(btn){ const orig = btn.textContent; btn.textContent = '✓'; setTimeout(() => { btn.textContent = orig; }, 1200); }
 }
 // ── END POKÉMON SET BROWSER ─────────────────────────────────────
+
+// ── MTG SET BROWSER (Scryfall) ───────────────────────────────────
+
+const _mtgsbState = {
+  sets: null, setsLoadedAt: 0,
+  selectedSet: null,
+  cards: [], filteredCards: [],
+  sortField: 'number', sortDir: 1,
+  filters: { name:'', artist:'', rarity:'', color:'', minPrice:'', maxPrice:'', owned:false, missing:false },
+  loading: false, view: 'cards',
+};
+
+function mtgsbRarityOrder(r){
+  return { common:0, uncommon:1, rare:2, mythic:3, special:4, bonus:5 }[r] ?? 6;
+}
+
+function mtgsbCompareCards(a, b){
+  const { sortField, sortDir } = _mtgsbState;
+  if(sortField === 'number'){
+    const an = parseInt(a.collector_number) || 0, bn = parseInt(b.collector_number) || 0;
+    if(an !== bn) return (an - bn) * sortDir;
+    return (a.collector_number || '').localeCompare(b.collector_number || '') * sortDir;
+  }
+  if(sortField === 'name') return (a.name || '').localeCompare(b.name || '') * sortDir;
+  if(sortField === 'rarity') return (mtgsbRarityOrder(a.rarity) - mtgsbRarityOrder(b.rarity)) * sortDir;
+  if(sortField === 'price') return (Number(a.prices?.usd || 0) - Number(b.prices?.usd || 0)) * sortDir;
+  return 0;
+}
+
+function mtgsbIsOwned(card){
+  if(!card || !Array.isArray(all) || !all.length) return false;
+  const tid = String(card.tcgplayer_id || '');
+  if(tid && tid !== 'undefined' && all.some(i => String(i.tcgPlayerId || i.tcgplayerId || '') === tid)) return true;
+  const name = (card.name || '').toLowerCase().trim();
+  const set = (card.set_name || '').toLowerCase().trim();
+  return all.some(i =>
+    (i.name || '').toLowerCase().trim() === name &&
+    (i.set || i.setName || '').toLowerCase().trim() === set
+  );
+}
+
+function mtgsbOwnedQty(card){
+  if(!card || !Array.isArray(all)) return 0;
+  const tid = String(card.tcgplayer_id || '');
+  return all.filter(i => {
+    if(tid && tid !== 'undefined' && String(i.tcgPlayerId || i.tcgplayerId || '') === tid) return true;
+    return (i.name || '').toLowerCase() === (card.name || '').toLowerCase() &&
+      (i.set || i.setName || '').toLowerCase() === (card.set_name || '').toLowerCase();
+  }).reduce((s, i) => s + Number(i.quantity || 1), 0);
+}
+
+async function mtgsbFetchSets(){
+  const cacheKey = 'mtsb_sets_v1';
+  try {
+    const cached = JSON.parse(sessionStorage.getItem(cacheKey) || 'null');
+    if(cached && (Date.now() - (cached.ts || 0)) < 86400000) return cached.sets;
+  } catch(e){}
+  const res = await fetch('https://api.scryfall.com/sets', { cache:'no-store' });
+  if(!res.ok) throw new Error('Sets fetch failed: ' + res.status);
+  const data = await res.json();
+  const KEEP = new Set(['core','expansion','masters','commander','draft_innovation','duel_deck','starter','box','premium_deck','from_the_vault','masterpiece','spellbook']);
+  const sets = (data.data || [])
+    .filter(s => !s.digital && KEEP.has(s.set_type) && s.card_count > 0)
+    .sort((a, b) => (b.released_at || '').localeCompare(a.released_at || ''));
+  try { sessionStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), sets })); } catch(e){}
+  return sets;
+}
+
+async function mtgsbFetchSetCards(setCode){
+  let cards = [];
+  let url = 'https://api.scryfall.com/cards/search?q=set:' + encodeURIComponent(setCode) + '&unique=prints&order=collector_number&format=json';
+  let pages = 0;
+  while(url && pages < 6){
+    const res = await fetch(url, { cache: 'default' });
+    if(!res.ok){
+      if(res.status === 404) break;
+      throw new Error('Cards fetch failed: HTTP ' + res.status);
+    }
+    const data = await res.json();
+    cards = cards.concat(data.data || []);
+    url = data.has_more ? data.next_page : null;
+    pages++;
+    if(url){
+      await new Promise(r => setTimeout(r, 80));
+      const loadEl = document.querySelector('#mtsb-content .mtsb-loading');
+      if(loadEl) loadEl.textContent = 'Loading cards… ' + cards.length + '+';
+    }
+  }
+  return cards;
+}
+
+function mtgsbApplyFilters(){
+  const { cards, filters } = _mtgsbState;
+  let f = [...cards];
+  const q = (filters.name || '').toLowerCase().trim();
+  if(q) f = f.filter(c => (c.name || '').toLowerCase().includes(q) || (c.type_line || '').toLowerCase().includes(q));
+  const a = (filters.artist || '').toLowerCase().trim();
+  if(a) f = f.filter(c => (c.artist || '').toLowerCase().includes(a));
+  if(filters.rarity) f = f.filter(c => c.rarity === filters.rarity);
+  if(filters.color){
+    const col = filters.color;
+    if(col === 'C'){
+      f = f.filter(c => (c.colors || c.card_faces?.[0]?.colors || []).length === 0);
+    } else {
+      f = f.filter(c => (c.colors || c.card_faces?.[0]?.colors || []).includes(col));
+    }
+  }
+  const minP = Number(filters.minPrice);
+  if(minP > 0) f = f.filter(c => Number(c.prices?.usd || 0) >= minP);
+  const maxP = Number(filters.maxPrice);
+  if(maxP > 0) f = f.filter(c => Number(c.prices?.usd || 0) <= maxP);
+  if(filters.owned) f = f.filter(c => mtgsbIsOwned(c));
+  if(filters.missing) f = f.filter(c => !mtgsbIsOwned(c));
+  f.sort(mtgsbCompareCards);
+  _mtgsbState.filteredCards = f;
+}
+
+function mtgsbColorPip(color){
+  const bg = {W:'#f8f6d8',U:'#1a6fb5',B:'#2a1a0e',R:'#d3202a',G:'#007a3d',C:'#aaa'}[color] || '#555';
+  const fg = ['W','C'].includes(color) ? '#333' : '#fff';
+  return `<span class="mtsb-color-pip" style="background:${bg};color:${fg}">${color}</span>`;
+}
+
+function mtgsbCardImgSrc(c){
+  return c.image_uris?.normal || c.card_faces?.[0]?.image_uris?.normal || '';
+}
+
+function mtgsbPriceHtml(c){
+  const usd = Number(c.prices?.usd || 0);
+  const foil = Number(c.prices?.usd_foil || 0);
+  let h = usd > 0 ? `<span class="mtsb-price">$${usd.toFixed(2)}</span>` : `<span class="mtsb-price" style="color:var(--dim)">—</span>`;
+  if(foil > 0) h += `<span class="mtsb-price-foil">✦$${foil.toFixed(2)}</span>`;
+  return h;
+}
+
+function mtgsbRenderContent(loading){
+  const content = document.getElementById('mtsb-content');
+  if(!content) return;
+  const { selectedSet, filteredCards, cards, view } = _mtgsbState;
+  if(loading){
+    content.innerHTML = `<div class="mtsb-empty mtsb-loading">Loading cards…</div>`;
+    return;
+  }
+  if(!selectedSet){
+    content.innerHTML = `<div class="mtsb-empty">Select a Magic: The Gathering set above to load all cards with prices.</div>`;
+    return;
+  }
+
+  const ownedCount = filteredCards.filter(c => mtgsbIsOwned(c)).length;
+  const totalOwned = cards.filter(c => mtgsbIsOwned(c)).length;
+
+  const rarities = ['','common','uncommon','rare','mythic'];
+  const rarityOpts = rarities.map(r => `<option value="${escHtml(r)}"${_mtgsbState.filters.rarity===r?' selected':''}>${r ? r[0].toUpperCase()+r.slice(1) : 'All Rarities'}</option>`).join('');
+  const colorChoices = [{v:'',l:'All Colors'},{v:'W',l:'White'},{v:'U',l:'Blue'},{v:'B',l:'Black'},{v:'R',l:'Red'},{v:'G',l:'Green'},{v:'C',l:'Colorless'}];
+  const colorOpts = colorChoices.map(c => `<option value="${escHtml(c.v)}"${_mtgsbState.filters.color===c.v?' selected':''}>${escHtml(c.l)}</option>`).join('');
+
+  const hasFilter = Object.entries(_mtgsbState.filters).some(([k,v]) => v === true || (v !== false && v !== ''));
+
+  const toolbar = `
+    <div class="mtsb-toolbar">
+      <div class="mtsb-stats">
+        <span>${filteredCards.length} card${filteredCards.length!==1?'s':''}${filteredCards.length!==cards.length?' / '+cards.length+' total':''} · ${escHtml(selectedSet.name||'')}</span>
+        ${ownedCount ? `<span style="color:var(--g)">${ownedCount} owned</span>` : ''}
+        ${totalOwned && !ownedCount ? `<span style="color:var(--dim)">${totalOwned} owned (filtered out)</span>` : ''}
+      </div>
+      <div class="mtsb-sort-row">
+        SORT:
+        ${['number','name','rarity','price'].map(f=>`<button class="hbtn mtsb-sort-btn${_mtgsbState.sortField===f?' active':''}" onclick="mtgsbSetSort('${f}')">${f.toUpperCase()}${_mtgsbState.sortField===f?(_mtgsbState.sortDir>0?' ↑':' ↓'):''}</button>`).join('')}
+        <button class="hbtn mtsb-sort-btn" style="margin-left:6px" onclick="mtgsbToggleView()">${view==='cards'?'⊞ TABLE':'⊟ GRID'}</button>
+      </div>
+    </div>
+    <div class="mtsb-filters">
+      <input class="mtsb-filter-input" placeholder="Card name…" style="width:130px" value="${escHtml(_mtgsbState.filters.name)}" oninput="mtgsbSetFilter('name',this.value)">
+      <input class="mtsb-filter-input" placeholder="Artist…" style="width:110px" value="${escHtml(_mtgsbState.filters.artist)}" oninput="mtgsbSetFilter('artist',this.value)">
+      <select class="mtsb-filter-input" style="cursor:pointer" onchange="mtgsbSetFilter('rarity',this.value)">${rarityOpts}</select>
+      <select class="mtsb-filter-input" style="cursor:pointer" onchange="mtgsbSetFilter('color',this.value)">${colorOpts}</select>
+      <input class="mtsb-filter-input" placeholder="Min $" style="width:58px" type="number" min="0" step="0.01" value="${escHtml(_mtgsbState.filters.minPrice)}" oninput="mtgsbSetFilter('minPrice',this.value)">
+      <input class="mtsb-filter-input" placeholder="Max $" style="width:58px" type="number" min="0" step="0.01" value="${escHtml(_mtgsbState.filters.maxPrice)}" oninput="mtgsbSetFilter('maxPrice',this.value)">
+      <span class="mtsb-filter-chip${_mtgsbState.filters.owned?' active':''}" onclick="mtgsbSetFilter('owned',!_mtgsbState.filters.owned)">OWNED</span>
+      <span class="mtsb-filter-chip${_mtgsbState.filters.missing?' active':''}" onclick="mtgsbSetFilter('missing',!_mtgsbState.filters.missing)">MISSING</span>
+      ${hasFilter ? `<button class="hbtn" style="min-height:36px;padding:4px 10px;font-size:10px" onclick="mtgsbClearFilters()">CLEAR</button>` : ''}
+    </div>`;
+
+  let cardsHtml = '';
+  if(!filteredCards.length){
+    cardsHtml = `<div class="mtsb-empty">No cards match filters.</div>`;
+  } else if(view === 'table'){
+    const rows = filteredCards.map(c => {
+      const owned = mtgsbIsOwned(c);
+      const img = mtgsbCardImgSrc(c);
+      const cols = c.colors || c.card_faces?.[0]?.colors || [];
+      const usd = Number(c.prices?.usd || 0);
+      const foil = Number(c.prices?.usd_foil || 0);
+      return `<tr class="${owned?'mtsb-tr-owned':''}">
+        <td class="mtsb-td mtsb-td-num">${escHtml(c.collector_number||'')}</td>
+        <td class="mtsb-td">
+          ${img?`<img src="${escHtml(img)}" style="width:32px;border-radius:3px;vertical-align:middle;margin-right:6px" loading="lazy">`:''}
+          <strong>${escHtml(c.name||'')}</strong>
+          ${owned?`<span class="mtsb-owned-badge" style="margin-left:6px">×${mtgsbOwnedQty(c)}</span>`:''}
+        </td>
+        <td class="mtsb-td">${cols.map(mtgsbColorPip).join('')}</td>
+        <td class="mtsb-td mtsb-td-dim"><span class="mtsb-rarity-${escHtml(c.rarity||'common')}">${escHtml(c.rarity||'')}</span></td>
+        <td class="mtsb-td mtsb-td-dim">${escHtml(c.artist||'')}</td>
+        <td class="mtsb-td mtsb-td-price">${usd>0?'$'+usd.toFixed(2):'—'}</td>
+        <td class="mtsb-td" style="color:#c0a0ff;font-family:monospace;font-size:10px">${foil>0?'✦$'+foil.toFixed(2):''}</td>
+      </tr>`;
+    }).join('');
+    cardsHtml = `<div class="mtsb-tbl-wrap"><table class="mtsb-table">
+      <thead><tr>
+        <th class="mtsb-th mtsb-th-sort${_mtgsbState.sortField==='number'?' mtsb-th-active':''}" onclick="mtgsbSetSort('number')">#</th>
+        <th class="mtsb-th mtsb-th-sort${_mtgsbState.sortField==='name'?' mtsb-th-active':''}" onclick="mtgsbSetSort('name')">CARD</th>
+        <th class="mtsb-th">CLR</th>
+        <th class="mtsb-th mtsb-th-sort${_mtgsbState.sortField==='rarity'?' mtsb-th-active':''}" onclick="mtgsbSetSort('rarity')">RARITY</th>
+        <th class="mtsb-th">ARTIST</th>
+        <th class="mtsb-th mtsb-th-sort${_mtgsbState.sortField==='price'?' mtsb-th-active':''}" onclick="mtgsbSetSort('price')">PRICE</th>
+        <th class="mtsb-th">FOIL</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>`;
+  } else {
+    cardsHtml = filteredCards.map(c => {
+      const img = mtgsbCardImgSrc(c);
+      const owned = mtgsbIsOwned(c);
+      const cols = c.colors || c.card_faces?.[0]?.colors || [];
+      return `<div class="mtsb-card${owned?' mtsb-owned':''}">
+        <div class="mtsb-card-img-wrap">
+          ${img ? `<img class="mtsb-card-img" src="${escHtml(img)}" loading="lazy" alt="${escHtml(c.name||'')}">` : `<div class="mtsb-no-img"></div>`}
+        </div>
+        <div class="mtsb-card-body">
+          <div class="mtsb-card-name">${escHtml(c.name||'')}</div>
+          <div class="mtsb-card-num">#${escHtml(c.collector_number||'')} · <span class="mtsb-rarity-${escHtml(c.rarity||'common')}">${escHtml(c.rarity||'')}</span>${cols.length?' · '+cols.map(mtgsbColorPip).join(''):''}</div>
+          <div class="mtsb-card-meta">${escHtml(c.type_line||'')}</div>
+          <div class="mtsb-card-meta" style="color:var(--text)">✏ ${escHtml(c.artist||'')}</div>
+          <div class="mtsb-card-prices">${mtgsbPriceHtml(c)}</div>
+          ${owned ? `<div style="margin-top:4px"><span class="mtsb-owned-badge">OWNED ×${mtgsbOwnedQty(c)}</span></div>` : ''}
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  content.innerHTML = toolbar + `<div class="mtsb-cards-area${view==='table'?' mtsb-table-mode':''}">${cardsHtml}</div>`;
+}
+
+function openMtgSetBrowser(){
+  let modal = document.getElementById('mtsb-modal');
+  if(!modal){
+    modal = document.createElement('div');
+    modal.id = 'mtsb-modal';
+    modal.className = 'mtsb-modal';
+    modal.innerHTML = '<div class="mtsb-inner" id="mtsb-inner"></div>';
+    modal.addEventListener('click', e => { if(e.target === modal) closeMtgSetBrowser(); });
+    document.body.appendChild(modal);
+  }
+  modal.classList.add('on');
+  renderMtgSetBrowserShell();
+}
+
+function closeMtgSetBrowser(){
+  document.getElementById('mtsb-modal')?.classList.remove('on');
+}
+
+function renderMtgSetBrowserShell(){
+  const inner = document.getElementById('mtsb-inner');
+  if(!inner) return;
+  inner.innerHTML = `
+    <div class="mtsb-header">
+      <div style="display:flex;align-items:center;gap:10px;min-width:0">
+        <span class="mtsb-title">🔮 MTG SET BROWSER</span>
+        <span style="font-family:monospace;font-size:9px;color:var(--dim);white-space:nowrap">artist · rarity · color · price · inventory</span>
+      </div>
+      <button class="hbtn" style="min-height:36px;padding:4px 14px;font-size:10px;flex-shrink:0" onclick="closeMtgSetBrowser()">✕ CLOSE</button>
+    </div>
+    <div class="mtsb-set-row">
+      <select id="mtsb-set-sel" class="mtsb-set-sel" onchange="mtgsbSelectSet()">
+        <option value="">— Choose a set —</option>
+      </select>
+      <input id="mtsb-set-search" class="mtsb-set-search" placeholder="Search sets…" oninput="mtgsbFilterSetDropdown(this.value)">
+    </div>
+    <div id="mtsb-content">
+      <div class="mtsb-empty">Select a Magic: The Gathering set above to load all cards with prices.</div>
+    </div>`;
+  mtgsbPopulateSets();
+}
+
+async function mtgsbPopulateSets(){
+  const sel = document.getElementById('mtsb-set-sel');
+  if(!sel) return;
+  sel.innerHTML = '<option value="">Loading sets…</option>';
+  try {
+    const sets = await mtgsbFetchSets();
+    _mtgsbState.sets = sets;
+    _mtgsbState.setsLoadedAt = Date.now();
+    mtgsbRenderSetOptions(sets);
+    const last = sessionStorage.getItem('mtsb_last_set_code');
+    if(last){
+      const opt = Array.from(sel.options).find(o => o.value === last);
+      if(opt){ opt.selected = true; mtgsbSelectSet(); }
+    }
+  } catch(e){
+    sel.innerHTML = `<option value="">Error: ${escHtml(e.message)}</option>`;
+  }
+}
+
+function mtgsbRenderSetOptions(sets){
+  const sel = document.getElementById('mtsb-set-sel');
+  if(!sel) return;
+  sel.innerHTML = '<option value="">— Choose a set —</option>' +
+    sets.map(s => {
+      const year = s.released_at ? ' (' + String(s.released_at).slice(0,4) + ')' : '';
+      const count = s.card_count ? ' · ' + s.card_count + ' cards' : '';
+      return `<option value="${escHtml(s.code)}" data-name="${escHtml(s.name||'')}">${escHtml(s.name||s.code)}${year}${count}</option>`;
+    }).join('');
+}
+
+function mtgsbFilterSetDropdown(q){
+  if(!_mtgsbState.sets) return;
+  const low = (q || '').toLowerCase();
+  const filtered = low
+    ? _mtgsbState.sets.filter(s => (s.name||'').toLowerCase().includes(low) || (s.code||'').toLowerCase().includes(low))
+    : _mtgsbState.sets;
+  mtgsbRenderSetOptions(filtered);
+}
+
+async function mtgsbSelectSet(){
+  const sel = document.getElementById('mtsb-set-sel');
+  const setCode = sel?.value;
+  const setName = sel?.options[sel.selectedIndex]?.getAttribute('data-name') || '';
+  if(!setCode) return;
+  _mtgsbState.selectedSet = { code: setCode, name: setName };
+  _mtgsbState.cards = [];
+  _mtgsbState.filteredCards = [];
+  _mtgsbState.filters = { name:'', artist:'', rarity:'', color:'', minPrice:'', maxPrice:'', owned:false, missing:false };
+  _mtgsbState.sortField = 'number';
+  _mtgsbState.sortDir = 1;
+  sessionStorage.setItem('mtsb_last_set_code', setCode);
+  mtgsbRenderContent(true);
+  try {
+    _mtgsbState.loading = true;
+    const cards = await mtgsbFetchSetCards(setCode);
+    _mtgsbState.cards = cards;
+    _mtgsbState.loading = false;
+    mtgsbApplyFilters();
+    mtgsbRenderContent(false);
+  } catch(e){
+    _mtgsbState.loading = false;
+    const content = document.getElementById('mtsb-content');
+    if(content) content.innerHTML = `<div class="mtsb-empty" style="color:var(--red)">Error loading cards: ${escHtml(e.message)}</div>`;
+  }
+}
+
+function mtgsbSetSort(field){
+  if(_mtgsbState.sortField === field) _mtgsbState.sortDir *= -1;
+  else { _mtgsbState.sortField = field; _mtgsbState.sortDir = field === 'price' ? -1 : 1; }
+  mtgsbApplyFilters();
+  mtgsbRenderContent(false);
+}
+
+function mtgsbSetFilter(key, val){
+  if(key === 'owned' || key === 'missing'){
+    _mtgsbState.filters[key] = val === true || val === 'true';
+    if(key === 'owned' && _mtgsbState.filters.owned) _mtgsbState.filters.missing = false;
+    if(key === 'missing' && _mtgsbState.filters.missing) _mtgsbState.filters.owned = false;
+  } else {
+    _mtgsbState.filters[key] = val;
+  }
+  mtgsbApplyFilters();
+  mtgsbRenderContent(false);
+}
+
+function mtgsbClearFilters(){
+  _mtgsbState.filters = { name:'', artist:'', rarity:'', color:'', minPrice:'', maxPrice:'', owned:false, missing:false };
+  mtgsbApplyFilters();
+  mtgsbRenderContent(false);
+}
+
+function mtgsbToggleView(){
+  _mtgsbState.view = _mtgsbState.view === 'cards' ? 'table' : 'cards';
+  mtgsbRenderContent(false);
+}
+
+// ── END MTG SET BROWSER ──────────────────────────────────────────
 
 </script>
 </body>
