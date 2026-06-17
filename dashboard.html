@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.06.17.02-pokemon-set-browser">
+<meta name="version" content="2026.06.17.03-set-browser-fix">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -861,6 +861,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
 .ppsb-filter-chip.active{border-color:rgba(0,255,179,.5);color:var(--g);background:rgba(0,255,179,.08);}
 .ppsb-empty{padding:40px 20px;text-align:center;font-family:monospace;font-size:11px;color:var(--dim);}
 .ppsb-loading{color:var(--g)!important;}
+#ppsb-content{flex:1;overflow:hidden;display:flex;flex-direction:column;min-height:0;}
 .ppsb-cards-area{flex:1;overflow-y:auto;padding:12px 18px;display:grid;gap:10px;align-content:start;}
 .ppsb-cards-area.ppsb-table-mode{grid-template-columns:1fr;}
 @media(min-width:641px){
@@ -1057,7 +1058,7 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.17.02-pokemon-set-browser</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.17.03-set-browser-fix</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
@@ -1084,7 +1085,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip dev-only" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.17.02-pokemon-set-browser</div>
+<div class="dsb-chip dev-only" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.17.03-set-browser-fix</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -2182,7 +2183,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.06.12.10-comic-lazy-images';
+const APP_VERSION = '2026.06.17.03-set-browser-fix';
 const branchName = 'pokemon-v2-core';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
 const POKEMON_EXACT_CACHE_VERSION = 'pokemon-exact-v3-price-matrix';
@@ -4236,7 +4237,9 @@ function setupAppShell(){
     v2StampTarget.prepend(stamp);
   }
   const logo = document.querySelector('.logo span');
-  if(logo) logo.textContent = 'DASHBOARD · v' + APP_VERSION;
+  if(logo) logo.textContent = 'DASHBOARD';
+  const dsbVer = document.getElementById('dsb-version');
+  if(dsbVer) dsbVer.textContent = 'v' + APP_VERSION;
   const posSec = document.querySelector('#tab-pos .sec');
   if(posSec) posSec.textContent = 'REGISTER';
 
@@ -9729,7 +9732,7 @@ async function loadInventory(){
     filtered = [...all];
     renderAll();
     renderInventoryCategoryFilters();
-    document.getElementById('sync-status').textContent = 'v'+APP_VERSION+' · '+products.length+' products · '+new Date().toLocaleTimeString();
+    document.getElementById('sync-status').textContent = products.length+' products · '+new Date().toLocaleTimeString();
   } catch(e){
     document.getElementById('sync-status').textContent = '⚠ '+e.message;
   }
@@ -22020,8 +22023,8 @@ async function sbFetchSets(){
 
 async function sbFetchSetCards(setId, setName){
   const params = new URLSearchParams({ fetchAllInSet:'true', limit:'500' });
-  if(setId) params.set('setId', setId);
-  else if(setName) params.set('set', setName);
+  if(setName) params.set('set', setName);
+  else if(setId) params.set('setId', setId);
   const res = await fetch(WORKER + '/pricing/pokemon/cards?' + params.toString(), { cache:'no-store' });
   if(!res.ok) throw new Error('Cards fetch failed: ' + res.status);
   const data = await res.json();
