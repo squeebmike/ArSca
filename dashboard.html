@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.06.17.03-set-browser-fix">
+<meta name="version" content="2026.06.17.04-set-browser-fetch-fix">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1058,7 +1058,7 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.17.03-set-browser-fix</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.17.04-set-browser-fetch-fix</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
@@ -1085,7 +1085,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip dev-only" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.17.03-set-browser-fix</div>
+<div class="dsb-chip dev-only" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.17.04-set-browser-fetch-fix</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -2183,7 +2183,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.06.17.03-set-browser-fix';
+const APP_VERSION = '2026.06.17.04-set-browser-fetch-fix';
 const branchName = 'pokemon-v2-core';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
 const POKEMON_EXACT_CACHE_VERSION = 'pokemon-exact-v3-price-matrix';
@@ -22022,13 +22022,21 @@ async function sbFetchSets(){
 }
 
 async function sbFetchSetCards(setId, setName){
-  const params = new URLSearchParams({ fetchAllInSet:'true', limit:'500' });
+  const params = new URLSearchParams({ fetchAllInSet:'true', limit:'500', fresh:'true' });
+  if(setId) params.set('setId', setId);
   if(setName) params.set('set', setName);
-  else if(setId) params.set('setId', setId);
   const res = await fetch(WORKER + '/pricing/pokemon/cards?' + params.toString(), { cache:'no-store' });
-  if(!res.ok) throw new Error('Cards fetch failed: ' + res.status);
+  if(!res.ok){
+    let errText = '';
+    try { errText = await res.text(); } catch(e){}
+    throw new Error('Cards fetch failed: HTTP ' + res.status + (errText ? ' — ' + errText.slice(0,200) : ''));
+  }
   const data = await res.json();
-  return data.data || data.cards || [];
+  const cards = data.cards || (Array.isArray(data.data) ? data.data : []) || data.results || [];
+  if(!cards.length && data.count === 0 && data.ok === false){
+    throw new Error('PPT error: ' + (data.error || JSON.stringify(data).slice(0,200)));
+  }
+  return cards;
 }
 
 function sbApplyFilters(){
