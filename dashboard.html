@@ -785,12 +785,17 @@ body.customer-display-mode #customer-display-exit{display:block;}
 
 /* ── PASS A: Phone (≤640px) mobile UI repair ─────────────────── */
 @media(max-width:640px){
+  /* Mobile top chrome — keep only the brand in the sticky header. */
+  .hdr{height:42px;min-height:42px;padding:0 14px;align-items:center;flex-wrap:nowrap;}
+  .logo{padding-top:0;font-size:13px;line-height:1;}
+  .hdr-right{display:none!important;}
+  #store-user-chip,#store-switcher,#top-show-chip,#top-drawer-chip,#sync-prices-btn,.show-mode-toggle,#header-actions-wrap{display:none!important;}
   /* Dealer status bar — hide verbose chips, keep drawer/net/intake */
   .dealer-status-bar{gap:6px;padding:3px 10px;}
   #dsb-sync,#dsb-version{display:none!important;}
 
   /* Tabs — already scroll with overflow-x:auto; enforce min tap height */
-  .tab{min-height:48px;padding:10px 10px;font-size:10px;}
+  .tab{min-height:42px;padding:8px 10px;font-size:10px;}
 
   /* Panel padding — recover horizontal space */
   .panel{padding:14px 12px;}
