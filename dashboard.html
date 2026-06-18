@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.06.17.08-poke-cards-fix">
+<meta name="version" content="2026.06.17.09-pokemontcg-setbrowser">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1128,7 +1128,7 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.17.08-poke-cards-fix</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.17.09-pokemontcg-setbrowser</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
@@ -1155,7 +1155,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip dev-only" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.17.08-poke-cards-fix</div>
+<div class="dsb-chip dev-only" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.17.09-pokemontcg-setbrowser</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -2260,7 +2260,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.06.17.08-poke-cards-fix';
+const APP_VERSION = '2026.06.17.09-pokemontcg-setbrowser';
 const branchName = 'pokemon-v2-core';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
 const POKEMON_EXACT_CACHE_VERSION = 'pokemon-exact-v3-price-matrix';
@@ -10395,6 +10395,8 @@ function switchTab(name, btn){
   }
   closeMoreMenu();
   activeTab = name;
+  // Refresh category-dependent helper rows (set browser buttons etc.) when switching to POS/Research
+  if(name === 'pos' || name === 'research') setTimeout(handleQplCategoryChange, 0);
 }
 
 // Quick sell modal
@@ -22097,48 +22099,82 @@ function sbOwnedQty(card){
 }
 
 async function sbFetchSets(){
-  const cacheKey = 'sb_sets_v1';
+  // Use PokemonTCG.io public API — free, proper set codes (e.g. "base2"), no auth needed.
+  // These codes are what the cards endpoint and PPT both understand.
+  const cacheKey = 'sb_sets_v3';
   try {
     const cached = JSON.parse(sessionStorage.getItem(cacheKey) || 'null');
     if(cached && (Date.now() - (cached.ts || 0)) < 86400000) return cached.sets;
   } catch(e){}
-  const params = new URLSearchParams({ sortBy:'releaseDate', sortOrder:'desc', limit:'300' });
-  const res = await fetch(WORKER + '/pricing/pokemon/sets?' + params.toString(), { cache:'no-store' });
+  const res = await fetch(
+    'https://api.pokemontcg.io/v2/sets?orderBy=-releaseDate&pageSize=300&select=id,name,series,releaseDate,total,images',
+    { cache: 'force-cache' }
+  );
   if(!res.ok) throw new Error('Sets fetch failed: ' + res.status);
   const data = await res.json();
-  const sets = data.data || data.sets || [];
+  // Normalise to the shape sbPopulateSets expects
+  const sets = (data.data || []).map(s => ({
+    id: s.id,           // short code like "base2", "sv3pt5", "cel25"
+    name: s.name || '',
+    series: s.series || '',
+    releaseDate: s.releaseDate || '',
+    cardCount: s.total || 0,
+    symbolUrl: s.images?.symbol || '',
+    logoUrl: s.images?.logo || '',
+  }));
   try { sessionStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), sets })); } catch(e){}
   return sets;
 }
 
+// Normalise a PokemonTCG.io card object to the field shape sbRenderContent expects
+function sbNormalizePokemonTcgCard(c){
+  // Pick the best price across all printings (holofoil > normal > reverseHolo > others)
+  const p = c.tcgplayer?.prices || {};
+  const pick = p.holofoil || p['1stEditionHolofoil'] || p.normal || p.reverseHolo
+    || p['1stEditionNormal'] || p.unlimitedHolofoil || Object.values(p)[0] || {};
+  const market = Number(pick.market || pick.mid || 0);
+  const low    = Number(pick.low || 0);
+  return {
+    name:         c.name || '',
+    cardNumber:   c.number || '',
+    rarity:       c.rarity || '',
+    artist:       c.artist || '',
+    setName:      c.set?.name || '',
+    imageCdnUrl:  c.images?.small || '',
+    imageCdnUrl200: c.images?.small || '',
+    prices:       { market, lowPrice: low, _allPrices: p },
+    tcgPlayerUrl: c.tcgplayer?.url || `https://www.tcgplayer.com/search/pokemon/product?q=${encodeURIComponent(c.name||'')}`,
+    tcgPlayerId:  String(c.tcgplayer?.productId || ''),
+    _pokemonTcgId: c.id || '',
+    _source:      'pokemontcg',
+    raw:          c,
+  };
+}
+
 async function sbFetchSetCards(setId, setName){
-  // PPT cards endpoint: pass set code (lowercase), numeric setId, AND setName so PPT can match by any field.
-  const params = new URLSearchParams({ fetchAllInSet:'true', limit:'500' });
-  if(setId){
-    params.set('set', setId.toLowerCase());      // lowercase code (PPT slugs are lowercase, e.g. "me04")
-    params.set('setId', setId);                  // also as-is in case it's a numeric/opaque ID
-  }
-  if(setName){
-    params.set('setName', setName);              // set display name — PPT can match by name if code doesn't work
-    if(!setId) params.set('set', setName);       // last-resort fallback: use name as the set= param
-  }
-  const res = await fetch(WORKER + '/pricing/pokemon/cards?' + params.toString(), { cache:'no-store' });
-  if(!res.ok){
-    let errText = '';
-    try { errText = await res.text(); } catch(e){}
-    throw new Error('Cards fetch failed: HTTP ' + res.status + (errText ? ' — ' + errText.slice(0,200) : ''));
-  }
-  const data = await res.json();
-  // Worker normalises: data.cards = extracted array, data.data = raw PPT .data field or full response.
-  // Handle all PPT response shapes: { cards:[] }, { data:[] }, { data:{ cards:[] } }, { results:[] }
-  const cards =
-    (Array.isArray(data.cards) && data.cards.length ? data.cards : null) ||
-    (Array.isArray(data.data) ? data.data : null) ||
-    (Array.isArray(data.data?.cards) ? data.data.cards : null) ||
-    (Array.isArray(data.results) ? data.results : null) ||
-    (Array.isArray(data.cards) ? data.cards : []);   // empty array fallback (avoids treating [] as falsy skip)
-  if(!cards.length && data.ok === false){
-    throw new Error('PPT API error: ' + (data.error || JSON.stringify(data).slice(0,200)));
+  // Use PokemonTCG.io public API — free, supports set.id:<code> queries, includes TCGPlayer prices.
+  // setId here is a PokemonTCG.io set code like "base2", "sv3pt5", "cel25".
+  if(!setId) throw new Error('No set ID');
+  let cards = [];
+  let page = 1;
+  const pageSize = 250;
+  while(page <= 6){  // max 6 pages = 1500 cards, plenty for any set
+    const url = `https://api.pokemontcg.io/v2/cards?q=set.id:${encodeURIComponent(setId)}&orderBy=number&pageSize=${pageSize}&page=${page}&select=id,name,number,rarity,artist,images,tcgplayer,set`;
+    const res = await fetch(url, { cache: 'default' });
+    if(!res.ok){
+      if(page === 1) throw new Error('Cards fetch failed: HTTP ' + res.status);
+      break;
+    }
+    const data = await res.json();
+    const batch = (data.data || []).map(sbNormalizePokemonTcgCard);
+    cards = cards.concat(batch);
+    // Update loading indicator
+    const loadEl = document.querySelector('#ppsb-content .ppsb-loading');
+    if(loadEl) loadEl.textContent = `⚡ Loading cards… ${cards.length}+`;
+    if(!data.data?.length || cards.length >= (data.totalCount || 999)) break;
+    page++;
+    if(data.data.length < pageSize) break;
+    await new Promise(r => setTimeout(r, 60));
   }
   return cards;
 }
@@ -22265,18 +22301,6 @@ async function sbSelectSet(){
     _sbState.loading = false;
     sbApplyFilters();
     sbRenderContent(false);
-    // If API returned 0 cards for a set that claims to have cards, show a helpful note
-    if(!_sbState.cards.length){
-      const content = document.getElementById('ppsb-content');
-      const expectedCount = sel?.options[sel.selectedIndex]?.text?.match(/·\s*(\d+)\s*cards/)?.[1];
-      if(content && expectedCount){
-        content.innerHTML += `<div class="ppsb-empty" style="color:var(--gold);margin-top:8px;font-size:10px">
-          ⚠ PPT returned 0 cards for set ID <b>${escHtml(setId)}</b> / name <b>${escHtml(setName)}</b>.<br>
-          The set lists ${escHtml(expectedCount)} cards — PPT may not have card-level data for this set yet, or the set ID format may not match.
-          <br><br><button class="hbtn" style="margin-top:8px;min-height:36px;font-size:10px" onclick="sbRetryByName('${escHtml(setName)}')">⚡ Retry by set name instead</button>
-        </div>`;
-      }
-    }
   } catch(e){
     _sbState.loading = false;
     const content = document.getElementById('ppsb-content');
