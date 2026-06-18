@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.06.18.04-cash-bag-workflow">
+<meta name="version" content="2026.06.18.05-inventory-sync-cart-rounding">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1173,7 +1173,7 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.18.04-cash-bag-workflow</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.18.05-inventory-sync-cart-rounding</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
@@ -1200,7 +1200,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip dev-only" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.18.04-cash-bag-workflow</div>
+<div class="dsb-chip dev-only" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.18.05-inventory-sync-cart-rounding</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -1975,7 +1975,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <div class="modal-bg" id="price-sync-modal">
   <div class="modal" style="max-width:600px;max-height:82vh;display:flex;flex-direction:column">
     <h3>💹 SYNC LATEST PRICES</h3>
-    <p style="font-size:11px;color:var(--dim);margin:0 0 12px">Compares your inventory market prices against prices stored in your local lookup cache. No API calls — runs offline too.</p>
+    <p style="font-size:11px;color:var(--dim);margin:0 0 12px">Cached scan compares local lookup data with no API calls. Live Pokémon refresh fetches current PokemonPriceTracker prices through the Worker for exact matched items.</p>
     <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:12px;align-items:center">
       <label style="display:flex;align-items:center;gap:5px;font-size:11px;cursor:pointer"><input type="checkbox" id="pso-tcg" checked> TCG / Pokémon</label>
       <label style="display:flex;align-items:center;gap:5px;font-size:11px;cursor:pointer"><input type="checkbox" id="pso-sports" checked> Sports Cards</label>
@@ -1983,7 +1983,8 @@ body.show-mode .inv-sync-badge{display:none;}
       <label style="display:flex;align-items:center;gap:5px;font-size:11px;cursor:pointer"><input type="number" id="pso-limit" value="50" min="5" max="200" style="width:52px;padding:3px 5px;font-family:monospace;font-size:11px;background:var(--bg2);border:1px solid var(--border);color:var(--text);border-radius:4px"> max items</label>
     </div>
     <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
-      <button class="hbtn" id="price-sync-scan-btn" onclick="runPriceSyncScan()">🔍 SCAN INVENTORY</button>
+      <button class="hbtn" id="price-sync-scan-btn" onclick="runPriceSyncScan()">SCAN CACHED PRICES</button>
+      <button class="hbtn" id="price-sync-live-btn" onclick="runLivePokemonPriceSync()">FETCH LIVE POKEMON</button>
       <button class="hbtn" id="price-sync-apply-btn" onclick="applySelectedPriceSyncUpdates()" style="display:none;background:rgba(0,255,179,.12);border-color:rgba(0,255,179,.4);color:var(--g)">✓ UPDATE SELECTED</button>
       <button class="modal-btn cancel" onclick="closePriceSyncModal()" style="margin-left:auto">CLOSE</button>
     </div>
@@ -2315,7 +2316,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.06.18.04-cash-bag-workflow';
+const APP_VERSION = '2026.06.18.05-inventory-sync-cart-rounding';
 const branchName = 'pokemon-v2-core';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
 const POKEMON_EXACT_CACHE_VERSION = 'pokemon-exact-v3-price-matrix';
@@ -7267,12 +7268,14 @@ async function importMappedSpreadsheet(pushWebflow){
 function getUniversalInventory(){
   return safeLocalJson('walkoff_universal_inventory', []).map(i => ({
     id:i.id, name:i.name||'Imported item', set:i.set||'', variant:i.variant||'', year:i.year||'',
-    category:i.category||'Collectibles', cost:Number(i.cost||0), market:Number(i.market||0), salePrice:Number(i.salePrice||i.market||0),
+    category:i.category||'Collectibles', cost:Number(i.cost||0), market:Number(i.market ?? i.marketPrice ?? i.rawMarketPrice ?? 0), salePrice:Number(i.salePrice||i.market||0),
     qty:Number(i.qty||1), profit:Number(i.profit||0), condition:i.condition||'', priceSource:i.priceSource||'spreadsheet',
     status:i.status||'in_stock', lifecycle:i.archivedAt ? 'archived' : (i.lifecycle||'in_stock'), archivedAt:i.archivedAt||'', archiveReason:i.archiveReason||'', channel:i.channel||'', addedAt:i.addedAt||'', soldAt:i.soldAt||'',
     tags:i.tags||'', thumbnail:i.thumbnail||null, location:i.location||'', player:i.player||'', team:i.team||'', sport:i.sport||'',
     manufacturer:i.manufacturer||'', card_number:i.card_number||'', serial_number:i.serial_number||'', publisher:i.publisher||'',
-    issue:i.issue||'', notes:i.notes||'', buySessionId:i.buySessionId||'', sourceProductId:i.sourceProductId||'', sourceVariantId:i.sourceVariantId||'', tcgplayerSkuId:i.tcgplayerSkuId||'', priceLabel:i.priceLabel||'', source:i.source||'spreadsheet',
+    issue:i.issue||'', notes:i.notes||'', buySessionId:i.buySessionId||'', sourceProductId:i.sourceProductId||'', sourceVariantId:i.sourceVariantId||'', tcgplayerSkuId:i.tcgplayerSkuId||'', tcgPlayerId:i.tcgPlayerId||i.tcgplayerId||'', tcgPlayerUrl:i.tcgPlayerUrl||'',
+    rawMarketPrice:i.rawMarketPrice??i.marketPrice??i.market??'', marketPrice:i.marketPrice??i.market??'', lastMarketPrice:i.lastMarketPrice??i.previousMarketPrice??'', marketPriceSource:i.marketPriceSource||'', lastPriceUpdate:i.lastPriceUpdate||'', priceUpdatedAt:i.priceUpdatedAt||'', stalePrice:!!i.stalePrice, livePriceStatus:i.livePriceStatus||'', pokemonPriceTrackerLastUpdated:i.pokemonPriceTrackerLastUpdated||'', pokemonPriceTrackerPrices:i.pokemonPriceTrackerPrices||null, pokemonPriceTrackerVariants:i.pokemonPriceTrackerVariants||null,
+    priceLabel:i.priceLabel||'', source:i.source||'spreadsheet',
   }));
 }
 
@@ -8960,11 +8963,135 @@ function roundBuyOffer(value){
   if(!isFinite(n) || n <= 0) return 0;
   return Math.floor(n + 1e-9);
 }
+function suggestedCartSalePrice(value){
+  const n = Number(value || 0);
+  if(!isFinite(n) || n <= 0) return 0;
+  return roundSellPrice(n);
+}
+function moneyNumber(value){
+  if(value == null || value === '') return 0;
+  if(typeof value === 'object') {
+    return moneyNumber(value.price ?? value.marketPrice ?? value.market ?? value.value ?? value.amount ?? value.current ?? 0);
+  }
+  const n = Number(String(value).replace(/[$,]/g, '').trim());
+  if(!isFinite(n) || n <= 0) return 0;
+  return (Number.isInteger(n) && n >= 10000) ? n / 100 : n;
+}
+function firstMoneyValue(...values){
+  for(const value of values){
+    const n = moneyNumber(value);
+    if(n > 0) return Math.round(n * 100) / 100;
+  }
+  return 0;
+}
+function inventoryReferenceMarketPrice(item = {}){
+  return firstMoneyValue(item.marketPrice, item.rawMarketPrice, item.market, item.price, item.displayPrice);
+}
+function inventoryTcgPlayerId(item = {}){
+  return String(
+    item.tcgPlayerId || item.tcgplayerId || item.tcgplayerProductId ||
+    item.pokemonPriceTrackerCardId || item.raw?.tcgPlayerId || item.raw?.tcgplayerId ||
+    item.raw?.tcgplayerProductId || item.externalRefs?.tcgPlayerId ||
+    item.externalRefs?.tcgplayerProductId || ''
+  ).trim();
+}
+function inventoryCardName(item = {}){
+  return item.cardName || item.name || item.player || item.raw?.cardName || item.raw?.name || '';
+}
+function inventorySetName(item = {}){
+  return item.setName || item.set || item.raw?.setName || item.raw?.set || '';
+}
+function inventoryCardNumber(item = {}){
+  return item.cardNumber || item.card_number || item.collectorNumber || item.number || item.raw?.cardNumber || item.raw?.card_number || item.raw?.collectorNumber || '';
+}
+function inventoryPokemonExactQuery(item = {}){
+  return [inventoryCardName(item), inventorySetName(item), inventoryCardNumber(item)].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
+}
+function isPokemonInventorySyncItem(item = {}){
+  if(inventoryTcgPlayerId(item)) return true;
+  const text = [
+    item.category, item.itemType, item.inventoryType, item.product_line, item.productLine,
+    item.manufacturer, item.brand, item.priceSource, item.marketPriceSource, item.source,
+    inventoryCardName(item), inventorySetName(item), item.raw?.priceSource, item.raw?.marketPriceSource
+  ].filter(Boolean).join(' ').toLowerCase();
+  if(/pokemon|pokémon|pokemonpricetracker/.test(text)) return true;
+  if(/\btcg\b/.test(text) && /\b(sv|scarlet|violet|sword|shield|swsh|sun|moon|xy|black star|base set|evolving skies|stellar crown|paldea|obsidian|surging sparks|151)\b/.test(text)) return true;
+  return false;
+}
+function pokemonCardNumberForSync(card = {}){
+  return card.cardNumber || card.number || card.collectorNumber || card.card_number || card.raw?.cardNumber || card.raw?.number || '';
+}
+function pokemonPriceTrackerMarketPrice(card = {}){
+  const prices = card.prices || {};
+  return firstMoneyValue(
+    prices.market?.price,
+    prices.market,
+    card.marketPrice,
+    card.market,
+    card.price,
+    card.selectedVariant?.marketPrice,
+    prices.conditions?.[card.primaryCondition || card.condition || 'Near Mint']?.price
+  );
+}
+function pokemonPriceTrackerLowPrice(card = {}){
+  const prices = card.prices || {};
+  return firstMoneyValue(prices.lowPrice?.price, prices.lowPrice, card.lowPrice, card.low);
+}
+function pokemonPriceTrackerLastUpdated(card = {}){
+  const prices = card.prices || {};
+  return card.lastPriceUpdate || card.lastUpdated || card.updatedAt || prices.market?.lastUpdated || prices.market?.updatedAt || prices.updatedAt || '';
+}
+function findBestLivePokemonInventoryMatch(item = {}, cards = []){
+  const targetName = normalizePokemonText(inventoryCardName(item));
+  const targetSet = normalizePokemonText(inventorySetName(item));
+  const targetNum = normalizePokemonText(inventoryCardNumber(item));
+  let best = null;
+  cards.forEach(card => {
+    const name = normalizePokemonText(card.name || card.cardName || '');
+    const set = normalizePokemonText(card.setName || card.set || '');
+    const num = normalizePokemonText(pokemonCardNumberForSync(card));
+    let score = 0;
+    if(targetName && name === targetName) score += 80;
+    else if(targetName && (name.includes(targetName) || targetName.includes(name))) score += 45;
+    if(targetNum && num === targetNum) score += 90;
+    else if(targetNum && num !== targetNum) score -= 120;
+    if(targetSet && set === targetSet) score += 55;
+    else if(targetSet && (set.includes(targetSet) || targetSet.includes(set))) score += 25;
+    if(!best || score > best.score) best = { card, score };
+  });
+  if(!best) return null;
+  if(targetNum && normalizePokemonText(pokemonCardNumberForSync(best.card)) !== targetNum) return null;
+  return best.score >= (targetNum ? 90 : 70) ? best.card : null;
+}
+async function fetchLivePokemonInventoryCard(item = {}){
+  const tcgPlayerId = inventoryTcgPlayerId(item);
+  const params = new URLSearchParams();
+  if(tcgPlayerId) {
+    params.set('tcgPlayerId', tcgPlayerId);
+    params.set('includeBoth', 'true');
+    params.set('limit', '1');
+  } else {
+    const query = inventoryPokemonExactQuery(item);
+    if(!query) return { card:null, requestPath:'', matchStatus:'no-query', resultCount:0 };
+    params.set('search', query);
+    params.set('limit', '20');
+  }
+  const result = await pokemonPriceTrackerCardsRequest(params, tcgPlayerId ? 'inventory.sync.tcgPlayerId' : 'inventory.sync.search');
+  const cards = result.cards || [];
+  const card = tcgPlayerId ? (cards[0] || null) : findBestLivePokemonInventoryMatch(item, cards);
+  return {
+    card,
+    requestPath:result.requestPath,
+    matchStatus:card ? (tcgPlayerId ? 'tcgPlayerId' : 'exact-query') : 'no-exact-match',
+    resultCount:cards.length,
+    cacheStatus:result.cacheStatus,
+  };
+}
 
 // ── PRICE SYNC ENGINE (A5-A8) ─────────────────────────────────────────────
-// Compares in-stock inventory market prices against the local IndexedDB Pokemon
-// price cache.  No live API calls — runs offline.  User reviews proposed changes
-// in a modal before anything is written.
+// Compares in-stock inventory market prices either against local Pokemon cache
+// data or live PokemonPriceTracker Worker responses. User reviews proposed
+// changes in a modal before anything is written.
 
 function isBigPriceChange(oldPrice, newPrice){
   if(!oldPrice || !newPrice || oldPrice <= 0) return false;
@@ -9020,7 +9147,12 @@ function getCachedCardMarketPrice(cached){
 async function buildPriceSyncProposal(options = {}){
   const { limit = 50, categories = null } = options;
   // Read raw items (preserves tcgPlayerId not exposed by getUniversalInventory)
-  const rawItems = safeLocalJson('walkoff_universal_inventory', []);
+  const localRawItems = safeLocalJson('walkoff_universal_inventory', []);
+  const seenRawIds = new Set(localRawItems.map(i => i.id || i.wfId).filter(Boolean));
+  const rawItems = localRawItems.concat((all || []).filter(i => {
+    const id = i.id || i.wfId;
+    return id && !seenRawIds.has(id);
+  }));
   const overrides = getInventoryEditOverrides();
   let items = rawItems.map(i => {
     const patch = overrides[i.id] || overrides[i.wfId];
@@ -9028,14 +9160,14 @@ async function buildPriceSyncProposal(options = {}){
   });
   items = items.filter(i => {
     const st = i.lifecycle || i.status || 'in_stock';
-    return (st === 'in_stock' || !st) && Number(i.market || 0) > 0;
+    return (st === 'in_stock' || !st) && inventoryReferenceMarketPrice(i) > 0;
   });
   if(categories && categories.length) {
     const normCats = categories.map(c => normalizePokemonText(c));
     items = items.filter(i => normCats.some(nc => normalizePokemonText(i.category || '').includes(nc)));
   }
   // Prioritise highest-value items first
-  items = items.sort((a, b) => Number(b.market || 0) - Number(a.market || 0)).slice(0, limit);
+  items = items.sort((a, b) => inventoryReferenceMarketPrice(b) - inventoryReferenceMarketPrice(a)).slice(0, limit);
 
   const allCards  = await pokemonDbAll('cards').catch(() => []);
   const storeId   = getActiveStoreId();
@@ -9048,17 +9180,18 @@ async function buildPriceSyncProposal(options = {}){
       if(!cached) continue;
       const freshPrice = getCachedCardMarketPrice(cached);
       if(!freshPrice || freshPrice <= 0) continue;
-      const oldPrice = Number(item.market || 0);
-      if(Math.abs(freshPrice - oldPrice) < 0.50) continue; // ignore rounding noise
+      const oldPrice = inventoryReferenceMarketPrice(item);
+      if(Math.abs(freshPrice - oldPrice) < 0.01) continue;
       const delta      = freshPrice - oldPrice;
       const deltaPct   = Math.abs(delta / oldPrice) * 100;
       const big        = isBigPriceChange(oldPrice, freshPrice);
       const direction  = delta > 0 ? 'up' : 'down';
-      const newRounded = roundSellPrice(freshPrice);
       proposal.push({
         item:      { ...item },
+        mode:      'cached',
+        source:    'PokemonPriceTracker cache',
         oldPrice,
-        newPrice:  newRounded,
+        newPrice:  Math.round(freshPrice * 100) / 100,
         rawNewPrice: freshPrice,
         delta,
         deltaPct,
@@ -9066,11 +9199,104 @@ async function buildPriceSyncProposal(options = {}){
         direction,
         label:     big ? (direction === 'up' ? 'BIG INCREASE' : 'BIG DROP') : (direction === 'up' ? 'increase' : 'drop'),
         cacheAge:  pokemonCacheAgeLabel(cached.updatedAt),
+        lastUpdated: cached.updatedAt || '',
         selected:  true,
       });
     } catch(e){ console.warn('[syncPrices] Skip:', item.name, e.message); }
   }
   // Big changes first, then by magnitude
+  return proposal.sort((a, b) => (b.isBig ? 1 : 0) - (a.isBig ? 1 : 0) || Math.abs(b.delta) - Math.abs(a.delta));
+}
+
+let _priceSyncLastSummary = null;
+
+async function buildLivePokemonPriceSyncProposal(options = {}){
+  const { limit = 5 } = options;
+  const localRawItems = safeLocalJson('walkoff_universal_inventory', []);
+  const seenRawIds = new Set(localRawItems.map(i => i.id || i.wfId).filter(Boolean));
+  const rawItems = localRawItems.concat((all || []).filter(i => {
+    const id = i.id || i.wfId;
+    return id && !seenRawIds.has(id);
+  }));
+  const overrides = getInventoryEditOverrides();
+  let items = rawItems.map(i => {
+    const patch = overrides[i.id] || overrides[i.wfId];
+    return patch ? { ...i, ...patch } : i;
+  });
+  items = items.filter(i => {
+    const st = i.lifecycle || i.status || 'in_stock';
+    return st !== 'sold' && st !== 'archived' && isPokemonInventorySyncItem(i);
+  });
+  items = items
+    .sort((a, b) => inventoryReferenceMarketPrice(b) - inventoryReferenceMarketPrice(a))
+    .slice(0, Math.max(1, Math.min(25, Number(limit || 5))));
+
+  const summary = { checked:items.length, changed:0, unchanged:0, errors:0, noMatch:0, requests:[] };
+  const proposal = [];
+  for(const item of items){
+    try {
+      const live = await fetchLivePokemonInventoryCard(item);
+      if(live.requestPath) summary.requests.push(live.requestPath);
+      if(!live.card) {
+        summary.noMatch++;
+        continue;
+      }
+      const freshPrice = pokemonPriceTrackerMarketPrice(live.card);
+      if(!freshPrice || freshPrice <= 0) {
+        summary.noMatch++;
+        continue;
+      }
+      const oldPrice = inventoryReferenceMarketPrice(item);
+      const lastUpdated = pokemonPriceTrackerLastUpdated(live.card) || new Date().toISOString();
+      if(oldPrice > 0 && Math.abs(freshPrice - oldPrice) < 0.01) {
+        summary.unchanged++;
+        await saveInventoryEdit(item, {
+          marketPriceSource:'PokemonPriceTracker',
+          priceSource:'PokemonPriceTracker live sync',
+          lastPriceUpdate:lastUpdated,
+          priceUpdatedAt:new Date().toISOString(),
+          stalePrice:false,
+          livePriceStatus:'live',
+          pokemonPriceTrackerLastUpdated:lastUpdated,
+          tcgPlayerId:inventoryTcgPlayerId(item) || live.card.tcgPlayerId || live.card.tcgplayerId || '',
+        }).catch(()=>{});
+        continue;
+      }
+      const delta = freshPrice - oldPrice;
+      const deltaPct = oldPrice > 0 ? Math.abs(delta / oldPrice) * 100 : 100;
+      const big = oldPrice > 0 ? isBigPriceChange(oldPrice, freshPrice) : false;
+      const direction = delta >= 0 ? 'up' : 'down';
+      summary.changed++;
+      proposal.push({
+        item:{ ...item },
+        mode:'live',
+        source:'PokemonPriceTracker',
+        oldPrice,
+        newPrice:Math.round(freshPrice * 100) / 100,
+        rawNewPrice:freshPrice,
+        lowPrice:pokemonPriceTrackerLowPrice(live.card),
+        delta,
+        deltaPct,
+        isBig:big,
+        direction,
+        label:big ? (direction === 'up' ? 'BIG INCREASE' : 'BIG DROP') : (direction === 'up' ? 'increase' : 'drop'),
+        cacheAge:live.cacheStatus || 'live',
+        lastUpdated,
+        requestPath:live.requestPath,
+        resultCount:live.resultCount,
+        matchStatus:live.matchStatus,
+        tcgPlayerId:inventoryTcgPlayerId(item) || live.card.tcgPlayerId || live.card.tcgplayerId || '',
+        tcgPlayerUrl:live.card.tcgPlayerUrl || live.card.productUrl || '',
+        prices:live.card.prices || null,
+        variants:live.card.prices?.variants || null,
+        selected:true,
+      });
+    } catch(e) {
+      console.warn('[syncPrices] Live skip:', item.name, e.message || e);
+      summary.errors++;
+    }
+  }
+  _priceSyncLastSummary = summary;
   return proposal.sort((a, b) => (b.isBig ? 1 : 0) - (a.isBig ? 1 : 0) || Math.abs(b.delta) - Math.abs(a.delta));
 }
 
@@ -9083,10 +9309,11 @@ function openPriceSyncModal(){
   const propEl  = document.getElementById('price-sync-proposal');
   const statusEl = document.getElementById('price-sync-status');
   const applyBtn = document.getElementById('price-sync-apply-btn');
-  if(propEl)   propEl.innerHTML   = '<div style="color:var(--dim);font-size:11px;padding:12px 0">Click SCAN INVENTORY to check prices against your cached lookups.</div>';
+  if(propEl)   propEl.innerHTML   = '<div style="color:var(--dim);font-size:11px;padding:12px 0">Use SCAN CACHED PRICES for offline lookup-cache comparison, or FETCH LIVE POKEMON for Worker/PokemonPriceTracker refresh.</div>';
   if(statusEl) statusEl.textContent = '';
   if(applyBtn) applyBtn.style.display = 'none';
   _priceSyncProposal = [];
+  _priceSyncLastSummary = null;
 }
 
 function closePriceSyncModal(){
@@ -9112,8 +9339,8 @@ async function runPriceSyncScan(){
   try {
     _priceSyncProposal = await buildPriceSyncProposal({ limit, categories: cats.length ? cats : null });
     if(!_priceSyncProposal.length) {
-      statusEl.textContent = 'No price changes found. Prices come from cached lookups — search cards in the Research tab to refresh the cache.';
-      propEl.innerHTML = '<div style="color:var(--dim);font-size:12px;padding:12px 0">✓ All cached prices match your current inventory pricing.</div>';
+      statusEl.textContent = 'Cached sync found no changes. This did not fetch live prices.';
+      propEl.innerHTML = '<div style="color:var(--dim);font-size:12px;padding:12px 0">All cached prices match current inventory pricing. Use FETCH LIVE POKEMON to check current Worker/PokemonPriceTracker data.</div>';
     } else {
       const bigCount = _priceSyncProposal.filter(p => p.isBig).length;
       statusEl.textContent = _priceSyncProposal.length + ' price change' + (_priceSyncProposal.length === 1 ? '' : 's') + ' found'
@@ -9127,7 +9354,39 @@ async function runPriceSyncScan(){
     statusEl.textContent = 'Scan failed: ' + (e.message || e);
   } finally {
     btn.disabled = false;
-    btn.textContent = '🔍 SCAN INVENTORY';
+    btn.textContent = 'SCAN CACHED PRICES';
+  }
+}
+
+async function runLivePokemonPriceSync(){
+  const btn      = document.getElementById('price-sync-live-btn');
+  const statusEl = document.getElementById('price-sync-status');
+  const propEl   = document.getElementById('price-sync-proposal');
+  const applyBtn = document.getElementById('price-sync-apply-btn');
+  if(!btn || !statusEl || !propEl) return;
+  btn.disabled = true;
+  btn.textContent = 'Fetching...';
+  statusEl.textContent = 'Fetching live PokemonPriceTracker prices through the Worker...';
+  propEl.innerHTML = '';
+  if(applyBtn) applyBtn.style.display = 'none';
+  const limit = Math.max(1, Math.min(25, Number(document.getElementById('pso-limit')?.value || 5)));
+  try {
+    _priceSyncProposal = await buildLivePokemonPriceSyncProposal({ limit });
+    const s = _priceSyncLastSummary || { checked:0, changed:0, unchanged:0, noMatch:0, errors:0 };
+    if(!_priceSyncProposal.length) {
+      statusEl.textContent = 'Live sync checked ' + s.checked + ' Pokemon item' + (s.checked===1?'':'s') + '. ' + s.changed + ' changed, ' + s.unchanged + ' unchanged, ' + s.noMatch + ' no exact match, ' + s.errors + ' errors.';
+      propEl.innerHTML = '<div style="color:var(--dim);font-size:12px;padding:12px 0">No live price updates to apply.</div>';
+    } else {
+      statusEl.textContent = 'Live sync checked ' + s.checked + ' Pokemon item' + (s.checked===1?'':'s') + '. ' + s.changed + ' changed, ' + s.unchanged + ' unchanged, ' + s.noMatch + ' no exact match, ' + s.errors + ' errors. Review below, then click UPDATE SELECTED.';
+      if(applyBtn) applyBtn.style.display = '';
+      renderPriceSyncProposal();
+      updatePriceAlertBanner();
+    }
+  } catch(e) {
+    statusEl.textContent = 'Live sync failed: ' + (e.message || e);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'FETCH LIVE POKEMON';
   }
 }
 
@@ -9145,12 +9404,12 @@ function renderPriceSyncProposal(){
       <input type="checkbox" data-pso-idx="${idx}" ${p.selected?'checked':''} onchange="togglePriceSyncItem(${idx},this.checked)" style="width:16px;height:16px;flex-shrink:0">
       <div style="flex:1;min-width:0">
         <div style="font-size:12px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(p.item.name||'Item')}</div>
-        <div style="font-size:10px;color:var(--dim)">${escHtml(p.item.set||'')}${p.item.card_number?' · #'+escHtml(p.item.card_number):''} · cached ${escHtml(p.cacheAge)}</div>
+        <div style="font-size:10px;color:var(--dim)">${escHtml(p.item.set||'')}${(p.item.card_number || p.item.cardNumber)?' · #'+escHtml(p.item.card_number || p.item.cardNumber):''} · ${escHtml(p.mode === 'live' ? 'live ' + (p.matchStatus || 'match') : 'cached')} · ${escHtml(p.source || '')}${p.lastUpdated?' · '+escHtml(String(p.lastUpdated).slice(0,10)):''}</div>
       </div>
       <div style="text-align:right;white-space:nowrap">
         ${bigBadge}
-        <div style="font-size:13px;font-weight:700;color:${col}">${arrow} $${p.newPrice}</div>
-        <div style="font-size:10px;color:var(--dim)">was $${p.oldPrice}</div>
+        <div style="font-size:13px;font-weight:700;color:${col}">${arrow} $${Number(p.newPrice||0).toFixed(2)}</div>
+        <div style="font-size:10px;color:var(--dim)">was $${Number(p.oldPrice||0).toFixed(2)}</div>
       </div>
     </div>`;
   }).join('');
@@ -9179,10 +9438,29 @@ async function applySelectedPriceSyncUpdates(){
   for(const p of selected){
     try{
       const fullItem = (all||[]).find(i => i.id === p.item.id) || p.item;
+      const now = new Date().toISOString();
+      const source = p.mode === 'live' ? 'PokemonPriceTracker' : (p.source || 'PokemonPriceTracker cache');
+      const lastUpdated = p.lastUpdated || now;
       await saveInventoryEdit(fullItem, {
         market:      p.newPrice,
-        salePrice:   p.newPrice,
-        priceSource: 'PPT cache sync ' + new Date().toLocaleDateString(),
+        price:       p.newPrice,
+        displayPrice:p.newPrice,
+        marketPrice: p.newPrice,
+        rawMarketPrice:p.rawNewPrice ?? p.newPrice,
+        lastMarketPrice:p.oldPrice,
+        previousMarketPrice:p.oldPrice,
+        marketPriceSource:source,
+        priceSource: source + (p.mode === 'live' ? ' live sync' : ' cached sync'),
+        lastPriceUpdate:lastUpdated,
+        priceUpdatedAt:now,
+        stalePrice:false,
+        livePriceStatus:p.mode === 'live' ? 'live' : 'cached',
+        pokemonPriceTrackerLastUpdated:lastUpdated,
+        tcgPlayerId:p.tcgPlayerId || inventoryTcgPlayerId(fullItem),
+        tcgPlayerUrl:p.tcgPlayerUrl || fullItem.tcgPlayerUrl || '',
+        pokemonPriceTrackerPrices:p.prices || fullItem.pokemonPriceTrackerPrices || null,
+        pokemonPriceTrackerVariants:p.variants || fullItem.pokemonPriceTrackerVariants || null,
+        priceSyncRequestPath:p.requestPath || '',
       });
       ok++;
     } catch(e){ console.warn('[syncPrices] Apply failed:', p.item.name, e); }
@@ -9689,7 +9967,7 @@ function mapBuiltInItem(row){
   const isSold = row.status === 'sold' || d.status === 'sold';
   const isArchived = row.status === 'archived' || d.status === 'archived' || !!d.archivedAt;
   const id = row.id || d.id || ('builtin_' + Date.now());
-  const market = Number(d.market ?? d.price ?? d.askingPrice ?? d.salePrice ?? 0);
+  const market = Number(d.market ?? d.marketPrice ?? d.rawMarketPrice ?? d.price ?? d.askingPrice ?? d.salePrice ?? 0);
   const cost = Number(d.cost ?? d.costBasis ?? d.cost_basis ?? 0);
   return {
     id,
@@ -9718,6 +9996,19 @@ function mapBuiltInItem(row){
     sourceProductId:d.sourceProductId || '',
     sourceVariantId:d.sourceVariantId || '',
     tcgplayerSkuId:d.tcgplayerSkuId || '',
+    tcgPlayerId:d.tcgPlayerId || d.tcgplayerId || d.tcgplayerProductId || d.externalRefs?.tcgPlayerId || '',
+    tcgPlayerUrl:d.tcgPlayerUrl || '',
+    marketPrice:d.marketPrice ?? d.market ?? '',
+    rawMarketPrice:d.rawMarketPrice ?? d.marketPrice ?? d.market ?? '',
+    lastMarketPrice:d.lastMarketPrice ?? d.previousMarketPrice ?? '',
+    marketPriceSource:d.marketPriceSource || '',
+    lastPriceUpdate:d.lastPriceUpdate || '',
+    priceUpdatedAt:d.priceUpdatedAt || '',
+    stalePrice:!!d.stalePrice,
+    livePriceStatus:d.livePriceStatus || '',
+    pokemonPriceTrackerLastUpdated:d.pokemonPriceTrackerLastUpdated || '',
+    pokemonPriceTrackerPrices:d.pokemonPriceTrackerPrices || null,
+    pokemonPriceTrackerVariants:d.pokemonPriceTrackerVariants || null,
     inventorySku:d.inventorySku || d.sku || '',
     externalRefs:d.externalRefs || null,
     priceLabel:d.priceLabel || '',
@@ -9736,6 +10027,7 @@ function mapBuiltInItem(row){
     team:d.team || '',
     sport:d.sport || '',
     manufacturer:d.manufacturer || d.brand || '',
+    card_number:d.card_number || d.cardNumber || d.collectorNumber || '',
     product_line:d.product_line || d.productLine || '',
     configuration:d.configuration || '',
     upc:d.upc || '',
@@ -9759,7 +10051,24 @@ function builtInDataFromItem(item, updates={}){
     qty:Number(updates.qty ?? item.qty ?? 1),
     cost:Number(updates.cost ?? item.cost ?? 0),
     market:Number(updates.market ?? item.market ?? 0),
-    salePrice:Number(updates.salePrice ?? item.salePrice ?? updates.market ?? item.market ?? 0),
+    salePrice:Number(updates.salePrice ?? item.salePrice ?? item.raw?.salePrice ?? item.market ?? updates.market ?? 0),
+    price:Number(updates.price ?? updates.market ?? item.price ?? item.market ?? 0),
+    displayPrice:Number(updates.displayPrice ?? updates.price ?? updates.market ?? item.displayPrice ?? item.market ?? 0),
+    marketPrice:Number(updates.marketPrice ?? updates.market ?? item.marketPrice ?? item.market ?? 0),
+    rawMarketPrice:Number(updates.rawMarketPrice ?? updates.marketPrice ?? updates.market ?? item.rawMarketPrice ?? item.market ?? 0),
+    lastMarketPrice:updates.lastMarketPrice ?? item.lastMarketPrice ?? '',
+    previousMarketPrice:updates.previousMarketPrice ?? item.previousMarketPrice ?? '',
+    marketPriceSource:updates.marketPriceSource ?? item.marketPriceSource ?? '',
+    lastPriceUpdate:updates.lastPriceUpdate ?? item.lastPriceUpdate ?? '',
+    priceUpdatedAt:updates.priceUpdatedAt ?? item.priceUpdatedAt ?? '',
+    stalePrice:!!(updates.stalePrice ?? item.stalePrice),
+    livePriceStatus:updates.livePriceStatus ?? item.livePriceStatus ?? '',
+    pokemonPriceTrackerLastUpdated:updates.pokemonPriceTrackerLastUpdated ?? item.pokemonPriceTrackerLastUpdated ?? '',
+    pokemonPriceTrackerPrices:updates.pokemonPriceTrackerPrices ?? item.pokemonPriceTrackerPrices ?? null,
+    pokemonPriceTrackerVariants:updates.pokemonPriceTrackerVariants ?? item.pokemonPriceTrackerVariants ?? null,
+    priceSyncRequestPath:updates.priceSyncRequestPath ?? item.priceSyncRequestPath ?? '',
+    tcgPlayerId:updates.tcgPlayerId ?? item.tcgPlayerId ?? item.tcgplayerId ?? '',
+    tcgPlayerUrl:updates.tcgPlayerUrl ?? item.tcgPlayerUrl ?? '',
     location:updates.location ?? item.location ?? '',
     status:updates.status ?? item.status ?? 'in_stock',
     lifecycle:updates.lifecycle ?? item.lifecycle ?? updates.status ?? item.status ?? 'in_stock',
@@ -10465,7 +10774,9 @@ function openSellModal(id){
   sellItemId = id;
   document.getElementById('sell-item-name').textContent = item.name;
   document.getElementById('sell-item-meta').textContent = [item.set, item.year, item.category].filter(Boolean).join(' · ');
-  document.getElementById('sell-price').value = item.market > 0 ? item.market.toFixed(2) : '';
+  const marketPrice = inventoryReferenceMarketPrice(item);
+  const suggested = marketPrice > 0 ? suggestedCartSalePrice(applyShowPriceRule(marketPrice)) : Number(item.salePrice || 0);
+  document.getElementById('sell-price').value = suggested > 0 ? suggested.toFixed(2) : '';
   document.getElementById('sell-profit-preview').textContent = '';
   // Reset payment buttons
   document.querySelectorAll('.sell-pay-btn').forEach(b => b.classList.remove('active'));
@@ -10677,7 +10988,8 @@ function dashAddToCart(id){
   // line shape and there is only one cart write path. Do not invent a
   // second cart — this preserves the unitPrice/applyShowPriceRule and
   // legacy field behavior the rest of the app expects.
-  const unitPrice = applyShowPriceRule(item.market || item.salePrice || 0);
+  const rawMarketPrice = inventoryReferenceMarketPrice(item);
+  const unitPrice = rawMarketPrice > 0 ? suggestedCartSalePrice(applyShowPriceRule(rawMarketPrice)) : Number(item.salePrice || 0);
   addSaleItemToCart(item, {
     sourceType: isSealedProduct(item) ? 'sealed' : 'inventory',
     inventoryId: item.id, name: item.name, category: item.category,
@@ -10702,11 +11014,14 @@ function addScanToCart(scan){
     const saved = localStorage.getItem('pos_cart_v2');
     if(saved) cartData = JSON.parse(saved);
   } catch(e) {}
+  const rawMarketPrice = getScanMarket(scan);
+  const cartPrice = rawMarketPrice > 0 ? suggestedCartSalePrice(rawMarketPrice) : 0;
   cartData.items.push({
     id: 'ci_phone_' + Date.now(),
     name: scan.name || 'Phone scan',
     sub: [scan.year, scan.set, scan.variant, scan.card_number ? '#'+scan.card_number : null, scan.issue ? '#'+scan.issue : null].filter(Boolean).join(' · '),
-    price: Number(scan.price || scan.market || scan.market_nm_estimate || scan.tcg_mid || scan.ebay_avg || 0),
+    price: cartPrice,
+    rawMarketPrice,
     cost: 0,
     img: getScanImageUrl(scan),
     shopId: null,
@@ -10781,7 +11096,9 @@ function addSaleItemToCart(item = {}, options = {}){
 
   const cartLineId = 'ci_' + sourceType + '_' + Date.now() + '_' + Math.random().toString(36).slice(2,6);
   const quantity = Math.max(1, Number(options.quantity ?? item.quantity ?? item.qty ?? 1));
-  const unitPrice = Number(options.unitPrice ?? item.unitPrice ?? item.price ?? item.market ?? item.salePrice ?? 0);
+  const hasExplicitUnitPrice = Object.prototype.hasOwnProperty.call(options, 'unitPrice');
+  const rawUnitPrice = Number(options.unitPrice ?? item.unitPrice ?? item.price ?? item.market ?? item.salePrice ?? 0);
+  const unitPrice = hasExplicitUnitPrice ? rawUnitPrice : suggestedCartSalePrice(rawUnitPrice);
   const costBasis = Number(options.costBasis ?? item.costBasis ?? item.cost ?? 0);
   const inventoryId = options.inventoryId ?? item.inventoryId ?? (sourceType === 'one_off' ? null : (item.id ?? null));
   const name = options.name ?? item.name ?? 'Item';
@@ -10813,6 +11130,8 @@ function addSaleItemToCart(item = {}, options = {}){
     id: cartLineId,
     sub: options.sub ?? [item.set, item.year, category].filter(Boolean).join(' · ') ?? '',
     price: unitPrice,
+    rawMarketPrice: options.rawMarketPrice ?? item.rawMarketPrice ?? item.marketPrice ?? item.market ?? null,
+    suggestedFromMarket: options.suggestedFromMarket ?? item.rawMarketPrice ?? item.marketPrice ?? item.market ?? null,
     cost: costBasis,
     img: imageUrl,
     qty: quantity,
@@ -19667,8 +19986,9 @@ function addQuickLookupToInventory(idx){
 
 function addSelectedQuickLookupToSaleCart(idx){
   const item = selectedQuickLookupItem(idx);
-  const price = Number(item.market || 0);
-  if(!price && !confirm('This research result has no trusted sale price. Add to sale cart at $0 for manual price override?')) {
+  const rawMarketPrice = Number(item.market || 0);
+  const price = rawMarketPrice > 0 ? suggestedCartSalePrice(rawMarketPrice) : 0;
+  if(!rawMarketPrice && !confirm('This research result has no trusted sale price. Add to sale cart at $0 for manual price override?')) {
     toast_dash('Sale cart needs a price first');
     return;
   }
@@ -19679,6 +19999,8 @@ function addSelectedQuickLookupToSaleCart(idx){
     name:item.name || 'Research item',
     sub:[item.year, item.setName || item.set, item.card_number ? '#'+item.card_number : '', item.condition, item.printing || item.selectedFinish].filter(Boolean).join(' / '),
     price,
+    rawMarketPrice,
+    suggestedFromMarket:rawMarketPrice,
     cost:Number(item.cost || 0),
     img:item.imageUrl || item.thumbnail || '',
     shopId:item.id && item.source === 'inventory' ? item.id : null,
@@ -19702,7 +20024,7 @@ function addSelectedQuickLookupToSaleCart(idx){
     externalRefs:item.externalRefs || null,
   });
   saveCartDataLocal(cartData, 'research cart add');
-  logOpsEvent('cart_item_added', 'Added research item to sale cart: ' + (item.name || 'item'), { price, source:item.priceSource || item.pricingSource || '' });
+  logOpsEvent('cart_item_added', 'Added research item to sale cart: ' + (item.name || 'item'), { price, rawMarketPrice, source:item.priceSource || item.pricingSource || '' });
   toast_dash('Added to sale cart: ' + (item.name || 'item'));
 }
 
