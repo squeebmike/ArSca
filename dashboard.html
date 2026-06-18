@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.06.17.12-3d-coverflow">
+<meta name="version" content="2026.06.17.13-deck-swiper">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -841,7 +841,8 @@ body.customer-display-mode #customer-display-exit{display:block;}
 /* ── POKÉMON SET BROWSER (Pass B) ───────────────────────────── */
 .ppsb-modal{position:fixed;inset:0;z-index:4000;background:rgba(0,0,0,.88);display:none;align-items:flex-start;justify-content:center;overflow:hidden;}
 .ppsb-modal.on{display:flex;}
-.ppsb-inner{background:var(--surf);border:1px solid var(--border);width:100%;max-width:1100px;height:100vh;max-height:100vh;display:flex;flex-direction:column;overflow:hidden;}
+.ppsb-inner{background:var(--surf);border:1px solid var(--border);width:100%;max-width:1100px;height:100dvh;max-height:100dvh;display:flex;flex-direction:column;overflow:hidden;}
+#ppsb-content{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden auto;}
 @media(min-width:641px){
   .ppsb-inner{border-radius:12px;margin:16px;max-height:calc(100vh - 32px);height:auto;}
 }
@@ -870,32 +871,32 @@ body.customer-display-mode #customer-display-exit{display:block;}
 @media(max-width:640px){
   .ppsb-cards-area:not(.ppsb-swipe-mode){grid-template-columns:1fr;}
 }
-/* ── SWIPE MODE ── */
-.ppsb-swipe-mode{display:flex!important;flex-direction:column;overflow:hidden;padding:0!important;}
-.ppsb-filters-compact{padding:6px 10px!important;gap:6px!important;}
-.ppsb-swipe-container{position:relative;display:flex;align-items:center;flex:1;min-height:0;overflow:hidden;background:var(--bg);}
-.ppsb-swipe-track{position:relative;width:100%;height:100%;}
-.ppsb-swipe-slide{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;will-change:transform;backface-visibility:hidden;}
-.ppsb-swipe-img{width:auto;max-width:78%;height:100%;max-height:calc(100dvh - 360px);object-fit:contain;border-radius:12px;box-shadow:0 14px 48px rgba(0,0,0,.75);user-select:none;-webkit-user-drag:none;pointer-events:none;}
-.ppsb-owned .ppsb-swipe-img{box-shadow:0 0 0 4px rgba(0,255,179,.65),0 14px 48px rgba(0,0,0,.75);}
-.ppsb-swipe-arrow{position:absolute;top:50%;transform:translateY(-50%);z-index:200;background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.18);color:#fff;font-size:30px;line-height:1;width:38px;height:58px;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s;}
-.ppsb-swipe-arrow:hover{background:rgba(0,255,179,.28);}
-.ppsb-swipe-prev{left:6px;}
-.ppsb-swipe-next{right:6px;}
-.ppsb-dots{display:flex;gap:5px;justify-content:center;padding:6px 0;flex-shrink:0;flex-wrap:wrap;max-height:28px;overflow:hidden;}
-.ppsb-dot{width:6px;height:6px;border-radius:50%;background:var(--border);cursor:pointer;transition:background .15s,transform .15s;flex-shrink:0;}
-.ppsb-dot.on{background:var(--g);transform:scale(1.5);}
-.ppsb-swipe-info{padding:10px 16px 14px;border-top:1px solid var(--border);background:var(--surf);flex-shrink:0;text-align:center;}
-.ppsb-swipe-name{font-size:15px;font-weight:700;color:var(--text);margin-bottom:3px;}
-.ppsb-swipe-btns{display:flex;gap:8px;justify-content:center;margin-top:8px;flex-wrap:wrap;}
-.ppsb-swipe-btns .hbtn{min-height:40px;font-size:11px;padding:6px 18px;}
+/* ── SHARED DECK SWIPER (ppsb + mtsb) ── */
+.ppsb-swipe-mode,.mtsb-swipe-mode{display:flex!important;flex-direction:column;overflow:hidden;padding:0!important;flex:1;min-height:0;}
+.ppsb-filters-compact,.mtsb-filters-compact{padding:6px 10px!important;gap:6px!important;}
+#ppsb-content .ppsb-cards-area,.ppsb-cards-area{flex:1;min-height:0;}
+#mtsb-content .mtsb-cards-area,.mtsb-cards-area{flex:1;min-height:0;}
+.ppsb-swipe-mode .ppsb-cards-area,.mtsb-swipe-mode .mtsb-cards-area{overflow:hidden;}
+.deck-swipe-stage{position:relative;flex:1;min-height:0;overflow:hidden;background:var(--bg);}
+.ppsb-swipe-slide,.mtsb-swipe-slide{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:14px 48px;box-sizing:border-box;will-change:transform;transform-origin:center bottom;}
+.deck-swipe-img{width:auto;max-width:88%;height:100%;max-height:calc(100dvh - 340px);object-fit:contain;border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,.8);user-select:none;-webkit-user-drag:none;pointer-events:none;transition:box-shadow .2s;}
+.ppsb-owned .deck-swipe-img,.mtsb-owned .deck-swipe-img{box-shadow:0 0 0 4px rgba(0,255,179,.7),0 20px 60px rgba(0,0,0,.8);}
+.deck-swipe-arrows{position:absolute;inset:0;display:flex;align-items:center;justify-content:space-between;pointer-events:none;z-index:300;padding:0 4px;}
+.deck-swipe-arrow{pointer-events:all;background:rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.15);color:#fff;font-size:28px;width:34px;height:52px;border-radius:7px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s;flex-shrink:0;}
+.deck-swipe-arrow:hover{background:rgba(0,255,179,.25);}
+.deck-dots{display:flex;gap:5px;justify-content:center;padding:5px 0;flex-shrink:0;flex-wrap:wrap;max-height:26px;overflow:hidden;}
+.deck-dot{width:6px;height:6px;border-radius:50%;background:var(--border);cursor:pointer;transition:background .15s,transform .15s;flex-shrink:0;}
+.deck-dot.on{background:var(--g);transform:scale(1.5);}
+.ppsb-swipe-info,.mtsb-swipe-info{padding:10px 16px 12px;border-top:1px solid var(--border);background:var(--surf);flex-shrink:0;text-align:center;}
+.deck-swipe-name{font-size:14px;font-weight:700;color:var(--text);margin-bottom:3px;}
+.deck-swipe-btns{display:flex;gap:8px;justify-content:center;margin-top:8px;flex-wrap:wrap;}
+.deck-swipe-btns .hbtn{min-height:38px;font-size:11px;padding:5px 16px;}
 @media(max-width:640px){
-  .ppsb-swipe-img{max-height:calc(100dvh - 330px);max-width:84%;}
-  .ppsb-swipe-arrow{width:32px;height:46px;font-size:22px;}
-  .ppsb-swipe-info{padding:8px 10px 12px;}
-  .ppsb-swipe-name{font-size:13px;}
-  .ppsb-toolbar{padding:8px 10px;}
-  .ppsb-sort-btn{min-height:28px!important;padding:2px 6px!important;font-size:8px!important;}
+  .deck-swipe-img{max-height:calc(100dvh - 310px);}
+  .ppsb-swipe-slide,.mtsb-swipe-slide{padding:10px 38px;}
+  .deck-swipe-arrow{width:28px;height:44px;font-size:20px;}
+  .ppsb-swipe-info,.mtsb-swipe-info{padding:7px 10px 10px;}
+  .deck-swipe-name{font-size:12px;}
 }
 .ppsb-card{display:flex;gap:10px;background:var(--surf2);border:1px solid var(--border);border-radius:10px;padding:10px;transition:border-color .15s;}
 .ppsb-card.ppsb-owned{border-color:rgba(0,255,179,.3);background:rgba(0,255,179,.03);}
@@ -936,7 +937,8 @@ body.customer-display-mode #customer-display-exit{display:block;}
 /* ── MTG SET BROWSER ─────────────────────────────────────────────── */
 .mtsb-modal{position:fixed;inset:0;z-index:4000;background:rgba(0,0,0,.88);display:none;align-items:flex-start;justify-content:center;overflow:hidden;}
 .mtsb-modal.on{display:flex;}
-.mtsb-inner{background:var(--surf);border:1px solid var(--border);width:100%;max-width:1100px;height:100vh;max-height:100vh;display:flex;flex-direction:column;overflow:hidden;}
+.mtsb-inner{background:var(--surf);border:1px solid var(--border);width:100%;max-width:1100px;height:100dvh;max-height:100dvh;display:flex;flex-direction:column;overflow:hidden;}
+#mtsb-content{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden auto;}
 @media(min-width:641px){
   .mtsb-inner{border-radius:12px;margin:16px;max-height:calc(100vh - 32px);height:auto;}
 }
@@ -1158,7 +1160,7 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.17.12-3d-coverflow</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.17.13-deck-swiper</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
@@ -1185,7 +1187,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip dev-only" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.17.12-3d-coverflow</div>
+<div class="dsb-chip dev-only" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.17.13-deck-swiper</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -2290,7 +2292,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.06.17.12-3d-coverflow';
+const APP_VERSION = '2026.06.17.13-deck-swiper';
 const branchName = 'pokemon-v2-core';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
 const POKEMON_EXACT_CACHE_VERSION = 'pokemon-exact-v3-price-matrix';
@@ -22070,8 +22072,8 @@ const _sbState = {
   sortField: 'number', sortDir: 1,
   filters: { name:'', artist:'', rarity:'', minPrice:'', maxPrice:'', owned:false, missing:false },
   loading: false, view: 'cards',
-  cardSize: 280,
-  tableImgSize: 54,
+  cardSize: 280, tableImgSize: 54,
+  swipeIdx: 0, isDragging: false, dragX: 0,
 };
 
 function sbParseCollectorNum(n){
@@ -22385,163 +22387,178 @@ function sbSetTableImgSize(val){
 // Dynamically load SwiperJS once, then call back
 // ── CUSTOM SWIPER (pure JS/CSS — no external deps) ─────────────────
 // ── CUSTOM 3D COVERFLOW SWIPER ────────────────────────────────────
-let _sbSwipeIdx = 0;
-let _sbSwipeProg = 0; // fractional progress for real-time drag
+// ══ SHARED DECK SWIPER (used by Pokemon ppsb + MTG mtsb) ══════════
+// Cards stack like a physical deck. Current card flies off on swipe.
+// ns = 'ppsb' or 'mtsb'   state = _sbState or _mtgsbState
 
-function sbUpdateTransforms(prog){
-  const slides = document.querySelectorAll('.ppsb-swipe-slide');
+function _deckTransforms(ns, state) {
+  const { swipeIdx:idx=0, isDragging=false, dragX=0 } = state;
+  const slides = [...document.querySelectorAll(`.${ns}-swipe-slide`)];
+  const W = document.getElementById(`${ns}-deck-stage`)?.offsetWidth || 360;
+  const dragProg = Math.min(1, Math.abs(dragX) / (W * 0.55));
+
   slides.forEach((slide, i) => {
-    const offset = i - prog;
-    const abs = Math.abs(offset);
-    if(abs > 3){ slide.style.opacity='0'; slide.style.pointerEvents='none'; return; }
-    const sign = offset < 0 ? -1 : offset > 0 ? 1 : 0;
-    const scale   = Math.max(0.6, 1 - abs * 0.16);
-    const rotY    = Math.max(-45, Math.min(45, offset * -28)); // deg
-    const tx      = offset * 72;   // % translateX
-    const tz      = -abs * 90;     // px depth
-    const opacity = Math.max(0, 1 - abs * 0.48);
-    const zIdx    = 100 - Math.round(abs * 10);
-    slide.style.zIndex  = String(zIdx);
-    slide.style.opacity = String(opacity);
-    slide.style.pointerEvents = abs < 0.6 ? 'auto' : 'none';
-    slide.style.transform = `perspective(1100px) translateX(${tx}%) rotateY(${rotY}deg) translateZ(${tz}px) scale(${scale})`;
+    const offset = i - idx;
+
+    // Hidden past cards
+    if (offset < -0.5) {
+      slide.style.cssText = 'opacity:0;z-index:0;transform:translateX(-200%) rotate(-30deg);transition:none;';
+      return;
+    }
+
+    // Current card dragging
+    if (offset <= 0.5 && isDragging) {
+      const rot = dragX * 0.04;
+      const ty  = Math.abs(dragX) * 0.06;
+      const op  = Math.max(0.15, 1 - Math.abs(dragX) / (W * 0.9));
+      slide.style.cssText = `z-index:100;opacity:${op.toFixed(2)};transition:none;transform:translateX(${dragX.toFixed(1)}px) translateY(-${ty.toFixed(1)}px) rotate(${rot.toFixed(2)}deg);`;
+      return;
+    }
+
+    // Cards in deck — rise toward front as current card drags away
+    const eff   = Math.max(0, offset - (isDragging ? dragProg : 0));
+    const scale = Math.max(0.68, 1 - eff * 0.09);
+    const ty    = eff * 24;          // px down into deck
+    const rot   = -eff * 2.5;        // slight tilt
+    const op    = offset > 3 ? 0 : Math.max(0, 1 - Math.max(0, eff - 0.4) * 0.5);
+    const zi    = Math.max(0, 100 - Math.round(offset) * 10);
+
+    slide.style.cssText = `z-index:${zi};opacity:${op.toFixed(2)};`
+      + (isDragging ? 'transition:none;' : 'transition:transform .35s cubic-bezier(.25,.46,.45,.94),opacity .35s ease;')
+      + `transform:scale(${scale.toFixed(3)}) translateY(${ty.toFixed(1)}px) rotate(${rot.toFixed(2)}deg);`;
   });
 }
 
-function sbSwipeTo(idx, transition){
-  const cards = _sbState.filteredCards;
+function deckSwipeTo(ns, state, infoFn, idx, anim) {
+  const cards = state.filteredCards || [];
   idx = Math.max(0, Math.min(cards.length - 1, idx));
-  _sbSwipeIdx = idx;
-  _sbSwipeProg = idx;
-  // Re-enable transitions
-  document.querySelectorAll('.ppsb-swipe-slide').forEach(s => {
-    s.style.transition = transition === false
-      ? 'none'
-      : 'transform 0.38s cubic-bezier(0.25,0.46,0.45,0.94), opacity 0.38s ease';
-  });
-  sbUpdateTransforms(idx);
+  state.swipeIdx = idx; state.isDragging = false; state.dragX = 0;
+  _deckTransforms(ns, state);
   // Dots / counter
-  document.querySelectorAll('.ppsb-dot').forEach((d,i) => d.classList.toggle('on', i===idx));
-  const ctr = document.getElementById('ppsb-swipe-counter');
-  if(ctr) ctr.textContent = `${idx+1} / ${cards.length}`;
+  document.querySelectorAll(`.${ns}-dot`).forEach((d,i) => d.classList.toggle('on', i===idx));
+  const ctr = document.getElementById(`${ns}-swipe-ctr`);
+  if (ctr) ctr.textContent = `${idx+1} / ${cards.length}`;
   // Info panel
-  sbUpdateSwipeInfo(idx);
+  const info = document.getElementById(`${ns}-swipe-info`);
+  if (info && infoFn) info.innerHTML = infoFn(idx);
 }
 
-function sbUpdateSwipeInfo(idx){
-  const cards = _sbState.filteredCards;
-  const card = cards[idx];
-  if(!card) return;
-  const market = Number(card.prices?.market||0);
-  const low    = Number(card.prices?.lowPrice||0);
-  const owned  = sbIsOwned(card);
-  const qty    = owned ? sbOwnedQty(card) : 0;
-  const info   = document.getElementById('ppsb-swipe-info');
-  if(!info) return;
-  info.innerHTML = `
-    <div class="ppsb-swipe-name">${escHtml(card.name||'?')} <span class="ppsb-card-num">#${escHtml(card.cardNumber||'?')}</span></div>
-    <div class="ppsb-card-meta" style="margin-bottom:4px">${escHtml(card.rarity||'')}${card.artist?' · '+escHtml(card.artist):''}</div>
-    <div class="ppsb-card-prices" style="justify-content:center;margin-bottom:8px">
-      <span class="ppsb-price" style="font-size:18px">${market?'$'+market.toFixed(2):'—'}</span>
-      ${low && low !== market ? `<span class="ppsb-price-low">Low $${low.toFixed(2)}</span>` : ''}
+function deckSwipeInit(ns, state, infoFn) {
+  const stage = document.getElementById(`${ns}-deck-stage`);
+  if (!stage || stage._deckOk) return;
+  stage._deckOk = true;
+
+  // ── touch ──
+  let tx0=0, ty0=0, drag=false, isH=false;
+  stage.addEventListener('touchstart', e=>{tx0=e.touches[0].clientX;ty0=e.touches[0].clientY;drag=true;isH=false;},{passive:true});
+  stage.addEventListener('touchmove', e=>{
+    if(!drag) return;
+    const dx=e.touches[0].clientX-tx0, dy=e.touches[0].clientY-ty0;
+    if(!isH){if(Math.abs(dx)>Math.abs(dy)&&Math.abs(dx)>8)isH=true;else if(Math.abs(dy)>12){drag=false;return;}}
+    if(!isH) return;
+    e.preventDefault();
+    state.isDragging=true; state.dragX=dx;
+    _deckTransforms(ns, state);
+  },{passive:false});
+  stage.addEventListener('touchend', e=>{
+    if(!drag) return; drag=false;
+    const dx = e.changedTouches[0].clientX - tx0;
+    _deckFlyOrSnap(ns, state, infoFn, dx, stage.offsetWidth);
+  },{passive:true});
+
+  // ── mouse ──
+  let mx0=0, mDn=false;
+  stage.addEventListener('mousedown',e=>{mDn=true;mx0=e.clientX;stage.style.cursor='grabbing';});
+  window.addEventListener('mouseup',e=>{
+    if(!mDn) return; mDn=false; stage.style.cursor='grab';
+    _deckFlyOrSnap(ns, state, infoFn, e.clientX-mx0, stage.offsetWidth);
+  });
+  window.addEventListener('mousemove',e=>{
+    if(!mDn) return;
+    state.isDragging=true; state.dragX=e.clientX-mx0;
+    _deckTransforms(ns, state);
+  });
+
+  // ── keyboard ──
+  const kh = e => {
+    if(!document.getElementById(`${ns}-deck-stage`)){document.removeEventListener('keydown',kh);return;}
+    if(e.key==='ArrowRight'||e.key==='ArrowDown'){e.preventDefault();deckSwipeTo(ns,state,infoFn,state.swipeIdx+1,true);}
+    if(e.key==='ArrowLeft'||e.key==='ArrowUp'){e.preventDefault();deckSwipeTo(ns,state,infoFn,state.swipeIdx-1,true);}
+  };
+  document.addEventListener('keydown', kh);
+
+  deckSwipeTo(ns, state, infoFn, 0, false);
+}
+
+function _deckFlyOrSnap(ns, state, infoFn, dx, W) {
+  const threshold = W * 0.28;
+  if (Math.abs(dx) > threshold) {
+    // Fly current card off then advance
+    const dir = dx < 0 ? -1 : 1;
+    const slides = document.querySelectorAll(`.${ns}-swipe-slide`);
+    const cur = slides[state.swipeIdx];
+    if (cur) {
+      cur.style.transition = 'transform .28s ease, opacity .28s ease';
+      cur.style.transform = `translateX(${dir * -140}%) rotate(${dir * -22}deg) scale(0.75)`;
+      cur.style.opacity = '0';
+      setTimeout(() => deckSwipeTo(ns, state, infoFn, state.swipeIdx + (dir < 0 ? 1 : -1), true), 80);
+      return;
+    }
+  }
+  deckSwipeTo(ns, state, infoFn, state.swipeIdx, true);
+}
+
+function _deckSlideHtml(ns, img, owned) {
+  return `<div class="${ns}-swipe-slide${owned?` ${ns}-owned`:''}">
+    ${img ? `<img src="${escHtml(img)}" class="deck-swipe-img" loading="lazy">` : '<div class="deck-swipe-img ppsb-no-img"></div>'}
+  </div>`;
+}
+
+function _deckDotsHtml(ns, count) {
+  if (count <= 40)
+    return `<div class="deck-dots">${Array.from({length:count},(_,i)=>`<span class="deck-dot${i===0?' on':''} ${ns}-dot" onclick="deckSwipeTo('${ns}',${ns==='ppsb'?'_sbState':'_mtgsbState'},${ns==='ppsb'?'sbSwipeInfoHtml':'mtgsbSwipeInfoHtml'},${i},true)"></span>`).join('')}</div>`;
+  return `<div class="deck-dots"><span id="${ns}-swipe-ctr" style="font-family:monospace;font-size:10px;color:var(--dim)">1 / ${count}</span></div>`;
+}
+
+// ── Pokemon swipe helpers ──
+function sbSwipeInfoHtml(idx) {
+  const card = _sbState.filteredCards[idx];
+  if (!card) return '';
+  const market = Number(card.prices?.market||0), low = Number(card.prices?.lowPrice||0);
+  const owned = sbIsOwned(card), qty = owned ? sbOwnedQty(card) : 0;
+  return `<div class="deck-swipe-name">${escHtml(card.name||'?')} <span class="ppsb-card-num">#${escHtml(card.cardNumber||'?')}</span></div>
+    <div class="ppsb-card-meta">${escHtml(card.rarity||'')}${card.artist?' · '+escHtml(card.artist):''}</div>
+    <div class="ppsb-card-prices" style="justify-content:center;margin:4px 0 6px">
+      <span class="ppsb-price">${market?'$'+market.toFixed(2):'—'}</span>
+      ${low&&low!==market?`<span class="ppsb-price-low">Low $${low.toFixed(2)}</span>`:''}
       ${owned?`<span class="ppsb-owned-badge">✓ OWNED${qty>1?' ×'+qty:''}</span>`:''}
     </div>
-    <div class="ppsb-swipe-btns">
+    <div class="deck-swipe-btns">
       <button class="hbtn" onclick="sbSelectCard(${idx})">SELECT</button>
       <button class="hbtn" onclick="sbOpenTcg(${idx})">TCG ↗</button>
       <button class="hbtn" onclick="sbAddToResearch(${idx},this)">+ ADD</button>
     </div>`;
 }
 
-function sbInitSwipe(){
-  const container = document.getElementById('ppsb-swipe-container');
-  if(!container || container._sbInited) return;
-  container._sbInited = true;
-  // ── Touch ──
-  let tx0=0, ty0=0, dragging=false, isH=false;
-  container.addEventListener('touchstart', e=>{
-    tx0=e.touches[0].clientX; ty0=e.touches[0].clientY; dragging=true; isH=false;
-  },{passive:true});
-  container.addEventListener('touchmove', e=>{
-    if(!dragging) return;
-    const dx=e.touches[0].clientX-tx0, dy=e.touches[0].clientY-ty0;
-    if(!isH){ if(Math.abs(dx)>Math.abs(dy)&&Math.abs(dx)>8) isH=true; else if(Math.abs(dy)>10){ dragging=false; return; } }
-    if(!isH) return;
-    e.preventDefault();
-    // Kill transitions for real-time feedback
-    document.querySelectorAll('.ppsb-swipe-slide').forEach(s=>s.style.transition='none');
-    const prog = _sbSwipeIdx - dx / (container.offsetWidth * 0.65);
-    _sbSwipeProg = Math.max(0, Math.min(_sbState.filteredCards.length-1, prog));
-    sbUpdateTransforms(_sbSwipeProg);
-  },{passive:false});
-  container.addEventListener('touchend', e=>{
-    if(!dragging) return; dragging=false;
-    const diff = tx0 - e.changedTouches[0].clientX;
-    const newIdx = Math.abs(diff)>45 ? _sbSwipeIdx+(diff>0?1:-1) : _sbSwipeIdx;
-    sbSwipeTo(newIdx, true);
-  },{passive:true});
-  // ── Mouse drag ──
-  let mx0=0, mDown=false;
-  container.addEventListener('mousedown', e=>{ mDown=true; mx0=e.clientX; container.style.cursor='grabbing'; });
-  window.addEventListener('mouseup', e=>{
-    if(!mDown) return; mDown=false; container.style.cursor='grab';
-    const diff=mx0-e.clientX;
-    if(Math.abs(diff)>45) sbSwipeTo(_sbSwipeIdx+(diff>0?1:-1), true);
-    else sbSwipeTo(_sbSwipeIdx, true);
-  });
-  window.addEventListener('mousemove', e=>{
-    if(!mDown) return;
-    document.querySelectorAll('.ppsb-swipe-slide').forEach(s=>s.style.transition='none');
-    const prog = _sbSwipeIdx - (mx0-e.clientX)/(container.offsetWidth*0.65);
-    _sbSwipeProg = Math.max(0, Math.min(_sbState.filteredCards.length-1, prog));
-    sbUpdateTransforms(_sbSwipeProg);
-  });
-  // ── Keyboard ──
-  const kh = e=>{
-    if(!document.getElementById('ppsb-swipe-container')){ document.removeEventListener('keydown',kh); return; }
-    if(e.key==='ArrowRight'||e.key==='ArrowDown'){ e.preventDefault(); sbSwipeTo(_sbSwipeIdx+1,true); }
-    if(e.key==='ArrowLeft'||e.key==='ArrowUp'){ e.preventDefault(); sbSwipeTo(_sbSwipeIdx-1,true); }
-  };
-  document.addEventListener('keydown', kh);
-  sbSwipeTo(0, false);
-}
-
-function sbRenderSwipeView(cards){
-  if(!cards.length) return '<div class="ppsb-empty">No cards match filters.</div>';
-  _sbSwipeIdx = 0; _sbSwipeProg = 0;
-  const slides = cards.map((c,i)=>{
-    const img = c.imageCdnUrl400||c.imageCdnUrl200||c.imageCdnUrl||'';
-    const owned = sbIsOwned(c);
-    return `<div class="ppsb-swipe-slide${owned?' ppsb-owned':''}" style="opacity:0">
-      ${img?`<img src="${escHtml(img)}" class="ppsb-swipe-img" alt="${escHtml(c.name||'')}" loading="lazy">`:'<div class="ppsb-swipe-img ppsb-no-img"></div>'}
-    </div>`;
-  }).join('');
-  const dots = cards.length <= 40
-    ? `<div class="ppsb-dots">${cards.map((_,i)=>`<span class="ppsb-dot${i===0?' on':''}" onclick="sbSwipeTo(${i},true)"></span>`).join('')}</div>`
-    : `<div class="ppsb-dots"><span id="ppsb-swipe-counter" style="font-family:monospace;font-size:11px;color:var(--dim)">1 / ${cards.length}</span></div>`;
-  const f=cards[0], fm=Number(f?.prices?.market||0), fl=Number(f?.prices?.lowPrice||0), fo=f?sbIsOwned(f):false, fq=fo?sbOwnedQty(f):0;
+function sbRenderSwipeView(cards) {
+  if (!cards.length) return '<div class="ppsb-empty">No cards match filters.</div>';
+  _sbState.swipeIdx = 0; _sbState.isDragging = false; _sbState.dragX = 0;
+  const slides = cards.map(c => _deckSlideHtml('ppsb', c.imageCdnUrl400||c.imageCdnUrl200||c.imageCdnUrl||'', sbIsOwned(c))).join('');
+  const dots = _deckDotsHtml('ppsb', cards.length);
+  const firstInfo = sbSwipeInfoHtml(0);
   return `
-    <div class="ppsb-swipe-container" id="ppsb-swipe-container" style="cursor:grab">
-      <button class="ppsb-swipe-arrow ppsb-swipe-prev" onclick="sbSwipeTo(_sbSwipeIdx-1,true)">&#8249;</button>
-      <div class="ppsb-swipe-track" id="ppsb-swipe-track">${slides}</div>
-      <button class="ppsb-swipe-arrow ppsb-swipe-next" onclick="sbSwipeTo(_sbSwipeIdx+1,true)">&#8250;</button>
+    <div class="deck-swipe-stage" id="ppsb-deck-stage" style="cursor:grab">
+      ${slides}
+      <div class="deck-swipe-arrows">
+        <button class="deck-swipe-arrow" onclick="deckSwipeTo('ppsb',_sbState,sbSwipeInfoHtml,_sbState.swipeIdx-1,true)">&#8249;</button>
+        <button class="deck-swipe-arrow" onclick="deckSwipeTo('ppsb',_sbState,sbSwipeInfoHtml,_sbState.swipeIdx+1,true)">&#8250;</button>
+      </div>
     </div>
     ${dots}
-    <div id="ppsb-swipe-info" class="ppsb-swipe-info">
-      <div class="ppsb-swipe-name">${escHtml(f?.name||'?')} <span class="ppsb-card-num">#${escHtml(f?.cardNumber||'?')}</span></div>
-      <div class="ppsb-card-meta" style="margin-bottom:4px">${escHtml(f?.rarity||'')}${f?.artist?' · '+escHtml(f.artist):''}</div>
-      <div class="ppsb-card-prices" style="justify-content:center;margin-bottom:8px">
-        <span class="ppsb-price" style="font-size:18px">${fm?'$'+fm.toFixed(2):'—'}</span>
-        ${fl&&fl!==fm?`<span class="ppsb-price-low">Low $${fl.toFixed(2)}</span>`:''}
-        ${fo?`<span class="ppsb-owned-badge">✓ OWNED${fq>1?' ×'+fq:''}</span>`:''}
-      </div>
-      <div class="ppsb-swipe-btns">
-        <button class="hbtn" onclick="sbSelectCard(0)">SELECT</button>
-        <button class="hbtn" onclick="sbOpenTcg(0)">TCG ↗</button>
-        <button class="hbtn" onclick="sbAddToResearch(0,this)">+ ADD</button>
-      </div>
-    </div>`;
+    <div id="ppsb-swipe-info" class="ppsb-swipe-info">${firstInfo}</div>`;
 }
+
+// MTG swipe helpers (added to mtgsb section below)
 
 function sbRenderContent(loading){
   const content = document.getElementById('ppsb-content');
@@ -22607,7 +22624,7 @@ function sbRenderContent(loading){
         : isTable ? sbRenderTable(filteredCards)
         : sbRenderCardList(filteredCards)}
     </div>`;
-  if(isSwipe) setTimeout(sbInitSwipe, 50);
+  if(isSwipe) setTimeout(()=>deckSwipeInit('ppsb',_sbState,sbSwipeInfoHtml), 60);
 }
 
 function sbRenderCardList(cards){
@@ -22724,6 +22741,7 @@ const _mtgsbState = {
   filters: { name:'', artist:'', rarity:'', color:'', minPrice:'', maxPrice:'', owned:false, missing:false },
   loading: false, view: localStorage.getItem('mtsb_view') || 'cards',
   cardSize: Number(localStorage.getItem('mtsb_card_size') || 300),
+  swipeIdx: 0, isDragging: false, dragX: 0,
 };
 
 function mtgsbRarityOrder(r){
@@ -22883,7 +22901,7 @@ function mtgsbRenderContent(loading){
       <div class="mtsb-sort-row">
         SORT:
         ${['number','name','rarity','price'].map(f=>`<button class="hbtn mtsb-sort-btn${_mtgsbState.sortField===f?' active':''}" onclick="mtgsbSetSort('${f}')">${f.toUpperCase()}${_mtgsbState.sortField===f?(_mtgsbState.sortDir>0?' ↑':' ↓'):''}</button>`).join('')}
-        <button class="hbtn mtsb-sort-btn" style="margin-left:6px" onclick="mtgsbToggleView()">${view==='cards'?'⊞ TABLE':'⊟ GRID'}</button>
+        <button class="hbtn mtsb-sort-btn" style="margin-left:6px" onclick="mtgsbToggleView()">${view==='cards'?'⊟ SWIPE':view==='swipe'?'⊞ TABLE':'☰ CARDS'}</button>
         ${view==='cards'?`<label style="display:flex;align-items:center;gap:5px;font-family:monospace;font-size:9px;color:var(--dim);margin-left:8px">SIZE<input type="range" min="160" max="480" step="20" value="${cardSize}" style="width:72px;accent-color:#5ba3f5;cursor:pointer" oninput="mtgsbSetCardSize(this.value)"></label>`:''}
       </div>
     </div>
@@ -22969,6 +22987,12 @@ function mtgsbRenderContent(loading){
     }).join('');
   }
 
+  const isSwipeMTG = view === 'swipe';
+  if(isSwipeMTG){
+    content.innerHTML = toolbar + `<div class="mtsb-cards-area mtsb-swipe-mode">${filteredCards.length ? mtgsbRenderSwipeView(filteredCards) : '<div class="mtsb-empty">No cards match filters.</div>'}</div>`;
+    setTimeout(()=>deckSwipeInit('mtsb',_mtgsbState,mtgsbSwipeInfoHtml), 60);
+    return;
+  }
   content.innerHTML = toolbar + `<div class="mtsb-cards-area${view==='table'?' mtsb-table-mode':''}" style="--mtsb-card-min:${cardSize}px">${cardsHtml}</div>`;
 }
 
@@ -23105,9 +23129,48 @@ function mtgsbClearFilters(){
 }
 
 function mtgsbToggleView(){
-  _mtgsbState.view = _mtgsbState.view === 'cards' ? 'table' : 'cards';
+  const views = ['cards','swipe','table'];
+  const cur = views.indexOf(_mtgsbState.view);
+  _mtgsbState.view = views[(cur+1) % views.length];
   localStorage.setItem('mtsb_view', _mtgsbState.view);
   mtgsbRenderContent(false);
+}
+
+function mtgsbSwipeInfoHtml(idx) {
+  const card = _mtgsbState.filteredCards[idx];
+  if(!card) return '';
+  const usd  = Number(card.prices?.usd||0);
+  const foil = Number(card.prices?.usd_foil||0);
+  const owned= mtgsbIsOwned(card), qty=owned?mtgsbOwnedQty(card):0;
+  return `<div class="deck-swipe-name">${escHtml(card.name||'?')} <span class="mtsb-card-num">#${escHtml(card.collector_number||'?')}</span></div>
+    <div class="mtsb-card-meta">${escHtml(card.rarity||'')}${card.artist?' · '+escHtml(card.artist):''}</div>
+    <div style="display:flex;gap:8px;align-items:center;justify-content:center;margin:4px 0 6px">
+      ${usd?`<span class="mtsb-price">$${usd.toFixed(2)}</span>`:'<span style="color:var(--dim)">—</span>'}
+      ${foil?`<span class="mtsb-price-foil">✦$${foil.toFixed(2)}</span>`:''}
+      ${owned?`<span class="mtsb-owned-badge">✓ ×${qty}</span>`:''}
+    </div>
+    <div class="deck-swipe-btns">
+      <button class="hbtn" onclick="mtgsbSelectCard(${idx})">SELECT</button>
+      <button class="hbtn" onclick="window.open(${JSON.stringify(card.purchase_uris?.tcgplayer||`https://www.tcgplayer.com/search/magic/product?q=${encodeURIComponent(card.name||'')}`)})">TCG ↗</button>
+      <button class="hbtn" onclick="mtgsbAddToResearch(${idx},this)">+ ADD</button>
+    </div>`;
+}
+
+function mtgsbRenderSwipeView(cards){
+  if(!cards.length) return '<div class="mtsb-empty">No cards match filters.</div>';
+  _mtgsbState.swipeIdx=0; _mtgsbState.isDragging=false; _mtgsbState.dragX=0;
+  const slides=cards.map(c=>_deckSlideHtml('mtsb', mtgsbCardImgSrc(c), mtgsbIsOwned(c))).join('');
+  const dots=_deckDotsHtml('mtsb', cards.length);
+  return `
+    <div class="deck-swipe-stage" id="mtsb-deck-stage" style="cursor:grab">
+      ${slides}
+      <div class="deck-swipe-arrows">
+        <button class="deck-swipe-arrow" onclick="deckSwipeTo('mtsb',_mtgsbState,mtgsbSwipeInfoHtml,_mtgsbState.swipeIdx-1,true)">&#8249;</button>
+        <button class="deck-swipe-arrow" onclick="deckSwipeTo('mtsb',_mtgsbState,mtgsbSwipeInfoHtml,_mtgsbState.swipeIdx+1,true)">&#8250;</button>
+      </div>
+    </div>
+    ${dots}
+    <div id="mtsb-swipe-info" class="mtsb-swipe-info">${mtgsbSwipeInfoHtml(0)}</div>`;
 }
 
 function mtgsbSetCardSize(val){
