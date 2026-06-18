@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.06.17.11-custom-swiper">
+<meta name="version" content="2026.06.17.12-3d-coverflow">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -872,28 +872,30 @@ body.customer-display-mode #customer-display-exit{display:block;}
 }
 /* ── SWIPE MODE ── */
 .ppsb-swipe-mode{display:flex!important;flex-direction:column;overflow:hidden;padding:0!important;}
-.ppsb-swipe-container{position:relative;display:flex;align-items:center;flex:1;min-height:0;overflow:hidden;background:var(--surf);}
-.ppsb-swipe-viewport{overflow:hidden;width:100%;height:100%;}
-.ppsb-swipe-track{display:flex;height:100%;will-change:transform;}
-.ppsb-swipe-slide{flex:0 0 100%;display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;}
-.ppsb-swipe-img{width:auto;max-width:88%;height:100%;max-height:calc(100dvh - 360px);object-fit:contain;border-radius:12px;box-shadow:0 12px 40px rgba(0,0,0,.7);user-select:none;-webkit-user-drag:none;pointer-events:none;}
-.ppsb-owned .ppsb-swipe-img{box-shadow:0 0 0 4px rgba(0,255,179,.6),0 12px 40px rgba(0,0,0,.7);}
-.ppsb-swipe-arrow{position:absolute;top:50%;transform:translateY(-50%);z-index:10;background:rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.15);color:#fff;font-size:28px;line-height:1;width:36px;height:54px;border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s;}
-.ppsb-swipe-arrow:hover{background:rgba(0,255,179,.25);}
+.ppsb-filters-compact{padding:6px 10px!important;gap:6px!important;}
+.ppsb-swipe-container{position:relative;display:flex;align-items:center;flex:1;min-height:0;overflow:hidden;background:var(--bg);}
+.ppsb-swipe-track{position:relative;width:100%;height:100%;}
+.ppsb-swipe-slide{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;will-change:transform;backface-visibility:hidden;}
+.ppsb-swipe-img{width:auto;max-width:78%;height:100%;max-height:calc(100dvh - 360px);object-fit:contain;border-radius:12px;box-shadow:0 14px 48px rgba(0,0,0,.75);user-select:none;-webkit-user-drag:none;pointer-events:none;}
+.ppsb-owned .ppsb-swipe-img{box-shadow:0 0 0 4px rgba(0,255,179,.65),0 14px 48px rgba(0,0,0,.75);}
+.ppsb-swipe-arrow{position:absolute;top:50%;transform:translateY(-50%);z-index:200;background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.18);color:#fff;font-size:30px;line-height:1;width:38px;height:58px;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s;}
+.ppsb-swipe-arrow:hover{background:rgba(0,255,179,.28);}
 .ppsb-swipe-prev{left:6px;}
 .ppsb-swipe-next{right:6px;}
-.ppsb-dots{display:flex;gap:5px;justify-content:center;padding:8px 0;flex-shrink:0;flex-wrap:wrap;max-height:32px;overflow:hidden;}
+.ppsb-dots{display:flex;gap:5px;justify-content:center;padding:6px 0;flex-shrink:0;flex-wrap:wrap;max-height:28px;overflow:hidden;}
 .ppsb-dot{width:6px;height:6px;border-radius:50%;background:var(--border);cursor:pointer;transition:background .15s,transform .15s;flex-shrink:0;}
-.ppsb-dot.on{background:var(--g);transform:scale(1.4);}
-.ppsb-swipe-info{padding:12px 16px;border-top:1px solid var(--border);background:var(--surf);flex-shrink:0;text-align:center;}
-.ppsb-swipe-name{font-size:15px;font-weight:700;color:var(--text);margin-bottom:4px;}
-.ppsb-swipe-btns{display:flex;gap:8px;justify-content:center;margin-top:10px;flex-wrap:wrap;}
+.ppsb-dot.on{background:var(--g);transform:scale(1.5);}
+.ppsb-swipe-info{padding:10px 16px 14px;border-top:1px solid var(--border);background:var(--surf);flex-shrink:0;text-align:center;}
+.ppsb-swipe-name{font-size:15px;font-weight:700;color:var(--text);margin-bottom:3px;}
+.ppsb-swipe-btns{display:flex;gap:8px;justify-content:center;margin-top:8px;flex-wrap:wrap;}
 .ppsb-swipe-btns .hbtn{min-height:40px;font-size:11px;padding:6px 18px;}
 @media(max-width:640px){
-  .ppsb-swipe-img{max-height:calc(100dvh - 340px);}
-  .ppsb-swipe-arrow{width:30px;height:44px;font-size:22px;}
-  .ppsb-swipe-info{padding:10px 12px;}
+  .ppsb-swipe-img{max-height:calc(100dvh - 330px);max-width:84%;}
+  .ppsb-swipe-arrow{width:32px;height:46px;font-size:22px;}
+  .ppsb-swipe-info{padding:8px 10px 12px;}
   .ppsb-swipe-name{font-size:13px;}
+  .ppsb-toolbar{padding:8px 10px;}
+  .ppsb-sort-btn{min-height:28px!important;padding:2px 6px!important;font-size:8px!important;}
 }
 .ppsb-card{display:flex;gap:10px;background:var(--surf2);border:1px solid var(--border);border-radius:10px;padding:10px;transition:border-color .15s;}
 .ppsb-card.ppsb-owned{border-color:rgba(0,255,179,.3);background:rgba(0,255,179,.03);}
@@ -1156,7 +1158,7 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.17.11-custom-swiper</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.17.12-3d-coverflow</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
@@ -1183,7 +1185,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip dev-only" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.17.11-custom-swiper</div>
+<div class="dsb-chip dev-only" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.17.12-3d-coverflow</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -2288,7 +2290,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.06.17.11-custom-swiper';
+const APP_VERSION = '2026.06.17.12-3d-coverflow';
 const branchName = 'pokemon-v2-core';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
 const POKEMON_EXACT_CACHE_VERSION = 'pokemon-exact-v3-price-matrix';
@@ -22069,6 +22071,7 @@ const _sbState = {
   filters: { name:'', artist:'', rarity:'', minPrice:'', maxPrice:'', owned:false, missing:false },
   loading: false, view: 'cards',
   cardSize: 280,
+  tableImgSize: 54,
 };
 
 function sbParseCollectorNum(n){
@@ -22368,33 +22371,79 @@ function sbSetCardSize(val){
   if(area) area.style.setProperty('--ppsb-card-min', val + 'px');
 }
 
+function sbSetTableImgSize(val){
+  _sbState.tableImgSize = Number(val);
+  // Update images in-place without full re-render
+  const imgH = Math.round(Number(val) * 1.39);
+  document.querySelectorAll('.ppsb-tbl-wrap img').forEach(img => {
+    img.style.width = val + 'px';
+    img.style.height = imgH + 'px';
+    img.closest('td').style.width = (Number(val)+8) + 'px';
+  });
+}
+
 // Dynamically load SwiperJS once, then call back
 // ── CUSTOM SWIPER (pure JS/CSS — no external deps) ─────────────────
+// ── CUSTOM 3D COVERFLOW SWIPER ────────────────────────────────────
 let _sbSwipeIdx = 0;
+let _sbSwipeProg = 0; // fractional progress for real-time drag
 
-function sbSwipeTo(idx, animated){
+function sbUpdateTransforms(prog){
+  const slides = document.querySelectorAll('.ppsb-swipe-slide');
+  slides.forEach((slide, i) => {
+    const offset = i - prog;
+    const abs = Math.abs(offset);
+    if(abs > 3){ slide.style.opacity='0'; slide.style.pointerEvents='none'; return; }
+    const sign = offset < 0 ? -1 : offset > 0 ? 1 : 0;
+    const scale   = Math.max(0.6, 1 - abs * 0.16);
+    const rotY    = Math.max(-45, Math.min(45, offset * -28)); // deg
+    const tx      = offset * 72;   // % translateX
+    const tz      = -abs * 90;     // px depth
+    const opacity = Math.max(0, 1 - abs * 0.48);
+    const zIdx    = 100 - Math.round(abs * 10);
+    slide.style.zIndex  = String(zIdx);
+    slide.style.opacity = String(opacity);
+    slide.style.pointerEvents = abs < 0.6 ? 'auto' : 'none';
+    slide.style.transform = `perspective(1100px) translateX(${tx}%) rotateY(${rotY}deg) translateZ(${tz}px) scale(${scale})`;
+  });
+}
+
+function sbSwipeTo(idx, transition){
   const cards = _sbState.filteredCards;
   idx = Math.max(0, Math.min(cards.length - 1, idx));
   _sbSwipeIdx = idx;
-  const track = document.getElementById('ppsb-swipe-track');
-  if(track){
-    track.style.transition = animated === false ? 'none' : 'transform 0.32s cubic-bezier(0.25,0.46,0.45,0.94)';
-    track.style.transform = `translateX(-${idx * 100}%)`;
-  }
+  _sbSwipeProg = idx;
+  // Re-enable transitions
+  document.querySelectorAll('.ppsb-swipe-slide').forEach(s => {
+    s.style.transition = transition === false
+      ? 'none'
+      : 'transform 0.38s cubic-bezier(0.25,0.46,0.45,0.94), opacity 0.38s ease';
+  });
+  sbUpdateTransforms(idx);
+  // Dots / counter
   document.querySelectorAll('.ppsb-dot').forEach((d,i) => d.classList.toggle('on', i===idx));
   const ctr = document.getElementById('ppsb-swipe-counter');
   if(ctr) ctr.textContent = `${idx+1} / ${cards.length}`;
+  // Info panel
+  sbUpdateSwipeInfo(idx);
+}
+
+function sbUpdateSwipeInfo(idx){
+  const cards = _sbState.filteredCards;
   const card = cards[idx];
   if(!card) return;
   const market = Number(card.prices?.market||0);
-  const owned = sbIsOwned(card);
-  const qty = owned ? sbOwnedQty(card) : 0;
-  const info = document.getElementById('ppsb-swipe-info');
-  if(info) info.innerHTML = `
+  const low    = Number(card.prices?.lowPrice||0);
+  const owned  = sbIsOwned(card);
+  const qty    = owned ? sbOwnedQty(card) : 0;
+  const info   = document.getElementById('ppsb-swipe-info');
+  if(!info) return;
+  info.innerHTML = `
     <div class="ppsb-swipe-name">${escHtml(card.name||'?')} <span class="ppsb-card-num">#${escHtml(card.cardNumber||'?')}</span></div>
-    <div class="ppsb-card-meta">${escHtml(card.rarity||'')+(card.artist?' · '+escHtml(card.artist):'')}</div>
-    <div class="ppsb-card-prices" style="margin-top:6px;justify-content:center">
-      <span class="ppsb-price">${market?'$'+market.toFixed(2):'—'}</span>
+    <div class="ppsb-card-meta" style="margin-bottom:4px">${escHtml(card.rarity||'')}${card.artist?' · '+escHtml(card.artist):''}</div>
+    <div class="ppsb-card-prices" style="justify-content:center;margin-bottom:8px">
+      <span class="ppsb-price" style="font-size:18px">${market?'$'+market.toFixed(2):'—'}</span>
+      ${low && low !== market ? `<span class="ppsb-price-low">Low $${low.toFixed(2)}</span>` : ''}
       ${owned?`<span class="ppsb-owned-badge">✓ OWNED${qty>1?' ×'+qty:''}</span>`:''}
     </div>
     <div class="ppsb-swipe-btns">
@@ -22408,65 +22457,90 @@ function sbInitSwipe(){
   const container = document.getElementById('ppsb-swipe-container');
   if(!container || container._sbInited) return;
   container._sbInited = true;
-  let startX=0, startY=0, dragging=false, movedH=false;
-  container.addEventListener('touchstart', e=>{ startX=e.touches[0].clientX; startY=e.touches[0].clientY; dragging=true; movedH=false; },{passive:true});
+  // ── Touch ──
+  let tx0=0, ty0=0, dragging=false, isH=false;
+  container.addEventListener('touchstart', e=>{
+    tx0=e.touches[0].clientX; ty0=e.touches[0].clientY; dragging=true; isH=false;
+  },{passive:true});
   container.addEventListener('touchmove', e=>{
     if(!dragging) return;
-    const dx=Math.abs(e.touches[0].clientX-startX), dy=Math.abs(e.touches[0].clientY-startY);
-    if(!movedH && dx>dy && dx>8) movedH=true;
-    if(movedH) e.preventDefault();
+    const dx=e.touches[0].clientX-tx0, dy=e.touches[0].clientY-ty0;
+    if(!isH){ if(Math.abs(dx)>Math.abs(dy)&&Math.abs(dx)>8) isH=true; else if(Math.abs(dy)>10){ dragging=false; return; } }
+    if(!isH) return;
+    e.preventDefault();
+    // Kill transitions for real-time feedback
+    document.querySelectorAll('.ppsb-swipe-slide').forEach(s=>s.style.transition='none');
+    const prog = _sbSwipeIdx - dx / (container.offsetWidth * 0.65);
+    _sbSwipeProg = Math.max(0, Math.min(_sbState.filteredCards.length-1, prog));
+    sbUpdateTransforms(_sbSwipeProg);
   },{passive:false});
   container.addEventListener('touchend', e=>{
     if(!dragging) return; dragging=false;
-    const diff=startX-e.changedTouches[0].clientX;
-    if(Math.abs(diff)>40) diff>0?sbSwipeTo(_sbSwipeIdx+1):sbSwipeTo(_sbSwipeIdx-1);
+    const diff = tx0 - e.changedTouches[0].clientX;
+    const newIdx = Math.abs(diff)>45 ? _sbSwipeIdx+(diff>0?1:-1) : _sbSwipeIdx;
+    sbSwipeTo(newIdx, true);
   },{passive:true});
-  let mDown=false, mX=0;
-  container.addEventListener('mousedown',e=>{mDown=true;mX=e.clientX;container.style.cursor='grabbing';});
-  window.addEventListener('mouseup',e=>{
-    if(!mDown)return;mDown=false;container.style.cursor='grab';
-    const diff=mX-e.clientX;
-    if(Math.abs(diff)>40) diff>0?sbSwipeTo(_sbSwipeIdx+1):sbSwipeTo(_sbSwipeIdx-1);
+  // ── Mouse drag ──
+  let mx0=0, mDown=false;
+  container.addEventListener('mousedown', e=>{ mDown=true; mx0=e.clientX; container.style.cursor='grabbing'; });
+  window.addEventListener('mouseup', e=>{
+    if(!mDown) return; mDown=false; container.style.cursor='grab';
+    const diff=mx0-e.clientX;
+    if(Math.abs(diff)>45) sbSwipeTo(_sbSwipeIdx+(diff>0?1:-1), true);
+    else sbSwipeTo(_sbSwipeIdx, true);
   });
+  window.addEventListener('mousemove', e=>{
+    if(!mDown) return;
+    document.querySelectorAll('.ppsb-swipe-slide').forEach(s=>s.style.transition='none');
+    const prog = _sbSwipeIdx - (mx0-e.clientX)/(container.offsetWidth*0.65);
+    _sbSwipeProg = Math.max(0, Math.min(_sbState.filteredCards.length-1, prog));
+    sbUpdateTransforms(_sbSwipeProg);
+  });
+  // ── Keyboard ──
   const kh = e=>{
-    if(!document.getElementById('ppsb-swipe-container')){document.removeEventListener('keydown',kh);return;}
-    if(e.key==='ArrowRight'||e.key==='ArrowDown'){e.preventDefault();sbSwipeTo(_sbSwipeIdx+1);}
-    if(e.key==='ArrowLeft'||e.key==='ArrowUp'){e.preventDefault();sbSwipeTo(_sbSwipeIdx-1);}
+    if(!document.getElementById('ppsb-swipe-container')){ document.removeEventListener('keydown',kh); return; }
+    if(e.key==='ArrowRight'||e.key==='ArrowDown'){ e.preventDefault(); sbSwipeTo(_sbSwipeIdx+1,true); }
+    if(e.key==='ArrowLeft'||e.key==='ArrowUp'){ e.preventDefault(); sbSwipeTo(_sbSwipeIdx-1,true); }
   };
-  document.addEventListener('keydown',kh);
-  sbSwipeTo(0,false);
+  document.addEventListener('keydown', kh);
+  sbSwipeTo(0, false);
 }
 
 function sbRenderSwipeView(cards){
   if(!cards.length) return '<div class="ppsb-empty">No cards match filters.</div>';
-  _sbSwipeIdx=0;
-  const slides=cards.map((c,i)=>{
-    const img=c.imageCdnUrl400||c.imageCdnUrl200||c.imageCdnUrl||'';
-    const owned=sbIsOwned(c);
-    return `<div class="ppsb-swipe-slide${owned?' ppsb-owned':''}">${img?`<img src="${escHtml(img)}" class="ppsb-swipe-img" alt="${escHtml(c.name||'')}" loading="lazy">`:'<div class="ppsb-swipe-img ppsb-no-img"></div>'}</div>`;
+  _sbSwipeIdx = 0; _sbSwipeProg = 0;
+  const slides = cards.map((c,i)=>{
+    const img = c.imageCdnUrl400||c.imageCdnUrl200||c.imageCdnUrl||'';
+    const owned = sbIsOwned(c);
+    return `<div class="ppsb-swipe-slide${owned?' ppsb-owned':''}" style="opacity:0">
+      ${img?`<img src="${escHtml(img)}" class="ppsb-swipe-img" alt="${escHtml(c.name||'')}" loading="lazy">`:'<div class="ppsb-swipe-img ppsb-no-img"></div>'}
+    </div>`;
   }).join('');
-  const dots=cards.length<=40
-    ?`<div class="ppsb-dots">${cards.map((_,i)=>`<span class="ppsb-dot${i===0?' on':''}" onclick="sbSwipeTo(${i})"></span>`).join('')}</div>`
-    :`<div class="ppsb-dots"><span id="ppsb-swipe-counter" style="font-family:monospace;font-size:11px;color:var(--dim)">1 / ${cards.length}</span></div>`;
-  const f=cards[0], fm=Number(f?.prices?.market||0), fo=f?sbIsOwned(f):false;
-  return `<div class="ppsb-swipe-container" id="ppsb-swipe-container" style="cursor:grab">
-    <button class="ppsb-swipe-arrow ppsb-swipe-prev" onclick="sbSwipeTo(_sbSwipeIdx-1)">&#8249;</button>
-    <div class="ppsb-swipe-viewport"><div class="ppsb-swipe-track" id="ppsb-swipe-track">${slides}</div></div>
-    <button class="ppsb-swipe-arrow ppsb-swipe-next" onclick="sbSwipeTo(_sbSwipeIdx+1)">&#8250;</button>
-  </div>
-  ${dots}
-  <div id="ppsb-swipe-info" class="ppsb-swipe-info">
-    <div class="ppsb-swipe-name">${escHtml(f?.name||'?')} <span class="ppsb-card-num">#${escHtml(f?.cardNumber||'?')}</span></div>
-    <div class="ppsb-card-meta">${escHtml(f?.rarity||'')+(f?.artist?' · '+escHtml(f.artist):'')}</div>
-    <div class="ppsb-card-prices" style="margin-top:6px;justify-content:center">
-      <span class="ppsb-price">${fm?'$'+fm.toFixed(2):'—'}</span>
-      ${fo?'<span class="ppsb-owned-badge">✓ OWNED</span>':''}</div>
-    <div class="ppsb-swipe-btns">
-      <button class="hbtn" onclick="sbSelectCard(0)">SELECT</button>
-      <button class="hbtn" onclick="sbOpenTcg(0)">TCG ↗</button>
-      <button class="hbtn" onclick="sbAddToResearch(0,this)">+ ADD</button>
+  const dots = cards.length <= 40
+    ? `<div class="ppsb-dots">${cards.map((_,i)=>`<span class="ppsb-dot${i===0?' on':''}" onclick="sbSwipeTo(${i},true)"></span>`).join('')}</div>`
+    : `<div class="ppsb-dots"><span id="ppsb-swipe-counter" style="font-family:monospace;font-size:11px;color:var(--dim)">1 / ${cards.length}</span></div>`;
+  const f=cards[0], fm=Number(f?.prices?.market||0), fl=Number(f?.prices?.lowPrice||0), fo=f?sbIsOwned(f):false, fq=fo?sbOwnedQty(f):0;
+  return `
+    <div class="ppsb-swipe-container" id="ppsb-swipe-container" style="cursor:grab">
+      <button class="ppsb-swipe-arrow ppsb-swipe-prev" onclick="sbSwipeTo(_sbSwipeIdx-1,true)">&#8249;</button>
+      <div class="ppsb-swipe-track" id="ppsb-swipe-track">${slides}</div>
+      <button class="ppsb-swipe-arrow ppsb-swipe-next" onclick="sbSwipeTo(_sbSwipeIdx+1,true)">&#8250;</button>
     </div>
-  </div>`;
+    ${dots}
+    <div id="ppsb-swipe-info" class="ppsb-swipe-info">
+      <div class="ppsb-swipe-name">${escHtml(f?.name||'?')} <span class="ppsb-card-num">#${escHtml(f?.cardNumber||'?')}</span></div>
+      <div class="ppsb-card-meta" style="margin-bottom:4px">${escHtml(f?.rarity||'')}${f?.artist?' · '+escHtml(f.artist):''}</div>
+      <div class="ppsb-card-prices" style="justify-content:center;margin-bottom:8px">
+        <span class="ppsb-price" style="font-size:18px">${fm?'$'+fm.toFixed(2):'—'}</span>
+        ${fl&&fl!==fm?`<span class="ppsb-price-low">Low $${fl.toFixed(2)}</span>`:''}
+        ${fo?`<span class="ppsb-owned-badge">✓ OWNED${fq>1?' ×'+fq:''}</span>`:''}
+      </div>
+      <div class="ppsb-swipe-btns">
+        <button class="hbtn" onclick="sbSelectCard(0)">SELECT</button>
+        <button class="hbtn" onclick="sbOpenTcg(0)">TCG ↗</button>
+        <button class="hbtn" onclick="sbAddToResearch(0,this)">+ ADD</button>
+      </div>
+    </div>`;
 }
 
 function sbRenderContent(loading){
@@ -22476,53 +22550,57 @@ function sbRenderContent(loading){
   if(!selectedSet){ content.innerHTML = '<div class="ppsb-empty">Select a set above.</div>'; return; }
   if(loading){ content.innerHTML = '<div class="ppsb-empty ppsb-loading">⚡ Loading cards…</div>'; return; }
 
-  const isMobile = window.innerWidth <= 640;
-  const isTable = !isMobile && view === 'table';
-  const artists = [...new Set(cards.map(c => c.artist).filter(Boolean))].sort();
-  const rarities = [...new Set(cards.map(c => c.rarity).filter(Boolean))].sort();
-  const ownedCount = cards.filter(c => sbIsOwned(c)).length;
+  const isMobile   = window.innerWidth <= 640;
+  const isSwipe    = view === 'swipe';
+  const isTable    = view === 'table';
+  const cardSize   = _sbState.cardSize || 280;
+  const tableImgSz = _sbState.tableImgSize || 54;
+  const artists    = [...new Set(cards.map(c=>c.artist).filter(Boolean))].sort();
+  const rarities   = [...new Set(cards.map(c=>c.rarity).filter(Boolean))].sort();
+  const ownedCount = cards.filter(c=>sbIsOwned(c)).length;
+  const hasFilter  = Object.values(filters).some(v=>v&&v!==false);
+  const viewLabel  = isSwipe ? '⊞ TABLE' : isTable ? '☰ CARDS' : '⊟ SWIPE';
 
   const sortBtn = (f, label) => {
     const active = sortField === f;
-    const dir = active ? (sortDir > 0 ? ' ↑' : ' ↓') : '';
+    const dir = active ? (sortDir>0?' ↑':' ↓') : '';
     return `<button class="hbtn ppsb-sort-btn${active?' active':''}" onclick="sbSetSort('${f}')">${label}${dir}</button>`;
   };
 
-  const hasFilter = Object.values(filters).some(v => v && v !== false);
-  const isSwipe = view === 'swipe';
-  const cardSize = _sbState.cardSize || 280;
-  const viewLabel = view === 'cards' ? '⊟ SWIPE' : view === 'swipe' ? '⊞ TABLE' : '☰ CARDS';
+  // Full filter bar — always shown (compact version for swipe)
+  const filterBar = `<div class="ppsb-filters${isSwipe?' ppsb-filters-compact':''}">
+    <input class="ppsb-filter-input" style="flex:1;min-width:80px" placeholder="Filter name…" value="${escHtml(filters.name||'')}" oninput="sbSetFilter('name',this.value)">
+    <select class="ppsb-filter-input" onchange="sbSetFilter('rarity',this.value)">
+      <option value="">All rarities</option>
+      ${rarities.map(r=>`<option value="${escHtml(r)}"${filters.rarity===r?' selected':''}>${escHtml(r)}</option>`).join('')}
+    </select>
+    ${!isSwipe?`<select class="ppsb-filter-input" onchange="sbSetFilter('artist',this.value)">
+      <option value="">All artists${artists.length?' ('+artists.length+')':''}</option>
+      ${artists.map(a=>`<option value="${escHtml(a)}"${filters.artist===a?' selected':''}>${escHtml(a)}</option>`).join('')}
+    </select>
+    <input class="ppsb-filter-input" type="number" placeholder="Min $" value="${escHtml(String(filters.minPrice||''))}" oninput="sbSetFilter('minPrice',this.value)" style="width:60px">
+    <input class="ppsb-filter-input" type="number" placeholder="Max $" value="${escHtml(String(filters.maxPrice||''))}" oninput="sbSetFilter('maxPrice',this.value)" style="width:60px">`:''}
+    <label class="ppsb-filter-chip${filters.owned?' active':''}"><input type="checkbox"${filters.owned?' checked':''} onchange="sbSetFilter('owned',this.checked)" style="display:none"> OWN</label>
+    <label class="ppsb-filter-chip${filters.missing?' active':''}"><input type="checkbox"${filters.missing?' checked':''} onchange="sbSetFilter('missing',this.checked)" style="display:none"> MISS</label>
+    ${hasFilter?`<button class="hbtn" style="min-height:32px;padding:3px 8px;font-size:9px;color:var(--dim)" onclick="sbClearFilters()">✕</button>`:''}
+  </div>`;
 
   content.innerHTML = `
     <div class="ppsb-toolbar">
       <div class="ppsb-stats">
-        <span style="color:var(--text)">${filteredCards.length}${filteredCards.length !== cards.length ? '/'+cards.length : ''} cards</span>
-        ${ownedCount ? `<span style="color:var(--g)">✓ ${ownedCount} owned</span>` : ''}
-        <span>${escHtml(selectedSet.name || '')}</span>
+        <span style="color:var(--text)">${filteredCards.length}${filteredCards.length!==cards.length?'/'+cards.length:''} cards</span>
+        ${ownedCount?`<span style="color:var(--g)">✓ ${ownedCount} owned</span>`:''}
+        <span>${escHtml(selectedSet.name||'')}</span>
       </div>
       <div class="ppsb-sort-row">
-        ${!isSwipe ? `SORT: ${sortBtn('number','#')} ${sortBtn('price','PRICE')} ${sortBtn('name','NAME')} ${sortBtn('rarity','RARITY')}` : ''}
+        ${!isSwipe?`SORT: ${sortBtn('number','#')} ${sortBtn('price','PRICE')} ${sortBtn('name','NAME')} ${sortBtn('rarity','RARITY')}`:''}
         <button class="hbtn ppsb-sort-btn" style="margin-left:4px;border-color:rgba(0,255,179,.4);color:var(--g)" onclick="sbToggleView()">${viewLabel}</button>
-        ${!isSwipe && !isTable ? `<label style="display:flex;align-items:center;gap:5px;font-family:monospace;font-size:9px;color:var(--dim);margin-left:6px">SIZE<input type="range" min="160" max="440" step="20" value="${cardSize}" style="width:66px;accent-color:var(--g);cursor:pointer" oninput="sbSetCardSize(this.value)"></label>` : ''}
+        ${!isSwipe&&!isTable?`<label style="display:flex;align-items:center;gap:4px;font-family:monospace;font-size:9px;color:var(--dim);margin-left:6px">SZ<input type="range" min="140" max="440" step="20" value="${cardSize}" style="width:60px;accent-color:var(--g);cursor:pointer" oninput="sbSetCardSize(this.value)"></label>`:''}
+        ${isTable?`<label style="display:flex;align-items:center;gap:4px;font-family:monospace;font-size:9px;color:var(--dim);margin-left:6px">IMG<input type="range" min="36" max="180" step="6" value="${tableImgSz}" style="width:60px;accent-color:var(--g);cursor:pointer" oninput="sbSetTableImgSize(this.value)"></label>`:''}
       </div>
     </div>
-    ${!isSwipe ? `<div class="ppsb-filters">
-      <input class="ppsb-filter-input" style="flex:1;min-width:100px" placeholder="Filter name…" value="${escHtml(filters.name||'')}" oninput="sbSetFilter('name',this.value)">
-      <select class="ppsb-filter-input" onchange="sbSetFilter('artist',this.value)">
-        <option value="">All artists${artists.length?' ('+artists.length+')':''}</option>
-        ${artists.map(a=>`<option value="${escHtml(a)}"${filters.artist===a?' selected':''}>${escHtml(a)}</option>`).join('')}
-      </select>
-      <select class="ppsb-filter-input" onchange="sbSetFilter('rarity',this.value)">
-        <option value="">All rarities</option>
-        ${rarities.map(r=>`<option value="${escHtml(r)}"${filters.rarity===r?' selected':''}>${escHtml(r)}</option>`).join('')}
-      </select>
-      <input class="ppsb-filter-input" type="number" placeholder="Min $" value="${escHtml(String(filters.minPrice||''))}" oninput="sbSetFilter('minPrice',this.value)" style="width:64px">
-      <input class="ppsb-filter-input" type="number" placeholder="Max $" value="${escHtml(String(filters.maxPrice||''))}" oninput="sbSetFilter('maxPrice',this.value)" style="width:64px">
-      <label class="ppsb-filter-chip${filters.owned?' active':''}"><input type="checkbox"${filters.owned?' checked':''} onchange="sbSetFilter('owned',this.checked)" style="display:none"> OWN</label>
-      <label class="ppsb-filter-chip${filters.missing?' active':''}"><input type="checkbox"${filters.missing?' checked':''} onchange="sbSetFilter('missing',this.checked)" style="display:none"> MISS</label>
-      ${hasFilter ? `<button class="hbtn" style="min-height:32px;padding:3px 8px;font-size:9px;color:var(--dim)" onclick="sbClearFilters()">✕</button>` : ''}
-    </div>` : ''}
-    <div class="ppsb-cards-area${isTable?' ppsb-table-mode':''}${isSwipe?' ppsb-swipe-mode':''}" id="ppsb-cards-area" style="--ppsb-card-min:${cardSize}px">
+    ${filterBar}
+    <div class="ppsb-cards-area${isTable?' ppsb-table-mode':''}${isSwipe?' ppsb-swipe-mode':''}" id="ppsb-cards-area" style="--ppsb-card-min:${cardSize}px;--ppsb-table-img:${tableImgSz}px">
       ${!filteredCards.length
         ? '<div class="ppsb-empty" style="grid-column:1/-1">No cards match filters.</div>'
         : isSwipe ? sbRenderSwipeView(filteredCards)
@@ -22562,20 +22640,23 @@ function sbRenderCardList(cards){
 }
 
 function sbRenderTable(cards){
+  const tableImgSz = _sbState.tableImgSize || 54;
   const hdr = (f, label) => {
     const active = _sbState.sortField === f;
-    const dir = active ? (_sbState.sortDir > 0 ? ' ↑' : ' ↓') : '';
+    const dir = active ? (_sbState.sortDir>0?' ↑':' ↓') : '';
     return `<th class="ppsb-th ppsb-th-sort${active?' ppsb-th-active':''}" onclick="sbSetSort('${f}')">${label}${dir}</th>`;
   };
   const rows = cards.map((c, i) => {
-    const market = Number(c.prices?.market || 0);
-    const low = Number(c.prices?.lowPrice || 0);
-    const owned = sbIsOwned(c);
-    const img = c.imageCdnUrl200 || c.imageCdnUrl || '';
+    const market = Number(c.prices?.market||0);
+    const low    = Number(c.prices?.lowPrice||0);
+    const owned  = sbIsOwned(c);
+    const img    = c.imageCdnUrl400||c.imageCdnUrl200||c.imageCdnUrl||'';
+    const imgH   = Math.round(tableImgSz * 1.39); // card aspect ratio ~1.39
     return `<tr class="ppsb-tr${owned?' ppsb-tr-owned':''}">
-      <td class="ppsb-td">${img?`<img src="${escHtml(img)}" style="width:38px;height:auto;border-radius:4px;vertical-align:middle;display:block" loading="lazy" onerror="this.style.display='none'">`:''}</td>
+      <td class="ppsb-td" style="width:${tableImgSz+8}px">
+        ${img?`<img src="${escHtml(img)}" style="width:${tableImgSz}px;height:${imgH}px;object-fit:contain;border-radius:4px;vertical-align:middle;display:block;transition:width .15s,height .15s" loading="lazy" onerror="this.style.display='none'">`:''}</td>
       <td class="ppsb-td ppsb-td-num">${escHtml(c.cardNumber||'?')}</td>
-      <td class="ppsb-td" style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(c.name||'?')}</td>
+      <td class="ppsb-td" style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(c.name||'?')}</td>
       <td class="ppsb-td ppsb-td-dim" style="white-space:nowrap">${escHtml(c.rarity||'—')}</td>
       <td class="ppsb-td ppsb-td-dim">${escHtml(c.artist||'—')}</td>
       <td class="ppsb-td ppsb-td-price">${market?'$'+market.toFixed(2):'—'}</td>
@@ -22592,7 +22673,7 @@ function sbRenderTable(cards){
   }).join('');
   return `<div class="ppsb-tbl-wrap"><table class="ppsb-table">
     <thead><tr>
-      <th class="ppsb-th" style="width:46px">IMG</th>
+      <th class="ppsb-th">IMG</th>
       ${hdr('number','#')}
       ${hdr('name','NAME')}
       ${hdr('rarity','RARITY')}
