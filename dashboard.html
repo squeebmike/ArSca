@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.06.17.07-poke-setbrowser-fix">
+<meta name="version" content="2026.06.17.08-poke-cards-fix">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1128,7 +1128,7 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.17.07-poke-setbrowser-fix</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.17.08-poke-cards-fix</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
@@ -1155,7 +1155,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip dev-only" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.17.07-poke-setbrowser-fix</div>
+<div class="dsb-chip dev-only" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.17.08-poke-cards-fix</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -2260,7 +2260,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.06.17.07-poke-setbrowser-fix';
+const APP_VERSION = '2026.06.17.08-poke-cards-fix';
 const branchName = 'pokemon-v2-core';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
 const POKEMON_EXACT_CACHE_VERSION = 'pokemon-exact-v3-price-matrix';
@@ -22112,14 +22112,15 @@ async function sbFetchSets(){
 }
 
 async function sbFetchSetCards(setId, setName){
-  // PPT set= expects the set code/slug (e.g. "me02"), NOT the display name.
-  // setId holds s.id from the sets endpoint which is the short code.
+  // PPT cards endpoint: pass set code (lowercase), numeric setId, AND setName so PPT can match by any field.
   const params = new URLSearchParams({ fetchAllInSet:'true', limit:'500' });
   if(setId){
-    params.set('set', setId);    // short code as set= value (matches PPT API examples like set=celebrations)
-    params.set('setId', setId);  // also pass as setId for good measure
-  } else if(setName){
-    params.set('set', setName);  // fallback if no id
+    params.set('set', setId.toLowerCase());      // lowercase code (PPT slugs are lowercase, e.g. "me04")
+    params.set('setId', setId);                  // also as-is in case it's a numeric/opaque ID
+  }
+  if(setName){
+    params.set('setName', setName);              // set display name — PPT can match by name if code doesn't work
+    if(!setId) params.set('set', setName);       // last-resort fallback: use name as the set= param
   }
   const res = await fetch(WORKER + '/pricing/pokemon/cards?' + params.toString(), { cache:'no-store' });
   if(!res.ok){
@@ -22128,7 +22129,18 @@ async function sbFetchSetCards(setId, setName){
     throw new Error('Cards fetch failed: HTTP ' + res.status + (errText ? ' — ' + errText.slice(0,200) : ''));
   }
   const data = await res.json();
-  return data.cards || (Array.isArray(data.data) ? data.data : []) || data.results || [];
+  // Worker normalises: data.cards = extracted array, data.data = raw PPT .data field or full response.
+  // Handle all PPT response shapes: { cards:[] }, { data:[] }, { data:{ cards:[] } }, { results:[] }
+  const cards =
+    (Array.isArray(data.cards) && data.cards.length ? data.cards : null) ||
+    (Array.isArray(data.data) ? data.data : null) ||
+    (Array.isArray(data.data?.cards) ? data.data.cards : null) ||
+    (Array.isArray(data.results) ? data.results : null) ||
+    (Array.isArray(data.cards) ? data.cards : []);   // empty array fallback (avoids treating [] as falsy skip)
+  if(!cards.length && data.ok === false){
+    throw new Error('PPT API error: ' + (data.error || JSON.stringify(data).slice(0,200)));
+  }
+  return cards;
 }
 
 function sbApplyFilters(){
@@ -22253,10 +22265,48 @@ async function sbSelectSet(){
     _sbState.loading = false;
     sbApplyFilters();
     sbRenderContent(false);
+    // If API returned 0 cards for a set that claims to have cards, show a helpful note
+    if(!_sbState.cards.length){
+      const content = document.getElementById('ppsb-content');
+      const expectedCount = sel?.options[sel.selectedIndex]?.text?.match(/·\s*(\d+)\s*cards/)?.[1];
+      if(content && expectedCount){
+        content.innerHTML += `<div class="ppsb-empty" style="color:var(--gold);margin-top:8px;font-size:10px">
+          ⚠ PPT returned 0 cards for set ID <b>${escHtml(setId)}</b> / name <b>${escHtml(setName)}</b>.<br>
+          The set lists ${escHtml(expectedCount)} cards — PPT may not have card-level data for this set yet, or the set ID format may not match.
+          <br><br><button class="hbtn" style="margin-top:8px;min-height:36px;font-size:10px" onclick="sbRetryByName('${escHtml(setName)}')">⚡ Retry by set name instead</button>
+        </div>`;
+      }
+    }
   } catch(e){
     _sbState.loading = false;
     const content = document.getElementById('ppsb-content');
     if(content) content.innerHTML = `<div class="ppsb-empty" style="color:var(--red)">Error loading cards: ${escHtml(e.message)}</div>`;
+  }
+}
+
+async function sbRetryByName(setName){
+  // Called when fetch by set ID returns 0 cards — retries using ONLY the set display name
+  const content = document.getElementById('ppsb-content');
+  if(content) content.innerHTML = '<div class="ppsb-empty ppsb-loading">⚡ Retrying by set name…</div>';
+  try {
+    const params = new URLSearchParams({ fetchAllInSet:'true', limit:'500', setName, set:setName });
+    const res = await fetch(WORKER + '/pricing/pokemon/cards?' + params.toString(), { cache:'no-store' });
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    const cards =
+      (Array.isArray(data.cards) && data.cards.length ? data.cards : null) ||
+      (Array.isArray(data.data) ? data.data : null) ||
+      (Array.isArray(data.data?.cards) ? data.data.cards : null) ||
+      (Array.isArray(data.results) ? data.results : null) ||
+      [];
+    _sbState.cards = cards;
+    sbApplyFilters();
+    sbRenderContent(false);
+    if(!cards.length && content){
+      content.innerHTML += `<div class="ppsb-empty" style="color:var(--dim);font-size:10px">Still 0 cards by name — PPT may not have data for <b>${escHtml(setName)}</b> yet.</div>`;
+    }
+  } catch(e){
+    if(content) content.innerHTML = `<div class="ppsb-empty" style="color:var(--red)">Retry failed: ${escHtml(e.message)}</div>`;
   }
 }
 
