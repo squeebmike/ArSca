@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.06.18.05-inventory-sync-cart-rounding">
+<meta name="version" content="2026.06.18.06-offline-catalog-browser-polish">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -905,11 +905,11 @@ body.customer-display-mode #customer-display-exit{display:block;}
   .ppsb-swipe-info,.mtsb-swipe-info{padding:7px 10px 10px;}
   .deck-swipe-name{font-size:12px;}
 }
-.ppsb-card{display:flex;gap:10px;background:var(--surf2);border:1px solid var(--border);border-radius:10px;padding:10px;transition:border-color .15s;}
+.ppsb-card{display:flex;gap:12px;background:var(--surf2);border:1px solid var(--border);border-radius:10px;padding:12px;transition:border-color .15s;}
 .ppsb-card.ppsb-owned{border-color:rgba(0,255,179,.3);background:rgba(0,255,179,.03);}
-.ppsb-card-img-wrap{width:72px;flex-shrink:0;}
-.ppsb-card-img{width:72px;height:auto;border-radius:6px;display:block;}
-.ppsb-no-img{width:72px;height:100px;background:var(--surf);border:1px solid var(--border);border-radius:6px;}
+.ppsb-card-img-wrap{width:clamp(104px,32%,172px);flex-shrink:0;}
+.ppsb-card-img{width:100%;height:auto;border-radius:7px;display:block;}
+.ppsb-no-img{width:100%;aspect-ratio:5/7;background:var(--surf);border:1px solid var(--border);border-radius:7px;}
 .ppsb-card-body{flex:1;display:flex;flex-direction:column;gap:4px;min-width:0;}
 .ppsb-card-name{font-size:13px;font-weight:700;color:var(--text);line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .ppsb-card-num{font-family:monospace;font-size:10px;color:var(--dim);font-weight:400;}
@@ -941,9 +941,10 @@ body.customer-display-mode #customer-display-exit{display:block;}
   .ppsb-filter-input.ppsb-filter-wide{flex-basis:100%;}
   .ppsb-artist-note{padding:0 12px 8px;}
   .ppsb-set-search{width:100%;flex:1 1 100%;}
-  .ppsb-card-img-wrap{width:60px;}
-  .ppsb-card-img{width:60px;}
-  .ppsb-no-img{width:60px;height:82px;}
+  .ppsb-card{display:block;padding:10px;}
+  .ppsb-card-img-wrap{width:min(76vw,260px);margin:0 auto 10px;}
+  .ppsb-card-img{width:100%;}
+  .ppsb-no-img{width:100%;height:auto;aspect-ratio:5/7;}
 }
 /* ── END PASS B ─────────────────────────────────────────────────── */
 
@@ -977,11 +978,11 @@ body.customer-display-mode #customer-display-exit{display:block;}
 @media(min-width:641px){
   .mtsb-cards-area:not(.mtsb-table-mode){grid-template-columns:repeat(auto-fill,minmax(var(--mtsb-card-min,300px),1fr));}
 }
-.mtsb-card{display:flex;gap:10px;background:var(--surf2);border:1px solid var(--border);border-radius:10px;padding:10px;transition:border-color .15s;}
+.mtsb-card{display:flex;gap:12px;background:var(--surf2);border:1px solid var(--border);border-radius:10px;padding:12px;transition:border-color .15s;}
 .mtsb-card.mtsb-owned{border-color:rgba(0,255,179,.3);background:rgba(0,255,179,.03);}
-.mtsb-card-img-wrap{width:72px;flex-shrink:0;}
-.mtsb-card-img{width:72px;height:auto;border-radius:6px;display:block;}
-.mtsb-no-img{width:72px;height:100px;background:var(--surf);border:1px solid var(--border);border-radius:6px;}
+.mtsb-card-img-wrap{width:clamp(112px,34%,184px);flex-shrink:0;}
+.mtsb-card-img{width:100%;height:auto;border-radius:7px;display:block;}
+.mtsb-no-img{width:100%;aspect-ratio:5/7;background:var(--surf);border:1px solid var(--border);border-radius:7px;}
 .mtsb-card-body{flex:1;display:flex;flex-direction:column;gap:4px;min-width:0;}
 .mtsb-card-name{font-size:13px;font-weight:700;color:var(--text);line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .mtsb-card-num{font-family:monospace;font-size:10px;color:var(--dim);}
@@ -1012,9 +1013,10 @@ body.customer-display-mode #customer-display-exit{display:block;}
   .mtsb-header{padding:12px 14px;}
   .mtsb-set-row,.mtsb-toolbar,.mtsb-filters{padding:8px 12px;}
   .mtsb-set-search{width:100%;flex:1 1 100%;}
-  .mtsb-card-img-wrap{width:60px;}
-  .mtsb-card-img{width:60px;}
-  .mtsb-no-img{width:60px;height:82px;}
+  .mtsb-card{display:block;padding:10px;}
+  .mtsb-card-img-wrap{width:min(78vw,280px);margin:0 auto 10px;}
+  .mtsb-card-img{width:100%;}
+  .mtsb-no-img{width:100%;height:auto;aspect-ratio:5/7;}
 }
 /* ── END MTG SET BROWSER ─────────────────────────────────────────── */
 
@@ -1173,7 +1175,7 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.18.05-inventory-sync-cart-rounding</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.18.06-offline-catalog-browser-polish</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
@@ -1200,7 +1202,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip dev-only" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.18.05-inventory-sync-cart-rounding</div>
+<div class="dsb-chip dev-only" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.18.06-offline-catalog-browser-polish</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -1975,7 +1977,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <div class="modal-bg" id="price-sync-modal">
   <div class="modal" style="max-width:600px;max-height:82vh;display:flex;flex-direction:column">
     <h3>💹 SYNC LATEST PRICES</h3>
-    <p style="font-size:11px;color:var(--dim);margin:0 0 12px">Cached scan compares local lookup data with no API calls. Live Pokémon refresh fetches current PokemonPriceTracker prices through the Worker for exact matched items.</p>
+    <p style="font-size:11px;color:var(--dim);margin:0 0 12px">Cached scan uses downloaded/local catalog or exact hydrated Pokémon data only; one-off Research searches are ignored. Live Pokémon refresh fetches current PokemonPriceTracker prices through the Worker.</p>
     <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:12px;align-items:center">
       <label style="display:flex;align-items:center;gap:5px;font-size:11px;cursor:pointer"><input type="checkbox" id="pso-tcg" checked> TCG / Pokémon</label>
       <label style="display:flex;align-items:center;gap:5px;font-size:11px;cursor:pointer"><input type="checkbox" id="pso-sports" checked> Sports Cards</label>
@@ -2316,7 +2318,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.06.18.05-inventory-sync-cart-rounding';
+const APP_VERSION = '2026.06.18.06-offline-catalog-browser-polish';
 const branchName = 'pokemon-v2-core';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
 const POKEMON_EXACT_CACHE_VERSION = 'pokemon-exact-v3-price-matrix';
@@ -4512,6 +4514,7 @@ function organizeRegisterLayout(){
   ensurePriceChartingDataPanel(backoffice);
   ensureOfflineCachePanel(backoffice);
   ensurePokemonExportPanel(backoffice);
+  ensureOfflineCatalogManagerPanel(backoffice);
   ensurePricingQaPanel(backoffice);
   ensureStoreMembersPanel(backoffice);
   ensureDataModePanel(backoffice);
@@ -4981,6 +4984,56 @@ function ensurePokemonExportPanel(backoffice){
   const ref = document.getElementById('pokemon-export-panel-anchor') || backoffice.querySelector('#offline-cache-panel') || backoffice.lastElementChild;
   ref.after ? ref.after(panel) : backoffice.appendChild(panel);
   renderPokemonExportPanel();
+}
+
+function ensureOfflineCatalogManagerPanel(backoffice){
+  if(!backoffice || document.getElementById('offline-catalog-manager-panel')) return;
+  const panel = document.createElement('div');
+  panel.id = 'offline-catalog-manager-panel';
+  panel.className = 'settings-panel';
+  panel.innerHTML = `
+    <div class="settings-panel-header">
+      <h3 class="settings-panel-title">Offline Catalog Download Manager</h3>
+      <p class="settings-panel-desc">Official provider catalogs for offline research and set browsing. Catalog rows are reference data only; they never create inventory.</p>
+    </div>
+    <div id="offline-catalog-manager-body"></div>`;
+  const ref = document.getElementById('pokemon-export-panel') || backoffice.querySelector('#offline-cache-panel') || backoffice.lastElementChild;
+  ref.after ? ref.after(panel) : backoffice.appendChild(panel);
+  renderOfflineCatalogManagerPanel();
+}
+
+async function renderOfflineCatalogManagerPanel(){
+  const body = document.getElementById('offline-catalog-manager-body');
+  if(!body) return;
+  const [pptCards, pptSealed, pptEbay, pptPop, mtg] = await Promise.all([
+    catalogDbGet('meta', 'export_cards').catch(() => null),
+    catalogDbGet('meta', 'export_sealed').catch(() => null),
+    catalogDbGet('meta', 'export_ebay').catch(() => null),
+    catalogDbGet('meta', 'export_population').catch(() => null),
+    mtgCatalogCounts().catch(() => ({ cards:0, sets:0, meta:{} })),
+  ]);
+  const row = (label, count, downloadedAt, status, actions, source) => `
+    <div style="display:grid;grid-template-columns:minmax(140px,1fr) 100px 160px minmax(120px,1fr) auto;gap:8px;align-items:center;border-top:1px solid var(--border);padding:9px 0;font-family:monospace;font-size:10px">
+      <b style="color:var(--text)">${escHtml(label)}</b>
+      <span>${Number(count || 0).toLocaleString()} rows</span>
+      <span style="color:var(--dim)">${downloadedAt ? escHtml(new Date(downloadedAt).toLocaleString()) : 'Not downloaded'}</span>
+      <span style="color:${status ? 'var(--gold)' : 'var(--g)'}">${escHtml(status || source || 'Offline ready')}</span>
+      <span style="display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap">${actions}</span>
+    </div>`;
+  const pptRows = [
+    ['Cards', pptCards, `<button class="hbtn" onclick="downloadPokemonExport('cards')">DOWNLOAD</button><button class="hbtn" onclick="clearPokemonExport('cards')">CLEAR</button>`],
+    ['Sealed', pptSealed, `<button class="hbtn" onclick="downloadPokemonExport('sealed')">DOWNLOAD</button><button class="hbtn" onclick="clearPokemonExport('sealed')">CLEAR</button>`],
+    ['eBay / Graded', pptEbay, `<button class="hbtn" onclick="downloadPokemonExport('ebay')">DOWNLOAD</button><button class="hbtn" onclick="clearPokemonExport('ebay')">CLEAR</button>`],
+    ['Population', pptPop, `<button class="hbtn" onclick="downloadPokemonExport('population')">DOWNLOAD</button><button class="hbtn" onclick="clearPokemonExport('population')">CLEAR</button>`],
+  ].map(([label, meta, actions]) => row(label, meta?.rowCount || 0, meta?.downloadedAt, meta?.error || '', actions, 'PokemonPriceTracker Export')).join('');
+  const mtgBusy = localStorage.getItem('mtg_bulk_status') === 'downloading';
+  body.innerHTML = `
+    <div style="font-family:monospace;font-size:10px;color:var(--dim);line-height:1.55;margin-bottom:8px">Cache policy: temporary Research searches are disposable. Downloaded catalogs are official offline reference data. Inventory remains owned stock only.</div>
+    <div style="font-family:'Orbitron',monospace;color:var(--g);font-size:11px;letter-spacing:.05em;margin-top:8px">POKEMON / POKEMONPRICETRACKER BUSINESS EXPORTS</div>
+    ${pptRows}
+    <div style="font-family:'Orbitron',monospace;color:#5ba3f5;font-size:11px;letter-spacing:.05em;margin-top:16px">MTG / SCRYFALL BULK CATALOG</div>
+    ${row('Default Cards', mtg.cards || mtg.meta?.rowCount || 0, mtg.meta?.downloadedAt, mtg.meta?.error || (mtg.cards ? (mtg.sets + ' sets indexed') : ''), `<button class="hbtn" onclick="downloadMtgBulkCatalog()" ${mtgBusy?'disabled':''}>${mtgBusy?'DOWNLOADING...':'DOWNLOAD'}</button><button class="hbtn" onclick="clearMtgBulkCatalog()">CLEAR</button>`, 'Scryfall default_cards')}
+    <div style="font-family:monospace;font-size:9px;color:var(--dim);margin-top:8px">Scryfall source: /bulk-data default_cards. This is large; use Wi-Fi and keep the tab open while downloading/parsing.</div>`;
 }
 
 async function renderPokemonExportPanel(){
@@ -9144,6 +9197,15 @@ function getCachedCardMarketPrice(cached){
   );
 }
 
+function isAuthoritativePokemonCacheRow(row = {}){
+  const source = String(row.source || row.card?.source || row.card?.lookupDebug?.path || '').toLowerCase();
+  const cardKey = String(row.cardKey || '');
+  if(source.includes('set sync') || source.includes('catalog') || source.includes('export')) return true;
+  if(cardKey.startsWith('pokemon:') && row.card?.lookupDebug?.exactHydrated) return true;
+  if(row.card?.cache?.state === 'catalog') return true;
+  return false;
+}
+
 async function buildPriceSyncProposal(options = {}){
   const { limit = 50, categories = null } = options;
   // Read raw items (preserves tcgPlayerId not exposed by getUniversalInventory)
@@ -9171,7 +9233,9 @@ async function buildPriceSyncProposal(options = {}){
 
   const allCards  = await pokemonDbAll('cards').catch(() => []);
   const storeId   = getActiveStoreId();
-  const storeCards = allCards.filter(c => !c.storeId || c.storeId === storeId);
+  const storeCards = allCards
+    .filter(c => !c.storeId || c.storeId === storeId)
+    .filter(isAuthoritativePokemonCacheRow);
 
   const proposal = [];
   for(const item of items) {
@@ -14558,7 +14622,7 @@ const PPT_EXPORT_TYPES = [
 function catalogDb(){
   if(window._catalogDb) return window._catalogDb;
   window._catalogDb = new Promise((resolve, reject) => {
-    const req = indexedDB.open('walkoff_catalog_v1', 1);
+    const req = indexedDB.open('walkoff_catalog_v1', 2);
     req.onupgradeneeded = () => {
       const db = req.result;
       ['ppt_cards','ppt_sealed','ppt_ebay','ppt_population'].forEach(store => {
@@ -14567,6 +14631,16 @@ function catalogDb(){
           if(store === 'ppt_cards' || store === 'ppt_sealed') s.createIndex('name','name');
         }
       });
+      if(!db.objectStoreNames.contains('mtg_cards')){
+        const s = db.createObjectStore('mtg_cards', { keyPath:'id' });
+        s.createIndex('set','set');
+        s.createIndex('name','name');
+        s.createIndex('artist','artist');
+      }
+      if(!db.objectStoreNames.contains('mtg_sets')){
+        const s = db.createObjectStore('mtg_sets', { keyPath:'code' });
+        s.createIndex('released_at','released_at');
+      }
       if(!db.objectStoreNames.contains('meta')) db.createObjectStore('meta', { keyPath:'key' });
     };
     req.onsuccess = () => resolve(req.result);
@@ -14766,6 +14840,151 @@ async function clearPokemonExport(type){
   toast_dash(`${type} export cache cleared`);
 }
 
+function mtgNormalizeBulkCard(c = {}, downloadedAt = new Date().toISOString()){
+  const img = c.image_uris || c.card_faces?.[0]?.image_uris || {};
+  const colors = c.colors || c.card_faces?.[0]?.colors || [];
+  return {
+    id:c.id || '',
+    oracle_id:c.oracle_id || '',
+    name:c.name || '',
+    set:c.set || '',
+    set_name:c.set_name || '',
+    collector_number:c.collector_number || '',
+    rarity:c.rarity || '',
+    artist:c.artist || '',
+    mana_cost:c.mana_cost || c.card_faces?.[0]?.mana_cost || '',
+    type_line:c.type_line || c.card_faces?.[0]?.type_line || '',
+    colors,
+    image_uris:c.image_uris || null,
+    card_faces:c.card_faces || null,
+    prices:c.prices || {},
+    released_at:c.released_at || '',
+    scryfall_uri:c.scryfall_uri || '',
+    purchase_uris:c.purchase_uris || null,
+    tcgplayer_id:c.tcgplayer_id || '',
+    finishes:c.finishes || [],
+    searchText:[c.name, c.set_name, c.set, c.collector_number, c.artist, c.rarity, c.type_line, colors.join(' ')].filter(Boolean).join(' ').toLowerCase(),
+    imageSmall:img.small || '',
+    imageNormal:img.normal || '',
+    provider:'Scryfall',
+    catalogSource:'Scryfall default_cards bulk',
+    downloadedAt,
+    raw:c,
+  };
+}
+
+async function mtgCatalogMeta(){
+  return catalogDbGet('meta', 'mtg_default_cards').catch(() => null);
+}
+
+async function mtgCatalogCounts(){
+  const [cards, sets, meta] = await Promise.all([
+    catalogDbCount('mtg_cards').catch(() => 0),
+    catalogDbCount('mtg_sets').catch(() => 0),
+    mtgCatalogMeta(),
+  ]);
+  return { cards, sets, meta:meta || {} };
+}
+
+async function downloadMtgBulkCatalog(){
+  const statusKey = 'mtg_bulk_status';
+  localStorage.setItem(statusKey, 'downloading');
+  renderOfflineCatalogManagerPanel();
+  try {
+    const manifestRes = await fetch('https://api.scryfall.com/bulk-data', { cache:'no-store' });
+    if(!manifestRes.ok) throw new Error('Scryfall bulk manifest HTTP ' + manifestRes.status);
+    const manifest = await manifestRes.json();
+    const bulk = (manifest.data || []).find(x => x.type === 'default_cards');
+    if(!bulk?.download_uri) throw new Error('Scryfall default_cards bulk file not found');
+    const dataRes = await fetch(bulk.download_uri, { cache:'no-store' });
+    if(!dataRes.ok) throw new Error('Scryfall default_cards HTTP ' + dataRes.status);
+    const cardsRaw = await dataRes.json();
+    if(!Array.isArray(cardsRaw)) throw new Error('Scryfall bulk payload was not an array');
+    const downloadedAt = new Date().toISOString();
+    const cards = cardsRaw.map(c => mtgNormalizeBulkCard(c, downloadedAt)).filter(c => c.id);
+    const setMap = new Map();
+    cards.forEach(c => {
+      if(!c.set) return;
+      const prev = setMap.get(c.set) || { code:c.set, name:c.set_name || c.set, set_type:c.raw?.set_type || '', released_at:c.released_at || '', card_count:0, provider:'Scryfall', downloadedAt };
+      prev.card_count++;
+      if(c.released_at && (!prev.released_at || c.released_at < prev.released_at)) prev.released_at = c.released_at;
+      setMap.set(c.set, prev);
+    });
+    await catalogDbClear('mtg_cards');
+    await catalogDbClear('mtg_sets');
+    await catalogDbPutBatch('mtg_cards', cards);
+    await catalogDbPutBatch('mtg_sets', [...setMap.values()]);
+    await catalogDbPut('meta', { key:'mtg_default_cards', type:'default_cards', rowCount:cards.length, setCount:setMap.size, downloadedAt, providerUpdatedAt:bulk.updated_at || '', size:bulk.size || 0, error:null });
+    toast_dash('Scryfall catalog downloaded: ' + cards.length.toLocaleString() + ' cards');
+  } catch(e) {
+    await catalogDbPut('meta', { key:'mtg_default_cards', type:'default_cards', rowCount:0, downloadedAt:null, error:e.message }).catch(()=>{});
+    toast_dash('MTG catalog download failed: ' + e.message);
+  }
+  localStorage.removeItem(statusKey);
+  renderOfflineCatalogManagerPanel();
+}
+
+async function clearMtgBulkCatalog(){
+  if(!confirm('Clear downloaded Scryfall catalog from this browser? Inventory is not touched.')) return;
+  await catalogDbClear('mtg_cards').catch(()=>{});
+  await catalogDbClear('mtg_sets').catch(()=>{});
+  await catalogDbPut('meta', { key:'mtg_default_cards', type:'default_cards', rowCount:0, setCount:0, downloadedAt:null, error:null }).catch(()=>{});
+  renderOfflineCatalogManagerPanel();
+  toast_dash('MTG offline catalog cleared');
+}
+
+async function searchMtgCatalogExport(query){
+  if(!query) return [];
+  const terms = String(query || '').toLowerCase().replace(/[^a-z0-9\s]/g,' ').split(/\s+/).filter(Boolean);
+  if(!terms.length) return [];
+  const rows = await catalogDbAll('mtg_cards').catch(() => []);
+  return rows.filter(r => terms.every(t => (r.searchText || '').includes(t))).slice(0, 50).map(c => {
+    const row = scryfallCardToQplRow(c.raw || c);
+    return { ...row, source:'scryfall_bulk_catalog', priceSource:'Offline Catalog - Scryfall default_cards', cache:{ state:'catalog', source:'Scryfall default_cards', updatedAt:c.downloadedAt || '' } };
+  });
+}
+
+async function mtgCatalogSets(){
+  const sets = await catalogDbAll('mtg_sets').catch(() => []);
+  return sets.sort((a,b) => String(b.released_at || '').localeCompare(String(a.released_at || '')));
+}
+
+async function mtgCatalogCardsBySet(setCode){
+  const rows = await catalogDbAll('mtg_cards').catch(() => []);
+  return rows.filter(c => String(c.set || '').toLowerCase() === String(setCode || '').toLowerCase()).map(c => c.raw || c);
+}
+
+async function pokemonCatalogExportSets(){
+  const rows = await catalogDbAll('ppt_cards').catch(() => []);
+  const map = new Map();
+  rows.forEach(r => {
+    const name = r.setName || '';
+    if(!name) return;
+    const prev = map.get(name) || { id:name, name, series:'Offline Catalog', releaseDate:'', cardCount:0, source:'ppt_export' };
+    prev.cardCount++;
+    map.set(name, prev);
+  });
+  return [...map.values()].sort((a,b) => a.name.localeCompare(b.name));
+}
+
+async function pokemonCatalogExportCardsBySet(setName){
+  const rows = await catalogDbAll('ppt_cards').catch(() => []);
+  return rows.filter(r => String(r.setName || '').toLowerCase() === String(setName || '').toLowerCase()).map(r => sbNormalizeSetCard({
+    name:r.name,
+    setName:r.setName,
+    setId:r.setId,
+    cardNumber:r.cardNumber,
+    rarity:r.rarity,
+    language:r.language || 'English',
+    tcgPlayerId:r.tcgPlayerId,
+    marketPrice:r.marketPrice,
+    lowPrice:r.lowPrice,
+    prices:{ market:r.marketPrice || 0, lowPrice:r.lowPrice || 0 },
+    source:'ppt_export',
+    cache:{ state:'catalog', source:'PokemonPriceTracker Export', updatedAt:r.lastUpdate || '' },
+  }, setName));
+}
+
 // ── Catalog search / lookup ────────────────────────────────────────────────────
 
 async function searchPokemonCatalogExport(query){
@@ -14892,13 +15111,18 @@ function normalizePokemonCacheRecord(row = {}, query = ''){
 async function savePokemonCacheResults(query, rows = [], source = 'Live lookup'){
   const pokemonRows = (rows || []).filter(r => qplResultCategoryKey(r) === 'pokemon' || isPokemonLookupIntent(query, r.category));
   if(!pokemonRows.length) return;
-  await Promise.all(pokemonRows.slice(0, 80).map(async row => {
-    const normalized = normalizePokemonCacheRecord({ ...row, priceSource:row.priceSource || source }, query);
-    await pokemonDbPut('cards', normalized);
-    await cachePokemonImage(normalized.cardKey, normalized.imageUrl || normalized.card?.imageUrl);
-    await savePokemonCompsFromRow(normalized.card, normalized.cardKey);
+  const updatedAt = new Date().toISOString();
+  const temporary = pokemonRows.slice(0, 40).map(row => ({
+    ...row,
+    cache:{ ...(row.cache || {}), state:'temporary', source:source || 'Temporary Search Result', updatedAt },
+    priceSource:(row.priceSource || source || 'PokemonPriceTracker') + ' (temporary search result)'
   }));
-  await pokemonDbPut('meta', { key:'lastPokemonSyncAt', value:new Date().toISOString() });
+  try{
+    const key = 'pokemon_temp_search_cache_v2';
+    const current = JSON.parse(sessionStorage.getItem(key) || '[]');
+    current.unshift({ query, source, updatedAt, rows:temporary });
+    sessionStorage.setItem(key, JSON.stringify(current.slice(0, 20)));
+  }catch(e){}
 }
 
 async function searchPokemonOfflineCache(query, cat = ''){
@@ -14906,7 +15130,7 @@ async function searchPokemonOfflineCache(query, cat = ''){
   const terms = normalizePokemonText(query).split(/\s+/).filter(Boolean);
   const queryNumber = pokemonQueryCardNumber(query);
   const normalizedQuery = normalizePokemonText(query);
-  const cards = await pokemonDbAll('cards').catch(() => []);
+  const cards = (await pokemonDbAll('cards').catch(() => [])).filter(isAuthoritativePokemonCacheRow);
   const imageRows = await pokemonDbAll('images').catch(() => []);
   const imageMap = new Map(imageRows.filter(i => !i.storeId || i.storeId === getActiveStoreId()).map(i => [i.cardKey, i.dataUrl || i.imageUrl]));
   const cacheResults = cards.filter(c => c.storeId === getActiveStoreId()).filter(c => {
@@ -14998,16 +15222,22 @@ async function saveMtgCacheResults(query, rows = [], source = 'Scryfall'){
 
 async function searchMtgOfflineCache(query, cat = ''){
   if(!isMtgLookupIntent(query, cat)) return [];
+  const catalogHits = await searchMtgCatalogExport(query).catch(() => []);
   const terms = (query||'').toLowerCase().replace(/[^a-z0-9\s]/g,' ').split(/\s+/).filter(Boolean);
   const cards = await mtgDbAll('cards').catch(() => []);
-  const finishIntent = parseMtgFinishIntent(query);
-  return cards
+  const tempHits = cards
     .filter(c => c.storeId === getActiveStoreId() && c.cacheVersion === MTG_CACHE_VERSION)
     .filter(c => terms.every(t => (c.searchText || '').includes(t)))
-    .filter(c => !finishIntent.finish || (c.card?.finish || c.card?.selectedFinish || '').includes(finishIntent.finish.replace('_foil','').replace('_','')) || true)
     .sort((a,b) => new Date(b.updatedAt||0) - new Date(a.updatedAt||0))
     .slice(0, 40)
-    .map(c => ({ ...(c.card||{}), cache:{ state: navigator.onLine ? 'cached' : 'offline', updatedAt: c.updatedAt, source: c.source||'MTG cache' }, priceSource: ((c.card?.priceSource)||'Scryfall') + ' (cached)' }));
+    .map(c => ({ ...(c.card||{}), cache:{ state: navigator.onLine ? 'temporary' : 'offline-temporary', updatedAt: c.updatedAt, source: c.source||'Temporary MTG search cache' }, priceSource: ((c.card?.priceSource)||'Scryfall') + ' (temporary search cache)' }));
+  const seen = new Set();
+  return [...catalogHits, ...tempHits].filter(r => {
+    const key = r.scryfallId || r.productId || [r.name,r.set,r.card_number].join('|');
+    if(seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  }).slice(0, 60);
 }
 
 // ── Comics IDB cache (walkoff_comics_cache_v1) ────────────────────────────────
@@ -15434,6 +15664,10 @@ async function searchQuickCatalog(q, cat){
     } catch(e) {}
   }
   if(!wants || wants === 'tcg' || wants === 'mtg' || wants === 'graded' || isMtgLookupIntent(q, cat)) {
+    try {
+      const mtgCatalog = await searchMtgCatalogExport(q);
+      mtgCatalog.forEach(add);
+    } catch(e) {}
     try {
       const mtg = await fetchScryfallCatalog(q);
       mtg.forEach(add);
@@ -22551,7 +22785,7 @@ const _sbState = {
   sortField: 'number', sortDir: 1,
   filters: { name:'', artist:'', rarity:'', minPrice:'', maxPrice:'', owned:false, missing:false, hasImage:false, hasPrice:false, language:'' },
   loading: false, view: 'cards',
-  cardSize: 280, tableImgSize: 54,
+  cardSize: 340, tableImgSize: 84,
   filterOpen: false,
   artistCoverage: '',
   swipeIdx: 0, isDragging: false, dragX: 0,
@@ -22635,6 +22869,11 @@ function sbOwnedQty(card){
 async function sbFetchSets(){
   // PPT /sets — set NAME is used as the value so sbFetchSetCards can pass set=<name> directly.
   // Cache 24h in localStorage (persists across reloads — fast on return visits).
+  const localSets = await pokemonCatalogExportSets().catch(() => []);
+  if(localSets.length && !navigator.onLine) {
+    _sbState.sourceLabel = 'Offline Catalog - PokemonPriceTracker Export';
+    return localSets;
+  }
   const cacheKey = 'sb_ppt_sets_v1';
   try {
     const cached = JSON.parse(localStorage.getItem(cacheKey) || 'null');
@@ -22653,7 +22892,8 @@ async function sbFetchSets(){
     imageUrl:    s.imageCdnUrl200 || s.imageCdnUrl400 || '',
   })).sort((a,b) => String(b.releaseDate || '').localeCompare(String(a.releaseDate || '')) || a.name.localeCompare(b.name));
   try { localStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), sets })); } catch(e){}
-  return sets;
+  _sbState.sourceLabel = 'Live PokemonPriceTracker Sets';
+  return localSets.length ? [...sets, ...localSets.filter(ls => !sets.some(s => String(s.name).toLowerCase() === String(ls.name).toLowerCase()))] : sets;
 }
 
 function sbNormalizeSetCard(card = {}, setName = ''){
@@ -22692,6 +22932,11 @@ function sbNormalizeSetCard(card = {}, setName = ''){
 async function sbFetchSetCards(setName){
   // PPT API: set=<setName>&fetchAllInSet=true  (per docs: set=celebrations, set=Fossil, etc.)
   if(!setName) throw new Error('No set name');
+  const catalogCards = await pokemonCatalogExportCardsBySet(setName).catch(() => []);
+  if(catalogCards.length) {
+    _sbState.sourceLabel = 'Offline Catalog - PokemonPriceTracker Export';
+    return catalogCards;
+  }
   // Session cache — cards stable within a session
   const ck = 'sb_cards_' + setName.toLowerCase().replace(/[^a-z0-9]/g,'_').slice(0,40);
   try {
@@ -22710,6 +22955,7 @@ async function sbFetchSetCards(setName){
     (Array.isArray(d.data)  && d.data.length  ? d.data  : null) ||
     (Array.isArray(d.results) ? d.results : []);
   const normalized = cards.map(c => sbNormalizeSetCard(c, setName));
+  _sbState.sourceLabel = 'Live PokemonPriceTracker';
   if(normalized.length) try { sessionStorage.setItem(ck, JSON.stringify({ ts: Date.now(), cards:normalized })); } catch(e){}
   return normalized;
 }
@@ -23167,14 +23413,15 @@ function sbRenderContent(loading){
         <span style="color:var(--text)">${filteredCards.length}${filteredCards.length!==cards.length?'/'+cards.length:''} cards</span>
         ${ownedCount?`<span style="color:var(--g)">✓ ${ownedCount} owned</span>`:''}
         ${missingCount?`<span>${missingCount} missing</span>`:''}
+        ${_sbState.sourceLabel?`<span style="color:${String(_sbState.sourceLabel).includes('Offline')?'var(--blue)':'var(--g)'}">${escHtml(_sbState.sourceLabel)}</span>`:''}
         <span>${escHtml(selectedSet.name||'')}</span>
       </div>
       <div class="ppsb-sort-row">
         ${!isSwipe?`SORT: ${sortBtn('number','#')} ${sortBtn('price','PRICE')} ${sortBtn('name','NAME')} ${sortBtn('rarity','RARITY')} ${sortBtn('artist','ARTIST')} ${sortBtn('owned','OWNED')} ${sortBtn('missing','MISSING')}`:''}
         <button class="hbtn ppsb-sort-btn ppsb-filter-toggle" onclick="sbToggleFilters()">FILTERS${hasFilter?' *':''}</button>
         <button class="hbtn ppsb-sort-btn" style="margin-left:4px;border-color:rgba(0,255,179,.4);color:var(--g)" onclick="sbToggleView()">${viewLabel}</button>
-        ${!isSwipe&&!isTable?`<label style="display:flex;align-items:center;gap:4px;font-family:monospace;font-size:9px;color:var(--dim);margin-left:6px">SZ<input type="range" min="140" max="440" step="20" value="${cardSize}" style="width:60px;accent-color:var(--g);cursor:pointer" oninput="sbSetCardSize(this.value)"></label>`:''}
-        ${isTable?`<label style="display:flex;align-items:center;gap:4px;font-family:monospace;font-size:9px;color:var(--dim);margin-left:6px">IMG<input type="range" min="36" max="180" step="6" value="${tableImgSz}" style="width:60px;accent-color:var(--g);cursor:pointer" oninput="sbSetTableImgSize(this.value)"></label>`:''}
+        ${!isSwipe&&!isTable?`<label style="display:flex;align-items:center;gap:4px;font-family:monospace;font-size:9px;color:var(--dim);margin-left:6px">SIZE<input type="range" min="220" max="520" step="20" value="${cardSize}" style="width:90px;accent-color:var(--g);cursor:pointer" oninput="sbSetCardSize(this.value)"></label>`:''}
+        ${isTable?`<label style="display:flex;align-items:center;gap:4px;font-family:monospace;font-size:9px;color:var(--dim);margin-left:6px">IMG<input type="range" min="54" max="220" step="6" value="${tableImgSz}" style="width:90px;accent-color:var(--g);cursor:pointer" oninput="sbSetTableImgSize(this.value)"></label>`:''}
       </div>
     </div>
     ${filterBar}
@@ -23350,7 +23597,8 @@ const _mtgsbState = {
   sortField: 'number', sortDir: 1,
   filters: { name:'', artist:'', rarity:'', color:'', minPrice:'', maxPrice:'', owned:false, missing:false },
   loading: false, view: localStorage.getItem('mtsb_view') || 'cards',
-  cardSize: Number(localStorage.getItem('mtsb_card_size') || 300),
+  cardSize: Number(localStorage.getItem('mtsb_card_size') || 360),
+  tableImgSize: Number(localStorage.getItem('mtsb_table_img_size') || 84),
   swipeIdx: 0, isDragging: false, dragX: 0,
 };
 
@@ -23394,6 +23642,11 @@ function mtgsbOwnedQty(card){
 }
 
 async function mtgsbFetchSets(){
+  const localSets = await mtgCatalogSets().catch(() => []);
+  if(localSets.length && !navigator.onLine) {
+    _mtgsbState.sourceLabel = 'Offline Catalog - Scryfall default_cards';
+    return localSets;
+  }
   const cacheKey = 'mtsb_sets_v1';
   try {
     const cached = JSON.parse(sessionStorage.getItem(cacheKey) || 'null');
@@ -23407,10 +23660,16 @@ async function mtgsbFetchSets(){
     .filter(s => !s.digital && KEEP.has(s.set_type) && s.card_count > 0)
     .sort((a, b) => (b.released_at || '').localeCompare(a.released_at || ''));
   try { sessionStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), sets })); } catch(e){}
-  return sets;
+  _mtgsbState.sourceLabel = 'Live Scryfall Sets';
+  return localSets.length ? [...sets, ...localSets.filter(ls => !sets.some(s => s.code === ls.code))] : sets;
 }
 
 async function mtgsbFetchSetCards(setCode){
+  const localCards = await mtgCatalogCardsBySet(setCode).catch(() => []);
+  if(localCards.length) {
+    _mtgsbState.sourceLabel = 'Offline Catalog - Scryfall default_cards';
+    return localCards;
+  }
   let cards = [];
   let url = 'https://api.scryfall.com/cards/search?q=set:' + encodeURIComponent(setCode) + '&unique=prints&order=collector_number&format=json';
   let pages = 0;
@@ -23430,6 +23689,7 @@ async function mtgsbFetchSetCards(setCode){
       if(loadEl) loadEl.textContent = 'Loading cards… ' + cards.length + '+';
     }
   }
+  _mtgsbState.sourceLabel = 'Live Scryfall';
   return cards;
 }
 
@@ -23507,12 +23767,14 @@ function mtgsbRenderContent(loading){
         <span>${filteredCards.length} card${filteredCards.length!==1?'s':''}${filteredCards.length!==cards.length?' / '+cards.length+' total':''} · ${escHtml(selectedSet.name||'')}</span>
         ${ownedCount ? `<span style="color:var(--g)">${ownedCount} owned</span>` : ''}
         ${totalOwned && !ownedCount ? `<span style="color:var(--dim)">${totalOwned} owned (filtered out)</span>` : ''}
+        ${_mtgsbState.sourceLabel ? `<span style="color:${String(_mtgsbState.sourceLabel).includes('Offline')?'var(--blue)':'#5ba3f5'}">${escHtml(_mtgsbState.sourceLabel)}</span>` : ''}
       </div>
       <div class="mtsb-sort-row">
         SORT:
         ${['number','name','rarity','price'].map(f=>`<button class="hbtn mtsb-sort-btn${_mtgsbState.sortField===f?' active':''}" onclick="mtgsbSetSort('${f}')">${f.toUpperCase()}${_mtgsbState.sortField===f?(_mtgsbState.sortDir>0?' ↑':' ↓'):''}</button>`).join('')}
         <button class="hbtn mtsb-sort-btn" style="margin-left:6px" onclick="mtgsbToggleView()">${view==='cards'?'⊟ SWIPE':view==='swipe'?'⊞ TABLE':'☰ CARDS'}</button>
-        ${view==='cards'?`<label style="display:flex;align-items:center;gap:5px;font-family:monospace;font-size:9px;color:var(--dim);margin-left:8px">SIZE<input type="range" min="160" max="480" step="20" value="${cardSize}" style="width:72px;accent-color:#5ba3f5;cursor:pointer" oninput="mtgsbSetCardSize(this.value)"></label>`:''}
+        ${view==='cards'?`<label style="display:flex;align-items:center;gap:5px;font-family:monospace;font-size:9px;color:var(--dim);margin-left:8px">SIZE<input type="range" min="240" max="560" step="20" value="${cardSize}" style="width:90px;accent-color:#5ba3f5;cursor:pointer" oninput="mtgsbSetCardSize(this.value)"></label>`:''}
+        ${view==='table'?`<label style="display:flex;align-items:center;gap:5px;font-family:monospace;font-size:9px;color:var(--dim);margin-left:8px">IMG<input type="range" min="54" max="220" step="6" value="${_mtgsbState.tableImgSize || 84}" style="width:90px;accent-color:#5ba3f5;cursor:pointer" oninput="mtgsbSetTableImgSize(this.value)"></label>`:''}
       </div>
     </div>
     <div class="mtsb-filters">
@@ -23534,13 +23796,14 @@ function mtgsbRenderContent(loading){
     const rows = filteredCards.map((c, i) => {
       const owned = mtgsbIsOwned(c);
       const img = mtgsbCardImgSrc(c);
+      const imgW = _mtgsbState.tableImgSize || 84;
       const cols = c.colors || c.card_faces?.[0]?.colors || [];
       const usd = Number(c.prices?.usd || 0);
       const foil = Number(c.prices?.usd_foil || 0);
       return `<tr class="${owned?'mtsb-tr-owned':''}">
         <td class="mtsb-td mtsb-td-num">${escHtml(c.collector_number||'')}</td>
         <td class="mtsb-td">
-          ${img?`<img src="${escHtml(img)}" style="width:32px;border-radius:3px;vertical-align:middle;margin-right:6px" loading="lazy">`:''}
+          ${img?`<img src="${escHtml(img)}" class="mtsb-table-img" style="width:${imgW}px;border-radius:4px;vertical-align:middle;margin-right:8px" loading="lazy">`:''}
           <strong>${escHtml(c.name||'')}</strong>
           ${owned?`<span class="mtsb-owned-badge" style="margin-left:6px">×${mtgsbOwnedQty(c)}</span>`:''}
         </td>
@@ -23788,6 +24051,14 @@ function mtgsbSetCardSize(val){
   localStorage.setItem('mtsb_card_size', val);
   const area = document.querySelector('#mtsb-content .mtsb-cards-area');
   if(area) area.style.setProperty('--mtsb-card-min', val + 'px');
+}
+
+function mtgsbSetTableImgSize(val){
+  _mtgsbState.tableImgSize = Number(val);
+  localStorage.setItem('mtsb_table_img_size', val);
+  document.querySelectorAll('.mtsb-table-img').forEach(img => {
+    img.style.width = val + 'px';
+  });
 }
 
 function scryfallCardToQplRow(c){
