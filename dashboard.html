@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.06.18.07-beta-onboarding-wizard">
+<meta name="version" content="2026.06.18.08-inventory-refresh-analytics">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -569,6 +569,34 @@ body.show-mode .show-mode-toggle { border-color:rgba(0,255,179,.4); color:var(--
 .inv-card-actions { display:grid; grid-template-columns:1fr 1fr; gap:5px; margin-top:auto; padding-top:8px; }
 .inv-card-actions .rab { min-height:44px; font-size:11px; padding:0 8px; width:100%; }
 .inv-card-actions .rab-edit { grid-column:1 / -1; background:var(--surf2); border-color:var(--border); color:var(--dim); font-size:10px; min-height:36px; }
+
+/* Inventory refresh: health, photos, owner analytics */
+.inv-health-grid,.owner-analytics-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; margin:10px 0 12px; }
+.inv-health-card,.owner-metric-card { border:1px solid var(--border); background:rgba(14,16,24,.8); border-radius:10px; padding:10px; min-height:74px; cursor:pointer; }
+.inv-health-card:hover,.owner-metric-card:hover { border-color:rgba(0,255,179,.35); }
+.inv-health-label,.owner-metric-label { font-family:var(--font-mono); font-size:8px; letter-spacing:.12em; color:var(--dim); text-transform:uppercase; }
+.inv-health-value,.owner-metric-value { font-family:'Orbitron',var(--font-mono); font-size:20px; font-weight:900; color:var(--g); margin-top:5px; }
+.inv-health-sub,.owner-metric-sub { font-family:var(--font-mono); font-size:9px; color:var(--dim); margin-top:3px; line-height:1.35; }
+.owner-section-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; margin-top:10px; }
+.owner-mini-panel { border:1px solid var(--border); background:var(--surf); border-radius:10px; padding:10px; min-height:120px; }
+.owner-mini-row { display:flex; align-items:center; justify-content:space-between; gap:10px; font-family:var(--font-mono); font-size:10px; color:var(--dim); padding:7px 0; border-bottom:1px solid rgba(255,255,255,.05); }
+.owner-mini-row:last-child { border-bottom:0; }
+.owner-mini-row b { color:var(--text); font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.inv-money-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; margin:10px 0; }
+.inv-money-card { border:1px solid var(--border); background:var(--surf); border-radius:9px; padding:9px; }
+.inv-money-card .k { font-family:var(--font-mono); font-size:8px; color:var(--dim); letter-spacing:.12em; text-transform:uppercase; }
+.inv-money-card .v { font-family:'Orbitron',var(--font-mono); font-size:15px; color:var(--text); margin-top:4px; }
+.inv-photo-box { border:1px dashed rgba(255,255,255,.18); background:#050507; border-radius:10px; min-height:190px; display:flex; align-items:center; justify-content:center; overflow:hidden; margin-bottom:8px; }
+.inv-photo-box img { width:100%; max-height:260px; object-fit:contain; display:block; }
+.inv-photo-placeholder { font-family:var(--font-mono); font-size:10px; color:var(--dim); letter-spacing:.12em; text-align:center; padding:20px; }
+.inv-photo-actions { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:10px; }
+.inv-photo-actions .hbtn { min-height:42px; font-size:10px; }
+.inv-source-pill { display:inline-block; font-family:var(--font-mono); font-size:8px; color:var(--dim); border:1px solid var(--border); border-radius:999px; padding:2px 6px; margin-top:4px; }
+.inv-warning-pill { display:inline-block; font-family:var(--font-mono); font-size:8px; color:var(--gold); border:1px solid rgba(255,209,102,.35); border-radius:999px; padding:2px 6px; margin-top:4px; }
+@media(max-width:767px) {
+  .inv-health-grid,.owner-analytics-grid,.owner-section-grid,.inv-money-grid { grid-template-columns:1fr; }
+  .inv-photo-box { min-height:240px; }
+}
 
 /* ── Research QPL — primary buttons fill full width ──────────────────────── */
 .qpl-actions-primary { display:grid; grid-template-columns:1fr; gap:8px; margin-bottom:10px; }
@@ -1206,7 +1234,7 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.18.07-beta-onboarding-wizard</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.18.08-inventory-refresh-analytics</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
@@ -1233,7 +1261,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip dev-only" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.18.07-beta-onboarding-wizard</div>
+<div class="dsb-chip dev-only" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.18.08-inventory-refresh-analytics</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -1356,6 +1384,12 @@ body.show-mode .inv-sync-badge{display:none;}
     <button class="fb" onclick="setF('archived',this)">Archived</button>
     <button class="fb" onclick="setF('at_show',this)">At Show</button>
     <button class="fb" onclick="setF('listed_online',this)">Listed</button>
+    <button class="fb" onclick="setF('not_listed',this)">Not Listed</button>
+    <button class="fb" onclick="setF('no_photo',this)">No Photo</button>
+    <button class="fb" onclick="setF('no_cost',this)">No Cost</button>
+    <button class="fb" onclick="setF('no_market',this)">No Market</button>
+    <button class="fb" onclick="setF('stale_price',this)">Stale Price</button>
+    <button class="fb" onclick="setF('below_cost',this)">Below Cost</button>
     <button class="fb" onclick="setF('pulled_ebay',this)">Pulled</button>
     <button class="fb" onclick="setF('Sports',this)">⚾ Sports</button>
     <button class="fb" onclick="setF('TCG',this)">🎴 TCG</button>
@@ -1364,6 +1398,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <button class="fb" onclick="setF('Collectibles',this)">🏷 Collectibles</button>
     <span id="tbl-count" style="font-family:var(--font-mono);font-size:9px;color:var(--dim);margin-left:4px"></span>
   </div>
+  <div id="inventory-health-panel"></div>
   <!-- Card grid view — hidden in table mode -->
   <div id="inv-card-grid-container" style="display:none">
     <div class="inv-card-grid" id="inv-card-grid"></div>
@@ -1394,6 +1429,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <!-- SALES TAB -->
 <div id="tab-sales" class="tab-panel">
   <div class="sec">SALES ANALYTICS</div>
+  <div id="owner-analytics-panel"></div>
   <div class="three">
     <div class="panel">
       <div class="ph">SALES BY CHANNEL</div>
@@ -1918,10 +1954,23 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <!-- EDIT ITEM MODAL -->
 <div class="modal-bg" id="edit-modal">
-  <div class="modal" style="max-width:420px">
+  <div class="modal" style="max-width:720px;max-height:92vh;overflow:auto">
     <h3>✏️ EDIT ITEM</h3>
     <div id="edit-item-title" style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:12px"></div>
 
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;align-items:start">
+      <div>
+        <div class="inv-photo-box" id="edit-photo-preview"><div class="inv-photo-placeholder">NO PHOTO</div></div>
+        <div class="inv-photo-actions">
+          <button class="hbtn" type="button" onclick="document.getElementById('edit-photo-file')?.click()">PHOTO</button>
+          <button class="hbtn danger" type="button" onclick="removeInventoryEditPhoto()">REMOVE</button>
+        </div>
+        <input id="edit-photo-file" type="file" accept="image/*" capture="environment" style="display:none" onchange="handleInventoryEditPhoto(this.files && this.files[0])">
+        <input id="edit-photo-data" type="hidden">
+        <input id="edit-photo-source" type="hidden">
+        <div id="edit-photo-note" class="inv-source-pill">No image</div>
+      </div>
+      <div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
       <div>
         <label>Cost Paid ($)</label>
@@ -1930,6 +1979,10 @@ body.show-mode .inv-sync-badge{display:none;}
       <div>
         <label>Market Price ($)</label>
         <input type="number" id="edit-market" step="0.01" min="0" placeholder="0.00">
+      </div>
+      <div>
+        <label>List / Sale Price ($)</label>
+        <input type="number" id="edit-list-price" step="0.01" min="0" placeholder="0.00">
       </div>
       <div>
         <label>Condition</label>
@@ -1958,6 +2011,8 @@ body.show-mode .inv-sync-badge{display:none;}
           <option value="Graded">Graded</option>
           <option value="Collectibles">Collectibles</option>
         </select>
+      </div>
+    </div>
       </div>
     </div>
 
@@ -2349,7 +2404,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.06.18.07-beta-onboarding-wizard';
+const APP_VERSION = '2026.06.18.08-inventory-refresh-analytics';
 window.APP_VERSION = APP_VERSION;
 const branchName = 'pokemon-v2-core';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
@@ -8903,7 +8958,8 @@ function renderCardView(){
   if(!rows.length){ grid.innerHTML = '<div style="color:var(--dim);font-family:monospace;font-size:12px;padding:20px;text-align:center">No items</div>'; return; }
   grid.innerHTML = rows.map(i => {
     const ins = i.status === 'in_stock';
-    const thumb = i.thumbnail || i.imageUrl || '';
+    const thumb = inventoryImageUrl(i);
+    const money = inventoryProfitStats(i);
     const imgEl = thumb
       ? `<img class="inv-card-img" src="${escHtml(thumb)}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
         + `<div class="inv-card-nimg" style="display:none">NO IMAGE</div>`
@@ -8913,7 +8969,9 @@ function renderCardView(){
       <div class="inv-card-body">
         <div class="inv-card-name" title="${escHtml(i.name)}" onclick="openInventoryItemInResearch('${i.id}')" style="cursor:pointer">${escHtml(i.name)}</div>
         <div class="inv-card-meta">${escHtml([i.set, i.year, i.condition].filter(Boolean).join(' · ') || i.category || '')}</div>
-        <div class="inv-card-price">${i.market > 0 ? '$' + Number(i.market).toFixed(2) : '—'}</div>
+        <div class="inv-card-price">${money.market > 0 ? fd$(money.market) : '—'}</div>
+        <div class="inv-card-meta">List ${money.list ? fd$(money.list) : '—'} · Cost ${money.cost ? fd$(money.cost) : '—'}</div>
+        <div class="inv-card-meta">${inventoryImageSourceLabel(i)}${inventoryIsPriceStale(i) ? ' · stale price' : ''}</div>
         ${i.qty > 1 ? `<div class="inv-card-meta" style="color:var(--g)">Qty: ${i.qty}</div>` : ''}
         <div class="inv-card-actions">
           ${ins ? `<button class="rab rab-sell" onclick="openSellModal('${i.id}')">SELL TO CART</button>` : '<div style="grid-column:1/-1;text-align:center;font-family:monospace;font-size:10px;color:var(--dim);padding:8px">SOLD</div>'}
@@ -10547,7 +10605,9 @@ function mapBuiltInItem(row){
     category:d.category || d.itemType || d.inventoryType || 'TCG',
     cost,
     market,
-    salePrice:Number(d.salePrice || d.sale_price || market || 0),
+    salePrice:Number(d.salePrice || d.sale_price || d.listPrice || d.displayPrice || market || 0),
+    listPrice:Number(d.listPrice || d.displayPrice || d.salePrice || d.sale_price || market || 0),
+    displayPrice:Number(d.displayPrice || d.listPrice || d.salePrice || d.sale_price || market || 0),
     qty:Number(d.qty ?? d.quantity ?? d['inventory-count'] ?? 1),
     profit:isSold ? Number(d.profit || (Number(d.salePrice || market || 0) - cost)) : 0,
     condition:d.condition || '',
@@ -10585,7 +10645,10 @@ function mapBuiltInItem(row){
     grade:d.grade || '',
     cert_number:d.cert_number || d.certNumber || '',
     tags:d.tags || '',
-    thumbnail:d.thumbnail || d.imageUrl || d.image_url || d.image || null,
+    thumbnail:d.photoDataUrl || d.uploadedPhotoUrl || d.thumbnail || d.imageUrl || d.image_url || d.image || null,
+    imageUrl:d.imageUrl || d.image_url || d.image || '',
+    photoDataUrl:d.photoDataUrl || '',
+    photoSource:d.photoSource || '',
     notes:d.notes || '',
     productType:d.productType || '',
     is_sealed:!!d.is_sealed,
@@ -10618,9 +10681,10 @@ function builtInDataFromItem(item, updates={}){
     qty:Number(updates.qty ?? item.qty ?? 1),
     cost:Number(updates.cost ?? item.cost ?? 0),
     market:Number(updates.market ?? item.market ?? 0),
-    salePrice:Number(updates.salePrice ?? item.salePrice ?? item.raw?.salePrice ?? item.market ?? updates.market ?? 0),
+    salePrice:Number(updates.salePrice ?? updates.listPrice ?? item.salePrice ?? item.listPrice ?? item.raw?.salePrice ?? item.market ?? updates.market ?? 0),
+    listPrice:Number(updates.listPrice ?? updates.salePrice ?? item.listPrice ?? item.displayPrice ?? item.salePrice ?? item.raw?.listPrice ?? item.market ?? updates.market ?? 0),
     price:Number(updates.price ?? updates.market ?? item.price ?? item.market ?? 0),
-    displayPrice:Number(updates.displayPrice ?? updates.price ?? updates.market ?? item.displayPrice ?? item.market ?? 0),
+    displayPrice:Number(updates.displayPrice ?? updates.listPrice ?? updates.salePrice ?? item.displayPrice ?? item.listPrice ?? item.salePrice ?? updates.price ?? updates.market ?? item.market ?? 0),
     marketPrice:Number(updates.marketPrice ?? updates.market ?? item.marketPrice ?? item.market ?? 0),
     rawMarketPrice:Number(updates.rawMarketPrice ?? updates.marketPrice ?? updates.market ?? item.rawMarketPrice ?? item.market ?? 0),
     lastMarketPrice:updates.lastMarketPrice ?? item.lastMarketPrice ?? '',
@@ -10653,6 +10717,10 @@ function builtInDataFromItem(item, updates={}){
     priceUsed:Number(updates.priceUsed ?? item.priceUsed ?? updates.market ?? item.market ?? 0),
     expectedProfit:Number(updates.expectedProfit ?? item.expectedProfit ?? 0),
     priceSource:updates.priceSource ?? item.priceSource ?? '',
+    thumbnail:updates.thumbnail ?? item.thumbnail ?? item.photoDataUrl ?? item.imageUrl ?? '',
+    imageUrl:updates.imageUrl ?? item.imageUrl ?? item.thumbnail ?? '',
+    photoDataUrl:updates.photoDataUrl ?? item.photoDataUrl ?? '',
+    photoSource:updates.photoSource ?? item.photoSource ?? '',
     key_notes:updates.key_notes ?? item.key_notes ?? item.notes ?? '',
     player:updates.player ?? item.player ?? '',
     team:updates.team ?? item.team ?? '',
@@ -10820,7 +10888,7 @@ function mapItem(i, skuMap){
   const market = parseFloat(f['retail-price'])||parseFloat(f['msrp'])||skuPrice||0;
   const cost = parseFloat(f['cost-basis'])||parseFloat(f.cost)||0;
   // sale-price is written by confirmSell when item is sold
-  const salePrice = parseFloat(f['sale-price'])||skuPrice||market;
+  const salePrice = parseFloat(f['sale-price'])||parseFloat(f['list-price'])||skuPrice||market;
   const qty = parseInt(f['inventory-count'])||0;
   const profit = isSold ? (parseFloat(f['profit'])||salePrice-cost) : 0;
   const condition = f['condition']||'';
@@ -10828,7 +10896,7 @@ function mapItem(i, skuMap){
   return {
     id:i.id, name:f.name||'—', set:f['set-name']||'',
     variant:f.variant||'', year:f.year||'',
-    category:cat, cost, market, salePrice, qty,
+    category:cat, cost, market, salePrice, listPrice:salePrice, displayPrice:salePrice, qty,
     profit, condition, priceSource,
     status:isSold?'sold':'in_stock',
     lifecycle:getLifecycle(i.id, isSold?'sold':'in_stock'),
@@ -10840,8 +10908,10 @@ function mapItem(i, skuMap){
     grader:f.grader||'', grade:f.grade||'',
     cert_number:f['cert-number']||f.cert_number||'',
     tags:f.tags||'',
-    thumbnail:f.thumbnail?.url||f['image-url']||null,
+    thumbnail:f.photoDataUrl||f.thumbnail?.url||f['image-url']||null,
     imageUrl:f['image-url']||'',
+    photoDataUrl:f.photoDataUrl||'',
+    photoSource:f.photoSource||'',
     location:f.location||'',
     player:f['player-card-name']||f.player||'',
     team:f.team||'',
@@ -10870,6 +10940,7 @@ function renderAll(){
   renderChannels(); renderTopSold(); renderMonthly();
   renderAlerts(); filterTable(); renderSoldTable();
   if(typeof updateDealerStatusBar === 'function') setTimeout(updateDealerStatusBar, 50);
+  renderInventoryHealthPanel(); renderOwnerAnalyticsPanel();
   renderTodayMode(); renderDataHealthPanel(); renderOnboardingPanel(); updateUndoButton();
 }
 
@@ -10880,6 +10951,9 @@ function applyDashboardItemUpdate(id, updates) {
     cost: updates.cost,
     market: updates.market,
     price: updates.market,
+    salePrice: updates.salePrice ?? updates.listPrice ?? all[idx].salePrice,
+    listPrice: updates.listPrice ?? updates.salePrice ?? all[idx].listPrice,
+    displayPrice: updates.displayPrice ?? updates.listPrice ?? updates.salePrice ?? all[idx].displayPrice,
     qty: updates.qty,
     year: updates.year,
     set: updates.set,
@@ -10888,6 +10962,10 @@ function applyDashboardItemUpdate(id, updates) {
     condition: updates.condition,
     category: updates.category,
     priceSource: updates.priceSource || updates.price_source || all[idx].priceSource,
+    thumbnail: updates.thumbnail ?? updates.photoDataUrl ?? all[idx].thumbnail,
+    imageUrl: updates.imageUrl ?? all[idx].imageUrl,
+    photoDataUrl: updates.photoDataUrl ?? all[idx].photoDataUrl,
+    photoSource: updates.photoSource ?? all[idx].photoSource,
     key_notes: updates.key_notes,
     notes: updates.key_notes,
     player: updates.player,
@@ -11170,6 +11248,151 @@ function filterAndSwitch(f){
   if(btn) setF(f, btn);
 }
 
+function inventoryImageUrl(item={}){
+  const raw = item.raw || {};
+  return item.photoDataUrl || item.userPhoto || item.uploadedPhotoUrl || item.photoUrl ||
+    item.thumbnail || item.imageUrl || item.image_url || item.image ||
+    raw.photoDataUrl || raw.userPhoto || raw.uploadedPhotoUrl || raw.photoUrl ||
+    raw.thumbnail || raw.imageUrl || raw.image_url || raw.image || '';
+}
+function inventoryImageSourceLabel(item={}){
+  const raw = item.raw || {};
+  if(item.photoDataUrl || item.userPhoto || item.uploadedPhotoUrl || raw.photoDataUrl || raw.userPhoto || raw.uploadedPhotoUrl) return 'Uploaded photo';
+  if(inventoryImageUrl(item)) return 'Catalog image';
+  return 'No image';
+}
+function inventoryCostBasis(item={}){ return Number(item.cost ?? item.costBasis ?? item.raw?.cost ?? 0) || 0; }
+function inventoryMarketPrice(item={}){ return Number(item.market ?? item.marketPrice ?? item.rawMarketPrice ?? item.raw?.market ?? 0) || 0; }
+function inventoryListPrice(item={}){
+  return Number(item.listPrice ?? item.displayPrice ?? item.salePrice ?? item.price ?? item.raw?.listPrice ?? item.raw?.displayPrice ?? item.raw?.salePrice ?? inventoryMarketPrice(item) ?? 0) || 0;
+}
+function inventoryProfitStats(item={}){
+  const cost = inventoryCostBasis(item);
+  const market = inventoryMarketPrice(item);
+  const list = inventoryListPrice(item);
+  const profit = list > 0 ? list - cost : market - cost;
+  const margin = list > 0 ? (profit / list) * 100 : (cost > 0 ? (profit / cost) * 100 : 0);
+  return { cost, market, list, profit, margin, unrealized:market - cost };
+}
+function inventoryPriceDate(item={}){
+  return item.priceUpdatedAt || item.lastPriceUpdate || item.pokemonPriceTrackerLastUpdated || item.raw?.priceUpdatedAt || item.raw?.lastPriceUpdate || '';
+}
+function inventoryIsPriceStale(item={}){
+  if(item.stalePrice) return true;
+  const market = inventoryMarketPrice(item);
+  if(market <= 0) return true;
+  const d = inventoryPriceDate(item);
+  if(!d) return true;
+  const t = new Date(d).getTime();
+  if(!Number.isFinite(t)) return true;
+  return (Date.now() - t) > 14 * 24 * 60 * 60 * 1000;
+}
+function inventoryIsListed(item={}){
+  const lifecycle = item.lifecycle || item.status || '';
+  return lifecycle === 'listed_online' || !!(item.listingUrl || item.ebayListingId || item.webflowSlug || item.raw?.listingUrl || item.raw?.ebayListingId);
+}
+function inventoryHealthSummary(items=all){
+  const inStock = (items || []).filter(i=>i.status === 'in_stock' && i.lifecycle !== 'archived');
+  return {
+    total:inStock.length,
+    noPhoto:inStock.filter(i=>!inventoryImageUrl(i)).length,
+    noCost:inStock.filter(i=>inventoryCostBasis(i) <= 0).length,
+    noMarket:inStock.filter(i=>inventoryMarketPrice(i) <= 0).length,
+    stale:inStock.filter(inventoryIsPriceStale).length,
+    listed:inStock.filter(inventoryIsListed).length,
+    notListed:inStock.filter(i=>!inventoryIsListed(i)).length,
+    belowCost:inStock.filter(i=>{ const s=inventoryProfitStats(i); return s.cost>0 && s.list>0 && s.list<s.cost; }).length,
+    highValue:inStock.filter(i=>Math.max(inventoryMarketPrice(i), inventoryListPrice(i)) >= 100).length,
+  };
+}
+function setInventoryHealthFilter(filter){
+  const btn = [...document.querySelectorAll('.fb')].find(b=>String(b.getAttribute('onclick')||'').includes("'" + filter + "'"));
+  if(btn) setF(filter, btn);
+  else { activeF = filter; page = 1; filterTable(); }
+}
+function renderInventoryHealthPanel(){
+  const el = document.getElementById('inventory-health-panel');
+  if(!el) return;
+  const h = inventoryHealthSummary(all);
+  const cards = [
+    ['no_photo','No Photo',h.noPhoto,'needs item image'],
+    ['no_cost','No Cost',h.noCost,'missing buy basis'],
+    ['no_market','No Market',h.noMarket,'needs market sync'],
+    ['stale_price','Stale Price',h.stale,'older than 14 days'],
+    ['not_listed','Not Listed',h.notListed,'in stock'],
+    ['listed_online','Listed',h.listed,'online lifecycle'],
+    ['below_cost','Below Cost',h.belowCost,'list below cost'],
+    ['high_value','High Value',h.highValue,'$100+ items'],
+  ];
+  el.innerHTML = `<div class="inv-health-grid">${cards.map(([f,l,v,s])=>`
+    <div class="inv-health-card" onclick="setInventoryHealthFilter('${f}')">
+      <div class="inv-health-label">${l}</div>
+      <div class="inv-health-value">${v}</div>
+      <div class="inv-health-sub">${s}</div>
+    </div>`).join('')}</div>`;
+}
+function getOwnerSaleRows(){
+  const hasSupabaseItems = all.some(i=>i.source === 'built_in');
+  const txRows = hasSupabaseItems ? [] : dedupeTransactionRows(transactionSoldRows(), soldData);
+  return soldData.concat(txRows);
+}
+function ownerAnalyticsData(){
+  const inv = (all || []).filter(i=>i.status === 'in_stock' && i.lifecycle !== 'archived');
+  const sold = getOwnerSaleRows();
+  const now = new Date();
+  const todayKey = now.toDateString();
+  const monthKey = now.getFullYear() + '-' + now.getMonth();
+  const salesToday = sold.filter(i=>new Date(i.soldAt || i.createdAt || 0).toDateString() === todayKey);
+  const salesMonth = sold.filter(i=>{ const d=new Date(i.soldAt || i.createdAt || 0); return d.getFullYear() + '-' + d.getMonth() === monthKey; });
+  const value = inv.reduce((s,i)=>s + inventoryMarketPrice(i) * (Number(i.qty || 1) || 1), 0);
+  const cost = inv.reduce((s,i)=>s + inventoryCostBasis(i) * (Number(i.qty || 1) || 1), 0);
+  const listed = inv.filter(inventoryIsListed).length;
+  const h = inventoryHealthSummary(all);
+  const tender = {};
+  (safeLocalJson('pos_transactions', []) || []).forEach(t=>{
+    const amt = Number(t.total || t.amount || 0) || 0;
+    const k = String(t.tenderType || t.paymentMethod || t.method || t.channel || 'unknown').toLowerCase();
+    tender[k] = (tender[k] || 0) + amt;
+  });
+  const cat = {};
+  sold.forEach(i=>{
+    const k = i.categoryName || i.category || 'Unknown';
+    cat[k] = (cat[k] || 0) + Number(i.salePrice || i.price || 0);
+  });
+  return {
+    inv, sold, salesToday, salesMonth, value, cost, unrealized:value-cost, listed, health:h,
+    revenueToday:salesToday.reduce((s,i)=>s+Number(i.salePrice || i.price || 0),0),
+    profitToday:salesToday.reduce((s,i)=>s+Number(i.profit || ((i.salePrice || i.price || 0) - (i.cost || 0)) || 0),0),
+    revenueMonth:salesMonth.reduce((s,i)=>s+Number(i.salePrice || i.price || 0),0),
+    profitMonth:salesMonth.reduce((s,i)=>s+Number(i.profit || ((i.salePrice || i.price || 0) - (i.cost || 0)) || 0),0),
+    tender, cat,
+    topValue:[...inv].sort((a,b)=>Math.max(inventoryMarketPrice(b),inventoryListPrice(b))-Math.max(inventoryMarketPrice(a),inventoryListPrice(a))).slice(0,5),
+    needsWork:inv.filter(i=>!inventoryImageUrl(i) || inventoryCostBasis(i)<=0 || inventoryMarketPrice(i)<=0 || inventoryIsPriceStale(i)).slice(0,5),
+  };
+}
+function renderOwnerAnalyticsPanel(){
+  const el = document.getElementById('owner-analytics-panel');
+  if(!el) return;
+  const d = ownerAnalyticsData();
+  const tenderRows = Object.entries(d.tender).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  const catRows = Object.entries(d.cat).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  el.innerHTML = `
+    <div class="owner-analytics-grid">
+      <div class="owner-metric-card"><div class="owner-metric-label">Inventory Value</div><div class="owner-metric-value">${fd$(d.value)}</div><div class="owner-metric-sub">Cost ${fd$(d.cost)} · unrealized ${fd$(d.unrealized)}</div></div>
+      <div class="owner-metric-card"><div class="owner-metric-label">Today Sales</div><div class="owner-metric-value">${fd$(d.revenueToday)}</div><div class="owner-metric-sub">${d.salesToday.length} sold · profit ${fd$(d.profitToday)}</div></div>
+      <div class="owner-metric-card"><div class="owner-metric-label">Month Sales</div><div class="owner-metric-value">${fd$(d.revenueMonth)}</div><div class="owner-metric-sub">${d.salesMonth.length} sold · profit ${fd$(d.profitMonth)}</div></div>
+      <div class="owner-metric-card" onclick="setInventoryHealthFilter('not_listed')"><div class="owner-metric-label">Listing Coverage</div><div class="owner-metric-value">${d.listed}/${d.inv.length}</div><div class="owner-metric-sub">${d.health.notListed} in stock not listed</div></div>
+    </div>
+    <div class="owner-section-grid">
+      <div class="owner-mini-panel"><div class="ph">TOP VALUE</div>${d.topValue.length?d.topValue.map(i=>`<div class="owner-mini-row"><b title="${escHtml(i.name)}">${escHtml(i.name)}</b><span>${fd$(Math.max(inventoryMarketPrice(i), inventoryListPrice(i)))}</span></div>`).join(''):'<div class="empty"><div class="empty-t">NONE</div></div>'}</div>
+      <div class="owner-mini-panel"><div class="ph">TENDER SPLIT</div>${tenderRows.length?tenderRows.map(([k,v])=>`<div class="owner-mini-row"><b>${escHtml(k.toUpperCase())}</b><span>${fd$(v)}</span></div>`).join(''):'<div class="empty"><div class="empty-t">NO TENDERS</div></div>'}</div>
+      <div class="owner-mini-panel"><div class="ph">OWNER FLAGS</div>${d.needsWork.length?d.needsWork.map(i=>`<div class="owner-mini-row"><b title="${escHtml(i.name)}">${escHtml(i.name)}</b><span>${!inventoryImageUrl(i)?'NO PHOTO':inventoryCostBasis(i)<=0?'NO COST':inventoryMarketPrice(i)<=0?'NO MARKET':'STALE'}</span></div>`).join(''):'<div class="empty"><div class="empty-t">ALL GOOD</div></div>'}</div>
+    </div>
+    <div class="owner-section-grid" style="grid-template-columns:1fr">
+      <div class="owner-mini-panel"><div class="ph">CATEGORY REVENUE</div>${catRows.length?catRows.map(([k,v])=>`<div class="owner-mini-row"><b>${escHtml(k)}</b><span>${fd$(v)}</span></div>`).join(''):'<div class="empty"><div class="empty-t">NO SALES</div></div>'}</div>
+    </div>`;
+}
+
 function inventoryEmptySearchState(q){
   const safeQ = escHtml(q || '');
   return `<div class="empty" style="padding:18px;text-align:left">
@@ -11197,6 +11420,14 @@ function filterTable(){
     if(activeF==='all') return mq;
     if(activeF==='in_stock') return mq&&i.status==='in_stock';
     if(activeF==='sold') return mq&&i.status==='sold';
+    if(activeF==='no_photo') return mq&&i.status==='in_stock'&&!inventoryImageUrl(i);
+    if(activeF==='no_cost') return mq&&i.status==='in_stock'&&inventoryCostBasis(i)<=0;
+    if(activeF==='no_market') return mq&&i.status==='in_stock'&&inventoryMarketPrice(i)<=0;
+    if(activeF==='stale_price') return mq&&i.status==='in_stock'&&inventoryIsPriceStale(i);
+    if(activeF==='not_listed') return mq&&i.status==='in_stock'&&!inventoryIsListed(i);
+    if(activeF==='listed_online') return mq&&i.status==='in_stock'&&inventoryIsListed(i);
+    if(activeF==='below_cost') return mq&&i.status==='in_stock'&&inventoryProfitStats(i).cost>0&&inventoryProfitStats(i).list>0&&inventoryProfitStats(i).list<inventoryProfitStats(i).cost;
+    if(activeF==='high_value') return mq&&i.status==='in_stock'&&Math.max(inventoryMarketPrice(i), inventoryListPrice(i))>=100;
     if(LIFECYCLE_LABELS[activeF]) return mq&&i.lifecycle===activeF;
     return mq&&i.category===activeF;
   });
@@ -11210,6 +11441,7 @@ function filterTable(){
     });
   }
   document.getElementById('tbl-count').textContent=filtered.length+' items';
+  renderInventoryHealthPanel();
   renderTable();
 }
 function renderTable(){
@@ -11223,11 +11455,13 @@ function renderTable(){
   }
   tb.innerHTML=rows.map(i=>{
     const ins=i.status==='in_stock';
-    const pft=ins?(i.market-i.cost):i.profit;
+    const money = inventoryProfitStats(i);
+    const pft=ins?money.profit:i.profit;
     const ppc=pft>=0?'pp pos':'pp neg';
     const cat=String(i.category||'TCG').replace(/\s+/g,'');
-    const margin=i.cost>0?((pft/i.cost)*100).toFixed(0)+'%':'—';
-    const thumbSrc = i.thumbnail || i.imageUrl || '';
+    const margin=money.list>0?money.margin.toFixed(0)+'%':(money.cost>0?((pft/money.cost)*100).toFixed(0)+'%':'—');
+    const thumbSrc = inventoryImageUrl(i);
+    const stale = inventoryIsPriceStale(i);
     const researchClick = `openInventoryItemInResearch('${i.id}')`;
     const thumbCell = thumbSrc
       ? `<td class="td-thumb" onclick="${researchClick}" style="cursor:pointer" title="Open in Research"><img class="inv-thumb" src="${escHtml(thumbSrc)}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><div class="inv-thumb-placeholder" style="display:none">NO IMG</div></td>`
@@ -11238,9 +11472,9 @@ function renderTable(){
       <td><span class="sc2">${[i.set,i.variant].filter(Boolean).join(' · ')||'—'}</span></td>
       <td><span class="ct ${cat}">${i.category}</span></td>
       <td style="text-align:center;font-family:var(--font-mono);font-size:11px;color:${(i.qty||1)>1?'var(--g)':'var(--dim)'}">${i.qty||1}</td>
-      <td class="pp pm">${i.market>0?fd$(i.market):'—'}<br>${priceSourceBadge(i.priceSource, i.category)}</td>
-      <td class="pp pd">${i.cost>0?fd$(i.cost):'—'}</td>
-      <td class="${ppc}">${i.cost>0||i.profit?(pft>=0?'+':'')+fd$(pft)+(i.cost>0?' ('+margin+')':''):'—'}</td>
+      <td class="pp pm">${money.market>0?fd$(money.market):'—'}<br>${money.list>0?`<span style="font-family:var(--font-mono);font-size:8px;color:var(--dim)">LIST ${fd$(money.list)}</span><br>`:''}${priceSourceBadge(i.priceSource, i.category)}${stale?'<br><span class="inv-warning-pill">STALE</span>':''}</td>
+      <td class="pp pd">${money.cost>0?fd$(money.cost):'<span class="inv-warning-pill">NO COST</span>'}</td>
+      <td class="${ppc}">${money.cost>0||i.profit?(pft>=0?'+':'')+fd$(pft)+(money.list>0||money.cost>0?' ('+margin+')':''):'—'}</td>
       <td><span style="font-family:var(--font-mono);font-size:9px;color:${ins?'var(--g)':'var(--dim)'}">${ins?'IN STOCK':'SOLD'+(i.channel?' · '+i.channel:'')}</span></td>
       <td><div class="row-act-v2">
         ${ins?`<button class="rab rab-sell" onclick="openSellModal('${i.id}')">SELL TO CART</button>`:''}
@@ -11252,25 +11486,25 @@ function renderTable(){
   }).join('');
   tb.querySelectorAll('tr[data-item-id]').forEach(tr => {
     const item = rows.find(r => r.id === tr.dataset.itemId);
-    const nameCell = tr.children[0];
+    const nameCell = tr.children[1];
     if(item && nameCell && !nameCell.querySelector('.inv-select')) {
       nameCell.insertAdjacentHTML('afterbegin', `<input class="inv-select" type="checkbox" value="${item.id}" style="margin-right:6px;accent-color:var(--g)">`);
       nameCell.insertAdjacentHTML('beforeend', `<br><span style="font-family:monospace;font-size:8px;color:var(--dim)">${String(item.source||getInventorySource()).replace('_',' ').toUpperCase()}</span>`);
     }
-    const actCell = tr.children[8];
+    const actCell = tr.children[9];
     if(item && actCell && !actCell.querySelector('.history-btn')) {
-      actCell.querySelector('.row-act')?.insertAdjacentHTML('beforeend', `<button class="ra history-btn" onclick="openItemTimeline('${item.id}')">History</button>`);
+      actCell.querySelector('.row-act-v2,.row-act')?.insertAdjacentHTML('beforeend', `<button class="ra history-btn" onclick="openItemTimeline('${item.id}')">History</button>`);
     }
     if(item && actCell && !actCell.querySelector('.auth-btn')) {
-      actCell.querySelector('.row-act')?.insertAdjacentHTML('beforeend', `<button class="ra auth-btn" style="background:rgba(72,202,228,.08);border-color:rgba(72,202,228,.24);color:var(--blue)" onclick="sendInventoryItemToAuthCheck('${item.id}')">Auth</button>`);
+      actCell.querySelector('.row-act-v2,.row-act')?.insertAdjacentHTML('beforeend', `<button class="ra auth-btn" style="background:rgba(72,202,228,.08);border-color:rgba(72,202,228,.24);color:var(--blue)" onclick="sendInventoryItemToAuthCheck('${item.id}')">Auth</button>`);
     }
     if(item && actCell && !actCell.querySelector('.archive-btn')) {
       const archived = item.lifecycle === 'archived' || item.status === 'archived' || item.archivedAt;
-      actCell.querySelector('.row-act')?.insertAdjacentHTML('beforeend', archived
+      actCell.querySelector('.row-act-v2,.row-act')?.insertAdjacentHTML('beforeend', archived
         ? `<button class="ra archive-btn" style="background:rgba(0,255,179,.08);border-color:rgba(0,255,179,.22);color:var(--g)" onclick="restoreInventoryItem('${item.id}')">Restore</button><button class="ra" style="background:rgba(255,77,109,.08);border-color:rgba(255,77,109,.24);color:var(--red)" onclick="hardDeleteInventoryItem('${item.id}')">Hard Delete</button>`
         : `<button class="ra archive-btn" style="background:rgba(255,209,102,.08);border-color:rgba(255,209,102,.22);color:var(--gold)" onclick="archiveInventoryItem('${item.id}')">Archive</button>`);
     }
-    const cell = tr.children[7];
+    const cell = tr.children[8];
     if(!item || !cell) return;
     const current = item.lifecycle || (item.status === 'sold' ? 'sold' : 'in_stock');
     cell.innerHTML = `<select class="min" style="width:138px;font-size:9px;padding:6px" onchange="setLifecycle('${item.id}', this.value)">
@@ -13825,6 +14059,41 @@ async function markInventoryRecordSold(item, fieldData, saleMeta){
 // ══════════════════════════════════════════════════
 let editingItemId = null;
 
+function setInventoryEditPhoto(src='', source=''){
+  const box = document.getElementById('edit-photo-preview');
+  const data = document.getElementById('edit-photo-data');
+  const srcEl = document.getElementById('edit-photo-source');
+  const note = document.getElementById('edit-photo-note');
+  if(data) data.value = src || '';
+  if(srcEl) srcEl.value = source || '';
+  if(note) note.textContent = source || (src ? 'Catalog image' : 'No image');
+  if(box) box.innerHTML = src ? `<img src="${escHtml(src)}" alt="">` : '<div class="inv-photo-placeholder">NO PHOTO</div>';
+}
+
+function removeInventoryEditPhoto(){ setInventoryEditPhoto('', 'No image'); }
+
+function handleInventoryEditPhoto(file){
+  if(!file) return;
+  if(!file.type || !file.type.startsWith('image/')) { toast_dash('Choose an image file'); return; }
+  const reader = new FileReader();
+  reader.onload = () => {
+    const img = new Image();
+    img.onload = () => {
+      const max = 1200;
+      const scale = Math.min(1, max / Math.max(img.width, img.height));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.round(img.width * scale));
+      canvas.height = Math.max(1, Math.round(img.height * scale));
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      setInventoryEditPhoto(canvas.toDataURL('image/jpeg', .78), 'Uploaded photo');
+      toast_dash('Photo attached locally');
+    };
+    img.onerror = () => toast_dash('Could not read image');
+    img.src = reader.result;
+  };
+  reader.readAsDataURL(file);
+}
+
 function openEditModal(id) {
   const item = all.find(i => i.id === id);
   if(!item) return;
@@ -13833,6 +14102,7 @@ function openEditModal(id) {
   document.getElementById('edit-item-title').textContent = item.name + (item.year ? ' · '+item.year : '') + (item.set ? ' · '+item.set : '');
   document.getElementById('edit-cost').value = item.cost || '';
   document.getElementById('edit-market').value = item.market || '';
+  document.getElementById('edit-list-price').value = inventoryListPrice(item) || '';
   document.getElementById('edit-qty').value = item.qty || 1;
   document.getElementById('edit-year').value = item.year || '';
   document.getElementById('edit-set').value = item.set || '';
@@ -13851,6 +14121,7 @@ function openEditModal(id) {
   document.getElementById('edit-key').checked = item.is_key || false;
   document.getElementById('edit-signed').checked = item.is_signed || false;
   document.getElementById('edit-sync-status').textContent = '';
+  setInventoryEditPhoto(inventoryImageUrl(item), inventoryImageSourceLabel(item));
   const syncBtn = document.getElementById('edit-sync-btn');
   if(syncBtn) {
     const source = item.source || getInventorySource();
@@ -13883,17 +14154,24 @@ async function deleteEditingInventoryItem(){
 function updateEditProfit() {
   const cost = parseFloat(document.getElementById('edit-cost').value)||0;
   const market = parseFloat(document.getElementById('edit-market').value)||0;
-  const profit = market - cost;
+  const list = parseFloat(document.getElementById('edit-list-price')?.value)||market;
+  const profit = list - cost;
+  const unrealized = market - cost;
   const el = document.getElementById('edit-profit-preview');
-  if(cost > 0 && market > 0) {
-    const roi = (profit/cost*100).toFixed(0);
-    el.innerHTML = `<span style="color:${profit>=0?'var(--g)':'var(--red)'}">${profit>=0?'+':''}$${profit.toFixed(2)} profit (${roi}% ROI)</span>`;
+  if(cost > 0 && (market > 0 || list > 0)) {
+    const margin = list > 0 ? (profit/list*100).toFixed(0) : '0';
+    el.innerHTML = `<div class="inv-money-grid">
+      <div class="inv-money-card"><div class="k">LIST PROFIT</div><div class="v" style="color:${profit>=0?'var(--g)':'var(--red)'}">${profit>=0?'+':''}$${profit.toFixed(2)}</div></div>
+      <div class="inv-money-card"><div class="k">MARGIN</div><div class="v">${margin}%</div></div>
+      <div class="inv-money-card"><div class="k">UNREALIZED</div><div class="v" style="color:${unrealized>=0?'var(--g)':'var(--red)'}">${unrealized>=0?'+':''}$${unrealized.toFixed(2)}</div></div>
+    </div>`;
   } else {
     el.textContent = '';
   }
 }
 document.getElementById('edit-cost').addEventListener('input', updateEditProfit);
 document.getElementById('edit-market').addEventListener('input', updateEditProfit);
+document.getElementById('edit-list-price')?.addEventListener('input', updateEditProfit);
 
 function saveEditToLocalStorage(id, updates) {
   const inv = JSON.parse(localStorage.getItem('lba_inventory')||'[]');
@@ -13923,6 +14201,13 @@ function updateUniversalInventoryItem(id, updates) {
     ...updates,
     market:Number(updates.market ?? inv[idx].market ?? 0),
     cost:Number(updates.cost ?? inv[idx].cost ?? 0),
+    salePrice:Number(updates.salePrice ?? updates.listPrice ?? inv[idx].salePrice ?? inv[idx].market ?? 0),
+    listPrice:Number(updates.listPrice ?? updates.salePrice ?? inv[idx].listPrice ?? inv[idx].salePrice ?? inv[idx].market ?? 0),
+    displayPrice:Number(updates.displayPrice ?? updates.listPrice ?? updates.salePrice ?? inv[idx].displayPrice ?? inv[idx].salePrice ?? inv[idx].market ?? 0),
+    thumbnail:updates.thumbnail ?? updates.photoDataUrl ?? inv[idx].thumbnail ?? '',
+    imageUrl:updates.imageUrl ?? inv[idx].imageUrl ?? '',
+    photoDataUrl:updates.photoDataUrl ?? inv[idx].photoDataUrl ?? '',
+    photoSource:updates.photoSource ?? inv[idx].photoSource ?? '',
     qty:Number(updates.qty ?? inv[idx].qty ?? 1),
     notes:updates.key_notes || updates.notes || inv[idx].notes || '',
     updatedAt:new Date().toISOString(),
@@ -13964,6 +14249,12 @@ async function confirmEdit() {
     cost: parseFloat(document.getElementById('edit-cost').value)||0,
     market: parseFloat(document.getElementById('edit-market').value)||0,
     price: parseFloat(document.getElementById('edit-market').value)||0,
+    salePrice: parseFloat(document.getElementById('edit-list-price')?.value)||parseFloat(document.getElementById('edit-market').value)||0,
+    listPrice: parseFloat(document.getElementById('edit-list-price')?.value)||parseFloat(document.getElementById('edit-market').value)||0,
+    displayPrice: parseFloat(document.getElementById('edit-list-price')?.value)||parseFloat(document.getElementById('edit-market').value)||0,
+    thumbnail: document.getElementById('edit-photo-data')?.value || '',
+    photoDataUrl: document.getElementById('edit-photo-data')?.value || '',
+    photoSource: document.getElementById('edit-photo-source')?.value || '',
     qty: parseInt(document.getElementById('edit-qty').value)||1,
     year: document.getElementById('edit-year').value.trim(),
     set: document.getElementById('edit-set').value.trim(),
@@ -14007,6 +14298,12 @@ async function confirmEditAndSync() {
     cost: parseFloat(document.getElementById('edit-cost').value)||0,
     market: parseFloat(document.getElementById('edit-market').value)||0,
     price: parseFloat(document.getElementById('edit-market').value)||0,
+    salePrice: parseFloat(document.getElementById('edit-list-price')?.value)||parseFloat(document.getElementById('edit-market').value)||0,
+    listPrice: parseFloat(document.getElementById('edit-list-price')?.value)||parseFloat(document.getElementById('edit-market').value)||0,
+    displayPrice: parseFloat(document.getElementById('edit-list-price')?.value)||parseFloat(document.getElementById('edit-market').value)||0,
+    thumbnail: document.getElementById('edit-photo-data')?.value || '',
+    photoDataUrl: document.getElementById('edit-photo-data')?.value || '',
+    photoSource: document.getElementById('edit-photo-source')?.value || '',
     qty: parseInt(document.getElementById('edit-qty').value)||1,
     year: document.getElementById('edit-year').value.trim(),
     set: document.getElementById('edit-set').value.trim(),
