@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.06.18.02-mobile-chrome">
+<meta name="version" content="2026.06.18.03-set-browser-polish">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -865,6 +865,8 @@ body.customer-display-mode #customer-display-exit{display:block;}
 .ppsb-filter-input{background:var(--surf2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:6px 10px;font-family:monospace;font-size:11px;min-height:36px;}
 .ppsb-filter-chip{font-family:monospace;font-size:10px;letter-spacing:.04em;padding:6px 10px;border:1px solid var(--border);border-radius:6px;cursor:pointer;color:var(--dim);background:var(--surf2);min-height:36px;display:flex;align-items:center;user-select:none;}
 .ppsb-filter-chip.active{border-color:rgba(0,255,179,.5);color:var(--g);background:rgba(0,255,179,.08);}
+.ppsb-filter-toggle{display:none;}
+.ppsb-artist-note{font-family:monospace;font-size:10px;color:var(--dim);padding:0 18px 8px;border-bottom:1px solid var(--border);}
 .ppsb-empty{padding:40px 20px;text-align:center;font-family:monospace;font-size:11px;color:var(--dim);}
 .ppsb-loading{color:var(--g)!important;}
 #ppsb-content{flex:1;overflow:hidden;display:flex;flex-direction:column;min-height:0;}
@@ -932,6 +934,12 @@ body.customer-display-mode #customer-display-exit{display:block;}
   .ppsb-cards-area{grid-template-columns:1fr;padding:10px 12px;}
   .ppsb-header{padding:12px 14px;}
   .ppsb-set-row,.ppsb-toolbar,.ppsb-filters{padding:8px 12px;}
+  .ppsb-filter-toggle{display:inline-flex!important;}
+  .ppsb-filters{display:none;}
+  .ppsb-filters.on{display:flex;}
+  .ppsb-filter-input{flex:1 1 calc(50% - 6px);min-width:0;}
+  .ppsb-filter-input.ppsb-filter-wide{flex-basis:100%;}
+  .ppsb-artist-note{padding:0 12px 8px;}
   .ppsb-set-search{width:100%;flex:1 1 100%;}
   .ppsb-card-img-wrap{width:60px;}
   .ppsb-card-img{width:60px;}
@@ -1165,7 +1173,7 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.18.02-mobile-chrome</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.18.03-set-browser-polish</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
@@ -1192,7 +1200,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip dev-only" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.18.02-mobile-chrome</div>
+<div class="dsb-chip dev-only" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.18.03-set-browser-polish</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -1531,6 +1539,8 @@ body.show-mode .inv-sync-badge{display:none;}
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
           <span style="font-family:'Orbitron',monospace;font-size:9px;color:var(--gold);letter-spacing:.05em">POKÉMON</span>
           <button class="hbtn" onclick="openSetBrowser()" style="font-size:10px;min-height:36px;padding:4px 14px;background:rgba(255,209,102,.1);border-color:rgba(255,209,102,.4);color:var(--gold)">⚡ SET BROWSER</button>
+          <input id="qpl-pokemon-artist" placeholder="Artist e.g. Mitsuhiro Arita" style="min-width:190px;flex:1;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:8px 10px;border-radius:6px;font-family:monospace;font-size:11px" onkeydown="if(event.key==='Enter')runPokemonArtistResearch()">
+          <button class="hbtn" id="qpl-pokemon-artist-btn" onclick="runPokemonArtistResearch()" style="font-size:9px;min-height:36px;padding:4px 12px">ARTIST</button>
           <span style="font-family:monospace;font-size:9px;color:var(--dim)">Browse full sets · filter by artist · track owned cards</span>
         </div>
       </div>
@@ -2297,7 +2307,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.06.18.02-mobile-chrome';
+const APP_VERSION = '2026.06.18.03-set-browser-polish';
 const branchName = 'pokemon-v2-core';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
 const POKEMON_EXACT_CACHE_VERSION = 'pokemon-exact-v3-price-matrix';
@@ -22075,31 +22085,37 @@ const _sbState = {
   selectedSet: null,
   cards: [], filteredCards: [],
   sortField: 'number', sortDir: 1,
-  filters: { name:'', artist:'', rarity:'', minPrice:'', maxPrice:'', owned:false, missing:false },
+  filters: { name:'', artist:'', rarity:'', minPrice:'', maxPrice:'', owned:false, missing:false, hasImage:false, hasPrice:false, language:'' },
   loading: false, view: 'cards',
   cardSize: 280, tableImgSize: 54,
+  filterOpen: false,
+  artistCoverage: '',
   swipeIdx: 0, isDragging: false, dragX: 0,
 };
 
 function sbParseCollectorNum(n){
   const s = String(n || '').trim();
-  if(!s) return ['zzz', 999999];
-  const slash = s.match(/^(\d+)\//);
-  if(slash) return ['', parseInt(slash[1], 10)];
-  const prefix = s.match(/^([A-Za-z]+)(\d+)/);
-  if(prefix) return [prefix[1].toUpperCase(), parseInt(prefix[2], 10)];
-  const num = s.match(/^(\d+)/);
-  if(num) return ['', parseInt(num[1], 10)];
-  return [s.toUpperCase(), 0];
+  if(!s) return [999, 'zzz', 999999, 999999, s];
+  const slash = s.match(/^(\d+)\s*\/\s*(\d+)/);
+  if(slash) return [0, '', parseInt(slash[1], 10), parseInt(slash[2], 10), s];
+  const prefix = s.match(/^([A-Za-z]+)\s*0*(\d+)/);
+  if(prefix) {
+    const order = { TG:20, GG:21, RC:22, SVP:23, SWSH:24, SM:25, XY:26, BW:27 };
+    const p = prefix[1].toUpperCase();
+    return [order[p] ?? 50, p, parseInt(prefix[2], 10), 0, s];
+  }
+  const num = s.match(/^0*(\d+)/);
+  if(num) return [0, '', parseInt(num[1], 10), 0, s];
+  return [80, s.toUpperCase(), 0, 0, s];
 }
 
 function sbCompareCards(a, b){
   const { sortField, sortDir } = _sbState;
   let r = 0;
   if(sortField === 'number'){
-    const [ap, an] = sbParseCollectorNum(a.cardNumber);
-    const [bp, bn] = sbParseCollectorNum(b.cardNumber);
-    r = ap !== bp ? (ap < bp ? -1 : 1) : an - bn;
+    const ap = sbParseCollectorNum(a.cardNumber);
+    const bp = sbParseCollectorNum(b.cardNumber);
+    r = ap[0] - bp[0] || String(ap[1]).localeCompare(String(bp[1])) || ap[2] - bp[2] || ap[3] - bp[3] || String(ap[4]).localeCompare(String(bp[4]));
   } else if(sortField === 'price'){
     r = Number(b.prices?.market || 0) - Number(a.prices?.market || 0);
   } else if(sortField === 'name'){
@@ -22108,22 +22124,37 @@ function sbCompareCards(a, b){
     r = (a.artist || '').localeCompare(b.artist || '');
   } else if(sortField === 'rarity'){
     r = (a.rarity || '').localeCompare(b.rarity || '');
+  } else if(sortField === 'owned'){
+    r = Number(sbIsOwned(b)) - Number(sbIsOwned(a)) || sbCompareCardsByNumber(a, b);
+  } else if(sortField === 'missing'){
+    r = Number(!sbIsOwned(b)) - Number(!sbIsOwned(a)) || sbCompareCardsByNumber(a, b);
   }
   return r * sortDir;
+}
+
+function sbCompareCardsByNumber(a, b){
+  const ap = sbParseCollectorNum(a.cardNumber);
+  const bp = sbParseCollectorNum(b.cardNumber);
+  return ap[0] - bp[0] || String(ap[1]).localeCompare(String(bp[1])) || ap[2] - bp[2] || ap[3] - bp[3] || String(a.name || '').localeCompare(b.name || '');
+}
+
+function sbNormalizeKey(v){
+  return String(v || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 }
 
 function sbIsOwned(card){
   if(!card || !Array.isArray(all) || !all.length) return false;
   const tid = String(card.tcgPlayerId || '');
   if(tid && all.some(i => String(i.tcgPlayerId || i.tcgplayerId || i.raw?.tcgPlayerId || '') === tid)) return true;
-  const name = (card.name || '').toLowerCase().trim();
-  const set = (card.setName || '').toLowerCase().trim();
-  const num = (card.cardNumber || '').toLowerCase().trim();
+  const name = sbNormalizeKey(card.name);
+  const set = sbNormalizeKey(card.setName);
+  const num = sbNormalizeKey(card.cardNumber);
   return all.some(i => {
-    const iname = (i.name || '').toLowerCase();
-    const iset = (i.set || i.setName || '').toLowerCase();
-    const inum = (i.card_number || i.cardNumber || '').toLowerCase();
-    return iname === name && iset === set && (!num || inum === num);
+    const iname = sbNormalizeKey(i.name);
+    const iset = sbNormalizeKey(i.set || i.setName);
+    const inum = sbNormalizeKey(i.card_number || i.cardNumber);
+    if(iname === name && iset === set && (!num || inum === num)) return true;
+    return !!num && !!iname && iname === name && inum === num;
   });
 }
 
@@ -22156,9 +22187,42 @@ async function sbFetchSets(){
     releaseDate: s.releaseDate || '',
     cardCount:   Number(s.cardCount || s.total || 0),
     imageUrl:    s.imageCdnUrl200 || s.imageCdnUrl400 || '',
-  }));
+  })).sort((a,b) => String(b.releaseDate || '').localeCompare(String(a.releaseDate || '')) || a.name.localeCompare(b.name));
   try { localStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), sets })); } catch(e){}
   return sets;
+}
+
+function sbNormalizeSetCard(card = {}, setName = ''){
+  const prices = { ...(card.prices || {}) };
+  if(prices.market == null && card.marketPrice != null) prices.market = card.marketPrice;
+  if(prices.market == null && card.price != null) prices.market = card.price;
+  if(prices.lowPrice == null && card.lowPrice != null) prices.lowPrice = card.lowPrice;
+  return {
+    ...card,
+    source:'pokemonpricetracker',
+    type:'pokemon-card',
+    category:card.category || 'Pokemon Single',
+    name:card.name || card.cardName || '',
+    cardName:card.cardName || card.name || '',
+    setName:card.setName || setName || '',
+    setId:card.setId || '',
+    cardNumber:card.cardNumber || card.number || card.collectorNumber || '',
+    collectorNumber:card.collectorNumber || card.cardNumber || card.number || '',
+    totalSetNumber:card.totalSetNumber || '',
+    rarity:card.rarity || '',
+    artist:card.artist || '',
+    language:card.language || 'English',
+    imageUrl:card.imageUrl || card.imageCdnUrl400 || card.imageCdnUrl200 || card.imageCdnUrl || '',
+    imageCdnUrl:card.imageCdnUrl || card.imageCdnUrl400 || card.imageCdnUrl200 || card.imageUrl || '',
+    imageCdnUrl200:card.imageCdnUrl200 || card.imageCdnUrl || card.imageUrl || '',
+    imageCdnUrl400:card.imageCdnUrl400 || card.imageCdnUrl || card.imageUrl || '',
+    tcgPlayerUrl:card.tcgPlayerUrl || '',
+    tcgPlayerId:card.tcgPlayerId || card.tcgplayerId || '',
+    prices,
+    marketPrice:Number(prices.market || card.marketPrice || card.price || 0) || 0,
+    lowPrice:Number(prices.lowPrice || card.lowPrice || 0) || 0,
+    raw:card.raw || card
+  };
 }
 
 async function sbFetchSetCards(setName){
@@ -22168,7 +22232,7 @@ async function sbFetchSetCards(setName){
   const ck = 'sb_cards_' + setName.toLowerCase().replace(/[^a-z0-9]/g,'_').slice(0,40);
   try {
     const cached = JSON.parse(sessionStorage.getItem(ck) || 'null');
-    if(cached && (Date.now() - (cached.ts||0)) < 3600000 && cached.cards?.length) return cached.cards;
+    if(cached && (Date.now() - (cached.ts||0)) < 3600000 && cached.cards?.length) return cached.cards.map(c => sbNormalizeSetCard(c, setName));
   } catch(e){}
   const params = new URLSearchParams({ set: setName, fetchAllInSet: 'true', limit: '500' });
   const res = await fetch(WORKER + '/pricing/pokemon/cards?' + params.toString(), { cache:'no-store' });
@@ -22181,8 +22245,9 @@ async function sbFetchSetCards(setName){
     (Array.isArray(d.cards) && d.cards.length ? d.cards : null) ||
     (Array.isArray(d.data)  && d.data.length  ? d.data  : null) ||
     (Array.isArray(d.results) ? d.results : []);
-  if(cards.length) try { sessionStorage.setItem(ck, JSON.stringify({ ts: Date.now(), cards })); } catch(e){}
-  return cards;
+  const normalized = cards.map(c => sbNormalizeSetCard(c, setName));
+  if(normalized.length) try { sessionStorage.setItem(ck, JSON.stringify({ ts: Date.now(), cards:normalized })); } catch(e){}
+  return normalized;
 }
 
 function sbApplyFilters(){
@@ -22198,6 +22263,10 @@ function sbApplyFilters(){
   if(minP > 0) f = f.filter(c => Number(c.prices?.market || 0) >= minP);
   const maxP = Number(filters.maxPrice);
   if(maxP > 0) f = f.filter(c => Number(c.prices?.market || 0) <= maxP);
+  if(filters.hasImage) f = f.filter(c => !!(c.imageCdnUrl400 || c.imageCdnUrl200 || c.imageCdnUrl || c.imageUrl));
+  if(filters.hasPrice) f = f.filter(c => Number(c.prices?.market || c.marketPrice || 0) > 0);
+  const lang = (filters.language || '').toLowerCase().trim();
+  if(lang) f = f.filter(c => String(c.language || 'English').toLowerCase() === lang);
   if(filters.owned) f = f.filter(c => sbIsOwned(c));
   if(filters.missing) f = f.filter(c => !sbIsOwned(c));
   f.sort(sbCompareCards);
@@ -22276,8 +22345,8 @@ function sbFilterSetDropdown(q){
   const sel = document.getElementById('ppsb-set-sel');
   if(!sel || !sets.length) return;
   const fq = (q || '').toLowerCase().trim();
-  const filtered = fq ? sets.filter(s => (s.name || '').toLowerCase().includes(fq)) : sets;
-  sel.innerHTML = '<option value="">— Choose a set —</option>' +
+  const filtered = fq ? sets.filter(s => (s.name || '').toLowerCase().includes(fq) || (s.series || '').toLowerCase().includes(fq)) : sets;
+  sel.innerHTML = `<option value="">${filtered.length ? '— Choose a set —' : 'No sets match'}</option>` +
     filtered.map(s => {
       const id = s.id || s.setId || '';
       const name = s.name || '';
@@ -22288,6 +22357,7 @@ function sbFilterSetDropdown(q){
 }
 
 async function sbSelectSet(){
+  if(_sbState.loading) return;
   const sel = document.getElementById('ppsb-set-sel');
   const setId = sel?.value;
   const setName = sel?.options[sel.selectedIndex]?.getAttribute('data-name') || '';
@@ -22295,9 +22365,10 @@ async function sbSelectSet(){
   _sbState.selectedSet = { id:setId, name:setName };
   _sbState.cards = [];
   _sbState.filteredCards = [];
-  _sbState.filters = { name:'', artist:'', rarity:'', minPrice:'', maxPrice:'', owned:false, missing:false };
+  _sbState.filters = { name:'', artist:'', rarity:'', minPrice:'', maxPrice:'', owned:false, missing:false, hasImage:false, hasPrice:false, language:'' };
   _sbState.sortField = 'number';
   _sbState.sortDir = 1;
+  _sbState.artistCoverage = '';
   if(setId) sessionStorage.setItem('sb_last_set_id', setId);
   sbRenderContent(true);
   try {
@@ -22310,7 +22381,7 @@ async function sbSelectSet(){
   } catch(e){
     _sbState.loading = false;
     const content = document.getElementById('ppsb-content');
-    if(content) content.innerHTML = `<div class="ppsb-empty" style="color:var(--red)">Error loading cards: ${escHtml(e.message)}</div>`;
+    if(content) content.innerHTML = `<div class="ppsb-empty" style="color:var(--red)">Error loading cards: ${escHtml(e.message)}<br><button class="hbtn" style="margin-top:12px" onclick="sbSelectSet()">RETRY</button></div>`;
   }
 }
 
@@ -22329,7 +22400,7 @@ async function sbRetryByName(setName){
       (Array.isArray(data.data?.cards) ? data.data.cards : null) ||
       (Array.isArray(data.results) ? data.results : null) ||
       [];
-    _sbState.cards = cards;
+    _sbState.cards = cards.map(c => sbNormalizeSetCard(c, setName));
     sbApplyFilters();
     sbRenderContent(false);
     if(!cards.length && content){
@@ -22342,13 +22413,13 @@ async function sbRetryByName(setName){
 
 function sbSetSort(field){
   if(_sbState.sortField === field) _sbState.sortDir *= -1;
-  else { _sbState.sortField = field; _sbState.sortDir = field === 'price' ? -1 : 1; }
+  else { _sbState.sortField = field; _sbState.sortDir = 1; }
   sbApplyFilters();
   sbRenderContent(false);
 }
 
 function sbSetFilter(key, val){
-  if(key === 'owned' || key === 'missing'){
+  if(key === 'owned' || key === 'missing' || key === 'hasImage' || key === 'hasPrice'){
     _sbState.filters[key] = val === true || val === 'true' || val === 1;
     if(key === 'owned' && _sbState.filters.owned) _sbState.filters.missing = false;
     if(key === 'missing' && _sbState.filters.missing) _sbState.filters.owned = false;
@@ -22360,8 +22431,13 @@ function sbSetFilter(key, val){
 }
 
 function sbClearFilters(){
-  _sbState.filters = { name:'', artist:'', rarity:'', minPrice:'', maxPrice:'', owned:false, missing:false };
+  _sbState.filters = { name:'', artist:'', rarity:'', minPrice:'', maxPrice:'', owned:false, missing:false, hasImage:false, hasPrice:false, language:'' };
   sbApplyFilters();
+  sbRenderContent(false);
+}
+
+function sbToggleFilters(){
+  _sbState.filterOpen = !_sbState.filterOpen;
   sbRenderContent(false);
 }
 
@@ -22531,6 +22607,7 @@ function sbSwipeInfoHtml(idx) {
   if (!card) return '';
   const market = Number(card.prices?.market||0), low = Number(card.prices?.lowPrice||0);
   const owned = sbIsOwned(card), qty = owned ? sbOwnedQty(card) : 0;
+  const hasTcg = !!sbCardTcgUrl(card);
   return `<div class="deck-swipe-name">${escHtml(card.name||'?')} <span class="ppsb-card-num">#${escHtml(card.cardNumber||'?')}</span></div>
     <div class="ppsb-card-meta">${escHtml(card.rarity||'')}${card.artist?' · '+escHtml(card.artist):''}</div>
     <div class="ppsb-card-prices" style="justify-content:center;margin:4px 0 6px">
@@ -22540,7 +22617,7 @@ function sbSwipeInfoHtml(idx) {
     </div>
     <div class="deck-swipe-btns">
       <button class="hbtn" onclick="sbSelectCard(${idx})">SELECT</button>
-      <button class="hbtn" onclick="sbOpenTcg(${idx})">TCG ↗</button>
+      <button class="hbtn" ${hasTcg ? `onclick="sbOpenTcg(${idx})"` : 'disabled title="No TCGPlayer link returned"'}>TCG ↗</button>
       <button class="hbtn" onclick="sbAddToResearch(${idx},this)">+ ADD</button>
     </div>`;
 }
@@ -22565,6 +22642,10 @@ function sbRenderSwipeView(cards) {
 
 // MTG swipe helpers (added to mtgsb section below)
 
+function sbCardTcgUrl(card = {}){
+  return card.tcgPlayerUrl || (card.tcgPlayerId ? 'https://www.tcgplayer.com/product/' + encodeURIComponent(card.tcgPlayerId) : '');
+}
+
 function sbRenderContent(loading){
   const content = document.getElementById('ppsb-content');
   if(!content) return;
@@ -22579,8 +22660,11 @@ function sbRenderContent(loading){
   const tableImgSz = _sbState.tableImgSize || 54;
   const artists    = [...new Set(cards.map(c=>c.artist).filter(Boolean))].sort();
   const rarities   = [...new Set(cards.map(c=>c.rarity).filter(Boolean))].sort();
+  const languages  = [...new Set(cards.map(c=>c.language || 'English').filter(Boolean))].sort();
   const ownedCount = cards.filter(c=>sbIsOwned(c)).length;
+  const missingCount = Math.max(0, cards.length - ownedCount);
   const hasFilter  = Object.values(filters).some(v=>v&&v!==false);
+  const filterOpen = !isMobile || _sbState.filterOpen || hasFilter;
   const viewLabel  = isSwipe ? '⊞ TABLE' : isTable ? '☰ CARDS' : '⊟ SWIPE';
 
   const sortBtn = (f, label) => {
@@ -22590,8 +22674,11 @@ function sbRenderContent(loading){
   };
 
   // Full filter bar — always shown (compact version for swipe)
-  const filterBar = `<div class="ppsb-filters${isSwipe?' ppsb-filters-compact':''}">
-    <input class="ppsb-filter-input" style="flex:1;min-width:80px" placeholder="Filter name…" value="${escHtml(filters.name||'')}" oninput="sbSetFilter('name',this.value)">
+  const artistNote = filters.artist
+    ? `<div class="ppsb-artist-note">${filteredCards.length ? 'Artist results from loaded set.' : 'No artist matches in this loaded set.'} Full artist list requires local catalog/export.</div>`
+    : '';
+  const filterBar = `<div class="ppsb-filters${isSwipe?' ppsb-filters-compact':''}${filterOpen?' on':''}">
+    <input class="ppsb-filter-input ppsb-filter-wide" style="flex:1;min-width:80px" placeholder="Card or Pokemon name..." value="${escHtml(filters.name||'')}" oninput="sbSetFilter('name',this.value)">
     <select class="ppsb-filter-input" onchange="sbSetFilter('rarity',this.value)">
       <option value="">All rarities</option>
       ${rarities.map(r=>`<option value="${escHtml(r)}"${filters.rarity===r?' selected':''}>${escHtml(r)}</option>`).join('')}
@@ -22601,9 +22688,12 @@ function sbRenderContent(loading){
       ${artists.map(a=>`<option value="${escHtml(a)}"${filters.artist===a?' selected':''}>${escHtml(a)}</option>`).join('')}
     </select>
     <input class="ppsb-filter-input" type="number" placeholder="Min $" value="${escHtml(String(filters.minPrice||''))}" oninput="sbSetFilter('minPrice',this.value)" style="width:60px">
-    <input class="ppsb-filter-input" type="number" placeholder="Max $" value="${escHtml(String(filters.maxPrice||''))}" oninput="sbSetFilter('maxPrice',this.value)" style="width:60px">`:''}
+    <input class="ppsb-filter-input" type="number" placeholder="Max $" value="${escHtml(String(filters.maxPrice||''))}" oninput="sbSetFilter('maxPrice',this.value)" style="width:60px">
+    ${languages.length > 1 ? `<select class="ppsb-filter-input" onchange="sbSetFilter('language',this.value)"><option value="">All languages</option>${languages.map(l=>`<option value="${escHtml(String(l).toLowerCase())}"${String(filters.language||'').toLowerCase()===String(l).toLowerCase()?' selected':''}>${escHtml(l)}</option>`).join('')}</select>` : ''}`:''}
     <label class="ppsb-filter-chip${filters.owned?' active':''}"><input type="checkbox"${filters.owned?' checked':''} onchange="sbSetFilter('owned',this.checked)" style="display:none"> OWN</label>
     <label class="ppsb-filter-chip${filters.missing?' active':''}"><input type="checkbox"${filters.missing?' checked':''} onchange="sbSetFilter('missing',this.checked)" style="display:none"> MISS</label>
+    <label class="ppsb-filter-chip${filters.hasImage?' active':''}"><input type="checkbox"${filters.hasImage?' checked':''} onchange="sbSetFilter('hasImage',this.checked)" style="display:none"> IMG</label>
+    <label class="ppsb-filter-chip${filters.hasPrice?' active':''}"><input type="checkbox"${filters.hasPrice?' checked':''} onchange="sbSetFilter('hasPrice',this.checked)" style="display:none"> PRICE</label>
     ${hasFilter?`<button class="hbtn" style="min-height:32px;padding:3px 8px;font-size:9px;color:var(--dim)" onclick="sbClearFilters()">✕</button>`:''}
   </div>`;
 
@@ -22612,16 +22702,19 @@ function sbRenderContent(loading){
       <div class="ppsb-stats">
         <span style="color:var(--text)">${filteredCards.length}${filteredCards.length!==cards.length?'/'+cards.length:''} cards</span>
         ${ownedCount?`<span style="color:var(--g)">✓ ${ownedCount} owned</span>`:''}
+        ${missingCount?`<span>${missingCount} missing</span>`:''}
         <span>${escHtml(selectedSet.name||'')}</span>
       </div>
       <div class="ppsb-sort-row">
-        ${!isSwipe?`SORT: ${sortBtn('number','#')} ${sortBtn('price','PRICE')} ${sortBtn('name','NAME')} ${sortBtn('rarity','RARITY')}`:''}
+        ${!isSwipe?`SORT: ${sortBtn('number','#')} ${sortBtn('price','PRICE')} ${sortBtn('name','NAME')} ${sortBtn('rarity','RARITY')} ${sortBtn('artist','ARTIST')} ${sortBtn('owned','OWNED')} ${sortBtn('missing','MISSING')}`:''}
+        <button class="hbtn ppsb-sort-btn ppsb-filter-toggle" onclick="sbToggleFilters()">FILTERS${hasFilter?' *':''}</button>
         <button class="hbtn ppsb-sort-btn" style="margin-left:4px;border-color:rgba(0,255,179,.4);color:var(--g)" onclick="sbToggleView()">${viewLabel}</button>
         ${!isSwipe&&!isTable?`<label style="display:flex;align-items:center;gap:4px;font-family:monospace;font-size:9px;color:var(--dim);margin-left:6px">SZ<input type="range" min="140" max="440" step="20" value="${cardSize}" style="width:60px;accent-color:var(--g);cursor:pointer" oninput="sbSetCardSize(this.value)"></label>`:''}
         ${isTable?`<label style="display:flex;align-items:center;gap:4px;font-family:monospace;font-size:9px;color:var(--dim);margin-left:6px">IMG<input type="range" min="36" max="180" step="6" value="${tableImgSz}" style="width:60px;accent-color:var(--g);cursor:pointer" oninput="sbSetTableImgSize(this.value)"></label>`:''}
       </div>
     </div>
     ${filterBar}
+    ${artistNote}
     <div class="ppsb-cards-area${isTable?' ppsb-table-mode':''}${isSwipe?' ppsb-swipe-mode':''}" id="ppsb-cards-area" style="--ppsb-card-min:${cardSize}px;--ppsb-table-img:${tableImgSz}px">
       ${!filteredCards.length
         ? '<div class="ppsb-empty" style="grid-column:1/-1">No cards match filters.</div>'
@@ -22639,6 +22732,7 @@ function sbRenderCardList(cards){
     const owned = sbIsOwned(c);
     const qty = owned ? sbOwnedQty(c) : 0;
     const img = c.imageCdnUrl200 || c.imageCdnUrl || '';
+    const hasTcg = !!sbCardTcgUrl(c);
     return `<div class="ppsb-card${owned?' ppsb-owned':''}">
       <div class="ppsb-card-img-wrap">
         ${img ? `<img src="${escHtml(img)}" class="ppsb-card-img" alt="${escHtml(c.name||'')}" loading="lazy" onerror="this.closest('.ppsb-card-img-wrap').innerHTML='<div class=ppsb-no-img></div>'">` : '<div class="ppsb-no-img"></div>'}
@@ -22653,7 +22747,7 @@ function sbRenderCardList(cards){
         </div>
         <div class="ppsb-card-actions">
           <button class="hbtn" style="min-height:34px;font-size:9px;padding:3px 9px" onclick="sbSelectCard(${i})">SELECT</button>
-          <button class="hbtn" style="min-height:34px;font-size:9px;padding:3px 9px" onclick="sbOpenTcg(${i})">TCG</button>
+          <button class="hbtn" style="min-height:34px;font-size:9px;padding:3px 9px" ${hasTcg ? `onclick="sbOpenTcg(${i})"` : 'disabled title="No TCGPlayer link returned"'}>TCG</button>
           <button class="hbtn" style="min-height:34px;font-size:9px;padding:3px 9px" onclick="sbAddToResearch(${i},this)">+ ADD</button>
         </div>
       </div>
@@ -22673,6 +22767,7 @@ function sbRenderTable(cards){
     const low    = Number(c.prices?.lowPrice||0);
     const owned  = sbIsOwned(c);
     const img    = c.imageCdnUrl400||c.imageCdnUrl200||c.imageCdnUrl||'';
+    const hasTcg = !!sbCardTcgUrl(c);
     const imgH   = Math.round(tableImgSz * 1.39); // card aspect ratio ~1.39
     return `<tr class="ppsb-tr${owned?' ppsb-tr-owned':''}">
       <td class="ppsb-td" style="width:${tableImgSz+8}px">
@@ -22687,7 +22782,7 @@ function sbRenderTable(cards){
       <td class="ppsb-td">
         <div style="display:flex;gap:4px">
           <button class="hbtn" style="min-height:28px;font-size:8px;padding:2px 7px" onclick="sbSelectCard(${i})">SEL</button>
-          <button class="hbtn" style="min-height:28px;font-size:8px;padding:2px 7px" onclick="sbOpenTcg(${i})">TCG</button>
+          <button class="hbtn" style="min-height:28px;font-size:8px;padding:2px 7px" ${hasTcg ? `onclick="sbOpenTcg(${i})"` : 'disabled title="No TCGPlayer link returned"'}>TCG</button>
           <button class="hbtn" style="min-height:28px;font-size:8px;padding:2px 7px" onclick="sbAddToResearch(${i},this)">+ADD</button>
         </div>
       </td>
@@ -22722,8 +22817,9 @@ function sbSelectCard(idx){
 function sbOpenTcg(idx){
   const card = _sbState.filteredCards[idx];
   if(!card) return;
-  const url = card.tcgPlayerUrl || (card.tcgPlayerId ? 'https://www.tcgplayer.com/product/'+card.tcgPlayerId : '');
+  const url = sbCardTcgUrl(card);
   if(url) window.open(url, '_blank', 'noopener');
+  else toast_dash('No TCGPlayer link returned for this card.');
 }
 
 function sbAddToResearch(idx, btn){
@@ -22733,6 +22829,51 @@ function sbAddToResearch(idx, btn){
   const tid = row.tcgPlayerId || '';
   qplResults = [row, ...qplResults.filter(r => !tid || (r.tcgPlayerId || '') !== tid)];
   if(btn){ const orig = btn.textContent; btn.textContent = '✓'; setTimeout(() => { btn.textContent = orig; }, 1200); }
+}
+
+async function runPokemonArtistResearch(){
+  const input = document.getElementById('qpl-pokemon-artist');
+  const btn = document.getElementById('qpl-pokemon-artist-btn');
+  const artist = String(input?.value || document.getElementById('qpl-input')?.value || '').replace(/\s+/g, ' ').trim();
+  if(!artist) return toast_dash('Enter an artist name first.');
+  const low = artist.toLowerCase();
+  const loadedMatches = (_sbState.cards || []).filter(c => String(c.artist || '').toLowerCase().includes(low));
+  const renderArtistRows = (cards, sourceLabel) => {
+    const rows = cards.slice(0, 40).map(c => {
+      const row = pokemonPriceTrackerCardToQplRow(sbNormalizeSetCard(c), c.name || artist, null);
+      row.matchWhy = [sourceLabel, c.artist ? 'Artist: ' + c.artist : 'artist field matched'];
+      row.note = sourceLabel + '. Full artist list requires local catalog/export.';
+      row.lookupDebug = { ...(row.lookupDebug || {}), artistQuery:artist, artistSource:sourceLabel };
+      return row;
+    });
+    qplResults = rows;
+    renderQuickLookupResults(qplResults);
+    document.getElementById('qpl-results')?.scrollIntoView({ behavior:'smooth', block:'start' });
+    toast_dash(sourceLabel + ': ' + rows.length + ' card' + (rows.length === 1 ? '' : 's'));
+  };
+  if(loadedMatches.length) {
+    renderArtistRows(loadedMatches, 'Artist results from loaded set');
+    return;
+  }
+  try {
+    if(btn) { btn.disabled = true; btn.textContent = '...'; }
+    const params = new URLSearchParams({ search:artist, limit:'20' });
+    const res = await fetch(WORKER + '/pricing/pokemon/cards?' + params.toString(), { cache:'no-store' });
+    const data = await res.json().catch(() => ({}));
+    if(!res.ok || data.ok === false) throw new Error(data.error || data.message || 'Artist search failed');
+    const cards = pokemonPriceTrackerCardsFromPayload(data).map(c => sbNormalizeSetCard(c));
+    const matches = cards.filter(c => String(c.artist || '').toLowerCase().includes(low));
+    if(matches.length) renderArtistRows(matches, 'Live API artist matches');
+    else {
+      qplResults = [];
+      renderQuickLookupResults(qplResults);
+      toast_dash('No returned cards had matching artist fields. Full artist list requires local catalog/export.');
+    }
+  } catch(e) {
+    toast_dash('Artist research unavailable: ' + (e.message || e));
+  } finally {
+    if(btn) { btn.disabled = false; btn.textContent = 'ARTIST'; }
+  }
 }
 // ── END POKÉMON SET BROWSER ─────────────────────────────────────
 
