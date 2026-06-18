@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.06.18.03-set-browser-polish">
+<meta name="version" content="2026.06.18.04-cash-bag-workflow">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1173,7 +1173,7 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.18.03-set-browser-polish</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.18.04-cash-bag-workflow</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
@@ -1181,7 +1181,7 @@ body.show-mode .inv-sync-badge{display:none;}
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
-      <span id="top-drawer-chip" class="top-state-chip dev-only">DRAWER CLOSED</span>
+      <span id="top-drawer-chip" class="top-state-chip dev-only">CASH BAG NOT STARTED</span>
       <span id="sync-status" class="dev-only">Loading...</span>
       <button class="show-mode-toggle" onclick="toggleShowMode()" title="Toggle Show Mode — hides developer info">SHOW MODE</button>
       <button class="hbtn" id="logout-btn" style="display:none" onclick="logoutAccount()">LOGOUT</button>
@@ -1195,12 +1195,12 @@ body.show-mode .inv-sync-badge{display:none;}
   </div>
   <!-- Dealer status bar — always visible, shows key info at a glance -->
   <div class="dealer-status-bar" id="dealer-status-bar">
-    <div class="dsb-chip" id="dsb-drawer">🏦 <span>DRAWER:</span> <b id="dsb-drawer-val">CLOSED</b></div>
+    <div class="dsb-chip" id="dsb-drawer">🏦 <span>CASH BAG:</span> <b id="dsb-drawer-val">NOT STARTED</b></div>
     <div class="dsb-chip">📦 <span>INV:</span> <b id="dsb-inv-val">—</b></div>
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip dev-only" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.18.03-set-browser-polish</div>
+<div class="dsb-chip dev-only" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.18.04-cash-bag-workflow</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -1488,7 +1488,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div id="ops-log-list" style="display:grid;gap:6px;font-family:var(--font-mono);font-size:10px;color:var(--dim)"></div>
   </div>
 
-  <!-- Row 1: Quick Price Lookup + Cash Drawer -->
+  <!-- Row 1: Quick Price Lookup + Cash Bag -->
   <div class="two" id="register-lookup-drawer-row" style="margin-top:4px">
 
     <!-- QUICK PRICE LOOKUP -->
@@ -1555,13 +1555,14 @@ body.show-mode .inv-sync-badge{display:none;}
       <div id="qpl-history" style="margin-top:10px;border-top:1px solid var(--border);padding-top:8px"></div>
     </div>
 
-    <!-- CASH DRAWER TRACKER -->
+    <!-- CASH BAG TRACKER -->
     <div class="panel" id="register-cash-panel">
-      <div class="ph">💵 CASH DRAWER <span id="drawer-status" style="font-size:9px;font-weight:600;color:var(--g)">CLOSED</span> <button class="hbtn" id="drawer-totals-toggle" onclick="toggleDrawerTotals()" style="float:right;min-height:28px;padding:4px 8px;font-size:9px">HIDE TOTALS</button></div>
+      <div class="ph">💵 CASH BAG <span id="drawer-status" style="font-size:9px;font-weight:600;color:var(--g)">NOT STARTED</span> <button class="hbtn" id="drawer-totals-toggle" onclick="toggleDrawerTotals()" style="float:right;min-height:28px;padding:4px 8px;font-size:9px">HIDE TOTALS</button></div>
       <div id="drawer-closed-view">
         <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);margin-bottom:8px">Starting Cash</div>
         <input type="number" id="drawer-float" step="0.01" placeholder="200.00" aria-label="Starting Cash" style="width:100%;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:6px;font-size:16px;font-family:'Orbitron',monospace;margin-bottom:8px">
-        <button class="hbtn" style="width:100%;padding:10px" onclick="openDrawer()">OPEN DRAWER</button>
+        <input type="text" id="drawer-start-note" placeholder="Optional note e.g. Starting bank for Kitsap Mall show" aria-label="Cash Bag Start Note" style="width:100%;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:6px;font-size:12px;margin-bottom:8px">
+        <button class="hbtn" style="width:100%;padding:10px" onclick="openDrawer()">START BAG</button>
       </div>
       <div id="drawer-open-view" style="display:none">
         <div class="drawer-ledger-grid">
@@ -1570,7 +1571,7 @@ body.show-mode .inv-sync-badge{display:none;}
             <div class="drawer-money" style="font-family:'Orbitron',monospace;font-size:14px;color:var(--text)" id="drawer-float-disp">$0</div>
           </div>
           <div style="background:var(--surf2);border:1px solid var(--border);border-radius:8px;padding:10px;text-align:center">
-            <div style="font-family:var(--font-mono);font-size:8px;color:var(--dim);margin-bottom:4px">SALES</div>
+            <div style="font-family:var(--font-mono);font-size:8px;color:var(--dim);margin-bottom:4px">CASH SALES</div>
             <div class="drawer-money" style="font-family:'Orbitron',monospace;font-size:14px;color:var(--g)" id="drawer-sales-disp">$0</div>
           </div>
           <div style="background:var(--surf2);border:1px solid rgba(0,255,179,.3);border-radius:8px;padding:10px;text-align:center">
@@ -1585,25 +1586,32 @@ body.show-mode .inv-sync-badge{display:none;}
             <div style="font-family:var(--font-mono);font-size:8px;color:var(--dim);margin-bottom:4px">OVER / SHORT</div>
             <div class="drawer-money" style="font-family:'Orbitron',monospace;font-size:14px;color:var(--text)" id="drawer-over-short-disp">$0.00</div>
           </div>
+          <div style="background:var(--surf2);border:1px solid var(--border);border-radius:8px;padding:10px;text-align:center">
+            <div style="font-family:var(--font-mono);font-size:8px;color:var(--dim);margin-bottom:4px">NET VS START</div>
+            <div class="drawer-money" style="font-family:'Orbitron',monospace;font-size:14px;color:var(--text)" id="drawer-net-change-disp">$0.00</div>
+          </div>
+          <div style="background:var(--surf2);border:1px solid var(--border);border-radius:8px;padding:10px;text-align:center">
+            <div style="font-family:var(--font-mono);font-size:8px;color:var(--dim);margin-bottom:4px">CASH PROFIT</div>
+            <div class="drawer-money" style="font-family:'Orbitron',monospace;font-size:14px;color:var(--g)" id="drawer-cash-profit-disp">$0.00</div>
+          </div>
         </div>
-        <div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);margin-bottom:6px">DRAWER MOVEMENTS</div>
-        <div style="display:flex;gap:6px;margin-bottom:8px">
+        <div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);margin-bottom:6px">CASH BAG MOVEMENTS</div>
+        <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap">
           <input type="number" id="drawer-adj-amt" placeholder="Amount" step="0.01" style="flex:1;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:7px 10px;border-radius:6px;font-size:12px">
-          <input type="text" id="drawer-adj-note" placeholder="Required note for payouts, drops, refunds, corrections" style="flex:2;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:7px 10px;border-radius:6px;font-size:12px">
-          <button class="hbtn" onclick="addDrawerMovement('paid_in')" style="white-space:nowrap">PAID IN</button>
-          <button class="hbtn" onclick="addDrawerMovement('paid_out')" style="background:rgba(255,77,109,.08);border-color:rgba(255,77,109,.2);color:var(--red);white-space:nowrap">PAID OUT</button>
+          <input type="text" id="drawer-adj-note" placeholder="Required reason/note for manual cash movement" style="flex:2;min-width:190px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:7px 10px;border-radius:6px;font-size:12px">
+          <button class="hbtn" onclick="addDrawerMovement('cash_added')" style="white-space:nowrap">ADD CASH</button>
+          <button class="hbtn" onclick="addDrawerMovement('cash_removed')" style="background:rgba(255,77,109,.08);border-color:rgba(255,77,109,.2);color:var(--red);white-space:nowrap">REMOVE CASH</button>
         </div>
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:8px">
-          <button class="hbtn" onclick="addDrawerMovement('drop')">DROP</button>
-          <button class="hbtn" onclick="addDrawerMovement('refund')">REFUND</button>
-          <button class="hbtn" onclick="addDrawerMovement('buy_payout')">BUY PAYOUT</button>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(115px,1fr));gap:6px;margin-bottom:8px">
+          <button class="hbtn" onclick="addDrawerMovement('cash_buy_payout')">CASH BUY / PAYOUT</button>
+          <button class="hbtn" onclick="addDrawerMovement('expense')">EXPENSE</button>
           <button class="hbtn" onclick="addDrawerMovement('no_sale')">NO SALE</button>
           <button class="hbtn" onclick="addDrawerMovement('correction')">CORRECTION</button>
         </div>
         <div id="drawer-log" style="font-family:var(--font-mono);font-size:9px;max-height:120px;overflow-y:auto;border:1px solid var(--border);border-radius:6px;padding:6px"></div>
         <div style="display:flex;gap:6px;margin-top:10px">
-          <button class="hbtn" onclick="countDrawer()" style="flex:1">COUNT DRAWER</button>
-          <button class="hbtn danger" onclick="closeDrawer()" style="flex:1">CLOSE DRAWER</button>
+          <button class="hbtn" onclick="countDrawer()" style="flex:1">COUNT BAG</button>
+          <button class="hbtn danger" onclick="closeDrawer()" style="flex:1">CLOSE DAY</button>
         </div>
       </div>
     </div>
@@ -1816,7 +1824,7 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <!-- SHOWS TAB -->
 <div id="tab-shows" class="tab-panel">
-  <div class="sec">SHOWS / CASH DRAWER</div>
+  <div class="sec">SHOWS / CASH BAG</div>
   <div id="shows-panels" style="max-width:1400px;margin:0 auto;padding:0 20px"></div>
 </div>
 
@@ -2009,10 +2017,10 @@ body.show-mode .inv-sync-badge{display:none;}
   </div>
 </div>
 
-<!-- DRAWER COUNT MODAL -->
+<!-- CASH BAG COUNT MODAL -->
 <div class="modal-bg" id="drawer-count-modal">
   <div class="modal">
-    <h3>COUNT DRAWER</h3>
+    <h3>COUNT CASH BAG</h3>
     <div id="drawer-count-expected" style="font-family:monospace;font-size:13px;color:var(--dim);margin-bottom:12px"></div>
     <label>Counted Cash ($)</label>
     <input type="number" id="drawer-count-input" step="0.01" min="0" placeholder="0.00"
@@ -2307,7 +2315,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.06.18.03-set-browser-polish';
+const APP_VERSION = '2026.06.18.04-cash-bag-workflow';
 const branchName = 'pokemon-v2-core';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
 const POKEMON_EXACT_CACHE_VERSION = 'pokemon-exact-v3-price-matrix';
@@ -3170,13 +3178,13 @@ function updateTopStateChips(){
   if(drawerChip) {
     drawerChip.onclick = openDrawerPanelFromHeader;
     drawerChip.style.cursor = 'pointer';
-    drawerChip.title = 'Open cash drawer management';
+    drawerChip.title = 'Open Cash Bag management';
     if(drawerState) {
       const expected = getDrawerExpected();
-      drawerChip.textContent = getDrawerTotalsVisible() ? 'DRAWER OPEN: $' + Number(expected || 0).toFixed(2) : 'DRAWER OPEN';
+      drawerChip.textContent = getDrawerTotalsVisible() ? 'CASH BAG: $' + Number(expected || 0).toFixed(2) : 'CASH BAG OPEN';
       drawerChip.className = 'top-state-chip dev-only warn';
     } else {
-      drawerChip.textContent = 'DRAWER CLOSED';
+      drawerChip.textContent = 'CASH BAG NOT STARTED';
       drawerChip.className = 'top-state-chip dev-only';
     }
   }
@@ -3991,7 +3999,7 @@ const HELP_CONTENT = {
   inventory:{title:'Inventory',body:'Everything you own and can sell. "In Stock" is the default view. <strong>SELL TO CART</strong> sends items to checkout — inventory only updates to Sold after you <strong>Finalize Sale</strong>.'},
   cart:{title:'Cart / Sell',body:'Every sale goes through the cart. Add items from Inventory or Research. Review cart totals before proceeding to payment. Cart persists across tabs and page refreshes.'},
   payments:{title:'Payments',body:'QR payment codes (Venmo, PayPal, Cash App) are generated from your saved handles. Confirm payment received before finalizing. Stripe card payments are handled separately and are not affected by these settings.'},
-  drawer:{title:'Cash Drawer',body:'The drawer tracks expected cash on hand. Cash sales add to drawer cash. Venmo, PayPal, Cash App, and Stripe sales do <strong>not</strong> — only physical cash changes the drawer total.'},
+    drawer:{title:'Cash Bag',body:'The Cash Bag tracks expected cash on hand. Starting cash is the baseline, cash sales add to expected cash, and Venmo, PayPal, Cash App, and Stripe sales do <strong>not</strong> change the bag.'},
   shows:{title:'Shows',body:'Start a show to track which items are at the event. <strong>Show Mode</strong> hides admin/debug clutter so your screen stays clean for customers. End Show to generate a closeout report.'},
   priceSync:{title:'Price Sync',body:'Download price data from external sources. Always review before applying — a big increase or drop triggers an alert. Update selected items only, not everything at once.'},
   settings:{title:'Settings / Admin',body:'Store name, payment handles, default category, modules, and branding all live here. <strong>Setup Wizard</strong> walks through the essentials. Debug mode is off by default — turn it on to see pricing IDs.'},
@@ -4104,7 +4112,7 @@ const WALKTHROUGH_STEPS = {
     {id:'sv-2', title:'Filter In Stock', body:'Use the status filter to show only In Stock items. This keeps the view clean during a show.', targetSelector:'#inv-status-filter', nextLabel:'Next →'},
     {id:'sv-3', title:'SELL TO CART', body:'Click SELL TO CART on any item. It goes into the cart — inventory is NOT updated yet.', targetSelector:null, nextLabel:'Next →'},
     {id:'sv-4', title:'Cart / Sell Tab', body:'Switch to the Sell tab to review your cart, apply discounts, and proceed to payment.', targetSelector:'[data-tab="pos"]', tabToOpen:'pos', nextLabel:'Next →'},
-    {id:'sv-5', title:'Finalize Sale', body:'After confirming payment is received, click FINALIZE SALE. This is when inventory updates to Sold and the cash drawer logs the transaction.', targetSelector:null, nextLabel:'Done ✓'},
+    {id:'sv-5', title:'Finalize Sale', body:'After confirming payment is received, click FINALIZE SALE. This is when inventory updates to Sold and cash sales are logged to the Cash Bag.', targetSelector:null, nextLabel:'Done ✓'},
   ],
 };
 
@@ -4531,7 +4539,7 @@ function ensurePermissionLockPanels(backoffice, shows, channels){
     target.prepend(panel);
   };
   add('admin-lock-panel', backoffice, 'Owner/admin role required for store profile, payment settings, members, modules, backups, and connector administration.');
-  add('manager-lock-panel', shows, 'Manager or admin role required for show sessions, cash drawer closeout, buy offers, and operational reports.');
+  add('manager-lock-panel', shows, 'Manager or admin role required for show sessions, Cash Bag closeout, buy offers, and operational reports.');
   add('channel-lock-panel', channels, 'Manager or admin role required for marketplace listings and channel sync.');
 }
 
@@ -4616,7 +4624,7 @@ function ensureLegacyToolsPanel(backoffice){
     ['research','Research / lookup'],
     ['display','Sell / cart'],
     ['inventory','Inventory'],
-    ['shows','Shows / cash drawer'],
+    ['shows','Shows / Cash Bag'],
     ['channels','Online listings / pricing'],
     ['sales','Sales report'],
     ['alerts','Alerts'],
@@ -4773,7 +4781,7 @@ function renderPaymentSettingsPanel(){
   const canEdit = requireOwnerAdmin();
   body.innerHTML = `
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:10px">
-      <div class="item-metric">${payToggle('cash','Cash',s.cash.enabled)}${payToggle('card','Card',s.card.enabled)}<label style="display:flex;gap:8px;align-items:center;font-family:monospace;font-size:10px;color:var(--dim);margin-top:8px"><input id="pay-cash-drawer" type="checkbox" ${s.cash.trackCashDrawer?'checked':''}> track cash drawer</label></div>
+      <div class="item-metric">${payToggle('cash','Cash',s.cash.enabled)}${payToggle('card','Card',s.card.enabled)}<label style="display:flex;gap:8px;align-items:center;font-family:monospace;font-size:10px;color:var(--dim);margin-top:8px"><input id="pay-cash-drawer" type="checkbox" ${s.cash.trackCashDrawer?'checked':''}> track Cash Bag</label></div>
       <div class="item-metric">${payToggle('venmo','Venmo',s.venmo.enabled)}${payToggle('paypal','PayPal',s.paypal.enabled)}<span style="font-family:monospace;font-size:9px;color:var(--dim);display:block;margin-top:6px">Handles set in Vendor Info</span></div>
       <div class="item-metric">${payToggle('cashapp','Cash App',s.cashApp.enabled)}${payToggle('showmethods','Show on customer display',s.customerDisplay.showPaymentMethods)}</div>
     </div>
@@ -8172,8 +8180,8 @@ function renderTodayMode(){
   const boughtToday = safeLocalJson('pos_buy_offers',[]).filter(o=>new Date(o.date).toDateString()===today).reduce((a,o)=>a+(o.addedCount||o.items?.length||0),0);
   // Inventory added today
   const addedToday = (all||[]).filter(i=>i.addedAt&&new Date(i.addedAt).toDateString()===today).length;
-  // Drawer
-  const drawerStatus = drawerState ? '▲ $'+getDrawerExpected().toFixed(2) : '▼ CLOSED';
+  // Cash Bag
+  const drawerStatus = drawerState ? '▲ $'+getDrawerExpected().toFixed(2) : '▼ NOT STARTED';
   const drawerColor = drawerState ? 'var(--g)' : 'var(--dim)';
   const cards = [
     ['Sales Today',    '$'+revenue.toFixed(2),  tx.length + ' transactions'],
@@ -8183,7 +8191,7 @@ function renderTodayMode(){
     ['Inv Added',      addedToday,              'today'],
     ['Buy Queue',      buys,                    'offer items'],
     ['Sync Queue',     pendingSync,             pendingSync>0?'pending':navigator.onLine?'online':'offline'],
-    ['Drawer',         drawerStatus,            drawerState?'open':'closed'],
+    ['Cash Bag',       drawerStatus,            drawerState?'open':'not started'],
   ];
   grid.innerHTML = cards.map(([k,v,s],i) => {
     const color = i===7?drawerColor:i===1?(profit>=0?'var(--g)':'var(--red)'):'';
@@ -8278,7 +8286,7 @@ function updateDealerStatusBar(){
       drawerVal.textContent = 'OPEN $' + getDrawerExpected().toFixed(2);
       drawerChip?.classList.remove('closed'); drawerChip?.classList.add('open');
     } else {
-      drawerVal.textContent = 'CLOSED';
+      drawerVal.textContent = 'NOT STARTED';
       drawerChip?.classList.remove('open'); drawerChip?.classList.add('closed');
     }
   }
@@ -8597,7 +8605,7 @@ function runCloseoutChecklist(){
   const issues = [];
   const pending = getSyncQueue().filter(x => x.status !== 'done').length;
   if(pending) issues.push(pending + ' sync item(s) pending');
-  if(getShowMode() && !drawerState) issues.push('cash drawer not counted/opened in this browser');
+  if(getShowMode() && !drawerState) issues.push('Cash Bag not started/countable in this browser');
   const atShow = all.filter(i => (i.lifecycle || i.status) === 'at_show').length;
   if(atShow) issues.push(atShow + ' item(s) still marked At Show');
   if(safeLocalJson('pos_buy_list', []).length) issues.push('buy offer still has unsaved items');
@@ -8645,9 +8653,9 @@ function ensureRegisterCommandCenter(register){
       </div>
       <div class="reg-card">
         <div>
-          <div class="reg-label">Cash Drawer</div>
+          <div class="reg-label">Cash Bag</div>
           <div class="reg-value gold" id="reg-cash-total">$0.00</div>
-          <div class="reg-sub" id="reg-cash-meta">Drawer closed</div>
+          <div class="reg-sub" id="reg-cash-meta">Cash Bag not started</div>
         </div>
       </div>
       <div class="reg-card">
@@ -8692,7 +8700,7 @@ function updateRegisterCommandCenter(scanCount){
   const cashMeta = document.getElementById('reg-cash-meta');
   const expected = drawerState ? getDrawerExpected() : 0;
   if(cashTotal) cashTotal.textContent = '$' + Number(expected || 0).toFixed(2);
-  if(cashMeta) cashMeta.textContent = drawerState ? 'Open since ' + new Date(drawerState.opened).toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'}) : 'Drawer closed';
+  if(cashMeta) cashMeta.textContent = drawerState ? 'Open since ' + new Date(drawerState.opened).toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'}) : 'Cash Bag not started';
 
   const count = Number.isFinite(scanCount) ? scanCount : Number(document.getElementById('scan-inbox-count')?.dataset.count || 0);
   const scanEl = document.getElementById('reg-scan-count');
@@ -19876,19 +19884,64 @@ function formatTenderLabel(key){
 function transactionTenderTotals(transactions = []){
   const totals = { cash:0, card:0, venmo:0, paypal:0, cashapp:0, trade_credit:0, manual_external:0 };
   transactions.forEach(t => {
-    const key = normalizeTenderType(t.method, t.tenderType);
-    totals[key] = Number(totals[key] || 0) + Number(t.total || 0);
+    const lines = Array.isArray(t.paymentBreakdown) && t.paymentBreakdown.length
+      ? t.paymentBreakdown
+      : [{ method:t.method, tenderType:t.tenderType, amount:t.total }];
+    lines.forEach(line => {
+      const key = normalizeTenderType(line.method, line.tenderType);
+      totals[key] = Number(totals[key] || 0) + Number(line.amount || 0);
+    });
   });
   return totals;
 }
 
+function transactionTenderProfitSummary(transactions = []){
+  const summary = {};
+  const ensure = key => summary[key] ||= { count:0, gross:0, cost:0, profit:0, fees:0, net:0, margin:0 };
+  transactions.forEach(t => {
+    const total = Number(t.total || 0);
+    const itemCost = (t.items || []).reduce((a,i) => a + Number(i.cost || i.cost_basis || 0), 0);
+    const itemProfit = (t.items || []).reduce((a,i) => a + (Number(i.price || i.adjusted_price || 0) - Number(i.cost || i.cost_basis || 0)), 0);
+    const lines = Array.isArray(t.paymentBreakdown) && t.paymentBreakdown.length
+      ? t.paymentBreakdown
+      : [{ method:t.method, tenderType:t.tenderType, amount:total }];
+    lines.forEach(line => {
+      const key = normalizeTenderType(line.method, line.tenderType);
+      const amount = Number(line.amount || 0);
+      const ratio = total > 0 ? amount / total : (lines.length ? 1 / lines.length : 1);
+      const row = ensure(key);
+      row.count += 1;
+      row.gross += amount;
+      row.cost += itemCost * ratio;
+      row.profit += itemProfit * ratio;
+    });
+  });
+  Object.values(summary).forEach(row => {
+    row.net = row.gross - Number(row.fees || 0);
+    row.margin = row.gross ? (row.profit / row.gross) * 100 : 0;
+  });
+  ['cash','card','venmo','paypal','cashapp','trade_credit','manual_external'].forEach(ensure);
+  return summary;
+}
+
 function getDrawerAdjustments(state = drawerState){
   const entries = Array.isArray(state?.log) ? state.log : [];
-  return {
-    in: entries.filter(e => Number(e.dir) > 0).reduce((a,e) => a + Number(e.amt || 0), 0),
-    out: entries.filter(e => Number(e.dir) < 0).reduce((a,e) => a + Number(e.amt || 0), 0),
-    net: entries.reduce((a,e) => a + (Number(e.dir || 0) * Number(e.amt || 0)), 0)
-  };
+  const buckets = { cashAdded:0, cashRemoved:0, cashBuyPayouts:0, expenses:0, corrections:0, in:0, out:0, net:0 };
+  entries.forEach(e => {
+    const dir = Number(e.dir || 0);
+    const amt = Math.abs(Number(e.amt || e.amount || 0));
+    const signed = dir * amt;
+    const type = String(e.type || e.movement_type || '').toLowerCase();
+    if(dir > 0) buckets.in += amt;
+    if(dir < 0) buckets.out += amt;
+    buckets.net += signed;
+    if(['cash_added','paid_in','cash_in'].includes(type)) buckets.cashAdded += amt;
+    else if(['cash_removed','paid_out','drop','cash_out'].includes(type)) buckets.cashRemoved += amt;
+    else if(['cash_buy_payout','buy_payout'].includes(type)) buckets.cashBuyPayouts += amt;
+    else if(['expense','refund'].includes(type)) buckets.expenses += amt;
+    else if(type === 'correction') buckets.corrections += signed;
+  });
+  return buckets;
 }
 
 function migrateDrawerStartingCash(state = drawerState){
@@ -19920,9 +19973,13 @@ function getDrawerSnapshot(state = drawerState, txLog = safeLocalJson('pos_trans
   state = migrateDrawerStartingCash(state);
   const tx = getDrawerTransactions(state, txLog);
   const tender = transactionTenderTotals(tx);
+  const tenderProfit = transactionTenderProfitSummary(tx);
   const adj = getDrawerAdjustments(state);
   const expected = Number(state?.startingCash ?? state?.float ?? 0) + Number(tender.cash || 0) + Number(adj.net || 0);
-  return { tx, tender, adj, expected };
+  const actual = state?.countedCash == null ? null : Number(state.countedCash || 0);
+  const netChange = (actual == null ? expected : actual) - Number(state?.startingCash ?? state?.float ?? 0);
+  const overShort = actual == null ? null : actual - expected;
+  return { tx, tender, tenderProfit, adj, expected, actual, netChange, overShort };
 }
 
 function getDrawerCloseouts(){
@@ -19938,6 +19995,7 @@ function saveDrawerCloseout(summary){
 
 async function openDrawer(){
   const float = parseFloat(document.getElementById('drawer-float').value) || 0;
+  const startNote = document.getElementById('drawer-start-note')?.value.trim() || '';
   const show = getShowMode();
   const session = getAuthSession();
   const openedAt = new Date().toISOString();
@@ -19953,11 +20011,23 @@ async function openDrawer(){
     expectedCash:float,
     opened: openedAt,
     openedBy: session?.user?.email || session?.user?.displayName || '',
-    log: [],
+    startNote,
+    log: startNote ? [{
+      id:'start_' + Date.now(),
+      drawerSessionId:'',
+      dir:0,
+      amt:float,
+      note:startNote,
+      type:'starting_cash',
+      label:'Starting Cash',
+      time:new Date(openedAt).toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'}),
+      createdAt:openedAt
+    }] : [],
     cashSales: 0,
     status: 'open',
     appVersion: APP_VERSION
   };
+  if(drawerState.log[0]) drawerState.log[0].drawerSessionId = drawerState.id || '';
   saveDrawer();
   try {
     await MoneyLedgerService().openDrawerSession({
@@ -19977,9 +20047,9 @@ async function openDrawer(){
     });
   } catch(e) {
     enqueueSync('drawer-session-open', 'Queued drawer open session', { drawerState }, e.message);
-    toast_dash('Drawer opened offline queued');
+    toast_dash('Cash Bag started offline queued');
   }
-  logOpsEvent('drawer_open', 'Opened cash drawer', { drawerSessionId:drawerState.id, startingCash:float });
+  logOpsEvent('drawer_open', 'Started Cash Bag', { drawerSessionId:drawerState.id, startingCash:float, note:startNote });
   renderDrawer();
 }
 
@@ -19997,33 +20067,40 @@ function resetDrawer(){
   localStorage.removeItem('pos_drawer');
   const floatInput = document.getElementById('drawer-float');
   if(floatInput) floatInput.value = '';
+  const startNoteInput = document.getElementById('drawer-start-note');
+  if(startNoteInput) startNoteInput.value = '';
   renderDrawer();
 }
 
 function drawerMovementMeta(type){
   return {
-    paid_in:{ dir:1, label:'Paid In', event:'drawer_paid_in' },
-    paid_out:{ dir:-1, label:'Paid Out', event:'drawer_paid_out' },
-    drop:{ dir:-1, label:'Cash Drop', event:'drawer_cash_drop' },
-    refund:{ dir:-1, label:'Cash Refund', event:'drawer_cash_refund' },
-    buy_payout:{ dir:-1, label:'Buy Payout', event:'drawer_buy_payout' },
+    cash_added:{ dir:1, label:'Cash Added', event:'cash_bag_cash_added' },
+    cash_removed:{ dir:-1, label:'Cash Removed', event:'cash_bag_cash_removed' },
+    cash_buy_payout:{ dir:-1, label:'Cash Buy / Payout', event:'cash_bag_buy_payout' },
+    expense:{ dir:-1, label:'Expense', event:'cash_bag_expense' },
+    paid_in:{ dir:1, label:'Cash Added', event:'cash_bag_cash_added' },
+    paid_out:{ dir:-1, label:'Cash Removed', event:'cash_bag_cash_removed' },
+    drop:{ dir:-1, label:'Cash Removed', event:'cash_bag_cash_removed' },
+    refund:{ dir:-1, label:'Expense', event:'cash_bag_expense' },
+    buy_payout:{ dir:-1, label:'Cash Buy / Payout', event:'cash_bag_buy_payout' },
     no_sale:{ dir:0, label:'No Sale', event:'drawer_no_sale' },
-    cash_in:{ dir:1, label:'Cash In', event:'drawer_cash_in' },
-    cash_out:{ dir:-1, label:'Cash Out', event:'drawer_cash_out' },
-    correction:{ dir:1, label:'Correction', event:'drawer_correction' },
-  }[type] || { dir:0, label:'Drawer Note', event:'drawer_note' };
+    cash_in:{ dir:1, label:'Cash Added', event:'cash_bag_cash_added' },
+    cash_out:{ dir:-1, label:'Cash Removed', event:'cash_bag_cash_removed' },
+    correction:{ dir:1, label:'Correction', event:'cash_bag_correction' },
+  }[type] || { dir:0, label:'Cash Bag Note', event:'cash_bag_note' };
 }
 
 async function addDrawerMovement(type){
-  if(!drawerState) return toast_dash('Open drawer first');
+  if(!drawerState) return toast_dash('Start Cash Bag first');
   migrateDrawerStartingCash(drawerState);
   const meta = drawerMovementMeta(type);
   const amtInput = document.getElementById('drawer-adj-amt');
   const noteInput = document.getElementById('drawer-adj-note');
   const amt = meta.dir === 0 ? 0 : (parseFloat(amtInput?.value) || 0);
-  const note = noteInput?.value || meta.label;
+  const note = (noteInput?.value || '').trim() || meta.label;
+  const requiresNote = ['cash_added','cash_removed','cash_buy_payout','expense','correction','paid_in','paid_out','drop','refund','buy_payout','cash_in','cash_out'].includes(type);
   if(meta.dir !== 0 && !amt) return toast_dash('Enter an amount for ' + meta.label);
-  if(['paid_out','drop','refund','buy_payout','correction'].includes(type) && (!noteInput?.value || noteInput.value.trim().length < 3)) return toast_dash('Note required for ' + meta.label);
+  if(requiresNote && (!noteInput?.value || noteInput.value.trim().length < 3)) return toast_dash('Reason/note required for ' + meta.label);
   let direction = meta.dir;
   if(type === 'correction') {
     const raw = prompt('Correction direction: enter + for cash added or - for cash removed', '+');
@@ -20079,7 +20156,7 @@ function countDrawer(){
   const expEl = document.getElementById('drawer-count-expected');
   const input = document.getElementById('drawer-count-input');
   const preview = document.getElementById('drawer-count-preview');
-  if(expEl) expEl.textContent = 'Expected: $' + expected.toFixed(2);
+  if(expEl) expEl.textContent = 'Expected Cash in Bag: $' + expected.toFixed(2);
   if(input){ input.value = ''; }
   if(preview) preview.textContent = '';
   // Live over/short preview
@@ -20106,14 +20183,14 @@ function submitDrawerCount(){
   drawerState.countedAt = new Date().toISOString();
   saveDrawer();
   if(modal) modal.classList.remove('on');
-  logOpsEvent('drawer_count', 'Counted cash drawer', {
+  logOpsEvent('drawer_count', 'Counted Cash Bag', {
     drawerSessionId:drawerState.id || '',
     expected: expected.toFixed(2),
     counted: counted.toFixed(2),
     difference: diff.toFixed(2)
   });
   renderDrawer();
-  toast_dash(`Drawer counted · Expected $${expected.toFixed(2)} · Counted $${counted.toFixed(2)} · ${diff>=0?'+':''}$${diff.toFixed(2)}`);
+  toast_dash(`Cash Bag counted - Expected $${expected.toFixed(2)} - Counted $${counted.toFixed(2)} - ${diff>=0?'+':''}$${diff.toFixed(2)}`);
 }
 
 function closeDrawer(){
@@ -20121,9 +20198,10 @@ function closeDrawer(){
   migrateDrawerStartingCash(drawerState);
   const snapshot = getDrawerSnapshot(drawerState);
   const expected = snapshot.expected;
-  if(drawerState.countedCash == null) return toast_dash('Count drawer before closing');
+  if(drawerState.countedCash == null) return toast_dash('Count Cash Bag before closing day');
   const counted = Number(drawerState.countedCash || 0);
   const diff = counted - expected;
+  const startingCash = Number(drawerState.startingCash ?? drawerState.float ?? 0);
   const summary = {
     id:'drawer_close_' + Date.now(),
     drawerSessionId: drawerState.id || '',
@@ -20134,16 +20212,24 @@ function closeDrawer(){
     booth: drawerState.booth || '',
     opened: drawerState.opened,
     closedAt: new Date().toISOString(),
-    float: Number(drawerState.startingCash ?? drawerState.float ?? 0),
-    startingCash: Number(drawerState.startingCash ?? drawerState.float ?? 0),
+    float: startingCash,
+    startingCash,
     cashSales: Number(snapshot.tender.cash || 0),
+    cashProfit: Number(snapshot.tenderProfit?.cash?.profit || 0),
     tenderTotals: snapshot.tender,
+    tenderProfit: snapshot.tenderProfit,
     cashIn: Number(snapshot.adj.in || 0),
     cashOut: Number(snapshot.adj.out || 0),
+    cashAdded: Number(snapshot.adj.cashAdded || 0),
+    cashRemoved: Number(snapshot.adj.cashRemoved || 0),
+    cashBuyPayouts: Number(snapshot.adj.cashBuyPayouts || 0),
+    expenses: Number(snapshot.adj.expenses || 0),
+    corrections: Number(snapshot.adj.corrections || 0),
     adjustmentNet: Number(snapshot.adj.net || 0),
     expected,
     counted,
     difference: diff,
+    cashNetChange: counted - startingCash,
     transactionCount: snapshot.tx.length,
     log: drawerState.log || [],
     appVersion: APP_VERSION
@@ -20169,7 +20255,7 @@ function closeDrawer(){
       enqueueSync('drawer-session-close', 'Close drawer session: ' + _drawerClosePayload.id, _drawerClosePayload, 'Supabase unavailable at close time');
     }
   })();
-  logOpsEvent('drawer_close', 'Closed cash drawer', {
+  logOpsEvent('drawer_close', 'Closed Cash Bag day', {
     drawerSessionId: summary.drawerSessionId,
     expected: expected.toFixed(2),
     counted: counted.toFixed(2),
@@ -20180,8 +20266,10 @@ function closeDrawer(){
   const summaryLines = [
     `Starting: $${Number(summary.startingCash).toFixed(2)}`,
     `Cash Sales: $${Number(summary.cashSales).toFixed(2)}`,
+    `Cash Buy/Payouts: -$${Number(summary.cashBuyPayouts).toFixed(2)}`,
     `Expected: $${expected.toFixed(2)}`,
     `Counted: $${counted.toFixed(2)}`,
+    `Net vs Starting: ${summary.cashNetChange>=0?'+':''}$${summary.cashNetChange.toFixed(2)}`,
     `${diff>=0?'+':''}$${diff.toFixed(2)} ${balanced?'✓ BALANCED':'⚠ '+( diff>0?'OVER':'SHORT')}`,
   ].join('  ·  ');
   drawerState = null;
@@ -20190,6 +20278,8 @@ function closeDrawer(){
   // can never pre-fill the next drawer open.
   const _floatInput = document.getElementById('drawer-float');
   if(_floatInput) _floatInput.value = '';
+  const _startNoteInput = document.getElementById('drawer-start-note');
+  if(_startNoteInput) _startNoteInput.value = '';
   renderDrawer();
   // Inject summary into the newly-rendered closed-drawer area
   setTimeout(() => {
@@ -20199,11 +20289,11 @@ function closeDrawer(){
       el.id = 'drawer-closeout-summary';
       el.style.cssText = 'font-family:monospace;font-size:11px;line-height:1.6;padding:10px 12px;border-radius:8px;margin-bottom:10px;' +
         (balanced ? 'background:rgba(0,255,179,.08);border:1px solid rgba(0,255,179,.3);color:var(--g)' : 'background:rgba(255,209,102,.08);border:1px solid rgba(255,209,102,.3);color:var(--gold)');
-      el.innerHTML = `<b>DRAWER CLOSED</b><br>${summaryLines.split('  ·  ').join('<br>')}`;
+      el.innerHTML = `<b>CASH BAG CLOSED</b><br>${summaryLines.split('  ·  ').join('<br>')}`;
       closedView.prepend(el);
     }
   }, 50);
-  toast_dash((balanced?'✓ Drawer balanced':'⚠ Drawer '+Math.abs(diff).toFixed(2)+(diff>0?' over':' short')) + ' · Closed successfully');
+  toast_dash((balanced?'Cash Bag balanced':'Cash Bag '+Math.abs(diff).toFixed(2)+(diff>0?' over':' short')) + ' - Closed successfully');
 }
 
 function getDrawerExpected(){
@@ -20221,7 +20311,7 @@ function renderDrawer(){
   if(totalsToggle) totalsToggle.textContent = totalsVisible ? 'HIDE TOTALS' : 'SHOW TOTALS';
   if(!drawerState){
     closed.style.display=''; open.style.display='none';
-    status.textContent='CLOSED'; status.style.color='var(--red)';
+    status.textContent='NOT STARTED'; status.style.color='var(--red)';
     updateTopStateChips();
     updateRegisterCommandCenter();
     return;
@@ -20231,10 +20321,23 @@ function renderDrawer(){
   status.style.color='var(--g)';
   const snapshot = getDrawerSnapshot(drawerState);
   const cashSales = Number(snapshot.tender.cash || 0);
+  const cashProfit = Number(snapshot.tenderProfit?.cash?.profit || 0);
+  const displayActual = drawerState.countedCash == null ? snapshot.expected : Number(drawerState.countedCash || 0);
+  const netChange = displayActual - Number(drawerState.startingCash ?? drawerState.float ?? 0);
   drawerState.cashSales = cashSales;
   document.getElementById('drawer-float-disp').textContent = '$'+Number(drawerState.startingCash ?? drawerState.float ?? 0).toFixed(2);
   document.getElementById('drawer-sales-disp').textContent = '$'+cashSales.toFixed(2);
   document.getElementById('drawer-expected-disp').textContent = '$'+snapshot.expected.toFixed(2);
+  const netEl = document.getElementById('drawer-net-change-disp');
+  if(netEl) {
+    netEl.textContent = (netChange >= 0 ? '+' : '') + '$' + netChange.toFixed(2);
+    netEl.style.color = netChange >= 0 ? 'var(--g)' : 'var(--red)';
+  }
+  const profitEl = document.getElementById('drawer-cash-profit-disp');
+  if(profitEl) {
+    profitEl.textContent = (cashProfit >= 0 ? '+' : '') + '$' + cashProfit.toFixed(2);
+    profitEl.style.color = cashProfit >= 0 ? 'var(--g)' : 'var(--red)';
+  }
   const countedEl = document.getElementById('drawer-counted-disp');
   if(countedEl) countedEl.textContent = drawerState.countedCash == null ? 'Not counted' : '$' + Number(drawerState.countedCash || 0).toFixed(2);
   const overShortEl = document.getElementById('drawer-over-short-disp');
@@ -20261,21 +20364,28 @@ function renderDrawer(){
   }
   const tenderEl = document.getElementById('drawer-tender-breakdown');
   if(tenderEl) {
-    tenderEl.innerHTML = Object.entries(snapshot.tender).map(([key,val]) => `
+    tenderEl.innerHTML = Object.entries(snapshot.tender).map(([key,val]) => {
+      const profit = Number(snapshot.tenderProfit?.[key]?.profit || 0);
+      return `
       <div style="background:var(--surf2);border:1px solid var(--border);border-radius:6px;padding:7px">
         <div style="font-family:var(--font-mono);font-size:8px;color:var(--dim);text-transform:uppercase">${formatTenderLabel(key)}</div>
         <div style="font-family:'Orbitron',monospace;font-size:11px;color:${key==='cash'?'var(--g)':'var(--text)'}">$${Number(val||0).toFixed(2)}</div>
-      </div>`).join('');
+        <div style="font-family:var(--font-mono);font-size:8px;color:${profit>=0?'var(--g)':'var(--red)'}">${profit>=0?'+':''}$${profit.toFixed(2)} profit</div>
+      </div>`;
+    }).join('') + `
+      <div style="grid-column:1/-1;background:rgba(255,209,102,.06);border:1px solid rgba(255,209,102,.22);border-radius:6px;padding:7px;font-family:var(--font-mono);font-size:9px;color:var(--dim)">
+        Added $${Number(snapshot.adj.cashAdded||0).toFixed(2)} · Removed $${Number(snapshot.adj.cashRemoved||0).toFixed(2)} · Cash Buy/Payout $${Number(snapshot.adj.cashBuyPayouts||0).toFixed(2)} · Expenses $${Number(snapshot.adj.expenses||0).toFixed(2)} · Corrections ${Number(snapshot.adj.corrections||0)>=0?'+':''}$${Number(snapshot.adj.corrections||0).toFixed(2)}
+      </div>`;
   }
   if(!drawerState.log.length && cashSales===0){
     logEl.innerHTML='<div style="color:var(--dim);text-align:center;padding:8px">No entries yet</div>';
   } else {
     const rows = [];
-    if(cashSales>0) rows.push({note:'POS Cash Sales', dir:1, amt:cashSales, time:'auto'});
+    if(cashSales>0) rows.push({note:'POS Cash Sales', dir:1, amt:cashSales, time:'auto', label:'Cash Sale'});
     rows.push(...drawerState.log);
     logEl.innerHTML = rows.map(r=>`<div class="dr-log-row">
-      <span class="dr-log-note">${r.note}</span>
-      <span class="${r.dir>0?'dr-log-amt-in':'dr-log-amt-out'}">${r.dir>0?'+':'-'}$${r.amt.toFixed(2)}</span>
+      <span class="dr-log-note">${escHtml([r.label, r.note].filter(Boolean).join(': '))}</span>
+      <span class="${r.dir>0?'dr-log-amt-in':'dr-log-amt-out'}">${r.dir>0?'+':r.dir<0?'-':''}$${Number(r.amt||0).toFixed(2)}</span>
     </div>`).join('');
   }
   const history = document.getElementById('drawer-closeout-history');
@@ -20403,20 +20513,35 @@ function payCustomerForBuySession(method){
   saveActiveBuySession(session);
   saveBuySessionHistory(session);
   if(normalizeTenderType(session.paymentType) === 'cash' && drawerState) {
+    const payoutAmount = Number(session.cashOfferTotal || 0);
+    const payoutNote = 'Customer buy payout' + (session.customerName ? ': ' + session.customerName : '') + (session.buySessionId ? ' (' + session.buySessionId + ')' : '');
     drawerState.log.push({
       id:'buy_payout_' + Date.now(),
       drawerSessionId:drawerState.id || '',
       dir:-1,
-      amt:Number(session.cashOfferTotal || 0),
-      note:'Customer buy payout' + (session.customerName ? ': ' + session.customerName : ''),
-      type:'buy_payout',
-      label:'Buy Payout',
+      amt:payoutAmount,
+      note:payoutNote,
+      type:'cash_buy_payout',
+      label:'Cash Buy / Payout',
       buySessionId:session.buySessionId,
       time:new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'}),
       createdAt:new Date().toISOString()
     });
+    drawerState.expectedCash = Number(drawerState.expectedCash ?? drawerState.startingCash ?? drawerState.float ?? 0) - payoutAmount;
     saveDrawer();
     renderDrawer();
+    const movement = {
+      id:makeUuid('move'),
+      drawer_session_id:drawerState.id || '',
+      store_id:getActiveStoreId(),
+      sale_id:null,
+      movement_type:'cash_buy_payout',
+      amount:-payoutAmount,
+      note:payoutNote,
+      created_by:getCurrentUserId(),
+      created_at:new Date().toISOString()
+    };
+    MoneyLedgerService().writeDrawerMovement(movement).catch(e => enqueueSync('drawer-movement', 'Queued cash buy payout: ' + payoutNote, movement, e.message));
   }
   logOpsEvent('customer_paid', 'Recorded customer payout for buy session', { buySessionId:session.buySessionId, method:session.paymentType, amount:session.cashOfferTotal });
   toast_dash('Customer payout recorded: ' + session.paymentType);
@@ -20923,6 +21048,7 @@ function generateEOD(){
   const totalRevenue = dayTx.reduce((a,t)=>a+t.total,0);
   const totalItems = dayTx.reduce((a,t)=>a+t.items.length,0);
   const tenderTotals = transactionTenderTotals(dayTx);
+  const tenderProfit = transactionTenderProfitSummary(dayTx);
   const cashTotal = Number(tenderTotals.cash || 0);
   const cardTotal = Number(tenderTotals.card || 0);
   const venmoTotal = Number(tenderTotals.venmo || 0);
@@ -20938,6 +21064,9 @@ function generateEOD(){
   const openDrawerSnapshot = drawerState && new Date(drawerState.opened || 0).toDateString() === targetDay ? getDrawerSnapshot(drawerState) : null;
   const drawerExpected = dayCloseouts.length ? dayCloseouts.reduce((a,c)=>a+Number(c.expected||0),0) : (openDrawerSnapshot ? openDrawerSnapshot.expected : 0);
   const expectedCash = drawerExpected || (Number(show?.startCash || 0) + cashTotal - buyPaidTotal);
+  const tenderRows = ['cash','card','venmo','paypal','cashapp','trade_credit','manual_external']
+    .map(key => ({ key, ...tenderProfit[key] }))
+    .filter(r => Number(r.gross || 0) || Number(r.profit || 0) || Number(r.count || 0));
 
   // Category breakdown
   const cats = {};
@@ -20972,21 +21101,29 @@ function generateEOD(){
       </div>`:''}
 
       ${(dayCloseouts.length || openDrawerSnapshot)?`<div class="eod-section">
-        <div class="eod-hdr">CASH DRAWER</div>
+        <div class="eod-hdr">CASH BAG RECONCILIATION</div>
         ${dayCloseouts.map(c => `<div style="border:1px solid var(--border);border-radius:6px;padding:8px;margin-bottom:8px">
           <div class="eod-row"><span class="eod-label">Session</span><span class="eod-val">${String(c.drawerSessionId||'').slice(-10).toUpperCase()}</span></div>
           <div class="eod-row"><span class="eod-label">Opened</span><span class="eod-val">${new Date(c.opened).toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'})}</span></div>
           <div class="eod-row"><span class="eod-label">Starting Cash</span><span class="eod-val">$${Number(c.startingCash ?? c.float ?? 0).toFixed(2)}</span></div>
           <div class="eod-row"><span class="eod-label">Cash Sales</span><span class="eod-val">$${Number(c.cashSales||0).toFixed(2)}</span></div>
-          <div class="eod-row"><span class="eod-label">Cash In / Out</span><span class="eod-val">+$${Number(c.cashIn||0).toFixed(2)} / -$${Number(c.cashOut||0).toFixed(2)}</span></div>
+          <div class="eod-row"><span class="eod-label">Cash Buy / Payouts</span><span class="eod-val">-$${Number(c.cashBuyPayouts||0).toFixed(2)}</span></div>
+          <div class="eod-row"><span class="eod-label">Cash Added / Removed</span><span class="eod-val">+$${Number(c.cashAdded ?? c.cashIn ?? 0).toFixed(2)} / -$${Number(c.cashRemoved ?? c.cashOut ?? 0).toFixed(2)}</span></div>
+          <div class="eod-row"><span class="eod-label">Expenses / Corrections</span><span class="eod-val">-$${Number(c.expenses||0).toFixed(2)} / ${Number(c.corrections||0)>=0?'+':''}$${Number(c.corrections||0).toFixed(2)}</span></div>
           <div class="eod-row"><span class="eod-label">Expected</span><span class="eod-val">$${Number(c.expected||0).toFixed(2)}</span></div>
-          <div class="eod-row"><span class="eod-label">Counted</span><span class="eod-val">$${Number(c.counted||0).toFixed(2)}</span></div>
+          <div class="eod-row"><span class="eod-label">Actual Count</span><span class="eod-val">$${Number(c.counted||0).toFixed(2)}</span></div>
+          <div class="eod-row"><span class="eod-label">Net Change vs Starting</span><span class="eod-val">${Number(c.cashNetChange ?? (Number(c.counted||0)-Number(c.startingCash ?? c.float ?? 0)))>=0?'+':''}$${Number(c.cashNetChange ?? (Number(c.counted||0)-Number(c.startingCash ?? c.float ?? 0))).toFixed(2)}</span></div>
+          <div class="eod-row"><span class="eod-label">Cash Profit From Sales</span><span class="eod-val">${Number(c.cashProfit||0)>=0?'+':''}$${Number(c.cashProfit||0).toFixed(2)}</span></div>
           <div class="eod-row total"><span class="eod-label">OVER / SHORT</span><span class="eod-val" style="color:${Math.abs(Number(c.difference||0))<0.5?'var(--g)':'var(--gold)'}">${Number(c.difference||0)>=0?'+':''}$${Number(c.difference||0).toFixed(2)}</span></div>
         </div>`).join('')}
         ${openDrawerSnapshot?`<div style="border:1px solid rgba(255,210,92,.35);border-radius:6px;padding:8px">
           <div class="eod-row"><span class="eod-label">Open Session</span><span class="eod-val">${String(drawerState.id||'').slice(-10).toUpperCase()}</span></div>
           <div class="eod-row"><span class="eod-label">Starting Cash</span><span class="eod-val">$${Number(drawerState.startingCash ?? drawerState.float ?? 0).toFixed(2)}</span></div>
           <div class="eod-row"><span class="eod-label">Cash Sales</span><span class="eod-val">$${Number(openDrawerSnapshot.tender.cash||0).toFixed(2)}</span></div>
+          <div class="eod-row"><span class="eod-label">Cash Buy / Payouts</span><span class="eod-val">-$${Number(openDrawerSnapshot.adj.cashBuyPayouts||0).toFixed(2)}</span></div>
+          <div class="eod-row"><span class="eod-label">Cash Added / Removed</span><span class="eod-val">+$${Number(openDrawerSnapshot.adj.cashAdded||0).toFixed(2)} / -$${Number(openDrawerSnapshot.adj.cashRemoved||0).toFixed(2)}</span></div>
+          <div class="eod-row"><span class="eod-label">Net Change vs Starting</span><span class="eod-val">${Number(openDrawerSnapshot.netChange||0)>=0?'+':''}$${Number(openDrawerSnapshot.netChange||0).toFixed(2)}</span></div>
+          <div class="eod-row"><span class="eod-label">Cash Profit From Sales</span><span class="eod-val">${Number(openDrawerSnapshot.tenderProfit?.cash?.profit||0)>=0?'+':''}$${Number(openDrawerSnapshot.tenderProfit?.cash?.profit||0).toFixed(2)}</span></div>
           <div class="eod-row total"><span class="eod-label">EXPECTED NOW</span><span class="eod-val">$${Number(openDrawerSnapshot.expected||0).toFixed(2)}</span></div>
         </div>`:''}
       </div>`:''}
@@ -21019,7 +21156,12 @@ function generateEOD(){
       </div>`:''}
 
       <div class="eod-section">
-        <div class="eod-hdr">BY PAYMENT METHOD</div>
+        <div class="eod-hdr">TENDER / PROFIT BY PAYMENT METHOD</div>
+        ${tenderRows.length ? tenderRows.map(r => `<div class="eod-row"><span class="eod-label">${formatTenderLabel(r.key)} · ${Number(r.count||0)} sale${Number(r.count||0)===1?'':'s'}</span><span class="eod-val">$${Number(r.gross||0).toFixed(2)} gross · $${Number(r.cost||0).toFixed(2)} cost · <b style="color:${Number(r.profit||0)>=0?'var(--g)':'var(--red)'}">${Number(r.profit||0)>=0?'+':''}$${Number(r.profit||0).toFixed(2)}</b> · ${Number(r.margin||0).toFixed(1)}%</span></div>`).join('') : '<div class="eod-row"><span class="eod-label">No tender activity</span><span class="eod-val">$0.00</span></div>'}
+      </div>
+
+      <div class="eod-section">
+        <div class="eod-hdr">TENDER GROSS BY PAYMENT METHOD</div>
         ${cashTotal>0?`<div class="eod-row"><span class="eod-label">💵 Cash</span><span class="eod-val">$${cashTotal.toFixed(2)}</span></div>`:''}
         ${cardTotal>0?`<div class="eod-row"><span class="eod-label">💳 Card</span><span class="eod-val">$${cardTotal.toFixed(2)}</span></div>`:''}
         ${venmoTotal>0?`<div class="eod-row"><span class="eod-label">📱 Venmo</span><span class="eod-val">$${venmoTotal.toFixed(2)}</span></div>`:''}
@@ -21091,7 +21233,7 @@ function exportEODCSV(){
   ])));
   getDrawerCloseouts().filter(c => new Date(c.closedAt || c.opened || 0).toDateString() === targetDay).forEach(c => rows.push([
     c.eventName || show.eventName || '', c.booth || show.booth || '', dateStr, 'drawer_closeout', c.drawerSessionId || c.id || '', new Date(c.closedAt || c.opened).toLocaleTimeString(),
-    'Cash Drawer', 'Expected / counted / over-short', '', Number(c.expected || 0).toFixed(2), '', Number(c.difference || 0).toFixed(2),
+    'Cash Bag', 'Expected / actual / over-short', '', Number(c.expected || 0).toFixed(2), '', Number(c.difference || 0).toFixed(2),
     Number(c.counted || 0).toFixed(2), '', '', daySold.length, itemsAdded.length, show.priceRulePct || '', 'drawer_closeout', APP_VERSION
   ]));
   if(rows.length===1) rows.push([show.eventName||'', show.booth||'', dateStr, 'none', '', '', 'NO ACTIVITY', '', '', '', '', '', '', '', '', daySold.length, itemsAdded.length, show.priceRulePct || '', '', APP_VERSION]);
