@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.06.18.09-mobile-containment-pass">
+<meta name="version" content="2026.06.18.10-customer-screen-fit">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -143,24 +143,25 @@ header{position:sticky;top:0;z-index:100;background:rgba(7,8,10,.96);backdrop-fi
 .dealer-total b{font-family:'Orbitron',monospace;font-size:34px;color:var(--g);}
 .checkout-action-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;}
 .checkout-action-row .hbtn{min-height:48px;}
-.customer-payment-screen{display:none;position:relative;min-height:calc(100vh - 170px);background:#f7f8fa;color:#101319;border-radius:0;padding:24px;box-shadow:0 18px 60px rgba(0,0,0,.35);overflow:hidden;}
+.customer-payment-screen{display:none;position:relative;width:100%;max-width:920px;margin:0 auto;box-sizing:border-box;background:#f7f8fa;color:#101319;border-radius:0;padding:24px;box-shadow:0 18px 60px rgba(0,0,0,.35);}
+.customer-payment-screen.on{display:grid;grid-template-rows:auto 1fr auto;gap:18px;height:calc(100dvh - 36px);max-height:calc(100dvh - 36px);overflow:hidden;}
+.customer-pay-scroll{min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;}
 .customer-payment-screen::before{content:'';position:absolute;inset:0;background-image:var(--customer-bg-image);background-size:cover;background-position:center;opacity:.16;pointer-events:none;}
 .customer-payment-screen>*{position:relative;z-index:1;}
-.customer-payment-screen.on{display:grid;grid-template-rows:auto 1fr auto;gap:18px;}
 .customer-pay-brand{text-align:center;}
 .customer-pay-brand img{display:none;width:110px;max-height:82px;object-fit:contain;margin:0 auto 10px;}
 .customer-pay-store{font-family:'Orbitron',monospace;font-size:28px;font-weight:900;letter-spacing:2px;color:#0b0d12;overflow-wrap:anywhere;max-width:100%;}
 .customer-pay-safe{font-family:var(--font-mono);font-size:11px;color:#657080;margin-top:5px;}
 .customer-pay-lines{display:grid;gap:10px;align-content:start;max-width:860px;width:100%;margin:0 auto;}
 .customer-pay-line{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:18px;align-items:center;border-bottom:1px solid #dce1e8;padding:12px 0;}
-.customer-pay-name{font-size:20px;font-weight:800;color:#101319;line-height:1.25;}
-.customer-pay-sub{font-family:var(--font-mono);font-size:11px;color:#657080;margin-top:4px;}
-.customer-pay-price{font-family:'Orbitron',monospace;font-size:23px;font-weight:900;color:#111827;}
+.customer-pay-name{font-size:clamp(15px,4vw,20px);font-weight:800;color:#101319;line-height:1.25;overflow-wrap:anywhere;}
+.customer-pay-sub{font-family:var(--font-mono);font-size:clamp(9px,2.2vw,11px);color:#657080;margin-top:4px;}
+.customer-pay-price{font-family:'Orbitron',monospace;font-size:clamp(16px,4.5vw,23px);font-weight:900;color:#111827;white-space:nowrap;}
 .customer-pay-total{text-align:center;}
 .customer-pay-total span{display:block;font-family:var(--font-mono);font-size:12px;color:#657080;letter-spacing:2px;}
-.customer-pay-total b{display:block;font-family:'Orbitron',monospace;font-size:68px;color:#05835f;line-height:1;}
+.customer-pay-total b{display:block;font-family:'Orbitron',monospace;font-size:clamp(40px,11vw,68px);color:#05835f;line-height:1;}
 .customer-method-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;max-width:860px;width:100%;margin:16px auto 0;}
-.customer-method-btn{min-height:74px;border-radius:8px;border:2px solid #cfd7e3;background:#fff;color:#101319;font-family:'Orbitron',monospace;font-size:13px;font-weight:900;letter-spacing:1px;cursor:pointer;}
+.customer-method-btn{min-height:clamp(58px,8vh,74px);border-radius:8px;border:2px solid #cfd7e3;background:#fff;color:#101319;font-family:'Orbitron',monospace;font-size:clamp(11px,2.6vw,13px);font-weight:900;letter-spacing:1px;cursor:pointer;}
 .customer-method-btn.on{border-color:#05835f;background:#e9fff7;color:#056044;}
 .payment-workbench{display:none;max-width:860px;width:100%;margin:12px auto 0;border:1px solid #cfd7e3;background:#fff;border-radius:8px;padding:14px;color:#101319;}
 .payment-workbench.on{display:block;}
@@ -818,7 +819,7 @@ body.customer-display-mode{padding-bottom:0;background:#020304;}
 body.customer-display-mode header,body.customer-display-mode #dealer-cart-tools,body.customer-display-mode #cd-help-panel,body.customer-display-mode .sec{display:none!important;}
 body.customer-display-mode .tab-panel{display:none!important;}
 body.customer-display-mode #tab-display{display:block!important;}
-body.customer-display-mode #customer-display{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:18px;background-color:#f7f8fa;background-image:linear-gradient(rgba(247,248,250,.88),rgba(247,248,250,.88)),var(--customer-bg-image);background-size:cover;background-position:center;}
+body.customer-display-mode #customer-display{min-height:100dvh;padding:18px;background-color:#f7f8fa;background-image:linear-gradient(rgba(247,248,250,.88),rgba(247,248,250,.88)),var(--customer-bg-image);background-size:cover;background-position:center;}
 body.customer-display-mode #customer-display .sell-shell{width:min(920px,100%);padding:0;}
 body.customer-display-mode #customer-display-exit{display:block;}
 .responsive-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(320px,100%),1fr));gap:14px;}
@@ -1294,7 +1295,7 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.18.09-mobile-containment-pass</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.18.10-customer-screen-fit</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
@@ -1321,7 +1322,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip dev-only" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.18.09-mobile-containment-pass</div>
+<div class="dsb-chip dev-only" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.18.10-customer-screen-fit</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -2467,7 +2468,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.06.18.09-mobile-containment-pass';
+const APP_VERSION = '2026.06.18.10-customer-screen-fit';
 window.APP_VERSION = APP_VERSION;
 const branchName = 'pokemon-v2-core';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
@@ -23318,7 +23319,7 @@ function ensureCheckoutRuntimeMarkup(){
         <div class="customer-pay-store" data-vendor-store>WALK-OFF</div>
         <div class="customer-pay-safe">Review your locked checkout total and choose a payment method.</div>
       </div>
-      <div>
+      <div class="customer-pay-scroll">
         <div id="cd-items" class="customer-pay-lines"></div>
         <div id="cd-total-breakdown" style="max-width:860px;margin:8px auto 0;color:#657080;font-family:var(--font-mono);font-size:12px"></div>
         <div class="customer-pay-total"><span>TOTAL DUE</span><b id="cd-total">$0.00</b></div>
