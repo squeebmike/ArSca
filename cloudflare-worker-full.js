@@ -3505,21 +3505,75 @@ export default {
 
 // ── BECKETT HTML PARSER ───────────────────────────────────────────────────────
 function parseBeckettChecklist(html, slug, name, sport, year) {
-  // Extract text content from article-content div
+  // Extract article content div
   const contentMatch = html.match(/class="[^"]*article-content[^"]*"[^>]*>([\s\S]*?)(?=<div[^>]+id="comments|<\/main|<footer)/i);
   if (!contentMatch) return null;
   const content = contentMatch[1];
 
-  // Strip HTML tags and decode entities
+  // ── Extract box contents from HTML <li> items under "What to expect" headings ──
+  const box_contents = {};
+  const boxSectionRe = /What to expect in (?:a |an )?([^:<]+?)(?:\s+box)?[:<]/gi;
+  let bm;
+  while ((bm = boxSectionRe.exec(content)) !== null) {
+    const boxType = bm[1].trim().toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+    // grab the <ul> or <ol> that follows this heading
+    const after = content.slice(bm.index + bm[0].length, bm.index + bm[0].length + 3000);
+    const listMatch = after.match(/<[uo]l[^>]*>([\s\S]*?)<\/[uo]l>/i);
+    if (listMatch) {
+      const items = [];
+      const liRe = /<li[^>]*>([\s\S]*?)<\/li>/gi;
+      let li;
+      while ((li = liRe.exec(listMatch[1])) !== null) {
+        const txt = li[1].replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').replace(/&nbsp;/g, ' ').replace(/&#\d+;/g, '').trim();
+        if (txt) items.push(txt);
+      }
+      if (items.length) box_contents[boxType] = items;
+    }
+  }
+
+  // ── Strip HTML and build line array ──
+  const decodeEntities = s => s
+    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+    .replace(/&nbsp;/g, ' ').replace(/&#(\d+);/g, (_, n) => String.fromCharCode(n))
+    .replace(/&[a-z]+;/g, ' ');
+
   const text = content
     .replace(/<style[\s\S]*?<\/style>/gi, '')
     .replace(/<script[\s\S]*?<\/script>/gi, '')
-    .replace(/<[^>]+>/g, '\n')
-    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&nbsp;/g, ' ').replace(/&#\d+;/g, ' ')
-    .replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+    .replace(/<\/?(li|p|h[1-6]|div|ul|ol)[^>]*>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .split('\n').map(l => decodeEntities(l).trim()).filter(Boolean);
 
-  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+  const lines = text;
 
+  // ── Product info (cards/packs/boxes per format) ──
+  const product_info = { cards_per_pack: {}, packs_per_box: {}, boxes_per_case: {} };
+  const infoLine = lines.find(l => /cards per pack/i.test(l));
+  if (infoLine) {
+    const parseFormatLine = (label) => {
+      const re = new RegExp(label + '[:\\s]+([^\\n]+)', 'i');
+      const m = infoLine.match(re) || lines.join('\n').match(re);
+      if (!m) return {};
+      const obj = {};
+      m[1].split(/[;,]/).forEach(part => {
+        const pm = part.trim().match(/^(.+?)\s*[–\-:]\s*(\d+)/);
+        if (pm) obj[pm[1].trim()] = parseInt(pm[2]);
+      });
+      return obj;
+    };
+    product_info.cards_per_pack = parseFormatLine('Cards per pack');
+    product_info.packs_per_box  = parseFormatLine('Packs per box');
+    product_info.boxes_per_case = parseFormatLine('Boxes per case');
+  }
+
+  // ── Release date & set size ──
+  const fullText = lines.join(' ');
+  const releaseDateMatch = fullText.match(/[Rr]elease date[:\s]+([A-Za-z]+ \d+,?\s*\d{4})/);
+  const releaseDate = releaseDateMatch ? releaseDateMatch[1].replace(/\s+/g, ' ').trim() : (year ? String(year) : '');
+  const setSizeMatch = fullText.match(/[Ss]et size[:\s]+(\d+)/);
+  const setSize = setSizeMatch ? parseInt(setSizeMatch[1]) : 0;
+
+  // ── Card parsing helpers ──
   const TEAMS = new Set([
     'New York Yankees','Toronto Blue Jays','Minnesota Twins','New York Mets','Chicago Cubs',
     'Arizona Diamondbacks','San Francisco Giants','San Diego Padres','Milwaukee Brewers',
@@ -3527,63 +3581,84 @@ function parseBeckettChecklist(html, slug, name, sport, year) {
     'Washington Nationals','Cleveland Guardians','St. Louis Cardinals','Houston Astros',
     'Kansas City Royals','Miami Marlins','Los Angeles Dodgers','Athletics','Angels',
     'Chicago White Sox','Seattle Mariners','Atlanta Braves','Philadelphia Phillies',
-    'Cincinnati Reds','Pittsburgh Pirates','Texas Rangers','Los Angeles Angels','Other',
+    'Cincinnati Reds','Pittsburgh Pirates','Texas Rangers','Los Angeles Angels',
+    'Oakland Athletics','Tampa Bay Devil Rays','Montreal Expos','Other',
   ]);
-
-  const CARD_RE = /^(\d+)\s+(.+?),\s+(.+?)(?:\s+\((.+?)\))?$/;
-  const PREFIX_RE = /^([A-Z0-9]{1,10}-[A-Z0-9]+[a-z]?)\s+(.+?),\s+(.+?)(\s+RC)?$/;
   const MONTHS = new Set(['January','February','March','April','May','June','July','August','September','October','November','December']);
+  const CARD_RE   = /^(\d+)\s+(.+?),\s+(.+?)(?:\s+\((.+?)\))?$/;
+  const PREFIX_RE = /^([A-Z]{1,4}-[A-Z0-9]+[a-z]?)\s+(.+?),\s+(.+?)$/;
+  const BASE_NO_TEAM_RE = /^(\d+)\s+(.+?)(?:\s+(RC))?$/;
 
-  function tryBase(line, maxNum = 350) {
+  function tryBase(line, maxNum = 400) {
     const m = line.match(CARD_RE);
     if (!m) return null;
     const num = parseInt(m[1]);
-    if (num > maxNum) return null;
+    if (num > maxNum || num < 1) return null;
     const player = m[2].trim(), team = m[3].trim(), note = (m[4] || '').trim();
     if (!TEAMS.has(team) && ![...TEAMS].some(t => team.includes(t))) return null;
-    if (MONTHS.has(player)) return null;
+    if (MONTHS.has(player) || /^\d{4}$/.test(player)) return null;
     return { number: num, player, team, note };
   }
 
   function tryPrefixed(line) {
     const m = line.match(PREFIX_RE);
     if (!m) return null;
-    return { number: m[1], player: m[2].trim(), team: m[3].trim() };
+    const team = m[3].trim();
+    if (MONTHS.has(m[2].trim())) return null;
+    return { number: m[1], player: m[2].trim(), team };
   }
 
-  // Find section boundaries
+  function tryBaseNoTeam(line, maxNum = 400) {
+    const m = line.match(BASE_NO_TEAM_RE);
+    if (!m) return null;
+    const num = parseInt(m[1]);
+    if (num > maxNum || num < 1) return null;
+    const player = m[2].trim();
+    if (MONTHS.has(player) || /^\d{4}$/.test(player) || player.length < 3) return null;
+    return { number: num, player, rc: m[3] === 'RC' };
+  }
+
+  // ── Find section boundaries ──
   let baseStart = -1, varsStart = lines.length, autoStart = lines.length;
   let memStart = lines.length, insStart = lines.length, teamStart = lines.length;
 
+  const SEC = { base: /^base set checklist$/i, vars: /[–\-]\s*variations/i, auto: /[–\-]\s*autographs/i, mem: /[–\-]\s*memorabilia/i, ins: /[–\-]\s*inserts/i, team: /^team sets$/i };
+
   for (let i = 0; i < lines.length; i++) {
     const l = lines[i];
-    if (l === 'Base Set Checklist' && baseStart < 0) baseStart = i;
-    if (l.includes('– Variations') && i > baseStart) { varsStart = Math.min(varsStart, i); }
-    if (l.includes('– Autographs')) autoStart = Math.min(autoStart, i);
-    if (l.includes('– Memorabilia')) memStart = Math.min(memStart, i);
-    if (l.includes('– Inserts')) insStart = Math.min(insStart, i);
-    if (l === 'Team Sets') teamStart = Math.min(teamStart, i);
+    if (SEC.base.test(l) && baseStart < 0) baseStart = i;
+    if (SEC.vars.test(l) && i > baseStart && baseStart >= 0) varsStart = Math.min(varsStart, i);
+    if (SEC.auto.test(l)) autoStart = Math.min(autoStart, i);
+    if (SEC.mem.test(l)) memStart = Math.min(memStart, i);
+    if (SEC.ins.test(l)) insStart = Math.min(insStart, i);
+    if (SEC.team.test(l)) teamStart = Math.min(teamStart, i);
   }
 
   if (baseStart < 0) return null;
 
-  // Parse parallels
+  // If sections are out of the expected order, reorder them
+  // (Beckett sometimes puts inserts before autos)
+  const sectionOrder = [
+    ['auto', autoStart], ['mem', memStart], ['ins', insStart], ['team', teamStart]
+  ].filter(s => s[1] < lines.length).sort((a, b) => a[1] - b[1]);
+
+  // ── Parse parallels (with odds) ──
   const parallels = [];
   let inPar = false;
   for (let i = baseStart; i < varsStart; i++) {
     const l = lines[i];
-    if (l === 'Parallels') { inPar = true; continue; }
+    if (/^parallels$/i.test(l)) { inPar = true; continue; }
     if (inPar) {
-      if (/^\d+ /.test(l)) break;
-      if (l && !l.startsWith('Shop') && !l.startsWith('Download')) parallels.push(l);
+      if (/^\d+ /.test(l) && CARD_RE.test(l)) break;
+      if (l && !/^shop/i.test(l) && !/^download/i.test(l)) parallels.push(l);
     }
   }
 
-  // Parse base set
+  // ── Parse base cards ──
   const baseSeen = new Set();
   const baseCards = [];
   for (let i = baseStart; i < varsStart; i++) {
-    const c = tryBase(lines[i], 350);
+    const c = tryBase(lines[i], setSize || 400);
     if (c) {
       const key = `${c.number}:${c.player}`;
       if (!baseSeen.has(key)) { baseSeen.add(key); baseCards.push(c); }
@@ -3591,51 +3666,84 @@ function parseBeckettChecklist(html, slug, name, sport, year) {
   }
   baseCards.sort((a, b) => a.number - b.number || a.player.localeCompare(b.player));
 
-  // Generic section parser (prefixed or base-numbered cards)
+  // ── Generic insert/auto/mem section parser ──
   function parseSets(start, end) {
     const sets = [];
     let cur = null;
+    const skip = /^(shop|download|on ebay|checklist)/i;
     for (let i = start; i < end; i++) {
       const l = lines[i];
+      if (skip.test(l)) continue;
+      // Section headers on Beckett look like "Set Name\nN cards"
       const nxt = lines[i + 1] || '';
-      if (/^\d+ cards$/.test(nxt) && l && !l.startsWith('2026 Topps Series') && !l.startsWith('Shop')) {
+      const isHeader = /^\d+ cards?$/.test(nxt) && l.length > 2 && !/^[A-Z]{1,4}-/.test(l) && !SEC.base.test(l) && !SEC.auto.test(l) && !SEC.mem.test(l) && !SEC.ins.test(l) && !SEC.team.test(l);
+      if (isHeader) {
         if (cur) sets.push(cur);
         cur = { name: l, count: parseInt(nxt), parallels: [], cards: [] };
         i++;
-        // collect parallels
+        // Collect parallels between header and first card
         while (i + 1 < end) {
           i++;
           const pl = lines[i];
-          if (tryPrefixed(pl) || tryBase(pl)) { i--; break; }
-          if (/^\d+ cards$/.test(lines[i + 1] || '')) { i--; break; }
-          if (pl && pl !== 'Parallels' && !pl.startsWith('Shop') && !pl.startsWith('on eBay')) cur.parallels.push(pl);
+          if (!pl || skip.test(pl)) continue;
+          if (tryPrefixed(pl) || tryBase(pl, 9999)) { i--; break; }
+          if (/^\d+ cards?$/.test(lines[i + 1] || '')) { i--; break; }
+          if (!/^parallels$/i.test(pl)) cur.parallels.push(pl);
         }
         continue;
       }
+      if (!cur) continue;
       const pc = tryPrefixed(l);
-      if (pc && cur) { cur.cards.push(pc); continue; }
-      const bc = tryBase(l);
-      if (bc && cur) cur.cards.push({ number: String(bc.number), player: bc.player, team: bc.team });
+      if (pc) { cur.cards.push(pc); continue; }
+      const bc = tryBase(l, 9999);
+      if (bc) { cur.cards.push({ number: String(bc.number), player: bc.player, team: bc.team, note: bc.note }); continue; }
     }
     if (cur) sets.push(cur);
-    return sets;
+    return sets.filter(s => s.cards.length > 0);
   }
 
-  const autoSets = parseSets(autoStart, memStart);
-  const memSets  = parseSets(memStart, insStart);
-  const insSets  = parseSets(insStart, teamStart);
+  // Determine section order to correctly assign auto/mem/ins boundaries
+  const secMap = { auto: autoStart, mem: memStart, ins: insStart, team: teamStart };
+  const ordered = Object.entries(secMap).sort((a, b) => a[1] - b[1]);
+  const nextBoundary = (key) => {
+    const idx = ordered.findIndex(e => e[0] === key);
+    return idx >= 0 && idx + 1 < ordered.length ? ordered[idx + 1][1] : lines.length;
+  };
 
-  // Parse release date and set size from content
-  const releaseDateMatch = lines.join(' ').match(/Release date[:\s]+([A-Za-z]+ \d+,? \d{4})/i);
-  const releaseDate = releaseDateMatch ? releaseDateMatch[1] : (year ? String(year) : '');
+  const autoSets = parseSets(autoStart, nextBoundary('auto'));
+  const memSets  = parseSets(memStart,  nextBoundary('mem'));
+  const insSets  = parseSets(insStart,  nextBoundary('ins'));
+
+  // ── Parse team sets (object keyed by team name) ──
+  const team_sets = {};
+  if (teamStart < lines.length) {
+    let curTeam = null;
+    for (let i = teamStart + 1; i < lines.length; i++) {
+      const l = lines[i];
+      // Team header line — usually matches "<Set> Checklist – <Team Name>"
+      const teamHeader = l.match(/–\s+(.+)$/) || (TEAMS.has(l) ? [null, l] : null);
+      if (teamHeader && TEAMS.has(teamHeader[1].trim())) {
+        curTeam = teamHeader[1].trim();
+        if (!team_sets[curTeam]) team_sets[curTeam] = { base: [] };
+        continue;
+      }
+      if (!curTeam) continue;
+      const c = tryBaseNoTeam(l);
+      if (c) team_sets[curTeam].base.push(c);
+    }
+  }
 
   return {
-    slug, set: name, sport, release_date: releaseDate,
-    set_size: baseCards.length > 0 ? Math.max(...baseCards.map(c => c.number)) : 0,
+    slug, set: name, sport,
+    release_date: releaseDate,
+    set_size: setSize || (baseCards.length > 0 ? Math.max(...baseCards.map(c => c.number)) : 0),
+    product_info,
+    box_contents,
     parallels,
     base_set: { count: baseCards.length, cards: baseCards },
     insert_sets: insSets,
     autograph_sets: autoSets,
     memorabilia_sets: memSets,
+    team_sets,
   };
 }
