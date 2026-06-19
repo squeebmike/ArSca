@@ -1980,6 +1980,7 @@ body.show-mode .inv-sync-badge{display:none;}
             <option value="inserts">Inserts</option>
             <option value="autos">Autographs</option>
             <option value="mem">Memorabilia</option>
+            <option value="teams">Team Sets</option>
           </select>
           <input id="sb-card-search" placeholder="Player / # / team…" oninput="sbSearchCards()" style="font-family:var(--font-mono);font-size:10px;background:var(--surf2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:4px 10px;width:170px">
         </div>
@@ -25499,14 +25500,24 @@ function sbLoadCards() {
   const d = SB.currentData;
   let cards = [];
 
-  if (section === 'base') {
-    cards = (d.base_set?.cards || []).map(c => ({ ...c, setName: '' }));
-  } else if (section === 'inserts') {
-    cards = (d.insert_sets || []).flatMap(s => s.cards.map(c => ({ ...c, setName: s.name })));
-  } else if (section === 'autos') {
-    cards = (d.autograph_sets || []).flatMap(s => s.cards.map(c => ({ ...c, setName: s.name })));
-  } else if (section === 'mem') {
-    cards = (d.memorabilia_sets || []).flatMap(s => s.cards.map(c => ({ ...c, setName: s.name })));
+  try {
+    if (section === 'base') {
+      cards = (d.base_set?.cards || []).map(c => ({ ...c, setName: '' }));
+    } else if (section === 'inserts') {
+      cards = (d.insert_sets || []).flatMap(s => (s.cards || []).map(c => ({ ...c, setName: s.name })));
+    } else if (section === 'autos') {
+      cards = (d.autograph_sets || []).flatMap(s => (s.cards || []).map(c => ({ ...c, setName: s.name })));
+    } else if (section === 'mem') {
+      cards = (d.memorabilia_sets || []).flatMap(s => (s.cards || []).map(c => ({ ...c, setName: s.name })));
+    } else if (section === 'teams') {
+      const ts = d.team_sets || {};
+      cards = Object.entries(ts).flatMap(([teamName, teamData]) =>
+        (teamData.base || []).map(c => ({ ...c, setName: teamName }))
+      );
+    }
+  } catch(err) {
+    document.getElementById('sb-card-status').textContent = 'Error loading cards: ' + err.message;
+    return;
   }
 
   SB.allCards = cards;
