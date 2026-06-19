@@ -25538,6 +25538,19 @@ function sbSearchCards() {
   sbRenderCards(filtered);
 }
 
+const SB_IMG_CACHE = new Map();
+
+function sbPcConsole() {
+  // Derive PriceCharting console slug from set slug
+  // e.g. "2026-topps-s1-baseball" → "2026-topps-series-1-baseball"
+  return (SB.currentData?.set || SB.currentSlug || '')
+    .toLowerCase()
+    .replace(/\bs1\b/g, 'series-1')
+    .replace(/\bs2\b/g, 'series-2')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
 function sbRenderCards(cards) {
   const el = document.getElementById('sb-card-list');
   const status = document.getElementById('sb-card-status');
@@ -25552,22 +25565,69 @@ function sbRenderCards(cards) {
   }
 
   el.innerHTML = showing.map(c => {
-    const num = c.number !== undefined ? `<span style="color:var(--dim);min-width:32px;display:inline-block">#${c.number}</span>` : '';
-    const note = c.note ? `<span style="font-size:8px;color:var(--gold);margin-left:6px">${escHtml(c.note)}</span>` : '';
-    const setLabel = c.setName ? `<div style="font-size:8px;color:var(--primary);opacity:.7;margin-top:1px">${escHtml(c.setName)}</div>` : '';
+    const num = c.number !== undefined ? `<span style="color:var(--dim);font-size:9px">#${c.number}</span>` : '';
+    const note = c.note ? `<span style="font-size:8px;color:var(--gold);margin-left:4px">${escHtml(c.note)}</span>` : '';
+    const setLabel = c.setName ? `<div style="font-size:8px;color:var(--primary);opacity:.7;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(c.setName)}</div>` : '';
     const rc = c.rc ? '<span style="font-size:8px;color:var(--gold);font-weight:700;margin-left:4px">RC</span>' : '';
-    const priceBtn = SB.currentData?.sport === 'baseball'
-      ? `<button onclick="sbLookupPrice(event,'${escHtml(String(c.number))}','${escHtml(c.player || '')}')" class="hbtn" style="font-size:8px;padding:2px 7px;min-height:24px;opacity:.7" title="Look up price">$</button>`
-      : '';
-    return `<div style="display:flex;align-items:center;gap:6px;padding:6px 10px;background:var(--surf2);border:1px solid var(--border);border-radius:6px;font-family:var(--font-mono);font-size:10px">
-      ${num}
+    const priceBtn = `<button onclick="sbLookupPrice(event,'${escHtml(String(c.number))}','${escHtml(c.player || '')}')" class="hbtn" style="font-size:8px;padding:2px 7px;min-height:24px;opacity:.7;flex-shrink:0" title="Look up price">$</button>`;
+    const imgKey = `${c.number}|${c.player}`;
+    const cachedImg = SB_IMG_CACHE.get(imgKey);
+    const imgEl = cachedImg
+      ? `<img src="${escHtml(cachedImg)}" style="width:48px;height:68px;object-fit:cover;border-radius:4px;flex-shrink:0" loading="lazy">`
+      : `<div class="sb-img-placeholder" data-card-num="${escHtml(String(c.number))}" data-card-player="${escHtml(c.player || '')}" style="width:48px;height:68px;background:var(--surf3,#1a1a2e);border-radius:4px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:16px;color:var(--dim)">🃏</div>`;
+    return `<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--surf2);border:1px solid var(--border);border-radius:6px;font-family:var(--font-mono);font-size:10px">
+      ${imgEl}
       <div style="flex:1;min-width:0">
-        <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:700">${escHtml(c.player || '')}${rc}${note}</div>
+        <div style="font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(c.player || '')}${rc}${note}</div>
         <div style="font-size:9px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(c.team || '')}${setLabel}</div>
+        <div style="margin-top:3px">${num}</div>
       </div>
       ${priceBtn}
     </div>`;
   }).join('');
+
+  sbLazyLoadImages();
+}
+
+function sbLazyLoadImages() {
+  const consoleName = sbPcConsole();
+  if (!consoleName) return;
+
+  const placeholders = document.querySelectorAll('#sb-card-list .sb-img-placeholder');
+  if (!placeholders.length) return;
+
+  const obs = new IntersectionObserver(async (entries) => {
+    for (const entry of entries) {
+      if (!entry.isIntersecting) continue;
+      const el = entry.target;
+      obs.unobserve(el);
+      const num = el.dataset.cardNum;
+      const player = el.dataset.cardPlayer;
+      const cacheKey = `${num}|${player}`;
+      if (SB_IMG_CACHE.has(cacheKey)) {
+        sbApplyImg(el, SB_IMG_CACHE.get(cacheKey));
+        continue;
+      }
+      const productName = `${player}-${num}`.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+      try {
+        const data = await sbWorker(`/pricing/sportscardspro/image?console=${encodeURIComponent(consoleName)}&name=${encodeURIComponent(productName)}`);
+        if (data.ok && data.imageUrl) {
+          SB_IMG_CACHE.set(cacheKey, data.imageUrl);
+          sbApplyImg(el, data.imageUrl);
+        }
+      } catch(_) {}
+    }
+  }, { rootMargin: '200px' });
+
+  placeholders.forEach(p => obs.observe(p));
+}
+
+function sbApplyImg(placeholder, src) {
+  const img = document.createElement('img');
+  img.src = src;
+  img.style.cssText = 'width:48px;height:68px;object-fit:cover;border-radius:4px;flex-shrink:0';
+  img.loading = 'lazy';
+  placeholder.replaceWith(img);
 }
 
 async function sbLookupPrice(e, cardNumber, playerName) {
