@@ -25592,7 +25592,9 @@ function sbRenderCards(cards) {
     return;
   }
 
-  el.innerHTML = showing.map(c => {
+  SB._cardIndex = showing; // store for modal lookup by index
+
+  el.innerHTML = showing.map((c, i) => {
     const numStr = String(c.number || '');
     const cacheKey = `${numStr}|${c.player||''}`;
     const rcHtml = c.rc ? '<span style="background:var(--gold);color:#000;font-size:8px;font-weight:900;padding:1px 4px;border-radius:3px;margin-left:5px">RC</span>' : '';
@@ -25606,7 +25608,7 @@ function sbRenderCards(cards) {
       ? `<div style="font-size:11px;color:var(--primary);font-weight:700">${cachedPrice}</div>`
       : `<div class="sb-price-slot" data-key="${escHtml(cacheKey)}" style="font-size:10px;color:var(--dim)">tap for price</div>`;
     const setLabel = c.setName ? `<div style="font-size:9px;color:var(--primary);opacity:.7;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(c.setName)}</div>` : '';
-    return `<div onclick="sbOpenCardModal(${JSON.stringify(c)})" style="cursor:pointer;background:var(--surf2);border:1px solid var(--border);border-radius:8px;overflow:hidden;font-family:var(--font-mono);transition:border-color .15s;display:flex;flex-direction:column" onmouseenter="this.style.borderColor='var(--primary)'" onmouseleave="this.style.borderColor='var(--border)'">
+    return `<div onclick="sbOpenCardModal(${i})" style="cursor:pointer;background:var(--surf2);border:1px solid var(--border);border-radius:8px;overflow:hidden;font-family:var(--font-mono);transition:border-color .15s;display:flex;flex-direction:column" onmouseenter="this.style.borderColor='var(--primary)'" onmouseleave="this.style.borderColor='var(--border)'">
       ${imgEl}
       <div style="padding:8px 10px;flex:1">
         <div style="font-size:12px;font-weight:700;line-height:1.3;margin-bottom:3px">${escHtml(c.player||'')}${rcHtml}${noteHtml}</div>
@@ -25670,7 +25672,8 @@ function sbLazyLoad() {
   document.querySelectorAll('#sb-card-list .sb-img-ph, #sb-card-list .sb-price-slot').forEach(e => obs.observe(e));
 }
 
-async function sbOpenCardModal(c) {
+async function sbOpenCardModal(idx) {
+  const c = SB._cardIndex?.[idx]; if (!c) return;
   const modal = document.getElementById('sb-card-modal');
   const numStr = String(c.number || '');
   const cacheKey = `${numStr}|${c.player||''}`;
