@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.06.19.01-guided-help-2">
+<meta name="version" content="2026.06.19.03-research-state-guard">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1318,7 +1318,7 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.19.02-qa-fixes</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.19.03-research-state-guard</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
@@ -1345,7 +1345,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip dev-only" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.19.02-qa-fixes</div>
+<div class="dsb-chip dev-only" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.19.03-research-state-guard</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -1651,7 +1651,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="panel" id="register-quick-panel">
       <div class="ph">⚡ QUICK PRICE LOOKUP <span style="color:var(--dim);font-size:8px">catalog search — no scanning needed</span></div>
       <div style="display:flex;gap:6px;margin-bottom:10px">
-        <input class="tsi" id="qpl-input" placeholder="e.g. 2021 Umbreon VMAX Evolving Skies..." style="flex:1;margin-bottom:0;font-size:12px;padding:10px 14px" oninput="debouncePriceLookup()" onkeydown="if(event.key==='Enter')runPriceLookup()">
+        <input class="tsi" id="qpl-input" placeholder="e.g. 2021 Umbreon VMAX Evolving Skies..." style="flex:1;margin-bottom:0;font-size:12px;padding:10px 14px" oninput="debouncePriceLookup()" onkeydown="if(event.key==='Enter'){event.preventDefault();runPriceLookup()}">
         <button class="hbtn" title="Speak search" aria-label="Voice price search" onclick="startVoiceInput('qpl-input', runPriceLookup)" style="width:54px;padding:0">MIC</button>
       </div>
       <div id="qpl-ctrl-row" style="display:flex;gap:6px;margin-bottom:10px">
@@ -1680,7 +1680,7 @@ body.show-mode .inv-sync-badge{display:none;}
       <div id="qpl-comic-helper" style="display:none;margin-bottom:10px;padding:9px 12px;background:rgba(199,125,255,.06);border:1px solid rgba(199,125,255,.22);border-radius:8px">
         <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:6px">
           <span style="font-family:'Orbitron',monospace;font-size:9px;color:var(--purple);letter-spacing:.05em">COMIC</span>
-          <input id="qpl-comic-issue" type="text" placeholder="Issue # (optional)" style="width:130px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:5px 9px;border-radius:6px;font-family:monospace;font-size:11px" oninput="buildComicQuery()" onkeydown="if(event.key==='Enter')runPriceLookup()">
+          <input id="qpl-comic-issue" type="text" placeholder="Issue # (optional)" style="width:130px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:5px 9px;border-radius:6px;font-family:monospace;font-size:11px" oninput="buildComicQuery()" onkeydown="if(event.key==='Enter'){event.preventDefault();runPriceLookup()}">
           <button class="hbtn" style="font-size:9px;padding:3px 9px" onclick="appendComicPublisher('Marvel')">Marvel</button>
           <button class="hbtn" style="font-size:9px;padding:3px 9px" onclick="appendComicPublisher('DC')">DC</button>
           <button class="hbtn" style="font-size:9px;padding:3px 9px" onclick="appendComicPublisher('Image')">Image</button>
@@ -2541,7 +2541,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.06.19.01-guided-help-2';
+const APP_VERSION = '2026.06.19.03-research-state-guard';
 window.APP_VERSION = APP_VERSION;
 const branchName = 'pokemon-v2-core';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
@@ -5474,9 +5474,11 @@ function resolvePokemonCatalogImagesForVisibleCards(){
     const idx = parseInt(card.getAttribute('data-qpl-idx'), 10);
     const r = qplResults[idx];
     if(!r || qplResultCategoryKey(r) !== 'pokemon') return;
+    const rowSeq = r._researchSeq;
     const img = card.querySelector('.qpl-img-shell img');
     if(!img) return;
     resolvePokemonCatalogImageUrl(r, 'small').then(url => {
+      if(rowSeq != null && !isActiveResearchSeq(rowSeq)) return;
       if(url && img && !img.dataset.catalogResolved) {
         img.dataset.catalogResolved = '1';
         if(!img.src || img.src === window.location.href) img.src = url; // only set if missing
@@ -12497,12 +12499,17 @@ function focusResearchSearch(){
 }
 
 function clearResearchLookup(){
+  cancelActiveResearchSearch('manual-clear');
   const input = document.getElementById('qpl-input');
   const result = document.getElementById('qpl-result');
   if(input) input.value = '';
   qplResults = [];
   qplMasterResults = [];
   qplLastSearch = '';
+  researchSearchState.status = 'idle';
+  researchSearchState.lastGoodResults = [];
+  researchSearchState.lastGoodQuery = '';
+  researchSearchState.lastGoodCategory = '';
   if(result) result.innerHTML = 'Enter a card, comic, slab, game, or collectible to identify it and route it into Buy, Inventory, or Sale.';
   focusResearchSearch();
 }
@@ -15562,6 +15569,111 @@ let qplResults = [];
 let qplMasterResults = [];
 let qplLastSearch = '';
 let pokemonConnectionState = navigator.onLine ? 'online' : 'offline';
+const researchSearchState = {
+  seq:0,
+  activeSeq:0,
+  activeQuery:'',
+  activeCategory:'',
+  activeMode:'',
+  startedAt:0,
+  status:'idle',
+  lastGoodResults:[],
+  lastGoodCategory:'',
+  lastGoodQuery:'',
+  lastGoodAt:0,
+};
+window.researchSearchState = researchSearchState;
+
+function normalizeResearchQuery(value = ''){
+  return String(value || '').replace(/\s+/g, ' ').trim();
+}
+
+function researchTrace(event, detail = {}){
+  try {
+    if(window.RESEARCH_TRACE || localStorage.getItem('research_trace_v1') === '1') {
+      console.info('[Research]', event, { ...detail, activeSeq:researchSearchState.activeSeq, status:researchSearchState.status });
+    }
+  } catch(e) {}
+}
+
+function beginResearchSearch({ query = '', category = '', mode = 'lookup' } = {}){
+  const normalizedQuery = normalizeResearchQuery(query);
+  const normalizedCategory = qplCategoryKey(category) || String(category || '');
+  if(
+    ['loading','partial'].includes(researchSearchState.status) &&
+    researchSearchState.activeQuery === normalizedQuery &&
+    researchSearchState.activeCategory === normalizedCategory &&
+    researchSearchState.activeMode === mode
+  ) {
+    researchTrace('duplicate-start-ignored', { query:normalizedQuery, category:normalizedCategory, mode });
+    return null;
+  }
+  const seq = ++researchSearchState.seq;
+  Object.assign(researchSearchState, {
+    activeSeq:seq,
+    activeQuery:normalizedQuery,
+    activeCategory:normalizedCategory,
+    activeMode:mode,
+    startedAt:Date.now(),
+    status:'loading',
+  });
+  researchTrace('start', { seq, query:normalizedQuery, category:normalizedCategory, mode });
+  return seq;
+}
+
+function cancelActiveResearchSearch(reason = 'cancelled'){
+  if(['loading','partial'].includes(researchSearchState.status)) {
+    researchSearchState.activeSeq = ++researchSearchState.seq;
+    researchSearchState.status = 'cancelled';
+    researchTrace('cancel', { reason });
+  }
+}
+
+function isActiveResearchSeq(searchSeq){
+  return Number(searchSeq || 0) === Number(researchSearchState.activeSeq || 0);
+}
+
+function shouldIgnoreResearchUpdate(searchSeq, reason = 'update'){
+  const stale = searchSeq != null && !isActiveResearchSeq(searchSeq);
+  if(stale) researchTrace('stale-' + reason, { searchSeq });
+  return stale;
+}
+
+function setResearchHtmlGuarded(searchSeq, html, status = ''){
+  if(shouldIgnoreResearchUpdate(searchSeq, 'html')) return false;
+  const el = document.getElementById('qpl-result');
+  if(!el) return false;
+  el.innerHTML = html;
+  if(status) researchSearchState.status = status;
+  return true;
+}
+
+function rememberResearchResults(results, query, category){
+  if(!Array.isArray(results) || !results.length) return;
+  researchSearchState.lastGoodResults = results.slice(0, 50);
+  researchSearchState.lastGoodQuery = normalizeResearchQuery(query || researchSearchState.activeQuery);
+  researchSearchState.lastGoodCategory = qplCategoryKey(category || researchSearchState.activeCategory) || String(category || researchSearchState.activeCategory || '');
+  researchSearchState.lastGoodAt = Date.now();
+}
+
+function renderResearchResultsGuarded({ searchSeq = null, query = '', category = '', results = [], source = '', isFinal = true, isCache = false, isLive = false } = {}){
+  if(shouldIgnoreResearchUpdate(searchSeq, 'results')) return false;
+  if(!Array.isArray(results)) {
+    researchTrace('non-array-results-kept-current', { source, query, category });
+    return false;
+  }
+  if(!results.length) {
+    researchTrace('empty-results-kept-current', { source, query, category, isFinal, isCache, isLive });
+    if(isFinal) researchSearchState.status = 'empty';
+    return false;
+  }
+  if(searchSeq != null) results.forEach(r => { if(r && typeof r === 'object') r._researchSeq = searchSeq; });
+  qplResults = results;
+  rememberResearchResults(results, query, category);
+  researchSearchState.status = isFinal ? 'success' : 'partial';
+  renderQuickLookupResults(results, { searchSeq, query, category, source, isFinal, isCache, isLive });
+  return true;
+}
 
 function normalizePokemonText(value = ''){
   return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9/]+/g, ' ').trim();
@@ -16556,22 +16668,25 @@ async function runPriceLookup(){
   const q = qplCategoryKey(cat) === 'comic' ? (comicSearchQuery() || rawQ) : rawQ;
   const el = document.getElementById('qpl-result');
   if(!q || q.length < 3) return;
+  const searchSeq = beginResearchSearch({ query:q, category:cat, mode:'lookup' });
+  if(searchSeq == null) return;
   const wantsPokemon = isPokemonLookupIntent(q, cat);
   const wantsMtg = !wantsPokemon && isMtgLookupIntent(q, cat);
   const wantsComic = !wantsPokemon && !wantsMtg && isComicLookupIntent(q, cat);
   setPokemonOfflineBanner('');
   setMtgOfflineBanner('');
   setComicsOfflineBanner('');
-  el.innerHTML = '<div style="color:var(--gold)">Searching local cache first, then live catalog sources...</div>';
+  setResearchHtmlGuarded(searchSeq, '<div style="color:var(--gold)">Searching local cache first, then live catalog sources...</div>', 'loading');
   let cachedResults = [];
 
   // ── Pokemon offline cache ──────────────────────────────────────────────────
   if(wantsPokemon) {
     cachedResults = await searchPokemonOfflineCache(q, cat);
+    if(shouldIgnoreResearchUpdate(searchSeq, 'pokemon-cache')) return;
     if(cachedResults.length) {
       qplMasterResults = cachedResults; qplLastSearch = q;
       qplResults = filterQplMasterResults(qplMasterResults, cat);
-      renderQuickLookupResults(qplResults);
+      renderResearchResultsGuarded({ searchSeq, query:q, category:cat, results:qplResults, source:'pokemon-cache', isFinal:false, isCache:true });
       const fromCatalog = cachedResults.some(r => r.source === 'ppt_export');
       const cacheAge = pokemonCacheAgeLabel(cachedResults.find(r => r.cache?.updatedAt)?.cache?.updatedAt);
       if(navigator.onLine){
@@ -16580,7 +16695,7 @@ async function runPriceLookup(){
         setPokemonOfflineBanner(fromCatalog ? 'Offline Mode: showing PPT catalog export data.' : 'Offline Mode: showing cached Pokémon data. Last updated ' + cacheAge + '.');
       }
     } else if(!navigator.onLine) {
-      el.innerHTML = `<div style="color:var(--gold);line-height:1.6">No cached or catalog data found for this search.<br>To enable full offline research, download the PPT export catalog in Settings.<br><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><button class="hbtn" onclick="switchTab('backoffice');document.getElementById('offline-cache-panel')?.scrollIntoView({behavior:'smooth',block:'start'})">OPEN OFFLINE CACHE</button><button class="hbtn" onclick="switchTab('backoffice');document.getElementById('pokemon-export-panel')?.scrollIntoView({behavior:'smooth',block:'start'})">DOWNLOAD CATALOG</button></div></div>`;
+      setResearchHtmlGuarded(searchSeq, `<div style="color:var(--gold);line-height:1.6">No cached or catalog data found for this search.<br>To enable full offline research, download the PPT export catalog in Settings.<br><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><button class="hbtn" onclick="switchTab('backoffice');document.getElementById('offline-cache-panel')?.scrollIntoView({behavior:'smooth',block:'start'})">OPEN OFFLINE CACHE</button><button class="hbtn" onclick="switchTab('backoffice');document.getElementById('pokemon-export-panel')?.scrollIntoView({behavior:'smooth',block:'start'})">DOWNLOAD CATALOG</button></div></div>`, 'empty');
       setPokemonOfflineBanner('Offline Mode: no cached Pokémon data found for "' + q + '".', 'bad');
       return;
     }
@@ -16589,14 +16704,15 @@ async function runPriceLookup(){
   // ── MTG offline cache ──────────────────────────────────────────────────────
   if(wantsMtg) {
     cachedResults = await searchMtgOfflineCache(q, cat);
+    if(shouldIgnoreResearchUpdate(searchSeq, 'mtg-cache')) return;
     if(cachedResults.length) {
       qplMasterResults = cachedResults; qplLastSearch = q;
       qplResults = filterQplMasterResults(qplMasterResults, cat);
-      renderQuickLookupResults(qplResults);
+      renderResearchResultsGuarded({ searchSeq, query:q, category:cat, results:qplResults, source:'mtg-cache', isFinal:false, isCache:true });
       const cacheAge = pokemonCacheAgeLabel(cachedResults.find(r => r.cache?.updatedAt)?.cache?.updatedAt);
       setMtgOfflineBanner(navigator.onLine ? 'Cached MTG results shown while Scryfall refresh runs. Last updated ' + cacheAge + '.' : 'Offline Mode: showing cached MTG data. Last updated ' + cacheAge + '.');
     } else if(!navigator.onLine) {
-      el.innerHTML = `<div style="color:var(--gold);line-height:1.6">No cached MTG data found for this search.<br>Search while online to build your MTG cache for use at shows.<br><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><button class="hbtn" onclick="document.getElementById('qpl-input').focus()">TRY ANOTHER SEARCH</button></div></div>`;
+      setResearchHtmlGuarded(searchSeq, `<div style="color:var(--gold);line-height:1.6">No cached MTG data found for this search.<br>Search while online to build your MTG cache for use at shows.<br><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><button class="hbtn" onclick="document.getElementById('qpl-input').focus()">TRY ANOTHER SEARCH</button></div></div>`, 'empty');
       setMtgOfflineBanner('Offline Mode: no cached MTG data found for "' + q + '".', 'bad');
       return;
     }
@@ -16605,14 +16721,15 @@ async function runPriceLookup(){
   // ── Comics offline cache ───────────────────────────────────────────────────
   if(wantsComic) {
     cachedResults = await searchComicsOfflineCache(q, cat);
+    if(shouldIgnoreResearchUpdate(searchSeq, 'comics-cache')) return;
     if(cachedResults.length) {
       qplMasterResults = cachedResults; qplLastSearch = q;
       qplResults = filterQplMasterResults(qplMasterResults, cat);
-      renderQuickLookupResults(qplResults);
+      renderResearchResultsGuarded({ searchSeq, query:q, category:cat, results:qplResults, source:'comics-cache', isFinal:false, isCache:true });
       const cacheAge = pokemonCacheAgeLabel(cachedResults.find(r => r.cache?.updatedAt)?.cache?.updatedAt);
       setComicsOfflineBanner(navigator.onLine ? 'Cached comics results shown while live refresh runs. Last updated ' + cacheAge + '.' : 'Offline Mode: showing cached comics data. Last updated ' + cacheAge + '.');
     } else if(!navigator.onLine) {
-      el.innerHTML = `<div style="color:var(--gold);line-height:1.6">No cached comics data found for this search.<br>Search while online to build your comics cache for use at shows.<br><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><button class="hbtn" onclick="document.getElementById('qpl-input').focus()">TRY ANOTHER SEARCH</button></div></div>`;
+      setResearchHtmlGuarded(searchSeq, `<div style="color:var(--gold);line-height:1.6">No cached comics data found for this search.<br>Search while online to build your comics cache for use at shows.<br><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><button class="hbtn" onclick="document.getElementById('qpl-input').focus()">TRY ANOTHER SEARCH</button></div></div>`, 'empty');
       setComicsOfflineBanner('Offline Mode: no cached comics data found for "' + q + '".', 'bad');
       return;
     }
@@ -16623,6 +16740,7 @@ async function runPriceLookup(){
 
   try {
     const slowTimer = setTimeout(() => {
+      if(!isActiveResearchSeq(searchSeq)) return;
       if(_netStatus === 'online') { _netStatus = 'slow'; updateNetBadge(); }
       if(wantsPokemon) setPokemonOfflineBanner(cachedResults.length ? 'Slow Internet: still showing cached Pokémon data while live refresh continues.' : 'Slow Internet: still trying live Pokémon sources.');
       if(wantsMtg) setMtgOfflineBanner(cachedResults.length ? 'Slow Internet: still showing cached MTG data while Scryfall refresh continues.' : 'Slow Internet: still trying live MTG sources.');
@@ -16633,16 +16751,18 @@ async function runPriceLookup(){
       new Promise((_, reject) => setTimeout(() => reject(new Error('Lookup timed out after 15 seconds')), 15000))
     ]);
     clearTimeout(slowTimer);
+    if(shouldIgnoreResearchUpdate(searchSeq, 'live-results')) return;
     qplMasterResults = results.length ? results : await aiQuickLookupFallback(q, cat);
+    if(shouldIgnoreResearchUpdate(searchSeq, 'fallback-results')) return;
     qplLastSearch = q;
     qplResults = filterQplMasterResults(qplMasterResults, cat);
     if(!qplResults.length) {
-      el.innerHTML = qplMasterResults.length ? qplNoCategoryResults(q, cat) : noQuickLookupResults(q, cat);
+      setResearchHtmlGuarded(searchSeq, qplMasterResults.length ? qplNoCategoryResults(q, cat) : noQuickLookupResults(q, cat), 'empty');
       return;
     }
-    renderQuickLookupResults(qplResults);
+    renderResearchResultsGuarded({ searchSeq, query:q, category:cat, results:qplResults, source:'live-catalog', isFinal:true, isLive:true });
     pushQuickLookupHistory(q, qplResults[0]);
-    if(qplResults.some(r => r.source === 'sportscardspro' && !r.imageUrl)) enrichScpImagesAsync();
+    if(qplResults.some(r => r.source === 'sportscardspro' && !r.imageUrl) && isActiveResearchSeq(searchSeq)) enrichScpImagesAsync();
     if(wantsPokemon) {
       savePokemonCacheResults(q, qplMasterResults, 'Live Pokemon lookup').then(renderOfflineCachePanel).catch(console.warn);
       setPokemonOfflineBanner((cachedResults.length ? 'Live Pokémon refresh updated the cached copy.' : 'Saved this Pokémon lookup for offline use.') + ' Last cached ' + pokemonCacheAgeLabel(new Date().toISOString()) + '.', 'good');
@@ -16653,7 +16773,7 @@ async function runPriceLookup(){
         for(let i = 0; i < qplResults.length && toLoad.length < 3; i++) {
           if(qplResultCategoryKey(qplResults[i]) === 'pokemon' && !qplResults[i].pokemonPriceTracker?.lookupDebug?.exactHydrated) toLoad.push(i);
         }
-        toLoad.forEach((idx, n) => setTimeout(() => loadPricesForResultCard(idx), 400 + n * 700));
+        toLoad.forEach((idx, n) => setTimeout(() => { if(isActiveResearchSeq(searchSeq)) loadPricesForResultCard(idx); }, 400 + n * 700));
       }
     }
     if(wantsMtg) {
@@ -16665,15 +16785,16 @@ async function runPriceLookup(){
       setComicsOfflineBanner((cachedResults.length ? 'Live comics refresh updated the cached copy.' : 'Saved this comics lookup for offline use.') + ' Last cached ' + pokemonCacheAgeLabel(new Date().toISOString()) + '.', 'good');
     }
   } catch(e) {
+    if(shouldIgnoreResearchUpdate(searchSeq, 'error')) return;
     if(e.message?.includes('timed out') || e.name === 'AbortError'){
       _netStatus = navigator.onLine ? 'slow' : 'offline';
       updateNetBadge();
     }
     if(e.subscriptionRequired){
-      el.innerHTML = `<div style="font-family:var(--font-mono);font-size:11px;color:var(--gold);line-height:1.6;padding:8px 0">
+      setResearchHtmlGuarded(searchSeq, `<div style="font-family:var(--font-mono);font-size:11px;color:var(--gold);line-height:1.6;padding:8px 0">
         Subscription required to use Pokemon price lookups.
         <br><button class="hbtn" style="margin-top:10px;color:var(--gold)" onclick="switchTab('backoffice');setTimeout(()=>document.getElementById('subscription-panel')?.scrollIntoView({behavior:'smooth',block:'start'}),150)">OPEN SUBSCRIPTION SETTINGS</button>
-      </div>`;
+      </div>`, 'error');
       return;
     }
     if(cachedResults.length) {
@@ -16681,7 +16802,7 @@ async function runPriceLookup(){
       if(wantsMtg) setMtgOfflineBanner('Live refresh failed: ' + e.message + '. Cached MTG data remains visible.', 'bad');
       if(wantsComic) setComicsOfflineBanner('Live refresh failed: ' + e.message + '. Cached comics data remains visible.', 'bad');
     } else {
-      el.innerHTML = '<div style="color:var(--red)">Lookup failed: ' + e.message + (e.message?.includes('timed out') ? ' — network may be slow.' : '') + '</div>';
+      setResearchHtmlGuarded(searchSeq, '<div style="color:var(--red)">Lookup failed: ' + e.message + (e.message?.includes('timed out') ? ' — network may be slow.' : '') + '</div>', 'error');
       if(wantsPokemon) setPokemonOfflineBanner('No cached Pokémon data found. Search online to build offline cache.', 'bad');
       if(wantsMtg) setMtgOfflineBanner('No cached MTG data found. Search online to build offline cache.', 'bad');
       if(wantsComic) setComicsOfflineBanner('No cached comics data found. Search online to build offline cache.', 'bad');
@@ -18269,10 +18390,12 @@ async function searchSportsCardsPro(q){
 async function fetchScpImageAsync(idx){
   const r = qplResults[idx];
   if(!r || r.source !== 'sportscardspro' || r.imageUrl || !r.set || !r.name) return;
+  const rowSeq = r._researchSeq;
   try {
     const params = new URLSearchParams({ console: r.set, name: r.name });
     const res = await fetch(WORKER + '/pricing/sportscardspro/image?' + params);
     const data = await res.json().catch(() => ({}));
+    if(rowSeq != null && !isActiveResearchSeq(rowSeq)) return;
     if(data.ok && data.imageUrl) {
       qplResults[idx] = { ...r, imageUrl: data.imageUrl };
       // Patch the img element in the already-rendered card without full re-render
@@ -18285,7 +18408,7 @@ async function fetchScpImageAsync(idx){
 // Kick off image fetches for all SCP rows after results are rendered.
 function enrichScpImagesAsync(){
   qplResults.forEach((r, idx) => {
-    if(r && r.source === 'sportscardspro' && !r.imageUrl) fetchScpImageAsync(idx);
+    if(r && r.source === 'sportscardspro' && !r.imageUrl && (r._researchSeq == null || isActiveResearchSeq(r._researchSeq))) fetchScpImageAsync(idx);
   });
 }
 
@@ -19578,6 +19701,7 @@ function pokemonParseTitleToQplRows(parsedResult = {}, query = ''){
 async function hydratePokemonPriceTrackerPricing(idx, rerender = true){
   const row = qplResults[idx];
   if(!row || !isPokemonChartCandidate(row)) return;
+  const rowSeq = row._researchSeq;
   if(row.pokemonPriceTracker?.lookupDebug?.exactHydrated) {
     applyQplSelectedVariant(row);
     if(rerender) updateQplResultCard(idx);
@@ -19587,6 +19711,7 @@ async function hydratePokemonPriceTrackerPricing(idx, rerender = true){
   row._pptHydrating = true;
   try {
     const cached = await cachedPokemonPriceTrackerCard(row);
+    if(rowSeq != null && !isActiveResearchSeq(rowSeq)) return;
     if(cached && !row.pokemonPriceTracker) {
       row.pokemonPriceTracker = cached;
       row.cache = row.cache || { state:navigator.onLine ? 'cached' : 'offline', updatedAt:cached.prices?.lastUpdated || cached.lastUpdated || new Date().toISOString(), source:'PokemonPriceTracker' };
@@ -19599,6 +19724,7 @@ async function hydratePokemonPriceTrackerPricing(idx, rerender = true){
       return;
     }
     const card = await resolveExactPokemonPriceTrackerCard(row, qplLastSearch);
+    if(rowSeq != null && !isActiveResearchSeq(rowSeq)) return;
     if(card) {
       row.pokemonPriceTracker = card;
       row.tcgPlayerId = card.tcgPlayerId || row.tcgPlayerId || row.tcgplayerId || '';
@@ -19820,6 +19946,7 @@ function filterQplMasterResults(results, cat){
 function handleQplCategoryChange(){
   const q = document.getElementById('qpl-input')?.value.trim() || qplLastSearch || '';
   const cat = document.getElementById('qpl-cat')?.value || '';
+  cancelActiveResearchSearch('category-change');
   const isComic = qplCategoryKey(cat) === 'comic';
   const isPokemon = qplCategoryKey(cat) === 'pokemon';
   const helper = document.getElementById('qpl-comic-helper');
@@ -19845,7 +19972,7 @@ function handleQplCategoryChange(){
     return;
   }
   qplResults = filterQplMasterResults(qplMasterResults, cat);
-  if(qplResults.length) renderQuickLookupResults(qplResults);
+  if(qplResults.length) renderQuickLookupResults(qplResults, { source:'category-filter', query:q, category:cat });
   else document.getElementById('qpl-result').innerHTML = qplNoCategoryResults(q, cat);
 }
 
@@ -20227,8 +20354,20 @@ function noQuickLookupResults(q, cat){
   </div>`;
 }
 
-function renderQuickLookupResults(results){
+function renderQuickLookupResults(results, meta = {}){
+  if(meta.searchSeq != null && shouldIgnoreResearchUpdate(meta.searchSeq, 'render')) return false;
+  if(meta.searchSeq == null && ['loading','partial'].includes(researchSearchState.status)) cancelActiveResearchSearch('direct-render');
+  if(!Array.isArray(results)) {
+    researchTrace('render-non-array-kept-current', { source:meta.source || '', query:meta.query || '' });
+    return false;
+  }
+  if(!results.length && !meta.allowEmpty) {
+    researchTrace('render-empty-kept-current', { source:meta.source || '', query:meta.query || '' });
+    return false;
+  }
   const el = document.getElementById('qpl-result');
+  if(!el) return false;
+  rememberResearchResults(results, meta.query || qplLastSearch || '', meta.category || document.getElementById('qpl-cat')?.value || '');
   const indexed = (results || []).map((r, idx) => ({ r, idx }));
   // Pokemon grouped rendering — triggered when any result has _pokemonGroup tag
   const hasPokemonGroup = indexed.some(x => x.r._pokemonGroup);
@@ -20266,10 +20405,10 @@ function renderQuickLookupResults(results){
       </div>
       ${groupOrder.map(g => groupHtml(groups[g], groupLabels[g])).join('')}
       ${fallbackHtml}`;
-    setTimeout(() => hydrateVisiblePokemonPriceTrackerResults(primary.map(x => x.idx)), 0);
-    setTimeout(() => resolvePokemonCatalogImagesForVisibleCards(), 200);
-    setTimeout(() => lazyLoadComicImages([...primary,...fallback].map(x=>x.idx)), 100);
-    return;
+    setTimeout(() => { if(meta.searchSeq == null || isActiveResearchSeq(meta.searchSeq)) hydrateVisiblePokemonPriceTrackerResults(primary.map(x => x.idx)); }, 0);
+    setTimeout(() => { if(meta.searchSeq == null || isActiveResearchSeq(meta.searchSeq)) resolvePokemonCatalogImagesForVisibleCards(); }, 200);
+    setTimeout(() => { if(meta.searchSeq == null || isActiveResearchSeq(meta.searchSeq)) lazyLoadComicImages([...primary,...fallback].map(x=>x.idx)); }, 100);
+    return true;
   }
   // Non-Pokemon flat rendering (sports, comics, etc.)
   const primary = indexed.filter(x => !x.r.closestStrictFallback);
@@ -20293,9 +20432,10 @@ function renderQuickLookupResults(results){
       ${primary.map(x => quickLookupResultCard(x.r, x.idx)).join('')}
     </div>
     ${fallbackHtml}`;
-  setTimeout(() => hydrateVisiblePokemonPriceTrackerResults(primary.map(x => x.idx)), 0);
-  setTimeout(() => resolvePokemonCatalogImagesForVisibleCards(), 200);
-  setTimeout(() => lazyLoadComicImages([...primary,...fallback].map(x=>x.idx)), 100);
+  setTimeout(() => { if(meta.searchSeq == null || isActiveResearchSeq(meta.searchSeq)) hydrateVisiblePokemonPriceTrackerResults(primary.map(x => x.idx)); }, 0);
+  setTimeout(() => { if(meta.searchSeq == null || isActiveResearchSeq(meta.searchSeq)) resolvePokemonCatalogImagesForVisibleCards(); }, 200);
+  setTimeout(() => { if(meta.searchSeq == null || isActiveResearchSeq(meta.searchSeq)) lazyLoadComicImages([...primary,...fallback].map(x=>x.idx)); }, 100);
+  return true;
 }
 
 // B4: count matching inventory items (in-stock and sold) for a search result.
@@ -20802,6 +20942,7 @@ async function lazyLoadComicImages(indices){
   if(!toLoad.length) return;
   await Promise.all(toLoad.map(async idx => {
     const r = qplResults[idx];
+    const rowSeq = r?._researchSeq;
     const name = r.name || r.raw?.productName || '';
     if(!name) return;
     // Parse "Amazing Spider-Man #300" -> title="Amazing Spider-Man", issue="300"
@@ -20816,6 +20957,7 @@ async function lazyLoadComicImages(indices){
       const res = await fetch(WORKER + '/comic/variants?' + params.toString(), { cache:'no-store' });
       if(!res.ok) return;
       const data = await res.json().catch(() => ({}));
+      if(rowSeq != null && !isActiveResearchSeq(rowSeq)) return;
       const best = (data.variants || []).find(v => v.cover_image) || null;
       const imageUrl = best?.cover_image || '';
       if(!imageUrl) return;
@@ -24793,9 +24935,12 @@ async function runPokemonArtistResearch(){
   const btn = document.getElementById('qpl-pokemon-artist-btn');
   const artist = String(input?.value || document.getElementById('qpl-input')?.value || '').replace(/\s+/g, ' ').trim();
   if(!artist) return toast_dash('Enter an artist name first.');
+  const searchSeq = beginResearchSearch({ query:artist, category:'Pokemon TCG', mode:'artist' });
+  if(searchSeq == null) return;
   const low = artist.toLowerCase();
   const loadedMatches = (_sbState.cards || []).filter(c => String(c.artist || '').toLowerCase().includes(low));
   const renderArtistRows = (cards, sourceLabel) => {
+    if(shouldIgnoreResearchUpdate(searchSeq, 'artist-render')) return;
     const rows = cards.slice(0, 40).map(c => {
       const row = pokemonPriceTrackerCardToQplRow(sbNormalizeSetCard(c), c.name || artist, null);
       row.matchWhy = [sourceLabel, c.artist ? 'Artist: ' + c.artist : 'artist field matched'];
@@ -24804,7 +24949,7 @@ async function runPokemonArtistResearch(){
       return row;
     });
     qplResults = rows;
-    renderQuickLookupResults(qplResults);
+    renderResearchResultsGuarded({ searchSeq, query:artist, category:'Pokemon TCG', results:qplResults, source:sourceLabel, isFinal:true, isLive:sourceLabel.includes('Live') });
     document.getElementById('qpl-results')?.scrollIntoView({ behavior:'smooth', block:'start' });
     toast_dash(sourceLabel + ': ' + rows.length + ' card' + (rows.length === 1 ? '' : 's'));
   };
@@ -24817,16 +24962,17 @@ async function runPokemonArtistResearch(){
     const params = new URLSearchParams({ search:artist, limit:'20' });
     const res = await fetch(WORKER + '/pricing/pokemon/cards?' + params.toString(), { cache:'no-store' });
     const data = await res.json().catch(() => ({}));
+    if(shouldIgnoreResearchUpdate(searchSeq, 'artist-live')) return;
     if(!res.ok || data.ok === false) throw new Error(data.error || data.message || 'Artist search failed');
     const cards = pokemonPriceTrackerCardsFromPayload(data).map(c => sbNormalizeSetCard(c));
     const matches = cards.filter(c => String(c.artist || '').toLowerCase().includes(low));
     if(matches.length) renderArtistRows(matches, 'Live API artist matches');
     else {
-      qplResults = [];
-      renderQuickLookupResults(qplResults);
+      renderResearchResultsGuarded({ searchSeq, query:artist, category:'Pokemon TCG', results:[], source:'artist-live-empty', isFinal:true, isLive:true });
       toast_dash('No returned cards had matching artist fields. Full artist list requires local catalog/export.');
     }
   } catch(e) {
+    if(shouldIgnoreResearchUpdate(searchSeq, 'artist-error')) return;
     toast_dash('Artist research unavailable: ' + (e.message || e));
   } finally {
     if(btn) { btn.disabled = false; btn.textContent = 'ARTIST'; }
