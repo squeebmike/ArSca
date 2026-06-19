@@ -3326,6 +3326,316 @@ export default {
       }
     }
 
+    // ── SET BROWSER API ──────────────────────────────────────────────────────
+    if (url.pathname.startsWith('/sets')) {
+      const kv = env.LBA_KV;
+      if (!kv) return json({ ok: false, error: 'KV not configured' }, 503);
+
+      // GET /sets — list all imported sets
+      if (url.pathname === '/sets' && request.method === 'GET') {
+        const raw = await kv.get('sets_index');
+        const index = raw ? JSON.parse(raw) : [];
+        return json({ ok: true, sets: index });
+      }
+
+      // POST /sets/import — fetch a Beckett checklist URL and parse it into KV
+      if (url.pathname === '/sets/import' && request.method === 'POST') {
+        const body = await request.json().catch(() => ({}));
+        const { url: beckettUrl, slug, name, sport = 'baseball', year } = body;
+        if (!beckettUrl || !slug || !name) {
+          return json({ ok: false, error: 'url, slug, name required' }, 400);
+        }
+
+        // Fetch with browser-like headers to bypass bot detection
+        const fetchRes = await fetch(beckettUrl, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xhtml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.9',
+            'Referer': 'https://www.beckett.com/news/',
+            'Cache-Control': 'no-cache',
+          },
+          redirect: 'follow',
+        }).catch(e => null);
+
+        if (!fetchRes || !fetchRes.ok) {
+          return json({ ok: false, error: `Fetch failed: ${fetchRes?.status || 'network error'}` }, 502);
+        }
+
+        const html = await fetchRes.text();
+        const parsed = parseBeckettChecklist(html, slug, name, sport, year);
+        if (!parsed) return json({ ok: false, error: 'Could not parse checklist from page' }, 422);
+
+        // Store full set data
+        await kv.put(`set:${slug}`, JSON.stringify(parsed));
+
+        // Update index
+        const idxRaw = await kv.get('sets_index');
+        const index = idxRaw ? JSON.parse(idxRaw) : [];
+        const existing = index.findIndex(s => s.slug === slug);
+        const meta = {
+          slug, name, sport, year: year || parsed.release_date || '',
+          setSize: parsed.set_size || 0,
+          releaseDate: parsed.release_date || '',
+          importedAt: new Date().toISOString(),
+          baseCount: parsed.base_set?.count || 0,
+          insertSetCount: parsed.insert_sets?.length || 0,
+          autoSetCount: parsed.autograph_sets?.length || 0,
+        };
+        if (existing >= 0) index[existing] = meta;
+        else index.push(meta);
+        index.sort((a, b) => (b.year || '').localeCompare(a.year || ''));
+        await kv.put('sets_index', JSON.stringify(index));
+
+        return json({ ok: true, slug, name, baseCount: meta.baseCount, insertSetCount: meta.insertSetCount });
+      }
+
+      // PUT /sets/import-json — store pre-parsed JSON (for seeding)
+      if (url.pathname === '/sets/import-json' && request.method === 'PUT') {
+        const body = await request.json().catch(() => null);
+        if (!body?.slug || !body?.name) return json({ ok: false, error: 'slug and name required' }, 400);
+        const { slug, name, sport = 'baseball', year } = body;
+
+        await kv.put(`set:${slug}`, JSON.stringify(body));
+
+        const idxRaw = await kv.get('sets_index');
+        const index = idxRaw ? JSON.parse(idxRaw) : [];
+        const existing = index.findIndex(s => s.slug === slug);
+        const meta = {
+          slug, name, sport, year: year || body.release_date || '',
+          setSize: body.set_size || 0, releaseDate: body.release_date || '',
+          importedAt: new Date().toISOString(),
+          baseCount: body.base_set?.count || 0,
+          insertSetCount: body.insert_sets?.length || 0,
+          autoSetCount: body.autograph_sets?.length || 0,
+        };
+        if (existing >= 0) index[existing] = meta;
+        else index.push(meta);
+        index.sort((a, b) => (b.year || '').localeCompare(a.year || ''));
+        await kv.put('sets_index', JSON.stringify(index));
+
+        return json({ ok: true, slug, seeded: true, baseCount: meta.baseCount });
+      }
+
+      // GET /sets/:slug — full set data
+      const slugMatch = url.pathname.match(/^\/sets\/([^/]+)$/);
+      if (slugMatch && request.method === 'GET') {
+        const raw = await kv.get(`set:${slugMatch[1]}`);
+        if (!raw) return json({ ok: false, error: 'Set not found' }, 404);
+        return new Response(raw, { headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+      }
+
+      // GET /sets/:slug/cards?q=QUERY&number=N&team=TEAM&section=base|inserts|autos
+      const cardsMatch = url.pathname.match(/^\/sets\/([^/]+)\/cards$/);
+      if (cardsMatch && request.method === 'GET') {
+        const raw = await kv.get(`set:${cardsMatch[1]}`);
+        if (!raw) return json({ ok: false, error: 'Set not found' }, 404);
+        const setData = JSON.parse(raw);
+        const q = (url.searchParams.get('q') || '').toLowerCase();
+        const numFilter = url.searchParams.get('number') || '';
+        const teamFilter = (url.searchParams.get('team') || '').toLowerCase();
+        const section = url.searchParams.get('section') || 'base';
+
+        let cards = [];
+        if (section === 'base') {
+          cards = setData.base_set?.cards || [];
+        } else if (section === 'inserts') {
+          cards = (setData.insert_sets || []).flatMap(s =>
+            s.cards.map(c => ({ ...c, setName: s.name }))
+          );
+        } else if (section === 'autos') {
+          cards = (setData.autograph_sets || []).flatMap(s =>
+            s.cards.map(c => ({ ...c, setName: s.name }))
+          );
+        } else if (section === 'mem') {
+          cards = (setData.memorabilia_sets || []).flatMap(s =>
+            s.cards.map(c => ({ ...c, setName: s.name }))
+          );
+        }
+
+        if (q) cards = cards.filter(c =>
+          String(c.player || '').toLowerCase().includes(q) ||
+          String(c.team || '').toLowerCase().includes(q) ||
+          String(c.number || '').toLowerCase().includes(q) ||
+          String(c.setName || '').toLowerCase().includes(q)
+        );
+        if (numFilter) cards = cards.filter(c => String(c.number) === numFilter);
+        if (teamFilter) cards = cards.filter(c => (c.team || '').toLowerCase().includes(teamFilter));
+
+        return json({ ok: true, section, total: cards.length, cards: cards.slice(0, 200) });
+      }
+
+      // GET /sets/:slug/card/:number/price — price lookup via PriceCharting
+      const priceMatch = url.pathname.match(/^\/sets\/([^/]+)\/card\/([^/]+)\/price$/);
+      if (priceMatch && request.method === 'GET') {
+        const [, setSlug, cardNum] = priceMatch;
+        const raw = await kv.get(`set:${setSlug}`);
+        if (!raw) return json({ ok: false, error: 'Set not found' }, 404);
+        const setData = JSON.parse(raw);
+        const card = (setData.base_set?.cards || []).find(c => String(c.number) === cardNum);
+        if (!card) return json({ ok: false, error: 'Card not found' }, 404);
+
+        const token = env.PRICECHARTING_TOKEN || env.PRICECHARTING_API_KEY;
+        if (!token) return json({ ok: false, error: 'PRICECHARTING_TOKEN not set' }, 501);
+
+        const q = encodeURIComponent(`${card.player} ${setData.set}`);
+        const pcRes = await fetch(`https://www.pricecharting.com/api/products?q=${q}&status=price&token=${token}`);
+        if (!pcRes.ok) return json({ ok: false, error: 'PriceCharting error' }, 502);
+        const pcData = await pcRes.json();
+        const products = (pcData.products || []).slice(0, 5);
+
+        return json({ ok: true, card, products });
+      }
+
+      // DELETE /sets/:slug — remove a set
+      const delMatch = url.pathname.match(/^\/sets\/([^/]+)$/) ;
+      if (delMatch && request.method === 'DELETE') {
+        const s = delMatch[1];
+        await kv.delete(`set:${s}`);
+        const idxRaw = await kv.get('sets_index');
+        const index = (idxRaw ? JSON.parse(idxRaw) : []).filter(x => x.slug !== s);
+        await kv.put('sets_index', JSON.stringify(index));
+        return json({ ok: true, deleted: s });
+      }
+    }
+
     return json({ error: 'Not found' }, 404);
   },
 };
+
+// ── BECKETT HTML PARSER ───────────────────────────────────────────────────────
+function parseBeckettChecklist(html, slug, name, sport, year) {
+  // Extract text content from article-content div
+  const contentMatch = html.match(/class="[^"]*article-content[^"]*"[^>]*>([\s\S]*?)(?=<div[^>]+id="comments|<\/main|<footer)/i);
+  if (!contentMatch) return null;
+  const content = contentMatch[1];
+
+  // Strip HTML tags and decode entities
+  const text = content
+    .replace(/<style[\s\S]*?<\/style>/gi, '')
+    .replace(/<script[\s\S]*?<\/script>/gi, '')
+    .replace(/<[^>]+>/g, '\n')
+    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&nbsp;/g, ' ').replace(/&#\d+;/g, ' ')
+    .replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+
+  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+
+  const TEAMS = new Set([
+    'New York Yankees','Toronto Blue Jays','Minnesota Twins','New York Mets','Chicago Cubs',
+    'Arizona Diamondbacks','San Francisco Giants','San Diego Padres','Milwaukee Brewers',
+    'Colorado Rockies','Detroit Tigers','Boston Red Sox','Tampa Bay Rays','Baltimore Orioles',
+    'Washington Nationals','Cleveland Guardians','St. Louis Cardinals','Houston Astros',
+    'Kansas City Royals','Miami Marlins','Los Angeles Dodgers','Athletics','Angels',
+    'Chicago White Sox','Seattle Mariners','Atlanta Braves','Philadelphia Phillies',
+    'Cincinnati Reds','Pittsburgh Pirates','Texas Rangers','Los Angeles Angels','Other',
+  ]);
+
+  const CARD_RE = /^(\d+)\s+(.+?),\s+(.+?)(?:\s+\((.+?)\))?$/;
+  const PREFIX_RE = /^([A-Z0-9]{1,10}-[A-Z0-9]+[a-z]?)\s+(.+?),\s+(.+?)(\s+RC)?$/;
+  const MONTHS = new Set(['January','February','March','April','May','June','July','August','September','October','November','December']);
+
+  function tryBase(line, maxNum = 350) {
+    const m = line.match(CARD_RE);
+    if (!m) return null;
+    const num = parseInt(m[1]);
+    if (num > maxNum) return null;
+    const player = m[2].trim(), team = m[3].trim(), note = (m[4] || '').trim();
+    if (!TEAMS.has(team) && ![...TEAMS].some(t => team.includes(t))) return null;
+    if (MONTHS.has(player)) return null;
+    return { number: num, player, team, note };
+  }
+
+  function tryPrefixed(line) {
+    const m = line.match(PREFIX_RE);
+    if (!m) return null;
+    return { number: m[1], player: m[2].trim(), team: m[3].trim() };
+  }
+
+  // Find section boundaries
+  let baseStart = -1, varsStart = lines.length, autoStart = lines.length;
+  let memStart = lines.length, insStart = lines.length, teamStart = lines.length;
+
+  for (let i = 0; i < lines.length; i++) {
+    const l = lines[i];
+    if (l === 'Base Set Checklist' && baseStart < 0) baseStart = i;
+    if (l.includes('– Variations') && i > baseStart) { varsStart = Math.min(varsStart, i); }
+    if (l.includes('– Autographs')) autoStart = Math.min(autoStart, i);
+    if (l.includes('– Memorabilia')) memStart = Math.min(memStart, i);
+    if (l.includes('– Inserts')) insStart = Math.min(insStart, i);
+    if (l === 'Team Sets') teamStart = Math.min(teamStart, i);
+  }
+
+  if (baseStart < 0) return null;
+
+  // Parse parallels
+  const parallels = [];
+  let inPar = false;
+  for (let i = baseStart; i < varsStart; i++) {
+    const l = lines[i];
+    if (l === 'Parallels') { inPar = true; continue; }
+    if (inPar) {
+      if (/^\d+ /.test(l)) break;
+      if (l && !l.startsWith('Shop') && !l.startsWith('Download')) parallels.push(l);
+    }
+  }
+
+  // Parse base set
+  const baseSeen = new Set();
+  const baseCards = [];
+  for (let i = baseStart; i < varsStart; i++) {
+    const c = tryBase(lines[i], 350);
+    if (c) {
+      const key = `${c.number}:${c.player}`;
+      if (!baseSeen.has(key)) { baseSeen.add(key); baseCards.push(c); }
+    }
+  }
+  baseCards.sort((a, b) => a.number - b.number || a.player.localeCompare(b.player));
+
+  // Generic section parser (prefixed or base-numbered cards)
+  function parseSets(start, end) {
+    const sets = [];
+    let cur = null;
+    for (let i = start; i < end; i++) {
+      const l = lines[i];
+      const nxt = lines[i + 1] || '';
+      if (/^\d+ cards$/.test(nxt) && l && !l.startsWith('2026 Topps Series') && !l.startsWith('Shop')) {
+        if (cur) sets.push(cur);
+        cur = { name: l, count: parseInt(nxt), parallels: [], cards: [] };
+        i++;
+        // collect parallels
+        while (i + 1 < end) {
+          i++;
+          const pl = lines[i];
+          if (tryPrefixed(pl) || tryBase(pl)) { i--; break; }
+          if (/^\d+ cards$/.test(lines[i + 1] || '')) { i--; break; }
+          if (pl && pl !== 'Parallels' && !pl.startsWith('Shop') && !pl.startsWith('on eBay')) cur.parallels.push(pl);
+        }
+        continue;
+      }
+      const pc = tryPrefixed(l);
+      if (pc && cur) { cur.cards.push(pc); continue; }
+      const bc = tryBase(l);
+      if (bc && cur) cur.cards.push({ number: String(bc.number), player: bc.player, team: bc.team });
+    }
+    if (cur) sets.push(cur);
+    return sets;
+  }
+
+  const autoSets = parseSets(autoStart, memStart);
+  const memSets  = parseSets(memStart, insStart);
+  const insSets  = parseSets(insStart, teamStart);
+
+  // Parse release date and set size from content
+  const releaseDateMatch = lines.join(' ').match(/Release date[:\s]+([A-Za-z]+ \d+,? \d{4})/i);
+  const releaseDate = releaseDateMatch ? releaseDateMatch[1] : (year ? String(year) : '');
+
+  return {
+    slug, set: name, sport, release_date: releaseDate,
+    set_size: baseCards.length > 0 ? Math.max(...baseCards.map(c => c.number)) : 0,
+    parallels,
+    base_set: { count: baseCards.length, cards: baseCards },
+    insert_sets: insSets,
+    autograph_sets: autoSets,
+    memorabilia_sets: memSets,
+  };
+}
