@@ -25592,84 +25592,29 @@ function sbRenderCards(cards) {
     return;
   }
 
-  SB._cardIndex = showing; // store for modal lookup by index
+  SB._cardIndex = showing;
 
   el.innerHTML = showing.map((c, i) => {
     const numStr = String(c.number || '');
     const cacheKey = `${numStr}|${c.player||''}`;
-    const rcHtml = c.rc ? '<span style="background:var(--gold);color:#000;font-size:8px;font-weight:900;padding:1px 4px;border-radius:3px;margin-left:5px">RC</span>' : '';
-    const noteHtml = c.note ? `<span style="font-size:9px;color:var(--gold);margin-left:4px">${escHtml(c.note)}</span>` : '';
+    const rcBadge = c.rc ? ' <span style="background:var(--gold);color:#000;font-size:9px;font-weight:900;padding:1px 5px;border-radius:3px;vertical-align:middle">RC</span>' : '';
+    const noteBadge = c.note ? ` <span style="font-size:9px;color:var(--gold)">${escHtml(c.note)}</span>` : '';
     const cachedImg = SB_IMG_CACHE.get(cacheKey);
-    const imgEl = cachedImg
-      ? `<img src="${escHtml(cachedImg)}" style="width:100%;aspect-ratio:2/3;object-fit:cover;border-radius:6px 6px 0 0;display:block" loading="lazy">`
-      : `<div class="sb-img-ph" data-key="${escHtml(cacheKey)}" data-num="${escHtml(numStr)}" data-player="${escHtml(c.player||'')}" style="width:100%;aspect-ratio:2/3;background:var(--surf3,#111);border-radius:6px 6px 0 0;display:flex;align-items:center;justify-content:center;font-size:40px">🃏</div>`;
+    const imgSrc = cachedImg ? `<img src="${escHtml(cachedImg)}" style="width:100%;height:160px;object-fit:cover;display:block;border-radius:6px 6px 0 0">` : `<div style="width:100%;height:160px;background:var(--surf3,#111);border-radius:6px 6px 0 0;display:flex;align-items:center;justify-content:center;font-size:44px">🃏</div>`;
     const cachedPrice = SB_PRICE_CACHE.get(cacheKey);
-    const priceHtml = cachedPrice
-      ? `<div style="font-size:11px;color:var(--primary);font-weight:700">${cachedPrice}</div>`
-      : `<div class="sb-price-slot" data-key="${escHtml(cacheKey)}" style="font-size:10px;color:var(--dim)">tap for price</div>`;
-    const setLabel = c.setName ? `<div style="font-size:9px;color:var(--primary);opacity:.7;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(c.setName)}</div>` : '';
-    return `<div onclick="sbOpenCardModal(${i})" style="cursor:pointer;background:var(--surf2);border:1px solid var(--border);border-radius:8px;overflow:hidden;font-family:var(--font-mono);transition:border-color .15s;display:flex;flex-direction:column" onmouseenter="this.style.borderColor='var(--primary)'" onmouseleave="this.style.borderColor='var(--border)'">
-      ${imgEl}
-      <div style="padding:8px 10px;flex:1">
-        <div style="font-size:12px;font-weight:700;line-height:1.3;margin-bottom:3px">${escHtml(c.player||'')}${rcHtml}${noteHtml}</div>
-        <div style="font-size:10px;color:var(--dim);margin-bottom:2px">${escHtml(c.team||'')}</div>
+    const priceStr = cachedPrice ? `<span style="color:var(--primary);font-weight:700">${cachedPrice}</span>` : `<span style="color:var(--dim);font-size:10px">click for price</span>`;
+    const setLabel = c.setName ? `<div style="font-size:9px;color:var(--primary);opacity:.8;margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(c.setName)}</div>` : '';
+    return `<div onclick="sbOpenCardModal(${i})" style="cursor:pointer;background:var(--surf2);border:1px solid var(--border);border-radius:8px;overflow:hidden;font-family:var(--font-mono);transition:border-color .15s" onmouseenter="this.style.borderColor='var(--primary)'" onmouseleave="this.style.borderColor='var(--border)'">
+      ${imgSrc}
+      <div style="padding:10px">
+        <div style="font-size:13px;font-weight:700;line-height:1.3;margin-bottom:3px">${escHtml(c.player||'')}${rcBadge}${noteBadge}</div>
+        <div style="font-size:11px;color:var(--dim);margin-bottom:2px">${escHtml(c.team||'')}</div>
         ${setLabel}
-        <div style="font-size:10px;color:var(--dim);margin-top:2px">#${escHtml(numStr)}</div>
-        <div style="margin-top:4px">${priceHtml}</div>
+        <div style="font-size:10px;color:var(--dim);margin-top:3px">#${escHtml(numStr)}</div>
+        <div style="margin-top:5px;font-size:11px">${priceStr}</div>
       </div>
     </div>`;
   }).join('');
-
-  sbLazyLoad();
-}
-
-function sbLazyLoad() {
-  const consoleName = sbPcConsole();
-  const obs = new IntersectionObserver(async (entries) => {
-    for (const entry of entries) {
-      if (!entry.isIntersecting) continue;
-      obs.unobserve(entry.target);
-      const el = entry.target;
-      const key = el.dataset.key;
-      const num = el.dataset.num || '';
-      const player = el.dataset.player || '';
-
-      if (el.classList.contains('sb-img-ph') && !SB_IMG_CACHE.has(key) && consoleName) {
-        const prod = `${player} ${num}`.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
-        try {
-          const d = await sbWorker(`/pricing/sportscardspro/image?console=${encodeURIComponent(consoleName)}&name=${encodeURIComponent(prod)}`);
-          if (d.ok && d.imageUrl) {
-            SB_IMG_CACHE.set(key, d.imageUrl);
-            const img = document.createElement('img');
-            img.src = d.imageUrl;
-            img.style.cssText = 'width:52px;height:72px;object-fit:cover;border-radius:4px;flex-shrink:0;border:1px solid var(--border)';
-            el.replaceWith(img);
-          }
-        } catch(_) {}
-      }
-
-      if (el.classList.contains('sb-price-slot') && !SB_PRICE_CACHE.has(key)) {
-        const [numPart, playerPart] = key.split('|');
-        try {
-          const d = await sbWorker(`/sets/${SB.currentSlug}/card/${encodeURIComponent(numPart)}/price`);
-          if (d.ok && d.products?.length) {
-            const p = d.products[0];
-            const loose = p['loose-price'] ? `$${(p['loose-price']/100).toFixed(2)}` : null;
-            const graded = p['graded-price'] ? ` · PSA $${(p['graded-price']/100).toFixed(2)}` : '';
-            const label = loose ? loose + graded : null;
-            if (label) {
-              SB_PRICE_CACHE.set(key, label);
-              el.style.color = 'var(--primary)';
-              el.style.fontWeight = '700';
-              el.textContent = label;
-            }
-          }
-        } catch(_) {}
-      }
-    }
-  }, { rootMargin: '300px' });
-
-  document.querySelectorAll('#sb-card-list .sb-img-ph, #sb-card-list .sb-price-slot').forEach(e => obs.observe(e));
 }
 
 async function sbOpenCardModal(idx) {
