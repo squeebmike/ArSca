@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.06.18.08-inventory-refresh-analytics">
+<meta name="version" content="2026.06.18.09-mobile-containment-pass">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -14,7 +14,17 @@
 <style>
 :root{--app-bg:#07080a;--app-surface:#0d0f14;--app-surface-2:#141720;--app-text:#e4e4e8;--app-muted:rgba(228,228,232,.4);--app-primary:#00ffb3;--app-secondary:#ffd166;--app-accent:#c77dff;--app-success:#00ffb3;--app-warning:#ffd166;--app-danger:#ff4d6d;--app-border:rgba(255,255,255,.07);--app-button-text:#050507;--app-radius:10px;--app-font:'DM Sans',sans-serif;--customer-bg-image:none;--brand-primary:var(--app-primary);--brand-secondary:var(--app-secondary);--brand-accent:var(--app-accent);--brand-background:var(--app-bg);--brand-surface:var(--app-surface);--brand-surface-2:var(--app-surface-2);--brand-text:var(--app-text);--brand-muted:var(--app-muted);--brand-success:var(--app-success);--brand-warning:var(--app-warning);--brand-danger:var(--app-danger);--brand-info:#48cae4;--brand-border:var(--app-border);--brand-card-radius:var(--app-radius);--brand-button-radius:6px;--brand-font-family:var(--app-font);--btn-height:38px;--btn-height-lg:52px;--font-mono:'DM Mono',monospace;--g:var(--brand-primary);--gd:rgba(0,255,179,.1);--gold:var(--brand-warning);--red:var(--brand-danger);--blue:var(--brand-info);--purple:var(--brand-accent);--bg:var(--brand-background);--surf:var(--brand-surface);--surf2:var(--brand-surface-2);--border:var(--brand-border);--text:var(--brand-text);--dim:var(--brand-muted);}
 *{margin:0;padding:0;box-sizing:border-box;}
-body{background:var(--bg);color:var(--text);font-family:var(--brand-font-family);min-height:100vh;padding-bottom:calc(72px + env(safe-area-inset-bottom));}
+html{max-width:100vw;overflow-x:hidden;}
+body{background:var(--bg);color:var(--text);font-family:var(--brand-font-family);min-height:100vh;padding-bottom:calc(72px + env(safe-area-inset-bottom));max-width:100vw;overflow-x:hidden;}
+@media(max-width:640px){
+  /* GLOBAL MOBILE CONTAINMENT — belt-and-suspenders against any element pushing past viewport width */
+  .panel,.sec,.two,.three,.tc,.tabs,.tbl-wrap,.tab-panel,.module-grid,.responsive-grid,
+  .dealer-checkout-panel,.customer-payment-screen,.buy-offer-panel,.item-metric{
+    max-width:100%;min-width:0;box-sizing:border-box;
+  }
+  .two,.three{grid-template-columns:1fr!important;}
+  input,select,textarea{max-width:100%;min-width:0;}
+}
 body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse at 15% 15%,rgba(0,255,179,.03) 0,transparent 55%),radial-gradient(ellipse at 85% 85%,rgba(199,125,255,.03) 0,transparent 55%);pointer-events:none;}
 
 /* HEADER */
@@ -139,7 +149,7 @@ header{position:sticky;top:0;z-index:100;background:rgba(7,8,10,.96);backdrop-fi
 .customer-payment-screen.on{display:grid;grid-template-rows:auto 1fr auto;gap:18px;}
 .customer-pay-brand{text-align:center;}
 .customer-pay-brand img{display:none;width:110px;max-height:82px;object-fit:contain;margin:0 auto 10px;}
-.customer-pay-store{font-family:'Orbitron',monospace;font-size:28px;font-weight:900;letter-spacing:2px;color:#0b0d12;}
+.customer-pay-store{font-family:'Orbitron',monospace;font-size:28px;font-weight:900;letter-spacing:2px;color:#0b0d12;overflow-wrap:anywhere;max-width:100%;}
 .customer-pay-safe{font-family:var(--font-mono);font-size:11px;color:#657080;margin-top:5px;}
 .customer-pay-lines{display:grid;gap:10px;align-content:start;max-width:860px;width:100%;margin:0 auto;}
 .customer-pay-line{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:18px;align-items:center;border-bottom:1px solid #dce1e8;padding:12px 0;}
@@ -361,10 +371,17 @@ tr.sold:hover td{opacity:.7;}
 .qpl-cond-chip .cchip-est { font-size:11px; font-weight:700; color:rgba(255,200,60,.55); }
 
 /* ─── SUBSCRIPTION GATE ─── */
-.sub-trial-banner{position:fixed;top:0;left:0;right:0;z-index:8000;background:linear-gradient(90deg,rgba(255,180,0,.18),rgba(255,140,0,.12));border-bottom:1px solid rgba(255,180,0,.4);padding:8px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;font-family:var(--font-mono);font-size:11px;color:var(--gold);}
-.sub-trial-banner .sub-banner-msg{font-weight:700;letter-spacing:.04em;}
-.sub-trial-banner .sub-banner-actions{display:flex;gap:8px;flex-shrink:0;}
-.sub-past-due-banner{position:fixed;top:0;left:0;right:0;z-index:8000;background:rgba(220,40,40,.18);border-bottom:1px solid rgba(220,40,40,.5);padding:8px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;font-family:var(--font-mono);font-size:11px;color:#ff6060;}
+.sub-trial-banner{position:relative;width:100%;max-width:100%;box-sizing:border-box;z-index:50;background:linear-gradient(90deg,rgba(255,180,0,.18),rgba(255,140,0,.12));border-bottom:1px solid rgba(255,180,0,.4);padding:8px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;font-family:var(--font-mono);font-size:11px;color:var(--gold);}
+.sub-trial-banner .sub-banner-msg{font-weight:700;letter-spacing:.04em;overflow-wrap:anywhere;min-width:0;flex:1 1 200px;}
+.sub-trial-banner .sub-banner-actions{display:flex;gap:8px;flex-shrink:0;flex-wrap:wrap;}
+.sub-past-due-banner{position:relative;width:100%;max-width:100%;box-sizing:border-box;z-index:50;}
+@media(max-width:640px){
+  .sub-trial-banner,.sub-past-due-banner{padding:8px 12px;font-size:10px;gap:8px;}
+  .sub-trial-banner .sub-banner-msg{flex-basis:100%;}
+  .sub-trial-banner .sub-banner-actions{flex-basis:100%;justify-content:flex-start;}
+  .sub-trial-banner .hbtn,.sub-past-due-banner .hbtn{min-height:36px;font-size:10px;}
+}
+.sub-past-due-banner{position:relative;width:100%;max-width:100%;box-sizing:border-box;z-index:50;background:rgba(220,40,40,.18);border-bottom:1px solid rgba(220,40,40,.5);padding:8px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;font-family:var(--font-mono);font-size:11px;color:#ff6060;}
 .sub-gate-overlay{position:fixed;inset:0;z-index:9500;background:rgba(5,7,9,.92);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:24px;}
 .sub-gate-card{background:var(--surf2);border:1px solid rgba(0,255,179,.2);border-radius:20px;padding:40px 32px;max-width:440px;width:100%;text-align:center;}
 .sub-gate-icon{font-size:56px;margin-bottom:16px;}
@@ -426,7 +443,21 @@ tr.sold:hover td{opacity:.7;}
 body.show-mode .buy-advanced{display:none;}
 @media(max-width:640px){
   .buy-offer-panel{grid-template-columns:1fr 1fr;}
-  .buy-tray-item{grid-template-columns:44px 1fr 62px 74px 56px 28px;gap:5px;}
+  /* buy-tray-item rows are rendered with an inline grid-template-columns
+     (7 fixed-width columns) that overrides any grid-template-columns rule
+     here, even with !important targeting the class — inline style specificity
+     wins for that one property. Switching display to flex (not overridden by
+     the inline grid-template-columns, which is then irrelevant) lets rows
+     wrap into a contained mobile card instead of squeezing into ~330px of
+     fixed columns and pushing the offer/remove controls off-screen. */
+  .buy-tray-item{display:flex!important;flex-wrap:wrap!important;gap:6px!important;padding:10px!important;align-items:center;}
+  .buy-tray-item>:nth-child(1){order:1;flex:0 0 40px;}
+  .buy-tray-item>:nth-child(2){order:2;flex:1 1 auto;min-width:0;}
+  .buy-tray-item>:nth-child(7){order:3;flex:0 0 32px;}
+  .buy-tray-item>:nth-child(3){order:4;flex:1 1 72px;min-width:64px;}
+  .buy-tray-item>:nth-child(4){order:5;flex:1 1 72px;min-width:64px;}
+  .buy-tray-item>:nth-child(5){order:6;flex:1 1 56px;text-align:center;}
+  .buy-tray-item>:nth-child(6){order:7;flex:0 0 auto;}
   .buy-advanced-grid{grid-template-columns:1fr;}
 }
 
@@ -724,6 +755,33 @@ body.show-mode .show-mode-toggle { border-color:rgba(0,255,179,.4); color:var(--
 .beta-bug-card textarea{width:100%;min-height:130px;background:var(--surf2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:11px;font-family:var(--font-mono);font-size:13px;box-sizing:border-box;resize:vertical}
 .beta-bug-card select{width:100%;background:var(--surf2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:10px;font-family:var(--font-mono);font-size:12px}
 @media(max-width:640px){
+  /* ── SHOW / CASH BAG + WANT LIST mobile containment ──────────────
+     These rows use inline grid-template-columns that ignore all other
+     media queries (inline styles beat stylesheet rules unless !important
+     is used here). Collapsing them to 1 column stops fields stretching
+     off the right edge of the screen. */
+  [style*="grid-template-columns:2fr 1fr 1fr 1fr"]{grid-template-columns:1fr!important;}
+  [style*="grid-template-columns:1fr 1fr 90px 1fr auto"]{grid-template-columns:1fr!important;}
+  [style*="grid-template-columns:2fr 1fr 1fr 1fr auto"]{grid-template-columns:1fr!important;}
+  [style*="grid-template-columns:2fr 1fr 1fr 1fr 1fr auto"]{grid-template-columns:1fr!important;}
+  [style*="grid-template-columns:2fr 1fr 1fr .8fr .8fr"]{grid-template-columns:1fr 1fr!important;}
+  [style*="grid-template-columns:2fr 1fr auto"]{grid-template-columns:1fr!important;}
+  [style*="grid-template-columns:1fr 100px 120px 90px"]{grid-template-columns:1fr 1fr!important;}
+  [style*="grid-template-columns:170px 220px 1fr 96px 96px 96px"]{grid-template-columns:1fr 1fr!important;}
+  [style*="grid-template-columns:minmax(140px,1fr) 100px 160px minmax(120px,1fr) auto"]{grid-template-columns:1fr 1fr!important;}
+  [style*="grid-template-columns:140px 1fr auto auto"]{grid-template-columns:1fr 1fr!important;}
+  /* Cash drawer ledger tiles — never fewer than 2 per row, never overflow */
+  .drawer-ledger-grid{grid-template-columns:repeat(2,1fr)!important;}
+}
+.inv-filter-toggle{display:none;}
+.inv-filter-chips{display:flex;}
+@media(max-width:640px){
+  .inv-filter-toggle{display:inline-flex!important;align-items:center;}
+  .inv-filter-toggle.active{border-color:rgba(0,255,179,.5);color:var(--g);}
+  .inv-filter-chips{display:none!important;margin-top:0;}
+  .inv-filter-chips.on{display:flex!important;}
+}
+@media(max-width:640px){
   .beta-mode-strip{font-size:9px;line-height:1.35;align-items:flex-start;text-align:left}
   .beta-coach{left:0!important;right:0!important;bottom:calc(58px + env(safe-area-inset-bottom))!important;top:auto!important;max-width:none;border-radius:14px 14px 0 0;padding:16px 14px}
   .beta-coach-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
@@ -840,6 +898,8 @@ body.customer-display-mode #customer-display-exit{display:block;}
   .customer-method-grid{grid-template-columns:1fr;}
   .customer-pay-line{grid-template-columns:1fr;gap:6px;}
   .qpl-selected-top{grid-template-columns:1fr;}
+  .customer-payment-screen{padding:14px;}
+  .customer-pay-store{font-size:clamp(18px,6vw,28px);}
 }
 
 /* ── PASS A: Phone (≤640px) mobile UI repair ─────────────────── */
@@ -1234,7 +1294,7 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.18.08-inventory-refresh-analytics</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.18.09-mobile-containment-pass</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
@@ -1261,7 +1321,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip dev-only" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.18.08-inventory-refresh-analytics</div>
+<div class="dsb-chip dev-only" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.18.09-mobile-containment-pass</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -1378,6 +1438,10 @@ body.show-mode .inv-sync-badge{display:none;}
   <div class="tc">
     <input class="tsi" id="tbl-q" placeholder="Search name, set, year, #, SIR, player..." oninput="filterTable()">
     <button class="fb" aria-label="Voice search inventory" onclick="startVoiceInput('tbl-q', filterTable)">MIC</button>
+    <button class="fb inv-filter-toggle" onclick="toggleInvFilters()" id="inv-filter-toggle-btn">☰ FILTERS</button>
+    <span id="tbl-count" style="font-family:var(--font-mono);font-size:9px;color:var(--dim);margin-left:4px" class="inv-count-desktop"></span>
+  </div>
+  <div class="tc inv-filter-chips" id="inv-filter-chips">
     <button class="fb" onclick="setF('all',this)">All</button>
     <button class="fb on" onclick="setF('in_stock',this)">In Stock</button>
     <button class="fb" onclick="setF('sold',this)">Sold</button>
@@ -1396,7 +1460,6 @@ body.show-mode .inv-sync-badge{display:none;}
     <button class="fb" onclick="setF('Comic',this)">📖 Comics</button>
     <button class="fb" onclick="setF('Graded',this)">🏆 Graded</button>
     <button class="fb" onclick="setF('Collectibles',this)">🏷 Collectibles</button>
-    <span id="tbl-count" style="font-family:var(--font-mono);font-size:9px;color:var(--dim);margin-left:4px"></span>
   </div>
   <div id="inventory-health-panel"></div>
   <!-- Card grid view — hidden in table mode -->
@@ -2404,7 +2467,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.06.18.08-inventory-refresh-analytics';
+const APP_VERSION = '2026.06.18.09-mobile-containment-pass';
 window.APP_VERSION = APP_VERSION;
 const branchName = 'pokemon-v2-core';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
@@ -11236,6 +11299,15 @@ function srt(col){
   [...document.querySelectorAll('th')].find(t=>t.onclick?.toString().includes("'"+col+"'"))?.classList.add(ts2.dir===1?'asc':'desc');
   page=1; renderTable();
 }
+// Mobile inventory filter drawer toggle — purely presentational, no filter logic change.
+function toggleInvFilters(){
+  const el = document.getElementById('inv-filter-chips');
+  const btn = document.getElementById('inv-filter-toggle-btn');
+  if(!el) return;
+  const on = el.classList.toggle('on');
+  if(btn) btn.classList.toggle('active', on);
+}
+
 function setF(f,btn){
   activeF=f; page=1;
   document.querySelectorAll('.fb').forEach(b=>b.classList.remove('on'));
@@ -23303,12 +23375,17 @@ function renderDealerCartTools(cartData = getCartDataLocal()){
   const total = Number(cartData.total || cartData.items?.reduce((a,i)=>a+Number(i.price||0),0) || 0);
   if(stateEl) stateEl.innerHTML = `<span class="checkout-state-pill ${checkoutState===CHECKOUT_STATES.OFFLINE_QUEUED?'bad':locked?'warn':''}">${checkoutState}</span><span>${lockedCheckoutSnapshot ? 'Snapshot ' + String(lockedCheckoutSnapshot.id).slice(0,8) : 'No locked snapshot'}</span><span>${items.length} line${items.length===1?'':'s'}</span>`;
   if(!items.length) el.innerHTML = '<div style="border:1px dashed var(--border);border-radius:8px;padding:10px;text-align:center">Cart is empty.</div>';
-  else el.innerHTML = items.map((i, idx) => `<div class="dealer-line ${locked?'locked':''}">
+  else {
+    // Privacy: dealer-only cost/profit must never be present in the DOM while
+    // customer-display-mode is active, not just visually hidden by CSS.
+    const isCustomerFacing = document.body.classList.contains('customer-display-mode');
+    el.innerHTML = items.map((i, idx) => `<div class="dealer-line ${locked?'locked':''}">
     <div><div class="dealer-line-name">${escHtml(i.name || i.title || 'Item')}</div><div class="dealer-line-sub">${escHtml([i.sub, i.category, i.condition, i.adjustmentReason ? 'Adjusted: '+i.adjustmentReason : ''].filter(Boolean).join(' / '))}</div></div>
     <div style="font-family:'Orbitron',monospace;color:var(--gold);text-align:right">$${Number(i.price ?? i.adjusted_price ?? 0).toFixed(2)}</div>
-    <div class="dealer-profit">Cost $${Number(i.cost ?? i.cost_basis ?? 0).toFixed(2)}<br>Profit $${(Number(i.price ?? i.adjusted_price ?? 0)-Number(i.cost ?? i.cost_basis ?? 0)).toFixed(2)}</div>
+    ${isCustomerFacing ? '' : `<div class="dealer-profit">Cost $${Number(i.cost ?? i.cost_basis ?? 0).toFixed(2)}<br>Profit $${(Number(i.price ?? i.adjusted_price ?? 0)-Number(i.cost ?? i.cost_basis ?? 0)).toFixed(2)}</div>`}
     ${locked ? '' : `<button class="ra" onclick="editCartLinePrice(${idx})">Edit</button><button class="cd-remove" title="Remove from cart" onclick="removeCustomerDisplayCartItem('${escHtml(i.id || '')}', ${idx})">X</button>`}
   </div>`).join('');
+  }
   if(totalEl) totalEl.innerHTML = `<span style="font-family:var(--font-mono);font-size:11px;color:var(--dim)">DEALER TOTAL</span><b>$${total.toFixed(2)}</b>`;
   if(actions) {
     actions.innerHTML = locked
