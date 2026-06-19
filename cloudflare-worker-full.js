@@ -3390,6 +3390,26 @@ export default {
         return json({ ok: true, slug, name, baseCount: meta.baseCount, insertSetCount: meta.insertSetCount });
       }
 
+      // POST /sets/import-raw-url — fetch pre-parsed JSON from a URL (e.g. raw GitHub) and seed it
+      if (url.pathname === '/sets/import-raw-url' && request.method === 'POST') {
+        const body = await request.json().catch(() => null);
+        if (!body?.url || !body?.slug || !body?.name) return json({ ok: false, error: 'url, slug, name required' }, 400);
+        const res = await fetch(body.url, { headers: { 'Accept': 'application/json' } });
+        if (!res.ok) return json({ ok: false, error: `Fetch failed: ${res.status}` }, 502);
+        const data = await res.json().catch(() => null);
+        if (!data) return json({ ok: false, error: 'Invalid JSON at URL' }, 422);
+        const payload = { ...data, slug: body.slug, name: body.name, sport: body.sport || data.sport || 'baseball', year: body.year || data.release_date || '' };
+        await kv.put(`set:${body.slug}`, JSON.stringify(payload));
+        const idxRaw = await kv.get('sets_index');
+        const index = idxRaw ? JSON.parse(idxRaw) : [];
+        const existing = index.findIndex(s => s.slug === body.slug);
+        const meta = { slug: body.slug, name: body.name, sport: payload.sport, year: payload.year, setSize: data.set_size || 0, releaseDate: data.release_date || '', importedAt: new Date().toISOString(), baseCount: data.base_set?.count || data.base_set?.cards?.length || 0, insertSetCount: data.insert_sets?.length || 0, autoSetCount: data.autograph_sets?.length || 0 };
+        if (existing >= 0) index[existing] = meta; else index.push(meta);
+        index.sort((a, b) => (b.year || '').localeCompare(a.year || ''));
+        await kv.put('sets_index', JSON.stringify(index));
+        return json({ ok: true, slug: body.slug, baseCount: meta.baseCount, insertSetCount: meta.insertSetCount });
+      }
+
       // PUT /sets/import-json — store pre-parsed JSON (for seeding)
       if (url.pathname === '/sets/import-json' && request.method === 'PUT') {
         const body = await request.json().catch(() => null);
