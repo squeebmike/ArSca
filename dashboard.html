@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.06.18.10-customer-screen-fit">
+<meta name="version" content="2026.06.19.01-guided-help-2">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -743,10 +743,24 @@ body.show-mode .show-mode-toggle { border-color:rgba(0,255,179,.4); color:var(--
 .beta-mode-pill.live{color:var(--red);border-color:rgba(255,77,109,.35);background:rgba(255,77,109,.08)}
 .beta-help-on [data-help-key]{outline:1px dashed rgba(72,202,228,.5);outline-offset:2px;cursor:help!important}
 .beta-highlight{position:relative!important;z-index:99991!important;box-shadow:0 0 0 3px rgba(0,255,179,.58),0 0 0 9999px rgba(0,0,0,.64)!important;border-radius:10px!important}
-.beta-coach{position:fixed;z-index:99992;max-width:360px;background:var(--surf);border:1px solid rgba(0,255,179,.35);border-radius:10px;padding:14px;box-shadow:0 18px 60px rgba(0,0,0,.55);font-family:var(--font-mono);font-size:11px;color:var(--dim);line-height:1.55}
+.beta-coach{position:fixed;z-index:99992;max-width:380px;background:var(--surf);border:1px solid rgba(0,255,179,.35);border-radius:10px;padding:14px;box-shadow:0 18px 60px rgba(0,0,0,.55);font-family:var(--font-mono);font-size:11px;color:var(--dim);line-height:1.55}
+.beta-coach:after{content:'';position:absolute;width:10px;height:10px;background:var(--surf);border-left:1px solid rgba(0,255,179,.35);border-top:1px solid rgba(0,255,179,.35);transform:rotate(45deg);top:18px;left:-6px}
+.beta-coach[data-side="left"]:after{left:auto;right:-6px;transform:rotate(225deg)}
+.beta-coach[data-side="below"]:after{top:-6px;left:22px;transform:rotate(45deg)}
+.beta-coach[data-side="above"]:after{top:auto;bottom:-6px;left:22px;transform:rotate(225deg)}
+.beta-coach.no-arrow:after{display:none}
 .beta-coach-title{font-family:'Orbitron',monospace;font-size:13px;color:var(--g);letter-spacing:.08em;margin-bottom:6px}
+.beta-coach-danger{margin-top:8px;padding:8px;border:1px solid rgba(255,77,109,.35);border-radius:8px;color:var(--red);background:rgba(255,77,109,.08);font-family:var(--font-mono);font-size:10px}
+.beta-coach-meta{display:grid;gap:5px;margin-top:9px;font-family:var(--font-mono);font-size:9px;color:var(--dim)}
+.beta-coach-meta b{color:var(--text);font-weight:700}
 .beta-coach-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:12px}
 .beta-coach-actions .hbtn{min-height:36px;font-size:9px;padding:5px 10px}
+.beta-help-menu{position:fixed;right:12px;top:70px;z-index:99994;width:min(420px,calc(100vw - 24px));max-height:min(78vh,720px);overflow:auto;background:var(--surf);border:1px solid var(--border);border-radius:12px;padding:14px;box-shadow:0 20px 70px rgba(0,0,0,.62)}
+.beta-help-menu-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+.beta-help-menu-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-top:10px}
+.beta-help-menu .hbtn{min-height:42px;font-size:9px;white-space:normal;line-height:1.25}
+.beta-help-note{font-family:var(--font-mono);font-size:9px;color:var(--dim);line-height:1.45;margin-top:8px}
+.beta-floating-help{display:none;position:fixed;right:12px;bottom:calc(66px + env(safe-area-inset-bottom));z-index:9990;min-width:58px;min-height:46px;border-radius:999px;background:rgba(0,255,179,.14);border:1px solid rgba(0,255,179,.4);color:var(--g);font-family:'Orbitron',monospace;font-size:10px;font-weight:800;letter-spacing:.08em;box-shadow:0 10px 34px rgba(0,0,0,.45)}
 .beta-checklist-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:8px}
 .beta-check-item{border:1px solid var(--border);border-radius:8px;background:var(--surf2);padding:10px}
 .beta-check-item.complete{border-color:rgba(0,255,179,.28)}
@@ -784,9 +798,12 @@ body.show-mode .show-mode-toggle { border-color:rgba(0,255,179,.4); color:var(--
 }
 @media(max-width:640px){
   .beta-mode-strip{font-size:9px;line-height:1.35;align-items:flex-start;text-align:left}
-  .beta-coach{left:0!important;right:0!important;bottom:calc(58px + env(safe-area-inset-bottom))!important;top:auto!important;max-width:none;border-radius:14px 14px 0 0;padding:16px 14px}
+  .beta-coach{left:0!important;right:0!important;bottom:calc(58px + env(safe-area-inset-bottom))!important;top:auto!important;max-width:none;border-radius:14px 14px 0 0;padding:16px 14px;max-height:48vh;overflow:auto}
+  .beta-coach:after{display:none}
   .beta-coach-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
   .beta-coach-actions .hbtn{min-height:44px}
+  .beta-help-menu{left:0;right:0;top:auto;bottom:calc(58px + env(safe-area-inset-bottom));width:100%;max-height:62vh;border-radius:14px 14px 0 0}
+  .beta-floating-help{display:block}
   .beta-bug-modal{align-items:flex-end;padding:0}
   .beta-bug-card{width:100%;max-height:88vh;border-radius:14px 14px 0 0;padding:16px 14px 18px}
   .beta-checklist-grid{grid-template-columns:1fr}
@@ -1295,7 +1312,7 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.18.10-customer-screen-fit</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.19.01-guided-help-2</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
@@ -1322,7 +1339,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip dev-only" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.18.10-customer-screen-fit</div>
+<div class="dsb-chip dev-only" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.19.01-guided-help-2</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -2468,7 +2485,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.06.18.10-customer-screen-fit';
+const APP_VERSION = '2026.06.19.01-guided-help-2';
 window.APP_VERSION = APP_VERSION;
 const branchName = 'pokemon-v2-core';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
@@ -7226,7 +7243,9 @@ function betaSetupChecklist(){
   const hasPaymentHandle = !!(pay.venmo?.handle || pay.paypal?.emailOrHandle || pay.cashApp?.cashtag);
   const cashOnly = !!skipped.cashOnlyConfirmed || !!pay.cash?.enabled;
   const catalogMeta = safeLocalJson('walkoff_catalog_last_counts_v1', {});
-  const hasCatalog = !!(catalogMeta.pokemon || catalogMeta.mtg || skipped.catalogSkipped);
+  const hasPokemonCatalog = !!(catalogMeta.pokemon || catalogMeta.pokemonCards || skipped.pokemonCatalogSkipped);
+  const hasMtgCatalog = !!(catalogMeta.mtg || catalogMeta.mtgCards || skipped.mtgCatalogSkipped);
+  const hasCatalog = !!(hasPokemonCatalog || hasMtgCatalog || skipped.catalogSkipped);
   const item = (key, title, complete, detail) => ({
     key,
     title,
@@ -7242,6 +7261,10 @@ function betaSetupChecklist(){
     item('stripe','Stripe/Card status checked', !!(pay.card?.provider || skipped.stripeChecked), pay.card?.enabled ? 'Card payment enabled; backend setup still required.' : 'Card status can be checked in Payments.'),
     item('mode','Demo/Live mode understood', !!skipped.modeUnderstood, ctx.isDemo ? 'Demo Mode is safe for testing.' : 'Live Mode changes real inventory and sales.'),
     item('catalog','Offline catalog downloaded or skipped', hasCatalog, skipped.catalogSkipped ? 'Skipped for now.' : hasCatalog ? 'Offline catalog present or recorded.' : 'Use Offline Catalog Download Manager.'),
+    item('pokemonCatalog','Offline Pokemon catalog downloaded/skipped', hasPokemonCatalog || skipped.pokemonCatalogSkipped, skipped.pokemonCatalogSkipped ? 'Skipped for now.' : hasPokemonCatalog ? 'Pokemon catalog recorded.' : 'Download or skip in Offline Catalogs.'),
+    item('mtgCatalog','Offline MTG catalog downloaded/skipped', hasMtgCatalog || skipped.mtgCatalogSkipped, skipped.mtgCatalogSkipped ? 'Skipped for now.' : hasMtgCatalog ? 'MTG catalog recorded.' : 'Download or skip in Offline Catalogs.'),
+    item('inventoryAdd','Inventory add flow tested/skipped', !!(skipped.inventoryAddTested || skipped.inventoryAddSkipped), skipped.inventoryAddTested ? 'Inventory add flow tested.' : 'Run Add Inventory walkthrough or skip.'),
+    item('checkoutTest','Checkout test completed/skipped', !!(skipped.checkoutTested || skipped.checkoutSkipped), skipped.checkoutTested ? 'Checkout test completed.' : 'Run Test Drive in Demo Mode or skip.'),
     item('bug','Report Bug tested/skipped', !!(skipped.bugTested || skipped.bugSkipped), skipped.bugTested ? 'Bug report flow tested.' : 'Try Report Bug once before beta testing.')
   ];
 }
@@ -7265,6 +7288,7 @@ function betaRenderOnboardingPanel(){
       <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
         <button class="hbtn" onclick="startBetaWalkthrough('setup')">SETUP WALKTHROUGH</button>
         <button class="hbtn" onclick="startBetaWalkthrough('testDrive')">TEST DRIVE</button>
+        <button class="hbtn" onclick="openBetaHelpMenu()">HELP MENU</button>
         <button class="hbtn" onclick="toggleBetaHelpMode()">${betaHelpEnabled()?'HELP ON':'HELP MODE'}</button>
         <button class="hbtn" onclick="openBugReportModal()">REPORT BUG</button>
         <button class="hbtn" onclick="runNextOnboardingStep()">${complete?'REVIEW SETUP':'CONTINUE SETUP'}</button>
@@ -7337,6 +7361,56 @@ function betaWalkthroughs(){
       {title:'Check Inventory', body:'Inventory shows owned stock, status, quick sale actions, sync, and listing tools.', tab:'inventory', target:'#tab-inventory'},
       {title:'Check EOD / Reports', body:'EOD reports show sales, profit, and payment breakdowns. The walkthrough only points to the area.', tab:'shows', target:'#register-eod-panel'},
       {title:'Report Bug', body:'If anything feels wrong, share a bug report with context and last safe actions.', tab:'overview', target:'#store-onboarding-panel', action:'bug', finish:true}
+    ],
+    researchCard:[
+      {title:'Research A Card', body:'Start with the Research search box. Use full card names, set words, and card numbers when you have them.', tab:'research', target:'#qpl-input'},
+      {title:'Category And Helpers', body:'Choose the right category and use the Pokemon, MTG, or comic helper rows when they apply.', tab:'research', target:'#qpl-cat'},
+      {title:'Results And Pricing', body:'Select the exact result, then inspect condition rows, graph, TCG link, pop count, and price source.', tab:'research', target:'#qpl-results', finish:true}
+    ],
+    addInventory:[
+      {title:'Add Inventory Item', body:'Inventory is owned stock only. Add catalog/search results only when you actually own the item.', tab:'inventory', target:'#tab-inventory'},
+      {title:'Edit Details', body:'Use Edit to verify photo, cost basis, market price, list price, condition, grade, and location.', tab:'inventory', target:'button[onclick*="openEditModal"]'},
+      {title:'Save Safely', body:'In Live Mode, saving affects real inventory. This walkthrough does not click Save for you.', tab:'inventory', target:'#edit-modal', checklist:{inventoryAddTested:'Complete'}, finish:true}
+    ],
+    buyIntake:[
+      {title:'Buy / Intake Cards', body:'Use the Buy/Intake area for customer offers. Scanner queue and Research can feed candidate items here.', tab:'intake', target:'#tab-intake'},
+      {title:'Offer Math', body:'Review market value, offer percentage, your offer, and profit spread before accepting.', tab:'intake', target:'#tab-intake'},
+      {title:'Accept Or Reject', body:'Accept Offer and Cash Buy/Payout are live actions. This walkthrough only explains and highlights them.', tab:'intake', target:'button[onclick*="accept"]', finish:true}
+    ],
+    sellCheckout:[
+      {title:'Sell / Checkout', body:'Use Sell/POS to review cart lines, edit sale prices, remove items, and proceed to payment.', tab:'display', target:'#dealer-cart-tools'},
+      {title:'Payment Methods', body:'Cash, Card/Stripe, Venmo, PayPal, Cash App, and Trade each record different tender context.', tab:'display', target:'#dealer-checkout-actions'},
+      {title:'Complete Sale', body:'Complete Sale is destructive in Live Mode: it records the sale and updates reports/inventory. The walkthrough will not click it.', tab:'display', target:'button[onclick*="completeSale"]', danger:true, checklist:{checkoutTested:'Complete'}, finish:true}
+    ],
+    customerDisplay:[
+      {title:'Customer Display', body:'Customer display is customer-safe. It should show cart items, total due, and payment options without cost or profit.', tab:'display', target:'#customer-display'},
+      {title:'Locked Cart Snapshot', body:'Confirm the customer-facing cart matches the dealer cart before payment.', tab:'display', target:'#cd-items'},
+      {title:'Exit Display', body:'Exit returns to dealer view. It should not alter checkout totals by itself.', tab:'display', target:'#customer-display-exit', finish:true}
+    ],
+    showCashBag:[
+      {title:'Show / Cash Bag', body:'Use Shows and Register tools to manage event context and expected cash.', tab:'shows', target:'#register-show-panel'},
+      {title:'Starting Cash', body:'Starting cash is the baseline for expected cash. Cash sales and cash adjustments change expected bag totals.', tab:'shows', target:'#register-cash-panel', danger:true},
+      {title:'Closeout', body:'Generate closeout, count bag, and close day are live reporting/accounting actions. This walkthrough only points to them.', tab:'shows', target:'#register-eod-panel', danger:true, finish:true}
+    ],
+    inventoryManagement:[
+      {title:'Inventory Management', body:'Use filters to find no photo, no cost, no market, stale price, listed/not listed, and below-cost items.', tab:'inventory', target:'#inventory-health-panel'},
+      {title:'Table And Cards', body:'Table is dense for editing and actions. Cards are visual for show picking.', tab:'inventory', target:'#inv-card-grid-container'},
+      {title:'Quick Actions', body:'Quick sell and Add to Cart prepare sale lines. Inventory is sold only after checkout completion.', tab:'inventory', target:'button[onclick*="dashAddToCart"]', finish:true}
+    ],
+    analyticsReports:[
+      {title:'Analytics / Reports', body:'Sales, profit, inventory value, tender split, and category summaries come from existing inventory and transaction data.', tab:'sales', target:'#owner-analytics-panel'},
+      {title:'Sold Items', body:'Sold item rows help verify sale price, cost, profit, channel, and sold date.', tab:'sales', target:'#sold-body'},
+      {title:'EOD Report', body:'EOD/closeout reports are for review and export. This walkthrough does not alter analytics calculations.', tab:'shows', target:'#register-eod-panel', finish:true}
+    ],
+    offlineCatalogs:[
+      {title:'Offline Catalogs', body:'Offline catalogs help Research when network or API calls are limited. They are not owned inventory.', tab:'backoffice', target:'#offline-catalog-manager-panel'},
+      {title:'Pokemon Catalog', body:'Download or skip Pokemon catalog setup for beta. Skipping is allowed and does not block app use.', tab:'backoffice', target:'#pokemon-export-panel', checklist:{pokemonCatalogSkipped:'Skipped'}},
+      {title:'MTG Catalog', body:'Download or skip MTG catalog setup for beta. Skipping is allowed and does not block app use.', tab:'backoffice', target:'#mtg-export-panel', checklist:{mtgCatalogSkipped:'Skipped'}, finish:true}
+    ],
+    reportBug:[
+      {title:'Report A Bug', body:'Use Report Bug when anything feels wrong. Include what you tried, what happened, and what you expected.', tab:'overview', target:'#beta-bug-btn', action:'bug'},
+      {title:'Screenshot Toggle', body:'Screenshots are optional. Avoid including private customer details.', tab:'overview', target:'#beta-bug-modal'},
+      {title:'Share / Copy', body:'Native share is used when available; otherwise the report text is copied.', tab:'overview', target:'#beta-bug-modal', checklist:{bugTested:'Complete'}, finish:true}
     ]
   };
 }
@@ -7400,23 +7474,60 @@ function showCoachmark(step, kind, index){
   coach.id = 'beta-coach';
   coach.className = 'beta-coach';
   const missing = step.target && !target ? '<div style="color:var(--gold);margin-top:6px">Could not find that setting UI. You can continue safely.</div>' : '';
+  const total = (betaWalkthroughs()[kind] || []).length || 1;
+  const isHelp = kind === 'help';
+  const danger = step.danger || step.demoLiveWarning ? `<div class="beta-coach-danger">${escHtml(step.demoLiveWarning || 'Use caution in Live Store Mode. This can affect real records.')}</div>` : '';
+  const meta = [step.relatedWorkflow ? ['Workflow', step.relatedWorkflow] : null, step.setupRequirement ? ['Setup', step.setupRequirement] : null, step.customerSafe === true ? ['Customer safe', 'Yes'] : step.customerSafe === false ? ['Customer safe', 'Dealer only'] : null].filter(Boolean);
   coach.innerHTML = `
     <div class="beta-coach-title">${escHtml(step.title)}</div>
     <div>${escHtml(step.body)}</div>
     ${missing}
+    ${danger}
+    ${meta.length ? `<div class="beta-coach-meta">${meta.map(([k,v])=>`<div><b>${escHtml(k)}:</b> ${escHtml(v)}</div>`).join('')}</div>` : ''}
     <div class="beta-coach-actions">
-      <button class="hbtn" ${index <= 0 ? 'disabled' : ''} onclick="showBetaWalkthroughStep('${kind}',${index - 1})">BACK</button>
+      ${isHelp ? '<button class="hbtn" onclick="closeBetaCoach()">CLOSE</button>' : `<button class="hbtn" ${index <= 0 ? 'disabled' : ''} onclick="showBetaWalkthroughStep('${kind}',${index - 1})">BACK</button>`}
       ${step.action === 'bug' ? `<button class="hbtn" onclick="openBugReportModal()">REPORT BUG</button>` : ''}
-      <button class="hbtn" onclick="skipBetaWalkthrough('${kind}')">SKIP</button>
-      <button class="hbtn" onclick="finishBetaWalkthrough('${kind}')">${step.finish || index === ((betaWalkthroughs()[kind] || []).length || 1) - 1 ? 'DONE' : 'NEXT'}</button>
-      <button class="hbtn" onclick="openSettingsSection('store')">OPEN SETTINGS</button>
+      ${isHelp ? '' : `<button class="hbtn" onclick="skipBetaWalkthrough('${kind}')">SKIP</button>`}
+      ${isHelp ? '' : `<button class="hbtn" onclick="finishBetaWalkthrough('${kind}')">${step.finish || index === total - 1 ? 'DONE' : 'NEXT'}</button>`}
+      ${isHelp ? '' : `<button class="hbtn" onclick="openSettingsSection('store')">OPEN SETTINGS</button>`}
     </div>`;
   document.body.appendChild(coach);
-  if(target && window.innerWidth > 640) {
-    const r = target.getBoundingClientRect();
-    coach.style.left = Math.min(window.innerWidth - 380, Math.max(12, r.right + 14)) + 'px';
-    coach.style.top = Math.min(window.innerHeight - 220, Math.max(12, r.top)) + 'px';
-  }
+  positionBetaCoach(coach, target);
+  setTimeout(() => document.addEventListener('click', betaCoachOutsideClose, {capture:true}), 60);
+}
+
+function positionBetaCoach(coach, target){
+  if(!coach) return;
+  coach.classList.toggle('no-arrow', !target || window.innerWidth <= 640);
+  if(!target || window.innerWidth <= 640) return;
+  const r = target.getBoundingClientRect();
+  const margin = 12;
+  const w = Math.min(380, window.innerWidth - margin * 2);
+  const h = Math.min(coach.offsetHeight || 220, window.innerHeight - margin * 2);
+  const options = [
+    {side:'right', left:r.right + margin, top:r.top},
+    {side:'left', left:r.left - w - margin, top:r.top},
+    {side:'below', left:r.left, top:r.bottom + margin},
+    {side:'above', left:r.left, top:r.top - h - margin}
+  ];
+  let pick = options.find(o => o.left >= margin && o.top >= margin && o.left + w <= window.innerWidth - margin && o.top + h <= window.innerHeight - margin) || options[0];
+  coach.dataset.side = pick.side;
+  coach.style.width = w + 'px';
+  coach.style.left = Math.max(margin, Math.min(pick.left, window.innerWidth - w - margin)) + 'px';
+  coach.style.top = Math.max(margin, Math.min(pick.top, window.innerHeight - h - margin)) + 'px';
+}
+
+function closeBetaCoach(){
+  document.getElementById('beta-coach')?.remove();
+  document.querySelectorAll('.beta-highlight').forEach(el => el.classList.remove('beta-highlight'));
+}
+
+function betaCoachOutsideClose(e){
+  const coach = document.getElementById('beta-coach');
+  if(!coach) return;
+  if(coach.contains(e.target) || e.target.closest?.('[data-help-key]')) return;
+  if(getOnboardingState().activeWalkthrough) return;
+  closeBetaCoach();
 }
 
 function finishBetaWalkthrough(kind){
@@ -7448,6 +7559,7 @@ function ensureBetaModeLabels(){
     document.querySelector('header')?.after(strip);
   }
   strip.className = 'beta-mode-strip ' + mode;
+  strip.dataset.helpKey = 'mode';
   strip.innerHTML = `<b>${ctx.isDemo ? 'DEMO MODE' : 'LIVE STORE MODE'}</b><span>${ctx.isDemo ? 'Safe testing data.' : 'Live mode changes real inventory and sales.'}</span><span>${escHtml(getActiveStore().displayName || getActiveStoreId())}</span>`;
   let pill = document.getElementById('beta-mode-pill');
   const hdr = document.querySelector('.hdr-right');
@@ -7458,6 +7570,7 @@ function ensureBetaModeLabels(){
   }
   if(pill) {
     pill.className = 'beta-mode-pill ' + mode;
+    pill.dataset.helpKey = 'mode';
     pill.textContent = ctx.isDemo ? 'DEMO MODE' : 'LIVE STORE MODE';
   }
 }
@@ -7468,8 +7581,8 @@ function ensureBetaHeaderActions(){
   const help = document.createElement('button');
   help.className = 'hbtn';
   help.id = 'beta-help-btn';
-  help.textContent = betaHelpEnabled() ? 'HELP ON' : 'HELP';
-  help.onclick = toggleBetaHelpMode;
+  help.textContent = 'HELP';
+  help.onclick = openBetaHelpMenu;
   hdr.appendChild(help);
   const bug = document.createElement('button');
   bug.className = 'hbtn';
@@ -7477,7 +7590,68 @@ function ensureBetaHeaderActions(){
   bug.textContent = 'REPORT BUG';
   bug.onclick = openBugReportModal;
   hdr.appendChild(bug);
+  if(!document.getElementById('beta-floating-help')) {
+    const floatHelp = document.createElement('button');
+    floatHelp.id = 'beta-floating-help';
+    floatHelp.className = 'beta-floating-help';
+    floatHelp.textContent = 'HELP';
+    floatHelp.onclick = openBetaHelpMenu;
+    document.body.appendChild(floatHelp);
+  }
   applyBetaHelpAnnotations();
+}
+
+function betaWorkflowList(){
+  return [
+    ['setup','Set Up Store'],
+    ['testDrive','Try Core Dealer Loop'],
+    ['researchCard','Research a Card'],
+    ['addInventory','Add Inventory Item'],
+    ['buyIntake','Buy / Intake Cards'],
+    ['sellCheckout','Sell / Checkout'],
+    ['customerDisplay','Customer Display'],
+    ['showCashBag','Show / Cash Bag'],
+    ['inventoryManagement','Inventory Management'],
+    ['analyticsReports','Analytics / Reports'],
+    ['offlineCatalogs','Offline Catalogs'],
+    ['reportBug','Report a Bug']
+  ];
+}
+
+function openBetaHelpMenu(){
+  document.getElementById('beta-help-menu')?.remove();
+  const menu = document.createElement('div');
+  menu.id = 'beta-help-menu';
+  menu.className = 'beta-help-menu';
+  const desktopNote = window.innerWidth > 640 ? '<div class="beta-help-note">Desktop: press ESC or click outside to close help. Help Mode intercepts enabled controls and shows guidance instead of firing actions.</div>' : '';
+  menu.innerHTML = `
+    <div class="beta-help-menu-head">
+      <div>
+        <div class="beta-coach-title" style="margin:0">HELP &amp; TRAINING</div>
+        <div class="beta-help-note" style="margin:3px 0 0">${betaHelpEnabled() ? 'Help Mode is ON. Tapping enabled controls opens help instead of running actions.' : 'Use Help Mode or start a walkthrough.'}</div>
+      </div>
+      <button class="hbtn" onclick="closeBetaHelpMenu()">CLOSE</button>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="hbtn" onclick="toggleBetaHelpMode();openBetaHelpMenu()">${betaHelpEnabled() ? 'TURN HELP OFF' : 'TURN HELP ON'}</button>
+      <button class="hbtn" onclick="startBetaWalkthrough('setup');closeBetaHelpMenu()">SETUP WALKTHROUGH</button>
+      <button class="hbtn" onclick="startBetaWalkthrough('testDrive');closeBetaHelpMenu()">TEST DRIVE</button>
+      <button class="hbtn" onclick="resetBetaWalkthroughs();openBetaHelpMenu()">RESET TUTORIALS</button>
+      <button class="hbtn" onclick="openBugReportModal();closeBetaHelpMenu()">REPORT BUG</button>
+    </div>
+    <div class="beta-help-note">Workflow walkthroughs</div>
+    <div class="beta-help-menu-grid">
+      ${betaWorkflowList().map(([id,label])=>`<button class="hbtn" onclick="startBetaWalkthrough('${id}');closeBetaHelpMenu()">${escHtml(label)}</button>`).join('')}
+    </div>
+    ${desktopNote}`;
+  document.body.appendChild(menu);
+  setTimeout(() => document.addEventListener('click', betaHelpMenuOutsideClose, {capture:true}), 60);
+}
+
+function closeBetaHelpMenu(){ document.getElementById('beta-help-menu')?.remove(); }
+function betaHelpMenuOutsideClose(e){
+  const menu = document.getElementById('beta-help-menu');
+  if(menu && !menu.contains(e.target) && e.target.id !== 'beta-help-btn') closeBetaHelpMenu();
 }
 
 function toggleBetaHelpMode(){
@@ -7492,47 +7666,149 @@ function toggleBetaHelpMode(){
   toast_dash(on ? 'Help Mode on' : 'Help Mode off');
 }
 
+const HELP_TEXTS = {
+  storeName:{title:'Store Name',body:'This name appears in dealer-facing setup, receipts, customer display, exports, and bug reports. It is safe to edit during setup.',relatedWorkflow:'Setup',setupRequirement:'Store profile'},
+  storeLocation:{title:'Store Location',body:'Location and contact fields help identify your store in reports and customer-facing materials. They do not affect pricing or checkout math.',relatedWorkflow:'Setup',setupRequirement:'Store profile'},
+  worker:{title:'Worker / API Status',body:'The Worker powers pricing, exports, health checks, and live lookups. This check should never expose API keys in the browser.',relatedWorkflow:'Setup',setupRequirement:'Worker URL'},
+  payment:{title:'Payment Settings',body:'Cash works without setup. Venmo, PayPal, and Cash App need handles or links. Stripe/Card requires backend Stripe setup before live card checkout.',relatedWorkflow:'Setup',setupRequirement:'Payment handles',demoLiveWarning:'Live mode uses real payment instructions.'},
+  venmo:{title:'Venmo',body:'Save the Venmo handle or payment link shown to customers during checkout. Confirm payment received before completing a sale.',relatedWorkflow:'Checkout',customerSafe:true},
+  paypal:{title:'PayPal',body:'Save the PayPal handle, email, or link shown to customers during checkout. Confirm payment received before completing a sale.',relatedWorkflow:'Checkout',customerSafe:true},
+  cashapp:{title:'Cash App',body:'Save the Cash App cashtag or link shown to customers during checkout. Confirm payment received before completing a sale.',relatedWorkflow:'Checkout',customerSafe:true},
+  stripe:{title:'Card / Stripe Status',body:'Card checkout depends on Stripe backend setup. This help pass does not change Stripe processing, QR generation, or checkout finalize behavior.',relatedWorkflow:'Checkout',setupRequirement:'Stripe setup',danger:true},
+  catalog:{title:'Offline Catalog Downloads',body:'Offline catalogs provide reference lookup data for Pokemon and MTG. Catalog rows are not owned inventory until you explicitly add an item.',relatedWorkflow:'Offline Catalogs',setupRequirement:'Optional catalog download'},
+  mode:{title:'Demo vs Live Mode',body:'Demo Mode is safe for testing. Live Store Mode changes real inventory, sale, and report records when you complete real actions.',relatedWorkflow:'Setup',danger:true,demoLiveWarning:'Check the mode before every test.'},
+  subscription:{title:'Subscription / Trial',body:'This banner tells testers whether the current account is in trial, active, or needs attention. It should warn, not block beta testing unless billing rules require it.',relatedWorkflow:'Setup'},
+  research:{title:'Research Search',body:'Type the full card name, card number, set, or natural-language query. Searching does not change inventory or checkout records.',relatedWorkflow:'Research'},
+  prices:{title:'Get Prices',body:'Loads available pricing for the selected result. Use live refresh only when you need current data because it may call provider APIs.',relatedWorkflow:'Research'},
+  liveRefresh:{title:'Live Refresh',body:'Refreshes pricing from the live provider when available. Cached data is faster and safer for repeated testing.',relatedWorkflow:'Research'},
+  condition:{title:'Condition / Finish',body:'Choose the exact condition or finish row to set the active price basis. Dropdown changes should not make new API calls.',relatedWorkflow:'Research'},
+  graph:{title:'Price Graph',body:'Shows price history when the provider returns it. If a condition has no history, the chart should explain which path is missing.',relatedWorkflow:'Research'},
+  tcg:{title:'TCGPlayer Link',body:'Opens the product or marketplace URL for the selected card and condition. Opening the link does not change app records.',relatedWorkflow:'Research'},
+  pop:{title:'Population Count',body:'Shows grading population data when available. It is reference context, not a buy or sell price.',relatedWorkflow:'Research'},
+  addBuy:{title:'Add To Buy',body:'Moves the researched candidate into the buy/intake workflow so you can build an offer. It does not complete a payout.',relatedWorkflow:'Buy / Intake'},
+  addInventory:{title:'Add To Inventory',body:'Creates or prepares an owned inventory record. In Live Mode this can affect real inventory once saved.',relatedWorkflow:'Inventory',danger:true,demoLiveWarning:'Demo inventory is safe test data.'},
+  addCart:{title:'Add To Cart',body:'Adds this item to the dealer cart. Suggested sale prices round up to the nearest dollar, but you can edit the final sale price before checkout.',relatedWorkflow:'Sell / Checkout'},
+  setBrowser:{title:'Set Browser',body:'Browses cards in a set. This is reference/catalog browsing and should not change owned inventory until you add an item.',relatedWorkflow:'Research'},
+  artist:{title:'Artist Search',body:'Filters or searches by artist when supported by the catalog source. It is lookup-only.',relatedWorkflow:'Research'},
+  syncPrices:{title:'Sync Latest Prices',body:'Compares inventory items against cached/live pricing. Review changes before applying; this help pass does not change sync math.',relatedWorkflow:'Inventory'},
+  scannerQueue:{title:'Scanner Queue',body:'Scanner candidates can be sent to Research for exact lookup. The queue itself is not a completed inventory or sale record.',relatedWorkflow:'Buy / Intake'},
+  offerPercent:{title:'Offer Percentage',body:'Controls the buy offer percentage. Offers are guidance for the dealer; changing this does not pay the customer by itself.',relatedWorkflow:'Buy / Intake'},
+  marketValue:{title:'Market Value',body:'Market value is the reference price used for offers and decisions. Always confirm exact item and condition first.',relatedWorkflow:'Buy / Intake'},
+  yourOffer:{title:'Your Offer',body:'The calculated amount you may offer the customer. A payout is only real when you intentionally complete the cash buy/payout flow.',relatedWorkflow:'Buy / Intake'},
+  profitSpread:{title:'Profit Spread',body:'Shows the gap between cost/offer and expected sale value. This is dealer-only and should not be shown to customers.',relatedWorkflow:'Buy / Intake',customerSafe:false},
+  acceptOffer:{title:'Accept Offer',body:'Accepts the intake offer and moves the item toward inventory/payout workflow. Confirm mode before live testing.',relatedWorkflow:'Buy / Intake',danger:true},
+  rejectOffer:{title:'Reject Offer',body:'Rejects or skips the intake item. This should not affect inventory unless a record has already been saved.',relatedWorkflow:'Buy / Intake'},
+  cashPayout:{title:'Cash Buy / Payout',body:'Records cash leaving the bag for a buy or payout. In Live Mode this affects cash expected in the bag.',relatedWorkflow:'Show / Cash Bag',danger:true},
+  oneOff:{title:'Add One-Off',body:'Adds a manual sale line that is not tied to an inventory item. It is useful for supplies, bulk, or quick show sales.',relatedWorkflow:'Sell / Checkout'},
+  cartEdit:{title:'Cart Item Edit',body:'Adjusts the sale line before checkout. Inventory status does not change until sale completion.',relatedWorkflow:'Sell / Checkout'},
+  cartRemove:{title:'Remove Item',body:'Removes a line from the cart. This can change the customer total but should not mark inventory sold by itself.',relatedWorkflow:'Sell / Checkout'},
+  paymentProceed:{title:'Proceed To Payment',body:'Moves the cart to payment review. Confirm totals before completing the sale.',relatedWorkflow:'Sell / Checkout'},
+  clearCart:{title:'Clear Cart',body:'Clears the current cart. This is destructive to the in-progress cart but should not alter sold inventory by itself.',relatedWorkflow:'Sell / Checkout',danger:true},
+  phoneCheckout:{title:'Phone Scanner Checkout',body:'Use the phone/scanner handoff for quick sale entry. Confirm the cart before payment.',relatedWorkflow:'Sell / Checkout'},
+  payCash:{title:'Cash Payment',body:'Cash sales add to expected cash in the bag when the sale is completed.',relatedWorkflow:'Sell / Checkout'},
+  payCard:{title:'Card / Stripe Payment',body:'Card payments rely on Stripe setup. This help pass does not alter Stripe processing.',relatedWorkflow:'Sell / Checkout',danger:true},
+  payTrade:{title:'Trade Payment',body:'Trade records non-cash value. Confirm your local process before completing the sale.',relatedWorkflow:'Sell / Checkout'},
+  completeSale:{title:'Complete Sale',body:'Finalizes the sale, records the payment method, updates inventory status, and adds the sale to reports.',relatedWorkflow:'Sell / Checkout',danger:true,demoLiveWarning:'In Demo Mode this is safe test data. In Live Store Mode this changes real records.'},
+  customerDisplay:{title:'Customer Display',body:'Shows a customer-safe cart view. It must not reveal cost, profit, or dealer-only notes.',relatedWorkflow:'Customer Display',customerSafe:true},
+  totalDue:{title:'Total Due',body:'The customer-facing amount due for the locked cart snapshot. Verify it before payment.',relatedWorkflow:'Customer Display',customerSafe:true},
+  inventoryAdd:{title:'Add Inventory Item',body:'Creates owned stock. Use it for items you actually have, not just catalog cards.',relatedWorkflow:'Inventory'},
+  inventoryEdit:{title:'Edit Inventory Item',body:'Edit item details such as cost, market, list price, photo, condition, location, and notes. Saves affect real records in Live Mode.',relatedWorkflow:'Inventory',danger:true},
+  photo:{title:'Upload / Change Photo',body:'Attaches a compressed item photo to the inventory record or local override. Use clear photos for faster visual picking.',relatedWorkflow:'Inventory'},
+  cost:{title:'Cost Basis',body:'What you paid for the item. This drives profit/margin reporting and should stay dealer-only.',relatedWorkflow:'Inventory',customerSafe:false},
+  market:{title:'Market Price',body:'Current reference value from pricing sources or manual entry. It is not always the same as your list price.',relatedWorkflow:'Inventory'},
+  listPrice:{title:'List / Sale Price',body:'The price you intend to ask or sell for. Profit and margin compare this to cost basis.',relatedWorkflow:'Inventory'},
+  margin:{title:'Profit / Margin',body:'Dealer-only estimate comparing list price or sale price against cost basis.',relatedWorkflow:'Inventory',customerSafe:false},
+  status:{title:'Status / Lifecycle',body:'Tracks whether an item is in stock, listed, at show, sold, archived, or pulled. Some statuses affect visibility.',relatedWorkflow:'Inventory'},
+  filters:{title:'Inventory Filters',body:'Use filters to find missing photos, missing cost, stale prices, listed/not listed items, and other action queues.',relatedWorkflow:'Inventory'},
+  showStart:{title:'Start / Save Show',body:'Starts or updates show context for event selling. It should not change checkout math.',relatedWorkflow:'Show / Cash Bag'},
+  startingCash:{title:'Starting Cash',body:'Cash counted at the beginning of the day or show. This is the baseline for cash bag expected totals.',relatedWorkflow:'Show / Cash Bag',danger:true},
+  showDiscount:{title:'Show Percent Off',body:'Applies show pricing guidance where supported. Confirm sale totals before checkout.',relatedWorkflow:'Show / Cash Bag'},
+  closeout:{title:'Generate Closeout',body:'Builds an end-of-day/show summary from existing sales and tender data. It should not rewrite the ledger.',relatedWorkflow:'Show / Cash Bag'},
+  endShow:{title:'End Show',body:'Ends show context and can generate closeout reporting. Do not require testers to perform this in walkthroughs.',relatedWorkflow:'Show / Cash Bag',danger:true},
+  cashAdjust:{title:'Cash Adjustment',body:'Add/remove cash, expense, no sale, correction, and count bag entries affect expected cash. Use carefully in Live Mode.',relatedWorkflow:'Show / Cash Bag',danger:true},
+  closeDay:{title:'Close Day',body:'Finalizes day closeout/count workflow. This is a live accounting action.',relatedWorkflow:'Show / Cash Bag',danger:true},
+  todaySales:{title:'Today Sales',body:'Shows sales recorded today from existing transaction data.',relatedWorkflow:'Analytics / Reports'},
+  todayProfit:{title:'Today Profit',body:'Uses existing sale and cost data to summarize dealer profit. Missing costs reduce confidence.',relatedWorkflow:'Analytics / Reports'},
+  inventoryValue:{title:'Inventory Value',body:'Estimated market/list value for in-stock inventory.',relatedWorkflow:'Analytics / Reports'},
+  tenderBreakdown:{title:'Tender Breakdown',body:'Shows existing payment method totals. This help pass does not change tender math.',relatedWorkflow:'Analytics / Reports'},
+  categoryBreakdown:{title:'Category Breakdown',body:'Shows sales or inventory grouped by category.',relatedWorkflow:'Analytics / Reports'},
+  eodReport:{title:'EOD Report',body:'End-of-day report summarizes sales, tender split, and closeout data.',relatedWorkflow:'Analytics / Reports'},
+  bug:{title:'Report Bug',body:'Shares tester notes plus safe context: app version, mode, active tab, viewport, and recent actions. Screenshots are optional.',relatedWorkflow:'Bug Report'},
+  screenshot:{title:'Screenshot Toggle',body:'Includes a screenshot when supported by the browser. Do not include private customer info in screenshots.',relatedWorkflow:'Bug Report'},
+  shareReport:{title:'Share / Copy Report',body:'Uses native sharing when available, otherwise copies the bug report text to the clipboard.',relatedWorkflow:'Bug Report'}
+};
+
 function betaHelpContent(key){
-  const map = {
-    storeName:['Store name','Printed on receipts, display screens, and customer-facing flows. Setup required before live testing.'],
-    worker:['Worker/API status','Checks whether backend APIs are reachable. It does not reveal API keys.'],
-    payment:['Payment handles','QR payment methods need saved handles. Cash needs no setup. Stripe/Card needs backend setup.'],
-    catalog:['Offline catalog downloads','Downloads official catalog reference data. Catalog rows do not create inventory.'],
-    research:['Research search','Searches pricing/catalog sources. Searching does not change real data.'],
-    prices:['Get prices','Hydrates condition/finish prices for the selected card.'],
-    graph:['Price graph','Shows available history for the selected card/condition when returned by provider data.'],
-    tcg:['TCG link','Opens the exact product or search link. Does not change app data.'],
-    pop:['Pop count','Shows population data when provider data is available.'],
-    addCart:['Add to cart','Creates a sale line. The sale is not final until checkout completion.'],
-    addInventory:['Add to inventory','Creates owned stock. In Live Mode this affects real inventory records.'],
-    syncPrices:['Sync latest prices','Compares inventory against latest/cached pricing. Live refresh may call providers.'],
-    completeSale:['Complete sale','Finalizes a checkout. In Live Mode this changes sale and inventory records.'],
-    quickSell:['Quick sell','Starts a sale from an inventory item.'],
-    ebay:['Add to eBay','Prepares an online listing workflow.'],
-    markSold:['Mark sold','Changes item lifecycle to sold.'],
-    bug:['Report bug','Shares tester notes plus safe context, app version, mode, tab, viewport, and last actions.']
-  };
-  return map[key] || ['Help','This control has beta help available.'];
+  return HELP_TEXTS[key] || {title:'Help',body:'No detailed help has been added for this control yet.',relatedWorkflow:'General'};
 }
 
 function showHelpForElement(el){
   const key = el?.dataset?.helpKey || 'help';
-  const [title, body] = betaHelpContent(key);
-  showCoachmark({ title, body, target:null }, 'help', 0);
+  const help = betaHelpContent(key);
+  showCoachmark({...help, target:el, helpKey:key, finish:true}, 'help', 0);
 }
 
 function applyBetaHelpAnnotations(){
   const entries = [
-    ['#vp-storeName','storeName'], ['#vp-location','storeName'], ['#backoffice-system-panel','worker'],
-    ['#payment-settings-panel','payment'], ['#offline-catalog-manager-panel','catalog'], ['#qpl-input','research'],
-    ['button[onclick*="loadPricesForResultCard"]','prices'], ['button[onclick*="openQplChartModal"]','graph'],
-    ['button[onclick*="openQuickExternal"]','tcg'], ['.pop-panel','pop'],
+    ['#beta-mode-strip,#beta-mode-pill','mode'],
+    ['#vp-storeName,#vendor-profile-panel input[name*="store"],#vendor-profile-panel','storeName'],
+    ['#vp-location,#vendor-profile-panel input[name*="location"]','storeLocation'],
+    ['#backoffice-system-panel,#worker-url,#sync-status','worker'],
+    ['#payment-settings-panel','payment'], ['input[id*="venmo"],#pay-venmo,#venmo-link','venmo'],
+    ['input[id*="paypal"],#pay-paypal,#paypal-link','paypal'], ['input[id*="cashapp"],input[id*="cashApp"],#pay-cashapp,#cashapp-link','cashapp'],
+    ['button[onclick*="stripe"],#stripe-status,#stripe-qr-modal','stripe'],
+    ['#offline-catalog-manager-panel,#offline-cache-panel','catalog'],
+    ['#subscription-panel,.subscription-banner','subscription'],
+    ['#qpl-input','research'], ['#qpl-cat,#qpl-pokemon-helper,#qpl-mtg-helper,#qpl-comic-helper','setBrowser'],
+    ['button[onclick*="loadPricesForResultCard"],button[onclick*="runPriceLookup"],button[onclick*="getPrices"]','prices'],
+    ['button[onclick*="refresh"],button[onclick*="Live"],button[onclick*="live"]','liveRefresh'],
+    ['.qpl-cond-chip,select[id*="condition"],#edit-condition','condition'],
+    ['button[onclick*="openQplChartModal"],button[onclick*="chart"],button[onclick*="Graph"]','graph'],
+    ['button[onclick*="openQuickExternal"],button[onclick*="tcg"],button[onclick*="TCG"]','tcg'], ['.pop-panel,button[onclick*="fetchPopCount"]','pop'],
     ['button[onclick*="addQuickLookupToSaleCart"],button[onclick*="addSelectedQuickLookupToSaleCart"]','addCart'],
     ['button[onclick*="addSelectedResearchResultToInventory"],button[onclick*="addQuickLookupToInventory"],button[onclick*="bulkAddBuyListToInventory"]','addInventory'],
+    ['button[onclick*="addToBuy"],button[onclick*="buy"],#register-buy-panel','addBuy'],
     ['#sync-prices-btn,button[onclick*="openPriceSyncModal"],button[onclick*="manualSyncInventoryNow"]','syncPrices'],
+    ['#research-queue-panel,button[onclick*="Scanner"],button[onclick*="scanner"],button[onclick*="importScannerQueue"]','scannerQueue'],
+    ['input[id*="offer"],#offer-percent,#buy-offer-percent','offerPercent'],
+    ['#buy-market,#market-value,.market-value','marketValue'],
+    ['#buy-offer,#your-offer,.your-offer','yourOffer'],
+    ['#profit-spread,.profit-spread','profitSpread'],
+    ['button[onclick*="acceptOffer"],button[onclick*="Accept Offer"]','acceptOffer'],
+    ['button[onclick*="reject"],button[onclick*="Reject"]','rejectOffer'],
+    ['button[onclick*="payout"],button[onclick*="cashBuy"],button[onclick*="Cash Buy"]','cashPayout'],
+    ['button[onclick*="openOneOffSellModal"],#oneoff-sell-modal','oneOff'],
+    ['button[onclick*="editCart"],button[onclick*="updateCart"]','cartEdit'],
+    ['button[onclick*="removeCart"],button[onclick*="removeFromCart"],button[onclick*="clearCartLine"]','cartRemove'],
+    ['button[onclick*="Proceed"],button[onclick*="proceed"],#dealer-checkout-actions','paymentProceed'],
+    ['button[onclick*="clearCart"],#cd-clear-cart','clearCart'],
+    ['button[onclick*="phone"],button[onclick*="scannerCheckout"]','phoneCheckout'],
+    ['button[data-method="cash"],button[onclick*="cash"]','payCash'],
+    ['button[data-method="card"],button[onclick*="Card"],button[onclick*="stripe"]','payCard'],
+    ['button[data-method="trade"],button[onclick*="trade"]','payTrade'],
     ['button[onclick*="completeSale"],button[onclick*="stripeQrComplete"]','completeSale'],
+    ['#customer-display,#cd-items,#cd-totals','customerDisplay'], ['#cd-total','totalDue'],
+    ['button[onclick*="openEditModal"],#edit-modal','inventoryEdit'],
+    ['#edit-photo-preview,#edit-photo-file,button[onclick*="handleInventoryEditPhoto"]','photo'],
+    ['#edit-cost','cost'], ['#edit-market','market'], ['#edit-list-price','listPrice'], ['#edit-profit-preview','margin'],
+    ['#edit-condition,#edit-grade-extra','condition'], ['#edit-location','status'],
+    ['#inventory-health-panel,.fb,#tbl-q','filters'],
     ['button[onclick*="dashAddToCart"]','quickSell'], ['button[onclick*="openEbayFromDash"]','ebay'],
-    ['button[onclick*="markSold"],button[onclick*="setLifecycle"]','markSold'], ['#beta-bug-btn','bug']
+    ['button[onclick*="markSold"],button[onclick*="setLifecycle"]','markSold'],
+    ['#register-show-panel,button[onclick*="saveShow"],button[onclick*="startShow"]','showStart'],
+    ['#register-cash-panel,input[id*="starting"],input[id*="cash"]','startingCash'],
+    ['input[id*="discount"],input[id*="show"]','showDiscount'],
+    ['button[onclick*="closeout"],button[onclick*="generateCloseout"]','closeout'],
+    ['button[onclick*="endShow"],button[onclick*="End Show"]','endShow'],
+    ['button[onclick*="addCash"],button[onclick*="removeCash"],button[onclick*="expense"],button[onclick*="correction"],button[onclick*="countBag"]','cashAdjust'],
+    ['button[onclick*="closeDay"],button[onclick*="Close Day"]','closeDay'],
+    ['#owner-analytics-panel,#sales-today,#today-sales','todaySales'],
+    ['#profit-meter,#today-profit','todayProfit'],
+    ['#top-val,#inventory-health-panel','inventoryValue'],
+    ['#ch-bars,#tender-breakdown','tenderBreakdown'],
+    ['#monthly-trend,#category-breakdown','categoryBreakdown'],
+    ['#register-eod-panel','eodReport'],
+    ['#beta-bug-btn','bug'], ['#beta-bug-screenshot','screenshot'], ['button[onclick*="submitBugReport"]','shareReport']
   ];
   entries.forEach(([sel,key]) => document.querySelectorAll(sel).forEach(el => el.dataset.helpKey = key));
   document.body.classList.toggle('beta-help-on', betaHelpEnabled());
@@ -7548,7 +7824,13 @@ document.addEventListener('click', e => {
       ['button[onclick*="addQuickLookupToSaleCart"],button[onclick*="addSelectedQuickLookupToSaleCart"]','addCart'],
       ['button[onclick*="addSelectedResearchResultToInventory"],button[onclick*="addQuickLookupToInventory"],button[onclick*="bulkAddBuyListToInventory"]','addInventory'],
       ['button[onclick*="openPriceSyncModal"],button[onclick*="manualSyncInventoryNow"]','syncPrices'],
-      ['button[onclick*="completeSale"],button[onclick*="stripeQrComplete"]','completeSale']
+      ['button[onclick*="completeSale"],button[onclick*="stripeQrComplete"]','completeSale'],
+      ['button[onclick*="dashAddToCart"]','quickSell'],
+      ['button[onclick*="openEditModal"]','inventoryEdit'],
+      ['button[onclick*="openOneOffSellModal"]','oneOff'],
+      ['button[onclick*="clearCart"]','clearCart'],
+      ['button[onclick*="payout"],button[onclick*="cashBuy"]','cashPayout'],
+      ['button[onclick*="closeDay"],button[onclick*="endShow"]','closeDay']
     ];
     for(const [sel,key] of dynamic){
       const node = e.target.closest?.(sel);
@@ -7561,6 +7843,14 @@ document.addEventListener('click', e => {
     showHelpForElement(helpEl);
   }
 }, true);
+
+document.addEventListener('keydown', e => {
+  if(e.key === 'Escape') {
+    document.getElementById('beta-help-menu')?.remove();
+    closeBetaCoach();
+    if(getOnboardingState().activeWalkthrough) skipBetaWalkthrough(getOnboardingState().activeWalkthrough);
+  }
+});
 
 function buildBugReportText(note, severity, screenshotNote = ''){
   const ctx = getAccountContext();
