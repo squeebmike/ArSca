@@ -25611,8 +25611,16 @@ async function sbFetchOneCard(card, idx, pcConsole, gen) {
   if (!pc) {
     try {
       const q = `${card.player || ''} ${card.number !== undefined ? '#' + card.number : ''}`.trim();
-      const data = await sbWorker(`/pricing/pricecharting/search?q=${encodeURIComponent(q)}&console=${encodeURIComponent(pcConsole)}`);
-      pc = data.products?.[0] || null;
+      // live=true bypasses the CSV cache so the console filter actually works
+      const data = await sbWorker(`/pricing/pricecharting/search?q=${encodeURIComponent(q)}&console=${encodeURIComponent(pcConsole)}&live=true`);
+      const year = (SB.currentData?.name || '').match(/\d{4}/)?.[0] || '';
+      const sport = SB.currentData?.sport || '';
+      const products = data.products || [];
+      // Prefer a result whose consoleName contains the sport or year (avoids Funko/comics cross-hits)
+      pc = products.find(p => {
+        const cn = (p.consoleName || '').toLowerCase();
+        return (sport && cn.includes(sport)) || (year && cn.includes(year));
+      }) || products[0] || null;
       if (pc) SB._pcCache[key] = pc;
     } catch(e) { return; }
   }
