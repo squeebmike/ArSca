@@ -16,6 +16,10 @@
 *{margin:0;padding:0;box-sizing:border-box;}
 html{max-width:100vw;overflow-x:hidden;}
 body{background:var(--bg);color:var(--text);font-family:var(--brand-font-family);min-height:100vh;padding-bottom:calc(72px + env(safe-area-inset-bottom));max-width:100vw;overflow-x:hidden;}
+@media(min-width:901px){
+  body{padding-bottom:0;}
+  #lba-nav{display:none!important;}
+}
 @media(max-width:640px){
   /* GLOBAL MOBILE CONTAINMENT — belt-and-suspenders against any element pushing past viewport width */
   .panel,.sec,.two,.three,.tc,.tabs,.tbl-wrap,.tab-panel,.module-grid,.responsive-grid,
@@ -417,6 +421,7 @@ tr.sold:hover td{opacity:.7;}
 .buy-tray{min-height:60px;margin-bottom:12px;}
 .buy-tray-empty{font-family:var(--font-mono);font-size:10px;color:var(--dim);text-align:center;padding:20px;border:1px dashed var(--border);border-radius:8px;}
 .buy-tray-item{display:grid;grid-template-columns:48px 1fr 70px 80px 62px 30px;align-items:center;gap:7px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;background:var(--surf2);}
+.buy-tray-thumb-wrap{width:44px;height:44px;flex-shrink:0;display:flex;align-items:center;justify-content:center;}
 .buy-tray-thumb{width:44px;height:44px;object-fit:cover;border-radius:5px;border:1px solid var(--border);}
 .buy-tray-thumb-ph{width:44px;height:44px;border-radius:5px;border:1px solid var(--border);background:var(--surf);display:flex;align-items:center;justify-content:center;font-family:monospace;font-size:7px;color:var(--dim);}
 .buy-tray-name{font-family:var(--font-mono);font-size:11px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
@@ -1263,6 +1268,7 @@ body.wt-show-help.show-mode .help-q-btn{display:inline-flex;}
 body.show-mode .inv-sync-badge{display:none;}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 </head>
 <body>
 
@@ -2504,7 +2510,6 @@ const CAT_MAP = {
   '891253037409c4fe59854f3c9ef99a6b':'Sports',
   '475ed99cc87de703b543fe9529e2c1da':'TCG',
   '27f1c9c43a61cf03820a31132cfc6b9a':'Comic',
-  '2c3076cc33bf2f312265bfdc894db265':'Supplies', // added from live schema
   '2c3076cc33bf2f312265bfdc894db265':'Supplies',
 };
 
@@ -2937,9 +2942,9 @@ async function openSubscriptionCheckout(storeId, email){
     if(data.ok && data.checkout_url) {
       window.open(data.checkout_url, '_blank');
     } else {
-      alert('Checkout error: ' + (data.error || 'Unknown error. Check Worker secrets: STRIPE_SECRET_KEY and STRIPE_SUBSCRIPTION_PRICE_ID.'));
+      toast_dash('Checkout error: ' + (data.error || 'Check Worker secrets: STRIPE_SECRET_KEY and STRIPE_SUBSCRIPTION_PRICE_ID.'), 6000);
     }
-  } catch(e){ alert('Could not start checkout: ' + e.message); }
+  } catch(e){ toast_dash('Could not start checkout: ' + e.message, 5000); }
 }
 
 async function openSubscriptionPortal(storeId){
@@ -2950,8 +2955,8 @@ async function openSubscriptionPortal(storeId){
     });
     const data = await res.json();
     if(data.ok && data.url) window.open(data.url, '_blank');
-    else alert('Portal error: ' + (data.error || 'No billing portal found.'));
-  } catch(e){ alert('Could not open portal: ' + e.message); }
+    else toast_dash('Portal error: ' + (data.error || 'No billing portal found.'), 5000);
+  } catch(e){ toast_dash('Could not open portal: ' + e.message, 5000); }
 }
 
 function renderStorePickerOptions(stores){
@@ -7485,11 +7490,11 @@ function showCoachmark(step, kind, index){
     ${danger}
     ${meta.length ? `<div class="beta-coach-meta">${meta.map(([k,v])=>`<div><b>${escHtml(k)}:</b> ${escHtml(v)}</div>`).join('')}</div>` : ''}
     <div class="beta-coach-actions">
-      ${isHelp ? '<button class="hbtn" onclick="closeBetaCoach()">CLOSE</button>' : `<button class="hbtn" ${index <= 0 ? 'disabled' : ''} onclick="showBetaWalkthroughStep('${kind}',${index - 1})">BACK</button>`}
+      ${isHelp ? '<button class="hbtn" onclick="closeBetaCoach()">CLOSE</button>' : (index > 0 ? `<button class="hbtn" onclick="showBetaWalkthroughStep('${kind}',${index - 1})">BACK</button>` : '')}
       ${step.action === 'bug' ? `<button class="hbtn" onclick="openBugReportModal()">REPORT BUG</button>` : ''}
       ${isHelp ? '' : `<button class="hbtn" onclick="skipBetaWalkthrough('${kind}')">SKIP</button>`}
       ${isHelp ? '' : `<button class="hbtn" onclick="finishBetaWalkthrough('${kind}')">${step.finish || index === total - 1 ? 'DONE' : 'NEXT'}</button>`}
-      ${isHelp ? '' : `<button class="hbtn" onclick="openSettingsSection('store')">OPEN SETTINGS</button>`}
+      ${(!isHelp && kind === 'setup') ? `<button class="hbtn" onclick="openSettingsSection('store')">OPEN SETTINGS</button>` : ''}
     </div>`;
   document.body.appendChild(coach);
   positionBetaCoach(coach, target);
@@ -13221,15 +13226,15 @@ async function renderScanInbox(){
 setInterval(renderScanInbox, 2500);
 renderScanInbox();
 
-function toast_dash(msg){
+function toast_dash(msg, ms = 2500){
   const existing = document.getElementById('dash-toast');
   if(existing) existing.remove();
   const t = document.createElement('div');
   t.id = 'dash-toast';
-  t.style.cssText = 'position:fixed;bottom:72px;left:50%;transform:translateX(-50%);background:#00ffb3;color:#000;font-family:var(--font-mono);font-size:10px;font-weight:700;padding:8px 16px;border-radius:6px;z-index:9999;letter-spacing:1px;white-space:nowrap;pointer-events:none';
+  t.style.cssText = 'position:fixed;bottom:72px;left:50%;transform:translateX(-50%);background:#00ffb3;color:#000;font-family:var(--font-mono);font-size:10px;font-weight:700;padding:8px 16px;border-radius:6px;z-index:9999;letter-spacing:1px;white-space:nowrap;max-width:calc(100vw - 40px);overflow:hidden;text-overflow:ellipsis;pointer-events:none';
   t.textContent = msg;
   document.body.appendChild(t);
-  setTimeout(() => t.remove(), 2500);
+  setTimeout(() => t.remove(), ms);
 }
 
 function openEbayFromDash(id){
@@ -22509,11 +22514,11 @@ function renderBuyList(){
     const invBtn = added
       ? `<span style="font-family:monospace;font-size:9px;color:var(--g);white-space:nowrap">✓ INV</span>`
       : `<button class="hbtn" onclick="addBuyItemToInventory('${i.id}')" style="font-size:9px;padding:4px 8px;min-height:32px;color:var(--gold);white-space:nowrap" title="Add to inventory">+INV</button>`;
-    // Phase 4: lazy image with error fallback
+    // Phase 4: lazy image with error fallback — wrapped in a single div so
+    // the img+placeholder pair counts as one nth-child for mobile flex ordering.
     const imgEl = i.imageUrl
-      ? `<img src="${escHtml(i.imageUrl)}" class="buy-tray-thumb" alt="" loading="lazy" onerror="this.style.display='none';this.nextSibling.style.display='flex'">`
-        + `<div class="buy-tray-thumb-ph" style="display:none">IMG</div>`
-      : '<div class="buy-tray-thumb-ph">IMG</div>';
+      ? `<div class="buy-tray-thumb-wrap"><img src="${escHtml(i.imageUrl)}" class="buy-tray-thumb" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><div class="buy-tray-thumb-ph" style="display:none">IMG</div></div>`
+      : '<div class="buy-tray-thumb-wrap"><div class="buy-tray-thumb-ph">IMG</div></div>';
     return `<div class="buy-tray-item" style="grid-template-columns:48px 1fr 70px 80px 62px 42px 30px">
       ${imgEl}
       <div class="buy-tray-info">
