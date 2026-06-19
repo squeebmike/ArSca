@@ -1972,40 +1972,29 @@ body.show-mode .inv-sync-badge{display:none;}
     <!-- Card browser (shown after picking a set) -->
     <div id="sb-card-browser" style="display:none">
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px;padding-top:10px;border-top:1px solid var(--border)">
-        <button class="hbtn" onclick="sbCloseBrowser()" style="padding:6px 14px">← Sets</button>
-        <div id="sb-set-title" style="font-family:'Orbitron',monospace;font-size:13px;color:var(--primary);letter-spacing:.05em"></div>
-        <div style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap;align-items:center">
-          <select id="sb-section" onchange="sbLoadCards()" style="font-family:var(--font-mono);font-size:11px;background:var(--surf2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:6px 10px">
+        <button class="hbtn" onclick="sbCloseBrowser()" style="font-size:10px;padding:4px 10px">← Sets</button>
+        <div id="sb-set-title" style="font-family:'Orbitron',monospace;font-size:11px;color:var(--primary);letter-spacing:.05em"></div>
+        <div style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap">
+          <select id="sb-section" onchange="sbLoadCards()" style="font-family:var(--font-mono);font-size:10px;background:var(--surf2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:4px 8px">
             <option value="base">Base Set</option>
             <option value="inserts">Inserts</option>
             <option value="autos">Autographs</option>
             <option value="mem">Memorabilia</option>
             <option value="teams">Team Sets</option>
           </select>
-          <input id="sb-card-search" placeholder="Player / # / team…" oninput="sbSearchCards()" style="font-family:var(--font-mono);font-size:11px;background:var(--surf2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:6px 12px;width:180px">
+          <input id="sb-card-search" placeholder="Player / # / team…" oninput="sbSearchCards()" style="font-family:var(--font-mono);font-size:10px;background:var(--surf2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:4px 10px;width:170px">
         </div>
       </div>
-      <div id="sb-parallels-bar" style="display:none;font-family:var(--font-mono);font-size:10px;color:var(--dim);line-height:1.9;margin-bottom:10px;padding:10px;background:var(--surf2);border-radius:6px;border:1px solid var(--border)"></div>
-      <div id="sb-card-status" style="font-family:var(--font-mono);font-size:10px;color:var(--dim);margin-bottom:8px"></div>
-      <div id="sb-card-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px"></div>
-    </div>
-  </div>
-
-  <!-- Card detail modal -->
-  <div id="sb-card-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.75);align-items:center;justify-content:center;padding:20px">
-    <div style="background:var(--bg);border:1px solid var(--primary);border-radius:12px;max-width:460px;width:100%;max-height:90vh;overflow-y:auto;padding:20px;position:relative">
-      <button onclick="sbCloseModal()" style="position:absolute;top:12px;right:12px;background:none;border:none;color:var(--dim);font-size:18px;cursor:pointer;font-family:var(--font-mono)">✕</button>
-      <div style="display:flex;gap:16px;align-items:flex-start">
-        <div id="sbm-img-wrap" style="flex-shrink:0;width:110px;height:155px;background:var(--surf2);border-radius:8px;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:36px;overflow:hidden">🃏</div>
-        <div style="flex:1;min-width:0">
-          <div id="sbm-player" style="font-family:'Orbitron',monospace;font-size:15px;font-weight:700;color:var(--primary);line-height:1.3;margin-bottom:4px"></div>
-          <div id="sbm-number" style="font-family:var(--font-mono);font-size:12px;color:var(--dim);margin-bottom:2px"></div>
-          <div id="sbm-team" style="font-family:var(--font-mono);font-size:12px;color:var(--text);margin-bottom:2px"></div>
-          <div id="sbm-setname" style="font-family:var(--font-mono);font-size:11px;color:var(--primary);opacity:.7;margin-bottom:10px"></div>
-          <div id="sbm-price-area" style="font-family:var(--font-mono);font-size:11px;color:var(--dim)">Loading price…</div>
+      <div id="sb-parallels-bar" style="display:none;font-family:var(--font-mono);font-size:9px;color:var(--dim);line-height:1.8;margin-bottom:8px;padding:8px;background:var(--surf2);border-radius:6px;border:1px solid var(--border)"></div>
+      <div id="sb-card-status" style="font-family:var(--font-mono);font-size:9px;color:var(--dim);margin-bottom:6px"></div>
+      <div id="sb-card-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:6px"></div>
+      <div id="sb-price-drawer" style="display:none;margin-top:10px;padding:12px;background:var(--surf2);border:1px solid var(--primary);border-radius:8px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <div id="sb-price-card-name" style="font-family:var(--font-mono);font-size:11px;font-weight:700;color:var(--primary)"></div>
+          <button class="hbtn" onclick="document.getElementById('sb-price-drawer').style.display='none'" style="font-size:10px;padding:3px 8px">✕</button>
         </div>
+        <div id="sb-price-results" style="font-family:var(--font-mono);font-size:10px;color:var(--dim)">Searching…</div>
       </div>
-      <div id="sbm-price-detail" style="margin-top:14px;font-family:var(--font-mono);font-size:11px"></div>
     </div>
   </div>
 
@@ -25456,31 +25445,25 @@ function sbFilterSets() {
   const el = document.getElementById('sb-set-list');
   if (!el) return;
   if (!filtered.length) {
-    el.innerHTML = '<div style="font-family:var(--font-mono);font-size:10px;color:var(--dim)">No sets — click + IMPORT SET</div>';
+    el.innerHTML = '<div style="font-family:var(--font-mono);font-size:10px;color:var(--dim)">No sets — import one with + IMPORT SET</div>';
     return;
   }
   el.innerHTML = filtered.map(s => `
     <div style="position:relative;cursor:pointer;padding:12px 14px;background:var(--surf2);border:1px solid var(--border);border-radius:8px;min-width:200px;flex:0 0 auto;transition:border-color .15s" onmouseenter="this.style.borderColor='var(--primary)'" onmouseleave="this.style.borderColor='var(--border)'" onclick="sbOpenSet('${escHtml(s.slug)}')">
-      <button onclick="event.stopPropagation();sbDeleteSet('${escHtml(s.slug)}','${escHtml(s.name)}')" style="position:absolute;top:6px;right:6px;background:none;border:none;color:var(--dim);font-size:13px;cursor:pointer;line-height:1;padding:2px 5px;border-radius:4px" title="Delete set" onmouseenter="this.style.color='var(--r,#f66)'" onmouseleave="this.style.color='var(--dim)'">✕</button>
+      <button onclick="event.stopPropagation();sbDeleteSet('${escHtml(s.slug)}','${escHtml(s.name)}')" style="position:absolute;top:6px;right:8px;background:none;border:none;color:var(--dim);font-size:14px;cursor:pointer;padding:2px 4px" title="Delete set">✕</button>
       <div style="font-family:'Orbitron',monospace;font-size:11px;color:var(--primary);letter-spacing:.04em;margin-bottom:5px;padding-right:20px">${escHtml(s.name)}</div>
-      <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim)">${escHtml(s.releaseDate || s.year || '')} · ${s.setSize || s.baseCount || '?'} base cards</div>
+      <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim)">${escHtml(s.releaseDate || s.year || '')} · ${s.setSize || s.baseCount || '?'} cards</div>
       <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);margin-top:2px">${s.insertSetCount || 0} insert sets · ${s.autoSetCount || 0} auto sets</div>
     </div>`).join('');
 }
 
 async function sbDeleteSet(slug, name) {
-  if (!confirm(`Delete "${name}"?\n\nThis removes it from the set browser.`)) return;
+  if (!confirm(`Delete "${name}" from the set browser?`)) return;
   try {
     const d = await sbWorker(`/sets/${slug}`, { method: 'DELETE' });
-    if (d.ok) {
-      toast_dash(`Deleted ${name}`, 3000);
-      await sbInit();
-    } else {
-      toast_dash('Delete failed: ' + (d.error || 'Unknown'), 4000);
-    }
-  } catch(e) {
-    toast_dash('Delete error: ' + e.message, 4000);
-  }
+    if (d.ok) { toast_dash(`Deleted ${name}`, 3000); await sbInit(); }
+    else toast_dash('Delete failed: ' + (d.error || 'error'), 4000);
+  } catch(e) { toast_dash('Delete error: ' + e.message, 4000); }
 }
 
 async function sbOpenSet(slug) {
@@ -25565,20 +25548,6 @@ function sbSearchCards() {
   sbRenderCards(filtered);
 }
 
-const SB_IMG_CACHE = new Map();
-const SB_PRICE_CACHE = new Map();
-
-// Known sets: slug → PriceCharting console name
-const SB_PC_CONSOLES = {
-  '2026-topps-s1-baseball': '2026-topps-series-1-baseball',
-  '2026-topps-series-1-baseball': '2026-topps-series-1-baseball',
-};
-
-function sbPcConsole() {
-  return SB_PC_CONSOLES[SB.currentSlug] ||
-    (SB.currentData?.set || '').toLowerCase().replace(/\bs1\b/g,'series-1').replace(/\bs2\b/g,'series-2').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
-}
-
 function sbRenderCards(cards) {
   const el = document.getElementById('sb-card-list');
   const status = document.getElementById('sb-card-status');
@@ -25592,144 +25561,61 @@ function sbRenderCards(cards) {
     return;
   }
 
-  SB._cardIndex = showing;
-
-  el.innerHTML = showing.map((c, i) => {
-    const numStr = String(c.number || '');
-    const cacheKey = `${numStr}|${c.player||''}`;
-    const rcBadge = c.rc ? ' <span style="background:var(--gold);color:#000;font-size:9px;font-weight:900;padding:1px 5px;border-radius:3px;vertical-align:middle">RC</span>' : '';
-    const noteBadge = c.note ? ` <span style="font-size:9px;color:var(--gold)">${escHtml(c.note)}</span>` : '';
-    const cachedImg = SB_IMG_CACHE.get(cacheKey);
-    const imgSrc = cachedImg ? `<img src="${escHtml(cachedImg)}" style="width:100%;height:160px;object-fit:cover;display:block;border-radius:6px 6px 0 0">` : `<div style="width:100%;height:160px;background:var(--surf3,#111);border-radius:6px 6px 0 0;display:flex;align-items:center;justify-content:center;font-size:44px">🃏</div>`;
-    const cachedPrice = SB_PRICE_CACHE.get(cacheKey);
-    const priceStr = cachedPrice ? `<span style="color:var(--primary);font-weight:700">${cachedPrice}</span>` : `<span style="color:var(--dim);font-size:10px">click for price</span>`;
-    const setLabel = c.setName ? `<div style="font-size:9px;color:var(--primary);opacity:.8;margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(c.setName)}</div>` : '';
-    return `<div onclick="sbOpenCardModal(${i})" style="cursor:pointer;background:var(--surf2);border:1px solid var(--border);border-radius:8px;overflow:hidden;font-family:var(--font-mono);transition:border-color .15s" onmouseenter="this.style.borderColor='var(--primary)'" onmouseleave="this.style.borderColor='var(--border)'">
-      ${imgSrc}
-      <div style="padding:10px">
-        <div style="font-size:13px;font-weight:700;line-height:1.3;margin-bottom:3px">${escHtml(c.player||'')}${rcBadge}${noteBadge}</div>
-        <div style="font-size:11px;color:var(--dim);margin-bottom:2px">${escHtml(c.team||'')}</div>
-        ${setLabel}
-        <div style="font-size:10px;color:var(--dim);margin-top:3px">#${escHtml(numStr)}</div>
-        <div style="margin-top:5px;font-size:11px">${priceStr}</div>
+  el.innerHTML = showing.map(c => {
+    const num = c.number !== undefined ? `<span style="color:var(--dim);min-width:32px;display:inline-block">#${c.number}</span>` : '';
+    const note = c.note ? `<span style="font-size:8px;color:var(--gold);margin-left:6px">${escHtml(c.note)}</span>` : '';
+    const setLabel = c.setName ? `<div style="font-size:8px;color:var(--primary);opacity:.7;margin-top:1px">${escHtml(c.setName)}</div>` : '';
+    const rc = c.rc ? '<span style="font-size:8px;color:var(--gold);font-weight:700;margin-left:4px">RC</span>' : '';
+    const priceBtn = SB.currentData?.sport === 'baseball'
+      ? `<button onclick="sbLookupPrice(event,'${escHtml(String(c.number))}','${escHtml(c.player || '')}')" class="hbtn" style="font-size:8px;padding:2px 7px;min-height:24px;opacity:.7" title="Look up price">$</button>`
+      : '';
+    return `<div style="display:flex;align-items:center;gap:6px;padding:6px 10px;background:var(--surf2);border:1px solid var(--border);border-radius:6px;font-family:var(--font-mono);font-size:10px">
+      ${num}
+      <div style="flex:1;min-width:0">
+        <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:700">${escHtml(c.player || '')}${rc}${note}</div>
+        <div style="font-size:9px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(c.team || '')}${setLabel}</div>
       </div>
+      ${priceBtn}
     </div>`;
   }).join('');
 }
 
-async function sbOpenCardModal(idx) {
-  const c = SB._cardIndex?.[idx]; if (!c) return;
-  const modal = document.getElementById('sb-card-modal');
-  const numStr = String(c.number || '');
-  const cacheKey = `${numStr}|${c.player||''}`;
-  modal.style.display = 'flex';
+async function sbLookupPrice(e, cardNumber, playerName) {
+  e.stopPropagation();
+  const drawer = document.getElementById('sb-price-drawer');
+  const nameEl = document.getElementById('sb-price-card-name');
+  const resEl = document.getElementById('sb-price-results');
+  nameEl.textContent = `#${cardNumber} ${playerName}`;
+  resEl.textContent = 'Searching PriceCharting…';
+  drawer.style.display = 'block';
 
-  document.getElementById('sbm-player').textContent = c.player || '';
-  document.getElementById('sbm-number').textContent = `#${numStr}${c.rc ? '  RC' : ''}${c.note ? '  ' + c.note : ''}`;
-  document.getElementById('sbm-team').textContent = c.team || '';
-  document.getElementById('sbm-setname').textContent = c.setName || '';
-  document.getElementById('sbm-price-detail').innerHTML = '';
-  document.getElementById('sbm-price-area').textContent = 'Loading price…';
-
-  // Image
-  const imgWrap = document.getElementById('sbm-img-wrap');
-  const consoleName = sbPcConsole();
-  if (SB_IMG_CACHE.has(cacheKey)) {
-    imgWrap.innerHTML = `<img src="${escHtml(SB_IMG_CACHE.get(cacheKey))}" style="width:100%;height:100%;object-fit:cover">`;
-  } else if (consoleName) {
-    imgWrap.innerHTML = '🃏';
-    const prod = `${c.player||''} ${numStr}`.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
-    sbWorker(`/pricing/sportscardspro/image?console=${encodeURIComponent(consoleName)}&name=${encodeURIComponent(prod)}`)
-      .then(d => {
-        if (d.ok && d.imageUrl) {
-          SB_IMG_CACHE.set(cacheKey, d.imageUrl);
-          imgWrap.innerHTML = `<img src="${escHtml(d.imageUrl)}" style="width:100%;height:100%;object-fit:cover;border-radius:8px 0 0 8px">`;
-          // Also update grid tile if visible
-          document.querySelectorAll(`#sb-card-list .sb-img-ph[data-key="${CSS.escape(cacheKey)}"]`).forEach(el => {
-            const img = document.createElement('img');
-            img.src = d.imageUrl; img.style.cssText = 'width:100%;aspect-ratio:2/3;object-fit:cover;border-radius:6px 6px 0 0;display:block';
-            el.replaceWith(img);
-          });
-        }
-      }).catch(() => {});
-  }
-
-  // Price
   try {
-    const data = await sbWorker(`/sets/${SB.currentSlug}/card/${encodeURIComponent(numStr)}/price`);
+    const data = await sbWorker(`/sets/${SB.currentSlug}/card/${encodeURIComponent(cardNumber)}/price`);
     if (!data.ok || !data.products?.length) {
-      document.getElementById('sbm-price-area').textContent = 'No price found on PriceCharting';
+      resEl.textContent = 'No price data found.';
       return;
     }
-    const p = data.products[0];
-    const loose = p['loose-price'] ? `$${(p['loose-price']/100).toFixed(2)}` : null;
-    const graded = p['graded-price'] ? `PSA $${(p['graded-price']/100).toFixed(2)}` : null;
-    document.getElementById('sbm-price-area').innerHTML =
-      (loose ? `<span style="font-size:18px;font-weight:700;color:var(--primary)">${loose}</span> <span style="font-size:11px;color:var(--dim)">ungraded</span>` : '') +
-      (graded ? `&nbsp;&nbsp;<span style="font-size:14px;font-weight:700;color:var(--gold)">${graded}</span>` : '');
-    if (loose) SB_PRICE_CACHE.set(cacheKey, loose);
-    // Update grid tile price slot
-    document.querySelectorAll(`#sb-card-list .sb-price-slot[data-key="${CSS.escape(cacheKey)}"]`).forEach(el => {
-      el.className = ''; el.style.color = 'var(--primary)'; el.style.fontWeight = '700'; el.style.fontSize = '11px'; el.textContent = loose;
-    });
-    document.getElementById('sbm-price-detail').innerHTML = data.products.slice(0,5).map(p2 => `
-      <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);font-size:10px">
-        <div style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text)">${escHtml(p2['product-name']||p2.name||'')}</div>
-        <div style="display:flex;gap:10px;flex-shrink:0;margin-left:8px">
-          ${p2['loose-price'] ? `<span style="color:var(--primary);font-weight:700">$${(p2['loose-price']/100).toFixed(2)}</span>` : ''}
-          ${p2['graded-price'] ? `<span style="color:var(--gold)">PSA $${(p2['graded-price']/100).toFixed(2)}</span>` : ''}
+    resEl.innerHTML = data.products.map(p => `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid var(--border)">
+        <div style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(p['product-name'] || p.name || '')}</div>
+        <div style="display:flex;gap:10px;flex-shrink:0;margin-left:10px">
+          ${p['loose-price'] ? `<span style="color:var(--primary)">$${(p['loose-price']/100).toFixed(2)}</span>` : ''}
+          ${p['graded-price'] ? `<span style="color:var(--gold)">PSA $${(p['graded-price']/100).toFixed(2)}</span>` : ''}
         </div>
       </div>`).join('');
-  } catch(err) {
-    document.getElementById('sbm-price-area').textContent = 'Price error: ' + err.message;
+  } catch(e2) {
+    resEl.textContent = 'Price lookup failed: ' + e2.message;
   }
 }
-
-function sbCloseModal() {
-  document.getElementById('sb-card-modal').style.display = 'none';
-}
-
-// Close modal on backdrop click
-document.getElementById('sb-card-modal')?.addEventListener('click', e => { if (e.target === e.currentTarget) sbCloseModal(); });
 
 async function sbImportPrompt() {
-  const choices = ['Beckett URL (auto-parse)', 'Restore 2026 Topps S1 Baseball (clean data)'];
-  const choice = confirm('Restore 2026 Topps S1 Baseball from clean data?\n\nOK = Restore clean data\nCancel = Import new set from Beckett URL');
-
-  if (choice) {
-    toast_dash('Restoring 2026 Topps S1 Baseball…', 6000);
-    try {
-      const data = await sbWorker('/sets/import-raw-url', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          url: 'https://raw.githubusercontent.com/squeebmike/ArSca/main/2026_topps_s1_baseball.json',
-          slug: '2026-topps-s1-baseball',
-          name: '2026 Topps Series 1 Baseball',
-          sport: 'baseball',
-          year: '2026',
-        }),
-      });
-      if (data.ok) {
-        toast_dash(`✓ Restored: ${data.baseCount} base, ${data.insertSetCount} insert sets`, 5000);
-        SB_IMG_CACHE.clear(); SB_PRICE_CACHE.clear();
-        await sbInit();
-      } else {
-        toast_dash('Restore failed: ' + (data.error || 'Unknown'), 6000);
-      }
-    } catch(err) {
-      toast_dash('Restore error: ' + err.message, 6000);
-    }
-    return;
-  }
-
-  const beckettUrl = prompt('Paste the Beckett checklist URL:');
+  const beckettUrl = prompt('Paste the Beckett checklist URL:\n(e.g. https://www.beckett.com/news/2026-topps-series-2-baseball-cards/)');
   if (!beckettUrl) return;
   const name = prompt('Set name:', '2026 Topps Series 2 Baseball');
   if (!name) return;
-  const slug = prompt('Slug:', name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,''));
+  const slug = prompt('Slug (URL-safe key):', name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''));
   if (!slug) return;
-  const sport = prompt('Sport:', 'baseball');
+  const sport = prompt('Sport (baseball/football/basketball/hockey):', 'baseball');
 
   toast_dash('Importing set from Beckett…', 8000);
 
