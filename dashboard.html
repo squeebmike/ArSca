@@ -1318,7 +1318,7 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.19.03-set-browser</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.19.04-card-tiles</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
@@ -1345,7 +1345,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip dev-only" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.19.03-set-browser</div>
+<div class="dsb-chip dev-only" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.19.04-card-tiles</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -1987,7 +1987,7 @@ body.show-mode .inv-sync-badge{display:none;}
       </div>
       <div id="sb-parallels-bar" style="display:none;font-family:var(--font-mono);font-size:9px;color:var(--dim);line-height:1.8;margin-bottom:8px;padding:8px;background:var(--surf2);border-radius:6px;border:1px solid var(--border)"></div>
       <div id="sb-card-status" style="font-family:var(--font-mono);font-size:9px;color:var(--dim);margin-bottom:6px"></div>
-      <div id="sb-card-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:6px"></div>
+      <div id="sb-card-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:10px"></div>
       <div id="sb-price-drawer" style="display:none;margin-top:10px;padding:12px;background:var(--surf2);border:1px solid var(--primary);border-radius:8px">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
           <div id="sb-price-card-name" style="font-family:var(--font-mono);font-size:11px;font-weight:700;color:var(--primary)"></div>
@@ -25468,6 +25468,8 @@ async function sbDeleteSet(slug, name) {
 
 async function sbOpenSet(slug) {
   SB.currentSlug = slug;
+  SB._pcCache = {};
+  SB._fetchGen = (SB._fetchGen || 0) + 1;
   document.getElementById('sb-card-browser').style.display = 'block';
   document.getElementById('sb-set-list').style.display = 'none';
   document.querySelector('.panel #sb-sport-filter')?.closest('div[style*="margin-bottom:12px"]') && null;
@@ -25506,6 +25508,7 @@ function sbCloseBrowser() {
 
 function sbLoadCards() {
   if (!SB.currentData) return;
+  SB._fetchGen = (SB._fetchGen || 0) + 1;
   const section = document.getElementById('sb-section')?.value || 'base';
   const d = SB.currentData;
   let cards = [];
@@ -25555,58 +25558,175 @@ function sbRenderCards(cards) {
 
   const showing = cards.slice(0, 300);
   status.textContent = `${cards.length} cards${cards.length > 300 ? ' (showing first 300)' : ''}`;
+  SB._cardIndex = showing;
 
   if (!cards.length) {
     el.innerHTML = '<div style="font-family:var(--font-mono);font-size:10px;color:var(--dim)">No cards match</div>';
     return;
   }
 
-  el.innerHTML = showing.map(c => {
-    const num = c.number !== undefined ? `<span style="color:var(--dim);min-width:32px;display:inline-block">#${c.number}</span>` : '';
-    const note = c.note ? `<span style="font-size:8px;color:var(--gold);margin-left:6px">${escHtml(c.note)}</span>` : '';
-    const setLabel = c.setName ? `<div style="font-size:8px;color:var(--primary);opacity:.7;margin-top:1px">${escHtml(c.setName)}</div>` : '';
-    const rc = c.rc ? '<span style="font-size:8px;color:var(--gold);font-weight:700;margin-left:4px">RC</span>' : '';
-    const priceBtn = SB.currentData?.sport === 'baseball'
-      ? `<button onclick="sbLookupPrice(event,'${escHtml(String(c.number))}','${escHtml(c.player || '')}')" class="hbtn" style="font-size:8px;padding:2px 7px;min-height:24px;opacity:.7" title="Look up price">$</button>`
-      : '';
-    return `<div style="display:flex;align-items:center;gap:6px;padding:6px 10px;background:var(--surf2);border:1px solid var(--border);border-radius:6px;font-family:var(--font-mono);font-size:10px">
-      ${num}
-      <div style="flex:1;min-width:0">
-        <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:700">${escHtml(c.player || '')}${rc}${note}</div>
-        <div style="font-size:9px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(c.team || '')}${setLabel}</div>
+  el.innerHTML = showing.map((c, i) => {
+    const rc = c.rc ? '<span style="background:var(--gold);color:#000;font-size:7px;font-weight:900;padding:1px 4px;border-radius:3px;margin-left:4px;vertical-align:middle">RC</span>' : '';
+    const note = c.note ? `<div style="font-size:8px;color:var(--gold);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(c.note)}</div>` : '';
+    const setLabel = c.setName ? `<div style="font-size:8px;color:var(--primary);opacity:.75;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(c.setName)}</div>` : '';
+    return `<div data-sb-idx="${i}" onclick="sbCardClick(${i})"
+      style="cursor:pointer;background:var(--surf2);border:1px solid var(--border);border-radius:10px;overflow:hidden;transition:border-color .15s,transform .12s"
+      onmouseenter="this.style.borderColor='var(--primary)';this.style.transform='translateY(-2px)'"
+      onmouseleave="this.style.borderColor='var(--border)';this.style.transform=''">
+      <div style="width:100%;height:175px;background:var(--surf);display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden">
+        <span class="sb-img-ph" style="font-size:44px;opacity:.2;pointer-events:none">🃏</span>
+        <img class="sb-card-img" src="" alt="" style="display:none;position:absolute;inset:0;width:100%;height:100%;object-fit:contain" loading="lazy">
+        <span class="sb-card-price" style="display:none;position:absolute;bottom:5px;right:5px;background:rgba(0,0,0,.82);color:#4cff90;font-family:var(--font-mono);font-size:9px;font-weight:700;padding:2px 5px;border-radius:4px"></span>
       </div>
-      ${priceBtn}
+      <div style="padding:8px 10px 10px">
+        <div style="font-family:'Orbitron',monospace;font-size:10px;font-weight:700;color:var(--text);line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(c.player || '—')}${rc}</div>
+        <div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(c.team || '')}${c.number !== undefined ? ' · #' + c.number : ''}</div>
+        ${note}${setLabel}
+      </div>
     </div>`;
   }).join('');
+
+  // Background fetch images + prices from PriceCharting
+  const setName = SB.currentData?.name || '';
+  const pcConsole = setName.toLowerCase().replace(/['']/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
+  if (pcConsole && showing.length) sbFetchAllCardImages(showing, pcConsole);
 }
 
-async function sbLookupPrice(e, cardNumber, playerName) {
-  e.stopPropagation();
-  const drawer = document.getElementById('sb-price-drawer');
-  const nameEl = document.getElementById('sb-price-card-name');
-  const resEl = document.getElementById('sb-price-results');
-  nameEl.textContent = `#${cardNumber} ${playerName}`;
-  resEl.textContent = 'Searching PriceCharting…';
-  drawer.style.display = 'block';
-
-  try {
-    const data = await sbWorker(`/sets/${SB.currentSlug}/card/${encodeURIComponent(cardNumber)}/price`);
-    if (!data.ok || !data.products?.length) {
-      resEl.textContent = 'No price data found.';
-      return;
-    }
-    resEl.innerHTML = data.products.map(p => `
-      <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid var(--border)">
-        <div style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(p['product-name'] || p.name || '')}</div>
-        <div style="display:flex;gap:10px;flex-shrink:0;margin-left:10px">
-          ${p['loose-price'] ? `<span style="color:var(--primary)">$${(p['loose-price']/100).toFixed(2)}</span>` : ''}
-          ${p['graded-price'] ? `<span style="color:var(--gold)">PSA $${(p['graded-price']/100).toFixed(2)}</span>` : ''}
-        </div>
-      </div>`).join('');
-  } catch(e2) {
-    resEl.textContent = 'Price lookup failed: ' + e2.message;
+async function sbFetchAllCardImages(cards, pcConsole) {
+  SB._fetchGen = (SB._fetchGen || 0) + 1;
+  const gen = SB._fetchGen;
+  SB._pcCache = SB._pcCache || {};
+  const BATCH = 4;
+  const limit = Math.min(cards.length, 80);
+  for (let i = 0; i < limit; i += BATCH) {
+    if (SB._fetchGen !== gen) return;
+    await Promise.all(cards.slice(i, i + BATCH).map((c, j) => sbFetchOneCard(c, i + j, pcConsole, gen)));
+    if (i + BATCH < limit) await new Promise(r => setTimeout(r, 200));
   }
 }
+
+async function sbFetchOneCard(card, idx, pcConsole, gen) {
+  const key = `${pcConsole}:${card.number}:${card.player}`;
+  let pc = SB._pcCache[key];
+  if (!pc) {
+    try {
+      const q = `${card.player || ''} ${card.number !== undefined ? '#' + card.number : ''}`.trim();
+      const data = await sbWorker(`/pricing/pricecharting/search?q=${encodeURIComponent(q)}&console=${encodeURIComponent(pcConsole)}`);
+      pc = data.products?.[0] || null;
+      if (pc) SB._pcCache[key] = pc;
+    } catch(e) { return; }
+  }
+  if (!pc || SB._fetchGen !== gen) return;
+  const tile = document.querySelector(`[data-sb-idx="${idx}"]`);
+  if (!tile) return;
+  if (pc.imageUrl) {
+    const img = tile.querySelector('.sb-card-img');
+    const ph = tile.querySelector('.sb-img-ph');
+    if (img) {
+      img.onload = () => { img.style.display = 'block'; if (ph) ph.style.display = 'none'; };
+      img.onerror = () => {};
+      img.src = pc.imageUrl;
+    }
+  }
+  if (pc.prices?.ungraded) {
+    const priceEl = tile.querySelector('.sb-card-price');
+    if (priceEl) { priceEl.textContent = '$' + (pc.prices.ungraded / 100).toFixed(2); priceEl.style.display = 'block'; }
+  }
+}
+
+function sbCardClick(idx) {
+  const card = SB._cardIndex?.[idx];
+  if (!card) return;
+  const setName = SB.currentData?.name || '';
+  const pcConsole = setName.toLowerCase().replace(/['']/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
+  const key = `${pcConsole}:${card.number}:${card.player}`;
+  const pc = SB._pcCache?.[key];
+  sbShowCardModal(card, pc, key, pcConsole);
+}
+
+function sbShowCardModal(card, pc, cacheKey, pcConsole) {
+  let modal = document.getElementById('sb-card-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'sb-card-modal';
+    modal.style.cssText = 'display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.82);align-items:center;justify-content:center;padding:16px';
+    modal.onclick = e => { if (e.target === modal) sbCloseModal(); };
+    document.body.appendChild(modal);
+  }
+  const rc = card.rc ? '<span style="background:var(--gold);color:#000;font-size:9px;font-weight:900;padding:1px 6px;border-radius:3px;margin-left:6px">RC</span>' : '';
+  const imgHtml = pc?.imageUrl
+    ? `<img src="${escHtml(pc.imageUrl)}" style="max-width:150px;max-height:210px;object-fit:contain;border-radius:8px;border:1px solid var(--border)" onerror="this.style.opacity='.2'">`
+    : `<div style="width:110px;height:154px;background:var(--surf2);border-radius:8px;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:44px;opacity:.25">🃏</div>`;
+
+  const prices = pc?.prices;
+  const priceRows = prices ? [
+    prices.ungraded != null ? `<div style="display:flex;justify-content:space-between;gap:20px"><span>Raw</span><b style="color:var(--primary)">$${(prices.ungraded/100).toFixed(2)}</b></div>` : '',
+    prices.psa7 != null ? `<div style="display:flex;justify-content:space-between;gap:20px"><span>PSA 7</span><b style="color:var(--gold)">$${(prices.psa7/100).toFixed(2)}</b></div>` : '',
+    prices.psa8 != null ? `<div style="display:flex;justify-content:space-between;gap:20px"><span>PSA 8</span><b style="color:var(--gold)">$${(prices.psa8/100).toFixed(2)}</b></div>` : '',
+    prices.psa9 != null ? `<div style="display:flex;justify-content:space-between;gap:20px"><span>PSA 9</span><b style="color:var(--gold)">$${(prices.psa9/100).toFixed(2)}</b></div>` : '',
+    prices.psa10 != null ? `<div style="display:flex;justify-content:space-between;gap:20px"><span>PSA 10</span><b style="color:#4cff90">$${(prices.psa10/100).toFixed(2)}</b></div>` : '',
+  ].filter(Boolean).join('') : '';
+
+  const pcLink = pc?.url ? `<a href="${escHtml(pc.url)}" target="_blank" rel="noopener" style="font-size:9px;color:var(--primary);text-decoration:none;font-family:var(--font-mono)">View on PriceCharting ↗</a>` : '';
+  const pcName = pc?.productName ? `<div style="font-size:9px;color:var(--dim);font-family:var(--font-mono);margin-top:6px;opacity:.7">${escHtml(pc.productName)}</div>` : '';
+
+  let priceSection = '';
+  if (pc && priceRows) {
+    priceSection = `<div style="margin-top:12px;font-family:var(--font-mono);font-size:11px;display:flex;flex-direction:column;gap:5px">${priceRows}</div>`;
+  } else if (!pc) {
+    priceSection = `<div id="sb-modal-price-area" style="margin-top:12px;font-family:var(--font-mono);font-size:10px;color:var(--dim)">Loading price…</div>`;
+  }
+
+  modal.innerHTML = `
+    <div style="background:var(--bg);border:1px solid var(--primary);border-radius:12px;max-width:480px;width:100%;max-height:90vh;overflow-y:auto;padding:20px;position:relative">
+      <button onclick="sbCloseModal()" style="position:absolute;top:12px;right:12px;background:none;border:none;color:var(--dim);font-size:20px;cursor:pointer;line-height:1;padding:4px">✕</button>
+      <div style="display:flex;gap:16px;align-items:flex-start">
+        ${imgHtml}
+        <div style="flex:1;min-width:0">
+          <div style="font-family:'Orbitron',monospace;font-size:15px;font-weight:700;color:var(--primary);line-height:1.3;margin-bottom:6px">${escHtml(card.player || '—')}${rc}</div>
+          ${card.number !== undefined ? `<div style="font-family:var(--font-mono);font-size:11px;color:var(--dim)">Card #${card.number}</div>` : ''}
+          ${card.team ? `<div style="font-family:var(--font-mono);font-size:12px;color:var(--text);margin-top:2px">${escHtml(card.team)}</div>` : ''}
+          ${card.setName ? `<div style="font-family:var(--font-mono);font-size:10px;color:var(--primary);opacity:.75;margin-top:2px">${escHtml(card.setName)}</div>` : ''}
+          ${card.note ? `<div style="font-family:var(--font-mono);font-size:10px;color:var(--gold);margin-top:4px">${escHtml(card.note)}</div>` : ''}
+          ${priceSection}
+        </div>
+      </div>
+      ${pcName}
+      ${pcLink ? `<div style="margin-top:10px">${pcLink}</div>` : ''}
+    </div>`;
+  modal.style.display = 'flex';
+
+  // If no PC data yet, fetch it live
+  if (!pc && cacheKey && pcConsole) {
+    sbFetchOneCard(card, -1, pcConsole, SB._fetchGen || 0).then(() => {
+      const freshPc = SB._pcCache?.[cacheKey];
+      if (!freshPc) return;
+      const area = document.getElementById('sb-modal-price-area');
+      if (!area) return;
+      const modalImg = modal.querySelector('img');
+      if (!modalImg && freshPc.imageUrl) {
+        const wrap = modal.querySelector('div[style*="110px"]');
+        if (wrap) wrap.outerHTML = `<img src="${escHtml(freshPc.imageUrl)}" style="max-width:150px;max-height:210px;object-fit:contain;border-radius:8px;border:1px solid var(--border)">`;
+      } else if (modalImg && freshPc.imageUrl && !modalImg.src) {
+        modalImg.src = freshPc.imageUrl;
+      }
+      const p = freshPc.prices || {};
+      const rows = [
+        p.ungraded != null ? `<div style="display:flex;justify-content:space-between;gap:20px"><span>Raw</span><b style="color:var(--primary)">$${(p.ungraded/100).toFixed(2)}</b></div>` : '',
+        p.psa9 != null ? `<div style="display:flex;justify-content:space-between;gap:20px"><span>PSA 9</span><b style="color:var(--gold)">$${(p.psa9/100).toFixed(2)}</b></div>` : '',
+        p.psa10 != null ? `<div style="display:flex;justify-content:space-between;gap:20px"><span>PSA 10</span><b style="color:#4cff90">$${(p.psa10/100).toFixed(2)}</b></div>` : '',
+      ].filter(Boolean).join('');
+      if (rows) area.outerHTML = `<div style="margin-top:12px;font-family:var(--font-mono);font-size:11px;display:flex;flex-direction:column;gap:5px">${rows}</div>`;
+      else area.textContent = 'No price data found.';
+    });
+  }
+}
+
+function sbCloseModal() {
+  const m = document.getElementById('sb-card-modal');
+  if (m) m.style.display = 'none';
+}
+
 
 async function sbImportPrompt() {
   const beckettUrl = prompt('Paste the Beckett checklist URL:\n(e.g. https://www.beckett.com/news/2026-topps-series-2-baseball-cards/)');
