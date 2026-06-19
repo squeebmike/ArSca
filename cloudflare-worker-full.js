@@ -3586,7 +3586,8 @@ function parseBeckettChecklist(html, slug, name, sport, year) {
   ]);
   const MONTHS = new Set(['January','February','March','April','May','June','July','August','September','October','November','December']);
   const CARD_RE   = /^(\d+)\s+(.+?),\s+(.+?)(?:\s+\((.+?)\))?$/;
-  const PREFIX_RE = /^([A-Z]{1,4}-[A-Z0-9]+[a-z]?)\s+(.+?),\s+(.+?)$/;
+  // Prefix cards: e.g. "75YA-RC Roger Clemens, Boston Red Sox" or "BSA-AB Alec Burleson, St. Louis Cardinals"
+  const PREFIX_RE = /^([A-Z0-9]{1,6}-[A-Z0-9]{1,6}[a-z]?)\s+(.+?),\s+(.+?)$/;
   const BASE_NO_TEAM_RE = /^(\d+)\s+(.+?)(?:\s+(RC))?$/;
 
   function tryBase(line, maxNum = 400) {
@@ -3676,7 +3677,7 @@ function parseBeckettChecklist(html, slug, name, sport, year) {
       if (skip.test(l)) continue;
       // Section headers on Beckett look like "Set Name\nN cards"
       const nxt = lines[i + 1] || '';
-      const isHeader = /^\d+ cards?$/.test(nxt) && l.length > 2 && !/^[A-Z]{1,4}-/.test(l) && !SEC.base.test(l) && !SEC.auto.test(l) && !SEC.mem.test(l) && !SEC.ins.test(l) && !SEC.team.test(l);
+      const isHeader = /^\d+ cards?$/.test(nxt) && l.length > 2 && !/^[A-Z0-9]{1,6}-[A-Z0-9]/.test(l) && !SEC.base.test(l) && !SEC.auto.test(l) && !SEC.mem.test(l) && !SEC.ins.test(l) && !SEC.team.test(l);
       if (isHeader) {
         if (cur) sets.push(cur);
         cur = { name: l, count: parseInt(nxt), parallels: [], cards: [] };
