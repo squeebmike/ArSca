@@ -1,0 +1,1550 @@
+{
+  "set": "2025-26 Topps NBL Basketball",
+  "release_date": "2025-26",
+  "set_size": 100,
+  "product_info": {},
+  "box_contents": {},
+  "parallels": [],
+  "base_set": {
+    "count": 100,
+    "cards": [
+      {
+        "number": "1",
+        "player": "Flynn Cameron Adelaide 36ers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "2",
+        "player": "Zylan Cheatham Adelaide 36ers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "3",
+        "player": "Bryce Cotton Adelaide 36ers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "4",
+        "player": "Nick Rakocevic Adelaide 36ers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "5",
+        "player": "John Jenkins Adelaide 36ers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "6",
+        "player": "Isaac Humphries Adelaide 36ers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "7",
+        "player": "Matt Kenyon Adelaide 36ers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "8",
+        "player": "Keanu Rasmussen Adelaide 36ers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "9",
+        "player": "Dejan Vasiljevic Adelaide 36ers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "10",
+        "player": "Isaac White Adelaide 36ers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "11",
+        "player": "Terry Taylor Brisbane Bullets",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "12",
+        "player": "Alex Ducas Brisbane Bullets",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "13",
+        "player": "Javon Freeman-Liberty Brisbane Bullets",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "14",
+        "player": "Tyrell Harrison Brisbane Bullets",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "15",
+        "player": "Sam McDaniel Brisbane Bullets",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "16",
+        "player": "Mitch Norton Brisbane Bullets",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "17",
+        "player": "Casey Prather Brisbane Bullets",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "18",
+        "player": "Dakota Mathias Brisbane Bullets",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "19",
+        "player": "Jacob Holt Brisbane Bullets",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "20",
+        "player": "Taine Murray Brisbane Bullets",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "21",
+        "player": "Mawot Mag Cairns Taipans",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "22",
+        "player": "Kyrin Galloway Cairns Taipans",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "23",
+        "player": "Alex Higgins-Titsha Cairns Taipans",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "24",
+        "player": "Marcus Lee Cairns Taipans",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "25",
+        "player": "Andrew Andrews Cairns Taipans",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "26",
+        "player": "Jack McVeigh Cairns Taipans",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "27",
+        "player": "Admiral Schofield Cairns Taipans",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "28",
+        "player": "Reyne Smith Cairns Taipans",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "29",
+        "player": "Mojave King Cairns Taipans",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "30",
+        "player": "Sam Waardenburg Cairns Taipans",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "31",
+        "player": "Todd Blanchfield Illawarra Hawks",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "32",
+        "player": "Jonah Bolden Illawarra Hawks",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "33",
+        "player": "Quentin Peterson Illawarra Hawks",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "34",
+        "player": "Tyler Harvey Illawarra Hawks",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "35",
+        "player": "William Hickey Illawarra Hawks",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "36",
+        "player": "JaVale McGee Illawarra Hawks",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "37",
+        "player": "Mason Peatling Illawarra Hawks",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "38",
+        "player": "Wani Swaka Lo Buluk Illawarra Hawks",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "39",
+        "player": "Daniel Grida Illawarra Hawks",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "40",
+        "player": "Sam Froling Illawarra Hawks",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "41",
+        "player": "Kyle Bowen Melbourne United",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "42",
+        "player": "Finn Delany Melbourne United",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "43",
+        "player": "Milton Doyle Melbourne United",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "44",
+        "player": "Jesse Edwards Melbourne United",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "45",
+        "player": "Chris Goulding Melbourne United",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "46",
+        "player": "Shea Ili Melbourne United",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "47",
+        "player": "Tanner Krebs Melbourne United",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "48",
+        "player": "Fabijan Krslovic Melbourne United",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "49",
+        "player": "Tyson Walker Melbourne United",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "50",
+        "player": "Dash Daniels Melbourne United",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "51",
+        "player": "Karim Lopez New Zealand Breakers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "52",
+        "player": "Reuben Te Rangi New Zealand Breakers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "53",
+        "player": "Robert Baker New Zealand Breakers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "54",
+        "player": "Carlin Davison New Zealand Breakers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "55",
+        "player": "Izaiah Brockington New Zealand Breakers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "56",
+        "player": "Tai Webster New Zealand Breakers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "57",
+        "player": "Parker Jackson-Cartwright New Zealand Breakers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "58",
+        "player": "Izayah Le'Afa New Zealand Breakers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "59",
+        "player": "Rob Loe New Zealand Breakers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "60",
+        "player": "Sam Mennenga New Zealand Breakers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "61",
+        "player": "Noa Kouakou-Heugue Perth Wildcats",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "62",
+        "player": "Jaron Rillie Perth Wildcats",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "63",
+        "player": "Kristian Doolittle Perth Wildcats",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "64",
+        "player": "David Duke Jr. Perth Wildcats",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "65",
+        "player": "David Okwera Perth Wildcats",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "66",
+        "player": "Elijah Pepper Perth Wildcats",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "67",
+        "player": "Ben Henshall Perth Wildcats",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "68",
+        "player": "Jesse Wagstaff Perth Wildcats",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "69",
+        "player": "Dylan Windler Perth Wildcats",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "70",
+        "player": "Jo Lual-Acuil Jr. Perth Wildcats",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "71",
+        "player": "Wes Iwundu South East Melbourne Phoenix",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "72",
+        "player": "John Brown III South East Melbourne Phoenix",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "73",
+        "player": "Owen Foxwell South East Melbourne Phoenix",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "74",
+        "player": "Akech Aliir South East Melbourne Phoenix",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "75",
+        "player": "Angus Glover South East Melbourne Phoenix",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "76",
+        "player": "Jordan Hunter South East Melbourne Phoenix",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "77",
+        "player": "Ian Clark South East Melbourne Phoenix",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "78",
+        "player": "DJ Mitchell South East Melbourne Phoenix",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "79",
+        "player": "Nathan Sobey South East Melbourne Phoenix",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "80",
+        "player": "Malique Lewis South East Melbourne Phoenix",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "81",
+        "player": "Shaun Bruce Sydney Kings",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "82",
+        "player": "Xavier Cooks Sydney Kings",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "83",
+        "player": "Kendric Davis Sydney Kings",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "84",
+        "player": "Matthew Dellavedova Sydney Kings",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "85",
+        "player": "Jaylin Galloway Sydney Kings",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "86",
+        "player": "Bul Kuol Sydney Kings",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "87",
+        "player": "Tim Soares Sydney Kings",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "88",
+        "player": "Makuach Maluach Sydney Kings",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "89",
+        "player": "Kouat Noi Sydney Kings",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "90",
+        "player": "Torrey Craig Sydney Kings",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "91",
+        "player": "Ben Ayre Tasmania JackJumpers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "92",
+        "player": "Josh Bannan Tasmania JackJumpers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "93",
+        "player": "Majok Deng Tasmania JackJumpers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "94",
+        "player": "Anthony Drmic Tasmania JackJumpers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "95",
+        "player": "Bryce Hamilton Tasmania JackJumpers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "96",
+        "player": "David Johnson Tasmania JackJumpers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "97",
+        "player": "Tyger Campbell Tasmania JackJumpers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "98",
+        "player": "Will Magnay Tasmania JackJumpers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "99",
+        "player": "Nick Marshall Tasmania JackJumpers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "100",
+        "player": "Nicholas Stoddart Tasmania JackJumpers",
+        "team": "",
+        "note": ""
+      }
+    ]
+  },
+  "insert_sets": [
+    {
+      "name": "CYCLONES",
+      "count": 25,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "C-1",
+          "player": "Bryce Cotton Adelaide 36ers",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "C-2",
+          "player": "Flynn Cameron Adelaide 36ers",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "C-3",
+          "player": "Alex Ducas Brisbane Bullets",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "C-4",
+          "player": "Dakota Mathias Brisbane Bullets",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "C-5",
+          "player": "Terry Taylor Brisbane Bullets",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "C-6",
+          "player": "Sam Waardenburg Cairns Taipans",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "C-7",
+          "player": "Kyrin Galloway Cairns Taipans",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "C-8",
+          "player": "Alex Higgins-Titsha Cairns Taipans",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "C-9",
+          "player": "Jonah Bolden Illawarra Hawks",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "C-10",
+          "player": "Wani Swaka Lo Buluk Illawarra Hawks",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "C-11",
+          "player": "Dash Daniels Melbourne United",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "C-12",
+          "player": "Jesse Edwards Melbourne United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "C-13",
+          "player": "Milton Doyle Melbourne United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "C-14",
+          "player": "Karim Lopez New Zealand Breakers",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "C-15",
+          "player": "Reuben Te Rangi New Zealand Breakers",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "C-16",
+          "player": "Robert Baker New Zealand Breakers",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "C-17",
+          "player": "Ben Henshall Perth Wildcats",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "C-18",
+          "player": "Dylan Windler Perth Wildcats",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "C-19",
+          "player": "Owen Foxwell South East Melbourne Phoenix",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "C-20",
+          "player": "Jordan Hunter South East Melbourne Phoenix",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "C-21",
+          "player": "Kendric Davis Sydney Kings",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "C-22",
+          "player": "Jaylin Galloway Sydney Kings",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "C-23",
+          "player": "Tim Soares Sydney Kings",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "C-24",
+          "player": "David Johnson Tasmania JackJumpers",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "C-25",
+          "player": "Tyger Campbell Tasmania JackJumpers",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "OOHS AND AHHS",
+      "count": 25,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "OA-1",
+          "player": "Bryce Cotton Adelaide 36ers",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "OA-2",
+          "player": "Dejan Vasiljevic Adelaide 36ers",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "OA-3",
+          "player": "Zylan Cheatham Adelaide 36ers",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "OA-4",
+          "player": "Casey Prather Brisbane Bullets",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "OA-5",
+          "player": "Javon Freeman-Liberty Brisbane Bullets",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "OA-6",
+          "player": "Angus Glover South East Melbourne Phoenix",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "OA-7",
+          "player": "Andrew Andrews Cairns Taipans",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "OA-8",
+          "player": "Jack McVeigh Cairns Taipans",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "OA-9",
+          "player": "JaVale McGee Illawarra Hawks",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "OA-10",
+          "player": "Tyler Harvey Illawarra Hawks",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "OA-11",
+          "player": "William Hickey Illawarra Hawks",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "OA-12",
+          "player": "Chris Goulding Melbourne United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "OA-13",
+          "player": "Tyson Walker Melbourne United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "OA-14",
+          "player": "Izaiah Brockington New Zealand Breakers",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "OA-15",
+          "player": "Parker Jackson-Cartwright New Zealand Breakers",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "OA-16",
+          "player": "Jo Lual-Acuil Jr. Perth Wildcats",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "OA-17",
+          "player": "Kristian Doolittle Perth Wildcats",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "OA-18",
+          "player": "Noa Kouakou-Heugue Perth Wildcats",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "OA-19",
+          "player": "John Brown III South East Melbourne Phoenix",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "OA-20",
+          "player": "Nathan Sobey South East Melbourne Phoenix",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "OA-21",
+          "player": "Xavier Cooks Sydney Kings",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "OA-22",
+          "player": "Kendric Davis Sydney Kings",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "OA-23",
+          "player": "Matthew Dellavedova Sydney Kings",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "OA-24",
+          "player": "Bryce Hamilton Tasmania JackJumpers",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "OA-25",
+          "player": "Will Magnay Tasmania JackJumpers",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "THE ROAR",
+      "count": 20,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "R-1",
+          "player": "Isaac Humphries Adelaide 36ers",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "R-2",
+          "player": "Javon Freeman-Liberty Brisbane Bullets",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "R-3",
+          "player": "Tyrell Harrison Brisbane Bullets",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "R-4",
+          "player": "Bryce Cotton Adelaide 36ers",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "R-5",
+          "player": "Marcus Lee Cairns Taipans",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "R-6",
+          "player": "Jonah Bolden Illawarra Hawks",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "R-7",
+          "player": "JaVale McGee Illawarra Hawks",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "R-8",
+          "player": "Milton Doyle Melbourne United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "R-9",
+          "player": "Sam Mennenga New Zealand Breakers",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "R-10",
+          "player": "Parker Jackson-Cartwright New Zealand Breakers",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "R-11",
+          "player": "Ben Henshall Perth Wildcats",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "R-12",
+          "player": "Jack McVeigh Cairns Taipans",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "R-13",
+          "player": "Jo Lual-Acuil Jr. Perth Wildcats",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "R-14",
+          "player": "Angus Glover South East Melbourne Phoenix",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "R-15",
+          "player": "Nathan Sobey South East Melbourne Phoenix",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "R-16",
+          "player": "Jaylin Galloway Sydney Kings",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "R-17",
+          "player": "Xavier Cooks Sydney Kings",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "R-18",
+          "player": "Nick Marshall Tasmania JackJumpers",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "R-19",
+          "player": "Bryce Hamilton Tasmania JackJumpers",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "R-20",
+          "player": "Will Magnay Tasmania JackJumpers",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "BIG TOPPS",
+      "count": 30,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "BT-1",
+          "player": "Isaac Humphries Adelaide 36ers",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BT-2",
+          "player": "Zylan Cheatham Adelaide 36ers",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BT-3",
+          "player": "John Jenkins Adelaide 36ers",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BT-4",
+          "player": "Casey Prather Brisbane Bullets",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BT-5",
+          "player": "Tyrell Harrison Brisbane Bullets",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BT-6",
+          "player": "Javon Freeman-Liberty Brisbane Bullets",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BT-7",
+          "player": "Kyrin Galloway Cairns Taipans",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BT-8",
+          "player": "Marcus Lee Cairns Taipans",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BT-9",
+          "player": "Admiral Schofield Cairns Taipans",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BT-10",
+          "player": "JaVale McGee Illawarra Hawks",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BT-11",
+          "player": "Jonah Bolden Illawarra Hawks",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BT-12",
+          "player": "William Hickey Illawarra Hawks",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BT-13",
+          "player": "Finn Delany Melbourne United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BT-14",
+          "player": "Jesse Edwards Melbourne United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BT-15",
+          "player": "Fabijan Krslovic Melbourne United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BT-16",
+          "player": "Robert Baker New Zealand Breakers",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BT-17",
+          "player": "Karim Lopez New Zealand Breakers",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BT-18",
+          "player": "Sam Mennenga New Zealand Breakers",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BT-19",
+          "player": "Dylan Windler Perth Wildcats",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BT-20",
+          "player": "Jesse Wagstaff Perth Wildcats",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BT-21",
+          "player": "Kristian Doolittle Perth Wildcats",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BT-22",
+          "player": "Malique Lewis South East Melbourne Phoenix",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BT-23",
+          "player": "John Brown III South East Melbourne Phoenix",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BT-24",
+          "player": "Jordan Hunter South East Melbourne Phoenix",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BT-25",
+          "player": "Matthew Dellavedova Sydney Kings",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BT-26",
+          "player": "Tim Soares Sydney Kings",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BT-27",
+          "player": "Xavier Cooks Sydney Kings",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BT-28",
+          "player": "Majok Deng Tasmania JackJumpers",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BT-29",
+          "player": "Josh Bannan Tasmania JackJumpers",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BT-30",
+          "player": "Will Magnay Tasmania JackJumpers",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "ATLAS",
+      "count": 10,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "A-1",
+          "player": "Zylan Cheatham Adelaide 36ers",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "A-2",
+          "player": "Terry Taylor Brisbane Bullets",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "A-3",
+          "player": "Andrew Andrews Cairns Taipans",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "A-4",
+          "player": "JaVale McGee Illawarra Hawks",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "A-5",
+          "player": "Jesse Edwards Melbourne United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "A-6",
+          "player": "Izaiah Brockington New Zealand Breakers",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "A-7",
+          "player": "Kristian Doolittle Perth Wildcats",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "A-8",
+          "player": "John Brown III South East Melbourne Phoenix",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "A-9",
+          "player": "Kendric Davis Sydney Kings",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "A-10",
+          "player": "Bryce Hamilton Tasmania JackJumpers",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "NEXT STARS",
+      "count": 4,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "NS-1",
+          "player": "Malique Lewis South East Melbourne Phoenix",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NS-2",
+          "player": "Dash Daniels Melbourne United",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "NS-3",
+          "player": "Noa Kouakou-Heugue Perth Wildcats",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "NS-4",
+          "player": "Karim Lopez New Zealand Breakers",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "GLASS AND GRIT",
+      "count": 16,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "GG-1",
+          "player": "Flynn Cameron Adelaide 36ers",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "GG-2",
+          "player": "Terry Taylor Brisbane Bullets",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "GG-3",
+          "player": "Casey Prather Brisbane Bullets",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "GG-4",
+          "player": "Marcus Lee Cairns Taipans",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "GG-5",
+          "player": "Sam Waardenburg Cairns Taipans",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "GG-6",
+          "player": "Quentin Peterson Illawarra Hawks",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "GG-7",
+          "player": "Tyson Walker Melbourne United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "GG-8",
+          "player": "Milton Doyle Melbourne United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "GG-9",
+          "player": "Parker Jackson-Cartwright New Zealand Breakers",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "GG-10",
+          "player": "Karim Lopez New Zealand Breakers",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "GG-11",
+          "player": "Jonah Bolden Illawarra Hawks",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "GG-12",
+          "player": "David Duke Jr. Perth Wildcats",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "GG-13",
+          "player": "Ian Clark South East Melbourne Phoenix",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "GG-14",
+          "player": "Kouat Noi Sydney Kings",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "GG-15",
+          "player": "Owen Foxwell South East Melbourne Phoenix",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "GG-16",
+          "player": "Tyger Campbell Tasmania JackJumpers",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "LOCALS ONLY",
+      "count": 16,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "LO-1",
+          "player": "Bryce Cotton Adelaide 36ers",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LO-2",
+          "player": "Isaac Humphries Adelaide 36ers",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LO-3",
+          "player": "Tyrell Harrison Brisbane Bullets",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LO-4",
+          "player": "Jack McVeigh Cairns Taipans",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LO-5",
+          "player": "William Hickey Illawarra Hawks",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LO-6",
+          "player": "Finn Delany Melbourne United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LO-7",
+          "player": "Chris Goulding Melbourne United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LO-8",
+          "player": "Sam Mennenga New Zealand Breakers",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LO-9",
+          "player": "Jo Lual-Acuil Jr. Perth Wildcats",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LO-10",
+          "player": "Dylan Windler Perth Wildcats",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LO-11",
+          "player": "Jordan Hunter South East Melbourne Phoenix",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LO-12",
+          "player": "Nathan Sobey South East Melbourne Phoenix",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LO-13",
+          "player": "Matthew Dellavedova Sydney Kings",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LO-14",
+          "player": "Xavier Cooks Sydney Kings",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LO-15",
+          "player": "Will Magnay Tasmania JackJumpers",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LO-16",
+          "player": "Josh Bannan Tasmania JackJumpers",
+          "team": "",
+          "note": ""
+        }
+      ]
+    }
+  ],
+  "autograph_sets": [],
+  "memorabilia_sets": [],
+  "team_sets": {}
+}
