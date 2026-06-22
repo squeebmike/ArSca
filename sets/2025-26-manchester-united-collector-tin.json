@@ -1,0 +1,278 @@
+{
+  "set": "2025-26 Manchester United Collector Tin",
+  "release_date": "2025-26",
+  "set_size": 0,
+  "product_info": {},
+  "box_contents": {},
+  "parallels": [],
+  "base_set": {
+    "count": 0,
+    "cards": []
+  },
+  "insert_sets": [
+    {
+      "name": "FIRST TEAM",
+      "count": 20,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "1",
+          "player": "Andr\u00e9 Onana Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "2",
+          "player": "Lisandro Mart\u00ednez Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "3",
+          "player": "Matthijs de Ligt Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "4",
+          "player": "Harry Maguire Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "5",
+          "player": "Leny Yoro Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "6",
+          "player": "Noussair Mazraoui Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "7",
+          "player": "Ayden Heaven Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "8",
+          "player": "Diogo Dalot Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "9",
+          "player": "Diego Le\u00f3n Manchester United",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "10",
+          "player": "Patrick Dorgu Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "11",
+          "player": "Manuel Ugarte Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "12",
+          "player": "Kobbie Mainoo Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "13",
+          "player": "S\u00e9kou Kon\u00e9 Manchester United",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "14",
+          "player": "Bruno Fernandes Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "15",
+          "player": "Mason Mount Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "16",
+          "player": "Chido Obi Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "17",
+          "player": "Matheus Cunha Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "18",
+          "player": "Amad Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "19",
+          "player": "Joshua Zirkzee Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "20",
+          "player": "Rasmus H\u00f8jlund Manchester United",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "NAME IN LIGHTS",
+      "count": 10,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "21",
+          "player": "Leny Yoro Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "22",
+          "player": "Nemanja Vidic Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "23",
+          "player": "Paul Scholes Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "24",
+          "player": "Kobbie Mainoo Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "25",
+          "player": "Ryan Giggs Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "26",
+          "player": "Bruno Fernandes Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "27",
+          "player": "Wayne Rooney Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "28",
+          "player": "Joshua Zirkzee Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "29",
+          "player": "Rasmus H\u00f8jlund Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "30",
+          "player": "Sir Alex Ferguson Manchester United",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "GOLD VAULT LIMITED EDITION",
+      "count": 10,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "GV-1",
+          "player": "Sir Alex Ferguson Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "GV-2",
+          "player": "Rio Ferdinand Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "GV-3",
+          "player": "Roy Keane Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "GV-4",
+          "player": "Bruno Fernandes Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "GV-5",
+          "player": "Kobbie Mainoo Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "GV-6",
+          "player": "Michael Carrick Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "GV-7",
+          "player": "Dimitar Berbatov Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "GV-8",
+          "player": "Amad Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "GV-9",
+          "player": "Robin van Persie Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "GV-10",
+          "player": "Wayne Rooney Manchester United",
+          "team": "",
+          "note": ""
+        }
+      ]
+    }
+  ],
+  "autograph_sets": [],
+  "memorabilia_sets": [],
+  "team_sets": {}
+}
