@@ -1953,11 +1953,21 @@ body.show-mode .inv-sync-badge{display:none;}
       <div class="ph" style="margin:0">SET BROWSER</div>
       <div style="display:flex;gap:6px;flex-wrap:wrap">
         <select id="sb-sport-filter" onchange="sbFilterSets()" style="font-family:var(--font-mono);font-size:10px;background:var(--surf2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:4px 8px">
-          <option value="">All Sports</option>
-          <option value="baseball" selected>Baseball</option>
+          <option value="" selected>All Card Types</option>
+          <option value="baseball">Baseball</option>
           <option value="football">Football</option>
           <option value="basketball">Basketball</option>
           <option value="hockey">Hockey</option>
+          <option value="soccer">Soccer</option>
+          <option value="motorsport">Motorsport / F1</option>
+          <option value="mma">MMA / UFC</option>
+          <option value="wrestling">Wrestling / WWE</option>
+          <option value="marvel">Marvel</option>
+          <option value="disney">Disney</option>
+          <option value="star wars">Star Wars</option>
+          <option value="olympics">Olympics</option>
+          <option value="veefriends">VeeFriends</option>
+          <option value="other">Other</option>
         </select>
         <input id="sb-set-search" placeholder="Search sets…" oninput="sbFilterSets()" style="font-family:var(--font-mono);font-size:10px;background:var(--surf2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:4px 10px;width:160px">
         <button class="hbtn" onclick="sbImportPrompt()" title="Import a new set from Beckett">+ IMPORT SET</button>
