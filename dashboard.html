@@ -1318,7 +1318,7 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.19.04-card-tiles</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.22.01-topps-hub</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
@@ -1345,7 +1345,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip dev-only" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.19.04-card-tiles</div>
+<div class="dsb-chip dev-only" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.22.01-topps-hub</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -1949,27 +1949,27 @@ body.show-mode .inv-sync-badge{display:none;}
   </div>
   <!-- SET BROWSER -->
   <div id="set-browser-panel" class="panel" style="margin:0 0 14px;max-width:1200px">
-    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px">
-      <div class="ph" style="margin:0">SET BROWSER</div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap">
-        <select id="sb-sport-filter" onchange="sbFilterSets()" style="font-family:var(--font-mono);font-size:10px;background:var(--surf2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:4px 8px">
-          <option value="">All Sports</option>
-          <option value="baseball" selected>Baseball</option>
-          <option value="football">Football</option>
-          <option value="basketball">Basketball</option>
-          <option value="hockey">Hockey</option>
-        </select>
-        <input id="sb-set-search" placeholder="Search sets…" oninput="sbFilterSets()" style="font-family:var(--font-mono);font-size:10px;background:var(--surf2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:4px 10px;width:160px">
-        <button class="hbtn" onclick="sbImportPrompt()" title="Import a new set from Beckett">+ IMPORT SET</button>
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px">
+      <div class="ph" style="margin:0">TOPPS SET BROWSER</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+        <input id="sb-set-search" placeholder="Search sets…" oninput="sbFilterCatalog()" style="font-family:var(--font-mono);font-size:10px;background:var(--surf2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:4px 10px;width:150px">
+        <button class="hbtn" id="sb-admin-btn" onclick="sbToggleAdmin()" style="font-size:10px;padding:4px 10px" title="Admin login">🔑 ADMIN</button>
       </div>
     </div>
 
-    <!-- Set list -->
-    <div id="sb-set-list" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;min-height:40px">
+    <!-- Filter chips -->
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid var(--border)">
+      <div id="sb-sport-chips" style="display:flex;gap:4px;flex-wrap:wrap"></div>
+      <div id="sb-year-chips" style="display:flex;gap:4px;flex-wrap:wrap"></div>
+      <div id="sb-brand-chips" style="display:flex;gap:4px;flex-wrap:wrap"></div>
+    </div>
+
+    <!-- Catalog grid -->
+    <div id="sb-catalog-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px;margin-bottom:14px;min-height:40px">
       <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim)">Loading sets…</div>
     </div>
 
-    <!-- Card browser (shown after picking a set) -->
+    <!-- Card browser (shown after picking an imported set) -->
     <div id="sb-card-browser" style="display:none">
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px;padding-top:10px;border-top:1px solid var(--border)">
         <button class="hbtn" onclick="sbCloseBrowser()" style="font-size:10px;padding:4px 10px">← Sets</button>
@@ -25411,58 +25411,175 @@ function mtgsbAddToResearch(idx, btn){
 
 // ── SPORTS SET BROWSER ───────────────────────────────────────────
 const SB = {
-  sets: [],          // index from /sets
-  currentSlug: null, // active set
-  currentData: null, // full set JSON
-  allCards: [],      // cards for current section
-  filteredCards: [], // after search filter
+  sets: [],          // imported sets index from /sets
+  catalog: [],       // full topps catalog from /topps/catalog
+  currentSlug: null,
+  currentData: null,
+  allCards: [],
+  filteredCards: [],
+  // filter state
+  _sport: '',
+  _year: '',
+  _brand: '',
+  _q: '',
 };
 
 async function sbWorker(path, opts = {}) {
   const base = (typeof WORKER !== 'undefined' ? WORKER : '');
-  const res = await fetch(base + path, opts);
+  const headers = { ...(opts.headers || {}) };
+  const token = sbGetAdminToken();
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const res = await fetch(base + path, { ...opts, headers });
   return res.json();
 }
 
-async function sbInit() {
-  try {
-    const data = await sbWorker('/sets');
-    SB.sets = data.sets || [];
-    sbFilterSets();
-  } catch(e) {
-    document.getElementById('sb-set-list').innerHTML =
-      '<div style="font-family:var(--font-mono);font-size:10px;color:var(--r)">Could not load sets — Worker unreachable</div>';
+// ── Admin token (stored in localStorage) ──────────────────────────────────────
+function sbGetAdminToken() { return localStorage.getItem('sb_admin_token') || ''; }
+function sbIsAdmin() { return !!sbGetAdminToken(); }
+function sbToggleAdmin() {
+  if (sbIsAdmin()) {
+    if (confirm('Log out of admin mode?')) {
+      localStorage.removeItem('sb_admin_token');
+      sbUpdateAdminBtn();
+      sbRenderCatalog();
+    }
+  } else {
+    const t = prompt('Enter admin token:');
+    if (t) {
+      localStorage.setItem('sb_admin_token', t.trim());
+      sbUpdateAdminBtn();
+      sbRenderCatalog();
+      toast_dash('Admin mode enabled', 2500);
+    }
+  }
+}
+function sbUpdateAdminBtn() {
+  const btn = document.getElementById('sb-admin-btn');
+  if (!btn) return;
+  if (sbIsAdmin()) {
+    btn.textContent = '🔓 ADMIN';
+    btn.style.borderColor = 'var(--primary)';
+    btn.style.color = 'var(--primary)';
+  } else {
+    btn.textContent = '🔑 ADMIN';
+    btn.style.borderColor = '';
+    btn.style.color = '';
   }
 }
 
-function sbFilterSets() {
-  const sport = document.getElementById('sb-sport-filter')?.value || '';
-  const q = (document.getElementById('sb-set-search')?.value || '').toLowerCase();
-  const filtered = SB.sets.filter(s =>
-    (!sport || s.sport === sport) &&
-    (!q || s.name.toLowerCase().includes(q) || String(s.year).includes(q))
+// ── Init ───────────────────────────────────────────────────────────────────────
+async function sbInit() {
+  sbUpdateAdminBtn();
+  sbBuildFilterChips();
+  try {
+    const [catData, setsData] = await Promise.all([
+      sbWorker('/topps/catalog'),
+      sbWorker('/sets'),
+    ]);
+    SB.catalog = catData.catalog || [];
+    SB.sets = setsData.sets || [];
+    // Merge imported data into catalog entries
+    const importedMap = {};
+    SB.sets.forEach(s => { importedMap[s.slug] = s; });
+    SB.catalog.forEach(c => {
+      if (importedMap[c.slug]) { c.imported = true; c._meta = importedMap[c.slug]; }
+    });
+    // Add any imported sets not in the catalog (e.g. manually imported)
+    SB.sets.forEach(s => {
+      if (!SB.catalog.find(c => c.slug === s.slug)) {
+        SB.catalog.push({ ...s, imported: true, _meta: s, _custom: true });
+      }
+    });
+    sbFilterCatalog();
+  } catch(e) {
+    document.getElementById('sb-catalog-grid').innerHTML =
+      '<div style="font-family:var(--font-mono);font-size:10px;color:var(--r)">Could not load — Worker unreachable</div>';
+  }
+}
+
+// ── Filter chips builder ───────────────────────────────────────────────────────
+function sbBuildFilterChips() {
+  const sports = [['', 'All'], ['baseball', 'Baseball'], ['basketball', 'Basketball'], ['football', 'Football'], ['soccer', 'Soccer'], ['hockey', 'Hockey']];
+  const years = [['', 'All Years'], ['2026', '2026'], ['2025', '2025'], ['2024', '2024']];
+  const brands = [['', 'All Brands'], ['Chrome', 'Chrome'], ['Topps', 'Topps'], ['Bowman Chrome', 'Bowman Chrome'], ['Bowman', 'Bowman'], ['Heritage', 'Heritage'], ['Finest', 'Finest'], ['Stadium Club', 'Stadium Club'], ['Allen & Ginter', 'A&G']];
+
+  const chip = (id, val, label, activeVal, fn) =>
+    `<button onclick="${fn}('${val.replace(/'/g,'\\\'')}')" style="font-family:var(--font-mono);font-size:9px;padding:3px 8px;border-radius:5px;border:1px solid ${activeVal === val ? 'var(--primary)' : 'var(--border)'};background:${activeVal === val ? 'rgba(0,255,179,.1)' : 'var(--surf2)'};color:${activeVal === val ? 'var(--primary)' : 'var(--dim)'};cursor:pointer;white-space:nowrap">${escHtml(label)}</button>`;
+
+  document.getElementById('sb-sport-chips').innerHTML = sports.map(([v, l]) => chip('sport', v, l, SB._sport, 'sbSetSport')).join('');
+  document.getElementById('sb-year-chips').innerHTML = years.map(([v, l]) => chip('year', v, l, SB._year, 'sbSetYear')).join('');
+  document.getElementById('sb-brand-chips').innerHTML = brands.map(([v, l]) => chip('brand', v, l, SB._brand, 'sbSetBrand')).join('');
+}
+function sbSetSport(v) { SB._sport = v; sbBuildFilterChips(); sbFilterCatalog(); }
+function sbSetYear(v) { SB._year = v; sbBuildFilterChips(); sbFilterCatalog(); }
+function sbSetBrand(v) { SB._brand = v; sbBuildFilterChips(); sbFilterCatalog(); }
+function sbFilterCatalog() {
+  SB._q = (document.getElementById('sb-set-search')?.value || '').toLowerCase();
+  const filtered = SB.catalog.filter(s =>
+    (!SB._sport || s.sport === SB._sport) &&
+    (!SB._year || String(s.year) === SB._year) &&
+    (!SB._brand || s.brand === SB._brand) &&
+    (!SB._q || s.name.toLowerCase().includes(SB._q) || String(s.year).includes(SB._q) || (s.brand || '').toLowerCase().includes(SB._q))
   );
-  const el = document.getElementById('sb-set-list');
+  sbRenderCatalog(filtered);
+}
+
+function sbRenderCatalog(sets) {
+  if (!sets) sets = SB.catalog;
+  const el = document.getElementById('sb-catalog-grid');
   if (!el) return;
-  if (!filtered.length) {
-    el.innerHTML = '<div style="font-family:var(--font-mono);font-size:10px;color:var(--dim)">No sets — import one with + IMPORT SET</div>';
+  if (!sets.length) {
+    el.innerHTML = '<div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);grid-column:1/-1">No sets match</div>';
     return;
   }
-  el.innerHTML = filtered.map(s => `
-    <div style="position:relative;cursor:pointer;padding:12px 14px;background:var(--surf2);border:1px solid var(--border);border-radius:8px;min-width:200px;flex:0 0 auto;transition:border-color .15s" onmouseenter="this.style.borderColor='var(--primary)'" onmouseleave="this.style.borderColor='var(--border)'" onclick="sbOpenSet('${escHtml(s.slug)}')">
-      <button onclick="event.stopPropagation();sbDeleteSet('${escHtml(s.slug)}','${escHtml(s.name)}')" style="position:absolute;top:6px;right:8px;background:none;border:none;color:var(--dim);font-size:14px;cursor:pointer;padding:2px 4px" title="Delete set">✕</button>
-      <div style="font-family:'Orbitron',monospace;font-size:11px;color:var(--primary);letter-spacing:.04em;margin-bottom:5px;padding-right:20px">${escHtml(s.name)}</div>
-      <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim)">${escHtml(s.releaseDate || s.year || '')} · ${s.setSize || s.baseCount || '?'} cards</div>
-      <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);margin-top:2px">${s.insertSetCount || 0} insert sets · ${s.autoSetCount || 0} auto sets</div>
-    </div>`).join('');
+  const admin = sbIsAdmin();
+  el.innerHTML = sets.map(s => {
+    const imported = s.imported;
+    const meta = s._meta || {};
+    const baseCount = meta.baseCount || 0;
+    const insertCount = meta.insertSetCount || 0;
+    const autoCount = meta.autoSetCount || 0;
+    const sportIcon = {baseball:'⚾',basketball:'🏀',football:'🏈',soccer:'⚽',hockey:'🏒'}[s.sport] || '🃏';
+    const brandBadge = s.brand ? `<span style="font-size:8px;background:var(--surf);border:1px solid var(--border);border-radius:3px;padding:1px 5px;color:var(--dim)">${escHtml(s.brand)}</span>` : '';
+    const importedBadge = imported
+      ? `<span style="font-size:8px;background:rgba(0,255,179,.15);border:1px solid rgba(0,255,179,.4);border-radius:3px;padding:1px 5px;color:var(--primary)">IMPORTED</span>`
+      : `<span style="font-size:8px;background:var(--surf);border:1px solid var(--border);border-radius:3px;padding:1px 5px;color:var(--dim)">Not imported</span>`;
+    const actionBtn = imported
+      ? `<button onclick="sbOpenSet('${escHtml(s.slug)}')" style="font-family:var(--font-mono);font-size:9px;padding:4px 10px;border-radius:5px;border:1px solid var(--primary);background:rgba(0,255,179,.1);color:var(--primary);cursor:pointer;width:100%">BROWSE CARDS</button>`
+      : (admin ? `<button onclick="sbShowImportDialog('${escHtml(s.slug)}','${escHtml(s.name).replace(/'/g,'\\\'')}')" style="font-family:var(--font-mono);font-size:9px;padding:4px 10px;border-radius:5px;border:1px solid var(--border);background:var(--surf2);color:var(--dim);cursor:pointer;width:100%">+ IMPORT CHECKLIST</button>` : `<div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);padding:4px 0">Checklist not yet imported</div>`);
+    const deleteBtn = (imported && admin)
+      ? `<button onclick="sbDeleteSet('${escHtml(s.slug)}','${escHtml(s.name).replace(/'/g,'\\\'')}')" style="position:absolute;top:6px;right:8px;background:none;border:none;color:var(--dim);font-size:13px;cursor:pointer;padding:2px 4px" title="Delete set">✕</button>` : '';
+    const cardSummary = imported
+      ? `<div style="font-size:9px;color:var(--dim);margin-top:3px">${baseCount} base · ${insertCount} insert · ${autoCount} auto</div>`
+      : '';
+    return `<div style="position:relative;padding:12px;background:var(--surf2);border:1px solid ${imported ? 'rgba(0,255,179,.25)' : 'var(--border)'};border-radius:8px;display:flex;flex-direction:column;gap:6px;transition:border-color .15s" onmouseenter="this.style.borderColor='var(--primary)'" onmouseleave="this.style.borderColor='${imported ? 'rgba(0,255,179,.25)' : 'var(--border)'}'">
+      ${deleteBtn}
+      <div style="font-size:11px;color:var(--text);font-family:'Orbitron',monospace;font-weight:700;line-height:1.3;padding-right:${(imported && admin) ? '20px' : '0'}">${sportIcon} ${escHtml(s.name)}</div>
+      <div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center">
+        <span style="font-size:9px;color:var(--dim);font-family:var(--font-mono)">${s.year || ''}</span>
+        ${brandBadge}
+        ${importedBadge}
+      </div>
+      ${cardSummary}
+      ${actionBtn}
+    </div>`;
+  }).join('');
 }
 
 async function sbDeleteSet(slug, name) {
   if (!confirm(`Delete "${name}" from the set browser?`)) return;
   try {
     const d = await sbWorker(`/sets/${slug}`, { method: 'DELETE' });
-    if (d.ok) { toast_dash(`Deleted ${name}`, 3000); await sbInit(); }
-    else toast_dash('Delete failed: ' + (d.error || 'error'), 4000);
+    if (d.ok) {
+      toast_dash(`Deleted ${name}`, 3000);
+      // Update local state
+      SB.sets = SB.sets.filter(s => s.slug !== slug);
+      SB.catalog.forEach(c => { if (c.slug === slug) { c.imported = false; delete c._meta; } });
+      SB.catalog = SB.catalog.filter(c => !(c._custom && c.slug === slug));
+      sbFilterCatalog();
+    } else {
+      toast_dash('Delete failed: ' + (d.error || 'error'), 4000);
+    }
   } catch(e) { toast_dash('Delete error: ' + e.message, 4000); }
 }
 
@@ -25471,10 +25588,12 @@ async function sbOpenSet(slug) {
   SB._pcCache = {};
   SB._fetchGen = (SB._fetchGen || 0) + 1;
   document.getElementById('sb-card-browser').style.display = 'block';
-  document.getElementById('sb-set-list').style.display = 'none';
-  document.querySelector('.panel #sb-sport-filter')?.closest('div[style*="margin-bottom:12px"]') && null;
+  document.getElementById('sb-catalog-grid').style.display = 'none';
+  // Also hide filter chips and search
+  document.getElementById('sb-sport-chips')?.closest('div[style*="border-bottom"]') && (document.getElementById('sb-sport-chips').closest('div[style*="border-bottom"]').style.display = 'none');
+  document.getElementById('sb-set-search')?.closest('div[style*="margin-bottom:10px"]') && null;
 
-  const meta = SB.sets.find(s => s.slug === slug) || {};
+  const meta = SB.catalog.find(s => s.slug === slug) || SB.sets.find(s => s.slug === slug) || {};
   document.getElementById('sb-set-title').textContent = meta.name || slug;
   document.getElementById('sb-section').value = 'base';
   document.getElementById('sb-card-search').value = '';
@@ -25500,7 +25619,9 @@ async function sbOpenSet(slug) {
 
 function sbCloseBrowser() {
   document.getElementById('sb-card-browser').style.display = 'none';
-  document.getElementById('sb-set-list').style.display = 'flex';
+  document.getElementById('sb-catalog-grid').style.display = 'grid';
+  const filterBar = document.getElementById('sb-sport-chips')?.closest('div[style*="border-bottom"]');
+  if (filterBar) filterBar.style.display = 'flex';
   document.getElementById('sb-parallels-bar').style.display = 'none';
   SB.currentSlug = null;
   SB.currentData = null;
@@ -25736,37 +25857,72 @@ function sbCloseModal() {
 }
 
 
-async function sbImportPrompt() {
-  const beckettUrl = prompt('Paste the Beckett checklist URL:\n(e.g. https://www.beckett.com/news/2026-topps-series-2-baseball-cards/)');
-  if (!beckettUrl) return;
-  const name = prompt('Set name:', '2026 Topps Series 2 Baseball');
-  if (!name) return;
-  const slug = prompt('Slug (URL-safe key):', name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''));
-  if (!slug) return;
-  const sport = prompt('Sport (baseball/football/basketball/hockey):', 'baseball');
+function sbShowImportDialog(slug, name) {
+  // Show a modal with a textarea for pasting PDF text
+  let modal = document.getElementById('sb-import-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'sb-import-modal';
+    modal.style.cssText = 'display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.85);align-items:center;justify-content:center;padding:16px';
+    modal.onclick = e => { if (e.target === modal) modal.style.display = 'none'; };
+    document.body.appendChild(modal);
+  }
+  modal.innerHTML = `
+    <div style="background:var(--bg);border:1px solid var(--primary);border-radius:12px;width:min(600px,100%);max-height:90vh;overflow-y:auto;padding:20px;position:relative">
+      <button onclick="document.getElementById('sb-import-modal').style.display='none'" style="position:absolute;top:12px;right:12px;background:none;border:none;color:var(--dim);font-size:20px;cursor:pointer">✕</button>
+      <div style="font-family:'Orbitron',monospace;font-size:13px;color:var(--primary);margin-bottom:4px">IMPORT CHECKLIST</div>
+      <div style="font-family:var(--font-mono);font-size:11px;color:var(--text);margin-bottom:14px">${escHtml(name)}</div>
+      <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);margin-bottom:8px;line-height:1.5">
+        Open the Topps PDF checklist, select all text (Ctrl+A), copy it (Ctrl+C), then paste it below:
+      </div>
+      <textarea id="sb-import-text" placeholder="Paste PDF text here…" style="width:100%;height:240px;background:var(--surf2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:10px;font-family:var(--font-mono);font-size:10px;resize:vertical;box-sizing:border-box"></textarea>
+      <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+        <button class="hbtn buy" onclick="sbDoImportText('${escHtml(slug)}','${escHtml(name).replace(/'/g,"\\'")}')">IMPORT</button>
+        <button class="hbtn" onclick="document.getElementById('sb-import-modal').style.display='none'">CANCEL</button>
+        <div style="font-size:9px;color:var(--dim);font-family:var(--font-mono);align-self:center">Parses Topps PDF format automatically</div>
+      </div>
+      <div id="sb-import-status" style="font-family:var(--font-mono);font-size:10px;margin-top:10px"></div>
+    </div>`;
+  modal.style.display = 'flex';
+  setTimeout(() => document.getElementById('sb-import-text')?.focus(), 100);
+}
 
-  toast_dash('Importing set from Beckett…', 8000);
+async function sbDoImportText(slug, name) {
+  const text = document.getElementById('sb-import-text')?.value || '';
+  if (!text.trim()) { toast_dash('Paste the PDF text first', 3000); return; }
+  const status = document.getElementById('sb-import-status');
+  if (status) status.innerHTML = '<span style="color:var(--dim)">Parsing and importing…</span>';
 
+  // Get sport/year/brand from catalog
+  const cat = SB.catalog.find(c => c.slug === slug) || {};
   try {
-    const data = await sbWorker('/sets/import', {
+    const data = await sbWorker('/sets/import-topps-text', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url: beckettUrl, slug, name, sport }),
+      body: JSON.stringify({ slug, name, text, sport: cat.sport || 'baseball', year: cat.year || '', brand: cat.brand || '' }),
     });
     if (data.ok) {
-      toast_dash(`✓ Imported ${name}: ${data.baseCount} base cards, ${data.insertSetCount} insert sets`, 5000);
-      await sbInit();
+      if (status) status.innerHTML = `<span style="color:var(--primary)">✓ Imported: ${data.baseCount} base · ${data.insertSetCount} insert sets · ${data.autoSetCount} auto sets</span>`;
+      // Update local state
+      const existing = SB.catalog.find(c => c.slug === slug);
+      if (existing) { existing.imported = true; existing._meta = data; }
+      SB.sets = SB.sets.filter(s => s.slug !== slug);
+      SB.sets.push({ slug, name, sport: cat.sport, year: cat.year, brand: cat.brand, baseCount: data.baseCount, insertSetCount: data.insertSetCount, autoSetCount: data.autoSetCount });
+      setTimeout(() => {
+        document.getElementById('sb-import-modal').style.display = 'none';
+        sbFilterCatalog();
+        toast_dash(`✓ ${name} imported`, 4000);
+      }, 1500);
     } else {
-      toast_dash('Import failed: ' + (data.error || 'Unknown error'), 6000);
+      if (status) status.innerHTML = `<span style="color:var(--r)">Error: ${escHtml(data.error || 'Unknown error')}</span>`;
     }
   } catch(e) {
-    toast_dash('Import error: ' + e.message, 5000);
+    if (status) status.innerHTML = `<span style="color:var(--r)">Error: ${escHtml(e.message)}</span>`;
   }
 }
 
 // Auto-init when research tab is opened
 (function sbSetupInit() {
-  // Hook into tab switching — init when research tab becomes active
   const origSwitch = window.switchTab;
   window.switchTab = function(id, btn) {
     if (typeof origSwitch === 'function') origSwitch(id, btn);
@@ -25775,7 +25931,6 @@ async function sbImportPrompt() {
       sbInit();
     }
   };
-  // Also init immediately if already on research tab
   if (document.getElementById('tab-research')?.classList.contains('active')) {
     SB._initialized = true;
     sbInit();

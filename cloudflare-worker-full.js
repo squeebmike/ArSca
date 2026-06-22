@@ -3326,10 +3326,27 @@ export default {
       }
     }
 
+    // ── TOPPS CATALOG ────────────────────────────────────────────────────────
+    if (url.pathname === '/topps/catalog' && request.method === 'GET') {
+      const kv = env.LBA_KV;
+      const idxRaw = kv ? await kv.get('sets_index') : null;
+      const importedSlugs = new Set((idxRaw ? JSON.parse(idxRaw) : []).map(s => s.slug));
+      const catalog = TOPPS_CATALOG.map(s => ({ ...s, imported: importedSlugs.has(s.slug) }));
+      return json({ ok: true, catalog });
+    }
+
     // ── SET BROWSER API ──────────────────────────────────────────────────────
     if (url.pathname.startsWith('/sets')) {
       const kv = env.LBA_KV;
       if (!kv) return json({ ok: false, error: 'KV not configured' }, 503);
+
+      // Admin check for mutations
+      const requireAdmin = () => {
+        const token = env.ADMIN_TOKEN;
+        if (!token) return false; // no token configured = open (backward compat)
+        const auth = request.headers.get('Authorization') || '';
+        return auth === `Bearer ${token}`;
+      };
 
       // GET /sets — list all imported sets
       if (url.pathname === '/sets' && request.method === 'GET') {
@@ -3338,8 +3355,34 @@ export default {
         return json({ ok: true, sets: index });
       }
 
+      // POST /sets/import-topps-text — paste raw text from a Topps PDF checklist
+      if (url.pathname === '/sets/import-topps-text' && request.method === 'POST') {
+        if (!requireAdmin()) return json({ ok: false, error: 'Admin token required' }, 403);
+        const body = await request.json().catch(() => ({}));
+        const { text, slug, name, sport = 'baseball', year, brand = '' } = body;
+        if (!text || !slug || !name) return json({ ok: false, error: 'text, slug, name required' }, 400);
+        const parsed = parseToppsChecklistText(text, { slug, name, sport, year, brand });
+        await kv.put(`set:${slug}`, JSON.stringify(parsed));
+        const idxRaw = await kv.get('sets_index');
+        const index = idxRaw ? JSON.parse(idxRaw) : [];
+        const existing = index.findIndex(s => s.slug === slug);
+        const meta = {
+          slug, name, sport, year: year || '', brand: brand || '',
+          setSize: parsed.set_size || 0, releaseDate: year || '',
+          importedAt: new Date().toISOString(),
+          baseCount: parsed.base_set?.cards?.length || 0,
+          insertSetCount: parsed.insert_sets?.length || 0,
+          autoSetCount: parsed.autograph_sets?.length || 0,
+        };
+        if (existing >= 0) index[existing] = meta; else index.push(meta);
+        index.sort((a, b) => (b.year || '').localeCompare(a.year || ''));
+        await kv.put('sets_index', JSON.stringify(index));
+        return json({ ok: true, slug, name, baseCount: meta.baseCount, insertSetCount: meta.insertSetCount, autoSetCount: meta.autoSetCount });
+      }
+
       // POST /sets/import — fetch a Beckett checklist URL and parse it into KV
       if (url.pathname === '/sets/import' && request.method === 'POST') {
+        if (!requireAdmin()) return json({ ok: false, error: 'Admin token required' }, 403);
         const body = await request.json().catch(() => ({}));
         const { url: beckettUrl, slug, name, sport = 'baseball', year } = body;
         if (!beckettUrl || !slug || !name) {
@@ -3392,6 +3435,7 @@ export default {
 
       // POST /sets/import-raw-url — fetch pre-parsed JSON from a URL (e.g. raw GitHub) and seed it
       if (url.pathname === '/sets/import-raw-url' && request.method === 'POST') {
+        if (!requireAdmin()) return json({ ok: false, error: 'Admin token required' }, 403);
         const body = await request.json().catch(() => null);
         if (!body?.url || !body?.slug || !body?.name) return json({ ok: false, error: 'url, slug, name required' }, 400);
         const res = await fetch(body.url, { headers: { 'Accept': 'application/json' } });
@@ -3412,6 +3456,7 @@ export default {
 
       // PUT /sets/import-json — store pre-parsed JSON (for seeding)
       if (url.pathname === '/sets/import-json' && request.method === 'PUT') {
+        if (!requireAdmin()) return json({ ok: false, error: 'Admin token required' }, 403);
         const body = await request.json().catch(() => null);
         if (!body?.slug || !body?.name) return json({ ok: false, error: 'slug and name required' }, 400);
         const { slug, name, sport = 'baseball', year } = body;
@@ -3508,8 +3553,9 @@ export default {
       }
 
       // DELETE /sets/:slug — remove a set
-      const delMatch = url.pathname.match(/^\/sets\/([^/]+)$/) ;
+      const delMatch = url.pathname.match(/^\/sets\/([^/]+)$/);
       if (delMatch && request.method === 'DELETE') {
+        if (!requireAdmin()) return json({ ok: false, error: 'Admin token required' }, 403);
         const s = delMatch[1];
         await kv.delete(`set:${s}`);
         const idxRaw = await kv.get('sets_index');
@@ -3767,4 +3813,164 @@ function parseBeckettChecklist(html, slug, name, sport, year) {
     memorabilia_sets: memSets,
     team_sets,
   };
+}
+
+// ── TOPPS CATALOG ─────────────────────────────────────────────────────────────
+const TOPPS_CATALOG = [
+  // Baseball 2026
+  { name: '2026 Topps Chrome Baseball', sport: 'baseball', year: '2026', brand: 'Chrome', slug: '2026-topps-chrome-baseball' },
+  { name: '2026 Topps Series 1 Baseball', sport: 'baseball', year: '2026', brand: 'Topps', slug: '2026-topps-series-1-baseball' },
+  { name: '2026 Topps Series 2 Baseball', sport: 'baseball', year: '2026', brand: 'Topps', slug: '2026-topps-series-2-baseball' },
+  { name: '2026 Topps Heritage Baseball', sport: 'baseball', year: '2026', brand: 'Heritage', slug: '2026-topps-heritage-baseball' },
+  { name: '2026 Topps Finest Baseball', sport: 'baseball', year: '2026', brand: 'Finest', slug: '2026-topps-finest-baseball' },
+  { name: '2026 Bowman Baseball', sport: 'baseball', year: '2026', brand: 'Bowman', slug: '2026-bowman-baseball' },
+  { name: '2026 Bowman Chrome Baseball', sport: 'baseball', year: '2026', brand: 'Bowman Chrome', slug: '2026-bowman-chrome-baseball' },
+  // Baseball 2025
+  { name: '2025 Topps Chrome Baseball', sport: 'baseball', year: '2025', brand: 'Chrome', slug: '2025-topps-chrome-baseball' },
+  { name: '2025 Topps Series 1 Baseball', sport: 'baseball', year: '2025', brand: 'Topps', slug: '2025-topps-series-1-baseball' },
+  { name: '2025 Topps Series 2 Baseball', sport: 'baseball', year: '2025', brand: 'Topps', slug: '2025-topps-series-2-baseball' },
+  { name: '2025 Topps Heritage Baseball', sport: 'baseball', year: '2025', brand: 'Heritage', slug: '2025-topps-heritage-baseball' },
+  { name: '2025 Topps Finest Baseball', sport: 'baseball', year: '2025', brand: 'Finest', slug: '2025-topps-finest-baseball' },
+  { name: '2025 Topps Allen & Ginter Baseball', sport: 'baseball', year: '2025', brand: 'Allen & Ginter', slug: '2025-topps-allen-ginter-baseball' },
+  { name: '2025 Topps Stadium Club Baseball', sport: 'baseball', year: '2025', brand: 'Stadium Club', slug: '2025-topps-stadium-club-baseball' },
+  { name: '2025 Bowman Baseball', sport: 'baseball', year: '2025', brand: 'Bowman', slug: '2025-bowman-baseball' },
+  { name: '2025 Bowman Chrome Baseball', sport: 'baseball', year: '2025', brand: 'Bowman Chrome', slug: '2025-bowman-chrome-baseball' },
+  { name: '2025 Bowman Draft Baseball', sport: 'baseball', year: '2025', brand: 'Bowman Draft', slug: '2025-bowman-draft-baseball' },
+  // Baseball 2024
+  { name: '2024 Topps Chrome Baseball', sport: 'baseball', year: '2024', brand: 'Chrome', slug: '2024-topps-chrome-baseball' },
+  { name: '2024 Topps Series 1 Baseball', sport: 'baseball', year: '2024', brand: 'Topps', slug: '2024-topps-series-1-baseball' },
+  { name: '2024 Topps Series 2 Baseball', sport: 'baseball', year: '2024', brand: 'Topps', slug: '2024-topps-series-2-baseball' },
+  { name: '2024 Topps Heritage Baseball', sport: 'baseball', year: '2024', brand: 'Heritage', slug: '2024-topps-heritage-baseball' },
+  { name: '2024 Topps Finest Baseball', sport: 'baseball', year: '2024', brand: 'Finest', slug: '2024-topps-finest-baseball' },
+  { name: '2024 Topps Allen & Ginter Baseball', sport: 'baseball', year: '2024', brand: 'Allen & Ginter', slug: '2024-topps-allen-ginter-baseball' },
+  { name: '2024 Topps Stadium Club Baseball', sport: 'baseball', year: '2024', brand: 'Stadium Club', slug: '2024-topps-stadium-club-baseball' },
+  { name: '2024 Bowman Baseball', sport: 'baseball', year: '2024', brand: 'Bowman', slug: '2024-bowman-baseball' },
+  { name: '2024 Bowman Chrome Baseball', sport: 'baseball', year: '2024', brand: 'Bowman Chrome', slug: '2024-bowman-chrome-baseball' },
+  { name: '2024 Bowman Draft Baseball', sport: 'baseball', year: '2024', brand: 'Bowman Draft', slug: '2024-bowman-draft-baseball' },
+  // Basketball
+  { name: '2025-26 Topps Chrome Basketball', sport: 'basketball', year: '2025', brand: 'Chrome', slug: '2025-26-topps-chrome-basketball' },
+  { name: '2024-25 Topps Chrome Basketball', sport: 'basketball', year: '2024', brand: 'Chrome', slug: '2024-25-topps-chrome-basketball' },
+  { name: '2025-26 Topps Basketball', sport: 'basketball', year: '2025', brand: 'Topps', slug: '2025-26-topps-basketball' },
+  { name: '2024-25 Topps Basketball', sport: 'basketball', year: '2024', brand: 'Topps', slug: '2024-25-topps-basketball' },
+  // Football
+  { name: '2025 Topps Chrome Football', sport: 'football', year: '2025', brand: 'Chrome', slug: '2025-topps-chrome-football' },
+  { name: '2024 Topps Chrome Football', sport: 'football', year: '2024', brand: 'Chrome', slug: '2024-topps-chrome-football' },
+  { name: '2025 Bowman Chrome University Football', sport: 'football', year: '2025', brand: 'Bowman Chrome', slug: '2025-bowman-chrome-university-football' },
+  // Soccer
+  { name: '2025 Topps Chrome UEFA Champions League', sport: 'soccer', year: '2025', brand: 'Chrome', slug: '2025-topps-chrome-ucl' },
+  { name: '2025 Topps Chrome MLS', sport: 'soccer', year: '2025', brand: 'Chrome', slug: '2025-topps-chrome-mls' },
+  { name: '2024 Topps Chrome UEFA Champions League', sport: 'soccer', year: '2024', brand: 'Chrome', slug: '2024-topps-chrome-ucl' },
+  { name: '2024-25 Topps Chrome UEFA Club Competitions', sport: 'soccer', year: '2024', brand: 'Chrome', slug: '2024-25-topps-chrome-ucc' },
+  // Hockey
+  { name: '2025-26 Topps Chrome Hockey', sport: 'hockey', year: '2025', brand: 'Chrome', slug: '2025-26-topps-chrome-hockey' },
+  { name: '2024-25 Topps Chrome Hockey', sport: 'hockey', year: '2024', brand: 'Chrome', slug: '2024-25-topps-chrome-hockey' },
+];
+
+// ── TOPPS PDF TEXT PARSER ─────────────────────────────────────────────────────
+function parseToppsChecklistText(text, meta) {
+  const { slug, name, sport = 'baseball', year = '', brand = '' } = meta;
+  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+
+  const result = {
+    slug, set: name, name, sport, year, brand,
+    release_date: year,
+    set_size: 0,
+    parallels: [],
+    base_set: { count: 0, cards: [] },
+    insert_sets: [],
+    autograph_sets: [],
+    memorabilia_sets: [],
+  };
+
+  // Section detection
+  const SEC_BASE = /^BASE\s*(CARDS?|SET)?$/i;
+  const SEC_INSERT = /^INSERTS?(\s+CARDS?|\s+SETS?)?$/i;
+  const SEC_AUTO = /^AUTOGRAPH(S|ED)?(\s+CARDS?|\s+SETS?)?$/i;
+  const SEC_RELIC = /^(RELIC|RELICS|MEMORABILIA|MEM)(\s+CARDS?|\s+SETS?)?$/i;
+  const SEC_AUTO_RELIC = /^(AUTOGRAPH(ED)?|AUTO)\s+(RELIC|MEM)(S|ORABI[LA]+)?(\s+CARDS?)?$/i;
+
+  // Skip sections (variations, short prints etc.)
+  const SKIP_SECTION = /^(LIGHTBOARD|IMAGE VARIATION|SUPER SHORT PRINT|SHORT PRINT|PARALLEL|CHROME REFRACTOR VARIATION)/i;
+
+  // Card line: optional prefix, then number, then name, then team (separated by 2+ spaces)
+  // Examples: "1  Shohei Ohtani  Los Angeles Dodgers®"
+  //           "RA-SS  Roki Sasaki  Seattle Mariners®  [Rookie]"
+  //           "UV-1  Player Name  Team Name"
+  const cardLine = (l) => {
+    // Split on 2+ spaces or tabs
+    const parts = l.split(/\s{2,}|\t+/).map(s => s.trim()).filter(Boolean);
+    if (parts.length < 2) return null;
+    // First part: number (pure digits) or prefixed (XX-N or XX-XX)
+    const numPart = parts[0];
+    const isNum = /^\d+$/.test(numPart);
+    const isPrefixed = /^[A-Z0-9]+-[A-Z0-9]+$/i.test(numPart);
+    if (!isNum && !isPrefixed) return null;
+    // Second part should look like a name (not all-caps multi-word → that's a header)
+    const player = parts[1];
+    if (!player || /^[A-Z\s&]{4,}$/.test(player)) return null; // all-caps = probably a header
+    const team = parts[2] ? parts[2].replace(/[®™]/g, '').trim() : '';
+    const rc = parts.some(p => /^\[?rookie\]?$/i.test(p));
+    const note = parts.slice(3).filter(p => !/^\[?rookie\]?$/i.test(p)).join(' ') || '';
+    return { number: numPart, player, team, rc, note: note || undefined };
+  };
+
+  let section = 'base';
+  let inSkip = false;
+  let currentSubset = null;  // { name, cards[] } in insert_sets or autograph_sets
+  let currentCollection = null; // 'inserts' | 'autos' | 'mem' | 'auto_mem'
+
+  const pushSubset = () => {
+    if (!currentSubset) return;
+    if (currentSubset.cards.length === 0) return;
+    if (currentCollection === 'inserts') result.insert_sets.push(currentSubset);
+    else if (currentCollection === 'autos') result.autograph_sets.push(currentSubset);
+    else if (currentCollection === 'mem' || currentCollection === 'auto_mem') result.memorabilia_sets.push(currentSubset);
+    currentSubset = null;
+  };
+
+  for (let i = 0; i < lines.length; i++) {
+    const l = lines[i];
+
+    // Major section headers
+    if (SEC_BASE.test(l)) { pushSubset(); section = 'base'; inSkip = false; continue; }
+    if (SEC_AUTO_RELIC.test(l)) { pushSubset(); section = 'auto_mem'; currentCollection = 'auto_mem'; inSkip = false; continue; }
+    if (SEC_AUTO.test(l)) { pushSubset(); section = 'auto'; currentCollection = 'autos'; inSkip = false; continue; }
+    if (SEC_RELIC.test(l)) { pushSubset(); section = 'mem'; currentCollection = 'mem'; inSkip = false; continue; }
+    if (SEC_INSERT.test(l)) { pushSubset(); section = 'insert'; currentCollection = 'inserts'; inSkip = false; continue; }
+
+    // Skip variation sub-sections
+    if (SKIP_SECTION.test(l)) { inSkip = true; continue; }
+    if (inSkip) {
+      // Exit skip when we hit a card line or a new major section
+      const c = cardLine(l);
+      if (c) { inSkip = false; } else continue;
+    }
+
+    // Sub-section header in non-base sections (all-caps, no number prefix)
+    if (section !== 'base' && /^[A-Z][A-Z\s\-&'/]{3,}$/.test(l) && !cardLine(l)) {
+      pushSubset();
+      currentSubset = { name: l, cards: [] };
+      continue;
+    }
+
+    const card = cardLine(l);
+    if (!card) continue;
+
+    if (section === 'base') {
+      const num = parseInt(card.number, 10);
+      result.base_set.cards.push({ number: isNaN(num) ? card.number : num, player: card.player, team: card.team, rc: card.rc || undefined, note: card.note || undefined });
+    } else {
+      if (!currentSubset) {
+        // Cards before any named subset — create a generic subset
+        const defaultName = section === 'auto' ? 'Autographs' : section === 'mem' ? 'Relics' : section === 'auto_mem' ? 'Autograph Relics' : 'Inserts';
+        currentSubset = { name: defaultName, cards: [] };
+      }
+      currentSubset.cards.push({ number: card.number, player: card.player, team: card.team, rc: card.rc || undefined, note: card.note || undefined });
+    }
+  }
+  pushSubset();
+
+  result.base_set.count = result.base_set.cards.length;
+  result.set_size = result.base_set.cards.length;
+  return result;
 }
