@@ -1,0 +1,5241 @@
+{
+  "set": "2026 Topps Chrome Baseball (v2)",
+  "release_date": "2026",
+  "set_size": 302,
+  "product_info": {},
+  "box_contents": {},
+  "parallels": [],
+  "base_set": {
+    "count": 302,
+    "cards": [
+      {
+        "number": "1",
+        "player": "Shohei Ohtani Los Angeles Dodgers\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "2",
+        "player": "Cody Bellinger New York Yankees\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "3",
+        "player": "Yordan Alvarez Houston Astros\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "4",
+        "player": "Brice Turang Milwaukee Brewers\u2122",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "5",
+        "player": "Trea Turner Philadelphia Phillies\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "6",
+        "player": "Sal Stewart Cincinnati Reds\u00ae",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "7",
+        "player": "Samuel Basallo Baltimore Orioles\u00ae",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "8",
+        "player": "Ezequiel Tovar Colorado Rockies\u2122",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "9",
+        "player": "Cal Raleigh Seattle Mariners\u2122",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "10",
+        "player": "Andy Pages Los Angeles Dodgers\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "11",
+        "player": "Noelvi Marte Cincinnati Reds\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "12",
+        "player": "Bobby Witt Jr. Kansas City Royals\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "13",
+        "player": "Kyle Karros Colorado Rockies\u2122",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "14",
+        "player": "Jack Flaherty Detroit Tigers\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "15",
+        "player": "Christian Yelich Milwaukee Brewers\u2122",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "16",
+        "player": "Kevin McGonigle Detroit Tigers\u00ae",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "17",
+        "player": "Juan Soto New York Mets\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "18",
+        "player": "Dillon Dingler Detroit Tigers\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "19",
+        "player": "Heriberto Hern\u00e1ndez Miami Marlins\u00ae",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "20",
+        "player": "Sandy Alcantara Miami Marlins\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "21",
+        "player": "Shane Bieber Toronto Blue Jays\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "22",
+        "player": "Mason Barnett Athletics\u2122",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "23",
+        "player": "Cole Young Seattle Mariners\u2122",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "24",
+        "player": "Josh Bell Minnesota Twins\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "25",
+        "player": "J.P. Crawford Seattle Mariners\u2122",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "26",
+        "player": "Michael Busch Chicago Cubs\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "27",
+        "player": "Joey Ortiz Milwaukee Brewers\u2122",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "28",
+        "player": "Corey Seager Texas Rangers\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "29",
+        "player": "Nico Hoerner Chicago Cubs\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "30",
+        "player": "Alex Bregman Chicago Cubs\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "31",
+        "player": "Bryan Woo Seattle Mariners\u2122",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "32",
+        "player": "Isaac Paredes Houston Astros\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "33",
+        "player": "Luisangel Acu\u00f1a Chicago White Sox\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "34",
+        "player": "Seiya Suzuki Chicago Cubs\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "35",
+        "player": "Gleyber Torres Detroit Tigers\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "36",
+        "player": "Yusei Kikuchi Angels\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "37",
+        "player": "Gavin Williams Cleveland Guardians\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "38",
+        "player": "Eury P\u00e9rez Miami Marlins\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "39",
+        "player": "Carter Jensen Kansas City Royals\u00ae",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "40",
+        "player": "Spencer Steer Cincinnati Reds\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "41",
+        "player": "MacKenzie Gore Texas Rangers\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "42",
+        "player": "Chris Bassitt Baltimore Orioles\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "43",
+        "player": "Carlos Rod\u00f3n New York Yankees\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "44",
+        "player": "Max Muncy Los Angeles Dodgers\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "45",
+        "player": "Pete Crow-Armstrong Chicago Cubs\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "46",
+        "player": "C.J. Kayfus Cleveland Guardians\u00ae",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "47",
+        "player": "Carlos Correa Houston Astros\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "48",
+        "player": "Kyle Stowers Miami Marlins\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "49",
+        "player": "Miguel Vargas Chicago White Sox\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "50",
+        "player": "Tarik Skubal Detroit Tigers\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "51",
+        "player": "Jackson Chourio Milwaukee Brewers\u2122",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "52",
+        "player": "Jack Dreyer Los Angeles Dodgers\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "53",
+        "player": "Victor Scott II St. Louis Cardinals\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "54",
+        "player": "Dylan Crews Washington Nationals\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "55",
+        "player": "Pete Alonso Baltimore Orioles\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "56",
+        "player": "Harry Ford Washington Nationals\u00ae",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "57",
+        "player": "Drew Rasmussen Tampa Bay Rays\u2122",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "58",
+        "player": "Kyle Tucker Los Angeles Dodgers\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "59",
+        "player": "Brandon Sproat Milwaukee Brewers\u2122",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "60",
+        "player": "Sal Frelick Milwaukee Brewers\u2122",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "61",
+        "player": "Jazz Chisholm Jr. New York Yankees\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "62",
+        "player": "Luis Castillo Seattle Mariners\u2122",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "63",
+        "player": "Kyle Teel Chicago White Sox\u00ae",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "64",
+        "player": "Shinnosuke Ogasawara Washington Nationals\u00ae",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "65",
+        "player": "Trevor Story Boston Red Sox\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "66",
+        "player": "Vladimir Guerrero Jr. Toronto Blue Jays\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "67",
+        "player": "Freddy Peralta New York Mets\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "68",
+        "player": "Brendan Donovan Seattle Mariners\u2122",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "69",
+        "player": "Matt McLain Cincinnati Reds\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "70",
+        "player": "Jhostynxon Garcia Pittsburgh Pirates\u00ae",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "71",
+        "player": "Edwin D\u00edaz Los Angeles Dodgers\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "72",
+        "player": "Brandon Lowe Pittsburgh Pirates\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "73",
+        "player": "Justin Crawford Philadelphia Phillies\u00ae",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "74",
+        "player": "Konnor Griffin Pittsburgh Pirates\u00ae",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "75",
+        "player": "Yoshinobu Yamamoto Los Angeles Dodgers\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "76",
+        "player": "George Valera Cleveland Guardians\u00ae",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "77",
+        "player": "Zach Neto Angels\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "78",
+        "player": "Kazuma Okamoto Toronto Blue Jays\u00ae",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "79",
+        "player": "Trent Grisham New York Yankees\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "80",
+        "player": "Spencer Schwellenbach Atlanta Braves\u2122",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "81",
+        "player": "Javier B\u00e1ez Detroit Tigers\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "82",
+        "player": "Iv\u00e1n Herrera St. Louis Cardinals\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "83",
+        "player": "Corbin Carroll Arizona Diamondbacks\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "84",
+        "player": "Maikel Garcia Kansas City Royals\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "85",
+        "player": "Grant Taylor Chicago White Sox\u00ae",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "86",
+        "player": "Trey Yesavage Toronto Blue Jays\u00ae",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "87",
+        "player": "Carson Benge New York Mets\u00ae",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "88",
+        "player": "Marcelo Mayer Boston Red Sox\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "89",
+        "player": "Tanner Bibee Cleveland Guardians\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "90",
+        "player": "Michael McGreevy St. Louis Cardinals\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "91",
+        "player": "Cole Ragans Kansas City Royals\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "92",
+        "player": "Gabriel Moreno Arizona Diamondbacks\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "93",
+        "player": "Bubba Chandler Pittsburgh Pirates\u00ae",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "94",
+        "player": "Nolan Schanuel Angels\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "95",
+        "player": "Jarren Duran Boston Red Sox\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "96",
+        "player": "Nick Pivetta San Diego Padres\u2122",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "97",
+        "player": "Logan O'Hoppe Angels\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "98",
+        "player": "Chase Meidroth Chicago White Sox\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "99",
+        "player": "Ketel Marte Arizona Diamondbacks\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "100",
+        "player": "Aaron Judge New York Yankees\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "101",
+        "player": "Brandon Nimmo Texas Rangers\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "102",
+        "player": "Alex Freeland Los Angeles Dodgers\u00ae",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "103",
+        "player": "Luke Weaver New York Mets\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "104",
+        "player": "Taylor Walls Tampa Bay Rays\u2122",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "105",
+        "player": "Alejandro Kirk Toronto Blue Jays\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "106",
+        "player": "Ernie Clement Toronto Blue Jays\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "107",
+        "player": "Zach Cole Houston Astros\u00ae",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "108",
+        "player": "Cam Smith Houston Astros\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "109",
+        "player": "Bo Bichette New York Mets\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "110",
+        "player": "Spencer Strider Atlanta Braves\u2122",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "111",
+        "player": "Kevin Gausman Toronto Blue Jays\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "112",
+        "player": "Cody Ponce Toronto Blue Jays\u00ae",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "113",
+        "player": "Max Fried New York Yankees\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "114",
+        "player": "Shane Baz Baltimore Orioles\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "115",
+        "player": "Owen Caissie Miami Marlins\u00ae",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "116",
+        "player": "Otto Lopez Miami Marlins\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "117",
+        "player": "Kyle Manzardo Cleveland Guardians\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "118",
+        "player": "Noah Cameron Kansas City Royals\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "119",
+        "player": "JJ Wetherholt St. Louis Cardinals\u00ae",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "120",
+        "player": "Taylor Ward Baltimore Orioles\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "121",
+        "player": "Cade Horton Chicago Cubs\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "122",
+        "player": "Ryan Ritter Colorado Rockies\u2122",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "123",
+        "player": "Kyle Schwarber Philadelphia Phillies\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "124",
+        "player": "Ronald Acu\u00f1a Jr. Atlanta Braves\u2122",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "125",
+        "player": "Brenton Doyle Colorado Rockies\u2122",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "126",
+        "player": "Drew Gilbert San Francisco Giants\u00ae",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "127",
+        "player": "Jos\u00e9 Ram\u00edrez Cleveland Guardians\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "128",
+        "player": "James Wood Washington Nationals\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "129",
+        "player": "Connelly Early Boston Red Sox\u00ae",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "130",
+        "player": "Junior Caminero Tampa Bay Rays\u2122",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "131",
+        "player": "Jac Caglianone Kansas City Royals\u00ae",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "132",
+        "player": "Daylen Lile Washington Nationals\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "133",
+        "player": "Justin Verlander Detroit Tigers\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "134",
+        "player": "Chase Burns Cincinnati Reds\u00ae",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "135",
+        "player": "Hunter Greene Cincinnati Reds\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "136",
+        "player": "Jackson Holliday Baltimore Orioles\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "137",
+        "player": "Jackson Merrill San Diego Padres\u2122",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "138",
+        "player": "Kodai Senga New York Mets\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "139",
+        "player": "Coby Mayo Baltimore Orioles\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "140",
+        "player": "Willy Adames San Francisco Giants\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "141",
+        "player": "Hurston Waldrep Atlanta Braves\u2122",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "142",
+        "player": "Carson Whisenhunt San Francisco Giants\u00ae",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "143",
+        "player": "Zach Maxwell Cincinnati Reds\u00ae",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "144",
+        "player": "Giancarlo Stanton New York Yankees\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "145",
+        "player": "Aroldis Chapman Boston Red Sox\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "146",
+        "player": "Randy Arozarena Seattle Mariners\u2122",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "147",
+        "player": "Colby Thomas Athletics\u2122",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "148",
+        "player": "Max Scherzer Toronto Blue Jays\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "149",
+        "player": "Julio Rodr\u00edguez Seattle Mariners\u2122",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "150",
+        "player": "Paul Skenes Pittsburgh Pirates\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "151",
+        "player": "Royce Lewis Minnesota Twins\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "152",
+        "player": "Chandler Simpson Tampa Bay Rays\u2122",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "153",
+        "player": "Gunnar Henderson Baltimore Orioles\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "154",
+        "player": "Manny Machado San Diego Padres\u2122",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "155",
+        "player": "Xander Bogaerts San Diego Padres\u2122",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "156",
+        "player": "Alec Burleson St. Louis Cardinals\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "157",
+        "player": "Jeremy Pe\u00f1a Houston Astros\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "158",
+        "player": "Zac Gallen Arizona Diamondbacks\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "159",
+        "player": "Freddie Freeman Los Angeles Dodgers\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "160",
+        "player": "Andrew Painter Philadelphia Phillies\u00ae",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "161",
+        "player": "Shota Imanaga Chicago Cubs\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "162",
+        "player": "Vinnie Pasquantino Kansas City Royals\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "163",
+        "player": "Bryan Reynolds Pittsburgh Pirates\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "164",
+        "player": "Jeff McNeil Athletics\u2122",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "165",
+        "player": "Wilyer Abreu Boston Red Sox\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "166",
+        "player": "Lourdes Gurriel Jr. Arizona Diamondbacks\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "167",
+        "player": "Will Banfield Cincinnati Reds\u00ae",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "168",
+        "player": "Luis Arraez San Francisco Giants\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "169",
+        "player": "Brice Matthews Houston Astros\u00ae",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "170",
+        "player": "Steven Kwan Cleveland Guardians\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "171",
+        "player": "Austin Riley Atlanta Braves\u2122",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "172",
+        "player": "Michael King San Diego Padres\u2122",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "173",
+        "player": "Byron Buxton Minnesota Twins\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "174",
+        "player": "Jonathan Aranda Tampa Bay Rays\u2122",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "175",
+        "player": "Jack Leiter Texas Rangers\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "176",
+        "player": "Logan Gilbert Seattle Mariners\u2122",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "177",
+        "player": "Payton Tolle Boston Red Sox\u00ae",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "178",
+        "player": "Mike Yastrzemski Atlanta Braves\u2122",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "179",
+        "player": "Brooks Lee Minnesota Twins\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "180",
+        "player": "Riley Greene Detroit Tigers\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "181",
+        "player": "T.J. Rumfield Colorado Rockies\u2122",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "182",
+        "player": "Nolan Arenado Arizona Diamondbacks\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "183",
+        "player": "Rafael Devers San Francisco Giants\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "184",
+        "player": "Parker Messick Cleveland Guardians\u00ae",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "185",
+        "player": "Rafael Flores Pittsburgh Pirates\u00ae",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "186",
+        "player": "Brent Rooker Athletics\u2122",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "187",
+        "player": "Dansby Swanson Chicago Cubs\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "188",
+        "player": "Jung Hoo Lee San Francisco Giants\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "189",
+        "player": "Brady House Washington Nationals\u00ae",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "190",
+        "player": "Henry Davis Pittsburgh Pirates\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "191",
+        "player": "Gerrit Cole New York Yankees\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "192",
+        "player": "Nathan Church St. Louis Cardinals\u00ae",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "193",
+        "player": "Matt Chapman San Francisco Giants\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "194",
+        "player": "Devin Williams New York Mets\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "195",
+        "player": "Carson Williams Tampa Bay Rays\u2122",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "196",
+        "player": "Jacob Misiorowski Milwaukee Brewers\u2122",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "197",
+        "player": "Patrick Bailey San Francisco Giants\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "198",
+        "player": "William Contreras Milwaukee Brewers\u2122",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "199",
+        "player": "Roki Sasaki Los Angeles Dodgers\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "200",
+        "player": "Mike Trout Angels\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "201",
+        "player": "Josh Naylor Seattle Mariners\u2122",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "202",
+        "player": "Troy Melton Detroit Tigers\u00ae",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "203",
+        "player": "Eugenio Su\u00e1rez Cincinnati Reds\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "204",
+        "player": "Xavier Edwards Miami Marlins\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "205",
+        "player": "Robert Suarez Atlanta Braves\u2122",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "206",
+        "player": "Adolis Garc\u00eda Philadelphia Phillies\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "207",
+        "player": "Hunter Goodman Colorado Rockies\u2122",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "208",
+        "player": "Dylan Cease Toronto Blue Jays\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "209",
+        "player": "Caleb Durbin Boston Red Sox\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "210",
+        "player": "Joe Ryan Minnesota Twins\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "211",
+        "player": "Tyler Soderstrom Athletics\u2122",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "212",
+        "player": "Sean Murphy Atlanta Braves\u2122",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "213",
+        "player": "Wyatt Langford Texas Rangers\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "214",
+        "player": "Andrew McCutchen Texas Rangers\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "215",
+        "player": "Shane Smith Chicago White Sox\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "216",
+        "player": "George Kirby Seattle Mariners\u2122",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "217",
+        "player": "Masyn Winn St. Louis Cardinals\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "218",
+        "player": "Dylan Beavers Baltimore Orioles\u00ae",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "219",
+        "player": "Harrison Bader San Francisco Giants\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "220",
+        "player": "Luke Keaschall Minnesota Twins\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "221",
+        "player": "Jordan Walker St. Louis Cardinals\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "222",
+        "player": "Agust\u00edn Ram\u00edrez Miami Marlins\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "223",
+        "player": "Lawrence Butler Athletics\u2122",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "224",
+        "player": "Daulton Varsho Toronto Blue Jays\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "225",
+        "player": "Roman Anthony Boston Red Sox\u00ae",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "226",
+        "player": "Jordan Beck Colorado Rockies\u2122",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "227",
+        "player": "Jacob Wilson Athletics\u2122",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "228",
+        "player": "Geraldo Perdomo Arizona Diamondbacks\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "229",
+        "player": "Otto Kemp Philadelphia Phillies\u00ae",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "230",
+        "player": "Kerry Carpenter Detroit Tigers\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "231",
+        "player": "Seth Lugo Kansas City Royals\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "232",
+        "player": "Christian Moore Angels\u00ae",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "233",
+        "player": "J.T. Realmuto Philadelphia Phillies\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "234",
+        "player": "Ryan Jeffers Minnesota Twins\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "235",
+        "player": "Jo Adell Angels\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "236",
+        "player": "Nolan McLean New York Mets\u00ae",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "237",
+        "player": "Corbin Burnes Arizona Diamondbacks\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "238",
+        "player": "Logan Webb San Francisco Giants\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "239",
+        "player": "Maximo Acosta Miami Marlins\u00ae",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "240",
+        "player": "Will Smith Los Angeles Dodgers\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "241",
+        "player": "Matt Olson Atlanta Braves\u2122",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "242",
+        "player": "Tatsuya Imai Houston Astros\u00ae",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "243",
+        "player": "CJ Abrams Washington Nationals\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "244",
+        "player": "Bryce Harper Philadelphia Phillies\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "245",
+        "player": "Jacob Melton Tampa Bay Rays\u2122",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "246",
+        "player": "Denzel Clarke Athletics\u2122",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "247",
+        "player": "Warming Bernabel Washington Nationals\u00ae",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "248",
+        "player": "Bryson Stott Philadelphia Phillies\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "249",
+        "player": "Oneil Cruz Pittsburgh Pirates\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "250",
+        "player": "Nick Kurtz Athletics\u2122",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "251",
+        "player": "Isaac Collins Kansas City Royals\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "252",
+        "player": "Christian Walker Houston Astros\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "253",
+        "player": "George Springer Toronto Blue Jays\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "254",
+        "player": "Bryce Eldridge San Francisco Giants\u00ae",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "255",
+        "player": "Cody Freeman Texas Rangers\u00ae",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "256",
+        "player": "Matthew Boyd Chicago Cubs\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "257",
+        "player": "Denzer Guzman Angels\u00ae",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "258",
+        "player": "Drake Baldwin Atlanta Braves\u2122",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "259",
+        "player": "Colson Montgomery Chicago White Sox\u00ae",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "260",
+        "player": "Fernando Tatis Jr. San Diego Padres\u2122",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "261",
+        "player": "Jakob Marsee Miami Marlins\u00ae",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "262",
+        "player": "Cam Schlittler New York Yankees\u00ae",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "263",
+        "player": "Brett Baty New York Mets\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "264",
+        "player": "Mois\u00e9s Ballesteros Chicago Cubs\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "265",
+        "player": "Jes\u00fas Luzardo Philadelphia Phillies\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "266",
+        "player": "Jacob deGrom Texas Rangers\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "267",
+        "player": "Luis Robert Jr. New York Mets\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "268",
+        "player": "Mookie Betts Los Angeles Dodgers\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "269",
+        "player": "Jonah Tong New York Mets\u00ae",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "270",
+        "player": "Cristopher S\u00e1nchez Philadelphia Phillies\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "271",
+        "player": "Matt Shaw Chicago Cubs\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "272",
+        "player": "Daniel Schneemann Cleveland Guardians\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "273",
+        "player": "Shea Langeliers Athletics\u2122",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "274",
+        "player": "Munetaka Murakami Chicago White Sox\u00ae",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "275",
+        "player": "Paul Goldschmidt New York Yankees\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "276",
+        "player": "Addison Barger Toronto Blue Jays\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "277",
+        "player": "Chase Dollander Colorado Rockies\u2122",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "278",
+        "player": "Blake Snell Los Angeles Dodgers\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "279",
+        "player": "Elly De La Cruz Cincinnati Reds\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "280",
+        "player": "Willson Contreras Boston Red Sox\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "281",
+        "player": "Marcus Semien New York Mets\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "282",
+        "player": "Kristian Campbell Boston Red Sox\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "283",
+        "player": "Salvador Perez Kansas City Royals\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "284",
+        "player": "Chase DeLauter Cleveland Guardians\u00ae",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "285",
+        "player": "Hunter Brown Houston Astros\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "286",
+        "player": "Andr\u00e9s Gim\u00e9nez Toronto Blue Jays\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "287",
+        "player": "Mason Miller San Diego Padres\u2122",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "288",
+        "player": "Kris Bryant Colorado Rockies\u2122",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "289",
+        "player": "Spencer Torkelson Detroit Tigers\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "290",
+        "player": "Zack Wheeler Philadelphia Phillies\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "291",
+        "player": "Jimmy Crooks St. Louis Cardinals\u00ae",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "292",
+        "player": "Lars Nootbaar St. Louis Cardinals\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "293",
+        "player": "Austin Hays Chicago White Sox\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "294",
+        "player": "Luis Morales Athletics\u2122",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "295",
+        "player": "Ben Rice New York Yankees\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "296",
+        "player": "Chris Sale Atlanta Braves\u2122",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "297",
+        "player": "Ozzie Albies Atlanta Braves\u2122",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "298",
+        "player": "Adley Rutschman Baltimore Orioles\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "299",
+        "player": "Francisco Lindor New York Mets\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "300",
+        "player": "Garrett Crochet Boston Red Sox\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "2025",
+        "player": "CHROME MVP BUYBACKS",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "2026",
+        "player": "Topps Chrome Baseball Checklist",
+        "team": "",
+        "note": ""
+      }
+    ]
+  },
+  "insert_sets": [
+    {
+      "name": "ULTRAVIOLET",
+      "count": 15,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "UV-1",
+          "player": "Shohei Ohtani Los Angeles Dodgers\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "UV-2",
+          "player": "Aaron Judge New York Yankees\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "UV-3",
+          "player": "Ronald Acu\u00f1a Jr. Atlanta Braves\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "UV-4",
+          "player": "Juan Soto New York Mets\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "UV-5",
+          "player": "Yoshinobu Yamamoto Los Angeles Dodgers\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "UV-6",
+          "player": "Vladimir Guerrero Jr. Toronto Blue Jays\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "UV-7",
+          "player": "Munetaka Murakami Chicago White Sox\u00ae",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "UV-8",
+          "player": "Nick Kurtz Athletics\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "UV-9",
+          "player": "Bobby Witt Jr. Kansas City Royals\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "UV-10",
+          "player": "Bryce Harper Philadelphia Phillies\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "UV-11",
+          "player": "Cal Raleigh Seattle Mariners\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "UV-12",
+          "player": "Jac Caglianone Kansas City Royals\u00ae",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "UV-13",
+          "player": "Roman Anthony Boston Red Sox\u00ae",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "UV-14",
+          "player": "Samuel Basallo Baltimore Orioles\u00ae",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "UV-15",
+          "player": "Paul Skenes Pittsburgh Pirates\u00ae",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "NUMBERS LIVE FOREVER",
+      "count": 2,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "NLF-1",
+          "player": "Wade Boggs Boston Red Sox\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NLF-2",
+          "player": "Billy Williams Chicago Cubs\u00ae",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "CLASS OF 2026 COOPERSTOWN CALLS",
+      "count": 3,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "CC-1",
+          "player": "Andruw Jones Atlanta Braves\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CC-2",
+          "player": "Carlos Beltr\u00e1n New York Mets\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CC-3",
+          "player": "Jeff Kent San Francisco Giants\u00ae",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "CLASS OF 2025 COOPERSTOWN CALLS",
+      "count": 5,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "CC-1",
+          "player": "Ichiro Seattle Mariners\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CC-2",
+          "player": "CC Sabathia New York Yankees\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CC-3",
+          "player": "Billy Wagner Houston Astros\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CC-4",
+          "player": "Dave Parker Pittsburgh Pirates\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CC-5",
+          "player": "Dick Allen Philadelphia Phillies\u00ae",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "TOPPS CHROME RADIATING ROOKIES",
+      "count": 20,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "RR-1",
+          "player": "Jac Caglianone Kansas City Royals\u00ae",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "RR-2",
+          "player": "Roman Anthony Boston Red Sox\u00ae",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "RR-3",
+          "player": "Bryce Eldridge San Francisco Giants\u00ae",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "RR-4",
+          "player": "Trey Yesavage Toronto Blue Jays\u00ae",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "RR-5",
+          "player": "Munetaka Murakami Chicago White Sox\u00ae",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "RR-6",
+          "player": "Colson Montgomery Chicago White Sox\u00ae",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "RR-7",
+          "player": "Kyle Teel Chicago White Sox\u00ae",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "RR-8",
+          "player": "Chase DeLauter Cleveland Guardians\u00ae",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "RR-9",
+          "player": "Jacob Misiorowski Milwaukee Brewers\u2122",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "RR-10",
+          "player": "Bubba Chandler Pittsburgh Pirates\u00ae",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "RR-11",
+          "player": "Jonah Tong New York Mets\u00ae",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "RR-12",
+          "player": "Samuel Basallo Baltimore Orioles\u00ae",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "RR-13",
+          "player": "Owen Caissie Miami Marlins\u00ae",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "RR-14",
+          "player": "Kevin McGonigle Detroit Tigers\u00ae",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "RR-15",
+          "player": "JJ Wetherholt St. Louis Cardinals\u00ae",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "RR-16",
+          "player": "Sal Stewart Cincinnati Reds\u00ae",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "RR-17",
+          "player": "Carson Benge New York Mets\u00ae",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "RR-18",
+          "player": "Nolan McLean New York Mets\u00ae",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "RR-19",
+          "player": "Kazuma Okamoto Toronto Blue Jays\u00ae",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "RR-20",
+          "player": "Tatsuya Imai Houston Astros\u00ae",
+          "team": "",
+          "note": "Rookie"
+        }
+      ]
+    },
+    {
+      "name": "FUTURE STARS",
+      "count": 10,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "FS-1",
+          "player": "Munetaka Murakami Chicago White Sox\u00ae",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "FS-2",
+          "player": "Colson Montgomery Chicago White Sox\u00ae",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "FS-3",
+          "player": "JJ Wetherholt St. Louis Cardinals\u00ae",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "FS-4",
+          "player": "Samuel Basallo Baltimore Orioles\u00ae",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "FS-5",
+          "player": "Nick Kurtz Athletics\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FS-6",
+          "player": "Kevin McGonigle Detroit Tigers\u00ae",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "FS-7",
+          "player": "Jac Caglianone Kansas City Royals\u00ae",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "FS-8",
+          "player": "Roman Anthony Boston Red Sox\u00ae",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "FS-9",
+          "player": "Paul Skenes Pittsburgh Pirates\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FS-10",
+          "player": "Carson Benge New York Mets\u00ae",
+          "team": "",
+          "note": "Rookie"
+        }
+      ]
+    },
+    {
+      "name": "SUPER SHORT PRINTS",
+      "count": 10,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "1",
+          "player": "Shohei Ohtani Los Angeles Dodgers\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "7",
+          "player": "Samuel Basallo Baltimore Orioles\u00ae",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "12",
+          "player": "Bobby Witt Jr. Kansas City Royals\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "17",
+          "player": "Juan Soto New York Mets\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "100",
+          "player": "Aaron Judge New York Yankees\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "124",
+          "player": "Ronald Acu\u00f1a Jr. Atlanta Braves\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "131",
+          "player": "Jac Caglianone Kansas City Royals\u00ae",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "150",
+          "player": "Paul Skenes Pittsburgh Pirates\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "200",
+          "player": "Mike Trout Angels\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "225",
+          "player": "Roman Anthony Boston Red Sox\u00ae",
+          "team": "",
+          "note": "Rookie"
+        }
+      ]
+    },
+    {
+      "name": "PERSPECTIVES",
+      "count": 10,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "P-1",
+          "player": "Jac Caglianone Kansas City Royals\u00ae",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "P-2",
+          "player": "Roman Anthony Boston Red Sox\u00ae",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "P-3",
+          "player": "Nick Kurtz Athletics\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "P-4",
+          "player": "Yoshinobu Yamamoto Los Angeles Dodgers\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "P-5",
+          "player": "Mike Trout Angels\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "P-6",
+          "player": "Ronald Acu\u00f1a Jr. Atlanta Braves\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "P-7",
+          "player": "Juan Soto New York Mets\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "P-8",
+          "player": "Paul Skenes Pittsburgh Pirates\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "P-9",
+          "player": "Albert Pujols St. Louis Cardinals\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "P-10",
+          "player": "Derek Jeter New York Yankees\u00ae",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "WORLD SERIES AT NIGHT",
+      "count": 10,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "WSN-1S",
+          "player": "hohei Ohtani Los Angeles Dodgers\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WSN-2M",
+          "player": "ookie Betts Los Angeles Dodgers\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WSN-3F",
+          "player": "reddie Freeman Los Angeles Dodgers\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WSN-4Y",
+          "player": "oshinobu Yamamoto Los Angeles Dodgers\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WSN-5W",
+          "player": "ill Smith Los Angeles Dodgers\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WSN-6G",
+          "player": "eorge Springer Toronto Blue Jays\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WSN-7M",
+          "player": "ax Scherzer Toronto Blue Jays\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WSN-8V",
+          "player": "ladimir Guerrero Jr. Toronto Blue Jays\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WSN-9T",
+          "player": "rey Yesavage Toronto Blue Jays\u00ae",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "WSN-10B",
+          "player": "o Bichette Toronto Blue Jays\u00ae",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "SHADOW ETCH",
+      "count": 20,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "SE-1",
+          "player": "Shohei Ohtani Los Angeles Dodgers\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SE-2",
+          "player": "Nick Kurtz Athletics\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SE-3",
+          "player": "Francisco Lindor New York Mets\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SE-4",
+          "player": "Juan Soto New York Mets\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SE-5",
+          "player": "Vladimir Guerrero Jr. Toronto Blue Jays\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SE-6",
+          "player": "Mookie Betts Los Angeles Dodgers\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SE-7",
+          "player": "Elly De La Cruz Cincinnati Reds\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SE-8",
+          "player": "Jos\u00e9 Ram\u00edrez Cleveland Guardians\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SE-9",
+          "player": "Ronald Acu\u00f1a Jr. Atlanta Braves\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SE-10",
+          "player": "Bryce Harper Philadelphia Phillies\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SE-11",
+          "player": "Corbin Carroll Arizona Diamondbacks\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SE-12",
+          "player": "Jac Caglianone Kansas City Royals\u00ae",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "SE-13",
+          "player": "Roman Anthony Boston Red Sox\u00ae",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "SE-14",
+          "player": "Munetaka Murakami Chicago White Sox\u00ae",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "SE-15",
+          "player": "Chase DeLauter Cleveland Guardians\u00ae",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "SE-16",
+          "player": "Jacob Misiorowski Milwaukee Brewers\u2122",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "SE-17",
+          "player": "Nolan McLean New York Mets\u00ae",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "SE-18",
+          "player": "Samuel Basallo Baltimore Orioles\u00ae",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "SE-19",
+          "player": "Chase Burns Cincinnati Reds\u00ae",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "SE-20",
+          "player": "Kazuma Okamoto Toronto Blue Jays\u00ae",
+          "team": "",
+          "note": "Rookie"
+        }
+      ]
+    },
+    {
+      "name": "HELIX",
+      "count": 15,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "HX-1",
+          "player": "Shohei Ohtani Los Angeles Dodgers\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HX-2",
+          "player": "Aaron Judge New York Yankees\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HX-3",
+          "player": "Bobby Witt Jr. Kansas City Royals\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HX-4",
+          "player": "Paul Skenes Pittsburgh Pirates\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HX-5",
+          "player": "Cal Raleigh Seattle Mariners\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HX-6",
+          "player": "Mike Trout Angels\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HX-7",
+          "player": "Bryce Harper Philadelphia Phillies\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HX-8",
+          "player": "Willie Mays San Francisco Giants\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HX-9",
+          "player": "Roberto Clemente Pittsburgh Pirates\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HX-10",
+          "player": "Hank Aaron Atlanta Braves\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HX-11",
+          "player": "Sandy Koufax Brooklyn Dodgers\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HX-12",
+          "player": "Colson Montgomery Chicago White Sox\u00ae",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "HX-13",
+          "player": "Samuel Basallo Baltimore Orioles\u00ae",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "HX-14",
+          "player": "Jac Caglianone Kansas City Royals\u00ae",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "HX-15",
+          "player": "Roman Anthony Boston Red Sox\u00ae",
+          "team": "",
+          "note": "Rookie"
+        }
+      ]
+    },
+    {
+      "name": "STATIC NOISE",
+      "count": 15,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "SN-1",
+          "player": "Shohei Ohtani Los Angeles Dodgers\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SN-2",
+          "player": "Aaron Judge New York Yankees\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SN-3",
+          "player": "Francisco Lindor New York Mets\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SN-4",
+          "player": "Juan Soto New York Mets\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SN-5",
+          "player": "Freddie Freeman Los Angeles Dodgers\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SN-6",
+          "player": "Vladimir Guerrero Jr. Toronto Blue Jays\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SN-7",
+          "player": "Corbin Carroll Arizona Diamondbacks\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SN-8",
+          "player": "Bobby Witt Jr. Kansas City Royals\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SN-9",
+          "player": "Paul Skenes Pittsburgh Pirates\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SN-10",
+          "player": "Jos\u00e9 Ram\u00edrez Cleveland Guardians\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SN-11",
+          "player": "Cal Raleigh Seattle Mariners\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SN-12",
+          "player": "Ronald Acu\u00f1a Jr. Atlanta Braves\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SN-13",
+          "player": "Bryce Harper Philadelphia Phillies\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SN-14",
+          "player": "Jac Caglianone Kansas City Royals\u00ae",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "SN-15",
+          "player": "Roman Anthony Boston Red Sox\u00ae",
+          "team": "",
+          "note": "Rookie"
+        }
+      ]
+    },
+    {
+      "name": "HOBBY MASTERS",
+      "count": 19,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "HM-1",
+          "player": "Shohei Ohtani Los Angeles Dodgers\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HM-2",
+          "player": "Aaron Judge New York Yankees\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HM-3",
+          "player": "Francisco Lindor New York Mets\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HM-4",
+          "player": "Juan Soto New York Mets\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HM-5",
+          "player": "Fernando Tatis Jr. San Diego Padres\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HM-6",
+          "player": "Vladimir Guerrero Jr. Toronto Blue Jays\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HM-7",
+          "player": "Corbin Carroll Arizona Diamondbacks\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HM-8",
+          "player": "Bobby Witt Jr. Kansas City Royals\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HM-9",
+          "player": "Paul Skenes Pittsburgh Pirates\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HM-10",
+          "player": "Jos\u00e9 Ram\u00edrez Cleveland Guardians\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HM-11",
+          "player": "Cal Raleigh Seattle Mariners\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HM-12",
+          "player": "Ronald Acu\u00f1a Jr. Atlanta Braves\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HM-13",
+          "player": "Bryce Harper Philadelphia Phillies\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HM-14",
+          "player": "Elly De La Cruz Cincinnati Reds\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HM-15",
+          "player": "Julio Rodr\u00edguez Seattle Mariners\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HM-16",
+          "player": "Pete Crow-Armstrong Chicago Cubs\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HM-17",
+          "player": "Bryce Eldridge San Francisco Giants\u00ae",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "HM-18",
+          "player": "Jac Caglianone Kansas City Royals\u00ae",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "HM-19",
+          "player": "Roman Anthony Boston Red Sox\u00ae",
+          "team": "",
+          "note": "Rookie"
+        }
+      ]
+    },
+    {
+      "name": "FANATICAL",
+      "count": 10,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "FAN-1",
+          "player": "Aaron Judge New York Yankees\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FAN-2",
+          "player": "Bryce Harper Philadelphia Phillies\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FAN-3",
+          "player": "Juan Soto New York Mets\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FAN-4",
+          "player": "Jac Caglianone Kansas City Royals\u00ae",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "FAN-5",
+          "player": "Roman Anthony Boston Red Sox\u00ae",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "FAN-6",
+          "player": "Colson Montgomery Chicago White Sox\u00ae",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "FAN-7",
+          "player": "Shohei Ohtani Los Angeles Dodgers\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FAN-8",
+          "player": "Paul Skenes Pittsburgh Pirates\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FAN-9",
+          "player": "Bobby Witt Jr. Kansas City Royals\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FAN-10R",
+          "player": "onald Acu\u00f1a Jr. Atlanta Braves\u2122",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "WILD STYLE",
+      "count": 25,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "WST-1S",
+          "player": "hohei Ohtani Los Angeles Dodgers\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WST-2A",
+          "player": "aron Judge New York Yankees\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WST-3J",
+          "player": "uan Soto New York Mets\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WST-4F",
+          "player": "rancisco Lindor New York Mets\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WST-5N",
+          "player": "ick Kurtz Athletics\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WST-6K",
+          "player": "azuma Okamoto Toronto Blue Jays\u00ae",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "WST-7M",
+          "player": "ookie Betts Los Angeles Dodgers\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WST-8M",
+          "player": "att Olson Atlanta Braves\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WST-9F",
+          "player": "reddie Freeman Los Angeles Dodgers\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WST-10Y",
+          "player": "oshinobu Yamamoto Los Angeles Dodgers\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WST-11C",
+          "player": "orbin Carroll Arizona Diamondbacks\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WST-12F",
+          "player": "ernando Tatis Jr. San Diego Padres\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WST-13J",
+          "player": "os\u00e9 Ram\u00edrez Cleveland Guardians\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WST-14J",
+          "player": "ulio Rodr\u00edguez Seattle Mariners\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WST-15C",
+          "player": "orey Seager Texas Rangers\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WST-16P",
+          "player": "ete Crow-Armstrong Chicago Cubs\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WST-17J",
+          "player": "ames Wood Washington Nationals\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WST-18R",
+          "player": "afael Devers San Francisco Giants\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WST-19W",
+          "player": "yatt Langford Texas Rangers\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WST-20J",
+          "player": "ackson Holliday Baltimore Orioles\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WST-21S",
+          "player": "amuel Basallo Baltimore Orioles\u00ae",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "WST-22J",
+          "player": "ac Caglianone Kansas City Royals\u00ae",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "WST-23R",
+          "player": "oman Anthony Boston Red Sox\u00ae",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "WST-24C",
+          "player": "olson Montgomery Chicago White Sox\u00ae",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "WST-25M",
+          "player": "unetaka Murakami Chicago White Sox\u00ae",
+          "team": "",
+          "note": "Rookie"
+        }
+      ]
+    },
+    {
+      "name": "PAST TO PRESENT",
+      "count": 50,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "PTP-1",
+          "player": "Mickey Mantle New York Yankees\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PTP-1",
+          "player": "Aaron Judge New York Yankees\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PTP-2",
+          "player": "Hank Aaron Atlanta Braves\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PTP-2",
+          "player": "Ronald Acu\u00f1a Jr. Atlanta Braves\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PTP-3",
+          "player": "Jackie Robinson Brooklyn Dodgers\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PTP-3",
+          "player": "Mookie Betts Los Angeles Dodgers\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PTP-4",
+          "player": "Mike Schmidt Philadelphia Phillies\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PTP-4",
+          "player": "Bryce Harper Philadelphia Phillies\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PTP-5",
+          "player": "Barry Larkin Cincinnati Reds\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PTP-5",
+          "player": "Elly De La Cruz Cincinnati Reds\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PTP-6",
+          "player": "Joe Carter Toronto Blue Jays\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PTP-6",
+          "player": "Vladimir Guerrero Jr. Toronto Blue Jays\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PTP-7",
+          "player": "Orel Hershiser Los Angeles Dodgers\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PTP-7",
+          "player": "Yoshinobu Yamamoto Los Angeles Dodgers\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PTP-8",
+          "player": "Mark McGwire Oakland Athletics\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PTP-8",
+          "player": "Nick Kurtz Athletics\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PTP-9",
+          "player": "Rickey Henderson Oakland Athletics\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PTP-9",
+          "player": "Lawrence Butler Athletics\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PTP-10C",
+          "player": "hipper Jones Atlanta Braves\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PTP-10A",
+          "player": "ustin Riley Atlanta Braves\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PTP-11",
+          "player": "F\u00e9lix Hern\u00e1ndez Seattle Mariners\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PTP-11L",
+          "player": "uis Castillo Seattle Mariners\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PTP-12L",
+          "player": "uis Gonzalez Arizona Diamondbacks\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PTP-12C",
+          "player": "orbin Carroll Arizona Diamondbacks\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PTP-13R",
+          "player": "on Guidry New York Yankees\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PTP-13G",
+          "player": "errit Cole New York Yankees\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PTP-14F",
+          "player": "rancisco Lindor New York Mets\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PTP-14D",
+          "player": "avid Wright New York Mets\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PTP-15E",
+          "player": "dgar Mart\u00ednez Seattle Mariners\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PTP-15C",
+          "player": "al Raleigh Seattle Mariners\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PTP-16K",
+          "player": "irby Puckett Minnesota Twins\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PTP-16B",
+          "player": "yron Buxton Minnesota Twins\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PTP-17G",
+          "player": "eorge Brett Kansas City Royals",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PTP-17B",
+          "player": "obby Witt Jr. Kansas City Royals",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PTP-18C",
+          "player": "al Ripken Jr. Baltimore Orioles\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PTP-18G",
+          "player": "unnar Henderson Baltimore Orioles\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PTP-19A",
+          "player": "drian Beltr\u00e9 Texas Rangers\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PTP-19C",
+          "player": "orey Seager Texas Rangers\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PTP-20C",
+          "player": "arl Yastrzemski Boston Red Sox\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PTP-20R",
+          "player": "oman Anthony Boston Red Sox\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PTP-21C",
+          "player": "raig Biggio Houston Astros\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PTP-21J",
+          "player": "ose Altuve Houston Astros\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PTP-22R",
+          "player": "yne Sandberg Chicago Cubs\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PTP-22P",
+          "player": "ete Crow-Armstrong Chicago Cubs\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PTP-23O",
+          "player": "zzie Smith St. Louis Cardinals\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PTP-23M",
+          "player": "asyn Winn St. Louis Cardinals\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PTP-24W",
+          "player": "ill Clark San Francisco Giants\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PTP-24M",
+          "player": "att Chapman San Francisco Giants\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PTP-25F",
+          "player": "red McGriff Atlanta Braves\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PTP-25M",
+          "player": "att Olson Atlanta Braves\u2122",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "TOPPS CHROME EXPOSE",
+      "count": 30,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "TCE-1",
+          "player": "Shohei Ohtani Los Angeles Dodgers\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TCE-2",
+          "player": "Paul Skenes Pittsburgh Pirates\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TCE-3",
+          "player": "Bobby Witt Jr. Kansas City Royals\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TCE-4",
+          "player": "Elly De La Cruz Cincinnati Reds\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TCE-5",
+          "player": "Pete Crow-Armstrong Chicago Cubs\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TCE-6",
+          "player": "Cal Raleigh Seattle Mariners\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TCE-7",
+          "player": "Bryce Harper Philadelphia Phillies\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TCE-8",
+          "player": "Roman Anthony Boston Red Sox\u00ae",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "TCE-9",
+          "player": "Francisco Lindor New York Mets\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TCE-10J",
+          "player": "acob Wilson Athletics\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TCE-11J",
+          "player": "ac Caglianone Kansas City Royals\u00ae",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "TCE-12M",
+          "player": "anny Machado San Diego Padres\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TCE-13J",
+          "player": "unior Caminero Tampa Bay Rays\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TCE-14C",
+          "player": "olson Montgomery Chicago White Sox\u00ae",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "TCE-15C",
+          "player": "hase Burns Cincinnati Reds\u00ae",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "TCE-16R",
+          "player": "onald Acu\u00f1a Jr. Atlanta Braves\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TCE-17R",
+          "player": "afael Devers San Francisco Giants\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TCE-18J",
+          "player": "acob Misiorowski Milwaukee Brewers\u2122",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "TCE-19T",
+          "player": "rey Yesavage Toronto Blue Jays\u00ae",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "TCE-20O",
+          "player": "wen Caissie Miami Marlins\u00ae",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "TCE-21S",
+          "player": "al Stewart Cincinnati Reds\u00ae",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "TCE-22J",
+          "player": "onah Tong New York Mets\u00ae",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "TCE-23C",
+          "player": "arson Williams Tampa Bay Rays\u2122",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "TCE-24M",
+          "player": "ike Trout Angels\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TCE-25N",
+          "player": "olan McLean New York Mets\u00ae",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "TCE-26K",
+          "player": "azuma Okamoto Toronto Blue Jays\u00ae",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "TCE-27C",
+          "player": "orey Seager Texas Rangers\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TCE-28M",
+          "player": "unetaka Murakami Chicago White Sox\u00ae",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "TCE-29M",
+          "player": "ax Scherzer Toronto Blue Jays\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TCE-30J",
+          "player": "akob Marsee Miami Marlins\u00ae",
+          "team": "",
+          "note": "Rookie"
+        }
+      ]
+    },
+    {
+      "name": "BIG TICKET PLAYERS",
+      "count": 25,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "BTP-1",
+          "player": "Mike Trout Angels\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BTP-2",
+          "player": "Jacob Misiorowski Milwaukee Brewers\u2122",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "BTP-3",
+          "player": "Shohei Ohtani Los Angeles Dodgers\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BTP-4",
+          "player": "Gunnar Henderson Baltimore Orioles\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BTP-5",
+          "player": "Elly De La Cruz Cincinnati Reds\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BTP-6",
+          "player": "Corbin Carroll Arizona Diamondbacks\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BTP-7",
+          "player": "Ronald Acu\u00f1a Jr. Atlanta Braves\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BTP-8",
+          "player": "Mookie Betts Los Angeles Dodgers\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BTP-9",
+          "player": "Jos\u00e9 Ram\u00edrez Cleveland Guardians\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BTP-10F",
+          "player": "rancisco Lindor New York Mets\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BTP-11J",
+          "player": "uan Soto New York Mets\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BTP-12J",
+          "player": "ackson Chourio Milwaukee Brewers\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BTP-13P",
+          "player": "ete Crow-Armstrong Chicago Cubs\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BTP-14P",
+          "player": "aul Skenes Pittsburgh Pirates\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BTP-15J",
+          "player": "ames Wood Washington Nationals\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BTP-16B",
+          "player": "obby Witt Jr. Kansas City Royals\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BTP-17V",
+          "player": "ladimir Guerrero Jr. Toronto Blue Jays\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BTP-18A",
+          "player": "aron Judge New York Yankees\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BTP-19B",
+          "player": "ryce Harper Philadelphia Phillies\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BTP-20F",
+          "player": "ernando Tatis Jr. San Diego Padres\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BTP-21J",
+          "player": "ulio Rodr\u00edguez Seattle Mariners\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BTP-22J",
+          "player": "ac Caglianone Kansas City Royals\u00ae",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "BTP-23R",
+          "player": "oman Anthony Boston Red Sox\u00ae",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "BTP-24C",
+          "player": "hase Burns Cincinnati Reds\u00ae",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "BTP-25S",
+          "player": "amuel Basallo Baltimore Orioles\u00ae",
+          "team": "",
+          "note": "Rookie"
+        }
+      ]
+    },
+    {
+      "name": "WRECKING CREW",
+      "count": 56,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "WC-1",
+          "player": "Aaron Judge New York Yankees\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WC-2",
+          "player": "Shohei Ohtani Los Angeles Dodgers\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WC-3",
+          "player": "Kyle Schwarber Philadelphia Phillies\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WC-4",
+          "player": "Bryce Harper Philadelphia Phillies\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WC-5",
+          "player": "Cal Raleigh Seattle Mariners\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WC-6",
+          "player": "Nick Kurtz Athletics\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WC-7",
+          "player": "Pete Crow-Armstrong Chicago Cubs\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WC-8",
+          "player": "Giancarlo Stanton New York Yankees\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WC-9",
+          "player": "Paul Goldschmidt New York Yankees\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WC-10F",
+          "player": "ernando Tatis Jr. San Diego Padres\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WC-11B",
+          "player": "yron Buxton Minnesota Twins\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WC-12J",
+          "player": "ackson Chourio Milwaukee Brewers\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WC-13F",
+          "player": "reddie Freeman Los Angeles Dodgers\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WC-14C",
+          "player": "orbin Carroll Arizona Diamondbacks\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WC-15K",
+          "player": "etel Marte Arizona Diamondbacks\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WC-16C",
+          "player": "orey Seager Texas Rangers\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WC-17O",
+          "player": "neil Cruz Pittsburgh Pirates\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WC-18M",
+          "player": "ike Trout Angels\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WC-19S",
+          "player": "pencer Torkelson Detroit Tigers\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WC-20J",
+          "player": "os\u00e9 Ram\u00edrez Cleveland Guardians\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WC-21B",
+          "player": "obby Witt Jr. Kansas City Royals\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WC-22E",
+          "player": "lly De La Cruz Cincinnati Reds\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WC-23C",
+          "player": "olson Montgomery Chicago White Sox\u00ae",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "WC-24S",
+          "player": "amuel Basallo Baltimore Orioles\u00ae",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "WC-25R",
+          "player": "oman Anthony Boston Red Sox\u00ae",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "1991",
+          "player": "TOPPS BASEBALL",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "91C",
+          "player": "B-1Shohei Ohtani Los Angeles Dodgers\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "91C",
+          "player": "B-2Aaron Judge New York Yankees\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "91C",
+          "player": "B-3Bryce Harper Philadelphia Phillies\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "91C",
+          "player": "B-4Cal Raleigh Seattle Mariners\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "91C",
+          "player": "B-5Ronald Acu\u00f1a Jr. Atlanta Braves\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "91C",
+          "player": "B-6Mike Trout Angels\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "91C",
+          "player": "B-7Elly De La Cruz Cincinnati Reds\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "91C",
+          "player": "B-8Mookie Betts Los Angeles Dodgers\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "91C",
+          "player": "B-9Jos\u00e9 Ram\u00edrez Cleveland Guardians\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "91C",
+          "player": "B-1Y0oshinobu Yamamoto Los Angeles Dodgers\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "91C",
+          "player": "B-1J1uan Soto New York Mets\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "91C",
+          "player": "B-1F2ernando Tatis Jr. San Diego Padres\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "91C",
+          "player": "B-1J3ulio Rodr\u00edguez Seattle Mariners\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "91C",
+          "player": "B-1P4ete Crow-Armstrong Chicago Cubs\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "91C",
+          "player": "B-1P5aul Skenes Pittsburgh Pirates\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "91C",
+          "player": "B-1C6olson Montgomery Chicago White Sox\u00ae",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "91C",
+          "player": "B-1S7amuel Basallo Baltimore Orioles\u00ae",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "91C",
+          "player": "B-1B8ubba Chandler Pittsburgh Pirates\u00ae",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "91C",
+          "player": "B-1R9oman Anthony Boston Red Sox\u00ae",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "91C",
+          "player": "B-2J0ac Caglianone Kansas City Royals\u00ae",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "91C",
+          "player": "B-2S1al Stewart Cincinnati Reds\u00ae",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "91C",
+          "player": "B-2M2unetaka Murakami Chicago White Sox\u00ae",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "91C",
+          "player": "B-2T3atsuya Imai Houston Astros\u00ae",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "91C",
+          "player": "B-2K4azuma Okamoto Toronto Blue Jays\u00ae",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "91C",
+          "player": "B-2C5hase Burns Cincinnati Reds\u00ae",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "91C",
+          "player": "B-2C6hristian Moore Angels\u00ae",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "91C",
+          "player": "B-2O7wen Caissie Miami Marlins\u00ae",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "91C",
+          "player": "B-2J8akob Marsee Miami Marlins\u00ae",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "91C",
+          "player": "B-2K9yle Teel Chicago White Sox\u00ae",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "91C",
+          "player": "B-3B0ryce Eldridge San Francisco Giants\u00ae",
+          "team": "",
+          "note": "Rookie"
+        }
+      ]
+    },
+    {
+      "name": "DIAMOND MOMENTS",
+      "count": 52,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "DM-1",
+          "player": "Mickey Mantle New York Yankees\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "DM-2",
+          "player": "Willie Mays New York Giants\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "DM-3",
+          "player": "Don Larsen New York Yankees\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "DM-4",
+          "player": "Ted Williams Boston Red Sox\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "DM-5",
+          "player": "Bill Mazeroski Pittsburgh Pirates\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "DM-6",
+          "player": "Roger Maris New York Yankees\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "DM-7",
+          "player": "Sandy Koufax Los Angeles Dodgers\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "DM-8",
+          "player": "Sandy Koufax Los Angeles Dodgers\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "DM-9",
+          "player": "Mickey Mantle New York Yankees\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "DM-10B",
+          "player": "ob Gibson St. Louis Cardinals\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "DM-11W",
+          "player": "illie Mays San Francisco Giants\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "DM-12R",
+          "player": "oberto Clemente Pittsburgh Pirates\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "DM-13H",
+          "player": "ank Aaron Atlanta Braves\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "DM-14R",
+          "player": "eggie Jackson Oakland Athletics\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "DM-15C",
+          "player": "arlton Fisk Boston Red Sox\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "DM-16R",
+          "player": "eggie Jackson New York Yankees\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "DM-17O",
+          "player": "zzie Smith St. Louis Cardinals\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "DM-18K",
+          "player": "irk Gibson Los Angeles Dodgers\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "DM-19N",
+          "player": "olan Ryan Texas Rangers\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "DM-20T",
+          "player": "ony Gwynn San Diego Padres\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "DM-21R",
+          "player": "ickey Henderson Oakland Athletics\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "DM-22K",
+          "player": "irby Puckett Minnesota Twins\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "DM-23J",
+          "player": "oe Carter Toronto Blue Jays\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "DM-24C",
+          "player": "al Ripken Jr. Baltimore Orioles\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "DM-25K",
+          "player": "en Griffey Jr. Seattle Mariners\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "DM-26T",
+          "player": "ony Gwynn San Diego Padres\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "DM-27K",
+          "player": "erry Wood Chicago Cubs\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "DM-28M",
+          "player": "ark McGwire St. Louis Cardinals\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "DM-29R",
+          "player": "obin Ventura New York Mets\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "DM-30D",
+          "player": "erek Jeter New York Yankees\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "DM-31I",
+          "player": "chiro Seattle Mariners\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "DM-32L",
+          "player": "uis Gonzalez Arizona Diamondbacks\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "DM-33G",
+          "player": "eorge Bush",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "DM-34D",
+          "player": "erek Jeter New York Yankees\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "DM-35M",
+          "player": "anny Ramirez Boston Red Sox\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "DM-36D",
+          "player": "avid Ortiz Boston Red Sox\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "DM-37S",
+          "player": "ammy Sosa Texas Rangers\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "DM-38K",
+          "player": "en Griffey Jr. Cincinnati Reds\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "DM-39D",
+          "player": "erek Jeter New York Yankees\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "DM-40M",
+          "player": "iguel Cabrera Detroit Tigers\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "DM-41K",
+          "player": "ris Bryant Chicago Cubs\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "DM-42I",
+          "player": "chiro Miami Marlins\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "DM-43B",
+          "player": "artolo Colon New York Mets\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "DM-44P",
+          "player": "ete Alonso New York Mets\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "DM-45A",
+          "player": "lbert Pujols St. Louis Cardinals\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "DM-46A",
+          "player": "aron Judge New York Yankees\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "DM-47S",
+          "player": "hohei Ohtani Los Angeles Dodgers\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "DM-48F",
+          "player": "reddie Freeman Los Angeles Dodgers\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "DM-49F",
+          "player": "reddie Freeman Los Angeles Dodgers\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "DM-50S",
+          "player": "hohei Ohtani Los Angeles Dodgers\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "2025",
+          "player": "MLB COMMISSIONERS TROPHY",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CT-1",
+          "player": "Los Angeles Dodgers\u00ae",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "CHROME RIVALS HOME",
+      "count": 25,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "RVH-1",
+          "player": "Derek Jeter New York Yankees\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RVH-2",
+          "player": "Roger Clemens New York Yankees\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RVH-3",
+          "player": "Mookie Betts Los Angeles Dodgers\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RVH-4",
+          "player": "Mark McGwire St. Louis Cardinals\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RVH-5",
+          "player": "Sandy Koufax Brooklyn Dodgers\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RVH-6",
+          "player": "Albert Pujols St. Louis Cardinals\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RVH-7",
+          "player": "Brandon Phillips Cincinnati Reds\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RVH-8",
+          "player": "Chase Utley Philadelphia Phillies\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RVH-9",
+          "player": "Rickey Henderson Oakland Athletics\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RVH-10G",
+          "player": "eorge Brett Kansas City Royals\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RVH-11N",
+          "player": "olan Ryan Texas Rangers\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RVH-12P",
+          "player": "edro Martinez Boston Red Sox\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RVH-13A",
+          "player": "lex Rodriguez New York Yankees\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RVH-14M",
+          "player": "ike Piazza New York Mets\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RVH-15D",
+          "player": "ave Parker Pittsburgh Pirates\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RVH-16R",
+          "player": "eggie Jackson New York Yankees\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RVH-17C",
+          "player": "layton Kershaw Los Angeles Dodgers\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RVH-18R",
+          "player": "yne Sandberg Chicago Cubs\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RVH-19G",
+          "player": "eorge Bell Toronto Blue Jays\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RVH-20A",
+          "player": "aron Judge New York Yankees\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RVH-21M",
+          "player": "ike Schmidt Philadelphia Phillies\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RVH-22J",
+          "player": "ose Altuve Houston Astros\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RVH-23F",
+          "player": "rank Thomas Chicago White Sox\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RVH-24S",
+          "player": "eiya Suzuki Chicago Cubs\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RVH-25S",
+          "player": "hohei Ohtani Los Angeles Dodgers\u00ae",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "CHROME RIVALS AWAY",
+      "count": 25,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "RVA-1",
+          "player": "David Ortiz Boston Red Sox\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RVA-2",
+          "player": "Mike Piazza New York Mets\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RVA-3",
+          "player": "Manny Machado San Diego Padres\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RVA-4",
+          "player": "Sammy Sosa Chicago Cubs\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RVA-5",
+          "player": "Willie Mays New York Giants\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RVA-6",
+          "player": "Derrek Lee Chicago Cubs\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RVA-7",
+          "player": "Yadier Molina St. Louis Cardinals\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RVA-8",
+          "player": "David Wright New York Mets\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RVA-9",
+          "player": "Will Clark San Francisco Giants\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RVA-10G",
+          "player": "raig Nettles New York Yankees\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RVA-11R",
+          "player": "obin Ventura Chicago White Sox\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RVA-12J",
+          "player": "orge Posada New York Yankees\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RVA-13M",
+          "player": "anny Ramirez Boston Red Sox\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RVA-14C",
+          "player": "hipper Jones Atlanta Braves\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RVA-15J",
+          "player": "ohnny Bench Cincinnati Reds\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RVA-16C",
+          "player": "arl Yastrzemski Boston Red Sox\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RVA-17B",
+          "player": "uster Posey San Francisco Giants\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RVA-18O",
+          "player": "zzie Smith St. Louis Cardinals\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RVA-19A",
+          "player": "lan Trammell Detroit Tigers\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RVA-20J",
+          "player": "arren Duran Boston Red Sox\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RVA-21D",
+          "player": "arryl Strawberry New York Mets\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RVA-22C",
+          "player": "orey Seager Texas Rangers\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RVA-23G",
+          "player": "reg Maddux Chicago Cubs\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RVA-24C",
+          "player": "hristian Yelich Milwaukee Brewers\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RVA-25F",
+          "player": "ernando Tatis Jr. San Diego Padres\u2122",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "MINIONS",
+      "count": 4,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "17",
+          "player": "Juan Soto New York Mets\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "100",
+          "player": "Aaron Judge New York Yankees\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "150",
+          "player": "Paul Skenes Pittsburgh Pirates\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "225",
+          "player": "Roman Anthony Boston Red Sox\u00ae",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "WSCA-TTTrea Turner Washington Nationals\u00ae",
+      "count": 7,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "1991",
+          "player": "TOPPS BASEBALL AUTOGRAPHS",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "91C",
+          "player": "A-CCCorbin Carroll Arizona Diamondbacks\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "91C",
+          "player": "A-CCMolson Montgomery Chicago White Sox\u00ae",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "91C",
+          "player": "A-CCWarson Williams Tampa Bay Rays\u2122",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "91C",
+          "player": "A-JCJac Caglianone Kansas City Royals\u00ae",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "91C",
+          "player": "A-OOCwen Caissie Chicago Cubs\u00ae",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "91C",
+          "player": "A-SSBamuel Basallo Baltimore Orioles\u00ae",
+          "team": "",
+          "note": "Rookie"
+        }
+      ]
+    },
+    {
+      "name": "IS-WL Wyatt Langford Texas Rangers\u00ae",
+      "count": 70,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "75T",
+          "player": "H DIAMOND AUTOGRAPHS",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "75",
+          "player": "D-ABAlex Bregman Boston Red Sox\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "75",
+          "player": "D-AGAdr\u00edan Gonz\u00e1lez Los Angeles Dodgers\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "75",
+          "player": "D-AKAlejandro Kirk Toronto Blue Jays\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "75",
+          "player": "D-ALAlec Bohm Philadelphia Phillies\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "75",
+          "player": "D-AMAndrew McCutchen Pittsburgh Pirates\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "75",
+          "player": "D-ARAustin Riley Atlanta Braves\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "75",
+          "player": "D-ARAUdley Rutschman Baltimore Orioles\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "75",
+          "player": "D-ASAlfonso Soriano Chicago Cubs\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "75",
+          "player": "D-AVAnthony Volpe New York Yankees\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "75",
+          "player": "D-BAMois\u00e9s Ballesteros Chicago Cubs\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "75",
+          "player": "D-BBBert Blyleven Minnesota Twins\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "75",
+          "player": "D-BRBryan Reynolds Pittsburgh Pirates\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "75",
+          "player": "D-BTBrice Turang Milwaukee Brewers\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "75",
+          "player": "D-CFCarlton Fisk Boston Red Sox\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "75",
+          "player": "D-CSCAhris Sale Atlanta Braves\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "75",
+          "player": "D-DAJohnny Damon Boston Red Sox\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "75",
+          "player": "D-DBDusty Baker Los Angeles Dodgers\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "75",
+          "player": "D-DMDale Murphy Atlanta Braves\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "75",
+          "player": "D-DOJasson Dom\u00ednguez New York Yankees\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "75",
+          "player": "D-DSDarryl Strawberry New York Mets\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "75",
+          "player": "D-DWDavid Wright New York Mets\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "75",
+          "player": "D-EDElly De La Cruz Cincinnati Reds\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "75",
+          "player": "D-EMEddie Murray Baltimore Orioles\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "75",
+          "player": "D-EMEAdgar Martinez Seattle Mariners\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "75",
+          "player": "D-EQEdgar Quero Chicago White Sox\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "75",
+          "player": "D-ETEzequiel Tovar Colorado Rockies\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "75",
+          "player": "D-FHF\u00e9lix Hern\u00e1ndez Seattle Mariners\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "75",
+          "player": "D-FPFreddy Peralta Milwaukee Brewers\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "75",
+          "player": "D-FTFrank Thomas Chicago White Sox\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "75",
+          "player": "D-FTFJernando Tatis Jr. San Diego Padres\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "75",
+          "player": "D-GSGary Sheffield Florida Marlins\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "75",
+          "player": "D-HWHurston Waldrep Atlanta Braves\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "75",
+          "player": "D-IHIan Happ Chicago Cubs\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "75",
+          "player": "D-IPIsaac Paredes Houston Astros\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "75",
+          "player": "D-JBJohnny Bench Cincinnati Reds\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "75",
+          "player": "D-JDJarren Duran Boston Red Sox\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "75",
+          "player": "D-JIJimmy Rollins Philadelphia Phillies\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "75",
+          "player": "D-JJJackson Jobe Detroit Tigers\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "75",
+          "player": "D-JRJim Rice Boston Red Sox\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "75",
+          "player": "D-JSJohan Santana Minnesota Twins\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "75",
+          "player": "D-JTRJ.T. Realmuto Philadelphia Phillies\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "75",
+          "player": "D-JVJoey Votto Cincinnati Reds\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "75",
+          "player": "D-JWJames Wood Washington Nationals\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "75",
+          "player": "D-KCKristian Campbell Boston Red Sox\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "75",
+          "player": "D-KMKyle Manzardo Cleveland Guardians\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "75",
+          "player": "D-KSKCyle Schwarber Philadelphia Phillies\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "75",
+          "player": "D-KWKerry Wood Chicago Cubs\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "75",
+          "player": "D-LCLuis Castillo Seattle Mariners\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "75",
+          "player": "D-LWLogan Webb San Francisco Giants\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "75",
+          "player": "D-MBMichael Busch Chicago Cubs\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "75",
+          "player": "D-MCMatt Chapman San Francisco Giants\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "75",
+          "player": "D-MGMichael McGreevy St. Louis Cardinals\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "75",
+          "player": "D-MOMatt Olson Atlanta Braves\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "75",
+          "player": "D-MSMike Schmidt Philadelphia Phillies\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "75",
+          "player": "D-NHNico Hoerner Chicago Cubs\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "75",
+          "player": "D-OSOzzie Smith St. Louis Cardinals\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "75",
+          "player": "D-OZMarcell Ozuna Atlanta Braves\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "75",
+          "player": "D-PGPaul Goldschmidt New York Yankees\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "75",
+          "player": "D-RAJos\u00e9 Ram\u00edrez Cleveland Guardians\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "75",
+          "player": "D-REJos\u00e9 Reyes New York Mets\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "75",
+          "player": "D-RFRollie Fingers Oakland Athletics\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "75",
+          "player": "D-RGRiley Greene Detroit Tigers\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "75",
+          "player": "D-RHRyan Howard Philadelphia Phillies\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "75",
+          "player": "D-RMRyan McMahon New York Yankees\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "75",
+          "player": "D-RSRoki Sasaki Los Angeles Dodgers\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "75",
+          "player": "D-TETommy Edman Los Angeles Dodgers\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "75",
+          "player": "D-TSTyler Soderstrom Athletics\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "75",
+          "player": "D-WMWillie McGee St. Louis Cardinals\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "75",
+          "player": "D-YYYoshinobu Yamamoto Los Angeles Dodgers\u00ae",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "CHR-YYYoshinobu Yamamoto Los Angeles Dodgers\u00ae",
+      "count": 1,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "2025",
+          "player": "WORLD CHAMPIONS AUTOGRAPH REFRACTOR",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "DA-SDAndre Dawson Chicago Cubs\u00ae",
+      "count": 3,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "2025",
+          "player": "CHROME MVP BUYBACKS AUTOGRAPHS",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "1",
+          "player": "Shohei Ohtani Los Angeles Dodgers\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "99",
+          "player": "Aaron Judge New York Yankees\u00ae",
+          "team": "",
+          "note": ""
+        }
+      ]
+    }
+  ],
+  "autograph_sets": [],
+  "memorabilia_sets": [],
+  "team_sets": {}
+}
