@@ -1,0 +1,1049 @@
+{
+  "set": "2025 Topps Marvel The Collector",
+  "release_date": "2025",
+  "set_size": 0,
+  "product_info": {},
+  "box_contents": {},
+  "parallels": [],
+  "base_set": {
+    "count": 0,
+    "cards": []
+  },
+  "insert_sets": [
+    {
+      "name": "MCU PERFECTION CHARACTER PROPERTY",
+      "count": 85,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "1",
+          "player": "Mister Fantastic The Fantastic Four: First Steps",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "2",
+          "player": "Invisible Woman The Fantastic Four: First Steps",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "3",
+          "player": "Human Torch The Fantastic Four: First Steps",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "4",
+          "player": "The Thing The Fantastic Four: First Steps",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "5",
+          "player": "Yelena Belova Thunderbolts*",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "6",
+          "player": "Bucky Barnes Thunderbolts*",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "7",
+          "player": "John F. Walker Thunderbolts*",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "8",
+          "player": "Ghost Thunderbolts*",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "9",
+          "player": "Taskmaster Thunderbolts*",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "10",
+          "player": "Sentry Thunderbolts*",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "11",
+          "player": "Valentina Allegra de Fontaine Thunderbolts*",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "12",
+          "player": "Captain America Captain America: Brave New World",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "13",
+          "player": "Red Hulk Captain America: Brave New World",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "14",
+          "player": "Falcon Captain America: Brave New World",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "15",
+          "player": "Sidewinder Captain America: Brave New World",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "16",
+          "player": "The Leader Captain America: Brave New World",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "17",
+          "player": "Agatha Harkness Agatha All Along",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "18",
+          "player": "Rio Vidal Agatha All Along",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "19",
+          "player": "G'iah Secret Invasion",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "20",
+          "player": "Moon Knight Moon Knight",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "21",
+          "player": "She-Hulk She-Hulk",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "22",
+          "player": "Wilson Fisk Daredevil: Born Again",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "23",
+          "player": "Namor Black Panther: Wakanda Forever",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "24",
+          "player": "Ironheart Black Panther: Wakanda Forever",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "25",
+          "player": "Zuri Black Panther",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "26",
+          "player": "Erik Killmonger Black Panther",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "27",
+          "player": "Star-Lord Guardians of the Galaxy",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "28",
+          "player": "Rocket Guardians of the Galaxy",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "29",
+          "player": "Groot Guardians of the Galaxy",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "30",
+          "player": "Drax Guardians of the Galaxy",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "31",
+          "player": "Nebula Guardians of the Galaxy",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "32",
+          "player": "Yondu Guardians of the Galaxy",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "33",
+          "player": "The Collector Guardians of the Galaxy",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "34",
+          "player": "Ego Guardians of the Galaxy Vol. 2",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "35",
+          "player": "The High Evolutionary Guardians of the Galaxy Vol.3",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "36",
+          "player": "Thor Thor: Love and Thunder",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "37",
+          "player": "The Mighty Thor Thor: Love and Thunder",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "38",
+          "player": "Odin Thor",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "39",
+          "player": "Grandmaster Thor: Ragnarok",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "40",
+          "player": "Frigga Thor",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "41",
+          "player": "Korg Thor: Love and Thunder",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "42",
+          "player": "Loki Marvel's The Avengers",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "43",
+          "player": "Hela Thor: Ragnarok",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "44",
+          "player": "Sif Thor",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "45",
+          "player": "Valkyrie Thor: Ragnarok",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "46",
+          "player": "Captain Marvel Captain Marvel",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "47",
+          "player": "Talos Captain Marvel",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "48",
+          "player": "Yon-Rogg Captain Marvel",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "49",
+          "player": "Ms. Marvel The Marvels",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "50",
+          "player": "Monica Rambeau The Marvels",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "51",
+          "player": "Dar-Benn The Marvels",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "52",
+          "player": "Shang-Chi Shang-Chi and the Legend of the Ten Rings",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "53",
+          "player": "Ikaris Eternals",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "54",
+          "player": "Druig Eternals",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "55",
+          "player": "Thena Eternals",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "56",
+          "player": "Ant-Man Ant-Man",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "57",
+          "player": "Hope van Dyne Ant-Man",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "58",
+          "player": "Dr. Christine Palmer Doctor Strange",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "59",
+          "player": "Wong Doctor Strange",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "60",
+          "player": "The Ancient One Doctor Strange",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "61",
+          "player": "Kaecilius Doctor Strange",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "62",
+          "player": "Mordo Doctor Strange",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "63",
+          "player": "Doctor Strange Doctor Strange in the Multiverse of Madness",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "64",
+          "player": "America Chavez Doctor Strange in the Multiverse of Madness",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "65",
+          "player": "Clea Doctor Strange in the Multiverse of Madness",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "66",
+          "player": "Silver Surfer The Fantastic Four: First Steps",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "67",
+          "player": "Galactus The Fantastic Four: First Steps",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "68",
+          "player": "Nick Fury Avengers: Endgame",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "69",
+          "player": "Maria Hill Marvel's The Avengers",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "70",
+          "player": "Pepper Potts Avengers: Endgame",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "71",
+          "player": "Aldrich Killian Iron Man 3",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "72",
+          "player": "Trevor Slattery Iron Man 3",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "73",
+          "player": "War Machine Captain America: Civil War",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "74",
+          "player": "Vision Avengers: Age of Ultron",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "75",
+          "player": "Wanda Maximoff Avengers: Infinity War",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "76",
+          "player": "Pietro Maximoff Avengers: Age of Ultron",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "77",
+          "player": "Black Widow Avengers: Endgame",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "78",
+          "player": "Hawkeye Avengers: Endgame",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "79",
+          "player": "Kate Bishop Hawkeye",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "80",
+          "player": "Peggy Carter Captain America: The First Avenger",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "81",
+          "player": "Captain America Avengers: Endgame",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "82",
+          "player": "Hulk Avengers: Endgame",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "83",
+          "player": "Iron Man Avengers: Endgame",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "84",
+          "player": "Spider-Man Avengers: Infinity War",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "85",
+          "player": "Thanos Avengers: Endgame",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "MARVEL TOMORROW",
+      "count": 25,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "MT-1",
+          "player": "Mister Fantastic The Fantastic Four: First Steps",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MT-2",
+          "player": "M\u2019Baku Black Panther: Wakanda Forever",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MT-3",
+          "player": "Shang-Chi Shang-Chi and the Legend of the Ten Rings",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MT-4",
+          "player": "Black Panther Black Panther: Wakanda Forever",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MT-5",
+          "player": "Namor Black Panther: Wakanda Forever",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MT-6",
+          "player": "Falcon Captain America: Brave New World",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MT-7",
+          "player": "Ms. Marvel The Marvels",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MT-8",
+          "player": "Ghost Thunderbolts*",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MT-9",
+          "player": "Yelena Belova Thunderbolts*",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MT-10",
+          "player": "Captain America Captain America: Brave New World",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MT-11",
+          "player": "John F. Walker Thunderbolts*",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MT-12",
+          "player": "The Vision WandaVision",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MT-13",
+          "player": "Adam Warlock Guardians of the Galaxy Vol. 3",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MT-14",
+          "player": "Moon Knight Moon Knight",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MT-15",
+          "player": "Red Guardian Thunderbolts*",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MT-16",
+          "player": "Cassie Lang Ant-Man and the Wasp: Quantumania",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MT-17",
+          "player": "She-Hulk She-Hulk",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MT-18",
+          "player": "Riri Williams Black Panther: Wakanda Forever",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MT-19",
+          "player": "Monica Rambeau The Marvels",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MT-20",
+          "player": "Human Torch The Fantastic Four: First Steps",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MT-21",
+          "player": "The Thing The Fantastic Four: First Steps",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MT-22",
+          "player": "Invisible Woman The Fantastic Four: First Steps",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MT-23",
+          "player": "Sylvie Loki",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MT-24",
+          "player": "Kate Bishop Hawkeye",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MT-25",
+          "player": "Sentry Thunderbolts*",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "VILLAINY",
+      "count": 25,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "V-01",
+          "player": "Thanos",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "V-02",
+          "player": "Galactus",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "V-03",
+          "player": "Ultron",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "V-04",
+          "player": "Namor",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "V-05",
+          "player": "Malekith",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "V-06",
+          "player": "Aldrich Killian",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "V-07",
+          "player": "Erik Killmonger",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "V-08",
+          "player": "Ronan",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "V-09",
+          "player": "Ego",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "V-10",
+          "player": "Justin Hammer",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "V-11",
+          "player": "Iron Monger",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "V-12",
+          "player": "Crossbones",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "V-13",
+          "player": "Yellowjacket",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "V-14",
+          "player": "Baron Zemo",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "V-15",
+          "player": "Wilson Fisk",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "V-16",
+          "player": "Kaecilius",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "V-17",
+          "player": "Hela",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "V-18",
+          "player": "Dar-Benn",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "V-19",
+          "player": "Grandmaster",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "V-20",
+          "player": "Agatha Harkness",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "V-21",
+          "player": "Wenwu",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "V-22",
+          "player": "M.O.D.O.K.",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "V-23",
+          "player": "Yon-Rogg",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "V-24",
+          "player": "Red Hulk",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "V-25",
+          "player": "The Void",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "SHOW STOPPERS",
+      "count": 7,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "ST-1",
+          "player": "Avengers Assembled",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ST-2",
+          "player": "Tony Tests His Mark",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ST-3",
+          "player": "An Explosive Escape",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ST-4",
+          "player": "A Universal Threat Emerges",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ST-5",
+          "player": "Mayhem in Monaco",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ST-6",
+          "player": "The Battle of Wakanda",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ST-7",
+          "player": "Strength of the Winter Soldier",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "Victorious",
+      "count": 17,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "ST-9",
+          "player": "Swinging Into Action",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ST-10",
+          "player": "Reaching For Infinity",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ST-11",
+          "player": "Wanda's Sacrifice",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ST-12",
+          "player": "Suiting Up For Battle",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ST-13",
+          "player": "Thor Confronts Gorr",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ST-14",
+          "player": "The Marvels United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ST-15",
+          "player": "Shuri Takes Up The Mantle",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ST-16",
+          "player": "Rocket Leads The Charge",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ST-17",
+          "player": "Rumble on the Runway",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ST-18",
+          "player": "Bargaining with Dormammu",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ST-19",
+          "player": "Ego's Secrets Revealed",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ST-20",
+          "player": "Fending Off Fenris",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ST-21",
+          "player": "Upgrades Unleashed",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ST-22",
+          "player": "Tony Stark's Final Stand",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ST-23",
+          "player": "Earth's Last Hope",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ST-24",
+          "player": "A Legacy Lives On",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ST-25",
+          "player": "Introducing The New Avengers",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "INFINITY GAUNTLET",
+      "count": 6,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "IG-1",
+          "player": "Thanos",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "IG-2",
+          "player": "Thanos",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "IG-3",
+          "player": "Thanos",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "IG-4",
+          "player": "Thanos",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "IG-5",
+          "player": "Thanos",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "IG-6",
+          "player": "Thanos",
+          "team": "",
+          "note": ""
+        }
+      ]
+    }
+  ],
+  "autograph_sets": [],
+  "memorabilia_sets": [],
+  "team_sets": {}
+}
