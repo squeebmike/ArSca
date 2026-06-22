@@ -1,0 +1,3957 @@
+{
+  "set": "2026 Topps Finest Fantastic Four",
+  "release_date": "2026",
+  "set_size": 200,
+  "product_info": {},
+  "box_contents": {},
+  "parallels": [],
+  "base_set": {
+    "count": 200,
+    "cards": [
+      {
+        "number": "001",
+        "player": "Mister Fantastic",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "NZ-001",
+        "player": "Mister Fantastic",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "002",
+        "player": "Invisible Woman",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "NZ-002",
+        "player": "Invisible Woman",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "003",
+        "player": "Human Torch",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "NZ-003",
+        "player": "Human Torch",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "004",
+        "player": "The Thing",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "NZ-004",
+        "player": "The Thing",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "005",
+        "player": "Air-Walker",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "NZ-005",
+        "player": "Adam Warlock",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "006",
+        "player": "Alicia Masters",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "NZ-006",
+        "player": "Agatha Harkness",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "007",
+        "player": "Artie Maddicks",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "NZ-007",
+        "player": "Air-Walker",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "008",
+        "player": "Attuma",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "NZ-008",
+        "player": "Alicia Masters",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "009",
+        "player": "Awesome Android",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "NZ-009",
+        "player": "Alpha",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "010",
+        "player": "Bentley-23",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "NZ-010",
+        "player": "Ant-Man",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "011",
+        "player": "Beyonder",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "NZ-011",
+        "player": "Artie Maddicks",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "012",
+        "player": "Devil Dinosaur",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "NZ-012",
+        "player": "Attuma",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "013",
+        "player": "Diablo",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "NZ-013",
+        "player": "Awesome Android",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "014",
+        "player": "Doctor Doom",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "NZ-014",
+        "player": "Bentley-23",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "015",
+        "player": "Dragon Man",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "NZ-015",
+        "player": "Beyonder",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "016",
+        "player": "Ego",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "NZ-016",
+        "player": "Black Bolt",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "017",
+        "player": "Fallen One",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "NZ-017",
+        "player": "Black Panther",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "018",
+        "player": "Firelord",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "NZ-018",
+        "player": "Blastaar",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "19",
+        "player": "Flux",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "NZ-019",
+        "player": "The Bombastic Bagman",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "020",
+        "player": "Franklin Richards",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "NZ-020",
+        "player": "Captain America",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "021",
+        "player": "H.E.R.B.I.E.",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "NZ-021",
+        "player": "Crystal",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "022",
+        "player": "The High Evolutionary",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "NZ-022",
+        "player": "Dazzler",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "023",
+        "player": "Immortus",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "NZ-023",
+        "player": "Devil Dinosaur",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "024",
+        "player": "Impossible Man",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "NZ-024",
+        "player": "Diablo",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "025",
+        "player": "Klaw",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "NZ-025",
+        "player": "Doctor Doom",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "026",
+        "player": "Leech",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "NZ-026",
+        "player": "Doctor Strange",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "027",
+        "player": "Lyja",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "NZ-027",
+        "player": "Doom 2099",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "028",
+        "player": "Mad Thinker",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "NZ-028",
+        "player": "Doomasaur",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "029",
+        "player": "Miss Thing",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "NZ-029",
+        "player": "Dragon Man",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "030",
+        "player": "Mobius M. Mobius",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "NZ-030",
+        "player": "Ego",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "031",
+        "player": "Molecule Man",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "NZ-031",
+        "player": "Fallen One",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "032",
+        "player": "Morg",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "NZ-032",
+        "player": "Firelord",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "033",
+        "player": "Over-Mind",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "NZ-033",
+        "player": "Flux",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "034",
+        "player": "Power Skrull",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "34",
+        "player": "Puppet Master",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "NZ-034",
+        "player": "Franklin Richards",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "035",
+        "player": "Psycho-Man",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "NZ-035",
+        "player": "Galactus",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "NZ-036",
+        "player": "Ghost Rider",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "037",
+        "player": "Rama-Tut",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "NZ-037",
+        "player": "Gorgon",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "038",
+        "player": "Red Ghost",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "NZ-038",
+        "player": "H.E.R.B.I.E.",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "039",
+        "player": "Ronan",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "NZ-039",
+        "player": "The High Evolutionary",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "040",
+        "player": "Sandman",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "NZ-040",
+        "player": "Hulk",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "041",
+        "player": "She-Thing",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "41",
+        "player": "Spider-Man",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "NZ-041",
+        "player": "Iceman",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "NZ-042",
+        "player": "Immortus",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "043",
+        "player": "Super-Skrull",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "NZ-043",
+        "player": "Impossible Man",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "044",
+        "player": "Terrax",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "NZ-044",
+        "player": "Invisible Man",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "045",
+        "player": "Thundra",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "NZ-045",
+        "player": "Iron Man",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "46",
+        "player": "Titania",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "NZ-046",
+        "player": "Jack Of Hearts",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "047",
+        "player": "Trapster",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "NZ-047",
+        "player": "Kang",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "048",
+        "player": "Valeria Richards",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "NZ-048",
+        "player": "Karnak",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "049",
+        "player": "Victorious",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "NZ-049",
+        "player": "Klaw",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "050",
+        "player": "Wizard",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "NZ-050",
+        "player": "Leech",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "051",
+        "player": "Adam Warlock",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "NZ-051",
+        "player": "Lockjaw",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "052",
+        "player": "Agatha Harkness",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "NZ-052",
+        "player": "Luke Cage",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "053",
+        "player": "Alpha",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "NZ-053",
+        "player": "Lyja",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "054",
+        "player": "Black Bolt",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "NZ-054",
+        "player": "Mad Thinker",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "055",
+        "player": "Blastaar",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "NZ-055",
+        "player": "Maker",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "056",
+        "player": "Captain America",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "NZ-056",
+        "player": "Malice",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "057",
+        "player": "Dazzler",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "NZ-057",
+        "player": "Medusa",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "058",
+        "player": "Doctor Strange",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "NZ-058",
+        "player": "Miss Thing",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "059",
+        "player": "Doom 2099",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "NZ-059",
+        "player": "Mobius M. Mobius",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "060",
+        "player": "Galactus",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "NZ-060",
+        "player": "Mole Man",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "061",
+        "player": "Gorgon",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "NZ-061",
+        "player": "Molecule Man",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "062",
+        "player": "Iceman",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "NZ-062",
+        "player": "Moon Girl",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "063",
+        "player": "Iron Man",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "NZ-063",
+        "player": "Morg",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "064",
+        "player": "Jack Of Hearts",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "NZ-064",
+        "player": "Namor",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "065",
+        "player": "Kang",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "NZ-065",
+        "player": "Namorita",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "066",
+        "player": "Karnak",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "NZ-066",
+        "player": "Nathaniel Richards",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "067",
+        "player": "Lockjaw",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "NZ-067",
+        "player": "Nick Fury",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "068",
+        "player": "Luke Cage",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "NZ-068",
+        "player": "Nova",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "069",
+        "player": "Mole Man",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "NZ-069",
+        "player": "Over-Mind",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "070",
+        "player": "Moon Girl",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "NZ-070",
+        "player": "Power Skrull",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "071",
+        "player": "Namor",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "NZ-071",
+        "player": "Psycho-Man",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "072",
+        "player": "Namorita",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "NZ-072",
+        "player": "Puppet Master",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "073",
+        "player": "Nathaniel Richards",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "NZ-073",
+        "player": "Rama-Tut",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "074",
+        "player": "Nick Fury",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "NZ-074",
+        "player": "Red Ghost",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "075",
+        "player": "Nova",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "NZ-075",
+        "player": "Ronan",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "076",
+        "player": "Scarlet Witch",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "NZ-076",
+        "player": "Sandman",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "077",
+        "player": "Silver Surfer",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "NZ-077",
+        "player": "Scarlet Witch",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "078",
+        "player": "Sleepwalker",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "NZ-078",
+        "player": "She-Hulk",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "079",
+        "player": "Thanos",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "NZ-079",
+        "player": "She-Thing",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "080",
+        "player": "Tigra",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "NZ-080",
+        "player": "Silver Surfer",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "081",
+        "player": "Triton",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "NZ-081",
+        "player": "Sleepwalker",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "082",
+        "player": "Ultron",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "NZ-082",
+        "player": "Spider-Man",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "083",
+        "player": "Vision",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "NZ-083",
+        "player": "Storm",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "084",
+        "player": "Wasp",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "NZ-084",
+        "player": "Super-Skrull",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "085",
+        "player": "The Watcher",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "NZ-085",
+        "player": "Terrax",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "86",
+        "player": "Ant-Man",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "NZ-086",
+        "player": "Thanos",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "87",
+        "player": "Black Panther",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "NZ-087",
+        "player": "Thor",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "88",
+        "player": "The Bombastic Bagman",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "NZ-088",
+        "player": "Thundra",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "89",
+        "player": "Crystal",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "NZ-089",
+        "player": "Tigra",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "90",
+        "player": "Doomasaur",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "NZ-090",
+        "player": "Titania",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "91",
+        "player": "Ghost Rider",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "NZ-091",
+        "player": "Trapster",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "92",
+        "player": "Hulk",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "NZ-092",
+        "player": "Triton",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "93",
+        "player": "Invisible Man",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "NZ-093",
+        "player": "Ultron",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "94",
+        "player": "Maker",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "NZ-094",
+        "player": "Valeria Richards",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "95",
+        "player": "Malice",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "NZ-095",
+        "player": "Victorious",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "96",
+        "player": "Medusa",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "NZ-096",
+        "player": "Vision",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "97",
+        "player": "She-Hulk",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "NZ-097",
+        "player": "Wasp",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "98",
+        "player": "Storm",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "NZ-098",
+        "player": "The Watcher",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "99",
+        "player": "Thor",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "NZ-099",
+        "player": "Wizard",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "100",
+        "player": "Wolverine",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "NZ-100",
+        "player": "Wolverine",
+        "team": "",
+        "note": ""
+      }
+    ]
+  },
+  "insert_sets": [
+    {
+      "name": "INSERT",
+      "count": 101,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "1960s",
+          "player": "BLACKLIGHT BASE VARIATION",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BL-001",
+          "player": "Mister Fantastic",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BL-002",
+          "player": "Invisible Woman",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BL-003",
+          "player": "Human Torch",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BL-004",
+          "player": "The Thing",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BL-005",
+          "player": "Adam Warlock",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BL-006",
+          "player": "Agatha Harkness",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BL-007",
+          "player": "Air-Walker",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BL-008",
+          "player": "Alicia Masters",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BL-009",
+          "player": "Alpha",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BL-010",
+          "player": "Ant-Man",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BL-011",
+          "player": "Artie Maddicks",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BL-012",
+          "player": "Attuma",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BL-013",
+          "player": "Awesome Android",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BL-014",
+          "player": "Bentley-23",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BL-015",
+          "player": "Beyonder",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BL-016",
+          "player": "Black Bolt",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BL-017",
+          "player": "Black Panther",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BL-018",
+          "player": "Blastaar",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BL-019",
+          "player": "The Bombastic Bagman",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BL-020",
+          "player": "Captain America",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BL-021",
+          "player": "Crystal",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BL-022",
+          "player": "Dazzler",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BL-023",
+          "player": "Devil Dinosaur",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BL-024",
+          "player": "Diablo",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BL-025",
+          "player": "Doctor Doom",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BL-026",
+          "player": "Doctor Strange",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BL-027",
+          "player": "Doom 2099",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BL-028",
+          "player": "Doomasaur",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BL-029",
+          "player": "Dragon Man",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BL-030",
+          "player": "Ego",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BL-031",
+          "player": "Fallen One",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BL-032",
+          "player": "Firelord",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BL-033",
+          "player": "Flux",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BL-034",
+          "player": "Franklin Richards",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BL-035",
+          "player": "Galactus",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BL-036",
+          "player": "Ghost Rider",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BL-037",
+          "player": "Gorgon",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BL-038",
+          "player": "H.E.R.B.I.E.",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BL-039",
+          "player": "The High Evolutionary",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BL-040",
+          "player": "Hulk",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BL-041",
+          "player": "Iceman",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BL-042",
+          "player": "Immortus",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BL-043",
+          "player": "Impossible Man",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BL-044",
+          "player": "Invisible Man",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BL-045",
+          "player": "Iron Man",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BL-046",
+          "player": "Jack Of Hearts",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BL-047",
+          "player": "Kang",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BL-048",
+          "player": "Karnak",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BL-049",
+          "player": "Klaw",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BL-050",
+          "player": "Leech",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BL-051",
+          "player": "Lockjaw",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BL-052",
+          "player": "Luke Cage",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BL-053",
+          "player": "Lyja",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BL-054",
+          "player": "Mad Thinker",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BL-055",
+          "player": "Maker",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BL-056",
+          "player": "Malice",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BL-057",
+          "player": "Medusa",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BL-058",
+          "player": "Miss Thing",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BL-059",
+          "player": "Mobius M. Mobius",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BL-060",
+          "player": "Mole Man",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BL-061",
+          "player": "Molecule Man",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BL-062",
+          "player": "Moon Girl",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BL-063",
+          "player": "Morg",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BL-064",
+          "player": "Namor",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BL-065",
+          "player": "Namorita",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BL-066",
+          "player": "Nathaniel Richards",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BL-067",
+          "player": "Nick Fury",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BL-068",
+          "player": "Nova",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BL-069",
+          "player": "Over-Mind",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BL-070",
+          "player": "Power Skrull",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BL-071",
+          "player": "Psycho-Man",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BL-072",
+          "player": "Puppet Master",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BL-073",
+          "player": "Rama-Tut",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BL-074",
+          "player": "Red Ghost",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BL-075",
+          "player": "Ronan",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BL-076",
+          "player": "Sandman",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BL-077",
+          "player": "Scarlet Witch",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BL-078",
+          "player": "Silver Surfer",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BL-079",
+          "player": "She-Hulk",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BL-080",
+          "player": "She-Thing",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BL-081",
+          "player": "Sleepwalker",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BL-082",
+          "player": "Spider-Man",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BL-083",
+          "player": "Storm",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BL-084",
+          "player": "Super-Skrull",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BL-085",
+          "player": "Terrax",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BL-086",
+          "player": "Thanos",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BL-087",
+          "player": "Thor",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BL-088",
+          "player": "Thundra",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BL-089",
+          "player": "Tigra",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BL-090",
+          "player": "Titania",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BL-091",
+          "player": "Trapster",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BL-092",
+          "player": "Triton",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BL-093",
+          "player": "Ultron",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BL-094",
+          "player": "Valeria Richards",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BL-095",
+          "player": "Victorious",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BL-096",
+          "player": "Vision",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BL-097",
+          "player": "Wasp",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BL-098",
+          "player": "The Watcher",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BL-099",
+          "player": "Wizard",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BL-100",
+          "player": "Wolverine",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "TRIBUTE TO FINEST \u201896",
+      "count": 100,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "TF-001",
+          "player": "Mister Fantastic",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TF-002",
+          "player": "Invisible Woman",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TF-003",
+          "player": "Human Torch",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TF-004",
+          "player": "The Thing",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TF-005",
+          "player": "Adam Warlock",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TF-006",
+          "player": "Agatha Harkness",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TF-007",
+          "player": "Air-Walker",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TF-008",
+          "player": "Alicia Masters",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TF-009",
+          "player": "Alpha",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TF-010",
+          "player": "Ant-Man",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TF-011",
+          "player": "Artie Maddicks",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TF-012",
+          "player": "Attuma",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TF-013",
+          "player": "Awesome Android",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TF-014",
+          "player": "Bentley-23",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TF-015",
+          "player": "Beyonder",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TF-016",
+          "player": "Black Bolt",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TF-017",
+          "player": "Black Panther",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TF-018",
+          "player": "Blastaar",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TF-019",
+          "player": "The Bombastic Bagman",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TF-020",
+          "player": "Captain America",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TF-021",
+          "player": "Crystal",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TF-022",
+          "player": "Dazzler",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TF-023",
+          "player": "Devil Dinosaur",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TF-024",
+          "player": "Diablo",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TF-025",
+          "player": "Doctor Doom",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TF-026",
+          "player": "Doctor Strange",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TF-027",
+          "player": "Doom 2099",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TF-028",
+          "player": "Doomasaur",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TF-029",
+          "player": "Dragon Man",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TF-030",
+          "player": "Ego",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TF-031",
+          "player": "Fallen One",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TF-032",
+          "player": "Firelord",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TF-033",
+          "player": "Flux",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TF-034",
+          "player": "Franklin Richards",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TF-035",
+          "player": "Galactus",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TF-036",
+          "player": "Gorgon",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TF-037",
+          "player": "Ghost Rider",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TF-038",
+          "player": "H.E.R.B.I.E.",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TF-039",
+          "player": "The High Evolutionary",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TF-040",
+          "player": "Hulk",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TF-041",
+          "player": "Iceman",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TF-042",
+          "player": "Immortus",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TF-043",
+          "player": "Impossible Man",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TF-044",
+          "player": "Invisible Man",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TF-045",
+          "player": "Iron Man",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TF-046",
+          "player": "Jack Of Hearts",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TF-047",
+          "player": "Kang",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TF-048",
+          "player": "Karnak",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TF-049",
+          "player": "Klaw",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TF-050",
+          "player": "Leech",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TF-051",
+          "player": "Lockjaw",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TF-052",
+          "player": "Luke Cage",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TF-053",
+          "player": "Lyja",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TF-054",
+          "player": "Mad Thinker",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TF-055",
+          "player": "Maker",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TF-056",
+          "player": "Malice",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TF-057",
+          "player": "Medusa",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TF-058",
+          "player": "Miss Thing",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TF-059",
+          "player": "Mobius M. Mobius",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TF-060",
+          "player": "Mole Man",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TF-061",
+          "player": "Molecule Man",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TF-062",
+          "player": "Moon Girl",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TF-063",
+          "player": "Morg",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TF-064",
+          "player": "Namor",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TF-065",
+          "player": "Namorita",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TF-066",
+          "player": "Nathaniel Richards",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TF-067",
+          "player": "Nick Fury",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TF-068",
+          "player": "Nova",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TF-069",
+          "player": "Over-Mind",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TF-070",
+          "player": "Power Skrull",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TF-071",
+          "player": "Psycho-Man",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TF-072",
+          "player": "Puppet Master",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TF-073",
+          "player": "Rama-Tut",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TF-074",
+          "player": "Red Ghost",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TF-075",
+          "player": "Ronan",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TF-076",
+          "player": "Sandman",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TF-077",
+          "player": "Scarlet Witch",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TF-078",
+          "player": "She-Hulk",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TF-079",
+          "player": "She-Thing",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TF-080",
+          "player": "Silver Surfer",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TF-081",
+          "player": "Sleepwalker",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TF-082",
+          "player": "Spider-Man",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TF-083",
+          "player": "Storm",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TF-084",
+          "player": "Super-Skrull",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TF-085",
+          "player": "Terrax",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TF-086",
+          "player": "Thanos",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TF-087",
+          "player": "Thor",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TF-088",
+          "player": "Thundra",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TF-089",
+          "player": "Tigra",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TF-090",
+          "player": "Titania",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TF-091",
+          "player": "Trapster",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TF-092",
+          "player": "Triton",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TF-093",
+          "player": "Ultron",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TF-094",
+          "player": "Valeria Richards",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TF-095",
+          "player": "Victorious",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TF-096",
+          "player": "Vision",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TF-097",
+          "player": "Wasp",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TF-098",
+          "player": "The Watcher",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TF-099",
+          "player": "Wizard",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TF-100",
+          "player": "Wolverine",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "FIRST FAMILY",
+      "count": 20,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "FF-01",
+          "player": "Fantastic Four",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FF-02",
+          "player": "Fantastic Four",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FF-03",
+          "player": "Fantastic Four",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FF-04",
+          "player": "Fantastic Four",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FF-05",
+          "player": "Fantastic Four",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FF-06",
+          "player": "Fantastic Four",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FF-07",
+          "player": "Fantastic Four",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FF-08",
+          "player": "Fantastic Four",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FF-09",
+          "player": "Fantastic Four",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FF-10",
+          "player": "Fantastix",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FF-11",
+          "player": "Four Fantastics",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FF-12",
+          "player": "Future Foundation",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FF-13",
+          "player": "Future Foundation",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FF-14",
+          "player": "Future Foundation",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FF-15",
+          "player": "Mad Thinker's Fantastic Four",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FF-16",
+          "player": "New Fantastic Four",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FF-17",
+          "player": "New Fantastic Four",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FF-18",
+          "player": "Newer Fantastic Four",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FF-19",
+          "player": "Ultimate Future Foundation",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FF-20",
+          "player": "Ultimate Fantastic Four",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "CLOBBERIN\u2019 TIME",
+      "count": 20,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "CT-01",
+          "player": "Black Bolt",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CT-02",
+          "player": "Black Panther",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CT-03",
+          "player": "Captain America",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CT-04",
+          "player": "Crystal",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CT-05",
+          "player": "Doctor Doom",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CT-06",
+          "player": "Galactus",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CT-07",
+          "player": "Hulk",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CT-08",
+          "player": "Human Torch",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CT-09",
+          "player": "Invisible Woman",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CT-10",
+          "player": "Iron Man",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CT-11",
+          "player": "Luke Cage",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CT-12",
+          "player": "Mister Fantastic",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CT-13",
+          "player": "Mole Man",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CT-14",
+          "player": "Namor",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CT-15",
+          "player": "Ronan",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CT-16",
+          "player": "Super-Skrull",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CT-17",
+          "player": "She-Hulk",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CT-18",
+          "player": "Silver Surfer",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CT-19",
+          "player": "The Thing",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CT-20",
+          "player": "Thor",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "SCREEN MOMENTS",
+      "count": 20,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "SM-01",
+          "player": "The Fantastic Four",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SM-02",
+          "player": "The Brilliant Reed Richards",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SM-03",
+          "player": "Helpful H.E.R.B.I.E.",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SM-04",
+          "player": "A Bright Future",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SM-05",
+          "player": "Lending A Hand",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SM-06",
+          "player": "Local Legend",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SM-07",
+          "player": "Stone Body, Tender Heart",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SM-08",
+          "player": "A Glimpse of Before",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SM-09",
+          "player": "Face To Face",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SM-10",
+          "player": "Falling To Earth",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SM-11",
+          "player": "Intrusion Alert",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SM-12",
+          "player": "A Perilous Encounter",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SM-13",
+          "player": "The Silver Surfer",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SM-14",
+          "player": "Enter Galactus",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SM-15",
+          "player": "Searching The City",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SM-16",
+          "player": "Fantastic Science",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SM-17",
+          "player": "Stretched Thin",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SM-18",
+          "player": "Dropping In",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SM-19",
+          "player": "Sensational Sue Storm",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SM-20",
+          "player": "Vanquished",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "WORLD\u2019S GREATEST COMIC MAGAZINES",
+      "count": 10,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "WG-01",
+          "player": "Fantastic Four #3",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WG-02",
+          "player": "Fantastic Four #14",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WG-03",
+          "player": "Fantastic Four #25",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WG-04",
+          "player": "Fantastic Four #39",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WG-05",
+          "player": "Fantastic Four #45",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WG-06",
+          "player": "Fantastic Four #49",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WG-07",
+          "player": "Fantastic Four #51",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WG-08",
+          "player": "Fantastic Four #52",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WG-09",
+          "player": "Fantastic Four #55",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WG-10",
+          "player": "Fantastic Four #348",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "THE FANTASTIC FOUR: FIRST STEPS CONCEPT ART",
+      "count": 20,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "CA-01",
+          "player": "Fantastic Four",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CA-02",
+          "player": "Human Torch",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CA-03",
+          "player": "Human Torch",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CA-04",
+          "player": "Human Torch",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CA-05",
+          "player": "The Thing",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CA-06",
+          "player": "The Thing",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CA-07",
+          "player": "The Thing",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CA-08",
+          "player": "The Thing",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CA-09",
+          "player": "The Thing",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CA-10",
+          "player": "H.E.R.B.I.E.",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CA-11",
+          "player": "Mole Man",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CA-12",
+          "player": "Mole Man",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CA-13",
+          "player": "Silver Surfer",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CA-14",
+          "player": "Silver Surfer",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CA-15",
+          "player": "Silver Surfer",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CA-16",
+          "player": "Silver Surfer",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CA-17",
+          "player": "Galactus",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CA-18",
+          "player": "Galactus",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CA-19",
+          "player": "Galactus",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CA-20",
+          "player": "Galactus",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "ADVERSARIES",
+      "count": 20,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "AD-01",
+          "player": "Annihilus",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "AD-02",
+          "player": "Beyonder",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "AD-03",
+          "player": "Blastaar",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "AD-04",
+          "player": "Doctor Doom",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "AD-05",
+          "player": "Galactus",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "AD-06",
+          "player": "Impossible Man",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "AD-07",
+          "player": "Kang",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "AD-08",
+          "player": "Klaw",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "AD-09",
+          "player": "Mad Thinker",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "AD-10",
+          "player": "Maker",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "AD-11",
+          "player": "Mole Man",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "AD-12",
+          "player": "Molecule Man",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "AD-13",
+          "player": "Namor",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "AD-14",
+          "player": "Puppet Master",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "AD-15",
+          "player": "Ronan",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "AD-16",
+          "player": "Super-Skrull",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "AD-17",
+          "player": "Terrax",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "AD-18",
+          "player": "Thanos",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "AD-19",
+          "player": "Ultron",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "AD-20",
+          "player": "Wizard",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "FLAME THROWERS VARIANTS",
+      "count": 8,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "FT-01",
+          "player": "Black Cat",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FT-02",
+          "player": "Captain America",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FT-03",
+          "player": "Iceman",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FT-04",
+          "player": "Moon Knight",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FT-05",
+          "player": "Thor",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FT-06",
+          "player": "Miles Morales",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FT-07",
+          "player": "Spider-Boy",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FT-08",
+          "player": "Spider-Man",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "ROCK STARS VARIANTS",
+      "count": 8,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "RS-01",
+          "player": "Black Panther",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RS-02",
+          "player": "Captain America",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RS-03",
+          "player": "Daredevil",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RS-04",
+          "player": "Ghost-Spider",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RS-05",
+          "player": "Iron Man",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RS-06",
+          "player": "Nightcrawler",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RS-07",
+          "player": "Spider-Boy",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RS-08",
+          "player": "Wolverine",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "FINEST TIMELINES",
+      "count": 10,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "TL-01",
+          "player": "The Birth of the Fantastic Four",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TL-02",
+          "player": "Hulk vs. Thing",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TL-03",
+          "player": "Surfing through the Cosmos",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TL-04",
+          "player": "The Coming of Galactus",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TL-05",
+          "player": "Doom Wields the Power Cosmic",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TL-06",
+          "player": "Birth of Franklin Richards",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TL-07",
+          "player": "The Ultimate Sacrifice",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TL-08",
+          "player": "To Me\u2026 My Galactus!",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TL-09",
+          "player": "Reed Revealed as The Maker",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TL-10",
+          "player": "Doom Questions Thanos",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "FANTASTIC SCIENCE",
+      "count": 10,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "FS-01",
+          "player": "Mister Fantastic",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FS-02",
+          "player": "Invisible Woman",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FS-03",
+          "player": "The Thing",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FS-04",
+          "player": "Human Torch",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FS-05",
+          "player": "Galactus",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FS-06",
+          "player": "Silver Surfer",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FS-07",
+          "player": "Rachel Rozman",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FS-08",
+          "player": "H.E.R.B.I.E.",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FS-09",
+          "player": "Lynne Nichols",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FS-10",
+          "player": "Mole Man",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "POWER HOUR",
+      "count": 10,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "PH-01",
+          "player": "The Fantastic Four",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PH-02",
+          "player": "The Fantastic Four",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PH-03",
+          "player": "The Thing",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PH-04",
+          "player": "Invisible Woman",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PH-05",
+          "player": "Human Torch",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PH-06",
+          "player": "Red Ghost",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PH-07",
+          "player": "The Thing",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PH-08",
+          "player": "The Fantastic Four",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PH-09",
+          "player": "The Fantastic Four",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PH-10",
+          "player": "Mister Fantastic",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "FUTURE FOUNDATION ID CARDS",
+      "count": 10,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "FF-01",
+          "player": "Alex Power",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FF-02",
+          "player": "Benjamin Grimm",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FF-03",
+          "player": "Draconus",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FF-04",
+          "player": "Franklin Richards",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FF-05",
+          "player": "Johnny Storm",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FF-06",
+          "player": "Peter Parker",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FF-07",
+          "player": "Reed Richards",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FF-08",
+          "player": "Susan Storm",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FF-09",
+          "player": "Valeria Richards",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FF-10",
+          "player": "Victor von Doom",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "ALL FOR FOUR",
+      "count": 22,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "AFF-01",
+          "player": "Ant-Man",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "AFF-02",
+          "player": "Black Panther",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "AFF-03",
+          "player": "Crystal",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "AFF-04",
+          "player": "Devil Dinosaur",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "AFF-05",
+          "player": "Franklin Richards",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "AFF-06",
+          "player": "Ghost Rider",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "AFF-07",
+          "player": "Hulk",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "AFF-08",
+          "player": "Human Torch",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "AFF-09",
+          "player": "Invisible Woman",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "AFF-10",
+          "player": "Luke Cage",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "AFF-11",
+          "player": "Medusa",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "AFF-12",
+          "player": "Miss Thing",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "AFF-13",
+          "player": "Mister Fantastic",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "AFF-14",
+          "player": "Moon Girl",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "AFF-15",
+          "player": "Namorita",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "AFF-16",
+          "player": "She-Hulk",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "AFF-17",
+          "player": "She-Thing",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "AFF-18",
+          "player": "Spider-Man",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "AFF-19",
+          "player": "Storm",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "AFF-20",
+          "player": "The Thing",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "AFF-21",
+          "player": "Valeria Richards",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "AFF-22",
+          "player": "Wolverine",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "ASTONISHING",
+      "count": 10,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "AS-01",
+          "player": "Black Bolt",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "AS-02",
+          "player": "Doctor Doom",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "AS-03",
+          "player": "Human Torch",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "AS-04",
+          "player": "Invisible Woman",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "AS-05",
+          "player": "Kang",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "AS-06",
+          "player": "Medusa",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "AS-07",
+          "player": "Mister Fantastic",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "AS-08",
+          "player": "Mole Man",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "AS-09",
+          "player": "Namor",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "AS-10",
+          "player": "The Thing",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "TOPPS ORIGINALS",
+      "count": 10,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "TO-01",
+          "player": "Doctor Doom Adi Granov",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TO-02",
+          "player": "Galactus Adi Granov",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TO-03",
+          "player": "Mister Fantastic E.M. Gist",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TO-04",
+          "player": "Human Torch E.M. Gist",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TO-05",
+          "player": "The Thing Nelson",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TO-06",
+          "player": "Invisible Woman Nelson",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TO-07",
+          "player": "Spider-Man Ben Bradi",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TO-08",
+          "player": "She-Hulk Ben Bradi",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TO-09",
+          "player": "Silver Surfer Myles Wohl",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TO-10",
+          "player": "Thanos Myles Wohl",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "FANTASTIC CREATORS",
+      "count": 2,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "FC-01",
+          "player": "Jack Kirby",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FC-02",
+          "player": "Stan Lee",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "COMIC EXCERPTS: SILVER SURFER",
+      "count": 10,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "CE-01",
+          "player": "Silver Surfer Silver Surfer #2",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CE-02",
+          "player": "Silver Surfer Silver Surfer #5",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CE-03",
+          "player": "Silver Surfer Silver Surfer #6",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CE-04",
+          "player": "Silver Surfer Silver Surfer #7",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CE-05",
+          "player": "Silver Surfer Silver Surfer #9",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CE-06",
+          "player": "Silver Surfer Silver Surfer #14",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CE-07",
+          "player": "Silver Surfer Silver Surfer #1",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CE-08",
+          "player": "Silver Surfer Silver Surfer #50",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CE-09",
+          "player": "Silver Surfer Silver Surfer #64",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CE-10",
+          "player": "Silver Surfer Thor #193",
+          "team": "",
+          "note": ""
+        }
+      ]
+    }
+  ],
+  "autograph_sets": [
+    {
+      "name": "FANTASTIC SCIENCE AUTOGRAPHS",
+      "count": 12,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "FS-01",
+          "player": "Pedro Pascal Mister Fantastic",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FS-02",
+          "player": "Vanessa Kirby Invisible Woman",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FS-03",
+          "player": "Ebon Moss-Bachrach The Thing",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FS-04",
+          "player": "Joseph Quinn Human Torch",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FS-05",
+          "player": "Ralph Ineson Galactus",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FS-06",
+          "player": "Natasha Lyonne Rachel Rozman",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FS-07",
+          "player": "Matthew Wood H.E.R.B.I.E.",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FS-08",
+          "player": "Sarah Niles Lynne Nichols",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FS-09",
+          "player": "Paul Walter Hauser Mole Man",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FS-11",
+          "player": "Rebecca Staab Carolyn Haynes",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FS-12",
+          "player": "Jay Underwood Powerplant Worker #1",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FS-13",
+          "player": "Michael Bailey Smith Powerplant Worker #2",
+          "team": "",
+          "note": ""
+        }
+      ]
+    }
+  ],
+  "memorabilia_sets": [],
+  "team_sets": {}
+}
