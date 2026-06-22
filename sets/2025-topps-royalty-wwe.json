@@ -1,0 +1,1512 @@
+{
+  "set": "2025 Topps Royalty WWE",
+  "release_date": "2025",
+  "set_size": 100,
+  "product_info": {},
+  "box_contents": {},
+  "parallels": [],
+  "base_set": {
+    "count": 100,
+    "cards": [
+      {
+        "number": "1U",
+        "player": "ndertaker Legend",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "2T",
+        "player": "he Rock Legend",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "3T",
+        "player": "riple H Legend",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "4C",
+        "player": "M Punk Raw",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "5J",
+        "player": "ey Uso Raw",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "6K",
+        "player": "evin Owens Smackdown",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "7L",
+        "player": "A Knight Smackdown",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "8L",
+        "player": "iv Morgan Raw",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "9T",
+        "player": "iffany Stratton Smckdown",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "10R",
+        "player": "ey Mysterio Raw",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "11O",
+        "player": "ba Femi NXT",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "12R",
+        "player": "oman Reigns Smackdown",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "13S",
+        "player": "ami Zayn Raw",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "14",
+        "player": "\"The American Nightmare\" SCmodayck Rdhoowdnes",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "15L",
+        "player": "ash Legend NXT",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "16Z",
+        "player": "oey Stark Raw",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "17T",
+        "player": "onga Loa Smackdown",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "18E",
+        "player": "than Page NXT",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "19N",
+        "player": "aomi Smackdown",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "20T",
+        "player": "ama Tonga Smackdown",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "21A",
+        "player": "leister Black Smackdown",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "22J",
+        "player": "ordynne Grace NXT",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "23K",
+        "player": "endal Grey NXT",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "24",
+        "player": "\"Stone Cold\" Steve AustinLegend",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "25G",
+        "player": "iulia Smackdown",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "26X",
+        "player": "avier Woods Raw",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "27J",
+        "player": "e'Von Evans NXT",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "28B",
+        "player": "ianca Belair Smackdown",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "29K",
+        "player": "ofi Kingston Raw",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "30A",
+        "player": "lexa Bliss Smackdown",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "31A",
+        "player": "J Styles Raw",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "32R",
+        "player": "oxanne Perez Raw",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "33G",
+        "player": "unther Raw",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "34B",
+        "player": "rock Lesnar WWE",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "35H",
+        "player": "ulk Hogan\u2122 Legend",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "36L",
+        "player": "exis King NXT",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "37D",
+        "player": "amian Priest Smackdown",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "38S",
+        "player": "antos Escobar Smackdown",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "39S",
+        "player": "tacy Keibler Legend",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "40R",
+        "player": "ey Fenix Smackdown",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "41J",
+        "player": "immy Uso Smackdown",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "42Z",
+        "player": "elina Vega Smackdown",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "43J",
+        "player": "ohnny Gargano Smackdown",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "44S",
+        "player": "eth Rollins Raw",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "45B",
+        "player": "lake Monroe NXT",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "46K",
+        "player": "ane Legend",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "47L",
+        "player": "ola Vice NXT",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "48J",
+        "player": "acob Fatu Smackdown",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "49S",
+        "player": "heamus Raw",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "50R",
+        "player": "hea Ripley Raw",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "51J",
+        "player": "ohn Cena WWE",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "52J",
+        "player": "ade Cargill Smackdown",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "53S",
+        "player": "tephanie Vaquer Raw",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "54A",
+        "player": "suka Raw",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "55L",
+        "player": "udwig Kaiser Raw",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "56T",
+        "player": "rish Stratus Legend",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "57D",
+        "player": "ominik Mysterio Raw",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "58F",
+        "player": "allon Henley NXT",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "59S",
+        "player": "olo Sikoa Smackdown",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "60I",
+        "player": "YO Sky Raw",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "61B",
+        "player": "ron Breakker Raw",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "62Z",
+        "player": "aria NXT",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "63S",
+        "player": "ol Ruca NXT",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "64C",
+        "player": "andice LeRae Smackdown",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "65K",
+        "player": "airi Sane Raw",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "66P",
+        "player": "enta Raw",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "67B",
+        "player": "ret \"Hit Man\" Hart Legend",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "68B",
+        "player": "ronson Reed Raw",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "69D",
+        "player": "rew McIntyre Smackdown",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "70B",
+        "player": "ayley Raw",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "71I",
+        "player": "zzi Dame NXT",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "72C",
+        "player": "helsea Green Smackdown",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "73F",
+        "player": "inn B\u00e1lor Raw",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "74T",
+        "player": "ony D'Angelo NXT",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "75J",
+        "player": "aida Parker NXT",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "76L",
+        "player": "ita Legend",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "77M",
+        "player": "ontez Ford Smackdown",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "78B",
+        "player": "ecky Lynch Raw",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "79N",
+        "player": "ia Jax Smackdown",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "80T",
+        "player": "ommaso Ciampa Smackdown",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "81K",
+        "player": "armen Petrovic NXT",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "82T",
+        "player": "he Miz Smackdown",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "83S",
+        "player": "hinsuke Nakamura Smackdown",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "84M",
+        "player": "ichin Smackdown",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "85D",
+        "player": "ragon Lee Raw",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "86R",
+        "player": "andy Orton Smackdown",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "87E",
+        "player": "rik Raw",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "88J",
+        "player": "azmyn Nyx NXT",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "89P",
+        "player": "aul Heyman WWE",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "90U",
+        "player": "ncle Howdy Smackdown",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "91S",
+        "player": "hawn Michaels Legend",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "92A",
+        "player": "ngelo Dawkins Smackdown",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "93T",
+        "player": "rick Williams NXT",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "94K",
+        "player": "elani Jordan NXT",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "95I",
+        "player": "var Raw",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "96C",
+        "player": "had Gable Raw",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "97L",
+        "player": "yra Valkyria Raw",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "98R",
+        "player": "aquel Rodriguez Raw",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "99W",
+        "player": "es Lee NXT",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "100C",
+        "player": "harlotte Flair Smackdown",
+        "team": "",
+        "note": ""
+      }
+    ]
+  },
+  "insert_sets": [
+    {
+      "name": "LIQUID SILVER",
+      "count": 10,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "LQ-1",
+          "player": "Undertaker Legend",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LQ-2",
+          "player": "\"Stone Cold\" Steve AustinLegend",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LQ-3",
+          "player": "Rhea Ripley Raw",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LQ-4",
+          "player": "\"The American Nightmare\" SCmodayck Rdhoowdnes",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LQ-5",
+          "player": "Stephanie Vaquer Raw",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LQ-6",
+          "player": "Roman Reigns Smackdown",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LQ-7",
+          "player": "John Cena WWE",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LQ-8",
+          "player": "CM Punk Raw",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LQ-9",
+          "player": "Tiffany Stratton Smackdown",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LQ-10",
+          "player": "The Rock Legend",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "PRODIGIOUS PAIRINGS",
+      "count": 20,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "PRP-1",
+          "player": "Tommaso Ciampa Smackdown",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PRP-1",
+          "player": "Johnny Gargano Smackdown",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PRP-2",
+          "player": "Ludwig Kaiser Raw",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PRP-2",
+          "player": "Gunther Raw",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PRP-3",
+          "player": "JD McDonagh Raw",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PRP-3",
+          "player": "Finn B\u00e1lor Raw",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PRP-4",
+          "player": "Kairi Sane Raw",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PRP-4",
+          "player": "Asuka Raw",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PRP-5",
+          "player": "Chris Sabin Smackdown",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PRP-5",
+          "player": "Alex Shelley Smackdown",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PRP-6",
+          "player": "Xavier Woods Raw",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PRP-6",
+          "player": "Kofi Kingston Raw",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PRP-7",
+          "player": "Kit Wilson Smackdown",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PRP-7",
+          "player": "Elton Prince Smackdown",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PRP-8",
+          "player": "Montez Ford Smackdown",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PRP-8",
+          "player": "Angelo Dawkins Smackdown",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PRP-9",
+          "player": "Erik Raw",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PRP-9",
+          "player": "Ivar Raw",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PRP-10",
+          "player": "Julius Creed Raw",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PRP-10",
+          "player": "Brutus Creed Raw",
+          "team": "",
+          "note": ""
+        }
+      ]
+    }
+  ],
+  "autograph_sets": [
+    {
+      "name": "CELEBRATING CENA AUTOGRAPHS",
+      "count": 4,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "CCA-22",
+          "player": "John Cena WWE",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CCA-23",
+          "player": "John Cena WWE",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CCA-24",
+          "player": "John Cena WWE",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CCA-25",
+          "player": "John Cena WWE",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "THE ROCK RETROSPECTIVE AUTOGRAPHS",
+      "count": 2,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "RRA-8",
+          "player": "The Rock Legend",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RRA-9",
+          "player": "The Rock Legend",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "TRIPLE H TRIBUTE AUTOGRAPHS",
+      "count": 3,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "TTA-12",
+          "player": "Triple H Legend",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TTA-13",
+          "player": "Triple H Legend",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TTA-14",
+          "player": "Triple H Legend",
+          "team": "",
+          "note": ""
+        }
+      ]
+    }
+  ],
+  "memorabilia_sets": [
+    {
+      "name": "REGALIA RELICS",
+      "count": 38,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "RR-1",
+          "player": "Nikkita Lyons NXT",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RR-2",
+          "player": "Ricky Saints NXT",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RR-3",
+          "player": "Uncle Howdy Smackdown",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RR-5",
+          "player": "Edris Enof\u00e9 NXT",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RR-6",
+          "player": "Alba Fyre Smackdown",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RR-7",
+          "player": "Nikki Cross Smackdown",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RR-8",
+          "player": "Rey Mysterio Raw",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RR-9",
+          "player": "Becky Lynch Raw",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RR-10",
+          "player": "Julius Creed Raw",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RR-11",
+          "player": "Carmelo Hayes Smackdown",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RR-13",
+          "player": "\"The American Nightmare\" SCmodayck Rdhoowdnes",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RR-14",
+          "player": "Ludwig Kaiser Raw",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RR-15",
+          "player": "Bronson Reed Raw",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RR-16",
+          "player": "Kendal Grey NXT",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "RR-17",
+          "player": "Austin Theory Raw",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RR-18",
+          "player": "Roman Reigns Smackdown",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RR-19",
+          "player": "Brutus Creed Raw",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RR-20",
+          "player": "Lyra Valkyria Raw",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RR-21",
+          "player": "Kairi Sane Raw",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RR-22",
+          "player": "Seth Rollins Raw",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RR-23",
+          "player": "JD McDonagh Raw",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RR-24",
+          "player": "Dominik Mysterio Raw",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RR-25",
+          "player": "Jimmy Uso Smackdown",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RR-26",
+          "player": "Finn B\u00e1lor Raw",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RR-27",
+          "player": "Hulk Hogan\u2122 Legend",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RR-28",
+          "player": "IYO SKY Raw",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RR-29",
+          "player": "Ron Killings Smackdown",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RR-30",
+          "player": "Elton Prince Smackdown",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RR-31",
+          "player": "Angelo Dawkins Smackdown",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RR-32",
+          "player": "Ethan Page NXT",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RR-33",
+          "player": "Joaquin Wilde Raw",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RR-34",
+          "player": "Giulia Smackdown",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RR-35",
+          "player": "Bron Breakker Raw",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RR-36",
+          "player": "\"Stone Cold\" Steve AustinLegend",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RR-37",
+          "player": "AJ Styles Raw",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RR-38",
+          "player": "Gunther Raw",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RR-39",
+          "player": "Penta Raw",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RR-40",
+          "player": "Jordynne Grace NXT",
+          "team": "",
+          "note": "Rookie"
+        }
+      ]
+    },
+    {
+      "name": "STAR RELICS",
+      "count": 26,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "SR-1",
+          "player": "Naomi Smackdown",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SR-2",
+          "player": "Akira Tozawa Raw",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SR-3",
+          "player": "Tiffany Stratton Smackdown",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SR-4",
+          "player": "Kofi Kingston Raw",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SR-5",
+          "player": "LA Knight Smackdown",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SR-6",
+          "player": "Erik Raw",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SR-7",
+          "player": "Jey Uso Raw",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SR-8",
+          "player": "Roxanne Perez Raw",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SR-9",
+          "player": "Zoey Stark Raw",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SR-10",
+          "player": "Adriana Rizzo NXT",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SR-11",
+          "player": "Piper Niven Smackdown",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SR-12",
+          "player": "Bayley Raw",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SR-13",
+          "player": "Zaria NXT",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "SR-14",
+          "player": "Tama Tonga Smackdown",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SR-15",
+          "player": "Randy Orton Smackdown",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SR-16",
+          "player": "CM Punk Raw",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SR-18",
+          "player": "Solo Sikoa Smackdown",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SR-19",
+          "player": "Je'Von Evans NXT",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SR-21",
+          "player": "Montez Ford Smackdown",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SR-22",
+          "player": "Chelsea Green Smackdown",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SR-23",
+          "player": "Bianca Belair Smackdown",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SR-25",
+          "player": "Charlotte Flair Smackdown",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SR-26",
+          "player": "Michin Smackdown",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SR-27",
+          "player": "Dragon Lee Raw",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SR-28",
+          "player": "Asuka Raw",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SR-30",
+          "player": "The Miz Smackdown",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "RELIC JEWELS",
+      "count": 18,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "RJ-1",
+          "player": "B-Fab Smackdown",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RJ-2",
+          "player": "Santos Escobar Smackdown",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RJ-3",
+          "player": "Grayson Waller Raw",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RJ-4",
+          "player": "Tommaso Ciampa Smackdown",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RJ-5",
+          "player": "Drew McIntyre Smackdown",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RJ-6",
+          "player": "Raquel Rodriguez Raw",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RJ-7",
+          "player": "Kevin Owens Smackdown",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RJ-9",
+          "player": "Sami Zayn Raw",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RJ-11",
+          "player": "Ivar Raw",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RJ-12",
+          "player": "Zelina Vega Smackdown",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RJ-13",
+          "player": "Shinsuke Nakamura Smackdown",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RJ-14",
+          "player": "Damian Priest Smackdown",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RJ-15",
+          "player": "Rhea Ripley Raw",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RJ-16",
+          "player": "Sheamus Raw",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RJ-17",
+          "player": "Xavier Woods Raw",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RJ-18",
+          "player": "Jaida Parker NXT",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RJ-19",
+          "player": "Jacob Fatu Smackdown",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RJ-20",
+          "player": "Trick Williams NXT",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "THE DEADMAN RELICS",
+      "count": 5,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "TDR-1",
+          "player": "Undertaker Legend",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TDR-2",
+          "player": "Undertaker Legend",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TDR-3",
+          "player": "Undertaker Legend",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TDR-4",
+          "player": "Undertaker Legend",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TDR-5",
+          "player": "Undertaker Legend",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "U CANT SEE ME RELICS",
+      "count": 11,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "JCR-1",
+          "player": "John Cena WWE",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "JCR-2",
+          "player": "John Cena WWE",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "JCR-3",
+          "player": "John Cena WWE",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "JCR-4",
+          "player": "John Cena WWE",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "JCR-5",
+          "player": "John Cena WWE",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "100",
+          "player": "PERCENT STRATUSFACTION RELICS",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TSR-1",
+          "player": "Trish Stratus Legend",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TSR-2",
+          "player": "Trish Stratus Legend",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TSR-3",
+          "player": "Trish Stratus Legend",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TSR-4",
+          "player": "Trish Stratus Legend",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TSR-5",
+          "player": "Trish Stratus Legend",
+          "team": "",
+          "note": ""
+        }
+      ]
+    }
+  ],
+  "team_sets": {}
+}
