@@ -1,0 +1,685 @@
+{
+  "set": "2025 Topps Royalty UFC",
+  "release_date": "2025",
+  "set_size": 100,
+  "product_info": {},
+  "box_contents": {},
+  "parallels": [],
+  "base_set": {
+    "count": 100,
+    "cards": [
+      {
+        "number": "1",
+        "player": "Alex Pereira",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "2",
+        "player": "Georges St-Pierre",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "3",
+        "player": "Dricus du Plessis",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "4",
+        "player": "Norma Dumont",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "5",
+        "player": "Jonathan Martinez",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "6",
+        "player": "Arman Tsarukyan",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "7",
+        "player": "Israel Adesanya",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "8",
+        "player": "Hyunsung Park",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "9",
+        "player": "Assu Almabayev",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "10",
+        "player": "Kai Asakura",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "11",
+        "player": "Merab Dvalishvili",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "12",
+        "player": "Sean O'Malley",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "13",
+        "player": "Daniel Zellhuber",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "14",
+        "player": "Tatiana Suarez",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "15",
+        "player": "Alexa Grasso",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "16",
+        "player": "Deiveson Figueiredo",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "17",
+        "player": "Muhammadjon Naimov",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "18",
+        "player": "Dana White",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "19",
+        "player": "Nurullo Aliev",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "20",
+        "player": "Farid Basharat",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "21",
+        "player": "Amir Albazi",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "22",
+        "player": "Magomed Ankalaev",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "23",
+        "player": "Chase Hooper",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "24",
+        "player": "Roman Kopylov",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "25",
+        "player": "Yair Rodr\u00edguez",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "26",
+        "player": "Jiri Prochazka",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "27",
+        "player": "Zhang Weili",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "28",
+        "player": "Diego Lopes",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "29",
+        "player": "Shamil Gaziev",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "30",
+        "player": "Max Holloway",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "31",
+        "player": "Carlos Ulberg",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "32",
+        "player": "Alexander Volkanovski",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "33",
+        "player": "Daniel Marcos",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "34",
+        "player": "Ailin Perez",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "35",
+        "player": "Movsar Evloev",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "36",
+        "player": "Daniel Hooker",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "37",
+        "player": "Belal Muhammad",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "38",
+        "player": "Ian Machado Garry",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "39",
+        "player": "Leon Edwards",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "40",
+        "player": "Nate Landwehr",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "41",
+        "player": "Bogdan Guskov",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "42",
+        "player": "Justin Gaethje",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "43",
+        "player": "Maycee Barber",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "44",
+        "player": "Ketlen Vieira",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "45",
+        "player": "Alexandre Pantoja",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "46",
+        "player": "Waldo Cortes",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "47",
+        "player": "Khamzat Chimaev",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "48",
+        "player": "Nassourdine Imavov",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "49",
+        "player": "Conor McGregor",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "50",
+        "player": "Gabriel Bonfim",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "51",
+        "player": "Sean Brady",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "52",
+        "player": "Erin Blanchfield",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "53",
+        "player": "Virna Jandiroba",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "54",
+        "player": "Jos\u00e9 Aldo",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "55",
+        "player": "Christian Duncan",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "56",
+        "player": "Jean Matsumoto",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "57",
+        "player": "Stephen Erceg",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "58",
+        "player": "Dustin Poirier",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "59",
+        "player": "Tom Aspinall",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "60",
+        "player": "Khabib Nurmagomedov",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "61",
+        "player": "Aljamain Sterling",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "62",
+        "player": "Vitor Petrino",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "63",
+        "player": "Kayla Harrison",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "64",
+        "player": "Caio Borralho",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "65",
+        "player": "Valentina Shevchenko",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "66",
+        "player": "Anderson Silva",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "67",
+        "player": "Ciryl Gane",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "68",
+        "player": "Myktybek Orolbai",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "69",
+        "player": "Jose Mariscal",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "70",
+        "player": "Raquel Pennington",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "71",
+        "player": "Jack Della Maddalena",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "72",
+        "player": "Yan Xiaonan",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "73",
+        "player": "Charles Oliveira",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "74",
+        "player": "Rinya Nakamura",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "75",
+        "player": "Joshua Van",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "76",
+        "player": "Payton Talbott",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "77",
+        "player": "Bo Nickal",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "78",
+        "player": "Tracy Cortez",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "79",
+        "player": "Brandon Royval",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "80",
+        "player": "Raul Rosas",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "81",
+        "player": "Vinicius Oliveira",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "82",
+        "player": "Jean Silva",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "83",
+        "player": "Carlos Prates",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "84",
+        "player": "Reinier de Ridder",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "85",
+        "player": "Julianna Pe\u00f1a",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "86",
+        "player": "Paddy Pimblett",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "87",
+        "player": "Islam Makhachev",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "88",
+        "player": "Sean Strickland",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "89",
+        "player": "Mackenzie Dern",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "90",
+        "player": "Mauricio Santos",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "91",
+        "player": "Brandon Moreno",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "92",
+        "player": "Colby Covington",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "93",
+        "player": "Manon Fiorot",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "94",
+        "player": "Umar Nurmagomedov",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "95",
+        "player": "Rose Namajunas",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "96",
+        "player": "Michael Chandler",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "97",
+        "player": "Ilia Topuria",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "98",
+        "player": "Shavkat Rakhmonov",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "99",
+        "player": "Kai Kara-France",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "100",
+        "player": "Jon Jones",
+        "team": "",
+        "note": ""
+      }
+    ]
+  },
+  "insert_sets": [
+    {
+      "name": "LIQUID SILVER",
+      "count": 10,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "LS-1",
+          "player": "Islam Makhachev",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LS-2",
+          "player": "Alexander Volkanovski",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LS-3",
+          "player": "Charles Oliveira",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LS-4",
+          "player": "Dricus Du Plessis",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LS-5",
+          "player": "Merab Dvalishvili",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LS-6",
+          "player": "Zhang Weili",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LS-7",
+          "player": "Dustin Poirier",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LS-8",
+          "player": "Kayla Harrison",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LS-9",
+          "player": "Paddy Pimblett",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LS-10",
+          "player": "Georges St-Pierre",
+          "team": "",
+          "note": ""
+        }
+      ]
+    }
+  ],
+  "autograph_sets": [],
+  "memorabilia_sets": [],
+  "team_sets": {}
+}
