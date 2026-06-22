@@ -1,0 +1,3875 @@
+{
+  "set": "2025 Topps Cosmic Chrome Football",
+  "release_date": "2025",
+  "set_size": 200,
+  "product_info": {},
+  "box_contents": {},
+  "parallels": [],
+  "base_set": {
+    "count": 200,
+    "cards": [
+      {
+        "number": "1",
+        "player": "Kyler Murray Arizona Cardinals",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-1",
+        "player": "Kyler Murray Arizona Cardinals",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "2",
+        "player": "Trey Benson Arizona Cardinals",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-2",
+        "player": "Marvin Harrison Jr. Arizona Cardinals",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "3",
+        "player": "Marvin Harrison Jr. Arizona Cardinals",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-3",
+        "player": "Bijan Robinson Atlanta Falcons",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "4",
+        "player": "Bijan Robinson Atlanta Falcons",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-4",
+        "player": "Drake London Atlanta Falcons",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "5",
+        "player": "Drake London Atlanta Falcons",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-5",
+        "player": "Lamar Jackson Baltimore Ravens",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "6",
+        "player": "Kyle Pitts Atlanta Falcons",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-6",
+        "player": "Derrick Henry Baltimore Ravens",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "7",
+        "player": "Lamar Jackson Baltimore Ravens",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-7",
+        "player": "Josh Allen Buffalo Bills",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "8",
+        "player": "Derrick Henry Baltimore Ravens",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-8",
+        "player": "James Cook Buffalo Bills",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "9",
+        "player": "Zay Flowers Baltimore Ravens",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-9",
+        "player": "Bryce Young Carolina Panthers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "10",
+        "player": "Josh Allen Buffalo Bills",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-10",
+        "player": "Caleb Williams Chicago Bears",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "11",
+        "player": "James Cook Buffalo Bills",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-11",
+        "player": "Rome Odunze Chicago Bears",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "12",
+        "player": "Keon Coleman Buffalo Bills",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-12",
+        "player": "Joe Burrow Cincinnati Bengals",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "13",
+        "player": "Bryce Young Carolina Panthers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-13",
+        "player": "Ja'Marr Chase Cincinnati Bengals",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "14",
+        "player": "Rico Dowdle Carolina Panthers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-14",
+        "player": "Myles Garrett Cleveland Browns",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "15",
+        "player": "Jaycee Horn Carolina Panthers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-15",
+        "player": "Dak Prescott Dallas Cowboys",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "16",
+        "player": "Caleb Williams Chicago Bears",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-16",
+        "player": "CeeDee Lamb Dallas Cowboys",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "17",
+        "player": "D'Andre Swift Chicago Bears",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-17",
+        "player": "Bo Nix Denver Broncos",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "18",
+        "player": "Rome Odunze Chicago Bears",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-18",
+        "player": "Pat Surtain II Denver Broncos",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "19",
+        "player": "Joe Burrow Cincinnati Bengals",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-19",
+        "player": "Jahmyr Gibbs Detroit Lions",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "20",
+        "player": "Ja'Marr Chase Cincinnati Bengals",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-20",
+        "player": "Amon-Ra St. Brown Detroit Lions",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "21",
+        "player": "Tee Higgins Cincinnati Bengals",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-21",
+        "player": "Jordan Love Green Bay Packers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "22",
+        "player": "Jerry Jeudy Cleveland Browns",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-22",
+        "player": "Micah Parsons Green Bay Packers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "23",
+        "player": "David Njoku Cleveland Browns",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-23",
+        "player": "CJ Stroud Houston Texans",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "24",
+        "player": "Myles Garrett Cleveland Browns",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-24",
+        "player": "Nico Collins Houston Texans",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "25",
+        "player": "Dak Prescott Dallas Cowboys",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-25",
+        "player": "Daniel Jones Indianapolis Colts",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "26",
+        "player": "CeeDee Lamb Dallas Cowboys",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-26",
+        "player": "Jonathan Taylor Indianapolis Colts",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "27",
+        "player": "George Pickens Dallas Cowboys",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-27",
+        "player": "Trevor Lawrence Jacksonville Jaguars",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "28",
+        "player": "Bo Nix Denver Broncos",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-28",
+        "player": "Patrick Mahomes II Kansas City Chiefs",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "29",
+        "player": "Courtland Sutton Denver Broncos",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-29",
+        "player": "Travis Kelce Kansas City Chiefs",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "30",
+        "player": "Pat Surtain II Denver Broncos",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-30",
+        "player": "Brock Bowers Las Vegas Raiders",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "31",
+        "player": "Jared Goff Detroit Lions",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-31",
+        "player": "Maxx Crosby Las Vegas Raiders",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "32",
+        "player": "Jahmyr Gibbs Detroit Lions",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-32",
+        "player": "Justin Herbert Los Angeles Chargers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "33",
+        "player": "Amon-Ra St. Brown Detroit Lions",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-33",
+        "player": "Matthew Stafford Los Angeles Rams",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "34",
+        "player": "Aidan Hutchinson Detroit Lions",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-34",
+        "player": "Puka Nacua Los Angeles Rams",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "35",
+        "player": "Jordan Love Green Bay Packers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-35",
+        "player": "De'Von Achane Miami Dolphins",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "36",
+        "player": "Josh Jacobs Green Bay Packers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-36",
+        "player": "Jaylen Waddle Miami Dolphins",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "37",
+        "player": "Micah Parsons Green Bay Packers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-37",
+        "player": "Justin Jefferson Minnesota Vikings",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "38",
+        "player": "CJ Stroud Houston Texans",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-38",
+        "player": "Drake Maye New England Patriots",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "39",
+        "player": "Nico Collins Houston Texans",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-39",
+        "player": "Alvin Kamara New Orleans Saints",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "40",
+        "player": "Dalton Schultz Houston Texans",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-40",
+        "player": "Chris Olave New Orleans Saints",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "41",
+        "player": "Daniel Jones Indianapolis Colts",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-41",
+        "player": "Malik Nabers New York Giants",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "42",
+        "player": "Jonathan Taylor Indianapolis Colts",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-42",
+        "player": "Breece Hall New York Jets",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "43",
+        "player": "Sauce Gardner Indianapolis Colts",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-43",
+        "player": "Jalen Hurts Philadelphia Eagles",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "44",
+        "player": "Trevor Lawrence Jacksonville Jaguars",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-44",
+        "player": "Saquon Barkley Philadelphia Eagles",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "45",
+        "player": "Travis Etienne Jr. Jacksonville Jaguars",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-45",
+        "player": "Aaron Rodgers Pittsburgh Steelers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "46",
+        "player": "Brian Thomas Jr. Jacksonville Jaguars",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-46",
+        "player": "DK Metcalf Pittsburgh Steelers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "47",
+        "player": "Patrick Mahomes II Kansas City Chiefs",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-47",
+        "player": "T.J. Watt Pittsburgh Steelers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "48",
+        "player": "Xavier Worthy Kansas City Chiefs",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-48",
+        "player": "Brock Purdy San Francisco 49ers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "49",
+        "player": "Travis Kelce Kansas City Chiefs",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-49",
+        "player": "Christian McCaffrey San Francisco 49ers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "50",
+        "player": "Geno Smith Las Vegas Raiders",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-50",
+        "player": "Jaxon Smith-Njigba Seattle Seahawks",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "51",
+        "player": "Brock Bowers Las Vegas Raiders",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-51",
+        "player": "Baker Mayfield Tampa Bay Buccaneers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "52",
+        "player": "Maxx Crosby Las Vegas Raiders",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-52",
+        "player": "Bucky Irving Tampa Bay Buccaneers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "53",
+        "player": "Justin Herbert Los Angeles Chargers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-53",
+        "player": "Tony Pollard Tennessee Titans",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "54",
+        "player": "Ladd McConkey Los Angeles Chargers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-54",
+        "player": "Jayden Daniels Washington Commanders",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "55",
+        "player": "Derwin James Jr. Los Angeles Chargers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-55",
+        "player": "Deebo Samuel Washington Commanders",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "56",
+        "player": "Matthew Stafford Los Angeles Rams",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-56",
+        "player": "Tetairoa McMillan Carolina Panthers",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "57",
+        "player": "Kyren Williams Los Angeles Rams",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-57",
+        "player": "Trevor Etienne Carolina Panthers",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "58",
+        "player": "Puka Nacua Los Angeles Rams",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-58",
+        "player": "Colston Loveland Chicago Bears",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "59",
+        "player": "Tua Tagovailoa Miami Dolphins",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-59",
+        "player": "Luther Burden III Chicago Bears",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "60",
+        "player": "De'Von Achane Miami Dolphins",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-60",
+        "player": "Quinshon Judkins Cleveland Browns",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "61",
+        "player": "Jaylen Waddle Miami Dolphins",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-61",
+        "player": "Dillon Gabriel Cleveland Browns",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "62",
+        "player": "Tyreek Hill Miami Dolphins",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-62",
+        "player": "Shedeur Sanders Cleveland Browns",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "63",
+        "player": "J.J. McCarthy Minnesota Vikings",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-63",
+        "player": "Donovan Ezeiruaku Dallas Cowboys",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "64",
+        "player": "Aaron Jones Sr. Minnesota Vikings",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-64",
+        "player": "RJ Harvey Denver Broncos",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "65",
+        "player": "Justin Jefferson Minnesota Vikings",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-65",
+        "player": "Pat Bryant Denver Broncos",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "66",
+        "player": "Drake Maye New England Patriots",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-66",
+        "player": "Isaac TeSlaa Detroit Lions",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "67",
+        "player": "Stefon Diggs New England Patriots",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-67",
+        "player": "Matthew Golden Green Bay Packers",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "68",
+        "player": "Christian Gonzalez New England Patriots",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-68",
+        "player": "Savion Williams Green Bay Packers",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "69",
+        "player": "Alvin Kamara New Orleans Saints",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-69",
+        "player": "Jayden Higgins Houston Texans",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "70",
+        "player": "Chris Olave New Orleans Saints",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-70",
+        "player": "Jaylin Noel Houston Texans",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "71",
+        "player": "Taysom Hill New Orleans Saints",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-71",
+        "player": "Woody Marks Houston Texans",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "72",
+        "player": "Malik Nabers New York Giants",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-72",
+        "player": "Tyler Warren Indianapolis Colts",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "73",
+        "player": "Theo Johnson New York Giants",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-73",
+        "player": "Riley Leonard Indianapolis Colts",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "74",
+        "player": "Dexter Lawrence II New York Giants",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-74",
+        "player": "Travis Hunter Jacksonville Jaguars",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "75",
+        "player": "Justin Fields New York Jets",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-75",
+        "player": "Jalen Royals Kansas City Chiefs",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "76",
+        "player": "Breece Hall New York Jets",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-76",
+        "player": "Ashton Jeanty Las Vegas Raiders",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "77",
+        "player": "Quincy Williams New York Jets",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-77",
+        "player": "Jack Bech Las Vegas Raiders",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "78",
+        "player": "Jalen Hurts Philadelphia Eagles",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-78",
+        "player": "Omarion Hampton Los Angeles Chargers",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "79",
+        "player": "Saquon Barkley Philadelphia Eagles",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-79",
+        "player": "Tre Harris III Los Angeles Chargers",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "80",
+        "player": "A.J. Brown Philadelphia Eagles",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-80",
+        "player": "Terrance Ferguson Los Angeles Rams",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "81",
+        "player": "Dallas Goedert Philadelphia Eagles",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-81",
+        "player": "Ollie Gordon II Miami Dolphins",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "82",
+        "player": "Aaron Rodgers Pittsburgh Steelers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-82",
+        "player": "Quinn Ewers Miami Dolphins",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "83",
+        "player": "DK Metcalf Pittsburgh Steelers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-83",
+        "player": "Tai Felton Minnesota Vikings",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "84",
+        "player": "T.J. Watt Pittsburgh Steelers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-84",
+        "player": "TreVeyon Henderson New England Patriots",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "85",
+        "player": "Brock Purdy San Francisco 49ers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-85",
+        "player": "Tyler Shough New Orleans Saints",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "86",
+        "player": "Christian McCaffrey San Francisco 49ers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-86",
+        "player": "Abdul Carter New York Giants",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "87",
+        "player": "Ricky Pearsall San Francisco 49ers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-87",
+        "player": "Jaxson Dart New York Giants",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "88",
+        "player": "George Kittle San Francisco 49ers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-88",
+        "player": "Cam Skattebo New York Giants",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "89",
+        "player": "Sam Darnold Seattle Seahawks",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-89",
+        "player": "Mason Taylor New York Jets",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "90",
+        "player": "Kenneth Walker III Seattle Seahawks",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-90",
+        "player": "Jihaad Campbell Philadelphia Eagles",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "91",
+        "player": "Jaxon Smith-Njigba Seattle Seahawks",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-91",
+        "player": "Kaleb Johnson Pittsburgh Steelers",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "92",
+        "player": "Baker Mayfield Tampa Bay Buccaneers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-92",
+        "player": "Will Howard Pittsburgh Steelers",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "93",
+        "player": "Bucky Irving Tampa Bay Buccaneers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-93",
+        "player": "Elijah Arroyo Seattle Seahawks",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "94",
+        "player": "Mike Evans Tampa Bay Buccaneers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-94",
+        "player": "Jalen Milroe Seattle Seahawks",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "95",
+        "player": "Tony Pollard Tennessee Titans",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-95",
+        "player": "Emeka Egbuka Tampa Bay Buccaneers",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "96",
+        "player": "Calvin Ridley Tennessee Titans",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-96",
+        "player": "Tez Johnson Tampa Bay Buccaneers",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "97",
+        "player": "T'Vondre Sweat Tennessee Titans",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-97",
+        "player": "Cam Ward Tennessee Titans",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "98",
+        "player": "Jayden Daniels Washington Commanders",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-98",
+        "player": "Elic Ayomanor Tennessee Titans",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "99",
+        "player": "Terry McLaurin Washington Commanders",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-99",
+        "player": "Jaylin Lane Washington Commanders",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "100",
+        "player": "Deebo Samuel Washington Commanders",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-100",
+        "player": "Jacory Croskey-Merritt Washington Commanders",
+        "team": "",
+        "note": "Rookie"
+      }
+    ]
+  },
+  "insert_sets": [
+    {
+      "name": "ROOKIES",
+      "count": 100,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "101",
+          "player": "Walter Nolen Arizona Cardinals",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "102",
+          "player": "Will Johnson Arizona Cardinals",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "103",
+          "player": "Jordan Burch Arizona Cardinals",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "104",
+          "player": "Jalon Walker Atlanta Falcons",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "105",
+          "player": "Billy Bowman Jr. Atlanta Falcons",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "106",
+          "player": "Xavier Watts Atlanta Falcons",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "107",
+          "player": "Malaki Starks Baltimore Ravens",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "108",
+          "player": "Mike Green Baltimore Ravens",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "109",
+          "player": "Teddye Buchanan Baltimore Ravens",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "110",
+          "player": "Maxwell Hairston Buffalo Bills",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "111",
+          "player": "T.J. Sanders Buffalo Bills",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "112",
+          "player": "Landon Jackson Buffalo Bills",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "113",
+          "player": "Tetairoa McMillan Carolina Panthers",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "114",
+          "player": "Nic Scourton Carolina Panthers",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "115",
+          "player": "Trevor Etienne Carolina Panthers",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "116",
+          "player": "Colston Loveland Chicago Bears",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "117",
+          "player": "Luther Burden III Chicago Bears",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "118",
+          "player": "Kyle Monangai Chicago Bears",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "119",
+          "player": "Shemar Stewart Cincinnati Bengals",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "120",
+          "player": "Demetrius Knight Jr. Cincinnati Bengals",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "121",
+          "player": "Barrett Carter Cincinnati Bengals",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "122",
+          "player": "Mason Graham Cleveland Browns",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "123",
+          "player": "Carson Schwesinger Cleveland Browns",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "124",
+          "player": "Quinshon Judkins Cleveland Browns",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "125",
+          "player": "Harold Fannin Jr. Cleveland Browns",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "126",
+          "player": "Dillon Gabriel Cleveland Browns",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "127",
+          "player": "Shedeur Sanders Cleveland Browns",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "128",
+          "player": "Tyler Booker Dallas Cowboys",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "129",
+          "player": "Donovan Ezeiruaku Dallas Cowboys",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "130",
+          "player": "Shavon Revel Jr. Dallas Cowboys",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "131",
+          "player": "Jahdae Barron Denver Broncos",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "132",
+          "player": "RJ Harvey Denver Broncos",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "133",
+          "player": "Pat Bryant Denver Broncos",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "134",
+          "player": "Tyleik Williams Detroit Lions",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "135",
+          "player": "Tate Ratledge Detroit Lions",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "136",
+          "player": "Isaac TeSlaa Detroit Lions",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "137",
+          "player": "Matthew Golden Green Bay Packers",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "138",
+          "player": "Anthony Belton Green Bay Packers",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "139",
+          "player": "Savion Williams Green Bay Packers",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "140",
+          "player": "Jayden Higgins Houston Texans",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "141",
+          "player": "Jaylin Noel Houston Texans",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "142",
+          "player": "Woody Marks Houston Texans",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "143",
+          "player": "Tyler Warren Indianapolis Colts",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "144",
+          "player": "JT Tuimoloau Indianapolis Colts",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "145",
+          "player": "Riley Leonard Indianapolis Colts",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "146",
+          "player": "Travis Hunter Jacksonville Jaguars",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "147",
+          "player": "Bhayshul Tuten Jacksonville Jaguars",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "148",
+          "player": "Jack Kiser Jacksonville Jaguars",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "149",
+          "player": "Josh Simmons Kansas City Chiefs",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "150",
+          "player": "Omarr Norman-Lott Kansas City Chiefs",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "151",
+          "player": "Jalen Royals Kansas City Chiefs",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "152",
+          "player": "Ashton Jeanty Las Vegas Raiders",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "153",
+          "player": "Jack Bech Las Vegas Raiders",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "154",
+          "player": "Dont'e Thornton Jr. Las Vegas Raiders",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "155",
+          "player": "Omarion Hampton Los Angeles Chargers",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "156",
+          "player": "Tre Harris III Los Angeles Chargers",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "157",
+          "player": "Jamaree Caldwell Los Angeles Chargers",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "158",
+          "player": "Terrance Ferguson Los Angeles Rams",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "159",
+          "player": "Josaiah Stewart Los Angeles Rams",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "160",
+          "player": "Ty Hamilton Los Angeles Rams",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "161",
+          "player": "Kenneth Grant Miami Dolphins",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "162",
+          "player": "Ollie Gordon II Miami Dolphins",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "163",
+          "player": "Quinn Ewers Miami Dolphins",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "164",
+          "player": "Donovan Jackson Minnesota Vikings",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "165",
+          "player": "Tai Felton Minnesota Vikings",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "166",
+          "player": "Tyrion Ingram-Dawkins Minnesota Vikings",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "167",
+          "player": "Will Campbell New England Patriots",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "168",
+          "player": "TreVeyon Henderson New England Patriots",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "169",
+          "player": "Kyle Williams New England Patriots",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "170",
+          "player": "Kelvin Banks Jr. New Orleans Saints",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "171",
+          "player": "Tyler Shough New Orleans Saints",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "172",
+          "player": "Jonas Sanker New Orleans Saints",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "173",
+          "player": "Abdul Carter New York Giants",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "174",
+          "player": "Jaxson Dart New York Giants",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "175",
+          "player": "Darius Alexander New York Giants",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "176",
+          "player": "Cam Skattebo New York Giants",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "177",
+          "player": "Armand Membou New York Jets",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "178",
+          "player": "Mason Taylor New York Jets",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "179",
+          "player": "Malachi Moore New York Jets",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "180",
+          "player": "Jihaad Campbell Philadelphia Eagles",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "181",
+          "player": "Andrew Mukuba Philadelphia Eagles",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "182",
+          "player": "Kyle McCord Philadelphia Eagles",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "183",
+          "player": "Derrick Harmon Pittsburgh Steelers",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "184",
+          "player": "Kaleb Johnson Pittsburgh Steelers",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "185",
+          "player": "Will Howard Pittsburgh Steelers",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "186",
+          "player": "Mykel Williams San Francisco 49ers",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "187",
+          "player": "Alfred Collins San Francisco 49ers",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "188",
+          "player": "Upton Stout San Francisco 49ers",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "189",
+          "player": "Nick Emmanwori Seattle Seahawks",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "190",
+          "player": "Elijah Arroyo Seattle Seahawks",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "191",
+          "player": "Jalen Milroe Seattle Seahawks",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "192",
+          "player": "Emeka Egbuka Tampa Bay Buccaneers",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "193",
+          "player": "Benjamin Morrison Tampa Bay Buccaneers",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "194",
+          "player": "Tez Johnson Tampa Bay Buccaneers",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "195",
+          "player": "Cam Ward Tennessee Titans",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "196",
+          "player": "Elic Ayomanor Tennessee Titans",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "197",
+          "player": "Gunnar Helm Tennessee Titans",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "198",
+          "player": "Josh Conerly Jr. Washington Commanders",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "199",
+          "player": "Jaylin Lane Washington Commanders",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "200",
+          "player": "Jacory Croskey-Merritt Washington Commanders",
+          "team": "",
+          "note": "Rookie"
+        }
+      ]
+    },
+    {
+      "name": "LIGHT SPEED",
+      "count": 35,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "LS-1",
+          "player": "Kyler Murray Arizona Cardinals",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LS-2",
+          "player": "Lamar Jackson Baltimore Ravens",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LS-3",
+          "player": "Josh Allen Buffalo Bills",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LS-4",
+          "player": "Caleb Williams Chicago Bears",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LS-5",
+          "player": "CJ Stroud Houston Texans",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LS-6",
+          "player": "Patrick Mahomes II Kansas City Chiefs",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LS-7",
+          "player": "Justin Herbert Los Angeles Chargers",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LS-8",
+          "player": "Drake Maye New England Patriots",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LS-9",
+          "player": "Jalen Hurts Philadelphia Eagles",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LS-10",
+          "player": "Jayden Daniels Washington Commanders",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LS-11",
+          "player": "Trey Benson Arizona Cardinals",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LS-12",
+          "player": "Bijan Robinson Atlanta Falcons",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LS-13",
+          "player": "Derrick Henry Baltimore Ravens",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LS-14",
+          "player": "James Cook Buffalo Bills",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LS-15",
+          "player": "Jahmyr Gibbs Detroit Lions",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LS-16",
+          "player": "Jonathan Taylor Indianapolis Colts",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LS-17",
+          "player": "De'Von Achane Miami Dolphins",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LS-18",
+          "player": "Breece Hall New York Jets",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LS-19",
+          "player": "Saquon Barkley Philadelphia Eagles",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LS-20",
+          "player": "Christian McCaffrey San Francisco 49ers",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LS-21",
+          "player": "Kenneth Walker III Seattle Seahawks",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LS-22",
+          "player": "Bucky Irving Tampa Bay Buccaneers",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LS-23",
+          "player": "Ja'Marr Chase Cincinnati Bengals",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LS-24",
+          "player": "CeeDee Lamb Dallas Cowboys",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LS-25",
+          "player": "Jameson Williams Detroit Lions",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LS-26",
+          "player": "Brian Thomas Jr. Jacksonville Jaguars",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LS-27",
+          "player": "Nico Collins Houston Texans",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LS-28",
+          "player": "Xavier Worthy Kansas City Chiefs",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LS-29",
+          "player": "Puka Nacua Los Angeles Rams",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LS-30",
+          "player": "Tyreek Hill Miami Dolphins",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LS-31",
+          "player": "Jaylen Waddle Miami Dolphins",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LS-32",
+          "player": "Justin Jefferson Minnesota Vikings",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LS-33",
+          "player": "Malik Nabers New York Giants",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LS-34",
+          "player": "Jaxon Smith-Njigba Seattle Seahawks",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LS-35",
+          "player": "Terry McLaurin Washington Commanders",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "EXTRATERRESTRIAL TALENT",
+      "count": 25,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "ET-1",
+          "player": "Cam Ward Tennessee Titans",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "ET-2",
+          "player": "Jaxson Dart New York Giants",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "ET-3",
+          "player": "Ashton Jeanty Las Vegas Raiders",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "ET-4",
+          "player": "Cam Skattebo New York Giants",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "ET-5",
+          "player": "Tetairoa McMillan Carolina Panthers",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "ET-6",
+          "player": "Travis Hunter Jacksonville Jaguars",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "ET-7",
+          "player": "Josh Allen Buffalo Bills",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ET-8",
+          "player": "Dak Prescott Dallas Cowboys",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ET-9",
+          "player": "Patrick Mahomes II Kansas City Chiefs",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ET-10",
+          "player": "James Cook Buffalo Bills",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ET-11",
+          "player": "Josh Jacobs Green Bay Packers",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ET-12",
+          "player": "Breece Hall New York Jets",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ET-13",
+          "player": "Drake London Atlanta Falcons",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ET-14",
+          "player": "George Pickens Dallas Cowboys",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ET-15",
+          "player": "Jaylen Waddle Miami Dolphins",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ET-16",
+          "player": "Trey McBride Arizona Cardinals",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ET-17",
+          "player": "Travis Kelce Kansas City Chiefs",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ET-18",
+          "player": "Dexter Lawrence II New York Giants",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ET-19",
+          "player": "Aidan Hutchinson Detroit Lions",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ET-20",
+          "player": "T.J. Watt Pittsburgh Steelers",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ET-21",
+          "player": "Fred Warner San Francisco 49ers",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ET-22",
+          "player": "Pat Surtain II Denver Broncos",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ET-23",
+          "player": "Derek Stingley Jr. Houston Texans",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ET-24",
+          "player": "Kyle Hamilton Baltimore Ravens",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ET-25",
+          "player": "Derwin James Jr. Los Angeles Chargers",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "STARS IN THE NIGHT",
+      "count": 25,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "STN-1",
+          "player": "Cam Ward Tennessee Titans",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "STN-2",
+          "player": "Jaxson Dart New York Giants",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "STN-3",
+          "player": "Shedeur Sanders Cleveland Browns",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "STN-4",
+          "player": "Ashton Jeanty Las Vegas Raiders",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "STN-5",
+          "player": "Cam Skattebo New York Giants",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "STN-6",
+          "player": "Tetairoa McMillan Carolina Panthers",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "STN-7",
+          "player": "Luther Burden III Chicago Bears",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "STN-8",
+          "player": "Emeka Egbuka Tampa Bay Buccaneers",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "STN-9",
+          "player": "Travis Hunter Jacksonville Jaguars",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "STN-10",
+          "player": "Tyler Warren Indianapolis Colts",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "STN-11",
+          "player": "Lamar Jackson Baltimore Ravens",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "STN-12",
+          "player": "Josh Allen Buffalo Bills",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "STN-13",
+          "player": "Joe Burrow Cincinnati Bengals",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "STN-14",
+          "player": "Patrick Mahomes II Kansas City Chiefs",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "STN-15",
+          "player": "Jahmyr Gibbs Detroit Lions",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "STN-16",
+          "player": "Saquon Barkley Philadelphia Eagles",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "STN-17",
+          "player": "Ja'Marr Chase Cincinnati Bengals",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "STN-18",
+          "player": "CeeDee Lamb Dallas Cowboys",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "STN-19",
+          "player": "Justin Jefferson Minnesota Vikings",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "STN-20",
+          "player": "Jaxon Smith-Njigba Seattle Seahawks",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "STN-21",
+          "player": "Brock Bowers Las Vegas Raiders",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "STN-22",
+          "player": "George Kittle San Francisco 49ers",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "STN-23",
+          "player": "Myles Garrett Cleveland Browns",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "STN-24",
+          "player": "Micah Parsons Green Bay Packers",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "STN-25",
+          "player": "Pat Surtain II Denver Broncos",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "STAR CLUSTERS",
+      "count": 30,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "SC-1",
+          "player": "Cam Ward Tennessee Titans",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "SC-1",
+          "player": "Caleb Williams Chicago Bears",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SC-2",
+          "player": "Travis Hunter Jacksonville Jaguars",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "SC-2",
+          "player": "Shedeur Sanders Cleveland Browns",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "SC-3",
+          "player": "TreVeyon Henderson New England Patriots",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "SC-3",
+          "player": "Omarion Hampton Los Angeles Chargers",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "SC-4",
+          "player": "Baker Mayfield Tampa Bay Buccaneers",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SC-4",
+          "player": "Kyler Murray Arizona Cardinals",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SC-5",
+          "player": "Jayden Daniels Washington Commanders",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SC-5",
+          "player": "Lamar Jackson Baltimore Ravens",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SC-6",
+          "player": "Tetairoa McMillan Carolina Panthers",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "SC-6",
+          "player": "Bryce Young Carolina Panthers",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SC-7",
+          "player": "Joe Burrow Cincinnati Bengals",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SC-7",
+          "player": "Ja'Marr Chase Cincinnati Bengals",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SC-8",
+          "player": "CeeDee Lamb Dallas Cowboys",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SC-8",
+          "player": "George Pickens Dallas Cowboys",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SC-9",
+          "player": "David Montgomery Detroit Lions",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SC-9",
+          "player": "Jahmyr Gibbs Detroit Lions",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SC-10",
+          "player": "Matthew Golden Green Bay Packers",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "SC-10",
+          "player": "Jordan Love Green Bay Packers",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SC-11",
+          "player": "Nico Collins Houston Texans",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SC-11",
+          "player": "CJ Stroud Houston Texans",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SC-12",
+          "player": "Travis Kelce Kansas City Chiefs",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SC-12",
+          "player": "Patrick Mahomes II Kansas City Chiefs",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SC-13",
+          "player": "Ashton Jeanty Las Vegas Raiders",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "SC-13",
+          "player": "Brock Bowers Las Vegas Raiders",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SC-14",
+          "player": "Cam Skattebo New York Giants",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "SC-14",
+          "player": "Jaxson Dart New York Giants",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "SC-15",
+          "player": "A.J. Brown Philadelphia Eagles",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SC-15",
+          "player": "Jalen Hurts Philadelphia Eagles",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "LIGHT YEARS",
+      "count": 20,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "LY-1",
+          "player": "John Elway Denver Broncos",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LY-2",
+          "player": "Peyton Manning Indianapolis Colts",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LY-3",
+          "player": "Tom Brady New England Patriots",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LY-4",
+          "player": "Joe Montana San Francisco 49ers",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LY-5",
+          "player": "Walter Payton Chicago Bears",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LY-6",
+          "player": "Barry Sanders Detroit Lions",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LY-7",
+          "player": "Emmitt Smith Dallas Cowboys",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LY-8",
+          "player": "Earl Campbell Houston Oilers",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LY-9",
+          "player": "Chad Johnson Cincinnati Bengals",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LY-10",
+          "player": "Randy Moss Minnesota Vikings",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LY-11",
+          "player": "Dan Marino Miami Dolphins",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LY-12",
+          "player": "Jerry Rice San Francisco 49ers",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LY-13",
+          "player": "Jason Witten Dallas Cowboys",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LY-14",
+          "player": "Rob Gronkowski New England Patriots",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LY-15",
+          "player": "Aaron Donald Los Angeles Rams",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LY-16",
+          "player": "Ray Lewis Baltimore Ravens",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LY-17",
+          "player": "Lawrence Taylor New York Giants",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LY-18",
+          "player": "Charles Woodson Green Bay Packers",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LY-19",
+          "player": "Darrelle Revis New York Jets",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LY-20",
+          "player": "Troy Polamalu Pittsburgh Steelers",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "COSMIC DUST",
+      "count": 20,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "CD-1",
+          "player": "Cam Ward Tennessee Titans",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "CD-2",
+          "player": "Jaxson Dart New York Giants",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "CD-3",
+          "player": "Shedeur Sanders Cleveland Browns",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "CD-4",
+          "player": "Ashton Jeanty Las Vegas Raiders",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "CD-5",
+          "player": "Cam Skattebo New York Giants",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "CD-6",
+          "player": "Tetairoa McMillan Carolina Panthers",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "CD-7",
+          "player": "Luther Burden III Chicago Bears",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "CD-8",
+          "player": "Emeka Egbuka Tampa Bay Buccaneers",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "CD-9",
+          "player": "Josh Allen Buffalo Bills",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CD-10",
+          "player": "Bo Nix Denver Broncos",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CD-11",
+          "player": "Patrick Mahomes II Kansas City Chiefs",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CD-12",
+          "player": "Jalen Hurts Philadelphia Eagles",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CD-13",
+          "player": "Jahmyr Gibbs Detroit Lions",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CD-14",
+          "player": "Saquon Barkley Philadelphia Eagles",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CD-15",
+          "player": "Ja'Marr Chase Cincinnati Bengals",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CD-16",
+          "player": "CeeDee Lamb Dallas Cowboys",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CD-17",
+          "player": "Justin Jefferson Minnesota Vikings",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CD-18",
+          "player": "Brock Bowers Las Vegas Raiders",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CD-19",
+          "player": "George Kittle San Francisco 49ers",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CD-20",
+          "player": "Micah Parsons Green Bay Packers",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "COS PLAY",
+      "count": 25,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "CP-1",
+          "player": "Cam Ward Tennessee Titans",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "CP-2",
+          "player": "Jaxson Dart New York Giants",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "CP-3",
+          "player": "Shedeur Sanders Cleveland Browns",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "CP-4",
+          "player": "Ashton Jeanty Las Vegas Raiders",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "CP-5",
+          "player": "Quinshon Judkins Cleveland Browns",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "CP-6",
+          "player": "Cam Skattebo New York Giants",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "CP-7",
+          "player": "Tetairoa McMillan Carolina Panthers",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "CP-8",
+          "player": "Luther Burden III Chicago Bears",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "CP-9",
+          "player": "Emeka Egbuka Tampa Bay Buccaneers",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "CP-10",
+          "player": "Travis Hunter Jacksonville Jaguars",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "CP-11",
+          "player": "Tyler Warren Indianapolis Colts",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "CP-12",
+          "player": "Lamar Jackson Baltimore Ravens",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CP-13",
+          "player": "Josh Allen Buffalo Bills",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CP-14",
+          "player": "Joe Burrow Cincinnati Bengals",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CP-15",
+          "player": "Patrick Mahomes II Kansas City Chiefs",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CP-16",
+          "player": "Bijan Robinson Atlanta Falcons",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CP-17",
+          "player": "Jonathan Taylor Indianapolis Colts",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CP-18",
+          "player": "Christian McCaffrey San Francisco 49ers",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CP-19",
+          "player": "Ja'Marr Chase Cincinnati Bengals",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CP-20",
+          "player": "CeeDee Lamb Dallas Cowboys",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CP-21",
+          "player": "Amon-Ra St. Brown Detroit Lions",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CP-22",
+          "player": "Justin Jefferson Minnesota Vikings",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CP-23",
+          "player": "Trey McBride Arizona Cardinals",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CP-24",
+          "player": "Micah Parsons Green Bay Packers",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CP-25",
+          "player": "Pat Surtain II Denver Broncos",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "SUPERNOVA",
+      "count": 25,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "SPN-1",
+          "player": "Cam Ward Tennessee Titans",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "SPN-2",
+          "player": "Jaxson Dart New York Giants",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "SPN-3",
+          "player": "Shedeur Sanders Cleveland Browns",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "SPN-4",
+          "player": "Ashton Jeanty Las Vegas Raiders",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "SPN-5",
+          "player": "Omarion Hampton Los Angeles Chargers",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "SPN-6",
+          "player": "Cam Skattebo New York Giants",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "SPN-7",
+          "player": "Tetairoa McMillan Carolina Panthers",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "SPN-8",
+          "player": "Luther Burden III Chicago Bears",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "SPN-9",
+          "player": "Emeka Egbuka Tampa Bay Buccaneers",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "SPN-10",
+          "player": "Travis Hunter Jacksonville Jaguars",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "SPN-11",
+          "player": "Tyler Warren Indianapolis Colts",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "SPN-12",
+          "player": "Lamar Jackson Baltimore Ravens",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SPN-13",
+          "player": "Josh Allen Buffalo Bills",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SPN-14",
+          "player": "Joe Burrow Cincinnati Bengals",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SPN-15",
+          "player": "Patrick Mahomes II Kansas City Chiefs",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SPN-16",
+          "player": "Derrick Henry Baltimore Ravens",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SPN-17",
+          "player": "Saquon Barkley Philadelphia Eagles",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SPN-18",
+          "player": "Ja'Marr Chase Cincinnati Bengals",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SPN-19",
+          "player": "CeeDee Lamb Dallas Cowboys",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SPN-20",
+          "player": "Justin Jefferson Minnesota Vikings",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SPN-21",
+          "player": "Jaxon Smith-Njigba Seattle Seahawks",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SPN-22",
+          "player": "Travis Kelce Kansas City Chiefs",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SPN-23",
+          "player": "George Kittle San Francisco 49ers",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SPN-24",
+          "player": "Myles Garrett Cleveland Browns",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SPN-25",
+          "player": "T.J. Watt Pittsburgh Steelers",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "STARFRACTOR",
+      "count": 100,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "SF-1",
+          "player": "Kyler Murray Arizona Cardinals",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SF-2",
+          "player": "Marvin Harrison Jr. Arizona Cardinals",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SF-3",
+          "player": "Bijan Robinson Atlanta Falcons",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SF-4",
+          "player": "Drake London Atlanta Falcons",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SF-5",
+          "player": "Lamar Jackson Baltimore Ravens",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SF-6",
+          "player": "Derrick Henry Baltimore Ravens",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SF-7",
+          "player": "Josh Allen Buffalo Bills",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SF-8",
+          "player": "James Cook Buffalo Bills",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SF-9",
+          "player": "Bryce Young Carolina Panthers",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SF-10",
+          "player": "Caleb Williams Chicago Bears",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SF-11",
+          "player": "Rome Odunze Chicago Bears",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SF-12",
+          "player": "Joe Burrow Cincinnati Bengals",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SF-13",
+          "player": "Ja'Marr Chase Cincinnati Bengals",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SF-14",
+          "player": "Myles Garrett Cleveland Browns",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SF-15",
+          "player": "Dak Prescott Dallas Cowboys",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SF-16",
+          "player": "CeeDee Lamb Dallas Cowboys",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SF-17",
+          "player": "Bo Nix Denver Broncos",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SF-18",
+          "player": "Pat Surtain II Denver Broncos",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SF-19",
+          "player": "David Montgomery Detroit Lions",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SF-20",
+          "player": "Amon-Ra St. Brown Detroit Lions",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SF-21",
+          "player": "Jordan Love Green Bay Packers",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SF-22",
+          "player": "Micah Parsons Green Bay Packers",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SF-23",
+          "player": "CJ Stroud Houston Texans",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SF-24",
+          "player": "Nico Collins Houston Texans",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SF-25",
+          "player": "Jonathan Taylor Indianapolis Colts",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SF-26",
+          "player": "Trevor Lawrence Jacksonville Jaguars",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SF-27",
+          "player": "Patrick Mahomes II Kansas City Chiefs",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SF-28",
+          "player": "Travis Kelce Kansas City Chiefs",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SF-29",
+          "player": "Brock Bowers Las Vegas Raiders",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SF-30",
+          "player": "Maxx Crosby Las Vegas Raiders",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SF-31",
+          "player": "Justin Herbert Los Angeles Chargers",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SF-32",
+          "player": "Puka Nacua Los Angeles Rams",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SF-33",
+          "player": "De'Von Achane Miami Dolphins",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SF-34",
+          "player": "Jaylen Waddle Miami Dolphins",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SF-35",
+          "player": "Justin Jefferson Minnesota Vikings",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SF-36",
+          "player": "Drake Maye New England Patriots",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SF-37",
+          "player": "Alvin Kamara New Orleans Saints",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SF-38",
+          "player": "Chris Olave New Orleans Saints",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SF-39",
+          "player": "Malik Nabers New York Giants",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SF-40",
+          "player": "Breece Hall New York Jets",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SF-41",
+          "player": "Jalen Hurts Philadelphia Eagles",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SF-42",
+          "player": "Saquon Barkley Philadelphia Eagles",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SF-43",
+          "player": "Aaron Rodgers Pittsburgh Steelers",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SF-44",
+          "player": "DK Metcalf Pittsburgh Steelers",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SF-45",
+          "player": "T.J. Watt Pittsburgh Steelers",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SF-46",
+          "player": "Brock Purdy San Francisco 49ers",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SF-47",
+          "player": "Christian McCaffrey San Francisco 49ers",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SF-48",
+          "player": "Jaxon Smith-Njigba Seattle Seahawks",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SF-49",
+          "player": "Baker Mayfield Tampa Bay Buccaneers",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SF-50",
+          "player": "Bucky Irving Tampa Bay Buccaneers",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SF-51",
+          "player": "Tony Pollard Tennessee Titans",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SF-52",
+          "player": "Jayden Daniels Washington Commanders",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SF-53",
+          "player": "Deebo Samuel Washington Commanders",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SF-54",
+          "player": "Tetairoa McMillan Carolina Panthers",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "SF-55",
+          "player": "Colston Loveland Chicago Bears",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "SF-56",
+          "player": "Luther Burden III Chicago Bears",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "SF-57",
+          "player": "Quinshon Judkins Cleveland Browns",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "SF-58",
+          "player": "Dillon Gabriel Cleveland Browns",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "SF-59",
+          "player": "Shedeur Sanders Cleveland Browns",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "SF-60",
+          "player": "RJ Harvey Denver Broncos",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "SF-61",
+          "player": "Pat Bryant Denver Broncos",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "SF-62",
+          "player": "Isaac TeSlaa Detroit Lions",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "SF-63",
+          "player": "Matthew Golden Green Bay Packers",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "SF-64",
+          "player": "Jayden Higgins Houston Texans",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "SF-65",
+          "player": "Jaylin Noel Houston Texans",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "SF-66",
+          "player": "Woody Marks Houston Texans",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "SF-67",
+          "player": "Tyler Warren Indianapolis Colts",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "SF-68",
+          "player": "Travis Hunter Jacksonville Jaguars",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "SF-69",
+          "player": "Jalen Royals Kansas City Chiefs",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "SF-70",
+          "player": "Ashton Jeanty Las Vegas Raiders",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "SF-71",
+          "player": "Omarion Hampton Los Angeles Chargers",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "SF-72",
+          "player": "Tre Harris III Los Angeles Chargers",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "SF-73",
+          "player": "Terrance Ferguson Los Angeles Rams",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "SF-74",
+          "player": "Quinn Ewers Miami Dolphins",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "SF-75",
+          "player": "Tai Felton Minnesota Vikings",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "SF-76",
+          "player": "TreVeyon Henderson New England Patriots",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "SF-77",
+          "player": "Tyler Shough New Orleans Saints",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "SF-78",
+          "player": "Abdul Carter New York Giants",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "SF-79",
+          "player": "Jaxson Dart New York Giants",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "SF-80",
+          "player": "Cam Skattebo New York Giants",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "SF-81",
+          "player": "Mason Taylor New York Jets",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "SF-82",
+          "player": "Jihaad Campbell Philadelphia Eagles",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "SF-83",
+          "player": "Kaleb Johnson Pittsburgh Steelers",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "SF-84",
+          "player": "Elijah Arroyo Seattle Seahawks",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "SF-85",
+          "player": "Jalen Milroe Seattle Seahawks",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "SF-86",
+          "player": "Emeka Egbuka Tampa Bay Buccaneers",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "SF-87",
+          "player": "Tez Johnson Tampa Bay Buccaneers",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "SF-88",
+          "player": "Cam Ward Tennessee Titans",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "SF-89",
+          "player": "Elic Ayomanor Tennessee Titans",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "SF-90",
+          "player": "Jacory Croskey-Merritt Washington Commanders",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "SF-91",
+          "player": "Ray Lewis Baltimore Ravens",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SF-92",
+          "player": "Jim McMahon Chicago Bears",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SF-93",
+          "player": "Chad Johnson Cincinnati Bengals",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SF-94",
+          "player": "Michael Irvin Dallas Cowboys",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SF-95",
+          "player": "John Elway Denver Broncos",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SF-96",
+          "player": "Brett Favre Green Bay Packers",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SF-97",
+          "player": "Peyton Manning Indianapolis Colts",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SF-98",
+          "player": "Dan Marino Miami Dolphins",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SF-99",
+          "player": "Randy Moss Minnesota Vikings",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SF-100",
+          "player": "Tom Brady New England Patriots",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "PLANETARIUM",
+      "count": 25,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "PL-1",
+          "player": "Cam Ward Tennessee Titans",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "PL-2",
+          "player": "Jaxson Dart New York Giants",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "PL-3",
+          "player": "Shedeur Sanders Cleveland Browns",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "PL-4",
+          "player": "Ashton Jeanty Las Vegas Raiders",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "PL-5",
+          "player": "TreVeyon Henderson New England Patriots",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "PL-6",
+          "player": "Cam Skattebo New York Giants",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "PL-7",
+          "player": "Tetairoa McMillan Carolina Panthers",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "PL-8",
+          "player": "Luther Burden III Chicago Bears",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "PL-9",
+          "player": "Emeka Egbuka Tampa Bay Buccaneers",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "PL-10",
+          "player": "Travis Hunter Jacksonville Jaguars",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "PL-11",
+          "player": "Tyler Warren Indianapolis Colts",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "PL-12",
+          "player": "Lamar Jackson Baltimore Ravens",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PL-13",
+          "player": "Josh Allen Buffalo Bills",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PL-14",
+          "player": "Patrick Mahomes II Kansas City Chiefs",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PL-15",
+          "player": "Drake Maye New England Patriots",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PL-16",
+          "player": "Jahmyr Gibbs Detroit Lions",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PL-17",
+          "player": "Saquon Barkley Philadelphia Eagles",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PL-18",
+          "player": "Ja'Marr Chase Cincinnati Bengals",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PL-19",
+          "player": "CeeDee Lamb Dallas Cowboys",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PL-20",
+          "player": "Puka Nacua Los Angeles Rams",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PL-21",
+          "player": "Justin Jefferson Minnesota Vikings",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PL-22",
+          "player": "Brock Bowers Las Vegas Raiders",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PL-23",
+          "player": "George Kittle San Francisco 49ers",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PL-24",
+          "player": "Myles Garrett Cleveland Browns",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PL-25",
+          "player": "Micah Parsons Green Bay Packers",
+          "team": "",
+          "note": ""
+        }
+      ]
+    }
+  ],
+  "autograph_sets": [],
+  "memorabilia_sets": [],
+  "team_sets": {}
+}
