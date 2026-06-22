@@ -1,0 +1,2313 @@
+{
+  "set": "2026 Topps Chrome U.S. Winter Olympics & Paralympic Team Hopefuls",
+  "release_date": "2026",
+  "set_size": 200,
+  "product_info": {},
+  "box_contents": {},
+  "parallels": [],
+  "base_set": {
+    "count": 200,
+    "cards": [
+      {
+        "number": "1",
+        "player": "Dusty Henricksen",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "2",
+        "player": "Noah Elliott",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "3",
+        "player": "Ashley Wagner",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "4",
+        "player": "Nick Goepper",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "5",
+        "player": "Mikaela Shiffrin",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "6",
+        "player": "Grace Henderson",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "7",
+        "player": "Alysa Liu",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "8",
+        "player": "Jaelin Kauf",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "9",
+        "player": "Ryan Cochran-Siegle",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "10",
+        "player": "John Shuster",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "11",
+        "player": "Bode Miller",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "12",
+        "player": "Lauren Macuga",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "13",
+        "player": "Amber Glenn",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "14",
+        "player": "Judd Henkes",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "15",
+        "player": "Nina O'Brien",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "16",
+        "player": "Chloe Kim",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "17",
+        "player": "Jason Brown",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "18",
+        "player": "Kelly Clark",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "19",
+        "player": "Red Gerard",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "20",
+        "player": "Maddie Mastro",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "21",
+        "player": "Alex Ferreira",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "22",
+        "player": "Winter Vinecki",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "23",
+        "player": "Kaysha Love",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "24",
+        "player": "Jordan Stolz",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "25",
+        "player": "Breezy Johnson",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "26",
+        "player": "Nathan Chen",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "27",
+        "player": "Brittany Bowe",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "28",
+        "player": "Jamie Anderson",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "29",
+        "player": "Dani Aravich",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "30",
+        "player": "Ross Powers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "31",
+        "player": "Joey Okesson",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "32",
+        "player": "Hilary Knight",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "33",
+        "player": "Erin Jackson",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "34",
+        "player": "Rosie Brennan",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "35",
+        "player": "Chris Klug",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "36",
+        "player": "Mac Forehand",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "37",
+        "player": "Jack Hughes",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "38",
+        "player": "Shani Davis",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "39",
+        "player": "Jessie Diggins",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "40",
+        "player": "Aaron Blunck",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "41",
+        "player": "Evan Lysacek",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "42",
+        "player": "Kristen Santos-Griswold",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "43",
+        "player": "Devin Logan",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "44",
+        "player": "Evan Bates",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "45",
+        "player": "Madison Chock",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "46",
+        "player": "Jack Wallace",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "47",
+        "player": "Brittani Coury",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "48",
+        "player": "Hannah Teter",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "49",
+        "player": "Julia Marino",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "50",
+        "player": "Tristan Feinberg",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "51",
+        "player": "Alex Hall",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "52",
+        "player": "Oksana Masters",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "53",
+        "player": "Elana Meyers Taylor",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "54",
+        "player": "Ollie Martin",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "55",
+        "player": "Hunter Henderson",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "56",
+        "player": "Brenna Huckaby",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "57",
+        "player": "Konnor Ralph",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "58",
+        "player": "Meryl Davis",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "59",
+        "player": "Hanna Faulhaber",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "60",
+        "player": "Charlie White",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "61",
+        "player": "Seth Wescott",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "62",
+        "player": "Katie Uhlaender",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "63",
+        "player": "Keely Cashman",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "64",
+        "player": "Hannah Kearney",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "65",
+        "player": "Liz Lemley",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "66",
+        "player": "Ted Ligety",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "67",
+        "player": "Alli Macuga",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "68",
+        "player": "Sam Macuga",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "69",
+        "player": "Paula Moltzan",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "70",
+        "player": "Sam Morse",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "71",
+        "player": "Kikkan Randall",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "72",
+        "player": "Ava Sunshine",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "73",
+        "player": "Isabeau Levito",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "74",
+        "player": "Christopher Lillis",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "75",
+        "player": "Jen Lee",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "76",
+        "player": "Dan Cnossen",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "77",
+        "player": "Evan Strong",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "78",
+        "player": "Malik Jones",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "79",
+        "player": "Jack Eichel",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "80",
+        "player": "Jake Guentzel",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "81",
+        "player": "Jake Oettinger",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "82",
+        "player": "Alex Carpenter",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "83",
+        "player": "Colby Stevenson",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "84",
+        "player": "Hailey Langland",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "85",
+        "player": "River Radamus",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "86",
+        "player": "Apolo Ohno",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "87",
+        "player": "Aerin Frankel",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "88",
+        "player": "Cayla Barnes",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "89",
+        "player": "Haley Winn",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "90",
+        "player": "Hannah Bilka",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "91",
+        "player": "Hayley Scamurra",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "92",
+        "player": "Ilia Malinin",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "93",
+        "player": "Jack O'Callahan",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "94",
+        "player": "Jake Canter",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "95",
+        "player": "Kristi Yamaguchi",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "96",
+        "player": "Lindsey Vonn",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "97",
+        "player": "Mike Eruzione",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "98",
+        "player": "Shaun White",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "99",
+        "player": "Tessa Janecke",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "100",
+        "player": "Julia Mancuso",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "101",
+        "player": "Dusty Henricksen",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "102",
+        "player": "Noah Elliott",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "103",
+        "player": "Ashley Wagner",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "104",
+        "player": "Nick Goepper",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "105",
+        "player": "Mikaela Shiffrin",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "106",
+        "player": "Grace Henderson",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "107",
+        "player": "Alysa Liu",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "108",
+        "player": "Jaelin Kauf",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "109",
+        "player": "Ryan Cochran-Siegle",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "110",
+        "player": "John Shuster",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "111",
+        "player": "Bode Miller",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "112",
+        "player": "Lauren Macuga",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "113",
+        "player": "Amber Glenn",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "114",
+        "player": "Judd Henkes",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "115",
+        "player": "Nina O'Brien",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "116",
+        "player": "Chloe Kim",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "117",
+        "player": "Jason Brown",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "118",
+        "player": "Kelly Clark",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "119",
+        "player": "Red Gerard",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "120",
+        "player": "Maddie Mastro",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "121",
+        "player": "Alex Ferreira",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "122",
+        "player": "Winter Vinecki",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "123",
+        "player": "Kaysha Love",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "124",
+        "player": "Jordan Stolz",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "125",
+        "player": "Breezy Johnson",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "126",
+        "player": "Nathan Chen",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "127",
+        "player": "Brittany Bowe",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "128",
+        "player": "Jamie Anderson",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "129",
+        "player": "Dani Aravich",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "130",
+        "player": "Ross Powers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "131",
+        "player": "Joey Okesson",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "132",
+        "player": "Hilary Knight",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "133",
+        "player": "Erin Jackson",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "134",
+        "player": "Rosie Brennan",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "135",
+        "player": "Chris Klug",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "136",
+        "player": "Mac Forehand",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "137",
+        "player": "Aaron Pike",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "138",
+        "player": "Shani Davis",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "139",
+        "player": "Jessie Diggins",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "140",
+        "player": "Aaron Blunck",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "141",
+        "player": "Evan Lysacek",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "142",
+        "player": "Kristen Santos-Griswold",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "143",
+        "player": "Devin Logan",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "144",
+        "player": "Evan Bates",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "145",
+        "player": "Madison Chock",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "146",
+        "player": "Jack Wallace",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "147",
+        "player": "Brittani Coury",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "148",
+        "player": "Hannah Teter",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "149",
+        "player": "Julia Marino",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "150",
+        "player": "Tristan Feinberg",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "151",
+        "player": "Alex Hall",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "152",
+        "player": "Oksana Masters",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "153",
+        "player": "Elana Meyers Taylor",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "154",
+        "player": "Ollie Martin",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "155",
+        "player": "Hunter Henderson",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "156",
+        "player": "Brenna Huckaby",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "157",
+        "player": "Konnor Ralph",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "158",
+        "player": "Meryl Davis",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "159",
+        "player": "Hanna Faulhaber",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "160",
+        "player": "Charlie White",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "161",
+        "player": "Seth Wescott",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "162",
+        "player": "Katie Uhlaender",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "163",
+        "player": "Keely Cashman",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "164",
+        "player": "Hannah Kearney",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "165",
+        "player": "Liz Lemley",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "166",
+        "player": "Ted Ligety",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "167",
+        "player": "Alli Macuga",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "168",
+        "player": "Sam Macuga",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "169",
+        "player": "Paula Moltzan",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "170",
+        "player": "Sam Morse",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "171",
+        "player": "Kikkan Randall",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "172",
+        "player": "Ava Sunshine",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "173",
+        "player": "Isabeau Levito",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "174",
+        "player": "Christopher Lillis",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "175",
+        "player": "Jen Lee",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "176",
+        "player": "Dan Cnossen",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "177",
+        "player": "Evan Strong",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "178",
+        "player": "Malik Jones",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "179",
+        "player": "Brock Crouch",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "180",
+        "player": "Andrew Kurka",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "181",
+        "player": "Batoyun Oyuna Uranchimeg",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "182",
+        "player": "Alex Carpenter",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "183",
+        "player": "Colby Stevenson",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "184",
+        "player": "Hailey Langland",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "185",
+        "player": "River Radamus",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "186",
+        "player": "Apolo Ohno",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "187",
+        "player": "Aerin Frankel",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "188",
+        "player": "Cayla Barnes",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "189",
+        "player": "Haley Winn",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "190",
+        "player": "Hannah Bilka",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "191",
+        "player": "Hayley Scamurra",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "192",
+        "player": "Ilia Malinin",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "193",
+        "player": "Jack O'Callahan",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "194",
+        "player": "Jake Canter",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "195",
+        "player": "Kristi Yamaguchi",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "196",
+        "player": "Lindsey Vonn",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "197",
+        "player": "Mike Eruzione",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "198",
+        "player": "Shaun White",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "199",
+        "player": "Tessa Janecke",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "200",
+        "player": "Julia Mancuso",
+        "team": "",
+        "note": ""
+      }
+    ]
+  },
+  "insert_sets": [
+    {
+      "name": "BUONGIORNO",
+      "count": 20,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "BU-1",
+          "player": "Hilary Knight",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BU-2",
+          "player": "Alysa Liu",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BU-3",
+          "player": "Ilia Malinin",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BU-4",
+          "player": "Mikaela Shiffrin",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BU-5",
+          "player": "Nathan Chen",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BU-6",
+          "player": "Lindsey Vonn",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BU-7",
+          "player": "Apolo Ohno",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BU-8",
+          "player": "Jessie Diggins",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BU-9",
+          "player": "Chloe Kim",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BU-10",
+          "player": "Shaun White",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BU-11",
+          "player": "Jordan Stolz",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BU-12",
+          "player": "Red Gerard",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BU-13",
+          "player": "Hailey Langland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BU-14",
+          "player": "Evan Bates",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BU-15",
+          "player": "Madison Chock",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BU-16",
+          "player": "Erin Jackson",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BU-17",
+          "player": "Amber Glenn",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BU-18",
+          "player": "Alex Ferreira",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BU-19",
+          "player": "Isabeau Levito",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BU-20",
+          "player": "Bode Miller",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "FOR PRIDE AND COUNTRY",
+      "count": 26,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "PC-1",
+          "player": "Hilary Knight",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PC-2",
+          "player": "Alysa Liu",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PC-3",
+          "player": "Ilia Malinin",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PC-4",
+          "player": "Mikaela Shiffrin",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PC-5",
+          "player": "Nathan Chen",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PC-6",
+          "player": "Lindsey Vonn",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PC-7",
+          "player": "Apolo Ohno",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PC-8",
+          "player": "Jessie Diggins",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PC-9",
+          "player": "Chloe Kim",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PC-10",
+          "player": "Shaun White",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PC-11",
+          "player": "Jordan Stolz",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PC-12",
+          "player": "Red Gerard",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PC-13",
+          "player": "Hailey Langland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PC-14",
+          "player": "Evan Bates",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PC-15",
+          "player": "Madison Chock",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PC-16",
+          "player": "Erin Jackson",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PC-17",
+          "player": "Amber Glenn",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PC-18",
+          "player": "Alex Ferreira",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PC-19",
+          "player": "Isabeau Levito",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PC-20",
+          "player": "Brittany Bowe",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PC-21",
+          "player": "Bode Miller",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PC-22",
+          "player": "Kristi Yamaguchi",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PC-23",
+          "player": "Mike Eruzione",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PC-24",
+          "player": "Elana Meyers Taylor",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PC-25",
+          "player": "Jamie Anderson",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "1986",
+          "player": "TOPPS",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "WINTER BLIZZARD",
+      "count": 15,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "WB-1",
+          "player": "Alysa Liu",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WB-2",
+          "player": "Ilia Malinin",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WB-3",
+          "player": "Mikaela Shiffrin",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WB-4",
+          "player": "Nathan Chen",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WB-5",
+          "player": "Lindsey Vonn",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WB-6",
+          "player": "Apolo Ohno",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WB-7",
+          "player": "Jessie Diggins",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WB-8",
+          "player": "Chloe Kim",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WB-9",
+          "player": "Shaun White",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WB-10",
+          "player": "Jordan Stolz",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WB-11",
+          "player": "Red Gerard",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WB-12",
+          "player": "Bode Miller",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WB-13",
+          "player": "Amber Glenn",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WB-14",
+          "player": "Alex Ferreira",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WB-15",
+          "player": "Isabeau Levito",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "CHASING THE RINGS",
+      "count": 50,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "CR-1",
+          "player": "Ilia Malinin",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CR-2",
+          "player": "Ilia Malinin",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CR-3",
+          "player": "Ilia Malinin",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CR-4",
+          "player": "Ilia Malinin",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CR-5",
+          "player": "Ilia Malinin",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CR-6",
+          "player": "Mikaela Shiffrin",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CR-7",
+          "player": "Mikaela Shiffrin",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CR-8",
+          "player": "Mikaela Shiffrin",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CR-9",
+          "player": "Mikaela Shiffrin",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CR-10",
+          "player": "Mikaela Shiffrin",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CR-11",
+          "player": "Lindsey Vonn",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CR-12",
+          "player": "Lindsey Vonn",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CR-13",
+          "player": "Lindsey Vonn",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CR-14",
+          "player": "Lindsey Vonn",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CR-15",
+          "player": "Lindsey Vonn",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CR-16",
+          "player": "Apolo Ohno",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CR-17",
+          "player": "Apolo Ohno",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CR-18",
+          "player": "Apolo Ohno",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CR-19",
+          "player": "Apolo Ohno",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CR-20",
+          "player": "Apolo Ohno",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CR-21",
+          "player": "Chloe Kim",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CR-22",
+          "player": "Chloe Kim",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CR-23",
+          "player": "Chloe Kim",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CR-24",
+          "player": "Chloe Kim",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CR-25",
+          "player": "Chloe Kim",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CR-26",
+          "player": "Shaun White",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CR-27",
+          "player": "Shaun White",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CR-28",
+          "player": "Shaun White",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CR-29",
+          "player": "Shaun White",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CR-30",
+          "player": "Shaun White",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CR-31",
+          "player": "Jordan Stolz",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CR-32",
+          "player": "Jordan Stolz",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CR-33",
+          "player": "Jordan Stolz",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CR-34",
+          "player": "Jordan Stolz",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CR-35",
+          "player": "Jordan Stolz",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CR-36",
+          "player": "Red Gerard",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CR-37",
+          "player": "Red Gerard",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CR-38",
+          "player": "Red Gerard",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CR-39",
+          "player": "Red Gerard",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CR-40",
+          "player": "Red Gerard",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CR-41",
+          "player": "Alex Ferreira",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CR-42",
+          "player": "Alex Ferreira",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CR-43",
+          "player": "Alex Ferreira",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CR-44",
+          "player": "Alex Ferreira",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CR-45",
+          "player": "Alex Ferreira",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CR-46",
+          "player": "Bode Miller",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CR-47",
+          "player": "Bode Miller",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CR-48",
+          "player": "Bode Miller",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CR-49",
+          "player": "Bode Miller",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CR-50",
+          "player": "Bode Miller",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "HIDDEN GEMS",
+      "count": 5,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "HG-1",
+          "player": "Ilia Malinin",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HG-2",
+          "player": "Mikaela Shiffrin",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HG-3",
+          "player": "Lindsey Vonn",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HG-4",
+          "player": "Shaun White",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HG-5",
+          "player": "Chloe Kim",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "LETS GO",
+      "count": 24,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "LG-1",
+          "player": "Hilary Knight",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LG-2",
+          "player": "Alysa Liu",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LG-3",
+          "player": "Ilia Malinin",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LG-4",
+          "player": "Mikaela Shiffrin",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LG-5",
+          "player": "Nathan Chen",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LG-6",
+          "player": "Lindsey Vonn",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LG-7",
+          "player": "Apolo Ohno",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LG-8",
+          "player": "Jessie Diggins",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LG-9",
+          "player": "Chloe Kim",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LG-10",
+          "player": "Shaun White",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LG-11",
+          "player": "Jordan Stolz",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LG-12",
+          "player": "Red Gerard",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LG-13",
+          "player": "Hailey Langland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LG-14",
+          "player": "Evan Bates",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LG-15",
+          "player": "Madison Chock",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LG-16",
+          "player": "Erin Jackson",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LG-17",
+          "player": "Amber Glenn",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LG-18",
+          "player": "Alex Ferreira",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LG-20",
+          "player": "Brittany Bowe",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LG-21",
+          "player": "Bode Miller",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LG-22",
+          "player": "Jaelin Kauf",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LG-23",
+          "player": "Winter Vinecki",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LG-24",
+          "player": "Elana Meyers Taylor",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LG-25",
+          "player": "Jamie Anderson",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "HELIX",
+      "count": 20,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "HX-1",
+          "player": "Hilary Knight",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HX-2",
+          "player": "Alysa Liu",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HX-3",
+          "player": "Ilia Malinin",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HX-4",
+          "player": "Mikaela Shiffrin",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HX-5",
+          "player": "Nathan Chen",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HX-6",
+          "player": "Lindsey Vonn",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HX-7",
+          "player": "Apolo Ohno",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HX-8",
+          "player": "Jessie Diggins",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HX-9",
+          "player": "Chloe Kim",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HX-10",
+          "player": "Shaun White",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HX-11",
+          "player": "Jordan Stolz",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HX-12",
+          "player": "Red Gerard",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HX-13",
+          "player": "Hailey Langland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HX-14",
+          "player": "Jamie Anderson",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HX-15",
+          "player": "Elana Meyers Taylor",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HX-16",
+          "player": "Erin Jackson",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HX-17",
+          "player": "Amber Glenn",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HX-18",
+          "player": "Alex Ferreira",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HX-19",
+          "player": "Isabeau Levito",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HX-20",
+          "player": "Bode Miller",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "MILANO CORTINA",
+      "count": 1,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "MC-1",
+          "player": "Milano Cortina",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "OC-SW Shaun White",
+      "count": 11,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "1986",
+          "player": "TOPPS AUTOGRAPH VARIATION",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "86T",
+          "player": "A-AF Alex Ferreira",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "86T",
+          "player": "A-AL Alysa Liu",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "86T",
+          "player": "A-BC Brock Crouch",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "86T",
+          "player": "A-EJ Erin Jackson",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "86T",
+          "player": "A-EM Elana Meyers Taylor",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "86T",
+          "player": "A-HK Hilary Knight",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "86T",
+          "player": "A-HL Hailey Langland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "86T",
+          "player": "A-IL Isabeau Levito",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "86T",
+          "player": "A-JS Jordan Stolz",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "86T",
+          "player": "A-NC Nathan Chen",
+          "team": "",
+          "note": ""
+        }
+      ]
+    }
+  ],
+  "autograph_sets": [],
+  "memorabilia_sets": [],
+  "team_sets": {}
+}
