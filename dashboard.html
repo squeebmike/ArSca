@@ -1319,7 +1319,7 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.22.02-topps-live-sync</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.22.03-beckett-import</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
@@ -1346,7 +1346,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip dev-only" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.22.02-topps-live-sync</div>
+<div class="dsb-chip dev-only" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.22.03-beckett-import</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -25503,16 +25503,14 @@ function sbRenderCatalog(sets) {
       ? `<span style="font-size:8px;background:rgba(0,255,179,.15);border:1px solid rgba(0,255,179,.4);border-radius:3px;padding:1px 5px;color:var(--primary)">✓ IMPORTED</span>`
       : syncing
         ? `<span style="font-size:8px;background:rgba(255,200,0,.15);border:1px solid rgba(255,200,0,.4);border-radius:3px;padding:1px 5px;color:var(--gold)">⟳ IMPORTING…</span>`
-        : `<span style="font-size:8px;background:var(--surf);border:1px solid var(--border);border-radius:3px;padding:1px 5px;color:var(--dim)">${s.url ? 'Available' : 'No checklist'}</span>`;
+        : `<span style="font-size:8px;background:var(--surf);border:1px solid var(--border);border-radius:3px;padding:1px 5px;color:var(--dim)">Available</span>`;
     let actionBtn = '';
     if (imported) {
       actionBtn = `<button onclick="sbOpenSet('${escHtml(s.slug)}')" style="font-family:var(--font-mono);font-size:9px;padding:4px 10px;border-radius:5px;border:1px solid var(--primary);background:rgba(0,255,179,.1);color:var(--primary);cursor:pointer;width:100%">BROWSE CARDS →</button>`;
     } else if (syncing) {
       actionBtn = `<button disabled style="font-family:var(--font-mono);font-size:9px;padding:4px 10px;border-radius:5px;border:1px solid var(--gold);background:rgba(255,200,0,.07);color:var(--gold);width:100%;cursor:default">Importing…</button>`;
-    } else if (s.url) {
-      actionBtn = `<button onclick="sbImportSet('${escHtml(s.slug)}')" style="font-family:var(--font-mono);font-size:9px;padding:4px 10px;border-radius:5px;border:1px solid var(--border);background:var(--surf);color:var(--dim);cursor:pointer;width:100%">⬇ Import Checklist</button>`;
     } else {
-      actionBtn = `<div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);padding:2px 0">No PDF available yet</div>`;
+      actionBtn = `<button onclick="sbImportSet('${escHtml(s.slug)}')" style="font-family:var(--font-mono);font-size:9px;padding:4px 10px;border-radius:5px;border:1px solid var(--border);background:var(--surf);color:var(--dim);cursor:pointer;width:100%">⬇ Import Checklist</button>`;
     }
     const deleteBtn = imported
       ? `<button onclick="sbDeleteSet('${escHtml(s.slug)}','${escHtml(s.name).replace(/'/g,'\\\'')}')" style="position:absolute;top:6px;right:8px;background:none;border:none;color:var(--dim);font-size:13px;cursor:pointer;padding:2px 4px;line-height:1" title="Remove set">✕</button>` : '';
@@ -25535,7 +25533,7 @@ function sbRenderCatalog(sets) {
 // ── Per-set import from PDF ────────────────────────────────────────────────────
 async function sbImportSet(slug) {
   const s = SB.catalog.find(c => c.slug === slug);
-  if (!s || !s.url) return toast_dash('No PDF URL for this set', 3000);
+  if (!s) return toast_dash('Set not found in catalog', 3000);
 
   SB._syncing = slug;
   sbFilterCatalog(); // re-render to show syncing state
@@ -25548,17 +25546,6 @@ async function sbImportSet(slug) {
     s.imported = true;
     s._meta = result;
     toast_dash(`✓ ${s.name}: ${result.baseCount} base · ${result.insertSetCount} insert · ${result.autoSetCount} auto`, 5000);
-  } else if (result.redirect) {
-    // PDF URL redirected — try the new URL
-    sbSetSyncStatus(`Redirected, retrying ${s.name}…`, true);
-    s.url = result.redirect;
-    const r2 = await sbDoImportPdf(s);
-    if (r2.ok) {
-      s.imported = true; s._meta = r2;
-      toast_dash(`✓ ${s.name}: ${r2.baseCount} base cards`, 4000);
-    } else {
-      toast_dash(`✗ ${s.name}: ${r2.error || 'Import failed'}`, 5000);
-    }
   } else {
     toast_dash(`✗ ${s.name}: ${result.error || 'Import failed'}`, 5000);
   }
@@ -25569,15 +25556,11 @@ async function sbImportSet(slug) {
 
 async function sbDoImportPdf(s) {
   try {
-    const r = await sbWorker('/topps/import-pdf', {
+    return await sbWorker('/topps/import-checklist', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url: s.url, slug: s.slug, name: s.name, sport: s.sport, year: s.year, brand: s.brand }),
+      body: JSON.stringify({ slug: s.slug, name: s.name, sport: s.sport, year: s.year, brand: s.brand, beckettUrl: s.beckettUrl }),
     });
-    if (!r.ok && r.textSample) {
-      console.warn(`[SB] Import failed for ${s.slug} — text sample:\n`, r.textSample);
-    }
-    return r;
   } catch(e) { return { ok: false, error: e.message }; }
 }
 
@@ -25591,7 +25574,7 @@ async function sbDebugUrl(url) {
 
 // ── Sync all sets from Topps ───────────────────────────────────────────────────
 async function sbSyncAll() {
-  const toImport = SB.catalog.filter(s => !s.imported && s.url);
+  const toImport = SB.catalog.filter(s => !s.imported);
   if (!toImport.length) {
     toast_dash('All available sets already imported', 3000);
     return;
@@ -25607,12 +25590,7 @@ async function sbSyncAll() {
     SB._syncing = s.slug;
     sbFilterCatalog();
 
-    let result = await sbDoImportPdf(s);
-    if (!result.ok && result.redirect) {
-      s.url = result.redirect;
-      result = await sbDoImportPdf(s);
-    }
-
+    const result = await sbDoImportPdf(s);
     SB._syncing = null;
     if (result.ok) {
       done++;

@@ -3421,6 +3421,77 @@ export default {
         return json({ ok: true, catalog: merged, source: liveSets ? 'live' : 'hardcoded' });
       }
 
+      // POST /topps/import-checklist — import a set using Beckett HTML (preferred) or PDF
+      if (url.pathname === '/topps/import-checklist' && request.method === 'POST') {
+        if (!kv) return json({ ok: false, error: 'KV not configured' }, 503);
+        const body = await request.json().catch(() => ({}));
+        const { slug, name, sport = 'baseball', year = '', brand = '' } = body;
+        if (!slug || !name) return json({ ok: false, error: 'slug and name required' }, 400);
+
+        // Find the catalog entry to get beckettUrl
+        const catEntry = TOPPS_CATALOG.find(s => s.slug === slug) || {};
+        let beckettUrl = body.beckettUrl || catEntry.beckettUrl;
+
+        // Auto-construct Beckett URL if not provided
+        if (!beckettUrl) {
+          beckettUrl = `https://www.beckett.com/news/${slug}-cards/`;
+        }
+
+        // Try up to 3 Beckett URL patterns
+        const urlsToTry = [
+          beckettUrl,
+          `https://www.beckett.com/news/${slug}-checklist/`,
+          `https://www.beckett.com/news/${slug}/`,
+        ];
+
+        let parsed = null;
+        let usedUrl = null;
+        for (const tryUrl of urlsToTry) {
+          const fetchRes = await fetch(tryUrl, {
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+              'Accept': 'text/html,application/xhtml+xml',
+              'Accept-Language': 'en-US,en;q=0.9',
+              'Referer': 'https://www.beckett.com/',
+              'Cache-Control': 'no-cache',
+            },
+            redirect: 'follow',
+          }).catch(() => null);
+
+          if (!fetchRes || !fetchRes.ok) continue;
+          const html = await fetchRes.text();
+          parsed = parseBeckettChecklist(html, slug, name, sport, year);
+          if (parsed && (parsed.base_set?.cards?.length > 0 || parsed.insert_sets?.length > 0)) {
+            usedUrl = tryUrl;
+            break;
+          }
+        }
+
+        if (!parsed || (parsed.base_set?.cards?.length === 0 && parsed.insert_sets?.length === 0)) {
+          return json({ ok: false, error: `Checklist not found on Beckett. Tried: ${urlsToTry.join(', ')}` }, 404);
+        }
+
+        await kv.put(`set:${slug}`, JSON.stringify(parsed));
+        const idxRaw = await kv.get('sets_index');
+        const index = idxRaw ? JSON.parse(idxRaw) : [];
+        const existing = index.findIndex(s => s.slug === slug);
+        const meta = {
+          slug, name, sport, year, brand,
+          setSize: parsed.base_set?.cards?.length || 0,
+          releaseDate: parsed.release_date || year,
+          importedAt: new Date().toISOString(),
+          beckettUrl: usedUrl,
+          baseCount: parsed.base_set?.cards?.length || 0,
+          insertSetCount: parsed.insert_sets?.length || 0,
+          autoSetCount: parsed.autograph_sets?.length || 0,
+        };
+        if (existing >= 0) index[existing] = meta; else index.push(meta);
+        index.sort((a, b) => (b.year || '').localeCompare(a.year || ''));
+        await kv.put('sets_index', JSON.stringify(index));
+
+        return json({ ok: true, slug, name, baseCount: meta.baseCount, insertSetCount: meta.insertSetCount, autoSetCount: meta.autoSetCount, source: usedUrl });
+      }
+
       // POST /topps/import-pdf — fetch a PDF URL, extract text, parse, store in KV
       if (url.pathname === '/topps/import-pdf' && request.method === 'POST') {
         if (!kv) return json({ ok: false, error: 'KV not configured' }, 503);
@@ -3977,54 +4048,121 @@ function parseBeckettChecklist(html, slug, name, sport, year) {
 }
 
 // ── TOPPS CATALOG ─────────────────────────────────────────────────────────────
+// beckettUrl: Beckett checklist HTML page — parsed with existing parseBeckettChecklist()
+// These are structured HTML pages, far more reliable than PDFs
 const TOPPS_CATALOG = [
-  // Baseball 2026
-  { name: '2026 Topps Chrome Baseball', sport: 'baseball', year: '2026', brand: 'Chrome', slug: '2026-topps-chrome-baseball' },
-  { name: '2026 Topps Series 1 Baseball', sport: 'baseball', year: '2026', brand: 'Topps', slug: '2026-topps-series-1-baseball' },
-  { name: '2026 Topps Series 2 Baseball', sport: 'baseball', year: '2026', brand: 'Topps', slug: '2026-topps-series-2-baseball' },
-  { name: '2026 Topps Heritage Baseball', sport: 'baseball', year: '2026', brand: 'Heritage', slug: '2026-topps-heritage-baseball' },
-  { name: '2026 Topps Finest Baseball', sport: 'baseball', year: '2026', brand: 'Finest', slug: '2026-topps-finest-baseball' },
-  { name: '2026 Bowman Baseball', sport: 'baseball', year: '2026', brand: 'Bowman', slug: '2026-bowman-baseball' },
-  { name: '2026 Bowman Chrome Baseball', sport: 'baseball', year: '2026', brand: 'Bowman Chrome', slug: '2026-bowman-chrome-baseball' },
-  // Baseball 2025
-  { name: '2025 Topps Chrome Baseball', sport: 'baseball', year: '2025', brand: 'Chrome', slug: '2025-topps-chrome-baseball' },
-  { name: '2025 Topps Series 1 Baseball', sport: 'baseball', year: '2025', brand: 'Topps', slug: '2025-topps-series-1-baseball' },
-  { name: '2025 Topps Series 2 Baseball', sport: 'baseball', year: '2025', brand: 'Topps', slug: '2025-topps-series-2-baseball' },
-  { name: '2025 Topps Heritage Baseball', sport: 'baseball', year: '2025', brand: 'Heritage', slug: '2025-topps-heritage-baseball' },
-  { name: '2025 Topps Finest Baseball', sport: 'baseball', year: '2025', brand: 'Finest', slug: '2025-topps-finest-baseball' },
-  { name: '2025 Topps Allen & Ginter Baseball', sport: 'baseball', year: '2025', brand: 'Allen & Ginter', slug: '2025-topps-allen-ginter-baseball' },
-  { name: '2025 Topps Stadium Club Baseball', sport: 'baseball', year: '2025', brand: 'Stadium Club', slug: '2025-topps-stadium-club-baseball' },
-  { name: '2025 Bowman Baseball', sport: 'baseball', year: '2025', brand: 'Bowman', slug: '2025-bowman-baseball' },
-  { name: '2025 Bowman Chrome Baseball', sport: 'baseball', year: '2025', brand: 'Bowman Chrome', slug: '2025-bowman-chrome-baseball' },
-  { name: '2025 Bowman Draft Baseball', sport: 'baseball', year: '2025', brand: 'Bowman Draft', slug: '2025-bowman-draft-baseball' },
-  // Baseball 2024
-  { name: '2024 Topps Chrome Baseball', sport: 'baseball', year: '2024', brand: 'Chrome', slug: '2024-topps-chrome-baseball' },
-  { name: '2024 Topps Series 1 Baseball', sport: 'baseball', year: '2024', brand: 'Topps', slug: '2024-topps-series-1-baseball' },
-  { name: '2024 Topps Series 2 Baseball', sport: 'baseball', year: '2024', brand: 'Topps', slug: '2024-topps-series-2-baseball' },
-  { name: '2024 Topps Heritage Baseball', sport: 'baseball', year: '2024', brand: 'Heritage', slug: '2024-topps-heritage-baseball' },
-  { name: '2024 Topps Finest Baseball', sport: 'baseball', year: '2024', brand: 'Finest', slug: '2024-topps-finest-baseball' },
-  { name: '2024 Topps Allen & Ginter Baseball', sport: 'baseball', year: '2024', brand: 'Allen & Ginter', slug: '2024-topps-allen-ginter-baseball' },
-  { name: '2024 Topps Stadium Club Baseball', sport: 'baseball', year: '2024', brand: 'Stadium Club', slug: '2024-topps-stadium-club-baseball' },
-  { name: '2024 Bowman Baseball', sport: 'baseball', year: '2024', brand: 'Bowman', slug: '2024-bowman-baseball' },
-  { name: '2024 Bowman Chrome Baseball', sport: 'baseball', year: '2024', brand: 'Bowman Chrome', slug: '2024-bowman-chrome-baseball' },
-  { name: '2024 Bowman Draft Baseball', sport: 'baseball', year: '2024', brand: 'Bowman Draft', slug: '2024-bowman-draft-baseball' },
-  // Basketball
-  { name: '2025-26 Topps Chrome Basketball', sport: 'basketball', year: '2025', brand: 'Chrome', slug: '2025-26-topps-chrome-basketball' },
-  { name: '2024-25 Topps Chrome Basketball', sport: 'basketball', year: '2024', brand: 'Chrome', slug: '2024-25-topps-chrome-basketball' },
-  { name: '2025-26 Topps Basketball', sport: 'basketball', year: '2025', brand: 'Topps', slug: '2025-26-topps-basketball' },
-  { name: '2024-25 Topps Basketball', sport: 'basketball', year: '2024', brand: 'Topps', slug: '2024-25-topps-basketball' },
-  // Football
-  { name: '2025 Topps Chrome Football', sport: 'football', year: '2025', brand: 'Chrome', slug: '2025-topps-chrome-football' },
-  { name: '2024 Topps Chrome Football', sport: 'football', year: '2024', brand: 'Chrome', slug: '2024-topps-chrome-football' },
-  { name: '2025 Bowman Chrome University Football', sport: 'football', year: '2025', brand: 'Bowman Chrome', slug: '2025-bowman-chrome-university-football' },
-  // Soccer
-  { name: '2025 Topps Chrome UEFA Champions League', sport: 'soccer', year: '2025', brand: 'Chrome', slug: '2025-topps-chrome-ucl' },
-  { name: '2025 Topps Chrome MLS', sport: 'soccer', year: '2025', brand: 'Chrome', slug: '2025-topps-chrome-mls' },
-  { name: '2024 Topps Chrome UEFA Champions League', sport: 'soccer', year: '2024', brand: 'Chrome', slug: '2024-topps-chrome-ucl' },
-  { name: '2024-25 Topps Chrome UEFA Club Competitions', sport: 'soccer', year: '2024', brand: 'Chrome', slug: '2024-25-topps-chrome-ucc' },
-  // Hockey
-  { name: '2025-26 Topps Chrome Hockey', sport: 'hockey', year: '2025', brand: 'Chrome', slug: '2025-26-topps-chrome-hockey' },
-  { name: '2024-25 Topps Chrome Hockey', sport: 'hockey', year: '2024', brand: 'Chrome', slug: '2024-25-topps-chrome-hockey' },
+  // ── Baseball 2026 ──
+  { name: '2026 Topps Chrome Baseball', sport: 'baseball', year: '2026', brand: 'Chrome', slug: '2026-topps-chrome-baseball',
+    beckettUrl: 'https://www.beckett.com/news/2026-topps-chrome-baseball-cards/' },
+  { name: '2026 Topps Series 1 Baseball', sport: 'baseball', year: '2026', brand: 'Topps', slug: '2026-topps-series-1-baseball',
+    beckettUrl: 'https://www.beckett.com/news/2026-topps-series-1-baseball-cards/' },
+  { name: '2026 Topps Series 2 Baseball', sport: 'baseball', year: '2026', brand: 'Topps', slug: '2026-topps-series-2-baseball',
+    beckettUrl: 'https://www.beckett.com/news/2026-topps-series-2-baseball-cards/' },
+  { name: '2026 Topps Heritage Baseball', sport: 'baseball', year: '2026', brand: 'Heritage', slug: '2026-topps-heritage-baseball',
+    beckettUrl: 'https://www.beckett.com/news/2026-topps-heritage-baseball-cards/' },
+  { name: '2026 Topps Finest Baseball', sport: 'baseball', year: '2026', brand: 'Finest', slug: '2026-topps-finest-baseball',
+    beckettUrl: 'https://www.beckett.com/news/2026-topps-finest-baseball-cards/' },
+  { name: '2026 Bowman Baseball', sport: 'baseball', year: '2026', brand: 'Bowman', slug: '2026-bowman-baseball',
+    beckettUrl: 'https://www.beckett.com/news/2026-bowman-baseball-cards/' },
+  { name: '2026 Bowman Chrome Baseball', sport: 'baseball', year: '2026', brand: 'Bowman Chrome', slug: '2026-bowman-chrome-baseball',
+    beckettUrl: 'https://www.beckett.com/news/2026-bowman-chrome-baseball-cards/' },
+  // ── Baseball 2025 ──
+  { name: '2025 Topps Chrome Baseball', sport: 'baseball', year: '2025', brand: 'Chrome', slug: '2025-topps-chrome-baseball',
+    beckettUrl: 'https://www.beckett.com/news/2025-topps-chrome-baseball-cards/' },
+  { name: '2025 Topps Series 1 Baseball', sport: 'baseball', year: '2025', brand: 'Topps', slug: '2025-topps-series-1-baseball',
+    beckettUrl: 'https://www.beckett.com/news/2025-topps-series-1-baseball-cards/' },
+  { name: '2025 Topps Series 2 Baseball', sport: 'baseball', year: '2025', brand: 'Topps', slug: '2025-topps-series-2-baseball',
+    beckettUrl: 'https://www.beckett.com/news/2025-topps-series-2-baseball-cards/' },
+  { name: '2025 Topps Heritage Baseball', sport: 'baseball', year: '2025', brand: 'Heritage', slug: '2025-topps-heritage-baseball',
+    beckettUrl: 'https://www.beckett.com/news/2025-topps-heritage-baseball-cards/' },
+  { name: '2025 Topps Finest Baseball', sport: 'baseball', year: '2025', brand: 'Finest', slug: '2025-topps-finest-baseball',
+    beckettUrl: 'https://www.beckett.com/news/2025-topps-finest-baseball-cards/' },
+  { name: '2025 Topps Allen & Ginter Baseball', sport: 'baseball', year: '2025', brand: 'Allen & Ginter', slug: '2025-topps-allen-ginter-baseball',
+    beckettUrl: 'https://www.beckett.com/news/2025-topps-allen-ginter-baseball-cards/' },
+  { name: '2025 Topps Stadium Club Baseball', sport: 'baseball', year: '2025', brand: 'Stadium Club', slug: '2025-topps-stadium-club-baseball',
+    beckettUrl: 'https://www.beckett.com/news/2025-topps-stadium-club-baseball-cards/' },
+  { name: '2025 Topps Update Baseball', sport: 'baseball', year: '2025', brand: 'Topps', slug: '2025-topps-update-baseball',
+    beckettUrl: 'https://www.beckett.com/news/2025-topps-update-series-baseball-cards/' },
+  { name: '2025 Topps Archives Baseball', sport: 'baseball', year: '2025', brand: 'Archives', slug: '2025-topps-archives-baseball',
+    beckettUrl: 'https://www.beckett.com/news/2025-topps-archives-baseball-cards/' },
+  { name: '2025 Bowman Baseball', sport: 'baseball', year: '2025', brand: 'Bowman', slug: '2025-bowman-baseball',
+    beckettUrl: 'https://www.beckett.com/news/2025-bowman-baseball-cards/' },
+  { name: "2025 Bowman's Best Baseball", sport: 'baseball', year: '2025', brand: "Bowman's Best", slug: '2025-bowmans-best-baseball',
+    beckettUrl: "https://www.beckett.com/news/2025-bowmans-best-baseball-cards/" },
+  { name: '2025 Bowman Chrome Baseball', sport: 'baseball', year: '2025', brand: 'Bowman Chrome', slug: '2025-bowman-chrome-baseball',
+    beckettUrl: 'https://www.beckett.com/news/2025-bowman-chrome-baseball-cards/' },
+  { name: '2025 Bowman Draft Baseball', sport: 'baseball', year: '2025', brand: 'Bowman Draft', slug: '2025-bowman-draft-baseball',
+    beckettUrl: 'https://www.beckett.com/news/2025-bowman-draft-baseball-cards/' },
+  // ── Baseball 2024 ──
+  { name: '2024 Topps Chrome Baseball', sport: 'baseball', year: '2024', brand: 'Chrome', slug: '2024-topps-chrome-baseball',
+    beckettUrl: 'https://www.beckett.com/news/2024-topps-chrome-baseball-cards/' },
+  { name: '2024 Topps Series 1 Baseball', sport: 'baseball', year: '2024', brand: 'Topps', slug: '2024-topps-series-1-baseball',
+    beckettUrl: 'https://www.beckett.com/news/2024-topps-series-1-baseball-cards/' },
+  { name: '2024 Topps Series 2 Baseball', sport: 'baseball', year: '2024', brand: 'Topps', slug: '2024-topps-series-2-baseball',
+    beckettUrl: 'https://www.beckett.com/news/2024-topps-series-2-baseball-cards/' },
+  { name: '2024 Topps Update Baseball', sport: 'baseball', year: '2024', brand: 'Topps', slug: '2024-topps-update-baseball',
+    beckettUrl: 'https://www.beckett.com/news/2024-topps-update-series-baseball-cards/' },
+  { name: '2024 Topps Heritage Baseball', sport: 'baseball', year: '2024', brand: 'Heritage', slug: '2024-topps-heritage-baseball',
+    beckettUrl: 'https://www.beckett.com/news/2024-topps-heritage-baseball-cards/' },
+  { name: '2024 Topps Finest Baseball', sport: 'baseball', year: '2024', brand: 'Finest', slug: '2024-topps-finest-baseball',
+    beckettUrl: 'https://www.beckett.com/news/2024-topps-finest-baseball-cards/' },
+  { name: '2024 Topps Allen & Ginter Baseball', sport: 'baseball', year: '2024', brand: 'Allen & Ginter', slug: '2024-topps-allen-ginter-baseball',
+    beckettUrl: 'https://www.beckett.com/news/2024-topps-allen-ginter-baseball-cards/' },
+  { name: '2024 Topps Stadium Club Baseball', sport: 'baseball', year: '2024', brand: 'Stadium Club', slug: '2024-topps-stadium-club-baseball',
+    beckettUrl: 'https://www.beckett.com/news/2024-topps-stadium-club-baseball-cards/' },
+  { name: '2024 Topps Archives Baseball', sport: 'baseball', year: '2024', brand: 'Archives', slug: '2024-topps-archives-baseball',
+    beckettUrl: 'https://www.beckett.com/news/2024-topps-archives-baseball-cards/' },
+  { name: '2024 Bowman Baseball', sport: 'baseball', year: '2024', brand: 'Bowman', slug: '2024-bowman-baseball',
+    beckettUrl: 'https://www.beckett.com/news/2024-bowman-baseball-cards/' },
+  { name: '2024 Bowman Chrome Baseball', sport: 'baseball', year: '2024', brand: 'Bowman Chrome', slug: '2024-bowman-chrome-baseball',
+    beckettUrl: 'https://www.beckett.com/news/2024-bowman-chrome-baseball-cards/' },
+  { name: '2024 Bowman Draft Baseball', sport: 'baseball', year: '2024', brand: 'Bowman Draft', slug: '2024-bowman-draft-baseball',
+    beckettUrl: 'https://www.beckett.com/news/2024-bowman-draft-baseball-cards/' },
+  // ── Baseball 2023 ──
+  { name: '2023 Topps Chrome Baseball', sport: 'baseball', year: '2023', brand: 'Chrome', slug: '2023-topps-chrome-baseball',
+    beckettUrl: 'https://www.beckett.com/news/2023-topps-chrome-baseball-cards/' },
+  { name: '2023 Topps Series 1 Baseball', sport: 'baseball', year: '2023', brand: 'Topps', slug: '2023-topps-series-1-baseball',
+    beckettUrl: 'https://www.beckett.com/news/2023-topps-series-1-baseball-cards/' },
+  { name: '2023 Topps Series 2 Baseball', sport: 'baseball', year: '2023', brand: 'Topps', slug: '2023-topps-series-2-baseball',
+    beckettUrl: 'https://www.beckett.com/news/2023-topps-series-2-baseball-cards/' },
+  { name: '2023 Topps Update Baseball', sport: 'baseball', year: '2023', brand: 'Topps', slug: '2023-topps-update-baseball',
+    beckettUrl: 'https://www.beckett.com/news/2023-topps-update-series-baseball-cards/' },
+  { name: '2023 Topps Heritage Baseball', sport: 'baseball', year: '2023', brand: 'Heritage', slug: '2023-topps-heritage-baseball',
+    beckettUrl: 'https://www.beckett.com/news/2023-topps-heritage-baseball-cards/' },
+  { name: '2023 Bowman Baseball', sport: 'baseball', year: '2023', brand: 'Bowman', slug: '2023-bowman-baseball',
+    beckettUrl: 'https://www.beckett.com/news/2023-bowman-baseball-cards/' },
+  { name: '2023 Bowman Chrome Baseball', sport: 'baseball', year: '2023', brand: 'Bowman Chrome', slug: '2023-bowman-chrome-baseball',
+    beckettUrl: 'https://www.beckett.com/news/2023-bowman-chrome-baseball-cards/' },
+  { name: '2023 Bowman Draft Baseball', sport: 'baseball', year: '2023', brand: 'Bowman Draft', slug: '2023-bowman-draft-baseball',
+    beckettUrl: 'https://www.beckett.com/news/2023-bowman-draft-baseball-cards/' },
+  // ── Basketball ──
+  { name: '2025-26 Topps Chrome Basketball', sport: 'basketball', year: '2025', brand: 'Chrome', slug: '2025-26-topps-chrome-basketball',
+    beckettUrl: 'https://www.beckett.com/news/2025-26-topps-chrome-basketball-cards/' },
+  { name: '2024-25 Topps Chrome Basketball', sport: 'basketball', year: '2024', brand: 'Chrome', slug: '2024-25-topps-chrome-basketball',
+    beckettUrl: 'https://www.beckett.com/news/2024-25-topps-chrome-basketball-cards/' },
+  { name: '2023-24 Topps Chrome Basketball', sport: 'basketball', year: '2023', brand: 'Chrome', slug: '2023-24-topps-chrome-basketball',
+    beckettUrl: 'https://www.beckett.com/news/2023-24-topps-chrome-basketball-cards/' },
+  // ── Football ──
+  { name: '2025 Topps Chrome Football', sport: 'football', year: '2025', brand: 'Chrome', slug: '2025-topps-chrome-football',
+    beckettUrl: 'https://www.beckett.com/news/2025-topps-chrome-football-cards/' },
+  { name: '2024 Topps Chrome Football', sport: 'football', year: '2024', brand: 'Chrome', slug: '2024-topps-chrome-football',
+    beckettUrl: 'https://www.beckett.com/news/2024-topps-chrome-football-cards/' },
+  { name: '2025 Topps Chrome Black Football', sport: 'football', year: '2025', brand: 'Chrome Black', slug: '2025-topps-chrome-black-football',
+    beckettUrl: 'https://www.beckett.com/news/2025-topps-chrome-black-football-cards/' },
+  { name: '2025 Bowman Chrome University Football', sport: 'football', year: '2025', brand: 'Bowman Chrome', slug: '2025-bowman-chrome-university-football',
+    beckettUrl: 'https://www.beckett.com/news/2025-bowman-chrome-university-football-cards/' },
+  // ── Soccer ──
+  { name: '2025-26 Topps Chrome UEFA Champions League', sport: 'soccer', year: '2025', brand: 'Chrome', slug: '2025-26-topps-chrome-ucl',
+    beckettUrl: 'https://www.beckett.com/news/2025-26-topps-chrome-uefa-champions-league-cards/' },
+  { name: '2025 Topps Chrome MLS', sport: 'soccer', year: '2025', brand: 'Chrome', slug: '2025-topps-chrome-mls',
+    beckettUrl: 'https://www.beckett.com/news/2025-topps-chrome-mls-cards/' },
+  { name: '2024-25 Topps Chrome UEFA Club Competitions', sport: 'soccer', year: '2024', brand: 'Chrome', slug: '2024-25-topps-chrome-ucc',
+    beckettUrl: 'https://www.beckett.com/news/2024-25-topps-chrome-uefa-club-competitions-cards/' },
+  // ── Hockey ──
+  { name: '2025-26 Topps Chrome Hockey', sport: 'hockey', year: '2025', brand: 'Chrome', slug: '2025-26-topps-chrome-hockey',
+    beckettUrl: 'https://www.beckett.com/news/2025-26-topps-chrome-hockey-cards/' },
+  { name: '2024-25 Topps Chrome Hockey', sport: 'hockey', year: '2024', brand: 'Chrome', slug: '2024-25-topps-chrome-hockey',
+    beckettUrl: 'https://www.beckett.com/news/2024-25-topps-chrome-hockey-cards/' },
 ];
 
 // ── TOPPS PDF TEXT PARSER ─────────────────────────────────────────────────────
