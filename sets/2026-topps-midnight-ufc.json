@@ -1,0 +1,1941 @@
+{
+  "set": "2026 Topps Midnight UFC",
+  "release_date": "2026",
+  "set_size": 100,
+  "product_info": {},
+  "box_contents": {},
+  "parallels": [],
+  "base_set": {
+    "count": 100,
+    "cards": [
+      {
+        "number": "1I",
+        "player": "lia Topuria",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "2F",
+        "player": "atima Kline",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "3A",
+        "player": "nderson Silva",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "4D",
+        "player": "ione Barbosa",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "5S",
+        "player": "ean O'Malley",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "6M",
+        "player": "arQuel Mederos",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "7S",
+        "player": "hi Ming",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "8K",
+        "player": "habib Nurmagomedov",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "9C",
+        "player": "arlos Leal",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "10T",
+        "player": "om Aspinall",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "11N",
+        "player": "atalia Cristina da Silva",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "12F",
+        "player": "elipe Lima",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "13A",
+        "player": "rman Tsarukyan",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "14C",
+        "player": "hang Ho Lee",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "15V",
+        "player": "irna Jandiroba",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "16R",
+        "player": "ei Tsuruya",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "17S",
+        "player": "ean Brady",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "18K",
+        "player": "aue Fernandes",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "19Q",
+        "player": "uillan Salkilld",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "20A",
+        "player": "lexander Volkanovski",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "21H",
+        "player": "yder Amil",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "22N",
+        "player": "assourdine Imavov",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "23K",
+        "player": "ody Steele",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "24G",
+        "player": "abriel Santos",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "25M",
+        "player": "agomed Ankalaev",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "26M",
+        "player": "ingyang Zhang",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "27J",
+        "player": "ulianna Pe\u00f1a",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "28M",
+        "player": "ario Pinto",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "29M",
+        "player": "arco Silva",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "30J",
+        "player": "oshua Van",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "31J",
+        "player": "aqueline Amorim",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "32J",
+        "player": "iri Prochazka",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "33Z",
+        "player": "hu Rong",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "34J",
+        "player": "J Aldrich",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "35J",
+        "player": "on Jones",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "36M",
+        "player": "ax Holloway",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "37O",
+        "player": "umar Sy",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "38A",
+        "player": "lexander Volkov",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "39R",
+        "player": "amazan Temirov",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "40D",
+        "player": "iego Lopes",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "41A",
+        "player": "leksandre Topuria",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "42D",
+        "player": "avid Onama",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "43C",
+        "player": "harles Oliveira",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "44M",
+        "player": "ansur Abdul-Malik",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "45P",
+        "player": "addy Pimblett",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "46Y",
+        "player": "oussef Zalal",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "47S",
+        "player": "ean Strickland",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "48N",
+        "player": "avajo Stirling",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "49A",
+        "player": "ustin Vanderford",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "50C",
+        "player": "onor McGregor",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "51O",
+        "player": "ban Elliott",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "52M",
+        "player": "anon Fiorot",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "53I",
+        "player": "slam Dulatov",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "54N",
+        "player": "ursulton Ruziboev",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "55K",
+        "player": "hamzat Chimaev",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "56C",
+        "player": "hris Padilla",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "57B",
+        "player": "runa Brasil",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "58A",
+        "player": "lex Pereira",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "59T",
+        "player": "orrez Finney",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "60K",
+        "player": "ayla Harrison",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "61A",
+        "player": "ndre Lima",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "62T",
+        "player": "atiana Suarez",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "63G",
+        "player": "autier Ateba",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "64T",
+        "player": "om Nolan",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "65C",
+        "player": "iryl Gane",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "66S",
+        "player": "eok Hyeon Ko",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "67J",
+        "player": "acqueline Cavalcanti",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "68D",
+        "player": "ricus Du Plessis",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "69D",
+        "player": "aniel Santos",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "70V",
+        "player": "alentina Shevchenko",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "71A",
+        "player": "lexia Thainara",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "72B",
+        "player": "randon Moreno",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "73T",
+        "player": "allison Teixeira",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "74P",
+        "player": "atrick Mix",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "75J",
+        "player": "ack Della Maddalena",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "76M",
+        "player": "ichael Parkin",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "77U",
+        "player": "mar Nurmagomedov",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "78W",
+        "player": "ang Cong",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "79M",
+        "player": "alcolm Wellmaker",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "80A",
+        "player": "lexandre Pantoja",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "81I",
+        "player": "bo Aslan",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "82B",
+        "player": "elal Muhammad",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "83J",
+        "player": "eongYeong Lee",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "84C",
+        "player": "layton Carpenter",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "85D",
+        "player": "ustin Poirier",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "86M",
+        "player": "ichael Aswell",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "87E",
+        "player": "lijah Smith",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "88I",
+        "player": "slam Makhachev",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "89P",
+        "player": "atricio Freire",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "90Z",
+        "player": "hang Weili",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "91R",
+        "player": "afael Estevam",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "92R",
+        "player": "aquel Pennington",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "93N",
+        "player": "asrat Haqparast",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "94A",
+        "player": "manda Nunes",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "95J",
+        "player": "oo Sang Yoo",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "96L",
+        "player": "one'er Kavanagh",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "97M",
+        "player": "ovsar Evloev",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "98A",
+        "player": "ndreas Gustafsson",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "99A",
+        "player": "aron Pico",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "100M",
+        "player": "erab Dvalishvili",
+        "team": "",
+        "note": ""
+      }
+    ]
+  },
+  "insert_sets": [
+    {
+      "name": "NIGHT WATCH",
+      "count": 25,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "PC-1",
+          "player": "Max Holloway",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PC-2",
+          "player": "Islam Makhachev",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PC-3",
+          "player": "Julianna Pe\u00f1a",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PC-4",
+          "player": "Yair Rodr\u00edguez",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PC-5",
+          "player": "Conor McGregor",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PC-6",
+          "player": "Charles Oliveira",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PC-7",
+          "player": "Valentina Shevchenko",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PC-8",
+          "player": "Jiri Prochazka",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PC-9",
+          "player": "Magomed Ankalaev",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PC-10",
+          "player": "Kayla Harrison",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PC-11",
+          "player": "Youssef Zalal",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "PC-12",
+          "player": "Ian Machado Garry",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PC-13",
+          "player": "Sean Strickland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PC-14",
+          "player": "Michael Parkin",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "PC-15",
+          "player": "Movsar Evloev",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PC-16",
+          "player": "Khabib Nurmagomedov",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PC-17",
+          "player": "Wang Cong",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "PC-18",
+          "player": "Michael Page",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PC-19",
+          "player": "Diego Lopes",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PC-20",
+          "player": "Jacqueline Cavalcanti",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PC-21",
+          "player": "Yadong Song",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PC-22",
+          "player": "Ilia Topuria",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PC-23",
+          "player": "Robert Whittaker",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PC-24",
+          "player": "Nassourdine Imavov",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PC-25",
+          "player": "Alex Pereira",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "ZERO HOUR",
+      "count": 20,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "ZH-1",
+          "player": "Tom Aspinall",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ZH-2",
+          "player": "Colby Covington",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ZH-3",
+          "player": "Sean O'Malley",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ZH-4",
+          "player": "Jon Jones",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ZH-5",
+          "player": "Valentina Shevchenko",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ZH-6",
+          "player": "Natalia Cristina da Silva",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ZH-7",
+          "player": "Khamzat Chimaev",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ZH-8",
+          "player": "Israel Adesanya",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ZH-9",
+          "player": "Oumar Sy",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "ZH-10",
+          "player": "Merab Dvalishvili",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ZH-11",
+          "player": "Alexander Volkanovski",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ZH-12",
+          "player": "Paddy Pimblett",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ZH-13",
+          "player": "Zhang Weili",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ZH-14",
+          "player": "Patricio Freire",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "ZH-15",
+          "player": "Jamahal Hill",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ZH-16",
+          "player": "Umar Nurmagomedov",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ZH-17",
+          "player": "Alexandre Pantoja",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ZH-18",
+          "player": "Jack Della Maddalena",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ZH-19",
+          "player": "Manel Kape",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ZH-20",
+          "player": "Ramazan Temirov",
+          "team": "",
+          "note": "Rookie"
+        }
+      ]
+    },
+    {
+      "name": "CELESTIAL COMBOS",
+      "count": 20,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "CC-1",
+          "player": "Sean O'Malley",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CC-1",
+          "player": "Merab Dvalishvili",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CC-2",
+          "player": "Valentina Shevchenko",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CC-2",
+          "player": "Zhang Weili",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CC-3",
+          "player": "Jack Della Maddalena",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CC-3",
+          "player": "Islam Makhachev",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CC-4",
+          "player": "Charles Oliveira",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CC-4",
+          "player": "Ilia Topuria",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CC-5",
+          "player": "Alexandre Pantoja",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CC-5",
+          "player": "Joshua Van",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CC-6",
+          "player": "Amanda Nunes",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CC-6",
+          "player": "Kayla Harrison",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CC-7",
+          "player": "Magomed Ankalaev",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CC-7",
+          "player": "Alex Pereira",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CC-8",
+          "player": "Dricus Du Plessis",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CC-8",
+          "player": "Khamzat Chimaev",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CC-9",
+          "player": "Tom Aspinall",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CC-9",
+          "player": "Ciryl Gane",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CC-10",
+          "player": "Dustin Poirier",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CC-10",
+          "player": "Conor McGregor",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "LUNAR APEX",
+      "count": 20,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "LA-1",
+          "player": "Khabib Nurmagomedov",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LA-2",
+          "player": "Charles Oliveira",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LA-3",
+          "player": "Jean Silva",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LA-4",
+          "player": "Reinier De Ridder",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LA-5",
+          "player": "Merab Dvalishvili",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LA-6",
+          "player": "Georges St-Pierre",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LA-7",
+          "player": "Benoit Saint Denis",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LA-8",
+          "player": "Sean Strickland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LA-9",
+          "player": "Raul Rosas",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LA-10",
+          "player": "Sharabutdin Magomedov",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LA-11",
+          "player": "Kayla Harrison",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LA-12",
+          "player": "Magomed Ankalaev",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LA-13",
+          "player": "Robert Whittaker",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LA-14",
+          "player": "Joshua Van",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LA-15",
+          "player": "Kamaru Usman",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LA-16",
+          "player": "Tallison Teixeira",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "LA-17",
+          "player": "Maycee Barber",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LA-18",
+          "player": "Lerone Murphy",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LA-19",
+          "player": "Patricio Freire",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "LA-20",
+          "player": "Max Holloway",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "INSOMNIA",
+      "count": 25,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "IN-1",
+          "player": "Ilia Topuria",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "IN-2",
+          "player": "Sean O'Malley",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "IN-3",
+          "player": "Alexander Volkanovski",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "IN-4",
+          "player": "Islam Makhachev",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "IN-5",
+          "player": "Natalia Cristina da Silva",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "IN-6",
+          "player": "Tom Aspinall",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "IN-7",
+          "player": "Dricus Du Plessis",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "IN-8",
+          "player": "Bo Nickal",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "IN-9",
+          "player": "Jon Jones",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "IN-10",
+          "player": "Belal Muhammad",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "IN-11",
+          "player": "Israel Adesanya",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "IN-12",
+          "player": "Joe Pyfer",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "IN-13",
+          "player": "Caio Borralho",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "IN-14",
+          "player": "Conor McGregor",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "IN-15",
+          "player": "Reinier De Ridder",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "IN-16",
+          "player": "Khamzat Chimaev",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "IN-17",
+          "player": "Alex Pereira",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "IN-18",
+          "player": "Rose Namajunas",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "IN-19",
+          "player": "Paddy Pimblett",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "IN-20",
+          "player": "Justin Gaethje",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "IN-21",
+          "player": "Jack Della Maddalena",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "IN-22",
+          "player": "Vinicius Oliveira",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "IN-23",
+          "player": "Alexandre Pantoja",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "IN-24",
+          "player": "Zhang Weili",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "IN-25",
+          "player": "Diego Lopes",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "LAST ONE STANDING",
+      "count": 30,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "LO-1",
+          "player": "Jon Jones",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LO-2",
+          "player": "Valentina Shevchenko",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LO-3",
+          "player": "Merab Dvalishvili",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LO-4",
+          "player": "Max Holloway",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LO-5",
+          "player": "Jack Della Maddalena",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LO-6",
+          "player": "Khabib Nurmagomedov",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LO-7",
+          "player": "Dricus Du Plessis",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LO-8",
+          "player": "Carlos Prates",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LO-9",
+          "player": "Magomed Ankalaev",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LO-10",
+          "player": "Joshua Van",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LO-11",
+          "player": "Arman Tsarukyan",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LO-12",
+          "player": "Sean O'Malley",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LO-13",
+          "player": "Mauricio Santos",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LO-14",
+          "player": "Lerone Murphy",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LO-15",
+          "player": "Kayla Harrison",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LO-16",
+          "player": "Umar Nurmagomedov",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LO-17",
+          "player": "Movsar Evloev",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LO-18",
+          "player": "Shavkat Rakhmonov",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LO-19",
+          "player": "Diego Lopes",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LO-20",
+          "player": "Ilia Topuria",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LO-21",
+          "player": "Sean Strickland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LO-22",
+          "player": "Anderson Silva",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LO-23",
+          "player": "Bo Nickal",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LO-24",
+          "player": "Charles Oliveira",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LO-25",
+          "player": "Daniel Hooker",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LO-26",
+          "player": "Brendan Allen",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LO-27",
+          "player": "Jean Silva",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LO-28",
+          "player": "Alex Pereira",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LO-29",
+          "player": "Justin Gaethje",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LO-30",
+          "player": "Israel Adesanya",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "NEON APEX",
+      "count": 25,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "NA-1",
+          "player": "Ilia Topuria",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NA-2",
+          "player": "Conor McGregor",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NA-3",
+          "player": "Zhang Weili",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NA-4",
+          "player": "Paddy Pimblett",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NA-5",
+          "player": "Natalia Cristina da Silva",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NA-6",
+          "player": "Mauricio Santos",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NA-7",
+          "player": "Khalil Rountree Jr.",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NA-8",
+          "player": "Alexander Volkanovski",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NA-9",
+          "player": "Ciryl Gane",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NA-10",
+          "player": "Khamzat Chimaev",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NA-11",
+          "player": "Payton Talbott",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NA-12",
+          "player": "Mackenzie Dern",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NA-13",
+          "player": "Manon Fiorot",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NA-14",
+          "player": "Caio Borralho",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NA-15",
+          "player": "Tom Aspinall",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NA-16",
+          "player": "Diego Lopes",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NA-17",
+          "player": "Magomed Ankalaev",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NA-18",
+          "player": "Islam Makhachev",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NA-19",
+          "player": "Derrick Lewis",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NA-20",
+          "player": "Alexander Volkov",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NA-21",
+          "player": "Assu Almabayev",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NA-22",
+          "player": "Joshua Van",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NA-23",
+          "player": "Brandon Royval",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NA-24",
+          "player": "Dricus Du Plessis",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NA-25",
+          "player": "Sean O'Malley",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "TWILIGHT",
+      "count": 20,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "TL-1",
+          "player": "Khamzat Chimaev",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TL-2",
+          "player": "Jean Silva",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "TL-3",
+          "player": "Valentina Shevchenko",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TL-4",
+          "player": "Joshua Van",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TL-5",
+          "player": "Erin Blanchfield",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TL-6",
+          "player": "Reinier De Ridder",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TL-7",
+          "player": "Natalia Cristina da Silva",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TL-8",
+          "player": "Khabib Nurmagomedov",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TL-9",
+          "player": "Nassourdine Imavov",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TL-10",
+          "player": "Jack Della Maddalena",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TL-11",
+          "player": "Justin Gaethje",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TL-12",
+          "player": "Ilia Topuria",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "TL-13",
+          "player": "Arman Tsarukyan",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TL-14",
+          "player": "Georges St-Pierre",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TL-15",
+          "player": "Alexander Volkanovski",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TL-16",
+          "player": "Alex Pereira",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TL-17",
+          "player": "Dustin Poirier",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TL-18",
+          "player": "Tracy Cortez",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TL-19",
+          "player": "Paddy Pimblett",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TL-20",
+          "player": "Alexandre Pantoja",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "CEMENTED",
+      "count": 25,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "CM-1",
+          "player": "Tom Aspinall",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CM-2",
+          "player": "Charles Oliveira",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CM-3",
+          "player": "Israel Adesanya",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CM-4",
+          "player": "Kayla Harrison",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CM-5",
+          "player": "Sean O'Malley",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CM-6",
+          "player": "Alexa Grasso",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CM-7",
+          "player": "Anderson Silva",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CM-8",
+          "player": "Dricus Du Plessis",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CM-9",
+          "player": "Leon Edwards",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CM-10",
+          "player": "Alexandre Pantoja",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CM-11",
+          "player": "Chuck Liddell",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CM-12",
+          "player": "Jiri Prochazka",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CM-13",
+          "player": "Jon Jones",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CM-14",
+          "player": "Conor McGregor",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CM-15",
+          "player": "Rose Namajunas",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CM-16",
+          "player": "Sean Strickland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CM-17",
+          "player": "Khabib Nurmagomedov",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CM-18",
+          "player": "Yair Rodr\u00edguez",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CM-19",
+          "player": "Amanda Nunes",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CM-20",
+          "player": "Alex Pereira",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CM-21",
+          "player": "Dustin Poirier",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CM-22",
+          "player": "Max Holloway",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CM-23",
+          "player": "Mackenzie Dern",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CM-24",
+          "player": "Islam Makhachev",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CM-25",
+          "player": "Merab Dvalishvili",
+          "team": "",
+          "note": ""
+        }
+      ]
+    }
+  ],
+  "autograph_sets": [],
+  "memorabilia_sets": [],
+  "team_sets": {}
+}
