@@ -1,0 +1,4246 @@
+{
+  "set": "2025-26 Bowman Basketball",
+  "release_date": "2025-26",
+  "set_size": 450,
+  "product_info": {},
+  "box_contents": {},
+  "parallels": [],
+  "base_set": {
+    "count": 450,
+    "cards": [
+      {
+        "number": "1",
+        "player": "Cooper Flagg Dallas Mavericks",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BCV-1",
+        "player": "Cooper Flagg Dallas Mavericks",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BRR-1",
+        "player": "Cooper Flagg Dallas Mavericks",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "2",
+        "player": "Dylan Harper San Antonio Spurs",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BCV-2",
+        "player": "Dylan Harper San Antonio Spurs",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BRR-2",
+        "player": "Dylan Harper San Antonio Spurs",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "3",
+        "player": "VJ Edgecombe Philadelphia 76ers",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BCV-3",
+        "player": "VJ Edgecombe Philadelphia 76ers",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BRR-3",
+        "player": "VJ Edgecombe Philadelphia 76ers",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "4",
+        "player": "Kon Knueppel Charlotte Hornets",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BCV-4",
+        "player": "Kon Knueppel Charlotte Hornets",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BRR-4",
+        "player": "Kon Knueppel Charlotte Hornets",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "5",
+        "player": "Ace Bailey Utah Jazz",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BCV-5",
+        "player": "Ace Bailey Utah Jazz",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BRR-5",
+        "player": "Ace Bailey Utah Jazz",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "6",
+        "player": "Tre Johnson III Washington Wizards",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BCV-6",
+        "player": "Tre Johnson III Washington Wizards",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BRR-6",
+        "player": "Tre Johnson III Washington Wizards",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "7",
+        "player": "Jeremiah Fears New Orleans Pelicans",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BCV-7",
+        "player": "Jeremiah Fears New Orleans Pelicans",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BRR-7",
+        "player": "Jeremiah Fears New Orleans Pelicans",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "8",
+        "player": "Egor D\u00ebmin Brooklyn Nets",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BCV-8",
+        "player": "Egor D\u00ebmin Brooklyn Nets",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BRR-8",
+        "player": "Egor D\u00ebmin Brooklyn Nets",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "9",
+        "player": "Collin Murray-Boyles Toronto Raptors",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BCV-9",
+        "player": "Collin Murray-Boyles Toronto Raptors",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BRR-9",
+        "player": "Collin Murray-Boyles Toronto Raptors",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "10",
+        "player": "Khaman Maluach Phoenix Suns",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BCV-10",
+        "player": "Khaman Maluach Phoenix Suns",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BRR-10",
+        "player": "Khaman Maluach Phoenix Suns",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "11",
+        "player": "Cedric Coward Memphis Grizzlies",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BCV-11",
+        "player": "Cedric Coward Memphis Grizzlies",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BRR-11",
+        "player": "Cedric Coward Memphis Grizzlies",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "12",
+        "player": "Noa Essengue Chicago Bulls",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BCV-12",
+        "player": "Noa Essengue Chicago Bulls",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BRR-12",
+        "player": "Noa Essengue Chicago Bulls",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "13",
+        "player": "Derik Queen New Orleans Pelicans",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BCV-13",
+        "player": "Derik Queen New Orleans Pelicans",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BRR-13",
+        "player": "Derik Queen New Orleans Pelicans",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "14",
+        "player": "Carter Bryant San Antonio Spurs",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BCV-14",
+        "player": "Carter Bryant San Antonio Spurs",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BRR-14",
+        "player": "Carter Bryant San Antonio Spurs",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "15",
+        "player": "Thomas Sorber Oklahoma City Thunder",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BCV-15",
+        "player": "Thomas Sorber Oklahoma City Thunder",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BRR-15",
+        "player": "Thomas Sorber Oklahoma City Thunder",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "16",
+        "player": "Yang Hansen Portland Trail Blazers",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BCV-16",
+        "player": "Yang Hansen Portland Trail Blazers",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BRR-16",
+        "player": "Yang Hansen Portland Trail Blazers",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "17",
+        "player": "Joan Beringer Minnesota Timberwolves",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BCV-17",
+        "player": "Joan Beringer Minnesota Timberwolves",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BRR-17",
+        "player": "Joan Beringer Minnesota Timberwolves",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "18",
+        "player": "Walter Clayton Jr. Utah Jazz",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BCV-18",
+        "player": "Walter Clayton Jr. Utah Jazz",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BRR-18",
+        "player": "Walter Clayton Jr. Utah Jazz",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "19",
+        "player": "Nolan Traore Brooklyn Nets",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BCV-19",
+        "player": "Nolan Traore Brooklyn Nets",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BRR-19",
+        "player": "Nolan Traore Brooklyn Nets",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "20",
+        "player": "Kasparas Jakuc\u030cionis Miami Heat",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BCV-20",
+        "player": "Kasparas Jakuc\u030cionis Miami Heat",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BRR-20",
+        "player": "Kasparas Jakuc\u030cionis Miami Heat",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "21",
+        "player": "Will Riley Washington Wizards",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BCV-21",
+        "player": "Will Riley Washington Wizards",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BRR-21",
+        "player": "Will Riley Washington Wizards",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "22",
+        "player": "Drake Powell Brooklyn Nets",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BCV-22",
+        "player": "Drake Powell Brooklyn Nets",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BRR-22",
+        "player": "Drake Powell Brooklyn Nets",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "23",
+        "player": "Asa Newell Atlanta Hawks",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BCV-23",
+        "player": "Asa Newell Atlanta Hawks",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BRR-23",
+        "player": "Asa Newell Atlanta Hawks",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "24",
+        "player": "Nique Clifford Sacramento Kings",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BCV-24",
+        "player": "Nique Clifford Sacramento Kings",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BRR-24",
+        "player": "Nique Clifford Sacramento Kings",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "25",
+        "player": "Jase Richardson Orlando Magic",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BCV-25",
+        "player": "Jase Richardson Orlando Magic",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BRR-25",
+        "player": "Jase Richardson Orlando Magic",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "26",
+        "player": "Ben Saraf Brooklyn Nets",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BCV-26",
+        "player": "Ben Saraf Brooklyn Nets",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BRR-26",
+        "player": "Ben Saraf Brooklyn Nets",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "27",
+        "player": "Danny Wolf Brooklyn Nets",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BCV-27",
+        "player": "Danny Wolf Brooklyn Nets",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BRR-27",
+        "player": "Danny Wolf Brooklyn Nets",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "28",
+        "player": "Hugo Gonza\u0301lez Boston Celtics",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BCV-28",
+        "player": "Hugo Gonza\u0301lez Boston Celtics",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BRR-28",
+        "player": "Hugo Gonza\u0301lez Boston Celtics",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "29",
+        "player": "Liam McNeeley Charlotte Hornets",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BCV-29",
+        "player": "Liam McNeeley Charlotte Hornets",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BRR-29",
+        "player": "Liam McNeeley Charlotte Hornets",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "30",
+        "player": "Yanic Konan-Niederh\u00e4user Los Angeles Clippers",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BCV-30",
+        "player": "Yanic Konan-Niederh\u00e4user Los Angeles Clippers",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BRR-30",
+        "player": "Yanic Konan-Niederh\u00e4user Los Angeles Clippers",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "31",
+        "player": "Rasheer Fleming Phoenix Suns",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BCV-31",
+        "player": "Rasheer Fleming Phoenix Suns",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BRR-31",
+        "player": "Rasheer Fleming Phoenix Suns",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "32",
+        "player": "Noah Penda Orlando Magic",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BCV-32",
+        "player": "Noah Penda Orlando Magic",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BRR-32",
+        "player": "Noah Penda Orlando Magic",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "33",
+        "player": "Sion James Charlotte Hornets",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BCV-33",
+        "player": "Sion James Charlotte Hornets",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BRR-33",
+        "player": "Sion James Charlotte Hornets",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "34",
+        "player": "Ryan Kalkbrenner Charlotte Hornets",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BCV-34",
+        "player": "Ryan Kalkbrenner Charlotte Hornets",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BRR-34",
+        "player": "Ryan Kalkbrenner Charlotte Hornets",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "35",
+        "player": "Johni Broome Philadelphia 76ers",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BCV-35",
+        "player": "Johni Broome Philadelphia 76ers",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BRR-35",
+        "player": "Johni Broome Philadelphia 76ers",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "36",
+        "player": "Adou Thiero Los Angeles Lakers",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BCV-36",
+        "player": "Adou Thiero Los Angeles Lakers",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BRR-36",
+        "player": "Adou Thiero Los Angeles Lakers",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "37",
+        "player": "Buddy Hield Golden State Warriors",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-37",
+        "player": "Buddy Hield Golden State Warriors",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BRR-37",
+        "player": "Will Richard Golden State Warriors",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "38",
+        "player": "Chaz Lanier Detroit Pistons",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BCV-38",
+        "player": "Chaz Lanier Detroit Pistons",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BRR-38",
+        "player": "Chaz Lanier Detroit Pistons",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "39",
+        "player": "Kam Jones Indiana Pacers",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BCV-39",
+        "player": "Kam Jones Indiana Pacers",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BRR-39",
+        "player": "Kam Jones Indiana Pacers",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "40",
+        "player": "Alijah Martin Toronto Raptors",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BCV-40",
+        "player": "Alijah Martin Toronto Raptors",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BRR-40",
+        "player": "Alijah Martin Toronto Raptors",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "41",
+        "player": "Micah Peavy New Orleans Pelicans",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BCV-41",
+        "player": "Micah Peavy New Orleans Pelicans",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BRR-41",
+        "player": "Micah Peavy New Orleans Pelicans",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "42",
+        "player": "Koby Brea Phoenix Suns",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BCV-42",
+        "player": "Koby Brea Phoenix Suns",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BRR-42",
+        "player": "Koby Brea Phoenix Suns",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "43",
+        "player": "Maxime Raynaud Sacramento Kings",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BCV-43",
+        "player": "Maxime Raynaud Sacramento Kings",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BRR-43",
+        "player": "Maxime Raynaud Sacramento Kings",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "44",
+        "player": "Jamir Watkins Washington Wizards",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BCV-44",
+        "player": "Jamir Watkins Washington Wizards",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BRR-44",
+        "player": "Jamir Watkins Washington Wizards",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "45",
+        "player": "Brooks Barnhizer Oklahoma City Thunder",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BCV-45",
+        "player": "Brooks Barnhizer Oklahoma City Thunder",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BRR-45",
+        "player": "Brooks Barnhizer Oklahoma City Thunder",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "46",
+        "player": "Javon Small Memphis Grizzlies",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BCV-46",
+        "player": "Javon Small Memphis Grizzlies",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BRR-46",
+        "player": "Javon Small Memphis Grizzlies",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "47",
+        "player": "Kobe Sanders Los Angeles Clippers",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BCV-47",
+        "player": "Kobe Sanders Los Angeles Clippers",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BRR-47",
+        "player": "Kobe Sanders Los Angeles Clippers",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "48",
+        "player": "Alex Toohey Golden State Warriors",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BCV-48",
+        "player": "Alex Toohey Golden State Warriors",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BRR-48",
+        "player": "Alex Toohey Golden State Warriors",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "49",
+        "player": "John Tonje Utah Jazz",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BCV-49",
+        "player": "John Tonje Utah Jazz",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BRR-49",
+        "player": "John Tonje Utah Jazz",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "50",
+        "player": "Taelon Peter Indiana Pacers",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BCV-50",
+        "player": "Taelon Peter Indiana Pacers",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BRR-50",
+        "player": "Taelon Peter Indiana Pacers",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "51",
+        "player": "Lachlan Olbrich Chicago Bulls",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BCV-51",
+        "player": "Lachlan Olbrich Chicago Bulls",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "52",
+        "player": "Will Richard Golden State Warriors",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BCV-52",
+        "player": "Will Richard Golden State Warriors",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "53",
+        "player": "Max Shulga Boston Celtics",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BCV-53",
+        "player": "Max Shulga Boston Celtics",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "54",
+        "player": "Jahmai Mashack Memphis Grizzlies",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BCV-54",
+        "player": "Jahmai Mashack Memphis Grizzlies",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "55",
+        "player": "Tyrese Proctor Cleveland Cavaliers",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "BCV-55",
+        "player": "Tyrese Proctor Cleveland Cavaliers",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "56",
+        "player": "Jayson Tatum Boston Celtics",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-56",
+        "player": "Jayson Tatum Boston Celtics",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "57",
+        "player": "Jaylen Brown Boston Celtics",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-57",
+        "player": "Jaylen Brown Boston Celtics",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "58",
+        "player": "Derrick White Boston Celtics",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-58",
+        "player": "Derrick White Boston Celtics",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "59",
+        "player": "Cam Thomas Brooklyn Nets",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-59",
+        "player": "Cam Thomas Brooklyn Nets",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "60",
+        "player": "Jalen Wilson Brooklyn Nets",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-60",
+        "player": "Jalen Wilson Brooklyn Nets",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "61",
+        "player": "Cameron Johnson Brooklyn Nets",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-61",
+        "player": "Cameron Johnson Brooklyn Nets",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "62",
+        "player": "Jalen Brunson New York Knicks",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-62",
+        "player": "Jalen Brunson New York Knicks",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "63",
+        "player": "OG Anunoby New York Knicks",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-63",
+        "player": "OG Anunoby New York Knicks",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "64",
+        "player": "Karl-Anthony Towns New York Knicks",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-64",
+        "player": "Karl-Anthony Towns New York Knicks",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "65",
+        "player": "Jared McCain Philadelphia 76ers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-65",
+        "player": "Jared McCain Philadelphia 76ers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "66",
+        "player": "Tyrese Maxey Philadelphia 76ers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-66",
+        "player": "Tyrese Maxey Philadelphia 76ers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "67",
+        "player": "Joel Embiid Philadelphia 76ers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-67",
+        "player": "Joel Embiid Philadelphia 76ers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "68",
+        "player": "Scottie Barnes Toronto Raptors",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-68",
+        "player": "Scottie Barnes Toronto Raptors",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "69",
+        "player": "Immanuel Quickley Toronto Raptors",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-69",
+        "player": "Immanuel Quickley Toronto Raptors",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "70",
+        "player": "Gradey Dick Toronto Raptors",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-70",
+        "player": "Gradey Dick Toronto Raptors",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "71",
+        "player": "Coby White Chicago Bulls",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-71",
+        "player": "Coby White Chicago Bulls",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "72",
+        "player": "Josh Giddey Chicago Bulls",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-72",
+        "player": "Josh Giddey Chicago Bulls",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "73",
+        "player": "Matas Buzelis Chicago Bulls",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-73",
+        "player": "Matas Buzelis Chicago Bulls",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "74",
+        "player": "Cade Cunningham Detroit Pistons",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-74",
+        "player": "Cade Cunningham Detroit Pistons",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "75",
+        "player": "Jalen Duren Detroit Pistons",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-75",
+        "player": "Jalen Duren Detroit Pistons",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "76",
+        "player": "Ausar Thompson Detroit Pistons",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-76",
+        "player": "Ausar Thompson Detroit Pistons",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "77",
+        "player": "Tyrese Haliburton Indiana Pacers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-77",
+        "player": "Tyrese Haliburton Indiana Pacers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "78",
+        "player": "Bennedict Mathurin Indiana Pacers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-78",
+        "player": "Bennedict Mathurin Indiana Pacers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "79",
+        "player": "Pascal Siakam Indiana Pacers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-79",
+        "player": "Pascal Siakam Indiana Pacers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "80",
+        "player": "Giannis Antetokounmpo Milwaukee Bucks",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-80",
+        "player": "Giannis Antetokounmpo Milwaukee Bucks",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "81",
+        "player": "Damian Lillard Milwaukee Bucks",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-81",
+        "player": "Damian Lillard Milwaukee Bucks",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "82",
+        "player": "Kyle Kuzma Milwaukee Bucks",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-82",
+        "player": "Kyle Kuzma Milwaukee Bucks",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "83",
+        "player": "Trae Young Atlanta Hawks",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-83",
+        "player": "Trae Young Atlanta Hawks",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "84",
+        "player": "Zaccharie Risacher Atlanta Hawks",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-84",
+        "player": "Zaccharie Risacher Atlanta Hawks",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "85",
+        "player": "Jalen Johnson Atlanta Hawks",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-85",
+        "player": "Jalen Johnson Atlanta Hawks",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "86",
+        "player": "LaMelo Ball Charlotte Hornets",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-86",
+        "player": "LaMelo Ball Charlotte Hornets",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "87",
+        "player": "Brandon Miller Charlotte Hornets",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-87",
+        "player": "Brandon Miller Charlotte Hornets",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "88",
+        "player": "Tyler Herro Miami Heat",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-88",
+        "player": "Tyler Herro Miami Heat",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "89",
+        "player": "Bam Adebayo Miami Heat",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-89",
+        "player": "Bam Adebayo Miami Heat",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "90",
+        "player": "Kel'el Ware Miami Heat",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-90",
+        "player": "Kel'el Ware Miami Heat",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "91",
+        "player": "Donovan Mitchell Cleveland Cavaliers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-91",
+        "player": "Donovan Mitchell Cleveland Cavaliers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "92",
+        "player": "Darius Garland Cleveland Cavaliers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-92",
+        "player": "Darius Garland Cleveland Cavaliers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "93",
+        "player": "Evan Mobley Cleveland Cavaliers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-93",
+        "player": "Evan Mobley Cleveland Cavaliers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "94",
+        "player": "Paolo Banchero Orlando Magic",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-94",
+        "player": "Paolo Banchero Orlando Magic",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "95",
+        "player": "Franz Wagner Orlando Magic",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-95",
+        "player": "Franz Wagner Orlando Magic",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "96",
+        "player": "Anthony Black Orlando Magic",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-96",
+        "player": "Anthony Black Orlando Magic",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "97",
+        "player": "Jordan Poole Washington Wizards",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-97",
+        "player": "Jordan Poole Washington Wizards",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "98",
+        "player": "Bilal Coulibaly Washington Wizards",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-98",
+        "player": "Bilal Coulibaly Washington Wizards",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "99",
+        "player": "Alex Sarr Washington Wizards",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-99",
+        "player": "Alex Sarr Washington Wizards",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "100",
+        "player": "Nikola Joki\u0107 Denver Nuggets",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-100",
+        "player": "Nikola Joki\u0107 Denver Nuggets",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "101",
+        "player": "Jamal Murray Denver Nuggets",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-101",
+        "player": "Jamal Murray Denver Nuggets",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "102",
+        "player": "Russell Westbrook Denver Nuggets",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-102",
+        "player": "Russell Westbrook Denver Nuggets",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "103",
+        "player": "Anthony Edwards Minnesota Timberwolves",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-103",
+        "player": "Anthony Edwards Minnesota Timberwolves",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "104",
+        "player": "Naz Reid Minnesota Timberwolves",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-104",
+        "player": "Naz Reid Minnesota Timberwolves",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "105",
+        "player": "Terrence Shannon Jr. Minnesota Timberwolves",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-105",
+        "player": "Terrence Shannon Jr. Minnesota Timberwolves",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "106",
+        "player": "Shai Gilgeous-Alexander Oklahoma City Thunder",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-106",
+        "player": "Shai Gilgeous-Alexander Oklahoma City Thunder",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "107",
+        "player": "Jalen Williams Oklahoma City Thunder",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-107",
+        "player": "Jalen Williams Oklahoma City Thunder",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "108",
+        "player": "Chet Holmgren Oklahoma City Thunder",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-108",
+        "player": "Chet Holmgren Oklahoma City Thunder",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "109",
+        "player": "Scoot Henderson Portland Trail Blazers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-109",
+        "player": "Scoot Henderson Portland Trail Blazers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "110",
+        "player": "Shaedon Sharpe Portland Trail Blazers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-110",
+        "player": "Shaedon Sharpe Portland Trail Blazers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "111",
+        "player": "Toumani Camara Portland Trail Blazers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-111",
+        "player": "Toumani Camara Portland Trail Blazers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "112",
+        "player": "Lauri Markkanen Utah Jazz",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-112",
+        "player": "Lauri Markkanen Utah Jazz",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "113",
+        "player": "Kyle Filipowski Utah Jazz",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-113",
+        "player": "Kyle Filipowski Utah Jazz",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "114",
+        "player": "Isaiah Collier Utah Jazz",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-114",
+        "player": "Isaiah Collier Utah Jazz",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "115",
+        "player": "Stephen Curry Golden State Warriors",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-115",
+        "player": "Stephen Curry Golden State Warriors",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "116",
+        "player": "Jimmy Butler III Golden State Warriors",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-116",
+        "player": "Jimmy Butler III Golden State Warriors",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "117",
+        "player": "Draymond Green Golden State Warriors",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-117",
+        "player": "Draymond Green Golden State Warriors",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "118",
+        "player": "Kawhi Leonard Los Angeles Clippers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-118",
+        "player": "Kawhi Leonard Los Angeles Clippers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "119",
+        "player": "James Harden Los Angeles Clippers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-119",
+        "player": "James Harden Los Angeles Clippers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "120",
+        "player": "Ivica Zubac Los Angeles Clippers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-120",
+        "player": "Ivica Zubac Los Angeles Clippers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "121",
+        "player": "LeBron James Los Angeles Lakers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-121",
+        "player": "LeBron James Los Angeles Lakers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "122",
+        "player": "Bronny James Jr. Los Angeles Lakers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-122",
+        "player": "Bronny James Jr. Los Angeles Lakers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "123",
+        "player": "Luka Donc\u030ci\u0107 Los Angeles Lakers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-123",
+        "player": "Luka Donc\u030ci\u0107 Los Angeles Lakers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "124",
+        "player": "Devin Booker Phoenix Suns",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-124",
+        "player": "Devin Booker Phoenix Suns",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "125",
+        "player": "Kevin Durant Houston Rockets",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-125",
+        "player": "Kevin Durant Houston Rockets",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "126",
+        "player": "Bradley Beal Phoenix Suns",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-126",
+        "player": "Bradley Beal Phoenix Suns",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "127",
+        "player": "DeMar DeRozan Sacramento Kings",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-127",
+        "player": "DeMar DeRozan Sacramento Kings",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "128",
+        "player": "Zach LAVine Sacramento Kings",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-128",
+        "player": "Zach LaVine Sacramento Kings",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "129",
+        "player": "Domantas Sabonis Sacramento Kings",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-129",
+        "player": "Domantas Sabonis Sacramento Kings",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "130",
+        "player": "Kyrie Irving Dallas Mavericks",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-130",
+        "player": "Kyrie Irving Dallas Mavericks",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "131",
+        "player": "Anthony Davis Dallas Mavericks",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-131",
+        "player": "Anthony Davis Dallas Mavericks",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "132",
+        "player": "Klay Thompson Dallas Mavericks",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-132",
+        "player": "Klay Thompson Dallas Mavericks",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "133",
+        "player": "Alperen Sengun Houston Rockets",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-133",
+        "player": "Alperen Sengun Houston Rockets",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "134",
+        "player": "Amen Thompson Houston Rockets",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-134",
+        "player": "Amen Thompson Houston Rockets",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "135",
+        "player": "Reed Sheppard Houston Rockets",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-135",
+        "player": "Reed Sheppard Houston Rockets",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "136",
+        "player": "Ja Morant Memphis Grizzlies",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-136",
+        "player": "Ja Morant Memphis Grizzlies",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "137",
+        "player": "Jaren Jackson Jr. Memphis Grizzlies",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-137",
+        "player": "Jaren Jackson Jr. Memphis Grizzlies",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "138",
+        "player": "Desmond Bane Memphis Grizzlies",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-138",
+        "player": "Desmond Bane Memphis Grizzlies",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "139",
+        "player": "Zach Edey Memphis Grizzlies",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-139",
+        "player": "Zach Edey Memphis Grizzlies",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "140",
+        "player": "Herbert Jones New Orleans Pelicans",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-140",
+        "player": "Herbert Jones New Orleans Pelicans",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "141",
+        "player": "Trey Murphy III New Orleans Pelicans",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-141",
+        "player": "Trey Murphy III New Orleans Pelicans",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "142",
+        "player": "Dejounte Murray New Orleans Pelicans",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-142",
+        "player": "Dejounte Murray New Orleans Pelicans",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "143",
+        "player": "Victor Wembanyama San Antonio Spurs",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-143",
+        "player": "Victor Wembanyama San Antonio Spurs",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "144",
+        "player": "De'Aaron Fox San Antonio Spurs",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-144",
+        "player": "De'Aaron Fox San Antonio Spurs",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "145",
+        "player": "Stephon Castle San Antonio Spurs",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-145",
+        "player": "Stephon Castle San Antonio Spurs",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "146",
+        "player": "Chris Paul San Antonio Spurs",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-146",
+        "player": "Chris Paul San Antonio Spurs",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "147",
+        "player": "Jeremy Sochan San Antonio Spurs",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-147",
+        "player": "Jeremy Sochan San Antonio Spurs",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "148",
+        "player": "Kristaps Porzingis Boston Celtics",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-148",
+        "player": "Kristaps Porzingis Boston Celtics",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "149",
+        "player": "Payton Pritchard Boston Celtics",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-149",
+        "player": "Payton Pritchard Boston Celtics",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "150",
+        "player": "Nic Claxton Brooklyn Nets",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-150",
+        "player": "Nic Claxton Brooklyn Nets",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "151",
+        "player": "Noah Clowney Brooklyn Nets",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-151",
+        "player": "Noah Clowney Brooklyn Nets",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "152",
+        "player": "Mikal Bridges New York Knicks",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-152",
+        "player": "Mikal Bridges New York Knicks",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "153",
+        "player": "Josh Hart New York Knicks",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-153",
+        "player": "Josh Hart New York Knicks",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "154",
+        "player": "Paul George Philadelphia 76ers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-154",
+        "player": "Paul George Philadelphia 76ers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "155",
+        "player": "Guerschon Yabusele Philadelphia 76ers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-155",
+        "player": "Guerschon Yabusele Philadelphia 76ers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "156",
+        "player": "RJ Barrett Toronto Raptors",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-156",
+        "player": "RJ Barrett Toronto Raptors",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "157",
+        "player": "Nikola Vuc\u030cevi\u0107 Chicago Bulls",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-157",
+        "player": "Nikola Vuc\u030cevi\u0107 Chicago Bulls",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "158",
+        "player": "Patrick Williams Chicago Bulls",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-158",
+        "player": "Patrick Williams Chicago Bulls",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "159",
+        "player": "Jaden Ivey Detroit Pistons",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-159",
+        "player": "Jaden Ivey Detroit Pistons",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "160",
+        "player": "Ron Holland II Detroit Pistons",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-160",
+        "player": "Ron Holland II Detroit Pistons",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "161",
+        "player": "Myles Turner Indiana Pacers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-161",
+        "player": "Myles Turner Indiana Pacers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "162",
+        "player": "Obi Toppin Indiana Pacers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-162",
+        "player": "Obi Toppin Indiana Pacers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "163",
+        "player": "Andrew Nembhard Indiana Pacers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-163",
+        "player": "Andrew Nembhard Indiana Pacers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "164",
+        "player": "AJ Green Milwaukee Bucks",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-164",
+        "player": "AJ Green Milwaukee Bucks",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "165",
+        "player": "Gary Trent Jr. Milwaukee Bucks",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-165",
+        "player": "Gary Trent Jr. Milwaukee Bucks",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "166",
+        "player": "Dyson Daniels Atlanta Hawks",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-166",
+        "player": "Dyson Daniels Atlanta Hawks",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "167",
+        "player": "Onyeka Okongwu Atlanta Hawks",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-167",
+        "player": "Onyeka Okongwu Atlanta Hawks",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "168",
+        "player": "Mark Williams Charlotte Hornets",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-168",
+        "player": "Mark Williams Charlotte Hornets",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "169",
+        "player": "Tidjane Sala\u00fcn Charlotte Hornets",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-169",
+        "player": "Tidjane Sala\u00fcn Charlotte Hornets",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "170",
+        "player": "Andrew Wiggins Miami Heat",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-170",
+        "player": "Andrew Wiggins Miami Heat",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "171",
+        "player": "Jaime Jaquez Jr. Miami Heat",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-171",
+        "player": "Jaime Jaquez Jr. Miami Heat",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "172",
+        "player": "Jarrett Allen Cleveland Cavaliers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-172",
+        "player": "Jarrett Allen Cleveland Cavaliers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "173",
+        "player": "Jaylon Tyson Cleveland Cavaliers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-173",
+        "player": "Jaylon Tyson Cleveland Cavaliers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "174",
+        "player": "Jalen Suggs Orlando Magic",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-174",
+        "player": "Jalen Suggs Orlando Magic",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "175",
+        "player": "Tristan da Silva Orlando Magic",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-175",
+        "player": "Tristan da Silva Orlando Magic",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "176",
+        "player": "Bub Carrington Washington Wizards",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-176",
+        "player": "Bub Carrington Washington Wizards",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "177",
+        "player": "Kyshawn George Washington Wizards",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-177",
+        "player": "Kyshawn George Washington Wizards",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "178",
+        "player": "AJ Johnson Washington Wizards",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-178",
+        "player": "AJ Johnson Washington Wizards",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "179",
+        "player": "Michael Porter Jr. Denver Nuggets",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-179",
+        "player": "Michael Porter Jr. Denver Nuggets",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "180",
+        "player": "Peyton Watson Denver Nuggets",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-180",
+        "player": "Peyton Watson Denver Nuggets",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "181",
+        "player": "Christian Braun Denver Nuggets",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-181",
+        "player": "Christian Braun Denver Nuggets",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "182",
+        "player": "Rob Dillingham Minnesota Timberwolves",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-182",
+        "player": "Rob Dillingham Minnesota Timberwolves",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "183",
+        "player": "Julius Randle Minnesota Timberwolves",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-183",
+        "player": "Julius Randle Minnesota Timberwolves",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "184",
+        "player": "Luguentz Dort Oklahoma City Thunder",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-184",
+        "player": "Luguentz Dort Oklahoma City Thunder",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "185",
+        "player": "Cason Wallace Oklahoma City Thunder",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-185",
+        "player": "Cason Wallace Oklahoma City Thunder",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "186",
+        "player": "Aaron Wiggins Oklahoma City Thunder",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-186",
+        "player": "Aaron Wiggins Oklahoma City Thunder",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "187",
+        "player": "Deni Avdija Portland Trail Blazers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-187",
+        "player": "Deni Avdija Portland Trail Blazers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "188",
+        "player": "Donovan Clingan Portland Trail Blazers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-188",
+        "player": "Donovan Clingan Portland Trail Blazers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "189",
+        "player": "Keyonte George Utah Jazz",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-189",
+        "player": "Keyonte George Utah Jazz",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "190",
+        "player": "Jordan Clarkson Utah Jazz",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-190",
+        "player": "Jordan Clarkson Utah Jazz",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "191",
+        "player": "Jonathan Kuminga Golden State Warriors",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-191",
+        "player": "Jonathan Kuminga Golden State Warriors",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "192",
+        "player": "Norman Powell Los Angeles Clippers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-192",
+        "player": "Norman Powell Los Angeles Clippers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "193",
+        "player": "Austin Reaves Los Angeles Lakers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-193",
+        "player": "Austin Reaves Los Angeles Lakers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "194",
+        "player": "Dalton Knecht Los Angeles Lakers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-194",
+        "player": "Dalton Knecht Los Angeles Lakers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "195",
+        "player": "Ryan Dunn Phoenix Suns",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-195",
+        "player": "Ryan Dunn Phoenix Suns",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "196",
+        "player": "Oso Ighodaro Phoenix Suns",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-196",
+        "player": "Oso Ighodaro Phoenix Suns",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "197",
+        "player": "Devin Carter Sacramento Kings",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-197",
+        "player": "Devin Carter Sacramento Kings",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "198",
+        "player": "Dereck Lively II Dallas Mavericks",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-198",
+        "player": "Dereck Lively II Dallas Mavericks",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "199",
+        "player": "Jalen Green Houston Rockets",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-199",
+        "player": "Jalen Green Houston Rockets",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "200",
+        "player": "Santi Aldama Memphis Grizzlies",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "BCV-200",
+        "player": "Santi Aldama Memphis Grizzlies",
+        "team": "",
+        "note": ""
+      }
+    ]
+  },
+  "insert_sets": [
+    {
+      "name": "PAPER PROSPECTS",
+      "count": 100,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "BPP-1",
+          "player": "AJ Dybantsa BYU\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BPP-2",
+          "player": "Darryn Peterson Kansas\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BPP-3",
+          "player": "Koa Peat Arizona\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BPP-4",
+          "player": "Kiyan Anthony Syracuse\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BPP-5",
+          "player": "Nate Ament Tennessee\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BPP-6",
+          "player": "Jasper Johnson Kentucky\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BPP-7",
+          "player": "Isiah Harwell Houston",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BPP-8",
+          "player": "Bryson Tiller Kansas\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BPP-9",
+          "player": "Obi Agbim Baylor\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BPP-10",
+          "player": "Shelton Henderson Miami\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BPP-11",
+          "player": "Tounde Yessoufou Baylor\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BPP-12",
+          "player": "Mikel Brown Jr. Louisville\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BPP-13",
+          "player": "Sienna Betts UCLA\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BPP-14",
+          "player": "Acaden Lewis Villanova\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BPP-15",
+          "player": "Madison Booker Texas",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BPP-16",
+          "player": "Jason Edwards Providence\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BPP-17",
+          "player": "Josh Dix Creighton\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BPP-18",
+          "player": "Niko Bundalo Ole Miss\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BPP-19",
+          "player": "Shon Abaev Cincinnati\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BPP-20",
+          "player": "Silas Demary Jr. UConn\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BPP-21",
+          "player": "Trey Kaufman-Renn Purdue\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BPP-22",
+          "player": "Zuby Ejiofor St. John's\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BPP-23",
+          "player": "Jaland Lowe Kentucky\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BPP-24",
+          "player": "Joe Grahovac St. Bonaventure\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BPP-25",
+          "player": "Kiyomi McMILLER Penn State\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BPP-26",
+          "player": "Michael Rataj Baylor\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BPP-27",
+          "player": "Reed Bailey Indiana\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BPP-28",
+          "player": "Xaivian Lee Florida\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BPP-29",
+          "player": "Braeden Shrewsberry Notre Dame\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BPP-30",
+          "player": "Cotie McMahon Ole Miss\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BPP-31",
+          "player": "Serah Williams UConn\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BPP-32",
+          "player": "Owen Freeman Creighton\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BPP-33",
+          "player": "Aaliyah Crump Texas",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BPP-34",
+          "player": "Agot Makeer University Of South Carolina\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BPP-35",
+          "player": "Coen Carr Michigan State\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BPP-36",
+          "player": "Darrion Williams NC State\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BPP-37",
+          "player": "Derek Dixon UNC\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BPP-38",
+          "player": "Hailee Swain Stanford\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BPP-39",
+          "player": "Kaylene Smikle Maryland\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BPP-40",
+          "player": "Milos Uzan Houston",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BPP-41",
+          "player": "Sadiq White Syracuse\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BPP-42",
+          "player": "Tarris Reed Jr. UConn\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BPP-43",
+          "player": "Wesley Yates III Washington\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BPP-44",
+          "player": "Lara Somfai Stanford\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BPP-45",
+          "player": "Christian Anderson Texas Tech\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BPP-46",
+          "player": "Davion Hannah Alabama\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BPP-47",
+          "player": "Davis Fogle Gonzaga\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BPP-48",
+          "player": "Grace Knox LSU\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BPP-49",
+          "player": "Isaiah Denis UNC\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BPP-50",
+          "player": "Addison Deal Iowa\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BPP-51",
+          "player": "Brayden Burries Arizona\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BPP-52",
+          "player": "Bryce Lindsay Villanova\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BPP-53",
+          "player": "Cam Ward Michigan State\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BPP-54",
+          "player": "Chase Ross Marquette\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BPP-55",
+          "player": "Deniya Prawl Tennessee\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BPP-56",
+          "player": "Devin McGlockton Vanderbilt\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BPP-57",
+          "player": "Donald Hand Jr. Boston College\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BPP-58",
+          "player": "Ja'Kobi Gillespie Tennessee\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BPP-59",
+          "player": "Jamier Jones Providence\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BPP-60",
+          "player": "Keyshawn Hall Auburn\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BPP-61",
+          "player": "Leah Macy Notre Dame\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BPP-62",
+          "player": "Nick Martinelli Northwestern\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BPP-63",
+          "player": "Nyla Brooks UNC\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BPP-64",
+          "player": "Pharrel Payne Maryland\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BPP-65",
+          "player": "Raegan Beers The University of Oklahoma\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BPP-66",
+          "player": "Richie Saunders BYU\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BPP-67",
+          "player": "Winters Grady Michigan\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BPP-68",
+          "player": "Yarden Garzon Maryland\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BPP-69",
+          "player": "Darianna Alexander Cincinnati\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BPP-70",
+          "player": "Jeremiah Wilkinson Georgia\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BPP-71",
+          "player": "Kara Dunn USC",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BPP-72",
+          "player": "Boopie Miller SMU\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BPP-73",
+          "player": "ZaKiyah Johnson LSU\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BPP-74",
+          "player": "Jaida Civil Tennessee\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BPP-75",
+          "player": "Alexandra Eschmeyer Stanford\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BPP-76",
+          "player": "Aliyahna Morris California\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BPP-77",
+          "player": "CJ Ingram Florida\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BPP-78",
+          "player": "John Blackwell Wisconsin\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BPP-79",
+          "player": "Tobe Awaka Arizona\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BPP-80",
+          "player": "Sarah Strong UConn\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BPP-81",
+          "player": "Tre Holloman NC State\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BPP-82",
+          "player": "Kaelyn Carroll Kentucky\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BPP-83",
+          "player": "Caleb Wilson UNC\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BPP-84",
+          "player": "Ayla McDowell University Of South Carolina\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BPP-85",
+          "player": "Emilee Skinner Duke\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BPP-86",
+          "player": "Ta'Niya Latson University Of South Carolina\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BPP-87",
+          "player": "Oziyah Sellers St. John's\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BPP-88",
+          "player": "Nate Bittle Oregon\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BPP-89",
+          "player": "Kelis Fisher UConn\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BPP-90",
+          "player": "Bennett Stirtz Iowa\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BPP-91",
+          "player": "Ace Flagg Maine",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BPP-92",
+          "player": "Nate Calmese Wake Forest\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BPP-93",
+          "player": "JT Toppin Texas Tech\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BPP-94",
+          "player": "Braden Smith Purdue\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BPP-95",
+          "player": "Kohl Rosario Kansas\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BPP-96",
+          "player": "Juju Watkins USC",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BPP-97",
+          "player": "Brandon Garrison Kentucky\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BPP-98",
+          "player": "Otega Oweh Kentucky\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BPP-99",
+          "player": "Sebastian Wilkins Duke\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BPP-100",
+          "player": "Caleb Foster Duke\u00ae",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "CHROME PROSPECTS",
+      "count": 100,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "BCP-1",
+          "player": "AJ Dybantsa BYU\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BCP-2",
+          "player": "Darryn Peterson Kansas\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BCP-3",
+          "player": "Koa Peat Arizona\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BCP-4",
+          "player": "Kiyan Anthony Syracuse\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BCP-5",
+          "player": "Nate Ament Tennessee\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BCP-6",
+          "player": "Jasper Johnson Kentucky\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BCP-7",
+          "player": "Isiah Harwell Houston",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BCP-8",
+          "player": "Bryson Tiller Kansas\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BCP-9",
+          "player": "Obi Agbim Baylor\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BCP-10",
+          "player": "Shelton Henderson Miami\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BCP-11",
+          "player": "Tounde Yessoufou Baylor\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BCP-12",
+          "player": "Mikel Brown Jr. Louisville\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BCP-13",
+          "player": "Sienna Betts UCLA\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BCP-14",
+          "player": "Acaden Lewis Villanova\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BCP-15",
+          "player": "Madison Booker Texas",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BCP-16",
+          "player": "Jason Edwards Providence\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BCP-17",
+          "player": "Josh Dix Creighton\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BCP-18",
+          "player": "Niko Bundalo Ole Miss\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BCP-19",
+          "player": "Shon Abaev Cincinnati\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BCP-20",
+          "player": "Silas Demary Jr. UConn\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BCP-21",
+          "player": "Trey Kaufman-Renn Purdue\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BCP-22",
+          "player": "Zuby Ejiofor St. John's\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BCP-23",
+          "player": "Jaland Lowe Kentucky\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BCP-24",
+          "player": "Joe Grahovac St. Bonaventure\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BCP-25",
+          "player": "Kiyomi McMILLER Penn State\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BCP-26",
+          "player": "Michael Rataj Baylor\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BCP-27",
+          "player": "Reed Bailey Indiana\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BCP-28",
+          "player": "Xaivian Lee Florida\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BCP-29",
+          "player": "Braeden Shrewsberry Notre Dame\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BCP-30",
+          "player": "Cotie McMahon Ole Miss\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BCP-31",
+          "player": "Serah Williams UConn\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BCP-32",
+          "player": "Owen Freeman Creighton\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BCP-33",
+          "player": "Aaliyah Crump Texas",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BCP-34",
+          "player": "Agot Makeer University Of South Carolina\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BCP-35",
+          "player": "Coen Carr Michigan State\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BCP-36",
+          "player": "Darrion Williams NC State\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BCP-37",
+          "player": "Derek Dixon UNC\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BCP-38",
+          "player": "Hailee Swain Stanford\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BCP-39",
+          "player": "Kaylene Smikle Maryland\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BCP-40",
+          "player": "Milos Uzan Houston",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BCP-41",
+          "player": "Sadiq White Syracuse\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BCP-42",
+          "player": "Tarris Reed Jr. UConn\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BCP-43",
+          "player": "Wesley Yates III Washington\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BCP-44",
+          "player": "Lara Somfai Stanford\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BCP-45",
+          "player": "Christian Anderson Texas Tech\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BCP-46",
+          "player": "Davion Hannah Alabama\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BCP-47",
+          "player": "Davis Fogle Gonzaga\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BCP-48",
+          "player": "Grace Knox LSU\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BCP-49",
+          "player": "Isaiah Denis UNC\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BCP-50",
+          "player": "Addison Deal Iowa\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BCP-51",
+          "player": "Brayden Burries Arizona\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BCP-52",
+          "player": "Bryce Lindsay Villanova\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BCP-53",
+          "player": "Cam Ward Michigan State\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BCP-54",
+          "player": "Chase Ross Marquette\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BCP-55",
+          "player": "Deniya Prawl Tennessee\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BCP-56",
+          "player": "Devin McGlockton Vanderbilt\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BCP-57",
+          "player": "Donald Hand Jr. Boston College\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BCP-58",
+          "player": "Ja'Kobi Gillespie Tennessee\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BCP-59",
+          "player": "Jamier Jones Providence\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BCP-60",
+          "player": "Keyshawn Hall Auburn\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BCP-61",
+          "player": "Leah Macy Notre Dame\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BCP-62",
+          "player": "Nick Martinelli Northwestern\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BCP-63",
+          "player": "Nyla Brooks UNC\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BCP-64",
+          "player": "Pharrel Payne Maryland\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BCP-65",
+          "player": "Raegan Beers The University of Oklahoma\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BCP-66",
+          "player": "Richie Saunders BYU\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BCP-67",
+          "player": "Winters Grady Michigan\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BCP-68",
+          "player": "Yarden Garzon Maryland\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BCP-69",
+          "player": "Darianna Alexander Cincinnati\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BCP-70",
+          "player": "Jeremiah Wilkinson Georgia\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BCP-71",
+          "player": "Kara Dunn USC",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BCP-72",
+          "player": "Boopie Miller SMU\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BCP-73",
+          "player": "ZaKiyah Johnson LSU\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BCP-74",
+          "player": "Jaida Civil Tennessee\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BCP-75",
+          "player": "Alexandra Eschmeyer Stanford\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BCP-76",
+          "player": "Aliyahna Morris California\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BCP-77",
+          "player": "CJ Ingram Florida\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BCP-78",
+          "player": "John Blackwell Wisconsin\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BCP-79",
+          "player": "Tobe Awaka Arizona\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BCP-80",
+          "player": "Sarah Strong UConn\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BCP-81",
+          "player": "Tre Holloman NC State\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BCP-82",
+          "player": "Kaelyn Carroll Kentucky\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BCP-83",
+          "player": "Caleb Wilson UNC\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BCP-84",
+          "player": "Ayla McDowell University Of South Carolina\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BCP-85",
+          "player": "Emilee Skinner Duke\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BCP-86",
+          "player": "Ta'Niya Latson University Of South Carolina\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BCP-87",
+          "player": "Oziyah Sellers St. John's\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BCP-88",
+          "player": "Nate Bittle Oregon\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BCP-89",
+          "player": "Kelis Fisher UConn\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BCP-90",
+          "player": "Bennett Stirtz Iowa\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BCP-91",
+          "player": "Ace Flagg Maine",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BCP-92",
+          "player": "Nate Calmese Wake Forest\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BCP-93",
+          "player": "JT Toppin Texas Tech\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BCP-94",
+          "player": "Braden Smith Purdue\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BCP-95",
+          "player": "Kohl Rosario Kansas\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BCP-96",
+          "player": "Juju Watkins USC",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BCP-97",
+          "player": "Brandon Garrison Kentucky\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BCP-98",
+          "player": "Otega Oweh Kentucky\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BCP-99",
+          "player": "Sebastian Wilkins Duke\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BCP-100",
+          "player": "Caleb Foster Duke\u00ae",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "MEGA ROOKIES",
+      "count": 25,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "MR-1",
+          "player": "Cooper Flagg Dallas Mavericks",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "MR-2",
+          "player": "Dylan Harper San Antonio Spurs",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "MR-3",
+          "player": "VJ Edgecombe Philadelphia 76ers",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "MR-4",
+          "player": "Kon Knueppel Charlotte Hornets",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "MR-5",
+          "player": "Ace Bailey Utah Jazz",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "MR-6",
+          "player": "Tre Johnson III Washington Wizards",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "MR-7",
+          "player": "Jeremiah Fears New Orleans Pelicans",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "MR-8",
+          "player": "Egor D\u00ebmin Brooklyn Nets",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "MR-9",
+          "player": "Collin Murray-Boyles Toronto Raptors",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "MR-10",
+          "player": "Khaman Maluach Phoenix Suns",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "MR-11",
+          "player": "Cedric Coward Memphis Grizzlies",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "MR-12",
+          "player": "Noa Essengue Chicago Bulls",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "MR-13",
+          "player": "Derik Queen New Orleans Pelicans",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "MR-14",
+          "player": "Carter Bryant San Antonio Spurs",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "MR-15",
+          "player": "Thomas Sorber Oklahoma City Thunder",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "MR-16",
+          "player": "Yang Hansen Portland Trail Blazers",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "MR-17",
+          "player": "Joan Beringer Minnesota Timberwolves",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "MR-18",
+          "player": "Walter Clayton Jr. Utah Jazz",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "MR-19",
+          "player": "Nolan Traore Brooklyn Nets",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "MR-20",
+          "player": "Kasparas Jakuc\u030cionis Miami Heat",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "MR-21",
+          "player": "Will Riley Washington Wizards",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "MR-22",
+          "player": "Drake Powell Brooklyn Nets",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "MR-23",
+          "player": "Asa Newell Atlanta Hawks",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "MR-24",
+          "player": "Nique Clifford Sacramento Kings",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "MR-25",
+          "player": "Danny Wolf Brooklyn Nets",
+          "team": "",
+          "note": "Rookie"
+        }
+      ]
+    },
+    {
+      "name": "MEGA PROSPECTS",
+      "count": 25,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "MP-1",
+          "player": "AJ Dybantsa BYU\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MP-2",
+          "player": "Darryn Peterson Kansas\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MP-3",
+          "player": "Koa Peat Arizona\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MP-4",
+          "player": "Emilee Skinner Duke\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MP-5",
+          "player": "Sarah Strong UConn\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MP-6",
+          "player": "Sienna Betts UCLA\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MP-7",
+          "player": "Raegan Beers The University of Oklahoma\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MP-8",
+          "player": "Juju Watkins USC",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MP-9",
+          "player": "Caleb Wilson UNC\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MP-10",
+          "player": "Nate Ament Tennessee\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MP-11",
+          "player": "Otega Oweh Kentucky\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MP-12",
+          "player": "Sebastian Wilkins Duke\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MP-13",
+          "player": "Hailee Swain Stanford\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MP-14",
+          "player": "Kaylene Smikle Maryland\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MP-15",
+          "player": "Milos Uzan Houston",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MP-16",
+          "player": "Sadiq White Syracuse\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MP-17",
+          "player": "Tarris Reed Jr. UConn\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MP-18",
+          "player": "Wesley Yates III Washington\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MP-19",
+          "player": "Lara Somfai Stanford\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MP-20",
+          "player": "Christian Anderson Texas Tech\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MP-21",
+          "player": "Davion Hannah Alabama\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MP-22",
+          "player": "Davis Fogle Gonzaga\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MP-23",
+          "player": "Grace Knox LSU\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MP-24",
+          "player": "Isaiah Denis UNC\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MP-25",
+          "player": "Addison Deal Iowa\u2122",
+          "team": "",
+          "note": ""
+        }
+      ]
+    }
+  ],
+  "autograph_sets": [],
+  "memorabilia_sets": [],
+  "team_sets": {}
+}
