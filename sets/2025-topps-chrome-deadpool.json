@@ -1,0 +1,1617 @@
+{
+  "set": "2025 Topps Chrome Deadpool",
+  "release_date": "2025",
+  "set_size": 0,
+  "product_info": {},
+  "box_contents": {},
+  "parallels": [],
+  "base_set": {
+    "count": 0,
+    "cards": []
+  },
+  "insert_sets": [
+    {
+      "name": "COMIC ACCURATE",
+      "count": 20,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "1",
+          "player": "Deadpool",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "2",
+          "player": "Old Man Logan",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "3",
+          "player": "Cable",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "4",
+          "player": "Domino",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "5",
+          "player": "Wolverine",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "6",
+          "player": "Colossus",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "7",
+          "player": "Sabretooth",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "8",
+          "player": "Psylocke",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "9",
+          "player": "Juggernaut",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "10",
+          "player": "Gambit",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "11",
+          "player": "Pyro",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "12",
+          "player": "Toad",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "13",
+          "player": "Lady Deathstrike",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "14",
+          "player": "Blob",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "15",
+          "player": "X-23",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "16",
+          "player": "Weapon X",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "17",
+          "player": "Elektra",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "18",
+          "player": "Blade",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "19",
+          "player": "Bullseye",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "20",
+          "player": "Patch",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "CHARACTERS",
+      "count": 26,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "21",
+          "player": "Deadpool",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "22",
+          "player": "Mr. Paradox",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "23",
+          "player": "Peter",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "24",
+          "player": "Headpool",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "25",
+          "player": "Pyro",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "26",
+          "player": "Negasonic Teenage Warhead",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "27",
+          "player": "Ladypool",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "28",
+          "player": "Dogpool",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "29",
+          "player": "Happy Hogan",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "30",
+          "player": "Wolverine",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "31",
+          "player": "Wade Wilson",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "32",
+          "player": "Blind Al",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "33",
+          "player": "Juggernaut",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "34",
+          "player": "Russian",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "35",
+          "player": "B-15",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "36",
+          "player": "Cowboypool",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "37",
+          "player": "Welshpool",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "38",
+          "player": "Kidpool",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "39",
+          "player": "Babypool",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "40",
+          "player": "Toad",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "41",
+          "player": "Sabretooth",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "42",
+          "player": "X-23",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "43",
+          "player": "Dopinder",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "44",
+          "player": "Shatterstar",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "45",
+          "player": "Quill",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "46",
+          "player": "Cassandra Nova",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "MULTIVERSE AND MORE",
+      "count": 54,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "47",
+          "player": "The Adventure Begins",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "48",
+          "player": "Searching for Logan",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "49",
+          "player": "Minutemen In Pursuit",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "50",
+          "player": "Hiding From The TVA",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "51",
+          "player": "Deadpool Strikes Back",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "52",
+          "player": "An All-Out Brawl",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "53",
+          "player": "Taking Matters Into His Own Hands",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "54",
+          "player": "Advanced Weaponry",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "55",
+          "player": "Wade's Big Interview",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "56",
+          "player": "The Scheming Mr. Paradox",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "57",
+          "player": "The TVA Office",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "58",
+          "player": "Fashion and Function",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "59",
+          "player": "Enjoying His New Threads",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "60",
+          "player": "Face-To-Face With The Hulk",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "61",
+          "player": "Finding The Cavillrine",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "62",
+          "player": "Deadpool Finds His Logan",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "63",
+          "player": "Fleeing The TVA",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "64",
+          "player": "First Tango With Wolverine",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "65",
+          "player": "Patrolling The Void",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "66",
+          "player": "The FantastiCar",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "67",
+          "player": "A Fiery Entrance",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "68",
+          "player": "Pyro's Fury",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "69",
+          "player": "Fighting Fire With Fire",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "70",
+          "player": "Magnet Trap",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "71",
+          "player": "The Nefarious Cassandra Nova",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "72",
+          "player": "Deadpool's Baby Knife",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "73",
+          "player": "Dogpool Taking A Stroll",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "74",
+          "player": "A Pool's Best Friend",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "75",
+          "player": "Ready For Round 2",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "76",
+          "player": "Aftermath",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "77",
+          "player": "Waking Up In A Den of Rebels",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "78",
+          "player": "A Reminder Of What You Are",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "79",
+          "player": "Fracas In The Fortress",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "80",
+          "player": "All Or Nothing",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "81",
+          "player": "Unstoppable",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "82",
+          "player": "Battle Prowess",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "83",
+          "player": "Special Delivery",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "84",
+          "player": "Caught In The Action",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "85",
+          "player": "Subdued by Cassandra",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "86",
+          "player": "The Coup Gone Wrong",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "87",
+          "player": "Cassandra's Wrath",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "88",
+          "player": "Into Logan's Mind",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "89",
+          "player": "A Way Back",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "90",
+          "player": "A Daring Escape",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "91",
+          "player": "Cassandra Exits The Void",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "92",
+          "player": "A Dire Situation",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "93",
+          "player": "Standoff with Cowboypool",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "94",
+          "player": "Mercenary Melee",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "95",
+          "player": "Variant Madness",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "96",
+          "player": "A Momentary Pause In Chaos",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "97",
+          "player": "An Army of Two",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "98",
+          "player": "Accessing The Time Ripper",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "99",
+          "player": "Destroying All Timelines",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "100",
+          "player": "Disrupting Cassandra's Plot",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "COMIC BOOK GOLD",
+      "count": 30,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "CB-1",
+          "player": "Deadpool",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CB-2",
+          "player": "Deadpool",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CB-3",
+          "player": "Deadpool",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CB-4",
+          "player": "Wade Wilson",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CB-5",
+          "player": "Wild Thing",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CB-6",
+          "player": "Wolverine",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CB-7",
+          "player": "Wolverine",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CB-8",
+          "player": "Wolverine",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CB-9",
+          "player": "Old Man Logan",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CB-10",
+          "player": "Weapon X",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CB-11",
+          "player": "Ultimate Wolverine",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CB-12",
+          "player": "Patch",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CB-13",
+          "player": "Cable",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CB-14",
+          "player": "Evil Deadpool",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CB-15",
+          "player": "Archangel",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CB-16",
+          "player": "Colossus",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CB-17",
+          "player": "Domino",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CB-18",
+          "player": "X-23",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CB-19",
+          "player": "Professor X",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CB-20",
+          "player": "Lady Deadpool",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CB-21",
+          "player": "Headpool",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CB-22",
+          "player": "Kidpool",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CB-23",
+          "player": "King Deadpool",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CB-24",
+          "player": "Zenpool",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CB-25",
+          "player": "Deadpool 2099",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CB-26",
+          "player": "Ultimate Deadpool",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CB-27",
+          "player": "Fantomex",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CB-28",
+          "player": "Dreadpool",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CB-29",
+          "player": "Psylocke",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CB-30",
+          "player": "Nightcrawler",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "COVER STARS",
+      "count": 30,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "CS-1",
+          "player": "Deadpool / Wolverine #2",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CS-2",
+          "player": "Deadpool #27",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CS-3",
+          "player": "Deadpool & Wolverine: WWIII #3",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CS-4",
+          "player": "Deadpool & Wolverine: WWIII #1",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CS-5",
+          "player": "Deadpool #1",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CS-6",
+          "player": "Deadpool #4",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CS-7",
+          "player": "Wolverine: Deep Cut #1",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CS-8",
+          "player": "The Avengers #16",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CS-9",
+          "player": "X-Men: Heir of Apocalypse #3",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CS-10",
+          "player": "X-Men: Blood Hunt - Laura Kinney The Wolverine #1",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CS-11",
+          "player": "Hellverine #3",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CS-12",
+          "player": "Wolverine #20",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CS-13",
+          "player": "The Immortal Thor #13",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CS-14",
+          "player": "The Avengers #17",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CS-15",
+          "player": "Captain America #11",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CS-16",
+          "player": "Fantastic Four #22",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CS-17",
+          "player": "The Spectacular Spider-Men #6",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CS-18",
+          "player": "Spider-Gwen: The Ghost-Spider #3",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CS-19",
+          "player": "X-Men #2",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CS-20",
+          "player": "Deadpool Vs. Wolverine: Slash 'Em Up Infinity Comic #1",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CS-21",
+          "player": "Deadpool #1",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CS-22",
+          "player": "Deadpool Vs. Wolverine: Slash 'Em Up Infinity Comic #3",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CS-23",
+          "player": "Deadpool / Wolverine #7",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CS-24",
+          "player": "Deadpool / Wolverine #1",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CS-25",
+          "player": "Wolverine: Origins #25",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CS-26",
+          "player": "Wolverines & Deadpools #1",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CS-27",
+          "player": "Wolverines & Deadpools #1",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CS-28",
+          "player": "Wolverines & Deadpools #2",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CS-29",
+          "player": "The New Mutants #98",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CS-30",
+          "player": "The Incredible Hulk #181",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "WELL YOU GOT NOTHING TO SAY MOUTH",
+      "count": 10,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "WM-01",
+          "player": "Deadpool",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WM-02",
+          "player": "Wolverine",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WM-03",
+          "player": "Deadpool",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WM-04",
+          "player": "Deadpool",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WM-05",
+          "player": "Deadpool",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WM-06",
+          "player": "Wolverine",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WM-07",
+          "player": "Deadpool",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WM-08",
+          "player": "Deadpool",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WM-09",
+          "player": "Cassandra Nova",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WM-10",
+          "player": "Wolverine",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "FUTURE STARS",
+      "count": 10,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "FS-1",
+          "player": "Cowboypool",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FS-2",
+          "player": "Welshpool",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FS-3",
+          "player": "Babypool",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FS-4",
+          "player": "Golden Age Deadpool",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FS-5",
+          "player": "Deadpool 2099",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FS-6",
+          "player": "Headpool",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FS-7",
+          "player": "Kidpool",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FS-8",
+          "player": "Dogpool",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FS-9",
+          "player": "Ladypool",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FS-10",
+          "player": "Zenpool",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "TOPPS ORIGINALS",
+      "count": 10,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "TO-1",
+          "player": "Deadpool",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TO-2",
+          "player": "Psylocke",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TO-3",
+          "player": "Lady Deadpool",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TO-4",
+          "player": "Juggernaut",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TO-5",
+          "player": "Wolverine",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TO-6",
+          "player": "Cable",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TO-7",
+          "player": "Colossus",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TO-8",
+          "player": "Gambit",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TO-9",
+          "player": "X-23",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TO-10",
+          "player": "Sabretooth",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "10005 FIRE",
+      "count": 9,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "FO-1",
+          "player": "Pyro",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FO-2",
+          "player": "Cassandra Nova",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FO-3",
+          "player": "X-23",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FO-4",
+          "player": "Juggernaut",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FO-5",
+          "player": "Colossus",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FO-6",
+          "player": "Sabretooth",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FO-7",
+          "player": "Peter",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FO-9",
+          "player": "Negasonic Teenage Warhead",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FO-10",
+          "player": "Mr. Paradox",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "BEST BUBS",
+      "count": 9,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "NC-1",
+          "player": "Deadpool",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NC-2",
+          "player": "Wolverine",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NC-3",
+          "player": "Blind Al",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NC-4",
+          "player": "Dogpool",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NC-5",
+          "player": "Vanessa",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NC-6",
+          "player": "Peter",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NC-8",
+          "player": "Negasonic Teenage Warhead",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NC-9",
+          "player": "X-23",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NC-10",
+          "player": "Johnny Storm",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "LOOKING FOR LOGAN",
+      "count": 5,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "LL-1",
+          "player": "Classic Brown-and-Tan Wolverine",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LL-2",
+          "player": "The Cavillrine",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LL-3",
+          "player": "Short King Wolverine",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LL-4",
+          "player": "Fever Dream Wolverine",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LL-5",
+          "player": "Wolverine",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "INDESTRUCTIBLE",
+      "count": 5,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "I-1",
+          "player": "Wolverine",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "I-2",
+          "player": "Dogpool",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "I-3",
+          "player": "X-23",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "I-4",
+          "player": "Juggernaut",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "I-5",
+          "player": "Deadpool",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "DEADPOOL REFLECTIONS",
+      "count": 5,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "DE-1",
+          "player": "Psylocke & Deadpool",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "DE-2",
+          "player": "Wolverine & Deadpool",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "DE-3",
+          "player": "Cable & Deadpool",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "DE-4",
+          "player": "Deadpool & Colossus",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "DE-5",
+          "player": "Wolverine & Gambit",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "HIDDEN GEMS",
+      "count": 5,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "HG-1",
+          "player": "Deadpool",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HG-2",
+          "player": "Wolverine",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HG-3",
+          "player": "Cassandra Nova",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HG-4",
+          "player": "X-23",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HG-5",
+          "player": "Pyro",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "THE VOID",
+      "count": 10,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "TV-1",
+          "player": "Deadpool",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TV-2",
+          "player": "Wolverine",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TV-3",
+          "player": "Cassandra Nova",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TV-4",
+          "player": "Pyro",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TV-5",
+          "player": "Juggernaut",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TV-6",
+          "player": "X-23",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TV-7",
+          "player": "Sabretooth",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TV-8",
+          "player": "Toad",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TV-9",
+          "player": "Azazel",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TV-10",
+          "player": "Russian",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "DEADPOOL ICONS",
+      "count": 10,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "DI-1",
+          "player": "Deadpool",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "DI-2",
+          "player": "Cable",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "DI-3",
+          "player": "Domino",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "DI-4",
+          "player": "Gambit",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "DI-5",
+          "player": "X-23",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "DI-6",
+          "player": "Nightcrawler",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "DI-7",
+          "player": "Elektra",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "DI-8",
+          "player": "Blade",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "DI-9",
+          "player": "Rogue",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "DI-10",
+          "player": "Wolverine",
+          "team": "",
+          "note": ""
+        }
+      ]
+    }
+  ],
+  "autograph_sets": [],
+  "memorabilia_sets": [],
+  "team_sets": {}
+}
