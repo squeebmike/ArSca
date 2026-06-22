@@ -1,0 +1,85 @@
+{
+  "set": "2026 Topps Collector Kit",
+  "release_date": "2026",
+  "set_size": 5,
+  "product_info": {},
+  "box_contents": {},
+  "parallels": [],
+  "base_set": {
+    "count": 5,
+    "cards": [
+      {
+        "number": "MLB-1",
+        "player": "Shohei Ohtani Los Angeles Dodgers\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "MLB-2",
+        "player": "Roman Anthony Boston Red Sox\u00ae",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "MLB-3",
+        "player": "Jac Caglianone Kansas City Royals\u00ae",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "MLB-4",
+        "player": "Francisco Lindor New York Mets\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "MLB-5",
+        "player": "Ronald Acu\u00f1a Jr. Atlanta Braves\u2122",
+        "team": "",
+        "note": ""
+      }
+    ]
+  },
+  "insert_sets": [
+    {
+      "name": "COLLECTOR KIT CARDS BASKETBALL",
+      "count": 5,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "NBA-6",
+          "player": "Cooper Flagg Dallas Mavericks",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "NBA-7",
+          "player": "Victor Wembanyama San Antonio Spurs",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NBA-8",
+          "player": "Ace Bailey Utah Jazz",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "NBA-9",
+          "player": "Egor D\u00ebmin Brooklyn Nets",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "NBA-10",
+          "player": "Kevin Durant Houston Rockets",
+          "team": "",
+          "note": ""
+        }
+      ]
+    }
+  ],
+  "autograph_sets": [],
+  "memorabilia_sets": [],
+  "team_sets": {}
+}
