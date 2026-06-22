@@ -1,0 +1,1470 @@
+{
+  "set": "2025-26 Bowman University Best Basketball",
+  "release_date": "2025-26",
+  "set_size": 100,
+  "product_info": {},
+  "box_contents": {},
+  "parallels": [],
+  "base_set": {
+    "count": 100,
+    "cards": [
+      {
+        "number": "1",
+        "player": "Braden Smith Purdue\u2122",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "2",
+        "player": "Obi Agbim Baylor\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "3",
+        "player": "Ryan Conwell Louisville\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "4",
+        "player": "Kam Williams Kentucky\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "5",
+        "player": "Malik Reneau Miami\u2122",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "6",
+        "player": "Tre Donaldson Miami\u2122",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "7",
+        "player": "Robert McCray V Florida State\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "8",
+        "player": "Tylis Jordan Ole Miss\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "9",
+        "player": "AJ Dybantsa BYU\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "10",
+        "player": "Darryn Peterson Kansas\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "11",
+        "player": "Koa Peat Arizona\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "12",
+        "player": "Kiyan Anthony Syracuse\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "13",
+        "player": "Nate Ament Tennessee\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "14",
+        "player": "Jasper Johnson Kentucky\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "15",
+        "player": "Isiah Harwell Houston",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "16",
+        "player": "Bryson Tiller Kansas\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "17",
+        "player": "Dwayne Aristode Arizona\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "18",
+        "player": "Shelton Henderson Miami\u2122",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "19",
+        "player": "Tounde Yessoufou Baylor\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "20",
+        "player": "Mikel Brown Jr. Louisville\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "21",
+        "player": "Sienna Betts UCLA\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "22",
+        "player": "Acaden Lewis Villanova\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "23",
+        "player": "Madison Booker Texas",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "24",
+        "player": "Jason Edwards Providence\u2122",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "25",
+        "player": "Josh Dix Creighton\u2122",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "26",
+        "player": "Niko Bundalo Ole Miss\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "27",
+        "player": "Shon Abaev Cincinnati\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "28",
+        "player": "Silas Demary Jr. UConn\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "29",
+        "player": "Trey Kaufman-Renn Purdue\u2122",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "30",
+        "player": "Zuby Ejiofor St. John's\u2122",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "31",
+        "player": "Jaland Lowe Kentucky\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "32",
+        "player": "Joe Grahovac St. Bonaventure\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "33",
+        "player": "Kiyomi McMiller Penn State\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "34",
+        "player": "Michael Rataj Baylor\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "35",
+        "player": "Reed Bailey Indiana\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "36",
+        "player": "Xaivian Lee Florida\u2122",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "37",
+        "player": "Braeden Shrewsberry Notre Dame\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "38",
+        "player": "Cotie McMahon Ole Miss\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "39",
+        "player": "Serah Williams UConn\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "40",
+        "player": "Owen Freeman Creighton\u2122",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "41",
+        "player": "Aaliyah Crump Texas",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "42",
+        "player": "Agot Makeer University Of South Carolina\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "43",
+        "player": "Coen Carr Michigan State\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "44",
+        "player": "Darrion Williams NC State\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "45",
+        "player": "Derek Dixon UNC\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "46",
+        "player": "Hailee Swain Stanford\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "47",
+        "player": "Kaylene Smikle Maryland\u2122",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "48",
+        "player": "Milos Uzan Houston",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "49",
+        "player": "Sadiq White Jr. Syracuse\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "50",
+        "player": "Tarris Reed Jr. UConn\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "51",
+        "player": "Wesley Yates III Washington Huskies",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "52",
+        "player": "Lara Somfai Stanford\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "53",
+        "player": "Christian Anderson Texas Tech\u2122",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "54",
+        "player": "Davion Hannah Alabama\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "55",
+        "player": "Davis Fogle Gonzaga\u2122",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "56",
+        "player": "Grace Knox LSU\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "57",
+        "player": "Isaiah Denis UNC\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "58",
+        "player": "Addison Deal Iowa\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "59",
+        "player": "Brayden Burries Arizona\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "60",
+        "player": "Bryce Lindsay Villanova\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "61",
+        "player": "Cam Ward Michigan State\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "62",
+        "player": "Kohl Rosario Kansas\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "63",
+        "player": "Deniya Prawl Tennessee\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "64",
+        "player": "Devin McGlockton Vanderbilt\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "65",
+        "player": "Donald Hand Jr. Boston College\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "66",
+        "player": "Juju Watkins USC",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "67",
+        "player": "Jamier Jones Providence\u2122",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "68",
+        "player": "Keyshawn Hall Auburn\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "69",
+        "player": "Cameron Boozer Duke\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "70",
+        "player": "Nick Martinelli Northwestern\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "71",
+        "player": "Nyla Brooks UNC\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "72",
+        "player": "Pharrel Payne Maryland\u2122",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "73",
+        "player": "Raegan Beers The University of Oklahoma\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "74",
+        "player": "Richie Saunders BYU\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "75",
+        "player": "Winters Grady Michigan\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "76",
+        "player": "Yarden Garzon Maryland\u2122",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "77",
+        "player": "Darianna Alexander Cincinnati\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "78",
+        "player": "Jeremiah Wilkinson Georgia\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "79",
+        "player": "Kara Dunn USC",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "80",
+        "player": "Boopie Miller SMU\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "81",
+        "player": "ZaKiyah Johnson LSU\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "82",
+        "player": "Jaida Civil Tennessee\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "83",
+        "player": "Alexandra Eschmeyer Stanford\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "84",
+        "player": "Aliyahna Morris California\u2122",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "85",
+        "player": "Otega Oweh Kentucky\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "86",
+        "player": "John Blackwell Wisconsin\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "87",
+        "player": "Tobe Awaka Arizona\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "88",
+        "player": "Sarah Strong UConn\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "89",
+        "player": "Tre Holloman NC State\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "90",
+        "player": "Kaelyn Carroll Kentucky\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "91",
+        "player": "Caleb Wilson UNC\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "92",
+        "player": "Ayla McDowell University Of South Carolina\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "93",
+        "player": "Emilee Skinner Duke\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "94",
+        "player": "Ta'Niya Latson University Of South Carolina\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "95",
+        "player": "Oziyah Sellers St. John's\u2122",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "96",
+        "player": "Nate Bittle Oregon\u2122",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "97",
+        "player": "Cayden Boozer Duke\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "98",
+        "player": "Bennett Stirtz Iowa\u00ae",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "99",
+        "player": "JT Toppin Texas Tech\u2122",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "100",
+        "player": "Nate Calmese Wake Forest\u00ae",
+        "team": "",
+        "note": ""
+      }
+    ]
+  },
+  "insert_sets": [
+    {
+      "name": "TONE SETTERS",
+      "count": 40,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "TS-1",
+          "player": "AJ Dybantsa BYU\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TS-2",
+          "player": "Darryn Peterson Kansas\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TS-3",
+          "player": "Koa Peat Arizona\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TS-4",
+          "player": "Kiyan Anthony Syracuse\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TS-5",
+          "player": "Nate Ament Tennessee\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TS-6",
+          "player": "Jasper Johnson Kentucky\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TS-7",
+          "player": "Isiah Harwell Houston",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TS-8",
+          "player": "Bryson Tiller Kansas\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TS-9",
+          "player": "Dwayne Aristode Arizona\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TS-10",
+          "player": "Shelton Henderson Miami\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TS-11",
+          "player": "Tounde Yessoufou Baylor\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TS-12",
+          "player": "Mikel Brown Jr. Louisville\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TS-13",
+          "player": "Sienna Betts UCLA\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TS-14",
+          "player": "Acaden Lewis Villanova\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TS-15",
+          "player": "Madison Booker Texas",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TS-16",
+          "player": "Raegan Beers The University of Oklahoma\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TS-17",
+          "player": "Richie Saunders BYU\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TS-18",
+          "player": "Braden Smith Purdue\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TS-19",
+          "player": "Kohl Rosario Kansas\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TS-20",
+          "player": "Ja'Kobi Gillespie Tennessee\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TS-21",
+          "player": "Brandon Garrison Kentucky\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TS-22",
+          "player": "Otega Oweh Kentucky\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TS-23",
+          "player": "Christian Anderson Texas Tech\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TS-24",
+          "player": "Davion Hannah Alabama\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TS-25",
+          "player": "Davis Fogle Gonzaga\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TS-26",
+          "player": "Grace Knox LSU\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TS-27",
+          "player": "Isaiah Denis UNC\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TS-28",
+          "player": "Addison Deal Iowa\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TS-29",
+          "player": "Brayden Burries Arizona\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TS-30",
+          "player": "Caleb Wilson UNC\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TS-31",
+          "player": "Cam Ward Michigan State\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TS-32",
+          "player": "Sarah Strong UConn\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TS-33",
+          "player": "Bennett Stirtz Iowa\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TS-34",
+          "player": "JT Toppin Texas Tech\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TS-35",
+          "player": "Milos Uzan Houston",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TS-36",
+          "player": "Trey Kaufman-Renn Purdue\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TS-37",
+          "player": "Keyshawn Hall Auburn\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TS-38",
+          "player": "John Blackwell Wisconsin\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TS-39",
+          "player": "Xaivian Lee Florida\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TS-40",
+          "player": "Juju Watkins USC",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "BOWMAN MASTERPIECES",
+      "count": 40,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "BM-1",
+          "player": "Juju Watkins USC",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BM-2",
+          "player": "AJ Dybantsa BYU\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BM-3",
+          "player": "Darryn Peterson Kansas\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BM-4",
+          "player": "Koa Peat Arizona\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BM-5",
+          "player": "Kiyan Anthony Syracuse\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BM-6",
+          "player": "Nate Ament Tennessee\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BM-7",
+          "player": "Jasper Johnson Kentucky\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BM-8",
+          "player": "Isiah Harwell Houston",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BM-9",
+          "player": "Bryson Tiller Kansas\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BM-10",
+          "player": "Dwayne Aristode Arizona\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BM-11",
+          "player": "Shelton Henderson Miami\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BM-12",
+          "player": "Tounde Yessoufou Baylor\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BM-13",
+          "player": "Mikel Brown Jr. Louisville\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BM-14",
+          "player": "Sienna Betts UCLA\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BM-15",
+          "player": "Acaden Lewis Villanova\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BM-16",
+          "player": "Madison Booker Texas",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BM-17",
+          "player": "Raegan Beers The University of Oklahoma\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BM-18",
+          "player": "Leah Macy Notre Dame\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BM-19",
+          "player": "Nick Martinelli Northwestern\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BM-20",
+          "player": "Nyla Brooks UNC\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BM-21",
+          "player": "Caleb Wilson UNC\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BM-22",
+          "player": "Emilee Skinner Duke\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BM-23",
+          "player": "Ta'Niya Latson University Of South Carolina\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BM-24",
+          "player": "Kiyomi McMiller Penn State\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BM-25",
+          "player": "Cotie McMahon Ole Miss\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BM-26",
+          "player": "Serah Williams UConn\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BM-27",
+          "player": "Shon Abaev Cincinnati\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BM-28",
+          "player": "Silas Demary Jr. UConn\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BM-29",
+          "player": "Trey Kaufman-Renn Purdue\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BM-30",
+          "player": "Zuby Ejiofor St. John's\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BM-31",
+          "player": "Jaland Lowe Kentucky\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BM-32",
+          "player": "Joe Grahovac St. Bonaventure\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BM-33",
+          "player": "Aaliyah Crump Texas",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BM-34",
+          "player": "Agot Makeer University Of South Carolina\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BM-35",
+          "player": "Coen Carr Michigan State\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BM-36",
+          "player": "Darrion Williams NC State\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BM-37",
+          "player": "Derek Dixon UNC\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BM-38",
+          "player": "Hailee Swain Stanford\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BM-39",
+          "player": "Kaylene Smikle Maryland\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BM-40",
+          "player": "Milos Uzan Houston",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "BREAKING BARRIERS",
+      "count": 20,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "BB-1",
+          "player": "Juju Watkins USC",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BB-2",
+          "player": "Sienna Betts UCLA\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BB-3",
+          "player": "Madison Booker Texas",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BB-4",
+          "player": "Cotie McMahon Ole Miss\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BB-5",
+          "player": "Serah Williams UConn\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BB-6",
+          "player": "Agot Makeer University Of South Carolina\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BB-7",
+          "player": "Aaliyah Crump Texas",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BB-8",
+          "player": "Hailee Swain Stanford\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BB-9",
+          "player": "Kaylene Smikle Maryland\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BB-10",
+          "player": "Lara Somfai Stanford\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BB-11",
+          "player": "Grace Knox LSU\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BB-12",
+          "player": "Addison Deal Iowa\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BB-13",
+          "player": "Leah Macy Notre Dame\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BB-14",
+          "player": "Kara Dunn USC",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BB-15",
+          "player": "Sarah Strong UConn\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BB-16",
+          "player": "Kiyomi McMiller Penn State\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BB-17",
+          "player": "Aliyahna Morris California\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BB-18",
+          "player": "Nyla Brooks UNC\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BB-19",
+          "player": "Ayla McDowell University Of South Carolina\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BB-20",
+          "player": "Emilee Skinner Duke\u00ae",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "LETS GO",
+      "count": 5,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "LG-1",
+          "player": "AJ Dybantsa BYU\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LG-2",
+          "player": "Darryn Peterson Kansas\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LG-3",
+          "player": "Caleb Wilson UNC\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LG-4",
+          "player": "Mikel Brown Jr. Louisville\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LG-5",
+          "player": "Madison Booker Texas",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "TOP BILLING",
+      "count": 10,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "TB-1",
+          "player": "AJ Dybantsa BYU\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TB-2",
+          "player": "Darryn Peterson Kansas\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TB-3",
+          "player": "Caleb Wilson UNC\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TB-4",
+          "player": "Mikel Brown Jr. Louisville\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TB-5",
+          "player": "Tounde Yessoufou Baylor\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TB-6",
+          "player": "Juju Watkins USC",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TB-7",
+          "player": "Koa Peat Arizona\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TB-8",
+          "player": "Nate Ament Tennessee\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TB-9",
+          "player": "Aaliyah Crump Texas",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TB-10",
+          "player": "Ta'Niya Latson University Of South Carolina\u00ae",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "BIG ENERGY",
+      "count": 20,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "BE-1",
+          "player": "Tarris Reed Jr. UConn\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BE-2",
+          "player": "Mikel Brown Jr. Louisville\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BE-3",
+          "player": "Madison Booker Texas",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BE-4",
+          "player": "AJ Dybantsa BYU\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BE-5",
+          "player": "Darryn Peterson Kansas\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BE-6",
+          "player": "Koa Peat Arizona\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BE-7",
+          "player": "Kiyan Anthony Syracuse\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BE-8",
+          "player": "Nate Ament Tennessee\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BE-9",
+          "player": "Kiyomi McMiller Penn State\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BE-10",
+          "player": "ZaKiyah Johnson LSU\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BE-11",
+          "player": "Sarah Strong UConn\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BE-12",
+          "player": "Juju Watkins USC",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BE-13",
+          "player": "Caleb Wilson UNC\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BE-14",
+          "player": "Jaida Civil Tennessee\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BE-15",
+          "player": "Braden Smith Purdue\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BE-16",
+          "player": "Zuby Ejiofor St. John's\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BE-17",
+          "player": "Bennett Stirtz Iowa\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BE-18",
+          "player": "JT Toppin Texas Tech\u2122",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BE-19",
+          "player": "Grace Knox LSU\u00ae",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BE-20",
+          "player": "Isiah Harwell Houston",
+          "team": "",
+          "note": ""
+        }
+      ]
+    }
+  ],
+  "autograph_sets": [],
+  "memorabilia_sets": [],
+  "team_sets": {}
+}
