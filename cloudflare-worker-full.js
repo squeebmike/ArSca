@@ -3419,7 +3419,7 @@ export default {
           });
         }
 
-        const passing = results.filter(r => r.ok && r.counts.base > 0);
+        const passing = results.filter(r => r.ok && (r.counts.base > 0 || r.counts.insertSets > 0 || r.counts.autoSets > 0));
         return json({
           ok: true,
           tested: results.length,
@@ -4066,14 +4066,25 @@ function parseBeckettChecklist(html, slug, name, sport, year) {
     }
   }
 
+  // ── Split lines where Beckett concatenates multiple cards without separators ──
+  // e.g. "1 Aaron Judge, New York Yankees2 Shohei Ohtani, Los Angeles Dodgers"
+  function splitConcatenated(line) {
+    if (line.length < 40) return [line];
+    // Split where a letter is immediately followed by 1-3 digits + space + capital letter
+    const parts = line.split(/(?<=[A-Za-z])(?=\d{1,3}\s+[A-Z])/);
+    return parts.map(s => s.trim()).filter(Boolean);
+  }
+
   // ── Parse base cards ──
   const baseSeen = new Set();
   const baseCards = [];
   for (let i = baseStart; i < varsStart; i++) {
-    const c = tryBase(lines[i], setSize || 400);
-    if (c) {
-      const key = `${c.number}:${c.player}`;
-      if (!baseSeen.has(key)) { baseSeen.add(key); baseCards.push(c); }
+    for (const sl of splitConcatenated(lines[i])) {
+      const c = tryBase(sl, setSize || 400);
+      if (c) {
+        const key = `${c.number}:${c.player}`;
+        if (!baseSeen.has(key)) { baseSeen.add(key); baseCards.push(c); }
+      }
     }
   }
   baseCards.sort((a, b) => a.number - b.number || a.player.localeCompare(b.player));
@@ -4084,7 +4095,7 @@ function parseBeckettChecklist(html, slug, name, sport, year) {
     let cur = null;
     const skip = /^(shop|download|on ebay|checklist)/i;
     for (let i = start; i < end; i++) {
-      const l = lines[i];
+      for (const l of splitConcatenated(lines[i])) {
       if (skip.test(l)) continue;
       // Section headers on Beckett look like "Set Name\nN cards"
       const nxt = lines[i + 1] || '';
@@ -4109,6 +4120,7 @@ function parseBeckettChecklist(html, slug, name, sport, year) {
       if (pc) { cur.cards.push(pc); continue; }
       const bc = tryBase(l, 9999);
       if (bc) { cur.cards.push({ number: String(bc.number), player: bc.player, team: bc.team, note: bc.note }); continue; }
+      } // end splitConcatenated loop
     }
     if (cur) sets.push(cur);
     return sets.filter(s => s.cards.length > 0);
