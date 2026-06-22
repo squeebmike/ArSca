@@ -1,0 +1,4010 @@
+{
+  "set": "2025 Topps Disneyland 70th Anniversary",
+  "release_date": "2025",
+  "set_size": 0,
+  "product_info": {},
+  "box_contents": {},
+  "parallels": [],
+  "base_set": {
+    "count": 0,
+    "cards": []
+  },
+  "insert_sets": [
+    {
+      "name": "THEN AND NOW",
+      "count": 82,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "1D",
+          "player": "isneyland Railroad THEN Main Street, U.S.A.",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "2D",
+          "player": "isneyland Railroad NOW Main Street, U.S.A.",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "3M",
+          "player": "ain Street, U.S.A. NOW Main Street, U.S.A.",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "4G",
+          "player": "reat Moments with Mr. Lincoln THEN Main Street, U.S.A.",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "5G",
+          "player": "reat Moments with Mr. Lincoln NOW Main Street, U.S.A.",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "6T",
+          "player": "he Hub THEN Main Street, U.S.A.",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "7P",
+          "player": "rimeval World THEN Main Street, U.S.A.",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "8W",
+          "player": "alt Disney's Enchanted Tiki Room THEN Adventureland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "9T",
+          "player": "he Jungle Cruise THEN Adventureland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "10T",
+          "player": "he Jungle Cruise NOW Adventureland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "11T",
+          "player": "he One, The Only, Backside of Water THEN Adventureland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "12D",
+          "player": "on't Worry, They Have Their Trunks On THEN Adventureland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "13I",
+          "player": "ndiana Jones Adventure THEN Adventureland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "14L",
+          "player": "ook Not into the Eyes of the Idol NOW Adventureland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "15I",
+          "player": "ndiana Jones Contains the Spirit NOW Adventureland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "16S",
+          "player": "tage Coach Ride THEN Frontierland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "17M",
+          "player": "ine Train Through Nature's Wonderland THEN Frontierland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "18C",
+          "player": "ascade Peak THEN Frontierland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "19B",
+          "player": "ig Thunder Mountain NOW Frontierland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "20R",
+          "player": "ivers of America and the Living Desert THEN Frontierland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "21M",
+          "player": "ark Twain Riverboat NOW Frontierland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "22C",
+          "player": "ountry Bear Jamboree THEN Bayou Country",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "23T",
+          "player": "he Many Adventures of Winnie the Pooh NOW Bayou Country",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "24B",
+          "player": "lack Spire Outpost, Batuu NOW Star Wars: Galaxy's Edge",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "25M",
+          "player": "illennium Falcon: Smugglers Run NOW Star Wars: Galaxy's Edge",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "26S",
+          "player": "tar Wars: Rise of the Resistance NOW Star Wars: Galaxy's Edge",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "27T",
+          "player": "oontown Five & Dime and The Gag Factory THEN Toontown",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "28T",
+          "player": "he El CapiTOON Theater NOW Toontown",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "29N",
+          "player": "othing Can Stop Us Now NOW Toontown",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "30",
+          "player": "\"it's a small world\" THEN Fantasyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "31S",
+          "player": "torybook Land Canal Boats THEN Fantasyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "32S",
+          "player": "torybook Land Lighthouse Ticket Booth THEN Fantasyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "33D",
+          "player": "umbo Flying Elephants THEN Fantasyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "34D",
+          "player": "umbo the Flying Elephant NOW Fantasyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "35O",
+          "player": "ff to Never Land NOW Fantasyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "36M",
+          "player": "ermaid Lagoon THEN Fantasyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "37F",
+          "player": "antasyland Skyway Station THEN Fantasyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "38S",
+          "player": "kyway Buckets THEN Fantasyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "39M",
+          "player": "atterhorn NOW Fantasyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "40S",
+          "player": "omething Lurks Inside the Mountain NOW Fantasyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "41T",
+          "player": "he Abominable Snowman THEN Fantasyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "42T",
+          "player": "he Abominable Snowman NOW Fantasyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "43M",
+          "player": "ad Tea Party THEN Fantasyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "44M",
+          "player": "ad Tea Party NOW Fantasyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "45A",
+          "player": "Very Merry Unbirthday NOW Fantasyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "46A",
+          "player": "Great Big Beautiful Tomorrow THEN Tomorrowland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "47I",
+          "player": "magination and Beyond THEN Tomorrowland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "48S",
+          "player": "pace Mountain THEN Tomorrowland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "49S",
+          "player": "pace Mountain THEN Tomorrowland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "50S",
+          "player": "pace Mountain NOW Tomorrowland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "51A",
+          "player": "dventure Thru Inner Space THEN Tomorrowland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "52S",
+          "player": "tar Tours THEN Tomorrowland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "53S",
+          "player": "tar Tours: The Adventures Continue NOW Tomorrowland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "54R",
+          "player": "ocket to the Moon THEN Tomorrowland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "55R",
+          "player": "edd Rockett's Pizza Port THEN Tomorrowland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "56A",
+          "player": "lien Pizza Planet NOW Tomorrowland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "57T",
+          "player": "he Moonliner and Astro-Jets THEN Tomorrowland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "58R",
+          "player": "ocket Jets THEN Tomorrowland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "59O",
+          "player": "bservatron NOW Tomorrowland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "60A",
+          "player": "stro Orbitor NOW Tomorrowland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "61A",
+          "player": "utopia THEN Tomorrowland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "62K",
+          "player": "inetic Energy: Monorail Over Submarine Lagoon THEN Tomorrowland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "63S",
+          "player": "ubmarine Voyage THEN Tomorrowland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "64F",
+          "player": "inding Nemo Submarine Voyage NOW Tomorrowland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "65C",
+          "player": "arousel of Progress THEN Tomorrowland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "66A",
+          "player": "merica Sings THEN Tomorrowland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "67I",
+          "player": "nnoventions THEN Tomorrowland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "68N",
+          "player": "eon Astronaut Mickey THEN Tomorrowland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "69T",
+          "player": "he PeopleMover THEN Tomorrowland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "70R",
+          "player": "ocket Rods THEN Tomorrowland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "71P",
+          "player": "irates of the Caribbean THEN New Orleans Square",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "72P",
+          "player": "irates of the Caribbean NOW New Orleans Square",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "73P",
+          "player": "iles of Treasure THEN New Orleans Square",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "74D",
+          "player": "ead Men Tell No Tales NOW New Orleans Square",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "75P",
+          "player": "illaging and Plundering THEN New Orleans Square",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "76C",
+          "player": "ome on, have a nice bone, eh? THEN New Orleans Square",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "77T",
+          "player": "he Blue Bayou NOW New Orleans Square",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "78T",
+          "player": "he Haunted Mansion NOW New Orleans Square",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "79T",
+          "player": "he Mansion's Organ THEN New Orleans Square",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "80A",
+          "player": "Swinging Wake THEN New Orleans Square",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "81G",
+          "player": "rim Grinning Ghosts Come Out to Socialize THEN New Orleans Square",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "82B",
+          "player": "eware of Hitchhiking Ghosts NOW New Orleans Square",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "TIMELINE",
+      "count": 17,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "83S",
+          "player": "leeping Beauty Castle Construction Fantasyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "84M",
+          "player": "ickey and Donald Celebrate the Grand Opening Disneyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "85A",
+          "player": "utopia Cars Zoom in the First Parade Disneyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "86L",
+          "player": "illian's Petrified Tree \"Gift\" Frontierland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "87W",
+          "player": "alt's Plans to Take the Park to New Heights Fantasyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "88D",
+          "player": "isneyland Tenth Anniversary on TV Disneyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "89T",
+          "player": "he Primeval World Meets the Modern World Disneyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "90",
+          "player": "\"it's a small world\" Debuts After the World's Fair Fantasyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "91W",
+          "player": "alt and Mickey in Engine No. 1 Disneyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "92D",
+          "player": "eveloping Pirates of the Caribbean in Miniature New Orleans Square",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "93A",
+          "player": "Happy Haunt Materializes New Orleans Square",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "94S",
+          "player": "pace Mountain Shoots for the Stars Tomorrowland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "95B",
+          "player": "ig Thunder Hosts its First Wild Ride Frontierland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "96T",
+          "player": "he Land that Toons Built Toontown",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "97T",
+          "player": "he Temple of Mara Opens to Tourists Adventureland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "98N",
+          "player": "ew Tomorrowland Tomorrowland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "99B",
+          "player": "uzz Lightyear to Star Command Tomorrowland",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "SNACK TIME",
+      "count": 5,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "100M",
+          "player": "ickey's Premium Ice Cream Bar",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "101C",
+          "player": "aramel Corn and Kettle Corn",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "102C",
+          "player": "lassic Mickey-Shaped Beignets",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "103T",
+          "player": "urkey Leg",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "104C",
+          "player": "hurro",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "10570th Anniversary Minnie Caramel Apple",
+      "count": 12,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "106M",
+          "player": "ickey Waffle",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "107P",
+          "player": "ineapple Soft Serve",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "108G",
+          "player": "rey Stuff",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "109B",
+          "player": "lue Milk and Green Milk",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "110R",
+          "player": "onto Morning Wrap",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "111P",
+          "player": "opcorn",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "112C",
+          "player": "elebration Matterhorn Macaroon",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "113M",
+          "player": "ickey Mouse Pretzel",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "114C",
+          "player": "orn Dog",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "115S",
+          "player": "easonal: Evil Queen Caramel Apple",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "116S",
+          "player": "easonal: Mickey Gingerbread",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "117B",
+          "player": "alloon Mickey Marshmallow Pop",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "CONCEPT ART",
+      "count": 33,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "118A",
+          "player": "Dream of the Happiest Place on Earth Anaheim, California",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "119T",
+          "player": "own Square Main Street, U.S.A.",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "120M",
+          "player": "ain Street, U.S.A. Main Street, U.S.A.",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "121C",
+          "player": "arnation Caf\u00e9 Main Street, U.S.A.",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "122S",
+          "player": "hopping at the Bazaar Adventureland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "123T",
+          "player": "he Jungle Cruise Adventureland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "124T",
+          "player": "he Haunted Mansion New Orleans Square",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "125T",
+          "player": "he Bride New Orleans Square",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "126R",
+          "player": "owboat Ghost New Orleans Square",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "127T",
+          "player": "he Mansion's Organist New Orleans Square",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "128E",
+          "player": "ntering Isla Tesoro Jail New Orleans Square",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "129H",
+          "player": "ow\u2019s About a Nice, Juicy Bone? New Orleans Square",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "130T",
+          "player": "har Be Treasure New Orleans Square",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "131S",
+          "player": "inging Pirates New Orleans Square",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "132F",
+          "player": "rontierland Aerial Frontierland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "133M",
+          "player": "ark Twain Riverboat Frontierland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "134U",
+          "player": "ranium Hunt Frontierland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "135S",
+          "player": "leeping Beauty Castle Fantasyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "136M",
+          "player": "atterhorn Mountain Fantasyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "137F",
+          "player": "antasyland Duck Bumps Fantasyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "138R",
+          "player": "iding the Jolly Roger Fantasyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "139K",
+          "player": "ing Arthur Carrousel Fantasyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "140S",
+          "player": "now White's Adventures with Dopey Fantasyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "141C",
+          "player": "asey Jr. Circus Train Fantasyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "142M",
+          "player": "onstro the Whale Fantasyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "143D",
+          "player": "umbo Flying Elephants Fantasyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "144M",
+          "player": "ad Tea Party Fantasyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "145T",
+          "player": "he Land that Toons Built Toontown",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "146A",
+          "player": "Vista into a World of Wondrous Ideas Tomorrowland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "147H",
+          "player": "ighway of the Future Tomorrowland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "148T",
+          "player": "he PeopleMover and \"Spaceport & Rocket Flight\" Tomorrowland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "149S",
+          "player": "pace Mountain Tomorrowland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "150M",
+          "player": "agic from the Sky Anaheim, California",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "THEN AND NOW HIDDEN MICKEY VARIATION",
+      "count": 82,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "1D",
+          "player": "isneyland Railroad THEN Main Street, U.S.A.",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "2D",
+          "player": "isneyland Railroad NOW Main Street, U.S.A.",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "3M",
+          "player": "ain Street, U.S.A. NOW Main Street, U.S.A.",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "4G",
+          "player": "reat Moments with Mr. Lincoln THEN Main Street, U.S.A.",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "5G",
+          "player": "reat Moments with Mr. Lincoln NOW Main Street, U.S.A.",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "6T",
+          "player": "he Hub THEN Main Street, U.S.A.",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "7P",
+          "player": "rimeval World THEN Main Street, U.S.A.",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "8W",
+          "player": "alt Disney's Enchanted Tiki Room THEN Adventureland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "9T",
+          "player": "he Jungle Cruise THEN Adventureland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "10T",
+          "player": "he Jungle Cruise NOW Adventureland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "11T",
+          "player": "he One, The Only, Backside of Water THEN Adventureland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "12D",
+          "player": "on't Worry, They Have Their Trunks On THEN Adventureland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "13I",
+          "player": "ndiana Jones Adventure THEN Adventureland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "14L",
+          "player": "ook Not into the Eyes of the Idol NOW Adventureland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "15I",
+          "player": "ndiana Jones Contains the Spirit NOW Adventureland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "16S",
+          "player": "tage Coach Ride THEN Frontierland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "17M",
+          "player": "ine Train Through Nature's Wonderland THEN Frontierland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "18C",
+          "player": "ascade Peak THEN Frontierland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "19B",
+          "player": "ig Thunder Mountain NOW Frontierland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "20R",
+          "player": "ivers of America and the Living Desert THEN Frontierland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "21M",
+          "player": "ark Twain Riverboat NOW Frontierland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "22C",
+          "player": "ountry Bear Jamboree THEN Bayou Country",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "23T",
+          "player": "he Many Adventures of Winnie the Pooh NOW Bayou Country",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "24B",
+          "player": "lack Spire Outpost, Batuu NOW Star Wars: Galaxy's Edge",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "25M",
+          "player": "illennium Falcon: Smugglers Run NOW Star Wars: Galaxy's Edge",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "26S",
+          "player": "tar Wars: Rise of the Resistance NOW Star Wars: Galaxy's Edge",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "27T",
+          "player": "oontown Five & Dime and The Gag Factory THEN Toontown",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "28T",
+          "player": "he El CapiTOON Theater NOW Toontown",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "29N",
+          "player": "othing Can Stop Us Now NOW Toontown",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "30",
+          "player": "\"it's a small world\" THEN Fantasyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "31S",
+          "player": "torybook Land Canal Boats THEN Fantasyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "32S",
+          "player": "torybook Land Lighthouse Ticket Booth THEN Fantasyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "33D",
+          "player": "umbo Flying Elephants THEN Fantasyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "34D",
+          "player": "umbo the Flying Elephant NOW Fantasyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "35O",
+          "player": "ff to Never Land NOW Fantasyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "36M",
+          "player": "ermaid Lagoon THEN Fantasyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "37F",
+          "player": "antasyland Skyway Station THEN Fantasyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "38S",
+          "player": "kyway Buckets THEN Fantasyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "39M",
+          "player": "atterhorn NOW Fantasyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "40S",
+          "player": "omething Lurks Inside the Mountain NOW Fantasyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "41T",
+          "player": "he Abominable Snowman THEN Fantasyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "42T",
+          "player": "he Abominable Snowman NOW Fantasyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "43M",
+          "player": "ad Tea Party THEN Fantasyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "44M",
+          "player": "ad Tea Party NOW Fantasyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "45A",
+          "player": "Very Merry Unbirthday NOW Fantasyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "46A",
+          "player": "Great Big Beautiful Tomorrow THEN Tomorrowland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "47I",
+          "player": "magination and Beyond THEN Tomorrowland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "48S",
+          "player": "pace Mountain THEN Tomorrowland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "49S",
+          "player": "pace Mountain THEN Tomorrowland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "50S",
+          "player": "pace Mountain NOW Tomorrowland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "51A",
+          "player": "dventure Thru Inner Space THEN Tomorrowland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "52S",
+          "player": "tar Tours THEN Tomorrowland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "53S",
+          "player": "tar Tours: The Adventures Continue NOW Tomorrowland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "54R",
+          "player": "ocket to the Moon THEN Tomorrowland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "55R",
+          "player": "edd Rockett's Pizza Port THEN Tomorrowland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "56A",
+          "player": "lien Pizza Planet NOW Tomorrowland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "57T",
+          "player": "he Moonliner and Astro-Jets THEN Tomorrowland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "58R",
+          "player": "ocket Jets THEN Tomorrowland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "59O",
+          "player": "bservatron NOW Tomorrowland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "60A",
+          "player": "stro Orbitor NOW Tomorrowland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "61A",
+          "player": "utopia THEN Tomorrowland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "62K",
+          "player": "inetic Energy: Monorail Over Submarine Lagoon THEN Tomorrowland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "63S",
+          "player": "ubmarine Voyage THEN Tomorrowland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "64F",
+          "player": "inding Nemo Submarine Voyage NOW Tomorrowland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "65C",
+          "player": "arousel of Progress THEN Tomorrowland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "66A",
+          "player": "merica Sings THEN Tomorrowland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "67I",
+          "player": "nnoventions THEN Tomorrowland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "68N",
+          "player": "eon Astronaut Mickey THEN Tomorrowland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "69T",
+          "player": "he PeopleMover THEN Tomorrowland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "70R",
+          "player": "ocket Rods THEN Tomorrowland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "71P",
+          "player": "irates of the Caribbean THEN New Orleans Square",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "72P",
+          "player": "irates of the Caribbean NOW New Orleans Square",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "73P",
+          "player": "iles of Treasure THEN New Orleans Square",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "74D",
+          "player": "ead Men Tell No Tales NOW New Orleans Square",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "75P",
+          "player": "illaging and Plundering THEN New Orleans Square",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "76C",
+          "player": "ome on, have a nice bone, eh? THEN New Orleans Square",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "77T",
+          "player": "he Blue Bayou NOW New Orleans Square",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "78T",
+          "player": "he Haunted Mansion NOW New Orleans Square",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "79T",
+          "player": "he Mansion's Organ THEN New Orleans Square",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "80A",
+          "player": "Swinging Wake THEN New Orleans Square",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "81G",
+          "player": "rim Grinning Ghosts Come Out to Socialize THEN New Orleans Square",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "82B",
+          "player": "eware of Hitchhiking Ghosts NOW New Orleans Square",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "TIMELINE HIDDEN MICKEY VARIATION",
+      "count": 17,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "83S",
+          "player": "leeping Beauty Castle Construction Fantasyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "84M",
+          "player": "ickey and Donald Celebrate the Grand Opening Disneyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "85A",
+          "player": "utopia Cars Zoom in the First Parade Disneyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "86L",
+          "player": "illian's Petrified Tree \"Gift\" Frontierland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "87W",
+          "player": "alt's Plans to Take the Park to New Heights Fantasyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "88D",
+          "player": "isneyland Tenth Anniversary on TV Disneyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "89T",
+          "player": "he Primeval World Meets the Modern World Disneyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "90",
+          "player": "\"it's a small world\" Debuts After the World's Fair Fantasyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "91W",
+          "player": "alt and Mickey in Engine No. 1 Disneyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "92D",
+          "player": "eveloping Pirates of the Caribbean in Miniature New Orleans Square",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "93A",
+          "player": "Happy Haunt Materializes New Orleans Square",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "94S",
+          "player": "pace Mountain Shoots for the Stars Tomorrowland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "95B",
+          "player": "ig Thunder Hosts its First Wild Ride Frontierland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "96T",
+          "player": "he Land that Toons Built Toontown",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "97T",
+          "player": "he Temple of Mara Opens to Tourists Adventureland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "98N",
+          "player": "ew Tomorrowland Tomorrowland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "99B",
+          "player": "uzz Lightyear to Star Command Tomorrowland",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "SNACK TIME HIDDEN MICKEY VARIATION",
+      "count": 5,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "100M",
+          "player": "ickey's Premium Ice Cream Bar",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "101C",
+          "player": "aramel Corn and Kettle Corn",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "102C",
+          "player": "lassic Mickey-Shaped Beignets",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "103T",
+          "player": "urkey Leg",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "104C",
+          "player": "hurro",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "10570th Anniversary Minnie Caramel Apple",
+      "count": 12,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "106M",
+          "player": "ickey Waffle",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "107P",
+          "player": "ineapple Soft Serve",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "108G",
+          "player": "rey Stuff",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "109B",
+          "player": "lue Milk and Green Milk",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "110R",
+          "player": "onto Morning Wrap",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "111P",
+          "player": "opcorn",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "112C",
+          "player": "elebration Matterhorn Macaroon",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "113M",
+          "player": "ickey Mouse Pretzel",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "114C",
+          "player": "orn Dog",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "115S",
+          "player": "easonal: Evil Queen Caramel Apple",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "116S",
+          "player": "easonal: Mickey Gingerbread",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "117B",
+          "player": "alloon Mickey Marshmallow Pop",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "CONCEPT ART HIDDEN MICKEY VARIATION",
+      "count": 33,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "118A",
+          "player": "Dream of the Happiest Place on Earth Anaheim, California",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "119T",
+          "player": "own Square Main Street, U.S.A.",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "120M",
+          "player": "ain Street, U.S.A. Main Street, U.S.A.",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "121C",
+          "player": "arnation Caf\u00e9 Main Street, U.S.A.",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "122S",
+          "player": "hopping at the Bazaar Adventureland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "123T",
+          "player": "he Jungle Cruise Adventureland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "124T",
+          "player": "he Haunted Mansion New Orleans Square",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "125T",
+          "player": "he Bride New Orleans Square",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "126R",
+          "player": "owboat Ghost New Orleans Square",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "127T",
+          "player": "he Mansion's Organist New Orleans Square",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "128E",
+          "player": "ntering Isla Tesoro Jail New Orleans Square",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "129H",
+          "player": "ow\u2019s About a Nice, Juicy Bone? New Orleans Square",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "130T",
+          "player": "har Be Treasure New Orleans Square",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "131S",
+          "player": "inging Pirates New Orleans Square",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "132F",
+          "player": "rontierland Aerial Frontierland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "133M",
+          "player": "ark Twain Riverboat Frontierland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "134U",
+          "player": "ranium Hunt Frontierland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "135S",
+          "player": "leeping Beauty Castle Fantasyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "136M",
+          "player": "atterhorn Mountain Fantasyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "137F",
+          "player": "antasyland Duck Bumps Fantasyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "138R",
+          "player": "iding the Jolly Roger Fantasyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "139K",
+          "player": "ing Arthur Carrousel Fantasyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "140S",
+          "player": "now White's Adventures with Dopey Fantasyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "141C",
+          "player": "asey Jr. Circus Train Fantasyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "142M",
+          "player": "onstro the Whale Fantasyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "143D",
+          "player": "umbo Flying Elephants Fantasyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "144M",
+          "player": "ad Tea Party Fantasyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "145T",
+          "player": "he Land that Toons Built Toontown",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "146A",
+          "player": "Vista into a World of Wondrous Ideas Tomorrowland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "147H",
+          "player": "ighway of the Future Tomorrowland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "148T",
+          "player": "he PeopleMover and \"Spaceport & Rocket Flight\" Tomorrowland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "149S",
+          "player": "pace Mountain Tomorrowland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "150M",
+          "player": "agic from the Sky Anaheim, California",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "THEN AND NOW LIGHT BULB VARIATION",
+      "count": 82,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "1D",
+          "player": "isneyland Railroad THEN Main Street, U.S.A.",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "2D",
+          "player": "isneyland Railroad NOW Main Street, U.S.A.",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "3M",
+          "player": "ain Street, U.S.A. NOW Main Street, U.S.A.",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "4G",
+          "player": "reat Moments with Mr. Lincoln THEN Main Street, U.S.A.",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "5G",
+          "player": "reat Moments with Mr. Lincoln NOW Main Street, U.S.A.",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "6T",
+          "player": "he Hub THEN Main Street, U.S.A.",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "7P",
+          "player": "rimeval World THEN Main Street, U.S.A.",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "8W",
+          "player": "alt Disney's Enchanted Tiki Room THEN Adventureland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "9T",
+          "player": "he Jungle Cruise THEN Adventureland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "10T",
+          "player": "he Jungle Cruise NOW Adventureland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "11T",
+          "player": "he One, The Only, Backside of Water THEN Adventureland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "12D",
+          "player": "on't Worry, They Have Their Trunks On THEN Adventureland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "13I",
+          "player": "ndiana Jones Adventure THEN Adventureland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "14L",
+          "player": "ook Not into the Eyes of the Idol NOW Adventureland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "15I",
+          "player": "ndiana Jones Contains the Spirit NOW Adventureland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "16S",
+          "player": "tage Coach Ride THEN Frontierland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "17M",
+          "player": "ine Train Through Nature's Wonderland THEN Frontierland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "18C",
+          "player": "ascade Peak THEN Frontierland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "19B",
+          "player": "ig Thunder Mountain NOW Frontierland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "20R",
+          "player": "ivers of America and the Living Desert THEN Frontierland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "21M",
+          "player": "ark Twain Riverboat NOW Frontierland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "22C",
+          "player": "ountry Bear Jamboree THEN Bayou Country",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "23T",
+          "player": "he Many Adventures of Winnie the Pooh NOW Bayou Country",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "24B",
+          "player": "lack Spire Outpost, Batuu NOW Star Wars: Galaxy's Edge",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "25M",
+          "player": "illennium Falcon: Smugglers Run NOW Star Wars: Galaxy's Edge",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "26S",
+          "player": "tar Wars: Rise of the Resistance NOW Star Wars: Galaxy's Edge",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "27T",
+          "player": "oontown Five & Dime and The Gag Factory THEN Toontown",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "28T",
+          "player": "he El CapiTOON Theater NOW Toontown",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "29N",
+          "player": "othing Can Stop Us Now NOW Toontown",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "30",
+          "player": "\"it's a small world\" THEN Fantasyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "31S",
+          "player": "torybook Land Canal Boats THEN Fantasyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "32S",
+          "player": "torybook Land Lighthouse Ticket Booth THEN Fantasyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "33D",
+          "player": "umbo Flying Elephants THEN Fantasyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "34D",
+          "player": "umbo the Flying Elephant NOW Fantasyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "35O",
+          "player": "ff to Never Land NOW Fantasyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "36M",
+          "player": "ermaid Lagoon THEN Fantasyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "37F",
+          "player": "antasyland Skyway Station THEN Fantasyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "38S",
+          "player": "kyway Buckets THEN Fantasyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "39M",
+          "player": "atterhorn NOW Fantasyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "40S",
+          "player": "omething Lurks Inside the Mountain NOW Fantasyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "41T",
+          "player": "he Abominable Snowman THEN Fantasyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "42T",
+          "player": "he Abominable Snowman NOW Fantasyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "43M",
+          "player": "ad Tea Party THEN Fantasyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "44M",
+          "player": "ad Tea Party NOW Fantasyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "45A",
+          "player": "Very Merry Unbirthday NOW Fantasyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "46A",
+          "player": "Great Big Beautiful Tomorrow THEN Tomorrowland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "47I",
+          "player": "magination and Beyond THEN Tomorrowland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "48S",
+          "player": "pace Mountain THEN Tomorrowland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "49S",
+          "player": "pace Mountain THEN Tomorrowland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "50S",
+          "player": "pace Mountain NOW Tomorrowland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "51A",
+          "player": "dventure Thru Inner Space THEN Tomorrowland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "52S",
+          "player": "tar Tours THEN Tomorrowland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "53S",
+          "player": "tar Tours: The Adventures Continue NOW Tomorrowland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "54R",
+          "player": "ocket to the Moon THEN Tomorrowland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "55R",
+          "player": "edd Rockett's Pizza Port THEN Tomorrowland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "56A",
+          "player": "lien Pizza Planet NOW Tomorrowland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "57T",
+          "player": "he Moonliner and Astro-Jets THEN Tomorrowland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "58R",
+          "player": "ocket Jets THEN Tomorrowland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "59O",
+          "player": "bservatron NOW Tomorrowland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "60A",
+          "player": "stro Orbitor NOW Tomorrowland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "61A",
+          "player": "utopia THEN Tomorrowland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "62K",
+          "player": "inetic Energy: Monorail Over Submarine Lagoon THEN Tomorrowland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "63S",
+          "player": "ubmarine Voyage THEN Tomorrowland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "64F",
+          "player": "inding Nemo Submarine Voyage NOW Tomorrowland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "65C",
+          "player": "arousel of Progress THEN Tomorrowland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "66A",
+          "player": "merica Sings THEN Tomorrowland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "67I",
+          "player": "nnoventions THEN Tomorrowland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "68N",
+          "player": "eon Astronaut Mickey THEN Tomorrowland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "69T",
+          "player": "he PeopleMover THEN Tomorrowland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "70R",
+          "player": "ocket Rods THEN Tomorrowland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "71P",
+          "player": "irates of the Caribbean THEN New Orleans Square",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "72P",
+          "player": "irates of the Caribbean NOW New Orleans Square",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "73P",
+          "player": "iles of Treasure THEN New Orleans Square",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "74D",
+          "player": "ead Men Tell No Tales NOW New Orleans Square",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "75P",
+          "player": "illaging and Plundering THEN New Orleans Square",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "76C",
+          "player": "ome on, have a nice bone, eh? THEN New Orleans Square",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "77T",
+          "player": "he Blue Bayou NOW New Orleans Square",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "78T",
+          "player": "he Haunted Mansion NOW New Orleans Square",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "79T",
+          "player": "he Mansion's Organ THEN New Orleans Square",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "80A",
+          "player": "Swinging Wake THEN New Orleans Square",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "81G",
+          "player": "rim Grinning Ghosts Come Out to Socialize THEN New Orleans Square",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "82B",
+          "player": "eware of Hitchhiking Ghosts NOW New Orleans Square",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "TIMELINE LIGHT BULB VARIATION",
+      "count": 17,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "83S",
+          "player": "leeping Beauty Castle Construction Fantasyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "84M",
+          "player": "ickey and Donald Celebrate the Grand Opening Disneyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "85A",
+          "player": "utopia Cars Zoom in the First Parade Disneyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "86L",
+          "player": "illian's Petrified Tree \"Gift\" Frontierland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "87W",
+          "player": "alt's Plans to Take the Park to New Heights Fantasyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "88D",
+          "player": "isneyland Tenth Anniversary on TV Disneyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "89T",
+          "player": "he Primeval World Meets the Modern World Disneyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "90",
+          "player": "\"it's a small world\" Debuts After the World's Fair Fantasyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "91W",
+          "player": "alt and Mickey in Engine No. 1 Disneyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "92D",
+          "player": "eveloping Pirates of the Caribbean in Miniature New Orleans Square",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "93A",
+          "player": "Happy Haunt Materializes New Orleans Square",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "94S",
+          "player": "pace Mountain Shoots for the Stars Tomorrowland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "95B",
+          "player": "ig Thunder Hosts its First Wild Ride Frontierland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "96T",
+          "player": "he Land that Toons Built Toontown",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "97T",
+          "player": "he Temple of Mara Opens to Tourists Adventureland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "98N",
+          "player": "ew Tomorrowland Tomorrowland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "99B",
+          "player": "uzz Lightyear to Star Command Tomorrowland",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "SNACK TIME LIGHT BULB VARIATION",
+      "count": 5,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "100M",
+          "player": "ickey's Premium Ice Cream Bar",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "101C",
+          "player": "aramel Corn and Kettle Corn",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "102C",
+          "player": "lassic Mickey-Shaped Beignets",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "103T",
+          "player": "urkey Leg",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "104C",
+          "player": "hurro",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "10570th Anniversary Minnie Caramel Apple",
+      "count": 12,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "106M",
+          "player": "ickey Waffle",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "107P",
+          "player": "ineapple Soft Serve",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "108G",
+          "player": "rey Stuff",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "109B",
+          "player": "lue Milk and Green Milk",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "110R",
+          "player": "onto Morning Wrap",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "111P",
+          "player": "opcorn",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "112C",
+          "player": "elebration Matterhorn Macaroon",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "113M",
+          "player": "ickey Mouse Pretzel",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "114C",
+          "player": "orn Dog",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "115S",
+          "player": "easonal: Evil Queen Caramel Apple",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "116S",
+          "player": "easonal: Mickey Gingerbread",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "117B",
+          "player": "alloon Mickey Marshmallow Pop",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "CONCEPT ART LIGHT BULB VARIATION",
+      "count": 33,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "118A",
+          "player": "Dream of the Happiest Place on Earth Anaheim, California",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "119T",
+          "player": "own Square Main Street, U.S.A.",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "120M",
+          "player": "ain Street, U.S.A. Main Street, U.S.A.",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "121C",
+          "player": "arnation Caf\u00e9 Main Street, U.S.A.",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "122S",
+          "player": "hopping at the Bazaar Adventureland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "123T",
+          "player": "he Jungle Cruise Adventureland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "124T",
+          "player": "he Haunted Mansion New Orleans Square",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "125T",
+          "player": "he Bride New Orleans Square",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "126R",
+          "player": "owboat Ghost New Orleans Square",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "127T",
+          "player": "he Mansion's Organist New Orleans Square",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "128E",
+          "player": "ntering Isla Tesoro Jail New Orleans Square",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "129H",
+          "player": "ow\u2019s About a Nice, Juicy Bone? New Orleans Square",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "130T",
+          "player": "har Be Treasure New Orleans Square",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "131S",
+          "player": "inging Pirates New Orleans Square",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "132F",
+          "player": "rontierland Aerial Frontierland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "133M",
+          "player": "ark Twain Riverboat Frontierland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "134U",
+          "player": "ranium Hunt Frontierland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "135S",
+          "player": "leeping Beauty Castle Fantasyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "136M",
+          "player": "atterhorn Mountain Fantasyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "137F",
+          "player": "antasyland Duck Bumps Fantasyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "138R",
+          "player": "iding the Jolly Roger Fantasyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "139K",
+          "player": "ing Arthur Carrousel Fantasyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "140S",
+          "player": "now White's Adventures with Dopey Fantasyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "141C",
+          "player": "asey Jr. Circus Train Fantasyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "142M",
+          "player": "onstro the Whale Fantasyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "143D",
+          "player": "umbo Flying Elephants Fantasyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "144M",
+          "player": "ad Tea Party Fantasyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "145T",
+          "player": "he Land that Toons Built Toontown",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "146A",
+          "player": "Vista into a World of Wondrous Ideas Tomorrowland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "147H",
+          "player": "ighway of the Future Tomorrowland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "148T",
+          "player": "he PeopleMover and \"Spaceport & Rocket Flight\" Tomorrowland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "149S",
+          "player": "pace Mountain Tomorrowland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "150M",
+          "player": "agic from the Sky Anaheim, California",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "ENTRANCE TO MAGIC",
+      "count": 1,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "EM-1",
+          "player": "Entrance to Magic",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "THE LANDS",
+      "count": 11,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "LNDS-1",
+          "player": "Main Street, USA",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LNDS-2",
+          "player": "Adventureland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LNDS-3",
+          "player": "Tomorrowland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LNDS-4",
+          "player": "Frontierland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LNDS-5",
+          "player": "Fantasyland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LNDS-6",
+          "player": "New Orleans Square",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LNDS-7",
+          "player": "Bayou Country / Bear Country",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LNDS-8",
+          "player": "Mickey's Toontown",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LNDS-9",
+          "player": "Star Wars: Galaxy's Edge / Big Thunder Ranch",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "LNDS-10",
+          "player": "Sleeping Beauty Castle",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "1954",
+          "player": "TOPPS DISNEYLAND ON WHEELS",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "T54-25 Locomotive Disneyland Railroad",
+      "count": 1,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "1955",
+          "player": "TOPPS DISNEYLAND ICONS",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "FROM SILVER SCREEN TO MAIN STREET",
+      "count": 25,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "MS-1",
+          "player": "The First Parade Disneyland Grand Opening",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MS-2",
+          "player": "Blue Fairy Main Street Electrical Parade",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MS-3",
+          "player": "Casey Jr. Train and the Drum Main Street Electrical Parade",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MS-4",
+          "player": "The Jolly Roger Main Street Electrical Parade",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MS-5",
+          "player": "Pete's Dragon Elliott Main Street Electrical Parade",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MS-6",
+          "player": "To Honor America Main Street Electrical Parade",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MS-7",
+          "player": "Mickey & Friends Disneyland 25 Family Reunion Parade",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MS-8",
+          "player": "Fantasia Magic Brooms Flights of Fantasy",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MS-9",
+          "player": "Mickey, Minnie, and Donald Balloons 35 Years of Magic - Party Gras Parade",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MS-10",
+          "player": "I Just Can't Wait To Be King The Lion King Celebration",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MS-11",
+          "player": "Rafiki and Zazu The Lion King Celebration",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MS-12",
+          "player": "Mushu Mulan Parade",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MS-13",
+          "player": "Dream of Laughter \u2013 Geppetto Walt Disney's Parade of Dreams",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MS-14",
+          "player": "Dream of Enchantment \u2013 Cogsworth Walt Disney's Parade of Dreams",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MS-15",
+          "player": "Gingerbread House \u2013 Goofy A Christmas Fantasy",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MS-16",
+          "player": "The Toy Soldiers A Christmas Fantasy",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MS-17",
+          "player": "Tinker Bell and Peter Pan Paint the Night Parade",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MS-18",
+          "player": "Genie, Tigger, and Lumi\u00e8re Paint the Night Parade",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MS-19",
+          "player": "Monsters, Inc. Dance Party \u2013 Mike Wazowski Paint the Night Parade",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MS-20",
+          "player": "Monsters, Inc. Dance Party \u2013 Sulley Paint the Night Parade",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MS-21",
+          "player": "Cars Electric Roadway Jam \u2013 Mack Paint the Night Parade",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MS-22",
+          "player": "Frozen Fractals \u2013 Anna and Elsa Paint the Night Parade",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MS-23",
+          "player": "Mickey & Friends Lightastic Finale \u2013 Donald Duck Paint the Night Parade",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MS-24",
+          "player": "A Swirl of Magic \u2013 Mickey Magic Happens",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MS-25",
+          "player": "Celebrate Happy Cavalcade Disneyland 70th Anniversary",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "GREETINGS FROM THE TIKI ROOM CHROME",
+      "count": 4,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "ETR-1",
+          "player": "Jos\u00e9",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ETR-2",
+          "player": "Michael",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ETR-3",
+          "player": "Pierre",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ETR-4",
+          "player": "Fritz",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "POSTERS",
+      "count": 14,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "P-1",
+          "player": "Jungle Cruise",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "P-2",
+          "player": "Mad Tea Party, Dumbo, & King Arthur Carrousel",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "P-3",
+          "player": "Mr. Toad's Wild Ride",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "P-4",
+          "player": "Space Station X-1",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "P-5",
+          "player": "Peter Pan's Flight",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "P-6",
+          "player": "Red Wagon Inn",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "P-7",
+          "player": "Storybook Land Canal Boats",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "P-8",
+          "player": "Rocket to the Moon",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "P-9",
+          "player": "Rainbow Caverns",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "P-10",
+          "player": "Disneyland Monorail",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "P-11",
+          "player": "Flying Saucers",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "P-12",
+          "player": "\"it's a small world\"",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "P-13",
+          "player": "PeopleMover",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "P-14",
+          "player": "Adventure Thru Inner Space",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "POSTERS PETG VARIATIONS",
+      "count": 14,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "PP-1",
+          "player": "Jungle Cruise",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PP-2",
+          "player": "Mad Tea Party, Dumbo, & King Arthur Carrousel",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PP-3",
+          "player": "Mr. Toad's Wild Ride",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PP-4",
+          "player": "Space Station X-1",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PP-5",
+          "player": "Peter Pan's Flight",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PP-6",
+          "player": "Red Wagon Inn",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PP-7",
+          "player": "Storybook Land Canal Boats",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PP-8",
+          "player": "Rocket to the Moon",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PP-9",
+          "player": "Rainbow Caverns",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PP-10",
+          "player": "Disneyland Monorail",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PP-11",
+          "player": "Flying Saucers",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PP-12",
+          "player": "\"it's a small world\"",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PP-13",
+          "player": "PeopleMover",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PP-14",
+          "player": "Adventure Thru Inner Space",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "WELCOME FOOLISH MORTALS",
+      "count": 4,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "WFM-1",
+          "player": "Sally Slater",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WFM-2",
+          "player": "Alexander Nitrokoff",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WFM-3",
+          "player": "Constance",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WFM-4",
+          "player": "Three Unfortunate Men in Quicksand",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "HAPPY HAUNTS CHROME",
+      "count": 14,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "HHC-1",
+          "player": "Madame Leota",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HHC-2",
+          "player": "Master Gracey",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HHC-3",
+          "player": "The Gorgon",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HHC-4",
+          "player": "Right Duelist",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HHC-5",
+          "player": "Left Duelist",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HHC-6",
+          "player": "Pickwick",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HHC-7",
+          "player": "Birthday Ghost",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HHC-8",
+          "player": "Ballroom Dancers",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HHC-9",
+          "player": "Beating-Heart Bride",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HHC-10",
+          "player": "The Caretaker",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HHC-11",
+          "player": "Gus",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HHC-12",
+          "player": "Ezra",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HHC-13",
+          "player": "Phineas",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HHC-14",
+          "player": "Constance Hatchaway",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "TOMORROWLAND COSMIC CHROME",
+      "count": 28,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "TCC-1",
+          "player": "Moonliner",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TCC-3",
+          "player": "Astronaut Pluto",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TCC-4",
+          "player": "Astronaut Donald Duck",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TCC-5",
+          "player": "Neon Mickey Mouse",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TCC-6",
+          "player": "Space Mountain Robot",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TCC-7",
+          "player": "Astronauts Chip 'n' Dale",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TCC-8",
+          "player": "Astronaut Goofy",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TCC-9",
+          "player": "Autopia Robot",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TCC-10",
+          "player": "Astronaut Mickey Mouse",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TCC-11",
+          "player": "Stitch",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TCC-11",
+          "player": "Buzz Lightyear",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TCC-12",
+          "player": "Emperor Zurg",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TCC-13",
+          "player": "Green Alien",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TCC-14",
+          "player": "Ghost Galaxy",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "1977",
+          "player": "TOPPS STAR TOURS CHROME",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "77S",
+          "player": "T-1 Enter A Galaxy Far, Far Away",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "77S",
+          "player": "T-2 C-3PO",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "77S",
+          "player": "T-3 StarSpeeder 3000",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "77S",
+          "player": "T-4 StarSpeeder 3000 Cabin",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "77S",
+          "player": "T-5 RX-24",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "77S",
+          "player": "T-6 G2-4T",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "77S",
+          "player": "T-7 R2-D2",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "77S",
+          "player": "T-8 StarSpeeder 1000",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "77S",
+          "player": "T-9 StarSpeeder 1000 Cabin",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "77S",
+          "player": "T-10 Darth Vader",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "77S",
+          "player": "T-11 Podracing on Tatooine",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "77S",
+          "player": "T-12 AT-AT Battle on Hoth",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "77S",
+          "player": "T-13 Lightspeed to Endor",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "A PIRATE'S LIFE CHROME",
+      "count": 10,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "POTC-1",
+          "player": "Helmsman",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "POTC-2",
+          "player": "Island Skeleton",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "POTC-3",
+          "player": "Ned Low",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "POTC-4",
+          "player": "Captain Charles Gibbs",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "POTC-5",
+          "player": "Sir Henry Mainwaring",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "POTC-6",
+          "player": "Sir Francis Verney",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "POTC-7",
+          "player": "Anne Bonny & Mary Read",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "POTC-8",
+          "player": "Pirate Robber",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "POTC-9",
+          "player": "Auctioneer",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "POTC-10",
+          "player": "Pirate Redd",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "IT'S A SMALL WORLD CHROME",
+      "count": 8,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "IASW-1",
+          "player": "Hello!",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "IASW-2",
+          "player": "Bonjour!",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "IASW-3",
+          "player": "Dia Duit!",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "IASW-4",
+          "player": "Hallo!",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "IASW-5",
+          "player": "Ciao!",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "IASW-6",
+          "player": "Privet!",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "IASW-7",
+          "player": "Sawadee!",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "IASW-8",
+          "player": "Jambo!",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "IASW-9 \u00a1Hola!",
+      "count": 5,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "IASW-10",
+          "player": "Aloha!",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "IASW-11",
+          "player": "Howdy!",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "IASW-12",
+          "player": "Goodbye!",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "IASW-13",
+          "player": "Farewell!",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "IASW-14",
+          "player": "See You Later!",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "EIGHTH WONDER CHROME",
+      "count": 7,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "EW-1",
+          "player": "Wave Goodbye to the Folks on the Dock",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "EW-2",
+          "player": "This is your skipper speaking. First time? Me too.",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "EW-3",
+          "player": "Ugh, the Ancient Temple is Ruined",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "EW-4",
+          "player": "Rooted in History",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "EW-5",
+          "player": "Schweitzer Falls and the Eighth Wonder of the World",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "EW-6",
+          "player": "The Most Dangerous Animal in the Jungle: the Hippo",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "EW-7",
+          "player": "The Cruise that Goes on for Niles and Niles",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "Card Number First Name Last Name Character Attraction",
+      "count": 19,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "1955",
+          "player": "TOPPS DISNEYLAND ICONS AUTOGRAPHS",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "T55",
+          "player": "A-BI Bret Iwan Sorcerer's Apprentice Mickey Fantasmic!",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "T55",
+          "player": "A-CD Chris Diamantopoulos Mickey Mouse Mickey and Minnie's Runaway Railway",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "T55",
+          "player": "A-BF Bill Farmer Pluto Mickey and Minnie's Runaway Railway",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "T55",
+          "player": "A-ANR Anika Noni Rose Tiana Tiana's Bayou Adventure",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "T55",
+          "player": "A-JL Jenifer Lewis Mama Odie Tiana's Bayou Adventure",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "T55",
+          "player": "A-MLW Michael-Leon Wooley Louis Tiana's Bayou Adventure",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "T55",
+          "player": "A-JC Jim Cummings Winnie the Pooh The Many Adventures of Winnie the Pooh",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "T55",
+          "player": "A-JCT Jim Cummings Tigger The Many Adventures of Winnie the Pooh",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "T55",
+          "player": "A-JCH Jim Cummings Hondo Ohnaka Millennium Falcon: Smugglers Run",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "T55",
+          "player": "A-PW Patrick Warburton G2-4T Star Tours \u2013 The Adventures Continue",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "T55",
+          "player": "A-BB Ben Burtt R2-D2 Star Tours \u2013 The Adventures Continue",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "T55",
+          "player": "A-JP Jeff Pidgeon Aliens Buzz Lightyear Astro Blasters",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "T55",
+          "player": "A-TA Tim Allen Buzz Lightyear Buzz Lightyear Astro Blasters",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "T55",
+          "player": "A-ASZ Andrew Stanton Zurg Buzz Lightyear Astro Blasters",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "T55",
+          "player": "A-ASC Andrew Stanton Crush Finding Nemo Submarine Voyage",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "T55",
+          "player": "A-AB Albert Brooks Marlin Finding Nemo Submarine Voyage",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "T55",
+          "player": "A-AG Alexander Gould Nemo Finding Nemo Submarine Voyage",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "T55",
+          "player": "A-MK Margaret Kerry Tinker Bell Original Pantomime Model",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "COLLECTOR'S PIN",
+      "count": 1,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "CP-70",
+          "player": "Collector's Pin Relic Card",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "ER-DDC Disney Dollar - 50th Anniversary Castle",
+      "count": 13,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "ER-57N",
+          "player": "YE 1957 New Year\u2019s Eve Ticket",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ER-58N",
+          "player": "YE 1958 New Year\u2019s Eve Ticket",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ER-59D",
+          "player": "N 1959 Date Nite Pass",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ER-60O",
+          "player": "FP 1960 An Old Fashioned Picnic Ticket",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ER-60S",
+          "player": "A 1960 Special Admission Ticket",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ER-61G",
+          "player": "N 1961 First Annual Grad Nite Party Ticket",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ER-61M",
+          "player": "KC 1961 Magic Kingdom Club Special Guest Card",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ER-61P",
+          "player": "D 1961 Passport to Disneyland Guided Tour Ticket",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ER-61G",
+          "player": "T 1961 Magic Kingdom Guided Tour Ticket",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ER-61N",
+          "player": "YE 1961 New Year\u2019s Eve Ticket",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ER-62S",
+          "player": "F 1962 Spring Fling Ticket",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ER-05",
+          "player": "U 2005 Disneyland 50th Anniversary Umbrella",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ER-15S",
+          "player": "BC 2015 Disneyland 60th Anniversary Sleeping Beauty Castle Banner",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "ER-MSEP 2017 Main Street Electrical Parade Banner",
+      "count": 1,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "ER-23S",
+          "player": "BC 2023 Disney100 Sleeping Beauty Castle Drawbridge Banner",
+          "team": "",
+          "note": ""
+        }
+      ]
+    }
+  ],
+  "autograph_sets": [],
+  "memorabilia_sets": [],
+  "team_sets": {}
+}
