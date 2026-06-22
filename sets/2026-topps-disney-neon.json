@@ -1,0 +1,3312 @@
+{
+  "set": "2026 Topps Disney Neon",
+  "release_date": "2026",
+  "set_size": 200,
+  "product_info": {},
+  "box_contents": {},
+  "parallels": [],
+  "base_set": {
+    "count": 200,
+    "cards": [
+      {
+        "number": "1P",
+        "player": "hineas Phineas and Ferb",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "2F",
+        "player": "erb Phineas and Ferb",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "3I",
+        "player": "sabella Phineas and Ferb",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "4D",
+        "player": "r. Doofenshmirtz Phineas and Ferb",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "5P",
+        "player": "erry the Platypus Phineas and Ferb",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "6C",
+        "player": "andace Phineas and Ferb",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "7T",
+        "player": "igger Winnie the Pooh",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "8P",
+        "player": "eter Pan Peter Pan",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "9C",
+        "player": "aptain Hook Peter Pan",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "10M",
+        "player": "r. Smee Peter Pan",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "11T",
+        "player": "he Beast Beauty and the Beast",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "12G",
+        "player": "aston Beauty and the Beast",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "13L",
+        "player": "umi\u00e8re Beauty and the Beast",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "14S",
+        "player": "titch Lilo & Stitch",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "15L",
+        "player": "ilo Lilo & Stitch",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "16J",
+        "player": "umba Lilo & Stitch",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "17P",
+        "player": "leakley Lilo & Stitch",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "18C",
+        "player": "aptain Gantu Lilo & Stitch",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "19W",
+        "player": "ALL-E WALL-E",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "20E",
+        "player": "ve WALL-E",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "21M",
+        "player": "oana Moana 2",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "22M",
+        "player": "oni Moana 2",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "23L",
+        "player": "oto Moana 2",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "24K",
+        "player": "ele Moana 2",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "25M",
+        "player": "atangi Moana 2",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "26M",
+        "player": "aui Moana 2",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "27T",
+        "player": "he Kakamora Moana 2",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "28A",
+        "player": "laddin Aladdin",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "29G",
+        "player": "enie Aladdin",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "30J",
+        "player": "afar Aladdin",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "31B",
+        "player": "uzz Lightyear Toy Story",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "32W",
+        "player": "oody Toy Story",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "33J",
+        "player": "essie Toy Story",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "34Z",
+        "player": "urg Toy Story 2",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "35D",
+        "player": "uke Caboom Toy Story 4",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "36D",
+        "player": "ucky & Bunny Toy Story 4",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "37K",
+        "player": "uzco The Emperor's New Groove",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "38Y",
+        "player": "zma The Emperor's New Groove",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "39K",
+        "player": "ronk The Emperor's New Groove",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "40M",
+        "player": "ufasa The Lion King",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "41S",
+        "player": "imba The Lion King",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "42N",
+        "player": "ala The Lion King",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "43S",
+        "player": "car The Lion King",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "44J",
+        "player": "oe Gardner Soul",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "46M",
+        "player": "oonwind Soul",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "47T",
+        "player": "erry Soul",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "48D",
+        "player": "orothea Williams Soul",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "49D",
+        "player": "ez Soul",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "50B",
+        "player": "runi Frozen 2",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "51M",
+        "player": "r. Incredible The Incredibles",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "52M",
+        "player": "rs. Incredible The Incredibles",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "53S",
+        "player": "yndrome The Incredibles",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "54D",
+        "player": "ash Parr The Incredibles",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "55V",
+        "player": "iolet Parr The Incredibles",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "56F",
+        "player": "rozone The Incredibles",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "57M",
+        "player": "irage The Incredibles",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "58T",
+        "player": "he Underminer The Incredibles",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "59S",
+        "player": "creenslaver Incredibles 2",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "60F",
+        "player": "lynn Rider Tangled",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "61N",
+        "player": "ick Wilde Zootopia",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "62J",
+        "player": "udy Hopps Zootopia",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "63F",
+        "player": "lash Zootopia",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "64G",
+        "player": "azelle Zootopia",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "65M",
+        "player": "iguel Coco",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "66",
+        "player": "H\u00e9ctor Coco",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "67E",
+        "player": "rnesto de la Cruz Coco",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "68C",
+        "player": "hicharr\u00f3n Coco",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "69P",
+        "player": "epita Coco",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "70A",
+        "player": "lebrije Dante Coco",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "71R",
+        "player": "emy Ratatouille",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "72L",
+        "player": "inguini Ratatouille",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "73A",
+        "player": "nton Ego Ratatouille",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "74G",
+        "player": "usteau Ratatouille",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "75M",
+        "player": "ulan Mulan",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "76M",
+        "player": "ushu Mulan",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "77L",
+        "player": "i Shang Mulan",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "78S",
+        "player": "han Yu Mulan",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "79N",
+        "player": "emo Finding Nemo",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "80M",
+        "player": "arlin Finding Nemo",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "81D",
+        "player": "ory Finding Nemo",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "82C",
+        "player": "rush & Squirt Finding Nemo",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "83B",
+        "player": "ruce Finding Nemo",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "84G",
+        "player": "ill Finding Nemo",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "85H",
+        "player": "ank Finding Dory",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "86P",
+        "player": "inocchio Pinocchio",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "87J",
+        "player": "iminy Cricket Pinocchio",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "88C",
+        "player": "ruz Ramirez Cars 3",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "89M",
+        "player": "ater Cars",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "90C",
+        "player": "hick Hicks Cars",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "91J",
+        "player": "ackson Storm Cars 3",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "92R",
+        "player": "amone Cars",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "93T",
+        "player": "he King Cars",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "94F",
+        "player": "rancesco Bernoulli Cars 2",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "95L",
+        "player": "ightning McQueen Cars",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "96W",
+        "player": "ingo Cars",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "97S",
+        "player": "not Rod Cars",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "98B",
+        "player": "oost Cars",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "99D",
+        "player": "J Cars",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "100M",
+        "player": "aleficent Sleeping Beauty",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "101P",
+        "player": "owerline A Goofy Movie",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "102G",
+        "player": "oofy A Goofy Movie",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "103P",
+        "player": "ete A Goofy Movie",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "104P",
+        "player": ".J. A Goofy Movie",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "105M",
+        "player": "ax Goof A Goofy Movie",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "106R",
+        "player": "oxanne A Goofy Movie",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "107R",
+        "player": "alph Wreck-It Ralph",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "108F",
+        "player": "elix Wreck-It Ralph",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "109V",
+        "player": "anellope von Schweetz Wreck-It Ralph",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "110K",
+        "player": "ing Candy Wreck-It Ralph",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "111S",
+        "player": "ergeant Calhoun Wreck-It Ralph",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "112S",
+        "player": "our Bill Wreck-It Ralph",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "113S",
+        "player": "hank Ralph Breaks the Internet",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "114Y",
+        "player": "esss Ralph Breaks the Internet",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "115C",
+        "player": "hicken Little Chicken Little",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "116F",
+        "player": "ish Out of Water Chicken Little",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "117K",
+        "player": "irby Chicken Little",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "118S",
+        "player": "ulley Monsters, Inc.",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "119M",
+        "player": "ike Wazowski Monsters, Inc.",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "120R",
+        "player": "andall Boggs Monsters, Inc.",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "121A",
+        "player": "rt Monsters University",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "122S",
+        "player": "quishy Monsters University",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "123D",
+        "player": "arkwing Duck Darkwing Duck",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "124L",
+        "player": "aunchpad McQuack Darkwing Duck",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "125B",
+        "player": "aymax Big Hero 6",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "126H",
+        "player": "iro Hamada Big Hero 6",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "127Y",
+        "player": "okai Big Hero 6",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "128B",
+        "player": "olt Bolt",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "129C",
+        "player": "arl Fredricksen Up",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "130R",
+        "player": "ussell Up",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "131H",
+        "player": "ercules Hercules",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "132H",
+        "player": "ades Hercules",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "133M",
+        "player": "egara Hercules",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "134G",
+        "player": "oliath Gargoyles",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "135D",
+        "player": "emona Gargoyles",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "136H",
+        "player": "udson Gargoyles",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "137B",
+        "player": "rooklyn Gargoyles",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "138B",
+        "player": "roadway Gargoyles",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "139L",
+        "player": "exington Gargoyles",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "140L",
+        "player": "ewis Meet the Robinsons",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "141W",
+        "player": "ilbur Robinson Meet the Robinsons",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "142B",
+        "player": "owler Hat Guy & DOR-15 Meet the Robinsons",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "143C",
+        "player": "arl the Robot Meet the Robinsons",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "144T",
+        "player": "iny Meet the Robinsons",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "145M",
+        "player": "erlin The Sword in the Stone",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "146E",
+        "player": "lio Sol\u00eds Elio",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "147G",
+        "player": "lordon Elio",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "148L",
+        "player": "ord Grigon Elio",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "149J",
+        "player": "im Hawkins Treasure Planet",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "150B",
+        "player": ".E.N. Treasure Planet",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "151S",
+        "player": "crooge McDuck Ducktales",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "152H",
+        "player": "uey, Dewey, Louie Ducktales",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "153C",
+        "player": "hernabog Fantasia",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "154I",
+        "player": "an Lightfoot Onward",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "155B",
+        "player": "arley Lightfoot Onward",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "156M",
+        "player": "al Descendants",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "157E",
+        "player": "vie Descendants",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "158J",
+        "player": "ay Descendants",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "159C",
+        "player": "arlos Descendants",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "160U",
+        "player": "ma Descendants",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "161R",
+        "player": "ed Descendants",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "162E",
+        "player": "lliott Pete's Dragon",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "163J",
+        "player": "oy Inside Out",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "164F",
+        "player": "ear Inside Out",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "165A",
+        "player": "nger Inside Out",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "166S",
+        "player": "adness Inside Out",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "167D",
+        "player": "isgust Inside Out",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "168B",
+        "player": "ing Bong Inside Out",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "169A",
+        "player": "nxiety Inside Out 2",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "170E",
+        "player": "mbarrassment Inside Out 2",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "171E",
+        "player": "nnui Inside Out 2",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "172B",
+        "player": "loofy & Pouchy Inside Out 2",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "173L",
+        "player": "ance Slashblade Inside Out 2",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "174M",
+        "player": "ilo Atlantis: The Lost Empire",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "175K",
+        "player": "ida Atlantis: The Lost Empire",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "176U",
+        "player": "rsula The Little Mermaid",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "177K",
+        "player": "ing Triton The Little Mermaid",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "178C",
+        "player": "hef Louis The Little Mermaid",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "179F",
+        "player": "lotsam and Jetsam The Little Mermaid",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "180S",
+        "player": "ebastian The Little Mermaid",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "181E",
+        "player": "mber Lumen Elemental",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "182W",
+        "player": "ade Ripple Elemental",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "183C",
+        "player": "ruella de Vil One Hundred and One Dalmatians",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "184T",
+        "player": "imothy Q. Mouse Dumbo",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "185D",
+        "player": "umbo Dumbo",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "186K",
+        "player": "ermit The Muppets",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "187M",
+        "player": "iss Piggy The Muppets",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "188P",
+        "player": "ep\u00e9 The Muppets",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "189R",
+        "player": "izzo The Muppets",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "190S",
+        "player": "wedish Chef The Muppets",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "191G",
+        "player": "onzo The Muppets",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "192F",
+        "player": "ozzie Bear The Muppets",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "193D",
+        "player": "r. Bunsen Honeydew & Beaker The Muppets",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "194A",
+        "player": "nimal The Muppets",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "195S",
+        "player": "am Eagle The Muppets",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "196D",
+        "player": "onald Duck Mickey & Friends",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "197D",
+        "player": "aisy Duck Mickey & Friends",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "198P",
+        "player": "luto Mickey & Friends",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "199M",
+        "player": "innie Mouse Mickey & Friends",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "200M",
+        "player": "ickey Mouse Mickey & Friends",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "4522",
+        "player": "Soul",
+        "team": "",
+        "note": ""
+      }
+    ]
+  },
+  "insert_sets": [
+    {
+      "name": "FAMILY FIRST",
+      "count": 35,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "FF-1",
+          "player": "Mirabel Abuela Alma",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FF-2",
+          "player": "Miguel H\u00e9ctor",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FF-3",
+          "player": "Wendy John & Michael",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FF-4",
+          "player": "Geppetto Pinocchio",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FF-5",
+          "player": "Simba Mufasa",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FF-6",
+          "player": "Mulan Fa Zhou",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FF-7",
+          "player": "Bernard Miss Bianca",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FF-8",
+          "player": "Mowgli Baloo",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FF-9",
+          "player": "Hercules Hera",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FF-10",
+          "player": "Lewis Wilbur Robinson",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FF-11",
+          "player": "Tweedle Dee Tweedle Dum",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FF-12",
+          "player": "Lady Tramp",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FF-13",
+          "player": "Belle Maurice",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FF-14",
+          "player": "Pongo Perdita",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FF-15",
+          "player": "Ian Lightfoot Barley Lightfoot",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FF-16",
+          "player": "Bambi Mother",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FF-17",
+          "player": "Merida Queen Elinor",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FF-18",
+          "player": "Chicken Little Buck Cluck",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FF-19",
+          "player": "Ariel King Triton",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FF-20",
+          "player": "Jaq Gus",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FF-21",
+          "player": "Kanga Roo",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FF-22",
+          "player": "Lilo Nani",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FF-23",
+          "player": "Goofy Max Goof",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FF-24",
+          "player": "Pacha Chicha",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FF-25",
+          "player": "Dumbo Mrs. Jumbo",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FF-26",
+          "player": "Elsa Anna",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FF-27",
+          "player": "Remy Emile",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FF-28",
+          "player": "Mei Lee Ming Lee",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FF-29",
+          "player": "Anastasia Drizella",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FF-30",
+          "player": "Phineas Ferb",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FF-31",
+          "player": "Mrs. Potts Chip",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FF-32",
+          "player": "Nemo Marlin",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FF-33",
+          "player": "Violet Parr Dash Parr",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FF-34",
+          "player": "Mal Maleficent",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FF-35",
+          "player": "Perdita Her Puppies",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "FAMILY FIRST RIVALS VARIATION",
+      "count": 70,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "FFR-1",
+          "player": "Snow White",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FFR-1",
+          "player": "Evil Queen",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FFR-2",
+          "player": "Sulley",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FFR-2",
+          "player": "Randall Boggs",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FFR-3",
+          "player": "Buzz Lightyear",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FFR-3",
+          "player": "Zurg",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FFR-4",
+          "player": "Robin Hood",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FFR-4",
+          "player": "Prince John",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FFR-5",
+          "player": "Tiana",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FFR-5",
+          "player": "Dr. Facilier",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FFR-6",
+          "player": "Stitch",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FFR-6",
+          "player": "Captain Gantu",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FFR-7",
+          "player": "Mr. Incredible",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FFR-7",
+          "player": "Syndrome",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FFR-8",
+          "player": "Peter Pan",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FFR-8",
+          "player": "Captain Hook",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FFR-9",
+          "player": "Mowgli",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FFR-9",
+          "player": "Shere Khan",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FFR-10",
+          "player": "Alice",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FFR-10",
+          "player": "Queen of Hearts",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FFR-11",
+          "player": "Hercules",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FFR-11",
+          "player": "Hades",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FFR-12",
+          "player": "Winnie the Pooh",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FFR-12",
+          "player": "Heffalumps",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FFR-13",
+          "player": "Belle",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FFR-13",
+          "player": "Gaston",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FFR-14",
+          "player": "Quasimodo",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FFR-14",
+          "player": "Judge Claude Frollo",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FFR-15",
+          "player": "Vanellope von Schweetz",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FFR-15",
+          "player": "King Candy",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FFR-16",
+          "player": "Aladdin",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FFR-16",
+          "player": "Jafar",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FFR-17",
+          "player": "Ariel",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FFR-17",
+          "player": "Ursula",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FFR-18",
+          "player": "Lewis Robinson",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FFR-18",
+          "player": "Bowler Hat Guy",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FFR-19",
+          "player": "Asha",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FFR-19",
+          "player": "King Magnifico",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FFR-20",
+          "player": "Mufasa",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FFR-20",
+          "player": "Scar",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FFR-21",
+          "player": "Flik",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FFR-21",
+          "player": "Hopper",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FFR-22",
+          "player": "Aurora",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FFR-22",
+          "player": "Maleficent",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FFR-23",
+          "player": "The Dalmatians",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FFR-23",
+          "player": "Cruella de Vil",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FFR-24",
+          "player": "Cinderella",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FFR-24",
+          "player": "Lady Tremaine",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FFR-25",
+          "player": "Linguini & Remy",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FFR-25",
+          "player": "Anton Ego",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FFR-26",
+          "player": "Rapunzel",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FFR-26",
+          "player": "Mother Gothel",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FFR-27",
+          "player": "Jaq & Gus",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FFR-27",
+          "player": "Lucifer",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FFR-28",
+          "player": "Anna",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FFR-28",
+          "player": "Prince Hans",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FFR-29",
+          "player": "Pocahontas",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FFR-29",
+          "player": "Governor Ratcliffe",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FFR-30",
+          "player": "Mulan",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FFR-30",
+          "player": "Shan Yu",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FFR-31",
+          "player": "Hiro Hamada",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FFR-31",
+          "player": "Yokai",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FFR-32",
+          "player": "Kuzco",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FFR-32",
+          "player": "Yzma",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FFR-33",
+          "player": "Mickey",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FFR-33",
+          "player": "Pete",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FFR-34",
+          "player": "Carl Fredricksen",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FFR-34",
+          "player": "Charles F. Muntz",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FFR-35",
+          "player": "Woody",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FFR-35",
+          "player": "Lotso",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "MANGA MADNESS",
+      "count": 15,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "MM-1",
+          "player": "Woody",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MM-2",
+          "player": "Jessie",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MM-3",
+          "player": "Bo Peep",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MM-4",
+          "player": "Rex",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MM-5",
+          "player": "Buzz Lightyear",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MM-6",
+          "player": "Snot Rod",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MM-7",
+          "player": "Boost",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MM-8",
+          "player": "DJ",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MM-9",
+          "player": "Wingo",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MM-10",
+          "player": "Lightning Mcqueen",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MM-11",
+          "player": "Aladdin",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MM-12",
+          "player": "Prince Charming",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MM-13",
+          "player": "Rapunzel",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MM-14",
+          "player": "Snow White",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MM-15",
+          "player": "Evil Queen",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "A GOOFY MOVIE",
+      "count": 12,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "AGM-1",
+          "player": "Goofy",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "AGM-2",
+          "player": "Pete",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "AGM-3",
+          "player": "P.J.",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "AGM-4",
+          "player": "Roxanne",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "AGM-5",
+          "player": "Max Goof",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "AGM-6",
+          "player": "Bobby Zimuruski",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "AGM-7",
+          "player": "Bigfoot",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "AGM-8",
+          "player": "Powerline",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "AGM-9",
+          "player": "Goofy",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "AGM-10",
+          "player": "Max Goof",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "AGM-11",
+          "player": "Goofy",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "AGM-12",
+          "player": "Powerline",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "EPIC MICKEY",
+      "count": 25,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "EM-1",
+          "player": "Mickey Mouse",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "EM-2",
+          "player": "Horace Horsecollar",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "EM-3",
+          "player": "Clarabelle Cow",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "EM-4",
+          "player": "Abner",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "EM-5",
+          "player": "Oswald the Lucky Rabbit",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "EM-6",
+          "player": "Ortensia",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "EM-7",
+          "player": "Witch Tanker Beetleworx",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "EM-8",
+          "player": "Tomorrow City Tanker Beetleworx",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "EM-9",
+          "player": "Captain Basher Beetleworx",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "EM-10",
+          "player": "Steamboat Willie",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "EM-11",
+          "player": "Pirate Moody",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "EM-12",
+          "player": "Brave Little Tailor",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "EM-13",
+          "player": "Small Pete",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "EM-14",
+          "player": "Gus the Gremlin",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "EM-15",
+          "player": "Animatronic Donald",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "EM-16",
+          "player": "Animatronic Daisy",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "EM-17",
+          "player": "Spladoosh Blotling",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "EM-18",
+          "player": "Spatter Blotling",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "EM-19",
+          "player": "Seer Blotling",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "EM-20",
+          "player": "Mickey Mouse",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "EM-21",
+          "player": "Tanker Beetleworx",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "EM-22",
+          "player": "Basher Beetleworx",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "EM-23",
+          "player": "Clock Tower",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "EM-24",
+          "player": "Clock Tower",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "EM-25",
+          "player": "Shadow Blot",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "THE MUPPETS PUZZLE",
+      "count": 21,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "MP-1",
+          "player": "Animal",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MP-2",
+          "player": "Beaker",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MP-3",
+          "player": "Camilla the Chicken",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MP-4",
+          "player": "Dr. Bunsen Honeydew",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MP-5",
+          "player": "Dr. Teeth",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MP-6",
+          "player": "Floyd Pepper",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MP-7",
+          "player": "Fozzie Bear",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MP-8",
+          "player": "Gonzo",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MP-9",
+          "player": "Janice",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MP-10",
+          "player": "Kermit",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MP-11",
+          "player": "Miss Piggy",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MP-12",
+          "player": "Pep\u00e9",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MP-13",
+          "player": "Rizzo",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MP-14",
+          "player": "Rowlf the Dog",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MP-15",
+          "player": "Sam Eagle",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MP-16",
+          "player": "Scooter",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MP-17",
+          "player": "Statler",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MP-18",
+          "player": "The Swedish Chef",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MP-19",
+          "player": "Waldorf",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MP-20",
+          "player": "Walter",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MP-21",
+          "player": "Zoot",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "NEON PETG LIGHTS",
+      "count": 25,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "NPL-1",
+          "player": "Alice",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NPL-2",
+          "player": "Angel",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NPL-3",
+          "player": "Ariel",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NPL-4",
+          "player": "Belle",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NPL-5",
+          "player": "Buzz Lightyear",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NPL-6",
+          "player": "Daisy Duck",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NPL-7",
+          "player": "Donald Duck",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NPL-8",
+          "player": "Elsa",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NPL-9",
+          "player": "Genie",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NPL-10",
+          "player": "Goofy",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NPL-11",
+          "player": "Hercules",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NPL-12",
+          "player": "Joy",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NPL-13",
+          "player": "Lightning McQueen",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NPL-14",
+          "player": "Mickey Mouse",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NPL-15",
+          "player": "Minnie Mouse",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NPL-16",
+          "player": "Mirabel",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NPL-17",
+          "player": "Moana",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NPL-18",
+          "player": "Peter Pan",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NPL-19",
+          "player": "Pinocchio",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NPL-20",
+          "player": "Pluto",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NPL-21",
+          "player": "Simba",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NPL-22",
+          "player": "Stitch",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NPL-23",
+          "player": "Sulley",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NPL-24",
+          "player": "Tinker Bell",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NPL-25",
+          "player": "Wreck-It Ralph",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "MICKEY SHORTS SHORT PRINTS",
+      "count": 23,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "MSSP-1",
+          "player": "Mickey Mouse",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MSSP-2",
+          "player": "Mickey Mouse",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MSSP-3",
+          "player": "Mickey Mouse",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MSSP-4",
+          "player": "Mickey Mouse",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MSSP-5",
+          "player": "Mickey & Minnie Mouse",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MSSP-6",
+          "player": "Minnie Mouse",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MSSP-7",
+          "player": "Minnie Mouse",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MSSP-8",
+          "player": "Minnie Mouse",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MSSP-9",
+          "player": "Minnie Mouse",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MSSP-10",
+          "player": "Donald Duck",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MSSP-11",
+          "player": "Donald Duck",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MSSP-12",
+          "player": "Donald Duck",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MSSP-13",
+          "player": "Donald Duck",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MSSP-14",
+          "player": "Daisy Duck",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MSSP-15",
+          "player": "Daisy Duck",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MSSP-16",
+          "player": "Daisy Duck",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MSSP-17",
+          "player": "Goofy",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MSSP-18",
+          "player": "Goofy",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MSSP-19",
+          "player": "Goofy",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MSSP-20",
+          "player": "Goofy",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MSSP-21",
+          "player": "Pluto",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MSSP-22",
+          "player": "Pluto",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MSSP-23",
+          "player": "Pluto",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "MAGIC CARPET RIDE",
+      "count": 1,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "MCR-1",
+          "player": "Magic Carpet",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "NEON VILLAINS INSERT",
+      "count": 7,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "NV-1",
+          "player": "Ursula",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NV-2",
+          "player": "Hades",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NV-3",
+          "player": "Dr. Facilier",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NV-4",
+          "player": "Chernabog",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NV-5",
+          "player": "Evil Queen",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NV-6",
+          "player": "Scar",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NV-7",
+          "player": "Maleficent",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "CHROME NEON ETCH",
+      "count": 100,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "CNE-1",
+          "player": "Phineas Phineas and Ferb",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CNE-2",
+          "player": "Ferb Phineas and Ferb",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CNE-4",
+          "player": "Dr. Doofenshmirtz Phineas and Ferb",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CNE-5",
+          "player": "Perry the Platypus Phineas and Ferb",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CNE-7",
+          "player": "Tigger Winnie the Pooh",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CNE-8",
+          "player": "Peter Pan Peter Pan",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CNE-9",
+          "player": "Captain Hook Peter Pan",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CNE-11",
+          "player": "The Beast Beauty and the Beast",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CNE-14",
+          "player": "Stitch Lilo & Stitch",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CNE-15",
+          "player": "Lilo Lilo & Stitch",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CNE-19",
+          "player": "WALL-E WALL-E",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CNE-20",
+          "player": "Eve WALL-E",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CNE-28",
+          "player": "Aladdin Aladdin",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CNE-29",
+          "player": "Genie Aladdin",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CNE-30",
+          "player": "Jafar Aladdin",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CNE-31",
+          "player": "Buzz Lightyear Toy Story",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CNE-32",
+          "player": "Woody Toy Story",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CNE-33",
+          "player": "Jessie Toy Story",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CNE-34",
+          "player": "Zurg Toy Story 2",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CNE-37",
+          "player": "Kuzco The Emperor's New Groove",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CNE-38",
+          "player": "Yzma The Emperor's New Groove",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CNE-39",
+          "player": "Kronk The Emperor's New Groove",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CNE-40",
+          "player": "Mufasa The Lion King",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CNE-41",
+          "player": "Simba The Lion King",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CNE-42",
+          "player": "Nala The Lion King",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CNE-43",
+          "player": "Scar The Lion King",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CNE-51",
+          "player": "Mr. Incredible The Incredibles",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CNE-52",
+          "player": "Mrs. Incredible The Incredibles",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CNE-53",
+          "player": "Syndrome The Incredibles",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CNE-56",
+          "player": "Frozone The Incredibles",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CNE-60",
+          "player": "Flynn Rider Tangled",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CNE-61",
+          "player": "Nick Wilde Zootopia",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CNE-62",
+          "player": "Judy Hopps Zootopia",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CNE-65",
+          "player": "Miguel Coco",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CNE-66",
+          "player": "H\u00e9ctor Coco",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CNE-67",
+          "player": "Ernesto de la Cruz Coco",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CNE-69",
+          "player": "Pepita Coco",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CNE-70",
+          "player": "Alebrije Dante Coco",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CNE-71",
+          "player": "Remy Ratatouille",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CNE-72",
+          "player": "Linguini Ratatouille",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CNE-75",
+          "player": "Mulan Mulan",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CNE-76",
+          "player": "Mushu Mulan",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CNE-79",
+          "player": "Nemo Finding Nemo",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CNE-80",
+          "player": "Marlin Finding Nemo",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CNE-81",
+          "player": "Dory Finding Nemo",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CNE-86",
+          "player": "Pinocchio Pinocchio",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CNE-87",
+          "player": "Jiminy Cricket Pinocchio",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CNE-89",
+          "player": "Mater Cars",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CNE-95",
+          "player": "Lightning McQueen Cars",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CNE-100",
+          "player": "Maleficent Sleeping Beauty",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CNE-101",
+          "player": "Powerline A Goofy Movie",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CNE-102",
+          "player": "Goofy A Goofy Movie",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CNE-105",
+          "player": "Max Goof A Goofy Movie",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CNE-107",
+          "player": "Ralph Wreck-It Ralph",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CNE-108",
+          "player": "Felix Wreck-It Ralph",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CNE-109",
+          "player": "Vanellope von Schweetz Wreck-It Ralph",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CNE-115",
+          "player": "Chicken Little Chicken Little",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CNE-117",
+          "player": "Kirby Chicken Little",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CNE-118",
+          "player": "Sulley Monsters, Inc.",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CNE-119",
+          "player": "Mike Wazowski Monsters, Inc.",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CNE-120",
+          "player": "Randall Boggs Monsters, Inc.",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CNE-123",
+          "player": "Darkwing Duck Darkwing Duck",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CNE-125",
+          "player": "Baymax Big Hero 6",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CNE-126",
+          "player": "Hiro Hamada Big Hero 6",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CNE-128",
+          "player": "Bolt Bolt",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CNE-130",
+          "player": "Russell Up",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CNE-131",
+          "player": "Hercules Hercules",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CNE-132",
+          "player": "Hades Hercules",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CNE-133",
+          "player": "Megara Hercules",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CNE-134",
+          "player": "Goliath Gargoyles",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CNE-140",
+          "player": "Lewis Meet the Robinsons",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CNE-145",
+          "player": "Merlin The Sword in the Stone",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CNE-146",
+          "player": "Elio Sol\u00eds Elio",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CNE-147",
+          "player": "Glordon Elio",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CNE-150",
+          "player": "B.E.N. Treasure Planet",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CNE-151",
+          "player": "Scrooge McDuck Ducktales",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CNE-153",
+          "player": "Chernabog Fantasia",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CNE-162",
+          "player": "Elliott Pete's Dragon",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CNE-163",
+          "player": "Joy Inside Out",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CNE-164",
+          "player": "Fear Inside Out",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CNE-165",
+          "player": "Anger Inside Out",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CNE-166",
+          "player": "Sadness Inside Out",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CNE-167",
+          "player": "Disgust Inside Out",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CNE-168",
+          "player": "Bing Bong Inside Out",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CNE-169",
+          "player": "Anxiety Inside Out 2",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CNE-174",
+          "player": "Milo Atlantis: The Lost Empire",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CNE-175",
+          "player": "Kida Atlantis: The Lost Empire",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CNE-176",
+          "player": "Ursula The Little Mermaid",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CNE-180",
+          "player": "Sebastian The Little Mermaid",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CNE-181",
+          "player": "Ember Lumen Elemental",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CNE-185",
+          "player": "Dumbo Dumbo",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CNE-186",
+          "player": "Kermit The Muppets",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CNE-187",
+          "player": "Miss Piggy The Muppets",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CNE-191",
+          "player": "Gonzo The Muppets",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CNE-194",
+          "player": "Animal The Muppets",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CNE-196",
+          "player": "Donald Duck Mickey & Friends",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CNE-197",
+          "player": "Daisy Duck Mickey & Friends",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CNE-198",
+          "player": "Pluto Mickey & Friends",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CNE-199",
+          "player": "Minnie Mouse Mickey & Friends",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CNE-200",
+          "player": "Mickey Mouse Mickey & Friends",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "SCROOGES MONEY BIN",
+      "count": 1,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "SMB-1",
+          "player": "Scrooge McDuck Ducktales",
+          "team": "",
+          "note": ""
+        }
+      ]
+    }
+  ],
+  "autograph_sets": [],
+  "memorabilia_sets": [],
+  "team_sets": {}
+}
