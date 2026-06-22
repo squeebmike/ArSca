@@ -3326,6 +3326,197 @@ export default {
       }
     }
 
+    // Topps Checklist Browser API. Stores parsed PDF checklist data in KV as
+    // sets, source records, and chunked card rows so full-batch imports can be
+    // safely re-run as new Topps PDFs are released.
+    if (url.pathname.startsWith('/topps-checklists')) {
+      const kv = env.LBA_KV;
+      if (!kv) return json({ ok: false, error: 'KV not configured' }, 503);
+      const TOPPS_CARD_CHUNK_SIZE = 5000;
+      const readJsonKv = async (key, fallback) => {
+        const raw = await kv.get(key);
+        if (!raw) return fallback;
+        try { return JSON.parse(raw); } catch (_) { return fallback; }
+      };
+      const norm = v => String(v || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+      const loadToppsCards = async () => {
+        const count = Number(await kv.get('topps_cards_chunk_count') || 0);
+        const chunks = await Promise.all(Array.from({ length: count }, (_, i) => readJsonKv(`topps_cards_chunk:${i}`, [])));
+        return chunks.flat();
+      };
+      const cardMatches = (card, filters) => {
+        if (filters.setId && card.setId !== filters.setId) return false;
+        if (filters.year && String(card.year || '') !== String(filters.year)) return false;
+        if (filters.sport && String(card.sport || '').toLowerCase() !== String(filters.sport).toLowerCase()) return false;
+        if (filters.product && !norm(card.product).includes(norm(filters.product))) return false;
+        if (filters.team && !norm(card.team).includes(norm(filters.team))) return false;
+        if (filters.number && String(card.cardNumber || '').toLowerCase() !== String(filters.number).toLowerCase()) return false;
+        if (filters.flag && !card.flags?.[filters.flag]) return false;
+        if (filters.q) {
+          const hay = card.searchText || [card.year, card.brand, card.product, card.sport, card.section, card.cardNumber, card.player, card.subject, card.team, card.notes].join(' ').toLowerCase();
+          if (!norm(filters.q).split(/\s+/).every(t => hay.includes(t))) return false;
+        }
+        return true;
+      };
+
+      if (url.pathname === '/topps-checklists/import-start' && request.method === 'PUT') {
+        const body = await request.json().catch(() => null);
+        if (!body || !Array.isArray(body.sets)) return json({ ok: false, error: 'sets[] required' }, 400);
+        const now = new Date().toISOString();
+        const sets = body.sets.map(s => ({ ...s, updatedAt: now }));
+        const sources = (body.sources || []).map(s => {
+          const source = { ...s };
+          delete source.rawText;
+          return { ...source, updatedAt: now };
+        });
+        const priorCount = Number(await kv.get('topps_cards_chunk_count') || 0);
+        for (let i = 0; i < priorCount; i++) await kv.delete(`topps_cards_chunk:${i}`);
+        await kv.put('topps_cards_chunk_count', '0');
+        await kv.put('topps_sets_index', JSON.stringify(sets));
+        await kv.put('topps_source_index', JSON.stringify(sources));
+        await kv.put('topps_import_meta', JSON.stringify({
+          importedAt: now,
+          status: 'importing',
+          schemaVersion: body.schemaVersion || 1,
+          setCount: sets.length,
+          cardCount: 0,
+          expectedCardCount: body.expectedCardCount || 0,
+          sourceCount: sources.length,
+          chunkCount: 0,
+        }));
+        return json({ ok: true, setCount: sets.length, sourceCount: sources.length, clearedChunks: priorCount });
+      }
+
+      if (url.pathname === '/topps-checklists/import-cards-chunk' && request.method === 'PUT') {
+        const body = await request.json().catch(() => null);
+        const chunkIndex = Number(body?.chunkIndex);
+        if (!Number.isInteger(chunkIndex) || chunkIndex < 0 || !Array.isArray(body.cards)) return json({ ok: false, error: 'chunkIndex and cards[] required' }, 400);
+        const now = new Date().toISOString();
+        const cards = body.cards.map(c => ({ ...c, updatedAt: now }));
+        await kv.put(`topps_cards_chunk:${chunkIndex}`, JSON.stringify(cards));
+        return json({ ok: true, chunkIndex, cardCount: cards.length });
+      }
+
+      if (url.pathname === '/topps-checklists/import-source' && request.method === 'PUT') {
+        const body = await request.json().catch(() => null);
+        if (!body?.source?.sourceId) return json({ ok: false, error: 'source.sourceId required' }, 400);
+        await kv.put(`topps_source:${body.source.sourceId}`, JSON.stringify({ ...body.source, updatedAt: new Date().toISOString() }));
+        return json({ ok: true, sourceId: body.source.sourceId });
+      }
+
+      if (url.pathname === '/topps-checklists/import-complete' && request.method === 'PUT') {
+        const body = await request.json().catch(() => null);
+        const chunkCount = Number(body?.chunkCount);
+        if (!Number.isInteger(chunkCount) || chunkCount < 0) return json({ ok: false, error: 'chunkCount required' }, 400);
+        const now = new Date().toISOString();
+        await kv.put('topps_cards_chunk_count', String(chunkCount));
+        await kv.put('topps_import_meta', JSON.stringify({
+          importedAt: now,
+          status: 'ready',
+          schemaVersion: body.schemaVersion || 1,
+          setCount: Number(body.setCount || 0),
+          cardCount: Number(body.cardCount || 0),
+          sourceCount: Number(body.sourceCount || 0),
+          chunkCount,
+        }));
+        return json({ ok: true, setCount: Number(body.setCount || 0), cardCount: Number(body.cardCount || 0), sourceCount: Number(body.sourceCount || 0), chunkCount });
+      }
+
+      if (url.pathname === '/topps-checklists/import-json' && request.method === 'PUT') {
+        const body = await request.json().catch(() => null);
+        if (!body || !Array.isArray(body.sets) || !Array.isArray(body.cards)) return json({ ok: false, error: 'sets[] and cards[] required' }, 400);
+        const now = new Date().toISOString();
+        const sets = body.sets.map(s => ({ ...s, updatedAt: now }));
+        const cards = body.cards.map(c => ({ ...c, updatedAt: now }));
+        const sources = (body.sources || []).map(s => {
+          const source = { ...s };
+          delete source.rawText;
+          return { ...source, updatedAt: now };
+        });
+
+        await kv.put('topps_sets_index', JSON.stringify(sets));
+        await kv.put('topps_source_index', JSON.stringify(sources));
+        for (const source of body.sources || []) await kv.put(`topps_source:${source.sourceId}`, JSON.stringify(source));
+        const priorCount = Number(await kv.get('topps_cards_chunk_count') || 0);
+        for (let i = 0; i < priorCount; i++) await kv.delete(`topps_cards_chunk:${i}`);
+        const chunkCount = Math.ceil(cards.length / TOPPS_CARD_CHUNK_SIZE);
+        for (let i = 0; i < chunkCount; i++) {
+          await kv.put(`topps_cards_chunk:${i}`, JSON.stringify(cards.slice(i * TOPPS_CARD_CHUNK_SIZE, (i + 1) * TOPPS_CARD_CHUNK_SIZE)));
+        }
+        await kv.put('topps_cards_chunk_count', String(chunkCount));
+        await kv.put('topps_import_meta', JSON.stringify({ importedAt: now, schemaVersion: body.schemaVersion || 1, setCount: sets.length, cardCount: cards.length, sourceCount: sources.length, chunkCount }));
+        return json({ ok: true, setCount: sets.length, cardCount: cards.length, sourceCount: sources.length, chunkCount });
+      }
+
+      if (url.pathname === '/topps-checklists/meta' && request.method === 'GET') {
+        const meta = await readJsonKv('topps_import_meta', {});
+        return json({ ok: true, meta });
+      }
+
+      if (url.pathname === '/topps-checklists/sets' && request.method === 'GET') {
+        const sets = await readJsonKv('topps_sets_index', []);
+        const q = url.searchParams.get('q') || '';
+        const sport = url.searchParams.get('sport') || '';
+        const year = url.searchParams.get('year') || '';
+        const filtered = sets.filter(s =>
+          (!q || norm([s.year, s.brand, s.product, s.setName, s.releaseName, s.sport].join(' ')).includes(norm(q))) &&
+          (!sport || String(s.sport || '').toLowerCase() === sport.toLowerCase()) &&
+          (!year || String(s.year || '') === String(year))
+        );
+        return json({ ok: true, total: filtered.length, sets: filtered.slice(0, 500) });
+      }
+
+      if (url.pathname === '/topps-checklists/cards' && request.method === 'GET') {
+        const filters = {
+          q: url.searchParams.get('q') || '',
+          setId: url.searchParams.get('setId') || '',
+          year: url.searchParams.get('year') || '',
+          sport: url.searchParams.get('sport') || '',
+          product: url.searchParams.get('product') || '',
+          team: url.searchParams.get('team') || '',
+          number: url.searchParams.get('number') || '',
+          flag: url.searchParams.get('flag') || '',
+        };
+        const limit = Math.min(500, Math.max(1, Number(url.searchParams.get('limit') || 100)));
+        const offset = Math.max(0, Number(url.searchParams.get('offset') || 0));
+        const cards = await loadToppsCards();
+        const filtered = cards.filter(c => cardMatches(c, filters));
+        return json({ ok: true, total: filtered.length, cards: filtered.slice(offset, offset + limit), limit, offset });
+      }
+
+      const cardMatch = url.pathname.match(/^\/topps-checklists\/cards\/([^/]+)$/);
+      if (cardMatch && request.method === 'GET') {
+        const cards = await loadToppsCards();
+        const card = cards.find(c => c.id === decodeURIComponent(cardMatch[1]));
+        if (!card) return json({ ok: false, error: 'Card not found' }, 404);
+        const source = card.sourceId ? await readJsonKv(`topps_source:${card.sourceId}`, null) : null;
+        return json({ ok: true, card, source });
+      }
+
+      const pcMatch = url.pathname.match(/^\/topps-checklists\/cards\/([^/]+)\/pricecharting$/);
+      if (pcMatch && request.method === 'GET') {
+        const cardId = decodeURIComponent(pcMatch[1]);
+        const cacheKey = `topps_pc_match:${cardId}`;
+        const fresh = url.searchParams.get('fresh') === 'true';
+        const cached = !fresh ? await readJsonKv(cacheKey, null) : null;
+        if (cached && Date.now() - new Date(cached.cachedAt || 0).getTime() < 86400000) return json({ ok: true, cached: true, ...cached });
+
+        const cards = await loadToppsCards();
+        const card = cards.find(c => c.id === cardId);
+        if (!card) return json({ ok: false, error: 'Card not found' }, 404);
+        const q = [card.year, 'Topps', card.product, card.player || card.subject, card.cardNumber ? '#' + card.cardNumber : '', card.flags?.rc ? 'RC' : '', card.flags?.auto ? 'auto' : '', card.flags?.relic ? 'relic' : ''].filter(Boolean).join(' ');
+        const params = new URLSearchParams({ q, category: 'Sports Cards' });
+        const upstream = await fetch(new URL('/pricing/pricecharting/search?' + params.toString(), url.origin), { headers: request.headers });
+        const data = await upstream.json().catch(() => ({}));
+        const matches = data.matches || data.products || [];
+        const payload = { cardId, query: q, matches: matches.slice(0, 8), best: matches[0] || null, cachedAt: new Date().toISOString() };
+        await kv.put(cacheKey, JSON.stringify(payload), { expirationTtl: 86400 * 14 });
+        return json({ ok: true, cached: false, ...payload });
+      }
+
+      return json({ ok: false, error: 'Unknown Topps checklist route' }, 404);
+    }
+
     // ── SET BROWSER API ──────────────────────────────────────────────────────
     if (url.pathname.startsWith('/sets')) {
       const kv = env.LBA_KV;
