@@ -3579,6 +3579,32 @@ export default {
         return json({ ok: true, slug, name, baseCount: meta.baseCount, insertSetCount: meta.insertSetCount, autoSetCount: meta.autoSetCount, source: usedUrl });
       }
 
+      // GET /topps/proxy-pdf?url=URL — proxy a Topps PDF to the browser (bypasses CORS)
+      if (url.pathname === '/topps/proxy-pdf' && request.method === 'GET') {
+        const pdfUrl = url.searchParams.get('url');
+        if (!pdfUrl) return json({ ok: false, error: 'url param required' }, 400);
+        const pdfRes = await fetch(pdfUrl, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+            'Referer': 'https://www.topps.com/',
+            'Accept': 'application/pdf,*/*',
+          },
+        }).catch(() => null);
+        if (!pdfRes || !pdfRes.ok) return json({ ok: false, error: `PDF fetch failed: ${pdfRes?.status || 'network error'}` }, 502);
+        const ct = pdfRes.headers.get('content-type') || 'application/octet-stream';
+        if (ct.includes('html')) {
+          const html = await pdfRes.text();
+          const m = html.match(/href="([^"]*\.pdf[^"]*)"/i) || html.match(/src="([^"]*\.pdf[^"]*)"/i);
+          if (m) {
+            const realUrl = m[1].startsWith('http') ? m[1] : 'https://www.topps.com' + m[1];
+            return new Response(JSON.stringify({ redirect: realUrl }), { headers: { ...CORS, 'Content-Type': 'application/json' } });
+          }
+          return json({ ok: false, error: 'URL returned HTML, no PDF link found' }, 422);
+        }
+        const buf = await pdfRes.arrayBuffer();
+        return new Response(buf, { headers: { ...CORS, 'Content-Type': 'application/pdf', 'Content-Length': String(buf.byteLength) } });
+      }
+
       // POST /topps/import-pdf — fetch a PDF URL, extract text, parse, store in KV
       if (url.pathname === '/topps/import-pdf' && request.method === 'POST') {
         if (!kv) return json({ ok: false, error: 'KV not configured' }, 503);
@@ -3676,7 +3702,7 @@ export default {
 
       // POST /sets/import-topps-text — paste raw text from a Topps PDF checklist
       if (url.pathname === '/sets/import-topps-text' && request.method === 'POST') {
-        if (!requireAdmin()) return json({ ok: false, error: 'Admin token required' }, 403);
+        if (!kv) return json({ ok: false, error: 'KV not configured' }, 503);
         const body = await request.json().catch(() => ({}));
         const { text, slug, name, sport = 'baseball', year, brand = '' } = body;
         if (!text || !slug || !name) return json({ ok: false, error: 'text, slug, name required' }, 400);

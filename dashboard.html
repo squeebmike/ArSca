@@ -1319,7 +1319,7 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.22.04-test-then-sync</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.22.05-pdfjs-import</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
@@ -1346,7 +1346,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip dev-only" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.22.04-test-then-sync</div>
+<div class="dsb-chip dev-only" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.22.05-pdfjs-import</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -25556,12 +25556,96 @@ async function sbImportSet(slug) {
   sbFilterCatalog();
 }
 
+// ── pdf.js loader ─────────────────────────────────────────────────────────────
+let _pdfjsLib = null;
+async function getPdfjsLib() {
+  if (_pdfjsLib) return _pdfjsLib;
+  await new Promise((resolve, reject) => {
+    if (typeof pdfjsLib !== 'undefined') { resolve(); return; }
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+    s.onload = resolve;
+    s.onerror = reject;
+    document.head.appendChild(s);
+  });
+  if (typeof pdfjsLib !== 'undefined') {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    _pdfjsLib = pdfjsLib;
+  }
+  return _pdfjsLib;
+}
+
+async function extractTextWithPdfjs(arrayBuffer) {
+  const lib = await getPdfjsLib();
+  if (!lib) throw new Error('pdf.js failed to load');
+  const doc = await lib.getDocument({ data: new Uint8Array(arrayBuffer) }).promise;
+  let fullText = '';
+  for (let i = 1; i <= doc.numPages; i++) {
+    const page = await doc.getPage(i);
+    const content = await page.getTextContent();
+    // Join items: use newline when x resets (new column/row)
+    let lineText = '';
+    let lastX = null;
+    for (const item of content.items) {
+      if (lastX !== null && item.transform && item.transform[4] < lastX - 10) {
+        lineText += '  '; // gap = new column
+      }
+      lineText += item.str;
+      lastX = item.transform ? item.transform[4] + (item.width || 0) : lastX;
+    }
+    fullText += lineText + '\n';
+  }
+  return fullText;
+}
+
+async function sbFetchPdfBuffer(s) {
+  const pdfUrl = s.url;
+  if (!pdfUrl) return { error: 'No PDF URL for this set' };
+  const WORKER_BASE = (typeof WORKER !== 'undefined' ? WORKER : '');
+  const proxyUrl = `${WORKER_BASE}/topps/proxy-pdf?url=${encodeURIComponent(pdfUrl)}`;
+  const res = await fetch(proxyUrl).catch(() => null);
+  if (!res || !res.ok) return { error: `PDF proxy failed: ${res?.status || 'network error'}` };
+  const ct = res.headers.get('content-type') || '';
+  if (ct.includes('application/json')) {
+    const d = await res.json();
+    if (d.redirect) {
+      const res2 = await fetch(`${WORKER_BASE}/topps/proxy-pdf?url=${encodeURIComponent(d.redirect)}`).catch(() => null);
+      if (!res2 || !res2.ok) return { error: 'PDF redirect fetch failed' };
+      return { buffer: await res2.arrayBuffer() };
+    }
+    return { error: d.error || 'Unknown proxy error' };
+  }
+  return { buffer: await res.arrayBuffer() };
+}
+
 async function sbDoImportPdf(s) {
   try {
-    return await sbWorker('/topps/import-checklist', {
+    // Try Beckett first (fast for published sets)
+    const beckettResult = await sbWorker('/topps/import-checklist', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ slug: s.slug, name: s.name, sport: s.sport, year: s.year, brand: s.brand, beckettUrl: s.beckettUrl }),
+    });
+    if (beckettResult.ok && (beckettResult.baseCount > 0 || beckettResult.insertSetCount > 0)) {
+      return { ...beckettResult, source: 'beckett' };
+    }
+
+    // Fall back to pdf.js extraction via worker proxy
+    if (!s.url) return { ok: false, error: 'No PDF URL and Beckett had no checklist' };
+
+    sbSetSyncStatus(`${s.name}: fetching PDF…`, true);
+    const { buffer, error: fetchErr } = await sbFetchPdfBuffer(s);
+    if (fetchErr) return { ok: false, error: fetchErr };
+
+    sbSetSyncStatus(`${s.name}: extracting text…`, true);
+    const text = await extractTextWithPdfjs(buffer);
+    if (!text || text.trim().length < 50) return { ok: false, error: 'pdf.js extracted empty content' };
+
+    sbSetSyncStatus(`${s.name}: saving…`, true);
+    return await sbWorker('/sets/import-topps-text', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text, slug: s.slug, name: s.name, sport: s.sport, year: s.year, brand: s.brand }),
     });
   } catch(e) { return { ok: false, error: e.message }; }
 }
