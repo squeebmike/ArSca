@@ -1,0 +1,1274 @@
+{
+  "set": "2026 Topps Brooklyn Collection",
+  "release_date": "2026",
+  "set_size": 50,
+  "product_info": {},
+  "box_contents": {},
+  "parallels": [],
+  "base_set": {
+    "count": 50,
+    "cards": [
+      {
+        "number": "1",
+        "player": "Captain America",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "2",
+        "player": "Bucky Barnes",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "3",
+        "player": "Nick Fury",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "4",
+        "player": "Union Jack",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "5",
+        "player": "Namor",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "6",
+        "player": "Arnim Zola",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "7",
+        "player": "Crossbones",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "8",
+        "player": "Thor",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "9",
+        "player": "Iron Man",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "10",
+        "player": "Ant-Man",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "11",
+        "player": "Wasp",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "12",
+        "player": "Hawkeye",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "13",
+        "player": "Sharon Carter",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "14",
+        "player": "Black Widow",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "15",
+        "player": "Hulk",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "16",
+        "player": "Falcon",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "17",
+        "player": "Batroc The Leaper",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "18",
+        "player": "Baron Zemo",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "19",
+        "player": "Madame Hydra",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "20",
+        "player": "Diamondback",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "21",
+        "player": "Iron Fist",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "22",
+        "player": "Taskmaster",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "23",
+        "player": "Spider-Man",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "24",
+        "player": "Black Panther",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "25",
+        "player": "Loki",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "26",
+        "player": "Thanos",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "27",
+        "player": "Red Guardian",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "28",
+        "player": "Baron Strucker",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "29",
+        "player": "U.S. Agent",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "30",
+        "player": "Wolverine",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "31",
+        "player": "Scarlet Witch",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "32",
+        "player": "Battlestar",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "33",
+        "player": "Vision",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "34",
+        "player": "Quicksilver",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "35",
+        "player": "Doctor Doom",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "36",
+        "player": "Ultron",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "37",
+        "player": "Kang The Conqueror",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "38",
+        "player": "Cyclops",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "39",
+        "player": "Human Torch",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "40",
+        "player": "M.O.D.O.K.",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "41",
+        "player": "Doctor Strange",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "42",
+        "player": "Doctor Faustus",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "43",
+        "player": "War Machine",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "44",
+        "player": "Flag-Smasher",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "45",
+        "player": "Luke Cage",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "46",
+        "player": "Mephisto",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "47",
+        "player": "The Thing",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "48",
+        "player": "Daredevil",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "49",
+        "player": "Beast",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "50",
+        "player": "Wonder Man",
+        "team": "",
+        "note": ""
+      }
+    ]
+  },
+  "insert_sets": [
+    {
+      "name": "NEW YORKS HEROES",
+      "count": 25,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "NYF-1",
+          "player": "Captain America",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NYF-2",
+          "player": "Spider-Man",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NYF-3",
+          "player": "Daredevil",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NYF-4",
+          "player": "Luke Cage",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NYF-5",
+          "player": "Doctor Strange",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NYF-6",
+          "player": "The Thing",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NYF-7",
+          "player": "Jessica Jones",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NYF-8",
+          "player": "Moon Knight",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NYF-9",
+          "player": "Iron Man",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NYF-10",
+          "player": "Hawkeye",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NYF-11",
+          "player": "Wasp",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NYF-12",
+          "player": "Iron Fist",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NYF-13",
+          "player": "Invisible Woman",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NYF-14",
+          "player": "Misty Knight",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NYF-15",
+          "player": "Miles Morales",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NYF-16",
+          "player": "Cloak & Dagger",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NYF-17",
+          "player": "Flash Thompson",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NYF-18",
+          "player": "Mister Fantastic",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NYF-19",
+          "player": "Nick Fury",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NYF-20",
+          "player": "Human Torch",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NYF-21",
+          "player": "Prowler",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NYF-22",
+          "player": "Firestar",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NYF-23",
+          "player": "Professor X",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NYF-24",
+          "player": "Kate Bishop",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NYF-25",
+          "player": "Ghost-Spider",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "CAPTAIN AMERICA WELCOME TO BROOKLYN POSTCARD",
+      "count": 25,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "WB-1",
+          "player": "Bay Ridge",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WB-2",
+          "player": "Bed-Stuy",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WB-3",
+          "player": "Brooklyn Heights",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WB-4",
+          "player": "Navy Yard",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WB-5",
+          "player": "Bushwick",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WB-6",
+          "player": "Canarsie",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WB-7",
+          "player": "Carroll Gardens",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WB-8",
+          "player": "Cobble Hill",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WB-9",
+          "player": "Coney Island",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WB-10",
+          "player": "Crown Heights",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WB-11",
+          "player": "Dumbo",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WB-12",
+          "player": "Downtown Brooklyn",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WB-13",
+          "player": "Dyker Heights",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WB-14",
+          "player": "Williamsburg",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WB-15",
+          "player": "Flatbush",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WB-16",
+          "player": "Fort Greene",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WB-17",
+          "player": "Gowanus",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WB-18",
+          "player": "Greenpoint",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WB-19",
+          "player": "Manhattan Beach",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WB-20",
+          "player": "Park Slope",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WB-21",
+          "player": "Prospect Heights",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WB-22",
+          "player": "Prospect Park",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WB-23",
+          "player": "Bensonhurst",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WB-24",
+          "player": "Sheepshead Bay",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "WB-25",
+          "player": "Sunset Park",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "TEAM CAP",
+      "count": 25,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "TC-1",
+          "player": "Winter Soldier",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TC-2",
+          "player": "Falcon",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TC-3",
+          "player": "Iron Fist",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TC-4",
+          "player": "Thor",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TC-5",
+          "player": "Black Widow",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TC-6",
+          "player": "Namor",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TC-7",
+          "player": "Captain Marvel",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TC-8",
+          "player": "Hawkeye",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TC-9",
+          "player": "Hercules",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TC-10",
+          "player": "Luke Cage",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TC-11",
+          "player": "Wolverine",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TC-12",
+          "player": "Spider-Man",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TC-13",
+          "player": "Cable",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TC-14",
+          "player": "Black Panther",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TC-15",
+          "player": "Human Torch",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TC-16",
+          "player": "Nick Fury",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TC-17",
+          "player": "Cyclops",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TC-18",
+          "player": "Daredevil",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TC-19",
+          "player": "Doctor Strange",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TC-20",
+          "player": "Professor X",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TC-21",
+          "player": "Ghost Rider",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TC-22",
+          "player": "Beast",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TC-23",
+          "player": "Scarlet Witch",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TC-24",
+          "player": "Jessica Jones",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TC-25",
+          "player": "Vision",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "LIVING LEGEND",
+      "count": 25,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "NH-1",
+          "player": "Avengers (1963) #4",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NH-2",
+          "player": "Captain America (1968) #117",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NH-3",
+          "player": "Captain America (1968) #332",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NH-4",
+          "player": "Captain America (1968) #109",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NH-5",
+          "player": "Captain America (1968) #354",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NH-6",
+          "player": "Thor (1966) #390",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NH-7",
+          "player": "Strange Tales (1951) #114",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NH-8",
+          "player": "Captain America (1968) #110",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NH-9",
+          "player": "Captain America (1968) #208",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NH-10",
+          "player": "Captain America (1968) #100",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NH-11",
+          "player": "Invaders (1975) #3",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NH-12",
+          "player": "Captain America (1968) #230",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NH-13",
+          "player": "Captain America (1968) #218",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NH-14",
+          "player": "Captain America (1968) #251",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NH-15",
+          "player": "Fear Itself (2010) #7",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NH-16",
+          "player": "All Winners (1941) #2",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NH-17",
+          "player": "Marvel Mystery Comics (1939) #84",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NH-18",
+          "player": "Avengers (1963) #117",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NH-19",
+          "player": "Amazing Spider-Man (1963) #187",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NH-20",
+          "player": "Defenders (1972) #106",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NH-21",
+          "player": "Tales of Suspense (1959) #63",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NH-22",
+          "player": "Captain America (1968) #337",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NH-23",
+          "player": "Captain America (1968) #171",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NH-24",
+          "player": "Captain America (1968) #137",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NH-25",
+          "player": "Uncanny X-Men (1963) #268",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "TOPPS DISTINGUISHED SERVICE",
+      "count": 25,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "DS-1",
+          "player": "Captain America",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "DS-2",
+          "player": "Bucky Barnes",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "DS-3",
+          "player": "War Machine",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "DS-4",
+          "player": "Captain Marvel",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "DS-5",
+          "player": "Peggy Carter",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "DS-6",
+          "player": "Yelena Belova",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "DS-7",
+          "player": "Colonel Chester Phillips",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "DS-8",
+          "player": "Captain America",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "DS-9",
+          "player": "Nick Fury",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "DS-10",
+          "player": "Thaddeus Ross",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "DS-11",
+          "player": "Moon Knight",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "DS-12",
+          "player": "Wolverine",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "DS-13",
+          "player": "Black Widow",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "DS-14",
+          "player": "John F. Walker",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "DS-15",
+          "player": "Falcon",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "DS-16",
+          "player": "Hawkeye",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "DS-17",
+          "player": "Isaiah Bradley",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "DS-18",
+          "player": "Abomination",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "DS-19",
+          "player": "Bullseye",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "DS-20",
+          "player": "Red Guardian",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "DS-21",
+          "player": "Maria Hill",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "DS-22",
+          "player": "The Thing",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "DS-23",
+          "player": "Sharon Carter",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "DS-24",
+          "player": "Dum Dum Dugan",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "DS-25",
+          "player": "Agent Coulson",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "CAPTAIN AMERICA YOU ARE WORTHY PETG CARD",
+      "count": 10,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "AW-1",
+          "player": "Thor Thor",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "AW-2",
+          "player": "Thor",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "AW-3",
+          "player": "Mighty Thor Thor: Love and Thunder",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "AW-4",
+          "player": "Mighty Thor",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "AW-5",
+          "player": "Beta Ray Bill",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "AW-6",
+          "player": "Captain America The Avengers",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "AW-7",
+          "player": "Captain America Avengers: Age of Ultron",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "AW-8",
+          "player": "Captain America",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "AW-9",
+          "player": "Captain America",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "AW-10",
+          "player": "Captain America",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "BORN ON THE 4TH OF JULY",
+      "count": 10,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "FOJ-1",
+          "player": "Captain America Captain America: The First Avenger",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FOJ-2",
+          "player": "Captain America The Avengers",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FOJ-3",
+          "player": "Captain America Captain America: The Winter Soldier",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FOJ-4",
+          "player": "Captain America Captain America: Civil War",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FOJ-5",
+          "player": "Captain America",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FOJ-6",
+          "player": "Captain America",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FOJ-7",
+          "player": "Captain America",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FOJ-8",
+          "player": "Captain America",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FOJ-9",
+          "player": "Captain America",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FOJ-10",
+          "player": "Captain America",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "CAPTAIN AMERICA BROOKLYN STATUE",
+      "count": 5,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "CBS-1",
+          "player": "Steve Rogers",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CBS-2",
+          "player": "Steve Rogers",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CBS-3",
+          "player": "Steve Rogers",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CBS-4",
+          "player": "Bucky Barnes",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CBS-5",
+          "player": "Sam Wilson",
+          "team": "",
+          "note": ""
+        }
+      ]
+    }
+  ],
+  "autograph_sets": [],
+  "memorabilia_sets": [],
+  "team_sets": {}
+}
