@@ -1,0 +1,1285 @@
+{
+  "set": "2025 Topps Marvel Studios Chrome Sapphire",
+  "release_date": "2025",
+  "set_size": 200,
+  "product_info": {},
+  "box_contents": {},
+  "parallels": [],
+  "base_set": {
+    "count": 200,
+    "cards": [
+      {
+        "number": "1",
+        "player": "Iron Man Tony Stark Iron Man Phase One",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "2",
+        "player": "Happy Hogan Iron Man Phase One",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "3",
+        "player": "Iron Monger Obadiah Stane Iron Man Phase One",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "4",
+        "player": "Dr. Ho Yinsen Iron Man Phase One",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "5",
+        "player": "Pepper Potts Iron Man 2 Phase One",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "6",
+        "player": "Justin Hammer Iron Man 2 Phase One",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "7",
+        "player": "Black Widow Natasha Romanoff Iron Man 2 Phase One",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "8",
+        "player": "Whiplash Ivan Vanko Iron Man 2 Phase One",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "9",
+        "player": "Nick Fury Iron Man 2 Phase One",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "10",
+        "player": "Thor Thor Phase One",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "11",
+        "player": "Odin Thor Phase One",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "12",
+        "player": "Heimdall Thor Phase One",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "13",
+        "player": "Frigga Thor Phase One",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "14",
+        "player": "Erik Selvig Thor Phase One",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "15",
+        "player": "Dr. Jane Foster Thor Phase One",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "16",
+        "player": "Darcy Lewis Thor Phase One",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "17",
+        "player": "Laufey Thor Phase One",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "18",
+        "player": "Lady Sif Thor Phase One",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "19",
+        "player": "Loki Thor Phase One",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "20",
+        "player": "Captain America Steve Rogers Captain America: The First Avenger Phase One",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "21",
+        "player": "Howard Stark Captain America: The First Avenger Phase One",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "22",
+        "player": "Red Skull Johann Schmidt Captain America: The First Avenger Phase One",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "23",
+        "player": "Dr. Abraham Erskine Captain America: The First Avenger Phase One",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "24",
+        "player": "Agent Peggy Carter Captain America: The First Avenger Phase One",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "25",
+        "player": "Dr. Arnim Zola Captain America: The First Avenger Phase One",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "26",
+        "player": "Bucky Barnes Captain America: The First Avenger Phase One",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "27",
+        "player": "Hulk Bruce Banner Marvel's The Avengers Phase One",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "28",
+        "player": "Hawkeye Clint Barton Marvel's The Avengers Phase One",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "29",
+        "player": "Agent Phil Coulson Marvel's The Avengers Phase One",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "30",
+        "player": "Agent Maria Hill Marvel's The Avengers Phase One",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "31",
+        "player": "Iron Patriot James Rhodes Iron Man 3 Phase Two",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "32",
+        "player": "\"The Mandarin\" Trevor Slattery Iron Man 3 Phase Two",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "33",
+        "player": "Aldrich Killian Iron Man 3 Phase Two",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "34",
+        "player": "Ellen Brandt Iron Man 3 Phase Two",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "35",
+        "player": "Eric Savin Iron Man 3 Phase Two",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "36",
+        "player": "Dr. Maya Hansen Iron Man 3 Phase Two",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "37",
+        "player": "Malekith Thor: The Dark World Phase Two",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "38",
+        "player": "Winter Soldier Bucky Barnes Captain America: The Winter Soldier Phase Two",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "39",
+        "player": "Agent 13 Sharon Carter Captain America: The Winter Soldier Phase Two",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "40",
+        "player": "Brock Rumlow Captain America: The Winter Soldier Phase Two",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "41",
+        "player": "Falcon Sam Wilson Captain America: The Winter Soldier Phase Two",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "42",
+        "player": "Star-Lord Peter Quill Guardians of the Galaxy Vol. 1 Phase Two",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "43",
+        "player": "Rocket Guardians of the Galaxy Vol. 1 Phase Two",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "44",
+        "player": "Drax Guardians of the Galaxy Vol. 1 Phase Two",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "45",
+        "player": "Nebula Guardians of the Galaxy Vol. 1 Phase Two",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "46",
+        "player": "Ronan Guardians of the Galaxy Vol. 1 Phase Two",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "47",
+        "player": "Yondu Udonta Guardians of the Galaxy Vol. 1 Phase Two",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "48",
+        "player": "Gamora Guardians of the Galaxy Vol. 1 Phase Two",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "49",
+        "player": "The Collector Guardians of the Galaxy Vol. 1 Phase Two",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "50",
+        "player": "Groot Guardians of the Galaxy Vol. 1 Phase Two",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "51",
+        "player": "Nova Prime Guardians of the Galaxy Vol. 1 Phase Two",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "52",
+        "player": "Wanda Maximoff Avengers: Age of Ultron Phase Two",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "53",
+        "player": "Pietro Maximoff Avengers: Age of Ultron Phase Two",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "54",
+        "player": "Ultron Avengers: Age of Ultron Phase Two",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "55",
+        "player": "Vision Avengers: Age of Ultron Phase Two",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "56",
+        "player": "Baron Strucker Avengers: Age of Ultron Phase Two",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "57",
+        "player": "Ant-Man Scott Lang Ant-Man Phase Two",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "58",
+        "player": "Dr. Hank Pym Ant-Man Phase Two",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "59",
+        "player": "Hope Van Dyne Ant-Man Phase Two",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "60",
+        "player": "Yellow Jacket Darren Cross Ant-Man Phase Two",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "61",
+        "player": "Spider-Man Peter Parker Captain America: Civil War Phase Three",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "62",
+        "player": "Helmut Zemo Captain America: Civil War Phase Three",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "63",
+        "player": "King T'Chaka Captain America: Civil War Phase Three",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "64",
+        "player": "War Machine James Rhodes Captain America: Civil War Phase Three",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "65",
+        "player": "Doctor Strange Dr. Stephen Strange Doctor Strange Phase Three",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "66",
+        "player": "Dr. Christine Palmer Doctor Strange Phase Three",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "67",
+        "player": "Wong Doctor Strange Phase Three",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "68",
+        "player": "The Ancient One Doctor Strange Phase Three",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "69",
+        "player": "Karl Mordo Doctor Strange Phase Three",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "70",
+        "player": "Kaecilius Doctor Strange Phase Three",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "71",
+        "player": "Ego Guardians of the Galaxy Vol. 2 Phase Three",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "72",
+        "player": "Mantis Guardians of the Galaxy Vol. 2 Phase Three",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "73",
+        "player": "Baby Groot Guardians of the Galaxy Vol. 2 Phase Three",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "74",
+        "player": "Valkyrie Thor: Ragnarok Phase Three",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "75",
+        "player": "Grandmaster Thor: Ragnarok Phase Three",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "76",
+        "player": "Hela Thor: Ragnarok Phase Three",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "77",
+        "player": "Korg Thor: Ragnarok Phase Three",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "78",
+        "player": "Miek Thor: Ragnarok Phase Three",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "79",
+        "player": "Black Panther T'Challa Black Panther Phase Three",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "80",
+        "player": "Shuri Black Panther Phase Three",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "81",
+        "player": "Nakia Black Panther Phase Three",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "82",
+        "player": "Okoye Black Panther Phase Three",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "83",
+        "player": "M'Baku Black Panther Phase Three",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "84",
+        "player": "Ulysses Klaue Black Panther Phase Three",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "85",
+        "player": "Erik Killmonger N'Jadaka Black Panther Phase Three",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "86",
+        "player": "Queen Ramonda Black Panther Phase Three",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "87",
+        "player": "Cull Obsidian Avengers: Infinity War Phase Three",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "88",
+        "player": "Ebony Maw Avengers: Infinity War Phase Three",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "89",
+        "player": "Proxima Midnight Avengers: Infinity War Phase Three",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "90",
+        "player": "Corvus Glaive Avengers: Infinity War Phase Three",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "91",
+        "player": "The Wasp Hope Van Dyne Ant-Man and the Wasp Phase Three",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "92",
+        "player": "Janet Van Dyne Ant-Man and the Wasp Phase Three",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "93",
+        "player": "Maggie Lang Ant-Man and the Wasp Phase Three",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "94",
+        "player": "Jimmy Woo Ant-Man and the Wasp Phase Three",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "95",
+        "player": "Dr. Bill Foster Ant-Man and the Wasp Phase Three",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "96",
+        "player": "Captain Marvel Carol Danvers Captain Marvel Phase Three",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "97",
+        "player": "Yon-Rogg Captain Marvel Phase Three",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "98",
+        "player": "Talos Captain Marvel Phase Three",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "99",
+        "player": "Dr. Wendy Lawson Captain Marvel Phase Three",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "100",
+        "player": "Thanos Avengers: Endgame Phase Three",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "101",
+        "player": "Pietro Maximoff Ralph Bohner WandaVision Phase Four",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "102",
+        "player": "Karli Morgenthau The Falcon and The Winter Soldier Phase Four",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "103",
+        "player": "Mobius Loki Phase Four",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "104",
+        "player": "Sylvie Loki Phase Four",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "105",
+        "player": "Classic Loki Loki Phase Four",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "106",
+        "player": "Ravonna Renslayer Loki Phase Four",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "107",
+        "player": "B-15 Loki Phase Four",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "108",
+        "player": "Melina Vostokoff Black Widow Phase Four",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "109",
+        "player": "Dreykov Black Widow Phase Four",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "110",
+        "player": "Shang-Chi Shang-Chi and the Legend of the Ten RingPshase Four",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "111",
+        "player": "Katy Chen Shang-Chi and the Legend of the Ten RingPshase Four",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "112",
+        "player": "Wenwu Shang-Chi and the Legend of the Ten RingPshase Four",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "113",
+        "player": "Ying Nan Shang-Chi and the Legend of the Ten RingPshase Four",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "114",
+        "player": "Xialing Shang-Chi and the Legend of the Ten RingPshase Four",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "115",
+        "player": "Li Shang-Chi and the Legend of the Ten RingPshase Four",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "116",
+        "player": "Razor Fist Shang-Chi and the Legend of the Ten RingPshase Four",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "117",
+        "player": "Sersi Eternals Phase Four",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "118",
+        "player": "Ikaris Eternals Phase Four",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "119",
+        "player": "Ajak Eternals Phase Four",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "120",
+        "player": "Kingo Eternals Phase Four",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "121",
+        "player": "Sprite Eternals Phase Four",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "122",
+        "player": "Phastos Eternals Phase Four",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "123",
+        "player": "Makkari Eternals Phase Four",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "124",
+        "player": "Druig Eternals Phase Four",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "125",
+        "player": "Gilgamesh Eternals Phase Four",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "126",
+        "player": "Dane Whitman Eternals Phase Four",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "127",
+        "player": "Arishem Eternals Phase Four",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "128",
+        "player": "Kate Bishop Hawkeye Phase Four",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "129",
+        "player": "Moon Knight Marc Spector Moon Knight Phase Four",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "130",
+        "player": "Khonshu Moon Knight Phase Four",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "131",
+        "player": "America Chavez Doctor Strange in the Multiverse of Phase Four",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "132",
+        "player": "Clea Doctor Strange in the Multiverse of Phase Four",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "133",
+        "player": "Captain Marvel Maria Rambeau Doctor Strange in the Multiverse of Phase Four",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "134",
+        "player": "Thor Thor: Love and Thunder Phase Four",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "135",
+        "player": "The Mighty Thor Dr. Jane Foster Thor: Love and Thunder Phase Four",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "136",
+        "player": "Ms. Marvel Kamala Khan Ms. Marvel Phase Four",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "137",
+        "player": "She-Hulk Jennifer Walters She-Hulk: Attorney at Law Phase Four",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "138",
+        "player": "Jack Russell Werewolf by Night Phase Four",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "139",
+        "player": "Elsa Bloodstone Werewolf by Night Phase Four",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "140",
+        "player": "Black Panther Shuri Black Panther: Wakanda Forever Phase Four",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "141",
+        "player": "K'uk'ulkan Namor Black Panther: Wakanda Forever Phase Four",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "142",
+        "player": "Ironheart Riri Williams Black Panther: Wakanda Forever Phase Four",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "143",
+        "player": "Namora Black Panther: Wakanda Forever Phase Four",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "144",
+        "player": "Attuma Black Panther: Wakanda Forever Phase Four",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "145",
+        "player": "Aneka Black Panther: Wakanda Forever Phase Four",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "146",
+        "player": "Cassie Lang Ant-Man and the Wasp: Quantumania Phase Five",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "147",
+        "player": "M.O.D.O.K. Darren Cross Ant-Man and the Wasp: Quantumania Phase Five",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "148",
+        "player": "The High Evolutionary Guardians of the Galaxy Vol. 3 Phase Five",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "149",
+        "player": "Adam Warlock Guardians of the Galaxy Vol. 3 Phase Five",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "150",
+        "player": "Cosmo Guardians of the Galaxy Vol. 3 Phase Five",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "151",
+        "player": "Recorder Vim Guardians of the Galaxy Vol. 3 Phase Five",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "152",
+        "player": "Recorder Theel Guardians of the Galaxy Vol. 3 Phase Five",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "153",
+        "player": "Gravik Secret Invasion Phase Five",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "154",
+        "player": "Pagon Secret Invasion Phase Five",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "155",
+        "player": "O.B. Loki Phase Four",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "156",
+        "player": "Monica Rambeau The Marvels Phase Five",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "157",
+        "player": "Dar-Benn The Marvels Phase Five",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "158",
+        "player": "Emperor Dro'ge The Marvels Phase Five",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "159",
+        "player": "Prince Yan The Marvels Phase Five",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "160",
+        "player": "Echo Maya Lopez Echo Phase Five",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "161",
+        "player": "Death Rio Vidal Agatha All Along Phase Five DEBUT",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "162",
+        "player": "Agatha Harkness Agatha All Along Phase Five",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "163",
+        "player": "Lilia Calderu Agatha All Along Phase Five DEBUT",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "164",
+        "player": "Alice Wu-Gulliver Agatha All Along Phase Five DEBUT",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "165",
+        "player": "Wiccan Billy Maximoff Agatha All Along Phase Five DEBUT",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "166",
+        "player": "Jennifer Kale Agatha All Along Phase Five DEBUT",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "167",
+        "player": "Captain America Sam Wilson Captain America: Brave New World Phase Five",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "168",
+        "player": "Falcon Joaqu\u00edn Torres Captain America: Brave New World Phase Five",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "169",
+        "player": "Ruth Bat-Seraph Captain America: Brave New World Phase Five DEBUT",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "170",
+        "player": "Isaiah Bradley Captain America: Brave New World Phase Five",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "171",
+        "player": "Red Hulk President Thaddeus Ross Captain America: Brave New World Phase Five DEBUT",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "172",
+        "player": "Sidewinder Seth Voelker Captain America: Brave New World Phase Five DEBUT",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "173",
+        "player": "The Leader Samuel Sterns Captain America: Brave New World Phase Five",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "174",
+        "player": "Leila Taylor Captain America: Brave New World Phase Five DEBUT",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "175",
+        "player": "Daredevil Matt Murdock Daredevil: Born Again Phase Five",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "176",
+        "player": "Frank Castle Daredevil: Born Again Phase Five DEBUT",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "177",
+        "player": "Daniel Blake Daredevil: Born Again Phase Five DEBUT",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "178",
+        "player": "Kingpin Wilson Fisk Daredevil: Born Again Phase Five",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "179",
+        "player": "Vanessa Fisk Daredevil: Born Again Phase Five DEBUT",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "180",
+        "player": "Karen Page Daredevil: Born Again Phase Five DEBUT",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "181",
+        "player": "Foggy Nelson Daredevil: Born Again Phase Five DEBUT",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "182",
+        "player": "Yelena Belova Thunderbolts* Phase Five",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "183",
+        "player": "Bob Thunderbolts* Phase Five DEBUT",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "184",
+        "player": "John F. Walker Thunderbolts* Phase Five",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "185",
+        "player": "Taskmaster Antonia Dreykov Thunderbolts* Phase Five",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "186",
+        "player": "Ghost Ava Starr Thunderbolts* Phase Five",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "187",
+        "player": "Red Guardian Alexei Shostakov Thunderbolts* Phase Five",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "188",
+        "player": "Congressman Gary Thunderbolts* Phase Five DEBUT",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "189",
+        "player": "Sentry Bob Reynolds Thunderbolts* Phase Five DEBUT",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "190",
+        "player": "Valentina Allegra de Fontaine Thunderbolts* Phase Five",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "191",
+        "player": "Mel Thunderbolts* Phase Five DEBUT",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "192",
+        "player": "The Void Bob Reynolds Thunderbolts* Phase Five DEBUT",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "193",
+        "player": "Mephisto Ironheart Phase Five DEBUT",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "194",
+        "player": "Mister Fantastic Reed Richards Fantastic Four: First Steps Phase Six DEBUT",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "195",
+        "player": "Invisible Woman Sue Storm Fantastic Four: First Steps Phase Six DEBUT",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "196",
+        "player": "Human Torch Johnny Storm Fantastic Four: First Steps Phase Six DEBUT",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "197",
+        "player": "The Thing Ben Grimm Fantastic Four: First Steps Phase Six DEBUT",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "198",
+        "player": "Silver Surfer Shalla-Bal Fantastic Four: First Steps Phase Six DEBUT",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "199",
+        "player": "H.E.R.B.I.E. Fantastic Four: First Steps Phase Six DEBUT",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "200",
+        "player": "Galactus Fantastic Four: First Steps Phase Six DEBUT",
+        "team": "",
+        "note": ""
+      }
+    ]
+  },
+  "insert_sets": [
+    {
+      "name": "SAPPHIRE SELECTIONS",
+      "count": 10,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "SS-1",
+          "player": "Iron Man Iron Man",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SS-2",
+          "player": "Black Widow Iron Man 2",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SS-3",
+          "player": "Thor Thor",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SS-4",
+          "player": "Captain America Captain America: The First Avenger",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SS-5",
+          "player": "Hulk Marvel's The Avengers",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SS-6",
+          "player": "Groot Guardians of the Galaxy Vol. 1",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SS-7",
+          "player": "Spider-Man Captain America: Civil War",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SS-8",
+          "player": "Black Panther Black Panther",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SS-9",
+          "player": "Red Hulk Captain America: Brave New World",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SS-10",
+          "player": "Yelena Belova Thunderbolts*",
+          "team": "",
+          "note": ""
+        }
+      ]
+    }
+  ],
+  "autograph_sets": [],
+  "memorabilia_sets": [],
+  "team_sets": {}
+}
