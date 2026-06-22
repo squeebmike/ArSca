@@ -1,0 +1,2127 @@
+{
+  "set": "2025 Topps Star Wars Masterwork",
+  "release_date": "2025",
+  "set_size": 0,
+  "product_info": {},
+  "box_contents": {},
+  "parallels": [],
+  "base_set": {
+    "count": 0,
+    "cards": []
+  },
+  "insert_sets": [
+    {
+      "name": "CHARACTERS",
+      "count": 100,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "1",
+          "player": "Luke Skywalker",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "2",
+          "player": "R2-D2",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "3",
+          "player": "Han Solo",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "4",
+          "player": "Jedi Master Sol",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "5",
+          "player": "Jedi Master Indara",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "6",
+          "player": "Jod Na Nawood",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "7",
+          "player": "Yoda",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "8",
+          "player": "Grogu",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "9",
+          "player": "Neel",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "10",
+          "player": "Captain Brutus",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "11",
+          "player": "Jedi Master Vernestra Rwoh",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "12",
+          "player": "The Stranger",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "13",
+          "player": "Boba Fett",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "14",
+          "player": "The Mandalorian",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "15",
+          "player": "Captain Phasma",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "16",
+          "player": "Padm\u00e9 Amidala",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "17",
+          "player": "Anakin Skywalker",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "18",
+          "player": "Obi-Wan Kenobi",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "19",
+          "player": "Shin Hati",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "20",
+          "player": "Baylan Skoll",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "21",
+          "player": "Grand Admiral Thrawn",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "22",
+          "player": "Ahsoka Tano",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "23",
+          "player": "Sabine Wren",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "24",
+          "player": "Ezra Bridger",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "25",
+          "player": "Hera Syndulla",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "26",
+          "player": "Chopper",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "27",
+          "player": "Imperial Snowtrooper",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "28",
+          "player": "Mace Windu",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "29",
+          "player": "Darth Vader",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "30",
+          "player": "Jyn Erso",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "31",
+          "player": "Cassian Andor",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "32",
+          "player": "Mon Mothma",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "33",
+          "player": "Luthen Rael",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "34",
+          "player": "Maul",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "35",
+          "player": "Cobb Vanth",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "36",
+          "player": "Dedra Meero",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "37",
+          "player": "Rebel Trooper",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "38",
+          "player": "Chewbacca",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "39",
+          "player": "Qui-Gon Jinn",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "40",
+          "player": "Rey",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "41",
+          "player": "Kylo Ren",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "42",
+          "player": "Kleya Marki",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "43",
+          "player": "Ryder Azadi",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "44",
+          "player": "C-3PO",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "45",
+          "player": "Jedi Master Kelnacca",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "46",
+          "player": "Bo-Katan Kryze",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "47",
+          "player": "Greef Karga",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "48",
+          "player": "Vel Sartha",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "49",
+          "player": "Cinta Kaz",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "50",
+          "player": "Arvel Skeen",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "51",
+          "player": "Lando Calrissian",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "52",
+          "player": "Syril Karn",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "53",
+          "player": "Morgan Elsbeth",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "54",
+          "player": "Supervisor Lonni Jung",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "55",
+          "player": "Director Orson Krennic",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "56",
+          "player": "BB-8",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "57",
+          "player": "Saw Gerrera",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "58",
+          "player": "Jedi Master Dooku",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "59",
+          "player": "Major Partagaz",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "60",
+          "player": "Tredgar Volk",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "61",
+          "player": "Vane",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "62",
+          "player": "Migs Mayfeld",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "63",
+          "player": "Grand Moff Tarkin",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "64",
+          "player": "General Hux",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "65",
+          "player": "Wilmon Paak",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "66",
+          "player": "Darth Sidious",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "67",
+          "player": "Snap Wexley",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "68",
+          "player": "Maz Kanata",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "69",
+          "player": "Bix Caleen",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "70",
+          "player": "Kaydel Connix",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "71",
+          "player": "Qi'ra",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "72",
+          "player": "Jedi Padawan Jecki Lon",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "73",
+          "player": "Boolio",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "74",
+          "player": "Chirrut \u00cemwe",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "75",
+          "player": "SM-33",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "76",
+          "player": "K-2SO",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "77",
+          "player": "Poe Dameron",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "78",
+          "player": "Moff Gideon",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "79",
+          "player": "Asajj Ventress",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "80",
+          "player": "Admiral Ackbar",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "81",
+          "player": "Kh'ymm",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "82",
+          "player": "Cad Bane",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "83",
+          "player": "Haja Estree",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "84",
+          "player": "Jar Jar Binks",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "85",
+          "player": "Jawa",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "86",
+          "player": "Bail Organa",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "87",
+          "player": "Moroff",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "88",
+          "player": "The Fourth Sister",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "89",
+          "player": "The Fifth Brother",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "90",
+          "player": "The Seventh Sister",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "91",
+          "player": "IG-12",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "92",
+          "player": "Vulptex",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "93",
+          "player": "Fennec Shand",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "94",
+          "player": "Vect Nokru",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "95",
+          "player": "Gunter",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "96",
+          "player": "Zett Jukassa",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "97",
+          "player": "Babu Frik",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "98",
+          "player": "General Grievous",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "99",
+          "player": "Lobot",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "100",
+          "player": "Leia Organa",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "UNDER DISGUISE",
+      "count": 26,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "UN-1",
+          "player": "The Mandalorian",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "UN-2",
+          "player": "Bo-Katan Kryze",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "UN-3",
+          "player": "Captain Silvo",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "UN-4",
+          "player": "Zorii Bliss",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "UN-5",
+          "player": "The Armorer",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "UN-6",
+          "player": "Jango Fett",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "UN-7",
+          "player": "Kylo Ren",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "UN-8",
+          "player": "Carib Diss",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "UN-9",
+          "player": "Paz Vizsla",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "UN-10",
+          "player": "Sith Trooper",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "UN-11",
+          "player": "Alazmec",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "UN-12",
+          "player": "Vicrul",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "UN-13",
+          "player": "Kuruk",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "UN-14",
+          "player": "Ushar",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "UN-15",
+          "player": "Trudgen",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "UN-16",
+          "player": "Ap'Lek",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "UN-17",
+          "player": "Cardo",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "UN-18",
+          "player": "Lando Calrissian",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "UN-19",
+          "player": "Captain Enoch",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "UN-20",
+          "player": "Night Trooper",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "UN-21",
+          "player": "The Stranger",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "UN-22",
+          "player": "Constable Zuvio",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "UN-23",
+          "player": "Captain Rex",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "UN-24",
+          "player": "Fennec Shand",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "UN-25",
+          "player": "Boba Fett",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "UN-26",
+          "player": "Darth Vader",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "FALL OF THE CHOSEN ONE",
+      "count": 24,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "FALL-1",
+          "player": "\"I Sense Great Fear In You\"",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FALL-2",
+          "player": "\"Do It\"",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FALL-3",
+          "player": "Padm\u00e9 Amidala's Confession",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FALL-4",
+          "player": "Blinded by Love",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FALL-5",
+          "player": "Anakin Skywalker's Troubling Vision",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FALL-6",
+          "player": "Yoda's Counsel",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FALL-7",
+          "player": "The Eyes, Ears, And Voice Of The Republic",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FALL-8",
+          "player": "An Outburst At The Council",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FALL-9",
+          "player": "An Unofficial Assignment",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FALL-10",
+          "player": "A Request From Padm\u00e9 Amidala",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FALL-11",
+          "player": "\"Not From A Jedi\"",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FALL-12",
+          "player": "Obi-Wan Kenobi Chosen Over Anakin Skywalker",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FALL-13",
+          "player": "A Brother's Final Goodbye",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FALL-14",
+          "player": "A Sith Lord, Revealed",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FALL-15",
+          "player": "Conflicted",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FALL-16",
+          "player": "\"I Am The Senate\"",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FALL-17",
+          "player": "A Fatal Choice",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FALL-18",
+          "player": "Anakin Skywalker Becomes Darth Vader",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FALL-19",
+          "player": "Knightfall",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FALL-20",
+          "player": "Finishing Off The Separatists",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FALL-21",
+          "player": "The First Galactic Empire",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FALL-22",
+          "player": "The End Of Brotherhood",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FALL-23",
+          "player": "More Machine Than Man",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FALL-24",
+          "player": "The Sith Lords",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "GALACTIC DIE CUT PODS",
+      "count": 24,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "GPOD-1",
+          "player": "Padm\u00e9 Amidala",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "GPOD-2",
+          "player": "Bail Organa",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "GPOD-3",
+          "player": "Mon Mothma",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "GPOD-4",
+          "player": "Mas Amedda",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "GPOD-5",
+          "player": "Nute Gunray",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "GPOD-6",
+          "player": "Riyo Chuchi",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "GPOD-7",
+          "player": "Mee Deechi",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "GPOD-8",
+          "player": "Rush Clovis",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "GPOD-9",
+          "player": "Onaconda Farr",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "GPOD-10",
+          "player": "Halle Burtoni",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "GPOD-11",
+          "player": "Orn Free Taa",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "GPOD-12",
+          "player": "Hamato Xiono",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "GPOD-13",
+          "player": "Aks Moe",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "GPOD-14",
+          "player": "Mina Bonteri",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "GPOD-15",
+          "player": "Sheev Palpatine",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "GPOD-16",
+          "player": "Sly Moore",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "GPOD-17",
+          "player": "Gall Trayvis",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "GPOD-18",
+          "player": "Nix Card",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "GPOD-19",
+          "player": "Kharrus",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "GPOD-20",
+          "player": "Lott Dod",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "GPOD-21",
+          "player": "Ask Aak",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "GPOD-22",
+          "player": "Finis Valorum",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "GPOD-23",
+          "player": "Jar Jar Binks",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "GPOD-24",
+          "player": "Darth Sidious",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "SHORT CIRCUIT",
+      "count": 13,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "SHOC-1",
+          "player": "R2-D2",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SHOC-2",
+          "player": "BD-72",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SHOC-3",
+          "player": "MD-15C",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SHOC-4",
+          "player": "SE8 Waiter Droid",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SHOC-5",
+          "player": "D-0",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SHOC-6",
+          "player": "R4-DT",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SHOC-7",
+          "player": "First Order Interrogator Droid",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SHOC-8",
+          "player": "R5-X3",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SHOC-9",
+          "player": "Star Navigator Droid",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SHOC-10",
+          "player": "BB-8",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SHOC-11",
+          "player": "HK-87 Assassin Droid",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SHOC-12",
+          "player": "C2-B5",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SHOC-13",
+          "player": "R2-BHD",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "SHOC-14 1-JAC",
+      "count": 12,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "SHOC-15",
+          "player": "Chopper",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SHOC-16",
+          "player": "Lola",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SHOC-17",
+          "player": "Imperial Probe Droid",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SHOC-18",
+          "player": "Pip",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SHOC-19",
+          "player": "Scorpenek Annihilator Droid",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SHOC-20",
+          "player": "Homing Spider Droid",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SHOC-21",
+          "player": "G2-1B7",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SHOC-22",
+          "player": "K-2SO",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SHOC-23",
+          "player": "RA-7 Protocol Droid",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SHOC-24",
+          "player": "Nevarro Copper Droid",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SHOC-25",
+          "player": "C-3PO",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SHOC-26",
+          "player": "AD-4M",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "LOTHAL JEDI TEMPLE MORTIS GODS PAINTING PUZZLE",
+      "count": 10,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "MORTIS-1",
+          "player": "Piece 1",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MORTIS-2",
+          "player": "Piece 2",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MORTIS-3",
+          "player": "Piece 3",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MORTIS-4",
+          "player": "Piece 4",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MORTIS-5",
+          "player": "Piece 5",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MORTIS-6",
+          "player": "Piece 6",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MORTIS-7",
+          "player": "Piece 7",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MORTIS-8",
+          "player": "Piece 8",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MORTIS-9",
+          "player": "Piece 9",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "10",
+          "player": "YEARS OF MASTERWORKS BUYBACKS",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "A-W Andy Secombe Watto",
+      "count": 1,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "A-33",
+          "player": "Nick Frost SM-33",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "ROTJ FILM CEL",
+      "count": 91,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "ROC-1",
+          "player": "Moff Jerjerrod",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ROC-2",
+          "player": "Darth Vader",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ROC-3",
+          "player": "R2-D2",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ROC-4",
+          "player": "C-3PO",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ROC-5",
+          "player": "Bib Fortuna",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ROC-6",
+          "player": "Jabba the Hutt",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ROC-7",
+          "player": "R2-D2",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ROC-8",
+          "player": "Salacious B. Crumb",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ROC-9",
+          "player": "Bib Fortuna",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ROC-10",
+          "player": "Han Solo",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ROC-11",
+          "player": "EV-9D9",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ROC-12",
+          "player": "Sy Snootles",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ROC-13",
+          "player": "Max Rebo",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ROC-14",
+          "player": "C-3PO",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ROC-15",
+          "player": "Chewbacca",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ROC-16",
+          "player": "Boba Fett",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ROC-17",
+          "player": "Lando Calrissian",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ROC-18",
+          "player": "Leia Organa",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ROC-19",
+          "player": "Leia Organa",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ROC-20",
+          "player": "Han Solo",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ROC-21",
+          "player": "Luke Skywalker",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ROC-22",
+          "player": "Gamorrean Guard",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ROC-23",
+          "player": "Malakili",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ROC-24",
+          "player": "R2-D2",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ROC-25",
+          "player": "Luke Skywalker",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ROC-26",
+          "player": "Boba Fett",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ROC-27",
+          "player": "Luke Skywalker",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ROC-28",
+          "player": "Imperial Royal Guard",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ROC-29",
+          "player": "Yoda",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ROC-30",
+          "player": "Luke Skywalker",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ROC-31",
+          "player": "Lando Calrissian",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ROC-32",
+          "player": "Mon Mothma",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ROC-33",
+          "player": "Admiral Ackbar",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ROC-34",
+          "player": "Han Solo",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ROC-35",
+          "player": "The Emperor",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ROC-36",
+          "player": "Chewbacca",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ROC-37",
+          "player": "Leia Organa",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ROC-38",
+          "player": "Luke Skywalker",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ROC-39",
+          "player": "Wicket W. Warrick",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ROC-40",
+          "player": "The Emperor",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ROC-41",
+          "player": "Logray",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ROC-42",
+          "player": "C-3PO",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ROC-43",
+          "player": "Leia Organa",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ROC-44",
+          "player": "C-3PO",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ROC-45",
+          "player": "C-3PO",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ROC-46",
+          "player": "Leia Organa",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ROC-47",
+          "player": "Luke Skywalker",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ROC-48",
+          "player": "Han Solo",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ROC-49",
+          "player": "Sy Snootles",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ROC-50",
+          "player": "Darth Vader",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ROC-51",
+          "player": "Luke Skywalker",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ROC-52",
+          "player": "Wicket W. Warrick",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ROC-53",
+          "player": "Admiral Ackbar",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ROC-54",
+          "player": "Nien Nunb",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ROC-55",
+          "player": "Wicket W. Warrick",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ROC-56",
+          "player": "R2-D2",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ROC-57",
+          "player": "Han Solo",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ROC-58",
+          "player": "Imperial Royal Guard",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ROC-59",
+          "player": "The Emperor",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ROC-60",
+          "player": "Wicket W. Warrick",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ROC-61",
+          "player": "Wedge Antilles",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ROC-62",
+          "player": "Admiral Ackbar",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ROC-63",
+          "player": "The Emperor",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ROC-64",
+          "player": "Logray",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ROC-65",
+          "player": "Admiral Piett",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ROC-66",
+          "player": "Nien Nunb",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ROC-67",
+          "player": "R2-D2",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ROC-68",
+          "player": "Luke Skywalker",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ROC-69",
+          "player": "Chewbacca",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ROC-70",
+          "player": "Darth Vader",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ROC-71",
+          "player": "Han Solo",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ROC-72",
+          "player": "Luke Skywalker",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ROC-73",
+          "player": "The Emperor",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ROC-74",
+          "player": "The Emperor",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ROC-75",
+          "player": "Wedge Antilles",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ROC-76",
+          "player": "Nien Nunb",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ROC-77",
+          "player": "Admiral Ackbar",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ROC-78",
+          "player": "Admiral Piett",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ROC-79",
+          "player": "Luke Skywalker",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ROC-80",
+          "player": "Darth Vader",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ROC-81",
+          "player": "Wedge Antilles",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ROC-82",
+          "player": "Lando Calrissian",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ROC-83",
+          "player": "Nien Nunb",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ROC-84",
+          "player": "Luke Skywalker",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ROC-85",
+          "player": "Han Solo",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ROC-86",
+          "player": "Leia Organa",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ROC-87",
+          "player": "Luke Skywalker",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ROC-88",
+          "player": "Wicket W. Warrick",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ROC-89",
+          "player": "Lando Calrissian",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ROC-90",
+          "player": "Leia Organa",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "ROC-91",
+          "player": "Han Solo",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "A-W Andy Secombe Watto",
+      "count": 1,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "A-33",
+          "player": "Nick Frost SM-33",
+          "team": "",
+          "note": ""
+        }
+      ]
+    }
+  ],
+  "autograph_sets": [
+    {
+      "name": "AUTOGRAPHS",
+      "count": 1,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "2025",
+          "player": "MASTERWORKS ON CARD AUTOGRAPHS",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "ULTIMATE BOOK CARD AUTOGRAPHS",
+      "count": 10,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "UBC-456",
+          "player": "Jeremy Bulloch Boba Fett",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "UBC-456",
+          "player": "Billy Dee Williams Lando Calrissian",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "UBC-456",
+          "player": "Ian McDiarmid The Emperor",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "UBC-456",
+          "player": "David Prowse Darth Vader",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "UBC-456",
+          "player": "Anthony Daniels C-3PO",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "UBC-456",
+          "player": "Peter Mayhew Chewbacca",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "UBC-456",
+          "player": "Carrie Fisher Leia Organa",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "UBC-456",
+          "player": "Harrison Ford Han Solo",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "UBC-456",
+          "player": "Mark Hamill Luke Skywalker",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "UBC-456",
+          "player": "David Barclay Jabba the Hutt",
+          "team": "",
+          "note": ""
+        }
+      ]
+    }
+  ],
+  "memorabilia_sets": [
+    {
+      "name": "SKELETON CREW RELIC",
+      "count": 10,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "SCR-1",
+          "player": "KB Starport Dinghy: Skeleton Crew",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SCR-2",
+          "player": "Fern Starport Dinghy: Skeleton Crew",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SCR-3",
+          "player": "Wim Starport Dinghy: Skeleton Crew",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SCR-4",
+          "player": "Neel Starport Dinghy: Skeleton Crew",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SCR-5",
+          "player": "Dinghy Driver Starport Dinghy: Skeleton Crew",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SCR-6",
+          "player": "SM-33 Starport Dinghy: Skeleton Crew",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SCR-7",
+          "player": "Vane Starport Dinghy: Skeleton Crew",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SCR-8",
+          "player": "Gunter Starport Dinghy: Skeleton Crew",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SCR-9",
+          "player": "Brutus Starport Dinghy: Skeleton Crew",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SCR-10",
+          "player": "Jod Na Nawood Starport Dinghy: Skeleton Crew",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "RELIC CARDS",
+      "count": 12,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "REL-1",
+          "player": "The Mandalorian Outland TIE Fighter: The Mandalorian",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "REL-2",
+          "player": "Ezra Bridger TIE Fighter: Ahsoka",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "REL-3",
+          "player": "Death Trooper Outland TIE Fighter: The Mandalorian",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "REL-4",
+          "player": "Captain Enoch TIE Fighter: Ahsoka",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "REL-5",
+          "player": "Huyang TIE Fighter: Ahsoka",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "REL-6",
+          "player": "Morgan Elsbeth TIE Fighter: Ahsoka",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "REL-7",
+          "player": "Ahsoka Tano TIE Fighter: Ahsoka",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "REL-8",
+          "player": "Sabine Wren TIE Fighter: Ahsoka",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "REL-9",
+          "player": "Jawa Outland TIE Fighter: The Mandalorian",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "REL-10",
+          "player": "Moff Gideon Outland TIE Fighter: The Mandalorian",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "REL-11",
+          "player": "Cassian Andor Missle: Andor",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "REL-12",
+          "player": "Dedra Meero Vaporator: Andor",
+          "team": "",
+          "note": ""
+        }
+      ]
+    }
+  ],
+  "team_sets": {}
+}
