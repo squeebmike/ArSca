@@ -1,0 +1,4163 @@
+{
+  "set": "2026 Topps Chrome VeeFriends",
+  "release_date": "2026",
+  "set_size": 200,
+  "product_info": {},
+  "box_contents": {},
+  "parallels": [],
+  "base_set": {
+    "count": 200,
+    "cards": [
+      {
+        "number": "1",
+        "player": "Cynical Cat",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "2",
+        "player": "Fearless Fairy",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "3",
+        "player": "Decisive Duck",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "4",
+        "player": "Thoughtful Three Horned Harpik",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "5",
+        "player": "Motivated Monster",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "6",
+        "player": "Versatile Viking",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "7",
+        "player": "Notorious Ninja",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "8",
+        "player": "Gary Bee",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "9",
+        "player": "Kind Warrior",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "10",
+        "player": "Rare Robot",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "11",
+        "player": "Adventurous Astronaut",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "12",
+        "player": "Mindful Minokawa",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "13",
+        "player": "Patient Pig",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "14",
+        "player": "Dialed In Dog",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "15",
+        "player": "Driven Dragon",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "16",
+        "player": "Gritty Ghost",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "17",
+        "player": "Accountable Ant",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "18",
+        "player": "Alert Ape",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "19",
+        "player": "Amiable Anchovy",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "20",
+        "player": "Amped Aye Aye",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "21",
+        "player": "Arbitraging Admiral",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "22",
+        "player": "Articulate Armadillo",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "23",
+        "player": "Aspiring Alpaca",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "24",
+        "player": "Authentic Anaconda",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "25",
+        "player": "Awesome African Civet",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "26",
+        "player": "Bad Intentions",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "27",
+        "player": "Bad-Ass Bulldog",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "28",
+        "player": "Balanced Beetle",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "29",
+        "player": "Bashful Blobfish",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "30",
+        "player": "Be The Bigger Person",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "31",
+        "player": "Jolly Jack-O",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "32",
+        "player": "Befuddled Burglar",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "33",
+        "player": "Big Game Bandicoot",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "34",
+        "player": "Boisterous Beaver",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "35",
+        "player": "Bombastic Baboon",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "36",
+        "player": "Boss Bobcat",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "37",
+        "player": "Brave Bison",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "38",
+        "player": "Brilliant Barb",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "39",
+        "player": "Bubbly Buzzard",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "40",
+        "player": "Bullish Bull",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "41",
+        "player": "Calm Clam",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "42",
+        "player": "Candid Clownfish",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "43",
+        "player": "Capable Caterpillar",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "44",
+        "player": "Caring Camel",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "45",
+        "player": "Charming Cheetah",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "46",
+        "player": "Cheerful Chipmunk",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "47",
+        "player": "Chill Chinchilla",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "48",
+        "player": "Clever Crocodile",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "49",
+        "player": "Common Sense Cow",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "50",
+        "player": "Compassionate Catfish",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "51",
+        "player": "Adaptable Alien",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "52",
+        "player": "Competitive Clown",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "53",
+        "player": "Confident Cobra",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "54",
+        "player": "Considerate Cowboy",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "55",
+        "player": "Very, Very, Very, Very, Lucky Black Cat",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "56",
+        "player": "Consistent Cougar",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "57",
+        "player": "Content Condor",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "58",
+        "player": "Conviction Cockroach",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "59",
+        "player": "Courageous Cockatoo",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "60",
+        "player": "Creative Crab",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "61",
+        "player": "Curious Crane",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "62",
+        "player": "Dapper Dachshund",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "63",
+        "player": "Dedicated Dragonfly",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "64",
+        "player": "Detail-Oriented Dumbo Octopus",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "65",
+        "player": "Determined Dolphin",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "66",
+        "player": "Resilient Red Devil",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "67",
+        "player": "Dope Dodo",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "68",
+        "player": "Dynamic Dinosaur",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "69",
+        "player": "Earnest Ermine",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "70",
+        "player": "Empathy Elephant",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "71",
+        "player": "Enamoured Emu",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "72",
+        "player": "Entrepreneur Elf",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "73",
+        "player": "Faithful Pheasant",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "74",
+        "player": "Flex'n Fox",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "75",
+        "player": "Focused Falcon",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "76",
+        "player": "Eager Eagle",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "77",
+        "player": "Forever Phoenix",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "78",
+        "player": "Forgiving Horned Frog",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "79",
+        "player": "Forthright Flamingo",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "80",
+        "player": "Gentle Giant",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "81",
+        "player": "Genuine Giraffe",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "82",
+        "player": "Gifted Gopher",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "83",
+        "player": "Gleeful Sugar Glider",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "84",
+        "player": "Glowing Glow Worm",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "85",
+        "player": "Gracious Goose",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "86",
+        "player": "Gracious Grasshopper",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "87",
+        "player": "Gracious Grizzly Bear",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "88",
+        "player": "Grateful Gar",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "89",
+        "player": "Gratitude Gorilla",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "90",
+        "player": "Happy Hermit Crab",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "91",
+        "player": "Hard-Working Wombat",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "92",
+        "player": "Headstrong Honey Badger",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "93",
+        "player": "Heart Trooper",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "94",
+        "player": "Helpful Hippo",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "95",
+        "player": "Honorable Olm",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "96",
+        "player": "Hot Shot Hornet",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "97",
+        "player": "Humble Hedgehog",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "98",
+        "player": "Humble Hummingbird",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "99",
+        "player": "Hungry Hammerhead",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "100",
+        "player": "Hustling Hamster",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "101",
+        "player": "Hype Horse",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "102",
+        "player": "Impeccable Inostranet",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "103",
+        "player": "Independent Inch Worm",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "104",
+        "player": "Intuitive Iguana",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "105",
+        "player": "Joyous Jellyfish",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "106",
+        "player": "Just Jackal",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "107",
+        "player": "Keen Kingfisher",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "108",
+        "player": "Kindred Kangaroo",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "109",
+        "player": "Knowing Gnome",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "110",
+        "player": "Legendary Lemur",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "111",
+        "player": "Ambitious Angel",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "112",
+        "player": "Likable Leopard",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "113",
+        "player": "Like A Sponge",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "114",
+        "player": "Lit Lamb",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "115",
+        "player": "Logical Lion",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "116",
+        "player": "Loyal Lobster",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "117",
+        "player": "Macho Manta Ray",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "118",
+        "player": "Macro Micro",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "119",
+        "player": "Magnanimous Maltese",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "120",
+        "player": "Meticulous Magpie",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "121",
+        "player": "Mint Mink",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "122",
+        "player": "Modest Moose",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "123",
+        "player": "Mojo Mouse",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "124",
+        "player": "Monday Mole",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "125",
+        "player": "Moral Monkey",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "126",
+        "player": "Noble Numbat",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "127",
+        "player": "Observant Oyster",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "128",
+        "player": "Offense Oriented Orangutan",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "129",
+        "player": "Optimistic Otter",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "130",
+        "player": "Organized Ostrich",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "131",
+        "player": "Outgoing Octopus",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "132",
+        "player": "Passionate Parrot",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "133",
+        "player": "Pea Salad",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "134",
+        "player": "Perfect Persian Cat",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "135",
+        "player": "Persistent Penguin",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "136",
+        "player": "Perspective Pigeon",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "137",
+        "player": "Persuasive Pigeon",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "138",
+        "player": "Polished Poodle",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "139",
+        "player": "Positive Porcupine",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "140",
+        "player": "Practical Peacock",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "141",
+        "player": "Productive Puffin",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "142",
+        "player": "Profound Possum",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "143",
+        "player": "Protective Panther",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "144",
+        "player": "Prudent Polar Bear",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "145",
+        "player": "Radical Rabbit",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "146",
+        "player": "Reliable Rat",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "147",
+        "player": "Respectful Racoon",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "148",
+        "player": "Responsive Ram",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "149",
+        "player": "Secure Sparrow",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "150",
+        "player": "Self-Aware Hare",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "151",
+        "player": "Selfless Sloth",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "152",
+        "player": "Sensible Sommelier",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "153",
+        "player": "Sensitive Centipede",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "154",
+        "player": "Sentimental Salamander",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "155",
+        "player": "Serious Sperm Whale",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "156",
+        "player": "Sharing Squirrel",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "157",
+        "player": "Shrewd Sheep",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "158",
+        "player": "Sincere Skunk",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "159",
+        "player": "Skilled Skeleton",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "160",
+        "player": "Slay'n Slug",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "161",
+        "player": "Spiffy Salmon",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "162",
+        "player": "Spontaneous Seahorse",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "163",
+        "player": "Steadfast Snake",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "164",
+        "player": "Stoic Slime",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "165",
+        "player": "Stunned Sun",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "166",
+        "player": "Sufficient Shrimp",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "167",
+        "player": "Suffocate Hate",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "168",
+        "player": "Swaggy Sea Lion",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "169",
+        "player": "Tasteful Malayan Tapir",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "170",
+        "player": "Tenacious Termite",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "171",
+        "player": "Tenacious Turkey",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "172",
+        "player": "The Oak Monster",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "173",
+        "player": "The World Has Plenty Of Love Start Listening To It",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "174",
+        "player": "Tidy Troll",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "175",
+        "player": "To The Moon Meerkat",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "176",
+        "player": "Tolerant Tortoise",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "177",
+        "player": "Tolerant Tuna",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "178",
+        "player": "Tough To Beat A Worm From The Dirt!",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "179",
+        "player": "Tranquil Toad",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "180",
+        "player": "Ponder It From All Angles",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "181",
+        "player": "Tremendous Tiger",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "182",
+        "player": "Truculent T-Rex",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "183",
+        "player": "Trusting Tarantula",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "184",
+        "player": "Turnt Tick",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "185",
+        "player": "Unwavering Urchin",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "186",
+        "player": "Vibe'n Vampire",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "187",
+        "player": "Warm Wolverine",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "188",
+        "player": "Well-Connected Werewolf",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "189",
+        "player": "Well-Rounded Warthog",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "190",
+        "player": "Whimsical Wolf",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "191",
+        "player": "Wild Wallaby",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "192",
+        "player": "Willful Wizard",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "193",
+        "player": "Wily Wild Boar",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "194",
+        "player": "Woke Walrus",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "195",
+        "player": "Yolo Yak",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "196",
+        "player": "You're Gonna Die Fly",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "197",
+        "player": "Your Poor Relationship With Time Is Your Biggest Vulnerability",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "198",
+        "player": "Zealous Zombie",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "199",
+        "player": "Zestful Zebra",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "200",
+        "player": "Last Glass Standing",
+        "team": "",
+        "note": ""
+      }
+    ]
+  },
+  "insert_sets": [
+    {
+      "name": "MANGA SPECKLE SET",
+      "count": 100,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "SSA-1",
+          "player": "Thoughtful Three Horned Harpik",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SSA-2",
+          "player": "Motivated Monster",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SSA-3",
+          "player": "Gary Bee",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SSA-4",
+          "player": "Kind Warrior",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SSA-5",
+          "player": "Driven Dragon",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SSA-6",
+          "player": "Gritty Ghost",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SSA-7",
+          "player": "Accountable Ant",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SSA-8",
+          "player": "Amiable Anchovy",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SSA-9",
+          "player": "Arbitraging Admiral",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SSA-10",
+          "player": "Aspiring Alpaca",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SSA-11",
+          "player": "Awesome African Civet",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SSA-12",
+          "player": "Bad Intentions",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SSA-13",
+          "player": "Be The Bigger Person",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SSA-14",
+          "player": "Jolly Jack-O",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SSA-15",
+          "player": "Befuddled Burglar",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SSA-16",
+          "player": "Big Game Bandicoot",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SSA-17",
+          "player": "Bombastic Baboon",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SSA-18",
+          "player": "Boss Bobcat",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SSA-19",
+          "player": "Brave Bison",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SSA-20",
+          "player": "Brilliant Barb",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SSA-21",
+          "player": "Bubbly Buzzard",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SSA-22",
+          "player": "Calm Clam",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SSA-23",
+          "player": "Candid Clownfish",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SSA-24",
+          "player": "Caring Camel",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SSA-25",
+          "player": "Cheerful Chipmunk",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SSA-26",
+          "player": "Clever Crocodile",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SSA-27",
+          "player": "Compassionate Catfish",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SSA-28",
+          "player": "Conviction Cockroach",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SSA-29",
+          "player": "Courageous Cockatoo",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SSA-30",
+          "player": "Curious Crane",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SSA-31",
+          "player": "Dedicated Dragonfly",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SSA-32",
+          "player": "Detail-Oriented Dumbo Octopus",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SSA-33",
+          "player": "Determined Dolphin",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SSA-34",
+          "player": "Earnest Ermine",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SSA-35",
+          "player": "Faithful Pheasant",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SSA-36",
+          "player": "Flex'n Fox",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SSA-37",
+          "player": "Forever Phoenix",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SSA-38",
+          "player": "Gentle Giant",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SSA-39",
+          "player": "Genuine Giraffe",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SSA-40",
+          "player": "Gleeful Sugar Glider",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SSA-41",
+          "player": "Gracious Grasshopper",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SSA-42",
+          "player": "Grateful Gar",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SSA-43",
+          "player": "Gratitude Gorilla",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SSA-44",
+          "player": "Happy Hermit Crab",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SSA-45",
+          "player": "Hard-Working Wombat",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SSA-46",
+          "player": "Helpful Hippo",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SSA-47",
+          "player": "Honorable Olm",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SSA-48",
+          "player": "Hot Shot Hornet",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SSA-49",
+          "player": "Humble Hummingbird",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SSA-50",
+          "player": "Hungry Hammerhead",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SSA-51",
+          "player": "Hype Horse",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SSA-52",
+          "player": "Independent Inch Worm",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SSA-53",
+          "player": "Intuitive Iguana",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SSA-54",
+          "player": "Just Jackal",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SSA-55",
+          "player": "Keen Kingfisher",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SSA-56",
+          "player": "Kindred Kangaroo",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SSA-57",
+          "player": "Knowing Gnome",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SSA-58",
+          "player": "Likable Leopard",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SSA-59",
+          "player": "Lit Lamb",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SSA-60",
+          "player": "Loyal Lobster",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SSA-61",
+          "player": "Macho Manta Ray",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SSA-62",
+          "player": "Magnanimous Maltese",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SSA-63",
+          "player": "Meticulous Magpie",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SSA-64",
+          "player": "Mint Mink",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SSA-65",
+          "player": "Modest Moose",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SSA-66",
+          "player": "Mojo Mouse",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SSA-67",
+          "player": "Observant Oyster",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SSA-68",
+          "player": "Organized Ostrich",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SSA-69",
+          "player": "Passionate Parrot",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SSA-70",
+          "player": "Pea Salad",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SSA-71",
+          "player": "Persistent Penguin",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SSA-72",
+          "player": "Perspective Pigeon",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SSA-73",
+          "player": "Polished Poodle",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SSA-74",
+          "player": "Positive Porcupine",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SSA-75",
+          "player": "Practical Peacock",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SSA-76",
+          "player": "Profound Possum",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SSA-77",
+          "player": "Reliable Rat",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SSA-78",
+          "player": "Respectful Racoon",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SSA-79",
+          "player": "Responsive Ram",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SSA-80",
+          "player": "Self-Aware Hare",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SSA-81",
+          "player": "Sentimental Salamander",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SSA-82",
+          "player": "Serious Sperm Whale",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SSA-83",
+          "player": "Sharing Squirrel",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SSA-84",
+          "player": "Sincere Skunk",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SSA-85",
+          "player": "Spiffy Salmon",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SSA-86",
+          "player": "Steadfast Snake",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SSA-87",
+          "player": "Stoic Slime",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SSA-88",
+          "player": "Swaggy Sea Lion",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SSA-89",
+          "player": "Tasteful Malayan Tapir",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SSA-90",
+          "player": "The World Has Plenty Of Love Start Listening To It",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SSA-91",
+          "player": "Tolerant Tuna",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SSA-92",
+          "player": "Truculent T-Rex",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SSA-93",
+          "player": "Turnt Tick",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SSA-94",
+          "player": "Well-Connected Werewolf",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SSA-95",
+          "player": "Wily Wild Boar",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SSA-96",
+          "player": "Woke Walrus",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SSA-97",
+          "player": "Yolo Yak",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SSA-98",
+          "player": "You're Gonna Die Fly",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SSA-99",
+          "player": "Your Poor Relationship With Time Is Your Biggest Vulnerability",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SSA-100Z",
+          "player": "ealous Zombie",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "CHALKBOARD",
+      "count": 20,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "C-1",
+          "player": "Cynical Cat",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "C-2",
+          "player": "Patient Pig",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "C-3",
+          "player": "Dialed In Dog",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "C-4",
+          "player": "Articulate Armadillo",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "C-5",
+          "player": "Boisterous Beaver",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "C-6",
+          "player": "Bullish Bull",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "C-7",
+          "player": "Charming Cheetah",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "C-8",
+          "player": "Common Sense Cow",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "C-9",
+          "player": "Skilled Skeleton",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "C-10",
+          "player": "Creative Crab",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "C-11",
+          "player": "Dope Dodo",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "C-12",
+          "player": "Enamoured Emu",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "C-13",
+          "player": "Entrepreneur Elf",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "C-14",
+          "player": "Flex'n Fox",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "C-15",
+          "player": "Genuine Giraffe",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "C-16",
+          "player": "Gracious Goose",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "C-17",
+          "player": "Productive Puffin",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "C-18",
+          "player": "Like A Sponge",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "C-19",
+          "player": "Outgoing Octopus",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "C-20",
+          "player": "Moral Monkey",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "ORIGINAL SKETCH SELECTIONS",
+      "count": 5,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "OSS-1",
+          "player": "Motivated Monster",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "OSS-2",
+          "player": "Gary Bee",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "OSS-3",
+          "player": "Rare Robot",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "OSS-4",
+          "player": "Very, Very, Very, Very, Lucky Black Cat",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "OSS-5",
+          "player": "Empathy Elephant",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "NEON LIGHTS",
+      "count": 20,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "NE-1",
+          "player": "Decisive Duck",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NE-2",
+          "player": "Mindful Minokawa",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NE-3",
+          "player": "Whimsical Wolf",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NE-4",
+          "player": "Vibe'n Vampire",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NE-5",
+          "player": "Chill Chinchilla",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NE-6",
+          "player": "Competitive Clown",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NE-7",
+          "player": "Very, Very, Very, Very, Lucky Black Cat",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NE-8",
+          "player": "Tranquil Toad",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NE-9",
+          "player": "Resilient Red Devil",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NE-10",
+          "player": "Forever Phoenix",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NE-11",
+          "player": "Glowing Glow Worm",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NE-12",
+          "player": "Suffocate Hate",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NE-13",
+          "player": "Heart Trooper",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NE-14",
+          "player": "Hot Shot Hornet",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NE-15",
+          "player": "Humble Hedgehog",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NE-16",
+          "player": "Joyous Jellyfish",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NE-17",
+          "player": "Perfect Persian Cat",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NE-18",
+          "player": "Respectful Racoon",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NE-19",
+          "player": "Stunned Sun",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NE-20",
+          "player": "Stoic Slime",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "INFINITE SAPPHIRE",
+      "count": 5,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "IS-1",
+          "player": "Rare Robot",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "IS-2",
+          "player": "Kind Warrior",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "IS-3",
+          "player": "Adventurous Astronaut",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "IS-4",
+          "player": "Passionate Parrot",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "IS-5",
+          "player": "Very, Very, Very, Very, Lucky Black Cat",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "VEEFRIENDS VARIANTS",
+      "count": 10,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "3",
+          "player": "Decisive Duck",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "7",
+          "player": "Notorious Ninja",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "11",
+          "player": "Adventurous Astronaut",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "15",
+          "player": "Driven Dragon",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "39",
+          "player": "Bubbly Buzzard",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "54",
+          "player": "Considerate Cowboy",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "109",
+          "player": "Knowing Gnome",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "111",
+          "player": "Ambitious Angel",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "143",
+          "player": "Protective Panther",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "175",
+          "player": "To The Moon Meerkat",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "STELLAR HAZE",
+      "count": 20,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "SH-1",
+          "player": "Notorious Ninja",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SH-2",
+          "player": "Adventurous Astronaut",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SH-3",
+          "player": "Alert Ape",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SH-4",
+          "player": "Bad Intentions",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SH-5",
+          "player": "Adaptable Alien",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SH-6",
+          "player": "Content Condor",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SH-7",
+          "player": "Entrepreneur Elf",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SH-8",
+          "player": "Headstrong Honey Badger",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SH-9",
+          "player": "Hype Horse",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SH-10",
+          "player": "Impeccable Inostranet",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SH-11",
+          "player": "Legendary Lemur",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SH-12",
+          "player": "Ambitious Angel",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SH-13",
+          "player": "Persuasive Pigeon",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SH-14",
+          "player": "Prudent Polar Bear",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SH-15",
+          "player": "Tenacious Termite",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SH-16",
+          "player": "To The Moon Meerkat",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SH-17",
+          "player": "Truculent T-Rex",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SH-18",
+          "player": "Well-Connected Werewolf",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SH-19",
+          "player": "Willful Wizard",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SH-20",
+          "player": "Zealous Zombie",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "BALANCE BATTLES",
+      "count": 10,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "BB-1",
+          "player": "Candid Clownfish / Compassionate Catfish",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BB-2",
+          "player": "Chill Chinchilla / Hard-Working Wombat",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BB-3",
+          "player": "Confident Cobra / Humble Hedgehog",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BB-4",
+          "player": "Curious Crane / Knowing Gnome",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BB-5",
+          "player": "Happy Hermit Crab / Accountable Ant",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BB-6",
+          "player": "Intuitive Iguana / Logical Lion",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BB-7",
+          "player": "Macro Micro",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BB-8",
+          "player": "Patient Pig / Ambitious Angel",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BB-9",
+          "player": "Practical Peacock / Optimistic Otter",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "BB-10",
+          "player": "You're Gonna Die Fly / Forever Phoenix",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "ICONICS",
+      "count": 20,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "I-1",
+          "player": "Kind Warrior",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "I-2",
+          "player": "Accountable Ant",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "I-3",
+          "player": "Arbitraging Admiral",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "I-4",
+          "player": "Befuddled Burglar",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "I-5",
+          "player": "Very, Very, Very, Very, Lucky Black Cat",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "I-6",
+          "player": "Conviction Cockroach",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "I-7",
+          "player": "Intuitive Iguana",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "I-8",
+          "player": "Loyal Lobster",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "I-9",
+          "player": "Passionate Parrot",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "I-10",
+          "player": "Positive Porcupine",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "I-11",
+          "player": "Reliable Rat",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "I-12",
+          "player": "Secure Sparrow",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "I-13",
+          "player": "Sensible Sommelier",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "I-14",
+          "player": "Shrewd Sheep",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "I-15",
+          "player": "Spontaneous Seahorse",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "I-16",
+          "player": "Tolerant Tortoise",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "I-17",
+          "player": "Trusting Tarantula",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "I-18",
+          "player": "Turnt Tick",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "I-19",
+          "player": "Unwavering Urchin",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "I-20",
+          "player": "Well-Rounded Warthog",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "ERUPT",
+      "count": 20,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "E-1",
+          "player": "Fearless Fairy",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "E-2",
+          "player": "Thoughtful Three Horned Harpik",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "E-3",
+          "player": "Motivated Monster",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "E-4",
+          "player": "Versatile Viking",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "E-5",
+          "player": "Gary Bee",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "E-6",
+          "player": "Rare Robot",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "E-7",
+          "player": "Adventurous Astronaut",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "E-8",
+          "player": "Driven Dragon",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "E-9",
+          "player": "Bad Intentions",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "E-10",
+          "player": "Bashful Blobfish",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "E-11",
+          "player": "Jolly Jack-O",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "E-12",
+          "player": "Adaptable Alien",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "E-13",
+          "player": "Competitive Clown",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "E-14",
+          "player": "Confident Cobra",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "E-15",
+          "player": "Very, Very, Very, Very, Lucky Black Cat",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "E-16",
+          "player": "Resilient Red Devil",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "E-17",
+          "player": "Empathy Elephant",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "E-18",
+          "player": "Gratitude Gorilla",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "E-19",
+          "player": "Tidy Troll",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "E-20",
+          "player": "Willful Wizard",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "MEGAHEADS",
+      "count": 25,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "M-1",
+          "player": "Adventurous Astronaut",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "M-2",
+          "player": "Fearless Fairy",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "M-3",
+          "player": "Notorious Ninja",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "M-4",
+          "player": "Kind Warrior",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "M-5",
+          "player": "Rare Robot",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "M-6",
+          "player": "Ambitious Angel",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "M-7",
+          "player": "Be The Bigger Person",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "M-8",
+          "player": "Clever Crocodile",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "M-9",
+          "player": "Common Sense Cow",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "M-10",
+          "player": "Competitive Clown",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "M-11",
+          "player": "Dynamic Dinosaur",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "M-12",
+          "player": "Heart Trooper",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "M-13",
+          "player": "Hustling Hamster",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "M-14",
+          "player": "Jolly Jack-O",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "M-15",
+          "player": "Knowing Gnome",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "M-16",
+          "player": "Modest Moose",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "M-17",
+          "player": "Optimistic Otter",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "M-18",
+          "player": "Passionate Parrot",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "M-19",
+          "player": "Ponder It From All Angles",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "M-20",
+          "player": "Resilient Red Devil",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "M-21",
+          "player": "Self-Aware Hare",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "M-22",
+          "player": "Sensitive Centipede",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "M-23",
+          "player": "Steadfast Snake",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "M-24",
+          "player": "Zealous Zombie",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "M-25",
+          "player": "Very, Very, Very, Very, Lucky Black Cat",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "VEEFRIENDS VARIANTS - LAST GLASS STANDING",
+      "count": 1,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "200",
+          "player": "Last Glass Standing",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "VEEFRIENDS VARIANTS - GRITTY GHOST",
+      "count": 1,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "16",
+          "player": "Gritty Ghost",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "HIDDEN GEMS",
+      "count": 5,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "HG-1",
+          "player": "Notorious Ninja",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HG-2",
+          "player": "Resilient Red Devil",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HG-3",
+          "player": "Thoughtful Three Horned Harpik",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HG-4",
+          "player": "Gratitude Gorilla",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HG-5",
+          "player": "Very, Very, Very, Very, Lucky Black Cat",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "COMIC CLIPPINGS",
+      "count": 10,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "CC-1",
+          "player": "VeeFriends #1 - The Battle For Balance Begins!",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CC-2",
+          "player": "VeeFriends #2 - The Origin Of Fearless Fairy",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CC-3",
+          "player": "VeeFriends #3 - World Tour",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CC-4",
+          "player": "VeeFriends #4 - Hunt for Harpik",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CC-5",
+          "player": "VeeFriends #5 - Motivated Monster",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CC-6",
+          "player": "VeeFriends #6 - Vee Is For Viking",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CC-7",
+          "player": "VeeFriends #7 - Notorious Ninja",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CC-8",
+          "player": "VeeFriends #8 - Gary Bee",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CC-9",
+          "player": "VeeFriends #9 - Kind Warrior",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CC-10",
+          "player": "VeeFriends #10 - Rare Robot",
+          "team": "",
+          "note": ""
+        }
+      ]
+    }
+  ],
+  "autograph_sets": [
+    {
+      "name": "BASE CARDS GARY VEE AUTOGRAPH PARALLEL",
+      "count": 200,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "1",
+          "player": "Cynical Cat",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "2",
+          "player": "Fearless Fairy",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "3",
+          "player": "Decisive Duck",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "4",
+          "player": "Thoughtful Three Horned Harpik",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "5",
+          "player": "Motivated Monster",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "6",
+          "player": "Versatile Viking",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "7",
+          "player": "Notorious Ninja",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "8",
+          "player": "Gary Bee",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "9",
+          "player": "Kind Warrior",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "10",
+          "player": "Rare Robot",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "11",
+          "player": "Adventurous Astronaut",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "12",
+          "player": "Mindful Minokawa",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "13",
+          "player": "Patient Pig",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "14",
+          "player": "Dialed In Dog",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "15",
+          "player": "Driven Dragon",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "16",
+          "player": "Gritty Ghost",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "17",
+          "player": "Accountable Ant",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "18",
+          "player": "Alert Ape",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "19",
+          "player": "Amiable Anchovy",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "20",
+          "player": "Amped Aye Aye",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "21",
+          "player": "Arbitraging Admiral",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "22",
+          "player": "Articulate Armadillo",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "23",
+          "player": "Aspiring Alpaca",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "24",
+          "player": "Authentic Anaconda",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "25",
+          "player": "Awesome African Civet",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "26",
+          "player": "Bad Intentions",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "27",
+          "player": "Bad-Ass Bulldog",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "28",
+          "player": "Balanced Beetle",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "29",
+          "player": "Bashful Blobfish",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "30",
+          "player": "Be The Bigger Person",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "31",
+          "player": "Jolly Jack-O",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "32",
+          "player": "Befuddled Burglar",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "33",
+          "player": "Big Game Bandicoot",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "34",
+          "player": "Boisterous Beaver",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "35",
+          "player": "Bombastic Baboon",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "36",
+          "player": "Boss Bobcat",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "37",
+          "player": "Brave Bison",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "38",
+          "player": "Brilliant Barb",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "39",
+          "player": "Bubbly Buzzard",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "40",
+          "player": "Bullish Bull",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "41",
+          "player": "Calm Clam",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "42",
+          "player": "Candid Clownfish",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "43",
+          "player": "Capable Caterpillar",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "44",
+          "player": "Caring Camel",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "45",
+          "player": "Charming Cheetah",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "46",
+          "player": "Cheerful Chipmunk",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "47",
+          "player": "Chill Chinchilla",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "48",
+          "player": "Clever Crocodile",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "49",
+          "player": "Common Sense Cow",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "50",
+          "player": "Compassionate Catfish",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "51",
+          "player": "Adaptable Alien",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "52",
+          "player": "Competitive Clown",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "53",
+          "player": "Confident Cobra",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "54",
+          "player": "Considerate Cowboy",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "55",
+          "player": "Very, Very, Very, Very, Lucky Black Cat",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "56",
+          "player": "Consistent Cougar",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "57",
+          "player": "Content Condor",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "58",
+          "player": "Conviction Cockroach",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "59",
+          "player": "Courageous Cockatoo",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "60",
+          "player": "Creative Crab",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "61",
+          "player": "Curious Crane",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "62",
+          "player": "Dapper Dachshund",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "63",
+          "player": "Dedicated Dragonfly",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "64",
+          "player": "Detail-Oriented Dumbo Octopus",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "65",
+          "player": "Determined Dolphin",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "66",
+          "player": "Resilient Red Devil",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "67",
+          "player": "Dope Dodo",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "68",
+          "player": "Dynamic Dinosaur",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "69",
+          "player": "Earnest Ermine",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "70",
+          "player": "Empathy Elephant",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "71",
+          "player": "Enamoured Emu",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "72",
+          "player": "Entrepreneur Elf",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "73",
+          "player": "Faithful Pheasant",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "74",
+          "player": "Flex'n Fox",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "75",
+          "player": "Focused Falcon",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "76",
+          "player": "Eager Eagle",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "77",
+          "player": "Forever Phoenix",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "78",
+          "player": "Forgiving Horned Frog",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "79",
+          "player": "Forthright Flamingo",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "80",
+          "player": "Gentle Giant",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "81",
+          "player": "Genuine Giraffe",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "82",
+          "player": "Gifted Gopher",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "83",
+          "player": "Gleeful Sugar Glider",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "84",
+          "player": "Glowing Glow Worm",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "85",
+          "player": "Gracious Goose",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "86",
+          "player": "Gracious Grasshopper",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "87",
+          "player": "Gracious Grizzly Bear",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "88",
+          "player": "Grateful Gar",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "89",
+          "player": "Gratitude Gorilla",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "90",
+          "player": "Happy Hermit Crab",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "91",
+          "player": "Hard-Working Wombat",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "92",
+          "player": "Headstrong Honey Badger",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "93",
+          "player": "Heart Trooper",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "94",
+          "player": "Helpful Hippo",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "95",
+          "player": "Honorable Olm",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "96",
+          "player": "Hot Shot Hornet",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "97",
+          "player": "Humble Hedgehog",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "98",
+          "player": "Humble Hummingbird",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "99",
+          "player": "Hungry Hammerhead",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "100",
+          "player": "Hustling Hamster",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "101",
+          "player": "Hype Horse",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "102",
+          "player": "Impeccable Inostranet",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "103",
+          "player": "Independent Inch Worm",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "104",
+          "player": "Intuitive Iguana",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "105",
+          "player": "Joyous Jellyfish",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "106",
+          "player": "Just Jackal",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "107",
+          "player": "Keen Kingfisher",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "108",
+          "player": "Kindred Kangaroo",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "109",
+          "player": "Knowing Gnome",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "110",
+          "player": "Legendary Lemur",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "111",
+          "player": "Ambitious Angel",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "112",
+          "player": "Likable Leopard",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "113",
+          "player": "Like A Sponge",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "114",
+          "player": "Lit Lamb",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "115",
+          "player": "Logical Lion",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "116",
+          "player": "Loyal Lobster",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "117",
+          "player": "Macho Manta Ray",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "118",
+          "player": "Macro Micro",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "119",
+          "player": "Magnanimous Maltese",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "120",
+          "player": "Meticulous Magpie",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "121",
+          "player": "Mint Mink",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "122",
+          "player": "Modest Moose",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "123",
+          "player": "Mojo Mouse",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "124",
+          "player": "Monday Mole",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "125",
+          "player": "Moral Monkey",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "126",
+          "player": "Noble Numbat",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "127",
+          "player": "Observant Oyster",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "128",
+          "player": "Offense Oriented Orangutan",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "129",
+          "player": "Optimistic Otter",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "130",
+          "player": "Organized Ostrich",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "131",
+          "player": "Outgoing Octopus",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "132",
+          "player": "Passionate Parrot",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "133",
+          "player": "Pea Salad",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "134",
+          "player": "Perfect Persian Cat",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "135",
+          "player": "Persistent Penguin",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "136",
+          "player": "Perspective Pigeon",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "137",
+          "player": "Persuasive Pigeon",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "138",
+          "player": "Polished Poodle",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "139",
+          "player": "Positive Porcupine",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "140",
+          "player": "Practical Peacock",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "141",
+          "player": "Productive Puffin",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "142",
+          "player": "Profound Possum",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "143",
+          "player": "Protective Panther",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "144",
+          "player": "Prudent Polar Bear",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "145",
+          "player": "Radical Rabbit",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "146",
+          "player": "Reliable Rat",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "147",
+          "player": "Respectful Racoon",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "148",
+          "player": "Responsive Ram",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "149",
+          "player": "Secure Sparrow",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "150",
+          "player": "Self-Aware Hare",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "151",
+          "player": "Selfless Sloth",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "152",
+          "player": "Sensible Sommelier",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "153",
+          "player": "Sensitive Centipede",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "154",
+          "player": "Sentimental Salamander",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "155",
+          "player": "Serious Sperm Whale",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "156",
+          "player": "Sharing Squirrel",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "157",
+          "player": "Shrewd Sheep",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "158",
+          "player": "Sincere Skunk",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "159",
+          "player": "Skilled Skeleton",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "160",
+          "player": "Slay'n Slug",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "161",
+          "player": "Spiffy Salmon",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "162",
+          "player": "Spontaneous Seahorse",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "163",
+          "player": "Steadfast Snake",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "164",
+          "player": "Stoic Slime",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "165",
+          "player": "Stunned Sun",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "166",
+          "player": "Sufficient Shrimp",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "167",
+          "player": "Suffocate Hate",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "168",
+          "player": "Swaggy Sea Lion",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "169",
+          "player": "Tasteful Malayan Tapir",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "170",
+          "player": "Tenacious Termite",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "171",
+          "player": "Tenacious Turkey",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "172",
+          "player": "The Oak Monster",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "173",
+          "player": "The World Has Plenty Of Love Start Listening To It",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "174",
+          "player": "Tidy Troll",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "175",
+          "player": "To The Moon Meerkat",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "176",
+          "player": "Tolerant Tortoise",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "177",
+          "player": "Tolerant Tuna",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "178",
+          "player": "Tough To Beat A Worm From The Dirt!",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "179",
+          "player": "Tranquil Toad",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "180",
+          "player": "Ponder It From All Angles",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "181",
+          "player": "Tremendous Tiger",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "182",
+          "player": "Truculent T-Rex",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "183",
+          "player": "Trusting Tarantula",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "184",
+          "player": "Turnt Tick",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "185",
+          "player": "Unwavering Urchin",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "186",
+          "player": "Vibe'n Vampire",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "187",
+          "player": "Warm Wolverine",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "188",
+          "player": "Well-Connected Werewolf",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "189",
+          "player": "Well-Rounded Warthog",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "190",
+          "player": "Whimsical Wolf",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "191",
+          "player": "Wild Wallaby",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "192",
+          "player": "Willful Wizard",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "193",
+          "player": "Wily Wild Boar",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "194",
+          "player": "Woke Walrus",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "195",
+          "player": "Yolo Yak",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "196",
+          "player": "You're Gonna Die Fly",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "197",
+          "player": "Your Poor Relationship With Time Is Your Biggest Vulnerability",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "198",
+          "player": "Zealous Zombie",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "199",
+          "player": "Zestful Zebra",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "200",
+          "player": "Last Glass Standing",
+          "team": "",
+          "note": ""
+        }
+      ]
+    }
+  ],
+  "memorabilia_sets": [],
+  "team_sets": {}
+}
