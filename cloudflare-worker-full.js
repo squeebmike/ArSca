@@ -3693,11 +3693,6 @@ export default {
         try { return JSON.parse(raw); } catch (_) { return fallback; }
       };
       const norm = v => String(v || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
-      const loadToppsCards = async () => {
-        const count = Number(await kv.get('topps_cards_chunk_count') || 0);
-        const chunks = await Promise.all(Array.from({ length: count }, (_, i) => readJsonKv(`topps_cards_chunk:${i}`, [])));
-        return chunks.flat();
-      };
       const cardMatches = (card, filters) => {
         if (filters.setId && card.setId !== filters.setId) return false;
         if (filters.year && String(card.year || '') !== String(filters.year)) return false;
@@ -3711,6 +3706,28 @@ export default {
           if (!norm(filters.q).split(/\s+/).every(t => hay.includes(t))) return false;
         }
         return true;
+      };
+      const hasToppsFilters = filters => Object.values(filters).some(Boolean);
+      const scanToppsCards = async ({ filters = {}, limit = 100, offset = 0, id = '' } = {}) => {
+        const meta = await readJsonKv('topps_import_meta', {});
+        const count = Number(await kv.get('topps_cards_chunk_count') || meta.chunkCount || 0);
+        const out = [];
+        let seen = 0;
+        let scannedChunks = 0;
+        const need = offset + limit;
+        for (let i = 0; i < count; i++) {
+          const chunk = await readJsonKv(`topps_cards_chunk:${i}`, []);
+          scannedChunks++;
+          for (const card of chunk) {
+            const match = id ? card.id === id : cardMatches(card, filters);
+            if (!match) continue;
+            if (id) return { cards: [card], total: 1, scannedChunks, complete: true, meta };
+            if (seen >= offset && out.length < limit) out.push(card);
+            seen++;
+            if (out.length >= limit) return { cards: out, total: hasToppsFilters(filters) ? seen : Number(meta.cardCount || seen), scannedChunks, complete: false, meta };
+          }
+        }
+        return { cards: out, total: seen, scannedChunks, complete: true, meta };
       };
 
       if (url.pathname === '/topps-checklists/import-start' && request.method === 'PUT') {
@@ -3833,15 +3850,14 @@ export default {
         };
         const limit = Math.min(500, Math.max(1, Number(url.searchParams.get('limit') || 100)));
         const offset = Math.max(0, Number(url.searchParams.get('offset') || 0));
-        const cards = await loadToppsCards();
-        const filtered = cards.filter(c => cardMatches(c, filters));
-        return json({ ok: true, total: filtered.length, cards: filtered.slice(offset, offset + limit), limit, offset });
+        const page = await scanToppsCards({ filters, limit, offset });
+        return json({ ok: true, total: page.total, cards: page.cards, limit, offset, complete: page.complete, scannedChunks: page.scannedChunks });
       }
 
       const cardMatch = url.pathname.match(/^\/topps-checklists\/cards\/([^/]+)$/);
       if (cardMatch && request.method === 'GET') {
-        const cards = await loadToppsCards();
-        const card = cards.find(c => c.id === decodeURIComponent(cardMatch[1]));
+        const page = await scanToppsCards({ id: decodeURIComponent(cardMatch[1]), limit: 1 });
+        const card = page.cards[0];
         if (!card) return json({ ok: false, error: 'Card not found' }, 404);
         const source = card.sourceId ? await readJsonKv(`topps_source:${card.sourceId}`, null) : null;
         return json({ ok: true, card, source });
@@ -3855,8 +3871,8 @@ export default {
         const cached = !fresh ? await readJsonKv(cacheKey, null) : null;
         if (cached && Date.now() - new Date(cached.cachedAt || 0).getTime() < 86400000) return json({ ok: true, cached: true, ...cached });
 
-        const cards = await loadToppsCards();
-        const card = cards.find(c => c.id === cardId);
+        const page = await scanToppsCards({ id: cardId, limit: 1 });
+        const card = page.cards[0];
         if (!card) return json({ ok: false, error: 'Card not found' }, 404);
         const q = [card.year, 'Topps', card.product, card.player || card.subject, card.cardNumber ? '#' + card.cardNumber : '', card.flags?.rc ? 'RC' : '', card.flags?.auto ? 'auto' : '', card.flags?.relic ? 'relic' : ''].filter(Boolean).join(' ');
         const params = new URLSearchParams({ q, category: 'Sports Cards' });
