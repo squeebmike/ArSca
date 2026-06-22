@@ -1,0 +1,1440 @@
+{
+  "set": "2025 Topps Chrome McDonald's All-American Basketball",
+  "release_date": "2025",
+  "set_size": 100,
+  "product_info": {},
+  "box_contents": {},
+  "parallels": [],
+  "base_set": {
+    "count": 100,
+    "cards": [
+      {
+        "number": "1",
+        "player": "Shon Abaev East",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "2",
+        "player": "Darius Adams East",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "3",
+        "player": "Nate Ament East",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "4",
+        "player": "Jalen Haralson East",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "5",
+        "player": "Zai Harwell East",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "6",
+        "player": "Eric Reibe East",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "7",
+        "player": "AJ Dybantsa West",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "8",
+        "player": "Brayden Burries West",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "9",
+        "player": "Mikel Brown Jr. West",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "10",
+        "player": "Caleb Wilson West",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "11",
+        "player": "Chris Cenac Jr. West",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "12",
+        "player": "Darryn Peterson West",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "13",
+        "player": "Koa Peat West",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "14",
+        "player": "Nikola Bundalo West",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "15",
+        "player": "Tounde Yessoufou West",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "16",
+        "player": "Aaliyah Crump East",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "17",
+        "player": "Agot Makeer East",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "18",
+        "player": "Deniya Prawl East",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "19",
+        "player": "Hailee Swain East",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "20",
+        "player": "Jaida Civil East",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "21",
+        "player": "Jaliya Davis East",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "22",
+        "player": "Kaelyn Carroll East",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "23",
+        "player": "Lara Somfai East",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "24",
+        "player": "Leah Macy East",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "25",
+        "player": "Mia Pauldo East",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "26",
+        "player": "Nyla Brooks East",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "27",
+        "player": "Zakiyah Johnson East",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "28",
+        "player": "Aaliyah Chavez West",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "29",
+        "player": "Addie Deal West",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "30",
+        "player": "Alexandra Eschmeyer West",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "31",
+        "player": "Aliyahna Morris West",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "32",
+        "player": "Ayla McDowell West",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "33",
+        "player": "Brynn McGaughy West",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "34",
+        "player": "Darriana Alexander West",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "35",
+        "player": "Emilee Skinner West",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "36",
+        "player": "Grace Knox West",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "37",
+        "player": "Jordan Speiser West",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "38",
+        "player": "Sienna Betts West",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "39",
+        "player": "Shon Abaev East",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "40",
+        "player": "Darius Adams East",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "41",
+        "player": "Nate Ament East",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "42",
+        "player": "Jalen Haralson East",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "43",
+        "player": "Zai Harwell East",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "44",
+        "player": "Eric Reibe East",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "45",
+        "player": "AJ Dybantsa West",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "46",
+        "player": "Brayden Burries West",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "47",
+        "player": "Mikel Brown Jr. West",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "48",
+        "player": "Caleb Wilson West",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "49",
+        "player": "Chris Cenac Jr. West",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "50",
+        "player": "Darryn Peterson West",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "51",
+        "player": "Koa Peat West",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "52",
+        "player": "Nikola Bundalo West",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "53",
+        "player": "Tounde Yessoufou West",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "54",
+        "player": "Aaliyah Crump East",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "55",
+        "player": "Agot Makeer East",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "56",
+        "player": "Deniya Prawl East",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "57",
+        "player": "Hailee Swain East",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "58",
+        "player": "Jaida Civil East",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "59",
+        "player": "Jaliya Davis East",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "60",
+        "player": "Kaelyn Carroll East",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "61",
+        "player": "Lara Somfai East",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "62",
+        "player": "Leah Macy East",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "63",
+        "player": "Mia Pauldo East",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "64",
+        "player": "Nyla Brooks East",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "65",
+        "player": "Zakiyah Johnson East",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "66",
+        "player": "Aaliyah Chavez West",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "67",
+        "player": "Addie Deal West",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "68",
+        "player": "Alexandra Eschmeyer West",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "69",
+        "player": "Aliyahna Morris West",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "70",
+        "player": "Ayla McDowell West",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "71",
+        "player": "Brynn McGaughy West",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "72",
+        "player": "Darriana Alexander West",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "73",
+        "player": "Emilee Skinner West",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "74",
+        "player": "Grace Knox West",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "75",
+        "player": "Jordan Speiser West",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "76",
+        "player": "Sienna Betts West",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "77",
+        "player": "Bronny James West",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "78",
+        "player": "Jayson Tatum East",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "79",
+        "player": "Al Harrington East",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "80",
+        "player": "Tyrese Maxey West",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "81",
+        "player": "Rip Hamilton West",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "82",
+        "player": "Amar'e Stoudemire East",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "83",
+        "player": "Juwan Howard West",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "84",
+        "player": "JuJu Watkins West",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "85",
+        "player": "Anthony Black West",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "86",
+        "player": "Dwight Howard East",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "87",
+        "player": "Eric Gordon West",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "88",
+        "player": "Ron Holland II West",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "89",
+        "player": "Jarace Walker East",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "90",
+        "player": "Quentin Grimes West",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "91",
+        "player": "Marcus Smart West",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "92",
+        "player": "Immanuel Quickley East",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "93",
+        "player": "Dereck Lively II East",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "94",
+        "player": "Cole Anthony East",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "95",
+        "player": "Jaren Jackson Jr. West",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "96",
+        "player": "Kel'el Ware West",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "97",
+        "player": "Gradey Dick West",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "98",
+        "player": "Lebron James East",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "99",
+        "player": "Amari Bailey West",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "100",
+        "player": "Myles Turner East",
+        "team": "",
+        "note": ""
+      }
+    ]
+  },
+  "insert_sets": [
+    {
+      "name": "HIGH RISES",
+      "count": 38,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "HR-1",
+          "player": "Shon Abaev East",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HR-2",
+          "player": "Darius Adams East",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HR-3",
+          "player": "Nate Ament East",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HR-4",
+          "player": "Jalen Haralson East",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HR-5",
+          "player": "Zai Harwell East",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HR-6",
+          "player": "Eric Reibe East",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HR-7",
+          "player": "AJ Dybantsa West",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HR-8",
+          "player": "Brayden Burries West",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HR-9",
+          "player": "Mikel Brown Jr. West",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HR-10",
+          "player": "Caleb Wilson West",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HR-11",
+          "player": "Chris Cenac Jr. West",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HR-12",
+          "player": "Darryn Peterson West",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HR-13",
+          "player": "Koa Peat West",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HR-14",
+          "player": "Nikola Bundalo West",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HR-15",
+          "player": "Tounde Yessoufou West",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HR-16",
+          "player": "Aaliyah Crump East",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HR-17",
+          "player": "Agot Makeer East",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HR-18",
+          "player": "Deniya Prawl East",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HR-19",
+          "player": "Hailee Swain East",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HR-20",
+          "player": "Jaida Civil East",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HR-21",
+          "player": "Jaliya Davis East",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HR-22",
+          "player": "Kaelyn Carroll East",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HR-23",
+          "player": "Lara Somfai East",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HR-24",
+          "player": "Leah Macy East",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HR-25",
+          "player": "Mia Pauldo East",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HR-26",
+          "player": "Nyla Brooks East",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HR-27",
+          "player": "ZAKiyah Johnson East",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HR-28",
+          "player": "Aaliyah Chavez West",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HR-29",
+          "player": "Addie Deal West",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HR-30",
+          "player": "Alexandra Eschmeyer West",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HR-31",
+          "player": "Aliyahna Morris West",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HR-32",
+          "player": "Ayla McDowell West",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HR-33",
+          "player": "Brynn McGaughy West",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HR-34",
+          "player": "Darriana Alexander West",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HR-35",
+          "player": "Emilee Skinner West",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HR-36",
+          "player": "Grace Knox West",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HR-37",
+          "player": "Jordan Speiser West",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HR-38",
+          "player": "Sienna Betts West",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "TOP RECRUITS",
+      "count": 32,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "TP-1",
+          "player": "Shon Abaev East",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TP-2",
+          "player": "Darius Adams East",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TP-3",
+          "player": "Nate Ament East",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TP-4",
+          "player": "Jalen Haralson East",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TP-5",
+          "player": "Zai Harwell East",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TP-6",
+          "player": "Eric Reibe East",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TP-7",
+          "player": "AJ Dybantsa West",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TP-8",
+          "player": "Brayden Burries West",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TP-9",
+          "player": "Mikel Brown Jr. West",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TP-10",
+          "player": "Caleb Wilson West",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TP-11",
+          "player": "Chris Cenac Jr. West",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TP-12",
+          "player": "Darryn Peterson West",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TP-13",
+          "player": "Koa Peat West",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TP-14",
+          "player": "Nikola Bundalo West",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TP-15",
+          "player": "Tounde Yessoufou West",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TP-16",
+          "player": "Aaliyah Crump East",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TP-17",
+          "player": "Agot Makeer East",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TP-18",
+          "player": "Deniya Prawl East",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TP-19",
+          "player": "Hailee Swain East",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TP-20",
+          "player": "Jaida Civil East",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TP-21",
+          "player": "Jaliya Davis East",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TP-22",
+          "player": "Kaelyn Carroll East",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TP-23",
+          "player": "Lara Somfai East",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TP-24",
+          "player": "Leah Macy East",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TP-25",
+          "player": "Mia Pauldo East",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TP-26",
+          "player": "Nyla Brooks East",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TP-27",
+          "player": "Zakiyah Johnson East",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TP-28",
+          "player": "Aaliyah Chavez West",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TP-29",
+          "player": "Addie Deal West",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TP-30",
+          "player": "Alexandra Eschmeyer West",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TP-31",
+          "player": "Aliyahna Morris West",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "TP-32",
+          "player": "Ayla McDowell West",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "PROSPECT PATHS",
+      "count": 20,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "PP-1",
+          "player": "Shon Abaev East",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PP-2",
+          "player": "Darius Adams East",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PP-3",
+          "player": "Nate Ament East",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PP-4",
+          "player": "Jalen Haralson East",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PP-5",
+          "player": "Zai Harwell East",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PP-6",
+          "player": "Eric Reibe East",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PP-7",
+          "player": "AJ Dybantsa West",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PP-8",
+          "player": "Brayden Burries West",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PP-9",
+          "player": "Mikel Brown Jr. West",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PP-10",
+          "player": "Caleb Wilson West",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PP-11",
+          "player": "Chris Cenac Jr. West",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PP-12",
+          "player": "Darryn Peterson West",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PP-13",
+          "player": "Koa Peat West",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PP-14",
+          "player": "Leah Macy East",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PP-15",
+          "player": "Mia Pauldo East",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PP-16",
+          "player": "Nyla Brooks East",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PP-17",
+          "player": "ZaKiyah Johnson East",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PP-18",
+          "player": "Aaliyah Chavez West",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PP-19",
+          "player": "Addie Deal West",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PP-20",
+          "player": "Alexandra Eschmeyer West",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "HYPE TO LEGACY",
+      "count": 10,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "HL-1",
+          "player": "AJ Dybantsa West",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HL-2",
+          "player": "Nate Ament East",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HL-3",
+          "player": "Koa Peat West",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HL-4",
+          "player": "Darryn Peterson West",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HL-5",
+          "player": "Caleb Wilson West",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HL-6",
+          "player": "Aaliyah Chavez West",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HL-7",
+          "player": "Chris Cenac Jr. West",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HL-8",
+          "player": "Sienna Betts West",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HL-9",
+          "player": "Emilee Skinner West",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HL-10",
+          "player": "Aaliyah Crump East",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "ALL AMERICAN DRIP",
+      "count": 10,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "AA-1",
+          "player": "AJ Dybantsa West",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "AA-2",
+          "player": "Nate Ament East",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "AA-3",
+          "player": "Koa Peat West",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "AA-4",
+          "player": "Darryn Peterson West",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "AA-5",
+          "player": "Caleb Wilson West",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "AA-6",
+          "player": "Aaliyah Chavez West",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "AA-7",
+          "player": "Chris Cenac Jr. West",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "AA-8",
+          "player": "Sienna Betts West",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "AA-9",
+          "player": "Emilee Skinner West",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "AA-10",
+          "player": "Aaliyah Crump East",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "CONCRETE CANVAS",
+      "count": 20,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "CC-1",
+          "player": "AJ Dybantsa West",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CC-2",
+          "player": "Nate Ament East",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CC-3",
+          "player": "Koa Peat West",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CC-4",
+          "player": "Darryn Peterson West",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CC-5",
+          "player": "Caleb Wilson West",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CC-6",
+          "player": "Aaliyah Chavez West",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CC-7",
+          "player": "Chris Cenac Jr. West",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CC-8",
+          "player": "Sienna Betts West",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CC-9",
+          "player": "Emilee Skinner West",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CC-10",
+          "player": "Aaliyah Crump East",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CC-11",
+          "player": "Mikel Brown Jr. West",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CC-12",
+          "player": "Tounde Yessoufou West",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CC-13",
+          "player": "Brayden Burries West",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CC-14",
+          "player": "Jalen Haralson East",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CC-15",
+          "player": "Darius Adams East",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CC-16",
+          "player": "Shon Abaev East",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CC-17",
+          "player": "Leah Macy East",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CC-18",
+          "player": "Grace Knox West",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CC-19",
+          "player": "ZaKiyah Johnson East",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CC-20",
+          "player": "Nyla Brooks East",
+          "team": "",
+          "note": ""
+        }
+      ]
+    }
+  ],
+  "autograph_sets": [],
+  "memorabilia_sets": [],
+  "team_sets": {}
+}
