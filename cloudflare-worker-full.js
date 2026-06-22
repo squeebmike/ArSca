@@ -3343,7 +3343,94 @@ export default {
         return json({ ok: true, catalog });
       }
 
-      // GET /topps/debug-pdf?url=URL — fetch a URL and return raw info for debugging
+      // GET /topps/test-import?n=5 — dry-run import N sets, return quality report (no KV writes)
+      if (url.pathname === '/topps/test-import' && request.method === 'GET') {
+        const n = Math.min(parseInt(url.searchParams.get('n') || '5', 10), 10);
+        const slugFilter = url.searchParams.get('slug'); // test a specific slug
+        const TEST_SETS = slugFilter
+          ? TOPPS_CATALOG.filter(s => s.slug === slugFilter)
+          : [
+              TOPPS_CATALOG.find(s => s.slug === '2025-topps-chrome-baseball'),
+              TOPPS_CATALOG.find(s => s.slug === '2025-topps-series-1-baseball'),
+              TOPPS_CATALOG.find(s => s.slug === '2025-bowman-baseball'),
+              TOPPS_CATALOG.find(s => s.slug === '2025-26-topps-chrome-basketball'),
+              TOPPS_CATALOG.find(s => s.slug === '2025-topps-chrome-football'),
+            ].filter(Boolean).slice(0, n);
+
+        const results = [];
+        for (const entry of TEST_SETS) {
+          const urlsToTry = [
+            entry.beckettUrl,
+            `https://www.beckett.com/news/${entry.slug}-cards/`,
+            `https://www.beckett.com/news/${entry.slug}-checklist/`,
+          ].filter(Boolean);
+
+          let parsed = null;
+          let usedUrl = null;
+          let fetchError = null;
+          for (const tryUrl of urlsToTry) {
+            const fetchRes = await fetch(tryUrl, {
+              headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml',
+                'Accept-Language': 'en-US,en;q=0.9',
+                'Referer': 'https://www.beckett.com/',
+              },
+              redirect: 'follow',
+            }).catch(e => { fetchError = e.message; return null; });
+
+            if (!fetchRes || !fetchRes.ok) {
+              fetchError = fetchRes ? `HTTP ${fetchRes.status}` : fetchError;
+              continue;
+            }
+            const html = await fetchRes.text();
+            parsed = parseBeckettChecklist(html, entry.slug, entry.name, entry.sport, entry.year);
+            if (parsed && (parsed.base_set?.cards?.length > 0 || parsed.insert_sets?.length > 0)) {
+              usedUrl = tryUrl;
+              break;
+            }
+          }
+
+          const baseCards = parsed?.base_set?.cards || [];
+          const insertSets = parsed?.insert_sets || [];
+          const autoSets = parsed?.autograph_sets || [];
+          const memSets = parsed?.memorabilia_sets || [];
+
+          results.push({
+            slug: entry.slug,
+            name: entry.name,
+            sport: entry.sport,
+            year: entry.year,
+            ok: !!usedUrl,
+            source: usedUrl,
+            error: usedUrl ? null : (fetchError || 'Parser found 0 cards'),
+            counts: {
+              base: baseCards.length,
+              insertSets: insertSets.length,
+              autoSets: autoSets.length,
+              memSets: memSets.length,
+              parallels: parsed?.parallels?.length || 0,
+            },
+            // Sample data for quality check
+            sampleBase: baseCards.slice(0, 5).map(c => `#${c.number} ${c.player} (${c.team || '?'})${c.rc ? ' RC' : ''}`),
+            insertSetNames: insertSets.map(s => `${s.name} (${s.cards?.length || 0} cards)`),
+            autoSetNames: autoSets.map(s => `${s.name} (${s.cards?.length || 0} cards)`),
+            parallels: parsed?.parallels?.slice(0, 8) || [],
+          });
+        }
+
+        const passing = results.filter(r => r.ok && r.counts.base > 0);
+        return json({
+          ok: true,
+          tested: results.length,
+          passing: passing.length,
+          failing: results.length - passing.length,
+          readyToScale: passing.length === results.length,
+          results,
+        });
+      }
+
+
       if (url.pathname === '/topps/debug-pdf' && request.method === 'GET') {
         const pdfUrl = url.searchParams.get('url');
         if (!pdfUrl) return json({ error: 'url param required' }, 400);

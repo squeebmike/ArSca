@@ -1319,7 +1319,7 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.22.03-beckett-import</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.22.04-test-then-sync</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
@@ -1346,7 +1346,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip dev-only" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.22.03-beckett-import</div>
+<div class="dsb-chip dev-only" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.22.04-test-then-sync</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -1954,10 +1954,12 @@ body.show-mode .inv-sync-badge{display:none;}
       <div class="ph" style="margin:0">TOPPS SET BROWSER</div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
         <input id="sb-set-search" placeholder="Search sets…" oninput="sbFilterCatalog()" style="font-family:var(--font-mono);font-size:10px;background:var(--surf2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:4px 10px;width:150px">
-        <button class="hbtn" id="sb-sync-btn" onclick="sbSyncAll()" style="font-size:10px;padding:4px 12px" title="Import all checklists from Topps">⬇ SYNC ALL FROM TOPPS</button>
+        <button class="hbtn" id="sb-test-btn" onclick="sbRunTest()" style="font-size:10px;padding:4px 10px" title="Test import on 5 sets first">🧪 TEST 5</button>
+        <button class="hbtn" id="sb-sync-btn" onclick="sbSyncAll()" style="font-size:10px;padding:4px 12px" title="Import all checklists from Topps">⬇ SYNC ALL</button>
       </div>
     </div>
     <div id="sb-sync-status" style="display:none;font-family:var(--font-mono);font-size:10px;color:var(--primary);margin-bottom:8px;padding:8px;background:rgba(0,255,179,.07);border:1px solid rgba(0,255,179,.2);border-radius:6px"></div>
+    <div id="sb-test-report" style="display:none;font-family:var(--font-mono);font-size:10px;margin-bottom:10px;padding:12px;background:var(--surf2);border:1px solid var(--border);border-radius:8px;line-height:1.6;white-space:pre-wrap;max-height:360px;overflow-y:auto"></div>
 
     <!-- Filter chips -->
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid var(--border)">
@@ -25606,6 +25608,44 @@ async function sbSyncAll() {
   if (btn) { btn.disabled = false; btn.textContent = '⬇ SYNC ALL FROM TOPPS'; }
   sbSetSyncStatus(`✓ Sync complete: ${done} imported, ${failed} failed`, false);
   toast_dash(`Sync done: ${done} imported, ${failed} failed`, 5000);
+}
+
+async function sbRunTest() {
+  const btn = document.getElementById('sb-test-btn');
+  const report = document.getElementById('sb-test-report');
+  if (btn) { btn.disabled = true; btn.textContent = '⟳ Testing…'; }
+  if (report) { report.style.display = 'block'; report.textContent = 'Running test import on 5 sets (no data saved)…'; }
+  try {
+    const data = await sbWorker('/topps/test-import?n=5');
+    if (!data.ok) { if (report) report.textContent = 'Test failed: ' + (data.error || 'unknown'); return; }
+
+    let out = `TEST RESULT: ${data.passing}/${data.tested} sets passed\n`;
+    out += data.readyToScale ? '✓ READY TO SYNC ALL\n' : '⚠ Some sets failed — check below\n';
+    out += '─'.repeat(48) + '\n';
+
+    for (const r of data.results) {
+      out += `\n${r.ok ? '✓' : '✗'} ${r.name}\n`;
+      if (r.ok) {
+        out += `  Source: ${r.source}\n`;
+        out += `  Base: ${r.counts.base} cards | Inserts: ${r.counts.insertSets} sets | Autos: ${r.counts.autoSets} sets | Parallels: ${r.counts.parallels}\n`;
+        if (r.sampleBase.length) out += `  Sample: ${r.sampleBase.slice(0,3).join(' · ')}\n`;
+        if (r.insertSetNames.length) out += `  Inserts: ${r.insertSetNames.slice(0,3).join(', ')}\n`;
+        if (r.autoSetNames.length) out += `  Autos: ${r.autoSetNames.slice(0,3).join(', ')}\n`;
+      } else {
+        out += `  ERROR: ${r.error}\n`;
+      }
+    }
+    if (report) report.textContent = out;
+    if (data.readyToScale) {
+      toast_dash(`✓ All ${data.passing} test sets parsed clean — hit SYNC ALL to import everything`, 6000);
+    } else {
+      toast_dash(`${data.passing}/${data.tested} sets parsed — ${data.failing} failed`, 5000);
+    }
+  } catch(e) {
+    if (report) report.textContent = 'Error: ' + e.message;
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '🧪 TEST 5'; }
+  }
 }
 
 function sbSetSyncStatus(msg, spinner) {
