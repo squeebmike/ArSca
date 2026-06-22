@@ -1,0 +1,41 @@
+[
+  {
+    "id": "2019-19gpk2-collectibles",
+    "year": "2019",
+    "brand": "Topps",
+    "product": "19GPK2",
+    "sport": "collectibles",
+    "setName": "19GPK2",
+    "releaseName": "19GPK2",
+    "sourceIds": [
+      "topps_pdf_4868de7a4a3006b7"
+    ],
+    "cardCount": 129
+  },
+  {
+    "id": "2019-2019-topps-stranger-things-welcome-to-the-upside-down-entertainment",
+    "year": "2019",
+    "brand": "Topps",
+    "product": "2019 Topps Stranger Things: Welcome to the Upside Down -",
+    "sport": "entertainment",
+    "setName": "2019 Topps Stranger Things: Welcome to the Upside Down -",
+    "releaseName": "2019 Topps Stranger Things: Welcome to the Upside Down -",
+    "sourceIds": [
+      "topps_pdf_f6db4d45ce2251eb"
+    ],
+    "cardCount": 130
+  },
+  {
+    "id": "2019-topps-stranger-things-season-2-entertainment",
+    "year": "2019",
+    "brand": "Topps",
+    "product": "Topps Stranger Things Season 2 -",
+    "sport": "entertainment",
+    "setName": "Topps Stranger Things Season 2 -",
+    "releaseName": "Topps Stranger Things Season 2 -",
+    "sourceIds": [
+      "topps_pdf_9eff939723b7dd7c"
+    ],
+    "cardCount": 160
+  }
+]
