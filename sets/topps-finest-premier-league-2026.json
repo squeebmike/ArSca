@@ -1,0 +1,3432 @@
+{
+  "set": "Topps Finest Premier League 2026",
+  "release_date": "2026",
+  "set_size": 300,
+  "product_info": {},
+  "box_contents": {},
+  "parallels": [],
+  "base_set": {
+    "count": 300,
+    "cards": [
+      {
+        "number": "1",
+        "player": "Antoine Semenyo AFC Bournemouth",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "2",
+        "player": "Julio Soler AFC Bournemouth",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "3",
+        "player": "Eli Junior Kroupi AFC Bournemouth",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "4",
+        "player": "Amine Adli AFC Bournemouth",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "5",
+        "player": "Leandro Trossard Arsenal",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "6",
+        "player": "Jurri\u00ebn Timber Arsenal",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "7",
+        "player": "Riccardo Calafiori Arsenal",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "8",
+        "player": "Noni Madueke Arsenal",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "9",
+        "player": "Ben Broggio Aston Villa",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "10",
+        "player": "Rory Wilson Aston Villa",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "11",
+        "player": "Jamaldeen Jimoh-Aloba Aston Villa",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "12",
+        "player": "Mikkel Damsgaard Brentford",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "13",
+        "player": "Kevin Schade Brentford",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "14",
+        "player": "Michael Kayode Brentford",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "15",
+        "player": "Dango Ouattara Brentford",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "16",
+        "player": "Tom Watson Brighton & Hove Albion",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "17",
+        "player": "Kaoru Mitoma Brighton & Hove Albion",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "18",
+        "player": "Yasin Ayari Brighton & Hove Albion",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "19",
+        "player": "Harry Howell Brighton & Hove Albion",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "20",
+        "player": "Jaidon Anthony Burnley FC",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "21",
+        "player": "Lyle Foster Burnley FC",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "22",
+        "player": "Lesley Ugochukwu Burnley FC",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "23",
+        "player": "Jaydon Banel Burnley FC",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "24",
+        "player": "Bashir Humphreys Burnley FC",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "25",
+        "player": "Zian Flemming Burnley FC",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "26",
+        "player": "Kyle Walker Burnley FC",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "27",
+        "player": "Josh Laurent Burnley FC",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "28",
+        "player": "Est\u00eav\u00e3o Willian Chelsea",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "29",
+        "player": "Cole Palmer Chelsea",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "30",
+        "player": "Josh Acheampong Chelsea",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "31",
+        "player": "Shumaira Mheuka Chelsea",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "32",
+        "player": "Harrison Murray-Campbell Chelsea",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "33",
+        "player": "Romain Esse Crystal Palace",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "34",
+        "player": "Zach Marsh Crystal Palace",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "35",
+        "player": "Max Dowman Arsenal",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "36",
+        "player": "Justin Devenny Crystal Palace",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "37",
+        "player": "Y\u00e9remy Pino Crystal Palace",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "38",
+        "player": "Jack Grealish Everton",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "39",
+        "player": "Kiernan Dewsbury-Hall Everton",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "40",
+        "player": "Tyler Dibling Everton",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "41",
+        "player": "Roman Dixon Everton",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "42",
+        "player": "Charly Alcaraz Everton",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "43",
+        "player": "Jonah Kusi-Asare Fulham",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "44",
+        "player": "Samuel Chukwueze Fulham",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "45",
+        "player": "Kevin Fulham",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "46",
+        "player": "Josh King Fulham",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "47",
+        "player": "Gabriel Gudmundsson Leeds United",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "48",
+        "player": "Noah Okafor Leeds United",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "49",
+        "player": "Anton Stach Leeds United",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "50",
+        "player": "Dominic Calvert-Lewin Leeds United",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "51",
+        "player": "Harry Gray Leeds United",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "52",
+        "player": "Alfie Cresswell Leeds United",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "53",
+        "player": "Sean Longstaff Leeds United",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "54",
+        "player": "Virgil van Dijk Liverpool FC",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "55",
+        "player": "Rio Ngumoha Liverpool FC",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "56",
+        "player": "Mohamed Salah Liverpool FC",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "57",
+        "player": "Alexander Isak Liverpool FC",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "58",
+        "player": "Hugo Ekitike Liverpool FC",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "59",
+        "player": "Trent Kon\u00e9-Doherty Liverpool FC",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "60",
+        "player": "Giovanni Leoni Liverpool FC",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "61",
+        "player": "Erling Haaland Manchester City",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "62",
+        "player": "Rayan Cherki Manchester City",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "63",
+        "player": "Rodri Manchester City",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "64",
+        "player": "Tijjani Reijnders Manchester City",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "65",
+        "player": "Divine Mukasa Manchester City",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "66",
+        "player": "Gianluigi Donnarumma Manchester City",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "67",
+        "player": "Benjamin \u0160e\u0161ko Manchester United",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "68",
+        "player": "Matheus Cunha Manchester United",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "69",
+        "player": "Amir Ibragimov Manchester United",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "70",
+        "player": "Bruno Fernandes Manchester United",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "71",
+        "player": "Bendito Mantato Manchester United",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "72",
+        "player": "Joelinton Newcastle United",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "73",
+        "player": "Sandro Tonali Newcastle United",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "74",
+        "player": "Bruno Guimar\u00e3es Newcastle United",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "75",
+        "player": "Anthony Gordon Newcastle United",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "76",
+        "player": "Seung-Soo Park Newcastle United",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "77",
+        "player": "Nick Woltemade Newcastle United",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "78",
+        "player": "Morgan Gibbs-White Nottingham Forest",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "79",
+        "player": "James McAtee Nottingham Forest",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "80",
+        "player": "Igor Jesus Nottingham Forest",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "81",
+        "player": "Zach Abbott Nottingham Forest",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "82",
+        "player": "Jair Nottingham Forest",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "83",
+        "player": "Chris Rigg Sunderland",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "84",
+        "player": "Noah Sadiki Sunderland",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "85",
+        "player": "Eliezer Mayenda Sunderland",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "86",
+        "player": "Wilson Isidor Sunderland",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "87",
+        "player": "Simon Adingra Sunderland",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "88",
+        "player": "Lucas Bergvall Tottenham Hotspur",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "89",
+        "player": "Djed Spence Tottenham Hotspur",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "90",
+        "player": "Jo\u00e3o Palhinha Tottenham Hotspur",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "91",
+        "player": "Xavi Simons Tottenham Hotspur",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "92",
+        "player": "K\u014dta Takai Tottenham Hotspur",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "93",
+        "player": "Crysencio Summerville West Ham United",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "94",
+        "player": "Lucas Paquet\u00e1 West Ham United",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "95",
+        "player": "El Hadji Malick Diouf West Ham United",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "96",
+        "player": "Freddie Potts West Ham United",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "97",
+        "player": "Callum Marshall West Ham United",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "98",
+        "player": "Fer L\u00f3pez Wolverhampton Wanderers",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "99",
+        "player": "Enso Gonz\u00e1lez Wolverhampton Wanderers",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "100",
+        "player": "Wesley Okoduwa Wolverhampton Wanderers",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "101",
+        "player": "Antoine Semenyo AFC Bournemouth",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "102",
+        "player": "Justin Kluivert AFC Bournemouth",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "103",
+        "player": "Tyler Adams AFC Bournemouth",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "104",
+        "player": "Eli Junior Kroupi AFC Bournemouth",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "105",
+        "player": "Evanilson AFC Bournemouth",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "106",
+        "player": "Bukayo Saka Arsenal",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "107",
+        "player": "Gabriel Magalh\u00e3es Arsenal",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "108",
+        "player": "Max Dowman Arsenal",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "109",
+        "player": "Viktor Gy\u00f6keres Arsenal",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "110",
+        "player": "Jaydee Canvot Crystal Palace",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "111",
+        "player": "Cristhian Mosquera Arsenal",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "112",
+        "player": "William Saliba Arsenal",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "113",
+        "player": "Piero Hincapi\u00e9 Arsenal",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "114",
+        "player": "Igor Thiago Brentford",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "115",
+        "player": "Ollie Watkins Aston Villa",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "116",
+        "player": "Ben Broggio Aston Villa",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "117",
+        "player": "Morgan Rogers Aston Villa",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "118",
+        "player": "Youri Tielemans Aston Villa",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "119",
+        "player": "John McGinn Aston Villa",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "120",
+        "player": "Jamaldeen Jimoh-Aloba Aston Villa",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "121",
+        "player": "Jair Nottingham Forest",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "122",
+        "player": "Mikkel Damsgaard Brentford",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "123",
+        "player": "Dango Ouattara Brentford",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "124",
+        "player": "Gustavo Nunes Brentford",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "125",
+        "player": "Nathan Collins Brentford",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "126",
+        "player": "Romelle Donovan Brentford",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "127",
+        "player": "Jordan Henderson Brentford",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "128",
+        "player": "Antoni Milambo Brentford",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "129",
+        "player": "Kaoru Mitoma Brighton & Hove Albion",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "130",
+        "player": "Stefanos Tzimas Brighton & Hove Albion",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "131",
+        "player": "Brajan Gruda Brighton & Hove Albion",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "132",
+        "player": "Yasin Ayari Brighton & Hove Albion",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "133",
+        "player": "Yankuba Minteh Brighton & Hove Albion",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "134",
+        "player": "Josh Laurent Burnley FC",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "135",
+        "player": "Est\u00eav\u00e3o Willian Chelsea",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "136",
+        "player": "Cole Palmer Chelsea",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "137",
+        "player": "Mois\u00e9s Caicedo Chelsea",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "138",
+        "player": "Enzo Fern\u00e1ndez Chelsea",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "139",
+        "player": "Alejandro Garnacho Chelsea",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "140",
+        "player": "Jean-Philippe Mateta Crystal Palace",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "141",
+        "player": "Christantus Uche Crystal Palace",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "142",
+        "player": "Y\u00e9remy Pino Crystal Palace",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "143",
+        "player": "Jack Grealish Everton",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "144",
+        "player": "Charly Alcaraz Everton",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "145",
+        "player": "Iliman Ndiaye Everton",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "146",
+        "player": "Dwight McNeil Everton",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "147",
+        "player": "Jarrad Branthwaite Everton",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "148",
+        "player": "Thierno Barry Everton",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "149",
+        "player": "Emile Smith Rowe Fulham",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "150",
+        "player": "Kevin Fulham",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "151",
+        "player": "Josh King Fulham",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "152",
+        "player": "Ra\u00fal Jim\u00e9nez Fulham",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "153",
+        "player": "Brenden Aaronson Leeds United",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "154",
+        "player": "Alexander Isak Liverpool FC",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "155",
+        "player": "Rio Ngumoha Liverpool FC",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "156",
+        "player": "Mohamed Salah Liverpool FC",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "157",
+        "player": "Virgil van Dijk Liverpool FC",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "158",
+        "player": "Florian Wirtz Liverpool FC",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "159",
+        "player": "Hugo Ekitike Liverpool FC",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "160",
+        "player": "Erling Haaland Manchester City",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "161",
+        "player": "Rayan Cherki Manchester City",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "162",
+        "player": "Rodri Manchester City",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "163",
+        "player": "Omar Marmoush Manchester City",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "164",
+        "player": "Tijjani Reijnders Manchester City",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "165",
+        "player": "Divine Mukasa Manchester City",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "166",
+        "player": "Reigan Heskey Manchester City",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "167",
+        "player": "Phil Foden Manchester City",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "168",
+        "player": "Benjamin \u0160e\u0161ko Manchester United",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "169",
+        "player": "Bryan Mbeumo Manchester United",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "170",
+        "player": "Matheus Cunha Manchester United",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "171",
+        "player": "Bruno Fernandes Manchester United",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "172",
+        "player": "Shea Lacey Manchester United",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "173",
+        "player": "Fabian Sch\u00e4r Newcastle United",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "174",
+        "player": "Bruno Guimar\u00e3es Newcastle United",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "175",
+        "player": "Anthony Gordon Newcastle United",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "176",
+        "player": "Nick Woltemade Newcastle United",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "177",
+        "player": "Morgan Gibbs-White Nottingham Forest",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "178",
+        "player": "James McAtee Nottingham Forest",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "179",
+        "player": "Chris Rigg Sunderland",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "180",
+        "player": "Granit Xhaka Sunderland",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "181",
+        "player": "Noah Sadiki Sunderland",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "182",
+        "player": "Eliezer Mayenda Sunderland",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "183",
+        "player": "Enzo Le F\u00e9e Sunderland",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "184",
+        "player": "Simon Adingra Sunderland",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "185",
+        "player": "Wilson Odobert Tottenham Hotspur",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "186",
+        "player": "Pape Matar Sarr Tottenham Hotspur",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "187",
+        "player": "Pedro Porro Tottenham Hotspur",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "188",
+        "player": "Xavi Simons Tottenham Hotspur",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "189",
+        "player": "Mohammed Kudus Tottenham Hotspur",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "190",
+        "player": "Crysencio Summerville West Ham United",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "191",
+        "player": "Lucas Paquet\u00e1 West Ham United",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "192",
+        "player": "El Hadji Malick Diouf West Ham United",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "193",
+        "player": "Freddie Potts West Ham United",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "194",
+        "player": "Luis Guilherme West Ham United",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "195",
+        "player": "Ollie Scarles West Ham United",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "196",
+        "player": "J\u00f8rgen Strand Larsen Wolverhampton Wanderers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "197",
+        "player": "Andr\u00e9 Wolverhampton Wanderers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "198",
+        "player": "Jo\u00e3o Gomes Wolverhampton Wanderers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "199",
+        "player": "Jhon Arias Wolverhampton Wanderers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "200",
+        "player": "Tolu Arokodare Wolverhampton Wanderers",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "201",
+        "player": "Antoine Semenyo AFC Bournemouth",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "202",
+        "player": "Amine Adli AFC Bournemouth",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "203",
+        "player": "Tyler Adams AFC Bournemouth",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "204",
+        "player": "Eli Junior Kroupi AFC Bournemouth",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "205",
+        "player": "Evanilson AFC Bournemouth",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "206",
+        "player": "Veljko Milosavljevi\u0107 AFC Bournemouth",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "207",
+        "player": "Bukayo Saka Arsenal",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "208",
+        "player": "Viktor Gy\u00f6keres Arsenal",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "209",
+        "player": "Maxim De Cuyper Brighton & Hove Albion",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "210",
+        "player": "Martin \u00d8degaard Arsenal",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "211",
+        "player": "Mart\u00edn Zubimendi Arsenal",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "212",
+        "player": "Declan Rice Arsenal",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "213",
+        "player": "Max Dowman Arsenal",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "214",
+        "player": "Myles Lewis-Skelly Arsenal",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "215",
+        "player": "Jamaldeen Jimoh-Aloba Aston Villa",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "216",
+        "player": "Morgan Rogers Aston Villa",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "217",
+        "player": "Ollie Watkins Aston Villa",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "218",
+        "player": "Youri Tielemans Aston Villa",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "219",
+        "player": "Kevin Schade Brentford",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "220",
+        "player": "Dango Ouattara Brentford",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "221",
+        "player": "Romelle Donovan Brentford",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "222",
+        "player": "Kaoru Mitoma Brighton & Hove Albion",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "223",
+        "player": "Harry Howell Brighton & Hove Albion",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "224",
+        "player": "Brajan Gruda Brighton & Hove Albion",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "225",
+        "player": "Stefanos Tzimas Brighton & Hove Albion",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "226",
+        "player": "Yasin Ayari Brighton & Hove Albion",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "227",
+        "player": "Tom Watson Brighton & Hove Albion",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "228",
+        "player": "Quilindschy Hartman Burnley FC",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "229",
+        "player": "Est\u00eav\u00e3o Willian Chelsea",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "230",
+        "player": "Cole Palmer Chelsea",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "231",
+        "player": "Mois\u00e9s Caicedo Chelsea",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "232",
+        "player": "Enzo Fern\u00e1ndez Chelsea",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "233",
+        "player": "Jorrel Hato Chelsea",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "234",
+        "player": "Liam Delap Chelsea",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "235",
+        "player": "Jo\u00e3o Pedro Chelsea",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "236",
+        "player": "Adam Wharton Crystal Palace",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "237",
+        "player": "Jean-Philippe Mateta Crystal Palace",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "238",
+        "player": "Chris Richards Crystal Palace",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "239",
+        "player": "Daichi Kamada Crystal Palace",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "240",
+        "player": "Daniel Mu\u00f1oz Crystal Palace",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "241",
+        "player": "Y\u00e9remy Pino Crystal Palace",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "242",
+        "player": "Christantus Uche Crystal Palace",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "243",
+        "player": "Jack Grealish Everton",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "244",
+        "player": "Tyler Dibling Everton",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "245",
+        "player": "Charly Alcaraz Everton",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "246",
+        "player": "Iliman Ndiaye Everton",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "247",
+        "player": "Thierno Barry Everton",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "248",
+        "player": "Emile Smith Rowe Fulham",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "249",
+        "player": "Ra\u00fal Jim\u00e9nez Fulham",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "250",
+        "player": "Alex Iwobi Fulham",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "251",
+        "player": "Rodrigo Muniz Fulham",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "252",
+        "player": "Adama Traor\u00e9 Fulham",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "253",
+        "player": "Reggie Walsh Chelsea",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "254",
+        "player": "Harry Gray Leeds United",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "255",
+        "player": "Ao Tanaka Leeds United",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "256",
+        "player": "Jayden Bogle Leeds United",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "257",
+        "player": "Rio Ngumoha Liverpool FC",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "258",
+        "player": "Mohamed Salah Liverpool FC",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "259",
+        "player": "Virgil van Dijk Liverpool FC",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "260",
+        "player": "Florian Wirtz Liverpool FC",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "261",
+        "player": "Hugo Ekitik\u00e9 Liverpool FC",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "262",
+        "player": "Alexis Mac Allister Liverpool FC",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "263",
+        "player": "Alexander Isak Liverpool FC",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "264",
+        "player": "Erling Haaland Manchester City",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "265",
+        "player": "Rodri Manchester City",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "266",
+        "player": "Omar Marmoush Manchester City",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "267",
+        "player": "Tijjani Reijnders Manchester City",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "268",
+        "player": "Phil Foden Manchester City",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "269",
+        "player": "Benjamin \u0160e\u0161ko Manchester United",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "270",
+        "player": "Bryan Mbeumo Manchester United",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "271",
+        "player": "Amir Ibragimov Manchester United",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "272",
+        "player": "Matheus Cunha Manchester United",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "273",
+        "player": "Bruno Fernandes Manchester United",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "274",
+        "player": "Shea Lacey Manchester United",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "275",
+        "player": "Bruno Guimar\u00e3es Newcastle United",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "276",
+        "player": "Anthony Gordon Newcastle United",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "277",
+        "player": "Joelinton Newcastle United",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "278",
+        "player": "Sandro Tonali Newcastle United",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "279",
+        "player": "Seung-Soo Park Newcastle United",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "280",
+        "player": "Anthony Elanga Newcastle United",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "281",
+        "player": "James McAtee Nottingham Forest",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "282",
+        "player": "Igor Jesus Nottingham Forest",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "283",
+        "player": "Callum Hudson-Odoi Nottingham Forest",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "284",
+        "player": "Morgan Gibbs-White Nottingham Forest",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "285",
+        "player": "Murillo Nottingham Forest",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "286",
+        "player": "Chris Rigg Sunderland",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "287",
+        "player": "Eliezer Mayenda Sunderland",
+        "team": "",
+        "note": "Rookie"
+      },
+      {
+        "number": "288",
+        "player": "Xavi Simons Tottenham Hotspur",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "289",
+        "player": "Mohammed Kudus Tottenham Hotspur",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "290",
+        "player": "Dominic Solanke Tottenham Hotspur",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "291",
+        "player": "Archie Gray Tottenham Hotspur",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "292",
+        "player": "Lucas Bergvall Tottenham Hotspur",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "293",
+        "player": "Micky van de Ven Tottenham Hotspur",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "294",
+        "player": "Lucas Paquet\u00e1 West Ham United",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "295",
+        "player": "Jarrod Bowen West Ham United",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "296",
+        "player": "Jo\u00e3o Gomes Wolverhampton Wanderers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "297",
+        "player": "Andr\u00e9 Wolverhampton Wanderers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "298",
+        "player": "J\u00f8rgen Strand Larsen Wolverhampton Wanderers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "299",
+        "player": "Jhon Arias Wolverhampton Wanderers",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "300",
+        "player": "Enso Gonz\u00e1lez Wolverhampton Wanderers",
+        "team": "",
+        "note": "Rookie"
+      }
+    ]
+  },
+  "insert_sets": [
+    {
+      "name": "(xB) EXPECTED BRILLIANCE",
+      "count": 40,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "XB-1",
+          "player": "Evanilson AFC Bournemouth",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "XB-2",
+          "player": "Antoine Semenyo AFC Bournemouth",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "XB-3",
+          "player": "Eberechi Eze Arsenal",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "XB-4",
+          "player": "Viktor Gy\u00f6keres Arsenal",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "XB-5",
+          "player": "Ollie Watkins Aston Villa",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "XB-6",
+          "player": "Harvey Elliott Aston Villa",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "XB-7",
+          "player": "Dango Ouattara Brentford",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "XB-8",
+          "player": "Mikkel Damsgaard Brentford",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "XB-9",
+          "player": "Charalampos Kostoulas Brighton & Hove Albion",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "XB-10",
+          "player": "Stefanos Tzimas Brighton & Hove Albion",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "XB-11",
+          "player": "Armando Broja Burnley FC",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "XB-12",
+          "player": "Jaidon Anthony Burnley FC",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "XB-13",
+          "player": "Facundo Buonanotte Chelsea",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "XB-14",
+          "player": "Jo\u00e3o Pedro Chelsea",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "XB-15",
+          "player": "Jean-Philippe Mateta Crystal Palace",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "XB-16",
+          "player": "Y\u00e9remy Pino Crystal Palace",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "XB-17",
+          "player": "Charly Alcaraz Everton",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "XB-18",
+          "player": "Thierno Barry Everton",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "XB-19",
+          "player": "Jonah Kusi-Asare Fulham",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "XB-20",
+          "player": "Kevin Fulham",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "XB-21",
+          "player": "Harry Gray Leeds United",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "XB-22",
+          "player": "Wilfried Gnonto Leeds United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "XB-23",
+          "player": "Alexander Isak Liverpool FC",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "XB-24",
+          "player": "Hugo Ekitike Liverpool FC",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "XB-25",
+          "player": "Erling Haaland Manchester City",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "XB-26",
+          "player": "Omar Marmoush Manchester City",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "XB-27",
+          "player": "Bryan Mbeumo Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "XB-28",
+          "player": "Matheus Cunha Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "XB-29",
+          "player": "Nick Woltemade Newcastle United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "XB-30",
+          "player": "Sandro Tonali Newcastle United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "XB-31",
+          "player": "Chris Wood Nottingham Forest",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "XB-32",
+          "player": "Arnaud Kalimuendo Nottingham Forest",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "XB-33",
+          "player": "Eliezer Mayenda Sunderland",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "XB-34",
+          "player": "Habib Diarra Sunderland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "XB-35",
+          "player": "Xavi Simons Tottenham Hotspur",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "XB-36",
+          "player": "Randal Kolo Muani Tottenham Hotspur",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "XB-37",
+          "player": "El Hadji Malick Diouf West Ham United",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "XB-38",
+          "player": "Mateus Fernandes West Ham United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "XB-39",
+          "player": "Tolu Arokodare Wolverhampton Wanderers",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "XB-40",
+          "player": "Fer L\u00f3pez Wolverhampton Wanderers",
+          "team": "",
+          "note": "Rookie"
+        }
+      ]
+    },
+    {
+      "name": "SWERVE",
+      "count": 40,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "SV-1",
+          "player": "Justin Kluivert AFC Bournemouth",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SV-2",
+          "player": "Amine Adli AFC Bournemouth",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SV-3",
+          "player": "Max Dowman Arsenal",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "SV-4",
+          "player": "Ethan Nwaneri Arsenal",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SV-5",
+          "player": "Morgan Rogers Aston Villa",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SV-6",
+          "player": "Youri Tielemans Aston Villa",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SV-7",
+          "player": "Antoni Milambo Brentford",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SV-8",
+          "player": "Romelle Donovan Brentford",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "SV-9",
+          "player": "Yasin Ayari Brighton & Hove Albion",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "SV-10",
+          "player": "Brajan Gruda Brighton & Hove Albion",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SV-11",
+          "player": "Lesley Ugochukwu Burnley FC",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SV-12",
+          "player": "Quilindschy Hartman Burnley FC",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SV-13",
+          "player": "D\u00e1rio Essugo Chelsea",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SV-14",
+          "player": "Alejandro Garnacho Chelsea",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SV-15",
+          "player": "Isma\u00efla Sarr Crystal Palace",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SV-16",
+          "player": "Romain Esse Crystal Palace",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "SV-17",
+          "player": "Kiernan Dewsbury-Hall Everton",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SV-18",
+          "player": "Tyler Dibling Everton",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SV-19",
+          "player": "Josh King Fulham",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "SV-20",
+          "player": "Emile Smith Rowe Fulham",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SV-21",
+          "player": "Brenden Aaronson Leeds United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SV-22",
+          "player": "Ao Tanaka Leeds United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SV-23",
+          "player": "Alexis Mac Allister Liverpool FC",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SV-24",
+          "player": "Rio Ngumoha Liverpool FC",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "SV-25",
+          "player": "Tijjani Reijnders Manchester City",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SV-26",
+          "player": "J\u00e9r\u00e9my Doku Manchester City",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SV-27",
+          "player": "Bruno Fernandes Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SV-28",
+          "player": "Benjamin \u0160e\u0161ko Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SV-29",
+          "player": "Sandro Tonali Newcastle United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SV-30",
+          "player": "Tino Livramento Newcastle United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SV-31",
+          "player": "Arnaud Kalimuendo Nottingham Forest",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SV-32",
+          "player": "Ryan Yates Nottingham Forest",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SV-33",
+          "player": "Granit Xhaka Sunderland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SV-34",
+          "player": "Enzo Le F\u00e9e Sunderland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SV-35",
+          "player": "Jo\u00e3o Palhinha Tottenham Hotspur",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SV-36",
+          "player": "Lucas Bergvall Tottenham Hotspur",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SV-37",
+          "player": "Lucas Paquet\u00e1 West Ham United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SV-38",
+          "player": "Luis Guilherme West Ham United",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "SV-39",
+          "player": "Jhon Arias Wolverhampton Wanderers",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SV-40",
+          "player": "Jo\u00e3o Gomes Wolverhampton Wanderers",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "ARRIVALS",
+      "count": 10,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "AV-1",
+          "player": "Chris Rigg Sunderland",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "AV-2",
+          "player": "Josh King Fulham",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "AV-3",
+          "player": "Reggie Walsh Chelsea",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "AV-4",
+          "player": "Shea Lacey Manchester United",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "AV-5",
+          "player": "Harry Gray Leeds United",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "AV-6",
+          "player": "Max Dowman Arsenal",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "AV-7",
+          "player": "Rio Ngumoha Liverpool FC",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "AV-8",
+          "player": "Jaydee Canvot Crystal Palace",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "AV-9",
+          "player": "Tom Watson Brighton & Hove Albion",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "AV-10",
+          "player": "Est\u00eav\u00e3o Willian Chelsea",
+          "team": "",
+          "note": "Rookie"
+        }
+      ]
+    },
+    {
+      "name": "CLEAN",
+      "count": 10,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "CN-1",
+          "player": "Virgil van Dijk Liverpool FC",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CN-2",
+          "player": "Riccardo Calafiori Arsenal",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CN-3",
+          "player": "David Raya Arsenal",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CN-4",
+          "player": "Dan Burn Newcastle United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CN-5",
+          "player": "Micky van de Ven Tottenham Hotspur",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CN-6",
+          "player": "Jorrel Hato Chelsea",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CN-7",
+          "player": "Nathan Collins Brentford",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CN-8",
+          "player": "Murillo Nottingham Forest",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CN-9",
+          "player": "Gianluigi Donnarumma Manchester City",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "CN-10",
+          "player": "Lewis Dunk Brighton & Hove Albion",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "SWERVE FUSION VARIATION",
+      "count": 40,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "FV-1",
+          "player": "Justin Kluivert AFC Bournemouth",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FV-2",
+          "player": "Amine Adli AFC Bournemouth",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FV-3",
+          "player": "Max Dowman Arsenal",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "FV-4",
+          "player": "Ethan Nwaneri Arsenal",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FV-5",
+          "player": "Morgan Rogers Aston Villa",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FV-6",
+          "player": "Youri Tielemans Aston Villa",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FV-7",
+          "player": "Antoni Milambo Brentford",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FV-8",
+          "player": "Romelle Donovan Brentford",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "FV-9",
+          "player": "Yasin Ayari Brighton & Hove Albion",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "FV-10",
+          "player": "Brajan Gruda Brighton & Hove Albion",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FV-11",
+          "player": "Lesley Ugochukwu Burnley FC",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FV-12",
+          "player": "Quilindschy Hartman Burnley FC",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FV-13",
+          "player": "D\u00e1rio Essugo Chelsea",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FV-14",
+          "player": "Alejandro Garnacho Chelsea",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FV-15",
+          "player": "Isma\u00efla Sarr Crystal Palace",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FV-16",
+          "player": "Romain Esse Crystal Palace",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "FV-17",
+          "player": "Kiernan Dewsbury-Hall Everton",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FV-18",
+          "player": "Tyler Dibling Everton",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FV-19",
+          "player": "Josh King Fulham",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "FV-20",
+          "player": "Emile Smith Rowe Fulham",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FV-21",
+          "player": "Brenden Aaronson Leeds United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FV-22",
+          "player": "Ao Tanaka Leeds United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FV-23",
+          "player": "Alexis Mac Allister Liverpool FC",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FV-24",
+          "player": "Rio Ngumoha Liverpool FC",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "FV-25",
+          "player": "Tijjani Reijnders Manchester City",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FV-26",
+          "player": "J\u00e9r\u00e9my Doku Manchester City",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FV-27",
+          "player": "Bruno Fernandes Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FV-28",
+          "player": "Benjamin \u0160e\u0161ko Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FV-29",
+          "player": "Sandro Tonali Newcastle United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FV-30",
+          "player": "Tino Livramento Newcastle United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FV-31",
+          "player": "Arnaud Kalimuendo Nottingham Forest",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FV-32",
+          "player": "Ryan Yates Nottingham Forest",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FV-33",
+          "player": "Granit Xhaka Sunderland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FV-34",
+          "player": "Enzo Le F\u00e9e Sunderland",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FV-35",
+          "player": "Jo\u00e3o Palhinha Tottenham Hotspur",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FV-36",
+          "player": "Lucas Bergvall Tottenham Hotspur",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FV-37",
+          "player": "Lucas Paquet\u00e1 West Ham United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FV-38",
+          "player": "Luis Guilherme West Ham United",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "FV-39",
+          "player": "Jhon Arias Wolverhampton Wanderers",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FV-40",
+          "player": "Jo\u00e3o Gomes Wolverhampton Wanderers",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "GUSTO",
+      "count": 20,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "GO-1",
+          "player": "Kai Havertz Arsenal",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "GO-2",
+          "player": "Benjamin \u0160e\u0161ko Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "GO-3",
+          "player": "Jarrod Bowen West Ham United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "GO-4",
+          "player": "Diego Le\u00f3n Manchester United",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "GO-5",
+          "player": "Heung-Min Son Tottenham Hotspur",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "GO-6",
+          "player": "Mart\u00edn Zubimendi Arsenal",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "GO-7",
+          "player": "Yaya Tour\u00e9 Manchester City",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "GO-8",
+          "player": "Shea Lacey Manchester United",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "GO-9",
+          "player": "Anthony Gordon Newcastle United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "GO-10",
+          "player": "Declan Rice Arsenal",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "GO-11",
+          "player": "Alexis Mac Allister Liverpool FC",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "GO-12",
+          "player": "Hugo Ekitike Liverpool FC",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "GO-13",
+          "player": "Dominik Szoboszlai Liverpool FC",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "GO-14",
+          "player": "Mohammed Kudus Tottenham Hotspur",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "GO-15",
+          "player": "Bruno Guimar\u00e3es Newcastle United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "GO-16",
+          "player": "Chris Rigg Sunderland",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "GO-17",
+          "player": "Enzo Fern\u00e1ndez Chelsea",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "GO-18",
+          "player": "Jo\u00e3o Pedro Chelsea",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "GO-19",
+          "player": "Malo Gusto Chelsea",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "GO-20",
+          "player": "Divine Mukasa Manchester City",
+          "team": "",
+          "note": "Rookie"
+        }
+      ]
+    },
+    {
+      "name": "NIGHTMARE FUEL",
+      "count": 20,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "NF-1",
+          "player": "Benjamin \u0160e\u0161ko Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NF-2",
+          "player": "Mohamed Salah Liverpool FC",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NF-3",
+          "player": "Viktor Gy\u00f6keres Arsenal",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NF-4",
+          "player": "Carlos Tevez Manchester City",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NF-5",
+          "player": "Est\u00eav\u00e3o Willian Chelsea",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "NF-6",
+          "player": "Rio Ngumoha Liverpool FC",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "NF-7",
+          "player": "Wayne Rooney Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NF-8",
+          "player": "Harry Kane Tottenham Hotspur",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NF-9",
+          "player": "Fernando Torres Liverpool FC",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NF-10",
+          "player": "Dennis Bergkamp Arsenal",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NF-11",
+          "player": "Erling Haaland Manchester City",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NF-12",
+          "player": "Didier Drogba Chelsea",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NF-13",
+          "player": "Robbie Fowler Liverpool FC",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NF-14",
+          "player": "Eric Cantona Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NF-15",
+          "player": "Bukayo Saka Arsenal",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NF-16",
+          "player": "Alexander Isak Liverpool FC",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NF-17",
+          "player": "Sergio Ag\u00fcero Manchester City",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NF-18",
+          "player": "Thierry Henry Arsenal",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NF-19",
+          "player": "Ian Wright Arsenal",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "NF-20",
+          "player": "Alan Shearer Newcastle United",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "MAIN ATTRACTION",
+      "count": 20,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "MA-1",
+          "player": "Antoine Semenyo AFC Bournemouth",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MA-2",
+          "player": "Florian Wirtz Liverpool FC",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MA-3",
+          "player": "Rodri Manchester City",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MA-4",
+          "player": "Cole Palmer Chelsea",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MA-5",
+          "player": "Gareth Bale Tottenham Hotspur",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MA-6",
+          "player": "Mart\u00edn Zubimendi Arsenal",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MA-7",
+          "player": "Mohamed Salah Liverpool FC",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MA-8",
+          "player": "Matheus Cunha Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MA-9",
+          "player": "Bruno Fernandes Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MA-10",
+          "player": "Kaoru Mitoma Brighton & Hove Albion",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MA-11",
+          "player": "David Silva Manchester City",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MA-12",
+          "player": "Ethan Nwaneri Arsenal",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MA-13",
+          "player": "Virgil van Dijk Liverpool FC",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MA-14",
+          "player": "Andy Cole Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MA-15",
+          "player": "Morgan Rogers Aston Villa",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MA-16",
+          "player": "Est\u00eav\u00e3o Willian Chelsea",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "MA-17",
+          "player": "Mois\u00e9s Caicedo Chelsea",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MA-18",
+          "player": "Carlos Tevez Manchester City",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MA-19",
+          "player": "Kevin Fulham",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "MA-20",
+          "player": "Luka Modri\u0107 Tottenham Hotspur",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "POLKA",
+      "count": 20,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "PK-1",
+          "player": "David Beckham Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PK-2",
+          "player": "Mohamed Salah Liverpool FC",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PK-3",
+          "player": "Erling Haaland Manchester City",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PK-4",
+          "player": "Rio Ngumoha Liverpool FC",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "PK-5",
+          "player": "Kevin De Bruyne Manchester City",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PK-6",
+          "player": "Gareth Bale Tottenham Hotspur",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PK-7",
+          "player": "Harry Kane Tottenham Hotspur",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PK-8",
+          "player": "Bukayo Saka Arsenal",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PK-9",
+          "player": "Eden Hazard Chelsea",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PK-10",
+          "player": "Nick Woltemade Newcastle United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PK-11",
+          "player": "Heung-Min Son Tottenham Hotspur",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PK-12",
+          "player": "Alan Shearer Newcastle United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PK-13",
+          "player": "Thierry Henry Arsenal",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PK-14",
+          "player": "Wayne Rooney Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PK-15",
+          "player": "Max Dowman Arsenal",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "PK-16",
+          "player": "Frank Lampard Chelsea",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PK-17",
+          "player": "Steven Gerrard Liverpool FC",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PK-18",
+          "player": "Paul Scholes Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PK-19",
+          "player": "Dennis Bergkamp Arsenal",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "PK-20",
+          "player": "Sergio Ag\u00fcero Manchester City",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "HEADLINERS",
+      "count": 10,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "HS-1",
+          "player": "Mohammed Kudus Tottenham Hotspur",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HS-2",
+          "player": "Bruno Fernandes Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HS-3",
+          "player": "Phil Foden Manchester City",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HS-4",
+          "player": "Martin \u00d8degaard Arsenal",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HS-5",
+          "player": "Rodri Manchester City",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HS-6",
+          "player": "Hugo Ekitike Liverpool FC",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HS-7",
+          "player": "Declan Rice Arsenal",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HS-8",
+          "player": "Anthony Gordon Newcastle United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HS-9",
+          "player": "Bryan Mbeumo Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HS-10",
+          "player": "Morgan Gibbs-White Nottingham Forest",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "AURA",
+      "count": 20,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "AU-1",
+          "player": "Mario Balotelli Manchester City",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "AU-2",
+          "player": "Gianfranco Zola Chelsea",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "AU-3",
+          "player": "Phil Foden Manchester City",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "AU-4",
+          "player": "Paul Gascoigne Everton",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "AU-5",
+          "player": "Jack Grealish Everton",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "AU-6",
+          "player": "Declan Rice Arsenal",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "AU-7",
+          "player": "Fernandinho Manchester City",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "AU-8",
+          "player": "Claude Mak\u00e9l\u00e9l\u00e9 Chelsea",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "AU-9",
+          "player": "Roy Keane Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "AU-10",
+          "player": "William Saliba Arsenal",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "AU-11",
+          "player": "Bukayo Saka Arsenal",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "AU-12",
+          "player": "Wayne Rooney Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "AU-13",
+          "player": "Alexander Isak Liverpool FC",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "AU-14",
+          "player": "Steven Gerrard Liverpool FC",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "AU-15",
+          "player": "Est\u00eav\u00e3o Willian Chelsea",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "AU-16",
+          "player": "Mohamed Salah Liverpool FC",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "AU-17",
+          "player": "Florian Wirtz Liverpool FC",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "AU-18",
+          "player": "Thierry Henry Arsenal",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "AU-19",
+          "player": "Harry Kane Tottenham Hotspur",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "AU-20",
+          "player": "Didier Drogba Chelsea",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "FINEST IDOLS",
+      "count": 5,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "FI-1",
+          "player": "Steven Gerrard Liverpool FC",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FI-2",
+          "player": "Frank Lampard Chelsea",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FI-3",
+          "player": "Sergio Ag\u00fcero Manchester City",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FI-4",
+          "player": "Harry Kane Tottenham Hotspur",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FI-5",
+          "player": "Wayne Rooney Manchester United",
+          "team": "",
+          "note": ""
+        }
+      ]
+    }
+  ],
+  "autograph_sets": [],
+  "memorabilia_sets": [],
+  "team_sets": {}
+}
