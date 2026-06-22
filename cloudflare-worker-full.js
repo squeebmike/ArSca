@@ -3729,6 +3729,61 @@ export default {
         }
         return { cards: out, total: seen, scannedChunks, complete: true, meta };
       };
+      const toppsKnownTeams = [
+        'Arizona Diamondbacks','Atlanta Braves','Baltimore Orioles','Boston Red Sox','Chicago Cubs','Chicago White Sox','Cincinnati Reds','Cleveland Indians','Cleveland Guardians','Colorado Rockies','Detroit Tigers','Houston Astros','Kansas City Royals','Los Angeles Angels','Anaheim Angels','Los Angeles Dodgers','Miami Marlins','Florida Marlins','Milwaukee Brewers','Minnesota Twins','New York Mets','New York Yankees','Oakland Athletics','Philadelphia Phillies','Pittsburgh Pirates','San Diego Padres','San Francisco Giants','Seattle Mariners','St. Louis Cardinals','Tampa Bay Rays','Texas Rangers','Toronto Blue Jays','Washington Nationals',
+        'Angels','Braves','Orioles','Red Sox','Cubs','White Sox','Reds','Indians','Guardians','Rockies','Tigers','Astros','Royals','Dodgers','Marlins','Brewers','Twins','Mets','Yankees','Athletics','Phillies','Pirates','Padres','Giants','Mariners','Cardinals','Rays','Rangers','Blue Jays','Nationals'
+      ].sort((a, b) => b.length - a.length);
+      const cleanToppsText = v => String(v || '').replace(/[®™©]/g, '').replace(/\s+/g, ' ').trim();
+      const toppsPlayerNameOnly = card => {
+        let name = cleanToppsText(card.player || card.subject || '').replace(/\b(Rookie|RC)\b/ig, '').replace(/\s+/g, ' ').trim();
+        for (const team of toppsKnownTeams) {
+          const re = new RegExp('\\s+' + team.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$', 'i');
+          if (re.test(name)) return name.replace(re, '').trim();
+        }
+        return name;
+      };
+      const toppsPcCategory = card => {
+        const s = String(card.sport || '').toLowerCase();
+        if (s.includes('star wars')) return 'Star Wars Cards';
+        if (s.includes('marvel')) return 'Marvel Cards';
+        if (s.includes('garbage') || s.includes('gpk')) return 'Garbage Pail Cards';
+        return 'Sports Cards';
+      };
+      const toppsPcQueries = card => {
+        const player = toppsPlayerNameOnly(card);
+        const num = cleanToppsText(card.cardNumber || '').replace(/^#/, '');
+        const product = cleanToppsText(card.product || card.setName || '').replace(/\bchecklist\b/ig, '').replace(/\bbaseball\b/ig, '').trim();
+        const year = cleanToppsText(card.year || '').split('-')[0];
+        const flags = [card.flags?.rc ? 'RC' : '', card.flags?.auto ? 'auto' : '', card.flags?.relic ? 'relic' : ''].filter(Boolean).join(' ');
+        return [
+          [player, num ? '#' + num : '', flags].filter(Boolean).join(' '),
+          [player, num, flags].filter(Boolean).join(' '),
+          [player, num ? '#' + num : '', product, flags].filter(Boolean).join(' '),
+          [year, 'Topps', product, player, num ? '#' + num : '', flags].filter(Boolean).join(' '),
+        ].map(q => q.replace(/\s+/g, ' ').trim()).filter((q, i, arr) => q && arr.indexOf(q) === i);
+      };
+      const toppsPcScore = (match, card, query) => {
+        const hay = cleanToppsText([match.productName, match['product-name'], match.consoleName, match['console-name'], match.genre].join(' ')).toLowerCase();
+        const player = toppsPlayerNameOnly(card).toLowerCase();
+        const num = cleanToppsText(card.cardNumber || '').replace(/^#/, '').toLowerCase();
+        let score = 0;
+        if (player && player.split(/\s+/).every(t => hay.includes(t))) score += 80;
+        if (num && (hay.includes('#' + num) || new RegExp('(^|[^a-z0-9])' + num.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '($|[^a-z0-9])', 'i').test(hay))) score += 55;
+        if (card.year && hay.includes(String(card.year).split('-')[0])) score += 18;
+        if (/topps|bowman|allen|ginter|stadium|chrome|heritage|archives/i.test(hay)) score += 14;
+        if (query && hay.includes(query.toLowerCase())) score += 10;
+        if (/funko|pop\b/i.test(hay) && String(card.sport || '').toLowerCase() !== 'collectibles') score -= 200;
+        if (String(card.sport || '').toLowerCase() === 'baseball' && !/(baseball|mlb|yankees|dodgers|red sox|cubs|braves|mets|angels|astros|cardinals|padres|giants|mariners|phillies|orioles|rangers|blue jays|twins|brewers|marlins|pirates|rays|reds|royals|tigers|nationals|athletics|guardians|indians|rockies|white sox)/i.test(hay)) score -= 40;
+        return score;
+      };
+      const isBadToppsSet = set => {
+        const name = cleanToppsText(set.product || set.setName || set.releaseName || '');
+        if (!name) return true;
+        if (/^checklists provided by topps reflect/i.test(name)) return true;
+        if (/^configuration of that product/i.test(name)) return true;
+        if (/actual contents and odds may vary/i.test(name)) return true;
+        return false;
+      };
 
       if (url.pathname === '/topps-checklists/import-start' && request.method === 'PUT') {
         const body = await request.json().catch(() => null);
@@ -3829,12 +3884,14 @@ export default {
         const q = url.searchParams.get('q') || '';
         const sport = url.searchParams.get('sport') || '';
         const year = url.searchParams.get('year') || '';
+        const limit = Math.min(2000, Math.max(1, Number(url.searchParams.get('limit') || 2000)));
         const filtered = sets.filter(s =>
+          !isBadToppsSet(s) &&
           (!q || norm([s.year, s.brand, s.product, s.setName, s.releaseName, s.sport].join(' ')).includes(norm(q))) &&
           (!sport || String(s.sport || '').toLowerCase() === sport.toLowerCase()) &&
           (!year || String(s.year || '') === String(year))
         );
-        return json({ ok: true, total: filtered.length, sets: filtered.slice(0, 500) });
+        return json({ ok: true, total: filtered.length, sets: filtered.slice(0, limit), hiddenBadSets: sets.length - filtered.length });
       }
 
       if (url.pathname === '/topps-checklists/cards' && request.method === 'GET') {
@@ -3866,7 +3923,7 @@ export default {
       const pcMatch = url.pathname.match(/^\/topps-checklists\/cards\/([^/]+)\/pricecharting$/);
       if (pcMatch && request.method === 'GET') {
         const cardId = decodeURIComponent(pcMatch[1]);
-        const cacheKey = `topps_pc_match:${cardId}`;
+        const cacheKey = `topps_pc_match_v2:${cardId}`;
         const fresh = url.searchParams.get('fresh') === 'true';
         const cached = !fresh ? await readJsonKv(cacheKey, null) : null;
         if (cached && Date.now() - new Date(cached.cachedAt || 0).getTime() < 86400000) return json({ ok: true, cached: true, ...cached });
@@ -3874,12 +3931,26 @@ export default {
         const page = await scanToppsCards({ id: cardId, limit: 1 });
         const card = page.cards[0];
         if (!card) return json({ ok: false, error: 'Card not found' }, 404);
-        const q = [card.year, 'Topps', card.product, card.player || card.subject, card.cardNumber ? '#' + card.cardNumber : '', card.flags?.rc ? 'RC' : '', card.flags?.auto ? 'auto' : '', card.flags?.relic ? 'relic' : ''].filter(Boolean).join(' ');
-        const params = new URLSearchParams({ q, category: 'Sports Cards' });
-        const upstream = await fetch(new URL('/pricing/pricecharting/search?' + params.toString(), url.origin), { headers: request.headers });
-        const data = await upstream.json().catch(() => ({}));
-        const matches = data.matches || data.products || [];
-        const payload = { cardId, query: q, matches: matches.slice(0, 8), best: matches[0] || null, cachedAt: new Date().toISOString() };
+        const category = toppsPcCategory(card);
+        const queries = toppsPcQueries(card);
+        const seen = new Map();
+        for (const q of queries) {
+          const params = new URLSearchParams({ q, category });
+          const upstream = await fetch(new URL('/pricing/pricecharting/search?' + params.toString(), url.origin), { headers: request.headers });
+          const data = await upstream.json().catch(() => ({}));
+          for (const match of data.matches || data.products || []) {
+            const key = match.productId || match.id || match.productName || match['product-name'];
+            if (!key) continue;
+            const prior = seen.get(key) || {};
+            const score = Math.max(Number(prior._toppsScore || -999), toppsPcScore(match, card, q));
+            seen.set(key, { ...prior, ...match, _toppsScore: score, _toppsQuery: q });
+          }
+          const strong = [...seen.values()].some(m => Number(m._toppsScore || 0) >= 120);
+          if (strong) break;
+        }
+        const matches = [...seen.values()].sort((a, b) => Number(b._toppsScore || 0) - Number(a._toppsScore || 0));
+        const best = matches.find(m => Number(m._toppsScore || 0) >= 95) || null;
+        const payload = { cardId, query: queries[0] || '', queries, category, playerName: toppsPlayerNameOnly(card), matches: matches.slice(0, 8), best, cachedAt: new Date().toISOString() };
         await kv.put(cacheKey, JSON.stringify(payload), { expirationTtl: 86400 * 14 });
         return json({ ok: true, cached: false, ...payload });
       }
