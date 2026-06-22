@@ -1,0 +1,1618 @@
+{
+  "set": "2025 Topps Chrome Formula 1 Sapphire Edition",
+  "release_date": "2025",
+  "set_size": 201,
+  "product_info": {},
+  "box_contents": {},
+  "parallels": [],
+  "base_set": {
+    "count": 201,
+    "cards": [
+      {
+        "number": "1",
+        "player": "Max Verstappen",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "2",
+        "player": "Yuki Tsunoda",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "3",
+        "player": "Charles Leclerc",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "4",
+        "player": "Lewis Hamilton",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "5",
+        "player": "Lando Norris",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "6",
+        "player": "Oscar Piastri",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "7",
+        "player": "George Russell",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "8",
+        "player": "Kimi Antonelli",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "9",
+        "player": "Fernando Alonso",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "10",
+        "player": "Lance Stroll",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "11",
+        "player": "Liam Lawson",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "12",
+        "player": "Isack Hadjar",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "13",
+        "player": "Esteban Ocon",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "14",
+        "player": "Oliver Bearman",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "15",
+        "player": "Franco Colapinto",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "16",
+        "player": "Pierre Gasly",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "17",
+        "player": "Alex Albon",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "18",
+        "player": "Carlos Sainz",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "19",
+        "player": "Nico Hulkenberg",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "20",
+        "player": "Gabriel Bortoleto",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "21",
+        "player": "Leonardo Fornaroli",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "22",
+        "player": "Roman Stan\u011bk",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "23",
+        "player": "Arvid Lindblad",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "24",
+        "player": "Josep Mar\u00edaMart\u00ed",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "25",
+        "player": "Richard Verschoor",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "26",
+        "player": "Oliver Goethe",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "27",
+        "player": "Dino Beganovic",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "28",
+        "player": "Luke Browning",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "29",
+        "player": "Gabriele Min\u00ec",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "30",
+        "player": "Sebasti\u00e1n Montoya",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "31",
+        "player": "Jak Crawford",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "32",
+        "player": "Kush Maini",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "33",
+        "player": "Ritomo Miyata",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "34",
+        "player": "Victor Martins",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "35",
+        "player": "Alexander Dunne",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "36",
+        "player": "Amaury Cordeel",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "37",
+        "player": "Joshua D\u00fcrksen",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "38",
+        "player": "Cian Shields",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "39",
+        "player": "Max Esterson",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "40",
+        "player": "Sami Meguetounif",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "41",
+        "player": "John Bennett",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "42",
+        "player": "Rafael Villag\u00f3mez",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "43",
+        "player": "Noel Le\u00f3n",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "44",
+        "player": "Brando Badoer",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "45",
+        "player": "Ugo Ugochukwu",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "46",
+        "player": "Noah Str\u00f8msted",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "47",
+        "player": "Rafael C\u00e2mara",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "48",
+        "player": "Charlie Wurz",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "49",
+        "player": "Tim Tramnitz",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "50",
+        "player": "Bruno del Pino",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "51",
+        "player": "Alessandro Giusti",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "52",
+        "player": "Nikola Tsolov",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "53",
+        "player": "Tasanapol Inthraphuvasak",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "54",
+        "player": "Mari Boya",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "55",
+        "player": "Joshua Dufek",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "56",
+        "player": "Gerrard Xie",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "57",
+        "player": "Martinius Stenshorne",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "58",
+        "player": "Th\u00e9ophile Na\u00ebl",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "59",
+        "player": "Santiago Ramos",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "60",
+        "player": "Ivan Domingues",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "61",
+        "player": "James Wharton",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "62",
+        "player": "Tuukka Taponen",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "63",
+        "player": "Laurens van Hoepen",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "64",
+        "player": "Javier Sagrera",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "65",
+        "player": "Nicola Marinangeli",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "66",
+        "player": "Nikita Bedrin",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "67",
+        "player": "Callum Voisin",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "68",
+        "player": "Louis Sharp",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "69",
+        "player": "Roman Bilinski",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "70",
+        "player": "Mat\u00edas Zagazeta",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "71",
+        "player": "Nicola Lacorte",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "72",
+        "player": "Christian Ho",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "73",
+        "player": "Max Verstappen",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "74",
+        "player": "Yuki Tsunoda",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "75",
+        "player": "Charles Leclerc",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "76",
+        "player": "Lewis Hamilton",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "77",
+        "player": "Lando Norris",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "78",
+        "player": "Oscar Piastri",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "79",
+        "player": "George Russell",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "80",
+        "player": "Kimi Antonelli",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "81",
+        "player": "Fernando Alonso",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "82",
+        "player": "Lance Stroll",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "83",
+        "player": "Liam Lawson",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "84",
+        "player": "Isack Hadjar",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "85",
+        "player": "Esteban Ocon",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "86",
+        "player": "Oliver Bearman",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "87",
+        "player": "Franco Colapinto",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "88",
+        "player": "Pierre Gasly",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "89",
+        "player": "Alex Albon",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "90",
+        "player": "Carlos Sainz",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "91",
+        "player": "Nico Hulkenberg",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "92",
+        "player": "Gabriel Bortoleto",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "93",
+        "player": "Max Verstappen",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "94",
+        "player": "Max Verstappen",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "95",
+        "player": "Carlos Sainz",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "96",
+        "player": "Max Verstappen",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "97",
+        "player": "Max Verstappen",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "98",
+        "player": "Lando Norris",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "99",
+        "player": "Max Verstappen",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "100",
+        "player": "Charles Leclerc",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "101",
+        "player": "Max Verstappen",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "102",
+        "player": "Max Verstappen",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "103",
+        "player": "George Russell",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "104",
+        "player": "Lewis Hamilton",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "105",
+        "player": "Oscar Piastri",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "106",
+        "player": "Lewis Hamilton",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "107",
+        "player": "Lando Norris",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "108",
+        "player": "Charles Leclerc",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "109",
+        "player": "Oscar Piastri",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "110",
+        "player": "Lando Norris",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "111",
+        "player": "Charles Leclerc",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "112",
+        "player": "Carlos Sainz",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "113",
+        "player": "Max Verstappen",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "114",
+        "player": "George Russell",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "115",
+        "player": "Max Verstappen",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "116",
+        "player": "Lando Norris",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "117",
+        "player": "Max Verstappen",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "118",
+        "player": "Charles Leclerc",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "119",
+        "player": "George Russell",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "120",
+        "player": "Lando Norris",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "121",
+        "player": "Carlos Sainz",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "122",
+        "player": "Carlos Sainz",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "123",
+        "player": "Oliver Bearman",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "124",
+        "player": "Carlos Sainz",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "125",
+        "player": "Charles Leclerc",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "126",
+        "player": "Lando Norris",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "127",
+        "player": "Lando Norris",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "128",
+        "player": "Lando Norris",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "129",
+        "player": "Charles Leclerc",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "130",
+        "player": "Lando Norris",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "131",
+        "player": "Lando Norris",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "132",
+        "player": "Lando Norris",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "133",
+        "player": "Lewis Hamilton",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "134",
+        "player": "Oscar Piastri",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "135",
+        "player": "Lewis Hamilton",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "136",
+        "player": "Lando Norris",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "137",
+        "player": "Charles Leclerc",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "138",
+        "player": "Oscar Piastri",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "139",
+        "player": "Daniel Ricciardo",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "140",
+        "player": "Charles Leclerc",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "141",
+        "player": "Carlos Sainz",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "142",
+        "player": "Max Verstappen",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "143",
+        "player": "Lewis Hamilton",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "144",
+        "player": "Zhou Guanyu",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "145",
+        "player": "Charles Leclerc",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "146",
+        "player": "Oracle Red Bull Racing",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "147",
+        "player": "Lando Norris",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "148",
+        "player": "Max Verstappen",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "149",
+        "player": "Alain Prost",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "150",
+        "player": "Damon Hill",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "151",
+        "player": "David Coulthard",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "152",
+        "player": "Emerson Fittipaldi",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "153",
+        "player": "Gerhard Berger",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "154",
+        "player": "Jackie Stewart",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "155",
+        "player": "James Hunt",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "156",
+        "player": "Juan Pablo Montoya",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "157",
+        "player": "Kimi R\u00e4ikk\u00f6nen",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "158",
+        "player": "Michael Schumacher",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "159",
+        "player": "Mika H\u00e4kkinen",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "160",
+        "player": "Nigel Mansell",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "161",
+        "player": "Mario Andretti",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "162",
+        "player": "Ayrton Senna",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "163",
+        "player": "Jacques Villeneuve",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "164",
+        "player": "Max Verstappen",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "165",
+        "player": "Charles Leclerc",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "166",
+        "player": "Lando Norris",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "167",
+        "player": "George Russell",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "168",
+        "player": "Fernando Alonso",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "169",
+        "player": "Liam Lawson",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "170",
+        "player": "Esteban Ocon",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "171",
+        "player": "Pierre Gasly",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "172",
+        "player": "Alex Albon",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "173",
+        "player": "Nico Hulkenberg",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "174",
+        "player": "Oracle Red Bull Racing",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "175",
+        "player": "Scuderia Ferrari HP",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "176",
+        "player": "McLaren Formula 1\u00ae Team",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "177",
+        "player": "Mercedes-AMG PETRONAS Formula One\u2122 Team",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "178",
+        "player": "Aston Martin Aramco Formula One\u2122 Team",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "179",
+        "player": "Visa Cash App Racing Bulls Formula One\u2122 Team",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "180",
+        "player": "MoneyGram Haas F1\u00ae Team",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "181",
+        "player": "BWT Alpine Formula One\u2122 Team",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "182",
+        "player": "Atlassian Williams Racing",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "183",
+        "player": "Stake F1\u00ae Team KICK Sauber",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "184",
+        "player": "Yuki Tsunoda",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "185",
+        "player": "Kimi Antonelli",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "186",
+        "player": "Oliver Bearman",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "187",
+        "player": "Franco Colapinto",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "188",
+        "player": "Nico Hulkenberg",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "189",
+        "player": "Carlos Sainz",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "190",
+        "player": "Esteban Ocon",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "191",
+        "player": "Lewis Hamilton",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "192",
+        "player": "Christian Horner",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "193",
+        "player": "Fr\u00e9d\u00e9ric Vasseur",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "194",
+        "player": "Andrea Stella",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "195",
+        "player": "Toto Wolff",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "196",
+        "player": "Andy Cowell",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "197",
+        "player": "Laurent Mekies",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "198",
+        "player": "Ayao Komatsu",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "199",
+        "player": "Flavio Briatore",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "200",
+        "player": "James Vowles",
+        "team": "",
+        "note": ""
+      },
+      {
+        "number": "2025",
+        "player": "Topps Chrome F1",
+        "team": "",
+        "note": ""
+      }
+    ]
+  },
+  "insert_sets": [
+    {
+      "name": "75-KICK Gabriel Bortoleto",
+      "count": 60,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "SCA-1",
+          "player": "George Russell",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SCA-2",
+          "player": "Charles Leclerc",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SCA-3",
+          "player": "Max Verstappen",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SCA-4",
+          "player": "Lando Norris",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SCA-5",
+          "player": "Liam Lawson",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SCA-6",
+          "player": "Fernando Alonso",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SCA-7",
+          "player": "Carlos Sainz",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SCA-8",
+          "player": "Esteban Ocon",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SCA-9",
+          "player": "Pierre Gasly",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SCA-10",
+          "player": "Nico Hulkenberg",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SD-1",
+          "player": "Kimi Antonelli",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SD-2",
+          "player": "Lewis Hamilton",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SD-3",
+          "player": "Yuki Tsunoda",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SD-4",
+          "player": "Oscar Piastri",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SD-5",
+          "player": "Isack Hadjar",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SD-6",
+          "player": "Lance Stroll",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SD-7",
+          "player": "Alex Albon",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SD-8",
+          "player": "Oliver Bearman",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SD-9",
+          "player": "Franco Colapinto",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SD-10",
+          "player": "Gabriel Bortoleto",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SD-11",
+          "player": "Kimi R\u00e4ikk\u00f6nen",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HC-1",
+          "player": "Kimi Antonelli",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HC-2",
+          "player": "Lewis Hamilton",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HC-3",
+          "player": "Yuki Tsunoda",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HC-4",
+          "player": "Lando Norris",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HC-5",
+          "player": "Isack Hadjar",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HC-6",
+          "player": "Fernando Alonso",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HC-7",
+          "player": "Carlos Sainz",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HC-8",
+          "player": "OliverBearman",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HC-9",
+          "player": "Franco Colapinto",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "HC-10",
+          "player": "Gabriel Bortoleto",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FI-1",
+          "player": "Alain Prost",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FI-2",
+          "player": "Damon Hill",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FI-3",
+          "player": "Gerhard Berger",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FI-4",
+          "player": "Jackie Stewart",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FI-5",
+          "player": "James Hunt",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FI-6",
+          "player": "Kimi R\u00e4ikk\u00f6nen",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FI-7",
+          "player": "Michael Schumacher",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FI-8",
+          "player": "Mika H\u00e4kkinen",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FI-9",
+          "player": "Nigel Mansell",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "FI-10",
+          "player": "Ayrton Senna",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SS-1",
+          "player": "Gabriel Bortoleto",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SS-2",
+          "player": "Charles Leclerc",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SS-3",
+          "player": "Oscar Piastri",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SS-4",
+          "player": "Kimi Antonelli",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SS-5",
+          "player": "Lance Stroll",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SS-6",
+          "player": "Isack Hadjar",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SS-7",
+          "player": "Oliver Bearman",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SS-8",
+          "player": "Franco Colapinto",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "SS-9",
+          "player": "Alex Albon",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "IS-1",
+          "player": "Max Verstappen",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "IS-2",
+          "player": "Lewis Hamilton",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "IS-3",
+          "player": "Lando Norris",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "IS-4",
+          "player": "George Russell",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "IS-5",
+          "player": "Fernando Alonso",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "IS-6",
+          "player": "Liam Lawson",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "IS-7",
+          "player": "Esteban Ocon",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "IS-8",
+          "player": "Pierre Gasly",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "IS-9",
+          "player": "Carlos Sainz",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "IS-10",
+          "player": "Nico Hulkenberg",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "CAC-WHE Jonathan Wheatley",
+      "count": 1,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "2025",
+          "player": "Topps Chrome F1",
+          "team": "",
+          "note": ""
+        }
+      ]
+    }
+  ],
+  "autograph_sets": [
+    {
+      "name": "Stake F1\u00ae Team KICK Sauber Chrome Autographs",
+      "count": 1,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "2025",
+          "player": "Topps Chrome F1",
+          "team": "",
+          "note": ""
+        }
+      ]
+    }
+  ],
+  "memorabilia_sets": [],
+  "team_sets": {}
+}
