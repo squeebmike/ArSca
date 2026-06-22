@@ -1,0 +1,509 @@
+{
+  "set": "Topps Manchester United 2025/26 Team Set",
+  "release_date": "2025-26",
+  "set_size": 0,
+  "product_info": {},
+  "box_contents": {},
+  "parallels": [],
+  "base_set": {
+    "count": 0,
+    "cards": []
+  },
+  "insert_sets": [
+    {
+      "name": "FIRST TEAM",
+      "count": 20,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "1",
+          "player": "Senne Lammens Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "2",
+          "player": "Noussair Mazraoui Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "3",
+          "player": "Leny Yoro Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "4",
+          "player": "Lisandro Mart\u00ednez Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "5",
+          "player": "Matthijs de Ligt Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "6",
+          "player": "Harry Maguire Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "7",
+          "player": "Ayden Heaven Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "8",
+          "player": "Patrick Dorgu Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "9",
+          "player": "Diego Le\u00f3n Manchester United",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "10",
+          "player": "Manuel Ugarte Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "11",
+          "player": "S\u00e9kou Kon\u00e9 Manchester United",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "12",
+          "player": "Kobbie Mainoo Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "13",
+          "player": "Bruno Fernandes Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "14",
+          "player": "Bendito Mantato Manchester United",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "15",
+          "player": "Amad Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "16",
+          "player": "Amir Ibragimov Manchester United",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "17",
+          "player": "Matheus Cunha Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "18",
+          "player": "Benjamin \u0160e\u0161ko Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "19",
+          "player": "Joshua Zirkzee Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "20",
+          "player": "Chido Obi Manchester United",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "BONAFIDE BALLER",
+      "count": 5,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "21",
+          "player": "Roy Keane Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "22",
+          "player": "Wayne Rooney Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "23",
+          "player": "Bruno Fernandes Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "24",
+          "player": "Sir David Beckham Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "25",
+          "player": "Nani Manchester United",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "PITCH PURSUITS",
+      "count": 10,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "26",
+          "player": "Antonio Valencia Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "27",
+          "player": "Ella Toone Manchester United Women",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "28",
+          "player": "Ryan Giggs Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "29",
+          "player": "Shea Lacey Manchester United",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "30",
+          "player": "Nani Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "31",
+          "player": "Matheus Cunha Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "32",
+          "player": "Chido Obi Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "33",
+          "player": "Bryan Mbeumo Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "34",
+          "player": "Fridolina Rolf\u00f6 Manchester United Women",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "35",
+          "player": "Elisabeth Terland Manchester United Women",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "COLLECTORS CORNER",
+      "count": 5,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "36",
+          "player": "Bruno Fernandes Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "37",
+          "player": "Ryan Giggs Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "38",
+          "player": "Sir David Beckham Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "39",
+          "player": "Amad Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "40",
+          "player": "Wayne Rooney Manchester United",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "UNITED ROAD",
+      "count": 10,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "41",
+          "player": "Edwin van der Sar Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "42",
+          "player": "Rio Ferdinand Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "43",
+          "player": "Nemanja Vidi\u0107 Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "44",
+          "player": "Jaap Stam Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "45",
+          "player": "Michael Carrick Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "46",
+          "player": "Bruno Fernandes Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "47",
+          "player": "Andy Cole Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "48",
+          "player": "Dwight Yorke Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "49",
+          "player": "Robin van Persie Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "50",
+          "player": "Dimitar Berbatov Manchester United",
+          "team": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "RAINBOW FLICK",
+      "count": 25,
+      "parallels": [],
+      "cards": [
+        {
+          "number": "RF-1",
+          "player": "Diego Le\u00f3n Manchester United",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "RF-2",
+          "player": "Patrice Evra Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RF-3",
+          "player": "Leny Yoro Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RF-4",
+          "player": "Paul Scholes Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RF-5",
+          "player": "S\u00e9kou Kon\u00e9 Manchester United",
+          "team": "",
+          "note": "Rookie"
+        },
+        {
+          "number": "RF-6",
+          "player": "Kobbie Mainoo Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RF-7",
+          "player": "Bruno Fernandes Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RF-8",
+          "player": "Bastian Schweinsteiger Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RF-9",
+          "player": "Ryan Giggs Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RF-10",
+          "player": "Sir David Beckham Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RF-11",
+          "player": "Nani Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RF-12",
+          "player": "Matheus Cunha Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RF-13",
+          "player": "Amad Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RF-14",
+          "player": "Zlatan Ibrahimovi\u0107 Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RF-15",
+          "player": "Chido Obi Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RF-16",
+          "player": "Joshua Zirkzee Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RF-17",
+          "player": "Alexis S\u00e1nchez Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RF-18",
+          "player": "Henrik Larsson Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RF-19",
+          "player": "Wayne Rooney Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RF-20",
+          "player": "Andy Cole Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RF-21",
+          "player": "Dwight Yorke Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RF-22",
+          "player": "Robin van Persie Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RF-23",
+          "player": "Dimitar Berbatov Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RF-24",
+          "player": "Bryan Mbeumo Manchester United",
+          "team": "",
+          "note": ""
+        },
+        {
+          "number": "RF-25",
+          "player": "Benjamin \u0160e\u0161ko Manchester United",
+          "team": "",
+          "note": ""
+        }
+      ]
+    }
+  ],
+  "autograph_sets": [],
+  "memorabilia_sets": [],
+  "team_sets": {}
+}
