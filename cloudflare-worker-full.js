@@ -3326,13 +3326,128 @@ export default {
       }
     }
 
-    // ── TOPPS CATALOG ────────────────────────────────────────────────────────
-    if (url.pathname === '/topps/catalog' && request.method === 'GET') {
+    // ── TOPPS ROUTES ──────────────────────────────────────────────────────────
+    if (url.pathname.startsWith('/topps/')) {
       const kv = env.LBA_KV;
-      const idxRaw = kv ? await kv.get('sets_index') : null;
-      const importedSlugs = new Set((idxRaw ? JSON.parse(idxRaw) : []).map(s => s.slug));
-      const catalog = TOPPS_CATALOG.map(s => ({ ...s, imported: importedSlugs.has(s.slug) }));
-      return json({ ok: true, catalog });
+
+      // GET /topps/catalog — hardcoded catalog merged with import status
+      if (url.pathname === '/topps/catalog' && request.method === 'GET') {
+        const idxRaw = kv ? await kv.get('sets_index') : null;
+        const importedMap = {};
+        (idxRaw ? JSON.parse(idxRaw) : []).forEach(s => { importedMap[s.slug] = s; });
+        const catalog = TOPPS_CATALOG.map(s => ({
+          ...s,
+          imported: !!importedMap[s.slug],
+          _meta: importedMap[s.slug] || null,
+        }));
+        return json({ ok: true, catalog });
+      }
+
+      // GET /topps/fetch-catalog — scrape topps.com/pages/checklists for live set list
+      if (url.pathname === '/topps/fetch-catalog' && request.method === 'GET') {
+        const idxRaw = kv ? await kv.get('sets_index') : null;
+        const importedMap = {};
+        (idxRaw ? JSON.parse(idxRaw) : []).forEach(s => { importedMap[s.slug] = s; });
+
+        // Try live scrape first
+        let liveSets = await fetchToppsChecklistCatalog();
+
+        // Merge with hardcoded catalog (hardcoded has better metadata)
+        const hardcodedMap = {};
+        TOPPS_CATALOG.forEach(s => { hardcodedMap[s.slug] = s; });
+
+        // Build unified list: live sets + hardcoded sets not in live list
+        const merged = [];
+        const seenSlugs = new Set();
+
+        if (liveSets && liveSets.length > 0) {
+          for (const ls of liveSets) {
+            const hc = hardcodedMap[ls.slug];
+            const entry = hc ? { ...hc, url: ls.url } : ls;
+            entry.imported = !!importedMap[ls.slug];
+            entry._meta = importedMap[ls.slug] || null;
+            merged.push(entry);
+            seenSlugs.add(ls.slug);
+          }
+        }
+        // Add hardcoded sets not found in live page
+        for (const hc of TOPPS_CATALOG) {
+          if (!seenSlugs.has(hc.slug)) {
+            merged.push({ ...hc, imported: !!importedMap[hc.slug], _meta: importedMap[hc.slug] || null });
+          }
+        }
+
+        return json({ ok: true, catalog: merged, source: liveSets ? 'live' : 'hardcoded' });
+      }
+
+      // POST /topps/import-pdf — fetch a PDF URL, extract text, parse, store in KV
+      if (url.pathname === '/topps/import-pdf' && request.method === 'POST') {
+        if (!kv) return json({ ok: false, error: 'KV not configured' }, 503);
+        const body = await request.json().catch(() => ({}));
+        const { url: pdfUrl, slug, name, sport = 'baseball', year = '', brand = '' } = body;
+        if (!pdfUrl || !slug || !name) return json({ ok: false, error: 'url, slug, name required' }, 400);
+
+        // Fetch the PDF
+        const pdfRes = await fetch(pdfUrl, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+            'Referer': 'https://www.topps.com/',
+            'Accept': 'application/pdf,*/*',
+          },
+        }).catch(e => null);
+
+        if (!pdfRes || !pdfRes.ok) {
+          return json({ ok: false, error: `PDF fetch failed: ${pdfRes?.status || 'network error'} — ${pdfUrl}` }, 502);
+        }
+
+        const ct = pdfRes.headers.get('content-type') || '';
+        if (!ct.includes('pdf') && !pdfUrl.toLowerCase().includes('.pdf')) {
+          // Might be an HTML page wrapping the PDF link — try to find PDF URL in the response
+          const html = await pdfRes.text();
+          const pdfLinkM = html.match(/href="([^"]*\.pdf[^"]*)"/i);
+          if (pdfLinkM) {
+            return json({ ok: false, redirect: pdfLinkM[1], error: 'Redirected to PDF URL, retry with redirect URL' }, 200);
+          }
+          return json({ ok: false, error: 'URL did not return a PDF' }, 422);
+        }
+
+        const arrayBuffer = await pdfRes.arrayBuffer();
+        let text = '';
+        try {
+          text = await extractPdfText(arrayBuffer);
+        } catch (e) {
+          return json({ ok: false, error: 'PDF text extraction failed: ' + e.message }, 422);
+        }
+
+        if (!text || text.trim().length < 50) {
+          return json({ ok: false, error: 'Could not extract readable text from PDF' }, 422);
+        }
+
+        // Parse the extracted text
+        const parsed = parseToppsChecklistText(text, { slug, name, sport, year, brand });
+
+        // Store in KV
+        await kv.put(`set:${slug}`, JSON.stringify(parsed));
+        const idxRaw = await kv.get('sets_index');
+        const index = idxRaw ? JSON.parse(idxRaw) : [];
+        const existing = index.findIndex(s => s.slug === slug);
+        const meta = {
+          slug, name, sport, year, brand,
+          setSize: parsed.base_set?.cards?.length || 0,
+          releaseDate: year,
+          importedAt: new Date().toISOString(),
+          baseCount: parsed.base_set?.cards?.length || 0,
+          insertSetCount: parsed.insert_sets?.length || 0,
+          autoSetCount: parsed.autograph_sets?.length || 0,
+        };
+        if (existing >= 0) index[existing] = meta; else index.push(meta);
+        index.sort((a, b) => (b.year || '').localeCompare(a.year || ''));
+        await kv.put('sets_index', JSON.stringify(index));
+
+        return json({ ok: true, slug, name, baseCount: meta.baseCount, insertSetCount: meta.insertSetCount, autoSetCount: meta.autoSetCount });
+      }
+
+      return json({ error: 'Not found' }, 404);
     }
 
     // ── SET BROWSER API ──────────────────────────────────────────────────────
@@ -3973,4 +4088,223 @@ function parseToppsChecklistText(text, meta) {
   result.base_set.count = result.base_set.cards.length;
   result.set_size = result.base_set.cards.length;
   return result;
+}
+
+// ── TOPPS CHECKLISTS PAGE SCRAPER ─────────────────────────────────────────────
+async function fetchToppsChecklistCatalog() {
+  const res = await fetch('https://www.topps.com/pages/checklists', {
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      'Accept-Language': 'en-US,en;q=0.9',
+      'Cache-Control': 'no-cache',
+    },
+  }).catch(() => null);
+
+  if (!res || !res.ok) return null;
+  const html = await res.text();
+  return parseToppsChecklistsHtml(html);
+}
+
+function parseToppsChecklistsHtml(html) {
+  const sets = [];
+  // Remove script/style blocks
+  const clean = html.replace(/<script[\s\S]*?<\/script>/gi, '').replace(/<style[\s\S]*?<\/style>/gi, '');
+
+  // Look for <a href="..."> tags — Topps links to PDFs (their CDN) or product pages
+  const linkRe = /<a\s[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi;
+  let m;
+  while ((m = linkRe.exec(clean)) !== null) {
+    let url = m[1].trim();
+    const rawName = m[2].replace(/<[^>]+>/g, '').replace(/[®™]/g, '').trim();
+    if (!rawName || rawName.length < 8) continue;
+    // Only take links that look like checklists (PDF, or Shopify files, or have year in name)
+    const looksLikeChecklist = url.includes('.pdf') || url.includes('/files/') ||
+      url.includes('checklist') || (/\d{4}/.test(rawName) && rawName.length > 10);
+    if (!looksLikeChecklist) continue;
+    // Skip nav/footer links
+    if (/^(help|account|sign|cart|search|all-products|explore)/i.test(rawName)) continue;
+
+    if (url.startsWith('/')) url = 'https://www.topps.com' + url;
+    if (!url.startsWith('http')) continue;
+
+    const { year, sport, brand } = guessSetMeta(rawName);
+    const slug = rawName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+    sets.push({ name: rawName, url, slug, sport, year, brand });
+  }
+
+  // Deduplicate by slug
+  const seen = new Set();
+  return sets.filter(s => { if (seen.has(s.slug)) return false; seen.add(s.slug); return true; });
+}
+
+function guessSetMeta(name) {
+  const n = name.toLowerCase();
+  const yearM = name.match(/(\d{4})/);
+  const year = yearM ? yearM[1] : '';
+
+  let sport = 'baseball';
+  if (/basketball|nba/i.test(n)) sport = 'basketball';
+  else if (/football|nfl|gridiron/i.test(n)) sport = 'football';
+  else if (/soccer|mls|ucl|uefa|laliga|bundesliga|premier/i.test(n)) sport = 'soccer';
+  else if (/hockey|nhl/i.test(n)) sport = 'hockey';
+  else if (/star wars|marvel|disney|entertainment|non-sport/i.test(n)) sport = 'non-sport';
+
+  let brand = 'Topps';
+  if (/bowman chrome/i.test(n)) brand = 'Bowman Chrome';
+  else if (/bowman's best/i.test(n)) brand = "Bowman's Best";
+  else if (/bowman draft/i.test(n)) brand = 'Bowman Draft';
+  else if (/bowman/i.test(n)) brand = 'Bowman';
+  else if (/chrome.*black|black.*chrome/i.test(n)) brand = 'Chrome Black';
+  else if (/cosmic chrome/i.test(n)) brand = 'Cosmic Chrome';
+  else if (/chrome/i.test(n)) brand = 'Chrome';
+  else if (/heritage/i.test(n)) brand = 'Heritage';
+  else if (/finest/i.test(n)) brand = 'Finest';
+  else if (/allen.*ginter|ginter/i.test(n)) brand = 'Allen & Ginter';
+  else if (/stadium club/i.test(n)) brand = 'Stadium Club';
+  else if (/archives/i.test(n)) brand = 'Archives';
+  else if (/update/i.test(n)) brand = 'Topps Update';
+  else if (/brooklyn/i.test(n)) brand = 'Brooklyn Collection';
+  else if (/star wars|marvel/i.test(n)) brand = 'Entertainment';
+
+  return { year, sport, brand };
+}
+
+// ── PDF TEXT EXTRACTOR ────────────────────────────────────────────────────────
+async function decompressRaw(data) {
+  try {
+    const ds = new DecompressionStream('deflate-raw');
+    const writer = ds.writable.getWriter();
+    const reader = ds.readable.getReader();
+    writer.write(data);
+    writer.close();
+    const chunks = [];
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(value);
+    }
+    const total = chunks.reduce((a, c) => a + c.length, 0);
+    const out = new Uint8Array(total);
+    let off = 0;
+    for (const c of chunks) { out.set(c, off); off += c.length; }
+    return out;
+  } catch (_) {
+    // Try with zlib wrapper (2-byte zlib header)
+    try {
+      const ds2 = new DecompressionStream('deflate');
+      const writer2 = ds2.writable.getWriter();
+      const reader2 = ds2.readable.getReader();
+      writer2.write(data);
+      writer2.close();
+      const chunks2 = [];
+      while (true) {
+        const { done, value } = await reader2.read();
+        if (done) break;
+        chunks2.push(value);
+      }
+      const total2 = chunks2.reduce((a, c) => a + c.length, 0);
+      const out2 = new Uint8Array(total2);
+      let off2 = 0;
+      for (const c of chunks2) { out2.set(c, off2); off2 += c.length; }
+      return out2;
+    } catch (_2) { return null; }
+  }
+}
+
+function pdfUnescapeStr(s) {
+  return s
+    .replace(/\\n/g, '\n').replace(/\\r/g, '\r').replace(/\\t/g, '\t')
+    .replace(/\\\(/g, '(').replace(/\\\)/g, ')').replace(/\\\\/g, '\\')
+    .replace(/\\(\d{3})/g, (_, o) => String.fromCharCode(parseInt(o, 8)));
+}
+
+function pdfHexToStr(hex) {
+  let s = '';
+  // Handle UTF-16BE (common in PDFs with BOM FEFF)
+  if (hex.startsWith('feff') || hex.startsWith('FEFF')) {
+    for (let i = 4; i < hex.length; i += 4) {
+      s += String.fromCodePoint(parseInt(hex.slice(i, i + 4), 16));
+    }
+    return s;
+  }
+  for (let i = 0; i < hex.length; i += 2) {
+    s += String.fromCharCode(parseInt(hex.slice(i, i + 2), 16));
+  }
+  return s;
+}
+
+function extractTextFromContentStream(content) {
+  const lines = [];
+  const btEtRe = /BT([\s\S]*?)ET/g;
+  let m;
+  while ((m = btEtRe.exec(content)) !== null) {
+    const block = m[1];
+    const partRe = /\(([^)\\]*(?:\\.[^)\\]*)*)\)\s*(?:Tj|TJ)|\[([\s\S]*?)\]\s*TJ/g;
+    let pm;
+    while ((pm = partRe.exec(block)) !== null) {
+      if (pm[1] !== undefined) {
+        lines.push(pdfUnescapeStr(pm[1]));
+      } else if (pm[2]) {
+        const arr = pm[2];
+        const parts = [];
+        const innerRe = /\(([^)\\]*(?:\\.[^)\\]*)*)\)|<([0-9a-fA-F]+)>/g;
+        let im;
+        while ((im = innerRe.exec(arr)) !== null) {
+          if (im[1] !== undefined) parts.push(pdfUnescapeStr(im[1]));
+          else if (im[2]) parts.push(pdfHexToStr(im[2]));
+        }
+        if (parts.length) lines.push(parts.join(''));
+      }
+    }
+    lines.push(''); // paragraph break between BT/ET blocks
+  }
+  return lines.filter(Boolean).join('\n');
+}
+
+async function extractPdfText(arrayBuffer) {
+  const bytes = new Uint8Array(arrayBuffer);
+  // Build latin-1 string for regex parsing
+  let raw = '';
+  for (let i = 0; i < Math.min(bytes.length, 20 * 1024 * 1024); i++) {
+    raw += String.fromCharCode(bytes[i]);
+  }
+
+  const allText = [];
+
+  // Find all objects to check for streams
+  const objRe = /(\d+\s+\d+\s+obj[\s\S]*?)endobj/g;
+  let om;
+  while ((om = objRe.exec(raw)) !== null) {
+    const obj = om[1];
+    const streamMatch = obj.match(/stream\r?\n([\s\S]*?)\r?\nendstream/);
+    if (!streamMatch) continue;
+
+    const isFlate = /FlateDecode/i.test(obj) || /\/Fl\b/.test(obj);
+    const isText = !/\/Subtype\s*\/Image/i.test(obj) && !/\/XObject/i.test(obj);
+    if (!isText) continue;
+
+    let content;
+    if (isFlate) {
+      const streamStr = streamMatch[1];
+      const streamBytes = new Uint8Array(streamStr.length);
+      for (let i = 0; i < streamStr.length; i++) streamBytes[i] = streamStr.charCodeAt(i) & 0xff;
+      const decompressed = await decompressRaw(streamBytes);
+      if (!decompressed) continue;
+      content = new TextDecoder('latin1').decode(decompressed);
+    } else {
+      content = streamMatch[1];
+    }
+
+    const text = extractTextFromContentStream(content);
+    if (text && text.trim().length > 10) allText.push(text);
+  }
+
+  // Also try direct BT/ET extraction on raw (for uncompressed PDFs)
+  if (allText.length === 0) {
+    const directText = extractTextFromContentStream(raw);
+    if (directText.trim()) allText.push(directText);
+  }
+
+  return allText.join('\n');
 }

@@ -502,6 +502,7 @@ th.th-thumb, td.td-thumb { width:56px; padding:4px 4px 4px 8px; }
 .dsb-net-offline b { color:var(--red); }
 .dsb-net-cached b { color:var(--blue); }
 @keyframes dsb-pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
+@keyframes spin { to { transform:rotate(360deg); } }
 /* Intake chip */
 .dsb-intake-active b { color:var(--gold); }
 /* Stale data badge */
@@ -1318,7 +1319,7 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.22.01-topps-hub</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.22.02-topps-live-sync</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
@@ -1345,7 +1346,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip dev-only" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.22.01-topps-hub</div>
+<div class="dsb-chip dev-only" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.22.02-topps-live-sync</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -1953,9 +1954,10 @@ body.show-mode .inv-sync-badge{display:none;}
       <div class="ph" style="margin:0">TOPPS SET BROWSER</div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
         <input id="sb-set-search" placeholder="Search sets…" oninput="sbFilterCatalog()" style="font-family:var(--font-mono);font-size:10px;background:var(--surf2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:4px 10px;width:150px">
-        <button class="hbtn" id="sb-admin-btn" onclick="sbToggleAdmin()" style="font-size:10px;padding:4px 10px" title="Admin login">🔑 ADMIN</button>
+        <button class="hbtn" id="sb-sync-btn" onclick="sbSyncAll()" style="font-size:10px;padding:4px 12px" title="Import all checklists from Topps">⬇ SYNC ALL FROM TOPPS</button>
       </div>
     </div>
+    <div id="sb-sync-status" style="display:none;font-family:var(--font-mono);font-size:10px;color:var(--primary);margin-bottom:8px;padding:8px;background:rgba(0,255,179,.07);border:1px solid rgba(0,255,179,.2);border-radius:6px"></div>
 
     <!-- Filter chips -->
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid var(--border)">
@@ -25426,74 +25428,30 @@ const SB = {
 
 async function sbWorker(path, opts = {}) {
   const base = (typeof WORKER !== 'undefined' ? WORKER : '');
-  const headers = { ...(opts.headers || {}) };
-  const token = sbGetAdminToken();
-  if (token) headers['Authorization'] = `Bearer ${token}`;
-  const res = await fetch(base + path, { ...opts, headers });
+  const res = await fetch(base + path, opts);
   return res.json();
-}
-
-// ── Admin token (stored in localStorage) ──────────────────────────────────────
-function sbGetAdminToken() { return localStorage.getItem('sb_admin_token') || ''; }
-function sbIsAdmin() { return !!sbGetAdminToken(); }
-function sbToggleAdmin() {
-  if (sbIsAdmin()) {
-    if (confirm('Log out of admin mode?')) {
-      localStorage.removeItem('sb_admin_token');
-      sbUpdateAdminBtn();
-      sbRenderCatalog();
-    }
-  } else {
-    const t = prompt('Enter admin token:');
-    if (t) {
-      localStorage.setItem('sb_admin_token', t.trim());
-      sbUpdateAdminBtn();
-      sbRenderCatalog();
-      toast_dash('Admin mode enabled', 2500);
-    }
-  }
-}
-function sbUpdateAdminBtn() {
-  const btn = document.getElementById('sb-admin-btn');
-  if (!btn) return;
-  if (sbIsAdmin()) {
-    btn.textContent = '🔓 ADMIN';
-    btn.style.borderColor = 'var(--primary)';
-    btn.style.color = 'var(--primary)';
-  } else {
-    btn.textContent = '🔑 ADMIN';
-    btn.style.borderColor = '';
-    btn.style.color = '';
-  }
 }
 
 // ── Init ───────────────────────────────────────────────────────────────────────
 async function sbInit() {
-  sbUpdateAdminBtn();
   sbBuildFilterChips();
+  const grid = document.getElementById('sb-catalog-grid');
+  if (grid) grid.innerHTML = '<div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);grid-column:1/-1">Loading Topps catalog…</div>';
   try {
-    const [catData, setsData] = await Promise.all([
-      sbWorker('/topps/catalog'),
-      sbWorker('/sets'),
-    ]);
+    // Use fetch-catalog which tries to scrape topps.com live, falls back to hardcoded
+    const catData = await sbWorker('/topps/fetch-catalog');
     SB.catalog = catData.catalog || [];
-    SB.sets = setsData.sets || [];
-    // Merge imported data into catalog entries
-    const importedMap = {};
-    SB.sets.forEach(s => { importedMap[s.slug] = s; });
-    SB.catalog.forEach(c => {
-      if (importedMap[c.slug]) { c.imported = true; c._meta = importedMap[c.slug]; }
-    });
-    // Add any imported sets not in the catalog (e.g. manually imported)
-    SB.sets.forEach(s => {
-      if (!SB.catalog.find(c => c.slug === s.slug)) {
-        SB.catalog.push({ ...s, imported: true, _meta: s, _custom: true });
-      }
-    });
+    SB.source = catData.source || 'hardcoded';
+    // sets index is already merged into catalog entries
+    SB.sets = SB.catalog.filter(c => c.imported).map(c => c._meta || c);
     sbFilterCatalog();
+    const src = SB.source === 'live' ? '✓ Live from Topps' : 'Catalog loaded';
+    const count = SB.catalog.length;
+    const imported = SB.catalog.filter(c => c.imported).length;
+    sbSetSyncStatus(`${src} · ${count} sets · ${imported} imported`, false);
+    setTimeout(() => { const s = document.getElementById('sb-sync-status'); if (s) s.style.display = 'none'; }, 3000);
   } catch(e) {
-    document.getElementById('sb-catalog-grid').innerHTML =
-      '<div style="font-family:var(--font-mono);font-size:10px;color:var(--r)">Could not load — Worker unreachable</div>';
+    if (grid) grid.innerHTML = '<div style="font-family:var(--font-mono);font-size:10px;color:var(--r);grid-column:1/-1">Could not load — Worker unreachable</div>';
   }
 }
 
@@ -25532,33 +25490,41 @@ function sbRenderCatalog(sets) {
     el.innerHTML = '<div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);grid-column:1/-1">No sets match</div>';
     return;
   }
-  const admin = sbIsAdmin();
   el.innerHTML = sets.map(s => {
     const imported = s.imported;
+    const syncing = SB._syncing === s.slug;
     const meta = s._meta || {};
     const baseCount = meta.baseCount || 0;
     const insertCount = meta.insertSetCount || 0;
     const autoCount = meta.autoSetCount || 0;
     const sportIcon = {baseball:'⚾',basketball:'🏀',football:'🏈',soccer:'⚽',hockey:'🏒'}[s.sport] || '🃏';
     const brandBadge = s.brand ? `<span style="font-size:8px;background:var(--surf);border:1px solid var(--border);border-radius:3px;padding:1px 5px;color:var(--dim)">${escHtml(s.brand)}</span>` : '';
-    const importedBadge = imported
-      ? `<span style="font-size:8px;background:rgba(0,255,179,.15);border:1px solid rgba(0,255,179,.4);border-radius:3px;padding:1px 5px;color:var(--primary)">IMPORTED</span>`
-      : `<span style="font-size:8px;background:var(--surf);border:1px solid var(--border);border-radius:3px;padding:1px 5px;color:var(--dim)">Not imported</span>`;
-    const actionBtn = imported
-      ? `<button onclick="sbOpenSet('${escHtml(s.slug)}')" style="font-family:var(--font-mono);font-size:9px;padding:4px 10px;border-radius:5px;border:1px solid var(--primary);background:rgba(0,255,179,.1);color:var(--primary);cursor:pointer;width:100%">BROWSE CARDS</button>`
-      : (admin ? `<button onclick="sbShowImportDialog('${escHtml(s.slug)}','${escHtml(s.name).replace(/'/g,'\\\'')}')" style="font-family:var(--font-mono);font-size:9px;padding:4px 10px;border-radius:5px;border:1px solid var(--border);background:var(--surf2);color:var(--dim);cursor:pointer;width:100%">+ IMPORT CHECKLIST</button>` : `<div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);padding:4px 0">Checklist not yet imported</div>`);
-    const deleteBtn = (imported && admin)
-      ? `<button onclick="sbDeleteSet('${escHtml(s.slug)}','${escHtml(s.name).replace(/'/g,'\\\'')}')" style="position:absolute;top:6px;right:8px;background:none;border:none;color:var(--dim);font-size:13px;cursor:pointer;padding:2px 4px" title="Delete set">✕</button>` : '';
+    const statusBadge = imported
+      ? `<span style="font-size:8px;background:rgba(0,255,179,.15);border:1px solid rgba(0,255,179,.4);border-radius:3px;padding:1px 5px;color:var(--primary)">✓ IMPORTED</span>`
+      : syncing
+        ? `<span style="font-size:8px;background:rgba(255,200,0,.15);border:1px solid rgba(255,200,0,.4);border-radius:3px;padding:1px 5px;color:var(--gold)">⟳ IMPORTING…</span>`
+        : `<span style="font-size:8px;background:var(--surf);border:1px solid var(--border);border-radius:3px;padding:1px 5px;color:var(--dim)">${s.url ? 'Available' : 'No checklist'}</span>`;
+    let actionBtn = '';
+    if (imported) {
+      actionBtn = `<button onclick="sbOpenSet('${escHtml(s.slug)}')" style="font-family:var(--font-mono);font-size:9px;padding:4px 10px;border-radius:5px;border:1px solid var(--primary);background:rgba(0,255,179,.1);color:var(--primary);cursor:pointer;width:100%">BROWSE CARDS →</button>`;
+    } else if (syncing) {
+      actionBtn = `<button disabled style="font-family:var(--font-mono);font-size:9px;padding:4px 10px;border-radius:5px;border:1px solid var(--gold);background:rgba(255,200,0,.07);color:var(--gold);width:100%;cursor:default">Importing…</button>`;
+    } else if (s.url) {
+      actionBtn = `<button onclick="sbImportSet('${escHtml(s.slug)}')" style="font-family:var(--font-mono);font-size:9px;padding:4px 10px;border-radius:5px;border:1px solid var(--border);background:var(--surf);color:var(--dim);cursor:pointer;width:100%">⬇ Import Checklist</button>`;
+    } else {
+      actionBtn = `<div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);padding:2px 0">No PDF available yet</div>`;
+    }
+    const deleteBtn = imported
+      ? `<button onclick="sbDeleteSet('${escHtml(s.slug)}','${escHtml(s.name).replace(/'/g,'\\\'')}')" style="position:absolute;top:6px;right:8px;background:none;border:none;color:var(--dim);font-size:13px;cursor:pointer;padding:2px 4px;line-height:1" title="Remove set">✕</button>` : '';
     const cardSummary = imported
-      ? `<div style="font-size:9px;color:var(--dim);margin-top:3px">${baseCount} base · ${insertCount} insert · ${autoCount} auto</div>`
-      : '';
-    return `<div style="position:relative;padding:12px;background:var(--surf2);border:1px solid ${imported ? 'rgba(0,255,179,.25)' : 'var(--border)'};border-radius:8px;display:flex;flex-direction:column;gap:6px;transition:border-color .15s" onmouseenter="this.style.borderColor='var(--primary)'" onmouseleave="this.style.borderColor='${imported ? 'rgba(0,255,179,.25)' : 'var(--border)'}'">
+      ? `<div style="font-size:9px;color:var(--dim)">${baseCount} base · ${insertCount} insert · ${autoCount} auto</div>` : '';
+    const border = imported ? 'rgba(0,255,179,.25)' : 'var(--border)';
+    return `<div data-sb-cat-slug="${escHtml(s.slug)}" style="position:relative;padding:12px;background:var(--surf2);border:1px solid ${border};border-radius:8px;display:flex;flex-direction:column;gap:6px;transition:border-color .15s" onmouseenter="this.style.borderColor='var(--primary)'" onmouseleave="this.style.borderColor='${border}'">
       ${deleteBtn}
-      <div style="font-size:11px;color:var(--text);font-family:'Orbitron',monospace;font-weight:700;line-height:1.3;padding-right:${(imported && admin) ? '20px' : '0'}">${sportIcon} ${escHtml(s.name)}</div>
+      <div style="font-size:11px;color:var(--text);font-family:'Orbitron',monospace;font-weight:700;line-height:1.3;padding-right:${imported ? '20px' : '0'}">${sportIcon} ${escHtml(s.name)}</div>
       <div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center">
         <span style="font-size:9px;color:var(--dim);font-family:var(--font-mono)">${s.year || ''}</span>
-        ${brandBadge}
-        ${importedBadge}
+        ${brandBadge}${statusBadge}
       </div>
       ${cardSummary}
       ${actionBtn}
@@ -25566,20 +25532,111 @@ function sbRenderCatalog(sets) {
   }).join('');
 }
 
+// ── Per-set import from PDF ────────────────────────────────────────────────────
+async function sbImportSet(slug) {
+  const s = SB.catalog.find(c => c.slug === slug);
+  if (!s || !s.url) return toast_dash('No PDF URL for this set', 3000);
+
+  SB._syncing = slug;
+  sbFilterCatalog(); // re-render to show syncing state
+
+  sbSetSyncStatus(`Importing ${s.name}…`, true);
+  const result = await sbDoImportPdf(s);
+  SB._syncing = null;
+
+  if (result.ok) {
+    s.imported = true;
+    s._meta = result;
+    toast_dash(`✓ ${s.name}: ${result.baseCount} base · ${result.insertSetCount} insert · ${result.autoSetCount} auto`, 5000);
+  } else if (result.redirect) {
+    // PDF URL redirected — try the new URL
+    sbSetSyncStatus(`Redirected, retrying ${s.name}…`, true);
+    s.url = result.redirect;
+    const r2 = await sbDoImportPdf(s);
+    if (r2.ok) {
+      s.imported = true; s._meta = r2;
+      toast_dash(`✓ ${s.name}: ${r2.baseCount} base cards`, 4000);
+    } else {
+      toast_dash(`✗ ${s.name}: ${r2.error || 'Import failed'}`, 5000);
+    }
+  } else {
+    toast_dash(`✗ ${s.name}: ${result.error || 'Import failed'}`, 5000);
+  }
+
+  sbSetSyncStatus('', false);
+  sbFilterCatalog();
+}
+
+async function sbDoImportPdf(s) {
+  try {
+    return await sbWorker('/topps/import-pdf', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: s.url, slug: s.slug, name: s.name, sport: s.sport, year: s.year, brand: s.brand }),
+    });
+  } catch(e) { return { ok: false, error: e.message }; }
+}
+
+// ── Sync all sets from Topps ───────────────────────────────────────────────────
+async function sbSyncAll() {
+  const toImport = SB.catalog.filter(s => !s.imported && s.url);
+  if (!toImport.length) {
+    toast_dash('All available sets already imported', 3000);
+    return;
+  }
+  if (!confirm(`Import all ${toImport.length} available checklists from Topps? This may take a few minutes.`)) return;
+
+  const btn = document.getElementById('sb-sync-btn');
+  if (btn) { btn.disabled = true; btn.textContent = '⟳ Syncing…'; }
+
+  let done = 0, failed = 0;
+  for (const s of toImport) {
+    sbSetSyncStatus(`[${done + failed + 1}/${toImport.length}] Importing ${s.name}…`, true);
+    SB._syncing = s.slug;
+    sbFilterCatalog();
+
+    let result = await sbDoImportPdf(s);
+    if (!result.ok && result.redirect) {
+      s.url = result.redirect;
+      result = await sbDoImportPdf(s);
+    }
+
+    SB._syncing = null;
+    if (result.ok) {
+      done++;
+      s.imported = true;
+      s._meta = result;
+    } else {
+      failed++;
+    }
+    sbFilterCatalog();
+    await new Promise(r => setTimeout(r, 500)); // small delay between imports
+  }
+
+  if (btn) { btn.disabled = false; btn.textContent = '⬇ SYNC ALL FROM TOPPS'; }
+  sbSetSyncStatus(`✓ Sync complete: ${done} imported, ${failed} failed`, false);
+  toast_dash(`Sync done: ${done} imported, ${failed} failed`, 5000);
+}
+
+function sbSetSyncStatus(msg, spinner) {
+  const el = document.getElementById('sb-sync-status');
+  if (!el) return;
+  if (!msg) { el.style.display = 'none'; return; }
+  el.style.display = 'block';
+  el.innerHTML = (spinner ? '<span style="display:inline-block;animation:spin 1s linear infinite">⟳</span> ' : '') + escHtml(msg);
+}
+
 async function sbDeleteSet(slug, name) {
-  if (!confirm(`Delete "${name}" from the set browser?`)) return;
+  if (!confirm(`Remove "${name}" checklist data?`)) return;
   try {
     const d = await sbWorker(`/sets/${slug}`, { method: 'DELETE' });
     if (d.ok) {
-      toast_dash(`Deleted ${name}`, 3000);
-      // Update local state
+      toast_dash(`Removed ${name}`, 3000);
       SB.sets = SB.sets.filter(s => s.slug !== slug);
       SB.catalog.forEach(c => { if (c.slug === slug) { c.imported = false; delete c._meta; } });
       SB.catalog = SB.catalog.filter(c => !(c._custom && c.slug === slug));
       sbFilterCatalog();
-    } else {
-      toast_dash('Delete failed: ' + (d.error || 'error'), 4000);
-    }
+    } else toast_dash('Delete failed: ' + (d.error || 'error'), 4000);
   } catch(e) { toast_dash('Delete error: ' + e.message, 4000); }
 }
 
@@ -25857,69 +25914,6 @@ function sbCloseModal() {
 }
 
 
-function sbShowImportDialog(slug, name) {
-  // Show a modal with a textarea for pasting PDF text
-  let modal = document.getElementById('sb-import-modal');
-  if (!modal) {
-    modal = document.createElement('div');
-    modal.id = 'sb-import-modal';
-    modal.style.cssText = 'display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.85);align-items:center;justify-content:center;padding:16px';
-    modal.onclick = e => { if (e.target === modal) modal.style.display = 'none'; };
-    document.body.appendChild(modal);
-  }
-  modal.innerHTML = `
-    <div style="background:var(--bg);border:1px solid var(--primary);border-radius:12px;width:min(600px,100%);max-height:90vh;overflow-y:auto;padding:20px;position:relative">
-      <button onclick="document.getElementById('sb-import-modal').style.display='none'" style="position:absolute;top:12px;right:12px;background:none;border:none;color:var(--dim);font-size:20px;cursor:pointer">✕</button>
-      <div style="font-family:'Orbitron',monospace;font-size:13px;color:var(--primary);margin-bottom:4px">IMPORT CHECKLIST</div>
-      <div style="font-family:var(--font-mono);font-size:11px;color:var(--text);margin-bottom:14px">${escHtml(name)}</div>
-      <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);margin-bottom:8px;line-height:1.5">
-        Open the Topps PDF checklist, select all text (Ctrl+A), copy it (Ctrl+C), then paste it below:
-      </div>
-      <textarea id="sb-import-text" placeholder="Paste PDF text here…" style="width:100%;height:240px;background:var(--surf2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:10px;font-family:var(--font-mono);font-size:10px;resize:vertical;box-sizing:border-box"></textarea>
-      <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
-        <button class="hbtn buy" onclick="sbDoImportText('${escHtml(slug)}','${escHtml(name).replace(/'/g,"\\'")}')">IMPORT</button>
-        <button class="hbtn" onclick="document.getElementById('sb-import-modal').style.display='none'">CANCEL</button>
-        <div style="font-size:9px;color:var(--dim);font-family:var(--font-mono);align-self:center">Parses Topps PDF format automatically</div>
-      </div>
-      <div id="sb-import-status" style="font-family:var(--font-mono);font-size:10px;margin-top:10px"></div>
-    </div>`;
-  modal.style.display = 'flex';
-  setTimeout(() => document.getElementById('sb-import-text')?.focus(), 100);
-}
-
-async function sbDoImportText(slug, name) {
-  const text = document.getElementById('sb-import-text')?.value || '';
-  if (!text.trim()) { toast_dash('Paste the PDF text first', 3000); return; }
-  const status = document.getElementById('sb-import-status');
-  if (status) status.innerHTML = '<span style="color:var(--dim)">Parsing and importing…</span>';
-
-  // Get sport/year/brand from catalog
-  const cat = SB.catalog.find(c => c.slug === slug) || {};
-  try {
-    const data = await sbWorker('/sets/import-topps-text', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ slug, name, text, sport: cat.sport || 'baseball', year: cat.year || '', brand: cat.brand || '' }),
-    });
-    if (data.ok) {
-      if (status) status.innerHTML = `<span style="color:var(--primary)">✓ Imported: ${data.baseCount} base · ${data.insertSetCount} insert sets · ${data.autoSetCount} auto sets</span>`;
-      // Update local state
-      const existing = SB.catalog.find(c => c.slug === slug);
-      if (existing) { existing.imported = true; existing._meta = data; }
-      SB.sets = SB.sets.filter(s => s.slug !== slug);
-      SB.sets.push({ slug, name, sport: cat.sport, year: cat.year, brand: cat.brand, baseCount: data.baseCount, insertSetCount: data.insertSetCount, autoSetCount: data.autoSetCount });
-      setTimeout(() => {
-        document.getElementById('sb-import-modal').style.display = 'none';
-        sbFilterCatalog();
-        toast_dash(`✓ ${name} imported`, 4000);
-      }, 1500);
-    } else {
-      if (status) status.innerHTML = `<span style="color:var(--r)">Error: ${escHtml(data.error || 'Unknown error')}</span>`;
-    }
-  } catch(e) {
-    if (status) status.innerHTML = `<span style="color:var(--r)">Error: ${escHtml(e.message)}</span>`;
-  }
-}
 
 // Auto-init when research tab is opened
 (function sbSetupInit() {
