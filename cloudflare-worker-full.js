@@ -3343,6 +3343,47 @@ export default {
         return json({ ok: true, catalog });
       }
 
+      // GET /topps/debug-pdf?url=URL — fetch a URL and return raw info for debugging
+      if (url.pathname === '/topps/debug-pdf' && request.method === 'GET') {
+        const pdfUrl = url.searchParams.get('url');
+        if (!pdfUrl) return json({ error: 'url param required' }, 400);
+        const res = await fetch(pdfUrl, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+            'Referer': 'https://www.topps.com/',
+            'Accept': 'application/pdf,*/*',
+          },
+        }).catch(e => null);
+        if (!res) return json({ error: 'Fetch failed' }, 502);
+        const ct = res.headers.get('content-type') || '';
+        const finalUrl = res.url;
+        const status = res.status;
+        if (!ct.includes('pdf') && !pdfUrl.toLowerCase().includes('.pdf')) {
+          const html = await res.text();
+          // Look for PDF links
+          const pdfLinks = [];
+          const linkRe = /href="([^"]*\.pdf[^"]*)"/gi;
+          let m;
+          while ((m = linkRe.exec(html)) !== null) pdfLinks.push(m[1]);
+          return json({ ok: false, status, contentType: ct, finalUrl, htmlLength: html.length, pdfLinks, htmlSnippet: html.slice(0, 2000) });
+        }
+        const buf = await res.arrayBuffer();
+        const bytes = new Uint8Array(buf);
+        // Check PDF header
+        let header = '';
+        for (let i = 0; i < Math.min(20, bytes.length); i++) header += String.fromCharCode(bytes[i]);
+        // Try text extraction
+        let extractedText = '';
+        try { extractedText = await extractPdfText(buf); } catch(e) { extractedText = 'ERROR: ' + e.message; }
+        return json({
+          ok: true, status, contentType: ct, finalUrl,
+          pdfSize: buf.byteLength,
+          pdfHeader: header,
+          extractedLength: extractedText.length,
+          extractedSample: extractedText.slice(0, 3000),
+        });
+      }
+
       // GET /topps/fetch-catalog — scrape topps.com/pages/checklists for live set list
       if (url.pathname === '/topps/fetch-catalog' && request.method === 'GET') {
         const idxRaw = kv ? await kv.get('sets_index') : null;
@@ -3420,11 +3461,16 @@ export default {
         }
 
         if (!text || text.trim().length < 50) {
-          return json({ ok: false, error: 'Could not extract readable text from PDF' }, 422);
+          return json({ ok: false, error: 'Could not extract readable text from PDF (length=' + text.length + ')', textSample: text.slice(0, 500) }, 422);
         }
 
         // Parse the extracted text
         const parsed = parseToppsChecklistText(text, { slug, name, sport, year, brand });
+
+        // If 0 cards, return the text sample for debugging instead of storing empty data
+        if (parsed.base_set.cards.length === 0 && parsed.insert_sets.length === 0 && parsed.autograph_sets.length === 0) {
+          return json({ ok: false, error: 'Parser found 0 cards — text format may not match expected Topps checklist format', textSample: text.slice(0, 2000), textLength: text.length }, 422);
+        }
 
         // Store in KV
         await kv.put(`set:${slug}`, JSON.stringify(parsed));

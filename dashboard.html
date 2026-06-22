@@ -25569,12 +25569,24 @@ async function sbImportSet(slug) {
 
 async function sbDoImportPdf(s) {
   try {
-    return await sbWorker('/topps/import-pdf', {
+    const r = await sbWorker('/topps/import-pdf', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ url: s.url, slug: s.slug, name: s.name, sport: s.sport, year: s.year, brand: s.brand }),
     });
+    if (!r.ok && r.textSample) {
+      console.warn(`[SB] Import failed for ${s.slug} — text sample:\n`, r.textSample);
+    }
+    return r;
   } catch(e) { return { ok: false, error: e.message }; }
+}
+
+async function sbDebugUrl(url) {
+  const base = (typeof WORKER !== 'undefined' ? WORKER : '');
+  const r = await fetch(`${base}/topps/debug-pdf?url=${encodeURIComponent(url)}`);
+  const d = await r.json();
+  console.log('[SB DEBUG]', d);
+  return d;
 }
 
 // ── Sync all sets from Topps ───────────────────────────────────────────────────
