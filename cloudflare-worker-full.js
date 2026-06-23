@@ -741,20 +741,26 @@ export default {
     }
 
     // ── SportsCardsPro: card image lookup ─────────────────────────────────────
-    // GET /pricing/sportscardspro/image?console=CONSOLE_NAME&name=PRODUCT_NAME
-    // Fetches the PriceCharting product page with a browser UA and extracts the
-    // first storage.googleapis.com image URL. Cached 2 hours at the edge.
+    // GET /pricing/sportscardspro/image?id=SCPID  (preferred — exact SCP path slug)
+    // GET /pricing/sportscardspro/image?console=CONSOLE_NAME&name=PRODUCT_NAME  (fallback)
+    // Fetches the SportsCardsPro/PriceCharting product page and extracts the image.
+    // Cached 2 hours at the edge.
     if (url.pathname === '/pricing/sportscardspro/image') {
+      const scpId       = url.searchParams.get('id') || '';
       const consoleName = url.searchParams.get('console') || '';
       const productName = url.searchParams.get('name') || '';
-      if (!consoleName || !productName) return json({ ok: false, error: 'console and name required' }, 400);
+      if (!scpId && (!consoleName || !productName)) return json({ ok: false, error: 'id or (console and name) required' }, 400);
 
       const toSlug = s => String(s).toLowerCase()
         .replace(/['']/g, '')
         .replace(/[^a-z0-9]+/g, '-')
         .replace(/^-+|-+$/g, '');
 
-      const pageUrl = `https://www.pricecharting.com/game/${toSlug(consoleName)}/${toSlug(productName)}`;
+      // Prefer the exact SCP product path (e.g. baseball-cards-2025-bowman-chrome/jacob-wilson-refractor-1)
+      // because the slug we can derive from set name + card name rarely matches SCP's exact URL.
+      const pageUrl = scpId
+        ? `https://www.sportscardspro.com/game/${scpId}`
+        : `https://www.pricecharting.com/game/${toSlug(consoleName)}/${toSlug(productName)}`;
 
       const pageRes = await fetch(pageUrl, {
         headers: {

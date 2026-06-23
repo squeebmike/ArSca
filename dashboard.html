@@ -18676,9 +18676,11 @@ async function searchSportsCardsPro(q){
 
 async function fetchScpImageAsync(idx){
   const r = qplResults[idx];
-  if(!r || r.source !== 'sportscardspro' || r.imageUrl || !r.set || !r.name) return;
+  if(!r || r.source !== 'sportscardspro' || r.imageUrl) return;
+  if(!r.scpId && (!r.set || !r.name)) return;
   try {
-    const params = new URLSearchParams({ console: r.set, name: r.name });
+    const params = new URLSearchParams({ console: r.set || '', name: r.name || '' });
+    if(r.scpId) params.set('id', r.scpId);
     const res = await fetch(WORKER + '/pricing/sportscardspro/image?' + params);
     const data = await res.json().catch(() => ({}));
     if(data.ok && data.imageUrl) {
@@ -19344,6 +19346,10 @@ function buildTcgExternalLink(item = {}){
   const conditionLabel = tcgConditionSearchLabel(condition) || 'Near Mint';
   const productUrl = item.tcgPlayerUrl || item.tcgUrl || item.productUrl || '';
   const productId = item.tcgPlayerId || item.tcgplayerId || tcgPlayerProductIdFromUrl(productUrl);
+  // MTG: map our finish keys to TCGPlayer's Printing param (Foil Etched / Foil / Normal)
+  const rawFinish = (selected.finish || item.selectedFinish || item.finish || '').toLowerCase();
+  const isMtg = item.source === 'scryfall' || /^magic|^mtg/i.test(item.category || '');
+  const mtgPrinting = isMtg ? (/etched/i.test(rawFinish) ? 'Foil Etched' : /foil/i.test(rawFinish) ? 'Foil' : 'Normal') : '';
   let url = '';
   let note = activeSkuId ? 'Marketplace SKU captured; product link includes selected condition.' : 'Product link includes selected condition when available.';
   if(/tcgplayer\.com\/product\//i.test(productUrl || '')) {
@@ -19351,12 +19357,13 @@ function buildTcgExternalLink(item = {}){
     const params = [
       ['page', '1'],
       ['Language', language || 'English'],
-      ['Condition', conditionLabel]
+      ['Condition', conditionLabel],
+      ...(mtgPrinting ? [['Printing', mtgPrinting]] : [])
     ];
     url = base + '?' + params.map(([k,v]) => `${encodeURIComponent(k)}=${encodeTcgParam(v)}`).join('&');
   } else if(productId) {
     // Use bare numeric product ID — no slug — so TCGPlayer doesn't redirect (which drops query params)
-    url = `https://www.tcgplayer.com/product/${encodeURIComponent(productId)}?Language=${encodeTcgParam(language || 'English')}&Condition=${encodeTcgParam(conditionLabel)}`;
+    url = `https://www.tcgplayer.com/product/${encodeURIComponent(productId)}?Language=${encodeTcgParam(language || 'English')}&Condition=${encodeTcgParam(conditionLabel)}${mtgPrinting ? '&Printing=' + encodeTcgParam(mtgPrinting) : ''}`;
   } else {
     note = activeSkuId ? 'Marketplace SKU captured; search includes selected condition because direct SKU deep-link is not guaranteed.' : 'Marketplace cannot deep-link to exact condition here; opening a selected-condition search.';
     const isPokeItem = (typeof qplResultCategoryKey === 'function' && qplResultCategoryKey(item) === 'pokemon') || /pokemon/i.test([item.category, item.source, item.set].filter(Boolean).join(' '));
