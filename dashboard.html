@@ -1352,7 +1352,7 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.23.11-lazy-pc-images</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.23.12-no-layout-shift</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
@@ -1379,7 +1379,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip dev-only" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.23.11-lazy-pc-images</div>
+<div class="dsb-chip dev-only" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.23.12-no-layout-shift</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -26796,10 +26796,12 @@ function toppsRenderCards(){
         `<button class="hbtn" style="min-height:30px;font-size:8px;padding:3px 8px" onclick="event.stopPropagation();toppsOpenDetail('${escHtml(c.id)}')">OPEN</button></div>`;
     }
     return `<div class="topps-set-card" data-card-id="${escHtml(c.id)}" onclick="toppsOpenDetail('${escHtml(c.id)}')">` +
-      `<img class="topps-lazy-img" data-card-id="${escHtml(c.id)}" style="width:100%;height:160px;object-fit:contain;border-radius:6px;background:#050507;margin-bottom:8px">` +
+      `<div style="width:100%;height:160px;border-radius:6px;background:#050507;margin-bottom:8px;overflow:hidden;display:flex;align-items:center;justify-content:center">` +
+        `<img class="topps-lazy-img" data-card-id="${escHtml(c.id)}" style="width:100%;height:100%;object-fit:contain">` +
+      `</div>` +
       `<div style="font-family:'Orbitron',monospace;font-size:11px;color:var(--text);line-height:1.25;overflow:hidden;text-overflow:ellipsis">${escHtml(c.player || c.subject || 'Checklist Card')}</div>` +
       `<div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);margin-top:4px">${escHtml([c.team, c.section].filter(Boolean).join(' / '))}</div>` +
-      `<div class="topps-lazy-price" data-card-id="${escHtml(c.id)}" style="font-family:var(--font-mono);font-size:11px;color:var(--g);font-weight:700;margin-top:6px;min-height:1em"></div>` +
+      `<div class="topps-lazy-price" data-card-id="${escHtml(c.id)}" style="font-family:var(--font-mono);font-size:14px;color:var(--g);font-weight:700;margin-top:6px;height:1.4em"></div>` +
       `<div class="topps-badges" style="margin-top:6px">${badges}</div></div>`;
   };
   el.innerHTML = Object.entries(bySection).map(([section, cards]) => `<div style="grid-column:1/-1;font-family:'Orbitron',monospace;font-size:10px;color:var(--gold);letter-spacing:1px;margin:8px 0 2px">${escHtml(section)} <span style="font-family:var(--font-mono);font-size:9px;color:var(--dim)">(${cards.length})</span></div>${cards.map(renderCard).join('')}`).join('');
@@ -26807,9 +26809,21 @@ function toppsRenderCards(){
 }
 let _toppsImgObserver = null;
 const _toppsImgFetching = new Set();
+let _toppsImgQueue = [];
+let _toppsImgActive = 0;
+const TOPPS_IMG_CONCURRENCY = 3;
+function toppsImgDrain(){
+  while(_toppsImgActive < TOPPS_IMG_CONCURRENCY && _toppsImgQueue.length) {
+    const card = _toppsImgQueue.shift();
+    _toppsImgActive++;
+    toppsLoadPriceCharting(card).finally(() => { _toppsImgActive--; toppsImgDrain(); });
+  }
+}
 function toppsObserveLazyImages(container){
   if(_toppsImgObserver) _toppsImgObserver.disconnect();
   _toppsImgFetching.clear();
+  _toppsImgQueue = [];
+  _toppsImgActive = 0;
   _toppsImgObserver = new IntersectionObserver((entries) => {
     for(const entry of entries) {
       if(!entry.isIntersecting) continue;
@@ -26820,7 +26834,8 @@ function toppsObserveLazyImages(container){
       _toppsImgObserver.unobserve(img);
       const card = toppsFindCard(cardId);
       if(!card) continue;
-      toppsLoadPriceCharting(card);
+      _toppsImgQueue.push(card);
+      toppsImgDrain();
     }
   }, { rootMargin: '200px' });
   container.querySelectorAll('img.topps-lazy-img').forEach(img => _toppsImgObserver.observe(img));
