@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.06.23.02-login-session-recovery">
+<meta name="version" content="2026.06.23.03-sports-topps-research">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1352,7 +1352,7 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.23.02-login-session-recovery</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.23.03-sports-topps-research</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
@@ -1379,7 +1379,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip dev-only" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.23.02-login-session-recovery</div>
+<div class="dsb-chip dev-only" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.23.03-sports-topps-research</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -2647,7 +2647,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.06.23.02-login-session-recovery';
+const APP_VERSION = '2026.06.23.03-sports-topps-research';
 window.APP_VERSION = APP_VERSION;
 const branchName = 'pokemon-v2-core';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
@@ -16759,6 +16759,7 @@ async function runPriceLookup(){
     renderQuickLookupResults(qplResults);
     pushQuickLookupHistory(q, qplResults[0]);
     if(qplResults.some(r => r.source === 'sportscardspro' && !r.imageUrl)) enrichScpImagesAsync();
+    if(qplResults.some(r => r.source === 'topps_checklist')) enrichToppsSportsPriceChartingAsync();
     if(wantsPokemon) {
       savePokemonCacheResults(q, qplMasterResults, 'Live Pokemon lookup').then(renderOfflineCachePanel).catch(console.warn);
       setPokemonOfflineBanner((cachedResults.length ? 'Live Pokémon refresh updated the cached copy.' : 'Saved this Pokémon lookup for offline use.') + ' Last cached ' + pokemonCacheAgeLabel(new Date().toISOString()) + '.', 'good');
@@ -16833,6 +16834,13 @@ async function searchQuickCatalog(q, cat){
     seen.add(key);
     results.push(r);
   };
+
+  if(isSportsLookupIntent(q, cat)) {
+    try {
+      const toppsRows = await searchToppsSportsChecklist(q, cat);
+      toppsRows.forEach(add);
+    } catch(e) {}
+  }
 
   if(isPokemonLookupIntent(q, cat)) {
     // Intent signals
@@ -17087,6 +17095,7 @@ function rankQuickLookupResults(results, q, cat){
     if(intent.intents.includes('sports') || qplCategoryKey(cat) === 'sports' || /\b(topps|panini|prizm|rookie|rc|mike trout|lebron|jordan|brady|mahomes|ohtani)\b/i.test(q)) {
       // SCP is primary source for sports — boost it heavily
       const hasSCPResults = rows.some(x => x.source === 'sportscardspro');
+      if(r.source === 'topps_checklist' && key === 'sports') score += 390;
       if(r.source === 'sportscardspro' && key === 'sports') score += 350;
       // PriceCharting is fallback — give it a small boost only when no SCP results exist
       if(key === 'sports' && String(r.source || '').includes('pricecharting')) score += (hasSCPResults ? 0 : 210);
@@ -18213,6 +18222,162 @@ function buildSportsQueryVariants(q){
 // SportsCardsPro/PriceCharting API returns flat cent-based price fields on the product object.
 // Condition IDs: loose=raw/NM, graded=overall slab, condition-17=PSA 10, condition-18=PSA 9
 // All prices are in CENTS — divide by 100 for dollars.
+function isSportsLookupIntent(q = '', cat = ''){
+  if(qplCategoryKey(cat) === 'sports' || qplCategoryKey(cat) === 'graded') return true;
+  return /\b(topps|bowman|panini|prizm|upper deck|fleer|donruss|score|leaf|select|mosaic|chronicles|optic|obsidian|spectra|chrome|heritage|stadium\s*club|finest|allen\s*&?\s*ginter|rookie|rc|auto|autograph|relic|patch|baseball|football|basketball|hockey|soccer|mlb|nfl|nba|nhl|mls|ohtani|trout|griffey|jeter|judge|brady|mahomes|jordan|lebron|curry|wembanyama)\b/i.test(String(q || ''));
+}
+
+function sportsCardNumberFromQuery(q = ''){
+  const text = String(q || '').replace(/\b(19|20)\d{2}\b/g, ' ');
+  const prefixed = text.match(/#\s*([A-Z]{0,5}\d{1,4}[A-Z]{0,4})\b/i);
+  if(prefixed) return prefixed[1].toUpperCase();
+  const plain = text.match(/\b([A-Z]{1,5}\d{1,4}[A-Z]{0,4}|\d{1,4}[A-Z]{0,4})\b/i);
+  return plain ? plain[1].toUpperCase() : '';
+}
+
+function sportsQueryTerms(q = ''){
+  const cardNum = sportsCardNumberFromQuery(q).toLowerCase();
+  let text = String(q || '')
+    .toLowerCase()
+    .replace(/\b(19|20)\d{2}\b/g, ' ');
+  if(cardNum) text = text.replace(new RegExp('(^|\\s)#?' + cardNum.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?=\\s|$)', 'i'), ' ');
+  return text
+    .replace(/[^a-z0-9]+/g, ' ')
+    .split(/\s+/)
+    .filter(t => t.length > 1 && !['topps','card','cards','baseball','football','basketball','hockey','soccer','mlb','nfl','nba','nhl','rc','rookie'].includes(t))
+    .slice(0, 5);
+}
+
+function sportsToppsCardScore(card = {}, q = ''){
+  const hay = toppsNorm([card.year, card.brand, card.product, card.setName, card.releaseName, card.cardNumber, card.player, card.subject, card.team, card.notes, card.section].join(' '));
+  const terms = sportsQueryTerms(q);
+  const queryNum = sportsCardNumberFromQuery(q);
+  let score = 45;
+  if(queryNum) {
+    const cn = String(card.cardNumber || '').replace(/^#/, '').toUpperCase();
+    score += cn === queryNum || cn.replace(/^0+/, '') === queryNum.replace(/^0+/, '') ? 35 : -35;
+  }
+  terms.forEach(t => { if(hay.includes(t)) score += 8; });
+  if(/\brc|rookie\b/i.test(q) && card.flags?.rc) score += 10;
+  if(/\bauto|autograph\b/i.test(q) && card.flags?.auto) score += 10;
+  if(/\brelic|patch\b/i.test(q) && card.flags?.relic) score += 10;
+  if(/\bchrome\b/i.test(q) && /chrome/i.test(card.product || card.setName || '')) score += 8;
+  if(/\bheritage\b/i.test(q) && /heritage/i.test(card.product || card.setName || '')) score += 8;
+  return Math.max(5, Math.min(99, score));
+}
+
+function sportsToppsPriceQuery(card = {}){
+  const player = card.player || card.subject || '';
+  const num = card.cardNumber ? '#' + String(card.cardNumber).replace(/^#/, '') : '';
+  return [card.year, 'Topps', card.product || card.setName, player, num, card.flags?.rc ? 'RC' : '', card.flags?.auto ? 'auto' : '', card.flags?.relic ? 'relic' : ''].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
+}
+
+function sportsToppsCardToQplRow(card = {}, query = ''){
+  const cardName = card.player || card.subject || 'Checklist Card';
+  return {
+    source:'topps_checklist',
+    name:cardName,
+    category:'Sports Cards',
+    set:[card.year, 'Topps', card.product || card.setName].filter(Boolean).join(' '),
+    year:card.year || '',
+    variant:[card.section, card.notes].filter(Boolean).join(' / '),
+    card_number:card.cardNumber || '',
+    condition:'NM',
+    market:0,
+    imageUrl:'',
+    priceSource:'Topps checklist exact candidate',
+    note:'Matched the bulk Topps checklist catalog. PriceCharting/SportsCardsPro guide data loads separately.',
+    confidence:sportsToppsCardScore(card, query),
+    matchWhy:['Topps checklist catalog', card.cardNumber ? 'card #' + card.cardNumber : '', card.team || '', card.flags?.rc ? 'RC' : '', card.flags?.auto ? 'auto' : '', card.flags?.relic ? 'relic' : ''].filter(Boolean),
+    productUrl:'https://www.pricecharting.com/search-products?q=' + encodeURIComponent(sportsToppsPriceQuery(card)),
+    toppsChecklistCard:card,
+    toppsChecklistCardId:card.id || '',
+    pricechartingQuery:sportsToppsPriceQuery(card),
+    raw:card,
+    extraInfo:{ productLine:'Sports Cards', categoryName:'Sports Cards' },
+  };
+}
+
+async function searchToppsSportsChecklist(q, cat = ''){
+  if(!isSportsLookupIntent(q, cat)) return [];
+  const sb = getSupabaseClient();
+  if(!sb) return [];
+  const terms = sportsQueryTerms(q);
+  const queryNum = sportsCardNumberFromQuery(q);
+  const year = (String(q || '').match(/\b(19|20)\d{2}\b/) || [])[0] || '';
+  const seen = new Set();
+  const cards = [];
+  async function runQuery(exactNumber = false){
+    let req = sb.from('topps_checklist_cards')
+      .select('id,set_id,source_id,year,brand,product,sport,set_name,release_name,card_number,player,subject,team,notes,section,flags,parse_confidence,search_text,updated_at')
+      .limit(12)
+      .order('section_sort', { ascending:true })
+      .order('card_number_sort', { ascending:true });
+    if(year) req = req.eq('year', year);
+    if(exactNumber && queryNum) req = req.eq('card_number', queryNum);
+    terms.forEach(t => { req = req.ilike('search_text', '%' + t + '%'); });
+    const { data, error } = await req;
+    if(error) throw error;
+    (data || []).forEach(row => {
+      if(!row?.id || seen.has(row.id)) return;
+      seen.add(row.id);
+      cards.push({
+        id:row.id, setId:row.set_id, sourceId:row.source_id, year:row.year, brand:row.brand, product:row.product, sport:row.sport, setName:row.set_name, releaseName:row.release_name, cardNumber:row.card_number, player:row.player, subject:row.subject, team:row.team, notes:row.notes, section:row.section, flags:row.flags || {}, parseConfidence:Number(row.parse_confidence || 0), searchText:row.search_text || '', updatedAt:row.updated_at,
+      });
+    });
+  }
+  try {
+    await runQuery(!!queryNum);
+    if(cards.length < 8) await runQuery(false);
+  } catch(e) {
+    console.warn('Topps sports checklist lookup skipped', e);
+  }
+  return cards.map(card => sportsToppsCardToQplRow(card, q)).sort((a, b) => Number(b.confidence || 0) - Number(a.confidence || 0)).slice(0, 12);
+}
+
+function pcPriceFromMatch(match = {}){
+  const prices = match.prices || {};
+  return Number(prices.ungraded || prices.loose || prices.grade9 || prices.psa10 || 0) || Number(match['loose-price'] || 0) / 100 || 0;
+}
+
+async function fetchToppsSportsPriceChartingForRow(idx){
+  const r = qplResults[idx];
+  if(!r || r.source !== 'topps_checklist' || r.pricecharting || r.pcLoading) return;
+  r.pcLoading = true;
+  updateQplResultCard(idx);
+  try {
+    const q = r.pricechartingQuery || [r.year, 'Topps', r.set, r.name, r.card_number ? '#' + r.card_number : ''].filter(Boolean).join(' ');
+    const res = await fetch(WORKER + '/pricing/pricecharting/search?' + new URLSearchParams({ q, category:'Sports Cards' }).toString(), { cache:'no-store' });
+    const data = await res.json().catch(() => ({}));
+    const best = (data.matches || data.products || [])[0] || null;
+    if(!res.ok || !best) throw new Error(data.error || 'No PriceCharting match');
+    const price = pcPriceFromMatch(best);
+    const rawImg = best.imageUrl || best['image-url'] || best.image || best.image_url || '';
+    qplResults[idx] = {
+      ...r,
+      market:price || r.market || 0,
+      imageUrl:rawImg ? (/^\/\//.test(rawImg) ? 'https:' + rawImg : /^\//.test(rawImg) ? 'https://www.pricecharting.com' + rawImg : rawImg) : r.imageUrl,
+      priceSource:price ? 'PriceCharting Guide Value' : 'Topps checklist / no guide price',
+      productUrl:best.url || best.productUrl || r.productUrl,
+      pricecharting:best,
+      pcState:price ? 'Guide Value Available' : 'No Guide Value',
+      pcError:'',
+      matchWhy:[...(r.matchWhy || []), 'PriceCharting guide/image'].slice(0, 6),
+    };
+  } catch(e) {
+    qplResults[idx] = { ...r, pcError:e.message || 'PriceCharting unavailable', pcState:'No PriceCharting Match' };
+  } finally {
+    if(qplResults[idx]) qplResults[idx].pcLoading = false;
+    updateQplResultCard(idx);
+  }
+}
+
+function enrichToppsSportsPriceChartingAsync(){
+  qplResults.forEach((r, idx) => {
+    if(r?.source === 'topps_checklist' && !r.pricecharting) setTimeout(() => fetchToppsSportsPriceChartingForRow(idx), 250 + idx * 450);
+  });
+}
+
 function scpCents(p, key){ return Math.round(Number(p[key] || 0)) / 100; }
 
 // Build QPL availableVariants from a raw SCP product object (flat cent fields).
