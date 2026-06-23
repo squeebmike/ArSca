@@ -103,7 +103,7 @@ header{position:sticky;top:0;z-index:100;background:rgba(7,8,10,.96);backdrop-fi
 .topps-set-card,.topps-card-row{background:var(--surf);border:1px solid var(--border);border-radius:8px;padding:12px;cursor:pointer;transition:.15s;}
 .topps-set-card:hover,.topps-card-row:hover{border-color:rgba(0,255,179,.35);background:rgba(0,255,179,.04);}
 .topps-set-card.on{border-color:rgba(255,209,102,.45);background:rgba(255,209,102,.06);}
-.topps-card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px;}
+.topps-card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px;align-items:start;}
 .topps-card-list{display:grid;gap:6px;}
 .topps-card-row{display:grid;grid-template-columns:58px minmax(0,1fr) auto;gap:10px;align-items:center;}
 .topps-placeholder{aspect-ratio:2.5/3.5;border-radius:7px;border:1px solid rgba(255,255,255,.08);background:linear-gradient(145deg,rgba(0,255,179,.08),rgba(255,209,102,.08));display:flex;align-items:center;justify-content:center;text-align:center;font-family:'Orbitron',monospace;font-size:10px;color:var(--g);padding:8px;}
@@ -1352,7 +1352,7 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.23.12-no-layout-shift</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.23.13-price-overlay</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
@@ -1379,7 +1379,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip dev-only" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.23.12-no-layout-shift</div>
+<div class="dsb-chip dev-only" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.23.13-price-overlay</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -26790,18 +26790,20 @@ function toppsRenderCards(){
     const badges = toppsFlagsHtml(c.flags);
     if(TOPPS.view === 'table') {
       return `<div class="topps-card-row" data-card-id="${escHtml(c.id)}" onclick="toppsOpenDetail('${escHtml(c.id)}')">` +
-        `<img class="topps-lazy-img" data-card-id="${escHtml(c.id)}" style="width:44px;height:62px;object-fit:contain;border-radius:4px;background:#050507;flex-shrink:0">` +
+        `<div style="position:relative;width:44px;height:62px;flex-shrink:0;border-radius:4px;background:#050507;overflow:hidden">` +
+          `<img class="topps-lazy-img" data-card-id="${escHtml(c.id)}" style="width:100%;height:100%;object-fit:contain">` +
+        `</div>` +
         `<div style="min-width:0"><div style="font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(c.player || c.subject || 'Checklist Card')}</div><div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml([c.year, c.product, c.team, c.section].filter(Boolean).join(' / '))}</div><div class="topps-badges">${badges}</div></div>` +
-        `<div class="topps-lazy-price" data-card-id="${escHtml(c.id)}" style="font-family:var(--font-mono);font-size:11px;color:var(--g);font-weight:700;white-space:nowrap"></div>` +
-        `<button class="hbtn" style="min-height:30px;font-size:8px;padding:3px 8px" onclick="event.stopPropagation();toppsOpenDetail('${escHtml(c.id)}')">OPEN</button></div>`;
+        `<div class="topps-lazy-price" data-card-id="${escHtml(c.id)}" style="font-family:var(--font-mono);font-size:11px;color:var(--g);font-weight:700;white-space:nowrap;width:56px;text-align:right;flex-shrink:0"></div>` +
+        `<button class="hbtn" style="min-height:30px;font-size:8px;padding:3px 8px;flex-shrink:0" onclick="event.stopPropagation();toppsOpenDetail('${escHtml(c.id)}')">OPEN</button></div>`;
     }
     return `<div class="topps-set-card" data-card-id="${escHtml(c.id)}" onclick="toppsOpenDetail('${escHtml(c.id)}')">` +
-      `<div style="width:100%;height:160px;border-radius:6px;background:#050507;margin-bottom:8px;overflow:hidden;display:flex;align-items:center;justify-content:center">` +
+      `<div style="position:relative;width:100%;height:160px;border-radius:6px;background:#050507;margin-bottom:8px;overflow:hidden">` +
         `<img class="topps-lazy-img" data-card-id="${escHtml(c.id)}" style="width:100%;height:100%;object-fit:contain">` +
+        `<div class="topps-lazy-price" data-card-id="${escHtml(c.id)}" style="position:absolute;bottom:6px;right:8px;font-family:var(--font-mono);font-size:13px;color:var(--g);font-weight:700;text-shadow:0 1px 4px #000a"></div>` +
       `</div>` +
       `<div style="font-family:'Orbitron',monospace;font-size:11px;color:var(--text);line-height:1.25;overflow:hidden;text-overflow:ellipsis">${escHtml(c.player || c.subject || 'Checklist Card')}</div>` +
       `<div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);margin-top:4px">${escHtml([c.team, c.section].filter(Boolean).join(' / '))}</div>` +
-      `<div class="topps-lazy-price" data-card-id="${escHtml(c.id)}" style="font-family:var(--font-mono);font-size:14px;color:var(--g);font-weight:700;margin-top:6px;height:1.4em"></div>` +
       `<div class="topps-badges" style="margin-top:6px">${badges}</div></div>`;
   };
   el.innerHTML = Object.entries(bySection).map(([section, cards]) => `<div style="grid-column:1/-1;font-family:'Orbitron',monospace;font-size:10px;color:var(--gold);letter-spacing:1px;margin:8px 0 2px">${escHtml(section)} <span style="font-family:var(--font-mono);font-size:9px;color:var(--dim)">(${cards.length})</span></div>${cards.map(renderCard).join('')}`).join('');
