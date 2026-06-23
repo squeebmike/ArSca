@@ -16776,6 +16776,7 @@ async function runPriceLookup(){
     renderQuickLookupResults(qplResults);
     pushQuickLookupHistory(q, qplResults[0]);
     if(qplResults.some(r => r.source === 'sportscardspro' && !r.imageUrl)) enrichScpImagesAsync();
+    if(qplResults.some(r => r.source === 'PriceCharting' && !r.imageUrl)) enrichPcImagesAsync();
     if(qplResults.some(r => r.source === 'topps_checklist')) enrichToppsSportsPriceChartingAsync();
     if(wantsPokemon) {
       savePokemonCacheResults(q, qplMasterResults, 'Live Pokemon lookup').then(renderOfflineCachePanel).catch(console.warn);
@@ -18689,6 +18690,26 @@ async function fetchScpImageAsync(idx){
 function enrichScpImagesAsync(){
   qplResults.forEach((r, idx) => {
     if(r && r.source === 'sportscardspro' && !r.imageUrl) fetchScpImageAsync(idx);
+  });
+}
+
+function enrichPcImagesAsync(){
+  qplResults.forEach((r, idx) => {
+    if(r && r.source === 'PriceCharting' && !r.imageUrl && r.pricecharting?.productId) {
+      const pid = r.pricecharting.productId;
+      fetch(WORKER + '/pricing/pricecharting/product/' + encodeURIComponent(pid), { cache:'no-store' })
+        .then(res => res.ok ? res.json() : null)
+        .then(d => {
+          if(!d?.imageUrl) return;
+          if(qplResults[idx]) qplResults[idx].imageUrl = d.imageUrl;
+          const shell = document.querySelector(`[data-qpl-idx="${idx}"] .qpl-img-shell`);
+          if(shell) {
+            const existing = shell.querySelector('img');
+            if(existing) existing.src = d.imageUrl;
+            else shell.insertAdjacentHTML('afterbegin', `<img src="${escHtml(d.imageUrl)}" style="width:100%;height:auto;border-radius:10px" loading="lazy" onerror="this.style.display='none'">`);
+          }
+        }).catch(() => {});
+    }
   });
 }
 
@@ -20876,7 +20897,7 @@ function quickLookupResultCard(r, idx){
           ? [...new Set(r.availableVariants.map(v => v.finish).filter(Boolean))]
           : (r.selectedFinish && r.selectedFinish !== 'normal' ? [r.selectedFinish] : []);
         if(finishes.length < 2) return '';
-        const active = activeFinish || r.selectedFinish || r.finish || '';
+        const active = r.selectedFinish || r.finish || '';
         return `<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:6px">${finishes.map(f => {
           const isAct = normalizeQplFinish(f) === normalizeQplFinish(active);
           return `<button class="qpl-cat-pill${isAct?' active':''}" onclick="updateQplVariant(${idx},{selectedFinish:'${escHtml(f)}'})" style="font-size:9px;padding:4px 8px;min-height:26px">${escHtml(qplFinishLabel(f))}</button>`;
