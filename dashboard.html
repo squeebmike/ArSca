@@ -1352,7 +1352,7 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.23.18-live-pc</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.23.19-img-fix</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
@@ -1379,7 +1379,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.23.18-live-pc</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.23.19-img-fix</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -26915,7 +26915,8 @@ function toppsPcQueries(card = {}){
   ].map(q => q.replace(/\s+/g, ' ').trim()).filter((q, i, arr) => q && arr.indexOf(q) === i);
 }
 function toppsPcMatchScore(match = {}, card = {}){
-  const hay = toppsCleanPcText([match.productName, match['product-name'], match.consoleName, match['console-name'], match.genre].filter(Boolean).join(' ')).toLowerCase();
+  const consoleName = (match.consoleName || match['console-name'] || '').toLowerCase();
+  const hay = toppsCleanPcText([match.productName, match['product-name'], consoleName, match.genre].filter(Boolean).join(' ')).toLowerCase();
   const player = toppsPlayerOnly(card).toLowerCase();
   const num = toppsCleanPcText(card.cardNumber || '').replace(/^#/, '').toLowerCase();
   const year = String(card.year || '').split('-')[0];
@@ -26926,7 +26927,11 @@ function toppsPcMatchScore(match = {}, card = {}){
   if(year && hay.includes(year)) score += 18;
   if(product && product.split(/\s+/).filter(Boolean).some(t => hay.includes(t))) score += 12;
   if(/topps|bowman|chrome|heritage|finest|stadium|archives|ginter/i.test(hay)) score += 10;
-  if(/\b(disney|mickey|donald|goofy|star wars|marvel|funko|pop)\b/i.test(hay)) score -= 160;
+  // Sports consoleName bonus
+  if(/\b(baseball|football|basketball|hockey|soccer|sport[s]?\s*card[s]?)\b/i.test(consoleName)) score += 50;
+  // Hard junk penalties — non-sports categories
+  if(/\b(funko|pop[s]?|disney|mickey|donald|goofy|star\s*wars|marvel|dc\s+comic|lorcana|digimon|yu.?gi.?oh|pok[eé]mon|magic.*(the|commander|battle)|one\s*piece|dragon\s*ball)\b/i.test(hay)) score -= 200;
+  if(/\b(comic[s]?|video\s*game[s]?|lego|music|amiibo|film|movie|television|strategy\s*guide|gaming\s*mag)\b/i.test(consoleName)) score -= 200;
   return score;
 }
 function toppsDetailHtml(card, pcData = null, loadingPc = false){
@@ -26997,6 +27002,15 @@ async function toppsLoadPriceCharting(card){
     }
     const matches = [...seen.values()].sort((a,b) => Number(b._toppsScore || 0) - Number(a._toppsScore || 0));
     const payload = { ok:true, query:queries[0] || '', queries, matches:matches.slice(0, 8), best:matches.find(m => Number(m._toppsScore || 0) >= 90) || null };
+    // Fetch product detail to get imageUrl (PC search API doesn't return images)
+    if(payload.best && !payload.best.imageUrl && payload.best.productId) {
+      try {
+        const detRes = await fetch(WORKER + '/pricing/pricecharting/product/' + encodeURIComponent(payload.best.productId), { cache:'no-store' });
+        const det = await detRes.json().catch(() => ({}));
+        if(det.imageUrl) payload.best.imageUrl = det.imageUrl;
+        if(det.url && !payload.best.url) payload.best.url = det.url;
+      } catch(_) {}
+    }
     TOPPS.pcCache[card.id] = payload;
     if(drawer?.classList.contains('on') && TOPPS.openCardId === card.id) drawer.innerHTML = toppsDetailHtml(card, payload, false);
     pushToGrid(payload.best?.imageUrl || '', payload.best ? toppsPcPrice(payload.best) : 0);
@@ -27026,16 +27040,21 @@ async function toppsLoadParallels(cardId){
       const data = await res.json().catch(() => ({}));
       (data.matches || data.products || []).forEach(m => {
         const name = m.productName || m['product-name'] || '';
+        const consoleName = (m.consoleName || m['console-name'] || '').toLowerCase();
         const nameLower = toppsCleanPcText(name).toLowerCase();
-        // Must contain the player name to be this player's card
+        // Must contain the player name
         if(!player.split(' ').every(t => nameLower.includes(t.toLowerCase()))) return;
+        // Must be a sports card console — reject Funko, comics, games, etc.
+        if(/\b(funko|comic|video.?game|lego|pok[eé]mon|magic|lorcana|digimon|yu.?gi|one.?piece|dragon.?ball|star.?wars|marvel|disney|music|film|amiibo)\b/i.test(consoleName + ' ' + nameLower)) return;
+        if(consoleName && !/\b(baseball|football|basketball|hockey|soccer|sport[s]?)\b/i.test(consoleName)) return;
         const key = m.id || m.productId || name;
         if(!key || seen.has(key)) return;
         const rawImg = m.imageUrl || m['image-url'] || m.image || m.image_url || '';
         const imageUrl = rawImg ? (/^\/\//.test(rawImg) ? 'https:'+rawImg : /^\//.test(rawImg) ? 'https://www.pricecharting.com'+rawImg : rawImg) : '';
         const price = Number(m['loose-price'] || 0) / 100 || Number(m.price || 0) || 0;
-        const url = m.url || (m.id ? 'https://www.pricecharting.com/game/sports-cards/' + m.id : '');
-        seen.set(key, { name, imageUrl, price, url });
+        const productId = String(m.id || m.productId || '');
+        const url = m.url || m['product-url'] || (productId ? 'https://www.pricecharting.com/game/sports-cards/' + productId : '');
+        seen.set(key, { name, imageUrl, price, url, productId });
       });
     }
 
