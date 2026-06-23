@@ -25233,11 +25233,13 @@ function sbSelectCard(idx){
   const card = _sbState.filteredCards[idx];
   if(!card) return;
   closeSetBrowser();
-  const row = pokemonPriceTrackerCardToQplRow(card, card.name || '', null);
-  qplResults = [row, ...qplResults.slice(0, 19)];
-  renderQuickLookupResults(qplResults);
   switchTab('research');
-  setTimeout(() => document.getElementById('register-quick-panel')?.scrollIntoView({ behavior:'smooth', block:'start' }), 150);
+  try {
+    const row = pokemonPriceTrackerCardToQplRow(card, card.name || '', null);
+    qplResults = [row, ...qplResults.slice(0, 19)];
+    renderQuickLookupResults(qplResults);
+    setTimeout(() => document.getElementById('register-quick-panel')?.scrollIntoView({ behavior:'smooth', block:'start' }), 200);
+  } catch(e) { console.error('sbSelectCard error', e); toast_dash('Error selecting card: ' + e.message); }
 }
 
 function sbOpenTcg(idx){
@@ -25813,12 +25815,14 @@ function mtgsbSelectCard(idx){
   const card = _mtgsbState.filteredCards[idx];
   if(!card) return;
   closeMtgSetBrowser();
-  const row = scryfallCardToQplRow(card);
-  if(!row) return;
-  qplResults = [row, ...qplResults.slice(0, 19)];
-  renderQuickLookupResults(qplResults);
   switchTab('research');
-  setTimeout(() => document.getElementById('register-quick-panel')?.scrollIntoView({ behavior:'smooth', block:'start' }), 150);
+  try {
+    const row = scryfallCardToQplRow(card);
+    if(!row) return;
+    qplResults = [row, ...qplResults.slice(0, 19)];
+    renderQuickLookupResults(qplResults);
+    setTimeout(() => document.getElementById('register-quick-panel')?.scrollIntoView({ behavior:'smooth', block:'start' }), 200);
+  } catch(e) { console.error('mtgsbSelectCard error', e); toast_dash('Error selecting card: ' + e.message); }
 }
 
 function mtgsbOpenTcg(idx){
