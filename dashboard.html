@@ -16817,7 +16817,7 @@ async function runPriceLookup(){
     } else {
       el.innerHTML = '<div style="color:var(--red)">Lookup failed: ' + e.message + (e.message?.includes('timed out') ? ' — network may be slow.' : '') + '</div>';
       if(wantsPokemon) setPokemonOfflineBanner('No cached Pokémon data found. Search online to build offline cache.', 'bad');
-      if(wantsMtg) setMtgOfflineBanner('No cached MTG data found. Search online to build offline cache.', 'bad');
+      if(wantsMtg && !navigator.onLine) setMtgOfflineBanner('No cached MTG data found. Search online to build offline cache.', 'bad');
       if(wantsComic) setComicsOfflineBanner('No cached comics data found. Search online to build offline cache.', 'bad');
     }
   }
@@ -25236,7 +25236,8 @@ function sbSelectCard(idx){
   const row = pokemonPriceTrackerCardToQplRow(card, card.name || '', null);
   qplResults = [row, ...qplResults.slice(0, 19)];
   renderQuickLookupResults(qplResults);
-  setTimeout(() => document.getElementById('register-quick-panel')?.scrollIntoView({ behavior:'smooth', block:'start' }), 100);
+  switchTab('research');
+  setTimeout(() => document.getElementById('register-quick-panel')?.scrollIntoView({ behavior:'smooth', block:'start' }), 150);
 }
 
 function sbOpenTcg(idx){
@@ -25816,7 +25817,8 @@ function mtgsbSelectCard(idx){
   if(!row) return;
   qplResults = [row, ...qplResults.slice(0, 19)];
   renderQuickLookupResults(qplResults);
-  setTimeout(() => document.getElementById('register-quick-panel')?.scrollIntoView({ behavior:'smooth', block:'start' }), 100);
+  switchTab('research');
+  setTimeout(() => document.getElementById('register-quick-panel')?.scrollIntoView({ behavior:'smooth', block:'start' }), 150);
 }
 
 function mtgsbOpenTcg(idx){
