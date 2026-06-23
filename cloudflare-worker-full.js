@@ -15,6 +15,9 @@
  *   LBA_KV
  */
 
+// Per-isolate rate limiter for PriceCharting API (no KV needed)
+let _pcLastCall = 0;
+
 const WEBFLOW_BASE = 'https://api.webflow.com/v2';
 const ANTHROPIC_BASE = 'https://api.anthropic.com/v1';
 const SITE_ID = '65b15ee0228d06647ca7e4ce';
@@ -525,49 +528,13 @@ export default {
     }
 
     if (url.pathname === '/offline/cache/manifest') {
-      if (!env.LBA_KV) return json({ ok: false, error: 'LBA_KV binding required for offline cache manifest' }, 501);
-      const categories = ['Pokemon Cards', 'Magic Cards', 'YuGiOh Cards', 'One Piece Cards', 'Lorcana Cards', 'Digimon Cards', 'Dragon Ball Cards', 'Sports Cards'];
-      const pcCategoryKey = c => {
-        const raw = String(c || 'General').trim();
-        const slug = raw.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-        const alias = {
-          'pokemon-card':'Pokemon Cards',
-          'pokemon-cards':'Pokemon Cards',
-          'magic-card':'Magic Cards',
-          'magic-cards':'Magic Cards',
-          'mtg':'Magic Cards',
-          'yugioh-cards':'YuGiOh Cards',
-          'yu-gi-oh-cards':'YuGiOh Cards',
-          'sport-cards':'Sports Cards',
-          'sports-cards':'Sports Cards',
-        }[slug];
-        return alias || raw;
-      };
-      const kvKey = (kind, category) => `pc_csv_${kind}:${pcCategoryKey(category)}`;
-      const priceCharting = {};
-      for (const category of categories) {
-        const meta = await env.LBA_KV.get(kvKey('meta', category), 'json');
-        const manifest = await env.LBA_KV.get(kvKey('manifest', category), 'json');
-        const rows = await env.LBA_KV.get(kvKey('rows', category), 'json');
-        const savedUrl = await env.LBA_KV.get(kvKey('url', category));
-        const configured = !!(meta?.configured || savedUrl);
-        const chunkRowCount = Number(manifest?.cachedRowCount || 0);
-        const legacyRowCount = Array.isArray(rows) ? rows.length : 0;
-        priceCharting[category] = {
-          configured,
-          state: manifest?.syncStatus || meta?.state || (legacyRowCount ? 'synced' : configured ? 'ready' : 'not_configured'),
-          rowCount: chunkRowCount || legacyRowCount || Number(meta?.rowCount || 0),
-          lastSyncedAt: manifest?.lastSuccessfulSync || meta?.lastSyncedAt || meta?.lastSuccessAt || null,
-          cacheKey: manifest?.cacheKey || kvKey('rows', category),
-          manifest: manifest || null,
-        };
-      }
+      // PC CSV KV cache removed — Pokemon/MTG data is downloaded to device directly.
       return json({
         ok: true,
         source: 'walkoff-worker',
-        kv: true,
         generatedAt: new Date().toISOString(),
-        priceCharting,
+        priceCharting: {},
+        note: 'PC CSV KV cache removed. Card data is stored on-device via IndexedDB.',
       });
     }
 
@@ -1824,25 +1791,17 @@ export default {
       };
       async function pcFetch(path, params = {}) {
         const qs = new URLSearchParams({ t: token, ...params });
-        const publicQs = new URLSearchParams(params);
-        const cacheKey = 'pc_api_cache:' + btoa(path + '?' + publicQs.toString()).replace(/=+$/,'').slice(0, 180);
-        const ttl = path.includes('/api/products') ? 60 * 60 * 6 : 60 * 60 * 24;
-        if (env.LBA_KV) {
-          const cached = await env.LBA_KV.get(cacheKey, 'json');
-          if (cached) return { ...cached, _cacheHit: true };
-        }
-        if (env.LBA_KV) {
-          const last = Number(await env.LBA_KV.get('pc_live_last_call') || 0);
-          const now = Date.now();
-          const wait = last ? Math.max(0, 1100 - (now - last)) : 0;
+        // In-process rate limiter — no KV needed, good enough per isolate
+        const now = Date.now();
+        if (_pcLastCall > 0) {
+          const wait = Math.max(0, 1100 - (now - _pcLastCall));
           if (wait > 0) await new Promise(resolve => setTimeout(resolve, wait));
-          await env.LBA_KV.put('pc_live_last_call', String(Date.now()), { expirationTtl: 60 });
         }
+        _pcLastCall = Date.now();
         const res = await fetch(pcUrl(path) + '?' + qs.toString(), { headers: { 'Accept': 'application/json' } });
         const text = await res.text();
         let data; try { data = JSON.parse(text); } catch (_) { data = { raw: text }; }
         if (!res.ok || data.status === 'error') throw new Error(data['error-message'] || data.error || 'PriceCharting ' + res.status);
-        if (env.LBA_KV) await env.LBA_KV.put(cacheKey, JSON.stringify(data), { expirationTtl: ttl });
         return data;
       }
       function parseCsvLine(line) {
@@ -1938,7 +1897,10 @@ export default {
         return matches.slice(0, 25);
       }
       try {
-        if (url.pathname === '/pricing/pricecharting/csv/status') {
+        if (url.pathname.startsWith('/pricing/pricecharting/csv')) {
+          return json({ ok: false, removed: true, error: 'PC CSV KV cache removed. Use /pricing/pricecharting/search for live lookups.' }, 410);
+        }
+        if (false && url.pathname === '/pricing/pricecharting/csv/status') {
           if (!env.LBA_KV) return json({ ok: false, error: 'LBA_KV binding required for CSV cache' }, 501);
           const categories = PC_CSV_CATEGORIES;
           const status = {};
@@ -2295,17 +2257,6 @@ export default {
         if (url.pathname === '/pricing/pricecharting/search') {
           const q = (url.searchParams.get('q') || '').trim();
           if (!q) return json({ ok: false, error: 'q required' }, 400);
-          if (env.LBA_KV && url.searchParams.get('live') !== 'true') {
-            const category = url.searchParams.get('category') || '';
-            const cats = category ? [pcCategoryKey(category)] : PC_CSV_CATEGORIES;
-            let cached = [];
-            for (const cat of cats) {
-              const rows = await env.LBA_KV.get(kvKey('rows', cat), 'json');
-              if (Array.isArray(rows)) cached.push(...csvMatches(rows, q).map(m => ({ ...m, csvCategory: cat })));
-              cached.push(...await chunkedCsvMatches(cat, q));
-            }
-            if (cached.length) return json({ ok: true, source: 'PriceCharting CSV', query: q, products: cached.slice(0, 25), matches: cached.slice(0, 25), cached: true });
-          }
           // Forward console filter to PriceCharting so category-specific searches work
           const consoleFilter = url.searchParams.get('console') || '';
           const apiParams = { q };
