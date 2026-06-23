@@ -1021,6 +1021,10 @@ body.customer-display-mode #customer-display-exit{display:block;}
 .qpl-cat-pill{opacity:.55;transition:opacity .12s,background .12s;}
 .qpl-cat-pill.active{opacity:1;background:rgba(255,255,255,.1);box-shadow:inset 0 0 0 1px rgba(255,255,255,.25);}
 .qpl-cat-pill:hover{opacity:.85;}
+@media(max-width:480px){
+  #qpl-cat-pills .qpl-cat-pill:nth-child(n+5):not(.active){display:none;}
+  #qpl-cat-pills .qpl-cat-pill:nth-child(n+5).active{display:inline-flex;}
+}
 /* ── END PASS A ─────────────────────────────────────────────────── */
 
 /* ── POKÉMON SET BROWSER (Pass B) ───────────────────────────── */
@@ -16779,7 +16783,7 @@ async function runPriceLookup(){
       // immediately visible without requiring a manual GET PRICES click.
       if(navigator.onLine && !pokemonPriceTrackerQuotaBlocked()) {
         const toLoad = [];
-        for(let i = 0; i < qplResults.length && toLoad.length < 3; i++) {
+        for(let i = 0; i < qplResults.length && toLoad.length < 5; i++) {
           if(qplResultCategoryKey(qplResults[i]) === 'pokemon' && !qplResults[i].pokemonPriceTracker?.lookupDebug?.exactHydrated) toLoad.push(i);
         }
         toLoad.forEach((idx, n) => setTimeout(() => loadPricesForResultCard(idx), 400 + n * 700));
@@ -20865,6 +20869,18 @@ function quickLookupResultCard(r, idx){
         ${r.is_parse_title ? `<span class="qpl-badge">PARSED TITLE</span>` : ''}
         ${/^japanese$/i.test(r.language || '') ? `<span class="qpl-badge" style="background:#e63;color:#fff">JAPANESE</span>` : ''}
       </div>
+      <!-- Finish pills (Holofoil / Reverse Holo / Normal / etc.) — only show when >1 finish available -->
+      ${(() => {
+        const finishes = r.availableVariants?.length
+          ? [...new Set(r.availableVariants.map(v => v.finish).filter(Boolean))]
+          : (r.selectedFinish && r.selectedFinish !== 'normal' ? [r.selectedFinish] : []);
+        if(finishes.length < 2) return '';
+        const active = activeFinish || r.selectedFinish || r.finish || '';
+        return `<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:6px">${finishes.map(f => {
+          const isAct = normalizeQplFinish(f) === normalizeQplFinish(active);
+          return `<button class="qpl-cat-pill${isAct?' active':''}" onclick="updateQplVariant(${idx},{selectedFinish:'${escHtml(f)}'})" style="font-size:9px;padding:4px 8px;min-height:26px">${escHtml(qplFinishLabel(f))}</button>`;
+        }).join('')}</div>`;
+      })()}
       <!-- Condition chips — large touch targets -->
       <div class="qpl-condition-chips">${condChips}</div>
       ${qplGradedQuickChips(r, idx)}
