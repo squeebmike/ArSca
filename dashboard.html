@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.06.23.03-sports-topps-research">
+<meta name="version" content="2026.06.23.04-topps-direct-pricecharting">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1352,7 +1352,7 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.23.03-sports-topps-research</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.23.04-topps-direct-pricecharting</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
@@ -1379,7 +1379,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip dev-only" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.23.03-sports-topps-research</div>
+<div class="dsb-chip dev-only" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.23.04-topps-direct-pricecharting</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -2647,7 +2647,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.06.23.03-sports-topps-research';
+const APP_VERSION = '2026.06.23.04-topps-direct-pricecharting';
 window.APP_VERSION = APP_VERSION;
 const branchName = 'pokemon-v2-core';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
@@ -20632,6 +20632,7 @@ function qplGradedQuickChips(r, idx){
 function quickLookupResultCard(r, idx){
   const builtTcgLink = buildTcgExternalLink(r);
   const isComic = qplResultCategoryKey(r) === 'comic';
+  const isSportsResult = qplResultCategoryKey(r) === 'sports' || r.source === 'topps_checklist' || r.source === 'sportscardspro';
   const img = r.imageUrl
     ? `<div class="qpl-img-shell" onclick="openQplImageLightbox(${idx})"${isComic?' style="aspect-ratio:2/3;max-height:220px"':''}><img src="${escHtml(r.imageUrl)}" alt="${escHtml(r.name || 'Card image')}" style="${isComic?'object-fit:cover;width:100%;height:100%':''}" onerror="this.closest('.qpl-img-shell').innerHTML='<div class=qpl-no-img>${isComic?'📖<br>NO COVER':'NO IMAGE'}</div>'"></div>`
     : `<div class="qpl-img-shell"${isComic?' style="aspect-ratio:2/3;max-height:220px;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(199,125,255,.06);border:1px dashed rgba(199,125,255,.3)"':''}><div class="qpl-no-img" style="${isComic?'color:var(--purple);font-size:10px':''}">📖<br>${isComic?'NO COVER YET':'NO IMAGE'}</div></div>`;
@@ -20787,12 +20788,12 @@ function quickLookupResultCard(r, idx){
           <button class="hbtn" style="min-height:56px;font-size:14px;font-weight:800;background:rgba(255,209,102,.12);border-color:rgba(255,209,102,.4);color:var(--gold)" onclick="addQuickLookupToSaleCart(${idx})">ADD TO CART</button>
         </div>
         <!-- SECONDARY actions — 3-col normally, 4-col for Pokemon (adds TCG ↗) -->
-        <div class="qpl-actions-secondary" ${qplResultCategoryKey(r) === 'pokemon' ? 'style="grid-template-columns:1fr 1fr 1fr 1fr"' : ''}>
+        <div class="qpl-actions-secondary" ${qplResultCategoryKey(r) === 'pokemon' || isSportsResult ? 'style="grid-template-columns:1fr 1fr 1fr 1fr"' : ''}>
           ${qplResultCategoryKey(r) === 'pokemon'
             ? (r.pokemonPriceTracker?.lookupDebug?.exactHydrated
                 ? `<button class="hbtn ppt-refresh-btn" data-qpl-idx="${idx}" onclick="refreshLivePriceForCard(${idx})" title="Bypass cache and fetch fresh live pricing">↻ REFRESH</button>`
                 : `<button class="hbtn ppt-get-prices-btn" style="color:var(--blue)" onclick="loadPricesForResultCard(${idx})">GET PRICES</button>`)
-            : `<span></span>`}
+            : isSportsResult ? `<button class="hbtn" style="color:var(--gold)" onclick="openQuickExternal(${idx},'pricecharting')" title="Open exact PriceCharting/SportsCardsPro product when matched">PRICECHARTING</button>` : `<span></span>`}
           <button class="hbtn" onclick="openQplChartModal(${idx})">CHART</button>
           ${qplResultCategoryKey(r) === 'pokemon'
             ? `<button class="hbtn" style="color:var(--blue)" onclick="fetchPopCountForCard(${idx})">POP COUNT</button>`
@@ -20868,7 +20869,8 @@ function openQuickExternal(idx, type){
   }
   const q = [r.year,r.name,r.set,r.card_number ? '#'+r.card_number : ''].filter(Boolean).join(' ');
   if(type === 'pricecharting') {
-    window.open(r.pricecharting?.url || r.productUrl || ('https://www.pricecharting.com/search-products?q=' + encodeURIComponent(q)), '_blank');
+    const exactQ = r.pricechartingQuery || q;
+    window.open(r.pricecharting?.url || r.pricecharting?.productUrl || r.productUrl || ('https://www.pricecharting.com/search-products?q=' + encodeURIComponent(exactQ)), '_blank');
     return;
   }
   window.open('https://www.ebay.com/sch/i.html?_nkw=' + encodeURIComponent(q) + '&LH_Sold=1&LH_Complete=1', '_blank');
@@ -26356,32 +26358,143 @@ async function toppsLoadLocalIndex(){
   return res.json();
 }
 
+function toppsDbSetFromRow(row = {}){
+  return {
+    id:row.id,
+    year:row.year,
+    brand:row.brand,
+    product:row.product,
+    sport:row.sport,
+    setName:row.set_name,
+    releaseName:row.release_name,
+    sourceIds:row.source_ids || [],
+    cardCount:row.card_count || 0,
+    updatedAt:row.updated_at,
+  };
+}
+
+function toppsDbCardFromRow(row = {}){
+  return {
+    id:row.id,
+    setId:row.set_id,
+    sourceId:row.source_id,
+    year:row.year,
+    brand:row.brand,
+    product:row.product,
+    sport:row.sport,
+    setName:row.set_name,
+    releaseName:row.release_name,
+    cardNumber:row.card_number,
+    player:row.player,
+    subject:row.subject,
+    team:row.team,
+    notes:row.notes,
+    section:row.section,
+    flags:row.flags || {},
+    parseConfidence:Number(row.parse_confidence || 0),
+    searchText:row.search_text || '',
+    updatedAt:row.updated_at,
+  };
+}
+
+async function toppsSupabaseSets(limit = 2000){
+  const sb = getSupabaseClient();
+  if(!sb) throw new Error('Supabase client unavailable');
+  const { data, error, count } = await sb
+    .from('topps_sets')
+    .select('id,year,brand,product,sport,set_name,release_name,source_ids,card_count,updated_at', { count:'exact' })
+    .order('year', { ascending:false })
+    .order('product', { ascending:true })
+    .limit(limit);
+  if(error) throw error;
+  return { sets:(data || []).map(toppsDbSetFromRow), total:count || (data || []).length };
+}
+
+async function toppsSupabaseCards(filters = {}, limit = 500){
+  const sb = getSupabaseClient();
+  if(!sb) throw new Error('Supabase client unavailable');
+  let req = sb
+    .from('topps_checklist_cards')
+    .select('id,set_id,source_id,year,brand,product,sport,set_name,release_name,card_number,player,subject,team,notes,section,flags,parse_confidence,search_text,updated_at')
+    .order('section_sort', { ascending:true })
+    .order('section', { ascending:true })
+    .order('card_number_prefix', { ascending:true })
+    .order('card_number_sort', { ascending:true })
+    .order('card_number', { ascending:true })
+    .limit(limit);
+  if(filters.setId) req = req.eq('set_id', filters.setId);
+  if(filters.year) req = req.eq('year', filters.year);
+  if(filters.sport) req = req.eq('sport', filters.sport);
+  if(filters.flag) req = req.eq(`flags->>${filters.flag}`, 'true');
+  if(filters.q) toppsNorm(filters.q).split(/\s+/).filter(Boolean).forEach(t => { req = req.ilike('search_text', '%' + t + '%'); });
+  const { data, error } = await req;
+  if(error) throw error;
+  return { cards:(data || []).map(toppsDbCardFromRow), total:null };
+}
+
+async function toppsSupabaseMeta(){
+  const sb = getSupabaseClient();
+  if(!sb) return {};
+  const { data, error } = await sb
+    .from('topps_import_meta')
+    .select('set_count,card_count,source_count,imported_at,status')
+    .eq('id', 'topps_checklists')
+    .limit(1);
+  if(error) return {};
+  return data?.[0] || {};
+}
+
+async function toppsLoadSupabaseDirect(){
+  const [setsData, cardsData, meta] = await Promise.all([
+    toppsSupabaseSets(2000),
+    toppsSupabaseCards({}, 500),
+    toppsSupabaseMeta(),
+  ]);
+  return {
+    source:'Supabase direct',
+    sets:setsData.sets || [],
+    cards:cardsData.cards || [],
+    totalCards:Number(meta.card_count || cardsData.cards?.length || 0),
+  };
+}
+
 async function toppsRefresh(force = false){
   if(TOPPS.loaded && !force) return;
   const note = document.getElementById('topps-import-note');
   if(note) note.textContent = 'Loading Topps checklist database...';
   try {
-    const [setsData, cardsData] = await Promise.all([toppsWorker('/topps-checklists/sets?limit=2000'), toppsWorker('/topps-checklists/cards?limit=500')]);
-    TOPPS.sets = setsData.sets || [];
-    TOPPS.cards = cardsData.cards || [];
+    const dbData = await toppsLoadSupabaseDirect();
+    TOPPS.sets = dbData.sets || [];
+    TOPPS.cards = dbData.cards || [];
     TOPPS.sources = [];
-    TOPPS.source = 'Supabase catalog';
-    TOPPS.totalCards = cardsData.total || TOPPS.cards.length;
+    TOPPS.source = dbData.source;
+    TOPPS.totalCards = dbData.totalCards || TOPPS.cards.length;
     TOPPS.loaded = true;
     if(note) note.textContent = `${TOPPS.source} loaded. ${TOPPS.totalCards.toLocaleString()} cards indexed. Filters search the full database.`;
   } catch(e) {
     try {
-      const local = await toppsLoadLocalIndex();
-      TOPPS.sets = local.sets || [];
-      TOPPS.cards = local.cards || [];
-      TOPPS.sources = local.sources || [];
-      TOPPS.source = 'Local sample JSON';
-      TOPPS.totalCards = TOPPS.cards.length;
+      const [setsData, cardsData] = await Promise.all([toppsWorker('/topps-checklists/sets?limit=2000'), toppsWorker('/topps-checklists/cards?limit=500')]);
+      TOPPS.sets = setsData.sets || [];
+      TOPPS.cards = cardsData.cards || [];
+      TOPPS.sources = [];
+      TOPPS.source = 'Worker Supabase';
+      TOPPS.totalCards = cardsData.total || TOPPS.cards.length;
       TOPPS.loaded = true;
-      if(note) note.textContent = `Local sample loaded: ${TOPPS.sources.length} PDFs. Run npm.cmd run topps:import for full batch, then publish to Worker.`;
+      if(note) note.textContent = `${TOPPS.source} loaded. ${TOPPS.totalCards.toLocaleString()} cards indexed.`;
     } catch(e2) {
-      if(note) note.textContent = 'Topps checklist data unavailable: ' + (e2.message || e.message || e2);
-      TOPPS.loaded = false;
+      try {
+        const local = await toppsLoadLocalIndex();
+        TOPPS.sets = local.sets || [];
+        TOPPS.cards = local.cards || [];
+        TOPPS.sources = local.sources || [];
+        TOPPS.source = 'Local sample JSON';
+        TOPPS.totalCards = TOPPS.cards.length;
+        TOPPS.loaded = true;
+        if(note) note.textContent = `Local sample loaded: ${TOPPS.sources.length} PDFs. Supabase/Worker unavailable: ${e.message || e2.message || e2}`;
+      } catch(e3) {
+        if(note) note.textContent = 'Topps checklist data unavailable: ' + (e3.message || e2.message || e.message || e3);
+        TOPPS.loaded = false;
+      }
     }
   }
   toppsPopulateFilters();
@@ -26426,7 +26539,12 @@ function toppsSetMatches(s, f){
   return true;
 }
 function toppsApplyFilters(){
-  if(TOPPS.source === 'Worker KV') {
+  if(TOPPS.source === 'Supabase direct') {
+    clearTimeout(TOPPS.filterTimer);
+    TOPPS.filterTimer = setTimeout(toppsApplySupabaseFilters, 180);
+    return;
+  }
+  if(TOPPS.source === 'Worker KV' || TOPPS.source === 'Worker Supabase') {
     clearTimeout(TOPPS.filterTimer);
     TOPPS.filterTimer = setTimeout(toppsApplyWorkerFilters, 180);
     return;
@@ -26436,6 +26554,31 @@ function toppsApplyFilters(){
   TOPPS.filteredCards = TOPPS.cards.filter(c => toppsCardMatches(c, f)).slice(0, 500);
   toppsRender();
 }
+
+async function toppsApplySupabaseFilters(){
+  const seq = ++TOPPS.filterSeq;
+  const f = toppsCurrentFilters();
+  TOPPS.filteredSets = TOPPS.sets.filter(s => toppsSetMatches(s, f));
+  TOPPS.cardsLoading = true;
+  toppsRender();
+  try {
+    const data = await toppsSupabaseCards(f, 500);
+    if(seq !== TOPPS.filterSeq) return;
+    TOPPS.filteredCards = data.cards || [];
+    TOPPS.totalCards = data.total ?? TOPPS.totalCards;
+  } catch(e) {
+    if(seq !== TOPPS.filterSeq) return;
+    TOPPS.filteredCards = [];
+    const note = document.getElementById('topps-import-note');
+    if(note) note.textContent = 'Supabase Topps filter failed: ' + (e.message || e);
+  } finally {
+    if(seq === TOPPS.filterSeq) {
+      TOPPS.cardsLoading = false;
+      toppsRender();
+    }
+  }
+}
+
 async function toppsApplyWorkerFilters(){
   const seq = ++TOPPS.filterSeq;
   const f = toppsCurrentFilters();
