@@ -1017,6 +1017,10 @@ body.customer-display-mode #customer-display-exit{display:block;}
   .row-act-v2{gap:6px;}
   .rab{min-height:48px;}
 }
+/* Category pills */
+.qpl-cat-pill{opacity:.55;transition:opacity .12s,background .12s;}
+.qpl-cat-pill.active{opacity:1;background:rgba(255,255,255,.1);box-shadow:inset 0 0 0 1px rgba(255,255,255,.25);}
+.qpl-cat-pill:hover{opacity:.85;}
 /* ── END PASS A ─────────────────────────────────────────────────── */
 
 /* ── POKÉMON SET BROWSER (Pass B) ───────────────────────────── */
@@ -1352,7 +1356,7 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.23.22-comic-fix</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.23.23-qol</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
@@ -1379,7 +1383,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.23.22-comic-fix</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.23.23-qol</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -1690,23 +1694,33 @@ body.show-mode .inv-sync-badge{display:none;}
         <input class="tsi" id="qpl-input" placeholder="e.g. 2021 Umbreon VMAX Evolving Skies..." style="flex:1;margin-bottom:0;font-size:12px;padding:10px 14px" oninput="debouncePriceLookup()" onkeydown="if(event.key==='Enter')runPriceLookup()">
         <button class="hbtn" title="Speak search" aria-label="Voice price search" onclick="startVoiceInput('qpl-input', runPriceLookup)" style="width:54px;padding:0">MIC</button>
       </div>
-      <div id="qpl-ctrl-row" style="display:flex;gap:6px;margin-bottom:10px">
-        <select id="qpl-cat" onchange="handleQplCategoryChange()" style="flex:1;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:6px 8px;border-radius:6px;font-family:var(--font-mono);font-size:10px">
-          <option value="">Any Category</option>
-          <option value="Pokemon TCG">Pokemon TCG</option>
-          <option value="Magic: The Gathering">Magic: The Gathering</option>
-          <option value="Sports Card">Sports Card</option>
-          <option value="Yu-Gi-Oh!">Yu-Gi-Oh!</option>
-          <option value="Comic">Comic</option>
-          <option value="Sealed">Sealed / Packs</option>
-          <option value="Graded">Graded Slab</option>
-          <option value="Video Games">Video Games</option>
-          <option value="Funko Pops">Funko Pops</option>
-          <option value="LEGO Sets">LEGO Sets</option>
-          <option value="Collectibles">Collectibles</option>
-        </select>
+      <!-- hidden select keeps all existing JS working unchanged -->
+      <select id="qpl-cat" onchange="handleQplCategoryChange()" style="display:none">
+        <option value="">Any Category</option>
+        <option value="Pokemon TCG">Pokemon TCG</option>
+        <option value="Magic: The Gathering">Magic: The Gathering</option>
+        <option value="Sports Card">Sports Card</option>
+        <option value="Yu-Gi-Oh!">Yu-Gi-Oh!</option>
+        <option value="Comic">Comic</option>
+        <option value="Sealed">Sealed / Packs</option>
+        <option value="Graded">Graded Slab</option>
+        <option value="Video Games">Video Games</option>
+        <option value="Funko Pops">Funko Pops</option>
+        <option value="LEGO Sets">LEGO Sets</option>
+        <option value="Collectibles">Collectibles</option>
+      </select>
+      <div id="qpl-ctrl-row" style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap">
+        <div id="qpl-cat-pills" style="display:flex;gap:4px;flex-wrap:wrap;flex:1">
+          <button class="hbtn qpl-cat-pill active" data-cat="" onclick="setQplCategory(this)" style="font-size:9px;padding:4px 8px;min-height:28px">ALL</button>
+          <button class="hbtn qpl-cat-pill" data-cat="Pokemon TCG" onclick="setQplCategory(this)" style="font-size:9px;padding:4px 8px;min-height:28px;color:var(--gold)">POKEMON</button>
+          <button class="hbtn qpl-cat-pill" data-cat="Magic: The Gathering" onclick="setQplCategory(this)" style="font-size:9px;padding:4px 8px;min-height:28px;color:#5ba3f5">MTG</button>
+          <button class="hbtn qpl-cat-pill" data-cat="Sports Card" onclick="setQplCategory(this)" style="font-size:9px;padding:4px 8px;min-height:28px;color:var(--g)">SPORTS</button>
+          <button class="hbtn qpl-cat-pill" data-cat="Comic" onclick="setQplCategory(this)" style="font-size:9px;padding:4px 8px;min-height:28px;color:var(--purple)">COMICS</button>
+          <button class="hbtn qpl-cat-pill" data-cat="Graded" onclick="setQplCategory(this)" style="font-size:9px;padding:4px 8px;min-height:28px">GRADED</button>
+          <button class="hbtn qpl-cat-pill" data-cat="Video Games" onclick="setQplCategory(this)" style="font-size:9px;padding:4px 8px;min-height:28px">GAMES</button>
+          <button class="hbtn qpl-cat-pill" data-cat="Funko Pops" onclick="setQplCategory(this)" style="font-size:9px;padding:4px 8px;min-height:28px">FUNKO</button>
+        </div>
         <button class="hbtn" onclick="runPriceLookup()" style="white-space:nowrap">LOOK UP</button>
-        <button class="hbtn" onclick="importScannerQueueToResearch()" style="white-space:nowrap">IMPORT SCANS</button>
         <button class="hbtn" onclick="clearResearchLookup()" style="white-space:nowrap">CLEAR</button>
       </div>
       <div id="pokemon-offline-banner" class="pokemon-offline-banner"></div>
@@ -4555,6 +4569,10 @@ function applyResearchDefaultCategory(){
     if(last != null) value = last;
   }
   if(value && [...sel.options].some(o => o.value === value)) sel.value = value;
+  // Sync pill active state to restored category
+  document.querySelectorAll('.qpl-cat-pill').forEach(b => b.classList.toggle('active', b.dataset.cat === (sel.value || '')));
+  // Kick off background catalog auto-refresh (silently, 5s after load to avoid blocking startup)
+  setTimeout(autoRefreshStaleCatalogs, 5000);
 }
 function saveResearchSettingsFromForm(){
   const cat = document.getElementById('research-default-category')?.value || '';
@@ -4806,7 +4824,6 @@ function organizeRegisterLayout(){
   ensureResearchSettingsPanel(backoffice);
   ensurePriceChartingDataPanel(backoffice);
   ensureOfflineCachePanel(backoffice);
-  ensurePokemonExportPanel(backoffice);
   ensureOfflineCatalogManagerPanel(backoffice);
   ensurePricingQaPanel(backoffice);
   ensureStoreMembersPanel(backoffice);
@@ -5230,17 +5247,11 @@ async function renderOfflineCachePanel(status = ''){
       <div style="font-family:monospace;font-size:10px;color:var(--dim)">Loading image catalog…</div>
     </div>
 
-    <!-- ── Offline Queue ── -->
-    <div style="margin-top:14px;border-top:1px solid var(--border);padding-top:12px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-        <div style="font-family:'Orbitron',monospace;color:${s.pendingQueueCount ? 'var(--gold)' : 'var(--dim)'};font-size:10px;letter-spacing:.05em">OFFLINE QUEUE &nbsp;<span style="font-size:9px;font-family:monospace">${s.pendingQueueCount} pending</span></div>
-        <div style="display:flex;gap:6px">
-          <button class="hbtn" style="min-height:26px;font-size:9px" onclick="retryAllSyncQueue().then(()=>renderOfflineCachePanel())">RETRY ALL</button>
-          <button class="hbtn danger" style="min-height:26px;font-size:9px" onclick="clearCompletedSyncQueue();renderOfflineCachePanel()">CLEAR DONE</button>
-        </div>
-      </div>
-      <div style="display:grid;gap:6px;font-family:monospace;font-size:10px;color:var(--dim)">${queueRows}</div>
-    </div>
+    <!-- ── Offline Queue (summary; full queue in SYNC QUEUE panel below) ── -->
+    ${s.pendingQueueCount ? `<div style="margin-top:12px;padding:8px 10px;background:rgba(255,209,102,.06);border:1px solid rgba(255,209,102,.25);border-radius:8px;font-family:monospace;font-size:10px;color:var(--gold);display:flex;justify-content:space-between;align-items:center">
+      <span>${s.pendingQueueCount} item${s.pendingQueueCount!==1?'s':''} pending in offline queue</span>
+      <button class="hbtn" style="min-height:26px;font-size:9px" onclick="retryAllSyncQueue().then(()=>renderOfflineCachePanel())">RETRY ALL</button>
+    </div>` : ''}
 
     <!-- ── Cache Management ── -->
     <div style="margin-top:14px;border-top:1px dashed rgba(255,77,109,.3);padding-top:12px">
@@ -6229,7 +6240,7 @@ function renderPriceChartingDataPanel(status = null){
         <div style="font-size:9px;color:var(--dim);margin-top:4px">${lastAt ? `${rowCount.toLocaleString()} rows - ${new Date(lastAt).toLocaleString()}` : (configured ? 'Configured, not synced' : 'No cache yet')}</div>
       </label>
       <div style="font-family:monospace;font-size:8px;color:${configured?'var(--g)':'var(--gold)'};align-self:center">${configured ? 'Configured: ' + escHtml(urlPreview || 'saved in Worker') : 'Paste full download-custom URL here'}</div>
-      <input id="pc-csv-url-${escHtml(cat)}" class="tsi" placeholder="PriceCharting CSV download URL (saved in Worker/KV on sync)" value="${escHtml(urls[cat] || '')}">
+      <input id="pc-csv-url-${escHtml(cat)}" class="tsi" placeholder="PriceCharting CSV download URL" value="${escHtml(urls[cat] || '')}">
       <button class="hbtn" onclick="testPriceChartingCsv('${escHtml(cat)}')">TEST URL</button>
       <button class="hbtn" onclick="syncPriceChartingCsv('${escHtml(cat)}')">SYNC NOW</button>
       <button class="hbtn" onclick="clearPriceChartingCsvCache('${escHtml(cat)}')">CLEAR</button>
@@ -6237,8 +6248,7 @@ function renderPriceChartingDataPanel(status = null){
   }).join('');
   body.innerHTML = `
     <div style="font-family:monospace;font-size:10px;color:var(--dim);line-height:1.55;margin-bottom:10px">
-      Browser-based sync downloads and parses PriceCharting CSV files on this device, then uploads safe chunks to Worker/KV. The Worker no longer tries to fetch or parse giant CSV files in one request.
-      Failed syncs preserve the last successful cache for offline show mode.
+      Sports card prices come live from PriceCharting — no CSV sync needed. Configure your PriceCharting CSV download URLs below if you want to use them for Comics, Video Games, Funko, or other categories that PriceCharting covers.
     </div>
     <div class="item-metric" style="margin-bottom:12px">
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px;align-items:end">
@@ -16095,6 +16105,27 @@ function normalizePptExportRow(row, type){
   return base;
 }
 
+// Silently refresh stale offline catalogs in the background (no UI feedback unless triggered manually)
+async function autoRefreshStaleCatalogs(){
+  if(!navigator.onLine) return;
+  const MS_24H = 24 * 60 * 60 * 1000;
+  const MS_7D  = 7  * 24 * 60 * 60 * 1000;
+  try {
+    // Pokemon cards catalog — refresh if >24h old and not already downloading
+    const cardsMeta = await catalogDbGet('meta', 'export_cards').catch(() => null);
+    const cardsAge  = cardsMeta?.downloadedAt ? Date.now() - new Date(cardsMeta.downloadedAt).getTime() : Infinity;
+    if(cardsAge > MS_24H && localStorage.getItem('ppt_export_cards_status') !== 'downloading') {
+      downloadPokemonExport('cards').catch(console.warn);
+    }
+    // MTG Scryfall bulk catalog — refresh if >7d old and not already downloading
+    const mtg = await mtgCatalogCounts().catch(() => ({ meta:{} }));
+    const mtgAge = mtg.meta?.downloadedAt ? Date.now() - new Date(mtg.meta.downloadedAt).getTime() : Infinity;
+    if(mtgAge > MS_7D && localStorage.getItem('mtg_bulk_status') !== 'downloading') {
+      downloadMtgBulkCatalog().catch(console.warn);
+    }
+  } catch(e) { /* silent */ }
+}
+
 async function downloadPokemonExport(type){
   const storeId = getActiveStoreId();
   const statusKey = `ppt_export_${type}_status`;
@@ -20154,6 +20185,14 @@ function filterQplMasterResults(results, cat){
     .filter(r => r.closestStrictFallback || qplStrictAllows(r, strict, true));
 }
 
+function setQplCategory(btn){
+  const cat = btn?.dataset?.cat ?? '';
+  const sel = document.getElementById('qpl-cat');
+  if(sel) sel.value = cat;
+  document.querySelectorAll('.qpl-cat-pill').forEach(b => b.classList.toggle('active', b.dataset.cat === cat));
+  handleQplCategoryChange();
+}
+
 function handleQplCategoryChange(){
   const q = document.getElementById('qpl-input')?.value.trim() || qplLastSearch || '';
   const cat = document.getElementById('qpl-cat')?.value || '';
@@ -20173,6 +20212,8 @@ function handleQplCategoryChange(){
     : isMtg ? 'e.g. Black Lotus, Lightning Bolt, Counterspell…'
     : 'e.g. 2021 Umbreon VMAX Evolving Skies…';
   if(getResearchSettings().rememberLastCategory) localStorage.setItem('qpl_last_category', cat);
+  // Sync pill active state when category is set programmatically
+  document.querySelectorAll('.qpl-cat-pill').forEach(b => b.classList.toggle('active', b.dataset.cat === cat));
   if(!qplMasterResults.length) {
     const el = document.getElementById('qpl-result');
     if(q && el) el.innerHTML = `<div style="color:var(--gold);line-height:1.6">Category changed to ${escHtml(cat || 'Any Category')}. Press LOOK UP to search this category.</div>`;
@@ -21548,7 +21589,7 @@ async function selectQuickLookupResult(idx){
   const cat = normalizeQuickCategory(r.category);
   el.innerHTML = `<div class="qpl-selected-card" data-qpl-idx="${idx}">
     <div class="qpl-selected-top">
-      ${r.imageUrl ? `<img src="${escHtml(r.imageUrl)}" onclick="openQplImageLightbox(${idx})" alt="${escHtml(r.name || 'Selected item')}">` : '<div class="qpl-img-shell"><div class="qpl-no-img">NO IMAGE</div></div>'}
+      ${r.imageUrl ? `<img src="${escHtml(r.imageUrl)}" onclick="openQplImageLightbox(${idx})" alt="${escHtml(r.name || 'Selected item')}" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'qpl-img-shell',innerHTML:'<div class=qpl-no-img>NO IMAGE</div>'}))">` : '<div class="qpl-img-shell"><div class="qpl-no-img">NO IMAGE</div></div>'}
       <div>
         <div style="color:var(--gold);font-weight:800;font-size:13px;margin-bottom:8px">SELECTED PRINTING</div>
         <div class="qpl-title">${escHtml(r.name)}</div>
