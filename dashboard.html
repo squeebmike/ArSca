@@ -1352,7 +1352,7 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.23.06-sports-exact-match</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.23.07-sets-tab-supabase</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
@@ -1379,7 +1379,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip dev-only" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.23.06-sports-exact-match</div>
+<div class="dsb-chip dev-only" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.23.07-sets-tab-supabase</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -2046,12 +2046,26 @@ body.show-mode .inv-sync-badge{display:none;}
       </main>
     </div>
   </div>
-  <!-- SET BROWSER -->
-  <div id="set-browser-panel" class="panel" style="margin:0 0 14px;max-width:1200px">
-    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px">
+  <div id="research-panels" class="research-grid queue-hidden">
+    <div class="panel" id="research-queue-panel" style="display:none">
+      <!-- kept in DOM for backward compatibility, content moved to drawer -->
+    </div>
+    <div class="panel" id="research-actions-panel" aria-hidden="true">
+      <div class="ph">ITEM ACTIONS</div>
+      <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);line-height:1.55">Select an item to see actions.</div>
+      <div id="research-action-status" style="font-family:var(--font-mono);font-size:10px;color:var(--dim);margin-top:12px;line-height:1.45"></div>
+    </div>
+  </div>
+</div>
+
+
+<!-- SETS TAB -->
+<div id="tab-sets" class="tab-panel">
+  <div id="set-browser-panel" style="max-width:1400px;margin:0 auto;padding:0 20px">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin:14px 0 12px">
       <div class="ph" style="margin:0">TOPPS SET BROWSER</div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
-        <input id="sb-set-search" placeholder="Search sets…" oninput="sbFilterCatalog()" style="font-family:var(--font-mono);font-size:10px;background:var(--surf2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:4px 10px;width:150px">
+        <input id="sb-set-search" placeholder="Search sets…" oninput="sbFilterCatalog()" style="font-family:var(--font-mono);font-size:10px;background:var(--surf2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:4px 10px;width:180px">
         <button class="hbtn" id="sb-test-btn" onclick="sbRunTest()" style="font-size:10px;padding:4px 10px" title="Test import on 5 sets first">🧪 TEST 5</button>
         <button class="hbtn" id="sb-sync-btn" onclick="sbSyncAll()" style="font-size:10px;padding:4px 12px" title="Import all checklists from Topps">⬇ SYNC ALL</button>
       </div>
@@ -2099,19 +2113,7 @@ body.show-mode .inv-sync-badge{display:none;}
       </div>
     </div>
   </div>
-
-  <div id="research-panels" class="research-grid queue-hidden">
-    <div class="panel" id="research-queue-panel" style="display:none">
-      <!-- kept in DOM for backward compatibility, content moved to drawer -->
-    </div>
-    <div class="panel" id="research-actions-panel" aria-hidden="true">
-      <div class="ph">ITEM ACTIONS</div>
-      <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);line-height:1.55">Select an item to see actions.</div>
-      <div id="research-action-status" style="font-family:var(--font-mono);font-size:10px;color:var(--dim);margin-top:12px;line-height:1.45"></div>
-    </div>
-  </div>
 </div>
-
 
 <!-- BACK OFFICE TAB -->
 <div id="tab-backoffice" class="tab-panel">
@@ -2784,7 +2786,7 @@ function roleCanAccessTab(tab){
   const role = currentRole();
   if(role === 'owner' || role === 'admin') return true;
   if(role === 'manager') return !['backoffice'].includes(tab);
-  if(role === 'employee') return ['overview','display','inventory','research','pos','alerts','wantlist','locations','restock'].includes(tab);
+  if(role === 'employee') return ['overview','display','inventory','research','pos','alerts','wantlist','locations','restock','sets'].includes(tab);
   if(role === 'scanner_only') return false;
   return false;
 }
@@ -3694,6 +3696,7 @@ const DAILY_TABS = [
   ['intake', 'BUY'],
   ['display', 'SELL'],
   ['inventory', 'INVENTORY'],
+  ['sets', 'SETS'],
   ['shows', 'SHOWS'],
 ];
 const MORE_TABS = [
@@ -25823,21 +25826,40 @@ async function sbInit() {
   const grid = document.getElementById('sb-catalog-grid');
   if (grid) grid.innerHTML = '<div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);grid-column:1/-1">Loading Topps catalog…</div>';
   try {
-    // Use fetch-catalog which tries to scrape topps.com live, falls back to hardcoded
-    const catData = await sbWorker('/topps/fetch-catalog');
-    SB.catalog = catData.catalog || [];
-    SB.source = catData.source || 'hardcoded';
-    // sets index is already merged into catalog entries
-    SB.sets = SB.catalog.filter(c => c.imported).map(c => c._meta || c);
+    // Load catalog from worker (hardcoded + live Topps page)
+    const [catData, importedData] = await Promise.all([
+      sbWorker('/topps/fetch-catalog'),
+      sbLoadImportedFromSupabase(),
+    ]);
+    const importedMap = {};
+    (importedData || []).forEach(s => { importedMap[s.id || s.slug] = s; });
+
+    SB.catalog = (catData.catalog || []).map(s => ({
+      ...s,
+      imported: !!(importedMap[s.slug]),
+      _meta: importedMap[s.slug] || null,
+    }));
+    SB.sets = SB.catalog.filter(c => c.imported);
     sbFilterCatalog();
-    const src = SB.source === 'live' ? '✓ Live from Topps' : 'Catalog loaded';
     const count = SB.catalog.length;
     const imported = SB.catalog.filter(c => c.imported).length;
-    sbSetSyncStatus(`${src} · ${count} sets · ${imported} imported`, false);
+    sbSetSyncStatus(`${count} sets · ${imported} imported`, false);
     setTimeout(() => { const s = document.getElementById('sb-sync-status'); if (s) s.style.display = 'none'; }, 3000);
   } catch(e) {
-    if (grid) grid.innerHTML = '<div style="font-family:var(--font-mono);font-size:10px;color:var(--r);grid-column:1/-1">Could not load — Worker unreachable</div>';
+    if (grid) grid.innerHTML = `<div style="font-family:var(--font-mono);font-size:10px;color:var(--r);grid-column:1/-1">Could not load: ${e.message}</div>`;
   }
+}
+
+async function sbLoadImportedFromSupabase() {
+  if (!supabaseClient) return [];
+  try {
+    const { data, error } = await supabaseClient
+      .from('topps_sets')
+      .select('id, set_name, year, sport, brand, product, card_count, updated_at')
+      .order('year', { ascending: false });
+    if (error) return [];
+    return (data || []).map(s => ({ slug: s.id, name: s.set_name, year: s.year, sport: s.sport, brand: s.brand, cardCount: s.card_count }));
+  } catch { return []; }
 }
 
 // ── Filter chips builder ───────────────────────────────────────────────────────
@@ -26126,14 +26148,14 @@ function sbSetSyncStatus(msg, spinner) {
 async function sbDeleteSet(slug, name) {
   if (!confirm(`Remove "${name}" checklist data?`)) return;
   try {
-    const d = await sbWorker(`/sets/${slug}`, { method: 'DELETE' });
-    if (d.ok) {
-      toast_dash(`Removed ${name}`, 3000);
-      SB.sets = SB.sets.filter(s => s.slug !== slug);
-      SB.catalog.forEach(c => { if (c.slug === slug) { c.imported = false; delete c._meta; } });
-      SB.catalog = SB.catalog.filter(c => !(c._custom && c.slug === slug));
-      sbFilterCatalog();
-    } else toast_dash('Delete failed: ' + (d.error || 'error'), 4000);
+    if (supabaseClient) {
+      const { error } = await supabaseClient.from('topps_checklist_cards').delete().eq('set_id', slug);
+      if (!error) await supabaseClient.from('topps_sets').delete().eq('id', slug);
+    }
+    toast_dash(`Removed ${name}`, 3000);
+    SB.sets = SB.sets.filter(s => s.slug !== slug);
+    SB.catalog.forEach(c => { if (c.slug === slug) { c.imported = false; delete c._meta; } });
+    sbFilterCatalog();
   } catch(e) { toast_dash('Delete error: ' + e.message, 4000); }
 }
 
@@ -26143,9 +26165,8 @@ async function sbOpenSet(slug) {
   SB._fetchGen = (SB._fetchGen || 0) + 1;
   document.getElementById('sb-card-browser').style.display = 'block';
   document.getElementById('sb-catalog-grid').style.display = 'none';
-  // Also hide filter chips and search
-  document.getElementById('sb-sport-chips')?.closest('div[style*="border-bottom"]') && (document.getElementById('sb-sport-chips').closest('div[style*="border-bottom"]').style.display = 'none');
-  document.getElementById('sb-set-search')?.closest('div[style*="margin-bottom:10px"]') && null;
+  const filterBar = document.getElementById('sb-sport-chips')?.closest('div[style*="border-bottom"]');
+  if (filterBar) filterBar.style.display = 'none';
 
   const meta = SB.catalog.find(s => s.slug === slug) || SB.sets.find(s => s.slug === slug) || {};
   document.getElementById('sb-set-title').textContent = meta.name || slug;
@@ -26153,17 +26174,42 @@ async function sbOpenSet(slug) {
   document.getElementById('sb-card-search').value = '';
   document.getElementById('sb-card-list').innerHTML = '<div style="font-family:var(--font-mono);font-size:10px;color:var(--dim)">Loading…</div>';
   document.getElementById('sb-price-drawer').style.display = 'none';
+  document.getElementById('sb-parallels-bar').style.display = 'none';
 
   try {
-    const data = await sbWorker(`/sets/${slug}`);
-    SB.currentData = data;
-    // Show parallels bar
-    if (data.parallels?.length) {
-      const pb = document.getElementById('sb-parallels-bar');
-      pb.style.display = 'block';
-      pb.innerHTML = '<span style="color:var(--text);font-weight:700">PARALLELS: </span>' +
-        data.parallels.map(p => `<span style="margin-right:10px">${escHtml(p)}</span>`).join('');
+    // Load all cards for this set from Supabase
+    const { data: cards, error } = await supabaseClient
+      .from('topps_checklist_cards')
+      .select('id,card_number,card_number_sort,player,team,section,section_sort,notes,flags,set_name')
+      .eq('set_id', slug)
+      .order('section_sort', { ascending: true })
+      .order('card_number_sort', { ascending: true });
+
+    if (error) throw new Error(error.message);
+
+    // Group into KV-compatible structure for reuse by sbLoadCards
+    const base_set = { cards: [] };
+    const insert_sets = [], autograph_sets = [], memorabilia_sets = [];
+    const sectionMap = {};
+
+    for (const c of (cards || [])) {
+      const card = { number: c.card_number, player: c.player, team: c.team, note: c.notes, rc: !!c.flags?.rc, setName: c.set_name || '' };
+      const sec = (c.section || 'base').toLowerCase();
+      if (sec === 'base' || sec === 'checklist') {
+        base_set.cards.push(card);
+      } else {
+        const key = sec + ':' + (c.set_name || sec);
+        if (!sectionMap[key]) {
+          sectionMap[key] = { name: c.set_name || c.section, cards: [] };
+          if (sec === 'autographs' || sec === 'autograph') autograph_sets.push(sectionMap[key]);
+          else if (sec === 'memorabilia' || sec === 'relic') memorabilia_sets.push(sectionMap[key]);
+          else insert_sets.push(sectionMap[key]);
+        }
+        sectionMap[key].cards.push(card);
+      }
     }
+
+    SB.currentData = { slug, base_set, insert_sets, autograph_sets, memorabilia_sets, parallels: [] };
     sbLoadCards();
   } catch(e) {
     document.getElementById('sb-card-list').innerHTML =
@@ -26412,17 +26458,17 @@ function sbCloseModal() {
 
 
 
-// Auto-init when research tab is opened
+// Auto-init when sets tab is opened
 (function sbSetupInit() {
   const origSwitch = window.switchTab;
   window.switchTab = function(id, btn) {
     if (typeof origSwitch === 'function') origSwitch(id, btn);
-    if (id === 'research' && !SB._initialized) {
+    if (id === 'sets' && !SB._initialized) {
       SB._initialized = true;
       sbInit();
     }
   };
-  if (document.getElementById('tab-research')?.classList.contains('active')) {
+  if (document.getElementById('tab-sets')?.classList.contains('active')) {
     SB._initialized = true;
     sbInit();
   }
