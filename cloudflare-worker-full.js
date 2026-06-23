@@ -451,7 +451,7 @@ export default {
     if (request.method === 'OPTIONS') {
       return new Response(null, { status: 204, headers: CORS });
     }
-
+    try {
     const url = new URL(request.url);
 
     if (url.pathname === '/health') {
@@ -2484,11 +2484,11 @@ export default {
         ? 'ppt_parse:' + md5Hex(new TextEncoder().encode(String(bodyText || '').trim().toLowerCase().replace(/\s+/g, ' ')))
         : 'ppt_api_cache:' + btoa(stableKeySource).replace(/=+$/,'').slice(0, 180);
       if (env.LBA_KV && (spec.method === 'GET' || pptPath === '/pricing/pokemonpricetracker/parse-title') && url.searchParams.get('fresh') !== 'true') {
-        const cached = await env.LBA_KV.get(cacheKey, 'json');
+        const cached = await env.LBA_KV.get(cacheKey, 'json').catch(() => null);
         if (cached) return json({ ...cached, cache:{ state:'hit', source:'worker-kv', cacheKey, cachedAt:cached.cache?.cachedAt || null } });
       }
       if (env.LBA_KV) {
-        const quotaUntil = Number(await env.LBA_KV.get('ppt_quota_exhausted_until') || 0);
+        const quotaUntil = Number(await env.LBA_KV.get('ppt_quota_exhausted_until').catch(() => null) || 0);
         if (quotaUntil && Date.now() < quotaUntil) {
           const stale = await env.LBA_KV.get(cacheKey, 'json').catch(() => null);
           if (stale) return json({ ...stale, providerQuotaState:'exhausted', retryAt:new Date(quotaUntil).toISOString(), cache:{ state:'stale', source:'worker-kv', cacheKey, cachedAt:stale.cache?.cachedAt || null } });
@@ -4302,6 +4302,9 @@ export default {
     }
 
     return json({ error: 'Not found' }, 404);
+    } catch(e) {
+      return json({ ok: false, error: e?.message || 'Internal error' }, 500);
+    }
   },
 };
 
