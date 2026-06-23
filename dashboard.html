@@ -1352,7 +1352,7 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.23.19-img-fix</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.23.20-pokemon-fixes</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
@@ -1379,7 +1379,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.23.19-img-fix</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.23.20-pokemon-fixes</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -15506,6 +15506,7 @@ function wordsToSmallNumber(text){
 function cleanupVoiceTranscript(text){
   let out = String(text || '').toLowerCase().trim();
   out = out.replace(/\bslash\b/g, ' / ').replace(/\bhashtag\b|\bhash tag\b|\bnumber\b/g, '#');
+  out = out.replace(/\b(\d+)\s+(?:out\s+of|over|of)\s+(\d+)\b/g, '$1/$2');
   out = out.replace(/\b(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred)(?:\s+(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred))*\s*\/\s*(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred)(?:\s+(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred))*/g, m => {
     const [a,b] = m.split('/');
     return wordsToSmallNumber(a) + '/' + wordsToSmallNumber(b);
@@ -16444,7 +16445,7 @@ async function searchPokemonOfflineCache(query, cat = ''){
   const imageMap = new Map(imageRows.filter(i => !i.storeId || i.storeId === getActiveStoreId()).map(i => [i.cardKey, i.dataUrl || i.imageUrl]));
   const cacheResults = cards.filter(c => c.storeId === getActiveStoreId()).filter(c => {
     if(c.cacheVersion !== POKEMON_SEARCH_CACHE_VERSION) return false;
-    if(c.normalizedQuery && c.normalizedQuery !== normalizedQuery && queryNumber) return false;
+    if(c.normalizedQuery && c.normalizedQuery !== normalizedQuery && !queryNumber) return false;
     if(queryNumber && !pokemonCardNumberMatches(c.card || {}, queryNumber)) return false;
     const hay = c.searchText || normalizePokemonText(JSON.stringify(c.card || {}));
     return terms.every(t => hay.includes(t));
