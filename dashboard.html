@@ -1352,7 +1352,7 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.23.21-search-fixes</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.23.22-comic-fix</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
@@ -1379,7 +1379,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.23.21-search-fixes</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.23.22-comic-fix</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -7528,7 +7528,7 @@ function betaWalkthroughs(){
     offlineCatalogs:[
       {title:'Offline Catalogs', body:'Offline catalogs help Research when network or API calls are limited. They are not owned inventory.', tab:'backoffice', target:'#offline-catalog-manager-panel'},
       {title:'Pokemon Catalog', body:'Download or skip Pokemon catalog setup for beta. Skipping is allowed and does not block app use.', tab:'backoffice', target:'#pokemon-export-panel', checklist:{pokemonCatalogSkipped:'Skipped'}},
-      {title:'MTG Catalog', body:'Download or skip MTG catalog setup for beta. Skipping is allowed and does not block app use.', tab:'backoffice', target:'#mtg-export-panel', checklist:{mtgCatalogSkipped:'Skipped'}, finish:true}
+      {title:'MTG Catalog', body:'Download or skip MTG catalog setup for beta. Skipping is allowed and does not block app use.', tab:'backoffice', target:'#offline-catalog-manager-panel', checklist:{mtgCatalogSkipped:'Skipped'}, finish:true}
     ],
     reportBug:[
       {title:'Report A Bug', body:'Use Report Bug when anything feels wrong. Include what you tried, what happened, and what you expected.', tab:'overview', target:'#beta-bug-btn', action:'bug'},
@@ -15749,14 +15749,6 @@ function isComicLookupIntent(q = '', cat = ''){
   return false;
 }
 
-function isComicLookupIntent(q = '', cat = ''){
-  if(qplCategoryKey(cat) === 'comic') return true;
-  const t = String(q || '').toLowerCase();
-  // Issue-number pattern: series name + #N or "issue N"
-  if(/\b(asm|uxm)\b/.test(t)) return true;
-  if(/\b(spawn|batman|superman|wonder\s?woman|x.?men|spider.?man|wolverine|hulk|thor|avengers|fantastic\s?four|daredevil|venom|carnage|deadpool|iron\s?man|captain\s?america|black\s?panther|action\s?comics|detective\s?comics|walking\s?dead|invincible|saga|hellboy|sandman|preacher|tmnt|teenage\s?mutant\s?ninja)\b.{0,40}#?\d{1,4}/i.test(t)) return true;
-  return false;
-}
 
 // ── Comic helper UI functions ─────────────────────────────────────
 function appendComicPublisher(pub){
