@@ -1352,7 +1352,7 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.23.09-sets-visible</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.23.10-sets-images-pc</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
@@ -1379,7 +1379,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip dev-only" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.23.09-sets-visible</div>
+<div class="dsb-chip dev-only" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.23.10-sets-images-pc</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -26499,7 +26499,7 @@ async function toppsSupabaseSets(limit = 2000){
   return { sets:(data || []).map(toppsDbSetFromRow), total:count || (data || []).length };
 }
 
-async function toppsSupabaseCards(filters = {}, limit = 500){
+async function toppsSupabaseCards(filters = {}, limit = 2000){
   const sb = getSupabaseClient();
   if(!sb) throw new Error('Supabase client unavailable');
   let req = sb
@@ -26669,7 +26669,7 @@ async function toppsApplySupabaseFilters(){
   TOPPS.cardsLoading = true;
   toppsRender();
   try {
-    const data = await toppsSupabaseCards(f, f.setId ? 2500 : 500);
+    const data = await toppsSupabaseCards(f, f.setId ? 5000 : 2000);
     if(seq !== TOPPS.filterSeq) return;
     TOPPS.filteredCards = data.cards || [];
     TOPPS.totalCards = data.total ?? TOPPS.totalCards;
@@ -26760,7 +26760,7 @@ function toppsRender(){
 function toppsRenderSets(){
   const el = document.getElementById('topps-set-list');
   if(!el) return;
-  const sets = TOPPS.filteredSets.slice(0, 80);
+  const sets = TOPPS.filteredSets;
   if(!sets.length) { el.innerHTML = '<div style="font-family:var(--font-mono);font-size:10px;color:var(--dim)">No sets match the current filters.</div>'; return; }
   el.innerHTML = sets.map(s => `<div class="topps-set-card${TOPPS.selectedSetId===s.id?' on':''}" onclick="toppsSelectSet('${escHtml(s.id)}')">
     <div style="font-family:'Orbitron',monospace;font-size:11px;color:var(--g);line-height:1.3">${escHtml(s.product || s.setName || 'Topps Set')}</div>
@@ -26788,8 +26788,21 @@ function toppsRenderCards(){
   if(status) status.textContent = `${sortedCards.length} visible checklist rows${sortedCards.length >= (TOPPS.selectedSetId ? 2500 : 500) ? ' (page limit shown - narrow filters for more)' : ''}${sectionCount > 1 ? ' / ' + sectionCount + ' sections' : ''}`;
   const renderCard = c => {
     const badges = toppsFlagsHtml(c.flags);
-    if(TOPPS.view === 'table') return `<div class="topps-card-row" onclick="toppsOpenDetail('${escHtml(c.id)}')"><div class="topps-placeholder">#${escHtml(c.cardNumber || '')}</div><div style="min-width:0"><div style="font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(c.player || c.subject || 'Checklist Card')}</div><div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml([c.year, c.product, c.team, c.section].filter(Boolean).join(' / '))}</div><div class="topps-badges">${badges}</div></div><button class="hbtn" style="min-height:30px;font-size:8px;padding:3px 8px" onclick="event.stopPropagation();toppsOpenDetail('${escHtml(c.id)}')">OPEN</button></div>`;
-    return `<div class="topps-set-card" onclick="toppsOpenDetail('${escHtml(c.id)}')"><div style="display:grid;grid-template-columns:58px minmax(0,1fr);gap:10px;align-items:center"><div class="topps-placeholder">#${escHtml(c.cardNumber || '')}</div><div style="min-width:0"><div style="font-family:'Orbitron',monospace;font-size:12px;color:var(--text);line-height:1.25;overflow:hidden;text-overflow:ellipsis">${escHtml(c.player || c.subject || 'Checklist Card')}</div><div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);margin-top:5px">${escHtml([c.team, c.section].filter(Boolean).join(' / '))}</div></div></div><div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);margin-top:10px;line-height:1.4">${escHtml([c.year, c.product].filter(Boolean).join(' Topps '))}</div><div class="topps-badges">${badges}</div></div>`;
+    const pc = TOPPS.pcCache[c.id]?.best || null;
+    const img = pc?.imageUrl || '';
+    const price = pc ? toppsPcPrice(pc) : 0;
+    const priceHtml = price ? `<div style="font-family:var(--font-mono);font-size:11px;color:var(--g);font-weight:700;margin-top:6px">$${price.toFixed(2)}</div>` : '';
+    if(TOPPS.view === 'table') {
+      return `<div class="topps-card-row" onclick="toppsOpenDetail('${escHtml(c.id)}')">` +
+        (img ? `<img src="${escHtml(img)}" style="width:44px;height:62px;object-fit:contain;border-radius:4px;background:#050507;flex-shrink:0">` : `<div class="topps-placeholder">#${escHtml(c.cardNumber || '')}</div>`) +
+        `<div style="min-width:0"><div style="font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(c.player || c.subject || 'Checklist Card')}</div><div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml([c.year, c.product, c.team, c.section].filter(Boolean).join(' / '))}</div><div class="topps-badges">${badges}</div></div>` +
+        (price ? `<div style="font-family:var(--font-mono);font-size:11px;color:var(--g);font-weight:700;white-space:nowrap">$${price.toFixed(2)}</div>` : '') +
+        `<button class="hbtn" style="min-height:30px;font-size:8px;padding:3px 8px" onclick="event.stopPropagation();toppsOpenDetail('${escHtml(c.id)}')">OPEN</button></div>`;
+    }
+    const imgHtml = img
+      ? `<img src="${escHtml(img)}" style="width:100%;max-height:160px;object-fit:contain;border-radius:6px;background:#050507;margin-bottom:8px">`
+      : `<div class="topps-placeholder" style="height:90px;margin-bottom:8px">#${escHtml(c.cardNumber || '')}</div>`;
+    return `<div class="topps-set-card" onclick="toppsOpenDetail('${escHtml(c.id)}')">${imgHtml}<div style="font-family:'Orbitron',monospace;font-size:11px;color:var(--text);line-height:1.25;overflow:hidden;text-overflow:ellipsis">${escHtml(c.player || c.subject || 'Checklist Card')}</div><div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);margin-top:4px">${escHtml([c.team, c.section].filter(Boolean).join(' / '))}</div>${priceHtml}<div class="topps-badges" style="margin-top:6px">${badges}</div></div>`;
   };
   el.innerHTML = Object.entries(bySection).map(([section, cards]) => `<div style="grid-column:1/-1;font-family:'Orbitron',monospace;font-size:10px;color:var(--gold);letter-spacing:1px;margin:8px 0 2px">${escHtml(section)} <span style="font-family:var(--font-mono);font-size:9px;color:var(--dim)">(${cards.length})</span></div>${cards.map(renderCard).join('')}`).join('');
 }
@@ -26798,6 +26811,14 @@ function toppsEbayKeywords(card = {}){ return [card.year, 'Topps', card.product,
 function toppsEbayTitle(card = {}){ let title = toppsEbayKeywords(card).replace(/\bparallel\b/i, '').replace(/\s+/g,' ').trim(); if(title.length <= 80) return title; title = [card.year, 'Topps', card.product, card.player || card.subject, card.cardNumber ? '#' + card.cardNumber : '', card.flags?.rc ? 'RC' : '', card.flags?.auto ? 'Auto' : '', card.team, 'Card'].filter(Boolean).join(' ').replace(/\s+/g,' ').trim(); return title.length <= 80 ? title : title.slice(0, 79).trim(); }
 function toppsCopyText(text){ navigator.clipboard?.writeText(text).then(() => toast_dash('Copied')).catch(() => { const ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); toast_dash('Copied'); }); }
 function toppsOpenUrl(url){ window.open(url, '_blank', 'noopener'); }
+function toppsOpenPcForCard(cardId){
+  const cached = TOPPS.pcCache[cardId];
+  const card = toppsFindCard(cardId);
+  if(cached?.best) { window.open(cached.best.url || cached.best.productUrl, '_blank', 'noopener'); return; }
+  // Not loaded yet — open search while we wait
+  const q = card ? (toppsPcQueries(card)[0] || toppsEbayKeywords(card)) : '';
+  window.open('https://www.pricecharting.com/search-products?q=' + encodeURIComponent(q), '_blank', 'noopener');
+}
 async function toppsOpenDetail(cardId){
   const card = toppsFindCard(cardId); if(!card) return;
   document.getElementById('topps-drawer-bg')?.classList.add('on');
@@ -26869,7 +26890,7 @@ function toppsDetailHtml(card, pcData = null, loadingPc = false){
   return `<div style="display:flex;justify-content:space-between;gap:12px;align-items:start;margin-bottom:14px"><div><div style="font-family:'Orbitron',monospace;font-size:16px;color:var(--g);line-height:1.3">${escHtml(card.player || card.subject || 'Topps checklist card')}</div><div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);margin-top:6px">${escHtml([card.year, 'Topps', card.product, '#' + (card.cardNumber || ''), card.team].filter(Boolean).join(' / '))}</div><div class="topps-badges">${toppsFlagsHtml(card.flags)}</div></div><button class="hbtn" onclick="toppsCloseDetail()">CLOSE</button></div>
   <div style="display:grid;grid-template-columns:130px minmax(0,1fr);gap:14px;align-items:start;margin-bottom:14px">${image ? `<img src="${escHtml(image)}" style="width:130px;max-height:184px;object-fit:contain;border:1px solid var(--border);border-radius:8px;background:#050507">` : `<div class="topps-placeholder" style="width:130px;height:184px">TOPPS<br>${escHtml(card.year || '')}<br>#${escHtml(card.cardNumber || '')}</div>`}<div class="panel" style="padding:12px;background:var(--surf2)"><div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);line-height:1.75"><div><b style="color:var(--text)">Set:</b> ${escHtml(card.setName || card.product || '')}</div><div><b style="color:var(--text)">Sport:</b> ${escHtml(card.sport || '')}</div><div><b style="color:var(--text)">Section:</b> ${escHtml(card.section || '')}</div><div><b style="color:var(--text)">Notes:</b> ${escHtml(card.notes || 'No notes parsed')}</div><div><b style="color:var(--text)">PDF Source:</b> ${escHtml(card.sourceId || '')}</div><div><b style="color:var(--text)">Parse confidence:</b> ${Math.round(Number(card.parseConfidence || 0) * 100)}%</div></div></div></div>
   <div class="panel" style="margin-bottom:14px"><div class="ph">PRICECHARTING MATCH <span>${escHtml(pcData?.query || '')}</span></div>${loadingPc ? '<div style="font-family:var(--font-mono);font-size:10px;color:var(--dim)">Checking clean player + card number match...</div>' : pc ? `<div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);line-height:1.7"><div style="color:var(--text);font-weight:800">${escHtml(pc.productName || pc['product-name'] || 'PriceCharting match')}</div><div>${price ? '$' + price.toFixed(2) : 'No guide price returned'} ${pc.consoleName ? ' / ' + escHtml(pc.consoleName) : ''}${pc._sourceName ? ' / ' + escHtml(pc._sourceName) : ''}${pc._toppsScore ? ' / score ' + escHtml(pc._toppsScore) : ''}</div></div>` : pcNote}${candidates}<div class="topps-chart-empty" style="margin-top:12px">No price history found yet.</div></div>
-  <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="hbtn" onclick="toppsOpenUrl(decodeURIComponent('${encodeURIComponent(pcUrl)}'))">OPEN PRICECHARTING</button><button class="hbtn" onclick="toppsOpenUrl(decodeURIComponent('${encodeURIComponent(activeUrl)}'))">EBAY ACTIVE</button><button class="hbtn" onclick="toppsOpenUrl(decodeURIComponent('${encodeURIComponent(soldUrl)}'))">EBAY SOLD</button><button class="hbtn" onclick="toppsCopyText(decodeURIComponent('${encodeURIComponent(title)}'))">COPY EBAY TITLE</button><button class="hbtn" onclick="toppsCopyText(decodeURIComponent('${encodeURIComponent(keywords)}'))">COPY KEYWORDS</button></div>`;
+  <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="hbtn" id="topps-pc-btn" onclick="toppsOpenPcForCard('${escHtml(card.id)}')">${loadingPc ? '⏳ LOADING PC...' : 'OPEN PRICECHARTING'}</button><button class="hbtn" onclick="toppsOpenUrl(decodeURIComponent('${encodeURIComponent(activeUrl)}'))">EBAY ACTIVE</button><button class="hbtn" onclick="toppsOpenUrl(decodeURIComponent('${encodeURIComponent(soldUrl)}'))">EBAY SOLD</button><button class="hbtn" onclick="toppsCopyText(decodeURIComponent('${encodeURIComponent(title)}'))">COPY EBAY TITLE</button><button class="hbtn" onclick="toppsCopyText(decodeURIComponent('${encodeURIComponent(keywords)}'))">COPY KEYWORDS</button></div>`;
 }
 async function toppsLoadPriceCharting(card){
   const drawer = document.getElementById('topps-detail-drawer');
@@ -26914,6 +26935,9 @@ async function toppsLoadPriceCharting(card){
     const payload = { ok:true, query:queries[0] || '', queries, matches:matches.slice(0, 8), best:matches.find(m => Number(m._toppsScore || 0) >= 120) || null };
     TOPPS.pcCache[card.id] = payload;
     if(drawer?.classList.contains('on')) drawer.innerHTML = toppsDetailHtml(card, payload, false);
+    // Update card tile in grid if it's visible
+    const btn = document.getElementById('topps-pc-btn');
+    if(btn && payload.best) btn.textContent = 'OPEN PRICECHARTING';
   } catch(e) {
     if(drawer?.classList.contains('on')) drawer.innerHTML = toppsDetailHtml(card, { best:null, query:toppsPcQueries(card)[0] || '', error:e.message }, false);
   }
