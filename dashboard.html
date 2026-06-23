@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.06.22.08-topps-supabase-catalog">
+<meta name="version" content="2026.06.22.09-topps-supabase-only">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1352,7 +1352,7 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.22.08-topps-supabase-catalog</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.22.09-topps-supabase-only</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
@@ -1379,7 +1379,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip dev-only" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.22.08-topps-supabase-catalog</div>
+<div class="dsb-chip dev-only" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.22.09-topps-supabase-only</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -2645,7 +2645,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.06.22.08-topps-supabase-catalog';
+const APP_VERSION = '2026.06.22.09-topps-supabase-only';
 window.APP_VERSION = APP_VERSION;
 const branchName = 'pokemon-v2-core';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
@@ -26188,7 +26188,7 @@ async function toppsRefresh(force = false){
     TOPPS.sets = setsData.sets || [];
     TOPPS.cards = cardsData.cards || [];
     TOPPS.sources = [];
-    TOPPS.source = setsData.storage === 'supabase' || cardsData.storage === 'supabase' ? 'Supabase catalog' : 'Worker KV';
+    TOPPS.source = 'Supabase catalog';
     TOPPS.totalCards = cardsData.total || TOPPS.cards.length;
     TOPPS.loaded = true;
     if(note) note.textContent = `${TOPPS.source} loaded. ${TOPPS.totalCards.toLocaleString()} cards indexed. Filters search the full database.`;

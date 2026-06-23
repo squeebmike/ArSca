@@ -6,7 +6,7 @@ The Topps Checklist Browser is data-first:
 - Raw extracted PDF text is preserved.
 - Parsed records are stored as `topps_sets`, `topps_checklist_cards`, and `topps_pdf_sources`.
 - Supabase Postgres is the production catalog source of truth.
-- Cloudflare KV is only a fallback/cache path for older deployments and PriceCharting match caching.
+- Cloudflare KV is not a checklist source of truth and is not used as a Topps card/set fallback.
 
 ## Sample Import
 
@@ -71,19 +71,9 @@ The Cloudflare Worker reads Supabase first when these secrets/vars exist:
 
 The service role key is best for Worker-only server calls. Never expose it in frontend HTML.
 
-## Legacy Publish To Worker KV
+## Disabled Legacy KV Import
 
-```powershell
-node scripts/import-topps-checklists.js --publish
-```
-
-Optional:
-
-```powershell
-node scripts/import-topps-checklists.js --zip="C:\path\to\newToppsChecklist.zip" --publish
-```
-
-Re-running is safe, but this is now a fallback path. The Worker replaces the Topps set index, source index, and chunked card rows, then caches PriceCharting matches lazily as cards are opened.
+Do not publish Topps checklist cards to Worker KV. The Worker returns `410` for old `/topps-checklists/import-*` endpoints.
 
 The full generated card/source files are intentionally ignored by git because the complete batch is hundreds of MB. Supabase is the production source of truth; `topps_checklists_index.sample.json` is only a lightweight fallback for local/GitHub Pages testing before the Worker/Supabase path is available.
 
