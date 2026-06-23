@@ -1352,7 +1352,7 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.23.13-price-overlay</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.23.14-drawer-fix</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
@@ -1379,7 +1379,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip dev-only" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.23.13-price-overlay</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.23.14-drawer-fix</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -26857,12 +26857,13 @@ function toppsOpenPcForCard(cardId){
 }
 async function toppsOpenDetail(cardId){
   const card = toppsFindCard(cardId); if(!card) return;
+  TOPPS.openCardId = cardId;
   document.getElementById('topps-drawer-bg')?.classList.add('on');
   const drawer = document.getElementById('topps-detail-drawer');
   if(drawer) { drawer.classList.add('on'); drawer.innerHTML = toppsDetailHtml(card, null, true); }
   toppsLoadPriceCharting(card);
 }
-function toppsCloseDetail(){ document.getElementById('topps-drawer-bg')?.classList.remove('on'); document.getElementById('topps-detail-drawer')?.classList.remove('on'); }
+function toppsCloseDetail(){ TOPPS.openCardId = null; document.getElementById('topps-drawer-bg')?.classList.remove('on'); document.getElementById('topps-detail-drawer')?.classList.remove('on'); }
 function toppsPcPrice(best = {}){ const prices = best.prices || {}; return Number(prices.ungraded || prices.grade9 || Number(best['loose-price'] || 0) / 100 || 0) || 0; }
 const TOPPS_PC_TEAM_WORDS = [
   'Arizona Diamondbacks','Atlanta Braves','Baltimore Orioles','Boston Red Sox','Chicago Cubs','Chicago White Sox','Cincinnati Reds','Cleveland Guardians','Cleveland Indians','Colorado Rockies','Detroit Tigers','Houston Astros','Kansas City Royals','Los Angeles Angels','Anaheim Angels','Los Angeles Dodgers','Miami Marlins','Florida Marlins','Milwaukee Brewers','Minnesota Twins','New York Mets','New York Yankees','Oakland Athletics','Philadelphia Phillies','Pittsburgh Pirates','San Diego Padres','San Francisco Giants','Seattle Mariners','St. Louis Cardinals','Tampa Bay Rays','Texas Rangers','Toronto Blue Jays','Washington Nationals',
@@ -26970,7 +26971,8 @@ async function toppsLoadPriceCharting(card){
     const matches = [...seen.values()].sort((a,b) => Number(b._toppsScore || 0) - Number(a._toppsScore || 0));
     const payload = { ok:true, query:queries[0] || '', queries, matches:matches.slice(0, 8), best:matches.find(m => Number(m._toppsScore || 0) >= 120) || null };
     TOPPS.pcCache[card.id] = payload;
-    if(drawer?.classList.contains('on')) drawer.innerHTML = toppsDetailHtml(card, payload, false);
+    // Only update the drawer if this card is still the one being shown
+    if(drawer?.classList.contains('on') && TOPPS.openCardId === card.id) drawer.innerHTML = toppsDetailHtml(card, payload, false);
     // Push image + price into every matching grid tile
     const imgUrl = payload.best?.imageUrl || '';
     const price = payload.best ? toppsPcPrice(payload.best) : 0;
@@ -26981,7 +26983,7 @@ async function toppsLoadPriceCharting(card){
       if(price) el.textContent = '$' + price.toFixed(2);
     });
   } catch(e) {
-    if(drawer?.classList.contains('on')) drawer.innerHTML = toppsDetailHtml(card, { best:null, query:toppsPcQueries(card)[0] || '', error:e.message }, false);
+    if(drawer?.classList.contains('on') && TOPPS.openCardId === card.id) drawer.innerHTML = toppsDetailHtml(card, { best:null, query:toppsPcQueries(card)[0] || '', error:e.message }, false);
   }
 }
 </script>
