@@ -2050,6 +2050,7 @@ body.show-mode .inv-sync-badge{display:none;}
         </div>
         <button class="hbtn" onclick="toppsClearFilters()">CLEAR FILTERS</button>
         <button class="hbtn" onclick="toppsRefresh(true)">REFRESH DATA</button>
+        <button class="hbtn" id="topps-seed-btn" onclick="toppsSeedSupabase()" style="color:var(--gold)">SEED SETS DB</button>
         <div id="topps-import-note" style="font-family:var(--font-mono);font-size:9px;color:var(--dim);line-height:1.55">Loading Topps checklist index...</div>
         <!-- Set list lives in sidebar -->
         <div style="margin-top:12px;border-top:1px solid var(--border);padding-top:10px">
@@ -26687,6 +26688,22 @@ async function toppsRefresh(force = false){
 }
 
 function toppsInit(){ toppsEnsureState(); if(!TOPPS.loaded) toppsRefresh(false); }
+
+async function toppsSeedSupabase(){
+  const btn = document.getElementById('topps-seed-btn');
+  if(btn){ btn.disabled = true; btn.textContent = 'SEEDING…'; }
+  try {
+    const res = await fetch(`${WORKER_BASE}/topps/seed-supabase`, { method:'POST', headers:{'Content-Type':'application/json'} });
+    const d = await res.json().catch(() => ({}));
+    const msg = d.ok ? `✓ Seeded ${d.inserted}/${d.total} sets into Supabase` : `✗ Seed failed: ${(d.errors||[]).join(' | ')}`;
+    alert(msg);
+    if(d.ok) toppsRefresh(true);
+  } catch(e) {
+    alert('Seed error: ' + e.message);
+  } finally {
+    if(btn){ btn.disabled = false; btn.textContent = 'SEED SETS DB'; }
+  }
+}
 
 function toppsPopulateFilters(){
   const years = [...new Set(TOPPS.sets.map(s => s.year).filter(Boolean))].sort((a,b) => String(b).localeCompare(String(a)));

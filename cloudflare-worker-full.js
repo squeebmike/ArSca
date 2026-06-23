@@ -3628,6 +3628,49 @@ export default {
         return json({ ok: true, slug, name, baseCount: meta.baseCount, insertSetCount: meta.insertSetCount, autoSetCount: meta.autoSetCount });
       }
 
+      // POST /topps/seed-supabase — upsert full TOPPS_CATALOG into topps_sets table
+      if (url.pathname === '/topps/seed-supabase' && request.method === 'POST') {
+        const sbUrl = String(env.SUPABASE_URL || '').replace(/\/$/, '');
+        const sbKey = env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_KEY || env.SUPABASE_ANON_KEY || env.SUPABASE_KEY || '';
+        if (!sbUrl || !sbKey) return json({ ok: false, error: 'Supabase not configured' }, 503);
+        const rows = TOPPS_CATALOG.map(s => ({
+          slug: s.slug,
+          set_name: s.name,
+          year: String(s.year || ''),
+          brand: s.brand || '',
+          sport: s.sport || 'baseball',
+          release_name: s.name,
+          product: s.brand || 'Topps',
+          card_count: 0,
+          source_ids: [],
+          beckett_url: s.beckettUrl || null,
+        }));
+        // Upsert in batches of 50
+        const BATCH = 50;
+        let inserted = 0;
+        const errors = [];
+        for (let i = 0; i < rows.length; i += BATCH) {
+          const batch = rows.slice(i, i + BATCH);
+          const res = await fetch(`${sbUrl}/rest/v1/topps_sets`, {
+            method: 'POST',
+            headers: {
+              apikey: sbKey,
+              Authorization: `Bearer ${sbKey}`,
+              'Content-Type': 'application/json',
+              Prefer: 'resolution=merge-duplicates,return=minimal',
+            },
+            body: JSON.stringify(batch),
+          });
+          if (res.ok) {
+            inserted += batch.length;
+          } else {
+            const err = await res.text().catch(() => res.status);
+            errors.push(`batch ${i}-${i + batch.length}: ${err}`);
+          }
+        }
+        return json({ ok: errors.length === 0, total: rows.length, inserted, errors });
+      }
+
       return json({ error: 'Not found' }, 404);
     }
 
