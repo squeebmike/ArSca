@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.06.23.04-topps-direct-pricecharting">
+<meta name="version" content="2026.06.23.05-topps-full-catalog-polish">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1352,7 +1352,7 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.23.04-topps-direct-pricecharting</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.23.05-topps-full-catalog-polish</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
@@ -1379,7 +1379,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip dev-only" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.23.04-topps-direct-pricecharting</div>
+<div class="dsb-chip dev-only" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.23.05-topps-full-catalog-polish</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -2647,7 +2647,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.06.23.04-topps-direct-pricecharting';
+const APP_VERSION = '2026.06.23.05-topps-full-catalog-polish';
 window.APP_VERSION = APP_VERSION;
 const branchName = 'pokemon-v2-core';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
@@ -26327,7 +26327,7 @@ function sbCloseModal() {
 
 // Topps Checklist Browser - data-first browser backed by Worker KV, with a
 // local generated JSON fallback for GitHub Pages testing before full publish.
-function toppsDefaultState(){ return { loaded:false, source:'loading', sets:[], cards:[], sources:[], filteredSets:[], filteredCards:[], selectedSetId:'', view:'grid', pcCache:{}, totalCards:0, filterSeq:0, filterTimer:null, cardsLoading:false }; }
+function toppsDefaultState(){ return { loaded:false, source:'loading', sets:[], cards:[], sources:[], filteredSets:[], filteredCards:[], selectedSetId:'', view:'grid', pcCache:{}, totalCards:0, sourceCount:0, filterSeq:0, filterTimer:null, cardsLoading:false }; }
 var TOPPS = window.TOPPS || toppsDefaultState();
 function toppsEnsureState(){ if(!TOPPS) TOPPS = window.TOPPS = toppsDefaultState(); return TOPPS; }
 
@@ -26429,7 +26429,7 @@ async function toppsSupabaseCards(filters = {}, limit = 500){
   if(filters.q) toppsNorm(filters.q).split(/\s+/).filter(Boolean).forEach(t => { req = req.ilike('search_text', '%' + t + '%'); });
   const { data, error } = await req;
   if(error) throw error;
-  return { cards:(data || []).map(toppsDbCardFromRow), total:null };
+  return { cards:(data || []).map(toppsDbCardFromRow).filter(c => !toppsIsBadCard(c)), total:null };
 }
 
 async function toppsSupabaseMeta(){
@@ -26452,9 +26452,10 @@ async function toppsLoadSupabaseDirect(){
   ]);
   return {
     source:'Supabase direct',
-    sets:setsData.sets || [],
-    cards:cardsData.cards || [],
+    sets:(setsData.sets || []).filter(s => !toppsIsBadSet(s)),
+    cards:(cardsData.cards || []).filter(c => !toppsIsBadCard(c)),
     totalCards:Number(meta.card_count || cardsData.cards?.length || 0),
+    sourceCount:Number(meta.source_count || 0),
   };
 }
 
@@ -26469,16 +26470,18 @@ async function toppsRefresh(force = false){
     TOPPS.sources = [];
     TOPPS.source = dbData.source;
     TOPPS.totalCards = dbData.totalCards || TOPPS.cards.length;
+    TOPPS.sourceCount = dbData.sourceCount || 0;
     TOPPS.loaded = true;
     if(note) note.textContent = `${TOPPS.source} loaded. ${TOPPS.totalCards.toLocaleString()} cards indexed. Filters search the full database.`;
   } catch(e) {
     try {
       const [setsData, cardsData] = await Promise.all([toppsWorker('/topps-checklists/sets?limit=2000'), toppsWorker('/topps-checklists/cards?limit=500')]);
-      TOPPS.sets = setsData.sets || [];
-      TOPPS.cards = cardsData.cards || [];
+      TOPPS.sets = (setsData.sets || []).filter(s => !toppsIsBadSet(s));
+      TOPPS.cards = (cardsData.cards || []).filter(c => !toppsIsBadCard(c));
       TOPPS.sources = [];
       TOPPS.source = 'Worker Supabase';
       TOPPS.totalCards = cardsData.total || TOPPS.cards.length;
+      TOPPS.sourceCount = 0;
       TOPPS.loaded = true;
       if(note) note.textContent = `${TOPPS.source} loaded. ${TOPPS.totalCards.toLocaleString()} cards indexed.`;
     } catch(e2) {
@@ -26515,6 +26518,21 @@ function toppsPopulateFilters(){
 }
 
 function toppsNorm(v){ return String(v || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim(); }
+function toppsIsBadSet(set = {}){
+  const name = toppsNorm([set.product, set.setName, set.releaseName].filter(Boolean).join(' '));
+  if(!name) return true;
+  if(/^checklists provided by topps reflect/.test(name)) return true;
+  if(/^configuration of that product/.test(name)) return true;
+  if(/actual contents and odds may vary/.test(name)) return true;
+  return false;
+}
+function toppsIsBadCard(card = {}){
+  if(toppsIsBadSet(card)) return true;
+  const txt = toppsNorm([card.player, card.subject, card.notes, card.section].filter(Boolean).join(' '));
+  if(/^checklists provided by topps reflect/.test(txt)) return true;
+  if(/actual contents and odds may vary/.test(txt)) return true;
+  return false;
+}
 function toppsCurrentFilters(){ return { q:document.getElementById('topps-search')?.value || '', year:document.getElementById('topps-year')?.value || '', sport:document.getElementById('topps-sport')?.value || '', flag:document.getElementById('topps-flag')?.value || '', setId:TOPPS.selectedSetId || document.getElementById('topps-set')?.value || '' }; }
 function toppsFilterParams(f){
   const p = new URLSearchParams({ limit:'500' });
@@ -26645,7 +26663,7 @@ function toppsRender(){
   const source = document.getElementById('topps-source-label'); if(source) source.textContent = TOPPS.source || 'Topps index';
   const setStat = document.getElementById('topps-stat-sets'); if(setStat) setStat.textContent = TOPPS.sets.length;
   const cardStat = document.getElementById('topps-stat-cards'); if(cardStat) cardStat.textContent = Number(TOPPS.totalCards || TOPPS.cards.length || 0).toLocaleString();
-  const pdfStat = document.getElementById('topps-stat-pdfs'); if(pdfStat) pdfStat.textContent = TOPPS.sources.length || 'KV';
+  const pdfStat = document.getElementById('topps-stat-pdfs'); if(pdfStat) pdfStat.textContent = TOPPS.sourceCount || TOPPS.sources.length || '—';
   const visStat = document.getElementById('topps-stat-visible'); if(visStat) visStat.textContent = TOPPS.filteredCards.length;
   toppsRenderSets();
   toppsRenderCards();
@@ -26700,11 +26718,62 @@ async function toppsOpenDetail(cardId){
 }
 function toppsCloseDetail(){ document.getElementById('topps-drawer-bg')?.classList.remove('on'); document.getElementById('topps-detail-drawer')?.classList.remove('on'); }
 function toppsPcPrice(best = {}){ const prices = best.prices || {}; return Number(prices.ungraded || prices.grade9 || Number(best['loose-price'] || 0) / 100 || 0) || 0; }
+const TOPPS_PC_TEAM_WORDS = [
+  'Arizona Diamondbacks','Atlanta Braves','Baltimore Orioles','Boston Red Sox','Chicago Cubs','Chicago White Sox','Cincinnati Reds','Cleveland Guardians','Cleveland Indians','Colorado Rockies','Detroit Tigers','Houston Astros','Kansas City Royals','Los Angeles Angels','Anaheim Angels','Los Angeles Dodgers','Miami Marlins','Florida Marlins','Milwaukee Brewers','Minnesota Twins','New York Mets','New York Yankees','Oakland Athletics','Philadelphia Phillies','Pittsburgh Pirates','San Diego Padres','San Francisco Giants','Seattle Mariners','St. Louis Cardinals','Tampa Bay Rays','Texas Rangers','Toronto Blue Jays','Washington Nationals',
+  'Diamondbacks','Braves','Orioles','Red Sox','Cubs','White Sox','Reds','Guardians','Indians','Rockies','Tigers','Astros','Royals','Angels','Dodgers','Marlins','Brewers','Twins','Mets','Yankees','Athletics','Phillies','Pirates','Padres','Giants','Mariners','Cardinals','Rays','Rangers','Blue Jays','Nationals'
+].sort((a,b) => b.length - a.length);
+function toppsCleanPcText(v = ''){ return String(v || '').replace(/[®™©]/g, '').replace(/\s+/g, ' ').trim(); }
+function toppsPlayerOnly(card = {}){
+  let name = toppsCleanPcText(card.player || card.subject || '');
+  const team = toppsCleanPcText(card.team || '');
+  if(team) name = name.replace(new RegExp('\\s+' + team.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$', 'i'), '').trim();
+  for(const t of TOPPS_PC_TEAM_WORDS) {
+    name = name.replace(new RegExp('\\s+' + t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$', 'i'), '').trim();
+  }
+  return name.replace(/\b(Rookie|RC)\b/ig, '').replace(/\s+/g, ' ').trim();
+}
+function toppsPcProductWords(card = {}){
+  return toppsCleanPcText(card.product || card.setName || '')
+    .replace(/\b(19|20)\d{2}(?:-\d{2})?\b/g, '')
+    .replace(/\btopps\b/ig, '')
+    .replace(/\b(baseball|football|basketball|hockey|soccer|cards?|checklist)\b/ig, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+function toppsPcQueries(card = {}){
+  const player = toppsPlayerOnly(card);
+  const num = toppsCleanPcText(card.cardNumber || '').replace(/^#/, '');
+  const year = toppsCleanPcText(card.year || '').split('-')[0];
+  const product = toppsPcProductWords(card);
+  const flags = [card.flags?.rc ? 'RC' : '', card.flags?.auto ? 'auto' : '', card.flags?.relic ? 'relic' : '', card.flags?.parallel ? 'refractor' : ''].filter(Boolean).join(' ');
+  return [
+    [player, num ? '#' + num : '', flags].filter(Boolean).join(' '),
+    [player, num, flags].filter(Boolean).join(' '),
+    [year, 'Topps', product, player, num ? '#' + num : '', flags].filter(Boolean).join(' '),
+    [year, product, player, num ? '#' + num : '', flags].filter(Boolean).join(' '),
+  ].map(q => q.replace(/\s+/g, ' ').trim()).filter((q, i, arr) => q && arr.indexOf(q) === i);
+}
+function toppsPcMatchScore(match = {}, card = {}){
+  const hay = toppsCleanPcText([match.productName, match['product-name'], match.consoleName, match['console-name'], match.genre].filter(Boolean).join(' ')).toLowerCase();
+  const player = toppsPlayerOnly(card).toLowerCase();
+  const num = toppsCleanPcText(card.cardNumber || '').replace(/^#/, '').toLowerCase();
+  const year = String(card.year || '').split('-')[0];
+  const product = toppsPcProductWords(card).toLowerCase();
+  let score = 0;
+  if(player && player.split(/\s+/).every(t => hay.includes(t))) score += 90;
+  if(num && (hay.includes('#' + num) || new RegExp('(^|[^a-z0-9])' + num.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '($|[^a-z0-9])', 'i').test(hay))) score += 65;
+  if(year && hay.includes(year)) score += 18;
+  if(product && product.split(/\s+/).filter(Boolean).some(t => hay.includes(t))) score += 12;
+  if(/topps|bowman|chrome|heritage|finest|stadium|archives|ginter/i.test(hay)) score += 10;
+  if(/\b(disney|mickey|donald|goofy|star wars|marvel|funko|pop)\b/i.test(hay)) score -= 160;
+  return score;
+}
 function toppsDetailHtml(card, pcData = null, loadingPc = false){
   const keywords = toppsEbayKeywords(card), title = toppsEbayTitle(card);
   const activeUrl = 'https://www.ebay.com/sch/i.html?_nkw=' + encodeURIComponent(keywords);
   const soldUrl = activeUrl + '&LH_Sold=1&LH_Complete=1';
-  const pc = pcData?.best || null, pcUrl = pc?.url || ('https://www.pricecharting.com/search-products?q=' + encodeURIComponent(pcData?.query || keywords));
+  const pcQuery = pcData?.query || toppsPcQueries(card)[0] || keywords;
+  const pc = pcData?.best || null, pcUrl = pc?.url || pc?.productUrl || ('https://www.pricecharting.com/search-products?q=' + encodeURIComponent(pcQuery));
   const image = pc?.imageUrl || '', price = toppsPcPrice(pc || {});
   const pcNote = pcData?.best ? '' : pcData?.matches?.length ? `<div style="font-family:var(--font-mono);font-size:10px;color:var(--gold);line-height:1.6">No confident PriceCharting card match. Showing search actions and ${pcData.matches.length} possible candidates.</div>` : '<div style="font-family:var(--font-mono);font-size:10px;color:var(--dim)">No PriceCharting image/price match returned for the clean player + card number query yet.</div>';
   const candidates = !pc && pcData?.matches?.length ? `<div style="display:grid;gap:6px;margin-top:10px">${pcData.matches.slice(0,4).map(m => `<button class="hbtn" style="justify-content:flex-start;text-align:left;line-height:1.4" onclick="toppsOpenUrl(decodeURIComponent('${encodeURIComponent(m.url || '')}'))">${escHtml(m.productName || m['product-name'] || 'PriceCharting candidate')} ${m._toppsScore ? ' / score ' + escHtml(m._toppsScore) : ''}</button>`).join('')}</div>` : '';
@@ -26717,11 +26786,26 @@ async function toppsLoadPriceCharting(card){
   const drawer = document.getElementById('topps-detail-drawer');
   try {
     if(TOPPS.pcCache[card.id]) { if(drawer) drawer.innerHTML = toppsDetailHtml(card, TOPPS.pcCache[card.id], false); return; }
-    const data = await toppsWorker('/topps-checklists/cards/' + encodeURIComponent(card.id) + '/pricecharting');
-    TOPPS.pcCache[card.id] = data;
-    if(drawer?.classList.contains('on')) drawer.innerHTML = toppsDetailHtml(card, data, false);
+    const queries = toppsPcQueries(card);
+    const seen = new Map();
+    for(const q of queries) {
+      const res = await fetch(WORKER + '/pricing/pricecharting/search?' + new URLSearchParams({ q, category:'Sports Cards' }).toString(), { cache:'no-store' });
+      const data = await res.json().catch(() => ({}));
+      (data.matches || data.products || []).forEach(match => {
+        const key = match.productId || match.id || match.url || match.productName || match['product-name'];
+        if(!key) return;
+        const prior = seen.get(key) || {};
+        const score = Math.max(Number(prior._toppsScore || -999), toppsPcMatchScore(match, card));
+        seen.set(key, { ...prior, ...match, _toppsScore:score, _toppsQuery:q });
+      });
+      if([...seen.values()].some(m => Number(m._toppsScore || 0) >= 135)) break;
+    }
+    const matches = [...seen.values()].sort((a,b) => Number(b._toppsScore || 0) - Number(a._toppsScore || 0));
+    const payload = { ok:true, query:queries[0] || '', queries, matches:matches.slice(0, 8), best:matches.find(m => Number(m._toppsScore || 0) >= 120) || null };
+    TOPPS.pcCache[card.id] = payload;
+    if(drawer?.classList.contains('on')) drawer.innerHTML = toppsDetailHtml(card, payload, false);
   } catch(e) {
-    if(drawer?.classList.contains('on')) drawer.innerHTML = toppsDetailHtml(card, { best:null, error:e.message }, false);
+    if(drawer?.classList.contains('on')) drawer.innerHTML = toppsDetailHtml(card, { best:null, query:toppsPcQueries(card)[0] || '', error:e.message }, false);
   }
 }
 </script>
