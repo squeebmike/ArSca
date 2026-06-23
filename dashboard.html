@@ -1352,7 +1352,7 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.23.20-pokemon-fixes</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.23.21-search-fixes</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
@@ -1379,7 +1379,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.23.20-pokemon-fixes</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.23.21-search-fixes</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -15630,6 +15630,7 @@ let qplHistory = [];
 let qplResults = [];
 let qplMasterResults = [];
 let qplLastSearch = '';
+let _qplSearchSeq = 0;
 let pokemonConnectionState = navigator.onLine ? 'online' : 'offline';
 
 function normalizePokemonText(value = ''){
@@ -16625,6 +16626,7 @@ async function runPriceLookup(){
   const q = qplCategoryKey(cat) === 'comic' ? (comicSearchQuery() || rawQ) : rawQ;
   const el = document.getElementById('qpl-result');
   if(!q || q.length < 3) return;
+  const mySeq = ++_qplSearchSeq;
   const wantsPokemon = isPokemonLookupIntent(q, cat);
   const wantsMtg = !wantsPokemon && isMtgLookupIntent(q, cat);
   const wantsComic = !wantsPokemon && !wantsMtg && isComicLookupIntent(q, cat);
@@ -16638,6 +16640,7 @@ async function runPriceLookup(){
   if(wantsPokemon) {
     cachedResults = await searchPokemonOfflineCache(q, cat);
     if(cachedResults.length) {
+      if(_qplSearchSeq !== mySeq) return;
       qplMasterResults = cachedResults; qplLastSearch = q;
       qplResults = filterQplMasterResults(qplMasterResults, cat);
       renderQuickLookupResults(qplResults);
@@ -16659,6 +16662,7 @@ async function runPriceLookup(){
   if(wantsMtg) {
     cachedResults = await searchMtgOfflineCache(q, cat);
     if(cachedResults.length) {
+      if(_qplSearchSeq !== mySeq) return;
       qplMasterResults = cachedResults; qplLastSearch = q;
       qplResults = filterQplMasterResults(qplMasterResults, cat);
       renderQuickLookupResults(qplResults);
@@ -16675,6 +16679,7 @@ async function runPriceLookup(){
   if(wantsComic) {
     cachedResults = await searchComicsOfflineCache(q, cat);
     if(cachedResults.length) {
+      if(_qplSearchSeq !== mySeq) return;
       qplMasterResults = cachedResults; qplLastSearch = q;
       qplResults = filterQplMasterResults(qplMasterResults, cat);
       renderQuickLookupResults(qplResults);
@@ -16702,6 +16707,7 @@ async function runPriceLookup(){
       new Promise((_, reject) => setTimeout(() => reject(new Error('Lookup timed out after 15 seconds')), 15000))
     ]);
     clearTimeout(slowTimer);
+    if(_qplSearchSeq !== mySeq) return;
     qplMasterResults = results.length ? results : await aiQuickLookupFallback(q, cat);
     qplLastSearch = q;
     qplResults = filterQplMasterResults(qplMasterResults, cat);
@@ -20526,6 +20532,12 @@ function noQuickLookupResults(q, cat){
   const safeQ = escHtml(q || '');
   const catKey = qplCategoryKey(cat) || (isMtgLookupIntent(q, cat) ? 'mtg' : isComicLookupIntent(q, cat) ? 'comic' : isPokemonLookupIntent(q, cat) ? 'pokemon' : '');
   // Category-specific hint and external links
+  // Detect if the query looks like card text / ability / attack search which is not indexed
+  const lq = (q || '').toLowerCase();
+  const looksLikeCardText = /\b(damage|discard|flip|draw|attach|energy|attack|ability|effect|knock\s*out|ko|retreat|bench|stadium|trainer|supporter|item card)\b/.test(lq) && !/\b(psa|bgs|cgc|sgc|nm|mp|hp|lp|gem)\b/.test(lq);
+  const cardTextNote = (catKey === 'pokemon' || catKey === 'mtg') && looksLikeCardText
+    ? ` <span style="color:var(--gold)">Note: attack/ability text is not indexed — search by card name or number instead.</span>`
+    : '';
   const hints = {
     pokemon: 'Try card number + set (e.g. "Charizard 4/102 Base Set"), promo code (SVP074), or rarity shorthand (SIR / IR / Holo).',
     mtg: 'Try card name + set code (e.g. "Lightning Bolt MH2") or add a finish like "foil", "etched", "showcase", or "borderless".',
@@ -20560,7 +20572,7 @@ function noQuickLookupResults(q, cat){
   return `<div style="border:1px dashed rgba(255,209,102,.35);border-radius:10px;padding:14px;background:rgba(255,209,102,.05)">
     <div style="font-family:'Orbitron',monospace;font-size:11px;color:var(--gold);margin-bottom:8px">NO EXACT MATCH FOUND</div>
     <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);line-height:1.6;margin-bottom:12px">
-      No results for <b style="color:var(--text)">${safeQ}</b>. ${escHtml(hint)}
+      No results for <b style="color:var(--text)">${safeQ}</b>. ${escHtml(hint)}${cardTextNote}
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">${links}</div>
   </div>`;
