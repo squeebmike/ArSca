@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.06.19.03-set-browser">
+<meta name="version" content="2026.06.22.06-topps-checklists-main">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -86,6 +86,39 @@ header{position:sticky;top:0;z-index:100;background:rgba(7,8,10,.96);backdrop-fi
 .ph{font-family:var(--font-mono);font-size:9px;letter-spacing:2px;color:var(--dim);margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;}
 .ph b{color:var(--text);font-weight:600;}
 .ph-action{font-size:9px;color:var(--g);cursor:pointer;text-decoration:none;}
+.research-subtabs{max-width:1400px;margin:0 auto 12px;padding:0 20px;display:flex;gap:8px;flex-wrap:wrap;}
+.research-subtab{border:1px solid var(--border);background:var(--surf2);color:var(--dim);border-radius:7px;min-height:36px;padding:8px 12px;font-family:'Orbitron',monospace;font-size:9px;letter-spacing:1px;cursor:pointer;}
+.research-subtab.on{color:var(--g);background:rgba(0,255,179,.08);border-color:rgba(0,255,179,.35);}
+.topps-browser{max-width:1400px;margin:0 auto 14px;padding:0 20px;display:none;}
+.topps-shell{display:grid;grid-template-columns:260px minmax(0,1fr);gap:14px;align-items:start;}
+.topps-sidebar{background:var(--surf);border:1px solid var(--border);border-radius:10px;padding:14px;display:grid;gap:10px;position:sticky;top:126px;}
+.topps-input,.topps-select{width:100%;background:var(--surf2);border:1px solid var(--border);border-radius:7px;color:var(--text);font-family:var(--font-mono);font-size:11px;padding:9px 10px;}
+.topps-filter-label{font-family:'Orbitron',monospace;font-size:8px;letter-spacing:1px;color:var(--dim);margin-bottom:4px;}
+.topps-main{min-width:0;display:grid;gap:12px;}
+.topps-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
+.topps-stat{background:var(--surf);border:1px solid var(--border);border-radius:8px;padding:10px 12px;}
+.topps-stat b{display:block;font-family:'Orbitron',monospace;font-size:17px;color:var(--g);}
+.topps-stat span{font-family:var(--font-mono);font-size:8px;color:var(--dim);letter-spacing:1px;}
+.topps-set-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px;}
+.topps-set-card,.topps-card-row{background:var(--surf);border:1px solid var(--border);border-radius:8px;padding:12px;cursor:pointer;transition:.15s;}
+.topps-set-card:hover,.topps-card-row:hover{border-color:rgba(0,255,179,.35);background:rgba(0,255,179,.04);}
+.topps-set-card.on{border-color:rgba(255,209,102,.45);background:rgba(255,209,102,.06);}
+.topps-card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px;}
+.topps-card-list{display:grid;gap:6px;}
+.topps-card-row{display:grid;grid-template-columns:58px minmax(0,1fr) auto;gap:10px;align-items:center;}
+.topps-placeholder{aspect-ratio:2.5/3.5;border-radius:7px;border:1px solid rgba(255,255,255,.08);background:linear-gradient(145deg,rgba(0,255,179,.08),rgba(255,209,102,.08));display:flex;align-items:center;justify-content:center;text-align:center;font-family:'Orbitron',monospace;font-size:10px;color:var(--g);padding:8px;}
+.topps-badges{display:flex;gap:5px;flex-wrap:wrap;margin-top:7px;}
+.topps-badge{border:1px solid rgba(255,209,102,.28);background:rgba(255,209,102,.08);color:var(--gold);border-radius:999px;padding:3px 6px;font-family:var(--font-mono);font-size:8px;text-transform:uppercase;}
+.topps-drawer-bg{position:fixed;inset:0;background:rgba(0,0,0,.62);z-index:9998;display:none;}
+.topps-drawer{position:fixed;right:0;top:0;bottom:0;width:min(560px,100vw);background:var(--surf);border-left:1px solid var(--border);z-index:9999;display:none;overflow:auto;padding:18px;box-shadow:-20px 0 60px rgba(0,0,0,.45);}
+.topps-drawer.on,.topps-drawer-bg.on{display:block;}
+.topps-chart-empty{border:1px dashed rgba(255,255,255,.16);border-radius:8px;padding:18px;text-align:center;font-family:var(--font-mono);font-size:11px;color:var(--dim);}
+@media(max-width:760px){
+  .topps-shell{grid-template-columns:1fr;}
+  .topps-sidebar{position:static;}
+  .topps-summary{grid-template-columns:repeat(2,1fr);}
+  .topps-card-row{grid-template-columns:46px minmax(0,1fr);}
+}
 
 /* REGISTER COMMAND CENTER */
 .register-command{max-width:1400px;margin:0 auto 14px;padding:0 20px;display:grid;grid-template-columns:1.3fr .9fr .9fr .9fr;gap:10px;}
@@ -1319,7 +1352,7 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.22.05-pdfjs-import</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.22.06-topps-checklists-main</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
@@ -1346,7 +1379,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip dev-only" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.22.05-pdfjs-import</div>
+<div class="dsb-chip dev-only" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.22.06-topps-checklists-main</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -1948,6 +1981,69 @@ body.show-mode .inv-sync-badge{display:none;}
       <div id="rq-scan-inbox-list" style="font-family:monospace;font-size:10px;color:var(--dim)">No phone scans for this store</div>
     </div>
   </div>
+  <div class="research-subtabs">
+    <button class="research-subtab on" id="research-subtab-core" onclick="showResearchSubtab('core')">CORE RESEARCH</button>
+    <button class="research-subtab" id="research-subtab-topps" onclick="showResearchSubtab('topps')">TOPPS CHECKLISTS</button>
+  </div>
+  <div id="topps-checklist-panel" class="topps-browser">
+    <div class="topps-shell">
+      <aside class="topps-sidebar">
+        <div>
+          <div class="topps-filter-label">SEARCH</div>
+          <input id="topps-search" class="topps-input" placeholder="Player, team, card #, set..." oninput="toppsApplyFilters()">
+        </div>
+        <div>
+          <div class="topps-filter-label">YEAR</div>
+          <select id="topps-year" class="topps-select" onchange="toppsApplyFilters()"><option value="">All years</option></select>
+        </div>
+        <div>
+          <div class="topps-filter-label">SPORT</div>
+          <select id="topps-sport" class="topps-select" onchange="toppsApplyFilters()"><option value="">All sports</option></select>
+        </div>
+        <div>
+          <div class="topps-filter-label">SET / PRODUCT</div>
+          <select id="topps-set" class="topps-select" onchange="toppsSelectSet(this.value)"><option value="">All sets</option></select>
+        </div>
+        <div>
+          <div class="topps-filter-label">BADGE</div>
+          <select id="topps-flag" class="topps-select" onchange="toppsApplyFilters()">
+            <option value="">Any card type</option>
+            <option value="rc">Rookie / RC</option>
+            <option value="auto">Autograph</option>
+            <option value="relic">Relic / memorabilia</option>
+            <option value="parallel">Parallel</option>
+            <option value="numbered">Numbered</option>
+            <option value="insert">Insert</option>
+          </select>
+        </div>
+        <button class="hbtn" onclick="toppsClearFilters()">CLEAR FILTERS</button>
+        <button class="hbtn" onclick="toppsRefresh(true)">REFRESH DATA</button>
+        <div id="topps-import-note" style="font-family:var(--font-mono);font-size:9px;color:var(--dim);line-height:1.55">Loading Topps checklist index...</div>
+      </aside>
+      <main class="topps-main">
+        <div class="panel">
+          <div class="ph">TOPPS CHECKLIST BROWSER <span id="topps-source-label">structured PDF index</span></div>
+          <div class="topps-summary">
+            <div class="topps-stat"><b id="topps-stat-sets">0</b><span>SETS</span></div>
+            <div class="topps-stat"><b id="topps-stat-cards">0</b><span>CARDS</span></div>
+            <div class="topps-stat"><b id="topps-stat-pdfs">0</b><span>PDF SOURCES</span></div>
+            <div class="topps-stat"><b id="topps-stat-visible">0</b><span>VISIBLE</span></div>
+          </div>
+        </div>
+        <div class="panel">
+          <div style="display:flex;align-items:center;gap:8px;justify-content:space-between;flex-wrap:wrap;margin-bottom:10px">
+            <div class="ph" style="margin:0">SETS</div>
+            <button class="hbtn" onclick="toppsToggleView()" id="topps-view-btn">TABLE VIEW</button>
+          </div>
+          <div id="topps-set-list" class="topps-set-grid"></div>
+        </div>
+        <div class="panel">
+          <div class="ph">CHECKLIST RESULTS <span id="topps-result-status">Choose a set or search all cards</span></div>
+          <div id="topps-card-results" class="topps-card-grid"></div>
+        </div>
+      </main>
+    </div>
+  </div>
   <!-- SET BROWSER -->
   <div id="set-browser-panel" class="panel" style="margin:0 0 14px;max-width:1200px">
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px">
@@ -2093,6 +2189,9 @@ body.show-mode .inv-sync-badge{display:none;}
     </div>
   </div>
 </div>
+
+<div id="topps-drawer-bg" class="topps-drawer-bg" onclick="toppsCloseDetail()"></div>
+<div id="topps-detail-drawer" class="topps-drawer" aria-live="polite"></div>
 
 <!-- EDIT ITEM MODAL -->
 <div class="modal-bg" id="edit-modal">
@@ -2546,7 +2645,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.06.19.01-guided-help-2';
+const APP_VERSION = '2026.06.22.06-topps-checklists-main';
 window.APP_VERSION = APP_VERSION;
 const branchName = 'pokemon-v2-core';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
@@ -26047,6 +26146,231 @@ function sbCloseModal() {
 
 // ── END SPORTS SET BROWSER ───────────────────────────────────────
 
+// Topps Checklist Browser - data-first browser backed by Worker KV, with a
+// local generated JSON fallback for GitHub Pages testing before full publish.
+function toppsDefaultState(){ return { loaded:false, source:'loading', sets:[], cards:[], sources:[], filteredSets:[], filteredCards:[], selectedSetId:'', view:'grid', pcCache:{}, totalCards:0, filterSeq:0, filterTimer:null, cardsLoading:false }; }
+var TOPPS = window.TOPPS || toppsDefaultState();
+function toppsEnsureState(){ if(!TOPPS) TOPPS = window.TOPPS = toppsDefaultState(); return TOPPS; }
+
+function showResearchSubtab(tab){
+  toppsEnsureState();
+  const isTopps = tab === 'topps';
+  document.getElementById('research-subtab-core')?.classList.toggle('on', !isTopps);
+  document.getElementById('research-subtab-topps')?.classList.toggle('on', isTopps);
+  const topps = document.getElementById('topps-checklist-panel');
+  const setBrowser = document.getElementById('set-browser-panel');
+  const researchPanels = document.getElementById('research-panels');
+  if(topps) topps.style.display = isTopps ? 'block' : 'none';
+  if(setBrowser) setBrowser.style.display = isTopps ? 'none' : '';
+  if(researchPanels) researchPanels.style.display = isTopps ? 'none' : '';
+  if(isTopps) toppsInit();
+}
+
+async function toppsWorker(path, opts = {}){
+  const res = await fetch(WORKER + path, opts);
+  const data = await res.json().catch(() => ({}));
+  if(!res.ok || data.ok === false) throw new Error(data.error || 'Topps API failed');
+  return data;
+}
+
+async function toppsLoadLocalIndex(){
+  const res = await fetch('data/topps/topps_checklists_index.sample.json', { cache:'no-store' });
+  if(!res.ok) throw new Error('Local Topps sample index not found');
+  return res.json();
+}
+
+async function toppsRefresh(force = false){
+  if(TOPPS.loaded && !force) return;
+  const note = document.getElementById('topps-import-note');
+  if(note) note.textContent = 'Loading Topps checklist database...';
+  try {
+    const [setsData, cardsData] = await Promise.all([toppsWorker('/topps-checklists/sets'), toppsWorker('/topps-checklists/cards?limit=500')]);
+    TOPPS.sets = setsData.sets || [];
+    TOPPS.cards = cardsData.cards || [];
+    TOPPS.sources = [];
+    TOPPS.source = 'Worker KV';
+    TOPPS.totalCards = cardsData.total || TOPPS.cards.length;
+    TOPPS.loaded = true;
+    if(note) note.textContent = `Worker KV loaded. ${TOPPS.totalCards.toLocaleString()} cards indexed. Filters search the full database.`;
+  } catch(e) {
+    try {
+      const local = await toppsLoadLocalIndex();
+      TOPPS.sets = local.sets || [];
+      TOPPS.cards = local.cards || [];
+      TOPPS.sources = local.sources || [];
+      TOPPS.source = 'Local sample JSON';
+      TOPPS.totalCards = TOPPS.cards.length;
+      TOPPS.loaded = true;
+      if(note) note.textContent = `Local sample loaded: ${TOPPS.sources.length} PDFs. Run npm.cmd run topps:import for full batch, then publish to Worker.`;
+    } catch(e2) {
+      if(note) note.textContent = 'Topps checklist data unavailable: ' + (e2.message || e.message || e2);
+      TOPPS.loaded = false;
+    }
+  }
+  toppsPopulateFilters();
+  toppsApplyFilters();
+}
+
+function toppsInit(){ toppsEnsureState(); if(!TOPPS.loaded) toppsRefresh(false); }
+
+function toppsPopulateFilters(){
+  const years = [...new Set(TOPPS.sets.map(s => s.year).filter(Boolean))].sort((a,b) => String(b).localeCompare(String(a)));
+  const sports = [...new Set(TOPPS.sets.map(s => s.sport).filter(Boolean))].sort();
+  const yearEl = document.getElementById('topps-year');
+  const sportEl = document.getElementById('topps-sport');
+  const setEl = document.getElementById('topps-set');
+  if(yearEl) yearEl.innerHTML = '<option value="">All years</option>' + years.map(y => `<option value="${escHtml(y)}">${escHtml(y)}</option>`).join('');
+  if(sportEl) sportEl.innerHTML = '<option value="">All sports</option>' + sports.map(s => `<option value="${escHtml(s)}">${escHtml(s)}</option>`).join('');
+  if(setEl) setEl.innerHTML = '<option value="">All sets</option>' + TOPPS.sets.map(s => `<option value="${escHtml(s.id)}">${escHtml([s.year, s.product || s.setName, s.sport].filter(Boolean).join(' - '))}</option>`).join('');
+}
+
+function toppsNorm(v){ return String(v || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim(); }
+function toppsCurrentFilters(){ return { q:document.getElementById('topps-search')?.value || '', year:document.getElementById('topps-year')?.value || '', sport:document.getElementById('topps-sport')?.value || '', flag:document.getElementById('topps-flag')?.value || '', setId:TOPPS.selectedSetId || document.getElementById('topps-set')?.value || '' }; }
+function toppsFilterParams(f){
+  const p = new URLSearchParams({ limit:'500' });
+  ['q','year','sport','flag','setId'].forEach(k => { if(f[k]) p.set(k, f[k]); });
+  return p;
+}
+function toppsCardMatches(c, f){
+  if(f.setId && c.setId !== f.setId) return false;
+  if(f.year && String(c.year || '') !== String(f.year)) return false;
+  if(f.sport && String(c.sport || '').toLowerCase() !== String(f.sport).toLowerCase()) return false;
+  if(f.flag && !c.flags?.[f.flag]) return false;
+  if(f.q) {
+    const hay = c.searchText || [c.year,c.brand,c.product,c.sport,c.section,c.cardNumber,c.player,c.subject,c.team,c.notes].join(' ').toLowerCase();
+    if(!toppsNorm(f.q).split(/\s+/).every(t => hay.includes(t))) return false;
+  }
+  return true;
+}
+function toppsSetMatches(s, f){
+  if(f.year && String(s.year || '') !== String(f.year)) return false;
+  if(f.sport && String(s.sport || '').toLowerCase() !== String(f.sport).toLowerCase()) return false;
+  if(f.q && !toppsNorm([s.year,s.brand,s.product,s.setName,s.releaseName,s.sport].join(' ')).includes(toppsNorm(f.q))) return TOPPS.cards.some(c => c.setId === s.id && toppsCardMatches(c, f));
+  return true;
+}
+function toppsApplyFilters(){
+  if(TOPPS.source === 'Worker KV') {
+    clearTimeout(TOPPS.filterTimer);
+    TOPPS.filterTimer = setTimeout(toppsApplyWorkerFilters, 180);
+    return;
+  }
+  const f = toppsCurrentFilters();
+  TOPPS.filteredSets = TOPPS.sets.filter(s => toppsSetMatches(s, f));
+  TOPPS.filteredCards = TOPPS.cards.filter(c => toppsCardMatches(c, f)).slice(0, 500);
+  toppsRender();
+}
+async function toppsApplyWorkerFilters(){
+  const seq = ++TOPPS.filterSeq;
+  const f = toppsCurrentFilters();
+  TOPPS.filteredSets = TOPPS.sets.filter(s => toppsSetMatches(s, f));
+  TOPPS.cardsLoading = true;
+  toppsRender();
+  try {
+    const data = await toppsWorker('/topps-checklists/cards?' + toppsFilterParams(f).toString());
+    if(seq !== TOPPS.filterSeq) return;
+    TOPPS.filteredCards = data.cards || [];
+    TOPPS.totalCards = data.total ?? TOPPS.totalCards;
+  } catch(e) {
+    if(seq !== TOPPS.filterSeq) return;
+    TOPPS.filteredCards = [];
+    const note = document.getElementById('topps-import-note');
+    if(note) note.textContent = 'Topps filter request failed: ' + (e.message || e);
+  } finally {
+    if(seq === TOPPS.filterSeq) {
+      TOPPS.cardsLoading = false;
+      toppsRender();
+    }
+  }
+}
+function toppsSelectSet(setId){
+  TOPPS.selectedSetId = setId || '';
+  const setEl = document.getElementById('topps-set');
+  if(setEl && setEl.value !== TOPPS.selectedSetId) setEl.value = TOPPS.selectedSetId;
+  toppsApplyFilters();
+}
+function toppsClearFilters(){
+  ['topps-search','topps-year','topps-sport','topps-set','topps-flag'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
+  TOPPS.selectedSetId = '';
+  toppsApplyFilters();
+}
+function toppsToggleView(){ TOPPS.view = TOPPS.view === 'grid' ? 'table' : 'grid'; toppsRenderCards(); }
+function toppsFlagsHtml(flags = {}){ return Object.entries(flags).filter(([,v]) => v).map(([k]) => `<span class="topps-badge">${escHtml(k)}</span>`).join(''); }
+function toppsRender(){
+  const source = document.getElementById('topps-source-label'); if(source) source.textContent = TOPPS.source || 'Topps index';
+  const setStat = document.getElementById('topps-stat-sets'); if(setStat) setStat.textContent = TOPPS.sets.length;
+  const cardStat = document.getElementById('topps-stat-cards'); if(cardStat) cardStat.textContent = Number(TOPPS.totalCards || TOPPS.cards.length || 0).toLocaleString();
+  const pdfStat = document.getElementById('topps-stat-pdfs'); if(pdfStat) pdfStat.textContent = TOPPS.sources.length || 'KV';
+  const visStat = document.getElementById('topps-stat-visible'); if(visStat) visStat.textContent = TOPPS.filteredCards.length;
+  toppsRenderSets();
+  toppsRenderCards();
+}
+function toppsRenderSets(){
+  const el = document.getElementById('topps-set-list');
+  if(!el) return;
+  const sets = TOPPS.filteredSets.slice(0, 80);
+  if(!sets.length) { el.innerHTML = '<div style="font-family:var(--font-mono);font-size:10px;color:var(--dim)">No sets match the current filters.</div>'; return; }
+  el.innerHTML = sets.map(s => `<div class="topps-set-card${TOPPS.selectedSetId===s.id?' on':''}" onclick="toppsSelectSet('${escHtml(s.id)}')">
+    <div style="font-family:'Orbitron',monospace;font-size:11px;color:var(--g);line-height:1.3">${escHtml(s.product || s.setName || 'Topps Set')}</div>
+    <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);margin-top:7px">${escHtml([s.year, s.sport].filter(Boolean).join(' / '))}</div>
+    <div style="font-family:var(--font-mono);font-size:9px;color:var(--gold);margin-top:7px">${Number(s.cardCount || 0).toLocaleString()} parsed cards</div>
+  </div>`).join('');
+}
+function toppsRenderCards(){
+  const el = document.getElementById('topps-card-results');
+  const status = document.getElementById('topps-result-status');
+  const btn = document.getElementById('topps-view-btn');
+  if(!el) return;
+  if(btn) btn.textContent = TOPPS.view === 'grid' ? 'TABLE VIEW' : 'GRID VIEW';
+  el.className = TOPPS.view === 'grid' ? 'topps-card-grid' : 'topps-card-list';
+  if(TOPPS.cardsLoading) {
+    if(status) status.textContent = 'Searching Topps checklist database...';
+    el.innerHTML = '<div style="font-family:var(--font-mono);font-size:10px;color:var(--dim)">Loading checklist rows...</div>';
+    return;
+  }
+  if(status) status.textContent = `${TOPPS.filteredCards.length} visible checklist rows${TOPPS.filteredCards.length >= 500 ? ' (first 500 matches)' : ''}`;
+  if(!TOPPS.filteredCards.length) { el.innerHTML = '<div style="font-family:var(--font-mono);font-size:10px;color:var(--dim)">No cards match. Try clearing filters or selecting another set.</div>'; return; }
+  el.innerHTML = TOPPS.filteredCards.map(c => {
+    const badges = toppsFlagsHtml(c.flags);
+    if(TOPPS.view === 'table') return `<div class="topps-card-row" onclick="toppsOpenDetail('${escHtml(c.id)}')"><div class="topps-placeholder">#${escHtml(c.cardNumber || '')}</div><div style="min-width:0"><div style="font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(c.player || c.subject || 'Checklist Card')}</div><div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml([c.year, c.product, c.team, c.section].filter(Boolean).join(' / '))}</div><div class="topps-badges">${badges}</div></div><button class="hbtn" style="min-height:30px;font-size:8px;padding:3px 8px" onclick="event.stopPropagation();toppsOpenDetail('${escHtml(c.id)}')">OPEN</button></div>`;
+    return `<div class="topps-set-card" onclick="toppsOpenDetail('${escHtml(c.id)}')"><div style="display:grid;grid-template-columns:58px minmax(0,1fr);gap:10px;align-items:center"><div class="topps-placeholder">#${escHtml(c.cardNumber || '')}</div><div style="min-width:0"><div style="font-family:'Orbitron',monospace;font-size:12px;color:var(--text);line-height:1.25;overflow:hidden;text-overflow:ellipsis">${escHtml(c.player || c.subject || 'Checklist Card')}</div><div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);margin-top:5px">${escHtml([c.team, c.section].filter(Boolean).join(' / '))}</div></div></div><div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);margin-top:10px;line-height:1.4">${escHtml([c.year, c.product].filter(Boolean).join(' Topps '))}</div><div class="topps-badges">${badges}</div></div>`;
+  }).join('');
+}
+function toppsFindCard(cardId){ return TOPPS.cards.find(c => c.id === cardId) || TOPPS.filteredCards.find(c => c.id === cardId) || null; }
+function toppsEbayKeywords(card = {}){ return [card.year, 'Topps', card.product, card.player || card.subject, card.cardNumber ? '#' + card.cardNumber : '', card.flags?.rc ? 'RC' : '', card.flags?.auto ? 'auto' : '', card.flags?.relic ? 'relic' : '', card.flags?.parallel ? 'parallel' : '', card.team, card.sport === 'baseball' ? 'MLB Baseball Card' : 'Card'].filter(Boolean).join(' ').replace(/\s+/g,' ').trim(); }
+function toppsEbayTitle(card = {}){ let title = toppsEbayKeywords(card).replace(/\bparallel\b/i, '').replace(/\s+/g,' ').trim(); if(title.length <= 80) return title; title = [card.year, 'Topps', card.product, card.player || card.subject, card.cardNumber ? '#' + card.cardNumber : '', card.flags?.rc ? 'RC' : '', card.flags?.auto ? 'Auto' : '', card.team, 'Card'].filter(Boolean).join(' ').replace(/\s+/g,' ').trim(); return title.length <= 80 ? title : title.slice(0, 79).trim(); }
+function toppsCopyText(text){ navigator.clipboard?.writeText(text).then(() => toast_dash('Copied')).catch(() => { const ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); toast_dash('Copied'); }); }
+function toppsOpenUrl(url){ window.open(url, '_blank', 'noopener'); }
+async function toppsOpenDetail(cardId){
+  const card = toppsFindCard(cardId); if(!card) return;
+  document.getElementById('topps-drawer-bg')?.classList.add('on');
+  const drawer = document.getElementById('topps-detail-drawer');
+  if(drawer) { drawer.classList.add('on'); drawer.innerHTML = toppsDetailHtml(card, null, true); }
+  toppsLoadPriceCharting(card);
+}
+function toppsCloseDetail(){ document.getElementById('topps-drawer-bg')?.classList.remove('on'); document.getElementById('topps-detail-drawer')?.classList.remove('on'); }
+function toppsPcPrice(best = {}){ const prices = best.prices || {}; return Number(prices.ungraded || prices.grade9 || Number(best['loose-price'] || 0) / 100 || 0) || 0; }
+function toppsDetailHtml(card, pcData = null, loadingPc = false){
+  const keywords = toppsEbayKeywords(card), title = toppsEbayTitle(card);
+  const activeUrl = 'https://www.ebay.com/sch/i.html?_nkw=' + encodeURIComponent(keywords);
+  const soldUrl = activeUrl + '&LH_Sold=1&LH_Complete=1';
+  const pc = pcData?.best || null, pcUrl = pc?.url || ('https://www.pricecharting.com/search-products?q=' + encodeURIComponent(keywords));
+  const image = pc?.imageUrl || '', price = toppsPcPrice(pc || {});
+  return `<div style="display:flex;justify-content:space-between;gap:12px;align-items:start;margin-bottom:14px"><div><div style="font-family:'Orbitron',monospace;font-size:16px;color:var(--g);line-height:1.3">${escHtml(card.player || card.subject || 'Topps checklist card')}</div><div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);margin-top:6px">${escHtml([card.year, 'Topps', card.product, '#' + (card.cardNumber || ''), card.team].filter(Boolean).join(' / '))}</div><div class="topps-badges">${toppsFlagsHtml(card.flags)}</div></div><button class="hbtn" onclick="toppsCloseDetail()">CLOSE</button></div>
+  <div style="display:grid;grid-template-columns:130px minmax(0,1fr);gap:14px;align-items:start;margin-bottom:14px">${image ? `<img src="${escHtml(image)}" style="width:130px;max-height:184px;object-fit:contain;border:1px solid var(--border);border-radius:8px;background:#050507">` : `<div class="topps-placeholder" style="width:130px;height:184px">TOPPS<br>${escHtml(card.year || '')}<br>#${escHtml(card.cardNumber || '')}</div>`}<div class="panel" style="padding:12px;background:var(--surf2)"><div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);line-height:1.75"><div><b style="color:var(--text)">Set:</b> ${escHtml(card.setName || card.product || '')}</div><div><b style="color:var(--text)">Sport:</b> ${escHtml(card.sport || '')}</div><div><b style="color:var(--text)">Section:</b> ${escHtml(card.section || '')}</div><div><b style="color:var(--text)">Notes:</b> ${escHtml(card.notes || 'No notes parsed')}</div><div><b style="color:var(--text)">PDF Source:</b> ${escHtml(card.sourceId || '')}</div><div><b style="color:var(--text)">Parse confidence:</b> ${Math.round(Number(card.parseConfidence || 0) * 100)}%</div></div></div></div>
+  <div class="panel" style="margin-bottom:14px"><div class="ph">PRICECHARTING MATCH</div>${loadingPc ? '<div style="font-family:var(--font-mono);font-size:10px;color:var(--dim)">Checking cached PriceCharting match...</div>' : pc ? `<div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);line-height:1.7"><div style="color:var(--text);font-weight:800">${escHtml(pc.productName || pc['product-name'] || 'PriceCharting match')}</div><div>${price ? '$' + price.toFixed(2) : 'No guide price returned'} ${pc.consoleName ? ' / ' + escHtml(pc.consoleName) : ''}</div></div>` : '<div style="font-family:var(--font-mono);font-size:10px;color:var(--dim)">No PriceCharting match cached yet.</div>'}<div class="topps-chart-empty" style="margin-top:12px">No price history found yet.</div></div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="hbtn" onclick="toppsOpenUrl(decodeURIComponent('${encodeURIComponent(pcUrl)}'))">OPEN PRICECHARTING</button><button class="hbtn" onclick="toppsOpenUrl(decodeURIComponent('${encodeURIComponent(activeUrl)}'))">EBAY ACTIVE</button><button class="hbtn" onclick="toppsOpenUrl(decodeURIComponent('${encodeURIComponent(soldUrl)}'))">EBAY SOLD</button><button class="hbtn" onclick="toppsCopyText(decodeURIComponent('${encodeURIComponent(title)}'))">COPY EBAY TITLE</button><button class="hbtn" onclick="toppsCopyText(decodeURIComponent('${encodeURIComponent(keywords)}'))">COPY KEYWORDS</button></div>`;
+}
+async function toppsLoadPriceCharting(card){
+  const drawer = document.getElementById('topps-detail-drawer');
+  try {
+    if(TOPPS.pcCache[card.id]) { if(drawer) drawer.innerHTML = toppsDetailHtml(card, TOPPS.pcCache[card.id], false); return; }
+    const data = await toppsWorker('/topps-checklists/cards/' + encodeURIComponent(card.id) + '/pricecharting');
+    TOPPS.pcCache[card.id] = data;
+    if(drawer?.classList.contains('on')) drawer.innerHTML = toppsDetailHtml(card, data, false);
+  } catch(e) {
+    if(drawer?.classList.contains('on')) drawer.innerHTML = toppsDetailHtml(card, { best:null, error:e.message }, false);
+  }
+}
 </script>
 </body>
 </html>
