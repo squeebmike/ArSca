@@ -1356,7 +1356,7 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.23.23-qol</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.23.24-chips-sync</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
@@ -1383,7 +1383,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.23.23-qol</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.23.24-chips-sync</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -4033,6 +4033,15 @@ const RESEARCH_CATEGORY_OPTIONS = [
   { value:'Magic: The Gathering', label:'MTG' },
   { value:'Sealed', label:'Sealed / Packs' },
 ];
+function getAlertSettings(){
+  let saved = {};
+  try { saved = JSON.parse(localStorage.getItem('alert_settings_v1') || '{}'); } catch(e) {}
+  return { lowStockQty:1, lowStockMinValue:20, ...saved };
+}
+function saveAlertSettings(patch){
+  localStorage.setItem('alert_settings_v1', JSON.stringify({ ...getAlertSettings(), ...patch }));
+}
+
 function getResearchSettings(){
   let saved = {};
   try { saved = JSON.parse(localStorage.getItem('research_settings_v1') || '{}'); } catch(e) {}
@@ -4831,7 +4840,7 @@ function organizeRegisterLayout(){
   ensureVendorConfigPanel(backoffice);
   ensureSubscriptionPanel(backoffice);
   ensureHelpWalkthroughPanel(backoffice);
-  ensureInventorySyncPanel(backoffice);
+  ensureInventorySyncPanel(backoffice); // includes sync queue (merged)
   ensureLegacyToolsPanel(backoffice);
   ensureSpreadsheetPanel(backoffice);
   ensureSyncQueuePanel(backoffice);
@@ -6966,6 +6975,18 @@ function renderVendorConfigPanel(){
         <span>Inventory Debug <span style="color:var(--dim);font-size:9px">(shows dedup counts in status bar)</span></span>
       </label>
     </div>
+    <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
+      <div style="font-family:'Orbitron',monospace;font-size:10px;color:var(--dim);letter-spacing:.04em;margin-bottom:8px">ALERT THRESHOLDS</div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;font-family:monospace;font-size:10px;color:var(--dim)">
+        <label>LOW STOCK QTY AT OR BELOW
+          <input type="number" min="1" max="99" value="${getAlertSettings().lowStockQty}" class="tsi" style="width:70px;margin-top:4px" onchange="saveAlertSettings({lowStockQty:Math.max(1,parseInt(this.value,10)||1)})">
+        </label>
+        <label>MIN ITEM VALUE TO FLAG ($)
+          <input type="number" min="0" max="99999" value="${getAlertSettings().lowStockMinValue}" class="tsi" style="width:90px;margin-top:4px" onchange="saveAlertSettings({lowStockMinValue:Math.max(0,parseFloat(this.value)||0)})">
+        </label>
+        <span style="font-size:9px;line-height:1.5">Items at or below qty threshold and at or above the min value will appear in the low stock alert.</span>
+      </div>
+    </div>
     <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);display:flex;gap:8px;flex-wrap:wrap">
       <button class="hbtn" onclick="openSetupWizard(1)">${isSetupComplete()?'EDIT SETUP':'SETUP WIZARD'}</button>
       <button class="hbtn" onclick="startWalkthrough('first-time')">START WALKTHROUGH</button>
@@ -8775,9 +8796,17 @@ function renderInventorySyncPanel(){
       <button class="hbtn" onclick="manualPullInventory()">PULL LATEST FROM CLOUD</button>
       <button class="hbtn" onclick="manualPushInventory()">PUSH PENDING CHANGES</button>
       <button class="hbtn" onclick="retryAllSyncQueue()">RETRY FAILED</button>
-      <button class="hbtn" onclick="switchTab('backoffice');setTimeout(()=>document.getElementById('sync-queue-panel')?.scrollIntoView({behavior:'smooth'}),200)">VIEW SYNC QUEUE</button>
     </div>
-    <div style="font-family:monospace;font-size:9px;color:var(--dim)">Auto-syncs when online. Minimum 15s between auto-sync attempts.</div>`;
+    <div style="font-family:monospace;font-size:9px;color:var(--dim);margin-bottom:12px">Auto-syncs when online. Minimum 15s between auto-sync attempts.</div>
+    <!-- Generic sync queue (webflow, supabase, cart pushes) -->
+    <div style="font-family:'Orbitron',monospace;font-size:10px;color:var(--dim);letter-spacing:.04em;margin-bottom:8px">SYNC QUEUE</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+      <button class="hbtn" onclick="renderSyncQueue()">REFRESH</button>
+      <button class="hbtn danger" onclick="clearCompletedSyncQueue();renderSyncQueue()">CLEAR DONE</button>
+    </div>
+    <div id="sync-queue-count" style="font-family:monospace;font-size:9px;color:var(--dim);margin-bottom:6px"></div>
+    <div id="sync-queue-list" style="display:grid;gap:6px;font-family:var(--font-mono);font-size:10px;color:var(--dim)"></div>`;
+  renderSyncQueue();
 }
 
 function renderSyncQueue(){
@@ -11556,8 +11585,9 @@ function renderStats(){
   // Alerts banner
   const alertWrap = document.getElementById('alert-wrap');
   const alerts = [];
-  const lowStock = ins.filter(i=>(i.qty||1)===1&&i.market>20);
-  if(lowStock.length) alerts.push(`⚠ ${lowStock.length} high-value items at qty 1`);
+  const _als = getAlertSettings();
+  const lowStock = ins.filter(i=>(i.qty||1)<=(_als.lowStockQty||1)&&(i.market||0)>=(_als.lowStockMinValue||20));
+  if(lowStock.length) alerts.push(`⚠ ${lowStock.length} item${lowStock.length!==1?'s':''} at or below qty ${_als.lowStockQty||1} (min value $${_als.lowStockMinValue||20})`);
   const unpriced = ins.filter(i=>!i.market||i.market===0);
   if(unpriced.length) alerts.push(`📊 ${unpriced.length} items missing market price`);
   alertWrap.innerHTML = alerts.map(a=>`<div class="alert"><span>${a}</span><a class="ph-action" onclick="switchTab('alerts',document.querySelector('.tab:nth-child(4)'))">View →</a></div>`).join('');
@@ -20785,32 +20815,28 @@ function quickLookupResultCard(r, idx){
       return ((normActive ? rows.find(mr => mr.finish === normActive && mr.price > 0) : null)
         || rows.find(mr => mr.price > 0))?.price || 0;
     };
-    // For Pokemon, always use the 5-condition path so NM/LP/MP/HP/DMG chips are always visible.
-    // The TCG.io availableVariants path only has NM which would hide the other condition chips.
-    if(qplResultCategoryKey(r) !== 'pokemon' && r.availableVariants?.length) {
-      const finishVars = r.availableVariants.filter(v => !activeFinish || normalizePokemonText(v.finish||'') === normalizePokemonText(activeFinish));
-      const seen = new Set();
-      return (finishVars.length ? finishVars : r.availableVariants).filter(v => {
-        const k = v.condition; if(seen.has(k)) return false; seen.add(k); return true;
-      }).slice(0,6).map(v => {
-        const condCode = pokemonPptConditionCode(pokemonPptConditionLabel(v.condition || ''));
-        const p = Number(v.marketPrice || v.market || 0) || pptPriceFor(condCode);
-        const isActive = String(v.condition||'').toLowerCase() === String(activeCond||'').toLowerCase();
-        return `<button class="qpl-cond-chip${isActive?' active':''}" onclick="updateQplVariant(${idx},{selectedCondition:'${escHtml(v.condition||'')}',pricingMode:'raw',selectedGrade:'',selectedGradeKey:''})">
-          <span class="cchip-label">${escHtml(v.condition||'')}</span>
-          <span class="${p?'cchip-price':'cchip-na'}">${p?'$'+p.toFixed(2):'—'}</span>
-        </button>`;
-      }).join('');
-    }
-    // Pokemon (and fallback): always show NM/LP/MP/HP/DMG using real PPT prices only.
+    // Always show all 5 standard condition chips (NM/LP/MP/HP/DMG).
+    // Pull prices from availableVariants first, then fall back to pptMatrix.
+    // This ensures chips are always visible even before prices load.
+    // Standard condition label → code mapping for availableVariants lookup:
+    const COND_LABELS = { NM:['nm','near mint','near-mint'], LP:['lp','lightly played','light played'], MP:['mp','moderately played','moderate played'], HP:['hp','heavily played','heavy played'], DMG:['dmg','damaged','poor'] };
+    const priceFromVariants = condCode => {
+      if(!r.availableVariants?.length) return 0;
+      const labels = COND_LABELS[condCode] || [condCode.toLowerCase()];
+      const finishVars = activeFinish ? r.availableVariants.filter(v => normalizePokemonText(v.finish||'') === normalizePokemonText(activeFinish)) : r.availableVariants;
+      const vars = finishVars.length ? finishVars : r.availableVariants;
+      const match = vars.find(v => labels.some(l => String(v.condition||'').toLowerCase().includes(l)));
+      return match ? Number(match.marketPrice || match.market || 0) : 0;
+    };
+    // Always show NM/LP/MP/HP/DMG using availableVariants first, then PPT matrix.
     // For NM: also accept r.market as fallback when PPT loaded but returned prices.market only
     // (no variants/conditions breakdown), which makes pokemonPptMatrixRows return empty.
     // Use displayPrice as NM fallback whenever PPT has no real NM price — covers both
     // "pptMatrix is empty" and "pptMatrix has zero-price entries" cases.
-    const nmFallback = !pptPriceFor('NM') ? Number(displayPrice || 0) : 0;
+    const nmFallback = !pptPriceFor('NM') && !priceFromVariants('NM') ? Number(displayPrice || 0) : 0;
     return ['NM','LP','MP','HP','DMG'].map(c => {
       const isActive = c === (activeCond || 'NM');
-      const p = pptPriceFor(c) || (c === 'NM' ? nmFallback : 0);
+      const p = pptPriceFor(c) || priceFromVariants(c) || (c === 'NM' ? nmFallback : 0);
       return `<button class="qpl-cond-chip${isActive?' active':''}" onclick="updateQplVariant(${idx},{selectedCondition:'${c}',pricingMode:'raw',selectedGrade:'',selectedGradeKey:''})">
         <span class="cchip-label">${c}</span>
         <span class="${p?'cchip-price':'cchip-na'}">${p?'$'+p.toFixed(2):'—'}</span>
