@@ -146,21 +146,43 @@ function setsFromCards(cards = [], seedSets = []) {
   }).sort((a, b) => String(b.year).localeCompare(String(a.year)) || String(a.product).localeCompare(String(b.product)));
 }
 
-async function supabaseFetch(table, rows, { url, key, returning = 'minimal' }) {
-  const res = await fetch(`${url.replace(/\/$/, '')}/rest/v1/${table}?on_conflict=${table === 'topps_import_meta' ? 'id' : table === 'topps_pdf_sources' ? 'source_id' : table === 'topps_sets' ? 'id' : 'id'}`, {
-    method: 'POST',
-    headers: {
-      apikey: key,
-      Authorization: `Bearer ${key}`,
-      'Content-Type': 'application/json',
-      Prefer: `resolution=merge-duplicates,return=${returning}`,
-    },
-    body: JSON.stringify(rows),
+function uniquifyCardIds(cards = []) {
+  const seen = new Map();
+  let duplicateRows = 0;
+  const out = cards.map(card => {
+    const id = card.id || '';
+    const n = (seen.get(id) || 0) + 1;
+    seen.set(id, n);
+    if (n === 1) return card;
+    duplicateRows += 1;
+    return { ...card, id: `${id}_dup${n}` };
   });
-  if (!res.ok) {
+  return { cards: out, duplicateRows };
+}
+
+const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+async function supabaseFetch(table, rows, { url, key, returning = 'minimal' }) {
+  const endpoint = `${url.replace(/\/$/, '')}/rest/v1/${table}?on_conflict=${table === 'topps_import_meta' ? 'id' : table === 'topps_pdf_sources' ? 'source_id' : table === 'topps_sets' ? 'id' : 'id'}`;
+  let lastError = '';
+  for (let attempt = 1; attempt <= 5; attempt++) {
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        apikey: key,
+        Authorization: `Bearer ${key}`,
+        'Content-Type': 'application/json',
+        Prefer: `resolution=merge-duplicates,return=${returning}`,
+      },
+      body: JSON.stringify(rows),
+    });
+    if (res.ok) return;
     const text = await res.text().catch(() => '');
-    throw new Error(`${table} upsert failed ${res.status}: ${text.slice(0, 600)}`);
+    lastError = `${table} upsert failed ${res.status}: ${text.slice(0, 600)}`;
+    if (![429, 500, 502, 503, 504].includes(res.status) || attempt === 5) break;
+    await sleep(1000 * attempt * attempt);
   }
+  throw new Error(lastError);
 }
 
 async function upsertBatches(table, rows, ctx, chunkSize) {
@@ -180,6 +202,9 @@ async function main() {
   const sourcesFile = path.resolve(argValue('--sources', path.join(DATA_DIR, 'topps_pdf_sources.json.gz')));
   const chunkSize = Number(argValue('--chunk-size', '500')) || 500;
   const cardsLimit = Number(argValue('--limit-cards', '0')) || 0;
+  const cardOffset = Number(argValue('--card-offset', '0')) || 0;
+  const skipSources = process.argv.includes('--skip-sources');
+  const skipSets = process.argv.includes('--skip-sets');
   const dryRun = process.argv.includes('--dry-run');
 
   if (!fs.existsSync(cardsFile)) throw new Error('Missing cards file: ' + cardsFile);
@@ -188,13 +213,15 @@ async function main() {
 
   const allCards = readJson(cardsFile);
   const rawCards = cardsLimit ? allCards.slice(0, cardsLimit) : allCards;
+  const { cards: uniqueRawCards, duplicateRows } = uniquifyCardIds(rawCards);
   const seedSets = fs.existsSync(setsFile) ? readJson(setsFile) : [];
-  const sets = setsFromCards(rawCards, seedSets);
-  const cards = rawCards.map(cardRow);
+  const sets = setsFromCards(uniqueRawCards, seedSets);
+  const cards = uniqueRawCards.map(cardRow);
   const sources = readSources(sourcesFile).map(sourceRow);
   const ctx = { url, key };
 
   console.log(`Importing Topps checklists to Supabase: ${sets.length} sets, ${cards.length} cards, ${sources.length} sources`);
+  if (duplicateRows) console.log(`Resolved ${duplicateRows} duplicate parsed card ids with stable _dupN suffixes.`);
   if (dryRun) {
     console.log('Dry run only. No Supabase writes were made.');
     console.log('Sample set:', JSON.stringify(sets[0] || {}, null, 2).slice(0, 900));
@@ -202,9 +229,12 @@ async function main() {
     return;
   }
   if (!key) throw new Error('Set SUPABASE_SERVICE_ROLE_KEY or pass --service-role-key=... to import.');
-  await upsertBatches('topps_pdf_sources', sources, ctx, Math.min(chunkSize, 100));
-  await upsertBatches('topps_sets', sets, ctx, Math.min(chunkSize, 500));
-  await upsertBatches('topps_checklist_cards', cards, ctx, chunkSize);
+  if (skipSources) console.log('Skipping topps_pdf_sources upsert.');
+  else await upsertBatches('topps_pdf_sources', sources, ctx, Math.min(chunkSize, 100));
+  if (skipSets) console.log('Skipping topps_sets upsert.');
+  else await upsertBatches('topps_sets', sets, ctx, Math.min(chunkSize, 500));
+  if (cardOffset) console.log(`Resuming card upsert at offset ${cardOffset}/${cards.length}`);
+  await upsertBatches('topps_checklist_cards', cards.slice(cardOffset), ctx, chunkSize);
   await supabaseFetch('topps_import_meta', [{
     id: 'topps_checklists',
     imported_at: new Date().toISOString(),
