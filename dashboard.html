@@ -1352,7 +1352,7 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.23.05-topps-full-catalog-polish</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.23.06-sports-exact-match</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
@@ -1379,7 +1379,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip dev-only" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.23.05-topps-full-catalog-polish</div>
+<div class="dsb-chip dev-only" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.23.06-sports-exact-match</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -18185,7 +18185,16 @@ const SPORTS_PLAYER_MAP = {
   soto:'Juan Soto', guerrero:'Vladimir Guerrero Jr',
 };
 
+function normalizeSportsQueryInput(q = ''){
+  return String(q || '')
+    .replace(/\bupperdeck\b/ig, 'Upper Deck')
+    .replace(/\bcard\s*(?:number|num|no\.?)\b/ig, '#')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 function buildSportsQueryVariants(q){
+  q = normalizeSportsQueryInput(q);
   const lower = q.toLowerCase();
   const variants = [q];
 
@@ -18209,6 +18218,10 @@ function buildSportsQueryVariants(q){
   if(playerFull && playerFull !== q) variants.push(playerFull + (brand ? ' ' + brand : '') + (cardNum ? ' ' + cardNum : ''));
   if(cardNum && brand) variants.push(brand + ' ' + cardNum + (playerFull ? ' ' + playerFull.split(' ')[0] : ''));
   if(!playerFull && brand) variants.push(q.replace(brand, '').trim() + ' ' + brand + ' baseball card');
+  if(/\bken griffey\b/i.test(q) && /\bupper\s*deck\b/i.test(q) && cardNum === '1') {
+    variants.unshift('1989 Upper Deck Ken Griffey Jr #1');
+    variants.push('Ken Griffey Jr #1 1989 Upper Deck');
+  }
 
   return [...new Set(variants.map(v => v.replace(/\s+/g,' ').trim()).filter(Boolean))].slice(0,5);
 }
@@ -18228,7 +18241,7 @@ function isSportsLookupIntent(q = '', cat = ''){
 }
 
 function sportsCardNumberFromQuery(q = ''){
-  const text = String(q || '').replace(/\b(19|20)\d{2}\b/g, ' ');
+  const text = normalizeSportsQueryInput(q).replace(/\b(19|20)\d{2}\b/g, ' ');
   const prefixed = text.match(/#\s*([A-Z]{0,5}\d{1,4}[A-Z]{0,4})\b/i);
   if(prefixed) return prefixed[1].toUpperCase();
   const plain = text.match(/\b([A-Z]{1,5}\d{1,4}[A-Z]{0,4}|\d{1,4}[A-Z]{0,4})\b/i);
@@ -18236,6 +18249,7 @@ function sportsCardNumberFromQuery(q = ''){
 }
 
 function sportsQueryTerms(q = ''){
+  q = normalizeSportsQueryInput(q);
   const cardNum = sportsCardNumberFromQuery(q).toLowerCase();
   let text = String(q || '')
     .toLowerCase()
@@ -18246,6 +18260,38 @@ function sportsQueryTerms(q = ''){
     .split(/\s+/)
     .filter(t => t.length > 1 && !['topps','card','cards','baseball','football','basketball','hockey','soccer','mlb','nfl','nba','nhl','rc','rookie'].includes(t))
     .slice(0, 5);
+}
+
+function sportsProductSearchText(p = {}){
+  return String([p['product-name'], p.productName, p.name, p['console-name'], p.consoleName, p.console_name, p.genre].filter(Boolean).join(' ')).toLowerCase();
+}
+
+function sportsProductCardNumber(p = {}){
+  const text = String(p['product-name'] || p.productName || p.name || '');
+  const m = text.match(/#\s*([A-Z]{0,5}\d{1,4}[A-Z]{0,4})\b/i);
+  return m ? m[1].toUpperCase() : '';
+}
+
+function sportsProductMatchScore(p = {}, q = ''){
+  const hay = sportsProductSearchText(p);
+  const query = normalizeSportsQueryInput(q);
+  const terms = sportsQueryTerms(query);
+  const queryNum = sportsCardNumberFromQuery(query);
+  const year = (query.match(/\b(19|20)\d{2}\b/) || [])[0] || '';
+  let score = 0;
+  terms.forEach(t => { score += hay.includes(t) ? 16 : -8; });
+  const num = sportsProductCardNumber(p);
+  if(queryNum) {
+    if(num && (num === queryNum || num.replace(/^0+/, '') === queryNum.replace(/^0+/, ''))) score += 70;
+    else score -= 55;
+  }
+  if(year) score += hay.includes(year) ? 24 : -8;
+  if(/\bupper\s*deck\b/i.test(query)) score += /\bupper\s*deck\b/i.test(hay) ? 55 : -65;
+  if(/\btopps\b/i.test(query)) score += /\btopps\b/i.test(hay) ? 30 : -25;
+  if(/\bbowman\b/i.test(query)) score += /\bbowman\b/i.test(hay) ? 30 : -25;
+  if(/\bchrome\b/i.test(query)) score += /\bchrome\b/i.test(hay) ? 18 : -12;
+  if(/\brookie|rc\b/i.test(query)) score += /\brookie|rc\b/i.test(hay) ? 12 : 0;
+  return score;
 }
 
 function sportsToppsCardScore(card = {}, q = ''){
@@ -18347,16 +18393,37 @@ async function fetchToppsSportsPriceChartingForRow(idx){
   updateQplResultCard(idx);
   try {
     const q = r.pricechartingQuery || [r.year, 'Topps', r.set, r.name, r.card_number ? '#' + r.card_number : ''].filter(Boolean).join(' ');
-    const res = await fetch(WORKER + '/pricing/pricecharting/search?' + new URLSearchParams({ q, category:'Sports Cards' }).toString(), { cache:'no-store' });
-    const data = await res.json().catch(() => ({}));
-    const best = (data.matches || data.products || [])[0] || null;
-    if(!res.ok || !best) throw new Error(data.error || 'No PriceCharting match');
+    const seen = new Map();
+    for(const query of buildSportsQueryVariants(q)) {
+      try {
+        const scpRes = await fetch(WORKER + '/pricing/sportscardspro/products?' + new URLSearchParams({ q:query }).toString(), { cache:'no-store' });
+        const scpData = await scpRes.json().catch(() => ({}));
+        (scpData.products || scpData.matches || []).forEach(match => {
+          const id = match.id || match['product-id'] || '';
+          const key = 'scp:' + (id || match.url || match['product-name'] || match.productName || '');
+          if(!key || key === 'scp:') return;
+          const score = Math.max(Number((seen.get(key) || {})._toppsScore || -999), sportsProductMatchScore(match, q) + 20);
+          seen.set(key, { ...(seen.get(key) || {}), ...match, url:id ? 'https://www.sportscardspro.com/game/' + id : (match.url || match.productUrl || ''), _toppsScore:score, _sourceName:'SportsCardsPro' });
+        });
+      } catch(_) {}
+      const res = await fetch(WORKER + '/pricing/pricecharting/search?' + new URLSearchParams({ q:query, category:'Sports Cards' }).toString(), { cache:'no-store' });
+      const data = await res.json().catch(() => ({}));
+      (data.matches || data.products || []).forEach(match => {
+        const key = match.productId || match.id || match.url || match.productName || match['product-name'];
+        if(!key) return;
+        const score = Math.max(Number((seen.get(key) || {})._toppsScore || -999), toppsPcMatchScore(match, r.toppsChecklistCard || {}) || sportsProductMatchScore(match, q));
+        seen.set(key, { ...(seen.get(key) || {}), ...match, _toppsScore:score });
+      });
+      if([...seen.values()].some(m => Number(m._toppsScore || 0) >= 120)) break;
+    }
+    const best = [...seen.values()].sort((a,b) => Number(b._toppsScore || 0) - Number(a._toppsScore || 0))[0] || null;
+    if(!best || Number(best._toppsScore || 0) < 90) throw new Error('No confident PriceCharting match');
     const price = pcPriceFromMatch(best);
     const rawImg = best.imageUrl || best['image-url'] || best.image || best.image_url || '';
     qplResults[idx] = {
       ...r,
       market:price || r.market || 0,
-      imageUrl:rawImg ? (/^\/\//.test(rawImg) ? 'https:' + rawImg : /^\//.test(rawImg) ? 'https://www.pricecharting.com' + rawImg : rawImg) : r.imageUrl,
+      imageUrl:rawImg ? (/^\/\//.test(rawImg) ? 'https:' + rawImg : /^\//.test(rawImg) ? ((best._sourceName === 'SportsCardsPro' ? 'https://www.sportscardspro.com' : 'https://www.pricecharting.com') + rawImg) : rawImg) : r.imageUrl,
       priceSource:price ? 'PriceCharting Guide Value' : 'Topps checklist / no guide price',
       productUrl:best.url || best.productUrl || r.productUrl,
       pricecharting:best,
@@ -18547,6 +18614,44 @@ async function searchSportsCardsPro(q){
 
 // Step 1b: async image enrichment — fires after results render, patches images in place.
 // No-op if image already populated or row has no set/name.
+// Override the simple SCP search with ranked multi-query lookup so exact card numbers
+// and product words beat loose player-name matches.
+async function searchSportsCardsPro(q){
+  if(!q) return [];
+  const seen = new Map();
+  for(const query of buildSportsQueryVariants(q)) {
+    const params = new URLSearchParams({ q: String(query).trim() });
+    let data = {};
+    try {
+      const res = await fetch(WORKER + '/pricing/sportscardspro/products?' + params, { cache:'no-store' });
+      data = await res.json().catch(() => ({}));
+      if(data.needsKey) {
+        console.warn('[SCP] SCP_ACCESS_TOKEN not set in Worker secrets - SportsCardsPro search unavailable. Set it with: wrangler secret put SCP_ACCESS_TOKEN');
+        return [];
+      }
+      if(!data.ok) continue;
+    } catch(e) {
+      console.warn('[SCP] fetch error:', e);
+      continue;
+    }
+    const products = data.products || data.matches || data.data || data.results || (Array.isArray(data) ? data : []);
+    products.forEach(p => {
+      const key = String(p.id || p['product-id'] || p.url || p['product-name'] || p.productName || '');
+      if(!key) return;
+      const prior = seen.get(key) || {};
+      const score = Math.max(Number(prior._sportsScore || -999), sportsProductMatchScore(p, q));
+      seen.set(key, { ...prior, ...p, _sportsScore:score, _sportsQuery:query });
+    });
+    if([...seen.values()].some(p => Number(p._sportsScore || 0) >= 135)) break;
+  }
+  return [...seen.values()].sort((a,b) => Number(b._sportsScore || 0) - Number(a._sportsScore || 0)).slice(0, 10).map(p => {
+    const row = scpProductToQplRow(p, q);
+    row.confidence = Math.max(50, Math.min(98, Math.round(55 + Number(p._sportsScore || 0) / 3)));
+    row.matchWhy = [...(row.matchWhy || []), 'ranked exact product/card search', p._sportsQuery ? 'query: ' + p._sportsQuery : ''].filter(Boolean);
+    return row;
+  });
+}
+
 async function fetchScpImageAsync(idx){
   const r = qplResults[idx];
   if(!r || r.source !== 'sportscardspro' || r.imageUrl || !r.set || !r.name) return;
@@ -26535,7 +26640,7 @@ function toppsIsBadCard(card = {}){
 }
 function toppsCurrentFilters(){ return { q:document.getElementById('topps-search')?.value || '', year:document.getElementById('topps-year')?.value || '', sport:document.getElementById('topps-sport')?.value || '', flag:document.getElementById('topps-flag')?.value || '', setId:TOPPS.selectedSetId || document.getElementById('topps-set')?.value || '' }; }
 function toppsFilterParams(f){
-  const p = new URLSearchParams({ limit:'500' });
+  const p = new URLSearchParams({ limit:f.setId ? '2500' : '500' });
   ['q','year','sport','flag','setId'].forEach(k => { if(f[k]) p.set(k, f[k]); });
   return p;
 }
@@ -26580,7 +26685,7 @@ async function toppsApplySupabaseFilters(){
   TOPPS.cardsLoading = true;
   toppsRender();
   try {
-    const data = await toppsSupabaseCards(f, 500);
+    const data = await toppsSupabaseCards(f, f.setId ? 2500 : 500);
     if(seq !== TOPPS.filterSeq) return;
     TOPPS.filteredCards = data.cards || [];
     TOPPS.totalCards = data.total ?? TOPPS.totalCards;
@@ -26691,12 +26796,12 @@ function toppsRenderCards(){
     el.innerHTML = '<div style="font-family:var(--font-mono);font-size:10px;color:var(--dim)">Loading checklist rows...</div>';
     return;
   }
-  if(status) status.textContent = `${TOPPS.filteredCards.length} visible checklist rows${TOPPS.filteredCards.length >= 500 ? ' (first 500 matches)' : ''}`;
+  if(status) status.textContent = `${TOPPS.filteredCards.length} visible checklist rows${TOPPS.filteredCards.length >= (TOPPS.selectedSetId ? 2500 : 500) ? ' (page limit shown - narrow filters for more)' : ''}`;
   if(!TOPPS.filteredCards.length) { el.innerHTML = '<div style="font-family:var(--font-mono);font-size:10px;color:var(--dim)">No cards match. Try clearing filters or selecting another set.</div>'; return; }
   const sortedCards = toppsSortedCards(TOPPS.filteredCards);
   const bySection = sortedCards.reduce((acc, c) => { const key = c.section || 'Checklist'; (acc[key] ||= []).push(c); return acc; }, {});
   const sectionCount = Object.keys(bySection).length;
-  if(status) status.textContent = `${sortedCards.length} visible checklist rows${sortedCards.length >= 500 ? ' (first 500 matches)' : ''}${sectionCount > 1 ? ' / ' + sectionCount + ' sections' : ''}`;
+  if(status) status.textContent = `${sortedCards.length} visible checklist rows${sortedCards.length >= (TOPPS.selectedSetId ? 2500 : 500) ? ' (page limit shown - narrow filters for more)' : ''}${sectionCount > 1 ? ' / ' + sectionCount + ' sections' : ''}`;
   const renderCard = c => {
     const badges = toppsFlagsHtml(c.flags);
     if(TOPPS.view === 'table') return `<div class="topps-card-row" onclick="toppsOpenDetail('${escHtml(c.id)}')"><div class="topps-placeholder">#${escHtml(c.cardNumber || '')}</div><div style="min-width:0"><div style="font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(c.player || c.subject || 'Checklist Card')}</div><div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml([c.year, c.product, c.team, c.section].filter(Boolean).join(' / '))}</div><div class="topps-badges">${badges}</div></div><button class="hbtn" style="min-height:30px;font-size:8px;padding:3px 8px" onclick="event.stopPropagation();toppsOpenDetail('${escHtml(c.id)}')">OPEN</button></div>`;
@@ -26779,7 +26884,7 @@ function toppsDetailHtml(card, pcData = null, loadingPc = false){
   const candidates = !pc && pcData?.matches?.length ? `<div style="display:grid;gap:6px;margin-top:10px">${pcData.matches.slice(0,4).map(m => `<button class="hbtn" style="justify-content:flex-start;text-align:left;line-height:1.4" onclick="toppsOpenUrl(decodeURIComponent('${encodeURIComponent(m.url || '')}'))">${escHtml(m.productName || m['product-name'] || 'PriceCharting candidate')} ${m._toppsScore ? ' / score ' + escHtml(m._toppsScore) : ''}</button>`).join('')}</div>` : '';
   return `<div style="display:flex;justify-content:space-between;gap:12px;align-items:start;margin-bottom:14px"><div><div style="font-family:'Orbitron',monospace;font-size:16px;color:var(--g);line-height:1.3">${escHtml(card.player || card.subject || 'Topps checklist card')}</div><div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);margin-top:6px">${escHtml([card.year, 'Topps', card.product, '#' + (card.cardNumber || ''), card.team].filter(Boolean).join(' / '))}</div><div class="topps-badges">${toppsFlagsHtml(card.flags)}</div></div><button class="hbtn" onclick="toppsCloseDetail()">CLOSE</button></div>
   <div style="display:grid;grid-template-columns:130px minmax(0,1fr);gap:14px;align-items:start;margin-bottom:14px">${image ? `<img src="${escHtml(image)}" style="width:130px;max-height:184px;object-fit:contain;border:1px solid var(--border);border-radius:8px;background:#050507">` : `<div class="topps-placeholder" style="width:130px;height:184px">TOPPS<br>${escHtml(card.year || '')}<br>#${escHtml(card.cardNumber || '')}</div>`}<div class="panel" style="padding:12px;background:var(--surf2)"><div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);line-height:1.75"><div><b style="color:var(--text)">Set:</b> ${escHtml(card.setName || card.product || '')}</div><div><b style="color:var(--text)">Sport:</b> ${escHtml(card.sport || '')}</div><div><b style="color:var(--text)">Section:</b> ${escHtml(card.section || '')}</div><div><b style="color:var(--text)">Notes:</b> ${escHtml(card.notes || 'No notes parsed')}</div><div><b style="color:var(--text)">PDF Source:</b> ${escHtml(card.sourceId || '')}</div><div><b style="color:var(--text)">Parse confidence:</b> ${Math.round(Number(card.parseConfidence || 0) * 100)}%</div></div></div></div>
-  <div class="panel" style="margin-bottom:14px"><div class="ph">PRICECHARTING MATCH <span>${escHtml(pcData?.query || '')}</span></div>${loadingPc ? '<div style="font-family:var(--font-mono);font-size:10px;color:var(--dim)">Checking clean player + card number match...</div>' : pc ? `<div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);line-height:1.7"><div style="color:var(--text);font-weight:800">${escHtml(pc.productName || pc['product-name'] || 'PriceCharting match')}</div><div>${price ? '$' + price.toFixed(2) : 'No guide price returned'} ${pc.consoleName ? ' / ' + escHtml(pc.consoleName) : ''}${pc._toppsScore ? ' / score ' + escHtml(pc._toppsScore) : ''}</div></div>` : pcNote}${candidates}<div class="topps-chart-empty" style="margin-top:12px">No price history found yet.</div></div>
+  <div class="panel" style="margin-bottom:14px"><div class="ph">PRICECHARTING MATCH <span>${escHtml(pcData?.query || '')}</span></div>${loadingPc ? '<div style="font-family:var(--font-mono);font-size:10px;color:var(--dim)">Checking clean player + card number match...</div>' : pc ? `<div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);line-height:1.7"><div style="color:var(--text);font-weight:800">${escHtml(pc.productName || pc['product-name'] || 'PriceCharting match')}</div><div>${price ? '$' + price.toFixed(2) : 'No guide price returned'} ${pc.consoleName ? ' / ' + escHtml(pc.consoleName) : ''}${pc._sourceName ? ' / ' + escHtml(pc._sourceName) : ''}${pc._toppsScore ? ' / score ' + escHtml(pc._toppsScore) : ''}</div></div>` : pcNote}${candidates}<div class="topps-chart-empty" style="margin-top:12px">No price history found yet.</div></div>
   <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="hbtn" onclick="toppsOpenUrl(decodeURIComponent('${encodeURIComponent(pcUrl)}'))">OPEN PRICECHARTING</button><button class="hbtn" onclick="toppsOpenUrl(decodeURIComponent('${encodeURIComponent(activeUrl)}'))">EBAY ACTIVE</button><button class="hbtn" onclick="toppsOpenUrl(decodeURIComponent('${encodeURIComponent(soldUrl)}'))">EBAY SOLD</button><button class="hbtn" onclick="toppsCopyText(decodeURIComponent('${encodeURIComponent(title)}'))">COPY EBAY TITLE</button><button class="hbtn" onclick="toppsCopyText(decodeURIComponent('${encodeURIComponent(keywords)}'))">COPY KEYWORDS</button></div>`;
 }
 async function toppsLoadPriceCharting(card){
@@ -26789,6 +26894,27 @@ async function toppsLoadPriceCharting(card){
     const queries = toppsPcQueries(card);
     const seen = new Map();
     for(const q of queries) {
+      try {
+        const scpRes = await fetch(WORKER + '/pricing/sportscardspro/products?' + new URLSearchParams({ q }).toString(), { cache:'no-store' });
+        const scpData = await scpRes.json().catch(() => ({}));
+        (scpData.products || scpData.matches || []).forEach(match => {
+          const id = match.id || match['product-id'] || '';
+          const key = 'scp:' + (id || match.url || match['product-name'] || match.productName || '');
+          if(!key || key === 'scp:') return;
+          const rawImg = match.imageUrl || match['image-url'] || match.image || match.image_url || '';
+          const normalized = {
+            ...match,
+            productName:match.productName || match['product-name'] || match.name || '',
+            consoleName:match.consoleName || match['console-name'] || match.console_name || '',
+            imageUrl:rawImg ? (/^\/\//.test(rawImg) ? 'https:' + rawImg : /^\//.test(rawImg) ? 'https://www.sportscardspro.com' + rawImg : rawImg) : '',
+            url:id ? 'https://www.sportscardspro.com/game/' + id : (match.url || match.productUrl || ''),
+            _sourceName:'SportsCardsPro',
+          };
+          const exactQuery = [card.year, 'Topps', toppsPcProductWords(card), toppsPlayerOnly(card), card.cardNumber ? '#' + card.cardNumber : ''].filter(Boolean).join(' ');
+          const score = Math.max(Number((seen.get(key) || {})._toppsScore || -999), sportsProductMatchScore(normalized, exactQuery) + 20);
+          seen.set(key, { ...(seen.get(key) || {}), ...normalized, _toppsScore:score, _toppsQuery:q });
+        });
+      } catch(_) {}
       const res = await fetch(WORKER + '/pricing/pricecharting/search?' + new URLSearchParams({ q, category:'Sports Cards' }).toString(), { cache:'no-store' });
       const data = await res.json().catch(() => ({}));
       (data.matches || data.products || []).forEach(match => {
