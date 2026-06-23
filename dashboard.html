@@ -1352,7 +1352,7 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.23.07-sets-tab-supabase</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.23.08-sets-tab-topps</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
@@ -1379,7 +1379,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip dev-only" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.23.07-sets-tab-supabase</div>
+<div class="dsb-chip dev-only" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.23.08-sets-tab-topps</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -1983,10 +1983,21 @@ body.show-mode .inv-sync-badge{display:none;}
       <div id="rq-scan-inbox-list" style="font-family:monospace;font-size:10px;color:var(--dim)">No phone scans for this store</div>
     </div>
   </div>
-  <div class="research-subtabs">
-    <button class="research-subtab on" id="research-subtab-core" onclick="showResearchSubtab('core')">CORE RESEARCH</button>
-    <button class="research-subtab" id="research-subtab-topps" onclick="showResearchSubtab('topps')">TOPPS CHECKLISTS</button>
+  <div id="research-panels" class="research-grid queue-hidden">
+    <div class="panel" id="research-queue-panel" style="display:none">
+      <!-- kept in DOM for backward compatibility, content moved to drawer -->
+    </div>
+    <div class="panel" id="research-actions-panel" aria-hidden="true">
+      <div class="ph">ITEM ACTIONS</div>
+      <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);line-height:1.55">Select an item to see actions.</div>
+      <div id="research-action-status" style="font-family:var(--font-mono);font-size:10px;color:var(--dim);margin-top:12px;line-height:1.45"></div>
+    </div>
   </div>
+</div>
+
+
+<!-- SETS TAB -->
+<div id="tab-sets" class="tab-panel">
   <div id="topps-checklist-panel" class="topps-browser">
     <div class="topps-shell">
       <aside class="topps-sidebar">
@@ -2044,73 +2055,6 @@ body.show-mode .inv-sync-badge{display:none;}
           <div id="topps-card-results" class="topps-card-grid"></div>
         </div>
       </main>
-    </div>
-  </div>
-  <div id="research-panels" class="research-grid queue-hidden">
-    <div class="panel" id="research-queue-panel" style="display:none">
-      <!-- kept in DOM for backward compatibility, content moved to drawer -->
-    </div>
-    <div class="panel" id="research-actions-panel" aria-hidden="true">
-      <div class="ph">ITEM ACTIONS</div>
-      <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);line-height:1.55">Select an item to see actions.</div>
-      <div id="research-action-status" style="font-family:var(--font-mono);font-size:10px;color:var(--dim);margin-top:12px;line-height:1.45"></div>
-    </div>
-  </div>
-</div>
-
-
-<!-- SETS TAB -->
-<div id="tab-sets" class="tab-panel">
-  <div id="set-browser-panel" style="max-width:1400px;margin:0 auto;padding:0 20px">
-    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin:14px 0 12px">
-      <div class="ph" style="margin:0">TOPPS SET BROWSER</div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
-        <input id="sb-set-search" placeholder="Search sets…" oninput="sbFilterCatalog()" style="font-family:var(--font-mono);font-size:10px;background:var(--surf2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:4px 10px;width:180px">
-        <button class="hbtn" id="sb-test-btn" onclick="sbRunTest()" style="font-size:10px;padding:4px 10px" title="Test import on 5 sets first">🧪 TEST 5</button>
-        <button class="hbtn" id="sb-sync-btn" onclick="sbSyncAll()" style="font-size:10px;padding:4px 12px" title="Import all checklists from Topps">⬇ SYNC ALL</button>
-      </div>
-    </div>
-    <div id="sb-sync-status" style="display:none;font-family:var(--font-mono);font-size:10px;color:var(--primary);margin-bottom:8px;padding:8px;background:rgba(0,255,179,.07);border:1px solid rgba(0,255,179,.2);border-radius:6px"></div>
-    <div id="sb-test-report" style="display:none;font-family:var(--font-mono);font-size:10px;margin-bottom:10px;padding:12px;background:var(--surf2);border:1px solid var(--border);border-radius:8px;line-height:1.6;white-space:pre-wrap;max-height:360px;overflow-y:auto"></div>
-
-    <!-- Filter chips -->
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid var(--border)">
-      <div id="sb-sport-chips" style="display:flex;gap:4px;flex-wrap:wrap"></div>
-      <div id="sb-year-chips" style="display:flex;gap:4px;flex-wrap:wrap"></div>
-      <div id="sb-brand-chips" style="display:flex;gap:4px;flex-wrap:wrap"></div>
-    </div>
-
-    <!-- Catalog grid -->
-    <div id="sb-catalog-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px;margin-bottom:14px;min-height:40px">
-      <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim)">Loading sets…</div>
-    </div>
-
-    <!-- Card browser (shown after picking an imported set) -->
-    <div id="sb-card-browser" style="display:none">
-      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px;padding-top:10px;border-top:1px solid var(--border)">
-        <button class="hbtn" onclick="sbCloseBrowser()" style="font-size:10px;padding:4px 10px">← Sets</button>
-        <div id="sb-set-title" style="font-family:'Orbitron',monospace;font-size:11px;color:var(--primary);letter-spacing:.05em"></div>
-        <div style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap">
-          <select id="sb-section" onchange="sbLoadCards()" style="font-family:var(--font-mono);font-size:10px;background:var(--surf2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:4px 8px">
-            <option value="base">Base Set</option>
-            <option value="inserts">Inserts</option>
-            <option value="autos">Autographs</option>
-            <option value="mem">Memorabilia</option>
-            <option value="teams">Team Sets</option>
-          </select>
-          <input id="sb-card-search" placeholder="Player / # / team…" oninput="sbSearchCards()" style="font-family:var(--font-mono);font-size:10px;background:var(--surf2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:4px 10px;width:170px">
-        </div>
-      </div>
-      <div id="sb-parallels-bar" style="display:none;font-family:var(--font-mono);font-size:9px;color:var(--dim);line-height:1.8;margin-bottom:8px;padding:8px;background:var(--surf2);border-radius:6px;border:1px solid var(--border)"></div>
-      <div id="sb-card-status" style="font-family:var(--font-mono);font-size:9px;color:var(--dim);margin-bottom:6px"></div>
-      <div id="sb-card-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:10px"></div>
-      <div id="sb-price-drawer" style="display:none;margin-top:10px;padding:12px;background:var(--surf2);border:1px solid var(--primary);border-radius:8px">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-          <div id="sb-price-card-name" style="font-family:var(--font-mono);font-size:11px;font-weight:700;color:var(--primary)"></div>
-          <button class="hbtn" onclick="document.getElementById('sb-price-drawer').style.display='none'" style="font-size:10px;padding:3px 8px">✕</button>
-        </div>
-        <div id="sb-price-results" style="font-family:var(--font-mono);font-size:10px;color:var(--dim)">Searching…</div>
-      </div>
     </div>
   </div>
 </div>
@@ -26463,15 +26407,9 @@ function sbCloseModal() {
   const origSwitch = window.switchTab;
   window.switchTab = function(id, btn) {
     if (typeof origSwitch === 'function') origSwitch(id, btn);
-    if (id === 'sets' && !SB._initialized) {
-      SB._initialized = true;
-      sbInit();
-    }
+    if (id === 'sets') toppsInit();
   };
-  if (document.getElementById('tab-sets')?.classList.contains('active')) {
-    SB._initialized = true;
-    sbInit();
-  }
+  if (document.getElementById('tab-sets')?.classList.contains('active')) toppsInit();
 })();
 
 // ── END SPORTS SET BROWSER ───────────────────────────────────────
