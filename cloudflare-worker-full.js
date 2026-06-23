@@ -3680,14 +3680,14 @@ export default {
       return json({ error: 'Not found' }, 404);
     }
 
-    // Topps Checklist Browser API. Supabase is the catalog source of truth;
-    // KV remains a fallback/cache for older deployments and PriceCharting hits.
+    // Topps Checklist Browser API. Supabase is the catalog source of truth.
+    // KV is intentionally not used as a fallback for checklist set/card data.
     if (url.pathname.startsWith('/topps-checklists')) {
       const kv = env.LBA_KV;
       const supabaseToppsUrl = String(env.SUPABASE_URL || '').replace(/\/$/, '');
       const supabaseToppsKey = env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_KEY || env.SUPABASE_ANON_KEY || env.SUPABASE_KEY || '';
       const supabaseToppsEnabled = !!(supabaseToppsUrl && supabaseToppsKey);
-      if (!kv && !supabaseToppsEnabled) return json({ ok: false, error: 'Topps storage not configured' }, 503);
+      if (!supabaseToppsEnabled) return json({ ok: false, error: 'Supabase Topps catalog not configured' }, 503);
       const TOPPS_CARD_CHUNK_SIZE = 5000;
       const readJsonKv = async (key, fallback) => {
         if (!kv) return fallback;
@@ -3802,21 +3802,14 @@ export default {
         return { cards: (data || []).map(toppsCardFromDb), total, complete: true, scannedChunks: 0, meta: { storage: 'supabase' } };
       };
       const getToppsCardById = async cardId => {
-        if (supabaseToppsEnabled) {
-          const page = await supabaseToppsCards({ id: cardId, limit: 1 });
-          if (page.cards[0]) return { card: page.cards[0], storage: 'supabase' };
-        }
-        const page = await scanToppsCards({ id: cardId, limit: 1 });
-        return { card: page.cards[0] || null, storage: 'kv' };
+        const page = await supabaseToppsCards({ id: cardId, limit: 1 });
+        return { card: page.cards[0] || null, storage: 'supabase' };
       };
       const getToppsSource = async sourceId => {
         if (!sourceId) return null;
-        if (supabaseToppsEnabled) {
-          const p = new URLSearchParams({ select: '*', source_id: 'eq.' + sourceId, limit: '1' });
-          const { data } = await supabaseRest('topps_pdf_sources', p);
-          if (data?.[0]) return toppsSourceFromDb(data[0]);
-        }
-        return readJsonKv(`topps_source:${sourceId}`, null);
+        const p = new URLSearchParams({ select: '*', source_id: 'eq.' + sourceId, limit: '1' });
+        const { data } = await supabaseRest('topps_pdf_sources', p);
+        return data?.[0] ? toppsSourceFromDb(data[0]) : null;
       };
       const cardMatches = (card, filters) => {
         if (filters.setId && card.setId !== filters.setId) return false;
@@ -3909,6 +3902,10 @@ export default {
         if (/actual contents and odds may vary/i.test(name)) return true;
         return false;
       };
+
+      if (url.pathname.startsWith('/topps-checklists/import') && request.method === 'PUT') {
+        return json({ ok: false, error: 'Worker KV Topps import is disabled. Use scripts/import-topps-to-supabase.js.' }, 410);
+      }
 
       if (url.pathname === '/topps-checklists/import-start' && request.method === 'PUT') {
         if (!kv) return json({ ok: false, error: 'KV not configured for legacy KV import' }, 503);
@@ -4005,11 +4002,7 @@ export default {
       }
 
       if (url.pathname === '/topps-checklists/meta' && request.method === 'GET') {
-        if (supabaseToppsEnabled) {
-          try { return json({ ok: true, meta: await supabaseToppsMeta() }); } catch (_) {}
-        }
-        const meta = await readJsonKv('topps_import_meta', {});
-        return json({ ok: true, meta });
+        return json({ ok: true, meta: await supabaseToppsMeta() });
       }
 
       if (url.pathname === '/topps-checklists/sets' && request.method === 'GET') {
@@ -4017,21 +4010,9 @@ export default {
         const sport = url.searchParams.get('sport') || '';
         const year = url.searchParams.get('year') || '';
         const limit = Math.min(2000, Math.max(1, Number(url.searchParams.get('limit') || 2000)));
-        if (supabaseToppsEnabled) {
-          try {
-            const page = await supabaseToppsSets({ q, sport, year, limit });
-            const sets = page.sets.filter(s => !isBadToppsSet(s));
-            return json({ ok: true, total: page.total || sets.length, sets, hiddenBadSets: page.sets.length - sets.length, storage: 'supabase' });
-          } catch (_) {}
-        }
-        const sets = await readJsonKv('topps_sets_index', []);
-        const filtered = sets.filter(s =>
-          !isBadToppsSet(s) &&
-          (!q || norm([s.year, s.brand, s.product, s.setName, s.releaseName, s.sport].join(' ')).includes(norm(q))) &&
-          (!sport || String(s.sport || '').toLowerCase() === sport.toLowerCase()) &&
-          (!year || String(s.year || '') === String(year))
-        );
-        return json({ ok: true, total: filtered.length, sets: filtered.slice(0, limit), hiddenBadSets: sets.length - filtered.length });
+        const page = await supabaseToppsSets({ q, sport, year, limit });
+        const sets = page.sets.filter(s => !isBadToppsSet(s));
+        return json({ ok: true, total: page.total || sets.length, sets, hiddenBadSets: page.sets.length - sets.length, storage: 'supabase' });
       }
 
       if (url.pathname === '/topps-checklists/cards' && request.method === 'GET') {
@@ -4047,14 +4028,8 @@ export default {
         };
         const limit = Math.min(500, Math.max(1, Number(url.searchParams.get('limit') || 100)));
         const offset = Math.max(0, Number(url.searchParams.get('offset') || 0));
-        if (supabaseToppsEnabled) {
-          try {
-            const page = await supabaseToppsCards({ filters, limit, offset });
-            return json({ ok: true, total: page.total, cards: page.cards, limit, offset, complete: true, scannedChunks: 0, storage: 'supabase' });
-          } catch (_) {}
-        }
-        const page = await scanToppsCards({ filters, limit, offset });
-        return json({ ok: true, total: page.total, cards: page.cards, limit, offset, complete: page.complete, scannedChunks: page.scannedChunks });
+        const page = await supabaseToppsCards({ filters, limit, offset });
+        return json({ ok: true, total: page.total, cards: page.cards, limit, offset, complete: true, scannedChunks: 0, storage: 'supabase' });
       }
 
       const cardMatch = url.pathname.match(/^\/topps-checklists\/cards\/([^/]+)$/);
