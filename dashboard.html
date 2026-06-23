@@ -1352,7 +1352,7 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.23.15-sets-layout</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.23.16-images-fix</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
@@ -1379,7 +1379,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.23.15-sets-layout</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.23.16-images-fix</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -26945,8 +26945,17 @@ function toppsDetailHtml(card, pcData = null, loadingPc = false){
 }
 async function toppsLoadPriceCharting(card){
   const drawer = document.getElementById('topps-detail-drawer');
+  const pushToGrid = (imgUrl, price) => {
+    document.querySelectorAll(`img.topps-lazy-img[data-card-id="${CSS.escape(card.id)}"]`).forEach(img => { if(imgUrl) img.src = imgUrl; });
+    document.querySelectorAll(`.topps-lazy-price[data-card-id="${CSS.escape(card.id)}"]`).forEach(el => { if(price) el.textContent = '$' + price.toFixed(2); });
+  };
   try {
-    if(TOPPS.pcCache[card.id]) { if(drawer) drawer.innerHTML = toppsDetailHtml(card, TOPPS.pcCache[card.id], false); return; }
+    if(TOPPS.pcCache[card.id]) {
+      const cached = TOPPS.pcCache[card.id];
+      if(drawer?.classList.contains('on') && TOPPS.openCardId === card.id) drawer.innerHTML = toppsDetailHtml(card, cached, false);
+      pushToGrid(cached.best?.imageUrl || '', cached.best ? toppsPcPrice(cached.best) : 0);
+      return;
+    }
     const queries = toppsPcQueries(card);
     const seen = new Map();
     for(const q of queries) {
@@ -26978,24 +26987,18 @@ async function toppsLoadPriceCharting(card){
         if(!key) return;
         const prior = seen.get(key) || {};
         const score = Math.max(Number(prior._toppsScore || -999), toppsPcMatchScore(match, card));
-        seen.set(key, { ...prior, ...match, _toppsScore:score, _toppsQuery:q });
+        // normalize imageUrl from PC raw response fields
+        const rawImg = match.imageUrl || match['image-url'] || match.image || match.image_url || '';
+        const imageUrl = rawImg ? (/^\/\//.test(rawImg) ? 'https:' + rawImg : /^\//.test(rawImg) ? 'https://www.pricecharting.com' + rawImg : rawImg) : (prior.imageUrl || '');
+        seen.set(key, { ...prior, ...match, imageUrl, _toppsScore:score, _toppsQuery:q });
       });
       if([...seen.values()].some(m => Number(m._toppsScore || 0) >= 110)) break;
     }
     const matches = [...seen.values()].sort((a,b) => Number(b._toppsScore || 0) - Number(a._toppsScore || 0));
     const payload = { ok:true, query:queries[0] || '', queries, matches:matches.slice(0, 8), best:matches.find(m => Number(m._toppsScore || 0) >= 90) || null };
     TOPPS.pcCache[card.id] = payload;
-    // Only update the drawer if this card is still the one being shown
     if(drawer?.classList.contains('on') && TOPPS.openCardId === card.id) drawer.innerHTML = toppsDetailHtml(card, payload, false);
-    // Push image + price into every matching grid tile
-    const imgUrl = payload.best?.imageUrl || '';
-    const price = payload.best ? toppsPcPrice(payload.best) : 0;
-    document.querySelectorAll(`img.topps-lazy-img[data-card-id="${CSS.escape(card.id)}"]`).forEach(img => {
-      if(imgUrl) img.src = imgUrl;
-    });
-    document.querySelectorAll(`.topps-lazy-price[data-card-id="${CSS.escape(card.id)}"]`).forEach(el => {
-      if(price) el.textContent = '$' + price.toFixed(2);
-    });
+    pushToGrid(payload.best?.imageUrl || '', payload.best ? toppsPcPrice(payload.best) : 0);
   } catch(e) {
     if(drawer?.classList.contains('on') && TOPPS.openCardId === card.id) drawer.innerHTML = toppsDetailHtml(card, { best:null, query:toppsPcQueries(card)[0] || '', error:e.message }, false);
   }
