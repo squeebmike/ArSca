@@ -5,7 +5,8 @@ The Topps Checklist Browser is data-first:
 - PDFs are imported once.
 - Raw extracted PDF text is preserved.
 - Parsed records are stored as `topps_sets`, `topps_checklist_cards`, and `topps_pdf_sources`.
-- PriceCharting matches are cached in Worker KV as `topps_pc_match:{cardId}`.
+- Supabase Postgres is the production catalog source of truth.
+- Cloudflare KV is only a fallback/cache path for older deployments and PriceCharting match caching.
 
 ## Sample Import
 
@@ -34,7 +35,43 @@ npm.cmd run topps:import
 
 The importer is resumable. It uses `.topps-import/` as a local scratch/cache folder and keeps that folder out of git.
 
-## Publish To Worker KV
+## Apply Supabase Schema
+
+Run `supabase/topps-checklists.sql` once in the Supabase SQL editor, or with the Supabase CLI if you have project access.
+
+It creates:
+
+- `topps_import_meta`
+- `topps_sets`
+- `topps_checklist_cards`
+- `topps_pdf_sources`
+- `pricecharting_matches_cache`
+
+These tables are public-read and service-role/admin-write. Do not put the service role key in `dashboard.html`.
+
+## Import To Supabase
+
+After `npm.cmd run topps:import` has produced the full local JSON files, set a service role key only in your shell and run:
+
+```powershell
+$env:SUPABASE_URL="https://vroknjrxubsqyexngwus.supabase.co"
+$env:SUPABASE_SERVICE_ROLE_KEY="YOUR_SERVICE_ROLE_KEY"
+npm.cmd run topps:import:supabase
+Remove-Item Env:SUPABASE_SERVICE_ROLE_KEY
+```
+
+The importer upserts sources, sets, and cards, so it is safe to rerun when new Topps checklist PDFs are added.
+
+## Worker Supabase Secrets
+
+The Cloudflare Worker reads Supabase first when these secrets/vars exist:
+
+- `SUPABASE_URL`
+- `SUPABASE_SERVICE_ROLE_KEY` or `SUPABASE_ANON_KEY`
+
+The service role key is best for Worker-only server calls. Never expose it in frontend HTML.
+
+## Legacy Publish To Worker KV
 
 ```powershell
 node scripts/import-topps-checklists.js --publish
@@ -46,9 +83,9 @@ Optional:
 node scripts/import-topps-checklists.js --zip="C:\path\to\newToppsChecklist.zip" --publish
 ```
 
-Re-running is safe. The Worker replaces the Topps set index, source index, and chunked card rows, then caches PriceCharting matches lazily as cards are opened.
+Re-running is safe, but this is now a fallback path. The Worker replaces the Topps set index, source index, and chunked card rows, then caches PriceCharting matches lazily as cards are opened.
 
-The full generated card/source files are intentionally ignored by git because the complete batch is hundreds of MB. The published Worker KV database is the production source of truth; `topps_checklists_index.sample.json` is only a lightweight fallback for local/GitHub Pages testing before KV is available.
+The full generated card/source files are intentionally ignored by git because the complete batch is hundreds of MB. Supabase is the production source of truth; `topps_checklists_index.sample.json` is only a lightweight fallback for local/GitHub Pages testing before the Worker/Supabase path is available.
 
 ## Parser Notes
 

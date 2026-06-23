@@ -3680,19 +3680,144 @@ export default {
       return json({ error: 'Not found' }, 404);
     }
 
-    // Topps Checklist Browser API. Stores parsed PDF checklist data in KV as
-    // sets, source records, and chunked card rows so full-batch imports can be
-    // safely re-run as new Topps PDFs are released.
+    // Topps Checklist Browser API. Supabase is the catalog source of truth;
+    // KV remains a fallback/cache for older deployments and PriceCharting hits.
     if (url.pathname.startsWith('/topps-checklists')) {
       const kv = env.LBA_KV;
-      if (!kv) return json({ ok: false, error: 'KV not configured' }, 503);
+      const supabaseToppsUrl = String(env.SUPABASE_URL || '').replace(/\/$/, '');
+      const supabaseToppsKey = env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_KEY || env.SUPABASE_ANON_KEY || env.SUPABASE_KEY || '';
+      const supabaseToppsEnabled = !!(supabaseToppsUrl && supabaseToppsKey);
+      if (!kv && !supabaseToppsEnabled) return json({ ok: false, error: 'Topps storage not configured' }, 503);
       const TOPPS_CARD_CHUNK_SIZE = 5000;
       const readJsonKv = async (key, fallback) => {
+        if (!kv) return fallback;
         const raw = await kv.get(key);
         if (!raw) return fallback;
         try { return JSON.parse(raw); } catch (_) { return fallback; }
       };
       const norm = v => String(v || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+      const dbText = v => String(v || '').replace(/\s+/g, ' ').trim();
+      const dbLike = v => '*' + dbText(v).replace(/\*/g, ' ').trim() + '*';
+      const supabaseRest = async (table, params = new URLSearchParams(), { count = false } = {}) => {
+        const apiUrl = new URL(`${supabaseToppsUrl}/rest/v1/${table}`);
+        params.forEach((value, key) => apiUrl.searchParams.append(key, value));
+        const headers = {
+          apikey: supabaseToppsKey,
+          Authorization: `Bearer ${supabaseToppsKey}`,
+          Accept: 'application/json',
+        };
+        if (count) headers.Prefer = 'count=exact';
+        const res = await fetch(apiUrl.toString(), { headers });
+        const data = await res.json().catch(() => []);
+        if (!res.ok) throw new Error(data?.message || data?.error || `Supabase ${table} failed`);
+        const range = res.headers.get('content-range') || '';
+        const total = Number((range.match(/\/(\d+)$/) || [])[1] || 0);
+        return { data, total: Number.isFinite(total) ? total : 0 };
+      };
+      const toppsSetFromDb = row => ({
+        id: row.id,
+        year: row.year,
+        brand: row.brand,
+        product: row.product,
+        sport: row.sport,
+        setName: row.set_name,
+        releaseName: row.release_name,
+        sourceIds: row.source_ids || [],
+        cardCount: row.card_count || 0,
+        updatedAt: row.updated_at,
+      });
+      const toppsCardFromDb = row => ({
+        id: row.id,
+        setId: row.set_id,
+        sourceId: row.source_id,
+        year: row.year,
+        brand: row.brand,
+        product: row.product,
+        sport: row.sport,
+        setName: row.set_name,
+        releaseName: row.release_name,
+        cardNumber: row.card_number,
+        player: row.player,
+        subject: row.subject,
+        team: row.team,
+        notes: row.notes,
+        section: row.section,
+        flags: row.flags || {},
+        parseConfidence: Number(row.parse_confidence || 0),
+        searchText: row.search_text || '',
+        updatedAt: row.updated_at,
+      });
+      const toppsSourceFromDb = row => row ? ({
+        sourceId: row.source_id,
+        fileName: row.file_name,
+        originalPath: row.original_path,
+        pdfUrl: row.pdf_url,
+        pdfHash: row.pdf_hash,
+        pageCount: row.page_count,
+        textLength: row.text_length,
+        rawText: row.raw_text,
+        parsedSetId: row.parsed_set_id,
+        importedAt: row.imported_at,
+        updatedAt: row.updated_at,
+      }) : null;
+      const supabaseToppsMeta = async () => {
+        const p = new URLSearchParams({ select: '*', id: 'eq.topps_checklists', limit: '1' });
+        const { data } = await supabaseRest('topps_import_meta', p);
+        const row = data?.[0] || {};
+        return {
+          importedAt: row.imported_at,
+          status: row.status || 'ready',
+          schemaVersion: row.schema_version || 1,
+          setCount: row.set_count || 0,
+          cardCount: row.card_count || 0,
+          sourceCount: row.source_count || 0,
+          storage: 'supabase',
+        };
+      };
+      const supabaseToppsSets = async ({ q = '', sport = '', year = '', limit = 2000 } = {}) => {
+        const p = new URLSearchParams({ select: '*', order: 'year.desc,product.asc', limit: String(limit) });
+        if (q) p.set('search_text', 'ilike.' + dbLike(q));
+        if (sport) p.set('sport', 'eq.' + sport);
+        if (year) p.set('year', 'eq.' + year);
+        const { data, total } = await supabaseRest('topps_sets', p, { count: true });
+        return { sets: (data || []).map(toppsSetFromDb), total };
+      };
+      const supabaseToppsCards = async ({ filters = {}, limit = 100, offset = 0, id = '' } = {}) => {
+        const p = new URLSearchParams({
+          select: '*',
+          order: 'section_sort.asc,section.asc,card_number_prefix.asc,card_number_sort.asc,card_number.asc,player.asc',
+          limit: String(limit),
+          offset: String(offset),
+        });
+        if (id) p.set('id', 'eq.' + id);
+        if (filters.setId) p.set('set_id', 'eq.' + filters.setId);
+        if (filters.year) p.set('year', 'eq.' + filters.year);
+        if (filters.sport) p.set('sport', 'eq.' + filters.sport);
+        if (filters.product) p.set('product', 'ilike.' + dbLike(filters.product));
+        if (filters.team) p.set('team', 'ilike.' + dbLike(filters.team));
+        if (filters.number) p.set('card_number', 'eq.' + filters.number);
+        if (filters.flag) p.set(`flags->>${filters.flag}`, 'eq.true');
+        if (filters.q) norm(filters.q).split(/\s+/).filter(Boolean).forEach(t => p.append('search_text', 'ilike.*' + t + '*'));
+        const { data, total } = await supabaseRest('topps_checklist_cards', p, { count: true });
+        return { cards: (data || []).map(toppsCardFromDb), total, complete: true, scannedChunks: 0, meta: { storage: 'supabase' } };
+      };
+      const getToppsCardById = async cardId => {
+        if (supabaseToppsEnabled) {
+          const page = await supabaseToppsCards({ id: cardId, limit: 1 });
+          if (page.cards[0]) return { card: page.cards[0], storage: 'supabase' };
+        }
+        const page = await scanToppsCards({ id: cardId, limit: 1 });
+        return { card: page.cards[0] || null, storage: 'kv' };
+      };
+      const getToppsSource = async sourceId => {
+        if (!sourceId) return null;
+        if (supabaseToppsEnabled) {
+          const p = new URLSearchParams({ select: '*', source_id: 'eq.' + sourceId, limit: '1' });
+          const { data } = await supabaseRest('topps_pdf_sources', p);
+          if (data?.[0]) return toppsSourceFromDb(data[0]);
+        }
+        return readJsonKv(`topps_source:${sourceId}`, null);
+      };
       const cardMatches = (card, filters) => {
         if (filters.setId && card.setId !== filters.setId) return false;
         if (filters.year && String(card.year || '') !== String(filters.year)) return false;
@@ -3786,6 +3911,7 @@ export default {
       };
 
       if (url.pathname === '/topps-checklists/import-start' && request.method === 'PUT') {
+        if (!kv) return json({ ok: false, error: 'KV not configured for legacy KV import' }, 503);
         const body = await request.json().catch(() => null);
         if (!body || !Array.isArray(body.sets)) return json({ ok: false, error: 'sets[] required' }, 400);
         const now = new Date().toISOString();
@@ -3814,6 +3940,7 @@ export default {
       }
 
       if (url.pathname === '/topps-checklists/import-cards-chunk' && request.method === 'PUT') {
+        if (!kv) return json({ ok: false, error: 'KV not configured for legacy KV import' }, 503);
         const body = await request.json().catch(() => null);
         const chunkIndex = Number(body?.chunkIndex);
         if (!Number.isInteger(chunkIndex) || chunkIndex < 0 || !Array.isArray(body.cards)) return json({ ok: false, error: 'chunkIndex and cards[] required' }, 400);
@@ -3824,6 +3951,7 @@ export default {
       }
 
       if (url.pathname === '/topps-checklists/import-source' && request.method === 'PUT') {
+        if (!kv) return json({ ok: false, error: 'KV not configured for legacy KV import' }, 503);
         const body = await request.json().catch(() => null);
         if (!body?.source?.sourceId) return json({ ok: false, error: 'source.sourceId required' }, 400);
         await kv.put(`topps_source:${body.source.sourceId}`, JSON.stringify({ ...body.source, updatedAt: new Date().toISOString() }));
@@ -3831,6 +3959,7 @@ export default {
       }
 
       if (url.pathname === '/topps-checklists/import-complete' && request.method === 'PUT') {
+        if (!kv) return json({ ok: false, error: 'KV not configured for legacy KV import' }, 503);
         const body = await request.json().catch(() => null);
         const chunkCount = Number(body?.chunkCount);
         if (!Number.isInteger(chunkCount) || chunkCount < 0) return json({ ok: false, error: 'chunkCount required' }, 400);
@@ -3849,6 +3978,7 @@ export default {
       }
 
       if (url.pathname === '/topps-checklists/import-json' && request.method === 'PUT') {
+        if (!kv) return json({ ok: false, error: 'KV not configured for legacy KV import' }, 503);
         const body = await request.json().catch(() => null);
         if (!body || !Array.isArray(body.sets) || !Array.isArray(body.cards)) return json({ ok: false, error: 'sets[] and cards[] required' }, 400);
         const now = new Date().toISOString();
@@ -3875,16 +4005,26 @@ export default {
       }
 
       if (url.pathname === '/topps-checklists/meta' && request.method === 'GET') {
+        if (supabaseToppsEnabled) {
+          try { return json({ ok: true, meta: await supabaseToppsMeta() }); } catch (_) {}
+        }
         const meta = await readJsonKv('topps_import_meta', {});
         return json({ ok: true, meta });
       }
 
       if (url.pathname === '/topps-checklists/sets' && request.method === 'GET') {
-        const sets = await readJsonKv('topps_sets_index', []);
         const q = url.searchParams.get('q') || '';
         const sport = url.searchParams.get('sport') || '';
         const year = url.searchParams.get('year') || '';
         const limit = Math.min(2000, Math.max(1, Number(url.searchParams.get('limit') || 2000)));
+        if (supabaseToppsEnabled) {
+          try {
+            const page = await supabaseToppsSets({ q, sport, year, limit });
+            const sets = page.sets.filter(s => !isBadToppsSet(s));
+            return json({ ok: true, total: page.total || sets.length, sets, hiddenBadSets: page.sets.length - sets.length, storage: 'supabase' });
+          } catch (_) {}
+        }
+        const sets = await readJsonKv('topps_sets_index', []);
         const filtered = sets.filter(s =>
           !isBadToppsSet(s) &&
           (!q || norm([s.year, s.brand, s.product, s.setName, s.releaseName, s.sport].join(' ')).includes(norm(q))) &&
@@ -3907,17 +4047,22 @@ export default {
         };
         const limit = Math.min(500, Math.max(1, Number(url.searchParams.get('limit') || 100)));
         const offset = Math.max(0, Number(url.searchParams.get('offset') || 0));
+        if (supabaseToppsEnabled) {
+          try {
+            const page = await supabaseToppsCards({ filters, limit, offset });
+            return json({ ok: true, total: page.total, cards: page.cards, limit, offset, complete: true, scannedChunks: 0, storage: 'supabase' });
+          } catch (_) {}
+        }
         const page = await scanToppsCards({ filters, limit, offset });
         return json({ ok: true, total: page.total, cards: page.cards, limit, offset, complete: page.complete, scannedChunks: page.scannedChunks });
       }
 
       const cardMatch = url.pathname.match(/^\/topps-checklists\/cards\/([^/]+)$/);
       if (cardMatch && request.method === 'GET') {
-        const page = await scanToppsCards({ id: decodeURIComponent(cardMatch[1]), limit: 1 });
-        const card = page.cards[0];
+        const { card, storage } = await getToppsCardById(decodeURIComponent(cardMatch[1]));
         if (!card) return json({ ok: false, error: 'Card not found' }, 404);
-        const source = card.sourceId ? await readJsonKv(`topps_source:${card.sourceId}`, null) : null;
-        return json({ ok: true, card, source });
+        const source = await getToppsSource(card.sourceId);
+        return json({ ok: true, card, source, storage });
       }
 
       const pcMatch = url.pathname.match(/^\/topps-checklists\/cards\/([^/]+)\/pricecharting$/);
@@ -3928,8 +4073,7 @@ export default {
         const cached = !fresh ? await readJsonKv(cacheKey, null) : null;
         if (cached && Date.now() - new Date(cached.cachedAt || 0).getTime() < 86400000) return json({ ok: true, cached: true, ...cached });
 
-        const page = await scanToppsCards({ id: cardId, limit: 1 });
-        const card = page.cards[0];
+        const { card } = await getToppsCardById(cardId);
         if (!card) return json({ ok: false, error: 'Card not found' }, 404);
         const category = toppsPcCategory(card);
         const queries = toppsPcQueries(card);
@@ -3951,7 +4095,7 @@ export default {
         const matches = [...seen.values()].sort((a, b) => Number(b._toppsScore || 0) - Number(a._toppsScore || 0));
         const best = matches.find(m => Number(m._toppsScore || 0) >= 95) || null;
         const payload = { cardId, query: queries[0] || '', queries, category, playerName: toppsPlayerNameOnly(card), matches: matches.slice(0, 8), best, cachedAt: new Date().toISOString() };
-        await kv.put(cacheKey, JSON.stringify(payload), { expirationTtl: 86400 * 14 });
+        if (kv) await kv.put(cacheKey, JSON.stringify(payload), { expirationTtl: 86400 * 14 });
         return json({ ok: true, cached: false, ...payload });
       }
 

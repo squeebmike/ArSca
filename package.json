@@ -10,7 +10,8 @@
     "test:parse": "node tests/parse-check.js",
     "test:topps-parser": "node tests/topps-parser.test.js",
     "topps:import": "node scripts/import-topps-checklists.js",
-    "topps:import:sample": "node scripts/import-topps-checklists.js --limit=3"
+    "topps:import:sample": "node scripts/import-topps-checklists.js --limit=3",
+    "topps:import:supabase": "node scripts/import-topps-to-supabase.js"
   },
   "devDependencies": {
     "@playwright/test": "^1.52.0"
