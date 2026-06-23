@@ -24605,10 +24605,8 @@ function sbNormalizeSetCard(card = {}, setName = ''){
 }
 
 async function sbFetchSetCards(setIdOrName){
-  // PPT API: setId=<id>&fetchAllInSet=true  OR  set=<name>&fetchAllInSet=true
   if(!setIdOrName) throw new Error('No set name');
-  const isNumericId = /^\d+$/.test(String(setIdOrName));
-  // For offline catalog lookup always use the set name from state
+  // Always use the human-readable set name — PPT cards endpoint expects set=<name>
   const setName = _sbState.selectedSet?.name || setIdOrName;
   const catalogCards = await pokemonCatalogExportCardsBySet(setName).catch(() => []);
   if(catalogCards.length) {
@@ -24616,15 +24614,12 @@ async function sbFetchSetCards(setIdOrName){
     return catalogCards;
   }
   // Session cache — cards stable within a session
-  const ck = 'sb_cards_' + String(setIdOrName).toLowerCase().replace(/[^a-z0-9]/g,'_').slice(0,40);
+  const ck = 'sb_cards_' + setName.toLowerCase().replace(/[^a-z0-9]/g,'_').slice(0,40);
   try {
     const cached = JSON.parse(sessionStorage.getItem(ck) || 'null');
     if(cached && (Date.now() - (cached.ts||0)) < 3600000 && cached.cards?.length) return cached.cards.map(c => sbNormalizeSetCard(c, setName));
   } catch(e){}
-  // Use setId if we have a numeric ID, otherwise fall back to set name
-  const params = isNumericId
-    ? new URLSearchParams({ setId: setIdOrName, fetchAllInSet: 'true', limit: '500' })
-    : new URLSearchParams({ set: setIdOrName, fetchAllInSet: 'true', limit: '500' });
+  const params = new URLSearchParams({ set: setName, fetchAllInSet: 'true', limit: '500' });
   const res = await fetch(WORKER + '/pricing/pokemon/cards?' + params.toString(), { cache:'no-store' });
   if(!res.ok){
     let t=''; try { t = await res.text(); } catch(e){}
