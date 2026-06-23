@@ -24559,7 +24559,7 @@ async function sbFetchSets(){
   const d = await res.json();
   const raw = Array.isArray(d.data) ? d.data : Array.isArray(d.sets) ? d.sets : [];
   const sets = raw.map(s => ({
-    id:          s.name || s.id || '',   // option VALUE = name so sbFetchSetCards gets right param
+    id:          s.id || s.name || '',
     name:        s.name || '',
     series:      s.series || '',
     releaseDate: s.releaseDate || '',
@@ -24604,21 +24604,27 @@ function sbNormalizeSetCard(card = {}, setName = ''){
   };
 }
 
-async function sbFetchSetCards(setName){
-  // PPT API: set=<setName>&fetchAllInSet=true  (per docs: set=celebrations, set=Fossil, etc.)
-  if(!setName) throw new Error('No set name');
+async function sbFetchSetCards(setIdOrName){
+  // PPT API: setId=<id>&fetchAllInSet=true  OR  set=<name>&fetchAllInSet=true
+  if(!setIdOrName) throw new Error('No set name');
+  const isNumericId = /^\d+$/.test(String(setIdOrName));
+  // For offline catalog lookup always use the set name from state
+  const setName = _sbState.selectedSet?.name || setIdOrName;
   const catalogCards = await pokemonCatalogExportCardsBySet(setName).catch(() => []);
   if(catalogCards.length) {
     _sbState.sourceLabel = 'Offline Catalog - PokemonPriceTracker Export';
     return catalogCards;
   }
   // Session cache — cards stable within a session
-  const ck = 'sb_cards_' + setName.toLowerCase().replace(/[^a-z0-9]/g,'_').slice(0,40);
+  const ck = 'sb_cards_' + String(setIdOrName).toLowerCase().replace(/[^a-z0-9]/g,'_').slice(0,40);
   try {
     const cached = JSON.parse(sessionStorage.getItem(ck) || 'null');
     if(cached && (Date.now() - (cached.ts||0)) < 3600000 && cached.cards?.length) return cached.cards.map(c => sbNormalizeSetCard(c, setName));
   } catch(e){}
-  const params = new URLSearchParams({ set: setName, fetchAllInSet: 'true', limit: '500' });
+  // Use setId if we have a numeric ID, otherwise fall back to set name
+  const params = isNumericId
+    ? new URLSearchParams({ setId: setIdOrName, fetchAllInSet: 'true', limit: '500' })
+    : new URLSearchParams({ set: setIdOrName, fetchAllInSet: 'true', limit: '500' });
   const res = await fetch(WORKER + '/pricing/pokemon/cards?' + params.toString(), { cache:'no-store' });
   if(!res.ok){
     let t=''; try { t = await res.text(); } catch(e){}
