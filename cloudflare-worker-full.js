@@ -2517,7 +2517,7 @@ export default {
       if (!upstream.ok) {
         const providerMessage = errorMessageFromApi(data, 'PokemonPriceTracker API ' + upstream.status);
         const quotaBlocked = upstream.status === 429 || (upstream.status === 403 && /429|quota|rate|blocked/i.test(providerMessage));
-        if (quotaBlocked && env.LBA_KV) await env.LBA_KV.put('ppt_quota_exhausted_until', String(Date.now() + 60 * 60 * 1000), { expirationTtl: 60 * 60 });
+        if (quotaBlocked && env.LBA_KV) env.LBA_KV.put('ppt_quota_exhausted_until', String(Date.now() + 60 * 60 * 1000), { expirationTtl: 60 * 60 }).catch(() => {});
         const stale = env.LBA_KV ? await env.LBA_KV.get(cacheKey, 'json').catch(() => null) : null;
         if (quotaBlocked && stale) {
           return json({ ...stale, providerQuotaState: 'exhausted', providerStatus: upstream.status, warning: providerMessage, cache:{ state:'stale', source:'worker-kv', cacheKey, cachedAt:stale.cache?.cachedAt || null } }, 200, pokemonQuotaHeaders(upstream.headers));
@@ -2551,7 +2551,7 @@ export default {
         },
         cache:{ state:'miss', source:'live', cacheKey, cachedAt:new Date().toISOString() },
       };
-      if (env.LBA_KV && upstream.ok) await env.LBA_KV.put(cacheKey, JSON.stringify(payload), { expirationTtl: 60 * 60 * 24 });
+      if (env.LBA_KV && upstream.ok) env.LBA_KV.put(cacheKey, JSON.stringify(payload), { expirationTtl: 60 * 60 * 24 }).catch(() => {});
       return json(payload, 200, pokemonQuotaHeaders(upstream.headers));
     }
 
