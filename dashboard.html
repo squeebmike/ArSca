@@ -5766,9 +5766,11 @@ async function pstFetchSets(){
     const cached = JSON.parse(sessionStorage.getItem('pst_sets_session') || 'null');
     if(cached?.length) return cached;
   } catch(e){}
-  // Try PPT worker route
+  // Try PPT worker route — skip if rate-limited
+  if(pokemonPriceTrackerQuotaBlocked()) throw new Error('Rate limited — try again shortly');
   try {
     const res = await fetch(WORKER + '/pricing/pokemonpricetracker/sets', { cache:'no-store' });
+    if(res.status === 429){ localStorage.setItem('ppt_rate_limited_until', String(Date.now() + 60 * 1000)); throw new Error('Rate limited'); }
     if(res.ok){
       const d = await res.json();
       const sets = d.sets || d.data || [];
@@ -6228,7 +6230,7 @@ async function renderPokemonSetSyncPanel(statusMsg){
   if(existing) existing.outerHTML = html;
   else body.insertAdjacentHTML('beforeend', html);
   pstUpdateSummaryBar();
-  if(!_pstSets.length) pstLoadSetsBackground();
+  if(!_pstSets.length && !pokemonPriceTrackerQuotaBlocked()) pstLoadSetsBackground();
 }
 
 function ensurePriceChartingDataPanel(backoffice){
@@ -9382,10 +9384,10 @@ async function probeNetwork(){
   if(!navigator.onLine){ _netStatus = 'offline'; updateNetBadge(); return; }
   const start = Date.now();
   try {
-    // Lightweight ping: HEAD to the worker health endpoint with short timeout
+    // Lightweight ping: HEAD to the dashboard itself (workers.dev /ping doesn't exist)
     const ctrl = new AbortController();
     const timeout = setTimeout(() => ctrl.abort(), 3000);
-    await fetch(WORKER + '/ping', { method:'HEAD', signal:ctrl.signal, cache:'no-store' });
+    await fetch(location.href, { method:'HEAD', signal:ctrl.signal, cache:'no-store' });
     clearTimeout(timeout);
     const ms = Date.now() - start;
     _netStatus = ms < 1500 ? 'online' : 'slow';
@@ -16155,10 +16157,12 @@ async function autoRefreshStaleCatalogs(){
   const MS_24H = 24 * 60 * 60 * 1000;
   const MS_7D  = 7  * 24 * 60 * 60 * 1000;
   try {
-    // Pokemon cards catalog — refresh if >24h old and not already downloading
+    // Pokemon cards catalog — refresh if >24h old and not blocked/downloading
+    // Skip if last attempt returned 403 (business plan required — won't change without plan upgrade)
     const cardsMeta = await catalogDbGet('meta', 'export_cards').catch(() => null);
     const cardsAge  = cardsMeta?.downloadedAt ? Date.now() - new Date(cardsMeta.downloadedAt).getTime() : Infinity;
-    if(cardsAge > MS_24H && localStorage.getItem('ppt_export_cards_status') !== 'downloading') {
+    const exportBlocked = localStorage.getItem('ppt_export_auth_failed') === '1';
+    if(cardsAge > MS_24H && !exportBlocked && localStorage.getItem('ppt_export_cards_status') !== 'downloading') {
       downloadPokemonExport('cards').catch(console.warn);
     }
     // MTG Scryfall bulk catalog — refresh if >7d old and not already downloading
@@ -16185,7 +16189,7 @@ async function downloadPokemonExport(type){
     const resetAt         = res.headers.get('X-Reset-At') || '';
 
     if(res.status === 402){ const d = await res.json().catch(()=>({error:'Subscription required'})); throw Object.assign(new Error(d.error || 'Subscription required'), { subscriptionRequired:true }); }
-    if(res.status === 403){ const d = await res.json().catch(()=>({error:'Business plan required'})); throw Object.assign(new Error(d.error || 'Business plan required'), { businessRequired:true }); }
+    if(res.status === 403){ localStorage.setItem('ppt_export_auth_failed', '1'); const d = await res.json().catch(()=>({error:'Business plan required'})); throw Object.assign(new Error(d.error || 'Business plan required'), { businessRequired:true }); }
     if(res.status === 429){ const d = await res.json().catch(()=>({error:'Daily limit reached'})); throw Object.assign(new Error(d.error || 'Daily limit reached (2/day). Resets at 6:00 AM UTC.'), { limitReached:true }); }
     if(res.status === 503){ throw Object.assign(new Error('Export not ready — dumps regenerate daily at 6:00 AM UTC.'), { notReady:true }); }
     if(!res.ok){ const d = await res.json().catch(()=>({error:'HTTP '+res.status})); throw new Error(d.error || 'Export failed'); }
@@ -19609,6 +19613,7 @@ function pokemonExpandSearchAbbreviations(q){
 }
 
 async function searchPokemonPriceTrackerCards(rawQuery = '', language = 'english'){
+  if(pokemonPriceTrackerQuotaBlocked()) throw new Error('PokemonPriceTracker quota exhausted');
   const expanded = pokemonExpandSearchAbbreviations(String(rawQuery || '').replace(/\s+/g, ' ').trim());
   // PPT searches by card NAME only — strip promo-set abbreviations and standalone "promo"
   // so natural queries like "rayquaza swsh promo" or "rayquaza promo" send just "rayquaza".
