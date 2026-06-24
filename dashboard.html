@@ -27017,6 +27017,8 @@ function toppsObserveLazyImages(container){
   _toppsImgFetching.clear();
   _toppsImgQueue = [];
   _toppsImgActive = 0;
+  // Clear failed cache entries so they can retry (successful entries are kept)
+  if(TOPPS?.pcCache) Object.keys(TOPPS.pcCache).forEach(k => { if(!TOPPS.pcCache[k]?.best) delete TOPPS.pcCache[k]; });
   _toppsImgObserver = new IntersectionObserver((entries) => {
     for(const entry of entries) {
       if(!entry.isIntersecting) continue;
