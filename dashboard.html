@@ -19570,9 +19570,12 @@ async function pokemonPriceTrackerCardsRequest(params, pathLabel, { fresh = fals
     err.subscriptionRequired = true;
     throw err;
   }
-  if(res.status === 429 || data.providerQuotaState === 'exhausted' || (res.status === 403 && /429|quota|rate|blocked/i.test(String(data.error || data.message || '')))) localStorage.setItem('ppt_quota_exhausted_until', String(Date.now() + 60 * 60 * 1000));
   if(data.usage?.remaining != null) localStorage.setItem('ppt_remaining_credits', String(data.usage.remaining));
   if(data.usage?.consumed != null) localStorage.setItem('ppt_last_consumed', String(data.usage.consumed));
+  // Only block further calls when credits are truly exhausted — a plain 429 is a transient
+  // rate-limit and should not lock out the user for an hour when they still have credits.
+  const remaining = data.usage?.remaining ?? Number(localStorage.getItem('ppt_remaining_credits') || 9999);
+  if(data.providerQuotaState === 'exhausted' || (res.status === 429 && remaining <= 0) || (res.status === 403 && /quota|exhausted/i.test(String(data.error || data.message || '')))) localStorage.setItem('ppt_quota_exhausted_until', String(Date.now() + 60 * 60 * 1000));
   if(!res.ok || !data.ok) throw new Error(data.error || data.message || 'PokemonPriceTracker lookup failed');
   return { data, cards:pokemonPriceTrackerCardsFromPayload(data).slice(0, 20), requestPath, pathLabel, cacheStatus:data.cache?.state === 'hit' ? 'hit' : data.cache?.state === 'stale' ? 'stale' : 'miss' };
 }
@@ -19667,7 +19670,11 @@ async function fetchPokemonPopulation(tcgPlayerId, language = 'english'){
 
 function pokemonPriceTrackerQuotaBlocked(){
   const until = Number(localStorage.getItem('ppt_quota_exhausted_until') || 0);
-  return until && Date.now() < until;
+  if(!until || Date.now() >= until) return false;
+  // Auto-clear stale block if we know credits are available
+  const remaining = Number(localStorage.getItem('ppt_remaining_credits') || 0);
+  if(remaining > 0){ localStorage.removeItem('ppt_quota_exhausted_until'); return false; }
+  return true;
 }
 
 function pokemonPriceCacheFresh(card = null){
@@ -19788,9 +19795,10 @@ async function parsePokemonPriceTrackerTitle(row = {}, query = qplLastSearch){
     body:JSON.stringify({ title, options:{ fuzzyMatching:true, maxSuggestions:3, includeConfidence:true } })
   });
   const data = await res.json().catch(() => ({}));
-  if(res.status === 429 || data.providerQuotaState === 'exhausted' || (res.status === 403 && /429|quota|rate|blocked/i.test(String(data.error || data.message || '')))) localStorage.setItem('ppt_quota_exhausted_until', String(Date.now() + 60 * 60 * 1000));
   if(data.usage?.remaining != null) localStorage.setItem('ppt_remaining_credits', String(data.usage.remaining));
   if(data.usage?.consumed != null) localStorage.setItem('ppt_last_consumed', String(data.usage.consumed));
+  const remaining2 = data.usage?.remaining ?? Number(localStorage.getItem('ppt_remaining_credits') || 9999);
+  if(data.providerQuotaState === 'exhausted' || (res.status === 429 && remaining2 <= 0) || (res.status === 403 && /quota|exhausted/i.test(String(data.error || data.message || '')))) localStorage.setItem('ppt_quota_exhausted_until', String(Date.now() + 60 * 60 * 1000));
   if(!res.ok || !data.ok) return null;
   const payload = data.data?.data || data.data || {};
   const parsed = payload.parsed || data.parsed || {};
