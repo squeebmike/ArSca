@@ -17100,6 +17100,16 @@ function rankQuickLookupResults(results, q, cat){
         // Only penalise non-vintage PC when SCP already has good results
         if(!isVintage && hasSCPResults) score -= 180;
       }
+      // Year-match scoring: if query contains a 4-digit year (e.g. "1989 Ken Griffey"),
+      // strongly boost results whose year matches and penalise mismatches so reprints don't
+      // outrank the original vintage card.
+      const queryYearMatch = String(q || '').match(/\b(19\d{2}|20\d{2})\b/);
+      if(queryYearMatch && key === 'sports') {
+        const queryYear = Number(queryYearMatch[1]);
+        const resultYear = Number(r.year || 0);
+        if(resultYear && resultYear === queryYear) score += 400;
+        else if(resultYear && resultYear !== queryYear) score -= 300;
+      }
       // Inventory penalty: large (-500) when external sports results exist so external always wins.
       // Small (-50) when no external sports data found — let inventory show with its "IN INVENTORY" badge.
       if(r.source === 'inventory') score -= (qplCategoryKey(cat) === 'sports' ? (hasSportsExternalResults ? 500 : 50) : 170);
