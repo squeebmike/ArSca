@@ -27008,6 +27008,12 @@ function toppsRenderCards(){
     el.innerHTML = '<div style="font-family:var(--font-mono);font-size:10px;color:var(--dim)">Loading checklist rows...</div>';
     return;
   }
+  const activeSearch = !!(document.getElementById('topps-search')?.value?.trim() || document.getElementById('topps-year')?.value || document.getElementById('topps-sport')?.value || document.getElementById('topps-flag')?.value);
+  if(!TOPPS.selectedSetId && !activeSearch) {
+    if(status) status.textContent = '';
+    el.innerHTML = '<div style="font-family:var(--font-mono);font-size:11px;color:var(--dim);padding:24px 0;text-align:center">Select a set from the left panel to view its checklist,<br>or use the search box to find cards across all sets.</div>';
+    return;
+  }
   if(status) status.textContent = `${TOPPS.filteredCards.length} visible checklist rows${TOPPS.filteredCards.length >= (TOPPS.selectedSetId ? 2500 : 500) ? ' (page limit shown - narrow filters for more)' : ''}`;
   if(!TOPPS.filteredCards.length) { el.innerHTML = '<div style="font-family:var(--font-mono);font-size:10px;color:var(--dim)">No cards match. Try clearing filters or selecting another set.</div>'; return; }
   const sortedCards = toppsSortedCards(TOPPS.filteredCards);
@@ -27164,8 +27170,19 @@ function toppsDetailHtml(card, pcData = null, loadingPc = false){
   <div style="display:grid;grid-template-columns:130px minmax(0,1fr);gap:14px;align-items:start;margin-bottom:14px">${image ? `<img src="${escHtml(image)}" style="width:130px;max-height:184px;object-fit:contain;border:1px solid var(--border);border-radius:8px;background:#050507">` : `<div class="topps-placeholder" style="width:130px;height:184px">TOPPS<br>${escHtml(card.year || '')}<br>#${escHtml(card.cardNumber || '')}</div>`}<div class="panel" style="padding:12px;background:var(--surf2)"><div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);line-height:1.75"><div><b style="color:var(--text)">Set:</b> ${escHtml(card.setName || card.product || '')}</div><div><b style="color:var(--text)">Sport:</b> ${escHtml(card.sport || '')}</div><div><b style="color:var(--text)">Section:</b> ${escHtml(card.section || '')}</div><div><b style="color:var(--text)">Notes:</b> ${escHtml(card.notes || 'No notes parsed')}</div><div><b style="color:var(--text)">Parse confidence:</b> ${Math.round(Number(card.parseConfidence || 0) * 100)}%</div></div></div></div>
   <div class="panel" style="margin-bottom:14px"><div class="ph">PRICECHARTING MATCH <span>${escHtml(pcData?.query || '')}</span></div>${loadingPc ? '<div style="font-family:var(--font-mono);font-size:10px;color:var(--dim)">Checking PriceCharting...</div>' : pc ? `<div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);line-height:1.7"><div style="color:var(--text);font-weight:800">${escHtml(pc.productName || pc['product-name'] || 'PriceCharting match')}</div><div>${price ? '$' + price.toFixed(2) : 'No guide price'} ${pc.consoleName ? ' / ' + escHtml(pc.consoleName) : ''}${pc._sourceName ? ' / ' + escHtml(pc._sourceName) : ''}</div></div>` : pcNote}${candidates}</div>
   <div class="panel" id="topps-parallels-panel" style="margin-bottom:14px"><div class="ph" style="display:flex;align-items:center;justify-content:space-between">PARALLELS <button class="hbtn" id="topps-parallels-btn" onclick="toppsLoadParallels('${escHtml(card.id)}')" style="font-size:9px;padding:3px 10px;min-height:28px">${loadingPc ? '—' : 'LOAD PARALLELS'}</button></div><div id="topps-parallels-results" style="font-family:var(--font-mono);font-size:10px;color:var(--dim)">Click LOAD PARALLELS to fetch all versions of this card from PriceCharting.</div></div>
-  <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="hbtn" id="topps-pc-btn" onclick="toppsOpenPcForCard('${escHtml(card.id)}')">${loadingPc ? '⏳ LOADING...' : 'OPEN PRICECHARTING'}</button><button class="hbtn" onclick="toppsOpenUrl(decodeURIComponent('${encodeURIComponent(activeUrl)}'))">EBAY ACTIVE</button><button class="hbtn" onclick="toppsOpenUrl(decodeURIComponent('${encodeURIComponent(soldUrl)}'))">EBAY SOLD</button><button class="hbtn" onclick="toppsCopyText(decodeURIComponent('${encodeURIComponent(title)}'))">COPY EBAY TITLE</button><button class="hbtn" onclick="toppsCopyText(decodeURIComponent('${encodeURIComponent(keywords)}'))">COPY KEYWORDS</button></div>`;
+  <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="hbtn" style="background:var(--g);color:#000;font-weight:800" onclick="toppsResearchCard('${escHtml(card.id)}')">RESEARCH</button><button class="hbtn" id="topps-pc-btn" onclick="toppsOpenPcForCard('${escHtml(card.id)}')">${loadingPc ? '⏳ LOADING...' : 'OPEN PRICECHARTING'}</button><button class="hbtn" onclick="toppsOpenUrl(decodeURIComponent('${encodeURIComponent(activeUrl)}'))">EBAY ACTIVE</button><button class="hbtn" onclick="toppsOpenUrl(decodeURIComponent('${encodeURIComponent(soldUrl)}'))">EBAY SOLD</button><button class="hbtn" onclick="toppsCopyText(decodeURIComponent('${encodeURIComponent(title)}'))">COPY EBAY TITLE</button><button class="hbtn" onclick="toppsCopyText(decodeURIComponent('${encodeURIComponent(keywords)}'))">COPY KEYWORDS</button></div>`;
 }
+function toppsResearchCard(cardId){
+  const card = toppsFindCard(cardId);
+  if(!card){ toast_dash('Card not found in checklist'); return; }
+  const row = sportsToppsCardToQplRow(card, sportsToppsPriceQuery(card));
+  qplResults = [row, ...qplResults.filter(r => r.toppsChecklistCardId !== cardId)];
+  document.getElementById('qpl-input').value = sportsToppsPriceQuery(card);
+  toppsCloseDetail();
+  switchTab('pos', document.querySelector('[data-tab=pos]'));
+  setTimeout(() => { renderQuickLookupResults(qplResults); loadPricesForResultCard(0); }, 80);
+}
+
 async function toppsLoadPriceCharting(card){
   const drawer = document.getElementById('topps-detail-drawer');
   const pushToGrid = (imgUrl, price) => {
