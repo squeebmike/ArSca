@@ -27053,7 +27053,8 @@ async function toppsOpenDetail(cardId){
   TOPPS.openCardId = cardId;
   document.getElementById('topps-drawer-bg')?.classList.add('on');
   const drawer = document.getElementById('topps-detail-drawer');
-  if(drawer) { drawer.classList.add('on'); drawer.innerHTML = toppsDetailHtml(card, null, true); }
+  const cached = TOPPS?.pcCache?.[cardId] || null;
+  if(drawer) { drawer.classList.add('on'); drawer.innerHTML = toppsDetailHtml(card, cached, !cached); }
   toppsLoadPriceCharting(card);
 }
 function toppsCloseDetail(){ TOPPS.openCardId = null; document.getElementById('topps-drawer-bg')?.classList.remove('on'); document.getElementById('topps-detail-drawer')?.classList.remove('on'); }
