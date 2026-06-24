@@ -16496,33 +16496,12 @@ async function savePokemonCacheResults(query, rows = [], source = 'Live lookup')
 
 async function searchPokemonOfflineCache(query, cat = ''){
   if(!isPokemonLookupIntent(query, cat)) return [];
-  const terms = normalizePokemonText(query).split(/\s+/).filter(Boolean);
-  const queryNumber = pokemonQueryCardNumber(query);
-  const normalizedQuery = normalizePokemonText(query);
-  const cards = (await pokemonDbAll('cards').catch(() => [])).filter(isAuthoritativePokemonCacheRow);
-  const imageRows = await pokemonDbAll('images').catch(() => []);
-  const imageMap = new Map(imageRows.filter(i => !i.storeId || i.storeId === getActiveStoreId()).map(i => [i.cardKey, i.dataUrl || i.imageUrl]));
-  const cacheResults = cards.filter(c => c.storeId === getActiveStoreId()).filter(c => {
-    if(c.cacheVersion !== POKEMON_SEARCH_CACHE_VERSION) return false;
-    if(c.normalizedQuery && c.normalizedQuery !== normalizedQuery && !queryNumber) return false;
-    if(queryNumber && !pokemonCardNumberMatches(c.card || {}, queryNumber)) return false;
-    const hay = c.searchText || normalizePokemonText(JSON.stringify(c.card || {}));
-    return terms.every(t => hay.includes(t));
-  }).sort((a,b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0)).slice(0, 50).map(c => ({
-    ...(c.card || {}),
-    imageUrl:imageMap.get(c.cardKey) || c.card?.imageUrl || c.imageUrl || '',
-    cache:{ state:navigator.onLine ? 'cached' : 'offline', updatedAt:c.updatedAt, source:c.source || 'Pokemon cache', cardKey:c.cardKey },
-    priceSource:(c.card?.priceSource || c.source || 'Pokemon cache') + ' (cached)'
-  }));
-
-  // Supplement with catalog export results when cache is sparse or offline
-  if(cacheResults.length < 8 || !navigator.onLine){
-    const catalogHits = await searchPokemonCatalogExport(query).catch(() => []);
-    const seenIds = new Set(cacheResults.map(r => String(r.tcgPlayerId || '')).filter(Boolean));
-    const fresh = catalogHits.filter(r => !seenIds.has(String(r.tcgPlayerId || '')));
-    return [...cacheResults, ...fresh].slice(0, 60);
-  }
-  return cacheResults;
+  // Bulk PPT export is the sole local data source — search catalog only.
+  const catalogHits = await searchPokemonCatalogExport(query).catch(() => []);
+  const sealedHits  = await searchPokemonSealedCatalogLocal(query).catch(() => []);
+  const seenIds = new Set(catalogHits.map(r => String(r.tcgPlayerId || '')).filter(Boolean));
+  const freshSealed = sealedHits.filter(r => !seenIds.has(String(r.tcgPlayerId || '')));
+  return [...catalogHits, ...freshSealed].slice(0, 60);
 }
 
 async function savePokemonCompsFromRow(row = {}, cardKey = pokemonCardKey(row)){
@@ -16702,12 +16681,10 @@ async function runPriceLookup(){
       qplMasterResults = cachedResults; qplLastSearch = q;
       qplResults = filterQplMasterResults(qplMasterResults, cat);
       renderQuickLookupResults(qplResults);
-      const fromCatalog = cachedResults.some(r => r.source === 'ppt_export');
-      const cacheAge = pokemonCacheAgeLabel(cachedResults.find(r => r.cache?.updatedAt)?.cache?.updatedAt);
       if(navigator.onLine){
-        setPokemonOfflineBanner(fromCatalog ? 'Catalog export results shown while live refresh runs.' : 'Cached Pokémon results shown while live refresh runs. Last updated ' + cacheAge + '.');
+        setPokemonOfflineBanner('Catalog results shown while live PPT refresh runs.');
       } else {
-        setPokemonOfflineBanner(fromCatalog ? 'Offline Mode: showing PPT catalog export data.' : 'Offline Mode: showing cached Pokémon data. Last updated ' + cacheAge + '.');
+        setPokemonOfflineBanner('Offline Mode: showing PPT bulk export catalog data.');
       }
     } else if(!navigator.onLine) {
       el.innerHTML = `<div style="color:var(--gold);line-height:1.6">No cached or catalog data found for this search.<br>To enable full offline research, download the PPT export catalog in Settings.<br><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><button class="hbtn" onclick="switchTab('backoffice');document.getElementById('offline-cache-panel')?.scrollIntoView({behavior:'smooth',block:'start'})">OPEN OFFLINE CACHE</button><button class="hbtn" onclick="switchTab('backoffice');document.getElementById('pokemon-export-panel')?.scrollIntoView({behavior:'smooth',block:'start'})">DOWNLOAD CATALOG</button></div></div>`;
@@ -16779,8 +16756,8 @@ async function runPriceLookup(){
     if(qplResults.some(r => r.source === 'PriceCharting' && !r.imageUrl)) enrichPcImagesAsync();
     if(qplResults.some(r => r.source === 'topps_checklist')) enrichToppsSportsPriceChartingAsync();
     if(wantsPokemon) {
-      savePokemonCacheResults(q, qplMasterResults, 'Live Pokemon lookup').then(renderOfflineCachePanel).catch(console.warn);
-      setPokemonOfflineBanner((cachedResults.length ? 'Live Pokémon refresh updated the cached copy.' : 'Saved this Pokémon lookup for offline use.') + ' Last cached ' + pokemonCacheAgeLabel(new Date().toISOString()) + '.', 'good');
+      savePokemonCacheResults(q, qplMasterResults, 'Live Pokemon lookup').catch(console.warn);
+      setPokemonOfflineBanner('Live Pokémon prices loaded. Offline search uses PPT bulk export catalog.', 'good');
       // Auto-fetch full condition prices for the top 3 Pokemon results so chips/PSA grades are
       // immediately visible without requiring a manual GET PRICES click.
       if(navigator.onLine && !pokemonPriceTrackerQuotaBlocked()) {
@@ -19754,24 +19731,8 @@ async function cachedPokemonPriceTrackerCard(row = {}){
 }
 
 async function cachePokemonPriceTrackerCard(row = {}, card = null){
-  if(!card) return;
-  const exactId = card.tcgPlayerId || row.tcgPlayerId || row.tcgplayerId || '';
-  const cardKey = exactId ? 'pokemon:' + exactId : (row.cache?.cardKey || pokemonCardKey(row, qplLastSearch));
-  const normalized = normalizePokemonCacheRecord({
-    ...row,
-    pokemonPriceTracker:card,
-    tcgPlayerId:card.tcgPlayerId || row.tcgPlayerId || row.tcgplayerId || '',
-    tcgplayerId:card.tcgPlayerId || row.tcgplayerId || '',
-    tcgPlayerUrl:card.tcgPlayerUrl || row.tcgPlayerUrl || row.tcgUrl || '',
-    priceSource:row.priceSource || 'PokemonPriceTracker'
-  }, qplLastSearch);
-  normalized.cardKey = cardKey;
-  normalized.cacheVersion = POKEMON_EXACT_CACHE_VERSION;
-  normalized.exactCacheVersion = POKEMON_EXACT_CACHE_VERSION;
-  normalized.card.cache = { state:'cached', updatedAt:new Date().toISOString(), source:'PokemonPriceTracker', exactCacheVersion:POKEMON_EXACT_CACHE_VERSION };
-  normalized.card.pokemonPriceTracker.lookupDebug = { ...(normalized.card.pokemonPriceTracker.lookupDebug || {}), exactCacheVersion:POKEMON_EXACT_CACHE_VERSION };
-  await pokemonDbPut('cards', normalized);
-  await pokemonDbPut('meta', { key:'lastPokemonSyncAt', value:new Date().toISOString() });
+  // Per-card caching disabled — bulk PPT export is the only local data source.
+  // REFRESH hits live API only; nothing is written back to IndexedDB.
 }
 
 async function fetchPokemonPriceTrackerCard(row = {}){
