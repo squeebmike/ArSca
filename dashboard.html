@@ -1896,10 +1896,13 @@ body.show-mode .inv-sync-badge{display:none;}
         <button class="buy-action-reject" id="bl-reject-btn" onclick="rejectBuySession()">✕ REJECT</button>
       </div>
 
-      <!-- ⑥ PAY CUSTOMER — enabled only after accept -->
-      <div class="buy-pay-row">
+      <!-- ⑥ PAY CUSTOMER — enabled only after accept (legacy, kept for keyboard/accessibility) -->
+      <div class="buy-pay-row" style="display:none">
         <button class="buy-action-pay" id="bl-pay-btn" onclick="payCustomerForBuySession()">💵 PAY CUSTOMER</button>
       </div>
+
+      <!-- ⑥b Payment confirmation overlay — shown after ACCEPT OFFER -->
+      <div id="buy-payment-confirm-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:9999;align-items:center;justify-content:center;padding:20px"></div>
 
       <!-- ⑦ ADVANCED OPTIONS — collapsed by default, show mode hides entirely -->
       <details class="buy-advanced" id="buy-advanced-options">
@@ -9501,8 +9504,16 @@ function renderCardView(){
       <div class="inv-card-body">
         <div class="inv-card-name" title="${escHtml(i.name)}" onclick="openInventoryItemInResearch('${i.id}')" style="cursor:pointer">${escHtml(i.name)}</div>
         <div class="inv-card-meta">${escHtml([i.set, i.year, i.condition].filter(Boolean).join(' · ') || i.category || '')}</div>
-        <div class="inv-card-price">${money.market > 0 ? fd$(money.market) : '—'}</div>
-        <div class="inv-card-meta">List ${money.list ? fd$(money.list) : '—'} · Cost ${money.cost ? fd$(money.cost) : '—'}</div>
+        <div class="inv-card-price">${money.market > 0 ? fd$(money.market) : '—'}<span style="font-family:var(--font-mono);font-size:9px;color:var(--dim);margin-left:4px">mkt</span></div>
+        <div class="inv-card-meta" style="display:flex;align-items:center;gap:5px">
+          <span style="color:var(--dim);flex-shrink:0">List:</span>
+          <input type="number" step="0.01" min="0" value="${money.list || ''}" placeholder="Set price"
+            onclick="event.stopPropagation()"
+            onblur="saveInvListPrice('${i.id}', this.value)"
+            onkeydown="if(event.key==='Enter'){this.blur()}"
+            style="width:68px;background:var(--surf2);border:1px solid var(--border);color:var(--g);padding:2px 5px;border-radius:5px;font-family:var(--font-mono);font-size:11px;font-weight:700">
+          ${money.cost ? `<span style="color:var(--dim);font-size:9px;white-space:nowrap">· Cost ${fd$(money.cost)}</span>` : ''}
+        </div>
         <div class="inv-card-meta">${inventoryImageSourceLabel(i)}${inventoryIsPriceStale(i) ? ' · stale price' : ''}</div>
         ${i.qty > 1 ? `<div class="inv-card-meta" style="color:var(--g)">Qty: ${i.qty}</div>` : ''}
         <div class="inv-card-actions">
@@ -14714,6 +14725,16 @@ function updateEditProfit() {
 document.getElementById('edit-cost').addEventListener('input', updateEditProfit);
 document.getElementById('edit-market').addEventListener('input', updateEditProfit);
 document.getElementById('edit-list-price')?.addEventListener('input', updateEditProfit);
+
+function saveInvListPrice(id, rawVal){
+  const val = parseFloat(rawVal);
+  if(!id || isNaN(val) || val < 0) return;
+  const updates = { listPrice:val, salePrice:val, displayPrice:val };
+  const saved = saveEditToLocalStorage(id, updates);
+  if(!saved) updateUniversalInventoryItem(id, updates);
+  toast_dash('Price updated: ' + fd$(val));
+  renderCardView();
+}
 
 function saveEditToLocalStorage(id, updates) {
   const inv = JSON.parse(localStorage.getItem('lba_inventory')||'[]');
@@ -20113,9 +20134,19 @@ async function hydratePokemonPriceTrackerPricing(idx, rerender = true){
     }
   } catch(err) {
     row.pokemonPriceTrackerError = err.message || 'PokemonPriceTracker unavailable';
+    if(rerender) updateQplResultCard(idx);
   } finally {
     row._pptHydrating = false;
   }
+}
+
+function retryPptHydration(idx){
+  const row = qplResults[idx];
+  if(!row) return;
+  delete row.pokemonPriceTrackerError;
+  delete row._pptHydrating;
+  updateQplResultCard(idx);
+  hydratePokemonPriceTrackerPricing(idx, true);
 }
 
 function hydrateVisiblePokemonPriceTrackerResults(indexes = []){
@@ -21763,7 +21794,7 @@ async function selectQuickLookupResult(idx){
       </div>
     </div>
     ${isPokemonLookupIntent(r.name || '', r.category) || qplResultCategoryKey(r) === 'pokemon' ? `<div id="pokemon-comps-panel-${idx}" class="pokemon-comps-panel">Loading cached Pokemon comps...</div>` : ''}
-    ${qplResultCategoryKey(r) === 'pokemon' ? (r.pokemonPriceTracker ? pokemonPptSelectedInlinePanelHtml(r, idx) : '<div style="padding:12px 0;color:var(--dim);font-size:12px">Loading condition prices…</div>') : ''}
+    ${qplResultCategoryKey(r) === 'pokemon' ? (r.pokemonPriceTracker ? pokemonPptSelectedInlinePanelHtml(r, idx) : r.pokemonPriceTrackerError ? `<div style="padding:10px 0;display:flex;align-items:center;gap:10px;flex-wrap:wrap"><span style="color:var(--red);font-size:11px;font-family:var(--font-mono)">Condition prices unavailable — ${escHtml(r.pokemonPriceTrackerError)}</span><button class="hbtn" style="font-size:10px;padding:4px 12px;min-height:30px" onclick="retryPptHydration(${idx})">RETRY</button></div>` : `<div style="padding:10px 0;display:flex;align-items:center;gap:8px"><span style="color:var(--dim);font-size:12px">Loading condition prices…</span><span style="font-family:var(--font-mono);font-size:10px;color:var(--dim);animation:pulse 1.2s infinite">●</span></div>`) : ''}
     <div style="display:grid;grid-template-columns:1fr 140px 110px;gap:9px;margin-bottom:9px">
       <input id="qpl-edit-name" value="${escHtml(r.name)}" style="background:var(--surf);border:1px solid var(--border);color:var(--text);padding:12px;border-radius:8px;font-size:14px;min-height:48px">
       <select id="qpl-edit-category" style="background:var(--surf);border:1px solid var(--border);color:var(--text);padding:12px;border-radius:8px;font-size:14px;min-height:48px">
@@ -22025,7 +22056,8 @@ function addSelectedQuickLookupToSaleCart(idx){
   });
   saveCartDataLocal(cartData, 'research cart add');
   logOpsEvent('cart_item_added', 'Added research item to sale cart: ' + (item.name || 'item'), { price, rawMarketPrice, source:item.priceSource || item.pricingSource || '' });
-  toast_dash('Added to sale cart: ' + (item.name || 'item'));
+  toast_dash('Added to cart: ' + (item.name || 'item') + (price ? ' · $' + price.toFixed(2) : ''));
+  switchTab('pos', document.querySelector('[data-tab=pos]'));
 }
 
 function addQuickLookupToSaleCart(idx){
@@ -22887,7 +22919,48 @@ async function acceptBuySession(){
   logOpsEvent('buy_session_accepted', 'Accepted buy session', { buySessionId:session.buySessionId, items:session.items.length, cashOfferTotal:session.cashOfferTotal });
   await bulkAddBuyListToInventory(true);
   saveBuySessionHistory(snapshotBuySession('accepted'));
-  toast_dash('Buy accepted and converted to inventory');
+  showBuyPaymentConfirm(session);
+}
+
+function showBuyPaymentConfirm(session){
+  const total = Number(session.cashOfferTotal || 0);
+  const method = session.paymentType || document.getElementById('buy-session-pay-method')?.value || 'Cash';
+  const items = session.items || [];
+  const el = document.getElementById('buy-payment-confirm-overlay');
+  if(!el) return;
+  el.innerHTML = `
+    <div style="background:var(--surf);border:1px solid rgba(0,255,179,.4);border-radius:14px;padding:28px 24px;max-width:400px;width:100%;margin:auto;position:relative">
+      <div style="font-family:'Orbitron',monospace;font-size:18px;color:var(--g);margin-bottom:6px;text-align:center">BUY ACCEPTED</div>
+      <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);text-align:center;margin-bottom:20px">${items.length} card${items.length===1?'':'s'} added to inventory</div>
+      <div style="background:var(--surf2);border-radius:8px;padding:12px;margin-bottom:18px">
+        ${items.slice(0,6).map(i=>`<div style="display:flex;justify-content:space-between;font-family:var(--font-mono);font-size:11px;padding:3px 0;border-bottom:1px solid var(--border)"><span style="color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:240px">${escHtml(i.name||'Card')}</span><span style="color:var(--gold);flex-shrink:0;margin-left:8px">$${Math.round(i.cashOffer||i.offerValue||0)}</span></div>`).join('')}
+        ${items.length>6?`<div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);padding-top:4px">+${items.length-6} more</div>`:''}
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding-top:10px;border-top:2px solid rgba(0,255,179,.3)">
+          <span style="font-family:'Orbitron',monospace;font-size:13px;color:var(--text)">PAY CUSTOMER</span>
+          <span style="font-family:'Orbitron',monospace;font-size:22px;color:var(--g)">$${Math.round(total)}</span>
+        </div>
+        <div style="font-family:var(--font-mono);font-size:11px;color:var(--dim);text-align:right;margin-top:4px">via ${escHtml(method)}</div>
+      </div>
+      <div style="display:flex;gap:10px">
+        <button onclick="confirmBuyPayout()" style="flex:1;background:var(--g);color:#000;border:none;border-radius:10px;font-family:'Orbitron',monospace;font-size:14px;font-weight:800;padding:18px;cursor:pointer;letter-spacing:.05em">CONFIRM PAYMENT</button>
+        <button onclick="newCustomerReset()" style="flex:0 0 auto;background:var(--surf2);color:var(--dim);border:1px solid var(--border);border-radius:10px;font-family:var(--font-mono);font-size:11px;padding:12px 16px;cursor:pointer">SKIP</button>
+      </div>
+    </div>`;
+  el.style.display = 'flex';
+}
+
+function confirmBuyPayout(){
+  payCustomerForBuySession();
+  newCustomerReset();
+}
+
+function newCustomerReset(){
+  const el = document.getElementById('buy-payment-confirm-overlay');
+  if(el) el.style.display = 'none';
+  clearBuyList();
+  clearActiveBuySession();
+  renderBuyList();
+  toast_dash('Ready for next customer');
 }
 function updateBuySessionField(field, value){
   const session = getActiveBuySession();
