@@ -16767,12 +16767,8 @@ async function runPriceLookup(){
     if(wantsPokemon) {
       savePokemonCacheResults(q, qplMasterResults, 'Live Pokemon lookup').catch(console.warn);
       setPokemonOfflineBanner('Live Pokémon prices loaded. Offline search uses PPT bulk export catalog.', 'good');
-      // Auto-fetch full condition prices for the top result only — avoids bursting the PPT API.
-      // User can click GET PRICES on any other result manually.
-      if(navigator.onLine && !pokemonPriceTrackerQuotaBlocked()) {
-        const first = qplResults.findIndex(r => qplResultCategoryKey(r) === 'pokemon' && !r.pokemonPriceTracker?.lookupDebug?.exactHydrated);
-        if(first >= 0) setTimeout(() => loadPricesForResultCard(first), 400);
-      }
+      // hydrateVisiblePokemonPriceTrackerResults (called inside renderQuickLookupResults)
+      // already hydrates the top result — no separate auto-fire needed here.
     }
     if(wantsMtg) {
       saveMtgCacheResults(q, qplMasterResults, 'Scryfall live lookup').catch(console.warn);
@@ -19578,11 +19574,15 @@ async function pokemonPriceTrackerCardsRequest(params, pathLabel, { fresh = fals
   }
   if(data.usage?.remaining != null) localStorage.setItem('ppt_remaining_credits', String(data.usage.remaining));
   if(data.usage?.consumed != null) localStorage.setItem('ppt_last_consumed', String(data.usage.consumed));
-  // Only block further calls when credits are truly exhausted — a plain 429 is a transient
-  // rate-limit and should not lock out the user for an hour when they still have credits.
   const remaining = data.usage?.remaining ?? Number(localStorage.getItem('ppt_remaining_credits') || 9999);
-  if(data.providerQuotaState === 'exhausted' || (res.status === 429 && remaining <= 0) || (res.status === 403 && /quota|exhausted/i.test(String(data.error || data.message || '')))) localStorage.setItem('ppt_quota_exhausted_until', String(Date.now() + 60 * 60 * 1000));
-  if(!res.ok || !data.ok) throw new Error(data.error || data.message || 'PokemonPriceTracker lookup failed');
+  if(data.providerQuotaState === 'exhausted' || (res.status === 429 && remaining <= 0) || (res.status === 403 && /quota|exhausted/i.test(String(data.error || data.message || '')))) {
+    // True quota exhaustion — block for 1 hour
+    localStorage.setItem('ppt_quota_exhausted_until', String(Date.now() + 60 * 60 * 1000));
+  } else if(res.status === 429) {
+    // Transient rate-limit — back off for 60 seconds only
+    localStorage.setItem('ppt_rate_limited_until', String(Date.now() + 60 * 1000));
+  }
+  if(!res.ok || !data.ok) throw new Error(data.error || data.message || 'PokemonPriceTracker quota exhausted');
   return { data, cards:pokemonPriceTrackerCardsFromPayload(data).slice(0, 20), requestPath, pathLabel, cacheStatus:data.cache?.state === 'hit' ? 'hit' : data.cache?.state === 'stale' ? 'stale' : 'miss' };
 }
 
@@ -19676,11 +19676,15 @@ async function fetchPokemonPopulation(tcgPlayerId, language = 'english'){
 
 function pokemonPriceTrackerQuotaBlocked(){
   const until = Number(localStorage.getItem('ppt_quota_exhausted_until') || 0);
-  if(!until || Date.now() >= until) return false;
-  // Auto-clear stale block if we know credits are available
-  const remaining = Number(localStorage.getItem('ppt_remaining_credits') || 0);
-  if(remaining > 0){ localStorage.removeItem('ppt_quota_exhausted_until'); return false; }
-  return true;
+  if(until && Date.now() < until) {
+    const remaining = Number(localStorage.getItem('ppt_remaining_credits') || 0);
+    if(remaining > 0){ localStorage.removeItem('ppt_quota_exhausted_until'); return false; }
+    return true;
+  }
+  // Short-term rate-limit cooldown (60s)
+  const rl = Number(localStorage.getItem('ppt_rate_limited_until') || 0);
+  if(rl && Date.now() < rl) return true;
+  return false;
 }
 
 function pokemonPriceCacheFresh(card = null){
@@ -19804,7 +19808,11 @@ async function parsePokemonPriceTrackerTitle(row = {}, query = qplLastSearch){
   if(data.usage?.remaining != null) localStorage.setItem('ppt_remaining_credits', String(data.usage.remaining));
   if(data.usage?.consumed != null) localStorage.setItem('ppt_last_consumed', String(data.usage.consumed));
   const remaining2 = data.usage?.remaining ?? Number(localStorage.getItem('ppt_remaining_credits') || 9999);
-  if(data.providerQuotaState === 'exhausted' || (res.status === 429 && remaining2 <= 0) || (res.status === 403 && /quota|exhausted/i.test(String(data.error || data.message || '')))) localStorage.setItem('ppt_quota_exhausted_until', String(Date.now() + 60 * 60 * 1000));
+  if(data.providerQuotaState === 'exhausted' || (res.status === 429 && remaining2 <= 0) || (res.status === 403 && /quota|exhausted/i.test(String(data.error || data.message || '')))) {
+    localStorage.setItem('ppt_quota_exhausted_until', String(Date.now() + 60 * 60 * 1000));
+  } else if(res.status === 429) {
+    localStorage.setItem('ppt_rate_limited_until', String(Date.now() + 60 * 1000));
+  }
   if(!res.ok || !data.ok) return null;
   const payload = data.data?.data || data.data || {};
   const parsed = payload.parsed || data.parsed || {};
@@ -20072,10 +20080,9 @@ async function hydratePokemonPriceTrackerPricing(idx, rerender = true){
 }
 
 function hydrateVisiblePokemonPriceTrackerResults(indexes = []){
-  indexes.slice(0, 1).forEach(idx => {
-    const row = qplResults[idx];
-    if(row && isPokemonChartCandidate(row) && !row._pptHydrating) hydratePokemonPriceTrackerPricing(idx, true);
-  });
+  if(pokemonPriceTrackerQuotaBlocked()) return;
+  const idx = indexes.find(i => { const r = qplResults[i]; return r && isPokemonChartCandidate(r) && !r._pptHydrating; });
+  if(idx != null) hydratePokemonPriceTrackerPricing(idx, true);
 }
 
 function qplChartModalHtml(r, idx){
