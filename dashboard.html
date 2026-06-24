@@ -5760,23 +5760,32 @@ async function pstLoadSyncMeta(){
 }
 
 // Fetch sets — tries worker first, falls back to Pokemon TCG API
+// Session-caches the result so repeated panel opens don't re-hit the worker.
 async function pstFetchSets(){
+  try {
+    const cached = JSON.parse(sessionStorage.getItem('pst_sets_session') || 'null');
+    if(cached?.length) return cached;
+  } catch(e){}
   // Try PPT worker route
   try {
     const res = await fetch(WORKER + '/pricing/pokemonpricetracker/sets', { cache:'no-store' });
     if(res.ok){
       const d = await res.json();
       const sets = d.sets || d.data || [];
-      if(sets.length) return sets.map(s => ({
-        id: s.id || s.setId || s.pokemonTcgApiId || '',
-        name: s.name || s.setName || '',
-        series: s.series || s.groupName || '',
-        releaseDate: s.releaseDate || s.publishedOn || '',
-        total: Number(s.total || s.totalCards || s.cardCount || 0),
-        symbolUrl: s.symbolUrl || s.images?.symbol || '',
-        logoUrl: s.logoUrl || s.images?.logo || '',
-        tcgplayerGroupId: s.tcgplayerGroupId || s.groupId || s.tcgPlayerId || null,
-      }));
+      if(sets.length) {
+        const mapped = sets.map(s => ({
+          id: s.id || s.setId || s.pokemonTcgApiId || '',
+          name: s.name || s.setName || '',
+          series: s.series || s.groupName || '',
+          releaseDate: s.releaseDate || s.publishedOn || '',
+          total: Number(s.total || s.totalCards || s.cardCount || 0),
+          symbolUrl: s.symbolUrl || s.images?.symbol || '',
+          logoUrl: s.logoUrl || s.images?.logo || '',
+          tcgplayerGroupId: s.tcgplayerGroupId || s.groupId || s.tcgPlayerId || null,
+        }));
+        try { sessionStorage.setItem('pst_sets_session', JSON.stringify(mapped)); } catch(e){}
+        return mapped;
+      }
     }
   } catch(e){}
   // Fallback: Pokemon TCG API public endpoint
@@ -16758,14 +16767,11 @@ async function runPriceLookup(){
     if(wantsPokemon) {
       savePokemonCacheResults(q, qplMasterResults, 'Live Pokemon lookup').catch(console.warn);
       setPokemonOfflineBanner('Live Pokémon prices loaded. Offline search uses PPT bulk export catalog.', 'good');
-      // Auto-fetch full condition prices for the top 3 Pokemon results so chips/PSA grades are
-      // immediately visible without requiring a manual GET PRICES click.
+      // Auto-fetch full condition prices for the top result only — avoids bursting the PPT API.
+      // User can click GET PRICES on any other result manually.
       if(navigator.onLine && !pokemonPriceTrackerQuotaBlocked()) {
-        const toLoad = [];
-        for(let i = 0; i < qplResults.length && toLoad.length < 5; i++) {
-          if(qplResultCategoryKey(qplResults[i]) === 'pokemon' && !qplResults[i].pokemonPriceTracker?.lookupDebug?.exactHydrated) toLoad.push(i);
-        }
-        toLoad.forEach((idx, n) => setTimeout(() => loadPricesForResultCard(idx), 400 + n * 700));
+        const first = qplResults.findIndex(r => qplResultCategoryKey(r) === 'pokemon' && !r.pokemonPriceTracker?.lookupDebug?.exactHydrated);
+        if(first >= 0) setTimeout(() => loadPricesForResultCard(first), 400);
       }
     }
     if(wantsMtg) {
