@@ -2290,8 +2290,13 @@ export default {
           const consoleFilter = url.searchParams.get('console') || '';
           const apiParams = { q };
           if (consoleFilter) apiParams['console'] = consoleFilter;
-          const data = await pcFetch('/api/products', apiParams);
-          const products = (data.products || []).map(p => normalizePcProduct(p, q));
+          let products = [];
+          try {
+            const data = await pcFetch('/api/products', apiParams);
+            products = (data.products || []).map(p => normalizePcProduct(p, q));
+          } catch (_) {
+            // PC API error (rate-limit, bad query, etc.) — return empty rather than 500
+          }
           return json({ ok: true, source: 'PriceCharting', query: q, products, matches: products });
         }
         const productMatch = url.pathname.match(/^\/pricing\/pricecharting\/product\/([^/]+)$/);

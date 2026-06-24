@@ -19346,10 +19346,11 @@ function buildTcgExternalLink(item = {}){
   const conditionLabel = tcgConditionSearchLabel(condition) || 'Near Mint';
   const productUrl = item.tcgPlayerUrl || item.tcgUrl || item.productUrl || '';
   const productId = item.tcgPlayerId || item.tcgplayerId || tcgPlayerProductIdFromUrl(productUrl);
-  // MTG: map our finish keys to TCGPlayer's Printing param (Foil Etched / Foil / Normal)
+  // MTG: add Printing param only for foil variants — TCGPlayer doesn't accept "Normal",
+  // and omitting it for non-foil is fine (product page defaults to non-foil listings).
   const rawFinish = (selected.finish || item.selectedFinish || item.finish || '').toLowerCase();
   const isMtg = item.source === 'scryfall' || /^magic|^mtg/i.test(item.category || '');
-  const mtgPrinting = isMtg ? (/etched/i.test(rawFinish) ? 'Foil Etched' : /foil/i.test(rawFinish) ? 'Foil' : 'Normal') : '';
+  const mtgPrinting = isMtg ? (/etched/i.test(rawFinish) ? 'Foil Etched' : /foil/i.test(rawFinish) ? 'Foil' : '') : '';
   let url = '';
   let note = activeSkuId ? 'Marketplace SKU captured; product link includes selected condition.' : 'Product link includes selected condition when available.';
   if(/tcgplayer\.com\/product\//i.test(productUrl || '')) {
