@@ -19725,25 +19725,24 @@ function pickPokemonPriceTrackerCard(row = {}, cards = []){
   }) || cards[0] || null;
 }
 
+// In-session memory cache for exact-hydrated PPT cards (keyed by tcgPlayerId).
+// Satisfies "no persistent per-card caching" — dies when the page is closed.
+const _pptSessionCache = new Map();
+
 async function cachedPokemonPriceTrackerCard(row = {}){
-  const cardKey = row.cache?.cardKey || pokemonCardKey(row, qplLastSearch);
-  const rows = await pokemonDbAll('cards').catch(() => []);
   const wantedId = String(pokemonPriceTrackerId(row) || '');
-  const hit = rows.find(c => c.storeId === getActiveStoreId() && c.cardKey === cardKey)
-    || rows.find(c => c.storeId === getActiveStoreId() && wantedId && c.cardKey === 'pokemon:' + wantedId)
-    || rows.find(c => c.storeId === getActiveStoreId() && wantedId && String(c.card?.tcgPlayerId || c.card?.tcgplayerId || c.card?.pokemonPriceTracker?.tcgPlayerId || '') === wantedId);
-  const card = hit?.card?.pokemonPriceTracker || hit?.card?.pokemonPriceTrackerCard || null;
-  if(!card) return null;
-  const exactVersion = hit.exactCacheVersion || hit.cacheVersion || card.cache?.exactCacheVersion || card.lookupDebug?.exactCacheVersion || '';
-  const isSetSynced = hit?.source === 'PokemonPriceTracker set sync' || hit?.card?.lookupDebug?.path === 'set-sync.card-by-card';
-  if(navigator.onLine && !isSetSynced && exactVersion !== POKEMON_EXACT_CACHE_VERSION && !pokemonHydratedPriceMatrixReady(card)) return null;
-  if(card.lookupDebug) card.lookupDebug.hydratedFromCache = true;
-  return card;
+  if(wantedId && _pptSessionCache.has(wantedId)){
+    const card = _pptSessionCache.get(wantedId);
+    if(card.lookupDebug) card.lookupDebug.hydratedFromCache = true;
+    return card;
+  }
+  return null;
 }
 
 async function cachePokemonPriceTrackerCard(row = {}, card = null){
-  // Per-card caching disabled — bulk PPT export is the only local data source.
-  // REFRESH hits live API only; nothing is written back to IndexedDB.
+  // Write exact-hydrated card to in-session memory cache only — no IDB write.
+  const id = String(pokemonPriceTrackerId(row) || card?.tcgPlayerId || '');
+  if(id && card) _pptSessionCache.set(id, card);
 }
 
 async function fetchPokemonPriceTrackerCard(row = {}){
@@ -21704,7 +21703,7 @@ async function selectQuickLookupResult(idx){
       </div>
     </div>
     ${isPokemonLookupIntent(r.name || '', r.category) || qplResultCategoryKey(r) === 'pokemon' ? `<div id="pokemon-comps-panel-${idx}" class="pokemon-comps-panel">Loading cached Pokemon comps...</div>` : ''}
-    ${qplResultCategoryKey(r) === 'pokemon' && r.pokemonPriceTracker ? pokemonPptSelectedInlinePanelHtml(r, idx) : ''}
+    ${qplResultCategoryKey(r) === 'pokemon' ? (r.pokemonPriceTracker ? pokemonPptSelectedInlinePanelHtml(r, idx) : '<div style="padding:12px 0;color:var(--dim);font-size:12px">Loading condition prices…</div>') : ''}
     <div style="display:grid;grid-template-columns:1fr 140px 110px;gap:9px;margin-bottom:9px">
       <input id="qpl-edit-name" value="${escHtml(r.name)}" style="background:var(--surf);border:1px solid var(--border);color:var(--text);padding:12px;border-radius:8px;font-size:14px;min-height:48px">
       <select id="qpl-edit-category" style="background:var(--surf);border:1px solid var(--border);color:var(--text);padding:12px;border-radius:8px;font-size:14px;min-height:48px">
