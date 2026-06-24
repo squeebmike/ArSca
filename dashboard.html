@@ -27178,7 +27178,7 @@ async function toppsLoadPriceCharting(card){
     }
     const matches = [...seen.values()].sort((a,b) => Number(b._toppsScore || 0) - Number(a._toppsScore || 0));
     const payload = { ok:true, query:queries[0] || '', queries, matches:matches.slice(0, 8), best:matches.find(m => Number(m._toppsScore || 0) >= 90) || null };
-    // Fetch product detail to get imageUrl (PC search API doesn't return images)
+    // Fetch product detail to get imageUrl (search APIs don't return images)
     if(payload.best && !payload.best.imageUrl && payload.best.productId) {
       try {
         const detRes = await fetch(WORKER + '/pricing/pricecharting/product/' + encodeURIComponent(payload.best.productId), { cache:'no-store' });
@@ -27186,6 +27186,17 @@ async function toppsLoadPriceCharting(card){
         if(det.imageUrl) payload.best.imageUrl = det.imageUrl;
         if(det.url && !payload.best.url) payload.best.url = det.url;
       } catch(_) {}
+    }
+    // SCP results use numeric 'id' not 'productId' — same ID works via PC product API
+    if(payload.best && !payload.best.imageUrl && payload.best._sourceName === 'SportsCardsPro') {
+      const scpNumId = String(payload.best.id || payload.best['product-id'] || '');
+      if(scpNumId) {
+        try {
+          const imgRes = await fetch(WORKER + '/pricing/sportscardspro/image?id=' + encodeURIComponent(scpNumId), { cache:'no-store' });
+          const imgData = await imgRes.json().catch(() => ({}));
+          if(imgData.imageUrl) payload.best.imageUrl = imgData.imageUrl;
+        } catch(_) {}
+      }
     }
     TOPPS.pcCache[card.id] = payload;
     if(drawer?.classList.contains('on') && TOPPS.openCardId === card.id) drawer.innerHTML = toppsDetailHtml(card, payload, false);

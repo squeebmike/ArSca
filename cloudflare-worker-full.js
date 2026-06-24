@@ -741,24 +741,47 @@ export default {
     }
 
     // ── SportsCardsPro: card image lookup ─────────────────────────────────────
-    // GET /pricing/sportscardspro/image?id=SCPID  (preferred — exact SCP path slug)
+    // GET /pricing/sportscardspro/image?id=SCPID  (preferred — numeric or path slug)
     // GET /pricing/sportscardspro/image?console=CONSOLE_NAME&name=PRODUCT_NAME  (fallback)
-    // Fetches the SportsCardsPro/PriceCharting product page and extracts the image.
-    // Cached 2 hours at the edge.
+    // SCP and PC share the same numeric product IDs, so for numeric IDs we hit the
+    // PriceCharting /api/product endpoint directly (most reliable). For path slugs
+    // (e.g. baseball-cards-2025-bowman-chrome/jacob-wilson-refractor-1) we scrape the
+    // SCP product page. Falls back to PC page scraping via derived slug if all else fails.
     if (url.pathname === '/pricing/sportscardspro/image') {
       const scpId       = url.searchParams.get('id') || '';
       const consoleName = url.searchParams.get('console') || '';
       const productName = url.searchParams.get('name') || '';
       if (!scpId && (!consoleName || !productName)) return json({ ok: false, error: 'id or (console and name) required' }, 400);
 
+      // Numeric ID: SCP and PC share the same product database — call PC API directly for the image
+      if (scpId && /^\d+$/.test(scpId)) {
+        const pcToken = env.PRICECHARTING_TOKEN || env.PRICECHARTING_API_KEY;
+        if (pcToken) {
+          try {
+            const pcRes = await fetch(`https://www.pricecharting.com/api/product?id=${encodeURIComponent(scpId)}&t=${encodeURIComponent(pcToken)}`, {
+              headers: { 'Accept': 'application/json', 'User-Agent': 'Walk-Off Sports Cards Dealer App/2026' },
+              cf: { cacheTtl: 7200 },
+            });
+            if (pcRes.ok) {
+              const pcData = await pcRes.json().catch(() => null);
+              const rawImg = pcData?.['image-url'] || pcData?.imageUrl || pcData?.image || '';
+              if (rawImg) {
+                const imageUrl = /^\/\//.test(rawImg) ? 'https:' + rawImg : /^\//.test(rawImg) ? 'https://www.pricecharting.com' + rawImg : rawImg;
+                if (imageUrl) return json({ ok: true, imageUrl });
+              }
+            }
+          } catch (_) {}
+        }
+      }
+
       const toSlug = s => String(s).toLowerCase()
         .replace(/['']/g, '')
         .replace(/[^a-z0-9]+/g, '-')
         .replace(/^-+|-+$/g, '');
 
-      // Prefer the exact SCP product path (e.g. baseball-cards-2025-bowman-chrome/jacob-wilson-refractor-1)
-      // because the slug we can derive from set name + card name rarely matches SCP's exact URL.
-      const pageUrl = scpId
+      // Path slug (e.g. baseball-cards-2025-bowman-chrome/jacob-wilson-refractor-1): fetch SCP page directly.
+      // Otherwise fall back to deriving the slug from console + product names on PC.
+      const pageUrl = (scpId && scpId.includes('/'))
         ? `https://www.sportscardspro.com/game/${scpId}`
         : `https://www.pricecharting.com/game/${toSlug(consoleName)}/${toSlug(productName)}`;
 
