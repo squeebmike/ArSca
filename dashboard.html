@@ -19455,36 +19455,70 @@ async function openQplChartModal(idx, range='3M'){
   if(!r) return;
   r.graphRangeLabel = range;
   r.graphDuration = qplChartRangeToDuration(range);
-  // MTG (Scryfall): no history API — show current price + external links
+  // MTG (Scryfall): no Scryfall history API — show PriceCharting guide prices + external links
   if(r.source === 'scryfall' && !r.selectedVariant?.priceHistory?.length) {
     const scryfallUri = r.raw?.scryfall_uri || r.raw?.uri || '';
     const tcgUrl = r.raw?.purchase_uris?.tcgplayer || r.tcgUrl || '';
     const cardmarketUrl = r.raw?.purchase_uris?.cardmarket || '';
     const finish = qplFinishLabel(r.selectedFinish || r.finish || 'Normal');
     const price = Number(r.market || r.raw?.prices?.usd || r.raw?.prices?.usd_foil || 0);
+    const imgHtml = r.imageUrl ? `<img src="${escHtml(r.imageUrl)}" style="width:80px;max-height:110px;object-fit:contain;background:#050507;border:1px solid var(--border);border-radius:8px">` : '<div></div>';
+    const titleHtml = escHtml([r.name,r.set,r.card_number?'#'+r.card_number:''].filter(Boolean).join(' / '));
     let modal = document.getElementById('qpl-chart-modal');
     if(!modal){ modal = document.createElement('div'); modal.id='qpl-chart-modal'; modal.className='qpl-chart-modal'; modal.addEventListener('click', e=>{ if(e.target===modal) closeQplChartModal(); }); document.body.appendChild(modal); }
-    modal.innerHTML = `<div class="qpl-chart-card">
-      <div style="display:flex;justify-content:space-between;gap:12px;align-items:center">
-        <div><div style="font-family:'Orbitron',monospace;color:var(--blue);font-size:15px">PRICE GRAPH</div>
-        <div style="color:var(--dim);font-size:11px;margin-top:4px">${escHtml([r.name,r.set,r.card_number?'#'+r.card_number:''].filter(Boolean).join(' / '))}</div></div>
-        <button class="hbtn" onclick="closeQplChartModal()">CLOSE</button>
-      </div>
-      <div style="display:grid;grid-template-columns:80px 1fr;gap:12px;margin-top:14px;align-items:center">
-        ${r.imageUrl?`<img src="${escHtml(r.imageUrl)}" style="width:80px;max-height:110px;object-fit:contain;background:#050507;border:1px solid var(--border);border-radius:8px">`:'<div></div>'}
-        <div><div class="qpl-price">${price?'$'+price.toFixed(2):'No Price'}</div>
-        <div class="qpl-price-sub">NM · ${escHtml(finish)} · Scryfall market</div></div>
-      </div>
-      <div style="margin-top:16px;border:1px dashed rgba(91,163,245,.35);border-radius:12px;padding:16px;color:var(--dim);font-size:12px;line-height:1.6">
-        MTG price history is not available via Scryfall API. View full history on:
-        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
-          ${scryfallUri?`<button class="hbtn" onclick="window.open('${escHtml(scryfallUri)}','_blank','noopener')" style="color:var(--blue)">SCRYFALL PAGE ↗</button>`:''}
-          ${tcgUrl?`<button class="hbtn" onclick="window.open('${escHtml(tcgUrl)}','_blank','noopener')" style="color:var(--g)">TCGPLAYER ↗</button>`:''}
-          ${cardmarketUrl?`<button class="hbtn" onclick="window.open('${escHtml(cardmarketUrl)}','_blank','noopener')">CARDMARKET ↗</button>`:''}
+    const extLinks = [
+      scryfallUri?`<button class="hbtn" onclick="window.open('${escHtml(scryfallUri)}','_blank','noopener')" style="color:var(--blue)">SCRYFALL ↗</button>`:'',
+      tcgUrl?`<button class="hbtn" onclick="window.open('${escHtml(tcgUrl)}','_blank','noopener')" style="color:var(--g)">TCGPLAYER ↗</button>`:'',
+      cardmarketUrl?`<button class="hbtn" onclick="window.open('${escHtml(cardmarketUrl)}','_blank','noopener')">CARDMARKET ↗</button>`:''
+    ].filter(Boolean).join('');
+    const renderModal = (bodyHtml) => {
+      modal.innerHTML = `<div class="qpl-chart-card">
+        <div style="display:flex;justify-content:space-between;gap:12px;align-items:center">
+          <div><div style="font-family:'Orbitron',monospace;color:var(--blue);font-size:15px">MTG PRICES</div>
+          <div style="color:var(--dim);font-size:11px;margin-top:4px">${titleHtml}</div></div>
+          <button class="hbtn" onclick="closeQplChartModal()">CLOSE</button>
         </div>
-      </div>
-    </div>`;
-    modal.classList.add('on');
+        <div style="display:grid;grid-template-columns:80px 1fr;gap:12px;margin-top:14px;align-items:center">
+          ${imgHtml}
+          <div><div class="qpl-price">${price?'$'+price.toFixed(2):'—'}</div>
+          <div class="qpl-price-sub">${escHtml(finish)} · Scryfall</div></div>
+        </div>
+        ${bodyHtml}
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">${extLinks}</div>
+      </div>`;
+      modal.classList.add('on');
+    };
+    renderModal('<div style="color:var(--dim);font-size:11px;padding:10px 0">Searching PriceCharting…</div>');
+    // Fetch PriceCharting data for this MTG card
+    try {
+      const pcQuery = [r.name, r.set].filter(Boolean).join(' ');
+      const res = await fetch(WORKER + '/pricing/pricecharting/search?' + new URLSearchParams({ q:pcQuery, live:'true' }), { cache:'no-store' });
+      const data = await res.json().catch(() => ({}));
+      const products = data.matches || data.products || [];
+      const pcMatch = products.find(p => /magic/i.test(p.consoleName || p.category || '')) || products[0];
+      if(pcMatch) {
+        const p = pcMatch.prices || {};
+        const rows = [
+          ['NM / Ungraded', Number(p.ungraded || 0)],
+          ['Graded PSA 9', Number(p.grade9 || 0)],
+          ['Graded PSA 10', Number(p.psa10 || 0)],
+          ['BGS 10', Number(p.bgs10 || 0)],
+        ].filter(([,v]) => v > 0);
+        const tableRows = rows.map(([label, val]) =>
+          `<tr><td style="padding:5px 10px;color:var(--dim)">${escHtml(label)}</td><td style="padding:5px 10px;text-align:right;color:var(--gold);font-weight:700">$${val.toFixed(2)}</td></tr>`
+        ).join('');
+        const tableHtml = rows.length
+          ? `<div style="margin-top:14px"><div style="font-family:'Orbitron',monospace;color:var(--g);font-size:10px;margin-bottom:6px;letter-spacing:.05em">PRICECHARTING GUIDE</div>
+             <table style="width:100%;border-collapse:collapse;font-size:12px">${tableRows}</table>
+             <div style="font-size:10px;color:var(--dim);margin-top:6px">${escHtml(pcMatch.productName || r.name)} · PriceCharting guide values</div></div>`
+          : `<div style="color:var(--dim);font-size:11px;padding:10px 0">No PriceCharting data found for this card.</div>`;
+        renderModal(tableHtml);
+      } else {
+        renderModal(`<div style="color:var(--dim);font-size:11px;padding:10px 0">No PriceCharting match found. View price history on the external sites below.</div>`);
+      }
+    } catch(e) {
+      renderModal(`<div style="color:var(--dim);font-size:11px;padding:10px 0">PriceCharting unavailable. View price history on the external sites below.</div>`);
+    }
     return;
   }
   if(r.source === 'justtcg' && (!r.selectedVariant?.priceHistory?.length || range === '1Y')) {
@@ -22144,8 +22178,14 @@ async function updateSelectedQplEditVariant(idx){
   if(condEl && next.availableVariants?.length) condEl.innerHTML = qplVariantSelectOptions(next, 'condition', next.selectedCondition || next.condition);
   if(finishEl && next.availableVariants?.length) finishEl.innerHTML = qplVariantSelectOptions(next, 'finish', next.selectedFinish || next.finish);
   if(langEl && next.availableVariants?.length) langEl.innerHTML = qplVariantSelectOptions(next, 'language', next.selectedLanguage || next.language || 'English');
-  if(marketEl) marketEl.value = Number(next.market || 0) || '';
+  const newPrice = Number(next.market || 0);
+  if(marketEl) marketEl.value = newPrice || '';
   if(skuEl) skuEl.value = next.skuId || next.productConditionId || '';
+  // Update the big price display in the selected card panel
+  const priceDisp = document.querySelector(`.qpl-selected-card[data-qpl-idx="${idx}"] .qpl-price`);
+  if(priceDisp) priceDisp.textContent = '$' + newPrice.toFixed(2);
+  const priceSub = document.querySelector(`.qpl-selected-card[data-qpl-idx="${idx}"] .qpl-price-sub`);
+  if(priceSub) priceSub.textContent = next.priceSource || next.note || 'Updated';
   const status = document.getElementById('qpl-add-status');
   if(status) status.innerHTML = `<span style="color:${next.priceConfidence==='high'?'var(--g)':next.priceConfidence==='low'?'var(--gold)':'var(--dim)'}">${escHtml(next.priceSource || 'Price updated')}</span>`;
 }
