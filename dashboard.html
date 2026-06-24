@@ -19559,7 +19559,8 @@ function pokemonPriceTrackerApiSettings(){
   };
 }
 
-async function pokemonPriceTrackerCardsRequest(params, pathLabel){
+async function pokemonPriceTrackerCardsRequest(params, pathLabel, { fresh = false } = {}){
+  if(fresh) params.set('fresh', 'true');
   const requestPath = '/pricing/pokemon/cards?' + params.toString().replace(/\+/g, '%20');
   const storeId = getActiveStoreId();
   const res = await fetch(WORKER + requestPath, { cache:'no-store', headers: storeId ? { 'X-Store-Id': storeId } : {} });
@@ -19631,7 +19632,7 @@ async function searchPokemonSealedProducts(rawQuery = ''){
   return { products: Array.isArray(products) ? products : [], data };
 }
 
-async function fetchPokemonPriceTrackerExactDetail(tcgPlayerId, language = 'english'){
+async function fetchPokemonPriceTrackerExactDetail(tcgPlayerId, language = 'english', { fresh = false } = {}){
   if(!tcgPlayerId) return null;
   const settings = pokemonPriceTrackerApiSettings();
   const params = new URLSearchParams({ tcgPlayerId:String(tcgPlayerId), language:(language || 'english').toLowerCase(), limit:'1' });
@@ -19639,7 +19640,7 @@ async function fetchPokemonPriceTrackerExactDetail(tcgPlayerId, language = 'engl
   params.set('includeHistory', 'true');
   params.set('days', '180');
   params.set('maxDataPoints', String(settings.maxDataPoints));
-  const result = await pokemonPriceTrackerCardsRequest(params, 'cards.tcgPlayerId.limit1');
+  const result = await pokemonPriceTrackerCardsRequest(params, 'cards.tcgPlayerId.limit1', { fresh });
   const card = result.cards[0] || null;
   if(card) card.lookupDebug = { ...(card.lookupDebug || {}), path:'cards.tcgPlayerId.limit1', requestPath:result.requestPath, hydrationRequestUrl:result.requestPath, cache:result.cacheStatus, hydratedFromCache:result.cacheStatus === 'hit' || result.cacheStatus === 'stale', apiLimit:'1', exactHydrated:true, exactCacheVersion:POKEMON_EXACT_CACHE_VERSION, usage:result.data.usage || {} };
   return card;
@@ -21532,9 +21533,9 @@ async function refreshLivePriceForCard(idx){
   const tcgPlayerId    = r.tcgPlayerId || r.tcgplayerId || '';
 
   try {
-    // Go directly to live API — skip cachedPokemonPriceTrackerCard entirely
+    // Go directly to live API — skip worker KV cache entirely
     const exact = tcgPlayerId
-      ? await fetchPokemonPriceTrackerExactDetail(tcgPlayerId, r.language || 'english')
+      ? await fetchPokemonPriceTrackerExactDetail(tcgPlayerId, r.language || 'english', { fresh: true })
       : await resolveExactPokemonPriceTrackerCard(r, qplLastSearch);
 
     if(!exact) throw new Error('No data returned from API');
