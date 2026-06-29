@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.06.29.01-buy-workspace-import">
+<meta name="version" content="2026.06.29.02-universal-query">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1318,6 +1318,7 @@ body.show-mode .inv-sync-badge{display:none;}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script src="scripts/query-routing.js?v=2026.06.29.02-universal-query"></script>
 </head>
 <body>
 
@@ -1367,7 +1368,7 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.29.01-buy-workspace-import</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.29.02-universal-query</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
@@ -1394,7 +1395,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.29.01-buy-workspace-import</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.29.02-universal-query</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -2627,7 +2628,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.06.29.01-buy-workspace-import';
+const APP_VERSION = '2026.06.29.02-universal-query';
 window.APP_VERSION = APP_VERSION;
 const branchName = 'pokemon-v2-core';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
@@ -15828,12 +15829,15 @@ function startVoiceInput(inputId, done){
   rec.maxAlternatives = 1;
   toast_dash('Listening...');
   rec.onresult = e => {
-    const text = cleanupVoiceTranscript(e.results?.[0]?.[0]?.transcript || '');
+    const rawTranscript = e.results?.[0]?.[0]?.transcript || '';
+    const cleaned = cleanupVoiceTranscript(rawTranscript);
+    const text = universalSearchAdapter()?.normalizeUserQuery(cleaned)?.normalized || cleaned;
     const el = document.getElementById(inputId);
     if(el) {
       el.value = text;
       el.dispatchEvent(new Event('input', { bubbles:true }));
     }
+    if(showAdminDebug()) console.debug('[Search voice]', { rawTranscript, normalizedQuery:text });
     if(typeof done === 'function') setTimeout(done, 100);
   };
   rec.onerror = e => toast_dash('Voice input failed: ' + (e.error || 'unknown'));
@@ -15849,7 +15853,52 @@ let qplResults = [];
 let qplMasterResults = [];
 let qplLastSearch = '';
 let _qplSearchSeq = 0;
+let qplLastSearchPlan = null;
 let pokemonConnectionState = navigator.onLine ? 'online' : 'offline';
+
+function universalSearchAdapter(){ return window.ArsCaSearchAdapter || null; }
+function buildUniversalSearchPlan(rawQuery, selectedCategory = ''){
+  const adapter = universalSearchAdapter();
+  return adapter ? adapter.buildSearchPlan(rawQuery, selectedCategory) : {
+    rawQuery:String(rawQuery || ''), normalizedQuery:String(rawQuery || '').replace(/\s+/g,' ').trim(),
+    normalized:{ raw:String(rawQuery || ''), normalized:String(rawQuery || '').replace(/\s+/g,' ').trim(), tokens:[] },
+    intent:{ selectedCategory:qplCategoryKey(selectedCategory), inferredCategories:[], confidenceByCategory:{}, entities:{} },
+    adapters:[], callBudget:5, execution:{ routes:[], staleResponsesIgnored:0 }
+  };
+}
+function universalSearchQueries(plan, category, provider){
+  return universalSearchAdapter()?.queriesFor(plan, category, provider) || [];
+}
+function universalPlanHas(plan, category){
+  return (plan?.intent?.inferredCategories || []).includes(category);
+}
+function recordSearchPlanRoute(plan, route, query, resultCount = null){
+  if(!plan?.execution) return;
+  const safeRoute = String(route || '').replace(/[?&](?:t|token|key|api_key)=[^&]*/gi, '');
+  const key = safeRoute + '|' + String(query || '');
+  const prior = plan.execution.routes.find(r => r.key === key);
+  if(prior) { if(resultCount != null) prior.resultCount = resultCount; return; }
+  plan.execution.routes.push({ key, route:safeRoute, query:String(query || ''), resultCount });
+}
+function qplSearchStillActive(sequence, plan = qplLastSearchPlan){
+  const active = _qplSearchSeq === sequence;
+  if(!active && plan?.execution) plan.execution.staleResponsesIgnored = Number(plan.execution.staleResponsesIgnored || 0) + 1;
+  return active;
+}
+function renderUniversalSearchExplain(plan = qplLastSearchPlan, rows = qplResults){
+  document.getElementById('qpl-search-explain')?.remove();
+  if(!plan || !showAdminDebug()) return;
+  const host = document.getElementById('qpl-result');
+  if(!host) return;
+  const top = rows?.[0];
+  const panel = document.createElement('details');
+  panel.id = 'qpl-search-explain';
+  panel.className = 'dev-only';
+  panel.style.cssText = 'margin:0 0 10px;border:1px solid var(--border);border-radius:8px;background:var(--surf2);padding:10px;font-family:var(--font-mono);font-size:9px;color:var(--dim)';
+  panel.innerHTML = `<summary style="cursor:pointer;color:var(--g)">SEARCH EXPLAIN · ${escHtml(plan.normalizedQuery || '')}</summary>
+    <div style="line-height:1.65;margin-top:8px">Raw: ${escHtml(plan.rawQuery || '')}<br>Normalized: ${escHtml(plan.normalizedQuery || '')}<br>Manual category: ${escHtml(plan.intent?.selectedCategory || 'auto')}<br>Inferred: ${escHtml((plan.intent?.inferredCategories || []).join(', ') || 'none')}<br>Entities: ${escHtml(JSON.stringify(plan.intent?.entities || {}))}<br>Generated: ${escHtml((plan.adapters || []).map(a => a.provider + ': ' + a.queries.join(' | ')).join(' / ') || 'legacy query')}<br>Routes: ${escHtml((plan.execution?.routes || []).map(r => r.route + ' [' + r.query + '] → ' + (r.resultCount ?? '?')).join(' / ') || 'none')}<br>Top result: ${escHtml(top?.name || 'none')}<br>Matched: ${escHtml((top?.searchExplain?.matchedOn || top?.matchWhy || []).join(', ') || 'none')}<br>Stale responses ignored: ${Number(plan.execution?.staleResponsesIgnored || 0)}</div>`;
+  host.prepend(panel);
+}
 
 function normalizePokemonText(value = ''){
   return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9/]+/g, ' ').trim();
@@ -16835,13 +16884,16 @@ async function runPriceLookup(){
   // If comics selected, combine main input + optional issue# helper
   const rawQ = document.getElementById('qpl-input').value.trim();
   const cat = document.getElementById('qpl-cat').value;
-  const q = qplCategoryKey(cat) === 'comic' ? (comicSearchQuery() || rawQ) : rawQ;
+  const combinedRaw = qplCategoryKey(cat) === 'comic' ? (comicSearchQuery() || rawQ) : rawQ;
+  const searchPlan = buildUniversalSearchPlan(combinedRaw, cat);
+  const q = searchPlan.normalizedQuery || combinedRaw;
+  qplLastSearchPlan = searchPlan;
   const el = document.getElementById('qpl-result');
   if(!q || q.length < 3) return;
   const mySeq = ++_qplSearchSeq;
-  const wantsPokemon = isPokemonLookupIntent(q, cat);
-  const wantsMtg = !wantsPokemon && isMtgLookupIntent(q, cat);
-  const wantsComic = !wantsPokemon && !wantsMtg && isComicLookupIntent(q, cat);
+  const wantsPokemon = universalPlanHas(searchPlan, 'pokemon') || universalPlanHas(searchPlan, 'sealed') || isPokemonLookupIntent(q, cat);
+  const wantsMtg = !wantsPokemon && (universalPlanHas(searchPlan, 'mtg') || isMtgLookupIntent(q, cat));
+  const wantsComic = !wantsPokemon && !wantsMtg && (universalPlanHas(searchPlan, 'comic') || isComicLookupIntent(q, cat));
   setPokemonOfflineBanner('');
   setMtgOfflineBanner('');
   setComicsOfflineBanner('');
@@ -16852,10 +16904,11 @@ async function runPriceLookup(){
   if(wantsPokemon) {
     cachedResults = await searchPokemonOfflineCache(q, cat);
     if(cachedResults.length) {
-      if(_qplSearchSeq !== mySeq) return;
+      if(!qplSearchStillActive(mySeq, searchPlan)) return;
       qplMasterResults = cachedResults; qplLastSearch = q;
       qplResults = filterQplMasterResults(qplMasterResults, cat);
       renderQuickLookupResults(qplResults);
+      renderUniversalSearchExplain(searchPlan, qplResults);
       if(navigator.onLine){
         setPokemonOfflineBanner('Catalog results shown while live PPT refresh runs.');
       } else {
@@ -16872,10 +16925,11 @@ async function runPriceLookup(){
   if(wantsMtg) {
     cachedResults = await searchMtgOfflineCache(q, cat);
     if(cachedResults.length) {
-      if(_qplSearchSeq !== mySeq) return;
+      if(!qplSearchStillActive(mySeq, searchPlan)) return;
       qplMasterResults = cachedResults; qplLastSearch = q;
       qplResults = filterQplMasterResults(qplMasterResults, cat);
       renderQuickLookupResults(qplResults);
+      renderUniversalSearchExplain(searchPlan, qplResults);
       const cacheAge = pokemonCacheAgeLabel(cachedResults.find(r => r.cache?.updatedAt)?.cache?.updatedAt);
       setMtgOfflineBanner(navigator.onLine ? 'Cached MTG results shown while Scryfall refresh runs. Last updated ' + cacheAge + '.' : 'Offline Mode: showing cached MTG data. Last updated ' + cacheAge + '.');
     } else if(!navigator.onLine) {
@@ -16889,10 +16943,11 @@ async function runPriceLookup(){
   if(wantsComic) {
     cachedResults = await searchComicsOfflineCache(q, cat);
     if(cachedResults.length) {
-      if(_qplSearchSeq !== mySeq) return;
+      if(!qplSearchStillActive(mySeq, searchPlan)) return;
       qplMasterResults = cachedResults; qplLastSearch = q;
       qplResults = filterQplMasterResults(qplMasterResults, cat);
       renderQuickLookupResults(qplResults);
+      renderUniversalSearchExplain(searchPlan, qplResults);
       const cacheAge = pokemonCacheAgeLabel(cachedResults.find(r => r.cache?.updatedAt)?.cache?.updatedAt);
       setComicsOfflineBanner(navigator.onLine ? 'Cached comics results shown while live refresh runs. Last updated ' + cacheAge + '.' : 'Offline Mode: showing cached comics data. Last updated ' + cacheAge + '.');
     } else if(!navigator.onLine) {
@@ -16913,11 +16968,11 @@ async function runPriceLookup(){
       if(wantsComic) setComicsOfflineBanner(cachedResults.length ? 'Slow Internet: still showing cached comics data while live refresh continues.' : 'Slow Internet: still trying live comics sources.');
     }, 5000);
     const results = await Promise.race([
-      searchQuickCatalog(q, cat),
+      searchQuickCatalog(q, cat, searchPlan),
       new Promise((_, reject) => setTimeout(() => reject(new Error('Lookup timed out after 15 seconds')), 15000))
     ]);
     clearTimeout(slowTimer);
-    if(_qplSearchSeq !== mySeq) return;
+    if(!qplSearchStillActive(mySeq, searchPlan)) return;
     qplMasterResults = results.length ? results : await aiQuickLookupFallback(q, cat);
     qplLastSearch = q;
     qplResults = filterQplMasterResults(qplMasterResults, cat);
@@ -16926,6 +16981,7 @@ async function runPriceLookup(){
       return;
     }
     renderQuickLookupResults(qplResults);
+    renderUniversalSearchExplain(searchPlan, qplResults);
     pushQuickLookupHistory(q, qplResults[0]);
     if(qplResults.some(r => r.source === 'sportscardspro' && !r.imageUrl)) enrichScpImagesAsync();
     if(qplResults.some(r => r.source === 'PriceCharting' && !r.imageUrl)) enrichPcImagesAsync();
@@ -16983,10 +17039,12 @@ async function fetchComicVineCover(name, issue, year){
   } catch(e){ return ''; }
 }
 
-async function searchQuickCatalog(q, cat){
+async function searchQuickCatalog(q, cat, searchPlan = buildUniversalSearchPlan(q, cat)){
   const results = [];
   const wants = qplCategoryKey(cat);
   const intent = detectQuickQueryIntent(q, cat);
+  const plannedCategories = new Set(searchPlan?.intent?.inferredCategories || []);
+  const hasPlannedCategory = category => !plannedCategories.size || plannedCategories.has(category);
   const needle = smartSearchNeedles(q);
   const search = needle.clean;
   const seen = new Set();
@@ -16998,14 +17056,14 @@ async function searchQuickCatalog(q, cat){
     results.push(r);
   };
 
-  if(isSportsLookupIntent(q, cat)) {
+  if(hasPlannedCategory('sports') && isSportsLookupIntent(q, cat)) {
     try {
       const toppsRows = await searchToppsSportsChecklist(q, cat);
       toppsRows.forEach(add);
     } catch(e) {}
   }
 
-  if(isPokemonLookupIntent(q, cat)) {
+  if(plannedCategories.has('pokemon') || plannedCategories.has('sealed') || isPokemonLookupIntent(q, cat)) {
     // Intent signals
     const isJapanese = /\bjapanese?\b|\bjpn\b/i.test(q);
     const searchLanguage = isJapanese ? 'japanese' : 'english';
@@ -17016,14 +17074,18 @@ async function searchQuickCatalog(q, cat){
       || (q.length > 50 && /\b\d{1,4}\s*\/\s*\d{1,4}\b/.test(q))
       || (/\b(jpn|japanese)\b.{0,40}\d/i.test(q) && q.length > 30);
     // Kick off sealed-products fetch in parallel with cards — skip cards when parse-title
+    const pokemonSearchQuery = universalSearchQueries(searchPlan, 'pokemon', 'PokemonPriceTracker')[0] || q;
+    const sealedSearchQuery = universalSearchQueries(searchPlan, 'sealed', 'PokemonPriceTracker')[0] || q;
     const sealedPromise = isSealedQuery
-      ? searchPokemonSealedProducts(q).catch(() => ({ products:[] }))
+      ? searchPokemonSealedProducts(sealedSearchQuery).catch(() => ({ products:[] }))
       : null;
     try {
       const [searchResult, sealedResult] = await Promise.all([
-        isParseTitleQuery ? Promise.resolve({ cards:[], ranked:[], requestPath:'', cacheStatus:'skip' }) : searchPokemonPriceTrackerCards(q, searchLanguage),
+        isParseTitleQuery ? Promise.resolve({ cards:[], ranked:[], requestPath:'', cacheStatus:'skip' }) : searchPokemonPriceTrackerCards(pokemonSearchQuery, searchLanguage),
         sealedPromise || Promise.resolve({ products:[] }),
       ]);
+      if(!isParseTitleQuery) recordSearchPlanRoute(searchPlan, '/pricing/pokemon/cards', pokemonSearchQuery, searchResult.cards?.length || 0);
+      if(isSealedQuery) recordSearchPlanRoute(searchPlan, '/pricing/pokemon/sealed-products', sealedSearchQuery, sealedResult.products?.length || 0);
       // Parse-title path: slab/listing titles route directly to parse-title API
       if(isParseTitleQuery) {
         try {
@@ -17094,7 +17156,7 @@ async function searchQuickCatalog(q, cat){
           requestPath:searchResult.requestPath,
           searchResultCount:searchResult.cards.length,
           returnedCandidates:searchResult.cards.slice(0, 5).map(c => ({ tcgPlayerId:c.tcgPlayerId || '', cardNumber:c.cardNumber || '', setName:c.setName || '' })),
-          path:'cards.search.limit20',
+          path:'cards.search.limit5',
           exactHydrated,
           cache:searchResult.cacheStatus,
           confidence:rankedCard.confidence,
@@ -17109,6 +17171,7 @@ async function searchQuickCatalog(q, cat){
           isPromoQuery ? 'promo query' : '',
           isJapanese ? 'japanese' : '',
         ].filter(Boolean);
+        row.searchExplain = { generatedQuery:pokemonSearchQuery, provider:'PokemonPriceTracker' };
         if(queryNumber && !rankedCard.numberMatch) {
           row.closestStrictFallback = true;
           row._pokemonGroup = 'other';
@@ -17163,41 +17226,41 @@ async function searchQuickCatalog(q, cat){
     } catch(e) {}
   }
 
-  if(!wants || intent.intents.some(x => ['comic','video_games','funko','lego','coins','sports','graded','collectibles'].includes(x))) {
+  if(!wants || intent.intents.some(x => ['comic','video_games','funko','lego','coins','sports','graded','collectibles'].includes(x)) || plannedCategories.has('comic') || plannedCategories.has('sports')) {
     try {
-      const pcLive = await fetchPriceChartingLiveCatalog(q, cat);
+      const pcLive = await fetchPriceChartingLiveCatalog(q, cat, searchPlan);
       pcLive.forEach(add);
     } catch(e) {}
   }
 
   // SportsCardsPro — step 1 candidate search (step 2 hydration fires on result selection)
-  if(!wants || wants === 'sports' || wants === 'graded') {
+  if((!wants && hasPlannedCategory('sports')) || wants === 'sports' || wants === 'graded') {
     try {
-      const scpRows = await searchSportsCardsPro(q);
+      const scpRows = await searchSportsCardsPro(q, searchPlan);
       scpRows.forEach(add);
     } catch(e) {}
   }
 
-  if(!wants || ['tcg','pokemon','mtg','yugioh'].includes(wants)) {
+  if((!wants && (hasPlannedCategory('pokemon') || hasPlannedCategory('mtg'))) || ['tcg','pokemon','mtg','yugioh'].includes(wants)) {
     try {
       const workerRows = await fetchWorkerTcgCatalog(q, cat);
       workerRows.forEach(add);
     } catch(e) {}
   }
 
-  if(!wants || wants === 'tcg' || wants === 'pokemon' || wants === 'graded') {
+  if((!wants && hasPlannedCategory('pokemon')) || wants === 'tcg' || wants === 'pokemon' || wants === 'graded') {
     try {
       const ptcg = await fetchPokemonCatalog(q);
       ptcg.forEach(add);
     } catch(e) {}
   }
-  if(!wants || wants === 'tcg' || wants === 'mtg' || wants === 'graded' || isMtgLookupIntent(q, cat)) {
+  if((!wants && hasPlannedCategory('mtg')) || wants === 'tcg' || wants === 'mtg' || wants === 'graded' || isMtgLookupIntent(q, cat)) {
     try {
       const mtgCatalog = await searchMtgCatalogExport(q);
       mtgCatalog.forEach(add);
     } catch(e) {}
     try {
-      const mtg = await fetchScryfallCatalog(q);
+      const mtg = await fetchScryfallCatalog(q, searchPlan);
       mtg.forEach(add);
     } catch(e) {}
   }
@@ -17219,7 +17282,8 @@ async function searchQuickCatalog(q, cat){
     }));
   }
 
-  const ranked = rankQuickLookupResults(results, q, cat).slice(0, isPokemonLookupIntent(q, cat) ? 50 : 100);
+  const legacyRanked = rankQuickLookupResults(results, q, cat);
+  const ranked = (universalSearchAdapter()?.mergeAndRankResults(legacyRanked, searchPlan) || legacyRanked).slice(0, isPokemonLookupIntent(q, cat) ? 50 : 100);
   if(isPokemonLookupIntent(q, cat)) savePokemonCacheResults(q, ranked, 'Live Pokemon lookup').catch(console.warn);
   return ranked;
 }
@@ -18370,7 +18434,9 @@ function normalizeSportsQueryInput(q = ''){
     .trim();
 }
 
-function buildSportsQueryVariants(q){
+function buildSportsQueryVariants(q, searchPlan = qplLastSearchPlan){
+  const planned = universalSearchQueries(searchPlan, 'sports', 'SportsCardsPro');
+  if(planned.length) return planned.slice(0, 3);
   q = normalizeSportsQueryInput(q);
   const lower = q.toLowerCase();
   const variants = [q];
@@ -18793,10 +18859,13 @@ async function searchSportsCardsPro(q){
 // No-op if image already populated or row has no set/name.
 // Override the simple SCP search with ranked multi-query lookup so exact card numbers
 // and product words beat loose player-name matches.
-async function searchSportsCardsPro(q){
+async function searchSportsCardsPro(q, searchPlan = qplLastSearchPlan){
   if(!q) return [];
   const seen = new Map();
-  for(const query of buildSportsQueryVariants(q)) {
+  const queries = buildSportsQueryVariants(q, searchPlan).slice(0, 3);
+  for(let queryIndex = 0; queryIndex < queries.length; queryIndex++) {
+    const query = queries[queryIndex];
+    if(queryIndex > 0) await new Promise(resolve => setTimeout(resolve, 1050));
     const params = new URLSearchParams({ q: String(query).trim() });
     let data = {};
     try {
@@ -18812,6 +18881,7 @@ async function searchSportsCardsPro(q){
       continue;
     }
     const products = data.products || data.matches || data.data || data.results || (Array.isArray(data) ? data : []);
+    recordSearchPlanRoute(searchPlan, '/pricing/sportscardspro/products', query, products.length);
     products.forEach(p => {
       const key = String(p.id || p['product-id'] || p.url || p['product-name'] || p.productName || '');
       if(!key) return;
@@ -18825,6 +18895,7 @@ async function searchSportsCardsPro(q){
     const row = scpProductToQplRow(p, q);
     row.confidence = Math.max(50, Math.min(98, Math.round(55 + Number(p._sportsScore || 0) / 3)));
     row.matchWhy = [...(row.matchWhy || []), 'ranked exact product/card search', p._sportsQuery ? 'query: ' + p._sportsQuery : ''].filter(Boolean);
+    row.searchExplain = { generatedQuery:p._sportsQuery || q, provider:'SportsCardsPro' };
     return row;
   });
 }
@@ -18890,11 +18961,15 @@ async function fetchSportsCardsProProduct(scpId){
   }
 }
 
-function qplQueryVariants(q, cat = ''){
+function qplQueryVariants(q, cat = '', searchPlan = qplLastSearchPlan){
   const intent = detectQuickQueryIntent(q, cat);
   const wants = qplCategoryKey(cat);
   const clean = String(q || '').trim();
   const lower = clean.toLowerCase();
+  const plannedPcCategory = (searchPlan?.adapters || []).find(a => a.provider === 'PriceCharting')?.category || '';
+  const providerCategory = wants === 'comic' ? 'comic' : wants === 'sports' || wants === 'graded' ? 'sports' : (wants || plannedPcCategory);
+  const planned = universalSearchQueries(searchPlan, providerCategory, providerCategory === 'sports' || providerCategory === 'comic' ? 'PriceCharting' : '');
+  if(planned.length) return planned.slice(0, providerCategory === 'sports' ? 2 : 3);
 
   // Sports-specific query building
   const isSportsSearch = qplCategoryKey(cat) === 'sports' ||
@@ -18982,35 +19057,34 @@ async function fetchPriceChartingCsvCatalog(q, cat){
   }));
 }
 
-async function fetchPriceChartingLiveCatalog(q, cat){
-  const pcCat = qplPriceChartingCategory(cat);
-  const isSports = qplCategoryKey(cat) === 'sports';
+async function fetchPriceChartingLiveCatalog(q, cat, searchPlan = qplLastSearchPlan){
+  const plannedCategory = (searchPlan?.adapters || []).find(a => a.provider === 'PriceCharting')?.category || '';
+  const effectiveCategory = qplCategoryKey(cat) || plannedCategory;
+  const pcCat = qplPriceChartingCategory(effectiveCategory);
+  const isSports = effectiveCategory === 'sports';
   const rows = [];
 
   if(isSports){
-    // Sports: search each sport-specific console in parallel so PriceCharting's API
-    // filters within that console rather than returning everything (Funko, comics, etc.)
-    // PriceCharting organizes sports cards by console slug: baseball-cards, football-cards, etc.
-    const SPORT_CONSOLES = ['baseball-cards','football-cards','basketball-cards','hockey-cards','soccer-cards'];
-    const query = qplQueryVariants(q, cat)[0] || q; // use best query variant
-    const fetches = SPORT_CONSOLES.map(c => {
-      const params = new URLSearchParams({ q:query, live:'true', console:c });
-      return fetch(WORKER + '/pricing/pricecharting/search?' + params.toString(), { cache:'no-store' })
-        .then(r => r.json()).then(d => (d.ok ? d.matches || d.products || [] : []))
-        .catch(()=>[]);
-    });
-    const perConsole = await Promise.all(fetches);
-    perConsole.forEach(arr => rows.push(...arr));
+    // PriceCharting allows one API call per second. One /api/products-backed Worker
+    // search returns up to 20 candidates; local ranking removes unrelated categories.
+    const query = qplQueryVariants(q, cat, searchPlan)[0] || q;
+    const params = new URLSearchParams({ q:query, live:'true', category:'Sports Cards' });
+    const res = await fetch(WORKER + '/pricing/pricecharting/search?' + params.toString(), { cache:'no-store' });
+    const data = await res.json().catch(() => ({}));
+    const matches = res.ok && data.ok ? data.matches || data.products || [] : [];
+    rows.push(...matches.map(m => ({ ...m, _generatedQuery:query })));
+    recordSearchPlanRoute(searchPlan, '/pricing/pricecharting/search', query, matches.length);
   } else {
     // Non-sports: search query variants up to limit
     const queryLimit = 2;
     const rowLimit = 8;
-    for(const query of qplQueryVariants(q, cat).slice(0, queryLimit)) {
+    for(const query of qplQueryVariants(q, cat, searchPlan).slice(0, queryLimit)) {
       const params = new URLSearchParams({ q:query, live:'true' });
       if(pcCat) params.set('category', pcCat);
       const res = await fetch(WORKER + '/pricing/pricecharting/search?' + params.toString(), { cache:'no-store' });
       const data = await res.json().catch(() => ({}));
-      if(res.ok && data.ok) rows.push(...(data.matches || data.products || []));
+      if(res.ok && data.ok) rows.push(...(data.matches || data.products || []).map(m => ({ ...m, _generatedQuery:query })));
+      recordSearchPlanRoute(searchPlan, '/pricing/pricecharting/search', query, (data.matches || data.products || []).length);
       if(rows.length >= rowLimit) break;
     }
   }
@@ -19030,6 +19104,7 @@ async function fetchPriceChartingLiveCatalog(q, cat){
     note:'Live PriceCharting guide value. Current guide data only, not sold comps.',
     confidence:m.confidence === 'high' ? 92 : m.confidence === 'medium' ? 74 : 56,
     matchWhy:m.matchReasons || ['PriceCharting API'],
+    searchExplain:{ generatedQuery:m._generatedQuery || q, provider:'PriceCharting' },
     pricecharting:m,
     productUrl:m.url || '',
     raw:m,
@@ -19810,20 +19885,15 @@ function pokemonExpandSearchAbbreviations(q){
 
 async function searchPokemonPriceTrackerCards(rawQuery = '', language = 'english'){
   if(pokemonPriceTrackerQuotaBlocked()) throw new Error('PokemonPriceTracker quota exhausted');
-  const expanded = pokemonExpandSearchAbbreviations(String(rawQuery || '').replace(/\s+/g, ' ').trim());
-  // PPT searches by card NAME only — strip promo-set abbreviations and standalone "promo"
-  // so natural queries like "rayquaza swsh promo" or "rayquaza promo" send just "rayquaza".
-  // Negative lookbehind keeps "Promo" that is part of expanded set names like "Black Star Promo".
-  const query = (expanded
-    .replace(/\bswsh\b|\bsvp\b|\bhgss\b/gi, '')
-    .replace(/(?<!black[\s-]*star\s+)\bpromo\b/gi, '')
-    .replace(/\s+/g, ' ').trim()) || expanded;
+  // The documented /cards search accepts multi-word natural language across card
+  // name, set, number, rarity, and type. Preserve the complete adapted query.
+  const query = pokemonExpandSearchAbbreviations(String(rawQuery || '').replace(/\s+/g, ' ').trim());
   if(!query) return { cards:[], data:{}, requestPath:'', cacheStatus:'miss' };
   // Detect Japanese intent from rawQuery; caller can also pass language explicitly
   const lang = language === 'japanese' ? 'japanese' : (/\bjapanese?\b|\bjpn\b/i.test(rawQuery) ? 'japanese' : 'english');
   // Pass the ORIGINAL raw query to the ranker so set-word scoring still uses "swsh", "promo" etc.
-  const params = new URLSearchParams({ search:query, language:lang, limit:'50' });
-  const result = await pokemonPriceTrackerCardsRequest(params, 'cards.search.limit50');
+  const params = new URLSearchParams({ search:query, language:lang, limit:'5' });
+  const result = await pokemonPriceTrackerCardsRequest(params, 'cards.search.limit5');
   result.ranked = pokemonRankApiCards(result.cards, rawQuery);
   return result;
 }
@@ -20731,11 +20801,12 @@ function scryfallTreatmentLabel(c){
   return '';
 }
 
-async function fetchScryfallCatalog(q){
+async function fetchScryfallCatalog(q, searchPlan = qplLastSearchPlan){
   const finishIntent = parseMtgFinishIntent(q);
-  const searchQ = finishIntent.clean || q;
+  const plannedQueries = universalSearchQueries(searchPlan, 'mtg', 'Scryfall');
+  const searchQ = plannedQueries[0] || finishIntent.clean || q;
   // Build Scryfall query — if treatment specified, filter on the Scryfall side
-  let sfQ = expandSmartQuery(searchQ);
+  let sfQ = plannedQueries.length ? searchQ : expandSmartQuery(searchQ);
   if(finishIntent.treatment === 'borderless') sfQ += ' is:borderless';
   else if(finishIntent.treatment === 'showcase') sfQ += ' is:showcase';
   else if(finishIntent.treatment === 'extended_art') sfQ += ' is:extendedart';
@@ -20744,6 +20815,7 @@ async function fetchScryfallCatalog(q){
   if(!res?.ok) return [];
   const data = await res.json().catch(() => ({}));
   let allScryfallCards = data.data || [];
+  recordSearchPlanRoute(searchPlan, 'https://api.scryfall.com/cards/search', sfQ, allScryfallCards.length);
   if(data.has_more && allScryfallCards.length < 175){
     try {
       const res2 = await fetch(data.next_page, { headers:{ 'Accept':'application/json' } }).catch(() => null);
@@ -20788,6 +20860,7 @@ async function fetchScryfallCatalog(q){
       note:hit.why.length ? 'Matched: ' + hit.why.join(', ') : (c.type_line || ''),
       confidence:Math.min(99, Math.round(hit.score || 50)),
       matchWhy:hit.why,
+      searchExplain:{ generatedQuery:sfQ, provider:'Scryfall' },
       raw:c,
       productId:c.id || '',
       scryfallId:c.id || '',
