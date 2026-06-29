@@ -3,12 +3,13 @@
   "version": "2026.05.20.03",
   "private": true,
   "scripts": {
-    "test": "npm run test:parse && npm run test:topps-parser",
+    "test": "npm run test:parse && npm run test:topps-parser && npm run test:buy-workspace",
     "test:qa": "npm run test:parse",
     "test:smoke:manual": "playwright test --config=tests/playwright.config.js",
     "test:headed": "playwright test --config=tests/playwright.config.js --headed",
     "test:parse": "node tests/parse-check.js",
     "test:topps-parser": "node tests/topps-parser.test.js",
+    "test:buy-workspace": "node tests/buy-workspace.test.js",
     "topps:import": "node scripts/import-topps-checklists.js",
     "topps:import:sample": "node scripts/import-topps-checklists.js --limit=3",
     "topps:import:supabase": "node scripts/import-topps-to-supabase.js"

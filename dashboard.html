@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.06.23.06-sports-exact-match">
+<meta name="version" content="2026.06.29.01-buy-workspace-import">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -171,8 +171,10 @@ header{position:sticky;top:0;z-index:100;background:rgba(7,8,10,.96);backdrop-fi
 .checkout-state-pill{border:1px solid rgba(0,255,179,.24);background:rgba(0,255,179,.07);color:var(--g);border-radius:999px;padding:5px 9px;font-family:'Orbitron',monospace;font-size:9px;}
 .checkout-state-pill.warn{border-color:rgba(255,209,102,.28);background:rgba(255,209,102,.08);color:var(--gold);}
 .checkout-state-pill.bad{border-color:rgba(255,77,109,.28);background:rgba(255,77,109,.08);color:var(--red);}
-.dealer-line{display:grid;grid-template-columns:minmax(0,1fr) 92px 78px 44px 44px;gap:8px;align-items:center;background:var(--surf2);border:1px solid var(--border);border-radius:8px;padding:10px;}
-.dealer-line.locked{grid-template-columns:minmax(0,1fr) 92px 78px;}
+.dealer-line{display:grid;grid-template-columns:84px minmax(0,1fr) 92px 78px 44px 44px;gap:8px;align-items:center;background:var(--surf2);border:1px solid var(--border);border-radius:8px;padding:10px;}
+.dealer-line.locked{grid-template-columns:84px minmax(0,1fr) 92px 78px;}
+.dealer-line-image{width:78px;height:102px;object-fit:contain;background:#050507;border:1px solid var(--border);border-radius:6px;cursor:zoom-in;display:block;}
+.dealer-line-image-ph{width:78px;height:102px;display:flex;align-items:center;justify-content:center;background:var(--surf);border:1px dashed var(--border);border-radius:6px;font-family:var(--font-mono);font-size:8px;color:var(--dim);}
 .dealer-line-name{font-weight:700;color:var(--text);line-height:1.25;overflow:hidden;text-overflow:ellipsis;}
 .dealer-line-sub{font-family:var(--font-mono);font-size:9px;color:var(--dim);margin-top:3px;}
 .dealer-profit{font-family:var(--font-mono);font-size:9px;color:var(--dim);text-align:right;}
@@ -190,7 +192,9 @@ header{position:sticky;top:0;z-index:100;background:rgba(7,8,10,.96);backdrop-fi
 .customer-pay-store{font-family:'Orbitron',monospace;font-size:28px;font-weight:900;letter-spacing:2px;color:#0b0d12;overflow-wrap:anywhere;max-width:100%;}
 .customer-pay-safe{font-family:var(--font-mono);font-size:11px;color:#657080;margin-top:5px;}
 .customer-pay-lines{display:grid;gap:10px;align-content:start;max-width:860px;width:100%;margin:0 auto;}
-.customer-pay-line{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:18px;align-items:center;border-bottom:1px solid #dce1e8;padding:12px 0;}
+.customer-pay-line{display:grid;grid-template-columns:96px minmax(0,1fr) auto;gap:18px;align-items:center;border-bottom:1px solid #dce1e8;padding:12px 0;}
+.customer-pay-image{width:90px;height:122px;object-fit:contain;background:#fff;border:1px solid #dce1e8;border-radius:7px;cursor:zoom-in;display:block;}
+.customer-pay-image-ph{width:90px;height:122px;display:flex;align-items:center;justify-content:center;background:#eef1f5;border:1px dashed #c7ced8;border-radius:7px;font-family:var(--font-mono);font-size:9px;color:#657080;}
 .customer-pay-name{font-size:clamp(15px,4vw,20px);font-weight:800;color:#101319;line-height:1.25;overflow-wrap:anywhere;}
 .customer-pay-sub{font-family:var(--font-mono);font-size:clamp(9px,2.2vw,11px);color:#657080;margin-top:4px;}
 .customer-pay-price{font-family:'Orbitron',monospace;font-size:clamp(16px,4.5vw,23px);font-weight:900;color:#111827;white-space:nowrap;}
@@ -453,10 +457,12 @@ tr.sold:hover td{opacity:.7;}
 .buy-price-input{width:90px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:7px 10px;border-radius:6px;font-size:12px;font-family:monospace;flex-shrink:0;}
 .buy-tray{min-height:60px;margin-bottom:12px;}
 .buy-tray-empty{font-family:var(--font-mono);font-size:10px;color:var(--dim);text-align:center;padding:20px;border:1px dashed var(--border);border-radius:8px;}
-.buy-tray-item{display:grid;grid-template-columns:48px 1fr 70px 80px 62px 30px;align-items:center;gap:7px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;background:var(--surf2);}
-.buy-tray-thumb-wrap{width:44px;height:44px;flex-shrink:0;display:flex;align-items:center;justify-content:center;}
-.buy-tray-thumb{width:44px;height:44px;object-fit:cover;border-radius:5px;border:1px solid var(--border);}
-.buy-tray-thumb-ph{width:44px;height:44px;border-radius:5px;border:1px solid var(--border);background:var(--surf);display:flex;align-items:center;justify-content:center;font-family:monospace;font-size:7px;color:var(--dim);}
+.buy-tray-item{display:grid;grid-template-columns:92px 1fr 86px 90px 70px 44px 30px;align-items:center;gap:9px;padding:10px;border:1px solid var(--border);border-radius:8px;margin-bottom:8px;background:var(--surf2);}
+.buy-tray-thumb-wrap{width:86px;height:116px;flex-shrink:0;display:flex;align-items:center;justify-content:center;cursor:zoom-in;}
+.buy-tray-thumb{width:86px;height:116px;object-fit:contain;background:#050507;border-radius:6px;border:1px solid var(--border);}
+.buy-tray-thumb-ph{width:86px;height:116px;border-radius:6px;border:1px dashed var(--border);background:var(--surf);display:flex;align-items:center;justify-content:center;font-family:monospace;font-size:8px;color:var(--dim);}
+.buy-tray-price-note{font-family:var(--font-mono);font-size:8px;color:var(--dim);margin-top:5px;line-height:1.4;}
+.buy-tray-reset{border:0;background:none;color:var(--blue);font-family:var(--font-mono);font-size:8px;padding:0;cursor:pointer;text-decoration:underline;}
 .buy-tray-name{font-family:var(--font-mono);font-size:11px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .buy-tray-sub{font-family:var(--font-mono);font-size:8px;color:var(--dim);margin-top:2px;}
 .buy-tray-cond{width:70px;background:var(--surf);border:1px solid var(--border);color:var(--text);padding:5px 4px;border-radius:5px;font-size:10px;font-family:monospace;}
@@ -953,7 +959,8 @@ body.customer-display-mode #customer-display-exit{display:block;}
   .qpl-quick-controls{grid-template-columns:1fr;}
   .customer-pay-total b{font-size:clamp(42px,15vw,68px);}
   .customer-method-grid{grid-template-columns:1fr;}
-  .customer-pay-line{grid-template-columns:1fr;gap:6px;}
+  .customer-pay-line{grid-template-columns:72px minmax(0,1fr) auto;gap:9px;}
+  .customer-pay-image,.customer-pay-image-ph{width:68px;height:92px;}
   .qpl-selected-top{grid-template-columns:1fr;}
   .customer-payment-screen{padding:14px;}
   .customer-pay-store{font-size:clamp(18px,6vw,28px);}
@@ -1360,7 +1367,7 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.23.24-chips-sync</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.29.01-buy-workspace-import</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
@@ -1387,7 +1394,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.23.24-chips-sync</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.29.01-buy-workspace-import</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -2620,7 +2627,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.06.23.05-topps-full-catalog-polish';
+const APP_VERSION = '2026.06.29.01-buy-workspace-import';
 window.APP_VERSION = APP_VERSION;
 const branchName = 'pokemon-v2-core';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
@@ -7133,9 +7140,9 @@ function ensureSpreadsheetPanel(backoffice){
   panel.id = 'spreadsheet-panel';
   panel.style.marginBottom = '14px';
   panel.innerHTML = `
-    <div class="ph">SPREADSHEET / UNIVERSAL INVENTORY <span id="sheet-status" style="font-size:9px;color:var(--dim)">CSV bridge</span></div>
+    <div class="ph">INVENTORY IMPORT MANAGER <span id="sheet-status" style="font-size:9px;color:var(--dim)">CSV · TCGplayer · Collectr · generic</span></div>
     <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);margin-bottom:10px;line-height:1.55">
-      Import vendor spreadsheets, map columns once, and export clean files for Excel, eBay, or other POS systems. For Excel files, use Save As CSV for now.
+      Import card collections and store inventory from common CSV exports. Every import is previewed and validated before it changes inventory.
     </div>
     <div class="item-metric" style="margin-bottom:10px">
       <div style="font-family:monospace;font-size:9px;color:var(--dim);margin-bottom:6px">BUILT-IN QUICK ADD</div>
@@ -7181,12 +7188,15 @@ function ensureSpreadsheetPanel(backoffice){
       <button class="hbtn" onclick="exportUniversalTemplateCSV()">CSV TEMPLATE</button>
     </div>
     <div id="sheet-mapping" style="display:none;margin-bottom:10px"></div>
-    <div id="sheet-preview" style="font-family:var(--font-mono);font-size:10px;color:var(--dim);display:grid;gap:6px"></div>`;
+    <div id="sheet-preview" style="font-family:var(--font-mono);font-size:10px;color:var(--dim);display:grid;gap:6px"></div>
+    <div id="sheet-import-history" style="margin-top:12px"></div>`;
   backoffice.prepend(panel);
+  renderSpreadsheetImportHistory();
 }
 
 let pendingCsvRows = [];
 let pendingCsvHeaders = [];
+let pendingCsvFileName = '';
 
 function toggleBuiltGradedRow(){
   const cat = document.getElementById('built-category')?.value || '';
@@ -8194,6 +8204,7 @@ async function handleSpreadsheetImport(event){
   const file = event.target.files?.[0];
   event.target.value = '';
   if(!file) return;
+  pendingCsvFileName = file.name || 'inventory.csv';
   const text = await file.text();
   const rows = parseCSV(text);
   if(rows.length < 2){ toast_dash('CSV has no inventory rows'); return; }
@@ -8223,6 +8234,13 @@ function renderSpreadsheetMapping(){
     market:['price','market','retail','asking','list price'],
     location:['location','box','case','binder'],
     notes:['notes','description','memo'],
+    card_number:['card number','card #','number'],
+    player:['player','subject','card name'],
+    team:['team'],
+    sport:['sport'],
+    imageUrl:['image url','photo url','image'],
+    tcgPlayerId:['tcgplayer product id','product id'],
+    tcgplayerSkuId:['tcgplayer sku id','sku id','sku'],
   };
   const opts = '<option value="">-- ignore --</option>' + pendingCsvHeaders.map(h => `<option value="${h}">${h}</option>`).join('');
   box.style.display = '';
@@ -8231,7 +8249,9 @@ function renderSpreadsheetMapping(){
       <label style="font-family:monospace;font-size:9px;color:var(--dim)">IMPORT PRESET
         <select id="sheet-preset" onchange="applySpreadsheetPreset(this.value)" style="min-width:190px;margin-left:6px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:7px;border-radius:6px">
           <option value="">Auto / saved mapping</option>
-          <option value="tcgplayer">TCGPlayer</option>
+          <option value="tcgplayer">TCGplayer App / Seller</option>
+          <option value="collectr">Collectr</option>
+          <option value="walkoff">Walk-Off export</option>
           <option value="ebay">eBay</option>
           <option value="square">Square</option>
           <option value="shopify">Shopify</option>
@@ -8241,18 +8261,30 @@ function renderSpreadsheetMapping(){
       <button class="hbtn" onclick="showSpreadsheetDuplicatePreview()">CHECK DUPES</button>
       <span id="sheet-dupe-status" style="font-family:monospace;font-size:9px;color:var(--dim)"></span>
     </div>
+    <div style="display:grid;grid-template-columns:repeat(2,minmax(180px,1fr));gap:8px;margin-bottom:10px">
+      <label style="font-family:monospace;font-size:9px;color:var(--dim)">MATCHING ITEM ACTION
+        <select id="sheet-import-mode" style="width:100%;margin-top:3px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:7px;border-radius:6px">
+          <option value="skip">Skip duplicates (recommended)</option>
+          <option value="add">Add imported quantity</option>
+          <option value="replace">Replace matching local record</option>
+          <option value="duplicate">Import as separate items</option>
+        </select>
+      </label>
+      <div id="sheet-validation-status" style="font-family:monospace;font-size:9px;color:var(--dim);border:1px solid var(--border);border-radius:6px;padding:8px">Map columns to validate.</div>
+    </div>
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px">
       ${Object.entries(fields).map(([field, aliases]) => {
         const val = saved[field] || guessColumn(pendingCsvHeaders, aliases);
-        return `<label style="font-family:monospace;font-size:9px;color:var(--dim)">${field.toUpperCase()}<select id="map-${field}" style="width:100%;margin-top:3px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:7px;border-radius:6px">${opts.replace(`value="${val}"`,`value="${val}" selected`)}</select></label>`;
+        return `<label style="font-family:monospace;font-size:9px;color:var(--dim)">${field.toUpperCase()}<select id="map-${field}" onchange="validateSpreadsheetMapping()" style="width:100%;margin-top:3px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:7px;border-radius:6px">${opts.replace(`value="${val}"`,`value="${val}" selected`)}</select></label>`;
       }).join('')}
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
-      <button class="hbtn" onclick="importMappedSpreadsheet(false)">IMPORT LOCAL</button>
-      <button class="hbtn" onclick="importMappedSpreadsheet(true)">IMPORT + ADD TO WEBFLOW</button>
+      <button class="hbtn" onclick="importMappedSpreadsheet(false)">IMPORT TO THIS DEVICE</button>
+      <button class="hbtn" onclick="importMappedSpreadsheet(true)">IMPORT TO STORE DATABASE</button>
       <button class="hbtn danger" onclick="pendingCsvRows=[];document.getElementById('sheet-mapping').style.display='none'">CANCEL</button>
     </div>`;
   preview.innerHTML = pendingCsvRows.slice(0,5).map(r => `<div style="border:1px solid var(--border);background:var(--surf2);border-radius:6px;padding:7px">${pendingCsvHeaders.slice(0,6).map(h => `${h}: ${r[h]}`).join(' · ')}</div>`).join('');
+  validateSpreadsheetMapping();
 }
 
 const SPREADSHEET_PRESETS = {
@@ -8280,7 +8312,21 @@ const SPREADSHEET_PRESETS = {
     cost:['purchase price','cost','my price'],
     market:['market price','tcg market price','listed median','price'],
     location:['location'],
-    notes:['notes']
+    notes:['notes'],
+    card_number:['card number','number'], player:['product name','name'], team:['team'], sport:['product line','sport'],
+    imageUrl:['image url','photo url'], tcgPlayerId:['tcgplayer product id','product id'], tcgplayerSkuId:['tcgplayer sku id','sku id','sku']
+  },
+  collectr:{
+    name:['product name','card name','name'], category:['category','game'], set:['set','set name'], year:['year'],
+    variant:['variant','rarity','printing'], condition:['condition'], qty:['quantity','qty'], cost:['purchase price','cost'],
+    market:['market price','price'], location:['location','collection'], notes:['notes'], card_number:['card number','number'],
+    player:['player','card name','product name'], team:['team'], sport:['sport'], imageUrl:['image url','photo url'],
+    tcgPlayerId:['tcgplayer product id','product id'], tcgplayerSkuId:['tcgplayer sku id','sku id','sku']
+  },
+  walkoff:{
+    name:['name'], category:['category'], set:['set'], year:['year'], variant:['variant'], condition:['condition'], qty:['qty'],
+    cost:['cost'], market:['market price'], location:['location'], notes:['notes'], card_number:['card number'], player:['player'],
+    team:['team'], sport:['sport'], imageUrl:['image url','thumbnail'], tcgPlayerId:['tcgplayer id'], tcgplayerSkuId:['tcgplayer sku id']
   },
   ebay:{
     name:['title','item title'],
@@ -8350,10 +8396,31 @@ function showSpreadsheetDuplicatePreview(){
   const dupes = findDuplicateItems(items);
   el.style.color = dupes.length ? 'var(--gold)' : 'var(--g)';
   el.textContent = dupes.length ? dupes.length + ' possible duplicate(s)' : 'No obvious duplicates';
+  validateSpreadsheetMapping();
+}
+
+function validateSpreadsheetMapping(){
+  const el = document.getElementById('sheet-validation-status');
+  if(!el) return { valid:0, errors:[] };
+  const nameColumn = document.getElementById('map-name')?.value || '';
+  if(!nameColumn) {
+    el.style.color = 'var(--red)';
+    el.textContent = 'Required: map an item/card name column.';
+    return { valid:0, errors:['Missing name mapping'] };
+  }
+  const items = mappedSpreadsheetItems();
+  const missingNames = pendingCsvRows.length - items.length;
+  const invalidQty = items.filter(i => !Number.isFinite(i.qty) || i.qty < 1).length;
+  const errors = [];
+  if(missingNames) errors.push(missingNames + ' missing names');
+  if(invalidQty) errors.push(invalidQty + ' invalid quantities');
+  el.style.color = errors.length ? 'var(--gold)' : 'var(--g)';
+  el.textContent = items.length + ' valid row' + (items.length===1?'':'s') + (errors.length ? ' · ' + errors.join(' · ') : ' · ready to import');
+  return { valid:items.length, errors };
 }
 
 function mappedSpreadsheetItems(){
-  const fields = ['name','category','set','year','variant','condition','qty','cost','market','location','notes'];
+  const fields = ['name','category','set','year','variant','condition','qty','cost','market','location','notes','card_number','player','team','sport','imageUrl','tcgPlayerId','tcgplayerSkuId'];
   const map = {};
   fields.forEach(f => map[f] = document.getElementById('map-'+f)?.value || '');
   localStorage.setItem('sheet_mapping_v1', JSON.stringify(map));
@@ -8371,6 +8438,15 @@ function mappedSpreadsheetItems(){
     market:parseFloat(String(r[map.market] || '').replace(/[$,]/g,'')) || 0,
     location:r[map.location] || '',
     notes:r[map.notes] || '',
+    card_number:r[map.card_number] || '',
+    player:r[map.player] || '',
+    team:r[map.team] || '',
+    sport:r[map.sport] || '',
+    imageUrl:r[map.imageUrl] || '',
+    thumbnail:r[map.imageUrl] || '',
+    tcgPlayerId:r[map.tcgPlayerId] || '',
+    tcgplayerId:r[map.tcgPlayerId] || '',
+    tcgplayerSkuId:r[map.tcgplayerSkuId] || '',
     status:'in_stock',
     lifecycle:'in_stock',
     addedAt:new Date().toISOString(),
@@ -8378,29 +8454,94 @@ function mappedSpreadsheetItems(){
   })).filter(i => i.name && i.name !== 'Imported item');
 }
 
-async function importMappedSpreadsheet(pushWebflow){
+async function importMappedSpreadsheet(pushToStore){
   const items = mappedSpreadsheetItems();
   if(!items.length){ toast_dash('No mapped rows to import'); return; }
+  const mode = document.getElementById('sheet-import-mode')?.value || 'skip';
   const dupes = findDuplicateItems(items);
-  if(dupes.length && !confirm(dupes.length + ' possible duplicates found. Import anyway?')) return;
-  const local = safeLocalJson('walkoff_universal_inventory', []);
-  local.unshift(...items);
-  localStorage.setItem('walkoff_universal_inventory', JSON.stringify(local.slice(0,5000)));
-  let webflowOk = 0, webflowFail = 0;
-  if(pushWebflow) {
+  if(dupes.length && mode === 'duplicate' && !confirm(dupes.length + ' matching item(s) will be imported as separate records. Continue?')) return;
+  const historyEntry = { id:'import_'+Date.now(), fileName:pendingCsvFileName || 'inventory.csv', source:document.getElementById('sheet-preset')?.value || 'generic', destination:pushToStore?'store':'device', mode, requested:items.length, created:0, updated:0, skipped:0, failed:0, addedIds:[], updatedBefore:[], createdAt:new Date().toISOString(), appVersion:APP_VERSION };
+
+  if(pushToStore) {
     for(const item of items) {
-      try { await createInventoryRecord(item, item); webflowOk++; }
+      const existing = (all || []).find(x => itemMatchKey(x) === itemMatchKey(item));
+      if(existing && mode === 'skip') { historyEntry.skipped++; continue; }
+      try {
+        if(existing && ['add','replace'].includes(mode) && existing.source === 'built_in') {
+          const updates = mode === 'add' ? { ...item, qty:Number(existing.qty || 0) + Number(item.qty || 1) } : { ...item, qty:Number(item.qty || 1) };
+          await updateBuiltInInventoryItem(existing, updates);
+          historyEntry.updated++;
+        } else {
+          await createInventoryRecord(item, item);
+          historyEntry.created++;
+        }
+      }
       catch(e) {
-        webflowFail++;
+        historyEntry.failed++;
         enqueueSync('inventory-create', 'Create inventory item: ' + (item.name || 'Imported item'), { item, updates:item, inventorySource:getInventorySource() }, e.message || 'Inventory create failed');
       }
     }
+  } else {
+    const before = safeLocalJson('walkoff_universal_inventory', []);
+    const local = before.slice();
+    const byKey = new Map(local.map((item, idx) => [itemMatchKey(item), idx]));
+    items.forEach(item => {
+      const key = itemMatchKey(item);
+      const idx = byKey.has(key) ? byKey.get(key) : -1;
+      if(idx >= 0 && mode === 'skip') { historyEntry.skipped++; return; }
+      if(idx >= 0 && ['add','replace'].includes(mode)) {
+        historyEntry.updatedBefore.push({ index:idx, item:local[idx] });
+        local[idx] = mode === 'add'
+          ? { ...local[idx], ...Object.fromEntries(Object.entries(item).filter(([,v]) => v !== '' && v != null)), id:local[idx].id, qty:Number(local[idx].qty || 0) + Number(item.qty || 1), updatedAt:new Date().toISOString() }
+          : { ...item, id:local[idx].id, updatedAt:new Date().toISOString() };
+        historyEntry.updated++;
+        return;
+      }
+      local.unshift(item);
+      historyEntry.addedIds.push(item.id);
+      historyEntry.created++;
+    });
+    try { localStorage.setItem('walkoff_universal_inventory', JSON.stringify(local)); }
+    catch(e) { toast_dash('Import is too large for device storage. Use Import to Store Database instead.'); return; }
   }
+  const history = safeLocalJson('inventory_import_history_v2', []);
+  history.unshift(historyEntry);
+  localStorage.setItem('inventory_import_history_v2', JSON.stringify(history.slice(0,25)));
   pendingCsvRows = [];
   document.getElementById('sheet-mapping').style.display='none';
-  document.getElementById('sheet-preview').innerHTML = `Imported ${items.length} local item${items.length===1?'':'s'}${pushWebflow ? ' · inventory sync '+webflowOk+' ok / '+webflowFail+' failed' : ''}`;
-  logOpsEvent('spreadsheet_import', 'Imported spreadsheet inventory', { items:items.length, inventorySyncOk:webflowOk, inventorySyncFail:webflowFail, inventorySource:getInventorySource() });
+  document.getElementById('sheet-preview').innerHTML = `Import complete · ${historyEntry.created} created · ${historyEntry.updated} updated · ${historyEntry.skipped} skipped · ${historyEntry.failed} failed`;
+  logOpsEvent('spreadsheet_import', 'Imported spreadsheet inventory', { ...historyEntry, updatedBefore:undefined, addedIds:undefined, inventorySource:getInventorySource() });
+  renderSpreadsheetImportHistory();
   loadInventory();
+}
+
+function renderSpreadsheetImportHistory(){
+  const el = document.getElementById('sheet-import-history');
+  if(!el) return;
+  const history = safeLocalJson('inventory_import_history_v2', []);
+  el.innerHTML = `<div class="ph" style="margin-bottom:6px">RECENT IMPORTS</div>${history.length ? history.slice(0,8).map(h => `<div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;border-top:1px solid var(--border);padding:8px 0;font-family:var(--font-mono);font-size:9px;color:var(--dim)"><div><b style="color:var(--text)">${escHtml(h.fileName || 'inventory.csv')}</b> · ${escHtml(h.destination || 'device')} · ${new Date(h.createdAt).toLocaleString()}<br>${h.created||0} created · ${h.updated||0} updated · ${h.skipped||0} skipped · ${h.failed||0} failed</div>${h.destination === 'device' ? `<button class="hbtn danger" onclick="rollbackSpreadsheetImport('${h.id}')">ROLL BACK</button>` : '<span>store import logged</span>'}</div>`).join('') : '<div style="font-family:var(--font-mono);font-size:9px;color:var(--dim)">No imports yet.</div>'}`;
+}
+
+function rollbackSpreadsheetImport(importId){
+  const history = safeLocalJson('inventory_import_history_v2', []);
+  const entry = history.find(h => h.id === importId);
+  if(!entry || entry.destination !== 'device') return toast_dash('Only device imports can be rolled back here');
+  if(entry.rolledBackAt) return toast_dash('This import was already rolled back');
+  if(!confirm('Roll back this device import?')) return;
+  let local = safeLocalJson('walkoff_universal_inventory', []);
+  const added = new Set(entry.addedIds || []);
+  local = local.filter(item => !added.has(item.id));
+  (entry.updatedBefore || []).forEach(change => {
+    const idx = local.findIndex(item => item.id === change.item.id);
+    if(idx >= 0) local[idx] = change.item;
+    else local.splice(Math.min(change.index || 0, local.length), 0, change.item);
+  });
+  localStorage.setItem('walkoff_universal_inventory', JSON.stringify(local));
+  entry.rolledBackAt = new Date().toISOString();
+  localStorage.setItem('inventory_import_history_v2', JSON.stringify(history));
+  renderSpreadsheetImportHistory();
+  loadInventory();
+  toast_dash('Import rolled back');
 }
 
 function getUniversalInventory(){
@@ -8418,8 +8559,8 @@ function getUniversalInventory(){
 }
 
 function inventoryExportRows(){
-  return [['id','name','category','set','year','variant','condition','qty','cost','market_price','location','status','source','notes']]
-    .concat(all.map(i => [i.id,i.name,i.category,i.set,i.year,i.variant,i.condition,i.qty,i.cost,i.market,i.location,i.lifecycle||i.status,i.source||'webflow',i.notes||i.tags||'']));
+  return [['id','name','category','set','year','card_number','player','team','sport','variant','condition','qty','cost','market_price','location','image_url','tcgplayer_id','tcgplayer_sku_id','status','source','notes']]
+    .concat(all.map(i => [i.id,i.name,i.category,i.set,i.year,i.card_number||'',i.player||'',i.team||'',i.sport||'',i.variant,i.condition,i.qty,i.cost,i.market,i.location,i.imageUrl||i.thumbnail||'',i.tcgPlayerId||i.tcgplayerId||'',i.tcgplayerSkuId||'',i.lifecycle||i.status,i.source||'webflow',i.notes||i.tags||'']));
 }
 
 function exportInventoryCSV(){
@@ -8428,7 +8569,7 @@ function exportInventoryCSV(){
 }
 
 function exportUniversalTemplateCSV(){
-  downloadCSV('walkoff-inventory-template.csv', [['name','category','set','year','variant','condition','qty','cost','market_price','location','notes'],['Charizard','TCG','Base Set','1999','Unlimited','NM','1','120.00','250.00','Showcase A','example row']]);
+  downloadCSV('walkoff-inventory-template.csv', [['name','category','set','year','card_number','player','team','sport','variant','condition','qty','cost','market_price','location','image_url','tcgplayer_id','tcgplayer_sku_id','notes'],['Charizard','TCG','Base Set','1999','4/102','Charizard','','','Unlimited','NM','1','120.00','250.00','Showcase A','','','','example row']]);
 }
 
 function exportEbayPrepCSV(){
@@ -21126,6 +21267,25 @@ function closeQplImageLightbox(){
   document.getElementById('qpl-lightbox')?.classList.remove('on');
 }
 
+function openImageLightboxUrl(encodedUrl, encodedLabel=''){
+  const url = decodeURIComponent(encodedUrl || '');
+  if(!url) return;
+  window._qplLightbox = { idx:-1, imageIdx:0, imgs:[url] };
+  let lb = document.getElementById('qpl-lightbox');
+  if(!lb) {
+    lb = document.createElement('div');
+    lb.id = 'qpl-lightbox';
+    lb.className = 'qpl-lightbox';
+    lb.innerHTML = `<button class="qpl-lightbox-btn qpl-lightbox-close" onclick="closeQplImageLightbox()">×</button><img id="qpl-lightbox-img" alt="">`;
+    lb.addEventListener('click', e => { if(e.target === lb) closeQplImageLightbox(); });
+    document.body.appendChild(lb);
+  }
+  const img = document.getElementById('qpl-lightbox-img');
+  img.src = url;
+  img.alt = decodeURIComponent(encodedLabel || 'Card image');
+  lb.classList.add('on');
+}
+
 function openQuickExternal(idx, type){
   const r = qplResults[idx];
   if(!r) return;
@@ -21889,6 +22049,37 @@ function externalRefsFromQuickLookup(item = {}, selectedVariant = {}){
   };
 }
 
+function buyPriceOptionKey(option = {}){
+  return [String(option.condition || '').toUpperCase(), normalizeQplFinish(option.finish || option.finishLabel || '') || 'normal'].join('::');
+}
+
+function buyPriceOptionsFromResearch(row = {}){
+  const exactRows = pokemonPptMatrixRows(row).filter(r => Number(r.price || 0) > 0);
+  const variantRows = (row.availableVariants || []).map(v => ({
+    basisType:'raw', condition:String(v.condition || row.condition || 'NM').toUpperCase(),
+    conditionLabel:pokemonPptConditionLabel(v.condition || row.condition || 'NM'),
+    finish:normalizeQplFinish(v.finish || v.printing || row.selectedFinish || row.finish || 'Normal'),
+    finishLabel:qplFinishLabel(v.finish || v.printing || row.selectedFinish || row.finish || 'Normal'),
+    price:Number(v.marketPrice || v.price || 0), source:v.priceSource || row.priceSource || row.pricingSource || 'Research price',
+    path:v.pricePath || v.resolvedPricePath || '', label:[v.condition || row.condition || 'NM', qplFinishLabel(v.finish || v.printing || '')].filter(Boolean).join(' / '),
+    lastUpdated:v.lastUpdated || row.lastPriceSyncAt || ''
+  })).filter(v => v.price > 0);
+  const current = Number(row.activePriceBasis?.price || row.market || 0);
+  const currentRows = current > 0 ? [{
+    basisType:row.activePriceBasis?.basisType || 'raw', condition:String(row.selectedCondition || row.condition || row.activePriceBasis?.condition || 'NM').toUpperCase(),
+    conditionLabel:pokemonPptConditionLabel(row.selectedCondition || row.condition || row.activePriceBasis?.condition || 'NM'),
+    finish:normalizeQplFinish(row.selectedFinish || row.finish || row.activePriceBasis?.finish || 'Normal'), finishLabel:qplFinishLabel(row.selectedFinish || row.finish || row.activePriceBasis?.finish || 'Normal'),
+    price:current, source:row.activePriceBasis?.source || row.priceSource || row.pricingSource || 'Research price', path:row.activePriceBasis?.pricePath || row.resolvedPricePath || '',
+    label:row.activePriceBasis?.label || row.priceSource || 'Research price', lastUpdated:row.activePriceBasis?.lastUpdated || row.lastPriceSyncAt || ''
+  }] : [];
+  const unique = new Map();
+  [...exactRows, ...variantRows, ...currentRows].forEach(option => {
+    const key = buyPriceOptionKey(option);
+    if(!unique.has(key) || String(option.source).includes('Actual API')) unique.set(key, { ...option, key });
+  });
+  return [...unique.values()];
+}
+
 function selectedQuickLookupItem(idx){
   const r = applyQplSelectedVariant(qplResults[idx] || {});
   const selectedVariant = r.selectedVariant || qplSelectedVariant(r) || {};
@@ -21906,6 +22097,11 @@ function selectedQuickLookupItem(idx){
     label:r.priceSource || 'Manual Price'
   };
   const activePrice = Number(activePriceBasis.price || r.market || 0) || 0;
+  const buyPriceOptions = buyPriceOptionsFromResearch(r);
+  const selectedBuyPriceKey = buyPriceOptions.find(option =>
+    pokemonPptConditionCode(option.condition) === pokemonPptConditionCode(activePriceBasis.condition || r.selectedCondition || r.condition) &&
+    normalizeQplFinish(option.finish || option.finishLabel) === normalizeQplFinish(activePriceBasis.finish || r.selectedFinish || r.finish)
+  )?.key || buyPriceOptions.find(option => Number(option.price || 0) === activePrice)?.key || buyPriceOptionKey(activePriceBasis);
   // A3 fix: when the QPL result came from the local inventory (source === 'inventory'),
   // preserve the real item ID so the cart can set shopId correctly and
   // markCartItemsSoldFromPayment can find + mark the item sold after checkout.
@@ -21951,6 +22147,9 @@ function selectedQuickLookupItem(idx){
     pricingSource:activePriceBasis.source || r.pricingSource || r.priceSource || 'No Real Price Available',
     pricingMode:activePriceBasis.basisType || r.pricingMode || 'raw',
     activePriceBasis,
+    buyPriceOptions,
+    selectedBuyPriceKey,
+    referenceMarketPrice:activePrice,
     slabCompany:r.slabCompany || '',
     slabGrade:r.slabGrade || '',
     pricechartingProductId:r.pricecharting?.productId || '',
@@ -22123,6 +22322,7 @@ function addSelectedQuickLookupToBuyOffer(idx){
     id:'bl_qpl_' + Date.now(),
     name:item.name,
     market:item.market,
+    referenceMarketPrice:Number(item.referenceMarketPrice || item.market || 0),
     priceUsed:Number(item.market || 0),
     priceLabel:item.priceLabel || item.priceSource || item.pricingSource || 'Market Price',
     condition:item.condition,
@@ -22141,6 +22341,10 @@ function addSelectedQuickLookupToBuyOffer(idx){
     resolvedPricePath:item.resolvedPricePath || '',
     resolvedPrice:Number(item.resolvedPrice || item.market || 0),
     activePriceBasis:item.activePriceBasis || null,
+    buyPriceOptions:item.buyPriceOptions || [],
+    selectedBuyPriceKey:item.selectedBuyPriceKey || buyPriceOptionKey(item.activePriceBasis || item),
+    manualMarketOverride:false,
+    manualOfferOverride:false,
     pokemonPriceTrackerLastUpdated:item.pokemonPriceTrackerLastUpdated || '',
     category:item.category,
     set:item.set,
@@ -22798,7 +23002,7 @@ function buyItemOfferValue(item){
   // (roundBuyOffer). This is the single chokepoint for buy offer math —
   // tray display, totals, accepted cost basis, Pay Customer amount, and
   // printed/texted offers all flow through here.
-  if(Number(item.cashOffer) > 0) return roundBuyOffer(Number(item.cashOffer));
+  if(item.manualOfferOverride) return roundBuyOffer(Math.max(0, Number(item.cashOffer || 0)));
   const pct = parseFloat(document.getElementById('bl-pct')?.value || 50) / 100;
   return roundBuyOffer(Number(item.market || item.priceUsed || 0) * pct);
 }
@@ -23058,19 +23262,57 @@ function removeBuyItem(id){
 function updateBuyItem(id, field, value){
   const item = buyList.find(i => i.id === id);
   if(!item) return;
-  if(field === 'market') {
+  if(field === 'priceOption') {
+    const option = (item.buyPriceOptions || []).find(o => (o.key || buyPriceOptionKey(o)) === value);
+    if(option) {
+      item.selectedBuyPriceKey = value;
+      item.condition = option.condition || item.condition;
+      item.selectedCondition = option.condition || item.selectedCondition;
+      item.selectedFinish = option.finish || item.selectedFinish;
+      item.selectedPrinting = option.finishLabel || option.finish || item.selectedPrinting;
+      item.referenceMarketPrice = Number(option.price || 0);
+      item.market = Number(option.price || 0);
+      item.priceUsed = item.market;
+      item.priceLabel = option.label || option.source || 'Research price';
+      item.priceSource = option.source || item.priceSource;
+      item.resolvedPricePath = option.path || '';
+      item.resolvedPrice = item.market;
+      item.activePriceBasis = { ...(item.activePriceBasis || {}), basisType:option.basisType || 'raw', condition:option.conditionLabel || option.condition, finish:option.finishLabel || option.finish, price:item.market, source:option.source, pricePath:option.path, label:option.label, lastUpdated:option.lastUpdated, isExact:true };
+      item.manualMarketOverride = false;
+      item.manualOfferOverride = false;
+      delete item.cashOffer;
+    }
+  }
+  else if(field === 'market') {
     item.market = parseFloat(value) || 0;
     item.priceUsed = item.market;
-    item.priceLabel = item.priceSource === 'manual' ? 'Manual Price' : (item.priceLabel || item.priceSource || 'Market Price');
+    item.manualMarketOverride = true;
+    item.priceLabel = 'Manual market override';
   }
   else if(field === 'cashOffer') {
-    item.cashOffer = parseFloat(value) || 0;
+    item.cashOffer = Math.max(0, parseFloat(value) || 0);
+    item.manualOfferOverride = true;
     item.overrideReason = item.overrideReason || 'Manual offer override';
     logOpsEvent('offer_overridden', 'Overrode buy offer for ' + (item.name || id), { buySessionId:item.buySessionId || getActiveBuySession()?.buySessionId || '', itemId:id, cashOffer:item.cashOffer });
   }
   else item[field] = value;
   saveBuyList();
   renderBuyList();
+}
+
+function resetBuyItemPricing(id){
+  const item = buyList.find(i => i.id === id);
+  if(!item) return;
+  const option = (item.buyPriceOptions || []).find(o => (o.key || buyPriceOptionKey(o)) === item.selectedBuyPriceKey) || (item.buyPriceOptions || [])[0];
+  if(option) updateBuyItem(id, 'priceOption', option.key || buyPriceOptionKey(option));
+  else {
+    item.market = Number(item.referenceMarketPrice || item.priceUsed || 0);
+    item.manualMarketOverride = false;
+    item.manualOfferOverride = false;
+    delete item.cashOffer;
+    saveBuyList();
+    renderBuyList();
+  }
 }
 
 function updateBuyListOffer(){
@@ -23164,28 +23406,32 @@ function renderBuyList(){
     const added = !!i.inventoryId;
     const err   = i.inventoryError ? `<div style="color:var(--red);font-size:8px;margin-top:2px">${escHtml(String(i.inventoryError).slice(0,120))}</div>` : '';
     const sub   = [i.year, i.set, i.variant, i.card_number ? '#' + i.card_number : ''].filter(Boolean).join(' · ');
-    const offerVal = (i.market || i.cashOffer) ? '$' + Math.round(buyItemOfferValue(i)) : '…';
+    const offerVal = (i.market || i.manualOfferOverride) ? Math.round(buyItemOfferValue(i)) : '';
     const invBtn = added
       ? `<span style="font-family:monospace;font-size:9px;color:var(--g);white-space:nowrap">✓ INV</span>`
       : `<button class="hbtn" onclick="addBuyItemToInventory('${i.id}')" style="font-size:9px;padding:4px 8px;min-height:32px;color:var(--gold);white-space:nowrap" title="Add to inventory">+INV</button>`;
     // Phase 4: lazy image with error fallback — wrapped in a single div so
     // the img+placeholder pair counts as one nth-child for mobile flex ordering.
     const imgEl = i.imageUrl
-      ? `<div class="buy-tray-thumb-wrap"><img src="${escHtml(i.imageUrl)}" class="buy-tray-thumb" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><div class="buy-tray-thumb-ph" style="display:none">IMG</div></div>`
+      ? `<div class="buy-tray-thumb-wrap" onclick="openImageLightboxUrl('${encodeURIComponent(i.imageUrl)}','${encodeURIComponent(i.name || 'Card image')}')"><img src="${escHtml(i.imageUrl)}" class="buy-tray-thumb" alt="${escHtml(i.name || 'Card image')}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><div class="buy-tray-thumb-ph" style="display:none">IMG</div></div>`
       : '<div class="buy-tray-thumb-wrap"><div class="buy-tray-thumb-ph">IMG</div></div>';
-    return `<div class="buy-tray-item" style="grid-template-columns:48px 1fr 70px 80px 62px 42px 30px">
+    const priceOptions = (i.buyPriceOptions || []).map(o => ({ ...o, key:o.key || buyPriceOptionKey(o) }));
+    const conditionControl = priceOptions.length
+      ? `<select class="buy-tray-cond" title="Researched condition and finish" onchange="updateBuyItem('${i.id}','priceOption',this.value)" ${added ? 'disabled' : ''}>${priceOptions.map(o => `<option value="${escHtml(o.key)}" ${i.selectedBuyPriceKey===o.key?'selected':''}>${escHtml([o.condition, o.finishLabel || qplFinishLabel(o.finish), '$'+Number(o.price||0).toFixed(2)].filter(Boolean).join(' / '))}</option>`).join('')}</select>`
+      : `<select class="buy-tray-cond" onchange="updateBuyItem('${i.id}','condition',this.value)" ${added ? 'disabled' : ''}>${['NM','LP','MP','HP','DMG'].map(c => `<option value="${c}" ${String(i.condition||'NM')===c?'selected':''}>${c}</option>`).join('')}</select>`;
+    const priceNote = i.manualMarketOverride ? 'Manual market override' : (i.resolvedPricePath || i.priceLabel || i.priceSource || 'Manual price');
+    return `<div class="buy-tray-item">
       ${imgEl}
       <div class="buy-tray-info">
         <div class="buy-tray-name">${escHtml(i.name || 'Phone scan')}</div>
         <div class="buy-tray-sub">${escHtml(sub)}</div>
+        <div class="buy-tray-price-note">${escHtml(priceNote)}${(i.manualMarketOverride || i.manualOfferOverride) ? ` · <button class="buy-tray-reset" onclick="resetBuyItemPricing('${i.id}')">reset researched price</button>` : ''}</div>
         ${err}
       </div>
-      <select class="buy-tray-cond" onchange="updateBuyItem('${i.id}','condition',this.value)" ${added ? 'disabled' : ''}>
-        ${['NM','LP','MP','HP','DMG'].map(c => `<option value="${c}" ${String(i.condition||'NM')===c?'selected':''}>${c}</option>`).join('')}
-      </select>
+      ${conditionControl}
       <input type="number" step="0.01" value="${i.market||''}" placeholder="$mkt"
              class="buy-tray-mkt" onchange="updateBuyItem('${i.id}','market',this.value)" ${added ? 'disabled' : ''}>
-      <span class="buy-tray-offer-val">${offerVal}</span>
+      <input type="number" step="1" min="0" value="${offerVal}" placeholder="$offer" title="Agreed customer offer" class="buy-tray-mkt buy-tray-offer-val" onchange="updateBuyItem('${i.id}','cashOffer',this.value)" ${added ? 'disabled' : ''}>
       ${invBtn}
       <button class="buy-tray-rm" onclick="removeBuyItem('${i.id}')" aria-label="Remove">×</button>
     </div>`;
@@ -24294,7 +24540,7 @@ function ensureCheckoutRuntimeMarkup(){
 
 async function renderLockedCheckout(){
   ensureCheckoutRuntimeMarkup();
-  const cartData = lockedCheckoutSnapshot ? { items:lockedCheckoutSnapshot.lines.map(l => ({ name:l.title, category:l.category, price:l.adjusted_price, cost:l.cost_basis, condition:l.condition, originalPrice:l.original_price, adjustmentReason:l.discount_amount ? 'Locked adjustment' : '' })), discount:0, subtotal:lockedCheckoutSnapshot.subtotal, tax:lockedCheckoutSnapshot.tax_total, total:lockedCheckoutSnapshot.total } : await getActiveCartData();
+  const cartData = lockedCheckoutSnapshot ? { items:lockedCheckoutSnapshot.lines.map(l => ({ name:l.title, category:l.category, price:l.adjusted_price, cost:l.cost_basis, condition:l.condition, img:l.image_url, originalPrice:l.original_price, adjustmentReason:l.discount_amount ? 'Locked adjustment' : '' })), discount:0, subtotal:lockedCheckoutSnapshot.subtotal, tax:lockedCheckoutSnapshot.tax_total, total:lockedCheckoutSnapshot.total } : await getActiveCartData();
   renderDealerCartTools(cartData);
   renderCustomerDisplaySnapshot();
   const banner = document.getElementById('checkout-offline-banner');
@@ -24310,7 +24556,10 @@ async function renderCustomerDisplay(){
   checkoutState = (cartData.items || []).length ? CHECKOUT_STATES.BUILDING_CART : CHECKOUT_STATES.IDLE;
   renderDealerCartTools(cartData);
   const display = document.getElementById('customer-display');
-  if(display) display.classList.remove('on');
+  if(document.body.classList.contains('customer-display-mode')) {
+    display?.classList.add('on');
+    renderCustomerLiveCart(cartData);
+  } else if(display) display.classList.remove('on');
 }
 
 function renderDealerCartTools(cartData = getCartDataLocal()){
@@ -24330,6 +24579,7 @@ function renderDealerCartTools(cartData = getCartDataLocal()){
     // customer-display-mode is active, not just visually hidden by CSS.
     const isCustomerFacing = document.body.classList.contains('customer-display-mode');
     el.innerHTML = items.map((i, idx) => `<div class="dealer-line ${locked?'locked':''}">
+    ${i.img || i.image ? `<img class="dealer-line-image" src="${escHtml(i.img || i.image)}" alt="${escHtml(i.name || i.title || 'Item')}" onclick="openImageLightboxUrl('${encodeURIComponent(i.img || i.image)}','${encodeURIComponent(i.name || i.title || 'Item')}')" onerror="this.outerHTML='<div class=dealer-line-image-ph>NO IMAGE</div>'">` : '<div class="dealer-line-image-ph">NO IMAGE</div>'}
     <div><div class="dealer-line-name">${escHtml(i.name || i.title || 'Item')}</div><div class="dealer-line-sub">${escHtml([i.sub, i.category, i.condition, i.adjustmentReason ? 'Adjusted: '+i.adjustmentReason : ''].filter(Boolean).join(' / '))}</div></div>
     <div style="font-family:'Orbitron',monospace;color:var(--gold);text-align:right">$${Number(i.price ?? i.adjusted_price ?? 0).toFixed(2)}</div>
     ${isCustomerFacing ? '' : `<div class="dealer-profit">Cost $${Number(i.cost ?? i.cost_basis ?? 0).toFixed(2)}<br>Profit $${(Number(i.price ?? i.adjusted_price ?? 0)-Number(i.cost ?? i.cost_basis ?? 0)).toFixed(2)}</div>`}
@@ -24340,7 +24590,7 @@ function renderDealerCartTools(cartData = getCartDataLocal()){
   if(actions) {
     actions.innerHTML = locked
       ? `<button class="hbtn danger" onclick="cancelLockedCheckout()">CANCEL CHECKOUT</button><button class="hbtn" onclick="enterCustomerDisplayMode()">SHOW CUSTOMER PAYMENT</button>`
-      : `<button class="hbtn" onclick="lockCheckoutForPayment()" ${items.length?'':'disabled'}>PROCEED TO PAYMENT</button><button class="hbtn danger" onclick="clearCustomerDisplayCart()" ${items.length?'':'disabled'}>CLEAR CART</button><button class="hbtn" onclick="openScannerCheckout()">PHONE SCANNER CHECKOUT</button>`;
+      : `<button class="hbtn" onclick="lockCheckoutForPayment()" ${items.length?'':'disabled'}>PROCEED TO PAYMENT</button><button class="hbtn" onclick="enterCustomerDisplayMode()" ${items.length?'':'disabled'}>SHOW CUSTOMER CART</button><button class="hbtn danger" onclick="clearCustomerDisplayCart()" ${items.length?'':'disabled'}>CLEAR CART</button><button class="hbtn" onclick="openScannerCheckout()">PHONE SCANNER CHECKOUT</button>`;
   }
 }
 
@@ -24380,11 +24630,12 @@ function closeP2pQrModal(){
   if(linkRow) linkRow.style.display = 'none';
 }
 
-function enterCustomerDisplayMode(){
+async function enterCustomerDisplayMode(){
   ensureCheckoutRuntimeMarkup();
   document.body.classList.add('customer-display-mode');
   document.getElementById('customer-display')?.classList.add('on');
-  renderCustomerDisplaySnapshot();
+  if(lockedCheckoutSnapshot) renderCustomerDisplaySnapshot();
+  else renderCustomerLiveCart(await getActiveCartData());
 }
 
 function exitCustomerDisplayMode(){
@@ -24410,12 +24661,33 @@ function renderCustomerDisplaySnapshot(){
     if(workbench) workbench.classList.remove('on');
     return;
   }
-  if(itemsEl) itemsEl.innerHTML = s.lines.map(l => `<div class="customer-pay-line"><div><div class="customer-pay-name">${escHtml(l.title)}</div><div class="customer-pay-sub">${escHtml([l.category,l.condition].filter(Boolean).join(' / '))}</div></div><div class="customer-pay-price">$${Number(l.adjusted_price || 0).toFixed(2)}</div></div>`).join('');
+  if(itemsEl) itemsEl.innerHTML = s.lines.map(l => `<div class="customer-pay-line">${l.image_url ? `<img class="customer-pay-image" src="${escHtml(l.image_url)}" alt="${escHtml(l.title)}" onclick="openImageLightboxUrl('${encodeURIComponent(l.image_url)}','${encodeURIComponent(l.title)}')" onerror="this.outerHTML='<div class=customer-pay-image-ph>NO IMAGE</div>'">` : '<div class="customer-pay-image-ph">NO IMAGE</div>'}<div><div class="customer-pay-name">${escHtml(l.title)}</div><div class="customer-pay-sub">${escHtml([l.category,l.condition,l.finish].filter(Boolean).join(' / '))}</div></div><div class="customer-pay-price">$${Number(l.adjusted_price || 0).toFixed(2)}</div></div>`).join('');
   if(totalEl) totalEl.textContent = '$' + Number(s.total || 0).toFixed(2);
   if(countEl) countEl.textContent = s.lines.length + ' item' + (s.lines.length===1?'':'s') + ' locked for checkout';
   if(breakdownEl) breakdownEl.innerHTML = `Subtotal $${s.subtotal.toFixed(2)}${s.discount_total ? ' / Discount -$' + s.discount_total.toFixed(2) : ''}${s.tax_total ? ' / Tax $' + s.tax_total.toFixed(2) : ''}`;
   renderCustomerPaymentLinks(s.total, payEl);
   if(setupEl) setupEl.textContent = checkoutState === CHECKOUT_STATES.PAYMENT_PENDING ? 'Payment pending dealer confirmation.' : '';
+}
+
+function renderCustomerLiveCart(cartData = { items:[] }){
+  ensureCheckoutRuntimeMarkup();
+  const normalized = normalizeCartTotals(JSON.parse(JSON.stringify(cartData || { items:[] })));
+  const items = normalized.items || [];
+  const itemsEl = document.getElementById('cd-items');
+  const totalEl = document.getElementById('cd-total');
+  const countEl = document.getElementById('cd-items-count');
+  const breakdownEl = document.getElementById('cd-total-breakdown');
+  const payEl = document.getElementById('cd-pay-links');
+  const setupEl = document.getElementById('cd-payment-setup');
+  const workbench = document.getElementById('customer-payment-workbench');
+  if(itemsEl) itemsEl.innerHTML = items.map(i => `<div class="customer-pay-line">${i.img || i.image ? `<img class="customer-pay-image" src="${escHtml(i.img || i.image)}" alt="${escHtml(i.name || 'Item')}" onclick="openImageLightboxUrl('${encodeURIComponent(i.img || i.image)}','${encodeURIComponent(i.name || 'Item')}')" onerror="this.outerHTML='<div class=customer-pay-image-ph>NO IMAGE</div>'">` : '<div class="customer-pay-image-ph">NO IMAGE</div>'}<div><div class="customer-pay-name">${escHtml(i.name || i.title || 'Item')}</div><div class="customer-pay-sub">${escHtml([i.sub,i.category,i.condition].filter(Boolean).join(' / '))}</div></div><div class="customer-pay-price">$${Number(i.price || 0).toFixed(2)}</div></div>`).join('');
+  const total = Number(normalized.total || normalized.items?.reduce((a,i) => a + Number(i.price || 0), 0) || 0);
+  if(totalEl) totalEl.textContent = '$' + total.toFixed(2);
+  if(countEl) countEl.textContent = items.length ? items.length + ' item' + (items.length===1?'':'s') + ' · Review your cart' : 'Waiting for items';
+  if(breakdownEl) breakdownEl.textContent = items.length ? 'Cart updates automatically as the dealer makes changes.' : '';
+  if(payEl) payEl.innerHTML = '';
+  if(setupEl) setupEl.textContent = items.length ? 'Payment options appear after the order is confirmed.' : '';
+  if(workbench) { workbench.innerHTML = ''; workbench.classList.remove('on'); }
 }
 
 function renderCustomerPaymentLinks(total, el){
