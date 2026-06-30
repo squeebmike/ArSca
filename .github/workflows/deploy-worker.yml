@@ -23,7 +23,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
 
       - name: Validate required GitHub secrets
         shell: bash
@@ -71,6 +71,8 @@ jobs:
           const kv = config.kv_namespaces.find(k => k.binding === 'LBA_KV');
           if (!kv) throw new Error('Missing LBA_KV namespace binding');
           if (!kv.id || /placeholder|changeme|todo/i.test(kv.id)) throw new Error('LBA_KV namespace id is missing or placeholder');
+          const r2 = (config.r2_buckets || []).find(binding => binding.binding === 'MTG_CATALOG_R2');
+          if (!r2?.bucket_name) throw new Error('Missing MTG_CATALOG_R2 bucket binding');
           if (config.account_id && config.account_id !== process.env.CLOUDFLARE_ACCOUNT_ID) {
             throw new Error('wrangler account_id does not match CLOUDFLARE_ACCOUNT_ID secret');
           }
@@ -82,6 +84,7 @@ jobs:
             main: config.main,
             compatibilityDate: config.compatibility_date,
             kvBindings: config.kv_namespaces.map(k => ({ binding: k.binding, id: k.id })),
+            r2Bindings: config.r2_buckets.map(binding => ({ binding: binding.binding, bucket: binding.bucket_name })),
           }, null, 2));
           NODE
           npx wrangler deploy --config wrangler.deploy.jsonc --dry-run
@@ -140,6 +143,8 @@ jobs:
             body: JSON.stringify({ categoryKey: 'deploy-probe-' + Date.now() }),
           }, res => res.status === 400 || res.ok);
           await request('offline cache manifest', '/offline/cache/manifest');
+          await request('MTG R2 manifest', '/catalog/mtg/manifest', {}, res => res.ok || res.status === 404);
+          await request('MTG R2 file validation', '/catalog/mtg/download?file=invalid', {}, res => res.status === 400);
           await request('PokemonPriceTracker cards route', '/pricing/pokemonpricetracker/cards?search=charizard&language=english&limit=1', {}, res => res.status !== 404);
           console.log(JSON.stringify({ ok: true, workerUrl, checkedAt: new Date().toISOString() }));
           NODE

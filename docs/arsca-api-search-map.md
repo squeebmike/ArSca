@@ -7,7 +7,7 @@
 | Category | Primary source | Search use | Detail use |
 | --- | --- | --- | --- |
 | Pokemon | PokemonPriceTracker | Cards, sets, sealed products | Exact `tcgPlayerId`, prices, history, eBay/graded values, population |
-| MTG | Scryfall and the downloaded Scryfall bulk catalog | Name/fuzzy and oracle/type/keyword search | Images, print data, USD/foil values, sets |
+| MTG | Scryfall offline catalog + PriceCharting offline snapshot | Name, set, collector, artist, oracle/type/keyword search | Scryfall identity/images plus linked daily PriceCharting values |
 | Sports cards | SportsCardsPro / PriceCharting | Multi-result product candidates | Exact product ID and current grade values |
 | Comics | PriceCharting | Multi-result issue/product candidates | Exact product ID and comic grade values |
 | Comic metadata | Existing ComicVine/GCD-compatible routes only where already wired | Covers and issue metadata | Not the primary pricing source |
@@ -45,14 +45,20 @@ Search uses the full adapted natural-language query with `language` and `limit=5
 
 ### Scryfall
 
-The current dashboard uses Scryfall directly because it has no private key:
+The dashboard's default MTG mode is offline first. A daily server-side job builds an R2 bundle from Scryfall `default_cards` and the private PriceCharting MTG download. Devices import the bundle into IndexedDB and do not request full Scryfall data themselves.
+
+Worker bundle routes:
+
+- `GET /catalog/mtg/manifest`
+- `GET /catalog/mtg/download?file=cards|prices|links|sets`
+
+Live fallback may use Scryfall directly because it has no private key:
 
 - `GET https://api.scryfall.com/cards/search?q=`
 - `GET https://api.scryfall.com/cards/named?fuzzy=` where existing helpers use it
 - `GET https://api.scryfall.com/sets`
-- `GET https://api.scryfall.com/bulk-data`
 
-Use the local downloaded bulk catalog first when configured. Mechanic searches use Scryfall oracle syntax such as `o:deathtouch o:landfall`; likely card names continue through the existing name/full-text behavior.
+Search modes are Offline first/online backup, Online only, and Offline only. Local results are labeled `Scryfall offline catalog`; joined values are labeled `PriceCharting offline snapshot`. See `docs/mtg-offline-r2-pipeline.md` for bundle, R2, IndexedDB, and image-cache details.
 
 ## PriceCharting Price Fields
 

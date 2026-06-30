@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.06.29.02-universal-query">
+<meta name="version" content="2026.06.30.01-mtg-offline-r2">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1318,7 +1318,8 @@ body.show-mode .inv-sync-badge{display:none;}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-<script src="scripts/query-routing.js?v=2026.06.29.02-universal-query"></script>
+<script src="scripts/query-routing.js?v=2026.06.30.01-mtg-offline-r2"></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.06.30.01-mtg-offline-r2"></script>
 </head>
 <body>
 
@@ -1368,7 +1369,7 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.29.02-universal-query</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.30.01-mtg-offline-r2</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
@@ -1395,7 +1396,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.29.02-universal-query</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.30.01-mtg-offline-r2</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -2628,9 +2629,9 @@ body.show-mode .inv-sync-badge{display:none;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.06.29.02-universal-query';
+const APP_VERSION = '2026.06.30.01-mtg-offline-r2';
 window.APP_VERSION = APP_VERSION;
-const branchName = 'pokemon-v2-core';
+const branchName = 'main';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
 const POKEMON_EXACT_CACHE_VERSION = 'pokemon-exact-v3-price-matrix';
 const SUPABASE_URL = 'https://vroknjrxubsqyexngwus.supabase.co';
@@ -5342,7 +5343,7 @@ async function renderOfflineCatalogManagerPanel(){
     mtgCatalogCounts().catch(() => ({ cards:0, sets:0, meta:{} })),
   ]);
   const row = (label, count, downloadedAt, status, actions, source) => `
-    <div style="display:grid;grid-template-columns:minmax(140px,1fr) 100px 160px minmax(120px,1fr) auto;gap:8px;align-items:center;border-top:1px solid var(--border);padding:9px 0;font-family:monospace;font-size:10px">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;align-items:center;border-top:1px solid var(--border);padding:9px 0;font-family:monospace;font-size:10px">
       <b style="color:var(--text)">${escHtml(label)}</b>
       <span>${Number(count || 0).toLocaleString()} rows</span>
       <span style="color:var(--dim)">${downloadedAt ? escHtml(new Date(downloadedAt).toLocaleString()) : 'Not downloaded'}</span>
@@ -5356,13 +5357,25 @@ async function renderOfflineCatalogManagerPanel(){
     ['Population', pptPop, `<button class="hbtn" onclick="downloadPokemonExport('population')">DOWNLOAD</button><button class="hbtn" onclick="clearPokemonExport('population')">CLEAR</button>`],
   ].map(([label, meta, actions]) => row(label, meta?.rowCount || 0, meta?.downloadedAt, meta?.error || '', actions, 'PokemonPriceTracker Export')).join('');
   const mtgBusy = localStorage.getItem('mtg_bulk_status') === 'downloading';
+  const mtgMode = mtgOfflineSearchMode();
+  const mtgStatus = mtg.cards ? 'Current / ' + Number(mtg.sets || 0).toLocaleString() + ' sets' : 'Not downloaded';
   body.innerHTML = `
     <div style="font-family:monospace;font-size:10px;color:var(--dim);line-height:1.55;margin-bottom:8px">Cache policy: temporary Research searches are disposable. Downloaded catalogs are official offline reference data. Inventory remains owned stock only.</div>
     <div style="font-family:'Orbitron',monospace;color:var(--g);font-size:11px;letter-spacing:.05em;margin-top:8px">POKEMON / POKEMONPRICETRACKER BUSINESS EXPORTS</div>
     ${pptRows}
-    <div style="font-family:'Orbitron',monospace;color:#5ba3f5;font-size:11px;letter-spacing:.05em;margin-top:16px">MTG / SCRYFALL BULK CATALOG</div>
-    ${row('Default Cards', mtg.cards || mtg.meta?.rowCount || 0, mtg.meta?.downloadedAt, mtg.meta?.error || (mtg.cards ? (mtg.sets + ' sets indexed') : ''), `<button class="hbtn" onclick="downloadMtgBulkCatalog()" ${mtgBusy?'disabled':''}>${mtgBusy?'DOWNLOADING...':'DOWNLOAD'}</button><button class="hbtn" onclick="clearMtgBulkCatalog()">CLEAR</button>`, 'Scryfall default_cards')}
-    <div style="font-family:monospace;font-size:9px;color:var(--dim);margin-top:8px">Scryfall source: /bulk-data default_cards. This is large; use Wi-Fi and keep the tab open while downloading/parsing.</div>`;
+    <div style="font-family:'Orbitron',monospace;color:#5ba3f5;font-size:11px;letter-spacing:.05em;margin-top:16px">MTG OFFLINE DATA</div>
+    ${row('Scryfall cards', mtg.cards || 0, mtg.meta?.downloadedAt, mtgStatus, `<button class="hbtn" onclick="downloadMtgBulkCatalog()" ${mtgBusy?'disabled':''}>${mtgBusy?'SYNCING...':'REFRESH MTG OFFLINE DATA'}</button><button class="hbtn" onclick="clearMtgBulkCatalog()">CLEAR DATA</button>`, 'Scryfall offline catalog')}
+    ${row('PriceCharting snapshot', mtg.prices || 0, mtg.meta?.downloadedAt, (mtg.links || 0).toLocaleString() + ' linked cards', `<button class="hbtn" onclick="clearMtgImageCache()">CLEAR IMAGE CACHE (${Number(mtg.images||0).toLocaleString()})</button>`, 'PriceCharting offline snapshot')}
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;border-top:1px solid var(--border);padding:10px 0;font-family:monospace;font-size:10px">
+      <label for="mtg-offline-mode" style="color:var(--text);font-weight:700">SEARCH MODE</label>
+      <select id="mtg-offline-mode" onchange="setMtgOfflineSearchMode(this.value)" style="min-width:220px;max-width:100%">
+        <option value="offline_first" ${mtgMode==='offline_first'?'selected':''}>Offline first, online backup</option>
+        <option value="online_only" ${mtgMode==='online_only'?'selected':''}>Online only</option>
+        <option value="offline_only" ${mtgMode==='offline_only'?'selected':''}>Offline only</option>
+      </select>
+      <span id="mtg-offline-progress" style="color:var(--gold);min-width:160px">${mtgBusy?'Checking manifest...':''}</span>
+    </div>
+    <div style="font-family:monospace;font-size:9px;color:var(--dim);line-height:1.55;margin-top:8px">Catalog version: ${escHtml(mtg.meta?.catalogVersion || 'not downloaded')} / Prices version: ${escHtml(mtg.meta?.pricesVersion || 'not downloaded')}. R2 holds the daily compressed bundle; this device imports it into IndexedDB. PriceCharting values are a daily snapshot, not live prices. Images are cached separately only when viewed.</div>`;
 }
 
 async function renderPokemonExportPanel(){
@@ -16467,16 +16480,99 @@ function mtgNormalizeBulkCard(c = {}, downloadedAt = new Date().toISOString()){
 }
 
 async function mtgCatalogMeta(){
-  return catalogDbGet('meta', 'mtg_default_cards').catch(() => null);
+  const status = await window.ArsCaMtgOffline?.status().catch(() => null);
+  return status ? {
+    key:'mtg_r2_catalog', rowCount:status.cards, setCount:status.sets, priceCount:status.prices,
+    linkCount:status.links, imageCount:status.images, downloadedAt:status.lastImportedAt,
+    generatedAt:status.lastImportedAt, catalogVersion:status.catalogVersion,
+    pricesVersion:status.pricesVersion, importStatus:status.importStatus,
+  } : null;
 }
 
 async function mtgCatalogCounts(){
-  const [cards, sets, meta] = await Promise.all([
-    catalogDbCount('mtg_cards').catch(() => 0),
-    catalogDbCount('mtg_sets').catch(() => 0),
-    mtgCatalogMeta(),
-  ]);
-  return { cards, sets, meta:meta || {} };
+  const status = await window.ArsCaMtgOffline?.status().catch(() => null);
+  return status ? { cards:status.cards, sets:status.sets, prices:status.prices, links:status.links, images:status.images, meta:await mtgCatalogMeta() } : { cards:0, sets:0, prices:0, links:0, images:0, meta:{} };
+}
+
+function mtgOfflineSearchMode(){
+  const mode = localStorage.getItem('mtg_offline_mode') || 'offline_first';
+  return ['offline_first','online_only','offline_only'].includes(mode) ? mode : 'offline_first';
+}
+
+function setMtgOfflineSearchMode(mode){
+  localStorage.setItem('mtg_offline_mode', ['offline_first','online_only','offline_only'].includes(mode) ? mode : 'offline_first');
+  renderOfflineCatalogManagerPanel();
+}
+
+function mtgOfflineLegacyCard(card = {}){
+  const price = card.offlinePrice || null;
+  const faces = (card.cardFaces || []).map(face => ({
+    name:face.name || '', printed_name:face.printedName || '', mana_cost:face.manaCost || '',
+    type_line:face.typeLine || '', oracle_text:face.oracleText || '', colors:face.colors || [],
+    artist:face.artist || '', image_uris:face.imageUris || {},
+  }));
+  return {
+    id:card.scryfallId || '', oracle_id:card.oracleId || '', name:card.name || '', printed_name:card.printedName || '',
+    set:card.setCode || '', set_name:card.setName || '', collector_number:card.collectorNumber || '',
+    rarity:card.rarity || '', artist:card.artist || '', mana_cost:card.manaCost || '', cmc:card.cmc,
+    type_line:card.typeLine || '', oracle_text:card.oracleText || '', keywords:card.keywords || [],
+    colors:card.colors || [], color_identity:card.colorIdentity || [], legalities:card.legalities || {},
+    finishes:card.finishes || [], prices:{ ...(card.prices || {}), ...(price?.loosePrice != null ? { usd:String(price.loosePrice) } : {}) },
+    image_uris:card.imageUris || {}, card_faces:faces, scryfall_uri:card.scryfallUri || '',
+    purchase_uris:card.purchaseUris || {}, released_at:card.releasedAt || '',
+    offlinePrice:price, offlinePriceLink:card.offlinePriceLink || null, catalogVersion:card.catalogVersion || '',
+    offlineMatchWhy:card.offlineMatchWhy || [],
+  };
+}
+
+function mtgOfflineRecordFromLegacy(card = {}){
+  return {
+    scryfallId:card.id || '', oracleId:card.oracle_id || '', name:card.name || '', printedName:card.printed_name || '',
+    setCode:card.set || '', setName:card.set_name || '', collectorNumber:card.collector_number || '', rarity:card.rarity || '',
+    artist:card.artist || '', manaCost:card.mana_cost || '', cmc:card.cmc, typeLine:card.type_line || '', oracleText:card.oracle_text || '',
+    keywords:card.keywords || [], colors:card.colors || [], colorIdentity:card.color_identity || [], legalities:card.legalities || {},
+    finishes:card.finishes || [], prices:card.prices || {}, imageUris:card.image_uris || {},
+    cardFaces:(card.card_faces || []).map(face => ({ name:face.name || '', printedName:face.printed_name || '', manaCost:face.mana_cost || '', typeLine:face.type_line || '', oracleText:face.oracle_text || '', colors:face.colors || [], artist:face.artist || '', imageUris:face.image_uris || {} })),
+    scryfallUri:card.scryfall_uri || '', purchaseUris:card.purchase_uris || {}, releasedAt:card.released_at || '',
+    offlinePrice:card.offlinePrice || null, offlinePriceLink:card.offlinePriceLink || null, catalogVersion:card.catalogVersion || '',
+  };
+}
+
+function mtgOfflineCardToQplRow(card = {}){
+  const legacy = mtgOfflineLegacyCard(card);
+  const row = scryfallCardToQplRow(legacy);
+  if(!row) return null;
+  const price = card.offlinePrice || null;
+  const link = card.offlinePriceLink || null;
+  const snapshot = card.catalogVersion || price?.updatedAt?.slice(0,10) || '';
+  row.source = 'scryfall';
+  row.cache = { state:'offline-catalog', source:'Scryfall offline catalog', updatedAt:card.downloadedAt || snapshot };
+  row.lookupDebug = { path:'Scryfall offline catalog', matchWhy:card.offlineMatchWhy || [], catalogVersion:snapshot };
+  row.priceSource = price ? 'PriceCharting offline snapshot' : 'No PriceCharting match yet';
+  row.pricingSource = row.priceSource;
+  row.note = [card.typeLine, (card.offlineMatchWhy || []).length ? 'Matched: ' + card.offlineMatchWhy.join(', ') : ''].filter(Boolean).join(' / ');
+  row.confidence = Number(link?.confidence || 90);
+  row.lastPriceSyncAt = price?.updatedAt || snapshot;
+  if(price){
+    row.pricecharting = {
+      productId:price.pricechartingId || '', productName:price.productName || '', consoleName:price.consoleName || 'Magic Cards',
+      prices:{ ungraded:price.loosePrice, grade7:price.grade7Price, grade8:price.grade8Price, grade9:price.grade9Price,
+        grade9_5:price.grade95Price, psa10:price.psa10Price, bgs10:price.bgs10Price, cgc10:price.cgc10Price, sgc10:price.sgc10Price },
+      confidence:Number(link?.confidence || 0) >= 95 ? 'high confidence offline link' : 'possible offline price match',
+      lastUpdated:price.updatedAt || snapshot,
+      url:'https://www.pricecharting.com/search-products?q=' + encodeURIComponent(price.productName || card.name || '') + '&type=prices',
+    };
+    if(Number(price.loosePrice || 0) > 0){
+      const normal = (row.availableVariants || []).find(v => normalizeQplFinish(v.finish) === 'normal') || row.availableVariants?.[0];
+      if(normal){ normal.marketPrice = Number(price.loosePrice); normal.priceSource = 'PriceCharting offline snapshot'; normal.lastUpdated = price.updatedAt || snapshot; }
+      row.market = Number(price.loosePrice);
+      applyQplSelectedVariant(row);
+      row.resolvedPrice = Number(price.loosePrice);
+      row.resolvedPricePath = 'mtg_prices.loosePrice';
+      row.priceSource = 'PriceCharting offline snapshot';
+    }
+  }
+  return row;
 }
 
 async function downloadMtgBulkCatalog(){
@@ -16484,33 +16580,16 @@ async function downloadMtgBulkCatalog(){
   localStorage.setItem(statusKey, 'downloading');
   renderOfflineCatalogManagerPanel();
   try {
-    const manifestRes = await fetch('https://api.scryfall.com/bulk-data', { cache:'no-store' });
-    if(!manifestRes.ok) throw new Error('Scryfall bulk manifest HTTP ' + manifestRes.status);
-    const manifest = await manifestRes.json();
-    const bulk = (manifest.data || []).find(x => x.type === 'default_cards');
-    if(!bulk?.download_uri) throw new Error('Scryfall default_cards bulk file not found');
-    const dataRes = await fetch(bulk.download_uri, { cache:'no-store' });
-    if(!dataRes.ok) throw new Error('Scryfall default_cards HTTP ' + dataRes.status);
-    const cardsRaw = await dataRes.json();
-    if(!Array.isArray(cardsRaw)) throw new Error('Scryfall bulk payload was not an array');
-    const downloadedAt = new Date().toISOString();
-    const cards = cardsRaw.map(c => mtgNormalizeBulkCard(c, downloadedAt)).filter(c => c.id);
-    const setMap = new Map();
-    cards.forEach(c => {
-      if(!c.set) return;
-      const prev = setMap.get(c.set) || { code:c.set, name:c.set_name || c.set, set_type:c.raw?.set_type || '', released_at:c.released_at || '', card_count:0, provider:'Scryfall', downloadedAt };
-      prev.card_count++;
-      if(c.released_at && (!prev.released_at || c.released_at < prev.released_at)) prev.released_at = c.released_at;
-      setMap.set(c.set, prev);
+    if(!window.ArsCaMtgOffline) throw new Error('MTG offline module did not load');
+    const result = await window.ArsCaMtgOffline.sync({
+      workerBase:WORKER,
+      onProgress:detail => {
+        const note = document.getElementById('mtg-offline-progress');
+        if(note) note.textContent = detail.count ? `${detail.stage}: ${Number(detail.count).toLocaleString()} / ${Number(detail.total || 0).toLocaleString()}` : detail.stage;
+      }
     });
-    await catalogDbClear('mtg_cards');
-    await catalogDbClear('mtg_sets');
-    await catalogDbPutBatch('mtg_cards', cards);
-    await catalogDbPutBatch('mtg_sets', [...setMap.values()]);
-    await catalogDbPut('meta', { key:'mtg_default_cards', type:'default_cards', rowCount:cards.length, setCount:setMap.size, downloadedAt, providerUpdatedAt:bulk.updated_at || '', size:bulk.size || 0, error:null });
-    toast_dash('Scryfall catalog downloaded: ' + cards.length.toLocaleString() + ' cards');
+    toast_dash(result.updated ? `MTG offline catalog updated to ${result.manifest.version}` : 'MTG offline catalog current');
   } catch(e) {
-    await catalogDbPut('meta', { key:'mtg_default_cards', type:'default_cards', rowCount:0, downloadedAt:null, error:e.message }).catch(()=>{});
     toast_dash('MTG catalog download failed: ' + e.message);
   }
   localStorage.removeItem(statusKey);
@@ -16518,33 +16597,44 @@ async function downloadMtgBulkCatalog(){
 }
 
 async function clearMtgBulkCatalog(){
-  if(!confirm('Clear downloaded Scryfall catalog from this browser? Inventory is not touched.')) return;
-  await catalogDbClear('mtg_cards').catch(()=>{});
-  await catalogDbClear('mtg_sets').catch(()=>{});
-  await catalogDbPut('meta', { key:'mtg_default_cards', type:'default_cards', rowCount:0, setCount:0, downloadedAt:null, error:null }).catch(()=>{});
+  if(!confirm('Clear the MTG offline catalog and price snapshot from this device? Inventory is not touched.')) return;
+  await window.ArsCaMtgOffline?.clearAll();
   renderOfflineCatalogManagerPanel();
   toast_dash('MTG offline catalog cleared');
 }
 
+async function clearMtgImageCache(){
+  if(!confirm('Clear cached MTG card images from this device? Card data and inventory are not touched.')) return;
+  await window.ArsCaMtgOffline?.clearImageCache();
+  renderOfflineCatalogManagerPanel();
+  toast_dash('MTG image cache cleared');
+}
+
 async function searchMtgCatalogExport(query){
-  if(!query) return [];
-  const terms = String(query || '').toLowerCase().replace(/[^a-z0-9\s]/g,' ').split(/\s+/).filter(Boolean);
-  if(!terms.length) return [];
-  const rows = await catalogDbAll('mtg_cards').catch(() => []);
-  return rows.filter(r => terms.every(t => (r.searchText || '').includes(t))).slice(0, 50).map(c => {
-    const row = scryfallCardToQplRow(c.raw || c);
-    return { ...row, source:'scryfall_bulk_catalog', priceSource:'Offline Catalog - Scryfall default_cards', cache:{ state:'catalog', source:'Scryfall default_cards', updatedAt:c.downloadedAt || '' } };
-  });
+  if(!query || !window.ArsCaMtgOffline) return [];
+  const cards = await window.ArsCaMtgOffline.search(query, 50);
+  const rows = cards.map(mtgOfflineCardToQplRow).filter(Boolean);
+  if(!navigator.onLine) {
+    await Promise.all(rows.map(async (row, i) => {
+      const card = cards[i], url = card?.imageUris?.normal || card?.cardFaces?.[0]?.imageUris?.normal || '';
+      if(!url) return;
+      const cached = await window.ArsCaMtgOffline.cachedImageUrl({ scryfallId:card.scryfallId, url, size:'normal', faceIndex:0 }).catch(() => '');
+      if(cached) row.imageUrl = cached;
+    }));
+  }
+  return rows;
 }
 
 async function mtgCatalogSets(){
-  const sets = await catalogDbAll('mtg_sets').catch(() => []);
-  return sets.sort((a,b) => String(b.released_at || '').localeCompare(String(a.released_at || '')));
+  if(!window.ArsCaMtgOffline) return [];
+  return (await window.ArsCaMtgOffline.sets()).map(set => ({
+    ...set, code:set.setCode || '', name:set.setName || '', released_at:set.releasedAt || '', card_count:Number(set.cardCount || 0),
+  }));
 }
 
 async function mtgCatalogCardsBySet(setCode){
-  const rows = await catalogDbAll('mtg_cards').catch(() => []);
-  return rows.filter(c => String(c.set || '').toLowerCase() === String(setCode || '').toLowerCase()).map(c => c.raw || c);
+  if(!window.ArsCaMtgOffline) return [];
+  return (await window.ArsCaMtgOffline.cardsBySet(setCode)).map(mtgOfflineLegacyCard);
 }
 
 async function pokemonCatalogExportSets(){
@@ -16783,33 +16873,14 @@ async function mtgDbPut(store, record){ const db = await mtgDb(); return new Pro
 async function mtgDbAll(store){ const db = await mtgDb(); return new Promise((res,rej)=>{ const tx = db.transaction(store,'readonly'); const req = tx.objectStore(store).getAll(); req.onsuccess = e => res(e.target.result || []); req.onerror = e => rej(e.target.error); }); }
 
 async function saveMtgCacheResults(query, rows = [], source = 'Scryfall'){
-  const mtgRows = (rows || []).filter(r => r.source === 'scryfall' || qplCategoryKey(r.category) === 'mtg' || isMtgLookupIntent(query, r.category));
-  if(!mtgRows.length) return;
-  await Promise.all(mtgRows.slice(0, 60).map(async row => {
-    const cacheKey = ['mtg', row.scryfallId || row.productId || '', (row.selectedFinish || row.finish || 'normal'), (row.set || '').toLowerCase().replace(/\s+/g,'_')].filter(Boolean).join('|');
-    await mtgDbPut('cards', { cacheKey, query: (query||'').toLowerCase().trim(), storeId: getActiveStoreId(), cacheVersion: MTG_CACHE_VERSION, updatedAt: new Date().toISOString(), source: source || 'Scryfall', card: row, searchText: [row.name, row.set, row.year, row.variant, row.card_number, row.extraInfo?.typeLine, row.extraInfo?.treatment].filter(Boolean).join(' ').toLowerCase() });
-  }));
-  await mtgDbPut('meta', { key:'lastMtgSyncAt', value: new Date().toISOString() });
+  // MTG is a full versioned catalog. Per-query result caches would duplicate records
+  // and can become stale independently of the daily R2 snapshot.
+  return;
 }
 
 async function searchMtgOfflineCache(query, cat = ''){
-  if(!isMtgLookupIntent(query, cat)) return [];
-  const catalogHits = await searchMtgCatalogExport(query).catch(() => []);
-  const terms = (query||'').toLowerCase().replace(/[^a-z0-9\s]/g,' ').split(/\s+/).filter(Boolean);
-  const cards = await mtgDbAll('cards').catch(() => []);
-  const tempHits = cards
-    .filter(c => c.storeId === getActiveStoreId() && c.cacheVersion === MTG_CACHE_VERSION)
-    .filter(c => terms.every(t => (c.searchText || '').includes(t)))
-    .sort((a,b) => new Date(b.updatedAt||0) - new Date(a.updatedAt||0))
-    .slice(0, 40)
-    .map(c => ({ ...(c.card||{}), cache:{ state: navigator.onLine ? 'temporary' : 'offline-temporary', updatedAt: c.updatedAt, source: c.source||'Temporary MTG search cache' }, priceSource: ((c.card?.priceSource)||'Scryfall') + ' (temporary search cache)' }));
-  const seen = new Set();
-  return [...catalogHits, ...tempHits].filter(r => {
-    const key = r.scryfallId || r.productId || [r.name,r.set,r.card_number].join('|');
-    if(seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  }).slice(0, 60);
+  if(!isMtgLookupIntent(query, cat) || mtgOfflineSearchMode() === 'online_only') return [];
+  return searchMtgCatalogExport(query).catch(() => []);
 }
 
 // ── Comics IDB cache (walkoff_comics_cache_v1) ────────────────────────────────
@@ -16923,6 +16994,7 @@ async function runPriceLookup(){
 
   // ── MTG offline cache ──────────────────────────────────────────────────────
   if(wantsMtg) {
+    const mtgMode = mtgOfflineSearchMode();
     cachedResults = await searchMtgOfflineCache(q, cat);
     if(cachedResults.length) {
       if(!qplSearchStillActive(mySeq, searchPlan)) return;
@@ -16930,11 +17002,14 @@ async function runPriceLookup(){
       qplResults = filterQplMasterResults(qplMasterResults, cat);
       renderQuickLookupResults(qplResults);
       renderUniversalSearchExplain(searchPlan, qplResults);
-      const cacheAge = pokemonCacheAgeLabel(cachedResults.find(r => r.cache?.updatedAt)?.cache?.updatedAt);
-      setMtgOfflineBanner(navigator.onLine ? 'Cached MTG results shown while Scryfall refresh runs. Last updated ' + cacheAge + '.' : 'Offline Mode: showing cached MTG data. Last updated ' + cacheAge + '.');
-    } else if(!navigator.onLine) {
-      el.innerHTML = `<div style="color:var(--gold);line-height:1.6">No cached MTG data found for this search.<br>Search while online to build your MTG cache for use at shows.<br><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><button class="hbtn" onclick="document.getElementById('qpl-input').focus()">TRY ANOTHER SEARCH</button></div></div>`;
-      setMtgOfflineBanner('Offline Mode: no cached MTG data found for "' + q + '".', 'bad');
+      const snapshot = cachedResults[0]?.cache?.updatedAt || cachedResults[0]?.lookupDebug?.catalogVersion || '';
+      setMtgOfflineBanner('Scryfall offline catalog' + (snapshot ? ' / Price snapshot: ' + String(snapshot).slice(0,10) : '') + '.', 'good');
+      if(mtgMode !== 'online_only') return;
+    } else if(mtgMode === 'offline_only' || !navigator.onLine) {
+      const status = await window.ArsCaMtgOffline?.status().catch(() => null);
+      const message = status?.cards ? 'No MTG offline catalog result matched this search.' : 'MTG offline catalog not downloaded yet.';
+      el.innerHTML = `<div style="color:var(--gold);line-height:1.6">${escHtml(message)}<br><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><button class="hbtn" onclick="document.getElementById('qpl-input').focus()">TRY ANOTHER SEARCH</button><button class="hbtn" onclick="switchTab('backoffice');document.getElementById('offline-catalog-manager-panel')?.scrollIntoView({behavior:'smooth',block:'start'})">MTG OFFLINE SETTINGS</button></div></div>`;
+      setMtgOfflineBanner(message, 'bad');
       return;
     }
   }
@@ -16992,10 +17067,7 @@ async function runPriceLookup(){
       // hydrateVisiblePokemonPriceTrackerResults (called inside renderQuickLookupResults)
       // already hydrates the top result — no separate auto-fire needed here.
     }
-    if(wantsMtg) {
-      saveMtgCacheResults(q, qplMasterResults, 'Scryfall live lookup').catch(console.warn);
-      setMtgOfflineBanner((cachedResults.length ? 'Live MTG refresh updated the cached copy.' : 'Saved this MTG lookup for offline use.') + ' Last cached ' + pokemonCacheAgeLabel(new Date().toISOString()) + '.', 'good');
-    }
+    if(wantsMtg) setMtgOfflineBanner('Live Scryfall results. Use Refresh MTG Offline Data to update the device catalog.', 'good');
     if(wantsComic) {
       saveComicsCacheResults(q, qplMasterResults, 'Live comics lookup').catch(console.warn);
       setComicsOfflineBanner((cachedResults.length ? 'Live comics refresh updated the cached copy.' : 'Saved this comics lookup for offline use.') + ' Last cached ' + pokemonCacheAgeLabel(new Date().toISOString()) + '.', 'good');
@@ -17255,14 +17327,20 @@ async function searchQuickCatalog(q, cat, searchPlan = buildUniversalSearchPlan(
     } catch(e) {}
   }
   if((!wants && hasPlannedCategory('mtg')) || wants === 'tcg' || wants === 'mtg' || wants === 'graded' || isMtgLookupIntent(q, cat)) {
-    try {
-      const mtgCatalog = await searchMtgCatalogExport(q);
-      mtgCatalog.forEach(add);
-    } catch(e) {}
-    try {
-      const mtg = await fetchScryfallCatalog(q, searchPlan);
-      mtg.forEach(add);
-    } catch(e) {}
+    const mtgMode = mtgOfflineSearchMode();
+    let mtgCatalog = [];
+    if(mtgMode !== 'online_only') {
+      try {
+        mtgCatalog = await searchMtgCatalogExport(q);
+        mtgCatalog.forEach(add);
+      } catch(e) {}
+    }
+    if(mtgMode !== 'offline_only' && (mtgMode === 'online_only' || !mtgCatalog.length)) {
+      try {
+        const mtg = await fetchScryfallCatalog(q, searchPlan);
+        mtg.forEach(add);
+      } catch(e) {}
+    }
   }
 
   // ── Comic Vine cover enrichment — parallel, deduplicated by series+year ──
@@ -19726,6 +19804,26 @@ async function openQplChartModal(idx, range='3M'){
       modal.classList.add('on');
     };
     renderModal('<div style="color:var(--dim);font-size:11px;padding:10px 0">Searching PriceCharting…</div>');
+    const offlinePc = r.pricecharting?.prices || null;
+    if(offlinePc) {
+      const offlineRows = [
+        ['Ungraded', Number(offlinePc.ungraded || 0)], ['Grade 7', Number(offlinePc.grade7 || 0)],
+        ['Grade 8', Number(offlinePc.grade8 || 0)], ['Grade 9', Number(offlinePc.grade9 || 0)],
+        ['Grade 9.5', Number(offlinePc.grade9_5 || 0)], ['PSA 10', Number(offlinePc.psa10 || 0)],
+        ['BGS 10', Number(offlinePc.bgs10 || 0)], ['CGC 10', Number(offlinePc.cgc10 || 0)],
+        ['SGC 10', Number(offlinePc.sgc10 || 0)],
+      ].filter(([,value]) => value > 0);
+      const tableRows = offlineRows.map(([label, value]) => `<tr><td style="padding:5px 10px;color:var(--dim)">${escHtml(label)}</td><td style="padding:5px 10px;text-align:right;color:var(--gold);font-weight:700">$${value.toFixed(2)}</td></tr>`).join('');
+      const snapshotDate = String(r.pricecharting.lastUpdated || r.lastPriceSyncAt || '').slice(0,10) || 'unknown';
+      renderModal(`<div style="margin-top:14px"><div style="font-family:'Orbitron',monospace;color:var(--g);font-size:10px;margin-bottom:6px;letter-spacing:.05em">PRICECHARTING OFFLINE SNAPSHOT</div>
+        ${tableRows ? `<table style="width:100%;border-collapse:collapse;font-size:12px">${tableRows}</table>` : '<div style="color:var(--dim);font-size:11px">No PriceCharting values in this snapshot.</div>'}
+        <div style="font-size:10px;color:var(--dim);margin-top:6px">Price snapshot: ${escHtml(snapshotDate)} / No historical series is included in the daily snapshot.</div></div>`);
+      return;
+    }
+    if(mtgOfflineSearchMode() === 'offline_only') {
+      renderModal('<div style="color:var(--dim);font-size:11px;padding:10px 0">No PriceCharting match yet. Online lookup is disabled by MTG Offline Only mode.</div>');
+      return;
+    }
     // Fetch PriceCharting data for this MTG card
     try {
       const pcQuery = [r.name, r.set].filter(Boolean).join(' ');
@@ -25880,8 +25978,8 @@ function mtgsbOwnedQty(card){
 
 async function mtgsbFetchSets(){
   const localSets = await mtgCatalogSets().catch(() => []);
-  if(localSets.length && !navigator.onLine) {
-    _mtgsbState.sourceLabel = 'Offline Catalog - Scryfall default_cards';
+  if(localSets.length && mtgOfflineSearchMode() !== 'online_only') {
+    _mtgsbState.sourceLabel = 'Scryfall offline catalog';
     return localSets;
   }
   const cacheKey = 'mtsb_sets_v1';
@@ -25904,7 +26002,7 @@ async function mtgsbFetchSets(){
 async function mtgsbFetchSetCards(setCode){
   const localCards = await mtgCatalogCardsBySet(setCode).catch(() => []);
   if(localCards.length) {
-    _mtgsbState.sourceLabel = 'Offline Catalog - Scryfall default_cards';
+    _mtgsbState.sourceLabel = 'Scryfall offline catalog';
     return localCards;
   }
   let cards = [];
@@ -26331,14 +26429,21 @@ function scryfallCardToQplRow(c){
   });
 }
 
-function mtgsbSelectCard(idx){
+async function mtgsbSelectCard(idx){
   const card = _mtgsbState.filteredCards[idx];
   if(!card) return;
   closeMtgSetBrowser();
   switchTab('research');
   try {
-    const row = scryfallCardToQplRow(card);
+    const row = card.offlinePrice || card.catalogVersion ? mtgOfflineCardToQplRow(mtgOfflineRecordFromLegacy(card)) : scryfallCardToQplRow(card);
     if(!row) return;
+    const imageUrl = card.image_uris?.normal || card.card_faces?.[0]?.image_uris?.normal || '';
+    if(imageUrl && window.ArsCaMtgOffline) {
+      const args = { scryfallId:card.id, url:imageUrl, size:'normal', faceIndex:0 };
+      const cached = await window.ArsCaMtgOffline.cachedImageUrl(args).catch(() => '');
+      if(cached) row.imageUrl = cached;
+      else if(navigator.onLine) window.ArsCaMtgOffline.cacheImage(args).catch(() => {});
+    }
     qplResults = [row, ...qplResults.slice(0, 19)];
     renderQuickLookupResults(qplResults);
     setTimeout(() => document.getElementById('register-quick-panel')?.scrollIntoView({ behavior:'smooth', block:'start' }), 200);
@@ -26355,7 +26460,7 @@ function mtgsbOpenTcg(idx){
 function mtgsbAddToResearch(idx, btn){
   const card = _mtgsbState.filteredCards[idx];
   if(!card) return;
-  const row = scryfallCardToQplRow(card);
+  const row = card.offlinePrice || card.catalogVersion ? mtgOfflineCardToQplRow(mtgOfflineRecordFromLegacy(card)) : scryfallCardToQplRow(card);
   if(!row) return;
   const sid = row.scryfallId || '';
   qplResults = [row, ...qplResults.filter(r => !sid || (r.scryfallId || '') !== sid)];

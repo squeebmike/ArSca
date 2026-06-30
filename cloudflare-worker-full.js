@@ -13,6 +13,7 @@
  *   COMICVINE_API_KEY
  *   SOLDCOMPS_API_KEY
  *   LBA_KV
+ *   MTG_CATALOG_R2
  */
 
 // Per-isolate rate limiter for PriceCharting API (no KV needed)
@@ -44,6 +45,19 @@ function json(data, status = 200, extraHeaders = {}) {
     status,
     headers: { ...CORS, ...extraHeaders, 'Content-Type': 'application/json' },
   });
+}
+
+const MTG_CATALOG_FILE_TYPES = new Set(['cards', 'prices', 'links', 'sets']);
+
+function r2ObjectResponse(object, request, cacheControl) {
+  if (!object) return json({ ok: false, error: 'MTG catalog object not found' }, 404);
+  const headers = new Headers(CORS);
+  if (typeof object.writeHttpMetadata === 'function') object.writeHttpMetadata(headers);
+  headers.set('ETag', object.httpEtag || `"${object.etag}"`);
+  headers.set('Cache-Control', cacheControl);
+  headers.set('Vary', 'If-None-Match');
+  if (!('body' in object)) return new Response(null, { status: request.headers.has('If-None-Match') ? 304 : 412, headers });
+  return new Response(object.body, { status: 200, headers });
 }
 
 function pokemonQuotaHeaders(headers) {
@@ -473,7 +487,35 @@ export default {
         pokemonprice: !!(env.POKEMONPRICE_API_KEY || env.POKEMON_PRICE_TRACKER_API_KEY),
         soldcomps: !!env.SOLDCOMPS_API_KEY,
         kv: !!env.LBA_KV,
+        mtgCatalogR2: !!env.MTG_CATALOG_R2,
       });
+    }
+
+    if (url.pathname === '/catalog/mtg/manifest') {
+      if (request.method !== 'GET') return json({ ok: false, error: 'GET only' }, 405);
+      if (!env.MTG_CATALOG_R2) return json({ ok: false, error: 'MTG_CATALOG_R2 binding is not configured' }, 503);
+      const object = await env.MTG_CATALOG_R2.get('mtg/manifest.json', { onlyIf:request.headers });
+      return r2ObjectResponse(object, request, 'public, max-age=300, stale-if-error=86400');
+    }
+
+    if (url.pathname === '/catalog/mtg/download') {
+      if (request.method !== 'GET') return json({ ok: false, error: 'GET only' }, 405);
+      if (!env.MTG_CATALOG_R2) return json({ ok: false, error: 'MTG_CATALOG_R2 binding is not configured' }, 503);
+      const type = String(url.searchParams.get('file') || '').toLowerCase();
+      if (!MTG_CATALOG_FILE_TYPES.has(type)) return json({ ok: false, error: 'file must be cards, prices, links, or sets' }, 400);
+      const manifestObject = await env.MTG_CATALOG_R2.get('mtg/manifest.json');
+      if (!manifestObject) return json({ ok: false, error: 'MTG manifest not found' }, 404);
+      const manifest = await manifestObject.json().catch(() => null);
+      const descriptor = manifest?.status === 'ready' ? manifest.files?.[type] : null;
+      const key = String(descriptor?.path || '');
+      if (!key.startsWith('mtg/') || !key.endsWith('.jsonl.gz')) return json({ ok: false, error: `MTG ${type} file is not ready` }, 503);
+      const object = await env.MTG_CATALOG_R2.get(key, { onlyIf:request.headers });
+      if (!object) return json({ ok: false, error: `MTG ${type} catalog object not found` }, 404);
+      const response = r2ObjectResponse(object, request, 'public, max-age=31536000, immutable');
+      response.headers.set('Content-Type', 'application/gzip');
+      response.headers.set('X-MTG-Catalog-Version', String(manifest.version || ''));
+      response.headers.set('X-Content-SHA256', String(descriptor.sha256 || ''));
+      return response;
     }
 
     if (url.pathname === '/cart') {

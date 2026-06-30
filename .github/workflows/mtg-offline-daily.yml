@@ -1,0 +1,72 @@
+name: Build Daily MTG Offline Bundle
+
+on:
+  schedule:
+    - cron: '23 10 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: mtg-offline-daily
+  cancel-in-progress: false
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      PRICECHARTING_MTG_CSV_URL: ${{ secrets.PRICECHARTING_MTG_CSV_URL }}
+      MTG_R2_BUCKET: arsca-offline-catalogs
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Validate required secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${CLOUDFLARE_API_TOKEN:-}" || { echo "::error::CLOUDFLARE_API_TOKEN is missing"; exit 1; }
+          test -n "${CLOUDFLARE_ACCOUNT_ID:-}" || { echo "::error::CLOUDFLARE_ACCOUNT_ID is missing"; exit 1; }
+          test -n "${PRICECHARTING_MTG_CSV_URL:-}" || { echo "::error::PRICECHARTING_MTG_CSV_URL is missing"; exit 1; }
+
+      - name: Build compressed MTG bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="$(date -u +%F)"
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          npm run mtg:build -- --version="$VERSION"
+
+      - name: Validate generated bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          gzip -t "data/mtg/build/mtg/$VERSION/cards.jsonl.gz"
+          gzip -t "data/mtg/build/mtg/$VERSION/prices-pricecharting.jsonl.gz"
+          gzip -t "data/mtg/build/mtg/$VERSION/links-scryfall-pricecharting.jsonl.gz"
+          gzip -t "data/mtg/build/mtg/$VERSION/sets.jsonl.gz"
+          node -e "const m=require('./data/mtg/build/mtg/manifest.json'); if(m.status!=='ready'||m.version!==process.env.VERSION) process.exit(1)"
+
+      - name: Upload versioned files to R2
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE="data/mtg/build/mtg/$VERSION"
+          npx wrangler@latest r2 object put "$MTG_R2_BUCKET/mtg/$VERSION/cards.jsonl.gz" --file "$BASE/cards.jsonl.gz" --config wrangler.deploy.jsonc
+          npx wrangler@latest r2 object put "$MTG_R2_BUCKET/mtg/$VERSION/prices-pricecharting.jsonl.gz" --file "$BASE/prices-pricecharting.jsonl.gz" --config wrangler.deploy.jsonc
+          npx wrangler@latest r2 object put "$MTG_R2_BUCKET/mtg/$VERSION/links-scryfall-pricecharting.jsonl.gz" --file "$BASE/links-scryfall-pricecharting.jsonl.gz" --config wrangler.deploy.jsonc
+          npx wrangler@latest r2 object put "$MTG_R2_BUCKET/mtg/$VERSION/sets.jsonl.gz" --file "$BASE/sets.jsonl.gz" --config wrangler.deploy.jsonc
+          npx wrangler@latest r2 object put "$MTG_R2_BUCKET/mtg/$VERSION/build-report.json" --file "$BASE/build-report.json" --config wrangler.deploy.jsonc
+
+      - name: Publish manifest last
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx wrangler@latest r2 object put "$MTG_R2_BUCKET/mtg/manifest.json" --file "data/mtg/build/mtg/manifest.json" --config wrangler.deploy.jsonc
