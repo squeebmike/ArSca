@@ -12,6 +12,7 @@ assert.doesNotMatch(admin, /sb_secret_|service_role/i, 'admin browser must not c
 const scripts = [...admin.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(match => match[1]).filter(Boolean);
 for (const script of scripts) new Function(script);
 assert.match(worker, /requirePlatformAdmin/);
+assert.match(worker, /return await handlePlatformAdmin/);
 assert.match(worker, /\/auth\/v1\/user/);
 assert.match(worker, /writePlatformAudit/);
 assert.match(worker, /Authorization, x-store-id/);

@@ -651,7 +651,7 @@ export default {
     const url = new URL(request.url);
 
     if (url.pathname === '/admin/session' || url.pathname.startsWith('/admin/')) {
-      return handlePlatformAdmin(request, env, url);
+      return await handlePlatformAdmin(request, env, url);
     }
 
     if (url.pathname === '/health') {
@@ -674,6 +674,7 @@ export default {
         soldcomps: !!env.SOLDCOMPS_API_KEY,
         kv: !!env.LBA_KV,
         mtgCatalogR2: !!env.MTG_CATALOG_R2,
+        supabaseAdmin: !!(env.SUPABASE_URL && (env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_KEY)),
       });
     }
 
