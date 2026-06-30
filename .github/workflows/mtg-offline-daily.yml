@@ -1,6 +1,11 @@
 name: Build Daily MTG Offline Bundle
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - scripts/mtg/**
+      - .github/workflows/mtg-offline-daily.yml
   schedule:
     - cron: '23 10 * * *'
   workflow_dispatch:
