@@ -13,7 +13,7 @@
  *   COMICVINE_API_KEY
  *   SOLDCOMPS_API_KEY
  *   LBA_KV
- *   MTG_CATALOG_R2
+ *   MTG_CATALOG_R2 (R2 must be enabled for the Cloudflare account)
  */
 
 // Per-isolate rate limiter for PriceCharting API (no KV needed)
