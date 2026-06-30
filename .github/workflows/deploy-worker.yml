@@ -95,6 +95,17 @@ jobs:
           set -euo pipefail
           npx wrangler whoami
 
+      - name: Ensure MTG R2 bucket exists
+        shell: bash
+        run: |
+          set -euo pipefail
+          buckets="$(npx wrangler r2 bucket list --config wrangler.deploy.jsonc)"
+          if grep -Fq "arsca-offline-catalogs" <<< "$buckets"; then
+            echo "MTG R2 bucket already exists."
+          else
+            npx wrangler r2 bucket create arsca-offline-catalogs --config wrangler.deploy.jsonc
+          fi
+
       - name: Deploy Worker
         shell: bash
         run: |
