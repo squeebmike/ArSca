@@ -7,5 +7,11 @@
       "binding": "LBA_KV",
       "id": "3cfb05e353364f1ab89df23f058374a9"
     }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "MTG_CATALOG_R2",
+      "bucket_name": "arsca-offline-catalogs"
+    }
   ]
 }
