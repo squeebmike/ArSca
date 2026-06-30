@@ -36,7 +36,7 @@ const EBAY_SCOPES = [
 const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, PATCH, PUT, DELETE, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, accept, x-store-id, X-Store-Id',
+  'Access-Control-Allow-Headers': 'Content-Type, accept, Authorization, x-store-id, X-Store-Id',
   'Access-Control-Max-Age': '86400',
 };
 
@@ -45,6 +45,188 @@ function json(data, status = 200, extraHeaders = {}) {
     status,
     headers: { ...CORS, ...extraHeaders, 'Content-Type': 'application/json' },
   });
+}
+
+function supabaseAdminConfig(env) {
+  const base = String(env.SUPABASE_URL || '').replace(/\/$/, '');
+  const key = String(env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_KEY || '');
+  if (!base || !key) throw new Error('Supabase admin service is not configured');
+  return { base, key };
+}
+
+async function supabaseAdminFetch(env, path, options = {}) {
+  const { base, key } = supabaseAdminConfig(env);
+  const headers = new Headers(options.headers || {});
+  headers.set('apikey', key);
+  headers.set('Authorization', `Bearer ${key}`);
+  if (options.body && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
+  const response = await fetch(`${base}/rest/v1/${path}`, { ...options, headers });
+  const raw = await response.text();
+  let data = null;
+  try { data = raw ? JSON.parse(raw) : null; } catch (_) { data = raw; }
+  if (!response.ok) throw new Error(data?.message || data?.error || `Supabase ${response.status}`);
+  return { data, response };
+}
+
+async function requirePlatformAdmin(request, env) {
+  const token = String(request.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '');
+  if (!token) return { error: json({ ok:false, error:'Authentication required' }, 401) };
+  const { base, key } = supabaseAdminConfig(env);
+  const userResponse = await fetch(`${base}/auth/v1/user`, {
+    headers: { apikey:key, Authorization:`Bearer ${token}` },
+  });
+  if (!userResponse.ok) return { error:json({ ok:false, error:'Session expired or invalid' }, 401) };
+  const user = await userResponse.json();
+  const query = `platform_admins?user_id=eq.${encodeURIComponent(user.id)}&active=eq.true&select=user_id,role&limit=1`;
+  const { data } = await supabaseAdminFetch(env, query);
+  const admin = Array.isArray(data) ? data[0] : null;
+  if (!admin) return { error:json({ ok:false, error:'Platform administrator access required' }, 403) };
+  return { user, admin };
+}
+
+function adminPage(url) {
+  return Math.max(0, Math.min(10000, Number(url.searchParams.get('offset') || 0)));
+}
+
+function adminLimit(url, fallback = 50) {
+  return Math.max(1, Math.min(200, Number(url.searchParams.get('limit') || fallback)));
+}
+
+function cleanAdminText(value, max = 500) {
+  return String(value == null ? '' : value).trim().slice(0, max);
+}
+
+async function writePlatformAudit(env, actor, action, storeId, entityType, entityId, beforeData, afterData, reason) {
+  const row = {
+    actor_user_id:actor.id, action, target_store_id:storeId || null,
+    entity_type:entityType, entity_id:String(entityId || ''),
+    before_data:beforeData || {}, after_data:afterData || {}, reason:cleanAdminText(reason, 1000),
+  };
+  await supabaseAdminFetch(env, 'platform_admin_audit_log', {
+    method:'POST', headers:{ Prefer:'return=minimal' }, body:JSON.stringify(row),
+  });
+}
+
+async function handlePlatformAdmin(request, env, url) {
+  const auth = await requirePlatformAdmin(request, env);
+  if (auth.error) return auth.error;
+  const path = url.pathname;
+
+  if (path === '/admin/session' && request.method === 'GET') {
+    return json({ ok:true, user:{ id:auth.user.id, email:auth.user.email }, role:auth.admin.role });
+  }
+
+  if (path === '/admin/stores' && request.method === 'GET') {
+    const q = cleanAdminText(url.searchParams.get('q'), 80).toLowerCase();
+    const limit = adminLimit(url, 100);
+    const filter = q ? `&or=(name.ilike.*${encodeURIComponent(q)}*,display_name.ilike.*${encodeURIComponent(q)}*)` : '';
+    const { data:stores, response } = await supabaseAdminFetch(env,
+      `stores?select=id,name,display_name,status,timezone,currency,owner_user_id,created_at&order=created_at.desc&limit=${limit}&offset=${adminPage(url)}${filter}`,
+      { headers:{ Prefer:'count=exact' } });
+    const enriched = await Promise.all((stores || []).map(async store => {
+      const id = encodeURIComponent(store.id);
+      const [inventory, members, sales, activity] = await Promise.all([
+        supabaseAdminFetch(env, `inventory_items?store_id=eq.${id}&select=id&limit=1`, { headers:{ Prefer:'count=exact' } }),
+        supabaseAdminFetch(env, `store_members?store_id=eq.${id}&active=eq.true&select=id&limit=1`, { headers:{ Prefer:'count=exact' } }),
+        supabaseAdminFetch(env, `pos_sales?store_id=eq.${id}&select=id&limit=1`, { headers:{ Prefer:'count=exact' } }),
+        supabaseAdminFetch(env, `pos_audit_log?store_id=eq.${id}&select=created_at,event_type&order=created_at.desc&limit=1`),
+      ]);
+      const count = result => Number(String(result.response.headers.get('content-range') || '').split('/')[1] || 0);
+      return { ...store, inventoryCount:count(inventory), memberCount:count(members), saleCount:count(sales), lastActivity:activity.data?.[0] || null };
+    }));
+    return json({ ok:true, stores:enriched, total:Number(String(response.headers.get('content-range') || '').split('/')[1] || enriched.length) });
+  }
+
+  const storeMatch = path.match(/^\/admin\/stores\/([0-9a-f-]+)$/i);
+  if (storeMatch && request.method === 'GET') {
+    const id = encodeURIComponent(storeMatch[1]);
+    const { data } = await supabaseAdminFetch(env, `stores?id=eq.${id}&select=*&limit=1`);
+    if (!data?.[0]) return json({ ok:false, error:'Store not found' }, 404);
+    return json({ ok:true, store:data[0] });
+  }
+  if (storeMatch && request.method === 'PATCH') {
+    const body = await request.json();
+    const reason = cleanAdminText(body.reason, 1000);
+    if (!reason) return json({ ok:false, error:'Edit reason is required' }, 400);
+    const id = encodeURIComponent(storeMatch[1]);
+    const { data:beforeRows } = await supabaseAdminFetch(env, `stores?id=eq.${id}&select=*&limit=1`);
+    const before = beforeRows?.[0];
+    if (!before) return json({ ok:false, error:'Store not found' }, 404);
+    const allowed = {};
+    if (body.display_name != null) allowed.display_name = cleanAdminText(body.display_name, 120);
+    if (body.timezone != null) allowed.timezone = cleanAdminText(body.timezone, 80);
+    if (body.currency != null) allowed.currency = cleanAdminText(body.currency, 8).toUpperCase();
+    if (body.status != null && ['active','disabled'].includes(body.status)) allowed.status = body.status;
+    const { data:afterRows } = await supabaseAdminFetch(env, `stores?id=eq.${id}`, { method:'PATCH', headers:{ Prefer:'return=representation' }, body:JSON.stringify(allowed) });
+    await writePlatformAudit(env, auth.user, 'store.update', before.id, 'store', before.id, before, afterRows?.[0], reason);
+    return json({ ok:true, store:afterRows?.[0] });
+  }
+
+  const storeResource = path.match(/^\/admin\/stores\/([0-9a-f-]+)\/(inventory|sales|members)$/i);
+  if (storeResource && request.method === 'GET') {
+    const [, storeId, type] = storeResource;
+    const id = encodeURIComponent(storeId);
+    const limit = adminLimit(url);
+    const offset = adminPage(url);
+    if (type === 'inventory') {
+      const status = cleanAdminText(url.searchParams.get('status'), 40);
+      const statusFilter = status ? `&status=eq.${encodeURIComponent(status)}` : '';
+      const { data, response } = await supabaseAdminFetch(env, `inventory_items?store_id=eq.${id}${statusFilter}&select=id,store_id,data,status,created_at,updated_at&order=updated_at.desc&limit=${limit}&offset=${offset}`, { headers:{ Prefer:'count=exact' } });
+      return json({ ok:true, items:data || [], total:Number(String(response.headers.get('content-range') || '').split('/')[1] || 0) });
+    }
+    if (type === 'sales') {
+      const { data, response } = await supabaseAdminFetch(env, `pos_sales?store_id=eq.${id}&select=id,subtotal,discount_total,tax_total,total,status,created_at,completed_at,created_by&order=created_at.desc&limit=${limit}&offset=${offset}`, { headers:{ Prefer:'count=exact' } });
+      return json({ ok:true, sales:data || [], total:Number(String(response.headers.get('content-range') || '').split('/')[1] || 0) });
+    }
+    const { data, response } = await supabaseAdminFetch(env, `store_members?store_id=eq.${id}&select=id,store_id,user_id,role,active,created_at&order=created_at.asc&limit=${limit}&offset=${offset}`, { headers:{ Prefer:'count=exact' } });
+    return json({ ok:true, members:data || [], total:Number(String(response.headers.get('content-range') || '').split('/')[1] || 0) });
+  }
+
+  const inventoryMatch = path.match(/^\/admin\/inventory\/([0-9a-f-]+)$/i);
+  if (inventoryMatch && request.method === 'PATCH') {
+    const body = await request.json();
+    const reason = cleanAdminText(body.reason, 1000);
+    if (!reason) return json({ ok:false, error:'Edit reason is required' }, 400);
+    const id = encodeURIComponent(inventoryMatch[1]);
+    const { data:beforeRows } = await supabaseAdminFetch(env, `inventory_items?id=eq.${id}&select=*&limit=1`);
+    const before = beforeRows?.[0];
+    if (!before) return json({ ok:false, error:'Inventory item not found' }, 404);
+    if (body.expected_updated_at && body.expected_updated_at !== before.updated_at) return json({ ok:false, error:'Item changed since it was opened. Refresh and try again.' }, 409);
+    const allowedData = { ...(before.data || {}) };
+    for (const key of ['name','title','set','setName','category','condition','finish','quantity','qty','cost','market','listPrice','price','location','notes','image','imageUrl']) {
+      if (body.data && Object.prototype.hasOwnProperty.call(body.data, key)) allowedData[key] = typeof body.data[key] === 'string' ? cleanAdminText(body.data[key], key === 'notes' ? 2000 : 500) : body.data[key];
+    }
+    const update = { data:allowedData };
+    if (body.status != null) update.status = cleanAdminText(body.status, 40);
+    const { data:afterRows } = await supabaseAdminFetch(env, `inventory_items?id=eq.${id}`, { method:'PATCH', headers:{ Prefer:'return=representation' }, body:JSON.stringify(update) });
+    await writePlatformAudit(env, auth.user, 'inventory.update', before.store_id, 'inventory_item', before.id, before, afterRows?.[0], reason);
+    return json({ ok:true, item:afterRows?.[0] });
+  }
+
+  const memberMatch = path.match(/^\/admin\/store-members\/([0-9a-f-]+)$/i);
+  if (memberMatch && request.method === 'PATCH') {
+    const body = await request.json();
+    const reason = cleanAdminText(body.reason, 1000);
+    if (!reason) return json({ ok:false, error:'Edit reason is required' }, 400);
+    const id = encodeURIComponent(memberMatch[1]);
+    const { data:beforeRows } = await supabaseAdminFetch(env, `store_members?id=eq.${id}&select=*&limit=1`);
+    const before = beforeRows?.[0];
+    if (!before) return json({ ok:false, error:'Store member not found' }, 404);
+    const update = {};
+    if (body.role != null && ['owner','admin','manager','employee','scanner_only'].includes(body.role)) update.role = body.role;
+    if (body.active != null) update.active = Boolean(body.active);
+    const { data:afterRows } = await supabaseAdminFetch(env, `store_members?id=eq.${id}`, { method:'PATCH', headers:{ Prefer:'return=representation' }, body:JSON.stringify(update) });
+    await writePlatformAudit(env, auth.user, 'store_member.update', before.store_id, 'store_member', before.id, before, afterRows?.[0], reason);
+    return json({ ok:true, member:afterRows?.[0] });
+  }
+
+  if (path === '/admin/audit' && request.method === 'GET') {
+    const store = cleanAdminText(url.searchParams.get('storeId'), 40);
+    const filter = store ? `&target_store_id=eq.${encodeURIComponent(store)}` : '';
+    const { data } = await supabaseAdminFetch(env, `platform_admin_audit_log?select=*&order=created_at.desc&limit=${adminLimit(url, 100)}&offset=${adminPage(url)}${filter}`);
+    return json({ ok:true, entries:data || [] });
+  }
+  return json({ ok:false, error:'Admin route not found' }, 404);
 }
 
 const MTG_CATALOG_FILE_TYPES = new Set(['cards', 'prices', 'links', 'sets']);
@@ -467,6 +649,10 @@ export default {
     }
     try {
     const url = new URL(request.url);
+
+    if (url.pathname === '/admin/session' || url.pathname.startsWith('/admin/')) {
+      return handlePlatformAdmin(request, env, url);
+    }
 
     if (url.pathname === '/health') {
       return json({
