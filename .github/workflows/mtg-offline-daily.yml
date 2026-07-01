@@ -67,14 +67,22 @@ jobs:
         run: |
           set -euo pipefail
           BASE="data/mtg/build/mtg/$VERSION"
-          npx wrangler@latest r2 object put "$MTG_R2_BUCKET/mtg/$VERSION/cards.jsonl.gz" --file "$BASE/cards.jsonl.gz" --config wrangler.deploy.jsonc
-          npx wrangler@latest r2 object put "$MTG_R2_BUCKET/mtg/$VERSION/prices-pricecharting.jsonl.gz" --file "$BASE/prices-pricecharting.jsonl.gz" --config wrangler.deploy.jsonc
-          npx wrangler@latest r2 object put "$MTG_R2_BUCKET/mtg/$VERSION/links-scryfall-pricecharting.jsonl.gz" --file "$BASE/links-scryfall-pricecharting.jsonl.gz" --config wrangler.deploy.jsonc
-          npx wrangler@latest r2 object put "$MTG_R2_BUCKET/mtg/$VERSION/sets.jsonl.gz" --file "$BASE/sets.jsonl.gz" --config wrangler.deploy.jsonc
-          npx wrangler@latest r2 object put "$MTG_R2_BUCKET/mtg/$VERSION/build-report.json" --file "$BASE/build-report.json" --config wrangler.deploy.jsonc
+          npx wrangler@latest r2 object put "$MTG_R2_BUCKET/mtg/$VERSION/cards.jsonl.gz" --file "$BASE/cards.jsonl.gz" --config wrangler.deploy.jsonc --remote
+          npx wrangler@latest r2 object put "$MTG_R2_BUCKET/mtg/$VERSION/prices-pricecharting.jsonl.gz" --file "$BASE/prices-pricecharting.jsonl.gz" --config wrangler.deploy.jsonc --remote
+          npx wrangler@latest r2 object put "$MTG_R2_BUCKET/mtg/$VERSION/links-scryfall-pricecharting.jsonl.gz" --file "$BASE/links-scryfall-pricecharting.jsonl.gz" --config wrangler.deploy.jsonc --remote
+          npx wrangler@latest r2 object put "$MTG_R2_BUCKET/mtg/$VERSION/sets.jsonl.gz" --file "$BASE/sets.jsonl.gz" --config wrangler.deploy.jsonc --remote
+          npx wrangler@latest r2 object put "$MTG_R2_BUCKET/mtg/$VERSION/build-report.json" --file "$BASE/build-report.json" --config wrangler.deploy.jsonc --remote
 
       - name: Publish manifest last
         shell: bash
         run: |
           set -euo pipefail
-          npx wrangler@latest r2 object put "$MTG_R2_BUCKET/mtg/manifest.json" --file "data/mtg/build/mtg/manifest.json" --config wrangler.deploy.jsonc
+          npx wrangler@latest r2 object put "$MTG_R2_BUCKET/mtg/manifest.json" --file "data/mtg/build/mtg/manifest.json" --config wrangler.deploy.jsonc --remote
+
+      - name: Verify production manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --retry 5 --retry-delay 3 \
+            "https://still-resonance-4f87.swarnerauto.workers.dev/catalog/mtg/manifest" \
+            | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const m=JSON.parse(s);if(m.status!=='ready'||m.version!==process.env.VERSION)process.exit(1)})"

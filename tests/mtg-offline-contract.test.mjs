@@ -22,12 +22,14 @@ assert.match(browser, /mtg-image:\$\{scryfallId\}:\$\{faceIndex\}:\$\{size\}:\$\
 assert.match(dashboard, /Offline first, online backup/);
 assert.match(dashboard, /PriceCharting offline snapshot/);
 assert.match(dashboard, /Scryfall offline catalog/);
-assert.match(dashboard, /2026\.06\.30\.01-mtg-offline-r2/);
+assert.match(dashboard, /2026\.06\.30\.04-mtg-r2-remote-upload/);
 assert.match(dashboard, /const branchName = 'main'/);
 assert.doesNotMatch(dashboard, /fetch\(['"]https:\/\/api\.scryfall\.com\/bulk-data/);
 
 assert.match(workflow, /schedule:/);
 assert.match(workflow, /PRICECHARTING_MTG_CSV_URL/);
+assert.match(workflow, /r2 object put[^\n]+--remote/);
+assert.match(workflow, /Verify production manifest/);
 assert.ok(workflow.indexOf('build-report.json') < workflow.indexOf('Publish manifest last'));
 
 console.log('MTG offline integration contract tests passed');
