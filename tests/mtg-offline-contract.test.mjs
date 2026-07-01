@@ -30,7 +30,11 @@ assert.equal(browserSandbox.ArsCaMtgOffline.queryParts('Magic: The Gathering Sol
 assert.match(dashboard, /Offline first, online backup/);
 assert.match(dashboard, /PriceCharting offline snapshot/);
 assert.match(dashboard, /Scryfall offline catalog/);
-assert.match(dashboard, /2026\.07\.01\.01-mtg-offline-search-fix/);
+assert.match(dashboard, /2026\.07\.01\.02-mtg-sync-state-set-images/);
+assert.match(dashboard, /let _mtgBulkSyncActive = false/);
+assert.match(dashboard, /finally \{\s*_mtgBulkSyncActive = false/);
+assert.match(dashboard, /CACHE SET IMAGES/);
+assert.match(dashboard, /result\.skipped \? progress\.skipped\+\+/);
 assert.match(dashboard, /const branchName = 'main'/);
 assert.doesNotMatch(dashboard, /fetch\(['"]https:\/\/api\.scryfall\.com\/bulk-data/);
 

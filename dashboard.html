@@ -1318,8 +1318,8 @@ body.show-mode .inv-sync-badge{display:none;}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-<script src="scripts/query-routing.js?v=2026.07.01.01-mtg-offline-search-fix"></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.07.01.01-mtg-offline-search-fix"></script>
+<script src="scripts/query-routing.js?v=2026.07.01.02-mtg-sync-state-set-images"></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.07.01.02-mtg-sync-state-set-images"></script>
 </head>
 <body>
 
@@ -2629,7 +2629,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.07.01.01-mtg-offline-search-fix';
+const APP_VERSION = '2026.07.01.02-mtg-sync-state-set-images';
 window.APP_VERSION = APP_VERSION;
 const branchName = 'main';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
@@ -5332,6 +5332,8 @@ function ensureOfflineCatalogManagerPanel(backoffice){
   renderOfflineCatalogManagerPanel();
 }
 
+let _mtgBulkSyncActive = false;
+
 async function renderOfflineCatalogManagerPanel(){
   const body = document.getElementById('offline-catalog-manager-body');
   if(!body) return;
@@ -5356,7 +5358,9 @@ async function renderOfflineCatalogManagerPanel(){
     ['eBay / Graded', pptEbay, `<button class="hbtn" onclick="downloadPokemonExport('ebay')">DOWNLOAD</button><button class="hbtn" onclick="clearPokemonExport('ebay')">CLEAR</button>`],
     ['Population', pptPop, `<button class="hbtn" onclick="downloadPokemonExport('population')">DOWNLOAD</button><button class="hbtn" onclick="clearPokemonExport('population')">CLEAR</button>`],
   ].map(([label, meta, actions]) => row(label, meta?.rowCount || 0, meta?.downloadedAt, meta?.error || '', actions, 'PokemonPriceTracker Export')).join('');
-  const mtgBusy = localStorage.getItem('mtg_bulk_status') === 'downloading';
+  // Old builds persisted this flag and could leave the UI stuck after a reload.
+  localStorage.removeItem('mtg_bulk_status');
+  const mtgBusy = _mtgBulkSyncActive;
   const mtgMode = mtgOfflineSearchMode();
   const mtgStatus = mtg.cards ? 'Current / ' + Number(mtg.sets || 0).toLocaleString() + ' sets' : 'Not downloaded';
   body.innerHTML = `
@@ -16576,8 +16580,8 @@ function mtgOfflineCardToQplRow(card = {}){
 }
 
 async function downloadMtgBulkCatalog(){
-  const statusKey = 'mtg_bulk_status';
-  localStorage.setItem(statusKey, 'downloading');
+  if(_mtgBulkSyncActive) return;
+  _mtgBulkSyncActive = true;
   renderOfflineCatalogManagerPanel();
   try {
     if(!window.ArsCaMtgOffline) throw new Error('MTG offline module did not load');
@@ -16591,9 +16595,11 @@ async function downloadMtgBulkCatalog(){
     toast_dash(result.updated ? `MTG offline catalog updated to ${result.manifest.version}` : 'MTG offline catalog current');
   } catch(e) {
     toast_dash('MTG catalog download failed: ' + e.message);
+  } finally {
+    _mtgBulkSyncActive = false;
+    localStorage.removeItem('mtg_bulk_status');
+    renderOfflineCatalogManagerPanel();
   }
-  localStorage.removeItem(statusKey);
-  renderOfflineCatalogManagerPanel();
 }
 
 async function clearMtgBulkCatalog(){
@@ -25935,6 +25941,7 @@ const _mtgsbState = {
   cardSize: Number(localStorage.getItem('mtsb_card_size') || 360),
   tableImgSize: Number(localStorage.getItem('mtsb_table_img_size') || 84),
   swipeIdx: 0, isDragging: false, dragX: 0,
+  cachedImageUrls: new Map(), imageCacheProgress: null,
 };
 
 function mtgsbRarityOrder(r){
@@ -26061,7 +26068,52 @@ function mtgsbColorPip(color){
 }
 
 function mtgsbCardImgSrc(c){
-  return c.image_uris?.normal || c.card_faces?.[0]?.image_uris?.normal || '';
+  const id = c.id || c.scryfallId || '';
+  const cached = id ? _mtgsbState.cachedImageUrls.get(id) : '';
+  const remote = c.image_uris?.normal || c.card_faces?.[0]?.image_uris?.normal || '';
+  return cached || (navigator.onLine ? remote : '');
+}
+
+async function mtgsbLoadCachedSetImages(cards = []){
+  for(const value of _mtgsbState.cachedImageUrls.values()) if(String(value).startsWith('blob:')) URL.revokeObjectURL(value);
+  _mtgsbState.cachedImageUrls = new Map();
+  if(!window.ArsCaMtgOffline) return;
+  for(let start=0; start<cards.length; start+=24){
+    const batch = cards.slice(start,start+24);
+    const found = await Promise.all(batch.map(async card => {
+      const id = card.id || card.scryfallId || '';
+      const url = card.image_uris?.normal || card.card_faces?.[0]?.image_uris?.normal || '';
+      if(!id || !url) return null;
+      const cached = await window.ArsCaMtgOffline.cachedImageUrl({scryfallId:id,url,size:'normal',faceIndex:0}).catch(()=>'');
+      return cached ? [id,cached] : null;
+    }));
+    found.filter(Boolean).forEach(([id,url]) => _mtgsbState.cachedImageUrls.set(id,url));
+  }
+}
+
+async function mtgsbCacheSelectedSetImages(){
+  if(!navigator.onLine){ toast_dash('Connect to the internet to cache set images.'); return; }
+  if(!window.ArsCaMtgOffline || !_mtgsbState.cards.length || _mtgsbState.imageCacheProgress) return;
+  const cards = _mtgsbState.cards.filter(card => (card.id || card.scryfallId) && (card.image_uris?.normal || card.card_faces?.[0]?.image_uris?.normal));
+  const progress = _mtgsbState.imageCacheProgress = {done:0,total:cards.length,cached:0,skipped:0,failed:0};
+  const update = () => { const btn=document.getElementById('mtsb-cache-images'); if(btn) btn.textContent=`IMAGES ${progress.done}/${progress.total}`; };
+  update();
+  try {
+    for(let start=0; start<cards.length; start+=4){
+      await Promise.all(cards.slice(start,start+4).map(async card => {
+        const id=card.id || card.scryfallId;
+        const url=card.image_uris?.normal || card.card_faces?.[0]?.image_uris?.normal || '';
+        try { const result=await window.ArsCaMtgOffline.cacheImage({scryfallId:id,url,size:'normal',faceIndex:0}); result.skipped ? progress.skipped++ : progress.cached++; }
+        catch(_) { progress.failed++; }
+        finally { progress.done++; update(); }
+      }));
+    }
+    await mtgsbLoadCachedSetImages(cards);
+    toast_dash(`Set images ready: ${progress.cached} downloaded, ${progress.skipped} already cached${progress.failed ? ', '+progress.failed+' failed' : ''}.`);
+  } finally {
+    _mtgsbState.imageCacheProgress = null;
+    mtgsbRenderContent(false);
+  }
 }
 
 function mtgsbPriceHtml(c){
@@ -26110,6 +26162,7 @@ function mtgsbRenderContent(loading){
         <button class="hbtn mtsb-sort-btn" style="margin-left:6px" onclick="mtgsbToggleView()">${view==='cards'?'⊟ SWIPE':view==='swipe'?'⊞ TABLE':'☰ CARDS'}</button>
         ${view==='cards'?`<label style="display:flex;align-items:center;gap:5px;font-family:monospace;font-size:9px;color:var(--dim);margin-left:8px">SIZE<input type="range" min="240" max="560" step="20" value="${cardSize}" style="width:90px;accent-color:#5ba3f5;cursor:pointer" oninput="mtgsbSetCardSize(this.value)"></label>`:''}
         ${view==='table'?`<label style="display:flex;align-items:center;gap:5px;font-family:monospace;font-size:9px;color:var(--dim);margin-left:8px">IMG<input type="range" min="54" max="220" step="6" value="${_mtgsbState.tableImgSize || 84}" style="width:90px;accent-color:#5ba3f5;cursor:pointer" oninput="mtgsbSetTableImgSize(this.value)"></label>`:''}
+        <button id="mtsb-cache-images" class="hbtn" ${_mtgsbState.imageCacheProgress?'disabled':''} onclick="mtgsbCacheSelectedSetImages()">${_mtgsbState.imageCacheProgress?`IMAGES ${_mtgsbState.imageCacheProgress.done}/${_mtgsbState.imageCacheProgress.total}`:`CACHE SET IMAGES (${_mtgsbState.cachedImageUrls.size})`}</button>
       </div>
     </div>
     <div class="mtsb-filters">
@@ -26301,6 +26354,7 @@ async function mtgsbSelectSet(){
     _mtgsbState.loading = true;
     const cards = await mtgsbFetchSetCards(setCode);
     _mtgsbState.cards = cards;
+    await mtgsbLoadCachedSetImages(cards);
     _mtgsbState.loading = false;
     mtgsbApplyFilters();
     mtgsbRenderContent(false);
