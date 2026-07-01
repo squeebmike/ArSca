@@ -2,7 +2,7 @@
   'use strict';
 
   const DB_NAME = 'arscaOfflineCatalog';
-  const DB_VERSION = 1;
+  const DB_VERSION = 2;
   const DATA_STORES = ['mtg_cards','mtg_sets','mtg_prices','mtg_price_links'];
   let dbPromise;
 
@@ -36,6 +36,8 @@
           ['collectorNumber','collectorNumber'],['oracleId','oracleId'],['artist','artist'],['rarity','rarity'],
           ['typeLine','typeLine'],['searchText','searchText']
         ]);
+        const cardsStore = request.transaction.objectStore('mtg_cards');
+        if(!cardsStore.indexNames.contains('catalogSet')) cardsStore.createIndex('catalogSet',['catalogVersion','setCode']);
         createVersioned('mtg_sets','setCode',[['setName','setName'],['releasedAt','releasedAt']]);
         createVersioned('mtg_prices','pricechartingId',[['productName','productName'],['normalizedProductName','normalizedProductName'],['updatedAt','updatedAt']]);
         createVersioned('mtg_price_links','scryfallId',[['pricechartingId','pricechartingId'],['confidence','confidence'],['oracleId','oracleId']]);
@@ -204,7 +206,11 @@
   async function sets(){ const active=await getMeta('active'); return (await recordsForVersion('mtg_sets',active?.catalogVersion)).sort((a,b)=>String(b.releasedAt||'').localeCompare(String(a.releasedAt||''))); }
   async function cardsBySet(setCode){
     const active=await getMeta('active'), version=active?.catalogVersion, wanted=normalize(setCode);
-    const cards=await recordsForVersion('mtg_cards',version,Infinity,card=>normalize(card.setCode)===wanted);
+    if(!version || !wanted) return [];
+    const db=await openDb(), store=db.transaction('mtg_cards','readonly').objectStore('mtg_cards');
+    const cards=store.indexNames.contains('catalogSet')
+      ? await requestPromise(store.index('catalogSet').getAll(IDBKeyRange.only([version,wanted])))
+      : await recordsForVersion('mtg_cards',version,Infinity,card=>normalize(card.setCode)===wanted);
     return Promise.all(cards.map(async card=>{
       const link=await getVersioned('mtg_price_links',version,card.scryfallId);
       const price=link?.pricechartingId ? await getVersioned('mtg_prices',version,link.pricechartingId) : null;

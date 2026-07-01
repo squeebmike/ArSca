@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.06.30.01-mtg-offline-r2">
+<meta name="version" content="2026.07.01.04-mtg-offline-set-browser">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1158,6 +1158,7 @@ body.customer-display-mode #customer-display-exit{display:block;}
 .mtsb-sort-row{display:flex;gap:4px;align-items:center;flex-wrap:wrap;font-family:monospace;font-size:9px;color:var(--dim);}
 .mtsb-sort-btn{min-height:32px!important;padding:4px 10px!important;font-size:9px!important;}
 .mtsb-sort-btn.active{border-color:rgba(91,163,245,.5)!important;color:#5ba3f5!important;}
+.mtsb-filter-toggle{display:none;}
 .mtsb-filters{display:flex;gap:6px;padding:8px 18px;border-bottom:1px solid var(--border);flex-wrap:wrap;align-items:center;flex-shrink:0;}
 .mtsb-filter-input{background:var(--surf2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:6px 10px;font-family:monospace;font-size:11px;min-height:36px;}
 .mtsb-filter-chip{font-family:monospace;font-size:10px;letter-spacing:.04em;padding:6px 10px;border:1px solid var(--border);border-radius:6px;cursor:pointer;color:var(--dim);background:var(--surf2);min-height:36px;display:flex;align-items:center;user-select:none;}
@@ -1200,10 +1201,22 @@ body.customer-display-mode #customer-display-exit{display:block;}
 .mtsb-rarity-mythic{color:#e8742b;}
 .mtsb-color-pip{display:inline-block;width:14px;height:14px;border-radius:50%;font-size:8px;line-height:14px;text-align:center;font-weight:700;flex-shrink:0;}
 @media(max-width:640px){
-  .mtsb-cards-area{grid-template-columns:1fr;padding:10px 12px;}
-  .mtsb-header{padding:12px 14px;}
-  .mtsb-set-row,.mtsb-toolbar,.mtsb-filters{padding:8px 12px;}
-  .mtsb-set-search{width:100%;flex:1 1 100%;}
+  .mtsb-inner{height:100dvh;max-height:100dvh;}
+  .mtsb-header{padding:7px 10px;min-height:44px;}
+  .mtsb-header .mtsb-title + span{display:none;}
+  .mtsb-set-row{padding:6px 10px;gap:6px;flex-wrap:nowrap;}
+  .mtsb-set-sel{min-width:0;min-height:38px;padding:7px 9px;}
+  .mtsb-set-search{width:92px;min-height:38px;padding:7px 9px;flex:0 0 92px;}
+  .mtsb-toolbar{padding:5px 10px;min-height:42px;display:block;overflow-x:auto;white-space:nowrap;-webkit-overflow-scrolling:touch;}
+  .mtsb-stats{display:none;}
+  .mtsb-sort-row{flex-wrap:nowrap;width:max-content;}
+  .mtsb-sort-btn{min-height:30px!important;padding:3px 8px!important;}
+  .mtsb-filter-toggle{display:inline-flex;}
+  .mtsb-filters{display:none;padding:7px 10px;max-height:104px;overflow:auto;}
+  .mtsb-filters.on{display:flex;}
+  .mtsb-filter-input{min-height:34px;flex:1 1 calc(50% - 6px);min-width:0;}
+  .mtsb-filter-chip{min-height:34px;}
+  .mtsb-cards-area{grid-template-columns:1fr;padding:8px 10px;}
   .mtsb-card{display:block;padding:10px;}
   .mtsb-card-img-wrap{width:min(78vw,280px);margin:0 auto 10px;}
   .mtsb-card-img{width:100%;}
@@ -1318,8 +1331,8 @@ body.show-mode .inv-sync-badge{display:none;}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-<script src="scripts/query-routing.js?v=2026.07.01.02-mtg-sync-state-set-images"></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.07.01.02-mtg-sync-state-set-images"></script>
+<script src="scripts/query-routing.js?v=2026.07.01.04-mtg-offline-set-browser"></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.07.01.04-mtg-offline-set-browser"></script>
 </head>
 <body>
 
@@ -1369,7 +1382,7 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.06.30.01-mtg-offline-r2</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.07.01.04-mtg-offline-set-browser</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
@@ -1396,7 +1409,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.06.30.01-mtg-offline-r2</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.07.01.04-mtg-offline-set-browser</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -2629,7 +2642,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.07.01.03-auth-safety-invite-fix';
+const APP_VERSION = '2026.07.01.04-mtg-offline-set-browser';
 window.APP_VERSION = APP_VERSION;
 const branchName = 'main';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
@@ -25942,7 +25955,36 @@ const _mtgsbState = {
   tableImgSize: Number(localStorage.getItem('mtsb_table_img_size') || 84),
   swipeIdx: 0, isDragging: false, dragX: 0,
   cachedImageUrls: new Map(), imageCacheProgress: null,
+  mobileFiltersOpen: false,
 };
+
+function mtgsbNormalizeSetRecord(set = {}){
+  return {
+    ...set,
+    code: set.code || set.setCode || '',
+    name: set.name || set.setName || set.code || set.setCode || '',
+    released_at: set.released_at || set.releasedAt || '',
+    card_count: Number(set.card_count ?? set.cardCount ?? 0),
+  };
+}
+
+function mtgsbNormalizeCardRecord(card = {}){
+  const faces = card.card_faces || card.cardFaces || [];
+  return {
+    ...card,
+    id: card.id || card.scryfallId || '',
+    set: card.set || card.setCode || '',
+    set_name: card.set_name || card.setName || '',
+    collector_number: card.collector_number || card.collectorNumber || '',
+    type_line: card.type_line || card.typeLine || '',
+    image_uris: card.image_uris || card.imageUris || {},
+    card_faces: faces.map(face => ({
+      ...face,
+      type_line: face.type_line || face.typeLine || '',
+      image_uris: face.image_uris || face.imageUris || {},
+    })),
+  };
+}
 
 function mtgsbRarityOrder(r){
   return { common:0, uncommon:1, rare:2, mythic:3, special:4, bonus:5 }[r] ?? 6;
@@ -25987,7 +26029,7 @@ async function mtgsbFetchSets(){
   const localSets = await mtgCatalogSets().catch(() => []);
   if(localSets.length && mtgOfflineSearchMode() !== 'online_only') {
     _mtgsbState.sourceLabel = 'Scryfall offline catalog';
-    return localSets;
+    return localSets.map(mtgsbNormalizeSetRecord);
   }
   const cacheKey = 'mtsb_sets_v1';
   try {
@@ -26010,7 +26052,7 @@ async function mtgsbFetchSetCards(setCode){
   const localCards = await mtgCatalogCardsBySet(setCode).catch(() => []);
   if(localCards.length) {
     _mtgsbState.sourceLabel = 'Scryfall offline catalog';
-    return localCards;
+    return localCards.map(mtgsbNormalizeCardRecord);
   }
   let cards = [];
   let url = 'https://api.scryfall.com/cards/search?q=set:' + encodeURIComponent(setCode) + '&unique=prints&order=collector_number&format=json';
@@ -26068,7 +26110,7 @@ function mtgsbColorPip(color){
 }
 
 function mtgsbCardImgSrc(c){
-  const id = c.id || c.scryfallId || '';
+  const id = c.scryfallId || c.id || '';
   const cached = id ? _mtgsbState.cachedImageUrls.get(id) : '';
   const remote = c.image_uris?.normal || c.card_faces?.[0]?.image_uris?.normal || '';
   return cached || (navigator.onLine ? remote : '');
@@ -26081,7 +26123,7 @@ async function mtgsbLoadCachedSetImages(cards = []){
   for(let start=0; start<cards.length; start+=24){
     const batch = cards.slice(start,start+24);
     const found = await Promise.all(batch.map(async card => {
-      const id = card.id || card.scryfallId || '';
+      const id = card.scryfallId || card.id || '';
       const url = card.image_uris?.normal || card.card_faces?.[0]?.image_uris?.normal || '';
       if(!id || !url) return null;
       const cached = await window.ArsCaMtgOffline.cachedImageUrl({scryfallId:id,url,size:'normal',faceIndex:0}).catch(()=>'');
@@ -26094,14 +26136,14 @@ async function mtgsbLoadCachedSetImages(cards = []){
 async function mtgsbCacheSelectedSetImages(){
   if(!navigator.onLine){ toast_dash('Connect to the internet to cache set images.'); return; }
   if(!window.ArsCaMtgOffline || !_mtgsbState.cards.length || _mtgsbState.imageCacheProgress) return;
-  const cards = _mtgsbState.cards.filter(card => (card.id || card.scryfallId) && (card.image_uris?.normal || card.card_faces?.[0]?.image_uris?.normal));
+  const cards = _mtgsbState.cards.filter(card => (card.scryfallId || card.id) && (card.image_uris?.normal || card.card_faces?.[0]?.image_uris?.normal));
   const progress = _mtgsbState.imageCacheProgress = {done:0,total:cards.length,cached:0,skipped:0,failed:0};
   const update = () => { const btn=document.getElementById('mtsb-cache-images'); if(btn) btn.textContent=`IMAGES ${progress.done}/${progress.total}`; };
   update();
   try {
     for(let start=0; start<cards.length; start+=4){
       await Promise.all(cards.slice(start,start+4).map(async card => {
-        const id=card.id || card.scryfallId;
+        const id=card.scryfallId || card.id;
         const url=card.image_uris?.normal || card.card_faces?.[0]?.image_uris?.normal || '';
         try { const result=await window.ArsCaMtgOffline.cacheImage({scryfallId:id,url,size:'normal',faceIndex:0}); result.skipped ? progress.skipped++ : progress.cached++; }
         catch(_) { progress.failed++; }
@@ -26163,9 +26205,10 @@ function mtgsbRenderContent(loading){
         ${view==='cards'?`<label style="display:flex;align-items:center;gap:5px;font-family:monospace;font-size:9px;color:var(--dim);margin-left:8px">SIZE<input type="range" min="240" max="560" step="20" value="${cardSize}" style="width:90px;accent-color:#5ba3f5;cursor:pointer" oninput="mtgsbSetCardSize(this.value)"></label>`:''}
         ${view==='table'?`<label style="display:flex;align-items:center;gap:5px;font-family:monospace;font-size:9px;color:var(--dim);margin-left:8px">IMG<input type="range" min="54" max="220" step="6" value="${_mtgsbState.tableImgSize || 84}" style="width:90px;accent-color:#5ba3f5;cursor:pointer" oninput="mtgsbSetTableImgSize(this.value)"></label>`:''}
         <button id="mtsb-cache-images" class="hbtn" ${_mtgsbState.imageCacheProgress?'disabled':''} onclick="mtgsbCacheSelectedSetImages()">${_mtgsbState.imageCacheProgress?`IMAGES ${_mtgsbState.imageCacheProgress.done}/${_mtgsbState.imageCacheProgress.total}`:`CACHE SET IMAGES (${_mtgsbState.cachedImageUrls.size})`}</button>
+        <button class="hbtn mtsb-sort-btn mtsb-filter-toggle" onclick="mtgsbToggleMobileFilters()">FILTERS</button>
       </div>
     </div>
-    <div class="mtsb-filters">
+    <div class="mtsb-filters${_mtgsbState.mobileFiltersOpen?' on':''}">
       <input class="mtsb-filter-input" placeholder="Card name…" style="width:130px" value="${escHtml(_mtgsbState.filters.name)}" oninput="mtgsbSetFilter('name',this.value)">
       <input class="mtsb-filter-input" placeholder="Artist…" style="width:110px" value="${escHtml(_mtgsbState.filters.artist)}" oninput="mtgsbSetFilter('artist',this.value)">
       <select class="mtsb-filter-input" style="cursor:pointer" onchange="mtgsbSetFilter('rarity',this.value)">${rarityOpts}</select>
@@ -26354,10 +26397,12 @@ async function mtgsbSelectSet(){
     _mtgsbState.loading = true;
     const cards = await mtgsbFetchSetCards(setCode);
     _mtgsbState.cards = cards;
-    await mtgsbLoadCachedSetImages(cards);
     _mtgsbState.loading = false;
     mtgsbApplyFilters();
     mtgsbRenderContent(false);
+    mtgsbLoadCachedSetImages(cards).then(() => {
+      if(_mtgsbState.selectedSet?.code === setCode) mtgsbRenderContent(false);
+    }).catch(() => {});
   } catch(e){
     _mtgsbState.loading = false;
     const content = document.getElementById('mtsb-content');
@@ -26382,6 +26427,11 @@ function mtgsbSetFilter(key, val){
   }
   mtgsbApplyFilters();
   mtgsbRenderContent(false);
+}
+
+function mtgsbToggleMobileFilters(){
+  _mtgsbState.mobileFiltersOpen = !_mtgsbState.mobileFiltersOpen;
+  document.querySelector('#mtsb-content .mtsb-filters')?.classList.toggle('on', _mtgsbState.mobileFiltersOpen);
 }
 
 function mtgsbClearFilters(){
