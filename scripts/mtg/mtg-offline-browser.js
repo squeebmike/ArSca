@@ -158,7 +158,14 @@
     const explicitCollector=(raw.match(/\bcollector(?:\s+(?:number|#))?\s*#?([a-z0-9/-]+)/i)||[])[1] || '';
     const inferredCollector=!explicitCollector ? (raw.match(/(?:^|\s)#?([0-9]{1,5}[a-z]?(?:\/[0-9]{1,5})?)\s*$/i)||[])[1] || '' : '';
     const collector=explicitCollector||inferredCollector;
-    const clean=normalize(raw.replace(/\bartist\s+.+$/i,'').replace(/\bset\s+[a-z0-9]{2,8}\b/i,'').replace(/\bcollector(?:\s+(?:number|#))?\s*#?[a-z0-9/-]+/i,'').replace(inferredCollector ? new RegExp(`(?:^|\\s)#?${inferredCollector.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}\\s*$`,'i') : /$^/,''));
+    const clean=normalize(raw
+      .replace(/\bmagic\s*:?\s*the\s+gathering\b/ig,' ')
+      .replace(/\bmagic\s+cards?\b/ig,' ')
+      .replace(/\bmtg\b/ig,' ')
+      .replace(/\bartist\s+.+$/i,'')
+      .replace(/\bset\s+[a-z0-9]{2,8}\b/i,'')
+      .replace(/\bcollector(?:\s+(?:number|#))?\s*#?[a-z0-9/-]+/i,'')
+      .replace(inferredCollector ? new RegExp(`(?:^|\\s)#?${inferredCollector.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}\\s*$`,'i') : /$^/,''));
     return {raw,artist:normalize(artist),set:normalize(set),collector:normalize(collector),tokens:clean.split(' ').filter(Boolean),clean};
   }
 
@@ -244,5 +251,5 @@
 
   async function clearImageCache(){const db=await openDb();const tx=db.transaction('mtg_images','readwrite');tx.objectStore('mtg_images').clear();await transactionPromise(tx);}
 
-  root.ArsCaMtgOffline={openDb,sync,search,sets,cardsBySet,status,clearAll,cacheImage,cachedImageUrl,clearImageCache,normalize,DB_NAME};
+  root.ArsCaMtgOffline={openDb,sync,search,sets,cardsBySet,status,clearAll,cacheImage,cachedImageUrl,clearImageCache,normalize,queryParts,DB_NAME};
 })(typeof window!=='undefined'?window:globalThis);

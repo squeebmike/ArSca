@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import vm from 'node:vm';
 
 const worker = fs.readFileSync('cloudflare-worker-full.js', 'utf8');
 const dashboard = fs.readFileSync('dashboard.html', 'utf8');
@@ -18,11 +19,18 @@ for(const store of ['mtg_cards','mtg_sets','mtg_prices','mtg_price_links','mtg_m
 assert.match(browser, /active\?\.catalogVersion===manifest\.version/);
 assert.match(browser, /checksum mismatch/);
 assert.match(browser, /mtg-image:\$\{scryfallId\}:\$\{faceIndex\}:\$\{size\}:\$\{hash\}/);
+assert.match(browser, /replace\(\/\\bmtg\\b\/ig/);
+assert.match(browser, /normalize,queryParts,DB_NAME/);
+const browserSandbox = {};
+browserSandbox.globalThis = browserSandbox;
+vm.runInNewContext(browser, browserSandbox);
+assert.equal(browserSandbox.ArsCaMtgOffline.queryParts('mtg Black Lotus').tokens.join('|'), 'black|lotus');
+assert.equal(browserSandbox.ArsCaMtgOffline.queryParts('Magic: The Gathering Sol Ring').tokens.join('|'), 'sol|ring');
 
 assert.match(dashboard, /Offline first, online backup/);
 assert.match(dashboard, /PriceCharting offline snapshot/);
 assert.match(dashboard, /Scryfall offline catalog/);
-assert.match(dashboard, /2026\.06\.30\.04-mtg-r2-remote-upload/);
+assert.match(dashboard, /2026\.07\.01\.01-mtg-offline-search-fix/);
 assert.match(dashboard, /const branchName = 'main'/);
 assert.doesNotMatch(dashboard, /fetch\(['"]https:\/\/api\.scryfall\.com\/bulk-data/);
 
