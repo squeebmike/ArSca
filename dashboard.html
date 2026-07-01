@@ -1328,6 +1328,11 @@ body.wt-show-help.show-mode .help-q-btn{display:inline-flex;}
 .inv-sync-badge.conflict{background:rgba(255,77,109,.15);color:var(--red,#ff4d6d);border:1px solid rgba(255,77,109,.3);}
 .inv-sync-badge.synced{}
 body.show-mode .inv-sync-badge{display:none;}
+@media(max-width:600px){
+  .comic-appraisal-grid,.comic-values{grid-template-columns:1fr!important}
+  .comic-appraisal .tsi{width:100%;max-width:100%}
+  .comic-appraisal button{flex:1 1 145px;min-height:40px}
+}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
@@ -1550,6 +1555,13 @@ body.show-mode .inv-sync-badge{display:none;}
     <button class="fb" onclick="setF('Comic',this)">📖 Comics</button>
     <button class="fb" onclick="setF('Graded',this)">🏆 Graded</button>
     <button class="fb" onclick="setF('Collectibles',this)">🏷 Collectibles</button>
+  </div>
+  <div class="tc inv-filter-chips" aria-label="Comic inventory filters">
+    <button class="fb" onclick="setF('comic_raw',this)">Comic Raw</button>
+    <button class="fb" onclick="setF('comic_slabbed',this)">Comic Slabbed</button>
+    <button class="fb" onclick="setF('needs_cover',this)">Needs Cover Check</button>
+    <button class="fb" onclick="setF('high_value',this)">High Value</button>
+    <select class="tsi" aria-label="Sort comic inventory" onchange="setComicInventorySort(this.value)"><option value="name">Sort: title</option><option value="issueNumber">Issue number</option><option value="market">Market value</option><option value="numericGrade">Grade</option><option value="lastPriceUpdate">Last updated</option><option value="cost">Cost</option><option value="location">Location</option></select>
   </div>
   <div id="inventory-health-panel"></div>
   <!-- Card grid view — hidden in table mode -->
@@ -11975,6 +11987,18 @@ function filterAndSwitch(f){
 
 function inventoryImageUrl(item={}){
   const raw = item.raw || {};
+  const comicPhotoKey=item.userPhotoBlobKey||raw.userPhotoBlobKey||'';
+  if(comicPhotoKey){
+    const cached=window._comicPhotoUrls?.[comicPhotoKey];
+    if(cached)return cached;
+    if(typeof hydrateComicPhotoKey==='function')hydrateComicPhotoKey(comicPhotoKey);
+  }
+  const cachedCoverKey=item.cachedCoverBlobKey||raw.cachedCoverBlobKey||'';
+  if(cachedCoverKey){
+    const cached=window._comicPhotoUrls?.[cachedCoverKey];
+    if(cached)return cached;
+    if(typeof hydrateComicPhotoKey==='function')hydrateComicPhotoKey(cachedCoverKey);
+  }
   return item.photoDataUrl || item.userPhoto || item.uploadedPhotoUrl || item.photoUrl ||
     item.thumbnail || item.imageUrl || item.image_url || item.image ||
     raw.photoDataUrl || raw.userPhoto || raw.uploadedPhotoUrl || raw.photoUrl ||
@@ -11982,6 +12006,7 @@ function inventoryImageUrl(item={}){
 }
 function inventoryImageSourceLabel(item={}){
   const raw = item.raw || {};
+  if(item.userPhotoBlobKey || raw.userPhotoBlobKey) return 'Uploaded comic cover';
   if(item.photoDataUrl || item.userPhoto || item.uploadedPhotoUrl || raw.photoDataUrl || raw.userPhoto || raw.uploadedPhotoUrl) return 'Uploaded photo';
   if(inventoryImageUrl(item)) return 'Catalog image';
   return 'No image';
@@ -12133,6 +12158,7 @@ function inventoryEmptySearchState(q){
   </div>`;
 }
 
+function setComicInventorySort(column){ts2.col=column||'name';ts2.dir=1;page=1;filterTable();}
 function filterTable(){
   const q=(document.getElementById('tbl-q')?.value||'').trim();
   const smartRows = q ? smartSearchLocalItems(q, all, all.length) : [];
@@ -12153,6 +12179,9 @@ function filterTable(){
     if(activeF==='listed_online') return mq&&i.status==='in_stock'&&inventoryIsListed(i);
     if(activeF==='below_cost') return mq&&i.status==='in_stock'&&inventoryProfitStats(i).cost>0&&inventoryProfitStats(i).list>0&&inventoryProfitStats(i).list<inventoryProfitStats(i).cost;
     if(activeF==='high_value') return mq&&i.status==='in_stock'&&Math.max(inventoryMarketPrice(i), inventoryListPrice(i))>=100;
+    if(activeF==='comic_raw') return mq&&qplCategoryKey(i.category)==='comic'&&!i.isSlabbed;
+    if(activeF==='comic_slabbed') return mq&&qplCategoryKey(i.category)==='comic'&&!!i.isSlabbed;
+    if(activeF==='needs_cover') return mq&&qplCategoryKey(i.category)==='comic'&&(!inventoryImageUrl(i)||(!i.coverConfirmed&&i.coverConfidence!=='confirmed'));
     if(LIFECYCLE_LABELS[activeF]) return mq&&i.lifecycle===activeF;
     return mq&&i.category===activeF;
   });
@@ -12161,6 +12190,7 @@ function filterTable(){
   } else {
     filtered.sort((a,b)=>{
       let av=a[ts2.col]||'',bv=b[ts2.col]||'';
+      if(ts2.col==='issueNumber'||ts2.col==='numericGrade'){av=parseFloat(av)||0;bv=parseFloat(bv)||0;}
       if(typeof av==='string'){av=av.toLowerCase();bv=bv.toLowerCase();}
       return av<bv?-ts2.dir:av>bv?ts2.dir:0;
     });
@@ -15821,7 +15851,7 @@ function levenshtein(a,b){
 
 function scoreSmartItem(item, q){
   const needle = typeof q === 'string' ? smartSearchNeedles(q) : q;
-  const fields = [item.name,item.set,item.year,item.card_number,item.variant,item.rarity,item.finish,item.category,item.player,item.team,item.issue,item.publisher,item.notes,item.key_notes,item.tags].filter(Boolean);
+  const fields = [item.name,item.set,item.year,item.card_number,item.variant,item.rarity,item.finish,item.category,item.player,item.team,item.issue,item.issueNumber,item.series,item.publisher,item.location,item.box,item.notes,item.key_notes,item.tags].filter(Boolean);
   const hay = smartNormalizeText(fields.join(' '));
   const words = hay.split(/\s+/);
   let score = 0;
@@ -16088,13 +16118,13 @@ function qplComicPricePanel(r, idx){
   const demand = pc.demand || {};
   const grades = [
     { key:'ungraded', label:'Raw / Ungraded' },
-    { key:'grade4',   label:'CGC 4.0–4.5' },
-    { key:'grade6',   label:'CGC 6.0–6.5' },
-    { key:'grade8',   label:'CGC 8.0–8.5' },
-    { key:'grade9_2', label:'CGC 9.2' },
-    { key:'grade9_4', label:'CGC 9.4' },
-    { key:'grade9_8', label:'CGC 9.8' },
-    { key:'grade10',  label:'CGC 10 (Perfect)' },
+    { key:'grade4',   label:'Graded 4.0 / 4.5 estimate' },
+    { key:'grade6',   label:'Graded 6.0 / 6.5 estimate' },
+    { key:'grade8',   label:'Graded 8.0 / 8.5 estimate' },
+    { key:'grade9_2', label:'Graded 9.2 estimate' },
+    { key:'grade9_4', label:'Graded 9.4 estimate' },
+    { key:'grade9_8', label:'Graded 9.8 estimate' },
+    { key:'grade10',  label:'Graded 10.0 estimate' },
   ];
   const rows = grades.map(g => {
     const v = Number(cp[g.key] || 0);
@@ -16117,6 +16147,93 @@ function qplComicPricePanel(r, idx){
       ${vol ? `Sales vol: ${vol} &nbsp;·&nbsp; ` : ''}${genre ? `Genre: ${escHtml(genre)} &nbsp;·&nbsp; ` : ''}Source: PriceCharting${pc.confidence ? ' · ' + escHtml(pc.confidence) + ' confidence' : ''}
     </div>
   </div>`;
+}
+
+const COMIC_GRADE_BUCKETS = [
+  {key:'grade4',grade:4.25},{key:'grade6',grade:6.25},{key:'grade8',grade:8.25},
+  {key:'grade9_2',grade:9.2},{key:'grade9_4',grade:9.4},{key:'grade9_8',grade:9.8},{key:'grade10',grade:10}
+];
+const COMIC_DEFECTS = ['spine ticks','color breaks','creases','tears','detached staple','writing','restoration suspected','missing pages/coupons','water damage','foxing','tape'];
+
+function comicProductMeta(r = {}){
+  const name=String(r.name||r.pricecharting?.productName||'');
+  const match=name.match(/(?:^|\s)#(\d+[a-z]?)(?:\s|$)/i)||name.match(/\b(?:issue|no\.?)\s*(\d+[a-z]?)\b/i);
+  const issueNumber=r.issue||r.card_number||match?.[1]||'';
+  const series=r.series||(match?name.slice(0,match.index).trim():name.replace(/\s+\d+[a-z]?\s*(?:\[|\(|$).*/i,'').trim());
+  const edition=[r.variant,r.pricecharting?.genre,/\bnewsstand\b/i.test(name)?'Newsstand':'',/\bdirect\b/i.test(name)?'Direct':'',/\bfacsimile\b/i.test(name)?'Facsimile':'',/\breprint\b/i.test(name)?'Reprint':''].filter(Boolean).join(' / ');
+  return {series,issueNumber,edition};
+}
+
+function comicAppraisalState(r = {}){
+  const m=comicProductMeta(r);
+  const knownConditions=['Poor','Fair','Good','Very Good','Fine','Very Fine','Near Mint'];
+  const conditionSeed=knownConditions.includes(r.conditionText||r.condition) ? (r.conditionText||r.condition) : 'Very Fine';
+  r.comicAppraisal ||= {conditionText:conditionSeed,numericGrade:r.numericGrade||'',isSlabbed:!!r.isSlabbed,grader:r.grader||'',certNumber:r.certNumber||r.cert_number||'',pageQuality:r.pageQuality||'',defects:[...(r.defects||[])],notes:r.notes||'',listPriceOverride:'',costBasis:r.cost||'',location:r.location||'',box:r.box||'',coverConfirmed:!!r.coverConfirmed,series:m.series,issueNumber:m.issueNumber,volume:r.volume||'',publisher:r.publisher||'',variant:r.variant||m.edition||'',printing:r.printing||'',newsstandDirect:/newsstand/i.test(m.edition)?'Newsstand':/direct/i.test(m.edition)?'Direct':''};
+  return r.comicAppraisal;
+}
+
+function comicAppraisalEstimate(r = {}){
+  const a=comicAppraisalState(r),cp=r.pricecharting?.comicPrices||{},raw=Number(cp.ungraded||r.market||0);
+  let sourceLabel='Raw / Ungraded',estimated=raw;
+  if(a.isSlabbed&&Number(a.numericGrade)){
+    const nearest=COMIC_GRADE_BUCKETS.filter(b=>Number(cp[b.key]||0)>0).sort((x,y)=>Math.abs(x.grade-Number(a.numericGrade))-Math.abs(y.grade-Number(a.numericGrade)))[0];
+    if(nearest){estimated=Number(cp[nearest.key]||0);sourceLabel='Nearest available graded '+nearest.grade+' estimate';}
+  }else{
+    const factors={Poor:.20,Fair:.30,Good:.45,'Very Good':.60,Fine:.75,'Very Fine':.90,'Near Mint':1};
+    estimated=raw*Number(factors[a.conditionText]??1);sourceLabel=a.conditionText+' shop estimate from raw guide';
+  }
+  const market=estimated?Math.max(1,Math.round(estimated)):0,listPrice=Number(a.listPriceOverride||0)||market;
+  const exactIssue=!!comicProductMeta(r).issueNumber,imageConfirmed=!!a.coverConfirmed||r.imageSource==='user-upload';
+  const confidence=exactIssue&&imageConfirmed?'High':exactIssue?'Medium':'Low';
+  const reasons=[exactIssue?'Exact issue candidate selected':'Issue number needs confirmation',imageConfirmed?'Cover confirmed':'Cover image needs confirmation',a.isSlabbed?'Nearest provider grade bucket used':'Raw condition is a shop estimate'];
+  return {estimated:market,listPrice,buyLow:market?Math.round(market*.4):0,buyHigh:market?Math.round(market*.6):0,confidence,reasons,sourceLabel};
+}
+
+function updateComicAppraisal(idx,field,value,rerender=true){
+  const r=qplResults[idx];if(!r)return;const a=comicAppraisalState(r);a[field]=value;const v=comicAppraisalEstimate(r);
+  r.market=v.estimated;r.condition=a.conditionText;r.numericGrade=a.numericGrade;r.isSlabbed=a.isSlabbed;r.grader=a.grader;r.cert_number=a.certNumber;
+  if(rerender)updateQplResultCard(idx);
+}
+function toggleComicDefect(idx,defect,checked){const a=comicAppraisalState(qplResults[idx]||{});a.defects=checked?[...new Set([...(a.defects||[]),defect])]:(a.defects||[]).filter(x=>x!==defect);}
+function confirmComicCover(idx){const r=qplResults[idx];if(!r)return;comicAppraisalState(r).coverConfirmed=true;r.coverConfidence='confirmed';updateQplResultCard(idx);}
+window._comicPhotoUrls ||= {};
+function comicCoverCacheKey(r,url){let hash=2166136261;for(const ch of String(url||'')){hash^=ch.charCodeAt(0);hash=Math.imul(hash,16777619);}return ['comic-cover',r.imageSource||'provider',r.pricecharting?.productId||r.providerProductId||'unknown',(hash>>>0).toString(16)].join(':');}
+async function cacheComicExternalCover(r,url){
+  if(!r||!/^https?:/i.test(url||''))return;const key=comicCoverCacheKey(r,url);r.cachedCoverBlobKey=key;
+  const prior=await comicsDbGet('images',key).catch(()=>null);if(prior?.blob){window._comicPhotoUrls[key]||=URL.createObjectURL(prior.blob);return;}
+  try{const res=await fetch(url,{mode:'cors',cache:'force-cache'});if(!res.ok)return;const blob=await res.blob();await comicsDbPut('images',{key,blob,source:r.imageSource||'provider',providerProductId:r.pricecharting?.productId||'',url,updatedAt:new Date().toISOString()});window._comicPhotoUrls[key]=URL.createObjectURL(blob);}catch(e){}
+}
+async function handleComicCoverPhoto(idx,file){
+  const r=qplResults[idx];if(!r||!file)return;if(!/^image\//.test(file.type||'')){toast_dash('Choose an image file');return;}
+  if(file.size>12*1024*1024){toast_dash('Cover photo must be under 12 MB');return;}
+  const key='comic-photo:'+String(r.pricecharting?.productId||Date.now())+':'+Date.now();
+  await comicsDbPut('images',{key,blob:file,updatedAt:new Date().toISOString(),source:'user-upload'});
+  if(r.imageUrl&&!/^blob:/.test(r.imageUrl))r.externalCoverImageUrl=r.imageUrl;
+  const objectUrl=URL.createObjectURL(file);window._comicPhotoUrls[key]=objectUrl;r.userPhotoBlobKey=key;r.imageUrl=objectUrl;r.imageSource='user-upload';r.coverConfidence='confirmed';comicAppraisalState(r).coverConfirmed=true;updateQplResultCard(idx);
+}
+async function hydrateComicPhotoKey(key){
+  if(!key||window._comicPhotoUrls[key]||window._comicPhotoUrls[key]===null)return;
+  window._comicPhotoUrls[key]=null;const record=await comicsDbGet('images',key).catch(()=>null);if(!record?.blob)return;
+  window._comicPhotoUrls[key]=URL.createObjectURL(record.blob);filterTable();
+}
+
+function comicAppraisalSummary(r = {}){
+  const a=comicAppraisalState(r),v=comicAppraisalEstimate(r),m=comicProductMeta(r),cp=r.pricecharting?.comicPrices||{};
+  return `${r.name||[m.series,m.issueNumber?'#'+m.issueNumber:''].filter(Boolean).join(' ')}\nEstimated grade: ${a.isSlabbed?[a.grader,a.numericGrade].filter(Boolean).join(' ')||'Slabbed grade not entered':a.conditionText+' (shop estimate)'}\nPrice source: PriceCharting (${r.lastPriceUpdate?new Date(r.lastPriceUpdate).toLocaleDateString():'current lookup'})\nRaw estimate: ${cp.ungraded?'$'+Number(cp.ungraded).toFixed(2):'Unavailable'}\nGraded 9.8 estimate: ${cp.grade9_8?'$'+Number(cp.grade9_8).toFixed(2):'Unavailable'}\nEstimated current value: ${v.estimated?'$'+v.estimated:'Needs review'}\nRecommended list: ${v.listPrice?'$'+v.listPrice:'Needs review'}\nSuggested buy range: ${v.estimated?'$'+v.buyLow+'-$'+v.buyHigh:'Needs review'}\nConfidence: ${v.confidence}\nNotes: ${v.reasons.join('. ')}.${a.notes?' '+a.notes:''}\nGrade is a shop estimate, not certified grading.`;
+}
+async function copyComicAppraisal(idx){const text=comicAppraisalSummary(qplResults[idx]||{});try{await navigator.clipboard.writeText(text);toast_dash('Appraisal summary copied');}catch(e){window.prompt('Copy appraisal summary:',text);}}
+
+function qplComicPricePanelV2(r,idx){
+  const pc=r.pricecharting||{},cp=pc.comicPrices||{},grades=[['ungraded','Raw / Ungraded'],['grade4','Graded 4.0 / 4.5 estimate'],['grade6','Graded 6.0 / 6.5 estimate'],['grade8','Graded 8.0 / 8.5 estimate'],['grade9_2','Graded 9.2 estimate'],['grade9_4','Graded 9.4 estimate'],['grade9_8','Graded 9.8 estimate'],['grade10','Graded 10.0 estimate']];
+  const rows=grades.map(([key,label])=>`<tr><td style="padding:4px 8px;color:var(--dim)">${label}</td><td style="padding:4px 8px;text-align:right">${Number(cp[key]||0)?'$'+Number(cp[key]).toFixed(2):'--'}</td></tr>`).join('');
+  return `<div style="margin-top:12px;border:1px solid rgba(199,125,255,.22);border-radius:10px;padding:12px;background:rgba(199,125,255,.04)"><div style="display:flex;justify-content:space-between;gap:8px"><b style="font-family:'Orbitron',monospace;font-size:10px;color:var(--purple)">PRICECHARTING COMIC GUIDE</b>${pc.url?`<a href="${escHtml(pc.url)}" target="_blank">View</a>`:''}</div>${grades.some(([k])=>Number(cp[k]||0))?`<table style="width:100%;border-collapse:collapse;font-size:11px;margin-top:7px">${rows}</table>`:'<div style="color:var(--dim);margin-top:8px">No comic guide prices available.</div>'}<div style="font-size:9px;color:var(--dim);margin-top:7px">PriceCharting${r.lastPriceUpdate?' / checked '+escHtml(new Date(r.lastPriceUpdate).toLocaleString()):''}. Grade buckets are provider estimates, not company-specific grades.</div></div>`;
+}
+
+function qplComicAppraisalPanel(r,idx){
+  const a=comicAppraisalState(r),v=comicAppraisalEstimate(r),m=comicProductMeta(r);
+  const conditionOptions=['Poor','Fair','Good','Very Good','Fine','Very Fine','Near Mint'].map(x=>`<option ${a.conditionText===x?'selected':''}>${x}</option>`).join('');
+  const gradeOptions=['','4.0','4.5','6.0','6.5','8.0','8.5','9.2','9.4','9.8','10.0'].map(x=>`<option value="${x}" ${String(a.numericGrade)===x?'selected':''}>${x||'Select grade'}</option>`).join('');
+  return `<div class="comic-appraisal" style="margin-top:12px;border:1px solid rgba(199,125,255,.28);border-radius:10px;padding:12px;background:rgba(199,125,255,.035)"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><b style="font-family:'Orbitron',monospace;font-size:10px;color:var(--purple)">SHOP APPRAISAL</b><span class="qpl-badge ${v.confidence==='High'?'good':v.confidence==='Medium'?'warn':'bad'}">${v.confidence} confidence</span></div><div style="font-size:10px;color:var(--dim);margin:7px 0">${escHtml([m.series,m.issueNumber?'#'+m.issueNumber:'',a.publisher,a.volume,a.variant].filter(Boolean).join(' / '))}</div><div class="comic-appraisal-grid" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px"><label>RAW CONDITION<select class="tsi" onchange="updateComicAppraisal(${idx},'conditionText',this.value)">${conditionOptions}</select></label><label>SLABBED<select class="tsi" onchange="updateComicAppraisal(${idx},'isSlabbed',this.value==='yes')"><option value="no" ${!a.isSlabbed?'selected':''}>No / Raw</option><option value="yes" ${a.isSlabbed?'selected':''}>Yes</option></select></label><label>NUMERIC GRADE<select class="tsi" onchange="updateComicAppraisal(${idx},'numericGrade',this.value)">${gradeOptions}</select></label><label>GRADER<select class="tsi" onchange="updateComicAppraisal(${idx},'grader',this.value)"><option value="">Unspecified</option>${['CGC','CBCS','PGX','Other'].map(x=>`<option ${a.grader===x?'selected':''}>${x}</option>`).join('')}</select></label><label>CERT NUMBER<input class="tsi" value="${escHtml(a.certNumber)}" oninput="updateComicAppraisal(${idx},'certNumber',this.value,false)"></label><label>PAGE QUALITY<select class="tsi" onchange="updateComicAppraisal(${idx},'pageQuality',this.value,false)"><option value="">Not recorded</option>${['White','Off-white to white','Off-white','Cream to off-white','Cream'].map(x=>`<option ${a.pageQuality===x?'selected':''}>${x}</option>`).join('')}</select></label><label>LIST PRICE<input class="tsi" type="number" min="0" step="1" placeholder="${v.listPrice||0}" value="${escHtml(a.listPriceOverride)}" oninput="updateComicAppraisal(${idx},'listPriceOverride',this.value,false)"></label><label>LOCATION<input class="tsi" value="${escHtml(a.location)}" oninput="updateComicAppraisal(${idx},'location',this.value,false)"></label><label>BOX / BIN<input class="tsi" value="${escHtml(a.box)}" oninput="updateComicAppraisal(${idx},'box',this.value,false)"></label></div><details style="margin-top:8px"><summary style="cursor:pointer;color:var(--dim);font-size:10px">Condition defects</summary><div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:7px">${COMIC_DEFECTS.map(d=>`<label style="font-size:9px"><input type="checkbox" ${(a.defects||[]).includes(d)?'checked':''} onchange="toggleComicDefect(${idx},'${d}',this.checked)"> ${d}</label>`).join('')}</div></details><textarea class="tsi" style="width:100%;min-height:54px;margin-top:8px" placeholder="Appraisal notes" oninput="updateComicAppraisal(${idx},'notes',this.value,false)">${escHtml(a.notes)}</textarea><div class="comic-values" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:9px"><div><small>EST. VALUE</small><b>$${v.estimated||0}</b></div><div><small>RECOMMENDED LIST</small><b>$${v.listPrice||0}</b></div><div><small>SUGGESTED BUY RANGE</small><b>$${v.buyLow}-$${v.buyHigh}</b></div></div><div style="font-size:9px;color:var(--dim);line-height:1.5;margin-top:7px">${escHtml(v.sourceLabel)}. ${escHtml(v.reasons.join(' / '))}. Shop estimate only; not certified grading.</div><div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:9px"><button class="hbtn" onclick="copyComicAppraisal(${idx})">COPY APPRAISAL</button><button class="hbtn" onclick="addQuickLookupToInventory(${idx})">SAVE TO INVENTORY</button><label class="hbtn" style="cursor:pointer">USE MY PHOTO<input type="file" accept="image/*" capture="environment" style="display:none" onchange="handleComicCoverPhoto(${idx},this.files&&this.files[0])"></label>${a.coverConfirmed?'<span class="qpl-badge good">COVER CONFIRMED</span>':`<button class="hbtn" style="color:var(--gold)" onclick="confirmComicCover(${idx})">CONFIRM COVER</button>`}</div></div>`;
 }
 
 function pokemonCardKey(row = {}, query = ''){
@@ -16903,14 +17020,15 @@ async function searchMtgOfflineCache(query, cat = ''){
 }
 
 // ── Comics IDB cache (walkoff_comics_cache_v1) ────────────────────────────────
-const COMICS_CACHE_VERSION = 1;
+const COMICS_CACHE_VERSION = 2;
 function comicsDb(){
   return new Promise((resolve, reject) => {
-    const req = indexedDB.open('walkoff_comics_cache_v1', 1);
+    const req = indexedDB.open('walkoff_comics_cache_v1', COMICS_CACHE_VERSION);
     req.onupgradeneeded = e => {
       const db = e.target.result;
       if(!db.objectStoreNames.contains('issues')) { const s = db.createObjectStore('issues', { keyPath:'cacheKey' }); s.createIndex('query','query',{unique:false}); s.createIndex('updatedAt','updatedAt',{unique:false}); }
       if(!db.objectStoreNames.contains('meta')) db.createObjectStore('meta', { keyPath:'key' });
+      if(!db.objectStoreNames.contains('images')) db.createObjectStore('images', { keyPath:'key' });
     };
     req.onsuccess = e => resolve(e.target.result);
     req.onerror = e => reject(e.target.error);
@@ -16918,6 +17036,7 @@ function comicsDb(){
 }
 async function comicsDbPut(store, record){ const db = await comicsDb(); return new Promise((res,rej)=>{ const tx = db.transaction(store,'readwrite'); tx.objectStore(store).put(record).onsuccess = () => res(); tx.onerror = e => rej(e.target.error); }); }
 async function comicsDbAll(store){ const db = await comicsDb(); return new Promise((res,rej)=>{ const tx = db.transaction(store,'readonly'); const req = tx.objectStore(store).getAll(); req.onsuccess = e => res(e.target.result || []); req.onerror = e => rej(e.target.error); }); }
+async function comicsDbGet(store,key){ const db=await comicsDb();return new Promise((res,rej)=>{const tx=db.transaction(store,'readonly'),req=tx.objectStore(store).get(key);req.onsuccess=e=>res(e.target.result||null);req.onerror=e=>rej(e.target.error);}); }
 
 async function saveComicsCacheResults(query, rows = [], source = 'Live lookup'){
   const comicRows = (rows || []).filter(r => qplCategoryKey(r.category) === 'comic' || isComicLookupIntent(query, r.category));
@@ -19206,6 +19325,21 @@ async function fetchPriceChartingLiveCatalog(q, cat, searchPlan = qplLastSearchP
     productUrl:m.url || '',
     raw:m,
   }));
+  if(effectiveCategory === 'comic') mapped.forEach(row => {
+    const meta = comicProductMeta(row);
+    row.category = 'Comic';
+    row.series = meta.series;
+    row.issue = meta.issueNumber;
+    row.card_number = meta.issueNumber;
+    row.variant = meta.edition || row.variant || '';
+    row.publisher = row.pricecharting?.publisher || '';
+    row.imageSource = row.imageUrl ? 'pricecharting' : 'placeholder';
+    row.coverConfidence = row.imageUrl ? 'needs-confirmation' : 'missing';
+    if(row.imageUrl) cacheComicExternalCover(row,row.imageUrl);
+    row.market = Number(row.pricecharting?.comicPrices?.ungraded || row.market || 0);
+    row.lastPriceUpdate = new Date().toISOString();
+    row.priceSource = 'PriceCharting live';
+  });
   // When sports category is selected, filter out results that are clearly NOT sports trading cards.
   // PriceCharting's full-text search returns Funko POP, comics, video games, etc. alongside
   // actual sports cards. Only keep results whose consoleName looks like a sports card set.
@@ -20636,6 +20770,23 @@ async function fetchQplPriceCharting(idx){
   updateQplResultCard(idx);
   const q = [r.name, r.set, r.card_number ? '#'+r.card_number : ''].filter(Boolean).join(' ');
   try {
+    if(qplResultCategoryKey(r) === 'comic' && r.pricecharting?.productId){
+      const detailRes = await fetch(WORKER + '/pricing/pricecharting/product/' + encodeURIComponent(r.pricecharting.productId), { cache:'no-store' });
+      const detailData = await detailRes.json().catch(() => ({}));
+      if(!detailRes.ok || !detailData.ok) throw new Error(detailData.error || 'PriceCharting detail failed');
+      const detail = detailData.product || detailData;
+      const preserved = comicAppraisalState(r);
+      r.pricecharting = { ...r.pricecharting, ...detail, comicPrices:{ ...(r.pricecharting.comicPrices||{}), ...(detail.comicPrices||{}) } };
+      r.comicAppraisal = preserved;
+      r.lastPriceUpdate = new Date().toISOString();
+      r.lastPriceSyncAt = r.lastPriceUpdate;
+      r.priceSource = 'PriceCharting live';
+      if(detail.imageUrl && !r.userPhotoBlobKey){ r.imageUrl = detail.imageUrl; r.imageSource='pricecharting'; r.coverConfidence = preserved.coverConfirmed ? 'confirmed' : 'needs-confirmation'; cacheComicExternalCover(r,detail.imageUrl); }
+      r.market = comicAppraisalEstimate(r).estimated;
+      r.pcError = '';
+      r.pcState = 'Guide Value Available';
+      return;
+    }
     const res = await fetch(WORKER + '/pricing/pricecharting/slab-prices?' + new URLSearchParams({
       q,
       company:r.slabCompany || 'PSA',
@@ -21321,6 +21472,7 @@ function quickLookupResultCard(r, idx){
         <span class="qpl-badge ${confClass}">${confLabel}${conf?` ${conf}`:''}</span>
         <span class="qpl-badge ${truth.includes('No ') || truth.includes('Needs') ? 'bad' : truth.includes('Guide') ? 'warn' : 'good'}">${escHtml(truth)}</span>
         ${r.source === 'inventory' ? '<span class="qpl-badge good">IN INVENTORY</span>' : `<span class="qpl-badge">${escHtml(r.source === 'justtcg' ? 'JustTCG' : r.source === 'pricecharting_csv' ? 'PriceCharting' : r.source || 'Source')}</span>`}
+        ${isComic ? (comicAppraisalState(r).coverConfirmed ? '<span class="qpl-badge good">COVER CONFIRMED</span>' : `<span class="qpl-badge warn">${r.imageUrl?'COVER NEEDS CONFIRMATION':'NO COVER'}</span>`) : ''}
         ${r.cache?.state === 'offline' ? `<span class="qpl-badge warn">Offline Cache</span>` : ''}
         ${_qplStaleBadge(r)}
         ${r.is_sealed ? `<span class="qpl-badge good">SEALED</span>` : ''}
@@ -21379,7 +21531,7 @@ function quickLookupResultCard(r, idx){
       <details class="research-secondary-actions" style="margin-top:12px">
         <summary>▸ All Prices + Graded</summary>
         <div style="padding:8px 0">
-          ${isComic ? qplComicPricePanel(r, idx) : qplVariantPriceTable(r, idx)}
+          ${isComic ? qplComicPricePanelV2(r, idx) + qplComicAppraisalPanel(r, idx) : qplVariantPriceTable(r, idx)}
           ${isComic ? '' : qplSlabControls(r, idx)}
         </div>
       </details>
@@ -21397,7 +21549,7 @@ function quickLookupResultCard(r, idx){
             ? (r.pokemonPriceTracker?.lookupDebug?.exactHydrated
                 ? `<button class="hbtn ppt-refresh-btn" data-qpl-idx="${idx}" onclick="refreshLivePriceForCard(${idx})" title="Bypass cache and fetch fresh live pricing">↻ REFRESH</button>`
                 : `<button class="hbtn ppt-get-prices-btn" style="color:var(--blue)" onclick="loadPricesForResultCard(${idx})">GET PRICES</button>`)
-            : isSportsResult ? `<button class="hbtn" style="color:var(--gold)" onclick="openQuickExternal(${idx},'pricecharting')" title="Open exact PriceCharting/SportsCardsPro product when matched">PRICECHARTING</button>` : `<span></span>`}
+            : isComic ? `<button class="hbtn" style="color:var(--purple)" onclick="fetchQplPriceCharting(${idx})">${r.pricecharting?.comicPrices?'REFRESH PRICE':'GET PRICES'}</button>` : isSportsResult ? `<button class="hbtn" style="color:var(--gold)" onclick="openQuickExternal(${idx},'pricecharting')" title="Open exact PriceCharting/SportsCardsPro product when matched">PRICECHARTING</button>` : `<span></span>`}
           <button class="hbtn" onclick="openQplChartModal(${idx})">CHART</button>
           ${qplResultCategoryKey(r) === 'pokemon'
             ? `<button class="hbtn" style="color:var(--blue)" onclick="fetchPopCountForCard(${idx})">POP COUNT</button>`
@@ -21725,7 +21877,12 @@ async function lazyLoadComicImages(indices){
       const best = (data.variants || []).find(v => v.cover_image) || null;
       const imageUrl = best?.cover_image || '';
       if(!imageUrl) return;
-      if(qplResults[idx]) qplResults[idx].imageUrl = imageUrl;
+      if(qplResults[idx]) {
+        qplResults[idx].imageUrl = imageUrl;
+        qplResults[idx].imageSource = 'metadata-provider';
+        qplResults[idx].coverConfidence = 'needs-confirmation';
+        cacheComicExternalCover(qplResults[idx],imageUrl);
+      }
       const card = document.querySelector(`.qpl-hero-card[data-qpl-idx="${idx}"]`);
       const shell = card?.querySelector('.qpl-img-shell');
       if(!shell) return;
@@ -22272,6 +22429,10 @@ function buyPriceOptionsFromResearch(row = {}){
 
 function selectedQuickLookupItem(idx){
   const r = applyQplSelectedVariant(qplResults[idx] || {});
+  const isComic = qplResultCategoryKey(r) === 'comic';
+  const comicMeta = isComic ? comicProductMeta(r) : null;
+  const comicAppraisal = isComic ? comicAppraisalState(r) : null;
+  const comicValuation = isComic ? comicAppraisalEstimate(r) : null;
   const selectedVariant = r.selectedVariant || qplSelectedVariant(r) || {};
   const activePriceBasis = r.activePriceBasis || {
     basisType:r.pricingMode === 'slab' ? 'guide' : 'manual',
@@ -22286,7 +22447,7 @@ function selectedQuickLookupItem(idx){
     lastUpdated:r.lastPriceSyncAt || null,
     label:r.priceSource || 'Manual Price'
   };
-  const activePrice = Number(activePriceBasis.price || r.market || 0) || 0;
+  const activePrice = isComic ? Number(comicValuation.estimated || 0) : (Number(activePriceBasis.price || r.market || 0) || 0);
   const buyPriceOptions = buyPriceOptionsFromResearch(r);
   const selectedBuyPriceKey = buyPriceOptions.find(option =>
     pokemonPptConditionCode(option.condition) === pokemonPptConditionCode(activePriceBasis.condition || r.selectedCondition || r.condition) &&
@@ -22305,6 +22466,13 @@ function selectedQuickLookupItem(idx){
     set:document.getElementById('qpl-edit-set')?.value.trim() || r.set || '',
     variant:r.variant || '',
     card_number:document.getElementById('qpl-edit-cardnum')?.value.trim() || r.card_number || '',
+    series:isComic ? comicAppraisal.series || comicMeta.series : '',
+    issueNumber:isComic ? comicAppraisal.issueNumber || comicMeta.issueNumber : '',
+    issue:isComic ? comicAppraisal.issueNumber || comicMeta.issueNumber : (r.issue || ''),
+    volume:isComic ? comicAppraisal.volume || '' : '',
+    publisher:isComic ? comicAppraisal.publisher || r.publisher || '' : '',
+    printing:isComic ? comicAppraisal.printing || '' : (r.selectedPrinting || ''),
+    newsstandDirect:isComic ? comicAppraisal.newsstandDirect || '' : '',
     condition:document.getElementById('qpl-edit-condition')?.value || r.condition || 'NM',
     selectedCondition:document.getElementById('qpl-edit-condition')?.value || r.selectedCondition || r.condition || 'NM',
     selectedFinish:document.getElementById('qpl-edit-finish')?.value || r.selectedFinish || r.finish || '',
@@ -22328,15 +22496,21 @@ function selectedQuickLookupItem(idx){
     priceChange90d:r.priceChange90d || selectedVariant.priceChange90d || 0,
     priceHistory:r.priceHistory || selectedVariant.priceHistory || [],
     market:activePrice || (parseFloat(document.getElementById('qpl-edit-market')?.value) || 0),
-    cost:parseFloat(document.getElementById('qpl-edit-cost')?.value) || Number(r.cost || 0),
+    marketValue:activePrice || 0,
+    listPrice:isComic ? Number(comicValuation.listPrice || 0) : 0,
+    cost:parseFloat(document.getElementById('qpl-edit-cost')?.value) || Number(comicAppraisal?.costBasis || r.cost || 0),
+    costBasis:parseFloat(document.getElementById('qpl-edit-cost')?.value) || Number(comicAppraisal?.costBasis || r.cost || 0),
     qty:1,
-    location:document.getElementById('qpl-edit-location')?.value.trim() || '',
-    thumbnail:document.getElementById('qpl-edit-image-url')?.value.trim() || r.imageUrl || '',
-    imageUrl:document.getElementById('qpl-edit-image-url')?.value.trim() || r.imageUrl || '',
-    priceSource:activePriceBasis.label || r.priceSource || 'No Real Price Available',
-    pricingSource:activePriceBasis.source || r.pricingSource || r.priceSource || 'No Real Price Available',
-    pricingMode:activePriceBasis.basisType || r.pricingMode || 'raw',
-    activePriceBasis,
+    location:document.getElementById('qpl-edit-location')?.value.trim() || comicAppraisal?.location || '',
+    box:isComic ? comicAppraisal.box || '' : '',
+    thumbnail:document.getElementById('qpl-edit-image-url')?.value.trim() || (isComic&&r.userPhotoBlobKey ? r.externalCoverImageUrl||'' : r.imageUrl||''),
+    imageUrl:document.getElementById('qpl-edit-image-url')?.value.trim() || (isComic&&r.userPhotoBlobKey ? r.externalCoverImageUrl||'' : r.imageUrl||''),
+    userPhotoBlobKey:isComic ? r.userPhotoBlobKey || '' : '',
+    cachedCoverBlobKey:isComic ? r.cachedCoverBlobKey || '' : '',
+    priceSource:isComic ? 'PriceCharting' : (activePriceBasis.label || r.priceSource || 'No Real Price Available'),
+    pricingSource:isComic ? 'PriceCharting' : (activePriceBasis.source || r.pricingSource || r.priceSource || 'No Real Price Available'),
+    pricingMode:isComic ? (comicAppraisal.isSlabbed ? 'slabbed' : 'raw') : (activePriceBasis.basisType || r.pricingMode || 'raw'),
+    activePriceBasis:isComic ? { basisType:comicAppraisal.isSlabbed?'graded':'raw',source:'PriceCharting',price:activePrice,condition:comicAppraisal.conditionText,grade:comicAppraisal.numericGrade,isExact:!!comicAppraisal.coverConfirmed,lastUpdated:r.lastPriceUpdate||new Date().toISOString(),label:comicValuation.sourceLabel } : activePriceBasis,
     buyPriceOptions,
     selectedBuyPriceKey,
     referenceMarketPrice:activePrice,
@@ -22348,6 +22522,25 @@ function selectedQuickLookupItem(idx){
     pricechartingComicPrices:r.pricecharting?.comicPrices || null,
     pricechartingRetail:r.pricecharting?.retail || null,
     pricechartingDemand:r.pricecharting?.demand || null,
+    providerProductId:isComic ? r.pricecharting?.productId || '' : '',
+    providerUrl:isComic ? r.pricecharting?.url || r.productUrl || '' : '',
+    coverImageUrl:isComic ? (r.userPhotoBlobKey ? r.externalCoverImageUrl || '' : r.imageUrl || '') : '',
+    imageSource:isComic ? r.imageSource || (r.imageUrl ? 'pricecharting' : 'placeholder') : '',
+    coverConfirmed:isComic ? !!comicAppraisal.coverConfirmed : false,
+    coverConfidence:isComic ? r.coverConfidence || (comicAppraisal.coverConfirmed ? 'confirmed' : 'needs-confirmation') : '',
+    conditionText:isComic ? comicAppraisal.conditionText : '',
+    numericGrade:isComic ? comicAppraisal.numericGrade : '',
+    isSlabbed:isComic ? !!comicAppraisal.isSlabbed : false,
+    grader:isComic ? comicAppraisal.grader : (r.slabCompany || ''),
+    certNumber:isComic ? comicAppraisal.certNumber : '',
+    pageQuality:isComic ? comicAppraisal.pageQuality : '',
+    defects:isComic ? comicAppraisal.defects : [],
+    appraisalConfidence:isComic ? comicValuation.confidence : '',
+    appraisalSummary:isComic ? comicAppraisalSummary(r) : '',
+    suggestedBuyLow:isComic ? comicValuation.buyLow : 0,
+    suggestedBuyHigh:isComic ? comicValuation.buyHigh : 0,
+    lastPriceUpdate:isComic ? r.lastPriceUpdate || new Date().toISOString() : '',
+    comicMetadata:isComic ? { ...comicAppraisal, series:comicAppraisal.series||comicMeta.series, issueNumber:comicAppraisal.issueNumber||comicMeta.issueNumber, priceSnapshot:r.pricecharting?.comicPrices||{}, priceSource:'PriceCharting' } : null,
     resolvedPricePath:activePriceBasis.pricePath || r.resolvedPricePath || '',
     resolvedPrice:Number(activePriceBasis.price || r.resolvedPrice || r.market || 0),
     pokemonPriceTrackerLastUpdated:r.pokemonPriceTrackerLastUpdated || '',
@@ -22356,7 +22549,7 @@ function selectedQuickLookupItem(idx){
     priceConfidence:r.priceConfidence || selectedVariant.priceConfidence || 'unknown',
     lastPriceSyncAt:r.lastPriceSyncAt || selectedVariant.lastUpdated || new Date().toISOString(),
     source:r.source || 'quick_lookup',
-    notes:r.note || '',
+    notes:isComic ? comicAppraisal.notes || r.note || '' : (r.note || ''),
     lifecycle:'in_stock',
     status:'in_stock',
     addedAt:new Date().toISOString(),

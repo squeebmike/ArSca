@@ -43,6 +43,36 @@ assert.equal(comic.intent.inferredCategories[0], 'comic');
 assert.match(adapter.queriesFor(comic, 'comic', 'PriceCharting')[0], /amazing spider-man #300/i);
 assert.equal(comic.adapters[0].filters.endpoint, '/api/products');
 
+const comicCases = [
+  ['asm 300', /amazing spider-man #300/i],
+  ['tmnt 1 mirage', /teenage mutant ninja turtles #1 mirage/i],
+  ['spawn 1 newsstand', /spawn #1 newsstand/i],
+  ['hulk 181', /incredible hulk #181/i],
+  ['x-men 266', /x-men #266/i],
+  ['tec 27', /detective comics #27/i],
+  ['walking dead 1', /the walking dead #1/i]
+];
+for(const [input, expected] of comicCases){
+  const plan = adapter.buildSearchPlan(input, 'Comic');
+  assert.match(adapter.queriesFor(plan, 'comic', 'PriceCharting')[0], expected, `comic query expansion failed: ${input}`);
+}
+
+const spawnPlan = adapter.buildSearchPlan('spawn 1 newsstand', 'Comic');
+const comicRanked = adapter.mergeAndRankResults([
+  { source:'PriceCharting', productId:'direct', name:'Spawn #1 Direct Edition', category:'Comic' },
+  { source:'PriceCharting', productId:'newsstand', name:'Spawn #1 Newsstand', category:'Comic' },
+  { source:'PriceCharting', productId:'facsimile', name:'Spawn #1 Facsimile Reprint', category:'Comic' }
+], spawnPlan);
+assert.equal(comicRanked[0].productId, 'newsstand');
+assert.ok(comicRanked[0].searchExplain.matchedOn.includes('variant/edition match'));
+
+const originalPlan = adapter.buildSearchPlan('asm 300', 'Comic');
+const originalRanked = adapter.mergeAndRankResults([
+  { source:'PriceCharting', productId:'facsimile', name:'Amazing Spider-Man #300 Facsimile Reprint', category:'Comic' },
+  { source:'PriceCharting', productId:'original', name:'Amazing Spider-Man #300', category:'Comic' }
+], originalPlan);
+assert.equal(originalRanked[0].productId, 'original');
+
 const mtg = adapter.buildSearchPlan('deathtouch landfall', 'Magic: The Gathering');
 assert.equal(mtg.intent.inferredCategories[0], 'mtg');
 assert.equal(adapter.queriesFor(mtg, 'mtg', 'Scryfall')[0], 'o:deathtouch o:landfall');
@@ -58,6 +88,9 @@ assert.match(worker, /pcFetch\('\/api\/product'/, 'PriceCharting detail must use
 assert.match(dashboard, /_qplSearchSeq/, 'active search guard must remain present');
 assert.match(dashboard, /qplSearchStillActive/, 'adapter must integrate with stale-response guard');
 assert.match(dashboard, /limit:'5'/, 'normal Pokemon search must cap results at five');
+assert.match(dashboard, /Graded 9\.8 estimate/, 'comic UI must use neutral graded estimate labels');
+assert.match(dashboard, /\/pricing\/pricecharting\/product\//, 'comic refresh must hydrate the exact selected PriceCharting product');
+assert.match(dashboard, /userPhotoBlobKey/, 'comic user photos must persist by IndexedDB key');
 assert.doesNotMatch(dashboard, /PRICECHARTING_TOKEN\s*=|POKEMONPRICE_API_KEY\s*=\s*['"][^'"]+/, 'dashboard must not contain provider secrets');
 
 console.log('Universal search adapter checks passed');

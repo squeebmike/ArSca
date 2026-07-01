@@ -12,7 +12,7 @@
     comic:'comic', comics:'comic', sealed:'sealed', 'sealed product':'sealed',
     'video games':'video_games', games:'video_games', funko:'funko', lego:'lego', coins:'coins'
   };
-  const TEXT_ALIASES = { asm:'amazing spider-man', tmnt:'teenage mutant ninja turtles', spiderman:'spider-man', xmen:'x-men', ud:'upper deck', upperdeck:'upper deck' };
+  const TEXT_ALIASES = { asm:'amazing spider-man', tmnt:'teenage mutant ninja turtles', uxm:'uncanny x-men', spiderman:'spider-man', xmen:'x-men', ud:'upper deck', upperdeck:'upper deck' };
   const SPORTS_BRANDS = ['topps chrome','bowman chrome','upper deck','fleer ultra','topps','bowman','fleer','panini','prizm','optic','donruss','select','score','skybox','hoops','leaf','mosaic'];
   const SPORTS_PLAYERS = {
     griffey:'Ken Griffey Jr', 'ken griffey':'Ken Griffey Jr', jordan:'Michael Jordan', 'michael jordan':'Michael Jordan',
@@ -22,7 +22,7 @@
   const MTG_TERMS = ['deathtouch','landfall','flying','trample','lifelink','haste','commander','legendary','instant','sorcery','creature','planeswalker','goblin','artifact','enchantment','draw a card','mana'];
   const SEALED_TERMS = ['booster box','booster bundle','elite trainer box','etb','hobby box','blaster','mega box','collector booster','set booster','tin','pack','case','sealed'];
   const POKEMON_TERMS = ['pokemon','pikachu','charizard','bulbasaur','squirtle','charmander','umbreon','eevee','mew','mewtwo','gengar','rayquaza','vmax','vstar','sir','illustration rare','trainer gallery','swsh','svp'];
-  const COMIC_TERMS = ['asm','amazing spider-man','tmnt','teenage mutant ninja turtles','batman','spawn','venom','newsstand','direct','marvel','dc','mirage','issue'];
+  const COMIC_TERMS = ['asm','amazing spider-man','tmnt','teenage mutant ninja turtles','uxm','uncanny x-men','x-men','hulk','fantastic four','ff','batman','detective','tec','spawn','walking dead','venom','newsstand','direct','marvel','dc','mirage','issue','facsimile','reprint'];
   const FILLER = new Set(['the','lookup','price','value','please']);
 
   function unique(values, limit = 8){
@@ -83,7 +83,7 @@
     const playerKey = Object.keys(SPORTS_PLAYERS).sort((a,b)=>b.length-a.length).find(v => text.includes(v));
     const mechanics = MTG_TERMS.filter(v => text.includes(v));
     const sealedTypes = SEALED_TERMS.filter(v => text.includes(v));
-    const variantTerms = unique(text.match(/\b(?:rookie|rc|auto(?:graph)?|relic|patch|parallel|newsstand|direct|sir|ir|full art|reverse holo|holo|foil|borderless|japanese|1st edition)\b/g) || []);
+    const variantTerms = unique(text.match(/\b(?:rookie|rc|auto(?:graph)?|relic|patch|parallel|newsstand|direct|venom|mirage|sir|ir|full art|reverse holo|holo|borderless|japanese|1st edition|first print(?:ing)?|second print(?:ing)?|2nd print(?:ing)?|sketch|foil|virgin|ratio|incentive|facsimile|reprint)\b/g) || []);
     const plainNumbers = query.tokens.filter(t => /^#?\d{1,4}$/.test(t)).map(t => t.replace(/^#/,'')).filter(t => !query.years.includes(Number(t)));
     return {
       years:query.years, year:query.years[0] || null,
@@ -132,9 +132,15 @@
   }
 
   function comicQueries(query, entities){
-    const text = query.normalized;
+    const text = query.normalized
+      .replace(/^hulk(?=\s|$)/, 'incredible hulk')
+      .replace(/^ff(?=\s|$)/, 'fantastic four')
+      .replace(/^tec(?=\s|$)/, 'detective comics')
+      .replace(/^detective(?=\s+#?\d|\s+\d)/, 'detective comics')
+      .replace(/^walking dead(?=\s|$)/, 'the walking dead');
     const issue = entities.issueNumber || (text.match(/\b(?:issue\s*)?#?\s*(\d{1,4})\b/) || [])[1] || '';
-    const title = text.replace(/\b(?:issue\s*)?#?\s*\d{1,4}\b/g,' ').replace(/\b(?:venom|newsstand|direct|variant|mirage)\b/g,' ').replace(/\s+/g,' ').trim();
+    const variantPattern = /\b(?:venom|newsstand|direct|variant|mirage|sketch|foil|virgin|ratio|incentive|facsimile|reprint|first print(?:ing)?|second print(?:ing)?|2nd print(?:ing)?)\b/g;
+    const title = text.replace(/\b(?:issue\s*)?#?\s*\d{1,4}\b/g,' ').replace(variantPattern,' ').replace(/\s+/g,' ').trim();
     return unique([
       [title, issue ? '#'+issue : '', entities.variantTerms.join(' ')].filter(Boolean).join(' '),
       [title, issue || '', /venom/.test(text) ? 'Venom' : ''].filter(Boolean).join(' '), text,
@@ -209,6 +215,16 @@
     if(entities.brand){ if(text.includes(entities.brand)){ score += 150; matchedOn.push('brand/set match'); } else score -= 100; }
     if(entities.rookieIntent && /\b(?:rookie|rc)\b/.test(text)){ score += 80; matchedOn.push('rookie match'); }
     if(entities.issueNumber && (resultNumber === entities.issueNumber || text.includes('#'+entities.issueNumber))){ score += 300; matchedOn.push('exact issue'); }
+    if(plan?.intent?.inferredCategories?.includes('comic')){
+      const requestedVariants = entities.variantTerms || [];
+      const variantHits = requestedVariants.filter(term => text.includes(term));
+      if(variantHits.length){ score += variantHits.length * 130; matchedOn.push('variant/edition match'); }
+      if(requestedVariants.length && !variantHits.length){ score -= 90; matchedOn.push('variant needs confirmation'); }
+      const asksReprint = requestedVariants.some(term => /reprint|facsimile|second|2nd/.test(term));
+      if(!asksReprint && /\b(?:facsimile|reprint|trade paperback|tpb|graphic novel|omnibus|compendium)\b/.test(text)){
+        score -= 260; matchedOn.push('reprint/collected edition penalty');
+      }
+    }
     if(plan?.intent?.inferredCategories?.includes(category)){ score += 100; matchedOn.push('category match'); }
     const covered = (plan?.normalized?.tokens || []).filter(t => t.length > 1 && text.includes(t));
     score += Math.min(covered.length, 8) * 18;

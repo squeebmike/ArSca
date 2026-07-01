@@ -43,6 +43,14 @@ Search uses the full adapted natural-language query with `language` and `limit=5
 
 `PRICECHARTING_TOKEN` and `SCP_ACCESS_TOKEN` remain Worker-side. PriceCharting authenticates upstream with the private `t` parameter. Search must start with `/products`; `/product?q=` returns only one best match and hides candidates. PriceCharting permits one API call per second, so adapter queries are deduplicated and capped.
 
+### Comics
+
+- `GET /pricing/pricecharting/search?q=` wraps PriceCharting multi-result `/api/products`.
+- `GET /pricing/pricecharting/product/:id` wraps exact `/api/product?id=` after the operator selects a candidate.
+- `GET /comic/variants?title=&issue=&year=` uses the existing ComicVine integration for metadata/cover assistance only.
+
+Comic aliases and edition terms are normalized by `scripts/query-routing.js`. Exact issue and requested variant/newsstand/direct terms rank up; unrequested reprints, facsimiles, and collected editions rank down. PriceCharting remains the price source. See `docs/comics-pricecharting-appraisal.md` for grade mapping, cover confidence, inventory fields, appraisal logic, and offline behavior.
+
 ### Scryfall
 
 The dashboard's default MTG mode is offline first. A daily server-side job builds an R2 bundle from Scryfall `default_cards` and the private PriceCharting MTG download. Devices import the bundle into IndexedDB and do not request full Scryfall data themselves.
