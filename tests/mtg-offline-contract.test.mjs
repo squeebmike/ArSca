@@ -30,7 +30,7 @@ assert.equal(browserSandbox.ArsCaMtgOffline.queryParts('Magic: The Gathering Sol
 assert.match(dashboard, /Offline first, online backup/);
 assert.match(dashboard, /PriceCharting offline snapshot/);
 assert.match(dashboard, /Scryfall offline catalog/);
-assert.match(dashboard, /2026\.07\.01\.02-mtg-sync-state-set-images/);
+assert.match(dashboard, /2026\.07\.01\.03-auth-safety-invite-fix/);
 assert.match(dashboard, /let _mtgBulkSyncActive = false/);
 assert.match(dashboard, /finally \{\s*_mtgBulkSyncActive = false/);
 assert.match(dashboard, /CACHE SET IMAGES/);

@@ -54,7 +54,7 @@ create table if not exists public.stores (
   name text not null,
   display_name text not null,
   logo_url text,
-  owner_user_id uuid not null references auth.users(id) on delete cascade,
+  owner_user_id uuid references auth.users(id) on delete set null,
   timezone text not null default 'America/Los_Angeles',
   currency text not null default 'USD',
   created_at timestamptz not null default now(),
@@ -545,7 +545,7 @@ create policy scan_queue_update_employee on public.scan_queue for update using (
 drop policy if exists store_invites_select_owner_admin_or_self on public.store_invites;
 create policy store_invites_select_owner_admin_or_self on public.store_invites for select using (
   public.can_manage_store(store_id)
-  or lower(email) = lower(coalesce((select au.email from auth.users au where au.id = auth.uid()), ''))
+  or lower(email) = lower(coalesce(auth.jwt() ->> 'email', ''))
 );
 
 drop policy if exists store_invites_insert_owner_admin on public.store_invites;
