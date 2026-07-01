@@ -21,6 +21,14 @@
 
 ## Worker Routes In This Repository
 
+### Research barcode lookup
+
+- `POST /barcode/lookup` normalizes UPC/EAN values and wraps PriceCharting `/api/product?upc=`.
+- Low-confidence comic results and optional manual product words fall back to PriceCharting multi-result `/api/products?q=`.
+- Every candidate includes confidence/match reasons and remains confirmation-required. Comic candidates additionally require cover confirmation.
+
+The browser stores only confirmed barcode-product mappings in IndexedDB. PriceCharting credentials remain Worker-side. See `docs/barcode-scanner-lookup.md`.
+
 ### PokemonPriceTracker
 
 - `GET /pricing/pokemon/cards`

@@ -60,3 +60,7 @@ Live search/detail requires the Worker. Cached comic results and price snapshots
 - ComicVine is metadata/cover assistance only, not the price authority.
 - Raw condition factors and buy percentages are configurable shop heuristics, not guarantees.
 - No PDF appraisal export is included in this pass.
+
+## Barcode entry
+
+The Research barcode scanner can use UPC/EAN evidence to narrow a comic candidate. This does not replace cover confirmation: supplements, sticker barcodes, retailer exclusives, virgin/ratio covers, second printings, and facsimiles can remain ambiguous. A barcode-selected comic enters the same appraisal workflow with `needs-confirmation` until the operator explicitly chooses **Use This Cover** or supplies a user photo. See `docs/barcode-scanner-lookup.md`.

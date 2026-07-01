@@ -1328,15 +1328,37 @@ body.wt-show-help.show-mode .help-q-btn{display:inline-flex;}
 .inv-sync-badge.conflict{background:rgba(255,77,109,.15);color:var(--red,#ff4d6d);border:1px solid rgba(255,77,109,.3);}
 .inv-sync-badge.synced{}
 body.show-mode .inv-sync-badge{display:none;}
+.barcode-modal-overlay{display:none;position:fixed;inset:0;z-index:10050;background:rgba(0,0,0,.82);padding:18px;align-items:center;justify-content:center;}
+.barcode-modal-overlay.on{display:flex;}
+.barcode-sheet{width:min(760px,100%);max-height:92vh;overflow:auto;background:var(--surf);border:1px solid rgba(0,255,179,.3);border-radius:14px;padding:16px;box-shadow:0 24px 80px rgba(0,0,0,.7);}
+.barcode-camera{position:relative;display:grid;place-items:center;min-height:210px;background:#030405;border:1px solid var(--border);border-radius:10px;overflow:hidden;margin:10px 0;}
+.barcode-camera video{width:100%;max-height:330px;object-fit:contain;display:none;}
+.barcode-scan-line{display:none;position:absolute;left:8%;right:8%;top:50%;height:2px;background:var(--g);box-shadow:0 0 14px var(--g);}
+.barcode-camera.active .barcode-scan-line,.barcode-camera.active video{display:block;}
+.barcode-controls{display:grid;grid-template-columns:minmax(0,2fr) minmax(140px,1fr) auto;gap:8px;align-items:end;}
+.barcode-candidate{display:grid;grid-template-columns:90px minmax(0,1fr);gap:12px;border:1px solid var(--border);border-radius:10px;padding:10px;background:var(--surf2);margin-top:10px;}
+.barcode-candidate img{width:90px;height:120px;object-fit:contain;background:#050607;border-radius:7px;}
+.barcode-candidate-actions{grid-column:1/-1;display:flex;gap:7px;flex-wrap:wrap;}
+.barcode-candidate-actions .hbtn{flex:1 1 125px;min-height:40px;}
+.barcode-evidence{font-family:var(--font-mono);font-size:9px;color:var(--dim);line-height:1.5;}
 @media(max-width:600px){
   .comic-appraisal-grid,.comic-values{grid-template-columns:1fr!important}
   .comic-appraisal .tsi{width:100%;max-width:100%}
   .comic-appraisal button{flex:1 1 145px;min-height:40px}
+  .barcode-modal-overlay{padding:0;align-items:flex-end;}
+  .barcode-sheet{width:100%;max-height:calc(100vh - 48px - env(safe-area-inset-bottom));border-radius:16px 16px 0 0;padding:14px 12px calc(18px + env(safe-area-inset-bottom));}
+  .barcode-controls{grid-template-columns:1fr;}
+  .barcode-camera{min-height:180px;}
+  .barcode-candidate{grid-template-columns:72px minmax(0,1fr);}
+  .barcode-candidate img{width:72px;height:96px;}
+  #qpl-search-row #qpl-input{flex:1 1 100%!important;}
+  #qpl-search-row .hbtn{flex:1 1 130px;min-height:44px;}
 }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-<script src="scripts/query-routing.js?v=2026.07.01.04-mtg-offline-set-browser"></script>
+<script src="scripts/query-routing.js?v=2026.07.01.05-research-barcode-lookup"></script>
+<script src="scripts/barcode-lookup.js?v=2026.07.01.05-research-barcode-lookup"></script>
 <script src="scripts/mtg/mtg-offline-browser.js?v=2026.07.01.04-mtg-offline-set-browser"></script>
 </head>
 <body>
@@ -1728,8 +1750,9 @@ body.show-mode .inv-sync-badge{display:none;}
     <!-- QUICK PRICE LOOKUP -->
     <div class="panel" id="register-quick-panel">
       <div class="ph">⚡ QUICK PRICE LOOKUP <span style="color:var(--dim);font-size:8px">catalog search — no scanning needed</span></div>
-      <div style="display:flex;gap:6px;margin-bottom:10px">
+      <div id="qpl-search-row" style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">
         <input class="tsi" id="qpl-input" placeholder="e.g. 2021 Umbreon VMAX Evolving Skies..." style="flex:1;margin-bottom:0;font-size:12px;padding:10px 14px" oninput="debouncePriceLookup()" onkeydown="if(event.key==='Enter')runPriceLookup()">
+        <button class="hbtn" id="research-barcode-btn" title="Scan UPC or EAN barcode" onclick="openBarcodeScanner()" style="white-space:nowrap;color:var(--g)">SCAN BARCODE</button>
         <button class="hbtn" title="Speak search" aria-label="Voice price search" onclick="startVoiceInput('qpl-input', runPriceLookup)" style="width:54px;padding:0">MIC</button>
       </div>
       <!-- hidden select keeps all existing JS working unchanged -->
@@ -2003,6 +2026,25 @@ body.show-mode .inv-sync-badge{display:none;}
       </div>
     </div>
 
+  </div>
+</div>
+
+<div id="barcode-scanner-modal" class="barcode-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="barcode-scanner-title" onclick="if(event.target===this)closeBarcodeScanner()">
+  <div class="barcode-sheet">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+      <div><div id="barcode-scanner-title" style="font-family:'Orbitron',monospace;font-size:12px;color:var(--g)">UNIVERSAL BARCODE LOOKUP</div><div style="font-size:9px;color:var(--dim);margin-top:3px">Barcode is evidence. Confirm the product—and comic cover—before saving.</div></div>
+      <button class="hbtn" onclick="closeBarcodeScanner()">CLOSE</button>
+    </div>
+    <div id="barcode-camera" class="barcode-camera"><video id="barcode-video" playsinline muted></video><div class="barcode-scan-line"></div><div id="barcode-camera-placeholder" style="font-family:monospace;font-size:10px;color:var(--dim);text-align:center;padding:18px">Opening camera when supported.<br>Manual or USB scanner entry always works.</div></div>
+    <div id="barcode-status" style="font-family:var(--font-mono);font-size:10px;color:var(--dim);min-height:18px;line-height:1.5"></div>
+    <div class="barcode-controls">
+      <label style="font-size:9px;color:var(--dim)">BARCODE / UPC / EAN<input id="barcode-manual-input" class="tsi" inputmode="numeric" autocomplete="off" placeholder="Scan or type barcode" onkeydown="if(event.key==='Enter'){event.preventDefault();lookupBarcodeProduct()}"></label>
+      <label style="font-size:9px;color:var(--dim)">CATEGORY HINT<select id="barcode-category-hint" class="tsi"><option value="auto">Auto</option><option value="comics">Comics</option><option value="pokemon">Pokemon</option><option value="mtg">MTG</option><option value="sports">Sports</option><option value="sealed">Sealed / Product</option><option value="other">Other</option></select></label>
+      <button class="hbtn" onclick="lookupBarcodeProduct()" style="min-height:42px;color:var(--g)">LOOKUP</button>
+    </div>
+    <label style="display:block;font-size:9px;color:var(--dim);margin-top:8px">OPTIONAL PRODUCT WORDS (fallback when UPC has no match)<input id="barcode-query-hint" class="tsi" placeholder="e.g. Spider-Man comic, Pokemon booster box"></label>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"><button class="hbtn" id="barcode-camera-toggle" onclick="toggleBarcodeCamera()">START CAMERA</button><button class="hbtn" onclick="resetBarcodeLookup()">SEARCH AGAIN</button><button class="hbtn" id="barcode-forget-link" onclick="forgetConfirmedBarcodeLink()" style="display:none;color:var(--gold)">WRONG ITEM / FORGET SAVED MATCH</button></div>
+    <div id="barcode-candidates" style="margin-top:10px"></div>
   </div>
 </div>
 
@@ -2654,7 +2696,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.07.01.04-mtg-offline-set-browser';
+const APP_VERSION = '2026.07.01.05-research-barcode-lookup';
 window.APP_VERSION = APP_VERSION;
 const branchName = 'main';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
@@ -15907,6 +15949,90 @@ function startVoiceInput(inputId, done){
 // ══════════════════════════════════════════════════
 // QUICK PRICE LOOKUP
 // ══════════════════════════════════════════════════
+let barcodeStream=null,barcodeDetector=null,barcodeDetecting=false,barcodeCandidates=[],barcodeCurrentNormalized=null;
+
+function barcodeLinksDb(){
+  return new Promise((resolve,reject)=>{const req=indexedDB.open('arsca_barcode_links_v1',1);req.onupgradeneeded=e=>{const db=e.target.result;if(!db.objectStoreNames.contains('links')){const store=db.createObjectStore('links',{keyPath:'id'});store.createIndex('barcodePrimary','barcodePrimary',{unique:false});store.createIndex('lastUsedAt','lastUsedAt',{unique:false});}};req.onsuccess=e=>resolve(e.target.result);req.onerror=e=>reject(e.target.error);});
+}
+async function barcodeLinkGet(id){const db=await barcodeLinksDb();return new Promise((resolve,reject)=>{const req=db.transaction('links','readonly').objectStore('links').get(id);req.onsuccess=e=>resolve(e.target.result||null);req.onerror=e=>reject(e.target.error);});}
+async function barcodeLinkPut(value){const db=await barcodeLinksDb();return new Promise((resolve,reject)=>{const req=db.transaction('links','readwrite').objectStore('links').put(value);req.onsuccess=()=>resolve(value);req.onerror=e=>reject(e.target.error);});}
+async function barcodeLinkDelete(id){const db=await barcodeLinksDb();return new Promise((resolve,reject)=>{const req=db.transaction('links','readwrite').objectStore('links').delete(id);req.onsuccess=()=>resolve();req.onerror=e=>reject(e.target.error);});}
+function barcodeLinkId(n){return [n?.primary||'',n?.supplement||''].join('|');}
+function setBarcodeStatus(message,tone=''){const el=document.getElementById('barcode-status');if(el){el.textContent=message||'';el.style.color=tone||'var(--dim)';}}
+
+async function openBarcodeScanner(){
+  const modal=document.getElementById('barcode-scanner-modal');if(!modal)return;modal.classList.add('on');document.body.style.overflow='hidden';resetBarcodeLookup(false);
+  setTimeout(()=>document.getElementById('barcode-manual-input')?.focus(),80);
+  if(navigator.mediaDevices?.getUserMedia&&'BarcodeDetector' in window)await startBarcodeCamera();
+  else setBarcodeStatus('Barcode scanner unavailable in this browser. Use manual barcode entry or a USB scanner.','var(--gold)');
+}
+function closeBarcodeScanner(){stopBarcodeCamera();document.getElementById('barcode-scanner-modal')?.classList.remove('on');document.body.style.overflow='';}
+async function toggleBarcodeCamera(){if(barcodeStream)stopBarcodeCamera();else await startBarcodeCamera();}
+async function startBarcodeCamera(){
+  if(!navigator.mediaDevices?.getUserMedia){setBarcodeStatus('Camera not available. Use manual barcode entry.','var(--gold)');return;}
+  if(!('BarcodeDetector' in window)){setBarcodeStatus('Barcode scanner unavailable in this browser. Use manual barcode entry.','var(--gold)');return;}
+  try{
+    stopBarcodeCamera();
+    barcodeStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}},audio:false});
+    const video=document.getElementById('barcode-video');video.srcObject=barcodeStream;await video.play();
+    const supported=typeof BarcodeDetector.getSupportedFormats==='function'?await BarcodeDetector.getSupportedFormats().catch(()=>[]):[];const formats=['upc_a','upc_e','ean_13','ean_8','code_128'].filter(x=>!supported.length||supported.includes(x));
+    barcodeDetector=new BarcodeDetector(formats.length?{formats}:undefined);barcodeDetecting=true;document.getElementById('barcode-camera')?.classList.add('active');
+    const placeholder=document.getElementById('barcode-camera-placeholder');if(placeholder)placeholder.style.display='none';
+    const btn=document.getElementById('barcode-camera-toggle');if(btn)btn.textContent='STOP CAMERA';setBarcodeStatus('Point the camera at a UPC or EAN barcode.');detectBarcodeFrame();
+  }catch(e){
+    const denied=/notallowed|permission|denied/i.test(String(e?.name||e?.message||''));setBarcodeStatus(denied?'Camera permission denied. Use manual barcode entry.':'Camera not available. Use manual barcode entry.','var(--gold)');stopBarcodeCamera();
+  }
+}
+async function detectBarcodeFrame(){
+  if(!barcodeDetecting||!barcodeDetector)return;const video=document.getElementById('barcode-video');
+  try{if(video?.readyState>=2){const codes=await barcodeDetector.detect(video);const value=codes?.[0]?.rawValue||'';if(value){barcodeDetecting=false;document.getElementById('barcode-manual-input').value=value;stopBarcodeCamera();setBarcodeStatus('Barcode captured. Looking up UPC...','var(--g)');await lookupBarcodeProduct();return;}}}catch(e){}
+  if(barcodeDetecting)requestAnimationFrame(detectBarcodeFrame);
+}
+function stopBarcodeCamera(){barcodeDetecting=false;(barcodeStream?.getTracks?.()||[]).forEach(track=>track.stop());barcodeStream=null;barcodeDetector=null;const video=document.getElementById('barcode-video');if(video){video.pause();video.srcObject=null;}document.getElementById('barcode-camera')?.classList.remove('active');const placeholder=document.getElementById('barcode-camera-placeholder');if(placeholder)placeholder.style.display='';const btn=document.getElementById('barcode-camera-toggle');if(btn)btn.textContent='START CAMERA';}
+function resetBarcodeLookup(clearInput=true){barcodeCandidates=[];barcodeCurrentNormalized=null;const results=document.getElementById('barcode-candidates');if(results)results.innerHTML='';const forget=document.getElementById('barcode-forget-link');if(forget)forget.style.display='none';if(clearInput){const input=document.getElementById('barcode-manual-input');if(input)input.value='';const query=document.getElementById('barcode-query-hint');if(query)query.value='';}setBarcodeStatus('Scan a barcode or enter it manually. Nothing is saved until you confirm a product.');}
+
+function barcodeCandidateToResearch(candidate,n){
+  const categoryMap={comics:'Comic',pokemon:'Pokemon TCG',mtg:'Magic: The Gathering',sports:'Sports Card',sealed:'Sealed Product',other:'Collectibles'};
+  const rawValue=Number(candidate.priceSummary?.raw??candidate.priceSummary?.ungraded??0)||0;
+  return {source:candidate.savedConfirmed?'barcode_confirmed':'pricecharting_barcode',name:candidate.title||'Barcode product',category:categoryMap[candidate.category]||'Collectibles',set:candidate.consoleName||'',year:(candidate.raw?.releaseDate||'').toString().slice(0,4),variant:candidate.genre||'',market:rawValue,condition:candidate.category==='sealed'?'Sealed':'NM',is_sealed:candidate.category==='sealed',imageUrl:candidate.imageUrl||'',imageSource:candidate.imageUrl?'pricecharting':'placeholder',coverConfidence:candidate.category==='comics'?(candidate.coverConfirmed?'confirmed':'needs-confirmation'):'product-confirmation',confidence:Number(candidate.confidence||0),matchWhy:candidate.matchReason||[],note:(candidate.matchReason||[]).join(' / '),priceSource:candidate.savedConfirmed?'Last-known confirmed barcode match':'PriceCharting barcode evidence',providerProductId:candidate.providerProductId||'',productId:candidate.providerProductId||'',productUrl:candidate.providerUrl||'',barcode:n.primary,barcodePrimary:n.primary,barcodeSupplement:n.supplement||'',barcodeType:n.typeGuess,barcodeEvidence:{raw:n.raw,primary:n.primary,supplement:n.supplement||'',candidatesTried:n.candidates||[],confidence:candidate.confidence||0,matchReason:candidate.matchReason||[],confirmed:!!candidate.savedConfirmed},pricecharting:{productId:candidate.providerProductId||'',productName:candidate.title||'',consoleName:candidate.consoleName||'',genre:candidate.genre||'',url:candidate.providerUrl||'',imageUrl:candidate.imageUrl||'',prices:{ungraded:candidate.priceSummary?.ungraded??null,psa10:candidate.priceSummary?.psa10??null},comicPrices:{ungraded:candidate.priceSummary?.raw??null,grade9_8:candidate.priceSummary?.graded98??null}},raw:candidate.raw||{}};
+}
+
+async function lookupBarcodeProduct(){
+  const raw=document.getElementById('barcode-manual-input')?.value||'';const normalize=window.ArsCaBarcode?.normalizeBarcode;
+  if(!normalize){setBarcodeStatus('Barcode helper failed to load. Refresh and try again.','var(--red)');return;}
+  const n=normalize(raw);barcodeCurrentNormalized=n;
+  if(![8,12,13].includes(n.primary.length)){setBarcodeStatus('Barcode read looks too short or malformed. Correct it manually and try again.','var(--gold)');return;}
+  setBarcodeStatus(n.isValidLikely?'Looking up UPC...':'Check digit looks unusual; treating this as evidence and trying the entered code.','var(--gold)');
+  const saved=await barcodeLinkGet(barcodeLinkId(n)).catch(()=>null);let rows=saved?.confirmed?[{...saved.candidate,savedConfirmed:true,confidence:100,matchReason:['Saved confirmed barcode match',...(saved.candidate?.matchReason||[])]}]:[];
+  if(!navigator.onLine){barcodeCandidates=rows;renderBarcodeCandidates();setBarcodeStatus(rows.length?'Offline: showing last-known confirmed match.':'Offline. No saved match for this barcode.',rows.length?'var(--gold)':'var(--red)');return;}
+  try{
+    const body={barcode:n.raw,categoryHint:document.getElementById('barcode-category-hint')?.value||'auto',supplement:n.supplement||'',query:document.getElementById('barcode-query-hint')?.value.trim()||'',source:'research-tab'};
+    const res=await fetch(WORKER+'/barcode/lookup',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});const data=await res.json().catch(()=>({}));
+    if(!res.ok||data.status!=='success')throw new Error(data.error||'PriceCharting unavailable');
+    const seen=new Set(rows.map(x=>x.providerProductId));rows.push(...(data.candidates||[]).filter(x=>!seen.has(x.providerProductId)));
+    barcodeCandidates=rows;barcodeCurrentNormalized={...n,...(data.barcode||{})};renderBarcodeCandidates();setBarcodeStatus(rows.length?(rows.length>1?'Multiple possible matches found. Confirm the product and cover where applicable.':'UPC match found. Confirm before saving.'):'No product found by UPC. Add product words and search again.',rows.length?'var(--g)':'var(--gold)');
+  }catch(e){barcodeCandidates=rows;renderBarcodeCandidates();setBarcodeStatus(rows.length?'Live lookup failed; showing saved confirmed match.':'PriceCharting unavailable. Try again or use saved matches offline.','var(--gold)');}
+}
+
+function renderBarcodeCandidates(){
+  const host=document.getElementById('barcode-candidates');if(!host)return;const n=barcodeCurrentNormalized||{};
+  document.getElementById('barcode-forget-link').style.display=barcodeCandidates.some(x=>x.savedConfirmed)?'':'none';
+  if(!barcodeCandidates.length){host.innerHTML='';return;}
+  host.innerHTML=barcodeCandidates.map((c,idx)=>{const comic=c.category==='comics',sealed=c.category==='sealed',price=Number(c.priceSummary?.raw??c.priceSummary?.ungraded??0),grade98=Number(c.priceSummary?.graded98||0);return `<div class="barcode-candidate"><div>${c.imageUrl?`<img src="${escHtml(c.imageUrl)}" alt="${escHtml(c.title||'Product image')}" onerror="this.outerHTML='<div style=\'width:90px;height:120px;display:grid;place-items:center;background:#050607;color:var(--dim)\'>NO IMAGE</div>'">`:'<div style="width:90px;height:120px;display:grid;place-items:center;background:#050607;color:var(--dim)">NO IMAGE</div>'}</div><div><div style="font-weight:800;color:var(--text)">${escHtml(c.title||'Unknown product')}</div><div style="font-size:10px;color:var(--dim);margin-top:3px">${escHtml(c.subtitle||c.consoleName||c.category||'')}</div><div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:6px"><span class="qpl-badge ${Number(c.confidence)>=90?'good':Number(c.confidence)>=70?'warn':'bad'}">${Number(c.confidence)||0}% evidence</span><span class="qpl-badge">${escHtml(c.savedConfirmed?'SAVED CONFIRMED MATCH':'PRICECHARTING '+String(c.evidence?.routeType||'UPC').toUpperCase())}</span>${sealed?'<span class="qpl-badge good">SEALED PRODUCT</span>':''}${comic?'<span class="qpl-badge warn">CONFIRM COVER</span>':''}</div><div style="font-size:13px;margin-top:7px">${price?'Market $'+price.toFixed(2):'No current guide'}${comic&&grade98?' / Graded 9.8 estimate $'+grade98.toFixed(2):''}</div><div class="barcode-evidence">Barcode ${escHtml(n.primary||c.upc||'')} ${n.supplement?' + '+escHtml(n.supplement):''}<br>${escHtml((c.matchReason||[]).join(' / '))}</div></div><div class="barcode-candidate-actions"><button class="hbtn" onclick="confirmBarcodeCandidate(${idx},'view')">SELECT / VIEW</button><button class="hbtn" onclick="confirmBarcodeCandidate(${idx},'inventory')">ADD INVENTORY</button><button class="hbtn" onclick="confirmBarcodeCandidate(${idx},'buy')">ADD TO BUY</button><button class="hbtn" onclick="confirmBarcodeCandidate(${idx},'cart')">ADD TO CART</button>${comic?`${c.imageUrl?`<button class="hbtn" style="color:var(--purple)" onclick="confirmBarcodeCandidate(${idx},'cover')">USE THIS COVER</button>`:''}<button class="hbtn" style="color:var(--purple)" onclick="confirmBarcodeCandidate(${idx},'appraise')">APPRAISE COMIC</button><button class="hbtn" onclick="confirmBarcodeCandidate(${idx},'photo')">USE MY PHOTO</button>`:''}</div></div>`;}).join('');
+}
+
+async function confirmBarcodeCandidate(idx,action='view'){
+  const candidate=barcodeCandidates[idx],n=barcodeCurrentNormalized;if(!candidate||!n)return;
+  const coverConfirmed=action==='cover';candidate.coverConfirmed=coverConfirmed||!!candidate.coverConfirmed;candidate.needsCoverConfirmation=candidate.category==='comics'&&!candidate.coverConfirmed;
+  const now=new Date().toISOString();await barcodeLinkPut({id:barcodeLinkId(n),barcodePrimary:n.primary,barcodeSupplement:n.supplement||'',normalizedBarcode:n.cleaned,category:candidate.category,provider:candidate.provider||'pricecharting',providerProductId:candidate.providerProductId||'',title:candidate.title||'',consoleName:candidate.consoleName||'',imageUrl:candidate.imageUrl||'',imageSource:candidate.imageUrl?'pricecharting':'placeholder',confidence:100,confirmed:true,confirmedAt:now,lastUsedAt:now,notes:'Confirmed in Research barcode lookup',candidate:{...candidate,savedConfirmed:false,confidence:100}});
+  const result=barcodeCandidateToResearch(candidate,n);result.barcodeConfirmedAt=now;result.coverConfirmed=!!candidate.coverConfirmed;if(result.barcodeEvidence)result.barcodeEvidence.confirmed=true;
+  if(result.category==='Comic'){const appraisal=comicAppraisalState(result);appraisal.coverConfirmed=!!candidate.coverConfirmed;result.coverConfidence=candidate.coverConfirmed?'confirmed':'needs-confirmation';}
+  if(candidate.imageUrl&&typeof cacheComicExternalCover==='function')cacheComicExternalCover(result,candidate.imageUrl);
+  qplMasterResults=[result];qplResults=[result];qplLastSearch=n.primary;const cat=document.getElementById('qpl-cat');if(cat)cat.value=candidate.category==='sealed'?'Sealed':result.category;renderQuickLookupResults(qplResults);renderUniversalSearchExplain(qplLastSearchPlan,qplResults);closeBarcodeScanner();setTimeout(()=>selectQuickLookupResult(0),0);
+  if(action==='inventory')setTimeout(()=>addQuickLookupToInventory(0),80);else if(action==='buy')setTimeout(()=>addQuickLookupToBuyOffer(0),80);else if(action==='cart')setTimeout(()=>addQuickLookupToSaleCart(0),80);else if(action==='photo'){toast_dash('Candidate selected. Use My Photo is ready in the comic appraisal panel.');setTimeout(()=>document.querySelector('.comic-appraisal input[type=file]')?.click(),120);}else if(action==='appraise'||action==='cover')setTimeout(()=>document.querySelector('.comic-appraisal')?.scrollIntoView({behavior:'smooth',block:'center'}),120);
+}
+async function forgetConfirmedBarcodeLink(){if(!barcodeCurrentNormalized)return;await barcodeLinkDelete(barcodeLinkId(barcodeCurrentNormalized)).catch(()=>{});barcodeCandidates=barcodeCandidates.filter(x=>!x.savedConfirmed);renderBarcodeCandidates();setBarcodeStatus('Saved match forgotten. Run lookup to choose a different product.','var(--gold)');}
+
 let qplTimer = null;
 let qplHistory = [];
 let qplResults = [];
@@ -22522,8 +22648,8 @@ function selectedQuickLookupItem(idx){
     pricechartingComicPrices:r.pricecharting?.comicPrices || null,
     pricechartingRetail:r.pricecharting?.retail || null,
     pricechartingDemand:r.pricecharting?.demand || null,
-    providerProductId:isComic ? r.pricecharting?.productId || '' : '',
-    providerUrl:isComic ? r.pricecharting?.url || r.productUrl || '' : '',
+    providerProductId:r.providerProductId || r.pricecharting?.productId || r.productId || '',
+    providerUrl:r.providerUrl || r.pricecharting?.url || r.productUrl || '',
     coverImageUrl:isComic ? (r.userPhotoBlobKey ? r.externalCoverImageUrl || '' : r.imageUrl || '') : '',
     imageSource:isComic ? r.imageSource || (r.imageUrl ? 'pricecharting' : 'placeholder') : '',
     coverConfirmed:isComic ? !!comicAppraisal.coverConfirmed : false,
@@ -22541,6 +22667,13 @@ function selectedQuickLookupItem(idx){
     suggestedBuyHigh:isComic ? comicValuation.buyHigh : 0,
     lastPriceUpdate:isComic ? r.lastPriceUpdate || new Date().toISOString() : '',
     comicMetadata:isComic ? { ...comicAppraisal, series:comicAppraisal.series||comicMeta.series, issueNumber:comicAppraisal.issueNumber||comicMeta.issueNumber, priceSnapshot:r.pricecharting?.comicPrices||{}, priceSource:'PriceCharting' } : null,
+    barcode:r.barcode || r.barcodePrimary || '',
+    barcodePrimary:r.barcodePrimary || r.barcode || '',
+    barcodeSupplement:r.barcodeSupplement || '',
+    barcodeType:r.barcodeType || '',
+    barcodeEvidence:r.barcodeEvidence || null,
+    barcodeConfirmedAt:r.barcodeConfirmedAt || '',
+    sealedProductType:r.is_sealed ? (r.variant || r.set || 'Sealed product') : '',
     resolvedPricePath:activePriceBasis.pricePath || r.resolvedPricePath || '',
     resolvedPrice:Number(activePriceBasis.price || r.resolvedPrice || r.market || 0),
     pokemonPriceTrackerLastUpdated:r.pokemonPriceTrackerLastUpdated || '',

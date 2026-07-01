@@ -1868,7 +1868,7 @@ export default {
     }
 
     // PriceCharting guide proxy. Token and CSV URLs stay in Worker/KV only.
-    if (url.pathname.startsWith('/pricing/pricecharting')) {
+    if (url.pathname.startsWith('/pricing/pricecharting') || url.pathname === '/barcode/lookup') {
       const token = env.PRICECHARTING_TOKEN || env.PRICECHARTING_API_KEY;
 
       const pennies = v => {
@@ -2061,6 +2061,84 @@ export default {
         let data; try { data = JSON.parse(text); } catch (_) { data = { raw: text }; }
         if (!res.ok || data.status === 'error') throw new Error(data['error-message'] || data.error || 'PriceCharting ' + res.status);
         return data;
+      }
+      const normalizeBarcodeValue = raw => {
+        const original = String(raw ?? '').trim();
+        const digits = original.replace(/\D/g, '');
+        let primary = digits, supplement = '';
+        if (digits.length === 14 || digits.length === 15 || digits.length === 17) { primary = digits.slice(0, 12); supplement = digits.slice(12); }
+        else if (digits.length === 18) { primary = digits.slice(0, 13); supplement = digits.slice(13); }
+        const upcA = primary.length === 12 ? primary : primary.length === 13 && primary.startsWith('0') ? primary.slice(1) : '';
+        const ean13 = primary.length === 13 ? primary : primary.length === 12 ? '0' + primary : '';
+        const upcE = primary.length === 8 ? primary : '';
+        const candidates = [...new Set([upcA, ean13, upcE, primary].filter(Boolean))];
+        return { raw:original, cleaned:digits, primary, upcA, ean13, upcE, supplement, candidates, typeGuess:primary.length===12?'UPC-A':primary.length===13?'EAN-13':primary.length===8?'UPC-E':'unknown', isValidLikely:[8,12,13].includes(primary.length) };
+      };
+      const barcodeCategory = (product, hint = 'auto') => {
+        const text = [product.productName, product.consoleName, product.genre].filter(Boolean).join(' ').toLowerCase();
+        if (/\b(booster box|booster bundle|elite trainer box|etb|collector booster|hobby box|blaster|mega box|display box|factory sealed|pack|tin|case)\b/.test(text)) return 'sealed';
+        if (/\b(comics?|marvel comics?|dc comics?|image comics?|dark horse|idw|mirage)\b/.test(text)) return 'comics';
+        if (/\b(pokemon cards?|pok[eé]mon cards?)\b/.test(text)) return 'pokemon';
+        if (/\b(magic cards?|magic the gathering|mtg)\b/.test(text)) return 'mtg';
+        if (/\b(sports? cards?|baseball|football|basketball|hockey|soccer|topps|panini|bowman|upper deck)\b/.test(text)) return 'sports';
+        return ['comics','pokemon','mtg','sports','sealed','other'].includes(hint) ? hint : 'other';
+      };
+      const barcodeCandidate = (product, hint, routeType, attemptedCode) => {
+        const category = barcodeCategory(product, hint);
+        const isComic = category === 'comics';
+        const isSealed = category === 'sealed';
+        const upc = product.demand?.upc || product.videoGame?.upc || attemptedCode || '';
+        return {
+          category,
+          provider:'pricecharting',
+          providerProductId:product.productId || '',
+          title:product.productName || 'Unknown product',
+          subtitle:[product.consoleName, product.genre, product.releaseDate ? String(product.releaseDate).slice(0,4) : ''].filter(Boolean).join(' / '),
+          consoleName:product.consoleName || '', genre:product.genre || '', upc,
+          imageUrl:product.imageUrl || '', providerUrl:product.url || '',
+          priceSummary:{ raw:product.comicPrices?.ungraded ?? null, graded98:product.comicPrices?.grade9_8 ?? null, ungraded:product.prices?.ungraded ?? null, psa10:product.prices?.psa10 ?? null },
+          confidence:routeType === 'confirmed' ? 100 : routeType === 'upc' ? (isSealed ? 96 : isComic ? 82 : 90) : 55,
+          matchReason:routeType === 'upc' ? ['Exact UPC response from PriceCharting', isComic ? 'Barcode narrows the issue; cover still requires confirmation' : isSealed ? 'Sealed-product UPC is strong evidence' : 'Confirm product before saving'] : ['PriceCharting candidate search fallback'],
+          needsConfirmation:true, needsCoverConfirmation:isComic,
+          evidence:{ type:'barcode', routeType, barcode:attemptedCode || upc, supplement:'' },
+          raw:{ productId:product.productId || '', productName:product.productName || '', consoleName:product.consoleName || '', genre:product.genre || '', releaseDate:product.releaseDate || null }
+        };
+      };
+
+      if (url.pathname === '/barcode/lookup') {
+        if (request.method !== 'POST') return json({ status:'error', error:'POST required' }, 405);
+        if (!token) return json({ status:'error', error:'PriceCharting unavailable' }, 503);
+        let body = {};
+        try { body = await request.json(); } catch (_) { return json({ status:'error', error:'Valid JSON body required' }, 400); }
+        const barcode = normalizeBarcodeValue(body.barcode || '');
+        const hint = String(body.categoryHint || 'auto').toLowerCase();
+        const query = String(body.query || body.titleQuery || '').trim().slice(0, 160);
+        if (!barcode.isValidLikely) return json({ status:'error', error:'Barcode must be a likely UPC-A, UPC-E, or EAN-13 value', barcode }, 400);
+        if (body.supplement) barcode.supplement = String(body.supplement).replace(/\D/g, '').slice(0, 5);
+        const sourceCalls = [], found = [], tried = [];
+        for (const code of barcode.candidates.slice(0, 3)) {
+          tried.push(code);
+          try {
+            const data = await pcFetch('/api/product', { upc:code });
+            const product = normalizePcProduct(data, code);
+            const success = !!product.productId;
+            sourceCalls.push({ provider:'pricecharting', routeType:'upc', barcode:code, success });
+            if (success) { found.push(barcodeCandidate(product, hint, 'upc', code)); break; }
+          } catch (_) { sourceCalls.push({ provider:'pricecharting', routeType:'upc', barcode:code, success:false }); }
+        }
+        const fallbackQuery = query || (found[0]?.category === 'comics' ? found[0].title : '');
+        if (fallbackQuery && (!found.length || found[0]?.confidence < 85)) {
+          try {
+            const data = await pcFetch('/api/products', { q:fallbackQuery });
+            const products = (data.products || []).map(p => normalizePcProduct(p, fallbackQuery));
+            const seen = new Set(found.map(candidate => candidate.providerProductId));
+            found.push(...products.filter(p => !seen.has(p.productId)).slice(0, 20).map(p => barcodeCandidate(p, hint, 'search', barcode.primary)));
+            sourceCalls.push({ provider:'pricecharting', routeType:'search', success:products.length > 0 });
+          } catch (_) { sourceCalls.push({ provider:'pricecharting', routeType:'search', success:false }); }
+        }
+        barcode.candidatesTried = tried;
+        found.forEach(candidate => { candidate.evidence.supplement = barcode.supplement || ''; });
+        return json({ status:'success', barcode, candidates:found, sourceCalls, message:found.length ? (found.length > 1 ? 'Multiple possible matches found' : 'Confirm this product before saving') : 'No product found by UPC' });
       }
       function parseCsvLine(line) {
         const out = [];
