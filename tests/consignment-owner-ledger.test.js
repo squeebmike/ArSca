@@ -1,0 +1,15 @@
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const path=require('node:path');
+const dashboard=fs.readFileSync(path.join(__dirname,'..','dashboard.html'),'utf8');
+assert.match(dashboard,/id="cs-owner-filter"/);
+assert.match(dashboard,/id="cs-search"/);
+assert.match(dashboard,/Owner Cost \/ Basis/);
+assert.match(dashboard,/Current Market Value/);
+assert.match(dashboard,/function syncConsignmentSaleForInventory/);
+assert.match(dashboard,/syncConsignmentSaleForInventory\(inv,salePrice,soldAt,method\)/);
+assert.match(dashboard,/pos_consignment_alerts/);
+assert.match(dashboard,/CONSIGNMENTS SOLD — PAYOUT REQUIRED/);
+assert.match(dashboard,/STORE PROFIT/);
+assert.match(dashboard,/OWNER PAYOUT/);
+console.log('Consignment owner ledger contract checks passed');

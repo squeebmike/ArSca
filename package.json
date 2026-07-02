@@ -3,7 +3,7 @@
   "version": "2026.05.20.03",
   "private": true,
   "scripts": {
-    "test": "npm run test:parse && npm run test:topps-parser && npm run test:buy-workspace && npm run test:search-adapter && npm run test:comic-hub && npm run test:barcode && npm run test:mtg-offline && npm run test:admin-support",
+    "test": "npm run test:parse && npm run test:topps-parser && npm run test:buy-workspace && npm run test:search-adapter && npm run test:comic-hub && npm run test:consignment && npm run test:barcode && npm run test:mtg-offline && npm run test:admin-support",
     "test:qa": "npm run test:parse",
     "test:smoke:manual": "playwright test --config=tests/playwright.config.js",
     "test:headed": "playwright test --config=tests/playwright.config.js --headed",
@@ -13,6 +13,7 @@
     "test:search-adapter": "node tests/universal-search-query.test.js",
     "test:barcode": "node tests/barcode-lookup.test.js",
     "test:comic-hub": "node tests/comic-issue-hub.test.js",
+    "test:consignment": "node tests/consignment-owner-ledger.test.js",
     "test:mtg-offline": "node tests/mtg-offline-core.test.mjs && node tests/mtg-offline-contract.test.mjs",
     "test:admin-support": "node tests/admin-support-contract.test.mjs",
     "mtg:build": "node scripts/mtg/build-mtg-offline-bundle.mjs",

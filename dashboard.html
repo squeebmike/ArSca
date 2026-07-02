@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.07.01.07-comic-year-sort">
+<meta name="version" content="2026.07.02.01-consignment-owners">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -658,6 +658,7 @@ body.show-mode .show-mode-toggle { border-color:rgba(0,255,179,.4); color:var(--
 .owner-mini-panel { border:1px solid var(--border); background:var(--surf); border-radius:10px; padding:10px; min-height:120px; }
 .owner-mini-row { display:flex; align-items:center; justify-content:space-between; gap:10px; font-family:var(--font-mono); font-size:10px; color:var(--dim); padding:7px 0; border-bottom:1px solid rgba(255,255,255,.05); }
 .owner-mini-row:last-child { border-bottom:0; }
+.cs-browser-controls{display:grid;grid-template-columns:2fr 1fr 1fr;gap:8px;margin-bottom:10px}
 .owner-mini-row b { color:var(--text); font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .inv-money-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; margin:10px 0; }
 .inv-money-card { border:1px solid var(--border); background:var(--surf); border-radius:9px; padding:9px; }
@@ -672,6 +673,7 @@ body.show-mode .show-mode-toggle { border-color:rgba(0,255,179,.4); color:var(--
 .inv-warning-pill { display:inline-block; font-family:var(--font-mono); font-size:8px; color:var(--gold); border:1px solid rgba(255,209,102,.35); border-radius:999px; padding:2px 6px; margin-top:4px; }
 @media(max-width:767px) {
   .inv-health-grid,.owner-analytics-grid,.owner-section-grid,.inv-money-grid { grid-template-columns:1fr; }
+  .cs-browser-controls{grid-template-columns:1fr;}
   .inv-photo-box { min-height:240px; }
 }
 
@@ -1359,9 +1361,9 @@ body.show-mode .inv-sync-badge{display:none;}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-<script src="scripts/query-routing.js?v=2026.07.01.07-comic-year-sort"></script>
-<script src="scripts/barcode-lookup.js?v=2026.07.01.07-comic-year-sort"></script>
-<script src="scripts/comic-issue-hub.js?v=2026.07.01.07-comic-year-sort"></script>
+<script src="scripts/query-routing.js?v=2026.07.02.01-consignment-owners"></script>
+<script src="scripts/barcode-lookup.js?v=2026.07.02.01-consignment-owners"></script>
+<script src="scripts/comic-issue-hub.js?v=2026.07.02.01-consignment-owners"></script>
 <script src="scripts/mtg/mtg-offline-browser.js?v=2026.07.01.04-mtg-offline-set-browser"></script>
 </head>
 <body>
@@ -1412,7 +1414,7 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.07.01.07-comic-year-sort</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.07.02.01-consignment-owners</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
@@ -1439,7 +1441,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.07.01.07-comic-year-sort</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.07.02.01-consignment-owners</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -1655,6 +1657,10 @@ body.show-mode .inv-sync-badge{display:none;}
 <!-- ALERTS TAB -->
 <div id="tab-alerts" class="tab-panel">
   <div class="sec">NEEDS ATTENTION</div>
+  <div class="panel" style="margin-top:0;margin-bottom:14px;border-color:rgba(199,125,255,.3)">
+    <div class="ph">CONSIGNMENTS SOLD — PAYOUT REQUIRED <b id="consignment-alert-count"></b></div>
+    <div id="consignment-sale-alerts"></div>
+  </div>
   <div class="three">
     <div class="panel">
       <div class="ph">LOW STOCK <b id="low-count"></b></div>
@@ -2570,7 +2576,13 @@ body.show-mode .inv-sync-badge{display:none;}
             <input type="number" id="cs-price" step="0.01" placeholder="0.00" style="width:100%;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:6px;font-size:12px"></div>
           <div><label style="font-family:monospace;font-size:9px;color:var(--dim);display:block;margin-bottom:3px">Your Split %</label>
             <input type="number" id="cs-split" value="25" min="0" max="100" placeholder="25" style="width:100%;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:6px;font-size:12px"></div>
+          <div><label style="font-family:monospace;font-size:9px;color:var(--dim);display:block;margin-bottom:3px">Owner Cost / Basis ($)</label>
+            <input type="number" id="cs-cost" step="0.01" placeholder="Optional" style="width:100%;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:6px;font-size:12px"></div>
+          <div><label style="font-family:monospace;font-size:9px;color:var(--dim);display:block;margin-bottom:3px">Current Market Value ($)</label>
+            <input type="number" id="cs-market" step="0.01" placeholder="Optional" style="width:100%;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:6px;font-size:12px"></div>
         </div>
+        <label style="font-family:monospace;font-size:9px;color:var(--dim);display:block;margin-bottom:3px">Link Existing Inventory Item</label>
+        <select class="tsi" id="cs-inventory-link"><option value="">Not linked / consignment-only item</option></select>
         <input class="tsi" id="cs-notes" placeholder="Condition, notes, special instructions">
         <div style="display:flex;gap:8px;margin-top:4px">
           <input type="date" id="cs-expires" style="flex:1;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:6px;font-size:11px;font-family:monospace">
@@ -2609,7 +2621,13 @@ body.show-mode .inv-sync-badge{display:none;}
     <!-- Consignment list -->
     <div class="panel" style="margin-top:0">
       <div class="ph">ALL CONSIGNMENT ITEMS</div>
-      <div style="display:flex;gap:6px;margin-bottom:10px">
+      <div id="cs-owner-summary" style="margin-bottom:10px"></div>
+      <div class="cs-browser-controls">
+        <input class="tsi" id="cs-search" placeholder="Search item, owner, contact, notes, SKU..." oninput="setConsignSearch(this.value)" style="margin:0">
+        <select class="tsi" id="cs-owner-filter" onchange="setConsignOwner(this.value)" style="margin:0"><option value="all">All consignors</option></select>
+        <select class="tsi" id="cs-sort" onchange="setConsignSort(this.value)" style="margin:0"><option value="owner">Owner, then item</option><option value="value-high">Worth: high to low</option><option value="profit-high">Store profit: high to low</option><option value="newest">Newest received</option><option value="sold-newest">Recently sold</option></select>
+      </div>
+      <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">
         <button class="fb on" onclick="setConsignFilter('active',this)">Active</button>
         <button class="fb" onclick="setConsignFilter('sold',this)">Sold</button>
         <button class="fb" onclick="setConsignFilter('returned',this)">Returned</button>
@@ -2703,7 +2721,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.07.01.07-comic-year-sort';
+const APP_VERSION = '2026.07.02.01-consignment-owners';
 window.APP_VERSION = APP_VERSION;
 const branchName = 'main';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
@@ -11971,7 +11989,17 @@ function renderMonthly(){
   }).join('');
 }
 
+function renderConsignmentSaleAlerts(){
+  const host=document.getElementById('consignment-sale-alerts'),count=document.getElementById('consignment-alert-count');if(!host)return;
+  const rows=getConsignmentAlerts().filter(a=>a.status==='open').sort((a,b)=>new Date(b.soldAt||0)-new Date(a.soldAt||0));if(count)count.textContent=rows.length;
+  host.innerHTML=rows.length?rows.map(a=>`<div class="alert" style="margin-bottom:7px"><div><b>${escHtml(a.item)}</b> sold for ${fd$(a.salePrice)}<div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);margin-top:3px">${escHtml(a.owner)} · payout due ${fd$(a.ownerPayout)} · store profit ${fd$(a.storeCut)} · ${a.soldAt?new Date(a.soldAt).toLocaleString():''}</div></div><button class="hbtn" onclick="openConsignmentFromAlert('${escHtml(a.consignmentId)}')">REVIEW / PAYOUT</button></div>`).join(''):'<div class="empty"><div class="empty-t">NO CONSIGNMENT PAYOUTS DUE</div></div>';
+  const existing=document.getElementById('consignment-global-alert');if(existing)existing.remove();if(rows.length){const banner=document.createElement('div');banner.id='consignment-global-alert';banner.className='alert';banner.innerHTML=`<span>🤝 ${rows.length} sold consignment${rows.length===1?'':'s'} need payout</span><a class="ph-action" onclick="switchTab('alerts',document.querySelector('.tab[onclick*=alerts]'))">REVIEW →</a>`;document.getElementById('alert-wrap')?.prepend(banner);}
+}
+function openConsignmentFromAlert(id){const c=consignItems.find(x=>x.id===id);consignOwnerFilter=c?.owner||'all';consignFilter='sold';switchTab('consign',document.querySelector('.tab[onclick*=consign]'));renderConsign();}
+function syncConsignmentSaleForInventory(inv,salePrice,soldAt,channel){if(!inv)return null;const c=consignItems.find(x=>x.status==='active'&&(x.inventoryId===inv.id||x.id===inv.consignmentId));if(!c)return null;c.status='sold';c.salePrice=Number(salePrice||0);c.soldAt=soldAt||new Date().toISOString();c.saleChannel=channel||'';c.inventoryId ||= inv.id;c.inventorySku ||= inv.inventorySku||'';saveConsign();return createConsignmentSaleAlert(c,'inventory-checkout');}
+
 function renderAlerts(){
+  renderConsignmentSaleAlerts();
   const ins=all.filter(i=>i.status==='in_stock');
   // Low stock (qty = 1 and market > $10)
   const low=ins.filter(i=>(i.qty||1)===1&&(i.market||0)>10).sort((a,b)=>b.market-a.market).slice(0,10);
@@ -14045,8 +14073,21 @@ function checkWantListOnLoad(){
 // ══════════════════════════════════════════════════
 let consignItems = JSON.parse(localStorage.getItem('pos_consign')||'[]');
 let consignFilter = 'active';
+let consignOwnerFilter = 'all';
+let consignSearch = '';
+let consignSort = 'owner';
 
 function saveConsign(){ localStorage.setItem('pos_consign', JSON.stringify(consignItems)); }
+function consignMoney(value){return Number(value||0)||0;}
+function consignSaleValue(c){return consignMoney(c.salePrice||c.price);}
+function consignStoreCut(c){return consignSaleValue(c)*(consignMoney(c.split)/100);}
+function consignOwnerCut(c){return consignSaleValue(c)-consignStoreCut(c);}
+function consignWorth(c){return consignMoney(c.marketValue||c.market||c.price);}
+function consignMargin(c){const sale=consignSaleValue(c);return sale?consignStoreCut(c)/sale*100:0;}
+function getConsignmentAlerts(){return safeLocalJson('pos_consignment_alerts',[]);}
+function saveConsignmentAlerts(rows){localStorage.setItem('pos_consignment_alerts',JSON.stringify((rows||[]).slice(0,500)));}
+function createConsignmentSaleAlert(c,source='sale'){const rows=getConsignmentAlerts(),existing=rows.find(a=>a.consignmentId===c.id&&a.status==='open');const alert={id:existing?.id||('csa_'+Date.now()),consignmentId:c.id,inventoryId:c.inventoryId||'',owner:c.owner,item:c.item,salePrice:consignSaleValue(c),storeCut:consignStoreCut(c),ownerPayout:consignOwnerCut(c),soldAt:c.soldAt||new Date().toISOString(),source,status:c.paidOut?'settled':'open',createdAt:existing?.createdAt||new Date().toISOString()};saveConsignmentAlerts([alert,...rows.filter(a=>a.id!==alert.id)]);renderConsignmentSaleAlerts();return alert;}
+function populateConsignmentInventoryOptions(){const el=document.getElementById('cs-inventory-link');if(!el)return;const selected=el.value;const rows=(all||[]).filter(i=>i.status==='in_stock'&&!consignItems.some(c=>c.status==='active'&&c.inventoryId===i.id));el.innerHTML='<option value="">Not linked / consignment-only item</option>'+rows.map(i=>`<option value="${escHtml(i.id)}">${escHtml(i.name)}${i.inventorySku?' · '+escHtml(i.inventorySku):''}</option>`).join('');if(rows.some(i=>i.id===selected))el.value=selected;}
 
 function addConsignItem(){
   const item = document.getElementById('cs-item').value.trim();
@@ -14054,19 +14095,22 @@ function addConsignItem(){
   const contact = document.getElementById('cs-contact').value.trim();
   const price = parseFloat(document.getElementById('cs-price').value)||0;
   const split = parseFloat(document.getElementById('cs-split').value)||25;
+  const costBasis = parseFloat(document.getElementById('cs-cost').value)||0;
+  const marketValue = parseFloat(document.getElementById('cs-market').value)||price;
+  const inventoryId = document.getElementById('cs-inventory-link')?.value||'';
   const notes = document.getElementById('cs-notes').value.trim();
   const expires = document.getElementById('cs-expires').value;
   if(!item || !owner) { toast_dash('Item and owner required'); return; }
 
   consignItems.push({
     id: 'cs_'+Date.now(),
-    item, owner, contact, price, split, notes, expires,
+    item, owner, contact, price, split, costBasis, marketValue, inventoryId, inventorySku:(all||[]).find(i=>i.id===inventoryId)?.inventorySku||'', notes, expires,
     status: 'active',
     addedAt: new Date().toISOString(),
     soldAt: null, salePrice: null, paidOut: false,
   });
   saveConsign();
-  ['cs-item','cs-owner','cs-contact','cs-price','cs-notes','cs-expires'].forEach(id=>{
+  ['cs-item','cs-owner','cs-contact','cs-price','cs-cost','cs-market','cs-notes','cs-expires','cs-inventory-link'].forEach(id=>{
     const el=document.getElementById(id); if(el) el.value='';
   });
   document.getElementById('cs-split').value = '25';
@@ -14075,7 +14119,14 @@ function addConsignItem(){
 }
 
 function renderConsign(){
-  const items = consignItems.filter(c => consignFilter==='all' || c.status===consignFilter);
+  populateConsignmentInventoryOptions();
+  const owners=[...new Set(consignItems.map(c=>String(c.owner||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+  const ownerSelect=document.getElementById('cs-owner-filter');
+  if(ownerSelect){const current=consignOwnerFilter;ownerSelect.innerHTML='<option value="all">All consignors</option>'+owners.map(o=>`<option value="${escHtml(o)}">${escHtml(o)}</option>`).join('');ownerSelect.value=owners.includes(current)?current:'all';consignOwnerFilter=ownerSelect.value;}
+  let items = consignItems.filter(c => consignFilter==='all' || c.status===consignFilter).filter(c=>consignOwnerFilter==='all'||c.owner===consignOwnerFilter);
+  if(consignSearch){const q=consignSearch.toLowerCase();items=items.filter(c=>[c.item,c.owner,c.contact,c.notes,c.inventorySku,c.inventoryId,c.status].join(' ').toLowerCase().includes(q));}
+  const sorters={owner:(a,b)=>String(a.owner).localeCompare(String(b.owner))||String(a.item).localeCompare(String(b.item)),'value-high':(a,b)=>consignWorth(b)-consignWorth(a),'profit-high':(a,b)=>consignStoreCut(b)-consignStoreCut(a),newest:(a,b)=>new Date(b.addedAt||0)-new Date(a.addedAt||0),'sold-newest':(a,b)=>new Date(b.soldAt||0)-new Date(a.soldAt||0)};
+  items.sort(sorters[consignSort]||sorters.owner);
   const active = consignItems.filter(c=>c.status==='active');
   const sold = consignItems.filter(c=>c.status==='sold');
 
@@ -14087,23 +14138,29 @@ function renderConsign(){
   document.getElementById('cs-value').textContent = '$'+totalVal.toFixed(0);
   document.getElementById('cs-fees').textContent = '$'+totalFees.toFixed(0);
   document.getElementById('cs-owed').textContent = '$'+totalOwed.toFixed(0);
+  const ownerRows=consignOwnerFilter==='all'?consignItems:consignItems.filter(c=>c.owner===consignOwnerFilter),ownerActive=ownerRows.filter(c=>c.status==='active'),ownerSold=ownerRows.filter(c=>c.status==='sold'),ownerRevenue=ownerSold.reduce((n,c)=>n+consignSaleValue(c),0),ownerFees=ownerSold.reduce((n,c)=>n+consignStoreCut(c),0),ownerOwed=ownerSold.filter(c=>!c.paidOut).reduce((n,c)=>n+consignOwnerCut(c),0),ownerWorth=ownerActive.reduce((n,c)=>n+consignWorth(c),0);
+  const ownerSummary=document.getElementById('cs-owner-summary');if(ownerSummary)ownerSummary.innerHTML=`<div class="owner-analytics-grid"><div class="owner-metric-card"><div class="owner-metric-label">${consignOwnerFilter==='all'?'People':'Owner'}</div><div class="owner-metric-value">${consignOwnerFilter==='all'?owners.length:escHtml(consignOwnerFilter)}</div></div><div class="owner-metric-card"><div class="owner-metric-label">Active / Worth</div><div class="owner-metric-value">${ownerActive.length}</div><div class="owner-metric-sub">${fd$(ownerWorth)}</div></div><div class="owner-metric-card"><div class="owner-metric-label">Sold</div><div class="owner-metric-value">${fd$(ownerRevenue)}</div><div class="owner-metric-sub">${ownerSold.length} items</div></div><div class="owner-metric-card"><div class="owner-metric-label">Store Profit</div><div class="owner-metric-value">${fd$(ownerFees)}</div><div class="owner-metric-sub">commission earned</div></div><div class="owner-metric-card"><div class="owner-metric-label">Payout Due</div><div class="owner-metric-value" style="color:${ownerOwed?'var(--red)':'var(--g)'}">${fd$(ownerOwed)}</div></div></div>`;
 
   const el = document.getElementById('cs-list');
   if(!items.length){ el.innerHTML='<div class="empty"><div class="empty-t">NO ITEMS</div></div>'; return; }
 
   el.innerHTML = items.map(c=>{
-    const yourCut = (c.salePrice||c.price)*(c.split/100);
-    const ownerCut = (c.salePrice||c.price)*(1-c.split/100);
+    const yourCut = consignStoreCut(c);
+    const ownerCut = consignOwnerCut(c);
+    const worth = consignWorth(c);
+    const cost = consignMoney(c.costBasis);
+    const margin = consignMargin(c);
     const isExpired = c.expires && new Date(c.expires) < new Date();
     return `<div style="padding:10px;border-bottom:1px solid var(--border);${isExpired?'background:rgba(255,77,109,.04)':''}">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
         <div style="flex:1">
-          <div style="font-weight:700;color:var(--text)">${c.item}</div>
+          <div style="font-weight:700;color:var(--text)">${escHtml(c.item)}</div>
           <div style="font-family:monospace;font-size:9px;color:var(--dim);margin-top:2px">
             ${c.owner} ${c.contact?'· '+c.contact:''} · Split: ${c.split}% yours / ${100-c.split}% theirs
             ${c.expires?` · ${isExpired?'<span style="color:var(--red)">EXPIRED':'Expires'} ${c.expires}${isExpired?'</span>':''}`:''}
           </div>
-          ${c.notes?`<div style="font-family:monospace;font-size:8px;color:rgba(255,255,255,.3)">${c.notes}</div>`:''}
+          ${c.notes?`<div style="font-family:monospace;font-size:8px;color:rgba(255,255,255,.3)">${escHtml(c.notes)}</div>`:''}
+          <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:5px"><span class="qpl-badge">COST ${fd$(cost)}</span><span class="qpl-badge">WORTH ${fd$(worth)}</span><span class="qpl-badge">STORE PROFIT ${fd$(yourCut)}</span><span class="qpl-badge">MARGIN ${margin.toFixed(1)}%</span><span class="qpl-badge">OWNER PAYOUT ${fd$(ownerCut)}</span>${c.inventorySku?`<span class="qpl-badge">SKU ${escHtml(c.inventorySku)}</span>`:''}</div>
           ${c.status==='sold'?`<div style="font-family:monospace;font-size:9px;color:var(--g);margin-top:3px">SOLD $${(c.salePrice||c.price).toFixed(2)} · Your cut: $${yourCut.toFixed(2)} · Owed to ${c.owner}: $${ownerCut.toFixed(2)} ${c.paidOut?'<span style="color:var(--g)">✓ PAID</span>':'<span style="color:var(--red)">UNPAID</span>'}</div>`:''}
         </div>
         <div style="text-align:right;flex-shrink:0">
@@ -14127,6 +14184,9 @@ function setConsignFilter(f, btn){
   btn.classList.add('on');
   renderConsign();
 }
+function setConsignOwner(owner){consignOwnerFilter=owner||'all';renderConsign();}
+function setConsignSearch(value){consignSearch=String(value||'').trim();renderConsign();}
+function setConsignSort(value){consignSort=value||'owner';renderConsign();}
 
 function markConsignSold(id){
   const c = consignItems.find(x=>x.id===id);
@@ -14137,6 +14197,7 @@ function markConsignSold(id){
   c.status = 'sold';
   c.soldAt = new Date().toISOString();
   saveConsign();
+  createConsignmentSaleAlert(c,'manual-consignment-sale');
   renderConsign();
   const yourCut = sp*(c.split/100);
   const ownerCut = sp*(1-c.split/100);
@@ -14148,6 +14209,7 @@ function markPaidOut(id){
   if(!c) return;
   c.paidOut = true;
   c.paidAt = new Date().toISOString();
+  const alerts=getConsignmentAlerts();alerts.forEach(a=>{if(a.consignmentId===c.id&&a.status==='open'){a.status='settled';a.settledAt=c.paidAt;}});saveConsignmentAlerts(alerts);
   saveConsign();
   renderConsign();
   toast_dash('✓ Paid out to '+c.owner);
@@ -24810,6 +24872,7 @@ async function markCartItemsSoldFromPayment(items, method, soldAt){
       inv.channel=method;
       inv.soldAt=soldAt;
       setLifecycle(inv.id, 'sold', true);
+      syncConsignmentSaleForInventory(inv,salePrice,soldAt,method);
     }
     try {
       await markInventoryRecordSold(inv || { id, source:cartItem.source || '' }, fieldData, { salePrice, channel:method, soldAt });

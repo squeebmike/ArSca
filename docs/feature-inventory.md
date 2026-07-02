@@ -24,7 +24,7 @@ This file is the safety map for the progressive UX refactor. Do not remove a fea
 | `sales` | Sold table and sales search | Reports |
 | `alerts` | Inventory/business alerts | Home + Reports |
 | `wantlist` | Want list, set needs/customer looking for, stock checks, notify | More / Customers, surfaced inside Buy as alerts |
-| `consign` | Consignment intake, status, sold/payout/return, report | More / Consignment |
+| `consign` | Owner-selectable consignment inventory, search/filter/value/profit, checkout sale alerts, payout/return, report | More / Consignment |
 | `locations` | Location manager, location lookup, inventory by location | Inventory + More |
 | `restock` | Fast sellers, low stock, category performance, restock checklist | Reports + Inventory |
 | `display` | Cart/customer display, payment buttons | Sell |
