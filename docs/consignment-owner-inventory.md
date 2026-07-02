@@ -14,3 +14,12 @@ When adding a consignment, **Link Existing Inventory Item** ties the consignment
 4. Shows a global alert and a payout-required card in the Alerts tab.
 
 Marking the consignor paid settles the corresponding alert. A consignment-only record can still be marked sold manually and creates the same payout alert.
+
+## Assigning ownership from Inventory
+
+Every inventory item's **Edit Item** modal includes an **Item Ownership** section:
+
+- **Store Inventory** records normal store ownership.
+- **Consignor / Another Person** selects from people already created in Consignment.
+
+Assigning a consignor creates or updates the linked active consignment record using that item's cost, market value, list price, and SKU. Changing it back to Store marks the active consignment link returned so historical sales and payouts are retained. Inventory cards show the current owner for quick verification.

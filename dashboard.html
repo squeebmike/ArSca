@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.07.02.01-consignment-owners">
+<meta name="version" content="2026.07.02.02-inventory-ownership">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1361,9 +1361,9 @@ body.show-mode .inv-sync-badge{display:none;}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-<script src="scripts/query-routing.js?v=2026.07.02.01-consignment-owners"></script>
-<script src="scripts/barcode-lookup.js?v=2026.07.02.01-consignment-owners"></script>
-<script src="scripts/comic-issue-hub.js?v=2026.07.02.01-consignment-owners"></script>
+<script src="scripts/query-routing.js?v=2026.07.02.02-inventory-ownership"></script>
+<script src="scripts/barcode-lookup.js?v=2026.07.02.02-inventory-ownership"></script>
+<script src="scripts/comic-issue-hub.js?v=2026.07.02.02-inventory-ownership"></script>
 <script src="scripts/mtg/mtg-offline-browser.js?v=2026.07.01.04-mtg-offline-set-browser"></script>
 </head>
 <body>
@@ -1414,7 +1414,7 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.07.02.01-consignment-owners</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.07.02.02-inventory-ownership</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
@@ -1441,7 +1441,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.07.02.01-consignment-owners</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.07.02.02-inventory-ownership</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -2330,6 +2330,15 @@ body.show-mode .inv-sync-badge{display:none;}
     <label style="margin-top:8px;display:block">Storage Location</label>
     <input type="text" id="edit-location" placeholder="Bin A3, Showcase...">
 
+    <div style="margin-top:10px;border:1px solid rgba(199,125,255,.28);background:rgba(199,125,255,.04);border-radius:8px;padding:10px">
+      <div style="font-family:monospace;font-size:8px;color:var(--purple);letter-spacing:2px;margin-bottom:8px">ITEM OWNERSHIP</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div><label>Owned By</label><select id="edit-owner-type" onchange="toggleInventoryOwnerFields()"><option value="store">Store Inventory</option><option value="consignor">Consignor / Another Person</option></select></div>
+        <div id="edit-consignor-wrap"><label>Consignor</label><select id="edit-consignor"><option value="">Select a person...</option></select></div>
+      </div>
+      <div id="edit-owner-note" style="font-family:var(--font-mono);font-size:9px;color:var(--dim);margin-top:7px">Store-owned item. Sale profit belongs to the store.</div>
+    </div>
+
     <label style="margin-top:8px;display:block">Description / Notes</label>
     <textarea id="edit-notes" rows="2" style="width:100%;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:8px;border-radius:6px;font-size:11px;resize:vertical"></textarea>
 
@@ -2721,7 +2730,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.07.02.01-consignment-owners';
+const APP_VERSION = '2026.07.02.02-inventory-ownership';
 window.APP_VERSION = APP_VERSION;
 const branchName = 'main';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
@@ -9754,6 +9763,7 @@ function renderCardView(){
       <div onclick="openInventoryItemInResearch('${i.id}')" style="cursor:pointer" title="Open in Research">${imgEl}</div>
       <div class="inv-card-body">
         <div class="inv-card-name" title="${escHtml(i.name)}" onclick="openInventoryItemInResearch('${i.id}')" style="cursor:pointer">${escHtml(i.name)}</div>
+        <div class="inv-card-meta" style="color:${i.ownershipType==='consignor'||i.consignorName?'var(--purple)':'var(--dim)'}">OWNER: ${escHtml(i.consignorName||i.inventoryOwner||'Store')}</div>
         <div class="inv-card-meta">${escHtml([i.set, i.year, i.condition].filter(Boolean).join(' · ') || i.category || '')}</div>
         <div class="inv-card-price">${money.market > 0 ? fd$(money.market) : '—'}<span style="font-family:var(--font-mono);font-size:9px;color:var(--dim);margin-left:4px">mkt</span></div>
         <div class="inv-card-meta" style="display:flex;align-items:center;gap:5px">
@@ -11431,6 +11441,10 @@ function mapBuiltInItem(row){
     pokemonPriceTrackerPrices:d.pokemonPriceTrackerPrices || null,
     pokemonPriceTrackerVariants:d.pokemonPriceTrackerVariants || null,
     inventorySku:d.inventorySku || d.sku || '',
+    ownershipType:d.ownershipType || (d.consignorName||d.consignmentId?'consignor':'store'),
+    inventoryOwner:d.inventoryOwner || d.consignorName || 'Store',
+    consignorName:d.consignorName || '',
+    consignmentId:d.consignmentId || '',
     externalRefs:d.externalRefs || null,
     priceLabel:d.priceLabel || '',
     isRookie:!!(d.isRookie || d.rookieCard),
@@ -11505,6 +11519,10 @@ function builtInDataFromItem(item, updates={}){
     sourceVariantId:updates.sourceVariantId ?? item.sourceVariantId ?? '',
     tcgplayerSkuId:updates.tcgplayerSkuId ?? item.tcgplayerSkuId ?? '',
     inventorySku:updates.inventorySku ?? item.inventorySku ?? '',
+    ownershipType:updates.ownershipType ?? item.ownershipType ?? 'store',
+    inventoryOwner:updates.inventoryOwner ?? item.inventoryOwner ?? 'Store',
+    consignorName:updates.consignorName ?? item.consignorName ?? '',
+    consignmentId:updates.consignmentId ?? item.consignmentId ?? '',
     sku:updates.inventorySku ?? item.inventorySku ?? updates.sku ?? item.sku ?? '',
     externalRefs:updates.externalRefs ?? item.externalRefs ?? null,
     priceLabel:updates.priceLabel ?? item.priceLabel ?? '',
@@ -14920,6 +14938,12 @@ async function markInventoryRecordSold(item, fieldData, saleMeta){
 // ══════════════════════════════════════════════════
 let editingItemId = null;
 
+function consignmentOwnerDirectory(){const map=new Map();(consignItems||[]).forEach(c=>{const name=String(c.owner||'').trim();if(name&&!map.has(name.toLowerCase()))map.set(name.toLowerCase(),{name,contact:c.contact||'',split:Number(c.split||25)});});return [...map.values()].sort((a,b)=>a.name.localeCompare(b.name));}
+function populateInventoryOwnerSelect(item={}){const select=document.getElementById('edit-consignor');if(!select)return;const owners=consignmentOwnerDirectory(),current=item.consignorName||item.inventoryOwner||consignItems.find(c=>c.id===item.consignmentId||c.inventoryId===item.id)?.owner||'';select.innerHTML='<option value="">Select a person...</option>'+owners.map(o=>`<option value="${escHtml(o.name)}">${escHtml(o.name)}${o.contact?' · '+escHtml(o.contact):''}</option>`).join('');if(current&&!owners.some(o=>o.name===current))select.insertAdjacentHTML('beforeend',`<option value="${escHtml(current)}">${escHtml(current)}</option>`);select.value=current;}
+function toggleInventoryOwnerFields(){const type=document.getElementById('edit-owner-type')?.value||'store',wrap=document.getElementById('edit-consignor-wrap'),note=document.getElementById('edit-owner-note');if(wrap)wrap.style.display=type==='consignor'?'':'none';if(note)note.textContent=type==='consignor'?'This item will appear in that person’s consignment inventory. When it sells, a payout alert is created.':'Store-owned item. Sale profit belongs to the store.';}
+function inventoryOwnershipPatch(item={}){const type=document.getElementById('edit-owner-type')?.value||'store',owner=type==='consignor'?(document.getElementById('edit-consignor')?.value||''):'';return {ownershipType:type,inventoryOwner:type==='store'?'Store':owner,consignorName:owner};}
+function syncInventoryOwnershipToConsignment(item,updates){const type=updates.ownershipType||'store',owner=updates.consignorName||'',active=consignItems.find(c=>c.status==='active'&&(c.inventoryId===item.id||c.id===item.consignmentId));if(type==='store'){if(active){active.status='returned';active.returnedAt=new Date().toISOString();active.notes=[active.notes,'Ownership changed to Store in inventory editor'].filter(Boolean).join(' · ');}updates.consignmentId='';saveConsign();return;}if(!owner)return;const profile=consignmentOwnerDirectory().find(o=>o.name===owner)||{name:owner,contact:'',split:25};const c=active||{id:'cs_'+Date.now(),status:'active',addedAt:new Date().toISOString(),soldAt:null,salePrice:null,paidOut:false};Object.assign(c,{item:item.name||'Inventory item',owner,contact:profile.contact||c.contact||'',split:Number(c.split||profile.split||25),price:Number(updates.listPrice||item.listPrice||item.salePrice||item.market||0),marketValue:Number(updates.market||item.market||0),costBasis:Number(updates.cost||item.cost||0),inventoryId:item.id,inventorySku:item.inventorySku||'',status:'active'});if(!active)consignItems.push(c);updates.consignmentId=c.id;saveConsign();}
+
 function setInventoryEditPhoto(src='', source=''){
   const box = document.getElementById('edit-photo-preview');
   const data = document.getElementById('edit-photo-data');
@@ -14969,6 +14993,11 @@ function openEditModal(id) {
   document.getElementById('edit-set').value = item.set || '';
   document.getElementById('edit-variant').value = item.variant || '';
   document.getElementById('edit-location').value = item.location || '';
+  populateInventoryOwnerSelect(item);
+  const linkedConsignment=consignItems.find(c=>c.status==='active'&&(c.inventoryId===item.id||c.id===item.consignmentId));
+  document.getElementById('edit-owner-type').value=(item.ownershipType==='consignor'||item.consignorName||linkedConsignment)?'consignor':'store';
+  if(linkedConsignment)document.getElementById('edit-consignor').value=linkedConsignment.owner||'';
+  toggleInventoryOwnerFields();
   document.getElementById('edit-notes').value = item.key_notes || item.notes || '';
   document.getElementById('edit-player').value = item.player || '';
   document.getElementById('edit-team').value = item.team || item.publisher || '';
@@ -15145,8 +15174,11 @@ async function confirmEdit() {
     is_patch: document.getElementById('edit-patch').checked,
     is_key: document.getElementById('edit-key').checked,
     is_signed: document.getElementById('edit-signed').checked,
+    ...inventoryOwnershipPatch(),
   };
   if(!before) { toast_dash('Save failed: item not found'); return; }
+  if(updates.ownershipType==='consignor'&&!updates.consignorName){toast_dash('Select a consignor or choose Store Inventory');return;}
+  syncInventoryOwnershipToConsignment(before,updates);
   try {
     await saveInventoryEdit(before, updates);
     saveInventoryEditOverride(editingItemId, updates);
@@ -15194,7 +15226,10 @@ async function confirmEditAndSync() {
     is_patch: document.getElementById('edit-patch').checked,
     is_key: document.getElementById('edit-key').checked,
     is_signed: document.getElementById('edit-signed').checked,
+    ...inventoryOwnershipPatch(),
   };
+  if(updates.ownershipType==='consignor'&&!updates.consignorName){toast_dash('Select a consignor or choose Store Inventory');return;}
+  syncInventoryOwnershipToConsignment(item,updates);
 
   const statusEl = document.getElementById('edit-sync-status');
   statusEl.style.color = 'var(--gold)';

@@ -12,4 +12,8 @@ assert.match(dashboard,/pos_consignment_alerts/);
 assert.match(dashboard,/CONSIGNMENTS SOLD — PAYOUT REQUIRED/);
 assert.match(dashboard,/STORE PROFIT/);
 assert.match(dashboard,/OWNER PAYOUT/);
+assert.match(dashboard,/id="edit-owner-type"/);
+assert.match(dashboard,/id="edit-consignor"/);
+assert.match(dashboard,/function syncInventoryOwnershipToConsignment/);
+assert.match(dashboard,/ownershipType/);
 console.log('Consignment owner ledger contract checks passed');
