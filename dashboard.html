@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.07.02.03-consignor-people">
+<meta name="version" content="2026.07.02.04-inventory-usability">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -879,6 +879,7 @@ body.show-mode .show-mode-toggle { border-color:rgba(0,255,179,.4); color:var(--
 #header-actions-menu{position:absolute;right:0;top:calc(100% + 6px);min-width:190px;background:var(--surf);border:1px solid var(--border);border-radius:var(--brand-card-radius);padding:6px;box-shadow:0 18px 50px rgba(0,0,0,.65);z-index:10001;}
 #header-actions-menu.on{display:grid;gap:5px;}
 #customer-display-exit{display:none;position:fixed;top:12px;right:12px;z-index:100000;opacity:.34;}
+#customer-browse-exit{display:none;position:fixed;top:12px;right:12px;z-index:100000;opacity:.45;}
 body.customer-display-mode{padding-bottom:0;background:#020304;}
 body.customer-display-mode header,body.customer-display-mode #dealer-cart-tools,body.customer-display-mode #cd-help-panel,body.customer-display-mode .sec{display:none!important;}
 body.customer-display-mode .tab-panel{display:none!important;}
@@ -886,6 +887,7 @@ body.customer-display-mode #tab-display{display:block!important;}
 body.customer-display-mode #customer-display{min-height:100dvh;padding:18px;background-color:#f7f8fa;background-image:linear-gradient(rgba(247,248,250,.88),rgba(247,248,250,.88)),var(--customer-bg-image);background-size:cover;background-position:center;}
 body.customer-display-mode #customer-display .sell-shell{width:min(920px,100%);padding:0;}
 body.customer-display-mode #customer-display-exit{display:block;}
+body.customer-browse-mode{padding-bottom:0}body.customer-browse-mode header,body.customer-browse-mode .tabs,body.customer-browse-mode .dealer-status-bar,body.customer-browse-mode .beta-mode-strip{display:none!important}body.customer-browse-mode .tab-panel{display:none!important}body.customer-browse-mode #tab-browse{display:block!important;min-height:100vh;padding:18px}body.customer-browse-mode #customer-browse-exit{display:block}
 .responsive-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(320px,100%),1fr));gap:14px;}
 .sticky-action-bar{position:sticky;bottom:0;z-index:80;background:linear-gradient(to top,var(--bg) 78%,transparent);padding:10px 0;}
 
@@ -1361,9 +1363,9 @@ body.show-mode .inv-sync-badge{display:none;}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-<script src="scripts/query-routing.js?v=2026.07.02.03-consignor-people"></script>
-<script src="scripts/barcode-lookup.js?v=2026.07.02.03-consignor-people"></script>
-<script src="scripts/comic-issue-hub.js?v=2026.07.02.03-consignor-people"></script>
+<script src="scripts/query-routing.js?v=2026.07.02.04-inventory-usability"></script>
+<script src="scripts/barcode-lookup.js?v=2026.07.02.04-inventory-usability"></script>
+<script src="scripts/comic-issue-hub.js?v=2026.07.02.04-inventory-usability"></script>
 <script src="scripts/mtg/mtg-offline-browser.js?v=2026.07.01.04-mtg-offline-set-browser"></script>
 </head>
 <body>
@@ -1414,7 +1416,7 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.07.02.03-consignor-people</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.07.02.04-inventory-usability</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
@@ -1441,7 +1443,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.07.02.03-consignor-people</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.07.02.04-inventory-usability</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -2254,6 +2256,18 @@ body.show-mode .inv-sync-badge{display:none;}
   </div>
 </div>
 
+<!-- CUSTOMER INVENTORY BROWSER -->
+<div id="tab-browse" class="tab-panel">
+  <button id="customer-browse-exit" class="hbtn danger" onclick="exitCustomerBrowseMode()">EXIT CUSTOMER BROWSE</button>
+  <div class="sec">CUSTOMER INVENTORY BROWSER</div>
+  <div class="panel" style="max-width:1400px;margin:0 auto 14px">
+    <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px"><div><h2 data-vendor-store style="font-family:'Orbitron';color:var(--g)">STORE INVENTORY</h2><div style="color:var(--dim);font-size:11px">Browse what is currently available. Cost and private store data are hidden.</div></div><button class="hbtn" onclick="enterCustomerBrowseMode()">CUSTOMER FULL SCREEN</button></div>
+    <div class="cs-browser-controls"><input class="tsi" id="customer-inv-search" placeholder="Search name, set, year, category..." oninput="renderCustomerInventoryBrowser()" style="margin:0"><select class="tsi" id="customer-inv-category" onchange="renderCustomerInventoryBrowser()" style="margin:0"><option value="all">All categories</option></select><select class="tsi" id="customer-inv-sort" onchange="renderCustomerInventoryBrowser()" style="margin:0"><option value="name">Name</option><option value="price-low">Price: low to high</option><option value="price-high">Price: high to low</option><option value="newest">Newest added</option></select></div>
+    <div id="customer-inv-count" style="font-family:var(--font-mono);font-size:10px;color:var(--dim);margin:8px 0"></div>
+    <div id="customer-inventory-grid" class="comic-cover-grid"></div>
+  </div>
+</div>
+
 <div id="topps-drawer-bg" class="topps-drawer-bg" onclick="toppsCloseDetail()"></div>
 <div id="topps-detail-drawer" class="topps-drawer" aria-live="polite"></div>
 
@@ -2740,7 +2754,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.07.02.03-consignor-people';
+const APP_VERSION = '2026.07.02.04-inventory-usability';
 window.APP_VERSION = APP_VERSION;
 const branchName = 'main';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
@@ -2877,7 +2891,7 @@ function roleCanAccessTab(tab){
   const role = currentRole();
   if(role === 'owner' || role === 'admin') return true;
   if(role === 'manager') return !['backoffice'].includes(tab);
-  if(role === 'employee') return ['overview','display','inventory','research','pos','alerts','wantlist','locations','restock','sets'].includes(tab);
+  if(role === 'employee') return ['overview','display','browse','inventory','research','pos','alerts','wantlist','locations','restock','sets'].includes(tab);
   if(role === 'scanner_only') return false;
   return false;
 }
@@ -3304,7 +3318,7 @@ async function acceptPickedInvite(){
   location.reload();
 }
 
-const DEFAULT_STORE_THEME = { themeName:'Walk-Off Dark', primaryColor:'#00ffb3', secondaryColor:'#ffd166', accentColor:'#c77dff', backgroundColor:'#07080a', surfaceColor:'#0d0f14', surface2Color:'#141720', textColor:'#e4e4e8', mutedTextColor:'rgba(228,228,232,.4)', successColor:'#00ffb3', warningColor:'#ffd166', dangerColor:'#ff4d6d', infoColor:'#48cae4', borderColor:'rgba(255,255,255,.07)', buttonTextColor:'#050507', fontFamily:"'DM Sans',sans-serif", cardRadius:'10px', buttonRadius:'6px', logoUrl:'', customerBgImageUrl:'' };
+const DEFAULT_STORE_THEME = { themeName:'Walk-Off Dark', primaryColor:'#00ffb3', secondaryColor:'#ffd166', accentColor:'#c77dff', backgroundColor:'#07080a', surfaceColor:'#0d0f14', surface2Color:'#141720', textColor:'#e4e4e8', mutedTextColor:'rgba(228,228,232,.68)', successColor:'#00ffb3', warningColor:'#ffd166', dangerColor:'#ff4d6d', infoColor:'#48cae4', borderColor:'rgba(255,255,255,.13)', buttonTextColor:'#050507', fontFamily:"'DM Sans',sans-serif", cardRadius:'10px', buttonRadius:'6px', logoUrl:'', customerBgImageUrl:'' };
 const STORE_THEME_PRESETS = {
   'Walk-Off Dark': DEFAULT_STORE_THEME,
   'Clean Light': { ...DEFAULT_STORE_THEME, themeName:'Clean Light', primaryColor:'#0c6b52', secondaryColor:'#835a00', accentColor:'#5d4a9c', backgroundColor:'#f6f7f9', surfaceColor:'#ffffff', surface2Color:'#eef1f4', textColor:'#14171d', mutedTextColor:'#5d6673', borderColor:'rgba(0,0,0,.12)', buttonTextColor:'#ffffff' },
@@ -3312,7 +3326,7 @@ const STORE_THEME_PRESETS = {
   'Seahawks': { ...DEFAULT_STORE_THEME, themeName:'Seahawks', primaryColor:'#69be28', secondaryColor:'#a5acaf', accentColor:'#002244', backgroundColor:'#06121f', surfaceColor:'#0b1f34', surface2Color:'#102b47', infoColor:'#6bd6ff' },
   'Card Shop Neon': { ...DEFAULT_STORE_THEME, themeName:'Card Shop Neon', primaryColor:'#00f5d4', secondaryColor:'#fee440', accentColor:'#f15bb5', backgroundColor:'#090812', surfaceColor:'#11101d', surface2Color:'#1a1830', warningColor:'#fee440', dangerColor:'#ff4d6d' }
 };
-function getStoreTheme(){ try { return { ...DEFAULT_STORE_THEME, ...JSON.parse(localStorage.getItem('store_theme_v1') || '{}') }; } catch(e) { return { ...DEFAULT_STORE_THEME }; } }
+function getStoreTheme(){ try { const saved=JSON.parse(localStorage.getItem('store_theme_v1') || '{}');if(saved.mutedTextColor==='rgba(228,228,232,.4)')saved.mutedTextColor=DEFAULT_STORE_THEME.mutedTextColor;if(saved.borderColor==='rgba(255,255,255,.07)')saved.borderColor=DEFAULT_STORE_THEME.borderColor;return { ...DEFAULT_STORE_THEME, ...saved }; } catch(e) { return { ...DEFAULT_STORE_THEME }; } }
 function hexToRgb(hex){ const h = String(hex || '').replace('#','').trim(); return /^[0-9a-f]{6}$/i.test(h) ? { r:parseInt(h.slice(0,2),16), g:parseInt(h.slice(2,4),16), b:parseInt(h.slice(4,6),16) } : null; }
 function rgbaFromHex(hex, alpha){ const c = hexToRgb(hex); return c ? `rgba(${c.r},${c.g},${c.b},${alpha})` : `rgba(0,255,179,${alpha})`; }
 function applyStoreTheme(theme = getStoreTheme(), persist = false){
@@ -3330,7 +3344,7 @@ function applyStoreTheme(theme = getStoreTheme(), persist = false){
 }
 function themeFormValue(id, fallback){ return document.getElementById(id)?.value || fallback; }
 function readThemeForm(){
-  return { themeName:themeFormValue('theme-name','Custom'), primaryColor:themeFormValue('theme-primary','#00ffb3'), secondaryColor:themeFormValue('theme-secondary','#ffd166'), accentColor:themeFormValue('theme-accent','#c77dff'), backgroundColor:themeFormValue('theme-bg','#07080a'), surfaceColor:themeFormValue('theme-surface','#0d0f14'), surface2Color:themeFormValue('theme-surface2','#141720'), textColor:themeFormValue('theme-text','#e4e4e8'), mutedTextColor:themeFormValue('theme-muted','rgba(228,228,232,.4)'), successColor:themeFormValue('theme-success','#00ffb3'), warningColor:themeFormValue('theme-warning','#ffd166'), dangerColor:themeFormValue('theme-danger','#ff4d6d'), infoColor:themeFormValue('theme-info','#48cae4'), borderColor:themeFormValue('theme-border','rgba(255,255,255,.07)'), buttonTextColor:themeFormValue('theme-button-text','#050507'), fontFamily:themeFormValue('theme-font',"'DM Sans',sans-serif"), cardRadius:themeFormValue('theme-card-radius','10px'), buttonRadius:themeFormValue('theme-button-radius','6px'), logoUrl:themeFormValue('theme-logo-url',''), customerBgImageUrl:themeFormValue('theme-customer-bg','') };
+  return { themeName:themeFormValue('theme-name','Custom'), primaryColor:themeFormValue('theme-primary','#00ffb3'), secondaryColor:themeFormValue('theme-secondary','#ffd166'), accentColor:themeFormValue('theme-accent','#c77dff'), backgroundColor:themeFormValue('theme-bg','#07080a'), surfaceColor:themeFormValue('theme-surface','#0d0f14'), surface2Color:themeFormValue('theme-surface2','#141720'), textColor:themeFormValue('theme-text','#e4e4e8'), mutedTextColor:themeFormValue('theme-muted','rgba(228,228,232,.68)'), successColor:themeFormValue('theme-success','#00ffb3'), warningColor:themeFormValue('theme-warning','#ffd166'), dangerColor:themeFormValue('theme-danger','#ff4d6d'), infoColor:themeFormValue('theme-info','#48cae4'), borderColor:themeFormValue('theme-border','rgba(255,255,255,.13)'), buttonTextColor:themeFormValue('theme-button-text','#050507'), fontFamily:themeFormValue('theme-font',"'DM Sans',sans-serif"), cardRadius:themeFormValue('theme-card-radius','10px'), buttonRadius:themeFormValue('theme-button-radius','6px'), logoUrl:themeFormValue('theme-logo-url',''), customerBgImageUrl:themeFormValue('theme-customer-bg','') };
 }
 function setThemeForm(theme){
   const t = { ...DEFAULT_STORE_THEME, ...(theme || {}) };
@@ -3791,6 +3805,7 @@ const DAILY_TABS = [
   ['shows', 'SHOWS'],
 ];
 const MORE_TABS = [
+  ['browse', 'CUSTOMER BROWSE'],
   ['pos', 'LEGACY REGISTER'],
   ['channels', 'ONLINE LISTINGS'],
   ['sales', 'SALES'],
@@ -4913,7 +4928,10 @@ function enterCustomerDisplayMode(){
 function exitCustomerDisplayMode(){
   document.body.classList.remove('customer-display-mode');
 }
-document.addEventListener('keydown', e => { if(e.key === 'Escape') exitCustomerDisplayMode(); });
+function enterCustomerBrowseMode(){document.body.classList.add('customer-browse-mode');switchTab('browse');renderCustomerInventoryBrowser();}
+function exitCustomerBrowseMode(){document.body.classList.remove('customer-browse-mode');}
+function renderCustomerInventoryBrowser(){const host=document.getElementById('customer-inventory-grid');if(!host)return;const search=(document.getElementById('customer-inv-search')?.value||'').toLowerCase().trim(),cat=document.getElementById('customer-inv-category'),sort=document.getElementById('customer-inv-sort')?.value||'name';const stock=(all||[]).filter(i=>i.status==='in_stock'&&i.lifecycle!=='archived');const categories=[...new Set(stock.map(i=>i.category||'Other'))].sort();if(cat){const selected=cat.value;cat.innerHTML='<option value="all">All categories</option>'+categories.map(c=>`<option value="${escHtml(c)}">${escHtml(c)}</option>`).join('');cat.value=categories.includes(selected)?selected:'all';}let rows=stock.filter(i=>(!search||[i.name,i.set,i.year,i.category,i.variant].join(' ').toLowerCase().includes(search))&&(!cat||cat.value==='all'||i.category===cat.value));rows.sort(sort==='price-low'?(a,b)=>inventoryListPrice(a)-inventoryListPrice(b):sort==='price-high'?(a,b)=>inventoryListPrice(b)-inventoryListPrice(a):sort==='newest'?(a,b)=>new Date(b.addedAt||0)-new Date(a.addedAt||0):(a,b)=>String(a.name).localeCompare(String(b.name)));document.getElementById('customer-inv-count').textContent=rows.length+' available item'+(rows.length===1?'':'s');host.innerHTML=rows.length?rows.slice(0,500).map(i=>{const image=inventoryImageUrl(i),price=inventoryListPrice(i)||inventoryMarketPrice(i);return `<article class="comic-cover-card">${image?`<img class="comic-cover-img" src="${escHtml(image)}" alt="${escHtml(i.name)}" loading="lazy">`:'<div class="comic-cover-img" style="display:grid;place-items:center;color:var(--dim)">NO IMAGE</div>'}<h3 style="font-size:14px;margin:8px 0 4px">${escHtml(i.name)}</h3><div style="font-size:10px;color:var(--dim)">${escHtml([i.set,i.year,i.variant,i.condition].filter(Boolean).join(' · '))}</div><div style="font-family:'Orbitron';font-size:18px;color:var(--g);margin-top:8px">${price?fd$(price):'ASK FOR PRICE'}</div></article>`;}).join(''):'<div class="empty"><div class="empty-t">NO MATCHING ITEMS</div></div>';}
+document.addEventListener('keydown', e => { if(e.key === 'Escape'){exitCustomerDisplayMode();exitCustomerBrowseMode();} });
 
 function moveNode(id, target){
   const el = document.getElementById(id);
@@ -9828,6 +9846,7 @@ function showInvRowMenu(e, id, isInStock){
     `<button class="hbtn" style="${btnStyle}" onclick="openEbayFromDash('${id}');this.closest('.inv-row-menu').remove()">📦 eBay List</button>`,
     `<button class="hbtn" style="${btnStyle}" onclick="showItemHistory?.('${id}');this.closest('.inv-row-menu').remove()">📋 History</button>`,
     `<button class="hbtn" style="${btnStyle}color:var(--gold)" onclick="archiveInventoryItem('${id}');this.closest('.inv-row-menu').remove()">Archive</button>`,
+    isInStock?`<button class="hbtn danger" style="${btnStyle}" onclick="deleteInventoryRecord('${id}');this.closest('.inv-row-menu').remove()">Delete Test / Accident</button>`:'',
   ].filter(Boolean).join('');
   document.body.appendChild(menu);
   const close = () => menu.remove();
@@ -12419,6 +12438,8 @@ function switchTab(name, btn){
   }
   closeMoreMenu();
   activeTab = name;
+  if(name === 'inventory') setTimeout(()=>{ filterTable(); setInvView(_invView); },0);
+  if(name === 'browse') setTimeout(renderCustomerInventoryBrowser,0);
   // Refresh category-dependent helper rows (set browser buttons etc.) when switching to POS/Research
   if(name === 'pos' || name === 'research') setTimeout(handleQplCategoryChange, 0);
 }
@@ -14113,8 +14134,10 @@ let consignorPeople = safeLocalJson('pos_consignors', []);
 function saveConsign(){ localStorage.setItem('pos_consign', JSON.stringify(consignItems)); }
 function saveConsignorPeople(){localStorage.setItem('pos_consignors',JSON.stringify(consignorPeople));}
 function addConsignorPerson(){const name=document.getElementById('cs-person-name')?.value.trim(),contact=document.getElementById('cs-person-contact')?.value.trim()||'',split=Math.max(0,Math.min(100,Number(document.getElementById('cs-person-split')?.value||25)));if(!name)return toast_dash('Enter the consignor name');const existing=consignorPeople.find(p=>p.name.toLowerCase()===name.toLowerCase());if(existing)Object.assign(existing,{name,contact,split,updatedAt:new Date().toISOString()});else consignorPeople.push({id:'person_'+Date.now(),name,contact,split,createdAt:new Date().toISOString()});saveConsignorPeople();['cs-person-name','cs-person-contact'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});const splitEl=document.getElementById('cs-person-split');if(splitEl)splitEl.value='25';renderConsign();toast_dash('Consignor ready: '+name);}
-function renderConsignorPeople(){const host=document.getElementById('cs-people-list');if(!host)return;const rows=consignmentOwnerDirectory();host.innerHTML=rows.length?rows.map(p=>`<button class="hbtn" onclick="useConsignorPerson('${encodeURIComponent(p.name)}')" title="Use this person for a new consignment">${escHtml(p.name)}${p.contact?' · '+escHtml(p.contact):''} · ${Number(p.split||25)}% store</button>`).join(''):'<span style="font-family:var(--font-mono);font-size:9px;color:var(--dim)">No consignors yet. Add the first person above.</span>';}
+function renderConsignorPeople(){const host=document.getElementById('cs-people-list');if(!host)return;const rows=consignmentOwnerDirectory();host.innerHTML=rows.length?rows.map(p=>`<div style="display:flex;border:1px solid var(--border);border-radius:7px;overflow:hidden"><button class="hbtn" style="border:0;border-radius:0" onclick="useConsignorPerson('${encodeURIComponent(p.name)}')" title="Use this person for a new consignment">${escHtml(p.name)}${p.contact?' · '+escHtml(p.contact):''} · ${Number(p.split||25)}% store</button><button class="hbtn" style="border-width:0 0 0 1px;border-radius:0;color:var(--purple)" onclick="editConsignorPerson('${encodeURIComponent(p.name)}')">EDIT</button><button class="hbtn danger" style="border-width:0 0 0 1px;border-radius:0" onclick="deleteConsignorPerson('${encodeURIComponent(p.name)}')">DELETE</button></div>`).join(''):'<span style="font-family:var(--font-mono);font-size:9px;color:var(--dim)">No consignors yet. Add the first person above.</span>';}
 function useConsignorPerson(encoded){const name=decodeURIComponent(encoded),p=consignmentOwnerDirectory().find(x=>x.name===name);if(!p)return;document.getElementById('cs-owner').value=p.name;document.getElementById('cs-contact').value=p.contact||'';document.getElementById('cs-split').value=Number(p.split||25);document.getElementById('cs-item')?.focus();}
+function editConsignorPerson(encoded){const oldName=decodeURIComponent(encoded),profile=consignmentOwnerDirectory().find(p=>p.name===oldName);if(!profile)return;const name=prompt('Consignor name:',profile.name);if(name===null||!name.trim())return;const contact=prompt('Phone or email:',profile.contact||'');if(contact===null)return;const splitRaw=prompt('Default store commission %:',String(profile.split||25));if(splitRaw===null)return;const split=Math.max(0,Math.min(100,Number(splitRaw)||0));let person=consignorPeople.find(p=>p.name.toLowerCase()===oldName.toLowerCase());if(!person){person={id:'person_'+Date.now(),createdAt:new Date().toISOString()};consignorPeople.push(person);}Object.assign(person,{name:name.trim(),contact:contact.trim(),split,updatedAt:new Date().toISOString()});consignItems.filter(c=>c.owner===oldName).forEach(c=>Object.assign(c,{owner:name.trim(),contact:contact.trim(),split}));all.filter(i=>i.consignorName===oldName).forEach(i=>{const patch={consignorName:name.trim(),inventoryOwner:name.trim()};Object.assign(i,patch);saveInventoryEditOverride(i.id,patch);});saveConsignorPeople();saveConsign();renderConsign();filterTable();}
+function deleteConsignorPerson(encoded){const name=decodeURIComponent(encoded),hasRecords=consignItems.some(c=>c.owner===name);if(hasRecords)return toast_dash('This consignor has item history. Edit the person instead of deleting them.');if(!confirm('Delete consignor "'+name+'"?'))return;consignorPeople=consignorPeople.filter(p=>p.name!==name);saveConsignorPeople();renderConsign();}
 function consignMoney(value){return Number(value||0)||0;}
 function consignSaleValue(c){return consignMoney(c.salePrice||c.price);}
 function consignStoreCut(c){return consignSaleValue(c)*(consignMoney(c.split)/100);}
@@ -14736,7 +14759,10 @@ async function updateBuiltInInventoryItem(item, updates){
 async function deleteInventoryRecord(id){
   const item = all.find(i => i.id === id);
   if(!item) return false;
-  if(!confirm('Delete this inventory item from this store?')) return false;
+  const hasHistory=!!(item.soldAt||item.saleId||item.consignmentId||item.payoutLineId||item.buySessionId||item.status==='sold');
+  if(hasHistory){toast_dash('This item has financial/history records. Archive it instead of deleting.');return false;}
+  const typed=prompt('Permanent delete is only for tests or accidental entries. Type DELETE to remove "'+(item.name||'item')+'".');
+  if(typed!=='DELETE') return false;
   if(item.source === 'built_in') {
     const sb = getSupabaseClient();
     const session = getAuthSession();

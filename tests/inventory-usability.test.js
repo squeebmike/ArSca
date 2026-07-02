@@ -1,0 +1,15 @@
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const path=require('node:path');
+const dashboard=fs.readFileSync(path.join(__dirname,'..','dashboard.html'),'utf8');
+assert.match(dashboard,/if\(name === 'inventory'\).*filterTable\(\).*setInvView\(_invView\)/s);
+assert.match(dashboard,/Delete Test \/ Accident/);
+assert.match(dashboard,/Type DELETE/);
+assert.match(dashboard,/This item has financial\/history records/);
+assert.match(dashboard,/function editConsignorPerson/);
+assert.match(dashboard,/function deleteConsignorPerson/);
+assert.match(dashboard,/id="tab-browse"/);
+assert.match(dashboard,/function renderCustomerInventoryBrowser/);
+assert.match(dashboard,/Cost and private store data are hidden/);
+assert.match(dashboard,/mutedTextColor:'rgba\(228,228,232,.68\)'/);
+console.log('Inventory usability contract checks passed');
