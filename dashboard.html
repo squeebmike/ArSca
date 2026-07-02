@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.07.02.02-inventory-ownership">
+<meta name="version" content="2026.07.02.03-consignor-people">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1361,9 +1361,9 @@ body.show-mode .inv-sync-badge{display:none;}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-<script src="scripts/query-routing.js?v=2026.07.02.02-inventory-ownership"></script>
-<script src="scripts/barcode-lookup.js?v=2026.07.02.02-inventory-ownership"></script>
-<script src="scripts/comic-issue-hub.js?v=2026.07.02.02-inventory-ownership"></script>
+<script src="scripts/query-routing.js?v=2026.07.02.03-consignor-people"></script>
+<script src="scripts/barcode-lookup.js?v=2026.07.02.03-consignor-people"></script>
+<script src="scripts/comic-issue-hub.js?v=2026.07.02.03-consignor-people"></script>
 <script src="scripts/mtg/mtg-offline-browser.js?v=2026.07.01.04-mtg-offline-set-browser"></script>
 </head>
 <body>
@@ -1414,7 +1414,7 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.07.02.02-inventory-ownership</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.07.02.03-consignor-people</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
@@ -1441,7 +1441,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.07.02.02-inventory-ownership</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.07.02.03-consignor-people</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -2571,6 +2571,16 @@ body.show-mode .inv-sync-badge{display:none;}
   <div class="sec">CONSIGNMENT TRACKING</div>
   <div style="max-width:1400px;margin:0 auto;padding:0 20px">
 
+    <div class="panel" style="margin-top:4px;margin-bottom:14px;border-color:rgba(199,125,255,.28)">
+      <div class="ph">CONSIGNOR PEOPLE <span style="font-size:9px;color:var(--dim)">Create a person here, then assign inventory to them</span></div>
+      <div class="cs-browser-controls">
+        <input class="tsi" id="cs-person-name" placeholder="Person / consignor name" style="margin:0">
+        <input class="tsi" id="cs-person-contact" placeholder="Phone or email" style="margin:0">
+        <div style="display:flex;gap:7px"><input class="tsi" id="cs-person-split" type="number" min="0" max="100" value="25" placeholder="Store %" style="margin:0;min-width:0"><button class="hbtn" onclick="addConsignorPerson()">ADD PERSON</button></div>
+      </div>
+      <div id="cs-people-list" style="display:flex;gap:7px;flex-wrap:wrap"></div>
+    </div>
+
     <div class="two" style="margin-top:4px">
       <!-- Add consignment item -->
       <div class="panel">
@@ -2730,7 +2740,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.07.02.02-inventory-ownership';
+const APP_VERSION = '2026.07.02.03-consignor-people';
 window.APP_VERSION = APP_VERSION;
 const branchName = 'main';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
@@ -2767,7 +2777,7 @@ const WALKOFF_SCOPED_KEYS = new Set([
   'pos_buy_list','pos_buy_offers','pos_active_buy_session','pos_buy_sessions',
   'pos_transactions','pos_drawer','pos_drawer_closeouts',
   // POS / operations
-  'pos_wantlist','set_needs_v1','pos_consign','pos_locations',
+  'pos_wantlist','set_needs_v1','pos_consign','pos_consignors','pos_consignment_alerts','pos_locations',
   'pos_ops_log','pos_show_mode','pos_customers','pos_undo_stack',
   // Store settings / profile
   'vendor_profile_v1','vendor_config_v1','store_payment_settings_v1',
@@ -11146,6 +11156,8 @@ async function buildVendorBackup(){
       transactions: safeLocalJson('pos_transactions', []),
       wantList: safeLocalJson('pos_wantlist', []),
       consignments: safeLocalJson('pos_consign', []),
+      consignors: safeLocalJson('pos_consignors', []),
+      consignmentAlerts: safeLocalJson('pos_consignment_alerts', []),
       locations: safeLocalJson('pos_locations', []),
       lifecycle: safeLocalJson('inventory_lifecycle', {}),
       localInventoryCache: safeLocalJson('lba_inventory', []),
@@ -11218,6 +11230,8 @@ async function importVendorBackup(event){
       pos_transactions:d.transactions,
       pos_wantlist:d.wantList,
       pos_consign:d.consignments,
+      pos_consignors:d.consignors,
+      pos_consignment_alerts:d.consignmentAlerts,
       pos_locations:d.locations,
       inventory_lifecycle:d.lifecycle,
       lba_inventory:d.localInventoryCache,
@@ -14094,8 +14108,13 @@ let consignFilter = 'active';
 let consignOwnerFilter = 'all';
 let consignSearch = '';
 let consignSort = 'owner';
+let consignorPeople = safeLocalJson('pos_consignors', []);
 
 function saveConsign(){ localStorage.setItem('pos_consign', JSON.stringify(consignItems)); }
+function saveConsignorPeople(){localStorage.setItem('pos_consignors',JSON.stringify(consignorPeople));}
+function addConsignorPerson(){const name=document.getElementById('cs-person-name')?.value.trim(),contact=document.getElementById('cs-person-contact')?.value.trim()||'',split=Math.max(0,Math.min(100,Number(document.getElementById('cs-person-split')?.value||25)));if(!name)return toast_dash('Enter the consignor name');const existing=consignorPeople.find(p=>p.name.toLowerCase()===name.toLowerCase());if(existing)Object.assign(existing,{name,contact,split,updatedAt:new Date().toISOString()});else consignorPeople.push({id:'person_'+Date.now(),name,contact,split,createdAt:new Date().toISOString()});saveConsignorPeople();['cs-person-name','cs-person-contact'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});const splitEl=document.getElementById('cs-person-split');if(splitEl)splitEl.value='25';renderConsign();toast_dash('Consignor ready: '+name);}
+function renderConsignorPeople(){const host=document.getElementById('cs-people-list');if(!host)return;const rows=consignmentOwnerDirectory();host.innerHTML=rows.length?rows.map(p=>`<button class="hbtn" onclick="useConsignorPerson('${encodeURIComponent(p.name)}')" title="Use this person for a new consignment">${escHtml(p.name)}${p.contact?' · '+escHtml(p.contact):''} · ${Number(p.split||25)}% store</button>`).join(''):'<span style="font-family:var(--font-mono);font-size:9px;color:var(--dim)">No consignors yet. Add the first person above.</span>';}
+function useConsignorPerson(encoded){const name=decodeURIComponent(encoded),p=consignmentOwnerDirectory().find(x=>x.name===name);if(!p)return;document.getElementById('cs-owner').value=p.name;document.getElementById('cs-contact').value=p.contact||'';document.getElementById('cs-split').value=Number(p.split||25);document.getElementById('cs-item')?.focus();}
 function consignMoney(value){return Number(value||0)||0;}
 function consignSaleValue(c){return consignMoney(c.salePrice||c.price);}
 function consignStoreCut(c){return consignSaleValue(c)*(consignMoney(c.split)/100);}
@@ -14119,6 +14138,7 @@ function addConsignItem(){
   const notes = document.getElementById('cs-notes').value.trim();
   const expires = document.getElementById('cs-expires').value;
   if(!item || !owner) { toast_dash('Item and owner required'); return; }
+  const person=consignorPeople.find(p=>p.name.toLowerCase()===owner.toLowerCase());if(person)Object.assign(person,{name:owner,contact,split,updatedAt:new Date().toISOString()});else consignorPeople.push({id:'person_'+Date.now(),name:owner,contact,split,createdAt:new Date().toISOString()});saveConsignorPeople();
 
   consignItems.push({
     id: 'cs_'+Date.now(),
@@ -14138,6 +14158,7 @@ function addConsignItem(){
 
 function renderConsign(){
   populateConsignmentInventoryOptions();
+  renderConsignorPeople();
   const owners=[...new Set(consignItems.map(c=>String(c.owner||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
   const ownerSelect=document.getElementById('cs-owner-filter');
   if(ownerSelect){const current=consignOwnerFilter;ownerSelect.innerHTML='<option value="all">All consignors</option>'+owners.map(o=>`<option value="${escHtml(o)}">${escHtml(o)}</option>`).join('');ownerSelect.value=owners.includes(current)?current:'all';consignOwnerFilter=ownerSelect.value;}
@@ -14938,7 +14959,7 @@ async function markInventoryRecordSold(item, fieldData, saleMeta){
 // ══════════════════════════════════════════════════
 let editingItemId = null;
 
-function consignmentOwnerDirectory(){const map=new Map();(consignItems||[]).forEach(c=>{const name=String(c.owner||'').trim();if(name&&!map.has(name.toLowerCase()))map.set(name.toLowerCase(),{name,contact:c.contact||'',split:Number(c.split||25)});});return [...map.values()].sort((a,b)=>a.name.localeCompare(b.name));}
+function consignmentOwnerDirectory(){const map=new Map();(consignorPeople||[]).forEach(p=>{const name=String(p.name||'').trim();if(name)map.set(name.toLowerCase(),{name,contact:p.contact||'',split:Number(p.split||25),personId:p.id||''});});(consignItems||[]).forEach(c=>{const name=String(c.owner||'').trim();if(name&&!map.has(name.toLowerCase()))map.set(name.toLowerCase(),{name,contact:c.contact||'',split:Number(c.split||25)});});return [...map.values()].sort((a,b)=>a.name.localeCompare(b.name));}
 function populateInventoryOwnerSelect(item={}){const select=document.getElementById('edit-consignor');if(!select)return;const owners=consignmentOwnerDirectory(),current=item.consignorName||item.inventoryOwner||consignItems.find(c=>c.id===item.consignmentId||c.inventoryId===item.id)?.owner||'';select.innerHTML='<option value="">Select a person...</option>'+owners.map(o=>`<option value="${escHtml(o.name)}">${escHtml(o.name)}${o.contact?' · '+escHtml(o.contact):''}</option>`).join('');if(current&&!owners.some(o=>o.name===current))select.insertAdjacentHTML('beforeend',`<option value="${escHtml(current)}">${escHtml(current)}</option>`);select.value=current;}
 function toggleInventoryOwnerFields(){const type=document.getElementById('edit-owner-type')?.value||'store',wrap=document.getElementById('edit-consignor-wrap'),note=document.getElementById('edit-owner-note');if(wrap)wrap.style.display=type==='consignor'?'':'none';if(note)note.textContent=type==='consignor'?'This item will appear in that person’s consignment inventory. When it sells, a payout alert is created.':'Store-owned item. Sale profit belongs to the store.';}
 function inventoryOwnershipPatch(item={}){const type=document.getElementById('edit-owner-type')?.value||'store',owner=type==='consignor'?(document.getElementById('edit-consignor')?.value||''):'';return {ownershipType:type,inventoryOwner:type==='store'?'Store':owner,consignorName:owner};}

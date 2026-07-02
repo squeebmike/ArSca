@@ -23,3 +23,5 @@ Every inventory item's **Edit Item** modal includes an **Item Ownership** sectio
 - **Consignor / Another Person** selects from people already created in Consignment.
 
 Assigning a consignor creates or updates the linked active consignment record using that item's cost, market value, list price, and SKU. Changing it back to Store marks the active consignment link returned so historical sales and payouts are retained. Inventory cards show the current owner for quick verification.
+
+Create a person before receiving an item from **Consignment → Consignor People**. Enter their name, contact, and default store commission, then choose **Add Person**. That shared person directory feeds both the consignment intake form and the Inventory item ownership selector.

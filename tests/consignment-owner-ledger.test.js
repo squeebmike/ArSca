@@ -16,4 +16,7 @@ assert.match(dashboard,/id="edit-owner-type"/);
 assert.match(dashboard,/id="edit-consignor"/);
 assert.match(dashboard,/function syncInventoryOwnershipToConsignment/);
 assert.match(dashboard,/ownershipType/);
+assert.match(dashboard,/id="cs-person-name"/);
+assert.match(dashboard,/function addConsignorPerson/);
+assert.match(dashboard,/pos_consignors/);
 console.log('Consignment owner ledger contract checks passed');
