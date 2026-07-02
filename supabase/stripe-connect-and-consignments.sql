@@ -31,7 +31,7 @@ create table if not exists public.consignment_items (
   notes text not null default '',
   expires_on date,
   status text not null default 'active' check (status in ('active','sold','returned','archived')),
-  sale_id uuid references public.pos_sales(id) on delete set null,
+  sale_id text references public.pos_sales(id) on delete set null,
   sale_price numeric(12,2),
   paid_out boolean not null default false,
   added_at timestamptz not null default now(),
@@ -46,7 +46,7 @@ create table if not exists public.consignment_alerts (
   store_id uuid not null references public.stores(id) on delete cascade,
   consignment_id text not null references public.consignment_items(id) on delete cascade,
   inventory_item_id text,
-  sale_id uuid references public.pos_sales(id) on delete set null,
+  sale_id text references public.pos_sales(id) on delete set null,
   owner_name text not null,
   item_name text not null,
   sale_price numeric(12,2) not null default 0,
@@ -104,10 +104,10 @@ alter table public.pos_sales
   add column if not exists inventory_restock_status text;
 
 create table if not exists public.pos_refunds (
-  id uuid primary key default gen_random_uuid(),
+  id text primary key default gen_random_uuid()::text,
   store_id uuid not null references public.stores(id) on delete cascade,
-  sale_id uuid not null references public.pos_sales(id) on delete cascade,
-  payment_id uuid not null references public.pos_payments(id) on delete cascade,
+  sale_id text not null references public.pos_sales(id) on delete cascade,
+  payment_id text not null references public.pos_payments(id) on delete cascade,
   provider text not null default 'stripe',
   stripe_refund_id text unique,
   stripe_payment_intent_id text,
@@ -133,12 +133,12 @@ create table if not exists public.pos_refunds (
 );
 
 create table if not exists public.inventory_movements (
-  id uuid primary key default gen_random_uuid(),
+  id text primary key default gen_random_uuid()::text,
   store_id uuid not null references public.stores(id) on delete cascade,
   inventory_item_id text not null,
-  sale_id uuid references public.pos_sales(id) on delete set null,
-  refund_id uuid references public.pos_refunds(id) on delete set null,
-  sale_line_id uuid references public.pos_sale_lines(id) on delete set null,
+  sale_id text references public.pos_sales(id) on delete set null,
+  refund_id text references public.pos_refunds(id) on delete set null,
+  sale_line_id text references public.pos_sale_lines(id) on delete set null,
   movement_type text not null,
   quantity numeric(12,2) not null default 1,
   created_by uuid references auth.users(id) on delete set null,
