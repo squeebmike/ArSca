@@ -34,7 +34,7 @@ Comic aliases include ASM, TMNT, UXM, X-Men, Hulk, FF, Detective, and TEC. The a
 
 Cover priority is user photo, PriceCharting image, existing ComicVine metadata route, then placeholder. External covers begin as `needs-confirmation`; the operator can explicitly confirm or replace one.
 
-User cover photos are stored as blobs in the `walkoff_comics_cache_v1` IndexedDB `images` store. Inventory/localStorage holds only `userPhotoBlobKey`, never the image blob or data URL. Runtime object URLs are recreated from IndexedDB for display. Existing uploaded inventory photos are never overwritten automatically.
+User cover photos are stored as blobs in the `walkoff_comics_cache_v1` IndexedDB `userPhotos` store. Inventory/localStorage holds only `userPhotoBlobKey`, never the image blob or data URL. Runtime object URLs are recreated from IndexedDB for display. Provider comic covers are URL-only and are never copied into IndexedDB, localStorage, R2, or Supabase. Existing uploaded inventory photos are never overwritten automatically.
 
 Fields record `imageSource`, `coverConfidence`, and `coverConfirmed`. The current metadata-provider fallback is useful for issue-level matching but is not assumed to prove a particular variant cover.
 
@@ -64,3 +64,9 @@ Live search/detail requires the Worker. Cached comic results and price snapshots
 ## Barcode entry
 
 The Research barcode scanner can use UPC/EAN evidence to narrow a comic candidate. This does not replace cover confirmation: supplements, sticker barcodes, retailer exclusives, virgin/ratio covers, second printings, and facsimiles can remain ambiguous. A barcode-selected comic enters the same appraisal workflow with `needs-confirmation` until the operator explicitly chooses **Use This Cover** or supplies a user photo. See `docs/barcode-scanner-lookup.md`.
+
+## Comic Issue Hub
+
+Title-plus-issue searches now offer series/run groups before the operator opens a full Issue Hub. The Hub sweeps a bounded set of contextual PriceCharting `/api/products?q=` searches through `POST /pricing/pricecharting/comic-sweep`, deduplicates products by ID, and records which queries found each candidate. Exact `/api/product?id=` detail remains deferred until a candidate is selected.
+
+Previous/next navigation retains the selected series, publisher, run, and year. Candidate summaries, provider image URLs, hidden IDs, and timestamps are stored in IndexedDB `arsca_comic_issue_hubs_v1`; no image blobs are stored there. Explicit cover confirmations are stored separately in `confirmed_covers` and reused first for that run and issue. Barcode results expose **Browse All Covers** because UPC evidence never confirms a comic variant by itself.

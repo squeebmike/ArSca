@@ -48,6 +48,7 @@ Search uses the full adapted natural-language query with `language` and `limit=5
 - `GET /pricing/sportscardspro/product?id=` wraps exact `/api/product`
 - `GET /pricing/pricecharting/search?q=` wraps multi-result `/api/products`
 - `GET /pricing/pricecharting/product/:id` wraps exact `/api/product?id=`
+- `POST /pricing/pricecharting/comic-sweep` accepts up to six contextual queries, calls multi-result `/api/products?q=` under the existing throttle, and deduplicates candidates by product ID.
 
 `PRICECHARTING_TOKEN` and `SCP_ACCESS_TOKEN` remain Worker-side. PriceCharting authenticates upstream with the private `t` parameter. Search must start with `/products`; `/product?q=` returns only one best match and hides candidates. PriceCharting permits one API call per second, so adapter queries are deduplicated and capped.
 

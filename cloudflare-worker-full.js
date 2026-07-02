@@ -2590,6 +2590,29 @@ export default {
           return json({ ok: true, source: 'PriceCharting CSV', query: q, matches: matches.slice(0, 25), products: matches.slice(0, 25) });
         }
         if (!token) return json({ ok: false, needsKey: true, source: 'PriceCharting', error: 'PRICECHARTING_TOKEN not set in Worker secrets' }, 501);
+        if (url.pathname === '/pricing/pricecharting/comic-sweep' && request.method === 'POST') {
+          const body = await request.json().catch(() => ({}));
+          const queries = [...new Set((Array.isArray(body.queries) ? body.queries : []).map(q => String(q || '').replace(/\s+/g, ' ').trim().slice(0, 160)).filter(Boolean))].slice(0, 6);
+          if (!queries.length) return json({ ok: false, error: 'queries required' }, 400);
+          const found = new Map();
+          const attempts = [];
+          for (const q of queries) {
+            let products = [];
+            try {
+              const data = await pcFetch('/api/products', { q });
+              products = (data.products || []).map(p => normalizePcProduct(p, q));
+            } catch (_) {}
+            attempts.push({ query:q, resultCount:products.length });
+            products.forEach(product => {
+              const id = String(product.productId || '');
+              if (!id) return;
+              const prior = found.get(id);
+              if (prior) prior.foundByQueries = [...new Set([...(prior.foundByQueries || []), q])];
+              else found.set(id, { ...product, foundByQueries:[q] });
+            });
+          }
+          return json({ ok:true, source:'PriceCharting', endpoint:'/api/products', attempts, products:[...found.values()], matches:[...found.values()] });
+        }
         if (url.pathname === '/pricing/pricecharting/search') {
           const q = (url.searchParams.get('q') || '').trim();
           if (!q) return json({ ok: false, error: 'q required' }, 400);
