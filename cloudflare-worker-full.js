@@ -6,8 +6,9 @@
  *   ANTHROPIC_API_KEY
  *   WEBFLOW_TOKEN
  *   PSA_TOKEN
- *   STRIPE_SECRET_KEY
- *   STRIPE_WEBHOOK_SECRET
+ *   STRIPE_SECRET_KEY_TEST / STRIPE_SECRET_KEY_LIVE
+ *   STRIPE_PUBLISHABLE_KEY_TEST / STRIPE_PUBLISHABLE_KEY_LIVE
+ *   STRIPE_WEBHOOK_SECRET_TEST / STRIPE_WEBHOOK_SECRET_LIVE
  *   EBAY_USER_TOKEN
  *   EBAY_APP_ID
  *   COMICVINE_API_KEY
@@ -82,6 +83,209 @@ async function requirePlatformAdmin(request, env) {
   const admin = Array.isArray(data) ? data[0] : null;
   if (!admin) return { error:json({ ok:false, error:'Platform administrator access required' }, 403) };
   return { user, admin };
+}
+
+async function requireStoreUser(request, env, storeId, allowedRoles = ['owner','admin','manager','employee']) {
+  const token = String(request.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '');
+  if (!token) return { error:json({ ok:false, error:'Authentication required' }, 401) };
+  if (!storeId) return { error:json({ ok:false, error:'storeId is required' }, 400) };
+  const { base, key } = supabaseAdminConfig(env);
+  const userResponse = await fetch(`${base}/auth/v1/user`, { headers:{ apikey:key, Authorization:`Bearer ${token}` } });
+  if (!userResponse.ok) return { error:json({ ok:false, error:'Session expired or invalid' }, 401) };
+  const user = await userResponse.json();
+  const { data } = await supabaseAdminFetch(env, `store_members?store_id=eq.${encodeURIComponent(storeId)}&user_id=eq.${encodeURIComponent(user.id)}&active=eq.true&select=role&limit=1`);
+  const role = data?.[0]?.role;
+  if (!role || !allowedRoles.includes(role)) return { error:json({ ok:false, error:'You do not have permission for this store' }, 403) };
+  return { user, role, token };
+}
+
+function stripeMode(env, requested) {
+  const configured = String(env.STRIPE_PLATFORM_MODE || 'test').toLowerCase() === 'live' ? 'live' : 'test';
+  const wanted = String(requested || configured).toLowerCase();
+  return wanted === 'live' ? 'live' : 'test';
+}
+
+function stripeConfig(env, requestedMode) {
+  const mode = stripeMode(env, requestedMode);
+  const secretKey = mode === 'live' ? env.STRIPE_SECRET_KEY_LIVE : env.STRIPE_SECRET_KEY_TEST;
+  const publishableKey = mode === 'live' ? env.STRIPE_PUBLISHABLE_KEY_LIVE : env.STRIPE_PUBLISHABLE_KEY_TEST;
+  const webhookSecret = mode === 'live' ? env.STRIPE_WEBHOOK_SECRET_LIVE : env.STRIPE_WEBHOOK_SECRET_TEST;
+  return { mode, secretKey:String(secretKey || ''), publishableKey:String(publishableKey || ''), webhookSecret:String(webhookSecret || '') };
+}
+
+async function stripeApi(env, mode, path, { method='GET', params, account, idempotencyKey } = {}) {
+  const cfg = stripeConfig(env, mode);
+  if (!cfg.secretKey) throw new Error(`Stripe ${cfg.mode} secret key is not configured`);
+  const headers = new Headers({ Authorization:`Bearer ${cfg.secretKey}` });
+  if (account) headers.set('Stripe-Account', account);
+  if (idempotencyKey) headers.set('Idempotency-Key', String(idempotencyKey).slice(0, 255));
+  let body;
+  if (params) { headers.set('Content-Type', 'application/x-www-form-urlencoded'); body = params instanceof URLSearchParams ? params.toString() : new URLSearchParams(params).toString(); }
+  const response = await fetch(`https://api.stripe.com/v1/${path}`, { method, headers, body });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) { const error = new Error(data?.error?.message || `Stripe request failed (${response.status})`); error.status=response.status; error.code=data?.error?.code; throw error; }
+  return data;
+}
+
+function safeStripeAccount(account, mode) {
+  const due = account?.requirements || {};
+  const feePayer = account?.controller?.fees?.payer || (account?.type === 'standard' ? 'account' : '');
+  return {
+    stripeConnectedAccountId:account?.id || '', accountType:account?.type || '', feePayer,
+    feePayerVerified:feePayer === 'account', chargesEnabled:!!account?.charges_enabled,
+    payoutsEnabled:!!account?.payouts_enabled, detailsSubmitted:!!account?.details_submitted,
+    requirementsCurrentlyDue:due.currently_due || [], requirementsEventuallyDue:due.eventually_due || [],
+    requirementsPastDue:due.past_due || [], disabledReason:due.disabled_reason || '', mode,
+    onboardingStatus:account?.charges_enabled && account?.payouts_enabled ? 'ready' : account?.details_submitted ? 'restricted' : 'incomplete',
+    lastRefreshedAt:new Date().toISOString(),
+  };
+}
+
+async function saveStripeAccount(env, storeId, status) {
+  const row = { store_id:storeId, mode:status.mode, connected_account_id:status.stripeConnectedAccountId,
+    account_type:status.accountType || null, fee_payer:status.feePayer || null, fee_payer_verified:!!status.feePayerVerified,
+    details_submitted:status.detailsSubmitted, charges_enabled:status.chargesEnabled, payouts_enabled:status.payoutsEnabled,
+    onboarding_status:status.onboardingStatus, requirements_currently_due:status.requirementsCurrentlyDue,
+    requirements_eventually_due:status.requirementsEventuallyDue, requirements_past_due:status.requirementsPastDue,
+    disabled_reason:status.disabledReason || '', last_refreshed_at:status.lastRefreshedAt, updated_at:new Date().toISOString() };
+  await supabaseAdminFetch(env, 'store_stripe_accounts?on_conflict=store_id,mode', { method:'POST', headers:{ Prefer:'resolution=merge-duplicates,return=minimal' }, body:JSON.stringify(row) });
+}
+
+async function getStripeAccountRow(env, storeId, mode) {
+  const { data } = await supabaseAdminFetch(env, `store_stripe_accounts?store_id=eq.${encodeURIComponent(storeId)}&mode=eq.${mode}&select=*&limit=1`);
+  return data?.[0] || null;
+}
+
+function stripeApplicationFee(env, amount) {
+  if (String(env.ARSCA_PLATFORM_FEE_ENABLED || '').toLowerCase() !== 'true') return 0;
+  const bps = Math.max(0, Number(env.ARSCA_PLATFORM_FEE_PERCENT_BPS || 0));
+  const fixed = Math.max(0, Number(env.ARSCA_PLATFORM_FEE_FIXED_CENTS || 0));
+  return Math.max(0, Math.min(Math.max(0, amount - 1), Math.round(amount * bps / 10000) + Math.round(fixed)));
+}
+
+function constantTimeEqualHex(a, b) {
+  const x=String(a||''), y=String(b||''); if(x.length!==y.length)return false;let diff=0;for(let i=0;i<x.length;i++)diff|=x.charCodeAt(i)^y.charCodeAt(i);return diff===0;
+}
+
+async function verifyStripeWebhook(body, signatureHeader, secret) {
+  if (!secret || !signatureHeader) return false;
+  const pairs=String(signatureHeader).split(',').map(part=>part.split('='));
+  const timestamp=pairs.find(([k])=>k==='t')?.[1];
+  const signatures=pairs.filter(([k])=>k==='v1').map(([,v])=>v);
+  if(!timestamp||!signatures.length||Math.abs(Date.now()/1000-Number(timestamp))>300)return false;
+  const key=await crypto.subtle.importKey('raw',new TextEncoder().encode(secret),{name:'HMAC',hash:'SHA-256'},false,['sign']);
+  const signed=await crypto.subtle.sign('HMAC',key,new TextEncoder().encode(`${timestamp}.${body}`));
+  const expected=[...new Uint8Array(signed)].map(b=>b.toString(16).padStart(2,'0')).join('');
+  return signatures.some(sig=>constantTimeEqualHex(sig,expected));
+}
+
+async function syncStripeWebhookPayment(env, event, mode) {
+  const object=event.data?.object||{};const account=event.account||'';
+  let intentId='';let patch={updated_at:new Date().toISOString()};
+  if(event.type.startsWith('payment_intent.')){intentId=object.id;patch.status=event.type==='payment_intent.succeeded'?'succeeded':event.type==='payment_intent.payment_failed'?'failed':event.type==='payment_intent.canceled'?'canceled':object.status;}
+  if(event.type==='charge.succeeded'||event.type==='charge.refunded'||event.type==='charge.dispute.created'||event.type==='charge.dispute.closed'){intentId=object.payment_intent||'';patch.stripe_charge_id=object.id;const card=object.payment_method_details?.card||{};patch.card_brand=card.brand||null;patch.card_last4=card.last4||null;if(event.type==='charge.refunded'){patch.status=object.refunded?'refunded':'partially_refunded';patch.refunded_amount_cents=Number(object.amount_refunded||0);}if(event.type==='charge.dispute.created')patch.status='disputed';if(event.type==='charge.dispute.closed')patch.status=object.dispute?.status==='won'?'succeeded':'disputed';}
+  if(intentId){const filter=`pos_payments?stripe_mode=eq.${mode}&stripe_connected_account_id=eq.${encodeURIComponent(account)}&stripe_payment_intent_id=eq.${encodeURIComponent(intentId)}`;await supabaseAdminFetch(env,filter,{method:'PATCH',headers:{Prefer:'return=representation'},body:JSON.stringify(patch)});}
+  if(event.type.startsWith('refund.')){await supabaseAdminFetch(env,`pos_refunds?stripe_refund_id=eq.${encodeURIComponent(object.id)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({status:object.status||event.type.replace('refund.',''),failure_reason:object.failure_reason||'',updated_at:new Date().toISOString()})});}
+  if(event.type==='account.updated'){const storeId=object.metadata?.arsca_store_id;if(storeId){const status=safeStripeAccount(object,mode);await saveStripeAccount(env,storeId,status);}}
+}
+
+async function handleStripeWebhookSecure(request, env) {
+  const body=await request.text();let event;try{event=JSON.parse(body);}catch{return new Response('Bad JSON',{status:400});}
+  const mode=event.livemode?'live':'test';const secret=(mode==='live'?env.STRIPE_WEBHOOK_SECRET_LIVE:env.STRIPE_WEBHOOK_SECRET_TEST)||env.STRIPE_WEBHOOK_SECRET;
+  try{if(!await verifyStripeWebhook(body,request.headers.get('stripe-signature')||'',secret))return new Response('Invalid Stripe signature',{status:401});}catch{return new Response('Invalid Stripe signature',{status:401});}
+  let webhookStoredInSupabase=true;
+  try{const {data:seen}=await supabaseAdminFetch(env,`stripe_webhook_events?event_id=eq.${encodeURIComponent(event.id)}&select=event_id,status&limit=1`);if(seen?.[0]?.status==='processed')return new Response('ok',{status:200});if(!seen?.length)await supabaseAdminFetch(env,'stripe_webhook_events',{method:'POST',headers:{Prefer:'return=minimal'},body:JSON.stringify({event_id:event.id,mode,event_type:event.type,connected_account_id:event.account||null,status:'processing'})});else await supabaseAdminFetch(env,`stripe_webhook_events?event_id=eq.${encodeURIComponent(event.id)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({status:'processing',error:null})});await syncStripeWebhookPayment(env,event,mode);}catch(e){webhookStoredInSupabase=false;console.error('Stripe webhook foundation sync unavailable:',e.message);if(event.account)return new Response('Webhook persistence unavailable',{status:503});const kvKey=`stripe_webhook_processed:${event.id}`;if(env.LBA_KV&&await env.LBA_KV.get(kvKey))return new Response('ok',{status:200});}
+  // Preserve the existing SaaS subscription state machine for platform events.
+  if(!event.account&&env.LBA_KV){
+    const object=event.data?.object||{};const custKey=id=>`sub:cust:${id}`;const subKey=id=>`sub:store:${id}`;const storeFromCustomer=async id=>{try{const raw=await env.LBA_KV.get(custKey(id));return raw?JSON.parse(raw).store_id:null;}catch{return null;}};const put=async(id,patch)=>{const raw=await env.LBA_KV.get(subKey(id));const current=raw?JSON.parse(raw):{};await env.LBA_KV.put(subKey(id),JSON.stringify({...current,...patch,updatedAt:Date.now()}),{expirationTtl:400*24*3600});};
+    if(event.type==='checkout.session.completed'&&(object.metadata?.source==='walkoff-subscription'||object.mode==='subscription')){const storeId=object.metadata?.store_id||await storeFromCustomer(object.customer);if(storeId){await put(storeId,{status:'active',stripe_customer_id:object.customer,stripe_subscription_id:object.subscription});if(object.customer)await env.LBA_KV.put(custKey(object.customer),JSON.stringify({store_id:storeId}),{expirationTtl:400*24*3600});}}
+    if(event.type==='customer.subscription.created'||event.type==='customer.subscription.updated'){const storeId=await storeFromCustomer(object.customer);if(storeId)await put(storeId,{status:object.status,stripe_customer_id:object.customer,stripe_subscription_id:object.id,current_period_end:object.current_period_end?object.current_period_end*1000:null,cancel_at_period_end:!!object.cancel_at_period_end});}
+    if(event.type==='customer.subscription.deleted'){const storeId=await storeFromCustomer(object.customer);if(storeId)await put(storeId,{status:'canceled'});}
+    if(event.type==='invoice.payment_succeeded'||event.type==='invoice.payment_failed'){const storeId=await storeFromCustomer(object.customer);if(storeId)await put(storeId,{status:event.type.endsWith('failed')?'past_due':'active',current_period_end:object.lines?.data?.[0]?.period?.end?object.lines.data[0].period.end*1000:undefined});}
+    if(event.type==='checkout.session.completed'&&object.metadata?.source!=='walkoff-subscription'&&object.mode!=='subscription'&&object.id)await env.LBA_KV.put(`stripe_checkout:${object.id}`,JSON.stringify({status:'paid',amount:object.amount_total,created:Date.now()}),{expirationTtl:86400});
+  }
+  if(webhookStoredInSupabase)await supabaseAdminFetch(env,`stripe_webhook_events?event_id=eq.${encodeURIComponent(event.id)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({status:'processed',processed_at:new Date().toISOString(),error:null})}).catch(()=>{});
+  else if(env.LBA_KV)await env.LBA_KV.put(`stripe_webhook_processed:${event.id}`,'1',{expirationTtl:30*24*3600});
+  return new Response('ok',{status:200});
+}
+
+async function restockRefundItems(env,{storeId,saleId,refundId,lineItemIds,userId}){
+  const selected=Array.isArray(lineItemIds)&&lineItemIds.length?`&id=in.(${lineItemIds.map(id=>encodeURIComponent(id)).join(',')})`:'';
+  const {data:lines}=await supabaseAdminFetch(env,`pos_sale_lines?store_id=eq.${encodeURIComponent(storeId)}&sale_id=eq.${encodeURIComponent(saleId)}&select=id,item_id,quantity${selected}`);
+  let count=0;
+  for(const line of lines||[]){if(!/^[0-9a-f-]{36}$/i.test(String(line.item_id||'')))continue;const movement={store_id:storeId,inventory_item_id:line.item_id,sale_id:saleId,refund_id:refundId,sale_line_id:line.id,movement_type:'refund_restock',quantity:Number(line.quantity||1),created_by:userId};const {data:inserted}=await supabaseAdminFetch(env,'inventory_movements?on_conflict=refund_id,sale_line_id,movement_type',{method:'POST',headers:{Prefer:'resolution=ignore-duplicates,return=representation'},body:JSON.stringify(movement)});if(!inserted?.length)continue;const {data:items}=await supabaseAdminFetch(env,`inventory_items?id=eq.${line.item_id}&store_id=eq.${encodeURIComponent(storeId)}&select=id,data,status&limit=1`);const item=items?.[0];if(!item)continue;const data={...(item.data||{})};data.quantity=Number(data.quantity??data.qty??0)+Number(line.quantity||1);data.qty=data.quantity;data.status='in_stock';await supabaseAdminFetch(env,`inventory_items?id=eq.${line.item_id}&store_id=eq.${encodeURIComponent(storeId)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({data,status:'in_stock'})});count++;}
+  return count;
+}
+
+async function handleStripeFoundation(request, env, url) {
+  const path = url.pathname;
+  if(path==='/stripe/webhook'&&request.method==='POST')return handleStripeWebhookSecure(request,env);
+  if (path === '/stripe/config-status' && request.method === 'GET') {
+    const cfg = stripeConfig(env, url.searchParams.get('mode'));
+    return json({ ok:true, mode:cfg.mode, publishableKeyPresent:!!cfg.publishableKey, secretKeyPresent:!!cfg.secretKey, webhookSecretPresent:!!cfg.webhookSecret, connectEnabled:!!cfg.secretKey });
+  }
+  const body = request.method === 'POST' ? await request.json().catch(() => ({})) : {};
+  const storeId = body.storeId;
+  const ownerOnly = path.startsWith('/stripe/connect/') || path === '/stripe/refunds/create';
+  const auth = await requireStoreUser(request, env, storeId, ownerOnly ? ['owner','admin'] : ['owner','admin','manager','employee']);
+  if (auth.error) return auth.error;
+  const mode = stripeMode(env, body.mode);
+
+  if (path === '/stripe/connect/account') {
+    let row = await getStripeAccountRow(env, storeId, mode);
+    let account;
+    if (row?.connected_account_id) account = await stripeApi(env, mode, `accounts/${encodeURIComponent(row.connected_account_id)}`);
+    else {
+      const { data:stores } = await supabaseAdminFetch(env, `stores?id=eq.${encodeURIComponent(storeId)}&select=id,name,display_name,currency&limit=1`);
+      const store = stores?.[0]; if (!store) return json({ ok:false, error:'Store not found' }, 404);
+      const params = new URLSearchParams({ country:String(body.country || 'US').toUpperCase(), 'controller[fees][payer]':'account', 'controller[stripe_dashboard][type]':'full', 'capabilities[card_payments][requested]':'true', 'capabilities[transfers][requested]':'true', 'metadata[arsca_store_id]':storeId, 'business_profile[name]':store.display_name || store.name || 'ArSca Store' });
+      account = await stripeApi(env, mode, 'accounts', { method:'POST', params, idempotencyKey:`arsca-connect-${mode}-${storeId}` });
+    }
+    const status = safeStripeAccount(account, mode); await saveStripeAccount(env, storeId, status); return json({ ok:true, ...status });
+  }
+  if (path === '/stripe/connect/status') {
+    const row = await getStripeAccountRow(env, storeId, mode); if (!row) return json({ ok:true, mode, onboardingStatus:'not_started', chargesEnabled:false, payoutsEnabled:false, feePayerVerified:false });
+    const account = await stripeApi(env, mode, `accounts/${encodeURIComponent(row.connected_account_id)}`); const status=safeStripeAccount(account,mode);await saveStripeAccount(env,storeId,status);return json({ok:true,...status});
+  }
+  if (path === '/stripe/connect/onboarding-link') {
+    const row=await getStripeAccountRow(env,storeId,mode);if(!row)return json({ok:false,error:'Create the connected account first'},409);
+    const origin=String(body.returnUrl || request.headers.get('Origin') || url.origin).replace(/\/$/,'');
+    const link=await stripeApi(env,mode,'account_links',{method:'POST',params:new URLSearchParams({account:row.connected_account_id,refresh_url:`${origin}/dashboard.html?stripe=refresh`,return_url:`${origin}/dashboard.html?stripe=return`,type:'account_onboarding'})});return json({ok:true,url:link.url,expiresAt:link.expires_at});
+  }
+  if (path === '/stripe/connect/dashboard-link') {
+    const row=await getStripeAccountRow(env,storeId,mode);if(!row)return json({ok:false,error:'No connected account'},404);
+    if(row.account_type==='express'){const link=await stripeApi(env,mode,`accounts/${encodeURIComponent(row.connected_account_id)}/login_links`,{method:'POST',params:new URLSearchParams()});return json({ok:true,url:link.url});}
+    return json({ok:true,url:mode==='live'?'https://dashboard.stripe.com/':'https://dashboard.stripe.com/test/',message:'Standard accounts sign in to their own Stripe Dashboard.'});
+  }
+  if (path === '/stripe/payments/create-intent') {
+    const saleId=String(body.saleId||'');if(!saleId)return json({ok:false,error:'saleId is required'},400);
+    const {data:sales}=await supabaseAdminFetch(env,`pos_sales?id=eq.${encodeURIComponent(saleId)}&store_id=eq.${encodeURIComponent(storeId)}&select=*&limit=1`);const sale=sales?.[0];if(!sale)return json({ok:false,error:'Sale not found for this store'},404);
+    const amount=Math.round(Number(sale.total||0)*100);if(amount<50)return json({ok:false,error:'Sale total must be at least $0.50'},400);if(body.amountCents!=null&&Math.round(Number(body.amountCents))!==amount)return json({ok:false,error:'Checkout amount changed; refresh the sale before charging'},409);
+    const row=await getStripeAccountRow(env,storeId,mode);if(!row?.connected_account_id)return json({ok:false,error:'Stripe setup required for this store'},409);
+    if(!row.charges_enabled)return json({ok:false,error:'Stripe onboarding is incomplete or charges are disabled'},409);
+    if(mode==='live'&&!row.fee_payer_verified)return json({ok:false,error:'Live card charging is blocked until Stripe confirms this connected account pays processing fees'},409);
+    const fee=stripeApplicationFee(env,amount);const params=new URLSearchParams({amount:String(amount),currency:String(body.currency||'usd').toLowerCase(),'automatic_payment_methods[enabled]':'true','metadata[arsca_sale_id]':saleId,'metadata[arsca_store_id]':storeId,'metadata[arsca_register_id]':String(body.metadata?.arscaRegisterId||''),'metadata[arsca_user_id]':auth.user.id});if(fee)params.set('application_fee_amount',String(fee));
+    const pi=await stripeApi(env,mode,'payment_intents',{method:'POST',params,account:row.connected_account_id,idempotencyKey:`arsca-pay-${mode}-${saleId}-${Math.max(1,Number(body.attemptNumber||1))}`});
+    const paymentId=body.paymentId||crypto.randomUUID();await supabaseAdminFetch(env,'pos_payments?on_conflict=id',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({id:paymentId,sale_id:saleId,store_id:storeId,method:'Stripe Card',amount:amount/100,status:pi.status,provider:'stripe',stripe_mode:mode,stripe_connected_account_id:row.connected_account_id,stripe_payment_intent_id:pi.id,currency:pi.currency,amount_cents:amount,application_fee_amount_cents:fee,processing_fee_paid_by:'connected_account',confirmed_by:auth.user.id,created_at:new Date().toISOString(),updated_at:new Date().toISOString()})});
+    return json({ok:true,clientSecret:pi.client_secret,paymentIntentId:pi.id,paymentId,stripeAccount:row.connected_account_id,amountCents:amount,currency:pi.currency,applicationFeeAmount:fee,mode,publishableKey:stripeConfig(env,mode).publishableKey});
+  }
+  if (path === '/stripe/payments/status') {
+    const row=await getStripeAccountRow(env,storeId,mode);if(!row)return json({ok:false,error:'Stripe setup required'},409);const pi=await stripeApi(env,mode,`payment_intents/${encodeURIComponent(body.paymentIntentId||'')}`,{account:row.connected_account_id});const charge=pi.latest_charge?await stripeApi(env,mode,`charges/${encodeURIComponent(pi.latest_charge)}`,{account:row.connected_account_id}):null;const card=charge?.payment_method_details?.card||{};
+    const {data:paymentRows}=await supabaseAdminFetch(env,`pos_payments?store_id=eq.${encodeURIComponent(storeId)}&stripe_payment_intent_id=eq.${encodeURIComponent(pi.id)}&select=id,sale_id,amount_cents&limit=1`);const payment=paymentRows?.[0];
+    await supabaseAdminFetch(env,`pos_payments?store_id=eq.${encodeURIComponent(storeId)}&stripe_payment_intent_id=eq.${encodeURIComponent(pi.id)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({status:pi.status,stripe_charge_id:charge?.id||null,card_brand:card.brand||null,card_last4:card.last4||null,confirmed_at:pi.status==='succeeded'?new Date().toISOString():null,updated_at:new Date().toISOString()})});
+    if(pi.status==='succeeded'&&payment?.sale_id)await supabaseAdminFetch(env,`pos_sales?id=eq.${payment.sale_id}&store_id=eq.${encodeURIComponent(storeId)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({status:'completed',payment_status:'paid',refundable_remaining_cents:Number(payment.amount_cents||pi.amount_received||pi.amount),completed_at:new Date().toISOString()})});
+    return json({ok:true,status:pi.status,paymentIntentId:pi.id,chargeId:charge?.id||'',brand:card.brand||'',last4:card.last4||'',amountCents:pi.amount_received||pi.amount,mode});
+  }
+  if (path === '/stripe/refunds/create') {
+    const {data:payments}=await supabaseAdminFetch(env,`pos_payments?id=eq.${encodeURIComponent(body.paymentId||'')}&sale_id=eq.${encodeURIComponent(body.saleId||'')}&store_id=eq.${encodeURIComponent(storeId)}&provider=eq.stripe&select=*&limit=1`);const payment=payments?.[0];if(!payment)return json({ok:false,error:'Stripe payment not found'},404);if(!['succeeded','partially_refunded'].includes(payment.status))return json({ok:false,error:'Only successful Stripe payments can be refunded'},409);
+    const amount=Math.round(Number(body.amountCents||0));const remaining=Number(payment.amount_cents||Math.round(Number(payment.amount)*100))-Number(payment.refunded_amount_cents||0);if(amount<=0||amount>remaining)return json({ok:false,error:`Refund must be between 1 and ${remaining} cents`},400);
+    const actionId=String(body.actionId||crypto.randomUUID());const idem=`arsca-refund-${payment.id}-${actionId}`;const params=new URLSearchParams({payment_intent:payment.stripe_payment_intent_id,amount:String(amount),'metadata[arsca_sale_id]':payment.sale_id,'metadata[arsca_store_id]':storeId});if(['duplicate','fraudulent','requested_by_customer'].includes(body.reason))params.set('reason',body.reason);if(body.refundApplicationFee!==false&&Number(payment.application_fee_amount_cents||0)>0)params.set('refund_application_fee','true');
+    const refund=await stripeApi(env,payment.stripe_mode,'refunds',{method:'POST',params,account:payment.stripe_connected_account_id,idempotencyKey:idem});const refundId=crypto.randomUUID();await supabaseAdminFetch(env,'pos_refunds',{method:'POST',headers:{Prefer:'return=minimal'},body:JSON.stringify({id:refundId,store_id:storeId,sale_id:payment.sale_id,payment_id:payment.id,stripe_refund_id:refund.id,stripe_payment_intent_id:payment.stripe_payment_intent_id,stripe_charge_id:payment.stripe_charge_id,stripe_connected_account_id:payment.stripe_connected_account_id,stripe_mode:payment.stripe_mode,amount_cents:amount,currency:payment.currency||'usd',reason:body.reason||'requested_by_customer',internal_note:String(body.internalNote||'').slice(0,1000),status:refund.status||'pending',refund_application_fee:body.refundApplicationFee!==false,restock_mode:body.restockMode||'no_restock',line_item_ids:Array.isArray(body.lineItemIds)?body.lineItemIds:[],created_by:auth.user.id,idempotency_key:idem,stripe_reference:refund.id})});
+    let restocked=0;if(body.restockMode==='restock'&&refund.status==='succeeded'){restocked=await restockRefundItems(env,{storeId,saleId:payment.sale_id,refundId,lineItemIds:body.lineItemIds,userId:auth.user.id});await supabaseAdminFetch(env,`pos_refunds?id=eq.${refundId}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({restock_completed_at:new Date().toISOString(),updated_at:new Date().toISOString()})});}
+    const refunded=Number(payment.refunded_amount_cents||0)+amount;const nextStatus=refunded>=Number(payment.amount_cents)?'refunded':'partially_refunded';await supabaseAdminFetch(env,`pos_payments?id=eq.${payment.id}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({status:nextStatus,refunded_amount_cents:refunded,updated_at:new Date().toISOString()})});await supabaseAdminFetch(env,`pos_sales?id=eq.${payment.sale_id}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({payment_status:nextStatus,refund_total_cents:refunded,refundable_remaining_cents:Math.max(0,Number(payment.amount_cents)-refunded),inventory_restock_status:body.restockMode==='restock'?'pending':'not_requested'})});
+    return json({ok:true,refundId:refund.id,status:refund.status,amountCents:amount,saleRefundStatus:nextStatus,refundedApplicationFee:body.refundApplicationFee!==false,restockedItems:restocked});
+  }
+  return json({ok:false,error:'Stripe route not found'},404);
 }
 
 function adminPage(url) {
@@ -654,6 +858,10 @@ export default {
       return await handlePlatformAdmin(request, env, url);
     }
 
+    if (url.pathname === '/stripe/config-status' || url.pathname === '/stripe/webhook' || url.pathname.startsWith('/stripe/connect/') || url.pathname.startsWith('/stripe/payments/') || url.pathname === '/stripe/refunds/create') {
+      return await handleStripeFoundation(request, env, url);
+    }
+
     if (url.pathname === '/health') {
       return json({
         ok: true,
@@ -661,7 +869,7 @@ export default {
         webflow: !!env.WEBFLOW_TOKEN,
         anthropic: !!env.ANTHROPIC_API_KEY,
         psa: !!env.PSA_TOKEN,
-        stripe: !!env.STRIPE_SECRET_KEY,
+        stripe: !!(env.STRIPE_SECRET_KEY_TEST || env.STRIPE_SECRET_KEY_LIVE || env.STRIPE_SECRET_KEY),
         ebay: !!env.EBAY_USER_TOKEN,
         ebayClient: !!(env.EBAY_CLIENT_ID || (env.LBA_KV && await env.LBA_KV.get('secret:EBAY_CLIENT_ID'))),
         ebayRefresh: !!(env.EBAY_REFRESH_TOKEN || (env.LBA_KV && await env.LBA_KV.get('secret:EBAY_REFRESH_TOKEN'))),

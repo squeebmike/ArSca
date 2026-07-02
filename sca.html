@@ -667,7 +667,7 @@ const STORE = {
   store_location:   'Kingston, WA',
   store_website:    'walkoffsc.com',
   worker_url:       'https://still-resonance-4f87.swarnerauto.workers.dev',
-  stripe_pk:        'pk_live_51OhyA8LHo6HlAYnMuSJGtOtXDbU5I8NIvHqgSpoKfH8PoZ2pIHCFVyO1fkqlpcpTAQ5tgEMGbWYlA81hiwQ2HhB400tlnsrfsw',
+  stripe_pk:        '', // Stripe keys are supplied by the Worker/Connect flow, never hardcoded here.
   venmo:            '',
   paypal:           '',
   cashapp:          '',
@@ -689,7 +689,7 @@ const STORE = {
   wf_status_instock:'f3769d1e15fa0956f98984d6fa36437f',
   wf_status_sold:   'e6b42f14fcb99aa2168a5f5672226f68',
 };
-const APP_VERSION = '2026.05.20.03';
+const APP_VERSION = '2026.07.02.05-cloud-consignments-stripe-foundation';
 const SUPABASE_URL = 'https://vroknjrxubsqyexngwus.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_wbpX2nL8l-4NbXtZNG_bjA_nabSYaJ5';
 const WORKER_URL = STORE.worker_url;
@@ -811,7 +811,8 @@ function applyVendorProfileToScanner(){
     if(pay.venmo?.handle !== undefined) STORE.venmo = pay.venmo.handle;
     if(pay.paypal?.emailOrHandle !== undefined) STORE.paypal = pay.paypal.emailOrHandle;
     if(pay.cashApp?.cashtag !== undefined) STORE.cashapp = pay.cashApp.cashtag;
-    if(pay.card?.stripePublishableKey) STORE.stripe_pk = pay.card.stripePublishableKey;
+    // Legacy browser-key card flow is intentionally disabled. Verified Connect
+    // card payments are created from the authenticated dashboard checkout.
     if(Number.isFinite(Number(pay.tax?.defaultRate))) STORE.tax_rate = Number(pay.tax.defaultRate);
     document.querySelectorAll('.store-name-display').forEach(el => el.textContent = STORE.store_name.toUpperCase());
     document.querySelectorAll('.store-loc-display').forEach(el => el.textContent = STORE.store_location);
@@ -6665,6 +6666,9 @@ async function initStripe(){
 }
 
 async function processStripePayment(){
+  const disabledStatus = document.getElementById('stripe-status');
+  if(disabledStatus) disabledStatus.textContent = 'Use Dashboard → Checkout → Stripe Card for verified Connect payments.';
+  return;
   const {total} = getCartTotals();
   if(total <= 0){ toast('Nothing to charge'); return; }
   const btn = document.getElementById('stripe-pay-btn');
