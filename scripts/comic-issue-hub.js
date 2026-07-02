@@ -55,7 +55,10 @@
   function groupCandidates(candidates,parsed){
     const groups=new Map();
     (candidates||[]).forEach(c=>{const run=detectRun(c,parsed),key=norm(run.runLabel+'|'+run.year);if(!groups.has(key))groups.set(key,{seriesTitle:parsed.seriesGuess||clean(c.productName),publisher:run.publisher,runLabel:run.runLabel,yearGuess:run.year,issueNumber:parsed.issueNumber,candidateCount:0,topCoverImageUrl:'',priceRangeRaw:{min:null,max:null},priceRange98:{min:null,max:null},confidence:0,examples:[],candidates:[]});const g=groups.get(key),sc=scoreCandidate(c,{...parsed,seriesTitle:parsed.seriesGuess,currentIssueNumber:parsed.issueNumber,publisher:run.publisher});g.candidates.push({...c,hubScore:sc.score,matchReason:sc.reasons});g.candidateCount++;g.confidence=Math.max(g.confidence,sc.score);g.topCoverImageUrl ||= c.imageUrl||'';g.examples.push(clean(c.productName||c.name));[['priceRangeRaw',c.comicPrices?.ungraded??c.prices?.ungraded],['priceRange98',c.comicPrices?.grade9_8]].forEach(([k,v])=>{v=Number(v);if(v>0){g[k].min=g[k].min===null?v:Math.min(g[k].min,v);g[k].max=g[k].max===null?v:Math.max(g[k].max,v);}});});
-    return [...groups.values()].sort((a,b)=>b.confidence-a.confidence||b.candidateCount-a.candidateCount);
+    return [...groups.values()].sort((a,b)=>{
+      const ay=Number(a.yearGuess)||9999,by=Number(b.yearGuess)||9999;
+      return ay-by||b.confidence-a.confidence||b.candidateCount-a.candidateCount;
+    });
   }
   function buildSweepQueries(context={},broad=false){
     const series=clean(context.seriesTitle||context.seriesGuess),issue=String(context.currentIssueNumber??context.issueNumber??''),publisher=clean(context.publisher||context.publisherGuess),year=clean(context.yearGuess),alias=Object.entries(ALIASES).find(([,v])=>norm(v)===norm(series))?.[0]?.toUpperCase();

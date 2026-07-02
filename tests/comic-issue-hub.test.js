@@ -18,6 +18,8 @@ assert.equal(hub.adjacentIssue('1A',1),null);
 const groups=hub.groupCandidates([{productId:'a',productName:'Teenage Mutant Ninja Turtles #1 IDW Cover A',consoleName:'Comics',imageUrl:'https://x/a.jpg',comicPrices:{ungraded:10,grade9_8:80}},{productId:'b',productName:'Teenage Mutant Ninja Turtles #1 Mirage Second Print',consoleName:'Comics',comicPrices:{ungraded:20,grade9_8:100}}],hub.parseComicQuery('TMNT 1'));
 assert.equal(groups.length,2);
 assert.ok(groups.some(g=>g.publisher==='IDW'));
+const dated=hub.groupCandidates([{productId:'new',productName:'TMNT #1 IDW',releaseDate:'2011-01-01'},{productId:'old',productName:'TMNT #1 Mirage',releaseDate:'1984-01-01'}],hub.parseComicQuery('TMNT 1'));
+assert.equal(dated[0].yearGuess,'1984','run groups should sort oldest to newest');
 const dashboard=fs.readFileSync(require('node:path').join(__dirname,'..','dashboard.html'),'utf8');
 const worker=fs.readFileSync(require('node:path').join(__dirname,'..','cloudflare-worker-full.js'),'utf8');
 assert.match(worker,/comic-sweep/);
