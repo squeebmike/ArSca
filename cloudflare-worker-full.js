@@ -892,7 +892,7 @@ export default {
       const storeId = String(url.searchParams.get('store_id') || '').trim();
       if (!/^[0-9a-z_-]{2,80}$/i.test(storeId)) return json({ ok:false, error:'Valid store_id required' }, 400);
       if (!(env.SUPABASE_URL && (env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_KEY))) return json({ ok:false, error:'Storefront service unavailable' }, 503);
-      const { data:settings } = await supabaseAdminFetch(env, `store_settings?store_id=eq.${encodeURIComponent(storeId)}&select=receipt_settings,theme&limit=1`);
+      const { data:settings } = await supabaseAdminFetch(env, `store_settings?store_id=eq.${encodeURIComponent(storeId)}&select=receipt_settings,theme,modules&limit=1`);
       const cfg = settings?.[0]?.receipt_settings || {};
       if (cfg.storefrontEnabled !== true) return json({ ok:false, error:'Storefront is not published' }, 404);
       const { data:stores } = await supabaseAdminFetch(env, `stores?id=eq.${encodeURIComponent(storeId)}&select=id,name,display_name&limit=1`);
@@ -900,12 +900,28 @@ export default {
       if (!response?.ok) return json({ ok:false, error:'Inventory unavailable' }, 502);
       const cleanText = (v,n=240) => String(v == null ? '' : v).trim().slice(0,n);
       const cleanUrl = v => { const s=cleanText(v,1000); return /^https?:\/\//i.test(s)||/^data:image\//i.test(s)?s:''; };
-      const items = (rows || []).map(row => { const d=row.data || {}; const rawQty=d.quantity ?? d.qty ?? 1; const quantity=Number.isFinite(Number(rawQty))?Number(rawQty):1; const inventoryStatus=cleanText(d.lifecycle || d.status || row.status || 'in_stock',40).toLowerCase(); return {
+      const linkedWfIds = new Set((rows || []).map(row => row.data?.wfId || row.data?.webflowId).filter(Boolean).map(String));
+      let items = (rows || []).map(row => { const d=row.data || {}; const rawQty=d.quantity ?? d.qty ?? 1; const quantity=Number.isFinite(Number(rawQty))?Number(rawQty):1; const inventoryStatus=cleanText(d.lifecycle || d.status || row.status || 'in_stock',40).toLowerCase(); return {
         id:cleanText(row.id,80), name:cleanText(d.name || d.title || 'Item'), category:cleanText(d.category || d.type || 'Other',80),
         set:cleanText(d.set || d.series || '',120), year:cleanText(d.year || '',12), variant:cleanText(d.variant || d.finish || '',120), condition:cleanText(d.condition || d.grade || '',80),
         price:Number(d.listPrice || d.salePrice || d.price || d.market || 0) || 0, image:cleanUrl(d.image || d.img || d.imageUrl || d.image_url || d.photo),
         quantity, inventoryStatus, soldAt:d.soldAt || d.sold_at || '', archivedAt:d.archivedAt || '', addedAt:row.created_at || '', updatedAt:row.updated_at || ''
       }; }).filter(i => i.name && i.quantity > 0 && !i.soldAt && !i.archivedAt && !['sold','archived','returned','deleted'].includes(i.inventoryStatus));
+      const inventorySource = cleanText(settings?.[0]?.modules?.inventorySource || '',40).toLowerCase();
+      if ((inventorySource === 'webflow' || inventorySource === 'hybrid') && env.WEBFLOW_TOKEN) {
+        const webflowItems=[];
+        for(let offset=0;offset<1000;offset+=100){
+          const wfRes=await fetch(`${WEBFLOW_BASE}/collections/${WF_PRODUCTS}/items?limit=100&offset=${offset}`,{headers:{Authorization:'Bearer '+env.WEBFLOW_TOKEN,accept:'application/json'}});
+          if(!wfRes.ok)break;
+          const wfData=await wfRes.json(),batch=Array.isArray(wfData.items)?wfData.items:[];
+          webflowItems.push(...batch);
+          if(batch.length<100)break;
+        }
+        const mappedWebflow=webflowItems.filter(row=>!linkedWfIds.has(String(row.id))).map(row=>{const d=row.fieldData||{};const quantity=Number(d['inventory-count']??1);const isSold=d['sold-out']===true||String(d.status||'').toLowerCase().includes('sold');return {
+          id:cleanText(row.id,80),name:cleanText(d.name||'Item'),category:cleanText(d['card-category']||d.category||d['custom-category']||d['item-type']||'Other',80),set:cleanText(d['set-name']||'',120),year:cleanText(d.year||'',12),variant:cleanText(d.variant||'',120),condition:cleanText(d.condition||'',80),price:Number(d['list-price']||d['sale-price']||d['retail-price']||d.msrp||0)||0,image:cleanUrl(d['image-url']||d.photoDataUrl||d.thumbnail?.url),quantity,inventoryStatus:isSold?'sold':'in_stock',soldAt:d['date-sold']||'',archivedAt:'',addedAt:d['date-added']||row.createdOn||'',updatedAt:row.lastUpdated||row.updatedOn||''
+        };}).filter(i=>i.name&&i.quantity>0&&i.inventoryStatus==='in_stock'&&!i.soldAt);
+        items=[...items,...mappedWebflow];
+      }
       const store = stores?.[0] || {};
       return json({ ok:true, store:{ id:storeId, name:cleanText(cfg.storeName || cfg.shortName || store.display_name || store.name || 'Store',120), location:cleanText(cfg.location,160), website:cleanUrl(cfg.website), email:cleanText(cfg.email,200), phone:cleanText(cfg.phone,80), logo:cleanUrl(cfg.logo), message:cleanText(cfg.storefrontMessage,500), theme:settings?.[0]?.theme || {} }, items, updatedAt:new Date().toISOString() }, 200, { 'Cache-Control':'public, max-age=60, stale-while-revalidate=300' });
     }

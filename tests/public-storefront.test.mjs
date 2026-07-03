@@ -6,6 +6,7 @@ const storefront=fs.readFileSync(new URL('../storefront.html',import.meta.url),'
 assert.match(worker,/\/public\/storefront/);
 assert.match(worker,/storefrontEnabled !== true/,'storefront is opt-in');
 assert.match(worker,/\['sold','archived','returned','deleted'\]\.includes\(i\.inventoryStatus\)/,'legacy and current statuses are filtered safely');
+assert.match(worker,/inventorySource === 'webflow' \|\| inventorySource === 'hybrid'/,'hybrid stores publish Webflow inventory too');
 for(const privateField of ['cost','profit','consignor','notes']) assert.doesNotMatch(storefront,new RegExp(`i\\.${privateField}`,'i'),`${privateField} is not rendered`);
 assert.match(dashboard,/PUBLIC INVENTORY STOREFRONT/);
 assert.match(dashboard,/copyStorefrontLink/);
