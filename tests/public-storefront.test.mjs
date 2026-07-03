@@ -5,7 +5,7 @@ const worker=fs.readFileSync(new URL('../cloudflare-worker-full.js',import.meta.
 const storefront=fs.readFileSync(new URL('../storefront.html',import.meta.url),'utf8');
 assert.match(worker,/\/public\/storefront/);
 assert.match(worker,/storefrontEnabled !== true/,'storefront is opt-in');
-assert.match(worker,/status=eq\.in_stock/,'only in-stock inventory is public');
+assert.match(worker,/\['sold','archived','returned','deleted'\]\.includes\(i\.inventoryStatus\)/,'legacy and current statuses are filtered safely');
 for(const privateField of ['cost','profit','consignor','notes']) assert.doesNotMatch(storefront,new RegExp(`i\\.${privateField}`,'i'),`${privateField} is not rendered`);
 assert.match(dashboard,/PUBLIC INVENTORY STOREFRONT/);
 assert.match(dashboard,/copyStorefrontLink/);

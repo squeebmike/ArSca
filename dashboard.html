@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.07.03.02-public-storefront">
+<meta name="version" content="2026.07.03.03-inventory-visibility">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -646,6 +646,15 @@ body.show-mode .show-mode-toggle { border-color:rgba(0,255,179,.4); color:var(--
 .rab-cart { background:rgba(255,209,102,.12); border-color:rgba(255,209,102,.4); color:var(--gold); }
 .rab-edit { background:rgba(199,125,255,.1); border-color:rgba(199,125,255,.35); color:var(--purple); }
 .rab-more { background:var(--surf2); border-color:var(--border); color:var(--dim); min-width:42px; padding:0 10px; font-size:16px; }
+
+@media(min-width:1100px){
+  #tab-inventory .sec,#tab-inventory .tc,#tab-inventory .tbl-wrap,#tab-inventory #inventory-health-panel,#tab-inventory #inv-card-grid-container,#tab-inventory .pager{max-width:1880px;width:calc(100% - 32px);padding-left:8px;padding-right:8px}
+  #tab-inventory table{font-size:14px;table-layout:auto}
+  #tab-inventory th{font-size:10px;padding:11px 12px;letter-spacing:1.4px;color:color-mix(in srgb,var(--text) 62%,var(--bg))}
+  #tab-inventory td{padding:12px 12px;line-height:1.38}
+  #tab-inventory th:nth-child(2){min-width:255px}#tab-inventory th:nth-child(3){min-width:220px}#tab-inventory th:nth-child(6){min-width:105px}#tab-inventory th:nth-child(9){min-width:150px}#tab-inventory th:nth-child(10){min-width:330px}
+  #tab-inventory .nc{font-size:14px;line-height:1.35}#tab-inventory .sc2{font-size:11px;line-height:1.45;color:color-mix(in srgb,var(--text) 70%,var(--bg))}#tab-inventory .pp{font-size:13px}
+}
 
 /* ── Inventory card view — 3 buttons ──────────────────────────────────────── */
 .inv-card-actions { display:grid; grid-template-columns:1fr 1fr; gap:5px; margin-top:auto; padding-top:8px; }
@@ -1371,9 +1380,9 @@ body.show-mode .inv-sync-badge{display:none;}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-<script src="scripts/query-routing.js?v=2026.07.03.02-public-storefront"></script>
-<script src="scripts/barcode-lookup.js?v=2026.07.03.02-public-storefront"></script>
-<script src="scripts/comic-issue-hub.js?v=2026.07.03.02-public-storefront"></script>
+<script src="scripts/query-routing.js?v=2026.07.03.03-inventory-visibility"></script>
+<script src="scripts/barcode-lookup.js?v=2026.07.03.03-inventory-visibility"></script>
+<script src="scripts/comic-issue-hub.js?v=2026.07.03.03-inventory-visibility"></script>
 <script src="scripts/mtg/mtg-offline-browser.js?v=2026.07.01.04-mtg-offline-set-browser"></script>
 </head>
 <body>
@@ -1424,7 +1433,7 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.07.03.02-public-storefront</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.07.03.03-inventory-visibility</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
@@ -1451,7 +1460,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.07.03.02-public-storefront</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.07.03.03-inventory-visibility</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -1624,7 +1633,6 @@ body.show-mode .inv-sync-badge{display:none;}
       <tbody id="tbody"></tbody>
     </table>
   </div>
-  </div><!-- end inv-table-wrap -->
   <div class="pager" id="pager"></div>
 </div>
 
@@ -2762,7 +2770,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.07.03.02-public-storefront';
+const APP_VERSION = '2026.07.03.03-inventory-visibility';
 window.APP_VERSION = APP_VERSION;
 const branchName = 'main';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
@@ -10007,6 +10015,7 @@ function showInvRowMenu(e, id, isInStock){
     `<button class="hbtn" style="${btnStyle};color:var(--blue)" onclick="openInventoryItemInResearch('${id}');this.closest('.inv-row-menu').remove()">🔍 Research</button>`,
     `<button class="hbtn" style="${btnStyle}" onclick="openEbayFromDash('${id}');this.closest('.inv-row-menu').remove()">📦 eBay List</button>`,
     `<button class="hbtn" style="${btnStyle}" onclick="showItemHistory?.('${id}');this.closest('.inv-row-menu').remove()">📋 History</button>`,
+    `<button class="hbtn" style="${btnStyle};color:var(--blue)" onclick="sendInventoryItemToAuthCheck('${id}');this.closest('.inv-row-menu').remove()">✓ Authentication Check</button>`,
     `<button class="hbtn" style="${btnStyle}color:var(--gold)" onclick="archiveInventoryItem('${id}');this.closest('.inv-row-menu').remove()">Archive</button>`,
     isInStock?`<button class="hbtn danger" style="${btnStyle}" onclick="deleteInventoryRecord('${id}');this.closest('.inv-row-menu').remove()">Delete Test / Accident</button>`:'',
   ].filter(Boolean).join('');
@@ -12509,8 +12518,8 @@ function renderTable(){
       : `<td class="td-thumb" onclick="${researchClick}" style="cursor:pointer" title="Open in Research"><div class="inv-thumb-placeholder">🔍</div></td>`;
     return `<tr class="${ins?'':'sold'}" data-item-id="${i.id}">
       ${thumbCell}
-      <td><span class="dot ${ins?'in_stock':'sold'}"></span><span class="nc" title="${i.tcgCardId?'TCG ID: '+i.tcgCardId:''}" onclick="${researchClick}" style="cursor:pointer">${i.name}${i.isRookie?' <span style="color:var(--gold);font-size:8px">RC</span>':''}${i.tcgCardId?'<span style="font-family:monospace;font-size:7px;color:rgba(0,255,179,.4);margin-left:4px">●</span>':''}</span></td>
-      <td><span class="sc2">${[i.set,i.variant].filter(Boolean).join(' · ')||'—'}</span></td>
+      <td><span class="dot ${ins?'in_stock':'sold'}"></span><span class="nc" title="${i.tcgCardId?'TCG ID: '+i.tcgCardId:''}" onclick="${researchClick}" style="cursor:pointer">${i.name}${i.isRookie?' <span style="color:var(--gold);font-size:8px">RC</span>':''}${i.tcgCardId?'<span style="font-family:monospace;font-size:7px;color:rgba(0,255,179,.4);margin-left:4px">●</span>':''}</span><div class="sc2" style="margin:5px 0 0 12px">${escHtml([i.consignorName||i.inventoryOwner||'Store owned',i.inventorySku||i.sku||''].filter(Boolean).join(' · '))}</div></td>
+      <td><span class="sc2">${escHtml([i.set,i.variant].filter(Boolean).join(' · ')||'—')}</span><div class="sc2" style="margin-top:5px">${escHtml([i.year,i.condition,i.location].filter(Boolean).join(' · '))}</div></td>
       <td><span class="ct ${cat}">${i.category}</span></td>
       <td style="text-align:center;font-family:var(--font-mono);font-size:11px;color:${(i.qty||1)>1?'var(--g)':'var(--dim)'}">${i.qty||1}</td>
       <td class="pp pm">${money.market>0?fd$(money.market):'—'}<br>${money.list>0?`<span style="font-family:var(--font-mono);font-size:8px;color:var(--dim)">LIST ${fd$(money.list)}</span><br>`:''}${priceSourceBadge(i.priceSource, i.category)}${stale?'<br><span class="inv-warning-pill">STALE</span>':''}</td>
@@ -12533,18 +12542,6 @@ function renderTable(){
       nameCell.insertAdjacentHTML('beforeend', `<br><span style="font-family:monospace;font-size:8px;color:var(--dim)">${String(item.source||getInventorySource()).replace('_',' ').toUpperCase()}</span>`);
     }
     const actCell = tr.children[9];
-    if(item && actCell && !actCell.querySelector('.history-btn')) {
-      actCell.querySelector('.row-act-v2,.row-act')?.insertAdjacentHTML('beforeend', `<button class="ra history-btn" onclick="openItemTimeline('${item.id}')">History</button>`);
-    }
-    if(item && actCell && !actCell.querySelector('.auth-btn')) {
-      actCell.querySelector('.row-act-v2,.row-act')?.insertAdjacentHTML('beforeend', `<button class="ra auth-btn" style="background:rgba(72,202,228,.08);border-color:rgba(72,202,228,.24);color:var(--blue)" onclick="sendInventoryItemToAuthCheck('${item.id}')">Auth</button>`);
-    }
-    if(item && actCell && !actCell.querySelector('.archive-btn')) {
-      const archived = item.lifecycle === 'archived' || item.status === 'archived' || item.archivedAt;
-      actCell.querySelector('.row-act-v2,.row-act')?.insertAdjacentHTML('beforeend', archived
-        ? `<button class="ra archive-btn" style="background:rgba(0,255,179,.08);border-color:rgba(0,255,179,.22);color:var(--g)" onclick="restoreInventoryItem('${item.id}')">Restore</button><button class="ra" style="background:rgba(255,77,109,.08);border-color:rgba(255,77,109,.24);color:var(--red)" onclick="hardDeleteInventoryItem('${item.id}')">Hard Delete</button>`
-        : `<button class="ra archive-btn" style="background:rgba(255,209,102,.08);border-color:rgba(255,209,102,.22);color:var(--gold)" onclick="archiveInventoryItem('${item.id}')">Archive</button>`);
-    }
     const cell = tr.children[8];
     if(!item || !cell) return;
     const current = item.lifecycle || (item.status === 'sold' ? 'sold' : 'in_stock');
