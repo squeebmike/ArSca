@@ -31,6 +31,8 @@ All Connect, payment-status, PaymentIntent, and refund routes authenticate the S
 
 Settings → Payments creates or reuses a full-Dashboard connected account and opens Stripe-hosted onboarding. Stripe collects bank, business, tax, and identity information. ArSca shows details-submitted, charges-enabled, payouts-enabled, requirements, disabled reason, fee-payer verification, and test/live mode. Full-Dashboard accounts use their normal Stripe sign-in; Express login links remain supported for pre-existing Express accounts.
 
+The Settings information-architecture pass places these existing controls under **Checkout & Payments**. It does not alter onboarding, charge routing, fee-payer enforcement, webhook processing, or refund behavior.
+
 ## Checkout and manual tenders
 
 Cash and Venmo/PayPal/Cash App QR flows remain manual-confirmed tenders. Stripe Card is provider-verified: ArSca persists a pending sale, the Worker validates its total, creates a direct-charge PaymentIntent, Stripe's Payment Element collects card data, and the sale finalizes only after a Worker status check returns `succeeded`. Declines, cancellation, processing states, and setup errors do not finalize inventory.

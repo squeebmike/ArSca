@@ -1360,6 +1360,9 @@ body.show-mode .inv-sync-badge{display:none;}
   #qpl-search-row #qpl-input{flex:1 1 100%!important;}
   #qpl-search-row .hbtn{flex:1 1 130px;min-height:44px;}
 }
+/* Settings information architecture shell */
+.settings-shell{display:grid;grid-template-columns:230px minmax(0,1fr);gap:16px;align-items:start;max-width:1400px;margin:0 auto;padding-bottom:28px}.settings-sidebar{position:sticky;top:12px;border:1px solid var(--border);border-radius:12px;background:var(--surf);padding:10px;max-height:calc(100vh - 150px);overflow:auto}.settings-search{width:100%;min-height:42px;margin:0 0 8px;background:var(--surf2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:9px 10px;font-family:var(--font-mono);font-size:11px}.settings-nav{display:grid;gap:4px}.settings-nav-btn{width:100%;min-height:40px;text-align:left;border:1px solid transparent;border-radius:8px;background:transparent;color:var(--dim);padding:8px 10px;font-family:var(--font-mono);font-size:10px;cursor:pointer}.settings-nav-btn:hover,.settings-nav-btn.on{color:var(--g);border-color:rgba(0,255,179,.28);background:rgba(0,255,179,.07)}.settings-mobile-select{display:none;width:100%;min-height:46px;background:var(--surf);border:1px solid var(--border);border-radius:9px;color:var(--text);padding:8px 10px;font-family:var(--font-mono)}.settings-content{min-width:0}.settings-section{display:none;min-width:0}.settings-section.on{display:block}.settings-section-head{margin-bottom:12px;padding:2px 2px 10px;border-bottom:1px solid var(--border)}.settings-section-title{font-family:'Orbitron',var(--font-mono);font-size:18px;color:var(--text);letter-spacing:.04em}.settings-section-subtitle{font-family:var(--font-mono);font-size:10px;line-height:1.6;color:var(--dim);margin-top:5px;max-width:900px}.settings-overview-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}.settings-overview-card{border:1px solid var(--border);border-radius:10px;background:var(--surf);padding:12px;display:grid;gap:8px;min-height:150px}.settings-overview-card h3{font-size:13px;margin:0;color:var(--text)}.settings-overview-card p{font-family:var(--font-mono);font-size:10px;line-height:1.55;color:var(--dim);margin:0}.settings-overview-card .hbtn{justify-self:start}.settings-status{display:inline-flex;width:max-content;border:1px solid var(--border);border-radius:999px;padding:3px 7px;font-family:var(--font-mono);font-size:8px;letter-spacing:.05em;color:var(--dim)}.settings-status.working,.settings-status.offline-ready{color:var(--g);border-color:rgba(0,255,179,.35)}.settings-status.needs-setup,.settings-status.local-fallback,.settings-status.planned{color:var(--gold);border-color:rgba(255,209,102,.38)}.settings-status.error,.settings-status.blocked{color:var(--red);border-color:rgba(255,77,109,.38)}.settings-status.online-only,.settings-status.advanced{color:var(--blue);border-color:rgba(72,202,228,.38)}.settings-search-results{display:none;margin:0 0 10px;border:1px solid var(--border);border-radius:9px;background:var(--surf2);padding:6px}.settings-search-results.on{display:grid;gap:4px}.settings-search-result{border:0;background:transparent;color:var(--text);text-align:left;padding:8px;border-radius:6px;font-family:var(--font-mono);font-size:10px;cursor:pointer}.settings-search-result:hover{background:rgba(0,255,179,.08);color:var(--g)}.settings-explainer{border:1px solid rgba(72,202,228,.28);background:rgba(72,202,228,.06);border-radius:10px;padding:12px;margin-bottom:12px;font-family:var(--font-mono);font-size:10px;line-height:1.65;color:var(--dim)}.settings-generated-panel{border:1px solid var(--border);border-radius:10px;background:var(--surf);padding:12px;margin-bottom:14px}
+@media(max-width:760px){#backoffice-panels{padding:0 10px!important}.settings-shell{display:block}.settings-sidebar{position:static;max-height:none;padding:0;border:0;background:transparent;margin-bottom:10px}.settings-nav{display:none}.settings-mobile-select{display:block;margin-bottom:8px}.settings-overview-grid{grid-template-columns:1fr}.settings-section .panel,.settings-section .settings-panel{overflow:hidden}.settings-section [style*="grid-template-columns:repeat(3"],.settings-section [style*="grid-template-columns:2fr 1fr auto"],.settings-section [style*="grid-template-columns:minmax(220px,320px) 1fr"]{grid-template-columns:1fr!important}.settings-section .hbtn{white-space:normal}}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
@@ -2754,7 +2757,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.07.02.06-cloud-consignments-stripe-foundation';
+const APP_VERSION = '2026.07.02.07-settings-architecture';
 window.APP_VERSION = APP_VERSION;
 const branchName = 'main';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
@@ -4938,6 +4941,93 @@ function moveNode(id, target){
   if(el && target && el.parentElement !== target) target.appendChild(el);
 }
 
+const SETTINGS_SECTIONS = [
+  {id:'overview',label:'Overview',subtitle:'Store readiness and health at a glance.',keywords:'status health setup stripe refunds sync consignments pokemon mtg pricecharting theme imports users cash bag debug'},
+  {id:'profile',label:'Store Profile',subtitle:'Store identity, receipts, operational defaults, and public contact details.',keywords:'store vendor profile logo name website phone email location tax buy markdown receipt shipping venmo paypal cash app'},
+  {id:'payments',label:'Checkout & Payments',subtitle:'Tender methods, QR payment links, Stripe Connect status, and refund access.',keywords:'checkout payments cash card stripe qr venmo paypal cash app refunds fee payer webhook cash bag receipt customer display'},
+  {id:'sync',label:'Data Sync',subtitle:'Store Data Sync keeps inventory, sales, settings, users, queues, and consignment data consistent across devices and cloud.',keywords:'sync queue cloud inventory pull push pending failed conflicts consignments sql device webflow'},
+  {id:'catalogs',label:'Catalogs & Pricing',subtitle:'Research reference catalogs, provider pricing, and optional offline data.',keywords:'catalog pricing pokemon pokémon ppt mtg scryfall pricecharting comics sports topps csv cache research offline'},
+  {id:'inventory',label:'Inventory & Imports',subtitle:'Add, import, export, and inspect store-owned inventory data.',keywords:'inventory imports csv spreadsheet export ebay buy offers quick add template threshold data health'},
+  {id:'users',label:'Users & Permissions',subtitle:'Store members, invitations, roles, and access boundaries.',keywords:'users members invites owner admin staff cashier scanner refunds permissions roles'},
+  {id:'devices',label:'Devices & Hardware',subtitle:'Register identity and the hardware surfaces used around the store.',keywords:'device hardware barcode scanner phone inbox printer cash drawer customer display stripe reader vending register'},
+  {id:'theme',label:'Theme & Branding',subtitle:'Colors, fonts, layout radius, logo, and customer-screen appearance.',keywords:'theme branding colors fonts logo background preview radius'},
+  {id:'subscription',label:'Subscription & Billing',subtitle:'ArSca software plan and subscription status—not customer checkout payments.',keywords:'subscription billing trial plan subscribe renewal portal'},
+  {id:'advanced',label:'Advanced / Diagnostics',subtitle:'Diagnostics, readiness checks, raw IDs, caches, QA, and legacy tools.',keywords:'advanced diagnostics qa debug rls account data mode cache api legacy tool map health flags reset'}
+];
+
+const SETTINGS_PANEL_MAP = {
+  profile:['vendor-profile-panel'],
+  payments:['payment-settings-panel'],
+  sync:['inventory-sync-panel','sync-queue-panel'],
+  catalogs:['backoffice-research-panel','offline-cache-panel','pokemon-export-panel','offline-catalog-manager-panel','pricecharting-data-panel'],
+  inventory:['spreadsheet-panel'],
+  users:['store-members-panel'],
+  theme:['branding-theme-panel'],
+  subscription:['subscription-panel'],
+  advanced:['admin-lock-panel','vendor-config-panel','backoffice-system-panel','backoffice-ops-panel','pricing-qa-panel','data-mode-panel','customer-panel','data-health-panel','help-walkthrough-panel','legacy-tools-panel']
+};
+
+function settingsSectionMarkup(section){return `<section class="settings-section" id="settings-section-${section.id}" data-settings-section="${section.id}"><div class="settings-section-head"><div class="settings-section-title">${escHtml(section.label)}</div><div class="settings-section-subtitle">${escHtml(section.subtitle)}</div></div><div class="settings-section-panels" id="settings-panels-${section.id}"></div></section>`;}
+function settingsStatus(label,kind='working'){return `<span class="settings-status ${kind}">${escHtml(label)}</span>`;}
+function settingsOverviewCard(title,status,kind,detail,section){return `<article class="settings-overview-card"><div>${settingsStatus(status,kind)}</div><h3>${escHtml(title)}</h3><p>${escHtml(detail)}</p><button class="hbtn" onclick="selectSettingsSection('${section}')">MANAGE</button></article>`;}
+
+function renderSettingsOverview(){
+  const host=document.getElementById('settings-overview-grid');if(!host)return;
+  const profile=getVendorProfile(),payments=getPaymentSettings(),queue=getSyncQueue(),failed=queue.filter(x=>x.status==='failed').length,conflicts=getConflictItemIds().length;
+  const enabled=getEnabledPaymentMethods().map(m=>m.label),profileReady=!!(profile.storeName&&profile.location),stripeConfigured=!!document.getElementById('stripe-connect-summary')&&!/not connected|not started|checking|loading/i.test(document.getElementById('stripe-connect-summary')?.textContent||'');
+  const consignLocal=(consignItems||[]).length+(consignorPeople||[]).length,cloudReady=!!consignmentCloudReady,sub=window._subStatus||{},members=getAuthSession()?.stores?.length||1;
+  const debugOn=localStorage.getItem('walkoff_debug_mode')==='true'||localStorage.getItem('inventory_debug_mode')==='true';
+  host.innerHTML=[
+    settingsOverviewCard('Store Profile',profileReady?'Working':'Needs Setup',profileReady?'working':'needs-setup',profileReady?`${profile.storeName} · ${profile.location}`:'Add store name, location, receipt, and contact details.','profile'),
+    settingsOverviewCard('Checkout & Payments',stripeConfigured?'Working':'Needs Setup',stripeConfigured?'working':'needs-setup',`${enabled.length?enabled.join(', '):'No tenders enabled'} · refunds Owner/Admin only`,'payments'),
+    settingsOverviewCard('Cloud Consignments',cloudReady?'Working':'Local Fallback',cloudReady?'working':'local-fallback',cloudReady?`${consignLocal} local/cloud records for this store`:`${consignLocal} cached records · cloud schema or connection still needed`,'sync'),
+    settingsOverviewCard('Store Data Sync',failed||conflicts?'Error':queue.filter(x=>x.status!=='done').length?'Needs Setup':'Working',failed||conflicts?'error':queue.filter(x=>x.status!=='done').length?'needs-setup':'working',`${queue.filter(x=>x.status!=='done').length} pending · ${failed} failed · ${conflicts} conflicts · ${navigator.onLine?'online':'offline'}`,'sync'),
+    settingsOverviewCard('Catalogs & Pricing','Offline Ready','offline-ready','MTG offline protected · Pokémon live active · PPT offline planned · comics/sports online only','catalogs'),
+    settingsOverviewCard('Inventory & Imports',all.length?'Working':'Needs Setup',all.length?'working':'needs-setup',`${all.length} inventory records · imports and exports available`,'inventory'),
+    settingsOverviewCard('Subscription',sub.status?roleLabel(sub.status):'Needs Setup',sub.active?'working':'needs-setup',sub.daysRemaining?`${sub.daysRemaining} trial days remaining`:'ArSca software billing and plan status','subscription'),
+    settingsOverviewCard('Users',members?'Working':'Needs Setup',members?'working':'needs-setup',`${members} accessible store membership${members===1?'':'s'} · manage staff and invites`,'users'),
+    settingsOverviewCard('Advanced Health',debugOn?'Advanced':'Working',debugOn?'advanced':'working',`${debugOn?'Debug mode enabled':'Debug mode off'} · QA, RLS, readiness, and raw IDs`,'advanced')
+  ].join('');
+}
+
+function renderSettingsGeneratedPanels(){
+  const overview=document.getElementById('settings-panels-overview');if(overview&&!document.getElementById('settings-overview-grid'))overview.innerHTML='<div id="settings-overview-grid" class="settings-overview-grid"></div>';
+  const sync=document.getElementById('settings-panels-sync');if(sync&&!document.getElementById('cloud-consignment-settings-status'))sync.insertAdjacentHTML('afterbegin',`<div class="settings-generated-panel" id="cloud-consignment-settings-status"><div class="ph">CLOUD CONSIGNMENTS ${settingsStatus(consignmentCloudReady?'Working':'Local Fallback',consignmentCloudReady?'working':'local-fallback')}</div><div style="font-family:var(--font-mono);font-size:10px;line-height:1.65;color:var(--dim)">${consignmentCloudReady?'Per-store consignors, inventory, and sale alerts are syncing through Supabase.':'This device is using its store-scoped local cache. Apply the cloud migration and reconnect to activate cross-device sync.'}<br>People: ${consignorPeople.length} · Items: ${consignItems.length} · Sale alerts: ${getConsignmentAlerts().length}</div></div>`);
+  const catalogs=document.getElementById('settings-panels-catalogs');if(catalogs&&!document.getElementById('catalog-data-concepts'))catalogs.insertAdjacentHTML('afterbegin',`<div class="settings-explainer" id="catalog-data-concepts"><b style="color:var(--text)">Three different data concepts</b><br>1. Store Data Sync — your inventory, sales, settings, users, queues, and consignments.<br>2. Offline Catalog Sync — reference catalogs downloaded to this device; they never create inventory.<br>3. Live Provider Pricing — live or scheduled candidate prices from PriceCharting, Scryfall, and PokemonPriceTracker.<br><br><b style="color:var(--g)">MTG Offline Catalog: Working.</b> Scryfall cards + PriceCharting snapshot; pipeline and image cache remain untouched.<br><b style="color:var(--gold)">Pokémon Offline Catalog: Planned next.</b> PPT offline pipeline is not built in this pass.<br>Comics and sports remain online-only; comic provider images remain URL-only.</div>`);
+  const devices=document.getElementById('settings-panels-devices');if(devices&&!document.getElementById('devices-hardware-summary'))devices.innerHTML=`<div class="settings-overview-grid" id="devices-hardware-summary">${[['Barcode Scanner','Working','Camera/USB barcode evidence input'],['Phone Scan Inbox','Working','Scanner queue and tablet handoff'],['Receipt Printer','Planned','Browser print workflow; no dedicated driver'],['Cash Drawer','Working','Cash Bag tracking through checkout'],['Customer Display','Working','Cart and payment-method display'],['Stripe Reader','Planned','Coming later; no Terminal integration'],['Vending Hardware','Planned','Future hardware integration'],['Register / Device ID','Working',getDealerDeviceId()]].map(([a,b,c])=>`<article class="settings-overview-card"><div>${settingsStatus(b,b==='Working'?'working':'planned')}</div><h3>${a}</h3><p>${escHtml(c)}</p></article>`).join('')}</div>`;
+  const users=document.getElementById('settings-panels-users');if(users&&!document.getElementById('permissions-summary'))users.insertAdjacentHTML('afterbegin',`<div class="settings-generated-panel" id="permissions-summary"><div class="ph">PERMISSION SUMMARY</div><div style="font-family:var(--font-mono);font-size:10px;line-height:1.65;color:var(--dim)">Owner/Admin: payment setup, refunds, members, store configuration, and advanced tools.<br>Manager/Staff: inventory and checkout according to existing role gates.<br>Scanner Only: phone scanner workflow. Stripe refunds remain Owner/Admin only.</div></div>`);
+  const advanced=document.getElementById('settings-panels-advanced');if(advanced&&!document.getElementById('advanced-settings-warning'))advanced.insertAdjacentHTML('afterbegin','<div class="settings-explainer" id="advanced-settings-warning" style="border-color:rgba(255,209,102,.35)"><b style="color:var(--gold)">Advanced tools can affect local data, caches, sync queues, and diagnostics. Use carefully.</b><br>Legacy Tool Map is temporary during the UI refactor. Existing confirmation prompts remain in place.</div>');
+  renderSettingsOverview();
+}
+
+function selectSettingsSection(id='overview'){
+  if(!SETTINGS_SECTIONS.some(s=>s.id===id))id='overview';
+  document.querySelectorAll('.settings-section').forEach(el=>el.classList.toggle('on',el.dataset.settingsSection===id));
+  document.querySelectorAll('.settings-nav-btn').forEach(el=>el.classList.toggle('on',el.dataset.settingsTarget===id));
+  const select=document.getElementById('settings-mobile-section');if(select)select.value=id;
+  localStorage.setItem('settings_active_section_v1',id);
+  if(id==='overview')renderSettingsOverview();
+  if(id==='sync'){renderInventorySyncPanel();renderSyncQueue();}
+  if(id==='payments'){renderPaymentSettingsPanel();}
+  if(id==='users'){renderStoreMembersPanel();}
+  document.getElementById('settings-shell')?.scrollIntoView({block:'start'});
+}
+function openSettingsSection(id,targetId){switchTab('backoffice');selectSettingsSection(id);setTimeout(()=>document.getElementById(targetId||('settings-section-'+id))?.scrollIntoView({behavior:'smooth',block:'start'}),80);}
+
+function searchSettings(value){
+  const q=String(value||'').trim().toLowerCase(),host=document.getElementById('settings-search-results');if(!host)return;
+  if(!q){host.classList.remove('on');host.innerHTML='';return;}
+  const matches=SETTINGS_SECTIONS.filter(s=>(s.label+' '+s.subtitle+' '+s.keywords).toLowerCase().includes(q));
+  host.innerHTML=matches.length?matches.map(s=>`<button class="settings-search-result" onclick="selectSettingsSection('${s.id}');document.getElementById('settings-search-results').classList.remove('on')"><b>${escHtml(s.label)}</b><br><span style="color:var(--dim)">${escHtml(s.subtitle)}</span></button>`).join(''):'<div style="padding:8px;font-family:var(--font-mono);font-size:10px;color:var(--dim)">No matching settings section.</div>';host.classList.add('on');
+}
+
+function ensureSettingsShell(backoffice){
+  if(!backoffice)return;let shell=document.getElementById('settings-shell'),isNew=!shell;
+  if(!shell){shell=document.createElement('div');shell.id='settings-shell';shell.className='settings-shell';shell.innerHTML=`<aside class="settings-sidebar"><input id="settings-search" class="settings-search" placeholder="Search settings…" oninput="searchSettings(this.value)"><div id="settings-search-results" class="settings-search-results"></div><select id="settings-mobile-section" class="settings-mobile-select" onchange="selectSettingsSection(this.value)">${SETTINGS_SECTIONS.map(s=>`<option value="${s.id}">${escHtml(s.label)}</option>`).join('')}</select><nav class="settings-nav">${SETTINGS_SECTIONS.map(s=>`<button class="settings-nav-btn" data-settings-target="${s.id}" onclick="selectSettingsSection('${s.id}')">${escHtml(s.label)}</button>`).join('')}</nav></aside><main class="settings-content">${SETTINGS_SECTIONS.map(settingsSectionMarkup).join('')}</main>`;backoffice.appendChild(shell);}
+  Object.entries(SETTINGS_PANEL_MAP).forEach(([section,ids])=>{const target=document.getElementById('settings-panels-'+section);ids.forEach(id=>moveNode(id,target));});
+  renderSettingsGeneratedPanels();selectSettingsSection(isNew?'overview':(localStorage.getItem('settings_active_section_v1')||'overview'));
+}
+
 function organizeRegisterLayout(){
   const register = document.getElementById('tab-pos');
   const intake = document.getElementById('intake-panels');
@@ -4979,6 +5069,7 @@ function organizeRegisterLayout(){
   ensureResearchSettingsPanel(backoffice);
   ensurePriceChartingDataPanel(backoffice);
   ensureOfflineCachePanel(backoffice);
+  ensurePokemonExportPanel(backoffice);
   ensureOfflineCatalogManagerPanel(backoffice);
   ensurePricingQaPanel(backoffice);
   ensureStoreMembersPanel(backoffice);
@@ -4994,6 +5085,7 @@ function organizeRegisterLayout(){
   ensureDataHealthPanel(backoffice);
   ensureInventoryToolsPanel();
   ensurePermissionLockPanels(backoffice, shows, channels);
+  ensureSettingsShell(backoffice);
   applyVendorConfig();
 }
 
@@ -7458,7 +7550,7 @@ function onboardingTasks(){
       detail:(cfg.inventorySource || 'built_in').replace('_',' ') + ' selected',
       done:!!cfg.inventorySource,
       action:'SET SOURCE',
-      run:() => { switchTab('backoffice'); document.getElementById('vendor-config-panel')?.scrollIntoView({behavior:'smooth', block:'start'}); }
+      run:() => openSettingsSection('advanced','vendor-config-panel')
     },
     {
       key:'payments',
@@ -7466,7 +7558,7 @@ function onboardingTasks(){
       detail:hasPayment ? 'Checkout has at least one tender enabled' : 'Add Venmo, PayPal, Cash App, card, or cash settings',
       done:hasPayment,
       action:'PAYMENTS',
-      run:() => { switchTab('backoffice'); document.getElementById('payment-settings-panel')?.scrollIntoView({behavior:'smooth', block:'start'}); }
+      run:() => openSettingsSection('payments','payment-settings-panel')
     },
     {
       key:'profile',
@@ -7474,7 +7566,7 @@ function onboardingTasks(){
       detail:profile.storeName ? profile.storeName : 'Add store name, logo, receipt footer',
       done:!!profile.storeName,
       action:'PROFILE',
-      run:() => { switchTab('backoffice'); document.getElementById('vendor-profile-panel')?.scrollIntoView({behavior:'smooth', block:'start'}); }
+      run:() => openSettingsSection('profile','vendor-profile-panel')
     },
     {
       key:'firstItem',
@@ -7482,7 +7574,7 @@ function onboardingTasks(){
       detail:hasItem ? 'Inventory has items' : 'Use built-in quick add or import CSV',
       done:hasItem,
       action:'ADD ITEM',
-      run:() => { switchTab('backoffice'); document.getElementById('spreadsheet-panel')?.scrollIntoView({behavior:'smooth', block:'start'}); setTimeout(()=>document.getElementById('built-name')?.focus(), 250); }
+      run:() => { openSettingsSection('inventory','spreadsheet-panel'); setTimeout(()=>document.getElementById('built-name')?.focus(), 250); }
     },
     {
       key:'scanner',
@@ -7499,8 +7591,7 @@ function onboardingTasks(){
       done:subDone,
       action:ctx.isDemo ? 'DEMO' : (sub?.status === 'active' ? 'MANAGE' : 'SUBSCRIBE'),
       run:() => {
-        switchTab('backoffice');
-        setTimeout(()=>document.getElementById('subscription-panel')?.scrollIntoView({behavior:'smooth',block:'start'}), 150);
+        openSettingsSection('subscription','subscription-panel');
       }
     },
   ];
@@ -17434,7 +17525,7 @@ async function runPriceLookup(){
         setPokemonOfflineBanner('Offline Mode: showing PPT bulk export catalog data.');
       }
     } else if(!navigator.onLine) {
-      el.innerHTML = `<div style="color:var(--gold);line-height:1.6">No cached or catalog data found for this search.<br>To enable full offline research, download the PPT export catalog in Settings.<br><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><button class="hbtn" onclick="switchTab('backoffice');document.getElementById('offline-cache-panel')?.scrollIntoView({behavior:'smooth',block:'start'})">OPEN OFFLINE CACHE</button><button class="hbtn" onclick="switchTab('backoffice');document.getElementById('pokemon-export-panel')?.scrollIntoView({behavior:'smooth',block:'start'})">DOWNLOAD CATALOG</button></div></div>`;
+      el.innerHTML = `<div style="color:var(--gold);line-height:1.6">No cached or catalog data found for this search.<br>To enable full offline research, download the PPT export catalog in Settings.<br><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><button class="hbtn" onclick="openSettingsSection('catalogs','offline-cache-panel')">OPEN OFFLINE CACHE</button><button class="hbtn" onclick="openSettingsSection('catalogs','pokemon-export-panel')">DOWNLOAD CATALOG</button></div></div>`;
       setPokemonOfflineBanner('Offline Mode: no cached Pokémon data found for "' + q + '".', 'bad');
       return;
     }
@@ -17456,7 +17547,7 @@ async function runPriceLookup(){
     } else if(mtgMode === 'offline_only' || !navigator.onLine) {
       const status = await window.ArsCaMtgOffline?.status().catch(() => null);
       const message = status?.cards ? 'No MTG offline catalog result matched this search.' : 'MTG offline catalog not downloaded yet.';
-      el.innerHTML = `<div style="color:var(--gold);line-height:1.6">${escHtml(message)}<br><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><button class="hbtn" onclick="document.getElementById('qpl-input').focus()">TRY ANOTHER SEARCH</button><button class="hbtn" onclick="switchTab('backoffice');document.getElementById('offline-catalog-manager-panel')?.scrollIntoView({behavior:'smooth',block:'start'})">MTG OFFLINE SETTINGS</button></div></div>`;
+      el.innerHTML = `<div style="color:var(--gold);line-height:1.6">${escHtml(message)}<br><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><button class="hbtn" onclick="document.getElementById('qpl-input').focus()">TRY ANOTHER SEARCH</button><button class="hbtn" onclick="openSettingsSection('catalogs','offline-catalog-manager-panel')">MTG OFFLINE SETTINGS</button></div></div>`;
       setMtgOfflineBanner(message, 'bad');
       return;
     }
@@ -17528,7 +17619,7 @@ async function runPriceLookup(){
     if(e.subscriptionRequired){
       el.innerHTML = `<div style="font-family:var(--font-mono);font-size:11px;color:var(--gold);line-height:1.6;padding:8px 0">
         Subscription required to use Pokemon price lookups.
-        <br><button class="hbtn" style="margin-top:10px;color:var(--gold)" onclick="switchTab('backoffice');setTimeout(()=>document.getElementById('subscription-panel')?.scrollIntoView({behavior:'smooth',block:'start'}),150)">OPEN SUBSCRIPTION SETTINGS</button>
+        <br><button class="hbtn" style="margin-top:10px;color:var(--gold)" onclick="openSettingsSection('subscription','subscription-panel')">OPEN SUBSCRIPTION SETTINGS</button>
       </div>`;
       return;
     }
@@ -25449,7 +25540,7 @@ function selectLockedPaymentMethod(method){
       wb.innerHTML = `<div style="font-weight:800;text-align:center;margin-bottom:8px">${escHtml(formatTenderLabel(method))}</div>
         <div style="text-align:center;color:var(--gold);font-family:monospace;font-size:12px;margin-bottom:12px">${escHtml(built.error || ('No ' + formatTenderLabel(method) + ' handle saved'))}</div>
         <div class="payment-confirm-row" style="flex-direction:column;gap:8px">
-          <button class="hbtn" onclick="switchTab('backoffice');setTimeout(()=>document.getElementById('payment-settings-panel')?.scrollIntoView({behavior:'smooth'}),150)">⚙ OPEN PAYMENT SETTINGS</button>
+          <button class="hbtn" onclick="openSettingsSection('payments','payment-settings-panel')">⚙ OPEN PAYMENT SETTINGS</button>
           <button class="hbtn" style="font-size:11px;color:var(--dim)" onclick="confirmLockedPayment('${method}')">Manual confirm (handled outside the app)</button>
         </div>`;
     }
