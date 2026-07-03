@@ -11,4 +11,6 @@ assert.match(html,/Publish \/ Sync Webflow/);
 assert.match(html,/Remove sold item from Webflow/,'cloud sales enqueue Webflow removal failures');
 assert.match(html,/ebay_delist_needed/,'linked eBay sales leave a visible integration event');
 assert.match(html,/width:72px; height:72px/,'inventory thumbnails are enlarged');
+assert.match(html,/@media\(min-width:901px\) and \(max-width:1150px\)/,'compact desktop inventory has a responsive breakpoint');
+assert.match(html,/grid-column:2\/5;grid-row:4/,'actions remain visible in compact desktop rows');
 console.log('Webflow cloud sync contract passed');
