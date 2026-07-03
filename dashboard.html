@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.07.02.04-inventory-usability">
+<meta name="version" content="2026.07.03.01-plan-gates-checkout">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -204,6 +204,11 @@ header{position:sticky;top:0;z-index:100;background:rgba(7,8,10,.96);backdrop-fi
 .customer-method-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;max-width:860px;width:100%;margin:16px auto 0;}
 .customer-method-btn{min-height:clamp(58px,8vh,74px);border-radius:8px;border:2px solid #cfd7e3;background:#fff;color:#101319;font-family:'Orbitron',monospace;font-size:clamp(11px,2.6vw,13px);font-weight:900;letter-spacing:1px;cursor:pointer;}
 .customer-method-btn.on{border-color:#05835f;background:#e9fff7;color:#056044;}
+.customer-method-btn{display:grid;grid-template-columns:48px 1fr;align-items:center;text-align:left;gap:12px;padding:10px 14px;box-shadow:0 5px 18px rgba(15,23,42,.06);transition:.16s transform,.16s border-color,.16s box-shadow;}
+.customer-method-btn:hover{transform:translateY(-2px);border-color:#8fa3b5;box-shadow:0 9px 24px rgba(15,23,42,.1);}
+.customer-method-icon{width:46px;height:46px;border-radius:12px;display:grid;place-items:center;background:#edf2f7;font-size:25px;line-height:1;color:#0f172a;}
+.customer-method-copy{display:grid;gap:3px}.customer-method-copy small{font-family:var(--font-mono);font-size:9px;letter-spacing:0;color:#657080;text-transform:none}.customer-method-btn.on .customer-method-icon{background:#c9f7e7;}
+.plan-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px;margin-top:14px}.plan-card{border:1px solid var(--border);background:var(--surf2);border-radius:10px;padding:14px;display:grid;gap:8px}.plan-card.current{border-color:var(--g);box-shadow:0 0 0 1px rgba(0,255,179,.18)}.plan-name{font-family:'Orbitron',monospace;color:var(--g);font-size:12px}.plan-price{font-family:'Orbitron',monospace;font-size:24px;color:var(--text)}.plan-price small{font-family:var(--font-mono);font-size:9px;color:var(--dim)}.plan-features{font-family:var(--font-mono);font-size:9px;line-height:1.65;color:var(--dim)}
 .payment-workbench{display:none;max-width:860px;width:100%;margin:12px auto 0;border:1px solid #cfd7e3;background:#fff;border-radius:8px;padding:14px;color:#101319;}
 .payment-workbench.on{display:block;}
 .payment-qr{width:220px;height:220px;border:1px solid #cfd7e3;border-radius:8px;background:#fff;object-fit:contain;margin:10px auto;display:block;}
@@ -1366,9 +1371,9 @@ body.show-mode .inv-sync-badge{display:none;}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-<script src="scripts/query-routing.js?v=2026.07.02.04-inventory-usability"></script>
-<script src="scripts/barcode-lookup.js?v=2026.07.02.04-inventory-usability"></script>
-<script src="scripts/comic-issue-hub.js?v=2026.07.02.04-inventory-usability"></script>
+<script src="scripts/query-routing.js?v=2026.07.03.01-plan-gates-checkout"></script>
+<script src="scripts/barcode-lookup.js?v=2026.07.03.01-plan-gates-checkout"></script>
+<script src="scripts/comic-issue-hub.js?v=2026.07.03.01-plan-gates-checkout"></script>
 <script src="scripts/mtg/mtg-offline-browser.js?v=2026.07.01.04-mtg-offline-set-browser"></script>
 </head>
 <body>
@@ -1419,7 +1424,7 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.07.02.04-inventory-usability</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.07.03.01-plan-gates-checkout</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
@@ -1446,7 +1451,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.07.02.04-inventory-usability</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.07.03.01-plan-gates-checkout</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -2757,7 +2762,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.07.02.07-settings-architecture';
+const APP_VERSION = '2026.07.03.01-plan-gates-checkout';
 window.APP_VERSION = APP_VERSION;
 const branchName = 'main';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
@@ -2890,13 +2895,29 @@ function getAccountContext(){
 // RLS is required before paid isolation can be guaranteed.
 function resolveAccountContextFromAuth(){ return getAccountContext(); }
 
+const SUBSCRIPTION_PLANS = {
+  research:{ name:'Research', price:19, features:['Live + offline pricing','Barcode and cover research','Sets and want lists'], capabilities:['research'] },
+  register:{ name:'Register', price:49, features:['Everything in Research','Checkout and customer display','Sales history + Stripe payments'], capabilities:['research','checkout','sales'] },
+  store:{ name:'Store', price:89, features:['Everything in Register','Inventory, buying and consignments','Staff, shows and profit reporting'], capabilities:['research','checkout','sales','inventory','consignments','staff','shows'] },
+  pro:{ name:'Pro', price:149, features:['Everything in Store','Online listing tools','Advanced operations + multi-store'], capabilities:['research','checkout','sales','inventory','consignments','staff','shows','marketplace','advanced'] }
+};
+const TAB_CAPABILITY = {research:'research',sets:'research',wantlist:'research',display:'checkout',browse:'checkout',pos:'checkout',sales:'sales',intake:'inventory',inventory:'inventory',locations:'inventory',restock:'inventory',consign:'consignments',shows:'shows',channels:'marketplace'};
+function currentPlanCode(){ return SUBSCRIPTION_PLANS[window._subStatus?.plan_code] ? window._subStatus.plan_code : 'store'; }
+function hasPlanCapability(capability){ return !capability || SUBSCRIPTION_PLANS[currentPlanCode()].capabilities.includes(capability); }
+function planCanAccessTab(tab){ return hasPlanCapability(TAB_CAPABILITY[tab]); }
+function showPlanUpgradeGate(capability){
+  const target = Object.entries(SUBSCRIPTION_PLANS).find(([,p])=>p.capabilities.includes(capability));
+  toast_dash(`${target?.[1]?.name || 'Higher'} plan required — open Settings / Subscription to upgrade.`, 5500);
+  openSettingsSection?.('subscription','subscription-panel');
+}
+
 function roleCanAccessTab(tab){
   const role = currentRole();
-  if(role === 'owner' || role === 'admin') return true;
-  if(role === 'manager') return !['backoffice'].includes(tab);
-  if(role === 'employee') return ['overview','display','browse','inventory','research','pos','alerts','wantlist','locations','restock','sets'].includes(tab);
-  if(role === 'scanner_only') return false;
-  return false;
+  let allowed = false;
+  if(role === 'owner' || role === 'admin') allowed = true;
+  else if(role === 'manager') allowed = !['backoffice'].includes(tab);
+  else if(role === 'employee') allowed = ['overview','display','browse','inventory','research','pos','alerts','wantlist','locations','restock','sets'].includes(tab);
+  return allowed && planCanAccessTab(tab);
 }
 
 (function installStoreScopedStorage(){
@@ -3099,6 +3120,7 @@ async function checkAndApplySubscriptionState(){
   } catch(_){ subCheckFailed = true; }
 
   window._subStatus = sub;
+  setupAppShell();
   renderSubscriptionPanel();
   renderOnboardingPanel();
   _removeSubBanners();
@@ -3196,19 +3218,19 @@ function _showSoftSubPrompt(sub, storeId, email){
   document.body.prepend(b);
 }
 
-async function openSubscriptionCheckout(storeId, email){
+async function openSubscriptionCheckout(storeId, email, planCode='store'){
   const ctx = getAccountContext();
   const storeName = ctx.stores?.find(s => s.id === storeId)?.displayName || ctx.stores?.[0]?.displayName || '';
   try {
     const res = await fetch(WORKER + '/subscription/checkout', {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({ store_id:storeId, store_name:storeName, email:email || ctx.user?.email || '' })
+      body:JSON.stringify({ store_id:storeId, store_name:storeName, email:email || ctx.user?.email || '', plan_code:planCode })
     });
     const data = await res.json();
     if(data.ok && data.checkout_url) {
       window.open(data.checkout_url, '_blank');
     } else {
-      toast_dash('Checkout error: ' + (data.error || 'Check Worker secrets: STRIPE_SECRET_KEY and STRIPE_SUBSCRIPTION_PRICE_ID.'), 6000);
+      toast_dash('Checkout error: ' + (data.error || 'Check the Stripe subscription price secrets in the Worker.'), 6000);
     }
   } catch(e){ toast_dash('Could not start checkout: ' + e.message, 5000); }
 }
@@ -7204,14 +7226,24 @@ function renderSubscriptionPanel(){
     : '';
   const refreshBtn = `<button class="hbtn" onclick="checkAndApplySubscriptionState().then(()=>renderSubscriptionPanel())">REFRESH STATUS</button>`;
 
+  const selectedPlan = currentPlanCode();
+  const planCards = Object.entries(SUBSCRIPTION_PLANS).map(([code, plan]) => `<div class="plan-card ${code===selectedPlan?'current':''}">
+    <div class="plan-name">${escHtml(plan.name)} ${code===selectedPlan?'<span class="data-pill">CURRENT</span>':''}</div>
+    <div class="plan-price">$${plan.price}<small> / month</small></div>
+    <div class="plan-features">${plan.features.map(f=>'✓ '+escHtml(f)).join('<br>')}</div>
+    ${code===selectedPlan ? '' : `<button class="hbtn" onclick="openSubscriptionCheckout('${escHtml(storeId)}','${escHtml(ctx.user?.email||'')}','${code}')">CHOOSE ${plan.name.toUpperCase()}</button>`}
+  </div>`).join('');
+
   body.innerHTML = `
     <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:6px">
-      <div style="font-family:var(--font-mono);font-size:13px;font-weight:700;${statusColor(sub.status)}">${escHtml(statusLabel)}</div>
+      <div style="font-family:var(--font-mono);font-size:13px;font-weight:700;${statusColor(sub.status)}">${escHtml(statusLabel)} · ${escHtml(SUBSCRIPTION_PLANS[selectedPlan].name)} plan</div>
     </div>
     ${detailLine}
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
       ${primaryBtn}${portalBtn}${refreshBtn}
-    </div>`;
+    </div>
+    <div class="plan-grid">${planCards}</div>
+    <div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);margin-top:10px">Changing plans never deletes inventory, sales, or customer records. Features outside the current plan are simply locked.</div>`;
 }
 
 function renderVendorConfigPanel(){
@@ -12531,7 +12563,8 @@ function filterSold(){ renderSoldTable(); }
 // Tab switching
 function switchTab(name, btn){
   if(!roleCanAccessTab(name)) {
-    toast_dash('Role access required');
+    if(!planCanAccessTab(name)) showPlanUpgradeGate(TAB_CAPABILITY[name]);
+    else toast_dash('Role access required');
     name = 'overview';
   }
   document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('on'));
@@ -25400,7 +25433,7 @@ function renderDealerCartTools(cartData = getCartDataLocal()){
   if(actions) {
     actions.innerHTML = locked
       ? `<button class="hbtn danger" onclick="cancelLockedCheckout()">CANCEL CHECKOUT</button><button class="hbtn" onclick="enterCustomerDisplayMode()">SHOW CUSTOMER PAYMENT</button>`
-      : `<button class="hbtn" onclick="lockCheckoutForPayment()" ${items.length?'':'disabled'}>PROCEED TO PAYMENT</button><button class="hbtn" onclick="enterCustomerDisplayMode()" ${items.length?'':'disabled'}>SHOW CUSTOMER CART</button><button class="hbtn danger" onclick="clearCustomerDisplayCart()" ${items.length?'':'disabled'}>CLEAR CART</button><button class="hbtn" onclick="openScannerCheckout()">PHONE SCANNER CHECKOUT</button>`;
+      : `<button class="hbtn" onclick="lockCheckoutForPayment()" ${items.length?'':'disabled'}>💳 CHECKOUT &amp; TAKE PAYMENT</button><button class="hbtn" onclick="enterCustomerDisplayMode()" ${items.length?'':'disabled'}>🖥️ PREVIEW CUSTOMER SCREEN</button><button class="hbtn danger" onclick="clearCustomerDisplayCart()" ${items.length?'':'disabled'}>CLEAR CART</button>`;
   }
 }
 
@@ -25503,7 +25536,8 @@ function renderCustomerLiveCart(cartData = { items:[] }){
 function renderCustomerPaymentLinks(total, el){
   if(!el) return;
   const methods = getEnabledPaymentMethods();
-  el.innerHTML = methods.map(m => `<button class="customer-method-btn ${selectedTenderLines.some(t => t.method === m.key)?'on':''}" onclick="selectLockedPaymentMethod('${m.key}')">${escHtml(m.label)}</button>`).join('');
+  const visuals={cash:['💵','Record cash received'],card:['💳','Secure card or manual card'],venmo:['V','Show Venmo payment'],paypal:['PP','Show PayPal payment'],cashapp:['$','Show Cash App payment'],other:['•••','Record another tender']};
+  el.innerHTML = methods.map(m => { const v=visuals[m.key]||['•','Choose payment method']; return `<button class="customer-method-btn ${selectedTenderLines.some(t => t.method === m.key)?'on':''}" onclick="selectLockedPaymentMethod('${m.key}')"><span class="customer-method-icon">${v[0]}</span><span class="customer-method-copy">${escHtml(m.label)}<small>${escHtml(v[1])}</small></span></button>`; }).join('');
 }
 
 let stripePosRuntime=null;

@@ -258,6 +258,7 @@ async function handleStripeFoundation(request, env, url) {
     return json({ok:true,url:mode==='live'?'https://dashboard.stripe.com/':'https://dashboard.stripe.com/test/',message:'Standard accounts sign in to their own Stripe Dashboard.'});
   }
   if (path === '/stripe/payments/create-intent') {
+    if(env.LBA_KV){const raw=await env.LBA_KV.get(`sub:store:${storeId}`).catch(()=>null);const rec=raw?JSON.parse(raw):null;if(rec?.plan_code&&rec.plan_code==='research')return json({ok:false,error:'The Register plan or higher is required to take payments'},403);}
     const saleId=String(body.saleId||'');if(!saleId)return json({ok:false,error:'saleId is required'},400);
     const {data:sales}=await supabaseAdminFetch(env,`pos_sales?id=eq.${encodeURIComponent(saleId)}&store_id=eq.${encodeURIComponent(storeId)}&select=*&limit=1`);const sale=sales?.[0];if(!sale)return json({ok:false,error:'Sale not found for this store'},404);
     const amount=Math.round(Number(sale.total||0)*100);if(amount<50)return json({ok:false,error:'Sale total must be at least $0.50'},400);if(body.amountCents!=null&&Math.round(Number(body.amountCents))!==amount)return json({ok:false,error:'Checkout amount changed; refresh the sale before charging'},409);
@@ -1683,12 +1684,13 @@ export default {
         if (session?.id && env.LBA_KV) {
           if (session.metadata?.source === 'walkoff-subscription' || session.mode === 'subscription') {
             // Subscription checkout completed — activate the store
+            const pendingSession = await env.LBA_KV.get(`sub:session:${session.id}`).then(r => r ? JSON.parse(r) : {}).catch(() => ({}));
             const storeId = session.metadata?.store_id
               || await storeFromCust(session.customer)
-              || (await env.LBA_KV.get(`sub:session:${session.id}`).then(r => r ? JSON.parse(r).store_id : null).catch(() => null));
+              || pendingSession.store_id;
             if (storeId) {
               const existing = await getSubRec(storeId) || {};
-              await putSubRec(storeId, { ...existing, status: 'active', stripe_customer_id: session.customer, stripe_subscription_id: session.subscription });
+              await putSubRec(storeId, { ...existing, status: 'active', plan_code:session.metadata?.plan_code || pendingSession.plan_code || existing.plan_code || 'store', stripe_customer_id: session.customer, stripe_subscription_id: session.subscription });
               if (session.customer) await env.LBA_KV.put(custKvKey(session.customer), JSON.stringify({ store_id: storeId }), { expirationTtl: 400 * 24 * 3600 }).catch(() => {});
               await env.LBA_KV.delete(`sub:session:${session.id}`).catch(() => {});
             }
@@ -1752,6 +1754,18 @@ export default {
     }
 
     // ── Subscription Management ───────────────────────────────────────────────
+    const SUBSCRIPTION_PLANS = {
+      research: { name: 'Research', price: 19, capabilities: ['research'], envKey: 'STRIPE_SUBSCRIPTION_PRICE_RESEARCH' },
+      register: { name: 'Register', price: 49, capabilities: ['research','checkout','sales'], envKey: 'STRIPE_SUBSCRIPTION_PRICE_REGISTER' },
+      store: { name: 'Store', price: 89, capabilities: ['research','checkout','sales','inventory','consignments','staff','shows'], envKey: 'STRIPE_SUBSCRIPTION_PRICE_STORE' },
+      pro: { name: 'Pro', price: 149, capabilities: ['research','checkout','sales','inventory','consignments','staff','shows','marketplace','advanced'], envKey: 'STRIPE_SUBSCRIPTION_PRICE_PRO' },
+    };
+    const subscriptionPlan = code => SUBSCRIPTION_PLANS[code] ? code : 'store';
+    const publicPlan = code => { const p = SUBSCRIPTION_PLANS[subscriptionPlan(code)]; return { plan_code:subscriptionPlan(code), plan_name:p.name, price_monthly:p.price, capabilities:p.capabilities }; };
+
+    if (url.pathname === '/subscription/plans' && request.method === 'GET') {
+      return json({ ok:true, plans:Object.keys(SUBSCRIPTION_PLANS).map(publicPlan) });
+    }
 
     // POST /subscription/init-trial
     // Idempotent — writes a 14-day trial record if no subscription exists yet.
@@ -1763,7 +1777,7 @@ export default {
         const existing = await env.LBA_KV.get(`sub:store:${store_id}`);
         if (existing) return json({ ok: true, new: false, status: JSON.parse(existing).status });
         const trial_end = Date.now() + 14 * 24 * 60 * 60 * 1000;
-        await env.LBA_KV.put(`sub:store:${store_id}`, JSON.stringify({ status: 'trialing', trial_end, created_at: Date.now(), updatedAt: Date.now() }), { expirationTtl: 400 * 24 * 3600 });
+        await env.LBA_KV.put(`sub:store:${store_id}`, JSON.stringify({ status: 'trialing', plan_code:'store', trial_end, created_at: Date.now(), updatedAt: Date.now() }), { expirationTtl: 400 * 24 * 3600 });
         return json({ ok: true, new: true, status: 'trialing', trial_end });
       } catch (e) { return json({ ok: false, error: e.message }, 500); }
     }
@@ -1785,28 +1799,32 @@ export default {
       }
       const active = status === 'active' || status === 'trialing';
       const daysRemaining = endMs && endMs > now ? Math.ceil((endMs - now) / 86400000) : 0;
-      return json({ ok: true, status, active, daysRemaining, trial_end: rec.trial_end || null, current_period_end: rec.current_period_end || null, stripe_customer_id: rec.stripe_customer_id || null, cancel_at_period_end: rec.cancel_at_period_end || false });
+      const plan = publicPlan(rec.plan_code); // Legacy active/trial subscriptions are grandfathered to Store.
+      return json({ ok: true, status, active, daysRemaining, ...plan, trial_end: rec.trial_end || null, current_period_end: rec.current_period_end || null, stripe_customer_id: rec.stripe_customer_id || null, cancel_at_period_end: rec.cancel_at_period_end || false });
     }
 
     // POST /subscription/checkout
-    // Body: { store_id, store_name, email }
+    // Body: { store_id, store_name, email, plan_code }
     // Creates a Stripe subscription checkout session.
-    // Requires STRIPE_SECRET_KEY + STRIPE_SUBSCRIPTION_PRICE_ID in Worker secrets.
+    // Requires STRIPE_SECRET_KEY plus the selected STRIPE_SUBSCRIPTION_PRICE_* secret.
     if (url.pathname === '/subscription/checkout' && request.method === 'POST') {
       if (!env.STRIPE_SECRET_KEY) return json({ ok: false, error: 'STRIPE_SECRET_KEY not configured' }, 500);
-      if (!env.STRIPE_SUBSCRIPTION_PRICE_ID) return json({ ok: false, error: 'STRIPE_SUBSCRIPTION_PRICE_ID not configured — add recurring Stripe price ID to Worker secrets' }, 500);
       try {
-        const { store_id, store_name, email } = await request.json().catch(() => ({}));
+        const { store_id, store_name, email, plan_code } = await request.json().catch(() => ({}));
         if (!store_id) return json({ ok: false, error: 'store_id required' }, 400);
+        const selectedPlan = subscriptionPlan(plan_code);
+        const priceId = env[SUBSCRIPTION_PLANS[selectedPlan].envKey] || (selectedPlan === 'store' ? env.STRIPE_SUBSCRIPTION_PRICE_ID : null);
+        if (!priceId) return json({ ok:false, error:`${SUBSCRIPTION_PLANS[selectedPlan].envKey} not configured in Worker secrets` }, 500);
         const origin = url.origin;
         const params = new URLSearchParams({
           mode: 'subscription',
           'payment_method_types[]': 'card',
-          'line_items[0][price]': env.STRIPE_SUBSCRIPTION_PRICE_ID,
+          'line_items[0][price]': priceId,
           'line_items[0][quantity]': '1',
           success_url: `${origin}/subscription/success?store_id=${encodeURIComponent(store_id)}&session_id={CHECKOUT_SESSION_ID}`,
           cancel_url: `${origin}/subscription/cancel`,
           'metadata[store_id]': store_id,
+          'metadata[plan_code]': selectedPlan,
           'metadata[source]': 'walkoff-subscription',
           allow_promotion_codes: 'true',
         });
@@ -1819,7 +1837,7 @@ export default {
         });
         const data = await r.json();
         if (!r.ok) return json({ ok: false, error: data.error?.message || 'Stripe error' }, r.status);
-        if (env.LBA_KV) await env.LBA_KV.put(`sub:session:${data.id}`, JSON.stringify({ store_id }), { expirationTtl: 86400 });
+        if (env.LBA_KV) await env.LBA_KV.put(`sub:session:${data.id}`, JSON.stringify({ store_id, plan_code:selectedPlan }), { expirationTtl: 86400 });
         return json({ ok: true, checkout_url: data.url, session_id: data.id });
       } catch (e) { return json({ ok: false, error: e.message }, 500); }
     }
