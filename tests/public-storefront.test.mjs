@@ -1,0 +1,14 @@
+import fs from 'node:fs';
+import assert from 'node:assert/strict';
+const dashboard=fs.readFileSync(new URL('../dashboard.html',import.meta.url),'utf8');
+const worker=fs.readFileSync(new URL('../cloudflare-worker-full.js',import.meta.url),'utf8');
+const storefront=fs.readFileSync(new URL('../storefront.html',import.meta.url),'utf8');
+assert.match(worker,/\/public\/storefront/);
+assert.match(worker,/storefrontEnabled !== true/,'storefront is opt-in');
+assert.match(worker,/status=eq\.in_stock/,'only in-stock inventory is public');
+for(const privateField of ['cost','profit','consignor','notes']) assert.doesNotMatch(storefront,new RegExp(`i\\.${privateField}`,'i'),`${privateField} is not rendered`);
+assert.match(dashboard,/PUBLIC INVENTORY STOREFRONT/);
+assert.match(dashboard,/copyStorefrontLink/);
+for(const id of ['q','category','year','condition','sort']) assert.match(storefront,new RegExp(`id="${id}"`));
+assert.match(storefront,/ASK ABOUT THIS ITEM/);
+console.log('public storefront contract passed');

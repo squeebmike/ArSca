@@ -887,6 +887,29 @@ export default {
       });
     }
 
+    // Public, read-only storefront. A store must explicitly publish it.
+    if (url.pathname === '/public/storefront' && request.method === 'GET') {
+      const storeId = String(url.searchParams.get('store_id') || '').trim();
+      if (!/^[0-9a-z_-]{2,80}$/i.test(storeId)) return json({ ok:false, error:'Valid store_id required' }, 400);
+      if (!(env.SUPABASE_URL && (env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_KEY))) return json({ ok:false, error:'Storefront service unavailable' }, 503);
+      const { data:settings } = await supabaseAdminFetch(env, `store_settings?store_id=eq.${encodeURIComponent(storeId)}&select=receipt_settings,theme&limit=1`);
+      const cfg = settings?.[0]?.receipt_settings || {};
+      if (cfg.storefrontEnabled !== true) return json({ ok:false, error:'Storefront is not published' }, 404);
+      const { data:stores } = await supabaseAdminFetch(env, `stores?id=eq.${encodeURIComponent(storeId)}&select=id,name,display_name&limit=1`);
+      const { data:rows, response } = await supabaseAdminFetch(env, `inventory_items?store_id=eq.${encodeURIComponent(storeId)}&status=eq.in_stock&select=id,data,status,created_at,updated_at&order=updated_at.desc&limit=1000`);
+      if (!response?.ok) return json({ ok:false, error:'Inventory unavailable' }, 502);
+      const cleanText = (v,n=240) => String(v == null ? '' : v).trim().slice(0,n);
+      const cleanUrl = v => { const s=cleanText(v,1000); return /^https?:\/\//i.test(s)||/^data:image\//i.test(s)?s:''; };
+      const items = (rows || []).map(row => { const d=row.data || {}; return {
+        id:cleanText(row.id,80), name:cleanText(d.name || d.title || 'Item'), category:cleanText(d.category || d.type || 'Other',80),
+        set:cleanText(d.set || d.series || '',120), year:cleanText(d.year || '',12), variant:cleanText(d.variant || d.finish || '',120), condition:cleanText(d.condition || d.grade || '',80),
+        price:Number(d.listPrice || d.salePrice || d.price || d.market || 0) || 0, image:cleanUrl(d.image || d.img || d.imageUrl || d.image_url || d.photo),
+        quantity:Math.max(1,Number(d.quantity || d.qty || 1) || 1), addedAt:row.created_at || '', updatedAt:row.updated_at || ''
+      }; }).filter(i => i.name && i.quantity > 0);
+      const store = stores?.[0] || {};
+      return json({ ok:true, store:{ id:storeId, name:cleanText(cfg.storeName || cfg.shortName || store.display_name || store.name || 'Store',120), location:cleanText(cfg.location,160), website:cleanUrl(cfg.website), email:cleanText(cfg.email,200), phone:cleanText(cfg.phone,80), logo:cleanUrl(cfg.logo), message:cleanText(cfg.storefrontMessage,500), theme:settings?.[0]?.theme || {} }, items, updatedAt:new Date().toISOString() }, 200, { 'Cache-Control':'public, max-age=60, stale-while-revalidate=300' });
+    }
+
     if (url.pathname === '/catalog/mtg/manifest') {
       if (request.method !== 'GET') return json({ ok: false, error: 'GET only' }, 405);
       if (!env.MTG_CATALOG_R2) return json({ ok: false, error: 'MTG_CATALOG_R2 binding is not configured' }, 503);

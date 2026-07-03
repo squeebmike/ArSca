@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.07.03.01-plan-gates-checkout">
+<meta name="version" content="2026.07.03.02-public-storefront">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -633,7 +633,7 @@ body.show-mode .show-mode-toggle { border-color:rgba(0,255,179,.4); color:var(--
 .inv-card-nimg { width:100%; aspect-ratio:3/4; background:#050507; display:flex; align-items:center; justify-content:center; font-family:monospace; font-size:9px; color:var(--dim); letter-spacing:1px; }
 .inv-card-body { padding:10px; flex:1; display:flex; flex-direction:column; gap:6px; }
 .inv-card-name { font-size:12px; font-weight:700; color:var(--text); line-height:1.3; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
-.inv-card-meta { font-family:monospace; font-size:10px; color:var(--dim); }
+.inv-card-meta { font-family:monospace; font-size:11px; color:color-mix(in srgb,var(--text) 68%,var(--bg)); line-height:1.45; }
 .inv-card-price { font-family:'Orbitron',monospace; font-size:16px; font-weight:900; color:var(--gold); }
 .inv-card-actions { display:flex; gap:6px; margin-top:auto; padding-top:6px; }
 .inv-card-actions .ra { flex:1; min-height:38px; font-size:11px; }
@@ -1371,9 +1371,9 @@ body.show-mode .inv-sync-badge{display:none;}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-<script src="scripts/query-routing.js?v=2026.07.03.01-plan-gates-checkout"></script>
-<script src="scripts/barcode-lookup.js?v=2026.07.03.01-plan-gates-checkout"></script>
-<script src="scripts/comic-issue-hub.js?v=2026.07.03.01-plan-gates-checkout"></script>
+<script src="scripts/query-routing.js?v=2026.07.03.02-public-storefront"></script>
+<script src="scripts/barcode-lookup.js?v=2026.07.03.02-public-storefront"></script>
+<script src="scripts/comic-issue-hub.js?v=2026.07.03.02-public-storefront"></script>
 <script src="scripts/mtg/mtg-offline-browser.js?v=2026.07.01.04-mtg-offline-set-browser"></script>
 </head>
 <body>
@@ -1424,7 +1424,7 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.07.03.01-plan-gates-checkout</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.07.03.02-public-storefront</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
@@ -1451,7 +1451,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.07.03.01-plan-gates-checkout</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.07.03.02-public-storefront</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -2762,7 +2762,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.07.03.01-plan-gates-checkout';
+const APP_VERSION = '2026.07.03.02-public-storefront';
 window.APP_VERSION = APP_VERSION;
 const branchName = 'main';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
@@ -4000,6 +4000,8 @@ const DEFAULT_VENDOR_PROFILE = {
   venmo:'',
   paypal:'',
   cashapp:'',
+  storefrontEnabled:false,
+  storefrontMessage:'Browse what is available now.',
 };
 const DEFAULT_PAYMENT_SETTINGS = {
   cash:{ enabled:true, trackCashDrawer:true },
@@ -4186,6 +4188,8 @@ function saveVendorProfile(profile){
       ebayShippingLine:next.ebayShippingLine,
       paymentMethods:next.paymentMethods,
       taxRate:Number(next.taxRate || 0),
+      storefrontEnabled:next.storefrontEnabled === true,
+      storefrontMessage:next.storefrontMessage || '',
     },
     theme:{ accent:next.themeAccent || '#00ffb3', logo:next.logo || '' }
   });
@@ -5275,6 +5279,7 @@ function renderVendorProfilePanel(){
   const body = document.getElementById('vendor-profile-body');
   if(!body) return;
   const p = getVendorProfile();
+  const storefrontUrl = new URL('storefront.html', location.href); storefrontUrl.searchParams.set('store', getActiveStoreId());
   body.innerHTML = `
     <div style="display:grid;grid-template-columns:90px 1fr;gap:12px;align-items:start;margin-bottom:12px">
       <div>
@@ -5305,8 +5310,24 @@ function renderVendorProfilePanel(){
       <button class="hbtn" onclick="exportVendorProfile()">EXPORT PROFILE</button>
       <button class="hbtn" onclick="document.getElementById('vendor-profile-import').click()">IMPORT PROFILE</button>
       <input id="vendor-profile-import" type="file" accept="application/json,.json" style="display:none" onchange="importVendorProfile(event)">
+    </div>
+    <div style="margin-top:14px;padding:14px;border:1px solid var(--border);border-radius:10px;background:var(--surf2)">
+      <div style="font-family:'Orbitron',monospace;font-size:11px;color:var(--g);margin-bottom:7px">PUBLIC INVENTORY STOREFRONT</div>
+      <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);line-height:1.6;margin-bottom:10px">Publish a customer-safe catalog. Cost, profit, consignor, internal notes, and sold inventory are never included.</div>
+      <label style="display:flex;align-items:center;gap:8px;font-family:var(--font-mono);font-size:11px;margin-bottom:10px"><input id="vp-storefrontEnabled" type="checkbox" ${p.storefrontEnabled?'checked':''}> Publish this store's available inventory</label>
+      <label style="font-family:var(--font-mono);font-size:9px;color:var(--dim)">WELCOME MESSAGE<input id="vp-storefrontMessage" class="tsi" value="${escHtml(p.storefrontMessage||'')}" placeholder="Browse what is available now" style="margin-top:4px"></label>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><button class="hbtn" onclick="saveStorefrontSettings()">SAVE STOREFRONT</button><button class="hbtn" onclick="window.open('${escHtml(storefrontUrl.href)}','_blank')">OPEN PUBLIC PAGE</button><button class="hbtn" onclick="copyStorefrontLink('${encodeURIComponent(storefrontUrl.href)}')">COPY LINK</button><button class="hbtn" onclick="showStorefrontQr('${encodeURIComponent(storefrontUrl.href)}')">SHOW QR CODE</button><code style="font-size:9px;color:var(--dim);word-break:break-all">${escHtml(storefrontUrl.href)}</code></div>
     </div>`;
 }
+
+function saveStorefrontSettings(){
+  const enabled=!!document.getElementById('vp-storefrontEnabled')?.checked;
+  const storefrontMessage=document.getElementById('vp-storefrontMessage')?.value.trim()||'';
+  saveVendorProfile({storefrontEnabled:enabled,storefrontMessage});
+  toast_dash(enabled?'Public storefront published':'Public storefront disabled');
+}
+async function copyStorefrontLink(encoded){try{await navigator.clipboard.writeText(decodeURIComponent(encoded));toast_dash('Storefront link copied');}catch(e){toast_dash('Could not copy link');}}
+function showStorefrontQr(encoded){const link=decodeURIComponent(encoded);window.open('https://api.qrserver.com/v1/create-qr-code/?size=500x500&margin=20&data='+encodeURIComponent(link),'_blank');}
 
 function vendorInput(key, label, value, type='text'){
   return `<label style="font-family:monospace;font-size:9px;color:var(--dim)">${label.toUpperCase()}<input id="vp-${key}" class="tsi" type="${type}" value="${escHtml(value)}" style="margin-top:3px;margin-bottom:0"></label>`;
@@ -9908,9 +9929,9 @@ function setInvView(view){
   localStorage.setItem('inv_view', view);
   document.getElementById('inv-btn-table')?.classList.toggle('active', view === 'table');
   document.getElementById('inv-btn-cards')?.classList.toggle('active', view === 'cards');
-  document.getElementById('inv-table-wrap')?.style.setProperty('display', view === 'table' ? '' : 'none');
-  document.getElementById('pager')?.style.setProperty('display', view === 'table' ? '' : 'none');
-  document.getElementById('inv-card-grid-container')?.style.setProperty('display', view === 'cards' ? '' : 'none');
+  document.getElementById('inv-table-wrap')?.style.setProperty('display', view === 'table' ? 'block' : 'none');
+  document.getElementById('pager')?.style.setProperty('display', view === 'table' ? 'flex' : 'none');
+  document.getElementById('inv-card-grid-container')?.style.setProperty('display', view === 'cards' ? 'block' : 'none');
   if(view === 'cards') renderCardView();
 }
 
