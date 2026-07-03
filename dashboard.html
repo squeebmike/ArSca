@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.07.03.04-inventory-visibility">
+<meta name="version" content="2026.07.03.05-cloud-webflow-sync">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -319,7 +319,7 @@ tr.sold:hover td{opacity:.7;}
 .dot.sold{background:var(--red);}
 .nc{font-weight:600;}
 .sc2{font-family:var(--font-mono);font-size:9px;color:var(--dim);}
-.ct{font-family:var(--font-mono);font-size:8px;letter-spacing:1px;padding:2px 6px;border-radius:3px;}
+.ct{font-family:var(--font-mono);font-size:11px;font-weight:800;letter-spacing:.7px;padding:5px 9px;border-radius:5px;white-space:nowrap;}
 .ct.Sports{background:rgba(255,209,102,.1);color:var(--gold);}
 .ct.TCG{background:rgba(0,255,179,.1);color:var(--g);}
 .ct.Comic{background:rgba(199,125,255,.1);color:var(--purple);}
@@ -528,9 +528,9 @@ body.show-mode .buy-advanced{display:none;}
 #rq-drawer-overlay.on { display:block; }
 
 /* 4. Inventory thumbnails */
-.inv-thumb { width:48px; height:48px; object-fit:contain; border-radius:6px; border:1px solid var(--border); background:#050507; display:block; }
-.inv-thumb-placeholder { width:48px; height:48px; border-radius:6px; border:1px solid var(--border); background:#050507; display:flex; align-items:center; justify-content:center; font-size:7px; font-family:monospace; color:var(--dim); text-align:center; line-height:1.2; }
-th.th-thumb, td.td-thumb { width:56px; padding:4px 4px 4px 8px; }
+.inv-thumb { width:72px; height:72px; object-fit:contain; border-radius:8px; border:1px solid var(--border); background:#050507; display:block; }
+.inv-thumb-placeholder { width:72px; height:72px; border-radius:8px; border:1px solid var(--border); background:#050507; display:flex; align-items:center; justify-content:center; font-size:10px; font-family:monospace; color:var(--dim); text-align:center; line-height:1.2; }
+th.th-thumb, td.td-thumb { width:82px; padding:5px 5px 5px 8px; }
 
 /* 5. Dealer header */
 .dealer-status-bar { display:flex; gap:16px; align-items:center; padding:4px 20px; background:rgba(0,0,0,.3); border-bottom:1px solid var(--border); font-family:monospace; font-size:10px; letter-spacing:.04em; }
@@ -651,9 +651,9 @@ body.show-mode .show-mode-toggle { border-color:rgba(0,255,179,.4); color:var(--
   #tab-inventory .sec,#tab-inventory .tc,#tab-inventory .tbl-wrap,#tab-inventory #inventory-health-panel,#tab-inventory #inv-card-grid-container,#tab-inventory .pager{max-width:1880px;width:calc(100% - 32px);padding-left:8px;padding-right:8px}
   #tab-inventory table{font-size:14px;table-layout:auto}
   #tab-inventory th{font-size:10px;padding:11px 12px;letter-spacing:1.4px;color:color-mix(in srgb,var(--text) 62%,var(--bg))}
-  #tab-inventory td{padding:12px 12px;line-height:1.38}
+  #tab-inventory td{padding:8px 10px;line-height:1.42}
   #tab-inventory th:nth-child(2){min-width:255px}#tab-inventory th:nth-child(3){min-width:220px}#tab-inventory th:nth-child(6){min-width:105px}#tab-inventory th:nth-child(9){min-width:150px}#tab-inventory th:nth-child(10){min-width:330px}
-  #tab-inventory .nc{font-size:14px;line-height:1.35}#tab-inventory .sc2{font-size:11px;line-height:1.45;color:color-mix(in srgb,var(--text) 70%,var(--bg))}#tab-inventory .pp{font-size:13px}
+  #tab-inventory .nc{font-size:15px;line-height:1.35}#tab-inventory .sc2{font-size:12px;line-height:1.45;color:color-mix(in srgb,var(--text) 76%,var(--bg))}#tab-inventory .pp{font-size:14px}#tab-inventory .rab{font-size:12px;min-height:46px}#tab-inventory .src-badge{font-size:9px;padding:3px 6px}
 }
 
 /* ── Inventory card view — 3 buttons ──────────────────────────────────────── */
@@ -1380,9 +1380,9 @@ body.show-mode .inv-sync-badge{display:none;}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-<script src="scripts/query-routing.js?v=2026.07.03.04-inventory-visibility"></script>
-<script src="scripts/barcode-lookup.js?v=2026.07.03.04-inventory-visibility"></script>
-<script src="scripts/comic-issue-hub.js?v=2026.07.03.04-inventory-visibility"></script>
+<script src="scripts/query-routing.js?v=2026.07.03.05-cloud-webflow-sync"></script>
+<script src="scripts/barcode-lookup.js?v=2026.07.03.05-cloud-webflow-sync"></script>
+<script src="scripts/comic-issue-hub.js?v=2026.07.03.05-cloud-webflow-sync"></script>
 <script src="scripts/mtg/mtg-offline-browser.js?v=2026.07.01.04-mtg-offline-set-browser"></script>
 </head>
 <body>
@@ -1433,7 +1433,7 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.07.03.04-inventory-visibility</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.07.03.05-cloud-webflow-sync</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
@@ -1460,7 +1460,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.07.03.04-inventory-visibility</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.07.03.05-cloud-webflow-sync</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -2770,7 +2770,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.07.03.04-inventory-visibility';
+const APP_VERSION = '2026.07.03.05-cloud-webflow-sync';
 window.APP_VERSION = APP_VERSION;
 const branchName = 'main';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
@@ -3459,6 +3459,7 @@ async function loadStoreSettingsFromSupabase(){
       categories:Array.isArray(data.modules.categories) ? data.modules.categories.filter(Boolean) : getVendorConfig().categories,
     };
     localStorage.setItem('vendor_config_v1', JSON.stringify(cfg));
+    if(data.modules.webflowIntegration) localStorage.setItem('webflow_integration_v1', JSON.stringify(data.modules.webflowIntegration));
   }
   if(data.receipt_settings) {
     localStorage.setItem('vendor_profile_v1', JSON.stringify({ ...getVendorProfile(), ...data.receipt_settings }));
@@ -5026,7 +5027,7 @@ function renderSettingsOverview(){
 
 function renderSettingsGeneratedPanels(){
   const overview=document.getElementById('settings-panels-overview');if(overview&&!document.getElementById('settings-overview-grid'))overview.innerHTML='<div id="settings-overview-grid" class="settings-overview-grid"></div>';
-  const sync=document.getElementById('settings-panels-sync');if(sync&&!document.getElementById('cloud-consignment-settings-status'))sync.insertAdjacentHTML('afterbegin',`<div class="settings-generated-panel" id="cloud-consignment-settings-status"><div class="ph">CLOUD CONSIGNMENTS ${settingsStatus(consignmentCloudReady?'Working':'Local Fallback',consignmentCloudReady?'working':'local-fallback')}</div><div style="font-family:var(--font-mono);font-size:10px;line-height:1.65;color:var(--dim)">${consignmentCloudReady?'Per-store consignors, inventory, and sale alerts are syncing through Supabase.':'This device is using its store-scoped local cache. Apply the cloud migration and reconnect to activate cross-device sync.'}<br>People: ${consignorPeople.length} · Items: ${consignItems.length} · Sale alerts: ${getConsignmentAlerts().length}</div></div>`);
+  const sync=document.getElementById('settings-panels-sync');if(sync&&!document.getElementById('cloud-consignment-settings-status'))sync.insertAdjacentHTML('afterbegin',`<div class="settings-generated-panel" id="cloud-consignment-settings-status"><div class="ph">CLOUD CONSIGNMENTS ${settingsStatus(consignmentCloudReady?'Working':'Local Fallback',consignmentCloudReady?'working':'local-fallback')}</div><div style="font-family:var(--font-mono);font-size:10px;line-height:1.65;color:var(--dim)">${consignmentCloudReady?'Per-store consignors, inventory, and sale alerts are syncing through Supabase.':'This device is using its store-scoped local cache. Apply the cloud migration and reconnect to activate cross-device sync.'}<br>People: ${consignorPeople.length} · Items: ${consignItems.length} · Sale alerts: ${getConsignmentAlerts().length}</div></div>`);if(sync&&!document.getElementById('webflow-integration-panel'))sync.insertAdjacentHTML('afterbegin','<div class="settings-generated-panel" id="webflow-integration-panel"></div>');renderWebflowIntegrationPanel?.();
   const catalogs=document.getElementById('settings-panels-catalogs');if(catalogs&&!document.getElementById('catalog-data-concepts'))catalogs.insertAdjacentHTML('afterbegin',`<div class="settings-explainer" id="catalog-data-concepts"><b style="color:var(--text)">Three different data concepts</b><br>1. Store Data Sync — your inventory, sales, settings, users, queues, and consignments.<br>2. Offline Catalog Sync — reference catalogs downloaded to this device; they never create inventory.<br>3. Live Provider Pricing — live or scheduled candidate prices from PriceCharting, Scryfall, and PokemonPriceTracker.<br><br><b style="color:var(--g)">MTG Offline Catalog: Working.</b> Scryfall cards + PriceCharting snapshot; pipeline and image cache remain untouched.<br><b style="color:var(--gold)">Pokémon Offline Catalog: Planned next.</b> PPT offline pipeline is not built in this pass.<br>Comics and sports remain online-only; comic provider images remain URL-only.</div>`);
   const devices=document.getElementById('settings-panels-devices');if(devices&&!document.getElementById('devices-hardware-summary'))devices.innerHTML=`<div class="settings-overview-grid" id="devices-hardware-summary">${[['Barcode Scanner','Working','Camera/USB barcode evidence input'],['Phone Scan Inbox','Working','Scanner queue and tablet handoff'],['Receipt Printer','Planned','Browser print workflow; no dedicated driver'],['Cash Drawer','Working','Cash Bag tracking through checkout'],['Customer Display','Working','Cart and payment-method display'],['Stripe Reader','Planned','Coming later; no Terminal integration'],['Vending Hardware','Planned','Future hardware integration'],['Register / Device ID','Working',getDealerDeviceId()]].map(([a,b,c])=>`<article class="settings-overview-card"><div>${settingsStatus(b,b==='Working'?'working':'planned')}</div><h3>${a}</h3><p>${escHtml(c)}</p></article>`).join('')}</div>`;
   const users=document.getElementById('settings-panels-users');if(users&&!document.getElementById('permissions-summary'))users.insertAdjacentHTML('afterbegin',`<div class="settings-generated-panel" id="permissions-summary"><div class="ph">PERMISSION SUMMARY</div><div style="font-family:var(--font-mono);font-size:10px;line-height:1.65;color:var(--dim)">Owner/Admin: payment setup, refunds, members, store configuration, and advanced tools.<br>Manager/Staff: inventory and checkout according to existing role gates.<br>Scanner Only: phone scanner workflow. Stripe refunds remain Owner/Admin only.</div></div>`);
@@ -10016,6 +10017,7 @@ function showInvRowMenu(e, id, isInStock){
     `<button class="hbtn" style="${btnStyle}" onclick="openEbayFromDash('${id}');this.closest('.inv-row-menu').remove()">📦 eBay List</button>`,
     `<button class="hbtn" style="${btnStyle}" onclick="showItemHistory?.('${id}');this.closest('.inv-row-menu').remove()">📋 History</button>`,
     `<button class="hbtn" style="${btnStyle};color:var(--blue)" onclick="sendInventoryItemToAuthCheck('${id}');this.closest('.inv-row-menu').remove()">✓ Authentication Check</button>`,
+    isInStock?`<button class="hbtn" style="${btnStyle};color:var(--g)" onclick="publishInventoryItemToWebflow('${id}');this.closest('.inv-row-menu').remove()">🌐 Publish / Sync Webflow</button>`:'',
     `<button class="hbtn" style="${btnStyle}color:var(--gold)" onclick="archiveInventoryItem('${id}');this.closest('.inv-row-menu').remove()">Archive</button>`,
     isInStock?`<button class="hbtn danger" style="${btnStyle}" onclick="deleteInventoryRecord('${id}');this.closest('.inv-row-menu').remove()">Delete Test / Accident</button>`:'',
   ].filter(Boolean).join('');
@@ -12539,7 +12541,7 @@ function renderTable(){
     const nameCell = tr.children[1];
     if(item && nameCell && !nameCell.querySelector('.inv-select')) {
       nameCell.insertAdjacentHTML('afterbegin', `<input class="inv-select" type="checkbox" value="${item.id}" style="margin-right:6px;accent-color:var(--g)">`);
-      nameCell.insertAdjacentHTML('beforeend', `<br><span style="font-family:monospace;font-size:8px;color:var(--dim)">${String(item.source||getInventorySource()).replace('_',' ').toUpperCase()}</span>`);
+      nameCell.insertAdjacentHTML('beforeend', `<br><span style="font-family:monospace;font-size:10px;font-weight:700;color:color-mix(in srgb,var(--text) 62%,var(--bg));letter-spacing:.7px">${String(item.source||getInventorySource()).replace('_',' ').toUpperCase()}</span>`);
     }
     const actCell = tr.children[9];
     const cell = tr.children[8];
@@ -14742,6 +14744,15 @@ document.getElementById('edit-modal').addEventListener('click', function(e){
 // ══════════════════════════════════════════════════
 // WEBFLOW PRODUCT CREATE (for unsynced items)
 // ══════════════════════════════════════════════════
+const DEFAULT_WEBFLOW_INTEGRATION={enabled:false,autoPublishNew:false,lastImportAt:'',lastImportCount:0};
+function getWebflowIntegration(){try{return {...DEFAULT_WEBFLOW_INTEGRATION,...JSON.parse(localStorage.getItem('webflow_integration_v1')||'{}')}}catch(e){return {...DEFAULT_WEBFLOW_INTEGRATION}}}
+function saveWebflowIntegration(patch){const next={...getWebflowIntegration(),...patch,updatedAt:new Date().toISOString()};localStorage.setItem('webflow_integration_v1',JSON.stringify(next));saveStoreSettingsToSupabase({modules:{...getVendorConfig(),webflowIntegration:next}});renderWebflowIntegrationPanel();return next;}
+function renderWebflowIntegrationPanel(){const host=document.getElementById('webflow-integration-panel');if(!host)return;const cfg=getWebflowIntegration();host.innerHTML=`<div class="ph">WEBFLOW WEBSITE SYNC <span class="data-pill ${cfg.enabled?'':'warn'}">${cfg.enabled?'CONNECTED CHANNEL':'OPTIONAL'}</span></div><div style="font-family:var(--font-mono);font-size:11px;line-height:1.65;color:var(--dim);margin-bottom:10px">ArSca Cloud Inventory is the master. Webflow is an optional publishing channel. Linked items mirror edits and are marked sold-out when they sell in ArSca.</div><div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:10px"><label><input type="checkbox" ${cfg.enabled?'checked':''} onchange="saveWebflowIntegration({enabled:this.checked})"> Enable Webflow channel</label><label><input type="checkbox" ${cfg.autoPublishNew?'checked':''} onchange="saveWebflowIntegration({autoPublishNew:this.checked})"> Publish new cloud items automatically</label></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="hbtn" onclick="previewWebflowMigration()">PREVIEW WEBFLOW IMPORT</button><button class="hbtn" onclick="runWebflowMigration()">IMPORT WEBFLOW → CLOUD</button></div><div id="webflow-migration-status" style="font-family:var(--font-mono);font-size:10px;color:var(--dim);margin-top:9px">${cfg.lastImportAt?`Last import: ${new Date(cfg.lastImportAt).toLocaleString()} · ${cfg.lastImportCount||0} created`:''}</div>`;}
+async function webflowMigrationPlan(){const [wf,built]=await Promise.all([loadWebflowInventoryItems(),loadBuiltInInventoryItems()]);const linked=new Set(built.map(i=>String(i.raw?.wfId||i.raw?.webflowId||'')).filter(Boolean));const candidates=wf.items.filter(i=>!linked.has(String(i.id)));return {wf,built,candidates};}
+async function previewWebflowMigration(){const status=document.getElementById('webflow-migration-status');if(status)status.textContent='Reading Webflow and cloud inventory…';try{const p=await webflowMigrationPlan();if(status)status.textContent=`${p.wf.count} Webflow items · ${p.built.length} cloud items · ${p.candidates.length} ready to import`;toast_dash(`${p.candidates.length} Webflow items ready to import`);}catch(e){if(status)status.textContent='Preview failed: '+e.message;}}
+async function runWebflowMigration(){if(!requireOwnerAdmin())return;if(!confirm('Import unmatched Webflow inventory into this store cloud? Existing linked records will not be duplicated.'))return;const status=document.getElementById('webflow-migration-status');try{const sb=getSupabaseClient(),storeId=getActiveStoreId();if(!sb||!getAuthSession()?.supabase||!storeId)throw new Error('Cloud sign-in required');const p=await webflowMigrationPlan();let created=0;for(let x=0;x<p.candidates.length;x+=50){const rows=p.candidates.slice(x,x+50).map(i=>({store_id:storeId,status:i.status==='sold'?'sold':'in_stock',data:{...i,id:undefined,source:'webflow_import',wfId:i.id,webflowId:i.id,status:i.status||'in_stock',channelFlags:{webflow:true,storefront:true,ebay:false},importedAt:new Date().toISOString(),appVersion:APP_VERSION}}));const {error}=await sb.from('inventory_items').insert(rows);if(error)throw error;created+=rows.length;if(status)status.textContent=`Imported ${created} of ${p.candidates.length}…`;};saveWebflowIntegration({enabled:true,lastImportAt:new Date().toISOString(),lastImportCount:created});saveVendorConfig({...getVendorConfig(),inventorySource:'built_in'});await loadInventory();logOpsEvent('webflow_migration','Imported Webflow inventory into cloud',{created,skipped:p.wf.count-created});if(status)status.textContent=`Import complete · ${created} cloud items created · cloud inventory is now primary`;toast_dash(`Imported ${created} Webflow items into cloud`);}catch(e){if(status)status.textContent='Import failed: '+e.message;toast_dash('Webflow import failed: '+e.message);}}
+async function publishInventoryItemToWebflow(id){const item=all.find(i=>i.id===id);if(!item)return;const existing=item.raw?.wfId||item.raw?.webflowId||item.wfId;if(existing){try{await mirrorUpdateToWebflow(existing,item,item);toast_dash('Webflow listing updated');}catch(e){enqueueSync('webflow-mirror-update','Sync Webflow: '+item.name,{wfId:existing,item,updates:item},e.message);toast_dash('Webflow sync queued');}return;}try{const wfId=await createWebflowProduct(item,item);await storeWfIdOnSupabaseRecord(item.supabaseRowId||item.id,wfId);item.raw={...(item.raw||{}),wfId,webflowId:wfId};saveWebflowIntegration({enabled:true});toast_dash('Published to Webflow');}catch(e){enqueueSync('webflow-mirror-create','Publish Webflow: '+item.name,{item,updates:item,supabaseId:item.supabaseRowId||item.id},e.message);toast_dash('Webflow publish queued');}}
+
 async function createWebflowProduct(item, updates) {
   // catMap: schema-confirmed Option IDs from live Webflow Products collection.
   // 'Graded' removed — graded cards use their real category (TCG/Sports) + graded:true Switch.
@@ -15132,7 +15143,10 @@ async function createInventoryRecord(item, updates) {
     return supabaseRowId;
   }
 
-  return createBuiltInInventoryItem(item, updates, source);
+  const cloudId=await createBuiltInInventoryItem(item, updates, source);
+  const webflowCfg=getWebflowIntegration();
+  if(webflowCfg.enabled&&webflowCfg.autoPublishNew){createWebflowProduct(item,updates).then(wfId=>storeWfIdOnSupabaseRecord(cloudId,wfId)).catch(e=>enqueueSync('webflow-mirror-create','Publish Webflow: '+(updates.name||item.name||'item'),{item:{...item,...updates},updates,supabaseId:cloudId},e.message));}
+  return cloudId;
 }
 
 async function markInventoryRecordSold(item, fieldData, saleMeta){
@@ -15143,6 +15157,9 @@ async function markInventoryRecordSold(item, fieldData, saleMeta){
       const nextData = { ...(item.raw || {}), ...item, ...saleMeta, status:'sold' };
       const { error } = await sb.from('inventory_items').update({ status:'sold', data:nextData, updated_at:new Date().toISOString() }).eq('id', item.id);
       if(error) throw new Error('Built-in sold sync ' + error.message);
+      const wfId=item.raw?.wfId||item.raw?.webflowId;
+      if(wfId&&getWebflowIntegration().enabled){const soldFields={'sold-out':true,'inventory-count':0,status:STATUS_SOLD};try{const wfRes=await wfPatch('/collections/'+WF_PRODUCTS+'/items/'+wfId,{fieldData:soldFields});if(!wfRes.ok)throw new Error('Webflow sold-out '+wfRes.status);}catch(e){enqueueOrReplaceSync('webflow-mirror-update','sold-'+wfId,'Remove sold item from Webflow: '+(item.name||wfId),{wfId,item,updates:{qty:0,status:'sold','sold-out':true}},e.message);}}
+      if(item.raw?.ebayListingId||item.raw?.listingId)logOpsEvent('ebay_delist_needed','Sold item needs eBay delist',{itemId:item.id,listingId:item.raw.ebayListingId||item.raw.listingId});
       return 'built-in';
     }
     updateUniversalInventoryItem(item.id, { ...saleMeta, status:'sold', lifecycle:'sold' });
