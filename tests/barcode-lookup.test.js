@@ -28,7 +28,7 @@ assert.match(worker,/needsCoverConfirmation:isComic/);
 assert.match(dashboard,/id="research-barcode-btn"/);
 assert.match(dashboard,/BarcodeDetector/);
 assert.match(dashboard,/arsca_barcode_links_v1/);
-assert.match(dashboard,/2026\.07\.03\.06-responsive-inventory/);
+assert.match(dashboard,/2026\.07\.06\.03-deck-lab-nav/);
 assert.doesNotMatch(dashboard,/PRICECHARTING_TOKEN\s*=|PRICECHARTING_API_KEY\s*=/);
 
 console.log('Barcode lookup contract checks passed');

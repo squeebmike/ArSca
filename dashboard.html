@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.07.03.06-responsive-inventory">
+<meta name="version" content="2026.07.06.03-deck-lab-nav">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -49,6 +49,7 @@ header{position:sticky;top:0;z-index:100;background:rgba(7,8,10,.96);backdrop-fi
 .tab{font-family:var(--font-mono);font-size:10px;letter-spacing:1px;color:var(--dim);padding:10px 14px;min-height:40px;border:1px solid transparent;border-radius:var(--brand-button-radius);cursor:pointer;transition:.15s;user-select:none;white-space:nowrap;display:flex;align-items:center;}
 .tab.on{color:var(--g);border-color:rgba(0,255,179,.28);background:rgba(0,255,179,.07);}
 .tab.primary{color:rgba(228,228,232,.72);}
+.tab.deck-lab-link{color:var(--g);text-decoration:none;border-color:rgba(0,255,179,.28);background:rgba(0,255,179,.07);}
 .nav-more{margin-left:auto;position:relative;flex-shrink:0;}
 .more-menu{position:fixed;right:20px;top:98px;display:none;min-width:220px;background:var(--surf);border:1px solid var(--border);border-radius:8px;padding:6px;box-shadow:0 18px 50px rgba(0,0,0,.65);z-index:9998;}
 .more-menu.on{display:grid;gap:4px;}
@@ -1401,9 +1402,9 @@ body.show-mode .inv-sync-badge{display:none;}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-<script src="scripts/query-routing.js?v=2026.07.03.06-responsive-inventory"></script>
-<script src="scripts/barcode-lookup.js?v=2026.07.03.06-responsive-inventory"></script>
-<script src="scripts/comic-issue-hub.js?v=2026.07.03.06-responsive-inventory"></script>
+<script src="scripts/query-routing.js?v=2026.07.06.03-deck-lab-nav"></script>
+<script src="scripts/barcode-lookup.js?v=2026.07.06.03-deck-lab-nav"></script>
+<script src="scripts/comic-issue-hub.js?v=2026.07.06.03-deck-lab-nav"></script>
 <script src="scripts/mtg/mtg-offline-browser.js?v=2026.07.01.04-mtg-offline-set-browser"></script>
 </head>
 <body>
@@ -1454,7 +1455,7 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.07.03.06-responsive-inventory</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.07.06.03-deck-lab-nav</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
@@ -1481,7 +1482,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.07.03.06-responsive-inventory</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.07.06.03-deck-lab-nav</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -2793,7 +2794,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.07.03.06-responsive-inventory';
+const APP_VERSION = '2026.07.06.03-deck-lab-nav';
 window.APP_VERSION = APP_VERSION;
 const branchName = 'main';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
@@ -4912,6 +4913,7 @@ function setupAppShell(){
     tabs.innerHTML = daily.map(([id,label]) =>
       `<div class="tab primary ${id === activeTab ? 'on' : ''}" data-tab="${id}" onclick="switchTab('${id}',this)">${label}</div>`
     ).join('') + `
+      <a class="tab primary deck-lab-link" href="mtg-deck-lab.html">DECK LAB</a>
       <div class="nav-more">
         <div class="tab" id="more-tab-btn" onclick="toggleMoreMenu(event)">MORE</div>
         <div class="more-menu" id="more-menu">
