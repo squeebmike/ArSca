@@ -21,6 +21,7 @@ async function main(){
   assert.equal(moxExport.cards[1].section,'Mainboard');assert.equal(moxExport.cards[2].section,'Sideboard');assert.equal(moxExport.cards[3].section,'Maybeboard');
   const arena=imports.detectProvider(`Deck\n4 Llanowar Elves\n20 Forest\n\nSideboard\n2 Duress`);
   assert.equal(arena.provider.id,'arena');assert.equal(lab.parseDecklist(arena.provider.parseExport(`Deck\n4 Llanowar Elves\n20 Forest\n\nSideboard\n2 Duress`)).cards[2].section,'Sideboard');
+  assert.equal(imports.detectProvider(`Commander\n1 Tatyova, Benthic Druid\nDeck\nRamp\n1 Sol Ring\nSideboard\n1 Negate`).provider.id,'plain');
   const csv=imports.parseCsvExport('quantity,name,set,collector_number,category\n1,"Sol Ring",CMM,400,Ramp\n1,Counterspell,2X2,50,Interaction');
   assert.match(csv,/Ramp\n1 Sol Ring \(CMM\) 400/);assert.match(csv,/Interaction\n1 Counterspell \(2X2\) 50/);
 
