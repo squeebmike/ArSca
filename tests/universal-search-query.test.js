@@ -78,15 +78,35 @@ assert.equal(mtg.intent.inferredCategories[0], 'mtg');
 assert.equal(adapter.queriesFor(mtg, 'mtg', 'Scryfall')[0], 'o:deathtouch o:landfall');
 assert.equal(mtg.adapters[0].filters.mode, 'oracle');
 assert.match(adapter.queriesFor(adapter.buildSearchPlan('rhystic', ''), 'mtg', 'Scryfall')[0], /Rhystic Study/);
+assert.equal(adapter.buildSearchPlan('Arcane Signet', '').intent.inferredCategories[0], 'mtg');
+assert.equal(adapter.buildSearchPlan('Command Tower', '').intent.inferredCategories[0], 'mtg');
+assert.match(adapter.queriesFor(adapter.buildSearchPlan('Arcane Signet', ''), 'mtg', 'Scryfall')[0], /^arcane signet$/i);
+assert.match(adapter.queriesFor(adapter.buildSearchPlan('Command Tower', ''), 'mtg', 'Scryfall')[0], /^command tower$/i);
 
 const sealed = adapter.buildSearchPlan('151 booster bundle', '');
 assert.ok(sealed.intent.inferredCategories.includes('sealed'));
 assert.ok(sealed.adapters.some(a => a.route === '/pricing/pokemon/sealed-products'));
 
+const julio = adapter.buildSearchPlan('Julio Logoman', '');
+assert.equal(julio.intent.inferredCategories[0], 'sports');
+assert.match(adapter.queriesFor(julio, 'sports', 'SportsCardsPro')[0], /Julio Rodriguez.*Logoman/i);
+
+const ohtani = adapter.buildSearchPlan('Ohtani Cosmic Uranus', '');
+assert.equal(ohtani.intent.inferredCategories[0], 'sports');
+assert.match(adapter.queriesFor(ohtani, 'sports', 'SportsCardsPro')[0], /Shohei Ohtani.*Cosmic Uranus/i);
+
+const psaCharmander = adapter.buildSearchPlan('PSA 10 Charmander', '');
+assert.ok(psaCharmander.intent.inferredCategories.includes('graded'));
+assert.ok(psaCharmander.adapters.some(a => a.category === 'graded' && a.provider === 'PriceCharting'));
+assert.match(adapter.queriesFor(psaCharmander, 'graded', 'PriceCharting')[0], /PSA 10 Charmander/i);
+assert.doesNotMatch(adapter.queriesFor(psaCharmander, 'graded', 'PriceCharting')[0], /#10/);
+
 assert.match(worker, /pcFetch\('\/api\/products'/, 'PriceCharting search must use multi-result /api/products');
 assert.match(worker, /pcFetch\('\/api\/product'/, 'PriceCharting detail must use /api/product by id');
 assert.match(dashboard, /_qplSearchSeq/, 'active search guard must remain present');
 assert.match(dashboard, /qplSearchStillActive/, 'adapter must integrate with stale-response guard');
+assert.match(dashboard, /plannedCategories\.has\('graded'\)/, 'graded search plans must execute live PriceCharting lookups');
+assert.match(dashboard, /effectiveCategory === 'graded' \? gradedPcCat/, 'graded PriceCharting searches must choose Pokemon, comics, or sports category from the query');
 assert.match(dashboard, /limit:'5'/, 'normal Pokemon search must cap results at five');
 assert.match(dashboard, /Graded 9\.8 estimate/, 'comic UI must use neutral graded estimate labels');
 assert.match(dashboard, /\/pricing\/pricecharting\/product\//, 'comic refresh must hydrate the exact selected PriceCharting product');

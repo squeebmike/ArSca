@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.07.07.05-mtg-freshness-status">
+<meta name="version" content="2026.07.07.06-search-lifecycle-fixes">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1415,11 +1415,11 @@ body.show-mode .inv-sync-badge{display:none;}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-<script src="scripts/query-routing.js?v=2026.07.07.05-mtg-freshness-status"></script>
-<script src="scripts/barcode-lookup.js?v=2026.07.07.05-mtg-freshness-status"></script>
-<script src="scripts/comic-issue-hub.js?v=2026.07.07.05-mtg-freshness-status"></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.07.07.05-mtg-freshness-status"></script>
-<script src="scripts/mtg/research-batch.js?v=2026.07.07.05-mtg-freshness-status"></script>
+<script src="scripts/query-routing.js?v=2026.07.07.06-search-lifecycle-fixes"></script>
+<script src="scripts/barcode-lookup.js?v=2026.07.07.06-search-lifecycle-fixes"></script>
+<script src="scripts/comic-issue-hub.js?v=2026.07.07.06-search-lifecycle-fixes"></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.07.07.06-search-lifecycle-fixes"></script>
+<script src="scripts/mtg/research-batch.js?v=2026.07.07.06-search-lifecycle-fixes"></script>
 </head>
 <body>
 
@@ -1469,11 +1469,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.07.07.05-mtg-freshness-status</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.07.07.06-search-lifecycle-fixes</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.07.07.05-mtg-freshness-status</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.07.07.06-search-lifecycle-fixes</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1496,7 +1496,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.07.07.05-mtg-freshness-status</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.07.07.06-search-lifecycle-fixes</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -2829,7 +2829,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.07.07.05-mtg-freshness-status';
+const APP_VERSION = '2026.07.07.06-search-lifecycle-fixes';
 window.APP_VERSION = APP_VERSION;
 const branchName = 'main';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
@@ -17878,7 +17878,7 @@ async function searchQuickCatalog(q, cat, searchPlan = buildUniversalSearchPlan(
       : null;
     try {
       const [searchResult, sealedResult] = await Promise.all([
-        isParseTitleQuery ? Promise.resolve({ cards:[], ranked:[], requestPath:'', cacheStatus:'skip' }) : searchPokemonPriceTrackerCards(pokemonSearchQuery, searchLanguage),
+        isParseTitleQuery ? Promise.resolve({ cards:[], ranked:[], requestPath:'', cacheStatus:'skip' }) : searchPokemonPriceTrackerCards(pokemonSearchQuery, searchLanguage).catch(error => ({ cards:[], ranked:[], requestPath:'', cacheStatus:'failed', error })),
         sealedPromise || Promise.resolve({ products:[] }),
       ]);
       if(!isParseTitleQuery) recordSearchPlanRoute(searchPlan, '/pricing/pokemon/cards', pokemonSearchQuery, searchResult.cards?.length || 0);
@@ -18023,7 +18023,7 @@ async function searchQuickCatalog(q, cat, searchPlan = buildUniversalSearchPlan(
     } catch(e) {}
   }
 
-  if(!wants || intent.intents.some(x => ['comic','video_games','funko','lego','coins','sports','graded','collectibles'].includes(x)) || plannedCategories.has('comic') || plannedCategories.has('sports')) {
+  if(!wants || intent.intents.some(x => ['comic','video_games','funko','lego','coins','sports','graded','collectibles'].includes(x)) || plannedCategories.has('comic') || plannedCategories.has('sports') || plannedCategories.has('graded')) {
     try {
       const pcLive = await fetchPriceChartingLiveCatalog(q, cat, searchPlan);
       pcLive.forEach(add);
@@ -19863,8 +19863,9 @@ async function fetchPriceChartingCsvCatalog(q, cat){
 async function fetchPriceChartingLiveCatalog(q, cat, searchPlan = qplLastSearchPlan){
   const plannedCategory = (searchPlan?.adapters || []).find(a => a.provider === 'PriceCharting')?.category || '';
   const effectiveCategory = qplCategoryKey(cat) || plannedCategory;
-  const pcCat = qplPriceChartingCategory(effectiveCategory);
-  const isSports = effectiveCategory === 'sports';
+  const gradedPcCat = isPokemonLookupIntent(q, '') ? 'Pokemon Cards' : isComicLookupIntent(q, '') ? 'Comics' : 'Sports Cards';
+  const pcCat = effectiveCategory === 'graded' ? gradedPcCat : qplPriceChartingCategory(effectiveCategory);
+  const isSports = effectiveCategory === 'sports' || (effectiveCategory === 'graded' && pcCat === 'Sports Cards');
   const rows = [];
 
   if(isSports){
@@ -23106,7 +23107,7 @@ function selectedQuickLookupItem(idx){
     listPrice:isComic ? Number(comicValuation.listPrice || 0) : 0,
     cost:parseFloat(document.getElementById('qpl-edit-cost')?.value) || Number(comicAppraisal?.costBasis || r.cost || 0),
     costBasis:parseFloat(document.getElementById('qpl-edit-cost')?.value) || Number(comicAppraisal?.costBasis || r.cost || 0),
-    qty:1,
+    qty:Math.max(1, Math.min(100, Number(r.qty || r.quantity || 1) || 1)),
     location:document.getElementById('qpl-edit-location')?.value.trim() || comicAppraisal?.location || '',
     box:isComic ? comicAppraisal.box || '' : '',
     thumbnail:document.getElementById('qpl-edit-image-url')?.value.trim() || (isComic&&r.userPhotoBlobKey ? r.externalCoverImageUrl||'' : r.imageUrl||''),
@@ -23313,8 +23314,9 @@ function addSelectedQuickLookupToBuyOffer(idx){
     return;
   }
   const session = getActiveBuySession();
-  buyList.push({
-    id:'bl_qpl_' + Date.now(),
+  const quantity = Math.max(1, Math.min(100, Number(item.qty || item.quantity || 1) || 1));
+  const makeBuyItem = copyIndex => ({
+    id:'bl_qpl_' + Date.now() + '_' + copyIndex + '_' + Math.random().toString(36).slice(2,5),
     name:item.name,
     market:item.market,
     referenceMarketPrice:Number(item.referenceMarketPrice || item.market || 0),
@@ -23355,12 +23357,17 @@ function addSelectedQuickLookupToBuyOffer(idx){
     buySessionId:session?.buySessionId || '',
     storeId:getActiveStoreId(),
     status:'offered',
+    quantity:1,
+    sourceQuantity:quantity,
+    quantityCopyIndex:copyIndex + 1,
   });
+  const items = Array.from({ length:quantity }, (_, copyIndex) => makeBuyItem(copyIndex));
+  buyList.push(...items);
   saveBuyList();
-  logOpsEvent('buy_item_added', 'Added research result to buy offer: ' + item.name, { buySessionId:session?.buySessionId || '', source:item.priceSource || item.pricingSource || '', market:Number(item.market || 0) });
+  logOpsEvent('buy_item_added', 'Added research result to buy offer: ' + item.name, { buySessionId:session?.buySessionId || '', source:item.priceSource || item.pricingSource || '', market:Number(item.market || 0), quantity });
   renderBuyList();
   setTimeout(renderBuyList, 75);
-  toast_dash('Added to buy offer: ' + item.name);
+  toast_dash('Added to buy offer: ' + item.name + (quantity > 1 ? ' x' + quantity : ''));
 }
 
 function addQuickLookupToBuyOffer(idx){
@@ -28778,7 +28785,7 @@ async function toppsLoadParallels(cardId){
   }
 }
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.07.07.05-mtg-freshness-status"></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.07.07.06-search-lifecycle-fixes"></script>
 </body>
 </html>
 

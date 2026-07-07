@@ -30,6 +30,25 @@ test('dealer query examples return useful candidates', async ({ page }) => {
   }
 });
 
+test('release search matrix routes MTG, Pokemon, sealed, sports, and graded queries', async ({ page }) => {
+  const examples = [
+    ['Sol Ring', '', /Sol Ring/i],
+    ['Arcane Signet', '', /Arcane Signet/i],
+    ['Command Tower', '', /Command Tower/i],
+    ['Charizard 4/102', '', /Charizard/i],
+    ['Greninja ex 214', '', /Greninja ex/i],
+    ['booster bundle 151', '', /151 Booster Bundle/i],
+    ['Surging Sparks booster box', '', /Surging Sparks Booster Box/i],
+    ['PSA 10 Charmander', '', /PSA 10 Charmander|Charmander/i],
+    ['Julio Logoman', '', /Julio Rodriguez Logoman/i],
+    ['Ohtani Cosmic Uranus', '', /Shohei Ohtani Cosmic Uranus/i],
+  ];
+  for (const [query, category, expected] of examples) {
+    const cards = await runResearchSearch(page, query, category);
+    await expect(cards.first(), query).toContainText(expected);
+  }
+});
+
 test('category dropdown refilters already-loaded results', async ({ page }) => {
   await runResearchSearch(page, 'wolverine', '');
   await page.locator('.qpl-cat-pill[data-cat="Comic"]').click();

@@ -314,6 +314,35 @@ async function mockWalkoffApis(page) {
     else if (q.includes('wolverine')) matches = [justTcgMatch('Wolverine', { game: 'Magic', setName: 'Marvel', rarity: 'Rare', marketPrice: 5, confidenceScore: 40 })];
     return route.fulfill({ json: { ok: true, success: true, matches } });
   });
+  await page.route('**/pricing/pokemon/sealed-products**', route => {
+    const url = new URL(route.request().url());
+    const q = (url.searchParams.get('search') || url.searchParams.get('q') || '').toLowerCase();
+    const products = [];
+    if (q.includes('151') && q.includes('booster')) {
+      products.push({
+        id: 'qa-sealed-151-bundle',
+        tcgPlayerId: 'qa-sealed-151-bundle',
+        name: 'Pokemon 151 Booster Bundle',
+        setName: 'Scarlet & Violet 151',
+        unopenedPrice: 58,
+        language: 'English',
+        imageUrl: '',
+        lastScrapedAt: '2026-05-08T00:00:00.000Z',
+      });
+    } else if (q.includes('surging sparks') && q.includes('booster')) {
+      products.push({
+        id: 'qa-sealed-surging-box',
+        tcgPlayerId: 'qa-sealed-surging-box',
+        name: 'Surging Sparks Booster Box',
+        setName: 'Surging Sparks',
+        unopenedPrice: 210,
+        language: 'English',
+        imageUrl: '',
+        lastScrapedAt: '2026-05-08T00:00:00.000Z',
+      });
+    }
+    return route.fulfill({ json: { ok: true, products } });
+  });
   await page.route('**/pricing/justtcg/card/**', route => route.fulfill({ json: { ok: true, ...justTcgMatch('Pikachu', { marketPrice: 22 }) } }));
   await page.route('**/pricing/justtcg/sku/**', route => route.fulfill({ json: { ok: true, skuId: 'qa-sku', marketPrice: 22, priceHistory: [{ date: '2026-04-08', price: 18 }, { date: '2026-05-08', price: 22 }] } }));
   await page.route('**/pricing/tcg**', route => route.fulfill({ json: { ok: true, success: true, matches: [] } }));

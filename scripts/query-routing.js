@@ -17,9 +17,11 @@
   const SPORTS_PLAYERS = {
     griffey:'Ken Griffey Jr', 'ken griffey':'Ken Griffey Jr', jordan:'Michael Jordan', 'michael jordan':'Michael Jordan',
     ohtani:'Shohei Ohtani', trout:'Mike Trout', brady:'Tom Brady', kobe:'Kobe Bryant',
-    'randy johnson':'Randy Johnson', mahomes:'Patrick Mahomes', lebron:'LeBron James'
+    'randy johnson':'Randy Johnson', mahomes:'Patrick Mahomes', lebron:'LeBron James',
+    julio:'Julio Rodriguez', 'julio rodriguez':'Julio Rodriguez'
   };
-  const MTG_TERMS = ['deathtouch','landfall','flying','trample','lifelink','haste','commander','legendary','instant','sorcery','creature','planeswalker','goblin','artifact','enchantment','draw a card','mana'];
+  const MTG_TERMS = ['deathtouch','landfall','flying','trample','lifelink','haste','commander','legendary','instant','sorcery','creature','planeswalker','artifact','enchantment','draw a card','mana','sol ring','arcane signet','command tower','swords to plowshares','counterspell','beast within'];
+  const MTG_CARD_NAMES = ['sol ring','arcane signet','command tower','swords to plowshares','counterspell','beast within','fire // ice','fable of the mirror-breaker'];
   const SEALED_TERMS = ['booster box','booster bundle','elite trainer box','etb','hobby box','blaster','mega box','collector booster','set booster','tin','pack','case','sealed'];
   const POKEMON_TERMS = ['pokemon','pikachu','charizard','bulbasaur','squirtle','charmander','umbreon','eevee','mew','mewtwo','gengar','rayquaza','vmax','vstar','sir','illustration rare','trainer gallery','swsh','svp'];
   const COMIC_TERMS = ['asm','amazing spider-man','tmnt','teenage mutant ninja turtles','uxm','uncanny x-men','x-men','hulk','fantastic four','ff','batman','detective','tec','spawn','walking dead','venom','newsstand','direct','marvel','dc','mirage','issue','facsimile','reprint'];
@@ -83,7 +85,7 @@
     const playerKey = Object.keys(SPORTS_PLAYERS).sort((a,b)=>b.length-a.length).find(v => text.includes(v));
     const mechanics = MTG_TERMS.filter(v => text.includes(v));
     const sealedTypes = SEALED_TERMS.filter(v => text.includes(v));
-    const variantTerms = unique(text.match(/\b(?:rookie|rc|auto(?:graph)?|relic|patch|parallel|newsstand|direct|venom|mirage|sir|ir|full art|reverse holo|holo|borderless|japanese|1st edition|first print(?:ing)?|second print(?:ing)?|2nd print(?:ing)?|sketch|foil|virgin|ratio|incentive|facsimile|reprint)\b/g) || []);
+    const variantTerms = unique(text.match(/\b(?:rookie|rc|auto(?:graph)?|relic|patch|parallel|logoman|cosmic|uranus|kaboom|downtown|color blast|stained glass|zebra|gold vinyl|newsstand|direct|venom|mirage|sir|ir|full art|reverse holo|holo|borderless|japanese|1st edition|first print(?:ing)?|second print(?:ing)?|2nd print(?:ing)?|sketch|foil|virgin|ratio|incentive|facsimile|reprint)\b/g) || []);
     const plainNumbers = query.tokens.filter(t => /^#?\d{1,4}$/.test(t)).map(t => t.replace(/^#/,'')).filter(t => !query.years.includes(Number(t)));
     return {
       years:query.years, year:query.years[0] || null,
@@ -97,13 +99,16 @@
   function detectSearchIntent(normalizedQuery, selectedCategory = ''){
     const query = typeof normalizedQuery === 'string' ? normalizeUserQuery(normalizedQuery) : normalizedQuery;
     const selected = categoryKey(selectedCategory), text = query.normalized, entities = extractEntities(query);
-    const scores = { pokemon:0, mtg:0, sports:0, comic:0, sealed:0 };
+    const scores = { pokemon:0, mtg:0, sports:0, comic:0, sealed:0, graded:0 };
     if(query.collectorNumbers.some(n => n.includes('/'))) scores.pokemon += 65;
     if(includesAny(text, POKEMON_TERMS)) scores.pokemon += 45;
     if(/\b(?:ex|gx|vmax|vstar|sir|illustration rare|trainer gallery)\b/.test(text)) scores.pokemon += 20;
     if(entities.brands.length || /\b(?:rookie|rc|baseball|basketball|football|hockey|soccer|mlb|nba|nfl|nhl)\b/.test(text)) scores.sports += 55;
     if(entities.player) scores.sports += 30;
+    if(entities.player && entities.variantTerms.length) scores.sports += 35;
     if(entities.year && (entities.brand || entities.player)) scores.sports += 15;
+    if(/\b(?:psa|bgs|cgc|sgc)\s*(?:10|9\.?8|9|8\.?5|8)\b|\bgraded\b/.test(text)) scores.graded += 70;
+    if(scores.graded && (scores.pokemon || scores.sports || scores.comic)) scores.graded += 15;
     if(includesAny(text, COMIC_TERMS) || (/\b#?\d{1,4}\b/.test(text) && /\b(?:issue|variant|newsstand|mirage)\b/.test(text))) scores.comic += 60;
     if(entities.mechanics.length || /\b(?:magic the gathering|mtg|planeswalker|sorcery|instant|rhystic(?: study)?|sol ring)\b/.test(text)) scores.mtg += 55;
     if(entities.sealedTypes.length) scores.sealed += 55;
@@ -116,18 +121,20 @@
 
   function sportsQueries(query, entities){
     const text = query.normalized;
+    if(/\b(?:psa|bgs|cgc|sgc)\s*(?:10|9\.?8|9|8\.?5|8)\b/.test(text)) return unique([text], 5);
     const year2 = (text.match(/\b\d{2}\b/g) || []).find(value => value !== String(entities.cardNumber || '').replace(/^#/,''));
     let year = entities.year ? String(entities.year) : '';
     if(!year && year2) year = (Number(year2) >= 50 ? '19' : '20') + year2;
     const player = entities.player, brand = entities.brand, num = String(entities.cardNumber || '').replace(/^#/,'');
+    const variants = (entities.variantTerms || []).filter(term => !/rookie|rc/.test(term)).join(' ');
     const out = [];
     if(/griffey/.test(text) && /upper deck/.test(text) && (!num || num === '1')) out.push('1989 Upper Deck Ken Griffey Jr #1');
     if(/jordan/.test(text) && /fleer/.test(text) && (!num || num === '57')) out.push('1986 Fleer Michael Jordan #57');
     if(/randy johnson/.test(text) && /75ya-rj/i.test(text)) out.push('2026 Topps 75 Years of Topps All-Stars Randy Johnson 75YA-RJ');
-    if(player || brand || year || num) out.push([year, brand, player, num ? '#'+num : '', entities.rookieIntent ? 'rookie' : ''].filter(Boolean).join(' '));
+    if(player || brand || year || num || variants) out.push([year, brand, player, num ? '#'+num : '', variants, entities.rookieIntent ? 'rookie' : ''].filter(Boolean).join(' '));
     out.push(text);
-    if(player) out.push([player, brand, num ? '#'+num : '', entities.rookieIntent ? 'rookie' : ''].filter(Boolean).join(' '));
-    if(player && brand) out.push([year, brand, 'Baseball', player, num ? '#'+num : ''].filter(Boolean).join(' '));
+    if(player) out.push([player, brand, num ? '#'+num : '', variants, entities.rookieIntent ? 'rookie' : ''].filter(Boolean).join(' '));
+    if(player && brand) out.push([year, brand, 'Baseball', player, num ? '#'+num : '', variants].filter(Boolean).join(' '));
     return unique(out, 5);
   }
 
@@ -150,6 +157,7 @@
 
   function mtgQueries(query, entities){
     const text = query.normalized.replace(/\bmtg\b|\bmagic the gathering\b/g,' ').replace(/\s+/g,' ').trim();
+    if(MTG_CARD_NAMES.includes(text)) return unique([text], 3);
     if(entities.mechanics.length) return unique([entities.mechanics.map(term => term.includes(' ') ? 'o:"'+term+'"' : 'o:'+term).join(' '), text], 3);
     if(text === 'rhystic') return ['Rhystic Study', 'rhystic'];
     return unique([text], 3);
@@ -183,8 +191,8 @@
       if(category === 'pokemon') adapters.push(adapter('pokemon','PokemonPriceTracker','/pricing/pokemon/cards',pokemonQueries(normalized,entities),confidence,{ language:entities.language || 'english', limit:5 }));
       if(category === 'sports' || category === 'graded') {
         const queries = sportsQueries(normalized,entities);
-        adapters.push(adapter('sports','SportsCardsPro','/pricing/sportscardspro/products',queries,confidence,{ maxQueries:3 }));
-        adapters.push(adapter('sports','PriceCharting','/pricing/pricecharting/search',queries,confidence,{ endpoint:'/api/products', maxQueries:2 }));
+        if(category === 'sports') adapters.push(adapter('sports','SportsCardsPro','/pricing/sportscardspro/products',queries,confidence,{ maxQueries:3 }));
+        adapters.push(adapter(category,'PriceCharting','/pricing/pricecharting/search',queries,confidence,{ endpoint:'/api/products', maxQueries:2, slab:true }));
       }
       if(category === 'comic') adapters.push(adapter('comic','PriceCharting','/pricing/pricecharting/search',comicQueries(normalized,entities),confidence,{ endpoint:'/api/products', maxQueries:3 }));
       if(category === 'mtg') adapters.push(adapter('mtg','Scryfall','https://api.scryfall.com/cards/search',mtgQueries(normalized,entities),confidence,{ mode:entities.mechanics.length ? 'oracle' : 'name-or-text' }));

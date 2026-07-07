@@ -13,7 +13,7 @@ async function openDashboard(page, target = 'dashboard.html') {
   await mockWalkoffApis(page);
   await seedDemoStore(page);
   const guard = await installConsoleGuard(page, {
-    allowConsole: [/ERR_NETWORK_ACCESS_DENIED/i, /URL scheme "file" is not supported/i],
+    allowConsole: [/ERR_NETWORK_ACCESS_DENIED/i, /ERR_INTERNET_DISCONNECTED/i, /URL scheme "file" is not supported/i],
     allowRequest: [/favicon/i, /supabase/i, /cdn\.jsdelivr\.net/i, /swarnerauto\.workers\.dev/i],
   });
   await page.goto(appUrl(target), { waitUntil: 'domcontentloaded' });
@@ -29,7 +29,7 @@ async function openScanner(page, target = 'sca.html') {
   await mockWalkoffApis(page);
   await seedDemoStore(page);
   const guard = await installConsoleGuard(page, {
-    allowConsole: [/ERR_NETWORK_ACCESS_DENIED/i, /URL scheme "file" is not supported/i],
+    allowConsole: [/ERR_NETWORK_ACCESS_DENIED/i, /ERR_INTERNET_DISCONNECTED/i, /URL scheme "file" is not supported/i],
     allowRequest: [/favicon/i, /supabase/i, /cdn\.jsdelivr\.net/i, /swarnerauto\.workers\.dev/i],
   });
   await page.goto(appUrl(target), { waitUntil: 'domcontentloaded' });
