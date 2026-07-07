@@ -19,7 +19,7 @@ test('dashboard html and worker scripts parse', async () => {
 test('dashboard loads current build with primary nav and Research tab', async ({ page }) => {
   const guard = await openDashboard(page);
   await expect(page.locator('.logo')).toContainText(/WALK-OFF|DEMO DASHBOARD/i);
-  await expect(page.locator('meta[name="version"]')).toHaveAttribute('content', /2026\.07\.07\.03/);
+  await expect(page.locator('meta[name="version"]')).toHaveAttribute('content', /2026\.07\.07\.04/);
   await expect(page.locator('[data-tab="overview"]')).toBeVisible();
   await expect(page.locator('[data-tab="research"]')).toBeVisible();
   await expect(page.locator('#top-show-chip')).toContainText(/NO SHOW ACTIVE|SHOW ACTIVE/);

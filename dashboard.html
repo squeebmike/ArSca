@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.07.07.03-mtg-batch-appraisal">
+<meta name="version" content="2026.07.07.04-price-sync-labels">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1415,11 +1415,11 @@ body.show-mode .inv-sync-badge{display:none;}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-<script src="scripts/query-routing.js?v=2026.07.07.03-mtg-batch-appraisal"></script>
-<script src="scripts/barcode-lookup.js?v=2026.07.07.03-mtg-batch-appraisal"></script>
-<script src="scripts/comic-issue-hub.js?v=2026.07.07.03-mtg-batch-appraisal"></script>
+<script src="scripts/query-routing.js?v=2026.07.07.04-price-sync-labels"></script>
+<script src="scripts/barcode-lookup.js?v=2026.07.07.04-price-sync-labels"></script>
+<script src="scripts/comic-issue-hub.js?v=2026.07.07.04-price-sync-labels"></script>
 <script src="scripts/mtg/mtg-offline-browser.js?v=2026.07.01.04-mtg-offline-set-browser"></script>
-<script src="scripts/mtg/research-batch.js?v=2026.07.07.03-mtg-batch-appraisal"></script>
+<script src="scripts/mtg/research-batch.js?v=2026.07.07.04-price-sync-labels"></script>
 </head>
 <body>
 
@@ -1469,11 +1469,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.07.07.03-mtg-batch-appraisal</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.07.07.04-price-sync-labels</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.07.07.03-mtg-batch-appraisal</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.07.07.04-price-sync-labels</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1496,7 +1496,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.07.07.03-mtg-batch-appraisal</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.07.07.04-price-sync-labels</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -2465,6 +2465,7 @@ body.show-mode .inv-sync-badge{display:none;}
   <div class="modal" style="max-width:600px;max-height:82vh;display:flex;flex-direction:column">
     <h3>💹 SYNC LATEST PRICES</h3>
     <p style="font-size:11px;color:var(--dim);margin:0 0 12px">Cached scan uses downloaded/local catalog or exact hydrated Pokémon data only; one-off Research searches are ignored. Live Pokémon refresh fetches current PokemonPriceTracker prices through the Worker.</p>
+    <p style="font-size:11px;color:var(--gold);margin:0 0 12px;font-family:var(--font-mono)">Updates change market/list price fields only. Cost basis stays unchanged.</p>
     <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:12px;align-items:center">
       <label style="display:flex;align-items:center;gap:5px;font-size:11px;cursor:pointer"><input type="checkbox" id="pso-tcg" checked> TCG / Pokémon</label>
       <label style="display:flex;align-items:center;gap:5px;font-size:11px;cursor:pointer"><input type="checkbox" id="pso-sports" checked> Sports Cards</label>
@@ -2828,7 +2829,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.07.07.03-mtg-batch-appraisal';
+const APP_VERSION = '2026.07.07.04-price-sync-labels';
 window.APP_VERSION = APP_VERSION;
 const branchName = 'main';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
@@ -11081,6 +11082,13 @@ async function runLivePokemonPriceSync(){
   }
 }
 
+function priceSyncItemTitle(item = {}){
+  return item.name || item.title || item.cardName || item.productName || item.displayName ||
+    item.raw?.name || item.raw?.title || item.raw?.cardName || item.raw?.productName ||
+    [item.player, item.set, item.card_number || item.cardNumber].filter(Boolean).join(' ') ||
+    'Inventory item';
+}
+
 function renderPriceSyncProposal(){
   const el = document.getElementById('price-sync-proposal');
   if(!el) return;
@@ -11094,7 +11102,7 @@ function renderPriceSyncProposal(){
     return `<div style="background:var(--bg2);border:1px solid ${p.isBig?col:'var(--border)'};border-radius:8px;padding:9px 12px;display:flex;align-items:center;gap:10px;margin-bottom:6px">
       <input type="checkbox" data-pso-idx="${idx}" ${p.selected?'checked':''} onchange="togglePriceSyncItem(${idx},this.checked)" style="width:16px;height:16px;flex-shrink:0">
       <div style="flex:1;min-width:0">
-        <div style="font-size:12px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(p.item.name||'Item')}</div>
+        <div style="font-size:12px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(priceSyncItemTitle(p.item))}</div>
         <div style="font-size:10px;color:var(--dim)">${escHtml(p.item.set||'')}${(p.item.card_number || p.item.cardNumber)?' · #'+escHtml(p.item.card_number || p.item.cardNumber):''} · ${escHtml(p.mode === 'live' ? 'live ' + (p.matchStatus || 'match') : 'cached')} · ${escHtml(p.source || '')}${p.lastUpdated?' · '+escHtml(String(p.lastUpdated).slice(0,10)):''}</div>
       </div>
       <div style="text-align:right;white-space:nowrap">
@@ -11154,7 +11162,7 @@ async function applySelectedPriceSyncUpdates(){
         priceSyncRequestPath:p.requestPath || '',
       });
       ok++;
-    } catch(e){ console.warn('[syncPrices] Apply failed:', p.item.name, e); }
+    } catch(e){ console.warn('[syncPrices] Apply failed:', priceSyncItemTitle(p.item), e); }
   }
   _priceSyncProposal = _priceSyncProposal.filter(p => !p.selected);
   renderPriceSyncProposal();
@@ -28736,7 +28744,7 @@ async function toppsLoadParallels(cardId){
   }
 }
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.07.07.03-mtg-batch-appraisal"></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.07.07.04-price-sync-labels"></script>
 </body>
 </html>
 

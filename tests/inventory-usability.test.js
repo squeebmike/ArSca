@@ -12,4 +12,8 @@ assert.match(dashboard,/id="tab-browse"/);
 assert.match(dashboard,/function renderCustomerInventoryBrowser/);
 assert.match(dashboard,/Cost and private store data are hidden/);
 assert.match(dashboard,/mutedTextColor:'rgba\(228,228,232,.68\)'/);
+assert.match(dashboard,/Cost basis stays unchanged/);
+const priceSyncApply = dashboard.match(/async function applySelectedPriceSyncUpdates\(\)[\s\S]*?function updatePriceAlertBanner/)?.[0] || '';
+assert.ok(priceSyncApply, 'price sync apply function exists');
+assert.doesNotMatch(priceSyncApply, /\bcost\s*:/, 'price sync must not update cost basis');
 console.log('Inventory usability contract checks passed');
