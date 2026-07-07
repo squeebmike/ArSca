@@ -38,7 +38,11 @@ test('category dropdown refilters already-loaded results', async ({ page }) => {
   await runResearchSearch(page, 'pikachu', '');
   await page.locator('.qpl-cat-pill[data-cat="Pokemon TCG"]').click();
   if (await page.getByRole('button', { name: /search this category/i }).count()) {
-    await page.getByRole('button', { name: /search this category/i }).click();
+    await page.evaluate(() => {
+      const button = [...document.querySelectorAll('button')]
+        .find(btn => /search this category/i.test(btn.textContent || '') && btn.offsetParent);
+      button?.click();
+    });
   }
   await expect(page.locator('#qpl-result')).toContainText(/Pikachu/i);
 

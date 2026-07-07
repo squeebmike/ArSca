@@ -34,6 +34,26 @@
     if(p.usdEtched != null || row.selectedPrinting?.finishes?.includes?.('etched')) out.push('etched');
     return [...new Set(out)];
   }
+  function normName(value){
+    return String(value || '').toLowerCase().replace(/\/\/.*$/, '').replace(/\s+/g, ' ').replace(/[^a-z0-9 ]/g, '').trim();
+  }
+  function invQty(item){
+    const raw = item?.qty ?? item?.quantity ?? item?.count ?? 1;
+    const n = Number(raw);
+    return Number.isFinite(n) && n > 0 ? n : 1;
+  }
+  function rowInventoryCount(row){
+    const inv = Array.isArray(window.all) ? window.all : [];
+    const targets = [row.selectedPrinting?.name, row.cleanedName, row.parsedName].map(normName).filter(Boolean);
+    if(!targets.length) return 0;
+    return inv.reduce((sum, item) => {
+      const status = String(item?.status || '').toLowerCase();
+      if(status.includes('sold') || status.includes('archiv')) return sum;
+      const text = [item?.name, item?.title, item?.cardName, item?.productName, item?.displayName].map(normName).filter(Boolean);
+      const match = text.some(name => targets.includes(name) || targets.some(target => name === target || name.startsWith(target + ' ')));
+      return match ? sum + invQty(item) : sum;
+    }, 0);
+  }
 
   function installStyles(){
     if($('mtg-research-batch-style')) return;
@@ -49,12 +69,12 @@
       .mrb-field{display:grid;gap:5px;font-family:var(--font-mono);font-size:10px;color:var(--dim);margin-bottom:9px}.mrb-input,.mrb-select,.mrb-textarea{width:100%;background:var(--surf2);border:1px solid var(--border);border-radius:8px;color:var(--text);font:13px var(--font-mono);padding:9px 10px}.mrb-textarea{min-height:190px;resize:vertical;line-height:1.45}
       .mrb-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.mrb-stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;margin:10px 0}.mrb-stat{border:1px solid var(--border);border-radius:8px;background:var(--surf2);padding:9px}.mrb-stat b{font-size:19px;color:var(--text)}.mrb-stat span{display:block;font-family:var(--font-mono);font-size:9px;color:var(--dim);margin-top:3px}
       .mrb-saved{display:grid;gap:8px}.mrb-saved-card{border:1px solid var(--border);border-radius:8px;padding:9px;background:var(--surf2)}.mrb-saved-title{font-weight:800;color:var(--text);font-size:13px}.mrb-meta{font-family:var(--font-mono);font-size:10px;color:var(--dim);line-height:1.55}
-      .mrb-toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}.mrb-table-wrap{overflow:auto;border:1px solid var(--border);border-radius:10px}.mrb-table{width:100%;border-collapse:collapse;min-width:1420px}.mrb-table th,.mrb-table td{border-bottom:1px solid var(--border);padding:10px;vertical-align:top;text-align:left;font-size:12px}.mrb-table th{font:10px var(--font-mono);color:var(--dim);background:var(--surf2);position:sticky;top:0;z-index:1}
+      .mrb-toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}.mrb-table-wrap{overflow:visible;border:0;border-radius:0}.mrb-table{display:block;width:100%;min-width:0;border-collapse:separate}.mrb-table thead{display:none}.mrb-table tbody{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(760px,100%),1fr));gap:12px}.mrb-table tr{display:grid;grid-template-columns:86px 74px minmax(250px,1.25fr) minmax(250px,1.05fr) minmax(170px,.75fr);grid-template-areas:'checks qty card price meta' 'checks qty card price match' 'notes notes notes actions actions';gap:10px;align-items:start;border:1px solid var(--border);border-radius:10px;background:var(--surf2);padding:11px}.mrb-table td{display:block;border:0!important;padding:0!important;vertical-align:top;text-align:left;font-size:13px;min-width:0}.mrb-table td:nth-child(1){grid-area:checks}.mrb-table td:nth-child(2){grid-area:qty}.mrb-table td:nth-child(3){grid-area:card}.mrb-table td:nth-child(4){grid-area:price}.mrb-table td:nth-child(5){grid-area:meta}.mrb-table td:nth-child(6){grid-area:match}.mrb-table td:nth-child(7){grid-area:notes}.mrb-table td:nth-child(8){grid-area:actions}
       .mrb-card-cell{display:grid;grid-template-columns:82px minmax(0,1fr);gap:12px;align-items:start}.mrb-thumb{width:82px;height:114px;border-radius:6px;object-fit:cover;border:1px solid var(--border);background:#050508;cursor:zoom-in}.mrb-no-img{width:82px;height:114px;border:1px dashed var(--border);border-radius:6px;display:grid;place-items:center;font:9px var(--font-mono);color:var(--dim)}
       .mrb-name{font-weight:800;font-size:14px;color:var(--text);line-height:1.25}.mrb-badge{display:inline-flex;border:1px solid var(--border);border-radius:999px;padding:3px 7px;font:9px var(--font-mono);color:var(--dim);margin:2px 3px 2px 0}.mrb-badge.ok{color:var(--g);border-color:rgba(0,255,179,.35)}.mrb-badge.warn{color:var(--gold);border-color:rgba(255,209,102,.36)}.mrb-badge.bad{color:var(--red);border-color:rgba(255,77,109,.34)}
-      .mrb-small-input{width:72px;background:var(--surf2);border:1px solid var(--border);border-radius:7px;color:var(--text);padding:7px;font:12px var(--font-mono)}.mrb-note{min-width:170px}.mrb-warning{border:1px solid rgba(255,209,102,.35);background:rgba(255,209,102,.08);color:var(--gold);border-radius:8px;padding:9px 10px;font:11px var(--font-mono);line-height:1.45;margin-bottom:10px}
-      .mrb-checks{display:grid;gap:8px;font:9px var(--font-mono);color:var(--dim);min-width:78px}.mrb-checks label{display:flex;gap:6px;align-items:center}.mrb-price-main{font:16px var(--font-mono);color:var(--g);font-weight:800;margin:4px 0}.mrb-printing-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:12px}.mrb-printing-card{border:1px solid var(--border);border-radius:8px;background:var(--surf);padding:10px;display:grid;gap:8px}.mrb-printing-card img{width:100%;max-height:260px;object-fit:contain;background:#050508;border-radius:6px;cursor:zoom-in}.mrb-lightbox{position:fixed;inset:0;z-index:5000;background:rgba(0,0,0,.9);display:none;align-items:center;justify-content:center;padding:24px}.mrb-lightbox.on{display:flex}.mrb-lightbox img{max-width:min(92vw,620px);max-height:88vh;border-radius:10px}.mrb-picker{position:fixed;inset:0;z-index:4900;background:rgba(0,0,0,.82);display:none;padding:24px;overflow:auto}.mrb-picker.on{display:block}.mrb-picker-inner{max-width:1400px;margin:0 auto;background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:14px}
-      @media(max-width:760px){.mrb-body{grid-template-columns:1fr;overflow:auto}.mrb-shell{height:100dvh}.mrb-panel{overflow:visible}.mrb-head{align-items:flex-start}.mrb-title{font-size:15px}.mrb-table{min-width:1180px}.mrb-card-cell{grid-template-columns:72px minmax(0,1fr)}.mrb-thumb,.mrb-no-img{width:72px;height:100px}}
+      .mrb-small-input{width:72px;background:var(--surf2);border:1px solid var(--border);border-radius:7px;color:var(--text);padding:7px;font:12px var(--font-mono)}.mrb-note{min-width:0}.mrb-warning{border:1px solid rgba(255,209,102,.35);background:rgba(255,209,102,.08);color:var(--gold);border-radius:8px;padding:9px 10px;font:11px var(--font-mono);line-height:1.45;margin-bottom:10px}
+      .mrb-checks{display:grid;gap:8px;font:9px var(--font-mono);color:var(--dim);min-width:0}.mrb-checks label{display:flex;gap:6px;align-items:center}.mrb-price-main{font:17px var(--font-mono);color:var(--g);font-weight:800;margin:4px 0}.mrb-stock{font:11px var(--font-mono);margin-top:6px;color:var(--dim)}.mrb-stock b{color:var(--g)}.mrb-printing-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:12px}.mrb-printing-card{border:1px solid var(--border);border-radius:8px;background:var(--surf);padding:10px;display:grid;gap:8px}.mrb-printing-card img{width:100%;max-height:260px;object-fit:contain;background:#050508;border-radius:6px;cursor:zoom-in}.mrb-lightbox{position:fixed;inset:0;z-index:5000;background:rgba(0,0,0,.9);display:none;align-items:center;justify-content:center;padding:24px}.mrb-lightbox.on{display:flex}.mrb-lightbox img{max-width:min(92vw,620px);max-height:88vh;border-radius:10px}.mrb-picker{position:fixed;inset:0;z-index:4900;background:rgba(0,0,0,.82);display:none;padding:24px;overflow:auto}.mrb-picker.on{display:block}.mrb-picker-inner{max-width:1400px;margin:0 auto;background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:14px}
+      @media(max-width:1180px){.mrb-body{grid-template-columns:minmax(280px,360px) minmax(0,1fr)}.mrb-table tbody{grid-template-columns:1fr}.mrb-table tr{grid-template-columns:84px 74px minmax(240px,1fr) minmax(240px,1fr);grid-template-areas:'checks qty card price' 'checks qty meta match' 'notes notes notes actions'}}@media(max-width:1050px){.mrb-body{grid-template-columns:1fr;overflow:auto}.mrb-panel{overflow:visible}}@media(max-width:760px){.mrb-shell{height:100dvh}.mrb-head{align-items:flex-start}.mrb-title{font-size:15px}.mrb-table tbody{grid-template-columns:1fr}.mrb-table tr{grid-template-columns:74px minmax(0,1fr);grid-template-areas:'checks qty' 'card card' 'price price' 'meta meta' 'match match' 'notes notes' 'actions actions';gap:9px}.mrb-card-cell{grid-template-columns:72px minmax(0,1fr)}.mrb-thumb,.mrb-no-img{width:72px;height:100px}.mrb-picker{padding:12px}.mrb-printing-grid{grid-template-columns:repeat(auto-fill,minmax(145px,1fr))}}
     `;
     document.head.appendChild(style);
   }
@@ -181,9 +201,14 @@ Fable of the Mirror-Breaker`;
   }
 
   async function fetchPrintings(row){
+    const tryFetch = async url => {
+      try { return await fetch(url, { headers:{ Accept:'application/json' } }); }
+      catch(e) { return null; }
+    };
+    const searchAll = () => fetchPrintings({ ...row, setCode:'', setName:'', collectorNumber:'', matchMode:'all-printings' });
     if(row.setCode && row.collectorNumber){
-      const res = await fetch(`https://api.scryfall.com/cards/${encodeURIComponent(row.setCode)}/${encodeURIComponent(row.collectorNumber)}`);
-      if(res.ok) {
+      const res = await tryFetch(`https://api.scryfall.com/cards/${encodeURIComponent(row.setCode)}/${encodeURIComponent(row.collectorNumber)}`);
+      if(res?.ok) {
         const data = await res.json().catch(() => ({}));
         if(data?.name) return [scryfallToPrinting(data)];
       }
@@ -192,10 +217,9 @@ Fable of the Mirror-Breaker`;
     if(row.setCode) qParts.push('set:' + row.setCode);
     else if(row.setName) qParts.push('set:"' + row.setName + '"');
     else if(row.collectorNumber) qParts.push('cn:' + row.collectorNumber);
-    const res = await fetch('https://api.scryfall.com/cards/search?q=' + encodeURIComponent(qParts.join(' ')) + '&unique=prints&order=released&dir=desc', { headers:{ Accept:'application/json' } });
-    if(!res.ok && row.matchMode !== 'all-printings'){
-      return fetchPrintings({ ...row, setCode:'', setName:'', collectorNumber:'', matchMode:'all-printings' });
-    }
+    const res = await tryFetch('https://api.scryfall.com/cards/search?q=' + encodeURIComponent(qParts.join(' ')) + '&unique=prints&order=released&dir=desc');
+    if(!res?.ok && row.matchMode !== 'all-printings') return searchAll();
+    if(!res?.ok) throw new Error('Scryfall search failed');
     const data = await res.json().catch(() => ({}));
     return (data.data || []).filter(card => card?.name).slice(0, 40).map(scryfallToPrinting);
   }
@@ -269,11 +293,12 @@ Fable of the Mirror-Breaker`;
     const statusClass = row.matchStatus === 'matched' ? 'ok' : row.matchStatus === 'ambiguous' ? 'warn' : row.matchStatus === 'unmatched' ? 'bad' : '';
     const adj = adjustedPrice(row);
     const finishOptions = availableFinishes(row).map(f => `<option value="${esc(f)}" ${row.finish === f ? 'selected' : ''}>${finishLabel(f)}</option>`).join('');
+    const inStock = rowInventoryCount(row);
     return `<tr data-row-id="${esc(row.id)}">
       <td><div class="mrb-checks"><label><input type="checkbox" ${row.included !== false ? 'checked' : ''} onchange="mtgResearchBatchUpdate('${esc(row.id)}','included',this.checked)"> include</label><label><input type="checkbox" onchange="mtgResearchBatchSelect('${esc(row.id)}',this.checked)"> select</label></div></td>
       <td><input class="mrb-small-input" type="number" min="1" value="${Number(row.quantity || 1)}" onchange="mtgResearchBatchUpdate('${esc(row.id)}','quantity',this.value)"></td>
       <td><div class="mrb-card-cell">${image ? `<img class="mrb-thumb" src="${esc(image)}" loading="lazy" onclick="mtgResearchBatchZoom('${esc(p.normalImage || image)}')">` : '<div class="mrb-no-img">NO IMG</div>'}<div><div class="mrb-name">${esc(p.name || row.parsedName)}</div><div class="mrb-meta">Raw: ${esc(row.rawLine)}</div><div class="mrb-meta">Parsed: ${esc(row.cleanedName)}</div></div></div></td>
-      <td><div>${esc([p.setName, p.setCode, p.collectorNumber ? '#'+p.collectorNumber : ''].filter(Boolean).join(' · ') || 'All printings available')}</div><div class="mrb-meta">${esc(p.rarity || '')} · ${finishLabel(row.finish || 'normal')}</div><div class="mrb-price-main">${adj == null ? 'No price' : price(adj)} <span class="mrb-meta">condition estimate</span></div><div><span class="mrb-badge">Normal ${esc(price(p.prices?.usd))}</span><span class="mrb-badge">Foil ${esc(price(p.prices?.usdFoil))}</span><span class="mrb-badge">Etched ${esc(price(p.prices?.usdEtched))}</span></div><div>${conditionPills(row)}</div><button class="hbtn" onclick="mtgResearchBatchChoosePrinting('${esc(row.id)}')" style="margin-top:6px">CHOOSE PRINTING</button></td>
+      <td><div>${esc([p.setName, p.setCode, p.collectorNumber ? '#'+p.collectorNumber : ''].filter(Boolean).join(' · ') || 'All printings available')}</div><div class="mrb-meta">${esc(p.rarity || '')} · ${finishLabel(row.finish || 'normal')}</div><div class="mrb-price-main">${adj == null ? 'No price' : price(adj)} <span class="mrb-meta">condition estimate</span></div><div><span class="mrb-badge">Normal ${esc(price(p.prices?.usd))}</span><span class="mrb-badge">Foil ${esc(price(p.prices?.usdFoil))}</span><span class="mrb-badge">Etched ${esc(price(p.prices?.usdEtched))}</span></div><div>${conditionPills(row)}</div><div class="mrb-stock">${inStock ? `<b>${inStock}</b> in stock` : 'Not in stock'}</div><button class="hbtn" onclick="mtgResearchBatchChoosePrinting('${esc(row.id)}')" style="margin-top:6px">CHOOSE PRINTING</button></td>
       <td><select class="mrb-select" onchange="mtgResearchBatchUpdate('${esc(row.id)}','condition',this.value)">${API.CONDITIONS.map(c => `<option ${row.condition === c ? 'selected' : ''}>${c}</option>`).join('')}</select><select class="mrb-select" style="margin-top:6px" onchange="mtgResearchBatchUpdate('${esc(row.id)}','finish',this.value)">${finishOptions}</select></td>
       <td><span class="mrb-badge ${statusClass}">${esc(row.matchStatus)}</span><div class="mrb-meta">${esc(row.matchMode)} · ${Number(row.matchConfidence || 0)}%</div><div class="mrb-meta">${esc(row.error || '')}</div></td>
       <td><input class="mrb-input mrb-note" value="${esc(row.notes || '')}" onchange="mtgResearchBatchUpdate('${esc(row.id)}','notes',this.value)"></td>
@@ -296,9 +321,28 @@ Fable of the Mirror-Breaker`;
     if(img) img.src = url;
     box?.classList.add('on');
   };
-  window.mtgResearchBatchChoosePrinting = id => {
+  window.mtgResearchBatchChoosePrinting = async id => {
     const row = findRow(id);
-    if(!row?.candidatePrintings?.length) return alert('No printings available yet. Retry parsing/matching first.');
+    if(!row) return;
+    if(!row.candidatePrintings?.length){
+      row.error = 'Loading all printings...';
+      renderResults();
+      try {
+        row.candidatePrintings = await fetchPrintings({ ...row, setCode:'', setName:'', collectorNumber:'', matchMode:'all-printings' });
+        row.matchMode = 'all-printings';
+        if(row.candidatePrintings.length){
+          row.selectedPrinting = row.selectedPrinting || row.candidatePrintings[0];
+          row.matchStatus = 'matched';
+          row.matchConfidence = Math.max(Number(row.matchConfidence || 0), 86);
+          row.error = '';
+        }
+      } catch(e) {
+        row.error = e.message || 'Scryfall search failed';
+      }
+      renderReview();
+      renderResults();
+    }
+    if(!row.candidatePrintings?.length) return alert('No Scryfall printings found for ' + (row.cleanedName || row.parsedName || 'this card') + '. You can edit the parsed name or retry later.');
     const picker = $('mrb-printing-picker');
     if(!picker) return;
     picker.innerHTML = `<div class="mrb-picker-inner"><div class="mrb-actions" style="justify-content:space-between;margin-bottom:12px"><div><div class="mrb-title">Choose Printing</div><div class="mrb-sub">${esc(row.cleanedName)} · click image to zoom, Select to use it</div></div><button class="hbtn" onclick="mtgResearchBatchClosePicker()">CLOSE</button></div><div class="mrb-printing-grid">${row.candidatePrintings.slice(0,40).map((p,i) => {
