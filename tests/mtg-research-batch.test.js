@@ -38,6 +38,17 @@ assert.equal(exact.matchMode, 'exact-printing');
 const allPrintings = batch.parseLine('Lightning Bolt', 2);
 assert.equal(allPrintings.matchMode, 'all-printings');
 
+const goldfishFoil = batch.parseLine('1 Farseek <019ea7ca-f9d1-7d3e-93c2-6c618c18d0bf> [MSC] (F)', 3);
+assert.equal(goldfishFoil.cleanedName, 'Farseek');
+assert.equal(goldfishFoil.setCode, 'msc');
+assert.equal(goldfishFoil.finish, 'foil');
+
+const goldfishCollector = batch.parseLine('8 Forest <254> [THB]', 4);
+assert.equal(goldfishCollector.cleanedName, 'Forest');
+assert.equal(goldfishCollector.quantity, 8);
+assert.equal(goldfishCollector.setCode, 'thb');
+assert.equal(goldfishCollector.collectorNumber, '254');
+
 const csv = batch.parseList(fs.readFileSync(path.join(fixtureDir, 'research-batch-csv.csv'), 'utf8'), 'TCGplayer CSV');
 assert.equal(csv.cards.find(card => card.cleanedName === 'Lightning Bolt').quantity, 4);
 assert.equal(csv.cards.find(card => card.cleanedName === 'Lightning Bolt').collectorNumber, '146');

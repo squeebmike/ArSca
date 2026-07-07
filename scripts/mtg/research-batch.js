@@ -16,6 +16,7 @@
     return String(value || '')
       .replace(/<br\s*\/?>/gi, '\n')
       .replace(/<\/(?:div|p|li|tr)>/gi, '\n')
+      .replace(/<([^>]+)>/g, (all, inner) => /^\d{1,4}[A-Za-z]?$/.test(String(inner).trim()) ? ' #' + String(inner).trim() + ' ' : ' ')
       .replace(/<[^>]+>/g, ' ')
       .replace(/&nbsp;/gi, ' ')
       .replace(/&amp;/gi, '&')
@@ -58,7 +59,7 @@
   }
 
   function stripPricesAndComments(value){
-    return normalizeSpaces(value)
+    return normalizeSpaces(htmlDecode(value))
       .replace(/\s*(?:\/\/|--)\s*(?:price|usd|eur|tix|owned|comment).*$/i, '')
       .replace(/\s+\$[\d,]+(?:\.\d{1,2})?(?:\s*(?:usd|eur))?\s*$/i, '')
       .replace(/\s+(?:usd|eur|tix)\s*[\d,]+(?:\.\d{1,2})?\s*$/i, '')
@@ -69,7 +70,12 @@
 
   function extractConditionFinish(value){
     let text = stripPricesAndComments(value), condition = '', finish = '';
-    const finishMatch = text.match(/(?:^|\s|-)(foil|nonfoil|non-foil|etched)(?:\s*)$/i);
+    const shortFoil = text.match(/\s+\(F\)\s*$/i);
+    if(shortFoil){
+      finish = 'foil';
+      text = text.slice(0, shortFoil.index).trim();
+    }
+    const finishMatch = !finish && text.match(/(?:^|\s|-)(foil|nonfoil|non-foil|etched)(?:\s*)$/i);
     if(finishMatch){
       finish = /etched/i.test(finishMatch[1]) ? 'etched' : /non/i.test(finishMatch[1]) ? 'normal' : 'foil';
       text = text.slice(0, finishMatch.index).replace(/\s*-\s*$/, '').trim();
@@ -94,6 +100,8 @@
     let text = normalizeSpaces(value), setCode = '', setName = '', collectorNumber = '';
     let m = text.match(/\s+\(([A-Z0-9]{2,8})\)\s*#?([A-Za-z0-9-]+)?\s*$/i);
     if(m){ setCode = m[1].toLowerCase(); collectorNumber = m[2] || ''; text = text.slice(0, m.index).trim(); return { text, setCode, setName, collectorNumber }; }
+    m = text.match(/^(.+?)\s+#([A-Za-z0-9-]+)\s+\[([A-Z0-9]{2,8})\]\s*$/i);
+    if(m) return { text:normalizeSpaces(m[1]), setCode:m[3].toLowerCase(), setName:'', collectorNumber:m[2] };
     m = text.match(/\s+\[([A-Z0-9]{2,8})\]\s*#?([A-Za-z0-9-]+)?\s*$/i);
     if(m){ setCode = m[1].toLowerCase(); collectorNumber = m[2] || ''; text = text.slice(0, m.index).trim(); return { text, setCode, setName, collectorNumber }; }
     m = text.match(/^(.+?)\s+[|]\s*([A-Za-z0-9]{2,20})\s*[|]\s*#?([A-Za-z0-9-]+)\s*$/);
