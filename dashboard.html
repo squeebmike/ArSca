@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.07.07.06-search-lifecycle-fixes">
+<meta name="version" content="2026.07.07.07-mobile-inventory-cleanup">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1415,11 +1415,11 @@ body.show-mode .inv-sync-badge{display:none;}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-<script src="scripts/query-routing.js?v=2026.07.07.06-search-lifecycle-fixes"></script>
-<script src="scripts/barcode-lookup.js?v=2026.07.07.06-search-lifecycle-fixes"></script>
-<script src="scripts/comic-issue-hub.js?v=2026.07.07.06-search-lifecycle-fixes"></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.07.07.06-search-lifecycle-fixes"></script>
-<script src="scripts/mtg/research-batch.js?v=2026.07.07.06-search-lifecycle-fixes"></script>
+<script src="scripts/query-routing.js?v=2026.07.07.07-mobile-inventory-cleanup"></script>
+<script src="scripts/barcode-lookup.js?v=2026.07.07.07-mobile-inventory-cleanup"></script>
+<script src="scripts/comic-issue-hub.js?v=2026.07.07.07-mobile-inventory-cleanup"></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.07.07.07-mobile-inventory-cleanup"></script>
+<script src="scripts/mtg/research-batch.js?v=2026.07.07.07-mobile-inventory-cleanup"></script>
 </head>
 <body>
 
@@ -1469,11 +1469,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.07.07.06-search-lifecycle-fixes</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.07.07.07-mobile-inventory-cleanup</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.07.07.06-search-lifecycle-fixes</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.07.07.07-mobile-inventory-cleanup</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1496,7 +1496,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.07.07.06-search-lifecycle-fixes</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.07.07.07-mobile-inventory-cleanup</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -2528,7 +2528,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <!-- QUICK SELL MODAL -->
 <div class="modal-bg" id="sell-modal">
   <div class="modal">
-    <h3>🛒 SELL TO CART</h3>
+    <h3>🛒 ADD TO CART</h3>
     <div id="sell-item-name" style="font-size:12px;font-weight:600;margin-bottom:4px;color:var(--text)"></div>
     <div id="sell-item-meta" style="font-family:var(--font-mono);font-size:9px;color:var(--dim);margin-bottom:8px"></div>
     <div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);margin-bottom:8px">Adds this item to the cart at the price below. Payment method is chosen during checkout — this does not finalize a sale.</div>
@@ -2559,7 +2559,7 @@ body.show-mode .inv-sync-badge{display:none;}
     </select>
     <div id="sell-profit-preview"></div>
     <div class="modal-btns">
-      <button class="modal-btn confirm" onclick="confirmQuickSell()">SELL TO CART</button>
+      <button class="modal-btn confirm" onclick="confirmQuickSell()">ADD TO CART</button>
       <button class="modal-btn cancel" onclick="closeSellModal()">Cancel</button>
     </div>
   </div>
@@ -2829,7 +2829,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.07.07.06-search-lifecycle-fixes';
+const APP_VERSION = '2026.07.07.07-mobile-inventory-cleanup';
 window.APP_VERSION = APP_VERSION;
 const branchName = 'main';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
@@ -4554,7 +4554,7 @@ function maybeShowSetupPrompt(){
 const HELP_CONTENT = {
   research:{title:'Research',body:'Use this to look up cards or sealed products. Pokémon can be searched by name, card number, or set. Use <strong>Refresh Live Price</strong> only when you need current pricing — cached results load faster and don\'t use API credits.'},
   buy:{title:'Buy / Trade Intake',body:'Use this when buying cards from customers. Market price may show cents, but buy offers always round <strong>down</strong> to whole dollars. Set your offer percentage and the app calculates automatically.'},
-  inventory:{title:'Inventory',body:'Everything you own and can sell. "In Stock" is the default view. <strong>SELL TO CART</strong> sends items to checkout — inventory only updates to Sold after you <strong>Finalize Sale</strong>.'},
+  inventory:{title:'Inventory',body:'Everything you own and can sell. "In Stock" is the default view. <strong>Add to Cart</strong> sends items to checkout — inventory only updates to Sold after you <strong>Finalize Sale</strong>.'},
   cart:{title:'Cart / Sell',body:'Every sale goes through the cart. Add items from Inventory or Research. Review cart totals before proceeding to payment. Cart persists across tabs and page refreshes.'},
   payments:{title:'Payments',body:'QR payment codes (Venmo, PayPal, Cash App) are generated from your saved handles. Confirm payment received before finalizing. Stripe card payments are handled separately and are not affected by these settings.'},
     drawer:{title:'Cash Bag',body:'The Cash Bag tracks expected cash on hand. Starting cash is the baseline, cash sales add to expected cash, and Venmo, PayPal, Cash App, and Stripe sales do <strong>not</strong> change the bag.'},
@@ -4648,7 +4648,7 @@ const WALKTHROUGH_STEPS = {
     {id:'ft-1', title:'Welcome to Walk-Off Dashboard', body:'This quick tour covers the basics in about 2 minutes. Use Back / Next to move through steps, or Skip to exit anytime.', targetSelector:null, nextLabel:'Let\'s go →'},
     {id:'ft-2', title:'Settings / Admin', body:'Your store name, payment handles, and defaults live here. Run Setup Wizard to fill these in quickly.', targetSelector:'[data-tab="backoffice"]', tabToOpen:'backoffice', nextLabel:'Next →'},
     {id:'ft-3', title:'Research', body:'Look up card prices before buying or listing. Cached results are fast — use Refresh Live Price only when you need current data.', targetSelector:'[data-tab="research"]', tabToOpen:'research', nextLabel:'Next →'},
-    {id:'ft-4', title:'Inventory', body:'Everything you own. Filter by In Stock. SELL TO CART starts a sale — inventory doesn\'t change until you Finalize.', targetSelector:'[data-tab="inventory"]', tabToOpen:'inventory', nextLabel:'Next →'},
+    {id:'ft-4', title:'Inventory', body:'Everything you own. Filter by In Stock. Add to Cart starts a sale — inventory doesn\'t change until you Finalize.', targetSelector:'[data-tab="inventory"]', tabToOpen:'inventory', nextLabel:'Next →'},
     {id:'ft-5', title:'Sell / Cart', body:'Every sale goes through the cart before finalizing. Choose payment method, confirm received, then Finalize Sale.', targetSelector:'[data-tab="pos"]', tabToOpen:'pos', nextLabel:'Next →'},
     {id:'ft-6', title:'You\'re all set!', body:'Use the ? help buttons on any section for quick tips. Run Setup Wizard in Settings to enter your store name and payment handles.', targetSelector:null, nextLabel:'Done ✓'},
   ],
@@ -4668,7 +4668,7 @@ const WALKTHROUGH_STEPS = {
   'selling':[
     {id:'sv-1', title:'Selling from Inventory', body:'Go to Inventory to find items to sell.', targetSelector:'[data-tab="inventory"]', tabToOpen:'inventory', nextLabel:'Next →'},
     {id:'sv-2', title:'Filter In Stock', body:'Use the status filter to show only In Stock items. This keeps the view clean during a show.', targetSelector:'#inv-status-filter', nextLabel:'Next →'},
-    {id:'sv-3', title:'SELL TO CART', body:'Click SELL TO CART on any item. It goes into the cart — inventory is NOT updated yet.', targetSelector:null, nextLabel:'Next →'},
+    {id:'sv-3', title:'ADD TO CART', body:'Click Add to Cart on any item. It goes into the cart — inventory is NOT updated yet.', targetSelector:null, nextLabel:'Next →'},
     {id:'sv-4', title:'Cart / Sell Tab', body:'Switch to the Sell tab to review your cart, apply discounts, and proceed to payment.', targetSelector:'[data-tab="pos"]', tabToOpen:'pos', nextLabel:'Next →'},
     {id:'sv-5', title:'Finalize Sale', body:'After confirming payment is received, click FINALIZE SALE. This is when inventory updates to Sold and cash sales are logged to the Cash Bag.', targetSelector:null, nextLabel:'Done ✓'},
   ],
@@ -7452,7 +7452,6 @@ function ensureBuyResearchBridge(intake){
   bridge.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;margin:0 0 10px';
   bridge.innerHTML = `
     <button class="hbtn buy" onclick="switchTab('research');focusResearchSearch()">ADD ITEM FROM RESEARCH</button>
-    <button class="hbtn" onclick="switchTab('research');importScannerQueueToResearch()">OPEN SCANNER QUEUE</button>
   `;
   const sessionPanel = document.getElementById('buy-session-panel');
   // buy-session-panel may now be inside Advanced Options (not a direct child of buyPanel)
@@ -10057,8 +10056,7 @@ function renderCardView(){
         <div class="inv-card-meta">${inventoryImageSourceLabel(i)}${inventoryIsPriceStale(i) ? ' · stale price' : ''}</div>
         ${i.qty > 1 ? `<div class="inv-card-meta" style="color:var(--g)">Qty: ${i.qty}</div>` : ''}
         <div class="inv-card-actions">
-          ${ins ? `<button class="rab rab-sell" onclick="openSellModal('${i.id}')">SELL TO CART</button>` : '<div style="grid-column:1/-1;text-align:center;font-family:monospace;font-size:10px;color:var(--dim);padding:8px">SOLD</div>'}
-          ${ins ? `<button class="rab rab-cart" onclick="dashAddToCart('${i.id}')">+ CART</button>` : ''}
+          ${ins ? `<button class="rab rab-cart" onclick="dashAddToCart('${i.id}')">ADD TO CART</button>` : '<div style="grid-column:1/-1;text-align:center;font-family:monospace;font-size:10px;color:var(--dim);padding:8px">SOLD</div>'}
           <button class="rab rab-edit" onclick="openEditModal('${i.id}')">EDIT</button>
           <button class="rab" onclick="openInventoryItemInResearch('${i.id}')" style="grid-column:1/-1;border-color:rgba(0,160,255,.3);color:var(--blue);font-size:10px;min-height:36px">🔍 RESEARCH</button>
         </div>
@@ -10509,9 +10507,11 @@ document.addEventListener('click', closeMoreMenu);
 function priceSourceInfo(source, category){
   const raw = String(source || '').trim();
   const s = raw.toLowerCase();
-  if(s.includes('tcg') || s.includes('market')) return { label:'TCG market', cls:'tcg' };
-  if(s.includes('pokemonprice') || s.includes('pokeprice')) return { label:'PokePrice', cls:'slab' };
-  if(s.includes('pokemon')) return { label:'PokemonTCG', cls:'pokemon' };
+  if(s.includes('pokemonpricetracker') || s.includes('pokemonprice') || s.includes('pokeprice') || s.includes('ppt export')) return { label:'PokemonPriceTracker', cls:'pokemon' };
+  if(s.includes('tcgplayer')) return { label:'TCGPlayer Market', cls:'tcg' };
+  if(s.includes('tcg.io')) return { label:'TCG.io Market', cls:'tcg' };
+  if(s.includes('tcg') || s.includes('market')) return { label:'TCG Market', cls:'tcg' };
+  if(s.includes('pokemon')) return { label:'Pokemon', cls:'pokemon' };
   if(s.includes('scry') || s.includes('magic')) return { label:'Scryfall', cls:'tcg' };
   if(s.includes('ebay') || s.includes('sold')) return { label:'eBay sold', cls:'ebay' };
   if(s.includes('ai') || s.includes('estimate')) return { label:'AI est', cls:'ai' };
@@ -12619,8 +12619,7 @@ function renderTable(){
       <td class="${ppc}">${money.cost>0||i.profit?(pft>=0?'+':'')+fd$(pft)+(money.list>0||money.cost>0?' ('+margin+')':''):'—'}</td>
       <td><span style="font-family:var(--font-mono);font-size:9px;color:${ins?'var(--g)':'var(--dim)'}">${ins?'IN STOCK':'SOLD'+(i.channel?' · '+i.channel:'')}</span></td>
       <td><div class="row-act-v2">
-        ${ins?`<button class="rab rab-sell" onclick="openSellModal('${i.id}')">SELL TO CART</button>`:''}
-        ${ins?`<button class="rab rab-cart" onclick="dashAddToCart('${i.id}')">+ CART</button>`:''}
+        ${ins?`<button class="rab rab-cart" onclick="dashAddToCart('${i.id}')">ADD TO CART</button>`:''}
         <button class="rab rab-edit" onclick="openEditModal('${i.id}')">EDIT</button>
         <button class="rab rab-more" title="More: eBay, History, Archive" onclick="showInvRowMenu(event,'${i.id}',${ins})">⋯</button>
       </div></td>
@@ -15364,7 +15363,7 @@ function openEditModal(id) {
   const syncBtn = document.getElementById('edit-sync-btn');
   if(syncBtn) {
     const source = item.source || getInventorySource();
-    syncBtn.textContent = source === 'built_in' ? 'SAVE BUILT-IN' : source === 'spreadsheet' ? 'SAVE / PROMOTE' : usesWebflowInventory() ? 'SAVE + SYNC WEBFLOW' : 'SAVE INVENTORY';
+    syncBtn.textContent = source === 'spreadsheet' ? 'SAVE / PROMOTE' : usesWebflowInventory() ? 'SAVE + SYNC WEBFLOW' : 'SAVE';
   }
 
   const condSel = document.getElementById('edit-condition');
@@ -19089,7 +19088,7 @@ function estimateConditionValue(row, condition){
 function qplTruthLabel(r){
   if(r?.priceSource === 'Needs exact card selection') return 'Needs exact card selection';
   if(r?.priceSource === 'Estimated Condition Value' || r?.priceConfidence === 'estimate') return 'Estimated Condition Value';
-  if(r?.pokemonPriceTracker || /^PokemonPriceTracker/i.test(r?.priceSource || '')) return Number(r?.market || 0) > 0 ? 'PokemonPriceTracker Price' : 'No PPT Price';
+  if(r?.pokemonPriceTracker || /^PokemonPriceTracker/i.test(r?.priceSource || '')) return Number(r?.market || 0) > 0 ? 'PokemonPriceTracker' : 'No PokemonPriceTracker Price';
   if(r?.source === 'justtcg') return qplPriceValue(r.selectedVariant) > 0 ? 'TCGPlayer Market' : (/estimate/i.test(String(r.selectedVariant?.priceSource || r.priceSource || '')) ? 'Estimated Condition Value' : 'No TCGPlayer Price');
   if(/^TCG\.io/i.test(r?.priceSource || '')) return Number(r?.market || 0) > 0 ? 'TCG.io Market' : 'No TCG.io Price';
   if(r?.pricecharting || r?.source === 'pricecharting_csv') return Number(r.pricecharting?.prices?.ungraded || r.market || 0) > 0 ? 'Guide Value' : 'No Guide Value';
@@ -28784,8 +28783,45 @@ async function toppsLoadParallels(cardId){
     if(btn) { btn.disabled = false; btn.textContent = 'RETRY'; }
   }
 }
+// Keep mobile/browser Back inside the dashboard before leaving the app.
+// Tab changes push lightweight history states so Back returns to the prior tab
+// instead of jumping to scanner, login, or the previous browser page.
+(function installDashboardBackStack(){
+  if(window.__arscaBackStackInstalled) return;
+  window.__arscaBackStackInstalled = true;
+  const originalSwitchTab = window.switchTab;
+  if(typeof originalSwitchTab !== 'function') return;
+  let applyingPopState = false;
+  let lastHistoryTab = activeTab || 'overview';
+  const stateForTab = tab => ({ arscaDashboard:true, tab:tab || 'overview' });
+  try {
+    const current = history.state || {};
+    if(!current.arscaDashboard) history.replaceState(stateForTab(lastHistoryTab), '', location.pathname + location.search + '#tab=' + encodeURIComponent(lastHistoryTab));
+  } catch(_) {}
+  window.switchTab = function(tab, btn, opts){
+    const nextTab = tab || 'overview';
+    const result = originalSwitchTab.apply(this, arguments);
+    const shouldPush = !applyingPopState && !(opts && opts.history === false) && nextTab !== lastHistoryTab;
+    if(shouldPush) {
+      try { history.pushState(stateForTab(nextTab), '', location.pathname + location.search + '#tab=' + encodeURIComponent(nextTab)); } catch(_) {}
+    }
+    lastHistoryTab = nextTab;
+    return result;
+  };
+  window.addEventListener('popstate', event => {
+    const tab = event.state?.arscaDashboard ? event.state.tab : '';
+    if(!tab || tab === activeTab) return;
+    applyingPopState = true;
+    try { window.switchTab(tab, null, { history:false }); }
+    finally { applyingPopState = false; lastHistoryTab = tab; }
+  });
+  const hashTab = new URLSearchParams(String(location.hash || '').replace(/^#/, '')).get('tab');
+  if(hashTab && hashTab !== activeTab) {
+    setTimeout(() => window.switchTab(hashTab, null, { history:false }), 0);
+  }
+})();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.07.07.06-search-lifecycle-fixes"></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.07.07.07-mobile-inventory-cleanup"></script>
 </body>
 </html>
 
