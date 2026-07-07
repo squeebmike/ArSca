@@ -32,15 +32,15 @@ test('dealer query examples return useful candidates', async ({ page }) => {
 
 test('category dropdown refilters already-loaded results', async ({ page }) => {
   await runResearchSearch(page, 'wolverine', '');
-  await page.locator('#qpl-cat').selectOption('Comic');
+  await page.locator('.qpl-cat-pill[data-cat="Comic"]').click();
   await expect(page.locator('#qpl-result')).toContainText(/Wolverine #1/i);
 
   await runResearchSearch(page, 'pikachu', '');
-  await page.locator('#qpl-cat').selectOption('Pokemon TCG');
+  await page.locator('.qpl-cat-pill[data-cat="Pokemon TCG"]').click();
   await expect(page.locator('#qpl-result')).toContainText(/Pikachu/i);
 
   await runResearchSearch(page, 'zelda', '');
-  await page.locator('#qpl-cat').selectOption('Video Games');
+  await page.locator('.qpl-cat-pill[data-cat="Video Games"]').click();
   await expect(page.locator('#qpl-result')).toContainText(/Zelda|Search This Category|No results/i);
 });
 

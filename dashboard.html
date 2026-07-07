@@ -55,6 +55,8 @@ header{position:sticky;top:0;z-index:100;background:rgba(7,8,10,.96);backdrop-fi
 .more-menu.on{display:grid;gap:4px;}
 .more-item{font-family:var(--font-mono);font-size:10px;color:var(--dim);padding:9px 10px;border-radius:5px;cursor:pointer;letter-spacing:1px;}
 .more-item:hover,.more-item.on{background:rgba(0,255,179,.08);color:var(--g);}
+.auth-check-shell{max-width:1400px;margin:0 auto;padding:0 20px;display:grid;grid-template-columns:minmax(220px,320px) 1fr minmax(240px,360px);gap:14px;align-items:start}
+@media(max-width:900px){.auth-check-shell{grid-template-columns:1fr;padding:0 12px}}
 .install-hint{display:none;max-width:1400px;margin:0 auto;padding:8px 20px;border-top:1px solid rgba(255,255,255,.04);font-family:var(--font-mono);font-size:10px;color:var(--gold);justify-content:space-between;gap:10px;align-items:center;}
 .install-hint.on{display:flex;}
 
@@ -86,6 +88,17 @@ header{position:sticky;top:0;z-index:100;background:rgba(7,8,10,.96);backdrop-fi
 .panel{background:var(--surf);border:1px solid var(--border);border-radius:var(--brand-card-radius);padding:16px;}
 .ph{font-family:var(--font-mono);font-size:9px;letter-spacing:2px;color:var(--dim);margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;}
 .ph b{color:var(--text);font-weight:600;}
+.hdr,.tabs,.sec,.stats,.alert-wrap,.two,.three,.research-subtabs,.topps-browser{max-width:min(1760px,100vw);}
+@media(min-width:1100px){.hdr,.tabs{padding-left:28px;padding-right:28px}.sec,.stats,.alert-wrap,.two,.three,.research-subtabs,.topps-browser{padding-left:28px;padding-right:28px}.panel{padding:18px}.two{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}}
+body{font-size:15px;line-height:1.45;}
+.tab{font-size:11px;min-height:44px;padding:11px 15px;}
+.hbtn{font-size:10px;min-height:42px;padding:9px 14px;}
+.ph{font-size:10px;color:rgba(228,228,232,.62);}
+.item-metric,.tc,.empty,.alert,.help,.settings-explainer{font-size:12px;line-height:1.55;}
+.tbl th,.tbl td,table th,table td{font-size:12px;line-height:1.45;}
+.inv-name,.card-name,.qpl-title,.source-title{font-size:15px;line-height:1.25;}
+.price,.qpl-price,.metric-val,.drawer-money{font-size:16px;}
+@media(max-width:640px){body{font-size:14px}.tab{font-size:10px;min-height:42px}.hbtn{min-height:42px}.tbl-wrap,.table-wrap{overflow-x:auto}.panel{padding:14px}.sec{font-size:10px;letter-spacing:2px}}
 .ph-action{font-size:9px;color:var(--g);cursor:pointer;text-decoration:none;}
 .research-subtabs{max-width:1400px;margin:0 auto 12px;padding:0 20px;display:flex;gap:8px;flex-wrap:wrap;}
 .research-subtab{border:1px solid var(--border);background:var(--surf2);color:var(--dim);border-radius:7px;min-height:36px;padding:8px 12px;font-family:'Orbitron',monospace;font-size:9px;letter-spacing:1px;cursor:pointer;}
@@ -1459,7 +1472,7 @@ body.show-mode .inv-sync-badge{display:none;}
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="pokemon-v2-core">Branch: pokemon-v2-core</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.07.06.03-deck-lab-nav</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1487,7 +1500,7 @@ body.show-mode .inv-sync-badge{display:none;}
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
     <div class="tab" onclick="switchTab('research',this)">RESEARCH</div>
-    <a class="tab" href="mtg-deck-lab.html" style="text-decoration:none">DECK LAB</a>
+    <a class="tab" href="mtg-deck-lab.html" style="text-decoration:none">DECK LAB BETA</a>
     <div class="tab" onclick="switchTab('intake',this)">BUY</div>
     <div class="tab" onclick="switchTab('inventory',this)">INVENTORY</div>
     <div class="tab" onclick="switchTab('sales',this)">SALES</div>
@@ -2240,6 +2253,25 @@ body.show-mode .inv-sync-badge{display:none;}
   <div id="shows-panels" style="max-width:1400px;margin:0 auto;padding:0 20px"></div>
 </div>
 
+<!-- AUTH CHECK TAB -->
+<div id="tab-authcheck" class="tab-panel">
+  <div class="sec">AUTH CHECK BETA</div>
+  <div class="auth-check-shell">
+    <div class="panel">
+      <div class="ph">AUTH QUEUE <span id="auth-queue-count" style="font-size:9px;color:var(--dim);font-weight:600">0 queued</span></div>
+      <div id="auth-queue-list" style="display:grid;gap:8px"></div>
+    </div>
+    <div class="panel">
+      <div id="auth-workspace-body" style="font-family:var(--font-mono);font-size:10px;color:var(--dim);line-height:1.6">Choose an item from the Auth Queue, or send one here from Research.</div>
+    </div>
+    <div class="panel">
+      <div class="ph">DECISION SUPPORT</div>
+      <div id="auth-photo-checklist" style="display:grid;gap:8px;margin-bottom:12px"></div>
+      <div id="auth-decision-body" style="font-family:var(--font-mono);font-size:10px;color:var(--dim);line-height:1.6">No item selected.</div>
+    </div>
+  </div>
+</div>
+
 <!-- CUSTOMER DISPLAY TAB -->
 <div id="tab-display" class="tab-panel">
   <div class="sec">SELL / LOCKED CHECKOUT</div>
@@ -2781,7 +2813,7 @@ body.show-mode .inv-sync-badge{display:none;}
 </div>
 
 <div id="lba-nav">
-  <a class="lba-nav-btn" href="mtg-deck-lab.html"><span class="nav-ico">⌁</span>DECK LAB</a>
+  <a class="lba-nav-btn" href="mtg-deck-lab.html"><span class="nav-ico">⌁</span>DECK LAB BETA</a>
   <a class="lba-nav-btn" href="sca.html"><span class="nav-ico">⬡</span>SCANNER</a>
   <a class="lba-nav-btn" href="#" onclick="switchTab('display');return false" id="dash-cart-nav" style="position:relative">
     <span class="nav-ico">🛒</span>
@@ -3868,6 +3900,7 @@ const MORE_TABS = [
   ['channels', 'ONLINE LISTINGS'],
   ['sales', 'SALES'],
   ['alerts', 'ALERTS'],
+  ['authcheck', 'AUTH CHECK'],
   ['wantlist', 'WANT LIST'],
   ['consign', 'CONSIGNMENT'],
   ['locations', 'LOCATIONS'],
@@ -4913,7 +4946,7 @@ function setupAppShell(){
     tabs.innerHTML = daily.map(([id,label]) =>
       `<div class="tab primary ${id === activeTab ? 'on' : ''}" data-tab="${id}" onclick="switchTab('${id}',this)">${label}</div>`
     ).join('') + `
-      <a class="tab primary deck-lab-link" href="mtg-deck-lab.html">DECK LAB</a>
+      <a class="tab primary deck-lab-link" href="mtg-deck-lab.html">DECK LAB BETA</a>
       <div class="nav-more">
         <div class="tab" id="more-tab-btn" onclick="toggleMoreMenu(event)">MORE</div>
         <div class="more-menu" id="more-menu">
@@ -11707,6 +11740,7 @@ function mapBuiltInItem(row){
 }
 
 function builtInDataFromItem(item, updates={}){
+  const nextQty = Math.max(0, Number(updates.qty ?? item.qty ?? 1) || 0);
   return {
     ...(item.raw || {}),
     id:item.id,
@@ -11717,7 +11751,9 @@ function builtInDataFromItem(item, updates={}){
     year:updates.year ?? item.year ?? '',
     variant:updates.variant ?? item.variant ?? '',
     condition:updates.condition ?? item.condition ?? '',
-    qty:Number(updates.qty ?? item.qty ?? 1),
+    qty:nextQty,
+    quantity:nextQty,
+    'inventory-count':nextQty,
     cost:Number(updates.cost ?? item.cost ?? 0),
     market:Number(updates.market ?? item.market ?? 0),
     salePrice:Number(updates.salePrice ?? updates.listPrice ?? item.salePrice ?? item.listPrice ?? item.raw?.salePrice ?? item.market ?? updates.market ?? 0),
@@ -13140,6 +13176,10 @@ async function addAllScansToBuyList(){
   renderScanInbox();
   renderResearchQueue();
   toast_dash('Added ' + queue.length + ' scans to buy offer');
+}
+
+async function addAllFromScannerQueue(){
+  return addAllScansToBuyList();
 }
 
 function focusResearchSearch(){
@@ -14949,12 +14989,15 @@ async function createBuiltInInventoryItem(item, updates, sourceLabel='built_in')
 async function updateBuiltInInventoryItem(item, updates){
   const sb = getSupabaseClient();
   const session = getAuthSession();
+  const storeId = getActiveStoreId();
   const nextData = builtInDataFromItem(item, updates);
-  if(sb && session?.supabase) {
+  if(Number(nextData.qty || 0) < 0) throw new Error('Inventory quantity cannot be negative.');
+  if(sb && session?.supabase && storeId) {
     const { error } = await sb
       .from('inventory_items')
       .update({ data:nextData, status:nextData.status || 'in_stock', updated_at:new Date().toISOString() })
-      .eq('id', item.supabaseRowId || item.id);
+      .eq('id', item.supabaseRowId || item.id)
+      .eq('store_id', storeId);
     if(error) throw new Error('Built-in inventory update ' + error.message);
     applyDashboardItemUpdate(item.id, updates);
     return true;
@@ -15175,12 +15218,18 @@ async function createInventoryRecord(item, updates) {
 }
 
 async function markInventoryRecordSold(item, fieldData, saleMeta){
+  if(item.status === 'sold' || item.lifecycle === 'sold') return 'already-sold';
   if(item.source === 'built_in') {
     const sb = getSupabaseClient();
     const session = getAuthSession();
-    if(sb && session?.supabase) {
-      const nextData = { ...(item.raw || {}), ...item, ...saleMeta, status:'sold' };
-      const { error } = await sb.from('inventory_items').update({ status:'sold', data:nextData, updated_at:new Date().toISOString() }).eq('id', item.id);
+    const storeId = getActiveStoreId();
+    if(sb && session?.supabase && storeId) {
+      const nextData = { ...(item.raw || {}), ...item, ...saleMeta, status:'sold', lifecycle:'sold', qty:0, quantity:0, 'inventory-count':0 };
+      const { error } = await sb.from('inventory_items')
+        .update({ status:'sold', data:nextData, updated_at:new Date().toISOString() })
+        .eq('id', item.supabaseRowId || item.id)
+        .eq('store_id', storeId)
+        .neq('status', 'sold');
       if(error) throw new Error('Built-in sold sync ' + error.message);
       const wfId=item.raw?.wfId||item.raw?.webflowId;
       if(wfId&&getWebflowIntegration().enabled){const soldFields={'sold-out':true,'inventory-count':0,status:STATUS_SOLD};try{const wfRes=await wfPatch('/collections/'+WF_PRODUCTS+'/items/'+wfId,{fieldData:soldFields});if(!wfRes.ok)throw new Error('Webflow sold-out '+wfRes.status);}catch(e){enqueueOrReplaceSync('webflow-mirror-update','sold-'+wfId,'Remove sold item from Webflow: '+(item.name||wfId),{wfId,item,updates:{qty:0,status:'sold','sold-out':true}},e.message);}}
@@ -25209,6 +25258,7 @@ let checkoutState = CHECKOUT_STATES.IDLE;
 let lockedCheckoutSnapshot = null;
 let selectedTenderLines = [];
 let confirmedSaleContext = null;
+let checkoutFinalizing = false;
 
 function CheckoutStateManager(){
   return {
@@ -25670,6 +25720,7 @@ function updateLockedCashChange(){
 }
 
 async function confirmLockedPayment(method){
+  if(checkoutFinalizing) return toast_dash('Checkout is already finalizing');
   if(!lockedCheckoutSnapshot) return toast_dash('No locked checkout');
   const total = Number(lockedCheckoutSnapshot.total || 0);
   let amount = total;
@@ -25685,10 +25736,12 @@ async function confirmLockedPayment(method){
 }
 
 async function completeLockedCheckout(){
+  if(checkoutFinalizing) return toast_dash('Checkout is already finalizing');
   const snapshot = lockedCheckoutSnapshot;
   if(!snapshot) return;
   const tenderTotal = selectedTenderLines.reduce((a,t) => a + Number(t.amount || 0), 0);
   if(Math.abs(tenderTotal - Number(snapshot.total || 0)) > 0.009) return toast_dash('Tender total must equal checkout total');
+  checkoutFinalizing = true;
   checkoutState = CHECKOUT_STATES.PAYMENT_CONFIRMED;
   const bundle = buildLedgerBundle(snapshot, selectedTenderLines);
   try {
@@ -25697,6 +25750,8 @@ async function completeLockedCheckout(){
   } catch(e) {
     OfflineSyncQueue().enqueueTransaction(bundle, e.message);
     await finalizeCompletedCheckout(bundle, true);
+  } finally {
+    checkoutFinalizing = false;
   }
 }
 

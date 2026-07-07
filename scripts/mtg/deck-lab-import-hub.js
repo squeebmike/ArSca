@@ -45,9 +45,9 @@
     if(!entries.length){setNotice('No card lines were recognized. Use a quantity before each card name, such as “1 Sol Ring”.');render();return}
     setNotice('');importButton.disabled=true;$('match-progress').classList.add('on');$('parse-note').textContent='Matching '+entries.length+' lines through Scryfall…';render();
     const unique=new Map();entries.forEach(entry=>{const key=[DL.normalizeName(entry.name),entry.set,entry.collector].join('|');if(!unique.has(key))unique.set(key,entry)});
-    await runPool([...unique.values()],1,async seed=>{try{seed.card=await scryfallLookup(seed);seed.status='matched'}catch(error){seed.status=/ambiguous/i.test(error.message)?'ambiguous':'unmatched';seed.error=error.message}});
+    await runPool([...unique.values()],1,async seed=>{try{const match=await scryfallLookup(seed);seed.card=match.card||match;seed.status='matched';seed.matchMethod=match.method||seed.matchMethod||'exact';seed.failureReason=''}catch(error){seed.status=/ambiguous/i.test(error.message)?'ambiguous':'unmatched';seed.error=error.message;seed.matchMethod='failed';seed.failureReason=error.message}});
     const byKey=new Map([...unique.values()].map(entry=>[[DL.normalizeName(entry.name),entry.set,entry.collector].join('|'),entry]));
-    entries=entries.map(entry=>{const match=byKey.get([DL.normalizeName(entry.name),entry.set,entry.collector].join('|'));return{...entry,card:match.card,status:match.status,error:match.error}});
+    entries=entries.map(entry=>{const match=byKey.get([DL.normalizeName(entry.name),entry.set,entry.collector].join('|'));return{...entry,card:match.card,status:match.status,error:match.error,matchMethod:match.matchMethod||entry.matchMethod,failureReason:match.failureReason||match.error||''}});
     const commander=entries.find(entry=>entry.section==='Commander'&&entry.card);if(commander&&!$('deck-commander').value)$('deck-commander').value=commander.card.name;
     const colors=[...new Set(entries.flatMap(entry=>entry.card?.color_identity||[]))].join('');if(colors&&!$('deck-colors').value)$('deck-colors').value=colors;
     importButton.disabled=false;$('match-progress').classList.remove('on');$('parse-note').textContent=entries.filter(entry=>entry.status==='matched').length+' matched · '+entries.filter(entry=>entry.status!=='matched').length+' unresolved'+(ignored.length?' · '+ignored.length+' ignored line(s)':'');
@@ -57,7 +57,7 @@
     const metrics=DL.analyze(entries),categories=[...new Set(entries.map(entry=>entry.category).filter(Boolean))],matched=entries.filter(entry=>entry.status==='matched').reduce((sum,entry)=>sum+entry.quantity,0),unmatched=entries.filter(entry=>entry.status!=='matched').reduce((sum,entry)=>sum+entry.quantity,0),printing=entries.filter(entry=>entry.set||entry.collector).reduce((sum,entry)=>sum+entry.quantity,0),commanderCount=metrics.counts.Commander||0;
     $('review-deck-name').value=$('deck-name').value||($('deck-commander').value?$('deck-commander').value+' Deck':'Imported Deck');
     $('review-stats').innerHTML=[['MAIN',metrics.counts.Mainboard||0],['SIDE',metrics.counts.Sideboard||0],['MAYBE',metrics.counts.Maybeboard||0],['MATCHED',matched],['UNMATCHED',unmatched],['PRINT DATA',printing],['COMMANDER',commanderCount],['CATEGORIES',categories.length]].map(([label,value])=>'<div class="review-stat"><b>'+value+'</b><span>'+label+'</span></div>').join('');
-    $('review-categories').textContent=categories.length?'Categories found: '+categories.join(', '):'No category headers were found; cards remain in their detected deck sections.';
+    $('review-categories').innerHTML=(categories.length?'Categories found: '+esc(categories.join(', ')):'No category headers were found; cards remain in their detected deck sections.')+debugReviewTable();
     const commanderWarning=$('deck-format').value==='Commander'&&commanderCount!==1?'Commander warning: expected exactly 1 Commander card, found '+commanderCount+'. Review the section headers before confirming.':'';
     $('review-warning').textContent=commanderWarning||(unmatched?unmatched+' card(s) remain unmatched. They will stay visibly unresolved and are excluded from verified analysis.':'Ready to confirm. All imported card quantities matched through Scryfall.');
     $('import-review-overlay').hidden=false;
@@ -68,6 +68,11 @@
     recentRepo.upsert(record);
     if(currentImport.sourceUrl){const saved=sourceRepo.load().find(item=>item.sourceUrl===currentImport.sourceUrl);if(saved)sourceRepo.upsert({...saved,lastImportedAt:record.importedAt})}
     $('import-review-overlay').hidden=true;$('save-status').textContent='Imported '+new Date().toLocaleTimeString();renderRecent();renderSources();toast('Import confirmed and saved locally');
+  }
+  function debugReviewTable(){
+    const rows=entries.map(entry=>'<tr><td>'+esc(entry.rawLine||entry.name)+'</td><td>'+esc([entry.section,entry.category].filter(Boolean).join(' / '))+'</td><td>'+Number(entry.quantity||0)+'</td><td>'+esc(entry.name)+'</td><td>'+esc(entry.cleanedName||entry.name)+'</td><td>'+esc(entry.set||'')+'</td><td>'+esc(entry.collector||'')+'</td><td>'+esc(entry.matchMethod||entry.status||'pending')+'</td><td>'+esc(entry.failureReason||entry.error||'')+'</td></tr>').join('');
+    const ignoredRows=ignored.slice(0,20).map(row=>'<tr class="ignored"><td>'+esc(row.text)+'</td><td colspan="7">ignored '+esc(row.reason||'line')+'</td><td></td></tr>').join('');
+    return '<div class="review-debug-wrap"><div class="help" style="margin-top:12px">Import debug review: raw line, parsed name, Scryfall query, and match status.</div><div class="table-wrap"><table class="deck-table import-debug-table"><thead><tr><th>RAW LINE</th><th>SECTION</th><th>QTY</th><th>PARSED NAME</th><th>SCRYFALL QUERY</th><th>SET</th><th>#</th><th>MATCH</th><th>REASON</th></tr></thead><tbody>'+rows+ignoredRows+'</tbody></table></div></div>';
   }
 
   function renderSources(){

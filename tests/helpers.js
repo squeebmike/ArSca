@@ -13,7 +13,8 @@ async function openDashboard(page, target = 'dashboard.html') {
   await mockWalkoffApis(page);
   await seedDemoStore(page);
   const guard = await installConsoleGuard(page, {
-    allowRequest: [/favicon/i, /supabase/i],
+    allowConsole: [/ERR_NETWORK_ACCESS_DENIED/i, /URL scheme "file" is not supported/i],
+    allowRequest: [/favicon/i, /supabase/i, /cdn\.jsdelivr\.net/i, /swarnerauto\.workers\.dev/i],
   });
   await page.goto(appUrl(target), { waitUntil: 'domcontentloaded' });
   const auth = page.locator('#auth-screen.on');
@@ -28,7 +29,8 @@ async function openScanner(page, target = 'sca.html') {
   await mockWalkoffApis(page);
   await seedDemoStore(page);
   const guard = await installConsoleGuard(page, {
-    allowRequest: [/favicon/i, /supabase/i],
+    allowConsole: [/ERR_NETWORK_ACCESS_DENIED/i, /URL scheme "file" is not supported/i],
+    allowRequest: [/favicon/i, /supabase/i, /cdn\.jsdelivr\.net/i, /swarnerauto\.workers\.dev/i],
   });
   await page.goto(appUrl(target), { waitUntil: 'domcontentloaded' });
   return guard;
@@ -36,10 +38,20 @@ async function openScanner(page, target = 'sca.html') {
 
 async function runResearchSearch(page, query, category = '') {
   await page.locator('[data-tab="research"]').click();
-  if (category) await page.locator('#qpl-cat').selectOption(category);
+  if (category) {
+    const pill = page.locator(`.qpl-cat-pill[data-cat="${category}"]`).first();
+    if (await pill.count()) {
+      await pill.click();
+    } else {
+      await page.locator('#qpl-cat').evaluate((select, value) => {
+        select.value = value;
+        select.dispatchEvent(new Event('change', { bubbles: true }));
+      }, category);
+    }
+  }
   await page.locator('#qpl-input').fill(query);
   await page.getByRole('button', { name: /^LOOK UP$/ }).click();
-  await expect(page.locator('#qpl-result')).not.toContainText('Searching local inventory', { timeout: 15_000 });
+  await expect(page.locator('#qpl-result')).not.toContainText(/Searching local (inventory|cache)/i, { timeout: 15_000 });
   return page.locator('.qpl-hero-card');
 }
 

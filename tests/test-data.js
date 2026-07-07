@@ -56,6 +56,30 @@ const localFixtures = {
       lifecycle: 'in_stock',
       priceSource: 'QA fixture',
     },
+    {
+      id: 'qa-inv-151-booster-bundle',
+      name: 'Pokemon 151 Booster Bundle',
+      category: 'Sealed Product',
+      set: 'Scarlet & Violet 151',
+      condition: 'Factory Sealed',
+      market: 58,
+      cost: 36,
+      status: 'in_stock',
+      lifecycle: 'in_stock',
+      priceSource: 'QA fixture',
+    },
+    {
+      id: 'qa-inv-surging-sparks-booster-box',
+      name: 'Surging Sparks Booster Box',
+      category: 'Sealed Product',
+      set: 'Surging Sparks',
+      condition: 'Factory Sealed',
+      market: 210,
+      cost: 135,
+      status: 'in_stock',
+      lifecycle: 'in_stock',
+      priceSource: 'QA fixture',
+    },
   ],
   scanQueue: [
     {
@@ -202,6 +226,22 @@ function priceChartingProduct(productName, overrides = {}) {
   };
 }
 
+function scryfallCard(name, overrides = {}) {
+  return {
+    id: overrides.id || name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+    name,
+    set: overrides.set || 'cmm',
+    set_name: overrides.setName || 'Commander Masters',
+    collector_number: overrides.collectorNumber || '',
+    type_line: overrides.typeLine || 'Artifact',
+    oracle_text: overrides.oracleText || '',
+    cmc: overrides.cmc ?? 2,
+    color_identity: overrides.colorIdentity || [],
+    prices: { usd: overrides.usd ?? '1.00', usd_foil: null, eur: null, tix: null },
+    image_uris: { small: overrides.imageUrl || '' },
+  };
+}
+
 async function mockWalkoffApis(page) {
   await page.route('https://fonts.googleapis.com/**', route => route.fulfill({ contentType: 'text/css', body: '' }));
   await page.route('https://fonts.gstatic.com/**', route => route.fulfill({ status: 204, body: '' }));
@@ -225,6 +265,12 @@ async function mockWalkoffApis(page) {
     const q = (url.searchParams.get('q') || '').toLowerCase();
     const category = (url.searchParams.get('category') || '').toLowerCase();
     const matches = [];
+    if (/julio|logoman/.test(q) || /ohtani|cosmic|uranus/.test(q) || category.includes('sport')) {
+      matches.push(priceChartingProduct(/ohtani/.test(q) ? 'Shohei Ohtani Cosmic Uranus' : 'Julio Rodriguez Logoman', { csvCategory: 'Sports Cards', consoleName: 'Sports Cards', ungraded: /ohtani/.test(q) ? 75 : 350 }));
+    }
+    if (/psa\s*10|graded|charmander/.test(q) || category.includes('graded')) {
+      matches.push(priceChartingProduct('PSA 10 Charmander', { csvCategory: 'Pokemon Cards', consoleName: 'Pokemon Cards', ungraded: 12, psa10: 140, graded: 140 }));
+    }
     if (/wolverine|asm|spider/.test(q) || category.includes('comic')) {
       matches.push(priceChartingProduct(/asm|spider/.test(q) ? 'Amazing Spider-Man #300' : 'Wolverine #1', { csvCategory: 'Comics', consoleName: 'Comics', ungraded: /asm|spider/.test(q) ? 900 : 45 }));
     }
@@ -236,9 +282,19 @@ async function mockWalkoffApis(page) {
   await page.route('**/pricing/pricecharting/search**', route => {
     const url = new URL(route.request().url());
     const q = (url.searchParams.get('q') || '').toLowerCase();
-    const products = /zelda|ocarina|n64/.test(q)
-      ? [priceChartingProduct('The Legend of Zelda: Ocarina of Time', { consoleName: 'Nintendo 64', ungraded: 42 })]
-      : [priceChartingProduct(/asm|spider/.test(q) ? 'Amazing Spider-Man #300' : 'Wolverine #1')];
+    const products = /julio|logoman/.test(q)
+      ? [priceChartingProduct('Julio Rodriguez Logoman', { consoleName: 'Sports Cards', ungraded: 350 })]
+      : /ohtani|cosmic|uranus/.test(q)
+        ? [priceChartingProduct('Shohei Ohtani Cosmic Uranus', { consoleName: 'Sports Cards', ungraded: 75 })]
+        : /psa\s*10|graded|charmander/.test(q)
+          ? [priceChartingProduct('PSA 10 Charmander', { consoleName: 'Pokemon Cards', ungraded: 12, psa10: 140, graded: 140 })]
+          : /zelda|ocarina|n64/.test(q)
+            ? [priceChartingProduct('The Legend of Zelda: Ocarina of Time', { consoleName: 'Nintendo 64', ungraded: 42 })]
+            : /asm|spider/.test(q)
+              ? [priceChartingProduct('Amazing Spider-Man #300')]
+              : /wolverine/.test(q)
+                ? [priceChartingProduct('Wolverine #1')]
+                : [];
     return route.fulfill({ json: { ok: true, matches: products, products } });
   });
   await page.route('**/pricing/pricecharting/slab-prices**', route => route.fulfill({ json: { ok: true, product: priceChartingProduct('Wolverine #1'), prices: { ungraded: 45, grade9: 120, psa10: 250 } } }));
@@ -250,7 +306,11 @@ async function mockWalkoffApis(page) {
     else if (q.includes('pikachu') && q.includes('ex')) matches = [justTcgMatch('Pikachu ex', { rarity: 'Double Rare', cardNumber: '057/191', marketPrice: 18 })];
     else if (q.includes('pikachu')) matches = [justTcgMatch('Pikachu', { rarity: 'Illustration Rare', cardNumber: '173/165', setName: 'Scarlet & Violet 151', marketPrice: 22 })];
     else if (q.includes('umbreon')) matches = [justTcgMatch('Umbreon VMAX', { setName: 'Evolving Skies', rarity: 'Ultra Rare', cardNumber: '095/203', marketPrice: 38 })];
-    else if (q.includes('charizard')) matches = [justTcgMatch('Charizard ex', { setName: 'Scarlet & Violet 151', rarity: 'Special Illustration Rare', cardNumber: '199/165', marketPrice: 145 })];
+    else if (q.includes('charizard')) matches = [justTcgMatch('Charizard', { setName: 'Base Set', rarity: 'Rare Holo', cardNumber: '4/102', marketPrice: 300 })];
+    else if (q.includes('greninja')) matches = [justTcgMatch('Greninja ex', { setName: 'Twilight Masquerade', rarity: 'Special Illustration Rare', cardNumber: '214/167', marketPrice: 280 })];
+    else if (q.includes('151') && q.includes('booster')) matches = [justTcgMatch('Pokemon 151 Booster Bundle', { setName: 'Scarlet & Violet 151', rarity: 'Sealed Product', cardNumber: '', marketPrice: 58 })];
+    else if (q.includes('surging sparks') && q.includes('booster')) matches = [justTcgMatch('Surging Sparks Booster Box', { setName: 'Surging Sparks', rarity: 'Sealed Product', cardNumber: '', marketPrice: 210 })];
+    else if (q.includes('charmander')) matches = [justTcgMatch('Charmander', { setName: 'Obsidian Flames', rarity: 'Illustration Rare', cardNumber: '168/197', marketPrice: 22 })];
     else if (q.includes('wolverine')) matches = [justTcgMatch('Wolverine', { game: 'Magic', setName: 'Marvel', rarity: 'Rare', marketPrice: 5, confidenceScore: 40 })];
     return route.fulfill({ json: { ok: true, success: true, matches } });
   });
@@ -258,7 +318,16 @@ async function mockWalkoffApis(page) {
   await page.route('**/pricing/justtcg/sku/**', route => route.fulfill({ json: { ok: true, skuId: 'qa-sku', marketPrice: 22, priceHistory: [{ date: '2026-04-08', price: 18 }, { date: '2026-05-08', price: 22 }] } }));
   await page.route('**/pricing/tcg**', route => route.fulfill({ json: { ok: true, success: true, matches: [] } }));
   await page.route('https://api.pokemontcg.io/**', route => route.fulfill({ json: { data: [] } }));
-  await page.route('https://api.scryfall.com/**', route => route.fulfill({ json: { data: [] } }));
+  await page.route('https://api.scryfall.com/**', route => {
+    const url = new URL(route.request().url());
+    const q = `${url.searchParams.get('q') || ''} ${url.searchParams.get('exact') || ''} ${url.searchParams.get('fuzzy') || ''}`.toLowerCase();
+    const cards = [
+      scryfallCard('Sol Ring', { collectorNumber: '400', cmc: 1, usd: '1.25', oracleText: 'Add two colorless mana.' }),
+      scryfallCard('Arcane Signet', { collectorNumber: '300', cmc: 2, usd: '0.75', oracleText: 'Add one mana of any color in your commander color identity.' }),
+      scryfallCard('Command Tower', { collectorNumber: '401', typeLine: 'Land', cmc: 0, usd: '0.50', oracleText: 'Add one mana of any color in your commander color identity.' }),
+    ].filter(card => q.includes(card.name.toLowerCase()));
+    return route.fulfill({ json: { object: 'list', data: cards } });
+  });
 }
 
 module.exports = {
