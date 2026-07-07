@@ -3,7 +3,7 @@
   "version": "2026.07.06.03",
   "private": true,
   "scripts": {
-    "test": "npm run test:parse && npm run test:topps-parser && npm run test:buy-workspace && npm run test:search-adapter && npm run test:comic-hub && npm run test:consignment && npm run test:stripe-foundation && npm run test:settings-architecture && npm run test:subscription-plans && npm run test:storefront && npm run test:webflow-sync && npm run test:inventory-usability && npm run test:barcode && npm run test:mtg-offline && npm run test:deck-lab && npm run test:admin-support && npm run test:release-hardening",
+    "test": "npm run test:parse && npm run test:topps-parser && npm run test:buy-workspace && npm run test:search-adapter && npm run test:comic-hub && npm run test:consignment && npm run test:stripe-foundation && npm run test:settings-architecture && npm run test:subscription-plans && npm run test:storefront && npm run test:webflow-sync && npm run test:inventory-usability && npm run test:barcode && npm run test:mtg-offline && npm run test:deck-lab && npm run test:mtg-research-batch && npm run test:admin-support && npm run test:release-hardening",
     "test:qa": "npm run test:parse",
     "test:smoke:manual": "playwright test --config=tests/playwright.config.js --workers=1",
     "test:headed": "playwright test --config=tests/playwright.config.js --headed",
@@ -22,6 +22,7 @@
     "test:inventory-usability": "node tests/inventory-usability.test.js",
     "test:mtg-offline": "node tests/mtg-offline-core.test.mjs && node tests/mtg-offline-contract.test.mjs",
     "test:deck-lab": "node tests/deck-lab.test.js && node tests/deck-import-providers.test.js && node tests/deck-lab-import-fixtures.test.js",
+    "test:mtg-research-batch": "node tests/mtg-research-batch.test.js",
     "test:admin-support": "node tests/admin-support-contract.test.mjs",
     "test:release-hardening": "node tests/release-hardening.test.js",
     "mtg:build": "node scripts/mtg/build-mtg-offline-bundle.mjs",

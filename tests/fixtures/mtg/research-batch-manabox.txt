@@ -1,0 +1,10 @@
+Name	Quantity	Set code	Collector number	Condition	Foil
+Sol Ring	1	CMM	400	NM	true
+Arcane Signet	1			NM	false
+Command Tower	1			LP	false
+Lightning Bolt	4	M10	146	MP	false
+Counterspell	1			NM	false
+Swords to Plowshares	1			NM	false
+Beast Within	1			NM	false
+Fire // Ice	1			NM	false
+Fable of the Mirror-Breaker	1			NM	false

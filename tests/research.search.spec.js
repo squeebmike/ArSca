@@ -37,6 +37,9 @@ test('category dropdown refilters already-loaded results', async ({ page }) => {
 
   await runResearchSearch(page, 'pikachu', '');
   await page.locator('.qpl-cat-pill[data-cat="Pokemon TCG"]').click();
+  if (await page.getByRole('button', { name: /search this category/i }).count()) {
+    await page.getByRole('button', { name: /search this category/i }).click();
+  }
   await expect(page.locator('#qpl-result')).toContainText(/Pikachu/i);
 
   await runResearchSearch(page, 'zelda', '');

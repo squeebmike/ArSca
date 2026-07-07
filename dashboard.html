@@ -1419,6 +1419,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <script src="scripts/barcode-lookup.js?v=2026.07.06.03-deck-lab-nav"></script>
 <script src="scripts/comic-issue-hub.js?v=2026.07.06.03-deck-lab-nav"></script>
 <script src="scripts/mtg/mtg-offline-browser.js?v=2026.07.01.04-mtg-offline-set-browser"></script>
+<script src="scripts/mtg/research-batch.js?v=2026.07.07.01-mtg-research-batch"></script>
 </head>
 <body>
 
@@ -1878,7 +1879,8 @@ body.show-mode .inv-sync-badge{display:none;}
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
           <span style="font-family:'Orbitron',monospace;font-size:9px;color:#5ba3f5;letter-spacing:.05em">MAGIC: THE GATHERING</span>
           <button class="hbtn" onclick="openMtgSetBrowser()" style="font-size:10px;min-height:36px;padding:4px 14px;background:rgba(91,163,245,.1);border-color:rgba(91,163,245,.4);color:#5ba3f5">🔮 SET BROWSER</button>
-          <span style="font-family:monospace;font-size:9px;color:var(--dim)">Browse full sets · filter by artist · track owned cards</span>
+          <button class="hbtn" onclick="openMtgResearchBatch()" style="font-size:10px;min-height:36px;padding:4px 14px;background:rgba(91,163,245,.1);border-color:rgba(91,163,245,.4);color:#5ba3f5">IMPORT CARD LIST</button>
+          <span style="font-family:monospace;font-size:9px;color:var(--dim)">Browse sets · import local appraisal batches · saved on this device</span>
         </div>
       </div>
       <div id="qpl-result" style="font-family:var(--font-mono);font-size:10px;color:var(--dim);min-height:60px">Enter a card, comic, slab, game, or collectible to identify it and route it into Buy, Inventory, or Sale.</div>
@@ -28734,6 +28736,7 @@ async function toppsLoadParallels(cardId){
   }
 }
 </script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.07.07.01-mtg-research-batch"></script>
 </body>
 </html>
 
