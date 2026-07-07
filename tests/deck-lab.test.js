@@ -29,5 +29,5 @@ assert.equal(matched[1].inventoryQty,2);assert.equal(matched[1].availableValue,2
 assert.deepEqual(lab.cleanName('Sol Ring [CMM]'),{name:'Sol Ring',set:'cmm',collector:'',cleaned:'Sol Ring'});
 assert.deepEqual(lab.cleanName('Sol Ring #400'),{name:'Sol Ring',set:'',collector:'400',cleaned:'Sol Ring'});
 const page=fs.readFileSync('mtg-deck-lab.html','utf8'),dashboard=fs.readFileSync('dashboard.html','utf8');
-assert.match(page,/DEMO · LOCAL ONLY/);assert.match(page,/TODO\(deck-persistence\)/);assert.doesNotMatch(page,/\.from\('(?:decks|deck_cards)'\).*\.(?:insert|upsert)/);assert.match(dashboard,/class="tab primary deck-lab-link" href="mtg-deck-lab\.html">DECK LAB BETA/);assert.match(dashboard,/2026\.07\.07\.04-price-sync-labels/);
+assert.match(page,/DEMO · LOCAL ONLY/);assert.match(page,/TODO\(deck-persistence\)/);assert.doesNotMatch(page,/\.from\('(?:decks|deck_cards)'\).*\.(?:insert|upsert)/);assert.match(dashboard,/class="tab primary deck-lab-link" href="mtg-deck-lab\.html">DECK LAB BETA/);assert.match(dashboard,/2026\.07\.07\.05-mtg-freshness-status/);
 console.log('Deck Lab parser and analysis tests passed');

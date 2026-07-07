@@ -131,7 +131,7 @@
         counts[file]=await importGzipJsonl(response,descriptor,store,target,detail=>emitProgress({...detail,file,version:target},onProgress));
       }
       const importedAt=new Date().toISOString();
-      await putMeta({name:'active',catalogVersion:target,pricesVersion:target,manifestSha:manifest.files.cards.sha256,lastImportedAt:importedAt,importStatus:'ready',counts,generatedAt:manifest.generatedAt});
+      await putMeta({name:'active',catalogVersion:target,pricesVersion:target,manifestSha:manifest.files.cards.sha256,lastImportedAt:importedAt,importStatus:'ready',counts,generatedAt:manifest.generatedAt,sourceVersions:manifest.sourceVersions||{}});
       await putMeta({name:'import',importStatus:'complete',targetVersion:target,completedAt:importedAt});
       emitProgress({stage:'Complete',version:target,counts},onProgress);
       if(active?.catalogVersion && active.catalogVersion!==target) clearVersion(active.catalogVersion).catch(()=>{});
@@ -228,7 +228,7 @@
       countVersion('mtg_cards',version),countVersion('mtg_sets',version),countVersion('mtg_prices',version),countVersion('mtg_price_links',version),
       openDb().then(db=>requestPromise(db.transaction('mtg_images','readonly').objectStore('mtg_images').count())).catch(()=>0)
     ]);
-    return {catalogVersion:version,pricesVersion:active?.pricesVersion||'',lastImportedAt:active?.lastImportedAt||'',importStatus:active?.importStatus||'not-downloaded',cards,sets:setsCount,prices,links,images};
+    return {catalogVersion:version,pricesVersion:active?.pricesVersion||'',lastImportedAt:active?.lastImportedAt||'',generatedAt:active?.generatedAt||'',sourceVersions:active?.sourceVersions||{},manifestSha:active?.manifestSha||'',importStatus:active?.importStatus||'not-downloaded',cards,sets:setsCount,prices,links,images};
   }
 
   async function clearAll(){

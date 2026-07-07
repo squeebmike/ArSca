@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.07.07.04-price-sync-labels">
+<meta name="version" content="2026.07.07.05-mtg-freshness-status">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1415,11 +1415,11 @@ body.show-mode .inv-sync-badge{display:none;}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-<script src="scripts/query-routing.js?v=2026.07.07.04-price-sync-labels"></script>
-<script src="scripts/barcode-lookup.js?v=2026.07.07.04-price-sync-labels"></script>
-<script src="scripts/comic-issue-hub.js?v=2026.07.07.04-price-sync-labels"></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.07.01.04-mtg-offline-set-browser"></script>
-<script src="scripts/mtg/research-batch.js?v=2026.07.07.04-price-sync-labels"></script>
+<script src="scripts/query-routing.js?v=2026.07.07.05-mtg-freshness-status"></script>
+<script src="scripts/barcode-lookup.js?v=2026.07.07.05-mtg-freshness-status"></script>
+<script src="scripts/comic-issue-hub.js?v=2026.07.07.05-mtg-freshness-status"></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.07.07.05-mtg-freshness-status"></script>
+<script src="scripts/mtg/research-batch.js?v=2026.07.07.05-mtg-freshness-status"></script>
 </head>
 <body>
 
@@ -1469,11 +1469,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.07.07.04-price-sync-labels</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.07.07.05-mtg-freshness-status</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.07.07.04-price-sync-labels</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.07.07.05-mtg-freshness-status</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1496,7 +1496,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.07.07.04-price-sync-labels</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.07.07.05-mtg-freshness-status</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -2829,7 +2829,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.07.07.04-price-sync-labels';
+const APP_VERSION = '2026.07.07.05-mtg-freshness-status';
 window.APP_VERSION = APP_VERSION;
 const branchName = 'main';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
@@ -5686,6 +5686,12 @@ function ensureOfflineCatalogManagerPanel(backoffice){
 
 let _mtgBulkSyncActive = false;
 
+function formatOfflineCatalogDate(value){
+  if(!value) return '';
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString();
+}
+
 async function renderOfflineCatalogManagerPanel(){
   const body = document.getElementById('offline-catalog-manager-body');
   if(!body) return;
@@ -5700,7 +5706,7 @@ async function renderOfflineCatalogManagerPanel(){
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;align-items:center;border-top:1px solid var(--border);padding:9px 0;font-family:monospace;font-size:10px">
       <b style="color:var(--text)">${escHtml(label)}</b>
       <span>${Number(count || 0).toLocaleString()} rows</span>
-      <span style="color:var(--dim)">${downloadedAt ? escHtml(new Date(downloadedAt).toLocaleString()) : 'Not downloaded'}</span>
+      <span style="color:var(--dim)">${downloadedAt ? escHtml(formatOfflineCatalogDate(downloadedAt)) : 'Not downloaded'}</span>
       <span style="color:${status ? 'var(--gold)' : 'var(--g)'}">${escHtml(status || source || 'Offline ready')}</span>
       <span style="display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap">${actions}</span>
     </div>`;
@@ -5714,14 +5720,27 @@ async function renderOfflineCatalogManagerPanel(){
   localStorage.removeItem('mtg_bulk_status');
   const mtgBusy = _mtgBulkSyncActive;
   const mtgMode = mtgOfflineSearchMode();
-  const mtgStatus = mtg.cards ? 'Current / ' + Number(mtg.sets || 0).toLocaleString() + ' sets' : 'Not downloaded';
+  const mtgMeta = mtg.meta || {};
+  const mtgScryfallAt = mtgMeta.sourceVersions?.scryfall?.downloadedAt || mtgMeta.generatedAt || mtgMeta.downloadedAt;
+  const mtgPricechartingAt = mtgMeta.sourceVersions?.pricecharting?.downloadedAt || mtgMeta.generatedAt || mtgMeta.downloadedAt;
+  const remoteScryfallAt = mtgMeta.remoteSourceVersions?.scryfall?.downloadedAt || mtgMeta.remoteGeneratedAt;
+  const remotePricechartingAt = mtgMeta.remoteSourceVersions?.pricecharting?.downloadedAt || mtgMeta.remoteGeneratedAt;
+  const mtgStatus = mtg.cards
+    ? (mtgMeta.updateAvailable ? `Update available: ${mtgMeta.remoteVersion}` : 'Local current') + ' / ' + Number(mtg.sets || 0).toLocaleString() + ' sets'
+    : (mtgMeta.remoteVersion ? `Ready to import ${mtgMeta.remoteVersion}` : 'Not downloaded');
+  const mtgRemoteLine = mtgMeta.remoteVersion
+    ? `Remote R2 bundle: ${escHtml(mtgMeta.remoteVersion)} generated ${escHtml(formatOfflineCatalogDate(mtgMeta.remoteGeneratedAt))}. Scryfall source ${escHtml(formatOfflineCatalogDate(remoteScryfallAt) || 'unknown')}; PriceCharting snapshot ${escHtml(formatOfflineCatalogDate(remotePricechartingAt) || 'unknown')}.`
+    : 'Remote R2 bundle: unable to check right now.';
+  const mtgLocalLine = mtgMeta.catalogVersion
+    ? `Local device import: ${escHtml(mtgMeta.catalogVersion)} imported ${escHtml(formatOfflineCatalogDate(mtgMeta.localImportedAt || mtgMeta.downloadedAt) || 'unknown')}.`
+    : 'Local device import: not downloaded yet.';
   body.innerHTML = `
     <div style="font-family:monospace;font-size:10px;color:var(--dim);line-height:1.55;margin-bottom:8px">Cache policy: temporary Research searches are disposable. Downloaded catalogs are official offline reference data. Inventory remains owned stock only.</div>
     <div style="font-family:'Orbitron',monospace;color:var(--g);font-size:11px;letter-spacing:.05em;margin-top:8px">POKEMON / POKEMONPRICETRACKER BUSINESS EXPORTS</div>
     ${pptRows}
     <div style="font-family:'Orbitron',monospace;color:#5ba3f5;font-size:11px;letter-spacing:.05em;margin-top:16px">MTG OFFLINE DATA</div>
-    ${row('Scryfall cards', mtg.cards || 0, mtg.meta?.downloadedAt, mtgStatus, `<button class="hbtn" onclick="downloadMtgBulkCatalog()" ${mtgBusy?'disabled':''}>${mtgBusy?'SYNCING...':'REFRESH MTG OFFLINE DATA'}</button><button class="hbtn" onclick="clearMtgBulkCatalog()">CLEAR DATA</button>`, 'Scryfall offline catalog')}
-    ${row('PriceCharting snapshot', mtg.prices || 0, mtg.meta?.downloadedAt, (mtg.links || 0).toLocaleString() + ' linked cards', `<button class="hbtn" onclick="clearMtgImageCache()">CLEAR IMAGE CACHE (${Number(mtg.images||0).toLocaleString()})</button>`, 'PriceCharting offline snapshot')}
+    ${row('Scryfall cards', mtg.cards || 0, mtgScryfallAt, mtgStatus, `<button class="hbtn" onclick="downloadMtgBulkCatalog()" ${mtgBusy?'disabled':''}>${mtgBusy?'SYNCING...':(mtgMeta.updateAvailable?'IMPORT LATEST MTG DATA':'REFRESH MTG OFFLINE DATA')}</button><button class="hbtn" onclick="clearMtgBulkCatalog()">CLEAR DATA</button>`, 'Scryfall offline catalog')}
+    ${row('PriceCharting snapshot', mtg.prices || 0, mtgPricechartingAt, (mtg.links || 0).toLocaleString() + ' linked cards', `<button class="hbtn" onclick="clearMtgImageCache()">CLEAR IMAGE CACHE (${Number(mtg.images||0).toLocaleString()})</button>`, 'PriceCharting offline snapshot')}
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;border-top:1px solid var(--border);padding:10px 0;font-family:monospace;font-size:10px">
       <label for="mtg-offline-mode" style="color:var(--text);font-weight:700">SEARCH MODE</label>
       <select id="mtg-offline-mode" onchange="setMtgOfflineSearchMode(this.value)" style="min-width:220px;max-width:100%">
@@ -5731,7 +5750,7 @@ async function renderOfflineCatalogManagerPanel(){
       </select>
       <span id="mtg-offline-progress" style="color:var(--gold);min-width:160px">${mtgBusy?'Checking manifest...':''}</span>
     </div>
-    <div style="font-family:monospace;font-size:9px;color:var(--dim);line-height:1.55;margin-top:8px">Catalog version: ${escHtml(mtg.meta?.catalogVersion || 'not downloaded')} / Prices version: ${escHtml(mtg.meta?.pricesVersion || 'not downloaded')}. R2 holds the daily compressed bundle; this device imports it into IndexedDB. PriceCharting values are a daily snapshot, not live prices. Images are cached separately only when viewed.</div>`;
+    <div style="font-family:monospace;font-size:9px;color:var(--dim);line-height:1.55;margin-top:8px">Catalog version: ${escHtml(mtgMeta.catalogVersion || 'not downloaded')} / Prices version: ${escHtml(mtgMeta.pricesVersion || 'not downloaded')}. ${mtgRemoteLine} ${mtgLocalLine} R2 holds the daily compressed bundle; this device imports it into IndexedDB. PriceCharting values are a daily snapshot, not live prices. Images are cached separately only when viewed.</div>`;
 }
 
 async function renderPokemonExportPanel(){
@@ -17062,7 +17081,6 @@ function normalizePptExportRow(row, type){
 async function autoRefreshStaleCatalogs(){
   if(!navigator.onLine) return;
   const MS_24H = 24 * 60 * 60 * 1000;
-  const MS_7D  = 7  * 24 * 60 * 60 * 1000;
   try {
     // Pokemon cards catalog — refresh if >24h old and not blocked/downloading
     // Skip if last attempt returned 403 (business plan required — won't change without plan upgrade)
@@ -17072,10 +17090,10 @@ async function autoRefreshStaleCatalogs(){
     if(cardsAge > MS_24H && !exportBlocked && localStorage.getItem('ppt_export_cards_status') !== 'downloading') {
       downloadPokemonExport('cards').catch(console.warn);
     }
-    // MTG Scryfall bulk catalog — refresh if >7d old and not already downloading
+    // MTG offline bundle is built daily; refresh when R2 has a newer manifest, or when the local import is older than 24h.
     const mtg = await mtgCatalogCounts().catch(() => ({ meta:{} }));
     const mtgAge = mtg.meta?.downloadedAt ? Date.now() - new Date(mtg.meta.downloadedAt).getTime() : Infinity;
-    if(mtgAge > MS_7D && localStorage.getItem('mtg_bulk_status') !== 'downloading') {
+    if((mtg.meta?.updateAvailable || mtgAge > MS_24H) && !_mtgBulkSyncActive) {
       downloadMtgBulkCatalog().catch(console.warn);
     }
   } catch(e) { /* silent */ }
@@ -17163,18 +17181,34 @@ function mtgNormalizeBulkCard(c = {}, downloadedAt = new Date().toISOString()){
 }
 
 async function mtgCatalogMeta(){
-  const status = await window.ArsCaMtgOffline?.status().catch(() => null);
+  const [status, remote] = await Promise.all([
+    window.ArsCaMtgOffline?.status().catch(() => null),
+    fetch(WORKER + '/catalog/mtg/manifest', { cache:'no-store' }).then(res => res.ok ? res.json() : null).catch(() => null),
+  ]);
+  const remoteCardsSha = remote?.files?.cards?.sha256 || '';
+  const localCardsSha = status?.manifestSha || '';
+  const updateAvailable = !!(remote?.version && status?.catalogVersion && (remote.version !== status.catalogVersion || (remoteCardsSha && localCardsSha && remoteCardsSha !== localCardsSha)));
   return status ? {
     key:'mtg_r2_catalog', rowCount:status.cards, setCount:status.sets, priceCount:status.prices,
     linkCount:status.links, imageCount:status.images, downloadedAt:status.lastImportedAt,
-    generatedAt:status.lastImportedAt, catalogVersion:status.catalogVersion,
+    localImportedAt:status.lastImportedAt, generatedAt:status.generatedAt || status.lastImportedAt,
+    sourceVersions:status.sourceVersions || {}, catalogVersion:status.catalogVersion,
     pricesVersion:status.pricesVersion, importStatus:status.importStatus,
-  } : null;
+    remoteVersion:remote?.version || '', remoteGeneratedAt:remote?.generatedAt || '',
+    remoteSourceVersions:remote?.sourceVersions || {}, updateAvailable,
+    remoteStatus:remote?.status || '', remoteCardsSha,
+  } : {
+    key:'mtg_r2_catalog', rowCount:0, setCount:0, priceCount:0, linkCount:0, imageCount:0,
+    downloadedAt:null, catalogVersion:'', pricesVersion:'', importStatus:'not-downloaded',
+    sourceVersions:{}, remoteVersion:remote?.version || '', remoteGeneratedAt:remote?.generatedAt || '',
+    remoteSourceVersions:remote?.sourceVersions || {}, updateAvailable:false, remoteStatus:remote?.status || '',
+  };
 }
 
 async function mtgCatalogCounts(){
   const status = await window.ArsCaMtgOffline?.status().catch(() => null);
-  return status ? { cards:status.cards, sets:status.sets, prices:status.prices, links:status.links, images:status.images, meta:await mtgCatalogMeta() } : { cards:0, sets:0, prices:0, links:0, images:0, meta:{} };
+  const meta = await mtgCatalogMeta().catch(() => ({}));
+  return status ? { cards:status.cards, sets:status.sets, prices:status.prices, links:status.links, images:status.images, meta } : { cards:0, sets:0, prices:0, links:0, images:0, meta };
 }
 
 function mtgOfflineSearchMode(){
@@ -28744,7 +28778,7 @@ async function toppsLoadParallels(cardId){
   }
 }
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.07.07.04-price-sync-labels"></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.07.07.05-mtg-freshness-status"></script>
 </body>
 </html>
 
