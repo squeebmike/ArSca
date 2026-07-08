@@ -37,6 +37,17 @@
   function normName(value){
     return String(value || '').toLowerCase().replace(/\/\/.*$/, '').replace(/\s+/g, ' ').replace(/[^a-z0-9 ]/g, '').trim();
   }
+  function cleanSearchName(row){
+    let value = String(row.selectedPrinting?.name || row.cleanedName || row.parsedName || row.rawLine || '')
+      .replace(/\s+\*[A-Z]+\*\s*$/i, '')
+      .replace(/\s+\(([A-Z0-9]{2,8})\)\s*#?[A-Za-z0-9-]*\s*$/i, '')
+      .replace(/\s+\[([A-Z0-9]{2,8})\]\s*#?[A-Za-z0-9-]*\s*$/i, '')
+      .replace(/\s+#?[A-Za-z0-9-]+\s+\*[A-Z]+\*\s*$/i, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+    if(/\s+\d{1,4}[A-Za-z]?$/.test(value) && /[a-z]/i.test(value)) value = value.replace(/\s+\d{1,4}[A-Za-z]?$/, '').trim();
+    return value || String(row.cleanedName || row.parsedName || '').trim();
+  }
   function invQty(item){
     const raw = item?.qty ?? item?.quantity ?? item?.count ?? 1;
     const n = Number(raw);
@@ -207,7 +218,8 @@ Fable of the Mirror-Breaker`;
       try { return await fetch(url, { headers:{ Accept:'application/json' } }); }
       catch(e) { return null; }
     };
-    const searchAll = () => fetchPrintings({ ...row, setCode:'', setName:'', collectorNumber:'', matchMode:'all-printings' });
+    const searchName = cleanSearchName(row);
+    const searchAll = () => fetchPrintings({ ...row, cleanedName:searchName, parsedName:searchName, setCode:'', setName:'', collectorNumber:'', matchMode:'all-printings' });
     if(row.setCode && row.collectorNumber){
       const res = await tryFetch(`https://api.scryfall.com/cards/${encodeURIComponent(row.setCode)}/${encodeURIComponent(row.collectorNumber)}`);
       if(res?.ok) {
@@ -215,7 +227,7 @@ Fable of the Mirror-Breaker`;
         if(data?.name) return [scryfallToPrinting(data)];
       }
     }
-    const qParts = [`!"${row.cleanedName}"`];
+    const qParts = [`!"${searchName}"`];
     if(row.setCode) qParts.push('set:' + row.setCode);
     else if(row.setName) qParts.push('set:"' + row.setName + '"');
     else if(row.collectorNumber) qParts.push('cn:' + row.collectorNumber);
@@ -423,28 +435,38 @@ Fable of the Mirror-Breaker`;
   window.mtgResearchBatchChoosePrinting = async id => {
     const row = findRow(id);
     if(!row) return;
-    if(!row.candidatePrintings?.length){
-      row.error = 'Loading all printings...';
-      renderResults();
-      try {
-        row.candidatePrintings = await fetchPrintings({ ...row, setCode:'', setName:'', collectorNumber:'', matchMode:'all-printings' });
-        row.matchMode = 'all-printings';
-        if(row.candidatePrintings.length){
-          row.selectedPrinting = row.selectedPrinting || row.candidatePrintings[0];
-          row.matchStatus = 'matched';
-          row.matchConfidence = Math.max(Number(row.matchConfidence || 0), 86);
-          row.error = '';
-        }
-      } catch(e) {
-        row.error = e.message || 'Scryfall search failed';
+    const current = row.selectedPrinting;
+    row.error = 'Loading all printings...';
+    renderResults();
+    try {
+      const searchName = cleanSearchName(row);
+      const allPrintings = await fetchPrintings({ ...row, cleanedName:searchName, parsedName:searchName, setCode:'', setName:'', collectorNumber:'', matchMode:'all-printings' });
+      row.matchMode = 'all-printings';
+      if(allPrintings.length){
+        row.candidatePrintings = allPrintings;
+        row.selectedPrinting = allPrintings.find(p => current?.scryfallId && p.scryfallId === current.scryfallId) || allPrintings[0];
+        row.matchStatus = 'matched';
+        row.matchConfidence = Math.max(Number(row.matchConfidence || 0), 86);
+        row.error = '';
+      } else {
+        row.candidatePrintings = [];
+        row.error = 'No Scryfall printings found for ' + searchName;
       }
+    } catch(e) {
+      row.candidatePrintings = [];
+      row.error = e.message || 'Scryfall search failed';
+    } finally {
       renderReview();
       renderResults();
     }
-    if(!row.candidatePrintings?.length) return alert('No Scryfall printings found for ' + (row.cleanedName || row.parsedName || 'this card') + '. You can edit the parsed name or retry later.');
     const picker = $('mrb-printing-picker');
     if(!picker) return;
-    picker.innerHTML = `<div class="mrb-picker-inner"><div class="mrb-actions" style="justify-content:space-between;margin-bottom:12px"><div><div class="mrb-title">Choose Printing</div><div class="mrb-sub">${esc(row.cleanedName)} · click image to zoom, Select to use it</div></div><button class="hbtn" onclick="mtgResearchBatchClosePicker()">CLOSE</button></div><div class="mrb-printing-grid">${row.candidatePrintings.slice(0,40).map((p,i) => {
+    if(!row.candidatePrintings?.length){
+      picker.innerHTML = `<div class="mrb-picker-inner"><div class="mrb-actions" style="justify-content:space-between;margin-bottom:12px"><div><div class="mrb-title">Choose Printing</div><div class="mrb-sub">${esc(cleanSearchName(row))}</div></div><button class="hbtn" onclick="mtgResearchBatchClosePicker()">CLOSE</button></div><div class="empty"><div class="empty-t">NO PRINTINGS FOUND</div><p>${esc(row.error || 'Try editing the parsed card name, then choose printing again.')}</p></div></div>`;
+      picker.classList.add('on');
+      return;
+    }
+    picker.innerHTML = `<div class="mrb-picker-inner"><div class="mrb-actions" style="justify-content:space-between;margin-bottom:12px"><div><div class="mrb-title">Choose Printing</div><div class="mrb-sub">${esc(cleanSearchName(row))} · ${row.candidatePrintings.length} printings found · click image to zoom, Select to use it</div></div><button class="hbtn" onclick="mtgResearchBatchClosePicker()">CLOSE</button></div><div class="mrb-printing-grid">${row.candidatePrintings.slice(0,60).map((p,i) => {
       const img = imgFor(p);
       return `<div class="mrb-printing-card"><div>${img ? `<img src="${esc(img)}" loading="lazy" onclick="mtgResearchBatchZoom('${esc(p.normalImage || img)}')">` : '<div class="mrb-no-img">NO IMG</div>'}</div><div class="mrb-name">${esc(p.name)}</div><div class="mrb-meta">${esc([p.setName,p.setCode,p.collectorNumber ? '#'+p.collectorNumber : ''].filter(Boolean).join(' · '))}</div><div><span class="mrb-badge">Normal ${esc(price(p.prices?.usd))}</span><span class="mrb-badge">Foil ${esc(price(p.prices?.usdFoil))}</span></div><button class="hbtn" onclick="mtgResearchBatchUsePrinting('${esc(row.id)}',${i})">SELECT</button></div>`;
     }).join('')}</div></div>`;

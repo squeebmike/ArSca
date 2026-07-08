@@ -64,7 +64,7 @@
       .replace(/\s+\$[\d,]+(?:\.\d{1,2})?(?:\s*(?:usd|eur))?\s*$/i, '')
       .replace(/\s+(?:usd|eur|tix)\s*[\d,]+(?:\.\d{1,2})?\s*$/i, '')
       .replace(/\s+\d+(?:\.\d{1,2})?\s*tix\s*$/i, '')
-      .replace(/\s+\*F\*\s*$/i, '')
+      .replace(/\s+\*[A-Z]+\*\s*$/i, '')
       .trim();
   }
 

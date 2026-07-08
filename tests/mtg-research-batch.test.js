@@ -49,6 +49,11 @@ assert.equal(goldfishCollector.quantity, 8);
 assert.equal(goldfishCollector.setCode, 'thb');
 assert.equal(goldfishCollector.collectorNumber, '254');
 
+const enhancedSuffix = batch.parseLine('1 Halana, Kessig Ranger (CMR) 579 *E*', 5);
+assert.equal(enhancedSuffix.cleanedName, 'Halana, Kessig Ranger');
+assert.equal(enhancedSuffix.setCode, 'cmr');
+assert.equal(enhancedSuffix.collectorNumber, '579');
+
 const csv = batch.parseList(fs.readFileSync(path.join(fixtureDir, 'research-batch-csv.csv'), 'utf8'), 'TCGplayer CSV');
 assert.equal(csv.cards.find(card => card.cleanedName === 'Lightning Bolt').quantity, 4);
 assert.equal(csv.cards.find(card => card.cleanedName === 'Lightning Bolt').collectorNumber, '146');
@@ -75,5 +80,8 @@ assert.match(ui, /Add MTG Card To Buyer List/);
 assert.match(ui, /mtgResearchBatchSearchManual/);
 assert.match(ui, /mtgResearchBatchAddPrinting/);
 assert.match(ui, /mrb-cond-pill/);
+assert.match(ui, /cleanSearchName/);
+assert.match(ui, /NO PRINTINGS FOUND/);
+assert.doesNotMatch(ui, /return alert\('No Scryfall printings found/);
 
 console.log('MTG research batch parser and local storage tests passed');
