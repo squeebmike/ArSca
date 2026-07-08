@@ -28,9 +28,10 @@ assert.match(worker,/needsCoverConfirmation:isComic/);
 assert.match(dashboard,/id="research-barcode-btn"/);
 assert.match(dashboard,/BarcodeDetector/);
 assert.match(dashboard,/arsca_barcode_links_v1/);
-assert.match(dashboard,/2026\.07\.08\.05-mtg-sealed-products/);
+assert.match(dashboard,/2026\.07\.08\.06-real-sealed-search/);
 assert.match(dashboard,/TCGPLAYER LINK/);
 assert.match(dashboard,/parseTcgplayerProductInput/);
+assert.match(dashboard,/isSealedProductIntent\(hint, tcgCat\)/);
 assert.doesNotMatch(dashboard,/PRICECHARTING_TOKEN\s*=|PRICECHARTING_API_KEY\s*=/);
 
 console.log('Barcode lookup contract checks passed');

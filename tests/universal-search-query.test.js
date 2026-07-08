@@ -94,6 +94,11 @@ assert.ok(mtgSealed.adapters.some(a => a.route === '/pricing/pokemon/sealed-prod
 assert.match(dashboard, /data-cat="Sealed"[^>]*>SEALED/);
 assert.match(dashboard, /parseTcgplayerProductInput/);
 assert.match(dashboard, /tcgplayer_product_url/);
+assert.match(dashboard, /isMtgSealedSearchIntent/);
+assert.match(dashboard, /mtgSealedCardSearchQuery/);
+assert.match(dashboard, /tcgplayer_search_link/);
+assert.match(dashboard, /effectiveCategory === 'sealed' \? sealedPcCat/);
+assert.match(dashboard, /secret\\s\*lair.*key === 'mtg'/s);
 
 const julio = adapter.buildSearchPlan('Julio Logoman', '');
 assert.equal(julio.intent.inferredCategories[0], 'sports');
