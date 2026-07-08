@@ -87,6 +87,14 @@ const sealed = adapter.buildSearchPlan('151 booster bundle', '');
 assert.ok(sealed.intent.inferredCategories.includes('sealed'));
 assert.ok(sealed.adapters.some(a => a.route === '/pricing/pokemon/sealed-products'));
 
+const mtgSealed = adapter.buildSearchPlan('Magic The Gathering Marvel Super Heroes Play Booster Display', 'Sealed');
+assert.ok(mtgSealed.intent.inferredCategories.includes('sealed'));
+assert.ok(mtgSealed.adapters.some(a => a.provider === 'TCGplayerProduct' && a.route === 'local:tcgplayer-product'));
+assert.ok(mtgSealed.adapters.some(a => a.route === '/pricing/pokemon/sealed-products'));
+assert.match(dashboard, /data-cat="Sealed"[^>]*>SEALED/);
+assert.match(dashboard, /parseTcgplayerProductInput/);
+assert.match(dashboard, /tcgplayer_product_url/);
+
 const julio = adapter.buildSearchPlan('Julio Logoman', '');
 assert.equal(julio.intent.inferredCategories[0], 'sports');
 assert.match(adapter.queriesFor(julio, 'sports', 'SportsCardsPro')[0], /Julio Rodriguez.*Logoman/i);

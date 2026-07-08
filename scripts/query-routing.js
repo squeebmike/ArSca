@@ -22,7 +22,7 @@
   };
   const MTG_TERMS = ['deathtouch','landfall','flying','trample','lifelink','haste','commander','legendary','instant','sorcery','creature','planeswalker','artifact','enchantment','draw a card','mana','sol ring','arcane signet','command tower','swords to plowshares','counterspell','beast within'];
   const MTG_CARD_NAMES = ['sol ring','arcane signet','command tower','swords to plowshares','counterspell','beast within','fire // ice','fable of the mirror-breaker'];
-  const SEALED_TERMS = ['booster box','booster bundle','elite trainer box','etb','hobby box','blaster','mega box','collector booster','set booster','tin','pack','case','sealed'];
+  const SEALED_TERMS = ['booster box','booster bundle','play booster','play booster display','collector booster','collector booster box','draft booster','set booster','booster display','elite trainer box','etb','hobby box','blaster','mega box','secret lair','secret lair drop','commander deck','starter kit','precon','tin','pack','case','display','drop','sealed'];
   const POKEMON_TERMS = ['pokemon','pikachu','charizard','bulbasaur','squirtle','charmander','umbreon','eevee','mew','mewtwo','gengar','rayquaza','vmax','vstar','sir','illustration rare','trainer gallery','swsh','svp'];
   const COMIC_TERMS = ['asm','amazing spider-man','tmnt','teenage mutant ninja turtles','uxm','uncanny x-men','x-men','hulk','fantastic four','ff','batman','detective','tec','spawn','walking dead','venom','newsstand','direct','marvel','dc','mirage','issue','facsimile','reprint'];
   const FILLER = new Set(['the','lookup','price','value','please']);
@@ -110,7 +110,7 @@
     if(/\b(?:psa|bgs|cgc|sgc)\s*(?:10|9\.?8|9|8\.?5|8)\b|\bgraded\b/.test(text)) scores.graded += 70;
     if(scores.graded && (scores.pokemon || scores.sports || scores.comic)) scores.graded += 15;
     if(includesAny(text, COMIC_TERMS) || (/\b#?\d{1,4}\b/.test(text) && /\b(?:issue|variant|newsstand|mirage)\b/.test(text))) scores.comic += 60;
-    if(entities.mechanics.length || /\b(?:magic the gathering|mtg|planeswalker|sorcery|instant|rhystic(?: study)?|sol ring)\b/.test(text)) scores.mtg += 55;
+    if(entities.mechanics.length || /\b(?:magic the gathering|mtg|planeswalker|sorcery|instant|rhystic(?: study)?|sol ring|secret lair)\b/.test(text)) scores.mtg += 55;
     if(entities.sealedTypes.length) scores.sealed += 55;
     if(entities.sealedTypes.length && scores.pokemon) scores.sealed += 20;
     if(selected && !['all','auto'].includes(selected)) scores[selected] = 100;
@@ -196,7 +196,11 @@
       }
       if(category === 'comic') adapters.push(adapter('comic','PriceCharting','/pricing/pricecharting/search',comicQueries(normalized,entities),confidence,{ endpoint:'/api/products', maxQueries:3 }));
       if(category === 'mtg') adapters.push(adapter('mtg','Scryfall','https://api.scryfall.com/cards/search',mtgQueries(normalized,entities),confidence,{ mode:entities.mechanics.length ? 'oracle' : 'name-or-text' }));
-      if(category === 'sealed') adapters.push(adapter('sealed','PokemonPriceTracker','/pricing/pokemon/sealed-products',sealedQueries(normalized),confidence,{ limit:20 }));
+      if(category === 'sealed') {
+        const looksMtgSealed = /\b(?:magic(?: the gathering)?|mtg|secret lair|play booster|collector booster|draft booster|commander deck|starter kit|precon)\b/.test(normalized.normalized);
+        if(looksMtgSealed) adapters.push(adapter('sealed','TCGplayerProduct','local:tcgplayer-product',sealedQueries(normalized),confidence,{ game:'Magic: The Gathering', pricing:'todo-backend' }));
+        adapters.push(adapter('sealed','PokemonPriceTracker','/pricing/pokemon/sealed-products',sealedQueries(normalized),confidence,{ limit:20 }));
+      }
     });
     return { rawQuery:String(rawQuery || ''), normalizedQuery:normalized.normalized, normalized, intent, adapters, callBudget:5, execution:{ routes:[], staleResponsesIgnored:0 } };
   }

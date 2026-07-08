@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.07.08.04-mtg-printing-picker-fix">
+<meta name="version" content="2026.07.08.05-mtg-sealed-products">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1417,11 +1417,11 @@ body.show-mode .inv-sync-badge{display:none;}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-<script src="scripts/query-routing.js?v=2026.07.08.04-mtg-printing-picker-fix"></script>
-<script src="scripts/barcode-lookup.js?v=2026.07.08.04-mtg-printing-picker-fix"></script>
-<script src="scripts/comic-issue-hub.js?v=2026.07.08.04-mtg-printing-picker-fix"></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.07.08.04-mtg-printing-picker-fix"></script>
-<script src="scripts/mtg/research-batch.js?v=2026.07.08.04-mtg-printing-picker-fix"></script>
+<script src="scripts/query-routing.js?v=2026.07.08.05-mtg-sealed-products"></script>
+<script src="scripts/barcode-lookup.js?v=2026.07.08.05-mtg-sealed-products"></script>
+<script src="scripts/comic-issue-hub.js?v=2026.07.08.05-mtg-sealed-products"></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.07.08.05-mtg-sealed-products"></script>
+<script src="scripts/mtg/research-batch.js?v=2026.07.08.05-mtg-sealed-products"></script>
 </head>
 <body>
 
@@ -1471,11 +1471,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.07.08.04-mtg-printing-picker-fix</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.07.08.05-mtg-sealed-products</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.07.08.04-mtg-printing-picker-fix</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.07.08.05-mtg-sealed-products</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1498,7 +1498,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.07.08.04-mtg-printing-picker-fix</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.07.08.05-mtg-sealed-products</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -1841,6 +1841,7 @@ body.show-mode .inv-sync-badge{display:none;}
           <button class="hbtn qpl-cat-pill active" data-cat="" onclick="setQplCategory(this)" style="font-size:9px;padding:4px 8px;min-height:28px">ALL</button>
           <button class="hbtn qpl-cat-pill" data-cat="Pokemon TCG" onclick="setQplCategory(this)" style="font-size:9px;padding:4px 8px;min-height:28px;color:var(--gold)">POKEMON</button>
           <button class="hbtn qpl-cat-pill" data-cat="Magic: The Gathering" onclick="setQplCategory(this)" style="font-size:9px;padding:4px 8px;min-height:28px;color:#5ba3f5">MTG</button>
+          <button class="hbtn qpl-cat-pill" data-cat="Sealed" onclick="setQplCategory(this)" style="font-size:9px;padding:4px 8px;min-height:28px;color:var(--gold)">SEALED</button>
           <button class="hbtn qpl-cat-pill" data-cat="Sports Card" onclick="setQplCategory(this)" style="font-size:9px;padding:4px 8px;min-height:28px;color:var(--g)">SPORTS</button>
           <button class="hbtn qpl-cat-pill" data-cat="Comic" onclick="setQplCategory(this)" style="font-size:9px;padding:4px 8px;min-height:28px;color:var(--purple)">COMICS</button>
           <button class="hbtn qpl-cat-pill" data-cat="Graded" onclick="setQplCategory(this)" style="font-size:9px;padding:4px 8px;min-height:28px">GRADED</button>
@@ -2105,7 +2106,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div id="barcode-camera" class="barcode-camera"><video id="barcode-video" playsinline muted></video><div class="barcode-scan-line"></div><div id="barcode-camera-placeholder" style="font-family:monospace;font-size:10px;color:var(--dim);text-align:center;padding:18px">Opening camera when supported.<br>Manual or USB scanner entry always works.</div></div>
     <div id="barcode-status" style="font-family:var(--font-mono);font-size:10px;color:var(--dim);min-height:18px;line-height:1.5"></div>
     <div class="barcode-controls">
-      <label style="font-size:9px;color:var(--dim)">BARCODE / UPC / EAN<input id="barcode-manual-input" class="tsi" inputmode="numeric" autocomplete="off" placeholder="Scan or type barcode" onkeydown="if(event.key==='Enter'){event.preventDefault();lookupBarcodeProduct()}"></label>
+      <label style="font-size:9px;color:var(--dim)">BARCODE / UPC / EAN / TCGPLAYER LINK<input id="barcode-manual-input" class="tsi" inputmode="search" autocomplete="off" placeholder="Scan barcode, QR link, or type UPC" onkeydown="if(event.key==='Enter'){event.preventDefault();lookupBarcodeProduct()}"></label>
       <label style="font-size:9px;color:var(--dim)">CATEGORY HINT<select id="barcode-category-hint" class="tsi"><option value="auto">Auto</option><option value="comics">Comics</option><option value="pokemon">Pokemon</option><option value="mtg">MTG</option><option value="sports">Sports</option><option value="sealed">Sealed / Product</option><option value="other">Other</option></select></label>
       <button class="hbtn" onclick="lookupBarcodeProduct()" style="min-height:42px;color:var(--g)">LOOKUP</button>
     </div>
@@ -2831,7 +2832,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.07.08.04-mtg-printing-picker-fix';
+const APP_VERSION = '2026.07.08.05-mtg-sealed-products';
 window.APP_VERSION = APP_VERSION;
 const branchName = 'main';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
@@ -16449,6 +16450,22 @@ function barcodeCandidateToResearch(candidate,n){
 async function lookupBarcodeProduct(){
   const raw=document.getElementById('barcode-manual-input')?.value||'';const normalize=window.ArsCaBarcode?.normalizeBarcode;
   if(!normalize){setBarcodeStatus('Barcode helper failed to load. Refresh and try again.','var(--red)');return;}
+  const hint=document.getElementById('barcode-query-hint')?.value.trim()||'';
+  const categoryHint=document.getElementById('barcode-category-hint')?.value||'auto';
+  const tcgCat=categoryHint==='mtg'?'Magic: The Gathering':categoryHint==='sealed'?'Sealed':'';
+  const tcgProduct=parseTcgplayerProductInput(raw, tcgCat) || parseTcgplayerProductInput(hint, tcgCat) || parseMtgSealedProductIntent(hint, tcgCat);
+  if(tcgProduct){
+    const row=tcgplayerProductToQplRow(tcgProduct, raw || hint);
+    qplMasterResults=[row];qplResults=[row];qplLastSearch=raw || hint;
+    const cat=document.getElementById('qpl-cat');if(cat)cat.value='Sealed';
+    document.querySelectorAll('.qpl-cat-pill').forEach(b=>b.classList.toggle('active',b.dataset.cat==='Sealed'));
+    renderQuickLookupResults(qplResults);
+    renderUniversalSearchExplain(buildUniversalSearchPlan(raw || hint, 'Sealed'), qplResults);
+    closeBarcodeScanner();
+    setBarcodeStatus('TCGplayer product link opened in Research. Confirm exact sealed product before saving.','var(--g)');
+    setTimeout(()=>selectQuickLookupResult(0),0);
+    return;
+  }
   const n=normalize(raw);barcodeCurrentNormalized=n;
   if(![8,12,13].includes(n.primary.length)){setBarcodeStatus('Barcode read looks too short or malformed. Correct it manually and try again.','var(--gold)');return;}
   setBarcodeStatus(n.isValidLikely?'Looking up UPC...':'Check digit looks unusual; treating this as evidence and trying the entered code.','var(--gold)');
@@ -17677,6 +17694,117 @@ function debouncePriceLookup(){
   qplTimer = setTimeout(runPriceLookup, 1000);
 }
 
+function tcgTitleCase(value = ''){
+  const keep = new Set(['MTG','TCG','UPC','EAN','X']);
+  return String(value || '').replace(/\s+/g,' ').trim().split(' ').map(word => {
+    const clean = word.replace(/[^a-z0-9]/gi,'');
+    if(!clean) return word;
+    const upper = clean.toUpperCase();
+    if(keep.has(upper)) return word.replace(clean, upper);
+    if(/^[IVX]+$/i.test(clean)) return word.replace(clean, upper);
+    return word.replace(clean, clean.charAt(0).toUpperCase() + clean.slice(1).toLowerCase());
+  }).join(' ');
+}
+
+function tcgSlugToProductName(slug = '', productId = ''){
+  let clean = decodeURIComponent(String(slug || '')).replace(/[?#].*$/,'').replace(/^\/+|\/+$/g,'');
+  clean = clean.replace(/^magic-the-gathering-?/i,'').replace(/^pokemon-?/i,'');
+  if(!clean) return productId ? 'TCGplayer Product #' + productId : '';
+  let phrase = clean.replace(/-/g,' ').replace(/\s+/g,' ').trim();
+  phrase = phrase
+    .replace(/\bsecret lair drop series secret lair drop\b/i, 'Secret Lair Drop Series · Secret Lair Drop')
+    .replace(/\bmarvel super heroes marvel super heroes\b/i, 'Marvel Super Heroes · Marvel Super Heroes')
+    .replace(/\bmagic the gathering\b/i, 'Magic: The Gathering');
+  return tcgTitleCase(phrase).replace(/\bX\b/g,'x').replace(/Secret Lair x/i,'Secret Lair x');
+}
+
+function parseTcgplayerProductInput(raw = '', selectedCategory = ''){
+  const text = String(raw || '').trim();
+  if(!text) return null;
+  const selected = qplCategoryKey(selectedCategory);
+  let productId = '', slug = '', canonicalUrl = '';
+  const urlMatch = text.match(/tcgplayer\.com\/product\/(\d+)(?:\/([^?\s#]+))?/i);
+  if(urlMatch) {
+    productId = urlMatch[1];
+    slug = urlMatch[2] || '';
+    canonicalUrl = `https://www.tcgplayer.com/product/${productId}${slug ? '/' + slug : ''}`;
+  } else if(/^\d{5,8}$/.test(text) && ['mtg','sealed','tcg'].includes(selected)) {
+    productId = text;
+    canonicalUrl = `https://www.tcgplayer.com/product/${productId}`;
+  } else {
+    return null;
+  }
+  const hay = [text, slug, selectedCategory].join(' ').toLowerCase();
+  const isMtg = /\bmagic(?:-the-gathering|\s+the\s+gathering)?\b|\bmtg\b|secret[-\s]+lair|play[-\s]+booster|collector[-\s]+booster|draft[-\s]+booster|commander[-\s]+deck/i.test(hay) || selected === 'mtg' || selected === 'sealed';
+  const name = tcgSlugToProductName(slug, productId);
+  const sealed = /\b(secret[-\s]+lair|booster|display|box|bundle|pack|case|drop|sealed|commander[-\s]+deck|starter[-\s]+kit|precon)\b/i.test(hay);
+  return {
+    productId,
+    slug,
+    name:name || 'TCGplayer Product #' + productId,
+    canonicalUrl,
+    isMtg,
+    isSealed:sealed || selected === 'sealed',
+    source:'tcgplayer-url'
+  };
+}
+
+function parseMtgSealedProductIntent(raw = '', selectedCategory = ''){
+  const text = String(raw || '').replace(/\s+/g,' ').trim();
+  if(!text) return null;
+  const direct = parseTcgplayerProductInput(text, selectedCategory);
+  if(direct) return direct;
+  const selected = qplCategoryKey(selectedCategory);
+  const looksSealed = /\b(secret\s+lair|booster(?:\s+box|\s+display|\s+pack)?|play\s+booster|collector\s+booster|draft\s+booster|commander\s+deck|starter\s+kit|precon|sealed|display|bundle|case)\b/i.test(text);
+  const looksMtg = selected === 'mtg' || selected === 'sealed' || /\b(mtg|magic(?:\s+the\s+gathering)?|secret\s+lair)\b/i.test(text);
+  if(!looksSealed || !looksMtg) return null;
+  const searchUrl = 'https://www.tcgplayer.com/search/magic/product?q=' + encodeURIComponent(text);
+  return {
+    productId:'',
+    slug:'',
+    name:tcgTitleCase(text),
+    canonicalUrl:searchUrl,
+    isMtg:true,
+    isSealed:true,
+    source:'mtg-sealed-query'
+  };
+}
+
+function tcgplayerProductToQplRow(product = {}, query = ''){
+  const exact = !!product.productId;
+  return {
+    source: product.source === 'mtg-sealed-query' ? 'tcgplayer_sealed_search' : 'tcgplayer_product_url',
+    name: product.name || query || 'TCGplayer sealed product',
+    category: product.isMtg ? 'MTG Sealed Product' : 'Sealed Product',
+    set: product.isMtg ? 'Magic: The Gathering' : '',
+    setName: product.isMtg ? 'Magic: The Gathering' : '',
+    variant: 'Factory Sealed',
+    card_number:'',
+    condition:'Factory Sealed',
+    selectedCondition:'Factory Sealed',
+    finish:/foil/i.test(product.name || query) ? 'foil' : 'sealed',
+    selectedFinish:/foil/i.test(product.name || query) ? 'foil' : 'sealed',
+    language:/\bJapanese\b/i.test(query) ? 'Japanese' : 'English',
+    market:0,
+    low:0,
+    imageUrl:'',
+    priceSource: exact ? 'TCGplayer product link · live sealed pricing TODO' : 'TCGplayer sealed search · confirm exact product',
+    tcgUrl: product.canonicalUrl || '',
+    tcgPlayerUrl: product.canonicalUrl || '',
+    productUrl: product.canonicalUrl || '',
+    tcgPlayerId: product.productId || '',
+    tcgplayerId: product.productId || '',
+    productId: product.productId || '',
+    note: exact
+      ? 'TCGplayer sealed product found from pasted URL/product ID. Open TCG for live market/listings until backend sealed pricing is wired.'
+      : 'MTG sealed product search intent. Open TCG and confirm exact printing/display before buying or inventory.',
+    confidence: exact ? 95 : 72,
+    matchWhy:[exact ? 'TCGplayer product ID parsed' : 'MTG sealed product intent', product.isMtg ? 'Magic sealed/product route' : 'sealed product route'],
+    is_sealed:true,
+    raw:{ ...product, query }
+  };
+}
+
 async function runPriceLookup(){
   // If comics selected, combine main input + optional issue# helper
   const rawQ = document.getElementById('qpl-input').value.trim();
@@ -17687,6 +17815,24 @@ async function runPriceLookup(){
   qplLastSearchPlan = searchPlan;
   const el = document.getElementById('qpl-result');
   if(!q || q.length < 3) return;
+  const tcgProduct = parseTcgplayerProductInput(rawQ, cat) || parseMtgSealedProductIntent(combinedRaw, cat);
+  if(tcgProduct) {
+    recordSearchPlanRoute(searchPlan, 'local:tcgplayer-product', tcgProduct.productId || combinedRaw, 1);
+    const row = tcgplayerProductToQplRow(tcgProduct, combinedRaw);
+    qplMasterResults = [row];
+    qplLastSearch = combinedRaw;
+    if(!cat) {
+      const sel = document.getElementById('qpl-cat');
+      if(sel) sel.value = 'Sealed';
+      document.querySelectorAll('.qpl-cat-pill').forEach(b => b.classList.toggle('active', b.dataset.cat === 'Sealed'));
+    }
+    qplResults = filterQplMasterResults(qplMasterResults, document.getElementById('qpl-cat')?.value || cat);
+    renderQuickLookupResults(qplResults.length ? qplResults : qplMasterResults);
+    renderUniversalSearchExplain(searchPlan, qplResults.length ? qplResults : qplMasterResults);
+    pushQuickLookupHistory(combinedRaw, row);
+    setMtgOfflineBanner('MTG sealed product link resolved locally. TCGplayer sealed price fetch needs backend catalog credentials.', 'warn');
+    return;
+  }
   const mySeq = ++_qplSearchSeq;
   const wantsPokemon = universalPlanHas(searchPlan, 'pokemon') || universalPlanHas(searchPlan, 'sealed') || isPokemonLookupIntent(q, cat);
   const wantsMtg = !wantsPokemon && (universalPlanHas(searchPlan, 'mtg') || isMtgLookupIntent(q, cat));
@@ -18275,7 +18421,7 @@ function qplResultCategoryKey(r){
   }
   // Show Operations v1: detect sealed/pack/promo product so it routes away from singles
   const sealedText = String([r?.name, r?.title, r?.productName, text].filter(Boolean).join(' ')).toLowerCase();
-  if(/\b(booster box|booster bundle|booster pack|elite trainer box|\betb\b|sealed|blister|collection box|tin\b|bundle|sealed case|fat pack|theme deck|battle deck|premium collection|build ?& ?battle)\b/.test(sealedText)) return 'sealed';
+  if(/\b(secret lair|secret lair drop|booster box|booster bundle|play booster|collector booster|draft booster|booster display|booster pack|elite trainer box|\betb\b|sealed|blister|collection box|tin\b|bundle|sealed case|display|drop|fat pack|theme deck|battle deck|commander deck|starter kit|precon|premium collection|build ?& ?battle)\b/.test(sealedText)) return 'sealed';
   const key = qplCategoryKey(text);
   if(key) return key;
   return qplCategoryKey(r?.category);
@@ -18284,10 +18430,11 @@ function qplResultCategoryKey(r){
 function qplCategoryAllows(r, wants){
   if(!wants) return true;
   const key = qplResultCategoryKey(r);
-  if(wants === 'tcg') return ['tcg','pokemon','mtg','yugioh'].includes(key) || normalizeQuickCategory(r?.category) === 'TCG';
+  if(wants === 'tcg') return ['tcg','pokemon','mtg','yugioh','sealed'].includes(key) || normalizeQuickCategory(r?.category) === 'TCG';
+  if(wants === 'mtg') return key === 'mtg' || (key === 'sealed' && /\b(mtg|magic|secret lair|play booster|collector booster|draft booster|commander deck)\b/i.test([r?.name,r?.title,r?.category,r?.set,r?.note].filter(Boolean).join(' ')));
   if(wants === 'graded') return key === 'graded' || /psa|bgs|cgc|sgc|slab|graded/i.test([r?.name,r?.variant,r?.category,r?.note].filter(Boolean).join(' '));
   if(wants === 'collectibles') return key === 'collectibles';
-  if(wants === 'sealed') return key === 'sealed' || /\b(booster|elite trainer|\betb\b|sealed|blister|bundle|collection box|tin\b|fat pack|theme deck|battle deck|premium collection)\b/i.test([r?.name,r?.title,r?.category,r?.note].filter(Boolean).join(' '));
+  if(wants === 'sealed') return key === 'sealed' || /\b(secret lair|booster|display|drop|elite trainer|\betb\b|sealed|blister|bundle|collection box|tin\b|fat pack|theme deck|battle deck|commander deck|starter kit|precon|premium collection)\b/i.test([r?.name,r?.title,r?.category,r?.note].filter(Boolean).join(' '));
   if(['video_games','funko','lego','coins'].includes(wants)) return key === wants || qplCategoryKey(r?.category) === wants;
   return key === wants;
 }
@@ -21432,6 +21579,7 @@ function handleQplCategoryChange(){
   const pokemonHelper = document.getElementById('qpl-pokemon-helper');
   if(pokemonHelper) pokemonHelper.style.display = isPokemon ? '' : 'none';
   const isMtg = qplCategoryKey(cat) === 'mtg';
+  const isSealed = qplCategoryKey(cat) === 'sealed';
   const mtgHelper = document.getElementById('qpl-mtg-helper');
   if(mtgHelper) mtgHelper.style.display = isMtg ? '' : 'none';
   const inp = document.getElementById('qpl-input');
@@ -21439,6 +21587,7 @@ function handleQplCategoryChange(){
     ? 'e.g. Spawn #1, Amazing Spider-Man 300, Batman #251 newsstand…'
     : isPokemon ? 'e.g. Charizard VMAX 074/073 Shining Fates…'
     : isMtg ? 'e.g. Black Lotus, Lightning Bolt, Counterspell…'
+    : isSealed ? 'Paste a TCGplayer product URL/ID, or search Secret Lair / booster display…'
     : 'e.g. 2021 Umbreon VMAX Evolving Skies…';
   if(getResearchSettings().rememberLastCategory) localStorage.setItem('qpl_last_category', cat);
   // Sync pill active state when category is set programmatically
@@ -21449,6 +21598,7 @@ function handleQplCategoryChange(){
     else if(isComic && el) el.innerHTML = `<div style="color:var(--purple);line-height:1.7;font-family:monospace;font-size:10px">📖 Comics selected. Enter a series title and issue number above, then hit LOOK UP.<br><span style="color:var(--dim)">PriceCharting covers raw, CGC, CBCS grades and more.</span></div>`;
     else if(isPokemon && el) el.innerHTML = `<div style="color:var(--gold);line-height:1.7;font-family:monospace;font-size:10px">⚡ Pokémon TCG selected. Search a card above, or use <strong>SET BROWSER</strong> to browse all cards in a set with prices, filters, and inventory tracking.</div>`;
     else if(isMtg && el) el.innerHTML = `<div style="color:#5ba3f5;line-height:1.7;font-family:monospace;font-size:10px">🔮 Magic: The Gathering selected. Search a card above, or use <strong>SET BROWSER</strong> to browse all cards in a set — filter by artist, rarity, color, and price.</div>`;
+    else if(isSealed && el) el.innerHTML = `<div style="color:var(--gold);line-height:1.7;font-family:monospace;font-size:10px">📦 Sealed selected. Paste a TCGplayer product URL/product ID for exact MTG sealed products, or enter product words to open a TCGplayer sealed search. Live sealed pricing still needs backend catalog credentials.</div>`;
     return;
   }
   qplResults = filterQplMasterResults(qplMasterResults, cat);
@@ -28823,7 +28973,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.07.08.04-mtg-printing-picker-fix"></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.07.08.05-mtg-sealed-products"></script>
 </body>
 </html>
 
