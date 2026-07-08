@@ -30,7 +30,7 @@ async function main(){
   sources.upsert({id:'s1',deckName:'Toph source',sourceUrl:'https://archidekt.com/decks/123'});assert.equal(sources.load()[0].sourceUrl,'https://archidekt.com/decks/123');
 
   const page=fs.readFileSync('mtg-deck-lab.html','utf8'),controller=fs.readFileSync('scripts/mtg/deck-lab-import-hub.js','utf8');
-  assert.match(page,/DECK IMPORT HUB/);assert.match(page,/IMPORT FROM URL/);assert.match(page,/RECENT IMPORTS/);assert.match(page,/CONFIRM IMPORT/);assert.match(page,/deck-import-providers\.js\?v=2026\.07\.06\.02-deck-import-hub/);assert.match(controller,/manual_required|DIRECT IMPORT UNAVAILABLE/);assert.match(controller,/recentRepo\.upsert/);assert.match(controller,/sourceRepo\.upsert/);
+  assert.match(page,/DECK IMPORT HUB/);assert.match(page,/IMPORT FROM URL/);assert.match(page,/RECENT IMPORTS/);assert.match(page,/CONFIRM IMPORT/);assert.match(page,/deck-import-providers\.js\?v=2026\.07\.08\.02-first-fill/);assert.match(controller,/manual_required|DIRECT IMPORT UNAVAILABLE/);assert.match(controller,/recentRepo\.upsert/);assert.match(controller,/sourceRepo\.upsert/);
   console.log('Deck Import Hub provider, fallback, and storage tests passed');
 }
 main().catch(error=>{console.error(error);process.exitCode=1});

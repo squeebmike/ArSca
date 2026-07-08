@@ -9,10 +9,10 @@
   function applyProfile(next={}){
     $('deck-name').value=next.name||'';
     $('deck-format').value=next.format||'Commander';
-    $('deck-power').value=next.power||'Shop/customer unknown';
+    $('deck-power').value=next.power||'Customer / unknown';
     $('deck-commander').value=next.commander||'';
     $('deck-colors').value=next.colors||'';
-    $('deck-goal').value=next.goal||'Customer unknown';
+    $('deck-goal').value=next.goal||'Customer / unknown';
   }
   function safeOpen(url){const safe=DI.normalizeUrl(url);if(!safe){toast('That source URL is not a valid public http(s) link');return}window.open(safe,'_blank','noopener,noreferrer')}
 
