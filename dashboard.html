@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.07.07.07-mobile-inventory-cleanup">
+<meta name="version" content="2026.07.08.01-nav-tabs-lit">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -47,9 +47,11 @@ header{position:sticky;top:0;z-index:100;background:rgba(7,8,10,.96);backdrop-fi
 .tabs{max-width:1400px;margin:0 auto;padding:10px 20px 8px;display:flex;gap:6px;border-bottom:1px solid var(--border);align-items:center;overflow-x:auto;scrollbar-width:none;}
 .tabs::-webkit-scrollbar{display:none;}
 .tab{font-family:var(--font-mono);font-size:10px;letter-spacing:1px;color:var(--dim);padding:10px 14px;min-height:40px;border:1px solid transparent;border-radius:var(--brand-button-radius);cursor:pointer;transition:.15s;user-select:none;white-space:nowrap;display:flex;align-items:center;}
-.tab.on{color:var(--g);border-color:rgba(0,255,179,.28);background:rgba(0,255,179,.07);}
-.tab.primary{color:rgba(228,228,232,.72);}
-.tab.deck-lab-link{color:var(--g);text-decoration:none;border-color:rgba(0,255,179,.28);background:rgba(0,255,179,.07);}
+.tabs>.tab,.tabs .nav-more>.tab{color:var(--g);border-color:rgba(0,255,179,.28);background:rgba(0,255,179,.07);box-shadow:inset 0 0 0 1px rgba(0,255,179,.04),0 0 18px rgba(0,255,179,.035);}
+.tabs>.tab:hover,.tabs .nav-more>.tab:hover{border-color:rgba(0,255,179,.46);background:rgba(0,255,179,.12);box-shadow:0 0 22px rgba(0,255,179,.08);}
+.tab.on{color:var(--g);border-color:rgba(0,255,179,.62);background:rgba(0,255,179,.16);box-shadow:0 0 26px rgba(0,255,179,.14);}
+.tab.primary{color:var(--g);}
+.tab.deck-lab-link{color:var(--g);text-decoration:none;}
 .nav-more{margin-left:auto;position:relative;flex-shrink:0;}
 .more-menu{position:fixed;right:20px;top:98px;display:none;min-width:220px;background:var(--surf);border:1px solid var(--border);border-radius:8px;padding:6px;box-shadow:0 18px 50px rgba(0,0,0,.65);z-index:9998;}
 .more-menu.on{display:grid;gap:4px;}
@@ -1415,11 +1417,11 @@ body.show-mode .inv-sync-badge{display:none;}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-<script src="scripts/query-routing.js?v=2026.07.07.07-mobile-inventory-cleanup"></script>
-<script src="scripts/barcode-lookup.js?v=2026.07.07.07-mobile-inventory-cleanup"></script>
-<script src="scripts/comic-issue-hub.js?v=2026.07.07.07-mobile-inventory-cleanup"></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.07.07.07-mobile-inventory-cleanup"></script>
-<script src="scripts/mtg/research-batch.js?v=2026.07.07.07-mobile-inventory-cleanup"></script>
+<script src="scripts/query-routing.js?v=2026.07.08.01-nav-tabs-lit"></script>
+<script src="scripts/barcode-lookup.js?v=2026.07.08.01-nav-tabs-lit"></script>
+<script src="scripts/comic-issue-hub.js?v=2026.07.08.01-nav-tabs-lit"></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.07.08.01-nav-tabs-lit"></script>
+<script src="scripts/mtg/research-batch.js?v=2026.07.08.01-nav-tabs-lit"></script>
 </head>
 <body>
 
@@ -1469,11 +1471,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.07.07.07-mobile-inventory-cleanup</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.07.08.01-nav-tabs-lit</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.07.07.07-mobile-inventory-cleanup</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.07.08.01-nav-tabs-lit</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1496,7 +1498,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.07.07.07-mobile-inventory-cleanup</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.07.08.01-nav-tabs-lit</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -2829,7 +2831,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.07.07.07-mobile-inventory-cleanup';
+const APP_VERSION = '2026.07.08.01-nav-tabs-lit';
 window.APP_VERSION = APP_VERSION;
 const branchName = 'main';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
@@ -28821,7 +28823,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.07.07.07-mobile-inventory-cleanup"></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.07.08.01-nav-tabs-lit"></script>
 </body>
 </html>
 
