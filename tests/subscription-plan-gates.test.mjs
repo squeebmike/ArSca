@@ -12,5 +12,5 @@ assert.match(worker, /metadata\[plan_code\]/, 'Stripe Checkout records selected 
 assert.match(worker, /Legacy active\/trial subscriptions are grandfathered to Store/, 'legacy subscriptions are grandfathered');
 assert.doesNotMatch(dashboard, />PHONE SCANNER CHECKOUT</, 'legacy phone scanner checkout button removed');
 assert.match(dashboard, /customer-method-icon/, 'payment method icon tiles exist');
-assert.match(dashboard, /2026\.07\.08\.01-nav-tabs-lit/, 'visible build stamp updated');
+assert.match(dashboard, /2026\.07\.08\.03-mtg-batch-buyer-ui/, 'visible build stamp updated');
 console.log('subscription plan gates contract passed');

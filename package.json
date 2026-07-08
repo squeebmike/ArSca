@@ -1,6 +1,6 @@
 {
   "name": "walkoff-dashboard-qa",
-  "version": "2026.07.08.02",
+  "version": "2026.07.08.03",
   "private": true,
   "scripts": {
     "test": "npm run test:parse && npm run test:topps-parser && npm run test:buy-workspace && npm run test:search-adapter && npm run test:comic-hub && npm run test:consignment && npm run test:stripe-foundation && npm run test:settings-architecture && npm run test:subscription-plans && npm run test:storefront && npm run test:webflow-sync && npm run test:inventory-usability && npm run test:barcode && npm run test:mtg-offline && npm run test:deck-lab && npm run test:mtg-research-batch && npm run test:admin-support && npm run test:release-hardening",

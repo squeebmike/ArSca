@@ -69,4 +69,11 @@ assert.ok(copy.id !== saved.id);
 repo.remove(saved.id);
 assert.equal(repo.load().length, 1);
 
+const ui = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'mtg', 'research-batch-ui.js'), 'utf8');
+assert.doesNotMatch(ui, /prompt\('Card name to add:'\)/);
+assert.match(ui, /Add MTG Card To Buyer List/);
+assert.match(ui, /mtgResearchBatchSearchManual/);
+assert.match(ui, /mtgResearchBatchAddPrinting/);
+assert.match(ui, /mrb-cond-pill/);
+
 console.log('MTG research batch parser and local storage tests passed');
