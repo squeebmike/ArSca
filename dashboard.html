@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.07.09.01-exact-provider-links">
+<meta name="version" content="2026.07.09.02-research-routing-polish">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1417,11 +1417,11 @@ body.show-mode .inv-sync-badge{display:none;}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-<script src="scripts/query-routing.js?v=2026.07.09.01-exact-provider-links"></script>
-<script src="scripts/barcode-lookup.js?v=2026.07.09.01-exact-provider-links"></script>
-<script src="scripts/comic-issue-hub.js?v=2026.07.09.01-exact-provider-links"></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.07.09.01-exact-provider-links"></script>
-<script src="scripts/mtg/research-batch.js?v=2026.07.09.01-exact-provider-links"></script>
+<script src="scripts/query-routing.js?v=2026.07.09.02-research-routing-polish"></script>
+<script src="scripts/barcode-lookup.js?v=2026.07.09.02-research-routing-polish"></script>
+<script src="scripts/comic-issue-hub.js?v=2026.07.09.02-research-routing-polish"></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.07.09.02-research-routing-polish"></script>
+<script src="scripts/mtg/research-batch.js?v=2026.07.09.02-research-routing-polish"></script>
 </head>
 <body>
 
@@ -1471,11 +1471,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.07.09.01-exact-provider-links</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.07.09.02-research-routing-polish</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.07.09.01-exact-provider-links</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.07.09.02-research-routing-polish</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1498,7 +1498,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.07.09.01-exact-provider-links</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.07.09.02-research-routing-polish</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -1843,6 +1843,7 @@ body.show-mode .inv-sync-badge{display:none;}
           <button class="hbtn qpl-cat-pill" data-cat="Magic: The Gathering" onclick="setQplCategory(this)" style="font-size:9px;padding:4px 8px;min-height:28px;color:#5ba3f5">MTG</button>
           <button class="hbtn qpl-cat-pill" data-cat="Sealed" onclick="setQplCategory(this)" style="font-size:9px;padding:4px 8px;min-height:28px;color:var(--gold)">SEALED</button>
           <button class="hbtn qpl-cat-pill" data-cat="Sports Card" onclick="setQplCategory(this)" style="font-size:9px;padding:4px 8px;min-height:28px;color:var(--g)">SPORTS</button>
+          <button class="hbtn qpl-cat-pill" data-cat="Sports Card" onclick="openSportsSetBrowserFromResearch()" style="font-size:9px;padding:4px 8px;min-height:28px;color:var(--gold)">SPORTS SETS</button>
           <button class="hbtn qpl-cat-pill" data-cat="Comic" onclick="setQplCategory(this)" style="font-size:9px;padding:4px 8px;min-height:28px;color:var(--purple)">COMICS</button>
           <button class="hbtn qpl-cat-pill" data-cat="Graded" onclick="setQplCategory(this)" style="font-size:9px;padding:4px 8px;min-height:28px">GRADED</button>
           <button class="hbtn qpl-cat-pill" data-cat="Video Games" onclick="setQplCategory(this)" style="font-size:9px;padding:4px 8px;min-height:28px">GAMES</button>
@@ -1884,6 +1885,13 @@ body.show-mode .inv-sync-badge{display:none;}
           <button class="hbtn" onclick="openMtgSetBrowser()" style="font-size:10px;min-height:36px;padding:4px 14px;background:rgba(91,163,245,.1);border-color:rgba(91,163,245,.4);color:#5ba3f5">🔮 SET BROWSER</button>
           <button class="hbtn" onclick="openMtgResearchBatch()" style="font-size:10px;min-height:36px;padding:4px 14px;background:rgba(91,163,245,.1);border-color:rgba(91,163,245,.4);color:#5ba3f5">IMPORT CARD LIST</button>
           <span style="font-family:monospace;font-size:9px;color:var(--dim)">Browse sets · import local appraisal batches · saved on this device</span>
+        </div>
+      </div>
+      <div id="qpl-sports-helper" style="display:none;margin-bottom:10px;padding:9px 12px;background:rgba(0,255,179,.05);border:1px solid rgba(0,255,179,.22);border-radius:8px">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <span style="font-family:'Orbitron',monospace;font-size:9px;color:var(--g);letter-spacing:.05em">SPORTS</span>
+          <button class="hbtn" onclick="openSportsSetBrowserFromResearch()" style="font-size:10px;min-height:36px;padding:4px 14px;background:rgba(255,209,102,.1);border-color:rgba(255,209,102,.4);color:var(--gold)">SPORTS SET BROWSER</button>
+          <span style="font-family:monospace;font-size:9px;color:var(--dim)">Browse Topps sets/checklists from Research. Search player, team, card #, year, set, or sport.</span>
         </div>
       </div>
       <div id="qpl-result" style="font-family:var(--font-mono);font-size:10px;color:var(--dim);min-height:60px">Enter a card, comic, slab, game, or collectible to identify it and route it into Buy, Inventory, or Sale.</div>
@@ -2832,7 +2840,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.07.09.01-exact-provider-links';
+const APP_VERSION = '2026.07.09.02-research-routing-polish';
 window.APP_VERSION = APP_VERSION;
 const branchName = 'main';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
@@ -17727,7 +17735,7 @@ function setPokemonOfflineBanner(message = '', tone = 'warn'){
 
 function debouncePriceLookup(){
   clearTimeout(qplTimer);
-  qplTimer = setTimeout(runPriceLookup, 1000);
+  qplTimer = setTimeout(runPriceLookup, 350);
 }
 
 function tcgTitleCase(value = ''){
@@ -20753,7 +20761,7 @@ function buildTcgExternalLink(item = {}){
   const activeSkuId = selected.tcgplayerSkuId || selected.skuId || item.tcgplayerSkuId || item.skuId || '';
   const query = [item.name, item.set || item.setName, item.card_number || item.cardNumber, tcgConditionSearchLabel(condition) || condition, finish, language && language !== 'English' ? language : ''].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
   const conditionLabel = tcgConditionSearchLabel(condition) || 'Near Mint';
-  const productUrl = item.tcgPlayerUrl || item.tcgUrl || item.productUrl || '';
+  const productUrl = item.tcgPlayerUrl || item.tcgUrl || item.productUrl || item.raw?.purchase_uris?.tcgplayer || '';
   const productId = item.tcgPlayerId || item.tcgplayerId || item.raw?.tcgplayer_id || tcgPlayerProductIdFromUrl(productUrl);
   // MTG: add Printing param only for foil variants — TCGPlayer doesn't accept "Normal",
   // and omitting it for non-foil is fine (product page defaults to non-foil listings).
@@ -20775,7 +20783,7 @@ function buildTcgExternalLink(item = {}){
     // Use bare numeric product ID — no slug — so TCGPlayer doesn't redirect (which drops query params)
     url = `https://www.tcgplayer.com/product/${encodeURIComponent(productId)}?Language=${encodeTcgParam(language || 'English')}&Condition=${encodeTcgParam(conditionLabel)}${mtgPrinting ? '&Printing=' + encodeTcgParam(mtgPrinting) : ''}`;
   } else {
-    note = activeSkuId ? 'Marketplace SKU captured; search includes selected condition because direct SKU deep-link is not guaranteed.' : 'Marketplace cannot deep-link to exact condition here; opening a selected-condition search.';
+    note = activeSkuId ? 'Marketplace SKU captured; search includes selected condition because direct SKU deep-link is not guaranteed.' : 'No TCGplayer product ID found on this provider row; opening a selected-condition search.';
     const key = typeof qplResultCategoryKey === 'function' ? qplResultCategoryKey(item) : '';
     const isPokeItem = key === 'pokemon' || /pokemon/i.test([item.category, item.source, item.set].filter(Boolean).join(' '));
     const isMtgItem = key === 'mtg' || item.source === 'scryfall' || /magic|mtg/i.test([item.category, item.source, item.set, item.extraInfo?.game].filter(Boolean).join(' '));
@@ -21795,8 +21803,11 @@ function handleQplCategoryChange(){
   if(pokemonHelper) pokemonHelper.style.display = isPokemon ? '' : 'none';
   const isMtg = qplCategoryKey(cat) === 'mtg';
   const isSealed = qplCategoryKey(cat) === 'sealed';
+  const isSports = qplCategoryKey(cat) === 'sports';
   const mtgHelper = document.getElementById('qpl-mtg-helper');
   if(mtgHelper) mtgHelper.style.display = isMtg ? '' : 'none';
+  const sportsHelper = document.getElementById('qpl-sports-helper');
+  if(sportsHelper) sportsHelper.style.display = isSports ? '' : 'none';
   const inp = document.getElementById('qpl-input');
   if(inp) inp.placeholder = isComic
     ? 'e.g. Spawn #1, Amazing Spider-Man 300, Batman #251 newsstand…'
@@ -21822,11 +21833,33 @@ function handleQplCategoryChange(){
 }
 
 function qplNoCategoryResults(q, cat){
+  if(qplCategoryKey(cat) === 'sports') {
+    return `<div style="border:1px dashed rgba(255,209,102,.35);border-radius:10px;padding:14px;background:rgba(0,255,179,.04)">
+      <div style="font-family:'Orbitron',monospace;font-size:11px;color:var(--gold);margin-bottom:8px">NO SPORTS RESULTS IN CURRENT SEARCH</div>
+      <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);line-height:1.6;margin-bottom:12px">Search sports directly, or open the Sports Set Browser for Topps checklists/sets from Research.</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="hbtn" onclick="runPriceLookup()">SEARCH SPORTS</button><button class="hbtn" style="color:var(--gold)" onclick="openSportsSetBrowserFromResearch()">SPORTS SET BROWSER</button></div>
+    </div>`;
+  }
   return `<div style="border:1px dashed rgba(255,209,102,.35);border-radius:10px;padding:14px;background:rgba(255,209,102,.05)">
     <div style="font-family:'Orbitron',monospace;font-size:11px;color:var(--gold);margin-bottom:8px">NO ${escHtml(cat || 'CATEGORY')} RESULTS IN CURRENT SEARCH</div>
     <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);line-height:1.6;margin-bottom:12px">Loaded results did not include this category. Search this category directly to hit the right source/cache.</div>
     <button class="hbtn" onclick="runPriceLookup()">SEARCH THIS CATEGORY</button>
   </div>`;
+}
+
+function openSportsSetBrowserFromResearch(){
+  const q = document.getElementById('qpl-input')?.value.trim() || '';
+  const sel = document.getElementById('qpl-cat');
+  if(sel) sel.value = 'Sports Card';
+  document.querySelectorAll('.qpl-cat-pill').forEach(b => b.classList.toggle('active', b.dataset.cat === 'Sports Card'));
+  switchTab('sets');
+  setTimeout(() => {
+    const search = document.getElementById('topps-search');
+    if(search && q) search.value = q;
+    toppsInit();
+    if(q && typeof toppsApplyFilters === 'function') toppsApplyFilters();
+    document.getElementById('topps-checklist-panel')?.scrollIntoView({ behavior:'smooth', block:'start' });
+  }, 50);
 }
 
 function qplSlabControls(r, idx){
@@ -27709,6 +27742,7 @@ function scryfallCardToQplRow(c){
   if(Number(c.prices?.usd_foil || 0) > 0 || finishes.includes('foil')) priceMap.foil = { market:Number(c.prices?.usd_foil || 0), low:Number(c.prices?.usd_foil || 0) };
   if(Number(c.prices?.usd_etched || 0) > 0 || finishes.includes('etched')) priceMap.etched_foil = { market:Number(c.prices?.usd_etched || 0), low:Number(c.prices?.usd_etched || 0) };
   const autoFinish = Number(c.prices?.usd || 0) > 0 ? 'normal' : Number(c.prices?.usd_foil || 0) > 0 ? 'foil' : 'normal';
+  const exactTcgUrl = c.purchase_uris?.tcgplayer || (c.tcgplayer_id ? 'https://www.tcgplayer.com/product/' + encodeURIComponent(c.tcgplayer_id) : '') || c.scryfall_uri || '';
   return applyQplSelectedVariant({
     source: 'scryfall',
     name: c.name || '',
@@ -27723,7 +27757,10 @@ function scryfallCardToQplRow(c){
     market: Number(c.prices?.usd || c.prices?.usd_foil || 0),
     imageUrl: c.image_uris?.normal || c.card_faces?.[0]?.image_uris?.normal || '',
     priceSource: 'Scryfall market',
-    tcgUrl: c.purchase_uris?.tcgplayer || c.scryfall_uri || '',
+    tcgUrl: exactTcgUrl,
+    tcgPlayerUrl: exactTcgUrl,
+    tcgPlayerId: c.tcgplayer_id || '',
+    tcgplayerId: c.tcgplayer_id || '',
     note: c.type_line || '',
     confidence: 90,
     raw: c,
@@ -29192,7 +29229,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.07.09.01-exact-provider-links"></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.07.09.02-research-routing-polish"></script>
 </body>
 </html>
 

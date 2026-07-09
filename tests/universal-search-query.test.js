@@ -101,6 +101,9 @@ assert.match(dashboard, /effectiveCategory === 'sealed' \? sealedPcCat/);
 assert.match(dashboard, /secret\\s\*lair.*key === 'mtg'/s);
 assert.match(dashboard, /parsePriceChartingProductInput/);
 assert.match(dashboard, /tcgPlayerId:c\.tcgplayer_id/);
+assert.match(dashboard, /item\.raw\?\.purchase_uris\?\.tcgplayer/);
+assert.match(dashboard, /SPORTS SETS/);
+assert.match(dashboard, /openSportsSetBrowserFromResearch/);
 assert.match(dashboard, /isMtgItem \? 'magic'/);
 
 const julio = adapter.buildSearchPlan('Julio Logoman', '');
