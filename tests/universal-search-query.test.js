@@ -104,6 +104,9 @@ assert.match(dashboard, /tcgPlayerId:c\.tcgplayer_id/);
 assert.match(dashboard, /item\.raw\?\.purchase_uris\?\.tcgplayer/);
 assert.match(dashboard, /SPORTS SETS/);
 assert.match(dashboard, /openSportsSetBrowserFromResearch/);
+assert.match(dashboard, /resolveMtgTcgplayerProductRows/);
+assert.match(dashboard, /TCGplayer MTG URL resolved through local MTG catalog/);
+assert.match(dashboard, /PriceCharting offline condition guide estimate/);
 assert.match(dashboard, /isMtgItem \? 'magic'/);
 
 const julio = adapter.buildSearchPlan('Julio Logoman', '');
