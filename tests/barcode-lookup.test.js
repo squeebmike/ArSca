@@ -28,9 +28,10 @@ assert.match(worker,/needsCoverConfirmation:isComic/);
 assert.match(dashboard,/id="research-barcode-btn"/);
 assert.match(dashboard,/BarcodeDetector/);
 assert.match(dashboard,/arsca_barcode_links_v1/);
-assert.match(dashboard,/2026\.07\.08\.06-real-sealed-search/);
+assert.match(dashboard,/2026\.07\.09\.01-exact-provider-links/);
 assert.match(dashboard,/TCGPLAYER LINK/);
 assert.match(dashboard,/parseTcgplayerProductInput/);
+assert.match(dashboard,/parsePriceChartingProductInput/);
 assert.match(dashboard,/isSealedProductIntent\(hint, tcgCat\)/);
 assert.doesNotMatch(dashboard,/PRICECHARTING_TOKEN\s*=|PRICECHARTING_API_KEY\s*=/);
 
