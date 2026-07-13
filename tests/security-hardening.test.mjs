@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 const worker = readFileSync(new URL('../cloudflare-worker-full.js', import.meta.url), 'utf8');
 const dashboard = readFileSync(new URL('../dashboard.html', import.meta.url), 'utf8');
 const scanner = readFileSync(new URL('../sca.html', import.meta.url), 'utf8');
+const deployWorkflow = readFileSync(new URL('../.github/workflows/deploy-worker.yml', import.meta.url), 'utf8');
 
 function route(source, start, end) {
   const from = source.indexOf(start);
@@ -21,6 +22,7 @@ const kv = route(worker, "if (url.pathname.startsWith('/kv/'))", "if (url.pathna
 assert.match(kv, /requireStoreUser\(request, env, storeId\)/);
 assert.match(kv, /lba:\$\{safeStoreKey\(storeId\)\}:\$\{key\}/);
 assert.match(kv, /KV payload is too large/);
+assert.match(deployWorkflow, /anonymous kv write rejected[\s\S]*res\.status === 401 \|\| res\.status === 403/);
 
 const anthropic = route(worker, "if (url.pathname === '/anthropic/messages')", "if (url.pathname === '/upload-image')");
 assert.match(anthropic, /requireStoreUser\(request, env, storeId\)/);

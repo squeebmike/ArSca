@@ -133,15 +133,12 @@ jobs:
 
           const probeKey = 'deploy_probe_' + Date.now();
           await request('health', '/health');
-          await request('kv write', '/kv/' + probeKey, {
+          await request('anonymous kv write rejected', '/kv/' + probeKey, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ ok: true, probeKey, at: new Date().toISOString() }),
-          });
-          await request('kv read', '/kv/' + probeKey, {}, (res, body) => {
-            const value = typeof body.value === 'string' ? JSON.parse(body.value) : body.value;
-            return res.ok && value?.probeKey === probeKey;
-          });
+          }, res => res.status === 401 || res.status === 403);
+          await request('anonymous kv read rejected', '/kv/' + probeKey, {}, res => res.status === 401 || res.status === 403);
           await request('PriceCharting CSV status', '/pricing/pricecharting/csv/status', {}, res => res.ok || res.status === 410);
           await request('PriceCharting CSV test route', '/pricing/pricecharting/csv/test-url', {
             method: 'POST',
