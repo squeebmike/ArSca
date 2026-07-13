@@ -18,6 +18,11 @@ const cart = route(worker, "if (url.pathname === '/cart')", "if (url.pathname.st
 assert.match(cart, /requireStoreUser\(request, env, storeId\)/);
 assert.match(cart, /pos_cart:\$\{safeStoreKey\(storeId\)\}:\$\{registerId\}/);
 
+const invites = route(worker, "if (url.pathname === '/store/invites'", '// Public, read-only storefront');
+assert.match(invites, /requireStoreUser\(request, env, storeId, \['owner','admin'\]\)/);
+assert.match(invites, /store_invites\?store_id=eq/);
+assert.match(dashboard, /storeWorkerFetch\('\/store\/invites\?store_id='/);
+
 const kv = route(worker, "if (url.pathname.startsWith('/kv/'))", "if (url.pathname === '/offline/cache/manifest')");
 assert.match(kv, /requireStoreUser\(request, env, storeId\)/);
 assert.match(kv, /lba:\$\{safeStoreKey\(storeId\)\}:\$\{key\}/);

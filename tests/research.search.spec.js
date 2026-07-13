@@ -15,6 +15,16 @@ test('strict Pokemon searches keep unrelated cards out of primary results', asyn
   await expect(cards.first()).not.toContainText(/VMAX|VSTAR|promo/i);
 });
 
+test('Pokemon ETB search stays on PPT sealed products without bouncing', async ({ page }) => {
+  const requested = [];
+  page.on('request', request => requested.push(request.url()));
+  const cards = await runResearchSearch(page, 'surging sparks etb', 'Pokemon TCG');
+  await expect(cards.first()).toContainText(/Surging Sparks Elite Trainer Box/i);
+  await page.waitForTimeout(2000);
+  await expect(page.locator('#qpl-result')).toContainText(/Surging Sparks Elite Trainer Box/i);
+  expect(requested.some(url => /pricecharting\/csv\/search|pricing\/justtcg\/search|pricing\/tcg\?|api\.pokemontcg\.io/i.test(url))).toBeFalsy();
+});
+
 test('dealer query examples return useful candidates', async ({ page }) => {
   const examples = [
     ['pikachu 151', 'Pokemon TCG', /Pikachu/i],

@@ -933,6 +933,16 @@ export default {
       });
     }
 
+    if (url.pathname === '/store/invites' && request.method === 'GET') {
+      const storeId = String(url.searchParams.get('store_id') || request.headers.get('X-Store-Id') || '').trim();
+      const auth = await requireStoreUser(request, env, storeId, ['owner','admin']);
+      if (auth.error) return auth.error;
+      const { data, response } = await supabaseAdminFetch(env,
+        `store_invites?store_id=eq.${encodeURIComponent(storeId)}&select=id,email,role,expires_at,accepted_at,created_at&order=created_at.desc`);
+      if (!response.ok) return json({ ok:false, error:'Invites unavailable' }, 502);
+      return json({ ok:true, invites:data || [] });
+    }
+
     // Public, read-only storefront. A store must explicitly publish it.
     if (url.pathname === '/public/storefront' && request.method === 'GET') {
       const storeId = String(url.searchParams.get('store_id') || '').trim();

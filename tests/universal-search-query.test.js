@@ -87,6 +87,10 @@ const sealed = adapter.buildSearchPlan('151 booster bundle', '');
 assert.ok(sealed.intent.inferredCategories.includes('sealed'));
 assert.ok(sealed.adapters.some(a => a.route === '/pricing/pokemon/sealed-products'));
 
+const pokemonEtb = adapter.buildSearchPlan('surging sparks etb', 'Pokemon TCG');
+assert.deepEqual(pokemonEtb.intent.inferredCategories, ['pokemon', 'sealed']);
+assert.equal(adapter.queriesFor(pokemonEtb, 'sealed', 'PokemonPriceTracker')[0], 'surging sparks elite trainer box');
+
 const mtgSealed = adapter.buildSearchPlan('Magic The Gathering Marvel Super Heroes Play Booster Display', 'Sealed');
 assert.ok(mtgSealed.intent.inferredCategories.includes('sealed'));
 assert.ok(mtgSealed.adapters.some(a => a.provider === 'TCGplayerProduct' && a.route === 'local:tcgplayer-product'));
@@ -131,6 +135,9 @@ assert.match(dashboard, /qplSearchStillActive/, 'adapter must integrate with sta
 assert.match(dashboard, /plannedCategories\.has\('graded'\)/, 'graded search plans must execute live PriceCharting lookups');
 assert.match(dashboard, /effectiveCategory === 'graded' \? gradedPcCat/, 'graded PriceCharting searches must choose Pokemon, comics, or sports category from the query');
 assert.match(dashboard, /limit:'5'/, 'normal Pokemon search must cap results at five');
+assert.match(dashboard, /if\(isSealedQuery\) return \[\];/, 'sealed Pokemon searches must never fall through to single cards');
+assert.match(dashboard, /wants === 'pokemon'.*key === 'sealed'.*isPokemonSealedSearchIntent/, 'Pokemon category must allow PPT sealed results for sealed queries');
+assert.match(dashboard, /replace\(\/\\betb\\b\/gi, 'elite trainer box'\)/, 'Pokemon sealed search must expand ETB before calling PPT');
 assert.match(dashboard, /Graded 9\.8 estimate/, 'comic UI must use neutral graded estimate labels');
 assert.match(dashboard, /\/pricing\/pricecharting\/product\//, 'comic refresh must hydrate the exact selected PriceCharting product');
 assert.match(dashboard, /userPhotoBlobKey/, 'comic user photos must persist by IndexedDB key');

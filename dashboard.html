@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.07.13.02-research-pipeline">
+<meta name="version" content="2026.07.13.03-pokemon-search">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1417,12 +1417,12 @@ body.show-mode .inv-sync-badge{display:none;}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-<script src="scripts/query-routing.js?v=2026.07.13.02-research-pipeline"></script>
-<script src="scripts/barcode-lookup.js?v=2026.07.13.02-research-pipeline"></script>
-<script src="scripts/comic-issue-hub.js?v=2026.07.13.02-research-pipeline"></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.07.13.02-research-pipeline"></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.07.13.02-research-pipeline"></script>
-<script src="scripts/mtg/research-batch.js?v=2026.07.13.02-research-pipeline"></script>
+<script src="scripts/query-routing.js?v=2026.07.13.03-pokemon-search"></script>
+<script src="scripts/barcode-lookup.js?v=2026.07.13.03-pokemon-search"></script>
+<script src="scripts/comic-issue-hub.js?v=2026.07.13.03-pokemon-search"></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.07.13.03-pokemon-search"></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.07.13.03-pokemon-search"></script>
+<script src="scripts/mtg/research-batch.js?v=2026.07.13.03-pokemon-search"></script>
 </head>
 <body>
 
@@ -1472,11 +1472,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.07.13.02-research-pipeline</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.07.13.03-pokemon-search</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.07.13.02-research-pipeline</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.07.13.03-pokemon-search</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1499,7 +1499,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.07.13.02-research-pipeline</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.07.13.03-pokemon-search</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -2841,7 +2841,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.07.13.02-research-pipeline';
+const APP_VERSION = '2026.07.13.03-pokemon-search';
 window.APP_VERSION = APP_VERSION;
 const branchName = 'main';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
@@ -7117,17 +7117,18 @@ async function loadStoreMembers(){
 }
 
 async function loadStoreInvites(){
-  const sb = getSupabaseClient();
   const session = getAuthSession();
   const storeId = getActiveStoreId();
-  if(!sb || !session?.supabase || !storeId || !requireOwnerAdmin()) return [];
-  const { data, error } = await sb
-    .from('store_invites')
-    .select('id,email,role,expires_at,accepted_at,created_at')
-    .eq('store_id', storeId)
-    .order('created_at', { ascending:false });
-  if(error) { console.warn('Invites load failed:', error.message); return []; }
-  return data || [];
+  if(!session?.supabase || !storeId || !requireOwnerAdmin()) return [];
+  try {
+    const res = await storeWorkerFetch('/store/invites?store_id=' + encodeURIComponent(storeId), { cache:'no-store' });
+    const data = await res.json().catch(() => ({}));
+    if(!res.ok || !data.ok) throw new Error(data.error || 'Invite service unavailable');
+    return data.invites || [];
+  } catch(error) {
+    console.warn('Invites load failed:', error.message);
+    return [];
+  }
 }
 
 async function renderStoreMembersPanel(){
@@ -17677,6 +17678,9 @@ async function savePokemonCacheResults(query, rows = [], source = 'Live lookup')
 
 async function searchPokemonOfflineCache(query, cat = ''){
   if(!isPokemonLookupIntent(query, cat)) return [];
+  if(isPokemonSealedSearchIntent(query, cat)) {
+    return (await searchPokemonSealedCatalogLocal(query).catch(() => [])).slice(0, 60);
+  }
   // Bulk PPT export is the sole local data source — search catalog only.
   const catalogHits = await searchPokemonCatalogExport(query).catch(() => []);
   const sealedHits  = await searchPokemonSealedCatalogLocal(query).catch(() => []);
@@ -17844,7 +17848,7 @@ function setPokemonOfflineBanner(message = '', tone = 'warn'){
 
 function debouncePriceLookup(){
   clearTimeout(qplTimer);
-  qplTimer = setTimeout(runPriceLookup, 350);
+  qplTimer = setTimeout(runPriceLookup, 750);
 }
 
 function tcgTitleCase(value = ''){
@@ -17964,6 +17968,18 @@ function justTcgExactMatchToQplRow(match={}, product={}){
 
 async function resolveExactTcgplayerProduct(product={}){
   if(!product.productId||!navigator.onLine)return null;
+  const pokemonProduct = /pokemon/i.test([product.game,product.category,product.lineLabel].join(' '));
+  if(pokemonProduct) {
+    try {
+      if(!product.isSealed) {
+        const card = await fetchPokemonPriceTrackerExactDetail(product.productId, product.language || 'english');
+        if(card) return pokemonPriceTrackerCardToQplRow(card, product.name || '', null);
+      }
+      const sealed = await fetchPokemonSealedProductExact(product.productId);
+      if(sealed) return pokemonSealedProductToQplRow(sealed, product.name || '');
+    } catch(e) {}
+    return null;
+  }
   try{
     const res=await fetch(WORKER+'/pricing/justtcg/tcgplayer/'+encodeURIComponent(product.productId)+'?'+new URLSearchParams({priceHistoryDuration:'90d',storeId:getActiveStoreId()}).toString(),{cache:'no-store'});
     const data=await res.json().catch(()=>({}));
@@ -18199,6 +18215,7 @@ function tcgplayerSearchLinkToQplRow(query = '', game = 'magic'){
 }
 
 async function runPriceLookup(){
+  clearTimeout(qplTimer);
   // If comics selected, combine main input + optional issue# helper
   const rawQ = document.getElementById('qpl-input').value.trim();
   const cat = document.getElementById('qpl-cat').value;
@@ -18350,7 +18367,7 @@ async function runPriceLookup(){
     ]);
     clearTimeout(slowTimer);
     if(!qplSearchStillActive(mySeq, searchPlan)) return;
-    const liveResults = results.length ? results : await aiQuickLookupFallback(q, cat);
+    const liveResults = results.length || wantsPokemon ? results : await aiQuickLookupFallback(q, cat);
     qplMasterResults = universalSearchAdapter()?.mergeAndRankResults([...cachedResults, ...liveResults], searchPlan) || [...cachedResults, ...liveResults];
     qplLastSearch = q;
     qplResults = filterQplMasterResults(qplMasterResults, cat);
@@ -18459,10 +18476,10 @@ async function searchQuickCatalog(q, cat, searchPlan = buildUniversalSearchPlan(
       : null;
     try {
       const [searchResult, sealedResult] = await Promise.all([
-        isParseTitleQuery ? Promise.resolve({ cards:[], ranked:[], requestPath:'', cacheStatus:'skip' }) : searchPokemonPriceTrackerCards(pokemonSearchQuery, searchLanguage).catch(error => ({ cards:[], ranked:[], requestPath:'', cacheStatus:'failed', error })),
+        (isParseTitleQuery || isSealedQuery) ? Promise.resolve({ cards:[], ranked:[], requestPath:'', cacheStatus:'skip' }) : searchPokemonPriceTrackerCards(pokemonSearchQuery, searchLanguage).catch(error => ({ cards:[], ranked:[], requestPath:'', cacheStatus:'failed', error })),
         sealedPromise || Promise.resolve({ products:[] }),
       ]);
-      if(!isParseTitleQuery) recordSearchPlanRoute(searchPlan, '/pricing/pokemon/cards', pokemonSearchQuery, searchResult.cards?.length || 0);
+      if(!isParseTitleQuery && !isSealedQuery) recordSearchPlanRoute(searchPlan, '/pricing/pokemon/cards', pokemonSearchQuery, searchResult.cards?.length || 0);
       if(isSealedQuery) recordSearchPlanRoute(searchPlan, '/pricing/pokemon/sealed-products', sealedSearchQuery, sealedResult.products?.length || 0);
       // Parse-title path: slab/listing titles route directly to parse-title API
       if(isParseTitleQuery) {
@@ -18510,9 +18527,9 @@ async function searchQuickCatalog(q, cat, searchPlan = buildUniversalSearchPlan(
         await savePokemonCacheResults(q, sealedRows, 'PokemonPriceTracker sealed search').catch(console.warn);
         if(wants === 'sealed' || isSealedQuery) return sealedRows;
       }
+      if(isSealedQuery) return [];
       // Cards path: rank up to 20 results, group by match quality
       // If sealed was the intent but no sealed products found, note it on card results
-      const sealedFallthrough = isSealedQuery && !sealedResult.products.length;
       const queryNumber = pokemonQueryCardNumber(q);
       const ranked = searchResult.ranked || pokemonRankApiCards(searchResult.cards, q);
       const rows = [];
@@ -18560,7 +18577,6 @@ async function searchQuickCatalog(q, cat, searchPlan = buildUniversalSearchPlan(
           row._pokemonGroup = queryNumber && rankedCard.numberMatch
             ? (isPromoQuery ? 'promo' : 'number')
             : (isPromoQuery ? 'promo' : 'best');
-          if(sealedFallthrough) row.note = 'No sealed products found for this query — showing related cards instead.';
           applyPokemonPriceTrackerPrice(row);
         }
         rows.push(row);
@@ -18599,15 +18615,13 @@ async function searchQuickCatalog(q, cat, searchPlan = buildUniversalSearchPlan(
 
   const providerTasks=[];
   const queueProvider=(enabled,work)=>{if(enabled)providerTasks.push(Promise.resolve().then(work).catch(()=>[]).then(rows=>{(rows||[]).forEach(add);return rows||[];}));};
-  queueProvider(!wants || ['tcg','pokemon','mtg','yugioh','comic','sports','graded','sealed','collectibles','video_games','funko','lego','coins'].includes(wants) || sealedIntent, ()=>fetchPriceChartingCsvCatalog(q,cat));
-  queueProvider(!wants || intent.intents.some(x=>['comic','video_games','funko','lego','coins','sports','graded','sealed','collectibles'].includes(x)) || plannedCategories.has('comic') || plannedCategories.has('sports') || plannedCategories.has('graded') || plannedCategories.has('sealed') || sealedIntent, ()=>fetchPriceChartingLiveCatalog(q,cat,searchPlan));
+  const pokemonOnly = plannedCategories.has('pokemon') || wants === 'pokemon' || pokemonSealedIntent;
+  queueProvider(!pokemonOnly && (!wants || intent.intents.some(x=>['comic','video_games','funko','lego','coins','sports','graded','sealed','collectibles'].includes(x)) || plannedCategories.has('comic') || plannedCategories.has('sports') || plannedCategories.has('graded') || plannedCategories.has('sealed') || sealedIntent), ()=>fetchPriceChartingLiveCatalog(q,cat,searchPlan));
 
   // SportsCardsPro — step 1 candidate search (step 2 hydration fires on result selection)
   queueProvider((!wants&&hasPlannedCategory('sports')) || wants==='sports' || wants==='graded', ()=>searchSportsCardsPro(q,searchPlan));
 
-  queueProvider((!wants&&(hasPlannedCategory('pokemon')||hasPlannedCategory('mtg'))) || ['tcg','pokemon','mtg','yugioh'].includes(wants), ()=>fetchWorkerTcgCatalog(q,cat));
-
-  queueProvider((!wants&&hasPlannedCategory('pokemon')) || wants==='tcg' || wants==='pokemon' || wants==='graded', ()=>fetchPokemonCatalog(q));
+  queueProvider(!pokemonOnly && ((!wants&&hasPlannedCategory('mtg')) || ['tcg','mtg','yugioh'].includes(wants)), ()=>fetchWorkerTcgCatalog(q,cat));
   queueProvider((!wants&&hasPlannedCategory('mtg')) || wants==='tcg' || wants==='mtg' || wants==='graded' || (wants==='sealed'&&mtgSealedIntent) || isMtgLookupIntent(q,cat) || mtgSealedIntent, async()=>{
     const mtgMode=mtgOfflineSearchMode();let rows=[];
     if(mtgMode!=='online_only')rows=await searchMtgCatalogExport(q).catch(()=>[]);
@@ -18838,6 +18852,7 @@ function qplCategoryAllows(r, wants){
   const key = qplResultCategoryKey(r);
   const activeQuery = qplLastSearch || document.getElementById('qpl-input')?.value || '';
   if(wants === 'tcg') return ['tcg','pokemon','mtg','yugioh','sealed'].includes(key) || normalizeQuickCategory(r?.category) === 'TCG';
+  if(wants === 'pokemon') return key === 'pokemon' || (key === 'sealed' && isPokemonSealedSearchIntent(activeQuery, 'Pokemon TCG'));
   if(wants === 'mtg') return key === 'mtg' || (key === 'sealed' && /\b(mtg|magic|secret lair|play booster|collector booster|draft booster|commander deck)\b/i.test([r?.name,r?.title,r?.category,r?.set,r?.note].filter(Boolean).join(' ')));
   if(wants === 'graded') return key === 'graded' || /psa|bgs|cgc|sgc|slab|graded/i.test([r?.name,r?.variant,r?.category,r?.note].filter(Boolean).join(' '));
   if(wants === 'collectibles') return key === 'collectibles';
@@ -21311,17 +21326,33 @@ async function searchPokemonPriceTrackerCards(rawQuery = '', language = 'english
 }
 
 async function searchPokemonSealedProducts(rawQuery = ''){
-  const q = String(rawQuery || '').replace(/\s+/g, ' ').trim();
+  const q = String(rawQuery || '')
+    .replace(/\betb\b/gi, 'elite trainer box')
+    .replace(/\bupc\b/gi, 'ultra premium collection')
+    .replace(/\bbooster\s*bx\b/gi, 'booster box')
+    .replace(/\s+/g, ' ').trim();
   if(!q) return { products:[] };
   const params = new URLSearchParams({ search:q, limit:'20' });
   const requestPath = '/pricing/pokemon/sealed-products?' + params.toString().replace(/\+/g, '%20');
-  const res = await fetch(WORKER + requestPath, { cache:'no-store' });
+  const storeId = getActiveStoreId();
+  const res = await fetch(WORKER + requestPath, { cache:'no-store', headers:storeId ? { 'X-Store-Id':storeId } : {} });
   const data = await res.json().catch(() => ({}));
   if(!res.ok || !data.ok) throw new Error(data.error || data.message || 'Pokemon sealed-products lookup failed');
   // Worker normalises PPT data.data array into data.cards
   const products = data.cards || data.products || data.sealed_products || data.sealedProducts
     || (Array.isArray(data.data) ? data.data : []);
   return { products: Array.isArray(products) ? products : [], data };
+}
+
+async function fetchPokemonSealedProductExact(tcgPlayerId = ''){
+  if(!/^\d+$/.test(String(tcgPlayerId || ''))) return null;
+  const params = new URLSearchParams({ tcgPlayerId:String(tcgPlayerId), limit:'1' });
+  const requestPath = '/pricing/pokemon/sealed-products?' + params.toString();
+  const storeId = getActiveStoreId();
+  const res = await fetch(WORKER + requestPath, { cache:'no-store', headers:storeId ? { 'X-Store-Id':storeId } : {} });
+  const data = await res.json().catch(() => ({}));
+  if(!res.ok || !data.ok) return null;
+  return (data.cards || data.products || data.data || [])[0] || null;
 }
 
 async function fetchPokemonPriceTrackerExactDetail(tcgPlayerId, language = 'english', { fresh = false } = {}){
@@ -29432,7 +29463,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.07.13.02-research-pipeline"></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.07.13.03-pokemon-search"></script>
 </body>
 </html>
 

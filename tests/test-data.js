@@ -329,6 +329,17 @@ async function mockWalkoffApis(page) {
         imageUrl: '',
         lastScrapedAt: '2026-05-08T00:00:00.000Z',
       });
+    } else if (q.includes('surging sparks') && q.includes('elite trainer box')) {
+      products.push({
+        id: 'qa-sealed-surging-etb',
+        tcgPlayerId: '565630',
+        name: 'Surging Sparks Elite Trainer Box',
+        setName: 'SV08: Surging Sparks',
+        unopenedPrice: 134.47,
+        language: 'English',
+        imageUrl: '',
+        lastScrapedAt: '2026-07-13T00:00:00.000Z',
+      });
     } else if (q.includes('surging sparks') && q.includes('booster')) {
       products.push({
         id: 'qa-sealed-surging-box',

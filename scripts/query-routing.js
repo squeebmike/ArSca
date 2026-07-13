@@ -115,7 +115,9 @@
     if(entities.sealedTypes.length && scores.pokemon) scores.sealed += 20;
     if(selected && !['all','auto'].includes(selected)) scores[selected] = 100;
     const ordered = Object.entries(scores).sort((a,b)=>b[1]-a[1]).filter(([,score])=>score>0);
-    const inferredCategories = selected && !['all','auto'].includes(selected) ? [selected] : ordered.slice(0,2).map(([key])=>key);
+    const inferredCategories = selected && !['all','auto'].includes(selected)
+      ? [selected, ...((['pokemon','mtg'].includes(selected) && scores.sealed > 0) ? ['sealed'] : [])]
+      : ordered.slice(0,2).map(([key])=>key);
     return { selectedCategory:selected, inferredCategories, confidenceByCategory:scores, entities };
   }
 

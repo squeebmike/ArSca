@@ -11,6 +11,10 @@ const lookup=dashboard.slice(dashboard.indexOf('async function runPriceLookup()'
 assert.ok(lookup.indexOf('const mySeq = ++_qplSearchSeq') < lookup.indexOf('resolveMtgTcgplayerProductRows'), 'sequence guard must start before exact-product async work');
 assert.match(lookup,/\.\.\.cachedResults, \.\.\.liveResults/, 'live results must merge with already-rendered cached results');
 assert.match(dashboard,/await Promise\.allSettled\(providerTasks\)/, 'independent catalog providers must run concurrently');
+assert.match(dashboard,/const pokemonOnly = plannedCategories\.has\('pokemon'\)/, 'Pokemon searches must be isolated from generic providers');
+assert.doesNotMatch(dashboard,/queueProvider\([^\n]+fetchPriceChartingCsvCatalog\(q,cat\)/, 'retired PriceCharting CSV search must not run in live research');
+assert.doesNotMatch(dashboard,/queueProvider\([^\n]+fetchPokemonCatalog\(q\)/, 'direct PokemonTCG browser requests must not run in live research');
+assert.match(dashboard,/fetchPokemonSealedProductExact\(product\.productId\)/, 'Pokemon TCGplayer IDs must try PPT sealed-product resolution');
 assert.match(dashboard,/pricing\/justtcg\/tcgplayer\//, 'TCGplayer product IDs must resolve through an exact provider route');
 assert.match(dashboard,/^\s*} else if\(\/\^\\d\{5,8\}\$\/\.test\(text\)\)/m, 'bare TCGplayer product IDs must work without a preselected category');
 assert.match(dashboard,/searchPriceChartingOfflineCatalog\('sports'/, 'sports research must use the shared offline snapshot');
