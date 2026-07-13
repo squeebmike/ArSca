@@ -9,6 +9,9 @@ const builder=fs.readFileSync(new URL('../scripts/pricecharting/build-offline-bu
 
 const lookup=dashboard.slice(dashboard.indexOf('async function runPriceLookup()'),dashboard.indexOf('async function fetchComicVineCover'));
 assert.ok(lookup.indexOf('const mySeq = ++_qplSearchSeq') < lookup.indexOf('resolveMtgTcgplayerProductRows'), 'sequence guard must start before exact-product async work');
+assert.match(dashboard,/\/pricing\/tcgplayer\/product\//,'sealed TCGplayer exact-ID route must be wired');
+assert.match(dashboard,/tcgplayerSealedProductToQplRow/,'sealed TCGplayer response must render as a priced product row');
+assert.match(worker,/mpapi\.tcgplayer\.com\/v2\/product/,'Worker must proxy exact-ID marketplace pricepoints with CORS');
 assert.match(lookup,/\.\.\.cachedResults, \.\.\.liveResults/, 'live results must merge with already-rendered cached results');
 assert.match(dashboard,/await Promise\.allSettled\(providerTasks\)/, 'independent catalog providers must run concurrently');
 assert.match(dashboard,/const pokemonOnly = plannedCategories\.has\('pokemon'\)/, 'Pokemon searches must be isolated from generic providers');

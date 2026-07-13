@@ -3,7 +3,7 @@
 
   const DB_NAME = 'arscaPriceChartingOffline';
   const DB_VERSION = 1;
-  const CATEGORIES = new Set(['sports','comics','video_games','funko','lego','coins','yugioh','one_piece','lorcana','digimon','dragon_ball','garbage_pail','marvel','star_wars','other_tcg','amiibo','strategy_guides','gaming_magazines']);
+  const CATEGORIES = new Set(['sports','comics','video_games','yugioh','one_piece']);
   let dbPromise;
 
   function normalize(value=''){

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.07.13.04-offline-collectibles">
+<meta name="version" content="2026.07.13.05-sealed-offline-scope">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1417,12 +1417,12 @@ body.show-mode .inv-sync-badge{display:none;}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-<script src="scripts/query-routing.js?v=2026.07.13.04-offline-collectibles"></script>
-<script src="scripts/barcode-lookup.js?v=2026.07.13.04-offline-collectibles"></script>
-<script src="scripts/comic-issue-hub.js?v=2026.07.13.04-offline-collectibles"></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.07.13.04-offline-collectibles"></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.07.13.04-offline-collectibles"></script>
-<script src="scripts/mtg/research-batch.js?v=2026.07.13.04-offline-collectibles"></script>
+<script src="scripts/query-routing.js?v=2026.07.13.05-sealed-offline-scope"></script>
+<script src="scripts/barcode-lookup.js?v=2026.07.13.05-sealed-offline-scope"></script>
+<script src="scripts/comic-issue-hub.js?v=2026.07.13.05-sealed-offline-scope"></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.07.13.05-sealed-offline-scope"></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.07.13.05-sealed-offline-scope"></script>
+<script src="scripts/mtg/research-batch.js?v=2026.07.13.05-sealed-offline-scope"></script>
 </head>
 <body>
 
@@ -1472,11 +1472,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.07.13.04-offline-collectibles</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.07.13.05-sealed-offline-scope</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.07.13.04-offline-collectibles</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.07.13.05-sealed-offline-scope</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1499,7 +1499,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.07.13.04-offline-collectibles</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.07.13.05-sealed-offline-scope</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -2852,7 +2852,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.07.13.04-offline-collectibles';
+const APP_VERSION = '2026.07.13.05-sealed-offline-scope';
 window.APP_VERSION = APP_VERSION;
 const branchName = 'main';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
@@ -3677,8 +3677,6 @@ function loginDemoAccount(){
       seedDemoDataIfNeeded();
       await loadStoreSettingsFromSupabase();
       setupAppShell();
-      if(typeof schedulePriceSyncChecks === 'function') schedulePriceSyncChecks();
-      if(typeof maybeRunScheduledPriceSync === 'function') maybeRunScheduledPriceSync(true).catch(()=>{});
       if(typeof renderShowMode === 'function') renderShowMode();
       if(typeof applyResearchDefaultCategory === 'function') applyResearchDefaultCategory();
       if(typeof maybeShowSetupPrompt === 'function') maybeShowSetupPrompt();
@@ -5091,7 +5089,7 @@ const SETTINGS_PANEL_MAP = {
   profile:['vendor-profile-panel'],
   payments:['payment-settings-panel'],
   sync:['inventory-sync-panel','sync-queue-panel'],
-  catalogs:['backoffice-research-panel','offline-cache-panel','pokemon-export-panel','offline-catalog-manager-panel','pricecharting-data-panel'],
+  catalogs:['backoffice-research-panel','offline-cache-panel','pokemon-export-panel','offline-catalog-manager-panel'],
   inventory:['spreadsheet-panel'],
   users:['store-members-panel'],
   theme:['branding-theme-panel'],
@@ -5114,7 +5112,7 @@ function renderSettingsOverview(){
     settingsOverviewCard('Checkout & Payments',stripeConfigured?'Working':'Needs Setup',stripeConfigured?'working':'needs-setup',`${enabled.length?enabled.join(', '):'No tenders enabled'} · refunds Owner/Admin only`,'payments'),
     settingsOverviewCard('Cloud Consignments',cloudReady?'Working':'Local Fallback',cloudReady?'working':'local-fallback',cloudReady?`${consignLocal} local/cloud records for this store`:`${consignLocal} cached records · cloud schema or connection still needed`,'sync'),
     settingsOverviewCard('Store Data Sync',failed||conflicts?'Error':queue.filter(x=>x.status!=='done').length?'Needs Setup':'Working',failed||conflicts?'error':queue.filter(x=>x.status!=='done').length?'needs-setup':'working',`${queue.filter(x=>x.status!=='done').length} pending · ${failed} failed · ${conflicts} conflicts · ${navigator.onLine?'online':'offline'}`,'sync'),
-    settingsOverviewCard('Catalogs & Pricing','Offline Ready','offline-ready','MTG offline protected · Pokémon live active · PPT offline planned · comics/sports online only','catalogs'),
+    settingsOverviewCard('Catalogs & Pricing','Offline Ready','offline-ready','MTG offline protected · Pokémon PPT offline planned · five PriceCharting catalogs supported','catalogs'),
     settingsOverviewCard('Inventory & Imports',all.length?'Working':'Needs Setup',all.length?'working':'needs-setup',`${all.length} inventory records · imports and exports available`,'inventory'),
     settingsOverviewCard('Subscription',sub.status?roleLabel(sub.status):'Needs Setup',sub.active?'working':'needs-setup',sub.daysRemaining?`${sub.daysRemaining} trial days remaining`:'ArSca software billing and plan status','subscription'),
     settingsOverviewCard('Users',members?'Working':'Needs Setup',members?'working':'needs-setup',`${members} accessible store membership${members===1?'':'s'} · manage staff and invites`,'users'),
@@ -5125,7 +5123,7 @@ function renderSettingsOverview(){
 function renderSettingsGeneratedPanels(){
   const overview=document.getElementById('settings-panels-overview');if(overview&&!document.getElementById('settings-overview-grid'))overview.innerHTML='<div id="settings-overview-grid" class="settings-overview-grid"></div>';
   const sync=document.getElementById('settings-panels-sync');if(sync&&!document.getElementById('cloud-consignment-settings-status'))sync.insertAdjacentHTML('afterbegin',`<div class="settings-generated-panel" id="cloud-consignment-settings-status"><div class="ph">CLOUD CONSIGNMENTS ${settingsStatus(consignmentCloudReady?'Working':'Local Fallback',consignmentCloudReady?'working':'local-fallback')}</div><div style="font-family:var(--font-mono);font-size:10px;line-height:1.65;color:var(--dim)">${consignmentCloudReady?'Per-store consignors, inventory, and sale alerts are syncing through Supabase.':'This device is using its store-scoped local cache. Apply the cloud migration and reconnect to activate cross-device sync.'}<br>People: ${consignorPeople.length} · Items: ${consignItems.length} · Sale alerts: ${getConsignmentAlerts().length}</div></div>`);if(sync&&!document.getElementById('webflow-integration-panel'))sync.insertAdjacentHTML('afterbegin','<div class="settings-generated-panel" id="webflow-integration-panel"></div>');renderWebflowIntegrationPanel?.();
-  const catalogs=document.getElementById('settings-panels-catalogs');if(catalogs&&!document.getElementById('catalog-data-concepts'))catalogs.insertAdjacentHTML('afterbegin',`<div class="settings-explainer" id="catalog-data-concepts"><b style="color:var(--text)">Three different data concepts</b><br>1. Store Data Sync — your inventory, sales, settings, users, queues, and consignments.<br>2. Offline Catalog Sync — reference catalogs downloaded to this device; they never create inventory.<br>3. Live Provider Pricing — live or scheduled candidate prices from PriceCharting, Scryfall, and PokemonPriceTracker.<br><br><b style="color:var(--g)">MTG Offline Catalog: Working.</b> Scryfall cards + PriceCharting snapshot; pipeline and image cache remain untouched.<br><b style="color:var(--gold)">Pokémon Offline Catalog: Planned next.</b> PPT offline pipeline is not built in this pass.<br>Comics and sports remain online-only; comic provider images remain URL-only.</div>`);
+  const catalogs=document.getElementById('settings-panels-catalogs');if(catalogs&&!document.getElementById('catalog-data-concepts'))catalogs.insertAdjacentHTML('afterbegin',`<div class="settings-explainer" id="catalog-data-concepts"><b style="color:var(--text)">Three different data concepts</b><br>1. Store Data Sync — your inventory, sales, settings, users, queues, and consignments.<br>2. Offline Catalog Sync — reference catalogs downloaded to this device; they never create inventory.<br>3. Live Provider Pricing — live or scheduled candidate prices from PriceCharting, Scryfall, and PokemonPriceTracker.<br><br><b style="color:var(--g)">MTG Offline Catalog: Working.</b> Scryfall cards + PriceCharting snapshot; pipeline and image cache remain untouched.<br><b style="color:var(--gold)">Pokémon Offline Catalog: Planned next.</b> It will use PPT rather than PriceCharting.<br>PriceCharting shared offline catalogs are limited to sports cards, comics, video games, Yu-Gi-Oh, and One Piece.</div>`);
   const devices=document.getElementById('settings-panels-devices');if(devices&&!document.getElementById('devices-hardware-summary'))devices.innerHTML=`<div class="settings-overview-grid" id="devices-hardware-summary">${[['Barcode Scanner','Working','Camera/USB barcode evidence input'],['Phone Scan Inbox','Working','Scanner queue and tablet handoff'],['Receipt Printer','Planned','Browser print workflow; no dedicated driver'],['Cash Drawer','Working','Cash Bag tracking through checkout'],['Customer Display','Working','Cart and payment-method display'],['Stripe Reader','Planned','Coming later; no Terminal integration'],['Vending Hardware','Planned','Future hardware integration'],['Register / Device ID','Working',getDealerDeviceId()]].map(([a,b,c])=>`<article class="settings-overview-card"><div>${settingsStatus(b,b==='Working'?'working':'planned')}</div><h3>${a}</h3><p>${escHtml(c)}</p></article>`).join('')}</div>`;
   const users=document.getElementById('settings-panels-users');if(users&&!document.getElementById('permissions-summary'))users.insertAdjacentHTML('afterbegin',`<div class="settings-generated-panel" id="permissions-summary"><div class="ph">PERMISSION SUMMARY</div><div style="font-family:var(--font-mono);font-size:10px;line-height:1.65;color:var(--dim)">Owner/Admin: payment setup, refunds, members, store configuration, and advanced tools.<br>Manager/Staff: inventory and checkout according to existing role gates.<br>Scanner Only: phone scanner workflow. Stripe refunds remain Owner/Admin only.</div></div>`);
   const advanced=document.getElementById('settings-panels-advanced');if(advanced&&!document.getElementById('advanced-settings-warning'))advanced.insertAdjacentHTML('afterbegin','<div class="settings-explainer" id="advanced-settings-warning" style="border-color:rgba(255,209,102,.35)"><b style="color:var(--gold)">Advanced tools can affect local data, caches, sync queues, and diagnostics. Use carefully.</b><br>Legacy Tool Map is temporary during the UI refactor. Existing confirmation prompts remain in place.</div>');
@@ -5199,7 +5197,6 @@ function organizeRegisterLayout(){
   ensureBrandingPanel(backoffice);
   ensurePaymentSettingsPanel(backoffice);
   ensureResearchSettingsPanel(backoffice);
-  ensurePriceChartingDataPanel(backoffice);
   ensureOfflineCachePanel(backoffice);
   ensurePokemonExportPanel(backoffice);
   ensureOfflineCatalogManagerPanel(backoffice);
@@ -5722,10 +5719,8 @@ function ensureOfflineCatalogManagerPanel(backoffice){
 
 let _mtgBulkSyncActive = false;
 const PRICECHARTING_OFFLINE_CATALOGS = [
-  ['sports','Sports cards'],['comics','Comics'],['video_games','Video games'],['funko','Funko Pops'],['lego','LEGO sets'],['coins','Coins'],
-  ['yugioh','Yu-Gi-Oh cards'],['one_piece','One Piece cards'],['lorcana','Lorcana cards'],['digimon','Digimon cards'],['dragon_ball','Dragon Ball cards'],
-  ['garbage_pail','Garbage Pail cards'],['marvel','Marvel cards'],['star_wars','Star Wars cards'],['other_tcg','Other TCG cards'],
-  ['amiibo','Amiibo'],['strategy_guides','Strategy guides'],['gaming_magazines','Gaming magazines']
+  ['sports','Sports cards'],['comics','Comics'],['video_games','Video games'],
+  ['yugioh','Yu-Gi-Oh cards'],['one_piece','One Piece cards']
 ];
 
 function formatOfflineCatalogDate(value){
@@ -11925,8 +11920,6 @@ window.addEventListener('load', async function(){
   setupAppShell();
   setInvView(_invView);
   checkAndApplySubscriptionState().catch(console.warn);
-  schedulePriceSyncChecks();
-  maybeRunScheduledPriceSync(true).catch(console.warn);
   renderShowMode();
   applyResearchDefaultCategory();
   maybeShowSetupPrompt();
@@ -17986,6 +17979,41 @@ function justTcgExactMatchToQplRow(match={}, product={}){
   });
 }
 
+function tcgplayerSealedProductToQplRow(data={}, product={}){
+  const market=Number(data.marketPrice || 0) || 0;
+  const median=Number(data.listedMedianPrice || 0) || 0;
+  const name=product.name && !/^TCGplayer Product #/i.test(product.name) ? product.name : (data.name || product.name || `TCGplayer Product #${product.productId}`);
+  const isMtg=product.isMtg || product.game === 'magic';
+  return {
+    source:'tcgplayer_marketplace',
+    productId:product.productId,
+    tcgPlayerId:product.productId,
+    tcgplayerId:product.productId,
+    name,
+    category:isMtg ? 'MTG Sealed Product' : (product.category || 'Sealed Product'),
+    set:product.lineLabel || (isMtg ? 'Magic: The Gathering' : ''),
+    variant:'Factory Sealed',
+    condition:'Factory Sealed',
+    selectedCondition:'Factory Sealed',
+    finish:'sealed',
+    selectedFinish:'sealed',
+    language:product.language || 'English',
+    market,
+    low:0,
+    high:median,
+    imageUrl:data.imageUrl || `https://product-images.tcgplayer.com/fit-in/437x437/${product.productId}.jpg`,
+    priceSource:market ? 'TCGplayer Market Price' : (median ? 'TCGplayer Listed Median' : 'TCGplayer exact product · price unavailable'),
+    productUrl:product.canonicalUrl || data.productUrl || `https://www.tcgplayer.com/product/${product.productId}`,
+    tcgUrl:product.canonicalUrl || data.productUrl || '',
+    tcgPlayerUrl:product.canonicalUrl || data.productUrl || '',
+    note:market ? 'Exact TCGplayer product ID and current marketplace pricepoints.' : 'Exact TCGplayer product ID found. Current marketplace price is not available; verify listings before buying.',
+    confidence:99,
+    matchWhy:['Exact TCGplayer product ID','Factory-sealed product route'],
+    is_sealed:true,
+    raw:{...data,parsedProduct:product},
+  };
+}
+
 async function resolveExactTcgplayerProduct(product={}){
   if(!product.productId||!navigator.onLine)return null;
   const pokemonProduct = /pokemon/i.test([product.game,product.category,product.lineLabel].join(' '));
@@ -17997,6 +18025,17 @@ async function resolveExactTcgplayerProduct(product={}){
       }
       const sealed = await fetchPokemonSealedProductExact(product.productId);
       if(sealed) return pokemonSealedProductToQplRow(sealed, product.name || '');
+    } catch(e) {}
+    return null;
+  }
+  if(product.isSealed) {
+    try {
+      const params=new URLSearchParams();
+      if(product.name && !/^TCGplayer Product #/i.test(product.name)) params.set('name',product.name);
+      const suffix=params.toString()?'?'+params.toString():'';
+      const res=await fetch(WORKER+'/pricing/tcgplayer/product/'+encodeURIComponent(product.productId)+suffix,{cache:'no-store'});
+      const data=await res.json().catch(()=>({}));
+      if(res.ok && data.ok) return tcgplayerSealedProductToQplRow(data,product);
     } catch(e) {}
     return null;
   }
@@ -29502,7 +29541,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.07.13.04-offline-collectibles"></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.07.13.05-sealed-offline-scope"></script>
 </body>
 </html>
 

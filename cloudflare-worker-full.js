@@ -483,9 +483,7 @@ const MTG_CATALOG_FILE_TYPES = new Set(['cards', 'prices', 'links', 'sets']);
 // Shared PriceCharting business-download catalogs. Pokemon intentionally stays on
 // PokemonPriceTracker exports and MTG keeps its Scryfall + PriceCharting pipeline.
 const PRICECHARTING_OFFLINE_CATEGORIES = new Set([
-  'sports', 'comics', 'video_games', 'funko', 'lego', 'coins', 'yugioh',
-  'one_piece', 'lorcana', 'digimon', 'dragon_ball', 'garbage_pail', 'marvel',
-  'star_wars', 'other_tcg', 'amiibo', 'strategy_guides', 'gaming_magazines',
+  'sports', 'comics', 'video_games', 'yugioh', 'one_piece',
 ]);
 
 function r2ObjectResponse(object, request, cacheControl) {
@@ -2293,6 +2291,37 @@ export default {
         return json({ ok: true, success: true, source: 'justtcg', matches, selectedVariant: matches[0]?.selectedVariant || null });
       } catch (e) {
         return json({ ok: false, source: 'justtcg', error: e.message }, 500);
+      }
+    }
+
+    // TCGplayer's public marketplace pricepoints endpoint does not send browser
+    // CORS headers, so proxy the small exact-ID response. No TCGplayer credential
+    // is required and no listing/customer data is exposed.
+    const tcgplayerProductMatch = url.pathname.match(/^\/pricing\/tcgplayer\/product\/(\d+)$/);
+    if (tcgplayerProductMatch) {
+      const productId = tcgplayerProductMatch[1];
+      try {
+        const upstream = await fetch(`https://mpapi.tcgplayer.com/v2/product/${productId}/pricepoints`, {
+          headers:{ 'Accept':'application/json' },
+          signal:AbortSignal.timeout ? AbortSignal.timeout(8000) : undefined,
+          cf:{ cacheTtl:300, cacheEverything:true },
+        });
+        if (!upstream.ok) return json({ ok:false, source:'TCGplayer', productId, error:`TCGplayer HTTP ${upstream.status}` }, upstream.status === 404 ? 404 : 502);
+        const pricepoints = await upstream.json().catch(() => []);
+        const normal = (Array.isArray(pricepoints) ? pricepoints : []).find(row => String(row.printingType || '').toLowerCase() === 'normal') || pricepoints?.[0] || null;
+        return json({
+          ok:true,
+          source:'TCGplayer marketplace pricepoints',
+          productId,
+          name:String(url.searchParams.get('name') || '').replace(/[^a-zA-Z0-9 &'():.,!+\-]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 180),
+          imageUrl:`https://product-images.tcgplayer.com/fit-in/437x437/${productId}.jpg`,
+          productUrl:`https://www.tcgplayer.com/product/${productId}`,
+          marketPrice:Number(normal?.marketPrice || 0) || null,
+          listedMedianPrice:Number(normal?.listedMedianPrice || 0) || null,
+          pricepoints:Array.isArray(pricepoints) ? pricepoints : [],
+        });
+      } catch (e) {
+        return json({ ok:false, source:'TCGplayer', productId, error:/timeout|abort/i.test(String(e?.message || e)) ? 'TCGplayer lookup timed out' : 'TCGplayer lookup failed' }, 502);
       }
     }
 
