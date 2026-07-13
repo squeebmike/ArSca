@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.07.13.07-offline-search">
+<meta name="version" content="2026.07.13.08-offline-choice">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1417,12 +1417,12 @@ body.show-mode .inv-sync-badge{display:none;}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-<script src="scripts/query-routing.js?v=2026.07.13.07-offline-search"></script>
-<script src="scripts/barcode-lookup.js?v=2026.07.13.07-offline-search"></script>
-<script src="scripts/comic-issue-hub.js?v=2026.07.13.07-offline-search"></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.07.13.07-offline-search"></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.07.13.07-offline-search"></script>
-<script src="scripts/mtg/research-batch.js?v=2026.07.13.07-offline-search"></script>
+<script src="scripts/query-routing.js?v=2026.07.13.08-offline-choice"></script>
+<script src="scripts/barcode-lookup.js?v=2026.07.13.08-offline-choice"></script>
+<script src="scripts/comic-issue-hub.js?v=2026.07.13.08-offline-choice"></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.07.13.08-offline-choice"></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.07.13.08-offline-choice"></script>
+<script src="scripts/mtg/research-batch.js?v=2026.07.13.08-offline-choice"></script>
 </head>
 <body>
 
@@ -1472,11 +1472,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.07.13.07-offline-search</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.07.13.08-offline-choice</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.07.13.07-offline-search</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.07.13.08-offline-choice</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1499,7 +1499,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.07.13.07-offline-search</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.07.13.08-offline-choice</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -1818,7 +1818,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="panel" id="register-quick-panel">
       <div class="ph">⚡ QUICK PRICE LOOKUP <span style="color:var(--dim);font-size:8px">catalog search — no scanning needed</span></div>
       <div id="qpl-search-row" style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">
-        <input class="tsi" id="qpl-input" placeholder="e.g. 2021 Umbreon VMAX Evolving Skies..." style="flex:1;margin-bottom:0;font-size:12px;padding:10px 14px" oninput="debouncePriceLookup()" onkeydown="if(event.key==='Enter')runPriceLookup()">
+        <input class="tsi" id="qpl-input" placeholder="e.g. 2021 Umbreon VMAX Evolving Skies..." style="flex:1;margin-bottom:0;font-size:12px;padding:10px 14px" oninput="debouncePriceLookup()" onkeydown="if(event.key==='Enter'){event.preventDefault();runPriceLookup()}">
         <button class="hbtn" id="research-barcode-btn" title="Scan UPC or EAN barcode" onclick="openBarcodeScanner()" style="white-space:nowrap;color:var(--g)">SCAN BARCODE</button>
         <button class="hbtn" title="Speak search" aria-label="Voice price search" onclick="startVoiceInput('qpl-input', runPriceLookup)" style="width:54px;padding:0">MIC</button>
       </div>
@@ -1862,6 +1862,7 @@ body.show-mode .inv-sync-badge{display:none;}
           <button class="hbtn qpl-cat-pill" data-cat="Coins" onclick="setQplCategory(this)" style="font-size:9px;padding:4px 8px;min-height:28px">COINS</button>
         </div>
         <button class="hbtn" onclick="runPriceLookup()" style="white-space:nowrap">LOOK UP</button>
+        <button class="hbtn" onclick="openSettingsSection('catalogs','offline-catalog-manager-panel')" style="white-space:nowrap;color:var(--blue)">OFFLINE DATA</button>
         <button class="hbtn" onclick="clearResearchLookup()" style="white-space:nowrap">CLEAR</button>
       </div>
       <div id="pokemon-offline-banner" class="pokemon-offline-banner"></div>
@@ -2852,7 +2853,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.07.13.07-offline-search';
+const APP_VERSION = '2026.07.13.08-offline-choice';
 window.APP_VERSION = APP_VERSION;
 const branchName = 'main';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
@@ -5721,6 +5722,19 @@ let _mtgBulkSyncActive = false;
 const PRICECHARTING_OFFLINE_CATALOGS = [
   ['video_games','Video games'],['yugioh','Yu-Gi-Oh cards'],['one_piece','One Piece cards']
 ];
+const OFFLINE_CATALOG_SELECTION_KEY='offline_catalog_selection_v1';
+function offlineCatalogSelection(){
+  try{
+    const saved=JSON.parse(localStorage.getItem(OFFLINE_CATALOG_SELECTION_KEY)||'null');
+    if(saved&&typeof saved==='object')return {mtg:!!saved.mtg,video_games:!!saved.video_games,yugioh:!!saved.yugioh,one_piece:!!saved.one_piece};
+  }catch(e){}
+  return {mtg:true,video_games:false,yugioh:false,one_piece:false};
+}
+function setOfflineCatalogSelected(category,selected){
+  const next=offlineCatalogSelection();next[category]=!!selected;
+  localStorage.setItem(OFFLINE_CATALOG_SELECTION_KEY,JSON.stringify(next));
+  renderOfflineCatalogManagerPanel();
+}
 
 function formatOfflineCatalogDate(value){
   if(!value) return '';
@@ -5778,17 +5792,24 @@ async function renderOfflineCatalogManagerPanel(){
   }).join('');
   const storageEstimate=await navigator.storage?.estimate?.().catch(()=>({}))||{};
   const storagePersistent=await navigator.storage?.persisted?.().catch(()=>false)||false;
-  const installed=[mtg.cards>0,...priceChartingStatuses.map(status=>Number(status?.rowCount||0)>0)];
-  const indexedReady=!!mtgMeta.searchIndexReady&&priceChartingStatuses.every(status=>!!status?.searchIndexReady);
-  const fullyReady=installed.every(Boolean)&&indexedReady;
+  const selection=offlineCatalogSelection();
+  const catalogStates={mtg:{installed:mtg.cards>0,indexed:!!mtgMeta.searchIndexReady}};
+  PRICECHARTING_OFFLINE_CATALOGS.forEach(([category],index)=>catalogStates[category]={installed:Number(priceChartingStatuses[index]?.rowCount||0)>0,indexed:!!priceChartingStatuses[index]?.searchIndexReady});
+  const selectedKeys=Object.keys(selection).filter(key=>selection[key]);
+  const readyCount=selectedKeys.filter(key=>catalogStates[key]?.installed&&catalogStates[key]?.indexed).length;
+  const fullyReady=selectedKeys.length>0&&readyCount===selectedKeys.length;
+  const indexedReady=selectedKeys.length>0&&selectedKeys.every(key=>catalogStates[key]?.indexed);
   const bytesLabel=value=>Number.isFinite(Number(value))?(Number(value)/(1024*1024)).toFixed(Number(value)>1024*1024*1024?0:1)+' MB':'Unknown';
   const readinessColor=fullyReady?'var(--g)':'var(--gold)';
+  const choice=(key,label)=>`<label style="display:flex;align-items:center;gap:7px;border:1px solid ${selection[key]?'rgba(0,255,179,.35)':'var(--border)'};background:${selection[key]?'rgba(0,255,179,.06)':'var(--surf2)'};border-radius:8px;padding:9px 11px;font-family:monospace;font-size:10px;color:${selection[key]?'var(--g)':'var(--dim)'};cursor:pointer"><input type="checkbox" ${selection[key]?'checked':''} onchange="setOfflineCatalogSelected('${key}',this.checked)"> ${escHtml(label)}</label>`;
   body.innerHTML = `
     <div style="border:1px solid ${readinessColor};background:${fullyReady?'rgba(0,255,179,.06)':'rgba(255,209,102,.06)'};border-radius:10px;padding:12px;margin-bottom:14px">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
-        <div><div style="font-family:'Orbitron',monospace;color:${readinessColor};font-size:13px">${fullyReady?'READY FOR OFFLINE USE':'OFFLINE DATA NEEDS ATTENTION'}</div><div style="font-family:monospace;font-size:9px;color:var(--dim);margin-top:5px">${installed.filter(Boolean).length}/4 catalogs installed · ${indexedReady?'fast search indexes ready':'one or more search indexes need refresh'} · MTG images cached: ${Number(mtg.images||0).toLocaleString()}</div></div>
-        <div style="display:flex;gap:7px;flex-wrap:wrap"><button class="hbtn" style="color:var(--g)" onclick="updateAllOfflineCatalogs()">UPDATE ALL OFFLINE DATA</button><button class="hbtn" onclick="requestOfflinePersistentStorage()">${storagePersistent?'STORAGE PROTECTED':'PROTECT DEVICE DATA'}</button></div>
+        <div><div style="font-family:'Orbitron',monospace;color:${readinessColor};font-size:13px">${fullyReady?'READY FOR OFFLINE USE':selectedKeys.length?'SELECTED OFFLINE DATA NEEDS ATTENTION':'CHOOSE OFFLINE CATALOGS'}</div><div style="font-family:monospace;font-size:9px;color:var(--dim);margin-top:5px">${readyCount}/${selectedKeys.length} selected catalogs ready · ${indexedReady?'fast search indexes ready':'one or more selected indexes need refresh'} · MTG images cached: ${Number(mtg.images||0).toLocaleString()}</div></div>
+        <div style="display:flex;gap:7px;flex-wrap:wrap"><button class="hbtn" style="color:var(--g)" onclick="updateSelectedOfflineCatalogs()" ${selectedKeys.length?'':'disabled'}>UPDATE SELECTED (${selectedKeys.length})</button><button class="hbtn" onclick="requestOfflinePersistentStorage()">${storagePersistent?'STORAGE PROTECTED':'PROTECT DEVICE DATA'}</button></div>
       </div>
+      <div style="font-family:monospace;font-size:9px;color:var(--dim);margin-top:11px">Choose only what this device/store sells. Unchecking stops future updates; use CLEAR on an installed catalog below to remove its data.</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:7px;margin-top:8px">${choice('mtg','MTG')}${choice('video_games','Video Games')}${choice('yugioh','Yu-Gi-Oh')}${choice('one_piece','One Piece')}</div>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:8px;margin-top:10px;font-family:monospace;font-size:9px;color:var(--dim)"><span>Device storage: ${bytesLabel(storageEstimate.usage)} used</span><span>Browser allowance: ${bytesLabel(storageEstimate.quota)}</span><span>Persistence: ${storagePersistent?'Granted':'Not granted'}</span><span>Updates validate before activation</span></div>
       <div id="offline-update-all-progress" style="font-family:monospace;font-size:9px;color:var(--gold);margin-top:8px"></div>
     </div>
@@ -5821,21 +5842,27 @@ async function requestOfflinePersistentStorage(){
   renderOfflineCatalogManagerPanel();return granted;
 }
 
-async function updateAllOfflineCatalogs(){
+async function updateSelectedOfflineCatalogs(){
   if(!navigator.onLine){toast_dash('Connect to update offline catalogs');return;}
-  const progress=document.getElementById('offline-update-all-progress'),failures=[];
+  const selection=offlineCatalogSelection(),selectedKeys=Object.keys(selection).filter(key=>selection[key]);
+  if(!selectedKeys.length){toast_dash('Choose at least one offline catalog');return;}
+  const progress=document.getElementById('offline-update-all-progress'),failures=[];let completed=0;
   const note=value=>{if(progress)progress.textContent=value;};
   await navigator.storage?.persist?.().catch(()=>false);
-  note('1/4 Updating MTG cards, prices, links, and search index...');
-  try{await window.ArsCaMtgOffline.sync({workerBase:WORKER,force:false,onProgress:detail=>note(`1/4 MTG: ${detail.stage}${detail.count!=null?' '+Number(detail.count).toLocaleString():''}`)});}catch(error){failures.push('MTG: '+error.message);}
-  for(let index=0;index<PRICECHARTING_OFFLINE_CATALOGS.length;index++){
-    const [category,label]=PRICECHARTING_OFFLINE_CATALOGS[index];note(`${index+2}/4 Updating ${label}...`);
-    try{await window.ArsCaPriceChartingOffline.sync(category,{workerBase:WORKER,force:false,onProgress:detail=>note(`${index+2}/4 ${label}: ${detail.stage}${detail.count!=null?' '+Number(detail.count).toLocaleString():''}`)});}catch(error){failures.push(label+': '+error.message);}
+  if(selection.mtg){
+    note(`1/${selectedKeys.length} Updating MTG cards, prices, links, and search index...`);
+    try{await window.ArsCaMtgOffline.sync({workerBase:WORKER,force:false,onProgress:detail=>note(`${completed+1}/${selectedKeys.length} MTG: ${detail.stage}${detail.count!=null?' '+Number(detail.count).toLocaleString():''}`)});}catch(error){failures.push('MTG: '+error.message);}completed++;
   }
-  note(failures.length?'Completed with issues: '+failures.join(' · '):'All catalogs validated and ready for offline use.');
-  toast_dash(failures.length?'Offline update completed with issues':'All offline catalogs are ready');
+  for(const [category,label] of PRICECHARTING_OFFLINE_CATALOGS){
+    if(!selection[category])continue;
+    note(`${completed+1}/${selectedKeys.length} Updating ${label}...`);
+    try{await window.ArsCaPriceChartingOffline.sync(category,{workerBase:WORKER,force:false,onProgress:detail=>note(`${completed+1}/${selectedKeys.length} ${label}: ${detail.stage}${detail.count!=null?' '+Number(detail.count).toLocaleString():''}`)});}catch(error){failures.push(label+': '+error.message);}completed++;
+  }
+  note(failures.length?'Completed with issues: '+failures.join(' · '):'Selected catalogs validated and ready for offline use.');
+  toast_dash(failures.length?'Offline update completed with issues':'Selected offline catalogs are ready');
   await renderOfflineCatalogManagerPanel();
 }
+async function updateAllOfflineCatalogs(){return updateSelectedOfflineCatalogs();}
 
 async function syncPriceChartingOffline(category){
   const progress=document.getElementById('pricecharting-offline-progress');
@@ -16481,7 +16508,9 @@ function startVoiceInput(inputId, done){
       el.dispatchEvent(new Event('input', { bubbles:true }));
     }
     if(showAdminDebug()) console.debug('[Search voice]', { rawTranscript, normalizedQuery:text });
-    if(typeof done === 'function') setTimeout(done, 100);
+    // Final speech results submit immediately. The submit function clears any
+    // typing debounce scheduled by the synthetic input event.
+    if(typeof done === 'function') done();
   };
   rec.onerror = e => toast_dash('Voice input failed: ' + (e.error || 'unknown'));
   rec.start();
@@ -29599,7 +29628,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.07.13.07-offline-search"></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.07.13.08-offline-choice"></script>
 </body>
 </html>
 
