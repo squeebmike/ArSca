@@ -20,8 +20,8 @@ assert.doesNotMatch(dashboard,/queueProvider\([^\n]+fetchPokemonCatalog\(q\)/, '
 assert.match(dashboard,/fetchPokemonSealedProductExact\(product\.productId\)/, 'Pokemon TCGplayer IDs must try PPT sealed-product resolution');
 assert.match(dashboard,/pricing\/justtcg\/tcgplayer\//, 'TCGplayer product IDs must resolve through an exact provider route');
 assert.match(dashboard,/^\s*} else if\(\/\^\\d\{5,8\}\$\/\.test\(text\)\)/m, 'bare TCGplayer product IDs must work without a preselected category');
-assert.match(dashboard,/searchPriceChartingOfflineCatalog\('sports'/, 'sports research must use the shared offline snapshot');
-assert.match(dashboard,/searchPriceChartingOfflineCatalog\('comics'/, 'comics research must use the shared offline snapshot');
+assert.doesNotMatch(dashboard,/searchPriceChartingOfflineCatalog\('sports'/, 'sports must use live providers because no CSV export is available');
+assert.doesNotMatch(dashboard,/searchPriceChartingOfflineCatalog\('comics'/, 'comics must use live providers and its saved-search cache because no CSV export is available');
 assert.match(worker,/catalog\\\/pricecharting\\\/\(\[a-z0-9_\]\+\)/, 'Worker must serve shared PriceCharting manifests and downloads');
 assert.match(routing,/exact sealed product type/, 'sealed product type must affect ranking');
 assert.match(routing,/intent\.confidenceByCategory\.pokemon>0/, 'Pokemon sealed API must only run for Pokemon intent');

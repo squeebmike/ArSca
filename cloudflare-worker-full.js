@@ -483,7 +483,7 @@ const MTG_CATALOG_FILE_TYPES = new Set(['cards', 'prices', 'links', 'sets']);
 // Shared PriceCharting business-download catalogs. Pokemon intentionally stays on
 // PokemonPriceTracker exports and MTG keeps its Scryfall + PriceCharting pipeline.
 const PRICECHARTING_OFFLINE_CATEGORIES = new Set([
-  'sports', 'comics', 'video_games', 'yugioh', 'one_piece',
+  'video_games', 'yugioh', 'one_piece',
 ]);
 
 function r2ObjectResponse(object, request, cacheControl) {

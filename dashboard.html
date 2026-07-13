@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.07.13.05-sealed-offline-scope">
+<meta name="version" content="2026.07.13.06-offline-export-scope">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1417,12 +1417,12 @@ body.show-mode .inv-sync-badge{display:none;}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-<script src="scripts/query-routing.js?v=2026.07.13.05-sealed-offline-scope"></script>
-<script src="scripts/barcode-lookup.js?v=2026.07.13.05-sealed-offline-scope"></script>
-<script src="scripts/comic-issue-hub.js?v=2026.07.13.05-sealed-offline-scope"></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.07.13.05-sealed-offline-scope"></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.07.13.05-sealed-offline-scope"></script>
-<script src="scripts/mtg/research-batch.js?v=2026.07.13.05-sealed-offline-scope"></script>
+<script src="scripts/query-routing.js?v=2026.07.13.06-offline-export-scope"></script>
+<script src="scripts/barcode-lookup.js?v=2026.07.13.06-offline-export-scope"></script>
+<script src="scripts/comic-issue-hub.js?v=2026.07.13.06-offline-export-scope"></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.07.13.06-offline-export-scope"></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.07.13.06-offline-export-scope"></script>
+<script src="scripts/mtg/research-batch.js?v=2026.07.13.06-offline-export-scope"></script>
 </head>
 <body>
 
@@ -1472,11 +1472,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.07.13.05-sealed-offline-scope</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.07.13.06-offline-export-scope</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.07.13.05-sealed-offline-scope</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.07.13.06-offline-export-scope</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1499,7 +1499,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.07.13.05-sealed-offline-scope</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.07.13.06-offline-export-scope</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -2852,7 +2852,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.07.13.05-sealed-offline-scope';
+const APP_VERSION = '2026.07.13.06-offline-export-scope';
 window.APP_VERSION = APP_VERSION;
 const branchName = 'main';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
@@ -5112,7 +5112,7 @@ function renderSettingsOverview(){
     settingsOverviewCard('Checkout & Payments',stripeConfigured?'Working':'Needs Setup',stripeConfigured?'working':'needs-setup',`${enabled.length?enabled.join(', '):'No tenders enabled'} · refunds Owner/Admin only`,'payments'),
     settingsOverviewCard('Cloud Consignments',cloudReady?'Working':'Local Fallback',cloudReady?'working':'local-fallback',cloudReady?`${consignLocal} local/cloud records for this store`:`${consignLocal} cached records · cloud schema or connection still needed`,'sync'),
     settingsOverviewCard('Store Data Sync',failed||conflicts?'Error':queue.filter(x=>x.status!=='done').length?'Needs Setup':'Working',failed||conflicts?'error':queue.filter(x=>x.status!=='done').length?'needs-setup':'working',`${queue.filter(x=>x.status!=='done').length} pending · ${failed} failed · ${conflicts} conflicts · ${navigator.onLine?'online':'offline'}`,'sync'),
-    settingsOverviewCard('Catalogs & Pricing','Offline Ready','offline-ready','MTG offline protected · Pokémon PPT offline planned · five PriceCharting catalogs supported','catalogs'),
+    settingsOverviewCard('Catalogs & Pricing','Offline Ready','offline-ready','MTG offline protected · Pokémon PPT offline planned · three shared PriceCharting catalogs supported','catalogs'),
     settingsOverviewCard('Inventory & Imports',all.length?'Working':'Needs Setup',all.length?'working':'needs-setup',`${all.length} inventory records · imports and exports available`,'inventory'),
     settingsOverviewCard('Subscription',sub.status?roleLabel(sub.status):'Needs Setup',sub.active?'working':'needs-setup',sub.daysRemaining?`${sub.daysRemaining} trial days remaining`:'ArSca software billing and plan status','subscription'),
     settingsOverviewCard('Users',members?'Working':'Needs Setup',members?'working':'needs-setup',`${members} accessible store membership${members===1?'':'s'} · manage staff and invites`,'users'),
@@ -5123,7 +5123,7 @@ function renderSettingsOverview(){
 function renderSettingsGeneratedPanels(){
   const overview=document.getElementById('settings-panels-overview');if(overview&&!document.getElementById('settings-overview-grid'))overview.innerHTML='<div id="settings-overview-grid" class="settings-overview-grid"></div>';
   const sync=document.getElementById('settings-panels-sync');if(sync&&!document.getElementById('cloud-consignment-settings-status'))sync.insertAdjacentHTML('afterbegin',`<div class="settings-generated-panel" id="cloud-consignment-settings-status"><div class="ph">CLOUD CONSIGNMENTS ${settingsStatus(consignmentCloudReady?'Working':'Local Fallback',consignmentCloudReady?'working':'local-fallback')}</div><div style="font-family:var(--font-mono);font-size:10px;line-height:1.65;color:var(--dim)">${consignmentCloudReady?'Per-store consignors, inventory, and sale alerts are syncing through Supabase.':'This device is using its store-scoped local cache. Apply the cloud migration and reconnect to activate cross-device sync.'}<br>People: ${consignorPeople.length} · Items: ${consignItems.length} · Sale alerts: ${getConsignmentAlerts().length}</div></div>`);if(sync&&!document.getElementById('webflow-integration-panel'))sync.insertAdjacentHTML('afterbegin','<div class="settings-generated-panel" id="webflow-integration-panel"></div>');renderWebflowIntegrationPanel?.();
-  const catalogs=document.getElementById('settings-panels-catalogs');if(catalogs&&!document.getElementById('catalog-data-concepts'))catalogs.insertAdjacentHTML('afterbegin',`<div class="settings-explainer" id="catalog-data-concepts"><b style="color:var(--text)">Three different data concepts</b><br>1. Store Data Sync — your inventory, sales, settings, users, queues, and consignments.<br>2. Offline Catalog Sync — reference catalogs downloaded to this device; they never create inventory.<br>3. Live Provider Pricing — live or scheduled candidate prices from PriceCharting, Scryfall, and PokemonPriceTracker.<br><br><b style="color:var(--g)">MTG Offline Catalog: Working.</b> Scryfall cards + PriceCharting snapshot; pipeline and image cache remain untouched.<br><b style="color:var(--gold)">Pokémon Offline Catalog: Planned next.</b> It will use PPT rather than PriceCharting.<br>PriceCharting shared offline catalogs are limited to sports cards, comics, video games, Yu-Gi-Oh, and One Piece.</div>`);
+  const catalogs=document.getElementById('settings-panels-catalogs');if(catalogs&&!document.getElementById('catalog-data-concepts'))catalogs.insertAdjacentHTML('afterbegin',`<div class="settings-explainer" id="catalog-data-concepts"><b style="color:var(--text)">Three different data concepts</b><br>1. Store Data Sync — your inventory, sales, settings, users, queues, and consignments.<br>2. Offline Catalog Sync — reference catalogs downloaded to this device; they never create inventory.<br>3. Live Provider Pricing — live or scheduled candidate prices from PriceCharting, Scryfall, and PokemonPriceTracker.<br><br><b style="color:var(--g)">MTG Offline Catalog: Working.</b> Scryfall cards + PriceCharting snapshot; pipeline and image cache remain untouched.<br><b style="color:var(--gold)">Pokémon Offline Catalog: Planned next.</b> It will use PPT rather than PriceCharting.<br>PriceCharting shared offline catalogs cover Video Games, Yu-Gi-Oh, and One Piece. Sports and comics continue to use their live providers and saved search cache because this subscription does not expose CSV exports for them.</div>`);
   const devices=document.getElementById('settings-panels-devices');if(devices&&!document.getElementById('devices-hardware-summary'))devices.innerHTML=`<div class="settings-overview-grid" id="devices-hardware-summary">${[['Barcode Scanner','Working','Camera/USB barcode evidence input'],['Phone Scan Inbox','Working','Scanner queue and tablet handoff'],['Receipt Printer','Planned','Browser print workflow; no dedicated driver'],['Cash Drawer','Working','Cash Bag tracking through checkout'],['Customer Display','Working','Cart and payment-method display'],['Stripe Reader','Planned','Coming later; no Terminal integration'],['Vending Hardware','Planned','Future hardware integration'],['Register / Device ID','Working',getDealerDeviceId()]].map(([a,b,c])=>`<article class="settings-overview-card"><div>${settingsStatus(b,b==='Working'?'working':'planned')}</div><h3>${a}</h3><p>${escHtml(c)}</p></article>`).join('')}</div>`;
   const users=document.getElementById('settings-panels-users');if(users&&!document.getElementById('permissions-summary'))users.insertAdjacentHTML('afterbegin',`<div class="settings-generated-panel" id="permissions-summary"><div class="ph">PERMISSION SUMMARY</div><div style="font-family:var(--font-mono);font-size:10px;line-height:1.65;color:var(--dim)">Owner/Admin: payment setup, refunds, members, store configuration, and advanced tools.<br>Manager/Staff: inventory and checkout according to existing role gates.<br>Scanner Only: phone scanner workflow. Stripe refunds remain Owner/Admin only.</div></div>`);
   const advanced=document.getElementById('settings-panels-advanced');if(advanced&&!document.getElementById('advanced-settings-warning'))advanced.insertAdjacentHTML('afterbegin','<div class="settings-explainer" id="advanced-settings-warning" style="border-color:rgba(255,209,102,.35)"><b style="color:var(--gold)">Advanced tools can affect local data, caches, sync queues, and diagnostics. Use carefully.</b><br>Legacy Tool Map is temporary during the UI refactor. Existing confirmation prompts remain in place.</div>');
@@ -5719,8 +5719,7 @@ function ensureOfflineCatalogManagerPanel(backoffice){
 
 let _mtgBulkSyncActive = false;
 const PRICECHARTING_OFFLINE_CATALOGS = [
-  ['sports','Sports cards'],['comics','Comics'],['video_games','Video games'],
-  ['yugioh','Yu-Gi-Oh cards'],['one_piece','One Piece cards']
+  ['video_games','Video games'],['yugioh','Yu-Gi-Oh cards'],['one_piece','One Piece cards']
 ];
 
 function formatOfflineCatalogDate(value){
@@ -17802,7 +17801,6 @@ async function saveComicsCacheResults(query, rows = [], source = 'Live lookup'){
 
 async function searchComicsOfflineCache(query, cat = ''){
   if(!isComicLookupIntent(query, cat)) return [];
-  const shared = await searchPriceChartingOfflineCatalog('comics', query).catch(() => []);
   const terms = (query||'').toLowerCase().replace(/[^a-z0-9\s#]/g,' ').split(/\s+/).filter(Boolean);
   const issues = await comicsDbAll('issues').catch(() => []);
   const recent = issues
@@ -17812,29 +17810,24 @@ async function searchComicsOfflineCache(query, cat = ''){
     .slice(0, 40)
     .map(c => ({ ...(c.issue||{}), cache:{ state: navigator.onLine ? 'cached' : 'offline', updatedAt: c.updatedAt, source: c.source||'Comics cache' }, priceSource: ((c.issue?.priceSource)||'Comics cache') + ' (cached)' }));
   const seen=new Set();
-  return [...shared,...recent].filter(row=>{const key=String(row.pricecharting?.productId||row.productId||[row.name,row.year,row.variant].join('|')).toLowerCase();if(seen.has(key))return false;seen.add(key);return true;}).slice(0,80);
+  return recent.filter(row=>{const key=String(row.pricecharting?.productId||row.productId||[row.name,row.year,row.variant].join('|')).toLowerCase();if(seen.has(key))return false;seen.add(key);return true;}).slice(0,80);
 }
 
 function priceChartingOfflineProductToQplRow(product, category){
-  const comic=category==='comics',prices=product.prices||{};
+  const prices=product.prices||{},categoryLabels={video_games:'Video Games',yugioh:'Yu-Gi-Oh!',one_piece:'One Piece'};
   return {
-    source:'PriceCharting', name:product.productName||'PriceCharting product', category:comic?'Comic':'Sports Card', set:product.consoleName||'',
+    source:'PriceCharting', name:product.productName||'PriceCharting product', category:categoryLabels[category]||'Collectibles', set:product.consoleName||'',
     year:String(product.releaseDate||'').slice(0,4), variant:product.genre||'', condition:'Ungraded', selectedCondition:'Ungraded',
-    market:Number(prices.ungraded||prices.graded||0), imageUrl:'', priceSource:'PriceCharting shared offline snapshot',
+    market:Number(prices.ungraded||prices.cib||prices.new||prices.graded||0), imageUrl:product.imageUrl||'', imageSource:product.imageUrl?'pricecharting':'placeholder', priceSource:'PriceCharting shared offline snapshot',
     productId:product.productId||'', productUrl:product.url||'', providerUrl:product.url||'', confidence:Math.min(99,70+Math.round(Number(product.offlineScore||0)/20)),
     matchWhy:['Shared PriceCharting offline catalog'], cache:{state:'offline-catalog',updatedAt:product.updatedAt||'',source:'PriceCharting business snapshot'},
-    pricecharting:{productId:product.productId||'',productName:product.productName||'',consoleName:product.consoleName||'',genre:product.genre||'',url:product.url||'',prices,comicPrices:comic?{ungraded:prices.ungraded||null,grade9_8:prices.grade9_8||prices.graded||null}:{},demand:{consoleName:product.consoleName||'',genre:product.genre||''}}, raw:product
+    pricecharting:{productId:product.productId||'',productName:product.productName||'',consoleName:product.consoleName||'',genre:product.genre||'',url:product.url||'',prices,demand:{consoleName:product.consoleName||'',genre:product.genre||''}}, raw:product
   };
 }
 async function searchPriceChartingOfflineCatalog(category,query){
   const products=await window.ArsCaPriceChartingOffline?.search(category,query,80) || [];
   return products.map(product=>priceChartingOfflineProductToQplRow(product,category));
 }
-async function searchSportsOfflineCache(query,cat=''){
-  if(!isSportsLookupIntent(query,cat))return[];
-  return searchPriceChartingOfflineCatalog('sports',query).catch(()=>[]);
-}
-
 function setMtgOfflineBanner(message = '', tone = 'warn'){
   const banner = document.getElementById('mtg-offline-banner');
   if(!banner) return;
@@ -18350,12 +18343,7 @@ async function runPriceLookup(){
     else if(!navigator.onLine){el.innerHTML=`<div style="color:var(--gold);line-height:1.6">No offline ${escHtml(cat||'PriceCharting')} result matched. Download that shared catalog in Settings, or try an exact title, UPC, ASIN, year, issue/card number, or product ID.</div>`;return;}
   }
 
-  if(wantsSports){
-    cachedResults=await searchSportsOfflineCache(q,cat);
-    if(!qplSearchStillActive(mySeq,searchPlan))return;
-    if(cachedResults.length){qplMasterResults=cachedResults;qplLastSearch=q;qplResults=filterQplMasterResults(cachedResults,cat);renderQuickLookupResults(qplResults);renderUniversalSearchExplain(searchPlan,qplResults);}
-    else if(!navigator.onLine){el.innerHTML='<div style="color:var(--gold)">No sports offline catalog result matched. Download the shared PriceCharting sports catalog in Settings.</div>';return;}
-  }
+  if(wantsSports && !navigator.onLine){el.innerHTML='<div style="color:var(--gold)">Sports pricing requires the live SportsCardsPro / PriceCharting providers. Reconnect and search by player, year, brand, set, and card number.</div>';return;}
 
   // ── Pokemon offline cache ──────────────────────────────────────────────────
   if(wantsPokemon) {
@@ -29541,7 +29529,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.07.13.05-sealed-offline-scope"></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.07.13.06-offline-export-scope"></script>
 </body>
 </html>
 
