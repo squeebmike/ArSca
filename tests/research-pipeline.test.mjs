@@ -12,6 +12,9 @@ assert.match(dashboard,/if\(typeof done === 'function'\) done\(\);/,'voice final
 assert.doesNotMatch(dashboard,/if\(typeof done === 'function'\) setTimeout\(done, 100\)/,'voice search must not keep the old delay');
 assert.match(dashboard,/UPDATE SELECTED \(\$\{selectedKeys\.length\}\)/,'offline catalogs should update only the device selection');
 assert.match(dashboard,/return \{mtg:true,video_games:false,yugioh:false,one_piece:false\}/,'new devices should choose optional catalogs instead of downloading all');
+assert.match(dashboard,/if\(id==='catalogs'\)refreshOfflineCatalogManagerPanel\(\)/,'opening Catalogs should always refresh the offline manager');
+assert.match(dashboard,/setTimeout\(\(\) => refreshOfflineCatalogManagerPanel\(\), 0\)/,'initial catalog rendering must wait until catalog constants are initialized');
+assert.match(dashboard,/function priceChartingOfflineCategoryFor\(category\)/,'research must route eligible categories into their offline catalogs');
 
 const lookup=dashboard.slice(dashboard.indexOf('async function runPriceLookup()'),dashboard.indexOf('async function fetchComicVineCover'));
 assert.ok(lookup.indexOf('const mySeq = ++_qplSearchSeq') < lookup.indexOf('resolveMtgTcgplayerProductRows'), 'sequence guard must start before exact-product async work');
