@@ -57,7 +57,7 @@ export function normalizeScryfallCard(card = {}, downloadedAt = new Date().toISO
     keywords:Array.isArray(card.keywords) ? card.keywords : [], colors:Array.isArray(card.colors) ? card.colors : (faces[0]?.colors || []),
     colorIdentity:Array.isArray(card.color_identity) ? card.color_identity : [], legalities:card.legalities || {},
     finishes:Array.isArray(card.finishes) ? card.finishes : [], prices:card.prices || {}, imageUris:card.image_uris || {},
-    cardFaces:faces, scryfallUri:card.scryfall_uri || '', purchaseUris:card.purchase_uris || {},
+    cardFaces:faces, scryfallUri:card.scryfall_uri || '', purchaseUris:card.purchase_uris || {}, tcgplayerId:String(card.tcgplayer_id || ''),
     releasedAt:card.released_at || '', downloadedAt, searchText,
   };
 }

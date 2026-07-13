@@ -2,7 +2,8 @@
   'use strict';
 
   const DB_NAME = 'arscaPriceChartingOffline';
-  const DB_VERSION = 1;
+  const DB_VERSION = 2;
+  const SEARCH_INDEX_VERSION = 1;
   const CATEGORIES = new Set(['video_games','yugioh','one_piece']);
   let dbPromise;
 
@@ -24,6 +25,12 @@
           store.createIndex('categoryVersion',['category','catalogVersion']);
           store.createIndex('productId','productId');
         }
+        const products=request.transaction.objectStore('products');
+        if(!products.indexNames.contains('categoryVersionName')) products.createIndex('categoryVersionName',['category','catalogVersion','normalizedProductName']);
+        if(!products.indexNames.contains('categoryVersionProductId')) products.createIndex('categoryVersionProductId',['category','catalogVersion','searchProductId']);
+        if(!products.indexNames.contains('categoryVersionUpc')) products.createIndex('categoryVersionUpc',['category','catalogVersion','searchUpc']);
+        if(!products.indexNames.contains('categoryVersionAsin')) products.createIndex('categoryVersionAsin',['category','catalogVersion','searchAsin']);
+        if(!db.objectStoreNames.contains('search_tokens')) db.createObjectStore('search_tokens',{keyPath:['category','catalogVersion','token','productId']});
         if(!db.objectStoreNames.contains('meta')) db.createObjectStore('meta',{keyPath:'category'});
       };
       request.onsuccess=()=>{const db=request.result;db.onversionchange=()=>db.close();resolve(db);};
@@ -39,8 +46,19 @@
     const done=transactionPromise(tx);
     await new Promise((resolve,reject)=>{const req=index.openKeyCursor(IDBKeyRange.only([category,version]));req.onerror=()=>reject(req.error);req.onsuccess=()=>{const cursor=req.result;if(!cursor){resolve();return;}store.delete(cursor.primaryKey);cursor.continue();};});
     await done;
+    const tokenTx=db.transaction('search_tokens','readwrite'),tokens=tokenTx.objectStore('search_tokens'),tokenDone=transactionPromise(tokenTx);
+    await new Promise((resolve,reject)=>{const range=IDBKeyRange.bound([category,version,'',''],[category,version,'\uffff','\uffff']);const req=tokens.openKeyCursor(range);req.onerror=()=>reject(req.error);req.onsuccess=()=>{const cursor=req.result;if(!cursor){resolve();return;}tokens.delete(cursor.primaryKey);cursor.continue();};});
+    await tokenDone;
   }
-  async function putBatch(category,version,rows){if(!rows.length)return;const db=await openDb(),tx=db.transaction('products','readwrite'),store=tx.objectStore('products');rows.forEach(row=>store.put({...row,category,catalogVersion:version}));await transactionPromise(tx);}
+  function indexTokens(row){
+    const values=[row.productName,row.consoleName,row.genre,row.releaseDate,row.upc,row.asin,row.epid,row.productId];
+    return [...new Set(normalize(values.join(' ')).split(' ').filter(token=>token.length>1||/^\d+$/.test(token)))].slice(0,32);
+  }
+  async function putBatch(category,version,rows){
+    if(!rows.length)return;const db=await openDb(),tx=db.transaction(['products','search_tokens'],'readwrite'),store=tx.objectStore('products'),tokens=tx.objectStore('search_tokens');
+    rows.forEach(row=>{const product={...row,category,catalogVersion:version,searchProductId:normalize(row.productId),searchUpc:normalize(row.upc),searchAsin:normalize(row.asin)};store.put(product);indexTokens(product).forEach(token=>tokens.put({category,catalogVersion:version,token,productId:String(product.productId)}));});
+    await transactionPromise(tx);
+  }
   async function sha256Hex(buffer){const digest=await crypto.subtle.digest('SHA-256',buffer);return [...new Uint8Array(digest)].map(byte=>byte.toString(16).padStart(2,'0')).join('');}
 
   async function sync(category,{workerBase='',force=false,onProgress}={}){
@@ -50,9 +68,11 @@
     const manifest=await manifestResponse.json();
     if(manifest.status!=='ready'||!manifest.version||!manifest.files?.products) throw new Error(`${category} catalog is not ready`);
     const active=await getMeta(category);
-    if(!force&&active?.catalogVersion===manifest.version&&active?.sha256===manifest.files.products.sha256) return {updated:false,manifest,status:await status(category)};
-    const version=manifest.version,descriptor=manifest.files.products;
+    const activeManifestVersion=active?.manifestVersion||active?.catalogVersion||'';
+    if(!force&&activeManifestVersion===manifest.version&&active?.sha256===manifest.files.products.sha256&&active?.searchIndexVersion===SEARCH_INDEX_VERSION) return {updated:false,manifest,status:await status(category)};
+    const descriptor=manifest.files.products,version=`${manifest.version}::${String(descriptor.sha256||Date.now()).slice(0,12)}${force?'::'+Date.now():''}`;
     await clearVersion(category,version);
+    try{
     onProgress?.({stage:'Downloading',category,version});
     const response=await fetch(`${workerBase}/catalog/pricecharting/${category}/download`,{cache:'no-store'});
     if(!response.ok) throw new Error(`${category} download failed (HTTP ${response.status})`);
@@ -70,9 +90,13 @@
     }
     if(pending.trim()){batch.push(JSON.parse(pending));count++;} if(batch.length)await putBatch(category,version,batch);
     if(descriptor.recordCount&&count!==Number(descriptor.recordCount)) throw new Error(`${category} record count mismatch (${count}/${descriptor.recordCount})`);
-    await putMeta({category,catalogVersion:version,sha256:descriptor.sha256||'',rowCount:count,lastImportedAt:new Date().toISOString(),generatedAt:manifest.generatedAt||'',sourceVersions:manifest.sourceVersions||{}});
+    await putMeta({category,catalogVersion:version,manifestVersion:manifest.version,sha256:descriptor.sha256||'',rowCount:count,lastImportedAt:new Date().toISOString(),generatedAt:manifest.generatedAt||'',sourceVersions:manifest.sourceVersions||{},searchIndexVersion:SEARCH_INDEX_VERSION});
     if(active?.catalogVersion&&active.catalogVersion!==version) clearVersion(category,active.catalogVersion).catch(()=>{});
     onProgress?.({stage:'Complete',category,count,version}); return {updated:true,manifest,status:await status(category)};
+    }catch(error){
+      await clearVersion(category,version).catch(()=>{});
+      throw error;
+    }
   }
 
   function queryParts(query){const raw=String(query||''),clean=normalize(raw),tokens=clean.split(' ').filter(token=>token.length>1||/^\d+$/.test(token)),identifiers=[...raw.matchAll(/(?:#|no\.?\s*)?([a-z]*\d+[a-z]*(?:[-/.][a-z0-9]+)?)/ig)].map(match=>normalize(match[1])).filter(Boolean);return{raw,clean,tokens,identifiers,year:(raw.match(/\b(?:19|20)\d{2}\b/)||[])[0]||''};}
@@ -89,13 +113,50 @@
     if(/\b(reprint|facsimile)\b/.test(hay)&&!/\b(reprint|facsimile)\b/.test(parts.clean))value-=160;
     return value;
   }
-  async function search(category,query,limit=80){
-    category=validCategory(category);const meta=await getMeta(category);if(!meta?.catalogVersion)return[];const parts=queryParts(query);if(!parts.tokens.length)return[];
-    const db=await openDb(),index=db.transaction('products','readonly').objectStore('products').index('categoryVersion');
-    const rows=await new Promise((resolve,reject)=>{const out=[],req=index.openCursor(IDBKeyRange.only([category,meta.catalogVersion]));req.onerror=()=>reject(req.error);req.onsuccess=()=>{const cursor=req.result;if(!cursor){resolve(out);return;}const value=score(cursor.value,parts);if(value!==null)out.push({...cursor.value,offlineScore:value});cursor.continue();};});
+  async function exactCandidates(db,category,version,parts){
+    const found=new Map(),add=rows=>(rows||[]).forEach(row=>found.set(String(row.productId),row));
+    const exactValues=[parts.raw.trim(),...parts.identifiers].map(normalize).filter(Boolean);
+    for(const value of exactValues){
+      for(const indexName of ['categoryVersionProductId','categoryVersionUpc','categoryVersionAsin']){
+        const store=db.transaction('products','readonly').objectStore('products');
+        const row=await requestPromise(store.index(indexName).get([category,version,value])).catch(()=>null);if(row)add([row]);
+      }
+    }
+    if(parts.clean){
+      let store=db.transaction('products','readonly').objectStore('products');
+      add(await requestPromise(store.index('categoryVersionName').getAll([category,version,parts.clean],100)).catch(()=>[]));
+      const range=IDBKeyRange.bound([category,version,parts.clean],[category,version,parts.clean+'\uffff']);
+      store=db.transaction('products','readonly').objectStore('products');
+      add(await requestPromise(store.index('categoryVersionName').getAll(range,200)).catch(()=>[]));
+    }
+    return found;
+  }
+  async function tokenCandidateIds(db,category,version,tokens,max=800){
+    const ordered=[...new Set(tokens)].sort((a,b)=>b.length-a.length),sets=[];
+    for(const token of ordered.slice(0,4)){
+      const tx=db.transaction('search_tokens','readonly'),store=tx.objectStore('search_tokens'),range=IDBKeyRange.bound([category,version,token,''],[category,version,token,'\uffff']);
+      const keys=await requestPromise(store.getAllKeys(range,max));
+      sets.push(new Set(keys.map(key=>String(key[3]))));
+      if(!keys.length)return[];
+    }
+    if(!sets.length)return[];
+    return [...sets[0]].filter(id=>sets.every(set=>set.has(id))).slice(0,max);
+  }
+  async function legacyScan(store,category,version,parts,limit){
+    const index=store.index('categoryVersion');
+    const rows=await new Promise((resolve,reject)=>{const out=[],req=index.openCursor(IDBKeyRange.only([category,version]));req.onerror=()=>reject(req.error);req.onsuccess=()=>{const cursor=req.result;if(!cursor){resolve(out);return;}const value=score(cursor.value,parts);if(value!==null)out.push({...cursor.value,offlineScore:value});cursor.continue();};});
     return rows.sort((a,b)=>b.offlineScore-a.offlineScore).slice(0,limit);
   }
-  async function status(category){category=validCategory(category);const meta=await getMeta(category);return {category,catalogVersion:meta?.catalogVersion||'',rowCount:Number(meta?.rowCount||0),lastImportedAt:meta?.lastImportedAt||'',generatedAt:meta?.generatedAt||'',sourceVersions:meta?.sourceVersions||{}};}
+  async function search(category,query,limit=20){
+    category=validCategory(category);const meta=await getMeta(category);if(!meta?.catalogVersion)return[];const parts=queryParts(query);if(!parts.tokens.length)return[];
+    const db=await openDb(),store=db.transaction('products','readonly').objectStore('products');
+    if(meta.searchIndexVersion!==SEARCH_INDEX_VERSION)return legacyScan(store,category,meta.catalogVersion,parts,limit);
+    const candidates=await exactCandidates(db,category,meta.catalogVersion,parts),ids=await tokenCandidateIds(db,category,meta.catalogVersion,parts.tokens);
+    const rows=await Promise.all(ids.map(id=>{const readStore=db.transaction('products','readonly').objectStore('products');return requestPromise(readStore.get([category,meta.catalogVersion,id]));}));
+    rows.filter(Boolean).forEach(row=>candidates.set(String(row.productId),row));
+    return [...candidates.values()].map(row=>{const value=score(row,parts);return value===null?null:{...row,offlineScore:value};}).filter(Boolean).sort((a,b)=>b.offlineScore-a.offlineScore).slice(0,limit);
+  }
+  async function status(category){category=validCategory(category);const meta=await getMeta(category);return {category,catalogVersion:meta?.manifestVersion||meta?.catalogVersion||'',storageVersion:meta?.catalogVersion||'',rowCount:Number(meta?.rowCount||0),lastImportedAt:meta?.lastImportedAt||'',generatedAt:meta?.generatedAt||'',sourceVersions:meta?.sourceVersions||{},searchIndexReady:meta?.searchIndexVersion===SEARCH_INDEX_VERSION};}
   async function clear(category){category=validCategory(category);const meta=await getMeta(category);if(meta?.catalogVersion)await clearVersion(category,meta.catalogVersion);const db=await openDb(),tx=db.transaction('meta','readwrite');tx.objectStore('meta').delete(category);await transactionPromise(tx);}
 
   root.ArsCaPriceChartingOffline={openDb,sync,search,status,clear,normalize,DB_NAME,categories:[...CATEGORIES]};

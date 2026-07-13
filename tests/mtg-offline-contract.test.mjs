@@ -13,10 +13,10 @@ assert.match(worker, /\/catalog\/mtg\/download/);
 assert.match(worker, /MTG_CATALOG_R2/);
 assert.ok(wrangler.r2_buckets?.some(binding => binding.binding === 'MTG_CATALOG_R2'));
 
-for(const store of ['mtg_cards','mtg_sets','mtg_prices','mtg_price_links','mtg_meta','mtg_images']) {
+for(const store of ['mtg_cards','mtg_sets','mtg_prices','mtg_price_links','mtg_search_tokens','mtg_price_search_tokens','mtg_meta','mtg_images']) {
   assert.match(browser, new RegExp(store));
 }
-assert.match(browser, /active\?\.catalogVersion===manifest\.version/);
+assert.match(browser, /activeManifestVersion===manifest\.version/);
 assert.match(browser, /checksum mismatch/);
 assert.match(browser, /mtg-image:\$\{scryfallId\}:\$\{faceIndex\}:\$\{size\}:\$\{hash\}/);
 assert.match(browser, /replace\(\/\\bmtg\\b\/ig/);
@@ -26,6 +26,7 @@ browserSandbox.globalThis = browserSandbox;
 vm.runInNewContext(browser, browserSandbox);
 assert.equal(browserSandbox.ArsCaMtgOffline.queryParts('mtg Black Lotus').tokens.join('|'), 'black|lotus');
 assert.equal(browserSandbox.ArsCaMtgOffline.queryParts('Magic: The Gathering Sol Ring').tokens.join('|'), 'sol|ring');
+assert.equal(browserSandbox.ArsCaMtgOffline.queryParts('https://www.tcgplayer.com/product/592073/example').tcgplayerId, '592073');
 
 assert.match(dashboard, /Offline first, online backup/);
 assert.match(dashboard, /PriceCharting offline snapshot/);
@@ -33,7 +34,7 @@ assert.match(dashboard, /Scryfall offline catalog/);
 assert.match(dashboard, /let _mtgBulkSyncActive = false/);
 assert.match(dashboard, /finally \{\s*_mtgBulkSyncActive = false/);
 assert.match(dashboard, /CACHE SET IMAGES/);
-assert.match(dashboard, /2026\.07\.13\.06-offline-export-scope/);
+assert.match(dashboard, /2026\.07\.13\.07-offline-search/);
 assert.match(dashboard, /Scryfall market \(offline catalog\)/);
 assert.match(dashboard, /!hasScryfallPrice && Number\(link\?\.confidence/);
 assert.match(dashboard, /Remote R2 bundle:/);
@@ -43,7 +44,9 @@ assert.match(dashboard, /IMPORT LATEST MTG DATA/);
 assert.match(dashboard, /mtg\.meta\?\.updateAvailable \|\| mtgAge > MS_24H/);
 assert.match(dashboard, /mtgsbNormalizeCardRecord/);
 assert.match(dashboard, /mtgsbToggleMobileFilters/);
-assert.match(browser, /const DB_VERSION = 2/);
+assert.match(browser, /const DB_VERSION = 3/);
+assert.match(browser, /searchIndexReady/);
+assert.match(browser, /searchPrices/);
 assert.match(browser, /sourceVersions:manifest\.sourceVersions\|\|\{\}/);
 assert.match(browser, /sourceVersions:active\?\.sourceVersions\|\|\{\}/);
 assert.match(browser, /catalogSet/);
