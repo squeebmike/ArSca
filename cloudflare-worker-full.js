@@ -480,7 +480,13 @@ async function handlePlatformAdmin(request, env, url) {
 }
 
 const MTG_CATALOG_FILE_TYPES = new Set(['cards', 'prices', 'links', 'sets']);
-const PRICECHARTING_OFFLINE_CATEGORIES = new Set(['sports', 'comics']);
+// Shared PriceCharting business-download catalogs. Pokemon intentionally stays on
+// PokemonPriceTracker exports and MTG keeps its Scryfall + PriceCharting pipeline.
+const PRICECHARTING_OFFLINE_CATEGORIES = new Set([
+  'sports', 'comics', 'video_games', 'funko', 'lego', 'coins', 'yugioh',
+  'one_piece', 'lorcana', 'digimon', 'dragon_ball', 'garbage_pail', 'marvel',
+  'star_wars', 'other_tcg', 'amiibo', 'strategy_guides', 'gaming_magazines',
+]);
 
 function r2ObjectResponse(object, request, cacheControl) {
   if (!object) return json({ ok: false, error: 'MTG catalog object not found' }, 404);
@@ -1009,7 +1015,7 @@ export default {
       return response;
     }
 
-    const pricechartingCatalogMatch = url.pathname.match(/^\/catalog\/pricecharting\/(sports|comics)\/(manifest|download)$/);
+    const pricechartingCatalogMatch = url.pathname.match(/^\/catalog\/pricecharting\/([a-z0-9_]+)\/(manifest|download)$/);
     if (pricechartingCatalogMatch) {
       if (request.method !== 'GET') return json({ ok: false, error: 'GET only' }, 405);
       if (!env.MTG_CATALOG_R2) return json({ ok: false, error: 'MTG_CATALOG_R2 binding is not configured' }, 503);
@@ -3040,7 +3046,7 @@ export default {
           const q = (url.searchParams.get('q') || '').trim();
           if (!q) return json({ ok: false, error: 'q required' }, 400);
           // Forward console filter to PriceCharting so category-specific searches work
-          const consoleFilter = url.searchParams.get('console') || '';
+          const consoleFilter = url.searchParams.get('console') || url.searchParams.get('category') || '';
           const apiParams = { q };
           if (consoleFilter) apiParams['console'] = consoleFilter;
           let products = [];
@@ -3056,6 +3062,21 @@ export default {
         if (productMatch) {
           const data = await pcFetch('/api/product', { id: decodeURIComponent(productMatch[1]) });
           const product = normalizePcProduct(data, data['product-name'] || '');
+          if (!product.imageUrl && product.productName && product.consoleName) {
+            const slug = value => String(value || '').toLowerCase().replace(/['’]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+            try {
+              const pageRes = await fetch(`https://www.pricecharting.com/game/${slug(product.consoleName)}/${slug(product.productName)}`, {
+                headers:{ 'User-Agent':'Mozilla/5.0 (compatible; Walk-Off Catalog Image/2026)', 'Accept':'text/html' },
+                cf:{ cacheTtl:7200, cacheEverything:true },
+              });
+              if (pageRes.ok) {
+                const html = await pageRes.text();
+                const og = html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)/i) || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i);
+                const storage = html.match(/https?:\/\/storage\.googleapis\.com\/images\.pricecharting\.com\/[^"']+\/(?:240|300|400|1600)\.jpg/i);
+                product.imageUrl = og?.[1]?.replace(/&amp;/g, '&') || storage?.[0] || '';
+              }
+            } catch (_) {}
+          }
           return json({ ok: true, source: 'PriceCharting', product, ...product });
         }
         if (url.pathname === '/pricing/pricecharting/slab-prices') {

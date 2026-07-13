@@ -19,7 +19,7 @@ assert.match(dashboard,/pricing\/justtcg\/tcgplayer\//, 'TCGplayer product IDs m
 assert.match(dashboard,/^\s*} else if\(\/\^\\d\{5,8\}\$\/\.test\(text\)\)/m, 'bare TCGplayer product IDs must work without a preselected category');
 assert.match(dashboard,/searchPriceChartingOfflineCatalog\('sports'/, 'sports research must use the shared offline snapshot');
 assert.match(dashboard,/searchPriceChartingOfflineCatalog\('comics'/, 'comics research must use the shared offline snapshot');
-assert.match(worker,/catalog\\\/pricecharting\\\/\(sports\|comics\)/, 'Worker must serve shared PriceCharting manifests and downloads');
+assert.match(worker,/catalog\\\/pricecharting\\\/\(\[a-z0-9_\]\+\)/, 'Worker must serve shared PriceCharting manifests and downloads');
 assert.match(routing,/exact sealed product type/, 'sealed product type must affect ranking');
 assert.match(routing,/intent\.confidenceByCategory\.pokemon>0/, 'Pokemon sealed API must only run for Pokemon intent');
 assert.match(offline,/checksum mismatch/, 'offline imports must verify bundle checksums');

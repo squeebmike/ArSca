@@ -1,0 +1,47 @@
+name: Build Daily PriceCharting Offline Catalogs
+
+on:
+  schedule:
+    - cron: '41 10 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: pricecharting-offline-daily
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      PRICECHARTING_CSV_URLS_JSON: ${{ secrets.PRICECHARTING_CSV_URLS_JSON }}
+      PRICECHARTING_DOWNLOAD_DELAY_MS: '610000'
+      MTG_R2_BUCKET: arsca-offline-catalogs
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Validate required secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${CLOUDFLARE_API_TOKEN:-}" || { echo "::error::CLOUDFLARE_API_TOKEN is missing"; exit 1; }
+          test -n "${CLOUDFLARE_ACCOUNT_ID:-}" || { echo "::error::CLOUDFLARE_ACCOUNT_ID is missing"; exit 1; }
+          test -n "${PRICECHARTING_CSV_URLS_JSON:-}" || { echo "::error::PRICECHARTING_CSV_URLS_JSON is missing"; exit 1; }
+      - name: Build and publish category bundles
+        run: npm run pricecharting:build -- --version="$(date -u +%F)" --upload=true
+      - name: Verify representative manifests
+        shell: bash
+        run: |
+          set -euo pipefail
+          for category in sports comics video_games funko lego coins; do
+            curl --fail --retry 5 --retry-delay 3 "https://still-resonance-4f87.swarnerauto.workers.dev/catalog/pricecharting/$category/manifest" >/dev/null
+          done

@@ -3,7 +3,7 @@
 
   const DB_NAME = 'arscaPriceChartingOffline';
   const DB_VERSION = 1;
-  const CATEGORIES = new Set(['sports','comics']);
+  const CATEGORIES = new Set(['sports','comics','video_games','funko','lego','coins','yugioh','one_piece','lorcana','digimon','dragon_ball','garbage_pail','marvel','star_wars','other_tcg','amiibo','strategy_guides','gaming_magazines']);
   let dbPromise;
 
   function normalize(value=''){
@@ -11,7 +11,7 @@
   }
   function requestPromise(request){ return new Promise((resolve,reject)=>{request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error);}); }
   function transactionPromise(tx){ return new Promise((resolve,reject)=>{tx.oncomplete=()=>resolve(true);tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error||new Error('IndexedDB transaction aborted'));}); }
-  function validCategory(category){ const value=String(category||'').toLowerCase(); if(!CATEGORIES.has(value)) throw new Error('category must be sports or comics'); return value; }
+  function validCategory(category){ const value=String(category||'').toLowerCase(); if(!CATEGORIES.has(value)) throw new Error('unsupported PriceCharting offline category'); return value; }
 
   function openDb(){
     if(dbPromise) return dbPromise;
@@ -75,13 +75,18 @@
     onProgress?.({stage:'Complete',category,count,version}); return {updated:true,manifest,status:await status(category)};
   }
 
-  function queryParts(query){const clean=normalize(query),tokens=clean.split(' ').filter(token=>token.length>1);return {clean,tokens};}
+  function queryParts(query){const raw=String(query||''),clean=normalize(raw),tokens=clean.split(' ').filter(token=>token.length>1||/^\d+$/.test(token)),identifiers=[...raw.matchAll(/(?:#|no\.?\s*)?([a-z]*\d+[a-z]*(?:[-/.][a-z0-9]+)?)/ig)].map(match=>normalize(match[1])).filter(Boolean);return{raw,clean,tokens,identifiers,year:(raw.match(/\b(?:19|20)\d{2}\b/)||[])[0]||''};}
   function score(row,parts){
     const name=row.normalizedProductName||normalize(row.productName),hay=row.searchText||normalize([row.productName,row.consoleName,row.genre,row.releaseDate].join(' '));
-    if(parts.tokens.some(token=>!hay.includes(token)))return null;
+    const hits=parts.tokens.filter(token=>hay.includes(token)),required=parts.tokens.length<=2?parts.tokens.length:Math.ceil(parts.tokens.length*.7);
+    if(hits.length<required||parts.identifiers.some(id=>!hay.includes(id)))return null;
     let value=parts.clean&&name===parts.clean?600:parts.clean&&name.startsWith(parts.clean)?420:0;
-    value+=parts.tokens.filter(token=>name.includes(token)).length*55;
+    if(parts.clean&&hay.includes(parts.clean))value+=260;
+    value+=hits.length*55+(hits.length/Math.max(1,parts.tokens.length))*180;
+    value+=parts.identifiers.filter(id=>name.includes(id)||normalize(row.productId)===id||normalize(row.upc)===id||normalize(row.asin)===id).length*220;
+    if(parts.year&&String(row.releaseDate||'').includes(parts.year))value+=100;
     if(/\b(sealed|box|pack|case|bundle|blaster|hobby|booster|display|tin)\b/.test(parts.clean)&&/\b(sealed|box|pack|case|bundle|blaster|hobby|booster|display|tin)\b/.test(hay))value+=180;
+    if(/\b(reprint|facsimile)\b/.test(hay)&&!/\b(reprint|facsimile)\b/.test(parts.clean))value-=160;
     return value;
   }
   async function search(category,query,limit=80){
@@ -93,5 +98,5 @@
   async function status(category){category=validCategory(category);const meta=await getMeta(category);return {category,catalogVersion:meta?.catalogVersion||'',rowCount:Number(meta?.rowCount||0),lastImportedAt:meta?.lastImportedAt||'',generatedAt:meta?.generatedAt||'',sourceVersions:meta?.sourceVersions||{}};}
   async function clear(category){category=validCategory(category);const meta=await getMeta(category);if(meta?.catalogVersion)await clearVersion(category,meta.catalogVersion);const db=await openDb(),tx=db.transaction('meta','readwrite');tx.objectStore('meta').delete(category);await transactionPromise(tx);}
 
-  root.ArsCaPriceChartingOffline={openDb,sync,search,status,clear,normalize,DB_NAME};
+  root.ArsCaPriceChartingOffline={openDb,sync,search,status,clear,normalize,DB_NAME,categories:[...CATEGORIES]};
 })(typeof window!=='undefined'?window:globalThis);

@@ -1,0 +1,7 @@
+id,product-name,console-name,genre,release-date,upc,asin,image-url,loose-price,cib-price,new-price,graded-price,category
+101,Shohei Ohtani #700,2024 Topps Update,Baseball,2024,111111111111,,https://example.com/ohtani.jpg,1250,,,2500,Sports Cards
+102,Amazing Spider-Man #300,Marvel Comics,Comic,1988,,,https://example.com/asm300.jpg,30000,,,80000,Comics
+103,Super Mario Bros,Nintendo NES,Video Game,1985,222222222222,B000TEST,,1500,4000,9000,,Video Games
+104,Batman #01,Funko Pop Heroes,Collectible,2010,,,,2500,3500,6000,,Funko Pops
+105,Charizard 4/102,Pokemon Cards,TCG,1999,,,,12000,,,60000,Pokemon Cards
+106,Black Lotus,Magic Cards,TCG,1993,,,,999999,,,2000000,Magic Cards
