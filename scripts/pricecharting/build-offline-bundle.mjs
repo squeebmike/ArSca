@@ -15,12 +15,14 @@ const outputRoot=path.resolve(root,String(args.get('out')||'data/pricecharting/b
 const combinedSource=String(args.get('pricecharting')||process.env.PRICECHARTING_CSV_URL||process.env.PRICECHARTING_CSV_FILE||'');
 const sourcesJson=String(args.get('sources-json')||process.env.PRICECHARTING_CSV_URLS_JSON||'').trim(),sourceMap=sourcesJson?JSON.parse(sourcesJson):{};
 const upload=args.get('upload')===true||args.get('upload')==='true',bucket=String(args.get('bucket')||process.env.MTG_R2_BUCKET||'arsca-offline-catalogs');
+const downloadDelayMs=Math.max(0,Number(args.get('download-delay-ms')||process.env.PRICECHARTING_DOWNLOAD_DELAY_MS||0)||0);
 const configPath=path.resolve(root,String(args.get('config')||'wrangler.deploy.jsonc')),generatedAt=new Date().toISOString();
 for(const key of Object.keys(sourceMap))if(!CATEGORIES.includes(key))throw new Error(`Unsupported category in sources JSON: ${key}`);
 if(!combinedSource&&!Object.keys(sourceMap).length)throw new Error('PRICECHARTING_CSV_URL, --pricecharting, or PRICECHARTING_CSV_URLS_JSON is required');
 await fsp.mkdir(rawDir,{recursive:true});
 
-async function sourceFile(input,key='combined'){if(!/^https?:\/\//i.test(input))return path.resolve(root,input);const destination=path.join(rawDir,`pricecharting-${key}.csv`),response=await fetch(input);if(!response.ok||!response.body)throw new Error(`${key} download HTTP ${response.status}`);const writer=fs.createWriteStream(destination);await new Promise((resolve,reject)=>Readable.fromWeb(response.body).pipe(writer).on('finish',resolve).on('error',reject));return destination;}
+let lastRemoteDownloadAt=0;
+async function sourceFile(input,key='combined'){if(!/^https?:\/\//i.test(input))return path.resolve(root,input);if(lastRemoteDownloadAt&&downloadDelayMs){const waitMs=Math.max(0,downloadDelayMs-(Date.now()-lastRemoteDownloadAt));if(waitMs){process.stdout.write(`[pricecharting-bundle] waiting ${Math.ceil(waitMs/1000)}s before ${key} download\n`);await new Promise(resolve=>setTimeout(resolve,waitMs));}}lastRemoteDownloadAt=Date.now();const destination=path.join(rawDir,`pricecharting-${key}.csv`),response=await fetch(input);if(!response.ok||!response.body)throw new Error(`${key} download HTTP ${response.status}`);const writer=fs.createWriteStream(destination);await new Promise((resolve,reject)=>Readable.fromWeb(response.body).pipe(writer).on('finish',resolve).on('error',reject));return destination;}
 function text(row,...keys){for(const key of keys){const value=row[key];if(value!=null&&String(value).trim())return String(value).trim();}return'';}
 function money(value){if(value==null||value==='')return null;const n=Number(String(value).replace(/[$,]/g,''));if(!Number.isFinite(n))return null;return Number.isInteger(n)&&n>999?n/100:n;}
 function categoryFor(row){const hay=[text(row,'category','console-name','console_name','console'),text(row,'genre','product-type','product_type')].join(' ').toLowerCase();const tests=[['video_games',/video game/],['yugioh',/yu-?gi-?oh/],['one_piece',/one piece/]];return tests.find(([,re])=>re.test(hay))?.[0]||'';}

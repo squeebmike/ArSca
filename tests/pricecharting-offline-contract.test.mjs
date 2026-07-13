@@ -9,6 +9,7 @@ const root=path.resolve(import.meta.dirname,'..');
 const worker=fs.readFileSync(path.join(root,'cloudflare-worker-full.js'),'utf8');
 const browser=fs.readFileSync(path.join(root,'scripts/pricecharting/offline-browser.js'),'utf8');
 const dashboard=fs.readFileSync(path.join(root,'dashboard.html'),'utf8');
+const builder=fs.readFileSync(path.join(root,'scripts/pricecharting/build-offline-bundle.mjs'),'utf8');
 assert.match(worker,/PRICECHARTING_OFFLINE_CATEGORIES[\s\S]*'video_games'[\s\S]*'yugioh'[\s\S]*'one_piece'/);
 for(const excluded of ['sports','comics','funko','lego','coins','lorcana','digimon','gaming_magazines']) assert.doesNotMatch(worker,new RegExp(`PRICECHARTING_OFFLINE_CATEGORIES[^;]*'${excluded}'`));
 assert.doesNotMatch(worker,/PRICECHARTING_OFFLINE_CATEGORIES[^;]*'pokemon'/);
@@ -17,6 +18,8 @@ assert.match(browser,/one_piece/);
 assert.match(browser,/identifiers/);
 assert.match(dashboard,/Pokémon is intentionally excluded here/);
 assert.match(dashboard,/priceChartingOfflineCategoryFor/);
+assert.match(builder,/PRICECHARTING_DOWNLOAD_DELAY_MS/);
+assert.match(builder,/lastRemoteDownloadAt/);
 
 const out=fs.mkdtempSync(path.join(os.tmpdir(),'arsca-pc-offline-'));
 const result=spawnSync(process.execPath,['scripts/pricecharting/build-offline-bundle.mjs','--pricecharting=tests/fixtures/pricecharting/offline-sample.csv','--version=test','--out='+out],{cwd:root,encoding:'utf8'});
