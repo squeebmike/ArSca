@@ -33,7 +33,7 @@ assert.match(dashboard, /Scryfall offline catalog/);
 assert.match(dashboard, /let _mtgBulkSyncActive = false/);
 assert.match(dashboard, /finally \{\s*_mtgBulkSyncActive = false/);
 assert.match(dashboard, /CACHE SET IMAGES/);
-assert.match(dashboard, /2026\.07\.09\.03-mtg-offline-url-resolve/);
+assert.match(dashboard, /2026\.07\.13\.02-research-pipeline/);
 assert.match(dashboard, /Scryfall market \(offline catalog\)/);
 assert.match(dashboard, /!hasScryfallPrice && Number\(link\?\.confidence/);
 assert.match(dashboard, /Remote R2 bundle:/);

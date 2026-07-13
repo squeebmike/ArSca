@@ -689,7 +689,7 @@ const STORE = {
   wf_status_instock:'f3769d1e15fa0956f98984d6fa36437f',
   wf_status_sold:   'e6b42f14fcb99aa2168a5f5672226f68',
 };
-const APP_VERSION = '2026.07.03.06-responsive-inventory';
+const APP_VERSION = '2026.07.13.02-research-pipeline';
 const SUPABASE_URL = 'https://vroknjrxubsqyexngwus.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_wbpX2nL8l-4NbXtZNG_bjA_nabSYaJ5';
 const WORKER_URL = STORE.worker_url;
@@ -705,6 +705,19 @@ function getScannerSupabaseClient(){
     auth:{ persistSession:true, autoRefreshToken:true, detectSessionInUrl:true }
   });
   return scannerSupabaseClient;
+}
+
+async function scannerWorkerFetch(path, options = {}){
+  const authSession = getScannerAuthSession();
+  if(authSession?.demoMode) throw new Error('Demo mode keeps Worker data local');
+  const sb = getScannerSupabaseClient();
+  const session = (await sb?.auth.getSession().catch(() => null))?.data?.session;
+  if(!session?.access_token) throw new Error('Sign in to access live store services');
+  const headers = new Headers(options.headers || {});
+  headers.set('Authorization', 'Bearer ' + session.access_token);
+  headers.set('X-Store-Id', getScannerActiveStoreId());
+  const target = /^https?:\/\//i.test(path) ? path : WORKER_URL + path;
+  return fetch(target, { ...options, headers });
 }
 function getScannerAuthSession(){ try { return JSON.parse(localStorage.getItem(WALKOFF_AUTH_SESSION_KEY) || 'null'); } catch(e) { return null; } }
 function getScannerActiveStoreId(){ return localStorage.getItem(WALKOFF_ACTIVE_STORE_KEY) || getScannerAuthSession()?.activeStoreId || 'walkoff-main'; }
@@ -1220,7 +1233,7 @@ async function wfFetch(path, options){
     {'Content-Type':'application/json','accept':'application/json'},
     options.headers || {}
   );
-  return fetch(url, Object.assign({}, options, {headers: headers}));
+  return scannerWorkerFetch(url, Object.assign({}, options, {headers: headers}));
 }
 
 
@@ -2256,7 +2269,7 @@ async function uploadCardImage(cardName) {
 
     console.log('Uploading image:', fileName, '~' + Math.round(base64.length * 0.75 / 1024) + 'KB');
 
-    const res = await fetch(WORKER_URL + '/upload-image', {
+    const res = await scannerWorkerFetch('/upload-image', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ base64, fileName, mimeType: 'image/jpeg' }),
@@ -2361,7 +2374,7 @@ async function syncToShopProduct(entry, imageUrl, extraPhotoUrls){
   console.log('Syncing:', name, '| $' + (priceCents/100).toFixed(2));
 
   try{
-    const res = await fetch(url, {
+    const res = await scannerWorkerFetch(url, {
       method: 'POST',
       headers: { 'Content-Type':'application/json', 'accept':'application/json' },
       body: JSON.stringify(payload)
@@ -2382,7 +2395,7 @@ async function syncToShopProduct(entry, imageUrl, extraPhotoUrls){
     let photo2Url = null;
     if(entry.backB64) {
       try {
-        const b2Res = await fetch(WORKER_URL + '/upload-image', {
+        const b2Res = await scannerWorkerFetch('/upload-image', {
           method: 'POST',
           headers: {'Content-Type':'application/json'},
           body: JSON.stringify({
@@ -2661,7 +2674,7 @@ function capture(){
 }
 async function _claudeCall(model, msgs, maxTok){
   // Routes through Cloudflare Worker — API key never touches the browser
-  const res = await fetch(WORKER_URL + '/anthropic/messages', {
+  const res = await scannerWorkerFetch('/anthropic/messages', {
     method: 'POST',
     headers: {'Content-Type':'application/json'},
     body: JSON.stringify({ model, max_tokens: maxTok || 1000, messages: msgs })
@@ -2751,7 +2764,7 @@ function scanHandoffKey() {
 
 async function readScanHandoffQueue() {
   try {
-    const res = await fetch(scopedWorkerPath('/kv/' + encodeURIComponent(scanHandoffKey())), { signal: AbortSignal.timeout(2500) });
+    const res = await scannerWorkerFetch(scopedWorkerPath('/kv/' + encodeURIComponent(scanHandoffKey())), { signal: AbortSignal.timeout(2500) });
     const data = await res.json();
     return data?.value ? JSON.parse(data.value) : [];
   } catch(e) {
@@ -2760,7 +2773,7 @@ async function readScanHandoffQueue() {
 }
 
 async function writeScanHandoffQueue(queue) {
-  await fetch(scopedWorkerPath('/kv/' + encodeURIComponent(scanHandoffKey())), {
+  await scannerWorkerFetch(scopedWorkerPath('/kv/' + encodeURIComponent(scanHandoffKey())), {
     method: 'POST',
     headers: {'Content-Type':'application/json'},
     body: JSON.stringify(queue.slice(0, 25)),
@@ -5125,7 +5138,7 @@ window.confirmAdd=async function(id){
       try {
         const photoName = 'card-' + (item.player||item.name||'scan').toLowerCase()
           .replace(/[^a-z0-9]+/g,'-').substring(0,40) + '-' + Date.now().toString(36) + '.jpg';
-        const uploadRes = await fetch(WORKER_URL + '/upload-image', {
+        const uploadRes = await scannerWorkerFetch('/upload-image', {
           method: 'POST',
           headers: {'Content-Type':'application/json'},
           body: JSON.stringify({ base64: photoBase64, fileName: photoName, mimeType: 'image/jpeg' })
@@ -5154,7 +5167,7 @@ window.confirmAdd=async function(id){
       for(let ep of el._extraPhotos) {
         try {
           const epName = 'card-extra-'+Date.now().toString(36)+'.jpg';
-          const epRes = await fetch(WORKER_URL+'/upload-image', {
+          const epRes = await scannerWorkerFetch('/upload-image', {
             method:'POST', headers:{'Content-Type':'application/json'},
             body: JSON.stringify({base64:ep, fileName:epName, mimeType:'image/jpeg'})
           });
@@ -5484,7 +5497,7 @@ async function testWebflowWrite(){
     publishStatus:'staging'
   };
   try{
-    const r = await fetch(url,{method:'POST',headers:{'Content-Type':'application/json','accept':'application/json'},body:JSON.stringify(testPayload)});
+    const r = await scannerWorkerFetch(url,{method:'POST',headers:{'Content-Type':'application/json','accept':'application/json'},body:JSON.stringify(testPayload)});
     const txt = await r.text();
     if(res_el){
       res_el.style.color = r.ok ? 'var(--g)' : 'var(--red)';
@@ -5813,7 +5826,7 @@ window.submitEbayListing = async function(id) {
   if(el?._capturedPhoto && !el._uploadedPhotoUrl) {
     status.textContent = '📸 Uploading photo...';
     try {
-      const upRes = await fetch(WORKER_URL + '/upload-image', {
+      const upRes = await scannerWorkerFetch('/upload-image', {
         method: 'POST',
         headers: {'Content-Type':'application/json'},
         body: JSON.stringify({
@@ -5839,7 +5852,7 @@ window.submitEbayListing = async function(id) {
   };
 
   try {
-    const res = await fetch(WORKER_URL + '/ebay/list', {
+    const res = await scannerWorkerFetch('/ebay/list', {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
       body: JSON.stringify(payload),
@@ -5997,7 +6010,7 @@ function loadCartState() {
   // This makes the scanner pick up a cart started on another device
   setTimeout(async () => {
     try {
-      const r = await fetch(scopedWorkerPath('/cart'), {signal: AbortSignal.timeout(2000)});
+      const r = await scannerWorkerFetch(scopedWorkerPath('/cart'), {signal: AbortSignal.timeout(2000)});
       if(!r.ok) return;
       const wc = await r.json();
       const localSaved = localStorage.getItem('pos_cart_v2');
@@ -6043,7 +6056,7 @@ function saveCartState() {
   try {
     localStorage.setItem('pos_cart_v2', JSON.stringify(cartData));
     // Push to Worker for cross-device sync (tablet customer display)
-    fetch(scopedWorkerPath('/cart'), {
+    scannerWorkerFetch(scopedWorkerPath('/cart'), {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
       body: JSON.stringify(cartData),
@@ -6107,14 +6120,14 @@ async function flushSyncQueue() {
           signal: AbortSignal.timeout(12000),
         });
       } else if(job.type === 'cart-sync') {
-        res = await fetch(scopedWorkerPath('/cart'), {
+        res = await scannerWorkerFetch(scopedWorkerPath('/cart'), {
           method:'POST',
           headers:{'Content-Type':'application/json'},
           body: JSON.stringify(job.payload.cartData),
           signal: AbortSignal.timeout(5000),
         });
       } else {
-        res = await fetch(scopedWorkerPath('/pos/checkout'), {
+        res = await scannerWorkerFetch(scopedWorkerPath('/pos/checkout'), {
           method:'POST',
           headers:{'Content-Type':'application/json'},
           body: JSON.stringify(job.payload),
@@ -6335,7 +6348,7 @@ function renderCart(){
 async function syncCartToWorker(cartData) {
   // Write cart to Worker KV so any device can read it
   try {
-    const res = await fetch(scopedWorkerPath('/cart'), {
+    const res = await scannerWorkerFetch(scopedWorkerPath('/cart'), {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
       body: JSON.stringify(cartData),
@@ -6678,7 +6691,7 @@ async function processStripePayment(){
   status.style.color = 'var(--gold)';
   try {
     // Create PaymentIntent via Worker
-    const res = await fetch(WORKER_URL + '/stripe/create-payment-intent', {
+    const res = await scannerWorkerFetch('/stripe/create-payment-intent', {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
       body: JSON.stringify({ amount: Math.round(total * 100), currency: 'usd',
@@ -6745,7 +6758,7 @@ async function recordTransaction(method, total, change){
 
   const checkoutPayload = { transaction: tx, items: cartSnapshot, show, source: 'scanner', appVersion: APP_VERSION };
   try {
-    const res = await fetch(scopedWorkerPath('/pos/checkout'), {
+    const res = await scannerWorkerFetch(scopedWorkerPath('/pos/checkout'), {
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body: JSON.stringify(checkoutPayload),
@@ -6843,7 +6856,7 @@ async function recordTransaction(method, total, change){
   renderCart();
 
   // Clear Worker cart so tablet shows empty
-  fetch(scopedWorkerPath('/cart'), {
+  scannerWorkerFetch(scopedWorkerPath('/cart'), {
     method:'POST',
     headers:{'Content-Type':'application/json'},
     body: JSON.stringify({items:[], discount:0, total:0, clearedAt: soldAt, lastTxId: tx.id})

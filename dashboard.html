@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.07.09.03-mtg-offline-url-resolve">
+<meta name="version" content="2026.07.13.02-research-pipeline">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1417,11 +1417,12 @@ body.show-mode .inv-sync-badge{display:none;}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-<script src="scripts/query-routing.js?v=2026.07.09.03-mtg-offline-url-resolve"></script>
-<script src="scripts/barcode-lookup.js?v=2026.07.09.03-mtg-offline-url-resolve"></script>
-<script src="scripts/comic-issue-hub.js?v=2026.07.09.03-mtg-offline-url-resolve"></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.07.09.03-mtg-offline-url-resolve"></script>
-<script src="scripts/mtg/research-batch.js?v=2026.07.09.03-mtg-offline-url-resolve"></script>
+<script src="scripts/query-routing.js?v=2026.07.13.02-research-pipeline"></script>
+<script src="scripts/barcode-lookup.js?v=2026.07.13.02-research-pipeline"></script>
+<script src="scripts/comic-issue-hub.js?v=2026.07.13.02-research-pipeline"></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.07.13.02-research-pipeline"></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.07.13.02-research-pipeline"></script>
+<script src="scripts/mtg/research-batch.js?v=2026.07.13.02-research-pipeline"></script>
 </head>
 <body>
 
@@ -1471,11 +1472,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.07.09.03-mtg-offline-url-resolve</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.07.13.02-research-pipeline</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.07.09.03-mtg-offline-url-resolve</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.07.13.02-research-pipeline</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1498,7 +1499,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.07.09.03-mtg-offline-url-resolve</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.07.13.02-research-pipeline</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -2840,7 +2841,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.07.09.03-mtg-offline-url-resolve';
+const APP_VERSION = '2026.07.13.02-research-pipeline';
 window.APP_VERSION = APP_VERSION;
 const branchName = 'main';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
@@ -2908,6 +2909,19 @@ function getSupabaseClient(){
     auth:{ persistSession:true, autoRefreshToken:true, detectSessionInUrl:true }
   });
   return supabaseClient;
+}
+
+async function storeWorkerFetch(path, options = {}){
+  const ctx = getAccountContext();
+  if(ctx.isDemo) throw new Error('Demo mode keeps Worker data local');
+  const sb = getSupabaseClient();
+  const session = (await sb?.auth.getSession().catch(() => null))?.data?.session;
+  if(!session?.access_token) throw new Error('Sign in to access live store services');
+  const headers = new Headers(options.headers || {});
+  headers.set('Authorization', 'Bearer ' + session.access_token);
+  headers.set('X-Store-Id', getActiveStoreId());
+  const target = /^https?:\/\//i.test(path) ? path : WORKER + path;
+  return fetch(target, { ...options, headers });
 }
 
 function getAuthSession(){ try { return JSON.parse(localStorage.getItem(WALKOFF_AUTH_SESSION_KEY) || 'null'); } catch(e) { return null; } }
@@ -3183,7 +3197,7 @@ async function checkAndApplySubscriptionState(){
 
   // Initialise trial if this store has never been seen (idempotent)
   try {
-    await fetch(WORKER + '/subscription/init-trial', {
+    await storeWorkerFetch('/subscription/init-trial', {
       method:'POST', headers:{'Content-Type':'application/json'},
       body:JSON.stringify({ store_id:storeId })
     });
@@ -3192,7 +3206,7 @@ async function checkAndApplySubscriptionState(){
   let sub = { status:'none', active:false, daysRemaining:0 };
   let subCheckFailed = false;
   try {
-    const res = await fetch(WORKER + `/subscription/status?store_id=${encodeURIComponent(storeId)}`, { cache:'no-store' });
+    const res = await storeWorkerFetch(`/subscription/status?store_id=${encodeURIComponent(storeId)}`, { cache:'no-store' });
     if(res.ok) sub = await res.json();
     else subCheckFailed = true;
   } catch(_){ subCheckFailed = true; }
@@ -3300,7 +3314,7 @@ async function openSubscriptionCheckout(storeId, email, planCode='store'){
   const ctx = getAccountContext();
   const storeName = ctx.stores?.find(s => s.id === storeId)?.displayName || ctx.stores?.[0]?.displayName || '';
   try {
-    const res = await fetch(WORKER + '/subscription/checkout', {
+    const res = await storeWorkerFetch('/subscription/checkout', {
       method:'POST', headers:{'Content-Type':'application/json'},
       body:JSON.stringify({ store_id:storeId, store_name:storeName, email:email || ctx.user?.email || '', plan_code:planCode })
     });
@@ -3315,7 +3329,7 @@ async function openSubscriptionCheckout(storeId, email, planCode='store'){
 
 async function openSubscriptionPortal(storeId){
   try {
-    const res = await fetch(WORKER + '/subscription/customer-portal', {
+    const res = await storeWorkerFetch('/subscription/customer-portal', {
       method:'POST', headers:{'Content-Type':'application/json'},
       body:JSON.stringify({ store_id:storeId })
     });
@@ -5706,12 +5720,14 @@ function formatOfflineCatalogDate(value){
 async function renderOfflineCatalogManagerPanel(){
   const body = document.getElementById('offline-catalog-manager-body');
   if(!body) return;
-  const [pptCards, pptSealed, pptEbay, pptPop, mtg] = await Promise.all([
+  const [pptCards, pptSealed, pptEbay, pptPop, mtg, sportsPc, comicsPc] = await Promise.all([
     catalogDbGet('meta', 'export_cards').catch(() => null),
     catalogDbGet('meta', 'export_sealed').catch(() => null),
     catalogDbGet('meta', 'export_ebay').catch(() => null),
     catalogDbGet('meta', 'export_population').catch(() => null),
     mtgCatalogCounts().catch(() => ({ cards:0, sets:0, meta:{} })),
+    window.ArsCaPriceChartingOffline?.status('sports').catch(() => null),
+    window.ArsCaPriceChartingOffline?.status('comics').catch(() => null),
   ]);
   const row = (label, count, downloadedAt, status, actions, source) => `
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;align-items:center;border-top:1px solid var(--border);padding:9px 0;font-family:monospace;font-size:10px">
@@ -5761,8 +5777,22 @@ async function renderOfflineCatalogManagerPanel(){
       </select>
       <span id="mtg-offline-progress" style="color:var(--gold);min-width:160px">${mtgBusy?'Checking manifest...':''}</span>
     </div>
-    <div style="font-family:monospace;font-size:9px;color:var(--dim);line-height:1.55;margin-top:8px">Catalog version: ${escHtml(mtgMeta.catalogVersion || 'not downloaded')} / Prices version: ${escHtml(mtgMeta.pricesVersion || 'not downloaded')}. ${mtgRemoteLine} ${mtgLocalLine} R2 holds the daily compressed bundle; this device imports it into IndexedDB. PriceCharting values are a daily snapshot, not live prices. Images are cached separately only when viewed.</div>`;
+    <div style="font-family:monospace;font-size:9px;color:var(--dim);line-height:1.55;margin-top:8px">Catalog version: ${escHtml(mtgMeta.catalogVersion || 'not downloaded')} / Prices version: ${escHtml(mtgMeta.pricesVersion || 'not downloaded')}. ${mtgRemoteLine} ${mtgLocalLine} R2 holds the daily compressed bundle; this device imports it into IndexedDB. PriceCharting values are a daily snapshot, not live prices. Images are cached separately only when viewed.</div>
+    <div style="font-family:'Orbitron',monospace;color:var(--purple);font-size:11px;letter-spacing:.05em;margin-top:16px">PRICECHARTING SHARED OFFLINE DATA</div>
+    ${row('Sports cards', sportsPc?.rowCount || 0, sportsPc?.lastImportedAt, sportsPc?.catalogVersion ? 'Local current' : 'Waiting for business export bundle', `<button class="hbtn" onclick="syncPriceChartingOffline('sports')">DOWNLOAD / REFRESH</button><button class="hbtn" onclick="clearPriceChartingOffline('sports')">CLEAR</button>`, 'PriceCharting business snapshot')}
+    ${row('Comics', comicsPc?.rowCount || 0, comicsPc?.lastImportedAt, comicsPc?.catalogVersion ? 'Local current' : 'Waiting for business export bundle', `<button class="hbtn" onclick="syncPriceChartingOffline('comics')">DOWNLOAD / REFRESH</button><button class="hbtn" onclick="clearPriceChartingOffline('comics')">CLEAR</button>`, 'PriceCharting business snapshot')}
+    <div id="pricecharting-offline-progress" style="font-family:monospace;font-size:9px;color:var(--gold);margin-top:6px"></div>`;
 }
+
+async function syncPriceChartingOffline(category){
+  const progress=document.getElementById('pricecharting-offline-progress');
+  try{
+    await window.ArsCaPriceChartingOffline.sync(category,{workerBase:WORKER,force:true,onProgress:detail=>{if(progress)progress.textContent=`${category}: ${detail.stage}${detail.count!=null?' '+Number(detail.count).toLocaleString():''}`;}});
+    toast_dash(`${category} offline catalog updated`);
+  }catch(e){toast_dash(`${category} offline catalog: ${e.message}`);}
+  renderOfflineCatalogManagerPanel();
+}
+async function clearPriceChartingOffline(category){await window.ArsCaPriceChartingOffline?.clear(category);renderOfflineCatalogManagerPanel();toast_dash(`${category} offline catalog cleared`);}
 
 async function renderPokemonExportPanel(){
   const container = document.getElementById('ppt-export-rows');
@@ -8650,7 +8680,7 @@ function renderSpreadsheetMapping(){
     tcgPlayerId:['tcgplayer product id','product id'],
     tcgplayerSkuId:['tcgplayer sku id','sku id','sku'],
   };
-  const opts = '<option value="">-- ignore --</option>' + pendingCsvHeaders.map(h => `<option value="${h}">${h}</option>`).join('');
+  const opts = '<option value="">-- ignore --</option>' + pendingCsvHeaders.map(h => `<option value="${escHtml(h)}">${escHtml(h)}</option>`).join('');
   box.style.display = '';
   box.innerHTML = `<div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);margin-bottom:8px">${pendingCsvRows.length} rows found. Map your spreadsheet columns:</div>
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
@@ -8691,7 +8721,7 @@ function renderSpreadsheetMapping(){
       <button class="hbtn" onclick="importMappedSpreadsheet(true)">IMPORT TO STORE DATABASE</button>
       <button class="hbtn danger" onclick="pendingCsvRows=[];document.getElementById('sheet-mapping').style.display='none'">CANCEL</button>
     </div>`;
-  preview.innerHTML = pendingCsvRows.slice(0,5).map(r => `<div style="border:1px solid var(--border);background:var(--surf2);border-radius:6px;padding:7px">${pendingCsvHeaders.slice(0,6).map(h => `${h}: ${r[h]}`).join(' · ')}</div>`).join('');
+  preview.innerHTML = pendingCsvRows.slice(0,5).map(r => `<div style="border:1px solid var(--border);background:var(--surf2);border-radius:6px;padding:7px">${pendingCsvHeaders.slice(0,6).map(h => `${escHtml(h)}: ${escHtml(r[h])}`).join(' · ')}</div>`).join('');
   validateSpreadsheetMapping();
 }
 
@@ -9437,7 +9467,7 @@ async function processSyncItem(item){
     return;
   }
   if(item.type === 'webflow-patch') {
-    const res = await fetch(WORKER+'/proxy/collections/'+WF_PRODUCTS+'/items/'+item.payload.id, { method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ fieldData:item.payload.fieldData }) });
+    const res = await storeWorkerFetch('/proxy/collections/'+WF_PRODUCTS+'/items/'+item.payload.id, { method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ fieldData:item.payload.fieldData }) });
     if(!res.ok) throw new Error('Webflow patch '+res.status+': '+(await res.text()).slice(0,160));
     return;
   }
@@ -9447,7 +9477,7 @@ async function processSyncItem(item){
     return;
   }
   if(item.type === 'lifecycle-kv') {
-    const res = await fetch(scopedWorkerPath('/kv/inventory_lifecycle'), { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(item.payload.map) });
+    const res = await storeWorkerFetch(scopedWorkerPath('/kv/inventory_lifecycle'), { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(item.payload.map) });
     if(!res.ok) throw new Error('Lifecycle sync '+res.status);
     return;
   }
@@ -9598,7 +9628,7 @@ function renderCustomers(){
   if(!list) return;
   const c = getCustomers();
   if(count) count.textContent = c.length + ' contacts';
-  list.innerHTML = c.length ? c.slice(0,30).map(x => `<div style="border:1px solid var(--border);background:var(--surf2);border-radius:7px;padding:8px"><b style="color:var(--text)">${x.name||'Customer'}</b> · ${x.contact||''}<div>${x.notes||''}</div></div>`).join('') : '<div style="padding:10px;border:1px dashed var(--border);border-radius:8px;text-align:center">No customers yet</div>';
+  list.innerHTML = c.length ? c.slice(0,30).map(x => `<div style="border:1px solid var(--border);background:var(--surf2);border-radius:7px;padding:8px"><b style="color:var(--text)">${escHtml(x.name||'Customer')}</b> · ${escHtml(x.contact||'')}<div>${escHtml(x.notes||'')}</div></div>`).join('') : '<div style="padding:10px;border:1px dashed var(--border);border-radius:8px;text-align:center">No customers yet</div>';
 }
 function exportCustomersCSV(){ downloadCSV('walkoff-customers-'+new Date().toISOString().slice(0,10)+'.csv', [['name','contact','notes','created_at']].concat(getCustomers().map(c => [c.name,c.contact,c.notes,c.createdAt]))); }
 
@@ -10150,7 +10180,7 @@ async function launchStripeQrCheckout(totalDollars){
 
   try {
     const profile = getVendorProfile();
-    const res = await fetch(WORKER + '/stripe/create-checkout', {
+    const res = await storeWorkerFetch('/stripe/create-checkout', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -10185,7 +10215,7 @@ async function launchStripeQrCheckout(totalDollars){
 async function stripeQrPoll(){
   if(!_stripeQrSessionId) return;
   try {
-    const res = await fetch(WORKER + '/stripe/session-status?id=' + encodeURIComponent(_stripeQrSessionId));
+    const res = await storeWorkerFetch('/stripe/session-status?id=' + encodeURIComponent(_stripeQrSessionId));
     const data = await res.json();
     if(data.paid || data.payment_status === 'paid') {
       clearInterval(_stripeQrPollTimer);
@@ -10549,7 +10579,7 @@ function getLifecycleMap(){
 function saveLifecycleMap(map){
   localStorage.setItem('inventory_lifecycle', JSON.stringify(map));
   if(getAccountContext().isDemo) return; // Demo: local only, no worker KV writes
-  fetch(scopedWorkerPath('/kv/inventory_lifecycle'), {
+  storeWorkerFetch(scopedWorkerPath('/kv/inventory_lifecycle'), {
     method: 'POST',
     headers: {'Content-Type':'application/json'},
     body: JSON.stringify(map)
@@ -10560,7 +10590,7 @@ function saveLifecycleMap(map){
 
 async function syncLifecycleFromWorker(){
   try {
-    const res = await fetch(scopedWorkerPath('/kv/inventory_lifecycle'), { cache: 'no-store' });
+    const res = await storeWorkerFetch(scopedWorkerPath('/kv/inventory_lifecycle'), { cache: 'no-store' });
     const data = await res.json().catch(() => ({}));
     if(res.ok && data.value) {
       const parsed = typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
@@ -11240,7 +11270,7 @@ async function refreshEbayStatus(){
   status.textContent = 'checking...';
   status.style.color = 'var(--dim)';
   try {
-    const res = await fetch(WORKER + '/ebay/status', { cache:'no-store', signal:AbortSignal.timeout(3500) });
+    const res = await storeWorkerFetch('/ebay/status', { cache:'no-store', signal:AbortSignal.timeout(3500) });
     const d = await res.json();
     if(!res.ok) throw new Error(d.error || 'eBay status failed');
     if(d.readyToList && d.refreshConfigured) {
@@ -11270,7 +11300,7 @@ async function refreshEbayStatus(){
 async function connectEbay(){
   const hint = document.getElementById('ebay-oauth-hint');
   try {
-    const res = await fetch(WORKER + '/ebay/auth-url', { cache:'no-store', signal:AbortSignal.timeout(3500) });
+    const res = await storeWorkerFetch('/ebay/auth-url', { cache:'no-store', signal:AbortSignal.timeout(3500) });
     const d = await res.json();
     if(!res.ok || !d.url) throw new Error(d.error || 'Could not create eBay auth URL');
     window.open(d.url, '_blank');
@@ -11575,7 +11605,7 @@ async function readScanInbox(){
     console.warn('Supabase scan inbox failed; falling back to Worker KV:', error.message);
   }
   try {
-    const r = await fetch(scopedWorkerPath('/kv/' + encodeURIComponent(scanHandoffKey())), { signal: AbortSignal.timeout(2500) });
+    const r = await storeWorkerFetch(scopedWorkerPath('/kv/' + encodeURIComponent(scanHandoffKey())), { signal: AbortSignal.timeout(2500) });
     const d = await r.json();
     return d?.value ? JSON.parse(d.value) : [];
   } catch(e) {
@@ -11597,7 +11627,7 @@ async function writeScanInbox(queue){
     }
     return;
   }
-  await fetch(scopedWorkerPath('/kv/' + encodeURIComponent(scanHandoffKey())), {
+  await storeWorkerFetch(scopedWorkerPath('/kv/' + encodeURIComponent(scanHandoffKey())), {
     method:'POST',
     headers:{'Content-Type':'application/json'},
     body: JSON.stringify(queue.slice(0,25)),
@@ -11616,18 +11646,18 @@ async function markScanInboxItem(scan, status='reviewed'){
 }
 
 async function wfGet(path){
-  const r = await fetch(WORKER+'/proxy'+path,{headers:{'accept':'application/json','Content-Type':'application/json'}});
+  const r = await storeWorkerFetch('/proxy'+path,{headers:{'accept':'application/json','Content-Type':'application/json'}});
   if(!r.ok) throw new Error('API '+r.status);
   return r.json();
 }
 async function wfPatch(path, body){
-  return fetch(WORKER+'/proxy'+path,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  return storeWorkerFetch('/proxy'+path,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
 }
 
 async function postCartToWorker(cartData, queueOnFail = true){
   if(getAccountContext().isDemo) return true; // Demo: no worker cart sync
   try {
-    const res = await fetch(cartWorkerPath(), {
+    const res = await storeWorkerFetch(cartWorkerPath(), {
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify(cartData),
@@ -14172,7 +14202,7 @@ async function submitDashboardEbayListing(id){
     },
   };
   try{
-    const res=await fetch(WORKER+'/ebay/list',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    const res=await storeWorkerFetch('/ebay/list',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
     const data=await res.json().catch(()=>({}));
     if(!res.ok || !data.listingId) {
       const msg = data.error || ('eBay error '+res.status);
@@ -14203,8 +14233,9 @@ let wantList = JSON.parse(localStorage.getItem('pos_wantlist')||'[]');
 
 function saveWantList(){
   localStorage.setItem('pos_wantlist', JSON.stringify(wantList));
+  if(getAccountContext().isDemo) return;
   // Sync to Worker for cross-device access
-  fetch(WORKER + '/wantlist', {
+  storeWorkerFetch(scopedWorkerPath('/kv/wantlist'), {
     method: 'POST',
     headers: {'Content-Type':'application/json'},
     body: JSON.stringify(wantList),
@@ -14213,7 +14244,7 @@ function saveWantList(){
 
 async function loadWantListFromWorker() {
   try {
-    const r = await fetch(WORKER + '/wantlist', {signal: AbortSignal.timeout(2000)});
+    const r = await storeWorkerFetch(scopedWorkerPath('/kv/wantlist'), {signal: AbortSignal.timeout(2000)});
     if(r.ok) {
       const remote = await r.json();
       if(Array.isArray(remote) && remote.length > 0) {
@@ -14232,7 +14263,7 @@ async function syncWantListToWebflow(){
   // Uses the lba_inventory collection with a special id 'pos-wantlist-sync'
   try {
     const payload = { key: 'wantlist', value: JSON.stringify(wantList), updated: new Date().toISOString() };
-    await fetch(WORKER+'/proxy/collections/65eb45a28ff6bf3fe4f17b14/items/pos-wantlist-sync', {
+    await storeWorkerFetch('/proxy/collections/65eb45a28ff6bf3fe4f17b14/items/pos-wantlist-sync', {
       method: 'PATCH',
       headers: {'Content-Type':'application/json'},
       body: JSON.stringify({ fieldData: { name:'pos-wantlist-sync', 'card-description': JSON.stringify(wantList) } })
@@ -14243,7 +14274,7 @@ async function syncWantListToWebflow(){
 async function loadWantListFromWebflow(){
   // Try to load from Worker KV first (fastest cross-device sync)
   try {
-    const r = await fetch(WORKER+'/kv/wantlist', {signal: AbortSignal.timeout(3000)});
+    const r = await storeWorkerFetch(scopedWorkerPath('/kv/wantlist'), {signal: AbortSignal.timeout(3000)});
     if(r.ok) {
       const d = await r.json();
       if(d && d.value) {
@@ -14896,7 +14927,7 @@ async function createWebflowProduct(item, updates) {
   ].filter(Boolean).join('\n');
 
   try {
-    const res = await fetch(WORKER+'/proxy/sites/65b15ee0228d06647ca7e4ce/products', {
+    const res = await storeWorkerFetch('/proxy/sites/65b15ee0228d06647ca7e4ce/products', {
       method: 'POST',
       headers: {'Content-Type':'application/json','accept':'application/json'},
       body: JSON.stringify({
@@ -14972,7 +15003,7 @@ async function createWebflowProduct(item, updates) {
     Object.keys(patchFields).forEach(k => {
       if (patchFields[k] === '' || patchFields[k] == null || Number.isNaN(patchFields[k])) delete patchFields[k];
     });
-    const patchRes = await fetch(WORKER+'/proxy/collections/65eb45a28ff6bf3fe4f17b14/items/'+productId, {
+    const patchRes = await storeWorkerFetch('/proxy/collections/65eb45a28ff6bf3fe4f17b14/items/'+productId, {
       method: 'PATCH',
       headers: {'Content-Type':'application/json'},
       body: JSON.stringify({ fieldData: patchFields })
@@ -15205,12 +15236,12 @@ async function mirrorUpdateToWebflow(wfId, item, updates){
     if(fieldData[k] === '' || fieldData[k] == null || Number.isNaN(fieldData[k])) delete fieldData[k];
   });
   const priceCents = Math.round(Number(u.market || i.market || 0) * 100);
-  const r1 = await fetch(WORKER + '/proxy/collections/' + WF_PRODUCTS + '/items/' + wfId, {
+  const r1 = await storeWorkerFetch('/proxy/collections/' + WF_PRODUCTS + '/items/' + wfId, {
     method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ fieldData })
   });
   if(!r1.ok) throw new Error('Webflow item PATCH ' + r1.status + ': ' + (await r1.text()).slice(0,120));
   if(priceCents > 0) {
-    await fetch(WORKER + '/proxy/sites/' + WF_SITE_ID + '/products/' + wfId, {
+    await storeWorkerFetch('/proxy/sites/' + WF_SITE_ID + '/products/' + wfId, {
       method:'PATCH', headers:{'Content-Type':'application/json','accept':'application/json'},
       body:JSON.stringify({ sku:{ fieldData:{ price:{ value:priceCents, unit:'USD' } } } })
     }).catch(()=>{});
@@ -15723,21 +15754,21 @@ async function confirmEditAndSync() {
     }
 
     // 1. PATCH CMS item fields (ALWAYS — never POST/create)
-    const r2 = await fetch(WORKER+'/proxy/collections/'+WF_PRODUCTS+'/items/'+wfId, {
+    const r2 = await storeWorkerFetch('/proxy/collections/'+WF_PRODUCTS+'/items/'+wfId, {
       method: 'PATCH',
       headers: {'Content-Type':'application/json'},
       body: JSON.stringify({ fieldData })
     });
 
     // 2. PATCH SKU price via ecommerce products endpoint
-    const r = await fetch(WORKER+'/proxy/sites/'+WF_SITE_ID+'/products/'+wfId, {
+    const r = await storeWorkerFetch('/proxy/sites/'+WF_SITE_ID+'/products/'+wfId, {
       method: 'PATCH',
       headers: {'Content-Type':'application/json','accept':'application/json'},
       body: JSON.stringify({ sku: { fieldData: { price: { value: priceCents, unit: 'USD' } } } })
     });
 
     // 3. Publish so changes go live
-    await fetch(WORKER+'/proxy/collections/'+WF_PRODUCTS+'/items/publish', {
+    await storeWorkerFetch('/proxy/collections/'+WF_PRODUCTS+'/items/publish', {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
       body: JSON.stringify({ itemIds: [wfId] })
@@ -16073,7 +16104,7 @@ async function runPriceSync() {
     // Update Webflow if shopId exists
     if(item.shopId) {
       try {
-        const skuRes = await fetch(WORKER+'/proxy/sites/65b15ee0228d06647ca7e4ce/products/'+item.shopId, {
+        const skuRes = await storeWorkerFetch('/proxy/sites/65b15ee0228d06647ca7e4ce/products/'+item.shopId, {
           method:'PATCH',
           headers:{'Content-Type':'application/json','accept':'application/json'},
           body: JSON.stringify({ sku: { fieldData: { price: { value: Math.round(newPrice*100), unit:'USD' } } } })
@@ -17754,14 +17785,37 @@ async function saveComicsCacheResults(query, rows = [], source = 'Live lookup'){
 
 async function searchComicsOfflineCache(query, cat = ''){
   if(!isComicLookupIntent(query, cat)) return [];
+  const shared = await searchPriceChartingOfflineCatalog('comics', query).catch(() => []);
   const terms = (query||'').toLowerCase().replace(/[^a-z0-9\s#]/g,' ').split(/\s+/).filter(Boolean);
   const issues = await comicsDbAll('issues').catch(() => []);
-  return issues
+  const recent = issues
     .filter(c => c.storeId === getActiveStoreId() && c.cacheVersion === COMICS_CACHE_VERSION)
     .filter(c => terms.length < 2 || terms.some(t => (c.searchText||'').includes(t)))
     .sort((a,b) => new Date(b.updatedAt||0) - new Date(a.updatedAt||0))
     .slice(0, 40)
     .map(c => ({ ...(c.issue||{}), cache:{ state: navigator.onLine ? 'cached' : 'offline', updatedAt: c.updatedAt, source: c.source||'Comics cache' }, priceSource: ((c.issue?.priceSource)||'Comics cache') + ' (cached)' }));
+  const seen=new Set();
+  return [...shared,...recent].filter(row=>{const key=String(row.pricecharting?.productId||row.productId||[row.name,row.year,row.variant].join('|')).toLowerCase();if(seen.has(key))return false;seen.add(key);return true;}).slice(0,80);
+}
+
+function priceChartingOfflineProductToQplRow(product, category){
+  const comic=category==='comics',prices=product.prices||{};
+  return {
+    source:'PriceCharting', name:product.productName||'PriceCharting product', category:comic?'Comic':'Sports Card', set:product.consoleName||'',
+    year:String(product.releaseDate||'').slice(0,4), variant:product.genre||'', condition:'Ungraded', selectedCondition:'Ungraded',
+    market:Number(prices.ungraded||prices.graded||0), imageUrl:'', priceSource:'PriceCharting shared offline snapshot',
+    productId:product.productId||'', productUrl:product.url||'', providerUrl:product.url||'', confidence:Math.min(99,70+Math.round(Number(product.offlineScore||0)/20)),
+    matchWhy:['Shared PriceCharting offline catalog'], cache:{state:'offline-catalog',updatedAt:product.updatedAt||'',source:'PriceCharting business snapshot'},
+    pricecharting:{productId:product.productId||'',productName:product.productName||'',consoleName:product.consoleName||'',genre:product.genre||'',url:product.url||'',prices,comicPrices:comic?{ungraded:prices.ungraded||null,grade9_8:prices.grade9_8||prices.graded||null}:{},demand:{consoleName:product.consoleName||'',genre:product.genre||''}}, raw:product
+  };
+}
+async function searchPriceChartingOfflineCatalog(category,query){
+  const products=await window.ArsCaPriceChartingOffline?.search(category,query,80) || [];
+  return products.map(product=>priceChartingOfflineProductToQplRow(product,category));
+}
+async function searchSportsOfflineCache(query,cat=''){
+  if(!isSportsLookupIntent(query,cat))return[];
+  return searchPriceChartingOfflineCatalog('sports',query).catch(()=>[]);
 }
 
 function setMtgOfflineBanner(message = '', tone = 'warn'){
@@ -17863,7 +17917,7 @@ function parseTcgplayerProductInput(raw = '', selectedCategory = ''){
       printing = parsed.searchParams.get('Printing') || '';
       language = parsed.searchParams.get('Language') || '';
     } catch(e) {}
-  } else if(/^\d{5,8}$/.test(text) && ['mtg','sealed','tcg'].includes(selected)) {
+  } else if(/^\d{5,8}$/.test(text)) {
     productId = text;
     canonicalUrl = `https://www.tcgplayer.com/product/${productId}`;
   } else {
@@ -17890,6 +17944,32 @@ function parseTcgplayerProductInput(raw = '', selectedCategory = ''){
     isSealed:sealed || selected === 'sealed',
     source:'tcgplayer-url'
   };
+}
+
+function justTcgExactMatchToQplRow(match={}, product={}){
+  const selected=match.selectedVariant||match.availableVariants?.find(v=>v.condition==='NM')||match.availableVariants?.[0]||null;
+  return applyQplSelectedVariant({
+    source:'justtcg', productId:match.productId||match.id||'', justtcgCardId:match.productId||match.id||'',
+    tcgPlayerId:product.productId||match.tcgplayerId||'', tcgplayerId:product.productId||match.tcgplayerId||'',
+    name:match.name||product.name, category:match.category||product.category||'TCG', game:match.game||'', set:match.setName||'',
+    year:match.releaseDate?String(match.releaseDate).slice(0,4):'', variant:match.rarity||'', card_number:match.cardNumber||'',
+    condition:product.condition||selected?.condition||'NM', selectedCondition:product.condition||selected?.condition||'NM',
+    finish:product.finish||selected?.finish||'normal', selectedFinish:product.finish||selected?.finish||'normal', language:product.language||selected?.language||'English',
+    market:qplPriceValue(selected), low:Number(selected?.lowPrice||0), high:Number(selected?.highPrice||0), imageUrl:match.imageUrl||'',
+    priceSource:qplPriceSourceLabel(selected), productUrl:product.canonicalUrl||match.productUrl||'', tcgUrl:product.canonicalUrl||match.productUrl||'', tcgPlayerUrl:product.canonicalUrl||match.productUrl||'',
+    note:'Exact TCGplayer product ID resolved through the configured catalog provider.', confidence:99, matchWhy:['Exact TCGplayer product ID'],
+    availableVariants:match.availableVariants||[], selectedVariant:selected, priceChange7d:match.priceChange7d, priceChange30d:match.priceChange30d, priceHistory:match.priceHistory||[], raw:match
+  });
+}
+
+async function resolveExactTcgplayerProduct(product={}){
+  if(!product.productId||!navigator.onLine)return null;
+  try{
+    const res=await fetch(WORKER+'/pricing/justtcg/tcgplayer/'+encodeURIComponent(product.productId)+'?'+new URLSearchParams({priceHistoryDuration:'90d',storeId:getActiveStoreId()}).toString(),{cache:'no-store'});
+    const data=await res.json().catch(()=>({}));
+    const match=data.matches?.[0]||data.card||null;
+    return res.ok&&match?justTcgExactMatchToQplRow(match,product):null;
+  }catch(e){return null;}
 }
 
 function mtgTcgplayerProductSearchQuery(product = {}){
@@ -18128,10 +18208,22 @@ async function runPriceLookup(){
   qplLastSearchPlan = searchPlan;
   const el = document.getElementById('qpl-result');
   if(!q || q.length < 3) return;
+  const mySeq = ++_qplSearchSeq;
   const tcgProduct = parseTcgplayerProductInput(rawQ, cat);
   const priceChartingProduct = !tcgProduct ? parsePriceChartingProductInput(rawQ, cat) : null;
+  if(tcgProduct?.productId) {
+    const exactRow=await resolveExactTcgplayerProduct(tcgProduct);
+    if(!qplSearchStillActive(mySeq, searchPlan)) return;
+    if(exactRow){
+      recordSearchPlanRoute(searchPlan,'/pricing/justtcg/tcgplayer/:id',tcgProduct.productId,1);
+      qplMasterResults=[exactRow];qplResults=[exactRow];qplLastSearch=combinedRaw;
+      renderQuickLookupResults(qplResults);renderUniversalSearchExplain(searchPlan,qplResults);pushQuickLookupHistory(combinedRaw,exactRow);
+      setMtgOfflineBanner('Exact TCGplayer product loaded with catalog variants and pricing.','good');return;
+    }
+  }
   if(tcgProduct?.isMtg && !tcgProduct.isSealed) {
     const mtgRows = await resolveMtgTcgplayerProductRows(tcgProduct, searchPlan);
+    if(!qplSearchStillActive(mySeq, searchPlan)) return;
     if(mtgRows.length) {
       recordSearchPlanRoute(searchPlan, 'local:tcgplayer-mtg-offline', tcgProduct.productId || mtgTcgplayerProductSearchQuery(tcgProduct), mtgRows.length);
       qplMasterResults = mtgRows;
@@ -18164,15 +18256,22 @@ async function runPriceLookup(){
     setMtgOfflineBanner('External product URL resolved locally. Live provider price fetch still needs exact catalog/API support.', 'warn');
     return;
   }
-  const mySeq = ++_qplSearchSeq;
-  const wantsPokemon = universalPlanHas(searchPlan, 'pokemon') || universalPlanHas(searchPlan, 'sealed') || isPokemonLookupIntent(q, cat);
+  const wantsPokemon = universalPlanHas(searchPlan, 'pokemon') || isPokemonSealedSearchIntent(q,cat) || isPokemonLookupIntent(q, cat);
   const wantsMtg = !wantsPokemon && (universalPlanHas(searchPlan, 'mtg') || isMtgLookupIntent(q, cat));
   const wantsComic = !wantsPokemon && !wantsMtg && (universalPlanHas(searchPlan, 'comic') || isComicLookupIntent(q, cat));
+  const wantsSports = !wantsPokemon && !wantsMtg && !wantsComic && (universalPlanHas(searchPlan,'sports') || universalPlanHas(searchPlan,'graded') || isSportsLookupIntent(q,cat));
   setPokemonOfflineBanner('');
   setMtgOfflineBanner('');
   setComicsOfflineBanner('');
   el.innerHTML = '<div style="color:var(--gold)">Searching local cache first, then live catalog sources...</div>';
   let cachedResults = [];
+
+  if(wantsSports){
+    cachedResults=await searchSportsOfflineCache(q,cat);
+    if(!qplSearchStillActive(mySeq,searchPlan))return;
+    if(cachedResults.length){qplMasterResults=cachedResults;qplLastSearch=q;qplResults=filterQplMasterResults(cachedResults,cat);renderQuickLookupResults(qplResults);renderUniversalSearchExplain(searchPlan,qplResults);}
+    else if(!navigator.onLine){el.innerHTML='<div style="color:var(--gold)">No sports offline catalog result matched. Download the shared PriceCharting sports catalog in Settings.</div>';return;}
+  }
 
   // ── Pokemon offline cache ──────────────────────────────────────────────────
   if(wantsPokemon) {
@@ -18236,7 +18335,7 @@ async function runPriceLookup(){
   }
 
   // ── Offline guard: cached results already rendered — do not fire live API ──
-  if((wantsPokemon || wantsMtg || wantsComic) && !navigator.onLine) return;
+  if((wantsPokemon || wantsMtg || wantsComic || wantsSports) && !navigator.onLine) return;
 
   try {
     const slowTimer = setTimeout(() => {
@@ -18251,7 +18350,8 @@ async function runPriceLookup(){
     ]);
     clearTimeout(slowTimer);
     if(!qplSearchStillActive(mySeq, searchPlan)) return;
-    qplMasterResults = results.length ? results : await aiQuickLookupFallback(q, cat);
+    const liveResults = results.length ? results : await aiQuickLookupFallback(q, cat);
+    qplMasterResults = universalSearchAdapter()?.mergeAndRankResults([...cachedResults, ...liveResults], searchPlan) || [...cachedResults, ...liveResults];
     qplLastSearch = q;
     qplResults = filterQplMasterResults(qplMasterResults, cat);
     if(!qplResults.length) {
@@ -18497,58 +18597,24 @@ async function searchQuickCatalog(q, cat, searchPlan = buildUniversalSearchPlan(
   });
   });
 
-  if(!wants || ['tcg','pokemon','mtg','yugioh','comic','sports','graded','sealed','collectibles','video_games','funko','lego','coins'].includes(wants) || sealedIntent) {
-    try {
-      const pcRows = await fetchPriceChartingCsvCatalog(q, cat);
-      pcRows.forEach(add);
-    } catch(e) {}
-  }
-
-  if(!wants || intent.intents.some(x => ['comic','video_games','funko','lego','coins','sports','graded','sealed','collectibles'].includes(x)) || plannedCategories.has('comic') || plannedCategories.has('sports') || plannedCategories.has('graded') || plannedCategories.has('sealed') || sealedIntent) {
-    try {
-      const pcLive = await fetchPriceChartingLiveCatalog(q, cat, searchPlan);
-      pcLive.forEach(add);
-    } catch(e) {}
-  }
+  const providerTasks=[];
+  const queueProvider=(enabled,work)=>{if(enabled)providerTasks.push(Promise.resolve().then(work).catch(()=>[]).then(rows=>{(rows||[]).forEach(add);return rows||[];}));};
+  queueProvider(!wants || ['tcg','pokemon','mtg','yugioh','comic','sports','graded','sealed','collectibles','video_games','funko','lego','coins'].includes(wants) || sealedIntent, ()=>fetchPriceChartingCsvCatalog(q,cat));
+  queueProvider(!wants || intent.intents.some(x=>['comic','video_games','funko','lego','coins','sports','graded','sealed','collectibles'].includes(x)) || plannedCategories.has('comic') || plannedCategories.has('sports') || plannedCategories.has('graded') || plannedCategories.has('sealed') || sealedIntent, ()=>fetchPriceChartingLiveCatalog(q,cat,searchPlan));
 
   // SportsCardsPro — step 1 candidate search (step 2 hydration fires on result selection)
-  if((!wants && hasPlannedCategory('sports')) || wants === 'sports' || wants === 'graded') {
-    try {
-      const scpRows = await searchSportsCardsPro(q, searchPlan);
-      scpRows.forEach(add);
-    } catch(e) {}
-  }
+  queueProvider((!wants&&hasPlannedCategory('sports')) || wants==='sports' || wants==='graded', ()=>searchSportsCardsPro(q,searchPlan));
 
-  if((!wants && (hasPlannedCategory('pokemon') || hasPlannedCategory('mtg'))) || ['tcg','pokemon','mtg','yugioh'].includes(wants)) {
-    try {
-      const workerRows = await fetchWorkerTcgCatalog(q, cat);
-      workerRows.forEach(add);
-    } catch(e) {}
-  }
+  queueProvider((!wants&&(hasPlannedCategory('pokemon')||hasPlannedCategory('mtg'))) || ['tcg','pokemon','mtg','yugioh'].includes(wants), ()=>fetchWorkerTcgCatalog(q,cat));
 
-  if((!wants && hasPlannedCategory('pokemon')) || wants === 'tcg' || wants === 'pokemon' || wants === 'graded') {
-    try {
-      const ptcg = await fetchPokemonCatalog(q);
-      ptcg.forEach(add);
-    } catch(e) {}
-  }
-  if((!wants && hasPlannedCategory('mtg')) || wants === 'tcg' || wants === 'mtg' || wants === 'graded' || (wants === 'sealed' && mtgSealedIntent) || isMtgLookupIntent(q, cat) || mtgSealedIntent) {
-    const mtgMode = mtgOfflineSearchMode();
-    let mtgCatalog = [];
-    if(mtgMode !== 'online_only') {
-      try {
-        mtgCatalog = await searchMtgCatalogExport(q);
-        mtgCatalog.forEach(add);
-      } catch(e) {}
-    }
-    if(mtgMode !== 'offline_only' && (mtgMode === 'online_only' || !mtgCatalog.length)) {
-      try {
-        const mtgQuery = mtgSealedIntent ? (mtgSealedCardSearchQuery(q) || q) : q;
-        const mtg = await fetchScryfallCatalog(mtgQuery, mtgSealedIntent ? buildUniversalSearchPlan(mtgQuery, 'Magic: The Gathering') : searchPlan);
-        mtg.forEach(add);
-      } catch(e) {}
-    }
-  }
+  queueProvider((!wants&&hasPlannedCategory('pokemon')) || wants==='tcg' || wants==='pokemon' || wants==='graded', ()=>fetchPokemonCatalog(q));
+  queueProvider((!wants&&hasPlannedCategory('mtg')) || wants==='tcg' || wants==='mtg' || wants==='graded' || (wants==='sealed'&&mtgSealedIntent) || isMtgLookupIntent(q,cat) || mtgSealedIntent, async()=>{
+    const mtgMode=mtgOfflineSearchMode();let rows=[];
+    if(mtgMode!=='online_only')rows=await searchMtgCatalogExport(q).catch(()=>[]);
+    if(mtgMode!=='offline_only'&&(mtgMode==='online_only'||!rows.length)){const mtgQuery=mtgSealedIntent?(mtgSealedCardSearchQuery(q)||q):q;rows=await fetchScryfallCatalog(mtgQuery,mtgSealedIntent?buildUniversalSearchPlan(mtgQuery,'Magic: The Gathering'):searchPlan).catch(()=>[]);}
+    return rows;
+  });
+  await Promise.allSettled(providerTasks);
 
   if(sealedIntent && !results.some(r => r.source !== 'tcgplayer_search_link')){
     if(mtgSealedIntent) add(tcgplayerSearchLinkToQplRow(q, 'magic'));
@@ -22297,7 +22363,7 @@ async function fetchScryfallAllPrintings(cardName){
 
 async function aiQuickLookupFallback(q, cat){
   try {
-    const res = await fetch(WORKER + '/anthropic/messages', {
+    const res = await storeWorkerFetch('/anthropic/messages', {
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
@@ -25444,7 +25510,7 @@ function exportEODCSV(){
 // ══════════════════════════════════════════════════
 async function fetchCartFromWorker(){
   try {
-    const r = await fetch(cartWorkerPath(), {method:'GET', signal: AbortSignal.timeout(2000)});
+    const r = await storeWorkerFetch(cartWorkerPath(), {method:'GET', signal: AbortSignal.timeout(2000)});
     if(r.ok) {
       const d = await r.json();
       if(d && d.items) return d;
@@ -29366,7 +29432,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.07.09.03-mtg-offline-url-resolve"></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.07.13.02-research-pipeline"></script>
 </body>
 </html>
 

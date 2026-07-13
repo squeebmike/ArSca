@@ -85,7 +85,7 @@ async function requirePlatformAdmin(request, env) {
   return { user, admin };
 }
 
-async function requireStoreUser(request, env, storeId, allowedRoles = ['owner','admin','manager','employee']) {
+async function requireStoreUser(request, env, storeId, allowedRoles = ['owner','admin','manager','employee','scanner_only']) {
   const token = String(request.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '');
   if (!token) return { error:json({ ok:false, error:'Authentication required' }, 401) };
   if (!storeId) return { error:json({ ok:false, error:'storeId is required' }, 400) };
@@ -97,6 +97,51 @@ async function requireStoreUser(request, env, storeId, allowedRoles = ['owner','
   const role = data?.[0]?.role;
   if (!role || !allowedRoles.includes(role)) return { error:json({ ok:false, error:'You do not have permission for this store' }, 403) };
   return { user, role, token };
+}
+
+function requestStoreId(request, url, body = null) {
+  const candidate = request.headers.get('X-Store-Id')
+    || request.headers.get('x-store-id')
+    || url?.searchParams?.get('store')
+    || url?.searchParams?.get('store_id')
+    || body?.storeId
+    || body?.store_id
+    || body?.show?.storeId
+    || body?.transaction?.storeId
+    || '';
+  const storeId = String(candidate).trim();
+  return /^[0-9a-z_-]{2,80}$/i.test(storeId) ? storeId : '';
+}
+
+async function readJsonWithLimit(request, maxBytes) {
+  const declared = Number(request.headers.get('Content-Length') || 0);
+  if (declared > maxBytes) return { error:json({ ok:false, error:'Request body is too large' }, 413) };
+  const raw = await request.text();
+  if (new TextEncoder().encode(raw).byteLength > maxBytes) return { error:json({ ok:false, error:'Request body is too large' }, 413) };
+  try { return { data:raw ? JSON.parse(raw) : {} }; }
+  catch (_) { return { error:json({ ok:false, error:'Invalid JSON body' }, 400) }; }
+}
+
+async function enforceUsageLimit(env, key, limit, windowSeconds) {
+  if (!env.LBA_KV) return null;
+  const bucket = Math.floor(Date.now() / (windowSeconds * 1000));
+  const rateKey = `rate:${key}:${bucket}`;
+  const count = Number(await env.LBA_KV.get(rateKey) || 0);
+  if (count >= limit) return json({ ok:false, error:'Too many requests; try again shortly' }, 429, { 'Retry-After':String(windowSeconds) });
+  await env.LBA_KV.put(rateKey, String(count + 1), { expirationTtl:windowSeconds * 2 });
+  return null;
+}
+
+async function secureSecretEqual(provided, expected) {
+  const encoder = new TextEncoder();
+  const [a, b] = await Promise.all([
+    crypto.subtle.digest('SHA-256', encoder.encode(String(provided || ''))),
+    crypto.subtle.digest('SHA-256', encoder.encode(String(expected || ''))),
+  ]);
+  const left = new Uint8Array(a), right = new Uint8Array(b);
+  let different = 0;
+  for (let i = 0; i < left.length; i++) different |= left[i] ^ right[i];
+  return different === 0;
 }
 
 function stripeMode(env, requested) {
@@ -435,6 +480,7 @@ async function handlePlatformAdmin(request, env, url) {
 }
 
 const MTG_CATALOG_FILE_TYPES = new Set(['cards', 'prices', 'links', 'sets']);
+const PRICECHARTING_OFFLINE_CATEGORIES = new Set(['sports', 'comics']);
 
 function r2ObjectResponse(object, request, cacheControl) {
   if (!object) return json({ ok: false, error: 'MTG catalog object not found' }, 404);
@@ -953,8 +999,38 @@ export default {
       return response;
     }
 
+    const pricechartingCatalogMatch = url.pathname.match(/^\/catalog\/pricecharting\/(sports|comics)\/(manifest|download)$/);
+    if (pricechartingCatalogMatch) {
+      if (request.method !== 'GET') return json({ ok: false, error: 'GET only' }, 405);
+      if (!env.MTG_CATALOG_R2) return json({ ok: false, error: 'MTG_CATALOG_R2 binding is not configured' }, 503);
+      const category = pricechartingCatalogMatch[1];
+      const action = pricechartingCatalogMatch[2];
+      if (!PRICECHARTING_OFFLINE_CATEGORIES.has(category)) return json({ ok: false, error: 'Unsupported catalog category' }, 404);
+      if (action === 'manifest') {
+        const object = await env.MTG_CATALOG_R2.get(`${category}/manifest.json`, { onlyIf:request.headers });
+        return r2ObjectResponse(object, request, 'public, max-age=300, stale-if-error=86400');
+      }
+      const manifestObject = await env.MTG_CATALOG_R2.get(`${category}/manifest.json`);
+      if (!manifestObject) return json({ ok: false, error: `${category} manifest not found` }, 404);
+      const manifest = await manifestObject.json().catch(() => null);
+      const descriptor = manifest?.status === 'ready' ? manifest.files?.products : null;
+      const key = String(descriptor?.path || '');
+      if (!key.startsWith(`${category}/`) || !key.endsWith('.jsonl.gz')) return json({ ok: false, error: `${category} catalog is not ready` }, 503);
+      const object = await env.MTG_CATALOG_R2.get(key, { onlyIf:request.headers });
+      if (!object) return json({ ok: false, error: `${category} catalog object not found` }, 404);
+      const response = r2ObjectResponse(object, request, 'public, max-age=31536000, immutable');
+      response.headers.set('Content-Type', 'application/gzip');
+      response.headers.set('X-PriceCharting-Catalog-Version', String(manifest.version || ''));
+      response.headers.set('X-Content-SHA256', String(descriptor.sha256 || ''));
+      return response;
+    }
+
     if (url.pathname === '/cart') {
-      const key = legacyCartKey(url);
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId);
+      if (auth.error) return auth.error;
+      const registerId = safeStoreKey(url.searchParams.get('register') || 'front');
+      const key = `pos_cart:${safeStoreKey(storeId)}:${registerId}`;
 
       if (request.method === 'GET') {
         const cartData = env.LBA_KV
@@ -983,20 +1059,26 @@ export default {
 
     if (url.pathname.startsWith('/kv/')) {
       const key = url.pathname.slice(4).replace(/[^a-zA-Z0-9:_-]/g, '-');
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId);
+      if (auth.error) return auth.error;
+      if (!key) return json({ ok:false, error:'KV key is required' }, 400);
+      const scopedKey = `lba:${safeStoreKey(storeId)}:${key}`;
 
       if (request.method === 'GET') {
         const val = env.LBA_KV
-          ? await env.LBA_KV.get('lba_' + key)
-          : (globalThis['_lba_' + key] || null);
+          ? await env.LBA_KV.get(scopedKey)
+          : (globalThis['_' + scopedKey] || null);
         return json({ value: val });
       }
 
       if (request.method === 'POST') {
         const body = await request.text();
+        if (new TextEncoder().encode(body).byteLength > 1024 * 1024) return json({ ok:false, error:'KV payload is too large' }, 413);
         if (env.LBA_KV) {
-          await env.LBA_KV.put('lba_' + key, body, { expirationTtl: 604800 });
+          await env.LBA_KV.put(scopedKey, body, { expirationTtl: 604800 });
         } else {
-          globalThis['_lba_' + key] = body;
+          globalThis['_' + scopedKey] = body;
         }
         return json({ ok: true });
       }
@@ -1018,8 +1100,18 @@ export default {
     if (url.pathname === '/anthropic/messages') {
       if (request.method !== 'POST') return json({ error: 'POST only' }, 405);
       if (!env.ANTHROPIC_API_KEY) return json({ error: 'ANTHROPIC_API_KEY not set' }, 500);
-
-      const body = await request.text();
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId);
+      if (auth.error) return auth.error;
+      const limited = await readJsonWithLimit(request, 6 * 1024 * 1024);
+      if (limited.error) return limited.error;
+      const body = limited.data;
+      const allowedModels = new Set(['claude-haiku-4-5-20251001', 'claude-sonnet-4-6']);
+      if (!allowedModels.has(String(body.model || ''))) return json({ ok:false, error:'Unsupported model' }, 400);
+      body.max_tokens = Math.min(2000, Math.max(1, Number(body.max_tokens || 1000)));
+      if (!Array.isArray(body.messages) || !body.messages.length) return json({ ok:false, error:'messages are required' }, 400);
+      const rateError = await enforceUsageLimit(env, `anthropic:${storeId}:${auth.user.id}`, 60, 60);
+      if (rateError) return rateError;
       const res = await fetch(`${ANTHROPIC_BASE}/messages`, {
         method: 'POST',
         headers: {
@@ -1027,7 +1119,7 @@ export default {
           'anthropic-version': '2023-06-01',
           'Content-Type': 'application/json',
         },
-        body,
+        body: JSON.stringify(body),
       });
 
       const data = await res.text();
@@ -1042,12 +1134,21 @@ export default {
       if (!env.WEBFLOW_TOKEN) return json({ error: 'WEBFLOW_TOKEN not set' }, 500);
 
       try {
-        const { base64, fileName, mimeType } = await request.json();
+        const storeId = requestStoreId(request, url);
+        const auth = await requireStoreUser(request, env, storeId);
+        if (auth.error) return auth.error;
+        const limited = await readJsonWithLimit(request, 9 * 1024 * 1024);
+        if (limited.error) return limited.error;
+        const { base64, fileName, mimeType } = limited.data;
         if (!base64 || !fileName) return json({ error: 'base64 and fileName required' }, 400);
 
         const mime = mimeType || 'image/jpeg';
+        if (!['image/jpeg','image/png','image/webp','image/gif'].includes(mime)) return json({ ok:false, error:'Unsupported image type' }, 415);
         const cleanName = fileName.replace(/[^a-zA-Z0-9._-]/g, '-').substring(0, 100);
         const rawBase64 = String(base64).includes(',') ? String(base64).split(',').pop() : String(base64);
+        if (rawBase64.length > 8 * 1024 * 1024) return json({ ok:false, error:'Image is too large' }, 413);
+        const rateError = await enforceUsageLimit(env, `upload:${storeId}:${auth.user.id}`, 30, 60);
+        if (rateError) return rateError;
 
         const binaryStr = atob(rawBase64);
         const bytes = new Uint8Array(binaryStr.length);
@@ -1131,13 +1232,28 @@ export default {
       if (!env.WEBFLOW_TOKEN) return json({ error: 'WEBFLOW_TOKEN not set' }, 500);
 
       try {
-        const body = await request.json();
+        const limited = await readJsonWithLimit(request, 2 * 1024 * 1024);
+        if (limited.error) return limited.error;
+        const body = limited.data;
+        const storeId = requestStoreId(request, url, body);
+        const auth = await requireStoreUser(request, env, storeId);
+        if (auth.error) return auth.error;
         const items = Array.isArray(body.items) ? body.items : [];
         const method = body.method || body.paymentMethod || 'Unknown';
         const soldAt = body.soldAt || new Date().toISOString();
-        const txId = body.txId || ('tx_' + Date.now());
+        const requestedTxId = String(body.txId || body.transaction?.id || '').trim();
+        const txId = /^[0-9a-z:_-]{6,120}$/i.test(requestedTxId) ? requestedTxId : crypto.randomUUID();
+        const idempotencyKey = `pos_tx:${safeStoreKey(storeId)}:${txId}`;
 
         if (!items.length) return json({ error: 'No checkout items supplied' }, 400);
+        if (items.length > 250) return json({ error:'Checkout item limit exceeded' }, 400);
+        if (env.LBA_KV) {
+          const existing = await env.LBA_KV.get(idempotencyKey);
+          if (existing) {
+            const previous = JSON.parse(existing);
+            return json({ ...previous, idempotent:true });
+          }
+        }
 
         const results = [];
 
@@ -1150,7 +1266,7 @@ export default {
 
           const itemCost = Number(item.cost || 0);
           const salePrice = Number(item.price || 0);
-          const collectionId = item.collectionId || WF_PRODUCTS;
+          const collectionId = WF_PRODUCTS;
 
           const wfRes = await fetch(`${WEBFLOW_BASE}/collections/${collectionId}/items/${itemId}`, {
             method: 'PATCH',
@@ -1187,10 +1303,10 @@ export default {
         }
 
         const failed = results.filter(r => !r.ok);
-        const txRecord = { ...body, txId, soldAt, syncResults: results };
+        const responsePayload = { ok:failed.length === 0, txId, soldAt, results, failed };
 
         if (env.LBA_KV) {
-          await env.LBA_KV.put(`pos_tx:${txId}`, JSON.stringify(txRecord), { expirationTtl: 60 * 60 * 24 * 180 });
+          await env.LBA_KV.put(idempotencyKey, JSON.stringify(responsePayload), { expirationTtl: 60 * 60 * 24 * 180 });
           if (!failed.length) {
             await env.LBA_KV.put(legacyCartKey(url), JSON.stringify({
               items: [],
@@ -1210,7 +1326,7 @@ export default {
           });
         }
 
-        return json({ ok: failed.length === 0, txId, soldAt, results, failed }, failed.length ? 207 : 200);
+        return json(responsePayload, failed.length ? 207 : 200);
       } catch (e) {
         console.error('POS checkout error:', e);
         return json({ error: e.message }, 500);
@@ -1345,6 +1461,12 @@ export default {
 
     if (url.pathname.startsWith('/proxy/')) {
       if (!env.WEBFLOW_TOKEN) return json({ error: 'WEBFLOW_TOKEN not set' }, 500);
+      const storeId = requestStoreId(request, url);
+      const allowedRoles = ['GET','HEAD'].includes(request.method)
+        ? ['owner','admin','manager','employee']
+        : ['owner','admin'];
+      const auth = await requireStoreUser(request, env, storeId, allowedRoles);
+      if (auth.error) return auth.error;
 
       const wfPath = url.pathname.replace(/^\/proxy/, '');
       const wfUrl = WEBFLOW_BASE + wfPath + (url.search || '');
@@ -1374,6 +1496,9 @@ export default {
     }
 
     if (url.pathname === '/ebay/status') {
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId, ['owner','admin']);
+      if (auth.error) return auth.error;
       const hasClient = !!(await getStoredSecret(env, 'EBAY_CLIENT_ID')) && !!(await getStoredSecret(env, 'EBAY_CLIENT_SECRET'));
       const hasRefresh = !!(await getStoredSecret(env, 'EBAY_REFRESH_TOKEN'));
       const ruName = await getStoredSecret(env, 'EBAY_RU_NAME');
@@ -1388,12 +1513,16 @@ export default {
     }
 
     if (url.pathname === '/ebay/auth-url') {
+      const storeId = requestStoreId(request, url);
+      const authz = await requireStoreUser(request, env, storeId, ['owner','admin']);
+      if (authz.error) return authz.error;
       const clientId = await getStoredSecret(env, 'EBAY_CLIENT_ID');
       const ruName = await getStoredSecret(env, 'EBAY_RU_NAME');
       if (!clientId) return json({ error: 'EBAY_CLIENT_ID not configured' }, 500);
       if (!ruName) return json({ error: 'EBAY_RU_NAME not configured', hint: 'Set the RuName/redirect_uri value from eBay User Tokens page as EBAY_RU_NAME.' }, 500);
+      if (!env.LBA_KV) return json({ error:'KV is required for secure eBay OAuth state' }, 503);
       const state = crypto.randomUUID();
-      if (env.LBA_KV) await env.LBA_KV.put('ebay_oauth_state:' + state, '1', { expirationTtl: 900 });
+      await env.LBA_KV.put('ebay_oauth_state:' + state, JSON.stringify({ storeId, userId:authz.user.id }), { expirationTtl: 900 });
       const auth = new URL(EBAY_AUTH_URL);
       auth.searchParams.set('client_id', clientId);
       auth.searchParams.set('redirect_uri', ruName);
@@ -1408,11 +1537,10 @@ export default {
       const state = url.searchParams.get('state') || '';
       const ruName = await getStoredSecret(env, 'EBAY_RU_NAME');
       if (!code) return json({ error: 'Missing eBay code' }, 400);
-      if (env.LBA_KV && state) {
-        const okState = await env.LBA_KV.get('ebay_oauth_state:' + state);
-        if (!okState) return json({ error: 'Invalid or expired OAuth state' }, 400);
-        await env.LBA_KV.delete('ebay_oauth_state:' + state);
-      }
+      if (!env.LBA_KV || !state) return json({ error:'Missing secure OAuth state' }, 400);
+      const okState = await env.LBA_KV.get('ebay_oauth_state:' + state);
+      if (!okState) return json({ error: 'Invalid or expired OAuth state' }, 400);
+      await env.LBA_KV.delete('ebay_oauth_state:' + state);
       const data = await ebayTokenRequest(env, new URLSearchParams({
         grant_type: 'authorization_code',
         code,
@@ -1430,6 +1558,9 @@ export default {
 
     if (url.pathname === '/ebay/list') {
       if (request.method !== 'POST') return json({ error: 'POST only' }, 405);
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId, ['owner','admin']);
+      if (auth.error) return auth.error;
       let ebayToken = '';
       try { ebayToken = await getEbayUserAccessToken(env); }
       catch (tokenErr) { return json({ needsToken: true, error: tokenErr.message }, 401); }
@@ -1600,6 +1731,9 @@ export default {
     // Creates a Stripe Checkout Session (hosted page) for QR-code payment flow.
     // Returns { session_id, checkout_url }.
     if (url.pathname === '/stripe/create-checkout' && request.method === 'POST') {
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId);
+      if (auth.error) return auth.error;
       if (!env.STRIPE_SECRET_KEY) return json({ error: 'STRIPE_SECRET_KEY not configured in Worker secrets' }, 500);
       try {
         const body = await request.json();
@@ -1637,6 +1771,9 @@ export default {
     // Checks payment status — first checks KV cache (webhook may have updated it),
     // then falls back to polling Stripe directly.
     if (url.pathname === '/stripe/session-status' && request.method === 'GET') {
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId);
+      if (auth.error) return auth.error;
       const id = url.searchParams.get('id');
       if (!id) return json({ error: 'session id required' }, 400);
       try {
@@ -1813,6 +1950,8 @@ export default {
       try {
         const { store_id } = await request.json().catch(() => ({}));
         if (!store_id) return json({ ok: false, error: 'store_id required' }, 400);
+        const authz = await requireStoreUser(request, env, store_id, ['owner','admin']);
+        if (authz.error) return authz.error;
         const existing = await env.LBA_KV.get(`sub:store:${store_id}`);
         if (existing) return json({ ok: true, new: false, status: JSON.parse(existing).status });
         const trial_end = Date.now() + 14 * 24 * 60 * 60 * 1000;
@@ -1825,6 +1964,8 @@ export default {
     if (url.pathname === '/subscription/status' && request.method === 'GET') {
       const storeId = (url.searchParams.get('store_id') || '').trim();
       if (!storeId) return json({ ok: false, error: 'store_id required' }, 400);
+      const authz = await requireStoreUser(request, env, storeId);
+      if (authz.error) return authz.error;
       if (!env.LBA_KV) return json({ ok: true, status: 'none', active: false, daysRemaining: 0 });
       const raw = await env.LBA_KV.get(`sub:store:${storeId}`);
       if (!raw) return json({ ok: true, status: 'none', active: false, daysRemaining: 0 });
@@ -1839,7 +1980,7 @@ export default {
       const active = status === 'active' || status === 'trialing';
       const daysRemaining = endMs && endMs > now ? Math.ceil((endMs - now) / 86400000) : 0;
       const plan = publicPlan(rec.plan_code); // Legacy active/trial subscriptions are grandfathered to Store.
-      return json({ ok: true, status, active, daysRemaining, ...plan, trial_end: rec.trial_end || null, current_period_end: rec.current_period_end || null, stripe_customer_id: rec.stripe_customer_id || null, cancel_at_period_end: rec.cancel_at_period_end || false });
+      return json({ ok: true, status, active, daysRemaining, ...plan, trial_end: rec.trial_end || null, current_period_end: rec.current_period_end || null, cancel_at_period_end: rec.cancel_at_period_end || false });
     }
 
     // POST /subscription/checkout
@@ -1851,6 +1992,8 @@ export default {
       try {
         const { store_id, store_name, email, plan_code } = await request.json().catch(() => ({}));
         if (!store_id) return json({ ok: false, error: 'store_id required' }, 400);
+        const authz = await requireStoreUser(request, env, store_id, ['owner','admin']);
+        if (authz.error) return authz.error;
         const selectedPlan = subscriptionPlan(plan_code);
         const priceId = env[SUBSCRIPTION_PLANS[selectedPlan].envKey] || (selectedPlan === 'store' ? env.STRIPE_SUBSCRIPTION_PRICE_ID : null);
         if (!priceId) return json({ ok:false, error:`${SUBSCRIPTION_PLANS[selectedPlan].envKey} not configured in Worker secrets` }, 500);
@@ -1888,6 +2031,8 @@ export default {
       try {
         const { store_id } = await request.json().catch(() => ({}));
         if (!store_id || !env.LBA_KV) return json({ ok: false, error: 'store_id required' }, 400);
+        const authz = await requireStoreUser(request, env, store_id, ['owner','admin']);
+        if (authz.error) return authz.error;
         const raw = await env.LBA_KV.get(`sub:store:${store_id}`);
         if (!raw) return json({ ok: false, error: 'No subscription found' }, 404);
         const { stripe_customer_id } = JSON.parse(raw);
@@ -1931,6 +2076,9 @@ export default {
 
     if (url.pathname === '/stripe/create-payment-intent') {
       if (request.method !== 'POST') return json({ error: 'POST only' }, 405);
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId);
+      if (auth.error) return auth.error;
       if (!env.STRIPE_SECRET_KEY) return json({ error: 'STRIPE_SECRET_KEY not set in Worker secrets' }, 500);
 
       try {
@@ -4706,11 +4854,11 @@ export default {
       if (!kv) return json({ ok: false, error: 'KV not configured' }, 503);
 
       // Admin check for mutations
-      const requireAdmin = () => {
+      const requireAdmin = async () => {
         const token = env.ADMIN_TOKEN;
-        if (!token) return false; // no token configured = open (backward compat)
+        if (!token) return false;
         const auth = request.headers.get('Authorization') || '';
-        return auth === `Bearer ${token}`;
+        return secureSecretEqual(auth, `Bearer ${token}`);
       };
 
       // GET /sets — list all imported sets
@@ -4722,6 +4870,7 @@ export default {
 
       // POST /sets/import-topps-text — paste raw text from a Topps PDF checklist
       if (url.pathname === '/sets/import-topps-text' && request.method === 'POST') {
+        if (!await requireAdmin()) return json({ ok: false, error: 'Admin token required' }, 403);
         if (!kv) return json({ ok: false, error: 'KV not configured' }, 503);
         const body = await request.json().catch(() => ({}));
         const { text, slug, name, sport = 'baseball', year, brand = '' } = body;
@@ -4747,7 +4896,7 @@ export default {
 
       // POST /sets/import — fetch a Beckett checklist URL and parse it into KV
       if (url.pathname === '/sets/import' && request.method === 'POST') {
-        if (!requireAdmin()) return json({ ok: false, error: 'Admin token required' }, 403);
+        if (!await requireAdmin()) return json({ ok: false, error: 'Admin token required' }, 403);
         const body = await request.json().catch(() => ({}));
         const { url: beckettUrl, slug, name, sport = 'baseball', year } = body;
         if (!beckettUrl || !slug || !name) {
@@ -4800,7 +4949,7 @@ export default {
 
       // POST /sets/import-raw-url — fetch pre-parsed JSON from a URL (e.g. raw GitHub) and seed it
       if (url.pathname === '/sets/import-raw-url' && request.method === 'POST') {
-        if (!requireAdmin()) return json({ ok: false, error: 'Admin token required' }, 403);
+        if (!await requireAdmin()) return json({ ok: false, error: 'Admin token required' }, 403);
         const body = await request.json().catch(() => null);
         if (!body?.url || !body?.slug || !body?.name) return json({ ok: false, error: 'url, slug, name required' }, 400);
         const res = await fetch(body.url, { headers: { 'Accept': 'application/json' } });
@@ -4821,7 +4970,7 @@ export default {
 
       // PUT /sets/import-json — store pre-parsed JSON (for seeding)
       if (url.pathname === '/sets/import-json' && request.method === 'PUT') {
-        if (!requireAdmin()) return json({ ok: false, error: 'Admin token required' }, 403);
+        if (!await requireAdmin()) return json({ ok: false, error: 'Admin token required' }, 403);
         const body = await request.json().catch(() => null);
         if (!body?.slug || !body?.name) return json({ ok: false, error: 'slug and name required' }, 400);
         const { slug, name, sport = 'baseball', year } = body;
@@ -4920,7 +5069,7 @@ export default {
       // DELETE /sets/:slug — remove a set
       const delMatch = url.pathname.match(/^\/sets\/([^/]+)$/);
       if (delMatch && request.method === 'DELETE') {
-        if (!requireAdmin()) return json({ ok: false, error: 'Admin token required' }, 403);
+        if (!await requireAdmin()) return json({ ok: false, error: 'Admin token required' }, 403);
         const s = delMatch[1];
         await kv.delete(`set:${s}`);
         const idxRaw = await kv.get('sets_index');

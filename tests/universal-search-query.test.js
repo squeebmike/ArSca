@@ -90,7 +90,8 @@ assert.ok(sealed.adapters.some(a => a.route === '/pricing/pokemon/sealed-product
 const mtgSealed = adapter.buildSearchPlan('Magic The Gathering Marvel Super Heroes Play Booster Display', 'Sealed');
 assert.ok(mtgSealed.intent.inferredCategories.includes('sealed'));
 assert.ok(mtgSealed.adapters.some(a => a.provider === 'TCGplayerProduct' && a.route === 'local:tcgplayer-product'));
-assert.ok(mtgSealed.adapters.some(a => a.route === '/pricing/pokemon/sealed-products'));
+assert.ok(!mtgSealed.adapters.some(a => a.route === '/pricing/pokemon/sealed-products'));
+assert.ok(mtgSealed.adapters.some(a => a.provider === 'PriceCharting'));
 assert.match(dashboard, /data-cat="Sealed"[^>]*>SEALED/);
 assert.match(dashboard, /parseTcgplayerProductInput/);
 assert.match(dashboard, /tcgplayer_product_url/);

@@ -23,7 +23,7 @@
   const MTG_TERMS = ['deathtouch','landfall','flying','trample','lifelink','haste','commander','legendary','instant','sorcery','creature','planeswalker','artifact','enchantment','draw a card','mana','sol ring','arcane signet','command tower','swords to plowshares','counterspell','beast within'];
   const MTG_CARD_NAMES = ['sol ring','arcane signet','command tower','swords to plowshares','counterspell','beast within','fire // ice','fable of the mirror-breaker'];
   const SEALED_TERMS = ['booster box','booster bundle','play booster','play booster display','collector booster','collector booster box','draft booster','set booster','booster display','elite trainer box','etb','hobby box','blaster','mega box','secret lair','secret lair drop','commander deck','starter kit','precon','tin','pack','case','display','drop','sealed'];
-  const POKEMON_TERMS = ['pokemon','pikachu','charizard','bulbasaur','squirtle','charmander','umbreon','eevee','mew','mewtwo','gengar','rayquaza','vmax','vstar','sir','illustration rare','trainer gallery','swsh','svp'];
+  const POKEMON_TERMS = ['pokemon','pikachu','charizard','bulbasaur','squirtle','charmander','umbreon','eevee','mew','mewtwo','gengar','rayquaza','vmax','vstar','sir','illustration rare','trainer gallery','swsh','svp','151','prismatic evolutions','evolving skies','surging sparks','paldea evolved','obsidian flames'];
   const COMIC_TERMS = ['asm','amazing spider-man','tmnt','teenage mutant ninja turtles','uxm','uncanny x-men','x-men','hulk','fantastic four','ff','batman','detective','tec','spawn','walking dead','venom','newsstand','direct','marvel','dc','mirage','issue','facsimile','reprint'];
   const FILLER = new Set(['the','lookup','price','value','please']);
 
@@ -199,7 +199,8 @@
       if(category === 'sealed') {
         const looksMtgSealed = /\b(?:magic(?: the gathering)?|mtg|secret lair|play booster|collector booster|draft booster|commander deck|starter kit|precon)\b/.test(normalized.normalized);
         if(looksMtgSealed) adapters.push(adapter('sealed','TCGplayerProduct','local:tcgplayer-product',sealedQueries(normalized),confidence,{ game:'Magic: The Gathering', pricing:'todo-backend' }));
-        adapters.push(adapter('sealed','PokemonPriceTracker','/pricing/pokemon/sealed-products',sealedQueries(normalized),confidence,{ limit:20 }));
+        if(intent.confidenceByCategory.pokemon>0) adapters.push(adapter('sealed','PokemonPriceTracker','/pricing/pokemon/sealed-products',sealedQueries(normalized),confidence,{ limit:20 }));
+        adapters.push(adapter('sealed','PriceCharting','/pricing/pricecharting/search',sealedQueries(normalized),confidence,{ endpoint:'/api/products', productType:'sealed', maxQueries:2 }));
       }
     });
     return { rawQuery:String(rawQuery || ''), normalizedQuery:normalized.normalized, normalized, intent, adapters, callBudget:5, execution:{ routes:[], staleResponsesIgnored:0 } };
@@ -238,6 +239,16 @@
       }
     }
     if(plan?.intent?.inferredCategories?.includes(category)){ score += 100; matchedOn.push('category match'); }
+    if(plan?.intent?.inferredCategories?.includes('sealed')){
+      const requested=(entities.sealedTypes||[]).map(normalizeUserQuery).map(item=>item.normalized);
+      const sealedWords=['booster box','booster bundle','play booster','collector booster','draft booster','elite trainer box','hobby box','blaster','mega box','commander deck','starter kit','tin','pack','case','display','bundle','sealed'];
+      const resultTypes=sealedWords.filter(term=>text.includes(term));
+      const exactType=requested.some(term=>resultTypes.includes(term));
+      if(exactType){score+=260;matchedOn.push('exact sealed product type');}
+      else if(requested.length&&resultTypes.length){score-=90;matchedOn.push('different sealed product type');}
+      if(result.is_sealed||/factory sealed|sealed product/i.test([result.condition,result.category,result.variant].join(' '))){score+=120;matchedOn.push('sealed product');}
+      else if(!resultTypes.length){score-=220;matchedOn.push('single-card result penalty');}
+    }
     const covered = (plan?.normalized?.tokens || []).filter(t => t.length > 1 && text.includes(t));
     score += Math.min(covered.length, 8) * 18;
     if(covered.length) matchedOn.push('query term coverage');
