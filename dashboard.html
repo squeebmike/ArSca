@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.07.13.10-fast-mtg">
+<meta name="version" content="2026.07.14.01-stable-outbox">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1417,12 +1417,12 @@ body.show-mode .inv-sync-badge{display:none;}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-<script src="scripts/query-routing.js?v=2026.07.13.10-fast-mtg"></script>
-<script src="scripts/barcode-lookup.js?v=2026.07.13.10-fast-mtg"></script>
-<script src="scripts/comic-issue-hub.js?v=2026.07.13.10-fast-mtg"></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.07.13.10-fast-mtg"></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.07.13.10-fast-mtg"></script>
-<script src="scripts/mtg/research-batch.js?v=2026.07.13.10-fast-mtg"></script>
+<script src="scripts/query-routing.js?v=2026.07.14.01-stable-outbox"></script>
+<script src="scripts/barcode-lookup.js?v=2026.07.14.01-stable-outbox"></script>
+<script src="scripts/comic-issue-hub.js?v=2026.07.14.01-stable-outbox"></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.07.14.01-stable-outbox"></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.07.14.01-stable-outbox"></script>
+<script src="scripts/mtg/research-batch.js?v=2026.07.14.01-stable-outbox"></script>
 </head>
 <body>
 
@@ -1472,11 +1472,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.07.13.10-fast-mtg</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.07.14.01-stable-outbox</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.07.13.10-fast-mtg</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.07.14.01-stable-outbox</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1499,7 +1499,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.07.13.10-fast-mtg</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.07.14.01-stable-outbox</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -2853,7 +2853,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.07.13.10-fast-mtg';
+const APP_VERSION = '2026.07.14.01-stable-outbox';
 window.APP_VERSION = APP_VERSION;
 const branchName = 'main';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
@@ -9141,19 +9141,122 @@ function ensureSyncQueuePanel(backoffice){
   renderSyncQueue();
 }
 
+// Durable operational outbox. Keep the synchronous API used throughout the app,
+// but make IndexedDB (not a capped localStorage array) the source of truth.
+const SYNC_OUTBOX_DB = 'walkoff_operational_outbox_v1';
+const SYNC_OUTBOX_STORE = 'write_queue';
+let syncQueueMemory = safeLocalJson('sync_queue_v1', []);
+let syncOutboxDb = null;
+let syncOutboxWriteChain = Promise.resolve();
+
+function openSyncOutboxDb(){
+  return new Promise((resolve, reject) => {
+    if(!window.indexedDB) return reject(new Error('IndexedDB is unavailable'));
+    const request = indexedDB.open(SYNC_OUTBOX_DB, 1);
+    request.onupgradeneeded = () => {
+      const db = request.result;
+      const store = db.createObjectStore(SYNC_OUTBOX_STORE, { keyPath:'id' });
+      store.createIndex('status', 'status', { unique:false });
+      store.createIndex('createdAt', 'createdAt', { unique:false });
+      store.createIndex('type', 'type', { unique:false });
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error || new Error('Could not open the operational outbox'));
+  });
+}
+
+function readSyncOutbox(db){
+  return new Promise((resolve, reject) => {
+    const request = db.transaction(SYNC_OUTBOX_STORE, 'readonly').objectStore(SYNC_OUTBOX_STORE).getAll();
+    request.onsuccess = () => resolve(request.result || []);
+    request.onerror = () => reject(request.error || new Error('Could not read the operational outbox'));
+  });
+}
+
+function replaceSyncOutbox(db, queue){
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(SYNC_OUTBOX_STORE, 'readwrite');
+    const store = tx.objectStore(SYNC_OUTBOX_STORE);
+    store.clear();
+    queue.forEach(item => store.put(item));
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error || new Error('Could not save the operational outbox'));
+    tx.onabort = () => reject(tx.error || new Error('Operational outbox save was aborted'));
+  });
+}
+
+function putSyncOutboxItem(db, item){
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(SYNC_OUTBOX_STORE, 'readwrite');
+    tx.objectStore(SYNC_OUTBOX_STORE).put(item);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error || new Error('Could not save an operational outbox item'));
+    tx.onabort = () => reject(tx.error || new Error('Operational outbox item save was aborted'));
+  });
+}
+
+async function initSyncOutbox(){
+  try{
+    syncOutboxDb = await openSyncOutboxDb();
+    const stored = await readSyncOutbox(syncOutboxDb);
+    const merged = new Map(stored.map(item => [item.id, item]));
+    // Entries created during startup and legacy localStorage entries win over
+    // older IndexedDB copies with the same id.
+    syncQueueMemory.forEach(item => merged.set(item.id, item));
+    syncQueueMemory = [...merged.values()].sort((a,b) => String(b.createdAt||'').localeCompare(String(a.createdAt||'')));
+    await replaceSyncOutbox(syncOutboxDb, syncQueueMemory);
+    localStorage.removeItem('sync_queue_v1');
+    if(navigator.storage?.persist) navigator.storage.persist().catch(() => false);
+  }catch(error){
+    console.error('[OUTBOX] IndexedDB unavailable; using emergency localStorage fallback:', error);
+  }
+  renderSyncQueue();
+  return syncQueueMemory;
+}
+
+const syncOutboxReady = initSyncOutbox();
+
 function getSyncQueue(){
-  return safeLocalJson('sync_queue_v1', []);
+  return syncQueueMemory;
 }
 
 function saveSyncQueue(q){
-  localStorage.setItem('sync_queue_v1', JSON.stringify((q||[]).slice(0,500)));
+  syncQueueMemory = Array.isArray(q) ? q : [];
+  const snapshot = syncQueueMemory.map(item => ({...item}));
+  syncOutboxWriteChain = syncOutboxWriteChain.catch(() => {}).then(async () => {
+    await syncOutboxReady;
+    if(syncOutboxDb) {
+      await replaceSyncOutbox(syncOutboxDb, snapshot);
+      localStorage.removeItem('sync_queue_v1');
+    } else {
+      // Emergency compatibility path for browsers where IndexedDB is disabled.
+      localStorage.setItem('sync_queue_v1', JSON.stringify(snapshot));
+    }
+  });
   renderSyncQueue();
+  return syncOutboxWriteChain;
+}
+
+function saveSyncQueueItem(item){
+  const snapshot = {...item};
+  syncOutboxWriteChain = syncOutboxWriteChain.catch(() => {}).then(async () => {
+    await syncOutboxReady;
+    if(syncOutboxDb) {
+      await putSyncOutboxItem(syncOutboxDb, snapshot);
+      localStorage.removeItem('sync_queue_v1');
+    } else {
+      localStorage.setItem('sync_queue_v1', JSON.stringify(syncQueueMemory));
+    }
+  });
+  renderSyncQueue();
+  return syncOutboxWriteChain;
 }
 
 function enqueueSync(type, label, payload, error){
   const q = getSyncQueue();
-  q.unshift({ id:'sync_'+Date.now()+'_'+Math.random().toString(36).slice(2,6), type, label, payload, error:error||'', status:'pending', attempts:0, createdAt:new Date().toISOString(), updatedAt:new Date().toISOString() });
-  saveSyncQueue(q);
+  const item = { id:'sync_'+Date.now()+'_'+Math.random().toString(36).slice(2,6), type, label, payload, error:error||'', status:'pending', attempts:0, createdAt:new Date().toISOString(), updatedAt:new Date().toISOString() };
+  q.unshift(item);
+  return saveSyncQueueItem(item);
 }
 
 function enqueueOrReplaceSync(type, syncKey, label, payload, error){
@@ -9162,7 +9265,7 @@ function enqueueOrReplaceSync(type, syncKey, label, payload, error){
   const next = { id:idx >= 0 ? q[idx].id : 'sync_'+Date.now()+'_'+Math.random().toString(36).slice(2,6), syncKey, type, label, payload, error:error||'', status:'pending', attempts:idx >= 0 ? (q[idx].attempts||0) : 0, createdAt:idx >= 0 ? q[idx].createdAt : new Date().toISOString(), updatedAt:new Date().toISOString() };
   if(idx >= 0) q[idx] = next;
   else q.unshift(next);
-  saveSyncQueue(q);
+  return saveSyncQueueItem(next);
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -9645,6 +9748,7 @@ async function processSyncItem(item){
 }
 
 async function retrySyncItem(id){
+  await syncOutboxReady;
   const q = getSyncQueue();
   const item = q.find(x => x.id === id);
   if(!item) return;
@@ -9660,6 +9764,7 @@ async function retrySyncItem(id){
 }
 
 async function retryAllSyncQueue(){
+  await syncOutboxReady;
   for(const item of getSyncQueue().filter(x => x.status !== 'done')) await retrySyncItem(item.id);
 }
 
@@ -26077,7 +26182,7 @@ async function recordCustomerDisplayPayment(method, total, tenderType){
   toast_dash(method + ' payment recorded');
 }
 
-async function markCartItemsSoldFromPayment(items, method, soldAt){
+async function markCartItemsSoldFromPayment(items, method, soldAt, options={}){
   const tracked = (items || []).filter(i => i.shopId || i.wfId);
   if(!tracked.length) return;
   for(const cartItem of tracked) {
@@ -26103,10 +26208,12 @@ async function markCartItemsSoldFromPayment(items, method, soldAt){
       setLifecycle(inv.id, 'sold', true);
       syncConsignmentSaleForInventory(inv,salePrice,soldAt,method);
     }
-    try {
-      await markInventoryRecordSold(inv || { id, source:cartItem.source || '' }, fieldData, { salePrice, channel:method, soldAt });
-    } catch(e) {
-      enqueueOrReplaceSync('inventory-sold', id, 'Mark sold in inventory: ' + (cartItem.name || 'cart item'), { id, fieldData, inventorySource:getInventorySource() }, e.message || 'Sold sync failed');
+    if(!options.skipRemote){
+      try {
+        await markInventoryRecordSold(inv || { id, source:cartItem.source || '' }, fieldData, { salePrice, channel:method, soldAt });
+      } catch(e) {
+        enqueueOrReplaceSync('inventory-sold', id, 'Mark sold in inventory: ' + (cartItem.name || 'cart item'), { id, fieldData, inventorySource:getInventorySource() }, e.message || 'Sold sync failed');
+      }
     }
   }
   soldData = all.filter(i=>i.status==='sold');
@@ -26145,8 +26252,8 @@ function CheckoutStateManager(){
 
 function OfflineSyncQueue(){
   return {
-    enqueueTransaction(bundle, error){
-      enqueueOrReplaceSync('pos-ledger-transaction', bundle.sale.id, 'Queued completed checkout: $' + Number(bundle.sale.total || 0).toFixed(2), bundle, error || 'Supabase write failed');
+    async enqueueTransaction(bundle, error){
+      await enqueueOrReplaceSync('pos-ledger-transaction', bundle.sale.id, 'Queued completed checkout: $' + Number(bundle.sale.total || 0).toFixed(2), bundle, error || 'Supabase write failed');
       checkoutState = CHECKOUT_STATES.OFFLINE_QUEUED;
       const banner = document.getElementById('checkout-offline-banner');
       if(banner) banner.classList.add('on');
@@ -26287,6 +26394,14 @@ function MoneyLedgerService(){
       }
       const sb = getSupabaseClient();
       if(!sb) throw new Error('Supabase client unavailable; transaction must stay queued.');
+      // The RPC writes the sale, lines, tenders, drawer movement, inventory
+      // changes, and audit events in one PostgreSQL transaction. During the
+      // rollout only, retain the previous writer when the function is absent.
+      const { data:atomicResult, error:atomicError } = await sb.rpc('complete_pos_sale', { p_bundle:bundle });
+      if(!atomicError) return { ok:true, atomic:true, result:atomicResult };
+      const rpcMissing = atomicError.code === 'PGRST202' || /complete_pos_sale|schema cache|function.*not found/i.test(atomicError.message || '');
+      if(!rpcMissing) throw new Error('complete_pos_sale: ' + atomicError.message);
+      console.warn('[LEDGER] complete_pos_sale is not installed; using the compatibility writer.');
       const inserts = [
         ['pos_sales', bundle.sale],
         ['pos_sale_lines', bundle.saleLines],
@@ -26303,7 +26418,7 @@ function MoneyLedgerService(){
         const expected = Number(drawerState?.expectedCash ?? drawerState?.startingCash ?? drawerState?.float ?? 0) + Number(bundle.drawerMovements.reduce((a,m) => a + Number(m.amount || 0), 0));
         await sb.from('pos_drawer_sessions').update({ expected_cash:expected }).eq('id', bundle.sale.drawer_session_id);
       }
-      return { ok:true };
+      return { ok:true, atomic:false, compatibility:true };
     },
     async openDrawerSession(session){
       if(getAccountContext().isDemo){ console.log('[DEMO] Drawer open blocked in demo mode'); return true; }
@@ -26618,21 +26733,26 @@ async function completeLockedCheckout(){
   checkoutFinalizing = true;
   checkoutState = CHECKOUT_STATES.PAYMENT_CONFIRMED;
   const bundle = buildLedgerBundle(snapshot, selectedTenderLines);
+  let queued = false;
+  let commitResult = null;
   try {
-    await MoneyLedgerService().commitTransactionBundle(bundle);
-    await finalizeCompletedCheckout(bundle, false);
+    commitResult = await MoneyLedgerService().commitTransactionBundle(bundle);
   } catch(e) {
-    OfflineSyncQueue().enqueueTransaction(bundle, e.message);
-    await finalizeCompletedCheckout(bundle, true);
+    // Do not clear the cart unless the complete bundle is durably stored.
+    await OfflineSyncQueue().enqueueTransaction(bundle, e.message);
+    queued = true;
+  }
+  try {
+    await finalizeCompletedCheckout(bundle, queued, commitResult?.atomic === true);
   } finally {
     checkoutFinalizing = false;
   }
 }
 
-async function finalizeCompletedCheckout(bundle, queued){
+async function finalizeCompletedCheckout(bundle, queued, inventoryCommittedAtomically=false){
   const paidAt = bundle.sale.completed_at;
   const method = bundle.payments.map(p => p.method).join('+');
-  await markCartItemsSoldFromPayment((lockedCheckoutSnapshot?.lines || []).map(l => ({ name:l.title, price:l.adjusted_price, cost:l.cost_basis, category:l.category, condition:l.condition, shopId:l.item_id })), method, paidAt);
+  await markCartItemsSoldFromPayment((lockedCheckoutSnapshot?.lines || []).map(l => ({ name:l.title, price:l.adjusted_price, cost:l.cost_basis, category:l.category, condition:l.condition, shopId:l.item_id })), method, paidAt, { skipRemote:inventoryCommittedAtomically });
   const txLog = safeLocalJson('pos_transactions', []);
   txLog.unshift({ id:bundle.sale.id, date:paidAt, method, tenderType:normalizeTenderType(method), total:bundle.sale.total, items:bundle.saleLines.map(l => ({ name:l.title, price:l.adjusted_price, cost:l.cost_basis, category:l.category, soldAt:paidAt })), source:queued?'offline-queued-ledger':'supabase-ledger', drawerSessionId:bundle.sale.drawer_session_id, storeId:bundle.sale.store_id });
   localStorage.setItem('pos_transactions', JSON.stringify(txLog.slice(0,1000)));
@@ -29649,7 +29769,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.07.13.10-fast-mtg"></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.07.14.01-stable-outbox"></script>
 </body>
 </html>
 

@@ -19,7 +19,9 @@ test('dashboard html and worker scripts parse', async () => {
 test('dashboard loads current build with primary nav and Research tab', async ({ page }) => {
   const guard = await openDashboard(page);
   await expect(page.locator('.logo')).toContainText(/WALK-OFF|DEMO DASHBOARD/i);
-  await expect(page.locator('meta[name="version"]')).toHaveAttribute('content', /2026\.07\.07\.07/);
+  const metaVersion = await page.locator('meta[name="version"]').getAttribute('content');
+  const runtimeVersion = await page.evaluate(() => window.APP_VERSION);
+  expect(metaVersion).toBe(runtimeVersion);
   await expect(page.locator('[data-tab="overview"]')).toBeVisible();
   await expect(page.locator('[data-tab="research"]')).toBeVisible();
   await expect(page.locator('#top-show-chip')).toContainText(/NO SHOW ACTIVE|SHOW ACTIVE/);
@@ -28,6 +30,37 @@ test('dashboard loads current build with primary nav and Research tab', async ({
   await expect(page.locator('#tab-research.on')).toBeVisible();
   await expect(page.getByRole('button', { name: /Queue/i })).toBeVisible();
   await expect(page.locator('#register-quick-panel')).toBeVisible();
+  guard.assertClean();
+});
+
+test('operational outbox survives reload without the old 500-entry cap', async ({ page }) => {
+  const guard = await openDashboard(page);
+  const count = await page.evaluate(async () => {
+    await syncOutboxReady;
+    const now = new Date().toISOString();
+    const queue = Array.from({ length: 525 }, (_, index) => ({
+      id:`qa_outbox_${index}`,
+      type:'qa-durability',
+      label:`Durability item ${index}`,
+      payload:{ index },
+      error:'',
+      status:'pending',
+      attempts:0,
+      createdAt:now,
+      updatedAt:now
+    }));
+    await saveSyncQueue(queue);
+    return getSyncQueue().length;
+  });
+  expect(count).toBe(525);
+  await page.reload({ waitUntil:'domcontentloaded' });
+  const restored = await page.evaluate(async () => {
+    await syncOutboxReady;
+    const count = getSyncQueue().filter(item => item.type === 'qa-durability').length;
+    await saveSyncQueue(getSyncQueue().filter(item => item.type !== 'qa-durability'));
+    return count;
+  });
+  expect(restored).toBe(525);
   guard.assertClean();
 });
 
