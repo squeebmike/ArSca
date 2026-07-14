@@ -15,6 +15,11 @@ assert.match(dashboard,/return \{mtg:true,video_games:false,yugioh:false,one_pie
 assert.match(dashboard,/if\(id==='catalogs'\)refreshOfflineCatalogManagerPanel\(\)/,'opening Catalogs should always refresh the offline manager');
 assert.match(dashboard,/setTimeout\(\(\) => refreshOfflineCatalogManagerPanel\(\), 0\)/,'initial catalog rendering must wait until catalog constants are initialized');
 assert.match(dashboard,/function priceChartingOfflineCategoryFor\(category\)/,'research must route eligible categories into their offline catalogs');
+assert.match(dashboard,/const mtgOnly = \(wants === 'mtg' \|\| plannedCategories\.has\('mtg'\)\) && !sealedIntent/,'MTG card searches should have a dedicated fast provider path while sealed searches keep PriceCharting fallback');
+assert.match(dashboard,/!mtgOnly && \(\(!wants&&hasPlannedCategory\('mtg'\)\)/,'MTG must not wait for the generic JustTCG\/TCG proxy chain');
+assert.match(dashboard,/deadlineMs=6000/,'optional search providers must have a short whole-task deadline');
+assert.match(dashboard,/slice\(0,3\)/,'automatic PriceCharting image hydration must be bounded');
+assert.match(dashboard,/signal:AbortSignal\.timeout\(3500\)/,'optional image hydration must time out quickly');
 
 const lookup=dashboard.slice(dashboard.indexOf('async function runPriceLookup()'),dashboard.indexOf('async function fetchComicVineCover'));
 assert.ok(lookup.indexOf('const mySeq = ++_qplSearchSeq') < lookup.indexOf('resolveMtgTcgplayerProductRows'), 'sequence guard must start before exact-product async work');

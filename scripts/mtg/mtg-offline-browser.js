@@ -253,14 +253,17 @@
       add(await requestPromise(store.index('catalogArtist').getAll(range,500)).catch(()=>[]));
     }
     const ids=await tokenCardIds(db,version,parts.tokens);
-    const rows=await Promise.all(ids.map(id=>{const store=db.transaction('mtg_cards','readonly').objectStore('mtg_cards');return requestPromise(store.get([version,id]));}));
+    const cardTx=db.transaction('mtg_cards','readonly'),cardStore=cardTx.objectStore('mtg_cards');
+    const rows=await Promise.all(ids.map(id=>requestPromise(cardStore.get([version,id]))));
     add(rows.filter(Boolean));return [...cards.values()];
   }
 
   async function attachPrices(version,ranked){
     const db=await openDb();
-    const links=await Promise.all(ranked.map(item=>{const store=db.transaction('mtg_price_links','readonly').objectStore('mtg_price_links');return requestPromise(store.get([version,item.card.scryfallId]));}));
-    const prices=await Promise.all(links.map(link=>{if(!link?.pricechartingId)return null;const store=db.transaction('mtg_prices','readonly').objectStore('mtg_prices');return requestPromise(store.get([version,link.pricechartingId]));}));
+    const linkTx=db.transaction('mtg_price_links','readonly'),linkStore=linkTx.objectStore('mtg_price_links');
+    const links=await Promise.all(ranked.map(item=>requestPromise(linkStore.get([version,item.card.scryfallId]))));
+    const priceTx=db.transaction('mtg_prices','readonly'),priceStore=priceTx.objectStore('mtg_prices');
+    const prices=await Promise.all(links.map(link=>link?.pricechartingId?requestPromise(priceStore.get([version,link.pricechartingId])):null));
     return ranked.map((item,index)=>({...item.card,offlinePriceLink:links[index]||null,offlinePrice:prices[index]||null,offlineMatchWhy:item.why,catalogVersion:version}));
   }
 
@@ -289,7 +292,8 @@
       const tokens=parts.tokens.filter(token=>!['mtg','magic','sealed','product'].includes(token)).sort((a,b)=>b.length-a.length).slice(0,4),sets=[];
       for(const token of tokens){const store=db.transaction('mtg_price_search_tokens','readonly').objectStore('mtg_price_search_tokens'),range=IDBKeyRange.bound([version,token,''],[version,token,'\uffff']);const keys=await requestPromise(store.getAllKeys(range,800));sets.push(new Set(keys.map(key=>String(key[2]))));if(!keys.length)break;}
       const ids=sets.length?[...sets[0]].filter(id=>sets.every(set=>set.has(id))).slice(0,800):[];
-      const rows=await Promise.all(ids.map(id=>{const store=db.transaction('mtg_prices','readonly').objectStore('mtg_prices');return requestPromise(store.get([version,id]));}));add(rows.filter(Boolean));
+      const priceTx=db.transaction('mtg_prices','readonly'),priceStore=priceTx.objectStore('mtg_prices');
+      const rows=await Promise.all(ids.map(id=>requestPromise(priceStore.get([version,id]))));add(rows.filter(Boolean));
     }
     return [...found.values()].map(price=>{const offlineScore=priceScore(price,parts);return offlineScore===null?null:{...price,offlineScore,catalogVersion:version};}).filter(Boolean).sort((a,b)=>b.offlineScore-a.offlineScore).slice(0,limit);
   }

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.07.13.09-offline-panel">
+<meta name="version" content="2026.07.13.10-fast-mtg">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1417,12 +1417,12 @@ body.show-mode .inv-sync-badge{display:none;}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-<script src="scripts/query-routing.js?v=2026.07.13.09-offline-panel"></script>
-<script src="scripts/barcode-lookup.js?v=2026.07.13.09-offline-panel"></script>
-<script src="scripts/comic-issue-hub.js?v=2026.07.13.09-offline-panel"></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.07.13.09-offline-panel"></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.07.13.09-offline-panel"></script>
-<script src="scripts/mtg/research-batch.js?v=2026.07.13.09-offline-panel"></script>
+<script src="scripts/query-routing.js?v=2026.07.13.10-fast-mtg"></script>
+<script src="scripts/barcode-lookup.js?v=2026.07.13.10-fast-mtg"></script>
+<script src="scripts/comic-issue-hub.js?v=2026.07.13.10-fast-mtg"></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.07.13.10-fast-mtg"></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.07.13.10-fast-mtg"></script>
+<script src="scripts/mtg/research-batch.js?v=2026.07.13.10-fast-mtg"></script>
 </head>
 <body>
 
@@ -1472,11 +1472,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.07.13.09-offline-panel</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.07.13.10-fast-mtg</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.07.13.09-offline-panel</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.07.13.10-fast-mtg</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1499,7 +1499,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.07.13.09-offline-panel</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.07.13.10-fast-mtg</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -2853,7 +2853,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.07.13.09-offline-panel';
+const APP_VERSION = '2026.07.13.10-fast-mtg';
 window.APP_VERSION = APP_VERSION;
 const branchName = 'main';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
@@ -18771,14 +18771,20 @@ async function searchQuickCatalog(q, cat, searchPlan = buildUniversalSearchPlan(
   });
 
   const providerTasks=[];
-  const queueProvider=(enabled,work)=>{if(enabled)providerTasks.push(Promise.resolve().then(work).catch(()=>[]).then(rows=>{(rows||[]).forEach(add);return rows||[];}));};
+  const queueProvider=(enabled,work,deadlineMs=6000)=>{if(enabled)providerTasks.push(Promise.race([
+    Promise.resolve().then(work).catch(()=>[]),
+    new Promise(resolve=>setTimeout(()=>resolve([]),deadlineMs)),
+  ]).then(rows=>{(rows||[]).forEach(add);return rows||[];}));};
   const pokemonOnly = plannedCategories.has('pokemon') || wants === 'pokemon' || pokemonSealedIntent;
-  queueProvider(!pokemonOnly && (!wants || intent.intents.some(x=>['comic','video_games','funko','lego','coins','sports','graded','sealed','collectibles'].includes(x)) || plannedCategories.has('comic') || plannedCategories.has('sports') || plannedCategories.has('graded') || plannedCategories.has('sealed') || sealedIntent), ()=>fetchPriceChartingLiveCatalog(q,cat,searchPlan));
+  const mtgOnly = (wants === 'mtg' || plannedCategories.has('mtg')) && !sealedIntent;
+  queueProvider(!pokemonOnly && !mtgOnly && (!wants || intent.intents.some(x=>['comic','video_games','funko','lego','coins','sports','graded','sealed','collectibles'].includes(x)) || plannedCategories.has('comic') || plannedCategories.has('sports') || plannedCategories.has('graded') || plannedCategories.has('sealed') || sealedIntent), ()=>fetchPriceChartingLiveCatalog(q,cat,searchPlan));
 
   // SportsCardsPro — step 1 candidate search (step 2 hydration fires on result selection)
   queueProvider((!wants&&hasPlannedCategory('sports')) || wants==='sports' || wants==='graded', ()=>searchSportsCardsPro(q,searchPlan));
 
-  queueProvider(!pokemonOnly && ((!wants&&hasPlannedCategory('mtg')) || ['tcg','mtg','yugioh'].includes(wants)), ()=>fetchWorkerTcgCatalog(q,cat));
+  // MTG uses the local Scryfall + PriceCharting snapshot (or direct Scryfall
+  // fallback). Do not make it wait for the generic JustTCG/TCG proxy chain.
+  queueProvider(!pokemonOnly && !mtgOnly && ((!wants&&hasPlannedCategory('mtg')) || ['tcg','yugioh'].includes(wants)), ()=>fetchWorkerTcgCatalog(q,cat));
   queueProvider((!wants&&hasPlannedCategory('mtg')) || wants==='tcg' || wants==='mtg' || wants==='graded' || (wants==='sealed'&&mtgSealedIntent) || isMtgLookupIntent(q,cat) || mtgSealedIntent, async()=>{
     const mtgMode=mtgOfflineSearchMode();let rows=[];
     if(mtgMode!=='online_only')rows=await searchMtgCatalogExport(q).catch(()=>[]);
@@ -20471,24 +20477,21 @@ function enrichScpImagesAsync(){
   });
 }
 
-function enrichPcImagesAsync(){
-  qplResults.forEach((r, idx) => {
-    if(r && r.source === 'PriceCharting' && !r.imageUrl && r.pricecharting?.productId) {
-      const pid = r.pricecharting.productId;
-      fetch(WORKER + '/pricing/pricecharting/product/' + encodeURIComponent(pid), { cache:'no-store' })
-        .then(res => res.ok ? res.json() : null)
-        .then(d => {
-          if(!d?.imageUrl) return;
-          if(qplResults[idx]) qplResults[idx].imageUrl = d.imageUrl;
-          const shell = document.querySelector(`[data-qpl-idx="${idx}"] .qpl-img-shell`);
-          if(shell) {
-            const existing = shell.querySelector('img');
-            if(existing) existing.src = d.imageUrl;
-            else shell.insertAdjacentHTML('afterbegin', `<img src="${escHtml(d.imageUrl)}" style="width:100%;height:auto;border-radius:10px" loading="lazy" onerror="this.style.display='none'">`);
-          }
-        }).catch(() => {});
-    }
-  });
+async function enrichPcImagesAsync(){
+  // Image hydration is optional. Limit it to the first three visible products
+  // and serialize requests so a result list cannot burst the upstream API.
+  const candidates=qplResults.map((r,idx)=>({r,idx})).filter(({r})=>r&&r.source==='PriceCharting'&&!r.imageUrl&&r.pricecharting?.productId&&qplResultCategoryKey(r)!=='mtg').slice(0,3);
+  for(const {r,idx} of candidates){
+    try{
+      const res=await fetch(WORKER+'/pricing/pricecharting/product/'+encodeURIComponent(r.pricecharting.productId),{cache:'force-cache',signal:AbortSignal.timeout(3500)});
+      const d=res.ok?await res.json().catch(()=>null):null;
+      if(!d?.imageUrl)continue;
+      if(qplResults[idx])qplResults[idx].imageUrl=d.imageUrl;
+      const shell=document.querySelector(`[data-qpl-idx="${idx}"] .qpl-img-shell`);
+      if(shell){const existing=shell.querySelector('img');if(existing)existing.src=d.imageUrl;else shell.insertAdjacentHTML('afterbegin',`<img src="${escHtml(d.imageUrl)}" style="width:100%;height:auto;border-radius:10px" loading="lazy" onerror="this.style.display='none'">`);}
+    }catch(_){}
+    await new Promise(resolve=>setTimeout(resolve,1100));
+  }
 }
 
 // Step 2: hydrate a selected result with full price detail
@@ -29646,7 +29649,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.07.13.09-offline-panel"></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.07.13.10-fast-mtg"></script>
 </body>
 </html>
 
