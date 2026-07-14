@@ -3,12 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.07.14.01-stable-outbox">
+<meta name="version" content="2026.07.14.02-quantity-safe">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Walk-Off POS">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22><rect width=%2264%22 height=%2264%22 rx=%2212%22 fill=%22%2307080a%22/><path d=%22M10 34h18l7-18 7 32 5-14h7%22 fill=%22none%22 stroke=%22%2300ffb3%22 stroke-width=%226%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22/></svg>">
 <title>Walk-Off Dashboard</title>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -1417,12 +1418,12 @@ body.show-mode .inv-sync-badge{display:none;}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-<script src="scripts/query-routing.js?v=2026.07.14.01-stable-outbox"></script>
-<script src="scripts/barcode-lookup.js?v=2026.07.14.01-stable-outbox"></script>
-<script src="scripts/comic-issue-hub.js?v=2026.07.14.01-stable-outbox"></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.07.14.01-stable-outbox"></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.07.14.01-stable-outbox"></script>
-<script src="scripts/mtg/research-batch.js?v=2026.07.14.01-stable-outbox"></script>
+<script src="scripts/query-routing.js?v=2026.07.14.02-quantity-safe"></script>
+<script src="scripts/barcode-lookup.js?v=2026.07.14.02-quantity-safe"></script>
+<script src="scripts/comic-issue-hub.js?v=2026.07.14.02-quantity-safe"></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.07.14.02-quantity-safe"></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.07.14.02-quantity-safe"></script>
+<script src="scripts/mtg/research-batch.js?v=2026.07.14.02-quantity-safe"></script>
 </head>
 <body>
 
@@ -1472,11 +1473,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.07.14.01-stable-outbox</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.07.14.02-quantity-safe</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.07.14.01-stable-outbox</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.07.14.02-quantity-safe</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1499,7 +1500,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.07.14.01-stable-outbox</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.07.14.02-quantity-safe</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -2558,6 +2559,11 @@ body.show-mode .inv-sync-badge{display:none;}
     <div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);margin-bottom:8px">Adds this item to the cart at the price below. Payment method is chosen during checkout — this does not finalize a sale.</div>
     <label>Sale Price ($)</label>
     <input type="number" id="sell-price" step="0.01" min="0" placeholder="0.00" oninput="previewSellProfit()">
+    <div id="sell-qty-wrap" style="display:none">
+      <label>Quantity</label>
+      <input type="number" id="sell-qty" step="1" min="1" value="1">
+      <div id="sell-qty-help" style="font-family:var(--font-mono);font-size:9px;color:var(--dim);margin-top:4px"></div>
+    </div>
     <!-- Cart-unification: payment method is selected at checkout, not here.
          Legacy quick-tap buttons + select are kept in the DOM (hidden) so
          setSellPayMethod()/sell-channel references elsewhere don't break,
@@ -2853,7 +2859,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.07.14.01-stable-outbox';
+const APP_VERSION = '2026.07.14.02-quantity-safe';
 window.APP_VERSION = APP_VERSION;
 const branchName = 'main';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
@@ -9679,7 +9685,7 @@ async function processSyncItem(item){
     return;
   }
   if(item.type === 'inventory-sold') {
-    await markInventoryRecordSold({ id:item.payload.id, source:item.payload.inventorySource === 'built_in' ? 'built_in' : '' }, item.payload.fieldData, {});
+    await markInventoryRecordSold({ id:item.payload.id, source:item.payload.inventorySource === 'built_in' ? 'built_in' : '' }, item.payload.fieldData, item.payload.saleMeta || {});
     return;
   }
   if(item.type === 'pos-ledger-transaction') {
@@ -12948,6 +12954,13 @@ function openSellModal(id){
   const marketPrice = inventoryReferenceMarketPrice(item);
   const suggested = marketPrice > 0 ? suggestedCartSalePrice(applyShowPriceRule(marketPrice)) : Number(item.salePrice || 0);
   document.getElementById('sell-price').value = suggested > 0 ? suggested.toFixed(2) : '';
+  const available = inventoryAvailableQuantity(item);
+  const qtyWrap = document.getElementById('sell-qty-wrap');
+  const qtyInput = document.getElementById('sell-qty');
+  if(qtyWrap) qtyWrap.style.display = available > 1 ? '' : 'none';
+  if(qtyInput){ qtyInput.value='1'; qtyInput.max=String(Math.max(1,available)); }
+  const qtyHelp = document.getElementById('sell-qty-help');
+  if(qtyHelp) qtyHelp.textContent = available + ' available';
   document.getElementById('sell-profit-preview').textContent = '';
   // Reset payment buttons
   document.querySelectorAll('.sell-pay-btn').forEach(b => b.classList.remove('active'));
@@ -13122,7 +13135,8 @@ async function confirmQuickSell(){
   const item=all.find(i=>i.id===sellItemId); if(!item) return;
   const price=parseFloat(document.getElementById('sell-price').value)||0;
   if(!price){alert('Enter a sale price');return;}
-  if(item.status === 'sold'){ alert('This item is already sold'); return; }
+  if(!inventoryItemIsSellable(item)){ alert('This item is sold or out of stock'); return; }
+  const quantity = Math.max(1, parseInt(document.getElementById('sell-qty')?.value || '1', 10) || 1);
 
   addSaleItemToCart(item, {
     sourceType: isSealedProduct(item) ? 'sealed' : 'inventory',
@@ -13133,7 +13147,7 @@ async function confirmQuickSell(){
     imageUrl: item.thumbnail || null,
     unitPrice: price,
     costBasis: item.cost || 0,
-    quantity: 1,
+    quantity,
     productType: isSealedProduct(item) ? (item.category || 'Sealed') : '',
     metadata: { set:item.set || '', year:item.year || '' },
     undoLabel:'sell to cart'
@@ -13149,7 +13163,7 @@ async function confirmQuickSell(){
 function dashAddToCart(id){
   const item = all.find(i => i.id === id);
   if(!item) return;
-  if(item.status === 'sold'){ alert('This item is already sold'); return; }
+  if(!inventoryItemIsSellable(item)){ alert('This item is sold or out of stock'); return; }
   if(['listed_online','pulled_ebay'].includes(item.lifecycle || '')) {
     if(!confirm('This item is marked ' + (LIFECYCLE_LABELS[item.lifecycle] || item.lifecycle) + '. Add to in-person cart anyway?')) return;
   }
@@ -13280,6 +13294,19 @@ function addSaleItemToCart(item = {}, options = {}){
   const notes = options.notes ?? item.notes ?? '';
   const taxable = options.taxable ?? item.taxable ?? true;
   const metadata = Object.assign({}, item.metadata || {}, options.metadata || {});
+
+  if(inventoryId && ['inventory','sealed'].includes(sourceType)){
+    const inventoryItem = all.find(candidate => candidate.id === inventoryId || candidate.supabaseRowId === inventoryId) || item;
+    const available = inventoryAvailableQuantity(inventoryItem);
+    const alreadyInCart = cartData.items.reduce((sum, line) => {
+      const lineId = line.inventoryId || line.shopId || line.wfId;
+      return String(lineId || '') === String(inventoryId) ? sum + Number(line.quantity || line.qty || 1) : sum;
+    }, 0);
+    if(!inventoryItemIsSellable(inventoryItem) || quantity + alreadyInCart > available){
+      toast_dash(available > 0 ? `Only ${available} available (${alreadyInCart} already in cart)` : 'Item is sold or out of stock');
+      return null;
+    }
+  }
 
   const cartItem = {
     // ── Unified cart item model fields (Phase 2) ──
@@ -15485,25 +15512,31 @@ async function createInventoryRecord(item, updates) {
 }
 
 async function markInventoryRecordSold(item, fieldData, saleMeta){
-  if(item.status === 'sold' || item.lifecycle === 'sold') return 'already-sold';
+  const currentQuantity = inventoryAvailableQuantity(item);
+  const quantitySold = Math.max(1, Number(saleMeta?.quantitySold || 1));
+  const remainingQuantity = Number.isFinite(Number(saleMeta?.remainingQuantity))
+    ? Math.max(0, Number(saleMeta.remainingQuantity))
+    : Math.max(0, currentQuantity - quantitySold);
+  const depleted = remainingQuantity <= 0;
+  if((item.status === 'sold' || item.lifecycle === 'sold') && depleted) return 'already-sold';
   if(item.source === 'built_in') {
     const sb = getSupabaseClient();
     const session = getAuthSession();
     const storeId = getActiveStoreId();
     if(sb && session?.supabase && storeId) {
-      const nextData = { ...(item.raw || {}), ...item, ...saleMeta, status:'sold', lifecycle:'sold', qty:0, quantity:0, 'inventory-count':0 };
+      const nextStatus = depleted ? 'sold' : 'in_stock';
+      const nextData = { ...(item.raw || {}), ...item, ...saleMeta, status:nextStatus, lifecycle:nextStatus, qty:remainingQuantity, quantity:remainingQuantity, 'inventory-count':remainingQuantity, 'sold-out':depleted, soldAt:depleted ? saleMeta.soldAt : '' };
       const { error } = await sb.from('inventory_items')
-        .update({ status:'sold', data:nextData, updated_at:new Date().toISOString() })
+        .update({ status:nextStatus, data:nextData, updated_at:new Date().toISOString() })
         .eq('id', item.supabaseRowId || item.id)
-        .eq('store_id', storeId)
-        .neq('status', 'sold');
+        .eq('store_id', storeId);
       if(error) throw new Error('Built-in sold sync ' + error.message);
       const wfId=item.raw?.wfId||item.raw?.webflowId;
-      if(wfId&&getWebflowIntegration().enabled){const soldFields={'sold-out':true,'inventory-count':0,status:STATUS_SOLD};try{const wfRes=await wfPatch('/collections/'+WF_PRODUCTS+'/items/'+wfId,{fieldData:soldFields});if(!wfRes.ok)throw new Error('Webflow sold-out '+wfRes.status);}catch(e){enqueueOrReplaceSync('webflow-mirror-update','sold-'+wfId,'Remove sold item from Webflow: '+(item.name||wfId),{wfId,item,updates:{qty:0,status:'sold','sold-out':true}},e.message);}}
-      if(item.raw?.ebayListingId||item.raw?.listingId)logOpsEvent('ebay_delist_needed','Sold item needs eBay delist',{itemId:item.id,listingId:item.raw.ebayListingId||item.raw.listingId});
+      if(wfId&&getWebflowIntegration().enabled){const soldFields={'sold-out':depleted,'inventory-count':remainingQuantity};if(depleted)soldFields.status=STATUS_SOLD;try{const wfRes=await wfPatch('/collections/'+WF_PRODUCTS+'/items/'+wfId,{fieldData:soldFields});if(!wfRes.ok)throw new Error('Webflow inventory update '+wfRes.status);}catch(e){enqueueOrReplaceSync('webflow-mirror-update','sold-'+wfId,'Update Webflow inventory: '+(item.name||wfId),{wfId,item,updates:{qty:remainingQuantity,status:nextStatus,'sold-out':depleted}},e.message);}}
+      if(depleted&&(item.raw?.ebayListingId||item.raw?.listingId))logOpsEvent('ebay_delist_needed','Sold item needs eBay delist',{itemId:item.id,listingId:item.raw.ebayListingId||item.raw.listingId});
       return 'built-in';
     }
-    updateUniversalInventoryItem(item.id, { ...saleMeta, status:'sold', lifecycle:'sold' });
+    updateUniversalInventoryItem(item.id, { ...saleMeta, qty:remainingQuantity, quantity:remainingQuantity, status:depleted?'sold':'in_stock', lifecycle:depleted?'sold':'in_stock' });
     return 'built-in-local';
   }
   if(getInventorySource() === 'built_in' || getInventorySource() === 'spreadsheet') return 'local-only';
@@ -15511,10 +15544,10 @@ async function markInventoryRecordSold(item, fieldData, saleMeta){
   // date-sold) are NOT in the Webflow Products schema and cause 400 rejection of the whole PATCH.
   // Sale details live in Supabase pos_sales / pos_sale_lines, not Webflow product fields.
   const wfSoldFields = {
-    'sold-out':       true,
-    'inventory-count': 0,
-    status:           STATUS_SOLD,
+    'sold-out':       depleted,
+    'inventory-count': remainingQuantity,
   };
+  if(depleted) wfSoldFields.status = STATUS_SOLD;
   const res = await wfPatch('/collections/'+WF_PRODUCTS+'/items/'+item.id, { fieldData: wfSoldFields });
   if(!res.ok) throw new Error('Sold sync '+res.status+': '+(await res.text()).slice(0,160));
   return 'webflow';
@@ -16011,6 +16044,18 @@ function pricingGameForItem(item){
 
 function isSealedProduct(item){
   return /sealed|booster|box|hobby|blaster|mega|pack|case|tin|etb|elite trainer|bundle/.test([item.name,item.set,item.variant].filter(Boolean).join(' ').toLowerCase());
+}
+
+function inventoryAvailableQuantity(item){
+  if(!item) return 0;
+  const quantity = Number(item.qty ?? item.quantity ?? item.raw?.qty ?? item.raw?.quantity ?? item.raw?.['inventory-count'] ?? 1);
+  return Number.isFinite(quantity) ? Math.max(0, Math.floor(quantity)) : 0;
+}
+
+function inventoryItemIsSellable(item){
+  if(!item) return false;
+  const status = String(item.status || item.lifecycle || item.raw?.status || '').toLowerCase();
+  return !['sold','archived','returned','deleted'].includes(status) && !item.soldAt && inventoryAvailableQuantity(item) > 0;
 }
 
 function getPricingInventorySource(){
@@ -18871,6 +18916,10 @@ async function searchQuickCatalog(q, cat, searchPlan = buildUniversalSearchPlan(
     note:'Already in inventory - matched by ' + (hit.why.join(', ') || 'smart search'),
     confidence:Math.min(99, Math.round(hit.score)),
     matchWhy:hit.why,
+    status:i.status || i.lifecycle || 'in_stock',
+    lifecycle:i.lifecycle || i.status || 'in_stock',
+    qty:1,
+    availableQty:inventoryAvailableQuantity(i),
     raw:i,
   });
   });
@@ -22913,6 +22962,7 @@ function qplGradedQuickChips(r, idx){
 function quickLookupResultCard(r, idx){
   const builtTcgLink = buildTcgExternalLink(r);
   const isComic = qplResultCategoryKey(r) === 'comic';
+  const inventoryUnavailable = r.source === 'inventory' && !inventoryItemIsSellable(r.raw || r);
   const isSportsResult = qplResultCategoryKey(r) === 'sports' || r.source === 'topps_checklist' || r.source === 'sportscardspro';
   const img = r.imageUrl
     ? `<div class="qpl-img-shell" onclick="openQplImageLightbox(${idx})"${isComic?' style="aspect-ratio:2/3;max-height:220px"':''}><img src="${escHtml(r.imageUrl)}" alt="${escHtml(r.name || 'Card image')}" style="${isComic?'object-fit:cover;width:100%;height:100%':''}" onerror="this.closest('.qpl-img-shell').innerHTML='<div class=qpl-no-img>${isComic?'📖<br>NO COVER':'NO IMAGE'}</div>'"></div>`
@@ -23005,7 +23055,7 @@ function quickLookupResultCard(r, idx){
       <div class="qpl-badges">
         <span class="qpl-badge ${confClass}">${confLabel}${conf?` ${conf}`:''}</span>
         <span class="qpl-badge ${truth.includes('No ') || truth.includes('Needs') ? 'bad' : truth.includes('Guide') ? 'warn' : 'good'}">${escHtml(truth)}</span>
-        ${r.source === 'inventory' ? '<span class="qpl-badge good">IN INVENTORY</span>' : `<span class="qpl-badge">${escHtml(r.source === 'justtcg' ? 'JustTCG' : r.source === 'pricecharting_csv' ? 'PriceCharting' : r.source || 'Source')}</span>`}
+        ${r.source === 'inventory' ? `<span class="qpl-badge ${inventoryUnavailable?'bad':'good'}">${inventoryUnavailable?'SOLD / OUT OF STOCK':'IN INVENTORY'}</span>` : `<span class="qpl-badge">${escHtml(r.source === 'justtcg' ? 'JustTCG' : r.source === 'pricecharting_csv' ? 'PriceCharting' : r.source || 'Source')}</span>`}
         ${isComic ? (comicAppraisalState(r).coverConfirmed ? '<span class="qpl-badge good">COVER CONFIRMED</span>' : `<span class="qpl-badge warn">${r.imageUrl?'COVER NEEDS CONFIRMATION':'NO COVER'}</span>`) : ''}
         ${r.cache?.state === 'offline' ? `<span class="qpl-badge warn">Offline Cache</span>` : ''}
         ${_qplStaleBadge(r)}
@@ -23869,7 +23919,7 @@ async function selectQuickLookupResult(idx){
     <div class="research-context-actions">
       <button class="hbtn buy" onclick="addSelectedQuickLookupToBuyOffer(${idx})">ADD TO BUY</button>
       <button class="hbtn" style="color:var(--gold)" onclick="addSelectedQuickLookupToInventory(${idx})">ADD INVENTORY</button>
-      <button class="hbtn" onclick="addSelectedQuickLookupToSaleCart(${idx})">SELL</button>
+      <button class="hbtn" ${inventoryUnavailable?'disabled title="Sold or out of stock"':''} onclick="addSelectedQuickLookupToSaleCart(${idx})">${inventoryUnavailable?'SOLD OUT':'SELL'}</button>
       <button class="hbtn" onclick="renderQuickLookupResults(qplResults)">BACK</button>
     </div>
     <details class="research-secondary-actions">
@@ -24036,6 +24086,7 @@ function selectedQuickLookupItem(idx){
     cost:parseFloat(document.getElementById('qpl-edit-cost')?.value) || Number(comicAppraisal?.costBasis || r.cost || 0),
     costBasis:parseFloat(document.getElementById('qpl-edit-cost')?.value) || Number(comicAppraisal?.costBasis || r.cost || 0),
     qty:Math.max(1, Math.min(100, Number(r.qty || r.quantity || 1) || 1)),
+    availableQty:r.source === 'inventory' ? inventoryAvailableQuantity(r.raw) : Number(r.availableQty || r.qty || r.quantity || 1),
     location:document.getElementById('qpl-edit-location')?.value.trim() || comicAppraisal?.location || '',
     box:isComic ? comicAppraisal.box || '' : '',
     thumbnail:document.getElementById('qpl-edit-image-url')?.value.trim() || (isComic&&r.userPhotoBlobKey ? r.externalCoverImageUrl||'' : r.imageUrl||''),
@@ -24091,8 +24142,8 @@ function selectedQuickLookupItem(idx){
     lastPriceSyncAt:r.lastPriceSyncAt || selectedVariant.lastUpdated || new Date().toISOString(),
     source:r.source || 'quick_lookup',
     notes:isComic ? comicAppraisal.notes || r.note || '' : (r.note || ''),
-    lifecycle:'in_stock',
-    status:'in_stock',
+    lifecycle:r.source === 'inventory' ? (r.raw?.lifecycle || r.raw?.status || r.lifecycle || r.status || 'in_stock') : 'in_stock',
+    status:r.source === 'inventory' ? (r.raw?.status || r.raw?.lifecycle || r.status || r.lifecycle || 'in_stock') : 'in_stock',
     addedAt:new Date().toISOString(),
     appVersion:APP_VERSION,
   };
@@ -24140,6 +24191,21 @@ function addQuickLookupToInventory(idx){
 
 function addSelectedQuickLookupToSaleCart(idx){
   const item = selectedQuickLookupItem(idx);
+  const trackedInventoryItem = item.source === 'inventory' ? all.find(candidate => candidate.id === item.id) : null;
+  const requestedQuantity = Math.max(1, Number(item.qty || 1));
+  if(trackedInventoryItem){
+    if(!inventoryItemIsSellable(trackedInventoryItem)){
+      toast_dash('This inventory item is sold or out of stock');
+      return;
+    }
+    const currentCart = getCartDataLocal();
+    const alreadyInCart = (currentCart.items || []).reduce((sum, line) => String(line.inventoryId || line.shopId || line.wfId || '') === String(item.id) ? sum + Number(line.quantity || line.qty || 1) : sum, 0);
+    const available = inventoryAvailableQuantity(trackedInventoryItem);
+    if(requestedQuantity + alreadyInCart > available){
+      toast_dash(`Only ${available} available (${alreadyInCart} already in cart)`);
+      return;
+    }
+  }
   const rawMarketPrice = Number(item.market || 0);
   const price = rawMarketPrice > 0 ? suggestedCartSalePrice(rawMarketPrice) : 0;
   if(!rawMarketPrice && !confirm('This research result has no trusted sale price. Add to sale cart at $0 for manual price override?')) {
@@ -24156,9 +24222,12 @@ function addSelectedQuickLookupToSaleCart(idx){
     rawMarketPrice,
     suggestedFromMarket:rawMarketPrice,
     cost:Number(item.cost || 0),
+    qty:requestedQuantity,
+    quantity:requestedQuantity,
     img:item.imageUrl || item.thumbnail || '',
     shopId:item.id && item.source === 'inventory' ? item.id : null,
-    wfId:item.wfId || null,
+    wfId:item.source === 'inventory' ? item.id : (item.wfId || null),
+    inventoryId:item.id && item.source === 'inventory' ? item.id : null,
     category:item.category || 'Research',
     condition:item.condition || item.selectedCondition || '',
     set:item.setName || item.set || '',
@@ -26183,36 +26252,48 @@ async function recordCustomerDisplayPayment(method, total, tenderType){
 }
 
 async function markCartItemsSoldFromPayment(items, method, soldAt, options={}){
-  const tracked = (items || []).filter(i => i.shopId || i.wfId);
+  const grouped = new Map();
+  (items || []).filter(i => i.shopId || i.wfId).forEach(item => {
+    const id = item.shopId || item.wfId;
+    const existing = grouped.get(id);
+    if(existing) existing.quantity = Number(existing.quantity || 1) + Number(item.quantity || item.qty || 1);
+    else grouped.set(id, {...item, quantity:Number(item.quantity || item.qty || 1)});
+  });
+  const tracked = [...grouped.values()];
   if(!tracked.length) return;
   for(const cartItem of tracked) {
     const id = cartItem.shopId || cartItem.wfId;
     const inv = all.find(i => i.id === id);
     const salePrice = Number(cartItem.price || 0);
+    const quantitySold = Math.max(1, Number(cartItem.quantity || 1));
+    const remaining = Math.max(0, inventoryAvailableQuantity(inv || cartItem) - quantitySold);
+    const depleted = remaining === 0;
     const fieldData = {
-      'sold-out':true,
-      'inventory-count':0,
-      status:STATUS_SOLD,
+      'sold-out':depleted,
+      'inventory-count':remaining,
+      status:depleted ? STATUS_SOLD : 'in_stock',
       'sale-price':salePrice,
       'profit':salePrice - Number(cartItem.cost || inv?.cost || 0),
       'sale-channel':method,
       'date-sold':soldAt
     };
     if(inv) {
-      inv.status='sold';
-      inv.lifecycle='sold';
+      inv.qty=remaining;
+      inv.quantity=remaining;
+      inv.status=depleted ? 'sold' : 'in_stock';
+      inv.lifecycle=depleted ? 'sold' : 'in_stock';
       inv.salePrice=salePrice;
       inv.profit=salePrice - Number(inv.cost || cartItem.cost || 0);
       inv.channel=method;
-      inv.soldAt=soldAt;
-      setLifecycle(inv.id, 'sold', true);
-      syncConsignmentSaleForInventory(inv,salePrice,soldAt,method);
+      inv.soldAt=depleted ? soldAt : '';
+      setLifecycle(inv.id, depleted ? 'sold' : 'in_stock', true);
+      if(depleted) syncConsignmentSaleForInventory(inv,salePrice,soldAt,method);
     }
     if(!options.skipRemote){
       try {
-        await markInventoryRecordSold(inv || { id, source:cartItem.source || '' }, fieldData, { salePrice, channel:method, soldAt });
+        await markInventoryRecordSold(inv || { id, source:cartItem.source || '', qty:quantitySold }, fieldData, { salePrice, channel:method, soldAt, quantitySold, remainingQuantity:remaining });
       } catch(e) {
-        enqueueOrReplaceSync('inventory-sold', id, 'Mark sold in inventory: ' + (cartItem.name || 'cart item'), { id, fieldData, inventorySource:getInventorySource() }, e.message || 'Sold sync failed');
+        enqueueOrReplaceSync('inventory-sold', id, 'Update sold inventory quantity: ' + (cartItem.name || 'cart item'), { id, fieldData, saleMeta:{ salePrice, channel:method, soldAt, quantitySold, remainingQuantity:remaining }, inventorySource:getInventorySource() }, e.message || 'Inventory quantity sync failed');
       }
     }
   }
@@ -26752,7 +26833,7 @@ async function completeLockedCheckout(){
 async function finalizeCompletedCheckout(bundle, queued, inventoryCommittedAtomically=false){
   const paidAt = bundle.sale.completed_at;
   const method = bundle.payments.map(p => p.method).join('+');
-  await markCartItemsSoldFromPayment((lockedCheckoutSnapshot?.lines || []).map(l => ({ name:l.title, price:l.adjusted_price, cost:l.cost_basis, category:l.category, condition:l.condition, shopId:l.item_id })), method, paidAt, { skipRemote:inventoryCommittedAtomically });
+  await markCartItemsSoldFromPayment((lockedCheckoutSnapshot?.lines || []).map(l => ({ name:l.title, price:l.adjusted_price, cost:l.cost_basis, category:l.category, condition:l.condition, quantity:l.quantity, shopId:l.item_id })), method, paidAt, { skipRemote:inventoryCommittedAtomically });
   const txLog = safeLocalJson('pos_transactions', []);
   txLog.unshift({ id:bundle.sale.id, date:paidAt, method, tenderType:normalizeTenderType(method), total:bundle.sale.total, items:bundle.saleLines.map(l => ({ name:l.title, price:l.adjusted_price, cost:l.cost_basis, category:l.category, soldAt:paidAt })), source:queued?'offline-queued-ledger':'supabase-ledger', drawerSessionId:bundle.sale.drawer_session_id, storeId:bundle.sale.store_id });
   localStorage.setItem('pos_transactions', JSON.stringify(txLog.slice(0,1000)));
@@ -29769,7 +29850,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.07.14.01-stable-outbox"></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.07.14.02-quantity-safe"></script>
 </body>
 </html>
 

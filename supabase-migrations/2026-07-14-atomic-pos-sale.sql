@@ -2,6 +2,44 @@
 -- Run after supabase/pos-money-ledger.sql and
 -- supabase/stripe-connect-and-consignments.sql.
 
+-- Some early production installs have the core POS ledger without these two
+-- optional customer-capture tables. Creating them here is additive and makes
+-- the receipt/wants screens match the deployed application.
+create table if not exists public.customer_receipts (
+  id uuid primary key default gen_random_uuid(),
+  store_id uuid not null references public.stores(id) on delete cascade,
+  sale_id uuid references public.pos_sales(id) on delete set null,
+  phone text not null,
+  sms_status text not null default 'requested',
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.customer_wants (
+  id uuid primary key default gen_random_uuid(),
+  store_id uuid not null references public.stores(id) on delete cascade,
+  sale_id uuid references public.pos_sales(id) on delete set null,
+  phone text,
+  customer_name text,
+  want_text text not null,
+  categories text[] not null default '{}',
+  marketing_opt_in boolean not null default false,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists idx_customer_receipts_store on public.customer_receipts(store_id, created_at desc);
+create index if not exists idx_customer_wants_store on public.customer_wants(store_id, created_at desc);
+alter table public.customer_receipts enable row level security;
+alter table public.customer_wants enable row level security;
+drop policy if exists customer_receipts_select_member on public.customer_receipts;
+create policy customer_receipts_select_member on public.customer_receipts for select using (public.current_store_role(store_id) in ('owner','admin','manager','employee'));
+drop policy if exists customer_receipts_insert_employee on public.customer_receipts;
+create policy customer_receipts_insert_employee on public.customer_receipts for insert with check (public.current_store_role(store_id) in ('owner','admin','manager','employee'));
+drop policy if exists customer_wants_select_member on public.customer_wants;
+create policy customer_wants_select_member on public.customer_wants for select using (public.current_store_role(store_id) in ('owner','admin','manager','employee'));
+drop policy if exists customer_wants_insert_employee on public.customer_wants;
+create policy customer_wants_insert_employee on public.customer_wants for insert with check (public.current_store_role(store_id) in ('owner','admin','manager','employee'));
+grant select, insert on public.customer_receipts, public.customer_wants to authenticated;
+
 create or replace function public.complete_pos_sale(p_bundle jsonb)
 returns jsonb
 language plpgsql
@@ -14,6 +52,8 @@ declare
   v_store_id uuid;
   v_row jsonb;
   v_cash_delta numeric(12,2) := 0;
+  v_current_qty numeric := 0;
+  v_next_qty numeric := 0;
 begin
   if auth.uid() is null then
     raise exception 'Authentication required';
@@ -106,13 +146,35 @@ begin
   end if;
 
   for v_row in select value from jsonb_array_elements(coalesce(p_bundle -> 'inventoryUpdates','[]'::jsonb)) loop
+    select coalesce(
+             case when coalesce(data ->> 'qty','') ~ '^\d+(\.\d+)?$' then (data ->> 'qty')::numeric end,
+             case when coalesce(data ->> 'quantity','') ~ '^\d+(\.\d+)?$' then (data ->> 'quantity')::numeric end,
+             case when coalesce(data ->> 'inventory-count','') ~ '^\d+(\.\d+)?$' then (data ->> 'inventory-count')::numeric end,
+             1
+           )
+      into v_current_qty
+      from public.inventory_items
+     where store_id = v_store_id
+       and (id::text = v_row ->> 'item_id' or data ->> 'id' = v_row ->> 'item_id')
+     limit 1
+     for update;
+
+    if found then
+      v_next_qty := greatest(0, v_current_qty + coalesce((v_row ->> 'quantity_delta')::numeric,-1));
+    else
+      continue;
+    end if;
+
     update public.inventory_items
-       set status = 'sold',
+       set status = case when v_next_qty > 0 then 'in_stock' else 'sold' end,
            data = data || jsonb_build_object(
-                    'status', 'sold',
-                    'sold-out', true,
-                    'inventory-count', 0,
-                    'soldAt', coalesce(v_row ->> 'sold_at', now()::text),
+                    'status', case when v_next_qty > 0 then 'in_stock' else 'sold' end,
+                    'lifecycle', case when v_next_qty > 0 then 'in_stock' else 'sold' end,
+                    'qty', v_next_qty,
+                    'quantity', v_next_qty,
+                    'sold-out', v_next_qty <= 0,
+                    'inventory-count', v_next_qty,
+                    'soldAt', case when v_next_qty <= 0 then coalesce(v_row ->> 'sold_at', now()::text) else '' end,
                     'saleId', v_sale_id::text),
            updated_at = now()
      where store_id = v_store_id
@@ -138,3 +200,6 @@ $$;
 
 revoke all on function public.complete_pos_sale(jsonb) from public;
 grant execute on function public.complete_pos_sale(jsonb) to authenticated;
+
+-- Make newly created tables/functions visible to PostgREST immediately.
+notify pgrst, 'reload schema';

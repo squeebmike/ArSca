@@ -64,6 +64,31 @@ test('operational outbox survives reload without the old 500-entry cap', async (
   guard.assertClean();
 });
 
+test('tracked sealed inventory decrements quantity and blocks overselling', async ({ page }) => {
+  const guard = await openDashboard(page);
+  const result = await page.evaluate(async () => {
+    localStorage.setItem('pos_cart_v2', JSON.stringify({ items:[], discount:0 }));
+    const item = { id:'qa_sealed_qty', source:'built_in', name:'QA Booster Box', category:'Sealed Product', status:'in_stock', lifecycle:'in_stock', qty:3, market:100 };
+    all.push(item);
+    const first = addSaleItemToCart(item, { sourceType:'sealed', inventoryId:item.id, unitPrice:100, quantity:2 });
+    const oversell = addSaleItemToCart(item, { sourceType:'sealed', inventoryId:item.id, unitPrice:100, quantity:2 });
+    await markCartItemsSoldFromPayment([{ shopId:item.id, name:item.name, price:100, quantity:2 }], 'cash', new Date().toISOString(), { skipRemote:true });
+    const afterTwo = { qty:item.qty, status:item.status };
+    localStorage.setItem('pos_cart_v2', JSON.stringify({ items:[], discount:0 }));
+    await markCartItemsSoldFromPayment([{ shopId:item.id, name:item.name, price:100, quantity:1 }], 'cash', new Date().toISOString(), { skipRemote:true });
+    const afterThree = { qty:item.qty, status:item.status };
+    all = all.filter(candidate => candidate.id !== item.id);
+    return { first:!!first, oversell:!!oversell, afterTwo, afterThree };
+  });
+  expect(result).toEqual({
+    first:true,
+    oversell:false,
+    afterTwo:{ qty:1, status:'in_stock' },
+    afterThree:{ qty:0, status:'sold' }
+  });
+  guard.assertClean();
+});
+
 test('research and drawer use contextual actions and starting cash wording', async ({ page }) => {
   const guard = await openDashboard(page);
   await page.locator('[data-tab="research"]').click();

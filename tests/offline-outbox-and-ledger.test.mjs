@@ -14,6 +14,10 @@ assert.match(migration, /create or replace function public\.complete_pos_sale/, 
 assert.match(migration, /security definer/, 'RPC must own the complete transaction after checking store membership');
 assert.match(migration, /if exists \(select 1 from public\.pos_sales/, 'RPC must be idempotent by sale ID');
 assert.match(migration, /update public\.inventory_items/, 'inventory changes must be in the sale transaction');
+assert.match(migration, /v_next_qty := greatest\(0, v_current_qty/, 'tracked inventory must decrement instead of always becoming sold');
+assert.match(migration, /create table if not exists public\.customer_receipts/, 'receipt capture table must be installed');
+assert.match(migration, /create table if not exists public\.customer_wants/, 'customer wants table must be installed');
+assert.match(migration, /notify pgrst, 'reload schema'/, 'PostgREST must reload after the migration');
 assert.match(migration, /update public\.pos_drawer_sessions/, 'drawer totals must be in the sale transaction');
 assert.match(migration, /grant execute on function public\.complete_pos_sale\(jsonb\) to authenticated/, 'only authenticated clients may call the RPC');
 

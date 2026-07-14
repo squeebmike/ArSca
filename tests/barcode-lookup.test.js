@@ -28,7 +28,7 @@ assert.match(worker,/needsCoverConfirmation:isComic/);
 assert.match(dashboard,/id="research-barcode-btn"/);
 assert.match(dashboard,/BarcodeDetector/);
 assert.match(dashboard,/arsca_barcode_links_v1/);
-assert.match(dashboard,/2026\.07\.14\.01-stable-outbox/);
+assert.match(dashboard,/2026\.07\.14\.02-quantity-safe/);
 assert.match(dashboard,/TCGPLAYER LINK/);
 assert.match(dashboard,/parseTcgplayerProductInput/);
 assert.match(dashboard,/parsePriceChartingProductInput/);
