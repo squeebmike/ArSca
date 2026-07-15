@@ -383,6 +383,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
 .holo-tog{transition:.15s;}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="app-config.js"></script>
 </head>
 <body>
 <div id="scanner-auth-screen" class="auth-screen">
@@ -666,7 +667,7 @@ const STORE = {
   store_name:       'Walk-Off Sports Cards',
   store_location:   'Kingston, WA',
   store_website:    'walkoffsc.com',
-  worker_url:       'https://still-resonance-4f87.swarnerauto.workers.dev',
+  worker_url:       window.WALKOFF_CONFIG?.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev',
   stripe_pk:        '', // Stripe keys are supplied by the Worker/Connect flow, never hardcoded here.
   venmo:            '',
   paypal:           '',
@@ -690,8 +691,8 @@ const STORE = {
   wf_status_sold:   'e6b42f14fcb99aa2168a5f5672226f68',
 };
 const APP_VERSION = '2026.07.13.06-offline-export-scope';
-const SUPABASE_URL = 'https://vroknjrxubsqyexngwus.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_wbpX2nL8l-4NbXtZNG_bjA_nabSYaJ5';
+const SUPABASE_URL = window.WALKOFF_CONFIG?.supabaseUrl || 'https://vroknjrxubsqyexngwus.supabase.co';
+const SUPABASE_ANON_KEY = window.WALKOFF_CONFIG?.supabaseAnonKey || 'sb_publishable_wbpX2nL8l-4NbXtZNG_bjA_nabSYaJ5';
 const WORKER_URL = STORE.worker_url;
 
 const WALKOFF_SCOPED_KEYS = new Set(['lba_inventory','lba_sales','pos_transactions','pos_cart_v2','pos_buy_list','pos_active_buy_session','pos_buy_sessions','pos_sync_queue','pos_drawer','pos_drawer_closeouts','pos_wantlist','pos_consign','pos_consignors','pos_consignment_alerts','pos_locations','vendor_profile_v1','store_payment_settings_v1','store_theme_v1','grade_submissions']);

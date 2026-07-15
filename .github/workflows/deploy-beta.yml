@@ -1,0 +1,87 @@
+name: Deploy isolated beta
+
+on:
+  push:
+    branches: [beta]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy-beta:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: beta
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      BETA_WORKER_URL: https://walkoff-beta.swarnerauto.workers.dev
+      BETA_SUPABASE_URL: ${{ secrets.BETA_SUPABASE_URL }}
+      BETA_SUPABASE_ANON_KEY: ${{ secrets.BETA_SUPABASE_ANON_KEY }}
+      BETA_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.BETA_SUPABASE_SERVICE_ROLE_KEY }}
+      POKEMONPRICE_API_KEY: ${{ secrets.POKEMONPRICE_API_KEY }}
+      PRICECHARTING_TOKEN: ${{ secrets.PRICECHARTING_TOKEN }}
+      COMICVINE_API_KEY: ${{ secrets.COMICVINE_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Validate isolated beta configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          for name in CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID BETA_SUPABASE_URL BETA_SUPABASE_ANON_KEY BETA_SUPABASE_SERVICE_ROLE_KEY; do
+            if [ -z "${!name:-}" ]; then echo "::error::$name is missing from the protected beta environment"; exit 1; fi
+          done
+          if [[ "$BETA_SUPABASE_URL" == *"vroknjrxubsqyexngwus"* ]]; then
+            echo "::error::Beta may not use the production Supabase project"; exit 1
+          fi
+
+      - name: Install Wrangler
+        run: npm install --no-save wrangler@latest
+
+      - name: Provision isolated KV and R2, then build Worker config
+        shell: bash
+        run: |
+          set -euo pipefail
+          namespaces="$(npx wrangler kv namespace list)"
+          kv_id="$(KV_JSON="$namespaces" node -e "const a=JSON.parse(process.env.KV_JSON);const x=a.find(v=>v.title==='walkoff-beta-LBA_KV');if(x)process.stdout.write(x.id)")"
+          if [ -z "$kv_id" ]; then
+            output="$(npx wrangler kv namespace create LBA_KV --config wrangler.beta.jsonc 2>&1 || true)"
+            kv_id="$(printf '%s' "$output" | grep -Eo '[a-f0-9]{32}' | head -1)"
+          fi
+          if [ -z "$kv_id" ]; then echo "::error::Could not provision beta KV"; exit 1; fi
+          if ! npx wrangler r2 bucket list | grep -Fq 'arsca-offline-catalogs-beta'; then
+            npx wrangler r2 bucket create arsca-offline-catalogs-beta
+          fi
+          KV_ID="$kv_id" node -e "const fs=require('fs');const c=JSON.parse(fs.readFileSync('wrangler.beta.jsonc','utf8'));c.kv_namespaces[0].id=process.env.KV_ID;fs.writeFileSync('wrangler.beta.runtime.json',JSON.stringify(c,null,2))"
+
+      - name: Configure beta Worker secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs = require('fs');
+          const names = ['BETA_SUPABASE_URL','BETA_SUPABASE_SERVICE_ROLE_KEY','POKEMONPRICE_API_KEY','PRICECHARTING_TOKEN','COMICVINE_API_KEY'];
+          const map = { BETA_SUPABASE_URL:'SUPABASE_URL', BETA_SUPABASE_SERVICE_ROLE_KEY:'SUPABASE_SERVICE_ROLE_KEY' };
+          const values = {};
+          for (const name of names) if (process.env[name]) values[map[name] || name] = process.env[name];
+          fs.writeFileSync('/tmp/beta-secrets.json', JSON.stringify(values));
+          NODE
+          npx wrangler secret bulk /tmp/beta-secrets.json --config wrangler.beta.runtime.json
+
+      - name: Deploy beta Worker
+        run: npx wrangler deploy --config wrangler.beta.runtime.json --keep-vars
+
+      - name: Build and deploy beta site
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/build-beta-site.mjs
+          if ! npx wrangler pages project list | grep -Fq 'arsca-beta'; then
+            npx wrangler pages project create arsca-beta --production-branch beta
+          fi
+          npx wrangler pages deploy dist-beta --project-name arsca-beta --branch beta
