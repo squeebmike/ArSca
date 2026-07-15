@@ -9683,6 +9683,10 @@ async function processSyncItem(item){
   }
   if(item.type === 'supabase-inventory-update') {
     await updateBuiltInInventoryItem(item.payload.item, item.payload.updates || {});
+    // The queued retry has now landed in Supabase — clear the local override
+    // that was kept while it was pending, or it stays stuck shadowing fresh
+    // data indefinitely.
+    clearInventoryEditOverride(item.payload.item?.id);
     // After Supabase update succeeds, mirror to Webflow if linked
     const wfId = item.payload.item?.raw?.wfId || item.payload.item?.raw?.webflowId;
     if(wfId) {
@@ -15781,6 +15785,19 @@ function saveInventoryEditOverride(id, updates){
   localStorage.setItem('inventory_edit_overrides_v1', JSON.stringify(map));
 }
 
+// The override exists only to keep an edit visible locally while it is
+// pending/offline. Once a write is confirmed saved to the authoritative
+// backend, the override must be cleared — otherwise it permanently shadows
+// fresh data fetched on this device, hiding edits made from other devices.
+function clearInventoryEditOverride(id){
+  if(!id) return;
+  const map = getInventoryEditOverrides();
+  if(map[id]){
+    delete map[id];
+    localStorage.setItem('inventory_edit_overrides_v1', JSON.stringify(map));
+  }
+}
+
 function applyInventoryEditOverrides(items){
   const map = getInventoryEditOverrides();
   return (items || []).map(item => {
@@ -15828,8 +15845,11 @@ async function confirmEdit() {
   if(updates.ownershipType==='consignor'&&!updates.consignorName){toast_dash('Select a consignor or choose Store Inventory');return;}
   syncInventoryOwnershipToConsignment(before,updates);
   try {
+    // saveInventoryEdit() already manages the local override per source:
+    // it clears it on a confirmed built_in write and sets it for sources
+    // that are local-authoritative. Re-setting it here unconditionally
+    // would undo that and re-shadow fresh built_in data on every save.
     await saveInventoryEdit(before, updates);
-    saveInventoryEditOverride(editingItemId, updates);
   } catch(e) {
     toast_dash('Save failed: ' + (e.message || e));
     return;
@@ -15890,7 +15910,10 @@ async function confirmEditAndSync() {
     const wfMirrorId = item.raw?.wfId || item.raw?.webflowId || null;
     try {
       await updateBuiltInInventoryItem(item, updates);
-      saveInventoryEditOverride(editingItemId, updates);
+      // Write succeeded, so Supabase is now authoritative for this item —
+      // clear any local override instead of setting one, so other devices'
+      // edits aren't hidden behind this device's stale cached value.
+      clearInventoryEditOverride(editingItemId);
       applyDashboardItemUpdate(editingItemId, updates);
       statusEl.style.color = 'var(--g)';
       statusEl.textContent = wfMirrorId ? 'Saved — mirroring to Webflow…' : 'Saved to built-in inventory';
@@ -26202,7 +26225,10 @@ async function editCartLinePrice(idx){
 async function saveInventoryEdit(item, updates){
   if(item.source === 'built_in') {
     await updateBuiltInInventoryItem(item, updates);
-    saveInventoryEditOverride(item.id, updates);
+    // Write succeeded, so Supabase is now authoritative for this item — do not
+    // shadow it with a local override that would hide future edits from
+    // other devices.
+    clearInventoryEditOverride(item.id);
     return true;
   }
   if(item.source === 'spreadsheet' || getInventorySource() === 'spreadsheet') {
