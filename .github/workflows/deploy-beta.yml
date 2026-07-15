@@ -74,15 +74,8 @@ jobs:
           NODE
           npx wrangler secret bulk /tmp/beta-secrets.json --config wrangler.beta.runtime.json
 
-      - name: Deploy beta Worker
-        run: npx wrangler deploy --config wrangler.beta.runtime.json --keep-vars
+      - name: Build isolated beta site
+        run: node scripts/build-beta-site.mjs
 
-      - name: Build and deploy beta site
-        shell: bash
-        run: |
-          set -euo pipefail
-          node scripts/build-beta-site.mjs
-          if ! npx wrangler pages project list | grep -Fq 'arsca-beta'; then
-            npx wrangler pages project create arsca-beta --production-branch beta
-          fi
-          npx wrangler pages deploy dist-beta --project-name arsca-beta --branch beta
+      - name: Deploy beta Worker and static site
+        run: npx wrangler deploy --config wrangler.beta.runtime.json --keep-vars

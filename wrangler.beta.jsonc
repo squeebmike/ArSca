@@ -3,6 +3,12 @@
   "main": "cloudflare-worker-full.js",
   "compatibility_date": "2026-07-15",
   "vars": { "ENVIRONMENT": "beta" },
+  "assets": {
+    "directory": "./dist-beta",
+    "binding": "ASSETS",
+    "run_worker_first": true,
+    "not_found_handling": "single-page-application"
+  },
   "kv_namespaces": [
     { "binding": "LBA_KV", "id": "00000000000000000000000000000000" }
   ],

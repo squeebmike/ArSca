@@ -8,6 +8,8 @@ debug.log
 data/topps/topps_checklists_index.json
 data/topps/topps_checklist_cards.json
 data/topps/topps_pdf_sources.json.gz
+data/topps/offline-build/
+data/topps/export/
 data/mtg/raw/
 data/mtg/tmp/
 data/mtg/build/

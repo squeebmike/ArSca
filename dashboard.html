@@ -1424,6 +1424,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <script src="scripts/comic-issue-hub.js?v=2026.07.15.05-production-beta-split"></script>
 <script src="scripts/mtg/mtg-offline-browser.js?v=2026.07.15.05-production-beta-split"></script>
 <script src="scripts/pricecharting/offline-browser.js?v=2026.07.15.05-production-beta-split"></script>
+<script src="scripts/topps/offline-browser.js?v=2026.07.15.06-topps-r2"></script>
 <script src="scripts/mtg/research-batch.js?v=2026.07.15.05-production-beta-split"></script>
 </head>
 <body>
@@ -5748,9 +5749,9 @@ async function refreshOfflineCatalogManagerPanel(){
 function offlineCatalogSelection(){
   try{
     const saved=JSON.parse(localStorage.getItem(OFFLINE_CATALOG_SELECTION_KEY)||'null');
-    if(saved&&typeof saved==='object')return {mtg:!!saved.mtg,video_games:!!saved.video_games,yugioh:!!saved.yugioh,one_piece:!!saved.one_piece};
+    if(saved&&typeof saved==='object')return {mtg:!!saved.mtg,topps:!!saved.topps,video_games:!!saved.video_games,yugioh:!!saved.yugioh,one_piece:!!saved.one_piece};
   }catch(e){}
-  return {mtg:true,video_games:false,yugioh:false,one_piece:false};
+  return {mtg:true,topps:false,video_games:false,yugioh:false,one_piece:false};
 }
 function setOfflineCatalogSelected(category,selected){
   const next=offlineCatalogSelection();next[category]=!!selected;
@@ -5767,12 +5768,13 @@ function formatOfflineCatalogDate(value){
 async function renderOfflineCatalogManagerPanel(){
   const body = document.getElementById('offline-catalog-manager-body');
   if(!body) return;
-  const [pptCards, pptSealed, pptEbay, pptPop, mtg, ...priceChartingStatuses] = await Promise.all([
+  const [pptCards, pptSealed, pptEbay, pptPop, mtg, toppsOffline, ...priceChartingStatuses] = await Promise.all([
     catalogDbGet('meta', 'export_cards').catch(() => null),
     catalogDbGet('meta', 'export_sealed').catch(() => null),
     catalogDbGet('meta', 'export_ebay').catch(() => null),
     catalogDbGet('meta', 'export_population').catch(() => null),
     mtgCatalogCounts().catch(() => ({ cards:0, sets:0, meta:{} })),
+    window.ArsCaToppsOffline?.status().catch(() => null),
     ...PRICECHARTING_OFFLINE_CATALOGS.map(([category]) => window.ArsCaPriceChartingOffline?.status(category).catch(() => null)),
   ]);
   const row = (label, count, downloadedAt, status, actions, source) => `
@@ -5815,7 +5817,7 @@ async function renderOfflineCatalogManagerPanel(){
   const storageEstimate=await navigator.storage?.estimate?.().catch(()=>({}))||{};
   const storagePersistent=await navigator.storage?.persisted?.().catch(()=>false)||false;
   const selection=offlineCatalogSelection();
-  const catalogStates={mtg:{installed:mtg.cards>0,indexed:!!mtgMeta.searchIndexReady}};
+  const catalogStates={mtg:{installed:mtg.cards>0,indexed:!!mtgMeta.searchIndexReady},topps:{installed:!!toppsOffline?.installed,indexed:!!toppsOffline?.installed}};
   PRICECHARTING_OFFLINE_CATALOGS.forEach(([category],index)=>catalogStates[category]={installed:Number(priceChartingStatuses[index]?.rowCount||0)>0,indexed:!!priceChartingStatuses[index]?.searchIndexReady});
   const selectedKeys=Object.keys(selection).filter(key=>selection[key]);
   const readyCount=selectedKeys.filter(key=>catalogStates[key]?.installed&&catalogStates[key]?.indexed).length;
@@ -5831,7 +5833,7 @@ async function renderOfflineCatalogManagerPanel(){
         <div style="display:flex;gap:7px;flex-wrap:wrap"><button class="hbtn" style="color:var(--g)" onclick="updateSelectedOfflineCatalogs()" ${selectedKeys.length?'':'disabled'}>UPDATE SELECTED (${selectedKeys.length})</button><button class="hbtn" onclick="requestOfflinePersistentStorage()">${storagePersistent?'STORAGE PROTECTED':'PROTECT DEVICE DATA'}</button></div>
       </div>
       <div style="font-family:monospace;font-size:9px;color:var(--dim);margin-top:11px">Choose only what this device/store sells. Unchecking stops future updates; use CLEAR on an installed catalog below to remove its data.</div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:7px;margin-top:8px">${choice('mtg','MTG')}${choice('video_games','Video Games')}${choice('yugioh','Yu-Gi-Oh')}${choice('one_piece','One Piece')}</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:7px;margin-top:8px">${choice('mtg','MTG')}${choice('topps','Topps Sports')}${choice('video_games','Video Games')}${choice('yugioh','Yu-Gi-Oh')}${choice('one_piece','One Piece')}</div>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:8px;margin-top:10px;font-family:monospace;font-size:9px;color:var(--dim)"><span>Device storage: ${bytesLabel(storageEstimate.usage)} used</span><span>Browser allowance: ${bytesLabel(storageEstimate.quota)}</span><span>Persistence: ${storagePersistent?'Granted':'Not granted'}</span><span>Updates validate before activation</span></div>
       <div id="offline-update-all-progress" style="font-family:monospace;font-size:9px;color:var(--gold);margin-top:8px"></div>
     </div>
@@ -5851,6 +5853,8 @@ async function renderOfflineCatalogManagerPanel(){
       <span id="mtg-offline-progress" style="color:var(--gold);min-width:160px">${mtgBusy?'Checking manifest...':''}</span>
     </div>
     <div style="font-family:monospace;font-size:9px;color:var(--dim);line-height:1.55;margin-top:8px">Catalog version: ${escHtml(mtgMeta.catalogVersion || 'not downloaded')} / Prices version: ${escHtml(mtgMeta.pricesVersion || 'not downloaded')}. ${mtgRemoteLine} ${mtgLocalLine} R2 holds the daily compressed bundle; this device imports it into IndexedDB. PriceCharting values are a daily snapshot, not live prices. Images are cached separately only when viewed.</div>
+    <div style="font-family:'Orbitron',monospace;color:var(--gold);font-size:11px;letter-spacing:.05em;margin-top:16px">TOPPS SPORTS CHECKLISTS</div>
+    ${row('Topps checklist cards',toppsOffline?.rowCount||0,toppsOffline?.lastImportedAt,toppsOffline?.installed?`${Number(toppsOffline.setCount||0).toLocaleString()} sets / local indexed`:'Not downloaded',`<button class="hbtn" onclick="syncToppsOffline(true)">DOWNLOAD / REFRESH</button><button class="hbtn" onclick="clearToppsOffline()">CLEAR</button>`,'Topps R2 offline catalog')}
     <div style="font-family:'Orbitron',monospace;color:var(--purple);font-size:11px;letter-spacing:.05em;margin-top:16px">PRICECHARTING SHARED OFFLINE DATA</div>
     ${priceChartingRows}
     <div style="font-family:monospace;font-size:9px;color:var(--dim);line-height:1.5;margin-top:7px">Pokémon is intentionally excluded here and uses PokémonPriceTracker exports above. MTG remains in its dedicated Scryfall + PriceCharting bundle.</div>
@@ -5875,6 +5879,10 @@ async function updateSelectedOfflineCatalogs(){
     note(`1/${selectedKeys.length} Updating MTG cards, prices, links, and search index...`);
     try{await window.ArsCaMtgOffline.sync({workerBase:WORKER,force:false,onProgress:detail=>note(`${completed+1}/${selectedKeys.length} MTG: ${detail.stage}${detail.count!=null?' '+Number(detail.count).toLocaleString():''}`)});}catch(error){failures.push('MTG: '+error.message);}completed++;
   }
+  if(selection.topps){
+    note(`${completed+1}/${selectedKeys.length} Updating Topps sports checklist index...`);
+    try{await window.ArsCaToppsOffline.sync({worker:WORKER,force:false});}catch(error){failures.push('Topps: '+error.message);}completed++;
+  }
   for(const [category,label] of PRICECHARTING_OFFLINE_CATALOGS){
     if(!selection[category])continue;
     note(`${completed+1}/${selectedKeys.length} Updating ${label}...`);
@@ -5885,6 +5893,13 @@ async function updateSelectedOfflineCatalogs(){
   await renderOfflineCatalogManagerPanel();
 }
 async function updateAllOfflineCatalogs(){return updateSelectedOfflineCatalogs();}
+
+async function syncToppsOffline(force=false){
+  try{await navigator.storage?.persist?.().catch(()=>false);await window.ArsCaToppsOffline.sync({worker:WORKER,force});TOPPS.loaded=false;await toppsRefresh(true);toast_dash('Topps offline catalog ready');}
+  catch(e){toast_dash('Topps offline catalog: '+e.message);}
+  renderOfflineCatalogManagerPanel();
+}
+async function clearToppsOffline(){if(!confirm('Clear the Topps checklist catalog from this device? Inventory is not touched.'))return;await window.ArsCaToppsOffline?.clear();TOPPS=window.TOPPS=toppsDefaultState();renderOfflineCatalogManagerPanel();toast_dash('Topps offline catalog cleared');}
 
 async function syncPriceChartingOffline(category){
   const progress=document.getElementById('pricecharting-offline-progress');
@@ -20330,6 +20345,14 @@ function sportsToppsCardToQplRow(card = {}, query = ''){
 
 async function searchToppsSportsChecklist(q, cat = ''){
   if(!isSportsLookupIntent(q, cat)) return [];
+  try {
+    const offlineStatus = await window.ArsCaToppsOffline?.status();
+    if(offlineStatus?.installed) {
+      const queryNum = sportsCardNumberFromQuery(q);
+      const cards = await window.ArsCaToppsOffline.search({ q, number:queryNum }, 12);
+      return cards.map(card => sportsToppsCardToQplRow(card, q)).sort((a, b) => Number(b.confidence || 0) - Number(a.confidence || 0)).slice(0, 12);
+    }
+  } catch(e) { console.warn('Topps offline lookup skipped', e); }
   const sb = getSupabaseClient();
   if(!sb) return [];
   const terms = sportsQueryTerms(q);
@@ -29316,6 +29339,18 @@ async function toppsRefresh(force = false){
   const note = document.getElementById('topps-import-note');
   if(note) note.textContent = 'Loading Topps checklist database...';
   try {
+    const offlineStatus = await window.ArsCaToppsOffline?.status();
+    if(!offlineStatus?.installed) throw new Error('Topps offline catalog is not installed');
+    TOPPS.sets = (await window.ArsCaToppsOffline.getSets()).filter(s => !toppsIsBadSet(s));
+    TOPPS.cards = [];
+    TOPPS.sources = [];
+    TOPPS.source = 'R2 offline catalog';
+    TOPPS.totalCards = offlineStatus.rowCount;
+    TOPPS.sourceCount = 0;
+    TOPPS.loaded = true;
+    if(note) note.textContent = `Offline catalog loaded. ${TOPPS.totalCards.toLocaleString()} cards indexed on this device.`;
+  } catch(offlineError) {
+   try {
     const dbData = await toppsLoadSupabaseDirect();
     TOPPS.sets = dbData.sets || [];
     TOPPS.cards = dbData.cards || [];
@@ -29325,7 +29360,7 @@ async function toppsRefresh(force = false){
     TOPPS.sourceCount = dbData.sourceCount || 0;
     TOPPS.loaded = true;
     if(note) note.textContent = `${TOPPS.source} loaded. ${TOPPS.totalCards.toLocaleString()} cards indexed. Filters search the full database.`;
-  } catch(e) {
+   } catch(e) {
     try {
       const [setsData, cardsData] = await Promise.all([toppsWorker('/topps-checklists/sets?limit=2000'), toppsWorker('/topps-checklists/cards?limit=500')]);
       TOPPS.sets = (setsData.sets || []).filter(s => !toppsIsBadSet(s));
@@ -29351,6 +29386,7 @@ async function toppsRefresh(force = false){
         TOPPS.loaded = false;
       }
     }
+   }
   }
   toppsPopulateFilters();
   toppsApplyFilters();
@@ -29425,6 +29461,11 @@ function toppsSetMatches(s, f){
   return true;
 }
 function toppsApplyFilters(){
+  if(TOPPS.source === 'R2 offline catalog') {
+    clearTimeout(TOPPS.filterTimer);
+    TOPPS.filterTimer = setTimeout(toppsApplyOfflineFilters, 40);
+    return;
+  }
   if(TOPPS.source === 'Supabase direct') {
     clearTimeout(TOPPS.filterTimer);
     TOPPS.filterTimer = setTimeout(toppsApplySupabaseFilters, 180);
@@ -29439,6 +29480,14 @@ function toppsApplyFilters(){
   TOPPS.filteredSets = TOPPS.sets.filter(s => toppsSetMatches(s, f));
   TOPPS.filteredCards = TOPPS.cards.filter(c => toppsCardMatches(c, f)).slice(0, 500);
   toppsRender();
+}
+
+async function toppsApplyOfflineFilters(){
+  const seq=++TOPPS.filterSeq,f=toppsCurrentFilters();
+  TOPPS.filteredSets=TOPPS.sets.filter(s=>toppsSetMatches(s,f));TOPPS.cardsLoading=true;toppsRender();
+  try{const cards=await window.ArsCaToppsOffline.search(f,f.setId?500:100);if(seq!==TOPPS.filterSeq)return;TOPPS.filteredCards=cards;}
+  catch(e){if(seq!==TOPPS.filterSeq)return;TOPPS.filteredCards=[];const note=document.getElementById('topps-import-note');if(note)note.textContent='Offline Topps search failed: '+(e.message||e);}
+  finally{if(seq===TOPPS.filterSeq){TOPPS.cardsLoading=false;toppsRender();}}
 }
 
 async function toppsApplySupabaseFilters(){
