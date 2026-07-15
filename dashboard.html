@@ -2929,6 +2929,14 @@ function getSupabaseClient(){
   supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     auth:{ persistSession:true, autoRefreshToken:true, detectSessionInUrl:true }
   });
+  // GoTrue's PKCE redirect for password recovery does not reliably carry a
+  // type=recovery URL param, so detectSessionInUrl can silently turn a
+  // recovery link into a normal signed-in session. PASSWORD_RECOVERY is the
+  // SDK's own classification of the exchanged token and fires regardless of
+  // URL shape, so it is the reliable signal to fall back on.
+  supabaseClient.auth.onAuthStateChange((event) => {
+    if(event === 'PASSWORD_RECOVERY') window.__walkoffPasswordRecovery = true;
+  });
   return supabaseClient;
 }
 
@@ -3640,11 +3648,15 @@ async function handleAuthRecoveryRedirect(){
   if(!sb) return false;
   const params = new URLSearchParams(location.search);
   const hash = new URLSearchParams(String(location.hash || '').replace(/^#/, ''));
-  const isRecovery = params.get('auth') === 'recovery' || params.get('type') === 'recovery' || hash.get('type') === 'recovery';
-  if(!isRecovery) return false;
-  const code = params.get('code');
-  if(code) await sb.auth.exchangeCodeForSession(code).catch(() => null);
+  const urlIsRecovery = params.get('auth') === 'recovery' || params.get('type') === 'recovery' || hash.get('type') === 'recovery';
+  // GoTrue's PKCE recovery redirect can land here as just ?code=... with no
+  // explicit type=recovery marker. detectSessionInUrl (set on the client)
+  // already exchanges that code on its own; only bail out early if there is
+  // truly nothing for it to have processed.
+  if(!urlIsRecovery && !params.get('code') && !hash.get('access_token')) return false;
   await sb.auth.getSession().catch(() => null);
+  const isRecovery = urlIsRecovery || window.__walkoffPasswordRecovery === true;
+  if(!isRecovery) return false;
   showAuthMode('update-password', 'Reset link accepted. Enter your new password.');
   return true;
 }
