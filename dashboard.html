@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.07.15.06-inventory-override-fix">
+<meta name="version" content="2026.07.15.07-single-save-button">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1419,12 +1419,12 @@ body.show-mode .inv-sync-badge{display:none;}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.07.15.06-inventory-override-fix"></script>
-<script src="scripts/barcode-lookup.js?v=2026.07.15.06-inventory-override-fix"></script>
-<script src="scripts/comic-issue-hub.js?v=2026.07.15.06-inventory-override-fix"></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.07.15.06-inventory-override-fix"></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.07.15.06-inventory-override-fix"></script>
-<script src="scripts/mtg/research-batch.js?v=2026.07.15.06-inventory-override-fix"></script>
+<script src="scripts/query-routing.js?v=2026.07.15.07-single-save-button"></script>
+<script src="scripts/barcode-lookup.js?v=2026.07.15.07-single-save-button"></script>
+<script src="scripts/comic-issue-hub.js?v=2026.07.15.07-single-save-button"></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.07.15.07-single-save-button"></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.07.15.07-single-save-button"></script>
+<script src="scripts/mtg/research-batch.js?v=2026.07.15.07-single-save-button"></script>
 </head>
 <body>
 
@@ -1474,11 +1474,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.07.15.06-inventory-override-fix</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.07.15.07-single-save-button</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.07.15.06-inventory-override-fix</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.07.15.07-single-save-button</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1501,7 +1501,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.07.15.06-inventory-override-fix</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.07.15.07-single-save-button</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -2477,8 +2477,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div id="edit-profit-preview" style="font-family:'DM Mono',monospace;font-size:10px;margin:8px 0"></div>
 
     <div class="modal-btns">
-      <button class="modal-btn confirm" onclick="confirmEdit()">SAVE CHANGES</button>
-      <button class="modal-btn" id="edit-sync-btn" style="background:rgba(255,209,102,.08);border-color:rgba(255,209,102,.2);color:var(--gold)" onclick="confirmEditAndSync()">SAVE + SYNC</button>
+      <button class="modal-btn confirm" id="edit-sync-btn" onclick="confirmEditAndSync()">SAVE CHANGES</button>
       <button class="modal-btn danger" onclick="deleteEditingInventoryItem()">DELETE</button>
       <button class="modal-btn cancel" onclick="closeEditModal()">Cancel</button>
     </div>
@@ -2861,7 +2860,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.07.15.06-inventory-override-fix';
+const APP_VERSION = '2026.07.15.07-single-save-button';
 window.APP_VERSION = APP_VERSION;
 const branchName = 'main';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
@@ -15804,59 +15803,6 @@ function applyInventoryEditOverrides(items){
     const patch = map[item.id] || map[item.wfId];
     return patch ? { ...item, ...patch, id:item.id, wfId:item.wfId || patch.wfId || item.id } : item;
   });
-}
-
-async function confirmEdit() {
-  if(!editingItemId) return;
-  const before = all.find(i => i.id === editingItemId);
-  if(before) pushUndoAction('inventory edit', { type:'item-snapshot', item:{...before}, lifecycleMap:getLifecycleMap() });
-  const updates = {
-    cost: parseFloat(document.getElementById('edit-cost').value)||0,
-    market: parseFloat(document.getElementById('edit-market').value)||0,
-    price: parseFloat(document.getElementById('edit-market').value)||0,
-    salePrice: parseFloat(document.getElementById('edit-list-price')?.value)||parseFloat(document.getElementById('edit-market').value)||0,
-    listPrice: parseFloat(document.getElementById('edit-list-price')?.value)||parseFloat(document.getElementById('edit-market').value)||0,
-    displayPrice: parseFloat(document.getElementById('edit-list-price')?.value)||parseFloat(document.getElementById('edit-market').value)||0,
-    thumbnail: document.getElementById('edit-photo-data')?.value || '',
-    photoDataUrl: document.getElementById('edit-photo-data')?.value || '',
-    photoSource: document.getElementById('edit-photo-source')?.value || '',
-    qty: parseInt(document.getElementById('edit-qty').value)||1,
-    year: document.getElementById('edit-year').value.trim(),
-    set: document.getElementById('edit-set').value.trim(),
-    variant: document.getElementById('edit-variant').value.trim(),
-    location: document.getElementById('edit-location').value.trim(),
-    condition: document.getElementById('edit-condition').value,
-    category: document.getElementById('edit-category').value,
-    key_notes: document.getElementById('edit-notes').value.trim(),
-    player: document.getElementById('edit-player').value.trim(),
-    team: document.getElementById('edit-team').value.trim(),
-    issue: document.getElementById('edit-issue').value.trim(),
-    serial_number: document.getElementById('edit-serial').value.trim(),
-    card_number: document.getElementById('edit-cardnum').value.trim(),
-    comic_grade: document.getElementById('edit-grade-extra').value.trim(),
-    is_rookie: document.getElementById('edit-rookie').checked,
-    is_auto: document.getElementById('edit-auto').checked,
-    is_patch: document.getElementById('edit-patch').checked,
-    is_key: document.getElementById('edit-key').checked,
-    is_signed: document.getElementById('edit-signed').checked,
-    ...inventoryOwnershipPatch(),
-  };
-  if(!before) { toast_dash('Save failed: item not found'); return; }
-  if(updates.ownershipType==='consignor'&&!updates.consignorName){toast_dash('Select a consignor or choose Store Inventory');return;}
-  syncInventoryOwnershipToConsignment(before,updates);
-  try {
-    // saveInventoryEdit() already manages the local override per source:
-    // it clears it on a confirmed built_in write and sets it for sources
-    // that are local-authoritative. Re-setting it here unconditionally
-    // would undo that and re-shadow fresh built_in data on every save.
-    await saveInventoryEdit(before, updates);
-  } catch(e) {
-    toast_dash('Save failed: ' + (e.message || e));
-    return;
-  }
-  toast_dash('✓ Saved: ' + (all.find(i=>i.id===editingItemId)?.name||'item'));
-  applyDashboardItemUpdate(editingItemId, updates);
-  closeEditModal();
 }
 
 async function confirmEditAndSync() {
@@ -29962,7 +29908,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.07.15.06-inventory-override-fix"></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.07.15.07-single-save-button"></script>
 </body>
 </html>
 
