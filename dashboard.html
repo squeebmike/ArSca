@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.07.15.02-s-rank-access">
+<meta name="version" content="2026.07.15.03-fast-pokemon-search">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1418,12 +1418,12 @@ body.show-mode .inv-sync-badge{display:none;}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-<script src="scripts/query-routing.js?v=2026.07.15.02-s-rank-access"></script>
-<script src="scripts/barcode-lookup.js?v=2026.07.15.02-s-rank-access"></script>
-<script src="scripts/comic-issue-hub.js?v=2026.07.15.02-s-rank-access"></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.07.15.02-s-rank-access"></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.07.15.02-s-rank-access"></script>
-<script src="scripts/mtg/research-batch.js?v=2026.07.15.02-s-rank-access"></script>
+<script src="scripts/query-routing.js?v=2026.07.15.03-fast-pokemon-search"></script>
+<script src="scripts/barcode-lookup.js?v=2026.07.15.03-fast-pokemon-search"></script>
+<script src="scripts/comic-issue-hub.js?v=2026.07.15.03-fast-pokemon-search"></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.07.15.03-fast-pokemon-search"></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.07.15.03-fast-pokemon-search"></script>
+<script src="scripts/mtg/research-batch.js?v=2026.07.15.03-fast-pokemon-search"></script>
 </head>
 <body>
 
@@ -1473,11 +1473,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.07.15.02-s-rank-access</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.07.15.03-fast-pokemon-search</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.07.15.02-s-rank-access</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.07.15.03-fast-pokemon-search</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1500,7 +1500,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.07.15.02-s-rank-access</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.07.15.03-fast-pokemon-search</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -2859,7 +2859,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.07.15.02-s-rank-access';
+const APP_VERSION = '2026.07.15.03-fast-pokemon-search';
 window.APP_VERSION = APP_VERSION;
 const branchName = 'main';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
@@ -6308,7 +6308,7 @@ async function pstFetchSets(){
   // Try PPT worker route — skip if rate-limited
   if(pokemonPriceTrackerQuotaBlocked()) throw new Error('Rate limited — try again shortly');
   try {
-    const res = await fetch(WORKER + '/pricing/pokemonpricetracker/sets', { cache:'no-store' });
+    const res = await storeWorkerFetch('/pricing/pokemonpricetracker/sets', { cache:'no-store' });
     if(res.status === 429){ localStorage.setItem('ppt_rate_limited_until', String(Date.now() + 60 * 1000)); throw new Error('Rate limited'); }
     if(res.ok){
       const d = await res.json();
@@ -6604,7 +6604,7 @@ async function pstSyncOneSet(s, { staleOnly, incHistory, incEbay, dlImages, prog
         if(quotaHit) return;
         try {
           const params = new URLSearchParams({ tcgPlayerId:catCard.id, language:'english', limit:'1', includeHistory:incHistory?'true':'false', includeEbay:incEbay?'true':'false' });
-          const res = await fetch(WORKER + '/pricing/pokemonpricetracker/cards?' + params.toString(), { cache:'no-store' });
+          const res = await storeWorkerFetch('/pricing/pokemonpricetracker/cards?' + params.toString(), { cache:'no-store' });
           const data = await res.json().catch(() => ({}));
           pstHandleQuota(res, data);
           if(!res.ok) return;
@@ -6639,7 +6639,7 @@ async function pstSyncOneSet(s, { staleOnly, incHistory, incEbay, dlImages, prog
       includeHistory: incHistory ? 'true' : 'false',
       includeEbay: incEbay ? 'true' : 'false',
     });
-    const res = await fetch(WORKER + '/pricing/pokemonpricetracker/cards?' + params.toString(), { cache:'no-store' });
+    const res = await storeWorkerFetch('/pricing/pokemonpricetracker/cards?' + params.toString(), { cache:'no-store' });
     const data = await res.json().catch(() => ({}));
     pstHandleQuota(res, data);
     if(!res.ok) break;
@@ -18628,11 +18628,8 @@ async function runPriceLookup(){
       qplResults = filterQplMasterResults(qplMasterResults, cat);
       renderQuickLookupResults(qplResults);
       renderUniversalSearchExplain(searchPlan, qplResults);
-      if(navigator.onLine){
-        setPokemonOfflineBanner('Catalog results shown while live PPT refresh runs.');
-      } else {
-        setPokemonOfflineBanner('Offline Mode: showing PPT bulk export catalog data.');
-      }
+      setPokemonOfflineBanner(navigator.onLine ? 'PPT offline catalog result. Select a card for optional live detail.' : 'Offline Mode: showing PPT bulk export catalog data.', 'good');
+      return;
     } else if(!navigator.onLine) {
       el.innerHTML = `<div style="color:var(--gold);line-height:1.6">No cached or catalog data found for this search.<br>To enable full offline research, download the PPT export catalog in Settings.<br><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><button class="hbtn" onclick="openSettingsSection('catalogs','offline-cache-panel')">OPEN OFFLINE CACHE</button><button class="hbtn" onclick="openSettingsSection('catalogs','pokemon-export-panel')">DOWNLOAD CATALOG</button></div></div>`;
       setPokemonOfflineBanner('Offline Mode: no cached Pokémon data found for "' + q + '".', 'bad');
@@ -18809,7 +18806,7 @@ async function searchQuickCatalog(q, cat, searchPlan = buildUniversalSearchPlan(
       : null;
     try {
       const [searchResult, sealedResult] = await Promise.all([
-        (isParseTitleQuery || isSealedQuery) ? Promise.resolve({ cards:[], ranked:[], requestPath:'', cacheStatus:'skip' }) : searchPokemonPriceTrackerCards(pokemonSearchQuery, searchLanguage).catch(error => ({ cards:[], ranked:[], requestPath:'', cacheStatus:'failed', error })),
+        (isParseTitleQuery || isSealedQuery) ? Promise.resolve({ cards:[], ranked:[], requestPath:'', cacheStatus:'skip' }) : searchPokemonPriceTrackerCards(pokemonSearchQuery, searchLanguage),
         sealedPromise || Promise.resolve({ products:[] }),
       ]);
       if(!isParseTitleQuery && !isSealedQuery) recordSearchPlanRoute(searchPlan, '/pricing/pokemon/cards', pokemonSearchQuery, searchResult.cards?.length || 0);
@@ -18866,16 +18863,10 @@ async function searchQuickCatalog(q, cat, searchPlan = buildUniversalSearchPlan(
       const queryNumber = pokemonQueryCardNumber(q);
       const ranked = searchResult.ranked || pokemonRankApiCards(searchResult.cards, q);
       const rows = [];
-      let autoSelectDone = false;
       for(const rankedCard of ranked.slice(0, 50)) {
         let card = rankedCard.card;
-        let exactHydrated = false;
-        if(!autoSelectDone && rankedCard.autoSelect && card?.tcgPlayerId) {
-          autoSelectDone = true;
-          card = await fetchPokemonPriceTrackerExactDetail(card.tcgPlayerId, card.language || searchLanguage).catch(() => card);
-          exactHydrated = !!card?.lookupDebug?.exactHydrated;
-          await cachePokemonPriceTrackerCard({ name:q, rawTitle:q, tcgPlayerId:card.tcgPlayerId, setName:card.setName, cardNumber:card.cardNumber, category:'Pokemon' }, card).catch(() => {});
-        }
+        // Search must stay lightweight. Full price history/eBay data is hydrated
+        // only after the dealer selects a result.
         const row = pokemonPriceTrackerCardToQplRow(card, q, null);
         row.lookupDebug = {
           ...(row.lookupDebug || {}),
@@ -18885,7 +18876,7 @@ async function searchQuickCatalog(q, cat, searchPlan = buildUniversalSearchPlan(
           searchResultCount:searchResult.cards.length,
           returnedCandidates:searchResult.cards.slice(0, 5).map(c => ({ tcgPlayerId:c.tcgPlayerId || '', cardNumber:c.cardNumber || '', setName:c.setName || '' })),
           path:'cards.search.limit5',
-          exactHydrated,
+          exactHydrated:false,
           cache:searchResult.cacheStatus,
           confidence:rankedCard.confidence,
           autoSelect:rankedCard.autoSelect,
@@ -18920,8 +18911,13 @@ async function searchQuickCatalog(q, cat, searchPlan = buildUniversalSearchPlan(
         if(rows.some(r => !r.closestStrictFallback)) return rows;
       }
     } catch(e) {
+      if(e?.name === 'AbortError') return [];
       console.warn('PokemonPriceTracker documented search skipped', e);
+      throw e;
     }
+    // Pokemon is authoritative when selected or confidently inferred. Never
+    // continue into inventory, PriceCharting, Scryfall, or generic TCG fan-out.
+    return results;
   }
 
   smartSearchLocalItems(q, all, 15).forEach(hit => {
@@ -21620,11 +21616,10 @@ function pokemonPriceTrackerApiSettings(){
   };
 }
 
-async function pokemonPriceTrackerCardsRequest(params, pathLabel, { fresh = false } = {}){
+async function pokemonPriceTrackerCardsRequest(params, pathLabel, { fresh = false, signal = null } = {}){
   if(fresh) params.set('fresh', 'true');
   const requestPath = '/pricing/pokemon/cards?' + params.toString().replace(/\+/g, '%20');
-  const storeId = getActiveStoreId();
-  const res = await fetch(WORKER + requestPath, { cache:'no-store', headers: storeId ? { 'X-Store-Id': storeId } : {} });
+  const res = await storeWorkerFetch(requestPath, { cache:'no-store', signal });
   const data = await res.json().catch(() => ({}));
   if(res.status === 402 && data.subscriptionRequired){
     const err = new Error('Subscription required — open Settings to subscribe or start your free trial.');
@@ -21667,6 +21662,7 @@ function pokemonExpandSearchAbbreviations(q){
     .replace(/\s+/g, ' ').trim();
 }
 
+let _pptSearchAbortController = null;
 async function searchPokemonPriceTrackerCards(rawQuery = '', language = 'english'){
   if(pokemonPriceTrackerQuotaBlocked()) throw new Error('PokemonPriceTracker quota exhausted');
   // The documented /cards search accepts multi-word natural language across card
@@ -21677,7 +21673,9 @@ async function searchPokemonPriceTrackerCards(rawQuery = '', language = 'english
   const lang = language === 'japanese' ? 'japanese' : (/\bjapanese?\b|\bjpn\b/i.test(rawQuery) ? 'japanese' : 'english');
   // Pass the ORIGINAL raw query to the ranker so set-word scoring still uses "swsh", "promo" etc.
   const params = new URLSearchParams({ search:query, language:lang, limit:'5' });
-  const result = await pokemonPriceTrackerCardsRequest(params, 'cards.search.limit5');
+  _pptSearchAbortController?.abort();
+  _pptSearchAbortController = new AbortController();
+  const result = await pokemonPriceTrackerCardsRequest(params, 'cards.search.limit5', { signal:_pptSearchAbortController.signal });
   result.ranked = pokemonRankApiCards(result.cards, rawQuery);
   return result;
 }
@@ -21691,8 +21689,7 @@ async function searchPokemonSealedProducts(rawQuery = ''){
   if(!q) return { products:[] };
   const params = new URLSearchParams({ search:q, limit:'20' });
   const requestPath = '/pricing/pokemon/sealed-products?' + params.toString().replace(/\+/g, '%20');
-  const storeId = getActiveStoreId();
-  const res = await fetch(WORKER + requestPath, { cache:'no-store', headers:storeId ? { 'X-Store-Id':storeId } : {} });
+  const res = await storeWorkerFetch(requestPath, { cache:'no-store' });
   const data = await res.json().catch(() => ({}));
   if(!res.ok || !data.ok) throw new Error(data.error || data.message || 'Pokemon sealed-products lookup failed');
   // Worker normalises PPT data.data array into data.cards
@@ -21705,8 +21702,7 @@ async function fetchPokemonSealedProductExact(tcgPlayerId = ''){
   if(!/^\d+$/.test(String(tcgPlayerId || ''))) return null;
   const params = new URLSearchParams({ tcgPlayerId:String(tcgPlayerId), limit:'1' });
   const requestPath = '/pricing/pokemon/sealed-products?' + params.toString();
-  const storeId = getActiveStoreId();
-  const res = await fetch(WORKER + requestPath, { cache:'no-store', headers:storeId ? { 'X-Store-Id':storeId } : {} });
+  const res = await storeWorkerFetch(requestPath, { cache:'no-store' });
   const data = await res.json().catch(() => ({}));
   if(!res.ok || !data.ok) return null;
   return (data.cards || data.products || data.data || [])[0] || null;
@@ -21730,8 +21726,7 @@ async function fetchPokemonPopulation(tcgPlayerId, language = 'english'){
   if(!tcgPlayerId) return null;
   const params = new URLSearchParams({ tcgPlayerId:String(tcgPlayerId), language:language || 'english' });
   const requestPath = '/pricing/pokemon/population?' + params.toString().replace(/\+/g, '%20');
-  const storeId = getActiveStoreId();
-  const res = await fetch(WORKER + requestPath, { cache:'no-store', headers: storeId ? { 'X-Store-Id': storeId } : {} });
+  const res = await storeWorkerFetch(requestPath, { cache:'no-store' });
   const data = await res.json().catch(() => ({}));
   if(!res.ok || !data.ok) return null;
   const card = data.card || (Array.isArray(data.cards) ? data.cards[0] : null) || null;
@@ -21870,7 +21865,7 @@ async function parsePokemonPriceTrackerTitle(row = {}, query = qplLastSearch){
   if(!parts.shouldParseTitle || pokemonPriceTrackerQuotaBlocked() || !navigator.onLine) return null;
   const title = [row.rawTitle, row.ocrText, row.scanText, row.slabText, query, row.name, row.set || row.setName, row.card_number || row.cardNumber].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
   if(!title || title.length < 4) return null;
-  const res = await fetch(WORKER + '/pricing/pokemon/parse-title', {
+  const res = await storeWorkerFetch('/pricing/pokemon/parse-title', {
     method:'POST',
     headers:{ 'Content-Type':'application/json' },
     body:JSON.stringify({ title, options:{ fuzzyMatching:true, maxSuggestions:3, includeConfidence:true } })
@@ -27113,7 +27108,7 @@ async function sbFetchSets(){
     const cached = JSON.parse(localStorage.getItem(cacheKey) || 'null');
     if(cached && (Date.now() - (cached.ts||0)) < 86400000) return cached.sets;
   } catch(e){}
-  const res = await fetch(WORKER + '/pricing/pokemon/sets?sortBy=releaseDate&sortOrder=desc&limit=400', { cache:'no-store' });
+  const res = await storeWorkerFetch('/pricing/pokemon/sets?sortBy=releaseDate&sortOrder=desc&limit=400', { cache:'no-store' });
   if(!res.ok) throw new Error('Sets fetch failed: ' + res.status);
   const d = await res.json();
   const raw = Array.isArray(d.data) ? d.data : Array.isArray(d.sets) ? d.sets : [];
@@ -27179,7 +27174,7 @@ async function sbFetchSetCards(setIdOrName){
     if(cached && (Date.now() - (cached.ts||0)) < 3600000 && cached.cards?.length) return cached.cards.map(c => sbNormalizeSetCard(c, setName));
   } catch(e){}
   const params = new URLSearchParams({ set: setName, fetchAllInSet: 'true', limit: '500' });
-  const res = await fetch(WORKER + '/pricing/pokemon/cards?' + params.toString(), { cache:'no-store' });
+  const res = await storeWorkerFetch('/pricing/pokemon/cards?' + params.toString(), { cache:'no-store' });
   if(!res.ok){
     let t=''; try { t = await res.text(); } catch(e){}
     throw new Error('Cards fetch failed: HTTP ' + res.status + (t ? ' — '+t.slice(0,200) : ''));
@@ -27348,7 +27343,7 @@ async function sbRetryByName(setName){
   if(content) content.innerHTML = '<div class="ppsb-empty ppsb-loading">⚡ Retrying by set name…</div>';
   try {
     const params = new URLSearchParams({ fetchAllInSet:'true', limit:'500', setName, set:setName });
-    const res = await fetch(WORKER + '/pricing/pokemon/cards?' + params.toString(), { cache:'no-store' });
+    const res = await storeWorkerFetch('/pricing/pokemon/cards?' + params.toString(), { cache:'no-store' });
     if(!res.ok) throw new Error('HTTP ' + res.status);
     const data = await res.json();
     const cards =
@@ -27374,7 +27369,7 @@ async function sbRetryByName(setName){
   if(content) content.innerHTML = '<div class="ppsb-empty ppsb-loading">⚡ Retrying by set name…</div>';
   try {
     const params = new URLSearchParams({ fetchAllInSet:'true', limit:'500', setName, set:setName });
-    const res = await fetch(WORKER + '/pricing/pokemon/cards?' + params.toString(), { cache:'no-store' });
+    const res = await storeWorkerFetch('/pricing/pokemon/cards?' + params.toString(), { cache:'no-store' });
     if(!res.ok) throw new Error('HTTP ' + res.status);
     const data = await res.json();
     const cards =
@@ -27845,7 +27840,7 @@ async function runPokemonArtistResearch(){
   try {
     if(btn) { btn.disabled = true; btn.textContent = '...'; }
     const params = new URLSearchParams({ search:artist, limit:'20' });
-    const res = await fetch(WORKER + '/pricing/pokemon/cards?' + params.toString(), { cache:'no-store' });
+    const res = await storeWorkerFetch('/pricing/pokemon/cards?' + params.toString(), { cache:'no-store' });
     const data = await res.json().catch(() => ({}));
     if(!res.ok || data.ok === false) throw new Error(data.error || data.message || 'Artist search failed');
     const cards = pokemonPriceTrackerCardsFromPayload(data).map(c => sbNormalizeSetCard(c));
@@ -29917,7 +29912,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.07.15.02-s-rank-access"></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.07.15.03-fast-pokemon-search"></script>
 </body>
 </html>
 

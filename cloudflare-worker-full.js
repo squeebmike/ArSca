@@ -3371,13 +3371,6 @@ export default {
             status: subStatus,
           }, 402);
         }
-        // Track daily PPT usage (non-blocking, best-effort)
-        const day = new Date().toISOString().slice(0, 10);
-        const usageKey = `usage:ppt:${pptStoreId}:${day}`;
-        try {
-          const prev = Number(await env.LBA_KV.get(usageKey) || '0');
-          await env.LBA_KV.put(usageKey, String(prev + 1), { expirationTtl: 172800 }); // 48h TTL
-        } catch (_) {}
       }
 
       const routeMap = {
