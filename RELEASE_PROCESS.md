@@ -41,3 +41,5 @@ Do not rewrite `main`. Revert the release merge through a pull request, or redep
 - `COMICVINE_API_KEY` (optional until beta comics testing is needed)
 
 Production secrets remain separate and are never copied into the beta frontend.
+
+After the protected environment secrets are saved, create the repository variable `BETA_READY=true`. Until then, pushes to `beta` are intentionally skipped so an incomplete beta deployment cannot consume runner time or reach production data.

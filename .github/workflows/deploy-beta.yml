@@ -10,6 +10,7 @@ permissions:
 
 jobs:
   deploy-beta:
+    if: vars.BETA_READY == 'true' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     environment: beta
