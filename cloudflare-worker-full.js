@@ -652,6 +652,36 @@ async function handlePlatformAdmin(request, env, url) {
     return json({ ok:true });
   }
 
+  const setPasswordMatch = path.match(/^\/admin\/store-members\/([0-9a-f-]+)\/set-password$/i);
+  if (setPasswordMatch && request.method === 'POST') {
+    // Directly sets a user's password via the GoTrue admin API. This bypasses
+    // the recovery-email flow entirely (no email is sent, so it also bypasses
+    // that endpoint's rate limit), for cases like a locked-out account or an
+    // exhausted email quota. The password value itself must never be written
+    // to platform_admin_audit_log or logged anywhere.
+    const body = await request.json().catch(() => ({}));
+    const reason = cleanAdminText(body.reason, 1000);
+    if (!reason) return json({ ok:false, error:'Reason is required' }, 400);
+    const password = String(body.password || '');
+    if (password.length < 8) return json({ ok:false, error:'Password must be at least 8 characters' }, 400);
+    const id = encodeURIComponent(setPasswordMatch[1]);
+    const { data:memberRows } = await supabaseAdminFetch(env, `store_members?id=eq.${id}&select=id,store_id,user_id&limit=1`);
+    const member = memberRows?.[0];
+    if (!member) return json({ ok:false, error:'Store member not found' }, 404);
+    const { base, key } = supabaseAdminConfig(env);
+    const resp = await fetch(`${base}/auth/v1/admin/users/${encodeURIComponent(member.user_id)}`, {
+      method:'PUT',
+      headers:{ apikey:key, Authorization:`Bearer ${key}`, 'Content-Type':'application/json' },
+      body: JSON.stringify({ password }),
+    });
+    if (!resp.ok) {
+      const errData = await resp.json().catch(() => null);
+      return json({ ok:false, error: errData?.msg || errData?.message || `Password update failed (${resp.status})` }, 502);
+    }
+    await writePlatformAudit(env, auth.user, 'store_member.set_password', member.store_id, 'store_member', member.id, {}, { passwordManuallySet:true }, reason);
+    return json({ ok:true });
+  }
+
   if (path === '/admin/audit' && request.method === 'GET') {
     const store = cleanAdminText(url.searchParams.get('storeId'), 40);
     const filter = store ? `&target_store_id=eq.${encodeURIComponent(store)}` : '';
