@@ -436,6 +436,40 @@ async function handlePlatformAdmin(request, env, url) {
     await writePlatformAudit(env, auth.user, 'store.update', before.id, 'store', before.id, before, afterRows?.[0], reason);
     return json({ ok:true, store:afterRows?.[0] });
   }
+  if (storeMatch && request.method === 'DELETE') {
+    const body = await request.json().catch(() => ({}));
+    const reason = cleanAdminText(body.reason, 1000);
+    if (!reason) return json({ ok:false, error:'Delete reason is required' }, 400);
+    const id = encodeURIComponent(storeMatch[1]);
+    const { data:beforeRows } = await supabaseAdminFetch(env, `stores?id=eq.${id}&select=*&limit=1`);
+    const before = beforeRows?.[0];
+    if (!before) return json({ ok:false, error:'Store not found' }, 404);
+
+    const expectedName = before.display_name || before.name || '';
+    const confirmName = cleanAdminText(body.confirmName, 120);
+    if (!confirmName || confirmName !== expectedName) {
+      return json({ ok:false, error:`Type the store name exactly ("${expectedName}") to confirm permanent deletion` }, 400);
+    }
+
+    const countOf = r => Number(String(r.response.headers.get('content-range') || '').split('/')[1] || 0);
+    const [invCount, saleCount, paymentCount, memberCount] = await Promise.all([
+      supabaseAdminFetch(env, `inventory_items?store_id=eq.${id}&select=id&limit=1`, { headers:{ Prefer:'count=exact' } }),
+      supabaseAdminFetch(env, `pos_sales?store_id=eq.${id}&select=id&limit=1`, { headers:{ Prefer:'count=exact' } }),
+      supabaseAdminFetch(env, `pos_payments?store_id=eq.${id}&select=id&limit=1`, { headers:{ Prefer:'count=exact' } }),
+      supabaseAdminFetch(env, `store_members?store_id=eq.${id}&select=id&limit=1`, { headers:{ Prefer:'count=exact' } }),
+    ]);
+    const counts = { inventory:countOf(invCount), sales:countOf(saleCount), payments:countOf(paymentCount), members:countOf(memberCount) };
+    const hasFinancialHistory = counts.sales > 0 || counts.payments > 0;
+    if (hasFinancialHistory && body.force !== true) {
+      return json({ ok:false, error:'This store has sales/payment history. Confirm again with force to permanently delete it and every related record.', counts }, 409);
+    }
+
+    // Audit the full snapshot and cascade counts before the row (and everything
+    // referencing it via ON DELETE CASCADE) is gone for good.
+    await writePlatformAudit(env, auth.user, 'store.delete', before.id, 'store', before.id, { ...before, cascadeCounts:counts }, {}, reason);
+    await supabaseAdminFetch(env, `stores?id=eq.${id}`, { method:'DELETE', headers:{ Prefer:'return=minimal' } });
+    return json({ ok:true, deletedCounts:counts });
+  }
 
   const sRankMatch = path.match(/^\/admin\/stores\/([0-9a-f-]+)\/s-rank$/i);
   if (sRankMatch && request.method === 'GET') {
@@ -507,6 +541,58 @@ async function handlePlatformAdmin(request, env, url) {
     await writePlatformAudit(env, auth.user, 'inventory.update', before.store_id, 'inventory_item', before.id, before, afterRows?.[0], reason);
     return json({ ok:true, item:afterRows?.[0] });
   }
+  if (inventoryMatch && request.method === 'DELETE') {
+    const body = await request.json().catch(() => ({}));
+    const reason = cleanAdminText(body.reason, 1000);
+    if (!reason) return json({ ok:false, error:'Delete reason is required' }, 400);
+    const id = encodeURIComponent(inventoryMatch[1]);
+    const { data:beforeRows } = await supabaseAdminFetch(env, `inventory_items?id=eq.${id}&select=*&limit=1`);
+    const before = beforeRows?.[0];
+    if (!before) return json({ ok:false, error:'Inventory item not found' }, 404);
+    await supabaseAdminFetch(env, `inventory_items?id=eq.${id}`, { method:'DELETE', headers:{ Prefer:'return=minimal' } });
+    await writePlatformAudit(env, auth.user, 'inventory.delete', before.store_id, 'inventory_item', before.id, before, {}, reason);
+    return json({ ok:true });
+  }
+
+  if (path === '/admin/store-members' && request.method === 'POST') {
+    const body = await request.json();
+    const reason = cleanAdminText(body.reason, 1000);
+    if (!reason) return json({ ok:false, error:'Reason is required' }, 400);
+    const storeId = cleanAdminText(body.store_id, 60);
+    const email = cleanAdminText(body.email, 200).toLowerCase();
+    const role = ['owner','admin','manager','employee','scanner_only'].includes(body.role) ? body.role : 'employee';
+    if (!storeId || !email) return json({ ok:false, error:'store_id and email are required' }, 400);
+
+    const { data:storeRows } = await supabaseAdminFetch(env, `stores?id=eq.${encodeURIComponent(storeId)}&select=id&limit=1`);
+    if (!storeRows?.[0]) return json({ ok:false, error:'Store not found' }, 404);
+
+    const { base, key } = supabaseAdminConfig(env);
+    const lookupResp = await fetch(`${base}/auth/v1/admin/users?email=${encodeURIComponent(email)}`, {
+      headers: { apikey:key, Authorization:`Bearer ${key}` },
+    });
+    const lookupData = lookupResp.ok ? await lookupResp.json().catch(() => null) : null;
+    const foundUser = Array.isArray(lookupData?.users) ? lookupData.users[0] : (lookupData?.id ? lookupData : null);
+
+    if (foundUser?.id) {
+      const { data:existingRows } = await supabaseAdminFetch(env, `store_members?store_id=eq.${encodeURIComponent(storeId)}&user_id=eq.${encodeURIComponent(foundUser.id)}&select=id&limit=1`);
+      let afterRows;
+      if (existingRows?.[0]) {
+        ({ data:afterRows } = await supabaseAdminFetch(env, `store_members?id=eq.${encodeURIComponent(existingRows[0].id)}`, { method:'PATCH', headers:{ Prefer:'return=representation' }, body:JSON.stringify({ role, active:true }) }));
+      } else {
+        ({ data:afterRows } = await supabaseAdminFetch(env, 'store_members', { method:'POST', headers:{ Prefer:'return=representation' }, body:JSON.stringify({ store_id:storeId, user_id:foundUser.id, role, active:true }) }));
+      }
+      await writePlatformAudit(env, auth.user, 'store_member.add', storeId, 'store_member', afterRows?.[0]?.id || foundUser.id, {}, { ...afterRows?.[0], email }, reason);
+      return json({ ok:true, status:'added', member:afterRows?.[0] });
+    }
+
+    const { data:inviteRows } = await supabaseAdminFetch(env, 'store_invites?on_conflict=store_id,email', {
+      method:'POST',
+      headers:{ Prefer:'return=representation,resolution=merge-duplicates' },
+      body:JSON.stringify({ store_id:storeId, email, role, invited_by:auth.user.id, accepted_by:null, accepted_at:null }),
+    });
+    await writePlatformAudit(env, auth.user, 'store_member.invite', storeId, 'store_invite', inviteRows?.[0]?.id || email, {}, inviteRows?.[0] || { email, role }, reason);
+    return json({ ok:true, status:'invited', invite:inviteRows?.[0] });
+  }
 
   const memberMatch = path.match(/^\/admin\/store-members\/([0-9a-f-]+)$/i);
   if (memberMatch && request.method === 'PATCH') {
@@ -523,6 +609,18 @@ async function handlePlatformAdmin(request, env, url) {
     const { data:afterRows } = await supabaseAdminFetch(env, `store_members?id=eq.${id}`, { method:'PATCH', headers:{ Prefer:'return=representation' }, body:JSON.stringify(update) });
     await writePlatformAudit(env, auth.user, 'store_member.update', before.store_id, 'store_member', before.id, before, afterRows?.[0], reason);
     return json({ ok:true, member:afterRows?.[0] });
+  }
+  if (memberMatch && request.method === 'DELETE') {
+    const body = await request.json().catch(() => ({}));
+    const reason = cleanAdminText(body.reason, 1000);
+    if (!reason) return json({ ok:false, error:'Delete reason is required' }, 400);
+    const id = encodeURIComponent(memberMatch[1]);
+    const { data:beforeRows } = await supabaseAdminFetch(env, `store_members?id=eq.${id}&select=*&limit=1`);
+    const before = beforeRows?.[0];
+    if (!before) return json({ ok:false, error:'Store member not found' }, 404);
+    await supabaseAdminFetch(env, `store_members?id=eq.${id}`, { method:'DELETE', headers:{ Prefer:'return=minimal' } });
+    await writePlatformAudit(env, auth.user, 'store_member.remove', before.store_id, 'store_member', before.id, before, {}, reason);
+    return json({ ok:true });
   }
 
   if (path === '/admin/audit' && request.method === 'GET') {
