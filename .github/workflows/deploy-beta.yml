@@ -10,7 +10,6 @@ permissions:
 
 jobs:
   deploy-beta:
-    if: vars.BETA_READY == 'true' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     environment: beta
@@ -79,3 +78,22 @@ jobs:
 
       - name: Deploy beta Worker and static site
         run: npx wrangler deploy --config wrangler.beta.runtime.json --keep-vars
+
+      - name: Export Topps reference data for manual beta publication
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          SUPABASE_URL: https://vroknjrxubsqyexngwus.supabase.co
+          SUPABASE_ANON_KEY: sb_publishable_wbpX2nL8l-4NbXtZNG_bjA_nabSYaJ5
+        run: npm run topps:export:supabase
+
+      - name: Build and publish Topps offline beta catalog
+        if: github.event_name == 'workflow_dispatch'
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="$(date -u +%Y-%m-%d).${GITHUB_RUN_NUMBER}"
+          node --max-old-space-size=4096 scripts/topps/build-offline-bundle.mjs --version="$version" --out=data/topps/offline-build
+          base="data/topps/offline-build/topps/$version"
+          npx wrangler r2 object put "arsca-offline-catalogs-beta/topps/$version/cards.jsonl.gz" --file "$base/cards.jsonl.gz" --remote
+          npx wrangler r2 object put "arsca-offline-catalogs-beta/topps/$version/sets.jsonl.gz" --file "$base/sets.jsonl.gz" --remote
+          npx wrangler r2 object put "arsca-offline-catalogs-beta/topps/manifest.json" --file data/topps/offline-build/topps/manifest.json --remote
