@@ -518,7 +518,16 @@ async function handlePlatformAdmin(request, env, url) {
       return json({ ok:true, sales:data || [], total:Number(String(response.headers.get('content-range') || '').split('/')[1] || 0) });
     }
     const { data, response } = await supabaseAdminFetch(env, `store_members?store_id=eq.${id}&select=id,store_id,user_id,role,active,created_at&order=created_at.asc&limit=${limit}&offset=${offset}`, { headers:{ Prefer:'count=exact' } });
-    return json({ ok:true, members:data || [], total:Number(String(response.headers.get('content-range') || '').split('/')[1] || 0) });
+    const memberRows = data || [];
+    const userIds = [...new Set(memberRows.map(m => m.user_id).filter(Boolean))];
+    let profileByUserId = {};
+    if (userIds.length) {
+      const orFilter = userIds.map(uid => `id.eq.${uid}`).join(',');
+      const { data:profiles } = await supabaseAdminFetch(env, `profiles?or=(${orFilter})&select=id,email,display_name`);
+      profileByUserId = Object.fromEntries((profiles || []).map(p => [p.id, p]));
+    }
+    const members = memberRows.map(m => ({ ...m, email:profileByUserId[m.user_id]?.email || null, display_name:profileByUserId[m.user_id]?.display_name || null }));
+    return json({ ok:true, members, total:Number(String(response.headers.get('content-range') || '').split('/')[1] || 0) });
   }
 
   const inventoryMatch = path.match(/^\/admin\/inventory\/([0-9a-f-]+)$/i);
