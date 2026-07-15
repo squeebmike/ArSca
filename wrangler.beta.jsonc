@@ -10,7 +10,7 @@
     "not_found_handling": "single-page-application"
   },
   "kv_namespaces": [
-    { "binding": "LBA_KV", "id": "00000000000000000000000000000000" }
+    { "binding": "LBA_KV", "id": "e87df4f0b5dd47d9a8c07c955b779354" }
   ],
   "r2_buckets": [
     { "binding": "MTG_CATALOG_R2", "bucket_name": "arsca-offline-catalogs-beta" }

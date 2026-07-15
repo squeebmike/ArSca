@@ -46,22 +46,6 @@ jobs:
       - name: Build isolated beta site
         run: node scripts/build-beta-site.mjs
 
-      - name: Provision isolated KV and R2, then build Worker config
-        shell: bash
-        run: |
-          set -euo pipefail
-          namespaces="$(npx wrangler kv namespace list)"
-          kv_id="$(KV_JSON="$namespaces" node -e "const a=JSON.parse(process.env.KV_JSON);const x=a.find(v=>v.title==='walkoff-beta-LBA_KV');if(x)process.stdout.write(x.id)")"
-          if [ -z "$kv_id" ]; then
-            output="$(npx wrangler kv namespace create LBA_KV --config wrangler.beta.jsonc 2>&1 || true)"
-            kv_id="$(printf '%s' "$output" | grep -Eo '[a-f0-9]{32}' | head -1)"
-          fi
-          if [ -z "$kv_id" ]; then echo "::error::Could not provision beta KV"; exit 1; fi
-          if ! npx wrangler r2 bucket list | grep -Fq 'arsca-offline-catalogs-beta'; then
-            npx wrangler r2 bucket create arsca-offline-catalogs-beta
-          fi
-          KV_ID="$kv_id" node -e "const fs=require('fs');const c=JSON.parse(fs.readFileSync('wrangler.beta.jsonc','utf8'));c.kv_namespaces[0].id=process.env.KV_ID;fs.writeFileSync('wrangler.beta.runtime.json',JSON.stringify(c,null,2))"
-
       - name: Configure beta Worker secrets
         shell: bash
         run: |
@@ -74,10 +58,10 @@ jobs:
           for (const name of names) if (process.env[name]) values[map[name] || name] = process.env[name];
           fs.writeFileSync('/tmp/beta-secrets.json', JSON.stringify(values));
           NODE
-          npx wrangler secret bulk /tmp/beta-secrets.json --config wrangler.beta.runtime.json
+          npx wrangler secret bulk /tmp/beta-secrets.json --config wrangler.beta.jsonc
 
       - name: Deploy beta Worker and static site
-        run: npx wrangler deploy --config wrangler.beta.runtime.json --keep-vars
+        run: npx wrangler deploy --config wrangler.beta.jsonc --keep-vars
 
       - name: Export Topps reference data for manual beta publication
         if: github.event_name == 'workflow_dispatch'
