@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.07.15.03-fast-pokemon-search">
+<meta name="version" content="2026.07.15.04-fast-mtg-search">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1418,12 +1418,12 @@ body.show-mode .inv-sync-badge{display:none;}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-<script src="scripts/query-routing.js?v=2026.07.15.03-fast-pokemon-search"></script>
-<script src="scripts/barcode-lookup.js?v=2026.07.15.03-fast-pokemon-search"></script>
-<script src="scripts/comic-issue-hub.js?v=2026.07.15.03-fast-pokemon-search"></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.07.15.03-fast-pokemon-search"></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.07.15.03-fast-pokemon-search"></script>
-<script src="scripts/mtg/research-batch.js?v=2026.07.15.03-fast-pokemon-search"></script>
+<script src="scripts/query-routing.js?v=2026.07.15.04-fast-mtg-search"></script>
+<script src="scripts/barcode-lookup.js?v=2026.07.15.04-fast-mtg-search"></script>
+<script src="scripts/comic-issue-hub.js?v=2026.07.15.04-fast-mtg-search"></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.07.15.04-fast-mtg-search"></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.07.15.04-fast-mtg-search"></script>
+<script src="scripts/mtg/research-batch.js?v=2026.07.15.04-fast-mtg-search"></script>
 </head>
 <body>
 
@@ -1473,11 +1473,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.07.15.03-fast-pokemon-search</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.07.15.04-fast-mtg-search</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.07.15.03-fast-pokemon-search</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.07.15.04-fast-mtg-search</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1500,7 +1500,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.07.15.03-fast-pokemon-search</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.07.15.04-fast-mtg-search</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -2859,7 +2859,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.07.15.03-fast-pokemon-search';
+const APP_VERSION = '2026.07.15.04-fast-mtg-search';
 window.APP_VERSION = APP_VERSION;
 const branchName = 'main';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
@@ -18920,6 +18920,13 @@ async function searchQuickCatalog(q, cat, searchPlan = buildUniversalSearchPlan(
     return results;
   }
 
+  if((wants === 'mtg' || plannedCategories.has('mtg') || isMtgLookupIntent(q, cat)) && !sealedIntent) {
+    const mtgQuery = universalSearchQueries(searchPlan, 'mtg', 'Scryfall')[0] || q;
+    const rows = await fetchScryfallCatalog(mtgQuery, searchPlan);
+    rows.forEach(add);
+    return rankQuickLookupResults(results, q, cat).slice(0, 20);
+  }
+
   smartSearchLocalItems(q, all, 15).forEach(hit => {
     const i = hit.item;
     add({
@@ -22641,6 +22648,7 @@ function scryfallTreatmentLabel(c){
   return '';
 }
 
+let _scryfallSearchAbortController = null;
 async function fetchScryfallCatalog(q, searchPlan = qplLastSearchPlan){
   const finishIntent = parseMtgFinishIntent(q);
   const plannedQueries = universalSearchQueries(searchPlan, 'mtg', 'Scryfall');
@@ -22651,18 +22659,19 @@ async function fetchScryfallCatalog(q, searchPlan = qplLastSearchPlan){
   else if(finishIntent.treatment === 'showcase') sfQ += ' is:showcase';
   else if(finishIntent.treatment === 'extended_art') sfQ += ' is:extendedart';
   const url = 'https://api.scryfall.com/cards/search?q=' + encodeURIComponent(sfQ) + '&unique=prints&order=released&dir=desc';
-  const res = await fetch(url, { headers:{ 'Accept':'application/json' } }).catch(() => null);
+  _scryfallSearchAbortController?.abort();
+  _scryfallSearchAbortController = new AbortController();
+  const res = await fetch(url, { headers:{ 'Accept':'application/json' }, signal:_scryfallSearchAbortController.signal }).catch(error => {
+    if(error?.name === 'AbortError') throw error;
+    return null;
+  });
   if(!res?.ok) return [];
   const data = await res.json().catch(() => ({}));
   let allScryfallCards = data.data || [];
   recordSearchPlanRoute(searchPlan, 'https://api.scryfall.com/cards/search', sfQ, allScryfallCards.length);
-  if(data.has_more && allScryfallCards.length < 175){
-    try {
-      const res2 = await fetch(data.next_page, { headers:{ 'Accept':'application/json' } }).catch(() => null);
-      if(res2?.ok){ const d2 = await res2.json().catch(() => ({})); allScryfallCards = allScryfallCards.concat(d2.data || []); }
-    } catch(e){}
-  }
-  return allScryfallCards.slice(0, 200).map(c => {
+  // One Scryfall page is sufficient for the first 20 visible results. Additional
+  // printings load only when the dealer opens the variants control.
+  return allScryfallCards.slice(0, 20).map(c => {
     const hit = scoreSmartItem({ name:c.name, set:c.set_name, year:(c.released_at||'').slice(0,4), card_number:c.collector_number, rarity:c.rarity, variant:c.type_line }, q);
     // Build all available finishes from prices + Scryfall finishes array
     const priceMap = {};
@@ -29912,7 +29921,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.07.15.03-fast-pokemon-search"></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.07.15.04-fast-mtg-search"></script>
 </body>
 </html>
 
