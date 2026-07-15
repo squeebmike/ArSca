@@ -346,6 +346,31 @@ function cleanAdminText(value, max = 500) {
   return String(value == null ? '' : value).trim().slice(0, max);
 }
 
+const sRankKey = storeId => `entitlement:s_rank:store:${storeId}`;
+
+async function getSRankEntitlement(env, storeId) {
+  if (!env.LBA_KV || !storeId) return null;
+  try {
+    const raw = await env.LBA_KV.get(sRankKey(storeId));
+    const record = raw ? JSON.parse(raw) : null;
+    return record?.active === true ? record : null;
+  } catch (_) {
+    return null;
+  }
+}
+
+async function storeHasSubscriptionAccess(env, storeId, subscription = undefined) {
+  if (await getSRankEntitlement(env, storeId)) return true;
+  let rec = subscription;
+  if (rec === undefined && env.LBA_KV && storeId) {
+    const raw = await env.LBA_KV.get(`sub:store:${storeId}`).catch(() => null);
+    rec = raw ? JSON.parse(raw) : null;
+  }
+  const status = rec?.status || 'none';
+  const endMs = status === 'trialing' ? rec?.trial_end : rec?.current_period_end;
+  return (status === 'active' || status === 'trialing') && (!endMs || endMs > Date.now());
+}
+
 async function writePlatformAudit(env, actor, action, storeId, entityType, entityId, beforeData, afterData, reason) {
   const row = {
     actor_user_id:actor.id, action, target_store_id:storeId || null,
@@ -444,6 +469,36 @@ async function handlePlatformAdmin(request, env, url) {
     await writePlatformAudit(env, auth.user, 'store.delete', before.id, 'store', before.id, { ...before, cascadeCounts:counts }, {}, reason);
     await supabaseAdminFetch(env, `stores?id=eq.${id}`, { method:'DELETE', headers:{ Prefer:'return=minimal' } });
     return json({ ok:true, deletedCounts:counts });
+  }
+
+  const sRankMatch = path.match(/^\/admin\/stores\/([0-9a-f-]+)\/s-rank$/i);
+  if (sRankMatch && request.method === 'GET') {
+    const entitlement = await getSRankEntitlement(env, sRankMatch[1]);
+    return json({ ok:true, active:Boolean(entitlement), entitlement });
+  }
+  if (sRankMatch && request.method === 'POST') {
+    if (!env.LBA_KV) return json({ ok:false, error:'KV not configured' }, 500);
+    const body = await request.json().catch(() => ({}));
+    const reason = cleanAdminText(body.reason, 1000);
+    if (!reason) return json({ ok:false, error:'Grant reason is required' }, 400);
+    const storeId = sRankMatch[1];
+    const before = await getSRankEntitlement(env, storeId);
+    const entitlement = { active:true, tier:'s_rank', grantedAt:new Date().toISOString(), grantedBy:auth.user.id, reason };
+    await env.LBA_KV.put(sRankKey(storeId), JSON.stringify(entitlement));
+    await writePlatformAudit(env, auth.user, 'entitlement.s_rank.grant', storeId, 'store_entitlement', storeId, before || {}, entitlement, reason);
+    return json({ ok:true, active:true, entitlement });
+  }
+  if (sRankMatch && request.method === 'DELETE') {
+    if (!env.LBA_KV) return json({ ok:false, error:'KV not configured' }, 500);
+    const body = await request.json().catch(() => ({}));
+    const reason = cleanAdminText(body.reason, 1000);
+    if (!reason) return json({ ok:false, error:'Revocation reason is required' }, 400);
+    const storeId = sRankMatch[1];
+    const before = await getSRankEntitlement(env, storeId);
+    const revoked = { ...(before || {}), active:false, revokedAt:new Date().toISOString(), revokedBy:auth.user.id, revokeReason:reason };
+    await env.LBA_KV.put(sRankKey(storeId), JSON.stringify(revoked));
+    await writePlatformAudit(env, auth.user, 'entitlement.s_rank.revoke', storeId, 'store_entitlement', storeId, before || {}, revoked, reason);
+    return json({ ok:true, active:false });
   }
 
   const storeResource = path.match(/^\/admin\/stores\/([0-9a-f-]+)\/(inventory|sales|members)$/i);
@@ -1040,9 +1095,50 @@ export default {
       const auth = await requireStoreUser(request, env, storeId, ['owner','admin']);
       if (auth.error) return auth.error;
       const { data, response } = await supabaseAdminFetch(env,
-        `store_invites?store_id=eq.${encodeURIComponent(storeId)}&select=id,email,role,expires_at,accepted_at,created_at&order=created_at.desc`);
+        `store_invites?store_id=eq.${encodeURIComponent(storeId)}&select=id,email,role,expires_at,accepted_at,created_at,email_status,email_sent_at,email_error&order=created_at.desc`);
       if (!response.ok) return json({ ok:false, error:'Invites unavailable' }, 502);
       return json({ ok:true, invites:data || [] });
+    }
+
+    if (url.pathname === '/store/invites/send' && request.method === 'POST') {
+      const parsed = await readJsonWithLimit(request, 16 * 1024);
+      if (parsed.error) return parsed.error;
+      const body = parsed.data || {};
+      const storeId = requestStoreId(request, url, body);
+      const email = String(body.email || '').trim().toLowerCase();
+      const role = String(body.role || 'employee').trim().toLowerCase();
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return json({ ok:false, error:'Valid email required' }, 400);
+      if (!['scanner_only','employee','manager','admin'].includes(role)) return json({ ok:false, error:'Invalid store role' }, 400);
+      const auth = await requireStoreUser(request, env, storeId, ['owner','admin']);
+      if (auth.error) return auth.error;
+      const rateError = await enforceUsageLimit(env, `store-invite:${storeId}`, 20, 3600);
+      if (rateError) return rateError;
+      const { data:invites } = await supabaseAdminFetch(env, `store_invites?store_id=eq.${encodeURIComponent(storeId)}&email=eq.${encodeURIComponent(email)}&accepted_at=is.null&select=id,email,role&limit=1`);
+      const invite = invites?.[0];
+      if (!invite || invite.role !== role) return json({ ok:false, error:'Save the matching store invite before sending email' }, 409);
+      const { base, key } = supabaseAdminConfig(env);
+      const redirectTo = String(env.APP_URL || 'https://squeebmike.github.io/ArSca/dashboard.html');
+      let inviteResponse = await fetch(`${base}/auth/v1/invite?redirect_to=${encodeURIComponent(redirectTo)}`, {
+        method:'POST', headers:{ apikey:key, Authorization:`Bearer ${key}`, 'Content-Type':'application/json' },
+        body:JSON.stringify({ email, data:{ store_id:storeId, store_role:role, store_invite_id:invite.id } }),
+      });
+      let raw = await inviteResponse.text();
+      let result = null;
+      try { result = raw ? JSON.parse(raw) : null; } catch (_) {}
+      if (!inviteResponse.ok && inviteResponse.status === 422 && /already|registered|exists/i.test(String(result?.msg || result?.message || result?.error_description || ''))) {
+        inviteResponse = await fetch(`${base}/auth/v1/otp?redirect_to=${encodeURIComponent(redirectTo)}`, {
+          method:'POST', headers:{ apikey:key, Authorization:`Bearer ${key}`, 'Content-Type':'application/json' },
+          body:JSON.stringify({ email, create_user:false, data:{ store_id:storeId, store_role:role, store_invite_id:invite.id } }),
+        });
+        raw = await inviteResponse.text();
+        result = null;
+        try { result = raw ? JSON.parse(raw) : null; } catch (_) {}
+      }
+      const errorText = String(result?.msg || result?.message || result?.error_description || result?.error || `Email service returned ${inviteResponse.status}`).slice(0, 500);
+      const statusPatch = inviteResponse.ok ? { email_status:'sent', email_sent_at:new Date().toISOString(), email_error:null } : { email_status:'failed', email_error:errorText };
+      await supabaseAdminFetch(env, `store_invites?id=eq.${encodeURIComponent(invite.id)}`, { method:'PATCH', headers:{ Prefer:'return=minimal' }, body:JSON.stringify(statusPatch) }).catch(() => {});
+      if (!inviteResponse.ok) return json({ ok:false, inviteSaved:true, emailSent:false, error:errorText }, 502);
+      return json({ ok:true, inviteSaved:true, emailSent:true, inviteId:invite.id });
     }
 
     // Public, read-only storefront. A store must explicitly publish it.
@@ -2079,6 +2175,8 @@ export default {
       const authz = await requireStoreUser(request, env, storeId);
       if (authz.error) return authz.error;
       if (!env.LBA_KV) return json({ ok: true, status: 'none', active: false, daysRemaining: 0 });
+      const sRank = await getSRankEntitlement(env, storeId);
+      if (sRank) return json({ ok:true, status:'s_rank', active:true, daysRemaining:0, plan_code:'pro', plan_name:'S Rank', price_monthly:0, capabilities:SUBSCRIPTION_PLANS.pro.capabilities, complimentary:true, granted_at:sRank.grantedAt || null });
       const raw = await env.LBA_KV.get(`sub:store:${storeId}`);
       if (!raw) return json({ ok: true, status: 'none', active: false, daysRemaining: 0 });
       const rec = JSON.parse(raw);
@@ -3355,11 +3453,13 @@ export default {
       const ownerIds = (env.OWNER_STORE_IDS || env.OWNER_STORE_ID || '').split(',').map(s => s.trim()).filter(Boolean);
       const isBypassed = bypassIds.includes(pptStoreId) || ownerIds.includes(pptStoreId);
       if (!isDemo && !isBypassed && env.LBA_KV) {
+        const pptAuth = await requireStoreUser(request, env, pptStoreId);
+        if (pptAuth.error) return pptAuth.error;
         const subRaw = await env.LBA_KV.get(`sub:store:${pptStoreId}`);
         const sub = subRaw ? JSON.parse(subRaw) : null;
         const subStatus = sub?.status || 'none';
         const endMs = subStatus === 'trialing' ? sub?.trial_end : sub?.current_period_end;
-        const subActive = (subStatus === 'active' || subStatus === 'trialing') && (!endMs || endMs > Date.now());
+        const subActive = await storeHasSubscriptionAccess(env, pptStoreId, sub);
         if (!subActive) {
           return json({
             ok: false,
@@ -3369,13 +3469,6 @@ export default {
             status: subStatus,
           }, 402);
         }
-        // Track daily PPT usage (non-blocking, best-effort)
-        const day = new Date().toISOString().slice(0, 10);
-        const usageKey = `usage:ppt:${pptStoreId}:${day}`;
-        try {
-          const prev = Number(await env.LBA_KV.get(usageKey) || '0');
-          await env.LBA_KV.put(usageKey, String(prev + 1), { expirationTtl: 172800 }); // 48h TTL
-        } catch (_) {}
       }
 
       const routeMap = {

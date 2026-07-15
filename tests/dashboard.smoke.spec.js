@@ -19,7 +19,9 @@ test('dashboard html and worker scripts parse', async () => {
 test('dashboard loads current build with primary nav and Research tab', async ({ page }) => {
   const guard = await openDashboard(page);
   await expect(page.locator('.logo')).toContainText(/WALK-OFF|DEMO DASHBOARD/i);
-  await expect(page.locator('meta[name="version"]')).toHaveAttribute('content', /2026\.07\.07\.07/);
+  const metaVersion = await page.locator('meta[name="version"]').getAttribute('content');
+  const runtimeVersion = await page.evaluate(() => window.APP_VERSION);
+  expect(metaVersion).toBe(runtimeVersion);
   await expect(page.locator('[data-tab="overview"]')).toBeVisible();
   await expect(page.locator('[data-tab="research"]')).toBeVisible();
   await expect(page.locator('#top-show-chip')).toContainText(/NO SHOW ACTIVE|SHOW ACTIVE/);
@@ -28,6 +30,62 @@ test('dashboard loads current build with primary nav and Research tab', async ({
   await expect(page.locator('#tab-research.on')).toBeVisible();
   await expect(page.getByRole('button', { name: /Queue/i })).toBeVisible();
   await expect(page.locator('#register-quick-panel')).toBeVisible();
+  guard.assertClean();
+});
+
+test('operational outbox survives reload without the old 500-entry cap', async ({ page }) => {
+  const guard = await openDashboard(page);
+  const count = await page.evaluate(async () => {
+    await syncOutboxReady;
+    const now = new Date().toISOString();
+    const queue = Array.from({ length: 525 }, (_, index) => ({
+      id:`qa_outbox_${index}`,
+      type:'qa-durability',
+      label:`Durability item ${index}`,
+      payload:{ index },
+      error:'',
+      status:'pending',
+      attempts:0,
+      createdAt:now,
+      updatedAt:now
+    }));
+    await saveSyncQueue(queue);
+    return getSyncQueue().length;
+  });
+  expect(count).toBe(525);
+  await page.reload({ waitUntil:'domcontentloaded' });
+  const restored = await page.evaluate(async () => {
+    await syncOutboxReady;
+    const count = getSyncQueue().filter(item => item.type === 'qa-durability').length;
+    await saveSyncQueue(getSyncQueue().filter(item => item.type !== 'qa-durability'));
+    return count;
+  });
+  expect(restored).toBe(525);
+  guard.assertClean();
+});
+
+test('tracked sealed inventory decrements quantity and blocks overselling', async ({ page }) => {
+  const guard = await openDashboard(page);
+  const result = await page.evaluate(async () => {
+    localStorage.setItem('pos_cart_v2', JSON.stringify({ items:[], discount:0 }));
+    const item = { id:'qa_sealed_qty', source:'built_in', name:'QA Booster Box', category:'Sealed Product', status:'in_stock', lifecycle:'in_stock', qty:3, market:100 };
+    all.push(item);
+    const first = addSaleItemToCart(item, { sourceType:'sealed', inventoryId:item.id, unitPrice:100, quantity:2 });
+    const oversell = addSaleItemToCart(item, { sourceType:'sealed', inventoryId:item.id, unitPrice:100, quantity:2 });
+    await markCartItemsSoldFromPayment([{ shopId:item.id, name:item.name, price:100, quantity:2 }], 'cash', new Date().toISOString(), { skipRemote:true });
+    const afterTwo = { qty:item.qty, status:item.status };
+    localStorage.setItem('pos_cart_v2', JSON.stringify({ items:[], discount:0 }));
+    await markCartItemsSoldFromPayment([{ shopId:item.id, name:item.name, price:100, quantity:1 }], 'cash', new Date().toISOString(), { skipRemote:true });
+    const afterThree = { qty:item.qty, status:item.status };
+    all = all.filter(candidate => candidate.id !== item.id);
+    return { first:!!first, oversell:!!oversell, afterTwo, afterThree };
+  });
+  expect(result).toEqual({
+    first:true,
+    oversell:false,
+    afterTwo:{ qty:1, status:'in_stock' },
+    afterThree:{ qty:0, status:'sold' }
+  });
   guard.assertClean();
 });
 

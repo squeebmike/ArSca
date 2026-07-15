@@ -1,4 +1,5 @@
 node_modules/
+dist-beta/
 test-results/
 tests/test-results/
 playwright-report/

@@ -8,7 +8,7 @@ assert.match(html,/wfId:i\.id,webflowId:i\.id/,'migration preserves Webflow IDs'
 assert.match(html,/channelFlags:\{webflow:true,storefront:true,ebay:false\}/);
 assert.match(html,/inventorySource:'built_in'/,'cloud becomes authoritative after migration');
 assert.match(html,/Publish \/ Sync Webflow/);
-assert.match(html,/Remove sold item from Webflow/,'cloud sales enqueue Webflow removal failures');
+assert.match(html,/Update Webflow inventory/,'cloud sales enqueue Webflow quantity update failures');
 assert.match(html,/ebay_delist_needed/,'linked eBay sales leave a visible integration event');
 assert.match(html,/width:72px; height:72px/,'inventory thumbnails are enlarged');
 assert.match(html,/@media\(min-width:901px\) and \(max-width:1150px\)/,'compact desktop inventory has a responsive breakpoint');

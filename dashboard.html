@@ -3,12 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.07.13.10-fast-mtg">
+<meta name="version" content="2026.07.15.05-production-beta-split">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Walk-Off POS">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22><rect width=%2264%22 height=%2264%22 rx=%2212%22 fill=%22%2307080a%22/><path d=%22M10 34h18l7-18 7 32 5-14h7%22 fill=%22none%22 stroke=%22%2300ffb3%22 stroke-width=%226%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22/></svg>">
 <title>Walk-Off Dashboard</title>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -1417,12 +1418,13 @@ body.show-mode .inv-sync-badge{display:none;}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-<script src="scripts/query-routing.js?v=2026.07.13.10-fast-mtg"></script>
-<script src="scripts/barcode-lookup.js?v=2026.07.13.10-fast-mtg"></script>
-<script src="scripts/comic-issue-hub.js?v=2026.07.13.10-fast-mtg"></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.07.13.10-fast-mtg"></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.07.13.10-fast-mtg"></script>
-<script src="scripts/mtg/research-batch.js?v=2026.07.13.10-fast-mtg"></script>
+<script src="app-config.js"></script>
+<script src="scripts/query-routing.js?v=2026.07.15.05-production-beta-split"></script>
+<script src="scripts/barcode-lookup.js?v=2026.07.15.05-production-beta-split"></script>
+<script src="scripts/comic-issue-hub.js?v=2026.07.15.05-production-beta-split"></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.07.15.05-production-beta-split"></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.07.15.05-production-beta-split"></script>
+<script src="scripts/mtg/research-batch.js?v=2026.07.15.05-production-beta-split"></script>
 </head>
 <body>
 
@@ -1472,11 +1474,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.07.13.10-fast-mtg</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.07.15.05-production-beta-split</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.07.13.10-fast-mtg</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.07.15.05-production-beta-split</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1499,7 +1501,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.07.13.10-fast-mtg</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.07.15.05-production-beta-split</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -2558,6 +2560,11 @@ body.show-mode .inv-sync-badge{display:none;}
     <div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);margin-bottom:8px">Adds this item to the cart at the price below. Payment method is chosen during checkout — this does not finalize a sale.</div>
     <label>Sale Price ($)</label>
     <input type="number" id="sell-price" step="0.01" min="0" placeholder="0.00" oninput="previewSellProfit()">
+    <div id="sell-qty-wrap" style="display:none">
+      <label>Quantity</label>
+      <input type="number" id="sell-qty" step="1" min="1" value="1">
+      <div id="sell-qty-help" style="font-family:var(--font-mono);font-size:9px;color:var(--dim);margin-top:4px"></div>
+    </div>
     <!-- Cart-unification: payment method is selected at checkout, not here.
          Legacy quick-tap buttons + select are kept in the DOM (hidden) so
          setSellPayMethod()/sell-channel references elsewhere don't break,
@@ -2852,14 +2859,16 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
-const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.07.13.10-fast-mtg';
+const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
+const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
+const APP_VERSION = '2026.07.15.05-production-beta-split';
 window.APP_VERSION = APP_VERSION;
 const branchName = 'main';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
 const POKEMON_EXACT_CACHE_VERSION = 'pokemon-exact-v3-price-matrix';
-const SUPABASE_URL = 'https://vroknjrxubsqyexngwus.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_wbpX2nL8l-4NbXtZNG_bjA_nabSYaJ5';
+const SUPABASE_URL = RUNTIME_CONFIG.supabaseUrl || 'https://vroknjrxubsqyexngwus.supabase.co';
+const SUPABASE_ANON_KEY = RUNTIME_CONFIG.supabaseAnonKey || 'sb_publishable_wbpX2nL8l-4NbXtZNG_bjA_nabSYaJ5';
+if(RUNTIME_CONFIG.channel === 'beta') document.documentElement.dataset.environment = 'beta';
 const AUTH_REDIRECT_URL = 'https://squeebmike.github.io/ArSca/dashboard.html';
 const STORE_ID = 'walkoff-main';
 const REGISTER_ID = 'front';
@@ -6302,7 +6311,7 @@ async function pstFetchSets(){
   // Try PPT worker route — skip if rate-limited
   if(pokemonPriceTrackerQuotaBlocked()) throw new Error('Rate limited — try again shortly');
   try {
-    const res = await fetch(WORKER + '/pricing/pokemonpricetracker/sets', { cache:'no-store' });
+    const res = await storeWorkerFetch('/pricing/pokemonpricetracker/sets', { cache:'no-store' });
     if(res.status === 429){ localStorage.setItem('ppt_rate_limited_until', String(Date.now() + 60 * 1000)); throw new Error('Rate limited'); }
     if(res.ok){
       const d = await res.json();
@@ -6598,7 +6607,7 @@ async function pstSyncOneSet(s, { staleOnly, incHistory, incEbay, dlImages, prog
         if(quotaHit) return;
         try {
           const params = new URLSearchParams({ tcgPlayerId:catCard.id, language:'english', limit:'1', includeHistory:incHistory?'true':'false', includeEbay:incEbay?'true':'false' });
-          const res = await fetch(WORKER + '/pricing/pokemonpricetracker/cards?' + params.toString(), { cache:'no-store' });
+          const res = await storeWorkerFetch('/pricing/pokemonpricetracker/cards?' + params.toString(), { cache:'no-store' });
           const data = await res.json().catch(() => ({}));
           pstHandleQuota(res, data);
           if(!res.ok) return;
@@ -6633,7 +6642,7 @@ async function pstSyncOneSet(s, { staleOnly, incHistory, incEbay, dlImages, prog
       includeHistory: incHistory ? 'true' : 'false',
       includeEbay: incEbay ? 'true' : 'false',
     });
-    const res = await fetch(WORKER + '/pricing/pokemonpricetracker/cards?' + params.toString(), { cache:'no-store' });
+    const res = await storeWorkerFetch('/pricing/pokemonpricetracker/cards?' + params.toString(), { cache:'no-store' });
     const data = await res.json().catch(() => ({}));
     pstHandleQuota(res, data);
     if(!res.ok) break;
@@ -7284,9 +7293,11 @@ function memberRowHtml(m, canEdit){
 function inviteRowHtml(i){
   const accepted = !!i.accepted_at;
   const expired = i.expires_at && new Date(i.expires_at) < new Date();
+  const emailState = i.email_status === 'sent' ? 'EMAIL SENT' : i.email_status === 'failed' ? 'EMAIL FAILED' : 'EMAIL NOT SENT';
   return `<div class="item-metric" style="display:grid;gap:5px">
     <div style="display:flex;justify-content:space-between;gap:8px"><b>${escHtml(i.email)}</b><span style="font-family:monospace;font-size:9px;color:${accepted?'var(--g)':expired?'var(--red)':'var(--gold)'}">${accepted?'ACCEPTED':expired?'EXPIRED':'PENDING'}</span></div>
     <div style="font-family:monospace;font-size:9px;color:var(--dim)">${roleLabel(i.role)} · expires ${i.expires_at ? new Date(i.expires_at).toLocaleDateString() : 'soon'}</div>
+    <div style="font-family:monospace;font-size:9px;color:${i.email_status==='failed'?'var(--red)':'var(--dim)'}">${emailState}${i.email_error ? ' · ' + escHtml(i.email_error) : ''}</div>
   </div>`;
 }
 
@@ -7296,11 +7307,22 @@ async function inviteStoreMember(){
   const email = document.getElementById('member-invite-email')?.value.trim().toLowerCase();
   const role = document.getElementById('member-invite-role')?.value || 'employee';
   if(!sb || !email) { toast_dash('Enter an email'); return; }
-  const { error } = await sb.rpc('invite_store_member', { target_store_id:getActiveStoreId(), target_email:email, target_role:role });
+  const storeId = getActiveStoreId();
+  const { error } = await sb.rpc('invite_store_member', { target_store_id:storeId, target_email:email, target_role:role });
   if(error) { toast_dash('Invite failed: ' + error.message); return; }
+  try {
+    const res = await storeWorkerFetch('/store/invites/send', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ storeId, email, role }) });
+    const delivery = await res.json().catch(() => ({}));
+    if(!res.ok || !delivery.ok) throw new Error(delivery.error || 'Email delivery failed');
+  } catch(e) {
+    logOpsEvent('member_invite_email_failed', 'Store invite saved but email failed', { email, role, error:e.message });
+    toast_dash('Invite saved, but email was not sent: ' + e.message);
+    renderStoreMembersPanel();
+    return;
+  }
   document.getElementById('member-invite-email').value = '';
-  logOpsEvent('member_invite', 'Invited store member', { email, role });
-  toast_dash('Invite saved. Tester signs up/logs in with that email to accept.');
+  logOpsEvent('member_invite', 'Invited store member and sent email', { email, role });
+  toast_dash('Invite email sent to ' + email);
   renderStoreMembersPanel();
 }
 
@@ -7435,7 +7457,7 @@ function renderSubscriptionPanel(){
   };
 
   const statusColor = s => {
-    if(s === 'active') return 'color:#4caf50';
+    if(s === 'active' || s === 's_rank') return 'color:#4caf50';
     if(s === 'trialing') return 'color:var(--gold)';
     if(s === 'past_due') return 'color:#ff6060';
     return 'color:var(--dim)';
@@ -7449,7 +7471,7 @@ function renderSubscriptionPanel(){
   }
 
   const statusLabel = {
-    active:'Active', trialing:'Trial', past_due:'Past Due', canceled:'Canceled',
+    active:'Active', s_rank:'S Rank', trialing:'Trial', past_due:'Past Due', canceled:'Canceled',
     trialing_expired:'Trial Expired', expired:'Expired', none:'No Subscription'
   }[sub.status] || sub.status;
 
@@ -7487,7 +7509,7 @@ function renderSubscriptionPanel(){
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
       ${primaryBtn}${portalBtn}${refreshBtn}
     </div>
-    <div class="plan-grid">${planCards}</div>
+    ${sub.complimentary ? '<div style="font-family:var(--font-mono);font-size:10px;color:var(--g);margin-top:10px">Complimentary full access · managed by the platform administrator</div>' : `<div class="plan-grid">${planCards}</div>`}
     <div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);margin-top:10px">Changing plans never deletes inventory, sales, or customer records. Features outside the current plan are simply locked.</div>`;
 }
 
@@ -9141,19 +9163,122 @@ function ensureSyncQueuePanel(backoffice){
   renderSyncQueue();
 }
 
+// Durable operational outbox. Keep the synchronous API used throughout the app,
+// but make IndexedDB (not a capped localStorage array) the source of truth.
+const SYNC_OUTBOX_DB = 'walkoff_operational_outbox_v1';
+const SYNC_OUTBOX_STORE = 'write_queue';
+let syncQueueMemory = safeLocalJson('sync_queue_v1', []);
+let syncOutboxDb = null;
+let syncOutboxWriteChain = Promise.resolve();
+
+function openSyncOutboxDb(){
+  return new Promise((resolve, reject) => {
+    if(!window.indexedDB) return reject(new Error('IndexedDB is unavailable'));
+    const request = indexedDB.open(SYNC_OUTBOX_DB, 1);
+    request.onupgradeneeded = () => {
+      const db = request.result;
+      const store = db.createObjectStore(SYNC_OUTBOX_STORE, { keyPath:'id' });
+      store.createIndex('status', 'status', { unique:false });
+      store.createIndex('createdAt', 'createdAt', { unique:false });
+      store.createIndex('type', 'type', { unique:false });
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error || new Error('Could not open the operational outbox'));
+  });
+}
+
+function readSyncOutbox(db){
+  return new Promise((resolve, reject) => {
+    const request = db.transaction(SYNC_OUTBOX_STORE, 'readonly').objectStore(SYNC_OUTBOX_STORE).getAll();
+    request.onsuccess = () => resolve(request.result || []);
+    request.onerror = () => reject(request.error || new Error('Could not read the operational outbox'));
+  });
+}
+
+function replaceSyncOutbox(db, queue){
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(SYNC_OUTBOX_STORE, 'readwrite');
+    const store = tx.objectStore(SYNC_OUTBOX_STORE);
+    store.clear();
+    queue.forEach(item => store.put(item));
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error || new Error('Could not save the operational outbox'));
+    tx.onabort = () => reject(tx.error || new Error('Operational outbox save was aborted'));
+  });
+}
+
+function putSyncOutboxItem(db, item){
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(SYNC_OUTBOX_STORE, 'readwrite');
+    tx.objectStore(SYNC_OUTBOX_STORE).put(item);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error || new Error('Could not save an operational outbox item'));
+    tx.onabort = () => reject(tx.error || new Error('Operational outbox item save was aborted'));
+  });
+}
+
+async function initSyncOutbox(){
+  try{
+    syncOutboxDb = await openSyncOutboxDb();
+    const stored = await readSyncOutbox(syncOutboxDb);
+    const merged = new Map(stored.map(item => [item.id, item]));
+    // Entries created during startup and legacy localStorage entries win over
+    // older IndexedDB copies with the same id.
+    syncQueueMemory.forEach(item => merged.set(item.id, item));
+    syncQueueMemory = [...merged.values()].sort((a,b) => String(b.createdAt||'').localeCompare(String(a.createdAt||'')));
+    await replaceSyncOutbox(syncOutboxDb, syncQueueMemory);
+    localStorage.removeItem('sync_queue_v1');
+    if(navigator.storage?.persist) navigator.storage.persist().catch(() => false);
+  }catch(error){
+    console.error('[OUTBOX] IndexedDB unavailable; using emergency localStorage fallback:', error);
+  }
+  renderSyncQueue();
+  return syncQueueMemory;
+}
+
+const syncOutboxReady = initSyncOutbox();
+
 function getSyncQueue(){
-  return safeLocalJson('sync_queue_v1', []);
+  return syncQueueMemory;
 }
 
 function saveSyncQueue(q){
-  localStorage.setItem('sync_queue_v1', JSON.stringify((q||[]).slice(0,500)));
+  syncQueueMemory = Array.isArray(q) ? q : [];
+  const snapshot = syncQueueMemory.map(item => ({...item}));
+  syncOutboxWriteChain = syncOutboxWriteChain.catch(() => {}).then(async () => {
+    await syncOutboxReady;
+    if(syncOutboxDb) {
+      await replaceSyncOutbox(syncOutboxDb, snapshot);
+      localStorage.removeItem('sync_queue_v1');
+    } else {
+      // Emergency compatibility path for browsers where IndexedDB is disabled.
+      localStorage.setItem('sync_queue_v1', JSON.stringify(snapshot));
+    }
+  });
   renderSyncQueue();
+  return syncOutboxWriteChain;
+}
+
+function saveSyncQueueItem(item){
+  const snapshot = {...item};
+  syncOutboxWriteChain = syncOutboxWriteChain.catch(() => {}).then(async () => {
+    await syncOutboxReady;
+    if(syncOutboxDb) {
+      await putSyncOutboxItem(syncOutboxDb, snapshot);
+      localStorage.removeItem('sync_queue_v1');
+    } else {
+      localStorage.setItem('sync_queue_v1', JSON.stringify(syncQueueMemory));
+    }
+  });
+  renderSyncQueue();
+  return syncOutboxWriteChain;
 }
 
 function enqueueSync(type, label, payload, error){
   const q = getSyncQueue();
-  q.unshift({ id:'sync_'+Date.now()+'_'+Math.random().toString(36).slice(2,6), type, label, payload, error:error||'', status:'pending', attempts:0, createdAt:new Date().toISOString(), updatedAt:new Date().toISOString() });
-  saveSyncQueue(q);
+  const item = { id:'sync_'+Date.now()+'_'+Math.random().toString(36).slice(2,6), type, label, payload, error:error||'', status:'pending', attempts:0, createdAt:new Date().toISOString(), updatedAt:new Date().toISOString() };
+  q.unshift(item);
+  return saveSyncQueueItem(item);
 }
 
 function enqueueOrReplaceSync(type, syncKey, label, payload, error){
@@ -9162,7 +9287,7 @@ function enqueueOrReplaceSync(type, syncKey, label, payload, error){
   const next = { id:idx >= 0 ? q[idx].id : 'sync_'+Date.now()+'_'+Math.random().toString(36).slice(2,6), syncKey, type, label, payload, error:error||'', status:'pending', attempts:idx >= 0 ? (q[idx].attempts||0) : 0, createdAt:idx >= 0 ? q[idx].createdAt : new Date().toISOString(), updatedAt:new Date().toISOString() };
   if(idx >= 0) q[idx] = next;
   else q.unshift(next);
-  saveSyncQueue(q);
+  return saveSyncQueueItem(next);
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -9576,7 +9701,7 @@ async function processSyncItem(item){
     return;
   }
   if(item.type === 'inventory-sold') {
-    await markInventoryRecordSold({ id:item.payload.id, source:item.payload.inventorySource === 'built_in' ? 'built_in' : '' }, item.payload.fieldData, {});
+    await markInventoryRecordSold({ id:item.payload.id, source:item.payload.inventorySource === 'built_in' ? 'built_in' : '' }, item.payload.fieldData, item.payload.saleMeta || {});
     return;
   }
   if(item.type === 'pos-ledger-transaction') {
@@ -9645,6 +9770,7 @@ async function processSyncItem(item){
 }
 
 async function retrySyncItem(id){
+  await syncOutboxReady;
   const q = getSyncQueue();
   const item = q.find(x => x.id === id);
   if(!item) return;
@@ -9660,6 +9786,7 @@ async function retrySyncItem(id){
 }
 
 async function retryAllSyncQueue(){
+  await syncOutboxReady;
   for(const item of getSyncQueue().filter(x => x.status !== 'done')) await retrySyncItem(item.id);
 }
 
@@ -12843,6 +12970,13 @@ function openSellModal(id){
   const marketPrice = inventoryReferenceMarketPrice(item);
   const suggested = marketPrice > 0 ? suggestedCartSalePrice(applyShowPriceRule(marketPrice)) : Number(item.salePrice || 0);
   document.getElementById('sell-price').value = suggested > 0 ? suggested.toFixed(2) : '';
+  const available = inventoryAvailableQuantity(item);
+  const qtyWrap = document.getElementById('sell-qty-wrap');
+  const qtyInput = document.getElementById('sell-qty');
+  if(qtyWrap) qtyWrap.style.display = available > 1 ? '' : 'none';
+  if(qtyInput){ qtyInput.value='1'; qtyInput.max=String(Math.max(1,available)); }
+  const qtyHelp = document.getElementById('sell-qty-help');
+  if(qtyHelp) qtyHelp.textContent = available + ' available';
   document.getElementById('sell-profit-preview').textContent = '';
   // Reset payment buttons
   document.querySelectorAll('.sell-pay-btn').forEach(b => b.classList.remove('active'));
@@ -13017,7 +13151,8 @@ async function confirmQuickSell(){
   const item=all.find(i=>i.id===sellItemId); if(!item) return;
   const price=parseFloat(document.getElementById('sell-price').value)||0;
   if(!price){alert('Enter a sale price');return;}
-  if(item.status === 'sold'){ alert('This item is already sold'); return; }
+  if(!inventoryItemIsSellable(item)){ alert('This item is sold or out of stock'); return; }
+  const quantity = Math.max(1, parseInt(document.getElementById('sell-qty')?.value || '1', 10) || 1);
 
   addSaleItemToCart(item, {
     sourceType: isSealedProduct(item) ? 'sealed' : 'inventory',
@@ -13028,7 +13163,7 @@ async function confirmQuickSell(){
     imageUrl: item.thumbnail || null,
     unitPrice: price,
     costBasis: item.cost || 0,
-    quantity: 1,
+    quantity,
     productType: isSealedProduct(item) ? (item.category || 'Sealed') : '',
     metadata: { set:item.set || '', year:item.year || '' },
     undoLabel:'sell to cart'
@@ -13044,7 +13179,7 @@ async function confirmQuickSell(){
 function dashAddToCart(id){
   const item = all.find(i => i.id === id);
   if(!item) return;
-  if(item.status === 'sold'){ alert('This item is already sold'); return; }
+  if(!inventoryItemIsSellable(item)){ alert('This item is sold or out of stock'); return; }
   if(['listed_online','pulled_ebay'].includes(item.lifecycle || '')) {
     if(!confirm('This item is marked ' + (LIFECYCLE_LABELS[item.lifecycle] || item.lifecycle) + '. Add to in-person cart anyway?')) return;
   }
@@ -13175,6 +13310,19 @@ function addSaleItemToCart(item = {}, options = {}){
   const notes = options.notes ?? item.notes ?? '';
   const taxable = options.taxable ?? item.taxable ?? true;
   const metadata = Object.assign({}, item.metadata || {}, options.metadata || {});
+
+  if(inventoryId && ['inventory','sealed'].includes(sourceType)){
+    const inventoryItem = all.find(candidate => candidate.id === inventoryId || candidate.supabaseRowId === inventoryId) || item;
+    const available = inventoryAvailableQuantity(inventoryItem);
+    const alreadyInCart = cartData.items.reduce((sum, line) => {
+      const lineId = line.inventoryId || line.shopId || line.wfId;
+      return String(lineId || '') === String(inventoryId) ? sum + Number(line.quantity || line.qty || 1) : sum;
+    }, 0);
+    if(!inventoryItemIsSellable(inventoryItem) || quantity + alreadyInCart > available){
+      toast_dash(available > 0 ? `Only ${available} available (${alreadyInCart} already in cart)` : 'Item is sold or out of stock');
+      return null;
+    }
+  }
 
   const cartItem = {
     // ── Unified cart item model fields (Phase 2) ──
@@ -15380,25 +15528,31 @@ async function createInventoryRecord(item, updates) {
 }
 
 async function markInventoryRecordSold(item, fieldData, saleMeta){
-  if(item.status === 'sold' || item.lifecycle === 'sold') return 'already-sold';
+  const currentQuantity = inventoryAvailableQuantity(item);
+  const quantitySold = Math.max(1, Number(saleMeta?.quantitySold || 1));
+  const remainingQuantity = Number.isFinite(Number(saleMeta?.remainingQuantity))
+    ? Math.max(0, Number(saleMeta.remainingQuantity))
+    : Math.max(0, currentQuantity - quantitySold);
+  const depleted = remainingQuantity <= 0;
+  if((item.status === 'sold' || item.lifecycle === 'sold') && depleted) return 'already-sold';
   if(item.source === 'built_in') {
     const sb = getSupabaseClient();
     const session = getAuthSession();
     const storeId = getActiveStoreId();
     if(sb && session?.supabase && storeId) {
-      const nextData = { ...(item.raw || {}), ...item, ...saleMeta, status:'sold', lifecycle:'sold', qty:0, quantity:0, 'inventory-count':0 };
+      const nextStatus = depleted ? 'sold' : 'in_stock';
+      const nextData = { ...(item.raw || {}), ...item, ...saleMeta, status:nextStatus, lifecycle:nextStatus, qty:remainingQuantity, quantity:remainingQuantity, 'inventory-count':remainingQuantity, 'sold-out':depleted, soldAt:depleted ? saleMeta.soldAt : '' };
       const { error } = await sb.from('inventory_items')
-        .update({ status:'sold', data:nextData, updated_at:new Date().toISOString() })
+        .update({ status:nextStatus, data:nextData, updated_at:new Date().toISOString() })
         .eq('id', item.supabaseRowId || item.id)
-        .eq('store_id', storeId)
-        .neq('status', 'sold');
+        .eq('store_id', storeId);
       if(error) throw new Error('Built-in sold sync ' + error.message);
       const wfId=item.raw?.wfId||item.raw?.webflowId;
-      if(wfId&&getWebflowIntegration().enabled){const soldFields={'sold-out':true,'inventory-count':0,status:STATUS_SOLD};try{const wfRes=await wfPatch('/collections/'+WF_PRODUCTS+'/items/'+wfId,{fieldData:soldFields});if(!wfRes.ok)throw new Error('Webflow sold-out '+wfRes.status);}catch(e){enqueueOrReplaceSync('webflow-mirror-update','sold-'+wfId,'Remove sold item from Webflow: '+(item.name||wfId),{wfId,item,updates:{qty:0,status:'sold','sold-out':true}},e.message);}}
-      if(item.raw?.ebayListingId||item.raw?.listingId)logOpsEvent('ebay_delist_needed','Sold item needs eBay delist',{itemId:item.id,listingId:item.raw.ebayListingId||item.raw.listingId});
+      if(wfId&&getWebflowIntegration().enabled){const soldFields={'sold-out':depleted,'inventory-count':remainingQuantity};if(depleted)soldFields.status=STATUS_SOLD;try{const wfRes=await wfPatch('/collections/'+WF_PRODUCTS+'/items/'+wfId,{fieldData:soldFields});if(!wfRes.ok)throw new Error('Webflow inventory update '+wfRes.status);}catch(e){enqueueOrReplaceSync('webflow-mirror-update','sold-'+wfId,'Update Webflow inventory: '+(item.name||wfId),{wfId,item,updates:{qty:remainingQuantity,status:nextStatus,'sold-out':depleted}},e.message);}}
+      if(depleted&&(item.raw?.ebayListingId||item.raw?.listingId))logOpsEvent('ebay_delist_needed','Sold item needs eBay delist',{itemId:item.id,listingId:item.raw.ebayListingId||item.raw.listingId});
       return 'built-in';
     }
-    updateUniversalInventoryItem(item.id, { ...saleMeta, status:'sold', lifecycle:'sold' });
+    updateUniversalInventoryItem(item.id, { ...saleMeta, qty:remainingQuantity, quantity:remainingQuantity, status:depleted?'sold':'in_stock', lifecycle:depleted?'sold':'in_stock' });
     return 'built-in-local';
   }
   if(getInventorySource() === 'built_in' || getInventorySource() === 'spreadsheet') return 'local-only';
@@ -15406,10 +15560,10 @@ async function markInventoryRecordSold(item, fieldData, saleMeta){
   // date-sold) are NOT in the Webflow Products schema and cause 400 rejection of the whole PATCH.
   // Sale details live in Supabase pos_sales / pos_sale_lines, not Webflow product fields.
   const wfSoldFields = {
-    'sold-out':       true,
-    'inventory-count': 0,
-    status:           STATUS_SOLD,
+    'sold-out':       depleted,
+    'inventory-count': remainingQuantity,
   };
+  if(depleted) wfSoldFields.status = STATUS_SOLD;
   const res = await wfPatch('/collections/'+WF_PRODUCTS+'/items/'+item.id, { fieldData: wfSoldFields });
   if(!res.ok) throw new Error('Sold sync '+res.status+': '+(await res.text()).slice(0,160));
   return 'webflow';
@@ -15906,6 +16060,18 @@ function pricingGameForItem(item){
 
 function isSealedProduct(item){
   return /sealed|booster|box|hobby|blaster|mega|pack|case|tin|etb|elite trainer|bundle/.test([item.name,item.set,item.variant].filter(Boolean).join(' ').toLowerCase());
+}
+
+function inventoryAvailableQuantity(item){
+  if(!item) return 0;
+  const quantity = Number(item.qty ?? item.quantity ?? item.raw?.qty ?? item.raw?.quantity ?? item.raw?.['inventory-count'] ?? 1);
+  return Number.isFinite(quantity) ? Math.max(0, Math.floor(quantity)) : 0;
+}
+
+function inventoryItemIsSellable(item){
+  if(!item) return false;
+  const status = String(item.status || item.lifecycle || item.raw?.status || '').toLowerCase();
+  return !['sold','archived','returned','deleted'].includes(status) && !item.soldAt && inventoryAvailableQuantity(item) > 0;
 }
 
 function getPricingInventorySource(){
@@ -17798,6 +17964,14 @@ async function searchPokemonOfflineCache(query, cat = ''){
   return [...catalogHits, ...freshSealed].slice(0, 60);
 }
 
+async function pokemonOfflineCatalogAvailable(sealed = false){
+  const store = sealed ? 'ppt_sealed' : 'ppt_cards';
+  const metaKey = sealed ? 'export_sealed' : 'export_cards';
+  const meta = await catalogDbGet('meta', metaKey).catch(() => null);
+  if(Number(meta?.rowCount || 0) > 0) return true;
+  return (await catalogDbCount(store).catch(() => 0)) > 0;
+}
+
 async function savePokemonCompsFromRow(row = {}, cardKey = pokemonCardKey(row)){
   const capturedAt = new Date().toISOString();
   const comps = [];
@@ -18449,22 +18623,22 @@ async function runPriceLookup(){
 
   // ── Pokemon offline cache ──────────────────────────────────────────────────
   if(wantsPokemon) {
-    cachedResults = await searchPokemonOfflineCache(q, cat);
+    const pokemonOfflineReady = await pokemonOfflineCatalogAvailable(isPokemonSealedSearchIntent(q, cat));
+    cachedResults = pokemonOfflineReady ? await searchPokemonOfflineCache(q, cat) : [];
     if(cachedResults.length) {
       if(!qplSearchStillActive(mySeq, searchPlan)) return;
       qplMasterResults = cachedResults; qplLastSearch = q;
       qplResults = filterQplMasterResults(qplMasterResults, cat);
       renderQuickLookupResults(qplResults);
       renderUniversalSearchExplain(searchPlan, qplResults);
-      if(navigator.onLine){
-        setPokemonOfflineBanner('Catalog results shown while live PPT refresh runs.');
-      } else {
-        setPokemonOfflineBanner('Offline Mode: showing PPT bulk export catalog data.');
-      }
+      setPokemonOfflineBanner(navigator.onLine ? 'PPT offline catalog result. Select a card for optional live detail.' : 'Offline Mode: showing PPT bulk export catalog data.', 'good');
+      return;
     } else if(!navigator.onLine) {
       el.innerHTML = `<div style="color:var(--gold);line-height:1.6">No cached or catalog data found for this search.<br>To enable full offline research, download the PPT export catalog in Settings.<br><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><button class="hbtn" onclick="openSettingsSection('catalogs','offline-cache-panel')">OPEN OFFLINE CACHE</button><button class="hbtn" onclick="openSettingsSection('catalogs','pokemon-export-panel')">DOWNLOAD CATALOG</button></div></div>`;
       setPokemonOfflineBanner('Offline Mode: no cached Pokémon data found for "' + q + '".', 'bad');
       return;
+    } else if(!pokemonOfflineReady) {
+      setPokemonOfflineBanner('PPT offline catalog is not installed. Searching PPT online now.');
     }
   }
 
@@ -18592,8 +18766,10 @@ async function searchQuickCatalog(q, cat, searchPlan = buildUniversalSearchPlan(
   const results = [];
   const wants = qplCategoryKey(cat);
   const intent = detectQuickQueryIntent(q, cat);
-  const plannedCategories = new Set(searchPlan?.intent?.inferredCategories || []);
-  const hasPlannedCategory = category => !plannedCategories.size || plannedCategories.has(category);
+  const plannedFromPlan = (searchPlan?.intent?.inferredCategories || []).filter(Boolean);
+  const plannedFromIntent = (intent?.intents || []).filter(Boolean);
+  const plannedCategories = new Set(plannedFromPlan.length ? plannedFromPlan : plannedFromIntent);
+  const hasPlannedCategory = category => plannedCategories.has(category);
   const sealedIntent = isSealedProductIntent(q, cat) || plannedCategories.has('sealed');
   const pokemonSealedIntent = isPokemonSealedSearchIntent(q, cat);
   const mtgSealedIntent = isMtgSealedSearchIntent(q, cat);
@@ -18633,7 +18809,7 @@ async function searchQuickCatalog(q, cat, searchPlan = buildUniversalSearchPlan(
       : null;
     try {
       const [searchResult, sealedResult] = await Promise.all([
-        (isParseTitleQuery || isSealedQuery) ? Promise.resolve({ cards:[], ranked:[], requestPath:'', cacheStatus:'skip' }) : searchPokemonPriceTrackerCards(pokemonSearchQuery, searchLanguage).catch(error => ({ cards:[], ranked:[], requestPath:'', cacheStatus:'failed', error })),
+        (isParseTitleQuery || isSealedQuery) ? Promise.resolve({ cards:[], ranked:[], requestPath:'', cacheStatus:'skip' }) : searchPokemonPriceTrackerCards(pokemonSearchQuery, searchLanguage),
         sealedPromise || Promise.resolve({ products:[] }),
       ]);
       if(!isParseTitleQuery && !isSealedQuery) recordSearchPlanRoute(searchPlan, '/pricing/pokemon/cards', pokemonSearchQuery, searchResult.cards?.length || 0);
@@ -18690,16 +18866,10 @@ async function searchQuickCatalog(q, cat, searchPlan = buildUniversalSearchPlan(
       const queryNumber = pokemonQueryCardNumber(q);
       const ranked = searchResult.ranked || pokemonRankApiCards(searchResult.cards, q);
       const rows = [];
-      let autoSelectDone = false;
       for(const rankedCard of ranked.slice(0, 50)) {
         let card = rankedCard.card;
-        let exactHydrated = false;
-        if(!autoSelectDone && rankedCard.autoSelect && card?.tcgPlayerId) {
-          autoSelectDone = true;
-          card = await fetchPokemonPriceTrackerExactDetail(card.tcgPlayerId, card.language || searchLanguage).catch(() => card);
-          exactHydrated = !!card?.lookupDebug?.exactHydrated;
-          await cachePokemonPriceTrackerCard({ name:q, rawTitle:q, tcgPlayerId:card.tcgPlayerId, setName:card.setName, cardNumber:card.cardNumber, category:'Pokemon' }, card).catch(() => {});
-        }
+        // Search must stay lightweight. Full price history/eBay data is hydrated
+        // only after the dealer selects a result.
         const row = pokemonPriceTrackerCardToQplRow(card, q, null);
         row.lookupDebug = {
           ...(row.lookupDebug || {}),
@@ -18709,7 +18879,7 @@ async function searchQuickCatalog(q, cat, searchPlan = buildUniversalSearchPlan(
           searchResultCount:searchResult.cards.length,
           returnedCandidates:searchResult.cards.slice(0, 5).map(c => ({ tcgPlayerId:c.tcgPlayerId || '', cardNumber:c.cardNumber || '', setName:c.setName || '' })),
           path:'cards.search.limit5',
-          exactHydrated,
+          exactHydrated:false,
           cache:searchResult.cacheStatus,
           confidence:rankedCard.confidence,
           autoSelect:rankedCard.autoSelect,
@@ -18744,8 +18914,20 @@ async function searchQuickCatalog(q, cat, searchPlan = buildUniversalSearchPlan(
         if(rows.some(r => !r.closestStrictFallback)) return rows;
       }
     } catch(e) {
+      if(e?.name === 'AbortError') return [];
       console.warn('PokemonPriceTracker documented search skipped', e);
+      throw e;
     }
+    // Pokemon is authoritative when selected or confidently inferred. Never
+    // continue into inventory, PriceCharting, Scryfall, or generic TCG fan-out.
+    return results;
+  }
+
+  if((wants === 'mtg' || plannedCategories.has('mtg') || isMtgLookupIntent(q, cat)) && !sealedIntent) {
+    const mtgQuery = universalSearchQueries(searchPlan, 'mtg', 'Scryfall')[0] || q;
+    const rows = await fetchScryfallCatalog(mtgQuery, searchPlan);
+    rows.forEach(add);
+    return rankQuickLookupResults(results, q, cat).slice(0, 20);
   }
 
   smartSearchLocalItems(q, all, 15).forEach(hit => {
@@ -18766,6 +18948,10 @@ async function searchQuickCatalog(q, cat, searchPlan = buildUniversalSearchPlan(
     note:'Already in inventory - matched by ' + (hit.why.join(', ') || 'smart search'),
     confidence:Math.min(99, Math.round(hit.score)),
     matchWhy:hit.why,
+    status:i.status || i.lifecycle || 'in_stock',
+    lifecycle:i.lifecycle || i.status || 'in_stock',
+    qty:1,
+    availableQty:inventoryAvailableQuantity(i),
     raw:i,
   });
   });
@@ -18775,9 +18961,11 @@ async function searchQuickCatalog(q, cat, searchPlan = buildUniversalSearchPlan(
     Promise.resolve().then(work).catch(()=>[]),
     new Promise(resolve=>setTimeout(()=>resolve([]),deadlineMs)),
   ]).then(rows=>{(rows||[]).forEach(add);return rows||[];}));};
-  const pokemonOnly = plannedCategories.has('pokemon') || wants === 'pokemon' || pokemonSealedIntent;
+  const pokemonOnly = wants === 'pokemon' || plannedCategories.has('pokemon') || pokemonSealedIntent;
   const mtgOnly = (wants === 'mtg' || plannedCategories.has('mtg')) && !sealedIntent;
-  queueProvider(!pokemonOnly && !mtgOnly && (!wants || intent.intents.some(x=>['comic','video_games','funko','lego','coins','sports','graded','sealed','collectibles'].includes(x)) || plannedCategories.has('comic') || plannedCategories.has('sports') || plannedCategories.has('graded') || plannedCategories.has('sealed') || sealedIntent), ()=>fetchPriceChartingLiveCatalog(q,cat,searchPlan));
+  const priceChartingBackedCategories = ['comic','video_games','funko','lego','coins','sports','graded','sealed','collectibles','yugioh','one_piece','lorcana','digimon','dragon_ball','garbage_pail','marvel','star_wars','amiibo','books_guides'];
+  const autoUnknown = !wants && !plannedCategories.size;
+  queueProvider(!pokemonOnly && !mtgOnly && (autoUnknown || plannedCategories.has('graded') || priceChartingBackedCategories.some(category => plannedCategories.has(category)) || sealedIntent), ()=>fetchPriceChartingLiveCatalog(q,cat,searchPlan));
 
   // SportsCardsPro — step 1 candidate search (step 2 hydration fires on result selection)
   queueProvider((!wants&&hasPlannedCategory('sports')) || wants==='sports' || wants==='graded', ()=>searchSportsCardsPro(q,searchPlan));
@@ -19947,6 +20135,7 @@ function qplPriceChartingCategory(category){
   if(key === 'pokemon' || key === 'tcg') return 'Pokemon Cards';
   if(key === 'mtg') return 'Magic Cards';
   if(key === 'yugioh') return 'YuGiOh Cards';
+  if(key === 'one_piece') return 'One Piece Cards';
   if(key === 'lorcana') return 'Lorcana Cards';
   if(key === 'digimon') return 'Digimon Cards';
   if(key === 'dragon_ball') return 'Dragon Ball Cards';
@@ -21437,11 +21626,10 @@ function pokemonPriceTrackerApiSettings(){
   };
 }
 
-async function pokemonPriceTrackerCardsRequest(params, pathLabel, { fresh = false } = {}){
+async function pokemonPriceTrackerCardsRequest(params, pathLabel, { fresh = false, signal = null } = {}){
   if(fresh) params.set('fresh', 'true');
   const requestPath = '/pricing/pokemon/cards?' + params.toString().replace(/\+/g, '%20');
-  const storeId = getActiveStoreId();
-  const res = await fetch(WORKER + requestPath, { cache:'no-store', headers: storeId ? { 'X-Store-Id': storeId } : {} });
+  const res = await storeWorkerFetch(requestPath, { cache:'no-store', signal });
   const data = await res.json().catch(() => ({}));
   if(res.status === 402 && data.subscriptionRequired){
     const err = new Error('Subscription required — open Settings to subscribe or start your free trial.');
@@ -21484,6 +21672,7 @@ function pokemonExpandSearchAbbreviations(q){
     .replace(/\s+/g, ' ').trim();
 }
 
+let _pptSearchAbortController = null;
 async function searchPokemonPriceTrackerCards(rawQuery = '', language = 'english'){
   if(pokemonPriceTrackerQuotaBlocked()) throw new Error('PokemonPriceTracker quota exhausted');
   // The documented /cards search accepts multi-word natural language across card
@@ -21494,7 +21683,9 @@ async function searchPokemonPriceTrackerCards(rawQuery = '', language = 'english
   const lang = language === 'japanese' ? 'japanese' : (/\bjapanese?\b|\bjpn\b/i.test(rawQuery) ? 'japanese' : 'english');
   // Pass the ORIGINAL raw query to the ranker so set-word scoring still uses "swsh", "promo" etc.
   const params = new URLSearchParams({ search:query, language:lang, limit:'5' });
-  const result = await pokemonPriceTrackerCardsRequest(params, 'cards.search.limit5');
+  _pptSearchAbortController?.abort();
+  _pptSearchAbortController = new AbortController();
+  const result = await pokemonPriceTrackerCardsRequest(params, 'cards.search.limit5', { signal:_pptSearchAbortController.signal });
   result.ranked = pokemonRankApiCards(result.cards, rawQuery);
   return result;
 }
@@ -21508,8 +21699,7 @@ async function searchPokemonSealedProducts(rawQuery = ''){
   if(!q) return { products:[] };
   const params = new URLSearchParams({ search:q, limit:'20' });
   const requestPath = '/pricing/pokemon/sealed-products?' + params.toString().replace(/\+/g, '%20');
-  const storeId = getActiveStoreId();
-  const res = await fetch(WORKER + requestPath, { cache:'no-store', headers:storeId ? { 'X-Store-Id':storeId } : {} });
+  const res = await storeWorkerFetch(requestPath, { cache:'no-store' });
   const data = await res.json().catch(() => ({}));
   if(!res.ok || !data.ok) throw new Error(data.error || data.message || 'Pokemon sealed-products lookup failed');
   // Worker normalises PPT data.data array into data.cards
@@ -21522,8 +21712,7 @@ async function fetchPokemonSealedProductExact(tcgPlayerId = ''){
   if(!/^\d+$/.test(String(tcgPlayerId || ''))) return null;
   const params = new URLSearchParams({ tcgPlayerId:String(tcgPlayerId), limit:'1' });
   const requestPath = '/pricing/pokemon/sealed-products?' + params.toString();
-  const storeId = getActiveStoreId();
-  const res = await fetch(WORKER + requestPath, { cache:'no-store', headers:storeId ? { 'X-Store-Id':storeId } : {} });
+  const res = await storeWorkerFetch(requestPath, { cache:'no-store' });
   const data = await res.json().catch(() => ({}));
   if(!res.ok || !data.ok) return null;
   return (data.cards || data.products || data.data || [])[0] || null;
@@ -21547,8 +21736,7 @@ async function fetchPokemonPopulation(tcgPlayerId, language = 'english'){
   if(!tcgPlayerId) return null;
   const params = new URLSearchParams({ tcgPlayerId:String(tcgPlayerId), language:language || 'english' });
   const requestPath = '/pricing/pokemon/population?' + params.toString().replace(/\+/g, '%20');
-  const storeId = getActiveStoreId();
-  const res = await fetch(WORKER + requestPath, { cache:'no-store', headers: storeId ? { 'X-Store-Id': storeId } : {} });
+  const res = await storeWorkerFetch(requestPath, { cache:'no-store' });
   const data = await res.json().catch(() => ({}));
   if(!res.ok || !data.ok) return null;
   const card = data.card || (Array.isArray(data.cards) ? data.cards[0] : null) || null;
@@ -21687,7 +21875,7 @@ async function parsePokemonPriceTrackerTitle(row = {}, query = qplLastSearch){
   if(!parts.shouldParseTitle || pokemonPriceTrackerQuotaBlocked() || !navigator.onLine) return null;
   const title = [row.rawTitle, row.ocrText, row.scanText, row.slabText, query, row.name, row.set || row.setName, row.card_number || row.cardNumber].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
   if(!title || title.length < 4) return null;
-  const res = await fetch(WORKER + '/pricing/pokemon/parse-title', {
+  const res = await storeWorkerFetch('/pricing/pokemon/parse-title', {
     method:'POST',
     headers:{ 'Content-Type':'application/json' },
     body:JSON.stringify({ title, options:{ fuzzyMatching:true, maxSuggestions:3, includeConfidence:true } })
@@ -22463,6 +22651,7 @@ function scryfallTreatmentLabel(c){
   return '';
 }
 
+let _scryfallSearchAbortController = null;
 async function fetchScryfallCatalog(q, searchPlan = qplLastSearchPlan){
   const finishIntent = parseMtgFinishIntent(q);
   const plannedQueries = universalSearchQueries(searchPlan, 'mtg', 'Scryfall');
@@ -22473,18 +22662,19 @@ async function fetchScryfallCatalog(q, searchPlan = qplLastSearchPlan){
   else if(finishIntent.treatment === 'showcase') sfQ += ' is:showcase';
   else if(finishIntent.treatment === 'extended_art') sfQ += ' is:extendedart';
   const url = 'https://api.scryfall.com/cards/search?q=' + encodeURIComponent(sfQ) + '&unique=prints&order=released&dir=desc';
-  const res = await fetch(url, { headers:{ 'Accept':'application/json' } }).catch(() => null);
+  _scryfallSearchAbortController?.abort();
+  _scryfallSearchAbortController = new AbortController();
+  const res = await fetch(url, { headers:{ 'Accept':'application/json' }, signal:_scryfallSearchAbortController.signal }).catch(error => {
+    if(error?.name === 'AbortError') throw error;
+    return null;
+  });
   if(!res?.ok) return [];
   const data = await res.json().catch(() => ({}));
   let allScryfallCards = data.data || [];
   recordSearchPlanRoute(searchPlan, 'https://api.scryfall.com/cards/search', sfQ, allScryfallCards.length);
-  if(data.has_more && allScryfallCards.length < 175){
-    try {
-      const res2 = await fetch(data.next_page, { headers:{ 'Accept':'application/json' } }).catch(() => null);
-      if(res2?.ok){ const d2 = await res2.json().catch(() => ({})); allScryfallCards = allScryfallCards.concat(d2.data || []); }
-    } catch(e){}
-  }
-  return allScryfallCards.slice(0, 200).map(c => {
+  // One Scryfall page is sufficient for the first 20 visible results. Additional
+  // printings load only when the dealer opens the variants control.
+  return allScryfallCards.slice(0, 20).map(c => {
     const hit = scoreSmartItem({ name:c.name, set:c.set_name, year:(c.released_at||'').slice(0,4), card_number:c.collector_number, rarity:c.rarity, variant:c.type_line }, q);
     // Build all available finishes from prices + Scryfall finishes array
     const priceMap = {};
@@ -22808,6 +22998,7 @@ function qplGradedQuickChips(r, idx){
 function quickLookupResultCard(r, idx){
   const builtTcgLink = buildTcgExternalLink(r);
   const isComic = qplResultCategoryKey(r) === 'comic';
+  const inventoryUnavailable = r.source === 'inventory' && !inventoryItemIsSellable(r.raw || r);
   const isSportsResult = qplResultCategoryKey(r) === 'sports' || r.source === 'topps_checklist' || r.source === 'sportscardspro';
   const img = r.imageUrl
     ? `<div class="qpl-img-shell" onclick="openQplImageLightbox(${idx})"${isComic?' style="aspect-ratio:2/3;max-height:220px"':''}><img src="${escHtml(r.imageUrl)}" alt="${escHtml(r.name || 'Card image')}" style="${isComic?'object-fit:cover;width:100%;height:100%':''}" onerror="this.closest('.qpl-img-shell').innerHTML='<div class=qpl-no-img>${isComic?'📖<br>NO COVER':'NO IMAGE'}</div>'"></div>`
@@ -22900,7 +23091,7 @@ function quickLookupResultCard(r, idx){
       <div class="qpl-badges">
         <span class="qpl-badge ${confClass}">${confLabel}${conf?` ${conf}`:''}</span>
         <span class="qpl-badge ${truth.includes('No ') || truth.includes('Needs') ? 'bad' : truth.includes('Guide') ? 'warn' : 'good'}">${escHtml(truth)}</span>
-        ${r.source === 'inventory' ? '<span class="qpl-badge good">IN INVENTORY</span>' : `<span class="qpl-badge">${escHtml(r.source === 'justtcg' ? 'JustTCG' : r.source === 'pricecharting_csv' ? 'PriceCharting' : r.source || 'Source')}</span>`}
+        ${r.source === 'inventory' ? `<span class="qpl-badge ${inventoryUnavailable?'bad':'good'}">${inventoryUnavailable?'SOLD / OUT OF STOCK':'IN INVENTORY'}</span>` : `<span class="qpl-badge">${escHtml(r.source === 'justtcg' ? 'JustTCG' : r.source === 'pricecharting_csv' ? 'PriceCharting' : r.source || 'Source')}</span>`}
         ${isComic ? (comicAppraisalState(r).coverConfirmed ? '<span class="qpl-badge good">COVER CONFIRMED</span>' : `<span class="qpl-badge warn">${r.imageUrl?'COVER NEEDS CONFIRMATION':'NO COVER'}</span>`) : ''}
         ${r.cache?.state === 'offline' ? `<span class="qpl-badge warn">Offline Cache</span>` : ''}
         ${_qplStaleBadge(r)}
@@ -23764,7 +23955,7 @@ async function selectQuickLookupResult(idx){
     <div class="research-context-actions">
       <button class="hbtn buy" onclick="addSelectedQuickLookupToBuyOffer(${idx})">ADD TO BUY</button>
       <button class="hbtn" style="color:var(--gold)" onclick="addSelectedQuickLookupToInventory(${idx})">ADD INVENTORY</button>
-      <button class="hbtn" onclick="addSelectedQuickLookupToSaleCart(${idx})">SELL</button>
+      <button class="hbtn" ${inventoryUnavailable?'disabled title="Sold or out of stock"':''} onclick="addSelectedQuickLookupToSaleCart(${idx})">${inventoryUnavailable?'SOLD OUT':'SELL'}</button>
       <button class="hbtn" onclick="renderQuickLookupResults(qplResults)">BACK</button>
     </div>
     <details class="research-secondary-actions">
@@ -23931,6 +24122,7 @@ function selectedQuickLookupItem(idx){
     cost:parseFloat(document.getElementById('qpl-edit-cost')?.value) || Number(comicAppraisal?.costBasis || r.cost || 0),
     costBasis:parseFloat(document.getElementById('qpl-edit-cost')?.value) || Number(comicAppraisal?.costBasis || r.cost || 0),
     qty:Math.max(1, Math.min(100, Number(r.qty || r.quantity || 1) || 1)),
+    availableQty:r.source === 'inventory' ? inventoryAvailableQuantity(r.raw) : Number(r.availableQty || r.qty || r.quantity || 1),
     location:document.getElementById('qpl-edit-location')?.value.trim() || comicAppraisal?.location || '',
     box:isComic ? comicAppraisal.box || '' : '',
     thumbnail:document.getElementById('qpl-edit-image-url')?.value.trim() || (isComic&&r.userPhotoBlobKey ? r.externalCoverImageUrl||'' : r.imageUrl||''),
@@ -23986,8 +24178,8 @@ function selectedQuickLookupItem(idx){
     lastPriceSyncAt:r.lastPriceSyncAt || selectedVariant.lastUpdated || new Date().toISOString(),
     source:r.source || 'quick_lookup',
     notes:isComic ? comicAppraisal.notes || r.note || '' : (r.note || ''),
-    lifecycle:'in_stock',
-    status:'in_stock',
+    lifecycle:r.source === 'inventory' ? (r.raw?.lifecycle || r.raw?.status || r.lifecycle || r.status || 'in_stock') : 'in_stock',
+    status:r.source === 'inventory' ? (r.raw?.status || r.raw?.lifecycle || r.status || r.lifecycle || 'in_stock') : 'in_stock',
     addedAt:new Date().toISOString(),
     appVersion:APP_VERSION,
   };
@@ -24033,8 +24225,61 @@ function addQuickLookupToInventory(idx){
   setTimeout(() => addSelectedQuickLookupToInventory(idx), 0);
 }
 
+function researchInventoryIdentity(item){
+  const raw = item?.raw || {};
+  const refs = item?.externalRefs || {};
+  const cleanId = value => String(value || '').trim().toLowerCase();
+  const cleanText = value => String(value || '').toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g, ' ').trim();
+  return {
+    tcg:cleanId(item?.tcgPlayerId || item?.tcgplayerId || item?.tcgplayerProductId || refs.tcgPlayerId || refs.tcgplayerProductId || raw.tcgPlayerId || raw.tcgplayerId),
+    pc:cleanId(item?.pricechartingProductId || item?.providerProductId || refs.pricechartingProductId || raw.pricechartingProductId || raw.providerProductId),
+    barcode:cleanId(item?.barcodePrimary || item?.barcode || item?.upc || raw.barcodePrimary || raw.barcode || raw.upc),
+    name:cleanText(item?.name || item?.title),
+    set:cleanText(item?.setName || item?.set || raw.setName || raw.set),
+    number:cleanText(item?.card_number || item?.cardNumber || item?.collectorNumber || raw.card_number || raw.cardNumber),
+  };
+}
+
+function resolveResearchInventoryMatch(item){
+  if(item?.source === 'inventory') return { item:all.find(candidate => String(candidate.id) === String(item.id)) || item, soldOut:false, matchedBy:'inventory' };
+  const wanted = researchInventoryIdentity(item);
+  const ranked = (Array.isArray(all) ? all : []).map(candidate => {
+    const have = researchInventoryIdentity(candidate);
+    let score = 0, matchedBy = '';
+    if(wanted.tcg && have.tcg === wanted.tcg) { score=100; matchedBy='TCGplayer ID'; }
+    else if(wanted.pc && have.pc === wanted.pc) { score=100; matchedBy='PriceCharting ID'; }
+    else if(wanted.barcode && have.barcode === wanted.barcode) { score=100; matchedBy='UPC/barcode'; }
+    else if(wanted.name && have.name === wanted.name && (!wanted.set || !have.set || wanted.set === have.set) && (!wanted.number || !have.number || wanted.number === have.number)) { score=80; matchedBy='exact name/set/number'; }
+    return { candidate, score, matchedBy };
+  }).filter(row => row.score > 0).sort((a,b) => b.score-a.score);
+  if(!ranked.length) return { item:null, soldOut:false, matchedBy:'' };
+  const sellable = ranked.find(row => inventoryItemIsSellable(row.candidate));
+  if(sellable) return { item:sellable.candidate, soldOut:false, matchedBy:sellable.matchedBy };
+  return { item:null, soldOut:true, matchedBy:ranked[0].matchedBy };
+}
+
 function addSelectedQuickLookupToSaleCart(idx){
   const item = selectedQuickLookupItem(idx);
+  const inventoryMatch = resolveResearchInventoryMatch(item);
+  const trackedInventoryItem = inventoryMatch.item;
+  if(inventoryMatch.soldOut){
+    toast_dash('This exact item is already sold or out of stock');
+    return;
+  }
+  const requestedQuantity = Math.max(1, Number(item.qty || 1));
+  if(trackedInventoryItem){
+    if(!inventoryItemIsSellable(trackedInventoryItem)){
+      toast_dash('This inventory item is sold or out of stock');
+      return;
+    }
+    const currentCart = getCartDataLocal();
+    const alreadyInCart = (currentCart.items || []).reduce((sum, line) => String(line.inventoryId || line.shopId || line.wfId || '') === String(trackedInventoryItem.id) ? sum + Number(line.quantity || line.qty || 1) : sum, 0);
+    const available = inventoryAvailableQuantity(trackedInventoryItem);
+    if(requestedQuantity + alreadyInCart > available){
+      toast_dash(`Only ${available} available (${alreadyInCart} already in cart)`);
+      return;
+    }
+  }
   const rawMarketPrice = Number(item.market || 0);
   const price = rawMarketPrice > 0 ? suggestedCartSalePrice(rawMarketPrice) : 0;
   if(!rawMarketPrice && !confirm('This research result has no trusted sale price. Add to sale cart at $0 for manual price override?')) {
@@ -24051,9 +24296,12 @@ function addSelectedQuickLookupToSaleCart(idx){
     rawMarketPrice,
     suggestedFromMarket:rawMarketPrice,
     cost:Number(item.cost || 0),
+    qty:requestedQuantity,
+    quantity:requestedQuantity,
     img:item.imageUrl || item.thumbnail || '',
-    shopId:item.id && item.source === 'inventory' ? item.id : null,
-    wfId:item.wfId || null,
+    shopId:trackedInventoryItem?.id || null,
+    wfId:trackedInventoryItem?.wfId || trackedInventoryItem?.id || null,
+    inventoryId:trackedInventoryItem?.id || null,
     category:item.category || 'Research',
     condition:item.condition || item.selectedCondition || '',
     set:item.setName || item.set || '',
@@ -26077,36 +26325,50 @@ async function recordCustomerDisplayPayment(method, total, tenderType){
   toast_dash(method + ' payment recorded');
 }
 
-async function markCartItemsSoldFromPayment(items, method, soldAt){
-  const tracked = (items || []).filter(i => i.shopId || i.wfId);
+async function markCartItemsSoldFromPayment(items, method, soldAt, options={}){
+  const grouped = new Map();
+  (items || []).filter(i => i.shopId || i.wfId).forEach(item => {
+    const id = item.shopId || item.wfId;
+    const existing = grouped.get(id);
+    if(existing) existing.quantity = Number(existing.quantity || 1) + Number(item.quantity || item.qty || 1);
+    else grouped.set(id, {...item, quantity:Number(item.quantity || item.qty || 1)});
+  });
+  const tracked = [...grouped.values()];
   if(!tracked.length) return;
   for(const cartItem of tracked) {
     const id = cartItem.shopId || cartItem.wfId;
     const inv = all.find(i => i.id === id);
     const salePrice = Number(cartItem.price || 0);
+    const quantitySold = Math.max(1, Number(cartItem.quantity || 1));
+    const remaining = Math.max(0, inventoryAvailableQuantity(inv || cartItem) - quantitySold);
+    const depleted = remaining === 0;
     const fieldData = {
-      'sold-out':true,
-      'inventory-count':0,
-      status:STATUS_SOLD,
+      'sold-out':depleted,
+      'inventory-count':remaining,
+      status:depleted ? STATUS_SOLD : 'in_stock',
       'sale-price':salePrice,
       'profit':salePrice - Number(cartItem.cost || inv?.cost || 0),
       'sale-channel':method,
       'date-sold':soldAt
     };
     if(inv) {
-      inv.status='sold';
-      inv.lifecycle='sold';
+      inv.qty=remaining;
+      inv.quantity=remaining;
+      inv.status=depleted ? 'sold' : 'in_stock';
+      inv.lifecycle=depleted ? 'sold' : 'in_stock';
       inv.salePrice=salePrice;
       inv.profit=salePrice - Number(inv.cost || cartItem.cost || 0);
       inv.channel=method;
-      inv.soldAt=soldAt;
-      setLifecycle(inv.id, 'sold', true);
-      syncConsignmentSaleForInventory(inv,salePrice,soldAt,method);
+      inv.soldAt=depleted ? soldAt : '';
+      setLifecycle(inv.id, depleted ? 'sold' : 'in_stock', true);
+      if(depleted) syncConsignmentSaleForInventory(inv,salePrice,soldAt,method);
     }
-    try {
-      await markInventoryRecordSold(inv || { id, source:cartItem.source || '' }, fieldData, { salePrice, channel:method, soldAt });
-    } catch(e) {
-      enqueueOrReplaceSync('inventory-sold', id, 'Mark sold in inventory: ' + (cartItem.name || 'cart item'), { id, fieldData, inventorySource:getInventorySource() }, e.message || 'Sold sync failed');
+    if(!options.skipRemote){
+      try {
+        await markInventoryRecordSold(inv || { id, source:cartItem.source || '', qty:quantitySold }, fieldData, { salePrice, channel:method, soldAt, quantitySold, remainingQuantity:remaining });
+      } catch(e) {
+        enqueueOrReplaceSync('inventory-sold', id, 'Update sold inventory quantity: ' + (cartItem.name || 'cart item'), { id, fieldData, saleMeta:{ salePrice, channel:method, soldAt, quantitySold, remainingQuantity:remaining }, inventorySource:getInventorySource() }, e.message || 'Inventory quantity sync failed');
+      }
     }
   }
   soldData = all.filter(i=>i.status==='sold');
@@ -26145,8 +26407,8 @@ function CheckoutStateManager(){
 
 function OfflineSyncQueue(){
   return {
-    enqueueTransaction(bundle, error){
-      enqueueOrReplaceSync('pos-ledger-transaction', bundle.sale.id, 'Queued completed checkout: $' + Number(bundle.sale.total || 0).toFixed(2), bundle, error || 'Supabase write failed');
+    async enqueueTransaction(bundle, error){
+      await enqueueOrReplaceSync('pos-ledger-transaction', bundle.sale.id, 'Queued completed checkout: $' + Number(bundle.sale.total || 0).toFixed(2), bundle, error || 'Supabase write failed');
       checkoutState = CHECKOUT_STATES.OFFLINE_QUEUED;
       const banner = document.getElementById('checkout-offline-banner');
       if(banner) banner.classList.add('on');
@@ -26287,6 +26549,14 @@ function MoneyLedgerService(){
       }
       const sb = getSupabaseClient();
       if(!sb) throw new Error('Supabase client unavailable; transaction must stay queued.');
+      // The RPC writes the sale, lines, tenders, drawer movement, inventory
+      // changes, and audit events in one PostgreSQL transaction. During the
+      // rollout only, retain the previous writer when the function is absent.
+      const { data:atomicResult, error:atomicError } = await sb.rpc('complete_pos_sale', { p_bundle:bundle });
+      if(!atomicError) return { ok:true, atomic:true, result:atomicResult };
+      const rpcMissing = atomicError.code === 'PGRST202' || /complete_pos_sale|schema cache|function.*not found/i.test(atomicError.message || '');
+      if(!rpcMissing) throw new Error('complete_pos_sale: ' + atomicError.message);
+      console.warn('[LEDGER] complete_pos_sale is not installed; using the compatibility writer.');
       const inserts = [
         ['pos_sales', bundle.sale],
         ['pos_sale_lines', bundle.saleLines],
@@ -26303,7 +26573,7 @@ function MoneyLedgerService(){
         const expected = Number(drawerState?.expectedCash ?? drawerState?.startingCash ?? drawerState?.float ?? 0) + Number(bundle.drawerMovements.reduce((a,m) => a + Number(m.amount || 0), 0));
         await sb.from('pos_drawer_sessions').update({ expected_cash:expected }).eq('id', bundle.sale.drawer_session_id);
       }
-      return { ok:true };
+      return { ok:true, atomic:false, compatibility:true };
     },
     async openDrawerSession(session){
       if(getAccountContext().isDemo){ console.log('[DEMO] Drawer open blocked in demo mode'); return true; }
@@ -26618,21 +26888,26 @@ async function completeLockedCheckout(){
   checkoutFinalizing = true;
   checkoutState = CHECKOUT_STATES.PAYMENT_CONFIRMED;
   const bundle = buildLedgerBundle(snapshot, selectedTenderLines);
+  let queued = false;
+  let commitResult = null;
   try {
-    await MoneyLedgerService().commitTransactionBundle(bundle);
-    await finalizeCompletedCheckout(bundle, false);
+    commitResult = await MoneyLedgerService().commitTransactionBundle(bundle);
   } catch(e) {
-    OfflineSyncQueue().enqueueTransaction(bundle, e.message);
-    await finalizeCompletedCheckout(bundle, true);
+    // Do not clear the cart unless the complete bundle is durably stored.
+    await OfflineSyncQueue().enqueueTransaction(bundle, e.message);
+    queued = true;
+  }
+  try {
+    await finalizeCompletedCheckout(bundle, queued, commitResult?.atomic === true);
   } finally {
     checkoutFinalizing = false;
   }
 }
 
-async function finalizeCompletedCheckout(bundle, queued){
+async function finalizeCompletedCheckout(bundle, queued, inventoryCommittedAtomically=false){
   const paidAt = bundle.sale.completed_at;
   const method = bundle.payments.map(p => p.method).join('+');
-  await markCartItemsSoldFromPayment((lockedCheckoutSnapshot?.lines || []).map(l => ({ name:l.title, price:l.adjusted_price, cost:l.cost_basis, category:l.category, condition:l.condition, shopId:l.item_id })), method, paidAt);
+  await markCartItemsSoldFromPayment((lockedCheckoutSnapshot?.lines || []).map(l => ({ name:l.title, price:l.adjusted_price, cost:l.cost_basis, category:l.category, condition:l.condition, quantity:l.quantity, shopId:l.item_id })), method, paidAt, { skipRemote:inventoryCommittedAtomically });
   const txLog = safeLocalJson('pos_transactions', []);
   txLog.unshift({ id:bundle.sale.id, date:paidAt, method, tenderType:normalizeTenderType(method), total:bundle.sale.total, items:bundle.saleLines.map(l => ({ name:l.title, price:l.adjusted_price, cost:l.cost_basis, category:l.category, soldAt:paidAt })), source:queued?'offline-queued-ledger':'supabase-ledger', drawerSessionId:bundle.sale.drawer_session_id, storeId:bundle.sale.store_id });
   localStorage.setItem('pos_transactions', JSON.stringify(txLog.slice(0,1000)));
@@ -26845,7 +27120,7 @@ async function sbFetchSets(){
     const cached = JSON.parse(localStorage.getItem(cacheKey) || 'null');
     if(cached && (Date.now() - (cached.ts||0)) < 86400000) return cached.sets;
   } catch(e){}
-  const res = await fetch(WORKER + '/pricing/pokemon/sets?sortBy=releaseDate&sortOrder=desc&limit=400', { cache:'no-store' });
+  const res = await storeWorkerFetch('/pricing/pokemon/sets?sortBy=releaseDate&sortOrder=desc&limit=400', { cache:'no-store' });
   if(!res.ok) throw new Error('Sets fetch failed: ' + res.status);
   const d = await res.json();
   const raw = Array.isArray(d.data) ? d.data : Array.isArray(d.sets) ? d.sets : [];
@@ -26911,7 +27186,7 @@ async function sbFetchSetCards(setIdOrName){
     if(cached && (Date.now() - (cached.ts||0)) < 3600000 && cached.cards?.length) return cached.cards.map(c => sbNormalizeSetCard(c, setName));
   } catch(e){}
   const params = new URLSearchParams({ set: setName, fetchAllInSet: 'true', limit: '500' });
-  const res = await fetch(WORKER + '/pricing/pokemon/cards?' + params.toString(), { cache:'no-store' });
+  const res = await storeWorkerFetch('/pricing/pokemon/cards?' + params.toString(), { cache:'no-store' });
   if(!res.ok){
     let t=''; try { t = await res.text(); } catch(e){}
     throw new Error('Cards fetch failed: HTTP ' + res.status + (t ? ' — '+t.slice(0,200) : ''));
@@ -27080,7 +27355,7 @@ async function sbRetryByName(setName){
   if(content) content.innerHTML = '<div class="ppsb-empty ppsb-loading">⚡ Retrying by set name…</div>';
   try {
     const params = new URLSearchParams({ fetchAllInSet:'true', limit:'500', setName, set:setName });
-    const res = await fetch(WORKER + '/pricing/pokemon/cards?' + params.toString(), { cache:'no-store' });
+    const res = await storeWorkerFetch('/pricing/pokemon/cards?' + params.toString(), { cache:'no-store' });
     if(!res.ok) throw new Error('HTTP ' + res.status);
     const data = await res.json();
     const cards =
@@ -27106,7 +27381,7 @@ async function sbRetryByName(setName){
   if(content) content.innerHTML = '<div class="ppsb-empty ppsb-loading">⚡ Retrying by set name…</div>';
   try {
     const params = new URLSearchParams({ fetchAllInSet:'true', limit:'500', setName, set:setName });
-    const res = await fetch(WORKER + '/pricing/pokemon/cards?' + params.toString(), { cache:'no-store' });
+    const res = await storeWorkerFetch('/pricing/pokemon/cards?' + params.toString(), { cache:'no-store' });
     if(!res.ok) throw new Error('HTTP ' + res.status);
     const data = await res.json();
     const cards =
@@ -27577,7 +27852,7 @@ async function runPokemonArtistResearch(){
   try {
     if(btn) { btn.disabled = true; btn.textContent = '...'; }
     const params = new URLSearchParams({ search:artist, limit:'20' });
-    const res = await fetch(WORKER + '/pricing/pokemon/cards?' + params.toString(), { cache:'no-store' });
+    const res = await storeWorkerFetch('/pricing/pokemon/cards?' + params.toString(), { cache:'no-store' });
     const data = await res.json().catch(() => ({}));
     if(!res.ok || data.ok === false) throw new Error(data.error || data.message || 'Artist search failed');
     const cards = pokemonPriceTrackerCardsFromPayload(data).map(c => sbNormalizeSetCard(c));
@@ -29649,7 +29924,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.07.13.10-fast-mtg"></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.07.15.05-production-beta-split"></script>
 </body>
 </html>
 

@@ -1,0 +1,12 @@
+{
+  "name": "walkoff-beta",
+  "main": "cloudflare-worker-full.js",
+  "compatibility_date": "2026-07-15",
+  "vars": { "ENVIRONMENT": "beta" },
+  "kv_namespaces": [
+    { "binding": "LBA_KV", "id": "00000000000000000000000000000000" }
+  ],
+  "r2_buckets": [
+    { "binding": "MTG_CATALOG_R2", "bucket_name": "arsca-offline-catalogs-beta" }
+  ]
+}
