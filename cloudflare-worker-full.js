@@ -633,6 +633,25 @@ async function handlePlatformAdmin(request, env, url) {
     return json({ ok:true });
   }
 
+  const resetPasswordMatch = path.match(/^\/admin\/store-members\/([0-9a-f-]+)\/reset-password$/i);
+  if (resetPasswordMatch && request.method === 'POST') {
+    // The actual Supabase Auth recovery email is triggered client-side via
+    // sb.auth.resetPasswordForEmail(), which is a public GoTrue endpoint that
+    // does not touch platform_admin_audit_log (RLS blocks authenticated
+    // writes there). This route only records that a platform admin triggered
+    // a reset, after the client-side call already succeeded.
+    const body = await request.json().catch(() => ({}));
+    const reason = cleanAdminText(body.reason, 1000);
+    if (!reason) return json({ ok:false, error:'Reason is required' }, 400);
+    const id = encodeURIComponent(resetPasswordMatch[1]);
+    const { data:memberRows } = await supabaseAdminFetch(env, `store_members?id=eq.${id}&select=id,store_id,user_id&limit=1`);
+    const member = memberRows?.[0];
+    if (!member) return json({ ok:false, error:'Store member not found' }, 404);
+    const email = cleanAdminText(body.email, 200);
+    await writePlatformAudit(env, auth.user, 'store_member.reset_password', member.store_id, 'store_member', member.id, {}, { email }, reason);
+    return json({ ok:true });
+  }
+
   if (path === '/admin/audit' && request.method === 'GET') {
     const store = cleanAdminText(url.searchParams.get('storeId'), 40);
     const filter = store ? `&target_store_id=eq.${encodeURIComponent(store)}` : '';
