@@ -346,6 +346,31 @@ function cleanAdminText(value, max = 500) {
   return String(value == null ? '' : value).trim().slice(0, max);
 }
 
+const sRankKey = storeId => `entitlement:s_rank:store:${storeId}`;
+
+async function getSRankEntitlement(env, storeId) {
+  if (!env.LBA_KV || !storeId) return null;
+  try {
+    const raw = await env.LBA_KV.get(sRankKey(storeId));
+    const record = raw ? JSON.parse(raw) : null;
+    return record?.active === true ? record : null;
+  } catch (_) {
+    return null;
+  }
+}
+
+async function storeHasSubscriptionAccess(env, storeId, subscription = undefined) {
+  if (await getSRankEntitlement(env, storeId)) return true;
+  let rec = subscription;
+  if (rec === undefined && env.LBA_KV && storeId) {
+    const raw = await env.LBA_KV.get(`sub:store:${storeId}`).catch(() => null);
+    rec = raw ? JSON.parse(raw) : null;
+  }
+  const status = rec?.status || 'none';
+  const endMs = status === 'trialing' ? rec?.trial_end : rec?.current_period_end;
+  return (status === 'active' || status === 'trialing') && (!endMs || endMs > Date.now());
+}
+
 async function writePlatformAudit(env, actor, action, storeId, entityType, entityId, beforeData, afterData, reason) {
   const row = {
     actor_user_id:actor.id, action, target_store_id:storeId || null,
@@ -410,6 +435,36 @@ async function handlePlatformAdmin(request, env, url) {
     const { data:afterRows } = await supabaseAdminFetch(env, `stores?id=eq.${id}`, { method:'PATCH', headers:{ Prefer:'return=representation' }, body:JSON.stringify(allowed) });
     await writePlatformAudit(env, auth.user, 'store.update', before.id, 'store', before.id, before, afterRows?.[0], reason);
     return json({ ok:true, store:afterRows?.[0] });
+  }
+
+  const sRankMatch = path.match(/^\/admin\/stores\/([0-9a-f-]+)\/s-rank$/i);
+  if (sRankMatch && request.method === 'GET') {
+    const entitlement = await getSRankEntitlement(env, sRankMatch[1]);
+    return json({ ok:true, active:Boolean(entitlement), entitlement });
+  }
+  if (sRankMatch && request.method === 'POST') {
+    if (!env.LBA_KV) return json({ ok:false, error:'KV not configured' }, 500);
+    const body = await request.json().catch(() => ({}));
+    const reason = cleanAdminText(body.reason, 1000);
+    if (!reason) return json({ ok:false, error:'Grant reason is required' }, 400);
+    const storeId = sRankMatch[1];
+    const before = await getSRankEntitlement(env, storeId);
+    const entitlement = { active:true, tier:'s_rank', grantedAt:new Date().toISOString(), grantedBy:auth.user.id, reason };
+    await env.LBA_KV.put(sRankKey(storeId), JSON.stringify(entitlement));
+    await writePlatformAudit(env, auth.user, 'entitlement.s_rank.grant', storeId, 'store_entitlement', storeId, before || {}, entitlement, reason);
+    return json({ ok:true, active:true, entitlement });
+  }
+  if (sRankMatch && request.method === 'DELETE') {
+    if (!env.LBA_KV) return json({ ok:false, error:'KV not configured' }, 500);
+    const body = await request.json().catch(() => ({}));
+    const reason = cleanAdminText(body.reason, 1000);
+    if (!reason) return json({ ok:false, error:'Revocation reason is required' }, 400);
+    const storeId = sRankMatch[1];
+    const before = await getSRankEntitlement(env, storeId);
+    const revoked = { ...(before || {}), active:false, revokedAt:new Date().toISOString(), revokedBy:auth.user.id, revokeReason:reason };
+    await env.LBA_KV.put(sRankKey(storeId), JSON.stringify(revoked));
+    await writePlatformAudit(env, auth.user, 'entitlement.s_rank.revoke', storeId, 'store_entitlement', storeId, before || {}, revoked, reason);
+    return json({ ok:true, active:false });
   }
 
   const storeResource = path.match(/^\/admin\/stores\/([0-9a-f-]+)\/(inventory|sales|members)$/i);
@@ -2022,6 +2077,8 @@ export default {
       const authz = await requireStoreUser(request, env, storeId);
       if (authz.error) return authz.error;
       if (!env.LBA_KV) return json({ ok: true, status: 'none', active: false, daysRemaining: 0 });
+      const sRank = await getSRankEntitlement(env, storeId);
+      if (sRank) return json({ ok:true, status:'s_rank', active:true, daysRemaining:0, plan_code:'pro', plan_name:'S Rank', price_monthly:0, capabilities:SUBSCRIPTION_PLANS.pro.capabilities, complimentary:true, granted_at:sRank.grantedAt || null });
       const raw = await env.LBA_KV.get(`sub:store:${storeId}`);
       if (!raw) return json({ ok: true, status: 'none', active: false, daysRemaining: 0 });
       const rec = JSON.parse(raw);
@@ -3298,11 +3355,13 @@ export default {
       const ownerIds = (env.OWNER_STORE_IDS || env.OWNER_STORE_ID || '').split(',').map(s => s.trim()).filter(Boolean);
       const isBypassed = bypassIds.includes(pptStoreId) || ownerIds.includes(pptStoreId);
       if (!isDemo && !isBypassed && env.LBA_KV) {
+        const pptAuth = await requireStoreUser(request, env, pptStoreId);
+        if (pptAuth.error) return pptAuth.error;
         const subRaw = await env.LBA_KV.get(`sub:store:${pptStoreId}`);
         const sub = subRaw ? JSON.parse(subRaw) : null;
         const subStatus = sub?.status || 'none';
         const endMs = subStatus === 'trialing' ? sub?.trial_end : sub?.current_period_end;
-        const subActive = (subStatus === 'active' || subStatus === 'trialing') && (!endMs || endMs > Date.now());
+        const subActive = await storeHasSubscriptionAccess(env, pptStoreId, sub);
         if (!subActive) {
           return json({
             ok: false,
