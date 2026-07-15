@@ -2859,7 +2859,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <script>
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const WORKER      = 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.07.14.02-quantity-safe';
+const APP_VERSION = '2026.07.14.03-invites-stock-link';
 window.APP_VERSION = APP_VERSION;
 const branchName = 'main';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
@@ -7290,9 +7290,11 @@ function memberRowHtml(m, canEdit){
 function inviteRowHtml(i){
   const accepted = !!i.accepted_at;
   const expired = i.expires_at && new Date(i.expires_at) < new Date();
+  const emailState = i.email_status === 'sent' ? 'EMAIL SENT' : i.email_status === 'failed' ? 'EMAIL FAILED' : 'EMAIL NOT SENT';
   return `<div class="item-metric" style="display:grid;gap:5px">
     <div style="display:flex;justify-content:space-between;gap:8px"><b>${escHtml(i.email)}</b><span style="font-family:monospace;font-size:9px;color:${accepted?'var(--g)':expired?'var(--red)':'var(--gold)'}">${accepted?'ACCEPTED':expired?'EXPIRED':'PENDING'}</span></div>
     <div style="font-family:monospace;font-size:9px;color:var(--dim)">${roleLabel(i.role)} · expires ${i.expires_at ? new Date(i.expires_at).toLocaleDateString() : 'soon'}</div>
+    <div style="font-family:monospace;font-size:9px;color:${i.email_status==='failed'?'var(--red)':'var(--dim)'}">${emailState}${i.email_error ? ' · ' + escHtml(i.email_error) : ''}</div>
   </div>`;
 }
 
@@ -7302,11 +7304,22 @@ async function inviteStoreMember(){
   const email = document.getElementById('member-invite-email')?.value.trim().toLowerCase();
   const role = document.getElementById('member-invite-role')?.value || 'employee';
   if(!sb || !email) { toast_dash('Enter an email'); return; }
-  const { error } = await sb.rpc('invite_store_member', { target_store_id:getActiveStoreId(), target_email:email, target_role:role });
+  const storeId = getActiveStoreId();
+  const { error } = await sb.rpc('invite_store_member', { target_store_id:storeId, target_email:email, target_role:role });
   if(error) { toast_dash('Invite failed: ' + error.message); return; }
+  try {
+    const res = await storeWorkerFetch('/store/invites/send', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ storeId, email, role }) });
+    const delivery = await res.json().catch(() => ({}));
+    if(!res.ok || !delivery.ok) throw new Error(delivery.error || 'Email delivery failed');
+  } catch(e) {
+    logOpsEvent('member_invite_email_failed', 'Store invite saved but email failed', { email, role, error:e.message });
+    toast_dash('Invite saved, but email was not sent: ' + e.message);
+    renderStoreMembersPanel();
+    return;
+  }
   document.getElementById('member-invite-email').value = '';
-  logOpsEvent('member_invite', 'Invited store member', { email, role });
-  toast_dash('Invite saved. Tester signs up/logs in with that email to accept.');
+  logOpsEvent('member_invite', 'Invited store member and sent email', { email, role });
+  toast_dash('Invite email sent to ' + email);
   renderStoreMembersPanel();
 }
 
@@ -24189,9 +24202,47 @@ function addQuickLookupToInventory(idx){
   setTimeout(() => addSelectedQuickLookupToInventory(idx), 0);
 }
 
+function researchInventoryIdentity(item){
+  const raw = item?.raw || {};
+  const refs = item?.externalRefs || {};
+  const cleanId = value => String(value || '').trim().toLowerCase();
+  const cleanText = value => String(value || '').toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g, ' ').trim();
+  return {
+    tcg:cleanId(item?.tcgPlayerId || item?.tcgplayerId || item?.tcgplayerProductId || refs.tcgPlayerId || refs.tcgplayerProductId || raw.tcgPlayerId || raw.tcgplayerId),
+    pc:cleanId(item?.pricechartingProductId || item?.providerProductId || refs.pricechartingProductId || raw.pricechartingProductId || raw.providerProductId),
+    barcode:cleanId(item?.barcodePrimary || item?.barcode || item?.upc || raw.barcodePrimary || raw.barcode || raw.upc),
+    name:cleanText(item?.name || item?.title),
+    set:cleanText(item?.setName || item?.set || raw.setName || raw.set),
+    number:cleanText(item?.card_number || item?.cardNumber || item?.collectorNumber || raw.card_number || raw.cardNumber),
+  };
+}
+
+function resolveResearchInventoryMatch(item){
+  if(item?.source === 'inventory') return { item:all.find(candidate => String(candidate.id) === String(item.id)) || item, soldOut:false, matchedBy:'inventory' };
+  const wanted = researchInventoryIdentity(item);
+  const ranked = (Array.isArray(all) ? all : []).map(candidate => {
+    const have = researchInventoryIdentity(candidate);
+    let score = 0, matchedBy = '';
+    if(wanted.tcg && have.tcg === wanted.tcg) { score=100; matchedBy='TCGplayer ID'; }
+    else if(wanted.pc && have.pc === wanted.pc) { score=100; matchedBy='PriceCharting ID'; }
+    else if(wanted.barcode && have.barcode === wanted.barcode) { score=100; matchedBy='UPC/barcode'; }
+    else if(wanted.name && have.name === wanted.name && (!wanted.set || !have.set || wanted.set === have.set) && (!wanted.number || !have.number || wanted.number === have.number)) { score=80; matchedBy='exact name/set/number'; }
+    return { candidate, score, matchedBy };
+  }).filter(row => row.score > 0).sort((a,b) => b.score-a.score);
+  if(!ranked.length) return { item:null, soldOut:false, matchedBy:'' };
+  const sellable = ranked.find(row => inventoryItemIsSellable(row.candidate));
+  if(sellable) return { item:sellable.candidate, soldOut:false, matchedBy:sellable.matchedBy };
+  return { item:null, soldOut:true, matchedBy:ranked[0].matchedBy };
+}
+
 function addSelectedQuickLookupToSaleCart(idx){
   const item = selectedQuickLookupItem(idx);
-  const trackedInventoryItem = item.source === 'inventory' ? all.find(candidate => candidate.id === item.id) : null;
+  const inventoryMatch = resolveResearchInventoryMatch(item);
+  const trackedInventoryItem = inventoryMatch.item;
+  if(inventoryMatch.soldOut){
+    toast_dash('This exact item is already sold or out of stock');
+    return;
+  }
   const requestedQuantity = Math.max(1, Number(item.qty || 1));
   if(trackedInventoryItem){
     if(!inventoryItemIsSellable(trackedInventoryItem)){
@@ -24199,7 +24250,7 @@ function addSelectedQuickLookupToSaleCart(idx){
       return;
     }
     const currentCart = getCartDataLocal();
-    const alreadyInCart = (currentCart.items || []).reduce((sum, line) => String(line.inventoryId || line.shopId || line.wfId || '') === String(item.id) ? sum + Number(line.quantity || line.qty || 1) : sum, 0);
+    const alreadyInCart = (currentCart.items || []).reduce((sum, line) => String(line.inventoryId || line.shopId || line.wfId || '') === String(trackedInventoryItem.id) ? sum + Number(line.quantity || line.qty || 1) : sum, 0);
     const available = inventoryAvailableQuantity(trackedInventoryItem);
     if(requestedQuantity + alreadyInCart > available){
       toast_dash(`Only ${available} available (${alreadyInCart} already in cart)`);
@@ -24225,9 +24276,9 @@ function addSelectedQuickLookupToSaleCart(idx){
     qty:requestedQuantity,
     quantity:requestedQuantity,
     img:item.imageUrl || item.thumbnail || '',
-    shopId:item.id && item.source === 'inventory' ? item.id : null,
-    wfId:item.source === 'inventory' ? item.id : (item.wfId || null),
-    inventoryId:item.id && item.source === 'inventory' ? item.id : null,
+    shopId:trackedInventoryItem?.id || null,
+    wfId:trackedInventoryItem?.wfId || trackedInventoryItem?.id || null,
+    inventoryId:trackedInventoryItem?.id || null,
     category:item.category || 'Research',
     condition:item.condition || item.selectedCondition || '',
     set:item.setName || item.set || '',

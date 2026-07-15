@@ -22,6 +22,12 @@ const invites = route(worker, "if (url.pathname === '/store/invites'", '// Publi
 assert.match(invites, /requireStoreUser\(request, env, storeId, \['owner','admin'\]\)/);
 assert.match(invites, /store_invites\?store_id=eq/);
 assert.match(dashboard, /storeWorkerFetch\('\/store\/invites\?store_id='/);
+assert.match(invites, /url\.pathname === '\/store\/invites\/send' && request\.method === 'POST'/);
+assert.match(invites, /\/auth\/v1\/invite\?redirect_to=/);
+assert.match(invites, /\/auth\/v1\/otp\?redirect_to=/);
+assert.match(invites, /enforceUsageLimit\(env, `store-invite:/);
+assert.match(dashboard, /storeWorkerFetch\('\/store\/invites\/send'/);
+assert.match(dashboard, /Invite saved, but email was not sent:/);
 
 const kv = route(worker, "if (url.pathname.startsWith('/kv/'))", "if (url.pathname === '/offline/cache/manifest')");
 assert.match(kv, /requireStoreUser\(request, env, storeId\)/);

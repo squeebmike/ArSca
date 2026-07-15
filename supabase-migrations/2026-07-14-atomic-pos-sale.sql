@@ -5,6 +5,10 @@
 -- Some early production installs have the core POS ledger without these two
 -- optional customer-capture tables. Creating them here is additive and makes
 -- the receipt/wants screens match the deployed application.
+alter table if exists public.store_invites add column if not exists email_status text not null default 'not_sent';
+alter table if exists public.store_invites add column if not exists email_sent_at timestamptz;
+alter table if exists public.store_invites add column if not exists email_error text;
+
 create table if not exists public.customer_receipts (
   id uuid primary key default gen_random_uuid(),
   store_id uuid not null references public.stores(id) on delete cascade,
