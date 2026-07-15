@@ -64,14 +64,14 @@ jobs:
         run: npx wrangler deploy --config wrangler.beta.jsonc --keep-vars
 
       - name: Export Topps reference data for manual beta publication
-        if: github.event_name == 'workflow_dispatch'
+        if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[publish-topps]')
         env:
           SUPABASE_URL: https://vroknjrxubsqyexngwus.supabase.co
           SUPABASE_ANON_KEY: sb_publishable_wbpX2nL8l-4NbXtZNG_bjA_nabSYaJ5
         run: npm run topps:export:supabase
 
       - name: Build and publish Topps offline beta catalog
-        if: github.event_name == 'workflow_dispatch'
+        if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[publish-topps]')
         shell: bash
         run: |
           set -euo pipefail
