@@ -25,6 +25,15 @@ test('Pokemon ETB search stays on PPT sealed products without bouncing', async (
   expect(requested.some(url => /pricecharting\/csv\/search|pricing\/justtcg\/search|pricing\/tcg\?|api\.pokemontcg\.io/i.test(url))).toBeFalsy();
 });
 
+test('missing Pokemon offline export falls straight through to PPT online by card number', async ({ page }) => {
+  const requested = [];
+  page.on('request', request => requested.push(request.url()));
+  const cards = await runResearchSearch(page, '143/142', 'Pokemon TCG');
+  await expect(cards.first()).toContainText(/Bulbasaur/i);
+  expect(requested.some(url => /\/pricing\/pokemon\/cards\?.*search=143%2F142/i.test(url))).toBeTruthy();
+  expect(requested.some(url => /pricecharting|sportscardspro|justtcg|api\.scryfall\.com/i.test(url))).toBeFalsy();
+});
+
 test('dealer query examples return useful candidates', async ({ page }) => {
   const examples = [
     ['pikachu 151', 'Pokemon TCG', /Pikachu/i],

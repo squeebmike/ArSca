@@ -197,6 +197,28 @@ function justTcgMatch(name, overrides = {}) {
   };
 }
 
+function pptCard(name, overrides = {}) {
+  const market = Number(overrides.marketPrice || 22);
+  const id = String(overrides.tcgPlayerId || name.toLowerCase().replace(/[^a-z0-9]+/g, '-'));
+  return {
+    tcgPlayerId:id,
+    name,
+    setName:overrides.setName || 'Scarlet & Violet 151',
+    cardNumber:overrides.cardNumber || '',
+    rarity:overrides.rarity || 'Illustration Rare',
+    language:'English',
+    imageUrl:'',
+    prices:{
+      market,
+      primaryCondition:'Near Mint',
+      primaryPrinting:'Normal',
+      conditions:{ 'Near Mint':{price:market}, 'Lightly Played':{price:Number((market*.82).toFixed(2))} },
+      variants:{ Normal:{ 'Near Mint':{price:market}, 'Lightly Played':{price:Number((market*.82).toFixed(2))} }, Foil:{ 'Near Mint':{price:Number((market*1.4).toFixed(2))} } },
+      lastUpdated:'2026-07-15T00:00:00.000Z',
+    },
+  };
+}
+
 function priceChartingProduct(productName, overrides = {}) {
   return {
     productId: overrides.productId || productName.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
@@ -313,6 +335,28 @@ async function mockWalkoffApis(page) {
     else if (q.includes('charmander')) matches = [justTcgMatch('Charmander', { setName: 'Obsidian Flames', rarity: 'Illustration Rare', cardNumber: '168/197', marketPrice: 22 })];
     else if (q.includes('wolverine')) matches = [justTcgMatch('Wolverine', { game: 'Magic', setName: 'Marvel', rarity: 'Rare', marketPrice: 5, confidenceScore: 40 })];
     return route.fulfill({ json: { ok: true, success: true, matches } });
+  });
+  await page.route('**/pricing/pokemon/cards**', route => {
+    const url = new URL(route.request().url());
+    const q = (url.searchParams.get('search') || '').toLowerCase();
+    const exactId = url.searchParams.get('tcgPlayerId') || '';
+    let cards = [];
+    if (exactId) {
+      if (exactId.includes('sir')) cards = [pptCard('Pikachu SIR', { tcgPlayerId:exactId, rarity:'Special Illustration Rare', cardNumber:'238/191', marketPrice:125 })];
+      else if (exactId.includes('greninja')) cards = [pptCard('Greninja ex', { tcgPlayerId:exactId, setName:'Twilight Masquerade', cardNumber:'214/167', marketPrice:280 })];
+      else if (exactId.includes('charizard')) cards = [pptCard('Charizard', { tcgPlayerId:exactId, setName:'Base Set', cardNumber:'4/102', marketPrice:300 })];
+      else if (exactId.includes('bulbasaur')) cards = [pptCard('Bulbasaur', { tcgPlayerId:exactId, setName:'Stellar Crown', cardNumber:'143/142', marketPrice:35 })];
+      else cards = [pptCard('Pikachu', { tcgPlayerId:exactId, cardNumber:'173/165', marketPrice:22 })];
+    }
+    else if (q.includes('pikachu') && q.includes('special illustration rare')) cards = [pptCard('Pikachu SIR', { rarity:'Special Illustration Rare', cardNumber:'238/191', marketPrice:125 })];
+    else if (q.includes('pikachu') && q.includes('ex')) cards = [pptCard('Pikachu ex', { rarity:'Double Rare', cardNumber:'057/191', marketPrice:18 })];
+    else if (q.includes('pikachu')) cards = [pptCard('Pikachu', { cardNumber:'173/165', marketPrice:22 })];
+    else if (q.includes('umbreon')) cards = [pptCard('Umbreon VMAX', { setName:'Evolving Skies', cardNumber:'095/203', marketPrice:38 })];
+    else if (q.includes('charizard')) cards = [pptCard('Charizard', { setName:'Base Set', cardNumber:'4/102', marketPrice:300 })];
+    else if (q.includes('greninja')) cards = [pptCard('Greninja ex', { setName:'Twilight Masquerade', cardNumber:'214/167', marketPrice:280 })];
+    else if (q.includes('143/142')) cards = [pptCard('Bulbasaur', { setName:'Stellar Crown', cardNumber:'143/142', marketPrice:35 })];
+    else if (q.includes('charmander')) cards = [pptCard('Charmander', { setName:'Obsidian Flames', cardNumber:'168/197', marketPrice:22 })];
+    return route.fulfill({ json:{ ok:true, cards, usage:{remaining:999,consumed:1} } });
   });
   await page.route('**/pricing/pokemon/sealed-products**', route => {
     const url = new URL(route.request().url());
