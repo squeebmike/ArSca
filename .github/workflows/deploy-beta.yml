@@ -43,6 +43,9 @@ jobs:
       - name: Install Wrangler
         run: npm install --no-save wrangler@latest
 
+      - name: Build isolated beta site
+        run: node scripts/build-beta-site.mjs
+
       - name: Provision isolated KV and R2, then build Worker config
         shell: bash
         run: |
@@ -72,9 +75,6 @@ jobs:
           fs.writeFileSync('/tmp/beta-secrets.json', JSON.stringify(values));
           NODE
           npx wrangler secret bulk /tmp/beta-secrets.json --config wrangler.beta.runtime.json
-
-      - name: Build isolated beta site
-        run: node scripts/build-beta-site.mjs
 
       - name: Deploy beta Worker and static site
         run: npx wrangler deploy --config wrangler.beta.runtime.json --keep-vars
