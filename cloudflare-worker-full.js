@@ -566,22 +566,23 @@ async function handlePlatformAdmin(request, env, url) {
     const { data:storeRows } = await supabaseAdminFetch(env, `stores?id=eq.${encodeURIComponent(storeId)}&select=id&limit=1`);
     if (!storeRows?.[0]) return json({ ok:false, error:'Store not found' }, 404);
 
-    const { base, key } = supabaseAdminConfig(env);
-    const lookupResp = await fetch(`${base}/auth/v1/admin/users?email=${encodeURIComponent(email)}`, {
-      headers: { apikey:key, Authorization:`Bearer ${key}` },
-    });
-    const lookupData = lookupResp.ok ? await lookupResp.json().catch(() => null) : null;
-    const foundUser = Array.isArray(lookupData?.users) ? lookupData.users[0] : (lookupData?.id ? lookupData : null);
+    // GET /auth/v1/admin/users does not support filtering by exact email — it
+    // returns an unfiltered page of users, so matching users[0] against the
+    // typed email is unsafe (it can silently grab an unrelated account).
+    // public.profiles is kept in sync with auth.users via the on_auth_user_created
+    // trigger and is safe to filter with a normal PostgREST eq. query.
+    const { data:profileRows } = await supabaseAdminFetch(env, `profiles?email=eq.${encodeURIComponent(email)}&select=id&limit=1`);
+    const foundUserId = profileRows?.[0]?.id || null;
 
-    if (foundUser?.id) {
-      const { data:existingRows } = await supabaseAdminFetch(env, `store_members?store_id=eq.${encodeURIComponent(storeId)}&user_id=eq.${encodeURIComponent(foundUser.id)}&select=id&limit=1`);
+    if (foundUserId) {
+      const { data:existingRows } = await supabaseAdminFetch(env, `store_members?store_id=eq.${encodeURIComponent(storeId)}&user_id=eq.${encodeURIComponent(foundUserId)}&select=id&limit=1`);
       let afterRows;
       if (existingRows?.[0]) {
         ({ data:afterRows } = await supabaseAdminFetch(env, `store_members?id=eq.${encodeURIComponent(existingRows[0].id)}`, { method:'PATCH', headers:{ Prefer:'return=representation' }, body:JSON.stringify({ role, active:true }) }));
       } else {
-        ({ data:afterRows } = await supabaseAdminFetch(env, 'store_members', { method:'POST', headers:{ Prefer:'return=representation' }, body:JSON.stringify({ store_id:storeId, user_id:foundUser.id, role, active:true }) }));
+        ({ data:afterRows } = await supabaseAdminFetch(env, 'store_members', { method:'POST', headers:{ Prefer:'return=representation' }, body:JSON.stringify({ store_id:storeId, user_id:foundUserId, role, active:true }) }));
       }
-      await writePlatformAudit(env, auth.user, 'store_member.add', storeId, 'store_member', afterRows?.[0]?.id || foundUser.id, {}, { ...afterRows?.[0], email }, reason);
+      await writePlatformAudit(env, auth.user, 'store_member.add', storeId, 'store_member', afterRows?.[0]?.id || foundUserId, {}, { ...afterRows?.[0], email }, reason);
       return json({ ok:true, status:'added', member:afterRows?.[0] });
     }
 
