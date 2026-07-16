@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.07.16.02-batch-fixes">
+<meta name="version" content="2026.07.16.03-buylist-sync">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1420,12 +1420,12 @@ body.show-mode .inv-sync-badge{display:none;}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.07.16.02-batch-fixes"></script>
-<script src="scripts/barcode-lookup.js?v=2026.07.16.02-batch-fixes"></script>
-<script src="scripts/comic-issue-hub.js?v=2026.07.16.02-batch-fixes"></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.07.16.02-batch-fixes"></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.07.16.02-batch-fixes"></script>
-<script src="scripts/mtg/research-batch.js?v=2026.07.16.02-batch-fixes"></script>
+<script src="scripts/query-routing.js?v=2026.07.16.03-buylist-sync"></script>
+<script src="scripts/barcode-lookup.js?v=2026.07.16.03-buylist-sync"></script>
+<script src="scripts/comic-issue-hub.js?v=2026.07.16.03-buylist-sync"></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.07.16.03-buylist-sync"></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.07.16.03-buylist-sync"></script>
+<script src="scripts/mtg/research-batch.js?v=2026.07.16.03-buylist-sync"></script>
 </head>
 <body>
 
@@ -1475,11 +1475,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.07.16.02-batch-fixes</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.07.16.03-buylist-sync</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.07.16.02-batch-fixes</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.07.16.03-buylist-sync</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1502,7 +1502,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.07.16.02-batch-fixes</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.07.16.03-buylist-sync</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -2862,7 +2862,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.07.16.02-batch-fixes';
+const APP_VERSION = '2026.07.16.03-buylist-sync';
 window.APP_VERSION = APP_VERSION;
 const branchName = 'main';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
@@ -13013,6 +13013,8 @@ function switchTab(name, btn){
   if(name === 'browse') setTimeout(renderCustomerInventoryBrowser,0);
   // Refresh category-dependent helper rows (set browser buttons etc.) when switching to POS/Research
   if(name === 'pos' || name === 'research') setTimeout(handleQplCategoryChange, 0);
+  // Pick up buy-offer items added on another device since this device's last fetch
+  if(name === 'intake') setTimeout(fetchBuyListFromWorker, 0);
 }
 
 // Quick sell modal
@@ -13489,6 +13491,16 @@ function saveBuyList(){
   syncBuyListToWorker();
 }
 
+// Items this device removed/cleared recently. A background fetch that races
+// a removal must not resurrect the item just because the server copy hasn't
+// caught up yet — see fetchBuyListFromWorker().
+const buyListTombstones = new Map();
+function tombstoneBuyIds(ids){
+  const now = Date.now();
+  ids.forEach(id => { if(id) buyListTombstones.set(id, now); });
+  for(const [id,t] of buyListTombstones) { if(now - t > 120000) buyListTombstones.delete(id); }
+}
+
 // Buy list was localStorage-only, so items added on one device never showed
 // up on another. Piggyback on the same store-scoped /kv/:key mechanism the
 // cart and scan handoff already use for cross-device sync — read local first
@@ -13510,6 +13522,10 @@ async function syncBuyListToWorker(){
   } catch(e) { /* offline/demo — localStorage already has the latest */ }
 }
 
+// Merges in items the server has that this device doesn't, instead of
+// overwriting — two devices adding different items at the same time must
+// not clobber each other. Recently-removed ids are skipped so a stale
+// server copy can't bring back something this device just deleted.
 async function fetchBuyListFromWorker(){
   try {
     const r = await storeWorkerFetch(scopedWorkerPath('/kv/buy_list'), { signal: AbortSignal.timeout(4000) });
@@ -13517,9 +13533,17 @@ async function fetchBuyListFromWorker(){
     if(!d?.value) return;
     const remote = JSON.parse(d.value);
     if(!Array.isArray(remote)) return;
-    buyList = remote;
+    const localIds = new Set(buyList.map(i=>i.id));
+    let added = false;
+    for(const item of remote) {
+      if(!item?.id || localIds.has(item.id) || buyListTombstones.has(item.id)) continue;
+      buyList.push(item);
+      added = true;
+    }
+    if(!added) return;
     localStorage.setItem('pos_buy_list', JSON.stringify(buyList.slice(0,100)));
     renderBuyList();
+    syncBuyListToWorker(); // push the merged union back so every device converges on the same list
   } catch(e) { /* offline/demo — keep the local copy */ }
 }
 
@@ -25392,6 +25416,7 @@ async function autoLookupBuyItem(item){
 function removeBuyItem(id){
   const item = buyList.find(i=>i.id===id);
   buyList = buyList.filter(i=>i.id!==id);
+  tombstoneBuyIds([id]);
   saveBuyList();
   if(item) logOpsEvent('buy_item_removed', 'Removed item from buy offer: ' + (item.name || id), { buySessionId:item.buySessionId || getActiveBuySession()?.buySessionId || '' });
   renderBuyList();
@@ -25798,6 +25823,7 @@ async function bulkAddScanInboxToInventory(){
 }
 
 function clearBuyList(){
+  tombstoneBuyIds(buyList.map(i=>i.id));
   buyList=[];
   saveBuyList();
   renderBuyList();
@@ -27085,6 +27111,9 @@ loadBuyList();
 renderBuyList();
 renderSetNeeds();
 renderBuySignals();
+
+// Poll for buy-offer items added on another device (mirrors the customer-display refresh below)
+setInterval(fetchBuyListFromWorker, 8000);
 
 // ── POKÉMON SET BROWSER (Pass B) ────────────────────────────────
 const _sbState = {
@@ -29992,7 +30021,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.07.16.02-batch-fixes"></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.07.16.03-buylist-sync"></script>
 </body>
 </html>
 
