@@ -262,6 +262,39 @@ async function restockRefundItems(env,{storeId,saleId,refundId,lineItemIds,userI
   return count;
 }
 
+// Restocks every eligible line item of a voided sale. Unlike refunds, a void
+// has no refund_id to key an idempotency-safe unique constraint off of, so
+// callers must guarantee this only runs once per sale (handleVoidPosSale does
+// that with a status-gated conditional update before calling this).
+async function restockVoidedSaleLines(env,{storeId,saleId,lines,userId}){
+  let count=0;
+  for(const line of lines||[]){
+    if(!/^[0-9a-f-]{36}$/i.test(String(line.item_id||'')))continue;
+    const movement={store_id:storeId,inventory_item_id:line.item_id,sale_id:saleId,sale_line_id:line.id,movement_type:'void_restock',quantity:Number(line.quantity||1),created_by:userId};
+    await supabaseAdminFetch(env,'inventory_movements',{method:'POST',headers:{Prefer:'return=minimal'},body:JSON.stringify(movement)});
+    const {data:items}=await supabaseAdminFetch(env,`inventory_items?id=eq.${line.item_id}&store_id=eq.${encodeURIComponent(storeId)}&select=id,data,status&limit=1`);
+    const item=items?.[0];if(!item)continue;
+    const data={...(item.data||{})};
+    data.quantity=Number(data.quantity??data.qty??0)+Number(line.quantity||1);
+    data.qty=data.quantity;
+    data.status='in_stock';
+    data.lifecycle='in_stock';
+    data['sold-out']=false;
+    await supabaseAdminFetch(env,`inventory_items?id=eq.${line.item_id}&store_id=eq.${encodeURIComponent(storeId)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({data,status:'in_stock'})});
+    count++;
+  }
+  return count;
+}
+
+// Mirrors dashboard.html's normalizeTenderType() classification order — "cash
+// app" must be checked before plain "cash" or Cash App sales would wrongly
+// count as physical cash and get reversed against the cash drawer.
+function isPhysicalCashTender(method){
+  const raw=String(method||'').toLowerCase();
+  if(raw.includes('cash app')||raw.includes('cashapp'))return false;
+  return raw.includes('cash');
+}
+
 async function handleStripeFoundation(request, env, url) {
   const path = url.pathname;
   if(path==='/stripe/webhook'&&request.method==='POST')return handleStripeWebhookSecure(request,env);
@@ -1597,6 +1630,73 @@ export default {
       } catch (e) {
         console.error('POS checkout error:', e);
         return json({ error: e.message }, 500);
+      }
+    }
+
+    // Voids a completed sale of any tender type (cash, card, Venmo, PayPal,
+    // Cash App): restocks its built-in inventory line items, reverses any
+    // cash-drawer credit, and logs the reversal. Stripe card sales should
+    // normally be reversed through /stripe/refunds/create instead (that also
+    // refunds the card charge itself) — this route only ever restocks and
+    // marks the sale voided, it never touches money that already moved
+    // through a payment processor.
+    if (url.pathname === '/pos/sales/void' && request.method === 'POST') {
+      try {
+        const body = await request.json().catch(() => ({}));
+        const storeId = String(body.storeId || '');
+        const saleId = String(body.saleId || '');
+        const reason = String(body.reason || '').trim();
+        if (!saleId) return json({ ok:false, error:'saleId is required' }, 400);
+        if (!reason) return json({ ok:false, error:'A reason is required to void a sale' }, 400);
+        const auth = await requireStoreUser(request, env, storeId, ['owner','admin']);
+        if (auth.error) return auth.error;
+
+        const { data:sales } = await supabaseAdminFetch(env, `pos_sales?id=eq.${encodeURIComponent(saleId)}&store_id=eq.${encodeURIComponent(storeId)}&select=*&limit=1`);
+        const sale = sales?.[0];
+        if (!sale) return json({ ok:false, error:'Sale not found for this store' }, 404);
+        if (sale.status === 'voided') return json({ ok:true, saleId, alreadyVoided:true, restockedItems:0, cashReversed:0 });
+
+        // Conditional update keyed on the sale's current status closes the
+        // race window against a second concurrent void attempt — if another
+        // request already changed the status, this returns zero rows and we
+        // bail out instead of double-restocking or double-reversing cash.
+        const { data:voidedRows } = await supabaseAdminFetch(env,
+          `pos_sales?id=eq.${encodeURIComponent(saleId)}&store_id=eq.${encodeURIComponent(storeId)}&status=eq.${encodeURIComponent(sale.status)}`,
+          { method:'PATCH', headers:{ Prefer:'return=representation' }, body:JSON.stringify({ status:'voided' }) });
+        if (!voidedRows?.length) return json({ ok:false, error:'Sale status changed before it could be voided; refresh and try again' }, 409);
+
+        const { data:lines } = await supabaseAdminFetch(env, `pos_sale_lines?sale_id=eq.${encodeURIComponent(saleId)}&store_id=eq.${encodeURIComponent(storeId)}&select=id,item_id,quantity`);
+        const restockedItems = await restockVoidedSaleLines(env, { storeId, saleId, lines: lines || [], userId: auth.user.id });
+
+        const { data:payments } = await supabaseAdminFetch(env, `pos_payments?sale_id=eq.${encodeURIComponent(saleId)}&store_id=eq.${encodeURIComponent(storeId)}&select=method,amount,status`);
+        const cashAmount = (payments || [])
+          .filter(p => isPhysicalCashTender(p.method) && p.status !== 'refunded')
+          .reduce((sum,p) => sum + Number(p.amount || 0), 0);
+
+        let cashReversed = 0;
+        if (cashAmount > 0 && sale.drawer_session_id) {
+          await supabaseAdminFetch(env, 'pos_drawer_movements', {
+            method:'POST', headers:{ Prefer:'return=minimal' },
+            body:JSON.stringify({ id:crypto.randomUUID(), drawer_session_id:sale.drawer_session_id, store_id:storeId, sale_id:saleId, movement_type:'sale_void', amount:-cashAmount, note:('Sale voided: ' + reason).slice(0,500), created_by:auth.user.id }),
+          });
+          const { data:drawerRows } = await supabaseAdminFetch(env, `pos_drawer_sessions?id=eq.${encodeURIComponent(sale.drawer_session_id)}&select=expected_cash&limit=1`);
+          const currentExpected = Number(drawerRows?.[0]?.expected_cash || 0);
+          await supabaseAdminFetch(env, `pos_drawer_sessions?id=eq.${encodeURIComponent(sale.drawer_session_id)}`, {
+            method:'PATCH', headers:{ Prefer:'return=minimal' },
+            body:JSON.stringify({ expected_cash: currentExpected - cashAmount }),
+          });
+          cashReversed = cashAmount;
+        }
+
+        await supabaseAdminFetch(env, 'pos_audit_log', {
+          method:'POST', headers:{ Prefer:'return=minimal' },
+          body:JSON.stringify({ id:crypto.randomUUID(), store_id:storeId, event_type:'sale_voided', entity_type:'pos_sale', entity_id:saleId, details:{ reason, total:sale.total, restockedItems, cashReversed }, created_by:auth.user.id, created_at:new Date().toISOString() }),
+        });
+
+        return json({ ok:true, saleId, restockedItems, cashReversed });
+      } catch (e) {
+        console.error('Sale void error:', e);
+        return json({ ok:false, error: e.message }, 500);
       }
     }
 
