@@ -13014,7 +13014,7 @@ function switchTab(name, btn){
   // Refresh category-dependent helper rows (set browser buttons etc.) when switching to POS/Research
   if(name === 'pos' || name === 'research') setTimeout(handleQplCategoryChange, 0);
   // Pick up buy-offer items added on another device since this device's last fetch
-  if(name === 'pos') setTimeout(fetchBuyListFromWorker, 0);
+  if(name === 'intake') setTimeout(fetchBuyListFromWorker, 0);
 }
 
 // Quick sell modal
