@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.07.16.01-void-sale">
+<meta name="version" content="2026.07.16.02-batch-fixes">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -652,6 +652,7 @@ body.show-mode .show-mode-toggle { border-color:rgba(0,255,179,.4); color:var(--
 .inv-card-name { font-size:12px; font-weight:700; color:var(--text); line-height:1.3; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
 .inv-card-meta { font-family:monospace; font-size:11px; color:color-mix(in srgb,var(--text) 68%,var(--bg)); line-height:1.45; }
 .inv-card-price { font-family:'Orbitron',monospace; font-size:16px; font-weight:900; color:var(--gold); }
+.inv-card-price-input { width:90px; background:var(--surf2); border:1px solid var(--border); color:var(--gold); padding:3px 6px; border-radius:5px; font-family:'Orbitron',monospace; font-size:16px; font-weight:900; }
 .inv-card-actions { display:flex; gap:6px; margin-top:auto; padding-top:6px; }
 .inv-card-actions .ra { flex:1; min-height:38px; font-size:11px; }
 
@@ -1419,12 +1420,12 @@ body.show-mode .inv-sync-badge{display:none;}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.07.16.01-void-sale"></script>
-<script src="scripts/barcode-lookup.js?v=2026.07.16.01-void-sale"></script>
-<script src="scripts/comic-issue-hub.js?v=2026.07.16.01-void-sale"></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.07.16.01-void-sale"></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.07.16.01-void-sale"></script>
-<script src="scripts/mtg/research-batch.js?v=2026.07.16.01-void-sale"></script>
+<script src="scripts/query-routing.js?v=2026.07.16.02-batch-fixes"></script>
+<script src="scripts/barcode-lookup.js?v=2026.07.16.02-batch-fixes"></script>
+<script src="scripts/comic-issue-hub.js?v=2026.07.16.02-batch-fixes"></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.07.16.02-batch-fixes"></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.07.16.02-batch-fixes"></script>
+<script src="scripts/mtg/research-batch.js?v=2026.07.16.02-batch-fixes"></script>
 </head>
 <body>
 
@@ -1441,7 +1442,7 @@ body.show-mode .inv-sync-badge{display:none;}
           <button class="hbtn" type="button" id="auth-password-eye" aria-label="Show password" onclick="toggleAuthPasswordVisibility()" style="width:54px;padding:0">EYE</button>
         </span>
       </label>
-      <label id="auth-store-name-wrap" style="display:none;font-family:monospace;font-size:9px;color:var(--dim)">STORE NAME<input id="auth-store-name" class="tsi" value="Walk-Off Sports Cards & Comics"></label>
+      <label id="auth-store-name-wrap" style="display:none;font-family:monospace;font-size:9px;color:var(--dim)">STORE NAME<input id="auth-store-name" class="tsi" placeholder="Your Store Name"></label>
       <label id="auth-store-wrap" style="display:none;font-family:monospace;font-size:9px;color:var(--dim)">STORE<select id="auth-store" class="tsi"></select></label>
       <button class="hbtn" id="auth-primary-btn" onclick="loginSupabaseAccount()">LOGIN</button>
       <div id="auth-secondary-btns" style="display:flex;gap:8px;flex-wrap:wrap">
@@ -1474,11 +1475,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.07.16.01-void-sale</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.07.16.02-batch-fixes</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.07.16.01-void-sale</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.07.16.02-batch-fixes</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1501,7 +1502,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.07.16.01-void-sale</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.07.16.02-batch-fixes</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -2861,7 +2862,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.07.16.01-void-sale';
+const APP_VERSION = '2026.07.16.02-batch-fixes';
 window.APP_VERSION = APP_VERSION;
 const branchName = 'main';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
@@ -3748,7 +3749,7 @@ function renderAccountHeader(){
   const chip = document.getElementById('store-user-chip');
   if(chip && session) {
     const profile = getVendorProfile();
-    const storeName = store?.displayName || store?.name || profile.storeName || 'Walk-Off Sports Cards & Comics';
+    const storeName = store?.displayName || store?.name || profile.storeName || 'My Store';
     const userName = session.user?.displayName || session.user?.email || 'User';
     const role = session.user?.role || 'employee';
     chip.style.display = '';
@@ -4108,11 +4109,15 @@ function assertRealDataAllowed(operationName){
   return true;
 }
 
+// Every new store starts on this until they set their own — must stay a
+// generic placeholder. This previously hardcoded the original developer's
+// real store name/city/website, so any store that hadn't (yet) synced its
+// own profile showed someone else's real business identity by default.
 const DEFAULT_VENDOR_PROFILE = {
-  storeName:'Walk-Off Sports Cards',
-  shortName:'Walk-Off',
-  location:'Kingston, WA',
-  website:'walkoffsc.com',
+  storeName:'My Store',
+  shortName:'My Store',
+  location:'',
+  website:'',
   phone:'',
   email:'',
   logo:'',
@@ -4120,7 +4125,7 @@ const DEFAULT_VENDOR_PROFILE = {
   defaultBuyPct:70,
   defaultShowMarkdown:0,
   receiptFooter:'Thank you for shopping with us!',
-  ebayShippingLine:'Ships carefully packed from Walk-Off Sports Cards in Kingston, WA.',
+  ebayShippingLine:'',
   paymentMethods:'Cash, card, Venmo, or QR pay accepted',
   venmo:'',
   paypal:'',
@@ -4295,12 +4300,15 @@ function getVendorProfile(){
   catch(e) { return { ...base }; }
 }
 
-function saveVendorProfile(profile){
+async function saveVendorProfile(profile){
   const next = { ...getVendorProfile(), ...profile };
   localStorage.setItem('vendor_profile_v1', JSON.stringify(next));
   applyVendorProfile();
   renderVendorProfilePanel();
-  saveStoreSettingsToSupabase({
+  // saveStoreSettingsToSupabase() used to be fire-and-forget here, so a
+  // silent failure (offline, RLS, non-owner/admin role) left this device
+  // looking saved while every other device never received the change.
+  const cloudSaved = await saveStoreSettingsToSupabase({
     receipt_settings:{
       storeName:next.storeName,
       shortName:next.shortName,
@@ -4319,6 +4327,7 @@ function saveVendorProfile(profile){
     theme:{ accent:next.themeAccent || '#00ffb3', logo:next.logo || '' }
   });
   logOpsEvent('vendor_profile', 'Updated vendor profile/preferences', { storeName:next.storeName });
+  return cloudSaved;
 }
 
 // Show Operations v1 — Default Research Category setting
@@ -4920,9 +4929,15 @@ function getPaymentSettings(){
     ...DEFAULT_PAYMENT_SETTINGS,
     ...saved,
     cash:{ ...DEFAULT_PAYMENT_SETTINGS.cash, ...(saved.cash || {}) },
-    venmo:{ ...DEFAULT_PAYMENT_SETTINGS.venmo, handle:p.venmo || '', ...(saved.venmo || {}) },
-    paypal:{ ...DEFAULT_PAYMENT_SETTINGS.paypal, emailOrHandle:p.paypal || '', ...(saved.paypal || {}) },
-    cashApp:{ ...DEFAULT_PAYMENT_SETTINGS.cashApp, cashtag:p.cashapp || '', ...(saved.cashApp || {}) },
+    // The Checkout & Payments tab has no handle input of its own — it only
+    // saves a QR image URL — so the handle always comes from the Store
+    // Profile tab. Vendor profile must win when set, or a stale/empty
+    // handle already sitting in store_payment_settings_v1 (from a default
+    // init or an earlier empty save) permanently masks it, showing "No
+    // handle saved" even after the user enters one in Store Profile.
+    venmo:{ ...DEFAULT_PAYMENT_SETTINGS.venmo, ...(saved.venmo || {}), handle:p.venmo || saved.venmo?.handle || '' },
+    paypal:{ ...DEFAULT_PAYMENT_SETTINGS.paypal, ...(saved.paypal || {}), emailOrHandle:p.paypal || saved.paypal?.emailOrHandle || '' },
+    cashApp:{ ...DEFAULT_PAYMENT_SETTINGS.cashApp, ...(saved.cashApp || {}), cashtag:p.cashapp || saved.cashApp?.cashtag || '' },
     card:{ ...DEFAULT_PAYMENT_SETTINGS.card, ...(saved.card || {}) },
     tax:{ ...DEFAULT_PAYMENT_SETTINGS.tax, defaultRate:Number(p.taxRate || 0), ...(saved.tax || {}) },
     receipt:{ ...DEFAULT_PAYMENT_SETTINGS.receipt, storeName:p.storeName || '', footer:p.receiptFooter || DEFAULT_PAYMENT_SETTINGS.receipt.footer, ...(saved.receipt || {}) },
@@ -5459,7 +5474,7 @@ function vendorInput(key, label, value, type='text'){
   return `<label style="font-family:monospace;font-size:9px;color:var(--dim)">${label.toUpperCase()}<input id="vp-${key}" class="tsi" type="${type}" value="${escHtml(value)}" style="margin-top:3px;margin-bottom:0"></label>`;
 }
 
-function saveVendorProfileFromForm(){
+async function saveVendorProfileFromForm(){
   const keys = ['storeName','shortName','location','website','phone','email','taxRate','defaultBuyPct','defaultShowMarkdown','receiptFooter','ebayShippingLine','paymentMethods','venmo','paypal','cashapp'];
   const profile = {};
   keys.forEach(k => {
@@ -5467,8 +5482,8 @@ function saveVendorProfileFromForm(){
     if(!el) return;
     profile[k] = ['taxRate','defaultBuyPct','defaultShowMarkdown'].includes(k) ? Number(el.value || 0) : el.value.trim();
   });
-  saveVendorProfile(profile);
-  toast_dash('Vendor profile saved');
+  const cloudSaved = await saveVendorProfile(profile);
+  toast_dash(cloudSaved ? 'Vendor profile saved' : 'Saved on this device only — cloud sync failed, other devices will not see this change yet');
 }
 
 function handleVendorLogoUpload(event){
@@ -10304,9 +10319,14 @@ function setInvView(view){
 function renderCardView(){
   const grid = document.getElementById('inv-card-grid');
   if(!grid) return;
-  const PAGE = 40;
-  const rows = filtered.slice(0, PAGE);
-  if(!rows.length){ grid.innerHTML = '<div style="color:var(--dim);font-family:monospace;font-size:12px;padding:20px;text-align:center">No items</div>'; return; }
+  const start=(page-1)*PER, end=start+PER;
+  const rows = filtered.slice(start, end);
+  if(!rows.length){
+    grid.innerHTML = '<div style="color:var(--dim);font-family:monospace;font-size:12px;padding:20px;text-align:center">No items</div>';
+    const emptyPager = document.getElementById('pager-cards');
+    if(emptyPager) emptyPager.innerHTML = '';
+    return;
+  }
   grid.innerHTML = rows.map(i => {
     const ins = i.status === 'in_stock';
     const thumb = inventoryImageUrl(i);
@@ -10321,16 +10341,14 @@ function renderCardView(){
         <div class="inv-card-name" title="${escHtml(i.name)}" onclick="openInventoryItemInResearch('${i.id}')" style="cursor:pointer">${escHtml(i.name)}</div>
         <div class="inv-card-meta" style="color:${i.ownershipType==='consignor'||i.consignorName?'var(--purple)':'var(--dim)'}">OWNER: ${escHtml(i.consignorName||i.inventoryOwner||'Store')}</div>
         <div class="inv-card-meta">${escHtml([i.set, i.year, i.condition].filter(Boolean).join(' · ') || i.category || '')}</div>
-        <div class="inv-card-price">${money.market > 0 ? fd$(money.market) : '—'}<span style="font-family:var(--font-mono);font-size:9px;color:var(--dim);margin-left:4px">mkt</span></div>
-        <div class="inv-card-meta" style="display:flex;align-items:center;gap:5px">
-          <span style="color:var(--dim);flex-shrink:0">List:</span>
-          <input type="number" step="0.01" min="0" value="${money.list || ''}" placeholder="Set price"
-            onclick="event.stopPropagation()"
+        <div class="inv-card-price-row" style="display:flex;align-items:center;gap:6px" onclick="event.stopPropagation()">
+          <span style="color:var(--dim);font-family:var(--font-mono);font-size:9px;flex-shrink:0">List $</span>
+          <input type="number" step="0.01" min="0" value="${money.list || ''}" placeholder="${money.market > 0 ? fd$(money.market).replace('$','') : '0.00'}"
             onblur="saveInvListPrice('${i.id}', this.value)"
             onkeydown="if(event.key==='Enter'){this.blur()}"
-            style="width:68px;background:var(--surf2);border:1px solid var(--border);color:var(--g);padding:2px 5px;border-radius:5px;font-family:var(--font-mono);font-size:11px;font-weight:700">
-          ${money.cost ? `<span style="color:var(--dim);font-size:9px;white-space:nowrap">· Cost ${fd$(money.cost)}</span>` : ''}
+            class="inv-card-price-input">
         </div>
+        <div class="inv-card-meta">Mkt: ${money.market > 0 ? fd$(money.market) : '—'}${money.cost ? ` · Cost ${fd$(money.cost)}` : ''}</div>
         <div class="inv-card-meta">${inventoryImageSourceLabel(i)}${inventoryIsPriceStale(i) ? ' · stale price' : ''}</div>
         ${i.qty > 1 ? `<div class="inv-card-meta" style="color:var(--g)">Qty: ${i.qty}</div>` : ''}
         <div class="inv-card-actions">
@@ -10342,9 +10360,10 @@ function renderCardView(){
     </div>`;
   }).join('');
   const cardPager = document.getElementById('pager-cards');
-  if(cardPager) cardPager.innerHTML = filtered.length > PAGE
-    ? `<div style="font-family:monospace;font-size:11px;color:var(--dim);text-align:center;padding:10px">Showing ${PAGE} of ${filtered.length} — switch to Table view for full list</div>`
-    : '';
+  if(cardPager){
+    const tot = Math.ceil(filtered.length / PER);
+    cardPager.innerHTML = tot <= 1 ? '' : Array.from({length:tot}, (_,i) => `<button class="pg${i+1===page?' on':''}" onclick="page=${i+1};renderCardView()">${i+1}</button>`).join('');
+  }
 }
 
 // Patch renderTable to also refresh card view if active
@@ -10423,7 +10442,7 @@ async function launchStripeQrCheckout(totalDollars){
       body: JSON.stringify({
         amount_cents: _stripeQrAmount,
         description: 'Card show purchase',
-        store_name: profile.storeName || 'Walk-Off Sports Cards',
+        store_name: profile.storeName || 'My Store',
       }),
     });
     const data = await res.json();
@@ -12894,7 +12913,7 @@ function renderTable(){
       <td><span class="sc2">${escHtml([i.set,i.variant].filter(Boolean).join(' · ')||'—')}</span><div class="sc2" style="margin-top:5px">${escHtml([i.year,i.condition,i.location].filter(Boolean).join(' · '))}</div></td>
       <td><span class="ct ${cat}">${i.category}</span></td>
       <td style="text-align:center;font-family:var(--font-mono);font-size:11px;color:${(i.qty||1)>1?'var(--g)':'var(--dim)'}">${i.qty||1}</td>
-      <td class="pp pm">${money.market>0?fd$(money.market):'—'}<br>${money.list>0?`<span style="font-family:var(--font-mono);font-size:8px;color:var(--dim)">LIST ${fd$(money.list)}</span><br>`:''}${priceSourceBadge(i.priceSource, i.category)}${stale?'<br><span class="inv-warning-pill">STALE</span>':''}</td>
+      <td class="pp pm">${money.list>0?fd$(money.list):(money.market>0?fd$(money.market):'—')}<br>${money.list>0&&money.market>0?`<span style="font-family:var(--font-mono);font-size:8px;color:var(--dim)">MKT ${fd$(money.market)}</span><br>`:''}${priceSourceBadge(i.priceSource, i.category)}${stale?'<br><span class="inv-warning-pill">STALE</span>':''}</td>
       <td class="pp pd">${money.cost>0?fd$(money.cost):'<span class="inv-warning-pill">NO COST</span>'}</td>
       <td class="${ppc}">${money.cost>0||i.profit?(pft>=0?'+':'')+fd$(pft)+(money.list>0||money.cost>0?' ('+margin+')':''):'—'}</td>
       <td><span style="font-family:var(--font-mono);font-size:9px;color:${ins?'var(--g)':'var(--dim)'}">${ins?'IN STOCK':'SOLD'+(i.channel?' · '+i.channel:'')}</span></td>
@@ -13467,11 +13486,41 @@ function scanToBuyItem(scan){
 
 function saveBuyList(){
   localStorage.setItem('pos_buy_list', JSON.stringify(buyList.slice(0,100)));
+  syncBuyListToWorker();
 }
 
+// Buy list was localStorage-only, so items added on one device never showed
+// up on another. Piggyback on the same store-scoped /kv/:key mechanism the
+// cart and scan handoff already use for cross-device sync — read local first
+// (works offline, keeps existing callers synchronous-feeling), then refresh
+// from the synced copy in the background and re-render if it changed.
 function loadBuyList(){
   try { buyList = JSON.parse(localStorage.getItem('pos_buy_list') || '[]'); }
   catch(e) { buyList = []; }
+  fetchBuyListFromWorker();
+}
+
+async function syncBuyListToWorker(){
+  try {
+    await storeWorkerFetch(scopedWorkerPath('/kv/buy_list'), {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(buyList.slice(0,100)),
+      signal: AbortSignal.timeout(4000),
+    });
+  } catch(e) { /* offline/demo — localStorage already has the latest */ }
+}
+
+async function fetchBuyListFromWorker(){
+  try {
+    const r = await storeWorkerFetch(scopedWorkerPath('/kv/buy_list'), { signal: AbortSignal.timeout(4000) });
+    const d = await r.json();
+    if(!d?.value) return;
+    const remote = JSON.parse(d.value);
+    if(!Array.isArray(remote)) return;
+    buyList = remote;
+    localStorage.setItem('pos_buy_list', JSON.stringify(buyList.slice(0,100)));
+    renderBuyList();
+  } catch(e) { /* offline/demo — keep the local copy */ }
 }
 
 async function removeScanFromInbox(scanId){
@@ -14899,7 +14948,7 @@ function exportConsignReport(){
   const w = window.open('','_blank','width=500,height=700');
   w.document.write(`<html><head><title>Consignment Report</title>
     <style>body{font-family:monospace;padding:20px;font-size:11px;}h2,h3{margin:12px 0 6px;}table{width:100%;border-collapse:collapse;}td,th{border:1px solid #ddd;padding:6px 8px;text-align:left;font-size:10px;}th{background:#f5f5f5;font-weight:bold;}</style></head><body>
-    <h2>Walk-Off Sports Cards — Consignment Report</h2>
+    <h2>${escHtml(getVendorProfile().storeName || 'Consignment Report')} — Consignment Report</h2>
     <p>${new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}</p>
     <h3>AMOUNTS OWED TO CONSIGNORS</h3>
     ${unpaid.length?`<table><tr><th>Item</th><th>Consignor</th><th>Contact</th><th>Sale</th><th>Owed</th></tr>`+unpaid.map(c=>`<tr><td>${c.item}</td><td>${c.owner}</td><td>${c.contact||''}</td><td>$${(c.salePrice||0).toFixed(2)}</td><td><b>$${((c.salePrice||0)*(1-c.split/100)).toFixed(2)}</b></td></tr>`).join('')+'</table>':'<p>None</p>'}
@@ -15082,7 +15131,7 @@ function printRestockList(){
   const items = document.querySelectorAll('#rs-checklist input[type="checkbox"]');
   const w = window.open('','_blank','width=400,height=600');
   w.document.write('<html><head><title>Restock List</title><style>body{font-family:monospace;padding:20px;font-size:11px;}input{margin-right:8px;}</style></head><body>');
-  w.document.write('<h2>Walk-Off Sports Cards — Restock List</h2>');
+  w.document.write('<h2>'+escHtml(getVendorProfile().storeName||'Store')+' — Restock List</h2>');
   w.document.write('<p>'+new Date().toLocaleDateString()+'</p>');
   document.querySelectorAll('#rs-checklist [style*="border-bottom"]').forEach(row=>{
     w.document.write('<div style="padding:6px 0;border-bottom:1px solid #eee"><input type="checkbox"> '+row.querySelector('div').textContent+'</div>');
@@ -15618,7 +15667,7 @@ function consignmentOwnerDirectory(){const map=new Map();(consignorPeople||[]).f
 function populateInventoryOwnerSelect(item={}){const select=document.getElementById('edit-consignor');if(!select)return;const owners=consignmentOwnerDirectory(),current=item.consignorName||item.inventoryOwner||consignItems.find(c=>c.id===item.consignmentId||c.inventoryId===item.id)?.owner||'';select.innerHTML='<option value="">Select a person...</option>'+owners.map(o=>`<option value="${escHtml(o.name)}">${escHtml(o.name)}${o.contact?' · '+escHtml(o.contact):''}</option>`).join('');if(current&&!owners.some(o=>o.name===current))select.insertAdjacentHTML('beforeend',`<option value="${escHtml(current)}">${escHtml(current)}</option>`);select.value=current;}
 function toggleInventoryOwnerFields(){const type=document.getElementById('edit-owner-type')?.value||'store',wrap=document.getElementById('edit-consignor-wrap'),note=document.getElementById('edit-owner-note');if(wrap)wrap.style.display=type==='consignor'?'':'none';if(note)note.textContent=type==='consignor'?'This item will appear in that person’s consignment inventory. When it sells, a payout alert is created.':'Store-owned item. Sale profit belongs to the store.';}
 function inventoryOwnershipPatch(item={}){const type=document.getElementById('edit-owner-type')?.value||'store',owner=type==='consignor'?(document.getElementById('edit-consignor')?.value||''):'';return {ownershipType:type,inventoryOwner:type==='store'?'Store':owner,consignorName:owner};}
-function syncInventoryOwnershipToConsignment(item,updates){const type=updates.ownershipType||'store',owner=updates.consignorName||'',active=consignItems.find(c=>c.status==='active'&&(c.inventoryId===item.id||c.id===item.consignmentId));if(type==='store'){if(active){active.status='returned';active.returnedAt=new Date().toISOString();active.notes=[active.notes,'Ownership changed to Store in inventory editor'].filter(Boolean).join(' · ');}updates.consignmentId='';saveConsign();return;}if(!owner)return;const profile=consignmentOwnerDirectory().find(o=>o.name===owner)||{name:owner,contact:'',split:25};const c=active||{id:'cs_'+Date.now(),status:'active',addedAt:new Date().toISOString(),soldAt:null,salePrice:null,paidOut:false};Object.assign(c,{item:item.name||'Inventory item',owner,contact:profile.contact||c.contact||'',split:Number(c.split||profile.split||25),price:Number(updates.listPrice||item.listPrice||item.salePrice||item.market||0),marketValue:Number(updates.market||item.market||0),costBasis:Number(updates.cost||item.cost||0),inventoryId:item.id,inventorySku:item.inventorySku||'',status:'active'});if(!active)consignItems.push(c);updates.consignmentId=c.id;saveConsign();}
+function syncInventoryOwnershipToConsignment(item,updates){const type=updates.ownershipType||'store',owner=updates.consignorName||'',active=consignItems.find(c=>c.status==='active'&&(c.inventoryId===item.id||c.id===item.consignmentId));if(type==='store'){if(active){active.status='returned';active.returnedAt=new Date().toISOString();active.notes=[active.notes,'Ownership changed to Store in inventory editor'].filter(Boolean).join(' · ');}updates.consignmentId='';saveConsign();if(item.status!=='sold'&&item.lifecycle==='consigned')setLifecycle(item.id,'in_stock',true);return;}if(!owner)return;const profile=consignmentOwnerDirectory().find(o=>o.name===owner)||{name:owner,contact:'',split:25};const c=active||{id:'cs_'+Date.now(),status:'active',addedAt:new Date().toISOString(),soldAt:null,salePrice:null,paidOut:false};Object.assign(c,{item:item.name||'Inventory item',owner,contact:profile.contact||c.contact||'',split:Number(c.split||profile.split||25),price:Number(updates.listPrice||item.listPrice||item.salePrice||item.market||0),marketValue:Number(updates.market||item.market||0),costBasis:Number(updates.cost||item.cost||0),inventoryId:item.id,inventorySku:item.inventorySku||'',status:'active'});if(!active)consignItems.push(c);updates.consignmentId=c.id;saveConsign();if(item.status!=='sold'&&item.lifecycle!=='consigned')setLifecycle(item.id,'consigned',true);}
 
 function setInventoryEditPhoto(src='', source=''){
   const box = document.getElementById('edit-photo-preview');
@@ -29943,7 +29992,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.07.16.01-void-sale"></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.07.16.02-batch-fixes"></script>
 </body>
 </html>
 
