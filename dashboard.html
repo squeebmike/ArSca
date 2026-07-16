@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.07.16.03-buylist-sync">
+<meta name="version" content="2026.07.16.04-multi-buy-trays">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -456,6 +456,13 @@ tr.sold:hover td{opacity:.7;}
 .sub-gate-btn:hover{opacity:.88;}
 .sub-gate-link{color:var(--dim);font-size:11px;cursor:pointer;text-decoration:underline;}
 /* ─── BUY FLOW UX ─── */
+.buy-tray-switcher{display:flex;gap:6px;overflow-x:auto;padding-bottom:8px;margin-bottom:10px;-webkit-overflow-scrolling:touch;}
+.buy-tray-pill{flex:0 0 auto;display:flex;flex-direction:column;gap:2px;align-items:flex-start;background:var(--surf2);border:1px solid var(--border);border-radius:9px;padding:7px 12px;cursor:pointer;font-family:var(--font-mono);color:var(--text);}
+.buy-tray-pill.active{border-color:var(--g);background:rgba(0,255,179,.09);}
+.buy-tray-pill-name{font-size:11px;font-weight:700;white-space:nowrap;}
+.buy-tray-pill-meta{font-size:9px;color:var(--dim);}
+.buy-tray-pill-badge{font-size:7px;color:var(--gold);letter-spacing:.04em;text-transform:uppercase;}
+.buy-tray-pill-new{border-style:dashed;color:var(--g);align-items:center;justify-content:center;}
 .buy-offer-panel{display:grid;grid-template-columns:1fr 1fr 1.5fr 1fr;gap:1px;background:var(--border);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:14px;}
 .buy-offer-stat{background:var(--surf2);padding:14px 16px;display:flex;flex-direction:column;gap:4px;}
 .buy-offer-stat-label{font-family:var(--font-mono);font-size:8px;color:var(--dim);letter-spacing:1px;text-transform:uppercase;}
@@ -1420,12 +1427,12 @@ body.show-mode .inv-sync-badge{display:none;}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.07.16.03-buylist-sync"></script>
-<script src="scripts/barcode-lookup.js?v=2026.07.16.03-buylist-sync"></script>
-<script src="scripts/comic-issue-hub.js?v=2026.07.16.03-buylist-sync"></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.07.16.03-buylist-sync"></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.07.16.03-buylist-sync"></script>
-<script src="scripts/mtg/research-batch.js?v=2026.07.16.03-buylist-sync"></script>
+<script src="scripts/query-routing.js?v=2026.07.16.04-multi-buy-trays"></script>
+<script src="scripts/barcode-lookup.js?v=2026.07.16.04-multi-buy-trays"></script>
+<script src="scripts/comic-issue-hub.js?v=2026.07.16.04-multi-buy-trays"></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.07.16.04-multi-buy-trays"></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.07.16.04-multi-buy-trays"></script>
+<script src="scripts/mtg/research-batch.js?v=2026.07.16.04-multi-buy-trays"></script>
 </head>
 <body>
 
@@ -1475,11 +1482,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.07.16.03-buylist-sync</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.07.16.04-multi-buy-trays</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.07.16.03-buylist-sync</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.07.16.04-multi-buy-trays</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1502,7 +1509,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.07.16.03-buylist-sync</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.07.16.04-multi-buy-trays</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -1982,6 +1989,10 @@ body.show-mode .inv-sync-badge{display:none;}
     <!-- BUY LIST / TRADE-IN — redesigned for dealer workflow -->
     <div class="panel" id="register-buy-panel">
 
+      <!-- ⓪ TRAY SWITCHER — multiple concurrent buy sessions ("registers"),
+           one per customer, switchable per device and visible across devices -->
+      <div id="buy-tray-switcher" class="buy-tray-switcher"></div>
+
       <!-- ① OFFER PANEL — most prominent area, visible immediately -->
       <div class="buy-offer-panel">
         <div class="buy-offer-stat">
@@ -2058,8 +2069,8 @@ body.show-mode .inv-sync-badge{display:none;}
         <summary>▸ Advanced Options &amp; Session Details</summary>
         <div class="buy-advanced-content">
           <div class="buy-advanced-grid">
-            <input class="tsi" id="bl-customer" placeholder="Customer name" style="margin-bottom:0">
-            <input class="tsi" id="bl-phone" placeholder="Phone (text offer)" style="margin-bottom:0">
+            <input class="tsi" id="bl-customer" placeholder="Customer name" style="margin-bottom:0" onchange="updateBuySessionField('customerName', this.value)">
+            <input class="tsi" id="bl-phone" placeholder="Phone (text offer)" style="margin-bottom:0" onchange="updateBuySessionField('customerPhone', this.value)">
           </div>
           <div id="buy-session-panel"></div>
           <div class="buy-tertiary-actions">
@@ -2862,7 +2873,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.07.16.03-buylist-sync';
+const APP_VERSION = '2026.07.16.04-multi-buy-trays';
 window.APP_VERSION = APP_VERSION;
 const branchName = 'main';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
@@ -2897,7 +2908,7 @@ const WALKOFF_DEMO_USER = { id:'demo-owner', email:'demo@walkoff.local', display
 const WALKOFF_SCOPED_KEYS = new Set([
   // Core inventory / transactions
   'lba_inventory','walkoff_universal_inventory','pos_cart_v2',
-  'pos_buy_list','pos_buy_offers','pos_active_buy_session','pos_buy_sessions',
+  'pos_buy_list','pos_buy_trays','pos_active_buy_tray_id','pos_buy_offers','pos_buy_sessions',
   'pos_transactions','pos_drawer','pos_drawer_closeouts',
   // POS / operations
   'pos_wantlist','set_needs_v1','pos_consign','pos_consignors','pos_consignment_alerts','pos_locations',
@@ -10154,7 +10165,7 @@ function renderTodayMode(){
   const profit = tx.reduce((a,t)=>a+(t.items||[]).reduce((b,i)=>b+Number(i.price||0)-Number(i.cost||0),0),0);
   const cash = tx.filter(t => normalizeTenderType(t.method,t.tenderType)==='cash').reduce((a,t)=>a+Number(t.total||0),0);
   const pendingSync = getSyncQueue().filter(x => x.status !== 'done').length;
-  const buys = safeLocalJson('pos_buy_list', []).length;
+  const buys = getBuyTrays().reduce((a,t)=>a+(t.items||[]).length,0);
   const soldToday = tx.reduce((a,t)=>a+(t.items?.length||0),0);
   // Cards bought today: from buy offers accepted today
   const boughtToday = safeLocalJson('pos_buy_offers',[]).filter(o=>new Date(o.date).toDateString()===today).reduce((a,o)=>a+(o.addedCount||o.items?.length||0),0);
@@ -10606,7 +10617,8 @@ function runCloseoutChecklist(){
   if(getShowMode() && !drawerState) issues.push('Cash Bag not started/countable in this browser');
   const atShow = all.filter(i => (i.lifecycle || i.status) === 'at_show').length;
   if(atShow) issues.push(atShow + ' item(s) still marked At Show');
-  if(safeLocalJson('pos_buy_list', []).length) issues.push('buy offer still has unsaved items');
+  const openBuyTrays = getBuyTrays().filter(t => (t.items||[]).length);
+  if(openBuyTrays.length) issues.push(openBuyTrays.length + ' open buy tray(s) still have unsaved items');
   toast_dash(issues.length ? 'Closeout: ' + issues.join(' · ') : 'Closeout checklist looks clear');
 }
 
@@ -11691,7 +11703,7 @@ async function runSystemCheck(){
     rows.push(systemLine('Phone scan inbox', false, e.message));
   }
   rows.push(systemLine('Inventory loaded', all.length > 0, all.length + ' items'));
-  rows.push(systemLine('Buy offer', true, buyList.length + ' items'));
+  rows.push(systemLine('Buy offer', true, getBuyTrays().length + ' open tray(s), ' + getBuyTrays().reduce((a,t)=>a+(t.items||[]).length,0) + ' items'));
   rows.push(systemLine('Offline cart', true, (safeLocalJson('pos_cart_v2', {items:[]}).items || []).length + ' items'));
   out.innerHTML = rows.join('');
   const hasBad = rows.join('').includes('CHECK');
@@ -11716,7 +11728,7 @@ async function buildVendorBackup(){
     counts: {
       inventoryLoaded: all.length,
       filteredLoaded: filtered.length,
-      buyOfferItems: buyList.length,
+      buyOfferItems: getBuyTrays().reduce((a,t)=>a+(t.items||[]).length,0),
       scanInbox: scanInbox.length,
       transactions: safeLocalJson('pos_transactions', []).length,
       drawerCloseouts: safeLocalJson('pos_drawer_closeouts', []).length,
@@ -11724,7 +11736,8 @@ async function buildVendorBackup(){
     },
     localData: {
       showMode: safeLocalJson('pos_show_mode', null),
-      buyList: safeLocalJson('pos_buy_list', []),
+      buyTrays: getBuyTrays(),
+      activeBuyTrayId: getActiveBuyTrayId(),
       buyOffers: safeLocalJson('pos_buy_offers', []),
       cart: safeLocalJson('pos_cart_v2', {items:[]}),
       drawer: safeLocalJson('pos_drawer', null),
@@ -11796,9 +11809,13 @@ async function importVendorBackup(event){
     const text = await file.text();
     const data = JSON.parse(text);
     const d = data.localData || {};
+    // Older backups only have a single flat buyList — wrap it into one tray so
+    // they still import something usable under the current multi-tray model.
+    const importedBuyTrays = Array.isArray(d.buyTrays) ? d.buyTrays
+      : (Array.isArray(d.buyList) && d.buyList.length ? [{ ...newBuyTrayRecord(), items:d.buyList }] : []);
     const map = {
       pos_show_mode:d.showMode,
-      pos_buy_list:d.buyList,
+      pos_buy_trays:importedBuyTrays,
       pos_buy_offers:d.buyOffers,
       pos_cart_v2:d.cart,
       pos_drawer:d.drawer,
@@ -11824,8 +11841,11 @@ async function importVendorBackup(event){
       if(v === null) localStorage.removeItem(k);
       else localStorage.setItem(k, JSON.stringify(v));
     }
+    // pos_active_buy_tray_id is a plain string (not JSON), unlike the rest of the map above.
+    setActiveBuyTrayId(d.activeBuyTrayId || importedBuyTrays[0]?.buySessionId || '');
     loadBuyList();
     renderBuyList();
+    renderBuyTraySwitcher();
     renderShowMode();
     renderDrawer();
     renderWantList();
@@ -13013,8 +13033,8 @@ function switchTab(name, btn){
   if(name === 'browse') setTimeout(renderCustomerInventoryBrowser,0);
   // Refresh category-dependent helper rows (set browser buttons etc.) when switching to POS/Research
   if(name === 'pos' || name === 'research') setTimeout(handleQplCategoryChange, 0);
-  // Pick up buy-offer items added on another device since this device's last fetch
-  if(name === 'intake') setTimeout(fetchBuyListFromWorker, 0);
+  // Pick up buy-offer items and open trays added on another device since this device's last fetch
+  if(name === 'intake') setTimeout(()=>{ fetchBuyListFromWorker(); fetchBuyTrayIndex(); }, 0);
 }
 
 // Quick sell modal
@@ -13486,9 +13506,20 @@ function scanToBuyItem(scan){
   };
 }
 
+// Persists buyList into the active tray record and pushes it to the
+// worker under that tray's own key, so each open tray (customer) syncs
+// independently and two trays never mix their items together.
 function saveBuyList(){
-  localStorage.setItem('pos_buy_list', JSON.stringify(buyList.slice(0,100)));
+  const tray = ensureActiveBuyTray();
+  tray.items = buyList.slice(0,100);
+  tray.itemCount = tray.items.length;
+  tray.pct = parseFloat(document.getElementById('bl-pct')?.value || tray.pct || 50);
+  tray.marketTotal = Math.round(buyList.reduce((a,i)=>a+Number(i.market||0),0) * 100) / 100;
+  tray.offerTotal = Math.round(buyList.reduce((a,i)=>a+buyItemOfferValue(i),0) * 100) / 100;
+  tray.updatedAt = new Date().toISOString();
+  upsertLocalBuyTray(tray);
   syncBuyListToWorker();
+  renderBuyTraySwitcher();
 }
 
 // Items this device removed/cleared recently. A background fetch that races
@@ -13507,44 +13538,180 @@ function tombstoneBuyIds(ids){
 // (works offline, keeps existing callers synchronous-feeling), then refresh
 // from the synced copy in the background and re-render if it changed.
 function loadBuyList(){
-  try { buyList = JSON.parse(localStorage.getItem('pos_buy_list') || '[]'); }
-  catch(e) { buyList = []; }
+  const tray = ensureActiveBuyTray();
+  buyList = Array.isArray(tray.items) ? tray.items : [];
   fetchBuyListFromWorker();
+  fetchBuyTrayIndex();
 }
 
 async function syncBuyListToWorker(){
+  const tray = ensureActiveBuyTray();
   try {
-    await storeWorkerFetch(scopedWorkerPath('/kv/buy_list'), {
+    await storeWorkerFetch(scopedWorkerPath('/kv/buy_tray_' + tray.buySessionId), {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify(buyList.slice(0,100)),
+      body: JSON.stringify(tray),
       signal: AbortSignal.timeout(4000),
     });
+    upsertBuyTrayIndexEntry(tray);
   } catch(e) { /* offline/demo — localStorage already has the latest */ }
 }
 
 // Merges in items the server has that this device doesn't, instead of
-// overwriting — two devices adding different items at the same time must
-// not clobber each other. Recently-removed ids are skipped so a stale
-// server copy can't bring back something this device just deleted.
+// overwriting — two devices adding different items to the SAME tray at the
+// same time must not clobber each other. Recently-removed ids are skipped
+// so a stale server copy can't bring back something this device just deleted.
 async function fetchBuyListFromWorker(){
+  const tray = ensureActiveBuyTray();
   try {
-    const r = await storeWorkerFetch(scopedWorkerPath('/kv/buy_list'), { signal: AbortSignal.timeout(4000) });
+    const r = await storeWorkerFetch(scopedWorkerPath('/kv/buy_tray_' + tray.buySessionId), { signal: AbortSignal.timeout(4000) });
     const d = await r.json();
     if(!d?.value) return;
     const remote = JSON.parse(d.value);
-    if(!Array.isArray(remote)) return;
+    if(!remote || !Array.isArray(remote.items)) return;
     const localIds = new Set(buyList.map(i=>i.id));
     let added = false;
-    for(const item of remote) {
+    for(const item of remote.items) {
       if(!item?.id || localIds.has(item.id) || buyListTombstones.has(item.id)) continue;
       buyList.push(item);
       added = true;
     }
     if(!added) return;
-    localStorage.setItem('pos_buy_list', JSON.stringify(buyList.slice(0,100)));
+    tray.items = buyList.slice(0,100);
+    upsertLocalBuyTray(tray);
     renderBuyList();
     syncBuyListToWorker(); // push the merged union back so every device converges on the same list
   } catch(e) { /* offline/demo — keep the local copy */ }
+}
+
+// Shared "what trays are open right now" list, so a device that never
+// touched a given tray can still see it exists (customer name, item count,
+// offer total) and switch to it — this is what makes the tray switcher work
+// across devices instead of just within one device's own localStorage.
+async function fetchBuyTrayIndex(){
+  try {
+    const r = await storeWorkerFetch(scopedWorkerPath('/kv/buy_trays_index'), { signal: AbortSignal.timeout(4000) });
+    const d = await r.json();
+    let index = [];
+    try { index = JSON.parse(d?.value || '[]'); } catch(e) { index = []; }
+    knownBuyTrayIndex = Array.isArray(index) ? index : [];
+    renderBuyTraySwitcher();
+  } catch(e) { /* offline/demo — keep last known list */ }
+}
+
+async function upsertBuyTrayIndexEntry(tray){
+  try {
+    const r = await storeWorkerFetch(scopedWorkerPath('/kv/buy_trays_index'), { signal: AbortSignal.timeout(4000) });
+    const d = await r.json();
+    let index = [];
+    try { index = JSON.parse(d?.value || '[]'); } catch(e) { index = []; }
+    if(!Array.isArray(index)) index = [];
+    const entry = {
+      id: tray.buySessionId,
+      customerName: tray.customerName || '',
+      itemCount: (tray.items || []).length,
+      offerTotal: Number(tray.offerTotal || 0),
+      status: tray.status || 'open',
+      updatedAt: tray.updatedAt || new Date().toISOString(),
+    };
+    const idx = index.findIndex(e => e.id === entry.id);
+    if(idx >= 0) index[idx] = entry; else index.push(entry);
+    knownBuyTrayIndex = index;
+    await storeWorkerFetch(scopedWorkerPath('/kv/buy_trays_index'), {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(index.slice(0,50)),
+      signal: AbortSignal.timeout(4000),
+    });
+    renderBuyTraySwitcher();
+  } catch(e) { /* offline/demo — this device's own tray list still works */ }
+}
+
+async function removeBuyTrayFromIndex(id){
+  try {
+    const r = await storeWorkerFetch(scopedWorkerPath('/kv/buy_trays_index'), { signal: AbortSignal.timeout(4000) });
+    const d = await r.json();
+    let index = [];
+    try { index = JSON.parse(d?.value || '[]'); } catch(e) { index = []; }
+    if(!Array.isArray(index)) index = [];
+    index = index.filter(e => e.id !== id);
+    knownBuyTrayIndex = index;
+    await storeWorkerFetch(scopedWorkerPath('/kv/buy_trays_index'), {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(index),
+      signal: AbortSignal.timeout(4000),
+    });
+  } catch(e) { /* offline/demo */ }
+  renderBuyTraySwitcher();
+}
+
+// Switches which open tray this device is looking at/editing. If the tray
+// was started on another device and this device has never seen it, its
+// contents are fetched fresh from the worker first.
+async function switchBuyTray(id){
+  if(!id || id === getActiveBuyTrayId()) return;
+  let tray = getBuyTrays().find(t => t.buySessionId === id);
+  if(!tray) {
+    try {
+      const r = await storeWorkerFetch(scopedWorkerPath('/kv/buy_tray_' + id), { signal: AbortSignal.timeout(4000) });
+      const d = await r.json();
+      tray = d?.value ? JSON.parse(d.value) : null;
+    } catch(e) { tray = null; }
+    if(!tray) { toast_dash('Could not load that buy tray — it may have just been closed'); fetchBuyTrayIndex(); return; }
+    upsertLocalBuyTray(tray);
+  }
+  setActiveBuyTrayId(id);
+  buyList = Array.isArray(tray.items) ? tray.items : [];
+  const pctSlider = document.getElementById('bl-pct'), pctNum = document.getElementById('bl-pct-num');
+  if(pctSlider) pctSlider.value = tray.pct || 50;
+  if(pctNum) pctNum.value = tray.pct || 50;
+  const nameEl = document.getElementById('bl-customer'), phoneEl = document.getElementById('bl-phone');
+  if(nameEl) nameEl.value = tray.customerName || '';
+  if(phoneEl) phoneEl.value = tray.customerPhone || '';
+  updateBuyListOffer();
+  renderBuyList();
+  renderBuyTraySwitcher();
+  fetchBuyListFromWorker();
+}
+
+// Opens a brand new tray for the next customer without touching any
+// currently open tray — this is the "multiple registers" entry point.
+function startNewBuyTray(){
+  const tray = newBuyTrayRecord();
+  upsertLocalBuyTray(tray);
+  setActiveBuyTrayId(tray.buySessionId);
+  buyList = [];
+  const pctSlider = document.getElementById('bl-pct'), pctNum = document.getElementById('bl-pct-num');
+  if(pctSlider) pctSlider.value = 50;
+  if(pctNum) pctNum.value = 50;
+  const nameEl = document.getElementById('bl-customer'), phoneEl = document.getElementById('bl-phone');
+  if(nameEl) nameEl.value = '';
+  if(phoneEl) phoneEl.value = '';
+  updateBuyListOffer();
+  renderBuyList();
+  renderBuyTraySwitcher();
+  syncBuyListToWorker();
+  toast_dash('New buy tray started');
+}
+
+// Pill row: one pill per open tray (this device's own + anything visible in
+// the shared index from other devices), plus "+ New Buy" to start another.
+function renderBuyTraySwitcher(){
+  const el = document.getElementById('buy-tray-switcher');
+  if(!el) return;
+  const activeId = getActiveBuyTrayId();
+  const localTrays = getBuyTrays();
+  const localIds = new Set(localTrays.map(t=>t.buySessionId));
+  const remoteOnly = (knownBuyTrayIndex || []).filter(e => !localIds.has(e.id));
+  const pills = [
+    ...localTrays.map(t => ({ id:t.buySessionId, label:t.customerName || 'Walk-in', count:(t.items||[]).length, total:Number(t.offerTotal||0), remote:false })),
+    ...remoteOnly.map(e => ({ id:e.id, label:e.customerName || 'Walk-in', count:e.itemCount||0, total:Number(e.offerTotal||0), remote:true })),
+  ];
+  el.innerHTML = pills.map(p => `
+    <button class="buy-tray-pill${p.id===activeId?' active':''}" onclick="switchBuyTray('${escHtml(p.id)}')" title="${p.count} item${p.count===1?'':'s'} · $${Math.round(p.total)} offer">
+      <span class="buy-tray-pill-name">${escHtml(p.label)}</span>
+      <span class="buy-tray-pill-meta">${p.count} · $${Math.round(p.total)}</span>
+      ${p.remote ? '<span class="buy-tray-pill-badge">other device</span>' : ''}
+    </button>`).join('')
+    + `<button class="buy-tray-pill buy-tray-pill-new" onclick="startNewBuyTray()">+ New Buy</button>`;
 }
 
 async function removeScanFromInbox(scanId){
@@ -25128,23 +25295,84 @@ function renderDrawer(){
 }
 
 // ══════════════════════════════════════════════════
-// BUY LIST / TRADE-IN
+// BUY LIST / TRADE-IN — multiple concurrent "trays" (like separate
+// registers), each with its own customer, items, and offer %. A device
+// works one tray at a time (buyList always points at the active tray's
+// items) but can switch between any tray open on any device via the
+// tray switcher — see renderBuyTraySwitcher().
 // ══════════════════════════════════════════════════
 let buyList = [];
+let knownBuyTrayIndex = [];
 
 const BUY_SESSION_LOCATIONS = ['Intake Tray','Showcase','Binder','Comic Box','Slab Case','Backstock','Needs Photos','Needs Research'];
 const BUY_SESSION_PAYMENTS = ['Cash','Card','Venmo','PayPal','Cash App','Trade Credit','Mixed'];
 
 function makeBuySessionId(){ return 'buy_session_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,6); }
-function getActiveBuySession(){ try { return JSON.parse(localStorage.getItem('pos_active_buy_session') || 'null'); } catch(e) { return null; } }
+function getBuyTrays(){ return safeLocalJson('pos_buy_trays', []); }
+function saveBuyTraysLocal(trays){ localStorage.setItem('pos_buy_trays', JSON.stringify(trays)); }
+function getActiveBuyTrayId(){ return localStorage.getItem('pos_active_buy_tray_id') || ''; }
+function setActiveBuyTrayId(id){ localStorage.setItem('pos_active_buy_tray_id', id || ''); }
+function upsertLocalBuyTray(tray){
+  const trays = getBuyTrays();
+  const idx = trays.findIndex(t => t.buySessionId === tray.buySessionId);
+  if(idx >= 0) trays[idx] = tray; else trays.push(tray);
+  saveBuyTraysLocal(trays);
+}
+function newBuyTrayRecord(){
+  return {
+    buySessionId: makeBuySessionId(), storeId:getActiveStoreId(), customerName:'', customerPhone:'', customerEmail:'',
+    source:'walk_up', status:'open', createdBy:getAuthSession()?.user?.id || 'local-user',
+    createdAt:new Date().toISOString(), updatedAt:new Date().toISOString(),
+    pct:50, items:[], itemCount:0, marketTotal:0, offerTotal:0, location:'Intake Tray', paymentType:'', notes:'',
+    appVersion:APP_VERSION,
+  };
+}
+// Guarantees buyList always has a backing tray to sync through — creates
+// one lazily the first time this device touches the buy screen, or picks
+// up wherever this device left off.
+function ensureActiveBuyTray(){
+  const trays = getBuyTrays();
+  let tray = trays.find(t => t.buySessionId === getActiveBuyTrayId());
+  if(tray) return tray;
+  if(trays.length){
+    tray = trays.slice().sort((a,b)=>new Date(b.updatedAt||0)-new Date(a.updatedAt||0))[0];
+    setActiveBuyTrayId(tray.buySessionId);
+    return tray;
+  }
+  tray = newBuyTrayRecord();
+  upsertLocalBuyTray(tray);
+  setActiveBuyTrayId(tray.buySessionId);
+  return tray;
+}
+function getActiveBuySession(){ return ensureActiveBuyTray(); }
 function saveActiveBuySession(session){
   if(!session) return;
   session.storeId = getActiveStoreId();
   session.updatedAt = new Date().toISOString();
-  localStorage.setItem('pos_active_buy_session', JSON.stringify(session));
+  upsertLocalBuyTray(session);
+  setActiveBuyTrayId(session.buySessionId);
   renderBuySessionPanel();
+  renderBuyTraySwitcher();
+  syncBuyListToWorker();
 }
-function clearActiveBuySession(){ localStorage.removeItem('pos_active_buy_session'); renderBuySessionPanel(); }
+// Ends the active tray (accepted/rejected/paid out) and removes it from
+// this device and the shared index, then hands off to another open tray
+// on this device if one exists, or leaves a clean slate for the next one.
+function closeActiveBuyTray(){
+  const id = getActiveBuyTrayId();
+  if(!id) return;
+  saveBuyTraysLocal(getBuyTrays().filter(t => t.buySessionId !== id));
+  removeBuyTrayFromIndex(id);
+  setActiveBuyTrayId('');
+  const remaining = getBuyTrays();
+  if(remaining.length) {
+    switchBuyTray(remaining[0].buySessionId);
+  } else {
+    buyList = [];
+    renderBuyList();
+    renderBuyTraySwitcher();
+  }
+}
 function getBuySessionHistory(){ return safeLocalJson('pos_buy_sessions', []); }
 function saveBuySessionHistory(session){
   if(!session) return;
@@ -25209,13 +25437,6 @@ function snapshotBuySession(status){
     appVersion:APP_VERSION,
   };
 }
-function startBuySession(){
-  if(getActiveBuySession() && !confirm('A buy session is already open. Start a new one?')) return;
-  const session = snapshotBuySession('open');
-  saveActiveBuySession(session);
-  logOpsEvent('buy_session_started', 'Started walk-up buy session', { buySessionId:session.buySessionId, customer:session.customerName });
-  toast_dash('Buy session started');
-}
 function saveBuySessionOnly(){
   const session = snapshotBuySession(getActiveBuySession()?.status || 'saved');
   saveActiveBuySession(session);
@@ -25224,11 +25445,11 @@ function saveBuySessionOnly(){
   toast_dash('Buy session saved');
 }
 function rejectBuySession(){
-  if(!getActiveBuySession() && !buyList.length){ toast_dash('No active buy session'); return; }
+  if(!buyList.length){ toast_dash('No active buy session'); return; }
   if(!confirm('Reject this buy offer? The session history will be kept.')) return;
   const session = snapshotBuySession('rejected');
   saveBuySessionHistory(session);
-  clearActiveBuySession();
+  closeActiveBuyTray();
   logOpsEvent('buy_session_rejected', 'Rejected buy session', { buySessionId:session.buySessionId, items:session.items.length });
   toast_dash('Buy session rejected');
 }
@@ -25323,9 +25544,7 @@ function confirmBuyPayout(){
 function newCustomerReset(){
   const el = document.getElementById('buy-payment-confirm-overlay');
   if(el) el.style.display = 'none';
-  clearBuyList();
-  clearActiveBuySession();
-  renderBuyList();
+  closeActiveBuyTray();
   toast_dash('Ready for next customer');
 }
 function updateBuySessionField(field, value){
@@ -25341,18 +25560,18 @@ function renderBuySessionPanel(){
   const totals = getBuyOfferTotals();
   const location = session?.location || 'Intake Tray';
   const payment = session?.paymentType || 'Cash';
-  const sessionLabel = session ? ('Session #' + String(session.buySessionId || '').replace(/[^a-z0-9]/gi,'').slice(-6).toUpperCase()) : 'start when customer walks up';
-  const sessionTitle = session?.customerName ? 'ACTIVE BUY SESSION - ' + session.customerName : (session ? 'ACTIVE BUY SESSION' : 'WALK-UP BUY SESSION');
-  // Session panel lives inside Advanced Options — show session metadata and start/save actions.
+  const sessionLabel = 'Session #' + String(session?.buySessionId || '').replace(/[^a-z0-9]/gi,'').slice(-6).toUpperCase();
+  const sessionTitle = session?.customerName ? 'ACTIVE BUY SESSION - ' + session.customerName : 'ACTIVE BUY SESSION';
+  // Session panel lives inside Advanced Options — show session metadata and save action.
+  // Starting another customer's session is done from the tray switcher ("+ New Buy") above.
   // ACCEPT and REJECT are promoted to large top-level buttons; PAY CUSTOMER is its own row.
-  el.innerHTML = `<div style="border:1px solid ${session?'rgba(0,255,179,.28)':'var(--border)'};background:${session?'rgba(0,255,179,.045)':'var(--surf2)'};border-radius:8px;padding:10px;">
+  el.innerHTML = `<div style="border:1px solid rgba(0,255,179,.28);background:rgba(0,255,179,.045);border-radius:8px;padding:10px;">
     <div style="display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
       <div>
-        <div style="font-family:monospace;font-size:9px;font-weight:700;color:${session?'var(--g)':'var(--dim)'}">${escHtml(sessionTitle)}</div>
+        <div style="font-family:monospace;font-size:9px;font-weight:700;color:var(--g)">${escHtml(sessionTitle)}</div>
         <div style="font-family:monospace;font-size:9px;color:var(--dim)">${escHtml(sessionLabel)} · ${buyList.length} item${buyList.length===1?'':'s'} · Cash $${Math.round(totals.offerTotal)} · Trade $${Math.round(totals.offerTotal*1.15)}</div>
       </div>
       <div style="display:flex;gap:5px">
-        <button class="hbtn" onclick="startBuySession()" style="font-size:10px;color:var(--g)">${session?'NEW SESSION':'START SESSION'}</button>
         <button class="hbtn" onclick="saveBuySessionOnly()" style="font-size:10px">SAVE</button>
       </div>
     </div>
@@ -27109,11 +27328,12 @@ renderCustomerDisplay().catch(()=>{});
 renderDrawer();
 loadBuyList();
 renderBuyList();
+renderBuyTraySwitcher();
 renderSetNeeds();
 renderBuySignals();
 
-// Poll for buy-offer items added on another device (mirrors the customer-display refresh below)
-setInterval(fetchBuyListFromWorker, 8000);
+// Poll for buy-offer items and open trays added on another device (mirrors the customer-display refresh below)
+setInterval(()=>{ fetchBuyListFromWorker(); fetchBuyTrayIndex(); }, 8000);
 
 // ── POKÉMON SET BROWSER (Pass B) ────────────────────────────────
 const _sbState = {
@@ -30021,7 +30241,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.07.16.03-buylist-sync"></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.07.16.04-multi-buy-trays"></script>
 </body>
 </html>
 
