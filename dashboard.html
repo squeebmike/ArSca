@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.07.16.09-topps-r2-sales-ledger">
+<meta name="version" content="2026.07.16.10-retire-legacy-drawer">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1430,13 +1430,13 @@ body.show-mode .inv-sync-badge{display:none;}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.07.16.09-topps-r2-sales-ledger"></script>
-<script src="scripts/barcode-lookup.js?v=2026.07.16.09-topps-r2-sales-ledger"></script>
-<script src="scripts/comic-issue-hub.js?v=2026.07.16.09-topps-r2-sales-ledger"></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.07.16.09-topps-r2-sales-ledger"></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.07.16.09-topps-r2-sales-ledger"></script>
-<script src="scripts/topps/offline-browser.js?v=2026.07.16.09-topps-r2-sales-ledger"></script>
-<script src="scripts/mtg/research-batch.js?v=2026.07.16.09-topps-r2-sales-ledger"></script>
+<script src="scripts/query-routing.js?v=2026.07.16.10-retire-legacy-drawer"></script>
+<script src="scripts/barcode-lookup.js?v=2026.07.16.10-retire-legacy-drawer"></script>
+<script src="scripts/comic-issue-hub.js?v=2026.07.16.10-retire-legacy-drawer"></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.07.16.10-retire-legacy-drawer"></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.07.16.10-retire-legacy-drawer"></script>
+<script src="scripts/topps/offline-browser.js?v=2026.07.16.10-retire-legacy-drawer"></script>
+<script src="scripts/mtg/research-batch.js?v=2026.07.16.10-retire-legacy-drawer"></script>
 </head>
 <body>
 
@@ -1486,11 +1486,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.07.16.09-topps-r2-sales-ledger</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.07.16.10-retire-legacy-drawer</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.07.16.09-topps-r2-sales-ledger</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.07.16.10-retire-legacy-drawer</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1513,7 +1513,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.07.16.09-topps-r2-sales-ledger</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.07.16.10-retire-legacy-drawer</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -2882,7 +2882,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.07.16.09-topps-r2-sales-ledger';
+const APP_VERSION = '2026.07.16.10-retire-legacy-drawer';
 window.APP_VERSION = APP_VERSION;
 const branchName = 'main';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
@@ -24764,6 +24764,13 @@ function pushQuickLookupHistory(q, r){
 // CASH DRAWER TRACKER
 // ══════════════════════════════════════════════════
 var drawerState = JSON.parse(localStorage.getItem('pos_drawer') || 'null');
+// Pre-UUID drawer sessions cannot participate in the atomic PostgreSQL
+// checkout. Retire only that obsolete local session; current drawers remain.
+if(drawerState?.id && !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(drawerState.id))){
+  console.warn('[DRAWER] Retiring incompatible legacy cash drawer session', String(drawerState.id));
+  localStorage.removeItem('pos_drawer');
+  drawerState = null;
+}
 
 function createDrawerSessionId(){
   return 'drawer_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 6);
@@ -26931,8 +26938,21 @@ function MoneyLedgerService(){
       // back to separate inserts: a partial write can record money without
       // reducing inventory (or vice versa). The caller durably queues the
       // complete bundle and retries it after the database function is ready.
-      const { data:atomicResult, error:atomicError } = await sb.rpc('complete_pos_sale', { p_bundle:bundle });
+      // Old queued checkouts may contain a pre-UUID cash-drawer ID. Strip only
+      // that obsolete relationship so the sale can sync automatically.
+      const safeBundle = JSON.parse(JSON.stringify(bundle || {}));
+      const drawerId = safeBundle?.sale?.drawer_session_id;
+      const validDrawerId = !drawerId || /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(drawerId));
+      if(!validDrawerId){
+        safeBundle.sale.drawer_session_id = null;
+        if(safeBundle.snapshot) safeBundle.snapshot.drawer_session_id = null;
+        (safeBundle.payments || []).forEach(payment => { payment.drawer_session_id = null; });
+        safeBundle.drawerMovements = [];
+        console.warn('[LEDGER] Removed incompatible legacy drawer from queued sale', safeBundle.sale.id);
+      }
+      const { data:atomicResult, error:atomicError } = await sb.rpc('complete_pos_sale', { p_bundle:safeBundle });
       if(!atomicError) return { ok:true, atomic:true, result:atomicResult };
+      console.error('[LEDGER] Atomic sale rejected', { code:atomicError.code, message:atomicError.message, details:atomicError.details, hint:atomicError.hint, saleId:safeBundle?.sale?.id });
       const rpcMissing = atomicError.code === 'PGRST202' || /complete_pos_sale|schema cache|function.*not found/i.test(atomicError.message || '');
       if(rpcMissing) throw new Error('Store sales database setup is incomplete (complete_pos_sale is unavailable). Sale saved to this device for automatic retry.');
       throw new Error('complete_pos_sale: ' + atomicError.message);
