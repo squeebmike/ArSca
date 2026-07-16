@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.07.15.09-price-lock-checkbox">
+<meta name="version" content="2026.07.16.01-void-sale">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1419,12 +1419,12 @@ body.show-mode .inv-sync-badge{display:none;}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.07.15.09-price-lock-checkbox"></script>
-<script src="scripts/barcode-lookup.js?v=2026.07.15.09-price-lock-checkbox"></script>
-<script src="scripts/comic-issue-hub.js?v=2026.07.15.09-price-lock-checkbox"></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.07.15.09-price-lock-checkbox"></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.07.15.09-price-lock-checkbox"></script>
-<script src="scripts/mtg/research-batch.js?v=2026.07.15.09-price-lock-checkbox"></script>
+<script src="scripts/query-routing.js?v=2026.07.16.01-void-sale"></script>
+<script src="scripts/barcode-lookup.js?v=2026.07.16.01-void-sale"></script>
+<script src="scripts/comic-issue-hub.js?v=2026.07.16.01-void-sale"></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.07.16.01-void-sale"></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.07.16.01-void-sale"></script>
+<script src="scripts/mtg/research-batch.js?v=2026.07.16.01-void-sale"></script>
 </head>
 <body>
 
@@ -1474,11 +1474,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.07.15.09-price-lock-checkbox</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.07.16.01-void-sale</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.07.15.09-price-lock-checkbox</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.07.16.01-void-sale</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1501,7 +1501,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.07.15.09-price-lock-checkbox</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.07.16.01-void-sale</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -1707,7 +1707,7 @@ body.show-mode .inv-sync-badge{display:none;}
         <th style="text-align:right">SALE PRICE</th>
         <th style="text-align:right">COST</th>
         <th style="text-align:right">PROFIT</th>
-        <th>CHANNEL</th><th>DATE</th>
+        <th>CHANNEL</th><th>DATE</th><th></th>
       </tr></thead>
       <tbody id="sold-body"></tbody>
     </table>
@@ -2861,7 +2861,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.07.15.09-price-lock-checkbox';
+const APP_VERSION = '2026.07.16.01-void-sale';
 window.APP_VERSION = APP_VERSION;
 const branchName = 'main';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
@@ -12010,6 +12010,7 @@ function mapBuiltInItem(row){
     livePriceStatus:d.livePriceStatus || '',
     manualPriceLock:!!d.manualPriceLock,
     manualPriceLockedAt:d.manualPriceLockedAt || '',
+    saleId:d.saleId || '',
     pokemonPriceTrackerLastUpdated:d.pokemonPriceTrackerLastUpdated || '',
     pokemonPriceTrackerPrices:d.pokemonPriceTrackerPrices || null,
     pokemonPriceTrackerVariants:d.pokemonPriceTrackerVariants || null,
@@ -12414,6 +12415,7 @@ function transactionSoldRows(){
       status:'sold',
       source:'pos_transaction',
       shopId:i.shopId || '',
+      saleId:t.id || '',
     };
   })).filter(Boolean);
 }
@@ -12928,7 +12930,8 @@ function renderSoldTable(){
   const txRows=hasSupabaseItems3 ? [] : dedupeTransactionRows(transactionSoldRows(), soldData);
   const rows=soldData.concat(txRows).filter(i=>!q||(i.name||'').toLowerCase().includes(q)).sort((a,b)=>new Date(b.soldAt||0)-new Date(a.soldAt||0));
   const tb=document.getElementById('sold-body');
-  if(!rows.length){tb.innerHTML=`<tr><td colspan="8"><div class="empty"><div class="empty-t">NO SALES YET</div></div></td></tr>`;return;}
+  if(!rows.length){tb.innerHTML=`<tr><td colspan="9"><div class="empty"><div class="empty-t">NO SALES YET</div></div></td></tr>`;return;}
+  const isVoidableSaleId=id=>/^[0-9a-f-]{36}$/i.test(id||'');
   tb.innerHTML=rows.slice(0,100).map(i=>{
     const d=new Date(i.soldAt||0);
     const ds=d.getFullYear()>2000?d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'2-digit'}):'—';
@@ -12942,10 +12945,29 @@ function renderSoldTable(){
       <td class="pp ${pft>=0?'pos':'neg'}">${pft?(pft>=0?'+':'')+fd$(pft):'—'}</td>
       <td style="font-family:var(--font-mono);font-size:9px;color:var(--dim)">${i.channel||'—'}</td>
       <td style="font-family:var(--font-mono);font-size:9px;color:var(--dim)">${ds}</td>
+      <td>${isVoidableSaleId(i.saleId)?`<button class="ra" onclick="voidSaleRow('${i.saleId}',${JSON.stringify(i.name||'this sale')})">VOID</button>`:''}</td>
     </tr>`;
   }).join('');
 }
 function filterSold(){ renderSoldTable(); }
+
+async function voidSaleRow(saleId, itemLabel){
+  if(!requireOwnerAdmin()){ toast_dash('Owner/Admin access required to void a sale'); return; }
+  if(!saleId) return;
+  const reason = prompt('Why is this sale being voided? (required)');
+  if(!reason || !reason.trim()) return;
+  if(!confirm('Void this sale and restock its items? This cannot be undone.\n\n' + itemLabel)) return;
+  try {
+    const result = await stripeWorkerFetch('/pos/sales/void', { saleId, reason: reason.trim() });
+    toast_dash(result.alreadyVoided
+      ? 'Sale was already voided'
+      : 'Sale voided — ' + result.restockedItems + ' item(s) restocked' + (result.cashReversed ? ', $' + result.cashReversed.toFixed(2) + ' cash reversed' : ''));
+    await loadInventory();
+    renderStats(); renderTodayMode(); renderSoldTable();
+  } catch(e) {
+    toast_dash('Void failed: ' + (e.message || e));
+  }
+}
 
 // Tab switching
 function switchTab(name, btn){
@@ -29921,7 +29943,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.07.15.09-price-lock-checkbox"></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.07.16.01-void-sale"></script>
 </body>
 </html>
 
