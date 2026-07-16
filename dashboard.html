@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.07.16.04-multi-buy-trays">
+<meta name="version" content="2026.07.16.05-delete-buy-tray">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -459,7 +459,10 @@ tr.sold:hover td{opacity:.7;}
 .buy-tray-switcher{display:flex;gap:6px;overflow-x:auto;padding-bottom:8px;margin-bottom:10px;-webkit-overflow-scrolling:touch;}
 .buy-tray-pill{flex:0 0 auto;display:flex;flex-direction:column;gap:2px;align-items:flex-start;background:var(--surf2);border:1px solid var(--border);border-radius:9px;padding:7px 12px;cursor:pointer;font-family:var(--font-mono);color:var(--text);}
 .buy-tray-pill.active{border-color:var(--g);background:rgba(0,255,179,.09);}
+.buy-tray-pill-top{display:flex;align-items:center;gap:8px;width:100%;justify-content:space-between;}
 .buy-tray-pill-name{font-size:11px;font-weight:700;white-space:nowrap;}
+.buy-tray-pill-x{font-size:11px;color:var(--dim);line-height:1;padding:0 2px;}
+.buy-tray-pill-x:hover{color:var(--red);}
 .buy-tray-pill-meta{font-size:9px;color:var(--dim);}
 .buy-tray-pill-badge{font-size:7px;color:var(--gold);letter-spacing:.04em;text-transform:uppercase;}
 .buy-tray-pill-new{border-style:dashed;color:var(--g);align-items:center;justify-content:center;}
@@ -1427,12 +1430,12 @@ body.show-mode .inv-sync-badge{display:none;}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.07.16.04-multi-buy-trays"></script>
-<script src="scripts/barcode-lookup.js?v=2026.07.16.04-multi-buy-trays"></script>
-<script src="scripts/comic-issue-hub.js?v=2026.07.16.04-multi-buy-trays"></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.07.16.04-multi-buy-trays"></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.07.16.04-multi-buy-trays"></script>
-<script src="scripts/mtg/research-batch.js?v=2026.07.16.04-multi-buy-trays"></script>
+<script src="scripts/query-routing.js?v=2026.07.16.05-delete-buy-tray"></script>
+<script src="scripts/barcode-lookup.js?v=2026.07.16.05-delete-buy-tray"></script>
+<script src="scripts/comic-issue-hub.js?v=2026.07.16.05-delete-buy-tray"></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.07.16.05-delete-buy-tray"></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.07.16.05-delete-buy-tray"></script>
+<script src="scripts/mtg/research-batch.js?v=2026.07.16.05-delete-buy-tray"></script>
 </head>
 <body>
 
@@ -1482,11 +1485,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.07.16.04-multi-buy-trays</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.07.16.05-delete-buy-tray</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.07.16.04-multi-buy-trays</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.07.16.05-delete-buy-tray</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1509,7 +1512,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.07.16.04-multi-buy-trays</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.07.16.05-delete-buy-tray</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -2873,7 +2876,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.07.16.04-multi-buy-trays';
+const APP_VERSION = '2026.07.16.05-delete-buy-tray';
 window.APP_VERSION = APP_VERSION;
 const branchName = 'main';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
@@ -13707,7 +13710,10 @@ function renderBuyTraySwitcher(){
   ];
   el.innerHTML = pills.map(p => `
     <button class="buy-tray-pill${p.id===activeId?' active':''}" onclick="switchBuyTray('${escHtml(p.id)}')" title="${p.count} item${p.count===1?'':'s'} · $${Math.round(p.total)} offer">
-      <span class="buy-tray-pill-name">${escHtml(p.label)}</span>
+      <span class="buy-tray-pill-top">
+        <span class="buy-tray-pill-name">${escHtml(p.label)}</span>
+        <span class="buy-tray-pill-x" onclick="deleteBuyTray('${escHtml(p.id)}', event)" title="Delete this tray">✕</span>
+      </span>
       <span class="buy-tray-pill-meta">${p.count} · $${Math.round(p.total)}</span>
       ${p.remote ? '<span class="buy-tray-pill-badge">other device</span>' : ''}
     </button>`).join('')
@@ -25358,11 +25364,14 @@ function saveActiveBuySession(session){
 // Ends the active tray (accepted/rejected/paid out) and removes it from
 // this device and the shared index, then hands off to another open tray
 // on this device if one exists, or leaves a clean slate for the next one.
+function removeBuyTrayEverywhere(id){
+  saveBuyTraysLocal(getBuyTrays().filter(t => t.buySessionId !== id));
+  removeBuyTrayFromIndex(id);
+}
 function closeActiveBuyTray(){
   const id = getActiveBuyTrayId();
   if(!id) return;
-  saveBuyTraysLocal(getBuyTrays().filter(t => t.buySessionId !== id));
-  removeBuyTrayFromIndex(id);
+  removeBuyTrayEverywhere(id);
   setActiveBuyTrayId('');
   const remaining = getBuyTrays();
   if(remaining.length) {
@@ -25372,6 +25381,25 @@ function closeActiveBuyTray(){
     renderBuyList();
     renderBuyTraySwitcher();
   }
+}
+// Abandons a tray outright — no accept, no reject, nothing added to inventory
+// or paid out. Works on any tray in the switcher, not just the active one, so
+// an accidental "+ New Buy" or a stray empty tray can be cleaned up without
+// switching to it first.
+async function deleteBuyTray(id, evt){
+  if(evt) evt.stopPropagation();
+  const localTray = getBuyTrays().find(t => t.buySessionId === id);
+  const remoteEntry = knownBuyTrayIndex.find(e => e.id === id);
+  const itemCount = localTray ? (localTray.items||[]).length : (remoteEntry?.itemCount || 0);
+  const label = localTray?.customerName || remoteEntry?.customerName || 'Walk-in';
+  const msg = itemCount
+    ? 'Delete this buy tray (' + label + ', ' + itemCount + ' item' + (itemCount===1?'':'s') + ')? This cannot be undone — nothing gets added to inventory or paid out.'
+    : 'Delete this empty buy tray (' + label + ')?';
+  if(!confirm(msg)) return;
+  if(id === getActiveBuyTrayId()) closeActiveBuyTray();
+  else { removeBuyTrayEverywhere(id); renderBuyTraySwitcher(); }
+  logOpsEvent('buy_tray_deleted', 'Deleted buy tray: ' + label, { buySessionId:id, items:itemCount });
+  toast_dash('Buy tray deleted');
 }
 function getBuySessionHistory(){ return safeLocalJson('pos_buy_sessions', []); }
 function saveBuySessionHistory(session){
@@ -30241,7 +30269,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.07.16.04-multi-buy-trays"></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.07.16.05-delete-buy-tray"></script>
 </body>
 </html>
 
