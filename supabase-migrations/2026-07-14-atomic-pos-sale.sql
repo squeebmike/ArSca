@@ -9,10 +9,64 @@ alter table if exists public.store_invites add column if not exists email_status
 alter table if exists public.store_invites add column if not exists email_sent_at timestamptz;
 alter table if exists public.store_invites add column if not exists email_error text;
 
+-- Upgrade early/legacy POS tables in place. These are additive columns only:
+-- existing rows, IDs, totals, and foreign keys are preserved.
+alter table if exists public.pos_sales add column if not exists show_session_id text;
+alter table if exists public.pos_sales add column if not exists drawer_session_id uuid;
+alter table if exists public.pos_sales add column if not exists checkout_snapshot_id uuid;
+alter table if exists public.pos_sales add column if not exists subtotal numeric(12,2) not null default 0;
+alter table if exists public.pos_sales add column if not exists discount_total numeric(12,2) not null default 0;
+alter table if exists public.pos_sales add column if not exists tax_total numeric(12,2) not null default 0;
+alter table if exists public.pos_sales add column if not exists total numeric(12,2) not null default 0;
+alter table if exists public.pos_sales add column if not exists status text not null default 'completed';
+alter table if exists public.pos_sales add column if not exists created_by uuid;
+alter table if exists public.pos_sales add column if not exists created_at timestamptz not null default now();
+alter table if exists public.pos_sales add column if not exists completed_at timestamptz;
+
+alter table if exists public.pos_sale_lines add column if not exists item_id text;
+alter table if exists public.pos_sale_lines add column if not exists title text not null default 'Item';
+alter table if exists public.pos_sale_lines add column if not exists category text;
+alter table if exists public.pos_sale_lines add column if not exists quantity numeric(12,2) not null default 1;
+alter table if exists public.pos_sale_lines add column if not exists unit_price numeric(12,2) not null default 0;
+alter table if exists public.pos_sale_lines add column if not exists original_price numeric(12,2) not null default 0;
+alter table if exists public.pos_sale_lines add column if not exists adjusted_price numeric(12,2) not null default 0;
+alter table if exists public.pos_sale_lines add column if not exists discount_amount numeric(12,2) not null default 0;
+alter table if exists public.pos_sale_lines add column if not exists cost_basis numeric(12,2) not null default 0;
+alter table if exists public.pos_sale_lines add column if not exists profit numeric(12,2) not null default 0;
+alter table if exists public.pos_sale_lines add column if not exists condition text;
+alter table if exists public.pos_sale_lines add column if not exists finish text;
+alter table if exists public.pos_sale_lines add column if not exists source_id text;
+alter table if exists public.pos_sale_lines add column if not exists image_url text;
+alter table if exists public.pos_sale_lines add column if not exists created_at timestamptz not null default now();
+
+alter table if exists public.pos_payments add column if not exists drawer_session_id uuid;
+alter table if exists public.pos_payments add column if not exists method text not null default 'other';
+alter table if exists public.pos_payments add column if not exists amount numeric(12,2) not null default 0;
+alter table if exists public.pos_payments add column if not exists reference text;
+alter table if exists public.pos_payments add column if not exists status text not null default 'confirmed';
+alter table if exists public.pos_payments add column if not exists confirmed_by uuid;
+alter table if exists public.pos_payments add column if not exists confirmed_at timestamptz;
+alter table if exists public.pos_payments add column if not exists created_at timestamptz not null default now();
+
+alter table if exists public.pos_drawer_movements add column if not exists movement_type text not null default 'cash_sale';
+alter table if exists public.pos_drawer_movements add column if not exists amount numeric(12,2) not null default 0;
+alter table if exists public.pos_drawer_movements add column if not exists note text;
+alter table if exists public.pos_drawer_movements add column if not exists created_by uuid;
+alter table if exists public.pos_drawer_movements add column if not exists created_at timestamptz not null default now();
+
+alter table if exists public.pos_audit_log add column if not exists event_type text not null default 'sale_event';
+alter table if exists public.pos_audit_log add column if not exists entity_type text not null default 'pos_sale';
+alter table if exists public.pos_audit_log add column if not exists entity_id text;
+alter table if exists public.pos_audit_log add column if not exists details jsonb not null default '{}'::jsonb;
+alter table if exists public.pos_audit_log add column if not exists created_by uuid;
+alter table if exists public.pos_audit_log add column if not exists created_at timestamptz not null default now();
+
 create table if not exists public.customer_receipts (
   id uuid primary key default gen_random_uuid(),
   store_id uuid not null references public.stores(id) on delete cascade,
-  sale_id uuid references public.pos_sales(id) on delete set null,
+  -- Production's original POS ledger uses text sale IDs. Keep this aligned
+  -- with pos_sales.id instead of introducing an incompatible uuid FK.
+  sale_id text references public.pos_sales(id) on delete set null,
   phone text not null,
   sms_status text not null default 'requested',
   created_at timestamptz not null default now()
@@ -21,7 +75,7 @@ create table if not exists public.customer_receipts (
 create table if not exists public.customer_wants (
   id uuid primary key default gen_random_uuid(),
   store_id uuid not null references public.stores(id) on delete cascade,
-  sale_id uuid references public.pos_sales(id) on delete set null,
+  sale_id text references public.pos_sales(id) on delete set null,
   phone text,
   customer_name text,
   want_text text not null,
@@ -52,7 +106,10 @@ set search_path = public, pg_temp
 as $$
 declare
   v_sale jsonb := p_bundle -> 'sale';
-  v_sale_id uuid;
+  -- The original production ledger stores sale IDs as text. Values are still
+  -- generated as UUID-shaped strings by the app, but the SQL type must match
+  -- pos_sales.id for comparisons and foreign keys.
+  v_sale_id text;
   v_store_id uuid;
   v_row jsonb;
   v_cash_delta numeric(12,2) := 0;
@@ -66,14 +123,14 @@ begin
     raise exception 'Invalid sale bundle';
   end if;
 
-  v_sale_id := (v_sale ->> 'id')::uuid;
+  v_sale_id := v_sale ->> 'id';
   v_store_id := (v_sale ->> 'store_id')::uuid;
   if coalesce(public.current_store_role(v_store_id)::text,'') not in ('owner','admin','manager','employee') then
     raise exception 'Store access denied';
   end if;
 
   -- A retried outbox item must never duplicate money or inventory effects.
-  if exists (select 1 from public.pos_sales where id = v_sale_id and store_id = v_store_id) then
+  if exists (select 1 from public.pos_sales where id = v_sale_id and store_id::text = v_store_id::text) then
     return jsonb_build_object('ok', true, 'saleId', v_sale_id, 'idempotent', true);
   end if;
 
@@ -95,7 +152,7 @@ begin
   );
 
   for v_row in select value from jsonb_array_elements(coalesce(p_bundle -> 'saleLines','[]'::jsonb)) loop
-    if (v_row ->> 'store_id')::uuid <> v_store_id or (v_row ->> 'sale_id')::uuid <> v_sale_id then
+    if (v_row ->> 'store_id')::uuid <> v_store_id or v_row ->> 'sale_id' <> v_sale_id then
       raise exception 'Sale line scope mismatch';
     end if;
     insert into public.pos_sale_lines (
@@ -114,7 +171,7 @@ begin
   end loop;
 
   for v_row in select value from jsonb_array_elements(coalesce(p_bundle -> 'payments','[]'::jsonb)) loop
-    if (v_row ->> 'store_id')::uuid <> v_store_id or (v_row ->> 'sale_id')::uuid <> v_sale_id then
+    if (v_row ->> 'store_id')::uuid <> v_store_id or v_row ->> 'sale_id' <> v_sale_id then
       raise exception 'Payment scope mismatch';
     end if;
     insert into public.pos_payments (
@@ -130,7 +187,7 @@ begin
   end loop;
 
   for v_row in select value from jsonb_array_elements(coalesce(p_bundle -> 'drawerMovements','[]'::jsonb)) loop
-    if (v_row ->> 'store_id')::uuid <> v_store_id or (v_row ->> 'sale_id')::uuid <> v_sale_id then
+    if (v_row ->> 'store_id')::uuid <> v_store_id or v_row ->> 'sale_id' <> v_sale_id then
       raise exception 'Drawer movement scope mismatch';
     end if;
     insert into public.pos_drawer_movements (
@@ -146,7 +203,11 @@ begin
   if v_cash_delta <> 0 and nullif(v_sale ->> 'drawer_session_id','') is not null then
     update public.pos_drawer_sessions
        set expected_cash = expected_cash + v_cash_delta
-     where id = (v_sale ->> 'drawer_session_id')::uuid and store_id = v_store_id;
+     -- Production has legacy ledgers where this primary key is text, while
+     -- fresh installs use uuid. Comparing their text representations works
+     -- for both layouts and avoids the text = uuid operator failure.
+     where id::text = (v_sale ->> 'drawer_session_id')
+       and store_id::text = v_store_id::text;
   end if;
 
   for v_row in select value from jsonb_array_elements(coalesce(p_bundle -> 'inventoryUpdates','[]'::jsonb)) loop
@@ -158,7 +219,7 @@ begin
            )
       into v_current_qty
       from public.inventory_items
-     where store_id = v_store_id
+     where store_id::text = v_store_id::text
        and (id::text = v_row ->> 'item_id' or data ->> 'id' = v_row ->> 'item_id')
      limit 1
      for update;
@@ -181,7 +242,7 @@ begin
                     'soldAt', case when v_next_qty <= 0 then coalesce(v_row ->> 'sold_at', now()::text) else '' end,
                     'saleId', v_sale_id::text),
            updated_at = now()
-     where store_id = v_store_id
+     where store_id::text = v_store_id::text
        and (id::text = v_row ->> 'item_id' or data ->> 'id' = v_row ->> 'item_id');
   end loop;
 

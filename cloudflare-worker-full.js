@@ -1299,6 +1299,33 @@ export default {
       return response;
     }
 
+    if (url.pathname === '/catalog/topps/manifest') {
+      if (request.method !== 'GET') return json({ ok: false, error: 'GET only' }, 405);
+      if (!env.MTG_CATALOG_R2) return json({ ok: false, error: 'Offline catalog R2 binding is not configured' }, 503);
+      const object = await env.MTG_CATALOG_R2.get('topps/manifest.json', { onlyIf: request.headers });
+      return r2ObjectResponse(object, request, 'public, max-age=300, stale-if-error=86400');
+    }
+
+    if (url.pathname === '/catalog/topps/download') {
+      if (request.method !== 'GET') return json({ ok: false, error: 'GET only' }, 405);
+      if (!env.MTG_CATALOG_R2) return json({ ok: false, error: 'Offline catalog R2 binding is not configured' }, 503);
+      const type = String(url.searchParams.get('file') || '').toLowerCase();
+      if (!new Set(['sets', 'cards']).has(type)) return json({ ok: false, error: 'file must be sets or cards' }, 400);
+      const manifestObject = await env.MTG_CATALOG_R2.get('topps/manifest.json');
+      if (!manifestObject) return json({ ok: false, error: 'Topps manifest not found' }, 404);
+      const manifest = await manifestObject.json().catch(() => null);
+      const descriptor = manifest?.status === 'ready' ? manifest.files?.[type] : null;
+      const key = String(descriptor?.path || '');
+      if (!key.startsWith('topps/') || !key.endsWith('.jsonl.gz')) return json({ ok: false, error: `Topps ${type} file is not ready` }, 503);
+      const object = await env.MTG_CATALOG_R2.get(key, { onlyIf: request.headers });
+      if (!object) return json({ ok: false, error: `Topps ${type} object not found` }, 404);
+      const response = r2ObjectResponse(object, request, 'public, max-age=31536000, immutable');
+      response.headers.set('Content-Type', 'application/gzip');
+      response.headers.set('X-Topps-Catalog-Version', String(manifest.version || ''));
+      response.headers.set('X-Content-SHA256', String(descriptor.sha256 || ''));
+      return response;
+    }
+
     const pricechartingCatalogMatch = url.pathname.match(/^\/catalog\/pricecharting\/([a-z0-9_]+)\/(manifest|download)$/);
     if (pricechartingCatalogMatch) {
       if (request.method !== 'GET') return json({ ok: false, error: 'GET only' }, 405);
@@ -5489,6 +5516,7 @@ export default {
       }
     }
 
+    if (env.ASSETS && (request.method === 'GET' || request.method === 'HEAD')) return env.ASSETS.fetch(request);
     return json({ error: 'Not found' }, 404);
     } catch(e) {
       return json({ ok: false, error: e?.message || 'Internal error' }, 500);

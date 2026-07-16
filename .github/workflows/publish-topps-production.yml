@@ -1,0 +1,43 @@
+name: Publish Topps offline catalog to production
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Immutable catalog version
+        required: true
+        default: "2026-07-16.1"
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: production
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      SUPABASE_URL: https://vroknjrxubsqyexngwus.supabase.co
+      SUPABASE_ANON_KEY: sb_publishable_wbpX2nL8l-4NbXtZNG_bjA_nabSYaJ5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
+      - name: Export public Topps reference data read-only
+        run: npm run topps:export:supabase
+      - name: Build compressed versioned catalog
+        run: node --max-old-space-size=4096 scripts/topps/build-offline-bundle.mjs --version=${{ inputs.version }} --out=data/topps/offline-build
+      - name: Upload immutable data before active manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="data/topps/offline-build/topps/${{ inputs.version }}"
+          npx wrangler r2 object put "arsca-offline-catalogs/topps/${{ inputs.version }}/cards.jsonl.gz" --file "$base/cards.jsonl.gz" --remote
+          npx wrangler r2 object put "arsca-offline-catalogs/topps/${{ inputs.version }}/sets.jsonl.gz" --file "$base/sets.jsonl.gz" --remote
+          npx wrangler r2 object put "arsca-offline-catalogs/topps/manifest.json" --file data/topps/offline-build/topps/manifest.json --remote
