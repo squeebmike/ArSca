@@ -12,7 +12,9 @@ alter table if exists public.store_invites add column if not exists email_error 
 create table if not exists public.customer_receipts (
   id uuid primary key default gen_random_uuid(),
   store_id uuid not null references public.stores(id) on delete cascade,
-  sale_id uuid references public.pos_sales(id) on delete set null,
+  -- Production's original POS ledger uses text sale IDs. Keep this aligned
+  -- with pos_sales.id instead of introducing an incompatible uuid FK.
+  sale_id text references public.pos_sales(id) on delete set null,
   phone text not null,
   sms_status text not null default 'requested',
   created_at timestamptz not null default now()
@@ -21,7 +23,7 @@ create table if not exists public.customer_receipts (
 create table if not exists public.customer_wants (
   id uuid primary key default gen_random_uuid(),
   store_id uuid not null references public.stores(id) on delete cascade,
-  sale_id uuid references public.pos_sales(id) on delete set null,
+  sale_id text references public.pos_sales(id) on delete set null,
   phone text,
   customer_name text,
   want_text text not null,
@@ -52,7 +54,10 @@ set search_path = public, pg_temp
 as $$
 declare
   v_sale jsonb := p_bundle -> 'sale';
-  v_sale_id uuid;
+  -- The original production ledger stores sale IDs as text. Values are still
+  -- generated as UUID-shaped strings by the app, but the SQL type must match
+  -- pos_sales.id for comparisons and foreign keys.
+  v_sale_id text;
   v_store_id uuid;
   v_row jsonb;
   v_cash_delta numeric(12,2) := 0;
@@ -66,7 +71,7 @@ begin
     raise exception 'Invalid sale bundle';
   end if;
 
-  v_sale_id := (v_sale ->> 'id')::uuid;
+  v_sale_id := v_sale ->> 'id';
   v_store_id := (v_sale ->> 'store_id')::uuid;
   if coalesce(public.current_store_role(v_store_id)::text,'') not in ('owner','admin','manager','employee') then
     raise exception 'Store access denied';
@@ -95,7 +100,7 @@ begin
   );
 
   for v_row in select value from jsonb_array_elements(coalesce(p_bundle -> 'saleLines','[]'::jsonb)) loop
-    if (v_row ->> 'store_id')::uuid <> v_store_id or (v_row ->> 'sale_id')::uuid <> v_sale_id then
+    if (v_row ->> 'store_id')::uuid <> v_store_id or v_row ->> 'sale_id' <> v_sale_id then
       raise exception 'Sale line scope mismatch';
     end if;
     insert into public.pos_sale_lines (
@@ -114,7 +119,7 @@ begin
   end loop;
 
   for v_row in select value from jsonb_array_elements(coalesce(p_bundle -> 'payments','[]'::jsonb)) loop
-    if (v_row ->> 'store_id')::uuid <> v_store_id or (v_row ->> 'sale_id')::uuid <> v_sale_id then
+    if (v_row ->> 'store_id')::uuid <> v_store_id or v_row ->> 'sale_id' <> v_sale_id then
       raise exception 'Payment scope mismatch';
     end if;
     insert into public.pos_payments (
@@ -130,7 +135,7 @@ begin
   end loop;
 
   for v_row in select value from jsonb_array_elements(coalesce(p_bundle -> 'drawerMovements','[]'::jsonb)) loop
-    if (v_row ->> 'store_id')::uuid <> v_store_id or (v_row ->> 'sale_id')::uuid <> v_sale_id then
+    if (v_row ->> 'store_id')::uuid <> v_store_id or v_row ->> 'sale_id' <> v_sale_id then
       raise exception 'Drawer movement scope mismatch';
     end if;
     insert into public.pos_drawer_movements (
