@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.07.16.13-mobile-inventory-layout">
+<meta name="version" content="2026.07.16.14-update-check-remove-pricelock">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1455,13 +1455,13 @@ body.show-mode .inv-sync-badge{display:none;}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.07.16.13-mobile-inventory-layout"></script>
-<script src="scripts/barcode-lookup.js?v=2026.07.16.13-mobile-inventory-layout"></script>
-<script src="scripts/comic-issue-hub.js?v=2026.07.16.13-mobile-inventory-layout"></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.07.16.13-mobile-inventory-layout"></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.07.16.13-mobile-inventory-layout"></script>
-<script src="scripts/topps/offline-browser.js?v=2026.07.16.13-mobile-inventory-layout"></script>
-<script src="scripts/mtg/research-batch.js?v=2026.07.16.13-mobile-inventory-layout"></script>
+<script src="scripts/query-routing.js?v=2026.07.16.14-update-check-remove-pricelock"></script>
+<script src="scripts/barcode-lookup.js?v=2026.07.16.14-update-check-remove-pricelock"></script>
+<script src="scripts/comic-issue-hub.js?v=2026.07.16.14-update-check-remove-pricelock"></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.07.16.14-update-check-remove-pricelock"></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.07.16.14-update-check-remove-pricelock"></script>
+<script src="scripts/topps/offline-browser.js?v=2026.07.16.14-update-check-remove-pricelock"></script>
+<script src="scripts/mtg/research-batch.js?v=2026.07.16.14-update-check-remove-pricelock"></script>
 </head>
 <body>
 
@@ -1511,11 +1511,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.07.16.13-mobile-inventory-layout</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.07.16.14-update-check-remove-pricelock</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.07.16.13-mobile-inventory-layout</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.07.16.14-update-check-remove-pricelock</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1537,7 +1537,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.07.16.13-mobile-inventory-layout</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.07.16.14-update-check-remove-pricelock</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -2447,7 +2447,6 @@ body.show-mode .inv-sync-badge{display:none;}
       <div>
         <label>List / Sale Price ($)</label>
         <input type="number" id="edit-list-price" step="0.01" min="0" placeholder="0.00">
-        <label style="display:flex;align-items:center;gap:5px;font-family:monospace;font-size:10px;color:var(--dim);cursor:pointer;margin-top:4px"><input type="checkbox" id="edit-price-lock"> Lock price (skip auto price sync)</label>
       </div>
       <div>
         <label>Condition</label>
@@ -2907,8 +2906,36 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.07.16.13-mobile-inventory-layout';
+const APP_VERSION = '2026.07.16.14-update-check-remove-pricelock';
 window.APP_VERSION = APP_VERSION;
+
+// This page has no cache-busting of its own (unlike the secondary scripts,
+// which carry a ?v= query string), so a phone can sit on a stale cached copy
+// indefinitely — every fix after that point silently doesn't apply until the
+// user happens to hard-refresh. Poll a cache-busted copy of this same page
+// for its version tag and prompt a reload the moment it drifts from what's
+// actually running.
+async function checkForAppUpdate(){
+  try {
+    const res = await fetch(location.pathname + '?_cb=' + Date.now(), { cache:'no-store' });
+    if(!res.ok) return;
+    const html = await res.text();
+    const latest = html.match(/<meta name="version" content="([^"]+)">/)?.[1];
+    if(latest && latest !== APP_VERSION) showAppUpdateBanner(latest);
+  } catch(e) { /* offline or blocked — current version keeps working, try again later */ }
+}
+function showAppUpdateBanner(latest){
+  if(document.getElementById('app-update-banner')) return;
+  const el = document.createElement('div');
+  el.id = 'app-update-banner';
+  el.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:99999;background:var(--g);color:#000;font-family:var(--font-mono);font-weight:800;font-size:12px;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;gap:10px;box-shadow:0 -4px 16px rgba(0,0,0,.35)';
+  el.innerHTML = '<span>A newer version is ready (' + String(latest).replace(/[<>&]/g,'') + ').</span>'
+    + '<button style="background:#000;color:var(--g);border:none;border-radius:6px;padding:9px 16px;font-family:var(--font-mono);font-weight:800;cursor:pointer;min-height:38px" onclick="location.reload()">RELOAD</button>';
+  document.body.appendChild(el);
+}
+setTimeout(checkForAppUpdate, 4000); // let the page's own resources load first
+document.addEventListener('visibilitychange', () => { if(document.visibilityState === 'visible') checkForAppUpdate(); });
+setInterval(checkForAppUpdate, 5 * 60 * 1000);
 const branchName = 'main';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
 const POKEMON_EXACT_CACHE_VERSION = 'pokemon-exact-v3-price-matrix';
@@ -11252,7 +11279,7 @@ async function buildPriceSyncProposal(options = {}){
   });
   items = items.filter(i => {
     const st = i.lifecycle || i.status || 'in_stock';
-    return (st === 'in_stock' || !st) && inventoryReferenceMarketPrice(i) > 0 && !i.manualPriceLock;
+    return (st === 'in_stock' || !st) && inventoryReferenceMarketPrice(i) > 0;
   });
   if(categories && categories.length) {
     const normCats = categories.map(c => normalizePokemonText(c));
@@ -11319,7 +11346,7 @@ async function buildLivePokemonPriceSyncProposal(options = {}){
   });
   items = items.filter(i => {
     const st = i.lifecycle || i.status || 'in_stock';
-    return st !== 'sold' && st !== 'archived' && !i.manualPriceLock && isPokemonInventorySyncItem(i);
+    return st !== 'sold' && st !== 'archived' && isPokemonInventorySyncItem(i);
   });
   items = items
     .sort((a, b) => inventoryReferenceMarketPrice(b) - inventoryReferenceMarketPrice(a))
@@ -12121,8 +12148,6 @@ function mapBuiltInItem(row){
     priceUpdatedAt:d.priceUpdatedAt || '',
     stalePrice:!!d.stalePrice,
     livePriceStatus:d.livePriceStatus || '',
-    manualPriceLock:!!d.manualPriceLock,
-    manualPriceLockedAt:d.manualPriceLockedAt || '',
     saleId:d.saleId || '',
     pokemonPriceTrackerLastUpdated:d.pokemonPriceTrackerLastUpdated || '',
     pokemonPriceTrackerPrices:d.pokemonPriceTrackerPrices || null,
@@ -16000,7 +16025,6 @@ function openEditModal(id) {
   document.getElementById('edit-patch').checked = item.is_patch || false;
   document.getElementById('edit-key').checked = item.is_key || false;
   document.getElementById('edit-signed').checked = item.is_signed || false;
-  document.getElementById('edit-price-lock').checked = item.manualPriceLock || false;
   document.getElementById('edit-sync-status').textContent = '';
   setInventoryEditPhoto(inventoryImageUrl(item), inventoryImageSourceLabel(item));
   const syncBtn = document.getElementById('edit-sync-btn');
@@ -16180,10 +16204,6 @@ async function confirmEditAndSync() {
     is_patch: document.getElementById('edit-patch').checked,
     is_key: document.getElementById('edit-key').checked,
     is_signed: document.getElementById('edit-signed').checked,
-    // Only lock the price when the admin explicitly checks the box — this
-    // is opt-in per item, not automatic on every save.
-    manualPriceLock: document.getElementById('edit-price-lock')?.checked || false,
-    manualPriceLockedAt: document.getElementById('edit-price-lock')?.checked ? new Date().toISOString() : null,
     ...inventoryOwnershipPatch(),
   };
   if(updates.ownershipType==='consignor'&&!updates.consignorName){toast_dash('Select a consignor or choose Store Inventory');return;}
@@ -30375,7 +30395,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.07.16.13-mobile-inventory-layout"></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.07.16.14-update-check-remove-pricelock"></script>
 </body>
 </html>
 
