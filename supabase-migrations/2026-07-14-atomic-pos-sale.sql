@@ -9,6 +9,58 @@ alter table if exists public.store_invites add column if not exists email_status
 alter table if exists public.store_invites add column if not exists email_sent_at timestamptz;
 alter table if exists public.store_invites add column if not exists email_error text;
 
+-- Upgrade early/legacy POS tables in place. These are additive columns only:
+-- existing rows, IDs, totals, and foreign keys are preserved.
+alter table if exists public.pos_sales add column if not exists show_session_id text;
+alter table if exists public.pos_sales add column if not exists drawer_session_id uuid;
+alter table if exists public.pos_sales add column if not exists checkout_snapshot_id uuid;
+alter table if exists public.pos_sales add column if not exists subtotal numeric(12,2) not null default 0;
+alter table if exists public.pos_sales add column if not exists discount_total numeric(12,2) not null default 0;
+alter table if exists public.pos_sales add column if not exists tax_total numeric(12,2) not null default 0;
+alter table if exists public.pos_sales add column if not exists total numeric(12,2) not null default 0;
+alter table if exists public.pos_sales add column if not exists status text not null default 'completed';
+alter table if exists public.pos_sales add column if not exists created_by uuid;
+alter table if exists public.pos_sales add column if not exists created_at timestamptz not null default now();
+alter table if exists public.pos_sales add column if not exists completed_at timestamptz;
+
+alter table if exists public.pos_sale_lines add column if not exists item_id text;
+alter table if exists public.pos_sale_lines add column if not exists title text not null default 'Item';
+alter table if exists public.pos_sale_lines add column if not exists category text;
+alter table if exists public.pos_sale_lines add column if not exists quantity numeric(12,2) not null default 1;
+alter table if exists public.pos_sale_lines add column if not exists unit_price numeric(12,2) not null default 0;
+alter table if exists public.pos_sale_lines add column if not exists original_price numeric(12,2) not null default 0;
+alter table if exists public.pos_sale_lines add column if not exists adjusted_price numeric(12,2) not null default 0;
+alter table if exists public.pos_sale_lines add column if not exists discount_amount numeric(12,2) not null default 0;
+alter table if exists public.pos_sale_lines add column if not exists cost_basis numeric(12,2) not null default 0;
+alter table if exists public.pos_sale_lines add column if not exists profit numeric(12,2) not null default 0;
+alter table if exists public.pos_sale_lines add column if not exists condition text;
+alter table if exists public.pos_sale_lines add column if not exists finish text;
+alter table if exists public.pos_sale_lines add column if not exists source_id text;
+alter table if exists public.pos_sale_lines add column if not exists image_url text;
+alter table if exists public.pos_sale_lines add column if not exists created_at timestamptz not null default now();
+
+alter table if exists public.pos_payments add column if not exists drawer_session_id uuid;
+alter table if exists public.pos_payments add column if not exists method text not null default 'other';
+alter table if exists public.pos_payments add column if not exists amount numeric(12,2) not null default 0;
+alter table if exists public.pos_payments add column if not exists reference text;
+alter table if exists public.pos_payments add column if not exists status text not null default 'confirmed';
+alter table if exists public.pos_payments add column if not exists confirmed_by uuid;
+alter table if exists public.pos_payments add column if not exists confirmed_at timestamptz;
+alter table if exists public.pos_payments add column if not exists created_at timestamptz not null default now();
+
+alter table if exists public.pos_drawer_movements add column if not exists movement_type text not null default 'cash_sale';
+alter table if exists public.pos_drawer_movements add column if not exists amount numeric(12,2) not null default 0;
+alter table if exists public.pos_drawer_movements add column if not exists note text;
+alter table if exists public.pos_drawer_movements add column if not exists created_by uuid;
+alter table if exists public.pos_drawer_movements add column if not exists created_at timestamptz not null default now();
+
+alter table if exists public.pos_audit_log add column if not exists event_type text not null default 'sale_event';
+alter table if exists public.pos_audit_log add column if not exists entity_type text not null default 'pos_sale';
+alter table if exists public.pos_audit_log add column if not exists entity_id text;
+alter table if exists public.pos_audit_log add column if not exists details jsonb not null default '{}'::jsonb;
+alter table if exists public.pos_audit_log add column if not exists created_by uuid;
+alter table if exists public.pos_audit_log add column if not exists created_at timestamptz not null default now();
+
 create table if not exists public.customer_receipts (
   id uuid primary key default gen_random_uuid(),
   store_id uuid not null references public.stores(id) on delete cascade,
