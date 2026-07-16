@@ -203,7 +203,11 @@ begin
   if v_cash_delta <> 0 and nullif(v_sale ->> 'drawer_session_id','') is not null then
     update public.pos_drawer_sessions
        set expected_cash = expected_cash + v_cash_delta
-     where id = (v_sale ->> 'drawer_session_id')::uuid and store_id::text = v_store_id::text;
+     -- Production has legacy ledgers where this primary key is text, while
+     -- fresh installs use uuid. Comparing their text representations works
+     -- for both layouts and avoids the text = uuid operator failure.
+     where id::text = (v_sale ->> 'drawer_session_id')
+       and store_id::text = v_store_id::text;
   end if;
 
   for v_row in select value from jsonb_array_elements(coalesce(p_bundle -> 'inventoryUpdates','[]'::jsonb)) loop
