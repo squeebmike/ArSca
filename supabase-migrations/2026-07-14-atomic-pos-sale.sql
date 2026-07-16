@@ -78,7 +78,7 @@ begin
   end if;
 
   -- A retried outbox item must never duplicate money or inventory effects.
-  if exists (select 1 from public.pos_sales where id = v_sale_id and store_id = v_store_id) then
+  if exists (select 1 from public.pos_sales where id = v_sale_id and store_id::text = v_store_id::text) then
     return jsonb_build_object('ok', true, 'saleId', v_sale_id, 'idempotent', true);
   end if;
 
@@ -151,7 +151,7 @@ begin
   if v_cash_delta <> 0 and nullif(v_sale ->> 'drawer_session_id','') is not null then
     update public.pos_drawer_sessions
        set expected_cash = expected_cash + v_cash_delta
-     where id = (v_sale ->> 'drawer_session_id')::uuid and store_id = v_store_id;
+     where id = (v_sale ->> 'drawer_session_id')::uuid and store_id::text = v_store_id::text;
   end if;
 
   for v_row in select value from jsonb_array_elements(coalesce(p_bundle -> 'inventoryUpdates','[]'::jsonb)) loop
@@ -163,7 +163,7 @@ begin
            )
       into v_current_qty
       from public.inventory_items
-     where store_id = v_store_id
+     where store_id::text = v_store_id::text
        and (id::text = v_row ->> 'item_id' or data ->> 'id' = v_row ->> 'item_id')
      limit 1
      for update;
@@ -186,7 +186,7 @@ begin
                     'soldAt', case when v_next_qty <= 0 then coalesce(v_row ->> 'sold_at', now()::text) else '' end,
                     'saleId', v_sale_id::text),
            updated_at = now()
-     where store_id = v_store_id
+     where store_id::text = v_store_id::text
        and (id::text = v_row ->> 'item_id' or data ->> 'id' = v_row ->> 'item_id');
   end loop;
 
