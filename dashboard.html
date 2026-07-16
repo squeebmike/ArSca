@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.07.16.12-move-sync-prices-btn">
+<meta name="version" content="2026.07.16.13-mobile-inventory-layout">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -989,19 +989,44 @@ body.customer-browse-mode{padding-bottom:0}body.customer-browse-mode header,body
   .qpl-selected-top{grid-template-columns:minmax(180px,240px) 1fr;}
   .research-grid{grid-template-columns:1fr;max-width:900px;}
   .research-grid #register-quick-panel,.research-grid #research-queue-panel,.research-grid #research-actions-panel{grid-column:1;grid-row:auto;}
+  /* Phone-width inventory rows — each row becomes a card. Thumbnail + name sit
+     together up top, the six stat cells pair up two-per-line instead of each
+     eating a full-width line, and every stat gets a small caps label ABOVE its
+     value (not inline before it) so long values (badges, multi-line prices)
+     never run into their own label. Column order here must track the <td>
+     order in renderTable() — thumb, name, set/variant, category, qty, market,
+     cost, margin, status, actions. */
   #tab-inventory .tbl-wrap{overflow:visible;}
-  #tab-inventory table,#tab-inventory tbody,#tab-inventory tr,#tab-inventory td{display:block;width:100%;}
+  #tab-inventory table,#tab-inventory tbody{display:block;width:100%;}
   #tab-inventory thead{display:none;}
-  #tab-inventory tr{background:var(--surf);border:1px solid var(--border);border-radius:10px;margin:0 0 10px;padding:10px;}
-  #tab-inventory td{border:0!important;padding:6px 4px!important;text-align:left!important;}
-  #tab-inventory td:nth-child(1){font-size:15px;font-weight:700;}
-  #tab-inventory td:nth-child(2)::before{content:'Set / Variant: ';color:var(--dim);font-family:var(--font-mono);font-size:9px;}
-  #tab-inventory td:nth-child(3)::before{content:'Category: ';color:var(--dim);font-family:var(--font-mono);font-size:9px;}
-  #tab-inventory td:nth-child(4)::before{content:'Qty: ';color:var(--dim);font-family:var(--font-mono);font-size:9px;}
-  #tab-inventory td:nth-child(5)::before{content:'Market: ';color:var(--dim);font-family:var(--font-mono);font-size:9px;}
-  #tab-inventory td:nth-child(6)::before{content:'Cost: ';color:var(--dim);font-family:var(--font-mono);font-size:9px;}
-  #tab-inventory td:nth-child(7)::before{content:'Margin: ';color:var(--dim);font-family:var(--font-mono);font-size:9px;}
-  #tab-inventory td:nth-child(8)::before{content:'Status: ';color:var(--dim);font-family:var(--font-mono);font-size:9px;}
+  #tab-inventory tr{display:flex;flex-wrap:wrap;align-items:flex-start;column-gap:12px;row-gap:10px;background:var(--surf);border:1px solid var(--border);border-radius:12px;margin:0 0 10px;padding:12px;}
+  #tab-inventory td{display:block;border:0!important;padding:0!important;text-align:left!important;min-width:0;}
+  #tab-inventory td:nth-child(1){flex:0 0 60px;}
+  #tab-inventory td:nth-child(2){flex:1 1 calc(100% - 72px);min-width:150px;font-size:15px;font-weight:700;align-self:flex-start;}
+  #tab-inventory td:nth-child(3){flex:1 1 100%;}
+  #tab-inventory td:nth-child(4),
+  #tab-inventory td:nth-child(5),
+  #tab-inventory td:nth-child(6),
+  #tab-inventory td:nth-child(7),
+  #tab-inventory td:nth-child(8),
+  #tab-inventory td:nth-child(9){flex:1 1 calc(50% - 6px);}
+  #tab-inventory td:nth-child(4){padding-top:8px!important;border-top:1px solid var(--border)!important;}
+  #tab-inventory td:nth-child(5){padding-top:8px!important;border-top:1px solid var(--border)!important;}
+  #tab-inventory td:nth-child(3)::before,
+  #tab-inventory td:nth-child(4)::before,
+  #tab-inventory td:nth-child(5)::before,
+  #tab-inventory td:nth-child(6)::before,
+  #tab-inventory td:nth-child(7)::before,
+  #tab-inventory td:nth-child(8)::before,
+  #tab-inventory td:nth-child(9)::before{display:block;color:var(--dim);font-family:var(--font-mono);font-size:8px;letter-spacing:.06em;margin-bottom:3px;}
+  #tab-inventory td:nth-child(3)::before{content:'SET / VARIANT';}
+  #tab-inventory td:nth-child(4)::before{content:'CATEGORY';}
+  #tab-inventory td:nth-child(5)::before{content:'QTY';}
+  #tab-inventory td:nth-child(6)::before{content:'MARKET';}
+  #tab-inventory td:nth-child(7)::before{content:'COST';}
+  #tab-inventory td:nth-child(8)::before{content:'MARGIN';}
+  #tab-inventory td:nth-child(9)::before{content:'STATUS';}
+  #tab-inventory td:nth-child(10){flex:1 1 100%;padding-top:10px!important;border-top:1px solid var(--border)!important;}
   #tab-inventory .row-act{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;}
   #tab-inventory .row-act .ra{width:100%;min-height:48px;padding:8px 6px;font-size:9px;}
   .dealer-line,.dealer-line.locked{grid-template-columns:minmax(0,1fr) 88px;align-items:start;}
@@ -1430,13 +1455,13 @@ body.show-mode .inv-sync-badge{display:none;}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.07.16.12-move-sync-prices-btn"></script>
-<script src="scripts/barcode-lookup.js?v=2026.07.16.12-move-sync-prices-btn"></script>
-<script src="scripts/comic-issue-hub.js?v=2026.07.16.12-move-sync-prices-btn"></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.07.16.12-move-sync-prices-btn"></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.07.16.12-move-sync-prices-btn"></script>
-<script src="scripts/topps/offline-browser.js?v=2026.07.16.12-move-sync-prices-btn"></script>
-<script src="scripts/mtg/research-batch.js?v=2026.07.16.12-move-sync-prices-btn"></script>
+<script src="scripts/query-routing.js?v=2026.07.16.13-mobile-inventory-layout"></script>
+<script src="scripts/barcode-lookup.js?v=2026.07.16.13-mobile-inventory-layout"></script>
+<script src="scripts/comic-issue-hub.js?v=2026.07.16.13-mobile-inventory-layout"></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.07.16.13-mobile-inventory-layout"></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.07.16.13-mobile-inventory-layout"></script>
+<script src="scripts/topps/offline-browser.js?v=2026.07.16.13-mobile-inventory-layout"></script>
+<script src="scripts/mtg/research-batch.js?v=2026.07.16.13-mobile-inventory-layout"></script>
 </head>
 <body>
 
@@ -1486,11 +1511,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.07.16.12-move-sync-prices-btn</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.07.16.13-mobile-inventory-layout</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.07.16.12-move-sync-prices-btn</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.07.16.13-mobile-inventory-layout</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1512,7 +1537,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.07.16.12-move-sync-prices-btn</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.07.16.13-mobile-inventory-layout</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -1627,7 +1652,7 @@ body.show-mode .inv-sync-badge{display:none;}
       <button class="inv-view-btn active" id="inv-btn-table" onclick="setInvView('table')" title="Table view">≡ Table</button>
       <button class="inv-view-btn" id="inv-btn-cards" onclick="setInvView('cards')" title="Card grid view">⊞ Cards</button>
     </div>
-    <button class="hbtn dev-only" id="sync-prices-btn" style="margin-left:auto" onclick="openPriceSyncModal()" title="Compare inventory prices against your cached price lookups">💹 SYNC PRICES</button>
+    <button class="hbtn" id="sync-prices-btn" style="margin-left:auto" onclick="openPriceSyncModal()" title="Compare inventory prices against your cached price lookups">💹 SYNC PRICES</button>
     <button class="hbtn" onclick="openOneOffSellModal()" title="Add an item that isn't in inventory yet to the cart">⚡ ADD ONE-OFF TO CART</button>
   </div>
   <div class="tc">
@@ -2882,7 +2907,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.07.16.12-move-sync-prices-btn';
+const APP_VERSION = '2026.07.16.13-mobile-inventory-layout';
 window.APP_VERSION = APP_VERSION;
 const branchName = 'main';
 const POKEMON_SEARCH_CACHE_VERSION = 'pokemon-search-v2-docs-cards-search';
@@ -30350,7 +30375,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.07.16.12-move-sync-prices-btn"></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.07.16.13-mobile-inventory-layout"></script>
 </body>
 </html>
 
