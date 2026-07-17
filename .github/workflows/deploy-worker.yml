@@ -153,6 +153,8 @@ jobs:
           await request('offline cache manifest', '/offline/cache/manifest');
           await request('MTG R2 manifest', '/catalog/mtg/manifest', {}, res => res.ok || res.status === 404);
           await request('MTG R2 file validation', '/catalog/mtg/download?file=invalid', {}, res => res.status === 400);
+          await request('Topps R2 manifest', '/catalog/topps/manifest', {}, res => res.ok || res.status === 404);
+          await request('Topps R2 file validation', '/catalog/topps/download?file=invalid', {}, res => res.status === 400);
           await request('PokemonPriceTracker cards route', '/pricing/pokemonpricetracker/cards?search=charizard&language=english&limit=1', {}, res => res.status !== 404);
           console.log(JSON.stringify({ ok: true, workerUrl, checkedAt: new Date().toISOString() }));
           NODE
