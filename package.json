@@ -8,7 +8,7 @@
     "test:smoke:manual": "playwright test --config=tests/playwright.config.js --workers=1",
     "test:headed": "playwright test --config=tests/playwright.config.js --headed",
     "test:parse": "node tests/parse-check.js",
-    "test:topps-parser": "node tests/topps-parser.test.js",
+    "test:topps-parser": "node tests/topps-parser.test.js && node tests/topps-r2-retirement.test.mjs",
     "test:buy-workspace": "node tests/buy-workspace.test.js",
     "test:search-adapter": "node tests/universal-search-query.test.js",
     "test:barcode": "node tests/barcode-lookup.test.js",
@@ -36,7 +36,8 @@
     "topps:import:sample": "node scripts/import-topps-checklists.js --limit=3",
     "topps:import:supabase": "node scripts/import-topps-to-supabase.js",
     "topps:export:supabase": "node scripts/topps/export-from-supabase.mjs",
-    "topps:build:offline": "node scripts/topps/build-offline-bundle.mjs"
+    "topps:build:offline": "node scripts/topps/build-offline-bundle.mjs",
+    "topps:verify:r2": "node scripts/topps/verify-production-r2.mjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.52.0"

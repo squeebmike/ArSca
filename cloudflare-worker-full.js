@@ -4891,6 +4891,10 @@ export default {
     // Topps Checklist Browser API. Supabase is the catalog source of truth.
     // KV is intentionally not used as a fallback for checklist set/card data.
     if (url.pathname.startsWith('/topps-checklists')) {
+      // The immutable Topps catalog was verified and moved to R2 on
+      // 2026-07-16. These legacy Supabase-backed routes stay retired so an
+      // old client cannot recreate catalog database load after cleanup.
+      return json({ ok: false, error: 'Topps catalog moved to R2; install it from Offline Data' }, 410);
       const kv = env.LBA_KV;
       const supabaseToppsUrl = String(env.SUPABASE_URL || '').replace(/\/$/, '');
       const supabaseToppsKey = env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_KEY || env.SUPABASE_ANON_KEY || env.SUPABASE_KEY || '';

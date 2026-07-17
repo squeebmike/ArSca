@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.07.16.15-sealed-product-grouping">
+<meta name="version" content="2026.07.16.16-sealed-product-grouping">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1455,13 +1455,13 @@ body.show-mode .inv-sync-badge{display:none;}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.07.16.15-sealed-product-grouping"></script>
-<script src="scripts/barcode-lookup.js?v=2026.07.16.15-sealed-product-grouping"></script>
-<script src="scripts/comic-issue-hub.js?v=2026.07.16.15-sealed-product-grouping"></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.07.16.15-sealed-product-grouping"></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.07.16.15-sealed-product-grouping"></script>
-<script src="scripts/topps/offline-browser.js?v=2026.07.16.15-sealed-product-grouping"></script>
-<script src="scripts/mtg/research-batch.js?v=2026.07.16.15-sealed-product-grouping"></script>
+<script src="scripts/query-routing.js?v=2026.07.16.16-sealed-product-grouping"></script>
+<script src="scripts/barcode-lookup.js?v=2026.07.16.16-sealed-product-grouping"></script>
+<script src="scripts/comic-issue-hub.js?v=2026.07.16.16-sealed-product-grouping"></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.07.16.16-sealed-product-grouping"></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.07.16.16-sealed-product-grouping"></script>
+<script src="scripts/topps/offline-browser.js?v=2026.07.16.16-sealed-product-grouping"></script>
+<script src="scripts/mtg/research-batch.js?v=2026.07.16.16-sealed-product-grouping"></script>
 </head>
 <body>
 
@@ -1511,11 +1511,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.07.16.15-sealed-product-grouping</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.07.16.16-sealed-product-grouping</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.07.16.15-sealed-product-grouping</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.07.16.16-sealed-product-grouping</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1537,7 +1537,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.07.16.15-sealed-product-grouping</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.07.16.16-sealed-product-grouping</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -2906,7 +2906,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.07.16.15-sealed-product-grouping';
+const APP_VERSION = '2026.07.16.16-sealed-product-grouping';
 window.APP_VERSION = APP_VERSION;
 
 // This page has no cache-busting of its own (unlike the secondary scripts,
@@ -20814,39 +20814,8 @@ async function searchToppsSportsChecklist(q, cat = ''){
       return cards.map(card => sportsToppsCardToQplRow(card, q)).sort((a, b) => Number(b.confidence || 0) - Number(a.confidence || 0)).slice(0, 12);
     }
   } catch(e) { console.warn('Topps offline lookup skipped', e); }
-  const sb = getSupabaseClient();
-  if(!sb) return [];
-  const terms = sportsQueryTerms(q);
-  const queryNum = sportsCardNumberFromQuery(q);
-  const year = (String(q || '').match(/\b(19|20)\d{2}\b/) || [])[0] || '';
-  const seen = new Set();
-  const cards = [];
-  async function runQuery(exactNumber = false){
-    let req = sb.from('topps_checklist_cards')
-      .select('id,set_id,source_id,year,brand,product,sport,set_name,release_name,card_number,player,subject,team,notes,section,flags,parse_confidence,search_text,updated_at')
-      .limit(12)
-      .order('section_sort', { ascending:true })
-      .order('card_number_sort', { ascending:true });
-    if(year) req = req.eq('year', year);
-    if(exactNumber && queryNum) req = req.eq('card_number', queryNum);
-    terms.forEach(t => { req = req.ilike('search_text', '%' + t + '%'); });
-    const { data, error } = await req;
-    if(error) throw error;
-    (data || []).forEach(row => {
-      if(!row?.id || seen.has(row.id)) return;
-      seen.add(row.id);
-      cards.push({
-        id:row.id, setId:row.set_id, sourceId:row.source_id, year:row.year, brand:row.brand, product:row.product, sport:row.sport, setName:row.set_name, releaseName:row.release_name, cardNumber:row.card_number, player:row.player, subject:row.subject, team:row.team, notes:row.notes, section:row.section, flags:row.flags || {}, parseConfidence:Number(row.parse_confidence || 0), searchText:row.search_text || '', updatedAt:row.updated_at,
-      });
-    });
-  }
-  try {
-    await runQuery(!!queryNum);
-    if(cards.length < 8) await runQuery(false);
-  } catch(e) {
-    console.warn('Topps sports checklist lookup skipped', e);
-  }
-  return cards.map(card => sportsToppsCardToQplRow(card, q)).sort((a, b) => Number(b.confidence || 0) - Number(a.confidence || 0)).slice(0, 12);
+  console.info('Topps offline catalog is not installed; Supabase catalog fallback is retired.');
+  return [];
 }
 
 function pcPriceFromMatch(match = {}){
@@ -29898,43 +29867,16 @@ async function toppsRefresh(force = false){
     TOPPS.loaded = true;
     if(note) note.textContent = `Offline catalog loaded. ${TOPPS.totalCards.toLocaleString()} cards indexed on this device.`;
   } catch(offlineError) {
-   try {
-    const dbData = await toppsLoadSupabaseDirect();
-    TOPPS.sets = dbData.sets || [];
-    TOPPS.cards = dbData.cards || [];
+    TOPPS.sets = [];
+    TOPPS.cards = [];
+    TOPPS.filteredSets = [];
+    TOPPS.filteredCards = [];
     TOPPS.sources = [];
-    TOPPS.source = dbData.source;
-    TOPPS.totalCards = dbData.totalCards || TOPPS.cards.length;
-    TOPPS.sourceCount = dbData.sourceCount || 0;
-    TOPPS.loaded = true;
-    if(note) note.textContent = `${TOPPS.source} loaded. ${TOPPS.totalCards.toLocaleString()} cards indexed. Filters search the full database.`;
-   } catch(e) {
-    try {
-      const [setsData, cardsData] = await Promise.all([toppsWorker('/topps-checklists/sets?limit=2000'), toppsWorker('/topps-checklists/cards?limit=500')]);
-      TOPPS.sets = (setsData.sets || []).filter(s => !toppsIsBadSet(s));
-      TOPPS.cards = (cardsData.cards || []).filter(c => !toppsIsBadCard(c));
-      TOPPS.sources = [];
-      TOPPS.source = 'Worker Supabase';
-      TOPPS.totalCards = cardsData.total || TOPPS.cards.length;
-      TOPPS.sourceCount = 0;
-      TOPPS.loaded = true;
-      if(note) note.textContent = `${TOPPS.source} loaded. ${TOPPS.totalCards.toLocaleString()} cards indexed.`;
-    } catch(e2) {
-      try {
-        const local = await toppsLoadLocalIndex();
-        TOPPS.sets = local.sets || [];
-        TOPPS.cards = local.cards || [];
-        TOPPS.sources = local.sources || [];
-        TOPPS.source = 'Local sample JSON';
-        TOPPS.totalCards = TOPPS.cards.length;
-        TOPPS.loaded = true;
-        if(note) note.textContent = `Local sample loaded: ${TOPPS.sources.length} PDFs. Supabase/Worker unavailable: ${e.message || e2.message || e2}`;
-      } catch(e3) {
-        if(note) note.textContent = 'Topps checklist data unavailable: ' + (e3.message || e2.message || e.message || e3);
-        TOPPS.loaded = false;
-      }
-    }
-   }
+    TOPPS.source = 'R2 offline catalog not installed';
+    TOPPS.totalCards = 0;
+    TOPPS.sourceCount = 0;
+    TOPPS.loaded = false;
+    if(note) note.textContent = 'Topps is stored in R2, not Supabase. Open Offline Data and install Topps Sports on this device.';
   }
   toppsPopulateFilters();
   toppsApplyFilters();
@@ -30521,7 +30463,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.07.16.15-sealed-product-grouping"></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.07.16.16-sealed-product-grouping"></script>
 </body>
 </html>
 

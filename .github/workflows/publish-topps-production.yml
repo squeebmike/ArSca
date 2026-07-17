@@ -41,3 +41,8 @@ jobs:
           npx wrangler r2 object put "arsca-offline-catalogs/topps/${{ inputs.version }}/cards.jsonl.gz" --file "$base/cards.jsonl.gz" --remote
           npx wrangler r2 object put "arsca-offline-catalogs/topps/${{ inputs.version }}/sets.jsonl.gz" --file "$base/sets.jsonl.gz" --remote
           npx wrangler r2 object put "arsca-offline-catalogs/topps/manifest.json" --file data/topps/offline-build/topps/manifest.json --remote
+
+      - name: Verify production R2 bundle through Worker
+        env:
+          TOPPS_WORKER_URL: https://still-resonance-4f87.swarnerauto.workers.dev
+        run: npm run topps:verify:r2
