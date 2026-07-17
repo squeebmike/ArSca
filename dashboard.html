@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.07.16.15-topps-r2-only">
+<meta name="version" content="2026.07.16.16-sealed-product-grouping">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1455,13 +1455,13 @@ body.show-mode .inv-sync-badge{display:none;}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.07.16.14-update-check-remove-pricelock"></script>
-<script src="scripts/barcode-lookup.js?v=2026.07.16.14-update-check-remove-pricelock"></script>
-<script src="scripts/comic-issue-hub.js?v=2026.07.16.14-update-check-remove-pricelock"></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.07.16.14-update-check-remove-pricelock"></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.07.16.14-update-check-remove-pricelock"></script>
-<script src="scripts/topps/offline-browser.js?v=2026.07.16.14-update-check-remove-pricelock"></script>
-<script src="scripts/mtg/research-batch.js?v=2026.07.16.14-update-check-remove-pricelock"></script>
+<script src="scripts/query-routing.js?v=2026.07.16.16-sealed-product-grouping"></script>
+<script src="scripts/barcode-lookup.js?v=2026.07.16.16-sealed-product-grouping"></script>
+<script src="scripts/comic-issue-hub.js?v=2026.07.16.16-sealed-product-grouping"></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.07.16.16-sealed-product-grouping"></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.07.16.16-sealed-product-grouping"></script>
+<script src="scripts/topps/offline-browser.js?v=2026.07.16.16-sealed-product-grouping"></script>
+<script src="scripts/mtg/research-batch.js?v=2026.07.16.16-sealed-product-grouping"></script>
 </head>
 <body>
 
@@ -1511,11 +1511,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.07.16.15-topps-r2-only</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.07.16.16-sealed-product-grouping</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.07.16.15-topps-r2-only</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.07.16.16-sealed-product-grouping</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1537,7 +1537,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.07.16.15-topps-r2-only</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.07.16.16-sealed-product-grouping</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -2906,7 +2906,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.07.16.15-topps-r2-only';
+const APP_VERSION = '2026.07.16.16-sealed-product-grouping';
 window.APP_VERSION = APP_VERSION;
 
 // This page has no cache-busting of its own (unlike the secondary scripts,
@@ -10025,6 +10025,7 @@ function ensureInventoryToolsPanel(){
       <button class="hbtn" onclick="bulkApplyShowPrice()">SHOW PRICE</button>
       <button class="hbtn" onclick="printSelectedPriceTags()">PRINT TAGS</button>
       <button class="hbtn" onclick="exportPriceTagsCSV()">TAG CSV</button>
+      <button class="hbtn" style="color:var(--gold)" onclick="openMergeSealedDuplicatesModal()" title="Combine duplicate rows of the same sealed product into one item with a summed quantity and weighted-average cost">MERGE SEALED DUPLICATES</button>
     </div>
     <div id="inventory-tools-status" style="font-family:var(--font-mono);font-size:10px;color:var(--dim)">Tip: select rows on the current page, then apply a status or show price.</div>`;
   tc.insertAdjacentElement('afterend', panel);
@@ -15871,6 +15872,13 @@ async function createInventoryRecord(item, updates) {
   const source = getInventorySource();
   if(source === 'webflow') return createWebflowProduct(item, updates);
 
+  // Sealed product is fungible — adding more of the same pack/box should grow
+  // the existing row's quantity (cost weighted-averaged) instead of creating
+  // another duplicate row. Singles never match here; isSealedInventoryItem()
+  // only fires for is_sealed items or names that look like packs/boxes/cases.
+  const existingSealed = findMatchingSealedInventoryItem(item, updates);
+  if(existingSealed) return mergeIntoExistingSealedItem(existingSealed, item, updates);
+
   if(source === 'hybrid') {
     // ── Supabase first (authoritative) ──────────────────────────────────────
     // Require Supabase to be reachable. If offline, throw so the caller can
@@ -16422,6 +16430,124 @@ function inventoryItemIsSellable(item){
   if(!item) return false;
   const status = String(item.status || item.lifecycle || item.raw?.status || '').toLowerCase();
   return !['sold','archived','returned','deleted'].includes(status) && !item.soldAt && inventoryAvailableQuantity(item) > 0;
+}
+
+// ══════════════════════════════════════════════════
+// SEALED PRODUCT — QUANTITY GROUPING
+// Sealed packs/boxes are fungible (a customer doesn't care which physical
+// pack they get), unlike singles where condition and photos are per-card.
+// So identical sealed product accumulates into one row with a quantity and
+// a weighted-average cost instead of piling up a new row every restock.
+// Singles are never touched by any of this.
+// ══════════════════════════════════════════════════
+function isSealedInventoryItem(item){
+  return !!item?.is_sealed || isSealedProduct(item || {});
+}
+function sealedItemIdentityKey(item){
+  const norm = v => String(v||'').trim().toLowerCase();
+  const productId = norm(item.sourceProductId || item.productId || item.pricechartingProductId);
+  if(productId) return 'pid:' + productId;
+  return ['name', 'set', 'variant', 'condition'].map(k => norm(item[k])).join('|');
+}
+// Finds an existing in-stock sealed item this new item/updates should merge
+// into instead of creating a duplicate row. Matches by product id when both
+// sides have one; otherwise falls back to name+set+variant+condition.
+function findMatchingSealedInventoryItem(item, updates){
+  const merged = { ...item, ...updates };
+  if(!isSealedInventoryItem(merged)) return null;
+  const key = sealedItemIdentityKey(merged);
+  return (all || []).find(existing =>
+    existing.id !== merged.id &&
+    inventoryItemIsSellable(existing) &&
+    isSealedInventoryItem(existing) &&
+    sealedItemIdentityKey(existing) === key
+  ) || null;
+}
+function weightedAverageCost(existingQty, existingCost, incomingQty, incomingCost){
+  const totalQty = existingQty + incomingQty;
+  if(totalQty <= 0) return incomingCost;
+  return Math.round(((existingQty * existingCost + incomingQty * incomingCost) / totalQty) * 100) / 100;
+}
+async function mergeIntoExistingSealedItem(existing, item, updates){
+  const existingQty = inventoryAvailableQuantity(existing);
+  const existingCost = Number(existing.cost || 0);
+  const incomingQty = Math.max(1, Number(updates.qty ?? item.qty ?? 1));
+  const incomingCost = Number(updates.cost ?? item.cost ?? 0);
+  const mergedQty = existingQty + incomingQty;
+  const mergedCost = weightedAverageCost(existingQty, existingCost, incomingQty, incomingCost);
+  const restockLine = 'Restocked +' + incomingQty + ' @ $' + incomingCost.toFixed(2) + ' (' + new Date().toLocaleDateString() + ')';
+  const notes = [existing.notes, restockLine].filter(Boolean).join('\n');
+  await updateBuiltInInventoryItem(existing, { qty:mergedQty, cost:mergedCost, notes });
+  logOpsEvent('inventory_sealed_restock', 'Merged sealed restock into existing item: ' + (existing.name || existing.id), { id:existing.id, addedQty:incomingQty, addedCost:incomingCost, newQty:mergedQty, newCost:mergedCost });
+  setTimeout(() => toast_dash('Merged into existing stock: ' + mergedQty + ' in stock @ $' + mergedCost.toFixed(2) + ' avg cost'), 50);
+  return existing.supabaseRowId || existing.id;
+}
+
+// Groups every in-stock sealed item already in inventory by identity, for
+// cleaning up duplicate rows that piled up before this grouping existed.
+function findSealedDuplicateGroups(){
+  const groups = new Map();
+  (all || []).filter(i => inventoryItemIsSellable(i) && isSealedInventoryItem(i)).forEach(i => {
+    const key = sealedItemIdentityKey(i);
+    if(!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(i);
+  });
+  return [...groups.values()].filter(g => g.length > 1);
+}
+function sealedGroupMergePreview(group){
+  const totalQty = group.reduce((a,i) => a + inventoryAvailableQuantity(i), 0);
+  const totalCost = group.reduce((a,i) => a + inventoryAvailableQuantity(i) * Number(i.cost || 0), 0);
+  const avgCost = totalQty > 0 ? Math.round((totalCost / totalQty) * 100) / 100 : 0;
+  const survivor = group.slice().sort((a,b) => new Date(b.addedAt || b.updatedAt || 0) - new Date(a.addedAt || a.updatedAt || 0))[0];
+  return { group, survivor, totalQty, avgCost };
+}
+function openMergeSealedDuplicatesModal(){
+  if(!requireOwnerAdmin()) return toast_dash('Owner/admin only');
+  const groups = findSealedDuplicateGroups();
+  if(!groups.length) return toast_dash('No duplicate sealed product found — every sealed item already has one row');
+  const previews = groups.map(sealedGroupMergePreview);
+  document.getElementById('merge-sealed-modal')?.remove();
+  const wrap = document.createElement('div');
+  wrap.id = 'merge-sealed-modal';
+  wrap.className = 'modal on';
+  wrap.innerHTML = `<div class="modal-box" style="max-width:640px">
+    <div class="modal-title">MERGE DUPLICATE SEALED PRODUCT</div>
+    <div style="font-family:var(--font-mono);font-size:11px;color:var(--dim);margin-bottom:10px">
+      Found ${previews.length} product${previews.length===1?'':'s'} with more than one row in stock. Merging combines each group into a single item — quantity summed, cost weighted by how many you paid each price for. The other rows are archived, not deleted, so nothing in their history is lost.
+    </div>
+    <div style="max-height:360px;overflow:auto;display:grid;gap:8px;margin-bottom:14px">
+      ${previews.map(p => `<div style="border:1px solid var(--border);border-radius:8px;padding:10px">
+        <div style="font-weight:700">${escHtml(p.survivor.name || 'Item')}</div>
+        <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim)">${p.group.length} rows → ${p.totalQty} qty @ $${p.avgCost.toFixed(2)} avg cost</div>
+      </div>`).join('')}
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="hbtn" onclick="document.getElementById('merge-sealed-modal').remove()">CANCEL</button>
+      <button class="hbtn" style="color:var(--g)" onclick="confirmMergeSealedDuplicates()">MERGE ${previews.length} GROUP${previews.length===1?'':'S'}</button>
+    </div>
+  </div>`;
+  document.body.appendChild(wrap);
+}
+async function confirmMergeSealedDuplicates(){
+  const groups = findSealedDuplicateGroups();
+  document.getElementById('merge-sealed-modal')?.remove();
+  let mergedGroups = 0;
+  for(const group of groups) {
+    const { survivor, totalQty, avgCost } = sealedGroupMergePreview(group);
+    const others = group.filter(i => i.id !== survivor.id);
+    const restockLines = others.map(i => 'Merged +' + inventoryAvailableQuantity(i) + ' @ $' + Number(i.cost || 0).toFixed(2) + ' from a duplicate row').join('\n');
+    const notes = [survivor.notes, restockLines].filter(Boolean).join('\n');
+    try {
+      await updateBuiltInInventoryItem(survivor, { qty:totalQty, cost:avgCost, notes });
+      for(const dup of others) {
+        await updateBuiltInInventoryItem(dup, { qty:0, lifecycle:'archived', status:'archived', archivedAt:new Date().toISOString(), archiveReason:'Merged into duplicate sealed product row', mergedIntoId:survivor.id });
+      }
+      mergedGroups++;
+    } catch(e) { console.warn('[mergeSealedDuplicates] failed for group', survivor.name, e.message); }
+  }
+  logOpsEvent('inventory_sealed_merge', 'Merged duplicate sealed product rows', { groups:mergedGroups });
+  toast_dash('Merged ' + mergedGroups + ' duplicate group' + (mergedGroups===1?'':'s'));
+  loadInventory();
 }
 
 function getPricingInventorySource(){
@@ -30337,7 +30463,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.07.16.14-update-check-remove-pricelock"></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.07.16.16-sealed-product-grouping"></script>
 </body>
 </html>
 
