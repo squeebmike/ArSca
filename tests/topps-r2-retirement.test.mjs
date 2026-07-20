@@ -6,7 +6,7 @@ const browser = fs.readFileSync('scripts/topps/offline-browser.js', 'utf8');
 const worker = fs.readFileSync('cloudflare-worker-full.js', 'utf8');
 const retirement = fs.readFileSync('supabase-migrations/2026-07-15-retire-topps-catalog-after-r2.sql', 'utf8');
 
-assert.match(dashboard, /2026\.07\.16\.15-topps-r2-only/);
+assert.match(dashboard, /<meta name="version" content="2026\./);
 assert.match(dashboard, /Supabase catalog fallback is retired/);
 assert.doesNotMatch(searchFunction(dashboard), /from\('topps_checklist_cards'\)/);
 assert.match(browser, /checksum mismatch/);

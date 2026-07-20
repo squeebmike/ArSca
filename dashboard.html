@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.07.19.01-show-sync-trade-credit-hold">
+<meta name="version" content="2026.07.20.01-mtg-offline-price-sync">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1469,13 +1469,13 @@ body.show-mode .inv-sync-badge{display:none;}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.07.19.01-show-sync-trade-credit-hold"></script>
-<script src="scripts/barcode-lookup.js?v=2026.07.19.01-show-sync-trade-credit-hold"></script>
-<script src="scripts/comic-issue-hub.js?v=2026.07.19.01-show-sync-trade-credit-hold"></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.07.19.01-show-sync-trade-credit-hold"></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.07.19.01-show-sync-trade-credit-hold"></script>
-<script src="scripts/topps/offline-browser.js?v=2026.07.19.01-show-sync-trade-credit-hold"></script>
-<script src="scripts/mtg/research-batch.js?v=2026.07.19.01-show-sync-trade-credit-hold"></script>
+<script src="scripts/query-routing.js?v=2026.07.20.01-mtg-offline-price-sync"></script>
+<script src="scripts/barcode-lookup.js?v=2026.07.20.01-mtg-offline-price-sync"></script>
+<script src="scripts/comic-issue-hub.js?v=2026.07.20.01-mtg-offline-price-sync"></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.07.20.01-mtg-offline-price-sync"></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.07.20.01-mtg-offline-price-sync"></script>
+<script src="scripts/topps/offline-browser.js?v=2026.07.20.01-mtg-offline-price-sync"></script>
+<script src="scripts/mtg/research-batch.js?v=2026.07.20.01-mtg-offline-price-sync"></script>
 </head>
 <body>
 
@@ -1525,11 +1525,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.07.19.01-show-sync-trade-credit-hold</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.07.20.01-mtg-offline-price-sync</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.07.19.01-show-sync-trade-credit-hold</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.07.20.01-mtg-offline-price-sync</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1551,7 +1551,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.07.19.01-show-sync-trade-credit-hold</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.07.20.01-mtg-offline-price-sync</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -2559,7 +2559,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <div class="modal-bg" id="price-sync-modal">
   <div class="modal" style="max-width:600px;max-height:82vh;display:flex;flex-direction:column">
     <h3>💹 SYNC LATEST PRICES</h3>
-    <p style="font-size:11px;color:var(--dim);margin:0 0 12px">Cached scan uses downloaded/local catalog or exact hydrated Pokémon data only; one-off Research searches are ignored. Live Pokémon refresh fetches current PokemonPriceTracker prices through the Worker.</p>
+    <p style="font-size:11px;color:var(--dim);margin:0 0 12px">Offline MTG uses the downloaded Scryfall + PriceCharting catalog without provider credits. Cached scan uses saved lookup data; Live Pokémon fetches current PokemonPriceTracker prices through the Worker.</p>
     <p style="font-size:11px;color:var(--gold);margin:0 0 12px;font-family:var(--font-mono)">Updates change market/list price fields only. Cost basis stays unchanged.</p>
     <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:12px;align-items:center">
       <label style="display:flex;align-items:center;gap:5px;font-size:11px;cursor:pointer"><input type="checkbox" id="pso-tcg" checked> TCG / Pokémon</label>
@@ -2569,6 +2569,7 @@ body.show-mode .inv-sync-badge{display:none;}
     </div>
     <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
       <button class="hbtn" id="price-sync-scan-btn" onclick="runPriceSyncScan()">SCAN CACHED PRICES</button>
+      <button class="hbtn" id="price-sync-mtg-btn" onclick="runOfflineMtgPriceSync()">SCAN OFFLINE MTG</button>
       <button class="hbtn" id="price-sync-live-btn" onclick="runLivePokemonPriceSync()">FETCH LIVE POKEMON</button>
       <button class="hbtn" id="price-sync-apply-btn" onclick="applySelectedPriceSyncUpdates()" style="display:none;background:rgba(0,255,179,.12);border-color:rgba(0,255,179,.4);color:var(--g)">✓ UPDATE SELECTED</button>
       <button class="modal-btn cancel" onclick="closePriceSyncModal()" style="margin-left:auto">CLOSE</button>
@@ -2930,7 +2931,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.07.19.01-show-sync-trade-credit-hold';
+const APP_VERSION = '2026.07.20.01-mtg-offline-price-sync';
 window.APP_VERSION = APP_VERSION;
 
 // This page has no cache-busting of its own (unlike the secondary scripts,
@@ -11567,6 +11568,128 @@ async function buildPriceSyncProposal(options = {}){
   return proposal.sort((a, b) => (b.isBig ? 1 : 0) - (a.isBig ? 1 : 0) || Math.abs(b.delta) - Math.abs(a.delta));
 }
 
+function mtgInventoryScryfallId(item = {}){
+  const candidates = [item.scryfallId, item.scryfall_id, item.externalRefs?.scryfallId, item.raw?.scryfallId, item.raw?.scryfall_id];
+  const productId = String(item.productId || item.raw?.productId || '').trim();
+  if(/^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(productId)) candidates.push(productId);
+  return String(candidates.find(Boolean) || '').trim();
+}
+function mtgInventoryOracleId(item = {}){
+  return String(item.oracleId || item.oracle_id || item.externalRefs?.oracleId || item.raw?.oracleId || item.raw?.oracle_id || '').trim();
+}
+function mtgInventorySetCode(item = {}){
+  return String(item.setCode || item.set_code || item.raw?.setCode || item.raw?.set_code || '').trim();
+}
+function isMtgInventorySyncItem(item = {}){
+  const text = [item.category,item.game,item.productLine,item.priceSource,item.pricingSource,item.source,item.setName,item.set,item.raw?.category,item.raw?.game,item.raw?.source]
+    .filter(Boolean).join(' ').toLowerCase();
+  if(/pokemon|pokÃ©mon|yugioh|yu-gi-oh|lorcana|one piece|sports?|comic/.test(text)) return false;
+  return /magic|mtg|scryfall/.test(text) || !!mtgInventoryScryfallId(item) || !!mtgInventoryOracleId(item);
+}
+function isMtgSealedInventorySyncItem(item = {}){
+  if(item.is_sealed || item.isSealed || item.raw?.is_sealed || item.raw?.isSealed) return true;
+  if(/^(sealed|lot)$/i.test(String(item.productType || item.itemType || item.inventoryType || ''))) return true;
+  return /\b(secret lair|booster (box|display|bundle|pack)|collector booster|draft booster|play booster|commander deck|starter kit|precon|sealed|bundle|display|case)\b/i
+    .test([inventoryCardName(item),inventorySetName(item),item.variant,item.configuration].filter(Boolean).join(' '));
+}
+function mtgInventoryFinish(item = {}){
+  const text = [item.selectedFinish,item.finish,item.printing,item.selectedPrinting,item.variant,item.raw?.selectedFinish,item.raw?.finish].filter(Boolean).join(' ').toLowerCase();
+  if(text.includes('etched')) return 'etched_foil';
+  if(text.includes('foil')) return 'foil';
+  return 'normal';
+}
+function resolveMtgOfflineCardPrice(item = {}, card = {}){
+  const finish = mtgInventoryFinish(item);
+  const condition = pokemonPptConditionCode(item.selectedCondition || item.condition || item.raw?.condition || 'NM');
+  const priceKey = finish === 'etched_foil' ? 'usd_etched' : finish === 'foil' ? 'usd_foil' : 'usd';
+  let base = firstMoneyValue(card.prices?.[priceKey]);
+  let source = 'Scryfall offline ' + (finish === 'normal' ? 'market' : qplFinishLabel(finish) + ' market');
+  let pricePath = 'mtg_cards.prices.' + priceKey;
+  if(!base && finish === 'normal' && Number(card.offlinePriceLink?.confidence || 0) >= 95){
+    base = firstMoneyValue(card.offlinePrice?.loosePrice);
+    source = 'PriceCharting MTG offline raw guide';
+    pricePath = 'mtg_prices.loosePrice';
+  }
+  if(!base) return { price:0, basePrice:0, finish, condition, source, pricePath };
+  const multiplier = COND_MULTIPLIER[condition] || 1;
+  const price = Math.round(base * multiplier * 100) / 100;
+  if(condition !== 'NM') source += ' · ' + condition + ' condition estimate';
+  return { price, basePrice:base, finish, condition, source, pricePath:pricePath + (condition === 'NM' ? '' : ' * condition multiplier') };
+}
+function mtgOfflineInventoryItems(){
+  const localRawItems = safeLocalJson('walkoff_universal_inventory', []);
+  const seenRawIds = new Set(localRawItems.map(i => i.id || i.wfId).filter(Boolean));
+  const rawItems = localRawItems.concat((all || []).filter(i => {
+    const id = i.id || i.wfId;
+    return id && !seenRawIds.has(id);
+  }));
+  const overrides = getInventoryEditOverrides();
+  return rawItems.map(i => {
+    const patch = overrides[i.id] || overrides[i.wfId];
+    return patch ? { ...i, ...patch } : i;
+  }).filter(i => {
+    const st = String(i.lifecycle || i.status || 'in_stock').toLowerCase();
+    return !['sold','archived','returned','deleted'].includes(st) && isMtgInventorySyncItem(i);
+  }).sort((a,b) => inventoryReferenceMarketPrice(b) - inventoryReferenceMarketPrice(a));
+}
+async function buildOfflineMtgPriceSyncProposal(options = {}){
+  const { onProgress = null } = options;
+  const items = mtgOfflineInventoryItems();
+  const summary = { checked:items.length, processed:0, changed:0, unchanged:0, noMatch:0, noPrice:0, errors:0, sealedChecked:0, issues:[] };
+  const proposal = [];
+  for(const item of items){
+    try{
+      const sealed = isMtgSealedInventorySyncItem(item);
+      let match = null, resolved = null, matchStatus = '';
+      if(sealed){
+        summary.sealedChecked++;
+        const pcId = String(item.pricechartingProductId || item.providerProductId || item.externalRefs?.pricechartingProductId || '').trim();
+        const query = pcId || priceSyncItemTitle(item);
+        const rows = await window.ArsCaMtgOffline.searchPrices(query, 30);
+        match = pcId ? rows.find(row => String(row.pricechartingId) === pcId) : rows.find(row => window.ArsCaMtgOffline.normalize(row.productName) === window.ArsCaMtgOffline.normalize(priceSyncItemTitle(item)));
+        if(match){
+          resolved = { price:firstMoneyValue(match.loosePrice), basePrice:firstMoneyValue(match.loosePrice), finish:'sealed', condition:'NM', source:'PriceCharting MTG offline sealed guide', pricePath:'mtg_prices.loosePrice' };
+          matchStatus = pcId ? 'exact PriceCharting ID' : 'exact sealed name';
+        }
+      } else {
+        const ref = {
+          scryfallId:mtgInventoryScryfallId(item), tcgPlayerId:inventoryTcgPlayerId(item),
+          name:inventoryCardName(item), setCode:mtgInventorySetCode(item), setName:inventorySetName(item), collectorNumber:inventoryCardNumber(item)
+        };
+        match = await window.ArsCaMtgOffline.findExact(ref);
+        if(match){
+          resolved = resolveMtgOfflineCardPrice(item, match);
+          matchStatus = (match.offlineMatchWhy || ['exact offline match']).join(', ');
+        }
+      }
+      if(!match){
+        summary.noMatch++;
+        const savedIds = [mtgInventoryScryfallId(item) && 'Scryfall '+mtgInventoryScryfallId(item), inventoryTcgPlayerId(item) && 'TCGplayer '+inventoryTcgPlayerId(item), mtgInventorySetCode(item) && 'set '+mtgInventorySetCode(item), inventoryCardNumber(item) && '#'+inventoryCardNumber(item)].filter(Boolean).join(' · ');
+        summary.issues.push({ item:{...item}, type:'no-match', title:'No exact offline MTG match', reason:savedIds ? 'The downloaded catalog could not resolve the saved identifiers: '+savedIds+'.' : 'No Scryfall/TCGplayer ID is saved, and exact name + set + collector number did not identify one printing.', providerId:savedIds });
+      } else if(!resolved?.price){
+        summary.noPrice++;
+        summary.issues.push({ item:{...item}, type:'no-price', title:'Exact MTG match has no price', reason:'Matched '+matchStatus+', but the offline catalog has no '+qplFinishLabel(resolved?.finish || mtgInventoryFinish(item))+' price for this printing.', providerId:match.scryfallId || match.pricechartingId || '' });
+      } else {
+        const oldPrice = inventoryReferenceMarketPrice(item), freshPrice = resolved.price;
+        if(Math.abs(freshPrice - oldPrice) < 0.01) summary.unchanged++;
+        else {
+          const delta=freshPrice-oldPrice, deltaPct=oldPrice>0?Math.abs(delta/oldPrice)*100:100, direction=delta>=0?'up':'down', big=isBigPriceChange(oldPrice,freshPrice);
+          summary.changed++;
+          proposal.push({ item:{...item}, mode:'mtg-offline', provider:'mtg-offline', source:resolved.source, oldPrice, newPrice:freshPrice, rawNewPrice:resolved.basePrice, delta, deltaPct, direction, isBig:big, label:big?(direction==='up'?'BIG INCREASE':'BIG DROP'):(direction==='up'?'increase':'drop'), matchStatus, lastUpdated:match.offlinePrice?.updatedAt || match.catalogVersion || '', scryfallId:match.scryfallId || '', oracleId:match.oracleId || '', tcgPlayerId:match.tcgplayerId || inventoryTcgPlayerId(item), tcgPlayerUrl:match.purchaseUris?.tcgplayer || '', pricechartingProductId:match.pricechartingId || match.offlinePrice?.pricechartingId || '', mtgCatalogVersion:match.catalogVersion || '', pricePath:resolved.pricePath, selected:true });
+        }
+      }
+    }catch(e){
+      summary.errors++;
+      summary.issues.push({ item:{...item}, type:'error', title:'Offline MTG lookup error', reason:String(e.message || e) });
+    }finally{
+      summary.processed++;
+      if(typeof onProgress === 'function') onProgress(summary.processed,summary.checked);
+    }
+  }
+  _priceSyncLastSummary=summary;
+  return proposal.sort((a,b)=>(b.isBig?1:0)-(a.isBig?1:0)||Math.abs(b.delta)-Math.abs(a.delta));
+}
+
 let _priceSyncLastSummary = null;
 
 async function waitForPokemonRateLimitRetry(error, onRateLimit, processed, total){
@@ -11792,7 +11915,7 @@ function openPriceSyncModal(){
     if(applyBtn) applyBtn.style.display = '';
     renderPriceSyncProposal();
   } else {
-    if(propEl) propEl.innerHTML = '<div style="color:var(--dim);font-size:11px;padding:12px 0">Use SCAN CACHED PRICES for offline lookup-cache comparison, or FETCH LIVE POKEMON for Worker/PokemonPriceTracker refresh.</div>';
+    if(propEl) propEl.innerHTML = '<div style="color:var(--dim);font-size:11px;padding:12px 0">Use SCAN OFFLINE MTG for the downloaded MTG database, SCAN CACHED PRICES for saved lookup data, or FETCH LIVE POKEMON for current PokemonPriceTracker prices.</div>';
     if(statusEl) statusEl.textContent = '';
     if(applyBtn) applyBtn.style.display = 'none';
   }
@@ -11839,6 +11962,41 @@ async function runPriceSyncScan(){
     btn.disabled = false;
     btn.textContent = 'SCAN CACHED PRICES';
   }
+}
+
+async function runOfflineMtgPriceSync(){
+  const btn=document.getElementById('price-sync-mtg-btn');
+  const statusEl=document.getElementById('price-sync-status');
+  const propEl=document.getElementById('price-sync-proposal');
+  const applyBtn=document.getElementById('price-sync-apply-btn');
+  if(!btn||!statusEl||!propEl)return;
+  restorePendingPriceSyncProposals();
+  const pendingBeforeRun=[..._priceSyncProposal];
+  if(!window.ArsCaMtgOffline){statusEl.textContent='MTG offline catalog module is unavailable.';return;}
+  const catalog=await window.ArsCaMtgOffline.status().catch(()=>null);
+  if(!catalog?.cards){
+    statusEl.textContent='No MTG offline catalog is downloaded yet.';
+    propEl.innerHTML='<div style="color:var(--gold);font-size:12px;padding:12px 0">Open Settings → Catalogs & Pricing and choose IMPORT LATEST MTG DATA, then run this scan again.</div>';
+    return;
+  }
+  btn.disabled=true;
+  btn.textContent='Scanning...';
+  statusEl.textContent='Matching MTG inventory against '+Number(catalog.cards).toLocaleString()+' downloaded cards...';
+  propEl.innerHTML='';
+  if(applyBtn)applyBtn.style.display='none';
+  try{
+    const freshProposal=await buildOfflineMtgPriceSyncProposal({onProgress:(done,total)=>{statusEl.textContent='Scanning offline MTG prices... '+done+' of '+total;}});
+    const s=_priceSyncLastSummary||{checked:0,changed:0,unchanged:0,noMatch:0,noPrice:0,errors:0,issues:[]};
+    _priceSyncProposal=mergePendingPriceSyncProposals(pendingBeforeRun,freshProposal);
+    savePendingPriceSyncProposals();
+    const summaryText='Offline MTG sync checked '+s.checked+' item'+(s.checked===1?'':'s')+'. '+s.changed+' changed, '+s.unchanged+' unchanged, '+s.noMatch+' not matched, '+s.noPrice+' matched without the selected finish price, '+s.errors+' errors.'+(s.sealedChecked?' Sealed checked: '+s.sealedChecked+'.':'');
+    statusEl.textContent=summaryText+(_priceSyncProposal.length?' Review price changes below, then click UPDATE SELECTED.':'');
+    renderPriceSyncProposal();
+    if(!_priceSyncProposal.length&&!(s.issues||[]).length)propEl.innerHTML='<div style="color:var(--dim);font-size:12px;padding:12px 0">All offline MTG prices already match inventory.</div>';
+    if(applyBtn&&_priceSyncProposal.length)applyBtn.style.display='';
+    updatePriceAlertBanner();
+  }catch(e){statusEl.textContent='Offline MTG sync failed: '+(e.message||e);}
+  finally{btn.disabled=false;btn.textContent='SCAN OFFLINE MTG';}
 }
 
 async function runLivePokemonPriceSync(){
@@ -11925,7 +12083,7 @@ function renderPriceSyncProposal(){
       <input type="checkbox" data-pso-idx="${idx}" ${p.selected?'checked':''} onchange="togglePriceSyncItem(${idx},this.checked)" style="width:16px;height:16px;flex-shrink:0">
       <div style="flex:1;min-width:0">
         <div style="font-size:12px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(priceSyncItemTitle(p.item))}</div>
-        <div style="font-size:10px;color:var(--dim)">${escHtml(p.item.set||'')}${(p.item.card_number || p.item.cardNumber)?' · #'+escHtml(p.item.card_number || p.item.cardNumber):''} · ${escHtml(p.mode === 'live' ? 'live ' + (p.matchStatus || 'match') : 'cached')} · ${escHtml(p.source || '')}${p.lastUpdated?' · '+escHtml(String(p.lastUpdated).slice(0,10)):''}</div>
+        <div style="font-size:10px;color:var(--dim)">${escHtml(p.item.set||'')}${(p.item.card_number || p.item.cardNumber)?' · #'+escHtml(p.item.card_number || p.item.cardNumber):''} · ${escHtml(p.mode === 'live' ? 'live ' + (p.matchStatus || 'match') : p.mode === 'mtg-offline' ? (p.matchStatus || 'offline MTG match') : 'cached')} · ${escHtml(p.source || '')}${p.lastUpdated?' · '+escHtml(String(p.lastUpdated).slice(0,10)):''}</div>
       </div>
       <div style="text-align:right;white-space:nowrap">
         ${bigBadge}
@@ -11940,7 +12098,7 @@ function renderPriceSyncProposal(){
     <span style="font-size:10px;color:var(--dim)">${_priceSyncProposal.length} item${_priceSyncProposal.length===1?'':'s'}</span>
   </div>` + rows : '';
   const issuesHtml = issues.length ? `<div style="margin:${_priceSyncProposal.length?'14px':'0'} 0 8px;padding-top:${_priceSyncProposal.length?'12px':'0'};border-top:${_priceSyncProposal.length?'1px solid var(--border)':'0'};font-size:10px;font-weight:700;color:var(--gold);letter-spacing:.6px">NOT UPDATED · ${issues.length} ITEM${issues.length===1?'':'S'}</div>` + issues.map(issue => {
-    const id = issue.tcgPlayerId ? ' · TCGplayer #' + escHtml(issue.tcgPlayerId) : '';
+    const id = issue.tcgPlayerId ? ' · TCGplayer #' + escHtml(issue.tcgPlayerId) : (issue.providerId ? ' · ' + escHtml(issue.providerId) : '');
     return `<div style="background:var(--bg2);border:1px solid ${issue.type==='error'?'rgba(255,60,60,.45)':'rgba(255,180,0,.35)'};border-radius:8px;padding:9px 12px;margin-bottom:6px">
       <div style="font-size:12px;font-weight:700;color:var(--text)">${escHtml(priceSyncItemTitle(issue.item))}</div>
       <div style="font-size:10px;color:var(--gold);margin-top:2px">${escHtml(issue.title)}${id}</div>
@@ -11972,8 +12130,26 @@ async function applySelectedPriceSyncUpdates(){
     try{
       const fullItem = (all||[]).find(i => i.id === p.item.id) || p.item;
       const now = new Date().toISOString();
-      const source = p.mode === 'live' ? 'PokemonPriceTracker' : (p.source || 'PokemonPriceTracker cache');
+      const isMtgOffline = p.mode === 'mtg-offline' || p.provider === 'mtg-offline';
+      const source = isMtgOffline ? (p.source || 'MTG offline catalog') : p.mode === 'live' ? 'PokemonPriceTracker' : (p.source || 'PokemonPriceTracker cache');
       const lastUpdated = p.lastUpdated || now;
+      const providerFields = isMtgOffline ? {
+        scryfallId:p.scryfallId || mtgInventoryScryfallId(fullItem),
+        oracleId:p.oracleId || mtgInventoryOracleId(fullItem),
+        tcgPlayerId:p.tcgPlayerId || inventoryTcgPlayerId(fullItem),
+        tcgPlayerUrl:p.tcgPlayerUrl || fullItem.tcgPlayerUrl || '',
+        pricechartingProductId:p.pricechartingProductId || fullItem.pricechartingProductId || '',
+        mtgCatalogVersion:p.mtgCatalogVersion || '',
+        mtgOfflinePriceUpdatedAt:lastUpdated,
+        priceSyncRequestPath:p.pricePath || 'offline IndexedDB',
+      } : {
+        pokemonPriceTrackerLastUpdated:lastUpdated,
+        tcgPlayerId:p.tcgPlayerId || inventoryTcgPlayerId(fullItem),
+        tcgPlayerUrl:p.tcgPlayerUrl || fullItem.tcgPlayerUrl || '',
+        pokemonPriceTrackerPrices:p.prices || fullItem.pokemonPriceTrackerPrices || null,
+        pokemonPriceTrackerVariants:p.variants || fullItem.pokemonPriceTrackerVariants || null,
+        priceSyncRequestPath:p.requestPath || '',
+      };
       await saveInventoryEdit(fullItem, {
         market:      p.newPrice,
         price:       p.newPrice,
@@ -11983,17 +12159,12 @@ async function applySelectedPriceSyncUpdates(){
         lastMarketPrice:p.oldPrice,
         previousMarketPrice:p.oldPrice,
         marketPriceSource:source,
-        priceSource: source + (p.mode === 'live' ? ' live sync' : ' cached sync'),
+        priceSource: isMtgOffline ? source : source + (p.mode === 'live' ? ' live sync' : ' cached sync'),
         lastPriceUpdate:lastUpdated,
         priceUpdatedAt:now,
         stalePrice:false,
-        livePriceStatus:p.mode === 'live' ? 'live' : 'cached',
-        pokemonPriceTrackerLastUpdated:lastUpdated,
-        tcgPlayerId:p.tcgPlayerId || inventoryTcgPlayerId(fullItem),
-        tcgPlayerUrl:p.tcgPlayerUrl || fullItem.tcgPlayerUrl || '',
-        pokemonPriceTrackerPrices:p.prices || fullItem.pokemonPriceTrackerPrices || null,
-        pokemonPriceTrackerVariants:p.variants || fullItem.pokemonPriceTrackerVariants || null,
-        priceSyncRequestPath:p.requestPath || '',
+        livePriceStatus:p.mode === 'live' ? 'live' : isMtgOffline ? 'offline' : 'cached',
+        ...providerFields,
       });
       ok++;
     } catch(e){ console.warn('[syncPrices] Apply failed:', priceSyncItemTitle(p.item), e); }
@@ -25179,7 +25350,9 @@ function externalRefsFromQuickLookup(item = {}, selectedVariant = {}){
     justTcgProductId:item.justtcgCardId || item.productId || null,
     justTcgVariantId:selectedVariant.justtcgVariantId || item.justtcgVariantId || null,
     pokemonPriceTrackerCardId:item.pokemonPriceTrackerCardId || item.pokemonPriceTracker?.id || item.pokemonPriceTracker?.cardId || null,
-    pricechartingProductId:item.pricechartingProductId || null
+    pricechartingProductId:item.pricechartingProductId || item.pricecharting?.productId || null,
+    scryfallId:item.scryfallId || item.raw?.scryfallId || item.raw?.id || null,
+    oracleId:item.oracleId || item.raw?.oracleId || item.raw?.oracle_id || null
   };
 }
 
@@ -25268,6 +25441,8 @@ function selectedQuickLookupItem(idx){
     selectedLanguage:document.getElementById('qpl-edit-language')?.value || r.selectedLanguage || r.language || 'English',
     selectedPrinting:selectedVariant.printing || r.selectedPrinting || qplFinishLabel(r.selectedFinish || r.finish || ''),
     productId:r.productId || '',
+    scryfallId:r.scryfallId || r.raw?.scryfallId || r.raw?.id || '',
+    oracleId:r.oracleId || r.raw?.oracleId || r.raw?.oracle_id || '',
     justtcgCardId:r.justtcgCardId || r.productId || '',
     justtcgVariantId:selectedVariant.justtcgVariantId || '',
     tcgplayerId:r.tcgPlayerId || r.tcgplayerId || '',
@@ -31246,7 +31421,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.07.19.01-show-sync-trade-credit-hold"></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.07.20.01-mtg-offline-price-sync"></script>
 </body>
 </html>
 

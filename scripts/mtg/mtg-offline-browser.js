@@ -309,6 +309,40 @@
     return attachPrices(active.catalogVersion,ranked);
   }
 
+  async function findExact(ref={}){
+    const active=await getMeta('active'),version=active?.catalogVersion;
+    if(!version)return null;
+    const db=await openDb(),store=()=>db.transaction('mtg_cards','readonly').objectStore('mtg_cards');
+    const scryfallId=String(ref.scryfallId||ref.id||'').trim();
+    const tcgplayerId=String(ref.tcgplayerId||ref.tcgPlayerId||'').trim();
+    const setCode=normalize(ref.setCode||ref.set||''),setName=normalize(ref.setName||'');
+    const collectorNumber=normalize(ref.collectorNumber||ref.cardNumber||ref.number||'');
+    const name=normalize(ref.name||ref.cardName||'');
+    let card=null,why=[];
+    if(scryfallId){
+      card=await getVersioned('mtg_cards',version,scryfallId).catch(()=>null);
+      if(card)why=['exact Scryfall ID'];
+    }
+    if(!card&&tcgplayerId){
+      const rows=await requestPromise(store().index('catalogTcgplayer').getAll([version,tcgplayerId],20)).catch(()=>[]);
+      card=rows.find(row=>(!setCode||normalize(row.setCode)===setCode)&&(!collectorNumber||normalize(row.collectorNumber)===collectorNumber))||null;
+      if(card)why=['exact TCGplayer ID'];
+    }
+    if(!card&&collectorNumber&&(setCode||setName)){
+      const rows=await requestPromise(store().index('catalogCollector').getAll([version,collectorNumber],300)).catch(()=>[]);
+      card=rows.find(row=>(!setCode||normalize(row.setCode)===setCode)&&(!setName||normalize(row.setName)===setName)&&(!name||normalize(row.name)===name))
+        || rows.find(row=>(!setCode||normalize(row.setCode)===setCode)&&(!setName||normalize(row.setName)===setName)) || null;
+      if(card)why=['exact set + collector number'];
+    }
+    if(!card&&name&&(setCode||setName)){
+      const rows=await requestPromise(store().index('catalogName').getAll([version,name],100)).catch(()=>[]);
+      const matches=rows.filter(row=>(!setCode||normalize(row.setCode)===setCode)&&(!setName||normalize(row.setName)===setName));
+      if(matches.length===1){card=matches[0];why=['exact name + set'];}
+    }
+    if(!card)return null;
+    return (await attachPrices(version,[{card,why}]))[0]||null;
+  }
+
   async function sets(){ const active=await getMeta('active'); return (await recordsForVersion('mtg_sets',active?.catalogVersion)).sort((a,b)=>String(b.releasedAt||'').localeCompare(String(a.releasedAt||''))); }
   async function cardsBySet(setCode){
     const active=await getMeta('active'), version=active?.catalogVersion, wanted=normalize(setCode);
@@ -363,5 +397,5 @@
 
   async function clearImageCache(){const db=await openDb();const tx=db.transaction('mtg_images','readwrite');tx.objectStore('mtg_images').clear();await transactionPromise(tx);}
 
-  root.ArsCaMtgOffline={openDb,sync,search,searchPrices,sets,cardsBySet,status,clearAll,cacheImage,cachedImageUrl,clearImageCache,normalize,queryParts,DB_NAME};
+  root.ArsCaMtgOffline={openDb,sync,search,findExact,searchPrices,sets,cardsBySet,status,clearAll,cacheImage,cachedImageUrl,clearImageCache,normalize,queryParts,DB_NAME};
 })(typeof window!=='undefined'?window:globalThis);
