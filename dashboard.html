@@ -11333,20 +11333,35 @@ function findBestLivePokemonInventoryMatch(item = {}, cards = []){
 async function fetchLivePokemonInventoryCard(item = {}){
   const tcgPlayerId = inventoryTcgPlayerId(item);
   const sealed = isPokemonSealedInventorySyncItem(item);
-  const params = new URLSearchParams();
+  let query = '';
+  let attemptedQueries = [];
+  let result;
   if(tcgPlayerId) {
+    const params = new URLSearchParams();
     params.set('tcgPlayerId', tcgPlayerId);
     params.set('limit', '1');
     if(!sealed) params.set('includeBoth', 'true');
+    result = sealed
+      ? await pokemonPriceTrackerSealedProductsRequest(params, 'inventory.sync.sealed.tcgPlayerId')
+      : await pokemonPriceTrackerCardsRequest(params, 'inventory.sync.tcgPlayerId');
   } else {
-    const query = inventoryPokemonExactQuery(item);
+    query = inventoryPokemonExactQuery(item);
     if(!query) return { card:null, requestPath:'', matchStatus:'no-query', resultCount:0, tcgPlayerId:'', query:'', productType:sealed ? 'sealed' : 'card' };
-    params.set('search', query);
-    params.set('limit', '20');
+    if(sealed) {
+      const queries = pokemonSealedInventorySearchQueries(item);
+      for(const candidateQuery of queries) {
+        attemptedQueries.push(candidateQuery);
+        const params = new URLSearchParams({ search:candidateQuery, limit:'20' });
+        result = await pokemonPriceTrackerSealedProductsRequest(params, 'inventory.sync.sealed.search');
+        query = candidateQuery;
+        if(result.cards?.length) break;
+      }
+    } else {
+      attemptedQueries = [query];
+      const params = new URLSearchParams({ search:query, limit:'20' });
+      result = await pokemonPriceTrackerCardsRequest(params, 'inventory.sync.search');
+    }
   }
-  const result = sealed
-    ? await pokemonPriceTrackerSealedProductsRequest(params, tcgPlayerId ? 'inventory.sync.sealed.tcgPlayerId' : 'inventory.sync.sealed.search')
-    : await pokemonPriceTrackerCardsRequest(params, tcgPlayerId ? 'inventory.sync.tcgPlayerId' : 'inventory.sync.search');
   const cards = result.cards || [];
   const card = tcgPlayerId ? (cards[0] || null) : (sealed ? findBestLivePokemonSealedMatch(item, cards) : findBestLivePokemonInventoryMatch(item, cards));
   return {
@@ -11356,7 +11371,8 @@ async function fetchLivePokemonInventoryCard(item = {}){
     resultCount:cards.length,
     cacheStatus:result.cacheStatus,
     tcgPlayerId,
-    query:tcgPlayerId ? '' : inventoryPokemonExactQuery(item),
+    query:tcgPlayerId ? '' : query,
+    attemptedQueries,
     productType:sealed ? 'sealed' : 'card',
   };
 }
@@ -11369,18 +11385,42 @@ function isPokemonSealedInventorySyncItem(item = {}){
   return /\b(etb|elite[\s-]*trainer[\s-]*box|booster[\s-]*(box|display|bundle|pack)|ultra[\s-]*premium[\s-]*collection|premium[\s-]*(figure[\s-]*)?collection|collection[\s-]*box|build[\s-]*&?[\s-]*battle|sleeved[\s-]*booster|blister|tin|sealed|display|case)\b/i.test(text);
 }
 
+function pokemonSealedInventorySearchQueries(item = {}){
+  const name = String(inventoryCardName(item) || '').trim();
+  const cleanedName = name.replace(/[\[\](){},:;–—-]+/g, ' ').replace(/\s+/g, ' ').trim();
+  const bracketName = (name.match(/[\[(]([^\])]+)[\])]/) || [])[1] || '';
+  return [...new Set([cleanedName, bracketName.replace(/[^a-z0-9]+/gi, ' ').replace(/\s+/g, ' ').trim()]
+    .filter(query => query && query.length >= 3))];
+}
+
 function findBestLivePokemonSealedMatch(item = {}, products = []){
   const targetName = normalizePokemonText(inventoryCardName(item));
   const targetSet = normalizePokemonText(inventorySetName(item));
+  const targetTokens = new Set(targetName.split(' ').filter(Boolean));
+  const targetSetTokens = new Set(targetSet.split(' ').filter(token => token && token !== 'pokemon'));
   let best = null;
   products.forEach(product => {
     const name = normalizePokemonText(product.name || product.productName || product.title || '');
     const set = normalizePokemonText(product.setName || product.set || '');
+    const nameTokens = new Set(name.split(' ').filter(Boolean));
+    const setTokens = new Set(set.split(' ').filter(Boolean));
     let score = 0;
     if(targetName && name === targetName) score += 120;
     else if(targetName && (name.includes(targetName) || targetName.includes(name))) score += 75;
+    const nameCoverage = targetTokens.size
+      ? [...targetTokens].filter(token => nameTokens.has(token)).length / targetTokens.size
+      : 0;
+    if(nameCoverage >= 0.8) score += 90 * nameCoverage;
+    else if(nameCoverage >= 0.6) score += 45 * nameCoverage;
     if(targetSet && set === targetSet) score += 45;
     else if(targetSet && set && (set.includes(targetSet) || targetSet.includes(set))) score += 20;
+    const setCoverage = targetSetTokens.size
+      ? [...targetSetTokens].filter(token => setTokens.has(token)).length / targetSetTokens.size
+      : 0;
+    score += 60 * setCoverage;
+    ['case', 'pokemon center', 'exclusive'].forEach(qualifier => {
+      if(name.includes(qualifier) !== targetName.includes(qualifier)) score -= 70;
+    });
     if(!best || score > best.score) best = { product, score };
   });
   return best && best.score >= 75 ? best.product : null;
@@ -11606,7 +11646,7 @@ async function buildLivePokemonPriceSyncProposal(options = {}){
             ? 'Exact product ID ' + linkedId + ' returned no Pokemon ' + (sealed ? 'sealed product from /sealed-products.' : 'card from /cards.') + ' Confirm the TCGplayer link and product type.'
             : (live.matchStatus === 'no-query'
               ? 'This row has no TCGplayer product ID/link and not enough name, set, or card-number data to search.'
-              : 'No TCGplayer product ID/link is saved. The fallback search for "' + (live.query || inventoryPokemonExactQuery(item)) + '" returned ' + Number(live.resultCount || 0) + ' candidate(s), but none passed exact name/set/number matching.'),
+              : 'No TCGplayer product ID/link is saved. The fallback search' + (live.attemptedQueries?.length > 1 ? 'es' : '') + ' for "' + ((live.attemptedQueries || [live.query || inventoryPokemonExactQuery(item)]).join('" / "')) + '" returned ' + Number(live.resultCount || 0) + ' candidate(s), but none passed exact product-name and set matching.'),
         });
         continue;
       }

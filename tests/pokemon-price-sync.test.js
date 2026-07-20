@@ -27,11 +27,14 @@ function functionSource(source, name) {
 const context = {
   inventoryCardName: item => item.name || '',
   inventorySetName: item => item.set || '',
+  normalizePokemonText: value => String(value || '').toLowerCase().replace(/[^a-z0-9/]+/g, ' ').trim(),
   firstMoneyValue: (...values) => values.map(Number).find(value => Number.isFinite(value) && value > 0) || 0,
 };
 vm.createContext(context);
 vm.runInContext(functionSource(dashboard, 'isPokemonSealedInventorySyncItem'), context);
 vm.runInContext(functionSource(dashboard, 'pokemonPriceTrackerMarketPrice'), context);
+vm.runInContext(functionSource(dashboard, 'pokemonSealedInventorySearchQueries'), context);
+vm.runInContext(functionSource(dashboard, 'findBestLivePokemonSealedMatch'), context);
 
 [
   'Phantasmal Flames Pokemon Center Elite Trainer Box (Exclusive)',
@@ -45,6 +48,25 @@ vm.runInContext(functionSource(dashboard, 'pokemonPriceTrackerMarketPrice'), con
 
 assert(!context.isPokemonSealedInventorySyncItem({ name:'Charizard ex - 199/165', set:'Pokemon 151' }), 'A Pokemon single must stay on /cards');
 assert.strictEqual(context.pokemonPriceTrackerMarketPrice({ unopenedPrice:325.56 }), 325.56, 'Sealed pricing must use unopenedPrice');
+assert.deepStrictEqual(
+  [...context.pokemonSealedInventorySearchQueries({ name:'Elite Trainer Box [Mega Lucario]' })],
+  ['Elite Trainer Box Mega Lucario', 'Mega Lucario'],
+  'Bracketed character names should become a second sealed search'
+);
+assert.deepStrictEqual(
+  [...context.pokemonSealedInventorySearchQueries({ name:'Mega Charizard X Ex Ultra-Premium Collection' })],
+  ['Mega Charizard X Ex Ultra Premium Collection'],
+  'Punctuation should not prevent a provider match'
+);
+const lucario = context.findBestLivePokemonSealedMatch(
+  { name:'Elite Trainer Box [Mega Lucario]', set:'Pokemon Mega Evolution' },
+  [
+    { name:'Mega Evolution Pokemon Center Elite Trainer Box (Exclusive) [Mega Lucario]', setName:'ME01: Mega Evolution' },
+    { name:'Mega Evolution Elite Trainer Box [Mega Lucario]', setName:'ME01: Mega Evolution', tcgPlayerId:'648394' },
+    { name:'Mega Lucario ex Premium Figure Collection', setName:'Mega Evolution' },
+  ]
+);
+assert.strictEqual(lucario.tcgPlayerId, '648394', 'Fallback must prefer the normal ETB over Pokemon Center and unrelated products');
 assert(dashboard.includes("await pokemonPriceTrackerSealedProductsRequest(params"), 'Sealed inventory must use the sealed-products request');
 assert(dashboard.includes("'/pricing/pokemon/sealed-products?'"), 'Sealed request must use the Worker sealed-products route');
 assert(worker.includes("'pokemon:sealed:' + params.get('tcgPlayerId')"), 'Exact sealed IDs need a stable Worker cache key');
