@@ -11266,12 +11266,15 @@ function inventoryPokemonExactQuery(item = {}){
   return [inventoryCardName(item), inventorySetName(item), inventoryCardNumber(item)].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
 }
 function isPokemonInventorySyncItem(item = {}){
-  if(inventoryTcgPlayerId(item)) return true;
   const text = [
     item.category, item.itemType, item.inventoryType, item.product_line, item.productLine,
     item.manufacturer, item.brand, item.priceSource, item.marketPriceSource, item.source,
+    item.game, item.raw?.category, item.raw?.game, item.raw?.productLine,
     inventoryCardName(item), inventorySetName(item), item.raw?.priceSource, item.raw?.marketPriceSource
   ].filter(Boolean).join(' ').toLowerCase();
+  // A TCGplayer ID is shared across every game on TCGplayer; it does not prove
+  // that an inventory row is Pokemon. Explicitly reject other product lines.
+  if(/\b(magic|mtg|secret lair|yugioh|yu-gi-oh|lorcana|flesh and blood|one piece|digimon|sports?|comic)\b/.test(text)) return false;
   if(/pokemon|pokémon|pokemonpricetracker/.test(text)) return true;
   if(/\btcg\b/.test(text) && /\b(sv|scarlet|violet|sword|shield|swsh|sun|moon|xy|black star|base set|evolving skies|stellar crown|paldea|obsidian|surging sparks|151)\b/.test(text)) return true;
   return false;
@@ -11501,12 +11504,33 @@ async function buildLivePokemonPriceSyncProposal(options = {}){
   });
   items = items.sort((a, b) => inventoryReferenceMarketPrice(b) - inventoryReferenceMarketPrice(a));
 
-  const summary = { checked:items.length, processed:0, changed:0, unchanged:0, errors:0, noMatch:0, noPrice:0, requests:[], issues:[] };
+  const summary = { checked:items.length, processed:0, changed:0, unchanged:0, errors:0, noMatch:0, noPrice:0, reusedLookups:0, requests:[], issues:[] };
+  // One TCGplayer product can appear in multiple inventory rows (separate
+  // locations, purchases, or quantities). Fetch each exact product only once
+  // per run, then apply the same live result independently to every row.
+  const liveByTcgPlayerId = new Map();
   const proposal = [];
   for(const item of items){
     try {
-      const live = await fetchLivePokemonInventoryCard(item);
-      if(live.requestPath) summary.requests.push(live.requestPath);
+      const exactId = inventoryTcgPlayerId(item);
+      let live;
+      let reusedLookup = false;
+      if(exactId && liveByTcgPlayerId.has(exactId)) {
+        reusedLookup = true;
+        summary.reusedLookups++;
+        const cachedLookup = liveByTcgPlayerId.get(exactId);
+        if(cachedLookup.error) throw cachedLookup.error;
+        live = cachedLookup.live;
+      } else {
+        try {
+          live = await fetchLivePokemonInventoryCard(item);
+          if(exactId) liveByTcgPlayerId.set(exactId, { live });
+        } catch(error) {
+          if(exactId) liveByTcgPlayerId.set(exactId, { error });
+          throw error;
+        }
+      }
+      if(live.requestPath && !reusedLookup) summary.requests.push(live.requestPath);
       if(!live.card) {
         summary.noMatch++;
         const linkedId = inventoryTcgPlayerId(item);
@@ -11666,7 +11690,8 @@ async function runLivePokemonPriceSync(){
       onProgress:(done, total) => { statusEl.textContent = 'Fetching live prices... ' + done + ' of ' + total + ' checked'; }
     });
     const s = _priceSyncLastSummary || { checked:0, changed:0, unchanged:0, noMatch:0, noPrice:0, errors:0, issues:[] };
-    const summaryText = 'Live sync checked ' + s.checked + ' Pokemon item' + (s.checked===1?'':'s') + '. ' + s.changed + ' changed, ' + s.unchanged + ' unchanged, ' + s.noMatch + ' not matched, ' + s.noPrice + ' matched without a market price, ' + s.errors + ' errors.';
+    const summaryText = 'Live sync checked ' + s.checked + ' Pokemon item' + (s.checked===1?'':'s') + '. ' + s.changed + ' changed, ' + s.unchanged + ' unchanged, ' + s.noMatch + ' not matched, ' + s.noPrice + ' matched without a market price, ' + s.errors + ' errors.'
+      + (s.reusedLookups ? ' ' + s.reusedLookups + ' duplicate product lookup' + (s.reusedLookups===1?' was':'s were') + ' reused.' : '');
     if(!_priceSyncProposal.length) {
       statusEl.textContent = summaryText;
       renderPriceSyncProposal();
@@ -11700,6 +11725,9 @@ function renderPriceSyncProposal(){
   const rows = _priceSyncProposal.map((p, idx) => {
     const col   = p.direction === 'up' ? 'var(--g)' : 'var(--red)';
     const arrow = p.direction === 'up' ? '▲' : '▼';
+    const deltaAmount = Math.abs(Number(p.delta || 0));
+    const deltaSign = p.direction === 'up' ? '+' : '-';
+    const deltaText = `${arrow} ${deltaSign}$${deltaAmount.toFixed(2)} (${deltaSign}${Number(p.deltaPct || 0).toFixed(1)}%)`;
     const bigBadge = p.isBig
       ? `<span style="display:inline-block;background:${p.direction==='up'?'rgba(255,180,0,.18)':'rgba(255,60,60,.18)'};color:${col};border-radius:4px;padding:1px 5px;font-size:9px;font-weight:700;letter-spacing:.5px;margin-right:4px">${escHtml(p.label.toUpperCase())}</span>`
       : '';
@@ -11711,7 +11739,8 @@ function renderPriceSyncProposal(){
       </div>
       <div style="text-align:right;white-space:nowrap">
         ${bigBadge}
-        <div style="font-size:13px;font-weight:700;color:${col}">${arrow} $${Number(p.newPrice||0).toFixed(2)}</div>
+        <div style="font-size:12px;font-weight:800;color:${col};margin-top:${p.isBig?'3px':'0'}">${deltaText}</div>
+        <div style="font-size:17px;line-height:1.15;font-weight:800;color:var(--text);margin-top:2px">$${Number(p.newPrice||0).toFixed(2)}</div>
         <div style="font-size:10px;color:var(--dim)">was $${Number(p.oldPrice||0).toFixed(2)}</div>
       </div>
     </div>`;
