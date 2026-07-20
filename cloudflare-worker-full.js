@@ -3692,6 +3692,8 @@ export default {
       const stableKeySource = spec.method + ':' + spec.upstream + '?' + [...params.entries()].sort((a,b) => a[0].localeCompare(b[0]) || String(a[1]).localeCompare(String(b[1]))).map(([k,v]) => k + '=' + v).join('&') + ':' + bodyText;
       const cacheKey = pptPath === '/pricing/pokemonpricetracker/cards' && (params.get('tcgPlayerId') || params.get('cardId'))
         ? 'pokemon:' + (params.get('tcgPlayerId') || params.get('cardId'))
+        : pptPath === '/pricing/pokemonpricetracker/sealed-products' && params.get('tcgPlayerId')
+        ? 'pokemon:sealed:' + params.get('tcgPlayerId')
         : pptPath === '/pricing/pokemonpricetracker/cards' && params.get('search')
         ? 'ppt_search:' + md5Hex(new TextEncoder().encode(String(params.get('language') || 'english').toLowerCase() + ':' + String(params.get('search') || '').trim().toLowerCase().replace(/\s+/g, ' ')))
         : pptPath === '/pricing/pokemonpricetracker/parse-title'
@@ -3784,7 +3786,11 @@ export default {
         },
         cache:{ state:'miss', source:'live', cacheKey, cachedAt:new Date().toISOString() },
       };
-      if (env.LBA_KV && upstream.ok) env.LBA_KV.put(cacheKey, JSON.stringify(payload), { expirationTtl: 60 * 60 * 24 }).catch(() => {});
+      // Await the write so exact product lookups reliably become reusable. A
+      // floating KV write may be cancelled as soon as the response completes.
+      if (env.LBA_KV && upstream.ok) {
+        await env.LBA_KV.put(cacheKey, JSON.stringify(payload), { expirationTtl: 60 * 60 * 24 }).catch(() => {});
+      }
       return json(payload, 200, pokemonQuotaHeaders(upstream.headers));
     }
 

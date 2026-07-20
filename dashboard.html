@@ -11289,6 +11289,8 @@ function pokemonCardNumberForSync(card = {}){
 function pokemonPriceTrackerMarketPrice(card = {}){
   const prices = card.prices || {};
   return firstMoneyValue(
+    card.unopenedPrice,
+    card.marketPrice?.price,
     prices.market?.price,
     prices.market,
     card.marketPrice,
@@ -11330,20 +11332,23 @@ function findBestLivePokemonInventoryMatch(item = {}, cards = []){
 }
 async function fetchLivePokemonInventoryCard(item = {}){
   const tcgPlayerId = inventoryTcgPlayerId(item);
+  const sealed = isPokemonSealedInventorySyncItem(item);
   const params = new URLSearchParams();
   if(tcgPlayerId) {
     params.set('tcgPlayerId', tcgPlayerId);
-    params.set('includeBoth', 'true');
     params.set('limit', '1');
+    if(!sealed) params.set('includeBoth', 'true');
   } else {
     const query = inventoryPokemonExactQuery(item);
-    if(!query) return { card:null, requestPath:'', matchStatus:'no-query', resultCount:0, tcgPlayerId:'', query:'' };
+    if(!query) return { card:null, requestPath:'', matchStatus:'no-query', resultCount:0, tcgPlayerId:'', query:'', productType:sealed ? 'sealed' : 'card' };
     params.set('search', query);
     params.set('limit', '20');
   }
-  const result = await pokemonPriceTrackerCardsRequest(params, tcgPlayerId ? 'inventory.sync.tcgPlayerId' : 'inventory.sync.search');
+  const result = sealed
+    ? await pokemonPriceTrackerSealedProductsRequest(params, tcgPlayerId ? 'inventory.sync.sealed.tcgPlayerId' : 'inventory.sync.sealed.search')
+    : await pokemonPriceTrackerCardsRequest(params, tcgPlayerId ? 'inventory.sync.tcgPlayerId' : 'inventory.sync.search');
   const cards = result.cards || [];
-  const card = tcgPlayerId ? (cards[0] || null) : findBestLivePokemonInventoryMatch(item, cards);
+  const card = tcgPlayerId ? (cards[0] || null) : (sealed ? findBestLivePokemonSealedMatch(item, cards) : findBestLivePokemonInventoryMatch(item, cards));
   return {
     card,
     requestPath:result.requestPath,
@@ -11352,7 +11357,33 @@ async function fetchLivePokemonInventoryCard(item = {}){
     cacheStatus:result.cacheStatus,
     tcgPlayerId,
     query:tcgPlayerId ? '' : inventoryPokemonExactQuery(item),
+    productType:sealed ? 'sealed' : 'card',
   };
+}
+
+function isPokemonSealedInventorySyncItem(item = {}){
+  if(item.is_sealed || item.isSealed || item.raw?.is_sealed || item.raw?.isSealed) return true;
+  if(/^(sealed|lot)$/i.test(String(item.productType || item.itemType || item.inventoryType || item.raw?.productType || ''))) return true;
+  const text = [inventoryCardName(item), inventorySetName(item), item.variant, item.condition, item.configuration, item.raw?.configuration]
+    .filter(Boolean).join(' ');
+  return /\b(etb|elite[\s-]*trainer[\s-]*box|booster[\s-]*(box|display|bundle|pack)|ultra[\s-]*premium[\s-]*collection|premium[\s-]*(figure[\s-]*)?collection|collection[\s-]*box|build[\s-]*&?[\s-]*battle|sleeved[\s-]*booster|blister|tin|sealed|display|case)\b/i.test(text);
+}
+
+function findBestLivePokemonSealedMatch(item = {}, products = []){
+  const targetName = normalizePokemonText(inventoryCardName(item));
+  const targetSet = normalizePokemonText(inventorySetName(item));
+  let best = null;
+  products.forEach(product => {
+    const name = normalizePokemonText(product.name || product.productName || product.title || '');
+    const set = normalizePokemonText(product.setName || product.set || '');
+    let score = 0;
+    if(targetName && name === targetName) score += 120;
+    else if(targetName && (name.includes(targetName) || targetName.includes(name))) score += 75;
+    if(targetSet && set === targetSet) score += 45;
+    else if(targetSet && set && (set.includes(targetSet) || targetSet.includes(set))) score += 20;
+    if(!best || score > best.score) best = { product, score };
+  });
+  return best && best.score >= 75 ? best.product : null;
 }
 
 // ── PRICE SYNC ENGINE (A5-A8) ─────────────────────────────────────────────
@@ -11521,7 +11552,7 @@ async function buildLivePokemonPriceSyncProposal(options = {}){
   });
   items = items.sort((a, b) => inventoryReferenceMarketPrice(b) - inventoryReferenceMarketPrice(a));
 
-  const summary = { checked:items.length, processed:0, changed:0, unchanged:0, errors:0, noMatch:0, noPrice:0, reusedLookups:0, requests:[], issues:[] };
+  const summary = { checked:items.length, processed:0, changed:0, unchanged:0, errors:0, noMatch:0, noPrice:0, reusedLookups:0, sealedChecked:items.filter(isPokemonSealedInventorySyncItem).length, sealedMatched:0, requests:[], issues:[] };
   // One TCGplayer product can appear in multiple inventory rows (separate
   // locations, purchases, or quantities). Fetch each exact product only once
   // per run, then apply the same live result independently to every row.
@@ -11531,12 +11562,14 @@ async function buildLivePokemonPriceSyncProposal(options = {}){
     let stopAfterItem = false;
     try {
       const exactId = inventoryTcgPlayerId(item);
+      const sealed = isPokemonSealedInventorySyncItem(item);
+      const lookupKey = exactId ? (sealed ? 'sealed:' : 'card:') + exactId : '';
       let live;
       let reusedLookup = false;
-      if(exactId && liveByTcgPlayerId.has(exactId)) {
+      if(lookupKey && liveByTcgPlayerId.has(lookupKey)) {
         reusedLookup = true;
         summary.reusedLookups++;
-        const cachedLookup = liveByTcgPlayerId.get(exactId);
+        const cachedLookup = liveByTcgPlayerId.get(lookupKey);
         if(cachedLookup.error) throw cachedLookup.error;
         live = cachedLookup.live;
       } else {
@@ -11556,9 +11589,9 @@ async function buildLivePokemonPriceSyncProposal(options = {}){
               throw error;
             }
           }
-          if(exactId) liveByTcgPlayerId.set(exactId, { live });
+          if(lookupKey) liveByTcgPlayerId.set(lookupKey, { live });
         } catch(error) {
-          if(exactId) liveByTcgPlayerId.set(exactId, { error });
+          if(lookupKey) liveByTcgPlayerId.set(lookupKey, { error });
           throw error;
         }
       }
@@ -11568,23 +11601,24 @@ async function buildLivePokemonPriceSyncProposal(options = {}){
         const linkedId = inventoryTcgPlayerId(item);
         summary.issues.push({
           item:{ ...item }, type:'no-match', tcgPlayerId:linkedId, requestPath:live.requestPath || '',
-          title:linkedId ? 'Linked TCGplayer product was not returned by PokemonPriceTracker' : (live.matchStatus === 'no-query' ? 'Missing card identity' : 'No exact card match'),
+          title:linkedId ? 'Linked TCGplayer product was not returned by PokemonPriceTracker' : (live.matchStatus === 'no-query' ? 'Missing product identity' : 'No exact ' + (sealed ? 'sealed product' : 'card') + ' match'),
           reason:linkedId
-            ? 'Exact product ID ' + linkedId + ' returned no Pokemon card. Confirm the link is a Pokemon single (not sealed or another TCG) and that PokemonPriceTracker supports that product.'
+            ? 'Exact product ID ' + linkedId + ' returned no Pokemon ' + (sealed ? 'sealed product from /sealed-products.' : 'card from /cards.') + ' Confirm the TCGplayer link and product type.'
             : (live.matchStatus === 'no-query'
               ? 'This row has no TCGplayer product ID/link and not enough name, set, or card-number data to search.'
               : 'No TCGplayer product ID/link is saved. The fallback search for "' + (live.query || inventoryPokemonExactQuery(item)) + '" returned ' + Number(live.resultCount || 0) + ' candidate(s), but none passed exact name/set/number matching.'),
         });
         continue;
       }
+      if(sealed) summary.sealedMatched++;
       const freshPrice = pokemonPriceTrackerMarketPrice(live.card);
       if(!freshPrice || freshPrice <= 0) {
         summary.noPrice++;
         const linkedId = inventoryTcgPlayerId(item) || live.card.tcgPlayerId || live.card.tcgplayerId || '';
         summary.issues.push({
           item:{ ...item }, type:'no-price', tcgPlayerId:linkedId, requestPath:live.requestPath || '',
-          title:'Exact card matched, but no market price was available',
-          reason:'Matched ' + (linkedId ? 'TCGplayer product ID ' + linkedId : 'by name, set, and card number') + ', but PokemonPriceTracker returned no positive market price.',
+          title:'Exact ' + (sealed ? 'sealed product' : 'card') + ' matched, but no market price was available',
+          reason:'Matched ' + (linkedId ? 'TCGplayer product ID ' + linkedId : (sealed ? 'by product name and set' : 'by name, set, and card number')) + ', but PokemonPriceTracker returned no positive market price.',
         });
         continue;
       }
@@ -11796,6 +11830,7 @@ async function runLivePokemonPriceSync(){
       ? 'Live sync paused after ' + s.processed + ' of ' + s.checked + ' Pokemon items because the short provider rate limit did not clear after automatic retries. '
       : 'Live sync checked ' + s.checked + ' Pokemon item' + (s.checked===1?'':'s') + '. ')
       + s.changed + ' changed, ' + s.unchanged + ' unchanged, ' + s.noMatch + ' not matched, ' + s.noPrice + ' matched without a market price, ' + s.errors + ' errors.'
+      + (s.sealedChecked ? ' Sealed: ' + s.sealedMatched + ' of ' + s.sealedChecked + ' matched through /sealed-products.' : '')
       + (s.reusedLookups ? ' ' + s.reusedLookups + ' duplicate product lookup' + (s.reusedLookups===1?' was':'s were') + ' reused.' : '')
       + (s.rateLimitPauses ? ' Automatically resumed after ' + s.rateLimitPauses + ' short rate-limit pause' + (s.rateLimitPauses===1?'':'s') + '.' : '');
     if(!_priceSyncProposal.length) {
@@ -22554,6 +22589,34 @@ async function pokemonPriceTrackerCardsRequest(params, pathLabel, { fresh = fals
   }
   if(!res.ok || !data.ok) {
     const err = new Error(data.error || data.message || 'PokemonPriceTracker request failed');
+    err.status = res.status;
+    err.providerQuotaState = data.providerQuotaState || '';
+    err.retryAt = data.retryAt || '';
+    throw err;
+  }
+  return { data, cards:pokemonPriceTrackerCardsFromPayload(data).slice(0, 20), requestPath, pathLabel, cacheStatus:data.cache?.state === 'hit' ? 'hit' : data.cache?.state === 'stale' ? 'stale' : 'miss' };
+}
+
+async function pokemonPriceTrackerSealedProductsRequest(params, pathLabel, { fresh = false, signal = null } = {}){
+  if(fresh) params.set('fresh', 'true');
+  const requestPath = '/pricing/pokemon/sealed-products?' + params.toString().replace(/\+/g, '%20');
+  const res = await storeWorkerFetch(requestPath, { cache:'no-store', signal });
+  const data = await res.json().catch(() => ({}));
+  if(res.status === 402 && data.subscriptionRequired){
+    const err = new Error('Subscription required — open Settings to subscribe or start your free trial.');
+    err.subscriptionRequired = true;
+    throw err;
+  }
+  if(data.usage?.dailyRemaining != null) localStorage.setItem('ppt_remaining_credits', String(data.usage.dailyRemaining));
+  if(data.usage?.consumed != null) localStorage.setItem('ppt_last_consumed', String(data.usage.consumed));
+  const remaining = data.usage?.dailyRemaining ?? Number(localStorage.getItem('ppt_remaining_credits') || 9999);
+  if(data.providerQuotaState === 'exhausted' || (res.status === 429 && remaining <= 0) || (res.status === 403 && /quota|exhausted/i.test(String(data.error || data.message || '')))) {
+    localStorage.setItem('ppt_quota_exhausted_until', String(Date.now() + 60 * 60 * 1000));
+  } else if(res.status === 429) {
+    localStorage.setItem('ppt_rate_limited_until', String(Date.now() + 60 * 1000));
+  }
+  if(!res.ok || !data.ok) {
+    const err = new Error(data.error || data.message || 'PokemonPriceTracker sealed-products request failed');
     err.status = res.status;
     err.providerQuotaState = data.providerQuotaState || '';
     err.retryAt = data.retryAt || '';
