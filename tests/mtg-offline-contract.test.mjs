@@ -13,7 +13,7 @@ assert.match(worker, /\/catalog\/mtg\/download/);
 assert.match(worker, /MTG_CATALOG_R2/);
 assert.ok(wrangler.r2_buckets?.some(binding => binding.binding === 'MTG_CATALOG_R2'));
 
-for(const store of ['mtg_cards','mtg_sets','mtg_prices','mtg_price_links','mtg_search_tokens','mtg_price_search_tokens','mtg_meta','mtg_images']) {
+for(const store of ['mtg_cards','mtg_market_prices','mtg_sets','mtg_prices','mtg_price_links','mtg_search_tokens','mtg_price_search_tokens','mtg_meta','mtg_images']) {
   assert.match(browser, new RegExp(store));
 }
 assert.match(browser, /activeManifestVersion===manifest\.version/);
@@ -44,7 +44,9 @@ assert.match(dashboard, /IMPORT LATEST MTG DATA/);
 assert.match(dashboard, /mtg\.meta\?\.updateAvailable \|\| mtgAge > MS_24H/);
 assert.match(dashboard, /mtgsbNormalizeCardRecord/);
 assert.match(dashboard, /mtgsbToggleMobileFilters/);
-assert.match(browser, /const DB_VERSION = 3/);
+assert.match(browser, /const DB_VERSION = 4/);
+assert.match(browser, /Downloading compact market prices/);
+assert.match(browser, /marketPricesVersion/);
 assert.match(browser, /searchIndexReady/);
 assert.match(browser, /searchPrices/);
 assert.match(browser, /findExact/);
@@ -60,6 +62,7 @@ assert.doesNotMatch(dashboard, /fetch\(['"]https:\/\/api\.scryfall\.com\/bulk-da
 assert.match(workflow, /schedule:/);
 assert.match(workflow, /PRICECHARTING_MTG_CSV_URL/);
 assert.match(workflow, /r2 object put[^\n]+--remote/);
+assert.match(workflow, /market-prices-scryfall\.jsonl\.gz/);
 assert.match(workflow, /Verify production manifest/);
 assert.ok(workflow.indexOf('build-report.json') < workflow.indexOf('Publish manifest last'));
 

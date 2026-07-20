@@ -57,6 +57,7 @@ jobs:
         run: |
           set -euo pipefail
           gzip -t "data/mtg/build/mtg/$VERSION/cards.jsonl.gz"
+          gzip -t "data/mtg/build/mtg/$VERSION/market-prices-scryfall.jsonl.gz"
           gzip -t "data/mtg/build/mtg/$VERSION/prices-pricecharting.jsonl.gz"
           gzip -t "data/mtg/build/mtg/$VERSION/links-scryfall-pricecharting.jsonl.gz"
           gzip -t "data/mtg/build/mtg/$VERSION/sets.jsonl.gz"
@@ -68,6 +69,7 @@ jobs:
           set -euo pipefail
           BASE="data/mtg/build/mtg/$VERSION"
           npx wrangler@latest r2 object put "$MTG_R2_BUCKET/mtg/$VERSION/cards.jsonl.gz" --file "$BASE/cards.jsonl.gz" --config wrangler.deploy.jsonc --remote
+          npx wrangler@latest r2 object put "$MTG_R2_BUCKET/mtg/$VERSION/market-prices-scryfall.jsonl.gz" --file "$BASE/market-prices-scryfall.jsonl.gz" --config wrangler.deploy.jsonc --remote
           npx wrangler@latest r2 object put "$MTG_R2_BUCKET/mtg/$VERSION/prices-pricecharting.jsonl.gz" --file "$BASE/prices-pricecharting.jsonl.gz" --config wrangler.deploy.jsonc --remote
           npx wrangler@latest r2 object put "$MTG_R2_BUCKET/mtg/$VERSION/links-scryfall-pricecharting.jsonl.gz" --file "$BASE/links-scryfall-pricecharting.jsonl.gz" --config wrangler.deploy.jsonc --remote
           npx wrangler@latest r2 object put "$MTG_R2_BUCKET/mtg/$VERSION/sets.jsonl.gz" --file "$BASE/sets.jsonl.gz" --config wrangler.deploy.jsonc --remote

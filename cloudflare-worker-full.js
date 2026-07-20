@@ -724,7 +724,7 @@ async function handlePlatformAdmin(request, env, url) {
   return json({ ok:false, error:'Admin route not found' }, 404);
 }
 
-const MTG_CATALOG_FILE_TYPES = new Set(['cards', 'prices', 'links', 'sets']);
+const MTG_CATALOG_FILE_TYPES = new Set(['cards', 'marketprices', 'prices', 'links', 'sets']);
 // Shared PriceCharting business-download catalogs. Pokemon intentionally stays on
 // PokemonPriceTracker exports and MTG keeps its Scryfall + PriceCharting pipeline.
 const PRICECHARTING_OFFLINE_CATEGORIES = new Set([
@@ -1283,11 +1283,12 @@ export default {
       if (request.method !== 'GET') return json({ ok: false, error: 'GET only' }, 405);
       if (!env.MTG_CATALOG_R2) return json({ ok: false, error: 'MTG_CATALOG_R2 binding is not configured' }, 503);
       const type = String(url.searchParams.get('file') || '').toLowerCase();
-      if (!MTG_CATALOG_FILE_TYPES.has(type)) return json({ ok: false, error: 'file must be cards, prices, links, or sets' }, 400);
+      if (!MTG_CATALOG_FILE_TYPES.has(type)) return json({ ok: false, error: 'file must be cards, marketPrices, prices, links, or sets' }, 400);
       const manifestObject = await env.MTG_CATALOG_R2.get('mtg/manifest.json');
       if (!manifestObject) return json({ ok: false, error: 'MTG manifest not found' }, 404);
       const manifest = await manifestObject.json().catch(() => null);
-      const descriptor = manifest?.status === 'ready' ? manifest.files?.[type] : null;
+      const descriptorKey = type === 'marketprices' ? 'marketPrices' : type;
+      const descriptor = manifest?.status === 'ready' ? manifest.files?.[descriptorKey] : null;
       const key = String(descriptor?.path || '');
       if (!key.startsWith('mtg/') || !key.endsWith('.jsonl.gz')) return json({ ok: false, error: `MTG ${type} file is not ready` }, 503);
       const object = await env.MTG_CATALOG_R2.get(key, { onlyIf:request.headers });

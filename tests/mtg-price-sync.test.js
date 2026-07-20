@@ -22,16 +22,27 @@ const context = {
   firstMoneyValue: (...values) => values.map(Number).find(value => Number.isFinite(value) && value > 0) || 0,
   COND_MULTIPLIER: { NM:1, LP:.8, MP:.64, HP:.4, DMG:.25 },
   qplFinishLabel: value => value,
+  normalizeQplFinish: value => String(value || 'normal').trim().toLowerCase().replace(/[\s-]+/g, '_'),
 };
 vm.createContext(context);
 vm.runInContext(functionSource(dashboard, 'mtgInventoryFinish'), context);
+vm.runInContext(functionSource(dashboard, 'mtgFinishPriceFamily'), context);
 vm.runInContext(functionSource(dashboard, 'resolveMtgOfflineCardPrice'), context);
+vm.runInContext(functionSource(dashboard, 'scryfallTreatmentLabel'), context);
 
 assert.equal(context.resolveMtgOfflineCardPrice({ condition:'NM' }, { prices:{ usd:10 } }).price, 10);
 assert.equal(context.resolveMtgOfflineCardPrice({ condition:'LP', selectedFinish:'Foil' }, { prices:{ usd:10, usd_foil:20 } }).price, 16);
 assert.equal(context.resolveMtgOfflineCardPrice({ condition:'MP', selectedFinish:'Etched Foil' }, { prices:{ usd_etched:25 } }).price, 16);
+assert.equal(context.resolveMtgOfflineCardPrice({ condition:'NM', selectedFinish:'Surge Foil' }, { prices:{ usd_foil:31 } }).price, 31);
+assert.equal(context.resolveMtgOfflineCardPrice({ condition:'NM', selectedFinish:'Rainbow Foil' }, { prices:{ usd_foil:32 } }).price, 32);
+assert.equal(context.resolveMtgOfflineCardPrice({ condition:'NM', selectedFinish:'Halo Foil' }, { prices:{ usd_foil:33 } }).price, 33);
+assert.equal(context.resolveMtgOfflineCardPrice({ condition:'NM', selectedFinish:'Oil Slick Foil' }, { prices:{ usd_foil:34 } }).price, 34);
+assert.equal(context.resolveMtgOfflineCardPrice({ condition:'NM', selectedFinish:'Textured Foil' }, { prices:{ usd_foil:35 } }).price, 35);
 assert.equal(context.resolveMtgOfflineCardPrice({}, { prices:{}, offlinePriceLink:{confidence:98}, offlinePrice:{loosePrice:12} }).price, 12);
 assert.equal(context.resolveMtgOfflineCardPrice({ selectedFinish:'Foil' }, { prices:{}, offlinePriceLink:{confidence:99}, offlinePrice:{loosePrice:12} }).price, 0, 'A generic raw guide must not be applied to a foil');
+assert.equal(context.scryfallTreatmentLabel({ frame_effects:['showcase'], promo_types:['surgefoil'] }), 'surge_foil');
+assert.equal(context.scryfallTreatmentLabel({ promo_types:['confettifoil'] }), 'rainbow_foil');
+assert.equal(context.scryfallTreatmentLabel({ promo_types:['textured'] }), 'textured_foil');
 
 assert.match(browser, /async function findExact\(ref=\{\}\)/);
 assert.match(browser, /exact Scryfall ID/);
@@ -41,8 +52,14 @@ assert.match(browser, /search,findExact,searchPrices/);
 assert.match(dashboard, /id="price-sync-mtg-btn"/);
 assert.match(dashboard, /async function buildOfflineMtgPriceSyncProposal/);
 assert.match(dashboard, /async function runOfflineMtgPriceSync/);
-assert.match(dashboard, /mode:'mtg-offline'/);
+assert.match(dashboard, /mode:live\?'mtg-live':'mtg-offline'/);
+assert.match(dashboard, /async function fetchLiveMtgInventoryPrice/);
+assert.match(dashboard, /SYNC MTG PRICES/);
 assert.match(dashboard, /mtgOfflinePriceUpdatedAt/);
 assert.match(dashboard, /No exact offline MTG match/);
+assert.match(dashboard, /function openInventoryTcgplayer/);
+assert.match(dashboard, /🛒 TCGplayer/);
+assert.match(dashboard, /async function refreshResearchPrice/);
+assert.match(dashboard, /onclick="refreshResearchPrice\(\$\{idx\}\)"/);
 
 console.log('MTG offline inventory price sync checks passed');

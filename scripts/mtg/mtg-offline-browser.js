@@ -2,9 +2,9 @@
   'use strict';
 
   const DB_NAME = 'arscaOfflineCatalog';
-  const DB_VERSION = 3;
+  const DB_VERSION = 4;
   const SEARCH_INDEX_VERSION = 1;
-  const DATA_STORES = ['mtg_cards','mtg_sets','mtg_prices','mtg_price_links','mtg_search_tokens','mtg_price_search_tokens'];
+  const DATA_STORES = ['mtg_cards','mtg_market_prices','mtg_sets','mtg_prices','mtg_price_links','mtg_search_tokens','mtg_price_search_tokens'];
   let dbPromise;
 
   function normalize(value = '') {
@@ -37,6 +37,7 @@
           ['collectorNumber','collectorNumber'],['oracleId','oracleId'],['artist','artist'],['rarity','rarity'],
           ['typeLine','typeLine'],['searchText','searchText']
         ]);
+        createVersioned('mtg_market_prices','scryfallId',[['updatedAt','updatedAt']]);
         const cardsStore = request.transaction.objectStore('mtg_cards');
         if(!cardsStore.indexNames.contains('catalogSet')) cardsStore.createIndex('catalogSet',['catalogVersion','setCode']);
         if(!cardsStore.indexNames.contains('catalogName')) cardsStore.createIndex('catalogName',['catalogVersion','normalizedName']);
@@ -126,7 +127,7 @@
       pending+=decoder.decode(value || new Uint8Array(),{stream:!done});
       const lines=pending.split('\n'); pending=lines.pop() || '';
       for(const line of lines){ if(!line.trim()) continue; batch.push(JSON.parse(line)); count++; }
-      if(batch.length>=500){ await putBatch(storeName,version,batch); batch=[]; onProgress?.({stage:`Importing ${storeName.replace('mtg_','')}`,count,total:descriptor.recordCount||0}); await new Promise(resolve=>setTimeout(resolve,0)); }
+      if(batch.length>=2000){ await putBatch(storeName,version,batch); batch=[]; onProgress?.({stage:`Importing ${storeName.replace('mtg_','')}`,count,total:descriptor.recordCount||0}); await new Promise(resolve=>setTimeout(resolve,0)); }
       if(done) break;
     }
     if(pending.trim()){batch.push(JSON.parse(pending));count++;}
@@ -140,32 +141,55 @@
     root.dispatchEvent?.(new CustomEvent('arsca-mtg-offline-progress',{detail}));
   }
 
-  async function sync({workerBase='',force=false,onProgress}={}){
+  async function sync({workerBase='',force=false,full=false,onProgress}={}){
     const manifestResponse=await fetch(workerBase+'/catalog/mtg/manifest',{cache:'no-store'});
     if(!manifestResponse.ok) throw new Error(`MTG manifest unavailable (HTTP ${manifestResponse.status})`);
     const manifest=await manifestResponse.json();
     if(manifest.status!=='ready' || !manifest.version) throw new Error('MTG manifest is not ready');
     const active=await getMeta('active');
     const activeManifestVersion=active?.manifestVersion||active?.catalogVersion||'';
+    const marketDescriptor=manifest.files?.marketPrices;
+    if(active?.catalogVersion && !force && !full && marketDescriptor){
+      if(active.marketPricesSha===marketDescriptor.sha256 && activeManifestVersion===manifest.version) return {updated:false,fast:true,manifest,status:await status()};
+      const marketTarget=`market::${String(marketDescriptor.sha256||manifest.version).slice(0,16)}`;
+      await clearVersion(marketTarget);
+      await putMeta({name:'import',importStatus:'running',targetVersion:marketTarget,mode:'prices-only',startedAt:new Date().toISOString()});
+      try{
+        emitProgress({stage:'Downloading compact market prices',file:'marketPrices',version:marketTarget},onProgress);
+        const response=await fetch(workerBase+'/catalog/mtg/download?file=marketPrices',{cache:'no-store'});
+        const count=await importGzipJsonl(response,marketDescriptor,'mtg_market_prices',marketTarget,detail=>emitProgress({...detail,file:'marketPrices',version:marketTarget},onProgress));
+        const importedAt=new Date().toISOString(),previousMarketVersion=active.marketPricesVersion;
+        await putMeta({...active,name:'active',manifestVersion:manifest.version,pricesVersion:manifest.version,marketPricesVersion:marketTarget,marketPricesSha:marketDescriptor.sha256,lastImportedAt:importedAt,importStatus:'ready',generatedAt:manifest.generatedAt,sourceVersions:manifest.sourceVersions||{}});
+        await putMeta({name:'import',importStatus:'complete',targetVersion:marketTarget,mode:'prices-only',completedAt:importedAt});
+        emitProgress({stage:'Price update complete',version:marketTarget,counts:{marketPrices:count},fast:true},onProgress);
+        if(previousMarketVersion&&previousMarketVersion!==active.catalogVersion&&previousMarketVersion!==marketTarget) clearVersion(previousMarketVersion).catch(()=>{});
+        return {updated:true,fast:true,manifest,status:await status()};
+      }catch(error){
+        await putMeta({name:'import',importStatus:'failed',targetVersion:marketTarget,mode:'prices-only',error:error.message,failedAt:new Date().toISOString()}).catch(()=>{});
+        await clearVersion(marketTarget).catch(()=>{});
+        throw error;
+      }
+    }
     if(!force && activeManifestVersion===manifest.version && active?.manifestSha===manifest.files?.cards?.sha256 && active?.searchIndexVersion===SEARCH_INDEX_VERSION) return {updated:false,manifest,status:await status()};
     const target=`${manifest.version}::${String(manifest.files?.cards?.sha256||Date.now()).slice(0,12)}${force?'::'+Date.now():''}`;
     await clearVersion(target);
     await putMeta({name:'import',importStatus:'running',targetVersion:target,startedAt:new Date().toISOString()});
-    const jobs=[['cards','mtg_cards'],['prices','mtg_prices'],['links','mtg_price_links'],['sets','mtg_sets']];
+    const jobs=[['cards','mtg_cards'],['marketPrices','mtg_market_prices'],['prices','mtg_prices'],['links','mtg_price_links'],['sets','mtg_sets']];
     const counts={};
     try{
       for(const [file,store] of jobs){
         const descriptor=manifest.files?.[file];
-        if(!descriptor){ if(file==='prices'||file==='links'){counts[file]=0;continue;} throw new Error(`Manifest missing ${file}`); }
+        if(!descriptor){ if(file==='marketPrices'||file==='prices'||file==='links'){counts[file]=0;continue;} throw new Error(`Manifest missing ${file}`); }
         emitProgress({stage:`Downloading ${file}`,file,version:target},onProgress);
         const response=await fetch(workerBase+`/catalog/mtg/download?file=${encodeURIComponent(file)}`,{cache:'no-store'});
         counts[file]=await importGzipJsonl(response,descriptor,store,target,detail=>emitProgress({...detail,file,version:target},onProgress));
       }
       const importedAt=new Date().toISOString();
-      await putMeta({name:'active',catalogVersion:target,manifestVersion:manifest.version,pricesVersion:manifest.version,manifestSha:manifest.files.cards.sha256,lastImportedAt:importedAt,importStatus:'ready',counts,generatedAt:manifest.generatedAt,sourceVersions:manifest.sourceVersions||{},searchIndexVersion:SEARCH_INDEX_VERSION});
+      await putMeta({name:'active',catalogVersion:target,manifestVersion:manifest.version,pricesVersion:manifest.version,manifestSha:manifest.files.cards.sha256,marketPricesVersion:target,marketPricesSha:manifest.files?.marketPrices?.sha256||'',lastImportedAt:importedAt,importStatus:'ready',counts,generatedAt:manifest.generatedAt,sourceVersions:manifest.sourceVersions||{},searchIndexVersion:SEARCH_INDEX_VERSION});
       await putMeta({name:'import',importStatus:'complete',targetVersion:target,completedAt:importedAt});
       emitProgress({stage:'Complete',version:target,counts},onProgress);
       if(active?.catalogVersion && active.catalogVersion!==target) clearVersion(active.catalogVersion).catch(()=>{});
+      if(active?.marketPricesVersion && active.marketPricesVersion!==active.catalogVersion && active.marketPricesVersion!==target) clearVersion(active.marketPricesVersion).catch(()=>{});
       return {updated:true,manifest,status:await status()};
     }catch(error){
       await putMeta({name:'import',importStatus:'failed',targetVersion:target,error:error.message,failedAt:new Date().toISOString()}).catch(()=>{});
@@ -260,11 +284,14 @@
 
   async function attachPrices(version,ranked){
     const db=await openDb();
+    const active=await getMeta('active'),marketVersion=active?.marketPricesVersion||version;
+    const marketTx=db.transaction('mtg_market_prices','readonly'),marketStore=marketTx.objectStore('mtg_market_prices');
+    const markets=await Promise.all(ranked.map(item=>requestPromise(marketStore.get([marketVersion,item.card.scryfallId]))));
     const linkTx=db.transaction('mtg_price_links','readonly'),linkStore=linkTx.objectStore('mtg_price_links');
     const links=await Promise.all(ranked.map(item=>requestPromise(linkStore.get([version,item.card.scryfallId]))));
     const priceTx=db.transaction('mtg_prices','readonly'),priceStore=priceTx.objectStore('mtg_prices');
     const prices=await Promise.all(links.map(link=>link?.pricechartingId?requestPromise(priceStore.get([version,link.pricechartingId])):null));
-    return ranked.map((item,index)=>({...item.card,offlinePriceLink:links[index]||null,offlinePrice:prices[index]||null,offlineMatchWhy:item.why,catalogVersion:version}));
+    return ranked.map((item,index)=>({...item.card,prices:markets[index]?.prices||item.card.prices||{},tcgplayerId:markets[index]?.tcgplayerId||item.card.tcgplayerId||'',marketPricesUpdatedAt:markets[index]?.updatedAt||'',offlinePriceLink:links[index]||null,offlinePrice:prices[index]||null,offlineMatchWhy:item.why,catalogVersion:version}));
   }
 
   function priceScore(price,parts){
@@ -351,10 +378,12 @@
     const cards=store.indexNames.contains('catalogSet')
       ? await requestPromise(store.index('catalogSet').getAll(IDBKeyRange.only([version,wanted])))
       : await recordsForVersion('mtg_cards',version,Infinity,card=>normalize(card.setCode)===wanted);
+    const activeMarketVersion=active?.marketPricesVersion||version;
     return Promise.all(cards.map(async card=>{
+      const market=await getVersioned('mtg_market_prices',activeMarketVersion,card.scryfallId);
       const link=await getVersioned('mtg_price_links',version,card.scryfallId);
       const price=link?.pricechartingId ? await getVersioned('mtg_prices',version,link.pricechartingId) : null;
-      return {...card,offlinePriceLink:link||null,offlinePrice:price||null,catalogVersion:version};
+      return {...card,prices:market?.prices||card.prices||{},tcgplayerId:market?.tcgplayerId||card.tcgplayerId||'',marketPricesUpdatedAt:market?.updatedAt||'',offlinePriceLink:link||null,offlinePrice:price||null,catalogVersion:version};
     }));
   }
 
@@ -364,11 +393,13 @@
 
   async function status(){
     const active=await getMeta('active'); const version=active?.catalogVersion||'';
-    const [cards,setsCount,prices,links,images]=await Promise.all([
-      countVersion('mtg_cards',version),countVersion('mtg_sets',version),countVersion('mtg_prices',version),countVersion('mtg_price_links',version),
+    const marketVersion=active?.marketPricesVersion||version;
+    const [cards,marketPrices,setsCount,prices,links,images]=await Promise.all([
+      countVersion('mtg_cards',version),countVersion('mtg_market_prices',marketVersion),countVersion('mtg_sets',version),
+      countVersion('mtg_prices',version),countVersion('mtg_price_links',version),
       openDb().then(db=>requestPromise(db.transaction('mtg_images','readonly').objectStore('mtg_images').count())).catch(()=>0)
     ]);
-    return {catalogVersion:active?.manifestVersion||version,storageVersion:version,pricesVersion:active?.pricesVersion||'',lastImportedAt:active?.lastImportedAt||'',generatedAt:active?.generatedAt||'',sourceVersions:active?.sourceVersions||{},manifestSha:active?.manifestSha||'',importStatus:active?.importStatus||'not-downloaded',searchIndexReady:active?.searchIndexVersion===SEARCH_INDEX_VERSION,cards,sets:setsCount,prices,links,images};
+    return {catalogVersion:active?.manifestVersion||version,storageVersion:version,pricesVersion:active?.pricesVersion||'',lastImportedAt:active?.lastImportedAt||'',generatedAt:active?.generatedAt||'',sourceVersions:active?.sourceVersions||{},manifestSha:active?.manifestSha||'',marketPricesSha:active?.marketPricesSha||'',importStatus:active?.importStatus||'not-downloaded',searchIndexReady:active?.searchIndexVersion===SEARCH_INDEX_VERSION,cards,marketPrices,sets:setsCount,prices,links,images};
   }
 
   async function clearAll(){

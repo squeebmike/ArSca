@@ -116,6 +116,7 @@ if(!pcArg) throw new Error('PRICECHARTING_MTG_CSV_URL or --pricecharting=<file-o
 const pricechartingFile = await sourceFile(pcArg, 'pricecharting-mtg.csv');
 
 const cardsPath = path.join(bundleDir, 'cards.jsonl.gz');
+const marketPricesPath = path.join(bundleDir, 'market-prices-scryfall.jsonl.gz');
 const pricesPath = path.join(bundleDir, 'prices-pricecharting.jsonl.gz');
 const linksPath = path.join(bundleDir, 'links-scryfall-pricecharting.jsonl.gz');
 const setsPath = path.join(bundleDir, 'sets.jsonl.gz');
@@ -124,6 +125,7 @@ const manifestPath = path.join(outputRoot, 'mtg', 'manifest.json');
 
 log('Normalizing streamed Scryfall cards');
 const cardWriter = gzipWriter(cardsPath);
+const marketPriceWriter = gzipWriter(marketPricesPath);
 const setMap = new Map();
 let cardCount = 0;
 const cardStream = chain([fs.createReadStream(scryfallFile), parser(), streamArray()]);
@@ -131,6 +133,7 @@ for await (const entry of cardStream) {
   const card = normalizeScryfallCard(entry.value, generatedAt);
   if(!card.scryfallId) continue;
   await cardWriter.write(card);
+  await marketPriceWriter.write({ scryfallId:card.scryfallId, prices:card.prices || {}, tcgplayerId:card.tcgplayerId || '', updatedAt:generatedAt });
   cardCount++;
   if(card.setCode) {
     const current = setMap.get(card.setCode) || {
@@ -144,6 +147,7 @@ for await (const entry of cardStream) {
   if(limit && cardCount >= limit) break;
 }
 await cardWriter.close();
+await marketPriceWriter.close();
 
 log('Normalizing PriceCharting MTG snapshot');
 const priceWriter = gzipWriter(pricesPath);
@@ -187,7 +191,7 @@ await linkWriter.close();
 
 const descriptors = {
   cards:await fileDescriptor(cardsPath, cardCount), prices:await fileDescriptor(pricesPath, prices.length),
-  links:await fileDescriptor(linksPath, linkStats.autoLinked), sets:await fileDescriptor(setsPath, setMap.size),
+  marketPrices:await fileDescriptor(marketPricesPath, cardCount), links:await fileDescriptor(linksPath, linkStats.autoLinked), sets:await fileDescriptor(setsPath, setMap.size),
 };
 const report = {
   category:'mtg', version, generatedAt, totalScryfallCards:cardCount, totalPriceChartingProducts:prices.length,

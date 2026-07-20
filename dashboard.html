@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.07.20.01-mtg-offline-price-sync">
+<meta name="version" content="2026.07.20.02-mtg-live-fast-sync">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1469,13 +1469,13 @@ body.show-mode .inv-sync-badge{display:none;}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.07.20.01-mtg-offline-price-sync"></script>
-<script src="scripts/barcode-lookup.js?v=2026.07.20.01-mtg-offline-price-sync"></script>
-<script src="scripts/comic-issue-hub.js?v=2026.07.20.01-mtg-offline-price-sync"></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.07.20.01-mtg-offline-price-sync"></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.07.20.01-mtg-offline-price-sync"></script>
-<script src="scripts/topps/offline-browser.js?v=2026.07.20.01-mtg-offline-price-sync"></script>
-<script src="scripts/mtg/research-batch.js?v=2026.07.20.01-mtg-offline-price-sync"></script>
+<script src="scripts/query-routing.js?v=2026.07.20.02-mtg-live-fast-sync"></script>
+<script src="scripts/barcode-lookup.js?v=2026.07.20.02-mtg-live-fast-sync"></script>
+<script src="scripts/comic-issue-hub.js?v=2026.07.20.02-mtg-live-fast-sync"></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.07.20.02-mtg-live-fast-sync"></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.07.20.02-mtg-live-fast-sync"></script>
+<script src="scripts/topps/offline-browser.js?v=2026.07.20.02-mtg-live-fast-sync"></script>
+<script src="scripts/mtg/research-batch.js?v=2026.07.20.02-mtg-live-fast-sync"></script>
 </head>
 <body>
 
@@ -1525,11 +1525,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.07.20.01-mtg-offline-price-sync</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.07.20.02-mtg-live-fast-sync</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.07.20.01-mtg-offline-price-sync</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.07.20.02-mtg-live-fast-sync</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1551,7 +1551,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.07.20.01-mtg-offline-price-sync</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.07.20.02-mtg-live-fast-sync</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -2569,7 +2569,7 @@ body.show-mode .inv-sync-badge{display:none;}
     </div>
     <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
       <button class="hbtn" id="price-sync-scan-btn" onclick="runPriceSyncScan()">SCAN CACHED PRICES</button>
-      <button class="hbtn" id="price-sync-mtg-btn" onclick="runOfflineMtgPriceSync()">SCAN OFFLINE MTG</button>
+      <button class="hbtn" id="price-sync-mtg-btn" onclick="runOfflineMtgPriceSync()">SYNC MTG PRICES</button>
       <button class="hbtn" id="price-sync-live-btn" onclick="runLivePokemonPriceSync()">FETCH LIVE POKEMON</button>
       <button class="hbtn" id="price-sync-apply-btn" onclick="applySelectedPriceSyncUpdates()" style="display:none;background:rgba(0,255,179,.12);border-color:rgba(0,255,179,.4);color:var(--g)">✓ UPDATE SELECTED</button>
       <button class="modal-btn cancel" onclick="closePriceSyncModal()" style="margin-left:auto">CLOSE</button>
@@ -2931,7 +2931,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.07.20.01-mtg-offline-price-sync';
+const APP_VERSION = '2026.07.20.02-mtg-live-fast-sync';
 window.APP_VERSION = APP_VERSION;
 
 // This page has no cache-busting of its own (unlike the secondary scripts,
@@ -5984,7 +5984,7 @@ async function renderOfflineCatalogManagerPanel(){
     <div style="font-family:'Orbitron',monospace;color:var(--g);font-size:11px;letter-spacing:.05em;margin-top:8px">POKEMON / POKEMONPRICETRACKER BUSINESS EXPORTS</div>
     ${pptRows}
     <div style="font-family:'Orbitron',monospace;color:#5ba3f5;font-size:11px;letter-spacing:.05em;margin-top:16px">MTG OFFLINE DATA</div>
-    ${row('Scryfall cards', mtg.cards || 0, mtgScryfallAt, mtgStatus, `<button class="hbtn" onclick="downloadMtgBulkCatalog()" ${mtgBusy?'disabled':''}>${mtgBusy?'SYNCING...':(mtgMeta.updateAvailable?'IMPORT LATEST MTG DATA':'REFRESH MTG OFFLINE DATA')}</button><button class="hbtn" onclick="clearMtgBulkCatalog()">CLEAR DATA</button>`, 'Scryfall offline catalog')}
+    ${row('Scryfall cards', mtg.cards || 0, mtgScryfallAt, mtgStatus, `<button class="hbtn" onclick="downloadMtgBulkCatalog()" ${mtgBusy?'disabled':''}>${mtgBusy?'SYNCING...':'FAST PRICE UPDATE'}</button><button class="hbtn" onclick="downloadMtgBulkCatalog(true)" ${mtgBusy?'disabled':''}>FULL CATALOG REBUILD</button><button class="hbtn" onclick="clearMtgBulkCatalog()">CLEAR DATA</button>`, 'Fast update refreshes the compact daily price snapshot. Full rebuild refreshes every card and search index.')}
     ${row('PriceCharting snapshot', mtg.prices || 0, mtgPricechartingAt, (mtg.links || 0).toLocaleString() + ' linked cards', `<button class="hbtn" onclick="clearMtgImageCache()">CLEAR IMAGE CACHE (${Number(mtg.images||0).toLocaleString()})</button>`, 'PriceCharting offline snapshot')}
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;border-top:1px solid var(--border);padding:10px 0;font-family:monospace;font-size:10px">
       <label for="mtg-offline-mode" style="color:var(--text);font-weight:700">SEARCH MODE</label>
@@ -10550,6 +10550,13 @@ function renderTable(){
 }
 
 // Inventory row ⋯ more menu
+function openInventoryTcgplayer(id){
+  const item=(all||[]).find(candidate=>String(candidate.id||candidate.wfId)===String(id));
+  if(!item){toast_dash('Inventory item not found');return;}
+  const built=buildTcgExternalLink(item);
+  if(!built.url){toast_dash('No TCGplayer link or searchable card details');return;}
+  window.open(built.url,'_blank','noopener');
+}
 function showInvRowMenu(e, id, isInStock){
   e.stopPropagation();
   document.querySelectorAll('.inv-row-menu').forEach(m => m.remove());
@@ -10562,6 +10569,7 @@ function showInvRowMenu(e, id, isInStock){
   const btnStyle = 'width:100%;min-height:40px;font-size:11px;margin-bottom:4px;text-align:left;padding:0 12px';
   menu.innerHTML = [
     `<div style="font-family:monospace;font-size:8px;color:var(--dim);padding:2px 6px 6px;letter-spacing:.06em">MORE ACTIONS</div>`,
+    `<button class="hbtn" style="${btnStyle};color:var(--g)" onclick="openInventoryTcgplayer('${id}');this.closest('.inv-row-menu').remove()">🛒 TCGplayer</button>`,
     `<button class="hbtn" style="${btnStyle};color:var(--blue)" onclick="openInventoryItemInResearch('${id}');this.closest('.inv-row-menu').remove()">🔍 Research</button>`,
     `<button class="hbtn" style="${btnStyle}" onclick="openEbayFromDash('${id}');this.closest('.inv-row-menu').remove()">📦 eBay List</button>`,
     `<button class="hbtn" style="${btnStyle}" onclick="showItemHistory?.('${id}');this.closest('.inv-row-menu').remove()">📋 History</button>`,
@@ -11595,17 +11603,30 @@ function isMtgSealedInventorySyncItem(item = {}){
 function mtgInventoryFinish(item = {}){
   const text = [item.selectedFinish,item.finish,item.printing,item.selectedPrinting,item.variant,item.raw?.selectedFinish,item.raw?.finish].filter(Boolean).join(' ').toLowerCase();
   if(text.includes('etched')) return 'etched_foil';
+  if(text.includes('surge')) return 'surge_foil';
+  if(text.includes('rainbow') || text.includes('confetti')) return 'rainbow_foil';
+  if(text.includes('halo')) return 'halo_foil';
+  if(text.includes('oil slick') || text.includes('oil-slick')) return 'oil_slick';
+  if(text.includes('textured')) return 'textured_foil';
+  if(text.includes('serialized')) return 'serialized';
   if(text.includes('foil')) return 'foil';
   return 'normal';
+}
+function mtgFinishPriceFamily(finish = ''){
+  const normalized=normalizeQplFinish(finish || 'normal');
+  if(normalized==='normal') return 'normal';
+  if(normalized==='etched_foil') return 'etched_foil';
+  return 'foil';
 }
 function resolveMtgOfflineCardPrice(item = {}, card = {}){
   const finish = mtgInventoryFinish(item);
   const condition = pokemonPptConditionCode(item.selectedCondition || item.condition || item.raw?.condition || 'NM');
-  const priceKey = finish === 'etched_foil' ? 'usd_etched' : finish === 'foil' ? 'usd_foil' : 'usd';
+  const priceFamily=mtgFinishPriceFamily(finish);
+  const priceKey = priceFamily === 'etched_foil' ? 'usd_etched' : priceFamily === 'foil' ? 'usd_foil' : 'usd';
   let base = firstMoneyValue(card.prices?.[priceKey]);
   let source = 'Scryfall offline ' + (finish === 'normal' ? 'market' : qplFinishLabel(finish) + ' market');
   let pricePath = 'mtg_cards.prices.' + priceKey;
-  if(!base && finish === 'normal' && Number(card.offlinePriceLink?.confidence || 0) >= 95){
+  if(!base && priceFamily === 'normal' && Number(card.offlinePriceLink?.confidence || 0) >= 95){
     base = firstMoneyValue(card.offlinePrice?.loosePrice);
     source = 'PriceCharting MTG offline raw guide';
     pricePath = 'mtg_prices.loosePrice';
@@ -11632,10 +11653,50 @@ function mtgOfflineInventoryItems(){
     return !['sold','archived','returned','deleted'].includes(st) && isMtgInventorySyncItem(i);
   }).sort((a,b) => inventoryReferenceMarketPrice(b) - inventoryReferenceMarketPrice(a));
 }
+function resolveMtgLiveRowPrice(item = {}, row = {}){
+  const finish=mtgInventoryFinish(item),family=mtgFinishPriceFamily(finish);
+  const condition=pokemonPptConditionCode(item.selectedCondition || item.condition || 'NM');
+  const language=String(item.selectedLanguage || item.language || 'English').toLowerCase();
+  const variants=(row.availableVariants||[]).filter(v=>pokemonPptConditionCode(v.condition||'NM')===condition);
+  const compatible=variants.filter(v=>mtgFinishPriceFamily(v.finish||v.printing||'normal')===family);
+  const exact=compatible.find(v=>normalizeQplFinish(v.finish||v.printing||'')===finish && String(v.language||'English').toLowerCase()===language)
+    || compatible.find(v=>String(v.language||'English').toLowerCase()===language)
+    || compatible[0] || null;
+  const price=firstMoneyValue(exact?.marketPrice,exact?.price,exact?.market,condition==='NM'&&family==='normal'?row.market:0);
+  return {price,basePrice:price,finish,condition,source:'TCGplayer live · '+qplFinishLabel(finish)+' · '+condition,pricePath:exact?.pricePath||'justtcg.availableVariants.marketPrice',variant:exact};
+}
+async function fetchLiveMtgInventoryPrice(item = {}, offlineMatch = null){
+  if(!navigator.onLine)return null;
+  const sealed=isMtgSealedInventorySyncItem(item);
+  const scryfallId=mtgInventoryScryfallId(item)||offlineMatch?.scryfallId||'';
+  let liveScryfall=null;
+  if(scryfallId&&!sealed){
+    const response=await fetch('https://api.scryfall.com/cards/'+encodeURIComponent(scryfallId),{cache:'no-store',headers:{Accept:'application/json'}}).catch(()=>null);
+    if(response?.ok)liveScryfall=await response.json().catch(()=>null);
+  }
+  const tcgPlayerId=inventoryTcgPlayerId(item)||liveScryfall?.tcgplayer_id||offlineMatch?.tcgplayerId||'';
+  if(tcgPlayerId){
+    const product={productId:String(tcgPlayerId),name:inventoryCardName(item),canonicalUrl:item.tcgPlayerUrl||`https://www.tcgplayer.com/product/${tcgPlayerId}`,isMtg:true,isSealed:sealed,game:'magic',category:sealed?'MTG Sealed Product':'TCG',condition:pokemonPptConditionCode(item.selectedCondition||item.condition||'NM'),finish:mtgFinishPriceFamily(mtgInventoryFinish(item)),language:item.selectedLanguage||item.language||'English'};
+    const row=await resolveExactTcgplayerProduct(product).catch(()=>null);
+    if(row){
+      const resolved=sealed
+        ? {price:firstMoneyValue(row.market),basePrice:firstMoneyValue(row.market),finish:'sealed',condition:'NM',source:'TCGplayer live sealed market',pricePath:'tcgplayer.marketPrice'}
+        : resolveMtgLiveRowPrice(item,row);
+      if(resolved.price)return {row,resolved,matchStatus:'live exact TCGplayer ID',tcgPlayerId:String(tcgPlayerId),scryfallId};
+    }
+  }
+  if(liveScryfall){
+    const resolved=resolveMtgOfflineCardPrice(item,liveScryfall);
+    resolved.source='Scryfall live · '+qplFinishLabel(resolved.finish)+(resolved.condition!=='NM'?' · '+resolved.condition+' condition estimate':'');
+    resolved.pricePath='scryfall.live.prices.'+(mtgFinishPriceFamily(resolved.finish)==='normal'?'usd':mtgFinishPriceFamily(resolved.finish)==='etched_foil'?'usd_etched':'usd_foil')+(resolved.condition==='NM'?'':' * condition multiplier');
+    if(resolved.price)return {row:scryfallCardToQplRow(liveScryfall),resolved,matchStatus:'live exact Scryfall ID',tcgPlayerId:String(liveScryfall.tcgplayer_id||tcgPlayerId||''),scryfallId};
+  }
+  return null;
+}
 async function buildOfflineMtgPriceSyncProposal(options = {}){
-  const { onProgress = null } = options;
+  const { onProgress = null, preferOnline = navigator.onLine } = options;
   const items = mtgOfflineInventoryItems();
-  const summary = { checked:items.length, processed:0, changed:0, unchanged:0, noMatch:0, noPrice:0, errors:0, sealedChecked:0, issues:[] };
+  const summary = { checked:items.length, processed:0, changed:0, unchanged:0, noMatch:0, noPrice:0, errors:0, sealedChecked:0, onlineChecked:0, liveMatched:0, offlineFallback:0, issues:[] };
   const proposal = [];
   for(const item of items){
     try{
@@ -11662,6 +11723,17 @@ async function buildOfflineMtgPriceSyncProposal(options = {}){
           matchStatus = (match.offlineMatchWhy || ['exact offline match']).join(', ');
         }
       }
+      let live=null;
+      if(preferOnline){
+        summary.onlineChecked++;
+        live=await fetchLiveMtgInventoryPrice(item,match).catch(()=>null);
+        if(live){
+          summary.liveMatched++;
+          match=live.row||match;
+          resolved=live.resolved;
+          matchStatus=live.matchStatus;
+        }else if(match)summary.offlineFallback++;
+      }
       if(!match){
         summary.noMatch++;
         const savedIds = [mtgInventoryScryfallId(item) && 'Scryfall '+mtgInventoryScryfallId(item), inventoryTcgPlayerId(item) && 'TCGplayer '+inventoryTcgPlayerId(item), mtgInventorySetCode(item) && 'set '+mtgInventorySetCode(item), inventoryCardNumber(item) && '#'+inventoryCardNumber(item)].filter(Boolean).join(' · ');
@@ -11675,7 +11747,7 @@ async function buildOfflineMtgPriceSyncProposal(options = {}){
         else {
           const delta=freshPrice-oldPrice, deltaPct=oldPrice>0?Math.abs(delta/oldPrice)*100:100, direction=delta>=0?'up':'down', big=isBigPriceChange(oldPrice,freshPrice);
           summary.changed++;
-          proposal.push({ item:{...item}, mode:'mtg-offline', provider:'mtg-offline', source:resolved.source, oldPrice, newPrice:freshPrice, rawNewPrice:resolved.basePrice, delta, deltaPct, direction, isBig:big, label:big?(direction==='up'?'BIG INCREASE':'BIG DROP'):(direction==='up'?'increase':'drop'), matchStatus, lastUpdated:match.offlinePrice?.updatedAt || match.catalogVersion || '', scryfallId:match.scryfallId || '', oracleId:match.oracleId || '', tcgPlayerId:match.tcgplayerId || inventoryTcgPlayerId(item), tcgPlayerUrl:match.purchaseUris?.tcgplayer || '', pricechartingProductId:match.pricechartingId || match.offlinePrice?.pricechartingId || '', mtgCatalogVersion:match.catalogVersion || '', pricePath:resolved.pricePath, selected:true });
+          proposal.push({ item:{...item}, mode:live?'mtg-live':'mtg-offline', provider:'mtg', source:resolved.source, oldPrice, newPrice:freshPrice, rawNewPrice:resolved.basePrice, delta, deltaPct, direction, isBig:big, label:big?(direction==='up'?'BIG INCREASE':'BIG DROP'):(direction==='up'?'increase':'drop'), matchStatus, lastUpdated:live?new Date().toISOString():(match.offlinePrice?.updatedAt || match.marketPricesUpdatedAt || match.catalogVersion || ''), scryfallId:live?.scryfallId || match.scryfallId || mtgInventoryScryfallId(item), oracleId:match.oracleId || mtgInventoryOracleId(item), tcgPlayerId:live?.tcgPlayerId || match.tcgplayerId || match.tcgPlayerId || inventoryTcgPlayerId(item), tcgPlayerUrl:match.purchaseUris?.tcgplayer || match.tcgPlayerUrl || item.tcgPlayerUrl || '', pricechartingProductId:match.pricechartingId || match.offlinePrice?.pricechartingId || '', mtgCatalogVersion:match.catalogVersion || '', pricePath:resolved.pricePath, selected:true });
         }
       }
     }catch(e){
@@ -11915,7 +11987,7 @@ function openPriceSyncModal(){
     if(applyBtn) applyBtn.style.display = '';
     renderPriceSyncProposal();
   } else {
-    if(propEl) propEl.innerHTML = '<div style="color:var(--dim);font-size:11px;padding:12px 0">Use SCAN OFFLINE MTG for the downloaded MTG database, SCAN CACHED PRICES for saved lookup data, or FETCH LIVE POKEMON for current PokemonPriceTracker prices.</div>';
+    if(propEl) propEl.innerHTML = '<div style="color:var(--dim);font-size:11px;padding:12px 0">Use SYNC MTG PRICES for live pricing when online with automatic offline fallback, SCAN CACHED PRICES for saved lookup data, or FETCH LIVE POKEMON for current PokemonPriceTracker prices.</div>';
     if(statusEl) statusEl.textContent = '';
     if(applyBtn) applyBtn.style.display = 'none';
   }
@@ -11974,29 +12046,30 @@ async function runOfflineMtgPriceSync(){
   const pendingBeforeRun=[..._priceSyncProposal];
   if(!window.ArsCaMtgOffline){statusEl.textContent='MTG offline catalog module is unavailable.';return;}
   const catalog=await window.ArsCaMtgOffline.status().catch(()=>null);
-  if(!catalog?.cards){
+  const useOnline=!!navigator.onLine;
+  if(!catalog?.cards&&!useOnline){
     statusEl.textContent='No MTG offline catalog is downloaded yet.';
     propEl.innerHTML='<div style="color:var(--gold);font-size:12px;padding:12px 0">Open Settings → Catalogs & Pricing and choose IMPORT LATEST MTG DATA, then run this scan again.</div>';
     return;
   }
   btn.disabled=true;
   btn.textContent='Scanning...';
-  statusEl.textContent='Matching MTG inventory against '+Number(catalog.cards).toLocaleString()+' downloaded cards...';
+  statusEl.textContent=useOnline?'Fetching live MTG prices; the offline catalog will cover any provider misses...':'Matching MTG inventory against '+Number(catalog?.cards||0).toLocaleString()+' downloaded cards...';
   propEl.innerHTML='';
   if(applyBtn)applyBtn.style.display='none';
   try{
-    const freshProposal=await buildOfflineMtgPriceSyncProposal({onProgress:(done,total)=>{statusEl.textContent='Scanning offline MTG prices... '+done+' of '+total;}});
+    const freshProposal=await buildOfflineMtgPriceSyncProposal({preferOnline:useOnline,onProgress:(done,total)=>{statusEl.textContent=(useOnline?'Fetching live MTG prices... ':'Scanning offline MTG prices... ')+done+' of '+total;}});
     const s=_priceSyncLastSummary||{checked:0,changed:0,unchanged:0,noMatch:0,noPrice:0,errors:0,issues:[]};
     _priceSyncProposal=mergePendingPriceSyncProposals(pendingBeforeRun,freshProposal);
     savePendingPriceSyncProposals();
-    const summaryText='Offline MTG sync checked '+s.checked+' item'+(s.checked===1?'':'s')+'. '+s.changed+' changed, '+s.unchanged+' unchanged, '+s.noMatch+' not matched, '+s.noPrice+' matched without the selected finish price, '+s.errors+' errors.'+(s.sealedChecked?' Sealed checked: '+s.sealedChecked+'.':'');
+    const summaryText=(useOnline?'MTG sync':'Offline MTG sync')+' checked '+s.checked+' item'+(s.checked===1?'':'s')+'. '+s.changed+' changed, '+s.unchanged+' unchanged, '+s.noMatch+' not matched, '+s.noPrice+' matched without the selected finish price, '+s.errors+' errors.'+(useOnline?' Live matches: '+s.liveMatched+'. Offline fallbacks: '+s.offlineFallback+'.':'')+(s.sealedChecked?' Sealed checked: '+s.sealedChecked+'.':'');
     statusEl.textContent=summaryText+(_priceSyncProposal.length?' Review price changes below, then click UPDATE SELECTED.':'');
     renderPriceSyncProposal();
     if(!_priceSyncProposal.length&&!(s.issues||[]).length)propEl.innerHTML='<div style="color:var(--dim);font-size:12px;padding:12px 0">All offline MTG prices already match inventory.</div>';
     if(applyBtn&&_priceSyncProposal.length)applyBtn.style.display='';
     updatePriceAlertBanner();
   }catch(e){statusEl.textContent='Offline MTG sync failed: '+(e.message||e);}
-  finally{btn.disabled=false;btn.textContent='SCAN OFFLINE MTG';}
+  finally{btn.disabled=false;btn.textContent='SYNC MTG PRICES';}
 }
 
 async function runLivePokemonPriceSync(){
@@ -12083,7 +12156,7 @@ function renderPriceSyncProposal(){
       <input type="checkbox" data-pso-idx="${idx}" ${p.selected?'checked':''} onchange="togglePriceSyncItem(${idx},this.checked)" style="width:16px;height:16px;flex-shrink:0">
       <div style="flex:1;min-width:0">
         <div style="font-size:12px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(priceSyncItemTitle(p.item))}</div>
-        <div style="font-size:10px;color:var(--dim)">${escHtml(p.item.set||'')}${(p.item.card_number || p.item.cardNumber)?' · #'+escHtml(p.item.card_number || p.item.cardNumber):''} · ${escHtml(p.mode === 'live' ? 'live ' + (p.matchStatus || 'match') : p.mode === 'mtg-offline' ? (p.matchStatus || 'offline MTG match') : 'cached')} · ${escHtml(p.source || '')}${p.lastUpdated?' · '+escHtml(String(p.lastUpdated).slice(0,10)):''}</div>
+        <div style="font-size:10px;color:var(--dim)">${escHtml(p.item.set||'')}${(p.item.card_number || p.item.cardNumber)?' · #'+escHtml(p.item.card_number || p.item.cardNumber):''} · ${escHtml(p.mode === 'live' ? 'live ' + (p.matchStatus || 'match') : p.mode === 'mtg-live' ? (p.matchStatus || 'live MTG match') : p.mode === 'mtg-offline' ? (p.matchStatus || 'offline MTG match') : 'cached')} · ${escHtml(p.source || '')}${p.lastUpdated?' · '+escHtml(String(p.lastUpdated).slice(0,10)):''}</div>
       </div>
       <div style="text-align:right;white-space:nowrap">
         ${bigBadge}
@@ -12130,10 +12203,10 @@ async function applySelectedPriceSyncUpdates(){
     try{
       const fullItem = (all||[]).find(i => i.id === p.item.id) || p.item;
       const now = new Date().toISOString();
-      const isMtgOffline = p.mode === 'mtg-offline' || p.provider === 'mtg-offline';
-      const source = isMtgOffline ? (p.source || 'MTG offline catalog') : p.mode === 'live' ? 'PokemonPriceTracker' : (p.source || 'PokemonPriceTracker cache');
+      const isMtgPriceSync = p.mode === 'mtg-offline' || p.mode === 'mtg-live' || p.provider === 'mtg';
+      const source = isMtgPriceSync ? (p.source || 'MTG price sync') : p.mode === 'live' ? 'PokemonPriceTracker' : (p.source || 'PokemonPriceTracker cache');
       const lastUpdated = p.lastUpdated || now;
-      const providerFields = isMtgOffline ? {
+      const providerFields = isMtgPriceSync ? {
         scryfallId:p.scryfallId || mtgInventoryScryfallId(fullItem),
         oracleId:p.oracleId || mtgInventoryOracleId(fullItem),
         tcgPlayerId:p.tcgPlayerId || inventoryTcgPlayerId(fullItem),
@@ -12159,11 +12232,11 @@ async function applySelectedPriceSyncUpdates(){
         lastMarketPrice:p.oldPrice,
         previousMarketPrice:p.oldPrice,
         marketPriceSource:source,
-        priceSource: isMtgOffline ? source : source + (p.mode === 'live' ? ' live sync' : ' cached sync'),
+        priceSource: isMtgPriceSync ? source : source + (p.mode === 'live' ? ' live sync' : ' cached sync'),
         lastPriceUpdate:lastUpdated,
         priceUpdatedAt:now,
         stalePrice:false,
-        livePriceStatus:p.mode === 'live' ? 'live' : isMtgOffline ? 'offline' : 'cached',
+        livePriceStatus:p.mode === 'live' || p.mode === 'mtg-live' ? 'live' : isMtgPriceSync ? 'offline' : 'cached',
         ...providerFields,
       });
       ok++;
@@ -18888,7 +18961,8 @@ function mtgOfflineLegacyCard(card = {}){
     rarity:card.rarity || '', artist:card.artist || '', mana_cost:card.manaCost || '', cmc:card.cmc,
     type_line:card.typeLine || '', oracle_text:card.oracleText || '', keywords:card.keywords || [],
     colors:card.colors || [], color_identity:card.colorIdentity || [], legalities:card.legalities || {},
-    finishes:card.finishes || [], prices:{ ...(card.prices || {}) },
+    finishes:card.finishes || [], prices:{ ...(card.prices || {}) }, frame_effects:card.frameEffects || [], promo_types:card.promoTypes || [],
+    border_color:card.borderColor || '', frame:card.frame || '',
     image_uris:card.imageUris || {}, card_faces:faces, scryfall_uri:card.scryfallUri || '',
     purchase_uris:card.purchaseUris || {}, tcgplayer_id:card.tcgplayerId || '', released_at:card.releasedAt || '',
     offlinePrice:price, offlinePriceLink:card.offlinePriceLink || null, catalogVersion:card.catalogVersion || '',
@@ -18902,7 +18976,8 @@ function mtgOfflineRecordFromLegacy(card = {}){
     setCode:card.set || '', setName:card.set_name || '', collectorNumber:card.collector_number || '', rarity:card.rarity || '',
     artist:card.artist || '', manaCost:card.mana_cost || '', cmc:card.cmc, typeLine:card.type_line || '', oracleText:card.oracle_text || '',
     keywords:card.keywords || [], colors:card.colors || [], colorIdentity:card.color_identity || [], legalities:card.legalities || {},
-    finishes:card.finishes || [], prices:card.prices || {}, imageUris:card.image_uris || {},
+    finishes:card.finishes || [], prices:card.prices || {}, imageUris:card.image_uris || {}, frameEffects:card.frame_effects || [], promoTypes:card.promo_types || [],
+    borderColor:card.border_color || '', frame:card.frame || '',
     cardFaces:(card.card_faces || []).map(face => ({ name:face.name || '', printedName:face.printed_name || '', manaCost:face.mana_cost || '', typeLine:face.type_line || '', oracleText:face.oracle_text || '', colors:face.colors || [], artist:face.artist || '', imageUris:face.image_uris || {} })),
     scryfallUri:card.scryfall_uri || '', purchaseUris:card.purchase_uris || {}, tcgplayerId:card.tcgplayer_id || '', releasedAt:card.released_at || '',
     offlinePrice:card.offlinePrice || null, offlinePriceLink:card.offlinePriceLink || null, catalogVersion:card.catalogVersion || '',
@@ -19004,7 +19079,7 @@ function applyMtgPriceChartingConditionGuides(row = {}, price = {}, snapshot = '
   return row;
 }
 
-async function downloadMtgBulkCatalog(){
+async function downloadMtgBulkCatalog(full=false){
   if(_mtgBulkSyncActive) return;
   _mtgBulkSyncActive = true;
   renderOfflineCatalogManagerPanel();
@@ -19012,12 +19087,13 @@ async function downloadMtgBulkCatalog(){
     if(!window.ArsCaMtgOffline) throw new Error('MTG offline module did not load');
     const result = await window.ArsCaMtgOffline.sync({
       workerBase:WORKER,
+      full,
       onProgress:detail => {
         const note = document.getElementById('mtg-offline-progress');
         if(note) note.textContent = detail.count ? `${detail.stage}: ${Number(detail.count).toLocaleString()} / ${Number(detail.total || 0).toLocaleString()}` : detail.stage;
       }
     });
-    toast_dash(result.updated ? `MTG offline catalog updated to ${result.manifest.version}` : 'MTG offline catalog current');
+    toast_dash(result.updated ? (result.fast ? `MTG prices updated fast to ${result.manifest.version}` : `MTG offline catalog rebuilt to ${result.manifest.version}`) : 'MTG offline catalog current');
   } catch(e) {
     toast_dash('MTG catalog download failed: ' + e.message);
   } finally {
@@ -23974,18 +24050,19 @@ async function fetchPokemonCatalog(q){
 }
 
 function scryfallTreatmentLabel(c){
-  const fe = c.frame_effects || [];
-  const pt = c.promo_types || [];
+  const fe = (c.frame_effects || c.frameEffects || []).map(value=>String(value).toLowerCase());
+  const pt = (c.promo_types || c.promoTypes || []).map(value=>String(value).toLowerCase());
+  if(fe.includes('surge') || pt.includes('surgefoil')) return 'surge_foil';
+  if(pt.includes('halofoil')) return 'halo_foil';
+  if(pt.includes('oilslick')) return 'oil_slick';
+  if(pt.includes('textured') || pt.includes('texturedfoil')) return 'textured_foil';
+  if(pt.includes('confettifoil') || pt.includes('rainbowfoil')) return 'rainbow_foil';
+  if(pt.includes('serialized')) return 'serialized';
   if(fe.includes('showcase')) return 'showcase';
   if(fe.includes('extendedart')) return 'extended_art';
   if(fe.includes('inverted')) return 'borderless';
   if(fe.includes('etched')) return 'etched_foil';
-  if(fe.includes('surge')) return 'surge_foil';
-  if(pt.includes('halofoil')) return 'halo_foil';
-  if(pt.includes('oilslick')) return 'oil_slick';
-  if(pt.includes('serialized')) return 'serialized';
-  if(pt.includes('confettiFoil') || pt.includes('rainbowFoil')) return 'rainbow_foil';
-  if(c.border_color === 'borderless' || fe.includes('borderless')) return 'borderless';
+  if((c.border_color || c.borderColor) === 'borderless' || fe.includes('borderless')) return 'borderless';
   if(fe.includes('retro') || c.frame === '1993' || c.frame === '1997') return 'retro_frame';
   return '';
 }
@@ -24504,11 +24581,7 @@ function quickLookupResultCard(r, idx){
         </div>
         <!-- SECONDARY actions — 3-col normally, 4-col for Pokemon (adds TCG ↗) -->
         <div class="qpl-actions-secondary" ${qplResultCategoryKey(r) === 'pokemon' || isSportsResult ? 'style="grid-template-columns:1fr 1fr 1fr 1fr"' : ''}>
-          ${qplResultCategoryKey(r) === 'pokemon'
-            ? (r.pokemonPriceTracker?.lookupDebug?.exactHydrated
-                ? `<button class="hbtn ppt-refresh-btn" data-qpl-idx="${idx}" onclick="refreshLivePriceForCard(${idx})" title="Bypass cache and fetch fresh live pricing">↻ REFRESH</button>`
-                : `<button class="hbtn ppt-get-prices-btn" style="color:var(--blue)" onclick="loadPricesForResultCard(${idx})">GET PRICES</button>`)
-            : isComic ? `<button class="hbtn" style="color:var(--purple)" onclick="fetchQplPriceCharting(${idx})">${r.pricecharting?.comicPrices?'REFRESH PRICE':'GET PRICES'}</button>` : isSportsResult ? `<button class="hbtn" style="color:var(--gold)" onclick="openQuickExternal(${idx},'pricecharting')" title="Open exact PriceCharting/SportsCardsPro product when matched">PRICECHARTING</button>` : `<span></span>`}
+          <button class="hbtn ppt-refresh-btn" data-qpl-idx="${idx}" onclick="refreshResearchPrice(${idx})" title="Refresh this result from its best current price source">↻ REFRESH PRICE</button>
           <button class="hbtn" onclick="openQplChartModal(${idx})">CHART</button>
           ${qplResultCategoryKey(r) === 'pokemon'
             ? `<button class="hbtn" style="color:var(--blue)" onclick="fetchPopCountForCard(${idx})">POP COUNT</button>`
@@ -24966,7 +25039,7 @@ const _refreshLiveCooldown = new Map(); // idx → last-triggered ms
 // Update all REFRESH buttons for a given result index
 function updateRefreshBtn(idx, state){
   const cfg = {
-    default: { text:'↻ REFRESH LIVE PRICE', cls:'', disabled:false },
+    default: { text:'↻ REFRESH PRICE',      cls:'', disabled:false },
     loading: { text:'⟳ REFRESHING…',        cls:'loading', disabled:true },
     success: { text:'✓ LIVE UPDATED',        cls:'success', disabled:true },
     error:   { text:'✕ FAILED — USING CACHE', cls:'error',  disabled:false },
@@ -25164,6 +25237,61 @@ async function refreshLivePriceForCard(idx){
   }
 }
 
+async function refreshLiveMtgPriceForCard(idx){
+  const r=qplResults[idx];
+  if(!r)return;
+  const savedCondition=r.selectedCondition||r.condition||'NM';
+  const savedFinish=mtgInventoryFinish(r);
+  let offlineMatch=null;
+  if(window.ArsCaMtgOffline){
+    offlineMatch=await window.ArsCaMtgOffline.findExact({scryfallId:r.scryfallId||r.raw?.id||'',tcgPlayerId:r.tcgPlayerId||r.tcgplayerId||'',name:r.name,setName:r.set,collectorNumber:r.card_number}).catch(()=>null);
+  }
+  const live=await fetchLiveMtgInventoryPrice({...r,selectedCondition:savedCondition,selectedFinish:savedFinish},offlineMatch).catch(()=>null);
+  if(!live){
+    if(!offlineMatch)throw new Error(navigator.onLine?'No exact live or offline MTG price found':'No exact offline MTG price found');
+    const offlineRow=mtgOfflineCardToQplRow(offlineMatch);
+    const resolved=resolveMtgOfflineCardPrice({...r,selectedCondition:savedCondition,selectedFinish:savedFinish},offlineMatch);
+    if(!resolved.price)throw new Error('Selected MTG finish has no offline price');
+    qplResults[idx]=applyQplSelectedVariant({...r,...offlineRow,selectedCondition:savedCondition,selectedFinish:savedFinish,finish:savedFinish,market:resolved.price,priceSource:resolved.source,cache:{state:'offline-catalog',source:'Scryfall offline catalog',updatedAt:offlineMatch.marketPricesUpdatedAt||offlineMatch.catalogVersion||''}});
+    return;
+  }
+  const desiredFamily=mtgFinishPriceFamily(savedFinish);
+  let variants=[...(live.row.availableVariants||[])];
+  if(savedFinish!==desiredFamily&&!variants.some(v=>normalizeQplFinish(v.finish||v.printing||'')===savedFinish)){
+    const familyVariants=variants.filter(v=>mtgFinishPriceFamily(v.finish||v.printing||'')===desiredFamily);
+    variants.push(...familyVariants.map(v=>({...v,finish:savedFinish,foilType:savedFinish,printing:qplFinishLabel(savedFinish),skuId:String(v.skuId||v.tcgplayerSkuId||'')+'-'+savedFinish})));
+  }
+  qplResults[idx]=applyQplSelectedVariant({...r,...live.row,inventoryId:r.inventoryId||live.row.inventoryId,selectedCondition:savedCondition,condition:savedCondition,selectedFinish:savedFinish,finish:savedFinish,availableVariants:variants,market:live.resolved.price,priceSource:live.resolved.source,cache:{state:'live',source:live.resolved.source,updatedAt:new Date().toISOString()}});
+}
+
+async function refreshResearchPrice(idx){
+  if(_refreshLiveInFlight.has(idx))return;
+  const r=qplResults[idx];
+  if(!r)return;
+  const key=qplResultCategoryKey(r);
+  if(key==='pokemon'){
+    if(!r.pokemonPriceTracker?.lookupDebug?.exactHydrated){await loadPricesForResultCard(idx);return;}
+    await refreshLivePriceForCard(idx);
+    return;
+  }
+  _refreshLiveInFlight.add(idx);
+  updateRefreshBtn(idx,'loading');
+  try{
+    if(key==='mtg'||r.source==='scryfall')await refreshLiveMtgPriceForCard(idx);
+    else if(r.source==='justtcg'&&r.justtcgCardId)await hydrateQplVariantMatrix(idx,r.graphDuration||'90d');
+    else await fetchQplPriceCharting(idx);
+    refreshQplResultCard(idx);
+    if(document.querySelector(`.qpl-selected-card[data-qpl-idx="${idx}"]`))selectQuickLookupResult(idx);
+    updateRefreshBtn(idx,'success');
+    setTimeout(()=>updateRefreshBtn(idx,'default'),4000);
+    toast_dash('Price refreshed');
+  }catch(e){
+    updateRefreshBtn(idx,'error');
+    setTimeout(()=>updateRefreshBtn(idx,'default'),6000);
+    toast_dash('Price refresh failed: '+(e.message||e));
+  }finally{_refreshLiveInFlight.delete(idx);}
+}
+
 async function selectQuickLookupResult(idx){
   let r = qplResults[idx];
   if(r && qplResultCategoryKey(r) === 'pokemon' && !r.pokemonPriceTracker?.lookupDebug?.exactHydrated && navigator.onLine && !pokemonPriceTrackerQuotaBlocked()) {
@@ -25253,7 +25381,7 @@ async function selectQuickLookupResult(idx){
             ${stamp ? `<span class="qpl-badge">${escHtml('Updated ' + pokemonCacheAgeLabel(stamp))}</span>` : ''}
           </div>`;
         })()}
-        ${qplResultCategoryKey(r) === 'pokemon' && r.pokemonPriceTracker ? `<button class="hbtn ppt-refresh-btn ppt-refresh-btn-wide" data-qpl-idx="${idx}" onclick="refreshLivePriceForCard(${idx})" title="Bypass cache and fetch fresh live pricing from PokemonPriceTracker">↻ REFRESH LIVE PRICE</button>` : ''}
+        <button class="hbtn ppt-refresh-btn ppt-refresh-btn-wide" data-qpl-idx="${idx}" onclick="refreshResearchPrice(${idx})" title="Refresh this item from its best current price source">↻ REFRESH PRICE</button>
         <div class="qpl-price">$${Number(r.market || 0).toFixed(2)}</div>
         <div class="qpl-price-sub">${escHtml(r.note || 'Review details, then add to inventory or buy offer.')}</div>
       </div>
@@ -29934,7 +30062,9 @@ function scryfallCardToQplRow(c){
   if(Number(c.prices?.usd || 0) > 0 || finishes.includes('nonfoil')) priceMap.normal = { market:Number(c.prices?.usd || 0), low:Number(c.prices?.usd || 0) };
   if(Number(c.prices?.usd_foil || 0) > 0 || finishes.includes('foil')) priceMap.foil = { market:Number(c.prices?.usd_foil || 0), low:Number(c.prices?.usd_foil || 0) };
   if(Number(c.prices?.usd_etched || 0) > 0 || finishes.includes('etched')) priceMap.etched_foil = { market:Number(c.prices?.usd_etched || 0), low:Number(c.prices?.usd_etched || 0) };
-  const autoFinish = Number(c.prices?.usd || 0) > 0 ? 'normal' : Number(c.prices?.usd_foil || 0) > 0 ? 'foil' : 'normal';
+  const treatment=scryfallTreatmentLabel(c);
+  if(treatment && treatment!=='etched_foil' && mtgFinishPriceFamily(treatment)==='foil' && Number(c.prices?.usd_foil||0)>0) priceMap[treatment]={market:Number(c.prices.usd_foil),low:Number(c.prices.usd_foil)};
+  const autoFinish = treatment && priceMap[treatment] ? treatment : Number(c.prices?.usd || 0) > 0 ? 'normal' : Number(c.prices?.usd_foil || 0) > 0 ? 'foil' : Number(c.prices?.usd_etched || 0) > 0 ? 'etched_foil' : 'normal';
   const exactTcgUrl = c.purchase_uris?.tcgplayer || (c.tcgplayer_id ? 'https://www.tcgplayer.com/product/' + encodeURIComponent(c.tcgplayer_id) : '') || c.scryfall_uri || '';
   return applyQplSelectedVariant({
     source: 'scryfall',
@@ -29942,7 +30072,7 @@ function scryfallCardToQplRow(c){
     category: 'TCG',
     set: c.set_name || '',
     year: (c.released_at || '').slice(0, 4),
-    variant: c.rarity ? c.rarity[0].toUpperCase() + c.rarity.slice(1) : '',
+    variant: [treatment ? qplFinishLabel(treatment) : '', c.rarity ? c.rarity[0].toUpperCase() + c.rarity.slice(1) : ''].filter(Boolean).join(' · '),
     card_number: c.collector_number || '',
     condition: 'NM',
     selectedFinish: autoFinish,
@@ -29960,7 +30090,7 @@ function scryfallCardToQplRow(c){
     productId: c.id || '',
     scryfallId: c.id || '',
     availableVariants: buildQplVariantsFromPrices(priceMap, c.id || ''),
-    extraInfo: { productLine:'Magic', categoryName:'Magic', game:'Magic: The Gathering', manaCost:c.mana_cost||'', typeLine:c.type_line||'', artist:c.artist||'', releaseDate:c.released_at||'' },
+    extraInfo: { productLine:'Magic', categoryName:'Magic', game:'Magic: The Gathering', manaCost:c.mana_cost||'', typeLine:c.type_line||'', artist:c.artist||'', releaseDate:c.released_at||'', treatment, scryfallFinishes:finishes },
   });
 }
 
