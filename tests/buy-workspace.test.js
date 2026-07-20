@@ -20,6 +20,12 @@ assert.match(selectedQuickResult, /const inventoryUnavailable = r\.source === 'i
 assert.match(html, /APPLY \$\$\{tradeTotal\.toFixed\(2\)\} TO PURCHASE/, 'Accepted buys must offer a direct trade-in-toward-purchase action');
 assert.match(html, /pos_pending_trade_purchase/, 'Trade-in purchase handoff must persist until checkout');
 assert.match(html, /getStoreCredits\(\)\.find\(c => c\.buySessionId === session\.buySessionId\)/, 'Trade credit issuance must be idempotent per buy session');
+assert.match(html, /id="bl-trade-btn"[^>]+onclick="acceptBuyAsTrade\(\)"/, 'Buy screen must expose a direct Trade to Sale action');
+assert.match(html, /async function acceptBuyAsTrade\(/, 'Direct trade workflow must accept the buy without a second payout modal');
+assert.match(html, /switchTab\('display'\)/, 'Direct trade workflow must open the Sell screen');
+assert.match(html, /TRADE CREDIT/, 'Sell screen must label pending trade credit');
+assert.match(html, /trade\.applied\.toFixed\(2\)/, 'Sell screen must visibly subtract the calculated trade credit');
+assert.match(html, /selectedTenderLines = \[\{ method:'trade_credit'/, 'Checkout must automatically carry the pending trade credit tender');
 
 assert.match(html, /function renderCustomerLiveCart\(/, 'Customer display must support live cart review');
 assert.match(html, /image_url:item\.img \|\| item\.image/, 'Checkout snapshot must retain item images');

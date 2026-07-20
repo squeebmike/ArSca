@@ -17,6 +17,24 @@ test('selected Research result renders Buy and Sell actions without an availabil
   await expect(page.locator('.qpl-selected-card').getByRole('button', { name:'SELL' })).toBeEnabled();
 });
 
+test('direct trade handoff subtracts credit on Sell and carries it into checkout', async ({ page }) => {
+  await openDashboard(page);
+  await page.evaluate(() => {
+    const credit = issueStoreCredit({ customerName:'QA Trade Customer', amount:20, buySessionId:'qa-trade-session' });
+    localStorage.setItem('pos_pending_trade_purchase', JSON.stringify({ creditId:credit.id, buySessionId:'qa-trade-session' }));
+    const cart = { items:[{ id:'qa-sale-item', name:'QA Purchase Item', price:50, cost:10, quantity:1 }], total:50, subtotal:50, discount:0 };
+    saveCartDataLocal(cart, 'QA direct trade handoff');
+    switchTab('display');
+    renderDealerCartTools(cart);
+  });
+  await expect(page.locator('#dealer-cart-lines')).toContainText('QA Purchase Item');
+  await expect(page.locator('#dealer-cart-total')).toContainText('ITEMS $50.00');
+  await expect(page.locator('#dealer-cart-total')).toContainText('TRADE CREDIT');
+  await expect(page.locator('#dealer-cart-total')).toContainText('BALANCE $30.00');
+  await page.getByRole('button', { name:/CHECKOUT & TAKE PAYMENT/i }).click();
+  await expect(page.locator('#customer-payment-workbench')).toContainText('$20.00 trade credit applied');
+});
+
 test('research result can be added to Buy Offer with source and price data', async ({ page }) => {
   await openDashboard(page);
   const cards = await runResearchSearch(page, 'pikachu 151', 'Pokemon TCG');

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.07.20.04-buy-tradein-fix">
+<meta name="version" content="2026.07.20.05-direct-trade-sale">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -506,9 +506,11 @@ tr.sold:hover td{opacity:.7;}
 .buy-tray-mkt{width:80px;background:var(--surf);border:1px solid var(--border);color:var(--text);padding:5px;border-radius:5px;font-size:10px;font-family:monospace;}
 .buy-tray-offer-val{font-family:'Orbitron',monospace;font-size:12px;font-weight:700;color:var(--gold);text-align:right;white-space:nowrap;}
 .buy-tray-rm{width:28px;height:28px;background:none;border:1px solid rgba(255,77,109,.22);color:var(--red);border-radius:6px;cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center;}
-.buy-primary-actions{display:grid;grid-template-columns:1fr auto;gap:8px;margin-bottom:8px;}
+.buy-primary-actions{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;margin-bottom:8px;}
 .buy-action-accept{height:60px;font-family:'Orbitron',monospace;font-size:14px;font-weight:800;background:rgba(0,255,179,.13);border:2px solid rgba(0,255,179,.45);color:var(--g);border-radius:12px;cursor:pointer;letter-spacing:1px;transition:all .14s;}
 .buy-action-accept:hover{background:rgba(0,255,179,.22);}
+.buy-action-trade{height:60px;font-family:'Orbitron',monospace;font-size:14px;font-weight:800;background:rgba(255,190,70,.12);border:2px solid rgba(255,190,70,.48);color:var(--gold);border-radius:12px;cursor:pointer;letter-spacing:1px;transition:all .14s;}
+.buy-action-trade:hover{background:rgba(255,190,70,.22);}
 .buy-action-reject{height:60px;padding:0 22px;font-family:'Orbitron',monospace;font-size:13px;font-weight:700;background:rgba(255,77,109,.1);border:2px solid rgba(255,77,109,.32);color:var(--red);border-radius:12px;cursor:pointer;letter-spacing:1px;transition:all .14s;}
 .buy-action-reject:hover{background:rgba(255,77,109,.2);}
 .buy-pay-row{margin-bottom:10px;}
@@ -524,6 +526,8 @@ tr.sold:hover td{opacity:.7;}
 .buy-tertiary-actions{display:flex;gap:6px;flex-wrap:wrap;}
 body.show-mode .buy-advanced{display:none;}
 @media(max-width:640px){
+  .buy-primary-actions{grid-template-columns:1fr 1fr;}
+  .buy-action-reject{grid-column:1/-1;height:44px;}
   .buy-offer-panel{grid-template-columns:1fr 1fr;}
   /* buy-tray-item rows are rendered with an inline grid-template-columns
      (7 fixed-width columns) that overrides any grid-template-columns rule
@@ -1469,13 +1473,13 @@ body.show-mode .inv-sync-badge{display:none;}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.07.20.04-buy-tradein-fix"></script>
-<script src="scripts/barcode-lookup.js?v=2026.07.20.04-buy-tradein-fix"></script>
-<script src="scripts/comic-issue-hub.js?v=2026.07.20.04-buy-tradein-fix"></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.07.20.04-buy-tradein-fix"></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.07.20.04-buy-tradein-fix"></script>
-<script src="scripts/topps/offline-browser.js?v=2026.07.20.04-buy-tradein-fix"></script>
-<script src="scripts/mtg/research-batch.js?v=2026.07.20.04-buy-tradein-fix"></script>
+<script src="scripts/query-routing.js?v=2026.07.20.05-direct-trade-sale"></script>
+<script src="scripts/barcode-lookup.js?v=2026.07.20.05-direct-trade-sale"></script>
+<script src="scripts/comic-issue-hub.js?v=2026.07.20.05-direct-trade-sale"></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.07.20.05-direct-trade-sale"></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.07.20.05-direct-trade-sale"></script>
+<script src="scripts/topps/offline-browser.js?v=2026.07.20.05-direct-trade-sale"></script>
+<script src="scripts/mtg/research-batch.js?v=2026.07.20.05-direct-trade-sale"></script>
 </head>
 <body>
 
@@ -1525,11 +1529,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.07.20.04-buy-tradein-fix</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.07.20.05-direct-trade-sale</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.07.20.04-buy-tradein-fix</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.07.20.05-direct-trade-sale</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1551,7 +1555,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.07.20.04-buy-tradein-fix</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.07.20.05-direct-trade-sale</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -2109,6 +2113,7 @@ body.show-mode .inv-sync-badge{display:none;}
       <!-- ⑤ PRIMARY ACTIONS — always visible, large touch targets -->
       <div class="buy-primary-actions">
         <button class="buy-action-accept" id="bl-accept-btn" onclick="acceptBuySession()">✓ ACCEPT OFFER</button>
+        <button class="buy-action-trade" id="bl-trade-btn" onclick="acceptBuyAsTrade()">↔ TRADE → SALE</button>
         <button class="buy-action-reject" id="bl-reject-btn" onclick="rejectBuySession()">✕ REJECT</button>
       </div>
 
@@ -2938,7 +2943,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.07.20.04-buy-tradein-fix';
+const APP_VERSION = '2026.07.20.05-direct-trade-sale';
 window.APP_VERSION = APP_VERSION;
 
 // This page has no cache-busting of its own (unlike the secondary scripts,
@@ -11214,6 +11219,18 @@ function issueStoreCredit({ customerName, customerPhone, customerEmail, amount, 
   credits.unshift(record);
   saveStoreCredits(credits);
   return record;
+}
+function getPendingTradePurchase(){
+  const handoff = safeLocalJson('pos_pending_trade_purchase', null);
+  if(!handoff?.creditId) return null;
+  const credit = getStoreCredits().find(c => c.id === handoff.creditId && Number(c.remainingBalance || 0) > 0);
+  return credit ? { handoff, credit } : null;
+}
+function pendingTradeAmounts(total){
+  const pending = getPendingTradePurchase();
+  const purchaseTotal = Math.max(0, Number(total || 0));
+  const applied = pending ? Math.min(purchaseTotal, Number(pending.credit.remainingBalance || 0)) : 0;
+  return { pending, applied:Math.round(applied * 100) / 100, due:Math.round((purchaseTotal - applied) * 100) / 100 };
 }
 function findStoreCreditsForCustomer(query){
   const q = String(query || '').trim().toLowerCase();
@@ -26939,6 +26956,44 @@ async function acceptBuySession(){
   showBuyPaymentConfirm(session);
 }
 
+async function acceptBuyAsTrade(){
+  if(!buyList.length){ toast_dash('No trade-in items'); return; }
+  const missing = buyList.filter(i => !Number(i.market || i.priceUsed || 0));
+  if(missing.length) {
+    alert('Manual price required before trading: ' + missing.map(i => i.name || 'Unnamed item').slice(0,5).join(', '));
+    return;
+  }
+  let session = snapshotBuySession('accepted');
+  if(!session.customerName && !session.customerPhone) {
+    // Immediate walk-in trades remain linked by buy session and credit ID. A
+    // named customer is still recommended when any unused balance may remain.
+    syncBuyConfirmCustomer('customerName', 'Walk-in trade ' + String(session.buySessionId).slice(-6).toUpperCase());
+    session = snapshotBuySession('accepted');
+  }
+  saveActiveBuySession(session);
+  saveBuySessionHistory(session);
+  logOpsEvent('buy_session_accepted', 'Accepted buy session as trade', { buySessionId:session.buySessionId, items:session.items.length, tradeCreditTotal:session.tradeCreditTotal });
+  await bulkAddBuyListToInventory(true);
+  saveBuySessionHistory(snapshotBuySession('accepted'));
+  const result = payCustomerForBuySession('Trade Credit');
+  if(!result?.credit) return;
+  localStorage.setItem('pos_pending_trade_purchase', JSON.stringify({
+    creditId:result.credit.id,
+    customerName:result.session.customerName || '',
+    customerPhone:result.session.customerPhone || '',
+    buySessionId:result.session.buySessionId,
+    createdAt:new Date().toISOString(),
+  }));
+  closeActiveBuyTray();
+  switchTab('display');
+  renderDealerCartTools(getCartDataLocal());
+  const cart = getCartDataLocal();
+  const saleCount = (cart.items || []).length;
+  toast_dash(saleCount
+    ? 'Trade applied to sale — ' + saleCount + ' purchase item' + (saleCount===1?'':'s') + ' ready'
+    : 'Trade ready — add the customer’s purchase items');
+}
+
 function showBuyPaymentConfirm(session){
   const method = session.paymentType || document.getElementById('buy-session-pay-method')?.value || 'Cash';
   const isTradeCredit = normalizeTenderType(method) === 'trade_credit';
@@ -28440,6 +28495,7 @@ function renderDealerCartTools(cartData = getCartDataLocal()){
   const items = cartData.items || [];
   const locked = !CheckoutStateManager().canEditCart();
   const total = Number(cartData.total || cartData.items?.reduce((a,i)=>a+Number(i.price||0),0) || 0);
+  const trade = pendingTradeAmounts(total);
   if(stateEl) stateEl.innerHTML = `<span class="checkout-state-pill ${checkoutState===CHECKOUT_STATES.OFFLINE_QUEUED?'bad':locked?'warn':''}">${checkoutState}</span><span>${lockedCheckoutSnapshot ? 'Snapshot ' + String(lockedCheckoutSnapshot.id).slice(0,8) : 'No locked snapshot'}</span><span>${items.length} line${items.length===1?'':'s'}</span>`;
   if(!items.length) el.innerHTML = '<div style="border:1px dashed var(--border);border-radius:8px;padding:10px;text-align:center">Cart is empty.</div>';
   else {
@@ -28454,7 +28510,9 @@ function renderDealerCartTools(cartData = getCartDataLocal()){
     ${locked ? '' : `<button class="ra" onclick="editCartLinePrice(${idx})">Edit</button><button class="cd-remove" title="Remove from cart" onclick="removeCustomerDisplayCartItem('${escHtml(i.id || '')}', ${idx})">X</button>`}
   </div>`).join('');
   }
-  if(totalEl) totalEl.innerHTML = `<span style="font-family:var(--font-mono);font-size:11px;color:var(--dim)">DEALER TOTAL</span><b>$${total.toFixed(2)}</b>`;
+  if(totalEl) totalEl.innerHTML = trade.pending
+    ? `<div style="display:grid;gap:3px;font-family:var(--font-mono);font-size:11px"><span style="color:var(--dim)">ITEMS $${total.toFixed(2)}</span><span style="color:var(--gold)">TRADE CREDIT −$${trade.applied.toFixed(2)}</span><b style="font-family:'Orbitron',monospace;font-size:18px;color:var(--g)">BALANCE $${trade.due.toFixed(2)}</b></div>`
+    : `<span style="font-family:var(--font-mono);font-size:11px;color:var(--dim)">DEALER TOTAL</span><b>$${total.toFixed(2)}</b>`;
   if(actions) {
     actions.innerHTML = locked
       ? `<button class="hbtn danger" onclick="cancelLockedCheckout()">CANCEL CHECKOUT</button><button class="hbtn" onclick="enterCustomerDisplayMode()">SHOW CUSTOMER PAYMENT</button>`
@@ -28471,15 +28529,25 @@ async function lockCheckoutForPayment(){
   CheckoutStateManager().set(CHECKOUT_STATES.CHECKOUT_LOCKED);
   logOpsEvent('checkout_locked', 'Locked checkout snapshot', { checkoutSnapshotId:lockedCheckoutSnapshot.id, total:lockedCheckoutSnapshot.total, items:lockedCheckoutSnapshot.lines.length });
   await enterCustomerDisplayMode();
-  const pendingTrade = safeLocalJson('pos_pending_trade_purchase', null);
-  const pendingCredit = pendingTrade?.creditId && getStoreCredits().find(c => c.id === pendingTrade.creditId && Number(c.remainingBalance || 0) > 0);
-  if(pendingCredit) {
+  const trade = pendingTradeAmounts(lockedCheckoutSnapshot.total);
+  if(trade.pending && trade.applied > 0) {
+    selectedTenderLines = [{ method:'trade_credit', amount:trade.applied, reference:trade.pending.credit.id }];
     selectLockedPaymentMethod('trade_credit');
-    const search = document.getElementById('trade-credit-search');
-    if(search) search.value = pendingCredit.customerPhone || pendingCredit.customerName || '';
-    renderTradeCreditMatches();
-    toast_dash('Trade-in credit found — tap APPLY to use it on this purchase');
+    const remaining = remainingCheckoutDue();
+    if(remaining <= 0.009) {
+      const wb = document.getElementById('customer-payment-workbench');
+      if(wb) wb.innerHTML = `<div style="text-align:center;color:#05835f;font-family:var(--font-mono);font-size:13px;margin-bottom:12px">Trade credit covers the full $${trade.applied.toFixed(2)} purchase.</div><div class="payment-confirm-row"><button class="hbtn" style="min-height:52px;font-size:14px" onclick="confirmTradeOnlyCheckout()">CONFIRM TRADE PURCHASE</button><button class="hbtn danger" onclick="removeTradeCreditTender()">REMOVE</button></div>`;
+      toast_dash('Trade credit covers this purchase — confirm to finish');
+    } else {
+      toast_dash('$' + trade.applied.toFixed(2) + ' trade credit applied — choose payment for $' + remaining.toFixed(2));
+    }
   }
+}
+
+async function confirmTradeOnlyCheckout(){
+  if(remainingCheckoutDue() > 0.009) return toast_dash('Choose payment for the remaining balance');
+  checkoutState = CHECKOUT_STATES.PAYMENT_PENDING;
+  await completeLockedCheckout();
 }
 
 function cancelLockedCheckout(){
