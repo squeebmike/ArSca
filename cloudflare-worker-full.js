@@ -3702,11 +3702,19 @@ export default {
         if (cached) return json({ ...cached, cache:{ state:'hit', source:'worker-kv', cacheKey, cachedAt:cached.cache?.cachedAt || null } });
       }
       if (env.LBA_KV) {
-        const quotaUntil = Number(await env.LBA_KV.get('ppt_quota_exhausted_until').catch(() => null) || 0);
+        // v2 deliberately ignores the legacy ppt_quota_exhausted_until key:
+        // older code poisoned it for every transient HTTP 429.
+        const quotaUntil = Number(await env.LBA_KV.get('ppt_daily_quota_exhausted_until_v2').catch(() => null) || 0);
         if (quotaUntil && Date.now() < quotaUntil) {
           const stale = await env.LBA_KV.get(cacheKey, 'json').catch(() => null);
           if (stale) return json({ ...stale, providerQuotaState:'exhausted', retryAt:new Date(quotaUntil).toISOString(), cache:{ state:'stale', source:'worker-kv', cacheKey, cachedAt:stale.cache?.cachedAt || null } });
           return json({ ok: false, source: 'pokemonpricetracker', error: 'PokemonPriceTracker quota exhausted', providerStatus: 429, providerQuotaState: 'exhausted', retryAt: new Date(quotaUntil).toISOString() }, 429);
+        }
+        const rateLimitUntil = Number(await env.LBA_KV.get('ppt_rate_limited_until_v2').catch(() => null) || 0);
+        if (rateLimitUntil && Date.now() < rateLimitUntil) {
+          const stale = await env.LBA_KV.get(cacheKey, 'json').catch(() => null);
+          if (stale) return json({ ...stale, providerQuotaState:'rate_limited', retryAt:new Date(rateLimitUntil).toISOString(), cache:{ state:'stale', source:'worker-kv', cacheKey, cachedAt:stale.cache?.cachedAt || null } });
+          return json({ ok:false, source:'pokemonpricetracker', error:'PokemonPriceTracker is temporarily rate limited', providerStatus:429, providerQuotaState:'rate_limited', retryAt:new Date(rateLimitUntil).toISOString() }, 429);
         }
       }
       const upstreamUrl = 'https://www.pokemonpricetracker.com/api/v2' + spec.upstream + (params.toString() ? '?' + params.toString() : '');
@@ -3730,21 +3738,31 @@ export default {
         : [];
       if (!upstream.ok) {
         const providerMessage = errorMessageFromApi(data, 'PokemonPriceTracker API ' + upstream.status);
-        const quotaBlocked = upstream.status === 429 || (upstream.status === 403 && /429|quota|rate|blocked/i.test(providerMessage));
-        if (quotaBlocked && env.LBA_KV) env.LBA_KV.put('ppt_quota_exhausted_until', String(Date.now() + 60 * 60 * 1000), { expirationTtl: 60 * 60 }).catch(() => {});
+        const dailyRemainingRaw = upstream.headers.get('X-RateLimit-Daily-Remaining');
+        const dailyRemaining = dailyRemainingRaw == null || dailyRemainingRaw === '' ? null : Number(dailyRemainingRaw);
+        const dailyQuotaBlocked = (Number.isFinite(dailyRemaining) && dailyRemaining <= 0)
+          || /daily.{0,20}(quota|credit).{0,20}(exhaust|limit)|(?:quota|credits?).{0,20}exhaust/i.test(providerMessage)
+          || (upstream.status === 403 && /quota|credits?|exhaust/i.test(providerMessage));
+        const transientRateLimited = upstream.status === 429 && !dailyQuotaBlocked;
+        if (dailyQuotaBlocked && env.LBA_KV) {
+          await env.LBA_KV.put('ppt_daily_quota_exhausted_until_v2', String(Date.now() + 60 * 60 * 1000), { expirationTtl: 60 * 60 });
+        } else if (transientRateLimited && env.LBA_KV) {
+          await env.LBA_KV.put('ppt_rate_limited_until_v2', String(Date.now() + 60 * 1000), { expirationTtl: 60 });
+        }
         const stale = env.LBA_KV ? await env.LBA_KV.get(cacheKey, 'json').catch(() => null) : null;
-        if (quotaBlocked && stale) {
-          return json({ ...stale, providerQuotaState: 'exhausted', providerStatus: upstream.status, warning: providerMessage, cache:{ state:'stale', source:'worker-kv', cacheKey, cachedAt:stale.cache?.cachedAt || null } }, 200, pokemonQuotaHeaders(upstream.headers));
+        if ((dailyQuotaBlocked || transientRateLimited) && stale) {
+          return json({ ...stale, providerQuotaState: dailyQuotaBlocked ? 'exhausted' : 'rate_limited', providerStatus: upstream.status, warning: providerMessage, cache:{ state:'stale', source:'worker-kv', cacheKey, cachedAt:stale.cache?.cachedAt || null } }, 200, pokemonQuotaHeaders(upstream.headers));
         }
         return json({
           ok: false,
           source: 'pokemonpricetracker',
           error: providerMessage,
           providerStatus: upstream.status,
-          providerQuotaState: quotaBlocked ? 'exhausted' : 'available',
+          providerQuotaState: dailyQuotaBlocked ? 'exhausted' : transientRateLimited ? 'rate_limited' : 'available',
           detail: data,
           usage: {
-            remaining: upstream.headers.get('X-RateLimit-Remaining') || upstream.headers.get('X-RateLimit-Daily-Remaining') || null,
+            remaining: upstream.headers.get('X-RateLimit-Remaining') || null,
+            dailyRemaining: upstream.headers.get('X-RateLimit-Daily-Remaining') || null,
             consumed: upstream.headers.get('X-API-Calls-Consumed') || null,
             breakdown: upstream.headers.get('X-API-Calls-Breakdown') || null,
           },
@@ -3759,7 +3777,8 @@ export default {
         card: cards[0] || null,
         count: cards.length,
         usage: {
-          remaining: upstream.headers.get('X-RateLimit-Remaining') || upstream.headers.get('X-RateLimit-Daily-Remaining') || null,
+          remaining: upstream.headers.get('X-RateLimit-Remaining') || null,
+          dailyRemaining: upstream.headers.get('X-RateLimit-Daily-Remaining') || null,
           consumed: upstream.headers.get('X-API-Calls-Consumed') || null,
           breakdown: upstream.headers.get('X-API-Calls-Breakdown') || null,
         },
