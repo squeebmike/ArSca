@@ -1872,7 +1872,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="panel" id="register-quick-panel">
       <div class="ph">⚡ QUICK PRICE LOOKUP <span style="color:var(--dim);font-size:8px">catalog search — no scanning needed</span></div>
       <div id="qpl-search-row" style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">
-        <input class="tsi" id="qpl-input" placeholder="e.g. 2021 Umbreon VMAX Evolving Skies..." style="flex:1;margin-bottom:0;font-size:12px;padding:10px 14px" oninput="debouncePriceLookup()" onkeydown="if(event.key==='Enter'){event.preventDefault();runPriceLookup()}">
+        <input class="tsi" id="qpl-input" placeholder="Card name, TCGplayer ID, or full product URL..." style="flex:1;margin-bottom:0;font-size:12px;padding:10px 14px" oninput="debouncePriceLookup()" onkeydown="if(event.key==='Enter'){event.preventDefault();runPriceLookup()}">
         <button class="hbtn" id="research-barcode-btn" title="Scan UPC or EAN barcode" onclick="openBarcodeScanner()" style="white-space:nowrap;color:var(--g)">SCAN BARCODE</button>
         <button class="hbtn" title="Speak search" aria-label="Voice price search" onclick="startVoiceInput('qpl-input', runPriceLookup)" style="width:54px;padding:0">MIC</button>
       </div>
@@ -2497,6 +2497,15 @@ body.show-mode .inv-sync-badge{display:none;}
 
     <label style="margin-top:8px;display:block">Set / Series</label>
     <input type="text" id="edit-set" placeholder="Set name">
+
+    <div style="margin-top:8px">
+      <label style="display:block">TCGplayer Product ID or URL (Pokémon)</label>
+      <div style="display:flex;gap:7px;align-items:center">
+        <input type="text" id="edit-tcgplayer-ref" inputmode="url" placeholder="654135 or https://www.tcgplayer.com/product/654135" style="flex:1" oninput="inventoryTcgReferenceChanged()">
+        <button class="hbtn" type="button" id="edit-tcgplayer-verify" onclick="verifyInventoryTcgplayerReference()">VERIFY</button>
+      </div>
+      <div id="edit-tcgplayer-status" style="font-family:var(--font-mono);font-size:9px;color:var(--dim);line-height:1.45;margin-top:5px">Paste either the numeric product ID or the complete TCGplayer product URL.</div>
+    </div>
 
     <label style="margin-top:8px;display:block">Variant / Parallel</label>
     <input type="text" id="edit-variant" placeholder="Base, Holo, Gold Prizm...">
@@ -16363,6 +16372,116 @@ let editingItemId = null;
 // Reuses the edit-item modal to review/adjust a Research result before it
 // becomes an inventory item — see openAddToInventoryModal() below.
 let pendingInventoryAdd = null;
+let inventoryTcgReferenceState = { originalId:'', verified:null };
+
+function inventoryTcgplayerReferenceId(value = ''){
+  const text = String(value || '').trim();
+  return tcgPlayerProductIdFromUrl(text) || (/^\d{5,8}$/.test(text) ? text : '');
+}
+
+function inventoryTcgReferenceChanged(){
+  const raw = document.getElementById('edit-tcgplayer-ref')?.value || '';
+  const id = inventoryTcgplayerReferenceId(raw);
+  if(inventoryTcgReferenceState.verified?.id !== id) inventoryTcgReferenceState.verified = null;
+  const status = document.getElementById('edit-tcgplayer-status');
+  if(!status) return;
+  status.style.color = raw && !id ? 'var(--red)' : 'var(--dim)';
+  status.textContent = raw && !id
+    ? 'Enter a 5–8 digit TCGplayer product ID or a TCGplayer /product/ URL.'
+    : id === inventoryTcgReferenceState.originalId
+      ? 'Saved TCGplayer product #' + id + '. Click VERIFY to re-check it.'
+      : id ? 'Product #' + id + ' must be verified before saving.' : 'No TCGplayer product is linked.';
+}
+
+function populateInventoryTcgReference(item = {}, trustedResearch = false){
+  const id = inventoryTcgPlayerId(item);
+  const url = item.tcgPlayerUrl || item.tcgUrl || (id ? 'https://www.tcgplayer.com/product/' + id : '');
+  const input = document.getElementById('edit-tcgplayer-ref');
+  if(input) input.value = url || id || '';
+  inventoryTcgReferenceState = {
+    originalId:id,
+    verified:trustedResearch && id ? { id, url:url || 'https://www.tcgplayer.com/product/' + id, match:item, productType:isPokemonSealedInventorySyncItem(item) ? 'sealed' : 'card' } : null,
+  };
+  const status = document.getElementById('edit-tcgplayer-status');
+  if(status) {
+    status.style.color = trustedResearch && id ? 'var(--g)' : 'var(--dim)';
+    status.textContent = id
+      ? (trustedResearch ? '✓ Exact TCGplayer product #' + id + ' carried from Research.' : 'Saved TCGplayer product #' + id + '. Click VERIFY to re-check it.')
+      : 'Paste either the numeric product ID or the complete TCGplayer product URL.';
+  }
+}
+
+async function verifyInventoryTcgplayerReference(){
+  const input = document.getElementById('edit-tcgplayer-ref');
+  const status = document.getElementById('edit-tcgplayer-status');
+  const button = document.getElementById('edit-tcgplayer-verify');
+  const id = inventoryTcgplayerReferenceId(input?.value || '');
+  if(!id) {
+    if(status) { status.style.color='var(--red)'; status.textContent='Enter a valid 5–8 digit product ID or TCGplayer product URL.'; }
+    return null;
+  }
+  const baseItem = pendingInventoryAdd ? selectedQuickLookupItem(pendingInventoryAdd.idx) : all.find(item => item.id === editingItemId) || {};
+  const formItem = {
+    ...baseItem,
+    category:document.getElementById('edit-category')?.value || baseItem.category,
+    set:document.getElementById('edit-set')?.value || baseItem.set,
+    variant:document.getElementById('edit-variant')?.value || baseItem.variant,
+    condition:document.getElementById('edit-condition')?.value || baseItem.condition,
+  };
+  const preferSealed = isPokemonSealedInventorySyncItem(formItem);
+  if(button) button.disabled = true;
+  if(status) { status.style.color='var(--gold)'; status.textContent='Checking exact Pokémon product #' + id + '…'; }
+  try {
+    let match = null, productType = '';
+    if(preferSealed) {
+      match = await fetchPokemonSealedProductExact(id);
+      if(match) productType = 'sealed';
+      if(!match) { match = await fetchPokemonPriceTrackerExactDetail(id, 'english'); if(match) productType='card'; }
+    } else {
+      match = await fetchPokemonPriceTrackerExactDetail(id, 'english');
+      if(match) productType = 'card';
+      if(!match) { match = await fetchPokemonSealedProductExact(id); if(match) productType='sealed'; }
+    }
+    if(!match) {
+      inventoryTcgReferenceState.verified = null;
+      if(status) { status.style.color='var(--red)'; status.textContent='No exact Pokémon card or sealed product found for TCGplayer #' + id + '.'; }
+      return null;
+    }
+    const url = match.tcgPlayerUrl || match.productUrl || 'https://www.tcgplayer.com/product/' + id;
+    inventoryTcgReferenceState.verified = { id, url, match, productType };
+    if(input) input.value = url;
+    const price = pokemonPriceTrackerMarketPrice(match);
+    if(status) {
+      status.style.color='var(--g)';
+      status.textContent='✓ #' + id + ' · ' + (match.name || match.productName || 'Exact Pokémon product') + ' · ' + (productType === 'sealed' ? 'Sealed' : 'Single') + (price ? ' · $' + price.toFixed(2) : '');
+    }
+    return inventoryTcgReferenceState.verified;
+  } catch(error) {
+    inventoryTcgReferenceState.verified = null;
+    if(status) { status.style.color='var(--red)'; status.textContent='Could not verify TCGplayer #' + id + ': ' + (error.message || error); }
+    return null;
+  } finally {
+    if(button) button.disabled = false;
+  }
+}
+
+async function inventoryTcgReferencePatch(item = {}){
+  const raw = document.getElementById('edit-tcgplayer-ref')?.value || '';
+  if(!String(raw).trim()) return { tcgPlayerId:'', tcgplayerId:'', tcgPlayerUrl:'', externalRefs:{ ...(item.externalRefs || {}), tcgPlayerId:'', tcgplayerProductId:'', tcgPlayerUrl:'' } };
+  const id = inventoryTcgplayerReferenceId(raw);
+  if(!id) throw new Error('Enter a valid TCGplayer product ID or URL.');
+  let verified = inventoryTcgReferenceState.verified?.id === id ? inventoryTcgReferenceState.verified : null;
+  if(!verified && id !== inventoryTcgReferenceState.originalId) verified = await verifyInventoryTcgplayerReference();
+  if(!verified && id !== inventoryTcgReferenceState.originalId) throw new Error('Verify the changed TCGplayer product before saving.');
+  const url = verified?.url || item.tcgPlayerUrl || 'https://www.tcgplayer.com/product/' + id;
+  return {
+    tcgPlayerId:id,
+    tcgplayerId:id,
+    tcgPlayerUrl:url,
+    ...(verified?.productType === 'sealed' ? { productType:'sealed', is_sealed:true } : {}),
+    externalRefs:{ ...(item.externalRefs || {}), tcgPlayerId:id, tcgplayerProductId:id, tcgPlayerUrl:url },
+  };
+}
 
 function consignmentOwnerDirectory(){const map=new Map();(consignorPeople||[]).forEach(p=>{const name=String(p.name||'').trim();if(name)map.set(name.toLowerCase(),{name,contact:p.contact||'',split:Number(p.split||25),personId:p.id||''});});(consignItems||[]).forEach(c=>{const name=String(c.owner||'').trim();if(name&&!map.has(name.toLowerCase()))map.set(name.toLowerCase(),{name,contact:c.contact||'',split:Number(c.split||25)});});return [...map.values()].sort((a,b)=>a.name.localeCompare(b.name));}
 function populateInventoryOwnerSelect(item={}){const select=document.getElementById('edit-consignor');if(!select)return;const owners=consignmentOwnerDirectory(),current=item.consignorName||item.inventoryOwner||consignItems.find(c=>c.id===item.consignmentId||c.inventoryId===item.id)?.owner||'';select.innerHTML='<option value="">Select a person...</option>'+owners.map(o=>`<option value="${escHtml(o.name)}">${escHtml(o.name)}${o.contact?' · '+escHtml(o.contact):''}</option>`).join('');if(current&&!owners.some(o=>o.name===current))select.insertAdjacentHTML('beforeend',`<option value="${escHtml(current)}">${escHtml(current)}</option>`);select.value=current;}
@@ -16417,6 +16536,7 @@ function openEditModal(id) {
   document.getElementById('edit-qty').value = item.qty || 1;
   document.getElementById('edit-year').value = item.year || '';
   document.getElementById('edit-set').value = item.set || '';
+  populateInventoryTcgReference(item, false);
   document.getElementById('edit-variant').value = item.variant || '';
   document.getElementById('edit-location').value = item.location || '';
   populateInventoryOwnerSelect(item);
@@ -16460,6 +16580,7 @@ function openEditModal(id) {
 function closeEditModal() {
   document.getElementById('edit-modal').classList.remove('on');
   editingItemId = null;
+  inventoryTcgReferenceState = { originalId:'', verified:null };
   if(pendingInventoryAdd) {
     pendingInventoryAdd = null;
     const syncBtn = document.getElementById('edit-sync-btn');
@@ -16488,6 +16609,7 @@ function openAddToInventoryModal(idx){
   document.getElementById('edit-qty').value = item.qty || 1;
   document.getElementById('edit-year').value = item.year || '';
   document.getElementById('edit-set').value = item.set || '';
+  populateInventoryTcgReference(item, true);
   document.getElementById('edit-variant').value = item.variant || '';
   document.getElementById('edit-location').value = item.location || '';
   populateInventoryOwnerSelect();
@@ -16527,6 +16649,10 @@ async function confirmAddToInventoryFromModal(){
   const item = selectedQuickLookupItem(idx);
   if(!item) { closeEditModal(); return; }
 
+  let tcgReferencePatch;
+  try { tcgReferencePatch = await inventoryTcgReferencePatch(item); }
+  catch(error) { toast_dash(error.message || String(error)); return; }
+
   Object.assign(item, {
     cost: parseFloat(document.getElementById('edit-cost').value)||0,
     market: parseFloat(document.getElementById('edit-market').value)||0,
@@ -16553,6 +16679,7 @@ async function confirmAddToInventoryFromModal(){
     is_patch: document.getElementById('edit-patch').checked,
     is_key: document.getElementById('edit-key').checked,
     is_signed: document.getElementById('edit-signed').checked,
+    ...tcgReferencePatch,
   });
   item.inventorySku = item.inventorySku || generateWalkoffInventorySku(item.category, item);
   item.sku = item.inventorySku;
@@ -16706,6 +16833,9 @@ async function confirmEditAndSync() {
   if(!editingItemId) return;
   const item = all.find(i => i.id === editingItemId);
   if(!item) return;
+  let tcgReferencePatch;
+  try { tcgReferencePatch = await inventoryTcgReferencePatch(item); }
+  catch(error) { toast_dash(error.message || String(error)); return; }
   pushUndoAction('inventory edit', { type:'item-snapshot', item:{...item}, lifecycleMap:getLifecycleMap() });
 
   const updates = {
@@ -16737,6 +16867,7 @@ async function confirmEditAndSync() {
     is_patch: document.getElementById('edit-patch').checked,
     is_key: document.getElementById('edit-key').checked,
     is_signed: document.getElementById('edit-signed').checked,
+    ...tcgReferencePatch,
     ...inventoryOwnershipPatch(),
   };
   if(updates.ownershipType==='consignor'&&!updates.consignorName){toast_dash('Select a consignor or choose Store Inventory');return;}
@@ -19283,16 +19414,25 @@ function tcgplayerSealedProductToQplRow(data={}, product={}){
 async function resolveExactTcgplayerProduct(product={}){
   if(!product.productId||!navigator.onLine)return null;
   const pokemonProduct = /pokemon/i.test([product.game,product.category,product.lineLabel].join(' '));
-  if(pokemonProduct) {
+  const tryPokemon = pokemonProduct || product.game === 'all';
+  if(tryPokemon) {
     try {
-      if(!product.isSealed) {
+      if(product.isSealed) {
+        const sealed = await fetchPokemonSealedProductExact(product.productId);
+        if(sealed) return pokemonSealedProductToQplRow(sealed, product.name || '');
+      } else {
         const card = await fetchPokemonPriceTrackerExactDetail(product.productId, product.language || 'english');
         if(card) return pokemonPriceTrackerCardToQplRow(card, product.name || '', null);
       }
-      const sealed = await fetchPokemonSealedProductExact(product.productId);
-      if(sealed) return pokemonSealedProductToQplRow(sealed, product.name || '');
+      if(product.isSealed) {
+        const card = await fetchPokemonPriceTrackerExactDetail(product.productId, product.language || 'english');
+        if(card) return pokemonPriceTrackerCardToQplRow(card, product.name || '', null);
+      } else {
+        const sealed = await fetchPokemonSealedProductExact(product.productId);
+        if(sealed) return pokemonSealedProductToQplRow(sealed, product.name || '');
+      }
     } catch(e) {}
-    return null;
+    if(pokemonProduct) return null;
   }
   if(product.isSealed) {
     try {

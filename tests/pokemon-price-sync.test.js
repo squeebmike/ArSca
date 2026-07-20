@@ -28,6 +28,7 @@ const context = {
   inventoryCardName: item => item.name || '',
   inventorySetName: item => item.set || '',
   normalizePokemonText: value => String(value || '').toLowerCase().replace(/[^a-z0-9/]+/g, ' ').trim(),
+  tcgPlayerProductIdFromUrl: value => (String(value || '').match(/tcgplayer\.com\/product\/(\d+)/i) || [])[1] || '',
   firstMoneyValue: (...values) => values.map(Number).find(value => Number.isFinite(value) && value > 0) || 0,
 };
 vm.createContext(context);
@@ -35,6 +36,7 @@ vm.runInContext(functionSource(dashboard, 'isPokemonSealedInventorySyncItem'), c
 vm.runInContext(functionSource(dashboard, 'pokemonPriceTrackerMarketPrice'), context);
 vm.runInContext(functionSource(dashboard, 'pokemonSealedInventorySearchQueries'), context);
 vm.runInContext(functionSource(dashboard, 'findBestLivePokemonSealedMatch'), context);
+vm.runInContext(functionSource(dashboard, 'inventoryTcgplayerReferenceId'), context);
 
 [
   'Phantasmal Flames Pokemon Center Elite Trainer Box (Exclusive)',
@@ -67,6 +69,13 @@ const lucario = context.findBestLivePokemonSealedMatch(
   ]
 );
 assert.strictEqual(lucario.tcgPlayerId, '648394', 'Fallback must prefer the normal ETB over Pokemon Center and unrelated products');
+assert.strictEqual(context.inventoryTcgplayerReferenceId('654135'), '654135', 'Inventory should accept a bare TCGplayer product ID');
+assert.strictEqual(context.inventoryTcgplayerReferenceId('https://www.tcgplayer.com/product/654135/example?Language=English'), '654135', 'Inventory should accept a complete TCGplayer URL');
+assert.strictEqual(context.inventoryTcgplayerReferenceId('not-a-product'), '', 'Inventory should reject invalid TCGplayer references');
+assert(dashboard.includes('id="edit-tcgplayer-ref"'), 'Inventory editor needs a TCGplayer ID/URL field');
+assert(dashboard.includes('onclick="verifyInventoryTcgplayerReference()"'), 'Inventory editor needs an explicit verification action');
+assert((dashboard.match(/await inventoryTcgReferencePatch\(item\)/g) || []).length >= 2, 'Both inventory edit and Research add must preserve the verified reference');
+assert(dashboard.includes("const tryPokemon = pokemonProduct || product.game === 'all'"), 'Bare Research IDs under Auto must try exact Pokemon lookup');
 assert(dashboard.includes("await pokemonPriceTrackerSealedProductsRequest(params"), 'Sealed inventory must use the sealed-products request');
 assert(dashboard.includes("'/pricing/pokemon/sealed-products?'"), 'Sealed request must use the Worker sealed-products route');
 assert(worker.includes("'pokemon:sealed:' + params.get('tcgPlayerId')"), 'Exact sealed IDs need a stable Worker cache key');
