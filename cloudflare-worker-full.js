@@ -1404,7 +1404,8 @@ export default {
         const body = await request.text();
         if (new TextEncoder().encode(body).byteLength > 1024 * 1024) return json({ ok:false, error:'KV payload is too large' }, 413);
         if (env.LBA_KV) {
-          await env.LBA_KV.put(scopedKey, body, { expirationTtl: 604800 });
+          const expirationTtl = key.startsWith('show_session') ? 60 * 60 * 24 * 180 : 604800;
+          await env.LBA_KV.put(scopedKey, body, { expirationTtl });
         } else {
           globalThis['_' + scopedKey] = body;
         }
@@ -1658,6 +1659,39 @@ export default {
       } catch (e) {
         console.error('POS checkout error:', e);
         return json({ error: e.message }, 500);
+      }
+    }
+
+    // Shared show Cash Bags can be counted or closed from any joined store
+    // device. The Worker performs the scoped update so every authenticated
+    // team member can operate a bag even when direct table update policies
+    // are intentionally more restrictive.
+    if (url.pathname === '/pos/drawers/update' && request.method === 'POST') {
+      try {
+        const body = await request.json().catch(() => ({}));
+        const storeId = requestStoreId(request, url, body);
+        const auth = await requireStoreUser(request, env, storeId);
+        if (auth.error) return auth.error;
+        const drawerId = String(body.drawerId || body.id || '').trim();
+        const action = String(body.action || '').toLowerCase();
+        if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(drawerId)) return json({ ok:false, error:'Valid drawerId is required' }, 400);
+        if (!['count','close'].includes(action)) return json({ ok:false, error:'action must be count or close' }, 400);
+        const { data:rows } = await supabaseAdminFetch(env, `pos_drawer_sessions?id=eq.${encodeURIComponent(drawerId)}&store_id=eq.${encodeURIComponent(storeId)}&select=*&limit=1`);
+        const drawer = rows?.[0];
+        if (!drawer) return json({ ok:false, error:'Cash Bag not found for this store' }, 404);
+        if (drawer.status === 'closed' && action === 'close') return json({ ok:true, drawer, alreadyClosed:true });
+        const expectedCash = Number(body.expectedCash);
+        const countedCash = Number(body.countedCash);
+        if (!Number.isFinite(expectedCash) || !Number.isFinite(countedCash) || countedCash < 0) return json({ ok:false, error:'Valid expected and counted cash totals are required' }, 400);
+        const now = new Date().toISOString();
+        const patch = { expected_cash:expectedCash, counted_cash:countedCash, over_short:countedCash-expectedCash };
+        if (action === 'close') Object.assign(patch, { status:'closed', closed_at:now, closed_by:auth.user.id });
+        const { data:updated } = await supabaseAdminFetch(env, `pos_drawer_sessions?id=eq.${encodeURIComponent(drawerId)}&store_id=eq.${encodeURIComponent(storeId)}`, { method:'PATCH', headers:{ Prefer:'return=representation' }, body:JSON.stringify(patch) });
+        await supabaseAdminFetch(env, 'pos_audit_log', { method:'POST', headers:{ Prefer:'return=minimal' }, body:JSON.stringify({ id:crypto.randomUUID(), store_id:storeId, event_type:action==='close'?'drawer_close':'drawer_count', entity_type:'pos_drawer_session', entity_id:drawerId, details:{ expectedCash, countedCash, overShort:countedCash-expectedCash }, created_by:auth.user.id, created_at:now }) }).catch(()=>{});
+        return json({ ok:true, drawer:updated?.[0] || { ...drawer, ...patch } });
+      } catch (e) {
+        console.error('Shared Cash Bag update error:', e);
+        return json({ ok:false, error:e.message }, 500);
       }
     }
 

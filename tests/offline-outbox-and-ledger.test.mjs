@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
 const dashboard = fs.readFileSync(new URL('../dashboard.html', import.meta.url), 'utf8');
+const worker = fs.readFileSync(new URL('../cloudflare-worker-full.js', import.meta.url), 'utf8');
 const migration = fs.readFileSync(new URL('../supabase-migrations/2026-07-14-atomic-pos-sale.sql', import.meta.url), 'utf8');
 
 assert.match(dashboard, /indexedDB\.open\(SYNC_OUTBOX_DB, 1\)/, 'operational queue must use IndexedDB');
@@ -12,6 +13,21 @@ assert.match(dashboard, /await finalizeCompletedCheckout\(bundle, queued/, 'fina
 assert.match(dashboard, /function resolveResearchInventoryMatch\(item\)/, 'research sales must resolve exact inventory matches');
 assert.match(dashboard, /inventoryId:trackedInventoryItem\?\.id \|\| null/, 'matched research results must carry the inventory ID into checkout');
 assert.match(dashboard, /This exact item is already sold or out of stock/, 'sold exact matches must be blocked');
+assert.match(dashboard, /show_sessions_index/, 'active shows must have a shared store-scoped index');
+assert.match(dashboard, /item\.type === 'show-session-kv'/, 'offline show starts and closes must have a retry handler');
+assert.match(dashboard, /async function joinShowSession\(id\)/, 'devices must be able to join a shared show');
+assert.match(dashboard, /async function joinCashBag\(id/, 'devices must be able to join a shared Cash Bag');
+assert.match(dashboard, /id="drawer-name"/, 'multiple shared Cash Bags must have an operator-visible name');
+assert.match(dashboard, /\.eq\('show_session_id',show\.id\)\.eq\('status','open'\)/, 'Cash Bags must be loaded under the selected show');
+assert.match(dashboard, /async function syncSharedShowTransactions/, 'joined devices must hydrate the shared transaction ledger');
+assert.match(dashboard, /paymentBreakdown:tender\.map/, 'shared tender details must retain Cash, Stripe, Venmo, and other methods');
+assert.match(dashboard, /!\['cash_sale','sale_void'\]\.includes/, 'automatic cash sale movements must not double-count cloud payment tenders');
+assert.match(dashboard, /show\('register-show-panel', cfg\.modules\.show && requireEmployee\(\)\)/, 'employees must be allowed to start or join shows');
+assert.match(dashboard, /show\('register-cash-panel', cfg\.modules\.cash && requireEmployee\(\)\)/, 'employees must be allowed to start or join Cash Bags');
+assert.match(dashboard, /Join or start a Cash Bag for this show before taking payment/, 'show checkout must be attached to a Cash Bag');
+assert.match(worker, /url\.pathname === '\/pos\/drawers\/update'/, 'Worker must expose a store-authenticated shared Cash Bag update route');
+assert.match(worker, /Cash Bag not found for this store/, 'Cash Bag updates must enforce store scope');
+assert.match(worker, /key\.startsWith\('show_session'\) \? 60 \* 60 \* 24 \* 180/, 'shared show metadata must outlive the short operational KV window');
 
 assert.match(migration, /create or replace function public\.complete_pos_sale/, 'atomic sale migration must define the RPC');
 assert.match(migration, /security definer/, 'RPC must own the complete transaction after checking store membership');
