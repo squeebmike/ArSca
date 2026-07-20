@@ -11511,6 +11511,7 @@ async function buildLivePokemonPriceSyncProposal(options = {}){
   const liveByTcgPlayerId = new Map();
   const proposal = [];
   for(const item of items){
+    let stopAfterItem = false;
     try {
       const exactId = inventoryTcgPlayerId(item);
       let live;
@@ -11604,20 +11605,58 @@ async function buildLivePokemonPriceSyncProposal(options = {}){
     } catch(e) {
       console.warn('[syncPrices] Live skip:', item.name, e.message || e);
       summary.errors++;
-      summary.issues.push({
-        item:{ ...item }, type:'error', title:'Live price request failed',
-        reason:String(e.message || e || 'Unknown provider error'), tcgPlayerId:inventoryTcgPlayerId(item),
-      });
+      const reason = String(e.message || e || 'Unknown provider error');
+      if(/quota exhausted|api 429|rate.?limit/i.test(reason)) {
+        summary.quotaBlocked = true;
+        stopAfterItem = true;
+        summary.issues.push({
+          item:{ ...item }, type:'error', title:'Live sync paused by provider quota',
+          reason:'No pending changes were discarded. Try again after the PokemonPriceTracker quota resets.', tcgPlayerId:inventoryTcgPlayerId(item),
+        });
+      } else {
+        summary.issues.push({
+          item:{ ...item }, type:'error', title:'Live price request failed',
+          reason, tcgPlayerId:inventoryTcgPlayerId(item),
+        });
+      }
     } finally {
       summary.processed++;
       if(typeof onProgress === 'function') onProgress(summary.processed, summary.checked);
     }
+    if(stopAfterItem) break;
   }
   _priceSyncLastSummary = summary;
   return proposal.sort((a, b) => (b.isBig ? 1 : 0) - (a.isBig ? 1 : 0) || Math.abs(b.delta) - Math.abs(a.delta));
 }
 
+const PRICE_SYNC_PENDING_KEY = 'price_sync_pending_v1';
 let _priceSyncProposal = [];
+
+function priceSyncProposalKey(p = {}){
+  const item = p.item || {};
+  return String(item.id || item.wfId || item.localId || '') ||
+    [inventoryTcgPlayerId(item), priceSyncItemTitle(item), inventoryCardNumber(item), p.oldPrice].join('|');
+}
+function savePendingPriceSyncProposals(){
+  try {
+    if(_priceSyncProposal.length) localStorage.setItem(PRICE_SYNC_PENDING_KEY, JSON.stringify(_priceSyncProposal));
+    else localStorage.removeItem(PRICE_SYNC_PENDING_KEY);
+  } catch(e) { console.warn('[syncPrices] Could not persist pending review:', e.message || e); }
+}
+function restorePendingPriceSyncProposals(){
+  if(_priceSyncProposal.length) return _priceSyncProposal;
+  try {
+    const saved = JSON.parse(localStorage.getItem(PRICE_SYNC_PENDING_KEY) || '[]');
+    if(Array.isArray(saved)) _priceSyncProposal = saved.filter(p => p?.item && Number(p.newPrice || 0) > 0);
+  } catch(e) { localStorage.removeItem(PRICE_SYNC_PENDING_KEY); }
+  return _priceSyncProposal;
+}
+function mergePendingPriceSyncProposals(previous = [], fresh = []){
+  const merged = new Map();
+  previous.forEach(p => merged.set(priceSyncProposalKey(p), p));
+  fresh.forEach(p => merged.set(priceSyncProposalKey(p), p));
+  return [...merged.values()].sort((a, b) => (b.isBig ? 1 : 0) - (a.isBig ? 1 : 0) || Math.abs(b.delta || 0) - Math.abs(a.delta || 0));
+}
 
 function openPriceSyncModal(){
   const modal = document.getElementById('price-sync-modal');
@@ -11626,10 +11665,16 @@ function openPriceSyncModal(){
   const propEl  = document.getElementById('price-sync-proposal');
   const statusEl = document.getElementById('price-sync-status');
   const applyBtn = document.getElementById('price-sync-apply-btn');
-  if(propEl)   propEl.innerHTML   = '<div style="color:var(--dim);font-size:11px;padding:12px 0">Use SCAN CACHED PRICES for offline lookup-cache comparison, or FETCH LIVE POKEMON for Worker/PokemonPriceTracker refresh.</div>';
-  if(statusEl) statusEl.textContent = '';
-  if(applyBtn) applyBtn.style.display = 'none';
-  _priceSyncProposal = [];
+  restorePendingPriceSyncProposals();
+  if(_priceSyncProposal.length) {
+    if(statusEl) statusEl.textContent = _priceSyncProposal.length + ' pending price change' + (_priceSyncProposal.length===1?'':'s') + ' restored for review.';
+    if(applyBtn) applyBtn.style.display = '';
+    renderPriceSyncProposal();
+  } else {
+    if(propEl) propEl.innerHTML = '<div style="color:var(--dim);font-size:11px;padding:12px 0">Use SCAN CACHED PRICES for offline lookup-cache comparison, or FETCH LIVE POKEMON for Worker/PokemonPriceTracker refresh.</div>';
+    if(statusEl) statusEl.textContent = '';
+    if(applyBtn) applyBtn.style.display = 'none';
+  }
   _priceSyncLastSummary = null;
 }
 
@@ -11654,6 +11699,7 @@ async function runPriceSyncScan(){
   if(document.getElementById('pso-comics')?.checked) cats.push('Comics');
   try {
     _priceSyncProposal = await buildPriceSyncProposal({ categories: cats.length ? cats : null });
+    savePendingPriceSyncProposals();
     if(!_priceSyncProposal.length) {
       statusEl.textContent = 'Cached sync found no changes. This did not fetch live prices.';
       propEl.innerHTML = '<div style="color:var(--dim);font-size:12px;padding:12px 0">All cached prices match current inventory pricing. Use FETCH LIVE POKEMON to check current Worker/PokemonPriceTracker data.</div>';
@@ -11680,17 +11726,33 @@ async function runLivePokemonPriceSync(){
   const propEl   = document.getElementById('price-sync-proposal');
   const applyBtn = document.getElementById('price-sync-apply-btn');
   if(!btn || !statusEl || !propEl) return;
+  restorePendingPriceSyncProposals();
+  if(pokemonPriceTrackerQuotaBlocked()) {
+    statusEl.textContent = 'PokemonPriceTracker is temporarily rate limited or out of quota. '
+      + (_priceSyncProposal.length ? _priceSyncProposal.length + ' pending change' + (_priceSyncProposal.length===1?' remains':'s remain') + ' available for review.' : 'No new prices were requested; try again after the provider resets.');
+    if(_priceSyncProposal.length) {
+      if(applyBtn) applyBtn.style.display = '';
+      renderPriceSyncProposal();
+    } else {
+      propEl.innerHTML = '<div style="color:var(--gold);font-size:12px;padding:12px 0">Live sync is paused so the app does not turn every inventory row into a repeated quota error.</div>';
+    }
+    return;
+  }
+  const pendingBeforeRun = [..._priceSyncProposal];
   btn.disabled = true;
   btn.textContent = 'Fetching...';
   statusEl.textContent = 'Fetching live PokemonPriceTracker prices through the Worker...';
   propEl.innerHTML = '';
   if(applyBtn) applyBtn.style.display = 'none';
   try {
-    _priceSyncProposal = await buildLivePokemonPriceSyncProposal({
+    const freshProposal = await buildLivePokemonPriceSyncProposal({
       onProgress:(done, total) => { statusEl.textContent = 'Fetching live prices... ' + done + ' of ' + total + ' checked'; }
     });
     const s = _priceSyncLastSummary || { checked:0, changed:0, unchanged:0, noMatch:0, noPrice:0, errors:0, issues:[] };
-    const summaryText = 'Live sync checked ' + s.checked + ' Pokemon item' + (s.checked===1?'':'s') + '. ' + s.changed + ' changed, ' + s.unchanged + ' unchanged, ' + s.noMatch + ' not matched, ' + s.noPrice + ' matched without a market price, ' + s.errors + ' errors.'
+    _priceSyncProposal = s.quotaBlocked ? mergePendingPriceSyncProposals(pendingBeforeRun, freshProposal) : freshProposal;
+    savePendingPriceSyncProposals();
+    const summaryText = (s.quotaBlocked ? 'Live sync paused after ' + s.processed + ' of ' + s.checked + ' Pokemon items because the provider quota was exhausted. ' : 'Live sync checked ' + s.checked + ' Pokemon item' + (s.checked===1?'':'s') + '. ')
+      + s.changed + ' changed, ' + s.unchanged + ' unchanged, ' + s.noMatch + ' not matched, ' + s.noPrice + ' matched without a market price, ' + s.errors + ' errors.'
       + (s.reusedLookups ? ' ' + s.reusedLookups + ' duplicate product lookup' + (s.reusedLookups===1?' was':'s were') + ' reused.' : '');
     if(!_priceSyncProposal.length) {
       statusEl.textContent = summaryText;
@@ -11763,6 +11825,7 @@ function renderPriceSyncProposal(){
 function toggleAllPriceSyncItems(checked){
   _priceSyncProposal.forEach(p => { p.selected = checked; });
   document.querySelectorAll('[data-pso-idx]').forEach(cb => { cb.checked = checked; });
+  savePendingPriceSyncProposals();
 }
 
 function togglePriceSyncItem(idx, checked){
@@ -11770,6 +11833,7 @@ function togglePriceSyncItem(idx, checked){
   const allChecked = _priceSyncProposal.every(p => p.selected);
   const cb = document.getElementById('pso-select-all');
   if(cb) cb.checked = allChecked;
+  savePendingPriceSyncProposals();
 }
 
 async function applySelectedPriceSyncUpdates(){
@@ -11807,6 +11871,7 @@ async function applySelectedPriceSyncUpdates(){
     } catch(e){ console.warn('[syncPrices] Apply failed:', priceSyncItemTitle(p.item), e); }
   }
   _priceSyncProposal = _priceSyncProposal.filter(p => !p.selected);
+  savePendingPriceSyncProposals();
   renderPriceSyncProposal();
   updatePriceAlertBanner();
   const statusEl = document.getElementById('price-sync-status');
