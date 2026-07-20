@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.07.20.03-shared-show-register">
+<meta name="version" content="2026.07.20.04-buy-tradein-fix">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1469,13 +1469,13 @@ body.show-mode .inv-sync-badge{display:none;}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.07.20.03-shared-show-register"></script>
-<script src="scripts/barcode-lookup.js?v=2026.07.20.03-shared-show-register"></script>
-<script src="scripts/comic-issue-hub.js?v=2026.07.20.03-shared-show-register"></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.07.20.03-shared-show-register"></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.07.20.03-shared-show-register"></script>
-<script src="scripts/topps/offline-browser.js?v=2026.07.20.03-shared-show-register"></script>
-<script src="scripts/mtg/research-batch.js?v=2026.07.20.03-shared-show-register"></script>
+<script src="scripts/query-routing.js?v=2026.07.20.04-buy-tradein-fix"></script>
+<script src="scripts/barcode-lookup.js?v=2026.07.20.04-buy-tradein-fix"></script>
+<script src="scripts/comic-issue-hub.js?v=2026.07.20.04-buy-tradein-fix"></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.07.20.04-buy-tradein-fix"></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.07.20.04-buy-tradein-fix"></script>
+<script src="scripts/topps/offline-browser.js?v=2026.07.20.04-buy-tradein-fix"></script>
+<script src="scripts/mtg/research-batch.js?v=2026.07.20.04-buy-tradein-fix"></script>
 </head>
 <body>
 
@@ -1525,11 +1525,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.07.20.03-shared-show-register</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.07.20.04-buy-tradein-fix</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.07.20.03-shared-show-register</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.07.20.04-buy-tradein-fix</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1551,7 +1551,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.07.20.03-shared-show-register</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.07.20.04-buy-tradein-fix</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -2938,7 +2938,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.07.20.03-shared-show-register';
+const APP_VERSION = '2026.07.20.04-buy-tradein-fix';
 window.APP_VERSION = APP_VERSION;
 
 // This page has no cache-busting of its own (unlike the secondary scripts,
@@ -3006,7 +3006,7 @@ const WALKOFF_SCOPED_KEYS = new Set([
   // Core inventory / transactions
   'lba_inventory','walkoff_universal_inventory','pos_cart_v2',
   'pos_buy_list','pos_buy_trays','pos_active_buy_tray_id','pos_buy_offers','pos_buy_sessions',
-  'pos_transactions','pos_drawer','pos_drawer_closeouts',
+  'pos_transactions','pos_drawer','pos_drawer_closeouts','pos_store_credits','pos_pending_trade_purchase',
   // POS / operations
   'pos_wantlist','set_needs_v1','pos_consign','pos_consignors','pos_consignment_alerts','pos_locations',
   'pos_ops_log','pos_show_mode','pos_customers','pos_undo_stack',
@@ -25446,6 +25446,9 @@ async function selectQuickLookupResult(idx){
 
   r = applyQplSelectedVariant(r);
   if(!r) return;
+  // The availability flag used to exist only in quickLookupResultCard().
+  // This selected-result card needs its own scoped value before rendering.
+  const inventoryUnavailable = r.source === 'inventory' && !inventoryItemIsSellable(r.raw || r);
   // If no image yet, try to fill from catalog (async, updates img after render)
   if(!r.imageUrl && qplResultCategoryKey(r) === 'pokemon'){
     resolvePokemonCatalogImageUrl(r, 'large').then(url => {
@@ -26861,6 +26864,10 @@ function rejectBuySession(){
 function payCustomerForBuySession(method){
   const session = snapshotBuySession(getActiveBuySession()?.status || 'open');
   session.paymentType = method || document.getElementById('buy-session-pay-method')?.value || 'Cash';
+  if(normalizeTenderType(session.paymentType) === 'trade_credit' && !session.customerName && !session.customerPhone) {
+    toast_dash('⚠ Add a customer name or phone before issuing trade credit');
+    return null;
+  }
   session.customerPaidAt = new Date().toISOString();
   saveActiveBuySession(session);
   saveBuySessionHistory(session);
@@ -26896,24 +26903,25 @@ function payCustomerForBuySession(method){
     };
     MoneyLedgerService().writeDrawerMovement(movement).catch(e => enqueueSync('drawer-movement', 'Queued cash buy payout: ' + payoutNote, movement, e.message));
   } else if(normalizeTenderType(session.paymentType) === 'trade_credit') {
-    if(!session.customerName && !session.customerPhone) {
-      toast_dash('⚠ Add a customer name or phone before issuing trade credit');
-      return;
+    // Only one credit may be issued for a buy session, even if confirmation is retried.
+    let record = getStoreCredits().find(c => c.buySessionId === session.buySessionId);
+    if(!record) {
+      record = issueStoreCredit({
+        customerName: session.customerName,
+        customerPhone: session.customerPhone,
+        customerEmail: session.customerEmail,
+        amount: session.tradeCreditTotal,
+        buySessionId: session.buySessionId,
+        note: 'Trade-in credit from buy session ' + session.buySessionId,
+      });
+      logOpsEvent('trade_credit_issued', 'Issued trade credit', { buySessionId:session.buySessionId, creditId:record.id, amount:record.amount, customerName:session.customerName });
     }
-    const record = issueStoreCredit({
-      customerName: session.customerName,
-      customerPhone: session.customerPhone,
-      customerEmail: session.customerEmail,
-      amount: session.tradeCreditTotal,
-      buySessionId: session.buySessionId,
-      note: 'Trade-in credit from buy session ' + session.buySessionId,
-    });
-    logOpsEvent('trade_credit_issued', 'Issued trade credit', { buySessionId:session.buySessionId, creditId:record.id, amount:record.amount, customerName:session.customerName });
     toast_dash('Trade credit issued: $' + record.amount.toFixed(2) + ' — redeemable at checkout');
-    return;
+    return { session, credit:record };
   }
   logOpsEvent('customer_paid', 'Recorded customer payout for buy session', { buySessionId:session.buySessionId, method:session.paymentType, amount:session.cashOfferTotal });
   toast_dash('Customer payout recorded: ' + session.paymentType);
+  return { session, credit:null };
 }
 async function acceptBuySession(){
   if(!buyList.length){ toast_dash('No buy offer items'); return; }
@@ -26932,8 +26940,10 @@ async function acceptBuySession(){
 }
 
 function showBuyPaymentConfirm(session){
-  const total = Number(session.cashOfferTotal || 0);
   const method = session.paymentType || document.getElementById('buy-session-pay-method')?.value || 'Cash';
+  const isTradeCredit = normalizeTenderType(method) === 'trade_credit';
+  const total = Number(isTradeCredit ? session.tradeCreditTotal : session.cashOfferTotal || 0);
+  const tradeTotal = Number(session.tradeCreditTotal || 0);
   const items = session.items || [];
   const el = document.getElementById('buy-payment-confirm-overlay');
   if(!el) return;
@@ -26941,26 +26951,53 @@ function showBuyPaymentConfirm(session){
     <div style="background:var(--surf);border:1px solid rgba(0,255,179,.4);border-radius:14px;padding:28px 24px;max-width:400px;width:100%;margin:auto;position:relative">
       <div style="font-family:'Orbitron',monospace;font-size:18px;color:var(--g);margin-bottom:6px;text-align:center">BUY ACCEPTED</div>
       <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);text-align:center;margin-bottom:20px">${items.length} card${items.length===1?'':'s'} added to inventory</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+        <input value="${escHtml(session.customerName || '')}" placeholder="Customer name" oninput="syncBuyConfirmCustomer('customerName',this.value)" style="min-width:0;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:11px;border-radius:8px;font-size:12px">
+        <input value="${escHtml(session.customerPhone || '')}" placeholder="Phone" oninput="syncBuyConfirmCustomer('customerPhone',this.value)" style="min-width:0;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:11px;border-radius:8px;font-size:12px">
+      </div>
       <div style="background:var(--surf2);border-radius:8px;padding:12px;margin-bottom:18px">
         ${items.slice(0,6).map(i=>`<div style="display:flex;justify-content:space-between;font-family:var(--font-mono);font-size:11px;padding:3px 0;border-bottom:1px solid var(--border)"><span style="color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:240px">${escHtml(i.name||'Card')}</span><span style="color:var(--gold);flex-shrink:0;margin-left:8px">$${Math.round(i.cashOffer||i.offerValue||0)}</span></div>`).join('')}
         ${items.length>6?`<div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);padding-top:4px">+${items.length-6} more</div>`:''}
         <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding-top:10px;border-top:2px solid rgba(0,255,179,.3)">
-          <span style="font-family:'Orbitron',monospace;font-size:13px;color:var(--text)">PAY CUSTOMER</span>
+          <span style="font-family:'Orbitron',monospace;font-size:13px;color:var(--text)">${isTradeCredit?'TRADE-IN CREDIT':'PAY CUSTOMER'}</span>
           <span style="font-family:'Orbitron',monospace;font-size:22px;color:var(--g)">$${Math.round(total)}</span>
         </div>
         <div style="font-family:var(--font-mono);font-size:11px;color:var(--dim);text-align:right;margin-top:4px">via ${escHtml(method)}</div>
       </div>
-      <div style="display:flex;gap:10px">
-        <button onclick="confirmBuyPayout()" style="flex:1;background:var(--g);color:#000;border:none;border-radius:10px;font-family:'Orbitron',monospace;font-size:14px;font-weight:800;padding:18px;cursor:pointer;letter-spacing:.05em">CONFIRM PAYMENT</button>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button onclick="confirmBuyPayout('${escHtml(method)}')" style="flex:1;background:var(--g);color:#000;border:none;border-radius:10px;font-family:'Orbitron',monospace;font-size:14px;font-weight:800;padding:18px;cursor:pointer;letter-spacing:.05em">${isTradeCredit?'ISSUE TRADE CREDIT':'CONFIRM PAYMENT'}</button>
+        ${isTradeCredit ? '' : `<button onclick="confirmBuyPayout('Trade Credit',true)" style="flex:1 0 100%;background:rgba(255,190,70,.12);color:var(--gold);border:1px solid rgba(255,190,70,.55);border-radius:10px;font-family:'Orbitron',monospace;font-size:12px;font-weight:800;padding:15px;cursor:pointer;letter-spacing:.04em">APPLY $${tradeTotal.toFixed(2)} TO PURCHASE</button>`}
         <button onclick="newCustomerReset()" style="flex:0 0 auto;background:var(--surf2);color:var(--dim);border:1px solid var(--border);border-radius:10px;font-family:var(--font-mono);font-size:11px;padding:12px 16px;cursor:pointer">SKIP</button>
       </div>
+      <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);line-height:1.5;margin-top:12px;text-align:center">Apply to Purchase issues customer-linked trade credit, then opens POS. At checkout choose Trade Credit and apply it before taking any remaining balance.</div>
     </div>`;
   el.style.display = 'flex';
 }
 
-function confirmBuyPayout(){
-  payCustomerForBuySession();
+function syncBuyConfirmCustomer(field, value){
+  const inputId = field === 'customerPhone' ? 'bl-phone' : 'bl-customer';
+  const input = document.getElementById(inputId);
+  if(input) input.value = value;
+  updateBuySessionField(field, value);
+}
+
+function confirmBuyPayout(method, applyToPurchase=false){
+  const result = payCustomerForBuySession(method);
+  if(!result) return;
+  if(applyToPurchase && result.credit) {
+    localStorage.setItem('pos_pending_trade_purchase', JSON.stringify({
+      creditId:result.credit.id,
+      customerName:result.session.customerName || '',
+      customerPhone:result.session.customerPhone || '',
+      buySessionId:result.session.buySessionId,
+      createdAt:new Date().toISOString(),
+    }));
+  }
   newCustomerReset();
+  if(applyToPurchase) {
+    switchTab('pos');
+    toast_dash('Trade-in credit ready — add purchase items, then checkout');
+  }
 }
 
 function newCustomerReset(){
@@ -28433,7 +28470,16 @@ async function lockCheckoutForPayment(){
   selectedTenderLines = [];
   CheckoutStateManager().set(CHECKOUT_STATES.CHECKOUT_LOCKED);
   logOpsEvent('checkout_locked', 'Locked checkout snapshot', { checkoutSnapshotId:lockedCheckoutSnapshot.id, total:lockedCheckoutSnapshot.total, items:lockedCheckoutSnapshot.lines.length });
-  enterCustomerDisplayMode();
+  await enterCustomerDisplayMode();
+  const pendingTrade = safeLocalJson('pos_pending_trade_purchase', null);
+  const pendingCredit = pendingTrade?.creditId && getStoreCredits().find(c => c.id === pendingTrade.creditId && Number(c.remainingBalance || 0) > 0);
+  if(pendingCredit) {
+    selectLockedPaymentMethod('trade_credit');
+    const search = document.getElementById('trade-credit-search');
+    if(search) search.value = pendingCredit.customerPhone || pendingCredit.customerName || '';
+    renderTradeCreditMatches();
+    toast_dash('Trade-in credit found — tap APPLY to use it on this purchase');
+  }
 }
 
 function cancelLockedCheckout(){
@@ -28735,7 +28781,14 @@ async function finalizeCompletedCheckout(bundle, queued, inventoryCommittedAtomi
   // draw the redeemed amount down from that customer's balance now that the sale
   // is durably recorded (either committed or queued for sync, same as inventory above).
   bundle.payments.filter(p => normalizeTenderType(p.method) === 'trade_credit' && p.reference)
-    .forEach(p => redeemStoreCredit(p.reference, Number(p.amount || 0)));
+    .forEach(p => {
+      redeemStoreCredit(p.reference, Number(p.amount || 0));
+      const pendingTrade = safeLocalJson('pos_pending_trade_purchase', null);
+      if(pendingTrade?.creditId === p.reference) localStorage.removeItem('pos_pending_trade_purchase');
+    });
+  // The explicit handoff is for the next purchase only. The store-credit record
+  // itself remains available in the ledger if it was not used on this sale.
+  localStorage.removeItem('pos_pending_trade_purchase');
   confirmedSaleContext = bundle;
   logOpsEvent(queued ? 'sale_offline_queued' : 'sale_completed', queued ? 'Completed sale queued for Supabase sync' : 'Completed sale in Supabase ledger', { saleId:bundle.sale.id, total:bundle.sale.total });
   // BUGFIX (discovered during cart-unification QA): `renderSales` was never

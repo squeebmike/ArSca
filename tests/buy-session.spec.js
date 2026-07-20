@@ -1,6 +1,22 @@
 const { test, expect } = require('@playwright/test');
 const { openDashboard, runResearchSearch } = require('./helpers');
 
+test('selected Research result renders Buy and Sell actions without an availability ReferenceError', async ({ page }) => {
+  await openDashboard(page);
+  await page.locator('[data-tab="research"]').click();
+  await page.evaluate(async () => {
+    qplResults = [{
+      id:'qa-selected-item', name:'QA Selected Card', category:'Collectibles',
+      source:'inventory', raw:{ id:'qa-selected-item', status:'in_stock', quantity:1 },
+      market:12, condition:'NM', set:'QA Set', year:'2026'
+    }];
+    await selectQuickLookupResult(0);
+  });
+  await expect(page.locator('.qpl-selected-card')).toContainText('QA Selected Card');
+  await expect(page.locator('.qpl-selected-card').getByRole('button', { name:'ADD TO BUY' })).toBeEnabled();
+  await expect(page.locator('.qpl-selected-card').getByRole('button', { name:'SELL' })).toBeEnabled();
+});
+
 test('research result can be added to Buy Offer with source and price data', async ({ page }) => {
   await openDashboard(page);
   const cards = await runResearchSearch(page, 'pikachu 151', 'Pokemon TCG');

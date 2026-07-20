@@ -13,6 +13,14 @@ const updateBuyItem = html.match(/function updateBuyItem\([\s\S]*?\r?\n}\r?\n\r?
 assert.ok(updateBuyItem, 'updateBuyItem function was not found');
 assert.doesNotMatch(updateBuyItem, /\bfetch\s*\(/, 'Buy dropdown changes must not call an API');
 
+const selectedQuickResult = html.match(/async function selectQuickLookupResult\([\s\S]*?\r?\n}\r?\n\r?\nfunction normalizeQuickCategory/)?.[0] || '';
+assert.ok(selectedQuickResult, 'selectQuickLookupResult function was not found');
+assert.match(selectedQuickResult, /const inventoryUnavailable = r\.source === 'inventory'/, 'Selected Research result must define its inventory availability before rendering cart actions');
+
+assert.match(html, /APPLY \$\$\{tradeTotal\.toFixed\(2\)\} TO PURCHASE/, 'Accepted buys must offer a direct trade-in-toward-purchase action');
+assert.match(html, /pos_pending_trade_purchase/, 'Trade-in purchase handoff must persist until checkout');
+assert.match(html, /getStoreCredits\(\)\.find\(c => c\.buySessionId === session\.buySessionId\)/, 'Trade credit issuance must be idempotent per buy session');
+
 assert.match(html, /function renderCustomerLiveCart\(/, 'Customer display must support live cart review');
 assert.match(html, /image_url:item\.img \|\| item\.image/, 'Checkout snapshot must retain item images');
 assert.match(html, /function rollbackSpreadsheetImport\(/, 'Device CSV imports must be rollback-capable');
