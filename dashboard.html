@@ -11489,8 +11489,21 @@ async function buildPriceSyncProposal(options = {}){
 
 let _priceSyncLastSummary = null;
 
+async function waitForPokemonRateLimitRetry(error, onRateLimit, processed, total){
+  const providerRetryAt = Date.parse(error?.retryAt || '');
+  const deadline = Number.isFinite(providerRetryAt)
+    ? Math.min(providerRetryAt + 750, Date.now() + 65000)
+    : Date.now() + 60000;
+  while(Date.now() < deadline) {
+    const seconds = Math.max(1, Math.ceil((deadline - Date.now()) / 1000));
+    if(typeof onRateLimit === 'function') onRateLimit(seconds, processed, total);
+    await new Promise(resolve => setTimeout(resolve, Math.min(1000, Math.max(1, deadline - Date.now()))));
+  }
+  localStorage.removeItem('ppt_rate_limited_until');
+}
+
 async function buildLivePokemonPriceSyncProposal(options = {}){
-  const { onProgress = null } = options;
+  const { onProgress = null, onRateLimit = null } = options;
   const localRawItems = safeLocalJson('walkoff_universal_inventory', []);
   const seenRawIds = new Set(localRawItems.map(i => i.id || i.wfId).filter(Boolean));
   const rawItems = localRawItems.concat((all || []).filter(i => {
@@ -11528,7 +11541,21 @@ async function buildLivePokemonPriceSyncProposal(options = {}){
         live = cachedLookup.live;
       } else {
         try {
-          live = await fetchLivePokemonInventoryCard(item);
+          let rateLimitRetries = 0;
+          while(true) {
+            try {
+              live = await fetchLivePokemonInventoryCard(item);
+              break;
+            } catch(error) {
+              if(error?.providerQuotaState === 'rate_limited' && rateLimitRetries < 2) {
+                rateLimitRetries++;
+                summary.rateLimitPauses = Number(summary.rateLimitPauses || 0) + 1;
+                await waitForPokemonRateLimitRetry(error, onRateLimit, summary.processed, summary.checked);
+                continue;
+              }
+              throw error;
+            }
+          }
           if(exactId) liveByTcgPlayerId.set(exactId, { live });
         } catch(error) {
           if(exactId) liveByTcgPlayerId.set(exactId, { error });
@@ -11610,12 +11637,19 @@ async function buildLivePokemonPriceSyncProposal(options = {}){
       console.warn('[syncPrices] Live skip:', item.name, e.message || e);
       summary.errors++;
       const reason = String(e.message || e || 'Unknown provider error');
-      if(/quota exhausted|api 429|rate.?limit/i.test(reason)) {
+      if(e?.providerQuotaState === 'exhausted' || /quota exhausted/i.test(reason)) {
         summary.quotaBlocked = true;
         stopAfterItem = true;
         summary.issues.push({
           item:{ ...item }, type:'error', title:'Live sync paused by provider quota',
           reason:'No pending changes were discarded. Try again after the PokemonPriceTracker quota resets.', tcgPlayerId:inventoryTcgPlayerId(item),
+        });
+      } else if(e?.providerQuotaState === 'rate_limited' || /api 429|rate.?limit/i.test(reason)) {
+        summary.rateLimitBlocked = true;
+        stopAfterItem = true;
+        summary.issues.push({
+          item:{ ...item }, type:'error', title:'Live sync paused by a temporary rate limit',
+          reason:'Automatic retries did not clear the short provider limit. Pending changes were preserved; try again in about one minute.', tcgPlayerId:inventoryTcgPlayerId(item),
         });
       } else {
         summary.issues.push({
@@ -11731,8 +11765,8 @@ async function runLivePokemonPriceSync(){
   const applyBtn = document.getElementById('price-sync-apply-btn');
   if(!btn || !statusEl || !propEl) return;
   restorePendingPriceSyncProposals();
-  if(pokemonPriceTrackerQuotaBlocked()) {
-    statusEl.textContent = 'PokemonPriceTracker is temporarily rate limited or out of quota. '
+  if(pokemonPriceTrackerDailyQuotaBlocked()) {
+    statusEl.textContent = 'PokemonPriceTracker reports that the daily quota is exhausted. '
       + (_priceSyncProposal.length ? _priceSyncProposal.length + ' pending change' + (_priceSyncProposal.length===1?' remains':'s remain') + ' available for review.' : 'No new prices were requested; try again after the provider resets.');
     if(_priceSyncProposal.length) {
       if(applyBtn) applyBtn.style.display = '';
@@ -11750,14 +11784,20 @@ async function runLivePokemonPriceSync(){
   if(applyBtn) applyBtn.style.display = 'none';
   try {
     const freshProposal = await buildLivePokemonPriceSyncProposal({
-      onProgress:(done, total) => { statusEl.textContent = 'Fetching live prices... ' + done + ' of ' + total + ' checked'; }
+      onProgress:(done, total) => { statusEl.textContent = 'Fetching live prices... ' + done + ' of ' + total + ' checked'; },
+      onRateLimit:(seconds, done, total) => { statusEl.textContent = 'PPT short rate limit reached after ' + done + ' of ' + total + '. Resuming automatically in ' + seconds + ' second' + (seconds===1?'':'s') + '...'; }
     });
     const s = _priceSyncLastSummary || { checked:0, changed:0, unchanged:0, noMatch:0, noPrice:0, errors:0, issues:[] };
-    _priceSyncProposal = s.quotaBlocked ? mergePendingPriceSyncProposals(pendingBeforeRun, freshProposal) : freshProposal;
+    _priceSyncProposal = (s.quotaBlocked || s.rateLimitBlocked) ? mergePendingPriceSyncProposals(pendingBeforeRun, freshProposal) : freshProposal;
     savePendingPriceSyncProposals();
-    const summaryText = (s.quotaBlocked ? 'Live sync paused after ' + s.processed + ' of ' + s.checked + ' Pokemon items because the provider quota was exhausted. ' : 'Live sync checked ' + s.checked + ' Pokemon item' + (s.checked===1?'':'s') + '. ')
+    const summaryText = (s.quotaBlocked
+      ? 'Live sync paused after ' + s.processed + ' of ' + s.checked + ' Pokemon items because the daily provider quota was exhausted. '
+      : s.rateLimitBlocked
+      ? 'Live sync paused after ' + s.processed + ' of ' + s.checked + ' Pokemon items because the short provider rate limit did not clear after automatic retries. '
+      : 'Live sync checked ' + s.checked + ' Pokemon item' + (s.checked===1?'':'s') + '. ')
       + s.changed + ' changed, ' + s.unchanged + ' unchanged, ' + s.noMatch + ' not matched, ' + s.noPrice + ' matched without a market price, ' + s.errors + ' errors.'
-      + (s.reusedLookups ? ' ' + s.reusedLookups + ' duplicate product lookup' + (s.reusedLookups===1?' was':'s were') + ' reused.' : '');
+      + (s.reusedLookups ? ' ' + s.reusedLookups + ' duplicate product lookup' + (s.reusedLookups===1?' was':'s were') + ' reused.' : '')
+      + (s.rateLimitPauses ? ' Automatically resumed after ' + s.rateLimitPauses + ' short rate-limit pause' + (s.rateLimitPauses===1?'':'s') + '.' : '');
     if(!_priceSyncProposal.length) {
       statusEl.textContent = summaryText;
       renderPriceSyncProposal();
@@ -22512,7 +22552,13 @@ async function pokemonPriceTrackerCardsRequest(params, pathLabel, { fresh = fals
     // Transient rate-limit — back off for 60 seconds only
     localStorage.setItem('ppt_rate_limited_until', String(Date.now() + 60 * 1000));
   }
-  if(!res.ok || !data.ok) throw new Error(data.error || data.message || 'PokemonPriceTracker quota exhausted');
+  if(!res.ok || !data.ok) {
+    const err = new Error(data.error || data.message || 'PokemonPriceTracker request failed');
+    err.status = res.status;
+    err.providerQuotaState = data.providerQuotaState || '';
+    err.retryAt = data.retryAt || '';
+    throw err;
+  }
   return { data, cards:pokemonPriceTrackerCardsFromPayload(data).slice(0, 20), requestPath, pathLabel, cacheStatus:data.cache?.state === 'hit' ? 'hit' : data.cache?.state === 'stale' ? 'stale' : 'miss' };
 }
 
@@ -22616,19 +22662,26 @@ async function fetchPokemonPopulation(tcgPlayerId, language = 'english'){
   return null;
 }
 
-function pokemonPriceTrackerQuotaBlocked(){
+function migratePokemonPriceTrackerQuotaState(){
   // Clear the false one-hour locks written by the pre-v2 429 handling once.
   if(localStorage.getItem('ppt_quota_state_version') !== '3') {
     localStorage.removeItem('ppt_quota_exhausted_until');
     localStorage.removeItem('ppt_rate_limited_until');
     localStorage.setItem('ppt_quota_state_version', '3');
   }
+}
+function pokemonPriceTrackerDailyQuotaBlocked(){
+  migratePokemonPriceTrackerQuotaState();
   const until = Number(localStorage.getItem('ppt_quota_exhausted_until') || 0);
   if(until && Date.now() < until) {
     const remaining = Number(localStorage.getItem('ppt_remaining_credits') || 0);
     if(remaining > 0){ localStorage.removeItem('ppt_quota_exhausted_until'); return false; }
     return true;
   }
+  return false;
+}
+function pokemonPriceTrackerQuotaBlocked(){
+  if(pokemonPriceTrackerDailyQuotaBlocked()) return true;
   // Short-term rate-limit cooldown (60s)
   const rl = Number(localStorage.getItem('ppt_rate_limited_until') || 0);
   if(rl && Date.now() < rl) return true;
