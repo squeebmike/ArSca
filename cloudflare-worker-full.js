@@ -3108,11 +3108,9 @@ export default {
         return data;
       }
 
-      const comicPcQuery = issue => [issue.seriesName, issue.number ? '#' + issue.number : '', issue.publisher, 'comic']
+      const comicPcQuery = issue => [issue.seriesName, issue.number ? '#' + issue.number : '', issue.seriesYearBegan || '', 'Comic Books']
         .filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
-      const isComicPcCandidate = candidate => /\b(comics?|marvel comics?|dc comics?|image comics?|dark horse comics?|idw comics?|boom!?(?: studios)?|dynamite comics?)\b/i.test([
-        candidate?.consoleName, candidate?.genre,
-      ].filter(Boolean).join(' '));
+      const isComicPcCandidate = candidate => /^comic books\b/i.test(String(candidate?.consoleName || '').trim());
       const matchingComicPcCandidates = (candidates, issue) => {
         const words = String(issue.seriesName || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').split(/\s+/).filter(word => word.length > 2);
         const number = String(issue.number || '').toLowerCase().replace(/[^a-z0-9.]/g, '');
@@ -3150,7 +3148,7 @@ export default {
         if (!token) return [];
         const q = comicPcQuery(issue);
         if (!q) return [];
-        const cacheKey = `comic-pricecharting:v3:${q.toLowerCase().slice(0, 300)}`;
+        const cacheKey = `comic-pricecharting:v4:${q.toLowerCase().slice(0, 300)}`;
         if (env.LBA_KV && !force) {
           const cached = await env.LBA_KV.get(cacheKey, 'json').catch(() => null);
           if (Array.isArray(cached)) return cached;

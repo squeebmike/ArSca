@@ -56,6 +56,7 @@ assert.match(dashboard,/PRICECHARTING/);
 assert.match(worker,/source:'Metron'.*priceCandidates:\[\]/s,'initial comic search should not wait for PriceCharting');
 assert.match(worker,/comic-pricecharting:/,'selected comic PriceCharting candidates should be server cached');
 assert.match(worker,/matchingComicPcCandidates/,'comic PriceCharting matches must reject non-comic categories');
+assert.match(worker,/\^comic books\\b/,'comic matching must require a real PriceCharting Comic Books catalog');
 assert.match(worker,/console:'Comics'/,'comic PriceCharting lookup must request the comics catalog');
 assert.match(worker,/pricechartingProductId/,'PriceCharting cover variants must be returned as selectable covers');
 assert.match(dashboard,/cover\.pricechartingProductId/,'selecting a PriceCharting cover must load its exact prices');
