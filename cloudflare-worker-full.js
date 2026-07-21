@@ -93,16 +93,21 @@ function normalizeMetronListIssue(issue = {}) {
 function normalizeMetronDetail(issue = {}) {
   const base = normalizeMetronListIssue(issue);
   const variants = (Array.isArray(issue.variants) ? issue.variants : []).map((variant, index) => ({
-    id:`${base.id}:variant:${index}`,
-    name:String(variant?.name || `Variant ${index + 1}`),
+    id:String(variant?.id || `${base.id}:variant:${index}`),
+    metronIssueId:String(variant?.issue?.id || variant?.issue_id || ''),
+    name:String(variant?.name || variant?.issue_name || `Variant ${index + 1}`),
+    number:String(variant?.number || variant?.issue?.number || base.number || ''),
     sku:String(variant?.sku || ''),
     upc:String(variant?.upc || ''),
     imageUrl:metronImage(variant?.image),
+    coverPrice:Number(variant?.price || 0) || null,
+    coverPriceCurrency:String(variant?.price_currency || 'USD'),
   }));
   const credits = (Array.isArray(issue.credits) ? issue.credits : []).map(credit => ({
     creator:metronName(credit?.creator),
-    roles:(Array.isArray(credit?.role) ? credit.role : [credit?.role]).map(metronName).filter(Boolean),
+    roles:(Array.isArray(credit?.roles) ? credit.roles : Array.isArray(credit?.role) ? credit.role : [credit?.roles || credit?.role]).map(metronName).filter(Boolean),
   })).filter(credit => credit.creator);
+  const creditNames = matcher => [...new Set(credits.filter(credit => credit.roles.some(role => matcher.test(role))).map(credit => credit.creator))];
   return {
     ...base,
     publisher:metronName(issue.publisher),
@@ -121,6 +126,9 @@ function normalizeMetronDetail(issue = {}) {
     arcs:(Array.isArray(issue.arcs) ? issue.arcs : []).map(metronName).filter(Boolean),
     genres:(Array.isArray(issue.genres) ? issue.genres : []).map(metronName).filter(Boolean),
     credits,
+    writers:creditNames(/writer|script/i),
+    artists:creditNames(/artist|pencil|inker|color|colour|letter/i),
+    coverArtists:creditNames(/cover/i),
     characters:(Array.isArray(issue.characters) ? issue.characters : []).map(metronName).filter(Boolean),
     teams:(Array.isArray(issue.teams) ? issue.teams : []).map(metronName).filter(Boolean),
     universes:(Array.isArray(issue.universes) ? issue.universes : []).map(metronName).filter(Boolean),
@@ -130,6 +138,39 @@ function normalizeMetronDetail(issue = {}) {
     gcdId:String(issue.gcd_id || ''),
     metronUrl:base.id ? `https://metron.cloud/issue/${base.id}/` : '',
   };
+}
+
+function metronIssueBaseNumber(value) {
+  const clean = String(value || '').trim();
+  return (clean.match(/^\d+(?:\.\d+)?/) || [clean])[0].toLowerCase();
+}
+
+function metronSiblingCovers(currentIssue, issueList = []) {
+  const target = metronIssueBaseNumber(currentIssue.number);
+  const siblings = (Array.isArray(issueList) ? issueList : []).map(normalizeMetronListIssue).filter(issue => {
+    if (!issue.id || !issue.imageUrl) return false;
+    return !target || metronIssueBaseNumber(issue.number) === target;
+  });
+  const current = normalizeMetronListIssue(currentIssue);
+  if (current.id && current.imageUrl && !siblings.some(issue => issue.id === current.id)) siblings.unshift(current);
+  const nested = (currentIssue.variants || []).filter(variant => variant.imageUrl).map(variant => ({
+    id:variant.metronIssueId || variant.id,
+    metronIssueId:variant.metronIssueId || '',
+    issueName:variant.name,
+    seriesId:current.seriesId,
+    seriesName:current.seriesName,
+    seriesYearBegan:current.seriesYearBegan,
+    publisher:current.publisher,
+    number:variant.number || current.number,
+    imageUrl:variant.imageUrl,
+    sku:variant.sku,
+    upc:variant.upc,
+    coverPrice:variant.coverPrice,
+    coverPriceCurrency:variant.coverPriceCurrency,
+    nestedVariant:true,
+  }));
+  const combined = [...siblings, ...nested];
+  return combined.filter((cover, index) => combined.findIndex(other => String(other.id) === String(cover.id) && other.imageUrl === cover.imageUrl) === index).slice(0, 60);
 }
 
 async function metronFetch(env, path, params = {}, ttlSeconds = 86400) {
@@ -3070,15 +3111,30 @@ export default {
       const comicPcQuery = issue => [
         issue.seriesName,
         issue.number ? '#' + issue.number : '',
+        issue.issueName,
         issue.publisher,
         issue.seriesYearBegan || (issue.coverDate ? String(issue.coverDate).slice(0, 4) : ''),
       ].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
-      const comicPcCandidates = async issue => {
+      const bestComicPcCandidate = (candidates, issue) => {
+        const words = String(issue.seriesName || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').split(/\s+/).filter(word => word.length > 2);
+        const number = String(issue.number || '').toLowerCase().replace(/[^a-z0-9.]/g, '');
+        return (candidates || []).map(candidate => {
+          const name = String(candidate.productName || '').toLowerCase();
+          const normalized = name.replace(/[^a-z0-9.]+/g, ' ');
+          const numberMatch = !number || new RegExp(`(?:^|[^a-z0-9])${number.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?:[^a-z0-9]|$)`, 'i').test(normalized);
+          let score = words.filter(word => normalized.includes(word)).length * 12;
+          if (numberMatch) score += 50;
+          if (issue.seriesYearBegan && normalized.includes(String(issue.seriesYearBegan))) score += 10;
+          if (/comic/i.test(candidate.consoleName || '')) score += 10;
+          return { candidate, score, numberMatch };
+        }).sort((a, b) => b.score - a.score).find(match => match.numberMatch && match.score >= 30)?.candidate || null;
+      };
+      const comicPcCandidates = async (issue, force = false) => {
         if (!token) return [];
         const q = comicPcQuery(issue);
         if (!q) return [];
-        const cacheKey = `comic-pricecharting:${q.toLowerCase().slice(0, 300)}`;
-        if (env.LBA_KV) {
+        const cacheKey = `comic-pricecharting:v2:${q.toLowerCase().slice(0, 300)}`;
+        if (env.LBA_KV && !force) {
           const cached = await env.LBA_KV.get(cacheKey, 'json').catch(() => null);
           if (Array.isArray(cached)) return cached;
         }
@@ -3129,9 +3185,26 @@ export default {
         if (access.error) return access.error;
         try {
           const metron = await metronFetch(env, `/issue/${metronIssueMatch[1]}/`, {}, 60 * 60 * 24 * 7);
-          const issue = normalizeMetronDetail(metron.data || {});
-          const priceCandidates = await comicPcCandidates(issue);
-          return json({ ok:true, source:'Metron + PriceCharting', cacheStatus:metron.cacheStatus, issue, priceCandidates });
+          let issue = normalizeMetronDetail(metron.data || {});
+          const variantKey = String(url.searchParams.get('variant') || '');
+          const selectedVariant = variantKey ? issue.variants.find(variant => String(variant.id) === variantKey || String(variant.metronIssueId) === variantKey) : null;
+          if (selectedVariant) issue = { ...issue, issueName:selectedVariant.name || issue.issueName, number:selectedVariant.number || issue.number, imageUrl:selectedVariant.imageUrl || issue.imageUrl, sku:selectedVariant.sku || issue.sku, upc:selectedVariant.upc || issue.upc, coverPrice:selectedVariant.coverPrice || issue.coverPrice, selectedVariant };
+          const forcePrice = url.searchParams.get('refresh') === '1';
+          const [seriesIssues, priceCandidates] = await Promise.all([
+            issue.seriesId ? metronFetch(env, `/series/${issue.seriesId}/issue_list/`, { limit:100 }, 60 * 60 * 24 * 7).catch(() => ({ data:[] })) : Promise.resolve({ data:[] }),
+            comicPcCandidates(issue, forcePrice),
+          ]);
+          const rawSeriesIssues = Array.isArray(seriesIssues.data) ? seriesIssues.data : (seriesIssues.data?.results || []);
+          const covers = metronSiblingCovers(issue, rawSeriesIssues);
+          const candidate = bestComicPcCandidate(priceCandidates, issue);
+          let priceMatch = candidate;
+          if (candidate?.productId) {
+            try {
+              const detail = await pcFetch('/api/product', { id:candidate.productId });
+              priceMatch = normalizePcProduct(detail, comicPcQuery(issue));
+            } catch (_) {}
+          }
+          return json({ ok:true, source:'Metron + PriceCharting', cacheStatus:metron.cacheStatus, issue, covers, priceCandidates, priceMatch });
         } catch (error) {
           const status = [401,403,404,429].includes(Number(error.status)) ? Number(error.status) : 502;
           const message = status === 401 || status === 403 ? 'Metron credentials were rejected' : status === 429 ? 'Metron rate limit reached; try the cached record again shortly' : status === 404 ? 'Metron issue not found' : 'Metron issue lookup failed';
