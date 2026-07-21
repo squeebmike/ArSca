@@ -62,11 +62,24 @@ test('Sell supports multiple named carts with images, price detail, and no cost 
 
 test('research result can be added to Buy Offer with source and price data', async ({ page }) => {
   await openDashboard(page);
-  const cards = await runResearchSearch(page, 'pikachu 151', 'Pokemon TCG');
-  await cards.first().getByRole('button', { name: /ADD TO BUY/i }).click();
-  await page.locator('[data-tab="intake"]').click();
+  await page.evaluate(() => {
+    qplResults = [{
+      id:'qa-pikachu', name:'Pikachu 151', category:'Pokemon TCG', source:'justtcg',
+      market:12.34, condition:'NM', set:'151', year:'2023', priceSource:'QA fixture'
+    }];
+    addSelectedQuickLookupToBuyOffer(0);
+    switchTab('intake');
+  });
   await expect(page.locator('#register-buy-panel')).toContainText(/Pikachu/i);
   await expect(page.locator('#register-buy-panel')).toContainText(/\$|JustTCG|QA fixture/i);
+  await expect(page.locator('#bl-items')).toContainText('OFFER ONLY');
+  await expect(page.locator('#bl-items').getByTitle(/Add accepted item to inventory/i)).toHaveCount(0);
+  const staged = await page.evaluate(async () => {
+    await addBuyItemToInventory(buyList[0].id);
+    return { status:getActiveBuySession()?.status, inventoryIds:buyList.map(i => i.inventoryId || '') };
+  });
+  expect(staged.status).not.toBe('accepted');
+  expect(staged.inventoryIds.every(id => !id)).toBe(true);
 });
 
 test('research result can be added to sale cart', async ({ page }) => {

@@ -26,6 +26,8 @@ assert.match(html, /switchTab\('display'\)/, 'Direct trade workflow must open th
 assert.match(html, /TRADE CREDIT/, 'Sell screen must label pending trade credit');
 assert.match(html, /trade\.applied\.toFixed\(2\)/, 'Sell screen must visibly subtract the calculated trade credit');
 assert.match(html, /selectedTenderLines = \[\{ method:'trade_credit'/, 'Checkout must automatically carry the pending trade credit tender');
+assert.match(html, /Accept the offer before adding this item to inventory/, 'A staged Buy item must be blocked from inventory conversion before acceptance');
+assert.match(html, /class="buy-tray-offer-only"/, 'Open Buy trays must label staged rows as offer-only instead of exposing +INV');
 assert.match(html, /\/kv\/sale_carts_index/, 'Open sale carts must publish a shared cross-device index');
 assert.match(html, /\/kv\/sale_cart_/, 'Each customer sale cart must have its own shared Worker record');
 assert.match(html, /function switchSaleCart\(/, 'Registers must be able to join another customer sale cart');
