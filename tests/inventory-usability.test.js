@@ -5,7 +5,10 @@ const dashboard=fs.readFileSync(path.join(__dirname,'..','dashboard.html'),'utf8
 assert.match(dashboard,/if\(name === 'inventory'\).*filterTable\(\).*setInvView\(_invView\)/s);
 assert.match(dashboard,/Delete Test \/ Accident/);
 assert.match(dashboard,/Type DELETE/);
-assert.match(dashboard,/This item has financial\/history records/);
+assert.match(dashboard,/function inventoryDeleteBlockReason/);
+assert.match(dashboard,/item\.soldAt \|\| item\.saleId \|\| item\.status === 'sold'/);
+assert.match(dashboard,/buySessionId is source provenance, not proof of a completed payout/);
+assert.match(dashboard,/!deleteBlockReason\?`<button class="hbtn danger"/, 'archived accidental entries can expose permanent delete');
 assert.match(dashboard,/function editConsignorPerson/);
 assert.match(dashboard,/function deleteConsignorPerson/);
 assert.match(dashboard,/id="tab-browse"/);

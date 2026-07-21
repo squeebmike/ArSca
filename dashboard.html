@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.07.21.01-buy-offer-staging">
+<meta name="version" content="2026.07.21.02-delete-accidental-inventory">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1478,13 +1478,13 @@ body.show-mode .inv-sync-badge{display:none;}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.07.21.01-buy-offer-staging"></script>
-<script src="scripts/barcode-lookup.js?v=2026.07.21.01-buy-offer-staging"></script>
-<script src="scripts/comic-issue-hub.js?v=2026.07.21.01-buy-offer-staging"></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.07.21.01-buy-offer-staging"></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.07.21.01-buy-offer-staging"></script>
-<script src="scripts/topps/offline-browser.js?v=2026.07.21.01-buy-offer-staging"></script>
-<script src="scripts/mtg/research-batch.js?v=2026.07.21.01-buy-offer-staging"></script>
+<script src="scripts/query-routing.js?v=2026.07.21.02-delete-accidental-inventory"></script>
+<script src="scripts/barcode-lookup.js?v=2026.07.21.02-delete-accidental-inventory"></script>
+<script src="scripts/comic-issue-hub.js?v=2026.07.21.02-delete-accidental-inventory"></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.07.21.02-delete-accidental-inventory"></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.07.21.02-delete-accidental-inventory"></script>
+<script src="scripts/topps/offline-browser.js?v=2026.07.21.02-delete-accidental-inventory"></script>
+<script src="scripts/mtg/research-batch.js?v=2026.07.21.02-delete-accidental-inventory"></script>
 </head>
 <body>
 
@@ -1534,11 +1534,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.07.21.01-buy-offer-staging</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.07.21.02-delete-accidental-inventory</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.07.21.01-buy-offer-staging</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.07.21.02-delete-accidental-inventory</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1560,7 +1560,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.07.21.01-buy-offer-staging</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.07.21.02-delete-accidental-inventory</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -2958,7 +2958,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.07.21.01-buy-offer-staging';
+const APP_VERSION = '2026.07.21.02-delete-accidental-inventory';
 window.APP_VERSION = APP_VERSION;
 
 // This page has no cache-busting of its own (unlike the secondary scripts,
@@ -10594,6 +10594,8 @@ function showInvRowMenu(e, id, isInStock){
   const btn = e.currentTarget;
   const rect = btn.getBoundingClientRect();
   const menu = document.createElement('div');
+  const item = (all || []).find(candidate => String(candidate.id || candidate.wfId) === String(id));
+  const deleteBlockReason = inventoryDeleteBlockReason(item);
   menu.className = 'inv-row-menu';
   menu.style.cssText = `position:fixed;left:${rect.left}px;top:${rect.bottom+4}px;z-index:600;background:var(--surf);border:1px solid var(--border);border-radius:8px;padding:6px;min-width:140px;box-shadow:0 8px 24px rgba(0,0,0,.4);`;
   // Secondary actions only — Sell/Cart/Edit are always visible in row
@@ -10607,7 +10609,7 @@ function showInvRowMenu(e, id, isInStock){
     `<button class="hbtn" style="${btnStyle};color:var(--blue)" onclick="sendInventoryItemToAuthCheck('${id}');this.closest('.inv-row-menu').remove()">✓ Authentication Check</button>`,
     isInStock?`<button class="hbtn" style="${btnStyle};color:var(--g)" onclick="publishInventoryItemToWebflow('${id}');this.closest('.inv-row-menu').remove()">🌐 Publish / Sync Webflow</button>`:'',
     `<button class="hbtn" style="${btnStyle}color:var(--gold)" onclick="archiveInventoryItem('${id}');this.closest('.inv-row-menu').remove()">Archive</button>`,
-    isInStock?`<button class="hbtn danger" style="${btnStyle}" onclick="deleteInventoryRecord('${id}');this.closest('.inv-row-menu').remove()">Delete Test / Accident</button>`:'',
+    !deleteBlockReason?`<button class="hbtn danger" style="${btnStyle}" onclick="deleteInventoryRecord('${id}');this.closest('.inv-row-menu').remove()">Delete Test / Accident</button>`:'',
   ].filter(Boolean).join('');
   document.body.appendChild(menu);
   const close = () => menu.remove();
@@ -16787,18 +16789,29 @@ async function updateBuiltInInventoryItem(item, updates){
   return false; // false = local-only, pending remote sync
 }
 
+function inventoryDeleteBlockReason(item){
+  if(!item) return 'missing item';
+  if(item.soldAt || item.saleId || item.status === 'sold') return 'sale history';
+  if(item.consignmentId) return 'consignment history';
+  if(item.payoutLineId) return 'payout history';
+  return '';
+}
+
 async function deleteInventoryRecord(id){
   const item = all.find(i => i.id === id);
   if(!item) return false;
-  const hasHistory=!!(item.soldAt||item.saleId||item.consignmentId||item.payoutLineId||item.buySessionId||item.status==='sold');
-  if(hasHistory){toast_dash('This item has financial/history records. Archive it instead of deleting.');return false;}
+  const deleteBlockReason = inventoryDeleteBlockReason(item);
+  // buySessionId is source provenance, not proof of a completed payout. The
+  // Buy session remains in its own history ledger after an accidental
+  // inventory row is removed, so it must not make test entries undeletable.
+  if(deleteBlockReason){toast_dash('This item has '+deleteBlockReason+'. Archive it instead of deleting.');return false;}
   const typed=prompt('Permanent delete is only for tests or accidental entries. Type DELETE to remove "'+(item.name||'item')+'".');
   if(typed!=='DELETE') return false;
   if(item.source === 'built_in') {
     const sb = getSupabaseClient();
     const session = getAuthSession();
     if(sb && session?.supabase) {
-      const { error } = await sb.from('inventory_items').delete().eq('id', item.supabaseRowId || item.id);
+      const { error } = await sb.from('inventory_items').delete().eq('id', item.supabaseRowId || item.id).eq('store_id', getActiveStoreId());
       if(error) { toast_dash('Delete failed: ' + error.message); return false; }
     } else {
       removeUniversalInventoryItem(item.id);
@@ -16863,11 +16876,11 @@ async function restoreInventoryItem(id){
 async function hardDeleteInventoryItem(id){
   const item = all.find(i => i.id === id);
   if(!item) return toast_dash('Item not found');
-  const hasHistory = item.soldAt || item.buySessionId || item.consignmentId || item.payoutLineId || item.saleId;
-  const warning = hasHistory ? 'This item has sale, consignment, payout, or buy-session history. ' : '';
+  const deleteBlockReason = inventoryDeleteBlockReason(item);
+  const warning = deleteBlockReason ? 'This item has '+deleteBlockReason+'. ' : (item.buySessionId ? 'Its separate Buy-session history will be preserved. ' : '');
   if(prompt(warning + 'Type DELETE to permanently remove this item. Archive is safer.') !== 'DELETE') return;
   const ok = await deleteInventoryRecord(id);
-  if(ok) logOpsEvent('inventory_hard_deleted', 'Hard deleted inventory item: ' + (item.name || id), { id, hadHistory:!!hasHistory, source:item.source || getInventorySource() });
+  if(ok) logOpsEvent('inventory_hard_deleted', 'Hard deleted inventory item: ' + (item.name || id), { id, deleteBlockReason, source:item.source || getInventorySource() });
 }
 
 function removeUniversalInventoryItem(id){
