@@ -28,11 +28,36 @@ test('direct trade handoff subtracts credit on Sell and carries it into checkout
     renderDealerCartTools(cart);
   });
   await expect(page.locator('#dealer-cart-lines')).toContainText('QA Purchase Item');
-  await expect(page.locator('#dealer-cart-total')).toContainText('ITEMS $50.00');
+  await expect(page.locator('#dealer-cart-total')).toContainText('SUBTOTAL $50.00');
   await expect(page.locator('#dealer-cart-total')).toContainText('TRADE CREDIT');
   await expect(page.locator('#dealer-cart-total')).toContainText('BALANCE $30.00');
   await page.getByRole('button', { name:/CHECKOUT & TAKE PAYMENT/i }).click();
   await expect(page.locator('#customer-payment-workbench')).toContainText('$20.00 trade credit applied');
+});
+
+test('Sell supports multiple named carts with images, price detail, and no cost or profit', async ({ page }) => {
+  await openDashboard(page);
+  const firstId = await page.evaluate(async () => {
+    const first = ensureActiveSaleCart();
+    renameActiveSaleCart('Alice');
+    saveCartDataLocal({ ...first, customerName:'Alice', items:[{ id:'alice-line', name:'Alice Card', price:40, originalPrice:50, imageUrl:'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg"/>', quantity:1 }] }, 'QA Alice cart');
+    startNewSaleCart();
+    renameActiveSaleCart('Bob');
+    const bob = ensureActiveSaleCart();
+    saveCartDataLocal({ ...bob, customerName:'Bob', items:[{ id:'bob-line', name:'Bob Card', price:25, quantity:1 }] }, 'QA Bob cart');
+    await switchSaleCart(first.cartId);
+    switchTab('display');
+    await renderCustomerDisplay();
+    return first.cartId;
+  });
+  expect(firstId).toBeTruthy();
+  await expect(page.locator('#sale-cart-switcher')).toContainText('Alice');
+  await expect(page.locator('#sale-cart-switcher')).toContainText('Bob');
+  await expect(page.locator('#dealer-cart-lines')).toContainText('Alice Card');
+  await expect(page.locator('#dealer-cart-lines')).toContainText('Was $50.00');
+  await expect(page.locator('#dealer-cart-lines img.dealer-line-image')).toHaveCount(1);
+  await expect(page.locator('#dealer-cart-lines').getByRole('button', { name:'EDIT' })).toBeVisible();
+  await expect(page.locator('#dealer-cart-lines')).not.toContainText(/Cost|Profit/);
 });
 
 test('research result can be added to Buy Offer with source and price data', async ({ page }) => {

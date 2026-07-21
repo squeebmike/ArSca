@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.07.20.05-direct-trade-sale">
+<meta name="version" content="2026.07.20.06-shared-sale-carts">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -188,13 +188,14 @@ body{font-size:15px;line-height:1.45;}
 .checkout-state-pill{border:1px solid rgba(0,255,179,.24);background:rgba(0,255,179,.07);color:var(--g);border-radius:999px;padding:5px 9px;font-family:'Orbitron',monospace;font-size:9px;}
 .checkout-state-pill.warn{border-color:rgba(255,209,102,.28);background:rgba(255,209,102,.08);color:var(--gold);}
 .checkout-state-pill.bad{border-color:rgba(255,77,109,.28);background:rgba(255,77,109,.08);color:var(--red);}
-.dealer-line{display:grid;grid-template-columns:84px minmax(0,1fr) 92px 78px 44px 44px;gap:8px;align-items:center;background:var(--surf2);border:1px solid var(--border);border-radius:8px;padding:10px;}
-.dealer-line.locked{grid-template-columns:84px minmax(0,1fr) 92px 78px;}
+.dealer-line{display:grid;grid-template-columns:84px minmax(0,1fr) 150px 72px 44px;gap:8px;align-items:center;background:var(--surf2);border:1px solid var(--border);border-radius:8px;padding:10px;}
+.dealer-line.locked{grid-template-columns:84px minmax(0,1fr) 150px;}
 .dealer-line-image{width:78px;height:102px;object-fit:contain;background:#050507;border:1px solid var(--border);border-radius:6px;cursor:zoom-in;display:block;}
 .dealer-line-image-ph{width:78px;height:102px;display:flex;align-items:center;justify-content:center;background:var(--surf);border:1px dashed var(--border);border-radius:6px;font-family:var(--font-mono);font-size:8px;color:var(--dim);}
 .dealer-line-name{font-weight:700;color:var(--text);line-height:1.25;overflow:hidden;text-overflow:ellipsis;}
 .dealer-line-sub{font-family:var(--font-mono);font-size:9px;color:var(--dim);margin-top:3px;}
-.dealer-profit{font-family:var(--font-mono);font-size:9px;color:var(--dim);text-align:right;}
+.dealer-price-breakdown{font-family:var(--font-mono);font-size:9px;color:var(--dim);text-align:right;line-height:1.55;}
+.dealer-price-breakdown b{font-family:'Orbitron',monospace;font-size:16px;color:var(--gold);}
 .dealer-total{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:12px;padding-top:12px;border-top:1px solid var(--border);}
 .dealer-total b{font-family:'Orbitron',monospace;font-size:34px;color:var(--g);}
 .checkout-action-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;}
@@ -468,6 +469,9 @@ tr.sold:hover td{opacity:.7;}
 .buy-tray-pill-meta{font-size:9px;color:var(--dim);}
 .buy-tray-pill-badge{font-size:7px;color:var(--gold);letter-spacing:.04em;text-transform:uppercase;}
 .buy-tray-pill-new{border-style:dashed;color:var(--g);align-items:center;justify-content:center;}
+.sale-cart-session-panel{margin:4px auto 14px;max-width:1400px;}
+.sale-cart-session-head{display:grid;grid-template-columns:minmax(180px,1fr) auto auto;gap:8px;align-items:center;margin-bottom:10px;}
+.sale-cart-session-head .tsi{margin:0;}
 .buy-tray-actions{display:flex;justify-content:flex-end;margin:-4px 0 12px;}
 .buy-tray-delete-btn{background:transparent;border:none;color:var(--dim);font-family:var(--font-mono);font-size:9px;padding:4px 2px;cursor:pointer;}
 .buy-tray-delete-btn:hover{color:var(--red);}
@@ -1042,8 +1046,9 @@ body.customer-browse-mode{padding-bottom:0}body.customer-browse-mode header,body
   #tab-inventory td:nth-child(10){flex:1 1 100%;padding-top:10px!important;border-top:1px solid var(--border)!important;}
   #tab-inventory .row-act{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;}
   #tab-inventory .row-act .ra{width:100%;min-height:48px;padding:8px 6px;font-size:9px;}
-  .dealer-line,.dealer-line.locked{grid-template-columns:minmax(0,1fr) 88px;align-items:start;}
-  .dealer-profit{grid-column:1 / -1;text-align:left;}
+  .dealer-line,.dealer-line.locked{grid-template-columns:68px minmax(0,1fr) 88px;align-items:start;}
+  .dealer-line-image,.dealer-line-image-ph{width:64px;height:86px;}
+  .dealer-price-breakdown{text-align:right;}
   .dealer-line .ra,.dealer-line .cd-remove{min-height:46px;width:100%;}
   #dealer-checkout-actions{position:sticky;bottom:0;background:linear-gradient(to top,var(--bg) 78%,transparent);padding-top:10px;z-index:12;}
 }
@@ -1473,13 +1478,13 @@ body.show-mode .inv-sync-badge{display:none;}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.07.20.05-direct-trade-sale"></script>
-<script src="scripts/barcode-lookup.js?v=2026.07.20.05-direct-trade-sale"></script>
-<script src="scripts/comic-issue-hub.js?v=2026.07.20.05-direct-trade-sale"></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.07.20.05-direct-trade-sale"></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.07.20.05-direct-trade-sale"></script>
-<script src="scripts/topps/offline-browser.js?v=2026.07.20.05-direct-trade-sale"></script>
-<script src="scripts/mtg/research-batch.js?v=2026.07.20.05-direct-trade-sale"></script>
+<script src="scripts/query-routing.js?v=2026.07.20.06-shared-sale-carts"></script>
+<script src="scripts/barcode-lookup.js?v=2026.07.20.06-shared-sale-carts"></script>
+<script src="scripts/comic-issue-hub.js?v=2026.07.20.06-shared-sale-carts"></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.07.20.06-shared-sale-carts"></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.07.20.06-shared-sale-carts"></script>
+<script src="scripts/topps/offline-browser.js?v=2026.07.20.06-shared-sale-carts"></script>
+<script src="scripts/mtg/research-batch.js?v=2026.07.20.06-shared-sale-carts"></script>
 </head>
 <body>
 
@@ -1529,11 +1534,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.07.20.05-direct-trade-sale</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.07.20.06-shared-sale-carts</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.07.20.05-direct-trade-sale</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.07.20.06-shared-sale-carts</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1555,7 +1560,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.07.20.05-direct-trade-sale</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.07.20.06-shared-sale-carts</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -2376,6 +2381,16 @@ body.show-mode .inv-sync-badge{display:none;}
 <!-- CUSTOMER DISPLAY TAB -->
 <div id="tab-display" class="tab-panel">
   <div class="sec">SELL / LOCKED CHECKOUT</div>
+  <div class="panel sale-cart-session-panel">
+    <div class="ph">ACTIVE CUSTOMER CARTS <span id="sale-cart-sync-status" style="font-size:9px;color:var(--dim)">shared across devices</span></div>
+    <div class="sale-cart-session-head">
+      <input class="tsi" id="sale-cart-customer" placeholder="Customer name / cart label" onchange="renameActiveSaleCart(this.value)">
+      <button class="hbtn" onclick="startNewSaleCart()">+ NEW CART</button>
+      <button class="hbtn" onclick="fetchSaleCartIndex(true)">↻ REFRESH</button>
+    </div>
+    <div id="sale-cart-switcher" class="buy-tray-switcher"></div>
+    <div style="display:flex;justify-content:flex-end"><button class="buy-tray-delete-btn" onclick="closeActiveSaleCart()">🗑 Close current cart</button></div>
+  </div>
   <div class="sell-shell" style="margin-bottom:14px">
     <div id="cd-help-panel" style="background:var(--surf);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:14px">
       <div class="ph">DEALER CHECKOUT WORKFLOW</div>
@@ -2943,7 +2958,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.07.20.05-direct-trade-sale';
+const APP_VERSION = '2026.07.20.06-shared-sale-carts';
 window.APP_VERSION = APP_VERSION;
 
 // This page has no cache-busting of its own (unlike the secondary scripts,
@@ -3011,6 +3026,7 @@ const WALKOFF_SCOPED_KEYS = new Set([
   // Core inventory / transactions
   'lba_inventory','walkoff_universal_inventory','pos_cart_v2',
   'pos_buy_list','pos_buy_trays','pos_active_buy_tray_id','pos_buy_offers','pos_buy_sessions',
+  'pos_sale_carts','pos_active_sale_cart_id',
   'pos_transactions','pos_drawer','pos_drawer_closeouts','pos_store_credits','pos_pending_trade_purchase',
   // POS / operations
   'pos_wantlist','set_needs_v1','pos_consign','pos_consignors','pos_consignment_alerts','pos_locations',
@@ -11021,6 +11037,279 @@ function priceSourceBadge(source, category){
   return `<span class="src-badge ${info.cls}">${info.label}</span>`;
 }
 
+// ── Shared sale carts ─────────────────────────────────────────────────────
+// Sale carts mirror Buy trays: each customer has an independent store-scoped
+// KV record plus a small shared index. A device joins a cart by id, then every
+// normal cart write publishes to that session. pos_cart_v2 remains the local
+// compatibility mirror used by the existing sale/checkout code.
+let knownSaleCartIndex = [];
+function getSaleCarts(){ return safeLocalJson('pos_sale_carts', []); }
+function saveSaleCartsLocal(carts){ localStorage.setItem('pos_sale_carts', JSON.stringify((carts || []).slice(0,50))); }
+function getActiveSaleCartId(){ return localStorage.getItem('pos_active_sale_cart_id') || ''; }
+function setActiveSaleCartId(id){ localStorage.setItem('pos_active_sale_cart_id', id || ''); }
+function saleCartLabel(cart){ return cart?.customerName || ('Sale ' + String(cart?.cartId || '').slice(-6).toUpperCase()) || 'Walk-in'; }
+function newSaleCartRecord(seed = {}){
+  const now = new Date().toISOString();
+  const id = seed.cartId || seed.id || makeUuid('cart');
+  return {
+    ...seed,
+    id,
+    cartId:id,
+    storeId:getActiveStoreId(),
+    registerId:REGISTER_ID,
+    customerName:seed.customerName || '',
+    items:Array.isArray(seed.items) ? seed.items : [],
+    discount:Number(seed.discount || 0),
+    tax:Number(seed.tax || 0),
+    status:'open',
+    createdAt:seed.createdAt || now,
+    createdBy:seed.createdBy || getCurrentUserLabel(),
+    updatedAt:now,
+    appVersion:APP_VERSION,
+  };
+}
+function upsertLocalSaleCart(cart){
+  if(!cart?.cartId) return;
+  const carts = getSaleCarts().filter(c => c.cartId !== cart.cartId);
+  carts.unshift(cart);
+  saveSaleCartsLocal(carts);
+}
+function ensureActiveSaleCart(){
+  let activeId = getActiveSaleCartId();
+  let cart = getSaleCarts().find(c => c.cartId === activeId && c.status !== 'complete' && c.status !== 'closed');
+  if(cart) return cart;
+  let seed = safeLocalJson('pos_cart_v2', {items:[],discount:0});
+  if(seed?.cartId) cart = getSaleCarts().find(c => c.cartId === seed.cartId) || seed;
+  if(!cart) cart = newSaleCartRecord(seed || {});
+  cart = newSaleCartRecord(cart);
+  upsertLocalSaleCart(cart);
+  setActiveSaleCartId(cart.cartId);
+  localStorage.setItem('pos_cart_v2', JSON.stringify(cart));
+  return cart;
+}
+function saleCartWorkerKey(id){ return '/kv/sale_cart_' + encodeURIComponent(String(id || '').replace(/[^a-zA-Z0-9:_-]/g,'-')); }
+function saleCartIndexEntry(cart){
+  return {
+    id:cart.cartId,
+    customerName:cart.customerName || '',
+    itemCount:(cart.items || []).length,
+    total:Number(normalizeCartTotals(JSON.parse(JSON.stringify(cart))).total || 0),
+    tradeAmount:Number(cart.tradeCredit?.remainingBalance || cart.tradeCredit?.amount || 0),
+    status:cart.status || 'open',
+    updatedAt:cart.updatedAt || new Date().toISOString(),
+    updatedBy:getCurrentUserLabel(),
+  };
+}
+async function upsertSaleCartIndexEntry(cart){
+  if(getAccountContext().isDemo){
+    const entry = saleCartIndexEntry(cart);
+    const idx = knownSaleCartIndex.findIndex(e => e.id === entry.id);
+    if(idx >= 0) knownSaleCartIndex[idx] = entry; else knownSaleCartIndex.push(entry);
+    renderSaleCartSwitcher();
+    return;
+  }
+  try {
+    const r = await storeWorkerFetch(scopedWorkerPath('/kv/sale_carts_index'), { cache:'no-store', signal:AbortSignal.timeout(4000) });
+    const d = await r.json();
+    let index = [];
+    try { index = JSON.parse(d?.value || '[]'); } catch(e) { index = []; }
+    if(!Array.isArray(index)) index = [];
+    const entry = saleCartIndexEntry(cart);
+    const idx = index.findIndex(e => e.id === entry.id);
+    if(idx >= 0) index[idx] = entry; else index.push(entry);
+    knownSaleCartIndex = index.filter(e => e.status === 'open').slice(0,100);
+    await storeWorkerFetch(scopedWorkerPath('/kv/sale_carts_index'), {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(knownSaleCartIndex), signal:AbortSignal.timeout(4000),
+    });
+    renderSaleCartSwitcher();
+  } catch(e) { /* local cart remains available offline */ }
+}
+async function removeSaleCartFromIndex(id){
+  knownSaleCartIndex = knownSaleCartIndex.filter(e => e.id !== id);
+  if(!getAccountContext().isDemo) {
+    try {
+      const r = await storeWorkerFetch(scopedWorkerPath('/kv/sale_carts_index'), { cache:'no-store', signal:AbortSignal.timeout(4000) });
+      const d = await r.json();
+      let index = [];
+      try { index = JSON.parse(d?.value || '[]'); } catch(e) { index = []; }
+      index = (Array.isArray(index) ? index : []).filter(e => e.id !== id && e.status === 'open');
+      knownSaleCartIndex = index;
+      await storeWorkerFetch(scopedWorkerPath('/kv/sale_carts_index'), {
+        method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(index), signal:AbortSignal.timeout(4000),
+      });
+    } catch(e) {}
+  }
+  renderSaleCartSwitcher();
+}
+async function syncActiveSaleCartToWorker(cartData){
+  const current = ensureActiveSaleCart();
+  const cart = newSaleCartRecord({ ...current, ...cartData, cartId:current.cartId, id:current.cartId, createdAt:current.createdAt, customerName:cartData.customerName ?? current.customerName, tradeCredit:cartData.tradeCredit ?? current.tradeCredit });
+  cart.updatedAt = new Date().toISOString();
+  cart.updatedBy = getCurrentUserLabel();
+  upsertLocalSaleCart(cart);
+  localStorage.setItem('pos_cart_v2', JSON.stringify(cart));
+  if(getAccountContext().isDemo){ await upsertSaleCartIndexEntry(cart); return true; }
+  try {
+    const res = await storeWorkerFetch(scopedWorkerPath(saleCartWorkerKey(cart.cartId)), {
+      method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(cart), signal:AbortSignal.timeout(4000),
+    });
+    if(!res.ok) throw new Error('Shared cart sync ' + res.status);
+    await upsertSaleCartIndexEntry(cart);
+    const status = document.getElementById('sale-cart-sync-status');
+    if(status) status.textContent = 'shared · ' + new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+    return true;
+  } catch(e) {
+    const status = document.getElementById('sale-cart-sync-status');
+    if(status) status.textContent = 'saved locally · sync pending';
+    return false;
+  }
+}
+async function fetchSaleCartIndex(showToast=false){
+  if(getAccountContext().isDemo){ renderSaleCartSwitcher(); return knownSaleCartIndex; }
+  try {
+    const r = await storeWorkerFetch(scopedWorkerPath('/kv/sale_carts_index'), { cache:'no-store', signal:AbortSignal.timeout(4000) });
+    const d = await r.json();
+    let index = [];
+    try { index = JSON.parse(d?.value || '[]'); } catch(e) { index = []; }
+    knownSaleCartIndex = (Array.isArray(index) ? index : []).filter(e => e.status === 'open');
+    renderSaleCartSwitcher();
+    if(showToast) toast_dash('Shared customer carts refreshed');
+    return knownSaleCartIndex;
+  } catch(e) {
+    if(showToast) toast_dash('Could not refresh shared carts');
+    return knownSaleCartIndex;
+  }
+}
+async function fetchActiveSaleCartFromWorker(){
+  const id = getActiveSaleCartId();
+  if(!id || getAccountContext().isDemo) return getSaleCarts().find(c => c.cartId === id) || null;
+  try {
+    const r = await storeWorkerFetch(scopedWorkerPath(saleCartWorkerKey(id)), { cache:'no-store', signal:AbortSignal.timeout(4000) });
+    const d = await r.json();
+    const remote = d?.value ? JSON.parse(d.value) : null;
+    if(!remote?.cartId || remote.status !== 'open') return null;
+    const local = getSaleCarts().find(c => c.cartId === id);
+    // Merge by line id and line timestamp so simultaneous additions converge
+    // while edits/removals made on another joined register are retained.
+    let merged = remote;
+    if(local) {
+      const localNewer = String(local.updatedAt || '') > String(remote.updatedAt || '');
+      merged = { ...(localNewer ? remote : local), ...(localNewer ? local : remote) };
+      const removed = new Set([...(local.removedLineIds || []), ...(remote.removedLineIds || [])]);
+      const byId = new Map();
+      for(const item of [...(local.items || []), ...(remote.items || [])]) {
+        const id = item.id || item.cartLineId;
+        if(!id || removed.has(id)) continue;
+        const prior = byId.get(id);
+        if(!prior || String(item.updatedAt || '') >= String(prior.updatedAt || '')) byId.set(id, item);
+      }
+      merged.items = [...byId.values()];
+      merged.removedLineIds = [...removed].slice(-300);
+    }
+    upsertLocalSaleCart(merged);
+    localStorage.setItem('pos_cart_v2', JSON.stringify(merged));
+    if(merged.tradeCredit) {
+      localStorage.setItem('pos_pending_trade_purchase', JSON.stringify({ creditId:merged.tradeCredit.id, buySessionId:merged.tradeCredit.buySessionId || '', customerName:merged.tradeCredit.customerName || '' }));
+      if(!getStoreCredits().some(c => c.id === merged.tradeCredit.id)) await syncStoreCreditsFromWorker();
+    }
+    else localStorage.removeItem('pos_pending_trade_purchase');
+    return merged;
+  } catch(e) { return null; }
+}
+async function switchSaleCart(id){
+  if(!id) return;
+  let cart = getSaleCarts().find(c => c.cartId === id);
+  if(!getAccountContext().isDemo) {
+    try {
+      const r = await storeWorkerFetch(scopedWorkerPath(saleCartWorkerKey(id)), { cache:'no-store', signal:AbortSignal.timeout(4000) });
+      const d = await r.json();
+      if(d?.value) cart = JSON.parse(d.value);
+    } catch(e) {}
+  }
+  if(!cart || cart.status !== 'open') { toast_dash('That customer cart is no longer open'); fetchSaleCartIndex(); return; }
+  setActiveSaleCartId(id);
+  upsertLocalSaleCart(cart);
+  localStorage.setItem('pos_cart_v2', JSON.stringify(cart));
+  if(cart.tradeCredit) localStorage.setItem('pos_pending_trade_purchase', JSON.stringify({ creditId:cart.tradeCredit.id, buySessionId:cart.tradeCredit.buySessionId || '', customerName:cart.tradeCredit.customerName || '' }));
+  else localStorage.removeItem('pos_pending_trade_purchase');
+  await syncStoreCreditsFromWorker();
+  renderSaleCartSwitcher();
+  await renderCustomerDisplay();
+  toast_dash('Joined ' + saleCartLabel(cart));
+}
+function startNewSaleCart(){
+  const cart = newSaleCartRecord();
+  upsertLocalSaleCart(cart);
+  setActiveSaleCartId(cart.cartId);
+  localStorage.setItem('pos_cart_v2', JSON.stringify(cart));
+  localStorage.removeItem('pos_pending_trade_purchase');
+  syncActiveSaleCartToWorker(cart);
+  renderSaleCartSwitcher();
+  renderCustomerDisplay();
+  document.getElementById('sale-cart-customer')?.focus();
+  toast_dash('New customer cart started');
+}
+function renameActiveSaleCart(value){
+  const cart = ensureActiveSaleCart();
+  cart.customerName = String(value || '').trim();
+  syncActiveSaleCartToWorker(cart);
+  renderSaleCartSwitcher();
+}
+async function closeActiveSaleCart(){
+  const cart = ensureActiveSaleCart();
+  if((cart.items || []).length && !confirm('Close ' + saleCartLabel(cart) + ' and discard its sale items?')) return;
+  cart.status = 'closed'; cart.closedAt = new Date().toISOString();
+  if(!getAccountContext().isDemo) await storeWorkerFetch(scopedWorkerPath(saleCartWorkerKey(cart.cartId)), { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(cart) }).catch(()=>{});
+  await removeSaleCartFromIndex(cart.cartId);
+  saveSaleCartsLocal(getSaleCarts().filter(c => c.cartId !== cart.cartId));
+  setActiveSaleCartId('');
+  const next = getSaleCarts().find(c => c.status === 'open');
+  if(next) await switchSaleCart(next.cartId); else startNewSaleCart();
+}
+async function completeActiveSaleCartAfterCheckout(saleId){
+  const cart = ensureActiveSaleCart();
+  cart.status = 'complete';
+  cart.saleId = saleId || '';
+  cart.completedAt = new Date().toISOString();
+  if(!getAccountContext().isDemo) await storeWorkerFetch(scopedWorkerPath(saleCartWorkerKey(cart.cartId)), { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(cart) }).catch(()=>{});
+  await removeSaleCartFromIndex(cart.cartId);
+  saveSaleCartsLocal(getSaleCarts().filter(c => c.cartId !== cart.cartId));
+  setActiveSaleCartId('');
+  localStorage.removeItem('pos_pending_trade_purchase');
+  const nextLocal = getSaleCarts().find(c => c.status === 'open');
+  const nextRemote = knownSaleCartIndex.find(e => e.status === 'open');
+  if(nextLocal) await switchSaleCart(nextLocal.cartId);
+  else if(nextRemote) await switchSaleCart(nextRemote.id);
+  else startNewSaleCart();
+}
+function renderSaleCartSwitcher(){
+  const el = document.getElementById('sale-cart-switcher');
+  if(!el) return;
+  const active = ensureActiveSaleCart();
+  const local = getSaleCarts().filter(c => c.status === 'open');
+  const localIds = new Set(local.map(c => c.cartId));
+  const carts = [
+    ...local.map(c => saleCartIndexEntry(c)),
+    ...knownSaleCartIndex.filter(e => !localIds.has(e.id)),
+  ].sort((a,b) => String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')));
+  el.innerHTML = carts.map(c => `<button class="buy-tray-pill${c.id===active.cartId?' active':''}" onclick="switchSaleCart('${escHtml(c.id)}')">
+    <span class="buy-tray-pill-name">${escHtml(c.customerName || ('Sale ' + String(c.id).slice(-6).toUpperCase()))}</span>
+    <span class="buy-tray-pill-meta">${Number(c.itemCount||0)} item${Number(c.itemCount||0)===1?'':'s'} · $${Number(c.total||0).toFixed(2)}${Number(c.tradeAmount||0)>0?' · trade $'+Number(c.tradeAmount).toFixed(2):''}</span>
+    ${localIds.has(c.id)?'':'<span class="buy-tray-pill-badge">JOIN</span>'}
+  </button>`).join('');
+  const input = document.getElementById('sale-cart-customer');
+  if(input && document.activeElement !== input) input.value = active.customerName || '';
+}
+async function attachTradeToActiveSaleCart(credit){
+  if(!credit) return;
+  const cart = ensureActiveSaleCart();
+  cart.tradeCredit = { ...credit, amount:Number(credit.amount || 0), remainingBalance:Number(credit.remainingBalance ?? credit.amount ?? 0) };
+  cart.customerName = cart.customerName || credit.customerName || '';
+  await syncActiveSaleCartToWorker(cart);
+  renderSaleCartSwitcher();
+}
+
 function cartWorkerPath(){
   return WORKER + '/cart?store=' + encodeURIComponent(getActiveStoreId()) + '&register=' + encodeURIComponent(REGISTER_ID);
 }
@@ -11220,14 +11509,17 @@ function issueStoreCredit({ customerName, customerPhone, customerEmail, amount, 
   saveStoreCredits(credits);
   return record;
 }
-function getPendingTradePurchase(){
+function getPendingTradePurchase(cartData = null){
+  const embedded = cartData?.tradeCredit || null;
   const handoff = safeLocalJson('pos_pending_trade_purchase', null);
-  if(!handoff?.creditId) return null;
-  const credit = getStoreCredits().find(c => c.id === handoff.creditId && Number(c.remainingBalance || 0) > 0);
-  return credit ? { handoff, credit } : null;
+  const creditId = embedded?.id || handoff?.creditId || '';
+  if(!creditId) return null;
+  const ledgerCredit = getStoreCredits().find(c => c.id === creditId && Number(c.remainingBalance || 0) > 0);
+  const credit = ledgerCredit || (embedded && Number(embedded.remainingBalance ?? embedded.amount ?? 0) > 0 ? embedded : null);
+  return credit ? { handoff:{ ...(handoff || {}), creditId }, credit } : null;
 }
-function pendingTradeAmounts(total){
-  const pending = getPendingTradePurchase();
+function pendingTradeAmounts(total, cartData = null){
+  const pending = getPendingTradePurchase(cartData);
   const purchaseTotal = Math.max(0, Number(total || 0));
   const applied = pending ? Math.min(purchaseTotal, Number(pending.credit.remainingBalance || 0)) : 0;
   return { pending, applied:Math.round(applied * 100) / 100, due:Math.round((purchaseTotal - applied) * 100) / 100 };
@@ -11246,8 +11538,13 @@ function findStoreCreditsForCustomer(query){
 }
 function redeemStoreCredit(id, amount){
   const credits = getStoreCredits();
-  const rec = credits.find(c => c.id === id);
-  if(!rec) return false;
+  let rec = credits.find(c => c.id === id);
+  if(!rec) {
+    const embedded = getCartDataLocal()?.tradeCredit;
+    if(!embedded || embedded.id !== id) return false;
+    rec = { ...embedded };
+    credits.unshift(rec);
+  }
   rec.remainingBalance = Math.max(0, Math.round((Number(rec.remainingBalance || 0) - Number(amount || 0)) * 100) / 100);
   rec.lastRedeemedAt = new Date().toISOString();
   saveStoreCredits(credits);
@@ -12802,7 +13099,8 @@ async function wfPatch(path, body){
 }
 
 async function postCartToWorker(cartData, queueOnFail = true){
-  if(getAccountContext().isDemo) return true; // Demo: no worker cart sync
+  const sharedOk = await syncActiveSaleCartToWorker(cartData);
+  if(getAccountContext().isDemo) return sharedOk; // Demo: local shared-cart simulation only
   try {
     const res = await storeWorkerFetch(cartWorkerPath(), {
       method:'POST',
@@ -12811,7 +13109,7 @@ async function postCartToWorker(cartData, queueOnFail = true){
       signal:AbortSignal.timeout(2500)
     });
     if(!res.ok) throw new Error('Cart sync '+res.status);
-    return true;
+    return sharedOk;
   } catch(e) {
     if(queueOnFail) enqueueOrReplaceSync('cart-sync', 'active-cart', 'Sync active cart to tablet/customer display', { cartData }, e.message || 'Cart sync failed');
     return false;
@@ -13905,6 +14203,7 @@ function switchTab(name, btn){
   if(name === 'browse') setTimeout(renderCustomerInventoryBrowser,0);
   // Refresh category-dependent helper rows (set browser buttons etc.) when switching to POS/Research
   if(name === 'pos' || name === 'research') setTimeout(handleQplCategoryChange, 0);
+  if(name === 'display') setTimeout(()=>{ fetchSaleCartIndex(); renderSaleCartSwitcher(); renderCustomerDisplay(); }, 0);
   // Pick up buy-offer items and open trays added on another device since this device's last fetch
   if(name === 'intake') setTimeout(()=>{ fetchBuyListFromWorker(); fetchBuyTrayIndex(); }, 0);
 }
@@ -14205,10 +14504,16 @@ function getCartDataLocal(){
 function saveCartDataLocal(cartData, undoLabel){
   const beforeCart = getCartDataLocal();
   cartData.savedAt = new Date().toISOString();
+  cartData.items = (cartData.items || []).map(i => ({ ...i, updatedAt:i.updatedAt || cartData.savedAt }));
   cartData.storeId = getActiveStoreId();
   cartData.registerId = REGISTER_ID;
   cartData.appVersion = APP_VERSION;
   cartData.show = getShowMode();
+  const session = ensureActiveSaleCart();
+  cartData.cartId = session.cartId;
+  cartData.id = session.cartId;
+  cartData.customerName = cartData.customerName ?? session.customerName;
+  cartData.tradeCredit = cartData.tradeCredit ?? session.tradeCredit;
   localStorage.setItem('pos_cart_v2', JSON.stringify(cartData));
   if(undoLabel) pushUndoAction(undoLabel, { type:'cart-snapshot', cart:beforeCart });
   postCartToWorker(cartData);
@@ -14308,6 +14613,7 @@ function addSaleItemToCart(item = {}, options = {}){
     wfId: (sourceType === 'one_off') ? null : inventoryId,
     set: item.set || '',
     year: item.year || '',
+    updatedAt:new Date().toISOString(),
   };
 
   cartData.items.push(cartItem);
@@ -26984,6 +27290,7 @@ async function acceptBuyAsTrade(){
     buySessionId:result.session.buySessionId,
     createdAt:new Date().toISOString(),
   }));
+  await attachTradeToActiveSaleCart(result.credit);
   closeActiveBuyTray();
   switchTab('display');
   renderDealerCartTools(getCartDataLocal());
@@ -27036,7 +27343,7 @@ function syncBuyConfirmCustomer(field, value){
   updateBuySessionField(field, value);
 }
 
-function confirmBuyPayout(method, applyToPurchase=false){
+async function confirmBuyPayout(method, applyToPurchase=false){
   const result = payCustomerForBuySession(method);
   if(!result) return;
   if(applyToPurchase && result.credit) {
@@ -27047,6 +27354,7 @@ function confirmBuyPayout(method, applyToPurchase=false){
       buySessionId:result.session.buySessionId,
       createdAt:new Date().toISOString(),
     }));
+    await attachTradeToActiveSaleCart(result.credit);
   }
   newCustomerReset();
   if(applyToPurchase) {
@@ -27798,6 +28106,8 @@ function exportEODCSV(){
 // CUSTOMER FACING DISPLAY
 // ══════════════════════════════════════════════════
 async function fetchCartFromWorker(){
+  const shared = await fetchActiveSaleCartFromWorker();
+  if(shared) return shared;
   try {
     const r = await storeWorkerFetch(cartWorkerPath(), {method:'GET', signal: AbortSignal.timeout(2000)});
     if(r.ok) {
@@ -28006,6 +28316,7 @@ async function editCartLinePrice(idx){
   item.adjustmentReason = reason;
   item.adjustedBy = getAuthSession()?.user?.email || getAuthSession()?.user?.displayName || 'local-user';
   item.adjustedAt = new Date().toISOString();
+  item.updatedAt = item.adjustedAt;
   await saveActiveCartData(cart);
   logOpsEvent('cart_price_override', 'Adjusted cart line price: ' + (item.name || 'item'), { cartLineId:item.id || '', originalPrice:original, adjustedPrice:next, reason });
   toast_dash('Cart price updated');
@@ -28059,9 +28370,15 @@ function normalizeCartTotals(cartData){
 async function saveActiveCartData(cartData){
   normalizeCartTotals(cartData);
   cartData.savedAt = new Date().toISOString();
+  cartData.items = (cartData.items || []).map(i => ({ ...i, updatedAt:i.updatedAt || cartData.savedAt }));
   cartData.storeId = getActiveStoreId();
   cartData.registerId = REGISTER_ID;
   cartData.appVersion = APP_VERSION;
+  const session = ensureActiveSaleCart();
+  cartData.cartId = session.cartId;
+  cartData.id = session.cartId;
+  cartData.customerName = cartData.customerName ?? session.customerName;
+  cartData.tradeCredit = cartData.tradeCredit ?? session.tradeCredit;
   localStorage.setItem('pos_cart_v2', JSON.stringify(cartData));
   await postCartToWorker(cartData);
   await renderCustomerDisplay();
@@ -28071,8 +28388,15 @@ async function removeCustomerDisplayCartItem(itemId, fallbackIndex){
   const cart = await getActiveCartData();
   const before = cart.items.length;
   const id = String(itemId || '');
-  if(id) cart.items = cart.items.filter(i => String(i.id || '') !== id);
-  if(cart.items.length === before && fallbackIndex >= 0) cart.items.splice(fallbackIndex, 1);
+  if(id) {
+    cart.items = cart.items.filter(i => String(i.id || '') !== id);
+    cart.removedLineIds = [...new Set([...(cart.removedLineIds || []), id])].slice(-300);
+  }
+  if(cart.items.length === before && fallbackIndex >= 0) {
+    const fallbackId = cart.items[fallbackIndex]?.id || cart.items[fallbackIndex]?.cartLineId || '';
+    cart.items.splice(fallbackIndex, 1);
+    if(fallbackId) cart.removedLineIds = [...new Set([...(cart.removedLineIds || []), fallbackId])].slice(-300);
+  }
   await saveActiveCartData(cart);
   toast_dash('Removed from cart');
 }
@@ -28081,6 +28405,7 @@ async function clearCustomerDisplayCart(){
   const cart = await getActiveCartData();
   if(!cart.items.length) return;
   if(!confirm('Clear the current cart?')) return;
+  cart.removedLineIds = [...new Set([...(cart.removedLineIds || []), ...cart.items.map(i => i.id || i.cartLineId).filter(Boolean)])].slice(-300);
   cart.items = [];
   cart.discount = 0;
   cart.total = 0;
@@ -28143,7 +28468,7 @@ async function recordCustomerDisplayPayment(method, total, tenderType){
   await markCartItemsSoldFromPayment(items, method, paidAt);
   const empty = { items:[], discount:0, savedAt:paidAt, clearedAt:paidAt, lastTxId:tx.id, storeId:getActiveStoreId(), registerId:REGISTER_ID, appVersion:APP_VERSION };
   localStorage.setItem('pos_cart_v2', JSON.stringify(empty));
-  postCartToWorker(empty);
+  await postCartToWorker(empty);
   renderCustomerDisplay();
   renderStats();
   renderTodayMode();
@@ -28463,7 +28788,8 @@ function ensureCheckoutRuntimeMarkup(){
 
 async function renderLockedCheckout(){
   ensureCheckoutRuntimeMarkup();
-  const cartData = lockedCheckoutSnapshot ? { items:lockedCheckoutSnapshot.lines.map(l => ({ name:l.title, category:l.category, price:l.adjusted_price, cost:l.cost_basis, condition:l.condition, img:l.image_url, originalPrice:l.original_price, adjustmentReason:l.discount_amount ? 'Locked adjustment' : '' })), discount:0, subtotal:lockedCheckoutSnapshot.subtotal, tax:lockedCheckoutSnapshot.tax_total, total:lockedCheckoutSnapshot.total } : await getActiveCartData();
+  const activeCart = getCartDataLocal();
+  const cartData = lockedCheckoutSnapshot ? { items:lockedCheckoutSnapshot.lines.map(l => ({ name:l.title, category:l.category, price:l.adjusted_price, cost:l.cost_basis, condition:l.condition, img:l.image_url, originalPrice:l.original_price, adjustmentReason:l.discount_amount ? 'Locked adjustment' : '' })), discount:0, subtotal:lockedCheckoutSnapshot.subtotal, tax:lockedCheckoutSnapshot.tax_total, total:lockedCheckoutSnapshot.total, tradeCredit:activeCart.tradeCredit || null } : await getActiveCartData();
   renderDealerCartTools(cartData);
   renderCustomerDisplaySnapshot();
   const banner = document.getElementById('checkout-offline-banner');
@@ -28494,25 +28820,28 @@ function renderDealerCartTools(cartData = getCartDataLocal()){
   if(!el) return;
   const items = cartData.items || [];
   const locked = !CheckoutStateManager().canEditCart();
-  const total = Number(cartData.total || cartData.items?.reduce((a,i)=>a+Number(i.price||0),0) || 0);
-  const trade = pendingTradeAmounts(total);
+  const totals = normalizeCartTotals(JSON.parse(JSON.stringify(cartData || {items:[]})));
+  const total = Number(totals.total || 0);
+  const trade = pendingTradeAmounts(total, cartData);
   if(stateEl) stateEl.innerHTML = `<span class="checkout-state-pill ${checkoutState===CHECKOUT_STATES.OFFLINE_QUEUED?'bad':locked?'warn':''}">${checkoutState}</span><span>${lockedCheckoutSnapshot ? 'Snapshot ' + String(lockedCheckoutSnapshot.id).slice(0,8) : 'No locked snapshot'}</span><span>${items.length} line${items.length===1?'':'s'}</span>`;
   if(!items.length) el.innerHTML = '<div style="border:1px dashed var(--border);border-radius:8px;padding:10px;text-align:center">Cart is empty.</div>';
   else {
-    // Privacy: dealer-only cost/profit must never be present in the DOM while
-    // customer-display-mode is active, not just visually hidden by CSS.
-    const isCustomerFacing = document.body.classList.contains('customer-display-mode');
-    el.innerHTML = items.map((i, idx) => `<div class="dealer-line ${locked?'locked':''}">
-    ${i.img || i.image ? `<img class="dealer-line-image" src="${escHtml(i.img || i.image)}" alt="${escHtml(i.name || i.title || 'Item')}" onclick="openImageLightboxUrl('${encodeURIComponent(i.img || i.image)}','${encodeURIComponent(i.name || i.title || 'Item')}')" onerror="this.outerHTML='<div class=dealer-line-image-ph>NO IMAGE</div>'">` : '<div class="dealer-line-image-ph">NO IMAGE</div>'}
+    el.innerHTML = items.map((i, idx) => {
+      const imageUrl = i.img || i.image || i.imageUrl || i.thumbnail || '';
+      const current = Number(i.price ?? i.adjusted_price ?? 0);
+      const original = Number(i.originalPrice ?? i.rawMarketPrice ?? i.suggestedFromMarket ?? current);
+      const quantity = Math.max(1, Number(i.quantity || i.qty || 1));
+      return `<div class="dealer-line ${locked?'locked':''}">
+    ${imageUrl ? `<img class="dealer-line-image" src="${escHtml(imageUrl)}" alt="${escHtml(i.name || i.title || 'Item')}" onclick="openImageLightboxUrl('${encodeURIComponent(imageUrl)}','${encodeURIComponent(i.name || i.title || 'Item')}')" onerror="this.outerHTML='<div class=dealer-line-image-ph>NO IMAGE</div>'">` : '<div class="dealer-line-image-ph">NO IMAGE</div>'}
     <div><div class="dealer-line-name">${escHtml(i.name || i.title || 'Item')}</div><div class="dealer-line-sub">${escHtml([i.sub, i.category, i.condition, i.adjustmentReason ? 'Adjusted: '+i.adjustmentReason : ''].filter(Boolean).join(' / '))}</div></div>
-    <div style="font-family:'Orbitron',monospace;color:var(--gold);text-align:right">$${Number(i.price ?? i.adjusted_price ?? 0).toFixed(2)}</div>
-    ${isCustomerFacing ? '' : `<div class="dealer-profit">Cost $${Number(i.cost ?? i.cost_basis ?? 0).toFixed(2)}<br>Profit $${(Number(i.price ?? i.adjusted_price ?? 0)-Number(i.cost ?? i.cost_basis ?? 0)).toFixed(2)}</div>`}
-    ${locked ? '' : `<button class="ra" onclick="editCartLinePrice(${idx})">Edit</button><button class="cd-remove" title="Remove from cart" onclick="removeCustomerDisplayCartItem('${escHtml(i.id || '')}', ${idx})">X</button>`}
-  </div>`).join('');
+    <div class="dealer-price-breakdown"><b>$${current.toFixed(2)}</b><br>${quantity>1?'Qty '+quantity+' · ':''}Sale price${Math.abs(original-current)>0.009?`<br><span style="text-decoration:line-through">Was $${original.toFixed(2)}</span> · <span style="color:${current<original?'var(--g)':'var(--gold)'}">${current<original?'-':'+'}$${Math.abs(current-original).toFixed(2)}</span>`:''}</div>
+    ${locked ? '' : `<button class="ra" onclick="editCartLinePrice(${idx})">EDIT</button><button class="cd-remove" title="Remove from cart" onclick="removeCustomerDisplayCartItem('${escHtml(i.id || '')}', ${idx})">X</button>`}
+  </div>`;
+    }).join('');
   }
   if(totalEl) totalEl.innerHTML = trade.pending
-    ? `<div style="display:grid;gap:3px;font-family:var(--font-mono);font-size:11px"><span style="color:var(--dim)">ITEMS $${total.toFixed(2)}</span><span style="color:var(--gold)">TRADE CREDIT −$${trade.applied.toFixed(2)}</span><b style="font-family:'Orbitron',monospace;font-size:18px;color:var(--g)">BALANCE $${trade.due.toFixed(2)}</b></div>`
-    : `<span style="font-family:var(--font-mono);font-size:11px;color:var(--dim)">DEALER TOTAL</span><b>$${total.toFixed(2)}</b>`;
+    ? `<div style="display:grid;gap:3px;font-family:var(--font-mono);font-size:11px"><span style="color:var(--dim)">SUBTOTAL $${Number(totals.subtotal||0).toFixed(2)}</span>${Number(totals.discountAmount||0)>0?`<span>DISCOUNT −$${Number(totals.discountAmount).toFixed(2)}</span>`:''}${Number(totals.tax||0)>0?`<span>TAX $${Number(totals.tax).toFixed(2)}</span>`:''}<span style="color:var(--gold)">TRADE CREDIT −$${trade.applied.toFixed(2)}</span><b style="font-family:'Orbitron',monospace;font-size:18px;color:var(--g)">BALANCE $${trade.due.toFixed(2)}</b></div>`
+    : `<div style="display:grid;gap:3px;font-family:var(--font-mono);font-size:11px"><span style="color:var(--dim)">SUBTOTAL $${Number(totals.subtotal||0).toFixed(2)}</span>${Number(totals.discountAmount||0)>0?`<span>DISCOUNT −$${Number(totals.discountAmount).toFixed(2)}</span>`:''}${Number(totals.tax||0)>0?`<span>TAX $${Number(totals.tax).toFixed(2)}</span>`:''}<b>$${total.toFixed(2)}</b></div>`;
   if(actions) {
     actions.innerHTML = locked
       ? `<button class="hbtn danger" onclick="cancelLockedCheckout()">CANCEL CHECKOUT</button><button class="hbtn" onclick="enterCustomerDisplayMode()">SHOW CUSTOMER PAYMENT</button>`
@@ -28529,7 +28858,7 @@ async function lockCheckoutForPayment(){
   CheckoutStateManager().set(CHECKOUT_STATES.CHECKOUT_LOCKED);
   logOpsEvent('checkout_locked', 'Locked checkout snapshot', { checkoutSnapshotId:lockedCheckoutSnapshot.id, total:lockedCheckoutSnapshot.total, items:lockedCheckoutSnapshot.lines.length });
   await enterCustomerDisplayMode();
-  const trade = pendingTradeAmounts(lockedCheckoutSnapshot.total);
+  const trade = pendingTradeAmounts(lockedCheckoutSnapshot.total, cart);
   if(trade.pending && trade.applied > 0) {
     selectedTenderLines = [{ method:'trade_credit', amount:trade.applied, reference:trade.pending.credit.id }];
     selectLockedPaymentMethod('trade_credit');
@@ -28608,10 +28937,11 @@ function renderCustomerDisplaySnapshot(){
     return;
   }
   if(itemsEl) itemsEl.innerHTML = s.lines.map(l => `<div class="customer-pay-line">${l.image_url ? `<img class="customer-pay-image" src="${escHtml(l.image_url)}" alt="${escHtml(l.title)}" onclick="openImageLightboxUrl('${encodeURIComponent(l.image_url)}','${encodeURIComponent(l.title)}')" onerror="this.outerHTML='<div class=customer-pay-image-ph>NO IMAGE</div>'">` : '<div class="customer-pay-image-ph">NO IMAGE</div>'}<div><div class="customer-pay-name">${escHtml(l.title)}</div><div class="customer-pay-sub">${escHtml([l.category,l.condition,l.finish].filter(Boolean).join(' / '))}</div></div><div class="customer-pay-price">$${Number(l.adjusted_price || 0).toFixed(2)}</div></div>`).join('');
-  if(totalEl) totalEl.textContent = '$' + Number(s.total || 0).toFixed(2);
+  const trade = pendingTradeAmounts(Number(s.total || 0), getCartDataLocal());
+  if(totalEl) totalEl.textContent = '$' + trade.due.toFixed(2);
   if(countEl) countEl.textContent = s.lines.length + ' item' + (s.lines.length===1?'':'s') + ' locked for checkout';
-  if(breakdownEl) breakdownEl.innerHTML = `Subtotal $${s.subtotal.toFixed(2)}${s.discount_total ? ' / Discount -$' + s.discount_total.toFixed(2) : ''}${s.tax_total ? ' / Tax $' + s.tax_total.toFixed(2) : ''}`;
-  renderCustomerPaymentLinks(s.total, payEl);
+  if(breakdownEl) breakdownEl.innerHTML = `Subtotal $${s.subtotal.toFixed(2)}${s.discount_total ? ' / Discount -$' + s.discount_total.toFixed(2) : ''}${s.tax_total ? ' / Tax $' + s.tax_total.toFixed(2) : ''}${trade.pending ? ' / Trade credit -$' + trade.applied.toFixed(2) : ''}`;
+  renderCustomerPaymentLinks(trade.due, payEl);
   if(setupEl) setupEl.textContent = checkoutState === CHECKOUT_STATES.PAYMENT_PENDING ? 'Payment pending dealer confirmation.' : '';
 }
 
@@ -28626,11 +28956,12 @@ function renderCustomerLiveCart(cartData = { items:[] }){
   const payEl = document.getElementById('cd-pay-links');
   const setupEl = document.getElementById('cd-payment-setup');
   const workbench = document.getElementById('customer-payment-workbench');
-  if(itemsEl) itemsEl.innerHTML = items.map(i => `<div class="customer-pay-line">${i.img || i.image ? `<img class="customer-pay-image" src="${escHtml(i.img || i.image)}" alt="${escHtml(i.name || 'Item')}" onclick="openImageLightboxUrl('${encodeURIComponent(i.img || i.image)}','${encodeURIComponent(i.name || 'Item')}')" onerror="this.outerHTML='<div class=customer-pay-image-ph>NO IMAGE</div>'">` : '<div class="customer-pay-image-ph">NO IMAGE</div>'}<div><div class="customer-pay-name">${escHtml(i.name || i.title || 'Item')}</div><div class="customer-pay-sub">${escHtml([i.sub,i.category,i.condition].filter(Boolean).join(' / '))}</div></div><div class="customer-pay-price">$${Number(i.price || 0).toFixed(2)}</div></div>`).join('');
+  if(itemsEl) itemsEl.innerHTML = items.map(i => { const imageUrl=i.img||i.image||i.imageUrl||i.thumbnail||''; return `<div class="customer-pay-line">${imageUrl ? `<img class="customer-pay-image" src="${escHtml(imageUrl)}" alt="${escHtml(i.name || 'Item')}" onclick="openImageLightboxUrl('${encodeURIComponent(imageUrl)}','${encodeURIComponent(i.name || 'Item')}')" onerror="this.outerHTML='<div class=customer-pay-image-ph>NO IMAGE</div>'">` : '<div class="customer-pay-image-ph">NO IMAGE</div>'}<div><div class="customer-pay-name">${escHtml(i.name || i.title || 'Item')}</div><div class="customer-pay-sub">${escHtml([i.sub,i.category,i.condition].filter(Boolean).join(' / '))}</div></div><div class="customer-pay-price">$${Number(i.price || 0).toFixed(2)}</div></div>`; }).join('');
   const total = Number(normalized.total || normalized.items?.reduce((a,i) => a + Number(i.price || 0), 0) || 0);
-  if(totalEl) totalEl.textContent = '$' + total.toFixed(2);
+  const trade = pendingTradeAmounts(total, cartData);
+  if(totalEl) totalEl.textContent = '$' + trade.due.toFixed(2);
   if(countEl) countEl.textContent = items.length ? items.length + ' item' + (items.length===1?'':'s') + ' · Review your cart' : 'Waiting for items';
-  if(breakdownEl) breakdownEl.textContent = items.length ? 'Cart updates automatically as the dealer makes changes.' : '';
+  if(breakdownEl) breakdownEl.innerHTML = items.length ? `Subtotal $${Number(normalized.subtotal||0).toFixed(2)}${Number(normalized.discountAmount||0)>0?' / Discount -$'+Number(normalized.discountAmount).toFixed(2):''}${Number(normalized.tax||0)>0?' / Tax $'+Number(normalized.tax).toFixed(2):''}${trade.pending?' / Trade credit -$'+trade.applied.toFixed(2):''}` : '';
   if(payEl) payEl.innerHTML = '';
   if(setupEl) setupEl.textContent = items.length ? 'Payment options appear after the order is confirmed.' : '';
   if(workbench) { workbench.innerHTML = ''; workbench.classList.remove('on'); }
@@ -28857,6 +29188,7 @@ async function finalizeCompletedCheckout(bundle, queued, inventoryCommittedAtomi
   // The explicit handoff is for the next purchase only. The store-credit record
   // itself remains available in the ledger if it was not used on this sale.
   localStorage.removeItem('pos_pending_trade_purchase');
+  await completeActiveSaleCartAfterCheckout(bundle.sale.id);
   confirmedSaleContext = bundle;
   logOpsEvent(queued ? 'sale_offline_queued' : 'sale_completed', queued ? 'Completed sale queued for Supabase sync' : 'Completed sale in Supabase ledger', { saleId:bundle.sale.id, total:bundle.sale.total });
   // BUGFIX (discovered during cart-unification QA): `renderSales` was never
@@ -28946,6 +29278,10 @@ function finishLockedCheckout(){
 
 // Auto-refresh customer display every 3 seconds
 setInterval(renderCustomerDisplay, 3000);
+ensureActiveSaleCart();
+renderSaleCartSwitcher();
+fetchSaleCartIndex();
+setInterval(fetchSaleCartIndex, 6000);
 renderCustomerDisplay().catch(()=>{});
 
 // Init drawer state on load

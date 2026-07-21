@@ -26,6 +26,14 @@ assert.match(html, /switchTab\('display'\)/, 'Direct trade workflow must open th
 assert.match(html, /TRADE CREDIT/, 'Sell screen must label pending trade credit');
 assert.match(html, /trade\.applied\.toFixed\(2\)/, 'Sell screen must visibly subtract the calculated trade credit');
 assert.match(html, /selectedTenderLines = \[\{ method:'trade_credit'/, 'Checkout must automatically carry the pending trade credit tender');
+assert.match(html, /\/kv\/sale_carts_index/, 'Open sale carts must publish a shared cross-device index');
+assert.match(html, /\/kv\/sale_cart_/, 'Each customer sale cart must have its own shared Worker record');
+assert.match(html, /function switchSaleCart\(/, 'Registers must be able to join another customer sale cart');
+assert.match(html, /tradeCredit:cartData\.tradeCredit \?\? current\.tradeCredit/, 'Trade credit must persist inside the shared sale cart');
+const liveDealerCart = html.slice(html.lastIndexOf('function renderDealerCartTools('), html.indexOf('async function lockCheckoutForPayment()', html.lastIndexOf('function renderDealerCartTools(')));
+assert.match(liveDealerCart, /i\.imageUrl/, 'Sell lines must render the stored imageUrl fallback');
+assert.match(liveDealerCart, /dealer-price-breakdown/, 'Sell lines must render an editable price breakdown');
+assert.doesNotMatch(liveDealerCart, /dealer-profit|\bCost\b|\bProfit\b/, 'Sell screen must not render cost or profit');
 
 assert.match(html, /function renderCustomerLiveCart\(/, 'Customer display must support live cart review');
 assert.match(html, /image_url:item\.img \|\| item\.image/, 'Checkout snapshot must retain item images');
