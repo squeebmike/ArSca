@@ -3112,16 +3112,18 @@ export default {
         .filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
       const isComicPcCandidate = candidate => /^comic books\b/i.test(String(candidate?.consoleName || '').trim());
       const matchingComicPcCandidates = (candidates, issue) => {
+        const seriesPhrase = String(issue.seriesName || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
         const words = String(issue.seriesName || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').split(/\s+/).filter(word => word.length > 2);
         const number = String(issue.number || '').toLowerCase().replace(/[^a-z0-9.]/g, '');
         const numberPattern = number ? new RegExp(`(?:^|[^a-z0-9])#?${number.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?:[^a-z0-9]|$)`, 'i') : null;
         return (candidates || []).filter(isComicPcCandidate).map(candidate => {
           const normalized = String(candidate.productName || '').toLowerCase().replace(/[^a-z0-9.#]+/g, ' ');
+          const seriesMatch = !seriesPhrase || normalized === seriesPhrase || normalized.startsWith(seriesPhrase + ' ');
           const numberMatch = !numberPattern || numberPattern.test(normalized);
           const titleMatches = words.filter(word => normalized.includes(word)).length;
           const score = titleMatches * 18 + (numberMatch ? 60 : 0) + (/comic/i.test(candidate.consoleName || '') ? 20 : 0);
-          return { candidate, score, numberMatch, titleMatches };
-        }).filter(match => match.numberMatch && match.titleMatches >= Math.max(1, Math.ceil(words.length * 0.6)) && match.score >= 70)
+          return { candidate, score, numberMatch, seriesMatch, titleMatches };
+        }).filter(match => match.seriesMatch && match.numberMatch && match.titleMatches >= Math.max(1, Math.ceil(words.length * 0.6)) && match.score >= 70)
           .sort((a, b) => b.score - a.score).map(match => ({ ...match.candidate, comicMatchScore:match.score }));
       };
       const bestComicPcCandidate = (candidates, issue) => {
@@ -3148,7 +3150,7 @@ export default {
         if (!token) return [];
         const q = comicPcQuery(issue);
         if (!q) return [];
-        const cacheKey = `comic-pricecharting:v4:${q.toLowerCase().slice(0, 300)}`;
+        const cacheKey = `comic-pricecharting:v5:${q.toLowerCase().slice(0, 300)}`;
         if (env.LBA_KV && !force) {
           const cached = await env.LBA_KV.get(cacheKey, 'json').catch(() => null);
           if (Array.isArray(cached)) return cached;
