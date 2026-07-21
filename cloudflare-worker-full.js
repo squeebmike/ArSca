@@ -3108,38 +3108,55 @@ export default {
         return data;
       }
 
-      const comicPcQuery = issue => [
-        issue.seriesName,
-        issue.number ? '#' + issue.number : '',
-        issue.issueName,
-        issue.publisher,
-        issue.seriesYearBegan || (issue.coverDate ? String(issue.coverDate).slice(0, 4) : ''),
-      ].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
-      const bestComicPcCandidate = (candidates, issue) => {
+      const comicPcQuery = issue => [issue.seriesName, issue.number ? '#' + issue.number : '', issue.publisher, 'comic']
+        .filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
+      const isComicPcCandidate = candidate => /\b(comics?|marvel comics?|dc comics?|image comics?|dark horse comics?|idw comics?|boom!?(?: studios)?|dynamite comics?)\b/i.test([
+        candidate?.consoleName, candidate?.genre,
+      ].filter(Boolean).join(' '));
+      const matchingComicPcCandidates = (candidates, issue) => {
         const words = String(issue.seriesName || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').split(/\s+/).filter(word => word.length > 2);
         const number = String(issue.number || '').toLowerCase().replace(/[^a-z0-9.]/g, '');
-        return (candidates || []).map(candidate => {
-          const name = String(candidate.productName || '').toLowerCase();
-          const normalized = name.replace(/[^a-z0-9.]+/g, ' ');
-          const numberMatch = !number || new RegExp(`(?:^|[^a-z0-9])${number.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?:[^a-z0-9]|$)`, 'i').test(normalized);
-          let score = words.filter(word => normalized.includes(word)).length * 12;
-          if (numberMatch) score += 50;
-          if (issue.seriesYearBegan && normalized.includes(String(issue.seriesYearBegan))) score += 10;
-          if (/comic/i.test(candidate.consoleName || '')) score += 10;
-          return { candidate, score, numberMatch };
-        }).sort((a, b) => b.score - a.score).find(match => match.numberMatch && match.score >= 30)?.candidate || null;
+        const numberPattern = number ? new RegExp(`(?:^|[^a-z0-9])#?${number.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?:[^a-z0-9]|$)`, 'i') : null;
+        return (candidates || []).filter(isComicPcCandidate).map(candidate => {
+          const normalized = String(candidate.productName || '').toLowerCase().replace(/[^a-z0-9.#]+/g, ' ');
+          const numberMatch = !numberPattern || numberPattern.test(normalized);
+          const titleMatches = words.filter(word => normalized.includes(word)).length;
+          const score = titleMatches * 18 + (numberMatch ? 60 : 0) + (/comic/i.test(candidate.consoleName || '') ? 20 : 0);
+          return { candidate, score, numberMatch, titleMatches };
+        }).filter(match => match.numberMatch && match.titleMatches >= Math.max(1, Math.ceil(words.length * 0.6)) && match.score >= 70)
+          .sort((a, b) => b.score - a.score).map(match => ({ ...match.candidate, comicMatchScore:match.score }));
+      };
+      const bestComicPcCandidate = (candidates, issue) => {
+        return matchingComicPcCandidates(candidates, issue)[0] || null;
+      };
+      const pcProductPageUrl = product => {
+        const slug = value => String(value || '').toLowerCase().replace(/['’]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+        return product?.productName && product?.consoleName ? `https://www.pricecharting.com/game/${slug(product.consoleName)}/${slug(product.productName)}` : '';
+      };
+      const hydratePcCoverImage = async product => {
+        if (!product || product.imageUrl) return product;
+        const pageUrl = pcProductPageUrl(product);
+        if (!pageUrl) return product;
+        try {
+          const pageRes = await fetch(pageUrl, { headers:{ 'User-Agent':'Mozilla/5.0 (compatible; Walk-Off Comic Cover/2026)', 'Accept':'text/html' }, cf:{ cacheTtl:86400, cacheEverything:true } });
+          if (!pageRes.ok) return product;
+          const html = await pageRes.text();
+          const og = html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)/i) || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i);
+          const storage = html.match(/https?:\/\/storage\.googleapis\.com\/images\.pricecharting\.com\/[^"']+\/(?:240|300|400|1600)\.jpg/i);
+          return { ...product, imageUrl:og?.[1]?.replace(/&amp;/g, '&') || storage?.[0] || '', url:pageUrl };
+        } catch (_) { return product; }
       };
       const comicPcCandidates = async (issue, force = false) => {
         if (!token) return [];
         const q = comicPcQuery(issue);
         if (!q) return [];
-        const cacheKey = `comic-pricecharting:v2:${q.toLowerCase().slice(0, 300)}`;
+        const cacheKey = `comic-pricecharting:v3:${q.toLowerCase().slice(0, 300)}`;
         if (env.LBA_KV && !force) {
           const cached = await env.LBA_KV.get(cacheKey, 'json').catch(() => null);
           if (Array.isArray(cached)) return cached;
         }
         try {
-          const data = await pcFetch('/api/products', { q });
+          const data = await pcFetch('/api/products', { q, console:'Comics' });
           const products = (data.products || []).map(product => normalizePcProduct(product, q)).slice(0, 25);
           if (env.LBA_KV) await env.LBA_KV.put(cacheKey, JSON.stringify(products), { expirationTtl:60 * 60 * 6 });
           return products;
@@ -3195,8 +3212,20 @@ export default {
             comicPcCandidates(issue, forcePrice),
           ]);
           const rawSeriesIssues = Array.isArray(seriesIssues.data) ? seriesIssues.data : (seriesIssues.data?.results || []);
-          const covers = metronSiblingCovers(issue, rawSeriesIssues);
-          const candidate = bestComicPcCandidate(priceCandidates, issue);
+          const metronCovers = metronSiblingCovers(issue, rawSeriesIssues);
+          const comicCandidates = matchingComicPcCandidates(priceCandidates, issue).slice(0, 12);
+          const pcCovers = await Promise.all(comicCandidates.map(hydratePcCoverImage));
+          const covers = [...metronCovers, ...pcCovers.map(product => ({
+            id:`pricecharting:${product.productId}`,
+            pricechartingProductId:product.productId,
+            issueName:product.productName,
+            name:product.productName,
+            number:issue.number,
+            imageUrl:product.imageUrl,
+            pricecharting:product,
+            source:'PriceCharting',
+          }))].filter((cover, index, all) => cover.imageUrl && all.findIndex(other => String(other.imageUrl).split('?')[0] === String(cover.imageUrl).split('?')[0]) === index);
+          const candidate = comicCandidates[0] || null;
           let priceMatch = candidate;
           if (candidate?.productId) {
             try {
@@ -3204,7 +3233,7 @@ export default {
               priceMatch = normalizePcProduct(detail, comicPcQuery(issue));
             } catch (_) {}
           }
-          return json({ ok:true, source:'Metron + PriceCharting', cacheStatus:metron.cacheStatus, issue, covers, priceCandidates, priceMatch });
+          return json({ ok:true, source:'Metron + PriceCharting', cacheStatus:metron.cacheStatus, issue, covers, priceCandidates:comicCandidates, priceMatch });
         } catch (error) {
           const status = [401,403,404,429].includes(Number(error.status)) ? Number(error.status) : 502;
           const message = status === 401 || status === 403 ? 'Metron credentials were rejected' : status === 429 ? 'Metron rate limit reached; try the cached record again shortly' : status === 404 ? 'Metron issue not found' : 'Metron issue lookup failed';
