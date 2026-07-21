@@ -101,7 +101,7 @@ function normalizeMetronDetail(issue = {}) {
   }));
   const credits = (Array.isArray(issue.credits) ? issue.credits : []).map(credit => ({
     creator:metronName(credit?.creator),
-    roles:(Array.isArray(credit?.role) ? credit.role : []).map(metronName).filter(Boolean),
+    roles:(Array.isArray(credit?.role) ? credit.role : [credit?.role]).map(metronName).filter(Boolean),
   })).filter(credit => credit.creator);
   return {
     ...base,
@@ -109,7 +109,7 @@ function normalizeMetronDetail(issue = {}) {
     imprint:metronName(issue.imprint),
     altNumber:String(issue.alt_number || ''),
     collectionTitle:String(issue.collection_title || ''),
-    storyTitles:(Array.isArray(issue.story_titles) ? issue.story_titles : []).map(String),
+    storyTitles:(Array.isArray(issue.story_titles) ? issue.story_titles : []).map(metronName).filter(Boolean),
     coverPrice:Number(issue.price || 0) || null,
     coverPriceCurrency:String(issue.price_currency || 'USD'),
     rating:metronName(issue.rating),
@@ -117,15 +117,18 @@ function normalizeMetronDetail(issue = {}) {
     isbn:String(issue.isbn || ''),
     upc:String(issue.upc || ''),
     pageCount:Number(issue.page_count || 0) || null,
-    description:metronText(issue.desc),
+    description:metronText(issue.desc || issue.description),
     arcs:(Array.isArray(issue.arcs) ? issue.arcs : []).map(metronName).filter(Boolean),
+    genres:(Array.isArray(issue.genres) ? issue.genres : []).map(metronName).filter(Boolean),
     credits,
     characters:(Array.isArray(issue.characters) ? issue.characters : []).map(metronName).filter(Boolean),
     teams:(Array.isArray(issue.teams) ? issue.teams : []).map(metronName).filter(Boolean),
     universes:(Array.isArray(issue.universes) ? issue.universes : []).map(metronName).filter(Boolean),
     variants,
+    reprints:(Array.isArray(issue.reprints) ? issue.reprints : []).map(reprint => ({ id:String(reprint?.id || ''), name:metronName(reprint), number:String(reprint?.number || '') })).filter(reprint => reprint.id || reprint.name),
     comicVineId:String(issue.cv_id || ''),
     gcdId:String(issue.gcd_id || ''),
+    metronUrl:base.id ? `https://metron.cloud/issue/${base.id}/` : '',
   };
 }
 
@@ -3074,9 +3077,16 @@ export default {
         if (!token) return [];
         const q = comicPcQuery(issue);
         if (!q) return [];
+        const cacheKey = `comic-pricecharting:${q.toLowerCase().slice(0, 300)}`;
+        if (env.LBA_KV) {
+          const cached = await env.LBA_KV.get(cacheKey, 'json').catch(() => null);
+          if (Array.isArray(cached)) return cached;
+        }
         try {
           const data = await pcFetch('/api/products', { q });
-          return (data.products || []).map(product => normalizePcProduct(product, q)).slice(0, 25);
+          const products = (data.products || []).map(product => normalizePcProduct(product, q)).slice(0, 25);
+          if (env.LBA_KV) await env.LBA_KV.put(cacheKey, JSON.stringify(products), { expirationTtl:60 * 60 * 6 });
+          return products;
         } catch (_) {
           return [];
         }
@@ -3104,8 +3114,7 @@ export default {
           const metron = await metronFetch(env, '/issue/', filters, 60 * 60 * 24);
           const rawIssues = Array.isArray(metron.data) ? metron.data : (metron.data?.results || []);
           const issues = rawIssues.slice(0, 20).map(normalizeMetronListIssue);
-          const priceCandidates = number && issues.length ? await comicPcCandidates({ ...issues[0], publisher }) : [];
-          return json({ ok:true, source:'Metron + PriceCharting', query:rawQuery, filters, cacheStatus:metron.cacheStatus, issues, priceCandidates });
+          return json({ ok:true, source:'Metron', query:rawQuery, filters, cacheStatus:metron.cacheStatus, issues, priceCandidates:[] });
         } catch (error) {
           const status = [401,403,429].includes(Number(error.status)) ? Number(error.status) : 502;
           const message = status === 401 || status === 403 ? 'Metron credentials were rejected' : status === 429 ? 'Metron rate limit reached; cached comic records remain available' : 'Metron comic search failed';

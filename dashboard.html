@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.07.21.03-metron-comics">
+<meta name="version" content="2026.07.21.04-comic-fast-details">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1103,7 +1103,6 @@ body.customer-browse-mode{padding-bottom:0}body.customer-browse-mode header,body
 
   /* Comic helper buttons — thumb-friendly (were 9px / 3px padding) */
   #qpl-comic-helper .hbtn{min-height:40px!important;font-size:11px!important;padding:6px 12px!important;}
-  #qpl-comic-helper #qpl-comic-issue{min-height:40px;font-size:13px;}
 
   /* QPL hero card image — was forced to min-height:300px!important here,
      which fought the max-height:200px set for phones above and (since the
@@ -1478,13 +1477,13 @@ body.show-mode .inv-sync-badge{display:none;}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.07.21.03-metron-comics"></script>
-<script src="scripts/barcode-lookup.js?v=2026.07.21.03-metron-comics"></script>
-<script src="scripts/comic-issue-hub.js?v=2026.07.21.03-metron-comics"></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.07.21.03-metron-comics"></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.07.21.03-metron-comics"></script>
-<script src="scripts/topps/offline-browser.js?v=2026.07.21.03-metron-comics"></script>
-<script src="scripts/mtg/research-batch.js?v=2026.07.21.03-metron-comics"></script>
+<script src="scripts/query-routing.js?v=2026.07.21.04-comic-fast-details"></script>
+<script src="scripts/barcode-lookup.js?v=2026.07.21.04-comic-fast-details"></script>
+<script src="scripts/comic-issue-hub.js?v=2026.07.21.04-comic-fast-details"></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.07.21.04-comic-fast-details"></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.07.21.04-comic-fast-details"></script>
+<script src="scripts/topps/offline-browser.js?v=2026.07.21.04-comic-fast-details"></script>
+<script src="scripts/mtg/research-batch.js?v=2026.07.21.04-comic-fast-details"></script>
 </head>
 <body>
 
@@ -1534,11 +1533,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.07.21.03-metron-comics</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.07.21.04-comic-fast-details</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.07.21.03-metron-comics</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.07.21.04-comic-fast-details</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1560,7 +1559,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.07.21.03-metron-comics</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.07.21.04-comic-fast-details</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -1937,16 +1936,14 @@ body.show-mode .inv-sync-badge{display:none;}
       <!-- Comic helper row — shown only when Comics category is selected -->
       <div id="qpl-comic-helper" style="display:none;margin-bottom:10px;padding:9px 12px;background:rgba(199,125,255,.06);border:1px solid rgba(199,125,255,.22);border-radius:8px">
         <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:6px">
-          <span style="font-family:'Orbitron',monospace;font-size:9px;color:var(--purple);letter-spacing:.05em">COMIC</span>
-          <input id="qpl-comic-issue" type="text" placeholder="Issue # (optional)" style="width:130px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:5px 9px;border-radius:6px;font-family:monospace;font-size:11px" oninput="buildComicQuery()" onkeydown="if(event.key==='Enter')runPriceLookup()">
+          <span style="font-family:'Orbitron',monospace;font-size:9px;color:var(--purple);letter-spacing:.05em">ONE SEARCH BOX · TYPE TITLE + ISSUE ABOVE</span>
           <button class="hbtn" style="font-size:9px;padding:3px 9px" onclick="appendComicPublisher('Marvel')">Marvel</button>
           <button class="hbtn" style="font-size:9px;padding:3px 9px" onclick="appendComicPublisher('DC')">DC</button>
           <button class="hbtn" style="font-size:9px;padding:3px 9px" onclick="appendComicPublisher('Image')">Image</button>
           <button class="hbtn" style="font-size:9px;padding:3px 9px" onclick="appendComicPublisher('Dark Horse')">Dark Horse</button>
           <button class="hbtn" style="font-size:9px;padding:3px 9px" onclick="appendComicPublisher('IDW')">IDW</button>
-          <button class="hbtn" style="font-size:9px;padding:3px 9px;color:var(--dim)" onclick="clearComicHelper()">✕ clear</button>
         </div>
-        <div style="font-family:monospace;font-size:10px;color:var(--dim);line-height:1.5">Variant tips: <em>newsstand · direct · foil · sketch · facsimile · incentive · 2nd print · virgin</em></div>
+        <div style="font-family:monospace;font-size:10px;color:var(--dim);line-height:1.5">Example: <em>Amazing Spider-Man #300 newsstand</em> · Press ENTER or LOOK UP. Variant tips: <em>direct · foil · sketch · facsimile · incentive · 2nd print · virgin</em></div>
       </div>
       <!-- Pokémon helper row — shown only when Pokemon TCG category is selected -->
       <div id="qpl-pokemon-helper" style="display:none;margin-bottom:10px;padding:9px 12px;background:rgba(255,209,102,.06);border:1px solid rgba(255,209,102,.22);border-radius:8px">
@@ -2958,7 +2955,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.07.21.03-metron-comics';
+const APP_VERSION = '2026.07.21.04-comic-fast-details';
 window.APP_VERSION = APP_VERSION;
 
 // This page has no cache-busting of its own (unlike the secondary scripts,
@@ -5302,7 +5299,7 @@ function renderSettingsOverview(){
 function renderSettingsGeneratedPanels(){
   const overview=document.getElementById('settings-panels-overview');if(overview&&!document.getElementById('settings-overview-grid'))overview.innerHTML='<div id="settings-overview-grid" class="settings-overview-grid"></div>';
   const sync=document.getElementById('settings-panels-sync');if(sync&&!document.getElementById('cloud-consignment-settings-status'))sync.insertAdjacentHTML('afterbegin',`<div class="settings-generated-panel" id="cloud-consignment-settings-status"><div class="ph">CLOUD CONSIGNMENTS ${settingsStatus(consignmentCloudReady?'Working':'Local Fallback',consignmentCloudReady?'working':'local-fallback')}</div><div style="font-family:var(--font-mono);font-size:10px;line-height:1.65;color:var(--dim)">${consignmentCloudReady?'Per-store consignors, inventory, and sale alerts are syncing through Supabase.':'This device is using its store-scoped local cache. Apply the cloud migration and reconnect to activate cross-device sync.'}<br>People: ${consignorPeople.length} · Items: ${consignItems.length} · Sale alerts: ${getConsignmentAlerts().length}</div></div>`);if(sync&&!document.getElementById('webflow-integration-panel'))sync.insertAdjacentHTML('afterbegin','<div class="settings-generated-panel" id="webflow-integration-panel"></div>');renderWebflowIntegrationPanel?.();
-  const catalogs=document.getElementById('settings-panels-catalogs');if(catalogs&&!document.getElementById('catalog-data-concepts'))catalogs.insertAdjacentHTML('afterbegin',`<div class="settings-explainer" id="catalog-data-concepts"><b style="color:var(--text)">Three different data concepts</b><br>1. Store Data Sync — your inventory, sales, settings, users, queues, and consignments.<br>2. Offline Catalog Sync — reference catalogs downloaded to this device; they never create inventory.<br>3. Live Provider Pricing — live or scheduled candidate prices from PriceCharting, Scryfall, and PokemonPriceTracker.<br><br><b style="color:var(--g)">MTG Offline Catalog: Working.</b> Scryfall cards + PriceCharting snapshot; pipeline and image cache remain untouched.<br><b style="color:var(--gold)">Pokémon Offline Catalog: Planned next.</b> It will use PPT rather than PriceCharting.<br>PriceCharting shared offline catalogs cover Video Games, Yu-Gi-Oh, and One Piece. Sports and comics continue to use their live providers and saved search cache because this subscription does not expose CSV exports for them.</div>`);
+  const catalogs=document.getElementById('settings-panels-catalogs');if(catalogs&&!document.getElementById('catalog-data-concepts'))catalogs.insertAdjacentHTML('afterbegin',`<div class="settings-explainer" id="catalog-data-concepts"><b style="color:var(--text)">Three different data concepts</b><br>1. Store Data Sync — your inventory, sales, settings, users, queues, and consignments.<br>2. Offline Catalog Sync — reference catalogs downloaded to this device; they never create inventory.<br>3. Live Provider Pricing — live or scheduled candidate prices from PriceCharting, Scryfall, and PokemonPriceTracker.<br><br><b style="color:var(--g)">MTG Offline Catalog: Working.</b> Scryfall cards + PriceCharting snapshot; pipeline and image cache remain untouched.<br><b style="color:var(--gold)">Pokémon Offline Catalog: Planned next.</b> It will use PPT rather than PriceCharting.<br>PriceCharting shared offline catalogs cover Video Games, Yu-Gi-Oh, and One Piece. Comics use live Metron records with server-side caching and PriceCharting values after selection; no device comic catalog is searched.</div>`);
   const devices=document.getElementById('settings-panels-devices');if(devices&&!document.getElementById('devices-hardware-summary'))devices.innerHTML=`<div class="settings-overview-grid" id="devices-hardware-summary">${[['Barcode Scanner','Working','Camera/USB barcode evidence input'],['Phone Scan Inbox','Working','Scanner queue and tablet handoff'],['Receipt Printer','Planned','Browser print workflow; no dedicated driver'],['Cash Drawer','Working','Cash Bag tracking through checkout'],['Customer Display','Working','Cart and payment-method display'],['Stripe Reader','Planned','Coming later; no Terminal integration'],['Vending Hardware','Planned','Future hardware integration'],['Register / Device ID','Working',getDealerDeviceId()]].map(([a,b,c])=>`<article class="settings-overview-card"><div>${settingsStatus(b,b==='Working'?'working':'planned')}</div><h3>${a}</h3><p>${escHtml(c)}</p></article>`).join('')}</div>`;
   const users=document.getElementById('settings-panels-users');if(users&&!document.getElementById('permissions-summary'))users.insertAdjacentHTML('afterbegin',`<div class="settings-generated-panel" id="permissions-summary"><div class="ph">PERMISSION SUMMARY</div><div style="font-family:var(--font-mono);font-size:10px;line-height:1.65;color:var(--dim)">Owner/Admin: payment setup, refunds, members, store configuration, and advanced tools.<br>Manager/Staff: inventory and checkout according to existing role gates.<br>Scanner Only: phone scanner workflow. Stripe refunds remain Owner/Admin only.</div></div>`);
   const advanced=document.getElementById('settings-panels-advanced');if(advanced&&!document.getElementById('advanced-settings-warning'))advanced.insertAdjacentHTML('afterbegin','<div class="settings-explainer" id="advanced-settings-warning" style="border-color:rgba(255,209,102,.35)"><b style="color:var(--gold)">Advanced tools can affect local data, caches, sync queues, and diagnostics. Use carefully.</b><br>Legacy Tool Map is temporary during the UI refactor. Existing confirmation prompts remain in place.</div>');
@@ -18830,28 +18827,6 @@ function appendComicPublisher(pub){
   inp.focus();
 }
 
-function buildComicQuery(){
-  // Optionally append issue# from helper field to main search query
-  // Called on issue input — does NOT modify qpl-input, just ensures issue gets
-  // included when runPriceLookup fires (done in comicSearchQuery helper)
-}
-
-function comicSearchQuery(){
-  // Build combined query from qpl-input + optional issue field
-  const base = (document.getElementById('qpl-input')?.value || '').trim();
-  const issue = (document.getElementById('qpl-comic-issue')?.value || '').trim();
-  if(!issue) return base;
-  // Avoid duplicate issue numbers
-  if(/[#\d]/.test(base.slice(-10)) && /^\d/.test(issue)) return base;
-  const issueStr = /^\d/.test(issue) ? '#' + issue : issue;
-  return base.includes(issueStr) ? base : base + ' ' + issueStr;
-}
-
-function clearComicHelper(){
-  const inp = document.getElementById('qpl-comic-issue');
-  if(inp) inp.value = '';
-}
-
 // ── Comic inline price panel (shown in result card instead of slab controls) ─
 function qplComicPricePanel(r, idx){
   const pc = r.pricecharting || {};
@@ -19858,15 +19833,16 @@ async function searchMtgOfflineCache(query, cat = ''){
 }
 
 // ── Comics IDB cache (walkoff_comics_cache_v1) ────────────────────────────────
-const COMICS_CACHE_VERSION = 3;
+// Comic photos stay device-local. Catalog and provider records are live/server-cached only.
+const COMICS_CACHE_VERSION = 4;
 function comicsDb(){
   return new Promise((resolve, reject) => {
     const req = indexedDB.open('walkoff_comics_cache_v1', COMICS_CACHE_VERSION);
     req.onupgradeneeded = e => {
       const db = e.target.result;
-      if(!db.objectStoreNames.contains('issues')) { const s = db.createObjectStore('issues', { keyPath:'cacheKey' }); s.createIndex('query','query',{unique:false}); s.createIndex('updatedAt','updatedAt',{unique:false}); }
-      if(!db.objectStoreNames.contains('meta')) db.createObjectStore('meta', { keyPath:'key' });
       if(!db.objectStoreNames.contains('userPhotos')) db.createObjectStore('userPhotos', { keyPath:'key' });
+      if(db.objectStoreNames.contains('issues')) db.deleteObjectStore('issues');
+      if(db.objectStoreNames.contains('meta')) db.deleteObjectStore('meta');
       if(db.objectStoreNames.contains('images')){
         const legacy=e.target.transaction.objectStore('images'),photos=e.target.transaction.objectStore('userPhotos');
         legacy.openCursor().onsuccess=event=>{const cursor=event.target.result;if(!cursor)return;const row=cursor.value||{};if(row.source==='user-upload'&&row.blob)photos.put(row);cursor.delete();cursor.continue();};
@@ -19877,32 +19853,7 @@ function comicsDb(){
   });
 }
 async function comicsDbPut(store, record){ const db = await comicsDb(); return new Promise((res,rej)=>{ const tx = db.transaction(store,'readwrite'); tx.objectStore(store).put(record).onsuccess = () => res(); tx.onerror = e => rej(e.target.error); }); }
-async function comicsDbAll(store){ const db = await comicsDb(); return new Promise((res,rej)=>{ const tx = db.transaction(store,'readonly'); const req = tx.objectStore(store).getAll(); req.onsuccess = e => res(e.target.result || []); req.onerror = e => rej(e.target.error); }); }
 async function comicsDbGet(store,key){ const db=await comicsDb();return new Promise((res,rej)=>{const tx=db.transaction(store,'readonly'),req=tx.objectStore(store).get(key);req.onsuccess=e=>res(e.target.result||null);req.onerror=e=>rej(e.target.error);}); }
-
-async function saveComicsCacheResults(query, rows = [], source = 'Live lookup'){
-  const comicRows = (rows || []).filter(r => qplCategoryKey(r.category) === 'comic' || isComicLookupIntent(query, r.category));
-  if(!comicRows.length) return;
-  await Promise.all(comicRows.slice(0, 60).map(async row => {
-    const cacheKey = ['comic', (row.name||'').toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,''), (row.issue||row.card_number||''), (row.year||''), (row.variant||'').toLowerCase().replace(/\s+/g,'_')].filter(Boolean).join('|');
-    await comicsDbPut('issues', { cacheKey, query: (query||'').toLowerCase().trim(), storeId: getActiveStoreId(), cacheVersion: COMICS_CACHE_VERSION, updatedAt: new Date().toISOString(), source: source||'Live lookup', issue: row, searchText: [row.name, row.set, row.year, row.variant, row.card_number, row.issue, row.publisher, row.note].filter(Boolean).join(' ').toLowerCase() });
-  }));
-  await comicsDbPut('meta', { key:'lastComicsSyncAt', value: new Date().toISOString() });
-}
-
-async function searchComicsOfflineCache(query, cat = ''){
-  if(!isComicLookupIntent(query, cat)) return [];
-  const terms = (query||'').toLowerCase().replace(/[^a-z0-9\s#]/g,' ').split(/\s+/).filter(Boolean);
-  const issues = await comicsDbAll('issues').catch(() => []);
-  const recent = issues
-    .filter(c => c.storeId === getActiveStoreId() && c.cacheVersion === COMICS_CACHE_VERSION)
-    .filter(c => terms.length < 2 || terms.some(t => (c.searchText||'').includes(t)))
-    .sort((a,b) => new Date(b.updatedAt||0) - new Date(a.updatedAt||0))
-    .slice(0, 40)
-    .map(c => ({ ...(c.issue||{}), cache:{ state: navigator.onLine ? 'cached' : 'offline', updatedAt: c.updatedAt, source: c.source||'Comics cache' }, priceSource: ((c.issue?.priceSource)||'Comics cache') + ' (cached)' }));
-  const seen=new Set();
-  return recent.filter(row=>{const key=String(row.pricecharting?.productId||row.productId||[row.name,row.year,row.variant].join('|')).toLowerCase();if(seen.has(key))return false;seen.add(key);return true;}).slice(0,80);
-}
 
 function priceChartingOfflineProductToQplRow(product, category){
   const prices=product.prices||{},categoryLabels={video_games:'Video Games',yugioh:'Yu-Gi-Oh!',one_piece:'One Piece'};
@@ -19945,6 +19896,7 @@ function setPokemonOfflineBanner(message = '', tone = 'warn'){
 
 function debouncePriceLookup(){
   clearTimeout(qplTimer);
+  if(qplCategoryKey(document.getElementById('qpl-cat')?.value||'')==='comic') return;
   qplTimer = setTimeout(runPriceLookup, 180);
 }
 
@@ -20376,7 +20328,7 @@ async function runPriceLookup(){
   // If comics selected, combine main input + optional issue# helper
   const rawQ = document.getElementById('qpl-input').value.trim();
   const cat = document.getElementById('qpl-cat').value;
-  const combinedRaw = qplCategoryKey(cat) === 'comic' ? (comicSearchQuery() || rawQ) : rawQ;
+  const combinedRaw = rawQ;
   const searchPlan = buildUniversalSearchPlan(combinedRaw, cat);
   const q = searchPlan.normalizedQuery || combinedRaw;
   qplLastSearchPlan = searchPlan;
@@ -20438,7 +20390,9 @@ async function runPriceLookup(){
   setPokemonOfflineBanner('');
   setMtgOfflineBanner('');
   setComicsOfflineBanner('');
-  el.innerHTML = '<div style="color:var(--gold)">Searching local cache first, then live catalog sources...</div>';
+  el.innerHTML = wantsComic
+    ? '<div style="color:var(--purple)">Searching the live Metron comic catalog…</div>'
+    : '<div style="color:var(--gold)">Searching local cache first, then live catalog sources...</div>';
   let cachedResults = [];
 
   if(priceChartingOfflineCategory && !['sports','comics'].includes(priceChartingOfflineCategory)){
@@ -20494,32 +20448,21 @@ async function runPriceLookup(){
   }
 
   // ── Comics offline cache ───────────────────────────────────────────────────
-  if(wantsComic) {
-    cachedResults = await searchComicsOfflineCache(q, cat);
-    if(cachedResults.length) {
-      if(!qplSearchStillActive(mySeq, searchPlan)) return;
-      qplMasterResults = cachedResults; qplLastSearch = q;
-      qplResults = filterQplMasterResults(qplMasterResults, cat);
-      renderQuickLookupResults(qplResults);
-      renderUniversalSearchExplain(searchPlan, qplResults);
-      const cacheAge = pokemonCacheAgeLabel(cachedResults.find(r => r.cache?.updatedAt)?.cache?.updatedAt);
-      setComicsOfflineBanner(navigator.onLine ? 'Cached comics results shown while live refresh runs. Last updated ' + cacheAge + '.' : 'Offline Mode: showing cached comics data. Last updated ' + cacheAge + '.');
-    } else if(!navigator.onLine) {
-      el.innerHTML = `<div style="color:var(--gold);line-height:1.6">No cached comics data found for this search.<br>Search while online to build your comics cache for use at shows.<br><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><button class="hbtn" onclick="document.getElementById('qpl-input').focus()">TRY ANOTHER SEARCH</button></div></div>`;
-      setComicsOfflineBanner('Offline Mode: no cached comics data found for "' + q + '".', 'bad');
-      return;
-    }
+  if(wantsComic && !navigator.onLine){
+    el.innerHTML='<div style="color:var(--gold);line-height:1.6">Comic research uses live Metron issue records and PriceCharting prices. Reconnect to search comics.</div>';
+    setComicsOfflineBanner('Comic research requires an internet connection. No device comic catalog is searched.','bad');
+    return;
   }
 
   // ── Offline guard: cached results already rendered — do not fire live API ──
-  if((wantsPokemon || wantsMtg || wantsComic || wantsSports || priceChartingOfflineCategory) && !navigator.onLine) return;
+  if((wantsPokemon || wantsMtg || wantsSports || priceChartingOfflineCategory) && !navigator.onLine) return;
 
   try {
     const slowTimer = setTimeout(() => {
       if(_netStatus === 'online') { _netStatus = 'slow'; updateNetBadge(); }
       if(wantsPokemon) setPokemonOfflineBanner(cachedResults.length ? 'Slow Internet: still showing cached Pokémon data while live refresh continues.' : 'Slow Internet: still trying live Pokémon sources.');
       if(wantsMtg) setMtgOfflineBanner(cachedResults.length ? 'Slow Internet: still showing cached MTG data while Scryfall refresh continues.' : 'Slow Internet: still trying live MTG sources.');
-      if(wantsComic) setComicsOfflineBanner(cachedResults.length ? 'Slow Internet: still showing cached comics data while live refresh continues.' : 'Slow Internet: still trying live comics sources.');
+      if(wantsComic) setComicsOfflineBanner('Still waiting for the live Metron comic catalog…');
     }, 5000);
     const results = await Promise.race([
       searchQuickCatalog(q, cat, searchPlan),
@@ -20527,7 +20470,7 @@ async function runPriceLookup(){
     ]);
     clearTimeout(slowTimer);
     if(!qplSearchStillActive(mySeq, searchPlan)) return;
-    const liveResults = results.length || wantsPokemon ? results : await aiQuickLookupFallback(q, cat);
+    const liveResults = results.length || wantsPokemon || wantsComic ? results : await aiQuickLookupFallback(q, cat);
     qplMasterResults = universalSearchAdapter()?.mergeAndRankResults([...cachedResults, ...liveResults], searchPlan) || [...cachedResults, ...liveResults];
     qplLastSearch = q;
     qplResults = filterQplMasterResults(qplMasterResults, cat);
@@ -20548,10 +20491,7 @@ async function runPriceLookup(){
       // already hydrates the top result — no separate auto-fire needed here.
     }
     if(wantsMtg) setMtgOfflineBanner('Live Scryfall results. Use Refresh MTG Offline Data to update the device catalog.', 'good');
-    if(wantsComic) {
-      saveComicsCacheResults(q, qplMasterResults, 'Live comics lookup').catch(console.warn);
-      setComicsOfflineBanner((cachedResults.length ? 'Live comics refresh updated the cached copy.' : 'Saved this comics lookup for offline use.') + ' Last cached ' + pokemonCacheAgeLabel(new Date().toISOString()) + '.', 'good');
-    }
+    if(wantsComic) setComicsOfflineBanner('Live Metron issue records loaded. Select a book for full details and PriceCharting prices.','good');
   } catch(e) {
     if(e.message?.includes('timed out') || e.name === 'AbortError'){
       _netStatus = navigator.onLine ? 'slow' : 'offline';
@@ -20567,12 +20507,12 @@ async function runPriceLookup(){
     if(cachedResults.length) {
       if(wantsPokemon) setPokemonOfflineBanner('Live refresh failed: ' + e.message + '. Cached Pokémon data remains visible.', 'bad');
       if(wantsMtg) setMtgOfflineBanner('Live refresh failed: ' + e.message + '. Cached MTG data remains visible.', 'bad');
-      if(wantsComic) setComicsOfflineBanner('Live refresh failed: ' + e.message + '. Cached comics data remains visible.', 'bad');
+      if(wantsComic) setComicsOfflineBanner('Live Metron refresh failed: ' + e.message, 'bad');
     } else {
       el.innerHTML = '<div style="color:var(--red)">Lookup failed: ' + e.message + (e.message?.includes('timed out') ? ' — network may be slow.' : '') + '</div>';
       if(wantsPokemon) setPokemonOfflineBanner('No cached Pokémon data found. Search online to build offline cache.', 'bad');
       if(wantsMtg && !navigator.onLine) setMtgOfflineBanner('No cached MTG data found. Search online to build offline cache.', 'bad');
-      if(wantsComic) setComicsOfflineBanner('No cached comics data found. Search online to build offline cache.', 'bad');
+      if(wantsComic) setComicsOfflineBanner('Live Metron comic search failed. No device comic catalog was searched.', 'bad');
     }
   }
 }
@@ -20599,7 +20539,7 @@ function bestComicPriceCandidate(candidates=[], issue={}){
 
 function metronIssueToQplRow(issue={},priceCandidates=[]){
   const pc=bestComicPriceCandidate(priceCandidates,issue),cp=pc?.comicPrices||{},title=[issue.seriesName,issue.number?'#'+issue.number:''].filter(Boolean).join(' ');
-  return {source:'metron',category:'Comic',name:title||issue.issueName||'Comic issue',series:issue.seriesName||'',seriesTitle:issue.seriesName||'',issue:String(issue.number||''),card_number:String(issue.number||''),year:String(issue.seriesYearBegan||issue.coverDate||'').slice(0,4),set:[issue.publisher,issue.seriesYearBegan?issue.seriesYearBegan+' series':''].filter(Boolean).join(' / '),publisher:issue.publisher||'',imageUrl:issue.imageUrl||'',coverImageUrl:issue.imageUrl||'',imageSource:issue.imageUrl?'metron':'placeholder',coverConfidence:'needs-confirmation',coverConfirmed:false,market:Number(cp.ungraded||0),priceSource:pc?'PriceCharting guide':'No PriceCharting match yet',lastPriceUpdate:new Date().toISOString(),confidence:issue.seriesName&&issue.number?94:70,matchWhy:['Metron series and issue match',issue.imageUrl?'Metron cover available':'No cover returned'].filter(Boolean),metronIssueId:String(issue.id||''),metron:issue,pricecharting:pc||null,providerProductId:String(pc?.productId||issue.id||''),providerUrl:pc?.url||issue.resourceUrl||'',raw:issue,note:'Metron comic record. Select it to load story, credits, identifiers, and every listed variant cover.'};
+  return {source:'metron',category:'Comic',name:title||issue.issueName||'Comic issue',series:issue.seriesName||'',seriesTitle:issue.seriesName||'',issue:String(issue.number||''),card_number:String(issue.number||''),year:String(issue.seriesYearBegan||issue.coverDate||'').slice(0,4),set:[issue.publisher,issue.seriesYearBegan?issue.seriesYearBegan+' series':''].filter(Boolean).join(' / '),publisher:issue.publisher||'',imageUrl:issue.imageUrl||'',coverImageUrl:issue.imageUrl||'',imageSource:issue.imageUrl?'metron':'placeholder',coverConfidence:'needs-confirmation',coverConfirmed:false,market:Number(cp.ungraded||0),priceSource:pc?'PriceCharting guide':'Select for PriceCharting prices',lastPriceUpdate:pc?new Date().toISOString():'',confidence:issue.seriesName&&issue.number?94:70,matchWhy:['Metron series and issue match',issue.imageUrl?'Metron cover available':'No cover returned'].filter(Boolean),metronIssueId:String(issue.id||''),metron:issue,pricecharting:pc||null,providerProductId:String(pc?.productId||issue.id||''),providerUrl:pc?.url||issue.resourceUrl||'',raw:issue,note:'Metron comic record. Select it to load full book info, variant covers, and PriceCharting prices.'};
 }
 
 async function searchMetronComicCatalog(q,parsed={}){
@@ -20626,9 +20566,30 @@ async function confirmMetronComicCover(idx,variantIndex=-1){
   if(document.querySelector(`.qpl-selected-card[data-qpl-idx="${idx}"]`))selectQuickLookupResult(idx);else updateQplResultCard(idx);toast_dash('Exact comic cover confirmed and shared');
 }
 
+function openComicReference(idx,type){
+  const r=qplResults[idx],m=r?.metron||{};if(!r)return;
+  const query=[m.seriesName||r.series||r.name,m.number?'#'+m.number:'',m.publisher||r.publisher||'',r.variant||''].filter(Boolean).join(' ');
+  const urls={
+    metron:m.metronUrl||(`https://metron.cloud/issue/${encodeURIComponent(r.metronIssueId||m.id||'')}/`),
+    gcd:m.gcdId?`https://www.comics.org/issue/${encodeURIComponent(m.gcdId)}/`:'',
+    comicvine:m.comicVineId?`https://comicvine.gamespot.com/issue/4000-${encodeURIComponent(m.comicVineId)}/`:'',
+    mycomicshop:'https://www.mycomicshop.com/search?q='+encodeURIComponent(query),
+  };
+  if(type==='pricecharting'){openQuickExternal(idx,'pricecharting');return;}
+  if(type==='sold'){openQuickExternal(idx,'sold');return;}
+  if(urls[type])window.open(urls[type],'_blank','noopener');
+}
+
 function qplComicMetadataPanel(r,idx){
-  const m=r.metron;if(!m)return '';const credits=(m.credits||[]).map(c=>[c.creator,(c.roles||[]).join(', ')].filter(Boolean).join(' — ')).join('; '),variants=[{name:'Main cover',imageUrl:m.imageUrl||r.imageUrl||'',_index:-1},...(m.variants||[]).map((v,i)=>({...v,_index:i}))].filter(v=>v.imageUrl);
-  return `<div style="margin-top:12px;border:1px solid rgba(199,125,255,.3);border-radius:10px;padding:12px;background:rgba(199,125,255,.04)"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><b style="font-family:'Orbitron',monospace;font-size:10px;color:var(--purple)">METRON ISSUE DETAILS</b><span class="qpl-badge">METRON #${escHtml(r.metronIssueId||m.id||'')}</span></div>${m.description?`<p style="font-size:11px;line-height:1.6">${escHtml(m.description)}</p>`:''}${(m.storyTitles||[]).length?`<div style="font-size:10px;margin-top:7px"><b>Stories:</b> ${escHtml(m.storyTitles.join(' / '))}</div>`:''}${credits?`<div style="font-size:10px;margin-top:7px"><b>Credits:</b> ${escHtml(credits)}</div>`:''}${(m.characters||[]).length?`<div style="font-size:10px;margin-top:7px"><b>Characters:</b> ${escHtml(m.characters.join(', '))}</div>`:''}<div style="font-size:9px;color:var(--dim);margin-top:7px">${escHtml([m.publisher,m.imprint,m.coverDate,m.upc?'UPC '+m.upc:'',m.sku?'SKU '+m.sku:'',m.gcdId?'GCD '+m.gcdId:''].filter(Boolean).join(' / '))}</div><div style="margin-top:9px"><span class="qpl-badge warn">KEY ISSUE: STORE VERIFICATION REQUIRED</span><div style="font-size:9px;color:var(--dim);margin-top:4px">Metron supplies issue facts, not reliable key-issue claims. Record your source and reason in the appraisal.</div></div>${variants.length?`<div style="display:flex;gap:8px;overflow-x:auto;margin-top:10px;padding-bottom:4px">${variants.map(v=>`<button class="hbtn" style="min-width:105px;padding:6px" onclick="confirmMetronComicCover(${idx},${v._index})"><img src="${escHtml(v.imageUrl)}" alt="${escHtml(v.name)}" style="width:90px;height:135px;object-fit:cover;display:block;margin:auto"><span style="display:block;white-space:normal;margin-top:4px">${escHtml(v.name||'Variant')}</span></button>`).join('')}</div>`:''}</div>`;
+  const m=r.metron;if(!m)return '';
+  const credits=(m.credits||[]).map(c=>[c.creator,(c.roles||[]).join(', ')].filter(Boolean).join(' — ')).join('; ');
+  const variants=[{name:'Main cover',imageUrl:m.imageUrl||r.imageUrl||'',_index:-1},...(m.variants||[]).map((v,i)=>({...v,_index:i}))].filter(v=>v.imageUrl);
+  const facts=[
+    ['Publisher',[m.publisher,m.imprint].filter(Boolean).join(' / ')],['Series began',m.seriesYearBegan],['Cover date',m.coverDate],['Store date',m.storeDate],
+    ['Cover price',m.coverPrice?`${m.coverPriceCurrency||'USD'} ${Number(m.coverPrice).toFixed(2)}`:''],['Pages',m.pageCount],['Rating',m.rating],['UPC',m.upc],['SKU',m.sku],['ISBN',m.isbn]
+  ].filter(([,value])=>value!==''&&value!==null&&value!==undefined);
+  const links=`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px"><button class="hbtn" style="color:var(--purple)" onclick="openComicReference(${idx},'metron')">METRON RECORD</button><button class="hbtn" style="color:var(--gold)" onclick="openComicReference(${idx},'pricecharting')">PRICECHARTING</button><button class="hbtn" onclick="openComicReference(${idx},'sold')">EBAY SOLD</button><button class="hbtn" onclick="openComicReference(${idx},'mycomicshop')">MYCOMICSHOP</button>${m.gcdId?`<button class="hbtn" onclick="openComicReference(${idx},'gcd')">GCD RECORD</button>`:''}${m.comicVineId?`<button class="hbtn" onclick="openComicReference(${idx},'comicvine')">COMIC VINE</button>`:''}</div>`;
+  return `<section style="margin-top:12px;border:1px solid rgba(199,125,255,.42);border-radius:10px;padding:14px;background:rgba(199,125,255,.055)"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center"><b style="font-family:'Orbitron',monospace;font-size:12px;color:var(--purple)">BOOK INFO · METRON</b><span class="qpl-badge">METRON #${escHtml(r.metronIssueId||m.id||'')}</span></div><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:6px;margin-top:10px">${facts.map(([label,value])=>`<div style="background:var(--surf);border:1px solid var(--border);border-radius:7px;padding:7px"><small style="display:block;color:var(--dim);font-size:8px">${escHtml(label)}</small><b style="font-size:10px">${escHtml(String(value))}</b></div>`).join('')}</div><div style="margin-top:11px"><b style="font-size:10px;color:var(--purple)">STORY / SYNOPSIS</b><p style="font-size:11px;line-height:1.65;margin:5px 0;color:${m.description?'var(--text)':'var(--dim)'}">${escHtml(m.description||'Metron does not currently have a synopsis for this issue.')}</p></div>${(m.storyTitles||[]).length?`<div style="font-size:10px;margin-top:7px"><b>Story titles:</b> ${escHtml(m.storyTitles.join(' / '))}</div>`:''}${credits?`<div style="font-size:10px;margin-top:7px;line-height:1.55"><b>Creators:</b> ${escHtml(credits)}</div>`:''}${(m.arcs||[]).length?`<div style="font-size:10px;margin-top:7px"><b>Story arcs:</b> ${escHtml(m.arcs.join(', '))}</div>`:''}${(m.genres||[]).length?`<div style="font-size:10px;margin-top:7px"><b>Genres:</b> ${escHtml(m.genres.join(', '))}</div>`:''}${(m.characters||[]).length?`<div style="font-size:10px;margin-top:7px"><b>Characters:</b> ${escHtml(m.characters.join(', '))}</div>`:''}${(m.teams||[]).length?`<div style="font-size:10px;margin-top:7px"><b>Teams:</b> ${escHtml(m.teams.join(', '))}</div>`:''}${(m.universes||[]).length?`<div style="font-size:10px;margin-top:7px"><b>Universes:</b> ${escHtml(m.universes.join(', '))}</div>`:''}${(m.reprints||[]).length?`<div style="font-size:10px;margin-top:7px"><b>Reprints:</b> ${escHtml(m.reprints.map(x=>[x.name,x.number?'#'+x.number:''].filter(Boolean).join(' ')).join(', '))}</div>`:''}${links}<div style="margin-top:11px"><span class="qpl-badge warn">KEY ISSUE STATUS NEEDS A VERIFIED SOURCE</span><div style="font-size:9px;color:var(--dim);margin-top:4px">Metron provides bibliographic facts, creators and story data; it does not make dependable key-issue claims. Record the verified reason below.</div></div>${variants.length?`<div style="font-family:'Orbitron',monospace;font-size:10px;color:var(--purple);margin-top:13px">VERIFY THE EXACT COVER · ${variants.length} SHOWN</div><div style="display:flex;gap:8px;overflow-x:auto;margin-top:7px;padding-bottom:4px">${variants.map(v=>`<button class="hbtn" style="min-width:105px;padding:6px;${r.coverConfirmed&&r.imageUrl===v.imageUrl?'border-color:var(--g)':''}" onclick="confirmMetronComicCover(${idx},${v._index})"><img src="${escHtml(v.imageUrl)}" alt="${escHtml(v.name)}" style="width:90px;height:135px;object-fit:cover;display:block;margin:auto"><span style="display:block;white-space:normal;margin-top:4px">${escHtml(v.name||'Variant')}</span></button>`).join('')}</div>`:'<div style="color:var(--dim);font-size:10px;margin-top:10px">Metron did not return additional variant cover images for this issue.</div>'}</section>`;
 }
 
 function qplComicKeyPanel(r,idx){
