@@ -11,7 +11,7 @@
  *   STRIPE_WEBHOOK_SECRET_TEST / STRIPE_WEBHOOK_SECRET_LIVE
  *   EBAY_USER_TOKEN
  *   EBAY_APP_ID
- *   COMICVINE_API_KEY
+ *   METRON_USER / METRON_PASS
  *   SOLDCOMPS_API_KEY
  *   LBA_KV
  *   MTG_CATALOG_R2 (R2 must be enabled for the Cloudflare account)
@@ -40,6 +40,131 @@ const CORS = {
   'Access-Control-Allow-Headers': 'Content-Type, accept, Authorization, x-store-id, X-Store-Id',
   'Access-Control-Max-Age': '86400',
 };
+
+const METRON_BASE = 'https://metron.cloud/api';
+
+function metronText(value, max = 4000) {
+  return String(value || '')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p\s*>/gi, '\n')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;|&apos;/gi, "'")
+    .replace(/\r/g, '')
+    .replace(/[ \t]+/g, ' ')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+    .slice(0, max);
+}
+
+function metronName(value) {
+  if (typeof value === 'string') return value;
+  return String(value?.name || value?.issue_name || value?.title || '');
+}
+
+function metronImage(value) {
+  if (typeof value === 'string') return value;
+  return String(value?.original || value?.large || value?.medium || value?.small || value?.url || '');
+}
+
+function normalizeMetronListIssue(issue = {}) {
+  const series = issue.series || {};
+  return {
+    id:String(issue.id || ''),
+    issueName:String(issue.issue_name || ''),
+    seriesId:String(series.id || ''),
+    seriesName:metronName(series),
+    seriesVolume:series.volume ?? null,
+    seriesYearBegan:series.year_began ?? null,
+    seriesType:metronName(series.series_type),
+    publisher:metronName(issue.publisher || series.publisher),
+    number:String(issue.number || ''),
+    coverDate:issue.cover_date || null,
+    storeDate:issue.store_date || null,
+    imageUrl:metronImage(issue.image),
+    coverHash:String(issue.cover_hash || ''),
+    modified:issue.modified || null,
+    resourceUrl:issue.resource_url || (issue.id ? `https://metron.cloud/issue/${issue.id}/` : ''),
+  };
+}
+
+function normalizeMetronDetail(issue = {}) {
+  const base = normalizeMetronListIssue(issue);
+  const variants = (Array.isArray(issue.variants) ? issue.variants : []).map((variant, index) => ({
+    id:`${base.id}:variant:${index}`,
+    name:String(variant?.name || `Variant ${index + 1}`),
+    sku:String(variant?.sku || ''),
+    upc:String(variant?.upc || ''),
+    imageUrl:metronImage(variant?.image),
+  }));
+  const credits = (Array.isArray(issue.credits) ? issue.credits : []).map(credit => ({
+    creator:metronName(credit?.creator),
+    roles:(Array.isArray(credit?.role) ? credit.role : []).map(metronName).filter(Boolean),
+  })).filter(credit => credit.creator);
+  return {
+    ...base,
+    publisher:metronName(issue.publisher),
+    imprint:metronName(issue.imprint),
+    altNumber:String(issue.alt_number || ''),
+    collectionTitle:String(issue.collection_title || ''),
+    storyTitles:(Array.isArray(issue.story_titles) ? issue.story_titles : []).map(String),
+    coverPrice:Number(issue.price || 0) || null,
+    coverPriceCurrency:String(issue.price_currency || 'USD'),
+    rating:metronName(issue.rating),
+    sku:String(issue.sku || ''),
+    isbn:String(issue.isbn || ''),
+    upc:String(issue.upc || ''),
+    pageCount:Number(issue.page_count || 0) || null,
+    description:metronText(issue.desc),
+    arcs:(Array.isArray(issue.arcs) ? issue.arcs : []).map(metronName).filter(Boolean),
+    credits,
+    characters:(Array.isArray(issue.characters) ? issue.characters : []).map(metronName).filter(Boolean),
+    teams:(Array.isArray(issue.teams) ? issue.teams : []).map(metronName).filter(Boolean),
+    universes:(Array.isArray(issue.universes) ? issue.universes : []).map(metronName).filter(Boolean),
+    variants,
+    comicVineId:String(issue.cv_id || ''),
+    gcdId:String(issue.gcd_id || ''),
+  };
+}
+
+async function metronFetch(env, path, params = {}, ttlSeconds = 86400) {
+  const user = String(env.METRON_USER || '');
+  const pass = String(env.METRON_PASS || '');
+  if (!user || !pass) {
+    const error = new Error('METRON_USER and METRON_PASS are not configured');
+    error.status = 501;
+    throw error;
+  }
+  const qs = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && String(value).trim()) qs.set(key, String(value).trim());
+  });
+  const cleanPath = '/' + String(path || '').replace(/^\/+/, '');
+  const cacheKey = `metron:${cleanPath}?${qs.toString()}`;
+  if (env.LBA_KV) {
+    const cached = await env.LBA_KV.get(cacheKey, 'json').catch(() => null);
+    if (cached) return { data:cached, cacheStatus:'hit' };
+  }
+  const response = await fetch(`${METRON_BASE}${cleanPath}${qs.size ? '?' + qs.toString() : ''}`, {
+    headers:{
+      'Accept':'application/json',
+      'Authorization':'Basic ' + btoa(`${user}:${pass}`),
+      'User-Agent':'WalkOff-Comics/1.0',
+    },
+    signal:AbortSignal.timeout ? AbortSignal.timeout(10000) : undefined,
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const error = new Error(data?.detail || data?.error || `Metron HTTP ${response.status}`);
+    error.status = response.status;
+    error.retryAfter = response.headers.get('Retry-After') || '';
+    throw error;
+  }
+  if (env.LBA_KV) await env.LBA_KV.put(cacheKey, JSON.stringify(data), { expirationTtl:ttlSeconds });
+  return { data, cacheStatus:'miss' };
+}
 
 function json(data, status = 200, extraHeaders = {}) {
   return new Response(JSON.stringify(data), {
@@ -1170,6 +1295,7 @@ export default {
         ebayClient: !!(env.EBAY_CLIENT_ID || (env.LBA_KV && await env.LBA_KV.get('secret:EBAY_CLIENT_ID'))),
         ebayRefresh: !!(env.EBAY_REFRESH_TOKEN || (env.LBA_KV && await env.LBA_KV.get('secret:EBAY_REFRESH_TOKEN'))),
         comicvine: !!env.COMICVINE_API_KEY,
+        metron: !!(env.METRON_USER && env.METRON_PASS),
         justtcg: !!env.JUSTTCG_API_KEY,
         pricecharting: !!(env.PRICECHARTING_TOKEN || env.PRICECHARTING_API_KEY),
         tcgapi: !!env.TCGAPI_KEY,
@@ -1404,7 +1530,7 @@ export default {
         const body = await request.text();
         if (new TextEncoder().encode(body).byteLength > 1024 * 1024) return json({ ok:false, error:'KV payload is too large' }, 413);
         if (env.LBA_KV) {
-          const expirationTtl = key.startsWith('show_session') ? 60 * 60 * 24 * 180 : 604800;
+          const expirationTtl = key.startsWith('show_session') ? 60 * 60 * 24 * 180 : key.startsWith('comic_cover_') ? 60 * 60 * 24 * 365 : 604800;
           await env.LBA_KV.put(scopedKey, body, { expirationTtl });
         } else {
           globalThis['_' + scopedKey] = body;
@@ -2743,7 +2869,7 @@ export default {
     }
 
     // PriceCharting guide proxy. Token and CSV URLs stay in Worker/KV only.
-    if (url.pathname.startsWith('/pricing/pricecharting') || url.pathname === '/barcode/lookup') {
+    if (url.pathname.startsWith('/pricing/pricecharting') || url.pathname.startsWith('/comic/metron/') || url.pathname === '/barcode/lookup') {
       const token = env.PRICECHARTING_TOKEN || env.PRICECHARTING_API_KEY;
 
       const pennies = v => {
@@ -2936,6 +3062,72 @@ export default {
         let data; try { data = JSON.parse(text); } catch (_) { data = { raw: text }; }
         if (!res.ok || data.status === 'error') throw new Error(data['error-message'] || data.error || 'PriceCharting ' + res.status);
         return data;
+      }
+
+      const comicPcQuery = issue => [
+        issue.seriesName,
+        issue.number ? '#' + issue.number : '',
+        issue.publisher,
+        issue.seriesYearBegan || (issue.coverDate ? String(issue.coverDate).slice(0, 4) : ''),
+      ].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
+      const comicPcCandidates = async issue => {
+        if (!token) return [];
+        const q = comicPcQuery(issue);
+        if (!q) return [];
+        try {
+          const data = await pcFetch('/api/products', { q });
+          return (data.products || []).map(product => normalizePcProduct(product, q)).slice(0, 25);
+        } catch (_) {
+          return [];
+        }
+      };
+
+      if (url.pathname === '/comic/metron/search' && request.method === 'GET') {
+        const storeId = requestStoreId(request, url);
+        const access = await requireStoreUser(request, env, storeId);
+        if (access.error) return access.error;
+        const rawQuery = String(url.searchParams.get('q') || '').trim().slice(0, 180);
+        const series = String(url.searchParams.get('series') || '').trim().slice(0, 120);
+        const number = String(url.searchParams.get('number') || '').trim().slice(0, 30);
+        const year = String(url.searchParams.get('year') || '').replace(/\D/g, '').slice(0, 4);
+        const publisher = String(url.searchParams.get('publisher') || '').trim().slice(0, 80);
+        const upc = String(url.searchParams.get('upc') || '').replace(/\D/g, '').slice(0, 20);
+        const sku = String(url.searchParams.get('sku') || '').trim().slice(0, 80);
+        if (!series && !upc && !sku) return json({ ok:false, error:'Comic series, UPC, or SKU is required' }, 400);
+        const filters = upc ? { upc } : sku ? { sku } : {
+          series_name:series,
+          number,
+          ...(year ? { series_year_began:year } : {}),
+          ...(publisher ? { publisher_name:publisher } : {}),
+        };
+        try {
+          const metron = await metronFetch(env, '/issue/', filters, 60 * 60 * 24);
+          const rawIssues = Array.isArray(metron.data) ? metron.data : (metron.data?.results || []);
+          const issues = rawIssues.slice(0, 20).map(normalizeMetronListIssue);
+          const priceCandidates = number && issues.length ? await comicPcCandidates({ ...issues[0], publisher }) : [];
+          return json({ ok:true, source:'Metron + PriceCharting', query:rawQuery, filters, cacheStatus:metron.cacheStatus, issues, priceCandidates });
+        } catch (error) {
+          const status = [401,403,429].includes(Number(error.status)) ? Number(error.status) : 502;
+          const message = status === 401 || status === 403 ? 'Metron credentials were rejected' : status === 429 ? 'Metron rate limit reached; cached comic records remain available' : 'Metron comic search failed';
+          return json({ ok:false, source:'Metron', error:message, retryAfter:error.retryAfter || null }, status, error.retryAfter ? { 'Retry-After':error.retryAfter } : {});
+        }
+      }
+
+      const metronIssueMatch = url.pathname.match(/^\/comic\/metron\/issue\/(\d+)$/);
+      if (metronIssueMatch && request.method === 'GET') {
+        const storeId = requestStoreId(request, url);
+        const access = await requireStoreUser(request, env, storeId);
+        if (access.error) return access.error;
+        try {
+          const metron = await metronFetch(env, `/issue/${metronIssueMatch[1]}/`, {}, 60 * 60 * 24 * 7);
+          const issue = normalizeMetronDetail(metron.data || {});
+          const priceCandidates = await comicPcCandidates(issue);
+          return json({ ok:true, source:'Metron + PriceCharting', cacheStatus:metron.cacheStatus, issue, priceCandidates });
+        } catch (error) {
+          const status = [401,403,404,429].includes(Number(error.status)) ? Number(error.status) : 502;
+          const message = status === 401 || status === 403 ? 'Metron credentials were rejected' : status === 429 ? 'Metron rate limit reached; try the cached record again shortly' : status === 404 ? 'Metron issue not found' : 'Metron issue lookup failed';
+          return json({ ok:false, source:'Metron', error:message, retryAfter:error.retryAfter || null }, status, error.retryAfter ? { 'Retry-After':error.retryAfter } : {});
+        }
       }
       const normalizeBarcodeValue = raw => {
         const original = String(raw ?? '').trim();
