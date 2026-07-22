@@ -3152,11 +3152,15 @@ export default {
       const normalizeComicRunText = value => String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
       const comicPcIdentity = candidate => {
         const productName = String(candidate?.productName || '').trim();
-        const issueMatch = productName.match(/^(.*?)\s*#\s*([0-9]+(?:\.[0-9]+)?[a-z]?)(?=\b|\s|\[|\()/i);
+        const issueMatch = productName.match(/#\s*([0-9]+(?:\.[0-9]+)?[a-z]?)(?=\b|\s|\[|\()/i);
+        const beforeIssue = issueMatch ? productName.slice(0, issueMatch.index).trim() : '';
+        const descriptorMatch = beforeIssue.match(/\s*\[([^\]]+)\]\s*$/);
+        const seriesName = descriptorMatch ? beforeIssue.slice(0, descriptorMatch.index).trim() : beforeIssue;
         const explicitYearMatch = productName.match(/[\[(]\s*((?:19|20)\d{2})\s*[\])]/);
         return {
-          series:normalizeComicRunText(issueMatch?.[1] || ''),
-          number:String(issueMatch?.[2] || '').toLowerCase(),
+          series:normalizeComicRunText(seriesName),
+          number:String(issueMatch?.[1] || '').toLowerCase(),
+          descriptor:String(descriptorMatch?.[1] || '').trim(),
           explicitYear:String(explicitYearMatch?.[1] || ''),
         };
       };
@@ -3203,6 +3207,7 @@ export default {
       };
       const comicPcCoverDescriptor = (product, issue) => {
         const name = String(product?.productName || '');
+        const identity = comicPcIdentity(product);
         const number = String(issue?.number || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         let suffix = number ? name.replace(new RegExp(`^.*?#\\s*${number}`, 'i'), '') : name;
         suffix = suffix.replace(/[\[(]\s*(?:19|20)\d{2}\s*[\])]/g, ' ')
@@ -3210,7 +3215,10 @@ export default {
           .replace(/^[\s\-:|/]+|[\s\-:|/]+$/g, '')
           .replace(/\s+/g, ' ')
           .trim();
-        return normalizeComicRunText(suffix);
+        const baseNumber = String(issue?.number || '').toLowerCase().replace(/[^a-z0-9.]/g, '');
+        const letteredCover = identity.number !== baseNumber && identity.number.startsWith(baseNumber)
+          ? `cover ${identity.number.slice(baseNumber.length)}` : '';
+        return normalizeComicRunText([identity.descriptor, letteredCover, suffix].filter(Boolean).join(' '));
       };
       const comicPcCandidates = async (issue, force = false) => {
         if (!token) return [];
@@ -3218,7 +3226,7 @@ export default {
         if (!q) return [];
         const exact = [issue.seriesName, issue.number ? '#' + issue.number : ''].filter(Boolean).join(' ').trim();
         const queries = [...new Set([q, exact && `${exact} variant`, exact && `${exact} foil`, exact && `${exact} virgin`, exact && `${exact} retailer exclusive`].filter(Boolean))];
-        const cacheKey = `comic-pricecharting:v7:${queries.join('|').toLowerCase().slice(0, 500)}`;
+        const cacheKey = `comic-pricecharting:v8:${queries.join('|').toLowerCase().slice(0, 500)}`;
         if (env.LBA_KV && !force) {
           const cached = await env.LBA_KV.get(cacheKey, 'json').catch(() => null);
           if (Array.isArray(cached)) return cached;

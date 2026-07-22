@@ -96,6 +96,9 @@ assert.match(worker,/\^comic books\\b/,'comic matching must require a real Price
 assert.match(worker,/identity\.series === seriesPhrase/,'comic prices must match the exact series title before the issue marker');
 assert.match(worker,/identity\.number === number/,'comic prices must match the exact issue number');
 assert.match(worker,/new RegExp\(`\^\$\{number\}\[a-z\]\$`/,'cover-letter products such as #1A and #1B must remain attached to base issue #1');
+assert.match(worker,/const beforeIssue = issueMatch \? productName\.slice\(0, issueMatch\.index\)/,'PriceCharting identity must split the title before the issue marker');
+assert.match(worker,/const descriptorMatch = beforeIssue\.match/,'bracketed PriceCharting cover names before the issue number must be captured as variants');
+assert.match(worker,/\[identity\.descriptor, letteredCover, suffix\]/,'cover descriptors before and after the issue number must be retained');
 assert.match(worker,/allowedYears\.has\(identity\.explicitYear\)/,'comic prices must reject incompatible run or publication years');
 assert.doesNotMatch(worker,/pcFetch\('\/api\/products', \{ q, console:'Comics' \}\)/,'PriceCharting products only documents q; comic results must be filtered after retrieval');
 assert.match(worker,/pricechartingProductId/,'PriceCharting cover variants must be returned as selectable covers');
@@ -105,7 +108,7 @@ assert.match(dashboard,/SELECTED COVER/,'cover selection must be visible in the 
 assert.match(worker,/function metronExactIssueRecords/,'selected issue should request exact Metron issue records');
 assert.match(worker,/series_id:seriesId, number, page:1/,'cover lookup must retain the selected series and issue number');
 assert.match(worker,/Math\.min\(3/,'Metron cover pagination must remain bounded');
-assert.match(worker,/comic-pricecharting:v7/,'cover candidate cache must include the expanded variant and foil searches');
+assert.match(worker,/comic-pricecharting:v8/,'cover candidate cache must be invalidated after bracketed variant discovery');
 assert.match(worker,/exact && `\$\{exact\} foil`/,'exact PriceCharting hydration must search foil editions');
 assert.match(worker,/for \(const query of queries\)/,'PriceCharting cover searches must be sequential so provider throttling is respected');
 assert.doesNotMatch(worker,/linkedPrice \? Promise\.resolve\(\[\]\) : comicPcCandidates/,'a saved exact price must not suppress discovery of other covers');
