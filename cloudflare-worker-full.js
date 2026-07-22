@@ -3132,22 +3132,35 @@ export default {
       const comicPcQuery = issue => [issue.seriesName, issue.number ? '#' + issue.number : '', issue.seriesYearBegan || '', 'Comic Books']
         .filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
       const isComicPcCandidate = candidate => /^comic books\b/i.test(String(candidate?.consoleName || '').trim());
+      const normalizeComicRunText = value => String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+      const comicPcIdentity = candidate => {
+        const productName = String(candidate?.productName || '').trim();
+        const issueMatch = productName.match(/^(.*?)\s*#\s*([0-9]+(?:\.[0-9]+)?[a-z]?)(?=\b|\s|\[|\()/i);
+        const explicitYearMatch = productName.match(/[\[(]\s*((?:19|20)\d{2})\s*[\])]/);
+        return {
+          series:normalizeComicRunText(issueMatch?.[1] || ''),
+          number:String(issueMatch?.[2] || '').toLowerCase(),
+          explicitYear:String(explicitYearMatch?.[1] || ''),
+        };
+      };
       const matchingComicPcCandidates = (candidates, issue) => {
-        const seriesPhrase = String(issue.seriesName || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
-        const words = String(issue.seriesName || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').split(/\s+/).filter(word => word.length > 2);
+        const seriesPhrase = normalizeComicRunText(issue.seriesName);
         const number = String(issue.number || '').toLowerCase().replace(/[^a-z0-9.]/g, '');
-        const numberPattern = number ? new RegExp(`(?:^|[^a-z0-9])#?${number.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?:[^a-z0-9]|$)`, 'i') : null;
-        const year = String(issue.seriesYearBegan || '').trim();
+        const allowedYears = new Set([issue.seriesYearBegan, String(issue.coverDate || '').slice(0, 4), String(issue.storeDate || '').slice(0, 4)].map(String).filter(value => /^(?:19|20)\d{2}$/.test(value)));
         const variantWords = String(issue.issueName || issue.selectedVariant?.name || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').split(/\s+/).filter(word => word.length > 2 && !['cover','variant','issue'].includes(word));
         return (candidates || []).filter(isComicPcCandidate).map(candidate => {
-          const normalized = String(candidate.productName || '').toLowerCase().replace(/[^a-z0-9.#]+/g, ' ');
-          const seriesMatch = !seriesPhrase || normalized === seriesPhrase || normalized.startsWith(seriesPhrase + ' ');
-          const numberMatch = !numberPattern || numberPattern.test(normalized);
-          const titleMatches = words.filter(word => normalized.includes(word)).length;
+          const identity = comicPcIdentity(candidate);
+          // PriceCharting title searches often return similarly named 2025 spin-offs
+          // for a 1984 run. Require the exact title before the issue marker, the exact
+          // issue number, and (when supplied) a year belonging to this Metron issue/run.
+          const seriesMatch = !!seriesPhrase && identity.series === seriesPhrase;
+          const numberMatch = !!number && identity.number === number;
+          const yearMatch = !identity.explicitYear || !allowedYears.size || allowedYears.has(identity.explicitYear);
+          const normalized = normalizeComicRunText(candidate.productName);
           const variantMatches = variantWords.filter(word => normalized.includes(word)).length;
-          const score = titleMatches * 18 + (numberMatch ? 60 : 0) + (/comic/i.test(candidate.consoleName || '') ? 20 : 0) + (year && normalized.includes(year) ? 12 : 0) + variantMatches * 5;
-          return { candidate, score, numberMatch, seriesMatch, titleMatches, variantMatches };
-        }).filter(match => match.seriesMatch && match.numberMatch && match.titleMatches >= Math.max(1, Math.ceil(words.length * 0.6)) && match.score >= 70)
+          const score = (seriesMatch ? 80 : 0) + (numberMatch ? 80 : 0) + (yearMatch ? 20 : 0) + (/comic/i.test(candidate.consoleName || '') ? 20 : 0) + variantMatches * 5;
+          return { candidate, score, numberMatch, seriesMatch, yearMatch, variantMatches };
+        }).filter(match => match.seriesMatch && match.numberMatch && match.yearMatch)
           .sort((a, b) => b.score - a.score).map(match => ({ ...match.candidate, comicMatchScore:match.score }));
       };
       const bestComicPcCandidate = (candidates, issue) => {
@@ -3158,9 +3171,10 @@ export default {
         return product?.productName && product?.consoleName ? `https://www.pricecharting.com/game/${slug(product.consoleName)}/${slug(product.productName)}` : '';
       };
       const hydratePcCoverImage = async product => {
-        if (!product || product.imageUrl) return product;
+        if (!product) return product;
         const pageUrl = pcProductPageUrl(product);
         if (!pageUrl) return product;
+        if (product.imageUrl) return { ...product, url:pageUrl };
         try {
           const pageRes = await fetch(pageUrl, { headers:{ 'User-Agent':'Mozilla/5.0 (compatible; Walk-Off Comic Cover/2026)', 'Accept':'text/html' }, cf:{ cacheTtl:86400, cacheEverything:true } });
           if (!pageRes.ok) return product;
@@ -3247,6 +3261,22 @@ export default {
         }
       }
 
+      const metronSeriesPreviewMatch = url.pathname.match(/^\/comic\/metron\/series\/(\d+)\/preview$/);
+      if (metronSeriesPreviewMatch && request.method === 'GET') {
+        const storeId = requestStoreId(request, url);
+        const access = await requireStoreUser(request, env, storeId);
+        if (access.error) return access.error;
+        try {
+          const result = await metronFetch(env, `/series/${metronSeriesPreviewMatch[1]}/issue_list/`, { limit:10 }, 60 * 60 * 24 * 30);
+          const rawIssues = Array.isArray(result.data) ? result.data : (result.data?.results || []);
+          const preview = rawIssues.map(normalizeMetronListIssue).find(issue => issue.imageUrl) || null;
+          return json({ ok:true, source:'Metron', seriesId:metronSeriesPreviewMatch[1], cacheStatus:result.cacheStatus, preview });
+        } catch (error) {
+          const status = [401,403,404,429].includes(Number(error.status)) ? Number(error.status) : 502;
+          return json({ ok:false, source:'Metron', error:status === 429 ? 'Metron preview rate limit reached' : 'Metron series preview unavailable' }, status);
+        }
+      }
+
       const metronIssueMatch = url.pathname.match(/^\/comic\/metron\/issue\/(\d+)$/);
       if (metronIssueMatch && request.method === 'GET') {
         const storeId = requestStoreId(request, url);
@@ -3281,7 +3311,13 @@ export default {
             issueName:product.productName,
             name:product.productName,
             number:issue.number,
+            seriesId:issue.seriesId,
+            seriesName:issue.seriesName,
+            seriesYearBegan:issue.seriesYearBegan,
+            coverDate:issue.coverDate,
+            publisher:issue.publisher,
             imageUrl:product.imageUrl,
+            pricechartingUrl:product.url,
             pricecharting:product,
             source:'PriceCharting',
           }))].filter((cover, index, all) => cover.imageUrl && all.findIndex(other => String(other.imageUrl).split('?')[0] === String(cover.imageUrl).split('?')[0]) === index);
@@ -3291,7 +3327,8 @@ export default {
           if (priceMatch?.productId) {
             try {
               const detail = await pcFetch('/api/product', { id:priceMatch.productId });
-              priceMatch = { ...normalizePcProduct(detail, comicPcQuery(issue)), savedExactLink:!!linkedPrice };
+              const normalizedPriceMatch = normalizePcProduct(detail, comicPcQuery(issue));
+              priceMatch = { ...normalizedPriceMatch, url:pcProductPageUrl(normalizedPriceMatch) || normalizedPriceMatch.url, savedExactLink:!!linkedPrice };
             } catch (_) {}
           }
           return json({ ok:true, source:'Metron + PriceCharting', cacheStatus:metron.cacheStatus, issue, covers, priceCandidates:comicCandidates, priceMatch });
@@ -3907,8 +3944,9 @@ export default {
         if (productMatch) {
           const data = await pcFetch('/api/product', { id: decodeURIComponent(productMatch[1]) });
           const product = normalizePcProduct(data, data['product-name'] || '');
+          const slug = value => String(value || '').toLowerCase().replace(/['’]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+          if (product.productName && product.consoleName) product.url = `https://www.pricecharting.com/game/${slug(product.consoleName)}/${slug(product.productName)}`;
           if (!product.imageUrl && product.productName && product.consoleName) {
-            const slug = value => String(value || '').toLowerCase().replace(/['’]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
             try {
               const pageRes = await fetch(`https://www.pricecharting.com/game/${slug(product.consoleName)}/${slug(product.productName)}`, {
                 headers:{ 'User-Agent':'Mozilla/5.0 (compatible; Walk-Off Catalog Image/2026)', 'Accept':'text/html' },

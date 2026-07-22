@@ -60,7 +60,9 @@ assert.match(dashboard,/comic_series_preferences_v1/,'recent comic runs must per
 const metronSearch=dashboard.slice(dashboard.indexOf('async function searchMetronComicCatalog'),dashboard.indexOf('async function hydrateMetronComicResult'));
 assert.doesNotMatch(metronSearch,/params\.set\('series_id'/,'a remembered run must never silently lock a new title search');
 assert.match(dashboard,/RECENT PICK - YOU CAN CHANGE IT/,'the prior run should be a visible suggestion only');
-assert.match(dashboard,/if\(r\.source === 'metron_series'\) return false/,'series cards must not receive guessed issue covers');
+assert.match(dashboard,/function lazyLoadMetronSeriesPreviews/,'series cards should load an exact Metron first-issue preview');
+assert.match(worker,/metronSeriesPreviewMatch/,'series previews must use a dedicated exact-series route');
+assert.match(worker,/metronSeriesPreviewMatch\[1\][\s\S]*issue_list/,'series previews must come from the selected Metron series id');
 assert.match(dashboard,/SELECT THIS RUN/,'every series choice needs an unmistakable selection action');
 assert.match(dashboard,/comic_price_link_/,'exact comic price links must persist across devices');
 assert.match(dashboard,/function selectComicPriceCandidate/,'ambiguous prices must be user-selectable');
@@ -79,10 +81,14 @@ assert.match(worker,/source:'Metron'.*priceCandidates:\[\]/s,'initial comic sear
 assert.match(worker,/comic-pricecharting:/,'selected comic PriceCharting candidates should be server cached');
 assert.match(worker,/matchingComicPcCandidates/,'comic PriceCharting matches must reject non-comic categories');
 assert.match(worker,/\^comic books\\b/,'comic matching must require a real PriceCharting Comic Books catalog');
-assert.match(worker,/normalized\.startsWith\(seriesPhrase/,'comic variants must remain inside the selected series');
+assert.match(worker,/identity\.series === seriesPhrase/,'comic prices must match the exact series title before the issue marker');
+assert.match(worker,/identity\.number === number/,'comic prices must match the exact issue number');
+assert.match(worker,/allowedYears\.has\(identity\.explicitYear\)/,'comic prices must reject incompatible run or publication years');
 assert.doesNotMatch(worker,/pcFetch\('\/api\/products', \{ q, console:'Comics' \}\)/,'PriceCharting products only documents q; comic results must be filtered after retrieval');
 assert.match(worker,/pricechartingProductId/,'PriceCharting cover variants must be returned as selectable covers');
 assert.match(dashboard,/cover\.pricechartingProductId/,'selecting a PriceCharting cover must load its exact prices');
+assert.match(dashboard,/VERIFY EXACT PRICECHARTING/,'the selected PriceCharting product must expose a direct verification link');
+assert.match(dashboard,/SELECTED COVER/,'cover selection must be visible in the top-level comic result');
 assert.match(worker,/series\/\$\{issue\.seriesId\}\/issue_list/,'selected issue should load its series cover list');
 assert.match(worker,/priceMatch/,'selected issue should return a hydrated exact PriceCharting product');
 assert.match(worker,/pcFetch\('\/api\/product'/,'comic pricing must hydrate the search candidate with product detail prices');
