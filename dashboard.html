@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.07.22.03-comic-run-cover-lock">
+<meta name="version" content="2026.07.22.04-comic-issue-pagination">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1477,13 +1477,13 @@ body.show-mode .inv-sync-badge{display:none;}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.07.22.03-comic-run-cover-lock"></script>
-<script src="scripts/barcode-lookup.js?v=2026.07.22.03-comic-run-cover-lock"></script>
-<script src="scripts/comic-issue-hub.js?v=2026.07.22.03-comic-run-cover-lock"></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.07.22.03-comic-run-cover-lock"></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.07.22.03-comic-run-cover-lock"></script>
-<script src="scripts/topps/offline-browser.js?v=2026.07.22.03-comic-run-cover-lock"></script>
-<script src="scripts/mtg/research-batch.js?v=2026.07.22.03-comic-run-cover-lock"></script>
+<script src="scripts/query-routing.js?v=2026.07.22.04-comic-issue-pagination"></script>
+<script src="scripts/barcode-lookup.js?v=2026.07.22.04-comic-issue-pagination"></script>
+<script src="scripts/comic-issue-hub.js?v=2026.07.22.04-comic-issue-pagination"></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.07.22.04-comic-issue-pagination"></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.07.22.04-comic-issue-pagination"></script>
+<script src="scripts/topps/offline-browser.js?v=2026.07.22.04-comic-issue-pagination"></script>
+<script src="scripts/mtg/research-batch.js?v=2026.07.22.04-comic-issue-pagination"></script>
 </head>
 <body>
 
@@ -1533,11 +1533,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.07.22.03-comic-run-cover-lock</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.07.22.04-comic-issue-pagination</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.07.22.03-comic-run-cover-lock</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.07.22.04-comic-issue-pagination</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1559,7 +1559,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.07.22.03-comic-run-cover-lock</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.07.22.04-comic-issue-pagination</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -2956,7 +2956,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.07.22.03-comic-run-cover-lock';
+const APP_VERSION = '2026.07.22.04-comic-issue-pagination';
 window.APP_VERSION = APP_VERSION;
 
 // This page has no cache-busting of its own (unlike the secondary scripts,
@@ -20407,6 +20407,7 @@ async function runPriceLookup(){
   qplLastSearchPlan = searchPlan;
   const el = document.getElementById('qpl-result');
   if(!q || q.length < 3) return;
+  metronComicSeriesBrowseState=null;
   const mySeq = ++_qplSearchSeq;
   const tcgProduct = parseTcgplayerProductInput(rawQ, cat);
   const priceChartingProduct = !tcgProduct ? parsePriceChartingProductInput(rawQ, cat) : null;
@@ -20641,21 +20642,45 @@ async function saveComicSeriesPreference(series={},parsed={}){
   localStorage.setItem(scopedStorageKey(COMIC_SERIES_PREFS_LOCAL),JSON.stringify(trimmed));
   await storeWorkerFetch('/kv/'+COMIC_SERIES_PREFS_LOCAL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(trimmed)}).catch(()=>null);
 }
-function changeComicSeriesRun(){runPriceLookup();}
+let metronComicSeriesBrowseState=null;
+function changeComicSeriesRun(){metronComicSeriesBrowseState=null;runPriceLookup();}
+
+function comicSeriesPaginationHtml(results=qplResults){
+  const s=metronComicSeriesBrowseState,rows=Array.isArray(results)?results:[];
+  if(!s||!rows.length||!rows.every(row=>row?.source==='metron'&&String(row.recentSeries?.seriesId||'')===String(s.chosen?.id||s.series?.id||'')))return '';
+  const p=s.pagination||{},page=Math.max(1,Number(p.page||1)),pageSize=Math.max(1,Number(p.pageSize||20)),total=Math.max(rows.length,Number(p.total||rows.length)),totalPages=Math.max(1,Number(p.totalPages||Math.ceil(total/pageSize))),start=((page-1)*pageSize)+1,end=Math.min(total,start+rows.length-1),hasPrevious=Boolean(p.hasPrevious)&&page>1,hasNext=Boolean(p.hasNext)&&page<totalPages;
+  return `<nav aria-label="Comic issue pages" style="display:flex;justify-content:center;align-items:center;gap:7px;flex-wrap:wrap;margin:12px 0;padding:10px;border:1px solid rgba(199,125,255,.3);border-radius:9px;background:rgba(199,125,255,.05)"><button class="hbtn" ${hasPrevious?'':'disabled'} onclick="loadMetronComicSeriesPage(1)">FIRST</button><button class="hbtn" ${hasPrevious?'':'disabled'} onclick="loadMetronComicSeriesPage(${page-1})">← PREVIOUS 20</button><span class="qpl-badge" style="padding:8px 12px">ISSUES ${start}-${end} OF ${total} · PAGE ${page} OF ${totalPages}</span><label style="font-size:9px;color:var(--dim)">GO TO PAGE <input class="tsi" type="number" min="1" max="${totalPages}" value="${page}" style="width:68px;margin-left:4px" onkeydown="if(event.key==='Enter'){event.preventDefault();loadMetronComicSeriesPage(this.value)}" onchange="loadMetronComicSeriesPage(this.value)"></label><button class="hbtn" ${hasNext?'':'disabled'} onclick="loadMetronComicSeriesPage(${page+1})">NEXT 20 →</button><button class="hbtn" ${hasNext?'':'disabled'} onclick="loadMetronComicSeriesPage(${totalPages})">LAST</button></nav>`;
+}
+
+async function loadMetronComicSeriesPage(requestedPage=1,savePreference=false){
+  const state=metronComicSeriesBrowseState;if(!state||state.loading)return;
+  const knownPages=Math.max(1,Number(state.pagination?.totalPages||1)),page=Math.max(1,Math.min(knownPages>1?knownPages:500,Number.parseInt(requestedPage,10)||1));
+  state.loading=true;
+  const host=document.getElementById('qpl-result');if(host)host.innerHTML=`<div style="color:var(--purple);padding:18px;text-align:center">Loading page ${page} from ${escHtml(state.series.name||'the selected Metron series')}...</div>`;
+  try{
+    const params=new URLSearchParams({q:state.parsed.raw||state.series.name,series_id:String(state.series.id),page:String(page)});if(state.parsed.issueNumber)params.set('number',state.parsed.issueNumber);
+    const response=await storeWorkerFetch('/comic/metron/search?'+params.toString(),{cache:'no-store'}),data=await response.json().catch(()=>({}));
+    if(!response.ok||!data.ok)throw new Error(data.error||'That comic run could not be loaded');
+    if(metronComicSeriesBrowseState!==state)return;
+    const chosen={...state.series,...(data.selectedSeries||{}),id:String(data.selectedSeries?.id||state.series.id),name:data.selectedSeries?.name||state.series.name};
+    if(savePreference)await saveComicSeriesPreference(chosen,state.parsed);
+    const preferred={seriesId:String(chosen.id),seriesName:chosen.name,publisher:chosen.publisher||'',yearBegan:String(chosen.yearBegan||'')},fallbackTotal=Number(chosen.issueCount||0),pagination=data.pagination||{};
+    state.chosen=chosen;state.preferred=preferred;state.pagination={page:Number(pagination.page||page),pageSize:Number(pagination.pageSize||20),total:Number(pagination.total||fallbackTotal||(data.issues||[]).length),totalPages:Number(pagination.totalPages||Math.max(1,Math.ceil((fallbackTotal||(data.issues||[]).length)/20))),hasNext:Boolean(pagination.hasNext),hasPrevious:Boolean(pagination.hasPrevious)};
+    qplMasterResults=(data.issues||[]).map(issue=>({...metronIssueToQplRow(issue,[]),recentSeries:preferred}));qplResults=qplMasterResults;
+    if(!qplResults.length){host.innerHTML=`<div style="color:var(--gold);line-height:1.6">That run does not contain ${state.parsed.issueNumber?'issue #'+escHtml(state.parsed.issueNumber):'issues on this page'}. <button class="hbtn" onclick="changeComicSeriesRun()">CHOOSE ANOTHER RUN</button></div>`;return;}
+    renderQuickLookupResults(qplResults);setComicsOfflineBanner(`Using ${chosen.name} - ${chosen.publisher||'publisher unknown'} - ${chosen.yearBegan||'year unknown'}. Page ${state.pagination.page} of ${state.pagination.totalPages}; all ${state.pagination.total} issues are available.`,'good');
+    host?.scrollIntoView({behavior:'smooth',block:'start'});
+  }catch(error){
+    if(metronComicSeriesBrowseState===state&&host)host.innerHTML=`<div style="color:var(--gold);line-height:1.6">${escHtml(error.message||'Comic issue page could not be loaded')}. <button class="hbtn" onclick="loadMetronComicSeriesPage(${page})">TRY AGAIN</button> <button class="hbtn" onclick="changeComicSeriesRun()">CHOOSE ANOTHER RUN</button></div>`;
+    toast_dash(error.message||'That comic run could not be loaded');
+  }finally{state.loading=false;}
+}
 
 async function chooseMetronComicSeries(idx){
   const row=qplResults[idx],series=row?.metronSeries,api=window.ArsCaComicIssueHub;if(!series?.id||!api)return;
   const parsed=api.parseComicQuery(qplLastSearch||document.getElementById('qpl-input')?.value||series.name);
-  document.getElementById('qpl-result').innerHTML='<div style="color:var(--purple)">Loading issues from the selected Metron series...</div>';
-  const params=new URLSearchParams({q:parsed.raw||series.name,series_id:String(series.id)});if(parsed.issueNumber)params.set('number',parsed.issueNumber);
-  const response=await storeWorkerFetch('/comic/metron/search?'+params.toString(),{cache:'no-store'}),data=await response.json().catch(()=>({}));
-  if(!response.ok||!data.ok){toast_dash(data.error||'That comic run could not be loaded');return;}
-  const chosen={...series,...(data.selectedSeries||{}),id:String(data.selectedSeries?.id||series.id),name:data.selectedSeries?.name||series.name};
-  await saveComicSeriesPreference(chosen,parsed);
-  const preferred={seriesId:String(chosen.id),seriesName:chosen.name,publisher:chosen.publisher||'',yearBegan:String(chosen.yearBegan||'')};
-  qplMasterResults=(data.issues||[]).map(issue=>({...metronIssueToQplRow(issue,[]),recentSeries:preferred}));qplResults=qplMasterResults;
-  if(!qplResults.length){document.getElementById('qpl-result').innerHTML=`<div style="color:var(--gold);line-height:1.6">That run does not contain issue #${escHtml(parsed.issueNumber||'requested')}. <button class="hbtn" onclick="changeComicSeriesRun()">CHOOSE ANOTHER RUN</button></div>`;return;}
-  renderQuickLookupResults(qplResults);setComicsOfflineBanner(`Using ${chosen.name} - ${chosen.publisher||'publisher unknown'} - ${chosen.yearBegan||'year unknown'}. Search the title again at any time to see every run.`,'good');
+  metronComicSeriesBrowseState={series:{...series,id:String(series.id)},parsed,chosen:null,preferred:null,pagination:{page:1,pageSize:20,total:Number(series.issueCount||0),totalPages:Math.max(1,Math.ceil(Number(series.issueCount||0)/20)),hasNext:Number(series.issueCount||0)>20,hasPrevious:false},loading:false};
+  await loadMetronComicSeriesPage(1,true);
 }
 
 async function searchMetronComicCatalog(q,parsed={}){
@@ -24967,6 +24992,7 @@ function renderQuickLookupResults(results){
   // Non-Pokemon flat rendering (sports, comics, etc.)
   const primary = indexed.filter(x => !x.r.closestStrictFallback);
   const fallback = indexed.filter(x => x.r.closestStrictFallback);
+  const comicSeriesPager=comicSeriesPaginationHtml(results);
   const fallbackHtml = fallback.length ? `
     <details ${primary.length === 0 ? 'open' : ''} class="qpl-card" style="padding:0;margin-top:12px">
       <summary style="cursor:pointer;padding:14px 16px;font-family:'Orbitron',monospace;font-size:11px;color:var(--gold)">
@@ -24982,10 +25008,11 @@ function renderQuickLookupResults(results){
       <div style="color:var(--g);font-weight:800;font-size:13px">${shownCount}${hiddenCount?' OF '+allIndexed.length:''} MATCH${allIndexed.length===1?'':'ES'}</div>
       <div style="color:var(--dim);font-size:11px">Large cards for live buying - tap image to inspect</div>
     </div>
+    ${comicSeriesPager}
     <div class="qpl-results">
       ${primary.map(x => quickLookupResultCard(x.r, x.idx)).join('')}
     </div>
-    ${fallbackHtml}${showMoreHtml}`;
+    ${fallbackHtml}${showMoreHtml}${comicSeriesPager}`;
   setTimeout(() => hydrateVisiblePokemonPriceTrackerResults(primary.map(x => x.idx)), 0);
   setTimeout(() => resolvePokemonCatalogImagesForVisibleCards(), 200);
   setTimeout(() => lazyLoadComicImages([...primary,...fallback].map(x=>x.idx)), 100);
@@ -32447,7 +32474,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.07.22.03-comic-run-cover-lock"></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.07.22.04-comic-issue-pagination"></script>
 </body>
 </html>
 

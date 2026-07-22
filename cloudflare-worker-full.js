@@ -3216,6 +3216,7 @@ export default {
         const upc = String(url.searchParams.get('upc') || '').replace(/\D/g, '').slice(0, 20);
         const sku = String(url.searchParams.get('sku') || '').trim().slice(0, 80);
         const creator = String(url.searchParams.get('creator') || '').trim().slice(0, 120);
+        const page = Math.min(500, Math.max(1, Number.parseInt(url.searchParams.get('page') || '1', 10) || 1));
         if (!series && !seriesId && !creator && !upc && !sku) return json({ ok:false, error:'Comic series, creator, UPC, or SKU is required' }, 400);
         try {
           if (creator) {
@@ -3240,7 +3241,7 @@ export default {
             selectedSeries = seriesChoices[0];
           }
           const selectedSeriesId = seriesId || selectedSeries?.id || '';
-          const filters = upc ? { upc } : sku ? { sku } : { series_id:selectedSeriesId, number };
+          const filters = upc ? { upc } : sku ? { sku } : { series_id:selectedSeriesId, number, page };
           const [initialMetron, selectedSeriesDetail] = await Promise.all([
             metronFetch(env, '/issue/', filters, 60 * 60 * 24),
             selectedSeriesId ? metronFetch(env, `/series/${selectedSeriesId}/`, {}, 60 * 60 * 24 * 7).catch(() => null) : Promise.resolve(null),
@@ -3252,8 +3253,20 @@ export default {
             metron = await metronFetch(env, '/issue/', { upc_starts_with:upc.slice(0, 13) }, 60 * 60 * 24);
             rawIssues = Array.isArray(metron.data) ? metron.data : (metron.data?.results || []);
           }
-          const issues = rawIssues.slice(0, 20).map(normalizeMetronListIssue);
-          return json({ ok:true, source:'Metron', query:rawQuery, filters, selectedSeries, seriesChoices, cacheStatus:metron.cacheStatus, issues, priceCandidates:[] });
+          const metronPage = Array.isArray(metron.data) ? {} : (metron.data || {});
+          const pageSize = Math.max(1, Number(metronPage.page_size || metronPage.pageSize || 20) || 20);
+          const total = Math.max(rawIssues.length, Number(metronPage.count || metronPage.total || selectedSeries?.issueCount || rawIssues.length) || 0);
+          const totalPages = Math.max(1, Math.ceil(total / pageSize));
+          const pagination = {
+            page,
+            pageSize,
+            total,
+            totalPages,
+            hasNext:Boolean(metronPage.next) || page < totalPages,
+            hasPrevious:Boolean(metronPage.previous) || page > 1,
+          };
+          const issues = rawIssues.map(normalizeMetronListIssue);
+          return json({ ok:true, source:'Metron', query:rawQuery, filters, selectedSeries, seriesChoices, cacheStatus:metron.cacheStatus, issues, pagination, priceCandidates:[] });
         } catch (error) {
           const status = [401,403,429].includes(Number(error.status)) ? Number(error.status) : 502;
           const message = status === 401 || status === 403 ? 'Metron credentials were rejected' : status === 429 ? 'Metron rate limit reached; cached comic records remain available' : 'Metron comic search failed';

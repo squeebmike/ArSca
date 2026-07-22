@@ -56,6 +56,13 @@ assert.match(dashboard,/function inventoryComicSearchFields/,'saved comic metada
 assert.match(dashboard,/function inventoryComicPeopleLine/,'comic creators must be visible in inventory');
 assert.match(dashboard,/function metronSeriesToQplRow/,'comic title search must show Metron series and run choices');
 assert.match(dashboard,/function chooseMetronComicSeries/,'choosing a Metron run must load that exact series id');
+assert.match(dashboard,/function loadMetronComicSeriesPage/,'selected Metron runs must support server-backed issue pagination');
+assert.match(dashboard,/series_id:String\(state\.series\.id\),page:String\(page\)/,'every issue page must retain the exact selected series id');
+assert.match(dashboard,/ISSUES \$\{start\}-\$\{end\} OF \$\{total\}/,'comic pagination must show the visible issue range and total');
+assert.match(dashboard,/NEXT 20/,'long comic runs need an explicit next-page control');
+assert.match(worker,/url\.searchParams\.get\('page'\)/,'the Worker must accept a requested Metron issue page');
+assert.match(worker,/pagination, priceCandidates/,'the Worker must return issue pagination metadata');
+assert.doesNotMatch(worker,/const issues = rawIssues\.slice\(0, 20\)/,'the Worker must not truncate an upstream Metron page');
 assert.match(dashboard,/comic_series_preferences_v1/,'recent comic runs must persist across devices');
 const metronSearch=dashboard.slice(dashboard.indexOf('async function searchMetronComicCatalog'),dashboard.indexOf('async function hydrateMetronComicResult'));
 assert.doesNotMatch(metronSearch,/params\.set\('series_id'/,'a remembered run must never silently lock a new title search');
