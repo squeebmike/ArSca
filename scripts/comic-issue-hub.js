@@ -10,6 +10,8 @@
   const norm=s=>clean(s).toLowerCase().replace(/[^a-z0-9:#.\-\s]/g,' ').replace(/\s+/g,' ').trim();
   function parseComicQuery(raw){
     const original=clean(raw),normalized=norm(original);
+    const creatorMatch=original.match(/^\s*(?:creator|artist|writer|cover\s+artist)\s*:\s*(.+)$/i)||original.match(/^\s*(?:creator|artist|writer|cover\s+artist)\s+(.+)$/i);
+    const creatorGuess=clean(creatorMatch?.[1]||'');
     const aliasToken=normalized.split(' ').find(t=>ALIASES[t]);
     const alias=ALIASES[aliasToken];
     const expanded=alias?clean(normalized.split(' ').map(t=>t===aliasToken?alias:t).join(' ')):original;
@@ -27,7 +29,18 @@
     const titleCase=series.replace(/\b\w/g,c=>c.toUpperCase()).replace(/\bIdw\b/g,'IDW').replace(/\bDc\b/g,'DC');
     const runGuess=[publisher,year].filter(Boolean).join(' ')||(normalized.match(/\b(?:saturday morning adventures|last ronin)\b/i)?.[0]||'');
     const confidence=Math.min(100,(titleCase?45:0)+(issueNumber?35:0)+(publisher||year?10:0)+(variantTerms.length?10:0));
-    return {raw:original,normalized,seriesGuess:titleCase,issueNumber,publisherGuess:publisher,runGuess:clean(runGuess),yearGuess:year,variantTerms,aliasesExpanded:alias?[expanded]:[],confidence};
+    return {raw:original,normalized,seriesGuess:creatorGuess?'':titleCase,issueNumber:creatorGuess?'':issueNumber,publisherGuess:publisher,runGuess:clean(runGuess),yearGuess:year,variantTerms,aliasesExpanded:alias?[expanded]:[],aliasKey:aliasToken||'',creatorGuess,confidence:creatorGuess?75:confidence};
+  }
+  function preferenceKeys(parsed={}){
+    return [...new Set([parsed.aliasKey,parsed.seriesGuess,parsed.raw].map(norm).filter(Boolean))];
+  }
+  function pickSeriesPreference(preferences={},parsed={}){
+    const entries=Array.isArray(preferences)?preferences:Object.values(preferences||{});
+    const keys=preferenceKeys(parsed);
+    return entries.filter(Boolean).sort((a,b)=>String(b.lastUsedAt||'').localeCompare(String(a.lastUsedAt||''))).find(pref=>{
+      const prefKeys=[...(pref.aliases||[]),pref.aliasKey,pref.seriesName].map(norm).filter(Boolean);
+      return keys.some(key=>prefKeys.includes(key));
+    })||null;
   }
   function variantLabels(name){return VARIANTS.filter(([,re])=>re.test(name||'')).map(([label])=>label);}
   function issueFromName(name){return parseComicQuery(name).issueNumber;}
@@ -70,5 +83,5 @@
   function canNavigate(issue){return /^\d+$/.test(String(issue));}
   function adjacentIssue(issue,delta){if(!canNavigate(issue))return null;return Math.max(0,Number(issue)+Number(delta));}
   function hubKey(c){return norm([c.seriesTitle,c.publisher,c.runLabel,c.yearGuess,c.currentIssueNumber??c.issueNumber].join('|'));}
-  return {ALIASES,parseComicQuery,variantLabels,scoreCandidate,groupCandidates,buildSweepQueries,canNavigate,adjacentIssue,hubKey};
+  return {ALIASES,parseComicQuery,preferenceKeys,pickSeriesPreference,variantLabels,scoreCandidate,groupCandidates,buildSweepQueries,canNavigate,adjacentIssue,hubKey};
 });

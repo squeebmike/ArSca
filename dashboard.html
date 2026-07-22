@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.07.21.08-comic-creator-search">
+<meta name="version" content="2026.07.22.01-comic-series-first">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1477,13 +1477,13 @@ body.show-mode .inv-sync-badge{display:none;}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.07.21.08-comic-creator-search"></script>
-<script src="scripts/barcode-lookup.js?v=2026.07.21.08-comic-creator-search"></script>
-<script src="scripts/comic-issue-hub.js?v=2026.07.21.08-comic-creator-search"></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.07.21.08-comic-creator-search"></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.07.21.08-comic-creator-search"></script>
-<script src="scripts/topps/offline-browser.js?v=2026.07.21.08-comic-creator-search"></script>
-<script src="scripts/mtg/research-batch.js?v=2026.07.21.08-comic-creator-search"></script>
+<script src="scripts/query-routing.js?v=2026.07.22.01-comic-series-first"></script>
+<script src="scripts/barcode-lookup.js?v=2026.07.22.01-comic-series-first"></script>
+<script src="scripts/comic-issue-hub.js?v=2026.07.22.01-comic-series-first"></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.07.22.01-comic-series-first"></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.07.22.01-comic-series-first"></script>
+<script src="scripts/topps/offline-browser.js?v=2026.07.22.01-comic-series-first"></script>
+<script src="scripts/mtg/research-batch.js?v=2026.07.22.01-comic-series-first"></script>
 </head>
 <body>
 
@@ -1533,11 +1533,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.07.21.08-comic-creator-search</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.07.22.01-comic-series-first</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.07.21.08-comic-creator-search</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.07.22.01-comic-series-first</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1559,7 +1559,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.07.21.08-comic-creator-search</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.07.22.01-comic-series-first</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -1936,14 +1936,14 @@ body.show-mode .inv-sync-badge{display:none;}
       <!-- Comic helper row — shown only when Comics category is selected -->
       <div id="qpl-comic-helper" style="display:none;margin-bottom:10px;padding:9px 12px;background:rgba(199,125,255,.06);border:1px solid rgba(199,125,255,.22);border-radius:8px">
         <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:6px">
-          <span style="font-family:'Orbitron',monospace;font-size:9px;color:var(--purple);letter-spacing:.05em">ONE SEARCH BOX · TYPE TITLE + ISSUE ABOVE</span>
+          <span style="font-family:'Orbitron',monospace;font-size:9px;color:var(--purple);letter-spacing:.05em">ONE SEARCH BOX · TITLE, ISSUE, CREATOR, OR BARCODE</span>
           <button class="hbtn" style="font-size:9px;padding:3px 9px" onclick="appendComicPublisher('Marvel')">Marvel</button>
           <button class="hbtn" style="font-size:9px;padding:3px 9px" onclick="appendComicPublisher('DC')">DC</button>
           <button class="hbtn" style="font-size:9px;padding:3px 9px" onclick="appendComicPublisher('Image')">Image</button>
           <button class="hbtn" style="font-size:9px;padding:3px 9px" onclick="appendComicPublisher('Dark Horse')">Dark Horse</button>
           <button class="hbtn" style="font-size:9px;padding:3px 9px" onclick="appendComicPublisher('IDW')">IDW</button>
         </div>
-        <div style="font-family:monospace;font-size:10px;color:var(--dim);line-height:1.5">Example: <em>Amazing Spider-Man #300 newsstand</em> · Press ENTER or LOOK UP. Variant tips: <em>direct · foil · sketch · facsimile · incentive · 2nd print · virgin</em></div>
+        <div style="font-family:monospace;font-size:10px;color:var(--dim);line-height:1.5">Examples: <em>TMNT</em> to choose a run, <em>Amazing Spider-Man #300 newsstand</em>, or <em>artist: Jim Lee</em>. Variant tips: <em>direct · foil · sketch · facsimile · incentive · 2nd print · virgin</em></div>
       </div>
       <!-- Pokémon helper row — shown only when Pokemon TCG category is selected -->
       <div id="qpl-pokemon-helper" style="display:none;margin-bottom:10px;padding:9px 12px;background:rgba(255,209,102,.06);border:1px solid rgba(255,209,102,.22);border-radius:8px">
@@ -2956,7 +2956,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.07.21.08-comic-creator-search';
+const APP_VERSION = '2026.07.22.01-comic-series-first';
 window.APP_VERSION = APP_VERSION;
 
 // This page has no cache-busting of its own (unlike the secondary scripts,
@@ -3040,7 +3040,7 @@ const WALKOFF_SCOPED_KEYS = new Set([
   'store_theme_v1','store_onboarding_v1',
   // Research / price sync
   'research_settings_v1','price_sync_settings_v1','price_sync_meta_v1',
-  'pricecharting_csv_urls_v1',
+  'pricecharting_csv_urls_v1','comic_series_preferences_v1',
   // Walkthrough / setup
   'walkthrough_progress_v1','walkthrough_settings_v1','walkthrough_seen_v1',
   'dealer_settings_v1',
@@ -18599,6 +18599,10 @@ function stopBarcodeCamera(){barcodeDetecting=false;(barcodeStream?.getTracks?.(
 function resetBarcodeLookup(clearInput=true){barcodeCandidates=[];barcodeCurrentNormalized=null;const results=document.getElementById('barcode-candidates');if(results)results.innerHTML='';const forget=document.getElementById('barcode-forget-link');if(forget)forget.style.display='none';if(clearInput){const input=document.getElementById('barcode-manual-input');if(input)input.value='';const query=document.getElementById('barcode-query-hint');if(query)query.value='';}setBarcodeStatus('Scan a barcode or enter it manually. Nothing is saved until you confirm a product.');}
 
 function barcodeCandidateToResearch(candidate,n){
+  if(candidate?.provider==='metron'&&candidate?.metronIssueId){
+    const row=metronIssueToQplRow(candidate.raw||{},[]);
+    return {...row,barcode:n.primary,barcodePrimary:n.primary,barcodeSupplement:n.supplement||'',barcodeType:n.typeGuess,barcodeEvidence:{raw:n.raw,primary:n.primary,supplement:n.supplement||'',candidatesTried:n.candidates||[],confidence:candidate.confidence||98,matchReason:candidate.matchReason||[],confirmed:false},confidence:Number(candidate.confidence||98),matchWhy:candidate.matchReason||row.matchWhy,note:'Metron barcode match. Select it to confirm the exact cover and load PriceCharting prices.'};
+  }
   const categoryMap={comics:'Comic',pokemon:'Pokemon TCG',mtg:'Magic: The Gathering',sports:'Sports Card',sealed:'Sealed Product',other:'Collectibles'};
   const rawValue=Number(candidate.priceSummary?.raw??candidate.priceSummary?.ungraded??0)||0;
   return {source:candidate.savedConfirmed?'barcode_confirmed':'pricecharting_barcode',name:candidate.title||'Barcode product',category:categoryMap[candidate.category]||'Collectibles',set:candidate.consoleName||'',year:(candidate.raw?.releaseDate||'').toString().slice(0,4),variant:candidate.genre||'',market:rawValue,condition:candidate.category==='sealed'?'Sealed':'NM',is_sealed:candidate.category==='sealed',imageUrl:candidate.imageUrl||'',imageSource:candidate.imageUrl?'pricecharting':'placeholder',coverConfidence:candidate.category==='comics'?(candidate.coverConfirmed?'confirmed':'needs-confirmation'):'product-confirmation',confidence:Number(candidate.confidence||0),matchWhy:candidate.matchReason||[],note:(candidate.matchReason||[]).join(' / '),priceSource:candidate.savedConfirmed?'Last-known confirmed barcode match':'PriceCharting barcode evidence',providerProductId:candidate.providerProductId||'',productId:candidate.providerProductId||'',productUrl:candidate.providerUrl||'',barcode:n.primary,barcodePrimary:n.primary,barcodeSupplement:n.supplement||'',barcodeType:n.typeGuess,barcodeEvidence:{raw:n.raw,primary:n.primary,supplement:n.supplement||'',candidatesTried:n.candidates||[],confidence:candidate.confidence||0,matchReason:candidate.matchReason||[],confirmed:!!candidate.savedConfirmed},pricecharting:{productId:candidate.providerProductId||'',productName:candidate.title||'',consoleName:candidate.consoleName||'',genre:candidate.genre||'',url:candidate.providerUrl||'',imageUrl:candidate.imageUrl||'',prices:{ungraded:candidate.priceSummary?.ungraded??null,psa10:candidate.priceSummary?.psa10??null},comicPrices:{ungraded:candidate.priceSummary?.raw??null,grade9_8:candidate.priceSummary?.graded98??null}},raw:candidate.raw||{}};
@@ -18957,13 +18961,20 @@ function updateComicAppraisal(idx,field,value,rerender=true){
 function toggleComicDefect(idx,defect,checked){const a=comicAppraisalState(qplResults[idx]||{});a.defects=checked?[...new Set([...(a.defects||[]),defect])]:(a.defects||[]).filter(x=>x!==defect);}
 function confirmComicCover(idx){const r=qplResults[idx];if(!r)return;comicAppraisalState(r).coverConfirmed=true;r.coverConfidence='confirmed';updateQplResultCard(idx);}
 window._comicPhotoUrls ||= {};
+async function comicPhotoPHash(file){
+  const bitmap=await createImageBitmap(file),size=32,hashSize=8,canvas=document.createElement('canvas');canvas.width=size;canvas.height=size;const ctx=canvas.getContext('2d',{willReadFrequently:true});ctx.drawImage(bitmap,0,0,size,size);bitmap.close?.();const rgba=ctx.getImageData(0,0,size,size).data,pixels=Array.from({length:size},(_,y)=>Array.from({length:size},(_,x)=>{const i=(y*size+x)*4;return rgba[i]*.299+rgba[i+1]*.587+rgba[i+2]*.114;})),low=[];
+  for(let u=0;u<hashSize;u++)for(let v=0;v<hashSize;v++){let sum=0;for(let x=0;x<size;x++)for(let y=0;y<size;y++)sum+=pixels[y][x]*Math.cos((2*x+1)*u*Math.PI/(2*size))*Math.cos((2*y+1)*v*Math.PI/(2*size));low.push(sum);}
+  const median=[...low].sort((a,b)=>a-b)[Math.floor(low.length/2)];let bits='';low.forEach(value=>bits+=value>median?'1':'0');return BigInt('0b'+bits).toString(16).padStart(16,'0');
+}
+function comicHashDistance(a,b){try{let value=BigInt('0x'+String(a||''))^BigInt('0x'+String(b||'')),count=0;while(value){count+=Number(value&1n);value>>=1n;}return count;}catch(_){return 99;}}
 async function handleComicCoverPhoto(idx,file){
-  const r=qplResults[idx];if(!r||!file)return;if(!/^image\//.test(file.type||'')){toast_dash('Choose an image file');return;}
+  let r=qplResults[idx];if(!r||!file)return;if(!/^image\//.test(file.type||'')){toast_dash('Choose an image file');return;}
   if(file.size>12*1024*1024){toast_dash('Cover photo must be under 12 MB');return;}
+  let photoHash='';try{photoHash=await comicPhotoPHash(file);const ranked=(r.metronCovers||[]).map((cover,index)=>({cover,index,distance:cover.coverHash?comicHashDistance(photoHash,cover.coverHash):99})).sort((a,b)=>a.distance-b.distance);if(ranked[0]?.distance<=10){await selectMetronComicCover(idx,ranked[0].index);r=qplResults[idx];r.photoCoverMatch={metronCoverHash:ranked[0].cover.coverHash,photoHash,distance:ranked[0].distance,matchedAt:new Date().toISOString()};}}catch(_){}
   const key='comic-photo:'+String(r.pricecharting?.productId||Date.now())+':'+Date.now();
   await comicsDbPut('userPhotos',{key,blob:file,updatedAt:new Date().toISOString(),source:'user-upload'});
   if(r.imageUrl&&!/^blob:/.test(r.imageUrl))r.externalCoverImageUrl=r.imageUrl;
-  const objectUrl=URL.createObjectURL(file);window._comicPhotoUrls[key]=objectUrl;r.userPhotoBlobKey=key;r.imageUrl=objectUrl;r.imageSource='user-upload';r.coverConfidence='confirmed';comicAppraisalState(r).coverConfirmed=true;updateQplResultCard(idx);
+  const objectUrl=URL.createObjectURL(file);window._comicPhotoUrls[key]=objectUrl;r.userPhotoBlobKey=key;r.imageUrl=objectUrl;r.imageSource='user-upload';r.photoCoverHash=photoHash;r.coverConfidence=r.photoCoverMatch?'confirmed':'photo-needs-review';comicAppraisalState(r).coverConfirmed=!!r.photoCoverMatch;qplResults[idx]=r;updateQplResultCard(idx);toast_dash(r.photoCoverMatch?'Photo matched a Metron cover; verify before saving':'Photo saved. No close Metron cover hash matched, so choose the cover visually.');
 }
 async function hydrateComicPhotoKey(key){
   if(!key||window._comicPhotoUrls[key]||window._comicPhotoUrls[key]===null)return;
@@ -18981,7 +18992,24 @@ function qplComicPricePanelV2(r,idx){
   const pc=r.pricecharting||{},cp=pc.comicPrices||{},grades=[['ungraded','Raw / Ungraded'],['grade4','Graded 4.0 / 4.5 estimate'],['grade6','Graded 6.0 / 6.5 estimate'],['grade8','Graded 8.0 / 8.5 estimate'],['grade9_2','Graded 9.2 estimate'],['grade9_4','Graded 9.4 estimate'],['grade9_8','Graded 9.8 estimate'],['grade10','Graded 10.0 estimate']];
   const rows=grades.map(([key,label])=>`<tr><td style="padding:4px 8px;color:var(--dim)">${label}</td><td style="padding:4px 8px;text-align:right">${Number(cp[key]||0)?'$'+Number(cp[key]).toFixed(2):'--'}</td></tr>`).join('');
   const hasPrices=grades.some(([key])=>Number(cp[key]||0));
-  return `<div style="margin-top:12px;border:1px solid rgba(199,125,255,.22);border-radius:10px;padding:12px;background:rgba(199,125,255,.04)"><div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><b style="font-family:'Orbitron',monospace;font-size:10px;color:var(--purple)">EXACT PRICECHARTING GUIDE</b><button class="hbtn" onclick="refreshResearchPrice(${idx})">REFRESH EXACT PRICE</button></div>${pc.productName?`<div style="font-size:10px;margin-top:7px"><b>Matched product:</b> ${escHtml(pc.productName)}${pc.url?` - <a href="${escHtml(pc.url)}" target="_blank">open PriceCharting</a>`:''}</div>`:''}${hasPrices?`<table style="width:100%;border-collapse:collapse;font-size:11px;margin-top:7px">${rows}</table>`:`<div style="color:var(--gold);margin-top:8px">${pc.productId?'This PriceCharting product returned no comic guide values.':'No exact PriceCharting product match yet. Select the correct cover, then refresh.'}</div>`}<div style="font-size:9px;color:var(--dim);margin-top:7px">PriceCharting${r.lastPriceUpdate?' / checked '+escHtml(new Date(r.lastPriceUpdate).toLocaleString()):''}. Prices belong to the selected cover record. Grade buckets are provider estimates.</div></div>`;
+  const candidates=(r.comicPriceCandidates||[]).filter(candidate=>String(candidate.productId||'')!==String(pc.productId||'')).slice(0,8);
+  const candidateHtml=candidates.length?`<div style="margin-top:10px"><div style="font-size:9px;color:var(--gold);margin-bottom:5px">${pc.productId?'OTHER PRICECHARTING PRODUCTS':'PRICE MATCH NEEDS CONFIRMATION'} - choose once and the exact link will be shared across devices.</div>${candidates.map((candidate,i)=>`<div style="display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;border-top:1px solid var(--border);padding:7px 0"><div><b style="font-size:10px">${escHtml(candidate.productName||'Unnamed PriceCharting product')}</b><div style="font-size:9px;color:var(--dim)">Raw ${Number(candidate.comicPrices?.ungraded||0)?'$'+Number(candidate.comicPrices.ungraded).toFixed(2):'--'} - 9.8 ${Number(candidate.comicPrices?.grade9_8||0)?'$'+Number(candidate.comicPrices.grade9_8).toFixed(2):'--'}</div></div><button class="hbtn" onclick="selectComicPriceCandidate(${idx},${i})">USE THIS PRICE</button><button class="hbtn" onclick="hideComicPriceCandidate(${idx},${i})">NOT THIS</button></div>`).join('')}</div>`:'';
+  return `<div style="margin-top:12px;border:1px solid rgba(199,125,255,.22);border-radius:10px;padding:12px;background:rgba(199,125,255,.04)"><div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><b style="font-family:'Orbitron',monospace;font-size:10px;color:var(--purple)">EXACT PRICECHARTING GUIDE</b><button class="hbtn" onclick="refreshResearchPrice(${idx})">REFRESH EXACT PRICE</button></div>${pc.productName?`<div style="font-size:10px;margin-top:7px"><b>Matched product:</b> ${escHtml(pc.productName)} ${pc.savedExactLink?'<span class="qpl-badge good">SAVED EXACT LINK</span>':''}${pc.url?` - <a href="${escHtml(pc.url)}" target="_blank">open PriceCharting</a>`:''}</div>`:''}${hasPrices?`<table style="width:100%;border-collapse:collapse;font-size:11px;margin-top:7px">${rows}</table>`:`<div style="color:var(--gold);margin-top:8px">${pc.productId?'This PriceCharting product returned no comic guide values.':candidates.length?'More than one plausible product was found. Choose the exact one below.':'No exact PriceCharting product match yet. Confirm the cover or enter PriceCharting manually.'}</div>`}${candidateHtml}<div style="display:grid;grid-template-columns:1fr auto;gap:7px;margin-top:9px"><input class="tsi" id="comic-pc-manual-${idx}" placeholder="PriceCharting product ID or full URL"><button class="hbtn" onclick="linkManualComicPrice(${idx})">LINK EXACT PRICE</button></div><div style="font-size:9px;color:var(--dim);margin-top:7px">PriceCharting${r.lastPriceUpdate?' / checked '+escHtml(new Date(r.lastPriceUpdate).toLocaleString()):''}. Prices belong to the selected cover record. Grade buckets are provider estimates.</div></div>`;
+}
+
+async function selectComicPriceCandidate(idx,candidateIndex){
+  const r=qplResults[idx],candidates=(r?.comicPriceCandidates||[]).filter(candidate=>String(candidate.productId||'')!==String(r?.pricecharting?.productId||'')).slice(0,8),candidate=candidates[candidateIndex];if(!r||!candidate?.productId)return;
+  try{const response=await storeWorkerFetch('/pricing/pricecharting/product/'+encodeURIComponent(candidate.productId),{cache:'no-store'}),data=await response.json().catch(()=>({})),pc=data.product||data;if(!response.ok||!pc?.productId)throw new Error(data.error||'PriceCharting product unavailable');if(!/^comic books\b/i.test(String(pc.consoleName||pc.demand?.consoleName||'')))throw new Error('That PriceCharting product is not a comic book');r.pricecharting={...pc,savedExactLink:true};r.market=Number(pc.comicPrices?.ungraded||0);r.lastPriceUpdate=new Date().toISOString();r.priceSource='Saved exact PriceCharting link';if(pc.imageUrl&&!r.coverConfirmed)r.imageUrl=pc.imageUrl;await storeWorkerFetch('/kv/comic_price_link_'+encodeURIComponent(r.metronIssueId),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({metronIssueId:r.metronIssueId,pricechartingProductId:String(pc.productId),productName:pc.productName||'',linkedAt:new Date().toISOString()})});qplResults[idx]=r;if(document.querySelector(`.qpl-selected-card[data-qpl-idx="${idx}"]`))selectQuickLookupResult(idx);else{updateQplResultCard(idx);const details=document.querySelector(`.qpl-hero-card[data-qpl-idx="${idx}"] details.comic-book-details`);if(details)details.open=true;}toast_dash('Exact PriceCharting product linked across devices');}catch(error){toast_dash('Price link could not be saved: '+(error.message||error));}
+}
+async function hideComicPriceCandidate(idx,candidateIndex){
+  const r=qplResults[idx],visible=(r?.comicPriceCandidates||[]).filter(candidate=>String(candidate.productId||'')!==String(r?.pricecharting?.productId||'')).slice(0,8),candidate=visible[candidateIndex];if(!r||!candidate?.productId)return;
+  let hidden=[];try{const response=await storeWorkerFetch('/kv/comic_price_hidden_'+encodeURIComponent(r.metronIssueId),{cache:'no-store'}),raw=(await response.json().catch(()=>({}))).value;hidden=raw?JSON.parse(raw):[];}catch(_){}hidden=[...new Set([...(Array.isArray(hidden)?hidden:[]),String(candidate.productId)])];await storeWorkerFetch('/kv/comic_price_hidden_'+encodeURIComponent(r.metronIssueId),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(hidden)}).catch(()=>null);r.comicPriceCandidates=(r.comicPriceCandidates||[]).filter(item=>String(item.productId)!==String(candidate.productId));updateQplResultCard(idx);const details=document.querySelector(`.qpl-hero-card[data-qpl-idx="${idx}"] details.comic-book-details`);if(details)details.open=true;toast_dash('Wrong price match hidden across devices');
+}
+async function linkManualComicPrice(idx){
+  const input=document.getElementById('comic-pc-manual-'+idx),raw=String(input?.value||'').trim(),id=/^\d+$/.test(raw)?raw:'';if(!raw)return;
+  if(id){const r=qplResults[idx];r.comicPriceCandidates=[{productId:id,productName:'PriceCharting #'+id}];r.pricecharting=null;await selectComicPriceCandidate(idx,0);return;}
+  const parsed=parsePriceChartingProductInput(raw,'Comic');if(!parsed?.name){toast_dash('Paste a numeric PriceCharting product ID or a full product URL');return;}
+  try{const response=await storeWorkerFetch('/pricing/pricecharting/search?'+new URLSearchParams({q:parsed.name+' Comic Books'}),{cache:'no-store'}),data=await response.json().catch(()=>({})),products=(data.products||data.matches||[]).filter(product=>/^comic books\b/i.test(String(product.consoleName||'')));if(!products.length)throw new Error('No comic product candidates found');qplResults[idx].comicPriceCandidates=products;qplResults[idx].pricecharting=null;updateQplResultCard(idx);const details=document.querySelector(`.qpl-hero-card[data-qpl-idx="${idx}"] details.comic-book-details`);if(details)details.open=true;toast_dash(products.length===1?'One PriceCharting candidate found - confirm it below':'Choose the exact PriceCharting candidate below');}catch(error){toast_dash('PriceCharting URL could not be resolved: '+(error.message||error));}
 }
 
 function qplComicAppraisalPanel(r,idx){
@@ -20587,20 +20615,63 @@ function metronIssueToQplRow(issue={},priceCandidates=[]){
   return {source:'metron',category:'Comic',name:title||issue.issueName||'Comic issue',series:issue.seriesName||'',seriesTitle:issue.seriesName||'',issue:String(issue.number||''),card_number:String(issue.number||''),year:String(issue.seriesYearBegan||issue.coverDate||'').slice(0,4),set:[issue.publisher,issue.seriesYearBegan?issue.seriesYearBegan+' series':''].filter(Boolean).join(' / '),publisher:issue.publisher||'',imageUrl:issue.imageUrl||'',coverImageUrl:issue.imageUrl||'',imageSource:issue.imageUrl?'metron':'placeholder',coverConfidence:'needs-confirmation',coverConfirmed:false,market:Number(cp.ungraded||0),priceSource:pc?'PriceCharting guide':'Select for PriceCharting prices',lastPriceUpdate:pc?new Date().toISOString():'',confidence:issue.seriesName&&issue.number?94:70,matchWhy:['Metron series and issue match',issue.imageUrl?'Metron cover available':'No cover returned'].filter(Boolean),metronIssueId:String(issue.id||''),metron:issue,pricecharting:pc||null,providerProductId:String(pc?.productId||issue.id||''),providerUrl:pc?.url||issue.resourceUrl||'',raw:issue,note:'Metron comic record. Select it to load full book info, variant covers, and PriceCharting prices.'};
 }
 
+function metronSeriesToQplRow(series={},parsed={},preferred=false){
+  return {source:'metron_series',recordType:'comic_series',category:'Comic',name:series.name||'Comic series',series:series.name||'',seriesTitle:series.name||'',year:String(series.yearBegan||''),set:[series.publisher,series.imprint].filter(Boolean).join(' / '),publisher:series.publisher||'',imageUrl:series.imageUrl||'',market:0,confidence:preferred?99:88,matchWhy:[preferred?'Recent shared series/run':'Metron series title match',series.publisher,series.yearBegan?String(series.yearBegan):''].filter(Boolean),priceSource:'Choose a run before pricing',note:'Choose this exact series/run, then select the issue and cover.',metronSeries:series,requestedIssue:parsed.issueNumber||'',preferredSeries:preferred,raw:series};
+}
+
+const COMIC_SERIES_PREFS_LOCAL='comic_series_preferences_v1';
+let _comicIgnoreSeriesPreferenceOnce=false;
+async function loadComicSeriesPreferences(){
+  let local={};try{local=JSON.parse(localStorage.getItem(scopedStorageKey(COMIC_SERIES_PREFS_LOCAL))||'{}')||{};}catch(_){}
+  if(!navigator.onLine)return local;
+  try{const response=await storeWorkerFetch('/kv/'+COMIC_SERIES_PREFS_LOCAL,{cache:'no-store'}),raw=(await response.json().catch(()=>({}))).value,cloud=raw?JSON.parse(raw):{};localStorage.setItem(scopedStorageKey(COMIC_SERIES_PREFS_LOCAL),JSON.stringify(cloud||{}));return cloud||{};}catch(_){return local;}
+}
+async function saveComicSeriesPreference(series={},parsed={}){
+  const api=window.ArsCaComicIssueHub;if(!api||!series.id)return;
+  const prefs=await loadComicSeriesPreferences(),record={seriesId:String(series.id),seriesName:series.name||parsed.seriesGuess||'',publisher:series.publisher||'',yearBegan:String(series.yearBegan||''),volume:series.volume??null,seriesType:series.seriesType||'',aliases:[...new Set([...api.preferenceKeys(parsed),...(parsed.aliasesExpanded||[]).map(x=>String(x).toLowerCase()),String(series.name||'').toLowerCase()])],lastUsedAt:new Date().toISOString()};
+  const keys=api.preferenceKeys(parsed);(keys.length?keys:[String(series.name||'').toLowerCase()]).forEach(key=>prefs[key]=record);
+  const trimmed=Object.fromEntries(Object.entries(prefs).sort((a,b)=>String(b[1]?.lastUsedAt||'').localeCompare(String(a[1]?.lastUsedAt||''))).slice(0,100));
+  localStorage.setItem(scopedStorageKey(COMIC_SERIES_PREFS_LOCAL),JSON.stringify(trimmed));
+  await storeWorkerFetch('/kv/'+COMIC_SERIES_PREFS_LOCAL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(trimmed)}).catch(()=>null);
+}
+function changeComicSeriesRun(){_comicIgnoreSeriesPreferenceOnce=true;runPriceLookup();}
+
+async function chooseMetronComicSeries(idx){
+  const row=qplResults[idx],series=row?.metronSeries,api=window.ArsCaComicIssueHub;if(!series?.id||!api)return;
+  const parsed=api.parseComicQuery(qplLastSearch||document.getElementById('qpl-input')?.value||series.name);
+  document.getElementById('qpl-result').innerHTML='<div style="color:var(--purple)">Loading issues from the selected Metron series...</div>';
+  await saveComicSeriesPreference(series,parsed);
+  const params=new URLSearchParams({q:parsed.raw||series.name,series_id:String(series.id)});if(parsed.issueNumber)params.set('number',parsed.issueNumber);
+  const response=await storeWorkerFetch('/comic/metron/search?'+params.toString(),{cache:'no-store'}),data=await response.json().catch(()=>({}));
+  if(!response.ok||!data.ok){toast_dash(data.error||'That comic run could not be loaded');return;}
+  const preferred={seriesId:String(series.id),seriesName:series.name,publisher:series.publisher||'',yearBegan:String(series.yearBegan||'')};
+  qplMasterResults=(data.issues||[]).map(issue=>({...metronIssueToQplRow(issue,[]),recentSeries:preferred}));qplResults=qplMasterResults;
+  if(!qplResults.length){document.getElementById('qpl-result').innerHTML=`<div style="color:var(--gold);line-height:1.6">That run does not contain issue #${escHtml(parsed.issueNumber||'requested')}. <button class="hbtn" onclick="changeComicSeriesRun()">CHOOSE ANOTHER RUN</button></div>`;return;}
+  renderQuickLookupResults(qplResults);setComicsOfflineBanner(`Using shared recent run: ${series.name} - ${series.publisher||'publisher unknown'} - ${series.yearBegan||'year unknown'}.`,'good');
+}
+
 async function searchMetronComicCatalog(q,parsed={}){
-  const params=new URLSearchParams({q});if(parsed.seriesGuess)params.set('series',parsed.seriesGuess);if(parsed.issueNumber)params.set('number',parsed.issueNumber);if(parsed.yearGuess)params.set('year',parsed.yearGuess);if(parsed.publisherGuess)params.set('publisher',parsed.publisherGuess);
+  const params=new URLSearchParams({q});if(parsed.seriesGuess)params.set('series',parsed.seriesGuess);if(parsed.issueNumber)params.set('number',parsed.issueNumber);if(parsed.yearGuess)params.set('year',parsed.yearGuess);if(parsed.publisherGuess)params.set('publisher',parsed.publisherGuess);if(parsed.creatorGuess)params.set('creator',parsed.creatorGuess);
   const digits=String(q||'').replace(/\D/g,'');if(/^(?:\d[ -]?){12,18}$/.test(String(q||'').trim())&&digits.length>=12)params.set('upc',digits);
-  const res=await storeWorkerFetch('/comic/metron/search?'+params.toString(),{cache:'no-store'}),data=await res.json().catch(()=>({}));if(!res.ok||!data.ok)throw new Error(data.error||'Metron comic search failed');
-  return (data.issues||[]).map(issue=>metronIssueToQplRow(issue,data.priceCandidates||[]));
+  let preferred=null;
+  if(!parsed.creatorGuess&&!parsed.yearGuess&&!parsed.publisherGuess&&!_comicIgnoreSeriesPreferenceOnce){const prefs=await loadComicSeriesPreferences();preferred=window.ArsCaComicIssueHub?.pickSeriesPreference(prefs,parsed)||null;if(preferred?.seriesId)params.set('series_id',preferred.seriesId);}
+  _comicIgnoreSeriesPreferenceOnce=false;
+  let res=await storeWorkerFetch('/comic/metron/search?'+params.toString(),{cache:'no-store'}),data=await res.json().catch(()=>({}));if(!res.ok||!data.ok)throw new Error(data.error||'Metron comic search failed');
+  if(preferred&&!(data.issues||[]).length){params.delete('series_id');preferred=null;res=await storeWorkerFetch('/comic/metron/search?'+params.toString(),{cache:'no-store'});data=await res.json().catch(()=>({}));if(!res.ok||!data.ok)throw new Error(data.error||'Metron comic search failed');}
+  const seriesRows=(data.seriesChoices||[]).map(series=>metronSeriesToQplRow(series,parsed,preferred?.seriesId===String(series.id)));
+  const issueRows=(data.issues||[]).map(issue=>({...metronIssueToQplRow(issue,data.priceCandidates||[]),recentSeries:preferred}));
+  return [...seriesRows,...issueRows];
 }
 
 async function hydrateMetronComicResult(idx,force=false,variantKey=''){
   let r=qplResults[idx];if(!r?.metronIssueId||(!force&&r.metronDetailLoaded))return r;
   const query=new URLSearchParams();if(force)query.set('refresh','1');if(variantKey)query.set('variant',variantKey);
+  try{const linkedResponse=await storeWorkerFetch('/kv/comic_price_link_'+encodeURIComponent(r.metronIssueId),{cache:'no-store'}),linkedRaw=(await linkedResponse.json().catch(()=>({}))).value,linked=linkedRaw?JSON.parse(linkedRaw):null;if(linked?.pricechartingProductId)query.set('pricecharting_id',linked.pricechartingProductId);}catch(_){}
   const path='/comic/metron/issue/'+encodeURIComponent(r.metronIssueId)+(query.size?'?'+query.toString():'');
   const res=await storeWorkerFetch(path,{cache:'no-store'}),data=await res.json().catch(()=>({}));if(!res.ok||!data.ok)throw new Error(data.error||'Metron issue detail failed');
-  const issue=data.issue||{},pc=data.priceMatch||bestComicPriceCandidate(data.priceCandidates||[],issue)||r.pricecharting||null;
-  r={...r,name:[issue.seriesName,issue.number?'#'+issue.number:''].filter(Boolean).join(' ')||r.name,issue:String(issue.number||r.issue||''),card_number:String(issue.number||r.card_number||''),variant:issue.issueName||r.variant||'',publisher:issue.publisher||r.publisher||'',year:String(issue.seriesYearBegan||issue.coverDate||r.year||'').slice(0,4),imageUrl:issue.imageUrl||r.imageUrl||'',coverImageUrl:issue.imageUrl||r.imageUrl||'',metron:issue,metronDetailLoaded:true,metronCovers:data.covers||[],metronVariants:issue.variants||[],comicPriceCandidates:data.priceCandidates||[],pricecharting:pc,market:Number(pc?.comicPrices?.ungraded||r.market||0),lastPriceUpdate:pc?new Date().toISOString():(r.lastPriceUpdate||''),priceSource:pc?'PriceCharting live':'No exact PriceCharting match'};
+  let hiddenPriceIds=[];try{const hiddenResponse=await storeWorkerFetch('/kv/comic_price_hidden_'+encodeURIComponent(r.metronIssueId),{cache:'no-store'}),hiddenRaw=(await hiddenResponse.json().catch(()=>({}))).value;hiddenPriceIds=hiddenRaw?JSON.parse(hiddenRaw):[];}catch(_){}const hiddenSet=new Set((Array.isArray(hiddenPriceIds)?hiddenPriceIds:[]).map(String)),visiblePriceCandidates=(data.priceCandidates||[]).filter(candidate=>!hiddenSet.has(String(candidate.productId||''))),visibleCovers=(data.covers||[]).filter(cover=>!cover.pricechartingProductId||!hiddenSet.has(String(cover.pricechartingProductId)));
+  const issue=data.issue||{},serverPrice=data.priceMatch&&!hiddenSet.has(String(data.priceMatch.productId||''))?data.priceMatch:null,pc=serverPrice||(r.pricecharting?.savedExactLink?r.pricecharting:null);
+  r={...r,name:[issue.seriesName,issue.number?'#'+issue.number:''].filter(Boolean).join(' ')||r.name,issue:String(issue.number||r.issue||''),card_number:String(issue.number||r.card_number||''),variant:issue.issueName||r.variant||'',publisher:issue.publisher||r.publisher||'',year:String(issue.seriesYearBegan||issue.coverDate||r.year||'').slice(0,4),imageUrl:issue.imageUrl||r.imageUrl||'',coverImageUrl:issue.imageUrl||r.imageUrl||'',metron:issue,metronDetailLoaded:true,metronCovers:visibleCovers,metronVariants:issue.variants||[],comicPriceCandidates:visiblePriceCandidates,pricecharting:pc,market:Number(pc?.comicPrices?.ungraded||r.market||0),lastPriceUpdate:pc?new Date().toISOString():(r.lastPriceUpdate||''),priceSource:pc?(pc.savedExactLink?'Saved exact PriceCharting link':'PriceCharting live'):visiblePriceCandidates.length>1?'Choose the exact PriceCharting product':'No exact PriceCharting match'};
   try{const savedRes=await storeWorkerFetch('/kv/comic_cover_'+encodeURIComponent(r.metronIssueId),{cache:'no-store'}),savedRaw=(await savedRes.json().catch(()=>({}))).value,saved=savedRaw?JSON.parse(savedRaw):null;if(saved?.imageUrl){r.imageUrl=saved.imageUrl;r.coverImageUrl=saved.imageUrl;r.variant=saved.variantName||'';r.variantLabel=saved.variantName||'';r.coverConfirmed=true;r.coverConfidence='confirmed';comicAppraisalState(r).coverConfirmed=true;}}catch(_){}
   qplResults[idx]=r;return r;
 }
@@ -20618,8 +20689,10 @@ async function selectMetronComicCover(idx,coverIndex){
     try{
       const response=await storeWorkerFetch('/pricing/pricecharting/product/'+encodeURIComponent(cover.pricechartingProductId),{cache:'no-store'}),data=await response.json().catch(()=>({})),pc=data.product||data;
       if(!response.ok||!pc?.productId)throw new Error(data.error||'PriceCharting product unavailable');
+      if(!/^comic books\b/i.test(String(pc.consoleName||pc.demand?.consoleName||'')))throw new Error('That PriceCharting product is not a comic book');
       r.pricecharting=pc;r.market=Number(pc.comicPrices?.ungraded||0);r.lastPriceUpdate=new Date().toISOString();r.priceSource=r.market?'PriceCharting live':'PriceCharting exact cover - no guide value';
       r.imageUrl=pc.imageUrl||cover.imageUrl||r.imageUrl;r.coverImageUrl=r.imageUrl;r.variant=pc.productName||cover.issueName||r.variant;r.variantLabel=r.variant;
+      await storeWorkerFetch('/kv/comic_price_link_'+encodeURIComponent(r.metronIssueId),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({metronIssueId:r.metronIssueId,pricechartingProductId:String(pc.productId),productName:pc.productName||'',linkedAt:new Date().toISOString()})}).catch(()=>null);
     }catch(error){toast_dash('Cover selected, but its PriceCharting price could not load: '+(error.message||error));r.imageUrl=cover.imageUrl||r.imageUrl;r.coverImageUrl=r.imageUrl;r.variant=cover.issueName||cover.name||r.variant;}
   }else{
   const nextId=String(cover.metronIssueId||cover.id||'');
@@ -24363,7 +24436,7 @@ function handleQplCategoryChange(){
   if(sportsHelper) sportsHelper.style.display = isSports ? '' : 'none';
   const inp = document.getElementById('qpl-input');
   if(inp) inp.placeholder = isComic
-    ? 'e.g. Spawn #1, Amazing Spider-Man 300, Batman #251 newsstand…'
+    ? 'e.g. TMNT, Spawn #1, artist: Jim Lee, or scan a barcode…'
     : isPokemon ? 'e.g. Charizard VMAX 074/073 Shining Fates…'
     : isMtg ? 'e.g. Black Lotus, Lightning Bolt, Counterspell…'
     : isSealed ? 'Paste a TCGplayer product URL/ID, or search Secret Lair / booster display…'
@@ -24954,6 +25027,9 @@ function qplGradedQuickChips(r, idx){
 }
 
 function quickLookupResultCard(r, idx){
+  if(r?.source==='metron_series'){
+    const s=r.metronSeries||{};return `<div class="qpl-hero-card" data-qpl-idx="${idx}" style="grid-template-columns:minmax(110px,170px) 1fr"><div class="qpl-img-sticky">${r.imageUrl?`<div class="qpl-img-shell" style="aspect-ratio:2/3"><img src="${escHtml(r.imageUrl)}" alt="${escHtml(r.name)}" style="width:100%;height:100%;object-fit:cover"></div>`:'<div class="qpl-img-shell" style="aspect-ratio:2/3;display:grid;place-items:center;color:var(--purple)">COMIC RUN</div>'}</div><div class="qpl-info"><div class="qpl-title">${escHtml(r.name)}</div><div class="qpl-meta">${escHtml([s.publisher,s.imprint,s.yearBegan?s.yearBegan+'-'+(s.yearEnd||'present'):'',s.seriesType,s.volume?'Volume '+s.volume:''].filter(Boolean).join(' / '))}</div><div class="qpl-badges"><span class="qpl-badge ${r.preferredSeries?'good':''}">${r.preferredSeries?'RECENT SHARED RUN':'METRON SERIES'}</span>${s.issueCount?`<span class="qpl-badge">${escHtml(String(s.issueCount))} ISSUES</span>`:''}</div><div style="font-size:10px;color:var(--dim);margin:9px 0">${escHtml(r.requestedIssue?'Choose this run to open issue #'+r.requestedIssue:'Choose this run to browse its issues.')}</div><div class="qpl-actions-primary"><button class="hbtn primary" onclick="chooseMetronComicSeries(${idx})">CHOOSE THIS SERIES / RUN</button></div></div></div>`;
+  }
   const builtTcgLink = buildTcgExternalLink(r);
   const isComic = qplResultCategoryKey(r) === 'comic';
   const inventoryUnavailable = r.source === 'inventory' && !inventoryItemIsSellable(r.raw || r);
@@ -25051,6 +25127,7 @@ function quickLookupResultCard(r, idx){
         <span class="qpl-badge ${truth.includes('No ') || truth.includes('Needs') ? 'bad' : truth.includes('Guide') ? 'warn' : 'good'}">${escHtml(truth)}</span>
         ${r.source === 'inventory' ? `<span class="qpl-badge ${inventoryUnavailable?'bad':'good'}">${inventoryUnavailable?'SOLD / OUT OF STOCK':'IN INVENTORY'}</span>` : `<span class="qpl-badge">${escHtml(r.source === 'justtcg' ? 'JustTCG' : r.source === 'pricecharting_csv' ? 'PriceCharting' : r.source || 'Source')}</span>`}
         ${isComic ? (comicAppraisalState(r).coverConfirmed ? '<span class="qpl-badge good">COVER CONFIRMED</span>' : `<span class="qpl-badge warn">${r.imageUrl?'COVER NEEDS CONFIRMATION':'NO COVER'}</span>`) : ''}
+        ${isComic&&r.recentSeries?`<span class="qpl-badge good">USING RECENT RUN</span><button class="hbtn" style="min-height:24px;padding:3px 7px;font-size:8px" onclick="changeComicSeriesRun()">CHANGE RUN</button>`:''}
         ${r.cache?.state === 'offline' ? `<span class="qpl-badge warn">Offline Cache</span>` : ''}
         ${_qplStaleBadge(r)}
         ${r.is_sealed ? `<span class="qpl-badge good">SEALED</span>` : ''}
@@ -25837,6 +25914,7 @@ async function refreshResearchPrice(idx){
 
 async function selectQuickLookupResult(idx){
   let r = qplResults[idx];
+  if(r?.source==='metron_series'){await chooseMetronComicSeries(idx);return;}
   if(r && qplResultCategoryKey(r) === 'pokemon' && !r.pokemonPriceTracker?.lookupDebug?.exactHydrated && navigator.onLine && !pokemonPriceTrackerQuotaBlocked()) {
     // Show loading state on the SELECT button
     const selectBtn = document.querySelector(`.qpl-hero-card[data-qpl-idx="${idx}"] .qpl-select-btn`);
@@ -32342,7 +32420,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.07.21.08-comic-creator-search"></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.07.22.01-comic-series-first"></script>
 </body>
 </html>
 

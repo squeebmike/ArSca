@@ -90,6 +90,24 @@ function normalizeMetronListIssue(issue = {}) {
   };
 }
 
+function normalizeMetronSeries(series = {}) {
+  return {
+    id:String(series.id || ''),
+    name:metronName(series),
+    volume:series.volume ?? null,
+    yearBegan:series.year_began ?? null,
+    yearEnd:series.year_end ?? null,
+    publisher:metronName(series.publisher),
+    imprint:metronName(series.imprint),
+    seriesType:metronName(series.series_type),
+    status:String(series.status || series.status_name || ''),
+    issueCount:Number(series.issue_count || series.issues_count || 0) || null,
+    imageUrl:metronImage(series.image),
+    modified:series.modified || null,
+    resourceUrl:series.resource_url || (series.id ? `https://metron.cloud/series/${series.id}/` : ''),
+  };
+}
+
 function normalizeMetronDetail(issue = {}) {
   const base = normalizeMetronListIssue(issue);
   const variants = (Array.isArray(issue.variants) ? issue.variants : []).map((variant, index) => ({
@@ -1574,7 +1592,7 @@ export default {
         const body = await request.text();
         if (new TextEncoder().encode(body).byteLength > 1024 * 1024) return json({ ok:false, error:'KV payload is too large' }, 413);
         if (env.LBA_KV) {
-          const expirationTtl = key.startsWith('show_session') ? 60 * 60 * 24 * 180 : key.startsWith('comic_cover_') ? 60 * 60 * 24 * 365 : 604800;
+          const expirationTtl = key.startsWith('show_session') ? 60 * 60 * 24 * 180 : key.startsWith('comic_') ? 60 * 60 * 24 * 365 : 604800;
           await env.LBA_KV.put(scopedKey, body, { expirationTtl });
         } else {
           globalThis['_' + scopedKey] = body;
@@ -3116,13 +3134,16 @@ export default {
         const words = String(issue.seriesName || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').split(/\s+/).filter(word => word.length > 2);
         const number = String(issue.number || '').toLowerCase().replace(/[^a-z0-9.]/g, '');
         const numberPattern = number ? new RegExp(`(?:^|[^a-z0-9])#?${number.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?:[^a-z0-9]|$)`, 'i') : null;
+        const year = String(issue.seriesYearBegan || '').trim();
+        const variantWords = String(issue.issueName || issue.selectedVariant?.name || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').split(/\s+/).filter(word => word.length > 2 && !['cover','variant','issue'].includes(word));
         return (candidates || []).filter(isComicPcCandidate).map(candidate => {
           const normalized = String(candidate.productName || '').toLowerCase().replace(/[^a-z0-9.#]+/g, ' ');
           const seriesMatch = !seriesPhrase || normalized === seriesPhrase || normalized.startsWith(seriesPhrase + ' ');
           const numberMatch = !numberPattern || numberPattern.test(normalized);
           const titleMatches = words.filter(word => normalized.includes(word)).length;
-          const score = titleMatches * 18 + (numberMatch ? 60 : 0) + (/comic/i.test(candidate.consoleName || '') ? 20 : 0);
-          return { candidate, score, numberMatch, seriesMatch, titleMatches };
+          const variantMatches = variantWords.filter(word => normalized.includes(word)).length;
+          const score = titleMatches * 18 + (numberMatch ? 60 : 0) + (/comic/i.test(candidate.consoleName || '') ? 20 : 0) + (year && normalized.includes(year) ? 12 : 0) + variantMatches * 5;
+          return { candidate, score, numberMatch, seriesMatch, titleMatches, variantMatches };
         }).filter(match => match.seriesMatch && match.numberMatch && match.titleMatches >= Math.max(1, Math.ceil(words.length * 0.6)) && match.score >= 70)
           .sort((a, b) => b.score - a.score).map(match => ({ ...match.candidate, comicMatchScore:match.score }));
       };
@@ -3156,7 +3177,7 @@ export default {
           if (Array.isArray(cached)) return cached;
         }
         try {
-          const data = await pcFetch('/api/products', { q, console:'Comics' });
+          const data = await pcFetch('/api/products', { q });
           const products = (data.products || []).map(product => normalizePcProduct(product, q)).slice(0, 25);
           if (env.LBA_KV) await env.LBA_KV.put(cacheKey, JSON.stringify(products), { expirationTtl:60 * 60 * 6 });
           return products;
@@ -3171,23 +3192,45 @@ export default {
         if (access.error) return access.error;
         const rawQuery = String(url.searchParams.get('q') || '').trim().slice(0, 180);
         const series = String(url.searchParams.get('series') || '').trim().slice(0, 120);
+        const seriesId = String(url.searchParams.get('series_id') || '').replace(/\D/g, '').slice(0, 20);
         const number = String(url.searchParams.get('number') || '').trim().slice(0, 30);
         const year = String(url.searchParams.get('year') || '').replace(/\D/g, '').slice(0, 4);
         const publisher = String(url.searchParams.get('publisher') || '').trim().slice(0, 80);
         const upc = String(url.searchParams.get('upc') || '').replace(/\D/g, '').slice(0, 20);
         const sku = String(url.searchParams.get('sku') || '').trim().slice(0, 80);
-        if (!series && !upc && !sku) return json({ ok:false, error:'Comic series, UPC, or SKU is required' }, 400);
-        const filters = upc ? { upc } : sku ? { sku } : {
-          series_name:series,
-          number,
-          ...(year ? { series_year_began:year } : {}),
-          ...(publisher ? { publisher_name:publisher } : {}),
-        };
+        const creator = String(url.searchParams.get('creator') || '').trim().slice(0, 120);
+        if (!series && !seriesId && !creator && !upc && !sku) return json({ ok:false, error:'Comic series, creator, UPC, or SKU is required' }, 400);
         try {
-          const metron = await metronFetch(env, '/issue/', filters, 60 * 60 * 24);
-          const rawIssues = Array.isArray(metron.data) ? metron.data : (metron.data?.results || []);
+          if (creator) {
+            const creatorResponse = await metronFetch(env, '/creator/', { name:creator }, 60 * 60 * 24 * 7);
+            const creators = (Array.isArray(creatorResponse.data) ? creatorResponse.data : (creatorResponse.data?.results || [])).slice(0, 10);
+            const exactCreator = creators.find(item => metronName(item).toLowerCase() === creator.toLowerCase()) || creators[0];
+            if (!exactCreator?.id) return json({ ok:true, source:'Metron', query:rawQuery, creator, creators:[], issues:[], seriesChoices:[], reason:'No Metron creator matched that name' });
+            const issueResponse = await metronFetch(env, '/issue/', { creator_id:exactCreator.id }, 60 * 60 * 24);
+            const rawIssues = Array.isArray(issueResponse.data) ? issueResponse.data : (issueResponse.data?.results || []);
+            return json({ ok:true, source:'Metron', query:rawQuery, creator:{ id:String(exactCreator.id), name:metronName(exactCreator) }, creators:creators.map(item => ({ id:String(item.id || ''), name:metronName(item) })), cacheStatus:issueResponse.cacheStatus, issues:rawIssues.slice(0, 20).map(normalizeMetronListIssue), seriesChoices:[], priceCandidates:[] });
+          }
+          let selectedSeries = null;
+          let seriesChoices = [];
+          if (!upc && !sku && !seriesId) {
+            const seriesResponse = await metronFetch(env, '/series/', {
+              name:series,
+              ...(year ? { year_began:year } : {}),
+              ...(publisher ? { publisher_name:publisher } : {}),
+            }, 60 * 60 * 24 * 7);
+            seriesChoices = (Array.isArray(seriesResponse.data) ? seriesResponse.data : (seriesResponse.data?.results || [])).slice(0, 30).map(normalizeMetronSeries);
+            if (seriesChoices.length !== 1) return json({ ok:true, source:'Metron', query:rawQuery, seriesChoices, issues:[], requiresSeriesSelection:seriesChoices.length > 1, reason:seriesChoices.length ? 'Choose the exact series and run' : 'No Metron series matched that title' });
+            selectedSeries = seriesChoices[0];
+          }
+          const filters = upc ? { upc } : sku ? { sku } : { series_id:seriesId || selectedSeries?.id, number };
+          let metron = await metronFetch(env, '/issue/', filters, 60 * 60 * 24);
+          let rawIssues = Array.isArray(metron.data) ? metron.data : (metron.data?.results || []);
+          if (upc && !rawIssues.length && upc.length >= 12) {
+            metron = await metronFetch(env, '/issue/', { upc_starts_with:upc.slice(0, 13) }, 60 * 60 * 24);
+            rawIssues = Array.isArray(metron.data) ? metron.data : (metron.data?.results || []);
+          }
           const issues = rawIssues.slice(0, 20).map(normalizeMetronListIssue);
-          return json({ ok:true, source:'Metron', query:rawQuery, filters, cacheStatus:metron.cacheStatus, issues, priceCandidates:[] });
+          return json({ ok:true, source:'Metron', query:rawQuery, filters, selectedSeries, seriesChoices, cacheStatus:metron.cacheStatus, issues, priceCandidates:[] });
         } catch (error) {
           const status = [401,403,429].includes(Number(error.status)) ? Number(error.status) : 502;
           const message = status === 401 || status === 403 ? 'Metron credentials were rejected' : status === 429 ? 'Metron rate limit reached; cached comic records remain available' : 'Metron comic search failed';
@@ -3207,13 +3250,21 @@ export default {
           const selectedVariant = variantKey ? issue.variants.find(variant => String(variant.id) === variantKey || String(variant.metronIssueId) === variantKey) : null;
           if (selectedVariant) issue = { ...issue, issueName:selectedVariant.name || issue.issueName, number:selectedVariant.number || issue.number, imageUrl:selectedVariant.imageUrl || issue.imageUrl, sku:selectedVariant.sku || issue.sku, upc:selectedVariant.upc || issue.upc, coverPrice:selectedVariant.coverPrice || issue.coverPrice, selectedVariant };
           const forcePrice = url.searchParams.get('refresh') === '1';
+          const linkedPcId = String(url.searchParams.get('pricecharting_id') || '').replace(/\D/g, '').slice(0, 30);
+          let linkedPrice = null;
+          if (linkedPcId) {
+            try {
+              const linkedDetail = normalizePcProduct(await pcFetch('/api/product', { id:linkedPcId }), comicPcQuery(issue));
+              if (isComicPcCandidate(linkedDetail)) linkedPrice = { ...linkedDetail, savedExactLink:true, comicMatchScore:999 };
+            } catch (_) {}
+          }
           const [seriesIssues, priceCandidates] = await Promise.all([
             issue.seriesId ? metronFetch(env, `/series/${issue.seriesId}/issue_list/`, { limit:100 }, 60 * 60 * 24 * 7).catch(() => ({ data:[] })) : Promise.resolve({ data:[] }),
-            comicPcCandidates(issue, forcePrice),
+            linkedPrice ? Promise.resolve([]) : comicPcCandidates(issue, forcePrice),
           ]);
           const rawSeriesIssues = Array.isArray(seriesIssues.data) ? seriesIssues.data : (seriesIssues.data?.results || []);
           const metronCovers = metronSiblingCovers(issue, rawSeriesIssues);
-          const comicCandidates = matchingComicPcCandidates(priceCandidates, issue).slice(0, 12);
+          const comicCandidates = linkedPrice ? [linkedPrice] : matchingComicPcCandidates(priceCandidates, issue).slice(0, 12);
           const pcCovers = await Promise.all(comicCandidates.map(hydratePcCoverImage));
           const covers = [...metronCovers, ...pcCovers.map(product => ({
             id:`pricecharting:${product.productId}`,
@@ -3226,11 +3277,12 @@ export default {
             source:'PriceCharting',
           }))].filter((cover, index, all) => cover.imageUrl && all.findIndex(other => String(other.imageUrl).split('?')[0] === String(cover.imageUrl).split('?')[0]) === index);
           const candidate = comicCandidates[0] || null;
-          let priceMatch = candidate;
-          if (candidate?.productId) {
+          const runnerUp = comicCandidates[1] || null;
+          let priceMatch = linkedPrice || (candidate && (!runnerUp || Number(candidate.comicMatchScore || 0) - Number(runnerUp.comicMatchScore || 0) >= 15) ? candidate : null);
+          if (priceMatch?.productId) {
             try {
-              const detail = await pcFetch('/api/product', { id:candidate.productId });
-              priceMatch = normalizePcProduct(detail, comicPcQuery(issue));
+              const detail = await pcFetch('/api/product', { id:priceMatch.productId });
+              priceMatch = { ...normalizePcProduct(detail, comicPcQuery(issue)), savedExactLink:!!linkedPrice };
             } catch (_) {}
           }
           return json({ ok:true, source:'Metron + PriceCharting', cacheStatus:metron.cacheStatus, issue, covers, priceCandidates:comicCandidates, priceMatch });
@@ -3282,10 +3334,29 @@ export default {
           raw:{ productId:product.productId || '', productName:product.productName || '', consoleName:product.consoleName || '', genre:product.genre || '', releaseDate:product.releaseDate || null }
         };
       };
+      const metronBarcodeCandidate = (issue, attemptedCode, supplement = '') => ({
+        category:'comics',
+        provider:'metron',
+        providerProductId:String(issue.id || ''),
+        metronIssueId:String(issue.id || ''),
+        title:[issue.seriesName, issue.number ? '#' + issue.number : ''].filter(Boolean).join(' ') || issue.issueName || 'Comic issue',
+        subtitle:[issue.publisher, issue.seriesYearBegan ? issue.seriesYearBegan + ' series' : '', issue.issueName].filter(Boolean).join(' / '),
+        consoleName:'Comic Books',
+        genre:'Comic',
+        upc:attemptedCode,
+        imageUrl:issue.imageUrl || '',
+        providerUrl:issue.resourceUrl || '',
+        priceSummary:{ raw:null, graded98:null },
+        confidence:98,
+        matchReason:['Exact Metron comic barcode match', supplement ? 'Five-digit cover supplement retained for confirmation' : 'Confirm the exact cover before saving'],
+        needsConfirmation:true,
+        needsCoverConfirmation:true,
+        evidence:{ type:'barcode', routeType:'metron-upc', barcode:attemptedCode, supplement },
+        raw:issue,
+      });
 
       if (url.pathname === '/barcode/lookup') {
         if (request.method !== 'POST') return json({ status:'error', error:'POST required' }, 405);
-        if (!token) return json({ status:'error', error:'PriceCharting unavailable' }, 503);
         let body = {};
         try { body = await request.json(); } catch (_) { return json({ status:'error', error:'Valid JSON body required' }, 400); }
         const barcode = normalizeBarcodeValue(body.barcode || '');
@@ -3294,7 +3365,23 @@ export default {
         if (!barcode.isValidLikely) return json({ status:'error', error:'Barcode must be a likely UPC-A, UPC-E, or EAN-13 value', barcode }, 400);
         if (body.supplement) barcode.supplement = String(body.supplement).replace(/\D/g, '').slice(0, 5);
         const sourceCalls = [], found = [], tried = [];
-        for (const code of barcode.candidates.slice(0, 3)) {
+        if (hint === 'comics' && env.METRON_USER && env.METRON_PASS) {
+          for (const code of barcode.candidates.slice(0, 3)) {
+            const fullCode = code + (barcode.supplement || '');
+            try {
+              let result = await metronFetch(env, '/issue/', { upc:fullCode }, 60 * 60 * 24 * 7);
+              let issues = Array.isArray(result.data) ? result.data : (result.data?.results || []);
+              if (!issues.length) {
+                result = await metronFetch(env, '/issue/', { upc_starts_with:code }, 60 * 60 * 24 * 7);
+                issues = Array.isArray(result.data) ? result.data : (result.data?.results || []);
+              }
+              found.push(...issues.slice(0, 20).map(normalizeMetronListIssue).map(issue => metronBarcodeCandidate(issue, code, barcode.supplement)));
+              sourceCalls.push({ provider:'metron', routeType:'upc', barcode:code, success:issues.length > 0 });
+              if (issues.length) break;
+            } catch (_) { sourceCalls.push({ provider:'metron', routeType:'upc', barcode:code, success:false }); }
+          }
+        }
+        for (const code of token ? barcode.candidates.slice(0, 3) : []) {
           tried.push(code);
           try {
             const data = await pcFetch('/api/product', { upc:code });
@@ -3309,14 +3396,14 @@ export default {
           try {
             const data = await pcFetch('/api/products', { q:fallbackQuery });
             const products = (data.products || []).map(p => normalizePcProduct(p, fallbackQuery));
-            const seen = new Set(found.map(candidate => candidate.providerProductId));
-            found.push(...products.filter(p => !seen.has(p.productId)).slice(0, 20).map(p => barcodeCandidate(p, hint, 'search', barcode.primary)));
+            const seen = new Set(found.map(candidate => `${candidate.provider}:${candidate.providerProductId}`));
+            found.push(...products.filter(p => !seen.has(`pricecharting:${p.productId}`)).slice(0, 20).map(p => barcodeCandidate(p, hint, 'search', barcode.primary)));
             sourceCalls.push({ provider:'pricecharting', routeType:'search', success:products.length > 0 });
           } catch (_) { sourceCalls.push({ provider:'pricecharting', routeType:'search', success:false }); }
         }
         barcode.candidatesTried = tried;
         found.forEach(candidate => { candidate.evidence.supplement = barcode.supplement || ''; });
-        return json({ status:'success', barcode, candidates:found, sourceCalls, message:found.length ? (found.length > 1 ? 'Multiple possible matches found' : 'Confirm this product before saving') : 'No product found by UPC' });
+        return json({ status:'success', barcode, candidates:found, sourceCalls, message:found.length ? (found.length > 1 ? 'Multiple possible matches found' : 'Confirm this product before saving') : (token ? 'No product found by UPC' : 'No Metron match found and PriceCharting is unavailable') });
       }
       function parseCsvLine(line) {
         const out = [];

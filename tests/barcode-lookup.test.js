@@ -24,6 +24,8 @@ assert.equal(barcode.normalizeBarcode('12-345').isValidLikely,false);
 assert.match(worker,/url\.pathname === '\/barcode\/lookup'/);
 assert.match(worker,/pcFetch\('\/api\/product', \{ upc:code \}\)/);
 assert.match(worker,/pcFetch\('\/api\/products', \{ q:fallbackQuery \}\)/);
+assert.match(worker,/upc_starts_with/);
+assert.match(worker,/metronBarcodeCandidate/);
 assert.match(worker,/needsCoverConfirmation:isComic/);
 assert.match(dashboard,/id="research-barcode-btn"/);
 assert.match(dashboard,/BarcodeDetector/);
