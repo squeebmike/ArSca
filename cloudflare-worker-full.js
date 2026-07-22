@@ -231,6 +231,23 @@ async function metronFetch(env, path, params = {}, ttlSeconds = 86400) {
   return { data, cacheStatus:'miss' };
 }
 
+async function metronExactIssueRecords(env, issue = {}) {
+  const seriesId = String(issue.seriesId || '');
+  const number = metronIssueBaseNumber(issue.number);
+  if (!seriesId || !number) return [];
+  const first = await metronFetch(env, '/issue/', { series_id:seriesId, number, page:1 }, 60 * 60 * 24 * 7);
+  const payload = first.data || {};
+  const rows = Array.isArray(payload) ? [...payload] : [...(payload.results || [])];
+  const total = Number(Array.isArray(payload) ? rows.length : payload.count || rows.length) || rows.length;
+  const pageSize = Math.max(1, rows.length || 20);
+  const pageCount = Math.min(3, Math.max(1, Math.ceil(total / pageSize)));
+  if (pageCount > 1) {
+    const extra = await Promise.all(Array.from({ length:pageCount - 1 }, (_, index) => metronFetch(env, '/issue/', { series_id:seriesId, number, page:index + 2 }, 60 * 60 * 24 * 7).catch(() => ({ data:[] }))));
+    extra.forEach(result => rows.push(...(Array.isArray(result.data) ? result.data : (result.data?.results || []))));
+  }
+  return rows.filter((row, index, all) => row?.id && all.findIndex(other => String(other?.id || '') === String(row.id)) === index).slice(0, 60);
+}
+
 function json(data, status = 200, extraHeaders = {}) {
   return new Response(JSON.stringify(data), {
     status,
@@ -3188,14 +3205,21 @@ export default {
         if (!token) return [];
         const q = comicPcQuery(issue);
         if (!q) return [];
-        const cacheKey = `comic-pricecharting:v5:${q.toLowerCase().slice(0, 300)}`;
+        const exact = [issue.seriesName, issue.number ? '#' + issue.number : ''].filter(Boolean).join(' ').trim();
+        const queries = [...new Set([q, exact && `${exact} variant`, exact && `${exact} foil`].filter(Boolean))];
+        const cacheKey = `comic-pricecharting:v6:${queries.join('|').toLowerCase().slice(0, 500)}`;
         if (env.LBA_KV && !force) {
           const cached = await env.LBA_KV.get(cacheKey, 'json').catch(() => null);
           if (Array.isArray(cached)) return cached;
         }
         try {
-          const data = await pcFetch('/api/products', { q });
-          const products = (data.products || []).map(product => normalizePcProduct(product, q)).slice(0, 25);
+          const batches = await Promise.all(queries.map(query => pcFetch('/api/products', { q:query }).catch(() => ({ products:[] }))));
+          const found = new Map();
+          batches.forEach((data, index) => (data.products || []).map(product => normalizePcProduct(product, queries[index])).forEach(product => {
+            const id = String(product.productId || '');
+            if (id && !found.has(id)) found.set(id, product);
+          }));
+          const products = [...found.values()].slice(0, 60);
           if (env.LBA_KV) await env.LBA_KV.put(cacheKey, JSON.stringify(products), { expirationTtl:60 * 60 * 6 });
           return products;
         } catch (_) {
@@ -3311,12 +3335,12 @@ export default {
             } catch (_) {}
           }
           const [seriesIssues, priceCandidates] = await Promise.all([
-            issue.seriesId ? metronFetch(env, `/series/${issue.seriesId}/issue_list/`, { limit:100 }, 60 * 60 * 24 * 7).catch(() => ({ data:[] })) : Promise.resolve({ data:[] }),
+            issue.seriesId ? metronExactIssueRecords(env, issue).catch(() => []) : Promise.resolve([]),
             linkedPrice ? Promise.resolve([]) : comicPcCandidates(issue, forcePrice),
           ]);
-          const rawSeriesIssues = Array.isArray(seriesIssues.data) ? seriesIssues.data : (seriesIssues.data?.results || []);
+          const rawSeriesIssues = Array.isArray(seriesIssues) ? seriesIssues : [];
           const metronCovers = metronSiblingCovers(issue, rawSeriesIssues);
-          const comicCandidates = linkedPrice ? [linkedPrice] : matchingComicPcCandidates(priceCandidates, issue).slice(0, 12);
+          const comicCandidates = linkedPrice ? [linkedPrice] : matchingComicPcCandidates(priceCandidates, issue).slice(0, 24);
           const pcCovers = await Promise.all(comicCandidates.map(hydratePcCoverImage));
           const covers = [...metronCovers, ...pcCovers.map(product => ({
             id:`pricecharting:${product.productId}`,
@@ -3424,7 +3448,7 @@ export default {
         if (!barcode.isValidLikely) return json({ status:'error', error:'Barcode must be a likely UPC-A, UPC-E, or EAN-13 value', barcode }, 400);
         if (body.supplement) barcode.supplement = String(body.supplement).replace(/\D/g, '').slice(0, 5);
         const sourceCalls = [], found = [], tried = [];
-        if (hint === 'comics' && env.METRON_USER && env.METRON_PASS) {
+        if ((hint === 'comics' || hint === 'auto') && env.METRON_USER && env.METRON_PASS) {
           for (const code of barcode.candidates.slice(0, 3)) {
             const fullCode = code + (barcode.supplement || '');
             try {
@@ -3916,7 +3940,7 @@ export default {
         if (!token) return json({ ok: false, needsKey: true, source: 'PriceCharting', error: 'PRICECHARTING_TOKEN not set in Worker secrets' }, 501);
         if (url.pathname === '/pricing/pricecharting/comic-sweep' && request.method === 'POST') {
           const body = await request.json().catch(() => ({}));
-          const queries = [...new Set((Array.isArray(body.queries) ? body.queries : []).map(q => String(q || '').replace(/\s+/g, ' ').trim().slice(0, 160)).filter(Boolean))].slice(0, 6);
+          const queries = [...new Set((Array.isArray(body.queries) ? body.queries : []).map(q => String(q || '').replace(/\s+/g, ' ').trim().slice(0, 160)).filter(Boolean))].slice(0, 10);
           if (!queries.length) return json({ ok: false, error: 'queries required' }, 400);
           const found = new Map();
           const attempts = [];

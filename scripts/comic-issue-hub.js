@@ -5,7 +5,7 @@
 })(typeof globalThis!=='undefined'?globalThis:this,function(){
   const ALIASES={tmnt:'Teenage Mutant Ninja Turtles',asm:'Amazing Spider-Man',spiderman:'Spider-Man','spider-man':'Spider-Man',xmen:'X-Men','x-men':'X-Men',uxm:'Uncanny X-Men',ff:'Fantastic Four',tec:'Detective Comics',detective:'Detective Comics'};
   const PUBLISHERS=['Mirage','IDW','Marvel','DC','Image','Boom','Dynamite','Dark Horse','Archie','Valiant','Oni','Skybound'];
-  const VARIANTS=[['retailer exclusive',/\bretailer(?:\s+exclusive)?\b/i],['second print',/\b(?:second|2nd)\s+print(?:ing)?\b/i],['facsimile',/\bfacsimile\b/i],['newsstand',/\bnewsstand\b/i],['direct',/\bdirect\b/i],['virgin',/\bvirgin\b/i],['foil',/\bfoil\b/i],['ratio',/\b(?:ratio|1:\d+)\b/i],['reprint',/\breprint\b/i],['exclusive',/\bexclusive\b/i],['sketch',/\bsketch\b/i],['signed',/\bsigned\b/i],['cover a',/\bcover\s+a\b/i],['cover b',/\bcover\s+b\b/i],['cover c',/\bcover\s+c\b/i]];
+  const VARIANTS=[['retailer exclusive',/\bretailer(?:\s+exclusive)?\b/i],['second print',/\b(?:second|2nd)\s+print(?:ing)?\b/i],['facsimile',/\bfacsimile\b/i],['newsstand',/\bnewsstand\b/i],['direct',/\bdirect\b/i],['virgin',/\bvirgin\b/i],['foil',/\b(?:foil|holofoil|metallic\s+foil)\b/i],['ratio',/\b(?:ratio|1:\d+)\b/i],['incentive',/\bincentive\b/i],['reprint',/\breprint\b/i],['exclusive',/\bexclusive\b/i],['sketch',/\bsketch\b/i],['signed',/\bsigned\b/i],['variant',/\bvariant\b/i]];
   const clean=s=>String(s||'').replace(/[–—]/g,'-').replace(/\s+/g,' ').trim();
   const norm=s=>clean(s).toLowerCase().replace(/[^a-z0-9:#.\-\s]/g,' ').replace(/\s+/g,' ').trim();
   function parseComicQuery(raw){
@@ -42,7 +42,7 @@
       return keys.some(key=>prefKeys.includes(key));
     })||null;
   }
-  function variantLabels(name){return VARIANTS.filter(([,re])=>re.test(name||'')).map(([label])=>label);}
+  function variantLabels(name){const text=String(name||''),labels=VARIANTS.filter(([,re])=>re.test(text)).map(([label])=>label),cover=text.match(/\bcover\s+([a-z])\b/i);if(cover)labels.unshift('cover '+cover[1].toUpperCase());return [...new Set(labels)];}
   function issueFromName(name){return parseComicQuery(name).issueNumber;}
   function scoreCandidate(candidate,context={}){
     const name=clean(candidate.productName||candidate.name),hay=norm(name+' '+(candidate.consoleName||''));
@@ -76,9 +76,9 @@
   function buildSweepQueries(context={},broad=false){
     const series=clean(context.seriesTitle||context.seriesGuess),issue=String(context.currentIssueNumber??context.issueNumber??''),publisher=clean(context.publisher||context.publisherGuess),year=clean(context.yearGuess),alias=Object.entries(ALIASES).find(([,v])=>norm(v)===norm(series))?.[0]?.toUpperCase();
     const qualifier=publisher||year;
-    const base=[context.originalQuery&&(!qualifier||norm(context.originalQuery).includes(norm(qualifier)))?context.originalQuery:'',`${series} ${issue} ${publisher}`,`${series} #${issue} ${publisher}`,year&&`${series} ${year} #${issue}`,alias&&`${alias} ${publisher||year} #${issue}`,`${series} ${issue} ${qualifier} variant`,`${series} ${issue} ${qualifier} cover`];
+    const base=[context.originalQuery&&(!qualifier||norm(context.originalQuery).includes(norm(qualifier)))?context.originalQuery:'',`${series} ${issue} ${publisher}`,`${series} #${issue} ${publisher}`,year&&`${series} ${year} #${issue}`,alias&&`${alias} ${publisher||year} #${issue}`,`${series} ${issue} ${qualifier} variant`,`${series} ${issue} ${qualifier} foil`,`${series} ${issue} ${qualifier} cover`];
     if(broad)base.push(`${series} ${issue} ${qualifier} virgin`,`${series} ${issue} ${qualifier} retailer exclusive`,`${series} ${issue} ${qualifier} ratio`,`${series} ${issue} ${qualifier} foil`,`${series} ${issue} ${qualifier} second print`,`${series} ${issue} ${qualifier} facsimile`);
-    return [...new Set(base.map(clean).filter(q=>q&&series&&issue))].slice(0,broad?10:6);
+    return [...new Set(base.map(clean).filter(q=>q&&series&&issue))].slice(0,broad?10:8);
   }
   function canNavigate(issue){return /^\d+$/.test(String(issue));}
   function adjacentIssue(issue,delta){if(!canNavigate(issue))return null;return Math.max(0,Number(issue)+Number(delta));}
