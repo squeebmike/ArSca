@@ -93,7 +93,8 @@ function normalizeMetronListIssue(issue = {}) {
 function normalizeMetronSeries(series = {}) {
   return {
     id:String(series.id || ''),
-    name:metronName(series),
+    // Metron's list serializer calls this field `series`; detail records use `name`.
+    name:metronName(series.series || series),
     volume:series.volume ?? null,
     yearBegan:series.year_began ?? null,
     yearEnd:series.year_end ?? null,
@@ -102,7 +103,9 @@ function normalizeMetronSeries(series = {}) {
     seriesType:metronName(series.series_type),
     status:String(series.status || series.status_name || ''),
     issueCount:Number(series.issue_count || series.issues_count || 0) || null,
-    imageUrl:metronImage(series.image),
+    // The series-list endpoint has no cover field. Issue covers are loaded only after
+    // a run is chosen so an unrelated metadata-provider image cannot impersonate it.
+    imageUrl:'',
     modified:series.modified || null,
     resourceUrl:series.resource_url || (series.id ? `https://metron.cloud/series/${series.id}/` : ''),
   };
@@ -3222,8 +3225,14 @@ export default {
             if (seriesChoices.length !== 1) return json({ ok:true, source:'Metron', query:rawQuery, seriesChoices, issues:[], requiresSeriesSelection:seriesChoices.length > 1, reason:seriesChoices.length ? 'Choose the exact series and run' : 'No Metron series matched that title' });
             selectedSeries = seriesChoices[0];
           }
-          const filters = upc ? { upc } : sku ? { sku } : { series_id:seriesId || selectedSeries?.id, number };
-          let metron = await metronFetch(env, '/issue/', filters, 60 * 60 * 24);
+          const selectedSeriesId = seriesId || selectedSeries?.id || '';
+          const filters = upc ? { upc } : sku ? { sku } : { series_id:selectedSeriesId, number };
+          const [initialMetron, selectedSeriesDetail] = await Promise.all([
+            metronFetch(env, '/issue/', filters, 60 * 60 * 24),
+            selectedSeriesId ? metronFetch(env, `/series/${selectedSeriesId}/`, {}, 60 * 60 * 24 * 7).catch(() => null) : Promise.resolve(null),
+          ]);
+          let metron = initialMetron;
+          if (selectedSeriesDetail?.data) selectedSeries = normalizeMetronSeries(selectedSeriesDetail.data);
           let rawIssues = Array.isArray(metron.data) ? metron.data : (metron.data?.results || []);
           if (upc && !rawIssues.length && upc.length >= 12) {
             metron = await metronFetch(env, '/issue/', { upc_starts_with:upc.slice(0, 13) }, 60 * 60 * 24);
