@@ -3171,7 +3171,7 @@ export default {
           // for a 1984 run. Require the exact title before the issue marker, the exact
           // issue number, and (when supplied) a year belonging to this Metron issue/run.
           const seriesMatch = !!seriesPhrase && identity.series === seriesPhrase;
-          const numberMatch = !!number && identity.number === number;
+          const numberMatch = !!number && (identity.number === number || (/^\d+$/.test(number) && new RegExp(`^${number}[a-z]$`, 'i').test(identity.number)));
           const yearMatch = !identity.explicitYear || !allowedYears.size || allowedYears.has(identity.explicitYear);
           const normalized = normalizeComicRunText(candidate.productName);
           const variantMatches = variantWords.filter(word => normalized.includes(word)).length;
@@ -3201,24 +3201,41 @@ export default {
           return { ...product, imageUrl:og?.[1]?.replace(/&amp;/g, '&') || storage?.[0] || '', url:pageUrl };
         } catch (_) { return product; }
       };
+      const comicPcCoverDescriptor = (product, issue) => {
+        const name = String(product?.productName || '');
+        const number = String(issue?.number || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        let suffix = number ? name.replace(new RegExp(`^.*?#\\s*${number}`, 'i'), '') : name;
+        suffix = suffix.replace(/[\[(]\s*(?:19|20)\d{2}\s*[\])]/g, ' ')
+          .replace(/\bcomic books?\b/gi, ' ')
+          .replace(/^[\s\-:|/]+|[\s\-:|/]+$/g, '')
+          .replace(/\s+/g, ' ')
+          .trim();
+        return normalizeComicRunText(suffix);
+      };
       const comicPcCandidates = async (issue, force = false) => {
         if (!token) return [];
         const q = comicPcQuery(issue);
         if (!q) return [];
         const exact = [issue.seriesName, issue.number ? '#' + issue.number : ''].filter(Boolean).join(' ').trim();
-        const queries = [...new Set([q, exact && `${exact} variant`, exact && `${exact} foil`].filter(Boolean))];
-        const cacheKey = `comic-pricecharting:v6:${queries.join('|').toLowerCase().slice(0, 500)}`;
+        const queries = [...new Set([q, exact && `${exact} variant`, exact && `${exact} foil`, exact && `${exact} virgin`, exact && `${exact} retailer exclusive`].filter(Boolean))];
+        const cacheKey = `comic-pricecharting:v7:${queries.join('|').toLowerCase().slice(0, 500)}`;
         if (env.LBA_KV && !force) {
           const cached = await env.LBA_KV.get(cacheKey, 'json').catch(() => null);
           if (Array.isArray(cached)) return cached;
         }
         try {
-          const batches = await Promise.all(queries.map(query => pcFetch('/api/products', { q:query }).catch(() => ({ products:[] }))));
           const found = new Map();
-          batches.forEach((data, index) => (data.products || []).map(product => normalizePcProduct(product, queries[index])).forEach(product => {
-            const id = String(product.productId || '');
-            if (id && !found.has(id)) found.set(id, product);
-          }));
+          // PriceCharting is rate-limited per request. Run these in order so the
+          // limiter actually spaces them; Promise.all caused all delayed calls to
+          // wake together and usually left only the first cover search alive.
+          for (const query of queries) {
+            let data = { products:[] };
+            try { data = await pcFetch('/api/products', { q:query }); } catch (_) {}
+            (data.products || []).map(product => normalizePcProduct(product, query)).forEach(product => {
+              const id = String(product.productId || '');
+              if (id && !found.has(id)) found.set(id, product);
+            });
+          }
           const products = [...found.values()].slice(0, 60);
           if (env.LBA_KV) await env.LBA_KV.put(cacheKey, JSON.stringify(products), { expirationTtl:60 * 60 * 6 });
           return products;
@@ -3336,13 +3353,20 @@ export default {
           }
           const [seriesIssues, priceCandidates] = await Promise.all([
             issue.seriesId ? metronExactIssueRecords(env, issue).catch(() => []) : Promise.resolve([]),
-            linkedPrice ? Promise.resolve([]) : comicPcCandidates(issue, forcePrice),
+            comicPcCandidates(issue, forcePrice),
           ]);
           const rawSeriesIssues = Array.isArray(seriesIssues) ? seriesIssues : [];
           const metronCovers = metronSiblingCovers(issue, rawSeriesIssues);
-          const comicCandidates = linkedPrice ? [linkedPrice] : matchingComicPcCandidates(priceCandidates, issue).slice(0, 24);
+          const matchedCandidates = matchingComicPcCandidates(priceCandidates, issue);
+          const candidateById = new Map();
+          if (linkedPrice?.productId) candidateById.set(String(linkedPrice.productId), linkedPrice);
+          matchedCandidates.forEach(product => {
+            const id = String(product.productId || '');
+            if (id && !candidateById.has(id)) candidateById.set(id, product);
+          });
+          const comicCandidates = [...candidateById.values()].slice(0, 24);
           const pcCovers = await Promise.all(comicCandidates.map(hydratePcCoverImage));
-          const covers = [...metronCovers, ...pcCovers.map(product => ({
+          const pcCoverRows = pcCovers.map(product => ({
             id:`pricecharting:${product.productId}`,
             pricechartingProductId:product.productId,
             issueName:product.productName,
@@ -3357,7 +3381,22 @@ export default {
             pricechartingUrl:product.url,
             pricecharting:product,
             source:'PriceCharting',
-          }))].filter((cover, index, all) => cover.imageUrl && all.findIndex(other => String(other.imageUrl).split('?')[0] === String(cover.imageUrl).split('?')[0]) === index);
+            coverDescriptor:comicPcCoverDescriptor(product, issue),
+          }));
+          // PriceCharting and Metron use different image URLs for the same main
+          // cover. Attach the standard PriceCharting price to Metron's main tile
+          // instead of rendering a fake second cover.
+          const standardPcCover = pcCoverRows.find(cover => !cover.coverDescriptor) || null;
+          const mergedMetronCovers = metronCovers.map((cover, index) => index === 0 && standardPcCover ? {
+            ...cover,
+            pricechartingProductId:standardPcCover.pricechartingProductId,
+            pricechartingUrl:standardPcCover.pricechartingUrl,
+            pricecharting:standardPcCover.pricecharting,
+            source:'Metron + PriceCharting',
+          } : cover);
+          const separatePcCovers = mergedMetronCovers.length ? pcCoverRows.filter(cover => cover.coverDescriptor) : pcCoverRows;
+          const covers = [...mergedMetronCovers, ...separatePcCovers]
+            .filter((cover, index, all) => cover.imageUrl && all.findIndex(other => String(other.imageUrl).split('?')[0] === String(cover.imageUrl).split('?')[0]) === index);
           const candidate = comicCandidates[0] || null;
           const runnerUp = comicCandidates[1] || null;
           let priceMatch = linkedPrice || (candidate && (!runnerUp || Number(candidate.comicMatchScore || 0) - Number(runnerUp.comicMatchScore || 0) >= 15) ? candidate : null);

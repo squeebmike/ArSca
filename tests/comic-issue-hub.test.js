@@ -95,6 +95,7 @@ assert.match(worker,/matchingComicPcCandidates/,'comic PriceCharting matches mus
 assert.match(worker,/\^comic books\\b/,'comic matching must require a real PriceCharting Comic Books catalog');
 assert.match(worker,/identity\.series === seriesPhrase/,'comic prices must match the exact series title before the issue marker');
 assert.match(worker,/identity\.number === number/,'comic prices must match the exact issue number');
+assert.match(worker,/new RegExp\(`\^\$\{number\}\[a-z\]\$`/,'cover-letter products such as #1A and #1B must remain attached to base issue #1');
 assert.match(worker,/allowedYears\.has\(identity\.explicitYear\)/,'comic prices must reject incompatible run or publication years');
 assert.doesNotMatch(worker,/pcFetch\('\/api\/products', \{ q, console:'Comics' \}\)/,'PriceCharting products only documents q; comic results must be filtered after retrieval');
 assert.match(worker,/pricechartingProductId/,'PriceCharting cover variants must be returned as selectable covers');
@@ -104,8 +105,12 @@ assert.match(dashboard,/SELECTED COVER/,'cover selection must be visible in the 
 assert.match(worker,/function metronExactIssueRecords/,'selected issue should request exact Metron issue records');
 assert.match(worker,/series_id:seriesId, number, page:1/,'cover lookup must retain the selected series and issue number');
 assert.match(worker,/Math\.min\(3/,'Metron cover pagination must remain bounded');
-assert.match(worker,/comic-pricecharting:v6/,'cover candidate cache must include the expanded variant and foil searches');
+assert.match(worker,/comic-pricecharting:v7/,'cover candidate cache must include the expanded variant and foil searches');
 assert.match(worker,/exact && `\$\{exact\} foil`/,'exact PriceCharting hydration must search foil editions');
+assert.match(worker,/for \(const query of queries\)/,'PriceCharting cover searches must be sequential so provider throttling is respected');
+assert.doesNotMatch(worker,/linkedPrice \? Promise\.resolve\(\[\]\) : comicPcCandidates/,'a saved exact price must not suppress discovery of other covers');
+assert.match(worker,/standardPcCover[\s\S]*Metron \+ PriceCharting/,'the standard PriceCharting result must merge into the Metron main cover instead of duplicating it');
+assert.match(dashboard,/candidateNumber===number[\s\S]*number\+'\[a-z\]\$'/,'the browser must retain PriceCharting cover-letter variants for a base issue');
 assert.match(worker,/priceMatch/,'selected issue should return a hydrated exact PriceCharting product');
 assert.match(worker,/pcFetch\('\/api\/product'/,'comic pricing must hydrate the search candidate with product detail prices');
 assert.match(worker,/writers:creditNames/);
