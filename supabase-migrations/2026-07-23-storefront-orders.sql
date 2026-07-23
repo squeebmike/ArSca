@@ -6,7 +6,7 @@
 create table if not exists public.storefront_orders (
   id uuid primary key default gen_random_uuid(),
   store_id uuid not null references public.stores(id) on delete cascade,
-  sale_id uuid not null references public.pos_sales(id) on delete cascade,
+  sale_id text not null references public.pos_sales(id) on delete cascade,
   confirmation_number text not null,
   customer_name text not null,
   customer_phone text not null,
