@@ -1,0 +1,898 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="version" content="2026.07.22.01-mana-pocket-storefront">
+<title>The Mana Pocket</title>
+<meta name="description" content="Cards, comics, collectibles, and live breaks from The Mana Pocket.">
+<meta name="theme-color" content="#0a0a12">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bangers&family=DM+Sans:wght@400;600;800&display=swap" rel="stylesheet">
+<script src="app-config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+/* ---- Theme contract: every color/radius/font below comes from CSS custom
+   properties set at runtime by applyBrandTheme(). Nothing here is a literal
+   brand color, so the page follows whatever the store's theme picker has
+   set (dashboard.html Theme & Branding panel), including custom themes. ---- */
+:root{
+  --brand-primary:#00ffb3;--brand-secondary:#ffd166;--brand-accent:#c77dff;
+  --brand-background:#07080a;--brand-surface:#0d0f14;--brand-surface-2:#141720;
+  --brand-text:#e4e4e8;--brand-muted:rgba(228,228,232,.68);
+  --brand-success:#00ffb3;--brand-warning:#ffd166;--brand-danger:#ff4d6d;--brand-info:#48cae4;
+  --brand-border:rgba(255,255,255,.13);--brand-card-radius:10px;--brand-button-radius:6px;
+  --brand-font-family:'DM Sans',sans-serif;--brand-button-text:#050507;
+  --brand-halftone:rgba(255,255,255,.05);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--brand-background);color:var(--brand-text);font-family:var(--brand-font-family);line-height:1.4;
+  background-image:radial-gradient(var(--brand-halftone) 1px,transparent 1.4px);background-size:14px 14px;}
+a{color:inherit}
+button,input,select,textarea{font-family:inherit;color:inherit}
+.display{font-family:'Bangers',var(--brand-font-family);letter-spacing:.03em;text-transform:uppercase;line-height:1.05}
+.wrap{max-width:1240px;margin:0 auto;padding:0 18px}
+.visually-hidden{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+:focus-visible{outline:3px solid var(--brand-accent);outline-offset:2px}
+@media (prefers-reduced-motion: reduce){*{animation-duration:.001ms !important;animation-iteration-count:1 !important;transition-duration:.001ms !important;scroll-behavior:auto !important}}
+
+/* Torn-sticker card edge, drawn with CSS only (no image assets). */
+.torn-top{position:relative}
+.torn-top::before{content:'';position:absolute;left:0;right:0;top:-1px;height:8px;
+  background:repeating-linear-gradient(115deg,var(--brand-background) 0 6px,transparent 0 12px);}
+
+/* ---- Announcement bar ---- */
+#announce{background:var(--brand-primary);color:var(--brand-button-text);font-weight:800;text-align:center;
+  padding:8px 10px;font-size:13px;letter-spacing:.04em}
+#announce.live{background:var(--brand-danger);color:#fff;animation:pulse 2.2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.72}}
+
+/* ---- Header ---- */
+header.site{position:sticky;top:0;z-index:40;background:color-mix(in srgb, var(--brand-surface) 92%, transparent);
+  backdrop-filter:blur(6px);border-bottom:2px solid var(--brand-border)}
+.head-row{display:flex;align-items:center;gap:14px;padding:12px 0}
+.wordmark{display:flex;flex-direction:column;line-height:1;text-decoration:none;flex:0 0 auto}
+.wordmark .small{font-size:12px;letter-spacing:.3em;color:var(--brand-muted);font-family:var(--brand-font-family)}
+.wordmark .big{font-size:clamp(22px,4vw,32px);color:var(--brand-primary);text-shadow:2px 2px 0 var(--brand-border)}
+.tagline{font-size:10px;letter-spacing:.18em;color:var(--brand-muted);margin-top:2px}
+nav.primary{display:flex;gap:2px;flex-wrap:wrap;font-weight:700;font-size:13px}
+nav.primary a{padding:8px 10px;border-radius:var(--brand-button-radius);text-decoration:none}
+nav.primary a:hover,nav.primary a.active{background:var(--brand-surface-2);color:var(--brand-primary)}
+.head-actions{display:flex;align-items:center;gap:8px;margin-left:auto}
+.icon-btn{border:1px solid var(--brand-border);background:var(--brand-surface-2);color:var(--brand-text);
+  border-radius:var(--brand-button-radius);min-height:44px;min-width:44px;display:inline-flex;align-items:center;
+  justify-content:center;gap:6px;padding:0 12px;cursor:pointer;font-weight:700;font-size:13px}
+.icon-btn:hover{border-color:var(--brand-primary)}
+#cart-count{background:var(--brand-primary);color:var(--brand-button-text);border-radius:999px;font-size:11px;
+  padding:1px 6px;font-weight:800;margin-left:2px}
+#search-form{display:flex;align-items:center;gap:6px;background:var(--brand-surface-2);border:1px solid var(--brand-border);
+  border-radius:var(--brand-button-radius);padding:0 8px;min-height:44px;flex:1 1 220px;max-width:360px}
+#search-form input{background:none;border:0;flex:1;min-height:42px;font-size:14px}
+#search-form input:focus{outline:0}
+#nav-toggle{display:none}
+@media (max-width:900px){
+  nav.primary{display:none}
+  #nav-toggle{display:inline-flex}
+  nav.primary.open{display:flex;flex-direction:column;position:fixed;inset:0 0 0 auto;width:min(86vw,340px);
+    background:var(--brand-surface);border-left:2px solid var(--brand-border);padding:70px 16px 16px;z-index:50;
+    overflow-y:auto}
+  nav.primary.open a{font-size:16px;padding:12px}
+}
+#search-form{display:none}
+@media (min-width:640px){#search-form{display:flex}}
+
+/* ---- Buttons / badges ---- */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:48px;padding:10px 20px;
+  border-radius:var(--brand-button-radius);border:2px solid transparent;background:var(--brand-primary);
+  color:var(--brand-button-text);font-weight:800;cursor:pointer;text-decoration:none;font-size:14px}
+.btn:hover{filter:brightness(1.08)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn.outline{background:transparent;border-color:var(--brand-border);color:var(--brand-text)}
+.btn.outline:hover{border-color:var(--brand-primary)}
+.btn.danger{background:var(--brand-danger);color:#fff}
+.btn.block{width:100%}
+.badge{display:inline-block;font-size:10px;font-weight:800;letter-spacing:.04em;padding:3px 8px;border-radius:5px;
+  border:1px solid currentColor;margin:0 4px 4px 0}
+.badge.new{color:var(--brand-info)}
+.badge.graded{color:var(--brand-accent)}
+.badge.sealed{color:var(--brand-primary)}
+.badge.key,.badge.variant,.badge.signed{color:var(--brand-secondary)}
+.badge.preorder{color:var(--brand-warning)}
+.badge.consignment{color:var(--brand-muted)}
+.badge.low-stock{color:var(--brand-danger)}
+
+/* ---- Hero ---- */
+.hero{padding:56px 0;border-bottom:3px solid var(--brand-border);position:relative;overflow:hidden}
+.hero h1{font-size:clamp(38px,7vw,84px);margin:0 0 10px;color:var(--brand-primary)}
+.hero p.lead{font-size:clamp(15px,2vw,19px);color:var(--brand-muted);max-width:640px;margin:0 0 22px}
+.hero .ctas{display:flex;gap:12px;flex-wrap:wrap}
+.hero.live{background:var(--brand-surface-2)}
+.crt::after{content:'';position:absolute;inset:0;pointer-events:none;
+  background:repeating-linear-gradient(0deg,rgba(0,0,0,.14) 0 2px,transparent 2px 4px);mix-blend-mode:overlay}
+.player-frame{border:4px solid var(--brand-primary);border-radius:8px;background:#000;aspect-ratio:16/9;
+  display:flex;align-items:center;justify-content:center;color:var(--brand-muted);font-family:var(--brand-font-family)}
+
+/* ---- Sections / grids ---- */
+section.pad{padding:44px 0}
+.section-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:18px;flex-wrap:wrap}
+.section-head h2{font-size:clamp(24px,4vw,36px);margin:0;color:var(--brand-text)}
+.section-head a{font-weight:700;color:var(--brand-primary);text-decoration:none;font-size:13px}
+.rail{display:flex;gap:14px;overflow-x:auto;padding-bottom:8px;scroll-snap-type:x proximity}
+.rail .card{scroll-snap-align:start;flex:0 0 200px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:14px}
+.card{background:var(--brand-surface);border:2px solid var(--brand-border);border-radius:var(--brand-card-radius);
+  overflow:hidden;cursor:pointer;transition:transform .15s,border-color .15s}
+.card:hover{border-color:var(--brand-primary);transform:translateY(-2px)}
+.card .photo{width:100%;aspect-ratio:1;object-fit:contain;background:var(--brand-surface-2)}
+.card .no-photo{aspect-ratio:1;display:grid;place-items:center;background:var(--brand-surface-2);color:var(--brand-muted);
+  font-family:var(--brand-font-family);font-size:12px}
+.card .body{padding:10px 12px 14px}
+.card .badges{min-height:18px}
+.card .name{font-weight:800;font-size:14px;line-height:1.3;margin:2px 0 4px}
+.card .meta{font-size:11px;color:var(--brand-muted)}
+.card .price-row{display:flex;align-items:baseline;gap:8px;margin-top:8px}
+.card .price{font-weight:900;font-size:18px;color:var(--brand-success)}
+.card .compare{font-size:12px;color:var(--brand-muted);text-decoration:line-through}
+
+.dept-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px}
+.dept-card{position:relative;border:3px solid var(--brand-border);border-radius:var(--brand-card-radius);
+  padding:26px 18px;min-height:150px;display:flex;flex-direction:column;justify-content:flex-end;
+  background:linear-gradient(160deg,var(--brand-surface-2),var(--brand-surface));text-decoration:none;overflow:hidden}
+.dept-card:hover{border-color:var(--brand-primary)}
+.dept-card .display{font-size:clamp(24px,3vw,32px);color:var(--brand-primary)}
+.dept-card span.sub{font-size:12px;color:var(--brand-muted)}
+
+.crew-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:18px}
+.crew-card{border:2px solid var(--brand-border);border-radius:var(--brand-card-radius);padding:18px;background:var(--brand-surface)}
+.crew-card .avatar{width:64px;height:64px;border-radius:50%;background:var(--brand-surface-2);display:grid;place-items:center;
+  font-family:'Bangers';font-size:22px;color:var(--brand-primary);margin-bottom:10px;border:2px solid var(--brand-border)}
+
+.panel{background:var(--brand-surface);border:2px solid var(--brand-border);border-radius:var(--brand-card-radius);padding:18px}
+.field{display:block;margin-bottom:14px}
+.field label{display:block;font-size:12px;font-weight:700;margin-bottom:6px;color:var(--brand-muted)}
+.field input,.field select,.field textarea{width:100%;min-height:46px;background:var(--brand-surface-2);
+  border:1px solid var(--brand-border);border-radius:var(--brand-button-radius);padding:8px 12px;font-size:14px}
+.field textarea{min-height:100px}
+
+/* ---- Filters / shop layout ---- */
+.shop-layout{display:grid;grid-template-columns:220px 1fr;gap:22px;align-items:start}
+@media (max-width:800px){.shop-layout{grid-template-columns:1fr}}
+.filters{position:sticky;top:78px}
+.filters h3{font-size:13px;letter-spacing:.06em;color:var(--brand-muted);margin:16px 0 8px}
+.filters h3:first-child{margin-top:0}
+.filter-chip{display:inline-block;font-size:12px;padding:6px 10px;border:1px solid var(--brand-border);
+  border-radius:999px;margin:0 6px 6px 0;cursor:pointer;background:var(--brand-surface)}
+.filter-chip.active{background:var(--brand-primary);color:var(--brand-button-text);border-color:var(--brand-primary)}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:16px}
+.toolbar select{min-height:44px;background:var(--brand-surface-2);border:1px solid var(--brand-border);
+  border-radius:var(--brand-button-radius);padding:0 10px}
+.empty{text-align:center;padding:60px 20px;color:var(--brand-muted)}
+
+/* ---- Product detail ---- */
+.pdp{display:grid;grid-template-columns:1fr 1fr;gap:32px}
+@media (max-width:760px){.pdp{grid-template-columns:1fr}}
+.pdp .gallery img{width:100%;border-radius:var(--brand-card-radius);border:2px solid var(--brand-border)}
+.pdp h1{font-size:clamp(24px,3vw,34px);margin:0 0 6px}
+.pdp .price-row{display:flex;align-items:baseline;gap:12px;margin:10px 0}
+.pdp .price{font-size:30px;font-weight:900;color:var(--brand-success)}
+.qty-row{display:flex;align-items:center;gap:10px;margin:16px 0}
+.qty-row input{width:64px;min-height:44px;text-align:center;background:var(--brand-surface-2);
+  border:1px solid var(--brand-border);border-radius:var(--brand-button-radius)}
+
+/* ---- Cart drawer ---- */
+#cart-drawer{position:fixed;top:0;right:0;bottom:0;width:min(94vw,400px);background:var(--brand-surface);
+  border-left:2px solid var(--brand-border);z-index:60;transform:translateX(100%);transition:transform .2s;
+  display:flex;flex-direction:column}
+#cart-drawer.open{transform:translateX(0)}
+#cart-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:55;display:none}
+#cart-backdrop.open{display:block}
+.cart-head{display:flex;align-items:center;justify-content:space-between;padding:16px;border-bottom:1px solid var(--brand-border)}
+.cart-lines{flex:1;overflow-y:auto;padding:12px 16px}
+.cart-line{display:flex;gap:10px;padding:10px 0;border-bottom:1px solid var(--brand-border)}
+.cart-line img{width:56px;height:56px;object-fit:contain;background:var(--brand-surface-2);border-radius:6px}
+.cart-foot{padding:16px;border-top:1px solid var(--brand-border)}
+
+footer.site{border-top:2px solid var(--brand-border);padding:36px 0 60px;color:var(--brand-muted);font-size:13px}
+footer.site .cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:20px;margin-bottom:20px}
+footer.site h4{color:var(--brand-text);font-size:12px;letter-spacing:.06em;margin:0 0 10px}
+footer.site a{display:block;text-decoration:none;color:var(--brand-muted);padding:3px 0}
+footer.site a:hover{color:var(--brand-primary)}
+.skeleton{background:linear-gradient(90deg,var(--brand-surface-2) 25%,var(--brand-surface) 37%,var(--brand-surface-2) 63%);
+  background-size:400% 100%;animation:sk 1.4s ease infinite;border-radius:var(--brand-card-radius)}
+@keyframes sk{0%{background-position:100% 50%}100%{background-position:0 50%}}
+.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--brand-surface-2);
+  border:1px solid var(--brand-primary);color:var(--brand-text);padding:10px 18px;border-radius:var(--brand-button-radius);
+  font-size:13px;font-weight:700;z-index:90;opacity:0;pointer-events:none;transition:opacity .2s}
+.toast.show{opacity:1}
+</style>
+</head>
+<body>
+
+<div id="announce">THE MANA POCKET IS ONLINE NOW — PHYSICAL SHOP COMING TO KITSAP COUNTY IN EARLY 2027</div>
+
+<header class="site">
+  <div class="wrap head-row">
+    <button id="nav-toggle" class="icon-btn" aria-label="Open menu" aria-expanded="false">☰</button>
+    <a class="wordmark" href="?" data-link>
+      <span class="small">THE MANA</span>
+      <span class="big display">POCKET</span>
+      <span class="tagline">CARDS • COMICS • COLLECTIBLES • LIVE</span>
+    </a>
+    <nav class="primary" id="primary-nav" aria-label="Primary">
+      <a href="?view=shop" data-link>Shop</a>
+      <a href="?view=shop&amp;department=sports" data-link>Sports</a>
+      <a href="?view=shop&amp;department=tcg" data-link>TCG</a>
+      <a href="?view=shop&amp;department=comics" data-link>Comics</a>
+      <a href="?view=shop&amp;department=collectibles" data-link>Collectibles</a>
+      <a href="?view=breaks" data-link>Breaks</a>
+      <a href="?view=live" data-link>Pocket Live</a>
+      <a href="?view=sell" data-link>Sell / Trade / Consign</a>
+      <a href="?view=rewards" data-link>Rewards</a>
+      <a href="?view=visit" data-link>Visit</a>
+      <a href="?view=account" data-link>My Pocket</a>
+    </nav>
+    <form id="search-form" role="search" action="?" method="get">
+      <span aria-hidden="true">🔎</span>
+      <input type="search" name="q" id="search-input" placeholder="Search cards, comics, sets…" aria-label="Search inventory">
+      <input type="hidden" name="view" value="shop">
+    </form>
+    <div class="head-actions">
+      <button class="icon-btn" id="cart-open" aria-haspopup="dialog">🛍️ Cart<span id="cart-count">0</span></button>
+    </div>
+  </div>
+</header>
+
+<main id="app"></main>
+
+<footer class="site">
+  <div class="wrap">
+    <div class="cols">
+      <div><h4>SHOP</h4>
+        <a href="?view=shop" data-link>Shop All</a>
+        <a href="?view=shop&amp;department=sports" data-link>Sports</a>
+        <a href="?view=shop&amp;department=tcg" data-link>Pokémon &amp; Magic</a>
+        <a href="?view=shop&amp;department=comics" data-link>Comics</a>
+        <a href="?view=shop&amp;department=collectibles" data-link>Collectibles</a>
+      </div>
+      <div><h4>THE POCKET</h4>
+        <a href="?view=breaks" data-link>Breaks</a>
+        <a href="?view=live" data-link>Pocket Live</a>
+        <a href="?view=sell" data-link>Sell / Trade / Consign</a>
+        <a href="?view=rewards" data-link>Pocket Points</a>
+        <a href="?view=visit" data-link>Visit</a>
+      </div>
+      <div><h4>ACCOUNT</h4>
+        <a href="?view=account" data-link>My Pocket</a>
+        <a href="?view=cart" data-link>Cart</a>
+      </div>
+      <div><h4>INFO</h4>
+        <a href="?view=policies&amp;doc=shipping" data-link>Shipping &amp; Pickup</a>
+        <a href="?view=policies&amp;doc=returns" data-link>Returns</a>
+        <a href="?view=policies&amp;doc=privacy" data-link>Privacy</a>
+        <a href="?view=policies&amp;doc=terms" data-link>Terms</a>
+      </div>
+    </div>
+    <div>United States shipping · Free in-store pickup where available · © <span id="year"></span> The Mana Pocket</div>
+  </div>
+</footer>
+
+<div id="cart-backdrop"></div>
+<aside id="cart-drawer" role="dialog" aria-label="Cart">
+  <div class="cart-head"><strong class="display" style="font-size:22px">YOUR POCKET</strong>
+    <button class="icon-btn" id="cart-close" aria-label="Close cart">✕</button></div>
+  <div class="cart-lines" id="cart-lines"></div>
+  <div class="cart-foot">
+    <div style="display:flex;justify-content:space-between;font-weight:800;margin-bottom:12px">
+      <span>Subtotal</span><span id="cart-subtotal">$0.00</span>
+    </div>
+    <button class="btn block" id="cart-checkout">CHECK OUT</button>
+    <p style="font-size:11px;color:var(--brand-muted);margin:10px 0 0">US shipping and free in-store pickup where available. Tax and shipping are calculated at checkout.</p>
+  </div>
+</aside>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ------------------------------------------------------------------ *
+ * Config: worker + Supabase come from app-config.js (shared with the
+ * dashboard). The store id is a placeholder until the owner creates a
+ * store for The Mana Pocket in the dashboard, per the build spec's
+ * instruction to treat unresolved facts as configurable settings.
+ * ------------------------------------------------------------------ */
+const CFG = window.WALKOFF_CONFIG || {};
+const WORKER = CFG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
+const STORE_ID = new URLSearchParams(location.search).get('store') || window.MANA_POCKET_STORE_ID || '';
+const sb = (CFG.supabaseUrl && CFG.supabaseAnonKey && window.supabase)
+  ? window.supabase.createClient(CFG.supabaseUrl, CFG.supabaseAnonKey)
+  : null;
+
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const money = cents => '$' + (Number(cents || 0) / 100).toFixed(2);
+const dollars = n => Number(n) > 0 ? '$' + Number(n).toFixed(2) : 'Ask for price';
+
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  clearTimeout(toast._t); toast._t = setTimeout(() => el.classList.remove('show'), 2600);
+}
+
+async function apiGet(path, params = {}) {
+  const usp = new URLSearchParams({ store_id: STORE_ID, ...params });
+  const res = await fetch(`${WORKER}${path}?${usp.toString()}`);
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || data.ok === false) throw new Error(data.error || `Request failed (${res.status})`);
+  return data;
+}
+async function apiPost(path, body = {}) {
+  const res = await fetch(`${WORKER}${path}`, { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify(body) });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || data.ok === false) throw new Error(data.error || `Request failed (${res.status})`);
+  return data;
+}
+
+/* ------------------------------------------------------------------ *
+ * Theme: mirrors dashboard.html's applyStoreTheme() --brand-* contract.
+ * No component in this file may hard-code a brand color; everything
+ * reads these custom properties instead.
+ * ------------------------------------------------------------------ */
+function applyBrandTheme(theme) {
+  const t = theme || {};
+  const root = document.documentElement;
+  const vars = {
+    '--brand-primary':t.primaryColor,'--brand-secondary':t.secondaryColor,'--brand-accent':t.accentColor,
+    '--brand-background':t.backgroundColor,'--brand-surface':t.surfaceColor,'--brand-surface-2':t.surface2Color,
+    '--brand-text':t.textColor,'--brand-muted':t.mutedTextColor,'--brand-success':t.successColor,
+    '--brand-warning':t.warningColor,'--brand-danger':t.dangerColor,'--brand-info':t.infoColor,
+    '--brand-border':t.borderColor,'--brand-card-radius':t.cardRadius,'--brand-button-radius':t.buttonRadius,
+    '--brand-font-family':t.fontFamily,'--brand-button-text':t.buttonTextColor,
+  };
+  Object.entries(vars).forEach(([k,v]) => { if (v) root.style.setProperty(k, v); });
+  if (t.backgroundColor) document.querySelector('meta[name="theme-color"]')?.setAttribute('content', t.backgroundColor);
+}
+
+/* ------------------------------------------------------------------ *
+ * Cart (persisted in localStorage; survives navigation and reload)
+ * ------------------------------------------------------------------ */
+const CART_KEY = 'mana_pocket_cart_v1';
+function getCart() { try { return JSON.parse(localStorage.getItem(CART_KEY) || '[]'); } catch { return []; } }
+function setCart(lines) { localStorage.setItem(CART_KEY, JSON.stringify(lines)); renderCartCount(); renderCartDrawer(); }
+function addToCart(item, qty = 1) {
+  const lines = getCart();
+  const existing = lines.find(l => l.id === item.id);
+  const maxQty = item.uniqueItem ? 1 : (item.quantity || 99);
+  if (existing) existing.qty = Math.min(maxQty, existing.qty + qty);
+  else lines.push({ id:item.id, name:item.name, price:item.price, image:item.image, qty:Math.min(maxQty, qty), uniqueItem:!!item.uniqueItem });
+  setCart(lines);
+  toast(`${item.name} added to your pocket`);
+}
+function removeFromCart(id) { setCart(getCart().filter(l => l.id !== id)); }
+function cartCount() { return getCart().reduce((n,l) => n + l.qty, 0); }
+function cartSubtotal() { return getCart().reduce((n,l) => n + l.qty * Number(l.price || 0), 0); }
+function renderCartCount() { document.getElementById('cart-count').textContent = cartCount(); }
+function renderCartDrawer() {
+  const lines = getCart();
+  document.getElementById('cart-lines').innerHTML = lines.length ? lines.map(l => `
+    <div class="cart-line">
+      ${l.image ? `<img src="${esc(l.image)}" alt="">` : `<div style="width:56px;height:56px;background:var(--brand-surface-2);border-radius:6px"></div>`}
+      <div style="flex:1">
+        <div style="font-weight:700;font-size:13px">${esc(l.name)}</div>
+        <div style="font-size:12px;color:var(--brand-muted)">${dollars(l.price)} × ${l.qty}</div>
+        <button class="icon-btn" style="min-height:32px;padding:0 8px;font-size:11px;margin-top:6px" onclick="removeFromCart('${esc(l.id)}');renderCartDrawer()">Remove</button>
+      </div>
+    </div>`).join('') : `<p class="empty">Your pocket is empty. Go find something good.</p>`;
+  document.getElementById('cart-subtotal').textContent = dollars(cartSubtotal());
+}
+function openCart() { document.getElementById('cart-drawer').classList.add('open'); document.getElementById('cart-backdrop').classList.add('open'); }
+function closeCart() { document.getElementById('cart-drawer').classList.remove('open'); document.getElementById('cart-backdrop').classList.remove('open'); }
+
+async function startCheckout() {
+  const lines = getCart();
+  if (!lines.length) { toast('Your pocket is empty'); return; }
+  if (!STORE_ID) { toast('Storefront is not configured yet'); return; }
+  const email = (sb && (await sb.auth.getUser()).data?.user?.email) || prompt('Email for your order confirmation:');
+  if (!email) return;
+  try {
+    const result = await apiPost('/public/checkout/create', {
+      storeId: STORE_ID, email, fulfillmentType: 'shipping', shippingAddress: { country:'US' },
+      lines: lines.map(l => ({ inventoryItemId:l.id, quantity:l.qty })),
+      successUrl: `${location.origin}${location.pathname}?view=checkout-return&status=success`,
+      cancelUrl: `${location.origin}${location.pathname}?view=checkout-return&status=cancelled`,
+    });
+    location.href = result.checkoutUrl;
+  } catch (e) { toast(e.message || 'Checkout is unavailable right now'); }
+}
+
+/* ------------------------------------------------------------------ *
+ * Recently viewed (client-side only, no account required)
+ * ------------------------------------------------------------------ */
+function pushRecentlyViewed(id) {
+  const key = 'mana_pocket_recent_v1';
+  let list = [];
+  try { list = JSON.parse(localStorage.getItem(key) || '[]'); } catch {}
+  list = [id, ...list.filter(x => x !== id)].slice(0, 12);
+  localStorage.setItem(key, JSON.stringify(list));
+}
+
+/* ------------------------------------------------------------------ *
+ * Card + department rendering helpers
+ * ------------------------------------------------------------------ */
+function badgeHtml(badges) {
+  return (badges || []).map(b => `<span class="badge ${b.toLowerCase().replace(/\s+/g,'-')}">${esc(b)}</span>`).join('');
+}
+function secondaryLine(i) {
+  return esc([i.set, i.series, i.player, i.team, i.character, i.publisher && i.issueNumber ? `#${i.issueNumber}` : '', i.year, i.variant]
+    .filter(Boolean).join(' · '));
+}
+function productCard(i) {
+  return `<article class="card" data-nav="?view=product&amp;id=${encodeURIComponent(i.id)}">
+    ${i.image ? `<img class="photo" src="${esc(i.image)}" alt="${esc(i.name)}" loading="lazy">` : `<div class="no-photo">NO PHOTO YET</div>`}
+    <div class="body">
+      <div class="badges">${badgeHtml(i.badges)}</div>
+      <div class="name">${esc(i.name)}</div>
+      <div class="meta">${secondaryLine(i)}${i.condition ? ' · ' + esc(i.condition) : ''}${i.grade ? ' · ' + esc(i.gradingCompany) + ' ' + esc(i.grade) : ''}</div>
+      <div class="price-row"><span class="price">${dollars(i.price)}</span>${i.compareAtPrice ? `<span class="compare">${dollars(i.compareAtPrice)}</span>` : ''}</div>
+    </div>
+  </article>`;
+}
+function skeletonRail(n) { return Array.from({length:n}).map(() => `<div class="skeleton card" style="height:260px"></div>`).join(''); }
+
+/* ------------------------------------------------------------------ *
+ * Views
+ * ------------------------------------------------------------------ */
+const DEPARTMENTS = [
+  { slug:'sports', label:'Sports', sub:'Baseball · Football · Singles · Graded · Sealed' },
+  { slug:'tcg', label:'Pokémon & Magic', sub:'Singles · Graded · Sealed · New Arrivals' },
+  { slug:'comics', label:'Comics', sub:'New This Week · Pull Lists · Back Issues · Keys' },
+  { slug:'collectibles', label:'Collectibles', sub:'Whatever’s in the case this week' },
+];
+const CREW = [
+  { name:'Shawn', role:'Owner / Sports Cards / Breaks', blurb:'Runs the shop and the breaks. If it has a rookie card on it, Shawn already knows the pop report.' },
+  { name:'Champ', role:'Comics', blurb:'Keeper of the long boxes. Ask about this week’s pulls and back-issue keys.' },
+  { name:'Jaccob', role:'Pokémon / Magic: The Gathering', blurb:'Singles, sealed, and deck advice. Will absolutely nerd out about a good pull.' },
+];
+
+async function renderHome(root) {
+  let live = { isLive:false };
+  try { live = (await apiGet('/public/live')).live; } catch {}
+  root.innerHTML = `
+    <section class="hero ${live.isLive ? 'live crt' : ''}">
+      <div class="wrap">
+        ${live.isLive ? `
+          <span class="badge" style="color:var(--brand-danger);font-size:13px">● LIVE FROM THE POCKET</span>
+          <h1 class="display">${esc(live.showTitle || 'LIVE FROM THE POCKET')}</h1>
+          <p class="lead">${esc(live.description || '')}${live.hostsLive?.length ? ' — with ' + esc(live.hostsLive.join(', ')) : ''}</p>
+          <div class="player-frame">${live.twitchChannel ? `<iframe title="Live stream" style="width:100%;height:100%;border:0" src="https://player.twitch.tv/?channel=${encodeURIComponent(live.twitchChannel)}&parent=${location.hostname}"></iframe>` : 'Stream link coming online…'}</div>
+          <div class="ctas" style="margin-top:16px">${live.whatnotShowUrl ? `<a class="btn" href="${esc(live.whatnotShowUrl)}" target="_blank" rel="noopener">SHOP THIS SHOW ON WHATNOT</a>` : ''}<a class="btn outline" href="?view=live" data-link>OPEN POCKET LIVE</a></div>
+        ` : `
+          <h1 class="display">THE MANA POCKET</h1>
+          <p class="lead">Cards, comics, collectibles, and live breaks — a real neighborhood shop you can walk into online. Physical shop coming to Kitsap County in early 2027.</p>
+          <div class="ctas">
+            <a class="btn" href="?view=shop&amp;sort=newest" data-link>SHOP NEW ARRIVALS</a>
+            <a class="btn outline" href="?view=shop" data-link>EXPLORE THE STORE</a>
+            <a class="btn outline" href="?view=breaks" data-link>VIEW UPCOMING BREAKS</a>
+          </div>
+        `}
+      </div>
+    </section>
+
+    <section class="pad wrap">
+      <div class="section-head"><h2 class="display">FOUR WAYS IN</h2></div>
+      <div class="dept-grid">
+        ${DEPARTMENTS.map(d => `<a class="dept-card" href="?view=shop&amp;department=${d.slug}" data-link>
+          <span class="display">${esc(d.label)}</span><span class="sub">${esc(d.sub)}</span></a>`).join('')}
+      </div>
+    </section>
+
+    <section class="pad wrap">
+      <div class="section-head"><h2 class="display">NEW ARRIVALS</h2><a href="?view=shop&amp;sort=newest" data-link>View all →</a></div>
+      <div class="rail" id="rail-new">${skeletonRail(6)}</div>
+    </section>
+
+    <section class="pad wrap">
+      <div class="section-head"><h2 class="display">UPCOMING BREAKS</h2><a href="?view=breaks" data-link>View all →</a></div>
+      <div class="rail" id="rail-breaks">${skeletonRail(3)}</div>
+    </section>
+
+    <section class="pad wrap">
+      <div class="section-head"><h2 class="display">COMICS THIS WEEK</h2><a href="?view=shop&amp;department=comics" data-link>Pull list →</a></div>
+      <div class="rail" id="rail-comics">${skeletonRail(6)}</div>
+    </section>
+
+    <section class="pad wrap">
+      <div class="section-head"><h2 class="display">FEATURED COLLECTIBLES</h2><a href="?view=shop&amp;department=collectibles" data-link>View all →</a></div>
+      <div class="rail" id="rail-collectibles">${skeletonRail(6)}</div>
+    </section>
+
+    <section class="pad wrap">
+      <div class="section-head"><h2 class="display">MEET THE CREW</h2></div>
+      <div class="crew-grid">
+        ${CREW.map(c => `<div class="crew-card"><div class="avatar">${esc(c.name[0])}</div>
+          <strong>${esc(c.name)}</strong><div style="font-size:12px;color:var(--brand-muted);margin-bottom:8px">${esc(c.role)}</div>
+          <p style="font-size:13px;margin:0">${esc(c.blurb)}</p></div>`).join('')}
+      </div>
+    </section>
+
+    <section class="pad wrap">
+      <div class="panel" style="display:grid;gap:14px;grid-template-columns:1fr auto;align-items:center">
+        <div>
+          <h2 class="display" style="margin:0 0 6px;font-size:26px">SELL. TRADE. CONSIGN.</h2>
+          <p style="margin:0;color:var(--brand-muted)">Bring in your collection. We buy, trade, and consign sports cards, TCG, comics, and collectibles — start with an appointment request.</p>
+        </div>
+        <a class="btn" href="?view=sell" data-link>REQUEST AN APPOINTMENT</a>
+      </div>
+    </section>
+
+    <section class="pad wrap">
+      <div class="panel" style="display:grid;gap:14px;grid-template-columns:1fr auto;align-items:center">
+        <div>
+          <h2 class="display" style="margin:0 0 6px;font-size:26px">POCKET POINTS</h2>
+          <p style="margin:0;color:var(--brand-muted)">Earn points on every purchase and redeem them toward future orders.</p>
+        </div>
+        <a class="btn outline" href="?view=rewards" data-link>HOW IT WORKS</a>
+      </div>
+    </section>
+
+    <section class="pad wrap">
+      <div class="panel">
+        <h2 class="display" style="margin:0 0 6px;font-size:26px">A REAL SHOP IS COMING</h2>
+        <p style="color:var(--brand-muted);margin:0 0 14px">The Mana Pocket is opening a physical location in Kitsap County, Washington in early 2027. Get on the list for opening updates.</p>
+        <a class="btn" id="opening-signup">JOIN THE OPENING LIST</a>
+      </div>
+    </section>
+  `;
+  document.getElementById('opening-signup')?.addEventListener('click', () => {
+    const email = prompt('Email for opening updates:');
+    if (email) window.location.href = `mailto:hello@themanapocket.com?subject=${encodeURIComponent('Opening list')}&body=${encodeURIComponent('Please add me to the opening list: ' + email)}`;
+  });
+
+  apiGet('/public/catalog', { sort:'newest', limit:8 }).then(r => {
+    document.getElementById('rail-new').innerHTML = r.items.length ? r.items.map(productCard).join('') : `<p class="empty">New arrivals are on the way.</p>`;
+  }).catch(() => { document.getElementById('rail-new').innerHTML = `<p class="empty">Catalog is warming up.</p>`; });
+
+  apiGet('/public/breaks').then(r => {
+    const upcoming = (r.breaks || []).filter(b => ['scheduled','filling','live'].includes(b.status)).slice(0, 4);
+    document.getElementById('rail-breaks').innerHTML = upcoming.length ? upcoming.map(breakCard).join('') : `<p class="empty">No breaks scheduled right now — check back soon.</p>`;
+  }).catch(() => { document.getElementById('rail-breaks').innerHTML = `<p class="empty">Breaks are loading.</p>`; });
+
+  apiGet('/public/comics', { view:'new' }).then(r => {
+    document.getElementById('rail-comics').innerHTML = r.comics?.length ? r.comics.map(comicCard).join('') : `<p class="empty">This week’s pulls are being shelved.</p>`;
+  }).catch(() => { document.getElementById('rail-comics').innerHTML = `<p class="empty">Comics are loading.</p>`; });
+
+  apiGet('/public/catalog', { department:'collectibles', limit:8 }).then(r => {
+    document.getElementById('rail-collectibles').innerHTML = r.items.length ? r.items.map(productCard).join('') : `<p class="empty">New collectibles coming soon.</p>`;
+  }).catch(() => { document.getElementById('rail-collectibles').innerHTML = `<p class="empty">Collectibles are loading.</p>`; });
+}
+
+function breakCard(b) {
+  const when = b.scheduledAt ? new Date(b.scheduledAt).toLocaleString(undefined,{ dateStyle:'medium', timeStyle:'short' }) : 'Date TBA';
+  return `<article class="card" data-nav="?view=breaks">
+    <div class="body">
+      <span class="badge ${b.platform === 'whatnot' ? 'preorder' : 'new'}">${b.platform === 'whatnot' ? 'ON WHATNOT' : 'ON THE MANA POCKET'}</span>
+      <div class="name">${esc(b.title)}</div>
+      <div class="meta">${esc(b.sportGame || '')}${b.format ? ' · ' + esc(b.format) : ''}</div>
+      <div class="meta">${esc(when)}</div>
+      <div class="price-row"><span class="price">${dollars((b.priceCents||0)/100)}</span></div>
+      <div class="meta">${b.remainingSpots != null ? b.remainingSpots + ' spots left' : ''}</div>
+    </div>
+  </article>`;
+}
+function comicCard(c) {
+  return `<article class="card">
+    ${c.coverImage ? `<img class="photo" src="${esc(c.coverImage)}" alt="${esc(c.series)}">` : `<div class="no-photo">NO COVER YET</div>`}
+    <div class="body">
+      <span class="badge preorder">${esc((c.preorderStatus||'').toUpperCase())}</span>
+      <div class="name">${esc(c.series)} #${esc(c.issueNumber||'')}</div>
+      <div class="meta">${esc(c.publisher||'')}${c.coverVariant ? ' · ' + esc(c.coverVariant) : ''}</div>
+      <div class="price-row"><span class="price">${dollars((c.priceCents||0)/100)}</span></div>
+    </div>
+  </article>`;
+}
+
+async function renderShop(root, params) {
+  root.innerHTML = `<div class="wrap pad">
+    <div class="section-head"><h1 class="display">SHOP</h1></div>
+    <div class="shop-layout">
+      <aside class="filters" id="filters"><div class="skeleton" style="height:200px"></div></aside>
+      <div>
+        <div class="toolbar">
+          <select id="sort-select">
+            <option value="newest">Newest</option>
+            <option value="price-low">Price: low to high</option>
+            <option value="price-high">Price: high to low</option>
+            <option value="name">Name</option>
+          </select>
+          <span id="result-count" style="color:var(--brand-muted);font-size:13px"></span>
+        </div>
+        <div class="grid" id="shop-grid">${skeletonRail(8)}</div>
+        <div style="text-align:center;margin-top:20px"><button class="btn outline" id="load-more" hidden>LOAD MORE</button></div>
+      </div>
+    </div>
+  </div>`;
+
+  let offset = 0;
+  const limit = 24;
+  const query = { department:params.get('department')||'', category:params.get('category')||'', q:params.get('q')||'',
+    sort:params.get('sort')||'newest', condition:params.get('condition')||'', grade:params.get('grade')||'' };
+  document.getElementById('sort-select').value = query.sort;
+  if (params.get('q')) document.getElementById('search-input').value = params.get('q');
+
+  async function load(reset) {
+    if (reset) { offset = 0; document.getElementById('shop-grid').innerHTML = skeletonRail(8); }
+    const r = await apiGet('/public/catalog', { ...query, offset, limit }).catch(e => { toast(e.message); return { items:[], total:0, facets:{} }; });
+    const grid = document.getElementById('shop-grid');
+    const html = r.items.map(productCard).join('');
+    grid.innerHTML = reset ? (html || `<p class="empty">Nothing matches yet. Try clearing a filter.</p>`) : grid.innerHTML + html;
+    document.getElementById('result-count').textContent = `${r.total || 0} item${r.total === 1 ? '' : 's'}`;
+    document.getElementById('load-more').hidden = offset + r.items.length >= (r.total || 0);
+    offset += r.items.length;
+    renderFilters(r.facets || {});
+  }
+  function renderFilters(facets) {
+    const el = document.getElementById('filters');
+    const section = (title, field, values) => !values?.length ? '' : `<h3>${title}</h3>${values.map(v => `
+      <span class="filter-chip ${query[field]===v?'active':''}" data-field="${field}" data-value="${esc(v)}">${esc(v)}</span>`).join('')}`;
+    el.innerHTML = section('Category', 'category', facets.category) + section('Sport', 'sport', facets.sport)
+      + section('Game', 'game', facets.game) + section('Condition', 'condition', facets.condition);
+    el.querySelectorAll('.filter-chip').forEach(chip => chip.addEventListener('click', () => {
+      const field = chip.dataset.field, value = chip.dataset.value;
+      query[field] = query[field] === value ? '' : value;
+      load(true);
+    }));
+  }
+  document.getElementById('sort-select').addEventListener('change', e => { query.sort = e.target.value; load(true); });
+  document.getElementById('load-more').addEventListener('click', () => load(false));
+  await load(true);
+}
+
+async function renderProduct(root, params) {
+  const id = params.get('id');
+  root.innerHTML = `<div class="wrap pad"><div class="skeleton" style="height:420px"></div></div>`;
+  if (!id) { root.innerHTML = `<div class="wrap pad"><p class="empty">Item not found.</p></div>`; return; }
+  let data;
+  try { data = await apiGet(`/public/product/${encodeURIComponent(id)}`); }
+  catch (e) { root.innerHTML = `<div class="wrap pad"><p class="empty">${esc(e.message)}</p></div>`; return; }
+  const i = data.item;
+  pushRecentlyViewed(id);
+  root.innerHTML = `<div class="wrap pad">
+    <div class="pdp">
+      <div class="gallery">${i.image ? `<img src="${esc(i.image)}" alt="${esc(i.name)}">` : `<div class="no-photo" style="aspect-ratio:1;border-radius:var(--brand-card-radius)">NO PHOTO YET</div>`}</div>
+      <div>
+        <div class="badges">${badgeHtml(i.badges)}</div>
+        <h1>${esc(i.name)}</h1>
+        <div class="meta" style="color:var(--brand-muted)">${secondaryLine(i)}</div>
+        <div class="price-row"><span class="price">${dollars(i.price)}</span>${i.compareAtPrice ? `<span class="compare">${dollars(i.compareAtPrice)}</span>` : ''}</div>
+        ${i.uniqueItem ? `<p style="font-size:13px;color:var(--brand-muted)">Only one of this item is available.</p>` : `<p style="font-size:13px;color:var(--brand-muted)">${i.quantity} in stock</p>`}
+        <p style="font-size:13px;color:var(--brand-muted)">${i.pickupAvailable ? 'Free in-store pickup where available. ' : ''}${i.shipEligible ? 'Ships within the United States.' : 'Pickup only.'}</p>
+        <div class="qty-row"><label for="pdp-qty" class="visually-hidden">Quantity</label>
+          <input type="number" id="pdp-qty" min="1" max="${i.uniqueItem ? 1 : Math.max(1,i.quantity)}" value="1"></div>
+        <button class="btn block" id="pdp-add" ${i.quantity <= 0 ? 'disabled' : ''}>${i.quantity <= 0 ? 'SOLD OUT' : 'ADD TO CART'}</button>
+        ${i.description ? `<p style="margin-top:18px">${esc(i.description)}</p>` : ''}
+      </div>
+    </div>
+    ${data.related?.length ? `<section class="pad"><div class="section-head"><h2 class="display">YOU MIGHT ALSO LIKE</h2></div><div class="rail">${data.related.map(productCard).join('')}</div></section>` : ''}
+  </div>`;
+  document.getElementById('pdp-add')?.addEventListener('click', () => {
+    const qty = Math.max(1, Number(document.getElementById('pdp-qty').value || 1));
+    addToCart(i, qty);
+  });
+  applyBrandTheme(data.theme);
+}
+
+async function renderBreaks(root) {
+  root.innerHTML = `<div class="wrap pad"><h1 class="display">BREAKS</h1><div class="grid" id="breaks-grid">${skeletonRail(6)}</div></div>`;
+  try {
+    const r = await apiGet('/public/breaks');
+    document.getElementById('breaks-grid').innerHTML = r.breaks?.length ? r.breaks.map(breakCard).join('') : `<p class="empty">No breaks scheduled right now.</p>`;
+  } catch (e) { document.getElementById('breaks-grid').innerHTML = `<p class="empty">${esc(e.message)}</p>`; }
+}
+
+async function renderLive(root) {
+  let live = { isLive:false };
+  try { live = (await apiGet('/public/live')).live; } catch {}
+  root.innerHTML = `<div class="wrap pad">
+    <h1 class="display">POCKET LIVE</h1>
+    ${live.isLive ? `
+      <div class="player-frame crt" style="margin-bottom:16px">${live.twitchChannel ? `<iframe title="Live stream" style="width:100%;height:100%;border:0" src="https://player.twitch.tv/?channel=${encodeURIComponent(live.twitchChannel)}&parent=${location.hostname}"></iframe>` : 'Stream link coming online…'}</div>
+      <h2>${esc(live.showTitle||'Live now')}</h2>
+      <p>${esc(live.description||'')}</p>
+      ${live.whatnotShowUrl ? `<a class="btn" href="${esc(live.whatnotShowUrl)}" target="_blank" rel="noopener">SHOP THIS SHOW ON WHATNOT</a>` : ''}
+    ` : `
+      <p class="lead" style="color:var(--brand-muted)">${esc(live.offlineMessage || 'Not live right now — check back soon.')}</p>
+      ${live.nextScheduledShow ? `<p>Next show: ${esc(live.nextScheduledShow)}</p>` : ''}
+    `}
+  </div>`;
+}
+
+async function renderSell(root) {
+  root.innerHTML = `<div class="wrap pad">
+    <h1 class="display">SELL / TRADE / CONSIGN</h1>
+    <p style="color:var(--brand-muted);max-width:640px">Tell us what you’ve got and request an in-store appointment. We’ll confirm a time and walk you through next steps.</p>
+    <form class="panel" id="appt-form" style="max-width:560px">
+      <div class="field"><label for="a-type">What are you looking to do?</label>
+        <select id="a-type"><option value="sell">Sell</option><option value="trade">Trade</option><option value="consign">Consign</option></select></div>
+      <div class="field"><label for="a-category">Category</label>
+        <select id="a-category"><option>Sports Cards</option><option>TCG</option><option>Comics</option><option>Collectibles</option><option>Mixed Collection</option></select></div>
+      <div class="field"><label for="a-name">Your name</label><input id="a-name" required></div>
+      <div class="field"><label for="a-email">Email</label><input id="a-email" type="email" required></div>
+      <div class="field"><label for="a-phone">Phone (optional)</label><input id="a-phone" type="tel"></div>
+      <div class="field"><label for="a-qty">Approximate quantity</label><input id="a-qty" placeholder="e.g. 3 long boxes, 200 cards"></div>
+      <div class="field"><label for="a-value">Estimated value (optional)</label><input id="a-value" type="number" min="0" step="1" placeholder="$"></div>
+      <div class="field"><label for="a-notes">Notes</label><textarea id="a-notes" placeholder="Tell us what you have"></textarea></div>
+      <button class="btn block" type="submit">REQUEST APPOINTMENT</button>
+    </form>
+  </div>`;
+  document.getElementById('appt-form').addEventListener('submit', async e => {
+    e.preventDefault();
+    if (!STORE_ID) { toast('Storefront is not configured yet'); return; }
+    const btn = e.target.querySelector('button');
+    btn.disabled = true; btn.textContent = 'SENDING…';
+    try {
+      await apiPost('/appointments/request', {
+        storeId: STORE_ID, requestType: document.getElementById('a-type').value, category: document.getElementById('a-category').value,
+        contactName: document.getElementById('a-name').value, contactEmail: document.getElementById('a-email').value,
+        contactPhone: document.getElementById('a-phone').value, approxQuantity: document.getElementById('a-qty').value,
+        estimatedValue: document.getElementById('a-value').value, notes: document.getElementById('a-notes').value,
+      });
+      e.target.innerHTML = `<p>Thanks — we’ve got your request and will follow up to schedule a time.</p>`;
+    } catch (err) { toast(err.message || 'Could not send that — try again'); btn.disabled = false; btn.textContent = 'REQUEST APPOINTMENT'; }
+  });
+}
+
+async function renderRewards(root) {
+  root.innerHTML = `<div class="wrap pad">
+    <h1 class="display">POCKET POINTS</h1>
+    <p style="color:var(--brand-muted);max-width:600px">Earn points on every eligible purchase and redeem them toward future orders. Sign in to see your balance.</p>
+    <div class="panel" style="max-width:480px" id="rewards-panel">
+      <p>Sign in from <a href="?view=account" data-link>My Pocket</a> to see your points balance and history.</p>
+    </div>
+  </div>`;
+}
+
+async function renderVisit(root) {
+  root.innerHTML = `<div class="wrap pad">
+    <h1 class="display">VISIT</h1>
+    <div class="panel" style="max-width:600px">
+      <p>The Mana Pocket’s physical shop is coming to <strong>Kitsap County, Washington in early 2027</strong>. We’ll share the exact address and hours here as soon as they’re confirmed.</p>
+      <p style="color:var(--brand-muted)">Free local pickup will be available once the shop opens. Until then, everything ships within the United States.</p>
+      <a class="btn" id="visit-signup">GET OPENING UPDATES</a>
+    </div>
+  </div>`;
+  document.getElementById('visit-signup')?.addEventListener('click', () => {
+    const email = prompt('Email for opening updates:');
+    if (email) window.location.href = `mailto:hello@themanapocket.com?subject=${encodeURIComponent('Opening list')}&body=${encodeURIComponent('Please add me to the opening list: ' + email)}`;
+  });
+}
+
+async function renderPolicies(root, params) {
+  const doc = params.get('doc') || 'shipping';
+  const copy = {
+    shipping: ['Shipping & Pickup', 'United States shipping only at launch. Free in-store pickup is offered where currently available and is clearly marked at checkout.'],
+    returns: ['Returns', 'Contact the shop about a return or exchange. Full policy details are coming soon.'],
+    privacy: ['Privacy', 'The Mana Pocket only uses your information to fulfill orders, manage your account, and share updates you’ve opted into.'],
+    terms: ['Terms', 'Standard terms of sale apply. Full terms are coming soon.'],
+  }[doc] || ['Info', ''];
+  root.innerHTML = `<div class="wrap pad"><h1 class="display">${esc(copy[0])}</h1><p style="max-width:640px;color:var(--brand-muted)">${esc(copy[1])}</p></div>`;
+}
+
+async function renderCartView(root) {
+  root.innerHTML = `<div class="wrap pad"><h1 class="display">YOUR POCKET</h1><div id="cart-view-lines"></div>
+    <button class="btn" id="cart-view-checkout" style="margin-top:16px">CHECK OUT</button></div>`;
+  const lines = getCart();
+  document.getElementById('cart-view-lines').innerHTML = lines.length ? `<div class="grid">${lines.map(l => `
+    <div class="card"><div class="body"><div class="name">${esc(l.name)}</div><div class="meta">${dollars(l.price)} × ${l.qty}</div>
+    <button class="btn outline" style="margin-top:8px" onclick="removeFromCart('${esc(l.id)}');location.reload()">Remove</button></div></div>`).join('')}</div>`
+    : `<p class="empty">Your pocket is empty.</p>`;
+  document.getElementById('cart-view-checkout').addEventListener('click', startCheckout);
+}
+
+async function renderCheckoutReturn(root, params) {
+  const status = params.get('status');
+  if (status === 'success') { setCart([]); }
+  root.innerHTML = `<div class="wrap pad"><div class="panel" style="max-width:520px;margin:0 auto;text-align:center">
+    <h1 class="display">${status === 'success' ? 'THANKS FOR SHOPPING WITH US' : 'CHECKOUT CANCELLED'}</h1>
+    <p style="color:var(--brand-muted)">${status === 'success' ? 'Your order is confirmed. A receipt is on its way to your email, and you can track it from My Pocket once you’re signed in.' : 'No charge was made. Your pocket is still saved.'}</p>
+    <a class="btn" href="?view=shop" data-link>KEEP SHOPPING</a>
+  </div></div>`;
+}
+
+async function renderAccount(root) {
+  root.innerHTML = `<div class="wrap pad"><h1 class="display">MY POCKET</h1><div id="account-body"><div class="skeleton" style="height:160px"></div></div></div>`;
+  const body = document.getElementById('account-body');
+  if (!sb) { body.innerHTML = `<p class="empty">Sign-in is not configured yet.</p>`; return; }
+  const { data: { user } } = await sb.auth.getUser();
+  if (!user) {
+    body.innerHTML = `<div class="panel" style="max-width:420px">
+      <p>Sign in to see your orders, Pocket Points, wish list, and pull list.</p>
+      <div class="field"><label for="acct-email">Email</label><input id="acct-email" type="email" placeholder="you@example.com"></div>
+      <button class="btn block" id="acct-otp">EMAIL ME A SIGN-IN LINK</button>
+      <div style="text-align:center;margin:12px 0;color:var(--brand-muted);font-size:12px">or</div>
+      <button class="btn outline block" id="acct-google">CONTINUE WITH GOOGLE</button>
+      <p id="acct-msg" style="font-size:12px;color:var(--brand-muted);margin-top:10px"></p>
+    </div>`;
+    document.getElementById('acct-otp').addEventListener('click', async () => {
+      const email = document.getElementById('acct-email').value.trim();
+      if (!email) return;
+      const { error } = await sb.auth.signInWithOtp({ email, options:{ emailRedirectTo: location.href } });
+      document.getElementById('acct-msg').textContent = error ? error.message : `Check ${email} for a sign-in link.`;
+    });
+    document.getElementById('acct-google').addEventListener('click', () => {
+      sb.auth.signInWithOAuth({ provider:'google', options:{ redirectTo: location.href } });
+    });
+    return;
+  }
+  body.innerHTML = `<div class="panel" style="max-width:520px">
+    <p>Signed in as <strong>${esc(user.email)}</strong></p>
+    <p style="color:var(--brand-muted);font-size:13px">Orders, Pocket Points balances, wish lists, and pull-list management appear here as those dashboard tools go live.</p>
+    <button class="btn outline" id="acct-signout">SIGN OUT</button>
+  </div>`;
+  document.getElementById('acct-signout').addEventListener('click', async () => { await sb.auth.signOut(); route(); });
+}
+
+/* ------------------------------------------------------------------ *
+ * Router
+ * ------------------------------------------------------------------ */
+const VIEWS = {
+  '': renderHome, shop: renderShop, product: renderProduct, breaks: renderBreaks, live: renderLive,
+  sell: renderSell, rewards: renderRewards, visit: renderVisit, policies: renderPolicies,
+  cart: renderCartView, account: renderAccount, 'checkout-return': renderCheckoutReturn,
+};
+async function route() {
+  const params = new URLSearchParams(location.search);
+  const view = params.get('view') || '';
+  document.querySelectorAll('nav.primary a').forEach(a => a.classList.toggle('active', a.getAttribute('href').includes(`view=${view}`) || (!view && a.getAttribute('href') === '?')));
+  const root = document.getElementById('app');
+  const renderer = VIEWS[view] || renderHome;
+  document.title = view ? `${view.replace(/-/g,' ').replace(/\b\w/g, c => c.toUpperCase())} · The Mana Pocket` : 'The Mana Pocket — Cards, Comics, Collectibles, Live';
+  await renderer(root, params);
+  window.scrollTo(0, 0);
+}
+
+document.addEventListener('click', e => {
+  const link = e.target.closest('[data-link]') || e.target.closest('[data-nav]');
+  if (!link) return;
+  e.preventDefault();
+  const href = link.getAttribute('href') || link.dataset.nav;
+  history.pushState({}, '', href);
+  route();
+  document.getElementById('primary-nav').classList.remove('open');
+});
+window.addEventListener('popstate', route);
+
+document.getElementById('nav-toggle').addEventListener('click', () => {
+  const nav = document.getElementById('primary-nav');
+  const open = nav.classList.toggle('open');
+  document.getElementById('nav-toggle').setAttribute('aria-expanded', String(open));
+});
+document.getElementById('cart-open').addEventListener('click', openCart);
+document.getElementById('cart-close').addEventListener('click', closeCart);
+document.getElementById('cart-backdrop').addEventListener('click', closeCart);
+document.getElementById('cart-checkout').addEventListener('click', startCheckout);
+document.getElementById('search-form').addEventListener('submit', e => {
+  e.preventDefault();
+  const q = document.getElementById('search-input').value.trim();
+  history.pushState({}, '', `?view=shop${q ? '&q=' + encodeURIComponent(q) : ''}`);
+  route();
+});
+document.getElementById('year').textContent = new Date().getFullYear();
+
+/* ------------------------------------------------------------------ *
+ * Boot
+ * ------------------------------------------------------------------ */
+(async function boot() {
+  renderCartCount(); renderCartDrawer();
+  if (!STORE_ID) {
+    document.getElementById('app').innerHTML = `<div class="wrap pad"><div class="panel">
+      <h1 class="display">STORE NOT CONFIGURED</h1>
+      <p>This page needs a <code>?store=&lt;store id&gt;</code> in the URL, or <code>window.MANA_POCKET_STORE_ID</code> set once the owner creates The Mana Pocket store in the dashboard and turns on the public storefront.</p>
+    </div></div>`;
+    return;
+  }
+  try {
+    const r = await apiGet('/public/catalog', { limit:1 });
+    applyBrandTheme(r.theme);
+  } catch (_) { /* theme falls back to defaults; storefront-disabled message renders per-view */ }
+  route();
+})();
+</script>
+</body>
+</html>

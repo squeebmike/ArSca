@@ -3708,6 +3708,9 @@ async function loadStoreSettingsFromSupabase(){
     };
     localStorage.setItem('vendor_config_v1', JSON.stringify(cfg));
     if(data.modules.webflowIntegration) localStorage.setItem('webflow_integration_v1', JSON.stringify(data.modules.webflowIntegration));
+    if(data.modules.live) localStorage.setItem('manapocket_live_v1', JSON.stringify(data.modules.live));
+    if(data.modules.rewards) localStorage.setItem('manapocket_rewards_v1', JSON.stringify(data.modules.rewards));
+    if(data.modules.storefront) localStorage.setItem('manapocket_storefront_v1', JSON.stringify(data.modules.storefront));
   }
   if(data.receipt_settings) {
     localStorage.setItem('vendor_profile_v1', JSON.stringify({ ...getVendorProfile(), ...data.receipt_settings }));
@@ -5265,6 +5268,7 @@ const SETTINGS_SECTIONS = [
   {id:'users',label:'Users & Permissions',subtitle:'Store members, invitations, roles, and access boundaries.',keywords:'users members invites owner admin staff cashier scanner refunds permissions roles'},
   {id:'devices',label:'Devices & Hardware',subtitle:'Register identity and the hardware surfaces used around the store.',keywords:'device hardware barcode scanner phone inbox printer cash drawer customer display stripe reader vending register'},
   {id:'theme',label:'Theme & Branding',subtitle:'Colors, fonts, layout radius, logo, and customer-screen appearance.',keywords:'theme branding colors fonts logo background preview radius'},
+  {id:'manapocket',label:'The Mana Pocket',subtitle:'Pocket Live control, Pocket Points rewards, and public storefront feature flags.',keywords:'mana pocket live twitch whatnot breaks rewards points storefront pickup shipping feature flags'},
   {id:'subscription',label:'Subscription & Billing',subtitle:'ArSca software plan and subscription status—not customer checkout payments.',keywords:'subscription billing trial plan subscribe renewal portal'},
   {id:'advanced',label:'Advanced / Diagnostics',subtitle:'Diagnostics, readiness checks, raw IDs, caches, QA, and legacy tools.',keywords:'advanced diagnostics qa debug rls account data mode cache api legacy tool map health flags reset'}
 ];
@@ -5277,6 +5281,7 @@ const SETTINGS_PANEL_MAP = {
   inventory:['spreadsheet-panel'],
   users:['store-members-panel'],
   theme:['branding-theme-panel'],
+  manapocket:['manapocket-panel'],
   subscription:['subscription-panel'],
   advanced:['admin-lock-panel','vendor-config-panel','backoffice-system-panel','backoffice-ops-panel','pricing-qa-panel','data-mode-panel','customer-panel','data-health-panel','help-walkthrough-panel','legacy-tools-panel']
 };
@@ -5397,6 +5402,7 @@ function organizeRegisterLayout(){
   ensureSyncQueuePanel(backoffice);
   ensureCustomerPanel(backoffice);
   ensureStoreCreditPanel(backoffice);
+  ensureManaPocketPanel(backoffice);
   ensureDataHealthPanel(backoffice);
   ensureInventoryToolsPanel();
   ensurePermissionLockPanels(backoffice, shows, channels);
@@ -5618,6 +5624,97 @@ function saveStorefrontSettings(){
 }
 async function copyStorefrontLink(encoded){try{await navigator.clipboard.writeText(decodeURIComponent(encoded));toast_dash('Storefront link copied');}catch(e){toast_dash('Could not copy link');}}
 function showStorefrontQr(encoded){const link=decodeURIComponent(encoded);window.open('https://api.qrserver.com/v1/create-qr-code/?size=500x500&margin=20&data='+encodeURIComponent(link),'_blank');}
+
+// The Mana Pocket: Pocket Live control, Pocket Points settings, and
+// storefront feature flags. Stored as sibling keys inside the same
+// store_settings.modules JSONB column used by webflowIntegration, so the
+// public storefront worker (which reads settings.modules.live / .rewards /
+// .storefront) and this dashboard panel share one source of truth.
+const DEFAULT_MANAPOCKET_LIVE = { isLive:false, showTitle:'', description:'', hostsLive:[], twitchChannel:'', whatnotShowUrl:'', activeBreakId:'', featuredProductIds:[], startTime:'', expectedEndTime:'', offlineMessage:'THE MANA POCKET IS ONLINE NOW — PHYSICAL SHOP COMING TO KITSAP COUNTY IN EARLY 2027', nextScheduledShow:'' };
+function getManaPocketLive(){ try { return { ...DEFAULT_MANAPOCKET_LIVE, ...JSON.parse(localStorage.getItem('manapocket_live_v1')||'{}') }; } catch(e){ return { ...DEFAULT_MANAPOCKET_LIVE }; } }
+function saveManaPocketLive(patch){ const next={ ...getManaPocketLive(), ...patch }; localStorage.setItem('manapocket_live_v1', JSON.stringify(next)); saveStoreSettingsToSupabase({ modules:{ ...getVendorConfig(), live:next } }); return next; }
+
+const DEFAULT_MANAPOCKET_REWARDS = { enabled:true, earnRatePerDollar:1, redemptionPointsPerDollar:20, minRedemptionPoints:100 };
+function getManaPocketRewards(){ try { return { ...DEFAULT_MANAPOCKET_REWARDS, ...JSON.parse(localStorage.getItem('manapocket_rewards_v1')||'{}') }; } catch(e){ return { ...DEFAULT_MANAPOCKET_REWARDS }; } }
+function saveManaPocketRewards(patch){ const next={ ...getManaPocketRewards(), ...patch }; localStorage.setItem('manapocket_rewards_v1', JSON.stringify(next)); saveStoreSettingsToSupabase({ modules:{ ...getVendorConfig(), rewards:next } }); return next; }
+
+const DEFAULT_MANAPOCKET_STOREFRONT = { pickupAvailable:false, shippingCountries:['US'] };
+function getManaPocketStorefrontFlags(){ try { return { ...DEFAULT_MANAPOCKET_STOREFRONT, ...JSON.parse(localStorage.getItem('manapocket_storefront_v1')||'{}') }; } catch(e){ return { ...DEFAULT_MANAPOCKET_STOREFRONT }; } }
+function saveManaPocketStorefrontFlags(patch){ const next={ ...getManaPocketStorefrontFlags(), ...patch }; localStorage.setItem('manapocket_storefront_v1', JSON.stringify(next)); saveStoreSettingsToSupabase({ modules:{ ...getVendorConfig(), storefront:next } }); return next; }
+
+function ensureManaPocketPanel(backoffice){
+  if(!backoffice || document.getElementById('manapocket-panel')) return;
+  const panel = document.createElement('div');
+  panel.className = 'panel';
+  panel.id = 'manapocket-panel';
+  panel.style.marginBottom = '14px';
+  panel.innerHTML = '<div class="ph">THE MANA POCKET <span style="font-size:9px;color:var(--dim)">live control, rewards, storefront flags</span></div><div id="manapocket-body"></div>';
+  backoffice.appendChild(panel);
+  renderManaPocketPanel();
+}
+function mpInput(key,label,value,type='text'){ return `<label style="font-family:monospace;font-size:9px;color:var(--dim)">${escHtml(label.toUpperCase())}<input id="mp-${key}" class="tsi" type="${type}" value="${escHtml(value ?? '')}" style="margin-top:3px;margin-bottom:0"></label>`; }
+function renderManaPocketPanel(){
+  const body = document.getElementById('manapocket-body');
+  if(!body) return;
+  const live = getManaPocketLive(), rewards = getManaPocketRewards(), flags = getManaPocketStorefrontFlags();
+  body.innerHTML = `
+    <div style="font-family:'Orbitron',monospace;font-size:11px;color:var(--g);margin-bottom:7px">POCKET LIVE</div>
+    <label style="display:flex;align-items:center;gap:8px;font-family:var(--font-mono);font-size:11px;margin-bottom:10px"><input id="mp-isLive" type="checkbox" ${live.isLive?'checked':''}> Live now (swaps the homepage hero + announcement bar to LIVE FROM THE POCKET)</label>
+    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:10px">
+      ${mpInput('showTitle','Show title',live.showTitle)}
+      ${mpInput('twitchChannel','Twitch channel',live.twitchChannel)}
+      ${mpInput('whatnotShowUrl','Whatnot show URL',live.whatnotShowUrl)}
+      ${mpInput('activeBreakId','Active break ID',live.activeBreakId)}
+      ${mpInput('hostsLive','Hosts live (comma separated)',(live.hostsLive||[]).join(', '))}
+      ${mpInput('nextScheduledShow','Next scheduled show',live.nextScheduledShow)}
+    </div>
+    <label style="font-family:monospace;font-size:9px;color:var(--dim)">SHOW DESCRIPTION<textarea id="mp-description" class="tsi" style="height:50px">${escHtml(live.description)}</textarea></label>
+    <label style="font-family:monospace;font-size:9px;color:var(--dim)">OFFLINE / ANNOUNCEMENT MESSAGE<textarea id="mp-offlineMessage" class="tsi" style="height:50px">${escHtml(live.offlineMessage)}</textarea></label>
+    <div style="margin:10px 0 14px"><button class="hbtn" onclick="saveManaPocketLiveFromForm()">SAVE LIVE CONTROL</button></div>
+
+    <div style="font-family:'Orbitron',monospace;font-size:11px;color:var(--g);margin-bottom:7px">POCKET POINTS (REWARDS)</div>
+    <label style="display:flex;align-items:center;gap:8px;font-family:var(--font-mono);font-size:11px;margin-bottom:10px"><input id="mp-rewardsEnabled" type="checkbox" ${rewards.enabled?'checked':''}> Rewards enabled</label>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px">
+      ${mpInput('earnRatePerDollar','Points per $1 spent',rewards.earnRatePerDollar,'number')}
+      ${mpInput('redemptionPointsPerDollar','Points per $1 redeemed',rewards.redemptionPointsPerDollar,'number')}
+      ${mpInput('minRedemptionPoints','Minimum redemption (points)',rewards.minRedemptionPoints,'number')}
+    </div>
+    <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);margin-bottom:10px">No points on tax, shipping, gift cards, or redeemed store credit. Points post as pending and become available once an order is completed; refunds reverse the corresponding points.</div>
+    <div style="margin-bottom:14px"><button class="hbtn" onclick="saveManaPocketRewardsFromForm()">SAVE REWARDS SETTINGS</button></div>
+
+    <div style="font-family:'Orbitron',monospace;font-size:11px;color:var(--g);margin-bottom:7px">STOREFRONT FLAGS</div>
+    <label style="display:flex;align-items:center;gap:8px;font-family:var(--font-mono);font-size:11px;margin-bottom:10px"><input id="mp-pickupAvailable" type="checkbox" ${flags.pickupAvailable?'checked':''}> Local pickup available now</label>
+    <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);margin-bottom:10px">Leave off until the physical shop can actually fulfill pickup orders. Shipping is United States only at launch.</div>
+    <button class="hbtn" onclick="saveManaPocketFlagsFromForm()">SAVE STOREFRONT FLAGS</button>
+  `;
+}
+function saveManaPocketLiveFromForm(){
+  saveManaPocketLive({
+    isLive: !!document.getElementById('mp-isLive')?.checked,
+    showTitle: document.getElementById('mp-showTitle')?.value.trim()||'',
+    description: document.getElementById('mp-description')?.value.trim()||'',
+    hostsLive: (document.getElementById('mp-hostsLive')?.value||'').split(',').map(s=>s.trim()).filter(Boolean),
+    twitchChannel: document.getElementById('mp-twitchChannel')?.value.trim()||'',
+    whatnotShowUrl: document.getElementById('mp-whatnotShowUrl')?.value.trim()||'',
+    activeBreakId: document.getElementById('mp-activeBreakId')?.value.trim()||'',
+    nextScheduledShow: document.getElementById('mp-nextScheduledShow')?.value.trim()||'',
+    offlineMessage: document.getElementById('mp-offlineMessage')?.value.trim()||'',
+  });
+  toast_dash('Pocket Live settings saved');
+}
+function saveManaPocketRewardsFromForm(){
+  saveManaPocketRewards({
+    enabled: !!document.getElementById('mp-rewardsEnabled')?.checked,
+    earnRatePerDollar: Number(document.getElementById('mp-earnRatePerDollar')?.value)||0,
+    redemptionPointsPerDollar: Number(document.getElementById('mp-redemptionPointsPerDollar')?.value)||20,
+    minRedemptionPoints: Number(document.getElementById('mp-minRedemptionPoints')?.value)||100,
+  });
+  toast_dash('Pocket Points settings saved');
+}
+function saveManaPocketFlagsFromForm(){
+  saveManaPocketStorefrontFlags({ pickupAvailable: !!document.getElementById('mp-pickupAvailable')?.checked });
+  toast_dash('Storefront flags saved');
+}
 
 function vendorInput(key, label, value, type='text', placeholder=''){
   return `<label style="font-family:monospace;font-size:9px;color:var(--dim)">${label.toUpperCase()}<input id="vp-${key}" class="tsi" type="${type}" value="${escHtml(value)}" ${placeholder?`placeholder="${escHtml(placeholder)}"`:''} style="margin-top:3px;margin-bottom:0"></label>`;

@@ -3,7 +3,7 @@
   "version": "2026.07.14.2",
   "private": true,
   "scripts": {
-    "test": "npm run test:parse && npm run test:topps-parser && npm run test:buy-workspace && npm run test:search-adapter && npm run test:pokemon-sync && npm run test:comic-hub && npm run test:consignment && npm run test:stripe-foundation && npm run test:settings-architecture && npm run test:subscription-plans && npm run test:storefront && npm run test:webflow-sync && npm run test:inventory-usability && npm run test:barcode && npm run test:mtg-offline && npm run test:pricecharting-offline && npm run test:deck-lab && npm run test:mtg-research-batch && npm run test:admin-support && npm run test:release-hardening && npm run test:security-hardening && npm run test:research-pipeline && npm run test:operational-durability",
+    "test": "npm run test:parse && npm run test:topps-parser && npm run test:buy-workspace && npm run test:search-adapter && npm run test:pokemon-sync && npm run test:comic-hub && npm run test:consignment && npm run test:stripe-foundation && npm run test:settings-architecture && npm run test:subscription-plans && npm run test:storefront && npm run test:mana-pocket && npm run test:webflow-sync && npm run test:inventory-usability && npm run test:barcode && npm run test:mtg-offline && npm run test:pricecharting-offline && npm run test:deck-lab && npm run test:mtg-research-batch && npm run test:admin-support && npm run test:release-hardening && npm run test:security-hardening && npm run test:research-pipeline && npm run test:operational-durability",
     "test:qa": "npm run test:parse",
     "test:smoke:manual": "playwright test --config=tests/playwright.config.js --workers=1",
     "test:headed": "playwright test --config=tests/playwright.config.js --headed",
@@ -19,6 +19,7 @@
     "test:settings-architecture": "node tests/settings-information-architecture.test.mjs",
     "test:subscription-plans": "node tests/subscription-plan-gates.test.mjs",
     "test:storefront": "node tests/public-storefront.test.mjs",
+    "test:mana-pocket": "node tests/mana-pocket-storefront.test.mjs",
     "test:webflow-sync": "node tests/webflow-cloud-sync.test.mjs",
     "test:inventory-usability": "node tests/inventory-usability.test.js",
     "test:mtg-offline": "node tests/mtg-offline-core.test.mjs && node tests/mtg-offline-contract.test.mjs && node tests/mtg-price-sync.test.js",

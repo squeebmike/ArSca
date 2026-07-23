@@ -431,12 +431,34 @@ async function verifyStripeWebhook(body, signatureHeader, secret) {
   return signatures.some(sig=>constantTimeEqualHex(sig,expected));
 }
 
+// Pocket Points earn rate/eligibility live in store_settings.modules.rewards
+// (configurable from the dashboard) rather than hard-coded in front-end code.
+async function finalizeOnlineOrderFromWebhook(env, orderId, mode, paymentIntentId, chargeId) {
+  const { data:orders } = await supabaseAdminFetch(env, `online_orders?id=eq.${encodeURIComponent(orderId)}&select=id,store_id,subtotal_cents,customer_id&limit=1`);
+  const order = orders?.[0];
+  if (!order) return;
+  const { data:settings } = await supabaseAdminFetch(env, `store_settings?store_id=eq.${encodeURIComponent(order.store_id)}&select=modules&limit=1`);
+  const rewardsCfg = settings?.[0]?.modules?.rewards || {};
+  const earnRate = Number.isFinite(Number(rewardsCfg.earnRatePerDollar)) ? Number(rewardsCfg.earnRatePerDollar) : 1;
+  const pointsEarned = rewardsCfg.enabled === false || !order.customer_id ? 0 : Math.floor((Number(order.subtotal_cents) || 0) / 100 * earnRate);
+  await supabaseAdminFetch(env, 'rpc/finalize_online_order_payment', {
+    method:'POST',
+    body:JSON.stringify({ p_order_id:orderId, p_stripe_payment_intent_id:paymentIntentId || '', p_stripe_charge_id:chargeId || '', p_points_earned:pointsEarned }),
+  });
+}
+
 async function syncStripeWebhookPayment(env, event, mode) {
   const object=event.data?.object||{};const account=event.account||'';
   let intentId='';let patch={updated_at:new Date().toISOString()};
   if(event.type.startsWith('payment_intent.')){intentId=object.id;patch.status=event.type==='payment_intent.succeeded'?'succeeded':event.type==='payment_intent.payment_failed'?'failed':event.type==='payment_intent.canceled'?'canceled':object.status;}
   if(event.type==='charge.succeeded'||event.type==='charge.refunded'||event.type==='charge.dispute.created'||event.type==='charge.dispute.closed'){intentId=object.payment_intent||'';patch.stripe_charge_id=object.id;const card=object.payment_method_details?.card||{};patch.card_brand=card.brand||null;patch.card_last4=card.last4||null;if(event.type==='charge.refunded'){patch.status=object.refunded?'refunded':'partially_refunded';patch.refunded_amount_cents=Number(object.amount_refunded||0);}if(event.type==='charge.dispute.created')patch.status='disputed';if(event.type==='charge.dispute.closed')patch.status=object.dispute?.status==='won'?'succeeded':'disputed';}
-  if(intentId){const filter=`pos_payments?stripe_mode=eq.${mode}&stripe_connected_account_id=eq.${encodeURIComponent(account)}&stripe_payment_intent_id=eq.${encodeURIComponent(intentId)}`;await supabaseAdminFetch(env,filter,{method:'PATCH',headers:{Prefer:'return=representation'},body:JSON.stringify(patch)});}
+  // Online (Mana Pocket storefront) orders carry their own id in metadata and
+  // are finalized through the atomic reservation RPC instead of pos_payments.
+  const onlineOrderId = object.metadata?.arsca_online_order_id || '';
+  if (onlineOrderId && (event.type === 'checkout.session.completed' || event.type === 'payment_intent.succeeded')) {
+    await finalizeOnlineOrderFromWebhook(env, onlineOrderId, mode, object.payment_intent || object.id, object.latest_charge || '').catch(e => console.error('Online order finalize failed:', e.message));
+  }
+  if(intentId && !onlineOrderId){const filter=`pos_payments?stripe_mode=eq.${mode}&stripe_connected_account_id=eq.${encodeURIComponent(account)}&stripe_payment_intent_id=eq.${encodeURIComponent(intentId)}`;await supabaseAdminFetch(env,filter,{method:'PATCH',headers:{Prefer:'return=representation'},body:JSON.stringify(patch)});}
   if(event.type.startsWith('refund.')){await supabaseAdminFetch(env,`pos_refunds?stripe_refund_id=eq.${encodeURIComponent(object.id)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({status:object.status||event.type.replace('refund.',''),failure_reason:object.failure_reason||'',updated_at:new Date().toISOString()})});}
   if(event.type==='account.updated'){const storeId=object.metadata?.arsca_store_id;if(storeId){const status=safeStripeAccount(object,mode);await saveStripeAccount(env,storeId,status);}}
 }
@@ -500,6 +522,335 @@ function isPhysicalCashTender(method){
   const raw=String(method||'').toLowerCase();
   if(raw.includes('cash app')||raw.includes('cashapp'))return false;
   return raw.includes('cash');
+}
+
+// ---------------------------------------------------------------------
+// The Mana Pocket public storefront v2: category filters, search,
+// pagination, product detail, breaks, comics, live status, and a
+// server-verified Stripe checkout. Extends (does not replace) the
+// original read-only /public/storefront endpoint above. Price and
+// availability are always computed from Supabase here, never trusted
+// from the request body.
+// ---------------------------------------------------------------------
+
+function publicCleanText(value, max = 240) {
+  return String(value == null ? '' : value).trim().slice(0, max);
+}
+
+function publicCleanUrl(value) {
+  const s = publicCleanText(value, 1000);
+  return /^https?:\/\//i.test(s) || /^data:image\//i.test(s) ? s : '';
+}
+
+function mapPublicCatalogItem(row, reservedByItem) {
+  const d = row.data || {};
+  const rawQty = d.quantity ?? d.qty ?? 1;
+  const quantity = Number.isFinite(Number(rawQty)) ? Number(rawQty) : 1;
+  const reserved = Number(reservedByItem?.[String(row.id)] || 0);
+  const available = Math.max(0, quantity - reserved);
+  const inventoryStatus = publicCleanText(d.lifecycle || d.status || row.status || 'in_stock', 40).toLowerCase();
+  const price = Number(d.listPrice || d.salePrice || d.price || d.market || 0) || 0;
+  const compareAt = Number(d.compareAtPrice || d.msrp || 0) || 0;
+  const badges = [];
+  if (d.isNew) badges.push('New');
+  if (publicCleanText(d.grade) || publicCleanText(d.gradingCompany)) badges.push('Graded');
+  if (d.sealed || /seal/i.test(String(d.condition || ''))) badges.push('Sealed');
+  if (d.isKey || d.key) badges.push('Key');
+  if (d.isVariant) badges.push('Variant');
+  if (d.signed) badges.push('Signed');
+  if (inventoryStatus === 'preorder' || d.preorder) badges.push('Preorder');
+  if (d.consignor || d.consignment) badges.push('Consignment');
+  if (available > 0 && available <= 2) badges.push('Low Stock');
+  return {
+    id: publicCleanText(row.id, 80),
+    name: publicCleanText(d.name || d.title || 'Item'),
+    department: publicCleanText(d.department || d.category || 'Other', 60),
+    category: publicCleanText(d.category || d.type || 'Other', 80),
+    sport: publicCleanText(d.sport, 60),
+    game: publicCleanText(d.game, 60),
+    set: publicCleanText(d.set || '', 120),
+    series: publicCleanText(d.series || '', 160),
+    publisher: publicCleanText(d.publisher, 120),
+    issueNumber: publicCleanText(d.issueNumber || d.issue_number, 20),
+    player: publicCleanText(d.player, 120),
+    team: publicCleanText(d.team, 120),
+    character: publicCleanText(d.character, 120),
+    manufacturer: publicCleanText(d.manufacturer, 120),
+    year: publicCleanText(d.year, 12),
+    variant: publicCleanText(d.variant || d.finish, 120),
+    condition: publicCleanText(d.condition, 80),
+    grade: publicCleanText(d.grade, 20),
+    gradingCompany: publicCleanText(d.gradingCompany, 20),
+    rarity: publicCleanText(d.rarity, 60),
+    language: publicCleanText(d.language, 40),
+    price,
+    compareAtPrice: compareAt > price ? compareAt : 0,
+    image: publicCleanUrl(d.image || d.img || d.imageUrl || d.image_url || d.photo),
+    images: Array.isArray(d.images) ? d.images.map(publicCleanUrl).filter(Boolean).slice(0, 12) : [],
+    description: publicCleanText(d.publicDescription || '', 4000),
+    badges,
+    quantity: available,
+    uniqueItem: quantity <= 1,
+    pickupAvailable: d.pickupAvailable !== false,
+    shipEligible: d.shipEligible !== false,
+    addedAt: row.created_at || '',
+    updatedAt: row.updated_at || '',
+  };
+}
+
+async function activeReservationTotals(env, storeId, itemId) {
+  const filter = itemId
+    ? `inventory_reservations?store_id=eq.${encodeURIComponent(storeId)}&inventory_item_id=eq.${encodeURIComponent(itemId)}&status=eq.active&expires_at=gt.${encodeURIComponent(new Date().toISOString())}&select=inventory_item_id,quantity`
+    : `inventory_reservations?store_id=eq.${encodeURIComponent(storeId)}&status=eq.active&expires_at=gt.${encodeURIComponent(new Date().toISOString())}&select=inventory_item_id,quantity`;
+  const { data } = await supabaseAdminFetch(env, filter).catch(() => ({ data: [] }));
+  const totals = {};
+  for (const r of data || []) totals[r.inventory_item_id] = (totals[r.inventory_item_id] || 0) + Number(r.quantity || 0);
+  return totals;
+}
+
+async function requireStorefrontEnabled(env, storeId) {
+  const { data: settings } = await supabaseAdminFetch(env, `store_settings?store_id=eq.${encodeURIComponent(storeId)}&select=receipt_settings,theme,modules&limit=1`);
+  const cfg = settings?.[0]?.receipt_settings || {};
+  if (cfg.storefrontEnabled !== true) return { error: json({ ok:false, error:'Storefront is not published' }, 404) };
+  return { settings: settings?.[0] || {}, cfg };
+}
+
+async function handlePublicStorefrontV2(request, env, url) {
+  const storeId = String(url.searchParams.get('store_id') || '').trim();
+  if (!/^[0-9a-z_-]{2,80}$/i.test(storeId) && request.method === 'GET') return json({ ok:false, error:'Valid store_id required' }, 400);
+  if (!(env.SUPABASE_URL && (env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_KEY))) return json({ ok:false, error:'Storefront service unavailable' }, 503);
+
+  if (url.pathname === '/public/catalog' && request.method === 'GET') {
+    const gate = await requireStorefrontEnabled(env, storeId);
+    if (gate.error) return gate.error;
+    const { data:rows, response } = await supabaseAdminFetch(env, `inventory_items?store_id=eq.${encodeURIComponent(storeId)}&select=id,data,status,created_at,updated_at&order=updated_at.desc&limit=1000`);
+    if (!response?.ok) return json({ ok:false, error:'Inventory unavailable' }, 502);
+    const reservedByItem = await activeReservationTotals(env, storeId);
+    let items = (rows || [])
+      .filter(row => {
+        const d = row.data || {};
+        const status = publicCleanText(d.lifecycle || d.status || row.status || 'in_stock', 40).toLowerCase();
+        return !['sold','archived','returned','deleted'].includes(status) && !d.soldAt && !d.archivedAt;
+      })
+      .map(row => mapPublicCatalogItem(row, reservedByItem))
+      .filter(i => i.name && (i.quantity > 0 || i.badges.includes('Preorder')));
+
+    const q = String(url.searchParams.get('q') || '').trim().toLowerCase();
+    if (q) {
+      const terms = q.split(/\s+/).filter(Boolean);
+      items = items.filter(i => {
+        const haystack = [i.name, i.set, i.series, i.player, i.team, i.character, i.publisher, i.category, i.sport, i.game, i.variant, i.year].join(' ').toLowerCase();
+        return terms.every(t => haystack.includes(t));
+      });
+    }
+    const department = String(url.searchParams.get('department') || '').trim().toLowerCase();
+    if (department) items = items.filter(i => i.department.toLowerCase() === department || i.category.toLowerCase() === department);
+    for (const field of ['category','sport','game','condition','grade','gradingCompany','publisher','series','rarity']) {
+      const val = String(url.searchParams.get(field) || '').trim().toLowerCase();
+      if (val) items = items.filter(i => String(i[field] || '').toLowerCase() === val);
+    }
+    const priceMin = Number(url.searchParams.get('priceMin'));
+    const priceMax = Number(url.searchParams.get('priceMax'));
+    if (Number.isFinite(priceMin)) items = items.filter(i => i.price >= priceMin);
+    if (Number.isFinite(priceMax)) items = items.filter(i => i.price <= priceMax);
+
+    const sort = String(url.searchParams.get('sort') || 'newest');
+    items.sort(
+      sort === 'price-low' ? (a,b) => a.price - b.price :
+      sort === 'price-high' ? (a,b) => b.price - a.price :
+      sort === 'name' ? (a,b) => a.name.localeCompare(b.name) :
+      sort === 'oldest' ? (a,b) => new Date(a.updatedAt) - new Date(b.updatedAt) :
+      (a,b) => new Date(b.updatedAt) - new Date(a.updatedAt)
+    );
+
+    const total = items.length;
+    const limit = Math.max(1, Math.min(60, Number(url.searchParams.get('limit') || 24)));
+    const offset = Math.max(0, Number(url.searchParams.get('offset') || 0));
+    const page = items.slice(offset, offset + limit);
+    const facets = {};
+    for (const field of ['category','sport','game','condition']) facets[field] = [...new Set(items.map(i => i[field]).filter(Boolean))].sort();
+    return json({ ok:true, items:page, total, limit, offset, facets, theme:gate.settings.theme || {}, updatedAt:new Date().toISOString() }, 200, { 'Cache-Control':'public, max-age=30, stale-while-revalidate=120' });
+  }
+
+  const productMatch = url.pathname.match(/^\/public\/product\/([^/]+)$/);
+  if (productMatch && request.method === 'GET') {
+    const itemId = decodeURIComponent(productMatch[1]);
+    const gate = await requireStorefrontEnabled(env, storeId);
+    if (gate.error) return gate.error;
+    const { data:rows } = await supabaseAdminFetch(env, `inventory_items?store_id=eq.${encodeURIComponent(storeId)}&id=eq.${encodeURIComponent(itemId)}&select=id,data,status,created_at,updated_at&limit=1`);
+    const row = rows?.[0];
+    if (!row) return json({ ok:false, error:'Item not found' }, 404);
+    const reservedByItem = await activeReservationTotals(env, storeId, itemId);
+    const item = mapPublicCatalogItem(row, reservedByItem);
+    const { data:relatedRows } = await supabaseAdminFetch(env, `inventory_items?store_id=eq.${encodeURIComponent(storeId)}&id=neq.${encodeURIComponent(itemId)}&select=id,data,status,created_at,updated_at&order=updated_at.desc&limit=200`);
+    const related = (relatedRows || [])
+      .map(r => mapPublicCatalogItem(r, {}))
+      .filter(r => r.quantity > 0 && (r.category === item.category || (item.set && r.set === item.set)))
+      .slice(0, 8);
+    return json({ ok:true, item, related, theme:gate.settings.theme || {} }, 200, { 'Cache-Control':'public, max-age=30' });
+  }
+
+  if (url.pathname === '/public/breaks' && request.method === 'GET') {
+    const { data:breaks } = await supabaseAdminFetch(env, `breaks?store_id=eq.${encodeURIComponent(storeId)}&status=neq.cancelled&select=id,title,sport_game,format,host,description,scheduled_at,platform,whatnot_url,spot_count,price_cents,status,stream_url,featured&order=scheduled_at.asc&limit=100`);
+    const ids = (breaks || []).map(b => b.id);
+    const spotsByBreak = {};
+    if (ids.length) {
+      const { data:spots } = await supabaseAdminFetch(env, `break_spots?break_id=in.(${ids.map(id => encodeURIComponent(id)).join(',')})&select=break_id,status`);
+      for (const s of spots || []) { spotsByBreak[s.break_id] = spotsByBreak[s.break_id] || { total:0, available:0 }; spotsByBreak[s.break_id].total++; if (s.status === 'available') spotsByBreak[s.break_id].available++; }
+    }
+    const items = (breaks || []).map(b => ({
+      id:b.id, title:publicCleanText(b.title), sportGame:publicCleanText(b.sport_game,60), format:publicCleanText(b.format,120),
+      host:publicCleanText(b.host,80), description:publicCleanText(b.description,2000), scheduledAt:b.scheduled_at,
+      platform:b.platform, whatnotUrl:b.platform === 'whatnot' ? publicCleanUrl(b.whatnot_url) : '', priceCents:b.price_cents,
+      status:b.status, streamUrl:publicCleanUrl(b.stream_url), featured:!!b.featured,
+      spotCount:b.spot_count, remainingSpots: spotsByBreak[b.id] ? spotsByBreak[b.id].available : b.spot_count,
+    }));
+    return json({ ok:true, breaks:items }, 200, { 'Cache-Control':'public, max-age=30' });
+  }
+
+  if (url.pathname === '/public/comics' && request.method === 'GET') {
+    const view = String(url.searchParams.get('view') || 'new');
+    const { data:issues } = await supabaseAdminFetch(env, `comic_issues?store_id=eq.${encodeURIComponent(storeId)}&select=id,series_id,issue_number,cover_variant,creators,release_date,foc_date,preorder_status,cover_image_url,price_cents,quantity&order=release_date.desc&limit=200`);
+    const seriesIds = [...new Set((issues || []).map(i => i.series_id))];
+    const seriesById = {};
+    if (seriesIds.length) {
+      const { data:series } = await supabaseAdminFetch(env, `comic_series?store_id=eq.${encodeURIComponent(storeId)}&id=in.(${seriesIds.map(id => encodeURIComponent(id)).join(',')})&select=id,publisher,title,volume,cover_image_url`);
+      for (const s of series || []) seriesById[s.id] = s;
+    }
+    let items = (issues || []).map(i => ({
+      id:i.id, seriesId:i.series_id, series:seriesById[i.series_id]?.title || '', publisher:seriesById[i.series_id]?.publisher || '',
+      issueNumber:i.issue_number, coverVariant:i.cover_variant, creators:i.creators, releaseDate:i.release_date, focDate:i.foc_date,
+      preorderStatus:i.preorder_status, coverImage:publicCleanUrl(i.cover_image_url || seriesById[i.series_id]?.cover_image_url),
+      priceCents:i.price_cents, quantity:i.quantity,
+    }));
+    if (view === 'preorders') items = items.filter(i => i.preorderStatus === 'open' || i.preorderStatus === 'announced');
+    if (view === 'new') items = items.filter(i => i.preorderStatus === 'released').slice(0, 40);
+    return json({ ok:true, view, comics:items, series:Object.values(seriesById) }, 200, { 'Cache-Control':'public, max-age=60' });
+  }
+
+  if (url.pathname === '/public/live' && request.method === 'GET') {
+    const { data:settings } = await supabaseAdminFetch(env, `store_settings?store_id=eq.${encodeURIComponent(storeId)}&select=modules&limit=1`);
+    const live = settings?.[0]?.modules?.live || {};
+    return json({ ok:true, live:{
+      isLive: !!live.isLive, showTitle: publicCleanText(live.showTitle,160), description: publicCleanText(live.description,1000),
+      hostsLive: Array.isArray(live.hostsLive) ? live.hostsLive.slice(0,10) : [], twitchChannel: publicCleanText(live.twitchChannel,80),
+      whatnotShowUrl: publicCleanUrl(live.whatnotShowUrl), activeBreakId: publicCleanText(live.activeBreakId,80),
+      featuredProductIds: Array.isArray(live.featuredProductIds) ? live.featuredProductIds.slice(0,20) : [],
+      startTime: live.startTime || '', expectedEndTime: live.expectedEndTime || '', offlineMessage: publicCleanText(live.offlineMessage,300),
+      nextScheduledShow: live.nextScheduledShow || '',
+    } }, 200, { 'Cache-Control':'public, max-age=15' });
+  }
+
+  if (url.pathname === '/public/checkout/create' && request.method === 'POST') {
+    const parsed = await readJsonWithLimit(request, 32 * 1024);
+    if (parsed.error) return parsed.error;
+    const body = parsed.data || {};
+    const bodyStoreId = String(body.storeId || body.store_id || '').trim();
+    if (!/^[0-9a-z_-]{2,80}$/i.test(bodyStoreId)) return json({ ok:false, error:'Valid store_id required' }, 400);
+    const email = String(body.email || '').trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return json({ ok:false, error:'A valid email is required' }, 400);
+    const lines = Array.isArray(body.lines) ? body.lines.slice(0, 40) : [];
+    if (!lines.length) return json({ ok:false, error:'Cart is empty' }, 400);
+    const fulfillmentType = body.fulfillmentType === 'pickup' ? 'pickup' : 'shipping';
+    if (fulfillmentType === 'shipping' && String(body.shippingAddress?.country || 'US').toUpperCase() !== 'US') {
+      return json({ ok:false, error:'Shipping is available in the United States only' }, 400);
+    }
+
+    const gate = await requireStorefrontEnabled(env, bodyStoreId);
+    if (gate.error) return gate.error;
+    if (fulfillmentType === 'pickup' && gate.settings.modules?.storefront?.pickupAvailable === false) return json({ ok:false, error:'Local pickup is not available yet' }, 409);
+
+    const rateError = await enforceUsageLimit(env, `checkout:${bodyStoreId}`, 60, 3600);
+    if (rateError) return rateError;
+
+    let orderResult;
+    try {
+      const { data } = await supabaseAdminFetch(env, 'rpc/create_online_order_with_reservations', {
+        method:'POST',
+        body:JSON.stringify({
+          p_order:{ store_id:bodyStoreId, customer_email:email, fulfillment_type:fulfillmentType, shipping_address:body.shippingAddress || {} },
+          p_lines: lines.map(l => ({ inventory_item_id:String(l.inventoryItemId || l.id || ''), quantity:Number(l.quantity || 1), kind:'item' })),
+        }),
+      });
+      orderResult = data;
+    } catch (e) {
+      return json({ ok:false, error:e.message || 'Unable to reserve items' }, 409);
+    }
+    const orderId = orderResult?.orderId;
+    if (!orderId) return json({ ok:false, error:'Unable to create order' }, 500);
+
+    const { data:orderLines } = await supabaseAdminFetch(env, `online_order_lines?order_id=eq.${encodeURIComponent(orderId)}&select=title,quantity,unit_price_cents`);
+    if (!orderLines?.length) return json({ ok:false, error:'Order has no line items' }, 500);
+
+    const mode = stripeMode(env, body.mode);
+    const row = await getStripeAccountRow(env, bodyStoreId, mode);
+    if (!row?.connected_account_id || !row.charges_enabled) return json({ ok:false, error:'This store is not yet set up to accept online payments' }, 409);
+    if (mode === 'live' && !row.fee_payer_verified) return json({ ok:false, error:'Live checkout is blocked until Stripe onboarding is confirmed' }, 409);
+
+    const origin = String(request.headers.get('Origin') || url.origin).replace(/\/$/, '');
+    const successUrl = /^https:\/\//.test(String(body.successUrl || '')) ? body.successUrl : `${origin}/the-mana-pocket.html?order=${encodeURIComponent(orderId)}&status=success`;
+    const cancelUrl = /^https:\/\//.test(String(body.cancelUrl || '')) ? body.cancelUrl : `${origin}/the-mana-pocket.html?order=${encodeURIComponent(orderId)}&status=cancelled`;
+
+    const params = new URLSearchParams({
+      mode:'payment', customer_email:email, success_url:successUrl, cancel_url:cancelUrl,
+      'metadata[arsca_online_order_id]':orderId, 'metadata[arsca_store_id]':bodyStoreId,
+      'payment_intent_data[metadata][arsca_online_order_id]':orderId,
+      'payment_intent_data[metadata][arsca_store_id]':bodyStoreId,
+    });
+    params.set('payment_method_types[0]', 'card');
+    orderLines.forEach((line, index) => {
+      params.set(`line_items[${index}][quantity]`, String(Math.max(1, Math.round(Number(line.quantity || 1)))));
+      params.set(`line_items[${index}][price_data][currency]`, 'usd');
+      params.set(`line_items[${index}][price_data][unit_amount]`, String(Math.round(Number(line.unit_price_cents || 0))));
+      params.set(`line_items[${index}][price_data][product_data][name]`, String(line.title || 'Item').slice(0, 250));
+    });
+    const fee = stripeApplicationFee(env, orderLines.reduce((sum, l) => sum + Math.round(Number(l.unit_price_cents || 0) * Number(l.quantity || 1)), 0));
+    if (fee) params.set('payment_intent_data[application_fee_amount]', String(fee));
+
+    let session;
+    try {
+      session = await stripeApi(env, mode, 'checkout/sessions', { method:'POST', params, account:row.connected_account_id, idempotencyKey:`arsca-online-${mode}-${orderId}` });
+    } catch (e) {
+      return json({ ok:false, error:e.message || 'Unable to start checkout' }, 502);
+    }
+
+    await supabaseAdminFetch(env, `online_orders?id=eq.${encodeURIComponent(orderId)}`, {
+      method:'PATCH', headers:{ Prefer:'return=minimal' },
+      body:JSON.stringify({ stripe_mode:mode, stripe_connected_account_id:row.connected_account_id, stripe_checkout_session_id:session.id, updated_at:new Date().toISOString() }),
+    });
+
+    return json({ ok:true, orderId, checkoutUrl:session.url, sessionId:session.id, mode });
+  }
+
+  if (url.pathname === '/appointments/request' && request.method === 'POST') {
+    const parsed = await readJsonWithLimit(request, 16 * 1024);
+    if (parsed.error) return parsed.error;
+    const body = parsed.data || {};
+    const bodyStoreId = String(body.storeId || body.store_id || '').trim();
+    if (!/^[0-9a-z_-]{2,80}$/i.test(bodyStoreId)) return json({ ok:false, error:'Valid store_id required' }, 400);
+    const contactEmail = String(body.contactEmail || '').trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail)) return json({ ok:false, error:'A valid email is required' }, 400);
+    const contactName = publicCleanText(body.contactName, 160);
+    if (!contactName) return json({ ok:false, error:'Name is required' }, 400);
+    const requestType = ['sell','trade','consign'].includes(body.requestType) ? body.requestType : 'sell';
+
+    const gate = await requireStorefrontEnabled(env, bodyStoreId);
+    if (gate.error) return gate.error;
+    const rateError = await enforceUsageLimit(env, `appointment:${bodyStoreId}`, 20, 3600);
+    if (rateError) return rateError;
+
+    const row = {
+      store_id: bodyStoreId, contact_name: contactName, contact_email: contactEmail,
+      contact_phone: publicCleanText(body.contactPhone, 40), request_type: requestType,
+      category: publicCleanText(body.category, 80), approx_quantity: publicCleanText(body.approxQuantity, 200),
+      estimated_value_cents: Number.isFinite(Number(body.estimatedValue)) ? Math.round(Number(body.estimatedValue) * 100) : null,
+      notes: publicCleanText(body.notes, 4000),
+    };
+    const { data } = await supabaseAdminFetch(env, 'appointment_requests', { method:'POST', headers:{ Prefer:'return=representation' }, body:JSON.stringify(row) });
+    return json({ ok:true, requestId: data?.[0]?.id || null });
+  }
+
+  return json({ ok:false, error:'Not found' }, 404);
 }
 
 async function handleStripeFoundation(request, env, url) {
@@ -1478,6 +1829,12 @@ export default {
       }
       const store = stores?.[0] || {};
       return json({ ok:true, store:{ id:storeId, name:cleanText(cfg.storeName || cfg.shortName || store.display_name || store.name || 'Store',120), location:cleanText(cfg.location,160), website:cleanUrl(cfg.website), email:cleanText(cfg.email,200), phone:cleanText(cfg.phone,80), logo:cleanUrl(cfg.logo), message:cleanText(cfg.storefrontMessage,500), theme:settings?.[0]?.theme || {} }, items, updatedAt:new Date().toISOString() }, 200, { 'Cache-Control':'public, max-age=60, stale-while-revalidate=300' });
+    }
+
+    // The Mana Pocket storefront v2: filtered/searchable catalog, product
+    // detail, breaks, comics, live status, and server-verified checkout.
+    if (url.pathname === '/public/catalog' || url.pathname.startsWith('/public/product/') || url.pathname === '/public/breaks' || url.pathname === '/public/comics' || url.pathname === '/public/live' || url.pathname === '/public/checkout/create' || url.pathname === '/appointments/request') {
+      return await handlePublicStorefrontV2(request, env, url);
     }
 
     if (url.pathname === '/catalog/mtg/manifest') {
