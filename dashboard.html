@@ -18791,7 +18791,7 @@ function cardSightDetectionToQplRow(det){
     source: 'cardsight',
     name: card.name || 'Unknown card',
     category: game,
-    set: card.setName || card.releaseName || '',
+    set: card.releaseName || card.setName || '',
     year: card.year || '',
     card_number: card.number || '',
     variant: card.parallel?.name || 'Base',
@@ -18814,11 +18814,28 @@ async function fetchCardSightRealPrice(row){
   const q = [row.name, row.year, row.set, row.variant && row.variant !== 'Base' ? row.variant : '', row.card_number ? '#' + row.card_number : ''].filter(Boolean).join(' ');
   if(row._game === 'Pokemon TCG'){
     try {
-      const params = new URLSearchParams({ search: row.name, limit: '5' });
+      // Search by name + set + card number together so PokemonPriceTracker
+      // matches the exact printing instead of the first card with this name.
+      const search = [row.name, row.set, row.card_number].filter(Boolean).join(' ');
+      const params = new URLSearchParams({ search, limit: '20' });
       const res = await storeWorkerFetch('/pricing/pokemonpricetracker/cards?' + params.toString());
       const data = await res.json();
-      const card = data?.card || data?.cards?.[0] || data?.data?.[0];
-      if(card) return { market: Number(card.prices?.market || 0), imageUrl: card.imageCdnUrl200 || card.imageUrl || '', priceSource: 'PokemonPriceTracker' };
+      const candidates = data?.cards || data?.data || (data?.card ? [data.card] : []);
+      const wantNum = String(row.card_number || '').replace(/^0+/, '').split('/')[0];
+      const wantSet = String(row.set || '').toLowerCase();
+      let best = null, bestScore = -1;
+      for(const c of candidates){
+        let score = 0;
+        const cNum = String(c.cardNumber || '').replace(/^0+/, '').split('/')[0];
+        if(wantNum && cNum && cNum === wantNum) score += 50;
+        const cSet = String(c.setName || '').toLowerCase();
+        if(wantSet && cSet && (cSet.includes(wantSet) || wantSet.includes(cSet))) score += 40;
+        if(String(c.name || '').toLowerCase() === String(row.name || '').toLowerCase()) score += 10;
+        if(score > bestScore){ bestScore = score; best = c; }
+      }
+      // Require at least the card number OR set to line up — otherwise this
+      // isn't confidently the same printing CardSight identified.
+      if(best && bestScore >= 40) return { market: Number(best.prices?.market || 0), imageUrl: best.imageCdnUrl200 || best.imageUrl || '', priceSource: 'PokemonPriceTracker' };
     } catch(e) { /* fall through */ }
     return { market: 0, imageUrl: '', priceSource: '' };
   }
