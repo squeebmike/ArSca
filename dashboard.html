@@ -1837,6 +1837,19 @@ body.show-mode .inv-sync-badge{display:none;}
     </div>
   </div>
 
+  <div class="panel" id="register-storefront-orders-panel" style="margin-top:4px;margin-bottom:14px">
+    <div class="ph">STOREFRONT ORDERS <span id="storefront-orders-count" style="font-size:9px;color:var(--dim)">loading…</span></div>
+    <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);margin-bottom:10px">
+      Orders paid through your public storefront. Mark fulfilled once picked up or shipped.
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+      <button class="hbtn" onclick="renderStorefrontOrders()">REFRESH ORDERS</button>
+    </div>
+    <div id="storefront-orders-list" style="display:grid;gap:8px">
+      <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);padding:10px;border:1px dashed var(--border);border-radius:8px;text-align:center">No storefront orders yet</div>
+    </div>
+  </div>
+
   <div class="panel" id="backoffice-ebay-panel" style="margin-top:4px;margin-bottom:14px">
     <div class="ph">EBAY CONNECTION <span id="ebay-oauth-status" style="font-size:9px;color:var(--dim)">checking...</span></div>
     <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);margin-bottom:10px;line-height:1.55">
@@ -5379,6 +5392,7 @@ function organizeRegisterLayout(){
   moveNode('register-eod-panel', shows);
   moveNode('register-quick-panel', research);
   moveNode('register-scan-panel', research);
+  moveNode('register-storefront-orders-panel', research);
   const qpl = document.getElementById('register-quick-panel');
   const actions = document.getElementById('research-actions-panel');
   if(qpl && actions && qpl.parentElement === research) research.insertBefore(qpl, actions);
@@ -15762,6 +15776,71 @@ async function renderScanInbox(){
 
 setInterval(renderScanInbox, 2500);
 renderScanInbox();
+
+const FULFILLMENT_METHOD_LABELS = { pickup_fedway:'Pickup — Fed Way Commons', pickup_kitsap:'Pickup — Kitsap County', shipping:'Shipping' };
+
+async function renderStorefrontOrders(){
+  const list = document.getElementById('storefront-orders-list');
+  const count = document.getElementById('storefront-orders-count');
+  if(!list) return;
+  let orders = [];
+  try {
+    const res = await storeWorkerFetch('/store/storefront-orders');
+    const data = await res.json();
+    if(!res.ok || !data.ok) throw new Error(data.error || 'Orders unavailable');
+    orders = data.orders || [];
+  } catch(e) {
+    if(count) count.textContent = 'unavailable';
+    list.innerHTML = `<div style="font-family:var(--font-mono);font-size:10px;color:var(--red);padding:10px;border:1px dashed var(--border);border-radius:8px;text-align:center">${escHtml(e.message)}</div>`;
+    return;
+  }
+  const pending = orders.filter(o => o.fulfillment_status !== 'fulfilled');
+  if(count) count.textContent = (pending.length ? pending.length + ' pending' : 'all caught up') + ' · ' + orders.length + ' total';
+  if(!orders.length) {
+    list.innerHTML = '<div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);padding:10px;border:1px dashed var(--border);border-radius:8px;text-align:center">No storefront orders yet</div>';
+    return;
+  }
+  list.innerHTML = orders.slice(0, 40).map(o => {
+    const items = (o.items || []).filter(li => li.category !== 'Shipping');
+    const itemsText = items.map(li => `${li.quantity}× ${escHtml(li.title)}`).join(', ');
+    const addr = o.shipping_address;
+    const addrText = addr ? [addr.line1, addr.line2, [addr.city, addr.state, addr.zip].filter(Boolean).join(', ')].filter(Boolean).map(escHtml).join('<br>') : '';
+    const fulfilled = o.fulfillment_status === 'fulfilled';
+    const paid = o.sale?.status === 'completed';
+    return `<div style="display:grid;gap:6px;background:var(--surf2);border:1px solid var(--border);border-radius:8px;padding:10px">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px">
+        <div style="font-family:monospace;font-weight:800;color:var(--g)">${escHtml(o.confirmation_number)}</div>
+        <div style="display:flex;gap:6px">
+          <span class="qpl-badge ${paid?'good':'warn'}">${paid?'PAID':'AWAITING PAYMENT'}</span>
+          <span class="qpl-badge ${fulfilled?'good':'warn'}">${fulfilled?'FULFILLED':'PENDING'}</span>
+        </div>
+      </div>
+      <div style="font-size:12px;font-weight:700;color:var(--text)">${escHtml(o.customer_name)} · ${escHtml(o.customer_phone)}${o.customer_email?' · '+escHtml(o.customer_email):''}</div>
+      <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim)">${escHtml(FULFILLMENT_METHOD_LABELS[o.fulfillment_method] || o.fulfillment_method)}</div>
+      ${addrText ? `<div style="font-family:var(--font-mono);font-size:10px;color:var(--dim)">${addrText}</div>` : ''}
+      <div style="font-family:var(--font-mono);font-size:10px;color:var(--text)">${itemsText || 'No items'}</div>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div style="font-weight:800">$${Number(o.sale?.total || 0).toFixed(2)}</div>
+        ${fulfilled ? '' : `<button class="ra" style="background:rgba(0,255,179,.08);border-color:rgba(0,255,179,.25);color:var(--g)" onclick="fulfillStorefrontOrder('${o.id}')">MARK FULFILLED</button>`}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+window.fulfillStorefrontOrder = async function(orderId){
+  try {
+    const res = await storeWorkerFetch('/store/storefront-orders/fulfill', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ orderId }) });
+    const data = await res.json();
+    if(!res.ok || !data.ok) throw new Error(data.error || 'Could not update order');
+    toast_dash('Order marked fulfilled');
+    renderStorefrontOrders();
+  } catch(e) {
+    toast_dash(e.message);
+  }
+};
+
+setInterval(renderStorefrontOrders, 30000);
+renderStorefrontOrders();
 
 function toast_dash(msg, ms = 2500){
   const existing = document.getElementById('dash-toast');
