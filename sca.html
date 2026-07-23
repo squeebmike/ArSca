@@ -351,31 +351,6 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
 .receipt-btns{display:flex;gap:8px;margin-top:12px;}
 .receipt-btn{flex:1;padding:10px;border:1px solid #ddd;border-radius:6px;font-size:11px;cursor:pointer;background:#f5f5f5;}
 
-/* ── PRICING TOOLS ────────────────────────────────────── */
-#pricing-panel{position:fixed;inset:0;background:var(--bg);z-index:700;display:none;flex-direction:column;}
-#pricing-panel.on{display:flex;}
-.pt-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:rgba(0,0,0,.4);border-bottom:1px solid rgba(255,255,255,.08);}
-.pt-title{font-family:'Orbitron',monospace;font-size:12px;letter-spacing:2px;color:var(--gold);}
-.pt-body{flex:1;overflow-y:auto;padding:12px 16px;}
-.pt-section{margin-bottom:20px;}
-.pt-section-h{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:2px;color:rgba(255,255,255,.4);margin-bottom:8px;text-transform:uppercase;}
-.pt-card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:8px;padding:12px;margin-bottom:8px;}
-.pt-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}
-.pt-label{font-family:'DM Mono',monospace;font-size:9px;color:rgba(255,255,255,.5);}
-.pt-val{font-family:'Orbitron',monospace;font-size:12px;font-weight:700;}
-.pt-val.g{color:var(--g);}
-.pt-val.gold{color:var(--gold);}
-.pt-val.red{color:var(--red);}
-.pt-val.blue{color:var(--blue);}
-.pt-inp{width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:#fff;padding:11px 12px;min-height:48px;border-radius:7px;font-family:'DM Mono',monospace;font-size:13px;margin-bottom:6px;outline:none;}
-.pt-grade-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;}
-.pt-grade-btn{padding:8px 4px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:5px;text-align:center;cursor:pointer;}
-.pt-grade-btn.on{background:rgba(0,255,179,.1);border-color:rgba(0,255,179,.3);}
-.pt-grade-val{font-family:'Orbitron',monospace;font-size:9px;color:var(--g);}
-.pt-grade-price{font-family:'DM Mono',monospace;font-size:8px;color:rgba(255,255,255,.4);}
-.pt-trend-bar{height:4px;background:rgba(255,255,255,.08);border-radius:2px;margin-top:4px;}
-.pt-trend-fill{height:4px;border-radius:2px;transition:width .4s;}
-
 /* NAV CART BADGE */
 .nav-cart-badge{position:absolute;top:-4px;right:-4px;background:var(--red);color:#fff;font-size:8px;font-weight:700;width:16px;height:16px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'DM Mono',monospace;}
 .lba-nav-btn{position:relative;}
@@ -404,10 +379,10 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
 
 <div id="setup">
   <div class="s-logo">LBA<br>SCANNER</div>
-  <div class="s-sub">AI CARD + COMIC IDENTIFIER</div>
+  <div class="s-sub">CARDSIGHT AI CARD IDENTIFIER</div>
   <div class="s-badges">
-    <span class="s-badge">TCG</span><span class="s-badge">SPORTS</span>
-    <span class="s-badge">COMICS</span><span class="s-badge">PSA/BGS/CGC</span>
+    <span class="s-badge">SPORTS</span><span class="s-badge">POKEMON TCG</span>
+    <span class="s-badge">ONE PIECE TCG</span>
   </div>
   <button class="s-btn" onclick="launch()">&#9654; LAUNCH SCANNER</button>
   <button class="s-btn2" onclick="launchBulk()">&#9654; BULK BUY MODE</button>
@@ -616,7 +591,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
     <button class="hbtn" onclick="runScannerManualSearch()">SEARCH</button>
   </div>
   <button id="scanbtn" onclick="doScan()">&#9654; SCAN CARDS</button>
-  <div class="shint" id="scanhint">TCG · Sports · Comics · Slabs</div>
+  <div class="shint" id="scanhint">Sports · Pokemon TCG · One Piece TCG</div>
 </div>
 
 <div id="scanner-progress-card" class="scanner-progress-card" aria-live="polite">
@@ -1557,6 +1532,48 @@ async function fetchAllPrintings(item){
       }
     }
 
+    // ── SPORTS CARDS (PriceCharting / JustTCG — real market data) ──
+    else if(game==='Sports Card'){
+      const q = [name, item.year, item.set_name, item.parallel && item.parallel!=='Base' ? item.parallel : '', item.card_number ? '#'+item.card_number : ''].filter(Boolean).join(' ');
+      const matches = await scannerUnifiedSearch(q, 'Sports').catch(() => []);
+      matches.slice(0, 10).forEach(m => {
+        result.printings.push({
+          set: m.set || item.set_name || 'Unknown Set',
+          variant: item.parallel || 'Base',
+          year: item.year || '',
+          card_number: m.card_number || item.card_number || '',
+          numbered: null,
+          mid: m.marketPrice || 0, low: (m.marketPrice||0)*0.8, high: (m.marketPrice||0)*1.3,
+          hasRealPrice: !!m.marketPrice,
+          imageUrl: m.imageUrl || null,
+          priceSource: m.priceSource || m.source,
+        });
+      });
+      result.bestMatchIdx = 0;
+      result.imageUrl = result.printings[0]?.imageUrl || null;
+    }
+
+    // ── ONE PIECE TCG (JustTCG — real market data) ──────────────
+    else if(game==='One Piece TCG'){
+      const q = [name, item.set_name, item.card_number || '', item.parallel && item.parallel!=='Base' ? item.parallel : ''].filter(Boolean).join(' ');
+      const matches = await scannerUnifiedSearch(q, 'One Piece TCG').catch(() => []);
+      matches.slice(0, 10).forEach(m => {
+        result.printings.push({
+          set: m.set || item.set_name || 'Unknown Set',
+          variant: item.parallel || 'Base',
+          year: item.year || '',
+          card_number: m.card_number || item.card_number || '',
+          numbered: null,
+          mid: m.marketPrice || 0, low: (m.marketPrice||0)*0.8, high: (m.marketPrice||0)*1.3,
+          hasRealPrice: !!m.marketPrice,
+          imageUrl: m.imageUrl || null,
+          priceSource: m.priceSource || m.source,
+        });
+      });
+      result.bestMatchIdx = 0;
+      result.imageUrl = result.printings[0]?.imageUrl || null;
+    }
+
   }catch(e){ console.log('Printings fetch failed:',e); }
 
   return result;
@@ -1901,59 +1918,6 @@ window.applyComicVariant = function(bubId, varIdx) {
 // Simple in-memory cache keyed by "title|issue" (lowercased)
 // Cleared on page reload — no stale data risk
 const _comicCache = {};
-
-// ── COMIC VISUAL MATCH — compare scanned cover against CV thumbnails ──
-// Sends the scanned image + up to 6 Comic Vine cover URLs to Sonnet.
-// Sonnet picks which CV cover most closely matches the actual scan.
-// Returns { bestIdx, confidence, reason } where bestIdx is index in cvVariants.
-async function findBestComicCoverMatch(frontB64, cvVariants) {
-  const withCovers = cvVariants.filter(v => v.cover_image);
-  if(!frontB64 || withCovers.length < 2) return { bestIdx: 0, confidence: 'low', reason: 'not enough candidates' };
-
-  // Cap at 6 candidates to keep prompt size manageable
-  const candidates = withCovers.slice(0, 6);
-
-  try {
-    // Build multi-image message: scan first, then each CV cover as a URL image
-    const content = [
-      { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: frontB64 } },
-      { type: 'text', text:
-        `That is the SCANNED comic cover. Below are ${candidates.length} Comic Vine cover candidates numbered 0–${candidates.length-1}. ` +
-        `Compare the scanned cover against each candidate. Look at: title/logo typography and style, publisher branding, art style (painted vs flat vs sketch), ` +
-        `color palette, character poses, barcode presence, cover price text, and overall layout composition. ` +
-        `Which candidate number (0–${candidates.length-1}) is the SAME EDITION as the scanned cover? ` +
-        `Return ONLY JSON — no markdown: {"best_match":0,"confidence":"high","reason":"specific visual detail that confirms the match"}`
-      },
-    ];
-
-    candidates.forEach((v, i) => {
-      const label = [v.volume || v.title, v.cover_date || v.year, v.publisher].filter(Boolean).join(' · ');
-      content.push({ type: 'text', text: `Candidate ${i}: ${label}` });
-      content.push({ type: 'image', source: { type: 'url', url: v.cover_image } });
-    });
-
-    // Use Sonnet — Haiku is weaker at multi-image visual reasoning
-    const resp = await callClaudeSonnet([{ role: 'user', content }], 200);
-    const ji = resp.indexOf('{');
-    if(ji >= 0) {
-      const result = JSON.parse(resp.slice(ji));
-      const picked = result.best_match;
-      if(typeof picked === 'number' && picked >= 0 && picked < candidates.length) {
-        // Map back from the "candidates" sub-array to the original cvVariants index
-        const matched = candidates[picked];
-        const originalIdx = cvVariants.indexOf(matched);
-        return {
-          bestIdx: originalIdx >= 0 ? originalIdx : 0,
-          confidence: result.confidence || 'medium',
-          reason: result.reason || '',
-        };
-      }
-    }
-  } catch(e) {
-    console.warn('[Comic visual match]', e.message);
-  }
-  return { bestIdx: 0, confidence: 'low', reason: 'visual match failed' };
-}
 
 // ── COMIC VINE — real variant covers ─────────────────────────────
 // Returns array of variant objects with cover_image URLs from Comic Vine
@@ -2616,32 +2580,6 @@ function setBracketColor(c){
   sl.className=c==='gold'?'gold':c==='purple'?'purple':'';
 }
 
-// ── TWO-IMAGE SPORTS ACCURACY ───────────────────────────
-// For sports cards: after front scan, if user taps SCAN BACK,
-// we already have the front image stored on the bubble.
-// sendBothImages() sends front+back to Claude simultaneously
-// for maximum accuracy on card number, parallel, serial.
-async function sendBothImagesToClaude(frontB64, backB64, existingItem){
-  const text = await callClaudeSonnet([{
-    role:'user',
-    content:[
-      {type:'image', source:{type:'base64',media_type:'image/jpeg',data:frontB64}},
-      {type:'image', source:{type:'base64',media_type:'image/jpeg',data:backB64}},
-      {type:'text', text:`You are looking at the FRONT and BACK of the same sports trading card simultaneously.
-The first image is the FRONT, the second image is the BACK.
-
-Read EVERY detail from BOTH images together:
-- Front: player name, team, year, set name, parallel color/type, manufacturer
-- Back: card number (e.g. 287/700), serial number (/25 etc), parallel reference codes, copyright, stats, bio
-- Cross-reference: manufacturer on front vs copyright on back to confirm set/year
-
-Return ONLY JSON with the most accurate identification possible:
-{"player":"full name","year":"4-digit year","set_name":"exact set name","parallel":"exact parallel e.g. Gold Prizm /10 or Base or Silver Prizm","card_number":"e.g. 287 or 287/700","serial_number":"/X or null","manufacturer":"Topps/Panini/Upper Deck/Bowman","sport":"Baseball/Basketball/Football/Hockey","is_rookie":true/false,"team":"team name","confidence":"high/medium","market_nm_estimate":0.00,"search_query":"best eBay sold search for this exact card"}`
-    }
-  ]}], 600);
-  return JSON.parse(text.replace(/\`\`\`json|\`\`\`/g,'').trim());
-}
-
 function toggleFlip(){
   if(bulkMode)toggleBulk();
   flipMode=!flipMode;
@@ -2649,7 +2587,7 @@ function toggleFlip(){
   const hint=document.getElementById('scanhint'),badge=document.getElementById('modebadge');
   setBracketColor(flipMode?'gold':'');
   if(flipMode){fb.classList.add('flip-on');fb.textContent='FRONT';sb.className='backmode';sb.innerHTML='&#9654; SCAN BACK';hint.textContent='Flip card — back shows serial # and stats';hint.className='shint back';badge.textContent='⟳ BACK OF CARD MODE';badge.className='back';badge.style.display='block';}
-  else{fb.classList.remove('flip-on');fb.textContent='FLIP';sb.className='';sb.innerHTML='&#9654; SCAN CARDS';hint.textContent='TCG · Sports · Comics · Slabs';hint.className='shint';badge.style.display='none';}
+  else{fb.classList.remove('flip-on');fb.textContent='FLIP';sb.className='';sb.innerHTML='&#9654; SCAN CARDS';hint.textContent='Sports · Pokemon TCG · One Piece TCG';hint.className='shint';badge.style.display='none';}
 }
 function toggleBulk(){
   if(flipMode)toggleFlip();
@@ -2659,7 +2597,7 @@ function toggleBulk(){
   const panel=document.getElementById('bulkpanel');
   setBracketColor(bulkMode?'purple':'');
   if(bulkMode){bb.classList.add('bulk-on');bb.textContent='EXIT';sb.className='bulkmode';sb.innerHTML='&#9654; ADD TO OFFER';hint.textContent='Scan cards to build bulk buy offer';hint.className='shint bulk';badge.textContent='💰 BULK BUY MODE';badge.className='bulk';badge.style.display='block';panel.style.display='block';}
-  else{bb.classList.remove('bulk-on');bb.textContent='BULK';sb.className='';sb.innerHTML='&#9654; SCAN CARDS';hint.textContent='TCG · Sports · Comics · Slabs';hint.className='shint';badge.style.display='none';panel.style.display='none';}
+  else{bb.classList.remove('bulk-on');bb.textContent='BULK';sb.className='';sb.innerHTML='&#9654; SCAN CARDS';hint.textContent='Sports · Pokemon TCG · One Piece TCG';hint.className='shint';badge.style.display='none';panel.style.display='none';}
 }
 
 function capture(){
@@ -2673,90 +2611,62 @@ function capture(){
   // Use 0.95 quality — better for fine text like card numbers
   return canvas.toDataURL('image/jpeg',.95).split(',')[1];
 }
-async function _claudeCall(model, msgs, maxTok){
-  // Routes through Cloudflare Worker — API key never touches the browser
-  const res = await scannerWorkerFetch('/anthropic/messages', {
+// ── CARDSIGHT AI — card identification (sports cards / Pokemon TCG / One Piece TCG) ──
+// Routes through the Cloudflare Worker so the CardSight API key never touches the browser.
+async function callCardSight(base64Image, opts = {}){
+  const res = await scannerWorkerFetch('/cardsight/identify', {
     method: 'POST',
     headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({ model, max_tokens: maxTok || 1000, messages: msgs })
+    body: JSON.stringify({ image: base64Image, segment: opts.segment || '' })
   });
   const respText = await res.text();
-  console.log('[CLAUDE] HTTP', res.status, 'response preview:', respText.substring(0,200));
   if(!res.ok){
-    throw new Error('Claude ' + model + ' error ' + res.status + ': ' + respText.substring(0,200));
+    throw new Error('CardSight error ' + res.status + ': ' + respText.substring(0,200));
   }
   let d;
   try { d = JSON.parse(respText); } catch(e) {
-    throw new Error('Claude response not JSON: ' + respText.substring(0,150));
+    throw new Error('CardSight response not JSON: ' + respText.substring(0,150));
   }
-  // Handle Anthropic error responses (status 200 but error in body)
-  if(d.type === 'error') {
-    throw new Error('Claude API error: ' + (d.error?.message || JSON.stringify(d.error)));
+  if(d.success === false){
+    throw new Error('CardSight: ' + (d.error || d.message || 'identification failed'));
   }
-  const content = d.content;
-  if(Array.isArray(content)){
-    const tb = content.find(b => b.type === 'text');
-    return tb ? tb.text : '';
-  }
-  return typeof content === 'string' ? content : '';
+  return d; // { success, requestId, detections:[{confidence, card, grading?}], processingTime }
 }
 
-// FAST scan model — Haiku: ~2-4s, great at reading text from images
-async function callClaude(msgs, maxTok){
-  return _claudeCall('claude-haiku-4-5-20251001', msgs, maxTok || 1000);
+// CardSight doesn't return a human-readable game/category label directly, so infer
+// it from the fields it does return. Only Sports Card / Pokemon TCG / One Piece TCG
+// are reachable here — those are the categories CardSight identifies today.
+function classifyCardSightGame(card){
+  const fieldKeys = (card.fields || []).map(f => String(f?.key || '').toLowerCase());
+  if(fieldKeys.some(k => ['hp','stage','retreat cost'].includes(k))) return 'Pokemon TCG';
+  const text = [card.manufacturer, card.setName, card.releaseName, card.name].filter(Boolean).join(' ').toLowerCase();
+  if(text.includes('one piece') || card.manufacturer === 'Bandai') return 'One Piece TCG';
+  return 'Sports Card';
 }
 
-// ACCURATE analysis model — Sonnet: ~8-15s, better for complex reasoning
-// Used for: back scan, two-image combine, pricing analysis, grade spread
-async function callClaudeSonnet(msgs, maxTok){
-  return _claudeCall('claude-sonnet-4-6', msgs, maxTok || 1000);
-}
-
-function parseClaudeJson(text, fallback) {
-  try {
-    let raw = String(text || '').replace(/```json/gi,'').replace(/```/g,'').trim();
-    const ai = raw.indexOf('[');
-    const oi = raw.indexOf('{');
-    if(ai >= 0 && (oi < 0 || ai < oi)) raw = raw.slice(ai);
-    else if(oi >= 0) raw = raw.slice(oi);
-    else return fallback;
-    return JSON.parse(raw);
-  } catch(e) {
-    return fallback;
-  }
-}
-
-function isSpecialScanItem(item) {
-  const g = String(item?.game || '').toLowerCase();
-  return g.includes('sports card') || g.includes('comic') || g.includes('slab');
-}
-
-async function refineSpecialScan(item, img) {
-  if(!isSpecialScanItem(item)) return item;
-  const game = String(item.game || '');
-  const base = JSON.stringify(item);
-  const prompt = game.includes('Comic')
-    ? `Re-check this comic cover for vending inventory. Prior result: ${base}
-
-Focus only on visible cover evidence: title/logo, issue number, publisher logo, cover price, UPC barcode, volume/series text, cover date, printing/variant hints, signatures/sketch cover/foil.
-Do not substitute a famous issue/year if not visible. Return ONLY one JSON object with:
-{"game":"Comic","name":"","issue":"","year":"","publisher":"","volume":"","variant":"","printing":"","cover_price":"","barcode_visible":true,"confidence":"high|medium|low","confidence_reason":"","search_query":""}`
-    : `Re-check this sports card or graded slab for vending inventory. Prior result: ${base}
-
-Focus only on visible evidence: player/name, team, sport, year, manufacturer, set, parallel/color, card number, rookie logo, autograph/patch, serial number, grader, grade, cert number.
-If the front is missing card number/serial, leave it null and say "scan back recommended" in confidence_reason. Return ONLY one JSON object with:
-{"game":"Sports Card","name":"","player":"","sport":"","team":"","year":"","manufacturer":"","set_name":"","parallel":"Base","card_number":null,"serial_number":null,"is_rookie":false,"is_auto":false,"is_patch":false,"grading_company":"","grade":"","cert_number":"","confidence":"high|medium|low","confidence_reason":"","search_query":""}`;
-  const text = await callClaudeSonnet([{role:'user',content:[
-    {type:'image',source:{type:'base64',media_type:'image/jpeg',data:img}},
-    {type:'text',text:prompt}
-  ]}], 700);
-  const refined = parseClaudeJson(text, null);
-  if(!refined || Array.isArray(refined)) return item;
-  return Object.assign({}, item, refined, {
-    cx: item.cx,
-    cy: item.cy,
-    refinedAt: new Date().toISOString(),
-  });
+function mapCardSightDetection(det){
+  const card = det.card || {};
+  const numberedTo = card.parallel?.numberedTo || card.numberedTo || null;
+  const game = classifyCardSightGame(card);
+  return {
+    game,
+    name: card.name || 'Unknown card',
+    player: card.name || '',
+    year: card.year || '',
+    set_name: card.setName || card.releaseName || '',
+    manufacturer: card.manufacturer || '',
+    parallel: card.parallel?.name || 'Base',
+    card_number: card.number || '',
+    serial_number: numberedTo ? ('/' + numberedTo) : '',
+    confidence: String(det.confidence || 'Medium').toLowerCase(),
+    confidence_reason: 'CardSight AI match',
+    grading_company: det.grading?.company?.name || '',
+    grade: det.grading?.grade?.value || '',
+    cert_number: '',
+    cardsightCardId: card.id || '',
+    search_query: [card.name, card.year, card.setName || card.releaseName, card.parallel?.name && card.parallel.name !== 'Base' ? card.parallel.name : '', card.number ? '#'+card.number : ''].filter(Boolean).join(' '),
+    cx: 50, cy: 50,
+  };
 }
 
 function scanHandoffKey() {
@@ -3274,118 +3184,47 @@ async function scanFront(img){
   window._lastFrontB64 = img;
   window._lastFrontTime = Date.now();
 
-  const quickPrompt = `Identify this collectible item from the image. It can be a trading card, sports card, comic book, graded slab, or any collectible.
-
-IMPORTANT RULES:
-- First classify the item type. Then use the matching extraction rules. Do not use TCG assumptions for sports cards or comics.
-- For sports cards: parallel/color, card number, rookie logo, autograph, relic/patch, and serial number matter more than generic set names. If card number or serial is not visible, say scan back recommended.
-- For sports cards: DO NOT guess the player if face is unclear — set confidence:"low" and describe what you can see (uniform color, number, position). Look for ANY text on the card edges/corners for year or card number.
-- For comics: Read the TITLE and ISSUE NUMBER from the cover carefully. CRITICAL — determine the CORRECT PUBLISHER and YEAR from VISUAL EVIDENCE on the cover, not the most famous version:
-  * Look for the publisher logo/imprint (Mirage, IDW, Image, Dark Horse, DC, Marvel, Fantagraphics, etc.) — it appears on the cover or spine
-  * Check cover price: $0.75 or $1.50 = ~1984 era; $1.25-$2.50 = late 80s/90s; $2.99-$3.99 = 2000s-present
-  * Check for UPC barcode: vintage comics (pre-1975) have NO barcode; modern comics have a UPC barcode on the cover
-  * Check printing style: black & white interior art comics often have covers indicating B&W content; full-color modern vs B&W indie
-  * Check for "Volume 2", "Vol. 2", or "Series 2" text on the cover — different volume = different publisher or era
-  * The year you report should be what you can VISUALLY CONFIRM from the cover, not the year of the most famous issue with that number
-  * Example: TMNT #1 from IDW (2011) has IDW logo, $3.99 cover price, UPC barcode, full color. TMNT #1 from Mirage (1984) has no barcode, $1.50 price, Mirage logo — very different look
-- For sealed product: classify as Sealed Product. Read brand/manufacturer, sport or game, year, product line, configuration (hobby box, blaster, mega, booster box, ETB, tin, pack, case), quantity/pack count, and UPC if visible. Do not invent a single-card name for sealed wax.
-- For slabs (PSA/BGS/CGC/SGC): Read the label — player name, year, set, grade, cert number are ALL printed clearly on the label.
-- Only return items you can actually identify. If truly unreadable, return confidence:"low" with best guess.
-- cx/cy = % position of card center in image (0-100).
-
-Return ONLY a JSON array, no markdown. Examples:
-[{"game":"Sports Card","name":"Patrick Mahomes","player":"Patrick Mahomes","sport":"Football","team":"Kansas City Chiefs","year":"2019","card_number":null,"set_name":"Panini Prizm","parallel":"Base","serial_number":null,"manufacturer":"Panini","is_rookie":true,"cx":50,"cy":50,"confidence":"high","confidence_reason":"name clearly visible on front","search_query":"2019 Panini Prizm Patrick Mahomes rookie base"}]
-
-Comic example: {"game":"Comic","name":"Amazing Spider-Man","issue":"#300","year":"1988","publisher":"Marvel","volume":"1","variant":"First print","cx":50,"cy":50,"confidence":"high","confidence_reason":"Marvel logo top-left, $1.50 cover price, no UPC barcode visible","search_query":"Amazing Spider-Man 300 1988 first print venom"}
-Comic example 2 (modern): {"game":"Comic","name":"Teenage Mutant Ninja Turtles","issue":"#1","year":"2011","publisher":"IDW","volume":"5","variant":"Cover A","cx":50,"cy":50,"confidence":"high","confidence_reason":"IDW logo visible, $3.99 cover price, UPC barcode present, full color","search_query":"TMNT Teenage Mutant Ninja Turtles 1 2011 IDW cover A"}
-
-Slab example: {"game":"PSA Slab","name":"Charizard","grading_company":"PSA","grade":"9","cert_number":"12345678","year":"1999","set_name":"Base Set","manufacturer":"WOTC","cx":50,"cy":50,"confidence":"high","confidence_reason":"PSA label clearly readable"}
-
-Sealed example: {"game":"Sealed Product","name":"2023 Topps Holiday Baseball Mega Box","year":"2023","manufacturer":"Topps","sport":"Baseball","product_line":"Holiday Baseball","configuration":"Mega Box","upc":null,"cx":50,"cy":50,"confidence":"high","confidence_reason":"front box panel and Topps branding clearly visible","search_query":"2023 Topps Holiday Baseball Mega Box sealed"}
-
-game must be exactly one of: Pokemon TCG, Magic: The Gathering, Yu-Gi-Oh!, Sports Card, Comic, Sealed Product, PSA Slab, BGS Slab, CGC Slab, SGC Slab, Hot Wheels, Funko Pop, LEGO, Action Figure, Video Game, Sports Memorabilia, Collectible
-
-search_query: most specific possible eBay search — include year, set, parallel color, card#, serial# if visible.
-
-Return array only, no markdown.`;
-
-  const text = await callClaude([{role:'user',content:[
-    {type:'image',source:{type:'base64',media_type:'image/jpeg',data:img}},
-    {type:'text',text:quickPrompt}
-  ]}], 1000);
-
-  console.log('[scanner] universal scan parsed'); document.getElementById('hstatus').textContent='v' + APP_VERSION + ' READY';
-  console.log('[v8] Raw response:', text ? text.substring(0,200) : 'EMPTY');
-
-  let items = [];
+  updateScannerProgress('detecting_category');
+  let result;
   try {
-    updateScannerProgress('detecting_category');
-    // Strip markdown, find first [ or {
-    let raw = text.replace(/```json/gi,'').replace(/```/g,'').trim();
-    const ai = raw.indexOf('[');
-    const oi = raw.indexOf('{');
-    if(ai >= 0 && (oi < 0 || ai < oi)) raw = raw.slice(ai);
-    else if(oi >= 0) raw = '[' + raw.slice(oi) + ']';
-    else throw new Error('no json in: ' + raw.slice(0,60));
-    items = JSON.parse(raw);
-    if(!Array.isArray(items)) items = [];
-    console.log('[v8] Parsed', items.length, 'items, first:', items[0]?.name, items[0]?.game);
+    result = await callCardSight(img);
   } catch(e) {
-    console.error('[v8] Parse error:', e.message, 'raw was:', text ? text.slice(0,300) : 'empty');
-    hs.textContent = 'PARSE ERR';
+    console.error('[CardSight] identify failed:', e.message);
+    hs.textContent = 'SCAN ERR';
     updateScannerProgress('error');
-    toast('Scan error — try again');
+    toast('Scan error: ' + e.message);
     return;
   }
 
-  if(!items.length) {
+  const detections = result.detections || [];
+  console.log('[CardSight] detections:', detections.length);
+
+  if(!detections.length) {
     hs.textContent = 'NONE';
     updateScannerProgress('error');
     toast('Nothing detected — move card closer');
     return;
   }
 
-  if(items.some(isSpecialScanItem)) {
-    hs.textContent = 'VERIFYING...';
-    updateScannerProgress('matching_card');
-    items = await Promise.all(items.map(item => refineSpecialScan(item, img).catch(() => item)));
-  }
-
   if(auto) clearAll();
 
-  for(const item of items) {
+  for(const det of detections) {
+    const item = mapCardSightDetection(det);
     const stock = checkStock(item);
-    const isTCG = ['Pokemon TCG','Magic: The Gathering','Yu-Gi-Oh!','Other TCG'].includes(item.game);
-    const isComic = item.game === 'Comic';
-    const isGeneral = ['Hot Wheels','Funko Pop','LEGO','Action Figure','Video Game','Sports Memorabilia','Collectible'].includes(item.game);
 
-    // cx/cy default to center if missing or invalid
-    const W = window.innerWidth, H = window.innerHeight;
-    const cx = (typeof item.cx === 'number' ? item.cx : 50) / 100 * W;
-    const cy = (typeof item.cy === 'number' ? item.cy : 50) / 100 * H;
-    // Patch item so addBubble uses safe values
-    item.cx = typeof item.cx === 'number' ? item.cx : 50;
-    item.cy = typeof item.cy === 'number' ? item.cy : 50;
-
-    console.log('[v8] addBubble:', item.name, item.game, 'cx='+item.cx, 'cy='+item.cy);
+    console.log('[CardSight] addBubble:', item.name, item.game);
     updateScannerProgress('matching_card');
     const bbl = addBubble(item, stock, null, null, 0);
-    console.log('[v8] bubble result:', bbl ? 'OK '+bbl.id+' left='+bbl.style.left+' top='+bbl.style.top : 'FAILED');
+    console.log('[CardSight] bubble result:', bbl ? 'OK '+bbl.id+' left='+bbl.style.left+' top='+bbl.style.top : 'FAILED');
 
     if(bbl) bbl._frontB64 = img;
 
-    // Phase 2: load TCGPlayer prices async after bubble shows
-    const _bbl = bbl, _item = item, _isTCG = isTCG, _isComic = isComic, _isGeneral = isGeneral;
+    // Phase 2: load real pricing (PriceCharting / pokemontcg.io / JustTCG) async after bubble shows
+    const _bbl = bbl, _item = item;
     (async () => {
       try {
         if(!_bbl) return;
-        const gameStr = (_item.game||'').toLowerCase();
-        const isTCGLocal = _isTCG || gameStr.includes('pokemon') || gameStr.includes('magic') || gameStr.includes('yu-gi') || gameStr.includes('tcg');
-        const isComicLocal = _isComic || gameStr.includes('comic');
-        const isSportsLocal = gameStr === 'sports card' || gameStr === 'sports' || _bbl._ct === 'sports';
-        const isGeneralLocal = !isTCGLocal && !isComicLocal && !isSportsLocal && (_isGeneral || ['hot wheels','funko','lego','action figure','video game','memorabilia','collectible'].some(t=>gameStr.includes(t)));
-
-        if(isTCGLocal) {
+        {
           hs.textContent = 'LOADING PRICES...';
           updateScannerProgress('checking_prices');
           const fetched = await fetchAllPrintings(_item);
@@ -3537,199 +3376,11 @@ Return array only, no markdown.`;
             hs.textContent = 'NOT FOUND — showing alternatives';
             showFallbackPicker(_bbl, _item);
           }
-        } else if(isComicLocal) {
-          const fetched = await fetchComicCovers(_item);
-          if(fetched.printings && fetched.printings.length) {
-            _bbl._prints = fetched.printings;
-            // Update dropdown with variant options
-            const selEl = document.getElementById('ps'+_bbl.id);
-            if(selEl) {
-              selEl.innerHTML = fetched.printings.map((p,i) =>
-                '<option value="'+i+'"'+(i===0?' selected':'')+'>'+p.variant+'</option>'
-              ).join('');
-              const lbl = _bbl.querySelector('.bsels-label');
-              if(lbl) lbl.textContent = fetched.printings.length + ' VARIANT' + (fetched.printings.length!==1?'S':'') + ' FOUND';
-            }
-          }
-          // Set cover image if found
-          if(fetched.imageUrl) {
-            _bbl._imgUrl = fetched.imageUrl;
-            const imgEl = document.getElementById('cimg'+_bbl.id);
-            if(imgEl) {
-              if(imgEl.tagName === 'IMG') {
-                imgEl.src = fetched.imageUrl;
-              } else {
-                const newImg = document.createElement('img');
-                newImg.className = 'card-img'; newImg.id = 'cimg'+_bbl.id;
-                newImg.src = fetched.imageUrl;
-                newImg.style.cssText = 'width:100%;height:120px;object-fit:contain';
-                newImg.onerror = function(){ this.style.display='none'; };
-                imgEl.parentNode.replaceChild(newImg, imgEl);
-              }
-            }
-          }
-          // Update eBay links with specific search
-          const comicEbayQ = [_item.name, _item.issue, _item.year, _item.publisher].filter(Boolean).join(' ');
-          const ebayBtns = _bbl.querySelectorAll('.a-ebay');
-          if(ebayBtns[0]) ebayBtns[0].href = AFF.ebaySearch(comicEbayQ);
-          if(ebayBtns[1]) ebayBtns[1].href = AFF.ebayActive(comicEbayQ);
-
-          // Surface pricing into the bubble's price row
-          let pricing = fetched.pricing;
-
-          // ── Claude pricing fallback when eBay returns nothing ──
-          if(!pricing || pricing.averagePrice === 0) {
-            try {
-              const comicCtx = [_item.name, _item.issue ? '#'+_item.issue : '', _item.year, _item.publisher].filter(Boolean).join(' ');
-              const comicPricePrompt = `Estimate current eBay market prices for this comic book: "${comicCtx}". Use your knowledge of recent sold listings. Return ONLY JSON (no markdown): {"comps":[{"desc":"Raw VF/NM","price":0.00},{"desc":"Raw VG/FN","price":0.00},{"desc":"CGC 9.8","price":0.00},{"desc":"CGC 9.6","price":0.00}],"note":"brief market context"}`;
-              const cpt = await callClaude([{role:'user',content:[{type:'text',text:comicPricePrompt}]}], 250);
-              const ci = cpt.indexOf('{');
-              if(ci >= 0) {
-                const cd = JSON.parse(cpt.slice(ci));
-                if(cd?.comps?.length) {
-                  const rawComp = cd.comps.find(c=>c.desc.toLowerCase().includes('raw') && c.desc.toLowerCase().includes('vf'));
-                  const aiAvg = rawComp ? rawComp.price : cd.comps[0].price;
-                  pricing = { averagePrice: aiAvg, recentPrices: [], source: 'ai_estimate', comps: cd.comps, note: cd.note };
-                  fetched.pricing = pricing;
-                  // store comps on bubble for condition chart
-                  if(_bbl._item) _bbl._item.comps = cd.comps;
-                }
-              }
-            } catch(pe) { console.warn('[Comic AI price]', pe.message); }
-          }
-
-          if(pricing && pricing.averagePrice > 0) {
-            const bpC = document.getElementById('bp'+_bbl.id);
-            const brC = document.getElementById('br'+_bbl.id);
-            if(bpC) { bpC.textContent = '$' + pricing.averagePrice.toFixed(2); bpC.style.fontSize=''; bpC.style.color=''; }
-            const srcLabel = pricing.source === 'ebay_sold' ? 'eBay sold avg'
-                           : pricing.source === 'ebay_active' ? 'eBay active avg'
-                           : 'AI price est';
-            if(brC) brC.textContent = srcLabel + (pricing.recentPrices?.length ? ' · ' + pricing.recentPrices.length + ' listings' : '');
-            // Show price comps section
-            const compsEl = _bbl.querySelector('.comps');
-            if(compsEl) {
-              if(pricing.source === 'ai_estimate' && pricing.comps?.length) {
-                // AI returned detailed comps — show them all
-                compsEl.innerHTML = `<div class="comps-hdr">AI PRICE ESTIMATE · RAW &amp; GRADED</div>` +
-                  pricing.comps.map(c => `<div class="comp-row"><span class="comp-d">${c.desc}</span><span class="comp-p">$${Number(c.price).toFixed(2)}</span></div>`).join('') +
-                  (pricing.note ? `<div style="font-size:9px;color:rgba(255,255,255,.35);margin-top:4px;font-style:italic">${pricing.note}</div>` : '');
-              } else {
-                const lo = Math.round(pricing.averagePrice * 0.7 * 100)/100;
-                const hi = Math.round(pricing.averagePrice * 1.4 * 100)/100;
-                compsEl.innerHTML = `<div class="comps-hdr">${srcLabel.toUpperCase()} — ${pricing.recentPrices?.length||0} LISTINGS</div>
-                  <div class="comp-row"><span class="comp-d">Average</span><span class="comp-p">$${pricing.averagePrice.toFixed(2)}</span></div>
-                  <div class="comp-row"><span class="comp-d">Low est</span><span class="comp-p">$${lo.toFixed(2)}</span></div>
-                  <div class="comp-row"><span class="comp-d">High est</span><span class="comp-p">$${hi.toFixed(2)}</span></div>`;
-              }
-            }
-          }
-
-          // Build variant image strip if Comic Vine covers loaded
-          const cvVars = fetched.printings?.find(p=>p._cvVariants)?._cvVariants;
-          if(cvVars && cvVars.length > 1) {
-            const existingStrip = _bbl.querySelector('.comic-variant-strip');
-            if(!existingStrip) {
-              const strip = document.createElement('div');
-              strip.className = 'comic-variant-strip';
-              strip.style.cssText = 'display:flex;gap:4px;overflow-x:auto;margin-bottom:8px;padding:4px 0;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch';
-              strip.innerHTML = cvVars.filter(v=>v.cover_image).map((v,i) =>
-                `<div onclick="applyComicVariant('${_bbl.id}',${i})" data-vidx="${i}"
-                  style="flex-shrink:0;scroll-snap-align:start;cursor:pointer;border-radius:5px;overflow:hidden;border:2px solid ${i===0?'rgba(199,125,255,.8)':'rgba(255,255,255,.1)'};width:75px;transition:.15s"
-                  onmouseenter="this.style.borderColor='rgba(199,125,255,.6)'" onmouseleave="this.style.borderColor='${i===0?'rgba(199,125,255,.8)':'rgba(255,255,255,.1)'}'">
-                  <img src="${v.cover_image}" style="width:75px;height:105px;object-fit:cover;display:block" loading="lazy" onerror="this.closest('[data-vidx]').style.display='none'">
-                  <div style="font-family:monospace;font-size:6px;color:rgba(255,255,255,.4);padding:2px 3px;background:rgba(0,0,0,.7);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${v.title||'Cover'}</div>
-                </div>`
-              ).join('');
-              // Store variants on bubble for applyComicVariant
-              _bbl._cvVariants = cvVars;
-              const imgSlot = document.getElementById('cimg'+_bbl.id);
-              if(imgSlot) imgSlot.after(strip); else _bbl.querySelector('.bacts')?.before(strip);
-            }
-          }
-
-          const cvCount = fetched.printings.filter(p=>p.cvId).length;
-          const hasPricing = fetched.pricing && fetched.pricing.averagePrice > 0;
-          const priceSrc = fetched.pricing?.source === 'ai_estimate' ? ' · AI PRICED' : (hasPricing ? ' · PRICED' : '');
-          if(hs) hs.textContent = cvCount > 0 ? `COMIC · ${cvCount} COVERS${priceSrc}` : (hasPricing ? `COMIC · PRICED${priceSrc}` : 'COMIC · TAP EBAY FOR PRICING');
-
-          // ── Visual cover matching — compare scan against CV thumbnails ──
-          // Runs after strip is shown so user sees results while Sonnet thinks
-          const cvVarsForMatch = fetched.printings?.find(p=>p._cvVariants)?._cvVariants;
-          if(_bbl._frontB64 && cvVarsForMatch && cvVarsForMatch.filter(v=>v.cover_image).length >= 2) {
-            if(hs) hs.textContent = (hs.textContent || '') + ' · MATCHING COVER...';
-            try {
-              const match = await findBestComicCoverMatch(_bbl._frontB64, cvVarsForMatch);
-              console.log('[Comic visual match] idx='+match.bestIdx+' conf='+match.confidence+' — '+match.reason);
-              if(match.confidence !== 'low') {
-                // Apply best visual match (even if index 0 — confirms or corrects selection)
-                applyComicVariant(_bbl.id, match.bestIdx);
-                // Patch _item context so prices/eBay links use the matched edition
-                const vMatch = cvVarsForMatch[match.bestIdx];
-                if(vMatch?.cover_date) _item.year = vMatch.cover_date.slice(0,4);
-                if(vMatch?.publisher)  _item.publisher = vMatch.publisher;
-              }
-              // Update status — include match reason on hover via title attr
-              const matchLabel = match.confidence === 'low' ? '' : ` · COVER ${match.bestIdx} MATCHED`;
-              const finalStatus = cvCount > 0
-                ? `COMIC · ${cvCount} COVERS${priceSrc}${matchLabel}`
-                : (hasPricing ? `COMIC · PRICED${priceSrc}` : 'COMIC · TAP EBAY FOR PRICING');
-              if(hs) { hs.textContent = finalStatus; hs.title = match.reason || ''; }
-            } catch(me) {
-              console.warn('[Comic visual match]', me.message);
-              if(hs) hs.textContent = hs.textContent.replace(' · MATCHING COVER...', '');
-            }
-          }
-        } else if(isGeneralLocal) {
-          // General collectible — no price API, guidance only
-          const bpEl = document.getElementById('bp'+_bbl.id);
-          const brEl = document.getElementById('br'+_bbl.id);
-          if(bpEl) { bpEl.textContent='SEE EBAY ↗'; bpEl.style.fontSize='11px'; bpEl.style.color='rgba(199,125,255,.8)'; }
-          if(brEl) brEl.textContent='Tap eBay Sold for recent sales';
-          hs.textContent = 'TAP EBAY SOLD ↗';
-        } else if(isSportsLocal) {
-          // Sports card — get AI price comps immediately, show flip prompt
-          hs.textContent = '⟳ LOADING SPORTS COMPS...';
-          const playerName = _item.player || _item.name || '';
-          const sportQ = [playerName, _item.year, _item.set_name, _item.parallel && _item.parallel !== 'Base' ? _item.parallel : null, _item.manufacturer].filter(Boolean).join(' ');
-          const sportPrompt = `eBay sold prices for this sports card: "${sportQ}". Include raw NM, raw LP, and a graded (PSA 9 or PSA 10) comp. Return ONLY JSON: {"comps":[{"desc":"Raw NM","price":0.00},{"desc":"Raw LP/Good","price":0.00},{"desc":"PSA 9","price":0.00},{"desc":"PSA 10","price":0.00}],"trend":"up|down|flat","trend_reason":"brief reason","note":"brief note about this card's market"}`;
-          const sportText = await callClaude([{role:'user',content:[{type:'text',text:sportPrompt}]}], 250);
-          try {
-            const si2 = sportText.indexOf('{');
-            if(si2 >= 0) {
-              const sd = JSON.parse('[' + sportText.slice(si2) + ']')[0];
-              if(sd?.comps?.length && _bbl._item) {
-                _bbl._item.comps = sd.comps;
-                _bbl._item.trend = sd.trend;
-                _bbl._item.trend_reason = sd.trend_reason;
-                const bpEl2 = document.getElementById('bp'+_bbl.id);
-                const brEl2 = document.getElementById('br'+_bbl.id);
-                if(bpEl2 && sd.comps[0]?.price > 0) {
-                  bpEl2.textContent = '$' + Number(sd.comps[0].price).toFixed(2);
-                  bpEl2.style.fontSize = ''; bpEl2.style.color = '';
-                }
-                if(brEl2) brEl2.textContent = 'AI est · PSA 9: $' + (sd.comps[2]?.price > 0 ? sd.comps[2].price.toFixed(2) : '—') + ' · PSA 10: $' + (sd.comps[3]?.price > 0 ? sd.comps[3].price.toFixed(2) : '—');
-                // Show comps section
-                const compsEl2 = _bbl.querySelector('.comps');
-                if(compsEl2) compsEl2.innerHTML = '<div class="comps-hdr">PRICE EST (AI) — TAP eBay SOLD FOR LIVE</div>' + sd.comps.map(c=>`<div class="comp-row"><span class="comp-d">${c.desc}</span><span class="comp-p">$${Number(c.price).toFixed(2)}</span></div>`).join('');
-                if(sd.note) {
-                  const noteEl = document.createElement('div');
-                  noteEl.style.cssText = 'font-family:monospace;font-size:7px;color:rgba(255,209,102,.4);margin:4px 0;padding:4px 6px;background:rgba(255,209,102,.04);border-radius:3px;border-left:2px solid rgba(255,209,102,.2)';
-                  noteEl.textContent = sd.note;
-                  _bbl.querySelector('.comps')?.after(noteEl);
-                }
-              }
-            }
-          } catch(se) { /* non-critical */ }
-          hs.textContent = 'SPORTS · FLIP FOR CARD #';
-        } else {
-          hs.textContent = 'READY';
         }
 
         // Sports cards: show "flip & scan back" prompt to get card number/serial
-        if((_item.game==='Sports Card' || _bbl._ct==='sports') && !_bbl._backScanned) {
+        if(_item.game === 'Sports Card' && !_bbl._backScanned) {
           hs.textContent = '⟳ FLIP TO SCAN BACK';
-          // Add a prominent flip prompt to the bubble
           const existingFlip = _bbl.querySelector('.flip-prompt');
           if(!existingFlip) {
             const fp = document.createElement('div');
@@ -3742,48 +3393,14 @@ Return array only, no markdown.`;
           }
         }
 
-        // Enrich with comps
-        try {
-          // Build item description based on type
-          const isCard = ['Pokemon TCG','Magic: The Gathering','Yu-Gi-Oh!','Sports Card'].includes(_item.game);
-          const isToy = ['Hot Wheels','Funko Pop','LEGO','Action Figure','Collectible'].includes(_item.game);
-          const itemDesc = isCard
-            ? `${_item.player||_item.name} ${_item.year||''} ${_item.set_name||''} ${_item.parallel&&_item.parallel!=='Base'?_item.parallel:''} ${_item.card_number?'#'+_item.card_number:''} ${_item.serial_number||''}`.trim()
-            : `${_item.name} ${_item.year||''} ${_item.set_name||_item.manufacturer||''}`.trim();
-          const ep = `Based on your training data, estimate eBay sold prices for: "${itemDesc}". ${isToy?'This is a collectible toy/figure — use completed eBay listings as reference.':''} Return ONLY JSON: {"comps":[{"desc":"NM/Mint ungraded","price":0.00},{"desc":"Good/LP","price":0.00},{"desc":"${isCard?'PSA 9 graded':'Sealed/New'}","price":0.00}],"trend":"up|down|flat","note":"brief market note"}`;
-          const et = await callClaude([{role:'user',content:[{type:'text',text:ep}]}], 200);
-          const ei = et.indexOf('{');
-          if(ei >= 0) {
-            const ed = JSON.parse('[' + et.slice(ei) + ']')[0];
-            if(ed && ed.comps && _bbl._item) {
-              _bbl._item.comps = ed.comps;
-              const compsEl = _bbl.querySelector('.comps');
-              if(compsEl) {
-                compsEl.innerHTML = '<div class="comps-hdr">PRICE EST (AI)</div>'
-                  + ed.comps.map(c=>`<div class="comp-row"><span class="comp-d">${c.desc}</span><span class="comp-p">$${Number(c.price).toFixed(2)}</span></div>`).join('');
-              }
-              // For sports/comics — update the main price display with NM estimate
-              const bpEl = document.getElementById('bp'+_bbl.id);
-              const brEl = document.getElementById('br'+_bbl.id);
-              const ct2 = _bbl._ct;
-              if(bpEl && (ct2==='sports'||ct2==='comic'||ct2==='general') && ed.comps[0]?.price > 0) {
-                bpEl.textContent = '$'+Number(ed.comps[0].price).toFixed(2);
-                bpEl.style.fontSize = '';
-                bpEl.style.color = '';
-                if(brEl) brEl.textContent = 'AI est · tap eBay Sold for live comps';
-              }
-            }
-          }
-        } catch(e3) { /* comps non-critical */ }
-
       } catch(e2) {
-        console.error('[v8] Phase2 error:', e2.message);
+        console.error('[CardSight] Phase2 error:', e2.message);
         hs.textContent = 'PRICE ERR';
       }
     })();
   }
 
-  hs.textContent = items.length + ' FOUND';
+  hs.textContent = detections.length + ' FOUND';
   drawLines();
 }
 
@@ -3792,291 +3409,140 @@ async function scanBack(img){
   const hs = document.getElementById('hstatus');
   window._lastBackB64 = img;
 
-  const hasFront    = window._lastFrontB64 && (Date.now() - (window._lastFrontTime||0)) < 180000;
-  const lastBub     = bubs.length > 0 ? bubs[bubs.length-1] : null;
-  const ct          = lastBub?.el?._ct || '';
-  const isSports    = ct === 'sports';
-  const isSlab      = ['psa','bgs','cgc','sgc'].includes(ct);
-  const item        = lastBub?.el?._item || null;
+  const lastBub = bubs.length > 0 ? bubs[bubs.length-1] : null;
+  const item = lastBub?.el?._item || null;
+  if(!lastBub) { toast('Scan the front of a card first'); return; }
 
-  // ─── SPORTS CARD: Send BOTH sides simultaneously ──────────────
-  if(isSports && hasFront && lastBub) {
-    hs.textContent = 'READING BOTH SIDES...';
-
-    // Build context from front scan
-    const frontContext = item ? [
-      item.player || item.name,
-      item.year,
-      item.set_name,
-      item.parallel && item.parallel !== 'Base' ? item.parallel : null,
-      item.manufacturer,
-      item.sport,
-      item.team,
-    ].filter(Boolean).join(', ') : 'unknown sports card';
-
-    const dualPrompt = `You are looking at the FRONT (Image 1) and BACK (Image 2) of the same sports trading card simultaneously.
-
-FRONT context already identified: ${frontContext}
-
-READ EVERY DETAIL from both images with maximum precision:
-
-FRONT IMAGE — look for:
-• Player name (full name), team name, team colors/logo
-• Year printed (usually bottom corner or in set name)
-• Manufacturer logo: Topps / Panini / Upper Deck / Bowman / Donruss / Leaf / Fleer / Score / Prizm / Select / Mosaic / Chronicles / Optic
-• Set name as printed on the card
-• Parallel finish: foil color, border color (Gold/Silver/Bronze/Orange/Blue/Green/Red/Purple/Pink/Rainbow), Chrome/Prizm/Refractor/Holo/Mosaic pattern, any numbered stamp on front
-• RC / Rookie stamp, autograph, patch/relic window
-
-BACK IMAGE — look for (ZOOM IN on all corners and edges):
-• CARD NUMBER: usually bottom-right or bottom-left corner (e.g. "287" or "287/700"). Look past any crease or damage.
-• SERIAL NUMBER: foil-stamped limited print run (e.g. 15/25, 042/150) — look on all four edges
-• SET CODE / COPYRIGHT LINE: tiny text at bottom (e.g. "© 2021 Panini America")
-• PARALLEL TEXT: sometimes printed on back (e.g. "GOLD /10" or "SILVER PRIZM")
-• YEAR in copyright line if not visible on front
-• PLAYER STATS / BIO: confirm player name and team
-
-AUTHORITY: Back is definitive for card#, serial#, year. Front is definitive for parallel color and player ID.
-
-Return ONLY JSON, no markdown:
-{"player":"full name","year":"4-digit","set_name":"exact official name","parallel":"exact parallel e.g. Base|Gold Prizm|Silver Refractor|Orange Wave|Holo|Mosaic|Chrome|Prizm","card_number":"e.g. 287","serial_number":"/25 or null","print_run":25,"manufacturer":"Topps|Panini|Upper Deck|Bowman|Leaf|Donruss|Fleer|Score","sport":"Baseball|Basketball|Football|Hockey|Soccer","team":"team name","is_rookie":true,"grading_company":null,"grade":null,"cert_number":null,"confidence":"high|medium|low","confidence_reason":"brief reason e.g. card# clearly visible on back","search_query":"best eBay sold search for this exact card e.g. 2021 Topps Prizm Patrick Mahomes Gold Prizm /10"}`;
-
-    try {
-      const text = await callClaudeSonnet([{role:'user',content:[
-        {type:'image', source:{type:'base64',media_type:'image/jpeg',data:window._lastFrontB64}},
-        {type:'image', source:{type:'base64',media_type:'image/jpeg',data:img}},
-        {type:'text', text:dualPrompt}
-      ]}], 800);
-
-      let c;
-      try {
-        let raw = text.replace(/```json/gi,'').replace(/```/g,'').trim();
-        const oi = raw.indexOf('{');
-        if(oi >= 0) raw = raw.slice(oi);
-        c = JSON.parse(raw);
-      } catch(pe) { throw new Error('Parse failed: '+text.substring(0,100)); }
-
-      if(c && lastBub.el._item) {
-        const it = lastBub.el._item;
-        if(c.player)          { it.player = c.player; it.name = c.player; }
-        if(c.year)              it.year = c.year;
-        if(c.set_name)          it.set_name = c.set_name;
-        if(c.parallel)          it.parallel = c.parallel;
-        if(c.card_number)       it.card_number = c.card_number;
-        if(c.serial_number)     it.serial_number = c.serial_number;
-        if(c.print_run)         it.print_run = c.print_run;
-        if(c.manufacturer)      it.manufacturer = c.manufacturer;
-        if(c.sport)             it.sport = c.sport;
-        if(c.team)              it.team = c.team;
-        if(c.is_rookie)         it.is_rookie = true;
-        if(c.search_query)      it._searchQuery = c.search_query;
-        if(c.grading_company)   it.grading_company = c.grading_company;
-        if(c.grade)             it.grade = c.grade;
-        if(c.cert_number)       it.cert_number = c.cert_number;
-        lastBub.el._backScanned = true;
-        lastBub.el._backB64 = img;
-
-        // Remove flip prompt
-        lastBub.el.querySelector('.flip-prompt')?.remove();
-
-        // Update bubble display
-        const bname = lastBub.el.querySelector('.bname');
-        if(bname) bname.textContent = c.player || it.name;
-        const bsub = lastBub.el.querySelector('.bsub');
-        if(bsub) {
-          const pts = [
-            c.team, c.year, c.set_name,
-            c.parallel && c.parallel !== 'Base' ? c.parallel : null,
-            c.card_number ? 'Card #'+c.card_number : null,
-            c.serial_number || null,
-            c.is_rookie ? '⭐ RC' : null,
-          ].filter(Boolean);
-          bsub.textContent = pts.join(' · ');
-        }
-
-        // Update eBay links with refined data
-        const qBest = c.search_query || [c.player,c.year,c.set_name,c.parallel!=='Base'?c.parallel:null,c.card_number?'#'+c.card_number:null,c.serial_number].filter(Boolean).join(' ');
-        const ebayBtns = lastBub.el.querySelectorAll('.a-ebay');
-        if(ebayBtns[0]) ebayBtns[0].href = AFF.ebaySearch(qBest);
-        if(ebayBtns[1]) ebayBtns[1].href = AFF.ebayActive(qBest);
-
-        // Serial number gets its own red button
-        if(c.serial_number) {
-          const qSerial = [c.player,c.year,c.serial_number].filter(Boolean).join(' ');
-          const actsEl = lastBub.el.querySelector('.bacts');
-          if(actsEl && !actsEl.querySelector('.serial-link')) {
-            const sl = document.createElement('a');
-            sl.className = 'bact a-ebay serial-link';
-            sl.style.cssText = 'background:rgba(255,77,109,.15);border-color:rgba(255,77,109,.5);color:#ff4d6d;font-weight:700';
-            sl.href = AFF.ebaySearch(qSerial);
-            sl.target = '_blank';
-            sl.textContent = '🔢 Serial '+c.serial_number+' Sold ↗';
-            actsEl.prepend(sl);
-          }
-        }
-
-        hs.textContent = '✓ DUAL SCAN · ' + (c.confidence||'').toUpperCase();
-        toast('✓ Both sides combined · #'+(c.card_number||'?')+' '+c.parallel);
-
-        // Add direct sold-comps research after back-scan confirms card# + year
-        if((c.card_number || it.card_number) && (c.year || it.year)) {
-          const actsEl = lastBub.el.querySelector('.bacts');
-          if(actsEl && !actsEl.querySelector('.comps-direct')) {
-            const bkQ = [c.player||it.player||it.name, c.year||it.year, c.set_name||it.set_name, c.card_number||it.card_number].filter(Boolean).join(' ');
-            const bkBtn = document.createElement('a');
-            bkBtn.className = 'bact comps-direct';
-            bkBtn.style.cssText = 'background:rgba(0,180,255,.12);color:#00b4ff;border:1px solid rgba(0,180,255,.35);font-weight:700;font-size:9px';
-            bkBtn.href = 'javascript:void(0)';
-            bkBtn.onclick = () => openCompsChart(lastBub.id, bkQ);
-            bkBtn.textContent = 'Sold chart #'+(c.card_number||it.card_number);
-            const scanBackBtn = actsEl.querySelector('[onclick*="scanBackForBubble"]');
-            if(scanBackBtn) scanBackBtn.after(bkBtn); else actsEl.prepend(bkBtn);
-          }
-        }
-
-                // Trigger AI price estimate with full info
-        const ep = `eBay sold prices for: "${qBest}". Return ONLY JSON: {"comps":[{"desc":"NM raw","price":0.00},{"desc":"Good/LP","price":0.00},{"desc":"PSA 9","price":0.00}],"trend":"up|down|flat","note":"brief note"}`;
-        callClaude([{role:'user',content:[{type:'text',text:ep}]}],200).then(et=>{
-          try {
-            const ei = et.indexOf('{');
-            if(ei<0) return;
-            const ed = JSON.parse('['+et.slice(ei)+']')[0];
-            if(ed?.comps?.length) {
-              it.comps = ed.comps;
-              const bpEl = document.getElementById('bp'+lastBub.id);
-              const brEl = document.getElementById('br'+lastBub.id);
-              if(bpEl && ed.comps[0]?.price>0) { bpEl.textContent='$'+Number(ed.comps[0].price).toFixed(2); bpEl.style.fontSize=''; bpEl.style.color=''; }
-              if(brEl) brEl.textContent='AI est · tap eBay Sold for live comps';
-              const compsEl = lastBub.el.querySelector('.comps');
-              if(compsEl) compsEl.innerHTML = '<div class="comps-hdr">PRICE EST (AI)</div>'+ed.comps.map(c2=>`<div class="comp-row"><span class="comp-d">${c2.desc}</span><span class="comp-p">$${Number(c2.price).toFixed(2)}</span></div>`).join('');
-            }
-          } catch(e3){}
-        }).catch(()=>{});
-      }
-    } catch(e) {
-      console.warn('[DUAL SCAN] failed:', e.message);
-      hs.textContent = 'DUAL SCAN FAILED — using back only';
-      // Fall through to single back scan
-      await doSingleBackScan(img, lastBub, item, hs);
-    }
+  hs.textContent = 'READING BACK...';
+  let result;
+  try {
+    result = await callCardSight(img);
+  } catch(e) {
+    hs.textContent = 'BACK SCAN FAILED';
+    toast('Back scan error: ' + e.message);
     return;
   }
 
-  // ─── SLAB or TCG: single back scan ─────────────────────────────
-  await doSingleBackScan(img, lastBub, item, hs);
-}
+  const det = (result.detections || [])[0];
+  if(!det) {
+    hs.textContent = 'BACK SCAN — NOTHING READ';
+    toast('Could not read the back — try again');
+    return;
+  }
 
-async function doSingleBackScan(img, lastBub, item, hs) {
-  hs.textContent = 'READING BACK...';
-  const text = await callClaude([{role:'user',content:[
-    {type:'image', source:{type:'base64',media_type:'image/jpeg',data:img}},
-    {type:'text', text:`Read every number, word, and marking on this card back with maximum precision.
+  const back = mapCardSightDetection(det);
+  if(item) {
+    if(back.card_number)   item.card_number = back.card_number;
+    if(back.serial_number) item.serial_number = back.serial_number;
+    if(back.year)           item.year = item.year || back.year;
+    if(back.set_name)       item.set_name = item.set_name || back.set_name;
+    if(back.parallel && back.parallel !== 'Base') item.parallel = back.parallel;
+    if(back.grading_company) item.grading_company = back.grading_company;
+    if(back.grade)           item.grade = back.grade;
+  }
 
-PRIORITY — look carefully for:
-1. CARD NUMBER: usually printed at bottom corner (e.g. "287" or "#287" or "287/700"). Scan ALL corners.
-2. SERIAL NUMBER: foil-stamped print run, often on edges (e.g. "042/150" or "15/25")
-3. COPYRIGHT LINE: tiny text at very bottom (e.g. "© 2021 Panini America Inc.")
-4. SET CODE: abbreviated set name in fine print
-5. PLAYER NAME / STATS: confirm who this card is
-6. ANY FOIL STAMPS: authentication marks, auto certification, rookie designations
+  lastBub.el._backB64 = img;
+  lastBub.el._backScanned = true;
+  lastBub.el.querySelector('.flip-prompt')?.remove();
+  addBackInfo(lastBub.id, back);
 
-Return ONLY JSON, no markdown:
-{"player":null,"card_number":"e.g. 287","set_name":null,"year":null,"serial_number":"/X or null","print_run":null,"parallel_code":null,"auto_authenticated":false,"rookie_stamp":false,"team":null,"manufacturer":null,"stats":[],"bio":null,"copyright":null,"notes":"any other text visible"}`}
-  ]}], 700);
+  const bname = lastBub.el.querySelector('.bname');
+  if(bname && item) bname.textContent = item.player || item.name;
+  const bsub = lastBub.el.querySelector('.bsub');
+  if(bsub && item) {
+    const pts = [
+      item.year, item.set_name,
+      item.parallel && item.parallel !== 'Base' ? item.parallel : null,
+      item.card_number ? 'Card #'+item.card_number : null,
+      item.serial_number || null,
+    ].filter(Boolean);
+    bsub.textContent = pts.join(' · ');
+  }
 
-  let back;
-  try {
-    let raw = text.replace(/```json/gi,'').replace(/```/g,'').trim();
-    const oi = raw.indexOf('{');
-    if(oi>=0) raw = raw.slice(oi);
-    back = JSON.parse(raw);
-  } catch(e) { toast('Back scan parse error'); return; }
+  if(item) {
+    const qBest = scannerQueryFromItem(item);
+    const ebayBtns = lastBub.el.querySelectorAll('.a-ebay');
+    if(ebayBtns[0]) ebayBtns[0].href = AFF.ebaySearch(qBest);
+    if(ebayBtns[1]) ebayBtns[1].href = AFF.ebayActive(qBest);
 
-  if(lastBub?.el) {
-    lastBub.el._backB64 = img;
-    lastBub.el._backScanned = true;
-    lastBub.el.querySelector('.flip-prompt')?.remove();
-    addBackInfo(lastBub.id, back);
-
-    if(item) {
-      if(back.card_number)   item.card_number   = back.card_number;
-      if(back.serial_number) item.serial_number = back.serial_number;
-      if(back.parallel_code) item.parallel_code = back.parallel_code;
-      if(back.year && !item.year) item.year      = back.year;
-      if(back.rookie_stamp)  item.is_rookie = true;
-      if(back.auto_authenticated) item.auto_authenticated = true;
-
-      const bsub = lastBub.el.querySelector('.bsub');
-      if(bsub && back.card_number) {
-        const parts = bsub.textContent.split(' · ').filter(p=>!p.startsWith('Card #'));
-        parts.push('Card #'+back.card_number);
-        if(back.serial_number) parts.push(back.serial_number);
-        bsub.textContent = parts.join(' · ');
+    if(item.serial_number) {
+      const qSerial = [item.player||item.name, item.year, item.serial_number].filter(Boolean).join(' ');
+      const actsEl = lastBub.el.querySelector('.bacts');
+      if(actsEl && !actsEl.querySelector('.serial-link')) {
+        const sl = document.createElement('a');
+        sl.className = 'bact a-ebay serial-link';
+        sl.style.cssText = 'background:rgba(255,77,109,.15);border-color:rgba(255,77,109,.5);color:#ff4d6d;font-weight:700';
+        sl.href = AFF.ebaySearch(qSerial);
+        sl.target = '_blank';
+        sl.textContent = '🔢 Serial '+item.serial_number+' Sold ↗';
+        actsEl.prepend(sl);
       }
     }
-    // Add direct sold-comps button if card# now known
-    if(back.card_number && item) {
+
+    if(item.card_number && item.year) {
       const actsEl = lastBub.el.querySelector('.bacts');
       if(actsEl && !actsEl.querySelector('.comps-direct')) {
-        const bkQ = [item.player||item.name, item.year||back.year, item.set_name||back.set_name, back.card_number].filter(Boolean).join(' ');
+        const bkQ = [item.player||item.name, item.year, item.set_name, item.card_number].filter(Boolean).join(' ');
         const bkBtn = document.createElement('a');
         bkBtn.className = 'bact comps-direct';
         bkBtn.style.cssText = 'background:rgba(0,180,255,.12);color:#00b4ff;border:1px solid rgba(0,180,255,.35);font-weight:700;font-size:9px';
         bkBtn.href = 'javascript:void(0)';
         bkBtn.onclick = () => openCompsChart(lastBub.id, bkQ);
-        bkBtn.textContent = 'Sold chart #'+back.card_number;
+        bkBtn.textContent = 'Sold chart #'+item.card_number;
         const scanBackBtn = actsEl.querySelector('[onclick*="scanBackForBubble"]');
         if(scanBackBtn) scanBackBtn.after(bkBtn); else actsEl.prepend(bkBtn);
       }
     }
-        hs.textContent = 'BACK SCANNED';
-    toast('✓ Back info added · #'+(back.card_number||'?'));
-  } else {
-    showBackStandalone(back);
-    hs.textContent = 'BACK READ';
+
+    // Re-run real pricing now that card # / parallel is confirmed from the back
+    try {
+      const fetched = await fetchAllPrintings(item);
+      if(fetched.printings && fetched.printings.length) {
+        lastBub.el._prints = fetched.printings;
+        const best = fetched.printings[fetched.bestMatchIdx || 0];
+        if(best) updatePrice(lastBub.id, best, document.getElementById('cs'+lastBub.id)?.value || 'NM');
+      }
+    } catch(e) { /* pricing refresh non-critical */ }
   }
+
+  hs.textContent = '✓ BACK SCANNED · ' + String(det.confidence||'').toUpperCase();
+  toast('✓ Back scanned · #'+(item?.card_number||'?'));
 }
 
 
 async function scanBulk(img){
   const hs=document.getElementById('hstatus');
-  const text=await callClaude([{role:'user',content:[{type:'image',source:{type:'base64',media_type:'image/jpeg',data:img}},{type:'text',text:'Identify all trading cards/comics visible. Return ONLY JSON array:[{"name":"name","year":"year","set":"set","parallel":"variant or Base","market_nm":5.00}]. market_nm=current NM price. Max 6. [] if none.'}]}],800);
-  let items=[];
-  console.log('[SCAN] Raw:', text ? text.substring(0,150) : 'EMPTY');
+  let result;
   try {
-    // Step 1: strip all markdown code fences
-    let _raw = text.replace(/```json/gi,'').replace(/```/g,'').trim();
-    // Step 2: find the first [ or { — skip any preamble text
-    const iB = _raw.indexOf('[');
-    const iO = _raw.indexOf('{');
-    if(iB >= 0 && (iO < 0 || iB <= iO)) {
-      // Starts with array — use as-is
-      _raw = _raw.slice(iB);
-    } else if(iO >= 0) {
-      // Single object — wrap in array
-      _raw = '[' + _raw.slice(iO) + ']';
-    } else {
-      throw new Error('No JSON found in: ' + _raw.substring(0,80));
-    }
-    items = JSON.parse(_raw);
-    if(!Array.isArray(items)) items = [];
-  } catch(parseErr) {
-    console.warn('[SCAN] Parse failed:', parseErr.message, '| raw:', text ? text.substring(0,200) : 'empty');
-    toast('Scan parse error — retrying');
-    // Retry with ultra-minimal prompt
-    try {
-      const retry = await callClaude([{role:'user',content:[
-        {type:'image',source:{type:'base64',media_type:'image/jpeg',data:img}},
-        {type:'text',text:'Trading card name and set. JSON only, no text: [{"name":"NAME","game":"Pokemon TCG","set_name":"SET","card_number":"NUM","parallel":"Base","cx":50,"cy":50}]'}
-      ]}], 300);
-      const iB2 = retry.indexOf('['), iO2 = retry.indexOf('{');
-      let r2 = (iB2>=0&&(iO2<0||iB2<=iO2)) ? retry.slice(iB2) : (iO2>=0 ? '['+retry.slice(iO2)+']' : '[]');
-      const ri = JSON.parse(r2);
-      if(Array.isArray(ri) && ri.length) { items = ri; console.log('[SCAN] Retry ok'); }
-    } catch(e2) { console.warn('[SCAN] Retry failed:', e2.message); }
+    result = await callCardSight(img);
+  } catch(e) {
+    hs.textContent = 'SCAN ERR';
+    toast('Scan error: ' + e.message);
+    return;
   }
-  if(Array.isArray(items)&&items.length){items.forEach(i=>addToBulk(i));hs.textContent=items.length+' ADDED';updateBulkTotal();}
-  else{hs.textContent='NONE';toast('No cards found');}
+  const detections = result.detections || [];
+  if(!detections.length) { hs.textContent = 'NONE'; toast('No cards found'); return; }
+
+  for(const det of detections.slice(0, 6)) {
+    const item = mapCardSightDetection(det);
+    let market = 0, imageUrl = '';
+    try {
+      const fetched = await fetchAllPrintings(item);
+      const best = fetched.printings?.[fetched.bestMatchIdx || 0];
+      if(best) { market = best.mid || 0; imageUrl = best.imageUrl || ''; }
+    } catch(e) { /* pricing non-critical for bulk add */ }
+    addToBulk({
+      name: item.player || item.name,
+      year: item.year,
+      set_name: item.set_name,
+      parallel: item.parallel,
+      card_number: item.card_number,
+      market_nm: market,
+      imageUrl,
+    });
+  }
+  hs.textContent = detections.length + ' ADDED';
+  updateBulkTotal();
 }
 
 function addToBulk(item){
@@ -4729,21 +4195,20 @@ window.retryBubbleTextSearch = async function(id){
   const bp = document.getElementById('bp'+id);
   const br = document.getElementById('br'+id);
   if(bp) { bp.textContent = 'SEARCHING...'; bp.style.fontSize = '11px'; }
-  const prompt = `Find current market info for this collectible using text only. Return ONLY JSON: {"name":"", "query":"", "price":0, "low":0, "high":0, "note":""}. Item: ${JSON.stringify({name:item.name,year:item.year,set:item.set_name,card_number:item.card_number,variant:item.parallel,category:item.game})}`;
   try {
-    const text = await callClaude([{role:'user',content:[{type:'text',text:prompt}]}], 300);
-    const oi = text.indexOf('{');
-    const data = oi >= 0 ? JSON.parse(text.slice(oi)) : null;
-    if(data?.price > 0 && bp) {
-      item.market_nm = data.price;
-      item.market = data.price;
-      item.priceSource = 'manual_retry_ai';
-      bp.textContent = '$' + Number(data.price).toFixed(2);
+    const fetched = await fetchAllPrintings(item);
+    const best = fetched.printings?.[fetched.bestMatchIdx || 0];
+    if(best && best.mid > 0 && bp) {
+      el._prints = fetched.printings;
+      item.market_nm = best.mid;
+      item.market = best.mid;
+      item.priceSource = best.priceSource || 'real_market_data';
+      bp.textContent = '$' + Number(best.mid).toFixed(2);
       bp.style.color = '';
-      if(br) br.textContent = [data.note || 'Text retry estimate', data.low && data.high ? '$'+Number(data.low).toFixed(2)+' - $'+Number(data.high).toFixed(2) : ''].filter(Boolean).join(' · ');
+      if(br) br.textContent = 'Re-matched with edited details';
       toast('Updated price/search from edited details');
     } else {
-      if(br) br.textContent = 'No price returned. Use external search links.';
+      if(br) br.textContent = 'No price found. Use external search links.';
       toast('No match found from edited details');
     }
   } catch(e) {
@@ -5915,48 +5380,7 @@ window.scanBackForBubble = async function(bubId) {
       bubs.push(bub);
     }
 
-    // If we have the front image for this bubble AND it's a sports card,
-    // use two-image call for maximum accuracy
-    const ct2 = bub.el?._ct;
-    const frontB64 = bub.el?._frontB64 || window._lastFrontB64;
-    if(ct2 === 'sports' && frontB64) {
-      hs.textContent = 'COMBINING BOTH SIDES...';
-      bub.el._backB64 = img;
-      try {
-        const refined = await sendBothImagesToClaude(frontB64, img, bub.el._item);
-        if(refined && refined.player && bub.el._item) {
-          const item = bub.el._item;
-          item.player      = refined.player    || item.player;
-          item.year        = refined.year       || item.year;
-          item.set_name    = refined.set_name   || item.set_name;
-          item.parallel    = refined.parallel   || item.parallel;
-          item.card_number = refined.card_number|| item.card_number;
-          item.serial_number=refined.serial_number||item.serial_number;
-          item.manufacturer= refined.manufacturer||item.manufacturer;
-          item.is_rookie   = refined.is_rookie  || item.is_rookie;
-          item._searchQuery= refined.search_query||'';
-          // Update bubble display
-          const bname = bub.el.querySelector('.bname');
-          if(bname) bname.textContent = refined.player;
-          const bsub = bub.el.querySelector('.bsub');
-          if(bsub) bsub.textContent = [refined.year, refined.set_name,
-            refined.parallel!=='Base'?refined.parallel:null,
-            refined.card_number?'Card #'+refined.card_number:null,
-            refined.serial_number].filter(Boolean).join(' · ');
-          // Update eBay search
-          const ebayBtns = bub.el.querySelectorAll('.a-ebay');
-          if(ebayBtns[0] && refined.search_query) ebayBtns[0].href = AFF.ebaySearch(refined.search_query);
-          hs.textContent = '✓ DUAL-SCAN (' + (refined.confidence||'?') + ')';
-          toast('✓ Both sides analyzed — ' + refined.parallel + (refined.serial_number?' '+refined.serial_number:''));
-          addBackInfo(bubId, {card_number:refined.card_number,serial_number:refined.serial_number,set_name:refined.set_name,year:refined.year,notes:'Two-image scan'});
-        }
-      } catch(e2) {
-        console.warn('Two-image failed, falling back to single back scan:', e2.message);
-        await scanBack(img);
-      }
-    } else {
-      await scanBack(img);
-    }
+    await scanBack(img);
 
     // Restore original order if we moved it
     if(bubIdx >= 0 && bubIdx !== bubs.length - 1) {
@@ -6899,184 +6323,6 @@ function newTransaction(){
 }
 
 // ════════════════════════════════════════════════════════════
-// PRICING TOOLS
-// ════════════════════════════════════════════════════════════
-function openPricingTools(){
-  document.getElementById('pricing-panel').classList.add('on');
-  document.getElementById('mc-ship').value = '1.00';
-
-  // Auto-fill from last scanned card
-  const lastBub = bubs.length > 0 ? bubs[bubs.length-1] : null;
-  if(!lastBub || !lastBub.el._item) return;
-  const item = lastBub.el._item;
-  const pi   = parseInt(document.getElementById('ps'+lastBub.id)?.value)||0;
-  const print = lastBub.el._prints?.[pi] || {};
-
-  // Build search string from scanned card
-  const cardName = [item.player||item.name, item.year, print.set||item.set_name,
-    print.variant && print.variant!=='Base' ? print.variant : null,
-    item.card_number ? '#'+item.card_number : null
-  ].filter(Boolean).join(' ');
-
-  // Fill quick price search
-  const ptSearch = document.getElementById('pt-search');
-  if(ptSearch && cardName) {
-    ptSearch.value = cardName;
-    debouncePriceSearch();
-  }
-
-  // Fill grade spread
-  const ptGrade = document.getElementById('pt-grade-card');
-  if(ptGrade && cardName) ptGrade.value = cardName;
-
-  // Fill trend
-  const ptDelta = document.getElementById('pt-delta-card');
-  if(ptDelta && cardName) ptDelta.value = cardName;
-
-  // Fill margin calculator with current price as sell price
-  const mktPrice = print.mid || 0;
-  if(mktPrice > 0) {
-    const sellEl = document.getElementById('mc-sell');
-    if(sellEl) { sellEl.value = mktPrice.toFixed(2); calcMargin(); }
-  }
-
-  // Fill price tag generator
-  const ptTagName = document.getElementById('pt-tag-name');
-  const ptTagPrice = document.getElementById('pt-tag-price');
-  if(ptTagName) ptTagName.value = item.player||item.name||'';
-  if(ptTagPrice && mktPrice > 0) ptTagPrice.value = mktPrice.toFixed(2);
-
-  // Show a banner at top of pricing panel showing what card is loaded
-  let banner = document.getElementById('pt-card-banner');
-  if(!banner) {
-    banner = document.createElement('div');
-    banner.id = 'pt-card-banner';
-    banner.style.cssText = 'background:rgba(0,255,179,.06);border:1px solid rgba(0,255,179,.2);border-radius:6px;padding:8px 12px;margin-bottom:12px;font-family:"DM Mono",monospace;font-size:9px;color:var(--g);display:flex;justify-content:space-between;align-items:center';
-    const ptBody = document.querySelector('#pricing-panel .pt-body');
-    if(ptBody) ptBody.prepend(banner);
-  }
-  banner.innerHTML = `<span>📊 Loaded: <b style="color:#fff">${item.player||item.name||'?'}</b>${print.set?' · '+print.set:''}</span>`
-    + (mktPrice > 0 ? `<span style="color:var(--gold);font-family:'Orbitron',monospace;font-size:11px">$${mktPrice.toFixed(2)}</span>` : '');
-}
-function closePricingTools(){ document.getElementById('pricing-panel').classList.remove('on'); }
-
-// Margin calculator
-function calcMargin(){
-  const cost = parseFloat(document.getElementById('mc-cost')?.value)||0;
-  const sell = parseFloat(document.getElementById('mc-sell')?.value)||0;
-  const ship = parseFloat(document.getElementById('mc-ship')?.value)||0;
-  const fees = sell * 0.1325 + 0.30; // eBay final value fee ~13.25% + $0.30
-  const profit = sell - cost - fees - ship;
-  const roi = cost > 0 ? (profit/cost*100) : 0;
-  const bar = Math.min(100, Math.max(0, roi));
-
-  document.getElementById('mc-fees').textContent = '$'+fees.toFixed(2);
-  document.getElementById('mc-profit').textContent = (profit>=0?'+':'')+'$'+Math.abs(profit).toFixed(2);
-  document.getElementById('mc-profit').className = 'pt-val '+(profit>=0?'g':'red');
-  document.getElementById('mc-roi').textContent = (roi>=0?'+':'')+roi.toFixed(1)+'%';
-  document.getElementById('mc-roi').className = 'pt-val '+(roi>=0?'g':'red');
-  document.getElementById('mc-bar').style.width = bar+'%';
-  document.getElementById('mc-bar').style.background = profit>=0?'var(--g)':'var(--red)';
-}
-
-// Price search — uses Claude to get quick price
-let priceSearchTimer = null;
-function debouncePriceSearch(){
-  clearTimeout(priceSearchTimer);
-  priceSearchTimer = setTimeout(runPriceSearch, 800);
-}
-
-async function runPriceSearch(){
-  const q = document.getElementById('pt-search')?.value?.trim();
-  if(!q || q.length < 3) return;
-  const el = document.getElementById('pt-results');
-  el.textContent = '⟳ Looking up...';
-  el.style.color = 'var(--gold)';
-  try {
-    const text = await callClaudeSonnet([{role:'user',content:[{type:'text',text:
-      `What is the current market price for: "${q}"?
-      Give me TCGPlayer mid, eBay sold average, and high/low range.
-      Return ONLY JSON: {"name":"exact name","tcg_mid":0.00,"ebay_avg":0.00,"low":0.00,"high":0.00,"condition":"NM","note":"brief note e.g. trending up, common, etc"}`
-    }]}], 400);
-    const data = JSON.parse(text.replace(/\`\`\`json|\`\`\`/g,'').trim());
-    el.style.color = 'var(--g)';
-    el.innerHTML = `
-      <div style="margin-bottom:4px;font-size:10px;color:#fff">${data.name||q}</div>
-      <div class="pt-row"><span class="pt-label">TCGPlayer mid</span><span class="pt-val g">$${(data.tcg_mid||0).toFixed(2)}</span></div>
-      <div class="pt-row"><span class="pt-label">eBay avg sold</span><span class="pt-val gold">$${(data.ebay_avg||0).toFixed(2)}</span></div>
-      <div class="pt-row"><span class="pt-label">Range (NM)</span><span class="pt-val blue">$${(data.low||0).toFixed(2)} – $${(data.high||0).toFixed(2)}</span></div>
-      <div style="font-size:8px;color:rgba(255,255,255,.3);margin-top:4px">${data.note||''} · AI estimate from training data</div>`;
-  } catch(e){
-    el.style.color = 'var(--red)';
-    el.textContent = '⚠ Could not look up: '+e.message;
-  }
-}
-
-// Grade spread
-async function lookupGradeSpread(){
-  const q = document.getElementById('pt-grade-card')?.value?.trim();
-  if(!q || q.length < 3) return;
-  const grid = document.getElementById('grade-grid');
-  grid.innerHTML = '<div style="font-family:monospace;font-size:8px;color:rgba(255,255,255,.3);grid-column:1/-1;text-align:center;padding:8px">Loading grade values...</div>';
-  try {
-    const text = await callClaudeSonnet([{role:'user',content:[{type:'text',text:
-      `What are the PSA graded values for: "${q}"?
-      Return ONLY JSON array of 8 grades: [{"grade":"10","price":0.00},{"grade":"9.5","price":0.00},{"grade":"9","price":0.00},{"grade":"8.5","price":0.00},{"grade":"8","price":0.00},{"grade":"7","price":0.00},{"grade":"6","price":0.00},{"grade":"5","price":0.00}]
-      Use current eBay sold averages. If unknown use 0.`
-    }]}], 400);
-    const grades = JSON.parse(text.replace(/\`\`\`json|\`\`\`/g,'').trim());
-    grid.innerHTML = grades.map(g => `
-      <div class="pt-grade-btn" onclick="this.classList.toggle('on')">
-        <div class="pt-grade-val">PSA ${g.grade}</div>
-        <div class="pt-grade-price">$${(g.price||0).toFixed(2)}</div>
-      </div>`).join('');
-  } catch(e){
-    grid.innerHTML = '<div style="color:var(--red);font-size:8px;padding:8px">Error: '+e.message+'</div>';
-  }
-}
-
-document.getElementById('pt-grade-card')?.addEventListener('keydown', e => { if(e.key==='Enter') lookupGradeSpread(); });
-
-// Market trend delta
-async function lookupTrendDelta(){
-  const q = document.getElementById('pt-delta-card')?.value?.trim();
-  if(!q) return;
-  const el = document.getElementById('pt-delta-result');
-  el.textContent = '⟳ Analyzing trend...';
-  el.style.color = 'var(--gold)';
-  try {
-    const text = await callClaudeSonnet([{role:'user',content:[{type:'text',text:
-      `What is the price trend for: "${q}"?
-      Based on your training data, estimate the trend.
-      Return ONLY JSON: {"trend":"up|down|flat|volatile","pct_30d":0.0,"pct_90d":0.0,"reason":"brief reason","current_nm":0.00}`
-    }]}], 300);
-    const d = JSON.parse(text.replace(/\`\`\`json|\`\`\`/g,'').trim());
-    const tc = d.trend==='up'?'var(--g)':d.trend==='down'?'var(--red)':'var(--gold)';
-    el.style.color = tc;
-    el.innerHTML = `<span style="color:${tc}">${d.trend==='up'?'↑':d.trend==='down'?'↓':'→'} ${d.trend.toUpperCase()}</span> &nbsp;
-      30d: ${d.pct_30d>=0?'+':''}${(d.pct_30d||0).toFixed(1)}% &nbsp; 90d: ${d.pct_90d>=0?'+':''}${(d.pct_90d||0).toFixed(1)}%<br>
-      <span style="color:rgba(255,255,255,.3);font-size:8px">${d.reason||''}</span>`;
-  } catch(e){ el.style.color='var(--red)'; el.textContent='Error: '+e.message; }
-}
-document.getElementById('pt-delta-card')?.addEventListener('keydown', e => { if(e.key==='Enter') lookupTrendDelta(); });
-
-// Price tag generator
-function generatePriceTag(){
-  const name = document.getElementById('pt-tag-name')?.value?.trim();
-  const price = parseFloat(document.getElementById('pt-tag-price')?.value)||0;
-  const cond = document.getElementById('pt-tag-cond')?.value||'NM';
-  if(!name || !price){ toast('Enter name and price'); return; }
-  const el = document.getElementById('pt-tag-preview');
-  el.innerHTML = `
-    <div style="background:#fff;color:#111;border-radius:8px;padding:10px 12px;margin-top:6px;font-family:'DM Mono',monospace;">
-      <div style="font-size:11px;font-weight:700;margin-bottom:2px">${name}</div>
-      <div style="font-size:9px;color:#666;margin-bottom:4px">${cond} · Walk-Off Sports Cards</div>
-      <div style="font-size:20px;font-weight:900;color:#111">$${price.toFixed(2)}</div>
-      <button onclick="window.print()" style="width:100%;margin-top:8px;padding:6px;background:#111;color:#fff;border:none;border-radius:4px;font-size:9px;cursor:pointer">🖨 Print Tag</button>
-    </div>`;
-}
-
-// ════════════════════════════════════════════════════════════
 // ADD TO CART BUTTON — inject into every bubble's bacts
 // ════════════════════════════════════════════════════════════
 // Hook into addBubble post-render to add cart button
@@ -7736,8 +6982,7 @@ function _ensureVariantModal() {
       <button onclick="closeVariantSearch()" style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);color:rgba(255,255,255,.5);padding:7px 10px;font-family:monospace;font-size:12px;border-radius:4px;cursor:pointer">×</button>
     </div>
     <div id="var-tabs" style="display:flex;gap:0;border-bottom:1px solid rgba(255,255,255,.06);flex-shrink:0">
-      <button class="var-tab on" onclick="setVarTab('ai',this)" style="flex:1;padding:7px;font-family:monospace;font-size:8px;letter-spacing:1px;background:rgba(0,255,179,.08);border:none;border-bottom:2px solid var(--g,#00ffb3);color:var(--g,#00ffb3);cursor:pointer">AI VARIANTS</button>
-      <button class="var-tab" onclick="setVarTab('ebay',this)" style="flex:1;padding:7px;font-family:monospace;font-size:8px;letter-spacing:1px;background:none;border:none;border-bottom:2px solid transparent;color:rgba(255,255,255,.35);cursor:pointer">EBAY SOLD</button>
+      <button class="var-tab on" onclick="setVarTab('ebay',this)" style="flex:1;padding:7px;font-family:monospace;font-size:8px;letter-spacing:1px;background:rgba(0,255,179,.08);border:none;border-bottom:2px solid var(--g,#00ffb3);color:var(--g,#00ffb3);cursor:pointer">EBAY SOLD</button>
       <button class="var-tab" onclick="setVarTab('130pt',this)" style="flex:1;padding:7px;font-family:monospace;font-size:8px;letter-spacing:1px;background:none;border:none;border-bottom:2px solid transparent;color:rgba(255,255,255,.35);cursor:pointer">130PT</button>
     </div>
     <div id="var-results" style="overflow-y:auto;padding:10px 12px;flex:1"></div>
@@ -7765,14 +7010,12 @@ window.openVariantSearch = function(id) {
   const game = item.game || '';
   const year = item.year ? ' '+item.year : '';
   const set  = item.set_name ? ' '+item.set_name : '';
-  const issue = item.issue ? ' #'+String(item.issue).replace(/^#/,'') : '';
-  document.getElementById('var-inp').value = game === 'Comic' ? (name + issue + year).trim() : name + year + set;
+  document.getElementById('var-inp').value = name + year + set;
   document.getElementById('var-modal').style.display = 'flex';
   document.getElementById('var-results').innerHTML = '<div style="color:rgba(255,255,255,.3);font-family:monospace;font-size:9px;text-align:center;padding:20px">Tap Search to find all variants</div>';
   window._varGame = game;
-  window._varIssue = item.issue || '';
   window._varYear = item.year || '';
-  window._varTab = 'ai';
+  window._varTab = 'ebay';
   // Reset tab UI
   document.querySelectorAll('.var-tab').forEach((b,i) => {
     b.style.background = i===0?'rgba(0,255,179,.08)':'none';
@@ -7795,91 +7038,19 @@ window.doVariantSearch = async function() {
   if(!res) return;
   if(!q) { res.innerHTML = '<div style="color:rgba(255,255,255,.3);font-family:monospace;font-size:9px;text-align:center;padding:20px">Enter a card name</div>'; return; }
 
-  const tab = window._varTab || 'ai';
-  const game = window._varGame || '';
-  if(game === 'Comic' && tab === 'ai') {
-    res.innerHTML = '<div style="color:rgba(199,125,255,.7);font-family:monospace;font-size:9px;text-align:center;padding:20px">Searching comic covers...</div>';
-    const title = q.replace(/\s+#?\d+.*$/,'').trim();
-    const issueMatch = q.match(/#?\s*(\d+[A-Za-z]?)/);
-    const issue = (window._varIssue || (issueMatch ? issueMatch[1] : '') || '').replace(/[^0-9A-Za-z]/g,'');
-    const year = window._varYear || ((q.match(/\b(19|20)\d{2}\b/)||[])[0] || '');
-    try {
-      const covers = await fetchComicVariants(title || q, issue, year);
-      if(covers && covers.length) {
-        res.innerHTML = `
-          <div style="font-family:monospace;font-size:8px;color:rgba(255,255,255,.3);margin-bottom:8px;">${covers.length} COVER CANDIDATES · tap to use</div>
-          <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px">
-          ${covers.map(v => {
-            const payload = { set:v.volume||title||q, variant:[v.title,v.publisher,v.year].filter(Boolean).join(' · ')||'Variant Cover', year:v.year||year, card_number:v.issue_number||issue, mid:0, low:0, high:0, note:v.cover_date||'', imageUrl:v.cover_image||null };
-            return `<div onclick="applyVariant(${JSON.stringify(payload).replace(/"/g,'&quot;')})" style="background:rgba(255,255,255,.04);border:1px solid rgba(199,125,255,.18);border-radius:7px;padding:7px;cursor:pointer">
-              ${v.cover_image ? `<img src="${v.cover_image}" style="width:100%;height:150px;object-fit:contain;background:#050507;border-radius:4px;margin-bottom:6px">` : ''}
-              <div style="font-family:monospace;font-size:9px;color:#fff;font-weight:700">${v.volume || title || q}</div>
-              <div style="font-family:monospace;font-size:8px;color:rgba(255,255,255,.45)">${[v.title || 'Cover', v.issue_number?'#'+v.issue_number:'', v.year].filter(Boolean).join(' · ')}</div>
-            </div>`;
-          }).join('')}</div>`;
-        return;
-      }
-    } catch(e) {}
-  }
+  const tab = window._varTab || 'ebay';
 
-  // -- eBay / 130pt tabs = open link
-  if(tab !== 'ai') {
-    const qEnc = encodeURIComponent(q);
-    const links = {
-      ebay: `https://www.ebay.com/sch/i.html?_nkw=${qEnc}&LH_Complete=1&LH_Sold=1&_sop=13`,
-      '130pt': `https://130point.com/sales/?q=${qEnc}`,
-    };
-    res.innerHTML = `
-      <div style="padding:8px 0;font-family:monospace;font-size:9px;color:rgba(255,255,255,.3);margin-bottom:8px">Tap to open in new tab:</div>
-      <a href="${links[tab]}" target="_blank" style="display:flex;align-items:center;gap:8px;padding:12px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:6px;color:#fff;text-decoration:none;font-family:monospace;font-size:10px">
-        🔗 Search "${q}" on ${tab==='ebay'?'eBay Sold':'130pt'} ↗
-      </a>`;
-    return;
-  }
-
-  // ── AI tab: ask Claude for all known variants ────────────────
-  res.innerHTML = '<div style="color:rgba(0,255,179,.5);font-family:monospace;font-size:9px;text-align:center;padding:20px">⟳ SEARCHING ALL VARIANTS...</div>';
-
-  const gameCtx = game ? ` (${game})` : '';
-  const prompt = `List ALL notable printings/variants of "${q}"${gameCtx}.
-
-Include: different sets, years, parallels, numbered editions, autos, patches, special editions, promos, reprints.
-For sports cards: include all Topps/Panini/Upper Deck sets and parallels.
-For TCG: include all set printings, holos, reverse holos, Secret Rares, Full Art, alt art.
-For comics: include all print runs, variants, cover variants, newsstand, CGC grades.
-
-Return ONLY a JSON array, up to 30 items, no markdown:
-[{"set":"Base Set","variant":"Shadowless Holo","year":"1999","card_number":null,"serial":null,"mid":5000,"low":2000,"high":12000,"note":"Rare shadowless print"},...]
-
-Fields: set, variant, year, card_number, serial, mid (median $), low ($), high ($), note.`;
-
-  try {
-    const text = await callClaude([{role:'user',content:[{type:'text',text:prompt}]}], 1200);
-    let raw = text.replace(/```json/gi,'').replace(/```/g,'').trim();
-    const ai = raw.indexOf('[');
-    if(ai>=0) raw = raw.slice(ai);
-    const variants = JSON.parse(raw);
-    if(!variants.length) throw new Error('empty');
-
-    res.innerHTML = `
-      <div style="font-family:monospace;font-size:8px;color:rgba(255,255,255,.3);margin-bottom:8px;">${variants.length} VARIANTS FOUND · tap to use</div>
-      ${variants.map((v,i) => {
-        const price = v.mid > 0 ? `<span style="color:var(--g,#00ffb3);font-weight:700">$${Number(v.mid).toFixed(2)}</span>` : '';
-        const range = (v.low>0&&v.high>0) ? `<span style="color:rgba(255,255,255,.3);font-size:8px"> $${v.low}–$${v.high}</span>` : '';
-        const serial = v.serial ? `<span style="color:#ff4d6d;font-size:8px"> ${v.serial}</span>` : '';
-        const num = v.card_number ? `<span style="color:rgba(255,255,255,.4);font-size:8px"> #${v.card_number}</span>` : '';
-        return `<div onclick="applyVariant(${JSON.stringify(v).replace(/"/g,'&quot;')})" style="display:flex;flex-direction:column;gap:2px;padding:9px 10px;margin-bottom:5px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);border-radius:5px;cursor:pointer;transition:background .15s" onmouseenter="this.style.background='rgba(0,255,179,.08)'" onmouseleave="this.style.background='rgba(255,255,255,.04)'">
-          <div style="display:flex;justify-content:space-between;align-items:center">
-            <span style="font-family:monospace;font-size:10px;color:#fff;font-weight:600">${v.set||'Unknown Set'}${serial}</span>
-            <span>${price}${range}</span>
-          </div>
-          <div style="font-family:monospace;font-size:8px;color:rgba(255,255,255,.4)">${v.variant||'Base'}${num}${v.year?' · '+v.year:''}</div>
-          ${v.note?`<div style="font-family:monospace;font-size:7px;color:rgba(255,255,255,.25)">${v.note}</div>`:''}
-        </div>`;
-      }).join('')}`;
-  } catch(e) {
-    res.innerHTML = `<div style="color:#ff4d6d;font-family:monospace;font-size:9px;text-align:center;padding:20px">⚠ Search failed — try a simpler name<br><span style="color:rgba(255,255,255,.3)">${e.message}</span></div>`;
-  }
+  // eBay / 130pt tabs = open link to real sold/listing search (no AI guessing)
+  const qEnc = encodeURIComponent(q);
+  const links = {
+    ebay: `https://www.ebay.com/sch/i.html?_nkw=${qEnc}&LH_Complete=1&LH_Sold=1&_sop=13`,
+    '130pt': `https://130point.com/sales/?q=${qEnc}`,
+  };
+  res.innerHTML = `
+    <div style="padding:8px 0;font-family:monospace;font-size:9px;color:rgba(255,255,255,.3);margin-bottom:8px">Tap to open in new tab:</div>
+    <a href="${links[tab]}" target="_blank" style="display:flex;align-items:center;gap:8px;padding:12px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:6px;color:#fff;text-decoration:none;font-family:monospace;font-size:10px">
+      🔗 Search "${q}" on ${tab==='ebay'?'eBay Sold':'130pt'} ↗
+    </a>`;
 };
 
 window.applyVariant = function(v) {
@@ -8114,94 +7285,6 @@ window.addEventListener('load', async function(){
       <button class="receipt-btn" onclick="closeReceipt()">Close</button>
       <button class="receipt-btn" onclick="newTransaction()">New Sale</button>
     </div>
-  </div>
-</div>
-
-<!-- ═══ PRICING TOOLS ════════════════════════════════════ -->
-<div id="pricing-panel">
-  <div class="pt-header">
-    <span class="pt-title">📊 PRICING TOOLS</span>
-    <button class="pos-close" onclick="closePricingTools()">×</button>
-  </div>
-  <div class="pt-body">
-
-    <div class="pt-section">
-      <div class="pt-section-h">QUICK PRICE LOOKUP</div>
-      <div class="pt-card">
-        <div style="display:grid;grid-template-columns:1fr 58px;gap:6px;align-items:start">
-          <input class="pt-inp" id="pt-search" placeholder="Card name, set, year, #, SIR..." oninput="debouncePriceSearch()">
-          <button class="hbtn" aria-label="Voice price search" onclick="startScannerVoiceInput('pt-search', runPriceSearch)" style="color:var(--g);font-weight:700">MIC</button>
-        </div>
-        <div id="pt-results" style="font-family:'DM Mono',monospace;font-size:9px;color:rgba(255,255,255,.4);text-align:center;padding:8px">Enter card name to search</div>
-      </div>
-    </div>
-
-    <div class="pt-section">
-      <div class="pt-section-h">GRADE VALUE SPREAD (PSA)</div>
-      <div class="pt-card" id="grade-spread-card">
-        <input class="pt-inp" id="pt-grade-card" placeholder="Card name for grade spread...">
-        <div class="pt-grade-grid" id="grade-grid">
-          <div style="font-family:monospace;font-size:8px;color:rgba(255,255,255,.2);grid-column:1/-1;text-align:center;padding:8px">Enter card name above then tap a grade</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="pt-section">
-      <div class="pt-section-h">MARGIN CALCULATOR</div>
-      <div class="pt-card">
-        <div class="pt-row">
-          <span class="pt-label">Cost paid</span>
-          <span></span>
-        </div>
-        <input class="pt-inp" id="mc-cost" type="number" placeholder="$0.00" step="0.01" oninput="calcMargin()">
-        <div class="pt-row">
-          <span class="pt-label">Sell price</span><span></span>
-        </div>
-        <input class="pt-inp" id="mc-sell" type="number" placeholder="$0.00" step="0.01" oninput="calcMargin()">
-        <div class="pt-row">
-          <span class="pt-label">eBay fees (~13.25%)</span>
-          <span class="pt-val gold" id="mc-fees">—</span>
-        </div>
-        <div class="pt-row">
-          <span class="pt-label">Shipping est.</span>
-          <input class="pt-inp" id="mc-ship" type="number" placeholder="1.00" step="0.25" value="1.00" style="width:70px;margin:0;padding:4px 6px" oninput="calcMargin()">
-        </div>
-        <div class="pt-row" style="margin-top:6px">
-          <span class="pt-label" style="font-size:10px;color:#fff">Net profit</span>
-          <span class="pt-val g" id="mc-profit" style="font-size:16px">—</span>
-        </div>
-        <div class="pt-row">
-          <span class="pt-label">ROI</span>
-          <span class="pt-val" id="mc-roi">—</span>
-        </div>
-        <div class="pt-trend-bar"><div class="pt-trend-fill" id="mc-bar" style="width:0%;background:var(--g)"></div></div>
-      </div>
-    </div>
-
-    <div class="pt-section">
-      <div class="pt-section-h">MARKET TREND DELTA</div>
-      <div class="pt-card">
-        <input class="pt-inp" id="pt-delta-card" placeholder="Card name...">
-        <div id="pt-delta-result" style="font-family:'DM Mono',monospace;font-size:9px;color:rgba(255,255,255,.3);padding:6px 0">Enter a card to see 30/60/90-day trend estimate</div>
-      </div>
-    </div>
-
-    <div class="pt-section">
-      <div class="pt-section-h">PRICE TAG GENERATOR</div>
-      <div class="pt-card">
-        <input class="pt-inp" id="pt-tag-name" placeholder="Item name">
-        <input class="pt-inp" id="pt-tag-price" type="number" placeholder="Price $" step="0.01">
-        <select class="pt-inp" id="pt-tag-cond">
-          <option value="NM">NM — Near Mint</option>
-          <option value="LP">LP — Light Play</option>
-          <option value="MP">MP — Moderate Play</option>
-          <option value="HP">HP — Heavy Play</option>
-        </select>
-        <button style="width:100%;padding:10px;background:rgba(255,209,102,.08);border:1px solid rgba(255,209,102,.2);color:var(--gold);border-radius:6px;font-family:'DM Mono',monospace;font-size:9px;cursor:pointer;letter-spacing:1px" onclick="generatePriceTag()">GENERATE PRICE TAG</button>
-        <div id="pt-tag-preview" style="margin-top:8px"></div>
-      </div>
-    </div>
-
   </div>
 </div>
 
