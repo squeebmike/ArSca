@@ -18866,6 +18866,12 @@ async function doCardSightScan(){
           const line = document.createElement('div');
           line.textContent = '✓ ' + row.name + (row.market ? ' — $' + row.market.toFixed(2) : ' — no price found');
           log.prepend(line);
+          const card = det.card || {};
+          const debugLine = document.createElement('div');
+          debugLine.style.color = 'var(--gold)';
+          debugLine.style.fontSize = '8px';
+          debugLine.textContent = 'DEBUG raw: setName="' + (card.setName || '') + '" releaseName="' + (card.releaseName || '') + '" setId="' + (card.setId || '') + '" releaseId="' + (card.releaseId || '') + '" segmentId="' + (card.segmentId || '') + '"';
+          log.prepend(debugLine);
         }
       }
       qplLastSearch = '';
