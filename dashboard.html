@@ -1886,6 +1886,7 @@ body.show-mode .inv-sync-badge{display:none;}
       <div id="qpl-search-row" style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">
         <input class="tsi" id="qpl-input" placeholder="Card name, TCGplayer ID, or full product URL..." style="flex:1;margin-bottom:0;font-size:12px;padding:10px 14px" oninput="debouncePriceLookup()" onkeydown="if(event.key==='Enter'){event.preventDefault();runPriceLookup()}">
         <button class="hbtn" id="research-barcode-btn" title="Scan UPC or EAN barcode" onclick="openBarcodeScanner()" style="white-space:nowrap;color:var(--g)">SCAN BARCODE</button>
+        <button class="hbtn" id="research-cardsight-btn" title="Scan a sports card, Pokemon TCG, or One Piece TCG card with CardSight AI" onclick="openCardSightScanner()" style="white-space:nowrap;color:var(--g)">SCAN CARD</button>
         <button class="hbtn" title="Speak search" aria-label="Voice price search" onclick="startVoiceInput('qpl-input', runPriceLookup)" style="width:54px;padding:0">MIC</button>
       </div>
       <!-- hidden select keeps all existing JS working unchanged -->
@@ -2212,6 +2213,23 @@ body.show-mode .inv-sync-badge{display:none;}
     <label style="display:block;font-size:9px;color:var(--dim);margin-top:8px">OPTIONAL PRODUCT WORDS (fallback when UPC has no match)<input id="barcode-query-hint" class="tsi" placeholder="e.g. Spider-Man comic, Pokemon booster box"></label>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"><button class="hbtn" id="barcode-camera-toggle" onclick="toggleBarcodeCamera()">START CAMERA</button><button class="hbtn" onclick="resetBarcodeLookup()">SEARCH AGAIN</button><button class="hbtn" id="barcode-forget-link" onclick="forgetConfirmedBarcodeLink()" style="display:none;color:var(--gold)">WRONG ITEM / FORGET SAVED MATCH</button></div>
     <div id="barcode-candidates" style="margin-top:10px"></div>
+  </div>
+</div>
+
+<div id="cardsight-scanner-modal" class="barcode-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="cardsight-scanner-title" onclick="if(event.target===this)closeCardSightScanner()">
+  <div class="barcode-sheet">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+      <div><div id="cardsight-scanner-title" style="font-family:'Orbitron',monospace;font-size:12px;color:var(--g)">CARDSIGHT AI CARD SCANNER</div><div style="font-size:9px;color:var(--dim);margin-top:3px">Sports cards, Pokemon TCG, and One Piece TCG. Point the camera at a card and tap Scan.</div></div>
+      <button class="hbtn" onclick="closeCardSightScanner()">CLOSE</button>
+    </div>
+    <div id="cardsight-camera" class="barcode-camera"><video id="cardsight-video" playsinline muted></video><div class="barcode-scan-line"></div><div id="cardsight-camera-placeholder" style="font-family:monospace;font-size:10px;color:var(--dim);text-align:center;padding:18px">Opening camera...</div></div>
+    <div id="cardsight-status" style="font-family:var(--font-mono);font-size:10px;color:var(--dim);min-height:18px;line-height:1.5"></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+      <button class="hbtn" id="cardsight-scan-btn" onclick="doCardSightScan()" style="min-height:42px;color:var(--g)">📷 SCAN CARD</button>
+      <button class="hbtn" id="cardsight-camera-toggle" onclick="toggleCardSightCamera()">STOP CAMERA</button>
+    </div>
+    <div style="font-size:9px;color:var(--dim);margin-top:8px">Cards scanned here are added straight to the Research results below — close this window any time to review them. Prices are always real market data (PriceCharting / JustTCG / PokemonPriceTracker), never AI-guessed.</div>
+    <div id="cardsight-results-log" style="margin-top:8px;font-family:var(--font-mono);font-size:9px;color:rgba(255,255,255,.5);display:grid;gap:4px;max-height:160px;overflow-y:auto"></div>
   </div>
 </div>
 
@@ -18660,6 +18678,207 @@ function renderBarcodeCandidates(){
   if(!barcodeCandidates.length){host.innerHTML='';return;}
   host.innerHTML=barcodeCandidates.map((c,idx)=>{const comic=c.category==='comics',sealed=c.category==='sealed',price=Number(c.priceSummary?.raw??c.priceSummary?.ungraded??0),grade98=Number(c.priceSummary?.graded98||0),source=c.savedConfirmed?'SAVED CONFIRMED MATCH':String(c.provider||'pricecharting').toUpperCase()+' '+String(c.evidence?.routeType||'UPC').toUpperCase();return `<div class="barcode-candidate"><div>${c.imageUrl?`<img src="${escHtml(c.imageUrl)}" alt="${escHtml(c.title||'Product image')}" onerror="this.outerHTML='<div style=\'width:90px;height:120px;display:grid;place-items:center;background:#050607;color:var(--dim)\'>NO IMAGE</div>'">`:'<div style="width:90px;height:120px;display:grid;place-items:center;background:#050607;color:var(--dim)">NO IMAGE</div>'}</div><div><div style="font-weight:800;color:var(--text)">${escHtml(c.title||'Unknown product')}</div><div style="font-size:10px;color:var(--dim);margin-top:3px">${escHtml(c.subtitle||c.consoleName||c.category||'')}</div><div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:6px"><span class="qpl-badge ${Number(c.confidence)>=90?'good':Number(c.confidence)>=70?'warn':'bad'}">${Number(c.confidence)||0}% evidence</span><span class="qpl-badge">${escHtml(source)}</span>${sealed?'<span class="qpl-badge good">SEALED PRODUCT</span>':''}${comic&&n.supplement?'<span class="qpl-badge good">COVER SUPPLEMENT READ</span>':''}${comic?'<span class="qpl-badge warn">CONFIRM COVER</span>':''}</div><div style="font-size:13px;margin-top:7px">${price?'Market $'+price.toFixed(2):'No current guide'}${comic&&grade98?' / Graded 9.8 estimate $'+grade98.toFixed(2):''}</div><div class="barcode-evidence">Barcode ${escHtml(n.primary||c.upc||'')} ${n.supplement?' + '+escHtml(n.supplement):''}<br>${escHtml((c.matchReason||[]).join(' / '))}</div></div><div class="barcode-candidate-actions"><button class="hbtn" onclick="confirmBarcodeCandidate(${idx},'view')">${comic?'OPEN COMIC':'SELECT / VIEW'}</button><button class="hbtn" onclick="confirmBarcodeCandidate(${idx},'inventory')">ADD INVENTORY</button><button class="hbtn" onclick="confirmBarcodeCandidate(${idx},'buy')">ADD TO BUY</button><button class="hbtn" onclick="confirmBarcodeCandidate(${idx},'cart')">ADD TO CART</button>${comic?`<button class="hbtn" style="color:var(--purple)" onclick="openBarcodeComicIssueHub(${idx})">BROWSE ALL COVERS</button>${c.imageUrl?`<button class="hbtn" style="color:var(--purple)" onclick="confirmBarcodeCandidate(${idx},'cover')">USE THIS COVER</button>`:''}<button class="hbtn" style="color:var(--purple)" onclick="confirmBarcodeCandidate(${idx},'appraise')">APPRAISE COMIC</button><button class="hbtn" onclick="confirmBarcodeCandidate(${idx},'photo')">USE MY PHOTO</button>`:''}</div></div>`;}).join('');
 }
+// ════════════════════════════════════════════════════════════════
+// CARDSIGHT AI CARD SCANNER — Research tab inline camera scan
+// Same Worker route the phone scanner uses (/cardsight/identify).
+// Identification only — pricing always comes from real market data
+// (PriceCharting / JustTCG / PokemonPriceTracker), never AI-guessed.
+// ════════════════════════════════════════════════════════════════
+let cardsightStream = null;
+
+function setCardSightStatus(message, tone = ''){
+  const el = document.getElementById('cardsight-status');
+  if(el){ el.textContent = message || ''; el.style.color = tone || 'var(--dim)'; }
+}
+
+function openCardSightScanner(){
+  const modal = document.getElementById('cardsight-scanner-modal');
+  if(!modal) return;
+  modal.classList.add('on');
+  document.body.style.overflow = 'hidden';
+  const log = document.getElementById('cardsight-results-log');
+  if(log) log.innerHTML = '';
+  setCardSightStatus('');
+  startCardSightCamera();
+}
+
+function closeCardSightScanner(){
+  stopCardSightCamera();
+  document.getElementById('cardsight-scanner-modal')?.classList.remove('on');
+  document.body.style.overflow = '';
+}
+
+async function toggleCardSightCamera(){
+  if(cardsightStream) stopCardSightCamera();
+  else await startCardSightCamera();
+}
+
+async function startCardSightCamera(){
+  const video = document.getElementById('cardsight-video');
+  const placeholder = document.getElementById('cardsight-camera-placeholder');
+  if(!navigator.mediaDevices?.getUserMedia){
+    setCardSightStatus('Camera not supported in this browser.', 'var(--gold)');
+    return;
+  }
+  try {
+    cardsightStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } },
+      audio: false,
+    });
+    video.srcObject = cardsightStream;
+    await video.play();
+    document.getElementById('cardsight-camera')?.classList.add('active');
+    if(placeholder) placeholder.style.display = 'none';
+    const toggleBtn = document.getElementById('cardsight-camera-toggle');
+    if(toggleBtn) toggleBtn.textContent = 'STOP CAMERA';
+    setCardSightStatus('Camera ready. Tap SCAN CARD.', 'var(--g)');
+  } catch(e){
+    setCardSightStatus('Camera error: ' + e.message, 'var(--red)');
+  }
+}
+
+function stopCardSightCamera(){
+  if(cardsightStream){ cardsightStream.getTracks().forEach(t => t.stop()); cardsightStream = null; }
+  const video = document.getElementById('cardsight-video');
+  if(video) video.srcObject = null;
+  document.getElementById('cardsight-camera')?.classList.remove('active');
+  const placeholder = document.getElementById('cardsight-camera-placeholder');
+  if(placeholder) placeholder.style.display = '';
+  const toggleBtn = document.getElementById('cardsight-camera-toggle');
+  if(toggleBtn) toggleBtn.textContent = 'START CAMERA';
+}
+
+function captureCardSightFrame(){
+  const video = document.getElementById('cardsight-video');
+  const canvas = document.createElement('canvas');
+  const vw = video.videoWidth || 1280, vh = video.videoHeight || 720;
+  canvas.width = Math.min(vw, 1280);
+  canvas.height = Math.round(canvas.width * vh / vw);
+  canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+  return canvas.toDataURL('image/jpeg', 0.92).split(',')[1];
+}
+
+async function callCardSightDashboard(base64Image){
+  const res = await storeWorkerFetch('/cardsight/identify', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ image: base64Image }),
+  });
+  const text = await res.text();
+  if(!res.ok) throw new Error('CardSight error ' + res.status + ': ' + text.slice(0, 200));
+  let data;
+  try { data = JSON.parse(text); } catch(e) { throw new Error('CardSight response not JSON'); }
+  if(data.success === false) throw new Error('CardSight: ' + (data.error || 'identification failed'));
+  return data; // { success, detections:[{confidence, card, grading?}], processingTime }
+}
+
+// CardSight doesn't return a human game/category label directly — infer it
+// from the fields it does return. Only Sports/Pokemon TCG/One Piece TCG are
+// reachable here, since that's what CardSight identifies today.
+function classifyCardSightGameDashboard(card){
+  const fieldKeys = (card.fields || []).map(f => String(f?.key || '').toLowerCase());
+  if(fieldKeys.some(k => ['hp','stage','retreat cost'].includes(k))) return 'Pokemon TCG';
+  const text = [card.manufacturer, card.setName, card.releaseName, card.name].filter(Boolean).join(' ').toLowerCase();
+  if(text.includes('one piece') || card.manufacturer === 'Bandai') return 'One Piece TCG';
+  return 'Sports Card';
+}
+
+function cardSightDetectionToQplRow(det){
+  const card = det.card || {};
+  const numberedTo = card.parallel?.numberedTo || card.numberedTo || null;
+  const game = classifyCardSightGameDashboard(card);
+  return {
+    source: 'cardsight',
+    name: card.name || 'Unknown card',
+    category: game,
+    set: card.setName || card.releaseName || '',
+    year: card.year || '',
+    card_number: card.number || '',
+    variant: card.parallel?.name || 'Base',
+    serial_number: numberedTo ? ('/' + numberedTo) : '',
+    grading_company: det.grading?.company?.name || '',
+    grade: det.grading?.grade?.value || '',
+    confidence: det.confidence === 'High' ? 90 : det.confidence === 'Medium' ? 65 : 35,
+    matchWhy: ['CardSight AI match'],
+    note: 'Identified by CardSight AI',
+    market: 0,
+    imageUrl: '',
+    priceSource: '',
+    _game: game,
+  };
+}
+
+// Real pricing only — never AI-guessed. Routes to whichever live provider
+// already backs that category in the Research tab.
+async function fetchCardSightRealPrice(row){
+  const q = [row.name, row.year, row.set, row.variant && row.variant !== 'Base' ? row.variant : '', row.card_number ? '#' + row.card_number : ''].filter(Boolean).join(' ');
+  if(row._game === 'Pokemon TCG'){
+    try {
+      const params = new URLSearchParams({ search: row.name, limit: '5' });
+      const res = await storeWorkerFetch('/pricing/pokemonpricetracker/cards?' + params.toString());
+      const data = await res.json();
+      const card = data?.card || data?.cards?.[0] || data?.data?.[0];
+      if(card) return { market: Number(card.prices?.market || 0), imageUrl: card.imageCdnUrl200 || card.imageUrl || '', priceSource: 'PokemonPriceTracker' };
+    } catch(e) { /* fall through */ }
+    return { market: 0, imageUrl: '', priceSource: '' };
+  }
+  const category = row._game === 'One Piece TCG' ? 'One Piece' : 'Sports Card';
+  try {
+    const params = new URLSearchParams({ q, category, storeId: getActiveStoreId(), include_variants: 'true' });
+    const res = await storeWorkerFetch('/pricing/justtcg/search?' + params.toString());
+    const data = await res.json();
+    const match = (data.matches || [])[0];
+    if(match) return { market: Number(match.selectedVariant?.marketPrice || 0), imageUrl: match.imageUrl || '', priceSource: 'JustTCG' };
+  } catch(e) { /* fall through */ }
+  if(row._game === 'Sports Card'){
+    try {
+      const params = new URLSearchParams({ q, category: 'Sports Card' });
+      const res = await storeWorkerFetch('/pricing/pricecharting/search?' + params.toString());
+      const data = await res.json();
+      const match = (data.matches || data.products || [])[0];
+      if(match) return { market: Number(match.prices?.ungraded || 0), imageUrl: match.imageUrl || '', priceSource: 'PriceCharting' };
+    } catch(e) { /* fall through */ }
+  }
+  return { market: 0, imageUrl: '', priceSource: '' };
+}
+
+async function doCardSightScan(){
+  if(!cardsightStream){ setCardSightStatus('Start the camera first.', 'var(--gold)'); return; }
+  const btn = document.getElementById('cardsight-scan-btn');
+  if(btn){ btn.textContent = '⟳ SCANNING...'; btn.disabled = true; }
+  setCardSightStatus('Reading card...', 'var(--gold)');
+  try {
+    const img = captureCardSightFrame();
+    const result = await callCardSightDashboard(img);
+    const detections = result.detections || [];
+    if(!detections.length){
+      setCardSightStatus('No card detected — move closer and try again.', 'var(--gold)');
+    } else {
+      const log = document.getElementById('cardsight-results-log');
+      for(const det of detections){
+        const row = cardSightDetectionToQplRow(det);
+        const priced = await fetchCardSightRealPrice(row);
+        row.market = priced.market;
+        row.imageUrl = priced.imageUrl;
+        row.priceSource = priced.priceSource || 'Needs Review';
+        qplMasterResults.unshift(row);
+        if(log){
+          const line = document.createElement('div');
+          line.textContent = '✓ ' + row.name + (row.market ? ' — $' + row.market.toFixed(2) : ' — no price found');
+          log.prepend(line);
+        }
+      }
+      qplLastSearch = '';
+      qplResults = filterQplMasterResults(qplMasterResults, document.getElementById('qpl-cat')?.value || '');
+      renderQuickLookupResults(qplResults.length ? qplResults : qplMasterResults);
+      setCardSightStatus(detections.length + ' card' + (detections.length > 1 ? 's' : '') + ' added to Research results below.', 'var(--g)');
+    }
+  } catch(e) {
+    setCardSightStatus('Scan error: ' + e.message, 'var(--red)');
+  }
+  if(btn){ btn.textContent = '📷 SCAN CARD'; btn.disabled = false; }
+}
+
 function openBarcodeComicIssueHub(idx){const c=barcodeCandidates[idx],n=barcodeCurrentNormalized;if(!c||!n)return;const r=barcodeCandidateToResearch(c,n),parsed=window.ArsCaComicIssueHub.parseComicQuery(c.title||'');const product=r.pricecharting||r.raw;window._comicRunGroups=window.ArsCaComicIssueHub.groupCandidates([product],parsed);closeBarcodeScanner();if(window._comicRunGroups.length)openComicIssueHubFromGroup(0);else toast_dash('Issue number is needed to browse covers. Add title and issue in manual search.');}
 
 async function confirmBarcodeCandidate(idx,action='view'){
