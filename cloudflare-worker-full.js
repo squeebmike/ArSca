@@ -4,6 +4,7 @@
  *
  * Secrets / bindings expected:
  *   ANTHROPIC_API_KEY
+ *   CARDSIGHTAI_API_KEY
  *   WEBFLOW_TOKEN
  *   PSA_TOKEN
  *   STRIPE_SECRET_KEY_TEST / STRIPE_SECRET_KEY_LIVE
@@ -22,6 +23,7 @@ let _pcLastCall = 0;
 
 const WEBFLOW_BASE = 'https://api.webflow.com/v2';
 const ANTHROPIC_BASE = 'https://api.anthropic.com/v1';
+const CARDSIGHTAI_BASE = 'https://api.cardsight.ai';
 const SITE_ID = '65b15ee0228d06647ca7e4ce';
 const WF_PRODUCTS = '65eb45a28ff6bf3fe4f17b14';
 const WF_STATUS_SOLD = 'e6b42f14fcb99aa2168a5f5672226f68';
@@ -1371,6 +1373,7 @@ export default {
         ts: Date.now(),
         webflow: !!env.WEBFLOW_TOKEN,
         anthropic: !!env.ANTHROPIC_API_KEY,
+        cardsight: !!env.CARDSIGHTAI_API_KEY,
         psa: !!env.PSA_TOKEN,
         stripe: !!(env.STRIPE_SECRET_KEY_TEST || env.STRIPE_SECRET_KEY_LIVE || env.STRIPE_SECRET_KEY),
         ebay: !!env.EBAY_USER_TOKEN,
@@ -1657,6 +1660,47 @@ export default {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(body),
+      });
+
+      const data = await res.text();
+      return new Response(data, {
+        status: res.status,
+        headers: { ...CORS, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (url.pathname === '/cardsight/identify') {
+      if (request.method !== 'POST') return json({ error: 'POST only' }, 405);
+      if (!env.CARDSIGHTAI_API_KEY) return json({ error: 'CARDSIGHTAI_API_KEY not set' }, 500);
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId);
+      if (auth.error) return auth.error;
+      const limited = await readJsonWithLimit(request, 6 * 1024 * 1024);
+      if (limited.error) return limited.error;
+      const body = limited.data;
+      const rawBase64 = String(body.image || '').includes(',') ? String(body.image).split(',').pop() : String(body.image || '');
+      if (!rawBase64) return json({ ok:false, error:'image is required' }, 400);
+      if (rawBase64.length > 8 * 1024 * 1024) return json({ ok:false, error:'Image is too large' }, 413);
+      const segment = /^[a-z-]{1,40}$/.test(String(body.segment || '')) ? String(body.segment) : '';
+      const rateError = await enforceUsageLimit(env, `cardsight:${storeId}:${auth.user.id}`, 60, 60);
+      if (rateError) return rateError;
+
+      let bytes;
+      try {
+        const binaryStr = atob(rawBase64);
+        bytes = new Uint8Array(binaryStr.length);
+        for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
+      } catch (_) {
+        return json({ ok:false, error:'Invalid base64 image' }, 400);
+      }
+
+      const form = new FormData();
+      form.append('image', new Blob([bytes], { type: 'image/jpeg' }), 'scan.jpg');
+      const path = segment ? `/v1/identify/card/${segment}` : '/v1/identify/card';
+      const res = await fetch(`${CARDSIGHTAI_BASE}${path}`, {
+        method: 'POST',
+        headers: { 'X-API-Key': env.CARDSIGHTAI_API_KEY },
+        body: form,
       });
 
       const data = await res.text();
