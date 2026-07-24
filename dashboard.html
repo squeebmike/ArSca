@@ -1775,6 +1775,11 @@ body.show-mode .inv-sync-badge{display:none;}
   </div>
 </div>
 
+<!-- ORDERS TAB -->
+<div id="tab-orders" class="tab-panel">
+  <div class="sec">ORDERS</div>
+</div>
+
 <!-- ALERTS TAB -->
 <div id="tab-alerts" class="tab-panel">
   <div class="sec">NEEDS ATTENTION</div>
@@ -2520,6 +2525,10 @@ body.show-mode .inv-sync-badge{display:none;}
         <input type="number" id="edit-list-price" step="0.01" min="0" placeholder="0.00">
       </div>
       <div>
+        <label>Min Sale Price ($)</label>
+        <input type="number" id="edit-min-price" step="0.01" min="0" placeholder="No floor">
+      </div>
+      <div>
         <label>Condition</label>
         <select id="edit-condition">
           <option value="NM">NM — Near Mint</option>
@@ -3188,7 +3197,7 @@ const SUBSCRIPTION_PLANS = {
   store:{ name:'Store', price:89, features:['Everything in Register','Inventory, buying and consignments','Staff, shows and profit reporting'], capabilities:['research','checkout','sales','inventory','consignments','staff','shows'] },
   pro:{ name:'Pro', price:149, features:['Everything in Store','Online listing tools','Advanced operations + multi-store'], capabilities:['research','checkout','sales','inventory','consignments','staff','shows','marketplace','advanced'] }
 };
-const TAB_CAPABILITY = {research:'research',sets:'research',wantlist:'research',display:'checkout',browse:'checkout',pos:'checkout',sales:'sales',intake:'inventory',inventory:'inventory',locations:'inventory',restock:'inventory',consign:'consignments',shows:'shows',channels:'marketplace'};
+const TAB_CAPABILITY = {research:'research',sets:'research',wantlist:'research',display:'checkout',browse:'checkout',pos:'checkout',sales:'sales',orders:'sales',intake:'inventory',inventory:'inventory',locations:'inventory',restock:'inventory',consign:'consignments',shows:'shows',channels:'marketplace'};
 function currentPlanCode(){ return SUBSCRIPTION_PLANS[window._subStatus?.plan_code] ? window._subStatus.plan_code : 'store'; }
 function hasPlanCapability(capability){ return !capability || SUBSCRIPTION_PLANS[currentPlanCode()].capabilities.includes(capability); }
 function planCanAccessTab(tab){ return hasPlanCapability(TAB_CAPABILITY[tab]); }
@@ -4126,6 +4135,7 @@ const MORE_TABS = [
   ['pos', 'LEGACY REGISTER'],
   ['channels', 'ONLINE LISTINGS'],
   ['sales', 'SALES'],
+  ['orders', 'ORDERS'],
   ['alerts', 'ALERTS'],
   ['authcheck', 'AUTH CHECK'],
   ['wantlist', 'WANT LIST'],
@@ -5396,13 +5406,7 @@ function organizeRegisterLayout(){
   const actions = document.getElementById('research-actions-panel');
   if(qpl && actions && qpl.parentElement === research) research.insertBefore(qpl, actions);
   if(actions) actions.style.display = 'none';
-  const salesTab = document.getElementById('tab-sales');
-  const soldSec = document.getElementById('sold-items-sec');
-  if(salesTab && soldSec){
-    moveNode('register-storefront-orders-panel', salesTab);
-    const orders = document.getElementById('register-storefront-orders-panel');
-    if(orders && orders.nextElementSibling !== soldSec) salesTab.insertBefore(orders, soldSec);
-  }
+  moveNode('register-storefront-orders-panel', document.getElementById('tab-orders'));
   moveNode('register-buy-panel', intake);
   ensureBuyResearchBridge(intake);
   renderResearchQueue();
@@ -13321,6 +13325,7 @@ function builtInDataFromItem(item, updates={}){
     market:Number(updates.market ?? item.market ?? 0),
     salePrice:Number(updates.salePrice ?? updates.listPrice ?? item.salePrice ?? item.listPrice ?? item.raw?.salePrice ?? item.market ?? updates.market ?? 0),
     listPrice:Number(updates.listPrice ?? updates.salePrice ?? item.listPrice ?? item.displayPrice ?? item.salePrice ?? item.raw?.listPrice ?? item.market ?? updates.market ?? 0),
+    minPrice:Number(updates.minPrice ?? item.minPrice ?? item.raw?.minPrice ?? 0) || 0,
     price:Number(updates.price ?? updates.market ?? item.price ?? item.market ?? 0),
     displayPrice:Number(updates.displayPrice ?? updates.listPrice ?? updates.salePrice ?? item.displayPrice ?? item.listPrice ?? item.salePrice ?? updates.price ?? updates.market ?? item.market ?? 0),
     marketPrice:Number(updates.marketPrice ?? updates.market ?? item.marketPrice ?? item.market ?? 0),
@@ -13936,8 +13941,11 @@ function inventoryImageSourceLabel(item={}){
 }
 function inventoryCostBasis(item={}){ return Number(item.cost ?? item.costBasis ?? item.raw?.cost ?? 0) || 0; }
 function inventoryMarketPrice(item={}){ return Number(item.market ?? item.marketPrice ?? item.rawMarketPrice ?? item.raw?.market ?? 0) || 0; }
+function inventoryMinPrice(item={}){ return Number(item.minPrice ?? item.raw?.minPrice ?? 0) || 0; }
 function inventoryListPrice(item={}){
-  return Number(item.listPrice ?? item.displayPrice ?? item.salePrice ?? item.price ?? item.raw?.listPrice ?? item.raw?.displayPrice ?? item.raw?.salePrice ?? inventoryMarketPrice(item) ?? 0) || 0;
+  const raw = Number(item.listPrice ?? item.displayPrice ?? item.salePrice ?? item.price ?? item.raw?.listPrice ?? item.raw?.displayPrice ?? item.raw?.salePrice ?? inventoryMarketPrice(item) ?? 0) || 0;
+  const floor = inventoryMinPrice(item);
+  return floor > 0 ? Math.max(raw, floor) : raw;
 }
 function inventoryProfitStats(item={}){
   const cost = inventoryCostBasis(item);
@@ -17359,6 +17367,7 @@ function openEditModal(id) {
   document.getElementById('edit-cost').value = item.cost || '';
   document.getElementById('edit-market').value = item.market || '';
   document.getElementById('edit-list-price').value = inventoryListPrice(item) || '';
+  document.getElementById('edit-min-price').value = item.minPrice || '';
   document.getElementById('edit-qty').value = item.qty || 1;
   document.getElementById('edit-year').value = item.year || '';
   document.getElementById('edit-set').value = item.set || '';
@@ -17434,6 +17443,7 @@ function openAddToInventoryModal(idx){
   document.getElementById('edit-cost').value = item.cost || '';
   document.getElementById('edit-market').value = item.market || '';
   document.getElementById('edit-list-price').value = item.listPrice || item.salePrice || item.market || '';
+  document.getElementById('edit-min-price').value = item.minPrice || '';
   document.getElementById('edit-qty').value = item.qty || 1;
   document.getElementById('edit-year').value = item.year || '';
   document.getElementById('edit-set').value = item.set || '';
@@ -17489,6 +17499,7 @@ async function confirmAddToInventoryFromModal(){
     salePrice: parseFloat(document.getElementById('edit-list-price')?.value)||parseFloat(document.getElementById('edit-market').value)||0,
     listPrice: parseFloat(document.getElementById('edit-list-price')?.value)||parseFloat(document.getElementById('edit-market').value)||0,
     displayPrice: parseFloat(document.getElementById('edit-list-price')?.value)||parseFloat(document.getElementById('edit-market').value)||0,
+    minPrice: parseFloat(document.getElementById('edit-min-price')?.value)||0,
     qty: parseInt(document.getElementById('edit-qty').value)||1,
     year: document.getElementById('edit-year').value.trim(),
     set: document.getElementById('edit-set').value.trim(),
@@ -17674,6 +17685,7 @@ async function confirmEditAndSync() {
     salePrice: parseFloat(document.getElementById('edit-list-price')?.value)||parseFloat(document.getElementById('edit-market').value)||0,
     listPrice: parseFloat(document.getElementById('edit-list-price')?.value)||parseFloat(document.getElementById('edit-market').value)||0,
     displayPrice: parseFloat(document.getElementById('edit-list-price')?.value)||parseFloat(document.getElementById('edit-market').value)||0,
+    minPrice: parseFloat(document.getElementById('edit-min-price')?.value)||0,
     thumbnail: document.getElementById('edit-photo-data')?.value || '',
     photoDataUrl: document.getElementById('edit-photo-data')?.value || '',
     photoSource: document.getElementById('edit-photo-source')?.value || '',
