@@ -470,7 +470,8 @@ async function syncStripeWebhookPayment(env, event, mode) {
   if(event.type.startsWith('payment_intent.')){intentId=object.id;patch.status=event.type==='payment_intent.succeeded'?'succeeded':event.type==='payment_intent.payment_failed'?'failed':event.type==='payment_intent.canceled'?'canceled':object.status;}
   if(event.type==='charge.succeeded'||event.type==='charge.refunded'||event.type==='charge.dispute.created'||event.type==='charge.dispute.closed'){intentId=object.payment_intent||'';patch.stripe_charge_id=object.id;const card=object.payment_method_details?.card||{};patch.card_brand=card.brand||null;patch.card_last4=card.last4||null;if(event.type==='charge.refunded'){patch.status=object.refunded?'refunded':'partially_refunded';patch.refunded_amount_cents=Number(object.amount_refunded||0);}if(event.type==='charge.dispute.created')patch.status='disputed';if(event.type==='charge.dispute.closed')patch.status=object.dispute?.status==='won'?'succeeded':'disputed';}
   if(intentId){
-    const filter=`pos_payments?stripe_mode=eq.${mode}&stripe_connected_account_id=eq.${encodeURIComponent(account)}&stripe_payment_intent_id=eq.${encodeURIComponent(intentId)}`;
+    const acctFilter=account?`stripe_connected_account_id=eq.${encodeURIComponent(account)}`:`stripe_connected_account_id=is.null`;
+    const filter=`pos_payments?stripe_mode=eq.${mode}&${acctFilter}&stripe_payment_intent_id=eq.${encodeURIComponent(intentId)}`;
     const {data:paymentRows}=await supabaseAdminFetch(env,filter,{method:'PATCH',headers:{Prefer:'return=representation'},body:JSON.stringify(patch)});
     const payment=paymentRows?.[0];
     if(payment?.sale_id&&payment?.store_id&&patch.status==='succeeded'){
@@ -1642,9 +1643,12 @@ export default {
       const shippingFeeCents = method !== 'shipping' ? 0 : (totalQuantity <= 3 && allRawSingles ? 300 : 700);
       const totalCents = subtotalCents + shippingFeeCents;
 
+      // No Stripe Connect yet -- this charges directly to the platform's own
+      // Stripe account (env.STRIPE_SECRET_KEY_LIVE/TEST), same as any other
+      // direct integration. Revisit once storefronts move to Connect.
       const mode = stripeMode(env);
-      const stripeRow = await getStripeAccountRow(env, storeId, mode);
-      if (!stripeRow?.connected_account_id || !stripeRow.charges_enabled) return json({ ok:false, error:'This store is not yet set up to accept online payments' }, 503);
+      const cfg = stripeConfig(env, mode);
+      if (!cfg.secretKey) return json({ ok:false, error:'Online payments are not configured yet' }, 503);
 
       const confirmationNumber = 'ORD-' + crypto.randomUUID().split('-')[0].toUpperCase();
       const saleId = crypto.randomUUID();
@@ -1656,11 +1660,9 @@ export default {
 
       let pi;
       try {
-        const fee = stripeApplicationFee(env, totalCents);
         const params = new URLSearchParams({ amount:String(totalCents), currency:'usd', 'automatic_payment_methods[enabled]':'true', 'metadata[arsca_sale_id]':saleId, 'metadata[arsca_store_id]':storeId, 'metadata[source]':'storefront_order', 'metadata[confirmation_number]':confirmationNumber });
-        if (fee) params.set('application_fee_amount', String(fee));
-        pi = await stripeApi(env, mode, 'payment_intents', { method:'POST', params, account:stripeRow.connected_account_id, idempotencyKey:`arsca-storefront-${mode}-${saleId}` });
-        await supabaseAdminFetch(env, 'pos_payments', { method:'POST', headers:{ Prefer:'return=minimal' }, body:JSON.stringify({ id:crypto.randomUUID(), sale_id:saleId, store_id:storeId, method:'Stripe Card', amount:totalCents/100, status:pi.status, provider:'stripe', stripe_mode:mode, stripe_connected_account_id:stripeRow.connected_account_id, stripe_payment_intent_id:pi.id, currency:pi.currency, amount_cents:totalCents, application_fee_amount_cents:fee, processing_fee_paid_by:'connected_account' }) });
+        pi = await stripeApi(env, mode, 'payment_intents', { method:'POST', params, idempotencyKey:`arsca-storefront-${mode}-${saleId}` });
+        await supabaseAdminFetch(env, 'pos_payments', { method:'POST', headers:{ Prefer:'return=minimal' }, body:JSON.stringify({ id:crypto.randomUUID(), sale_id:saleId, store_id:storeId, method:'Stripe Card', amount:totalCents/100, status:pi.status, provider:'stripe', stripe_mode:mode, stripe_payment_intent_id:pi.id, currency:pi.currency, amount_cents:totalCents, processing_fee_paid_by:'platform_account' }) });
       } catch (e) {
         return json({ ok:false, error:'Payment setup failed: ' + e.message }, 502);
       }
