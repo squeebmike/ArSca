@@ -2,6 +2,9 @@
   "name": "still-resonance-4f87",
   "main": "cloudflare-worker-full.js",
   "compatibility_date": "2026-05-19",
+  "vars": {
+    "STRIPE_PLATFORM_MODE": "live"
+  },
   "kv_namespaces": [
     {
       "binding": "LBA_KV",

@@ -433,12 +433,50 @@ async function verifyStripeWebhook(body, signatureHeader, secret) {
   return signatures.some(sig=>constantTimeEqualHex(sig,expected));
 }
 
+// Marks a storefront order's inventory lines sold once its sale is paid.
+// Idempotent: no-ops if the sale is already completed, so a redelivered
+// Stripe webhook event can't double-decrement stock.
+async function fulfillStorefrontOrderInventory(env, saleId, storeId) {
+  const { data: sales } = await supabaseAdminFetch(env, `pos_sales?id=eq.${encodeURIComponent(saleId)}&store_id=eq.${encodeURIComponent(storeId)}&select=id,status&limit=1`);
+  const sale = sales?.[0];
+  if (!sale || sale.status === 'completed') return;
+  await supabaseAdminFetch(env, `pos_sales?id=eq.${encodeURIComponent(saleId)}&store_id=eq.${encodeURIComponent(storeId)}`, { method:'PATCH', headers:{ Prefer:'return=minimal' }, body:JSON.stringify({ status:'completed', payment_status:'paid', completed_at:new Date().toISOString() }) });
+  const { data: orders } = await supabaseAdminFetch(env, `storefront_orders?sale_id=eq.${encodeURIComponent(saleId)}&store_id=eq.${encodeURIComponent(storeId)}&select=id,fulfillment_method&limit=1`);
+  const order = orders?.[0];
+  if (!order) return; // regular POS sale, not a storefront order — nothing more to do
+  const { data: lines } = await supabaseAdminFetch(env, `pos_sale_lines?sale_id=eq.${encodeURIComponent(saleId)}&store_id=eq.${encodeURIComponent(storeId)}&select=item_id,quantity`);
+  const nextStatus = order.fulfillment_method === 'shipping' ? 'sold_pending_shipment' : 'sold_pending_pickup';
+  for (const line of lines || []) {
+    if (!/^[0-9a-f-]{36}$/i.test(String(line.item_id || ''))) continue; // skip synthetic shipping-fee line
+    const { data: items } = await supabaseAdminFetch(env, `inventory_items?id=eq.${encodeURIComponent(line.item_id)}&store_id=eq.${encodeURIComponent(storeId)}&select=id,data,status&limit=1`);
+    const item = items?.[0];
+    if (!item) continue;
+    const data = { ...(item.data || {}) };
+    const remaining = Math.max(0, Number(data.quantity ?? data.qty ?? 1) - Number(line.quantity || 1));
+    const depleted = remaining <= 0;
+    const soldAt = new Date().toISOString();
+    Object.assign(data, {
+      quantity: remaining, qty: remaining, 'inventory-count': remaining,
+      status: depleted ? nextStatus : 'in_stock', lifecycle: depleted ? nextStatus : 'in_stock',
+      'sold-out': depleted, soldAt: depleted ? soldAt : (data.soldAt || ''),
+    });
+    await supabaseAdminFetch(env, `inventory_items?id=eq.${encodeURIComponent(line.item_id)}&store_id=eq.${encodeURIComponent(storeId)}`, { method:'PATCH', headers:{ Prefer:'return=minimal' }, body:JSON.stringify({ data, status: depleted ? nextStatus : 'in_stock' }) });
+  }
+}
+
 async function syncStripeWebhookPayment(env, event, mode) {
   const object=event.data?.object||{};const account=event.account||'';
   let intentId='';let patch={updated_at:new Date().toISOString()};
   if(event.type.startsWith('payment_intent.')){intentId=object.id;patch.status=event.type==='payment_intent.succeeded'?'succeeded':event.type==='payment_intent.payment_failed'?'failed':event.type==='payment_intent.canceled'?'canceled':object.status;}
   if(event.type==='charge.succeeded'||event.type==='charge.refunded'||event.type==='charge.dispute.created'||event.type==='charge.dispute.closed'){intentId=object.payment_intent||'';patch.stripe_charge_id=object.id;const card=object.payment_method_details?.card||{};patch.card_brand=card.brand||null;patch.card_last4=card.last4||null;if(event.type==='charge.refunded'){patch.status=object.refunded?'refunded':'partially_refunded';patch.refunded_amount_cents=Number(object.amount_refunded||0);}if(event.type==='charge.dispute.created')patch.status='disputed';if(event.type==='charge.dispute.closed')patch.status=object.dispute?.status==='won'?'succeeded':'disputed';}
-  if(intentId){const filter=`pos_payments?stripe_mode=eq.${mode}&stripe_connected_account_id=eq.${encodeURIComponent(account)}&stripe_payment_intent_id=eq.${encodeURIComponent(intentId)}`;await supabaseAdminFetch(env,filter,{method:'PATCH',headers:{Prefer:'return=representation'},body:JSON.stringify(patch)});}
+  if(intentId){
+    const filter=`pos_payments?stripe_mode=eq.${mode}&stripe_connected_account_id=eq.${encodeURIComponent(account)}&stripe_payment_intent_id=eq.${encodeURIComponent(intentId)}`;
+    const {data:paymentRows}=await supabaseAdminFetch(env,filter,{method:'PATCH',headers:{Prefer:'return=representation'},body:JSON.stringify(patch)});
+    const payment=paymentRows?.[0];
+    if(payment?.sale_id&&payment?.store_id&&patch.status==='succeeded'){
+      await fulfillStorefrontOrderInventory(env,payment.sale_id,payment.store_id).catch(e=>console.error('Storefront order fulfillment failed:',e.message));
+    }
+  }
   if(event.type.startsWith('refund.')){await supabaseAdminFetch(env,`pos_refunds?stripe_refund_id=eq.${encodeURIComponent(object.id)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({status:object.status||event.type.replace('refund.',''),failure_reason:object.failure_reason||'',updated_at:new Date().toISOString()})});}
   if(event.type==='account.updated'){const storeId=object.metadata?.arsca_store_id;if(storeId){const status=safeStripeAccount(object,mode);await saveStripeAccount(env,storeId,status);}}
 }
@@ -1403,6 +1441,53 @@ export default {
       return json({ ok:true, invites:data || [] });
     }
 
+    if (url.pathname === '/store/storefront-orders' && request.method === 'GET') {
+      const storeId = String(url.searchParams.get('store_id') || request.headers.get('X-Store-Id') || '').trim();
+      const auth = await requireStoreUser(request, env, storeId);
+      if (auth.error) return auth.error;
+      const { data:orders, response } = await supabaseAdminFetch(env,
+        `storefront_orders?store_id=eq.${encodeURIComponent(storeId)}&select=*&order=created_at.desc&limit=200`);
+      if (!response.ok) return json({ ok:false, error:'Orders unavailable' }, 502);
+      const saleIds = [...new Set((orders || []).map(o => o.sale_id))];
+      let sales = [], lines = [];
+      if (saleIds.length) {
+        const idList = saleIds.map(id => encodeURIComponent(id)).join(',');
+        ({ data:sales } = await supabaseAdminFetch(env, `pos_sales?id=in.(${idList})&store_id=eq.${encodeURIComponent(storeId)}&select=id,total,status,payment_status,completed_at`));
+        ({ data:lines } = await supabaseAdminFetch(env, `pos_sale_lines?sale_id=in.(${idList})&store_id=eq.${encodeURIComponent(storeId)}&select=sale_id,item_id,title,category,quantity,unit_price,image_url`));
+      }
+      const salesById = Object.fromEntries((sales || []).map(s => [s.id, s]));
+      const linesBySale = {};
+      (lines || []).forEach(l => { (linesBySale[l.sale_id] ||= []).push(l); });
+      const result = (orders || []).map(o => ({ ...o, sale: salesById[o.sale_id] || null, items: linesBySale[o.sale_id] || [] }));
+      return json({ ok:true, orders:result });
+    }
+
+    if (url.pathname === '/store/storefront-orders/fulfill' && request.method === 'POST') {
+      const parsed = await readJsonWithLimit(request, 8 * 1024);
+      if (parsed.error) return parsed.error;
+      const body = parsed.data || {};
+      const storeId = requestStoreId(request, url, body);
+      const auth = await requireStoreUser(request, env, storeId);
+      if (auth.error) return auth.error;
+      const orderId = String(body.orderId || '');
+      if (!orderId) return json({ ok:false, error:'orderId is required' }, 400);
+      const { data:orders } = await supabaseAdminFetch(env, `storefront_orders?id=eq.${encodeURIComponent(orderId)}&store_id=eq.${encodeURIComponent(storeId)}&select=id,sale_id,fulfillment_status&limit=1`);
+      const order = orders?.[0];
+      if (!order) return json({ ok:false, error:'Order not found' }, 404);
+      if (order.fulfillment_status === 'fulfilled') return json({ ok:true, alreadyFulfilled:true });
+      await supabaseAdminFetch(env, `storefront_orders?id=eq.${encodeURIComponent(orderId)}&store_id=eq.${encodeURIComponent(storeId)}`, { method:'PATCH', headers:{ Prefer:'return=minimal' }, body:JSON.stringify({ fulfillment_status:'fulfilled', fulfilled_at:new Date().toISOString(), fulfilled_by:auth.user.id }) });
+      const { data:lines } = await supabaseAdminFetch(env, `pos_sale_lines?sale_id=eq.${encodeURIComponent(order.sale_id)}&store_id=eq.${encodeURIComponent(storeId)}&select=item_id`);
+      for (const line of lines || []) {
+        if (!/^[0-9a-f-]{36}$/i.test(String(line.item_id || ''))) continue;
+        const { data:items } = await supabaseAdminFetch(env, `inventory_items?id=eq.${encodeURIComponent(line.item_id)}&store_id=eq.${encodeURIComponent(storeId)}&select=id,data,status&limit=1`);
+        const item = items?.[0];
+        if (!item || !['sold_pending_pickup', 'sold_pending_shipment'].includes(String(item.status || ''))) continue;
+        const data = { ...(item.data || {}), status:'sold', lifecycle:'sold' };
+        await supabaseAdminFetch(env, `inventory_items?id=eq.${encodeURIComponent(line.item_id)}&store_id=eq.${encodeURIComponent(storeId)}`, { method:'PATCH', headers:{ Prefer:'return=minimal' }, body:JSON.stringify({ data, status:'sold' }) });
+      }
+      return json({ ok:true });
+    }
+
     if (url.pathname === '/store/invites/send' && request.method === 'POST') {
       const parsed = await readJsonWithLimit(request, 16 * 1024);
       if (parsed.error) return parsed.error;
@@ -1461,9 +1546,10 @@ export default {
       let items = (rows || []).map(row => { const d=row.data || {}; const rawQty=d.quantity ?? d.qty ?? 1; const quantity=Number.isFinite(Number(rawQty))?Number(rawQty):1; const inventoryStatus=cleanText(d.lifecycle || d.status || row.status || 'in_stock',40).toLowerCase(); return {
         id:cleanText(row.id,80), name:cleanText(d.name || d.title || 'Item'), category:cleanText(d.category || d.type || 'Other',80),
         set:cleanText(d.set || d.series || '',120), year:cleanText(d.year || '',12), variant:cleanText(d.variant || d.finish || '',120), condition:cleanText(d.condition || d.grade || '',80),
-        price:Number(d.listPrice || d.salePrice || d.price || d.market || 0) || 0, image:cleanUrl(d.image || d.img || d.imageUrl || d.image_url || d.photo),
+        price:Number(d.listPrice || d.salePrice || d.price || d.market || 0) || 0, market:Number(d.market || d.marketPrice || d.rawMarketPrice || 0) || 0, image:cleanUrl(d.image || d.img || d.imageUrl || d.image_url || d.photo),
+        isSealed:!!d.is_sealed, gradingCompany:cleanText(d.grading_company || d.grader || '',40),
         quantity, inventoryStatus, soldAt:d.soldAt || d.sold_at || '', archivedAt:d.archivedAt || '', addedAt:row.created_at || '', updatedAt:row.updated_at || ''
-      }; }).filter(i => i.name && i.quantity > 0 && !i.soldAt && !i.archivedAt && !['sold','archived','returned','deleted'].includes(i.inventoryStatus));
+      }; }).filter(i => i.name && i.quantity > 0 && !i.soldAt && !i.archivedAt && !['sold','archived','returned','deleted','sold_pending_pickup','sold_pending_shipment'].includes(i.inventoryStatus));
       const inventorySource = cleanText(settings?.[0]?.modules?.inventorySource || '',40).toLowerCase();
       if ((inventorySource === 'webflow' || inventorySource === 'hybrid') && env.WEBFLOW_TOKEN) {
         const webflowItems=[];
@@ -1481,6 +1567,107 @@ export default {
       }
       const store = stores?.[0] || {};
       return json({ ok:true, store:{ id:storeId, name:cleanText(cfg.storeName || cfg.shortName || store.display_name || store.name || 'Store',120), location:cleanText(cfg.location,160), website:cleanUrl(cfg.website), email:cleanText(cfg.email,200), phone:cleanText(cfg.phone,80), logo:cleanUrl(cfg.logo), message:cleanText(cfg.storefrontMessage,500), theme:settings?.[0]?.theme || {} }, items, updatedAt:new Date().toISOString() }, 200, { 'Cache-Control':'public, max-age=60, stale-while-revalidate=300' });
+    }
+
+    // POST /public/storefront/checkout — public (unauthenticated) checkout.
+    // Creates a pos_sales/pos_sale_lines/pos_payments/storefront_orders record
+    // and a Stripe PaymentIntent under the store's own connected account.
+    // Prices and shipping fee are always computed server-side from current
+    // inventory data — never trusted from the request body.
+    if (url.pathname === '/public/storefront/checkout' && request.method === 'POST') {
+      if (!(env.SUPABASE_URL && (env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_KEY))) return json({ ok:false, error:'Storefront service unavailable' }, 503);
+      const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
+      const limited = await readJsonWithLimit(request, 32 * 1024);
+      if (limited.error) return limited.error;
+      const body = limited.data || {};
+      const storeId = String(body.storeId || '').trim();
+      if (!/^[0-9a-z_-]{2,80}$/i.test(storeId)) return json({ ok:false, error:'Valid storeId required' }, 400);
+      const rateError = await enforceUsageLimit(env, `storefront-checkout:${storeId}:${ip}`, 8, 60);
+      if (rateError) return rateError;
+
+      const { data:settings } = await supabaseAdminFetch(env, `store_settings?store_id=eq.${encodeURIComponent(storeId)}&select=receipt_settings&limit=1`);
+      if (settings?.[0]?.receipt_settings?.storefrontEnabled !== true) return json({ ok:false, error:'Storefront is not published' }, 404);
+
+      const fulfillment = body.fulfillment || {};
+      const method = String(fulfillment.method || '');
+      if (!['pickup_fedway', 'pickup_kitsap', 'shipping'].includes(method)) return json({ ok:false, error:'A valid fulfillment method is required' }, 400);
+      const customerName = String(fulfillment.name || '').trim().slice(0, 160);
+      const customerPhone = String(fulfillment.phone || '').trim().slice(0, 40);
+      if (!customerName || !customerPhone) return json({ ok:false, error:'Name and phone number are required' }, 400);
+      const customerEmail = String(fulfillment.email || '').trim().slice(0, 200);
+      let shippingAddress = null;
+      if (method === 'shipping') {
+        const addr = fulfillment.shippingAddress || {};
+        shippingAddress = {
+          line1: String(addr.line1 || '').trim().slice(0, 200),
+          line2: String(addr.line2 || '').trim().slice(0, 200),
+          city: String(addr.city || '').trim().slice(0, 120),
+          state: String(addr.state || '').trim().slice(0, 40),
+          zip: String(addr.zip || '').trim().slice(0, 20),
+        };
+        if (!shippingAddress.line1 || !shippingAddress.city || !shippingAddress.state || !shippingAddress.zip) return json({ ok:false, error:'A complete shipping address is required' }, 400);
+      }
+
+      const requestedItems = Array.isArray(body.items) ? body.items.slice(0, 20) : [];
+      if (!requestedItems.length) return json({ ok:false, error:'Your cart is empty' }, 400);
+      const cleanUrlLoose = v => { const s = String(v == null ? '' : v).trim().slice(0, 1000); return /^https?:\/\//i.test(s) || /^data:image\//i.test(s) ? s : ''; };
+
+      const lineItems = [];
+      let subtotalCents = 0;
+      let totalQuantity = 0;
+      let allRawSingles = true;
+      for (const req of requestedItems) {
+        const itemId = String(req.itemId || '').trim();
+        const qty = Math.max(1, Math.min(10, Number(req.quantity || 1)));
+        if (!/^[0-9a-f-]{36}$/i.test(itemId)) return json({ ok:false, error:'Invalid item in cart' }, 400);
+        const { data:rows } = await supabaseAdminFetch(env, `inventory_items?id=eq.${encodeURIComponent(itemId)}&store_id=eq.${encodeURIComponent(storeId)}&select=id,data,status&limit=1`);
+        const row = rows?.[0];
+        if (!row) return json({ ok:false, error:'An item in your cart is no longer available' }, 404);
+        const d = row.data || {};
+        const availableQty = Number(d.quantity ?? d.qty ?? 1) || 0;
+        const invStatus = String(d.lifecycle || d.status || row.status || 'in_stock').toLowerCase();
+        if (invStatus !== 'in_stock' || availableQty < qty || d.soldAt || d.archivedAt) return json({ ok:false, error:`"${d.name || 'An item'}" in your cart just sold out` }, 409);
+        const unitPrice = Number(d.listPrice || d.salePrice || d.price || d.market || 0) || 0;
+        if (unitPrice <= 0) return json({ ok:false, error:`"${d.name || 'An item'}" doesn't have a price set yet` }, 409);
+        const category = String(d.category || d.type || '').toLowerCase();
+        const isSealed = !!d.is_sealed || category.includes('sealed') || category === 'comic';
+        const isGraded = !!(d.grading_company || d.grader);
+        if (isSealed || isGraded) allRawSingles = false;
+        totalQuantity += qty;
+        subtotalCents += Math.round(unitPrice * 100) * qty;
+        lineItems.push({ itemId, quantity: qty, unitPrice, title: d.name || d.title || 'Item', category: d.category || d.type || 'Other', condition: d.condition || d.grade || '', imageUrl: cleanUrlLoose(d.image || d.img || d.imageUrl || d.image_url || d.photo) });
+      }
+      if (subtotalCents < 50) return json({ ok:false, error:'Order subtotal is too small to check out' }, 400);
+
+      const shippingFeeCents = method !== 'shipping' ? 0 : (totalQuantity <= 3 && allRawSingles ? 300 : 700);
+      const totalCents = subtotalCents + shippingFeeCents;
+
+      const mode = stripeMode(env);
+      const stripeRow = await getStripeAccountRow(env, storeId, mode);
+      if (!stripeRow?.connected_account_id || !stripeRow.charges_enabled) return json({ ok:false, error:'This store is not yet set up to accept online payments' }, 503);
+
+      const confirmationNumber = 'ORD-' + crypto.randomUUID().split('-')[0].toUpperCase();
+      const saleId = crypto.randomUUID();
+      await supabaseAdminFetch(env, 'pos_sales', { method:'POST', headers:{ Prefer:'return=minimal' }, body:JSON.stringify({ id:saleId, store_id:storeId, subtotal:subtotalCents/100, discount_total:0, tax_total:0, total:totalCents/100, status:'pending' }) });
+
+      const saleLines = lineItems.map(li => ({ id:crypto.randomUUID(), sale_id:saleId, store_id:storeId, item_id:li.itemId, title:li.title, category:li.category, quantity:li.quantity, unit_price:li.unitPrice, original_price:li.unitPrice, adjusted_price:li.unitPrice, discount_amount:0, cost_basis:0, profit:0, condition:li.condition, image_url:li.imageUrl }));
+      if (shippingFeeCents > 0) saleLines.push({ id:crypto.randomUUID(), sale_id:saleId, store_id:storeId, item_id:null, title:'Shipping', category:'Shipping', quantity:1, unit_price:shippingFeeCents/100, original_price:shippingFeeCents/100, adjusted_price:shippingFeeCents/100, discount_amount:0, cost_basis:0, profit:0 });
+      await supabaseAdminFetch(env, 'pos_sale_lines', { method:'POST', headers:{ Prefer:'return=minimal' }, body:JSON.stringify(saleLines) });
+
+      let pi;
+      try {
+        const fee = stripeApplicationFee(env, totalCents);
+        const params = new URLSearchParams({ amount:String(totalCents), currency:'usd', 'automatic_payment_methods[enabled]':'true', 'metadata[arsca_sale_id]':saleId, 'metadata[arsca_store_id]':storeId, 'metadata[source]':'storefront_order', 'metadata[confirmation_number]':confirmationNumber });
+        if (fee) params.set('application_fee_amount', String(fee));
+        pi = await stripeApi(env, mode, 'payment_intents', { method:'POST', params, account:stripeRow.connected_account_id, idempotencyKey:`arsca-storefront-${mode}-${saleId}` });
+        await supabaseAdminFetch(env, 'pos_payments', { method:'POST', headers:{ Prefer:'return=minimal' }, body:JSON.stringify({ id:crypto.randomUUID(), sale_id:saleId, store_id:storeId, method:'Stripe Card', amount:totalCents/100, status:pi.status, provider:'stripe', stripe_mode:mode, stripe_connected_account_id:stripeRow.connected_account_id, stripe_payment_intent_id:pi.id, currency:pi.currency, amount_cents:totalCents, application_fee_amount_cents:fee, processing_fee_paid_by:'connected_account' }) });
+      } catch (e) {
+        return json({ ok:false, error:'Payment setup failed: ' + e.message }, 502);
+      }
+
+      await supabaseAdminFetch(env, 'storefront_orders', { method:'POST', headers:{ Prefer:'return=minimal' }, body:JSON.stringify({ id:crypto.randomUUID(), store_id:storeId, sale_id:saleId, confirmation_number:confirmationNumber, customer_name:customerName, customer_phone:customerPhone, customer_email:customerEmail || null, fulfillment_method:method, shipping_address:shippingAddress, shipping_fee_cents:shippingFeeCents, fulfillment_status:'pending' }) });
+
+      return json({ ok:true, clientSecret:pi.client_secret, publishableKey:stripeConfig(env, mode).publishableKey, confirmationNumber, amountCents:totalCents, shippingFeeCents, mode });
     }
 
     if (url.pathname === '/catalog/mtg/manifest') {
