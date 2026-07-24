@@ -1757,7 +1757,7 @@ body.show-mode .inv-sync-badge{display:none;}
       <div id="monthly-trend"></div>
     </div>
   </div>
-  <div class="sec">SOLD ITEMS</div>
+  <div class="sec" id="sold-items-sec">SOLD ITEMS</div>
   <div class="tc">
     <input class="tsi" id="sold-q" placeholder="Search sold items..." oninput="filterSold()">
   </div>
@@ -5392,11 +5392,17 @@ function organizeRegisterLayout(){
   moveNode('register-eod-panel', shows);
   moveNode('register-quick-panel', research);
   moveNode('register-scan-panel', research);
-  moveNode('register-storefront-orders-panel', research);
   const qpl = document.getElementById('register-quick-panel');
   const actions = document.getElementById('research-actions-panel');
   if(qpl && actions && qpl.parentElement === research) research.insertBefore(qpl, actions);
   if(actions) actions.style.display = 'none';
+  const salesTab = document.getElementById('tab-sales');
+  const soldSec = document.getElementById('sold-items-sec');
+  if(salesTab && soldSec){
+    moveNode('register-storefront-orders-panel', salesTab);
+    const orders = document.getElementById('register-storefront-orders-panel');
+    if(orders && orders.nextElementSibling !== soldSec) salesTab.insertBefore(orders, soldSec);
+  }
   moveNode('register-buy-panel', intake);
   ensureBuyResearchBridge(intake);
   renderResearchQueue();
