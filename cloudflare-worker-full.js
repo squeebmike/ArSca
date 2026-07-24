@@ -361,9 +361,12 @@ function stripeMode(env, requested) {
 
 function stripeConfig(env, requestedMode) {
   const mode = stripeMode(env, requestedMode);
-  const secretKey = mode === 'live' ? env.STRIPE_SECRET_KEY_LIVE : env.STRIPE_SECRET_KEY_TEST;
-  const publishableKey = mode === 'live' ? env.STRIPE_PUBLISHABLE_KEY_LIVE : env.STRIPE_PUBLISHABLE_KEY_TEST;
-  const webhookSecret = mode === 'live' ? env.STRIPE_WEBHOOK_SECRET_LIVE : env.STRIPE_WEBHOOK_SECRET_TEST;
+  // Fall back to the unsuffixed vars for stores running a single Stripe
+  // account with no separate test/live keys configured (matches the
+  // fallback already used by the webhook secret lookup and /health check).
+  const secretKey = (mode === 'live' ? env.STRIPE_SECRET_KEY_LIVE : env.STRIPE_SECRET_KEY_TEST) || env.STRIPE_SECRET_KEY;
+  const publishableKey = (mode === 'live' ? env.STRIPE_PUBLISHABLE_KEY_LIVE : env.STRIPE_PUBLISHABLE_KEY_TEST) || env.STRIPE_PUBLISHABLE_KEY;
+  const webhookSecret = (mode === 'live' ? env.STRIPE_WEBHOOK_SECRET_LIVE : env.STRIPE_WEBHOOK_SECRET_TEST) || env.STRIPE_WEBHOOK_SECRET;
   return { mode, secretKey:String(secretKey || ''), publishableKey:String(publishableKey || ''), webhookSecret:String(webhookSecret || '') };
 }
 
