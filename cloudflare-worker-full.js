@@ -462,6 +462,7 @@ async function fulfillStorefrontOrderInventory(env, saleId, storeId) {
       quantity: remaining, qty: remaining, 'inventory-count': remaining,
       status: depleted ? nextStatus : 'in_stock', lifecycle: depleted ? nextStatus : 'in_stock',
       'sold-out': depleted, soldAt: depleted ? soldAt : (data.soldAt || ''),
+      channel: depleted ? (order.fulfillment_method === 'shipping' ? 'storefront_shipping' : 'storefront_pickup') : (data.channel || ''),
     });
     await supabaseAdminFetch(env, `inventory_items?id=eq.${encodeURIComponent(line.item_id)}&store_id=eq.${encodeURIComponent(storeId)}`, { method:'PATCH', headers:{ Prefer:'return=minimal' }, body:JSON.stringify({ data, status: depleted ? nextStatus : 'in_stock' }) });
   }
@@ -1462,7 +1463,13 @@ export default {
       const salesById = Object.fromEntries((sales || []).map(s => [s.id, s]));
       const linesBySale = {};
       (lines || []).forEach(l => { (linesBySale[l.sale_id] ||= []).push(l); });
-      const result = (orders || []).map(o => ({ ...o, sale: salesById[o.sale_id] || null, items: linesBySale[o.sale_id] || [] }));
+      // A storefront_orders row is created as soon as the checkout form is
+      // submitted, before the customer ever confirms payment with Stripe —
+      // only surface it here once the sale actually completed, so an
+      // abandoned/incomplete checkout doesn't show up as a real order.
+      const result = (orders || [])
+        .map(o => ({ ...o, sale: salesById[o.sale_id] || null, items: linesBySale[o.sale_id] || [] }))
+        .filter(o => o.sale?.status === 'completed');
       return json({ ok:true, orders:result });
     }
 
@@ -1479,6 +1486,8 @@ export default {
       const order = orders?.[0];
       if (!order) return json({ ok:false, error:'Order not found' }, 404);
       if (order.fulfillment_status === 'fulfilled') return json({ ok:true, alreadyFulfilled:true });
+      const { data:saleRows } = await supabaseAdminFetch(env, `pos_sales?id=eq.${encodeURIComponent(order.sale_id)}&store_id=eq.${encodeURIComponent(storeId)}&select=id,status&limit=1`);
+      if (saleRows?.[0]?.status !== 'completed') return json({ ok:false, error:'This order has not been paid yet' }, 409);
       await supabaseAdminFetch(env, `storefront_orders?id=eq.${encodeURIComponent(orderId)}&store_id=eq.${encodeURIComponent(storeId)}`, { method:'PATCH', headers:{ Prefer:'return=minimal' }, body:JSON.stringify({ fulfillment_status:'fulfilled', fulfilled_at:new Date().toISOString(), fulfilled_by:auth.user.id }) });
       const { data:lines } = await supabaseAdminFetch(env, `pos_sale_lines?sale_id=eq.${encodeURIComponent(order.sale_id)}&store_id=eq.${encodeURIComponent(storeId)}&select=item_id`);
       for (const line of lines || []) {
