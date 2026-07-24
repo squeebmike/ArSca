@@ -3,7 +3,8 @@
   "main": "cloudflare-worker-full.js",
   "compatibility_date": "2026-05-19",
   "vars": {
-    "STRIPE_PLATFORM_MODE": "live"
+    "STRIPE_PLATFORM_MODE": "live",
+    "STRIPE_PUBLISHABLE_KEY": "pk_live_51OhyA8LHo6HlAYnMuSJGtOtXDbU5I8NIvHqgSpoKfH8PoZ2pIHCFVyO1fkqlpcpTAQ5tgEMGbWYlA81hiwQ2HhB400tlnsrfsw"
   },
   "kv_namespaces": [
     {
