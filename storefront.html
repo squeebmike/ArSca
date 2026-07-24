@@ -86,9 +86,13 @@ function render(){const q=document.getElementById('q').value.toLowerCase().trim(
 
 function openItem(id){
   const i=payload.items.find(x=>x.id===id),s=payload.store;if(!i)return;
-  const subject=encodeURIComponent(`Question about ${i.name}`),body=encodeURIComponent(`Hi, I am interested in ${i.name}${i.price?' listed at '+money(i.price):''}. Is it still available?`);
+  const subject=encodeURIComponent(`Question about ${i.name}`);
+  const askText=`Hi, I am interested in ${i.name}${i.price?' listed at '+money(i.price):''}. Is it still available?`;
+  const body=encodeURIComponent(askText);
+  const smsBody=encodeURIComponent(askText);
+  const smsNumber=String(s.phone||'').replace(/[^\d+]/g,'');
   const marketLine = (i.market>0 && Math.round(i.market*100)!==Math.round(i.price*100)) ? `<div class="market" style="margin-bottom:6px">TCG Market Price: <s>$${i.market.toFixed(2)}</s></div>` : '';
-  document.getElementById('detail-content').innerHTML=`<div class="detail">${i.image?`<img src="${esc(i.image)}" alt="${esc(i.name)}">`:'<div class="no-photo">NO PHOTO</div>'}<div class="detail-copy"><div class="meta">${esc(i.category)}</div><h2>${esc(i.name)}</h2><div class="meta">${esc([i.set,i.year,i.variant,i.condition].filter(Boolean).join(' · '))}</div>${marketLine}<div class="price">${money(i.price)}</div><div class="btn-row"><button class="btn" onclick="addToCart('${esc(i.id)}');document.getElementById('detail').close()">ADD TO CART</button>${s.email?`<a class="btn close" href="mailto:${esc(s.email)}?subject=${subject}&body=${body}">ASK ABOUT THIS ITEM</a>`:''}</div><button class="btn close" style="margin-top:8px" onclick="document.getElementById('detail').close()">CLOSE</button></div></div>`;
+  document.getElementById('detail-content').innerHTML=`<div class="detail">${i.image?`<img src="${esc(i.image)}" alt="${esc(i.name)}">`:'<div class="no-photo">NO PHOTO</div>'}<div class="detail-copy"><div class="meta">${esc(i.category)}</div><h2>${esc(i.name)}</h2><div class="meta">${esc([i.set,i.year,i.variant,i.condition].filter(Boolean).join(' · '))}</div>${marketLine}<div class="price">${money(i.price)}</div><div class="btn-row"><button class="btn" onclick="addToCart('${esc(i.id)}');document.getElementById('detail').close()">ADD TO CART</button>${smsNumber?`<a class="btn close" href="sms:${esc(smsNumber)}?body=${smsBody}">TEXT US ABOUT THIS ITEM</a>`:''}${s.email?`<a class="btn close" href="mailto:${esc(s.email)}?subject=${subject}&body=${body}">EMAIL US ABOUT THIS ITEM</a>`:''}</div><button class="btn close" style="margin-top:8px" onclick="document.getElementById('detail').close()">CLOSE</button></div></div>`;
   document.getElementById('detail').showModal();
 }
 
