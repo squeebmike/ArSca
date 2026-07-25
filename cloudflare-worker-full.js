@@ -1562,7 +1562,7 @@ export default {
         price:Math.max(Number(d.listPrice || d.salePrice || d.price || d.market || 0) || 0, Number(d.minPrice || 0) || 0), market:Number(d.market || d.marketPrice || d.rawMarketPrice || 0) || 0, image:cleanUrl(d.image || d.img || d.imageUrl || d.image_url || d.photo),
         isSealed:!!d.is_sealed, gradingCompany:cleanText(d.grading_company || d.grader || '',40),
         quantity, inventoryStatus, soldAt:d.soldAt || d.sold_at || '', archivedAt:d.archivedAt || '', addedAt:row.created_at || '', updatedAt:row.updated_at || ''
-      }; }).filter(i => i.name && i.quantity > 0 && !i.soldAt && !i.archivedAt && !['sold','archived','returned','deleted','sold_pending_pickup','sold_pending_shipment'].includes(i.inventoryStatus));
+      }; }).filter(i => i.name && i.quantity > 0 && !i.soldAt && !i.archivedAt && !['sold','archived','returned','deleted','sold_pending_pickup','sold_pending_shipment','hold','lost_damaged'].includes(i.inventoryStatus));
       const inventorySource = cleanText(settings?.[0]?.modules?.inventorySource || '',40).toLowerCase();
       if ((inventorySource === 'webflow' || inventorySource === 'hybrid') && env.WEBFLOW_TOKEN) {
         const webflowItems=[];
