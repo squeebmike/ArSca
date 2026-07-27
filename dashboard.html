@@ -19036,7 +19036,51 @@ function cardSightDetectionToQplRow(det){
     imageUrl: '',
     priceSource: '',
     _game: game,
+    // Only set for exact catalog matches -- lets us pull pricing/images for
+    // this exact card straight from CardSight's own catalog instead of a
+    // fresh fuzzy text search against a different provider.
+    _cardsightCardId: card.id || '',
   };
+}
+
+function cardsightAveragePrice(records){
+  const prices = (records || []).map(r => Number(String(r?.price ?? '').replace(/[$,]/g, '')) || 0).filter(p => p > 0);
+  if(!prices.length) return 0;
+  return prices.reduce((a,b) => a+b, 0) / prices.length;
+}
+
+// CardSight's own sold-comps pricing for the exact card it just identified
+// (keyed by catalog card.id — no fresh text search, so no mismatch risk).
+// Picks the graded bucket matching what CardSight saw on the slab, or raw
+// comps for an ungraded card.
+async function fetchCardSightSportsPrice(row){
+  if(!row._cardsightCardId) return null;
+  try {
+    const params = new URLSearchParams({ period: '3m', limit: '20' });
+    const res = await storeWorkerFetch('/cardsight/pricing/' + encodeURIComponent(row._cardsightCardId) + '?' + params.toString());
+    if(!res.ok) return null;
+    const data = await res.json();
+    let records = [], source = '';
+    if(row.grading_company && row.grade){
+      const company = (data.graded || []).find(g => String(g.company_name || '').toLowerCase() === String(row.grading_company).toLowerCase());
+      const bucket = company?.grades?.find(g => String(g.grade_value || '') === String(row.grade));
+      if(bucket?.records?.length){ records = bucket.records; source = 'CardSight sold comps (' + company.company_name + ' ' + bucket.grade_value + ')'; }
+    }
+    if(!records.length && data.raw?.records?.length){ records = data.raw.records; source = 'CardSight sold comps (raw)'; }
+    const market = cardsightAveragePrice(records);
+    if(market > 0) return { market, priceSource: source };
+  } catch(e) { /* fall through */ }
+  return null;
+}
+
+async function fetchCardSightImage(row){
+  if(!row._cardsightCardId) return '';
+  try {
+    const res = await storeWorkerFetch('/cardsight/images/' + encodeURIComponent(row._cardsightCardId));
+    if(!res.ok) return '';
+    const data = await res.json();
+    return data.imageUrl || data.url || data.image || '';
+  } catch(e) { return ''; }
 }
 
 // Real pricing only — never AI-guessed. Routes to whichever live provider
@@ -19070,7 +19114,26 @@ async function fetchCardSightRealPrice(row){
     } catch(e) { /* fall through */ }
     return { market: 0, imageUrl: '', priceSource: '' };
   }
-  const category = row._game === 'One Piece TCG' ? 'One Piece' : 'Sports Card';
+  if(row._game === 'Sports Card'){
+    // JustTCG has no real North American sports card catalog -- it's a TCG
+    // pricing API (Magic/Pokemon/Yu-Gi-Oh!/Lorcana/One Piece). Go straight to
+    // CardSight's own sold-comps for this exact identified card, and only
+    // fall back to a fresh PriceCharting text search if CardSight has none.
+    const [cardsightPrice, cardsightImage] = await Promise.all([
+      fetchCardSightSportsPrice(row),
+      fetchCardSightImage(row),
+    ]);
+    if(cardsightPrice) return { market: cardsightPrice.market, imageUrl: cardsightImage, priceSource: cardsightPrice.priceSource };
+    try {
+      const params = new URLSearchParams({ q, category: 'Sports Card' });
+      const res = await storeWorkerFetch('/pricing/pricecharting/search?' + params.toString());
+      const data = await res.json();
+      const match = (data.matches || data.products || [])[0];
+      if(match) return { market: Number(match.prices?.ungraded || 0), imageUrl: cardsightImage || match.imageUrl || '', priceSource: 'PriceCharting' };
+    } catch(e) { /* fall through */ }
+    return { market: 0, imageUrl: cardsightImage, priceSource: '' };
+  }
+  const category = 'One Piece';
   try {
     const params = new URLSearchParams({ q, category, storeId: getActiveStoreId(), include_variants: 'true' });
     const res = await storeWorkerFetch('/pricing/justtcg/search?' + params.toString());
@@ -19078,15 +19141,6 @@ async function fetchCardSightRealPrice(row){
     const match = (data.matches || [])[0];
     if(match) return { market: Number(match.selectedVariant?.marketPrice || 0), imageUrl: match.imageUrl || '', priceSource: 'JustTCG' };
   } catch(e) { /* fall through */ }
-  if(row._game === 'Sports Card'){
-    try {
-      const params = new URLSearchParams({ q, category: 'Sports Card' });
-      const res = await storeWorkerFetch('/pricing/pricecharting/search?' + params.toString());
-      const data = await res.json();
-      const match = (data.matches || data.products || [])[0];
-      if(match) return { market: Number(match.prices?.ungraded || 0), imageUrl: match.imageUrl || '', priceSource: 'PriceCharting' };
-    } catch(e) { /* fall through */ }
-  }
   return { market: 0, imageUrl: '', priceSource: '' };
 }
 
