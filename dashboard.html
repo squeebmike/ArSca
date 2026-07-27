@@ -1628,32 +1628,7 @@ body.show-mode .inv-sync-badge{display:none;}
   <div class="two" style="margin-top:14px">
     <div class="panel">
       <div class="ph">BY CATEGORY <b id="ct-total"></b></div>
-      <div class="cg">
-        <div class="cp" onclick="filterAndSwitch('Sports')">
-          <div class="cp-n">⚾ SPORTS</div>
-          <div class="cp-v" id="c-sports">0</div>
-          <div class="cp-s" id="cv-sports">$0 value</div>
-          <div class="cp-bar"><div class="cp-bar-fill" id="cb-sports" style="width:0%"></div></div>
-        </div>
-        <div class="cp" onclick="filterAndSwitch('TCG')">
-          <div class="cp-n">🎴 TCG</div>
-          <div class="cp-v" id="c-tcg">0</div>
-          <div class="cp-s" id="cv-tcg">$0 value</div>
-          <div class="cp-bar"><div class="cp-bar-fill" id="cb-tcg" style="width:0%;background:var(--gold)"></div></div>
-        </div>
-        <div class="cp" onclick="filterAndSwitch('Comic')">
-          <div class="cp-n">📖 COMICS</div>
-          <div class="cp-v" id="c-comic">0</div>
-          <div class="cp-s" id="cv-comic">$0 value</div>
-          <div class="cp-bar"><div class="cp-bar-fill" id="cb-comic" style="width:0%;background:var(--purple)"></div></div>
-        </div>
-        <div class="cp" onclick="filterAndSwitch('Graded')">
-          <div class="cp-n">🏆 GRADED</div>
-          <div class="cp-v" id="c-graded">0</div>
-          <div class="cp-s" id="cv-graded">$0 value</div>
-          <div class="cp-bar"><div class="cp-bar-fill" id="cb-graded" style="width:0%;background:var(--blue)"></div></div>
-        </div>
-      </div>
+      <div class="cg" id="cat-panel"></div>
     </div>
     <div class="panel">
       <div class="ph">PROFIT BY CATEGORY</div>
@@ -7912,7 +7887,22 @@ function applyVendorConfig(){
 
 function getInventoryCategories(){
   const cfg = getVendorConfig();
-  return Array.from(new Set(cfg.categories || [])).filter(Boolean);
+  // Union in whatever category values already exist on real items -- an item
+  // can carry a category (e.g. "Magic: The Gathering" set by a Research/
+  // CardSight add) that was never explicitly "added" via Settings, and it
+  // still needs to show up in dropdowns, filters, and the category
+  // dashboards instead of silently having nowhere to appear.
+  const fromItems = (typeof all !== 'undefined' ? all : []).map(i => i.category).filter(Boolean);
+  return Array.from(new Set([...(cfg.categories || []), ...fromItems])).filter(Boolean);
+}
+// Shared color palette for category dashboards/charts -- categories are now
+// store-configurable, so nothing can be hardcoded to 5 known names anymore;
+// assign colors by position instead and reuse across every category widget.
+const CATEGORY_COLOR_PALETTE = ['var(--gold)','var(--g)','var(--purple)','var(--blue)','#ff9500','#ff6347','#48cae4','#c77dff','var(--dim)'];
+function getInventoryCategoryColors(){
+  const map = {};
+  getInventoryCategories().forEach((c,idx) => { map[c] = CATEGORY_COLOR_PALETTE[idx % CATEGORY_COLOR_PALETTE.length]; });
+  return map;
 }
 
 function renderInventoryCategoryFilters(){
@@ -13818,33 +13808,34 @@ function renderStats(){
 
 function renderCats(){
   const ins=all.filter(i=>i.status==='in_stock');
-  const cats=['Sports','TCG','Comic','Graded','Collectibles'];
+  const cats=getInventoryCategories();
+  const catColors=getInventoryCategoryColors();
   const vals = cats.map(c=>ins.filter(i=>i.category===c).reduce((a,i)=>a+(i.market||0)*(i.qty||1),0));
   const maxVal = Math.max(...vals,1);
-  cats.forEach((c,idx)=>{
-    const items=ins.filter(i=>i.category===c);
-    const v=vals[idx];
-    const key=c.toLowerCase();
-    const el=document.getElementById('c-'+key);
-    const vel=document.getElementById('cv-'+key);
-    const bar=document.getElementById('cb-'+key);
-    if(el) el.textContent=items.length;
-    if(vel) vel.textContent=f$(v)+' value';
-    if(bar) bar.style.width=(v/maxVal*100).toFixed(1)+'%';
-  });
+  const panelEl=document.getElementById('cat-panel');
+  if(panelEl){
+    panelEl.innerHTML = cats.map((c,idx)=>{
+      const items=ins.filter(i=>i.category===c);
+      return `<div class="cp" onclick="filterAndSwitch('${escHtml(c)}')">
+        <div class="cp-n">${escHtml(c).toUpperCase()}</div>
+        <div class="cp-v">${items.length}</div>
+        <div class="cp-s">${f$(vals[idx])} value</div>
+        <div class="cp-bar"><div class="cp-bar-fill" style="width:${(vals[idx]/maxVal*100).toFixed(1)}%;background:${catColors[c]}"></div></div>
+      </div>`;
+    }).join('');
+  }
   document.getElementById('ct-total').textContent=ins.length+' in stock';
 
   // Profit meter — same Supabase-first logic as renderStats
   const invSold=all.filter(i=>i.status==='sold');
   const hasSupabaseItems2=all.some(i=>i.source==='built_in');
   const sol=hasSupabaseItems2 ? invSold : invSold.concat(dedupeTransactionRows(transactionSoldRows(), invSold));
-  const catColors={'Sports':'var(--gold)','TCG':'var(--g)','Comic':'var(--purple)','Graded':'var(--blue)','Collectibles':'#ff9500'};
   const profitMeter=document.getElementById('profit-meter');
   const catProfits=cats.map(c=>({c,p:sol.filter(i=>i.category===c).reduce((a,i)=>a+(i.profit||0),0)}));
   const maxP=Math.max(...catProfits.map(x=>Math.abs(x.p)),1);
   profitMeter.innerHTML=catProfits.map(({c,p})=>`
     <div class="pm-row">
-      <div class="pm-label">${c.toUpperCase()}</div>
+      <div class="pm-label">${escHtml(c).toUpperCase()}</div>
       <div class="pm-bar"><div class="pm-fill" style="width:${(Math.abs(p)/maxP*100).toFixed(1)}%;background:${catColors[c]}"></div></div>
       <div class="pm-val" style="color:${p>=0?'var(--g)':'var(--red)'}">${p>=0?'+':''}${f$(p)}</div>
     </div>`).join('');
@@ -13855,7 +13846,7 @@ function renderTopVal(){
   const el=document.getElementById('top-val');
   if(!top.length){el.innerHTML='<div class="empty"><div class="empty-t">NO ITEMS</div></div>';return;}
   const max=top[0].market;
-  const cc={'Sports':'var(--gold)','TCG':'var(--g)','Comic':'var(--purple)','Graded':'var(--blue)'};
+  const cc=getInventoryCategoryColors();
   el.innerHTML=top.map(i=>`<div class="br">
     <span class="br-l" title="${i.name}">${i.name}</span>
     <div class="br-t"><div class="br-f" style="width:${(i.market/max*100).toFixed(1)}%;background:${cc[i.category]||'var(--g)'}"></div></div>
@@ -16683,8 +16674,8 @@ function renderRestock(){
   const ins = all.filter(i=>i.status==='in_stock');
 
   // Fastest sellers by category (items/week)
-  const cats = ['Sports','TCG','Comic','Graded','Collectibles'];
-  const catColors = {Sports:'var(--gold)',TCG:'var(--g)',Comic:'var(--purple)',Graded:'var(--blue)',Collectibles:'#ff9500'};
+  const cats = getInventoryCategories();
+  const catColors = getInventoryCategoryColors();
   const catSales = cats.map(c=>{
     const catSold = sol.filter(i=>i.category===c);
     const weeks = catSold.length ? Math.max(1,(Date.now()-new Date(catSold[catSold.length-1].soldAt))/604800000) : 1;
