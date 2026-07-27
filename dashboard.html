@@ -340,6 +340,8 @@ tr.sold:hover td{opacity:.7;}
 .ct{font-family:var(--font-mono);font-size:11px;font-weight:800;letter-spacing:.7px;padding:5px 9px;border-radius:5px;white-space:nowrap;}
 .ct.Sports{background:rgba(255,209,102,.1);color:var(--gold);}
 .ct.TCG{background:rgba(0,255,179,.1);color:var(--g);}
+.ct.PokemonTCG{background:rgba(0,255,179,.1);color:var(--g);}
+.ct.OnePieceTCG{background:rgba(255,99,71,.1);color:#ff6347;}
 .ct.Comic{background:rgba(199,125,255,.1);color:var(--purple);}
 .ct.Graded{background:rgba(72,202,228,.1);color:var(--blue);}
 .ct.Supplies{background:rgba(255,255,255,.06);color:var(--dim);}
@@ -2553,13 +2555,7 @@ body.show-mode .inv-sync-badge{display:none;}
       </div>
       <div>
         <label>Category</label>
-        <select id="edit-category">
-          <option value="TCG">TCG</option>
-          <option value="Sports">Sports</option>
-          <option value="Comic">Comic</option>
-          <option value="Graded">Graded</option>
-          <option value="Collectibles">Collectibles</option>
-        </select>
+        <select id="edit-category"></select>
       </div>
     </div>
       </div>
@@ -2604,7 +2600,6 @@ body.show-mode .inv-sync-badge{display:none;}
         <div><label>Issue # / Item #</label><input type="text" id="edit-issue" placeholder="#1, SKU..."></div>
         <div><label>Serial # / Numbered</label><input type="text" id="edit-serial" placeholder="023/150"></div>
         <div><label>Card # / Language</label><input type="text" id="edit-cardnum" placeholder="123/200, Japanese"></div>
-        <div><label>Grade (CGC/CBCS/PSA)</label><input type="text" id="edit-grade-extra" placeholder="CGC 9.8, PSA 10"></div>
       </div>
       <div style="display:flex;gap:12px;flex-wrap:wrap">
         <label style="display:flex;align-items:center;gap:5px;font-family:monospace;font-size:10px;color:var(--dim);cursor:pointer"><input type="checkbox" id="edit-rookie"> RC</label>
@@ -2612,6 +2607,17 @@ body.show-mode .inv-sync-badge{display:none;}
         <label style="display:flex;align-items:center;gap:5px;font-family:monospace;font-size:10px;color:var(--dim);cursor:pointer"><input type="checkbox" id="edit-patch"> Patch</label>
         <label style="display:flex;align-items:center;gap:5px;font-family:monospace;font-size:10px;color:var(--dim);cursor:pointer"><input type="checkbox" id="edit-key"> Key Issue</label>
         <label style="display:flex;align-items:center;gap:5px;font-family:monospace;font-size:10px;color:var(--dim);cursor:pointer"><input type="checkbox" id="edit-signed"> Signed</label>
+      </div>
+    </div>
+
+    <div style="margin-top:10px;border-top:1px solid var(--border);padding-top:10px">
+      <label style="display:flex;align-items:center;gap:6px;font-family:monospace;font-size:10px;color:var(--dim);cursor:pointer;margin-bottom:8px">
+        <input type="checkbox" id="edit-is-graded" onchange="toggleEditGradedRow()"> This item is professionally graded (PSA / BGS / CGC / SGC / CBCS)
+      </label>
+      <div id="edit-graded-row" style="display:none;grid-template-columns:1fr 1fr 1fr;gap:8px">
+        <div><label>Grader</label><input type="text" id="edit-grader" placeholder="PSA, BGS, CGC..."></div>
+        <div><label>Grade</label><input type="text" id="edit-grade" placeholder="10, 9.5..."></div>
+        <div><label>Cert #</label><input type="text" id="edit-cert" placeholder="Certification number"></div>
       </div>
     </div>
 
@@ -4163,7 +4169,7 @@ const DEFAULT_VENDOR_CONFIG = {
     ops: true,
     pricingSync: true,
   },
-  categories: ['TCG','Sports','Comic','Graded','Sealed Product','Collectibles','Supplies'],
+  categories: ['Pokemon TCG','Magic: The Gathering','One Piece TCG','Yu-Gi-Oh!','Sports','Comic','Sealed Product','Collectibles','Supplies'],
 };
 const LIFECYCLE_LABELS = {
   in_stock: 'In stock',
@@ -7915,7 +7921,10 @@ function renderInventoryCategoryFilters(){
   const configured = getInventoryCategories();
   document.querySelectorAll('#tab-inventory .fb').forEach(btn => {
     const txt = btn.textContent.replace(/[^\w\s-]/g,'').trim().toLowerCase();
-    const map = { sports:'Sports', tcg:'TCG', comics:'Comic', graded:'Graded', collectibles:'Collectibles' };
+    // "Graded" is intentionally excluded here -- it's a cross-category
+    // attribute now (any item can be graded regardless of category), not a
+    // configurable category, so that filter button always stays visible.
+    const map = { sports:'Sports', tcg:'TCG', comics:'Comic', collectibles:'Collectibles' };
     const key = Object.keys(map).find(k => txt.includes(k));
     if(key) btn.style.display = configured.includes(map[key]) ? '' : 'none';
   });
@@ -7945,7 +7954,7 @@ function ensureSpreadsheetPanel(backoffice){
       <div style="font-family:monospace;font-size:9px;color:var(--dim);margin-bottom:6px">BUILT-IN QUICK ADD</div>
       <div style="display:grid;grid-template-columns:2fr 1fr 1fr .8fr .8fr;gap:8px">
         <input id="built-name" class="tsi" placeholder="Item name">
-        <select id="built-category" class="tsi" onchange="toggleBuiltGradedRow()">${getInventoryCategories().map(c => `<option>${escHtml(c)}</option>`).join('')}</select>
+        <select id="built-category" class="tsi">${getInventoryCategories().map(c => `<option>${escHtml(c)}</option>`).join('')}</select>
         <select id="built-product-type" class="tsi" onchange="toggleBuiltSealedFields()" title="Single card vs sealed/pack product">
           <option value="single">Single / card</option>
           <option value="sealed">Sealed / pack / box</option>
@@ -7970,6 +7979,9 @@ function ensureSpreadsheetPanel(backoffice){
         <input id="built-image-sealed" class="tsi" placeholder="Image URL (optional)">
         <input id="built-notes-sealed" class="tsi" placeholder="Notes (optional)">
       </div>
+      <label style="display:flex;align-items:center;gap:5px;font-family:monospace;font-size:9px;color:var(--dim);cursor:pointer;margin-top:8px">
+        <input type="checkbox" id="built-is-graded" onchange="toggleBuiltGradedRow()"> This item is graded (PSA/BGS/CGC/SGC/CBCS)
+      </label>
       <div id="built-graded-row" style="display:none;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:8px">
         <input id="built-grader" class="tsi" placeholder="Grader (PSA / BGS / CGC)">
         <input id="built-grade" class="tsi" placeholder="Grade (e.g. 9.5)">
@@ -7995,10 +8007,42 @@ let pendingCsvRows = [];
 let pendingCsvHeaders = [];
 let pendingCsvFileName = '';
 
+// Populates the inventory Edit modal's Category dropdown from the store's
+// configured category list (Settings > ADD CATEGORY) instead of a hardcoded
+// list -- categories added there were previously invisible here, so there
+// was no way to actually assign an item to a custom category like "Pokemon
+// TCG" or "Magic: The Gathering" even though Settings let you "add" one.
+function populateEditCategorySelect(currentValue){
+  const sel = document.getElementById('edit-category');
+  if(!sel) return;
+  const configured = getInventoryCategories();
+  const options = (currentValue && !configured.includes(currentValue)) ? [...configured, currentValue] : configured;
+  sel.innerHTML = options.map(c => `<option value="${escHtml(c)}">${escHtml(c)}</option>`).join('');
+  sel.value = currentValue || options[0] || '';
+}
+function toggleEditGradedRow(){
+  const row = document.getElementById('edit-graded-row');
+  const on = document.getElementById('edit-is-graded')?.checked;
+  if(row) row.style.display = on ? 'grid' : 'none';
+}
+// Reads the edit modal's grading fields for save -- unchecking "This item is
+// graded" clears them (lets a mis-flagged item be un-graded), rather than
+// leaving stale grader/grade/cert data behind.
+function readEditGradingFields(){
+  const graded = document.getElementById('edit-is-graded')?.checked;
+  const grade = graded ? (document.getElementById('edit-grade')?.value.trim() || '') : '';
+  return {
+    grader: graded ? (document.getElementById('edit-grader')?.value.trim() || '') : '',
+    grade,
+    cert_number: graded ? (document.getElementById('edit-cert')?.value.trim() || '') : '',
+    comic_grade: grade,
+  };
+}
+
 function toggleBuiltGradedRow(){
-  const cat = document.getElementById('built-category')?.value || '';
+  const on = document.getElementById('built-is-graded')?.checked;
   const row = document.getElementById('built-graded-row');
-  if(row) row.style.display = cat === 'Graded' ? 'grid' : 'none';
+  if(row) row.style.display = on ? 'grid' : 'none';
 }
 
 // Show Operations v1: sealed/pack products skip card-number + condition-matrix fields —
@@ -8033,14 +8077,16 @@ async function addManualBuiltInInventory(){
     image:(isSealed ? document.getElementById('built-image-sealed')?.value.trim() : document.getElementById('built-image')?.value.trim()) || '',
     notes:(isSealed ? document.getElementById('built-notes-sealed')?.value.trim() : document.getElementById('built-notes')?.value.trim()) || '',
     is_sealed:isSealed,
-    // Graded fields — populated when category is Graded
-    grader:document.getElementById('built-grader')?.value.trim() || '',
-    grade:document.getElementById('built-grade')?.value.trim() || '',
-    cert_number:document.getElementById('built-cert')?.value.trim() || '',
+    // Graded fields — populated when "This item is graded" is checked, not
+    // tied to category (any category can be graded).
+    grader:document.getElementById('built-is-graded')?.checked ? (document.getElementById('built-grader')?.value.trim() || '') : '',
+    grade:document.getElementById('built-is-graded')?.checked ? (document.getElementById('built-grade')?.value.trim() || '') : '',
+    cert_number:document.getElementById('built-is-graded')?.checked ? (document.getElementById('built-cert')?.value.trim() || '') : '',
   };
   try {
     const id = await createBuiltInInventoryItem(item, item, 'manual_quick_add');
     ['built-name','built-set','built-year','built-condition','built-location','built-cost','built-price','built-qty','built-image','built-notes','built-image-sealed','built-notes-sealed','built-grader','built-grade','built-cert'].forEach(k => { const el=document.getElementById(k); if(el) el.value=k==='built-qty' ? '1' : ''; });
+    const gradedCheckbox = document.getElementById('built-is-graded'); if(gradedCheckbox){ gradedCheckbox.checked=false; toggleBuiltGradedRow(); }
     logOpsEvent('inventory_add', 'Manual built-in inventory item added: ' + item.name, { id, category:item.category, productType, cost:item.cost, price:item.market });
     toast_dash('Added: ' + item.name);
     loadInventory();
@@ -8770,7 +8816,7 @@ function applyBetaHelpAnnotations(){
     ['button[onclick*="openEditModal"],#edit-modal','inventoryEdit'],
     ['#edit-photo-preview,#edit-photo-file,button[onclick*="handleInventoryEditPhoto"]','photo'],
     ['#edit-cost','cost'], ['#edit-market','market'], ['#edit-list-price','listPrice'], ['#edit-profit-preview','margin'],
-    ['#edit-condition,#edit-grade-extra','condition'], ['#edit-location','status'],
+    ['#edit-condition,#edit-is-graded,#edit-grader,#edit-grade,#edit-cert','condition'], ['#edit-location','status'],
     ['#inventory-health-panel,.fb,#tbl-q','filters'],
     ['button[onclick*="dashAddToCart"]','quickSell'], ['button[onclick*="openEbayFromDash"]','ebay'],
     ['button[onclick*="markSold"],button[onclick*="setLifecycle"]','markSold'],
@@ -13393,6 +13439,8 @@ function builtInDataFromItem(item, updates={}){
     card_number:updates.card_number ?? item.card_number ?? '',
     comic_grade:updates.comic_grade ?? item.comic_grade ?? '',
     grade:updates.comic_grade ?? updates.grade ?? item.grade ?? '',
+    grader:updates.grader ?? item.grader ?? item.raw?.grader ?? '',
+    cert_number:updates.cert_number ?? item.cert_number ?? item.raw?.cert_number ?? '',
     is_rookie:!!(updates.is_rookie ?? item.is_rookie ?? item.isRookie),
     is_auto:!!(updates.is_auto ?? item.is_auto),
     is_patch:!!(updates.is_patch ?? item.is_patch),
@@ -13641,7 +13689,9 @@ function applyDashboardItemUpdate(id, updates) {
     serial_number: updates.serial_number,
     card_number: updates.card_number,
     comic_grade: updates.comic_grade,
-    grade: updates.comic_grade || all[idx].grade,
+    grade: updates.grade ?? updates.comic_grade ?? all[idx].grade,
+    grader: updates.grader ?? all[idx].grader,
+    cert_number: updates.cert_number ?? all[idx].cert_number,
     is_rookie: updates.is_rookie,
     isRookie: updates.is_rookie,
     is_auto: updates.is_auto,
@@ -14160,6 +14210,10 @@ function filterTable(){
     if(activeF==='listed_online') return mq&&i.status==='in_stock'&&inventoryIsListed(i);
     if(activeF==='below_cost') return mq&&i.status==='in_stock'&&inventoryProfitStats(i).cost>0&&inventoryProfitStats(i).list>0&&inventoryProfitStats(i).list<inventoryProfitStats(i).cost;
     if(activeF==='high_value') return mq&&i.status==='in_stock'&&inventoryListPrice(i)>=100;
+    // Grading is a cross-category attribute (any category can be graded), not
+    // a category of its own -- match on the actual grading fields instead of
+    // requiring category==='Graded'.
+    if(activeF==='Graded') return mq&&!!(i.grader||i.grade);
     if(activeF==='comic_raw') return mq&&qplCategoryKey(i.category)==='comic'&&!i.isSlabbed;
     if(activeF==='comic_slabbed') return mq&&qplCategoryKey(i.category)==='comic'&&!!i.isSlabbed;
     if(activeF==='needs_cover') return mq&&qplCategoryKey(i.category)==='comic'&&(!inventoryImageUrl(i)||(!i.coverConfirmed&&i.coverConfidence!=='confirmed'));
@@ -17436,7 +17490,11 @@ function openEditModal(id) {
   document.getElementById('edit-issue').value = item.issue || '';
   document.getElementById('edit-serial').value = item.serial_number || '';
   document.getElementById('edit-cardnum').value = item.card_number || '';
-  document.getElementById('edit-grade-extra').value = item.comic_grade || item.grade || '';
+  document.getElementById('edit-grader').value = item.grader || '';
+  document.getElementById('edit-grade').value = item.grade || item.comic_grade || '';
+  document.getElementById('edit-cert').value = item.cert_number || '';
+  document.getElementById('edit-is-graded').checked = !!(item.grader || item.grade || item.cert_number || item.comic_grade);
+  toggleEditGradedRow();
   document.getElementById('edit-rookie').checked = item.is_rookie || item.isRookie || false;
   document.getElementById('edit-auto').checked = item.is_auto || false;
   document.getElementById('edit-patch').checked = item.is_patch || false;
@@ -17456,8 +17514,7 @@ function openEditModal(id) {
   const cond = item.condition || 'NM';
   [...condSel.options].forEach(o => o.selected = o.value === cond);
 
-  const catSel = document.getElementById('edit-category');
-  [...catSel.options].forEach(o => o.selected = o.value === item.category);
+  populateEditCategorySelect(item.category);
 
   updateEditProfit();
   document.getElementById('edit-modal').classList.add('on');
@@ -17510,7 +17567,11 @@ function openAddToInventoryModal(idx){
   document.getElementById('edit-issue').value = item.issue || '';
   document.getElementById('edit-serial').value = item.serial_number || '';
   document.getElementById('edit-cardnum').value = item.card_number || '';
-  document.getElementById('edit-grade-extra').value = item.comic_grade || item.grade || '';
+  document.getElementById('edit-grader').value = item.grader || '';
+  document.getElementById('edit-grade').value = item.grade || item.comic_grade || '';
+  document.getElementById('edit-cert').value = item.cert_number || '';
+  document.getElementById('edit-is-graded').checked = !!(item.grader || item.grade || item.cert_number || item.comic_grade);
+  toggleEditGradedRow();
   document.getElementById('edit-rookie').checked = item.is_rookie || item.isRookie || false;
   document.getElementById('edit-auto').checked = item.is_auto || false;
   document.getElementById('edit-patch').checked = item.is_patch || false;
@@ -17522,8 +17583,7 @@ function openAddToInventoryModal(idx){
   const condSel = document.getElementById('edit-condition');
   const cond = item.condition || 'NM';
   [...condSel.options].forEach(o => o.selected = o.value === cond);
-  const catSel = document.getElementById('edit-category');
-  [...catSel.options].forEach(o => o.selected = o.value === item.category);
+  populateEditCategorySelect(item.category);
 
   const syncBtn = document.getElementById('edit-sync-btn');
   if(syncBtn) { syncBtn.textContent = 'ADD TO INVENTORY'; syncBtn.onclick = confirmAddToInventoryFromModal; }
@@ -17567,7 +17627,7 @@ async function confirmAddToInventoryFromModal(){
     issue: document.getElementById('edit-issue').value.trim(),
     serial_number: document.getElementById('edit-serial').value.trim(),
     card_number: document.getElementById('edit-cardnum').value.trim(),
-    comic_grade: document.getElementById('edit-grade-extra').value.trim(),
+    ...readEditGradingFields(),
     is_rookie: document.getElementById('edit-rookie').checked,
     is_auto: document.getElementById('edit-auto').checked,
     is_patch: document.getElementById('edit-patch').checked,
@@ -17764,7 +17824,7 @@ async function confirmEditAndSync() {
     issue: document.getElementById('edit-issue').value.trim(),
     serial_number: document.getElementById('edit-serial').value.trim(),
     card_number: document.getElementById('edit-cardnum').value.trim(),
-    comic_grade: document.getElementById('edit-grade-extra').value.trim(),
+    ...readEditGradingFields(),
     is_rookie: document.getElementById('edit-rookie').checked,
     is_auto: document.getElementById('edit-auto').checked,
     is_patch: document.getElementById('edit-patch').checked,
