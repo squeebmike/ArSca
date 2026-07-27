@@ -6036,7 +6036,7 @@ export default {
       };
 
       if (url.pathname.startsWith('/topps-checklists/import') && request.method === 'PUT') {
-        return json({ ok: false, error: 'Worker KV Topps import is disabled. Use scripts/import-topps-to-supabase.js.' }, 410);
+        return json({ ok: false, error: 'Worker KV Topps import is disabled. The Topps catalog lives in R2 -- use scripts/topps/merge-and-publish.mjs.' }, 410);
       }
 
       if (url.pathname === '/topps-checklists/import-start' && request.method === 'PUT') {

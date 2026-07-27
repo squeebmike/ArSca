@@ -1,12 +1,29 @@
 name: Publish Topps offline catalog to production
 
+# Supabase is permanently retired for the Topps catalog (see
+# supabase-migrations/2026-07-15-retire-topps-catalog-after-r2.sql -- the
+# historical 740-set/426,540-card catalog was verified and migrated to R2 on
+# 2026-07-16, then the Supabase tables were dropped for good). Growing the
+# catalog now means merging new locally-parsed sets straight into the live
+# R2 bundle, never through a database again.
+#
+# To publish new sets:
+#   1. Run `npm run topps:import -- --zip=<path to a zip of just the new
+#      checklist PDFs>` locally (this only runs where you have the zip and
+#      a local Python for PDF extraction -- see scripts/import-topps-checklists.js).
+#      This writes data/topps/topps_checklist_cards.json and topps_sets.json.
+#   2. Either run `npm run topps:merge:publish -- --version=... --upload=true`
+#      locally (needs CLOUDFLARE_API_TOKEN/CLOUDFLARE_ACCOUNT_ID in your
+#      shell), or force-add those two gitignored files to a scratch branch
+#      (git add -f) and trigger this workflow from that branch so CI does
+#      the merge+publish instead.
+
 on:
   workflow_dispatch:
     inputs:
       version:
-        description: Immutable catalog version
+        description: New immutable catalog version for this update
         required: true
-        default: "2026-07-16.1"
 
 permissions:
   contents: read
@@ -19,28 +36,18 @@ jobs:
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-      SUPABASE_URL: https://vroknjrxubsqyexngwus.supabase.co
-      SUPABASE_ANON_KEY: sb_publishable_wbpX2nL8l-4NbXtZNG_bjA_nabSYaJ5
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: main
+          ref: ${{ github.ref }}
+
       - uses: actions/setup-node@v4
         with:
           node-version: 22
       - run: npm ci
-      - name: Export public Topps reference data read-only
-        run: npm run topps:export:supabase
-      - name: Build compressed versioned catalog
-        run: node --max-old-space-size=4096 scripts/topps/build-offline-bundle.mjs --version=${{ inputs.version }} --out=data/topps/offline-build
-      - name: Upload immutable data before active manifest
-        shell: bash
-        run: |
-          set -euo pipefail
-          base="data/topps/offline-build/topps/${{ inputs.version }}"
-          npx wrangler r2 object put "arsca-offline-catalogs/topps/${{ inputs.version }}/cards.jsonl.gz" --file "$base/cards.jsonl.gz" --remote
-          npx wrangler r2 object put "arsca-offline-catalogs/topps/${{ inputs.version }}/sets.jsonl.gz" --file "$base/sets.jsonl.gz" --remote
-          npx wrangler r2 object put "arsca-offline-catalogs/topps/manifest.json" --file data/topps/offline-build/topps/manifest.json --remote
+
+      - name: Merge new local checklist data into the live R2 catalog and publish
+        run: node --max-old-space-size=4096 scripts/topps/merge-and-publish.mjs --version=${{ inputs.version }} --upload=true --out=data/topps/offline-build
 
       - name: Verify production R2 bundle through Worker
         env:
