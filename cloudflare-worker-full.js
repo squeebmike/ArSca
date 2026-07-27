@@ -1970,17 +1970,39 @@ export default {
       if (rateError) return rateError;
 
       const cardId = cardsightImageMatch[1];
-      const params = new URLSearchParams({ format: 'json', default: 'true' });
+      const params = new URLSearchParams({ default: 'true' });
       const res = await fetch(`${CARDSIGHTAI_BASE}/v1/images/card/${encodeURIComponent(cardId)}?${params.toString()}`, {
         method: 'GET',
         headers: { 'X-API-Key': env.CARDSIGHTAI_API_KEY },
       });
-
-      const data = await res.text();
-      return new Response(data, {
-        status: res.status,
-        headers: { ...CORS, 'Content-Type': 'application/json' },
-      });
+      if (!res.ok) {
+        const errText = await res.text();
+        return json({ ok: false, error: 'CardSight image ' + res.status + ': ' + errText.slice(0, 200) }, res.status);
+      }
+      const contentType = res.headers.get('Content-Type') || '';
+      // CardSight's docs describe this endpoint as returning "binary or base64
+      // JSON" -- handle whichever it actually sends rather than assuming one,
+      // and build a real data: URI ourselves so the dashboard can drop the
+      // result straight into an <img src> with no further parsing/guessing.
+      if (contentType.includes('application/json')) {
+        const data = await res.json().catch(() => ({}));
+        const already = String(data.imageUrl || data.url || '');
+        if (/^https?:\/\//i.test(already) || already.startsWith('data:')) {
+          return json({ ok: true, imageUrl: already });
+        }
+        const rawBase64 = String(data.image || data.data || data.base64 || data.imageBase64 || '');
+        const imgType = data.contentType || data.mimeType || 'image/jpeg';
+        return json({ ok: true, imageUrl: rawBase64 ? `data:${imgType};base64,${rawBase64}` : '' });
+      }
+      const buf = await res.arrayBuffer();
+      let binary = '';
+      const bytes = new Uint8Array(buf);
+      const chunkSize = 8192;
+      for (let i = 0; i < bytes.length; i += chunkSize) {
+        binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+      }
+      const base64 = btoa(binary);
+      return json({ ok: true, imageUrl: `data:${contentType || 'image/jpeg'};base64,${base64}` });
     }
 
     if (url.pathname === '/upload-image') {

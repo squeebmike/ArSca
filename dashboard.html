@@ -19123,15 +19123,18 @@ async function fetchCardSightRealPrice(row){
       fetchCardSightSportsPrice(row),
       fetchCardSightImage(row),
     ]);
-    if(cardsightPrice) return { market: cardsightPrice.market, imageUrl: cardsightImage, priceSource: cardsightPrice.priceSource };
+    if(cardsightPrice) return { market: cardsightPrice.market, imageUrl: cardsightImage, priceSource: cardsightPrice.priceSource, productUrl: '' };
     try {
       const params = new URLSearchParams({ q, category: 'Sports Card' });
       const res = await storeWorkerFetch('/pricing/pricecharting/search?' + params.toString());
       const data = await res.json();
       const match = (data.matches || data.products || [])[0];
-      if(match) return { market: Number(match.prices?.ungraded || 0), imageUrl: cardsightImage || match.imageUrl || '', priceSource: 'PriceCharting' };
+      // match.url is the actual PriceCharting product page for this exact
+      // item -- without it, the PRICECHARTING button falls back to a plain
+      // text search instead of deep-linking to the matched card.
+      if(match) return { market: Number(match.prices?.ungraded || 0), imageUrl: cardsightImage || match.imageUrl || '', priceSource: 'PriceCharting', productUrl: match.url || '' };
     } catch(e) { /* fall through */ }
-    return { market: 0, imageUrl: cardsightImage, priceSource: '' };
+    return { market: 0, imageUrl: cardsightImage, priceSource: '', productUrl: '' };
   }
   const category = 'One Piece';
   try {
@@ -19163,6 +19166,10 @@ async function doCardSightScan(){
         row.market = priced.market;
         row.imageUrl = priced.imageUrl;
         row.priceSource = priced.priceSource || 'Needs Review';
+        // openQuickExternal('pricecharting') reads r.productUrl before falling
+        // back to a generic text search -- without this, PriceCharting
+        // matches never deep-link to the actual product page.
+        if(priced.productUrl) row.productUrl = priced.productUrl;
         qplMasterResults.unshift(row);
         if(log){
           const line = document.createElement('div');
@@ -19174,6 +19181,13 @@ async function doCardSightScan(){
           debugLine.style.fontSize = '8px';
           debugLine.textContent = 'DEBUG raw: setName="' + (card.setName || '') + '" releaseName="' + (card.releaseName || '') + '" setId="' + (card.setId || '') + '" releaseId="' + (card.releaseId || '') + '" segmentId="' + (card.segmentId || '') + '"';
           log.prepend(debugLine);
+          if(row._game === 'Sports Card'){
+            const sportsDebug = document.createElement('div');
+            sportsDebug.style.color = 'var(--blue)';
+            sportsDebug.style.fontSize = '8px';
+            sportsDebug.textContent = 'DEBUG sports: cardsightCardId="' + (row._cardsightCardId || 'NONE — not an exact catalog match') + '" priceSource="' + (row.priceSource || '') + '" imageUrl=' + (row.imageUrl ? 'present (' + row.imageUrl.length + ' chars)' : 'EMPTY') + ' productUrl="' + (row.productUrl || '') + '"';
+            log.prepend(sportsDebug);
+          }
         }
       }
       qplLastSearch = '';
