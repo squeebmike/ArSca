@@ -12,6 +12,10 @@
 .cart-line .name{font-size:13px;font-weight:700}
 .cart-line .sub{font-size:11px;color:var(--muted)}
 .cart-line .rm{margin-left:auto;background:none;border:0;color:#b91c1c;font-size:20px;cursor:pointer;padding:4px 8px}
+.cart-line .qty-stepper{display:flex;align-items:center;gap:6px}
+.cart-line .qty-stepper button{width:28px;height:28px;border:1px solid var(--line);border-radius:6px;background:#fff;font-size:16px;font-weight:800;cursor:pointer;line-height:1;padding:0}
+.cart-line .qty-stepper button:disabled{opacity:.4;cursor:not-allowed}
+.cart-line .qty-stepper .qty-val{min-width:18px;text-align:center;font-size:13px;font-weight:700}
 .cart-total-row{display:flex;justify-content:space-between;font-size:15px;margin:6px 0}
 .cart-total-row.grand{font-weight:900;font-size:19px;border-top:1px solid var(--line);padding-top:10px;margin-top:10px}
 /* CHECKOUT FORM */
@@ -65,12 +69,33 @@ function updateCartFab(){
 }
 function addToCart(id){
   const item=payload.items.find(x=>x.id===id); if(!item) return;
+  const available=Math.max(1, Number(item.quantity||1));
   const existing=cart.find(c=>c.id===id);
-  if(existing) existing.qty++; else cart.push({id, qty:1, name:item.name, price:item.price, image:item.image, set:item.set, year:item.year, condition:item.condition});
+  if(existing){
+    if(existing.qty>=available){ toast('Only '+available+' available'); return; }
+    existing.qty++;
+  } else {
+    cart.push({id, qty:1, name:item.name, price:item.price, image:item.image, set:item.set, year:item.year, condition:item.condition});
+  }
   saveCart();
   toast('Added to cart');
 }
 function removeFromCart(id){ cart=cart.filter(c=>c.id!==id); saveCart(); renderCart(); }
+// Lets a customer bump quantity up/down right in the cart drawer instead of
+// having to close it and re-find the item in the grid -- especially useful
+// on a slow/spotty connection where every extra navigation is costly, since
+// this is purely local cart state with no network round trip.
+function changeCartQty(id, delta){
+  const line=cart.find(c=>c.id===id); if(!line) return;
+  const item=payload.items.find(x=>x.id===id);
+  const available=Math.max(1, Number(item?.quantity||1));
+  const next=line.qty+delta;
+  if(next<=0){ removeFromCart(id); return; }
+  if(next>available){ toast('Only '+available+' available'); return; }
+  line.qty=next;
+  saveCart();
+  renderCart();
+}
 function cartTotals(){ const subtotal=cart.reduce((a,c)=>a+Number(c.price||0)*c.qty,0); return {subtotal}; }
 function toast(msg){
   let t=document.getElementById('sf-toast');
@@ -99,7 +124,11 @@ function renderCart(){
   const linesEl=document.getElementById('cart-lines'), totalsEl=document.getElementById('cart-totals'), btn=document.getElementById('cart-checkout-btn');
   if(!cart.length){ linesEl.innerHTML='<div class="empty" style="padding:24px 0">Your cart is empty.</div>'; totalsEl.innerHTML=''; btn.disabled=true; return; }
   btn.disabled=false;
-  linesEl.innerHTML=cart.map(c=>`<div class="cart-line">${c.image?`<img src="${esc(c.image)}">`:''}<div><div class="name">${esc(c.name)}</div><div class="sub">${esc([c.set,c.year,c.condition].filter(Boolean).join(' · '))} · qty ${c.qty}</div></div><div>$${(c.price*c.qty).toFixed(2)}</div><button class="rm" onclick="removeFromCart('${esc(c.id)}')">×</button></div>`).join('');
+  linesEl.innerHTML=cart.map(c=>{
+    const item=payload.items.find(x=>x.id===c.id);
+    const available=Math.max(1, Number(item?.quantity||1));
+    return `<div class="cart-line">${c.image?`<img src="${esc(c.image)}">`:''}<div><div class="name">${esc(c.name)}</div><div class="sub">${esc([c.set,c.year,c.condition].filter(Boolean).join(' · '))}</div><div class="qty-stepper"><button onclick="changeCartQty('${esc(c.id)}',-1)" aria-label="Decrease quantity">−</button><span class="qty-val">${c.qty}</span><button onclick="changeCartQty('${esc(c.id)}',1)" ${c.qty>=available?'disabled':''} aria-label="Increase quantity">+</button></div></div><div>$${(c.price*c.qty).toFixed(2)}</div><button class="rm" onclick="removeFromCart('${esc(c.id)}')" aria-label="Remove item">×</button></div>`;
+  }).join('');
   const {subtotal}=cartTotals();
   totalsEl.innerHTML=`<div class="cart-total-row grand"><span>Subtotal</span><span>$${subtotal.toFixed(2)}</span></div><div style="font-size:11px;color:var(--muted)">Shipping (if selected) is calculated at checkout.</div>`;
 }
