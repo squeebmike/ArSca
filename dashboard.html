@@ -1593,6 +1593,11 @@ body.show-mode .inv-sync-badge{display:none;}
       <div class="sc-v" id="s2">—</div>
       <div class="sc-s">at market price</div>
     </div>
+    <div class="sc gold">
+      <div class="sc-l">SELL VALUE</div>
+      <div class="sc-v" id="s7">—</div>
+      <div class="sc-s">at our price (floor/override applied)</div>
+    </div>
     <div class="sc g">
       <div class="sc-l">TOTAL PROFIT</div>
       <div class="sc-v" id="s3">—</div>
@@ -13712,7 +13717,10 @@ function renderStats(){
     ? inventorySold
     : inventorySold.concat(dedupeTransactionRows(transactionSoldRows(), inventorySold));
   const totalQty=ins.reduce((a,i)=>a+(i.qty||1),0);
-  const mkt=ins.reduce((a,i)=>a+Math.max(inventoryMarketPrice(i), inventoryListPrice(i))*(i.qty||1),0);
+  // Two distinct totals, not blended: pure market reference vs. what we'd
+  // actually collect at our real (floor/override/rounded) sell price.
+  const mkt=ins.reduce((a,i)=>a+inventoryMarketPrice(i)*(i.qty||1),0);
+  const sellVal=ins.reduce((a,i)=>a+inventoryListPrice(i)*(i.qty||1),0);
   const pft=sol.reduce((a,i)=>a+(i.profit||0),0);
   const cost=ins.reduce((a,i)=>a+(i.cost||0)*(i.qty||1),0);
   const avg=sol.length?pft/sol.length:0;
@@ -13721,6 +13729,7 @@ function renderStats(){
   document.getElementById('s1').textContent=ins.length;
   document.getElementById('s1b').textContent=totalQty+' units · '+all.length+' SKUs';
   document.getElementById('s2').textContent=f$(mkt);
+  document.getElementById('s7').textContent=f$(sellVal);
   document.getElementById('s3').textContent=(pft>=0?'+':'')+f$(pft);
   document.getElementById('s3').className='sc-v'+(pft<0?' neg':'');
   document.getElementById('s3b').textContent=sol.length+' sold · ROI '+roi.toFixed(0)+'%';
@@ -13960,12 +13969,15 @@ function inventoryMinPrice(item={}){ return Number(item.minPrice ?? item.raw?.mi
 // at save time — see confirmEditAndSync/confirmAddToInventoryFromModal).
 // 0 means "no override — track market."
 function inventoryPriceOverride(item={}){ return Number(item.priceOverride ?? item.raw?.priceOverride ?? 0) || 0; }
-// The price before the floor is applied: the manual override if one was set,
-// otherwise the live market price. This is the single source of truth for
-// what an item is worth right now, absent an explicit floor.
+// The price before the floor is applied: the manual override if one was set
+// (respected exactly as typed), otherwise the live market price rounded UP
+// to the next whole dollar -- store policy is cash-register-friendly whole
+// dollars, not raw market cents (e.g. $7.01 market rings up as $8, never
+// down). This is the single source of truth for what an item is worth right
+// now, absent an explicit floor.
 function inventoryEffectiveBasePrice(item={}){
   const override = inventoryPriceOverride(item);
-  return override > 0 ? override : inventoryMarketPrice(item);
+  return override > 0 ? override : roundSellPrice(inventoryMarketPrice(item));
 }
 // The price rule: market price, unless there's a floor (minPrice) or a
 // manually-entered override, in which case the higher of override/market
@@ -14021,7 +14033,7 @@ function inventoryHealthSummary(items=all){
     listed:inStock.filter(inventoryIsListed).length,
     notListed:inStock.filter(i=>!inventoryIsListed(i)).length,
     belowCost:inStock.filter(i=>{ const s=inventoryProfitStats(i); return s.cost>0 && s.list>0 && s.list<s.cost; }).length,
-    highValue:inStock.filter(i=>Math.max(inventoryMarketPrice(i), inventoryListPrice(i)) >= 100).length,
+    highValue:inStock.filter(i=>inventoryListPrice(i) >= 100).length,
   };
 }
 function setInventoryHealthFilter(filter){
@@ -14063,7 +14075,7 @@ function ownerAnalyticsData(){
   const monthKey = now.getFullYear() + '-' + now.getMonth();
   const salesToday = sold.filter(i=>new Date(i.soldAt || i.createdAt || 0).toDateString() === todayKey);
   const salesMonth = sold.filter(i=>{ const d=new Date(i.soldAt || i.createdAt || 0); return d.getFullYear() + '-' + d.getMonth() === monthKey; });
-  const value = inv.reduce((s,i)=>s + Math.max(inventoryMarketPrice(i), inventoryListPrice(i)) * (Number(i.qty || 1) || 1), 0);
+  const value = inv.reduce((s,i)=>s + inventoryListPrice(i) * (Number(i.qty || 1) || 1), 0);
   const cost = inv.reduce((s,i)=>s + inventoryCostBasis(i) * (Number(i.qty || 1) || 1), 0);
   const listed = inv.filter(inventoryIsListed).length;
   const h = inventoryHealthSummary(all);
@@ -14085,7 +14097,7 @@ function ownerAnalyticsData(){
     revenueMonth:salesMonth.reduce((s,i)=>s+Number(i.salePrice || i.price || 0),0),
     profitMonth:salesMonth.reduce((s,i)=>s+Number(i.profit || ((i.salePrice || i.price || 0) - (i.cost || 0)) || 0),0),
     tender, cat,
-    topValue:[...inv].sort((a,b)=>Math.max(inventoryMarketPrice(b),inventoryListPrice(b))-Math.max(inventoryMarketPrice(a),inventoryListPrice(a))).slice(0,5),
+    topValue:[...inv].sort((a,b)=>inventoryListPrice(b)-inventoryListPrice(a)).slice(0,5),
     needsWork:inv.filter(i=>!inventoryImageUrl(i) || inventoryCostBasis(i)<=0 || inventoryMarketPrice(i)<=0 || inventoryIsPriceStale(i)).slice(0,5),
   };
 }
@@ -14103,7 +14115,7 @@ function renderOwnerAnalyticsPanel(){
       <div class="owner-metric-card" onclick="setInventoryHealthFilter('not_listed')"><div class="owner-metric-label">Listing Coverage</div><div class="owner-metric-value">${d.listed}/${d.inv.length}</div><div class="owner-metric-sub">${d.health.notListed} in stock not listed</div></div>
     </div>
     <div class="owner-section-grid">
-      <div class="owner-mini-panel"><div class="ph">TOP VALUE</div>${d.topValue.length?d.topValue.map(i=>`<div class="owner-mini-row"><b title="${escHtml(i.name)}">${escHtml(i.name)}</b><span>${fd$(Math.max(inventoryMarketPrice(i), inventoryListPrice(i)))}</span></div>`).join(''):'<div class="empty"><div class="empty-t">NONE</div></div>'}</div>
+      <div class="owner-mini-panel"><div class="ph">TOP VALUE</div>${d.topValue.length?d.topValue.map(i=>`<div class="owner-mini-row"><b title="${escHtml(i.name)}">${escHtml(i.name)}</b><span>${fd$(inventoryListPrice(i))}</span></div>`).join(''):'<div class="empty"><div class="empty-t">NONE</div></div>'}</div>
       <div class="owner-mini-panel"><div class="ph">TENDER SPLIT</div>${tenderRows.length?tenderRows.map(([k,v])=>`<div class="owner-mini-row"><b>${escHtml(k.toUpperCase())}</b><span>${fd$(v)}</span></div>`).join(''):'<div class="empty"><div class="empty-t">NO TENDERS</div></div>'}</div>
       <div class="owner-mini-panel"><div class="ph">OWNER FLAGS</div>${d.needsWork.length?d.needsWork.map(i=>`<div class="owner-mini-row"><b title="${escHtml(i.name)}">${escHtml(i.name)}</b><span>${!inventoryImageUrl(i)?'NO PHOTO':inventoryCostBasis(i)<=0?'NO COST':inventoryMarketPrice(i)<=0?'NO MARKET':'STALE'}</span></div>`).join(''):'<div class="empty"><div class="empty-t">ALL GOOD</div></div>'}</div>
     </div>
@@ -14147,7 +14159,7 @@ function filterTable(){
     if(activeF==='not_listed') return mq&&i.status==='in_stock'&&!inventoryIsListed(i);
     if(activeF==='listed_online') return mq&&i.status==='in_stock'&&inventoryIsListed(i);
     if(activeF==='below_cost') return mq&&i.status==='in_stock'&&inventoryProfitStats(i).cost>0&&inventoryProfitStats(i).list>0&&inventoryProfitStats(i).list<inventoryProfitStats(i).cost;
-    if(activeF==='high_value') return mq&&i.status==='in_stock'&&Math.max(inventoryMarketPrice(i), inventoryListPrice(i))>=100;
+    if(activeF==='high_value') return mq&&i.status==='in_stock'&&inventoryListPrice(i)>=100;
     if(activeF==='comic_raw') return mq&&qplCategoryKey(i.category)==='comic'&&!i.isSlabbed;
     if(activeF==='comic_slabbed') return mq&&qplCategoryKey(i.category)==='comic'&&!!i.isSlabbed;
     if(activeF==='needs_cover') return mq&&qplCategoryKey(i.category)==='comic'&&(!inventoryImageUrl(i)||(!i.coverConfirmed&&i.coverConfidence!=='confirmed'));

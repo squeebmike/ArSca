@@ -250,6 +250,15 @@ async function metronExactIssueRecords(env, issue = {}) {
   return rows.filter((row, index, all) => row?.id && all.findIndex(other => String(other?.id || '') === String(row.id)) === index).slice(0, 60);
 }
 
+// Store policy: market-tracked prices ring up as whole dollars, rounded UP
+// (e.g. $7.01 market -> $8, never down). A deliberate override or floor is
+// respected exactly as entered -- this only rounds the raw market figure.
+function roundUpToDollar(value) {
+  const n = Number(value || 0);
+  if (!isFinite(n) || n <= 0) return 0;
+  return Math.ceil(n - 1e-9);
+}
+
 function json(data, status = 200, extraHeaders = {}) {
   return new Response(JSON.stringify(data), {
     status,
@@ -1561,7 +1570,7 @@ export default {
         // manually-entered override (priceOverride) from the dashboard's edit
         // screen -- whichever of those is higher than market wins.
         const rowMarket = Number(d.market || d.marketPrice || d.rawMarketPrice || 0) || 0;
-        const rowBase = Number(d.priceOverride || 0) || rowMarket;
+        const rowBase = Number(d.priceOverride || 0) || roundUpToDollar(rowMarket);
         return {
         id:cleanText(row.id,80), name:cleanText(d.name || d.title || 'Item'), category:cleanText(d.category || d.type || 'Other',80),
         set:cleanText(d.set || d.series || '',120), year:cleanText(d.year || '',12), variant:cleanText(d.variant || d.finish || '',120), condition:cleanText(d.condition || d.grade || '',80),
@@ -1646,7 +1655,7 @@ export default {
         const availableQty = Number(d.quantity ?? d.qty ?? 1) || 0;
         const invStatus = String(d.lifecycle || d.status || row.status || 'in_stock').toLowerCase();
         if (invStatus !== 'in_stock' || availableQty < qty || d.soldAt || d.archivedAt) return json({ ok:false, error:`"${d.name || 'An item'}" in your cart just sold out` }, 409);
-        const checkoutBase = Number(d.priceOverride || 0) || Number(d.market || d.marketPrice || d.rawMarketPrice || d.price || 0) || 0;
+        const checkoutBase = Number(d.priceOverride || 0) || roundUpToDollar(Number(d.market || d.marketPrice || d.rawMarketPrice || d.price || 0) || 0);
         const unitPrice = Math.max(checkoutBase, Number(d.minPrice || 0) || 0);
         if (unitPrice <= 0) return json({ ok:false, error:`"${d.name || 'An item'}" doesn't have a price set yet` }, 409);
         const category = String(d.category || d.type || '').toLowerCase();
