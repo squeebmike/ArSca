@@ -1039,7 +1039,7 @@ body.customer-browse-mode{padding-bottom:0}body.customer-browse-mode header,body
   #tab-inventory td:nth-child(3)::before{content:'SET / VARIANT';}
   #tab-inventory td:nth-child(4)::before{content:'CATEGORY';}
   #tab-inventory td:nth-child(5)::before{content:'QTY';}
-  #tab-inventory td:nth-child(6)::before{content:'MARKET';}
+  #tab-inventory td:nth-child(6)::before{content:'PRICE (SELL)';}
   #tab-inventory td:nth-child(7)::before{content:'COST';}
   #tab-inventory td:nth-child(8)::before{content:'MARGIN';}
   #tab-inventory td:nth-child(9)::before{content:'STATUS';}
@@ -1727,7 +1727,7 @@ body.show-mode .inv-sync-badge{display:none;}
         <th onclick="srt('set')">SET / VARIANT</th>
         <th>CAT</th>
         <th onclick="srt('qty')" style="text-align:center">QTY</th>
-        <th onclick="srt('market')" style="text-align:right">MARKET</th>
+        <th onclick="srt('market')" style="text-align:right">PRICE (SELL)</th>
         <th onclick="srt('cost')" style="text-align:right">COST</th>
         <th onclick="srt('profit')" style="text-align:right">MARGIN</th>
         <th>STATUS</th>
@@ -12691,6 +12691,14 @@ async function applySelectedPriceSyncUpdates(){
         pokemonPriceTrackerVariants:p.variants || fullItem.pokemonPriceTrackerVariants || null,
         priceSyncRequestPath:p.requestPath || '',
       };
+      // If the item's list/sale price wasn't deliberately set apart from its old
+      // market price (no manual override — it was just mirroring market), carry
+      // it forward to the new price too. Otherwise inventoryListPrice() keeps
+      // prioritizing the old frozen listPrice forever and the displayed price
+      // never reflects the sync, even after "apply" — this was hiding every
+      // live price update for items without a real override (sealed product
+      // included).
+      const trackedMarket = Math.abs(inventoryListPrice(fullItem) - p.oldPrice) < 0.01;
       await saveInventoryEdit(fullItem, {
         market:      p.newPrice,
         price:       p.newPrice,
@@ -12705,6 +12713,7 @@ async function applySelectedPriceSyncUpdates(){
         priceUpdatedAt:now,
         stalePrice:false,
         livePriceStatus:p.mode === 'live' || p.mode === 'mtg-live' ? 'live' : isMtgPriceSync ? 'offline' : 'cached',
+        ...(trackedMarket ? { salePrice:p.newPrice, listPrice:p.newPrice } : {}),
         ...providerFields,
       });
       ok++;
@@ -13302,6 +13311,7 @@ function mapBuiltInItem(row){
     upc:d.upc || '',
     issue:d.issue || d.issueNumber || '',
     publisher:d.publisher || '',
+    minPrice:Number(d.minPrice ?? 0) || 0,
     raw:d,
   };
 }
@@ -13699,7 +13709,7 @@ function renderStats(){
     ? inventorySold
     : inventorySold.concat(dedupeTransactionRows(transactionSoldRows(), inventorySold));
   const totalQty=ins.reduce((a,i)=>a+(i.qty||1),0);
-  const mkt=ins.reduce((a,i)=>a+(i.market||0)*(i.qty||1),0);
+  const mkt=ins.reduce((a,i)=>a+Math.max(inventoryMarketPrice(i), inventoryListPrice(i))*(i.qty||1),0);
   const pft=sol.reduce((a,i)=>a+(i.profit||0),0);
   const cost=ins.reduce((a,i)=>a+(i.cost||0)*(i.qty||1),0);
   const avg=sol.length?pft/sol.length:0;
@@ -13947,6 +13957,16 @@ function inventoryListPrice(item={}){
   const floor = inventoryMinPrice(item);
   return floor > 0 ? Math.max(raw, floor) : raw;
 }
+// Suggested ring-up price for the Sell/POS flow: respects a manual list/sale
+// price override, applies the active Show Mode discount on top of it, then
+// enforces the per-item minPrice floor as a hard minimum (never rings up
+// below the floor even after a show discount).
+function inventorySellSuggestedPrice(item={}){
+  const basePrice = Number(item.listPrice ?? item.displayPrice ?? item.salePrice ?? item.price ?? item.raw?.listPrice ?? item.raw?.displayPrice ?? item.raw?.salePrice ?? inventoryMarketPrice(item) ?? 0) || 0;
+  const discounted = basePrice > 0 ? applyShowPriceRule(basePrice) : 0;
+  const floor = inventoryMinPrice(item);
+  return floor > 0 ? Math.max(discounted, floor) : discounted;
+}
 function inventoryProfitStats(item={}){
   const cost = inventoryCostBasis(item);
   const market = inventoryMarketPrice(item);
@@ -14025,7 +14045,7 @@ function ownerAnalyticsData(){
   const monthKey = now.getFullYear() + '-' + now.getMonth();
   const salesToday = sold.filter(i=>new Date(i.soldAt || i.createdAt || 0).toDateString() === todayKey);
   const salesMonth = sold.filter(i=>{ const d=new Date(i.soldAt || i.createdAt || 0); return d.getFullYear() + '-' + d.getMonth() === monthKey; });
-  const value = inv.reduce((s,i)=>s + inventoryMarketPrice(i) * (Number(i.qty || 1) || 1), 0);
+  const value = inv.reduce((s,i)=>s + Math.max(inventoryMarketPrice(i), inventoryListPrice(i)) * (Number(i.qty || 1) || 1), 0);
   const cost = inv.reduce((s,i)=>s + inventoryCostBasis(i) * (Number(i.qty || 1) || 1), 0);
   const listed = inv.filter(inventoryIsListed).length;
   const h = inventoryHealthSummary(all);
@@ -14277,8 +14297,8 @@ function openSellModal(id){
   sellItemId = id;
   document.getElementById('sell-item-name').textContent = item.name;
   document.getElementById('sell-item-meta').textContent = [item.set, item.year, item.category].filter(Boolean).join(' · ');
-  const marketPrice = inventoryReferenceMarketPrice(item);
-  const suggested = marketPrice > 0 ? suggestedCartSalePrice(applyShowPriceRule(marketPrice)) : Number(item.salePrice || 0);
+  const ringUpPrice = inventorySellSuggestedPrice(item);
+  const suggested = ringUpPrice > 0 ? suggestedCartSalePrice(ringUpPrice) : Number(item.salePrice || 0);
   document.getElementById('sell-price').value = suggested > 0 ? suggested.toFixed(2) : '';
   const available = inventoryAvailableQuantity(item);
   const qtyWrap = document.getElementById('sell-qty-wrap');
