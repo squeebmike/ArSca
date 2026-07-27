@@ -1039,7 +1039,7 @@ body.customer-browse-mode{padding-bottom:0}body.customer-browse-mode header,body
   #tab-inventory td:nth-child(3)::before{content:'SET / VARIANT';}
   #tab-inventory td:nth-child(4)::before{content:'CATEGORY';}
   #tab-inventory td:nth-child(5)::before{content:'QTY';}
-  #tab-inventory td:nth-child(6)::before{content:'PRICE (SELL)';}
+  #tab-inventory td:nth-child(6)::before{content:'PRICE';}
   #tab-inventory td:nth-child(7)::before{content:'COST';}
   #tab-inventory td:nth-child(8)::before{content:'MARGIN';}
   #tab-inventory td:nth-child(9)::before{content:'STATUS';}
@@ -1727,7 +1727,7 @@ body.show-mode .inv-sync-badge{display:none;}
         <th onclick="srt('set')">SET / VARIANT</th>
         <th>CAT</th>
         <th onclick="srt('qty')" style="text-align:center">QTY</th>
-        <th onclick="srt('market')" style="text-align:right">PRICE (SELL)</th>
+        <th onclick="srt('market')" style="text-align:right">PRICE</th>
         <th onclick="srt('cost')" style="text-align:right">COST</th>
         <th onclick="srt('profit')" style="text-align:right">MARGIN</th>
         <th>STATUS</th>
@@ -12691,14 +12691,14 @@ async function applySelectedPriceSyncUpdates(){
         pokemonPriceTrackerVariants:p.variants || fullItem.pokemonPriceTrackerVariants || null,
         priceSyncRequestPath:p.requestPath || '',
       };
-      // If the item's list/sale price wasn't deliberately set apart from its old
-      // market price (no manual override — it was just mirroring market), carry
-      // it forward to the new price too. Otherwise inventoryListPrice() keeps
-      // prioritizing the old frozen listPrice forever and the displayed price
-      // never reflects the sync, even after "apply" — this was hiding every
-      // live price update for items without a real override (sealed product
-      // included).
-      const trackedMarket = Math.abs(inventoryListPrice(fullItem) - p.oldPrice) < 0.01;
+      // Items without a deliberate manual override (see inventoryPriceOverride)
+      // just track market price automatically -- inventoryListPrice() reads
+      // market directly for those, so nothing else is needed for the price
+      // shown to actually move. Only keep the legacy salePrice/listPrice/
+      // displayPrice mirror fields in sync for other code that still reads
+      // them directly (CSV export, eBay listings, etc.); a real override is
+      // left untouched.
+      const hasOverride = inventoryPriceOverride(fullItem) > 0;
       await saveInventoryEdit(fullItem, {
         market:      p.newPrice,
         price:       p.newPrice,
@@ -12713,7 +12713,7 @@ async function applySelectedPriceSyncUpdates(){
         priceUpdatedAt:now,
         stalePrice:false,
         livePriceStatus:p.mode === 'live' || p.mode === 'mtg-live' ? 'live' : isMtgPriceSync ? 'offline' : 'cached',
-        ...(trackedMarket ? { salePrice:p.newPrice, listPrice:p.newPrice } : {}),
+        ...(hasOverride ? {} : { salePrice:p.newPrice, listPrice:p.newPrice }),
         ...providerFields,
       });
       ok++;
@@ -13248,6 +13248,7 @@ function mapBuiltInItem(row){
     category:d.category || d.itemType || d.inventoryType || 'TCG',
     cost,
     market,
+    priceOverride:Number(d.priceOverride ?? 0) || 0,
     salePrice:Number(d.salePrice || d.sale_price || d.listPrice || d.displayPrice || market || 0),
     listPrice:Number(d.listPrice || d.displayPrice || d.salePrice || d.sale_price || market || 0),
     displayPrice:Number(d.displayPrice || d.listPrice || d.salePrice || d.sale_price || market || 0),
@@ -13333,6 +13334,7 @@ function builtInDataFromItem(item, updates={}){
     'inventory-count':nextQty,
     cost:Number(updates.cost ?? item.cost ?? 0),
     market:Number(updates.market ?? item.market ?? 0),
+    priceOverride:Number(updates.priceOverride ?? item.priceOverride ?? item.raw?.priceOverride ?? 0) || 0,
     salePrice:Number(updates.salePrice ?? updates.listPrice ?? item.salePrice ?? item.listPrice ?? item.raw?.salePrice ?? item.market ?? updates.market ?? 0),
     listPrice:Number(updates.listPrice ?? updates.salePrice ?? item.listPrice ?? item.displayPrice ?? item.salePrice ?? item.raw?.listPrice ?? item.market ?? updates.market ?? 0),
     minPrice:Number(updates.minPrice ?? item.minPrice ?? item.raw?.minPrice ?? 0) || 0,
@@ -13610,6 +13612,7 @@ function applyDashboardItemUpdate(id, updates) {
     cost: updates.cost,
     market: updates.market,
     price: updates.market,
+    priceOverride: updates.priceOverride ?? all[idx].priceOverride,
     salePrice: updates.salePrice ?? updates.listPrice ?? all[idx].salePrice,
     listPrice: updates.listPrice ?? updates.salePrice ?? all[idx].listPrice,
     displayPrice: updates.displayPrice ?? updates.listPrice ?? updates.salePrice ?? all[idx].displayPrice,
@@ -13952,17 +13955,32 @@ function inventoryImageSourceLabel(item={}){
 function inventoryCostBasis(item={}){ return Number(item.cost ?? item.costBasis ?? item.raw?.cost ?? 0) || 0; }
 function inventoryMarketPrice(item={}){ return Number(item.market ?? item.marketPrice ?? item.rawMarketPrice ?? item.raw?.market ?? 0) || 0; }
 function inventoryMinPrice(item={}){ return Number(item.minPrice ?? item.raw?.minPrice ?? 0) || 0; }
-function inventoryListPrice(item={}){
-  const raw = Number(item.listPrice ?? item.displayPrice ?? item.salePrice ?? item.price ?? item.raw?.listPrice ?? item.raw?.displayPrice ?? item.raw?.salePrice ?? inventoryMarketPrice(item) ?? 0) || 0;
-  const floor = inventoryMinPrice(item);
-  return floor > 0 ? Math.max(raw, floor) : raw;
+// A manually-entered price from the edit screen's List/Sale Price field
+// (only set when that value was deliberately typed apart from Market Price
+// at save time — see confirmEditAndSync/confirmAddToInventoryFromModal).
+// 0 means "no override — track market."
+function inventoryPriceOverride(item={}){ return Number(item.priceOverride ?? item.raw?.priceOverride ?? 0) || 0; }
+// The price before the floor is applied: the manual override if one was set,
+// otherwise the live market price. This is the single source of truth for
+// what an item is worth right now, absent an explicit floor.
+function inventoryEffectiveBasePrice(item={}){
+  const override = inventoryPriceOverride(item);
+  return override > 0 ? override : inventoryMarketPrice(item);
 }
-// Suggested ring-up price for the Sell/POS flow: respects a manual list/sale
-// price override, applies the active Show Mode discount on top of it, then
+// The price rule: market price, unless there's a floor (minPrice) or a
+// manually-entered override, in which case the higher of override/market
+// vs floor wins.
+function inventoryListPrice(item={}){
+  const base = inventoryEffectiveBasePrice(item);
+  const floor = inventoryMinPrice(item);
+  return floor > 0 ? Math.max(base, floor) : base;
+}
+// Suggested ring-up price for the Sell/POS flow: respects a manual price
+// override, applies the active Show Mode discount on top of it, then
 // enforces the per-item minPrice floor as a hard minimum (never rings up
 // below the floor even after a show discount).
 function inventorySellSuggestedPrice(item={}){
-  const basePrice = Number(item.listPrice ?? item.displayPrice ?? item.salePrice ?? item.price ?? item.raw?.listPrice ?? item.raw?.displayPrice ?? item.raw?.salePrice ?? inventoryMarketPrice(item) ?? 0) || 0;
+  const basePrice = inventoryEffectiveBasePrice(item);
   const discounted = basePrice > 0 ? applyShowPriceRule(basePrice) : 0;
   const floor = inventoryMinPrice(item);
   return floor > 0 ? Math.max(discounted, floor) : discounted;
@@ -14519,8 +14537,8 @@ function dashAddToCart(id){
   // line shape and there is only one cart write path. Do not invent a
   // second cart — this preserves the unitPrice/applyShowPriceRule and
   // legacy field behavior the rest of the app expects.
-  const rawMarketPrice = inventoryReferenceMarketPrice(item);
-  const unitPrice = rawMarketPrice > 0 ? suggestedCartSalePrice(applyShowPriceRule(rawMarketPrice)) : Number(item.salePrice || 0);
+  const ringUpPrice = inventorySellSuggestedPrice(item);
+  const unitPrice = ringUpPrice > 0 ? suggestedCartSalePrice(ringUpPrice) : Number(item.salePrice || 0);
   addSaleItemToCart(item, {
     sourceType: isSealedProduct(item) ? 'sealed' : 'inventory',
     inventoryId: item.id, name: item.name, category: item.category,
@@ -17386,7 +17404,7 @@ function openEditModal(id) {
   document.getElementById('edit-item-title').textContent = item.name + (item.year ? ' · '+item.year : '') + (item.set ? ' · '+item.set : '');
   document.getElementById('edit-cost').value = item.cost || '';
   document.getElementById('edit-market').value = item.market || '';
-  document.getElementById('edit-list-price').value = inventoryListPrice(item) || '';
+  document.getElementById('edit-list-price').value = inventoryEffectiveBasePrice(item) || '';
   document.getElementById('edit-min-price').value = item.minPrice || '';
   document.getElementById('edit-qty').value = item.qty || 1;
   document.getElementById('edit-year').value = item.year || '';
@@ -17512,13 +17530,17 @@ async function confirmAddToInventoryFromModal(){
   try { tcgReferencePatch = await inventoryTcgReferencePatch(item); }
   catch(error) { toast_dash(error.message || String(error)); return; }
 
+  const addMarketVal = parseFloat(document.getElementById('edit-market').value)||0;
+  const addListVal = parseFloat(document.getElementById('edit-list-price')?.value)||0;
+  const addHasOverride = addListVal > 0 && Math.abs(addListVal - addMarketVal) >= 0.01;
   Object.assign(item, {
     cost: parseFloat(document.getElementById('edit-cost').value)||0,
-    market: parseFloat(document.getElementById('edit-market').value)||0,
-    price: parseFloat(document.getElementById('edit-market').value)||0,
-    salePrice: parseFloat(document.getElementById('edit-list-price')?.value)||parseFloat(document.getElementById('edit-market').value)||0,
-    listPrice: parseFloat(document.getElementById('edit-list-price')?.value)||parseFloat(document.getElementById('edit-market').value)||0,
-    displayPrice: parseFloat(document.getElementById('edit-list-price')?.value)||parseFloat(document.getElementById('edit-market').value)||0,
+    market: addMarketVal,
+    price: addMarketVal,
+    priceOverride: addHasOverride ? addListVal : 0,
+    salePrice: addHasOverride ? addListVal : addMarketVal,
+    listPrice: addHasOverride ? addListVal : addMarketVal,
+    displayPrice: addHasOverride ? addListVal : addMarketVal,
     minPrice: parseFloat(document.getElementById('edit-min-price')?.value)||0,
     qty: parseInt(document.getElementById('edit-qty').value)||1,
     year: document.getElementById('edit-year').value.trim(),
@@ -17698,13 +17720,21 @@ async function confirmEditAndSync() {
   catch(error) { toast_dash(error.message || String(error)); return; }
   pushUndoAction('inventory edit', { type:'item-snapshot', item:{...item}, lifecycleMap:getLifecycleMap() });
 
+  const editMarketVal = parseFloat(document.getElementById('edit-market').value)||0;
+  const editListVal = parseFloat(document.getElementById('edit-list-price')?.value)||0;
+  // Only treat the List/Sale Price field as a deliberate override when it was
+  // actually typed apart from Market Price. Otherwise this item just tracks
+  // market going forward -- it does not freeze at whatever market happened to
+  // read the moment someone opened the edit screen for an unrelated change.
+  const editHasOverride = editListVal > 0 && Math.abs(editListVal - editMarketVal) >= 0.01;
   const updates = {
     cost: parseFloat(document.getElementById('edit-cost').value)||0,
-    market: parseFloat(document.getElementById('edit-market').value)||0,
-    price: parseFloat(document.getElementById('edit-market').value)||0,
-    salePrice: parseFloat(document.getElementById('edit-list-price')?.value)||parseFloat(document.getElementById('edit-market').value)||0,
-    listPrice: parseFloat(document.getElementById('edit-list-price')?.value)||parseFloat(document.getElementById('edit-market').value)||0,
-    displayPrice: parseFloat(document.getElementById('edit-list-price')?.value)||parseFloat(document.getElementById('edit-market').value)||0,
+    market: editMarketVal,
+    price: editMarketVal,
+    priceOverride: editHasOverride ? editListVal : 0,
+    salePrice: editHasOverride ? editListVal : editMarketVal,
+    listPrice: editHasOverride ? editListVal : editMarketVal,
+    displayPrice: editHasOverride ? editListVal : editMarketVal,
     minPrice: parseFloat(document.getElementById('edit-min-price')?.value)||0,
     thumbnail: document.getElementById('edit-photo-data')?.value || '',
     photoDataUrl: document.getElementById('edit-photo-data')?.value || '',
