@@ -1039,7 +1039,7 @@ body.customer-browse-mode{padding-bottom:0}body.customer-browse-mode header,body
   #tab-inventory td:nth-child(3)::before{content:'SET / VARIANT';}
   #tab-inventory td:nth-child(4)::before{content:'CATEGORY';}
   #tab-inventory td:nth-child(5)::before{content:'QTY';}
-  #tab-inventory td:nth-child(6)::before{content:'MARKET';}
+  #tab-inventory td:nth-child(6)::before{content:'PRICE (SELL)';}
   #tab-inventory td:nth-child(7)::before{content:'COST';}
   #tab-inventory td:nth-child(8)::before{content:'MARGIN';}
   #tab-inventory td:nth-child(9)::before{content:'STATUS';}
@@ -1727,7 +1727,7 @@ body.show-mode .inv-sync-badge{display:none;}
         <th onclick="srt('set')">SET / VARIANT</th>
         <th>CAT</th>
         <th onclick="srt('qty')" style="text-align:center">QTY</th>
-        <th onclick="srt('market')" style="text-align:right">MARKET</th>
+        <th onclick="srt('market')" style="text-align:right">PRICE (SELL)</th>
         <th onclick="srt('cost')" style="text-align:right">COST</th>
         <th onclick="srt('profit')" style="text-align:right">MARGIN</th>
         <th>STATUS</th>
@@ -12691,6 +12691,14 @@ async function applySelectedPriceSyncUpdates(){
         pokemonPriceTrackerVariants:p.variants || fullItem.pokemonPriceTrackerVariants || null,
         priceSyncRequestPath:p.requestPath || '',
       };
+      // If the item's list/sale price wasn't deliberately set apart from its old
+      // market price (no manual override — it was just mirroring market), carry
+      // it forward to the new price too. Otherwise inventoryListPrice() keeps
+      // prioritizing the old frozen listPrice forever and the displayed price
+      // never reflects the sync, even after "apply" — this was hiding every
+      // live price update for items without a real override (sealed product
+      // included).
+      const trackedMarket = Math.abs(inventoryListPrice(fullItem) - p.oldPrice) < 0.01;
       await saveInventoryEdit(fullItem, {
         market:      p.newPrice,
         price:       p.newPrice,
@@ -12705,6 +12713,7 @@ async function applySelectedPriceSyncUpdates(){
         priceUpdatedAt:now,
         stalePrice:false,
         livePriceStatus:p.mode === 'live' || p.mode === 'mtg-live' ? 'live' : isMtgPriceSync ? 'offline' : 'cached',
+        ...(trackedMarket ? { salePrice:p.newPrice, listPrice:p.newPrice } : {}),
         ...providerFields,
       });
       ok++;
