@@ -24074,6 +24074,17 @@ async function openQplChartModal(idx, range='3M'){
   if(!r) return;
   r.graphRangeLabel = range;
   r.graphDuration = qplChartRangeToDuration(range);
+  // Comics/sports with a PriceCharting product linked (exact match or the
+  // best auto-match) have real guide values by grade, but PriceCharting's
+  // API has no historical price-over-time endpoint at all -- the generic
+  // "PRICE GRAPH" modal below only knows how to draw a JustTCG/Pokemon
+  // priceHistory series, so it always dead-ended on "no historical data"
+  // for these even when we had real by-grade values sitting right there.
+  const chartCategoryKey = qplResultCategoryKey(r);
+  if(r.pricecharting && (chartCategoryKey === 'comic' || chartCategoryKey === 'sports')) {
+    renderPriceChartingGuideChartModal(r, idx);
+    return;
+  }
   // MTG (Scryfall): no Scryfall history API — show PriceCharting guide prices + external links
   if(r.source === 'scryfall' && !r.selectedVariant?.priceHistory?.length) {
     const scryfallUri = r.raw?.scryfall_uri || r.raw?.uri || '';
@@ -24185,6 +24196,57 @@ async function openQplChartModal(idx, range='3M'){
 }
 
 function closeQplChartModal(){ document.getElementById('qpl-chart-modal')?.classList.remove('on'); }
+
+function pcGuideTierRows(r){
+  const isComic = qplResultCategoryKey(r) === 'comic';
+  const p = isComic ? (r.pricecharting?.comicPrices || {}) : (r.pricecharting?.prices || {});
+  const tiers = isComic
+    ? [['Raw','ungraded'],['4.0/4.5','grade4'],['6.0/6.5','grade6'],['8.0/8.5','grade8'],['9.2','grade9_2'],['9.4','grade9_4'],['9.8','grade9_8'],['10.0','grade10']]
+    : [['Raw','ungraded'],['Grade 7','grade7'],['Grade 8','grade8'],['Grade 9','grade9'],['Grade 9.5','grade9_5'],['PSA 10','psa10'],['BGS 10','bgs10'],['CGC 10','cgc10'],['SGC 10','sgc10']];
+  return tiers.map(([label,key]) => ({ label, value:Number(p[key] || 0) })).filter(t => t.value > 0);
+}
+
+// PriceCharting has no historical price-over-time API at all (current guide
+// values only), so this draws a by-grade bar chart from the linked product's
+// snapshot instead of pretending we have a real history series.
+function renderPriceChartingGuideChartModal(r, idx){
+  let modal = document.getElementById('qpl-chart-modal');
+  if(!modal){
+    modal = document.createElement('div');
+    modal.id = 'qpl-chart-modal';
+    modal.className = 'qpl-chart-modal';
+    modal.addEventListener('click', e => { if(e.target === modal) closeQplChartModal(); });
+    document.body.appendChild(modal);
+  }
+  const pc = r.pricecharting || {};
+  const rows = pcGuideTierRows(r);
+  const title = escHtml([r.name, r.set, r.card_number ? '#'+r.card_number : ''].filter(Boolean).join(' / '));
+  const max = Math.max(...rows.map(x => x.value), 1);
+  const bars = rows.map(x => {
+    const h = Math.max(12, Math.round((x.value / max) * 218 + 18));
+    return `<div style="display:flex;flex-direction:column;align-items:center;flex:1;min-width:0">
+      <div title="${escHtml(x.label)} $${x.value.toFixed(2)}" style="width:70%;height:${h}px;background:var(--gold);border-radius:3px 3px 0 0"></div>
+      <div style="font-size:8px;color:var(--dim);margin-top:4px;text-align:center;white-space:nowrap">${escHtml(x.label)}</div>
+      <div style="font-size:9px;color:var(--gold);font-weight:700">$${x.value.toFixed(0)}</div>
+    </div>`;
+  }).join('');
+  const raw = rows.find(x => x.label === 'Raw');
+  modal.innerHTML = `<div class="qpl-chart-card">
+    <div style="display:flex;justify-content:space-between;gap:12px;align-items:center">
+      <div><div style="font-family:'Orbitron',monospace;color:var(--gold);font-size:15px">PRICECHARTING GUIDE BY GRADE</div>
+      <div style="color:var(--dim);font-size:11px;margin-top:4px">${title}</div></div>
+      <button class="hbtn" onclick="closeQplChartModal()">CLOSE</button>
+    </div>
+    <div style="display:grid;grid-template-columns:80px 1fr;gap:12px;margin-top:14px;align-items:center">
+      ${r.imageUrl ? `<img src="${escHtml(r.imageUrl)}" style="width:80px;max-height:110px;object-fit:contain;background:#050507;border:1px solid var(--border);border-radius:8px">` : '<div></div>'}
+      <div><div class="qpl-price">${raw ? '$'+raw.value.toFixed(2) : '—'}</div>
+      <div class="qpl-price-sub">${escHtml(pc.productName || '')}${pc.savedExactLink ? ' · exact link' : ' · closest match'}</div></div>
+    </div>
+    ${rows.length ? `<div style="display:flex;align-items:flex-end;gap:8px;margin-top:18px;min-height:250px">${bars}</div>` : `<div style="margin-top:16px;border:1px dashed rgba(255,209,102,.35);border-radius:12px;padding:18px;color:var(--dim);font-size:13px">This PriceCharting product has no guide values by grade yet.</div>`}
+    <div style="color:var(--dim);font-size:10px;margin-top:12px">PriceCharting guide values by grade — current snapshot, not a price-over-time history. PriceCharting's API does not provide sale history.${pc.url ? ` <a href="${escHtml(pc.url)}" target="_blank" rel="noopener">Open on PriceCharting</a>` : ''}</div>
+  </div>`;
+  modal.classList.add('on');
+}
 
 function pokemonPriceTrackerSearchText(row = {}){
   return [row.name, row.set || row.setName, row.card_number || row.cardNumber].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
