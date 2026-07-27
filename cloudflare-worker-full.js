@@ -1556,10 +1556,16 @@ export default {
       const cleanText = (v,n=240) => String(v == null ? '' : v).trim().slice(0,n);
       const cleanUrl = v => { const s=cleanText(v,1000); return /^https?:\/\//i.test(s)||/^data:image\//i.test(s)?s:''; };
       const linkedWfIds = new Set((rows || []).map(row => row.data?.wfId || row.data?.webflowId).filter(Boolean).map(String));
-      let items = (rows || []).map(row => { const d=row.data || {}; const rawQty=d.quantity ?? d.qty ?? 1; const quantity=Number.isFinite(Number(rawQty))?Number(rawQty):1; const inventoryStatus=cleanText(d.lifecycle || d.status || row.status || 'in_stock',40).toLowerCase(); return {
+      let items = (rows || []).map(row => { const d=row.data || {}; const rawQty=d.quantity ?? d.qty ?? 1; const quantity=Number.isFinite(Number(rawQty))?Number(rawQty):1; const inventoryStatus=cleanText(d.lifecycle || d.status || row.status || 'in_stock',40).toLowerCase();
+        // Price rule: market price, unless there's a floor (minPrice) or a
+        // manually-entered override (priceOverride) from the dashboard's edit
+        // screen -- whichever of those is higher than market wins.
+        const rowMarket = Number(d.market || d.marketPrice || d.rawMarketPrice || 0) || 0;
+        const rowBase = Number(d.priceOverride || 0) || rowMarket;
+        return {
         id:cleanText(row.id,80), name:cleanText(d.name || d.title || 'Item'), category:cleanText(d.category || d.type || 'Other',80),
         set:cleanText(d.set || d.series || '',120), year:cleanText(d.year || '',12), variant:cleanText(d.variant || d.finish || '',120), condition:cleanText(d.condition || d.grade || '',80),
-        price:Math.max(Number(d.listPrice || d.salePrice || d.price || d.market || 0) || 0, Number(d.minPrice || 0) || 0), market:Number(d.market || d.marketPrice || d.rawMarketPrice || 0) || 0, image:cleanUrl(d.image || d.img || d.imageUrl || d.image_url || d.photo),
+        price:Math.max(rowBase, Number(d.minPrice || 0) || 0), market:rowMarket, image:cleanUrl(d.image || d.img || d.imageUrl || d.image_url || d.photo),
         isSealed:!!d.is_sealed, gradingCompany:cleanText(d.grading_company || d.grader || '',40),
         quantity, inventoryStatus, soldAt:d.soldAt || d.sold_at || '', archivedAt:d.archivedAt || '', addedAt:row.created_at || '', updatedAt:row.updated_at || ''
       }; }).filter(i => i.name && i.quantity > 0 && !i.soldAt && !i.archivedAt && !['sold','archived','returned','deleted','sold_pending_pickup','sold_pending_shipment','hold','lost_damaged'].includes(i.inventoryStatus));
@@ -1640,7 +1646,8 @@ export default {
         const availableQty = Number(d.quantity ?? d.qty ?? 1) || 0;
         const invStatus = String(d.lifecycle || d.status || row.status || 'in_stock').toLowerCase();
         if (invStatus !== 'in_stock' || availableQty < qty || d.soldAt || d.archivedAt) return json({ ok:false, error:`"${d.name || 'An item'}" in your cart just sold out` }, 409);
-        const unitPrice = Math.max(Number(d.listPrice || d.salePrice || d.price || d.market || 0) || 0, Number(d.minPrice || 0) || 0);
+        const checkoutBase = Number(d.priceOverride || 0) || Number(d.market || d.marketPrice || d.rawMarketPrice || d.price || 0) || 0;
+        const unitPrice = Math.max(checkoutBase, Number(d.minPrice || 0) || 0);
         if (unitPrice <= 0) return json({ ok:false, error:`"${d.name || 'An item'}" doesn't have a price set yet` }, 409);
         const category = String(d.category || d.type || '').toLowerCase();
         const isSealed = !!d.is_sealed || category.includes('sealed') || category === 'comic';
