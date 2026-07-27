@@ -2607,6 +2607,7 @@ body.show-mode .inv-sync-badge{display:none;}
         <label style="display:flex;align-items:center;gap:5px;font-family:monospace;font-size:10px;color:var(--dim);cursor:pointer"><input type="checkbox" id="edit-patch"> Patch</label>
         <label style="display:flex;align-items:center;gap:5px;font-family:monospace;font-size:10px;color:var(--dim);cursor:pointer"><input type="checkbox" id="edit-key"> Key Issue</label>
         <label style="display:flex;align-items:center;gap:5px;font-family:monospace;font-size:10px;color:var(--dim);cursor:pointer"><input type="checkbox" id="edit-signed"> Signed</label>
+        <label style="display:flex;align-items:center;gap:5px;font-family:monospace;font-size:10px;color:var(--dim);cursor:pointer"><input type="checkbox" id="edit-is-sealed"> Sealed / Pack Product</label>
       </div>
     </div>
 
@@ -8064,7 +8065,10 @@ async function addManualBuiltInInventory(){
   const isSealed = productType === 'sealed' || productType === 'lot';
   const item = {
     name,
-    category:isSealed ? 'Sealed' : cat,
+    // Keep whatever category was picked (Pokemon TCG, MTG, etc.) even when
+    // marked sealed/lot -- sealed is tracked separately via is_sealed below,
+    // it shouldn't overwrite which game/category the product actually is.
+    category:cat,
     productType,
     set:document.getElementById('built-set')?.value.trim() || '',
     year:document.getElementById('built-year')?.value.trim() || '',
@@ -12108,7 +12112,17 @@ function mtgInventorySetCode(item = {}){
   return String(item.setCode || item.set_code || item.raw?.setCode || item.raw?.set_code || '').trim();
 }
 function isMtgInventorySyncItem(item = {}){
-  const text = [item.category,item.game,item.productLine,item.priceSource,item.pricingSource,item.source,item.setName,item.set,item.raw?.category,item.raw?.game,item.raw?.source]
+  const category = String(item.category || item.raw?.category || '').trim();
+  // Once an item carries one of the real, specific configured categories
+  // (Pokemon TCG, Sports, Comic, One Piece TCG, etc.) that's the definitive
+  // answer -- a stray UUID-shaped id picked up from an unrelated lookup
+  // (PokemonPriceTracker, TCGplayer...) must never override an explicit
+  // non-MTG category. "TCG" and blank are the old pre-category-split values
+  // that don't tell us which game, so those still fall through to sniffing.
+  if(category && category !== 'TCG'){
+    return /magic|mtg/i.test(category);
+  }
+  const text = [item.game,item.productLine,item.priceSource,item.pricingSource,item.source,item.setName,item.set,item.raw?.game,item.raw?.source]
     .filter(Boolean).join(' ').toLowerCase();
   if(/pokemon|pokÃ©mon|yugioh|yu-gi-oh|lorcana|one piece|sports?|comic/.test(text)) return false;
   return /magic|mtg|scryfall/.test(text) || !!mtgInventoryScryfallId(item) || !!mtgInventoryOracleId(item);
@@ -13441,6 +13455,8 @@ function builtInDataFromItem(item, updates={}){
     grade:updates.comic_grade ?? updates.grade ?? item.grade ?? '',
     grader:updates.grader ?? item.grader ?? item.raw?.grader ?? '',
     cert_number:updates.cert_number ?? item.cert_number ?? item.raw?.cert_number ?? '',
+    is_sealed:!!(updates.is_sealed ?? item.is_sealed ?? item.raw?.is_sealed),
+    productType:updates.productType ?? item.productType ?? item.raw?.productType ?? '',
     is_rookie:!!(updates.is_rookie ?? item.is_rookie ?? item.isRookie),
     is_auto:!!(updates.is_auto ?? item.is_auto),
     is_patch:!!(updates.is_patch ?? item.is_patch),
@@ -13692,6 +13708,7 @@ function applyDashboardItemUpdate(id, updates) {
     grade: updates.grade ?? updates.comic_grade ?? all[idx].grade,
     grader: updates.grader ?? all[idx].grader,
     cert_number: updates.cert_number ?? all[idx].cert_number,
+    is_sealed: updates.is_sealed ?? all[idx].is_sealed,
     is_rookie: updates.is_rookie,
     isRookie: updates.is_rookie,
     is_auto: updates.is_auto,
@@ -17500,6 +17517,7 @@ function openEditModal(id) {
   document.getElementById('edit-patch').checked = item.is_patch || false;
   document.getElementById('edit-key').checked = item.is_key || false;
   document.getElementById('edit-signed').checked = item.is_signed || false;
+  document.getElementById('edit-is-sealed').checked = item.is_sealed || false;
   document.getElementById('edit-sync-status').textContent = '';
   setInventoryEditPhoto(inventoryImageUrl(item), inventoryImageSourceLabel(item));
   pendingInventoryAdd = null; // in case a Research add was left open — this is a real edit, not a review
@@ -17577,6 +17595,7 @@ function openAddToInventoryModal(idx){
   document.getElementById('edit-patch').checked = item.is_patch || false;
   document.getElementById('edit-key').checked = item.is_key || false;
   document.getElementById('edit-signed').checked = item.is_signed || false;
+  document.getElementById('edit-is-sealed').checked = item.is_sealed || false;
   document.getElementById('edit-sync-status').textContent = '';
   setInventoryEditPhoto(inventoryImageUrl(item), inventoryImageSourceLabel(item));
 
@@ -17633,6 +17652,7 @@ async function confirmAddToInventoryFromModal(){
     is_patch: document.getElementById('edit-patch').checked,
     is_key: document.getElementById('edit-key').checked,
     is_signed: document.getElementById('edit-signed').checked,
+    is_sealed: document.getElementById('edit-is-sealed').checked,
     ...tcgReferencePatch,
   });
   item.inventorySku = item.inventorySku || generateWalkoffInventorySku(item.category, item);
@@ -17830,6 +17850,7 @@ async function confirmEditAndSync() {
     is_patch: document.getElementById('edit-patch').checked,
     is_key: document.getElementById('edit-key').checked,
     is_signed: document.getElementById('edit-signed').checked,
+    is_sealed: document.getElementById('edit-is-sealed').checked,
     ...tcgReferencePatch,
     ...inventoryOwnershipPatch(),
   };
@@ -26633,7 +26654,11 @@ function externalRefsFromQuickLookup(item = {}, selectedVariant = {}){
     pokemonPriceTrackerCardId:item.pokemonPriceTrackerCardId || item.pokemonPriceTracker?.id || item.pokemonPriceTracker?.cardId || null,
     pricechartingProductId:item.pricechartingProductId || item.pricecharting?.productId || null,
     metronIssueId:item.metronIssueId || item.metron?.id || null,
-    scryfallId:item.scryfallId || item.raw?.scryfallId || item.raw?.id || null,
+    // NOTE: no item.raw?.id fallback here -- that's just this row's own
+    // internal/catalog id (Pokemon, sports, comic, anything), not a Scryfall
+    // id, and stamping it on non-MTG items was making the MTG price sync
+    // think they had a real Scryfall match.
+    scryfallId:item.scryfallId || item.raw?.scryfallId || null,
     oracleId:item.oracleId || item.raw?.oracleId || item.raw?.oracle_id || null
   };
 }
