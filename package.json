@@ -35,9 +35,8 @@
     "mtg:build:sample": "node scripts/mtg/build-mtg-offline-bundle.mjs --scryfall=tests/fixtures/mtg/scryfall-sample.json --pricecharting=tests/fixtures/mtg/pricecharting-sample.csv --version=sample",
     "topps:import": "node scripts/import-topps-checklists.js",
     "topps:import:sample": "node scripts/import-topps-checklists.js --limit=3",
-    "topps:import:supabase": "node scripts/import-topps-to-supabase.js",
-    "topps:export:supabase": "node scripts/topps/export-from-supabase.mjs",
     "topps:build:offline": "node scripts/topps/build-offline-bundle.mjs",
+    "topps:merge:publish": "node scripts/topps/merge-and-publish.mjs",
     "topps:verify:r2": "node scripts/topps/verify-production-r2.mjs"
   },
   "devDependencies": {
