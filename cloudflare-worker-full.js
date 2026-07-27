@@ -1927,6 +1927,62 @@ export default {
       });
     }
 
+    // Pricing/images for a card CardSight already identified -- keyed by the
+    // catalog card.id from /cardsight/identify, so this is an exact-match
+    // lookup against the same catalog, not a fresh fuzzy text search.
+    const cardsightPricingMatch = url.pathname.match(/^\/cardsight\/pricing\/([a-zA-Z0-9_-]{1,80})$/);
+    if (cardsightPricingMatch) {
+      if (request.method !== 'GET') return json({ error: 'GET only' }, 405);
+      if (!env.CARDSIGHTAI_API_KEY) return json({ error: 'CARDSIGHTAI_API_KEY not set' }, 500);
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId);
+      if (auth.error) return auth.error;
+      const rateError = await enforceUsageLimit(env, `cardsight-pricing:${storeId}:${auth.user.id}`, 60, 60);
+      if (rateError) return rateError;
+
+      const cardId = cardsightPricingMatch[1];
+      const params = new URLSearchParams();
+      for (const key of ['parallel_id', 'grade_id', 'period', 'listing_type', 'limit', 'as_of_date']) {
+        const v = url.searchParams.get(key);
+        if (v) params.set(key, v);
+      }
+      const qs = params.toString();
+      const res = await fetch(`${CARDSIGHTAI_BASE}/v1/pricing/${encodeURIComponent(cardId)}${qs ? '?' + qs : ''}`, {
+        method: 'POST',
+        headers: { 'X-API-Key': env.CARDSIGHTAI_API_KEY },
+      });
+
+      const data = await res.text();
+      return new Response(data, {
+        status: res.status,
+        headers: { ...CORS, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const cardsightImageMatch = url.pathname.match(/^\/cardsight\/images\/([a-zA-Z0-9_-]{1,80})$/);
+    if (cardsightImageMatch) {
+      if (request.method !== 'GET') return json({ error: 'GET only' }, 405);
+      if (!env.CARDSIGHTAI_API_KEY) return json({ error: 'CARDSIGHTAI_API_KEY not set' }, 500);
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId);
+      if (auth.error) return auth.error;
+      const rateError = await enforceUsageLimit(env, `cardsight-images:${storeId}:${auth.user.id}`, 60, 60);
+      if (rateError) return rateError;
+
+      const cardId = cardsightImageMatch[1];
+      const params = new URLSearchParams({ format: 'json', default: 'true' });
+      const res = await fetch(`${CARDSIGHTAI_BASE}/v1/images/card/${encodeURIComponent(cardId)}?${params.toString()}`, {
+        method: 'GET',
+        headers: { 'X-API-Key': env.CARDSIGHTAI_API_KEY },
+      });
+
+      const data = await res.text();
+      return new Response(data, {
+        status: res.status,
+        headers: { ...CORS, 'Content-Type': 'application/json' },
+      });
+    }
+
     if (url.pathname === '/upload-image') {
       if (request.method !== 'POST') return json({ error: 'POST only' }, 405);
       if (!env.WEBFLOW_TOKEN) return json({ error: 'WEBFLOW_TOKEN not set' }, 500);
