@@ -13302,6 +13302,7 @@ function mapBuiltInItem(row){
     upc:d.upc || '',
     issue:d.issue || d.issueNumber || '',
     publisher:d.publisher || '',
+    minPrice:Number(d.minPrice ?? 0) || 0,
     raw:d,
   };
 }
@@ -13699,7 +13700,7 @@ function renderStats(){
     ? inventorySold
     : inventorySold.concat(dedupeTransactionRows(transactionSoldRows(), inventorySold));
   const totalQty=ins.reduce((a,i)=>a+(i.qty||1),0);
-  const mkt=ins.reduce((a,i)=>a+(i.market||0)*(i.qty||1),0);
+  const mkt=ins.reduce((a,i)=>a+Math.max(inventoryMarketPrice(i), inventoryListPrice(i))*(i.qty||1),0);
   const pft=sol.reduce((a,i)=>a+(i.profit||0),0);
   const cost=ins.reduce((a,i)=>a+(i.cost||0)*(i.qty||1),0);
   const avg=sol.length?pft/sol.length:0;
@@ -13947,6 +13948,16 @@ function inventoryListPrice(item={}){
   const floor = inventoryMinPrice(item);
   return floor > 0 ? Math.max(raw, floor) : raw;
 }
+// Suggested ring-up price for the Sell/POS flow: respects a manual list/sale
+// price override, applies the active Show Mode discount on top of it, then
+// enforces the per-item minPrice floor as a hard minimum (never rings up
+// below the floor even after a show discount).
+function inventorySellSuggestedPrice(item={}){
+  const basePrice = Number(item.listPrice ?? item.displayPrice ?? item.salePrice ?? item.price ?? item.raw?.listPrice ?? item.raw?.displayPrice ?? item.raw?.salePrice ?? inventoryMarketPrice(item) ?? 0) || 0;
+  const discounted = basePrice > 0 ? applyShowPriceRule(basePrice) : 0;
+  const floor = inventoryMinPrice(item);
+  return floor > 0 ? Math.max(discounted, floor) : discounted;
+}
 function inventoryProfitStats(item={}){
   const cost = inventoryCostBasis(item);
   const market = inventoryMarketPrice(item);
@@ -14025,7 +14036,7 @@ function ownerAnalyticsData(){
   const monthKey = now.getFullYear() + '-' + now.getMonth();
   const salesToday = sold.filter(i=>new Date(i.soldAt || i.createdAt || 0).toDateString() === todayKey);
   const salesMonth = sold.filter(i=>{ const d=new Date(i.soldAt || i.createdAt || 0); return d.getFullYear() + '-' + d.getMonth() === monthKey; });
-  const value = inv.reduce((s,i)=>s + inventoryMarketPrice(i) * (Number(i.qty || 1) || 1), 0);
+  const value = inv.reduce((s,i)=>s + Math.max(inventoryMarketPrice(i), inventoryListPrice(i)) * (Number(i.qty || 1) || 1), 0);
   const cost = inv.reduce((s,i)=>s + inventoryCostBasis(i) * (Number(i.qty || 1) || 1), 0);
   const listed = inv.filter(inventoryIsListed).length;
   const h = inventoryHealthSummary(all);
@@ -14277,8 +14288,8 @@ function openSellModal(id){
   sellItemId = id;
   document.getElementById('sell-item-name').textContent = item.name;
   document.getElementById('sell-item-meta').textContent = [item.set, item.year, item.category].filter(Boolean).join(' · ');
-  const marketPrice = inventoryReferenceMarketPrice(item);
-  const suggested = marketPrice > 0 ? suggestedCartSalePrice(applyShowPriceRule(marketPrice)) : Number(item.salePrice || 0);
+  const ringUpPrice = inventorySellSuggestedPrice(item);
+  const suggested = ringUpPrice > 0 ? suggestedCartSalePrice(ringUpPrice) : Number(item.salePrice || 0);
   document.getElementById('sell-price').value = suggested > 0 ? suggested.toFixed(2) : '';
   const available = inventoryAvailableQuantity(item);
   const qtyWrap = document.getElementById('sell-qty-wrap');
