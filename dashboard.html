@@ -5970,6 +5970,89 @@ function formatOfflineCatalogDate(value){
   return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString();
 }
 
+// topps.com's storefront blocks server-side requests to its checklist page
+// (confirmed: HTTP 403 even with full browser-like headers), but never
+// blocks a real browser session. This is the console script to run on
+// https://www.topps.com/pages/checklists to pull the PDF link list out --
+// written with string concatenation (no template literals/backticks) so it's
+// safe to embed as plain text in this file's own template literals.
+const TOPPS_LINK_SCRAPER_SCRIPT = [
+  "const pdfs = [...document.querySelectorAll('a[href]')]",
+  "  .map(a => ({ name: a.textContent.trim().replace(/\\s+/g, ' '), url: a.href }))",
+  "  .filter(x => /\\.pdf(\\?|$)/i.test(x.url));",
+  "copy(pdfs.map(x => x.name + '\\t' + x.url).join('\\n'));",
+  "console.log('Copied ' + pdfs.length + ' PDF links to clipboard -- paste them into the dashboard.');",
+].join('\n');
+
+function parseToppsPastedLinks(text){
+  const entries=[];
+  for(const rawLine of String(text||'').split(/\r?\n/)){
+    const line=rawLine.trim();
+    if(!line) continue;
+    let name='',url='';
+    if(line.includes('\t')){
+      const parts=line.split('\t');
+      url=parts.pop().trim();
+      name=parts.join(' ').trim();
+    } else {
+      const m=line.match(/^(.*?)\s+(https?:\/\/\S+)$/);
+      if(m){name=m[1].trim();url=m[2].trim();}
+    }
+    if(name && /\.pdf(\?|$)/i.test(url)) entries.push({name,url});
+  }
+  return entries;
+}
+
+async function updateToppsCatalogFromPastedLinks(){
+  if(!requireOwnerAdmin()){toast_dash('Owner/admin only');return;}
+  const textarea=document.getElementById('topps-pasted-links');
+  const progress=document.getElementById('topps-paste-import-progress');
+  const note=value=>{if(progress)progress.textContent=value;};
+  const entries=parseToppsPastedLinks(textarea?.value||'');
+  if(!entries.length){toast_dash('No name+PDF-url lines found in the pasted text');return;}
+  try{
+    note(`Checking ${entries.length} pasted link(s) against the live catalog...`);
+    const filterRes=await storeWorkerFetch('/catalog/topps/update/filter-candidates',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({entries})});
+    const filterData=await filterRes.json().catch(()=>({}));
+    if(!filterRes.ok||!filterData.ok) throw new Error(filterData.error||'Filter failed');
+    const candidates=filterData.candidates||[];
+    if(!candidates.length){note('All pasted sets are already in the catalog.');toast_dash('Nothing new in the pasted links');return;}
+    if(!confirm(`${candidates.length} of ${filterData.totalSubmitted} pasted link(s) look new. Process and publish them now? This can take a while for large batches.`)){note('');return;}
+
+    const newSets=[],newCards=[],failures=[];
+    let completed=0;
+    const queue=candidates.slice();
+    const worker=async()=>{
+      while(queue.length){
+        const c=queue.shift();
+        try{
+          const res=await storeWorkerFetch('/catalog/topps/update/process-one',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:c.url,name:c.name,sport:c.sport,year:c.year,brand:c.brand})});
+          const data=await res.json().catch(()=>({}));
+          if(!res.ok||!data.ok){failures.push(`${c.name}: ${data.error||res.status}`);}
+          else{newSets.push(data.set);newCards.push(...data.cards);}
+        }catch(e){failures.push(`${c.name}: ${e.message}`);}
+        completed++;
+        note(`${completed}/${candidates.length} processed${failures.length?` (${failures.length} failed)`:''}`);
+      }
+    };
+    await Promise.all(Array.from({length:Math.min(3,candidates.length)},()=>worker()));
+
+    if(!newSets.length){note('No sets could be processed. '+failures.join(' · '));toast_dash('Nothing publishable came out of the pasted links');return;}
+
+    note(`Publishing ${newSets.length} set(s) / ${newCards.length} card(s)...`);
+    const pubRes=await storeWorkerFetch('/catalog/topps/update/publish',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sets:newSets,cards:newCards})});
+    const pubData=await pubRes.json().catch(()=>({}));
+    if(!pubRes.ok||!pubData.ok) throw new Error(pubData.error||'Publish failed');
+
+    note(pubData.published?`Published version ${pubData.version}: ${pubData.newSetCount} new set(s), ${pubData.newCardCount} new card(s).${failures.length?' Failed: '+failures.join(' · '):''}`:'Nothing new to publish.');
+    toast_dash(pubData.published?'Topps catalog updated from pasted links':'Topps catalog already up to date');
+    if(pubData.published){if(textarea)textarea.value='';await syncToppsOffline(true);}
+  }catch(e){
+    note('Import failed: '+e.message);
+    toast_dash('Topps pasted-link import failed: '+e.message);
+  }
+}
+
 async function renderOfflineCatalogManagerPanel(){
   const body = document.getElementById('offline-catalog-manager-body');
   if(!body) return;
@@ -6064,7 +6147,16 @@ async function renderOfflineCatalogManagerPanel(){
       <button class="hbtn" onclick="updateToppsCatalogFromWeb()">UPDATE TOPPS CATALOG (SCRAPE TOPPS.COM)</button>
       <span id="topps-catalog-update-progress" style="font-family:monospace;font-size:9px;color:var(--gold)"></span>
     </div>
-    <div style="font-family:monospace;font-size:9px;color:var(--dim);line-height:1.5;margin-top:4px">Owner/admin only. Scans topps.com's own checklist page for sets not yet in the catalog, downloads and parses any new ones, then publishes an updated catalog version directly -- no local computer or GitHub involved.</div>` : ''}
+    <div style="font-family:monospace;font-size:9px;color:var(--dim);line-height:1.5;margin-top:4px">Owner/admin only. Scans topps.com's own checklist page for sets not yet in the catalog, downloads and parses any new ones, then publishes an updated catalog version directly -- no local computer or GitHub involved. topps.com currently blocks this server-side scan (bot protection); if it fails, use the pasted-link method below instead.</div>
+    <div style="margin-top:8px;padding:10px;border:1px solid var(--border);border-radius:6px">
+      <div style="font-family:monospace;font-size:9px;color:var(--dim);line-height:1.6">topps.com blocks server-side requests to its checklist page but never blocks your own browser. Open <a href="https://www.topps.com/pages/checklists" target="_blank" rel="noopener" style="color:var(--blue)">topps.com/pages/checklists</a>, open the browser's DevTools Console, paste the script below, then paste its clipboard output into the second box.</div>
+      <textarea readonly onclick="this.select()" style="width:100%;height:70px;margin-top:6px;font-family:monospace;font-size:9px;background:#0d0f14;color:var(--g);border:1px solid var(--border);border-radius:4px;padding:6px">${escHtml(TOPPS_LINK_SCRAPER_SCRIPT)}</textarea>
+      <textarea id="topps-pasted-links" placeholder="Paste the copied name+PDF-url lines here..." style="width:100%;height:90px;margin-top:6px;font-family:monospace;font-size:9px;background:#0d0f14;color:var(--text);border:1px solid var(--border);border-radius:4px;padding:6px"></textarea>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:6px">
+        <button class="hbtn" onclick="updateToppsCatalogFromPastedLinks()">IMPORT FROM PASTED LINKS</button>
+        <span id="topps-paste-import-progress" style="font-family:monospace;font-size:9px;color:var(--gold)"></span>
+      </div>
+    </div>` : ''}
     <div style="font-family:'Orbitron',monospace;color:var(--purple);font-size:11px;letter-spacing:.05em;margin-top:16px">PRICECHARTING SHARED OFFLINE DATA</div>
     ${priceChartingRows}
     <div style="font-family:monospace;font-size:9px;color:var(--dim);line-height:1.5;margin-top:7px">Pokémon is intentionally excluded here and uses PokémonPriceTracker exports above. MTG remains in its dedicated Scryfall + PriceCharting bundle.</div>
