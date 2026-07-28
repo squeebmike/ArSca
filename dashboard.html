@@ -19278,9 +19278,15 @@ function barcodeCandidateToResearch(candidate,n){
     const row=metronIssueToQplRow(candidate.raw||{},[]);
     return {...row,barcode:n.primary,barcodePrimary:n.primary,barcodeSupplement:n.supplement||'',barcodeType:n.typeGuess,barcodeEvidence:{raw:n.raw,primary:n.primary,supplement:n.supplement||'',candidatesTried:n.candidates||[],confidence:candidate.confidence||98,matchReason:candidate.matchReason||[],confirmed:false},confidence:Number(candidate.confidence||98),matchWhy:candidate.matchReason||row.matchWhy,note:'Metron barcode match. Select it to confirm the exact cover and load PriceCharting prices.'};
   }
-  const categoryMap={comics:'Comic',pokemon:'Pokemon TCG',mtg:'Magic: The Gathering',sports:'Sports Card',sealed:'Sealed Product',other:'Collectibles'};
+  const categoryMap={comics:'Comic',pokemon:'Pokemon TCG',mtg:'Magic: The Gathering',sports:'Sports Card',other:'Collectibles'};
+  // The barcode provider's own "sealed" bucket means it couldn't pin a
+  // specific game from the UPC alone -- try the product's own title/console
+  // text before falling back to a generic bucket, so a sealed Pokemon box
+  // doesn't lose its real category just because the barcode lookup was
+  // ambiguous. is_sealed below carries the sealed-ness either way.
+  const sealedCategory=candidate.category==='sealed' ? (tcgLineFromText([candidate.title,candidate.consoleName,candidate.genre].filter(Boolean).join(' ')).category) : '';
   const rawValue=Number(candidate.priceSummary?.raw??candidate.priceSummary?.ungraded??0)||0;
-  return {source:candidate.savedConfirmed?'barcode_confirmed':'pricecharting_barcode',name:candidate.title||'Barcode product',category:categoryMap[candidate.category]||'Collectibles',set:candidate.consoleName||'',year:(candidate.raw?.releaseDate||'').toString().slice(0,4),variant:candidate.genre||'',market:rawValue,condition:candidate.category==='sealed'?'Sealed':'NM',is_sealed:candidate.category==='sealed',imageUrl:candidate.imageUrl||'',imageSource:candidate.imageUrl?'pricecharting':'placeholder',coverConfidence:candidate.category==='comics'?(candidate.coverConfirmed?'confirmed':'needs-confirmation'):'product-confirmation',confidence:Number(candidate.confidence||0),matchWhy:candidate.matchReason||[],note:(candidate.matchReason||[]).join(' / '),priceSource:candidate.savedConfirmed?'Last-known confirmed barcode match':'PriceCharting barcode evidence',providerProductId:candidate.providerProductId||'',productId:candidate.providerProductId||'',productUrl:candidate.providerUrl||'',barcode:n.primary,barcodePrimary:n.primary,barcodeSupplement:n.supplement||'',barcodeType:n.typeGuess,barcodeEvidence:{raw:n.raw,primary:n.primary,supplement:n.supplement||'',candidatesTried:n.candidates||[],confidence:candidate.confidence||0,matchReason:candidate.matchReason||[],confirmed:!!candidate.savedConfirmed},pricecharting:{productId:candidate.providerProductId||'',productName:candidate.title||'',consoleName:candidate.consoleName||'',genre:candidate.genre||'',url:candidate.providerUrl||'',imageUrl:candidate.imageUrl||'',prices:{ungraded:candidate.priceSummary?.ungraded??null,psa10:candidate.priceSummary?.psa10??null},comicPrices:{ungraded:candidate.priceSummary?.raw??null,grade9_8:candidate.priceSummary?.graded98??null}},raw:candidate.raw||{}};
+  return {source:candidate.savedConfirmed?'barcode_confirmed':'pricecharting_barcode',name:candidate.title||'Barcode product',category:categoryMap[candidate.category]||(sealedCategory && sealedCategory !== 'TCG' ? sealedCategory : 'Collectibles'),set:candidate.consoleName||'',year:(candidate.raw?.releaseDate||'').toString().slice(0,4),variant:candidate.genre||'',market:rawValue,condition:candidate.category==='sealed'?'Sealed':'NM',is_sealed:candidate.category==='sealed',imageUrl:candidate.imageUrl||'',imageSource:candidate.imageUrl?'pricecharting':'placeholder',coverConfidence:candidate.category==='comics'?(candidate.coverConfirmed?'confirmed':'needs-confirmation'):'product-confirmation',confidence:Number(candidate.confidence||0),matchWhy:candidate.matchReason||[],note:(candidate.matchReason||[]).join(' / '),priceSource:candidate.savedConfirmed?'Last-known confirmed barcode match':'PriceCharting barcode evidence',providerProductId:candidate.providerProductId||'',productId:candidate.providerProductId||'',productUrl:candidate.providerUrl||'',barcode:n.primary,barcodePrimary:n.primary,barcodeSupplement:n.supplement||'',barcodeType:n.typeGuess,barcodeEvidence:{raw:n.raw,primary:n.primary,supplement:n.supplement||'',candidatesTried:n.candidates||[],confidence:candidate.confidence||0,matchReason:candidate.matchReason||[],confirmed:!!candidate.savedConfirmed},pricecharting:{productId:candidate.providerProductId||'',productName:candidate.title||'',consoleName:candidate.consoleName||'',genre:candidate.genre||'',url:candidate.providerUrl||'',imageUrl:candidate.imageUrl||'',prices:{ungraded:candidate.priceSummary?.ungraded??null,psa10:candidate.priceSummary?.psa10??null},comicPrices:{ungraded:candidate.priceSummary?.raw??null,grade9_8:candidate.priceSummary?.graded98??null}},raw:candidate.raw||{}};
 }
 
 async function lookupBarcodeProduct(){
@@ -20636,7 +20642,7 @@ async function searchMtgCatalogExport(query){
 function mtgOfflinePriceProductToQplRow(price={}){
   const market=Number(price.loosePrice||price.grade7Price||price.grade8Price||price.grade9Price||0);
   return {
-    source:'PriceCharting',name:price.productName||'MTG sealed product',category:'MTG Sealed Product',set:price.consoleName||'Magic Cards',
+    source:'PriceCharting',name:price.productName||'MTG sealed product',category:'Magic: The Gathering',set:price.consoleName||'Magic Cards',
     variant:'Factory Sealed',condition:'Factory Sealed',selectedCondition:'Factory Sealed',finish:'sealed',selectedFinish:'sealed',is_sealed:true,
     market,priceSource:'PriceCharting offline snapshot',productId:price.pricechartingId||'',confidence:Math.min(99,78+Math.round(Number(price.offlineScore||0)/30)),
     matchWhy:['MTG sealed product','Indexed PriceCharting offline match'],cache:{state:'offline-catalog',updatedAt:price.updatedAt||price.catalogVersion||'',source:'PriceCharting MTG snapshot'},
@@ -21103,13 +21109,17 @@ function tcgplayerSealedProductToQplRow(data={}, product={}){
   const median=Number(data.listedMedianPrice || 0) || 0;
   const name=product.name && !/^TCGplayer Product #/i.test(product.name) ? product.name : (data.name || product.name || `TCGplayer Product #${product.productId}`);
   const isMtg=product.isMtg || product.game === 'magic';
+  // Sealed products still belong to their real game category, exactly like a
+  // raw/graded single would -- is_sealed below is the cross-cutting flag,
+  // not a separate "Sealed Product" bucket that hides which game this is.
+  const gameCategory={magic:'Magic: The Gathering',pokemon:'Pokemon TCG',yugioh:'Yu-Gi-Oh!',lorcana:'Disney Lorcana',one_piece:'One Piece TCG'}[product.game] || null;
   return {
     source:'tcgplayer_marketplace',
     productId:product.productId,
     tcgPlayerId:product.productId,
     tcgplayerId:product.productId,
     name,
-    category:isMtg ? 'MTG Sealed Product' : (product.category || 'Sealed Product'),
+    category:gameCategory || (product.category && product.category !== 'TCG' ? product.category : 'Collectibles'),
     set:product.lineLabel || (isMtg ? 'Magic: The Gathering' : ''),
     variant:'Factory Sealed',
     condition:'Factory Sealed',
@@ -21341,9 +21351,12 @@ function mtgSealedCardSearchQuery(q = ''){
 function tcgplayerProductToQplRow(product = {}, query = ''){
   const exact = !!product.productId;
   const sealed = !!product.isSealed;
-  const category = sealed
-    ? (product.game === 'magic' ? 'MTG Sealed Product' : product.game === 'pokemon' ? 'Pokemon Sealed Product' : product.category || 'Sealed Product')
-    : (product.category || (product.isMtg ? 'Magic: The Gathering' : 'TCG'));
+  // Sealed or not, the category is always the real game -- is_sealed (set
+  // below) is the cross-cutting flag, so a sealed MTG box and a raw MTG
+  // single both land under "Magic: The Gathering" instead of a separate
+  // "Sealed Product" bucket that hides which game it actually is.
+  const gameCategory={magic:'Magic: The Gathering',pokemon:'Pokemon TCG',yugioh:'Yu-Gi-Oh!',lorcana:'Disney Lorcana',one_piece:'One Piece TCG'}[product.game] || null;
+  const category = gameCategory || (product.category && product.category !== 'TCG' ? product.category : (product.isMtg ? 'Magic: The Gathering' : 'Collectibles'));
   const condition = sealed ? 'Factory Sealed' : (product.condition || 'NM');
   const finish = product.finish || (sealed ? 'sealed' : 'normal');
   return {
@@ -23922,7 +23935,7 @@ async function fetchPriceChartingLiveCatalog(q, cat, searchPlan = qplLastSearchP
       .filter(r => isSealedProductIntent([r.name,r.set,r.category,r.variant,r.note].filter(Boolean).join(' '), cat))
       .map(r => ({
         ...r,
-        category:isMtgSealedSearchIntent(q, cat) ? 'MTG Sealed Product' : isPokemonSealedSearchIntent(q, cat) ? 'Pokemon Sealed Product' : 'Sealed Product',
+        category:isMtgSealedSearchIntent(q, cat) ? 'Magic: The Gathering' : isPokemonSealedSearchIntent(q, cat) ? 'Pokemon TCG' : 'Collectibles',
         condition:'Factory Sealed',
         selectedCondition:'Factory Sealed',
         finish:'sealed',
