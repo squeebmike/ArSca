@@ -1,6 +1,44 @@
-const crypto = require('crypto');
-
 const TOPPS_CHECKLIST_SCHEMA_VERSION = 1;
+
+// Pure-JS SHA-1 (byte-identical to Node's crypto.createHash('sha1')) so this
+// file has zero Node dependencies and can be imported as-is by the Cloudflare
+// Worker (bundled via esbuild), not just required from Node scripts.
+function sha1Hex(str) {
+  function rotl(n, s) { return (n << s) | (n >>> (32 - s)); }
+  const utf8 = unescape(encodeURIComponent(str));
+  const bytes = [];
+  for (let i = 0; i < utf8.length; i++) bytes.push(utf8.charCodeAt(i));
+  const bitLen = bytes.length * 8;
+  bytes.push(0x80);
+  while (bytes.length % 64 !== 56) bytes.push(0);
+  for (let i = 7; i >= 0; i--) bytes.push((bitLen / Math.pow(2, i * 8)) & 0xff);
+
+  let h0 = 0x67452301, h1 = 0xEFCDAB89, h2 = 0x98BADCFE, h3 = 0x10325476, h4 = 0xC3D2E1F0;
+
+  for (let chunkStart = 0; chunkStart < bytes.length; chunkStart += 64) {
+    const w = new Array(80);
+    for (let i = 0; i < 16; i++) {
+      w[i] = (bytes[chunkStart + i * 4] << 24) | (bytes[chunkStart + i * 4 + 1] << 16) |
+             (bytes[chunkStart + i * 4 + 2] << 8) | (bytes[chunkStart + i * 4 + 3]);
+    }
+    for (let i = 16; i < 80; i++) w[i] = rotl(w[i - 3] ^ w[i - 8] ^ w[i - 14] ^ w[i - 16], 1);
+
+    let a = h0, b = h1, c = h2, d = h3, e = h4;
+    for (let i = 0; i < 80; i++) {
+      let f, k;
+      if (i < 20) { f = (b & c) | (~b & d); k = 0x5A827999; }
+      else if (i < 40) { f = b ^ c ^ d; k = 0x6ED9EBA1; }
+      else if (i < 60) { f = (b & c) | (b & d) | (c & d); k = 0x8F1BBCDC; }
+      else { f = b ^ c ^ d; k = 0xCA62C1D6; }
+      const temp = (rotl(a, 5) + f + e + k + w[i]) | 0;
+      e = d; d = c; c = rotl(b, 30); b = a; a = temp;
+    }
+    h0 = (h0 + a) | 0; h1 = (h1 + b) | 0; h2 = (h2 + c) | 0; h3 = (h3 + d) | 0; h4 = (h4 + e) | 0;
+  }
+
+  const toHex = n => (n >>> 0).toString(16).padStart(8, '0');
+  return toHex(h0) + toHex(h1) + toHex(h2) + toHex(h3) + toHex(h4);
+}
 
 function slugify(value = '') {
   return String(value || '')
@@ -150,7 +188,7 @@ function parseChecklistText({ text = '', fileName = '', sourceId = '' } = {}) {
       const flags = { ...detectFlags([row.subject, row.notes].join(' '), row.section), ...(row.flags || {}) };
       const idSeed = [sourceId, setId, row.section, row.cardNumber, row.subject, offset].join('|');
       cards.push({
-        id: 'topps_card_' + crypto.createHash('sha1').update(idSeed).digest('hex').slice(0, 16),
+        id: 'topps_card_' + sha1Hex(idSeed).slice(0, 16),
         setId,
         sourceId,
         year,
@@ -194,7 +232,7 @@ function buildChecklistIndex(sources = []) {
   const normalizedSources = [];
 
   sources.forEach((source, idx) => {
-    const sourceId = source.sourceId || 'topps_pdf_' + crypto.createHash('sha1').update(source.originalPath || source.fileName || String(idx)).digest('hex').slice(0, 12);
+    const sourceId = source.sourceId || 'topps_pdf_' + sha1Hex(source.originalPath || source.fileName || String(idx)).slice(0, 12);
     const parsed = parseChecklistText({ text: source.rawText || '', fileName: source.fileName || '', sourceId });
     normalizedSources.push({
       sourceId,
@@ -242,5 +280,6 @@ module.exports = {
   lineLooksLikeCardRow,
   parseCardLine,
   parseChecklistText,
+  sha1Hex,
   slugify,
 };
