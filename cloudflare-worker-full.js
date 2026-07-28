@@ -1854,8 +1854,9 @@ export default {
       const auth = await requireStoreUser(request, env, storeId, ['owner', 'admin']);
       if (auth.error) return auth.error;
 
-      const scraped = await fetchToppsChecklistCatalog();
-      if (!scraped) return json({ ok: false, error: 'Could not reach topps.com/pages/checklists' }, 502);
+      const scrapeResult = await fetchToppsChecklistCatalogDetailed();
+      if (!scrapeResult.ok) return json({ ok: false, error: scrapeResult.error, status: scrapeResult.status }, 502);
+      const scraped = scrapeResult.sets;
 
       let existingSets = [];
       const manifestObject = await env.MTG_CATALOG_R2.get('topps/manifest.json');
@@ -7345,19 +7346,34 @@ function parseToppsChecklistText(text, meta) {
 }
 
 // ── TOPPS CHECKLISTS PAGE SCRAPER ─────────────────────────────────────────────
-async function fetchToppsChecklistCatalog() {
-  const res = await fetch('https://www.topps.com/pages/checklists', {
-    headers: {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-      'Accept-Language': 'en-US,en;q=0.9',
-      'Cache-Control': 'no-cache',
-    },
-  }).catch(() => null);
-
-  if (!res || !res.ok) return null;
+// Returns { ok, sets, status, error } instead of collapsing every failure to
+// null/undefined -- a Worker fetch to a third-party site can fail for very
+// different reasons (network error, bot-blocked, page moved, empty result),
+// and callers need to tell those apart instead of guessing.
+async function fetchToppsChecklistCatalogDetailed() {
+  let res;
+  try {
+    res = await fetch('https://www.topps.com/pages/checklists', {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Cache-Control': 'no-cache',
+      },
+    });
+  } catch (e) {
+    return { ok: false, status: 0, error: 'Network error reaching topps.com: ' + (e?.message || e) };
+  }
+  if (!res.ok) return { ok: false, status: res.status, error: `topps.com returned HTTP ${res.status}` };
   const html = await res.text();
-  return parseToppsChecklistsHtml(html);
+  const sets = parseToppsChecklistsHtml(html);
+  if (!sets.length) return { ok: false, status: res.status, error: 'Page loaded but no checklist links were found (topps.com may have changed its page markup)', htmlLength: html.length };
+  return { ok: true, sets };
+}
+
+async function fetchToppsChecklistCatalog() {
+  const result = await fetchToppsChecklistCatalogDetailed();
+  return result.ok ? result.sets : null;
 }
 
 function parseToppsChecklistsHtml(html) {
