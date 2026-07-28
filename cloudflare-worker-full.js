@@ -5290,6 +5290,22 @@ export default {
         headers: { ...CORS, 'Content-Type': obj.httpMetadata?.contentType || 'image/jpeg', 'Cache-Control': 'public, max-age=31536000, immutable' },
       });
     }
+    // Only reachable for a genuinely deleted item (sold/consigned items are
+    // never hard-deleted -- see inventoryDeleteBlockReason in the dashboard),
+    // so this never touches a photo that still belongs to sale history.
+    if (url.pathname === '/inventory/photo/delete' && request.method === 'POST') {
+      const storeId = String(url.searchParams.get('store_id') || request.headers.get('X-Store-Id') || '').trim();
+      const auth = await requireStoreUser(request, env, storeId);
+      if (auth.error) return auth.error;
+      if (!env.MTG_CATALOG_R2) return json({ ok: false, error: 'Photo storage not configured' }, 500);
+      const body = await request.json().catch(() => ({}));
+      const photoMatch = String(body.url || '').match(/\/inventory\/photo\/(inventory-photos\/[^?#]+)/);
+      if (!photoMatch) return json({ ok: false, error: 'Not an inventory photo URL' }, 400);
+      const key = photoMatch[1];
+      if (!key.startsWith(`inventory-photos/${storeId}/`)) return json({ ok: false, error: 'Photo does not belong to this store' }, 403);
+      await env.MTG_CATALOG_R2.delete(key);
+      return json({ ok: true });
+    }
 
     const PSA_BASE = 'https://api.psacard.com/publicapi';
 
