@@ -5737,12 +5737,43 @@ async function saveVendorProfileFromForm(){
   toast_dash(cloudSaved ? 'Vendor profile saved' : 'Saved on this device only — cloud sync failed, other devices will not see this change yet');
 }
 
+// Resizes the logo locally, then uploads it to R2 via the Worker and saves
+// just the returned URL -- not a raw, unresized base64 string, which is what
+// this used to store directly in the settings row (a likely cause of a logo
+// that shows as a broken image: no size cap and no hosting at all before).
 function handleVendorLogoUpload(event){
   const file = event.target.files?.[0];
   event.target.value = '';
   if(!file) return;
+  if(!file.type || !file.type.startsWith('image/')) { toast_dash('Choose an image file'); return; }
   const reader = new FileReader();
-  reader.onload = () => saveVendorProfile({ logo: reader.result });
+  reader.onload = () => {
+    const img = new Image();
+    img.onload = () => {
+      const max = 480;
+      const scale = Math.min(1, max / Math.max(img.width, img.height));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.round(img.width * scale));
+      canvas.height = Math.max(1, Math.round(img.height * scale));
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      const localPreview = canvas.toDataURL('image/png');
+      canvas.toBlob(async blob => {
+        if(!blob) { toast_dash('Could not process image'); return; }
+        try {
+          const res = await storeWorkerFetch('/store/logo/upload', { method:'POST', headers:{ 'Content-Type':'image/png' }, body:blob });
+          const data = await res.json().catch(() => ({}));
+          if(!res.ok || !data.ok) throw new Error(data.error || 'Upload failed');
+          await saveVendorProfile({ logo:data.url });
+          toast_dash('Logo uploaded');
+        } catch(e) {
+          await saveVendorProfile({ logo:localPreview });
+          toast_dash('Saved locally only — reconnect and re-upload to sync everywhere (' + (e.message || e) + ')');
+        }
+      }, 'image/png');
+    };
+    img.onerror = () => toast_dash('Could not read image');
+    img.src = reader.result;
+  };
   reader.readAsDataURL(file);
 }
 
