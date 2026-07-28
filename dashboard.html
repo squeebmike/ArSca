@@ -5981,12 +5981,37 @@ function formatOfflineCatalogDate(value){
 // bookmarklet -- bookmarklets run in the plain page context and don't have
 // access to console-only globals like copy().
 const TOPPS_LINK_SCRAPER_SCRIPT = [
-  "const pdfs = [...document.querySelectorAll('a[href]')]",
-  "  .map(a => ({ name: a.textContent.trim().replace(/\\s+/g, ' '), url: a.href }))",
-  "  .filter(x => /\\.pdf(\\?|$)/i.test(x.url));",
-  "const toppsLinkText = pdfs.map(x => x.name + '\\t' + x.url).join('\\n');",
-  "if (!pdfs.length) { alert('No PDF links found on this page -- make sure you are on topps.com/pages/checklists'); }",
-  "else { navigator.clipboard.writeText(toppsLinkText).then(function(){ alert('Copied ' + pdfs.length + ' Topps checklist links. Go back to the dashboard tab and paste them in.'); }).catch(function(){ prompt('Copy this text (tap in the box, select all, copy), then go paste it into the dashboard:', toppsLinkText); }); }",
+  "(async function () {",
+  "  function countPdfLinks() { return document.querySelectorAll('a[href*=\".pdf\"]').length; }",
+  "  function clickLoadMore() {",
+  "    const btn = [...document.querySelectorAll('button, a')].find(function (el) {",
+  "      return /load more|show more|view more/i.test((el.textContent || '').trim()) && el.offsetParent !== null;",
+  "    });",
+  "    if (btn) { btn.click(); return true; }",
+  "    return false;",
+  "  }",
+  "  // The page lazy-loads more checklists as you scroll/click -- keep",
+  "  // scrolling and clicking any 'load more' button until the PDF link count",
+  "  // stops growing for a few rounds in a row, instead of grabbing only",
+  "  // whatever happened to be rendered at the moment the script ran.",
+  "  let lastCount = -1, stableRounds = 0;",
+  "  for (let i = 0; i < 80 && stableRounds < 4; i++) {",
+  "    clickLoadMore();",
+  "    window.scrollTo(0, document.body.scrollHeight);",
+  "    await new Promise(function (r) { setTimeout(r, 700); });",
+  "    const count = countPdfLinks();",
+  "    console.log('Topps scan: round ' + (i + 1) + ', ' + count + ' PDF links found so far...');",
+  "    if (count === lastCount) stableRounds++; else stableRounds = 0;",
+  "    lastCount = count;",
+  "  }",
+  "  const pdfs = [...document.querySelectorAll('a[href]')]",
+  "    .map(function (a) { return { name: a.textContent.trim().replace(/\\s+/g, ' '), url: a.href }; })",
+  "    .filter(function (x) { return /\\.pdf(\\?|$)/i.test(x.url); });",
+  "  const toppsLinkText = pdfs.map(function (x) { return x.name + '\\t' + x.url; }).join('\\n');",
+  "  if (!pdfs.length) { alert('No PDF links found on this page -- make sure you are on topps.com/pages/checklists'); return; }",
+  "  try { await navigator.clipboard.writeText(toppsLinkText); alert('Copied ' + pdfs.length + ' Topps checklist links (after auto-scrolling to load everything). Go back to the dashboard tab and paste them in.'); }",
+  "  catch (e) { prompt('Copy this text (tap in the box, select all, copy), then go paste it into the dashboard:', toppsLinkText); }",
+  "})();",
 ].join('\n');
 
 function toppsBookmarkletHref(){
@@ -6174,7 +6199,7 @@ async function renderOfflineCatalogManagerPanel(){
         <li>Click the <b>Console</b> tab near the top of the panel that opens.</li>
         <li>Click into that console area so the cursor is blinking there.</li>
         <li>Copy the box of code below (click it, Ctrl+A, Ctrl+C), then paste it into the console (Ctrl+V) and press <b>Enter</b>.</li>
-        <li>A popup will confirm how many links were copied ("Copied 743 Topps checklist links..."). Click OK.</li>
+        <li>It auto-scrolls the page and clicks any "load more" for up to about a minute (you'll see "Topps scan: round 1, 2, 3..." lines counting up in the console -- that's normal, let it finish). A popup then confirms how many links were copied ("Copied 743 Topps checklist links..."). Click OK.</li>
         <li>Come back to this dashboard tab, click into the second box below, and paste (Ctrl+V).</li>
         <li>Click <b>IMPORT FROM PASTED LINKS</b> and confirm. It'll show progress and publish automatically when done -- this can take a while for a large batch.</li>
       </ol>
