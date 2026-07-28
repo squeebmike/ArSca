@@ -5282,6 +5282,12 @@ export default {
           }
 
           const data = await psaRes.json();
+          // PSA's own docs: a 200 doesn't guarantee cert data -- malformed cert
+          // numbers or unfound certs still return 200 with IsValidRequest:false
+          // or ServerMessage:"No data found" instead of an HTTP error.
+          if (data?.IsValidRequest === false || /no data found/i.test(String(data?.ServerMessage || ''))) {
+            return json({ ok: false, error: data.ServerMessage || 'PSA has no record for that cert number' }, 404);
+          }
           const cert = data?.PSACert || data;
           // PSA only started attaching images to cert lookups in Oct 2021, and the
           // public API has shipped the URL under a couple of different casings/shapes
@@ -5300,15 +5306,17 @@ export default {
               subject: cert.Subject || null,
               year: cert.Year || null,
               brand: cert.Brand || null,
+              category: cert.Category || null,
               series: cert.Series || null,
               cardNumber: cert.CardNumber || cert.SpecNumber || null,
               variety: cert.Variety || null,
-              grade: cert.Grade || null,
+              grade: cert.CardGrade || cert.Grade || null,
               gradeDesc: cert.GradeDescription || null,
               totalPop: cert.TotalPopulation || 0,
-              popHigher: cert.PopHigher || 0,
+              popHigher: cert.PopulationHigher ?? cert.PopHigher ?? 0,
               isDualCert: cert.IsDualCert || false,
               isAuthentic: cert.IsAuthentic || false,
+              itemStatus: cert.ItemStatus || null,
               psaSetId: cert.PSASetID || null,
               specId: cert.SpecID || null,
               photoUrl,

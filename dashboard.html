@@ -1923,6 +1923,7 @@ body.show-mode .inv-sync-badge{display:none;}
           <button class="hbtn qpl-cat-pill" data-cat="Yu-Gi-Oh!" onclick="setQplCategory(this)" style="font-size:9px;padding:4px 8px;min-height:28px">YUGIOH</button>
           <button class="hbtn qpl-cat-pill" data-cat="One Piece Cards" onclick="setQplCategory(this)" style="font-size:9px;padding:4px 8px;min-height:28px">ONE PIECE</button>
           <button class="hbtn qpl-cat-pill" data-cat="Graded" onclick="setQplCategory(this)" style="font-size:9px;padding:4px 8px;min-height:28px">GRADED</button>
+          <button class="hbtn qpl-cat-pill" data-cat="PSA Cert" onclick="openPsaCertSearchModal()" style="font-size:9px;padding:4px 8px;min-height:28px;color:var(--blue)">PSA CERT</button>
           <button class="hbtn qpl-cat-pill" data-cat="Video Games" onclick="setQplCategory(this)" style="font-size:9px;padding:4px 8px;min-height:28px">GAMES</button>
           <button class="hbtn qpl-cat-pill" data-cat="Funko Pops" onclick="setQplCategory(this)" style="font-size:9px;padding:4px 8px;min-height:28px">FUNKO</button>
           <button class="hbtn qpl-cat-pill" data-cat="LEGO Sets" onclick="setQplCategory(this)" style="font-size:9px;padding:4px 8px;min-height:28px">LEGO</button>
@@ -26575,6 +26576,98 @@ function openSlabCertPanel(idx){
 function closeSlabCertPanel(){
   const modal = document.getElementById('qpl-slab-modal');
   if(modal) modal.style.display = 'none';
+}
+
+// Search Research results directly from a PSA cert number instead of a card
+// name -- pulls identity/grade/population/photo from PSA, then a graded
+// market price from PriceCharting, and drops it into the normal results list.
+function openPsaCertSearchModal(){
+  let modal = document.getElementById('psa-cert-search-modal');
+  if(!modal) {
+    modal = document.createElement('div');
+    modal.id = 'psa-cert-search-modal';
+    modal.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.78);display:none;align-items:center;justify-content:center;padding:18px';
+    document.body.appendChild(modal);
+  }
+  modal.innerHTML = `<div style="width:min(560px,96vw);max-height:90vh;overflow:auto;background:var(--surf);border:1px solid var(--border);border-radius:14px;padding:18px;box-shadow:0 22px 70px rgba(0,0,0,.55)">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px">
+      <div style="font-family:'Orbitron',monospace;color:var(--blue);font-size:14px">PSA CERT SEARCH</div>
+      <button class="hbtn" onclick="closePsaCertSearchModal()">CLOSE</button>
+    </div>
+    <div style="font-family:monospace;font-size:10px;color:var(--dim);margin-bottom:10px">Look up a graded card directly by its PSA cert number — pulls the card's identity, grade, population, and slab photo from PSA, then finds a graded market price.</div>
+    <div style="display:grid;grid-template-columns:1fr auto;gap:8px;align-items:end">
+      <label style="font-family:monospace;font-size:9px;color:var(--dim)">PSA CERT NUMBER
+        <input id="psa-cert-search-input" class="tsi" style="margin-top:4px" placeholder="e.g. 148386254" inputmode="numeric" onkeydown="if(event.key==='Enter'){event.preventDefault();runPsaCertSearch()}">
+      </label>
+      <button class="hbtn" style="min-height:48px;color:var(--g)" onclick="runPsaCertSearch()">SEARCH</button>
+    </div>
+    <div id="psa-cert-search-output" style="margin-top:14px;font-family:monospace;font-size:11px;color:var(--dim)">PSA public API cert lookup only — BGS/CGC/SGC cert numbers aren't supported yet.</div>
+  </div>`;
+  modal.style.display = 'flex';
+  document.getElementById('psa-cert-search-input')?.focus();
+}
+function closePsaCertSearchModal(){
+  const modal = document.getElementById('psa-cert-search-modal');
+  if(modal) modal.style.display = 'none';
+}
+function psaCertCategory(c = {}){
+  const line = tcgLineFromText([c.category, c.subject, c.brand].filter(Boolean).join(' '), '');
+  return line.game !== 'all' ? line.category : 'Sports';
+}
+function psaCertToQplRow(c = {}, certFallback = ''){
+  const category = psaCertCategory(c);
+  return {
+    source:'psa_cert',
+    name:c.subject || 'Unknown card',
+    category,
+    _game:category,
+    set:[c.year, c.brand].filter(Boolean).join(' '),
+    year:c.year || '',
+    card_number:c.cardNumber || '',
+    variant:c.variety || 'Base',
+    grader:'PSA',
+    grade:c.grade || c.gradeDesc || '',
+    cert_number:c.certNumber || certFallback,
+    imageUrl:c.photoUrl || '',
+    market:0,
+    priceSource:'',
+    matchWhy:['PSA cert lookup'],
+    note:'Identified by PSA cert #' + (c.certNumber || certFallback),
+    psaCert:c,
+    slabVerified:true,
+  };
+}
+async function runPsaCertSearch(){
+  const out = document.getElementById('psa-cert-search-output');
+  const cert = (document.getElementById('psa-cert-search-input')?.value || '').replace(/\D+/g, '');
+  if(!cert) { if(out) out.innerHTML = '<span style="color:var(--red)">Enter a cert number.</span>'; return; }
+  if(out) out.textContent = 'Checking PSA cert...';
+  try {
+    const res = await fetch(WORKER + '/psa/cert/' + encodeURIComponent(cert), { cache:'no-store' });
+    const data = await res.json().catch(() => ({}));
+    if(!res.ok || !data.ok) throw new Error(data.error || 'PSA lookup failed');
+    const c = data.cert || {};
+    const row = psaCertToQplRow(c, cert);
+    const slab = await fetchGradedSlabPriceForItem(row).catch(() => null);
+    if(slab) { row.market = slab.price; row.priceSource = slab.source; row.productUrl = slab.productUrl; if(!row.imageUrl) row.imageUrl = slab.imageUrl || ''; }
+    qplMasterResults = [row];
+    qplResults = [row];
+    qplLastSearch = row.name;
+    const sel = document.getElementById('qpl-cat');
+    if(sel) sel.value = row.category;
+    document.querySelectorAll('.qpl-cat-pill').forEach(b => b.classList.toggle('active', b.dataset.cat === row.category));
+    renderQuickLookupResults(qplResults);
+    pushQuickLookupHistory(row.name, row);
+    if(out) out.innerHTML = `<div style="color:var(--g);font-family:'Orbitron',monospace">FOUND — added to results below</div>
+      <div style="margin-top:8px"><b style="color:var(--text)">${escHtml(row.name)}</b></div>
+      <div>${escHtml([row.set, row.card_number ? '#'+row.card_number : ''].filter(Boolean).join(' · '))}</div>
+      <div>Grade: PSA ${escHtml(row.grade || '')}</div>
+      ${row.market ? `<div>Guide value: $${row.market.toFixed(2)} (${escHtml(row.priceSource || '')})</div>` : '<div style="color:var(--gold)">No PriceCharting graded match yet — you can still add it manually.</div>'}
+      ${row.imageUrl ? `<img src="${escHtml(row.imageUrl)}" alt="" style="max-width:200px;border-radius:6px;border:1px solid var(--border);margin-top:8px">` : '<div style="color:var(--dim);font-size:10px;margin-top:6px">No PSA photo on file (PSA only attaches photos to certs graded after Oct 2021).</div>'}`;
+    closePsaCertSearchModal();
+  } catch(e) {
+    if(out) out.innerHTML = '<span style="color:var(--red)">' + escHtml(e.message) + '</span>';
+  }
 }
 
 function pokemonCompSourceLabel(source){
