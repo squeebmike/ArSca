@@ -2590,10 +2590,16 @@ body.show-mode .inv-sync-badge{display:none;}
       <label style="display:flex;align-items:center;gap:6px;font-family:monospace;font-size:10px;color:var(--dim);cursor:pointer;margin-bottom:8px">
         <input type="checkbox" id="edit-is-graded" onchange="toggleEditGradedRow()"> This item is professionally graded (PSA / BGS / CGC / SGC / CBCS)
       </label>
-      <div id="edit-graded-row" style="display:none;grid-template-columns:1fr 1fr 1fr;gap:8px">
-        <div><label>Grader</label><input type="text" id="edit-grader" placeholder="PSA, BGS, CGC..."></div>
-        <div><label>Grade</label><input type="text" id="edit-grade" placeholder="10, 9.5..."></div>
-        <div><label>Cert #</label><input type="text" id="edit-cert" placeholder="Certification number"></div>
+      <div id="edit-graded-row" style="display:none">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+          <div><label>Grader</label><input type="text" id="edit-grader" placeholder="PSA, BGS, CGC..."></div>
+          <div><label>Grade</label><input type="text" id="edit-grade" placeholder="10, 9.5..."></div>
+          <div><label>Cert #</label><input type="text" id="edit-cert" placeholder="Certification number"></div>
+        </div>
+        <div style="margin-top:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <button class="hbtn" type="button" onclick="fetchPsaCertPhotoForEditItem()">FETCH PSA SLAB PHOTO</button>
+          <span id="edit-psa-photo-status" style="font-family:var(--font-mono);font-size:9px;color:var(--dim)"></span>
+        </div>
       </div>
     </div>
 
@@ -8300,7 +8306,7 @@ function populateEditCategorySelect(currentValue){
 function toggleEditGradedRow(){
   const row = document.getElementById('edit-graded-row');
   const on = document.getElementById('edit-is-graded')?.checked;
-  if(row) row.style.display = on ? 'grid' : 'none';
+  if(row) row.style.display = on ? 'block' : 'none';
 }
 // Reads the edit modal's grading fields for save -- unchecking "This item is
 // graded" clears them (lets a mis-flagged item be un-graded), rather than
@@ -17955,6 +17961,29 @@ function setInventoryEditPhoto(src='', source=''){
 }
 
 function removeInventoryEditPhoto(){ setInventoryEditPhoto('', 'No image'); }
+
+// Pulls PSA's own cert photo (when they have one on file) straight onto an
+// already-graded inventory item, without routing back through Quick Price
+// Lookup. Only updates the in-memory photo fields -- SAVE CHANGES persists it.
+async function fetchPsaCertPhotoForEditItem(){
+  const statusEl = document.getElementById('edit-psa-photo-status');
+  const grader = (document.getElementById('edit-grader')?.value || '').trim();
+  const cert = (document.getElementById('edit-cert')?.value || '').replace(/\D+/g, '');
+  if(!cert) { if(statusEl) statusEl.textContent = 'Enter a cert number first.'; return; }
+  if(grader && !/^psa$/i.test(grader)) { if(statusEl) statusEl.textContent = 'PSA cert photo lookup only — BGS/CGC/SGC not supported yet.'; return; }
+  if(statusEl) statusEl.textContent = 'Checking PSA cert...';
+  try {
+    const res = await fetch(WORKER + '/psa/cert/' + encodeURIComponent(cert), { cache:'no-store' });
+    const data = await res.json().catch(() => ({}));
+    if(!res.ok || !data.ok) throw new Error(data.error || 'PSA lookup failed');
+    const c = data.cert || {};
+    if(!c.photoUrl) { if(statusEl) statusEl.textContent = 'Cert verified, but PSA has no photo on file (PSA only attaches photos to certs graded after Oct 2021).'; return; }
+    setInventoryEditPhoto(c.photoUrl, 'PSA cert photo');
+    if(statusEl) statusEl.textContent = 'Slab photo pulled from PSA. Click SAVE CHANGES to keep it.';
+  } catch(e) {
+    if(statusEl) statusEl.textContent = e.message || String(e);
+  }
+}
 
 function handleInventoryEditPhoto(file){
   if(!file) return;
