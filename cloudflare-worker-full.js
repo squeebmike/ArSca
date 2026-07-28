@@ -17,7 +17,7 @@
  *   LBA_KV
  *   MTG_CATALOG_R2 (R2 must be enabled for the Cloudflare account)
  */
-// Production release marker: 2026.07.28.02-all-comic-covers
+// Production release marker: 2026.07.28.03-comic-cover-loader
 
 // Same parser that built the live 740-set/426,540-card Topps catalog (see
 // scripts/import-topps-checklists.js -> scripts/topps/merge-and-publish.mjs).
@@ -252,10 +252,17 @@ async function metronExactIssueRecords(env, issue = {}) {
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
   if (pageCount > 1) {
     const remainingPages = Array.from({ length:pageCount - 1 }, (_, index) => index + 2);
-    for (let offset = 0; offset < remainingPages.length; offset += 3) {
-      const batch = remainingPages.slice(offset, offset + 3);
-      const extra = await Promise.all(batch.map(page => metronFetch(env, '/issue/', { series_id:seriesId, number, page }, 60 * 60 * 24 * 7)));
-      extra.forEach(result => rows.push(...(Array.isArray(result.data) ? result.data : (result.data?.results || []))));
+    for (const page of remainingPages) {
+      let result = null;
+      for (let attempt = 1; attempt <= 3 && !result; attempt++) {
+        try {
+          result = await metronFetch(env, '/issue/', { series_id:seriesId, number, page }, 60 * 60 * 24 * 7);
+        } catch (error) {
+          if (attempt === 3) throw error;
+          await new Promise(resolve => setTimeout(resolve, 500 * attempt));
+        }
+      }
+      if (result) rows.push(...(Array.isArray(result.data) ? result.data : (result.data?.results || [])));
     }
   }
   return rows.filter((row, index, all) => row?.id && all.findIndex(other => String(other?.id || '') === String(row.id)) === index);

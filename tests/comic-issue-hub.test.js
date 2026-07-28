@@ -64,7 +64,11 @@ assert.match(dashboard,/function metronSeriesToQplRow/,'comic title search must 
 assert.match(dashboard,/function chooseMetronComicSeries/,'choosing a Metron run must load that exact series id');
 assert.match(dashboard,/function loadMetronComicSeriesPage/,'selected Metron runs must support server-backed issue pagination');
 assert.match(dashboard,/series_id:String\(state\.series\.id\),page:String\(page\)/,'every issue page must retain the exact selected series id');
-assert.match(dashboard,/remainingPages\.slice\(offset,offset\+3\)/,'selected comic runs must load every Metron page in bounded batches');
+assert.match(dashboard,/function loadAllMetronComicSeriesIssues/,'selected comic runs must expose a dedicated load-all action');
+assert.match(dashboard,/LOAD ALL \$\{total\}/,'the comic pager must make the full-run action visible');
+assert.match(dashboard,/for\(let page=1;page<=totalPages;page\+\+\)/,'load all must request Metron pages sequentially instead of concurrently');
+assert.match(dashboard,/requestMetronComicSeriesPageData\(state,page,3\)/,'load all must retry transient Metron page failures');
+assert.match(dashboard,/The current page is still available; try LOAD ALL again/,'a load-all failure must preserve the usable current page');
 assert.match(dashboard,/allLoaded:true/,'the selected comic run must record that all issues and covers were assembled');
 assert.match(dashboard,/completeComicRun\?allIndexed\.length/,'complete comic runs must display every cover instead of applying the shared 20-result screen limit');
 assert.match(dashboard,/ALL \$\{rows\.length\} \$\{s\.parsed\?\.issueNumber\?'COVERS \/ VARIANTS':'ISSUES \/ COVERS'\} LOADED/,'the comic run UI must confirm the full record count');
@@ -113,7 +117,8 @@ assert.match(dashboard,/SELECTED COVER/,'cover selection must be visible in the 
 assert.match(worker,/function metronExactIssueRecords/,'selected issue should request exact Metron issue records');
 assert.match(worker,/series_id:seriesId, number, page:1/,'cover lookup must retain the selected series and issue number');
 assert.doesNotMatch(metronCoverPagination,/Math\.min\(3|slice\(0, 60\)/,'Metron cover pagination must not silently truncate large variant sets');
-assert.match(metronCoverPagination,/remainingPages\.slice\(offset, offset \+ 3\)/,'large exact-cover sets must fetch all Metron pages in bounded batches');
+assert.match(metronCoverPagination,/for \(const page of remainingPages\)/,'large exact-cover sets must fetch Metron pages sequentially');
+assert.match(metronCoverPagination,/attempt <= 3/,'large exact-cover sets must retry transient Metron failures');
 assert.match(worker,/comic-pricecharting:v8/,'cover candidate cache must be invalidated after bracketed variant discovery');
 assert.match(worker,/exact && `\$\{exact\} foil`/,'exact PriceCharting hydration must search foil editions');
 assert.match(worker,/for \(const query of queries\)/,'PriceCharting cover searches must be sequential so provider throttling is respected');
