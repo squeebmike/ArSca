@@ -5976,13 +5976,31 @@ function formatOfflineCatalogDate(value){
 // https://www.topps.com/pages/checklists to pull the PDF link list out --
 // written with string concatenation (no template literals/backticks) so it's
 // safe to embed as plain text in this file's own template literals.
+// Uses navigator.clipboard (with a prompt() fallback) instead of DevTools'
+// copy() helper, so this works both pasted into a console AND as a
+// bookmarklet -- bookmarklets run in the plain page context and don't have
+// access to console-only globals like copy().
 const TOPPS_LINK_SCRAPER_SCRIPT = [
   "const pdfs = [...document.querySelectorAll('a[href]')]",
   "  .map(a => ({ name: a.textContent.trim().replace(/\\s+/g, ' '), url: a.href }))",
   "  .filter(x => /\\.pdf(\\?|$)/i.test(x.url));",
-  "copy(pdfs.map(x => x.name + '\\t' + x.url).join('\\n'));",
-  "console.log('Copied ' + pdfs.length + ' PDF links to clipboard -- paste them into the dashboard.');",
+  "const toppsLinkText = pdfs.map(x => x.name + '\\t' + x.url).join('\\n');",
+  "if (!pdfs.length) { alert('No PDF links found on this page -- make sure you are on topps.com/pages/checklists'); }",
+  "else { navigator.clipboard.writeText(toppsLinkText).then(function(){ alert('Copied ' + pdfs.length + ' Topps checklist links. Go back to the dashboard tab and paste them in.'); }).catch(function(){ prompt('Copy this text (tap in the box, select all, copy), then go paste it into the dashboard:', toppsLinkText); }); }",
 ].join('\n');
+
+function toppsBookmarkletHref(){
+  return 'javascript:' + encodeURIComponent('(function(){' + TOPPS_LINK_SCRAPER_SCRIPT.replace(/\n/g, ' ') + '})();');
+}
+
+async function copyToppsBookmarkletCode(){
+  try{
+    await navigator.clipboard.writeText(toppsBookmarkletHref());
+    toast_dash('Bookmarklet code copied -- paste it as a new bookmark\'s URL');
+  }catch(e){
+    toast_dash('Could not copy automatically -- tap and copy the code below instead');
+  }
+}
 
 function parseToppsPastedLinks(text){
   const entries=[];
@@ -6147,10 +6165,22 @@ async function renderOfflineCatalogManagerPanel(){
       <button class="hbtn" onclick="updateToppsCatalogFromWeb()">UPDATE TOPPS CATALOG (SCRAPE TOPPS.COM)</button>
       <span id="topps-catalog-update-progress" style="font-family:monospace;font-size:9px;color:var(--gold)"></span>
     </div>
-    <div style="font-family:monospace;font-size:9px;color:var(--dim);line-height:1.5;margin-top:4px">Owner/admin only. Scans topps.com's own checklist page for sets not yet in the catalog, downloads and parses any new ones, then publishes an updated catalog version directly -- no local computer or GitHub involved. topps.com currently blocks this server-side scan (bot protection); if it fails, use the pasted-link method below instead.</div>
+    <div style="font-family:monospace;font-size:9px;color:var(--dim);line-height:1.5;margin-top:4px">Owner/admin only. "UPDATE TOPPS CATALOG" above tries an automatic scan, but topps.com currently blocks that (bot protection) -- use the step-by-step method below instead, it works around that block.</div>
     <div style="margin-top:8px;padding:10px;border:1px solid var(--border);border-radius:6px">
-      <div style="font-family:monospace;font-size:9px;color:var(--dim);line-height:1.6">topps.com blocks server-side requests to its checklist page but never blocks your own browser. Open <a href="https://www.topps.com/pages/checklists" target="_blank" rel="noopener" style="color:var(--blue)">topps.com/pages/checklists</a>, open the browser's DevTools Console, paste the script below, then paste its clipboard output into the second box.</div>
+      <div style="font-family:monospace;font-size:11px;color:var(--gold);font-weight:700;margin-bottom:6px">HOW TO GET NEW TOPPS SETS INTO THE CATALOG (ONE-TIME STEPS PER UPDATE, ON A COMPUTER)</div>
+      <ol style="font-family:monospace;font-size:9.5px;color:var(--text);line-height:2;margin:0;padding-left:18px">
+        <li>On a computer, open <a href="https://www.topps.com/pages/checklists" target="_blank" rel="noopener" style="color:var(--blue)">topps.com/pages/checklists</a> in Chrome (or Edge).</li>
+        <li>Press <b>F12</b> (or right-click anywhere on the page and choose <b>Inspect</b>) to open Developer Tools.</li>
+        <li>Click the <b>Console</b> tab near the top of the panel that opens.</li>
+        <li>Click into that console area so the cursor is blinking there.</li>
+        <li>Copy the box of code below (click it, Ctrl+A, Ctrl+C), then paste it into the console (Ctrl+V) and press <b>Enter</b>.</li>
+        <li>A popup will confirm how many links were copied ("Copied 743 Topps checklist links..."). Click OK.</li>
+        <li>Come back to this dashboard tab, click into the second box below, and paste (Ctrl+V).</li>
+        <li>Click <b>IMPORT FROM PASTED LINKS</b> and confirm. It'll show progress and publish automatically when done -- this can take a while for a large batch.</li>
+      </ol>
+      <div style="font-family:monospace;font-size:9px;color:var(--dim);margin-top:8px">Code to paste into the Console (step 5):</div>
       <textarea readonly onclick="this.select()" style="width:100%;height:70px;margin-top:6px;font-family:monospace;font-size:9px;background:#0d0f14;color:var(--g);border:1px solid var(--border);border-radius:4px;padding:6px">${escHtml(TOPPS_LINK_SCRAPER_SCRIPT)}</textarea>
+      <div style="font-family:monospace;font-size:9px;color:var(--dim);margin-top:6px">Then paste what you copied here (step 7):</div>
       <textarea id="topps-pasted-links" placeholder="Paste the copied name+PDF-url lines here..." style="width:100%;height:90px;margin-top:6px;font-family:monospace;font-size:9px;background:#0d0f14;color:var(--text);border:1px solid var(--border);border-radius:4px;padding:6px"></textarea>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:6px">
         <button class="hbtn" onclick="updateToppsCatalogFromPastedLinks()">IMPORT FROM PASTED LINKS</button>
