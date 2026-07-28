@@ -30,6 +30,7 @@ const dated=hub.groupCandidates([{productId:'new',productName:'TMNT #1 IDW',rele
 assert.equal(dated[0].yearGuess,'1984','run groups should sort oldest to newest');
 const dashboard=fs.readFileSync(require('node:path').join(__dirname,'..','dashboard.html'),'utf8');
 const worker=fs.readFileSync(require('node:path').join(__dirname,'..','cloudflare-worker-full.js'),'utf8');
+const metronCoverPagination=worker.slice(worker.indexOf('async function metronExactIssueRecords'),worker.indexOf('// Store policy:'));
 assert.match(worker,/comic-sweep/);
 assert.match(worker,/pcFetch\('\/api\/products'/);
 assert.doesNotMatch(dashboard,/cacheComicExternalCover|cachedCoverBlobKey|comicsDb(?:Put|Get)\('images'/);
@@ -63,6 +64,10 @@ assert.match(dashboard,/function metronSeriesToQplRow/,'comic title search must 
 assert.match(dashboard,/function chooseMetronComicSeries/,'choosing a Metron run must load that exact series id');
 assert.match(dashboard,/function loadMetronComicSeriesPage/,'selected Metron runs must support server-backed issue pagination');
 assert.match(dashboard,/series_id:String\(state\.series\.id\),page:String\(page\)/,'every issue page must retain the exact selected series id');
+assert.match(dashboard,/remainingPages\.slice\(offset,offset\+3\)/,'selected comic runs must load every Metron page in bounded batches');
+assert.match(dashboard,/allLoaded:true/,'the selected comic run must record that all issues and covers were assembled');
+assert.match(dashboard,/completeComicRun\?allIndexed\.length/,'complete comic runs must display every cover instead of applying the shared 20-result screen limit');
+assert.match(dashboard,/ALL \$\{rows\.length\} \$\{s\.parsed\?\.issueNumber\?'COVERS \/ VARIANTS':'ISSUES \/ COVERS'\} LOADED/,'the comic run UI must confirm the full record count');
 assert.match(dashboard,/ISSUES \$\{start\}-\$\{end\} OF \$\{total\}/,'comic pagination must show the visible issue range and total');
 assert.match(dashboard,/NEXT 20/,'long comic runs need an explicit next-page control');
 assert.match(worker,/url\.searchParams\.get\('page'\)/,'the Worker must accept a requested Metron issue page');
@@ -107,7 +112,8 @@ assert.match(dashboard,/VERIFY EXACT PRICECHARTING/,'the selected PriceCharting 
 assert.match(dashboard,/SELECTED COVER/,'cover selection must be visible in the top-level comic result');
 assert.match(worker,/function metronExactIssueRecords/,'selected issue should request exact Metron issue records');
 assert.match(worker,/series_id:seriesId, number, page:1/,'cover lookup must retain the selected series and issue number');
-assert.match(worker,/Math\.min\(3/,'Metron cover pagination must remain bounded');
+assert.doesNotMatch(metronCoverPagination,/Math\.min\(3|slice\(0, 60\)/,'Metron cover pagination must not silently truncate large variant sets');
+assert.match(metronCoverPagination,/remainingPages\.slice\(offset, offset \+ 3\)/,'large exact-cover sets must fetch all Metron pages in bounded batches');
 assert.match(worker,/comic-pricecharting:v8/,'cover candidate cache must be invalidated after bracketed variant discovery');
 assert.match(worker,/exact && `\$\{exact\} foil`/,'exact PriceCharting hydration must search foil editions');
 assert.match(worker,/for \(const query of queries\)/,'PriceCharting cover searches must be sequential so provider throttling is respected');

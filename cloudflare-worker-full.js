@@ -17,7 +17,7 @@
  *   LBA_KV
  *   MTG_CATALOG_R2 (R2 must be enabled for the Cloudflare account)
  */
-// Production release marker: 2026.07.28.01-comic-operations
+// Production release marker: 2026.07.28.02-all-comic-covers
 
 // Same parser that built the live 740-set/426,540-card Topps catalog (see
 // scripts/import-topps-checklists.js -> scripts/topps/merge-and-publish.mjs).
@@ -200,7 +200,7 @@ function metronSiblingCovers(currentIssue, issueList = []) {
     nestedVariant:true,
   }));
   const combined = [...siblings, ...nested];
-  return combined.filter((cover, index) => combined.findIndex(other => String(other.id) === String(cover.id) && other.imageUrl === cover.imageUrl) === index).slice(0, 60);
+  return combined.filter((cover, index) => combined.findIndex(other => String(other.id) === String(cover.id) && other.imageUrl === cover.imageUrl) === index);
 }
 
 async function metronFetch(env, path, params = {}, ttlSeconds = 86400) {
@@ -249,12 +249,16 @@ async function metronExactIssueRecords(env, issue = {}) {
   const rows = Array.isArray(payload) ? [...payload] : [...(payload.results || [])];
   const total = Number(Array.isArray(payload) ? rows.length : payload.count || rows.length) || rows.length;
   const pageSize = Math.max(1, rows.length || 20);
-  const pageCount = Math.min(3, Math.max(1, Math.ceil(total / pageSize)));
+  const pageCount = Math.max(1, Math.ceil(total / pageSize));
   if (pageCount > 1) {
-    const extra = await Promise.all(Array.from({ length:pageCount - 1 }, (_, index) => metronFetch(env, '/issue/', { series_id:seriesId, number, page:index + 2 }, 60 * 60 * 24 * 7).catch(() => ({ data:[] }))));
-    extra.forEach(result => rows.push(...(Array.isArray(result.data) ? result.data : (result.data?.results || []))));
+    const remainingPages = Array.from({ length:pageCount - 1 }, (_, index) => index + 2);
+    for (let offset = 0; offset < remainingPages.length; offset += 3) {
+      const batch = remainingPages.slice(offset, offset + 3);
+      const extra = await Promise.all(batch.map(page => metronFetch(env, '/issue/', { series_id:seriesId, number, page }, 60 * 60 * 24 * 7)));
+      extra.forEach(result => rows.push(...(Array.isArray(result.data) ? result.data : (result.data?.results || []))));
+    }
   }
-  return rows.filter((row, index, all) => row?.id && all.findIndex(other => String(other?.id || '') === String(row.id)) === index).slice(0, 60);
+  return rows.filter((row, index, all) => row?.id && all.findIndex(other => String(other?.id || '') === String(row.id)) === index);
 }
 
 // Store policy: market-tracked prices ring up as whole dollars, rounded UP
