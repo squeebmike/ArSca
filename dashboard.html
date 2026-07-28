@@ -2624,6 +2624,7 @@ body.show-mode .inv-sync-badge{display:none;}
       <button class="hbtn" id="price-sync-scan-btn" onclick="runPriceSyncScan()">SCAN CACHED PRICES</button>
       <button class="hbtn" id="price-sync-mtg-btn" onclick="runOfflineMtgPriceSync()">SYNC MTG PRICES</button>
       <button class="hbtn" id="price-sync-live-btn" onclick="runLivePokemonPriceSync()">FETCH LIVE POKEMON</button>
+      <button class="hbtn" id="price-sync-other-btn" onclick="runOtherLivePriceSync()">FETCH LIVE SPORTS / OTHER TCG</button>
       <button class="hbtn" id="price-sync-apply-btn" onclick="applySelectedPriceSyncUpdates()" style="display:none;background:rgba(0,255,179,.12);border-color:rgba(0,255,179,.4);color:var(--g)">✓ UPDATE SELECTED</button>
       <button class="modal-btn cancel" onclick="closePriceSyncModal()" style="margin-left:auto">CLOSE</button>
     </div>
@@ -12902,6 +12903,145 @@ async function runLivePokemonPriceSync(){
   }
 }
 
+// Sports cards + everything else JustTCG covers (Yu-Gi-Oh!, Disney Lorcana,
+// One Piece TCG) plus legacy items still stuck with the generic "TCG"
+// category -- MTG and Pokemon already have their own dedicated sync above,
+// this covers what's left instead of leaving those categories with no live
+// price-refresh path at all.
+function isOtherTcgSportsInventorySyncItem(item = {}){
+  const st = String(item.lifecycle || item.status || 'in_stock').toLowerCase();
+  if(['sold','archived','returned','deleted'].includes(st)) return false;
+  if(isMtgInventorySyncItem(item) || isPokemonInventorySyncItem(item)) return false;
+  const key = qplCategoryKey(item.category || '');
+  if(key === 'sports' || ['yugioh','lorcana','one_piece'].includes(key)) return true;
+  const cat = String(item.category || '').trim();
+  return cat === 'TCG' || cat === '';
+}
+
+async function fetchOtherTcgOrSportsLivePrice(item){
+  const key = qplCategoryKey(item.category || '');
+  if(key === 'sports'){
+    const row = { name:inventoryCardName(item), year:item.year || '', set:inventorySetName(item), variant:item.variant || '', card_number:inventoryCardNumber(item), _game:'Sports Card' };
+    const priced = await fetchCardSightRealPrice(row).catch(() => null);
+    return priced?.market > 0 ? { market:priced.market, source:priced.priceSource || 'CardSight/PriceCharting', matchStatus:'sports live match' } : null;
+  }
+  const gameLabel = tcgLineFromText([item.category, item.game, item.raw?.game].filter(Boolean).join(' ')).label;
+  const tcgPlayerId = inventoryTcgPlayerId(item);
+  if(tcgPlayerId){
+    try {
+      const res = await fetch(WORKER + '/pricing/justtcg/tcgplayer/' + encodeURIComponent(tcgPlayerId) + '?' + new URLSearchParams({ storeId:getActiveStoreId() }).toString(), { cache:'no-store' });
+      const data = await res.json().catch(() => ({}));
+      const price = Number(data.price || data.selectedVariant?.marketPrice || data.card?.selectedVariant?.marketPrice || 0);
+      if(res.ok && data.ok !== false && price > 0) return { market:price, source:'JustTCG', matchStatus:'exact TCGplayer ID match' };
+    } catch(e) { /* fall through to name search */ }
+  }
+  const q = [inventoryCardName(item), inventorySetName(item), inventoryCardNumber(item) ? '#' + inventoryCardNumber(item) : ''].filter(Boolean).join(' ');
+  if(!q) return null;
+  try {
+    const params = new URLSearchParams({ q, category:gameLabel === 'TCG' ? '' : gameLabel, storeId:getActiveStoreId() });
+    const res = await fetch(WORKER + '/pricing/justtcg/search?' + params.toString(), { cache:'no-store' });
+    const data = await res.json().catch(() => ({}));
+    const match = (data.matches || [])[0];
+    if(match) return { market:Number(match.selectedVariant?.marketPrice || 0), source:'JustTCG', matchStatus:'name/set search match' };
+  } catch(e) { /* give up on this item */ }
+  return null;
+}
+
+async function buildOtherTcgSportsPriceSyncProposal(options = {}){
+  const { onProgress = null } = options;
+  const localRawItems = safeLocalJson('walkoff_universal_inventory', []);
+  const seenRawIds = new Set(localRawItems.map(i => i.id || i.wfId).filter(Boolean));
+  const rawItems = localRawItems.concat((all || []).filter(i => {
+    const id = i.id || i.wfId;
+    return id && !seenRawIds.has(id);
+  }));
+  const overrides = getInventoryEditOverrides();
+  let items = rawItems.map(i => {
+    const patch = overrides[i.id] || overrides[i.wfId];
+    return patch ? { ...i, ...patch } : i;
+  });
+  items = items.filter(isOtherTcgSportsInventorySyncItem);
+  items = items.sort((a,b) => inventoryReferenceMarketPrice(b) - inventoryReferenceMarketPrice(a));
+
+  const summary = { checked:items.length, processed:0, changed:0, unchanged:0, errors:0, noMatch:0, noPrice:0, issues:[] };
+  const proposal = [];
+  for(const item of items){
+    summary.processed++;
+    if(onProgress) onProgress(summary.processed, summary.checked);
+    try {
+      const live = await fetchOtherTcgOrSportsLivePrice(item);
+      if(!live || !(live.market > 0)){
+        summary.noMatch++;
+        summary.issues.push({ item:{ ...item }, type:'no-match', title:'No live match found', reason:'Could not find a confident price match for "' + (inventoryCardName(item) || 'this item') + '" via CardSight/PriceCharting/JustTCG.' });
+        continue;
+      }
+      const oldPrice = inventoryReferenceMarketPrice(item);
+      const freshPrice = live.market;
+      if(oldPrice > 0 && Math.abs(freshPrice - oldPrice) < 0.01){
+        summary.unchanged++;
+        await saveInventoryEdit(item, { marketPriceSource:live.source, priceSource:live.source + ' live sync', lastPriceUpdate:new Date().toISOString(), priceUpdatedAt:new Date().toISOString(), stalePrice:false, livePriceStatus:'live' }).catch(() => {});
+        continue;
+      }
+      const delta = freshPrice - oldPrice;
+      const deltaPct = oldPrice > 0 ? Math.abs(delta / oldPrice) * 100 : 100;
+      const big = oldPrice > 0 ? isBigPriceChange(oldPrice, freshPrice) : false;
+      const direction = delta >= 0 ? 'up' : 'down';
+      summary.changed++;
+      proposal.push({
+        item:{ ...item },
+        mode:'other-live',
+        source:live.source,
+        oldPrice,
+        newPrice:Math.round(freshPrice * 100) / 100,
+        rawNewPrice:freshPrice,
+        delta, deltaPct, isBig:big, direction,
+        label:big ? (direction === 'up' ? 'BIG INCREASE' : 'BIG DROP') : (direction === 'up' ? 'increase' : 'drop'),
+        matchStatus:live.matchStatus,
+        lastUpdated:new Date().toISOString(),
+        selected:true,
+      });
+    } catch(e) {
+      summary.errors++;
+      summary.issues.push({ item:{ ...item }, type:'error', title:'Lookup failed', reason:String(e.message || e) });
+    }
+  }
+  _priceSyncLastSummary = summary;
+  return proposal;
+}
+
+async function runOtherLivePriceSync(){
+  const btn = document.getElementById('price-sync-other-btn');
+  const statusEl = document.getElementById('price-sync-status');
+  const propEl = document.getElementById('price-sync-proposal');
+  const applyBtn = document.getElementById('price-sync-apply-btn');
+  if(!btn || !statusEl || !propEl) return;
+  restorePendingPriceSyncProposals();
+  const pendingBeforeRun = [..._priceSyncProposal];
+  if(!navigator.onLine){ statusEl.textContent = 'Connect to the internet to fetch live sports/other-TCG prices.'; return; }
+  btn.disabled = true;
+  btn.textContent = 'Fetching...';
+  statusEl.textContent = 'Fetching live sports/other-TCG prices...';
+  propEl.innerHTML = '';
+  if(applyBtn) applyBtn.style.display = 'none';
+  try {
+    const freshProposal = await buildOtherTcgSportsPriceSyncProposal({ onProgress:(done,total) => { statusEl.textContent = 'Fetching live prices... ' + done + ' of ' + total + ' checked'; } });
+    const s = _priceSyncLastSummary || { checked:0, changed:0, unchanged:0, noMatch:0, errors:0, issues:[] };
+    _priceSyncProposal = mergePendingPriceSyncProposals(pendingBeforeRun, freshProposal);
+    savePendingPriceSyncProposals();
+    const summaryText = 'Sports/other-TCG sync checked ' + s.checked + ' item' + (s.checked===1?'':'s') + '. ' + s.changed + ' changed, ' + s.unchanged + ' unchanged, ' + s.noMatch + ' not matched, ' + s.errors + ' errors.';
+    statusEl.textContent = summaryText + (_priceSyncProposal.length ? ' Review price changes below, then click UPDATE SELECTED.' : '');
+    renderPriceSyncProposal();
+    if(!_priceSyncProposal.length && !(s.issues || []).length) propEl.innerHTML = '<div style="color:var(--dim);font-size:12px;padding:12px 0">All sports/other-TCG prices already match inventory.</div>';
+    if(applyBtn && _priceSyncProposal.length) applyBtn.style.display = '';
+    updatePriceAlertBanner();
+  } catch(e) {
+    statusEl.textContent = 'Sports/other-TCG sync failed: ' + (e.message || e);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'FETCH LIVE SPORTS / OTHER TCG';
+  }
+}
+
 function priceSyncItemTitle(item = {}){
   return item.name || item.title || item.cardName || item.productName || item.displayName ||
     item.raw?.name || item.raw?.title || item.raw?.cardName || item.raw?.productName ||
@@ -20836,6 +20976,7 @@ function tcgLineFromText(text = '', selectedCategory = ''){
   if(/\bpok[eé]mon\b|\bpokemon\b/.test(hay) || selected === 'pokemon') return { game:'pokemon', category:'Pokemon TCG', label:'Pokemon TCG' };
   if(/\byu-?gi-?oh\b/.test(hay) || selected === 'yugioh') return { game:'yugioh', category:'Yu-Gi-Oh!', label:'Yu-Gi-Oh!' };
   if(/\blorcana\b/.test(hay) || selected === 'lorcana') return { game:'lorcana', category:'Disney Lorcana', label:'Disney Lorcana' };
+  if(/\bone[\s-]?piece\b/.test(hay) || selected === 'one_piece') return { game:'one_piece', category:'One Piece TCG', label:'One Piece TCG' };
   if(selected === 'sealed') return { game:'all', category:'Sealed Product', label:'Sealed Product' };
   return { game:'all', category:'TCG', label:'TCG' };
 }
@@ -25422,7 +25563,10 @@ async function fetchWorkerTcgCatalog(q, cat){
       productId:m.productId || m.id || '',
       justtcgCardId:m.productId || m.id || '',
       name:m.name || q,
-      category:'TCG',
+      // JustTCG covers multiple games -- detect which one instead of
+      // stamping every result with the generic "TCG" catch-all, which left
+      // added inventory items unroutable for any per-game price sync.
+      category:tcgLineFromText(m.game || m.category || game, game).category,
       game:m.game || m.category || '',
       set:m.setName || '',
       year:m.releaseDate ? String(m.releaseDate).slice(0,4) : '',
@@ -25465,7 +25609,7 @@ async function fetchWorkerTcgCatalog(q, cat){
       source:data.source || 'tcgplayer',
       productId:m.productId || m.id || '',
       name:m.name || q,
-      category:'TCG',
+      category:tcgLineFromText(m.categoryName || m.productLine || game, game).category,
       set:m.setName || m.groupName || m.set_name || '',
       year:m.extraInfo?.releaseDate ? String(m.extraInfo.releaseDate).slice(0,4) : '',
       variant:m.rarity || '',
@@ -25522,7 +25666,7 @@ async function fetchPokemonCatalog(q){
           source:'pokemon',
           _pokemonGroup:'best',
           name:c.name || clean,
-          category:'TCG',
+          category:'Pokemon TCG',
           set:c.set?.name || '',
           year:(c.set?.releaseDate || '').slice(0,4),
           variant:[c.rarity, p === prices.reverseHolofoil ? 'Reverse Holo' : '', c.supertype].filter(Boolean).join(' / '),
@@ -25615,7 +25759,7 @@ async function fetchScryfallCatalog(q, searchPlan = qplLastSearchPlan){
     const row = applyQplSelectedVariant({
       source:'scryfall',
       name:c.name || q,
-      category:'TCG',
+      category:'Magic: The Gathering',
       set:c.set_name || '',
       year:(c.released_at || '').slice(0,4),
       variant:variantNote,
@@ -28852,7 +28996,7 @@ function buyItemToInventoryUpdates(item){
   const location = document.getElementById('buy-session-location')?.value || session?.location || (getShowMode()?.eventName ? 'Show buy - ' + getShowMode().eventName : 'Intake Tray');
   return {
     name:item.name,
-    category:item.category === 'Pokemon TCG' ? 'TCG' : (item.category === 'Sealed' ? 'TCG' : (item.category || 'TCG')),
+    category:item.category || 'TCG',
     set:item.set || item.product_line || '',
     variant:item.variant || '',
     year:item.year || '',
@@ -31846,7 +31990,7 @@ function scryfallCardToQplRow(c){
   return applyQplSelectedVariant({
     source: 'scryfall',
     name: c.name || '',
-    category: 'TCG',
+    category: 'Magic: The Gathering',
     set: c.set_name || '',
     year: (c.released_at || '').slice(0, 4),
     variant: [treatment ? qplFinishLabel(treatment) : '', c.rarity ? c.rarity[0].toUpperCase() + c.rarity.slice(1) : ''].filter(Boolean).join(' · '),
