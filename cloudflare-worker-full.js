@@ -1718,6 +1718,7 @@ export default {
         const credits = (Array.isArray(m.credits) ? m.credits : []).slice(0,20).map(c => ({ creator:cleanText(c?.creator,80), roles:cleanList(c?.roles,6) })).filter(c => c.creator);
         return {
           seriesName:cleanText(m.seriesName || m.series || '',160), number:cleanText(m.number || m.issueNumber || '',20),
+          selectedCover:cleanText(m.selectedCover?.issueName || m.selectedCover?.name || d.variant || '',120),
           publisher:cleanText(m.publisher,120), seriesYearBegan:cleanText(m.seriesYearBegan,12),
           coverDate:cleanText(m.coverDate,20), storeDate:cleanText(m.storeDate,20),
           coverPrice:Number(m.coverPrice || 0) || 0, coverPriceCurrency:cleanText(m.coverPriceCurrency || 'USD',10),
@@ -1737,7 +1738,12 @@ export default {
         return {
         id:cleanText(row.id,80), name:cleanText(d.name || d.title || 'Item'), category:cleanText(d.category || d.type || 'Other',80),
         set:cleanText(d.set || d.series || '',120), year:cleanText(d.year || '',12), variant:cleanText(d.variant || d.finish || '',120), condition:cleanText(d.condition || d.grade || '',80),
-        price:Math.max(rowBase, Number(d.minPrice || 0) || 0), market:rowMarket, image:cleanUrl(d.image || d.img || d.imageUrl || d.image_url || d.photo),
+        // photoDataUrl/thumbnail are where the dashboard's own upload flow
+        // (camera/file photo, R2-hosted or legacy base64) actually saves a
+        // user-taken photo -- checked first, same precedence the dashboard's
+        // own inventoryImageUrl() uses, so a self-taken photo with no
+        // catalog-sourced image still shows up on the public storefront.
+        price:Math.max(rowBase, Number(d.minPrice || 0) || 0), market:rowMarket, image:cleanUrl(d.photoDataUrl || d.thumbnail || d.image || d.img || d.imageUrl || d.image_url || d.photo),
         isSealed:!!d.is_sealed, gradingCompany:cleanText(d.grading_company || d.grader || '',40),
         comic:comicDetailFor(d),
         quantity, inventoryStatus, soldAt:d.soldAt || d.sold_at || '', archivedAt:d.archivedAt || '', addedAt:row.created_at || '', updatedAt:row.updated_at || ''

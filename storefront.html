@@ -113,10 +113,10 @@ function render(){const q=document.getElementById('q').value.toLowerCase().trim(
 // `comic` when the item actually has a saved comic record (see the Worker's
 // /public/storefront route), so this renders nothing for non-comic items.
 function comicDetailHtml(c){
-  const stats=[['Series',c.seriesName],['Issue #',c.number],['Publisher',c.publisher],['Series began',c.seriesYearBegan],['Cover date',c.coverDate],['Store date',c.storeDate],['Cover price',c.coverPrice?`${c.coverPriceCurrency||'USD'} ${c.coverPrice.toFixed(2)}`:''],['Rating',c.rating],['UPC',c.upc],['SKU',c.sku]].filter(([,v])=>v);
+  const stats=[['Series',c.seriesName],['Issue #',c.number],['Selected cover',c.selectedCover],['Publisher',c.publisher],['Series began',c.seriesYearBegan],['Cover date',c.coverDate],['Store date',c.storeDate],['Cover price',c.coverPrice?`${c.coverPriceCurrency||'USD'} ${c.coverPrice.toFixed(2)}`:''],['Rating',c.rating],['UPC',c.upc],['SKU',c.sku]].filter(([,v])=>v);
   const credits=(c.credits||[]).map(cr=>[cr.creator,(cr.roles||[]).join(', ')].filter(Boolean).join(' — ')).join('; ');
   if(!stats.length && !c.description && !(c.writers||[]).length) return '';
-  return `<div style="margin-top:18px;padding-top:16px;border-top:1px solid var(--line)">
+  return `<div style="margin-top:18px;padding:16px 24px 20px;border-top:1px solid var(--line)">
     <div style="font-weight:900;font-size:14px;margin-bottom:10px">Book Details, Story &amp; Creators</div>
     ${stats.length?`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;margin-bottom:14px">${stats.map(([label,value])=>`<div style="background:#f5f7fa;border-radius:8px;padding:8px"><div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.03em">${esc(label)}</div><div style="font-size:13px;font-weight:700;word-break:break-word">${esc(value)}</div></div>`).join('')}</div>`:''}
     ${c.description?`<div style="font-size:13px;line-height:1.6;margin-bottom:14px">${esc(c.description)}</div>`:''}

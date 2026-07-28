@@ -5301,7 +5301,8 @@ function renderCustomerInventoryBrowser(){const host=document.getElementById('cu
 // screen's own comic panel (inventoryComicInfoHtml) includes.
 function customerComicDetailHtml(item){
   const m=item.comicMetadata; if(!m) return '';
-  const stats=[['Series',m.seriesName||m.series],['Issue #',m.number||m.issueNumber],['Publisher',m.publisher],['Series began',m.seriesYearBegan],['Cover date',m.coverDate],['Store date',m.storeDate],['Cover price',m.coverPrice?`${m.coverPriceCurrency||'USD'} ${Number(m.coverPrice).toFixed(2)}`:''],['Rating',m.rating],['UPC',m.upc],['SKU',m.sku]].filter(([,v])=>v);
+  const selectedCover=m.selectedCover?.issueName||m.selectedCover?.name||item.variant||'';
+  const stats=[['Series',m.seriesName||m.series],['Issue #',m.number||m.issueNumber],['Selected cover',selectedCover],['Publisher',m.publisher],['Series began',m.seriesYearBegan],['Cover date',m.coverDate],['Store date',m.storeDate],['Cover price',m.coverPrice?`${m.coverPriceCurrency||'USD'} ${Number(m.coverPrice).toFixed(2)}`:''],['Rating',m.rating],['UPC',m.upc],['SKU',m.sku]].filter(([,v])=>v);
   const credits=(m.credits||[]).map(c=>[c.creator,(c.roles||[]).join(', ')].filter(Boolean).join(' — ')).join('; ');
   if(!stats.length && !m.description && !(m.writers||[]).length) return '';
   return `<div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border)">
