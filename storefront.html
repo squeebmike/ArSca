@@ -109,13 +109,34 @@ function render(){const q=document.getElementById('q').value.toLowerCase().trim(
   return `<article class="card" data-id="${esc(i.id)}">${i.image?`<img class="photo" src="${esc(i.image)}" alt="${esc(i.name)}" loading="lazy">`:'<div class="no-photo">NO PHOTO</div>'}<div class="body"><div class="name">${esc(i.name)}</div><div class="meta">${esc([i.set,i.year,i.variant,i.condition].filter(Boolean).join(' · '))}</div><div class="price-row"><div class="price">${money(i.price)}</div></div>${marketLine}</div></article>`;
 }).join(''):'<div class="empty">No matching items.</div>';document.querySelectorAll('.card').forEach(c=>c.onclick=()=>openItem(c.dataset.id));}
 
+// Book details/story/creators panel for comic items -- server only attaches
+// `comic` when the item actually has a saved comic record (see the Worker's
+// /public/storefront route), so this renders nothing for non-comic items.
+function comicDetailHtml(c){
+  const stats=[['Series',c.seriesName],['Issue #',c.number],['Publisher',c.publisher],['Series began',c.seriesYearBegan],['Cover date',c.coverDate],['Store date',c.storeDate],['Cover price',c.coverPrice?`${c.coverPriceCurrency||'USD'} ${c.coverPrice.toFixed(2)}`:''],['Rating',c.rating],['UPC',c.upc],['SKU',c.sku]].filter(([,v])=>v);
+  const credits=(c.credits||[]).map(cr=>[cr.creator,(cr.roles||[]).join(', ')].filter(Boolean).join(' — ')).join('; ');
+  if(!stats.length && !c.description && !(c.writers||[]).length) return '';
+  return `<div style="margin-top:18px;padding-top:16px;border-top:1px solid var(--line)">
+    <div style="font-weight:900;font-size:14px;margin-bottom:10px">Book Details, Story &amp; Creators</div>
+    ${stats.length?`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;margin-bottom:14px">${stats.map(([label,value])=>`<div style="background:#f5f7fa;border-radius:8px;padding:8px"><div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.03em">${esc(label)}</div><div style="font-size:13px;font-weight:700;word-break:break-word">${esc(value)}</div></div>`).join('')}</div>`:''}
+    ${c.description?`<div style="font-size:13px;line-height:1.6;margin-bottom:14px">${esc(c.description)}</div>`:''}
+    <div style="font-size:13px;line-height:1.7">
+      ${c.writers?.length?`<div><b>Writer:</b> ${esc(c.writers.join(', '))}</div>`:''}
+      ${c.artists?.length?`<div><b>Artists:</b> ${esc(c.artists.join(', '))}</div>`:''}
+      ${c.coverArtists?.length?`<div><b>Cover artists:</b> ${esc(c.coverArtists.join(', '))}</div>`:''}
+      ${credits?`<details style="margin:4px 0;color:var(--muted)"><summary style="cursor:pointer">All creator credits</summary><div style="margin-top:6px">${esc(credits)}</div></details>`:''}
+      ${c.characters?.length?`<div><b>Characters:</b> ${esc(c.characters.join(', '))}</div>`:''}
+      ${c.teams?.length?`<div><b>Team:</b> ${esc(c.teams.join(', '))}</div>`:''}
+    </div>
+  </div>`;
+}
 function openItem(id){
   const i=payload.items.find(x=>x.id===id),s=payload.store;if(!i)return;
   const askText=`Hi, I am interested in ${i.name}${i.price?' listed at '+money(i.price):''}. Is it still available?`;
   const smsBody=encodeURIComponent(askText);
   const smsNumber=String(s.phone||'').replace(/[^\d+]/g,'');
   const marketLine = (i.market>0 && Math.round(i.market*100)!==Math.round(i.price*100)) ? `<div class="market" style="margin-bottom:6px">TCG Market Price: <s>$${i.market.toFixed(2)}</s></div>` : '';
-  document.getElementById('detail-content').innerHTML=`<div class="detail">${i.image?`<img src="${esc(i.image)}" alt="${esc(i.name)}">`:'<div class="no-photo">NO PHOTO</div>'}<div class="detail-copy"><div class="meta">${esc(i.category)}</div><h2>${esc(i.name)}</h2><div class="meta">${esc([i.set,i.year,i.variant,i.condition].filter(Boolean).join(' · '))}</div>${marketLine}<div class="price">${money(i.price)}</div><div class="btn-row"><button class="btn" onclick="addToCart('${esc(i.id)}');document.getElementById('detail').close()">ADD TO CART</button>${smsNumber?`<a class="btn close" href="sms:${esc(smsNumber)}?body=${smsBody}">TEXT US ABOUT THIS ITEM</a>`:''}</div><button class="btn close" style="margin-top:8px" onclick="document.getElementById('detail').close()">CLOSE</button></div></div>`;
+  document.getElementById('detail-content').innerHTML=`<div class="detail">${i.image?`<img src="${esc(i.image)}" alt="${esc(i.name)}">`:'<div class="no-photo">NO PHOTO</div>'}<div class="detail-copy"><div class="meta">${esc(i.category)}</div><h2>${esc(i.name)}</h2><div class="meta">${esc([i.set,i.year,i.variant,i.condition].filter(Boolean).join(' · '))}</div>${marketLine}<div class="price">${money(i.price)}</div><div class="btn-row"><button class="btn" onclick="addToCart('${esc(i.id)}');document.getElementById('detail').close()">ADD TO CART</button>${smsNumber?`<a class="btn close" href="sms:${esc(smsNumber)}?body=${smsBody}">TEXT US ABOUT THIS ITEM</a>`:''}</div><button class="btn close" style="margin-top:8px" onclick="document.getElementById('detail').close()">CLOSE</button></div></div>${i.comic?comicDetailHtml(i.comic):''}`;
   document.getElementById('detail').showModal();
 }
 
