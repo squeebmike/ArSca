@@ -2590,10 +2590,16 @@ body.show-mode .inv-sync-badge{display:none;}
       <label style="display:flex;align-items:center;gap:6px;font-family:monospace;font-size:10px;color:var(--dim);cursor:pointer;margin-bottom:8px">
         <input type="checkbox" id="edit-is-graded" onchange="toggleEditGradedRow()"> This item is professionally graded (PSA / BGS / CGC / SGC / CBCS)
       </label>
-      <div id="edit-graded-row" style="display:none;grid-template-columns:1fr 1fr 1fr;gap:8px">
-        <div><label>Grader</label><input type="text" id="edit-grader" placeholder="PSA, BGS, CGC..."></div>
-        <div><label>Grade</label><input type="text" id="edit-grade" placeholder="10, 9.5..."></div>
-        <div><label>Cert #</label><input type="text" id="edit-cert" placeholder="Certification number"></div>
+      <div id="edit-graded-row" style="display:none">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+          <div><label>Grader</label><input type="text" id="edit-grader" placeholder="PSA, BGS, CGC..."></div>
+          <div><label>Grade</label><input type="text" id="edit-grade" placeholder="10, 9.5..."></div>
+          <div><label>Cert #</label><input type="text" id="edit-cert" placeholder="Certification number"></div>
+        </div>
+        <div style="margin-top:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <button class="hbtn" type="button" onclick="fetchPsaCertPhotoForEditItem()">FETCH PSA SLAB PHOTO</button>
+          <span id="edit-psa-photo-status" style="font-family:var(--font-mono);font-size:9px;color:var(--dim)"></span>
+        </div>
       </div>
     </div>
 
@@ -8300,7 +8306,7 @@ function populateEditCategorySelect(currentValue){
 function toggleEditGradedRow(){
   const row = document.getElementById('edit-graded-row');
   const on = document.getElementById('edit-is-graded')?.checked;
-  if(row) row.style.display = on ? 'grid' : 'none';
+  if(row) row.style.display = on ? 'block' : 'none';
 }
 // Reads the edit modal's grading fields for save -- unchecking "This item is
 // graded" clears them (lets a mis-flagged item be un-graded), rather than
@@ -12086,6 +12092,43 @@ function inventoryCardNumber(item = {}){
 function inventoryPokemonExactQuery(item = {}){
   return [inventoryCardName(item), inventorySetName(item), inventoryCardNumber(item)].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
 }
+// Every live-price provider used by the three sync paths (PokemonPriceTracker,
+// Scryfall/TCGplayer/offline MTG catalog, JustTCG) only returns raw/ungraded
+// market prices -- none of them have a graded-tier price at all. A graded
+// item's "market price" needs to come from PriceCharting's graded-slab guide
+// values instead, or it silently gets compared against the wrong (raw) price.
+function inventoryGradingInfo(item = {}){
+  const grader = item.grader || item.grading_company || item.raw?.grader || item.raw?.grading_company || '';
+  const grade = item.grade || item.raw?.grade || '';
+  return { grader:String(grader || '').trim(), grade:String(grade || '').trim() };
+}
+function isGradedInventoryItem(item = {}){
+  const { grader, grade } = inventoryGradingInfo(item);
+  return !!(grader && grade);
+}
+async function fetchGradedSlabPriceForItem(item = {}){
+  const { grader, grade } = inventoryGradingInfo(item);
+  if(!grader || !grade) return null;
+  const q = [inventoryCardName(item), inventorySetName(item)].filter(Boolean).join(' ').trim();
+  if(!q) return null;
+  const params = new URLSearchParams({
+    q, company:grader, grade,
+    cardNumber:inventoryCardNumber(item) || '',
+    setName:inventorySetName(item) || '',
+  });
+  try {
+    const res = await fetch(WORKER + '/pricing/pricecharting/slab-prices?' + params.toString(), { cache:'no-store' });
+    const data = await res.json().catch(() => ({}));
+    if(!res.ok || !data.ok || !(Number(data.selectedValue) > 0)) return null;
+    return {
+      price:Number(data.selectedValue),
+      source:'PriceCharting graded (' + grader + ' ' + grade + ')',
+      lastUpdated:data.product?.lastUpdated || new Date().toISOString(),
+      productUrl:data.product?.url || '',
+      imageUrl:data.product?.imageUrl || '',
+    };
+  } catch(e) { return null; }
+}
 function isPokemonInventorySyncItem(item = {}){
   const text = [
     item.category, item.itemType, item.inventoryType, item.product_line, item.productLine,
@@ -12509,6 +12552,23 @@ async function buildOfflineMtgPriceSyncProposal(options = {}){
   const proposal = [];
   for(const item of items){
     try{
+      if(isGradedInventoryItem(item)) {
+        const gradeInfo = inventoryGradingInfo(item);
+        const slab = await fetchGradedSlabPriceForItem(item);
+        if(!slab) {
+          summary.noPrice++;
+          summary.issues.push({ item:{...item}, type:'no-price', title:'Graded item skipped — no PriceCharting graded slab match', reason:'Scryfall/TCGplayer/the offline MTG catalog only have raw/ungraded prices. This item is graded (' + [gradeInfo.grader, gradeInfo.grade].filter(Boolean).join(' ') + '), so it needs a PriceCharting graded-slab guide value instead, but no match was found for this card/grade.' });
+        } else {
+          const oldPrice = inventoryReferenceMarketPrice(item), freshPrice = slab.price;
+          if(Math.abs(freshPrice - oldPrice) < 0.01) summary.unchanged++;
+          else {
+            const delta=freshPrice-oldPrice, deltaPct=oldPrice>0?Math.abs(delta/oldPrice)*100:100, direction=delta>=0?'up':'down', big=isBigPriceChange(oldPrice,freshPrice);
+            summary.changed++;
+            proposal.push({ item:{...item}, mode:'mtg-live', provider:'mtg', source:slab.source, oldPrice, newPrice:Math.round(freshPrice*100)/100, rawNewPrice:freshPrice, delta, deltaPct, direction, isBig:big, label:big?(direction==='up'?'BIG INCREASE':'BIG DROP'):(direction==='up'?'increase':'drop'), matchStatus:'graded slab match', lastUpdated:slab.lastUpdated, tcgPlayerId:inventoryTcgPlayerId(item), tcgPlayerUrl:slab.productUrl || item.tcgPlayerUrl || '', selected:true });
+          }
+        }
+        continue;
+      }
       const sealed = isMtgSealedInventorySyncItem(item);
       let match = null, resolved = null, matchStatus = '';
       if(sealed){
@@ -12616,6 +12676,57 @@ async function buildLivePokemonPriceSyncProposal(options = {}){
     try {
       const exactId = inventoryTcgPlayerId(item);
       const sealed = isPokemonSealedInventorySyncItem(item);
+      if(isGradedInventoryItem(item)) {
+        const gradeInfo = inventoryGradingInfo(item);
+        const slab = await fetchGradedSlabPriceForItem(item);
+        if(!slab) {
+          summary.noPrice++;
+          summary.issues.push({
+            item:{ ...item }, type:'no-price', tcgPlayerId:exactId,
+            title:'Graded item skipped — no PriceCharting graded slab match',
+            reason:'PokemonPriceTracker only has raw/ungraded market prices. This item is graded (' + [gradeInfo.grader, gradeInfo.grade].filter(Boolean).join(' ') + '), so it needs a PriceCharting graded-slab guide value instead, but no match was found for this card/grade.',
+          });
+          continue;
+        }
+        const oldPrice = inventoryReferenceMarketPrice(item);
+        if(oldPrice > 0 && Math.abs(slab.price - oldPrice) < 0.01) {
+          summary.unchanged++;
+          await saveInventoryEdit(item, {
+            marketPriceSource:'PriceCharting',
+            priceSource:slab.source,
+            lastPriceUpdate:slab.lastUpdated,
+            priceUpdatedAt:new Date().toISOString(),
+            stalePrice:false,
+            livePriceStatus:'live',
+          }).catch(()=>{});
+          continue;
+        }
+        const delta = slab.price - oldPrice;
+        const deltaPct = oldPrice > 0 ? Math.abs(delta / oldPrice) * 100 : 100;
+        const big = oldPrice > 0 ? isBigPriceChange(oldPrice, slab.price) : false;
+        const direction = delta >= 0 ? 'up' : 'down';
+        summary.changed++;
+        proposal.push({
+          item:{ ...item },
+          mode:'live',
+          source:slab.source,
+          oldPrice,
+          newPrice:Math.round(slab.price * 100) / 100,
+          rawNewPrice:slab.price,
+          delta,
+          deltaPct,
+          isBig:big,
+          direction,
+          label:big ? (direction === 'up' ? 'BIG INCREASE' : 'BIG DROP') : (direction === 'up' ? 'increase' : 'drop'),
+          cacheAge:'live',
+          lastUpdated:slab.lastUpdated,
+          matchStatus:'graded slab match',
+          tcgPlayerId:exactId,
+          tcgPlayerUrl:slab.productUrl,
+          selected:true,
+        });
+        continue;
+      }
       const lookupKey = exactId ? (sealed ? 'sealed:' : 'card:') + exactId : '';
       let live;
       let reusedLookup = false;
@@ -12956,6 +13067,14 @@ function isOtherTcgSportsInventorySyncItem(item = {}){
 }
 
 async function fetchOtherTcgOrSportsLivePrice(item){
+  // CardSight/JustTCG/PriceCharting text search below only return raw/ungraded
+  // prices. A graded item needs PriceCharting's graded-slab guide value
+  // instead -- this works from name/set/card-number alone, so it doesn't
+  // depend on the item having been originally scanned via CardSight AI.
+  if(isGradedInventoryItem(item)){
+    const slab = await fetchGradedSlabPriceForItem(item);
+    return slab ? { market:slab.price, source:slab.source, matchStatus:'graded slab match', productUrl:slab.productUrl } : null;
+  }
   const key = qplCategoryKey(item.category || '');
   if(key === 'sports'){
     const row = { name:inventoryCardName(item), year:item.year || '', set:inventorySetName(item), variant:item.variant || '', card_number:inventoryCardNumber(item), _game:'Sports Card' };
@@ -13009,7 +13128,8 @@ async function buildOtherTcgSportsPriceSyncProposal(options = {}){
       const live = await fetchOtherTcgOrSportsLivePrice(item);
       if(!live || !(live.market > 0)){
         summary.noMatch++;
-        summary.issues.push({ item:{ ...item }, type:'no-match', title:'No live match found', reason:'Could not find a confident price match for "' + (inventoryCardName(item) || 'this item') + '" via CardSight/PriceCharting/JustTCG.' });
+        const graded = isGradedInventoryItem(item);
+        summary.issues.push({ item:{ ...item }, type:'no-match', title:graded ? 'Graded item skipped — no PriceCharting graded slab match' : 'No live match found', reason:graded ? 'CardSight/PriceCharting/JustTCG only have raw/ungraded prices, so this graded item needs a PriceCharting graded-slab guide value instead, but no match was found for this card/grade.' : 'Could not find a confident price match for "' + (inventoryCardName(item) || 'this item') + '" via CardSight/PriceCharting/JustTCG.' });
         continue;
       }
       const oldPrice = inventoryReferenceMarketPrice(item);
@@ -17841,6 +17961,29 @@ function setInventoryEditPhoto(src='', source=''){
 }
 
 function removeInventoryEditPhoto(){ setInventoryEditPhoto('', 'No image'); }
+
+// Pulls PSA's own cert photo (when they have one on file) straight onto an
+// already-graded inventory item, without routing back through Quick Price
+// Lookup. Only updates the in-memory photo fields -- SAVE CHANGES persists it.
+async function fetchPsaCertPhotoForEditItem(){
+  const statusEl = document.getElementById('edit-psa-photo-status');
+  const grader = (document.getElementById('edit-grader')?.value || '').trim();
+  const cert = (document.getElementById('edit-cert')?.value || '').replace(/\D+/g, '');
+  if(!cert) { if(statusEl) statusEl.textContent = 'Enter a cert number first.'; return; }
+  if(grader && !/^psa$/i.test(grader)) { if(statusEl) statusEl.textContent = 'PSA cert photo lookup only — BGS/CGC/SGC not supported yet.'; return; }
+  if(statusEl) statusEl.textContent = 'Checking PSA cert...';
+  try {
+    const res = await fetch(WORKER + '/psa/cert/' + encodeURIComponent(cert), { cache:'no-store' });
+    const data = await res.json().catch(() => ({}));
+    if(!res.ok || !data.ok) throw new Error(data.error || 'PSA lookup failed');
+    const c = data.cert || {};
+    if(!c.photoUrl) { if(statusEl) statusEl.textContent = 'Cert verified, but PSA has no photo on file (PSA only attaches photos to certs graded after Oct 2021).'; return; }
+    setInventoryEditPhoto(c.photoUrl, 'PSA cert photo');
+    if(statusEl) statusEl.textContent = 'Slab photo pulled from PSA. Click SAVE CHANGES to keep it.';
+  } catch(e) {
+    if(statusEl) statusEl.textContent = e.message || String(e);
+  }
+}
 
 function handleInventoryEditPhoto(file){
   if(!file) return;
