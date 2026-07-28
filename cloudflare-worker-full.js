@@ -5357,6 +5357,34 @@ export default {
       return json({ ok: true });
     }
 
+    // Store branding logo: same R2 hosting as inventory photos, but its own
+    // prefix since it's a persistent store-identity asset, not a deletable
+    // inventory record -- there's no per-item delete-on-delete concept here.
+    if (url.pathname === '/store/logo/upload' && request.method === 'POST') {
+      const storeId = String(url.searchParams.get('store_id') || request.headers.get('X-Store-Id') || '').trim();
+      const auth = await requireStoreUser(request, env, storeId, ['owner', 'admin']);
+      if (auth.error) return auth.error;
+      if (!env.MTG_CATALOG_R2) return json({ ok: false, error: 'Logo storage not configured' }, 500);
+      const contentType = String(request.headers.get('Content-Type') || 'image/png').split(';')[0].trim();
+      if (!contentType.startsWith('image/')) return json({ ok: false, error: 'Only image uploads are supported' }, 400);
+      const ext = (contentType.split('/')[1] || 'png').replace(/[^a-z0-9]/gi, '') || 'png';
+      const buf = await request.arrayBuffer();
+      if (!buf.byteLength) return json({ ok: false, error: 'Empty upload' }, 400);
+      if (buf.byteLength > 4 * 1024 * 1024) return json({ ok: false, error: 'Logo must be under 4MB' }, 400);
+      const key = `store-logos/${storeId}/${Date.now()}-${crypto.randomUUID()}.${ext}`;
+      await env.MTG_CATALOG_R2.put(key, buf, { httpMetadata: { contentType } });
+      return json({ ok: true, url: `${url.origin}/store/logo/${key}` });
+    }
+    const storeLogoMatch = url.pathname.match(/^\/store\/logo\/(store-logos\/.+)$/);
+    if (storeLogoMatch && request.method === 'GET') {
+      if (!env.MTG_CATALOG_R2) return json({ ok: false, error: 'Logo storage not configured' }, 500);
+      const obj = await env.MTG_CATALOG_R2.get(storeLogoMatch[1]);
+      if (!obj) return new Response('Not found', { status: 404, headers: CORS });
+      return new Response(obj.body, {
+        headers: { ...CORS, 'Content-Type': obj.httpMetadata?.contentType || 'image/png', 'Cache-Control': 'public, max-age=31536000, immutable' },
+      });
+    }
+
     const PSA_BASE = 'https://api.psacard.com/publicapi';
 
     if (url.pathname.startsWith('/psa/')) {
