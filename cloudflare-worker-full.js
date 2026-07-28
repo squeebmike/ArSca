@@ -5263,6 +5263,34 @@ export default {
       }, 501);
     }
 
+    // User-uploaded inventory photos: stored in R2 (not embedded as base64 in
+    // the synced inventory row) so every device's inventory sync only carries
+    // a short URL instead of the whole image on every pull.
+    if (url.pathname === '/inventory/photo/upload' && request.method === 'POST') {
+      const storeId = String(url.searchParams.get('store_id') || request.headers.get('X-Store-Id') || '').trim();
+      const auth = await requireStoreUser(request, env, storeId);
+      if (auth.error) return auth.error;
+      if (!env.MTG_CATALOG_R2) return json({ ok: false, error: 'Photo storage not configured' }, 500);
+      const contentType = String(request.headers.get('Content-Type') || 'image/jpeg').split(';')[0].trim();
+      if (!contentType.startsWith('image/')) return json({ ok: false, error: 'Only image uploads are supported' }, 400);
+      const ext = (contentType.split('/')[1] || 'jpg').replace(/[^a-z0-9]/gi, '') || 'jpg';
+      const buf = await request.arrayBuffer();
+      if (!buf.byteLength) return json({ ok: false, error: 'Empty upload' }, 400);
+      if (buf.byteLength > 8 * 1024 * 1024) return json({ ok: false, error: 'Photo must be under 8MB' }, 400);
+      const key = `inventory-photos/${storeId}/${Date.now()}-${crypto.randomUUID()}.${ext}`;
+      await env.MTG_CATALOG_R2.put(key, buf, { httpMetadata: { contentType } });
+      return json({ ok: true, url: `${url.origin}/inventory/photo/${key}` });
+    }
+    const inventoryPhotoMatch = url.pathname.match(/^\/inventory\/photo\/(inventory-photos\/.+)$/);
+    if (inventoryPhotoMatch && request.method === 'GET') {
+      if (!env.MTG_CATALOG_R2) return json({ ok: false, error: 'Photo storage not configured' }, 500);
+      const obj = await env.MTG_CATALOG_R2.get(inventoryPhotoMatch[1]);
+      if (!obj) return new Response('Not found', { status: 404, headers: CORS });
+      return new Response(obj.body, {
+        headers: { ...CORS, 'Content-Type': obj.httpMetadata?.contentType || 'image/jpeg', 'Cache-Control': 'public, max-age=31536000, immutable' },
+      });
+    }
+
     const PSA_BASE = 'https://api.psacard.com/publicapi';
 
     if (url.pathname.startsWith('/psa/')) {
