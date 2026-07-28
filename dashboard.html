@@ -5293,7 +5293,61 @@ function exitCustomerDisplayMode(){
 }
 function enterCustomerBrowseMode(){document.body.classList.add('customer-browse-mode');switchTab('browse');renderCustomerInventoryBrowser();}
 function exitCustomerBrowseMode(){document.body.classList.remove('customer-browse-mode');}
-function renderCustomerInventoryBrowser(){const host=document.getElementById('customer-inventory-grid');if(!host)return;const search=(document.getElementById('customer-inv-search')?.value||'').toLowerCase().trim(),cat=document.getElementById('customer-inv-category'),sort=document.getElementById('customer-inv-sort')?.value||'name';const stock=(all||[]).filter(i=>i.status==='in_stock'&&i.lifecycle!=='archived'&&i.lifecycle!=='hold');const categories=[...new Set(stock.map(i=>i.category||'Other'))].sort();if(cat){const selected=cat.value;cat.innerHTML='<option value="all">All categories</option>'+categories.map(c=>`<option value="${escHtml(c)}">${escHtml(c)}</option>`).join('');cat.value=categories.includes(selected)?selected:'all';}let rows=stock.filter(i=>(!search||[i.name,i.set,i.year,i.category,i.variant].join(' ').toLowerCase().includes(search))&&(!cat||cat.value==='all'||i.category===cat.value));rows.sort(sort==='price-low'?(a,b)=>inventoryListPrice(a)-inventoryListPrice(b):sort==='price-high'?(a,b)=>inventoryListPrice(b)-inventoryListPrice(a):sort==='newest'?(a,b)=>new Date(b.addedAt||0)-new Date(a.addedAt||0):(a,b)=>String(a.name).localeCompare(String(b.name)));document.getElementById('customer-inv-count').textContent=rows.length+' available item'+(rows.length===1?'':'s');host.innerHTML=rows.length?rows.slice(0,500).map(i=>{const image=inventoryImageUrl(i),price=inventoryListPrice(i)||inventoryMarketPrice(i);return `<article class="comic-cover-card">${image?`<img class="comic-cover-img" src="${escHtml(image)}" alt="${escHtml(i.name)}" loading="lazy">`:'<div class="comic-cover-img" style="display:grid;place-items:center;color:var(--dim)">NO IMAGE</div>'}<h3 style="font-size:14px;margin:8px 0 4px">${escHtml(i.name)}</h3><div style="font-size:10px;color:var(--dim)">${escHtml([i.set,i.year,i.variant,i.condition].filter(Boolean).join(' · '))}</div><div style="font-family:'Orbitron';font-size:18px;color:var(--g);margin-top:8px">${price?fd$(price):'ASK FOR PRICE'}</div></article>`;}).join(''):'<div class="empty"><div class="empty-t">NO MATCHING ITEMS</div></div>';}
+function renderCustomerInventoryBrowser(){const host=document.getElementById('customer-inventory-grid');if(!host)return;const search=(document.getElementById('customer-inv-search')?.value||'').toLowerCase().trim(),cat=document.getElementById('customer-inv-category'),sort=document.getElementById('customer-inv-sort')?.value||'name';const stock=(all||[]).filter(i=>i.status==='in_stock'&&i.lifecycle!=='archived'&&i.lifecycle!=='hold');const categories=[...new Set(stock.map(i=>i.category||'Other'))].sort();if(cat){const selected=cat.value;cat.innerHTML='<option value="all">All categories</option>'+categories.map(c=>`<option value="${escHtml(c)}">${escHtml(c)}</option>`).join('');cat.value=categories.includes(selected)?selected:'all';}let rows=stock.filter(i=>(!search||[i.name,i.set,i.year,i.category,i.variant].join(' ').toLowerCase().includes(search))&&(!cat||cat.value==='all'||i.category===cat.value));rows.sort(sort==='price-low'?(a,b)=>inventoryListPrice(a)-inventoryListPrice(b):sort==='price-high'?(a,b)=>inventoryListPrice(b)-inventoryListPrice(a):sort==='newest'?(a,b)=>new Date(b.addedAt||0)-new Date(a.addedAt||0):(a,b)=>String(a.name).localeCompare(String(b.name)));document.getElementById('customer-inv-count').textContent=rows.length+' available item'+(rows.length===1?'':'s');host.innerHTML=rows.length?rows.slice(0,500).map(i=>{const image=inventoryImageUrl(i),price=inventoryListPrice(i)||inventoryMarketPrice(i);return `<article class="comic-cover-card" style="cursor:pointer" onclick="openCustomerItemDetail('${escHtml(i.id)}')">${image?`<img class="comic-cover-img" src="${escHtml(image)}" alt="${escHtml(i.name)}" loading="lazy">`:'<div class="comic-cover-img" style="display:grid;place-items:center;color:var(--dim)">NO IMAGE</div>'}<h3 style="font-size:14px;margin:8px 0 4px">${escHtml(i.name)}</h3><div style="font-size:10px;color:var(--dim)">${escHtml([i.set,i.year,i.variant,i.condition].filter(Boolean).join(' · '))}</div><div style="font-family:'Orbitron';font-size:18px;color:var(--g);margin-top:8px">${price?fd$(price):'ASK FOR PRICE'}</div></article>`;}).join(''):'<div class="empty"><div class="empty-t">NO MATCHING ITEMS</div></div>';}
+
+// Book details/story/creators panel for the Customer Inventory Browser's
+// item popup -- a customer-facing preview, so it deliberately omits the
+// staff-only "OPEN IN RESEARCH / CHANGE COVER" action that the item edit
+// screen's own comic panel (inventoryComicInfoHtml) includes.
+function customerComicDetailHtml(item){
+  const m=item.comicMetadata; if(!m) return '';
+  const stats=[['Series',m.seriesName||m.series],['Issue #',m.number||m.issueNumber],['Publisher',m.publisher],['Series began',m.seriesYearBegan],['Cover date',m.coverDate],['Store date',m.storeDate],['Cover price',m.coverPrice?`${m.coverPriceCurrency||'USD'} ${Number(m.coverPrice).toFixed(2)}`:''],['Rating',m.rating],['UPC',m.upc],['SKU',m.sku]].filter(([,v])=>v);
+  const credits=(m.credits||[]).map(c=>[c.creator,(c.roles||[]).join(', ')].filter(Boolean).join(' — ')).join('; ');
+  if(!stats.length && !m.description && !(m.writers||[]).length) return '';
+  return `<div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border)">
+    <div style="font-family:'Orbitron',monospace;font-size:12px;color:var(--purple);margin-bottom:10px;letter-spacing:1px">BOOK DETAILS, STORY &amp; CREATORS</div>
+    ${stats.length?`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;margin-bottom:12px">${stats.map(([label,value])=>`<div style="background:var(--surf2);border:1px solid var(--border);border-radius:8px;padding:8px"><div style="font-family:monospace;font-size:8px;color:var(--dim);letter-spacing:1px">${escHtml(String(label)).toUpperCase()}</div><div style="font-size:12px;color:var(--text);font-weight:700;word-break:break-word">${escHtml(String(value))}</div></div>`).join('')}</div>`:''}
+    ${m.description?`<div style="font-size:11px;line-height:1.6;color:var(--text);margin-bottom:12px">${escHtml(m.description)}</div>`:''}
+    <div style="font-size:11px;color:var(--text);line-height:1.7">
+      ${(m.writers||[]).length?`<div><b>Writer:</b> ${escHtml(m.writers.join(', '))}</div>`:''}
+      ${(m.artists||[]).length?`<div><b>Artists:</b> ${escHtml(m.artists.join(', '))}</div>`:''}
+      ${(m.coverArtists||[]).length?`<div><b>Cover artists:</b> ${escHtml(m.coverArtists.join(', '))}</div>`:''}
+      ${credits?`<details style="margin:4px 0;color:var(--dim)"><summary style="cursor:pointer">All creator credits</summary><div style="margin-top:6px">${escHtml(credits)}</div></details>`:''}
+      ${(m.characters||[]).length?`<div><b>Characters:</b> ${escHtml(m.characters.join(', '))}</div>`:''}
+      ${(m.teams||[]).length?`<div><b>Team:</b> ${escHtml(m.teams.join(', '))}</div>`:''}
+    </div>
+  </div>`;
+}
+function openCustomerItemDetail(id){
+  const item=(all||[]).find(i=>i.id===id); if(!item) return;
+  let modal=document.getElementById('customer-item-detail-modal');
+  if(!modal){
+    modal=document.createElement('div');
+    modal.id='customer-item-detail-modal';
+    modal.style.cssText='position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.78);display:none;align-items:center;justify-content:center;padding:18px;overflow:auto';
+    modal.onclick=e=>{ if(e.target===modal) closeCustomerItemDetail(); };
+    document.body.appendChild(modal);
+  }
+  const image=inventoryImageUrl(item),price=inventoryListPrice(item)||inventoryMarketPrice(item);
+  modal.innerHTML=`<div style="width:min(720px,96vw);max-height:90vh;overflow:auto;background:var(--surf);border:1px solid var(--border);border-radius:14px;padding:18px;box-shadow:0 22px 70px rgba(0,0,0,.55)">
+    <div style="display:flex;justify-content:flex-end;margin-bottom:6px"><button class="hbtn" onclick="closeCustomerItemDetail()">CLOSE</button></div>
+    <div style="display:grid;grid-template-columns:minmax(160px,240px) 1fr;gap:16px">
+      ${image?`<img src="${escHtml(image)}" alt="${escHtml(item.name)}" style="width:100%;border-radius:8px;border:1px solid var(--border);object-fit:contain;background:var(--surf2)">`:`<div style="height:220px;border-radius:8px;border:1px solid var(--border);background:var(--surf2);display:grid;place-items:center;color:var(--dim)">NO IMAGE</div>`}
+      <div>
+        <div style="font-family:monospace;font-size:9px;color:var(--dim);letter-spacing:1px">${escHtml(item.category||'')}</div>
+        <h2 style="margin:4px 0;font-family:'Orbitron',monospace;font-size:18px;color:var(--text)">${escHtml(item.name||'')}</h2>
+        <div style="font-family:monospace;font-size:10px;color:var(--dim)">${escHtml([item.set,item.year,item.variant,item.condition].filter(Boolean).join(' · '))}</div>
+        <div style="font-family:'Orbitron',monospace;font-size:22px;color:var(--g);margin-top:10px">${price?fd$(price):'ASK FOR PRICE'}</div>
+      </div>
+    </div>
+    ${customerComicDetailHtml(item)}
+  </div>`;
+  modal.style.display='flex';
+}
+function closeCustomerItemDetail(){
+  const modal=document.getElementById('customer-item-detail-modal');
+  if(modal) modal.style.display='none';
+}
 document.addEventListener('keydown', e => { if(e.key === 'Escape'){exitCustomerDisplayMode();exitCustomerBrowseMode();} });
 
 function moveNode(id, target){

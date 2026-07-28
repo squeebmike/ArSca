@@ -1708,6 +1708,25 @@ export default {
       if (!response?.ok) return json({ ok:false, error:'Inventory unavailable' }, 502);
       const cleanText = (v,n=240) => String(v == null ? '' : v).trim().slice(0,n);
       const cleanUrl = v => { const s=cleanText(v,1000); return /^https?:\/\//i.test(s)||/^data:image\//i.test(s)?s:''; };
+      const cleanList = (v,n=12) => (Array.isArray(v) ? v : []).map(x => cleanText(x,80)).filter(Boolean).slice(0,n);
+      // Same book-detail fields the dashboard's own item editor already shows
+      // (Metron-sourced), trimmed for public payload size -- only attached for
+      // comic rows, and only when the item actually has a saved comic record.
+      const comicDetailFor = d => {
+        const m = d.comicMetadata;
+        if (!m || !/comic/i.test(String(d.category || ''))) return null;
+        const credits = (Array.isArray(m.credits) ? m.credits : []).slice(0,20).map(c => ({ creator:cleanText(c?.creator,80), roles:cleanList(c?.roles,6) })).filter(c => c.creator);
+        return {
+          seriesName:cleanText(m.seriesName || m.series || '',160), number:cleanText(m.number || m.issueNumber || '',20),
+          publisher:cleanText(m.publisher,120), seriesYearBegan:cleanText(m.seriesYearBegan,12),
+          coverDate:cleanText(m.coverDate,20), storeDate:cleanText(m.storeDate,20),
+          coverPrice:Number(m.coverPrice || 0) || 0, coverPriceCurrency:cleanText(m.coverPriceCurrency || 'USD',10),
+          rating:cleanText(m.rating,60), upc:cleanText(m.upc,40), sku:cleanText(m.sku,40),
+          description:cleanText(m.description,2000),
+          writers:cleanList(m.writers), artists:cleanList(m.artists), coverArtists:cleanList(m.coverArtists),
+          characters:cleanList(m.characters,30), teams:cleanList(m.teams,20), credits,
+        };
+      };
       const linkedWfIds = new Set((rows || []).map(row => row.data?.wfId || row.data?.webflowId).filter(Boolean).map(String));
       let items = (rows || []).map(row => { const d=row.data || {}; const rawQty=d.quantity ?? d.qty ?? 1; const quantity=Number.isFinite(Number(rawQty))?Number(rawQty):1; const inventoryStatus=cleanText(d.lifecycle || d.status || row.status || 'in_stock',40).toLowerCase();
         // Price rule: market price, unless there's a floor (minPrice) or a
@@ -1720,6 +1739,7 @@ export default {
         set:cleanText(d.set || d.series || '',120), year:cleanText(d.year || '',12), variant:cleanText(d.variant || d.finish || '',120), condition:cleanText(d.condition || d.grade || '',80),
         price:Math.max(rowBase, Number(d.minPrice || 0) || 0), market:rowMarket, image:cleanUrl(d.image || d.img || d.imageUrl || d.image_url || d.photo),
         isSealed:!!d.is_sealed, gradingCompany:cleanText(d.grading_company || d.grader || '',40),
+        comic:comicDetailFor(d),
         quantity, inventoryStatus, soldAt:d.soldAt || d.sold_at || '', archivedAt:d.archivedAt || '', addedAt:row.created_at || '', updatedAt:row.updated_at || ''
       }; }).filter(i => i.name && i.quantity > 0 && !i.soldAt && !i.archivedAt && !['sold','archived','returned','deleted','sold_pending_pickup','sold_pending_shipment','hold','lost_damaged'].includes(i.inventoryStatus));
       const inventorySource = cleanText(settings?.[0]?.modules?.inventorySource || '',40).toLowerCase();
