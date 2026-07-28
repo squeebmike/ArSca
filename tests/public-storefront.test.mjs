@@ -5,11 +5,11 @@ const worker=fs.readFileSync(new URL('../cloudflare-worker-full.js',import.meta.
 const storefront=fs.readFileSync(new URL('../storefront.html',import.meta.url),'utf8');
 assert.match(worker,/\/public\/storefront/);
 assert.match(worker,/storefrontEnabled !== true/,'storefront is opt-in');
-assert.match(worker,/\['sold','archived','returned','deleted'\]\.includes\(i\.inventoryStatus\)/,'legacy and current statuses are filtered safely');
+assert.match(worker,/\['sold','archived','returned','deleted'(?:,'[^']+')*\]\.includes\(i\.inventoryStatus\)/,'legacy and current statuses are filtered safely');
 assert.match(worker,/inventorySource === 'webflow' \|\| inventorySource === 'hybrid'/,'hybrid stores publish Webflow inventory too');
 for(const privateField of ['cost','profit','consignor','notes']) assert.doesNotMatch(storefront,new RegExp(`i\\.${privateField}`,'i'),`${privateField} is not rendered`);
 assert.match(dashboard,/PUBLIC INVENTORY STOREFRONT/);
 assert.match(dashboard,/copyStorefrontLink/);
 for(const id of ['q','category','year','condition','sort']) assert.match(storefront,new RegExp(`id="${id}"`));
-assert.match(storefront,/ASK ABOUT THIS ITEM/);
+assert.match(storefront,/ASK ABOUT THIS ITEM|ADD TO CART/,'storefront items expose a customer action');
 console.log('public storefront contract passed');

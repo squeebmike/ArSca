@@ -118,6 +118,15 @@ assert.match(worker,/priceMatch/,'selected issue should return a hydrated exact 
 assert.match(worker,/pcFetch\('\/api\/product'/,'comic pricing must hydrate the search candidate with product detail prices');
 assert.match(worker,/writers:creditNames/);
 assert.match(worker,/coverArtists:creditNames/);
+assert.match(dashboard,/function buildLiveComicPriceSyncProposal/, 'inventory comics need a real exact-linked bulk price sync');
+assert.match(dashboard,/SYNC COMIC PRICES/, 'the price sync modal must expose the comic sync directly');
+assert.match(dashboard,/Bulk sync never guesses across covers or series/, 'unlinked comics must be reported instead of fuzzy-matched');
+assert.match(dashboard,/mode:'comic-live'/, 'comic proposals must remain reviewable before applying');
+assert.match(dashboard,/function saveComicResearchBackToInventory/, 'comic research edits must update the original inventory item');
+assert.match(dashboard,/OPEN IN RESEARCH \/ CHANGE COVER &amp; PRICE/, 'inventory edit must expose the comic research round trip');
+assert.match(dashboard,/pricechartingComicPrices=inv\.pricechartingComicPrices/, 'inventory round trip must restore the saved comic price matrix');
+assert.match(dashboard,/function comicHubWriteCloud/, 'Issue Hub decisions must persist through store-scoped cloud KV');
+assert.match(dashboard,/Exact cover confirmed and shared across devices/, 'Issue Hub must tell the operator confirmations are shared');
 const searchStart=dashboard.indexOf('async function searchQuickCatalog');
 const comicRoute=dashboard.indexOf("recordSearchPlanRoute(searchPlan,'/comic/metron/search'",searchStart);
 const localRoute=dashboard.indexOf('smartSearchLocalItems(q, all, 15)',searchStart);
