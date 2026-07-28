@@ -18,7 +18,9 @@ for (const file of htmlFiles) {
   });
 }
 
-const worker = fs.readFileSync(path.join(root, 'cloudflare-worker-full.js'), 'utf8').replace(/^export default/m, 'const __worker =');
+const worker = fs.readFileSync(path.join(root, 'cloudflare-worker-full.js'), 'utf8')
+  .replace(/^import\s*\{[^}]*\}\s*from\s*'[^']*';?$/m, '')
+  .replace(/^export default/m, 'const __worker =');
 try {
   new Function(worker);
 } catch (error) {

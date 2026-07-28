@@ -18,6 +18,12 @@
  *   MTG_CATALOG_R2 (R2 must be enabled for the Cloudflare account)
  */
 
+// Same parser that built the live 740-set/426,540-card Topps catalog (see
+// scripts/import-topps-checklists.js -> scripts/topps/merge-and-publish.mjs).
+// It has zero Node dependencies (pure-JS SHA-1), so it bundles straight into
+// the Worker -- reused here instead of duplicating checklist-parsing logic.
+import { buildChecklistIndex, parseChecklistText, sha1Hex, slugify } from './scripts/topps-checklist-parser.js';
+
 // Per-isolate rate limiter for PriceCharting API (no KV needed)
 let _pcLastCall = 0;
 
@@ -1003,6 +1009,89 @@ function r2ObjectResponse(object, request, cacheControl) {
   return new Response(object.body, { status: 200, headers });
 }
 
+// ── Topps catalog auto-update: dashboard-triggered scrape -> parse -> merge ──
+// -> publish, entirely inside the Worker (no GitHub Actions / local Python).
+// Mirrors scripts/topps/merge-and-publish.mjs + build-offline-bundle.mjs so the
+// R2 layout/manifest shape stays identical to what the CI pipeline already publishes.
+
+async function gunzipJsonlFromR2(object) {
+  if (!object) return [];
+  const ds = new DecompressionStream('gzip');
+  const decompressed = object.body.pipeThrough(ds);
+  const text = await new Response(decompressed).text();
+  const rows = [];
+  for (const line of text.split('\n')) {
+    if (!line.trim()) continue;
+    rows.push(JSON.parse(line));
+  }
+  return rows;
+}
+
+async function gzipJsonl(rows) {
+  const cs = new CompressionStream('gzip');
+  const writer = cs.writable.getWriter();
+  const encoder = new TextEncoder();
+  const writeDone = (async () => {
+    for (const row of rows) {
+      await writer.write(encoder.encode(JSON.stringify(row) + '\n'));
+    }
+    await writer.close();
+  })();
+  const chunks = [];
+  const reader = cs.readable.getReader();
+  let total = 0;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    chunks.push(value);
+    total += value.length;
+  }
+  await writeDone;
+  const out = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) { out.set(chunk, offset); offset += chunk.length; }
+  return out;
+}
+
+async function sha256Hex(bytes) {
+  const digest = await crypto.subtle.digest('SHA-256', bytes);
+  return [...new Uint8Array(digest)].map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+function toppsCardDedupeKey(card = {}) {
+  return [card.setId, card.section, card.cardNumber, card.subject || card.player].map(v => String(v || '').toLowerCase().trim()).join('|');
+}
+
+function mergeToppsCards(existingCards, newCards) {
+  const byId = new Map(existingCards.map(c => [c.id, c]));
+  const byDedupeKey = new Map(existingCards.map(c => [toppsCardDedupeKey(c), c.id]));
+  for (const card of newCards) {
+    const dedupeKey = toppsCardDedupeKey(card);
+    const priorId = byDedupeKey.get(dedupeKey);
+    if (priorId && priorId !== card.id) byId.delete(priorId);
+    byId.set(card.id, card);
+    byDedupeKey.set(dedupeKey, card.id);
+  }
+  return [...byId.values()];
+}
+
+function mergeToppsSets(existingSets, newSets, mergedCards) {
+  const bySetId = new Map(existingSets.map(s => [s.id, s]));
+  for (const set of newSets) bySetId.set(set.id, { ...bySetId.get(set.id), ...set });
+  const cardCountBySet = new Map();
+  for (const card of mergedCards) cardCountBySet.set(card.setId, (cardCountBySet.get(card.setId) || 0) + 1);
+  for (const set of bySetId.values()) set.cardCount = cardCountBySet.get(set.id) || set.cardCount || 0;
+  return [...bySetId.values()];
+}
+
+function compactToppsCard(row = {}, generatedAt) {
+  return { id: row.id, setId: row.setId, sourceId: row.sourceId, year: row.year, brand: row.brand, product: row.product, sport: row.sport, setName: row.setName, releaseName: row.releaseName, cardNumber: row.cardNumber, player: row.player, subject: row.subject, team: row.team, notes: row.notes, section: row.section, flags: row.flags || {}, parseConfidence: Number(row.parseConfidence || 0), searchText: row.searchText || '', updatedAt: row.updatedAt || generatedAt };
+}
+
+function compactToppsSet(row = {}, generatedAt) {
+  return { id: row.id, year: row.year, brand: row.brand, product: row.product, sport: row.sport, setName: row.setName, releaseName: row.releaseName, cardCount: Number(row.cardCount || 0), updatedAt: row.updatedAt || generatedAt };
+}
+
 function pokemonQuotaHeaders(headers) {
   const out = {};
   for (const [from, to] of [
@@ -1753,6 +1842,168 @@ export default {
       response.headers.set('X-Topps-Catalog-Version', String(manifest.version || ''));
       response.headers.set('X-Content-SHA256', String(descriptor.sha256 || ''));
       return response;
+    }
+
+    // GET /catalog/topps/update/scan -- owner/admin only. Scrapes topps.com's
+    // own checklist page and diffs against what's already live in R2, so the
+    // dashboard can show "12 new sets found" before doing any PDF work.
+    if (url.pathname === '/catalog/topps/update/scan') {
+      if (request.method !== 'GET') return json({ ok: false, error: 'GET only' }, 405);
+      if (!env.MTG_CATALOG_R2) return json({ ok: false, error: 'Offline catalog R2 binding is not configured' }, 503);
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId, ['owner', 'admin']);
+      if (auth.error) return auth.error;
+
+      const scraped = await fetchToppsChecklistCatalog();
+      if (!scraped) return json({ ok: false, error: 'Could not reach topps.com/pages/checklists' }, 502);
+
+      let existingSets = [];
+      const manifestObject = await env.MTG_CATALOG_R2.get('topps/manifest.json');
+      const manifest = manifestObject ? await manifestObject.json().catch(() => null) : null;
+      if (manifest?.status === 'ready' && manifest.files?.sets?.path) {
+        const setsObject = await env.MTG_CATALOG_R2.get(manifest.files.sets.path);
+        existingSets = await gunzipJsonlFromR2(setsObject);
+      }
+      const knownSetIds = new Set(existingSets.filter(s => Number(s.cardCount || 0) > 0).map(s => s.id));
+
+      const candidates = scraped
+        .map(entry => ({
+          name: entry.name,
+          url: entry.url,
+          sport: entry.sport,
+          year: entry.year,
+          brand: entry.brand,
+          // Best-effort candidate id -- the real id is only known once the PDF is
+          // parsed (product name comes from the PDF text), so this is a heuristic
+          // filter only. A false "new" just means a harmless re-merge no-op.
+          candidateSetId: slugify([entry.year, String(entry.name || '').replace(/checklist/ig, ''), entry.sport].filter(Boolean).join(' ')),
+        }))
+        .filter(c => !knownSetIds.has(c.candidateSetId));
+
+      return json({ ok: true, totalOnSite: scraped.length, alreadyImported: scraped.length - candidates.length, candidates });
+    }
+
+    // POST /catalog/topps/update/process-one -- owner/admin only. Fetches one
+    // checklist PDF, extracts its text (extractPdfText, already proven via
+    // /topps/import-pdf), and parses it with the SAME parser that built the
+    // live catalog (scripts/topps-checklist-parser.js, imported above) instead
+    // of the older/unproven parseToppsChecklistText. Returns the parsed
+    // set/cards -- does not write anything yet.
+    if (url.pathname === '/catalog/topps/update/process-one') {
+      if (request.method !== 'POST') return json({ ok: false, error: 'POST only' }, 405);
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId, ['owner', 'admin']);
+      if (auth.error) return auth.error;
+
+      const body = await request.json().catch(() => ({}));
+      const pdfUrl = String(body.url || '');
+      const name = String(body.name || '');
+      if (!pdfUrl || !name) return json({ ok: false, error: 'url and name required' }, 400);
+
+      const pdfRes = await fetch(pdfUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+          'Referer': 'https://www.topps.com/',
+          'Accept': 'application/pdf,*/*',
+        },
+      }).catch(() => null);
+      if (!pdfRes || !pdfRes.ok) return json({ ok: false, error: `PDF fetch failed: ${pdfRes?.status || 'network error'}` }, 502);
+
+      const ct = pdfRes.headers.get('content-type') || '';
+      if (!ct.includes('pdf') && !pdfUrl.toLowerCase().includes('.pdf')) {
+        const html = await pdfRes.text();
+        const pdfLinkM = html.match(/href="([^"]*\.pdf[^"]*)"/i);
+        if (pdfLinkM) return json({ ok: false, redirect: pdfLinkM[1].startsWith('http') ? pdfLinkM[1] : 'https://www.topps.com' + pdfLinkM[1], error: 'Redirected to PDF URL, retry with redirect URL' }, 200);
+        return json({ ok: false, error: 'URL did not return a PDF' }, 422);
+      }
+
+      const arrayBuffer = await pdfRes.arrayBuffer();
+      let text = '';
+      try { text = await extractPdfText(arrayBuffer); }
+      catch (e) { return json({ ok: false, error: 'PDF text extraction failed: ' + e.message }, 422); }
+      if (!text || text.trim().length < 50) return json({ ok: false, error: 'Could not extract readable text from PDF', textLength: text.length }, 422);
+
+      const sourceId = 'topps_pdf_' + sha1Hex(pdfUrl).slice(0, 16);
+      const parsed = parseChecklistText({ text, fileName: name, sourceId });
+      if (!parsed.cards.length) return json({ ok: false, error: 'Parser found 0 cards for this PDF', textSample: text.slice(0, 1000) }, 422);
+
+      return json({
+        ok: true,
+        set: parsed.set,
+        cards: parsed.cards,
+        source: { sourceId, fileName: name, originalPath: pdfUrl, pdfUrl, pageCount: 0, importedAt: new Date().toISOString() },
+      });
+    }
+
+    // POST /catalog/topps/update/publish -- owner/admin only. Merges the
+    // accumulated sets/cards from one or more process-one calls into the live
+    // R2 catalog and publishes a new version, mirroring
+    // scripts/topps/merge-and-publish.mjs + build-offline-bundle.mjs exactly
+    // (same R2 key layout, same manifest shape) so the existing
+    // /catalog/topps/manifest + /catalog/topps/download routes need no changes.
+    if (url.pathname === '/catalog/topps/update/publish') {
+      if (request.method !== 'POST') return json({ ok: false, error: 'POST only' }, 405);
+      if (!env.MTG_CATALOG_R2) return json({ ok: false, error: 'Offline catalog R2 binding is not configured' }, 503);
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId, ['owner', 'admin']);
+      if (auth.error) return auth.error;
+
+      const body = await request.json().catch(() => ({}));
+      const newSets = Array.isArray(body.sets) ? body.sets : [];
+      const newCards = Array.isArray(body.cards) ? body.cards : [];
+      if (!newSets.length && !newCards.length) return json({ ok: false, error: 'sets and cards are required' }, 400);
+
+      const manifestObject = await env.MTG_CATALOG_R2.get('topps/manifest.json');
+      const manifest = manifestObject ? await manifestObject.json().catch(() => null) : null;
+      let existingSets = [], existingCards = [];
+      if (manifest?.status === 'ready') {
+        const [setsObject, cardsObject] = await Promise.all([
+          env.MTG_CATALOG_R2.get(manifest.files?.sets?.path || 'topps/__missing__'),
+          env.MTG_CATALOG_R2.get(manifest.files?.cards?.path || 'topps/__missing__'),
+        ]);
+        [existingSets, existingCards] = await Promise.all([gunzipJsonlFromR2(setsObject), gunzipJsonlFromR2(cardsObject)]);
+      }
+
+      const mergedCards = mergeToppsCards(existingCards, newCards);
+      const mergedSets = mergeToppsSets(existingSets, newSets, mergedCards);
+      if (mergedSets.length === existingSets.length && mergedCards.length === existingCards.length) {
+        return json({ ok: true, published: false, message: 'No new sets/cards -- nothing to publish.', setCount: mergedSets.length, cardCount: mergedCards.length });
+      }
+
+      const generatedAt = new Date().toISOString();
+      const version = String(body.version || generatedAt.slice(0, 19).replace(/[:T]/g, '-'));
+      const cardsGz = await gzipJsonl(mergedCards.map(c => compactToppsCard(c, generatedAt)));
+      const setsGz = await gzipJsonl(mergedSets.map(s => compactToppsSet(s, generatedAt)));
+      const [cardsSha256, setsSha256] = await Promise.all([sha256Hex(cardsGz), sha256Hex(setsGz)]);
+
+      const cardsKey = `topps/${version}/cards.jsonl.gz`;
+      const setsKey = `topps/${version}/sets.jsonl.gz`;
+      await env.MTG_CATALOG_R2.put(cardsKey, cardsGz, { httpMetadata: { contentType: 'application/gzip' } });
+      await env.MTG_CATALOG_R2.put(setsKey, setsGz, { httpMetadata: { contentType: 'application/gzip' } });
+      const newManifest = {
+        category: 'topps',
+        label: 'Topps Sports Checklists',
+        version,
+        generatedAt,
+        schemaVersion: 1,
+        sourceVersions: { topps: { importedAt: generatedAt } },
+        files: {
+          cards: { path: cardsKey, format: 'jsonl.gz', sha256: cardsSha256, recordCount: mergedCards.length, bytes: cardsGz.length },
+          sets: { path: setsKey, format: 'jsonl.gz', sha256: setsSha256, recordCount: mergedSets.length, bytes: setsGz.length },
+        },
+        status: 'ready',
+      };
+      await env.MTG_CATALOG_R2.put('topps/manifest.json', JSON.stringify(newManifest), { httpMetadata: { contentType: 'application/json' } });
+
+      return json({
+        ok: true,
+        published: true,
+        version,
+        setCount: mergedSets.length,
+        cardCount: mergedCards.length,
+        newSetCount: mergedSets.length - existingSets.length,
+        newCardCount: mergedCards.length - existingCards.length,
+      });
     }
 
     const pricechartingCatalogMatch = url.pathname.match(/^\/catalog\/pricecharting\/([a-z0-9_]+)\/(manifest|download)$/);
@@ -4920,6 +5171,15 @@ export default {
 
           const data = await psaRes.json();
           const cert = data?.PSACert || data;
+          // PSA only started attaching images to cert lookups in Oct 2021, and the
+          // public API has shipped the URL under a couple of different casings/shapes
+          // over time -- check each rather than assuming one.
+          const imageList = Array.isArray(cert.Images) ? cert.Images
+            : Array.isArray(cert.ImageURLs) ? cert.ImageURLs
+            : [];
+          const firstImage = v => typeof v === 'string' ? v : (v?.URL || v?.Url || v?.ImageURL || '');
+          const photoUrl = cert.ImageURL || cert.ImageUrl || firstImage(imageList[0]) || null;
+          const photoUrls = imageList.map(firstImage).filter(Boolean);
 
           return json({
             ok: true,
@@ -4939,7 +5199,8 @@ export default {
               isAuthentic: cert.IsAuthentic || false,
               psaSetId: cert.PSASetID || null,
               specId: cert.SpecID || null,
-              photoUrl: cert.PhotoURL || null,
+              photoUrl,
+              photoUrls: photoUrls.length ? photoUrls : (photoUrl ? [photoUrl] : []),
               labelType: cert.LabelType || null,
             },
           });

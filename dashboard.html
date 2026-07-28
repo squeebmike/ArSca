@@ -6060,6 +6060,11 @@ async function renderOfflineCatalogManagerPanel(){
     <div style="font-family:monospace;font-size:9px;color:var(--dim);line-height:1.55;margin-top:8px">Catalog version: ${escHtml(mtgMeta.catalogVersion || 'not downloaded')} / Prices version: ${escHtml(mtgMeta.pricesVersion || 'not downloaded')}. ${mtgRemoteLine} ${mtgLocalLine} R2 holds the daily compressed bundle; this device imports it into IndexedDB. PriceCharting values are a daily snapshot, not live prices. Images are cached separately only when viewed.</div>
     <div style="font-family:'Orbitron',monospace;color:var(--gold);font-size:11px;letter-spacing:.05em;margin-top:16px">TOPPS SPORTS CHECKLISTS</div>
     ${row('Topps checklist cards',toppsOffline?.rowCount||0,toppsOffline?.lastImportedAt,toppsOffline?.installed?`${Number(toppsOffline.setCount||0).toLocaleString()} sets / local indexed`:'Not downloaded',`<button class="hbtn" onclick="syncToppsOffline(true)">DOWNLOAD / REFRESH</button><button class="hbtn" onclick="clearToppsOffline()">CLEAR</button>`,'Topps R2 offline catalog')}
+    ${requireOwnerAdmin() ? `<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:4px">
+      <button class="hbtn" onclick="updateToppsCatalogFromWeb()">UPDATE TOPPS CATALOG (SCRAPE TOPPS.COM)</button>
+      <span id="topps-catalog-update-progress" style="font-family:monospace;font-size:9px;color:var(--gold)"></span>
+    </div>
+    <div style="font-family:monospace;font-size:9px;color:var(--dim);line-height:1.5;margin-top:4px">Owner/admin only. Scans topps.com's own checklist page for sets not yet in the catalog, downloads and parses any new ones, then publishes an updated catalog version directly -- no local computer or GitHub involved.</div>` : ''}
     <div style="font-family:'Orbitron',monospace;color:var(--purple);font-size:11px;letter-spacing:.05em;margin-top:16px">PRICECHARTING SHARED OFFLINE DATA</div>
     ${priceChartingRows}
     <div style="font-family:monospace;font-size:9px;color:var(--dim);line-height:1.5;margin-top:7px">Pokémon is intentionally excluded here and uses PokémonPriceTracker exports above. MTG remains in its dedicated Scryfall + PriceCharting bundle.</div>
@@ -6105,6 +6110,48 @@ async function syncToppsOffline(force=false){
   renderOfflineCatalogManagerPanel();
 }
 async function clearToppsOffline(){if(!confirm('Clear the Topps checklist catalog from this device? Inventory is not touched.'))return;await window.ArsCaToppsOffline?.clear();TOPPS=window.TOPPS=toppsDefaultState();renderOfflineCatalogManagerPanel();toast_dash('Topps offline catalog cleared');}
+
+async function updateToppsCatalogFromWeb(){
+  if(!requireOwnerAdmin()){toast_dash('Owner/admin only');return;}
+  const progress=document.getElementById('topps-catalog-update-progress');
+  const note=value=>{if(progress)progress.textContent=value;};
+  try{
+    note('Scanning topps.com for checklists...');
+    const scanRes=await storeWorkerFetch('/catalog/topps/update/scan',{cache:'no-store'});
+    const scanData=await scanRes.json().catch(()=>({}));
+    if(!scanRes.ok||!scanData.ok) throw new Error(scanData.error||'Scan failed');
+    const candidates=scanData.candidates||[];
+    if(!candidates.length){note('No new sets found on topps.com.');toast_dash('Topps catalog already up to date');return;}
+    if(!confirm(`Found ${candidates.length} possible new set(s) out of ${scanData.totalOnSite} on topps.com. Process and publish them now? This can take a while.`)){note('');return;}
+
+    const newSets=[],newCards=[],failures=[];
+    for(let i=0;i<candidates.length;i++){
+      const c=candidates[i];
+      note(`${i+1}/${candidates.length}: ${c.name}`);
+      try{
+        const res=await storeWorkerFetch('/catalog/topps/update/process-one',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:c.url,name:c.name,sport:c.sport,year:c.year,brand:c.brand})});
+        const data=await res.json().catch(()=>({}));
+        if(!res.ok||!data.ok){failures.push(`${c.name}: ${data.error||res.status}`);continue;}
+        newSets.push(data.set);
+        newCards.push(...data.cards);
+      }catch(e){failures.push(`${c.name}: ${e.message}`);}
+    }
+    if(!newSets.length){note('No sets could be processed. '+failures.join(' · '));toast_dash('Topps catalog update found nothing publishable');return;}
+
+    note(`Publishing ${newSets.length} set(s) / ${newCards.length} card(s)...`);
+    const pubRes=await storeWorkerFetch('/catalog/topps/update/publish',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sets:newSets,cards:newCards})});
+    const pubData=await pubRes.json().catch(()=>({}));
+    if(!pubRes.ok||!pubData.ok) throw new Error(pubData.error||'Publish failed');
+
+    note(pubData.published?`Published version ${pubData.version}: ${pubData.newSetCount} new set(s), ${pubData.newCardCount} new card(s).${failures.length?' Failed: '+failures.join(' · '):''}`:'Nothing new to publish.');
+    toast_dash(pubData.published?'Topps catalog updated':'Topps catalog already up to date');
+    if(pubData.published) await syncToppsOffline(true);
+  }catch(e){
+    note('Update failed: '+e.message);
+    toast_dash('Topps catalog update failed: '+e.message);
+  }
+  renderOfflineCatalogManagerPanel();
+}
 
 async function syncPriceChartingOffline(category){
   const progress=document.getElementById('pricecharting-offline-progress');
@@ -26128,10 +26175,13 @@ async function verifyQplPsaCert(idx){
     const r = qplResults[idx] || {};
     const subject = [c.year,c.brand,c.series,c.subject,c.cardNumber ? '#'+c.cardNumber : ''].filter(Boolean).join(' ');
     const mismatch = r.name && c.subject && !String(subject).toLowerCase().includes(String(r.name).split(/\s+/)[0].toLowerCase());
-    qplResults[idx] = { ...r, grader:'PSA', grade:c.grade || c.gradeDesc || '', cert_number:c.certNumber || cert, psaCert:c, slabVerified:true };
+    const usePsaPhoto = !r.imageUrl && !!c.photoUrl;
+    qplResults[idx] = { ...r, grader:'PSA', grade:c.grade || c.gradeDesc || '', cert_number:c.certNumber || cert, psaCert:c, slabVerified:true, ...(usePsaPhoto ? { imageUrl:c.photoUrl } : {}) };
+    if(usePsaPhoto) refreshQplResultCard(idx);
     if(out) out.innerHTML = `<div style="display:grid;gap:8px">
       <div style="color:var(--g);font-family:'Orbitron',monospace">PSA CERT VERIFIED</div>
       ${mismatch ? '<div style="color:var(--gold)">Possible mismatch: compare cert subject against selected item before buying.</div>' : ''}
+      ${c.photoUrl ? `<img src="${escHtml(c.photoUrl)}" alt="PSA cert photo" style="max-width:220px;border-radius:6px;border:1px solid var(--border)">` : '<div style="color:var(--dim);font-size:10px">No PSA photo on file (PSA only started attaching images to certs graded after Oct 2021).</div>'}
       <div><b style="color:var(--text)">Subject:</b> ${escHtml(subject || c.subject || '')}</div>
       <div><b style="color:var(--text)">Grade:</b> ${escHtml([c.gradeDesc,c.grade].filter(Boolean).join(' ') || '')}</div>
       <div><b style="color:var(--text)">Cert:</b> ${escHtml(c.certNumber || cert)}</div>
