@@ -6041,23 +6041,44 @@ const TOPPS_LINK_SCRAPER_SCRIPT = [
   "",
   "  const toppsLinkText = results.map(function (x) { return x.name + '\\t' + x.url; }).join('\\n');",
   "  if (!results.length) { alert('No PDF links found -- make sure you are on topps.com/pages/checklists'); return; }",
-  "  try { await navigator.clipboard.writeText(toppsLinkText); alert('Copied ' + results.length + ' Topps checklist links. Go back to the dashboard tab and paste them in.'); }",
-  "  catch (e) { prompt('Copy this text (tap in the box, select all, copy), then go paste it into the dashboard:', toppsLinkText); }",
+  "  // Skip alert()/prompt() for the actual text -- prompt()'s single-line input",
+  "  // silently truncates long multi-line strings in some browsers, which is",
+  "  // exactly what happened during testing (886 found, only 15 came through).",
+  "  // Build a real on-page overlay with a full textarea instead, so there is",
+  "  // no ambiguity about how much text is actually there.",
+  "  const overlay = document.createElement('div');",
+  "  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:2147483647;display:flex;align-items:center;justify-content:center;padding:20px;font-family:monospace';",
+  "  const box = document.createElement('div');",
+  "  box.style.cssText = 'background:#0d0f14;color:#e4e4e8;border:1px solid #333;border-radius:8px;padding:16px;max-width:700px;width:100%;max-height:85vh;display:flex;flex-direction:column;gap:10px';",
+  "  const title = document.createElement('div');",
+  "  title.style.cssText = 'font-weight:700;font-size:14px';",
+  "  title.textContent = 'Found ' + results.length + ' Topps checklist links (' + toppsLinkText.length.toLocaleString() + ' characters)';",
+  "  const note = document.createElement('div');",
+  "  note.style.cssText = 'font-size:11px;opacity:.8';",
+  "  note.textContent = 'Click COPY ALL below, then go paste it into the dashboard. Or click into the box, Ctrl+A, Ctrl+C.';",
+  "  const ta = document.createElement('textarea');",
+  "  ta.readOnly = true; ta.value = toppsLinkText;",
+  "  ta.style.cssText = 'flex:1;min-height:300px;width:100%;background:#000;color:#3fe07a;border:1px solid #333;border-radius:4px;padding:8px;font-family:monospace;font-size:11px';",
+  "  const row = document.createElement('div');",
+  "  row.style.cssText = 'display:flex;gap:8px;justify-content:flex-end';",
+  "  const copyBtn = document.createElement('button');",
+  "  copyBtn.textContent = 'COPY ALL';",
+  "  copyBtn.style.cssText = 'padding:8px 16px;background:#123;color:#3fe07a;border:1px solid #3fe07a;border-radius:4px;cursor:pointer;font-family:monospace';",
+  "  copyBtn.onclick = function () {",
+  "    ta.select();",
+  "    navigator.clipboard.writeText(toppsLinkText).then(function () { copyBtn.textContent = 'COPIED!'; }).catch(function () { document.execCommand('copy'); copyBtn.textContent = 'COPIED!'; });",
+  "  };",
+  "  const closeBtn = document.createElement('button');",
+  "  closeBtn.textContent = 'CLOSE';",
+  "  closeBtn.style.cssText = 'padding:8px 16px;background:#222;color:#ccc;border:1px solid #444;border-radius:4px;cursor:pointer;font-family:monospace';",
+  "  closeBtn.onclick = function () { overlay.remove(); };",
+  "  row.appendChild(copyBtn); row.appendChild(closeBtn);",
+  "  box.appendChild(title); box.appendChild(note); box.appendChild(ta); box.appendChild(row);",
+  "  overlay.appendChild(box);",
+  "  document.body.appendChild(overlay);",
+  "  ta.focus(); ta.select();",
   "})();",
 ].join('\n');
-
-function toppsBookmarkletHref(){
-  return 'javascript:' + encodeURIComponent('(function(){' + TOPPS_LINK_SCRAPER_SCRIPT.replace(/\n/g, ' ') + '})();');
-}
-
-async function copyToppsBookmarkletCode(){
-  try{
-    await navigator.clipboard.writeText(toppsBookmarkletHref());
-    toast_dash('Bookmarklet code copied -- paste it as a new bookmark\'s URL');
-  }catch(e){
-    toast_dash('Could not copy automatically -- tap and copy the code below instead');
-  }
-}
 
 function parseToppsPastedLinks(text){
   const entries=[];
@@ -6231,7 +6252,8 @@ async function renderOfflineCatalogManagerPanel(){
         <li>Click the <b>Console</b> tab near the top of the panel that opens.</li>
         <li>Click into that console area so the cursor is blinking there.</li>
         <li>Copy the box of code below (click it, Ctrl+A, Ctrl+C), then paste it into the console (Ctrl+V) and press <b>Enter</b>.</li>
-        <li>It scrolls the page, then visits each checklist's own page one by one to find its real PDF link (most aren't direct links). You'll see "Topps scan: checked X/Y..." counting up in the console -- this can take a few minutes for the full list, let it finish. A popup then confirms how many links were copied ("Copied 743 Topps checklist links..."). Click OK.</li>
+        <li>It scrolls the page, then visits each checklist's own page one by one to find its real PDF link (most aren't direct links). You'll see "Topps scan: checked X/Y..." counting up in the console -- this can take a few minutes for the full list, let it finish.</li>
+        <li>A box appears directly on the topps.com page showing everything it found. Click <b>COPY ALL</b> in that box (it'll change to "COPIED!"), then click <b>CLOSE</b>.</li>
         <li>Come back to this dashboard tab, click into the second box below, and paste (Ctrl+V).</li>
         <li>Click <b>IMPORT FROM PASTED LINKS</b> and confirm. It'll show progress and publish automatically when done -- this can take a while for a large batch.</li>
       </ol>
