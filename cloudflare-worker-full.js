@@ -1062,24 +1062,67 @@ function toppsCardDedupeKey(card = {}) {
   return [card.setId, card.section, card.cardNumber, card.subject || card.player].map(v => String(v || '').toLowerCase().trim()).join('|');
 }
 
-function mergeToppsCards(existingCards, newCards) {
-  const byId = new Map(existingCards.map(c => [c.id, c]));
-  const byDedupeKey = new Map(existingCards.map(c => [toppsCardDedupeKey(c), c.id]));
-  for (const card of newCards) {
-    const dedupeKey = toppsCardDedupeKey(card);
-    const priorId = byDedupeKey.get(dedupeKey);
-    if (priorId && priorId !== card.id) byId.delete(priorId);
-    byId.set(card.id, card);
-    byDedupeKey.set(dedupeKey, card.id);
+// The live cards file has ~426,000+ records -- gunzipJsonlFromR2's "decompress
+// the whole thing into one string, split, parse into one array" approach blew
+// the Worker's memory limit once the real catalog got merged against (a real
+// production failure: "Memory limit exceeded before EOF"). This streams the
+// existing cards one line at a time instead of materializing all of them.
+async function* streamJsonlFromR2(object) {
+  if (!object) return;
+  const ds = new DecompressionStream('gzip');
+  const reader = object.body.pipeThrough(ds).getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    let idx;
+    while ((idx = buffer.indexOf('\n')) >= 0) {
+      const line = buffer.slice(0, idx);
+      buffer = buffer.slice(idx + 1);
+      if (line.trim()) yield JSON.parse(line);
+    }
   }
-  return [...byId.values()];
+  buffer += decoder.decode();
+  if (buffer.trim()) yield JSON.parse(buffer);
 }
 
-function mergeToppsSets(existingSets, newSets, mergedCards) {
+// Companion to streamJsonlFromR2 -- writes rows into a gzip stream one at a
+// time instead of building a full array + one giant JSON string before
+// compressing, so re-publishing the merged cards file never needs the whole
+// (very large) card list resident in memory simultaneously.
+function createGzipJsonlWriter() {
+  const cs = new CompressionStream('gzip');
+  const writer = cs.writable.getWriter();
+  const encoder = new TextEncoder();
+  const chunks = [];
+  let total = 0;
+  const readerDone = (async () => {
+    const reader = cs.readable.getReader();
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(value);
+      total += value.length;
+    }
+  })();
+  return {
+    async write(row) { await writer.write(encoder.encode(JSON.stringify(row) + '\n')); },
+    async finish() {
+      await writer.close();
+      await readerDone;
+      const out = new Uint8Array(total);
+      let offset = 0;
+      for (const chunk of chunks) { out.set(chunk, offset); offset += chunk.length; }
+      return out;
+    },
+  };
+}
+
+function mergeToppsSetsWithCounts(existingSets, newSets, cardCountBySet) {
   const bySetId = new Map(existingSets.map(s => [s.id, s]));
   for (const set of newSets) bySetId.set(set.id, { ...bySetId.get(set.id), ...set });
-  const cardCountBySet = new Map();
-  for (const card of mergedCards) cardCountBySet.set(card.setId, (cardCountBySet.get(card.setId) || 0) + 1);
   for (const set of bySetId.values()) set.cardCount = cardCountBySet.get(set.id) || set.cardCount || 0;
   return [...bySetId.values()];
 }
@@ -1988,24 +2031,60 @@ export default {
 
       const manifestObject = await env.MTG_CATALOG_R2.get('topps/manifest.json');
       const manifest = manifestObject ? await manifestObject.json().catch(() => null) : null;
-      let existingSets = [], existingCards = [];
+      let existingSets = [];
+      let cardsObject = null;
       if (manifest?.status === 'ready') {
-        const [setsObject, cardsObject] = await Promise.all([
-          env.MTG_CATALOG_R2.get(manifest.files?.sets?.path || 'topps/__missing__'),
-          env.MTG_CATALOG_R2.get(manifest.files?.cards?.path || 'topps/__missing__'),
-        ]);
-        [existingSets, existingCards] = await Promise.all([gunzipJsonlFromR2(setsObject), gunzipJsonlFromR2(cardsObject)]);
+        const setsObject = await env.MTG_CATALOG_R2.get(manifest.files?.sets?.path || 'topps/__missing__');
+        existingSets = await gunzipJsonlFromR2(setsObject);
+        cardsObject = await env.MTG_CATALOG_R2.get(manifest.files?.cards?.path || 'topps/__missing__');
       }
 
-      const mergedCards = mergeToppsCards(existingCards, newCards);
-      const mergedSets = mergeToppsSets(existingSets, newSets, mergedCards);
-      if (mergedSets.length === existingSets.length && mergedCards.length === existingCards.length) {
-        return json({ ok: true, published: false, message: 'No new sets/cards -- nothing to publish.', setCount: mergedSets.length, cardCount: mergedCards.length });
+      // Dedupe the incoming batch against itself first (small -- tens to a
+      // few thousand rows), same rule as before: last write wins per dedupe
+      // key, and a dedupe-key collision with a different id drops the older id.
+      const newCardDedupeMap = new Map();
+      const newCardIdMap = new Map();
+      for (const card of newCards) {
+        const key = toppsCardDedupeKey(card);
+        const priorByKey = newCardDedupeMap.get(key);
+        if (priorByKey && priorByKey.id !== card.id) newCardIdMap.delete(priorByKey.id);
+        newCardDedupeMap.set(key, card);
+        newCardIdMap.set(card.id, card);
       }
+      const finalNewCards = [...new Map([...newCardDedupeMap.values()].map(c => [c.id, c])).values()];
 
       const generatedAt = new Date().toISOString();
       const version = String(body.version || generatedAt.slice(0, 19).replace(/[:T]/g, '-'));
-      const cardsGz = await gzipJsonl(mergedCards.map(c => compactToppsCard(c, generatedAt)));
+
+      // Stream the existing cards file through instead of loading it fully --
+      // it has 400,000+ records and materializing it as one array blew the
+      // Worker's memory limit in production ("Memory limit exceeded before
+      // EOF"). Cards superseded by the incoming batch are dropped as they
+      // stream past; everything else is written straight through.
+      const cardWriter = createGzipJsonlWriter();
+      const cardCountBySet = new Map();
+      let existingCardCount = 0;
+      let keptOldCount = 0;
+      for await (const oldCard of streamJsonlFromR2(cardsObject)) {
+        existingCardCount++;
+        const key = toppsCardDedupeKey(oldCard);
+        if (newCardDedupeMap.has(key) || newCardIdMap.has(oldCard.id)) continue;
+        await cardWriter.write(compactToppsCard(oldCard, oldCard.updatedAt || generatedAt));
+        cardCountBySet.set(oldCard.setId, (cardCountBySet.get(oldCard.setId) || 0) + 1);
+        keptOldCount++;
+      }
+      for (const card of finalNewCards) {
+        await cardWriter.write(compactToppsCard(card, generatedAt));
+        cardCountBySet.set(card.setId, (cardCountBySet.get(card.setId) || 0) + 1);
+      }
+      const finalCardCount = keptOldCount + finalNewCards.length;
+
+      const mergedSets = mergeToppsSetsWithCounts(existingSets, newSets, cardCountBySet);
+      if (mergedSets.length === existingSets.length && finalNewCards.length === 0 && keptOldCount === existingCardCount) {
+        return json({ ok: true, published: false, message: 'No new sets/cards -- nothing to publish.', setCount: mergedSets.length, cardCount: finalCardCount });
+      }
+
+      const cardsGz = await cardWriter.finish();
       const setsGz = await gzipJsonl(mergedSets.map(s => compactToppsSet(s, generatedAt)));
       const [cardsSha256, setsSha256] = await Promise.all([sha256Hex(cardsGz), sha256Hex(setsGz)]);
 
@@ -2021,7 +2100,7 @@ export default {
         schemaVersion: 1,
         sourceVersions: { topps: { importedAt: generatedAt } },
         files: {
-          cards: { path: cardsKey, format: 'jsonl.gz', sha256: cardsSha256, recordCount: mergedCards.length, bytes: cardsGz.length },
+          cards: { path: cardsKey, format: 'jsonl.gz', sha256: cardsSha256, recordCount: finalCardCount, bytes: cardsGz.length },
           sets: { path: setsKey, format: 'jsonl.gz', sha256: setsSha256, recordCount: mergedSets.length, bytes: setsGz.length },
         },
         status: 'ready',
@@ -2033,9 +2112,9 @@ export default {
         published: true,
         version,
         setCount: mergedSets.length,
-        cardCount: mergedCards.length,
+        cardCount: finalCardCount,
         newSetCount: mergedSets.length - existingSets.length,
-        newCardCount: mergedCards.length - existingCards.length,
+        newCardCount: finalCardCount - existingCardCount,
       });
     }
 
