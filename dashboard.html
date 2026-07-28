@@ -4132,6 +4132,15 @@ const MORE_TABS = [
   ['restock', 'RESTOCK'],
   ['backoffice', 'SETTINGS / ADMIN'],
 ];
+// Permanent, always-present categories -- every price-sync/routing function
+// (isMtgInventorySyncItem, isPokemonInventorySyncItem, tcgLineFromText,
+// qplCategoryKey...) matches against these exact names. They can't be
+// deleted and typing a near-duplicate is blocked (see addVendorCategory),
+// so a store can't accidentally lose or fork the one string every sync
+// path depends on. Stores can still add their own categories on top for
+// anything that doesn't need price-sync routing (a display case name, a
+// "Vintage" bucket, etc.).
+const STANDARD_INVENTORY_CATEGORIES = ['Pokemon TCG','Magic: The Gathering','One Piece TCG','Yu-Gi-Oh!','Disney Lorcana','Sports','Comic','Sealed Product','Collectibles','Supplies'];
 const DEFAULT_VENDOR_CONFIG = {
   inventorySource: 'built_in',
   modules: {
@@ -4146,7 +4155,7 @@ const DEFAULT_VENDOR_CONFIG = {
     ops: true,
     pricingSync: true,
   },
-  categories: ['Pokemon TCG','Magic: The Gathering','One Piece TCG','Yu-Gi-Oh!','Disney Lorcana','Sports','Comic','Sealed Product','Collectibles','Supplies'],
+  categories: [...STANDARD_INVENTORY_CATEGORIES],
 };
 const LIFECYCLE_LABELS = {
   in_stock: 'In stock',
@@ -8019,7 +8028,10 @@ function renderVendorConfigPanel(){
       <input class="tsi" id="new-category-name" placeholder="New category/filter name" style="flex:1;min-width:220px;margin-bottom:0">
       <button class="hbtn" onclick="addVendorCategory()">ADD CATEGORY</button>
     </div>
-    <div>${cfg.categories.map(c => `<span class="category-chip">${c}<button onclick="removeVendorCategory('${String(c).replace(/'/g,"\\'")}')">x</button></span>`).join('')}</div>
+    <div>${getInventoryCategories().map(c => {
+      const isStandard = STANDARD_INVENTORY_CATEGORIES.includes(c);
+      return `<span class="category-chip">${escHtml(c)}${isStandard ? ' <span style="color:var(--dim);font-size:9px">(standard)</span>' : `<button onclick="removeVendorCategory('${String(c).replace(/'/g,"\\'")}')">x</button>`}</span>`;
+    }).join('')}</div>
     <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border);display:flex;gap:16px;align-items:center;flex-wrap:wrap">
       <label style="display:flex;align-items:center;gap:8px;font-family:monospace;font-size:10px;color:var(--dim);cursor:pointer">
         <input type="checkbox" ${localStorage.getItem('qa_debug')==='1'?'checked':''} onchange="localStorage.setItem('qa_debug',this.checked?'1':'0');toast_dash(this.checked?'Debug mode ON':'Debug mode OFF')">
@@ -8095,10 +8107,27 @@ function toggleVendorModule(key, enabled){
   saveVendorConfig(cfg);
 }
 
+// Catches a typo'd or differently-worded attempt to re-add a category that's
+// already one of the fixed standard ones (e.g. "Pokeman", "pokemon cards") --
+// every price-sync routing function keys off the exact standard name, so a
+// near-duplicate would silently create an unroutable second bucket instead
+// of actually meaning what the user typed.
+function matchingStandardCategory(name){
+  const key = qplCategoryKey(name);
+  if(!key) return null;
+  return STANDARD_INVENTORY_CATEGORIES.find(std => qplCategoryKey(std) === key) || null;
+}
+
 function addVendorCategory(){
   const input = document.getElementById('new-category-name');
   const name = input?.value.trim();
   if(!name) return;
+  const existingStandard = matchingStandardCategory(name);
+  if(existingStandard){
+    toast_dash(`"${existingStandard}" is already a standard category -- use that one so price sync can find it`);
+    if(input) input.value = '';
+    return;
+  }
   const cfg = getVendorConfig();
   cfg.categories = Array.from(new Set([...(cfg.categories || []), name]));
   if(input) input.value = '';
@@ -8106,6 +8135,10 @@ function addVendorCategory(){
 }
 
 function removeVendorCategory(name){
+  if(STANDARD_INVENTORY_CATEGORIES.includes(name)){
+    toast_dash(`"${name}" is a standard category and can't be removed`);
+    return;
+  }
   const cfg = getVendorConfig();
   cfg.categories = (cfg.categories || []).filter(c => c !== name);
   saveVendorConfig(cfg);
@@ -8142,7 +8175,11 @@ function getInventoryCategories(){
   // still needs to show up in dropdowns, filters, and the category
   // dashboards instead of silently having nowhere to appear.
   const fromItems = (typeof all !== 'undefined' ? all : []).map(i => i.category).filter(Boolean);
-  return Array.from(new Set([...(cfg.categories || []), ...fromItems])).filter(Boolean);
+  // STANDARD_INVENTORY_CATEGORIES always come first regardless of what's
+  // saved -- a store's saved category list can add to this set but can
+  // never lose it (see removeVendorCategory), so every price-sync routing
+  // function always has the exact category names it matches against.
+  return Array.from(new Set([...STANDARD_INVENTORY_CATEGORIES, ...(cfg.categories || []), ...fromItems])).filter(Boolean);
 }
 // Shared color palette for category dashboards/charts -- categories are now
 // store-configurable, so nothing can be hardcoded to 5 known names anymore;
