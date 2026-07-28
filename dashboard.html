@@ -17574,6 +17574,22 @@ function inventoryDeleteBlockReason(item){
   return '';
 }
 
+// Best-effort R2 cleanup for a genuinely deleted item's uploaded photo --
+// only ever called from deleteInventoryRecord, which already refuses to
+// delete anything with sale/consignment/payout history, so sold items'
+// photos are never touched here. Never blocks the actual item delete.
+async function deleteInventoryPhotoIfHosted(item){
+  const photoUrl = String(item?.photoDataUrl || item?.thumbnail || '');
+  if(!photoUrl.includes('/inventory/photo/inventory-photos/')) return;
+  try {
+    await storeWorkerFetch('/inventory/photo/delete', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json' },
+      body:JSON.stringify({ url:photoUrl }),
+    });
+  } catch(e) { /* orphaned photo is a harmless, low-cost leftover -- never block the delete on this */ }
+}
+
 async function deleteInventoryRecord(id){
   const item = all.find(i => i.id === id);
   if(!item) return false;
@@ -17584,6 +17600,7 @@ async function deleteInventoryRecord(id){
   if(deleteBlockReason){toast_dash('This item has '+deleteBlockReason+'. Archive it instead of deleting.');return false;}
   const typed=prompt('Permanent delete is only for tests or accidental entries. Type DELETE to remove "'+(item.name||'item')+'".');
   if(typed!=='DELETE') return false;
+  deleteInventoryPhotoIfHosted(item).catch(()=>{});
   if(item.source === 'built_in') {
     const sb = getSupabaseClient();
     const session = getAuthSession();
