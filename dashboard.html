@@ -17986,6 +17986,11 @@ async function fetchPsaCertPhotoForEditItem(){
   }
 }
 
+// Resizes the photo locally, then uploads it to R2 via the Worker and stores
+// just the returned URL on the item -- not the raw base64 -- so every
+// device's inventory sync carries a short link instead of the whole image.
+// Falls back to keeping the base64 preview (this device only) if the
+// upload can't complete (offline, demo mode, not signed in).
 function handleInventoryEditPhoto(file){
   if(!file) return;
   if(!file.type || !file.type.startsWith('image/')) { toast_dash('Choose an image file'); return; }
@@ -17999,8 +18004,21 @@ function handleInventoryEditPhoto(file){
       canvas.width = Math.max(1, Math.round(img.width * scale));
       canvas.height = Math.max(1, Math.round(img.height * scale));
       canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
-      setInventoryEditPhoto(canvas.toDataURL('image/jpeg', .78), 'Uploaded photo');
-      toast_dash('Photo attached locally');
+      const localPreview = canvas.toDataURL('image/jpeg', .78);
+      setInventoryEditPhoto(localPreview, 'Uploading...');
+      canvas.toBlob(async blob => {
+        if(!blob) { toast_dash('Could not process image'); return; }
+        try {
+          const res = await storeWorkerFetch('/inventory/photo/upload', { method:'POST', headers:{ 'Content-Type':'image/jpeg' }, body:blob });
+          const data = await res.json().catch(() => ({}));
+          if(!res.ok || !data.ok) throw new Error(data.error || 'Upload failed');
+          setInventoryEditPhoto(data.url, 'Uploaded photo');
+          toast_dash('Photo uploaded — will show on every device');
+        } catch(e) {
+          setInventoryEditPhoto(localPreview, 'Uploaded photo (this device only)');
+          toast_dash('Saved locally only — reconnect and re-attach to sync to other devices (' + (e.message || e) + ')');
+        }
+      }, 'image/jpeg', .78);
     };
     img.onerror = () => toast_dash('Could not read image');
     img.src = reader.result;
