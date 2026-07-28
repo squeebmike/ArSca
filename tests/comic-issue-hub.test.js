@@ -66,6 +66,15 @@ assert.match(dashboard,/function loadMetronComicSeriesPage/,'selected Metron run
 assert.match(dashboard,/series_id:String\(state\.series\.id\),page:String\(page\)/,'every issue page must retain the exact selected series id');
 assert.match(dashboard,/function loadAllMetronComicSeriesIssues/,'selected comic runs must expose a dedicated load-all action');
 assert.match(dashboard,/LOAD ALL \$\{total\}/,'the comic pager must make the full-run action visible');
+assert.match(dashboard,/function loadAllComicVariantCovers/,'a selected issue must expose a separate on-demand variant-cover loader');
+assert.match(dashboard,/LOAD ALL VARIANT COVERS/,'the issue cover picker must make the full variant-cover action visible');
+assert.match(dashboard,/buildSweepQueries\(context,true\)/,'the issue-level load-all action must use the broad provider query set');
+assert.match(dashboard,/JSON\.stringify\(\{queries,exactIssue\}\)/,'the issue-level sweep must send exact run and issue identity');
+assert.match(dashboard,/comicPriceCandidateFitsIssue\(product,issue\)/,'the browser must defensively reject covers from another run or issue');
+assert.match(dashboard,/\/pricing\/pricecharting\/product\/'\+encodeURIComponent\(productId\)/,'newly discovered variant covers must hydrate exact images and prices');
+assert.match(dashboard,/allComicVariantCoversLoaded=true/,'the issue UI must record completion of the explicit cover load');
+assert.match(worker,/const products = exactIssue\?\.seriesName && exactIssue\?\.number \? matchingComicPcCandidates/,'the Worker must exact-filter an issue-level broad sweep before returning covers');
+assert.match(dashboard,/const beforeIssue=product\.slice\(0,issueMatch\.index\)/,'browser-side exact matching must strip bracketed cover descriptors before comparing the series title');
 assert.match(dashboard,/for\(let page=1;page<=totalPages;page\+\+\)/,'load all must request Metron pages sequentially instead of concurrently');
 assert.match(dashboard,/requestMetronComicSeriesPageData\(state,page,3\)/,'load all must retry transient Metron page failures');
 assert.match(dashboard,/The current page is still available; try LOAD ALL again/,'a load-all failure must preserve the usable current page');

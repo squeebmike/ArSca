@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.07.28.04-comic-page-size">
+<meta name="version" content="2026.07.28.05-issue-variant-covers">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1480,13 +1480,13 @@ body.show-mode .inv-sync-badge{display:none;}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.07.28.04-comic-page-size"></script>
-<script src="scripts/barcode-lookup.js?v=2026.07.28.04-comic-page-size"></script>
-<script src="scripts/comic-issue-hub.js?v=2026.07.28.04-comic-page-size"></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.07.28.04-comic-page-size"></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.07.28.04-comic-page-size"></script>
-<script src="scripts/topps/offline-browser.js?v=2026.07.28.04-comic-page-size"></script>
-<script src="scripts/mtg/research-batch.js?v=2026.07.28.04-comic-page-size"></script>
+<script src="scripts/query-routing.js?v=2026.07.28.05-issue-variant-covers"></script>
+<script src="scripts/barcode-lookup.js?v=2026.07.28.05-issue-variant-covers"></script>
+<script src="scripts/comic-issue-hub.js?v=2026.07.28.05-issue-variant-covers"></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.07.28.05-issue-variant-covers"></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.07.28.05-issue-variant-covers"></script>
+<script src="scripts/topps/offline-browser.js?v=2026.07.28.05-issue-variant-covers"></script>
+<script src="scripts/mtg/research-batch.js?v=2026.07.28.05-issue-variant-covers"></script>
 </head>
 <body>
 
@@ -1536,11 +1536,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.07.28.04-comic-page-size</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.07.28.05-issue-variant-covers</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.07.28.04-comic-page-size</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.07.28.05-issue-variant-covers</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1562,7 +1562,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.07.28.04-comic-page-size</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.07.28.05-issue-variant-covers</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -2993,7 +2993,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.07.28.04-comic-page-size';
+const APP_VERSION = '2026.07.28.05-issue-variant-covers';
 window.APP_VERSION = APP_VERSION;
 
 // This page has no cache-busting of its own (unlike the secondary scripts,
@@ -21982,11 +21982,12 @@ async function fetchComicVineCover(name, issue, year){
 }
 
 function comicPriceCandidateFitsIssue(candidate={},issue={}){
-  const product=String(candidate.productName||'').trim(),identity=product.match(/^(.*?)\s*#\s*([0-9]+(?:\.[0-9]+)?[a-z]?)(?=\b|\s|\[|\()/i);
-  if(!identity)return false;
+  const product=String(candidate.productName||'').trim(),issueMatch=product.match(/#\s*([0-9]+(?:\.[0-9]+)?[a-z]?)(?=\b|\s|\[|\()/i);
+  if(!issueMatch)return false;
+  const beforeIssue=product.slice(0,issueMatch.index).trim(),descriptorMatch=beforeIssue.match(/\s*\[([^\]]+)\]\s*$/),candidateSeries=descriptorMatch?beforeIssue.slice(0,descriptorMatch.index).trim():beforeIssue;
   const normalize=value=>normalizePokemonText(value).replace(/[^a-z0-9]+/g,' ').trim(),series=normalize(issue.seriesName||issue.series||''),number=String(issue.number||issue.issueNumber||'').toLowerCase().replace(/[^a-z0-9.]/g,'');
-  const candidateNumber=String(identity[2]||'').toLowerCase(),numberMatches=candidateNumber===number||(/^\d+$/.test(number)&&new RegExp('^'+number+'[a-z]$','i').test(candidateNumber));
-  if(!series||normalize(identity[1])!==series||!numberMatches)return false;
+  const candidateNumber=String(issueMatch[1]||'').toLowerCase(),numberMatches=candidateNumber===number||(/^\d+$/.test(number)&&new RegExp('^'+number+'[a-z]$','i').test(candidateNumber));
+  if(!series||normalize(candidateSeries)!==series||!numberMatches)return false;
   const explicitYear=(product.match(/[\[(]\s*((?:19|20)\d{2})\s*[\])]/)||[])[1],allowedYears=new Set([issue.seriesYearBegan,issue.year,String(issue.coverDate||'').slice(0,4),String(issue.storeDate||'').slice(0,4)].map(String).filter(x=>/^(?:19|20)\d{2}$/.test(x)));
   return !explicitYear||!allowedYears.size||allowedYears.has(explicitYear);
 }
@@ -22126,6 +22127,42 @@ async function hydrateMetronComicResult(idx,force=false,variantKey=''){
   qplResults[idx]=r;return r;
 }
 
+async function loadAllComicVariantCovers(idx){
+  let r=qplResults[idx];if(!r?.metronIssueId||r.loadingAllComicVariantCovers)return;
+  try{
+    if(!r.metronDetailLoaded)r=await hydrateMetronComicResult(idx);
+    const issue=r.metron||{},api=window.ArsCaComicIssueHub;
+    if(!api)throw new Error('Comic cover search is unavailable');
+    r.loadingAllComicVariantCovers=true;r.allComicVariantCoversError='';qplResults[idx]=r;updateQplResultCard(idx);
+    let reopened=document.querySelector(`.qpl-hero-card[data-qpl-idx="${idx}"] details.comic-book-details`);if(reopened)reopened.open=true;
+    const context={seriesTitle:issue.seriesName||r.series||'',publisher:issue.publisher||r.publisher||'',yearGuess:String(issue.seriesYearBegan||issue.coverDate||r.year||'').slice(0,4),currentIssueNumber:String(issue.number||r.issue||''),originalQuery:qplLastSearch||''};
+    const queries=api.buildSweepQueries(context,true),exactIssue={seriesName:issue.seriesName||r.series||'',number:String(issue.number||r.issue||''),seriesYearBegan:String(issue.seriesYearBegan||''),coverDate:issue.coverDate||'',storeDate:issue.storeDate||''};
+    const sweepResponse=await storeWorkerFetch('/pricing/pricecharting/comic-sweep',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({queries,exactIssue})}),sweepData=await sweepResponse.json().catch(()=>({}));
+    if(!sweepResponse.ok||!sweepData.ok)throw new Error(sweepData.error||'Variant cover search failed');
+    const exactProducts=(sweepData.products||[]).filter(product=>/^comic books\b/i.test(String(product.consoleName||''))&&comicPriceCandidateFitsIssue(product,issue));
+    const existing=[...(r.metronCovers||[])],existingProductIds=new Set(existing.map(cover=>String(cover.pricechartingProductId||cover.pricecharting?.productId||'')).filter(Boolean));
+    let added=0,failed=0;
+    for(const candidate of exactProducts){
+      const productId=String(candidate.productId||'');if(!productId||existingProductIds.has(productId))continue;
+      let product=candidate;
+      try{
+        const detailResponse=await storeWorkerFetch('/pricing/pricecharting/product/'+encodeURIComponent(productId),{cache:'no-store'}),detailData=await detailResponse.json().catch(()=>({}));
+        if(detailResponse.ok&&(detailData.product||detailData).productId)product=detailData.product||detailData;else failed++;
+      }catch(_){failed++;}
+      if(!comicPriceCandidateFitsIssue(product,issue))continue;
+      if(!(product.imageUrl||candidate.imageUrl)){failed++;continue;}
+      const identityName=product.productName||candidate.productName||`Issue #${issue.number||r.issue||''} cover`;
+      existing.push({id:'pricecharting:'+productId,metronIssueId:String(r.metronIssueId),seriesId:String(issue.seriesId||''),seriesName:issue.seriesName||r.series||'',number:String(issue.number||r.issue||''),issueName:identityName,name:identityName,imageUrl:product.imageUrl||candidate.imageUrl||'',pricechartingProductId:productId,pricechartingUrl:product.url||candidate.url||'',pricecharting:product,source:'PriceCharting'});
+      existingProductIds.add(productId);added++;
+    }
+    r=qplResults[idx];r.metronCovers=existing;r.comicPriceCandidates=[...(r.comicPriceCandidates||[]),...exactProducts].filter((product,index,rows)=>product?.productId&&rows.findIndex(other=>String(other?.productId||'')===String(product.productId))===index);r.allComicVariantCoversLoaded=true;r.allComicVariantCoverCount=existing.length;r.loadingAllComicVariantCovers=false;r.allComicVariantCoversError=failed?`${failed} cover image${failed===1?'':'s'} could not be refreshed.`:'';qplResults[idx]=r;
+    updateQplResultCard(idx);reopened=document.querySelector(`.qpl-hero-card[data-qpl-idx="${idx}"] details.comic-book-details`);if(reopened)reopened.open=true;
+    toast_dash(added?`Loaded ${added} more exact variant cover${added===1?'':'s'} (${existing.length} total)`:`All ${existing.length} exact provider covers are already shown`);
+  }catch(error){
+    r=qplResults[idx]||r;r.loadingAllComicVariantCovers=false;r.allComicVariantCoversError=error.message||String(error);qplResults[idx]=r;updateQplResultCard(idx);const reopened=document.querySelector(`.qpl-hero-card[data-qpl-idx="${idx}"] details.comic-book-details`);if(reopened)reopened.open=true;toast_dash('Could not load all variant covers: '+(error.message||error));
+  }
+}
+
 async function openComicDetailsAndHydrate(idx,details){
   if(!details?.open||qplResults[idx]?.metronDetailLoaded)return;
   details.querySelector('.comic-detail-loading')?.style.setProperty('display','block');
@@ -22209,8 +22246,9 @@ function qplComicBookInfoPanel(r,idx){
   const facts=[['Selected run',[m.seriesName,m.seriesYearBegan?m.seriesYearBegan+' series':''].filter(Boolean).join(' / ')],['Selected issue',m.number?'#'+m.number:''],['Selected cover',selectedCoverLabel],['Publisher',[m.publisher,m.imprint].filter(Boolean).join(' / ')],['Series began',m.seriesYearBegan],['Cover date',m.coverDate],['Store date',m.storeDate],['Cover price',m.coverPrice?`${m.coverPriceCurrency||'USD'} ${Number(m.coverPrice).toFixed(2)}`:''],['Pages',m.pageCount],['Rating',m.rating],['UPC',m.upc],['SKU',m.sku],['ISBN',m.isbn]].filter(([,value])=>value!==''&&value!==null&&value!==undefined);
   const row=(label,values)=>values?.length?`<div style="font-size:10px;margin-top:7px"><b>${label}${values.length===1?'':'s'}:</b> ${escHtml(values.join(', '))}</div>`:'';
   const priceLink=r.pricecharting?.url?`<a class="hbtn" style="color:var(--gold)" href="${escHtml(r.pricecharting.url)}" target="_blank" rel="noopener">VERIFY EXACT PRICECHARTING</a>`:`<button class="hbtn" style="color:var(--gold)" onclick="openComicReference(${idx},'pricecharting')">SEARCH PRICECHARTING</button>`;
+  const loadAllCoversControl=r.loadingAllComicVariantCovers?'<button class="hbtn" disabled style="border-color:var(--gold);color:var(--gold)">LOADING ALL VARIANT COVERS...</button>':r.allComicVariantCoversLoaded?`<button class="hbtn" style="border-color:var(--g);color:var(--g)" onclick="loadAllComicVariantCovers(${idx})">ALL ${covers.length} PROVIDER COVERS LOADED · REFRESH</button>`:`<button class="hbtn" style="border-color:var(--g);color:var(--g);font-weight:900" onclick="loadAllComicVariantCovers(${idx})">LOAD ALL VARIANT COVERS</button>`;
   const links=`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px"><button class="hbtn" style="color:var(--purple)" onclick="openComicReference(${idx},'metron')">METRON RECORD</button>${priceLink}<button class="hbtn" onclick="openComicReference(${idx},'sold')">EBAY SOLD</button><button class="hbtn" onclick="openComicReference(${idx},'mycomicshop')">MYCOMICSHOP</button>${m.gcdId?`<button class="hbtn" onclick="openComicReference(${idx},'gcd')">GCD RECORD</button>`:''}${m.comicVineId?`<button class="hbtn" onclick="openComicReference(${idx},'comicvine')">COMIC VINE</button>`:''}</div>`;
-  const coverCards=covers.map((cover,i)=>{
+  const coverCards=`<div style="grid-column:1/-1;display:flex;gap:8px;align-items:center;flex-wrap:wrap">${loadAllCoversControl}<span style="font-size:9px;color:var(--dim)">Loads every exact cover currently cataloged by Metron and PriceCharting for this issue only.</span>${r.allComicVariantCoversError?`<span style="color:var(--gold);font-size:9px">${escHtml(r.allComicVariantCoversError)}</span>`:''}</div>`+covers.map((cover,i)=>{
     const title=cover.issueName||cover.name||('Issue #'+(cover.number||m.number||'')),tags=window.ArsCaComicIssueHub?.variantLabels(title)||[],prices=cover.pricecharting?.comicPrices||{},raw=Number(prices.ungraded||0),graded=Number(prices.grade9_8||0),isSelected=Boolean(r.coverConfirmed&&String(r.imageUrl||'').split('?')[0]===String(cover.imageUrl||'').split('?')[0]),source=cover.pricechartingProductId?'PRICECHARTING':cover.nestedVariant?'METRON VARIANT':'METRON COVER';
     return `<button type="button" class="comic-cover-picker-card ${isSelected?'selected':''}" onclick="selectMetronComicCover(${idx},${i})" aria-label="Use ${escHtml(title)}"><img src="${escHtml(cover.imageUrl)}" alt="${escHtml(title)}" loading="lazy"><div class="comic-cover-picker-title">${escHtml(title)}</div><div class="comic-cover-picker-tags"><span class="qpl-badge">${source}</span>${tags.map(tag=>`<span class="qpl-badge ${tag==='foil'?'warn':''}">${escHtml(tag.toUpperCase())}</span>`).join('')}${isSelected?'<span class="qpl-badge good">SELECTED</span>':''}</div><div class="comic-cover-picker-price">${raw?'RAW $'+raw.toFixed(2):cover.coverPrice?'COVER PRICE $'+Number(cover.coverPrice).toFixed(2):'SELECT TO LOAD PRICE'}${graded?' · 9.8 $'+graded.toFixed(2):''}</div></button>`;
   }).join('');
@@ -34063,7 +34101,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.07.28.04-comic-page-size"></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.07.28.05-issue-variant-covers"></script>
 </body>
 </html>
 

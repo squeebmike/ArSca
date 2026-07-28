@@ -17,7 +17,7 @@
  *   LBA_KV
  *   MTG_CATALOG_R2 (R2 must be enabled for the Cloudflare account)
  */
-// Production release marker: 2026.07.28.04-comic-page-size
+// Production release marker: 2026.07.28.05-issue-variant-covers
 
 // Same parser that built the live 740-set/426,540-card Topps catalog (see
 // scripts/import-topps-checklists.js -> scripts/topps/merge-and-publish.mjs).
@@ -4706,6 +4706,13 @@ export default {
         if (url.pathname === '/pricing/pricecharting/comic-sweep' && request.method === 'POST') {
           const body = await request.json().catch(() => ({}));
           const queries = [...new Set((Array.isArray(body.queries) ? body.queries : []).map(q => String(q || '').replace(/\s+/g, ' ').trim().slice(0, 160)).filter(Boolean))].slice(0, 10);
+          const exactIssue = body.exactIssue && typeof body.exactIssue === 'object' ? {
+            seriesName:String(body.exactIssue.seriesName || '').trim().slice(0, 160),
+            number:String(body.exactIssue.number || '').trim().slice(0, 20),
+            seriesYearBegan:String(body.exactIssue.seriesYearBegan || '').trim().slice(0, 10),
+            coverDate:String(body.exactIssue.coverDate || '').trim().slice(0, 20),
+            storeDate:String(body.exactIssue.storeDate || '').trim().slice(0, 20),
+          } : null;
           if (!queries.length) return json({ ok: false, error: 'queries required' }, 400);
           const found = new Map();
           const attempts = [];
@@ -4724,7 +4731,8 @@ export default {
               else found.set(id, { ...product, foundByQueries:[q] });
             });
           }
-          return json({ ok:true, source:'PriceCharting', endpoint:'/api/products', attempts, products:[...found.values()], matches:[...found.values()] });
+          const products = exactIssue?.seriesName && exactIssue?.number ? matchingComicPcCandidates([...found.values()], exactIssue) : [...found.values()];
+          return json({ ok:true, source:'PriceCharting', endpoint:'/api/products', attempts, exactFiltered:Boolean(exactIssue?.seriesName && exactIssue?.number), products, matches:products });
         }
         if (url.pathname === '/pricing/pricecharting/search') {
           const q = (url.searchParams.get('q') || '').trim();
