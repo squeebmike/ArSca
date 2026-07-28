@@ -1844,9 +1844,40 @@ export default {
       return response;
     }
 
+    // Shared by both /scan (server-scraped list) and /filter-candidates
+    // (client-supplied list) -- diffs a list of {name,url,sport,year,brand}
+    // entries against what's already live in R2 using a best-effort candidate
+    // id. The real id is only known once a PDF is actually parsed (the
+    // product name comes from the PDF text), so this is a heuristic filter
+    // only -- a false "new" just means a harmless re-merge no-op later.
+    async function diffToppsCandidates(env, entries) {
+      let existingSets = [];
+      const manifestObject = await env.MTG_CATALOG_R2.get('topps/manifest.json');
+      const manifest = manifestObject ? await manifestObject.json().catch(() => null) : null;
+      if (manifest?.status === 'ready' && manifest.files?.sets?.path) {
+        const setsObject = await env.MTG_CATALOG_R2.get(manifest.files.sets.path);
+        existingSets = await gunzipJsonlFromR2(setsObject);
+      }
+      const knownSetIds = new Set(existingSets.filter(s => Number(s.cardCount || 0) > 0).map(s => s.id));
+      return entries
+        .map(entry => ({
+          name: entry.name,
+          url: entry.url,
+          sport: entry.sport || '',
+          year: entry.year || '',
+          brand: entry.brand || '',
+          candidateSetId: slugify([entry.year, String(entry.name || '').replace(/checklist/ig, ''), entry.sport].filter(Boolean).join(' ')),
+        }))
+        .filter(c => !knownSetIds.has(c.candidateSetId));
+    }
+
     // GET /catalog/topps/update/scan -- owner/admin only. Scrapes topps.com's
     // own checklist page and diffs against what's already live in R2, so the
     // dashboard can show "12 new sets found" before doing any PDF work.
+    // NOTE: topps.com's storefront has bot protection that 403s Worker-origin
+    // requests to the *page itself* (confirmed in production) -- if this
+    // keeps failing, use /catalog/topps/update/filter-candidates instead with
+    // a link list pulled from a real browser session (see that route).
     if (url.pathname === '/catalog/topps/update/scan') {
       if (request.method !== 'GET') return json({ ok: false, error: 'GET only' }, 405);
       if (!env.MTG_CATALOG_R2) return json({ ok: false, error: 'Offline catalog R2 binding is not configured' }, 503);
@@ -1856,32 +1887,33 @@ export default {
 
       const scrapeResult = await fetchToppsChecklistCatalogDetailed();
       if (!scrapeResult.ok) return json({ ok: false, error: scrapeResult.error, status: scrapeResult.status }, 502);
-      const scraped = scrapeResult.sets;
+      const candidates = await diffToppsCandidates(env, scrapeResult.sets);
+      return json({ ok: true, totalOnSite: scrapeResult.sets.length, alreadyImported: scrapeResult.sets.length - candidates.length, candidates });
+    }
 
-      let existingSets = [];
-      const manifestObject = await env.MTG_CATALOG_R2.get('topps/manifest.json');
-      const manifest = manifestObject ? await manifestObject.json().catch(() => null) : null;
-      if (manifest?.status === 'ready' && manifest.files?.sets?.path) {
-        const setsObject = await env.MTG_CATALOG_R2.get(manifest.files.sets.path);
-        existingSets = await gunzipJsonlFromR2(setsObject);
-      }
-      const knownSetIds = new Set(existingSets.filter(s => Number(s.cardCount || 0) > 0).map(s => s.id));
+    // POST /catalog/topps/update/filter-candidates -- owner/admin only.
+    // topps.com's storefront blocks the Worker's own fetch to the checklist
+    // page (bot protection, confirmed via /scan), but the actual PDF files
+    // live on Shopify's asset CDN, which process-one fetches directly and
+    // has no such block. So instead of the Worker scraping the page itself,
+    // this takes a {name,url} link list extracted from a real browser
+    // session (topps.com never blocks the browser you're actually reading it
+    // in) and runs the same known-set diff /scan does.
+    if (url.pathname === '/catalog/topps/update/filter-candidates') {
+      if (request.method !== 'POST') return json({ ok: false, error: 'POST only' }, 405);
+      if (!env.MTG_CATALOG_R2) return json({ ok: false, error: 'Offline catalog R2 binding is not configured' }, 503);
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId, ['owner', 'admin']);
+      if (auth.error) return auth.error;
 
-      const candidates = scraped
-        .map(entry => ({
-          name: entry.name,
-          url: entry.url,
-          sport: entry.sport,
-          year: entry.year,
-          brand: entry.brand,
-          // Best-effort candidate id -- the real id is only known once the PDF is
-          // parsed (product name comes from the PDF text), so this is a heuristic
-          // filter only. A false "new" just means a harmless re-merge no-op.
-          candidateSetId: slugify([entry.year, String(entry.name || '').replace(/checklist/ig, ''), entry.sport].filter(Boolean).join(' ')),
-        }))
-        .filter(c => !knownSetIds.has(c.candidateSetId));
+      const body = await request.json().catch(() => ({}));
+      const entries = (Array.isArray(body.entries) ? body.entries : [])
+        .map(e => ({ name: String(e?.name || '').trim(), url: String(e?.url || '').trim() }))
+        .filter(e => e.name && /\.pdf(\?|$)/i.test(e.url));
+      if (!entries.length) return json({ ok: false, error: 'entries (array of {name,url} pointing at .pdf files) is required' }, 400);
 
-      return json({ ok: true, totalOnSite: scraped.length, alreadyImported: scraped.length - candidates.length, candidates });
+      const candidates = await diffToppsCandidates(env, entries);
+      return json({ ok: true, totalSubmitted: entries.length, alreadyImported: entries.length - candidates.length, candidates });
     }
 
     // POST /catalog/topps/update/process-one -- owner/admin only. Fetches one
