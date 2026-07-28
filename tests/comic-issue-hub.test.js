@@ -66,6 +66,10 @@ assert.match(dashboard,/function loadMetronComicSeriesPage/,'selected Metron run
 assert.match(dashboard,/series_id:String\(state\.series\.id\),page:String\(page\)/,'every issue page must retain the exact selected series id');
 assert.match(dashboard,/function loadAllMetronComicSeriesIssues/,'selected comic runs must expose a dedicated load-all action');
 assert.match(dashboard,/LOAD ALL \$\{total\}/,'the comic pager must make the full-run action visible');
+assert.match(dashboard,/function loadAllMetronComicSeriesRun/,'an issue-filtered run must still expose a one-click whole-run loader');
+assert.match(dashboard,/LOAD ALL \$\{runTotal\} ISSUES \/ COVERS/,'the issue-filtered pager must show the complete run count');
+assert.match(dashboard,/state\.parsed=\{\.\.\.state\.parsed,issueNumber:''\}/,'loading a whole run must explicitly remove only the issue-number filter');
+assert.match(dashboard,/await loadMetronComicSeriesPage\(1\)[\s\S]*await loadAllMetronComicSeriesIssues\(\)/,'whole-run loading must discover real pagination before fetching every page');
 assert.match(dashboard,/function loadAllComicVariantCovers/,'a selected issue must expose a separate on-demand variant-cover loader');
 assert.match(dashboard,/LOAD ALL VARIANT COVERS/,'the issue cover picker must make the full variant-cover action visible');
 assert.match(dashboard,/buildSweepQueries\(context,true\)/,'the issue-level load-all action must use the broad provider query set');

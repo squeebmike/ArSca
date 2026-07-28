@@ -17,7 +17,7 @@
  *   LBA_KV
  *   MTG_CATALOG_R2 (R2 must be enabled for the Cloudflare account)
  */
-// Production release marker: 2026.07.28.05-issue-variant-covers
+// Production release marker: 2026.07.28.06-comic-load-controls
 
 // Same parser that built the live 740-set/426,540-card Topps catalog (see
 // scripts/import-topps-checklists.js -> scripts/topps/merge-and-publish.mjs).
