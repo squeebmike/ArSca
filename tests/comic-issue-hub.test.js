@@ -76,6 +76,7 @@ assert.match(dashboard,/ISSUES \$\{start\}-\$\{end\} OF \$\{total\}/,'comic pagi
 assert.match(dashboard,/NEXT 20/,'long comic runs need an explicit next-page control');
 assert.match(worker,/url\.searchParams\.get\('page'\)/,'the Worker must accept a requested Metron issue page');
 assert.match(worker,/pagination, priceCandidates/,'the Worker must return issue pagination metadata');
+assert.match(worker,/reportedPageSize \|\| \(page === 1 && rawIssues\.length \? rawIssues\.length : 100\)/,'Metron pagination must infer its real 100-record page instead of inventing extra 20-record pages');
 assert.doesNotMatch(worker,/const issues = rawIssues\.slice\(0, 20\)/,'the Worker must not truncate an upstream Metron page');
 assert.match(dashboard,/comic_series_preferences_v1/,'recent comic runs must persist across devices');
 const metronSearch=dashboard.slice(dashboard.indexOf('async function searchMetronComicCatalog'),dashboard.indexOf('async function hydrateMetronComicResult'));

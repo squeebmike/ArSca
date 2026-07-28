@@ -17,7 +17,7 @@
  *   LBA_KV
  *   MTG_CATALOG_R2 (R2 must be enabled for the Cloudflare account)
  */
-// Production release marker: 2026.07.28.03-comic-cover-loader
+// Production release marker: 2026.07.28.04-comic-page-size
 
 // Same parser that built the live 740-set/426,540-card Topps catalog (see
 // scripts/import-topps-checklists.js -> scripts/topps/merge-and-publish.mjs).
@@ -4017,7 +4017,11 @@ export default {
             rawIssues = Array.isArray(metron.data) ? metron.data : (metron.data?.results || []);
           }
           const metronPage = Array.isArray(metron.data) ? {} : (metron.data || {});
-          const pageSize = Math.max(1, Number(metronPage.page_size || metronPage.pageSize || 20) || 20);
+          // Metron's paginated response currently omits page_size while returning
+          // up to 100 issues. Falling back to 20 invents nonexistent pages (for
+          // example, a 150-record run became eight pages instead of two).
+          const reportedPageSize = Number(metronPage.page_size || metronPage.pageSize || 0);
+          const pageSize = Math.max(1, reportedPageSize || (page === 1 && rawIssues.length ? rawIssues.length : 100));
           const total = Math.max(rawIssues.length, Number(metronPage.count || metronPage.total || selectedSeries?.issueCount || rawIssues.length) || 0);
           const totalPages = Math.max(1, Math.ceil(total / pageSize));
           const pagination = {
