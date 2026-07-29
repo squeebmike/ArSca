@@ -25,7 +25,42 @@
   const SEALED_TERMS = ['booster box','booster bundle','play booster','play booster display','collector booster','collector booster box','draft booster','set booster','booster display','elite trainer box','etb','hobby box','blaster','mega box','secret lair','secret lair drop','commander deck','starter kit','precon','tin','pack','case','display','drop','sealed'];
   const POKEMON_TERMS = ['pokemon','pikachu','charizard','bulbasaur','squirtle','charmander','umbreon','eevee','mew','mewtwo','gengar','rayquaza','vmax','vstar','sir','illustration rare','trainer gallery','swsh','svp','151','prismatic evolutions','evolving skies','surging sparks','paldea evolved','obsidian flames'];
   const COMIC_TERMS = ['asm','amazing spider-man','tmnt','teenage mutant ninja turtles','uxm','uncanny x-men','x-men','hulk','fantastic four','ff','batman','detective','tec','spawn','walking dead','venom','newsstand','direct','marvel','dc','mirage','issue','facsimile','reprint'];
-  const FILLER = new Set(['the','lookup','price','value','please']);
+  // Only "the/lookup/price/value/please" originally -- nowhere near enough to
+  // survive a spoken/natural-language request ("do you have a charizard from
+  // base set"). PPT's own search docs only demonstrate clean 2-4 word phrases
+  // (e.g. "charizard base set"), not full sentences.
+  const FILLER = new Set([
+    'the','a','an','lookup','price','value','please','thanks','thank','you',
+    'do','does','did','is','are','was','were','have','has','had','can','could','would','should','will',
+    'i','im','me','my','we','us','our','it','its','that','this','these','those',
+    'looking','look','want','wanted','need','needed','got','get','getting','find','finding','show','showing','see','seeing','know','tell',
+    'any','some','there','here','if','whether','so','just','like','pull','pulling','up',
+    'for','from','of','with','about','on','at','to','in','into','out',
+    'by','artist','illustrated','drawn','all','every','each'
+  ]);
+  // Pokemon rarity shorthand -> the canonical rarity text PPT's rarity field
+  // actually stores. Matches what pokemonExpandSearchAbbreviations already
+  // expands for free-text search; also used to fill the dedicated `rarity`
+  // filter param, which free-text search alone can't target precisely.
+  const RARITY_MAP = {
+    sir:'Special Illustration Rare', sar:'Special Art Rare', ir:'Illustration Rare', ar:'Art Rare',
+    'hyper rare':'Hyper Rare', 'rainbow rare':'Rainbow Rare', 'secret rare':'Secret Rare', 'ultra rare':'Ultra Rare',
+    'ace spec':'ACE SPEC Rare', 'full art':'Full Art', 'trainer gallery':'Trainer Gallery', 'amazing rare':'Amazing Rare',
+    radiant:'Radiant', gx:'GX', ex:'EX', vmax:'VMAX', vstar:'VSTAR', v:'V', 'double rare':'Double Rare', 'shiny rare':'Shiny Rare',
+  };
+  const CARD_TYPE_MAP = { trainer:'Trainer', energy:'Energy', pokemon:'Pokemon' };
+  // Voice-to-text dictates digits and spelled-out letters one at a time
+  // ("one four three slash one four two", "s i r") instead of writing them
+  // as words/acronyms. Collapse runs of 2+ before anything else touches them.
+  const DIGIT_WORDS = { zero:'0', oh:'0', one:'1', two:'2', three:'3', four:'4', five:'5', six:'6', seven:'7', eight:'8', nine:'9' };
+  const DIGIT_WORD_RE = new RegExp('\\b(?:' + Object.keys(DIGIT_WORDS).join('|') + ')(?:\\s+(?:' + Object.keys(DIGIT_WORDS).join('|') + ')){1,}\\b', 'gi');
+  const LETTER_RUN_RE = /\b[a-z](?:\s+[a-z]){1,}\b/gi;
+  function collapseSpokenDigits(text = ''){
+    return String(text).replace(DIGIT_WORD_RE, run => run.trim().split(/\s+/).map(w => DIGIT_WORDS[w.toLowerCase()]).join(''));
+  }
+  function collapseSpokenLetters(text = ''){
+    return String(text).replace(LETTER_RUN_RE, run => run.trim().split(/\s+/).join(''));
+  }
 
   function unique(values, limit = 8){
     const seen = new Set(), out = [];
@@ -52,7 +87,10 @@
 
   function normalizeUserQuery(rawQuery = ''){
     const raw = String(rawQuery || '').trim();
-    let normalized = raw.normalize('NFKC')
+    // Collapse spoken digit/letter runs first ("one four three" -> "143",
+    // "s i r" -> "sir") so the existing slash/number normalization below and
+    // every downstream detector sees them as the real tokens they represent.
+    let normalized = collapseSpokenLetters(collapseSpokenDigits(raw)).normalize('NFKC')
       .replace(/[\u2018\u2019\u201c\u201d]/g, '').replace(/[\u2013\u2014]/g, '-')
       .replace(/\b(?:card\s+)?(?:number|no\.?)[\s#]*(\d{1,4})\s+(?:out\s+of|over|of)\s+(\d{1,4})\b/gi, '$1/$2')
       .replace(/\b(\d{1,4})\s+(?:slash|out\s+of|over)\s+(\d{1,4})\b/gi, '$1/$2')
@@ -79,6 +117,25 @@
 
   function includesAny(text, values){ return values.some(v => text.includes(v)); }
 
+  const ARTIST_TRIGGER_RE = /\b(?:art(?:work)?\s*by|illustrated\s*by|drawn\s*by|artist(?:\s*is|\s*name)?|by)\s+([a-z][a-z' .-]{1,60}?)\s*$/i;
+  const RARITY_KEYS_SORTED = Object.keys(RARITY_MAP).sort((a,b) => b.length - a.length);
+  const RARITY_RE = new RegExp('\\b(?:' + RARITY_KEYS_SORTED.map(k => k.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('|') + ')\\b', 'i');
+  const CARD_TYPE_RE = /\b(trainer|energy)\b/i;
+  const SHOW_ALL_RE = /\b(?:all|every|each)\b/i;
+
+  function extractPokemonArtist(text){
+    const m = ARTIST_TRIGGER_RE.exec(text);
+    return m ? m[1].replace(/\s+/g,' ').trim() : '';
+  }
+  function extractPokemonRarity(text){
+    const m = RARITY_RE.exec(text);
+    return m ? RARITY_MAP[m[0].toLowerCase()] : '';
+  }
+  function extractPokemonCardType(text){
+    const m = CARD_TYPE_RE.exec(text);
+    return m ? CARD_TYPE_MAP[m[1].toLowerCase()] : '';
+  }
+
   function extractEntities(query){
     const text = query.normalized;
     const brands = SPORTS_BRANDS.filter(v => text.includes(v));
@@ -91,6 +148,8 @@
       years:query.years, year:query.years[0] || null,
       cardNumber:query.collectorNumbers[0] || query.cardNumbers[0] || plainNumbers[plainNumbers.length - 1] || '', collectorNumbers:query.collectorNumbers,
       issueNumber:query.issueNumbers[0] || '', brands, brand:brands[0] || '', player:playerKey ? SPORTS_PLAYERS[playerKey] : '',
+      pokemonArtist:extractPokemonArtist(text), pokemonRarity:extractPokemonRarity(text), pokemonCardType:extractPokemonCardType(text),
+      wantsAll:SHOW_ALL_RE.test(text),
       rookieIntent:/\b(?:rookie|rc)\b/.test(text), mechanics, sealedTypes, variantTerms,
       language:/\b(?:japanese|jpn)\b/.test(text) ? 'japanese' : /\benglish\b/.test(text) ? 'english' : ''
     };
@@ -166,8 +225,18 @@
   }
 
   function pokemonQueries(query, entities){
-    const text = query.normalized, out = [text];
-    if(entities.cardNumber) out.push([text.replace(String(entities.cardNumber).toLowerCase(),''), entities.cardNumber].filter(Boolean).join(' '));
+    const text = query.normalized;
+    // "by NAME" is routed through the dedicated artist filter param (search
+    // never scans the artist field per PPT's docs), so strip it out of the
+    // free-text query rather than sending it as noise.
+    const withoutArtist = entities.pokemonArtist ? text.replace(ARTIST_TRIGGER_RE, '').trim() : text;
+    const baseText = withoutArtist || text;
+    // Stopword-filtered keywords are the primary query -- PPT's docs only
+    // show clean phrases ("charizard base set"); a full spoken sentence full
+    // of "do/you/have/a/from" reliably returns nothing from their search.
+    const keywordText = baseText.split(/\s+/).filter(t => t && !FILLER.has(t)).join(' ') || baseText;
+    const out = [keywordText, baseText, text];
+    if(entities.cardNumber) out.push([keywordText.replace(String(entities.cardNumber).toLowerCase(),''), entities.cardNumber].filter(Boolean).join(' '));
     if(/charizard/.test(text) && /\bsir\b/.test(text) && /\b151\b/.test(text)) out.push('Charizard ex 199/165', 'Charizard ex Scarlet Violet 151');
     if(/bulbasaur/.test(text) && /\bir\b/.test(text) && /mega evolution/.test(text)) out.push('Bulbasaur 133/132', 'Bulbasaur illustration rare Mega Evolution');
     if(/pikachu/.test(text) && /swsh050/.test(text)) out.unshift('Pikachu SWSH050');
@@ -190,7 +259,21 @@
     const adapters = [];
     categories.forEach(category => {
       const confidence = Number(intent.confidenceByCategory[category] || 50) / 100;
-      if(category === 'pokemon') adapters.push(adapter('pokemon','PokemonPriceTracker','/pricing/pokemon/cards',pokemonQueries(normalized,entities),confidence,{ language:entities.language || 'english', limit:5 }));
+      if(category === 'pokemon') {
+        // A specific card number means "find this one card" -- keep the
+        // small default. Rarity/artist/"show all" with no number means
+        // browsing many matches, so ask PPT for more up front.
+        const isBrowse = entities.wantsAll || (!entities.cardNumber && (entities.pokemonRarity || entities.pokemonArtist || entities.pokemonCardType));
+        adapters.push(adapter('pokemon','PokemonPriceTracker','/pricing/pokemon/cards',pokemonQueries(normalized,entities),confidence,{
+          language:entities.language || 'english', limit:isBrowse ? 30 : 5,
+          ...(entities.pokemonArtist ? { artist:entities.pokemonArtist } : {}),
+          // Rarity/cardType only applied when browsing -- an exact card-number
+          // lookup (e.g. "charizard ex 199/165") must not risk being filtered
+          // out by a guessed rarity string that may not match PPT's stored value.
+          ...(isBrowse && entities.pokemonRarity ? { rarity:entities.pokemonRarity } : {}),
+          ...(isBrowse && entities.pokemonCardType ? { cardType:entities.pokemonCardType } : {}),
+        }));
+      }
       if(category === 'sports' || category === 'graded') {
         const queries = sportsQueries(normalized,entities);
         if(category === 'sports') adapters.push(adapter('sports','SportsCardsPro','/pricing/sportscardspro/products',queries,confidence,{ maxQueries:3 }));
@@ -211,6 +294,11 @@
   function queriesFor(plan, category, provider){
     const cat = categoryKey(category), found = (plan?.adapters || []).find(a => a.category === cat && (!provider || a.provider === provider));
     return found?.queries?.slice() || [];
+  }
+
+  function filtersFor(plan, category, provider){
+    const cat = categoryKey(category), found = (plan?.adapters || []).find(a => a.category === cat && (!provider || a.provider === provider));
+    return found?.filters || {};
   }
 
   function resultText(result = {}){
@@ -273,5 +361,5 @@
     return [...merged.values()].sort((a,b)=>Number(b.rankScore||0)-Number(a.rankScore||0));
   }
 
-  return { normalizeUserQuery, detectSearchIntent, buildSearchPlan, queriesFor, mergeAndRankResults, scoreResult, categoryKey, unique };
+  return { normalizeUserQuery, detectSearchIntent, buildSearchPlan, queriesFor, filtersFor, mergeAndRankResults, scoreResult, categoryKey, unique };
 });

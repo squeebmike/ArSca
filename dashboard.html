@@ -20152,6 +20152,9 @@ function buildUniversalSearchPlan(rawQuery, selectedCategory = ''){
 function universalSearchQueries(plan, category, provider){
   return universalSearchAdapter()?.queriesFor(plan, category, provider) || [];
 }
+function universalSearchFilters(plan, category, provider){
+  return universalSearchAdapter()?.filtersFor(plan, category, provider) || {};
+}
 function universalPlanHas(plan, category){
   return (plan?.intent?.inferredCategories || []).includes(category);
 }
@@ -22436,13 +22439,14 @@ async function searchQuickCatalog(q, cat, searchPlan = buildUniversalSearchPlan(
       || (/\b(jpn|japanese)\b.{0,40}\d/i.test(q) && q.length > 30);
     // Kick off sealed-products fetch in parallel with cards — skip cards when parse-title
     const pokemonSearchQuery = universalSearchQueries(searchPlan, 'pokemon', 'PokemonPriceTracker')[0] || q;
+    const pokemonSearchFilters = universalSearchFilters(searchPlan, 'pokemon', 'PokemonPriceTracker');
     const sealedSearchQuery = universalSearchQueries(searchPlan, 'sealed', 'PokemonPriceTracker')[0] || q;
     const sealedPromise = isSealedQuery
       ? searchPokemonSealedProducts(sealedSearchQuery).catch(() => ({ products:[] }))
       : null;
     try {
       const [searchResult, sealedResult] = await Promise.all([
-        (isParseTitleQuery || isSealedQuery) ? Promise.resolve({ cards:[], ranked:[], requestPath:'', cacheStatus:'skip' }) : searchPokemonPriceTrackerCards(pokemonSearchQuery, searchLanguage),
+        (isParseTitleQuery || isSealedQuery) ? Promise.resolve({ cards:[], ranked:[], requestPath:'', cacheStatus:'skip' }) : searchPokemonPriceTrackerCards(pokemonSearchQuery, searchLanguage, pokemonSearchFilters),
         sealedPromise || Promise.resolve({ products:[] }),
       ]);
       if(!isParseTitleQuery && !isSealedQuery) recordSearchPlanRoute(searchPlan, '/pricing/pokemon/cards', pokemonSearchQuery, searchResult.cards?.length || 0);
@@ -25327,7 +25331,7 @@ function pokemonExpandSearchAbbreviations(q){
 }
 
 let _pptSearchAbortController = null;
-async function searchPokemonPriceTrackerCards(rawQuery = '', language = 'english'){
+async function searchPokemonPriceTrackerCards(rawQuery = '', language = 'english', filters = null){
   if(pokemonPriceTrackerQuotaBlocked()) throw new Error('PokemonPriceTracker quota exhausted');
   // The documented /cards search accepts multi-word natural language across card
   // name, set, number, rarity, and type. Preserve the complete adapted query.
@@ -25337,6 +25341,15 @@ async function searchPokemonPriceTrackerCards(rawQuery = '', language = 'english
   const lang = language === 'japanese' ? 'japanese' : (/\bjapanese?\b|\bjpn\b/i.test(rawQuery) ? 'japanese' : 'english');
   // Pass the ORIGINAL raw query to the ranker so set-word scoring still uses "swsh", "promo" etc.
   const params = new URLSearchParams({ search:query, language:lang, limit:'5' });
+  // Optional precise filters from the universal search-routing adapter (artist,
+  // rarity, cardType, and a browse-mode limit override) -- PPT's `search` param
+  // never scans artist, so these must ride along as dedicated query params.
+  if(filters && typeof filters === 'object') {
+    if(filters.artist) params.set('artist', String(filters.artist));
+    if(filters.rarity) params.set('rarity', String(filters.rarity));
+    if(filters.cardType) params.set('cardType', String(filters.cardType));
+    if(filters.limit) params.set('limit', String(filters.limit));
+  }
   _pptSearchAbortController?.abort();
   _pptSearchAbortController = new AbortController();
   const result = await pokemonPriceTrackerCardsRequest(params, 'cards.search.limit5', { signal:_pptSearchAbortController.signal });
