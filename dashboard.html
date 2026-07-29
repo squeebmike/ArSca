@@ -19662,18 +19662,29 @@ function scoreSmartItem(item, q){
   let score = 0;
   const why = [];
   if(!needle.clean) return { score:0, why };
-  if(hay.includes(needle.clean)) { score += 120; why.push('exact phrase'); }
+  const exactPhrase = hay.includes(needle.clean);
+  if(exactPhrase) { score += 120; why.push('exact phrase'); }
+  let numberMatched = false;
   needle.cardNumbers.forEach(num => {
     const cardNum = smartNormalizeText(item.card_number || item.issue || '');
-    if(cardNum && (cardNum === num || cardNum.includes(num) || num.includes(cardNum))) { score += 90; why.push('number'); }
-    else if(hay.includes(num)) { score += 45; why.push('number text'); }
+    if(cardNum && (cardNum === num || cardNum.includes(num) || num.includes(cardNum))) { score += 90; why.push('number'); numberMatched = true; }
+    else if(hay.includes(num)) { score += 45; why.push('number text'); numberMatched = true; }
   });
+  let matchedTokens = 0;
   needle.tokens.forEach(tok => {
-    if(hay.includes(tok)) { score += 18; why.push(tok); return; }
+    if(hay.includes(tok)) { score += 18; why.push(tok); matchedTokens++; return; }
     const close = words.some(w => w.length > 3 && Math.abs(w.length - tok.length) <= 2 && levenshtein(w, tok) <= 2);
-    if(close) { score += 8; why.push('fuzzy ' + tok); }
+    if(close) { score += 8; why.push('fuzzy ' + tok); matchedTokens++; }
   });
-  if(needle.tokens.length && needle.tokens.every(tok => hay.includes(tok) || words.some(w => w.length > 3 && levenshtein(w, tok) <= 2))) score += 30;
+  if(needle.tokens.length && matchedTokens === needle.tokens.length) score += 30;
+  // A multi-word query ("pitch black") must match every word (exact or close
+  // fuzzy) somewhere in the item, not just one -- otherwise a single common
+  // word ("black") drags in unrelated items ("Black Bolt") that share no
+  // other term with the search. Exact-phrase and card-number hits are strong
+  // enough signals on their own to skip this requirement.
+  if(!exactPhrase && !numberMatched && needle.tokens.length >= 2 && matchedTokens < needle.tokens.length) {
+    return { score:0, why:[] };
+  }
   return { score, why:[...new Set(why)].slice(0,4) };
 }
 
