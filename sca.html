@@ -2613,11 +2613,11 @@ function capture(){
 }
 // ── CARDSIGHT AI — card identification (sports cards / Pokemon TCG / One Piece TCG) ──
 // Routes through the Cloudflare Worker so the CardSight API key never touches the browser.
-async function callCardSight(base64Image, opts = {}){
+async function callCardSightOnce(base64Image, segment){
   const res = await scannerWorkerFetch('/cardsight/identify', {
     method: 'POST',
     headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({ image: base64Image, segment: opts.segment || '' })
+    body: JSON.stringify({ image: base64Image, segment: segment || '' })
   });
   const respText = await res.text();
   if(!res.ok){
@@ -2633,6 +2633,24 @@ async function callCardSight(base64Image, opts = {}){
   return d; // { success, requestId, detections:[{confidence, card, grading?}], processingTime }
 }
 
+// CardSight's real segment values aren't published anywhere we have access
+// to -- these are best-effort guesses from our own category names. If a
+// guess is wrong CardSight will reject the segmented path, so a scoped call
+// always falls back to a plain unscoped identify rather than ever failing a
+// scan over a wrong guess.
+const CARDSIGHT_SEGMENT_HINTS = { 'Sports Card':'sports', 'Pokemon TCG':'pokemon', 'One Piece TCG':'one-piece' };
+
+async function callCardSight(base64Image, opts = {}){
+  const segment = opts.segment || '';
+  if(!segment) return callCardSightOnce(base64Image, '');
+  try {
+    return await callCardSightOnce(base64Image, segment);
+  } catch(e) {
+    console.warn('[CardSight] segment "' + segment + '" rejected, retrying unscoped:', e.message);
+    return callCardSightOnce(base64Image, '');
+  }
+}
+
 // CardSight doesn't return a human-readable game/category label directly, so infer
 // it from the fields it does return. Only Sports Card / Pokemon TCG / One Piece TCG
 // are reachable here — those are the categories CardSight identifies today.
@@ -2644,10 +2662,30 @@ function classifyCardSightGame(card){
   return 'Sports Card';
 }
 
+// Turns CardSight's raw {key,value} field array into the {label,value} shape
+// addBackInfo() already renders, plus a flat "Key: value · Key: value" line
+// for key_notes so the same data still reaches inventory even for cards that
+// never get a back scan (Pokemon TCG, One Piece TCG -- only Sports Card gets
+// the flip-and-scan-back prompt).
+function cardSightFieldsToStats(fields){
+  return (Array.isArray(fields) ? fields : [])
+    .filter(f => f && f.key && f.value != null && f.value !== '')
+    .slice(0, 8)
+    .map(f => ({ label: String(f.key), value: String(f.value) }));
+}
+function cardSightFieldsToNotes(fields){
+  return cardSightFieldsToStats(fields).map(s => s.label + ': ' + s.value).join(' · ');
+}
+
 function mapCardSightDetection(det){
   const card = det.card || {};
   const numberedTo = card.parallel?.numberedTo || card.numberedTo || null;
   const game = classifyCardSightGame(card);
+  const grading = det.grading || {};
+  // CardSight's exact grading-object shape isn't documented anywhere we have
+  // access to -- try every plausible cert-number key so this picks it up
+  // automatically the moment a real graded scan reveals which one they use.
+  const certNumber = String(grading.certNumber || grading.cert_number || grading.cert || grading.certificationNumber || grading.certification_number || '').trim();
   return {
     game,
     name: card.name || 'Unknown card',
@@ -2660,10 +2698,19 @@ function mapCardSightDetection(det){
     serial_number: numberedTo ? ('/' + numberedTo) : '',
     confidence: String(det.confidence || 'Medium').toLowerCase(),
     confidence_reason: 'CardSight AI match',
-    grading_company: det.grading?.company?.name || '',
-    grade: det.grading?.grade?.value || '',
-    cert_number: '',
+    grading_company: grading.company?.name || '',
+    grade: grading.grade?.value || '',
+    cert_number: certNumber,
     cardsightCardId: card.id || '',
+    // Numeric segment id CardSight assigns the card to -- no name mapping is
+    // published, but logging it consistently lets us build one empirically.
+    cardsightSegmentId: card.segmentId || '',
+    // Raw structured attributes CardSight extracted (player/team/rookie/
+    // autograph/etc for sports, HP/stage/etc for Pokemon) -- previously
+    // discarded after only scanning it for 3 keys to guess the game.
+    cardsightFields: Array.isArray(card.fields) ? card.fields : [],
+    stats: cardSightFieldsToStats(card.fields),
+    key_notes: cardSightFieldsToNotes(card.fields),
     search_query: [card.name, card.year, card.setName || card.releaseName, card.parallel?.name && card.parallel.name !== 'Base' ? card.parallel.name : '', card.number ? '#'+card.number : ''].filter(Boolean).join(' '),
     cx: 50, cy: 50,
   };
@@ -3416,7 +3463,9 @@ async function scanBack(img){
   hs.textContent = 'READING BACK...';
   let result;
   try {
-    result = await callCardSight(img);
+    // Unlike the front scan, we already know the game from the front
+    // detection, so this one can actually use a segment hint.
+    result = await callCardSight(img, { segment: CARDSIGHT_SEGMENT_HINTS[item?.game] || '' });
   } catch(e) {
     hs.textContent = 'BACK SCAN FAILED';
     toast('Back scan error: ' + e.message);
@@ -3439,6 +3488,18 @@ async function scanBack(img){
     if(back.parallel && back.parallel !== 'Base') item.parallel = back.parallel;
     if(back.grading_company) item.grading_company = back.grading_company;
     if(back.grade)           item.grade = back.grade;
+    // The cert number is usually only readable on the front (slab label),
+    // but pick it up here too in case the back read caught it -- and run
+    // the same auto PSA lookup addBubble() does if this is the first time
+    // it's been seen for this card.
+    if(back.cert_number && !item.cert_number) {
+      item.cert_number = back.cert_number;
+      if(getType(item) === 'psa') {
+        const certInp = document.getElementById('slab-cert-' + lastBub.id);
+        if(certInp && !certInp.value) certInp.value = item.cert_number;
+        psaLookup(lastBub.id, String(item.cert_number).replace(/\D/g, ''));
+      }
+    }
   }
 
   lastBub.el._backB64 = img;
@@ -4037,6 +4098,13 @@ function addBubble(item,stock,imgUrl,apiPrintings,bestMatchIdx){
       if(certInp && !certInp.value) certInp.value = item.cert_number;
       psaLookup(id, String(item.cert_number).replace(/\D/g,''));
     }, 400);
+  }
+
+  // Pokemon TCG / One Piece TCG never get a "scan back" prompt, so this is
+  // the only chance to show what CardSight actually read off the card
+  // (HP/stage/type, etc) instead of discarding it after classification.
+  if(item.stats && item.stats.length) {
+    setTimeout(() => addBackInfo(id, item, 'AI-READ DETAILS'), 400);
   }
 
   // ── DRAG-TO-MOVE ────────────────────────────────────────────
@@ -4839,11 +4907,11 @@ function showBackStandalone(back){
     </div>`;
   document.body.appendChild(el);bubs.push({id,el,ax:window.innerWidth/2,ay:window.innerHeight/2,ct:'tcg'});drawLines();
 }
-function addBackInfo(bubId,back){
+function addBackInfo(bubId,back,header){
   const el=document.getElementById(bubId);if(!el)return;el.querySelector('.backinfo')?.remove();
   const statsHtml=back.stats&&back.stats.length?back.stats.slice(0,6).map(s=>`<div class="backinfo-row"><span>${s.label}</span><span class="backinfo-val">${s.value}</span></div>`).join(''):'';
   const bi=document.createElement('div');bi.className='backinfo';
-  bi.innerHTML=`<div class="backinfo-hdr">⟳ BACK OF CARD</div>
+  bi.innerHTML=`<div class="backinfo-hdr">⟳ ${header||'BACK OF CARD'}</div>
     ${back.card_number?`<div class="backinfo-row"><span style="color:var(--gold)">Card #</span><span class="backinfo-val" style="color:var(--gold);font-family:'Orbitron',monospace;font-size:11px">${back.card_number}</span></div>`:''}
     ${back.set_name?`<div class="backinfo-row"><span>Set</span><span class="backinfo-val">${back.set_name}</span></div>`:''}
     ${back.year?`<div class="backinfo-row"><span>Year</span><span class="backinfo-val">${back.year}</span></div>`:''}
