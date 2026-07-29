@@ -5383,7 +5383,7 @@ const SETTINGS_PANEL_MAP = {
   profile:['vendor-profile-panel'],
   payments:['payment-settings-panel'],
   sync:['inventory-sync-panel','sync-queue-panel'],
-  catalogs:['backoffice-research-panel','offline-cache-panel','pokemon-export-panel','offline-catalog-manager-panel'],
+  catalogs:['backoffice-research-panel','offline-cache-panel','offline-catalog-manager-panel'],
   inventory:['spreadsheet-panel'],
   users:['store-members-panel'],
   theme:['branding-theme-panel'],
@@ -5494,7 +5494,6 @@ function organizeRegisterLayout(){
   ensurePaymentSettingsPanel(backoffice);
   ensureResearchSettingsPanel(backoffice);
   ensureOfflineCachePanel(backoffice);
-  ensurePokemonExportPanel(backoffice);
   ensureOfflineCatalogManagerPanel(backoffice);
   ensurePricingQaPanel(backoffice);
   ensureStoreMembersPanel(backoffice);
@@ -6013,24 +6012,6 @@ async function renderOfflineCachePanel(status = ''){
   renderPokemonSetSyncPanel().catch(() => {});
 }
 
-function ensurePokemonExportPanel(backoffice){
-  if(document.getElementById('pokemon-export-panel')) return;
-  const ctx = getAccountContext();
-  if(ctx.isDemo) return;
-  const panel = document.createElement('div');
-  panel.id = 'pokemon-export-panel';
-  panel.className = 'settings-panel';
-  panel.innerHTML = `
-    <div class="settings-panel-header">
-      <h3 class="settings-panel-title">PokémonPriceTracker Business Export</h3>
-      <p class="settings-panel-desc">Download full pricing catalogs from PokémonPriceTracker for offline research. Refreshed daily at 6:00 AM UTC. Limit: 2 downloads per type per day.</p>
-    </div>
-    <div id="ppt-export-rows"></div>`;
-  const ref = document.getElementById('pokemon-export-panel-anchor') || backoffice.querySelector('#offline-cache-panel') || backoffice.lastElementChild;
-  ref.after ? ref.after(panel) : backoffice.appendChild(panel);
-  renderPokemonExportPanel();
-}
-
 function ensureOfflineCatalogManagerPanel(backoffice){
   if(!backoffice || document.getElementById('offline-catalog-manager-panel')) return;
   const panel = document.createElement('div');
@@ -6042,7 +6023,7 @@ function ensureOfflineCatalogManagerPanel(backoffice){
       <p class="settings-panel-desc">Official provider catalogs for offline research and set browsing. Catalog rows are reference data only; they never create inventory.</p>
     </div>
     <div id="offline-catalog-manager-body" style="font-family:monospace;font-size:10px;color:var(--dim)">Loading offline catalog choices...</div>`;
-  const ref = document.getElementById('pokemon-export-panel') || backoffice.querySelector('#offline-cache-panel') || backoffice.lastElementChild;
+  const ref = backoffice.querySelector('#offline-cache-panel') || backoffice.lastElementChild;
   ref.after ? ref.after(panel) : backoffice.appendChild(panel);
   // This panel is created while the settings shell is being initialized. Defer
   // its first read until the catalog constants and offline modules are ready.
@@ -6476,42 +6457,6 @@ async function syncPriceChartingOffline(category){
   renderOfflineCatalogManagerPanel();
 }
 async function clearPriceChartingOffline(category){await window.ArsCaPriceChartingOffline?.clear(category);renderOfflineCatalogManagerPanel();toast_dash(`${category} offline catalog cleared`);}
-
-async function renderPokemonExportPanel(){
-  const container = document.getElementById('ppt-export-rows');
-  if(!container) return;
-  const metaRows = await Promise.all(PPT_EXPORT_TYPES.map(({ type }) =>
-    catalogDbGet('meta', `export_${type}`).catch(() => null)
-  ));
-  container.innerHTML = PPT_EXPORT_TYPES.map(({ type, label, icon }, i) => {
-    const m = metaRows[i] || {};
-    const statusKey = `ppt_export_${type}_status`;
-    const downloading = localStorage.getItem(statusKey) === 'downloading';
-    const rowCount = m.rowCount ? m.rowCount.toLocaleString() : '—';
-    const syncedAt = m.downloadedAt ? new Date(m.downloadedAt).toLocaleString() : 'Never';
-    const generatedAt = m.generatedAt ? new Date(m.generatedAt).toLocaleString() : '—';
-    const downloadsLeft = m.downloadsLeft !== undefined && m.downloadsLeft !== '' ? m.downloadsLeft : '—';
-    const hasData = m.rowCount > 0;
-    const errHtml = m.error ? `<div class="setting-row-note" style="color:var(--c-warn,#f90)">${escHtml(m.error)}</div>` : '';
-    return `<div class="setting-row" style="display:flex;flex-direction:column;gap:4px;padding:10px 0;border-bottom:1px solid var(--c-border,#e5e5e5)">
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
-        <span style="font-weight:600">${icon} ${escHtml(label)}</span>
-        <span style="font-size:12px;color:var(--c-muted,#888)">
-          ${hasData ? `${rowCount} rows · synced ${syncedAt}` : 'Not downloaded'}
-          ${hasData ? ` · generated ${generatedAt}` : ''}
-          ${downloadsLeft !== '—' ? ` · <b>${downloadsLeft}</b> download${downloadsLeft === '1' ? '' : 's'} left today` : ''}
-        </span>
-        <div style="display:flex;gap:6px;flex-shrink:0">
-          <button class="btn btn-sm btn-primary" onclick="downloadPokemonExport('${type}')" ${downloading ? 'disabled' : ''}>
-            ${downloading ? 'Downloading…' : hasData ? '↻ Refresh' : '⬇ Download'}
-          </button>
-          ${hasData ? `<button class="btn btn-sm btn-ghost" onclick="clearPokemonExport('${type}')">Clear</button>` : ''}
-        </div>
-      </div>
-      ${errHtml}
-    </div>`;
-  }).join('');
-}
 
 async function syncPokemonQueries(queries = [], label = 'Pokemon cache'){
   const status = document.getElementById('offline-cache-status');
@@ -8812,7 +8757,7 @@ function betaWalkthroughs(){
     ],
     offlineCatalogs:[
       {title:'Offline Catalogs', body:'Offline catalogs help Research when network or API calls are limited. They are not owned inventory.', tab:'backoffice', target:'#offline-catalog-manager-panel'},
-      {title:'Pokemon Catalog', body:'Download or skip Pokemon catalog setup for beta. Skipping is allowed and does not block app use.', tab:'backoffice', target:'#pokemon-export-panel', checklist:{pokemonCatalogSkipped:'Skipped'}},
+      {title:'Pokemon Catalog', body:'Download or skip Pokemon catalog setup for beta. Skipping is allowed and does not block app use.', tab:'backoffice', target:'#offline-catalog-manager-panel', checklist:{pokemonCatalogSkipped:'Skipped'}},
       {title:'MTG Catalog', body:'Download or skip MTG catalog setup for beta. Skipping is allowed and does not block app use.', tab:'backoffice', target:'#offline-catalog-manager-panel', checklist:{mtgCatalogSkipped:'Skipped'}, finish:true}
     ],
     reportBug:[
@@ -20873,7 +20818,7 @@ async function downloadPokemonExport(type){
   const storeId = getActiveStoreId();
   const statusKey = `ppt_export_${type}_status`;
   localStorage.setItem(statusKey, 'downloading');
-  renderPokemonExportPanel();
+  refreshOfflineCatalogManagerPanel();
   try {
     const res = await fetch(WORKER + `/pricing/pokemon/export?type=${type}`, {
       cache: 'no-store',
@@ -20906,14 +20851,14 @@ async function downloadPokemonExport(type){
     localStorage.removeItem(statusKey);
     toast_dash('Export failed: ' + e.message);
   }
-  renderPokemonExportPanel();
+  refreshOfflineCatalogManagerPanel();
 }
 
 async function clearPokemonExport(type){
   const idbStore = `ppt_${type}`;
   await catalogDbClear(idbStore).catch(()=>{});
   await catalogDbPut('meta', { key:`export_${type}`, type, rowCount:0, downloadedAt:null, generatedAt:'', error:null }).catch(()=>{});
-  renderPokemonExportPanel();
+  refreshOfflineCatalogManagerPanel();
   toast_dash(`${type} export cache cleared`);
 }
 
@@ -22054,7 +21999,7 @@ async function runPriceLookup(){
       setPokemonOfflineBanner(navigator.onLine ? 'PPT offline catalog result. Select a card for optional live detail.' : 'Offline Mode: showing PPT bulk export catalog data.', 'good');
       return;
     } else if(!navigator.onLine) {
-      el.innerHTML = `<div style="color:var(--gold);line-height:1.6">No cached or catalog data found for this search.<br>To enable full offline research, download the PPT export catalog in Settings.<br><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><button class="hbtn" onclick="openSettingsSection('catalogs','offline-cache-panel')">OPEN OFFLINE CACHE</button><button class="hbtn" onclick="openSettingsSection('catalogs','pokemon-export-panel')">DOWNLOAD CATALOG</button></div></div>`;
+      el.innerHTML = `<div style="color:var(--gold);line-height:1.6">No cached or catalog data found for this search.<br>To enable full offline research, download the PPT export catalog in Settings.<br><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><button class="hbtn" onclick="openSettingsSection('catalogs','offline-cache-panel')">OPEN OFFLINE CACHE</button><button class="hbtn" onclick="openSettingsSection('catalogs','offline-catalog-manager-panel')">DOWNLOAD CATALOG</button></div></div>`;
       setPokemonOfflineBanner('Offline Mode: no cached Pokémon data found for "' + q + '".', 'bad');
       return;
     } else if(!pokemonOfflineReady) {
