@@ -16730,6 +16730,12 @@ async function renderStorefrontOrders(){
     list.innerHTML = `<div style="font-family:var(--font-mono);font-size:10px;color:var(--red);padding:10px;border:1px dashed var(--border);border-radius:8px;text-align:center">${escHtml(e.message)}</div>`;
     return;
   }
+  // Unfulfilled orders first (newest-first within each group) -- a pending
+  // order needing action shouldn't get buried under already-fulfilled ones.
+  orders = [...orders].sort((a, b) => {
+    const pendingDiff = (a.fulfillment_status === 'fulfilled' ? 1 : 0) - (b.fulfillment_status === 'fulfilled' ? 1 : 0);
+    return pendingDiff || new Date(b.created_at || 0) - new Date(a.created_at || 0);
+  });
   const pending = orders.filter(o => o.fulfillment_status !== 'fulfilled');
   if(count) count.textContent = (pending.length ? pending.length + ' pending' : 'all caught up') + ' · ' + orders.length + ' total';
   if(!orders.length) {
