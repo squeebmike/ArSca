@@ -19785,11 +19785,11 @@ function captureCardSightFrame(){
   return canvas.toDataURL('image/jpeg', 0.92).split(',')[1];
 }
 
-async function callCardSightDashboard(base64Image){
+async function callCardSightDashboardOnce(base64Image, segment){
   const res = await storeWorkerFetch('/cardsight/identify', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ image: base64Image }),
+    body: JSON.stringify({ image: base64Image, segment: segment || '' }),
   });
   const text = await res.text();
   if(!res.ok) throw new Error('CardSight error ' + res.status + ': ' + text.slice(0, 200));
@@ -19797,6 +19797,23 @@ async function callCardSightDashboard(base64Image){
   try { data = JSON.parse(text); } catch(e) { throw new Error('CardSight response not JSON'); }
   if(data.success === false) throw new Error('CardSight: ' + (data.error || 'identification failed'));
   return data; // { success, detections:[{confidence, card, grading?}], processingTime }
+}
+
+// CardSight's real segment values aren't published anywhere we have access
+// to -- these are best-effort guesses from our own category names. If a
+// guess is wrong CardSight will reject the segmented path, so a scoped call
+// always falls back to a plain unscoped identify rather than ever failing a
+// scan over a wrong guess.
+const CARDSIGHT_SEGMENT_HINTS_DASHBOARD = { sports:'sports', pokemon:'pokemon', one_piece:'one-piece' };
+
+async function callCardSightDashboard(base64Image, segment){
+  if(!segment) return callCardSightDashboardOnce(base64Image, '');
+  try {
+    return await callCardSightDashboardOnce(base64Image, segment);
+  } catch(e) {
+    console.warn('[CardSight] segment "' + segment + '" rejected, retrying unscoped:', e.message);
+    return callCardSightDashboardOnce(base64Image, '');
+  }
 }
 
 // CardSight doesn't return a human game/category label directly — infer it
@@ -19810,10 +19827,27 @@ function classifyCardSightGameDashboard(card){
   return 'Sports Card';
 }
 
+// Turns CardSight's raw {key,value} field array into a readable "Key: value
+// · Key: value" line -- previously this array was only ever scanned for 3
+// literal keys to guess the game, then discarded entirely.
+function cardSightFieldsToNoteDashboard(fields){
+  return (Array.isArray(fields) ? fields : [])
+    .filter(f => f && f.key && f.value != null && f.value !== '')
+    .slice(0, 8)
+    .map(f => f.key + ': ' + f.value)
+    .join(' · ');
+}
+
 function cardSightDetectionToQplRow(det){
   const card = det.card || {};
   const numberedTo = card.parallel?.numberedTo || card.numberedTo || null;
   const game = classifyCardSightGameDashboard(card);
+  const grading = det.grading || {};
+  // CardSight's exact grading-object shape isn't documented anywhere we have
+  // access to -- try every plausible cert-number key so this picks it up
+  // automatically the moment a real graded scan reveals which one they use.
+  const certNumber = String(grading.certNumber || grading.cert_number || grading.cert || grading.certificationNumber || grading.certification_number || '').trim();
+  const fieldsNote = cardSightFieldsToNoteDashboard(card.fields);
   return {
     source: 'cardsight',
     name: card.name || 'Unknown card',
@@ -19823,11 +19857,18 @@ function cardSightDetectionToQplRow(det){
     card_number: card.number || '',
     variant: card.parallel?.name || 'Base',
     serial_number: numberedTo ? ('/' + numberedTo) : '',
-    grading_company: det.grading?.company?.name || '',
-    grade: det.grading?.grade?.value || '',
+    grading_company: grading.company?.name || '',
+    grade: grading.grade?.value || '',
+    cert_number: certNumber,
     confidence: det.confidence === 'High' ? 90 : det.confidence === 'Medium' ? 65 : 35,
     matchWhy: ['CardSight AI match'],
-    note: 'Identified by CardSight AI',
+    note: fieldsNote ? 'Identified by CardSight AI — ' + fieldsNote : 'Identified by CardSight AI',
+    // Raw structured attributes CardSight extracted (player/team/rookie/
+    // autograph/etc for sports, HP/stage/etc for Pokemon).
+    cardsightFields: Array.isArray(card.fields) ? card.fields : [],
+    // Numeric segment id CardSight assigns the card to -- no name mapping is
+    // published, but logging it consistently lets us build one empirically.
+    cardsightSegmentId: card.segmentId || '',
     market: 0,
     imageUrl: '',
     priceSource: '',
@@ -19950,7 +19991,12 @@ async function doCardSightScan(){
   setCardSightStatus('Reading card...', 'var(--gold)');
   try {
     const img = captureCardSightFrame();
-    const result = await callCardSightDashboard(img);
+    // Best-effort hint from whatever QPL category the user already had
+    // selected (e.g. they tapped the SPORTS pill before scanning a stack of
+    // sports cards) -- callCardSightDashboard falls back to an unscoped call
+    // automatically if this guess doesn't pan out.
+    const categoryHint = qplCategoryKey(document.getElementById('qpl-cat')?.value || '');
+    const result = await callCardSightDashboard(img, CARDSIGHT_SEGMENT_HINTS_DASHBOARD[categoryHint] || '');
     const detections = result.detections || [];
     if(!detections.length){
       setCardSightStatus('No card detected — move closer and try again.', 'var(--gold)');
@@ -19975,7 +20021,7 @@ async function doCardSightScan(){
           const debugLine = document.createElement('div');
           debugLine.style.color = 'var(--gold)';
           debugLine.style.fontSize = '8px';
-          debugLine.textContent = 'DEBUG raw: setName="' + (card.setName || '') + '" releaseName="' + (card.releaseName || '') + '" setId="' + (card.setId || '') + '" releaseId="' + (card.releaseId || '') + '" segmentId="' + (card.segmentId || '') + '"';
+          debugLine.textContent = 'DEBUG raw: setName="' + (card.setName || '') + '" releaseName="' + (card.releaseName || '') + '" setId="' + (card.setId || '') + '" releaseId="' + (card.releaseId || '') + '" segmentId="' + (card.segmentId || '') + '" certNumber="' + (row.cert_number || 'none') + '" fields=' + (card.fields || []).length;
           log.prepend(debugLine);
           if(row._game === 'Sports Card'){
             const sportsDebug = document.createElement('div');
