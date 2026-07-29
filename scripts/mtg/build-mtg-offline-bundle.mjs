@@ -99,21 +99,29 @@ async function fileDescriptor(filePath, recordCount) {
 const scryfallArg = String(args.get('scryfall') || process.env.SCRYFALL_BULK_FILE || '');
 let scryfallMeta = { downloadedAt:generatedAt, bulkType:'default_cards', sourceUrlHash:'' };
 let scryfallFile;
+// Scryfall's bulk-data items used to expose a plain JSON-array `download_uri`.
+// They've since moved to a gzip-compressed JSONL file under `jsonl_download_uri`
+// (download_uri can be absent entirely) -- prefer that, but keep the legacy
+// array format working for local overrides / a future reversion.
+let scryfallFormat = 'json-array';
 if(scryfallArg) {
   scryfallFile = await sourceFile(scryfallArg, 'scryfall-default-cards.json');
+  scryfallFormat = /\.jsonl(\.gz)?$/i.test(scryfallArg) ? 'jsonl-gz' : 'json-array';
   scryfallMeta.sourceUrlHash = stableHash(scryfallArg);
 } else {
   log('Resolving Scryfall default_cards bulk file');
   const bulkManifest = await fetchJson('https://api.scryfall.com/bulk-data');
   const bulk = (bulkManifest.data || []).find(item => item.type === 'default_cards');
-  if(!bulk?.download_uri) {
+  const bulkUrl = bulk?.jsonl_download_uri || bulk?.download_uri || '';
+  if(!bulkUrl) {
     const types = Array.isArray(bulkManifest.data) ? bulkManifest.data.map(item => item.type) : [];
     log(`Scryfall bulk-data response had ${Array.isArray(bulkManifest.data) ? bulkManifest.data.length : 0} item(s): [${types.join(', ')}]`);
-    if(bulk) log(`default_cards entry found but missing download_uri: ${JSON.stringify(bulk)}`);
+    if(bulk) log(`default_cards entry found but missing a download URL: ${JSON.stringify(bulk)}`);
     throw new Error('Scryfall default_cards bulk item missing');
   }
-  scryfallMeta = { downloadedAt:bulk.updated_at || generatedAt, bulkType:'default_cards', sourceUrlHash:stableHash(bulk.download_uri) };
-  scryfallFile = await downloadToFile(bulk.download_uri, path.join(rawDir, 'scryfall-default-cards.json'));
+  scryfallFormat = bulk.jsonl_download_uri ? 'jsonl-gz' : 'json-array';
+  scryfallMeta = { downloadedAt:bulk.updated_at || generatedAt, bulkType:'default_cards', sourceUrlHash:stableHash(bulkUrl) };
+  scryfallFile = await downloadToFile(bulkUrl, path.join(rawDir, scryfallFormat === 'jsonl-gz' ? 'scryfall-default-cards.jsonl.gz' : 'scryfall-default-cards.json'));
 }
 
 const pcArg = String(args.get('pricecharting') || process.env.PRICECHARTING_MTG_CSV_URL || process.env.PRICECHARTING_MTG_CSV_FILE || '');
@@ -128,14 +136,26 @@ const setsPath = path.join(bundleDir, 'sets.jsonl.gz');
 const reportPath = path.join(bundleDir, 'build-report.json');
 const manifestPath = path.join(outputRoot, 'mtg', 'manifest.json');
 
+async function* readScryfallEntries(filePath, format) {
+  if(format === 'jsonl-gz') {
+    const lines = readline.createInterface({ input:fs.createReadStream(filePath).pipe(createGunzip()), crlfDelay:Infinity });
+    for await (const line of lines) {
+      if(!line.trim()) continue;
+      yield JSON.parse(line);
+    }
+  } else {
+    const stream = chain([fs.createReadStream(filePath), parser(), streamArray()]);
+    for await (const entry of stream) yield entry.value;
+  }
+}
+
 log('Normalizing streamed Scryfall cards');
 const cardWriter = gzipWriter(cardsPath);
 const marketPriceWriter = gzipWriter(marketPricesPath);
 const setMap = new Map();
 let cardCount = 0;
-const cardStream = chain([fs.createReadStream(scryfallFile), parser(), streamArray()]);
-for await (const entry of cardStream) {
-  const card = normalizeScryfallCard(entry.value, generatedAt);
+for await (const cardRaw of readScryfallEntries(scryfallFile, scryfallFormat)) {
+  const card = normalizeScryfallCard(cardRaw, generatedAt);
   if(!card.scryfallId) continue;
   await cardWriter.write(card);
   await marketPriceWriter.write({ scryfallId:card.scryfallId, prices:card.prices || {}, tcgplayerId:card.tcgplayerId || '', updatedAt:generatedAt });
