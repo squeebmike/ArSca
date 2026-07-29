@@ -19920,6 +19920,30 @@ async function fetchCardSightImage(row){
   } catch(e) { return ''; }
 }
 
+// PokemonPriceTracker's eBay graded-sales keys are {company}{grade}, e.g.
+// "psa10", "cgc9.5", "bgs10" -- lowercase company, grade with the trailing
+// ".0" stripped (CardSight's own grade values sometimes read "10.0").
+function pokemonGradeKeyDashboard(company, grade){
+  const c = String(company || '').toLowerCase().replace(/[^a-z]/g, '');
+  const g = String(grade || '').trim().replace(/\.0$/, '');
+  return (c && g) ? c + g : '';
+}
+async function fetchPokemonGradedPrice(tcgPlayerId, gradingCompany, grade){
+  try {
+    const params = new URLSearchParams({ tcgPlayerId:String(tcgPlayerId), language:'english', limit:'1', includeEbay:'true' });
+    const res = await storeWorkerFetch('/pricing/pokemonpricetracker/cards?' + params.toString());
+    if(!res.ok) return null;
+    const data = await res.json().catch(() => null);
+    const card = data?.card || (Array.isArray(data?.cards) ? data.cards[0] : null);
+    const gradeKey = pokemonGradeKeyDashboard(gradingCompany, grade);
+    const gradeData = card?.ebay?.salesByGrade?.[gradeKey];
+    if(!gradeData) return null;
+    const market = Number(gradeData.smartMarketPrice?.price || gradeData.medianPrice || gradeData.averagePrice || 0) || 0;
+    if(!market) return null;
+    return { market, priceSource: 'PokemonPriceTracker eBay ' + gradeKey.toUpperCase() + ' sold comps' };
+  } catch(e) { return null; }
+}
+
 // Real pricing only — never AI-guessed. Routes to whichever live provider
 // already backs that category in the Research tab.
 async function fetchCardSightRealPrice(row){
@@ -19947,7 +19971,19 @@ async function fetchCardSightRealPrice(row){
       }
       // Require at least the card number OR set to line up — otherwise this
       // isn't confidently the same printing CardSight identified.
-      if(best && bestScore >= 40) return { market: Number(best.prices?.market || 0), imageUrl: best.imageCdnUrl200 || best.imageUrl || '', priceSource: 'PokemonPriceTracker' };
+      if(best && bestScore >= 40) {
+        const rawResult = { market: Number(best.prices?.market || 0), imageUrl: best.imageCdnUrl200 || best.imageUrl || '', priceSource: 'PokemonPriceTracker' };
+        // A graded scan showing the raw ungraded market price would be
+        // wildly wrong (a PSA 10 pop-1 isn't worth the same as a beat-up raw
+        // copy) -- look up the real eBay graded sold-comp price instead,
+        // keyed to the exact card PPT already matched (1 cheap exact lookup,
+        // not a fresh search).
+        if(row.grading_company && row.grade && best.tcgPlayerId) {
+          const graded = await fetchPokemonGradedPrice(best.tcgPlayerId, row.grading_company, row.grade);
+          if(graded) return { ...rawResult, market: graded.market, priceSource: graded.priceSource };
+        }
+        return rawResult;
+      }
     } catch(e) { /* fall through */ }
     return { market: 0, imageUrl: '', priceSource: '' };
   }

@@ -1218,6 +1218,58 @@ async function wfFetch(path, options){
 // Returns { printings: [...], imageUrl: '...', bestMatchIdx: 0 }
 // ============================================================
 
+// PokemonPriceTracker's eBay graded-sales keys are {company}{grade}, e.g.
+// "psa10", "cgc9.5", "bgs10" -- lowercase company, grade with the trailing
+// ".0" stripped (CardSight's own grade values sometimes read "10.0").
+function pokemonGradeKey(company, grade){
+  const c = String(company || '').toLowerCase().replace(/[^a-z]/g, '');
+  const g = String(grade || '').trim().replace(/\.0$/, '');
+  return (c && g) ? c + g : '';
+}
+function pokemonGradedPriceFromEbay(gradeData){
+  if(!gradeData) return 0;
+  return Number(gradeData.smartMarketPrice?.price || gradeData.medianPrice || gradeData.averagePrice || 0) || 0;
+}
+
+// Real condition-specific pricing and (for graded scans) real eBay graded
+// sold-comp pricing from PokemonPriceTracker, keyed to the exact TCGPlayer
+// product id the pokemontcg.io match already resolved -- one credit-cheap
+// exact lookup, not a fresh fuzzy search. includeEbay is only requested when
+// the scanned card is actually graded, since it costs an extra credit.
+async function overlayPokemonPriceTrackerData(entry, item){
+  if(!entry?.tcgPlayerProductId) return;
+  const isGraded = !!(item.grading_company && item.grade);
+  try {
+    const params = new URLSearchParams({ tcgPlayerId:String(entry.tcgPlayerProductId), language:'english', limit:'1' });
+    if(isGraded) params.set('includeEbay', 'true');
+    const res = await scannerWorkerFetch('/pricing/pokemonpricetracker/cards?' + params.toString());
+    if(!res.ok) return;
+    const data = await res.json().catch(() => null);
+    const card = data?.card || (Array.isArray(data?.cards) ? data.cards[0] : null);
+    if(!card) return;
+    const conditions = card.prices?.conditions;
+    if(conditions && typeof conditions === 'object') {
+      entry.condPrices = {
+        NM: conditions['Near Mint']?.price || entry.condPrices?.NM || 0,
+        LP: conditions['Lightly Played']?.price || entry.condPrices?.LP || 0,
+        MP: conditions['Moderately Played']?.price || entry.condPrices?.MP || 0,
+        HP: conditions['Heavily Played']?.price || entry.condPrices?.HP || 0,
+        DMG: conditions['Damaged']?.price || entry.condPrices?.DMG || 0,
+      };
+      entry.priceSource = 'pokemonpricetracker';
+    }
+    if(isGraded && card.ebay?.salesByGrade) {
+      const gradeKey = pokemonGradeKey(item.grading_company, item.grade);
+      const gradedPrice = pokemonGradedPriceFromEbay(card.ebay.salesByGrade[gradeKey]);
+      if(gradedPrice > 0) {
+        entry.gradedPrice = gradedPrice;
+        entry.gradedPriceSource = 'PokemonPriceTracker eBay ' + gradeKey.toUpperCase() + ' sold comps';
+        entry.gradedSaleCount = card.ebay.salesByGrade[gradeKey]?.count || 0;
+      }
+    }
+  } catch(e) { console.warn('[PPT] exact overlay failed:', e.message); }
+}
+
 async function fetchAllPrintings(item){
   const game = item.game||'';
   const name = item.name||'';
@@ -1443,6 +1495,12 @@ async function fetchAllPrintings(item){
         result.imageUrl = d.data[bestIdx]?.images?.large || d.data[0]?.images?.small;
         // Store the pokemontcg.io card ID for fast future lookups
         result.tcgCardId = d.data[bestIdx]?.id || null;
+        // pokemontcg.io/TCGPlayer only exposes one blended market price, so
+        // LP/MP/HP/DMG below were rough percent-of-NM guesses. Overlay real
+        // per-condition pricing (and, for graded scans, real eBay graded
+        // sold-comp pricing) from PokemonPriceTracker for just this one
+        // resolved printing -- a single cheap exact lookup, not a re-search.
+        await overlayPokemonPriceTrackerData(result.printings[bestIdx], item);
       }
     }
 
@@ -4461,20 +4519,29 @@ window.cpill=function(id,pill,cond){
 };
 function updatePrice(id,p,cond){
   if(!p)return;
-  const m=CM[cond]||1;
-  const exactPrice = p.condPrices?.[cond] || 0;
-  const displayPrice = exactPrice || (p.mid*m);
-  const nmPrice = p.condPrices?.NM || p.mid || 0;
   const bpEl=document.getElementById('bp'+id);
   const brEl=document.getElementById('br'+id);
-  if(bpEl&&p.hasRealPrice&&displayPrice>0){
-    bpEl.textContent='$'+displayPrice.toFixed(2);
-    bpEl.style.fontSize='';bpEl.style.color='';
-    if(brEl)brEl.textContent=(exactPrice?'TCGPlayer ':'Est. ') + cond + ' market - NM $' + Number(nmPrice||0).toFixed(2);
-  } else if(bpEl) {
-    bpEl.textContent='No price data';
-    bpEl.style.fontSize='11px';bpEl.style.color='rgba(255,255,255,.4)';
-    if(brEl)brEl.textContent='Check TCGPlayer for current price';
+  // Graded scans get a real eBay graded sold-comp price from
+  // PokemonPriceTracker instead of the raw ungraded condition price below --
+  // showing the raw NM price for a PSA 10 would be wildly wrong.
+  if(p.gradedPrice > 0){
+    if(bpEl){ bpEl.textContent='$'+p.gradedPrice.toFixed(2); bpEl.style.fontSize=''; bpEl.style.color=''; }
+    if(brEl) brEl.textContent=(p.gradedPriceSource||'Graded sold comps') + (p.gradedSaleCount?' (' + p.gradedSaleCount + ' sales)':'');
+  } else {
+    const m=CM[cond]||1;
+    const exactPrice = p.condPrices?.[cond] || 0;
+    const displayPrice = exactPrice || (p.mid*m);
+    const nmPrice = p.condPrices?.NM || p.mid || 0;
+    const exactLabel = p.priceSource === 'pokemonpricetracker' ? 'PokemonPriceTracker ' : exactPrice ? 'TCGPlayer ' : 'Est. ';
+    if(bpEl&&p.hasRealPrice&&displayPrice>0){
+      bpEl.textContent='$'+displayPrice.toFixed(2);
+      bpEl.style.fontSize='';bpEl.style.color='';
+      if(brEl)brEl.textContent=exactLabel + cond + ' market - NM $' + Number(nmPrice||0).toFixed(2);
+    } else if(bpEl) {
+      bpEl.textContent='No price data';
+      bpEl.style.fontSize='11px';bpEl.style.color='rgba(255,255,255,.4)';
+      if(brEl)brEl.textContent='Check TCGPlayer for current price';
+    }
   }
   // Update TCGPlayer link with condition filter
   const bt=document.getElementById('bt'+id);
