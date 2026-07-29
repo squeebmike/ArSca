@@ -2549,6 +2549,15 @@ body.show-mode .inv-sync-badge{display:none;}
       <div id="edit-tcgplayer-status" style="font-family:var(--font-mono);font-size:9px;color:var(--dim);line-height:1.45;margin-top:5px">Paste either the numeric product ID or the complete TCGplayer product URL.</div>
     </div>
 
+    <div style="margin-top:8px">
+      <label style="display:block">PriceCharting Product ID (sealed / sports / any category)</label>
+      <div style="display:flex;gap:7px;align-items:center">
+        <input type="text" id="edit-pricecharting-ref" inputmode="numeric" placeholder="e.g. 5970222" style="flex:1" oninput="inventoryPcReferenceChanged()">
+        <button class="hbtn" type="button" id="edit-pricecharting-verify" onclick="verifyInventoryPriceChartingReference()">VERIFY</button>
+      </div>
+      <div id="edit-pricecharting-status" style="font-family:var(--font-mono);font-size:9px;color:var(--dim);line-height:1.45;margin-top:5px">Paste the numeric PriceCharting/SportsCardsPro product ID (shown as "PriceCharting ID" on the product page) to pin exact-match pricing.</div>
+    </div>
+
     <label style="margin-top:8px;display:block">Variant / Parallel</label>
     <input type="text" id="edit-variant" placeholder="Base, Holo, Gold Prizm...">
 
@@ -18214,6 +18223,79 @@ async function inventoryTcgReferencePatch(item = {}){
   };
 }
 
+// Lets a manually-added item (typically sealed/sports, no TCGplayer product)
+// be pinned to an exact PriceCharting product by ID -- the number shown as
+// "PriceCharting ID" on pricecharting.com/sportscardspro.com product pages.
+// Once saved, price syncs that already prefer an exact pricechartingProductId
+// (e.g. MTG sealed) use it instead of a fuzzy name search.
+let inventoryPcReferenceState = { originalId:'', verified:null };
+function inventoryPcReferenceChanged(){
+  const raw = document.getElementById('edit-pricecharting-ref')?.value || '';
+  const id = raw.replace(/\D+/g, '');
+  if(inventoryPcReferenceState.verified?.id !== id) inventoryPcReferenceState.verified = null;
+  const status = document.getElementById('edit-pricecharting-status');
+  if(!status) return;
+  status.style.color = raw && !id ? 'var(--red)' : 'var(--dim)';
+  status.textContent = raw && !id
+    ? 'Enter a numeric PriceCharting product ID.'
+    : id === inventoryPcReferenceState.originalId
+      ? 'Saved PriceCharting product #' + id + '. Click VERIFY to re-check it.'
+      : id ? 'Product #' + id + ' must be verified before saving.' : 'Paste the numeric PriceCharting/SportsCardsPro product ID to pin exact-match pricing.';
+}
+function populateInventoryPcReference(item = {}){
+  const id = String(item.pricechartingProductId || item.raw?.pricechartingProductId || '').trim();
+  const input = document.getElementById('edit-pricecharting-ref');
+  if(input) input.value = id;
+  inventoryPcReferenceState = { originalId:id, verified:null };
+  const status = document.getElementById('edit-pricecharting-status');
+  if(status) {
+    status.style.color = 'var(--dim)';
+    status.textContent = id ? 'Saved PriceCharting product #' + id + '. Click VERIFY to re-check it.' : 'Paste the numeric PriceCharting/SportsCardsPro product ID (shown as "PriceCharting ID" on the product page) to pin exact-match pricing.';
+  }
+}
+async function verifyInventoryPriceChartingReference(){
+  const input = document.getElementById('edit-pricecharting-ref');
+  const status = document.getElementById('edit-pricecharting-status');
+  const button = document.getElementById('edit-pricecharting-verify');
+  const id = (input?.value || '').replace(/\D+/g, '');
+  if(!id) {
+    if(status) { status.style.color='var(--red)'; status.textContent='Enter a numeric PriceCharting product ID.'; }
+    return null;
+  }
+  if(button) button.disabled = true;
+  if(status) { status.style.color='var(--gold)'; status.textContent='Checking PriceCharting #' + id + '…'; }
+  try {
+    const res = await fetch(WORKER + '/pricing/pricecharting/product/' + encodeURIComponent(id), { cache:'no-store' });
+    const data = await res.json().catch(() => ({}));
+    if(!res.ok || !data.ok || !data.product) throw new Error(data.error || 'No PriceCharting product found for that ID.');
+    const product = data.product;
+    inventoryPcReferenceState.verified = { id, product, url:product.url || '' };
+    if(status) {
+      status.style.color='var(--g)';
+      status.textContent='✓ #' + id + ' · ' + (product.productName || 'Unnamed product') + (product.consoleName ? ' · ' + product.consoleName : '');
+    }
+    return inventoryPcReferenceState.verified;
+  } catch(error) {
+    inventoryPcReferenceState.verified = null;
+    if(status) { status.style.color='var(--red)'; status.textContent='Could not verify PriceCharting #' + id + ': ' + (error.message || error); }
+    return null;
+  } finally {
+    if(button) button.disabled = false;
+  }
+}
+async function inventoryPcReferencePatch(item = {}){
+  const raw = document.getElementById('edit-pricecharting-ref')?.value || '';
+  const id = raw.replace(/\D+/g, '');
+  if(!id) return { pricechartingProductId:'', pricechartingProductName:item.pricechartingProductId ? '' : (item.pricechartingProductName || '') };
+  let verified = inventoryPcReferenceState.verified?.id === id ? inventoryPcReferenceState.verified : null;
+  if(!verified && id !== inventoryPcReferenceState.originalId) verified = await verifyInventoryPriceChartingReference();
+  if(!verified && id !== inventoryPcReferenceState.originalId) throw new Error('Verify the changed PriceCharting product before saving.');
+  return {
+    pricechartingProductId:id,
+    pricechartingProductName:verified?.product?.productName || item.pricechartingProductName || '',
+  };
+}
+
 function consignmentOwnerDirectory(){const map=new Map();(consignorPeople||[]).forEach(p=>{const name=String(p.name||'').trim();if(name)map.set(name.toLowerCase(),{name,contact:p.contact||'',split:Number(p.split||25),personId:p.id||''});});(consignItems||[]).forEach(c=>{const name=String(c.owner||'').trim();if(name&&!map.has(name.toLowerCase()))map.set(name.toLowerCase(),{name,contact:c.contact||'',split:Number(c.split||25)});});return [...map.values()].sort((a,b)=>a.name.localeCompare(b.name));}
 function populateInventoryOwnerSelect(item={}){const select=document.getElementById('edit-consignor');if(!select)return;const owners=consignmentOwnerDirectory(),current=item.consignorName||item.inventoryOwner||consignItems.find(c=>c.id===item.consignmentId||c.inventoryId===item.id)?.owner||'';select.innerHTML='<option value="">Select a person...</option>'+owners.map(o=>`<option value="${escHtml(o.name)}">${escHtml(o.name)}${o.contact?' · '+escHtml(o.contact):''}</option>`).join('');if(current&&!owners.some(o=>o.name===current))select.insertAdjacentHTML('beforeend',`<option value="${escHtml(current)}">${escHtml(current)}</option>`);select.value=current;}
 function toggleInventoryOwnerFields(){const type=document.getElementById('edit-owner-type')?.value||'store',wrap=document.getElementById('edit-consignor-wrap'),note=document.getElementById('edit-owner-note');if(wrap)wrap.style.display=type==='consignor'?'':'none';if(note)note.textContent=type==='consignor'?'This item will appear in that person’s consignment inventory. When it sells, a payout alert is created.':'Store-owned item. Sale profit belongs to the store.';}
@@ -18348,6 +18430,7 @@ function openEditModal(id) {
   document.getElementById('edit-year').value = item.year || '';
   document.getElementById('edit-set').value = item.set || '';
   populateInventoryTcgReference(item, false);
+  populateInventoryPcReference(item);
   document.getElementById('edit-variant').value = item.variant || '';
   document.getElementById('edit-location').value = item.location || '';
   populateInventoryOwnerSelect(item);
@@ -18397,6 +18480,7 @@ function closeEditModal() {
   document.getElementById('edit-modal').classList.remove('on');
   editingItemId = null;
   inventoryTcgReferenceState = { originalId:'', verified:null };
+  inventoryPcReferenceState = { originalId:'', verified:null };
   const comicInfo=document.getElementById('edit-comic-info');if(comicInfo)comicInfo.innerHTML='';
   if(pendingInventoryAdd) {
     pendingInventoryAdd = null;
@@ -18428,6 +18512,7 @@ function openAddToInventoryModal(idx){
   document.getElementById('edit-year').value = item.year || '';
   document.getElementById('edit-set').value = item.set || '';
   populateInventoryTcgReference(item, true);
+  populateInventoryPcReference(item);
   document.getElementById('edit-variant').value = item.variant || '';
   document.getElementById('edit-location').value = item.location || '';
   populateInventoryOwnerSelect();
@@ -18472,8 +18557,11 @@ async function confirmAddToInventoryFromModal(){
   const item = selectedQuickLookupItem(idx);
   if(!item) { closeEditModal(); return; }
 
-  let tcgReferencePatch;
-  try { tcgReferencePatch = await inventoryTcgReferencePatch(item); }
+  let tcgReferencePatch, pcReferencePatch;
+  try {
+    tcgReferencePatch = await inventoryTcgReferencePatch(item);
+    pcReferencePatch = await inventoryPcReferencePatch(item);
+  }
   catch(error) { toast_dash(error.message || String(error)); return; }
 
   const addMarketVal = parseFloat(document.getElementById('edit-market').value)||0;
@@ -18509,6 +18597,7 @@ async function confirmAddToInventoryFromModal(){
     is_signed: document.getElementById('edit-signed').checked,
     is_sealed: document.getElementById('edit-is-sealed').checked,
     ...tcgReferencePatch,
+    ...pcReferencePatch,
   });
   item.inventorySku = item.inventorySku || generateWalkoffInventorySku(item.category, item);
   item.sku = item.inventorySku;
@@ -18662,8 +18751,11 @@ async function confirmEditAndSync() {
   if(!editingItemId) return;
   const item = all.find(i => i.id === editingItemId);
   if(!item) return;
-  let tcgReferencePatch;
-  try { tcgReferencePatch = await inventoryTcgReferencePatch(item); }
+  let tcgReferencePatch, pcReferencePatch;
+  try {
+    tcgReferencePatch = await inventoryTcgReferencePatch(item);
+    pcReferencePatch = await inventoryPcReferencePatch(item);
+  }
   catch(error) { toast_dash(error.message || String(error)); return; }
   pushUndoAction('inventory edit', { type:'item-snapshot', item:{...item}, lifecycleMap:getLifecycleMap() });
 
@@ -18707,6 +18799,7 @@ async function confirmEditAndSync() {
     is_signed: document.getElementById('edit-signed').checked,
     is_sealed: document.getElementById('edit-is-sealed').checked,
     ...tcgReferencePatch,
+    ...pcReferencePatch,
     ...inventoryOwnershipPatch(),
   };
   if(updates.ownershipType==='consignor'&&!updates.consignorName){toast_dash('Select a consignor or choose Store Inventory');return;}
