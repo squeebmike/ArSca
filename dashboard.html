@@ -852,6 +852,15 @@ body.show-mode .show-mode-toggle { border-color:rgba(0,255,179,.4); color:var(--
 /* QUICK SELL MODAL */
 .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:500;display:none;align-items:center;justify-content:center;padding:20px;}
 .modal-bg.on{display:flex;}
+@media(max-width:640px){
+  /* On mobile the browser's own address-bar toolbar eats into the visible
+     viewport unpredictably (vh is sized against the toolbar-hidden layout
+     viewport). Centering a tall modal in that space can push its top edge
+     above what's actually visible, with no way to scroll up to it. Anchor
+     to the top and let the overlay itself scroll instead, so nothing is
+     ever hidden behind the toolbar. */
+  .modal-bg{align-items:flex-start;overflow-y:auto;padding:calc(12px + env(safe-area-inset-top)) 12px calc(12px + env(safe-area-inset-bottom));}
+}
 .modal{background:var(--surf);border:1px solid var(--border);border-radius:12px;padding:20px;width:100%;max-width:380px;}
 .modal h3{font-family:'Orbitron',monospace;font-size:12px;letter-spacing:2px;color:var(--g);margin-bottom:14px;}
 .modal label{font-family:var(--font-mono);font-size:9px;color:var(--dim);display:block;margin-bottom:4px;margin-top:10px;}
@@ -1084,7 +1093,7 @@ body.customer-browse-mode{padding-bottom:0}body.customer-browse-mode header,body
   .hdr{height:42px;min-height:42px;padding:0 14px;align-items:center;flex-wrap:nowrap;}
   .logo{padding-top:0;font-size:13px;line-height:1;}
   .hdr-right{display:none!important;}
-  #store-user-chip,#store-switcher,#top-show-chip,#top-drawer-chip,#sync-prices-btn,.show-mode-toggle,#header-actions-wrap{display:none!important;}
+  #store-user-chip,#store-switcher,#top-show-chip,#top-drawer-chip,.show-mode-toggle,#header-actions-wrap{display:none!important;}
   /* Dealer status bar — hide verbose chips, keep drawer/net/intake */
   .dealer-status-bar{gap:6px;padding:3px 10px;}
   #dsb-sync,#dsb-version{display:none!important;}
@@ -2624,7 +2633,7 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <!-- PRICE SYNC MODAL (A7) -->
 <div class="modal-bg" id="price-sync-modal">
-  <div class="modal" style="max-width:600px;max-height:82vh;display:flex;flex-direction:column">
+  <div class="modal" style="max-width:600px;max-height:82vh;max-height:82dvh;display:flex;flex-direction:column">
     <h3>💹 SYNC LATEST PRICES</h3>
     <p style="font-size:11px;color:var(--dim);margin:0 0 12px">Offline MTG uses the downloaded Scryfall + PriceCharting catalog without provider credits. Cached scan uses saved lookup data; Live Pokémon fetches current PokemonPriceTracker prices through the Worker.</p>
     <p style="font-size:11px;color:var(--gold);margin:0 0 12px;font-family:var(--font-mono)">Updates change market/list price fields only. Cost basis stays unchanged.</p>
@@ -5506,7 +5515,6 @@ function organizeRegisterLayout(){
   ensureCustomerPanel(backoffice);
   ensureStoreCreditPanel(backoffice);
   ensureDataHealthPanel(backoffice);
-  ensureInventoryToolsPanel();
   ensurePermissionLockPanels(backoffice, shows, channels);
   ensureSettingsShell(backoffice);
   applyVendorConfig();
@@ -10512,83 +10520,14 @@ function renderCustomers(){
 }
 function exportCustomersCSV(){ downloadCSV('walkoff-customers-'+new Date().toISOString().slice(0,10)+'.csv', [['name','contact','notes','created_at']].concat(getCustomers().map(c => [c.name,c.contact,c.notes,c.createdAt]))); }
 
-function selectedInventoryItems(){
-  return [...document.querySelectorAll('.inv-select:checked')]
-    .map(cb => all.find(i => i.id === cb.value))
-    .filter(Boolean);
-}
-function toggleAllInventorySelection(on){
-  document.querySelectorAll('.inv-select').forEach(cb => cb.checked = !!on);
-}
-function ensureInventoryToolsPanel(){
-  const tab = document.getElementById('tab-inventory');
-  const tc = tab?.querySelector('.tc');
-  if(!tab || !tc || document.getElementById('inventory-tools-panel')) return;
-  const panel = document.createElement('div');
-  panel.className = 'panel';
-  panel.id = 'inventory-tools-panel';
-  panel.style.maxWidth = '1400px';
-  panel.style.margin = '0 auto 14px';
-  panel.innerHTML = `<div class="ph">INVENTORY TOOLS <span style="font-size:9px;color:var(--dim)">bulk actions, labels, repricing</span></div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
-      <button class="hbtn" onclick="toggleAllInventorySelection(true)">SELECT PAGE</button>
-      <button class="hbtn" onclick="toggleAllInventorySelection(false)">CLEAR</button>
-      <select id="bulk-status" class="min" style="min-width:150px">
-        ${Object.entries(LIFECYCLE_LABELS).map(([v,l])=>`<option value="${v}">${l}</option>`).join('')}
-      </select>
-      <button class="hbtn" onclick="bulkSetLifecycle()">SET STATUS</button>
-      <input id="bulk-price-pct" type="number" class="tsi" placeholder="% market" value="85" style="width:90px;margin-bottom:0">
-      <button class="hbtn" onclick="bulkApplyShowPrice()">SHOW PRICE</button>
-      <button class="hbtn" onclick="printSelectedPriceTags()">PRINT TAGS</button>
-      <button class="hbtn" onclick="exportPriceTagsCSV()">TAG CSV</button>
-      <button class="hbtn" style="color:var(--gold)" onclick="openMergeSealedDuplicatesModal()" title="Combine duplicate rows of the same sealed product into one item with a summed quantity and weighted-average cost">MERGE SEALED DUPLICATES</button>
-    </div>
-    <div id="inventory-tools-status" style="font-family:var(--font-mono);font-size:10px;color:var(--dim)">Tip: select rows on the current page, then apply a status or show price.</div>`;
-  tc.insertAdjacentElement('afterend', panel);
-}
-
-function bulkSetLifecycle(){
-  const items = selectedInventoryItems();
-  const state = document.getElementById('bulk-status')?.value || 'in_stock';
-  if(!items.length) return toast_dash('Select inventory rows first');
-  const before = getLifecycleMap();
-  const map = {...before};
-  items.forEach(i => { map[i.id] = state; i.lifecycle = state; });
-  saveLifecycleMap(map);
-  pushUndoAction('bulk status', { type:'local-storage', key:'inventory_lifecycle', value:before });
-  renderAll();
-  toast_dash('Updated ' + items.length + ' item(s)');
-}
-
-function bulkApplyShowPrice(){
-  const items = selectedInventoryItems();
-  const pct = Number(document.getElementById('bulk-price-pct')?.value || 100) / 100;
-  if(!items.length) return toast_dash('Select inventory rows first');
-  const before = all.map(i => ({...i}));
-  items.forEach(i => {
-    i.showPrice = Math.round(Number(i.market || 0) * pct);
-    i.priceSource = i.priceSource || 'show_rule';
-  });
-  pushUndoAction('bulk show price', { type:'local-storage', key:'lba_inventory', value:before });
-  renderAll();
-  toast_dash('Show price set for ' + items.length + ' item(s)');
-}
-
 function priceTagRows(items){
   return [['name','price','category','condition','location','sku','qr_hint']]
     .concat(items.map(i => [i.name, Number(i.showPrice || i.market || 0).toFixed(2), i.category, i.condition || '', i.location || '', i.id, 'Open dashboard and search '+i.id]));
 }
 function exportPriceTagsCSV(){
-  const items = selectedInventoryItems().length ? selectedInventoryItems() : filtered.filter(i => i.status === 'in_stock').slice(0,250);
+  const items = filtered.filter(i => i.status === 'in_stock').slice(0,250);
   downloadCSV('walkoff-price-tags-'+new Date().toISOString().slice(0,10)+'.csv', priceTagRows(items));
   toast_dash('Exported ' + items.length + ' tag rows');
-}
-function printSelectedPriceTags(){
-  const items = selectedInventoryItems();
-  if(!items.length) return toast_dash('Select inventory rows first');
-  const w = window.open('', '_blank', 'width=800,height=700');
-  w.document.write(`<html><head><title>Price Tags</title><style>body{font-family:Arial,sans-serif}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.tag{border:1px solid #111;padding:8px;min-height:92px;break-inside:avoid}.n{font-weight:700;font-size:11px}.p{font-size:24px;font-weight:900;margin:4px 0}.m{font-size:9px;color:#555}.sku{font-family:monospace;font-size:8px;margin-top:6px}</style></head><body><div class="grid">${items.map(i=>`<div class="tag"><div class="n">${i.name}</div><div class="p">$${Number(i.showPrice || i.market || 0).toFixed(2)}</div><div class="m">${[i.category,i.condition,i.location].filter(Boolean).join(' · ')}</div><div class="sku">${i.id}</div></div>`).join('')}</div><script>print()<\/script></body></html>`);
-  w.document.close();
 }
 
 function dataHealthIssues(){
@@ -14996,9 +14935,8 @@ function renderTable(){
   tb.querySelectorAll('tr[data-item-id]').forEach(tr => {
     const item = rows.find(r => r.id === tr.dataset.itemId);
     const nameCell = tr.children[1];
-    if(item && nameCell && !nameCell.querySelector('.inv-select')) {
-      nameCell.insertAdjacentHTML('afterbegin', `<input class="inv-select" type="checkbox" value="${item.id}" style="margin-right:6px;accent-color:var(--g)">`);
-      nameCell.insertAdjacentHTML('beforeend', `<br><span style="font-family:monospace;font-size:10px;font-weight:700;color:color-mix(in srgb,var(--text) 62%,var(--bg));letter-spacing:.7px">${String(item.source||getInventorySource()).replace('_',' ').toUpperCase()}</span>`);
+    if(item && nameCell && !nameCell.querySelector('.inv-source-tag')) {
+      nameCell.insertAdjacentHTML('beforeend', `<br><span class="inv-source-tag" style="font-family:monospace;font-size:10px;font-weight:700;color:color-mix(in srgb,var(--text) 62%,var(--bg));letter-spacing:.7px">${String(item.source||getInventorySource()).replace('_',' ').toUpperCase()}</span>`);
     }
     const actCell = tr.children[9];
     const cell = tr.children[8];
@@ -19021,73 +18959,6 @@ async function mergeIntoExistingSealedItem(existing, item, updates){
   logOpsEvent('inventory_sealed_restock', 'Merged sealed restock into existing item: ' + (existing.name || existing.id), { id:existing.id, addedQty:incomingQty, addedCost:incomingCost, newQty:mergedQty, newCost:mergedCost });
   setTimeout(() => toast_dash('Merged into existing stock: ' + mergedQty + ' in stock @ $' + mergedCost.toFixed(2) + ' avg cost'), 50);
   return existing.supabaseRowId || existing.id;
-}
-
-// Groups every in-stock sealed item already in inventory by identity, for
-// cleaning up duplicate rows that piled up before this grouping existed.
-function findSealedDuplicateGroups(){
-  const groups = new Map();
-  (all || []).filter(i => inventoryItemIsSellable(i) && isSealedInventoryItem(i)).forEach(i => {
-    const key = sealedItemIdentityKey(i);
-    if(!groups.has(key)) groups.set(key, []);
-    groups.get(key).push(i);
-  });
-  return [...groups.values()].filter(g => g.length > 1);
-}
-function sealedGroupMergePreview(group){
-  const totalQty = group.reduce((a,i) => a + inventoryAvailableQuantity(i), 0);
-  const totalCost = group.reduce((a,i) => a + inventoryAvailableQuantity(i) * Number(i.cost || 0), 0);
-  const avgCost = totalQty > 0 ? Math.round((totalCost / totalQty) * 100) / 100 : 0;
-  const survivor = group.slice().sort((a,b) => new Date(b.addedAt || b.updatedAt || 0) - new Date(a.addedAt || a.updatedAt || 0))[0];
-  return { group, survivor, totalQty, avgCost };
-}
-function openMergeSealedDuplicatesModal(){
-  if(!requireOwnerAdmin()) return toast_dash('Owner/admin only');
-  const groups = findSealedDuplicateGroups();
-  if(!groups.length) return toast_dash('No duplicate sealed product found — every sealed item already has one row');
-  const previews = groups.map(sealedGroupMergePreview);
-  document.getElementById('merge-sealed-modal')?.remove();
-  const wrap = document.createElement('div');
-  wrap.id = 'merge-sealed-modal';
-  wrap.className = 'modal on';
-  wrap.innerHTML = `<div class="modal-box" style="max-width:640px">
-    <div class="modal-title">MERGE DUPLICATE SEALED PRODUCT</div>
-    <div style="font-family:var(--font-mono);font-size:11px;color:var(--dim);margin-bottom:10px">
-      Found ${previews.length} product${previews.length===1?'':'s'} with more than one row in stock. Merging combines each group into a single item — quantity summed, cost weighted by how many you paid each price for. The other rows are archived, not deleted, so nothing in their history is lost.
-    </div>
-    <div style="max-height:360px;overflow:auto;display:grid;gap:8px;margin-bottom:14px">
-      ${previews.map(p => `<div style="border:1px solid var(--border);border-radius:8px;padding:10px">
-        <div style="font-weight:700">${escHtml(p.survivor.name || 'Item')}</div>
-        <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim)">${p.group.length} rows → ${p.totalQty} qty @ $${p.avgCost.toFixed(2)} avg cost</div>
-      </div>`).join('')}
-    </div>
-    <div style="display:flex;gap:8px;justify-content:flex-end">
-      <button class="hbtn" onclick="document.getElementById('merge-sealed-modal').remove()">CANCEL</button>
-      <button class="hbtn" style="color:var(--g)" onclick="confirmMergeSealedDuplicates()">MERGE ${previews.length} GROUP${previews.length===1?'':'S'}</button>
-    </div>
-  </div>`;
-  document.body.appendChild(wrap);
-}
-async function confirmMergeSealedDuplicates(){
-  const groups = findSealedDuplicateGroups();
-  document.getElementById('merge-sealed-modal')?.remove();
-  let mergedGroups = 0;
-  for(const group of groups) {
-    const { survivor, totalQty, avgCost } = sealedGroupMergePreview(group);
-    const others = group.filter(i => i.id !== survivor.id);
-    const restockLines = others.map(i => 'Merged +' + inventoryAvailableQuantity(i) + ' @ $' + Number(i.cost || 0).toFixed(2) + ' from a duplicate row').join('\n');
-    const notes = [survivor.notes, restockLines].filter(Boolean).join('\n');
-    try {
-      await updateBuiltInInventoryItem(survivor, { qty:totalQty, cost:avgCost, notes });
-      for(const dup of others) {
-        await updateBuiltInInventoryItem(dup, { qty:0, lifecycle:'archived', status:'archived', archivedAt:new Date().toISOString(), archiveReason:'Merged into duplicate sealed product row', mergedIntoId:survivor.id });
-      }
-      mergedGroups++;
-    } catch(e) { console.warn('[mergeSealedDuplicates] failed for group', survivor.name, e.message); }
-  }
-  logOpsEvent('inventory_sealed_merge', 'Merged duplicate sealed product rows', { groups:mergedGroups });
-  toast_dash('Merged ' + mergedGroups + ' duplicate group' + (mergedGroups===1?'':'s'));
-  loadInventory();
 }
 
 function getPricingInventorySource(){
