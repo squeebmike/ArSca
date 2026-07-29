@@ -1953,9 +1953,7 @@ body.show-mode .inv-sync-badge{display:none;}
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
           <span style="font-family:'Orbitron',monospace;font-size:9px;color:var(--gold);letter-spacing:.05em">POKÉMON</span>
           <button class="hbtn" onclick="openSetBrowser()" style="font-size:10px;min-height:36px;padding:4px 14px;background:rgba(255,209,102,.1);border-color:rgba(255,209,102,.4);color:var(--gold)">⚡ SET BROWSER</button>
-          <input id="qpl-pokemon-artist" placeholder="Artist e.g. Mitsuhiro Arita" style="min-width:190px;flex:1;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:8px 10px;border-radius:6px;font-family:monospace;font-size:11px" onkeydown="if(event.key==='Enter')runPokemonArtistResearch()">
-          <button class="hbtn" id="qpl-pokemon-artist-btn" onclick="runPokemonArtistResearch()" style="font-size:9px;min-height:36px;padding:4px 12px">ARTIST</button>
-          <span style="font-family:monospace;font-size:9px;color:var(--dim)">Browse full sets · filter by artist · track owned cards</span>
+          <span style="font-family:monospace;font-size:9px;color:var(--dim)">Type an artist's name in the search box above to see all their cards · browse full sets · track owned cards</span>
         </div>
       </div>
       <div id="qpl-mtg-helper" style="display:none;margin-bottom:10px;padding:9px 12px;background:rgba(91,163,245,.06);border:1px solid rgba(91,163,245,.22);border-radius:8px">
@@ -25354,6 +25352,22 @@ async function searchPokemonPriceTrackerCards(rawQuery = '', language = 'english
   _pptSearchAbortController = new AbortController();
   const result = await pokemonPriceTrackerCardsRequest(params, 'cards.search.limit5', { signal:_pptSearchAbortController.signal });
   result.ranked = pokemonRankApiCards(result.cards, rawQuery);
+  // A plain name search that comes back empty is often someone typing an
+  // artist's name directly with no special syntax -- PPT's `search` param
+  // never scans the artist field, so retry as a dedicated artist lookup
+  // before giving up. Skip when the caller already asked for a specific
+  // artist/rarity/card-type or the text has digits (a set/card number, not a name).
+  if(!result.cards.length && !filters?.artist && !filters?.rarity && !filters?.cardType && !/\d/.test(query) && query.split(' ').length <= 4) {
+    try {
+      const artistParams = new URLSearchParams({ artist:query, language:lang, limit:'30' });
+      const artistResult = await pokemonPriceTrackerCardsRequest(artistParams, 'cards.artist.limit30');
+      if(artistResult.cards.length) {
+        artistResult.ranked = pokemonRankApiCards(artistResult.cards, rawQuery);
+        artistResult._artistFallback = true;
+        return artistResult;
+      }
+    } catch(e) { /* fall through to the empty name-search result */ }
+  }
   return result;
 }
 
@@ -32162,50 +32176,6 @@ function sbAddToResearch(idx, btn){
   if(btn){ const orig = btn.textContent; btn.textContent = '✓'; setTimeout(() => { btn.textContent = orig; }, 1200); }
 }
 
-async function runPokemonArtistResearch(){
-  const input = document.getElementById('qpl-pokemon-artist');
-  const btn = document.getElementById('qpl-pokemon-artist-btn');
-  const artist = String(input?.value || document.getElementById('qpl-input')?.value || '').replace(/\s+/g, ' ').trim();
-  if(!artist) return toast_dash('Enter an artist name first.');
-  const low = artist.toLowerCase();
-  const loadedMatches = (_sbState.cards || []).filter(c => String(c.artist || '').toLowerCase().includes(low));
-  const renderArtistRows = (cards, sourceLabel) => {
-    const rows = cards.slice(0, 40).map(c => {
-      const row = pokemonPriceTrackerCardToQplRow(sbNormalizeSetCard(c), c.name || artist, null);
-      row.matchWhy = [sourceLabel, c.artist ? 'Artist: ' + c.artist : 'artist field matched'];
-      row.note = sourceLabel + '. Full artist list requires local catalog/export.';
-      row.lookupDebug = { ...(row.lookupDebug || {}), artistQuery:artist, artistSource:sourceLabel };
-      return row;
-    });
-    qplResults = rows;
-    renderQuickLookupResults(qplResults);
-    document.getElementById('qpl-results')?.scrollIntoView({ behavior:'smooth', block:'start' });
-    toast_dash(sourceLabel + ': ' + rows.length + ' card' + (rows.length === 1 ? '' : 's'));
-  };
-  if(loadedMatches.length) {
-    renderArtistRows(loadedMatches, 'Artist results from loaded set');
-    return;
-  }
-  try {
-    if(btn) { btn.disabled = true; btn.textContent = '...'; }
-    const params = new URLSearchParams({ search:artist, limit:'20' });
-    const res = await storeWorkerFetch('/pricing/pokemon/cards?' + params.toString(), { cache:'no-store' });
-    const data = await res.json().catch(() => ({}));
-    if(!res.ok || data.ok === false) throw new Error(data.error || data.message || 'Artist search failed');
-    const cards = pokemonPriceTrackerCardsFromPayload(data).map(c => sbNormalizeSetCard(c));
-    const matches = cards.filter(c => String(c.artist || '').toLowerCase().includes(low));
-    if(matches.length) renderArtistRows(matches, 'Live API artist matches');
-    else {
-      qplResults = [];
-      renderQuickLookupResults(qplResults);
-      toast_dash('No returned cards had matching artist fields. Full artist list requires local catalog/export.');
-    }
-  } catch(e) {
-    toast_dash('Artist research unavailable: ' + (e.message || e));
-  } finally {
-    if(btn) { btn.disabled = false; btn.textContent = 'ARTIST'; }
-  }
-}
 // ── END POKÉMON SET BROWSER ─────────────────────────────────────
 
 // ── MTG SET BROWSER (Scryfall) ───────────────────────────────────
