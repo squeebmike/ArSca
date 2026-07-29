@@ -4157,7 +4157,7 @@ const MORE_TABS = [
 // path depends on. Stores can still add their own categories on top for
 // anything that doesn't need price-sync routing (a display case name, a
 // "Vintage" bucket, etc.).
-const STANDARD_INVENTORY_CATEGORIES = ['Pokemon TCG','Magic: The Gathering','One Piece TCG','Yu-Gi-Oh!','Disney Lorcana','Sports','Comic','Sealed Product','Collectibles','Supplies'];
+const STANDARD_INVENTORY_CATEGORIES = ['Pokemon TCG','Magic: The Gathering','One Piece TCG','Yu-Gi-Oh!','Disney Lorcana','Sports','Comic','Collectibles','Supplies'];
 const DEFAULT_VENDOR_CONFIG = {
   inventorySource: 'built_in',
   modules: {
@@ -15417,7 +15417,9 @@ function addScanToCart(scan){
     img: getScanImageUrl(scan),
     shopId: null,
     wfId: null,
-    category: scan.category || 'TCG',
+    // Same re-detection as buyItemToInventoryUpdates: a missing or generic
+    // "TCG" bucket gets one more pass at name/set text before falling back.
+    category: (scan.category && scan.category !== 'TCG') ? scan.category : tcgLineFromText([scan.name, scan.set].filter(Boolean).join(' ')).category,
     condition: scan.condition || 'NM',
     set: scan.set || '',
     year: scan.year || '',
@@ -29810,9 +29812,17 @@ function buyItemToInventoryUpdates(item){
   const cost = buyItemOfferValue(item);
   const market = Number(item.market || item.priceUsed || 0);
   const location = document.getElementById('buy-session-location')?.value || session?.location || (getShowMode()?.eventName ? 'Show buy - ' + getShowMode().eventName : 'Intake Tray');
+  // A missing or generic "TCG" category (the pre-detection catch-all, not a
+  // real game) gets one more pass at name/set text detection before falling
+  // back -- otherwise a Pokemon card whose upstream scan/search step never
+  // resolved a specific category ends up permanently mislabeled TCG in
+  // inventory instead of Pokemon TCG.
+  const category = (item.category && item.category !== 'TCG')
+    ? item.category
+    : tcgLineFromText([item.name, item.set, item.product_line].filter(Boolean).join(' ')).category;
   return {
     name:item.name,
-    category:item.category || 'TCG',
+    category,
     set:item.set || item.product_line || '',
     variant:item.variant || '',
     year:item.year || '',
