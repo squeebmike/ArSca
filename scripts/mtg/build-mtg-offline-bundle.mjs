@@ -106,7 +106,12 @@ if(scryfallArg) {
   log('Resolving Scryfall default_cards bulk file');
   const bulkManifest = await fetchJson('https://api.scryfall.com/bulk-data');
   const bulk = (bulkManifest.data || []).find(item => item.type === 'default_cards');
-  if(!bulk?.download_uri) throw new Error('Scryfall default_cards bulk item missing');
+  if(!bulk?.download_uri) {
+    const types = Array.isArray(bulkManifest.data) ? bulkManifest.data.map(item => item.type) : [];
+    log(`Scryfall bulk-data response had ${Array.isArray(bulkManifest.data) ? bulkManifest.data.length : 0} item(s): [${types.join(', ')}]`);
+    if(bulk) log(`default_cards entry found but missing download_uri: ${JSON.stringify(bulk)}`);
+    throw new Error('Scryfall default_cards bulk item missing');
+  }
   scryfallMeta = { downloadedAt:bulk.updated_at || generatedAt, bulkType:'default_cards', sourceUrlHash:stableHash(bulk.download_uri) };
   scryfallFile = await downloadToFile(bulk.download_uri, path.join(rawDir, 'scryfall-default-cards.json'));
 }
