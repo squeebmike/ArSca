@@ -4158,6 +4158,10 @@ export default {
             name:cover.variantName || `Issue #${issue.number} cover`,
             imageUrl:cover.imageUrl || '',
             manualPrice:cover.price || null,
+            artist:cover.artist || '',
+            ratio:cover.ratio || '',
+            sku:cover.sku || '',
+            notes:cover.notes || '',
             sourceUrl:cover.sourceUrl || '',
             addedBy:cover.addedBy || '',
             addedAt:cover.addedAt || '',
@@ -4270,6 +4274,10 @@ export default {
         const imageUrl = String(body.imageUrl || '').trim().slice(0, 600);
         const uploadedImageKey = String(body.imageKey || '').trim();
         const price = Number(body.price || 0) || null;
+        const artist = String(body.artist || '').trim().slice(0, 120);
+        const ratio = String(body.ratio || '').trim().slice(0, 40);
+        const sku = String(body.sku || '').trim().slice(0, 60);
+        const notes = String(body.notes || '').trim().slice(0, 500);
         if (!metronIssueId || !variantName) return json({ ok:false, error:'metronIssueId and variantName are required' }, 400);
         let imageKey = '', storedImageUrl = '';
         if (uploadedImageKey) {
@@ -4304,6 +4312,10 @@ export default {
           id:crypto.randomUUID(),
           variantName,
           price,
+          artist,
+          ratio,
+          sku,
+          notes,
           imageKey,
           imageUrl:storedImageUrl,
           sourceUrl:uploadedImageKey ? '' : imageUrl,
@@ -4332,6 +4344,10 @@ export default {
         const oldImageKey = target.imageKey || '';
         if (body.variantName != null) target.variantName = String(body.variantName).trim().slice(0, 160) || target.variantName;
         if (body.price != null) target.price = Number(body.price) || null;
+        if (body.artist != null) target.artist = String(body.artist).trim().slice(0, 120);
+        if (body.ratio != null) target.ratio = String(body.ratio).trim().slice(0, 40);
+        if (body.sku != null) target.sku = String(body.sku).trim().slice(0, 60);
+        if (body.notes != null) target.notes = String(body.notes).trim().slice(0, 500);
         const uploadedImageKey = String(body.imageKey || '').trim();
         const imageUrl = String(body.imageUrl || '').trim().slice(0, 600);
         if (uploadedImageKey) {
