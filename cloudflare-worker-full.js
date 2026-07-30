@@ -175,15 +175,21 @@ function metronIssueBaseNumber(value) {
   return (clean.match(/^\d+(?:\.\d+)?/) || [clean])[0].toLowerCase();
 }
 
+// Metron is the actual bibliographic catalog -- it lists a variant as soon
+// as someone's entered it, whether or not a photo has been uploaded for it
+// yet. Every gate in this function used to also require imageUrl, which
+// silently dropped real, known variants before they ever left the Worker
+// (an obscure retailer exclusive with no photo on file is exactly the kind
+// of cover a heavy-variant book's "missing" complaint traces back to).
 function metronSiblingCovers(currentIssue, issueList = []) {
   const target = metronIssueBaseNumber(currentIssue.number);
   const siblings = (Array.isArray(issueList) ? issueList : []).map(normalizeMetronListIssue).filter(issue => {
-    if (!issue.id || !issue.imageUrl) return false;
+    if (!issue.id) return false;
     return !target || metronIssueBaseNumber(issue.number) === target;
   });
   const current = normalizeMetronListIssue(currentIssue);
-  if (current.id && current.imageUrl && !siblings.some(issue => issue.id === current.id)) siblings.unshift(current);
-  const nested = (currentIssue.variants || []).filter(variant => variant.imageUrl).map(variant => ({
+  if (current.id && !siblings.some(issue => issue.id === current.id)) siblings.unshift(current);
+  const nested = (currentIssue.variants || []).map(variant => ({
     id:variant.metronIssueId || variant.id,
     metronIssueId:variant.metronIssueId || '',
     issueName:variant.name,
@@ -192,15 +198,15 @@ function metronSiblingCovers(currentIssue, issueList = []) {
     seriesYearBegan:current.seriesYearBegan,
     publisher:current.publisher,
     number:variant.number || current.number,
-    imageUrl:variant.imageUrl,
+    imageUrl:variant.imageUrl || '',
     sku:variant.sku,
     upc:variant.upc,
     coverPrice:variant.coverPrice,
     coverPriceCurrency:variant.coverPriceCurrency,
     nestedVariant:true,
-  }));
+  })).filter(variant => variant.id);
   const combined = [...siblings, ...nested];
-  return combined.filter((cover, index) => combined.findIndex(other => String(other.id) === String(cover.id) && other.imageUrl === cover.imageUrl) === index);
+  return combined.filter((cover, index) => combined.findIndex(other => String(other.id) === String(cover.id)) === index);
 }
 
 async function metronFetch(env, path, params = {}, ttlSeconds = 86400) {
@@ -4154,8 +4160,14 @@ export default {
             source:'Metron + PriceCharting',
           } : cover);
           const separatePcCovers = mergedMetronCovers.length ? pcCoverRows.filter(cover => cover.coverDescriptor) : pcCoverRows;
+          // Metron is the actual bibliographic source -- it catalogs a variant
+          // even when it has no photo on file for it. Dropping any cover
+          // without an image here (this used to apply to Metron entries too,
+          // not just PriceCharting's) discarded real, known variants before
+          // the client ever saw them. Only dedupe among covers that DO have
+          // an image; keep every imageless one.
           const covers = [...mergedMetronCovers, ...separatePcCovers]
-            .filter((cover, index, all) => cover.imageUrl && all.findIndex(other => String(other.imageUrl).split('?')[0] === String(cover.imageUrl).split('?')[0]) === index);
+            .filter((cover, index, all) => !cover.imageUrl || all.findIndex(other => other.imageUrl && String(other.imageUrl).split('?')[0] === String(cover.imageUrl).split('?')[0]) === index);
           const candidate = comicCandidates[0] || null;
           const runnerUp = comicCandidates[1] || null;
           let priceMatch = linkedPrice || (candidate && (!runnerUp || Number(candidate.comicMatchScore || 0) - Number(runnerUp.comicMatchScore || 0) >= 15) ? candidate : null);
