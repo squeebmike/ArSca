@@ -1738,9 +1738,14 @@ export default {
       let items = (rows || []).map(row => { const d=row.data || {}; const rawQty=d.quantity ?? d.qty ?? 1; const quantity=Number.isFinite(Number(rawQty))?Number(rawQty):1; const inventoryStatus=cleanText(d.lifecycle || d.status || row.status || 'in_stock',40).toLowerCase();
         // Price rule: market price, unless there's a floor (minPrice) or a
         // manually-entered override (priceOverride) from the dashboard's edit
-        // screen -- whichever of those is higher than market wins.
+        // screen -- whichever of those is higher than market wins. A
+        // signature is a fixed dollar add-on tracked separately from market
+        // price (see inventoryListPrice/inventorySignatureValue in
+        // dashboard.html) so it stays fixed while market price re-syncs --
+        // added on top here, after the floor, the same way.
         const rowMarket = Number(d.market || d.marketPrice || d.rawMarketPrice || 0) || 0;
         const rowBase = Number(d.priceOverride || 0) || roundUpToDollar(rowMarket);
+        const rowSignatureValue = Number(d.signature_value || 0) || 0;
         return {
         id:cleanText(row.id,80), name:cleanText(d.name || d.title || 'Item'), category:cleanText(d.category || d.type || 'Other',80),
         set:cleanText(d.set || d.series || '',120), year:cleanText(d.year || '',12), variant:cleanText(d.variant || d.finish || '',120), condition:cleanText(d.condition || d.grade || '',80),
@@ -1749,8 +1754,9 @@ export default {
         // user-taken photo -- checked first, same precedence the dashboard's
         // own inventoryImageUrl() uses, so a self-taken photo with no
         // catalog-sourced image still shows up on the public storefront.
-        price:Math.max(rowBase, Number(d.minPrice || 0) || 0), market:rowMarket, image:cleanUrl(d.photoDataUrl || d.thumbnail || d.image || d.img || d.imageUrl || d.image_url || d.photo),
+        price:Math.max(rowBase, Number(d.minPrice || 0) || 0) + rowSignatureValue, market:rowMarket, image:cleanUrl(d.photoDataUrl || d.thumbnail || d.image || d.img || d.imageUrl || d.image_url || d.photo),
         isSealed:!!d.is_sealed, gradingCompany:cleanText(d.grading_company || d.grader || '',40),
+        isSigned:!!d.is_signed, signedBy:cleanText(d.signed_by || '',120), signatureValue:rowSignatureValue,
         comic:comicDetailFor(d),
         quantity, inventoryStatus, soldAt:d.soldAt || d.sold_at || '', archivedAt:d.archivedAt || '', addedAt:row.created_at || '', updatedAt:row.updated_at || ''
       }; }).filter(i => i.name && i.quantity > 0 && !i.soldAt && !i.archivedAt && !['sold','archived','returned','deleted','sold_pending_pickup','sold_pending_shipment','hold','lost_damaged'].includes(i.inventoryStatus));
@@ -1832,7 +1838,9 @@ export default {
         const invStatus = String(d.lifecycle || d.status || row.status || 'in_stock').toLowerCase();
         if (invStatus !== 'in_stock' || availableQty < qty || d.soldAt || d.archivedAt) return json({ ok:false, error:`"${d.name || 'An item'}" in your cart just sold out` }, 409);
         const checkoutBase = Number(d.priceOverride || 0) || roundUpToDollar(Number(d.market || d.marketPrice || d.rawMarketPrice || d.price || 0) || 0);
-        const unitPrice = Math.max(checkoutBase, Number(d.minPrice || 0) || 0);
+        // Same signature add-on as the listing price above -- without this
+        // a signed item would list correctly but charge the un-signed price.
+        const unitPrice = Math.max(checkoutBase, Number(d.minPrice || 0) || 0) + (Number(d.signature_value || 0) || 0);
         if (unitPrice <= 0) return json({ ok:false, error:`"${d.name || 'An item'}" doesn't have a price set yet` }, 409);
         const category = String(d.category || d.type || '').toLowerCase();
         const isSealed = !!d.is_sealed || category.includes('sealed') || category === 'comic';
