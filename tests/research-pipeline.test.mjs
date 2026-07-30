@@ -16,7 +16,7 @@ assert.match(dashboard,/if\(id==='catalogs'\)refreshOfflineCatalogManagerPanel\(
 assert.match(dashboard,/setTimeout\(\(\) => refreshOfflineCatalogManagerPanel\(\), 0\)/,'initial catalog rendering must wait until catalog constants are initialized');
 assert.match(dashboard,/function priceChartingOfflineCategoryFor\(category\)/,'research must route eligible categories into their offline catalogs');
 assert.match(dashboard,/const mtgOnly = \(wants === 'mtg' \|\| plannedCategories\.has\('mtg'\)\) && !sealedIntent/,'MTG card searches should have a dedicated fast provider path while sealed searches keep PriceCharting fallback');
-assert.match(dashboard,/!mtgOnly && \(\(!wants&&hasPlannedCategory\('mtg'\)\)/,'MTG must not wait for the generic JustTCG\/TCG proxy chain');
+assert.match(dashboard,/queueProvider\(!pokemonOnly && \(\(!wants&&hasPlannedCategory\('mtg'\)\) \|\| \['tcg','yugioh','mtg'\]\.includes\(wants\)\), \(\)=>fetchWorkerTcgCatalog\(q,cat\)\)/,'MTG must use JustTCG for real per-condition prices and exact TCGPlayer links, not just Scryfall single-price data');
 assert.match(dashboard,/deadlineMs=6000/,'optional search providers must have a short whole-task deadline');
 assert.match(dashboard,/slice\(0,3\)/,'automatic PriceCharting image hydration must be bounded');
 assert.match(dashboard,/signal:AbortSignal\.timeout\(3500\)/,'optional image hydration must time out quickly');

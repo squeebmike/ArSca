@@ -3554,7 +3554,10 @@ export default {
           priceChange90d: Number(v.priceChange90d || v.change90d || v.change_90d || 0) || 0,
           priceHistory: v.priceHistory || v.history || [],
           lastUpdated: v.lastUpdated || v.updatedAt || v.priceUpdatedAt || null,
-          priceSource: market ? 'JustTCG Variant Market' : 'JustTCG Product Estimate',
+          // No computed guess here -- market is only ever a real price JustTCG
+          // returned for this exact variant. When it's 0/missing there's
+          // simply no real price for this condition/finish, full stop.
+          priceSource: market ? 'JustTCG Variant Market' : 'JustTCG No Price',
           priceConfidence: market ? 'high' : 'medium',
         };
       };

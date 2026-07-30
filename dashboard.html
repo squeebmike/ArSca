@@ -7382,7 +7382,6 @@ function renderPriceChartingDataPanel(status = null){
       <div id="pc-browser-sync-progress" style="margin-top:10px"></div>
     </div>
     <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px;font-family:monospace;font-size:10px;color:var(--dim)">
-      <label><input type="checkbox" ${allowEstimatedConditionValues() ? 'checked' : ''} onchange="setAllowEstimatedConditionValues(this.checked);renderPriceChartingDataPanel()"> Allow estimated condition values when exact SKU price is missing</label>
       <label><input type="checkbox" ${localStorage.getItem('qa_debug') === '1' ? 'checked' : ''} onchange="localStorage.setItem('qa_debug',this.checked?'1':'0');renderPriceChartingDataPanel()"> Show external SKU ids in admin/debug</label>
     </div>
     <div class="item-metric" style="margin-bottom:12px">
@@ -22788,9 +22787,13 @@ async function searchQuickCatalog(q, cat, searchPlan = buildUniversalSearchPlan(
   // SportsCardsPro — step 1 candidate search (step 2 hydration fires on result selection)
   queueProvider((!wants&&hasPlannedCategory('sports')) || wants==='sports' || wants==='graded', ()=>searchSportsCardsPro(q,searchPlan));
 
-  // MTG uses the local Scryfall + PriceCharting snapshot (or direct Scryfall
-  // fallback). Do not make it wait for the generic JustTCG/TCG proxy chain.
-  queueProvider(!pokemonOnly && !mtgOnly && ((!wants&&hasPlannedCategory('mtg')) || ['tcg','yugioh'].includes(wants)), ()=>fetchWorkerTcgCatalog(q,cat));
+  // JustTCG is the only source with real per-condition prices (NM/LP/MP/
+  // HP/DMG) and an exact TCGPlayer product+SKU link -- Scryfall below only
+  // ever has one "usd"/"usd_foil" market number and a generic marketplace
+  // search redirect, not a deep link. MTG used to be excluded from this call
+  // entirely; it now runs alongside the Scryfall/offline snapshot below
+  // instead of being the only source.
+  queueProvider(!pokemonOnly && ((!wants&&hasPlannedCategory('mtg')) || ['tcg','yugioh','mtg'].includes(wants)), ()=>fetchWorkerTcgCatalog(q,cat));
   queueProvider((!wants&&hasPlannedCategory('mtg')) || wants==='tcg' || wants==='mtg' || wants==='graded' || (wants==='sealed'&&mtgSealedIntent) || isMtgLookupIntent(q,cat) || mtgSealedIntent, async()=>{
     const mtgMode=mtgOfflineSearchMode();let rows=[];
     if(mtgMode!=='online_only')rows=await searchMtgCatalogExport(q).catch(()=>[]);
@@ -23102,13 +23105,13 @@ function qplFinishLabel(value){
 }
 
 function qplPriceValue(v){
-  if(/estimate/i.test(String(v?.priceSource || '')) && !allowEstimatedConditionValues()) return 0;
+  if(/estimate/i.test(String(v?.priceSource || ''))) return 0;
   return Number(v?.marketPrice || 0) || 0;
 }
 
 function qplPriceSourceLabel(v){
   if(!v) return 'Needs Research';
-  if(/estimate/i.test(String(v.priceSource || ''))) return allowEstimatedConditionValues() ? 'Estimated Condition Value' : 'No Real Price Available';
+  if(/estimate/i.test(String(v.priceSource || ''))) return 'No Real Price Available';
   if(Number(v.marketPrice || 0) > 0) return 'Real SKU Market Price';
   return 'No Real Price Available';
 }
@@ -23813,34 +23816,6 @@ function parseMtgFinishIntent(q){
     .replace(/\b(oil slick|halo foil|halo|rainbow foil|confetti foil|non[-\s]?foil|nonfoil|etched foil|etched|textured foil|textured|surge foil|surge|foil|borderless|retro frame|retro|old frame|showcase|extended art|extended)\b/g, ' ')
     .replace(/\s+/g, ' ').trim();
   return { finish, treatment, clean: clean || String(q || '').trim() };
-}
-
-function getConditionEstimateRates(){
-  return { NM:1, LP:0.8, MP:0.6, HP:0.4, DMG:0.25, ...safeLocalJson('condition_estimate_rates_v1', {}) };
-}
-
-function allowEstimatedConditionValues(){
-  return localStorage.getItem('allow_condition_estimates_v1') === '1';
-}
-
-function setAllowEstimatedConditionValues(on){
-  localStorage.setItem('allow_condition_estimates_v1', on ? '1' : '0');
-}
-
-function estimateConditionValue(row, condition){
-  if(!allowEstimatedConditionValues()) return 0;
-  const rates = getConditionEstimateRates();
-  const cond = String(condition || row.selectedCondition || row.condition || 'NM').toUpperCase();
-  const sameFinishLang = (row.availableVariants || []).filter(v =>
-    normalizeQplFinish(v.finish) === normalizeQplFinish(row.selectedFinish || row.finish) &&
-    String(v.language || 'English').toLowerCase() === String(row.selectedLanguage || row.language || 'English').toLowerCase()
-  );
-  const nm = sameFinishLang.find(v => String(v.condition).toUpperCase() === 'NM' && Number(v.marketPrice || v.price || 0) > 0)
-    || (row.availableVariants || []).find(v => String(v.condition).toUpperCase() === 'NM' && Number(v.marketPrice || v.price || 0) > 0)
-    || (row.availableVariants || []).find(v => Number(v.marketPrice || v.price || 0) > 0);
-  const base = Number(nm?.marketPrice || nm?.price || row.market || 0);
-  if(!base) return 0;
-  return Math.round(base * Number(rates[cond] ?? rates.NM ?? 1) * 100) / 100;
 }
 
 function qplTruthLabel(r){
@@ -24805,15 +24780,14 @@ function applyQplSelectedVariant(r){
   r.language = v.language || 'English';
   const pptApplied = applyPokemonPriceTrackerPrice(r);
   const realPrice = pptApplied ? Number(r.market || 0) : qplPriceValue(v);
-  const estPrice = pptApplied ? 0 : (realPrice ? 0 : estimateConditionValue(r, v.condition));
-  if(!pptApplied) r.market = realPrice || estPrice;
+  if(!pptApplied) r.market = realPrice;
   r.low = Number(v.lowPrice || v.lowestListingPrice || 0) || r.low || 0;
   r.high = Number(v.highPrice || 0) || r.high || 0;
   if(!pptApplied) {
-    r.priceSource = realPrice ? qplPriceSourceLabel(v) : (estPrice ? 'Estimated Condition Value' : qplPriceSourceLabel(v));
-    r.priceConfidence = realPrice ? (v.priceConfidence || r.priceConfidence || 'unknown') : (estPrice ? 'estimate' : 'unknown');
-    r.resolvedPricePath = realPrice ? 'selectedVariant.marketPrice' : (estPrice ? 'admin estimate fallback' : 'selectedVariant has no real price');
-    r.resolvedPrice = realPrice || estPrice || 0;
+    r.priceSource = qplPriceSourceLabel(v);
+    r.priceConfidence = realPrice ? (v.priceConfidence || r.priceConfidence || 'unknown') : 'unknown';
+    r.resolvedPricePath = realPrice ? 'selectedVariant.marketPrice' : 'selectedVariant has no real price';
+    r.resolvedPrice = realPrice || 0;
   }
   r.skuId = v.skuId || r.skuId || '';
   r.productConditionId = v.productConditionId || r.productConditionId || '';
