@@ -22563,6 +22563,20 @@ function openAddManualComicCoverModal(idx,coverId=''){
       <label style="font-family:monospace;font-size:9px;color:var(--dim)">PRICE (OPTIONAL)
         <input id="manual-cover-price-input" class="tsi" style="margin-top:4px;width:100%" type="number" step="0.01" min="0" placeholder="0.00" value="${existing?.manualPrice?Number(existing.manualPrice):''}">
       </label>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <label style="font-family:monospace;font-size:9px;color:var(--dim)">COVER ARTIST (OPTIONAL)
+          <input id="manual-cover-artist-input" class="tsi" style="margin-top:4px;width:100%" placeholder="e.g. Kevin Eastman" value="${existing?escHtml(existing.artist||''):''}">
+        </label>
+        <label style="font-family:monospace;font-size:9px;color:var(--dim)">PRINT RATIO (OPTIONAL)
+          <input id="manual-cover-ratio-input" class="tsi" style="margin-top:4px;width:100%" placeholder="e.g. 1:25" value="${existing?escHtml(existing.ratio||''):''}">
+        </label>
+      </div>
+      <label style="font-family:monospace;font-size:9px;color:var(--dim)">SKU / DIAMOND ORDER CODE (OPTIONAL)
+        <input id="manual-cover-sku-input" class="tsi" style="margin-top:4px;width:100%" placeholder="e.g. JUL110394" value="${existing?escHtml(existing.sku||''):''}">
+      </label>
+      <label style="font-family:monospace;font-size:9px;color:var(--dim)">NOTES (OPTIONAL)
+        <textarea id="manual-cover-notes-input" class="tsi" style="margin-top:4px;width:100%;min-height:52px;resize:vertical" placeholder="e.g. print run of 250, signed at NYCC 2011">${existing?escHtml(existing.notes||''):''}</textarea>
+      </label>
       <button class="hbtn" style="min-height:48px;color:var(--g)" onclick="submitManualComicCover(${idx},'${coverId}')">${existing?'SAVE CHANGES':'SAVE COVER'}</button>
       <div id="manual-cover-status" style="font-family:monospace;font-size:10px;color:var(--dim)"></div>
     </div>
@@ -22578,6 +22592,10 @@ async function submitManualComicCover(idx,coverId=''){
   const file=document.getElementById('manual-cover-file-input')?.files?.[0]||null;
   const priceRaw=document.getElementById('manual-cover-price-input')?.value;
   const price=priceRaw?Number(priceRaw):null;
+  const artist=document.getElementById('manual-cover-artist-input')?.value.trim()||'';
+  const ratio=document.getElementById('manual-cover-ratio-input')?.value.trim()||'';
+  const sku=document.getElementById('manual-cover-sku-input')?.value.trim()||'';
+  const notes=document.getElementById('manual-cover-notes-input')?.value.trim()||'';
   const status=document.getElementById('manual-cover-status');
   if(!coverId&&!variantName){if(status)status.textContent='Variant name is required.';return;}
   if(status)status.textContent='Saving...';
@@ -22593,8 +22611,8 @@ async function submitManualComicCover(idx,coverId=''){
     }
     const path=coverId?`/comic/covers/global/${encodeURIComponent(r.metronIssueId)}/${encodeURIComponent(coverId)}`:'/comic/covers/global/add';
     const payload=coverId
-      ?{...(variantName?{variantName}:{}),...(price!=null?{price}:{}),imageUrl:imageKey?'':imageUrl,imageKey}
-      :{metronIssueId:r.metronIssueId,variantName,imageUrl:imageKey?'':imageUrl,imageKey,price};
+      ?{...(variantName?{variantName}:{}),...(price!=null?{price}:{}),artist,ratio,sku,notes,imageUrl:imageKey?'':imageUrl,imageKey}
+      :{metronIssueId:r.metronIssueId,variantName,imageUrl:imageKey?'':imageUrl,imageKey,price,artist,ratio,sku,notes};
     const res=await storeWorkerFetch(path,{method:coverId?'PATCH':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
     const data=await res.json().catch(()=>({}));
     if(!res.ok||!data.ok)throw new Error(data.error||'Could not save that cover');
@@ -22749,7 +22767,8 @@ function qplComicBookInfoPanel(r,idx){
     const title=cover.issueName||cover.name||('Issue #'+(cover.number||m.number||'')),tags=window.ArsCaComicIssueHub?.variantLabels(title)||[],prices=cover.pricecharting?.comicPrices||{},raw=Number(prices.ungraded||cover.manualPrice||0),graded=Number(prices.grade9_8||0),isSelected=Boolean(r.coverConfirmed&&String(r.imageUrl||'').split('?')[0]===String(cover.imageUrl||'').split('?')[0]),isManual=cover.source==='Manual',source=isManual?'MANUALLY ADDED':cover.pricechartingProductId?'PRICECHARTING':cover.nestedVariant?'METRON VARIANT':'METRON COVER';
     const rawCoverId=isManual?String(cover.id||'').replace(/^manual:/,''):'';
     const manualControls=isManual?`<div style="position:absolute;top:6px;right:6px;display:flex;gap:4px;z-index:1"><button type="button" class="hbtn" style="padding:2px 6px;font-size:9px" onclick="event.stopPropagation();openAddManualComicCoverModal(${idx},'${rawCoverId}')">EDIT</button><button type="button" class="hbtn" style="padding:2px 6px;font-size:9px;color:var(--red)" onclick="event.stopPropagation();removeManualComicCover(${idx},'${rawCoverId}')">✕</button></div>`:'';
-    return `<div style="position:relative;width:100%">${manualControls}<button type="button" class="comic-cover-picker-card ${isSelected?'selected':''}" style="width:100%" onclick="selectMetronComicCover(${idx},${i})" aria-label="Use ${escHtml(title)}">${cover.imageUrl?('<img src="'+escHtml(cover.imageUrl)+'" alt="'+escHtml(title)+'" loading="lazy">'):('<div style="width:100%;aspect-ratio:2/3;display:grid;place-items:center;background:#050607;border-radius:7px;color:var(--dim);font-size:9px">NO IMAGE</div>')}<div class="comic-cover-picker-title">${escHtml(title)}</div><div class="comic-cover-picker-tags"><span class="qpl-badge">${source}</span>${tags.map(tag=>`<span class="qpl-badge ${tag==='foil'?'warn':''}">${escHtml(tag.toUpperCase())}</span>`).join('')}${isSelected?'<span class="qpl-badge good">SELECTED</span>':''}</div><div class="comic-cover-picker-price">${raw?'RAW $'+raw.toFixed(2):cover.coverPrice?'COVER PRICE $'+Number(cover.coverPrice).toFixed(2):'SELECT TO LOAD PRICE'}${graded?' · 9.8 $'+graded.toFixed(2):''}</div></button></div>`;
+    const manualTags=isManual?[cover.ratio&&`RATIO ${cover.ratio}`,cover.sku&&`SKU ${cover.sku}`].filter(Boolean):[];
+    return `<div style="position:relative;width:100%">${manualControls}<button type="button" class="comic-cover-picker-card ${isSelected?'selected':''}" style="width:100%" onclick="selectMetronComicCover(${idx},${i})" aria-label="Use ${escHtml(title)}"${isManual&&cover.notes?` title="${escHtml(cover.notes)}"`:''}>${cover.imageUrl?('<img src="'+escHtml(cover.imageUrl)+'" alt="'+escHtml(title)+'" loading="lazy">'):('<div style="width:100%;aspect-ratio:2/3;display:grid;place-items:center;background:#050607;border-radius:7px;color:var(--dim);font-size:9px">NO IMAGE</div>')}<div class="comic-cover-picker-title">${escHtml(title)}</div>${isManual&&cover.artist?`<div style="font-size:9px;color:var(--dim);margin-top:2px">Art: ${escHtml(cover.artist)}</div>`:''}<div class="comic-cover-picker-tags"><span class="qpl-badge">${source}</span>${tags.map(tag=>`<span class="qpl-badge ${tag==='foil'?'warn':''}">${escHtml(tag.toUpperCase())}</span>`).join('')}${manualTags.map(tag=>`<span class="qpl-badge">${escHtml(tag)}</span>`).join('')}${isSelected?'<span class="qpl-badge good">SELECTED</span>':''}</div><div class="comic-cover-picker-price">${raw?'RAW $'+raw.toFixed(2):cover.coverPrice?'COVER PRICE $'+Number(cover.coverPrice).toFixed(2):'SELECT TO LOAD PRICE'}${graded?' · 9.8 $'+graded.toFixed(2):''}</div></button></div>`;
   }).join('');
   return `<section style="margin-top:12px;border:1px solid rgba(199,125,255,.42);border-radius:10px;padding:14px;background:rgba(199,125,255,.055)"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center"><div><b style="font-family:'Orbitron',monospace;font-size:13px;color:var(--purple)">SELECT THE EXACT COVER & VARIANT</b><div style="font-size:10px;color:var(--dim);margin-top:4px">Metron cover records plus exact PriceCharting variants, including foil editions when available.</div></div><span class="qpl-badge">${covers.length} COVER${covers.length===1?'':'S'} · METRON #${escHtml(r.metronIssueId||m.id||'')}</span></div>${covers.length?`<div class="comic-cover-picker-grid">${coverCards}</div>`:'<div style="color:var(--dim);font-size:10px;margin-top:10px">No additional cover records were returned for this issue.</div>'}${links}<details class="comic-book-facts"><summary>BOOK DETAILS, STORY & CREATORS</summary><div class="comic-book-facts-body"><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:7px">${facts.map(([label,value])=>`<div style="background:var(--surf);border:1px solid var(--border);border-radius:7px;padding:8px"><small style="display:block;color:var(--dim);font-size:8px">${escHtml(label)}</small><b style="font-size:11px">${escHtml(String(value))}</b></div>`).join('')}</div><div style="margin-top:12px"><b style="font-size:10px;color:var(--purple)">STORY / SYNOPSIS</b><p style="font-size:11px;line-height:1.65;margin:5px 0;color:${m.description?'var(--text)':'var(--dim)'}">${escHtml(m.description||'Metron does not currently have a synopsis for this issue.')}</p></div>${row('Story title',m.storyTitles||[])}${grouped.map(([label,names])=>row(label,names)).join('')}${credits?`<details style="font-size:10px;margin-top:8px"><summary>All creator credits</summary><div style="line-height:1.55;margin-top:5px">${escHtml(credits)}</div></details>`:''}${row('Story arc',m.arcs||[])}${row('Genre',m.genres||[])}${row('Character',m.characters||[])}${row('Team',m.teams||[])}${row('Universe',m.universes||[])}<div style="margin-top:12px"><span class="qpl-badge warn">KEY ISSUE STATUS NEEDS A VERIFIED SOURCE</span><div style="font-size:9px;color:var(--dim);margin-top:4px">Metron supplies bibliographic facts, credits, and story data. Record a separately verified key-issue reason below.</div></div></div></details></section>`;
 }
