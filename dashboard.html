@@ -19946,6 +19946,29 @@ async function fetchPokemonGradedPrice(tcgPlayerId, gradingCompany, grade){
   } catch(e) { return null; }
 }
 
+// Requires every word of the scanned card's name to appear in a candidate
+// match's name before it's accepted -- mirrors the scoring gate the Pokemon
+// branch below already has. Without this, PriceCharting's text search (whose
+// "console" category filter isn't reliably respected upstream) can return
+// something from a totally unrelated catalog -- e.g. a "J.P. Crawford"
+// baseball card search returning a Funko Pop as the #1 result -- and get
+// silently accepted as if it were the right product.
+function cardSightMatchScore(candidateName, consoleName, row){
+  const name = smartNormalizeText(candidateName);
+  const wantTokens = smartNormalizeText(row.name || row.player || '').split(/\s+/).filter(t => t.length > 1);
+  if(!wantTokens.length) return 0;
+  const matched = wantTokens.filter(t => name.includes(t));
+  if(matched.length < wantTokens.length) return 0;
+  let score = matched.length * 20;
+  if(row.year && name.includes(String(row.year))) score += 15;
+  if(row.card_number && name.includes(String(row.card_number))) score += 15;
+  // Reject obviously-wrong categories a loose text search can wander into
+  // when the upstream category filter doesn't actually constrain results.
+  const badCategoryHints = ['funko','pop!','video game','comic','coin','lego','amiibo'];
+  if(badCategoryHints.some(h => String(consoleName || '').toLowerCase().includes(h))) return 0;
+  return score;
+}
+
 // Real pricing only — never AI-guessed. Routes to whichever live provider
 // already backs that category in the Research tab.
 async function fetchCardSightRealPrice(row){
@@ -20017,7 +20040,12 @@ async function fetchCardSightRealPrice(row){
       const params = new URLSearchParams({ q, category: 'Sports Card' });
       const res = await storeWorkerFetch('/pricing/pricecharting/search?' + params.toString());
       const data = await res.json();
-      const match = (data.matches || data.products || [])[0];
+      const candidates = data.matches || data.products || [];
+      let match = null, bestScore = 0;
+      for(const c of candidates){
+        const s = cardSightMatchScore(c.productName, c.consoleName, row);
+        if(s > bestScore){ bestScore = s; match = c; }
+      }
       // match.url is the actual PriceCharting product page for this exact
       // item -- without it, the PRICECHARTING button falls back to a plain
       // text search instead of deep-linking to the matched card.
@@ -20030,7 +20058,12 @@ async function fetchCardSightRealPrice(row){
     const params = new URLSearchParams({ q, category, storeId: getActiveStoreId(), include_variants: 'true' });
     const res = await storeWorkerFetch('/pricing/justtcg/search?' + params.toString());
     const data = await res.json();
-    const match = (data.matches || [])[0];
+    const candidates = data.matches || [];
+    let match = null, bestScore = 0;
+    for(const c of candidates){
+      const s = cardSightMatchScore(c.name, c.game || c.category, row);
+      if(s > bestScore){ bestScore = s; match = c; }
+    }
     if(match) return { market: Number(match.selectedVariant?.marketPrice || 0), imageUrl: match.imageUrl || '', priceSource: 'JustTCG' };
   } catch(e) { /* fall through */ }
   return { market: 0, imageUrl: '', priceSource: '' };
