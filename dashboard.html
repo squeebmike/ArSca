@@ -22376,7 +22376,11 @@ async function fetchComicVineCover(name, issue, year){
 function comicPriceCandidateFitsIssue(candidate={},issue={}){
   const product=String(candidate.productName||'').trim(),issueMatch=product.match(/#\s*([0-9]+(?:\.[0-9]+)?[a-z]?)(?=\b|\s|\[|\()/i);
   if(!issueMatch)return false;
-  const beforeIssue=product.slice(0,issueMatch.index).trim(),descriptorMatch=beforeIssue.match(/\s*\[([^\]]+)\]\s*$/),candidateSeries=descriptorMatch?beforeIssue.slice(0,descriptorMatch.index).trim():beforeIssue;
+  const beforeIssue=product.slice(0,issueMatch.index).trim(),descriptorMatch=beforeIssue.match(/\s*\[([^\]]+)\]\s*$/),candidateSeriesRaw=descriptorMatch?beforeIssue.slice(0,descriptorMatch.index).trim():beforeIssue;
+  // Strip a trailing run qualifier like "(2011)" or "(2011 IDW)" -- PriceCharting
+  // adds one whenever a franchise has more than one run, but Metron's plain
+  // seriesName never does, so leaving it in broke the exact-equality check below.
+  const candidateSeries=candidateSeriesRaw.replace(/\s*\([^)]*\)\s*$/,'').trim();
   const normalize=value=>normalizePokemonText(value).replace(/[^a-z0-9]+/g,' ').trim(),series=normalize(issue.seriesName||issue.series||''),number=String(issue.number||issue.issueNumber||'').toLowerCase().replace(/[^a-z0-9.]/g,'');
   const candidateNumber=String(issueMatch[1]||'').toLowerCase(),numberMatches=candidateNumber===number||(/^\d+$/.test(number)&&new RegExp('^'+number+'[a-z]$','i').test(candidateNumber));
   if(!series||normalize(candidateSeries)!==series||!numberMatches)return false;

@@ -3912,7 +3912,14 @@ export default {
         const issueMatch = productName.match(/#\s*([0-9]+(?:\.[0-9]+)?[a-z]?)(?=\b|\s|\[|\()/i);
         const beforeIssue = issueMatch ? productName.slice(0, issueMatch.index).trim() : '';
         const descriptorMatch = beforeIssue.match(/\s*\[([^\]]+)\]\s*$/);
-        const seriesName = descriptorMatch ? beforeIssue.slice(0, descriptorMatch.index).trim() : beforeIssue;
+        const seriesNameRaw = descriptorMatch ? beforeIssue.slice(0, descriptorMatch.index).trim() : beforeIssue;
+        // PriceCharting disambiguates multi-run franchises (e.g. TMNT has Mirage
+        // 1984, Archie, and IDW 2011 runs) with a trailing run qualifier right
+        // before the issue number -- "Teenage Mutant Ninja Turtles (2011) #1".
+        // Metron's plain seriesName never carries that qualifier, so leaving it
+        // in here made the exact-equality series match below reject nearly
+        // every PriceCharting variant for any book with more than one run.
+        const seriesName = seriesNameRaw.replace(/\s*\([^)]*\)\s*$/, '').trim();
         const explicitYearMatch = productName.match(/[\[(]\s*((?:19|20)\d{2})\s*[\])]/);
         return {
           series:normalizeComicRunText(seriesName),
