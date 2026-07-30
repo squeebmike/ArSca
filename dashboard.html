@@ -1611,12 +1611,12 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="sc gold">
       <div class="sc-l">SELL VALUE</div>
       <div class="sc-v" id="s7">—</div>
-      <div class="sc-s">at our price (floor/override applied)</div>
+      <div class="sc-s">at our price (floor/override/signature applied)</div>
     </div>
     <div class="sc p">
       <div class="sc-l">POTENTIAL ROI</div>
       <div class="sc-v" id="s8">—</div>
-      <div class="sc-s" id="s8b">if current stock sold at market</div>
+      <div class="sc-s" id="s8b">if current stock sold at our price</div>
     </div>
     <div class="sc g">
       <div class="sc-l">TOTAL PROFIT</div>
@@ -2607,8 +2607,15 @@ body.show-mode .inv-sync-badge{display:none;}
         <label style="display:flex;align-items:center;gap:5px;font-family:monospace;font-size:10px;color:var(--dim);cursor:pointer"><input type="checkbox" id="edit-auto"> Auto/Sig</label>
         <label style="display:flex;align-items:center;gap:5px;font-family:monospace;font-size:10px;color:var(--dim);cursor:pointer"><input type="checkbox" id="edit-patch"> Patch</label>
         <label style="display:flex;align-items:center;gap:5px;font-family:monospace;font-size:10px;color:var(--dim);cursor:pointer"><input type="checkbox" id="edit-key"> Key Issue</label>
-        <label style="display:flex;align-items:center;gap:5px;font-family:monospace;font-size:10px;color:var(--dim);cursor:pointer"><input type="checkbox" id="edit-signed"> Signed</label>
+        <label style="display:flex;align-items:center;gap:5px;font-family:monospace;font-size:10px;color:var(--dim);cursor:pointer"><input type="checkbox" id="edit-signed" onchange="toggleEditSignatureRow()"> Signed</label>
         <label style="display:flex;align-items:center;gap:5px;font-family:monospace;font-size:10px;color:var(--dim);cursor:pointer"><input type="checkbox" id="edit-is-sealed"> Sealed / Pack Product</label>
+      </div>
+      <div id="edit-signature-row" style="display:none;margin-top:8px">
+        <div style="display:grid;grid-template-columns:2fr 1fr;gap:8px">
+          <div><label>Signed By</label><input type="text" id="edit-signed-by" placeholder="e.g. Kevin Eastman"></div>
+          <div><label>Signature Value Add-On ($)</label><input type="number" id="edit-signature-value" step="0.01" min="0" placeholder="0.00"></div>
+        </div>
+        <div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);margin-top:5px">Added on top of the market/list price as a fixed amount -- stays what you set it to when the item's own price changes, it doesn't get recalculated as a percentage.</div>
       </div>
     </div>
 
@@ -8362,6 +8369,11 @@ function populateEditCategorySelect(currentValue){
 function toggleEditGradedRow(){
   const row = document.getElementById('edit-graded-row');
   const on = document.getElementById('edit-is-graded')?.checked;
+  if(row) row.style.display = on ? 'block' : 'none';
+}
+function toggleEditSignatureRow(){
+  const row = document.getElementById('edit-signature-row');
+  const on = document.getElementById('edit-signed')?.checked;
   if(row) row.style.display = on ? 'block' : 'none';
 }
 // Reads the edit modal's grading fields for save -- unchecking "This item is
@@ -14452,14 +14464,15 @@ function renderStats(){
   document.getElementById('s2').textContent=f$(mkt);
   document.getElementById('s7').textContent=f$(sellVal);
   // Unrealized/potential ROI on what's still in stock -- what you'd walk
-  // away with if it all sold at market price right now, versus what you
-  // actually paid for it. Distinct from the realized ROI already shown
-  // under TOTAL PROFIT below, which only covers items already sold.
-  const potentialProfit=mkt-cost;
+  // away with if it all sold at our real price right now (floor/override/
+  // signature applied, same as SELL VALUE above), versus what you actually
+  // paid for it. Distinct from the realized ROI already shown under TOTAL
+  // PROFIT below, which only covers items already sold.
+  const potentialProfit=sellVal-cost;
   const potentialRoi=cost>0?(potentialProfit/cost*100):0;
   document.getElementById('s8').textContent=(potentialRoi>=0?'+':'')+potentialRoi.toFixed(0)+'%';
   document.getElementById('s8').className='sc-v'+(potentialRoi<0?' neg':'');
-  document.getElementById('s8b').textContent=(potentialProfit>=0?'+':'')+f$(potentialProfit)+' if sold at market';
+  document.getElementById('s8b').textContent=(potentialProfit>=0?'+':'')+f$(potentialProfit)+' if sold at our price';
   document.getElementById('s3').textContent=(pft>=0?'+':'')+f$(pft);
   document.getElementById('s3').className='sc-v'+(pft<0?' neg':'');
   document.getElementById('s3b').textContent=sol.length+' sold · ROI '+roi.toFixed(0)+'%';
@@ -14700,6 +14713,14 @@ function inventoryMinPrice(item={}){ return Number(item.minPrice ?? item.raw?.mi
 // at save time — see confirmEditAndSync/confirmAddToInventoryFromModal).
 // 0 means "no override — track market."
 function inventoryPriceOverride(item={}){ return Number(item.priceOverride ?? item.raw?.priceOverride ?? 0) || 0; }
+// A signed item's added value: a fixed dollar amount set once (see the
+// "Signed" checkbox in the edit modal), not baked into item.market itself so
+// a price-sync refresh comparing old vs new market price isn't thrown off by
+// it. Added on top of the market/floor/override price everywhere that price
+// is meant to represent "what we'd actually charge for this exact item" --
+// never into inventoryMarketPrice() itself, which stays a pure live-price
+// reference for sync comparisons.
+function inventorySignatureValue(item={}){ return Number(item.signature_value ?? item.signatureValue ?? item.raw?.signature_value ?? 0) || 0; }
 // The price before the floor is applied: the manual override if one was set
 // (respected exactly as typed), otherwise the live market price rounded UP
 // to the next whole dollar -- store policy is cash-register-friendly whole
@@ -14716,17 +14737,22 @@ function inventoryEffectiveBasePrice(item={}){
 function inventoryListPrice(item={}){
   const base = inventoryEffectiveBasePrice(item);
   const floor = inventoryMinPrice(item);
-  return floor > 0 ? Math.max(base, floor) : base;
+  const floored = floor > 0 ? Math.max(base, floor) : base;
+  return floored + inventorySignatureValue(item);
 }
 // Suggested ring-up price for the Sell/POS flow: respects a manual price
 // override, applies the active Show Mode discount on top of it, then
 // enforces the per-item minPrice floor as a hard minimum (never rings up
-// below the floor even after a show discount).
+// below the floor even after a show discount). The signature premium is
+// added after the discount and floor -- a trade-show percentage-off rule
+// shouldn't eat into a real signature's value any more than it eats into
+// the floor.
 function inventorySellSuggestedPrice(item={}){
   const basePrice = inventoryEffectiveBasePrice(item);
   const discounted = basePrice > 0 ? applyShowPriceRule(basePrice) : 0;
   const floor = inventoryMinPrice(item);
-  return floor > 0 ? Math.max(discounted, floor) : discounted;
+  const floored = floor > 0 ? Math.max(discounted, floor) : discounted;
+  return floored + inventorySignatureValue(item);
 }
 function inventoryProfitStats(item={}){
   const cost = inventoryCostBasis(item);
@@ -18367,6 +18393,9 @@ function openEditModal(id) {
   document.getElementById('edit-patch').checked = item.is_patch || false;
   document.getElementById('edit-key').checked = item.is_key || false;
   document.getElementById('edit-signed').checked = item.is_signed || false;
+  document.getElementById('edit-signed-by').value = item.signed_by || '';
+  document.getElementById('edit-signature-value').value = item.signature_value || '';
+  toggleEditSignatureRow();
   document.getElementById('edit-is-sealed').checked = item.is_sealed || false;
   document.getElementById('edit-sync-status').textContent = '';
   setInventoryEditPhoto(inventoryImageUrl(item), inventoryImageSourceLabel(item));
@@ -18447,6 +18476,9 @@ function openAddToInventoryModal(idx){
   document.getElementById('edit-patch').checked = item.is_patch || false;
   document.getElementById('edit-key').checked = item.is_key || false;
   document.getElementById('edit-signed').checked = item.is_signed || false;
+  document.getElementById('edit-signed-by').value = item.signed_by || '';
+  document.getElementById('edit-signature-value').value = item.signature_value || '';
+  toggleEditSignatureRow();
   document.getElementById('edit-is-sealed').checked = item.is_sealed || false;
   document.getElementById('edit-sync-status').textContent = '';
   setInventoryEditPhoto(inventoryImageUrl(item), inventoryImageSourceLabel(item));
@@ -18507,6 +18539,8 @@ async function confirmAddToInventoryFromModal(){
     is_patch: document.getElementById('edit-patch').checked,
     is_key: document.getElementById('edit-key').checked,
     is_signed: document.getElementById('edit-signed').checked,
+    signed_by: document.getElementById('edit-signed-by').value.trim(),
+    signature_value: parseFloat(document.getElementById('edit-signature-value')?.value) || 0,
     is_sealed: document.getElementById('edit-is-sealed').checked,
     ...tcgReferencePatch,
     ...pcReferencePatch,
@@ -18709,6 +18743,8 @@ async function confirmEditAndSync() {
     is_patch: document.getElementById('edit-patch').checked,
     is_key: document.getElementById('edit-key').checked,
     is_signed: document.getElementById('edit-signed').checked,
+    signed_by: document.getElementById('edit-signed-by').value.trim(),
+    signature_value: parseFloat(document.getElementById('edit-signature-value')?.value) || 0,
     is_sealed: document.getElementById('edit-is-sealed').checked,
     ...tcgReferencePatch,
     ...pcReferencePatch,
@@ -20578,7 +20614,7 @@ function comicAppraisalState(r = {}){
   const m=comicProductMeta(r);
   const knownConditions=['Poor','Fair','Good','Very Good','Fine','Very Fine','Near Mint'];
   const conditionSeed=knownConditions.includes(r.conditionText||r.condition) ? (r.conditionText||r.condition) : 'Very Fine';
-  r.comicAppraisal ||= {conditionText:conditionSeed,numericGrade:r.numericGrade||'',isSlabbed:!!r.isSlabbed,grader:r.grader||'',certNumber:r.certNumber||r.cert_number||'',pageQuality:r.pageQuality||'',defects:[...(r.defects||[])],notes:r.notes||'',listPriceOverride:'',costBasis:r.cost||'',location:r.location||'',box:r.box||'',coverConfirmed:!!r.coverConfirmed,series:m.series,issueNumber:m.issueNumber,volume:r.volume||'',publisher:r.publisher||'',variant:r.variant||m.edition||'',printing:r.printing||'',newsstandDirect:/newsstand/i.test(m.edition)?'Newsstand':/direct/i.test(m.edition)?'Direct':'',isKeyIssue:!!r.comicMetadata?.isKeyIssue,keyReason:r.comicMetadata?.keyReason||'',keySource:r.comicMetadata?.keySource||'',isSigned:!!r.isSigned,signedBy:r.signedBy||'',signatureValue:Number(r.signatureValue||0)};
+  r.comicAppraisal ||= {conditionText:conditionSeed,numericGrade:r.numericGrade||'',isSlabbed:!!r.isSlabbed,grader:r.grader||'',certNumber:r.certNumber||r.cert_number||'',pageQuality:r.pageQuality||'',defects:[...(r.defects||[])],notes:r.notes||'',listPriceOverride:'',costBasis:r.cost||'',location:r.location||'',box:r.box||'',coverConfirmed:!!r.coverConfirmed,series:m.series,issueNumber:m.issueNumber,volume:r.volume||'',publisher:r.publisher||'',variant:r.variant||m.edition||'',printing:r.printing||'',newsstandDirect:/newsstand/i.test(m.edition)?'Newsstand':/direct/i.test(m.edition)?'Direct':'',isKeyIssue:!!r.comicMetadata?.isKeyIssue,keyReason:r.comicMetadata?.keyReason||'',keySource:r.comicMetadata?.keySource||'',is_signed:!!r.is_signed,signed_by:r.signed_by||'',signature_value:Number(r.signature_value||0)};
   return r.comicAppraisal;
 }
 
@@ -20598,19 +20634,19 @@ function comicAppraisalEstimate(r = {}){
   // separately and added on top rather than baked into one blended number.
   // When the base book value moves (up or down) with the market, the
   // signature premium stays exactly what it was set to.
-  const signatureValue=a.isSigned?Math.max(0,Number(a.signatureValue||0)):0;
+  const signatureValue=a.is_signed?Math.max(0,Number(a.signature_value||0)):0;
   const market=bookValue+signatureValue,listPrice=Number(a.listPriceOverride||0)||market;
   const exactIssue=!!comicProductMeta(r).issueNumber,imageConfirmed=!!a.coverConfirmed||r.imageSource==='user-upload';
   const confidence=exactIssue&&imageConfirmed?'High':exactIssue?'Medium':'Low';
   const reasons=[exactIssue?'Exact issue candidate selected':'Issue number needs confirmation',imageConfirmed?'Cover confirmed':'Cover image needs confirmation',a.isSlabbed?'Nearest provider grade bucket used':'Raw condition is a shop estimate'];
-  if(a.isSigned&&signatureValue>0)reasons.push((a.signedBy?a.signedBy+' signature':'Signature')+' premium ($'+signatureValue+') added on top of book value -- stays fixed when the book price changes');
+  if(a.is_signed&&signatureValue>0)reasons.push((a.signed_by?a.signed_by+' signature':'Signature')+' premium ($'+signatureValue+') added on top of book value -- stays fixed when the book price changes');
   return {estimated:market,bookValue,signatureValue,listPrice,buyLow:market?Math.round(market*.4):0,buyHigh:market?Math.round(market*.6):0,confidence,reasons,sourceLabel};
 }
 
 function updateComicAppraisal(idx,field,value,rerender=true){
   const r=qplResults[idx];if(!r)return;const a=comicAppraisalState(r);a[field]=value;const v=comicAppraisalEstimate(r);
   r.market=v.estimated;r.condition=a.conditionText;r.numericGrade=a.numericGrade;r.isSlabbed=a.isSlabbed;r.grader=a.grader;r.cert_number=a.certNumber;
-  r.isSigned=a.isSigned;r.signedBy=a.signedBy;r.signatureValue=a.signatureValue;
+  r.is_signed=a.is_signed;r.signed_by=a.signed_by;r.signature_value=a.signature_value;
   if(rerender)updateQplResultCard(idx);
 }
 function toggleComicDefect(idx,defect,checked){const a=comicAppraisalState(qplResults[idx]||{});a.defects=checked?[...new Set([...(a.defects||[]),defect])]:(a.defects||[]).filter(x=>x!==defect);}
@@ -20639,7 +20675,7 @@ async function hydrateComicPhotoKey(key){
 
 function comicAppraisalSummary(r = {}){
   const a=comicAppraisalState(r),v=comicAppraisalEstimate(r),m=comicProductMeta(r),cp=r.pricecharting?.comicPrices||{};
-  return `${r.name||[m.series,m.issueNumber?'#'+m.issueNumber:''].filter(Boolean).join(' ')}\nEstimated grade: ${a.isSlabbed?[a.grader,a.numericGrade].filter(Boolean).join(' ')||'Slabbed grade not entered':a.conditionText+' (shop estimate)'}\nPrice source: PriceCharting (${r.lastPriceUpdate?new Date(r.lastPriceUpdate).toLocaleDateString():'current lookup'})\nRaw estimate: ${cp.ungraded?'$'+Number(cp.ungraded).toFixed(2):'Unavailable'}\nGraded 9.8 estimate: ${cp.grade9_8?'$'+Number(cp.grade9_8).toFixed(2):'Unavailable'}${a.isSigned&&v.signatureValue>0?`\nBook value: $${v.bookValue||0}\nSigned by: ${a.signedBy||'Unspecified'}\nSignature premium: $${v.signatureValue} (fixed; does not move with book price)`:''}\nEstimated current value: ${v.estimated?'$'+v.estimated:'Needs review'}\nRecommended list: ${v.listPrice?'$'+v.listPrice:'Needs review'}\nSuggested buy range: ${v.estimated?'$'+v.buyLow+'-$'+v.buyHigh:'Needs review'}\nConfidence: ${v.confidence}\nNotes: ${v.reasons.join('. ')}.${a.notes?' '+a.notes:''}\nGrade is a shop estimate, not certified grading.`;
+  return `${r.name||[m.series,m.issueNumber?'#'+m.issueNumber:''].filter(Boolean).join(' ')}\nEstimated grade: ${a.isSlabbed?[a.grader,a.numericGrade].filter(Boolean).join(' ')||'Slabbed grade not entered':a.conditionText+' (shop estimate)'}\nPrice source: PriceCharting (${r.lastPriceUpdate?new Date(r.lastPriceUpdate).toLocaleDateString():'current lookup'})\nRaw estimate: ${cp.ungraded?'$'+Number(cp.ungraded).toFixed(2):'Unavailable'}\nGraded 9.8 estimate: ${cp.grade9_8?'$'+Number(cp.grade9_8).toFixed(2):'Unavailable'}${a.is_signed&&v.signatureValue>0?`\nBook value: $${v.bookValue||0}\nSigned by: ${a.signed_by||'Unspecified'}\nSignature premium: $${v.signatureValue} (fixed; does not move with book price)`:''}\nEstimated current value: ${v.estimated?'$'+v.estimated:'Needs review'}\nRecommended list: ${v.listPrice?'$'+v.listPrice:'Needs review'}\nSuggested buy range: ${v.estimated?'$'+v.buyLow+'-$'+v.buyHigh:'Needs review'}\nConfidence: ${v.confidence}\nNotes: ${v.reasons.join('. ')}.${a.notes?' '+a.notes:''}\nGrade is a shop estimate, not certified grading.`;
 }
 async function copyComicAppraisal(idx){const text=comicAppraisalSummary(qplResults[idx]||{});try{await navigator.clipboard.writeText(text);toast_dash('Appraisal summary copied');}catch(e){window.prompt('Copy appraisal summary:',text);}}
 
@@ -20713,7 +20749,7 @@ function qplComicAppraisalPanel(r,idx){
   const a=comicAppraisalState(r),v=comicAppraisalEstimate(r),m=comicProductMeta(r);
   const conditionOptions=['Poor','Fair','Good','Very Good','Fine','Very Fine','Near Mint'].map(x=>`<option ${a.conditionText===x?'selected':''}>${x}</option>`).join('');
   const gradeOptions=['','4.0','4.5','6.0','6.5','8.0','8.5','9.2','9.4','9.8','10.0'].map(x=>`<option value="${x}" ${String(a.numericGrade)===x?'selected':''}>${x||'Select grade'}</option>`).join('');
-  return `<div class="comic-appraisal" style="margin-top:12px;border:1px solid rgba(199,125,255,.28);border-radius:10px;padding:12px;background:rgba(199,125,255,.035)"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><b style="font-family:'Orbitron',monospace;font-size:10px;color:var(--purple)">SHOP APPRAISAL</b><span class="qpl-badge ${v.confidence==='High'?'good':v.confidence==='Medium'?'warn':'bad'}">${v.confidence} confidence</span></div><div style="font-size:10px;color:var(--dim);margin:7px 0">${escHtml([m.series,m.issueNumber?'#'+m.issueNumber:'',a.publisher,a.volume,a.variant].filter(Boolean).join(' / '))}</div><div class="comic-appraisal-grid" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px"><label>RAW CONDITION<select class="tsi" onchange="updateComicAppraisal(${idx},'conditionText',this.value)">${conditionOptions}</select></label><label>SLABBED<select class="tsi" onchange="updateComicAppraisal(${idx},'isSlabbed',this.value==='yes')"><option value="no" ${!a.isSlabbed?'selected':''}>No / Raw</option><option value="yes" ${a.isSlabbed?'selected':''}>Yes</option></select></label><label>NUMERIC GRADE<select class="tsi" onchange="updateComicAppraisal(${idx},'numericGrade',this.value)">${gradeOptions}</select></label><label>GRADER<select class="tsi" onchange="updateComicAppraisal(${idx},'grader',this.value)"><option value="">Unspecified</option>${['CGC','CBCS','PGX','Other'].map(x=>`<option ${a.grader===x?'selected':''}>${x}</option>`).join('')}</select></label><label>CERT NUMBER<input class="tsi" value="${escHtml(a.certNumber)}" oninput="updateComicAppraisal(${idx},'certNumber',this.value,false)"></label><label>PAGE QUALITY<select class="tsi" onchange="updateComicAppraisal(${idx},'pageQuality',this.value,false)"><option value="">Not recorded</option>${['White','Off-white to white','Off-white','Cream to off-white','Cream'].map(x=>`<option ${a.pageQuality===x?'selected':''}>${x}</option>`).join('')}</select></label><label>LIST PRICE<input class="tsi" type="number" min="0" step="1" placeholder="${v.listPrice||0}" value="${escHtml(a.listPriceOverride)}" oninput="updateComicAppraisal(${idx},'listPriceOverride',this.value,false)"></label><label>LOCATION<input class="tsi" value="${escHtml(a.location)}" oninput="updateComicAppraisal(${idx},'location',this.value,false)"></label><label>BOX / BIN<input class="tsi" value="${escHtml(a.box)}" oninput="updateComicAppraisal(${idx},'box',this.value,false)"></label><label>SIGNED<select class="tsi" onchange="updateComicAppraisal(${idx},'isSigned',this.value==='yes')"><option value="no" ${!a.isSigned?'selected':''}>No</option><option value="yes" ${a.isSigned?'selected':''}>Yes</option></select></label>${a.isSigned?`<label>SIGNED BY<input class="tsi" placeholder="e.g. Kevin Eastman" value="${escHtml(a.signedBy)}" oninput="updateComicAppraisal(${idx},'signedBy',this.value,false)"></label><label>SIGNATURE VALUE ADD-ON<input class="tsi" type="number" min="0" step="1" placeholder="0" value="${escHtml(a.signatureValue||'')}" oninput="updateComicAppraisal(${idx},'signatureValue',this.value)"></label>`:''}</div><details style="margin-top:8px"><summary style="cursor:pointer;color:var(--dim);font-size:10px">Condition defects</summary><div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:7px">${COMIC_DEFECTS.map(d=>`<label style="font-size:9px"><input type="checkbox" ${(a.defects||[]).includes(d)?'checked':''} onchange="toggleComicDefect(${idx},'${d}',this.checked)"> ${d}</label>`).join('')}</div></details><textarea class="tsi" style="width:100%;min-height:54px;margin-top:8px" placeholder="Appraisal notes" oninput="updateComicAppraisal(${idx},'notes',this.value,false)">${escHtml(a.notes)}</textarea>${a.isSigned&&v.signatureValue>0?`<div style="font-size:10px;color:var(--gold);margin-top:9px">Book value $${v.bookValue||0} + ${escHtml(a.signedBy||'signature')} premium $${v.signatureValue} = $${v.estimated||0} total. The signature premium stays fixed when the book's price changes.</div>`:''}<div class="comic-values" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:9px"><div><small>EST. VALUE</small><b>$${v.estimated||0}</b></div><div><small>RECOMMENDED LIST</small><b>$${v.listPrice||0}</b></div><div><small>SUGGESTED BUY RANGE</small><b>$${v.buyLow}-$${v.buyHigh}</b></div></div><div style="font-size:9px;color:var(--dim);line-height:1.5;margin-top:7px">${escHtml(v.sourceLabel)}. ${escHtml(v.reasons.join(' / '))}. Shop estimate only; not certified grading.</div><div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:9px"><button class="hbtn" onclick="copyComicAppraisal(${idx})">COPY APPRAISAL</button><button class="hbtn" onclick="addQuickLookupToInventory(${idx})">SAVE TO INVENTORY</button><label class="hbtn" style="cursor:pointer">USE MY PHOTO<input type="file" accept="image/*" capture="environment" style="display:none" onchange="handleComicCoverPhoto(${idx},this.files&&this.files[0])"></label>${a.coverConfirmed?'<span class="qpl-badge good">COVER CONFIRMED</span>':`<button class="hbtn" style="color:var(--gold)" onclick="confirmComicCover(${idx})">CONFIRM COVER</button>`}</div></div>`;
+  return `<div class="comic-appraisal" style="margin-top:12px;border:1px solid rgba(199,125,255,.28);border-radius:10px;padding:12px;background:rgba(199,125,255,.035)"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><b style="font-family:'Orbitron',monospace;font-size:10px;color:var(--purple)">SHOP APPRAISAL</b><span class="qpl-badge ${v.confidence==='High'?'good':v.confidence==='Medium'?'warn':'bad'}">${v.confidence} confidence</span></div><div style="font-size:10px;color:var(--dim);margin:7px 0">${escHtml([m.series,m.issueNumber?'#'+m.issueNumber:'',a.publisher,a.volume,a.variant].filter(Boolean).join(' / '))}</div><div class="comic-appraisal-grid" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px"><label>RAW CONDITION<select class="tsi" onchange="updateComicAppraisal(${idx},'conditionText',this.value)">${conditionOptions}</select></label><label>SLABBED<select class="tsi" onchange="updateComicAppraisal(${idx},'isSlabbed',this.value==='yes')"><option value="no" ${!a.isSlabbed?'selected':''}>No / Raw</option><option value="yes" ${a.isSlabbed?'selected':''}>Yes</option></select></label><label>NUMERIC GRADE<select class="tsi" onchange="updateComicAppraisal(${idx},'numericGrade',this.value)">${gradeOptions}</select></label><label>GRADER<select class="tsi" onchange="updateComicAppraisal(${idx},'grader',this.value)"><option value="">Unspecified</option>${['CGC','CBCS','PGX','Other'].map(x=>`<option ${a.grader===x?'selected':''}>${x}</option>`).join('')}</select></label><label>CERT NUMBER<input class="tsi" value="${escHtml(a.certNumber)}" oninput="updateComicAppraisal(${idx},'certNumber',this.value,false)"></label><label>PAGE QUALITY<select class="tsi" onchange="updateComicAppraisal(${idx},'pageQuality',this.value,false)"><option value="">Not recorded</option>${['White','Off-white to white','Off-white','Cream to off-white','Cream'].map(x=>`<option ${a.pageQuality===x?'selected':''}>${x}</option>`).join('')}</select></label><label>LIST PRICE<input class="tsi" type="number" min="0" step="1" placeholder="${v.listPrice||0}" value="${escHtml(a.listPriceOverride)}" oninput="updateComicAppraisal(${idx},'listPriceOverride',this.value,false)"></label><label>LOCATION<input class="tsi" value="${escHtml(a.location)}" oninput="updateComicAppraisal(${idx},'location',this.value,false)"></label><label>BOX / BIN<input class="tsi" value="${escHtml(a.box)}" oninput="updateComicAppraisal(${idx},'box',this.value,false)"></label><label>SIGNED<select class="tsi" onchange="updateComicAppraisal(${idx},'is_signed',this.value==='yes')"><option value="no" ${!a.is_signed?'selected':''}>No</option><option value="yes" ${a.is_signed?'selected':''}>Yes</option></select></label>${a.is_signed?`<label>SIGNED BY<input class="tsi" placeholder="e.g. Kevin Eastman" value="${escHtml(a.signed_by)}" oninput="updateComicAppraisal(${idx},'signed_by',this.value,false)"></label><label>SIGNATURE VALUE ADD-ON<input class="tsi" type="number" min="0" step="1" placeholder="0" value="${escHtml(a.signature_value||'')}" oninput="updateComicAppraisal(${idx},'signature_value',this.value)"></label>`:''}</div><details style="margin-top:8px"><summary style="cursor:pointer;color:var(--dim);font-size:10px">Condition defects</summary><div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:7px">${COMIC_DEFECTS.map(d=>`<label style="font-size:9px"><input type="checkbox" ${(a.defects||[]).includes(d)?'checked':''} onchange="toggleComicDefect(${idx},'${d}',this.checked)"> ${d}</label>`).join('')}</div></details><textarea class="tsi" style="width:100%;min-height:54px;margin-top:8px" placeholder="Appraisal notes" oninput="updateComicAppraisal(${idx},'notes',this.value,false)">${escHtml(a.notes)}</textarea>${a.is_signed&&v.signatureValue>0?`<div style="font-size:10px;color:var(--gold);margin-top:9px">Book value $${v.bookValue||0} + ${escHtml(a.signed_by||'signature')} premium $${v.signatureValue} = $${v.estimated||0} total. The signature premium stays fixed when the book's price changes.</div>`:''}<div class="comic-values" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:9px"><div><small>EST. VALUE</small><b>$${v.estimated||0}</b></div><div><small>RECOMMENDED LIST</small><b>$${v.listPrice||0}</b></div><div><small>SUGGESTED BUY RANGE</small><b>$${v.buyLow}-$${v.buyHigh}</b></div></div><div style="font-size:9px;color:var(--dim);line-height:1.5;margin-top:7px">${escHtml(v.sourceLabel)}. ${escHtml(v.reasons.join(' / '))}. Shop estimate only; not certified grading.</div><div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:9px"><button class="hbtn" onclick="copyComicAppraisal(${idx})">COPY APPRAISAL</button><button class="hbtn" onclick="addQuickLookupToInventory(${idx})">SAVE TO INVENTORY</button><label class="hbtn" style="cursor:pointer">USE MY PHOTO<input type="file" accept="image/*" capture="environment" style="display:none" onchange="handleComicCoverPhoto(${idx},this.files&&this.files[0])"></label>${a.coverConfirmed?'<span class="qpl-badge good">COVER CONFIRMED</span>':`<button class="hbtn" style="color:var(--gold)" onclick="confirmComicCover(${idx})">CONFIRM COVER</button>`}</div></div>`;
 }
 
 function pokemonCardKey(row = {}, query = ''){
@@ -28372,7 +28408,8 @@ async function saveComicResearchBackToInventory(idx){
     'priceSource','pricingSource','pricingMode','activePriceBasis','referenceMarketPrice','pricechartingProductId','pricechartingProductName',
     'pricechartingPrices','pricechartingComicPrices','pricechartingRetail','pricechartingDemand','providerProductId','providerUrl','coverImageUrl','imageSource',
     'coverConfirmed','coverConfidence','conditionText','numericGrade','isSlabbed','grader','certNumber','pageQuality','defects','appraisalConfidence',
-    'appraisalSummary','suggestedBuyLow','suggestedBuyHigh','lastPriceUpdate','writers','artists','coverArtists','comicMetadata','externalRefs','lastPriceSyncAt','notes'
+    'appraisalSummary','suggestedBuyLow','suggestedBuyHigh','lastPriceUpdate','writers','artists','coverArtists','comicMetadata','externalRefs','lastPriceSyncAt','notes',
+    'is_signed','signed_by','signature_value'
   ];
   const patch={};
   fields.forEach(field=>{if(selected[field]!==undefined)patch[field]=selected[field];});
