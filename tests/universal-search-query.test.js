@@ -111,7 +111,8 @@ assert.match(dashboard, /SPORTS SETS/);
 assert.match(dashboard, /openSportsSetBrowserFromResearch/);
 assert.match(dashboard, /resolveMtgTcgplayerProductRows/);
 assert.match(dashboard, /TCGplayer MTG URL resolved through local MTG catalog/);
-assert.match(dashboard, /PriceCharting offline condition guide estimate/);
+assert.match(dashboard, /function applyMtgPriceChartingConditionGuides/);
+assert.match(dashboard, /PriceCharting offline raw guide/);
 assert.match(dashboard, /isMtgItem \? 'magic'/);
 
 const julio = adapter.buildSearchPlan('Julio Logoman', '');

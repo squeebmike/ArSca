@@ -12541,6 +12541,12 @@ function mtgFinishPriceFamily(finish = ''){
   if(normalized==='etched_foil') return 'etched_foil';
   return 'foil';
 }
+// Scryfall/the offline PriceCharting snapshot only ever carry one raw market
+// number per finish (no LP/MP/HP/DMG breakdown) -- so this only ever returns
+// a real price for NM. A non-NM condition returns price:0 rather than a
+// percent-of-NM guess; every caller already treats a falsy price as "no
+// price found" (throws / adds a "no-price" sync issue) rather than silently
+// accepting $0, so this fails honestly instead of quietly faking a number.
 function resolveMtgOfflineCardPrice(item = {}, card = {}){
   const finish = mtgInventoryFinish(item);
   const condition = pokemonPptConditionCode(item.selectedCondition || item.condition || item.raw?.condition || 'NM');
@@ -12555,10 +12561,8 @@ function resolveMtgOfflineCardPrice(item = {}, card = {}){
     pricePath = 'mtg_prices.loosePrice';
   }
   if(!base) return { price:0, basePrice:0, finish, condition, source, pricePath };
-  const multiplier = COND_MULTIPLIER[condition] || 1;
-  const price = Math.round(base * multiplier * 100) / 100;
-  if(condition !== 'NM') source += ' · ' + condition + ' condition estimate';
-  return { price, basePrice:base, finish, condition, source, pricePath:pricePath + (condition === 'NM' ? '' : ' * condition multiplier') };
+  if(condition !== 'NM') return { price:0, basePrice:base, finish, condition, source:source + ' — no real ' + condition + ' price available offline', pricePath };
+  return { price:base, basePrice:base, finish, condition, source, pricePath };
 }
 function mtgOfflineInventoryItems(){
   const localRawItems = safeLocalJson('walkoff_universal_inventory', []);
@@ -12610,8 +12614,10 @@ async function fetchLiveMtgInventoryPrice(item = {}, offlineMatch = null){
   }
   if(liveScryfall){
     const resolved=resolveMtgOfflineCardPrice(item,liveScryfall);
-    resolved.source='Scryfall live · '+qplFinishLabel(resolved.finish)+(resolved.condition!=='NM'?' · '+resolved.condition+' condition estimate':'');
-    resolved.pricePath='scryfall.live.prices.'+(mtgFinishPriceFamily(resolved.finish)==='normal'?'usd':mtgFinishPriceFamily(resolved.finish)==='etched_foil'?'usd_etched':'usd_foil')+(resolved.condition==='NM'?'':' * condition multiplier');
+    if(resolved.condition==='NM'){
+      resolved.source='Scryfall live · '+qplFinishLabel(resolved.finish);
+      resolved.pricePath='scryfall.live.prices.'+(mtgFinishPriceFamily(resolved.finish)==='normal'?'usd':mtgFinishPriceFamily(resolved.finish)==='etched_foil'?'usd_etched':'usd_foil');
+    }
     if(resolved.price)return {row:scryfallCardToQplRow(liveScryfall),resolved,matchStatus:'live exact Scryfall ID',tcgPlayerId:String(liveScryfall.tcgplayer_id||tcgPlayerId||''),scryfallId};
   }
   return null;
@@ -18878,7 +18884,6 @@ async function confirmEditAndSync() {
 // ══════════════════════════════════════════════════
 // TCGPLAYER MASS PRICE SYNC
 // ══════════════════════════════════════════════════
-const COND_MULTIPLIER = {NM:1.0, LP:0.80, MP:0.64, HP:0.40, DMG:0.25};
 const TCG_COND_LABELS = {NM:'Near Mint', LP:'Lightly Played', MP:'Moderately Played', HP:'Heavily Played', DMG:'Damaged'};
 
 function isTcgInventoryItem(item){
@@ -19057,10 +19062,6 @@ async function fetchTCGPrice(name, setName, tcgCardId) {
       const nm = Number(universal.d.nmMarket || universal.d.price || 0);
       return {
         NM:nm,
-        LP:nm*0.80,
-        MP:nm*0.64,
-        HP:nm*0.40,
-        DMG:nm*0.25,
         cardId:m.id || m.tcgplayer_id || '',
         cardName:m.name || itemName,
         setName:m.set_name || itemSet,
@@ -19088,10 +19089,6 @@ async function fetchTCGPrice(name, setName, tcgCardId) {
       if(nm > 0) {
         return {
           NM:nm,
-          LP:nm*0.80,
-          MP:nm*0.64,
-          HP:nm*0.40,
-          DMG:nm*0.25,
           cardId:best.id || '',
           cardName:best.name || itemName,
           setName:best.set_name || itemSet,
@@ -19141,15 +19138,12 @@ async function fetchTCGPrice(name, setName, tcgCardId) {
     const nmMid = Object.values(tcgPrices).find(p=>p?.market>0 || p?.mid>0)?.market || Object.values(tcgPrices).find(p=>p?.mid>0)?.mid || 0;
     if(!nmMid) return null;
 
-    // Return object with condition-specific prices
-    // TCGPlayer actually has per-condition market data for some cards
-    // For others we use industry-standard multipliers
+    // pokemontcg.io only ever has one market/mid price per card (no LP/MP/HP/
+    // DMG breakdown) -- only NM is real here. PokemonPriceTracker is the
+    // real source for graded/condition-specific Pokemon prices elsewhere in
+    // the app; this legacy sync tool doesn't call it, so non-NM stays unpriced.
     return {
       NM:  nmMid,
-      LP:  nmMid * 0.80,   // TCGPlayer standard LP discount
-      MP:  nmMid * 0.64,   // MP
-      HP:  nmMid * 0.40,   // HP 40%
-      DMG: nmMid * 0.25,   // Damaged 25%
       cardId: card.id,      // Store for future lookups
       cardName: card.name,
       setName: card.set?.name || '',
@@ -19169,15 +19163,13 @@ async function previewPriceSync() {
   if(condFilter !== 'all') items = items.filter(i => (i.condition||'NM') === condFilter);
   items = items.filter(i => i.name && i.name.length > 2);
 
-  preview.innerHTML = `<div style="margin-bottom:6px"><b>${items.length} items</b> will be looked up on TCGPlayer</div>
-    <div style="color:var(--dim)">Conditions: NM=100% · LP=80% · MP=64% · HP=40% · DMG=25% of TCG mid price</div>
-    <div style="margin-top:6px">${items.slice(0,5).map(i=>`<div>• ${i.name} (${i.condition||'NM'}) — current: ${i.market>0?'$'+i.market.toFixed(2):'no price'}</div>`).join('')}
-    ${items.length>5?`<div style="color:var(--dim)">...and ${items.length-5} more</div>`:''}</div>`;
   const eligibleItems = items.filter(isTcgInventoryItem);
   const nonTcg = items.length - eligibleItems.length;
+  const nonNmEligible = eligibleItems.filter(i => (i.condition||'NM') !== 'NM').length;
   preview.innerHTML = `<div style="margin-bottom:6px"><b>${eligibleItems.length} TCG/sealed items</b> will be looked up</div>
-    <div style="color:var(--dim)">Condition multipliers: NM=100% · LP=80% · MP=64% · HP=40% · DMG=25%</div>
+    <div style="color:var(--dim)">Only NM has a real price from these sources -- non-NM items with no other real price are skipped, never estimated.</div>
     ${nonTcg ? `<div style="color:var(--gold);margin-top:4px">${nonTcg} non-TCG items skipped.</div>` : ''}
+    ${nonNmEligible ? `<div style="color:var(--gold);margin-top:4px">${nonNmEligible} non-NM item${nonNmEligible>1?'s':''} will likely be skipped (no real condition price here).</div>` : ''}
     <div style="color:var(--gold);margin-top:4px">MTG/Yu-Gi-Oh/Lorcana/sealed require TCGAPI_KEY in Cloudflare; Pokemon has a free fallback.</div>
     <div style="margin-top:6px">${eligibleItems.slice(0,5).map(i=>`<div>• ${i.name} (${TCG_COND_LABELS[i.condition||'NM']||i.condition||'NM'}) — current: ${i.market>0?'$'+i.market.toFixed(2):'no price'}</div>`).join('')}
     ${eligibleItems.length>5?`<div style="color:var(--dim)">...and ${eligibleItems.length-5} more</div>`:''}</div>`;
@@ -19210,7 +19202,6 @@ async function runPriceSync() {
     barEl.style.width = ((idx2+1)/items.length*100).toFixed(0)+'%';
 
     const cond = item.condition || 'NM';
-    const mult = COND_MULTIPLIER[cond] || 1.0;
 
     // Keep this guarded for safety if the upstream filter changes later.
     if(!isTcgInventoryItem(item)) {
@@ -19238,8 +19229,16 @@ async function runPriceSync() {
       if(invIdx >= 0) inv[invIdx].tcgCardId = tcgData.cardId;
     }
 
-    // Use condition-specific price instead of multiplier
-    const condPrice = tcgData[cond] || tcgData.NM * (COND_MULTIPLIER[cond]||1);
+    // These sources only ever have a real NM price -- no real per-condition
+    // data to use for LP/MP/HP/DMG, so those are skipped rather than backed
+    // into a percent-of-NM guess.
+    if(cond !== 'NM' && !tcgData[cond]) {
+      skipped++;
+      logEl.innerHTML += `<div style="color:var(--gold)">⊘ SKIP ${item.name} (no real ${TCG_COND_LABELS[cond]||cond} price available)</div>`;
+      logEl.scrollTop = logEl.scrollHeight;
+      continue;
+    }
+    const condPrice = tcgData[cond] || tcgData.NM;
     const newPrice = Math.max(0.01, condPrice);
 
     // Update localStorage
@@ -21188,49 +21187,49 @@ function mtgOfflineCardToQplRow(card = {}){
   return row;
 }
 
+// Only ever applies PriceCharting's real "loose" guide to the NM condition --
+// LP/MP/HP/DMG must come from JustTCG's real per-condition variants (see
+// fetchWorkerTcgCatalog) or stay unpriced. This used to also fabricate a
+// percent-of-NM number for the other conditions and write it straight into
+// marketPrice, which is what the condition-price table renders directly --
+// so that guess was showing up as if it were a real price.
 function applyMtgPriceChartingConditionGuides(row = {}, price = {}, snapshot = ''){
   const base = Number(price.loosePrice || 0);
   if(!base || !row) return row;
-  const condMult = { NM:1, LP:.8, MP:.64, HP:.4, DMG:.25 };
   const finishes = [...new Set((row.availableVariants || []).map(v => normalizeQplFinish(v.finish || row.finish || 'normal')).filter(Boolean))];
   const activeFinishes = finishes.length ? finishes : [normalizeQplFinish(row.finish || 'normal') || 'normal'];
   const byKey = new Map((row.availableVariants || []).map(v => [normalizeQplFinish(v.finish || 'normal') + '|' + String(v.condition || '').toUpperCase(), v]));
   activeFinishes.forEach((finish, fi) => {
-    Object.entries(condMult).forEach(([condition, mult]) => {
-      const key = normalizeQplFinish(finish) + '|' + condition;
-      const guide = Math.round(base * mult * 100) / 100;
-      const existing = byKey.get(key);
-      if(existing) {
-        if(!Number(existing.marketPrice || 0)) existing.marketPrice = guide;
-        existing.estimatedMarketPrice = guide;
-        existing.productLevelMarketPrice = base;
-        existing.priceSource = condition === 'NM' ? 'PriceCharting offline raw guide' : 'PriceCharting offline condition guide estimate';
-        existing.priceConfidence = condition === 'NM' ? 'guide' : 'estimate';
-        existing.lastUpdated = price.updatedAt || snapshot || existing.lastUpdated || '';
-        existing.pricePath = 'mtg_prices.loosePrice' + (condition === 'NM' ? '' : ' * condition multiplier');
-      } else {
-        row.availableVariants = row.availableVariants || [];
-        row.availableVariants.push({
-          skuId:`${row.scryfallId || row.productId || 'mtg'}-${finish}-${condition}`,
-          productConditionId:`${price.pricechartingId || row.productId || 'pc'}-${fi}-${condition}`,
-          condition,
-          finish,
-          foilType:finish,
-          language:'English',
-          printing:qplFinishLabel(finish),
-          marketPrice:guide,
-          estimatedMarketPrice:guide,
-          productLevelMarketPrice:base,
-          lowPrice:null,
-          midPrice:null,
-          highPrice:null,
-          lastUpdated:price.updatedAt || snapshot || '',
-          priceConfidence:condition === 'NM' ? 'guide' : 'estimate',
-          priceSource:condition === 'NM' ? 'PriceCharting offline raw guide' : 'PriceCharting offline condition guide estimate',
-          pricePath:'mtg_prices.loosePrice' + (condition === 'NM' ? '' : ' * condition multiplier'),
-        });
-      }
-    });
+    const key = normalizeQplFinish(finish) + '|NM';
+    const existing = byKey.get(key);
+    if(existing) {
+      if(!Number(existing.marketPrice || 0)) existing.marketPrice = base;
+      existing.productLevelMarketPrice = base;
+      existing.priceSource = 'PriceCharting offline raw guide';
+      existing.priceConfidence = 'guide';
+      existing.lastUpdated = price.updatedAt || snapshot || existing.lastUpdated || '';
+      existing.pricePath = 'mtg_prices.loosePrice';
+    } else {
+      row.availableVariants = row.availableVariants || [];
+      row.availableVariants.push({
+        skuId:`${row.scryfallId || row.productId || 'mtg'}-${finish}-NM`,
+        productConditionId:`${price.pricechartingId || row.productId || 'pc'}-${fi}-NM`,
+        condition:'NM',
+        finish,
+        foilType:finish,
+        language:'English',
+        printing:qplFinishLabel(finish),
+        marketPrice:base,
+        productLevelMarketPrice:base,
+        lowPrice:null,
+        midPrice:null,
+        highPrice:null,
+        lastUpdated:price.updatedAt || snapshot || '',
+        priceConfidence:'guide',
+        priceSource:'PriceCharting offline raw guide',
+        pricePath:'mtg_prices.loosePrice',
+      });
+    }
   });
   if(!Number(row.market || 0)) {
     row.market = base;
@@ -24211,31 +24210,22 @@ function buildScpVariants(p, productId){
   const rawNM = scpCents(p, 'loose-price');
   const variants = [];
 
-  // Raw / ungraded tiers — NM from API, others estimated by condition discount
-  const RAW_CONDS = [
-    { condition:'NM',   mult:1.00 },
-    { condition:'LP',   mult:0.80 },
-    { condition:'MP',   mult:0.64 },
-    { condition:'HP',   mult:0.40 },
-    { condition:'Poor', mult:0.20 },
-  ];
-  RAW_CONDS.forEach(({ condition, mult }) => {
-    const est = rawNM > 0 ? Math.round(rawNM * mult * 100) / 100 : null;
-    variants.push({
-      skuId:                   pid + '-raw-' + condition.toLowerCase(),
-      condition,
-      finish:                  'normal',
-      foilType:                'normal',
-      language:                'English',
-      marketPrice:             condition === 'NM' ? (rawNM || null) : null,
-      estimatedMarketPrice:    est,
-      productLevelMarketPrice: rawNM || null,
-      priceSource:             rawNM > 0
-        ? (condition === 'NM' ? 'SportsCardsPro ungraded guide' : 'Estimated (' + condition + ' discount)')
-        : 'No price available',
-      priceConfidence:         rawNM > 0 ? (condition === 'NM' ? 'high' : 'estimate') : 'unknown',
-      scpPriceTier:            'raw',
-    });
+  // Raw / ungraded — SportsCardsPro/PriceCharting only ever publish one raw
+  // guide price for a sports card (NM-ish "loose-price"), not a per-condition
+  // LP/MP/HP scale like TCG singles have. No real source exists for those
+  // other conditions, so only NM gets a real price here -- no computed
+  // percent-of-NM guess for the rest.
+  variants.push({
+    skuId:                   pid + '-raw-nm',
+    condition:               'NM',
+    finish:                  'normal',
+    foilType:                'normal',
+    language:                'English',
+    marketPrice:             rawNM || null,
+    productLevelMarketPrice: rawNM || null,
+    priceSource:             rawNM > 0 ? 'SportsCardsPro ungraded guide' : 'No price available',
+    priceConfidence:         rawNM > 0 ? 'high' : 'unknown',
+    scpPriceTier:            'raw',
   });
 
   // Graded tiers — PriceCharting condition IDs for sports cards:
@@ -24671,7 +24661,6 @@ async function fetchPriceChartingLiveCatalog(q, cat, searchPlan = qplLastSearchP
 function buildQplVariantsFromPrices(priceMap, productId = ''){
   const entries = Object.entries(priceMap || {});
   const conds = ['NM','LP','MP','HP','DMG'];
-  const condMult = { NM:1, LP:.8, MP:.64, HP:.4, DMG:.25 };
   const variants = [];
   entries.forEach(([finishRaw, p], i) => {
     const finish = normalizeQplFinish(finishRaw);
@@ -24684,9 +24673,11 @@ function buildQplVariantsFromPrices(priceMap, productId = ''){
       foilType:finish,
       language:'English',
       printing:qplFinishLabel(finish),
+      // base is a real product-level market number from the upstream API --
+      // only ever applied to NM. LP/MP/HP/DMG have no real per-condition
+      // number here, so they stay unpriced rather than a computed guess.
       marketPrice: condition === 'NM' ? base || null : null,
       productLevelMarketPrice: base || null,
-      estimatedMarketPrice: base ? Math.round(base * (condMult[condition] || 1) * 100) / 100 : null,
       lowPrice:Number(p?.low || 0) || null,
       midPrice:Number(p?.mid || 0) || null,
       highPrice:Number(p?.high || 0) || null,
@@ -24694,8 +24685,8 @@ function buildQplVariantsFromPrices(priceMap, productId = ''){
       lowestListingPrice:Number(p?.low || 0) || null,
       recentSoldPrice:null,
       lastUpdated:null,
-      priceConfidence: condition === 'NM' && base ? 'medium' : base ? 'low' : 'unknown',
-      priceSource: condition === 'NM' && base ? 'Product-Level Estimate' : base ? 'Estimated fallback' : 'Needs Research',
+      priceConfidence: condition === 'NM' && base ? 'medium' : 'unknown',
+      priceSource: condition === 'NM' && base ? 'Product-Level Market Price' : 'No Real Price Available',
     }));
   });
   return variants;
