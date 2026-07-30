@@ -341,24 +341,11 @@ async function requireStoreUser(request, env, storeId, allowedRoles = ['owner','
   return { user, role, token };
 }
 
-// Write access to the shared, cross-store comic cover archive is restricted
-// to whoever has access to "The Mana Pocket" (any store role there), not
-// gated by the store-agnostic platform_admins table -- so it works
-// immediately without a separate bootstrap step, and any teammate on that
-// one store can contribute without needing store-owner/admin rights.
-const COMIC_ARCHIVE_STORE_NAME = 'the mana pocket';
+// Write access to the shared, cross-store comic cover archive: any signed-in
+// store user, any role. Open for now since the app has no real user base
+// yet to worry about bad-faith edits from; revisit if that changes.
 async function requireComicArchiveWriter(request, env, storeId) {
-  const access = await requireStoreUser(request, env, storeId);
-  if (access.error) return access;
-  try {
-    const { data } = await supabaseAdminFetch(env, `stores?id=eq.${encodeURIComponent(storeId)}&select=name,display_name&limit=1`);
-    const store = Array.isArray(data) ? data[0] : null;
-    const label = String(store?.display_name || store?.name || '').trim().toLowerCase();
-    if (label !== COMIC_ARCHIVE_STORE_NAME) return { error:json({ ok:false, error:'Only The Mana Pocket can edit the shared comic cover archive' }, 403) };
-  } catch (_) {
-    return { error:json({ ok:false, error:'Could not verify store access' }, 502) };
-  }
-  return access;
+  return requireStoreUser(request, env, storeId);
 }
 
 function requestStoreId(request, url, body = null) {
@@ -4326,6 +4313,59 @@ export default {
         existing.push(entry);
         if (env.LBA_KV) await env.LBA_KV.put(listKey, JSON.stringify(existing), { expirationTtl:60 * 60 * 24 * 365 * 5 });
         return json({ ok:true, cover:entry });
+      }
+
+      const globalCoverEditMatch = url.pathname.match(/^\/comic\/covers\/global\/(\d+)\/([0-9a-f-]+)$/i);
+      if (globalCoverEditMatch && request.method === 'PATCH') {
+        const storeId = requestStoreId(request, url);
+        const auth = await requireComicArchiveWriter(request, env, storeId);
+        if (auth.error) return auth.error;
+        const [, metronIssueId, coverId] = globalCoverEditMatch;
+        const body = await request.json().catch(() => ({}));
+        const listKey = `global:comic_extra_covers:${metronIssueId}`;
+        const existingRaw = env.LBA_KV ? await env.LBA_KV.get(listKey) : null;
+        let existing = [];
+        try { existing = JSON.parse(existingRaw || '[]'); } catch (_) { existing = []; }
+        const index = existing.findIndex(cover => cover.id === coverId);
+        if (index === -1) return json({ ok:false, error:'That cover entry no longer exists' }, 404);
+        const target = existing[index];
+        const oldImageKey = target.imageKey || '';
+        if (body.variantName != null) target.variantName = String(body.variantName).trim().slice(0, 160) || target.variantName;
+        if (body.price != null) target.price = Number(body.price) || null;
+        const uploadedImageKey = String(body.imageKey || '').trim();
+        const imageUrl = String(body.imageUrl || '').trim().slice(0, 600);
+        if (uploadedImageKey) {
+          if (!uploadedImageKey.startsWith(`comic-covers/${metronIssueId}/`)) return json({ ok:false, error:'Uploaded image does not match this issue' }, 400);
+          const uploaded = env.MTG_CATALOG_R2 ? await env.MTG_CATALOG_R2.head(uploadedImageKey).catch(() => null) : null;
+          if (!uploaded) return json({ ok:false, error:'Uploaded image was not found; try uploading again' }, 400);
+          target.imageKey = uploadedImageKey;
+          target.imageUrl = `/comic/covers/image/${encodeURIComponent(uploadedImageKey)}`;
+          target.sourceUrl = '';
+        } else if (imageUrl) {
+          try {
+            const imgRes = await fetch(imageUrl, { headers:{ 'User-Agent':'Mozilla/5.0 (compatible; WalkOff Comic Cover Archive/1.0)', Accept:'image/*' } });
+            if (!imgRes.ok) return json({ ok:false, error:'Could not fetch that image URL (HTTP ' + imgRes.status + ')' }, 400);
+            const contentType = imgRes.headers.get('content-type') || 'image/jpeg';
+            const bytes = await imgRes.arrayBuffer();
+            if (bytes.byteLength > 8 * 1024 * 1024) return json({ ok:false, error:'Image is too large (max 8MB)' }, 413);
+            const newImageKey = `comic-covers/${metronIssueId}/${crypto.randomUUID()}.jpg`;
+            if (env.MTG_CATALOG_R2) await env.MTG_CATALOG_R2.put(newImageKey, bytes, { httpMetadata:{ contentType } });
+            target.imageKey = newImageKey;
+            target.imageUrl = `/comic/covers/image/${encodeURIComponent(newImageKey)}`;
+            target.sourceUrl = imageUrl;
+          } catch (error) {
+            return json({ ok:false, error:'Could not fetch that image URL: ' + error.message }, 400);
+          }
+        }
+        // Clean up the replaced image only after the new one is safely stored.
+        if ((uploadedImageKey || imageUrl) && oldImageKey && oldImageKey !== target.imageKey && env.MTG_CATALOG_R2) {
+          await env.MTG_CATALOG_R2.delete(oldImageKey).catch(() => {});
+        }
+        target.updatedBy = auth.user.email || auth.user.id;
+        target.updatedAt = new Date().toISOString();
+        existing[index] = target;
+        if (env.LBA_KV) await env.LBA_KV.put(listKey, JSON.stringify(existing), { expirationTtl:60 * 60 * 24 * 365 * 5 });
+        return json({ ok:true, cover:target });
       }
 
       const globalCoverRemoveMatch = url.pathname.match(/^\/comic\/covers\/global\/(\d+)\/([0-9a-f-]+)$/i);
