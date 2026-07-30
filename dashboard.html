@@ -21094,6 +21094,22 @@ async function mtgCatalogMeta(){
   };
 }
 
+// mtgCatalogMeta() does a live manifest fetch to compare the device's synced
+// catalog version against what's actually published -- previously only used
+// by the Settings > Catalogs panel. The offline-search banner used to just
+// claim "good" unconditionally, so a device that hadn't re-synced in days
+// (default search mode is offline-first; nothing prompts a re-sync) never
+// got told a newer catalog existed. Memoized for a few minutes so every
+// search doesn't pay for its own manifest round-trip.
+let _mtgCatalogFreshnessCache = null;
+async function mtgCatalogIsStale(){
+  if(_mtgCatalogFreshnessCache && (Date.now() - _mtgCatalogFreshnessCache.checkedAt) < 5 * 60 * 1000) return _mtgCatalogFreshnessCache.isStale;
+  let isStale = false;
+  try { isStale = !!(await mtgCatalogMeta()).updateAvailable; } catch(e) { /* keep last known / assume not stale on check failure */ }
+  _mtgCatalogFreshnessCache = { checkedAt: Date.now(), isStale };
+  return isStale;
+}
+
 async function mtgCatalogCounts(){
   const status = await window.ArsCaMtgOffline?.status().catch(() => null);
   const meta = await mtgCatalogMeta().catch(() => ({}));
@@ -22202,7 +22218,8 @@ async function runPriceLookup(){
       renderQuickLookupResults(qplResults);
       renderUniversalSearchExplain(searchPlan, qplResults);
       const snapshot = cachedResults[0]?.cache?.updatedAt || cachedResults[0]?.lookupDebug?.catalogVersion || '';
-      setMtgOfflineBanner('Scryfall offline catalog' + (snapshot ? ' / Price snapshot: ' + String(snapshot).slice(0,10) : '') + '.', 'good');
+      const catalogStale = await mtgCatalogIsStale();
+      setMtgOfflineBanner('Scryfall offline catalog' + (snapshot ? ' / Price snapshot: ' + String(snapshot).slice(0,10) : '') + '.' + (catalogStale ? ' A newer catalog is available — refresh in Settings > Catalogs.' : ''), catalogStale ? 'warn' : 'good');
       if(mtgMode !== 'online_only') return;
     } else if(mtgMode === 'offline_only' || !navigator.onLine) {
       const status = await window.ArsCaMtgOffline?.status().catch(() => null);
