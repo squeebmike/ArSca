@@ -20,7 +20,6 @@ function functionSource(source, name) {
 const context = {
   pokemonPptConditionCode: value => String(value || 'NM').toUpperCase(),
   firstMoneyValue: (...values) => values.map(Number).find(value => Number.isFinite(value) && value > 0) || 0,
-  COND_MULTIPLIER: { NM:1, LP:.8, MP:.64, HP:.4, DMG:.25 },
   qplFinishLabel: value => value,
   normalizeQplFinish: value => String(value || 'normal').trim().toLowerCase().replace(/[\s-]+/g, '_'),
 };
@@ -31,8 +30,12 @@ vm.runInContext(functionSource(dashboard, 'resolveMtgOfflineCardPrice'), context
 vm.runInContext(functionSource(dashboard, 'scryfallTreatmentLabel'), context);
 
 assert.equal(context.resolveMtgOfflineCardPrice({ condition:'NM' }, { prices:{ usd:10 } }).price, 10);
-assert.equal(context.resolveMtgOfflineCardPrice({ condition:'LP', selectedFinish:'Foil' }, { prices:{ usd:10, usd_foil:20 } }).price, 16);
-assert.equal(context.resolveMtgOfflineCardPrice({ condition:'MP', selectedFinish:'Etched Foil' }, { prices:{ usd_etched:25 } }).price, 16);
+// Scryfall/the offline snapshot only ever have one real price per finish (no
+// condition tiers) -- a non-NM condition must never get a percent-of-NM
+// guess, it must come back unpriced so the caller can report "no real price"
+// instead of silently faking one.
+assert.equal(context.resolveMtgOfflineCardPrice({ condition:'LP', selectedFinish:'Foil' }, { prices:{ usd:10, usd_foil:20 } }).price, 0, 'LP must not get a fabricated percent-of-NM price');
+assert.equal(context.resolveMtgOfflineCardPrice({ condition:'MP', selectedFinish:'Etched Foil' }, { prices:{ usd_etched:25 } }).price, 0, 'MP must not get a fabricated percent-of-NM price');
 assert.equal(context.resolveMtgOfflineCardPrice({ condition:'NM', selectedFinish:'Surge Foil' }, { prices:{ usd_foil:31 } }).price, 31);
 assert.equal(context.resolveMtgOfflineCardPrice({ condition:'NM', selectedFinish:'Rainbow Foil' }, { prices:{ usd_foil:32 } }).price, 32);
 assert.equal(context.resolveMtgOfflineCardPrice({ condition:'NM', selectedFinish:'Halo Foil' }, { prices:{ usd_foil:33 } }).price, 33);
