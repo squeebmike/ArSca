@@ -4734,7 +4734,11 @@ export default {
         if (!token) return json({ ok: false, needsKey: true, source: 'PriceCharting', error: 'PRICECHARTING_TOKEN not set in Worker secrets' }, 501);
         if (url.pathname === '/pricing/pricecharting/comic-sweep' && request.method === 'POST') {
           const body = await request.json().catch(() => ({}));
-          const queries = [...new Set((Array.isArray(body.queries) ? body.queries : []).map(q => String(q || '').replace(/\s+/g, ' ').trim().slice(0, 160)).filter(Boolean))].slice(0, 10);
+          // A broad sweep (buildSweepQueries broad=true) sends up to 24
+          // variant-cover-type queries for heavy-variant runs -- this used to
+          // silently truncate to 10, dropping most of the broad-only queries
+          // before they ever reached PriceCharting.
+          const queries = [...new Set((Array.isArray(body.queries) ? body.queries : []).map(q => String(q || '').replace(/\s+/g, ' ').trim().slice(0, 160)).filter(Boolean))].slice(0, 24);
           const exactIssue = body.exactIssue && typeof body.exactIssue === 'object' ? {
             seriesName:String(body.exactIssue.seriesName || '').trim().slice(0, 160),
             number:String(body.exactIssue.number || '').trim().slice(0, 20),

@@ -77,8 +77,20 @@
     const series=clean(context.seriesTitle||context.seriesGuess),issue=String(context.currentIssueNumber??context.issueNumber??''),publisher=clean(context.publisher||context.publisherGuess),year=clean(context.yearGuess),alias=Object.entries(ALIASES).find(([,v])=>norm(v)===norm(series))?.[0]?.toUpperCase();
     const qualifier=publisher||year;
     const base=[context.originalQuery&&(!qualifier||norm(context.originalQuery).includes(norm(qualifier)))?context.originalQuery:'',`${series} ${issue} ${publisher}`,`${series} #${issue} ${publisher}`,year&&`${series} ${year} #${issue}`,alias&&`${alias} ${publisher||year} #${issue}`,`${series} ${issue} ${qualifier} variant`,`${series} ${issue} ${qualifier} foil`,`${series} ${issue} ${qualifier} cover`];
-    if(broad)base.push(`${series} ${issue} ${qualifier} virgin`,`${series} ${issue} ${qualifier} retailer exclusive`,`${series} ${issue} ${qualifier} ratio`,`${series} ${issue} ${qualifier} foil`,`${series} ${issue} ${qualifier} second print`,`${series} ${issue} ${qualifier} facsimile`);
-    return [...new Set(base.map(clean).filter(q=>q&&series&&issue))].slice(0,broad?10:8);
+    // A book with a heavy variant-cover run (retailer exclusives, ratios,
+    // sketch/signed editions, etc.) needs one search angle per variant type --
+    // generic "variant/foil/cover" terms alone won't surface a "Jetpack
+    // Comics Exclusive" or "1:25 Ratio" edition. Reuse the same variant
+    // vocabulary the filter dropdown already classifies covers by, instead of
+    // a separate, shorter hardcoded list that silently missed most of it.
+    if(broad){
+      const seen=new Set(base.map(norm));
+      VARIANTS.forEach(([label])=>{
+        const q=`${series} ${issue} ${qualifier} ${label}`;
+        if(!seen.has(norm(q))){ seen.add(norm(q)); base.push(q); }
+      });
+    }
+    return [...new Set(base.map(clean).filter(q=>q&&series&&issue))].slice(0,broad?24:8);
   }
   function canNavigate(issue){return /^\d+$/.test(String(issue));}
   function adjacentIssue(issue,delta){if(!canNavigate(issue))return null;return Math.max(0,Number(issue)+Number(delta));}
