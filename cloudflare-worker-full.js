@@ -341,6 +341,26 @@ async function requireStoreUser(request, env, storeId, allowedRoles = ['owner','
   return { user, role, token };
 }
 
+// Write access to the shared, cross-store comic cover archive is restricted
+// to whoever has access to "The Mana Pocket" (any store role there), not
+// gated by the store-agnostic platform_admins table -- so it works
+// immediately without a separate bootstrap step, and any teammate on that
+// one store can contribute without needing store-owner/admin rights.
+const COMIC_ARCHIVE_STORE_NAME = 'the mana pocket';
+async function requireComicArchiveWriter(request, env, storeId) {
+  const access = await requireStoreUser(request, env, storeId);
+  if (access.error) return access;
+  try {
+    const { data } = await supabaseAdminFetch(env, `stores?id=eq.${encodeURIComponent(storeId)}&select=name,display_name&limit=1`);
+    const store = Array.isArray(data) ? data[0] : null;
+    const label = String(store?.display_name || store?.name || '').trim().toLowerCase();
+    if (label !== COMIC_ARCHIVE_STORE_NAME) return { error:json({ ok:false, error:'Only The Mana Pocket can edit the shared comic cover archive' }, 403) };
+  } catch (_) {
+    return { error:json({ ok:false, error:'Could not verify store access' }, 502) };
+  }
+  return access;
+}
+
 function requestStoreId(request, url, body = null) {
   const candidate = request.headers.get('X-Store-Id')
     || request.headers.get('x-store-id')
@@ -4227,10 +4247,11 @@ export default {
       // Manual comic cover archive: a hand-curated, cross-store cover library
       // for books where Metron, PriceCharting, and GCD all fall short (e.g. a
       // heavy-variant book with 100+ known covers). Reads are available to any
-      // authenticated store; writes are gated to the platform-admin account
-      // only (not per-store owner/admin) since this is shared, global data.
+      // authenticated store; writes are gated to The Mana Pocket only (any
+      // role there), since this is shared, global data every store sees.
       if (url.pathname === '/comic/covers/global/add' && request.method === 'POST') {
-        const auth = await requirePlatformAdmin(request, env);
+        const storeId = requestStoreId(request, url);
+        const auth = await requireComicArchiveWriter(request, env, storeId);
         if (auth.error) return auth.error;
         if (!env.MTG_CATALOG_R2) return json({ ok:false, error:'R2 storage is not configured' }, 501);
         const body = await request.json().catch(() => ({}));
@@ -4276,7 +4297,8 @@ export default {
 
       const globalCoverRemoveMatch = url.pathname.match(/^\/comic\/covers\/global\/(\d+)\/([0-9a-f-]+)$/i);
       if (globalCoverRemoveMatch && request.method === 'DELETE') {
-        const auth = await requirePlatformAdmin(request, env);
+        const storeId = requestStoreId(request, url);
+        const auth = await requireComicArchiveWriter(request, env, storeId);
         if (auth.error) return auth.error;
         const [, metronIssueId, coverId] = globalCoverRemoveMatch;
         const listKey = `global:comic_extra_covers:${metronIssueId}`;

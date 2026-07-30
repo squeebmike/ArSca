@@ -22531,22 +22531,13 @@ async function hydrateMetronComicResult(idx,force=false,variantKey=''){
   qplResults[idx]=r;return r;
 }
 
-// Manual comic cover archive: whether the signed-in user is the platform
-// admin (not a per-store owner/admin) allowed to add hand-curated covers to
-// the shared, cross-store archive. Cached after the first check; re-render
-// the open panel once it resolves since the button can't render truthfully
-// before then.
-let _platformAdminStatus=null,_platformAdminCheckPromise=null;
-function ensurePlatformAdminChecked(idx){
-  if(_platformAdminStatus!==null)return Promise.resolve(_platformAdminStatus);
-  if(_platformAdminCheckPromise)return _platformAdminCheckPromise;
-  _platformAdminCheckPromise=(async()=>{
-    try{const res=await storeWorkerFetch('/admin/session',{cache:'no-store'});_platformAdminStatus=res.ok;}
-    catch(e){_platformAdminStatus=false;}
-    if(_platformAdminStatus&&Number.isInteger(idx))updateQplResultCard(idx);
-    return _platformAdminStatus;
-  })();
-  return _platformAdminCheckPromise;
+// Manual comic cover archive: write access is restricted to whoever has
+// access to The Mana Pocket (any role there), not a platform-wide admin
+// flag -- matches the Worker's requireComicArchiveWriter gate, which is the
+// actual authority; this is only for deciding whether to show the button.
+function canEditComicCoverArchive(){
+  const label=String(getActiveStore()?.displayName||getActiveStore()?.name||'').trim().toLowerCase();
+  return label==='the mana pocket';
 }
 
 function openAddManualComicCoverModal(idx){
@@ -22722,12 +22713,7 @@ function qplComicBookInfoPanel(r,idx){
   const row=(label,values)=>values?.length?`<div style="font-size:10px;margin-top:7px"><b>${label}${values.length===1?'':'s'}:</b> ${escHtml(values.join(', '))}</div>`:'';
   const priceLink=r.pricecharting?.url?`<a class="hbtn" style="color:var(--gold)" href="${escHtml(r.pricecharting.url)}" target="_blank" rel="noopener">VERIFY EXACT PRICECHARTING</a>`:`<button class="hbtn" style="color:var(--gold)" onclick="openComicReference(${idx},'pricecharting')">SEARCH PRICECHARTING</button>`;
   const loadAllCoversControl=r.loadingAllComicVariantCovers?'<button class="hbtn" disabled style="border-color:var(--gold);color:var(--gold)">LOADING ALL VARIANT COVERS...</button>':r.allComicVariantCoversLoaded?`<button class="hbtn" style="border-color:var(--g);color:var(--g)" onclick="loadAllComicVariantCovers(${idx})">ALL ${covers.length} PROVIDER COVERS LOADED · REFRESH</button>`:`<button class="hbtn" style="border-color:var(--g);color:var(--g);font-weight:900" onclick="loadAllComicVariantCovers(${idx})">LOAD ALL VARIANT COVERS</button>`;
-  // Only the platform admin can add to the shared cover archive -- kick off
-  // the (cached) check if it hasn't resolved yet; the button simply won't
-  // render until it comes back true, and a resolved "true" re-renders this
-  // panel on its own.
-  if(_platformAdminStatus===null)ensurePlatformAdminChecked(idx);
-  const addCoverControl=_platformAdminStatus===true?`<button class="hbtn" style="border-color:var(--purple);color:var(--purple)" onclick="openAddManualComicCoverModal(${idx})">ADD A COVER</button>`:'';
+  const addCoverControl=canEditComicCoverArchive()?`<button class="hbtn" style="border-color:var(--purple);color:var(--purple)" onclick="openAddManualComicCoverModal(${idx})">ADD A COVER</button>`:'';
   const links=`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px"><button class="hbtn" style="color:var(--purple)" onclick="openComicReference(${idx},'metron')">METRON RECORD</button>${priceLink}<button class="hbtn" onclick="openComicReference(${idx},'sold')">EBAY SOLD</button><button class="hbtn" onclick="openComicReference(${idx},'mycomicshop')">MYCOMICSHOP</button>${m.gcdId?`<button class="hbtn" onclick="openComicReference(${idx},'gcd')">GCD RECORD</button>`:''}${m.comicVineId?`<button class="hbtn" onclick="openComicReference(${idx},'comicvine')">COMIC VINE</button>`:''}</div>`;
   const coverCards=`<div style="grid-column:1/-1;display:flex;gap:8px;align-items:center;flex-wrap:wrap">${loadAllCoversControl}${addCoverControl}<span style="font-size:9px;color:var(--dim)">Loads every exact cover currently cataloged by Metron and PriceCharting for this issue only.</span>${r.allComicVariantCoversError?`<span style="color:var(--gold);font-size:9px">${escHtml(r.allComicVariantCoversError)}</span>`:''}</div>`+covers.map((cover,i)=>{
     const title=cover.issueName||cover.name||('Issue #'+(cover.number||m.number||'')),tags=window.ArsCaComicIssueHub?.variantLabels(title)||[],prices=cover.pricecharting?.comicPrices||{},raw=Number(prices.ungraded||cover.manualPrice||0),graded=Number(prices.grade9_8||0),isSelected=Boolean(r.coverConfirmed&&String(r.imageUrl||'').split('?')[0]===String(cover.imageUrl||'').split('?')[0]),source=cover.source==='Manual'?'MANUALLY ADDED':cover.pricechartingProductId?'PRICECHARTING':cover.nestedVariant?'METRON VARIANT':'METRON COVER';
