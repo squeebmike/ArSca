@@ -22531,6 +22531,71 @@ async function hydrateMetronComicResult(idx,force=false,variantKey=''){
   qplResults[idx]=r;return r;
 }
 
+// Manual comic cover archive: whether the signed-in user is the platform
+// admin (not a per-store owner/admin) allowed to add hand-curated covers to
+// the shared, cross-store archive. Cached after the first check; re-render
+// the open panel once it resolves since the button can't render truthfully
+// before then.
+let _platformAdminStatus=null,_platformAdminCheckPromise=null;
+function ensurePlatformAdminChecked(idx){
+  if(_platformAdminStatus!==null)return Promise.resolve(_platformAdminStatus);
+  if(_platformAdminCheckPromise)return _platformAdminCheckPromise;
+  _platformAdminCheckPromise=(async()=>{
+    try{const res=await storeWorkerFetch('/admin/session',{cache:'no-store'});_platformAdminStatus=res.ok;}
+    catch(e){_platformAdminStatus=false;}
+    if(_platformAdminStatus&&Number.isInteger(idx))updateQplResultCard(idx);
+    return _platformAdminStatus;
+  })();
+  return _platformAdminCheckPromise;
+}
+
+function openAddManualComicCoverModal(idx){
+  const r=qplResults[idx];if(!r?.metronIssueId)return;
+  let modal=document.getElementById('manual-comic-cover-modal');
+  if(!modal){modal=document.createElement('div');modal.id='manual-comic-cover-modal';modal.style.cssText='position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.78);display:none;align-items:center;justify-content:center;padding:18px';document.body.appendChild(modal);}
+  modal.innerHTML=`<div style="width:min(560px,96vw);max-height:90vh;overflow:auto;background:var(--surf);border:1px solid var(--border);border-radius:14px;padding:18px;box-shadow:0 22px 70px rgba(0,0,0,.55)">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px">
+      <div style="font-family:'Orbitron',monospace;color:var(--purple);font-size:14px">ADD A COVER</div>
+      <button class="hbtn" onclick="closeAddManualComicCoverModal()">CLOSE</button>
+    </div>
+    <div style="font-family:monospace;font-size:10px;color:var(--dim);margin-bottom:10px">For a variant no source has cataloged (eBay sold listing, dealer site, your own scan). Saved once and shown to every store that looks up this exact issue.</div>
+    <div style="display:grid;gap:10px">
+      <label style="font-family:monospace;font-size:9px;color:var(--dim)">VARIANT NAME
+        <input id="manual-cover-name-input" class="tsi" style="margin-top:4px;width:100%" placeholder="e.g. Jetpack Comics Exclusive">
+      </label>
+      <label style="font-family:monospace;font-size:9px;color:var(--dim)">IMAGE URL
+        <input id="manual-cover-image-input" class="tsi" style="margin-top:4px;width:100%" placeholder="https://...">
+      </label>
+      <label style="font-family:monospace;font-size:9px;color:var(--dim)">PRICE (OPTIONAL)
+        <input id="manual-cover-price-input" class="tsi" style="margin-top:4px;width:100%" type="number" step="0.01" min="0" placeholder="0.00">
+      </label>
+      <button class="hbtn" style="min-height:48px;color:var(--g)" onclick="submitManualComicCover(${idx})">SAVE COVER</button>
+      <div id="manual-cover-status" style="font-family:monospace;font-size:10px;color:var(--dim)"></div>
+    </div>
+  </div>`;
+  modal.style.display='flex';
+  document.getElementById('manual-cover-name-input')?.focus();
+}
+function closeAddManualComicCoverModal(){const modal=document.getElementById('manual-comic-cover-modal');if(modal)modal.style.display='none';}
+async function submitManualComicCover(idx){
+  const r=qplResults[idx];if(!r?.metronIssueId)return;
+  const variantName=document.getElementById('manual-cover-name-input')?.value.trim()||'';
+  const imageUrl=document.getElementById('manual-cover-image-input')?.value.trim()||'';
+  const price=Number(document.getElementById('manual-cover-price-input')?.value||0)||null;
+  const status=document.getElementById('manual-cover-status');
+  if(!variantName){if(status)status.textContent='Variant name is required.';return;}
+  if(status)status.textContent='Saving...';
+  try{
+    const res=await storeWorkerFetch('/comic/covers/global/add',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({metronIssueId:r.metronIssueId,variantName,imageUrl,price})});
+    const data=await res.json().catch(()=>({}));
+    if(!res.ok||!data.ok)throw new Error(data.error||'Could not save that cover');
+    closeAddManualComicCoverModal();
+    toast_dash('Saved "'+variantName+'" — every store will see it on this issue from now on');
+    await hydrateMetronComicResult(idx,true);
+    updateQplResultCard(idx);
+  }catch(error){if(status)status.textContent=error.message||String(error);}
+}
+
 async function loadAllComicVariantCovers(idx){
   let r=qplResults[idx];if(!r?.metronIssueId||r.loadingAllComicVariantCovers)return;
   try{
@@ -22598,7 +22663,10 @@ async function selectMetronComicCover(idx,coverIndex){
     try{r=await hydrateMetronComicResult(idx);}catch(error){toast_dash('That cover detail could not load: '+(error.message||error));return;}
   }else if(cover.nestedVariant){
     try{r=await hydrateMetronComicResult(idx,true,nextId);}catch(error){toast_dash('That variant price could not load: '+(error.message||error));return;}
-  }else{r.imageUrl=cover.imageUrl||r.imageUrl;r.coverImageUrl=r.imageUrl;r.variant=cover.issueName||cover.name||('Cover '+(cover.number||''));r.variantLabel=r.variant;}}
+  }else{
+    r.imageUrl=cover.imageUrl||r.imageUrl;r.coverImageUrl=r.imageUrl;r.variant=cover.issueName||cover.name||('Cover '+(cover.number||''));r.variantLabel=r.variant;
+    if(cover.source==='Manual'&&Number(cover.manualPrice)>0){r.market=Number(cover.manualPrice);r.lastPriceUpdate=new Date().toISOString();r.priceSource='Manually entered price ('+(cover.addedBy||'archive')+')';r.pricecharting=null;}
+  }}
   r.selectedComicCover={...cover,metronIssueId:r.metronIssueId,imageUrl:r.imageUrl,selectedAt:new Date().toISOString()};r.coverConfirmed=true;r.coverConfidence='confirmed';comicAppraisalState(r).coverConfirmed=true;
   const confirmation={metronIssueId:r.metronIssueId,metronVariantId:cover.id||'',variantName:r.variant||cover.issueName||'',imageUrl:r.imageUrl,pricechartingProductId:String(r.pricecharting?.productId||''),pricechartingProductName:r.pricecharting?.productName||'',pricechartingUrl:r.pricecharting?.url||'',confirmedAt:new Date().toISOString()};
   try{await storeWorkerFetch('/kv/comic_cover_'+encodeURIComponent(r.metronIssueId),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(confirmation)});}catch(_){toast_dash('Cover selected on this device; cloud save failed');}
@@ -22654,9 +22722,15 @@ function qplComicBookInfoPanel(r,idx){
   const row=(label,values)=>values?.length?`<div style="font-size:10px;margin-top:7px"><b>${label}${values.length===1?'':'s'}:</b> ${escHtml(values.join(', '))}</div>`:'';
   const priceLink=r.pricecharting?.url?`<a class="hbtn" style="color:var(--gold)" href="${escHtml(r.pricecharting.url)}" target="_blank" rel="noopener">VERIFY EXACT PRICECHARTING</a>`:`<button class="hbtn" style="color:var(--gold)" onclick="openComicReference(${idx},'pricecharting')">SEARCH PRICECHARTING</button>`;
   const loadAllCoversControl=r.loadingAllComicVariantCovers?'<button class="hbtn" disabled style="border-color:var(--gold);color:var(--gold)">LOADING ALL VARIANT COVERS...</button>':r.allComicVariantCoversLoaded?`<button class="hbtn" style="border-color:var(--g);color:var(--g)" onclick="loadAllComicVariantCovers(${idx})">ALL ${covers.length} PROVIDER COVERS LOADED · REFRESH</button>`:`<button class="hbtn" style="border-color:var(--g);color:var(--g);font-weight:900" onclick="loadAllComicVariantCovers(${idx})">LOAD ALL VARIANT COVERS</button>`;
+  // Only the platform admin can add to the shared cover archive -- kick off
+  // the (cached) check if it hasn't resolved yet; the button simply won't
+  // render until it comes back true, and a resolved "true" re-renders this
+  // panel on its own.
+  if(_platformAdminStatus===null)ensurePlatformAdminChecked(idx);
+  const addCoverControl=_platformAdminStatus===true?`<button class="hbtn" style="border-color:var(--purple);color:var(--purple)" onclick="openAddManualComicCoverModal(${idx})">ADD A COVER</button>`:'';
   const links=`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px"><button class="hbtn" style="color:var(--purple)" onclick="openComicReference(${idx},'metron')">METRON RECORD</button>${priceLink}<button class="hbtn" onclick="openComicReference(${idx},'sold')">EBAY SOLD</button><button class="hbtn" onclick="openComicReference(${idx},'mycomicshop')">MYCOMICSHOP</button>${m.gcdId?`<button class="hbtn" onclick="openComicReference(${idx},'gcd')">GCD RECORD</button>`:''}${m.comicVineId?`<button class="hbtn" onclick="openComicReference(${idx},'comicvine')">COMIC VINE</button>`:''}</div>`;
-  const coverCards=`<div style="grid-column:1/-1;display:flex;gap:8px;align-items:center;flex-wrap:wrap">${loadAllCoversControl}<span style="font-size:9px;color:var(--dim)">Loads every exact cover currently cataloged by Metron and PriceCharting for this issue only.</span>${r.allComicVariantCoversError?`<span style="color:var(--gold);font-size:9px">${escHtml(r.allComicVariantCoversError)}</span>`:''}</div>`+covers.map((cover,i)=>{
-    const title=cover.issueName||cover.name||('Issue #'+(cover.number||m.number||'')),tags=window.ArsCaComicIssueHub?.variantLabels(title)||[],prices=cover.pricecharting?.comicPrices||{},raw=Number(prices.ungraded||0),graded=Number(prices.grade9_8||0),isSelected=Boolean(r.coverConfirmed&&String(r.imageUrl||'').split('?')[0]===String(cover.imageUrl||'').split('?')[0]),source=cover.pricechartingProductId?'PRICECHARTING':cover.nestedVariant?'METRON VARIANT':'METRON COVER';
+  const coverCards=`<div style="grid-column:1/-1;display:flex;gap:8px;align-items:center;flex-wrap:wrap">${loadAllCoversControl}${addCoverControl}<span style="font-size:9px;color:var(--dim)">Loads every exact cover currently cataloged by Metron and PriceCharting for this issue only.</span>${r.allComicVariantCoversError?`<span style="color:var(--gold);font-size:9px">${escHtml(r.allComicVariantCoversError)}</span>`:''}</div>`+covers.map((cover,i)=>{
+    const title=cover.issueName||cover.name||('Issue #'+(cover.number||m.number||'')),tags=window.ArsCaComicIssueHub?.variantLabels(title)||[],prices=cover.pricecharting?.comicPrices||{},raw=Number(prices.ungraded||cover.manualPrice||0),graded=Number(prices.grade9_8||0),isSelected=Boolean(r.coverConfirmed&&String(r.imageUrl||'').split('?')[0]===String(cover.imageUrl||'').split('?')[0]),source=cover.source==='Manual'?'MANUALLY ADDED':cover.pricechartingProductId?'PRICECHARTING':cover.nestedVariant?'METRON VARIANT':'METRON COVER';
     return `<button type="button" class="comic-cover-picker-card ${isSelected?'selected':''}" onclick="selectMetronComicCover(${idx},${i})" aria-label="Use ${escHtml(title)}">${cover.imageUrl?('<img src="'+escHtml(cover.imageUrl)+'" alt="'+escHtml(title)+'" loading="lazy">'):('<div style="width:100%;aspect-ratio:2/3;display:grid;place-items:center;background:#050607;border-radius:7px;color:var(--dim);font-size:9px">NO IMAGE</div>')}<div class="comic-cover-picker-title">${escHtml(title)}</div><div class="comic-cover-picker-tags"><span class="qpl-badge">${source}</span>${tags.map(tag=>`<span class="qpl-badge ${tag==='foil'?'warn':''}">${escHtml(tag.toUpperCase())}</span>`).join('')}${isSelected?'<span class="qpl-badge good">SELECTED</span>':''}</div><div class="comic-cover-picker-price">${raw?'RAW $'+raw.toFixed(2):cover.coverPrice?'COVER PRICE $'+Number(cover.coverPrice).toFixed(2):'SELECT TO LOAD PRICE'}${graded?' · 9.8 $'+graded.toFixed(2):''}</div></button>`;
   }).join('');
   return `<section style="margin-top:12px;border:1px solid rgba(199,125,255,.42);border-radius:10px;padding:14px;background:rgba(199,125,255,.055)"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center"><div><b style="font-family:'Orbitron',monospace;font-size:13px;color:var(--purple)">SELECT THE EXACT COVER & VARIANT</b><div style="font-size:10px;color:var(--dim);margin-top:4px">Metron cover records plus exact PriceCharting variants, including foil editions when available.</div></div><span class="qpl-badge">${covers.length} COVER${covers.length===1?'':'S'} · METRON #${escHtml(r.metronIssueId||m.id||'')}</span></div>${covers.length?`<div class="comic-cover-picker-grid">${coverCards}</div>`:'<div style="color:var(--dim);font-size:10px;margin-top:10px">No additional cover records were returned for this issue.</div>'}${links}<details class="comic-book-facts"><summary>BOOK DETAILS, STORY & CREATORS</summary><div class="comic-book-facts-body"><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:7px">${facts.map(([label,value])=>`<div style="background:var(--surf);border:1px solid var(--border);border-radius:7px;padding:8px"><small style="display:block;color:var(--dim);font-size:8px">${escHtml(label)}</small><b style="font-size:11px">${escHtml(String(value))}</b></div>`).join('')}</div><div style="margin-top:12px"><b style="font-size:10px;color:var(--purple)">STORY / SYNOPSIS</b><p style="font-size:11px;line-height:1.65;margin:5px 0;color:${m.description?'var(--text)':'var(--dim)'}">${escHtml(m.description||'Metron does not currently have a synopsis for this issue.')}</p></div>${row('Story title',m.storyTitles||[])}${grouped.map(([label,names])=>row(label,names)).join('')}${credits?`<details style="font-size:10px;margin-top:8px"><summary>All creator credits</summary><div style="line-height:1.55;margin-top:5px">${escHtml(credits)}</div></details>`:''}${row('Story arc',m.arcs||[])}${row('Genre',m.genres||[])}${row('Character',m.characters||[])}${row('Team',m.teams||[])}${row('Universe',m.universes||[])}<div style="margin-top:12px"><span class="qpl-badge warn">KEY ISSUE STATUS NEEDS A VERIFIED SOURCE</span><div style="font-size:9px;color:var(--dim);margin-top:4px">Metron supplies bibliographic facts, credits, and story data. Record a separately verified key-issue reason below.</div></div></div></details></section>`;

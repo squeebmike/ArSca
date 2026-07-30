@@ -4127,12 +4127,35 @@ export default {
               if (isComicPcCandidate(linkedDetail)) linkedPrice = { ...linkedDetail, savedExactLink:true, comicMatchScore:999 };
             } catch (_) {}
           }
-          const [seriesIssues, priceCandidates] = await Promise.all([
+          const [seriesIssues, priceCandidates, globalCoversRaw] = await Promise.all([
             issue.seriesId ? metronExactIssueRecords(env, issue).catch(() => []) : Promise.resolve([]),
             comicPcCandidates(issue, forcePrice),
+            env.LBA_KV ? env.LBA_KV.get(`global:comic_extra_covers:${metronIssueMatch[1]}`).catch(() => null) : Promise.resolve(null),
           ]);
           const rawSeriesIssues = Array.isArray(seriesIssues) ? seriesIssues : [];
           const metronCovers = metronSiblingCovers(issue, rawSeriesIssues);
+          // Manually-cataloged covers (added via the platform-admin-only comic
+          // cover archive) apply globally across every store -- no database
+          // we integrate with (Metron, PriceCharting, GCD) has a complete
+          // variant list for heavy-variant books, so this closes the gap with
+          // covers a person actually tracked down by hand.
+          let globalCovers = [];
+          try { globalCovers = JSON.parse(globalCoversRaw || '[]'); } catch (_) { globalCovers = []; }
+          const manualCoverRows = (Array.isArray(globalCovers) ? globalCovers : []).map(cover => ({
+            id:`manual:${cover.id}`,
+            metronIssueId:String(metronIssueMatch[1]),
+            seriesId:issue.seriesId,
+            seriesName:issue.seriesName,
+            number:issue.number,
+            issueName:cover.variantName || `Issue #${issue.number} cover`,
+            name:cover.variantName || `Issue #${issue.number} cover`,
+            imageUrl:cover.imageUrl || '',
+            manualPrice:cover.price || null,
+            sourceUrl:cover.sourceUrl || '',
+            addedBy:cover.addedBy || '',
+            addedAt:cover.addedAt || '',
+            source:'Manual',
+          }));
           const matchedCandidates = matchingComicPcCandidates(priceCandidates, issue);
           const candidateById = new Map();
           if (linkedPrice?.productId) candidateById.set(String(linkedPrice.productId), linkedPrice);
@@ -4181,7 +4204,7 @@ export default {
           // not just PriceCharting's) discarded real, known variants before
           // the client ever saw them. Only dedupe among covers that DO have
           // an image; keep every imageless one.
-          const covers = [...mergedMetronCovers, ...separatePcCovers]
+          const covers = [...mergedMetronCovers, ...separatePcCovers, ...manualCoverRows]
             .filter((cover, index, all) => !cover.imageUrl || all.findIndex(other => other.imageUrl && String(other.imageUrl).split('?')[0] === String(cover.imageUrl).split('?')[0]) === index);
           const candidate = comicCandidates[0] || null;
           const runnerUp = comicCandidates[1] || null;
@@ -4200,6 +4223,86 @@ export default {
           return json({ ok:false, source:'Metron', error:message, retryAfter:error.retryAfter || null }, status, error.retryAfter ? { 'Retry-After':error.retryAfter } : {});
         }
       }
+
+      // Manual comic cover archive: a hand-curated, cross-store cover library
+      // for books where Metron, PriceCharting, and GCD all fall short (e.g. a
+      // heavy-variant book with 100+ known covers). Reads are available to any
+      // authenticated store; writes are gated to the platform-admin account
+      // only (not per-store owner/admin) since this is shared, global data.
+      if (url.pathname === '/comic/covers/global/add' && request.method === 'POST') {
+        const auth = await requirePlatformAdmin(request, env);
+        if (auth.error) return auth.error;
+        if (!env.MTG_CATALOG_R2) return json({ ok:false, error:'R2 storage is not configured' }, 501);
+        const body = await request.json().catch(() => ({}));
+        const metronIssueId = String(body.metronIssueId || '').replace(/\D/g, '');
+        const variantName = String(body.variantName || '').trim().slice(0, 160);
+        const imageUrl = String(body.imageUrl || '').trim().slice(0, 600);
+        const price = Number(body.price || 0) || null;
+        if (!metronIssueId || !variantName) return json({ ok:false, error:'metronIssueId and variantName are required' }, 400);
+        let imageKey = '', storedImageUrl = '';
+        if (imageUrl) {
+          try {
+            const imgRes = await fetch(imageUrl, { headers:{ 'User-Agent':'Mozilla/5.0 (compatible; WalkOff Comic Cover Archive/1.0)', Accept:'image/*' } });
+            if (!imgRes.ok) return json({ ok:false, error:'Could not fetch that image URL (HTTP ' + imgRes.status + ')' }, 400);
+            const contentType = imgRes.headers.get('content-type') || 'image/jpeg';
+            const bytes = await imgRes.arrayBuffer();
+            if (bytes.byteLength > 8 * 1024 * 1024) return json({ ok:false, error:'Image is too large (max 8MB)' }, 413);
+            const coverId = crypto.randomUUID();
+            imageKey = `comic-covers/${metronIssueId}/${coverId}.jpg`;
+            await env.MTG_CATALOG_R2.put(imageKey, bytes, { httpMetadata:{ contentType } });
+            storedImageUrl = `/comic/covers/image/${encodeURIComponent(imageKey)}`;
+          } catch (error) {
+            return json({ ok:false, error:'Could not fetch that image URL: ' + error.message }, 400);
+          }
+        }
+        const listKey = `global:comic_extra_covers:${metronIssueId}`;
+        const existingRaw = env.LBA_KV ? await env.LBA_KV.get(listKey) : null;
+        let existing = [];
+        try { existing = JSON.parse(existingRaw || '[]'); } catch (_) { existing = []; }
+        const entry = {
+          id:crypto.randomUUID(),
+          variantName,
+          price,
+          imageKey,
+          imageUrl:storedImageUrl,
+          sourceUrl:imageUrl,
+          addedBy:auth.user.email || auth.user.id,
+          addedAt:new Date().toISOString(),
+        };
+        existing.push(entry);
+        if (env.LBA_KV) await env.LBA_KV.put(listKey, JSON.stringify(existing), { expirationTtl:60 * 60 * 24 * 365 * 5 });
+        return json({ ok:true, cover:entry });
+      }
+
+      const globalCoverRemoveMatch = url.pathname.match(/^\/comic\/covers\/global\/(\d+)\/([0-9a-f-]+)$/i);
+      if (globalCoverRemoveMatch && request.method === 'DELETE') {
+        const auth = await requirePlatformAdmin(request, env);
+        if (auth.error) return auth.error;
+        const [, metronIssueId, coverId] = globalCoverRemoveMatch;
+        const listKey = `global:comic_extra_covers:${metronIssueId}`;
+        const existingRaw = env.LBA_KV ? await env.LBA_KV.get(listKey) : null;
+        let existing = [];
+        try { existing = JSON.parse(existingRaw || '[]'); } catch (_) { existing = []; }
+        const target = existing.find(cover => cover.id === coverId);
+        const remaining = existing.filter(cover => cover.id !== coverId);
+        if (env.LBA_KV) await env.LBA_KV.put(listKey, JSON.stringify(remaining), { expirationTtl:60 * 60 * 24 * 365 * 5 });
+        if (target?.imageKey && env.MTG_CATALOG_R2) await env.MTG_CATALOG_R2.delete(target.imageKey).catch(() => {});
+        return json({ ok:true });
+      }
+
+      // Serving is unauthenticated like the PSA cert-photo proxy above -- a
+      // plain <img src> from the browser carries no Authorization header, and
+      // these are just cover photos, not sensitive per-store data.
+      const globalCoverImageMatch = url.pathname.match(/^\/comic\/covers\/image\/(.+)$/);
+      if (globalCoverImageMatch && request.method === 'GET') {
+        if (!env.MTG_CATALOG_R2) return json({ ok:false, error:'R2 storage is not configured' }, 501);
+        const key = decodeURIComponent(globalCoverImageMatch[1]);
+        if (!key.startsWith('comic-covers/')) return json({ ok:false, error:'Invalid image key' }, 400);
+        const object = await env.MTG_CATALOG_R2.get(key);
+        if (!object) return new Response('Not found', { status:404, headers:CORS });
+        return new Response(object.body, { headers:{ ...CORS, 'Content-Type':object.httpMetadata?.contentType || 'image/jpeg', 'Cache-Control':'public, max-age=31536000, immutable' } });
+      }
+
       const normalizeBarcodeValue = raw => {
         const original = String(raw ?? '').trim();
         const digits = original.replace(/\D/g, '');
