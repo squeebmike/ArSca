@@ -4119,7 +4119,11 @@ export default {
             const id = String(product.productId || '');
             if (id && !candidateById.has(id)) candidateById.set(id, product);
           });
-          const comicCandidates = [...candidateById.values()].slice(0, 24);
+          // comicPcCandidates() above already caps its own search to 60 --
+          // this used to re-truncate down to 24 for no reason, silently
+          // cutting a heavy-variant book's initial cover list before the
+          // user ever gets to "LOAD ALL VARIANT COVERS".
+          const comicCandidates = [...candidateById.values()].slice(0, 60);
           const pcCovers = await Promise.all(comicCandidates.map(hydratePcCoverImage));
           const pcCoverRows = pcCovers.map(product => ({
             id:`pricecharting:${product.productId}`,
