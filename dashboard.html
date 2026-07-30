@@ -26424,12 +26424,22 @@ function qplSlabControls(r, idx){
 
 async function fetchWorkerTcgCatalog(q, cat){
   const game = cat || '';
+  // Run all query variants in parallel instead of one at a time. This used
+  // to be a sequential for-await loop -- fine for a fuzzy search that hits
+  // the 12-match early-exit on the first query, but an exact card name
+  // search (the common case for MTG, which this function only recently
+  // started serving) rarely returns 12+ matches, so it paid for up to 3
+  // full round trips back-to-back. JustTCG has no server-side rate limiter
+  // to fight (unlike PriceCharting's pcFetch), so this is a pure speedup.
+  const queries = qplQueryVariants(q, cat).slice(0, 3);
+  const responses = await Promise.all(queries.map(query =>
+    fetch(WORKER + '/pricing/justtcg/search?' + new URLSearchParams({ q:query, category:game, storeId:getActiveStoreId() }).toString())
+      .then(res => res.ok ? res.json().catch(() => null) : null)
+      .catch(() => null)
+  ));
   const justRows = [];
-  for(const query of qplQueryVariants(q, cat).slice(0, 3)) {
-    const just = await fetch(WORKER + '/pricing/justtcg/search?' + new URLSearchParams({ q:query, category:game, storeId:getActiveStoreId() }).toString()).catch(() => null);
-    if(!just?.ok) continue;
-    const jd = await just.json().catch(() => ({}));
-    if(Array.isArray(jd.matches) && jd.matches.length) justRows.push(...jd.matches);
+  for(const jd of responses) {
+    if(Array.isArray(jd?.matches) && jd.matches.length) justRows.push(...jd.matches);
     if(justRows.length >= 12) break;
   }
   if(justRows.length) {
