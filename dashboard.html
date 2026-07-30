@@ -18224,8 +18224,8 @@ async function fetchPsaCertPhotoForEditItem(){
     if(!res.ok || !data.ok) throw new Error(data.error || 'PSA lookup failed');
     const c = data.cert || {};
     if(!c.photoUrl) { if(statusEl) statusEl.textContent = 'Cert verified, but PSA has no photo on file (PSA only attaches photos to certs graded after Oct 2021).'; return; }
-    setInventoryEditPhoto(c.photoUrl, 'PSA cert photo');
-    if(statusEl) statusEl.textContent = 'Slab photo pulled from PSA. Click SAVE CHANGES to keep it.';
+    setInventoryEditPhoto(psaCertPhotoUrl(c.certNumber || cert), 'PSA cert photo');
+    if(statusEl) statusEl.innerHTML = 'Slab photo pulled from PSA. Click SAVE CHANGES to keep it. <a href="' + escHtml(psaCertVerifyUrl(c.certNumber || cert)) + '" target="_blank" rel="noopener" style="color:var(--blue)">Verify on PSA ↗</a>';
   } catch(e) {
     if(statusEl) statusEl.textContent = e.message || String(e);
   }
@@ -19893,7 +19893,14 @@ async function handleCardsightCertBarcode(cert){
     renderQuickLookupResults(qplResults.length ? qplResults : qplMasterResults);
     if(log){
       const line = document.createElement('div');
-      line.textContent = '✓ ' + row.name + ' — PSA cert #' + cert + (row.market ? ' — $' + row.market.toFixed(2) : ' — no price found');
+      line.textContent = '✓ ' + row.name + ' — PSA cert #' + cert + (row.market ? ' — $' + row.market.toFixed(2) : ' — no price found') + ' ';
+      const verifyLink = document.createElement('a');
+      verifyLink.href = row.verifyUrl || psaCertVerifyUrl(cert);
+      verifyLink.target = '_blank';
+      verifyLink.rel = 'noopener';
+      verifyLink.style.color = 'var(--blue)';
+      verifyLink.textContent = 'Verify on PSA ↗';
+      line.appendChild(verifyLink);
       log.prepend(line);
     }
     setCardSightStatus('PSA cert #' + cert + ' added to Research results below.', 'var(--g)');
@@ -27262,8 +27269,18 @@ function psaCertCategory(c = {}){
   const line = tcgLineFromText([c.category, c.subject, c.brand].filter(Boolean).join(' '), '');
   return line.game !== 'all' ? line.category : 'Sports';
 }
+// PSA's own photo CDN 403s on a direct cross-origin <img src> (hotlink
+// protection) -- route through our own Worker proxy instead, which fetches
+// server-to-server (no Referer to trip that check) and caches to R2.
+function psaCertPhotoUrl(cert){
+  return cert ? WORKER + '/psa/cert/' + encodeURIComponent(cert) + '/photo' : '';
+}
+function psaCertVerifyUrl(cert){
+  return cert ? 'https://www.psacard.com/cert/' + encodeURIComponent(cert) : '';
+}
 function psaCertToQplRow(c = {}, certFallback = ''){
   const category = psaCertCategory(c);
+  const cert = c.certNumber || certFallback;
   return {
     source:'psa_cert',
     name:c.subject || 'Unknown card',
@@ -27275,12 +27292,13 @@ function psaCertToQplRow(c = {}, certFallback = ''){
     variant:c.variety || 'Base',
     grader:'PSA',
     grade:c.grade || c.gradeDesc || '',
-    cert_number:c.certNumber || certFallback,
-    imageUrl:c.photoUrl || '',
+    cert_number:cert,
+    imageUrl:c.photoUrl ? psaCertPhotoUrl(cert) : '',
+    verifyUrl:psaCertVerifyUrl(cert),
     market:0,
     priceSource:'',
     matchWhy:['PSA cert lookup'],
-    note:'Identified by PSA cert #' + (c.certNumber || certFallback),
+    note:'Identified by PSA cert #' + cert,
     psaCert:c,
     slabVerified:true,
   };
@@ -27318,7 +27336,8 @@ async function runPsaCertSearch(){
       <div>${escHtml([row.set, row.card_number ? '#'+row.card_number : ''].filter(Boolean).join(' · '))}</div>
       <div>Grade: PSA ${escHtml(row.grade || '')}</div>
       ${row.market ? `<div>Guide value: $${row.market.toFixed(2)} (${escHtml(row.priceSource || '')})</div>` : '<div style="color:var(--gold)">No PriceCharting graded match yet — you can still add it manually.</div>'}
-      ${row.imageUrl ? `<img src="${escHtml(row.imageUrl)}" alt="" style="max-width:200px;border-radius:6px;border:1px solid var(--border);margin-top:8px">` : '<div style="color:var(--dim);font-size:10px;margin-top:6px">No PSA photo on file (PSA only attaches photos to certs graded after Oct 2021).</div>'}`;
+      ${row.imageUrl ? `<img src="${escHtml(row.imageUrl)}" alt="" style="max-width:200px;border-radius:6px;border:1px solid var(--border);margin-top:8px">` : '<div style="color:var(--dim);font-size:10px;margin-top:6px">No PSA photo on file (PSA only attaches photos to certs graded after Oct 2021).</div>'}
+      ${row.verifyUrl ? `<div style="margin-top:8px"><a href="${escHtml(row.verifyUrl)}" target="_blank" rel="noopener" style="color:var(--blue)">🔍 Verify on PSA ↗</a></div>` : ''}`;
     closePsaCertSearchModal();
   } catch(e) {
     if(out) out.innerHTML = '<span style="color:var(--red)">' + escHtml(e.message) + '</span>';
@@ -27462,16 +27481,18 @@ async function verifyQplPsaCert(idx){
     const subject = [c.year,c.brand,c.series,c.subject,c.cardNumber ? '#'+c.cardNumber : ''].filter(Boolean).join(' ');
     const mismatch = r.name && c.subject && !String(subject).toLowerCase().includes(String(r.name).split(/\s+/)[0].toLowerCase());
     const usePsaPhoto = !r.imageUrl && !!c.photoUrl;
-    qplResults[idx] = { ...r, grader:'PSA', grade:c.grade || c.gradeDesc || '', cert_number:c.certNumber || cert, psaCert:c, slabVerified:true, ...(usePsaPhoto ? { imageUrl:c.photoUrl } : {}) };
+    const photoUrl = c.photoUrl ? psaCertPhotoUrl(c.certNumber || cert) : '';
+    qplResults[idx] = { ...r, grader:'PSA', grade:c.grade || c.gradeDesc || '', cert_number:c.certNumber || cert, psaCert:c, slabVerified:true, verifyUrl:psaCertVerifyUrl(c.certNumber || cert), ...(usePsaPhoto ? { imageUrl:photoUrl } : {}) };
     if(usePsaPhoto) refreshQplResultCard(idx);
     if(out) out.innerHTML = `<div style="display:grid;gap:8px">
       <div style="color:var(--g);font-family:'Orbitron',monospace">PSA CERT VERIFIED</div>
       ${mismatch ? '<div style="color:var(--gold)">Possible mismatch: compare cert subject against selected item before buying.</div>' : ''}
-      ${c.photoUrl ? `<img src="${escHtml(c.photoUrl)}" alt="PSA cert photo" style="max-width:220px;border-radius:6px;border:1px solid var(--border)">` : '<div style="color:var(--dim);font-size:10px">No PSA photo on file (PSA only started attaching images to certs graded after Oct 2021).</div>'}
+      ${photoUrl ? `<img src="${escHtml(photoUrl)}" alt="PSA cert photo" style="max-width:220px;border-radius:6px;border:1px solid var(--border)">` : '<div style="color:var(--dim);font-size:10px">No PSA photo on file (PSA only started attaching images to certs graded after Oct 2021).</div>'}
       <div><b style="color:var(--text)">Subject:</b> ${escHtml(subject || c.subject || '')}</div>
       <div><b style="color:var(--text)">Grade:</b> ${escHtml([c.gradeDesc,c.grade].filter(Boolean).join(' ') || '')}</div>
       <div><b style="color:var(--text)">Cert:</b> ${escHtml(c.certNumber || cert)}</div>
       <div><b style="color:var(--text)">Population:</b> total ${Number(c.totalPop || 0)} / higher ${Number(c.popHigher || 0)}</div>
+      <div><a href="${escHtml(psaCertVerifyUrl(c.certNumber || cert))}" target="_blank" rel="noopener" style="color:var(--blue)">🔍 Verify on PSA ↗</a></div>
     </div>`;
   } catch(e) {
     if(out) out.innerHTML = '<span style="color:var(--red)">' + escHtml(e.message) + '</span>';

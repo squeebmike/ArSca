@@ -7103,12 +7103,15 @@ async function psaLookup(id, certNumber) {
     const rarityColor = popHigher===0 ? '#ffd166' : popAtGrade < 10 ? '#00ffb3' : popAtGrade < 50 ? '#48cae4' : 'rgba(255,255,255,.5)';
 
     // ── PSA photo ────────────────────────────────────────────
+    // PSA's own photo CDN 403s a direct cross-origin <img src> hotlink --
+    // route through the Worker's server-to-server proxy instead.
     let photoHtml = '';
     if(c.photoUrl) {
+      const proxiedPhotoUrl = WORKER_URL + '/psa/cert/' + encodeURIComponent(c.certNumber || certNumber) + '/photo';
       // Update bubble card image too
       const cimg = el.querySelector('.card-img, .card-img-placeholder');
-      if(cimg && cimg.tagName === 'IMG') cimg.src = c.photoUrl;
-      photoHtml = `<img src="${c.photoUrl}" style="width:100%;max-height:80px;object-fit:contain;border-radius:3px;margin-bottom:6px;border:1px solid rgba(230,57,70,.2)" onerror="this.remove()">`;
+      if(cimg && cimg.tagName === 'IMG') cimg.src = proxiedPhotoUrl;
+      photoHtml = `<img src="${proxiedPhotoUrl}" style="width:100%;max-height:80px;object-fit:contain;border-radius:3px;margin-bottom:6px;border:1px solid rgba(230,57,70,.2)" onerror="this.remove()">`;
     }
 
     // ── Render PSA data panel ────────────────────────────────
@@ -7151,6 +7154,7 @@ async function psaLookup(id, certNumber) {
       </div>` : ''}
       ${c.isDualCert?`<div style="color:#ffd166;font-size:7px;margin-top:4px">⚠ DUAL CERT</div>`:''}
       ${c.isAuthentic?`<div style="color:rgba(255,255,255,.4);font-size:7px;margin-top:4px">AUTH — not numerically graded</div>`:''}
+      <div style="margin-top:6px"><a href="https://www.psacard.com/cert/${c.certNumber||certNumber}" target="_blank" rel="noopener" style="color:#e63946;font-size:8px;text-decoration:none">🔍 Verify on PSA ↗</a></div>
     `;
 
     // Store verified data on element
