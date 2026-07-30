@@ -5451,6 +5451,50 @@ export default {
         }
       }
 
+      // A plain browser <img src="{psaPhotoUrl}"> against PSA's own photo CDN
+      // comes back 403 -- their CDN appears to reject cross-origin hotlinking
+      // (a request carrying our page as Referer/Origin). A server-to-server
+      // fetch from here has neither, so it isn't subject to that check.
+      // Cached to R2 so repeat views of the same cert don't re-spend a PSA
+      // API credit on every page load -- same R2 binding/pattern already
+      // used for store logos above.
+      const certPhotoMatch = url.pathname.match(/^\/psa\/cert\/(\d+)\/photo$/);
+      if (certPhotoMatch) {
+        const certNumber = certPhotoMatch[1];
+        const r2Key = `psa-photos/${certNumber}.jpg`;
+        try {
+          if (env.MTG_CATALOG_R2) {
+            const cached = await env.MTG_CATALOG_R2.get(r2Key);
+            if (cached) {
+              return new Response(cached.body, {
+                headers: { ...CORS, 'Content-Type': cached.httpMetadata?.contentType || 'image/jpeg', 'Cache-Control': 'public, max-age=604800' },
+              });
+            }
+          }
+          const psaRes = await fetch(`${PSA_BASE}/cert/GetByCertNumber/${certNumber}`, {
+            headers: { 'Authorization': 'Bearer ' + env.PSA_TOKEN, 'Accept': 'application/json' },
+          });
+          if (!psaRes.ok) return json({ error: 'PSA API error ' + psaRes.status }, psaRes.status);
+          const data = await psaRes.json();
+          const cert = data?.PSACert || data;
+          const imageList = Array.isArray(cert.Images) ? cert.Images : Array.isArray(cert.ImageURLs) ? cert.ImageURLs : [];
+          const firstImage = v => typeof v === 'string' ? v : (v?.URL || v?.Url || v?.ImageURL || '');
+          const photoUrl = cert.ImageURL || cert.ImageUrl || firstImage(imageList[0]) || null;
+          if (!photoUrl) return json({ error: 'No PSA photo on file for this cert' }, 404);
+          let imgRes = await fetch(photoUrl, { headers: { Accept: 'image/*' } });
+          if (!imgRes.ok && (imgRes.status === 401 || imgRes.status === 403)) {
+            imgRes = await fetch(photoUrl, { headers: { Accept: 'image/*', Authorization: 'Bearer ' + env.PSA_TOKEN } });
+          }
+          if (!imgRes.ok) return json({ error: 'PSA photo fetch failed: ' + imgRes.status }, imgRes.status);
+          const contentType = imgRes.headers.get('content-type') || 'image/jpeg';
+          const buf = await imgRes.arrayBuffer();
+          if (env.MTG_CATALOG_R2) await env.MTG_CATALOG_R2.put(r2Key, buf, { httpMetadata: { contentType } }).catch(() => {});
+          return new Response(buf, { headers: { ...CORS, 'Content-Type': contentType, 'Cache-Control': 'public, max-age=604800' } });
+        } catch (e) {
+          return json({ error: e.message }, 500);
+        }
+      }
+
       const popMatch = url.pathname.match(/^\/psa\/pop\/(\d+)$/);
       if (popMatch) {
         const specSetId = popMatch[1];
