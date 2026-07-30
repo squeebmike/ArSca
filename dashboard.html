@@ -22557,6 +22557,10 @@ function openAddManualComicCoverModal(idx){
       <label style="font-family:monospace;font-size:9px;color:var(--dim)">IMAGE URL
         <input id="manual-cover-image-input" class="tsi" style="margin-top:4px;width:100%" placeholder="https://...">
       </label>
+      <div style="font-family:monospace;font-size:9px;color:var(--dim);text-align:center">— OR —</div>
+      <label style="font-family:monospace;font-size:9px;color:var(--dim)">UPLOAD A PHOTO
+        <input id="manual-cover-file-input" class="tsi" style="margin-top:4px;width:100%" type="file" accept="image/*">
+      </label>
       <label style="font-family:monospace;font-size:9px;color:var(--dim)">PRICE (OPTIONAL)
         <input id="manual-cover-price-input" class="tsi" style="margin-top:4px;width:100%" type="number" step="0.01" min="0" placeholder="0.00">
       </label>
@@ -22572,12 +22576,22 @@ async function submitManualComicCover(idx){
   const r=qplResults[idx];if(!r?.metronIssueId)return;
   const variantName=document.getElementById('manual-cover-name-input')?.value.trim()||'';
   const imageUrl=document.getElementById('manual-cover-image-input')?.value.trim()||'';
+  const file=document.getElementById('manual-cover-file-input')?.files?.[0]||null;
   const price=Number(document.getElementById('manual-cover-price-input')?.value||0)||null;
   const status=document.getElementById('manual-cover-status');
   if(!variantName){if(status)status.textContent='Variant name is required.';return;}
   if(status)status.textContent='Saving...';
   try{
-    const res=await storeWorkerFetch('/comic/covers/global/add',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({metronIssueId:r.metronIssueId,variantName,imageUrl,price})});
+    let imageKey='';
+    if(file){
+      if(status)status.textContent='Uploading photo...';
+      const uploadRes=await storeWorkerFetch('/comic/covers/global/upload-image?metronIssueId='+encodeURIComponent(r.metronIssueId),{method:'POST',headers:{'Content-Type':file.type||'image/jpeg'},body:file});
+      const uploadData=await uploadRes.json().catch(()=>({}));
+      if(!uploadRes.ok||!uploadData.ok)throw new Error(uploadData.error||'Could not upload that photo');
+      imageKey=uploadData.imageKey;
+      if(status)status.textContent='Saving...';
+    }
+    const res=await storeWorkerFetch('/comic/covers/global/add',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({metronIssueId:r.metronIssueId,variantName,imageUrl:imageKey?'':imageUrl,imageKey,price})});
     const data=await res.json().catch(()=>({}));
     if(!res.ok||!data.ok)throw new Error(data.error||'Could not save that cover');
     closeAddManualComicCoverModal();

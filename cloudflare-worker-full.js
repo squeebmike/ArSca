@@ -4249,6 +4249,29 @@ export default {
       // heavy-variant book with 100+ known covers). Reads are available to any
       // authenticated store; writes are gated to The Mana Pocket only (any
       // role there), since this is shared, global data every store sees.
+
+      // Raw-binary upload (a photo already in hand, no source URL to fetch) --
+      // same request shape as the existing /inventory/photo/upload route.
+      // Stores the bytes only; /comic/covers/global/add still records the
+      // metadata entry, referencing the key this returns.
+      if (url.pathname === '/comic/covers/global/upload-image' && request.method === 'POST') {
+        const storeId = requestStoreId(request, url);
+        const auth = await requireComicArchiveWriter(request, env, storeId);
+        if (auth.error) return auth.error;
+        if (!env.MTG_CATALOG_R2) return json({ ok:false, error:'R2 storage is not configured' }, 501);
+        const metronIssueId = String(url.searchParams.get('metronIssueId') || '').replace(/\D/g, '');
+        if (!metronIssueId) return json({ ok:false, error:'metronIssueId is required' }, 400);
+        const contentType = String(request.headers.get('Content-Type') || 'image/jpeg').split(';')[0].trim();
+        if (!contentType.startsWith('image/')) return json({ ok:false, error:'Only image uploads are supported' }, 400);
+        const buf = await request.arrayBuffer();
+        if (!buf.byteLength) return json({ ok:false, error:'Empty upload' }, 400);
+        if (buf.byteLength > 8 * 1024 * 1024) return json({ ok:false, error:'Photo must be under 8MB' }, 413);
+        const ext = (contentType.split('/')[1] || 'jpg').replace(/[^a-z0-9]/gi, '') || 'jpg';
+        const imageKey = `comic-covers/${metronIssueId}/${crypto.randomUUID()}.${ext}`;
+        await env.MTG_CATALOG_R2.put(imageKey, buf, { httpMetadata:{ contentType } });
+        return json({ ok:true, imageKey, imageUrl:`/comic/covers/image/${encodeURIComponent(imageKey)}` });
+      }
+
       if (url.pathname === '/comic/covers/global/add' && request.method === 'POST') {
         const storeId = requestStoreId(request, url);
         const auth = await requireComicArchiveWriter(request, env, storeId);
@@ -4258,10 +4281,20 @@ export default {
         const metronIssueId = String(body.metronIssueId || '').replace(/\D/g, '');
         const variantName = String(body.variantName || '').trim().slice(0, 160);
         const imageUrl = String(body.imageUrl || '').trim().slice(0, 600);
+        const uploadedImageKey = String(body.imageKey || '').trim();
         const price = Number(body.price || 0) || null;
         if (!metronIssueId || !variantName) return json({ ok:false, error:'metronIssueId and variantName are required' }, 400);
         let imageKey = '', storedImageUrl = '';
-        if (imageUrl) {
+        if (uploadedImageKey) {
+          // Already uploaded via /comic/covers/global/upload-image above --
+          // just confirm it's really there and belongs to this issue rather
+          // than fetching/storing it a second time.
+          if (!uploadedImageKey.startsWith(`comic-covers/${metronIssueId}/`)) return json({ ok:false, error:'Uploaded image does not match this issue' }, 400);
+          const uploaded = await env.MTG_CATALOG_R2.head(uploadedImageKey).catch(() => null);
+          if (!uploaded) return json({ ok:false, error:'Uploaded image was not found; try uploading again' }, 400);
+          imageKey = uploadedImageKey;
+          storedImageUrl = `/comic/covers/image/${encodeURIComponent(imageKey)}`;
+        } else if (imageUrl) {
           try {
             const imgRes = await fetch(imageUrl, { headers:{ 'User-Agent':'Mozilla/5.0 (compatible; WalkOff Comic Cover Archive/1.0)', Accept:'image/*' } });
             if (!imgRes.ok) return json({ ok:false, error:'Could not fetch that image URL (HTTP ' + imgRes.status + ')' }, 400);
@@ -4286,7 +4319,7 @@ export default {
           price,
           imageKey,
           imageUrl:storedImageUrl,
-          sourceUrl:imageUrl,
+          sourceUrl:uploadedImageKey ? '' : imageUrl,
           addedBy:auth.user.email || auth.user.id,
           addedAt:new Date().toISOString(),
         };
