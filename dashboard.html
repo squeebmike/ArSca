@@ -1898,8 +1898,8 @@ body.show-mode .inv-sync-badge{display:none;}
       <div class="ph">⚡ QUICK PRICE LOOKUP <span style="color:var(--dim);font-size:8px">catalog search — no scanning needed</span></div>
       <div id="qpl-search-row" style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">
         <input class="tsi" id="qpl-input" placeholder="Card name, TCGplayer ID, or full product URL..." style="flex:1;margin-bottom:0;font-size:12px;padding:10px 14px" oninput="debouncePriceLookup()" onkeydown="if(event.key==='Enter'){event.preventDefault();runPriceLookup()}">
-        <button class="hbtn" id="research-barcode-btn" title="Scan UPC or EAN barcode" onclick="openBarcodeScanner()" style="white-space:nowrap;color:var(--g)">SCAN BARCODE</button>
-        <button class="hbtn" id="research-cardsight-btn" title="Scan a sports card, Pokemon TCG, or One Piece TCG card with CardSight AI" onclick="openCardSightScanner()" style="white-space:nowrap;color:var(--g)">SCAN CARD</button>
+        <button class="hbtn" id="research-cardsight-btn" title="One camera, auto-detects a card, a product barcode, or a graded slab cert barcode" onclick="openCardSightScanner()" style="white-space:nowrap;color:var(--g)">📷 SCAN</button>
+        <button class="hbtn" id="research-barcode-btn" title="Manual barcode entry -- typed UPC or USB barcode scanner" onclick="openBarcodeScanner()" style="white-space:nowrap;font-size:9px">MANUAL BARCODE ENTRY</button>
         <button class="hbtn" title="Speak search" aria-label="Voice price search" onclick="startVoiceInput('qpl-input', runPriceLookup)" style="width:54px;padding:0">MIC</button>
       </div>
       <!-- hidden select keeps all existing JS working unchanged -->
@@ -2231,16 +2231,16 @@ body.show-mode .inv-sync-badge{display:none;}
 <div id="cardsight-scanner-modal" class="barcode-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="cardsight-scanner-title" onclick="if(event.target===this)closeCardSightScanner()">
   <div class="barcode-sheet">
     <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
-      <div><div id="cardsight-scanner-title" style="font-family:'Orbitron',monospace;font-size:12px;color:var(--g)">CARDSIGHT AI CARD SCANNER</div><div style="font-size:9px;color:var(--dim);margin-top:3px">Sports cards, Pokemon TCG, and One Piece TCG. Point the camera at a card and tap Scan.</div></div>
+      <div><div id="cardsight-scanner-title" style="font-family:'Orbitron',monospace;font-size:12px;color:var(--g)">SCANNER</div><div style="font-size:9px;color:var(--dim);margin-top:3px">One button. Point the camera at a sports/Pokemon/One Piece card, a product barcode, or a graded slab's barcode -- tap Scan and it figures out which.</div></div>
       <button class="hbtn" onclick="closeCardSightScanner()">CLOSE</button>
     </div>
     <div id="cardsight-camera" class="barcode-camera"><video id="cardsight-video" playsinline muted></video><div class="barcode-scan-line"></div><div id="cardsight-camera-placeholder" style="font-family:monospace;font-size:10px;color:var(--dim);text-align:center;padding:18px">Opening camera...</div></div>
     <div id="cardsight-status" style="font-family:var(--font-mono);font-size:10px;color:var(--dim);min-height:18px;line-height:1.5"></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
-      <button class="hbtn" id="cardsight-scan-btn" onclick="doCardSightScan()" style="min-height:42px;color:var(--g)">📷 SCAN CARD</button>
+      <button class="hbtn" id="cardsight-scan-btn" onclick="doCardSightScan()" style="min-height:42px;color:var(--g)">📷 SCAN</button>
       <button class="hbtn" id="cardsight-camera-toggle" onclick="toggleCardSightCamera()">STOP CAMERA</button>
     </div>
-    <div style="font-size:9px;color:var(--dim);margin-top:8px">Cards scanned here are added straight to the Research results below — close this window any time to review them. Prices are always real market data (PriceCharting / JustTCG / PokemonPriceTracker), never AI-guessed.</div>
+    <div style="font-size:9px;color:var(--dim);margin-top:8px">Results are added straight to the Research results below — close this window any time to review them. Prices are always real market data (PriceCharting / JustTCG / PokemonPriceTracker / PSA), never AI-guessed. Graded slab cert lookups are PSA only today — BGS/CGC/SGC barcodes aren't a supported cert format yet.</div>
     <div id="cardsight-results-log" style="margin-top:8px;font-family:var(--font-mono);font-size:9px;color:rgba(255,255,255,.5);display:grid;gap:4px;max-height:160px;overflow-y:auto"></div>
   </div>
 </div>
@@ -19781,6 +19781,7 @@ function renderBarcodeCandidates(){
 // (PriceCharting / JustTCG / PokemonPriceTracker), never AI-guessed.
 // ════════════════════════════════════════════════════════════════
 let cardsightStream = null;
+let cardsightBarcodeDetector = null;
 
 function setCardSightStatus(message, tone = ''){
   const el = document.getElementById('cardsight-status');
@@ -19827,7 +19828,7 @@ async function startCardSightCamera(){
     if(placeholder) placeholder.style.display = 'none';
     const toggleBtn = document.getElementById('cardsight-camera-toggle');
     if(toggleBtn) toggleBtn.textContent = 'STOP CAMERA';
-    setCardSightStatus('Camera ready. Tap SCAN CARD.', 'var(--g)');
+    setCardSightStatus('Camera ready. Tap SCAN.', 'var(--g)');
   } catch(e){
     setCardSightStatus('Camera error: ' + e.message, 'var(--red)');
   }
@@ -19842,6 +19843,81 @@ function stopCardSightCamera(){
   if(placeholder) placeholder.style.display = '';
   const toggleBtn = document.getElementById('cardsight-camera-toggle');
   if(toggleBtn) toggleBtn.textContent = 'START CAMERA';
+  cardsightBarcodeDetector = null;
+}
+
+// One SCAN button has to work for a card, a product barcode, or a graded
+// slab's own barcode -- so before ever calling the paid CardSight identify
+// API, take one free, instant BarcodeDetector.detect() pass over the current
+// frame. Nothing is running in the background between taps; this only costs
+// anything when the button is actually pressed, same as the card-identify
+// path it gates.
+async function detectCardsightBarcode(){
+  if(!('BarcodeDetector' in window)) return null;
+  const video = document.getElementById('cardsight-video');
+  if(!video || video.readyState < 2) return null;
+  try {
+    if(!cardsightBarcodeDetector){
+      const supported = typeof BarcodeDetector.getSupportedFormats === 'function' ? await BarcodeDetector.getSupportedFormats().catch(() => []) : [];
+      const formats = ['upc_a','upc_e','ean_13','ean_8','code_128'].filter(x => !supported.length || supported.includes(x));
+      cardsightBarcodeDetector = new BarcodeDetector(formats.length ? { formats } : undefined);
+    }
+    const codes = await cardsightBarcodeDetector.detect(video);
+    if(!codes?.length) return null;
+    return { value: String(codes[0].rawValue || '').trim(), format: codes[0].format || '' };
+  } catch(e) { return null; }
+}
+
+// BarcodeDetector reports the actual physical symbology it decoded, not
+// just the digit string -- retail UPC-A/UPC-E/EAN-13/EAN-8 scans always come
+// back as one of those formats, never code_128. A grading slab's cert
+// number, on the other hand, is printed as a plain code_128 label. So the
+// format alone (not a checksum on the digits, which a cert number has no
+// reason to satisfy -- and can occasionally satisfy by pure chance) is what
+// tells a product barcode apart from a slab's cert barcode.
+function looksLikeCardsightCertBarcode(hit){
+  return !!hit && hit.format === 'code_128' && /^\d{6,10}$/.test(hit.value);
+}
+
+// PSA's public cert API is the only automated graded-slab lookup we have --
+// BGS/CGC/SGC don't publish one, so their slabs still need a manual verify
+// link (same as the existing PSA Cert Search modal already discloses).
+async function handleCardsightCertBarcode(cert){
+  setCardSightStatus('Slab barcode read as PSA cert #' + cert + '. Looking up...', 'var(--g)');
+  const log = document.getElementById('cardsight-results-log');
+  try {
+    const row = await resolvePsaCertRow(cert);
+    qplMasterResults.unshift(row);
+    qplLastSearch = '';
+    qplResults = filterQplMasterResults(qplMasterResults, document.getElementById('qpl-cat')?.value || '');
+    renderQuickLookupResults(qplResults.length ? qplResults : qplMasterResults);
+    if(log){
+      const line = document.createElement('div');
+      line.textContent = '✓ ' + row.name + ' — PSA cert #' + cert + (row.market ? ' — $' + row.market.toFixed(2) : ' — no price found');
+      log.prepend(line);
+    }
+    setCardSightStatus('PSA cert #' + cert + ' added to Research results below.', 'var(--g)');
+  } catch(e) {
+    if(log){
+      const line = document.createElement('div');
+      line.style.color = 'var(--gold)';
+      line.textContent = 'Cert #' + cert + ' lookup failed: ' + e.message + ' (BGS/CGC/SGC cert barcodes aren\'t supported yet -- use their verify site directly).';
+      log.prepend(line);
+    }
+    setCardSightStatus('PSA lookup failed for cert #' + cert + '.', 'var(--gold)');
+  }
+}
+
+// A real product barcode (checksum-valid UPC/EAN, or any non-cert code_128)
+// belongs to the existing barcode-lookup pipeline -- reuse it wholesale
+// instead of re-implementing candidate search/render here.
+async function handleCardsightProductBarcode(hit){
+  setCardSightStatus('Product barcode detected. Opening barcode lookup...', 'var(--g)');
+  closeCardSightScanner();
+  await openBarcodeScanner();
+  const input = document.getElementById('barcode-manual-input');
+  if(input) input.value = hit.value;
+  await lookupBarcodeProduct();
 }
 
 function captureCardSightFrame(){
@@ -20142,8 +20218,18 @@ async function doCardSightScan(){
   if(!cardsightStream){ setCardSightStatus('Start the camera first.', 'var(--gold)'); return; }
   const btn = document.getElementById('cardsight-scan-btn');
   if(btn){ btn.textContent = '⟳ SCANNING...'; btn.disabled = true; }
-  setCardSightStatus('Reading card...', 'var(--gold)');
+  setCardSightStatus('Reading...', 'var(--gold)');
   try {
+    // Check for a barcode first -- it's a free, instant, single-frame check.
+    // Only fall through to the paid CardSight card-identify call below if
+    // nothing decodable was in frame.
+    const barcodeHit = await detectCardsightBarcode();
+    if(barcodeHit && barcodeHit.value){
+      if(looksLikeCardsightCertBarcode(barcodeHit)) await handleCardsightCertBarcode(barcodeHit.value);
+      else await handleCardsightProductBarcode(barcodeHit);
+      if(btn){ btn.textContent = '📷 SCAN'; btn.disabled = false; }
+      return;
+    }
     const img = captureCardSightFrame();
     // Best-effort hint from whatever QPL category the user already had
     // selected (e.g. they tapped the SPORTS pill before scanning a stack of
@@ -20194,7 +20280,7 @@ async function doCardSightScan(){
   } catch(e) {
     setCardSightStatus('Scan error: ' + e.message, 'var(--red)');
   }
-  if(btn){ btn.textContent = '📷 SCAN CARD'; btn.disabled = false; }
+  if(btn){ btn.textContent = '📷 SCAN'; btn.disabled = false; }
 }
 
 function openBarcodeComicIssueHub(idx){const c=barcodeCandidates[idx],n=barcodeCurrentNormalized;if(!c||!n)return;const r=barcodeCandidateToResearch(c,n),parsed=window.ArsCaComicIssueHub.parseComicQuery(c.title||'');const product=r.pricecharting||r.raw;window._comicRunGroups=window.ArsCaComicIssueHub.groupCandidates([product],parsed);closeBarcodeScanner();if(window._comicRunGroups.length)openComicIssueHubFromGroup(0);else toast_dash('Issue number is needed to browse covers. Add title and issue in manual search.');}
@@ -27199,19 +27285,26 @@ function psaCertToQplRow(c = {}, certFallback = ''){
     slabVerified:true,
   };
 }
+// Shared by the PSA Cert Search modal and the unified Research-tab scanner
+// (a slab's own barcode decodes to this same cert number) -- one fetch +
+// row-build + graded-slab-price path for both entry points.
+async function resolvePsaCertRow(cert){
+  const res = await fetch(WORKER + '/psa/cert/' + encodeURIComponent(cert), { cache:'no-store' });
+  const data = await res.json().catch(() => ({}));
+  if(!res.ok || !data.ok) throw new Error(data.error || 'PSA lookup failed');
+  const c = data.cert || {};
+  const row = psaCertToQplRow(c, cert);
+  const slab = await fetchGradedSlabPriceForItem(row).catch(() => null);
+  if(slab) { row.market = slab.price; row.priceSource = slab.source; row.productUrl = slab.productUrl; if(!row.imageUrl) row.imageUrl = slab.imageUrl || ''; }
+  return row;
+}
 async function runPsaCertSearch(){
   const out = document.getElementById('psa-cert-search-output');
   const cert = (document.getElementById('psa-cert-search-input')?.value || '').replace(/\D+/g, '');
   if(!cert) { if(out) out.innerHTML = '<span style="color:var(--red)">Enter a cert number.</span>'; return; }
   if(out) out.textContent = 'Checking PSA cert...';
   try {
-    const res = await fetch(WORKER + '/psa/cert/' + encodeURIComponent(cert), { cache:'no-store' });
-    const data = await res.json().catch(() => ({}));
-    if(!res.ok || !data.ok) throw new Error(data.error || 'PSA lookup failed');
-    const c = data.cert || {};
-    const row = psaCertToQplRow(c, cert);
-    const slab = await fetchGradedSlabPriceForItem(row).catch(() => null);
-    if(slab) { row.market = slab.price; row.priceSource = slab.source; row.productUrl = slab.productUrl; if(!row.imageUrl) row.imageUrl = slab.imageUrl || ''; }
+    const row = await resolvePsaCertRow(cert);
     qplMasterResults = [row];
     qplResults = [row];
     qplLastSearch = row.name;
