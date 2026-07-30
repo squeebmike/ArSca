@@ -19654,6 +19654,70 @@ function barcodeCandidateToResearch(candidate,n){
   return {source:candidate.savedConfirmed?'barcode_confirmed':'pricecharting_barcode',name:candidate.title||'Barcode product',category:categoryMap[candidate.category]||(sealedCategory && sealedCategory !== 'TCG' ? sealedCategory : 'Collectibles'),set:candidate.consoleName||'',year:(candidate.raw?.releaseDate||'').toString().slice(0,4),variant:candidate.genre||'',market:rawValue,condition:candidate.category==='sealed'?'Sealed':'NM',is_sealed:candidate.category==='sealed',imageUrl:candidate.imageUrl||'',imageSource:candidate.imageUrl?'pricecharting':'placeholder',coverConfidence:candidate.category==='comics'?(candidate.coverConfirmed?'confirmed':'needs-confirmation'):'product-confirmation',confidence:Number(candidate.confidence||0),matchWhy:candidate.matchReason||[],note:(candidate.matchReason||[]).join(' / '),priceSource:candidate.savedConfirmed?'Last-known confirmed barcode match':'PriceCharting barcode evidence',providerProductId:candidate.providerProductId||'',productId:candidate.providerProductId||'',productUrl:candidate.providerUrl||'',barcode:n.primary,barcodePrimary:n.primary,barcodeSupplement:n.supplement||'',barcodeType:n.typeGuess,barcodeEvidence:{raw:n.raw,primary:n.primary,supplement:n.supplement||'',candidatesTried:n.candidates||[],confidence:candidate.confidence||0,matchReason:candidate.matchReason||[],confirmed:!!candidate.savedConfirmed},pricecharting:{productId:candidate.providerProductId||'',productName:candidate.title||'',consoleName:candidate.consoleName||'',genre:candidate.genre||'',url:candidate.providerUrl||'',imageUrl:candidate.imageUrl||'',prices:{ungraded:candidate.priceSummary?.ungraded??null,psa10:candidate.priceSummary?.psa10??null},comicPrices:{ungraded:candidate.priceSummary?.raw??null,grade9_8:candidate.priceSummary?.graded98??null}},raw:candidate.raw||{}};
 }
 
+// PokemonPriceTracker has no UPC field at all -- it only supports exact
+// tcgPlayerId or name-text search. So a barcode-scanned Pokemon sealed
+// product can only ever reach it as a second hop: PriceCharting resolves
+// the UPC to a real product name first, then that name is used to
+// cross-check PPT's own sealed-products data and prefer its price/image
+// when confident. barcodeCategory() classifies any sealed box as 'sealed'
+// (checked before the pokemon-specific regex), so game text has to be
+// sniffed from the raw title/console/genre rather than trusting category alone.
+function looksLikePokemonSealedCandidate(candidate){
+  const text = [candidate.title, candidate.subtitle, candidate.consoleName, candidate.genre].filter(Boolean).join(' ');
+  return /pok[eé]mon/i.test(text);
+}
+// Requires most of the barcode candidate's own words to show up in PPT's
+// product name before accepting it -- same "don't blindly accept the first
+// result" guard as the CardSight sports/One Piece pricing fix, so a
+// booster box search can't get silently swapped for an ETB or a different set.
+function pokemonSealedMatchScore(pptProductName, candidateTitle){
+  const name = smartNormalizeText(pptProductName);
+  const wantTokens = smartNormalizeText(candidateTitle).split(/\s+/).filter(t => t.length > 2 && t !== 'pokemon');
+  if(!wantTokens.length || !name) return 0;
+  const matched = wantTokens.filter(t => name.includes(t));
+  return matched.length / wantTokens.length;
+}
+async function enrichPokemonSealedBarcodeCandidate(candidate){
+  try {
+    const result = await searchPokemonSealedProducts(candidate.title);
+    if(!result.products?.length) return candidate;
+    let best = null, bestScore = 0;
+    for(const p of result.products){
+      const score = pokemonSealedMatchScore(p.name || p.productName || '', candidate.title);
+      if(score > bestScore){ bestScore = score; best = p; }
+    }
+    if(!best || bestScore < 0.6) return candidate;
+    const market = Number(best.unopenedPrice || 0);
+    if(!(market > 0)) return candidate;
+    const imageUrl = best.imageCdnUrl400 || best.imageCdnUrl800 || best.imageCdnUrl200 || best.imageCdnUrl || best.imageUrl || '';
+    const tcgPlayerId = String(best.tcgPlayerId || best.tcgplayerId || best.id || '');
+    const providerUrl = best.tcgPlayerUrl || (tcgPlayerId ? 'https://www.tcgplayer.com/product/' + tcgPlayerId : candidate.providerUrl);
+    return {
+      ...candidate,
+      priceSummary: { ...candidate.priceSummary, ungraded: market },
+      imageUrl: imageUrl || candidate.imageUrl,
+      providerUrl,
+      matchReason: [...(candidate.matchReason || []), 'Price/image refined via PokemonPriceTracker sealed-products match'],
+    };
+  } catch(e) { return candidate; }
+}
+// Runs after the initial render so the UPC hit shows up immediately; swaps
+// in PokemonPriceTracker's own price/image for any Pokemon sealed candidate
+// once the cross-check resolves, without blocking the first paint on it.
+async function enrichPokemonSealedBarcodeCandidates(){
+  const targets = barcodeCandidates
+    .map((c, i) => ({ c, i }))
+    .filter(({ c }) => !c.savedConfirmed && (c.category === 'pokemon' || c.category === 'sealed') && looksLikePokemonSealedCandidate(c))
+    .slice(0, 3);
+  if(!targets.length) return;
+  let changed = false;
+  await Promise.all(targets.map(async ({ i }) => {
+    const enriched = await enrichPokemonSealedBarcodeCandidate(barcodeCandidates[i]).catch(() => barcodeCandidates[i]);
+    if(enriched !== barcodeCandidates[i]) { barcodeCandidates[i] = enriched; changed = true; }
+  }));
+  if(changed) renderBarcodeCandidates();
+}
+
 async function lookupBarcodeProduct(){
   const raw=document.getElementById('barcode-manual-input')?.value||'';const normalize=window.ArsCaBarcode?.normalizeBarcode;
   if(!normalize){setBarcodeStatus('Barcode helper failed to load. Refresh and try again.','var(--red)');return;}
@@ -19696,6 +19760,7 @@ async function lookupBarcodeProduct(){
     if(!res.ok||data.status!=='success')throw new Error(data.error||'PriceCharting unavailable');
     const seen=new Set(rows.map(x=>[x.provider||'',x.providerProductId||''].join(':')));rows.push(...(data.candidates||[]).filter(x=>{const key=[x.provider||'',x.providerProductId||''].join(':');if(seen.has(key))return false;seen.add(key);return true;}));
     barcodeCandidates=rows;barcodeCurrentNormalized={...n,...(data.barcode||{})};renderBarcodeCandidates();setBarcodeStatus(rows.length?(rows.length>1?'Multiple possible matches found. Confirm the product and cover where applicable.':'UPC match found. Confirm before saving.'):'No product found by UPC. Add product words and search again.',rows.length?'var(--g)':'var(--gold)');
+    enrichPokemonSealedBarcodeCandidates();
   }catch(e){barcodeCandidates=rows;renderBarcodeCandidates();setBarcodeStatus(rows.length?'Live lookup failed; showing saved confirmed match.':'PriceCharting unavailable. Try again or use saved matches offline.','var(--gold)');}
 }
 
