@@ -1468,6 +1468,9 @@ body.show-mode .inv-sync-badge{display:none;}
 .barcode-candidate-actions{grid-column:1/-1;display:flex;gap:7px;flex-wrap:wrap;}
 .barcode-candidate-actions .hbtn{flex:1 1 125px;min-height:40px;}
 .barcode-evidence{font-family:var(--font-mono);font-size:9px;color:var(--dim);line-height:1.5;}
+#cardsight-scanner-modal .barcode-sheet{width:min(920px,100%);}
+#cardsight-camera{min-height:360px;}
+#cardsight-camera video{max-height:560px;}
 @media(max-width:600px){
   .comic-appraisal-grid,.comic-values{grid-template-columns:1fr!important}
   .comic-appraisal .tsi{width:100%;max-width:100%}
@@ -1477,6 +1480,7 @@ body.show-mode .inv-sync-badge{display:none;}
   .barcode-sheet{width:100%;max-height:calc(100vh - 48px - env(safe-area-inset-bottom));border-radius:16px 16px 0 0;padding:14px 12px calc(18px + env(safe-area-inset-bottom));}
   .barcode-controls{grid-template-columns:1fr;}
   .barcode-camera{min-height:180px;}
+  #cardsight-camera{min-height:260px;}
   .barcode-candidate{grid-template-columns:72px minmax(0,1fr);}
   .barcode-candidate img{width:72px;height:96px;}
   #qpl-search-row #qpl-input{flex:1 1 100%!important;}
