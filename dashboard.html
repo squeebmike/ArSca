@@ -19889,8 +19889,10 @@ function cardsightAveragePrice(records){
 // CardSight's own sold-comps pricing for the exact card it just identified
 // (keyed by catalog card.id — no fresh text search, so no mismatch risk).
 // Picks the graded bucket matching what CardSight saw on the slab, or raw
-// comps for an ungraded card.
-async function fetchCardSightSportsPrice(row){
+// comps for an ungraded card. Free to use (no PokemonPriceTracker Pro tier
+// needed) -- used for Sports Card scans and, for graded Pokemon TCG scans,
+// tried before PokemonPriceTracker/PriceCharting.
+async function fetchCardSightGradedComps(row){
   if(!row._cardsightCardId) return null;
   try {
     const params = new URLSearchParams({ period: '3m', limit: '20' });
@@ -19949,6 +19951,20 @@ async function fetchPokemonGradedPrice(tcgPlayerId, gradingCompany, grade){
 async function fetchCardSightRealPrice(row){
   const q = [row.name, row.year, row.set, row.variant && row.variant !== 'Base' ? row.variant : '', row.card_number ? '#' + row.card_number : ''].filter(Boolean).join(' ');
   if(row._game === 'Pokemon TCG'){
+    const isGraded = !!(row.grading_company && row.grade);
+    // A graded scan showing the raw ungraded market price would be wildly
+    // wrong (a PSA 10 pop-1 isn't worth the same as a beat-up raw copy).
+    // Try sources cheapest/most-precise first: CardSight's own exact-match
+    // comps need no extra subscription tier; PokemonPriceTracker's eBay
+    // graded comps need Pro+ (tried below alongside the raw search);
+    // PriceCharting's graded-slab guide is a tier-independent last resort.
+    if(isGraded) {
+      const cardsightGraded = await fetchCardSightGradedComps(row);
+      if(cardsightGraded) {
+        const imageUrl = await fetchCardSightImage(row);
+        return { market: cardsightGraded.market, imageUrl, priceSource: cardsightGraded.priceSource };
+      }
+    }
     try {
       // Search by name + set + card number together so PokemonPriceTracker
       // matches the exact printing instead of the first card with this name.
@@ -19973,18 +19989,18 @@ async function fetchCardSightRealPrice(row){
       // isn't confidently the same printing CardSight identified.
       if(best && bestScore >= 40) {
         const rawResult = { market: Number(best.prices?.market || 0), imageUrl: best.imageCdnUrl200 || best.imageUrl || '', priceSource: 'PokemonPriceTracker' };
-        // A graded scan showing the raw ungraded market price would be
-        // wildly wrong (a PSA 10 pop-1 isn't worth the same as a beat-up raw
-        // copy) -- look up the real eBay graded sold-comp price instead,
-        // keyed to the exact card PPT already matched (1 cheap exact lookup,
-        // not a fresh search).
-        if(row.grading_company && row.grade && best.tcgPlayerId) {
+        if(isGraded && best.tcgPlayerId) {
           const graded = await fetchPokemonGradedPrice(best.tcgPlayerId, row.grading_company, row.grade);
           if(graded) return { ...rawResult, market: graded.market, priceSource: graded.priceSource };
+        } else if(!isGraded) {
+          return rawResult;
         }
-        return rawResult;
       }
     } catch(e) { /* fall through */ }
+    if(isGraded) {
+      const slab = await fetchGradedSlabPriceForItem(row);
+      if(slab) return { market: slab.price, imageUrl: slab.imageUrl || '', priceSource: slab.source, productUrl: slab.productUrl || '' };
+    }
     return { market: 0, imageUrl: '', priceSource: '' };
   }
   if(row._game === 'Sports Card'){
@@ -19993,7 +20009,7 @@ async function fetchCardSightRealPrice(row){
     // CardSight's own sold-comps for this exact identified card, and only
     // fall back to a fresh PriceCharting text search if CardSight has none.
     const [cardsightPrice, cardsightImage] = await Promise.all([
-      fetchCardSightSportsPrice(row),
+      fetchCardSightGradedComps(row),
       fetchCardSightImage(row),
     ]);
     if(cardsightPrice) return { market: cardsightPrice.market, imageUrl: cardsightImage, priceSource: cardsightPrice.priceSource, productUrl: '' };

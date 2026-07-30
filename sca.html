@@ -1270,6 +1270,70 @@ async function overlayPokemonPriceTrackerData(entry, item){
   } catch(e) { console.warn('[PPT] exact overlay failed:', e.message); }
 }
 
+// CardSight's own sold-comps pricing for the exact card it just identified
+// (keyed by catalog card.id -- no fresh text search, so no mismatch risk).
+// Free to use (no PokemonPriceTracker Pro tier needed) and already covers
+// Sports Card scans; this is the same lookup applied to Pokemon/One Piece.
+async function fetchCardSightGradedComps(cardsightCardId, gradingCompany, grade){
+  if(!cardsightCardId || !gradingCompany || !grade) return null;
+  try {
+    const params = new URLSearchParams({ period: '3m', limit: '20' });
+    const res = await scannerWorkerFetch('/cardsight/pricing/' + encodeURIComponent(cardsightCardId) + '?' + params.toString());
+    if(!res.ok) return null;
+    const data = await res.json();
+    const company = (data.graded || []).find(g => String(g.company_name || '').toLowerCase() === String(gradingCompany).toLowerCase());
+    const bucket = company?.grades?.find(g => String(g.grade_value || '') === String(grade));
+    const records = bucket?.records || [];
+    const prices = records.map(r => Number(String(r?.price ?? '').replace(/[$,]/g, '')) || 0).filter(p => p > 0);
+    if(!prices.length) return null;
+    return {
+      market: prices.reduce((a,b) => a+b, 0) / prices.length,
+      priceSource: 'CardSight sold comps (' + company.company_name + ' ' + bucket.grade_value + ')',
+      saleCount: records.length,
+    };
+  } catch(e) { return null; }
+}
+
+// PriceCharting's graded-slab guide -- generic text-search match, works for
+// basically anything PriceCharting has catalogued, no subscription tier
+// required. Last-resort fallback when neither CardSight nor
+// PokemonPriceTracker have graded comps for this exact card.
+async function fetchPriceChartingSlabPrice(item){
+  const grader = item.grading_company || '', grade = item.grade || '';
+  const q = [item.player || item.name, item.set_name].filter(Boolean).join(' ').trim();
+  if(!grader || !grade || !q) return null;
+  try {
+    const params = new URLSearchParams({ q, company:grader, grade, cardNumber:item.card_number || '', setName:item.set_name || '' });
+    const res = await scannerWorkerFetch('/pricing/pricecharting/slab-prices?' + params.toString());
+    if(!res.ok) return null;
+    const data = await res.json().catch(() => ({}));
+    if(!data.ok || !(Number(data.selectedValue) > 0)) return null;
+    return { market:Number(data.selectedValue), priceSource:'PriceCharting graded (' + grader + ' ' + grade + ')', imageUrl:data.product?.imageUrl || '' };
+  } catch(e) { return null; }
+}
+
+// Orchestrates real pricing for a resolved Pokemon TCG printing: CardSight's
+// own exact-match comps first (free), then PokemonPriceTracker's eBay
+// graded comps (needs Pro+) alongside real raw condition pricing, then
+// PriceCharting's graded-slab guide as a tier-independent last resort.
+async function applyPokemonRealPricing(entry, item){
+  if(!entry) return;
+  const isGraded = !!(item.grading_company && item.grade);
+  if(isGraded) {
+    const cardsightGraded = await fetchCardSightGradedComps(item.cardsightCardId, item.grading_company, item.grade);
+    if(cardsightGraded) {
+      entry.gradedPrice = cardsightGraded.market;
+      entry.gradedPriceSource = cardsightGraded.priceSource;
+      entry.gradedSaleCount = cardsightGraded.saleCount;
+    }
+  }
+  if(!entry.gradedPrice) await overlayPokemonPriceTrackerData(entry, item);
+  if(isGraded && !entry.gradedPrice) {
+    const slab = await fetchPriceChartingSlabPrice(item);
+    if(slab) { entry.gradedPrice = slab.market; entry.gradedPriceSource = slab.priceSource; }
+  }
+}
+
 async function fetchAllPrintings(item){
   const game = item.game||'';
   const name = item.name||'';
@@ -1497,10 +1561,10 @@ async function fetchAllPrintings(item){
         result.tcgCardId = d.data[bestIdx]?.id || null;
         // pokemontcg.io/TCGPlayer only exposes one blended market price, so
         // LP/MP/HP/DMG below were rough percent-of-NM guesses. Overlay real
-        // per-condition pricing (and, for graded scans, real eBay graded
-        // sold-comp pricing) from PokemonPriceTracker for just this one
-        // resolved printing -- a single cheap exact lookup, not a re-search.
-        await overlayPokemonPriceTrackerData(result.printings[bestIdx], item);
+        // pricing for just this one resolved printing -- graded scans try
+        // CardSight's own comps, then PokemonPriceTracker, then
+        // PriceCharting; raw scans get real per-condition PPT pricing.
+        await applyPokemonRealPricing(result.printings[bestIdx], item);
       }
     }
 
