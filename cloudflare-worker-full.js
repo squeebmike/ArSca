@@ -3295,6 +3295,77 @@ export default {
       }
     }
 
+    // Reads back the CURRENT live state of a listing straight from eBay --
+    // used so "manage this listing" can show/edit what's actually live right
+    // now instead of just recomputing a fresh guess from local inventory data,
+    // which would silently overwrite a price/quantity someone changed directly
+    // on eBay. Best-effort: the inventory_item side is optional (title/
+    // description/aspects/condition detail) -- if that call fails the offer
+    // data (price/quantity/category/best-offer terms) is still returned.
+    if (url.pathname === '/ebay/listing') {
+      if (request.method !== 'GET') return json({ error: 'GET only' }, 405);
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId, ['owner','admin']);
+      if (auth.error) return auth.error;
+      const sku = (url.searchParams.get('sku') || '').trim();
+      const offerId = (url.searchParams.get('offerId') || '').trim();
+      if (!sku || !offerId) return json({ ok: false, error: 'sku and offerId are required' }, 400);
+      let ebayToken = '';
+      try { ebayToken = await getEbayUserAccessToken(env); }
+      catch (tokenErr) { return json({ needsToken: true, error: tokenErr.message }, 401); }
+      if (!ebayToken) return json({ needsToken: true, error: 'Connect eBay first: missing user access/refresh token' }, 401);
+
+      try {
+        const [offerRes, itemRes] = await Promise.all([
+          fetch(`https://api.ebay.com/sell/inventory/v1/offer/${encodeURIComponent(offerId)}`, { headers: { Authorization: 'Bearer ' + ebayToken } }),
+          fetch(`https://api.ebay.com/sell/inventory/v1/inventory_item/${encodeURIComponent(sku)}`, { headers: { Authorization: 'Bearer ' + ebayToken } }),
+        ]);
+        const offerTxt = await offerRes.text();
+        let offer; try { offer = JSON.parse(offerTxt); } catch (_) { offer = null; }
+        if (!offerRes.ok || !offer) {
+          const msg = offer?.errors?.[0]?.longMessage || offer?.errors?.[0]?.message || offerTxt.substring(0, 300);
+          return json({ ok: false, error: 'Could not fetch live offer (' + offerRes.status + '): ' + msg }, offerRes.status);
+        }
+        let item = null;
+        try {
+          const itemTxt = await itemRes.text();
+          const parsed = JSON.parse(itemTxt);
+          if (itemRes.ok) item = parsed;
+        } catch (_) { /* item side is best-effort */ }
+
+        const bestOfferTerms = offer.listingPolicies?.bestOfferTerms || {};
+        return json({
+          ok: true,
+          offer: {
+            price: offer.pricingSummary?.price?.value || '',
+            quantity: Number(offer.availableQuantity || 0),
+            categoryId: String(offer.categoryId || ''),
+            format: offer.format || '',
+            duration: offer.listingDuration || '',
+            listingDescription: offer.listingDescription || '',
+            bestOfferEnabled: !!bestOfferTerms.bestOfferEnabled,
+            autoAcceptPrice: bestOfferTerms.autoAcceptPrice?.value || '',
+            autoDeclinePrice: bestOfferTerms.autoDeclinePrice?.value || '',
+            status: offer.status || '',
+            listingId: offer.listing?.listingId || '',
+          },
+          item: item ? {
+            title: item.product?.title || '',
+            description: item.product?.description || '',
+            imageUrls: item.product?.imageUrls || [],
+            aspects: item.product?.aspects || {},
+            conditionId: String(item.condition || ''),
+            conditionDescription: item.conditionDescription || '',
+            conditionDescriptors: item.conditionDescriptors || [],
+            quantity: item.availability?.shipToLocationAvailability?.quantity != null ? Number(item.availability.shipToLocationAvailability.quantity) : null,
+          } : null,
+        });
+      } catch (e) {
+        console.error('eBay live-listing fetch error:', e);
+        return json({ ok: false, error: e.message }, 502);
+      }
+    }
+
     // Detects eBay sales that this dashboard never recorded on its own -- a listing
     // can sell on eBay with zero action taken in this app. Matches paid, unfulfilled
     // eBay orders' line-item SKUs against this store's inventory (every item listed
@@ -3322,7 +3393,19 @@ export default {
         }
         if (!skuMap.size) return json({ ok: true, checked: 0, matched: 0, results: [] });
 
-        const res = await fetch('https://api.ebay.com/sell/fulfillment/v1/order?filter=' + encodeURIComponent('orderfulfillmentstatus:{NOT_STARTED|IN_PROGRESS}') + '&limit=50', {
+        // Regular sync only looks at orders eBay itself hasn't marked fulfilled yet.
+        // Reconcile mode additionally covers orders already fulfilled (through eBay's
+        // own app, or from before this sync existed) within the last 90 days --
+        // bounded by date since dropping the fulfillment filter can otherwise return
+        // a long account history. The status=neq.sold guard above already limits this
+        // to items still showing as available/listed in our own inventory, so this
+        // can't create a duplicate sale record for something already reconciled by
+        // hand -- it only catches items we still think are unsold.
+        const reconcile = url.searchParams.get('scope') === 'reconcile';
+        const orderFilter = reconcile
+          ? 'creationdate:[' + new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString() + '..]'
+          : 'orderfulfillmentstatus:{NOT_STARTED|IN_PROGRESS}';
+        const res = await fetch('https://api.ebay.com/sell/fulfillment/v1/order?filter=' + encodeURIComponent(orderFilter) + '&limit=' + (reconcile ? 200 : 50), {
           headers: { 'Authorization': 'Bearer ' + ebayToken },
         });
         const txt = await res.text();
