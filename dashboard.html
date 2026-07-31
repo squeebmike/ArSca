@@ -1865,6 +1865,10 @@ body.show-mode .inv-sync-badge{display:none;}
       <button class="hbtn" onclick="connectEbay()">CONNECT EBAY</button>
       <span id="ebay-oauth-hint" style="font-family:var(--font-mono);font-size:9px;color:var(--dim)"></span>
     </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
+      <button class="hbtn" onclick="syncEbayOrders()">SYNC EBAY ORDERS</button>
+      <span id="ebay-orders-sync-status" style="font-family:var(--font-mono);font-size:9px;color:var(--dim)">Checks for items that sold on eBay and records them as sales here -- runs automatically every few minutes while this tab is open.</span>
+    </div>
   </div>
 
   <div class="panel" id="backoffice-ebay-bulk-panel" style="margin-top:4px;margin-bottom:14px">
@@ -13621,6 +13625,45 @@ async function connectEbay(){
     if(hint) hint.textContent = e.message || 'eBay connect failed';
   }
 }
+
+// Detects items that sold on eBay without any action taken in this dashboard --
+// eBay has no way to tell us that on its own, so this asks the Worker to check
+// eBay's own paid-order list against SKUs we track locally (see /ebay/orders/sync).
+// `silent` is used by the periodic auto-poll so it doesn't nag when there's
+// nothing new; a manual click always shows a result either way.
+let _ebayOrderSyncInFlight = false;
+async function syncEbayOrders(silent){
+  if(_ebayOrderSyncInFlight) return;
+  _ebayOrderSyncInFlight = true;
+  const status = document.getElementById('ebay-orders-sync-status');
+  if(status && !silent){ status.style.color = 'var(--dim)'; status.textContent = 'Checking eBay for new sales...'; }
+  try{
+    const res = await storeWorkerFetch('/ebay/orders/sync', { method:'POST' });
+    const data = await res.json().catch(()=>({}));
+    if(!res.ok || !data.ok){
+      const msg = data.error || ('eBay order sync failed: HTTP ' + res.status);
+      if(status && !silent){ status.style.color = 'var(--red)'; status.textContent = msg; }
+      return;
+    }
+    if(data.matched > 0){
+      await loadInventory().catch(()=>{});
+      toast_dash(data.matched + ' eBay sale' + (data.matched > 1 ? 's' : '') + ' recorded');
+      logOpsEvent('ebay_order_synced', 'Recorded ' + data.matched + ' eBay sale(s)', { results: data.results });
+    }
+    if(status){
+      status.style.color = data.matched > 0 ? 'var(--g)' : 'var(--dim)';
+      status.textContent = data.matched > 0
+        ? data.matched + ' new eBay sale(s) recorded just now.'
+        : 'No new eBay sales found. Checks automatically every few minutes while this tab is open.';
+    }
+    if(data.errors?.length) console.warn('eBay order sync partial errors:', data.errors);
+  }catch(e){
+    if(status && !silent){ status.style.color = 'var(--red)'; status.textContent = 'eBay order sync failed: ' + e.message; }
+  }finally{
+    _ebayOrderSyncInFlight = false;
+  }
+}
+setInterval(()=>syncEbayOrders(true), 5 * 60000);
 
 function safeLocalJson(key, fallback){
   try { return JSON.parse(localStorage.getItem(key) || JSON.stringify(fallback)); }
