@@ -1870,7 +1870,7 @@ body.show-mode .inv-sync-badge{display:none;}
   <div class="panel" id="backoffice-ebay-bulk-panel" style="margin-top:4px;margin-bottom:14px">
     <div class="ph">EBAY BULK LISTING <span id="ebay-bulk-count" style="font-size:9px;color:var(--dim)"></span></div>
     <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);margin-bottom:10px;line-height:1.55">
-      Check items below to list them all at once. Each item is submitted one at a time using its current price, category, and condition. An AI-written description is generated per item when possible, falling back to the standard field-list description if AI is unavailable.
+      Check items below, then PREPARE SELECTED FOR REVIEW to build an editable listing card for each one -- title, price, Buy It Now vs. auction, condition, and description can all be adjusted before anything posts. Nothing goes to eBay until you list an individual item or hit SUBMIT ALL REVIEWED.
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
       <button class="hbtn" onclick="renderEbayBulkList()">LOAD LISTABLE ITEMS</button>
@@ -1881,8 +1881,8 @@ body.show-mode .inv-sync-badge{display:none;}
     <div id="ebay-bulk-list" style="display:grid;gap:6px;max-height:360px;overflow-y:auto;margin-bottom:10px">
       <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);padding:10px;border:1px dashed var(--border);border-radius:8px;text-align:center">Click LOAD LISTABLE ITEMS to see in-stock items not already listed on eBay.</div>
     </div>
-    <button class="hbtn" style="width:100%;padding:12px;background:rgba(255,209,102,.12);border-color:rgba(255,209,102,.35);color:var(--gold)" onclick="runEbayBulkListing()">LIST SELECTED ITEMS ON EBAY</button>
-    <div id="ebay-bulk-results" style="margin-top:10px;display:grid;gap:6px"></div>
+    <button class="hbtn" style="width:100%;padding:12px;background:rgba(255,209,102,.12);border-color:rgba(255,209,102,.35);color:var(--gold)" onclick="prepareEbayBulkReview()">PREPARE SELECTED FOR REVIEW</button>
+    <div id="ebay-bulk-results" style="margin-top:10px;display:grid;gap:8px"></div>
   </div>
 
   <div class="panel" id="backoffice-system-panel" style="margin-top:4px;margin-bottom:14px">
@@ -16757,6 +16757,88 @@ function toast_dash(msg, ms = 2500){
   setTimeout(() => t.remove(), ms);
 }
 
+const EBAY_TRADING_CARD_CATEGORIES = new Set(['183050','183454','261328']);
+function isEbayTradingCardCategory(catId){ return EBAY_TRADING_CARD_CATEGORIES.has(String(catId)); }
+
+let ebayConditionPolicyCache = {};
+async function fetchEbayConditionPolicies(categoryId){
+  const key = String(categoryId);
+  if(ebayConditionPolicyCache[key]) return ebayConditionPolicyCache[key];
+  try{
+    const res = await storeWorkerFetch('/ebay/condition-policies?categoryId=' + encodeURIComponent(key));
+    const data = await res.json().catch(()=>({}));
+    if(res.ok && data.ok){ ebayConditionPolicyCache[key] = data; return data; }
+  }catch(_){}
+  return null;
+}
+
+// Renders the CONDITION control(s) for an eBay listing form into `#${prefix}-condition-host`.
+// eBay's trading-card categories (Sports/TCG/Non-Sport singles) reject a plain condition id --
+// they require structured conditionDescriptors (grader+grade for graded, or a card-condition
+// scale for ungraded), fetched live from eBay rather than guessed so the values are always valid.
+async function refreshEbayConditionUi(prefix, item){
+  const catSel = document.getElementById(prefix+'-category');
+  const host = document.getElementById(prefix+'-condition-host');
+  if(!catSel || !host || !item) return;
+  const catId = catSel.value;
+  const prevCond = document.getElementById(prefix+'-condition')?.value;
+  const fields = computeEbayListingFields(item);
+  const condSelect = (optionsHtml) => `<select id="${prefix}-condition" style="width:100%;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:8px;border-radius:6px;box-sizing:border-box" onchange="refreshEbayConditionUi('${prefix}', all.find(i=>i.id==='${item.id}'))">${optionsHtml}</select>`;
+  if(!isEbayTradingCardCategory(catId)){
+    host.innerHTML = condSelect(`
+      <option value="2750" ${prevCond==='2750'?'selected':''}>Like New / Graded</option>
+      <option value="3000" ${(prevCond||fields.conditionId)==='3000'?'selected':''}>Very Good</option>
+      <option value="4000" ${prevCond==='4000'?'selected':''}>Good</option>
+      <option value="5000" ${prevCond==='5000'?'selected':''}>Acceptable</option>`)
+      + `<div id="${prefix}-condition-extra"></div>`;
+    return;
+  }
+  const graded = prevCond ? prevCond === '2750' : fields.isGraded;
+  host.innerHTML = condSelect(`
+      <option value="2750" ${graded?'selected':''}>Graded (slabbed)</option>
+      <option value="4000" ${!graded?'selected':''}>Ungraded</option>`)
+    + `<div id="${prefix}-condition-extra" style="margin-top:6px;font-family:monospace;font-size:9px;color:var(--dim)">Loading eBay's required condition details...</div>`;
+  const policy = await fetchEbayConditionPolicies(catId);
+  const extra = document.getElementById(prefix+'-condition-extra');
+  if(!extra) return;
+  if(graded){
+    const graderDesc = policy?.descriptors?.find(d => d.id === '27501' || /grad(er|ing company)/i.test(d.name||''));
+    const graderOptions = graderDesc?.values?.length
+      ? graderDesc.values.map(v=>`<option value="${escHtml(v.value)}" ${String(v.label).toUpperCase()===String(item.grader||'').toUpperCase()?'selected':''}>${escHtml(v.label)}</option>`).join('')
+      : '';
+    extra.innerHTML = `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:2px">
+        <div><label style="font-size:8px;color:var(--dim)">GRADER</label>${graderOptions?`<select id="${prefix}-grader-code" style="width:100%;margin-top:2px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:6px;border-radius:6px">${graderOptions}</select>`:`<input id="${prefix}-grader-code" value="${escHtml(item.grader||'')}" placeholder="PSA, BGS, CGC..." style="width:100%;margin-top:2px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:6px;border-radius:6px;box-sizing:border-box">`}</div>
+        <div><label style="font-size:8px;color:var(--dim)">GRADE</label><input id="${prefix}-grade-code" value="${escHtml(item.grade||'')}" style="width:100%;margin-top:2px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:6px;border-radius:6px;box-sizing:border-box"></div>
+      </div>
+      <div style="margin-top:6px"><label style="font-size:8px;color:var(--dim)">CERTIFICATION NUMBER (optional)</label><input id="${prefix}-cert-code" value="${escHtml(item.cert_number||'')}" style="width:100%;margin-top:2px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:6px;border-radius:6px;box-sizing:border-box"></div>
+      ${!graderDesc?'<div style="margin-top:6px;color:var(--gold)">Could not load eBay&#39;s exact grader list -- this may still be rejected. Check the eBay connection above and try again.</div>':''}
+    `;
+  } else {
+    const condDesc = policy?.descriptors?.find(d => d.id === '40001' || /card condition/i.test(d.name||''));
+    extra.innerHTML = condDesc?.values?.length
+      ? `<div style="margin-top:2px"><label style="font-size:8px;color:var(--dim)">CARD CONDITION</label><select id="${prefix}-cardcond-code" style="width:100%;margin-top:2px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:6px;border-radius:6px">${condDesc.values.map(v=>`<option value="${escHtml(v.value)}">${escHtml(v.label)}</option>`).join('')}</select></div>`
+      : `<div style="color:var(--red)">Could not load eBay's required card-condition options for this category. Check the eBay connection above, then reopen this listing before submitting.</div>`;
+  }
+}
+
+function collectEbayConditionDescriptors(prefix, catId, conditionId){
+  const out = [];
+  if(!isEbayTradingCardCategory(catId)) return out;
+  if(conditionId === '2750'){
+    const g = document.getElementById(prefix+'-grader-code')?.value?.trim();
+    const gr = document.getElementById(prefix+'-grade-code')?.value?.trim();
+    const c = document.getElementById(prefix+'-cert-code')?.value?.trim();
+    if(g) out.push({name:'27501', values:[g]});
+    if(gr) out.push({name:'27502', values:[gr]});
+    if(c) out.push({name:'27503', values:[c]});
+  } else {
+    const cc = document.getElementById(prefix+'-cardcond-code')?.value;
+    if(cc) out.push({name:'40001', values:[cc]});
+  }
+  return out;
+}
+
 function computeEbayListingFields(item){
   const condLabelMap = {
     '05cbd3bb538b65343a8f40c0fbe31282':'Near Mint',
@@ -16775,7 +16857,7 @@ function computeEbayListingFields(item){
   const isTCG = cat === 'TCG';
   const isGraded = cat === 'Graded' || !!item.grader || !!item.grade;
   const catId = isComic ? '259104' : (isSealed && cat === 'Sports') ? '261329' : isTCG ? '183454' : '261328';
-  const conditionId = isGraded ? '2750' : '3000';
+  const conditionId = isGraded ? '2750' : (isEbayTradingCardCategory(catId) ? '4000' : '3000');
   const title = [item.year && !lowerName.includes(String(item.year)) ? item.year : null,item.name,item.set && !lowerName.includes(String(item.set).toLowerCase()) ? item.set : null,item.variant,item.card_number?'#'+item.card_number:null,isGraded?[item.grader,item.grade].filter(Boolean).join(' '):null,item.isRookie?'RC':null]
     .filter(Boolean).join(' ').replace(/\s+/g,' ').substring(0,80);
   const price = Number(item.market || item.salePrice || 0);
@@ -16882,8 +16964,8 @@ function openEbayFromDash(id){
         <div><label style="font-family:monospace;font-size:9px;color:var(--dim)">PRICE</label><input id="dash-eb-price" type="number" step="0.01" min="0.99" value="${price?price.toFixed(2):''}" style="width:100%;margin-top:4px;background:var(--surf2);border:1px solid var(--border);color:var(--gold);padding:9px;border-radius:6px;box-sizing:border-box"></div>
         <div><label style="font-family:monospace;font-size:9px;color:var(--dim)">QTY</label><input id="dash-eb-qty" type="number" min="1" value="${Math.max(1, item.qty||1)}" style="width:100%;margin-top:4px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:9px;border-radius:6px;box-sizing:border-box"></div>
         <div><label style="font-family:monospace;font-size:9px;color:var(--dim)">FORMAT</label><select id="dash-eb-format" style="width:100%;margin-top:4px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:9px;border-radius:6px"><option value="FIXED_PRICE">Buy It Now</option><option value="AUCTION">Auction</option></select></div>
-        <div><label style="font-family:monospace;font-size:9px;color:var(--dim)">CONDITION</label><select id="dash-eb-condition" style="width:100%;margin-top:4px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:9px;border-radius:6px"><option value="2750" ${conditionId==='2750'?'selected':''}>Like New / Graded</option><option value="3000" ${conditionId==='3000'?'selected':''}>Very Good</option><option value="4000">Good</option><option value="5000">Acceptable</option></select></div>
-        <div><label style="font-family:monospace;font-size:9px;color:var(--dim)">CATEGORY</label><select id="dash-eb-category" style="width:100%;margin-top:4px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:9px;border-radius:6px"><option value="261328" ${catId==='261328'?'selected':''}>Sports Cards</option><option value="183454" ${catId==='183454'?'selected':''}>TCG Cards</option><option value="259104" ${catId==='259104'?'selected':''}>Comics</option><option value="261329">Sports Boxes/Packs</option><option value="2536">Card Lots</option></select></div>
+        <div><label style="font-family:monospace;font-size:9px;color:var(--dim)">CONDITION</label><div id="dash-eb-condition-host" style="margin-top:4px"></div></div>
+        <div><label style="font-family:monospace;font-size:9px;color:var(--dim)">CATEGORY</label><select id="dash-eb-category" onchange="refreshEbayConditionUi('dash-eb', all.find(i=>i.id==='${id}'))" style="width:100%;margin-top:4px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:9px;border-radius:6px"><option value="261328" ${catId==='261328'?'selected':''}>Sports Cards</option><option value="183454" ${catId==='183454'?'selected':''}>TCG Cards</option><option value="259104" ${catId==='259104'?'selected':''}>Comics</option><option value="261329">Sports Boxes/Packs</option><option value="2536">Card Lots</option></select></div>
         <div><label style="font-family:monospace;font-size:9px;color:var(--dim)">DURATION</label><select id="dash-eb-duration" style="width:100%;margin-top:4px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:9px;border-radius:6px"><option value="GTC">GTC</option><option value="DAYS_7">7 days</option><option value="DAYS_10">10 days</option></select></div>
       </div>
       <label style="font-family:monospace;font-size:9px;color:var(--dim)">CONDITION DESCRIPTION</label>
@@ -16920,6 +17002,7 @@ function openEbayFromDash(id){
       </div>
     </div>`;
   document.body.appendChild(modal);
+  refreshEbayConditionUi('dash-eb', item);
   if((item.lifecycle || 'in_stock') !== 'listed_online') {
     const map = getLifecycleMap();
     map[id] = 'pulled_ebay';
@@ -16937,17 +17020,25 @@ async function submitDashboardEbayListing(id){
   const title=document.getElementById('dash-eb-title').value.trim();
   const price=parseFloat(document.getElementById('dash-eb-price').value)||0;
   if(!title || price<0.99){ toast_dash('eBay listing needs title and price'); return; }
+  const categoryId=(document.getElementById('dash-eb-category-id')?.value.trim() || document.getElementById('dash-eb-category').value);
+  const listConditionId=document.getElementById('dash-eb-condition')?.value || '3000';
+  const conditionDescriptors=collectEbayConditionDescriptors('dash-eb', categoryId, listConditionId);
+  if(isEbayTradingCardCategory(categoryId) && !conditionDescriptors.length){
+    toast_dash('eBay requires condition details for this category -- fill in the condition fields first');
+    return;
+  }
   status.style.display='block'; status.style.color='var(--gold)'; status.style.border='1px solid rgba(255,209,102,.25)'; status.style.background='rgba(255,209,102,.06)'; status.textContent='Creating eBay listing...';
   const payload={
     title,
     description:document.getElementById('dash-eb-desc').value,
     price:price.toFixed(2),
     format:document.getElementById('dash-eb-format').value,
-    conditionId:document.getElementById('dash-eb-condition').value,
+    conditionId:listConditionId,
     conditionDescription:document.getElementById('dash-eb-cond-desc').value.trim(),
+    conditionDescriptors,
     duration:document.getElementById('dash-eb-duration').value,
     quantity:parseInt(document.getElementById('dash-eb-qty').value)||1,
-    categoryId:(document.getElementById('dash-eb-category-id')?.value.trim() || document.getElementById('dash-eb-category').value),
+    categoryId,
     imageUrl:item.thumbnail||null,
     imageUrls:[item.thumbnail,...(Array.isArray(item.photos)?item.photos:[])].filter(Boolean),
     sport:document.getElementById('dash-eb-sport')?.value.trim() || item.sport || '',
@@ -17027,79 +17118,139 @@ function toggleEbayBulkSelectAll(checked){
   document.querySelectorAll('.ebay-bulk-cb').forEach(cb => cb.checked = checked);
 }
 
-async function runEbayBulkListing(){
+function ebayBulkReviewCardHtml(item, fields, desc){
+  const prefix = 'ebb-' + item.id;
+  const thumbSrc = inventoryImageUrl(item);
+  return `<div class="ebay-bulk-review-card" data-item-id="${item.id}" style="border:1px solid var(--border);border-radius:8px;padding:10px">
+    <div style="display:flex;gap:10px;align-items:flex-start;margin-bottom:8px">
+      ${thumbSrc?`<img src="${escHtml(thumbSrc)}" style="width:52px;height:65px;object-fit:cover;border-radius:6px;flex-shrink:0">`:''}
+      <input id="${prefix}-title" maxlength="80" value="${escHtml(fields.title)}" style="flex:1;min-width:0;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:8px;border-radius:6px;box-sizing:border-box;font-size:12px">
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px;margin-bottom:8px">
+      <div><label style="font-size:8px;color:var(--dim)">PRICE</label><input id="${prefix}-price" type="number" step="0.01" min="0.99" value="${fields.price?fields.price.toFixed(2):''}" style="width:100%;margin-top:2px;background:var(--surf2);border:1px solid var(--border);color:var(--gold);padding:6px;border-radius:6px;box-sizing:border-box"></div>
+      <div><label style="font-size:8px;color:var(--dim)">QTY</label><input id="${prefix}-qty" type="number" min="1" value="${Math.max(1,item.qty||1)}" style="width:100%;margin-top:2px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:6px;border-radius:6px;box-sizing:border-box"></div>
+      <div><label style="font-size:8px;color:var(--dim)">FORMAT</label><select id="${prefix}-format" style="width:100%;margin-top:2px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:6px;border-radius:6px"><option value="FIXED_PRICE">Buy It Now</option><option value="AUCTION">Auction</option></select></div>
+      <div><label style="font-size:8px;color:var(--dim)">DURATION</label><select id="${prefix}-duration" style="width:100%;margin-top:2px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:6px;border-radius:6px"><option value="GTC">GTC</option><option value="DAYS_7">7 days</option><option value="DAYS_10">10 days</option></select></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px">
+      <div><label style="font-size:8px;color:var(--dim)">CATEGORY</label><select id="${prefix}-category" onchange="refreshEbayConditionUi('${prefix}', all.find(i=>i.id==='${item.id}'))" style="width:100%;margin-top:2px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:6px;border-radius:6px"><option value="261328" ${fields.catId==='261328'?'selected':''}>Sports Cards</option><option value="183454" ${fields.catId==='183454'?'selected':''}>TCG Cards</option><option value="259104" ${fields.catId==='259104'?'selected':''}>Comics</option><option value="261329" ${fields.catId==='261329'?'selected':''}>Sports Boxes/Packs</option><option value="2536" ${fields.catId==='2536'?'selected':''}>Card Lots</option></select></div>
+      <div><label style="font-size:8px;color:var(--dim)">CONDITION</label><div id="${prefix}-condition-host" style="margin-top:2px"></div></div>
+    </div>
+    <div style="margin-bottom:8px"><label style="font-size:8px;color:var(--dim)">DESCRIPTION</label><textarea id="${prefix}-desc" rows="5" style="width:100%;margin-top:2px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:8px;border-radius:6px;box-sizing:border-box;resize:vertical;font-size:11px">${escHtml(desc)}</textarea></div>
+    <div style="display:flex;gap:6px;align-items:center">
+      <button class="hbtn" style="flex:1;background:rgba(255,209,102,.12);border-color:rgba(255,209,102,.35);color:var(--gold)" onclick="submitEbayBulkReviewItem('${item.id}')">LIST THIS ITEM</button>
+      <button class="hbtn" onclick="this.closest('.ebay-bulk-review-card').remove()">REMOVE</button>
+    </div>
+    <div id="${prefix}-status" style="margin-top:6px;font-family:var(--font-mono);font-size:10px"></div>
+  </div>`;
+}
+
+async function prepareEbayBulkReview(){
   const ids = Array.from(document.querySelectorAll('.ebay-bulk-cb:checked')).map(cb => cb.value);
   const resultsHost = document.getElementById('ebay-bulk-results');
+  if(!resultsHost) return;
   if(!ids.length){ toast_dash('Check at least one item first'); return; }
   const useAi = !!document.getElementById('ebay-bulk-use-ai')?.checked;
-  if(resultsHost) resultsHost.innerHTML = '';
+  resultsHost.innerHTML = `<div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);text-align:center;padding:8px">Preparing ${ids.length} listing${ids.length>1?'s':''} for review...</div>`;
+  const cards = [];
   for(const id of ids){
     const item = all.find(i => i.id === id);
     if(!item) continue;
-    const row = document.createElement('div');
-    row.style.cssText = 'font-family:var(--font-mono);font-size:10px;padding:8px;border-radius:6px;border:1px solid var(--border);color:var(--dim)';
-    row.textContent = (item.name||'Item') + ': working...';
-    resultsHost?.prepend(row);
-    try{
-      const fields = computeEbayListingFields(item);
-      if(!fields.title || !(fields.price>0)) throw new Error('Missing title or price -- edit the item first');
-      let desc = fields.desc;
-      if(useAi){
-        try { desc = await generateAiEbayDescription(item, fields); }
-        catch(_) { /* AI unavailable -- fall back to the standard template description */ }
-      }
-      const payload = {
-        title: fields.title,
-        description: desc,
-        price: fields.price.toFixed(2),
-        format: 'FIXED_PRICE',
-        conditionId: fields.conditionId,
-        conditionDescription: fields.isGraded ? [item.grader,item.grade].filter(Boolean).join(' ') : fields.condText,
-        duration: 'GTC',
-        quantity: Math.max(1, item.qty||1),
-        categoryId: fields.catId,
-        imageUrl: item.thumbnail||null,
-        imageUrls: [item.thumbnail, ...(Array.isArray(item.photos)?item.photos:[])].filter(Boolean),
-        sport: item.sport || '',
-        year: item.year || '',
-        manufacturer: fields.inferManufacturer,
-        set: item.set || '',
-        parallel: item.variant || '',
-        cardNumber: item.card_number || item.issue || '',
-        player: item.player || item.name || '',
-        team: item.team || '',
-        grade: item.grade || '',
-        grader: item.grader || '',
-        isRookie: !!item.isRookie,
-        serialNumber: item.serial_number || '',
-        upc: '',
-        features: [item.isRookie?'Rookie':null,item.is_auto?'Autograph':null,fields.isSealed?'Sealed':''].filter(Boolean).join(', '),
-        productType: fields.isSealed ? 'sealed' : (fields.isComic ? 'comic' : 'single'),
-        configuration: fields.inferConfig,
-        customAspects: {
-          'Product': fields.isSealed ? 'Box' : '',
-          'Configuration': fields.inferConfig || (fields.isSealed ? 'Box' : ''),
-          'Card Size': 'Standard',
-          'Language': 'English',
-        },
-      };
-      const res = await storeWorkerFetch('/ebay/list', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
-      const data = await res.json().catch(()=>({}));
-      if(!res.ok || !data.listingId){
-        const msg = data.error || ('eBay error '+res.status);
-        throw new Error(/invalid access token|authorization/i.test(msg) ? 'eBay token expired -- reconnect above' : msg);
-      }
-      setLifecycle(id, 'listed_online', true);
-      logOpsEvent('ebay_listing', 'Bulk listed on eBay: ' + fields.title, {itemId:id, listingId:data.listingId, offerId:data.offerId||'', sku:data.sku||'', price:fields.price.toFixed(2)});
-      row.style.color = 'var(--g)'; row.style.borderColor='rgba(0,255,179,.25)'; row.style.background='rgba(0,255,179,.06)';
-      row.innerHTML = escHtml(item.name||'Item') + ': listed -- <a href="https://www.ebay.com/itm/'+data.listingId+'" target="_blank" style="color:var(--g)">view</a>';
-    }catch(e){
-      row.style.color = 'var(--red)'; row.style.borderColor='rgba(255,77,109,.25)'; row.style.background='rgba(255,77,109,.06)';
-      row.textContent = (item.name||'Item') + ': ' + e.message;
+    const fields = computeEbayListingFields(item);
+    let desc = fields.desc;
+    if(useAi){
+      try { desc = await generateAiEbayDescription(item, fields); }
+      catch(_) { /* AI unavailable -- fall back to the standard template description */ }
     }
+    cards.push({item, fields, desc});
   }
-  renderEbayBulkList();
-  toast_dash('Bulk eBay listing finished');
+  if(!cards.length){ resultsHost.innerHTML = ''; return; }
+  resultsHost.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
+      <div style="font-family:var(--font-mono);font-size:9px;color:var(--dim)">Review each listing below -- nothing posts to eBay until you list it.</div>
+      <button class="hbtn" onclick="submitAllEbayBulkReviewItems()">SUBMIT ALL REVIEWED</button>
+    </div>`
+    + cards.map(c => ebayBulkReviewCardHtml(c.item, c.fields, c.desc)).join('');
+  cards.forEach(c => refreshEbayConditionUi('ebb-'+c.item.id, c.item));
+}
+
+async function submitEbayBulkReviewItem(id){
+  const item = all.find(i=>i.id===id); if(!item) return;
+  const prefix = 'ebb-' + id;
+  const status = document.getElementById(prefix+'-status');
+  const title = document.getElementById(prefix+'-title')?.value.trim();
+  const price = parseFloat(document.getElementById(prefix+'-price')?.value)||0;
+  if(!title || price < 0.99){ if(status){ status.style.color='var(--red)'; status.textContent='Needs a title and a price of at least $0.99'; } return; }
+  const catId = document.getElementById(prefix+'-category')?.value || '261328';
+  const conditionId = document.getElementById(prefix+'-condition')?.value || '3000';
+  const conditionDescriptors = collectEbayConditionDescriptors(prefix, catId, conditionId);
+  if(isEbayTradingCardCategory(catId) && !conditionDescriptors.length){
+    if(status){ status.style.color='var(--red)'; status.textContent='eBay requires condition details for this category -- fill in the condition fields above first.'; }
+    return;
+  }
+  const fields = computeEbayListingFields(item);
+  if(status){ status.style.color='var(--gold)'; status.textContent='Creating eBay listing...'; }
+  const payload = {
+    title,
+    description: document.getElementById(prefix+'-desc')?.value || fields.desc,
+    price: price.toFixed(2),
+    format: document.getElementById(prefix+'-format')?.value || 'FIXED_PRICE',
+    conditionId,
+    conditionDescription: fields.isGraded ? [item.grader,item.grade].filter(Boolean).join(' ') : fields.condText,
+    conditionDescriptors,
+    duration: document.getElementById(prefix+'-duration')?.value || 'GTC',
+    quantity: Math.max(1, parseInt(document.getElementById(prefix+'-qty')?.value)||1),
+    categoryId: catId,
+    imageUrl: item.thumbnail||null,
+    imageUrls: [item.thumbnail, ...(Array.isArray(item.photos)?item.photos:[])].filter(Boolean),
+    sport: item.sport || '',
+    year: item.year || '',
+    manufacturer: fields.inferManufacturer,
+    set: item.set || '',
+    parallel: item.variant || '',
+    cardNumber: item.card_number || item.issue || '',
+    player: item.player || item.name || '',
+    team: item.team || '',
+    grade: item.grade || '',
+    grader: item.grader || '',
+    isRookie: !!item.isRookie,
+    serialNumber: item.serial_number || '',
+    upc: '',
+    features: [item.isRookie?'Rookie':null,item.is_auto?'Autograph':null,fields.isSealed?'Sealed':''].filter(Boolean).join(', '),
+    productType: fields.isSealed ? 'sealed' : (fields.isComic ? 'comic' : 'single'),
+    configuration: fields.inferConfig,
+    customAspects: {
+      'Product': fields.isSealed ? 'Box' : '',
+      'Configuration': fields.inferConfig || (fields.isSealed ? 'Box' : ''),
+      'Card Size': 'Standard',
+      'Language': 'English',
+    },
+  };
+  try{
+    const res = await storeWorkerFetch('/ebay/list', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
+    const data = await res.json().catch(()=>({}));
+    if(!res.ok || !data.listingId){
+      const msg = data.error || ('eBay error '+res.status);
+      throw new Error(/invalid access token|authorization/i.test(msg) ? 'eBay token expired -- reconnect above' : msg);
+    }
+    setLifecycle(id, 'listed_online', true);
+    logOpsEvent('ebay_listing', 'Bulk listed on eBay: ' + title, {itemId:id, listingId:data.listingId, offerId:data.offerId||'', sku:data.sku||'', price:price.toFixed(2)});
+    if(status){ status.style.color='var(--g)'; status.innerHTML = 'Listed -- <a href="https://www.ebay.com/itm/'+data.listingId+'" target="_blank" style="color:var(--g)">view listing</a>'; }
+    const card = document.querySelector(`.ebay-bulk-review-card[data-item-id="${id}"]`);
+    card?.querySelectorAll('input,select,textarea,button').forEach(el => { el.disabled = true; });
+  }catch(e){
+    if(status){ status.style.color='var(--red)'; status.textContent = e.message; }
+  }
+}
+
+async function submitAllEbayBulkReviewItems(){
+  const cards = Array.from(document.querySelectorAll('.ebay-bulk-review-card'));
+  for(const card of cards){
+    const id = card.dataset.itemId;
+    const status = document.getElementById('ebb-'+id+'-status');
+    if(status && /^Listed/.test(status.textContent||'')) continue;
+    await submitEbayBulkReviewItem(id);
+  }
+  toast_dash('Finished submitting reviewed listings');
 }
 
 // ══════════════════════════════════════════════════
