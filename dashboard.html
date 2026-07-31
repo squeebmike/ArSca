@@ -1867,6 +1867,24 @@ body.show-mode .inv-sync-badge{display:none;}
     </div>
   </div>
 
+  <div class="panel" id="backoffice-ebay-bulk-panel" style="margin-top:4px;margin-bottom:14px">
+    <div class="ph">EBAY BULK LISTING <span id="ebay-bulk-count" style="font-size:9px;color:var(--dim)"></span></div>
+    <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);margin-bottom:10px;line-height:1.55">
+      Check items below to list them all at once. Each item is submitted one at a time using its current price, category, and condition. An AI-written description is generated per item when possible, falling back to the standard field-list description if AI is unavailable.
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
+      <button class="hbtn" onclick="renderEbayBulkList()">LOAD LISTABLE ITEMS</button>
+      <button class="hbtn" onclick="toggleEbayBulkSelectAll(true)">SELECT ALL</button>
+      <button class="hbtn" onclick="toggleEbayBulkSelectAll(false)">SELECT NONE</button>
+      <label style="font-family:var(--font-mono);font-size:9px;color:var(--dim);display:flex;align-items:center;gap:5px"><input type="checkbox" id="ebay-bulk-use-ai" checked> Use AI descriptions</label>
+    </div>
+    <div id="ebay-bulk-list" style="display:grid;gap:6px;max-height:360px;overflow-y:auto;margin-bottom:10px">
+      <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);padding:10px;border:1px dashed var(--border);border-radius:8px;text-align:center">Click LOAD LISTABLE ITEMS to see in-stock items not already listed on eBay.</div>
+    </div>
+    <button class="hbtn" style="width:100%;padding:12px;background:rgba(255,209,102,.12);border-color:rgba(255,209,102,.35);color:var(--gold)" onclick="runEbayBulkListing()">LIST SELECTED ITEMS ON EBAY</button>
+    <div id="ebay-bulk-results" style="margin-top:10px;display:grid;gap:6px"></div>
+  </div>
+
   <div class="panel" id="backoffice-system-panel" style="margin-top:4px;margin-bottom:14px">
     <div class="ph">SYSTEM / BACKUP <span id="system-health-status" style="font-size:9px;color:var(--dim)">ready</span></div>
     <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);margin-bottom:10px;line-height:1.55">
@@ -5514,6 +5532,7 @@ function organizeRegisterLayout(){
   cleanupEmptyWorkflowRows();
 
   moveNode('backoffice-ebay-panel', channels);
+  moveNode('backoffice-ebay-bulk-panel', channels);
   moveNode('backoffice-tcg-sync-panel', channels);
   moveNode('backoffice-system-panel', backoffice);
   moveNode('backoffice-ops-panel', backoffice);
@@ -5576,7 +5595,7 @@ function cleanupEmptyWorkflowRows(){
     show.style.maxWidth = '960px';
     show.style.margin = '0 auto 14px';
   }
-  ['register-quick-panel','register-scan-panel','register-buy-panel','backoffice-ebay-panel','backoffice-tcg-sync-panel'].forEach(id => {
+  ['register-quick-panel','register-scan-panel','register-buy-panel','backoffice-ebay-panel','backoffice-ebay-bulk-panel','backoffice-tcg-sync-panel'].forEach(id => {
     const el = document.getElementById(id);
     if(el) {
       el.style.margin = '0 0 14px';
@@ -8230,6 +8249,7 @@ function applyVendorConfig(){
   show('register-buy-panel', cfg.modules.buy && manager);
   show('register-eod-panel', cfg.modules.closeout && manager);
   show('backoffice-ebay-panel', cfg.modules.ebay && manager);
+  show('backoffice-ebay-bulk-panel', cfg.modules.ebay && manager);
   show('backoffice-system-panel', cfg.modules.backup && ownerAdmin);
   show('backoffice-ops-panel', cfg.modules.ops && manager);
   show('backoffice-tcg-sync-panel', cfg.modules.pricingSync && manager);
@@ -16737,11 +16757,7 @@ function toast_dash(msg, ms = 2500){
   setTimeout(() => t.remove(), ms);
 }
 
-function openEbayFromDash(id){
-  const item=all.find(i=>i.id===id);
-  if(!item){ toast_dash('Could not find that inventory item'); return; }
-  toast_dash('Opening eBay listing form...');
-  const esc = v => String(v||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+function computeEbayListingFields(item){
   const condLabelMap = {
     '05cbd3bb538b65343a8f40c0fbe31282':'Near Mint',
     '80fd49b88449644f4d07b359e1605285':'Lightly Played',
@@ -16757,7 +16773,7 @@ function openEbayFromDash(id){
   const cat = item.category || 'Sports';
   const isComic = cat === 'Comic';
   const isTCG = cat === 'TCG';
-  const isGraded = cat === 'Graded' || item.grader || item.grade;
+  const isGraded = cat === 'Graded' || !!item.grader || !!item.grade;
   const catId = isComic ? '259104' : (isSealed && cat === 'Sports') ? '261329' : isTCG ? '183454' : '261328';
   const conditionId = isGraded ? '2750' : '3000';
   const title = [item.year && !lowerName.includes(String(item.year)) ? item.year : null,item.name,item.set && !lowerName.includes(String(item.set).toLowerCase()) ? item.set : null,item.variant,item.card_number?'#'+item.card_number:null,isGraded?[item.grader,item.grade].filter(Boolean).join(' '):null,item.isRookie?'RC':null]
@@ -16781,6 +16797,68 @@ function openEbayFromDash(id){
     '',
     getVendorProfile().ebayShippingLine
   ].filter(Boolean).join('\n');
+  return {condText, isSealed, inferManufacturer, inferConfig, cat, isComic, isTCG, isGraded, catId, conditionId, title, price, desc};
+}
+
+async function generateAiEbayDescription(item, fields){
+  const facts = [
+    fields.title,
+    item.category ? 'Category: '+item.category : '',
+    item.year ? 'Year: '+item.year : '',
+    item.set ? 'Set/Series: '+item.set : '',
+    item.variant ? 'Variant/Parallel: '+item.variant : '',
+    fields.condText ? 'Condition: '+fields.condText : '',
+    item.card_number ? 'Card #: '+item.card_number : '',
+    item.serial_number ? 'Serial #: '+item.serial_number : '',
+    item.player ? 'Player/Character: '+item.player : '',
+    item.team ? 'Team: '+item.team : '',
+    item.issue ? 'Issue #: '+item.issue : '',
+    item.publisher ? 'Publisher: '+item.publisher : '',
+    fields.isGraded ? 'Grade: '+[item.grader,item.grade].filter(Boolean).join(' ') : '',
+    item.isRookie ? 'Rookie card' : '',
+    fields.isSealed ? 'Factory sealed' : '',
+  ].filter(Boolean).join('\n');
+  const prompt = 'Write an eBay listing description for this collectible using ONLY the facts below -- do not invent details that are not listed. '
+    + 'Keep it under 150 words, factual, and SEO-friendly for eBay search. Plain text only, no markdown headers or asterisks. '
+    + 'A short intro line followed by a brief bullet list of specifics is fine. Do not include a title line or a shipping line, those are added separately.\n\nFacts:\n' + facts;
+  const res = await storeWorkerFetch('/anthropic/messages', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({
+      model:'claude-haiku-4-5-20251001',
+      max_tokens: 400,
+      messages:[{role:'user', content: prompt}],
+    }),
+  });
+  const data = await res.json().catch(()=>({}));
+  if(!res.ok) throw new Error(data.error || ('AI request failed: HTTP '+res.status));
+  const block = Array.isArray(data.content) ? data.content.find(b=>b.type==='text') : null;
+  const text = block?.text?.trim();
+  if(!text) throw new Error('AI returned no description');
+  return text + '\n\n' + getVendorProfile().ebayShippingLine;
+}
+
+async function generateAiEbayDescriptionForModal(id){
+  const item=all.find(i=>i.id===id); if(!item) return;
+  const ta = document.getElementById('dash-eb-desc');
+  const status = document.getElementById('dash-eb-status');
+  if(status){ status.style.display='block'; status.style.color='var(--gold)'; status.style.border='1px solid rgba(255,209,102,.25)'; status.style.background='rgba(255,209,102,.06)'; status.textContent='Generating AI description...'; }
+  try{
+    const fields = computeEbayListingFields(item);
+    const desc = await generateAiEbayDescription(item, fields);
+    if(ta) ta.value = desc;
+    if(status) status.style.display='none';
+  }catch(e){
+    if(status){ status.style.color='var(--red)'; status.style.border='1px solid rgba(255,77,109,.25)'; status.style.background='rgba(255,77,109,.06)'; status.textContent='AI description failed: '+e.message+' (kept existing description)'; }
+  }
+}
+
+function openEbayFromDash(id){
+  const item=all.find(i=>i.id===id);
+  if(!item){ toast_dash('Could not find that inventory item'); return; }
+  toast_dash('Opening eBay listing form...');
+  const esc = v => String(v||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+  const {condText, isSealed, inferManufacturer, inferConfig, cat, isComic, isTCG, isGraded, catId, conditionId, title, price, desc} = computeEbayListingFields(item);
 
   document.getElementById('dash-ebay-modal')?.remove();
   const modal=document.createElement('div');
@@ -16830,7 +16908,10 @@ function openEbayFromDash(id){
           <div><label style="font-family:monospace;font-size:8px;color:var(--dim)">GRADE / CERT</label><input id="dash-eb-grade" value="${esc([item.grade,item.cert_number].filter(Boolean).join(' Cert '))}" style="width:100%;margin-top:3px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:7px;border-radius:6px;box-sizing:border-box"></div>
         </div>
       </details>
-      <label style="font-family:monospace;font-size:9px;color:var(--dim)">DESCRIPTION</label>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <label style="font-family:monospace;font-size:9px;color:var(--dim)">DESCRIPTION</label>
+        <button class="hbtn" style="padding:4px 8px;font-size:9px" onclick="generateAiEbayDescriptionForModal('${id}')">✨ AI DESCRIPTION</button>
+      </div>
       <textarea id="dash-eb-desc" rows="8" style="width:100%;margin-top:4px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:9px;border-radius:6px;box-sizing:border-box;resize:vertical">${desc}</textarea>
       <div id="dash-eb-status" style="display:none;margin:10px 0;padding:10px;border-radius:6px;font-family:monospace;font-size:10px;text-align:center"></div>
       <div style="display:flex;gap:8px;margin-top:12px">
@@ -16915,6 +16996,110 @@ async function submitDashboardEbayListing(id){
     status.style.color='var(--red)'; status.style.border='1px solid rgba(255,77,109,.25)'; status.style.background='rgba(255,77,109,.06)';
     status.textContent=e.message;
   }
+}
+
+function renderEbayBulkList(){
+  const host = document.getElementById('ebay-bulk-list');
+  if(!host) return;
+  const items = all.filter(i => i.status==='in_stock' && i.lifecycle !== 'archived' && !inventoryIsListed(i));
+  const countEl = document.getElementById('ebay-bulk-count');
+  if(countEl) countEl.textContent = items.length + ' listable';
+  if(!items.length){
+    host.innerHTML = '<div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);padding:10px;border:1px dashed var(--border);border-radius:8px;text-align:center">No in-stock items are waiting to be listed.</div>';
+    return;
+  }
+  host.innerHTML = items.map(i => {
+    const money = inventoryProfitStats(i);
+    const price = money.list>0?money.list:money.market;
+    const thumbSrc = inventoryImageUrl(i);
+    return `<label style="display:flex;align-items:center;gap:8px;padding:6px;border:1px solid var(--border);border-radius:6px;cursor:pointer">
+      <input type="checkbox" class="ebay-bulk-cb" value="${i.id}">
+      ${thumbSrc?`<img src="${escHtml(thumbSrc)}" style="width:32px;height:40px;object-fit:cover;border-radius:4px;flex-shrink:0" loading="lazy">`:'<div style="width:32px;height:40px;background:#050507;border-radius:4px;flex-shrink:0"></div>'}
+      <div style="flex:1;min-width:0">
+        <div style="font-family:var(--font-mono);font-size:11px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(i.name||'Untitled')}</div>
+        <div style="font-family:var(--font-mono);font-size:9px;color:var(--dim)">${escHtml(i.category||'')}${price?' · '+fd$(price):''}</div>
+      </div>
+    </label>`;
+  }).join('');
+}
+
+function toggleEbayBulkSelectAll(checked){
+  document.querySelectorAll('.ebay-bulk-cb').forEach(cb => cb.checked = checked);
+}
+
+async function runEbayBulkListing(){
+  const ids = Array.from(document.querySelectorAll('.ebay-bulk-cb:checked')).map(cb => cb.value);
+  const resultsHost = document.getElementById('ebay-bulk-results');
+  if(!ids.length){ toast_dash('Check at least one item first'); return; }
+  const useAi = !!document.getElementById('ebay-bulk-use-ai')?.checked;
+  if(resultsHost) resultsHost.innerHTML = '';
+  for(const id of ids){
+    const item = all.find(i => i.id === id);
+    if(!item) continue;
+    const row = document.createElement('div');
+    row.style.cssText = 'font-family:var(--font-mono);font-size:10px;padding:8px;border-radius:6px;border:1px solid var(--border);color:var(--dim)';
+    row.textContent = (item.name||'Item') + ': working...';
+    resultsHost?.prepend(row);
+    try{
+      const fields = computeEbayListingFields(item);
+      if(!fields.title || !(fields.price>0)) throw new Error('Missing title or price -- edit the item first');
+      let desc = fields.desc;
+      if(useAi){
+        try { desc = await generateAiEbayDescription(item, fields); }
+        catch(_) { /* AI unavailable -- fall back to the standard template description */ }
+      }
+      const payload = {
+        title: fields.title,
+        description: desc,
+        price: fields.price.toFixed(2),
+        format: 'FIXED_PRICE',
+        conditionId: fields.conditionId,
+        conditionDescription: fields.isGraded ? [item.grader,item.grade].filter(Boolean).join(' ') : fields.condText,
+        duration: 'GTC',
+        quantity: Math.max(1, item.qty||1),
+        categoryId: fields.catId,
+        imageUrl: item.thumbnail||null,
+        imageUrls: [item.thumbnail, ...(Array.isArray(item.photos)?item.photos:[])].filter(Boolean),
+        sport: item.sport || '',
+        year: item.year || '',
+        manufacturer: fields.inferManufacturer,
+        set: item.set || '',
+        parallel: item.variant || '',
+        cardNumber: item.card_number || item.issue || '',
+        player: item.player || item.name || '',
+        team: item.team || '',
+        grade: item.grade || '',
+        grader: item.grader || '',
+        isRookie: !!item.isRookie,
+        serialNumber: item.serial_number || '',
+        upc: '',
+        features: [item.isRookie?'Rookie':null,item.is_auto?'Autograph':null,fields.isSealed?'Sealed':''].filter(Boolean).join(', '),
+        productType: fields.isSealed ? 'sealed' : (fields.isComic ? 'comic' : 'single'),
+        configuration: fields.inferConfig,
+        customAspects: {
+          'Product': fields.isSealed ? 'Box' : '',
+          'Configuration': fields.inferConfig || (fields.isSealed ? 'Box' : ''),
+          'Card Size': 'Standard',
+          'Language': 'English',
+        },
+      };
+      const res = await storeWorkerFetch('/ebay/list', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
+      const data = await res.json().catch(()=>({}));
+      if(!res.ok || !data.listingId){
+        const msg = data.error || ('eBay error '+res.status);
+        throw new Error(/invalid access token|authorization/i.test(msg) ? 'eBay token expired -- reconnect above' : msg);
+      }
+      setLifecycle(id, 'listed_online', true);
+      logOpsEvent('ebay_listing', 'Bulk listed on eBay: ' + fields.title, {itemId:id, listingId:data.listingId, offerId:data.offerId||'', sku:data.sku||'', price:fields.price.toFixed(2)});
+      row.style.color = 'var(--g)'; row.style.borderColor='rgba(0,255,179,.25)'; row.style.background='rgba(0,255,179,.06)';
+      row.innerHTML = escHtml(item.name||'Item') + ': listed -- <a href="https://www.ebay.com/itm/'+data.listingId+'" target="_blank" style="color:var(--g)">view</a>';
+    }catch(e){
+      row.style.color = 'var(--red)'; row.style.borderColor='rgba(255,77,109,.25)'; row.style.background='rgba(255,77,109,.06)';
+      row.textContent = (item.name||'Item') + ': ' + e.message;
+    }
+  }
+  renderEbayBulkList();
+  toast_dash('Bulk eBay listing finished');
 }
 
 // ══════════════════════════════════════════════════
