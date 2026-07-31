@@ -2955,6 +2955,47 @@ export default {
       });
     }
 
+    if (url.pathname === '/ebay/condition-policies') {
+      if (request.method !== 'GET') return json({ error: 'GET only' }, 405);
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId, ['owner','admin']);
+      if (auth.error) return auth.error;
+      const categoryId = (url.searchParams.get('categoryId') || '').trim();
+      if (!/^\d+$/.test(categoryId)) return json({ error: 'categoryId is required' }, 400);
+      let ebayToken = '';
+      try { ebayToken = await getEbayUserAccessToken(env); }
+      catch (tokenErr) { return json({ needsToken: true, error: tokenErr.message }, 401); }
+      if (!ebayToken) return json({ needsToken: true, error: 'Connect eBay first: missing user access/refresh token' }, 401);
+
+      try {
+        const res = await fetch(`https://api.ebay.com/sell/metadata/v1/marketplace/EBAY_US/get_item_condition_policies?filter=${encodeURIComponent('categoryIds:{' + categoryId + '}')}`, {
+          headers: { 'Authorization': 'Bearer ' + ebayToken },
+        });
+        const txt = await res.text();
+        let data; try { data = JSON.parse(txt); } catch (_) { data = { raw: txt }; }
+        if (!res.ok) {
+          const msg = data?.errors?.[0]?.longMessage || data?.errors?.[0]?.message || txt.substring(0, 300);
+          return json({ ok: false, error: 'Condition policy lookup failed (' + res.status + '): ' + msg }, res.status);
+        }
+        const policy = (data.itemConditionPolicies || [])[0] || {};
+        const conditions = (policy.itemConditions || [])
+          .map(c => ({ id: String(c.conditionId || ''), label: c.conditionDescription || '' }))
+          .filter(c => c.id);
+        const descriptors = (policy.itemConditionDescriptors || [])
+          .map(d => ({
+            id: String(d.conditionDescriptorId || ''),
+            name: d.conditionDescriptorName || '',
+            values: (d.conditionDescriptorValues || [])
+              .map(v => ({ value: String(v.value || ''), label: v.displayValue || v.value || '' }))
+              .filter(v => v.value),
+          }))
+          .filter(d => d.id);
+        return json({ ok: true, categoryId, conditions, descriptors });
+      } catch (e) {
+        return json({ ok: false, error: 'Condition policy lookup failed: ' + e.message }, 502);
+      }
+    }
+
     if (url.pathname === '/ebay/list') {
       if (request.method !== 'POST') return json({ error: 'POST only' }, 405);
       const storeId = requestStoreId(request, url);
@@ -2970,7 +3011,8 @@ export default {
         const {
           title, description, price, shippingCost = '0.00',
           format = 'FIXED_PRICE', conditionId = '3000',
-          conditionDescription = '', duration = 'GTC',
+          conditionDescription = '', conditionDescriptors = [],
+          duration = 'GTC',
           quantity = 1, categoryId = '261328',
           imageUrl = null, imageUrls = [],
           sport = '', year = '', manufacturer = '',
@@ -3045,6 +3087,12 @@ export default {
           },
           conditionId: String(conditionId),
           conditionDescription: conditionDescription || undefined,
+          conditionDescriptors: (() => {
+            const cleaned = (Array.isArray(conditionDescriptors) ? conditionDescriptors : [])
+              .map(d => ({ name: String(d?.name || ''), values: (Array.isArray(d?.values) ? d.values : [d?.values]).map(v => String(v || '')).filter(Boolean) }))
+              .filter(d => d.name && d.values.length);
+            return cleaned.length ? cleaned : undefined;
+          })(),
           availability: { shipToLocationAvailability: { quantity: parseInt(quantity) || 1 } },
           packageWeightAndSize: {
             dimensions: { height: 0.1, length: 6.5, width: 4, unit: 'INCH' },
