@@ -14502,10 +14502,17 @@ function renderCats(){
   if(panelEl){
     panelEl.innerHTML = cats.map((c,idx)=>{
       const items=ins.filter(i=>i.category===c);
+      // Same "at our real price" math as the Home stat cards (floor/
+      // override/signature applied), scoped to just this category.
+      const catCost=items.reduce((a,i)=>a+(i.cost||0)*(i.qty||1),0);
+      const catSellVal=items.reduce((a,i)=>a+inventoryListPrice(i)*(i.qty||1),0);
+      const catPotentialRoi=catCost>0?((catSellVal-catCost)/catCost*100):0;
       return `<div class="cp" onclick="filterAndSwitch('${escHtml(c)}')">
         <div class="cp-n">${escHtml(c).toUpperCase()}</div>
         <div class="cp-v">${items.length}</div>
         <div class="cp-s">${f$(vals[idx])} value</div>
+        <div class="cp-s">${f$(catCost)} cost · ${f$(catSellVal)} at our price</div>
+        <div class="cp-s" style="color:${catPotentialRoi<0?'var(--red)':'var(--g)'}">${catPotentialRoi>=0?'+':''}${catPotentialRoi.toFixed(0)}% potential ROI</div>
         <div class="cp-bar"><div class="cp-bar-fill" style="width:${(vals[idx]/maxVal*100).toFixed(1)}%;background:${catColors[c]}"></div></div>
       </div>`;
     }).join('');
