@@ -4253,6 +4253,8 @@ const DEMO_VENDOR_PROFILE_DEFAULTS = {
   defaultShowMarkdown:0,
   receiptFooter:'Thank you for shopping with us!',
   ebayShippingLine:'',
+  ebayCategoryMap:{},
+  ebayDescriptionTemplate:'',
   paymentMethods:'Cash accepted',
   venmo:'', paypal:'', cashapp:'',
 };
@@ -4364,6 +4366,8 @@ const DEFAULT_VENDOR_PROFILE = {
   defaultShowMarkdown:0,
   receiptFooter:'Thank you for shopping with us!',
   ebayShippingLine:'',
+  ebayCategoryMap:{},
+  ebayDescriptionTemplate:'',
   paymentMethods:'Cash, card, Venmo, or QR pay accepted',
   venmo:'',
   paypal:'',
@@ -4547,6 +4551,10 @@ async function saveVendorProfile(profile){
   // silent failure (offline, RLS, non-owner/admin role) left this device
   // looking saved while every other device never received the change.
   const cloudSaved = await saveStoreSettingsToSupabase({
+    // The receipt_settings column is a plain upsert (full replace, not a merge),
+    // so this must always carry every profile field -- a narrower explicit list
+    // here would silently erase whatever savePaymentSettings() last wrote (and
+    // vice versa), since both functions write the same column.
     receipt_settings:{
       storeName:next.storeName,
       shortName:next.shortName,
@@ -4557,10 +4565,15 @@ async function saveVendorProfile(profile){
       logo:next.logo,
       receiptFooter:next.receiptFooter,
       ebayShippingLine:next.ebayShippingLine,
+      ebayCategoryMap:next.ebayCategoryMap || {},
+      ebayDescriptionTemplate:next.ebayDescriptionTemplate || '',
       paymentMethods:next.paymentMethods,
       taxRate:Number(next.taxRate || 0),
       storefrontEnabled:next.storefrontEnabled === true,
       storefrontMessage:next.storefrontMessage || '',
+      venmo:next.venmo || '',
+      paypal:next.paypal || '',
+      cashapp:next.cashapp || '',
     },
     theme:{ accent:next.themeAccent || '#00ffb3', logo:next.logo || '' }
   });
@@ -5208,14 +5221,31 @@ function savePaymentSettings(settings){
   applyVendorProfile();
   renderPaymentSettingsPanel();
   renderCustomerDisplay();
+  // receipt_settings is a plain upsert (full replace, not a merge) -- must carry
+  // every profile field or this silently erases whatever saveVendorProfile() last
+  // wrote there (storeName, ebayShippingLine, ebayCategoryMap, etc).
+  const next = getVendorProfile();
   saveStoreSettingsToSupabase({
     payment_settings:settings,
     receipt_settings:{
-      receiptFooter:settings.receipt?.footer || '',
-      venmo:settings.venmo?.handle || '',
-      paypal:settings.paypal?.emailOrHandle || '',
-      cashapp:settings.cashApp?.cashtag || '',
-      taxRate:Number(settings.tax?.defaultRate || 0),
+      storeName:next.storeName,
+      shortName:next.shortName,
+      location:next.location,
+      website:next.website,
+      phone:next.phone,
+      email:next.email,
+      logo:next.logo,
+      receiptFooter:next.receiptFooter,
+      ebayShippingLine:next.ebayShippingLine,
+      ebayCategoryMap:next.ebayCategoryMap || {},
+      ebayDescriptionTemplate:next.ebayDescriptionTemplate || '',
+      paymentMethods:next.paymentMethods,
+      taxRate:Number(next.taxRate || 0),
+      storefrontEnabled:next.storefrontEnabled === true,
+      storefrontMessage:next.storefrontMessage || '',
+      venmo:next.venmo || '',
+      paypal:next.paypal || '',
+      cashapp:next.cashapp || '',
     }
   });
   logOpsEvent('payment_settings', 'Updated store payment settings', { storeId:getActiveStoreId() });
@@ -5763,7 +5793,35 @@ function renderVendorProfilePanel(){
       <label style="display:flex;align-items:center;gap:8px;font-family:var(--font-mono);font-size:11px;margin-bottom:10px"><input id="vp-storefrontEnabled" type="checkbox" ${p.storefrontEnabled?'checked':''}> Publish this store's available inventory</label>
       <label style="font-family:var(--font-mono);font-size:9px;color:var(--dim)">WELCOME MESSAGE<input id="vp-storefrontMessage" class="tsi" value="${escHtml(p.storefrontMessage||'')}" placeholder="Browse what is available now" style="margin-top:4px"></label>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><button class="hbtn" onclick="saveStorefrontSettings()">SAVE STOREFRONT</button><button class="hbtn" onclick="window.open('${escHtml(storefrontUrl.href)}','_blank')">OPEN PUBLIC PAGE</button><button class="hbtn" onclick="copyStorefrontLink('${encodeURIComponent(storefrontUrl.href)}')">COPY LINK</button><button class="hbtn" onclick="showStorefrontQr('${encodeURIComponent(storefrontUrl.href)}')">SHOW QR CODE</button><code style="font-size:9px;color:var(--dim);word-break:break-all">${escHtml(storefrontUrl.href)}</code></div>
+    </div>
+    <div style="margin-top:14px;padding:14px;border:1px solid var(--border);border-radius:10px;background:var(--surf2)">
+      <div style="font-family:'Orbitron',monospace;font-size:11px;color:var(--gold);margin-bottom:7px">EBAY LISTING SETTINGS</div>
+      <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);line-height:1.6;margin-bottom:10px">Map each of your inventory categories to the exact eBay category ID it should list under -- leave one blank to use the built-in Sports/TCG/Comics guess or be asked for an ID at listing time.</div>
+      <div style="display:grid;grid-template-columns:1fr 140px;gap:8px;margin-bottom:12px;align-items:center">
+        ${getInventoryCategories().map(c => `<div style="font-family:var(--font-mono);font-size:11px;color:var(--text)">${escHtml(c)}</div><input class="tsi vp-ebaycat-input" data-cat="${escHtml(c)}" value="${escHtml((p.ebayCategoryMap||{})[c]||'')}" placeholder="eBay category ID" style="margin:0">`).join('')}
+      </div>
+      <label style="font-family:var(--font-mono);font-size:9px;color:var(--dim)">DESCRIPTION TEMPLATE -- tokens: {title} {category} {year} {set} {variant} {condition} {cardNumber} {serialNumber} {player} {team} {issue} {publisher} {grade}. A line whose only content is one blank token is dropped automatically; the shipping line above is always appended after this.
+        <textarea id="vp-ebayDescriptionTemplate" class="tsi" style="height:150px;font-family:var(--font-mono);white-space:pre;margin-top:4px" placeholder="${escHtml(DEFAULT_EBAY_DESCRIPTION_TEMPLATE)}">${escHtml(p.ebayDescriptionTemplate||'')}</textarea>
+      </label>
+      <div style="display:flex;gap:8px;margin-top:8px"><button class="hbtn" onclick="saveEbayListingSettings()">SAVE EBAY LISTING SETTINGS</button><button class="hbtn" onclick="resetEbayDescriptionTemplate()">RESET TEMPLATE TO DEFAULT</button></div>
     </div>`;
+}
+
+function resetEbayDescriptionTemplate(){
+  const ta = document.getElementById('vp-ebayDescriptionTemplate');
+  if(ta) ta.value = '';
+}
+
+function saveEbayListingSettings(){
+  const ebayCategoryMap = {};
+  document.querySelectorAll('.vp-ebaycat-input').forEach(inp => {
+    const cat = inp.dataset.cat;
+    const val = inp.value.trim();
+    if(cat && val) ebayCategoryMap[cat] = val;
+  });
+  const ebayDescriptionTemplate = document.getElementById('vp-ebayDescriptionTemplate')?.value || '';
+  saveVendorProfile({ ebayCategoryMap, ebayDescriptionTemplate });
+  toast_dash('eBay listing settings saved');
 }
 
 function saveStorefrontSettings(){
@@ -10969,7 +11027,8 @@ function renderCardView(){
         <div class="inv-card-actions">
           ${ins ? `<button class="rab rab-cart" onclick="dashAddToCart('${i.id}')">ADD TO CART</button>` : '<div style="grid-column:1/-1;text-align:center;font-family:monospace;font-size:10px;color:var(--dim);padding:8px">SOLD</div>'}
           <button class="rab rab-edit" onclick="openEditModal('${i.id}')">EDIT</button>
-          <button class="rab" onclick="openInventoryItemInResearch('${i.id}')" style="grid-column:1/-1;border-color:rgba(0,160,255,.3);color:var(--blue);font-size:10px;min-height:36px">🔍 RESEARCH</button>
+          ${ins ? `<button class="rab" onclick="openEbayFromDash('${i.id}')" style="border-color:rgba(255,209,102,.3);color:var(--gold);font-size:10px;min-height:36px">${i.ebayListingId?'📦 MANAGE EBAY':'📦 LIST EBAY'}</button>` : ''}
+          <button class="rab" onclick="openInventoryItemInResearch('${i.id}')" style="${ins?'':'grid-column:1/-1;'}border-color:rgba(0,160,255,.3);color:var(--blue);font-size:10px;min-height:36px">🔍 RESEARCH</button>
         </div>
       </div>
     </div>`;
@@ -11014,7 +11073,7 @@ function showInvRowMenu(e, id, isInStock){
     `<div style="font-family:monospace;font-size:8px;color:var(--dim);padding:2px 6px 6px;letter-spacing:.06em">MORE ACTIONS</div>`,
     `<button class="hbtn" style="${btnStyle};color:var(--g)" onclick="openInventoryTcgplayer('${id}');this.closest('.inv-row-menu').remove()">🛒 TCGplayer</button>`,
     `<button class="hbtn" style="${btnStyle};color:var(--blue)" onclick="openInventoryItemInResearch('${id}');this.closest('.inv-row-menu').remove()">🔍 Research</button>`,
-    `<button class="hbtn" style="${btnStyle}" onclick="openEbayFromDash('${id}');this.closest('.inv-row-menu').remove()">📦 eBay List</button>`,
+    `<button class="hbtn" style="${btnStyle}" onclick="openEbayFromDash('${id}');this.closest('.inv-row-menu').remove()">📦 ${item?.ebayListingId?'Manage eBay Listing':'eBay List'}</button>`,
     `<button class="hbtn" style="${btnStyle}" onclick="showItemHistory?.('${id}');this.closest('.inv-row-menu').remove()">📋 History</button>`,
     `<button class="hbtn" style="${btnStyle};color:var(--blue)" onclick="sendInventoryItemToAuthCheck('${id}');this.closest('.inv-row-menu').remove()">✓ Authentication Check</button>`,
     isInStock?`<button class="hbtn" style="${btnStyle};color:var(--g)" onclick="publishInventoryItemToWebflow('${id}');this.closest('.inv-row-menu').remove()">🌐 Publish / Sync Webflow</button>`:'',
@@ -16785,12 +16844,21 @@ async function refreshEbayConditionUi(prefix, item){
   const fields = computeEbayListingFields(item);
   const condSelect = (optionsHtml) => `<select id="${prefix}-condition" style="width:100%;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:8px;border-radius:6px;box-sizing:border-box" onchange="refreshEbayConditionUi('${prefix}', all.find(i=>i.id==='${item.id}'))">${optionsHtml}</select>`;
   if(!isEbayTradingCardCategory(catId)){
+    const keep = prevCond || fields.conditionId;
     host.innerHTML = condSelect(`
-      <option value="2750" ${prevCond==='2750'?'selected':''}>Like New / Graded</option>
-      <option value="3000" ${(prevCond||fields.conditionId)==='3000'?'selected':''}>Very Good</option>
-      <option value="4000" ${prevCond==='4000'?'selected':''}>Good</option>
-      <option value="5000" ${prevCond==='5000'?'selected':''}>Acceptable</option>`)
+      <option value="2750" ${keep==='2750'?'selected':''}>Like New / Graded</option>
+      <option value="3000" ${keep==='3000'?'selected':''}>Very Good</option>
+      <option value="4000" ${keep==='4000'?'selected':''}>Good</option>
+      <option value="5000" ${keep==='5000'?'selected':''}>Acceptable</option>`)
       + `<div id="${prefix}-condition-extra"></div>`;
+    if(!catId) return; // "Other" category -- nothing to look up live conditions for yet
+    // Swap in eBay's own condition list for this specific category once it loads --
+    // more accurate and often more granular (New/Open box/For parts/etc) than the
+    // generic 4-option guess above, which stays as the fallback if the lookup fails.
+    const policy = await fetchEbayConditionPolicies(catId);
+    const sel = document.getElementById(prefix+'-condition');
+    if(!sel || !policy?.conditions?.length) return;
+    sel.innerHTML = policy.conditions.map(c => `<option value="${escHtml(c.id)}" ${c.id===keep?'selected':''}>${escHtml(c.label || c.id)}</option>`).join('');
     return;
   }
   const graded = prevCond ? prevCond === '2750' : fields.isGraded;
@@ -16839,6 +16907,35 @@ function collectEbayConditionDescriptors(prefix, catId, conditionId){
   return out;
 }
 
+const DEFAULT_EBAY_DESCRIPTION_TEMPLATE = `{title}
+
+Category: {category}
+Year: {year}
+Set: {set}
+Variant: {variant}
+Condition: {condition}
+Card #: {cardNumber}
+Serial #: {serialNumber}
+Player: {player}
+Team: {team}
+Issue: {issue}
+Publisher: {publisher}
+Grade: {grade}`;
+
+// A line whose only content is a single {token} that resolves empty for this item is
+// dropped entirely (matches the old hardcoded field-list's .filter(Boolean) behavior),
+// so a customized template doesn't need per-item conditional logic of its own.
+function renderEbayDescriptionTemplate(template, tokens){
+  const lines = String(template || '').split('\n');
+  const out = [];
+  for(const line of lines){
+    const keys = [...line.matchAll(/\{(\w+)\}/g)].map(m => m[1]);
+    if(keys.length && keys.every(k => !tokens[k])) continue;
+    out.push(line.replace(/\{(\w+)\}/g, (_, k) => tokens[k] || ''));
+  }
+  return out.join('\n').trim();
+}
+
 function computeEbayListingFields(item){
   const condLabelMap = {
     '05cbd3bb538b65343a8f40c0fbe31282':'Near Mint',
@@ -16861,29 +16958,23 @@ function computeEbayListingFields(item){
   // actually card/comic-shaped -- anything else (Disney collectibles, funko, etc.) should not
   // get silently mis-listed as Sports Cards, so it resolves to '' and the UI must ask.
   const isKnownCardCategory = isComic || isTCG || cat === 'Sports' || cat === 'Graded';
-  const catId = isComic ? '259104' : (isSealed && cat === 'Sports') ? '261329' : isTCG ? '183454' : isKnownCardCategory ? '261328' : '';
+  // A store can map any of its own categories to an exact eBay category ID (Settings >
+  // Vendor Info > EBAY LISTING SETTINGS) -- that always wins over the built-in guess.
+  const mappedCatId = String((getVendorProfile().ebayCategoryMap || {})[item.category] || '').trim();
+  const catId = mappedCatId || (isComic ? '259104' : (isSealed && cat === 'Sports') ? '261329' : isTCG ? '183454' : isKnownCardCategory ? '261328' : '');
   const conditionId = isGraded ? '2750' : (isEbayTradingCardCategory(catId) ? '4000' : '3000');
   const title = [item.year && !lowerName.includes(String(item.year)) ? item.year : null,item.name,item.set && !lowerName.includes(String(item.set).toLowerCase()) ? item.set : null,item.variant,item.card_number?'#'+item.card_number:null,isGraded?[item.grader,item.grade].filter(Boolean).join(' '):null,item.isRookie?'RC':null]
     .filter(Boolean).join(' ').replace(/\s+/g,' ').substring(0,80);
   const price = Number(item.market || item.salePrice || 0);
-  const desc = [
-    title,
-    '',
-    item.category ? 'Category: '+item.category : '',
-    item.year ? 'Year: '+item.year : '',
-    item.set ? 'Set: '+item.set : '',
-    item.variant ? 'Variant: '+item.variant : '',
-    condText ? 'Condition: '+condText : '',
-    item.card_number ? 'Card #: '+item.card_number : '',
-    item.serial_number ? 'Serial #: '+item.serial_number : '',
-    item.player ? 'Player: '+item.player : '',
-    item.team ? 'Team: '+item.team : '',
-    item.issue ? 'Issue: '+item.issue : '',
-    item.publisher ? 'Publisher: '+item.publisher : '',
-    isGraded ? 'Grade: '+[item.grader,item.grade].filter(Boolean).join(' ') : '',
-    '',
-    getVendorProfile().ebayShippingLine
-  ].filter(Boolean).join('\n');
+  const tokens = {
+    title, category:item.category||'', year:item.year||'', set:item.set||'', variant:item.variant||'',
+    condition:condText||'', cardNumber:item.card_number||'', serialNumber:item.serial_number||'',
+    player:item.player||'', team:item.team||'', issue:item.issue||'', publisher:item.publisher||'',
+    grade:isGraded?[item.grader,item.grade].filter(Boolean).join(' '):'',
+  };
+  const template = getVendorProfile().ebayDescriptionTemplate || DEFAULT_EBAY_DESCRIPTION_TEMPLATE;
+  const bodyText = renderEbayDescriptionTemplate(template, tokens);
+  const desc = [bodyText, getVendorProfile().ebayShippingLine].filter(Boolean).join('\n\n');
   return {condText, isSealed, inferManufacturer, inferConfig, cat, isComic, isTCG, isGraded, catId, conditionId, title, price, desc};
 }
 
@@ -16946,6 +17037,7 @@ function openEbayFromDash(id){
   toast_dash('Opening eBay listing form...');
   const esc = v => String(v||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
   const {condText, isSealed, inferManufacturer, inferConfig, cat, isComic, isTCG, isGraded, catId, conditionId, title, price, desc} = computeEbayListingFields(item);
+  const isManaging = !!(item.ebayListingId && item.ebayOfferId && item.ebaySku);
 
   document.getElementById('dash-ebay-modal')?.remove();
   const modal=document.createElement('div');
@@ -16954,9 +17046,10 @@ function openEbayFromDash(id){
   modal.innerHTML=`
     <div style="width:100%;max-width:560px;background:var(--surf);border:1px solid var(--border);border-radius:10px;padding:16px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-        <div style="font-family:'Orbitron',monospace;color:var(--gold);font-size:13px;letter-spacing:2px">LIST INVENTORY ON EBAY</div>
+        <div style="font-family:'Orbitron',monospace;color:var(--gold);font-size:13px;letter-spacing:2px">${isManaging?'MANAGE EBAY LISTING':'LIST INVENTORY ON EBAY'}</div>
         <button onclick="document.getElementById('dash-ebay-modal').remove()" style="background:none;border:none;color:var(--dim);font-size:22px;cursor:pointer">×</button>
       </div>
+      ${isManaging?`<div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);margin-bottom:10px;line-height:1.55">eBay's own app can't edit listings created through this tool's API, so changes here go straight to eBay. <a href="https://www.ebay.com/itm/${esc(item.ebayListingId)}" target="_blank" style="color:var(--g)">View live listing</a></div>`:''}
       <div style="display:grid;grid-template-columns:80px 1fr;gap:12px;margin-bottom:12px;align-items:start">
         ${item.thumbnail?`<img src="${item.thumbnail}" style="width:80px;height:100px;object-fit:contain;background:#050507;border:1px solid var(--border);border-radius:6px">`:`<div style="width:80px;height:100px;background:#050507;border:1px solid var(--border);border-radius:6px;display:flex;align-items:center;justify-content:center;color:var(--dim);font-family:monospace;font-size:9px">NO IMAGE</div>`}
         <div>
@@ -17002,9 +17095,12 @@ function openEbayFromDash(id){
       <textarea id="dash-eb-desc" rows="8" style="width:100%;margin-top:4px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:9px;border-radius:6px;box-sizing:border-box;resize:vertical">${desc}</textarea>
       <div id="dash-eb-status" style="display:none;margin:10px 0;padding:10px;border-radius:6px;font-family:monospace;font-size:10px;text-align:center"></div>
       <div style="display:flex;gap:8px;margin-top:12px">
-        <button class="hbtn" style="flex:1;padding:12px;background:rgba(255,209,102,.12);border-color:rgba(255,209,102,.35);color:var(--gold)" onclick="submitDashboardEbayListing('${id}')">LIST ON EBAY</button>
+        ${isManaging
+          ? `<button class="hbtn" style="flex:1;padding:12px;background:rgba(255,209,102,.12);border-color:rgba(255,209,102,.35);color:var(--gold)" onclick="updateDashboardEbayListing('${id}')">UPDATE LISTING</button>`
+          : `<button class="hbtn" style="flex:1;padding:12px;background:rgba(255,209,102,.12);border-color:rgba(255,209,102,.35);color:var(--gold)" onclick="submitDashboardEbayListing('${id}')">LIST ON EBAY</button>`}
         <button class="hbtn" style="padding:12px" onclick="document.getElementById('dash-ebay-modal').remove()">CANCEL</button>
       </div>
+      ${isManaging?`<button class="hbtn" style="width:100%;margin-top:8px;padding:10px;background:rgba(255,77,109,.08);border-color:rgba(255,77,109,.25);color:var(--red)" onclick="endDashboardEbayListing('${id}')">END LISTING ON EBAY</button>`:''}
     </div>`;
   document.body.appendChild(modal);
   refreshEbayConditionUi('dash-eb', item);
@@ -17019,21 +17115,19 @@ function openEbayFromDash(id){
   });
 }
 
-async function submitDashboardEbayListing(id){
-  const item=all.find(i=>i.id===id); if(!item) return;
-  const status=document.getElementById('dash-eb-status');
+// Shared by submitDashboardEbayListing (new listing) and updateDashboardEbayListing
+// (revise a live one) -- both read the exact same dash-eb-* form fields.
+function collectDashboardEbayFormPayload(item){
   const title=document.getElementById('dash-eb-title').value.trim();
   const price=parseFloat(document.getElementById('dash-eb-price').value)||0;
-  if(!title || price<0.99){ toast_dash('eBay listing needs title and price'); return; }
+  if(!title || price<0.99) return { error:'eBay listing needs title and price' };
   const categoryId=(document.getElementById('dash-eb-category-id')?.value.trim() || document.getElementById('dash-eb-category').value);
-  if(!categoryId){ toast_dash('eBay needs a specific category -- pick one above or enter an eBay category ID in LISTING DETAILS'); return; }
+  if(!categoryId) return { error:'eBay needs a specific category -- pick one above or enter an eBay category ID in LISTING DETAILS' };
   const listConditionId=document.getElementById('dash-eb-condition')?.value || '3000';
   const conditionDescriptors=collectEbayConditionDescriptors('dash-eb', categoryId, listConditionId);
   if(isEbayTradingCardCategory(categoryId) && !conditionDescriptors.length){
-    toast_dash('eBay requires condition details for this category -- fill in the condition fields first');
-    return;
+    return { error:'eBay requires condition details for this category -- fill in the condition fields first' };
   }
-  status.style.display='block'; status.style.color='var(--gold)'; status.style.border='1px solid rgba(255,209,102,.25)'; status.style.background='rgba(255,209,102,.06)'; status.textContent='Creating eBay listing...';
   const payload={
     title,
     description:document.getElementById('dash-eb-desc').value,
@@ -17070,6 +17164,15 @@ async function submitDashboardEbayListing(id){
       'Language':'English',
     },
   };
+  return { payload };
+}
+
+async function submitDashboardEbayListing(id){
+  const item=all.find(i=>i.id===id); if(!item) return;
+  const status=document.getElementById('dash-eb-status');
+  const { payload, error } = collectDashboardEbayFormPayload(item);
+  if(error){ toast_dash(error); return; }
+  status.style.display='block'; status.style.color='var(--gold)'; status.style.border='1px solid rgba(255,209,102,.25)'; status.style.background='rgba(255,209,102,.06)'; status.textContent='Creating eBay listing...';
   try{
     const res=await storeWorkerFetch('/ebay/list',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
     const data=await res.json().catch(()=>({}));
@@ -17081,17 +17184,68 @@ async function submitDashboardEbayListing(id){
     status.style.color='var(--g)'; status.style.border='1px solid rgba(0,255,179,.25)'; status.style.background='rgba(0,255,179,.06)';
     status.innerHTML='Listed on eBay<br><a href="https://www.ebay.com/itm/'+data.listingId+'" target="_blank" style="color:var(--g)">View listing</a>';
     setLifecycle(id, 'listed_online', true);
-    logOpsEvent('ebay_listing', 'Listed on eBay: ' + title, {
+    // Best-effort -- lets a later "MANAGE EBAY LISTING" open in edit/end mode.
+    // A failure here shouldn't block the listing itself; it just means the item
+    // opens as a fresh listing form again next time instead of a manage form.
+    try{ await updateBuiltInInventoryItem(item, { ebayListingId:data.listingId, ebayOfferId:data.offerId||'', ebaySku:data.sku||'', ebayListedAt:new Date().toISOString() }); }catch(_){}
+    logOpsEvent('ebay_listing', 'Listed on eBay: ' + payload.title, {
       itemId: id,
       listingId: data.listingId,
       offerId: data.offerId || '',
       sku: data.sku || '',
-      price: price.toFixed(2),
+      price: payload.price,
     });
     toast_dash('Inventory status set to Listed online');
   }catch(e){
     status.style.color='var(--red)'; status.style.border='1px solid rgba(255,77,109,.25)'; status.style.background='rgba(255,77,109,.06)';
     status.textContent=e.message;
+  }
+}
+
+async function updateDashboardEbayListing(id){
+  const item=all.find(i=>i.id===id); if(!item || !item.ebaySku || !item.ebayOfferId) return;
+  const status=document.getElementById('dash-eb-status');
+  const { payload, error } = collectDashboardEbayFormPayload(item);
+  if(error){ toast_dash(error); return; }
+  payload.sku = item.ebaySku;
+  payload.offerId = item.ebayOfferId;
+  status.style.display='block'; status.style.color='var(--gold)'; status.style.border='1px solid rgba(255,209,102,.25)'; status.style.background='rgba(255,209,102,.06)'; status.textContent='Updating eBay listing...';
+  try{
+    const res=await storeWorkerFetch('/ebay/update',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    const data=await res.json().catch(()=>({}));
+    if(!res.ok || !data.ok){
+      const msg = data.error || ('eBay error '+res.status);
+      if(/invalid access token|authorization/i.test(msg)) throw new Error('eBay token expired or invalid. Use POS Tools > CONNECT EBAY, approve access, then try again. Raw: '+msg);
+      throw new Error(msg);
+    }
+    status.style.color='var(--g)'; status.style.border='1px solid rgba(0,255,179,.25)'; status.style.background='rgba(0,255,179,.06)';
+    status.innerHTML='Listing updated<br><a href="https://www.ebay.com/itm/'+item.ebayListingId+'" target="_blank" style="color:var(--g)">View listing</a>';
+    logOpsEvent('ebay_listing_update', 'Updated eBay listing: ' + payload.title, {
+      itemId: id, listingId: item.ebayListingId, offerId: item.ebayOfferId, sku: item.ebaySku, price: payload.price,
+    });
+    toast_dash('eBay listing updated');
+  }catch(e){
+    status.style.color='var(--red)'; status.style.border='1px solid rgba(255,77,109,.25)'; status.style.background='rgba(255,77,109,.06)';
+    status.textContent=e.message;
+  }
+}
+
+async function endDashboardEbayListing(id){
+  const item=all.find(i=>i.id===id); if(!item || !item.ebayOfferId) return;
+  if(!confirm('End this eBay listing? It will no longer be visible or purchasable on eBay.')) return;
+  const status=document.getElementById('dash-eb-status');
+  if(status){ status.style.display='block'; status.style.color='var(--gold)'; status.style.border='1px solid rgba(255,209,102,.25)'; status.style.background='rgba(255,209,102,.06)'; status.textContent='Ending eBay listing...'; }
+  try{
+    const res=await storeWorkerFetch('/ebay/end',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({offerId:item.ebayOfferId})});
+    const data=await res.json().catch(()=>({}));
+    if(!res.ok || !data.ok){ throw new Error(data.error || ('eBay error '+res.status)); }
+    try{ await updateBuiltInInventoryItem(item, { ebayListingId:'', ebayOfferId:'', ebaySku:'', ebayListedAt:'' }); }catch(_){}
+    setLifecycle(id, 'pulled_ebay', true);
+    logOpsEvent('ebay_listing_end', 'Ended eBay listing', { itemId:id });
+    toast_dash('eBay listing ended');
+    document.getElementById('dash-ebay-modal')?.remove();
+  }catch(e){
+    if(status){ status.style.color='var(--red)'; status.style.border='1px solid rgba(255,77,109,.25)'; status.style.background='rgba(255,77,109,.06)'; status.textContent=e.message; }
   }
 }
 
@@ -17241,6 +17395,7 @@ async function submitEbayBulkReviewItem(id){
       throw new Error(/invalid access token|authorization/i.test(msg) ? 'eBay token expired -- reconnect above' : msg);
     }
     setLifecycle(id, 'listed_online', true);
+    try{ await updateBuiltInInventoryItem(item, { ebayListingId:data.listingId, ebayOfferId:data.offerId||'', ebaySku:data.sku||'', ebayListedAt:new Date().toISOString() }); }catch(_){}
     logOpsEvent('ebay_listing', 'Bulk listed on eBay: ' + title, {itemId:id, listingId:data.listingId, offerId:data.offerId||'', sku:data.sku||'', price:price.toFixed(2)});
     if(status){ status.style.color='var(--g)'; status.innerHTML = 'Listed -- <a href="https://www.ebay.com/itm/'+data.listingId+'" target="_blank" style="color:var(--g)">view listing</a>'; }
     const card = document.querySelector(`.ebay-bulk-review-card[data-item-id="${id}"]`);
