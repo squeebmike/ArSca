@@ -1255,6 +1255,101 @@ async function getEbayUserAccessToken(env) {
   return accessToken || '';
 }
 
+// Shared by /ebay/list and /ebay/update so a listing created one way can be
+// revised the other -- both routes build the exact same aspects/product/offer
+// shape from the same request-body fields.
+function buildEbayAspects(b) {
+  const {
+    sport = '', year = '', manufacturer = '', set = '', parallel = '', cardNumber = '',
+    player = '', team = '', isRookie = false, serialNumber = '', grader = '', grade = '',
+    upc = '', league = '', season = '', productType = '', configuration = '', features = '',
+    customAspects = {},
+  } = b;
+  const aspects = {};
+  if (sport) aspects['Sport'] = [sport];
+  if (year) aspects['Year'] = [String(year)];
+  if (manufacturer) aspects['Manufacturer'] = [manufacturer];
+  if (set) aspects['Set'] = [set];
+  if (parallel && parallel !== 'Base') aspects['Parallel/Variety'] = [parallel];
+  if (cardNumber) aspects['Card Number'] = [String(cardNumber)];
+  if (player) aspects['Player/Athlete'] = [player];
+  if (team) aspects['Team'] = [team];
+  if (isRookie) aspects['Rookie'] = ['Yes'];
+  if (serialNumber) aspects['Serial Numbered'] = [serialNumber];
+  if (grader) aspects['Professional Grader'] = [grader];
+  if (grade) aspects['Grade'] = [String(grade)];
+  if (upc) aspects['UPC'] = [String(upc)];
+  if (league) aspects['League'] = [league];
+  if (season) aspects['Season'] = [String(season)];
+  if (productType) aspects['Type'] = [productType === 'sealed' ? 'Sports Trading Card Box' : productType];
+  if (configuration) aspects['Configuration'] = [configuration];
+  if (features) {
+    const featureList = String(features).split(',').map(s => s.trim()).filter(Boolean);
+    if (featureList.length) aspects['Features'] = featureList;
+  }
+  for (const [k, v] of Object.entries(customAspects || {})) {
+    if (!k || v == null || v === '') continue;
+    const values = Array.isArray(v) ? v.map(x => String(x || '').trim()).filter(Boolean) : [String(v || '').trim()].filter(Boolean);
+    if (values.length) aspects[k] = values;
+  }
+  aspects['Sport'] = aspects['Sport'] || ['Trading Cards'];
+  for (const [k, v] of Object.entries({ ...aspects })) {
+    if (!Array.isArray(v) || !v.length || v.some(x => x == null || String(x).trim() === '')) delete aspects[k];
+  }
+  return aspects;
+}
+
+function buildEbayInventoryItemBody(b) {
+  const {
+    title, description, conditionId = '3000', conditionDescription = '', conditionDescriptors = [],
+    quantity = 1, imageUrl = null, imageUrls = [],
+  } = b;
+  const allImgUrls = [];
+  if (imageUrl) allImgUrls.push(imageUrl);
+  (imageUrls || []).forEach(u => { if (u && !allImgUrls.includes(u)) allImgUrls.push(u); });
+  return {
+    product: {
+      title: String(title || '').substring(0, 80),
+      description: description || title,
+      aspects: buildEbayAspects(b),
+      imageUrls: allImgUrls.slice(0, 12),
+    },
+    conditionId: String(conditionId),
+    conditionDescription: conditionDescription || undefined,
+    conditionDescriptors: (() => {
+      const cleaned = (Array.isArray(conditionDescriptors) ? conditionDescriptors : [])
+        .map(d => ({ name: String(d?.name || ''), values: (Array.isArray(d?.values) ? d.values : [d?.values]).map(v => String(v || '')).filter(Boolean) }))
+        .filter(d => d.name && d.values.length);
+      return cleaned.length ? cleaned : undefined;
+    })(),
+    availability: { shipToLocationAvailability: { quantity: parseInt(quantity) || 1 } },
+    packageWeightAndSize: {
+      dimensions: { height: 0.1, length: 6.5, width: 4, unit: 'INCH' },
+      weight: { value: 0.1, unit: 'POUND' },
+    },
+  };
+}
+
+function buildEbayOfferBody(b, sku, locationKey, env) {
+  const { title, description, price, format = 'FIXED_PRICE', duration = 'GTC', quantity = 1, categoryId = '261328' } = b;
+  const listingPolicies = {};
+  if (env.EBAY_FULFILLMENT_POLICY_ID) listingPolicies.fulfillmentPolicyId = env.EBAY_FULFILLMENT_POLICY_ID;
+  if (env.EBAY_PAYMENT_POLICY_ID) listingPolicies.paymentPolicyId = env.EBAY_PAYMENT_POLICY_ID;
+  if (env.EBAY_RETURN_POLICY_ID) listingPolicies.returnPolicyId = env.EBAY_RETURN_POLICY_ID;
+  return {
+    sku,
+    marketplaceId: 'EBAY_US',
+    format,
+    listingDuration: format === 'AUCTION' ? (duration || 'DAYS_7') : (duration || 'GTC'),
+    availableQuantity: parseInt(quantity) || 1,
+    categoryId: String(categoryId),
+    listingDescription: description || title,
+    listingPolicies,
+    merchantLocationKey: locationKey,
+    pricingSummary: { price: { value: parseFloat(price).toFixed(2), currency: 'USD' } },
+  };
+}
+
 function leftRotate(x, c) {
   return (x << c) | (x >>> (32 - c));
 }
@@ -3042,63 +3137,7 @@ export default {
         }).catch(() => {});
 
         const sku = 'lba-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 5);
-        const aspects = {};
-        if (sport) aspects['Sport'] = [sport];
-        if (year) aspects['Year'] = [String(year)];
-        if (manufacturer) aspects['Manufacturer'] = [manufacturer];
-        if (set) aspects['Set'] = [set];
-        if (parallel && parallel !== 'Base') aspects['Parallel/Variety'] = [parallel];
-        if (cardNumber) aspects['Card Number'] = [String(cardNumber)];
-        if (player) aspects['Player/Athlete'] = [player];
-        if (team) aspects['Team'] = [team];
-        if (isRookie) aspects['Rookie'] = ['Yes'];
-        if (serialNumber) aspects['Serial Numbered'] = [serialNumber];
-        if (grader) aspects['Professional Grader'] = [grader];
-        if (grade) aspects['Grade'] = [String(grade)];
-        if (upc) aspects['UPC'] = [String(upc)];
-        if (league) aspects['League'] = [league];
-        if (season) aspects['Season'] = [String(season)];
-        if (productType) aspects['Type'] = [productType === 'sealed' ? 'Sports Trading Card Box' : productType];
-        if (configuration) aspects['Configuration'] = [configuration];
-        if (features) {
-          const featureList = String(features).split(',').map(s => s.trim()).filter(Boolean);
-          if (featureList.length) aspects['Features'] = featureList;
-        }
-        for (const [k, v] of Object.entries(customAspects || {})) {
-          if (!k || v == null || v === '') continue;
-          const values = Array.isArray(v) ? v.map(x => String(x || '').trim()).filter(Boolean) : [String(v || '').trim()].filter(Boolean);
-          if (values.length) aspects[k] = values;
-        }
-        aspects['Sport'] = aspects['Sport'] || ['Trading Cards'];
-        for (const [k, v] of Object.entries({ ...aspects })) {
-          if (!Array.isArray(v) || !v.length || v.some(x => x == null || String(x).trim() === '')) delete aspects[k];
-        }
-
-        const allImgUrls = [];
-        if (imageUrl) allImgUrls.push(imageUrl);
-        (imageUrls || []).forEach(u => { if (u && !allImgUrls.includes(u)) allImgUrls.push(u); });
-
-        const itemBody = {
-          product: {
-            title: title.substring(0, 80),
-            description: description || title,
-            aspects,
-            imageUrls: allImgUrls.slice(0, 12),
-          },
-          conditionId: String(conditionId),
-          conditionDescription: conditionDescription || undefined,
-          conditionDescriptors: (() => {
-            const cleaned = (Array.isArray(conditionDescriptors) ? conditionDescriptors : [])
-              .map(d => ({ name: String(d?.name || ''), values: (Array.isArray(d?.values) ? d.values : [d?.values]).map(v => String(v || '')).filter(Boolean) }))
-              .filter(d => d.name && d.values.length);
-            return cleaned.length ? cleaned : undefined;
-          })(),
-          availability: { shipToLocationAvailability: { quantity: parseInt(quantity) || 1 } },
-          packageWeightAndSize: {
-            dimensions: { height: 0.1, length: 6.5, width: 4, unit: 'INCH' },
-            weight: { value: 0.1, unit: 'POUND' },
-          },
-        };
+        const itemBody = buildEbayInventoryItemBody(b);
 
         const itemRes = await fetch(`https://api.ebay.com/sell/inventory/v1/inventory_item/${sku}`, {
           method: 'PUT',
@@ -3117,23 +3156,7 @@ export default {
           return json({ error: 'Item creation failed (' + itemRes.status + '): ' + msg, detail: errData }, itemRes.status);
         }
 
-        const listingPolicies = {};
-        if (env.EBAY_FULFILLMENT_POLICY_ID) listingPolicies.fulfillmentPolicyId = env.EBAY_FULFILLMENT_POLICY_ID;
-        if (env.EBAY_PAYMENT_POLICY_ID) listingPolicies.paymentPolicyId = env.EBAY_PAYMENT_POLICY_ID;
-        if (env.EBAY_RETURN_POLICY_ID) listingPolicies.returnPolicyId = env.EBAY_RETURN_POLICY_ID;
-
-        const offerBody = {
-          sku,
-          marketplaceId: 'EBAY_US',
-          format,
-          availableQuantity: parseInt(quantity) || 1,
-          categoryId: String(categoryId),
-          listingDescription: description || title,
-          listingPolicies,
-          merchantLocationKey: locationKey,
-          pricingSummary: { price: { value: parseFloat(price).toFixed(2), currency: 'USD' } },
-          ...(parseFloat(shippingCost) > 0 ? {} : {}),
-        };
+        const offerBody = buildEbayOfferBody(b, sku, locationKey, env);
 
         const offerRes = await fetch('https://api.ebay.com/sell/inventory/v1/offer', {
           method: 'POST',
@@ -3168,6 +3191,96 @@ export default {
         return json({ ok: true, listingId: pubData.listingId, offerId, sku });
       } catch (e) {
         console.error('eBay listing error:', e);
+        return json({ error: e.message }, 500);
+      }
+    }
+
+    // Revises an already-published listing in place. eBay's own Inventory API PUT
+    // endpoints are full replaces (not patches), so this rebuilds the exact same
+    // inventory_item/offer bodies /ebay/list would for a new listing and re-sends
+    // them against the existing sku/offerId -- no re-publish needed, a live offer
+    // picks up inventory_item/offer PUT changes immediately. This exists because
+    // eBay's own seller app refuses to edit Inventory-API-based listings at all
+    // ("Inventory-based listing management is not currently supported by this
+    // tool") -- whatever tool created the listing is expected to also revise it.
+    if (url.pathname === '/ebay/update') {
+      if (request.method !== 'POST') return json({ error: 'POST only' }, 405);
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId, ['owner','admin']);
+      if (auth.error) return auth.error;
+      let ebayToken = '';
+      try { ebayToken = await getEbayUserAccessToken(env); }
+      catch (tokenErr) { return json({ needsToken: true, error: tokenErr.message }, 401); }
+      if (!ebayToken) return json({ needsToken: true, error: 'Connect eBay first: missing user access/refresh token' }, 401);
+
+      try {
+        const b = await request.json();
+        const { sku, offerId, title, price } = b;
+        if (!sku || !offerId) return json({ error: 'sku and offerId are required' }, 400);
+        if (!title || !price) return json({ error: 'title and price required' }, 400);
+
+        const itemBody = buildEbayInventoryItemBody(b);
+        const itemRes = await fetch(`https://api.ebay.com/sell/inventory/v1/inventory_item/${encodeURIComponent(sku)}`, {
+          method: 'PUT',
+          headers: { 'Authorization': 'Bearer ' + ebayToken, 'Content-Type': 'application/json', 'Content-Language': 'en-US' },
+          body: JSON.stringify(itemBody),
+        });
+        if (!itemRes.ok && itemRes.status !== 204) {
+          const errTxt = await itemRes.text();
+          let errData; try { errData = JSON.parse(errTxt); } catch (_) { errData = errTxt; }
+          const msg = errData?.errors?.[0]?.longMessage || errData?.errors?.[0]?.message || errTxt.substring(0, 200);
+          return json({ error: 'Item update failed (' + itemRes.status + '): ' + msg, detail: errData }, itemRes.status);
+        }
+
+        const locationKey = env.EBAY_LOCATION_KEY || 'walkoff-main';
+        const offerBody = buildEbayOfferBody(b, sku, locationKey, env);
+        delete offerBody.sku; // sku is the path param below, not a body field on update
+        const offerRes = await fetch(`https://api.ebay.com/sell/inventory/v1/offer/${encodeURIComponent(offerId)}`, {
+          method: 'PUT',
+          headers: { 'Authorization': 'Bearer ' + ebayToken, 'Content-Type': 'application/json', 'Content-Language': 'en-US' },
+          body: JSON.stringify(offerBody),
+        });
+        const offerTxt = await offerRes.text();
+        let offerData; try { offerData = JSON.parse(offerTxt); } catch (_) { offerData = { raw: offerTxt }; }
+        if (!offerRes.ok && offerRes.status !== 204) {
+          const msg = offerData?.errors?.[0]?.longMessage || offerData?.errors?.[0]?.message || offerTxt.substring(0, 300);
+          return json({ error: 'Offer update failed (' + offerRes.status + '): ' + msg, detail: offerData }, offerRes.status);
+        }
+
+        return json({ ok: true, offerId, sku });
+      } catch (e) {
+        console.error('eBay update error:', e);
+        return json({ error: e.message }, 500);
+      }
+    }
+
+    if (url.pathname === '/ebay/end') {
+      if (request.method !== 'POST') return json({ error: 'POST only' }, 405);
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId, ['owner','admin']);
+      if (auth.error) return auth.error;
+      let ebayToken = '';
+      try { ebayToken = await getEbayUserAccessToken(env); }
+      catch (tokenErr) { return json({ needsToken: true, error: tokenErr.message }, 401); }
+      if (!ebayToken) return json({ needsToken: true, error: 'Connect eBay first: missing user access/refresh token' }, 401);
+
+      try {
+        const b = await request.json();
+        const { offerId } = b;
+        if (!offerId) return json({ error: 'offerId is required' }, 400);
+        const res = await fetch(`https://api.ebay.com/sell/inventory/v1/offer/${encodeURIComponent(offerId)}/withdraw`, {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + ebayToken, 'Content-Type': 'application/json' },
+        });
+        const txt = await res.text();
+        let data; try { data = JSON.parse(txt); } catch (_) { data = { raw: txt }; }
+        if (!res.ok) {
+          const msg = data?.errors?.[0]?.longMessage || data?.errors?.[0]?.message || txt.substring(0, 300);
+          return json({ error: 'End listing failed (' + res.status + '): ' + msg, detail: data }, res.status);
+        }
+        return json({ ok: true, offerId });
+      } catch (e) {
+        console.error('eBay end-listing error:', e);
         return json({ error: e.message }, 500);
       }
     }
