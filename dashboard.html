@@ -22577,6 +22577,7 @@ function openAddManualComicCoverModal(idx,coverId=''){
       <label style="font-family:monospace;font-size:9px;color:var(--dim)">NOTES (OPTIONAL)
         <textarea id="manual-cover-notes-input" class="tsi" style="margin-top:4px;width:100%;min-height:52px;resize:vertical" placeholder="e.g. print run of 250, signed at NYCC 2011">${existing?escHtml(existing.notes||''):''}</textarea>
       </label>
+      <label style="font-family:monospace;font-size:11px;display:flex;align-items:center;gap:8px"><input id="manual-cover-foil-input" type="checkbox" ${existing?.isFoil?'checked':''}> FOIL</label>
       <button class="hbtn" style="min-height:48px;color:var(--g)" onclick="submitManualComicCover(${idx},'${coverId}')">${existing?'SAVE CHANGES':'SAVE COVER'}</button>
       <div id="manual-cover-status" style="font-family:monospace;font-size:10px;color:var(--dim)"></div>
     </div>
@@ -22596,6 +22597,7 @@ async function submitManualComicCover(idx,coverId=''){
   const ratio=document.getElementById('manual-cover-ratio-input')?.value.trim()||'';
   const sku=document.getElementById('manual-cover-sku-input')?.value.trim()||'';
   const notes=document.getElementById('manual-cover-notes-input')?.value.trim()||'';
+  const isFoil=!!document.getElementById('manual-cover-foil-input')?.checked;
   const status=document.getElementById('manual-cover-status');
   if(!coverId&&!variantName){if(status)status.textContent='Variant name is required.';return;}
   if(status)status.textContent='Saving...';
@@ -22611,8 +22613,8 @@ async function submitManualComicCover(idx,coverId=''){
     }
     const path=coverId?`/comic/covers/global/${encodeURIComponent(r.metronIssueId)}/${encodeURIComponent(coverId)}`:'/comic/covers/global/add';
     const payload=coverId
-      ?{...(variantName?{variantName}:{}),...(price!=null?{price}:{}),artist,ratio,sku,notes,imageUrl:imageKey?'':imageUrl,imageKey}
-      :{metronIssueId:r.metronIssueId,variantName,imageUrl:imageKey?'':imageUrl,imageKey,price,artist,ratio,sku,notes};
+      ?{...(variantName?{variantName}:{}),...(price!=null?{price}:{}),artist,ratio,sku,notes,isFoil,imageUrl:imageKey?'':imageUrl,imageKey}
+      :{metronIssueId:r.metronIssueId,variantName,imageUrl:imageKey?'':imageUrl,imageKey,price,artist,ratio,sku,notes,isFoil};
     const res=await storeWorkerFetch(path,{method:coverId?'PATCH':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
     const data=await res.json().catch(()=>({}));
     if(!res.ok||!data.ok)throw new Error(data.error||'Could not save that cover');
@@ -22765,6 +22767,7 @@ function qplComicBookInfoPanel(r,idx){
   const links=`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px"><button class="hbtn" style="color:var(--purple)" onclick="openComicReference(${idx},'metron')">METRON RECORD</button>${priceLink}<button class="hbtn" onclick="openComicReference(${idx},'sold')">EBAY SOLD</button><button class="hbtn" onclick="openComicReference(${idx},'mycomicshop')">MYCOMICSHOP</button>${m.gcdId?`<button class="hbtn" onclick="openComicReference(${idx},'gcd')">GCD RECORD</button>`:''}${m.comicVineId?`<button class="hbtn" onclick="openComicReference(${idx},'comicvine')">COMIC VINE</button>`:''}</div>`;
   const coverCards=`<div style="grid-column:1/-1;display:flex;gap:8px;align-items:center;flex-wrap:wrap">${loadAllCoversControl}${addCoverControl}<span style="font-size:9px;color:var(--dim)">Loads every exact cover currently cataloged by Metron and PriceCharting for this issue only.</span>${r.allComicVariantCoversError?`<span style="color:var(--gold);font-size:9px">${escHtml(r.allComicVariantCoversError)}</span>`:''}</div>`+covers.map((cover,i)=>{
     const title=cover.issueName||cover.name||('Issue #'+(cover.number||m.number||'')),tags=window.ArsCaComicIssueHub?.variantLabels(title)||[],prices=cover.pricecharting?.comicPrices||{},raw=Number(prices.ungraded||cover.manualPrice||0),graded=Number(prices.grade9_8||0),isSelected=Boolean(r.coverConfirmed&&String(r.imageUrl||'').split('?')[0]===String(cover.imageUrl||'').split('?')[0]),isManual=cover.source==='Manual',source=isManual?'MANUALLY ADDED':cover.pricechartingProductId?'PRICECHARTING':cover.nestedVariant?'METRON VARIANT':'METRON COVER';
+    if(isManual&&cover.isFoil&&!tags.includes('foil'))tags.push('foil');
     const rawCoverId=isManual?String(cover.id||'').replace(/^manual:/,''):'';
     const manualControls=isManual?`<div style="position:absolute;top:6px;right:6px;display:flex;gap:4px;z-index:1"><button type="button" class="hbtn" style="padding:2px 6px;font-size:9px" onclick="event.stopPropagation();openAddManualComicCoverModal(${idx},'${rawCoverId}')">EDIT</button><button type="button" class="hbtn" style="padding:2px 6px;font-size:9px;color:var(--red)" onclick="event.stopPropagation();removeManualComicCover(${idx},'${rawCoverId}')">✕</button></div>`:'';
     const manualTags=isManual?[cover.ratio&&`RATIO ${cover.ratio}`,cover.sku&&`SKU ${cover.sku}`].filter(Boolean):[];
