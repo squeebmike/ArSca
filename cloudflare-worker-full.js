@@ -1762,6 +1762,7 @@ export default {
         // own inventoryImageUrl() uses, so a self-taken photo with no
         // catalog-sourced image still shows up on the public storefront.
         price:Math.max(rowBase, Number(d.minPrice || 0) || 0) + rowSignatureValue, market:rowMarket, image:cleanUrl(d.photoDataUrl || d.thumbnail || d.image || d.img || d.imageUrl || d.image_url || d.photo),
+        photos:(Array.isArray(d.photos) ? d.photos : []).map(cleanUrl).filter(Boolean).slice(0, 12),
         isSealed:!!d.is_sealed, gradingCompany:cleanText(d.grading_company || d.grader || '',40),
         isSigned:!!d.is_signed, signedBy:cleanText(d.signed_by || '',120), signatureValue:rowSignatureValue,
         comic:comicDetailFor(d),
