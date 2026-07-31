@@ -16856,7 +16856,12 @@ function computeEbayListingFields(item){
   const isComic = cat === 'Comic';
   const isTCG = cat === 'TCG';
   const isGraded = cat === 'Graded' || !!item.grader || !!item.grade;
-  const catId = isComic ? '259104' : (isSealed && cat === 'Sports') ? '261329' : isTCG ? '183454' : '261328';
+  // Store categories are freeform (getInventoryCategories() unions in whatever a store has
+  // named), so only fall back to a card-shaped eBay category for the categories that are
+  // actually card/comic-shaped -- anything else (Disney collectibles, funko, etc.) should not
+  // get silently mis-listed as Sports Cards, so it resolves to '' and the UI must ask.
+  const isKnownCardCategory = isComic || isTCG || cat === 'Sports' || cat === 'Graded';
+  const catId = isComic ? '259104' : (isSealed && cat === 'Sports') ? '261329' : isTCG ? '183454' : isKnownCardCategory ? '261328' : '';
   const conditionId = isGraded ? '2750' : (isEbayTradingCardCategory(catId) ? '4000' : '3000');
   const title = [item.year && !lowerName.includes(String(item.year)) ? item.year : null,item.name,item.set && !lowerName.includes(String(item.set).toLowerCase()) ? item.set : null,item.variant,item.card_number?'#'+item.card_number:null,isGraded?[item.grader,item.grade].filter(Boolean).join(' '):null,item.isRookie?'RC':null]
     .filter(Boolean).join(' ').replace(/\s+/g,' ').substring(0,80);
@@ -16965,7 +16970,7 @@ function openEbayFromDash(id){
         <div><label style="font-family:monospace;font-size:9px;color:var(--dim)">QTY</label><input id="dash-eb-qty" type="number" min="1" value="${Math.max(1, item.qty||1)}" style="width:100%;margin-top:4px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:9px;border-radius:6px;box-sizing:border-box"></div>
         <div><label style="font-family:monospace;font-size:9px;color:var(--dim)">FORMAT</label><select id="dash-eb-format" style="width:100%;margin-top:4px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:9px;border-radius:6px"><option value="FIXED_PRICE">Buy It Now</option><option value="AUCTION">Auction</option></select></div>
         <div><label style="font-family:monospace;font-size:9px;color:var(--dim)">CONDITION</label><div id="dash-eb-condition-host" style="margin-top:4px"></div></div>
-        <div><label style="font-family:monospace;font-size:9px;color:var(--dim)">CATEGORY</label><select id="dash-eb-category" onchange="refreshEbayConditionUi('dash-eb', all.find(i=>i.id==='${id}'))" style="width:100%;margin-top:4px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:9px;border-radius:6px"><option value="261328" ${catId==='261328'?'selected':''}>Sports Cards</option><option value="183454" ${catId==='183454'?'selected':''}>TCG Cards</option><option value="259104" ${catId==='259104'?'selected':''}>Comics</option><option value="261329">Sports Boxes/Packs</option><option value="2536">Card Lots</option></select></div>
+        <div><label style="font-family:monospace;font-size:9px;color:var(--dim)">CATEGORY</label><select id="dash-eb-category" onchange="refreshEbayConditionUi('dash-eb', all.find(i=>i.id==='${id}'))" style="width:100%;margin-top:4px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:9px;border-radius:6px"><option value="" ${catId===''?'selected':''}>Other (set ID below)</option><option value="261328" ${catId==='261328'?'selected':''}>Sports Cards</option><option value="183454" ${catId==='183454'?'selected':''}>TCG Cards</option><option value="259104" ${catId==='259104'?'selected':''}>Comics</option><option value="261329">Sports Boxes/Packs</option><option value="2536">Card Lots</option></select></div>
         <div><label style="font-family:monospace;font-size:9px;color:var(--dim)">DURATION</label><select id="dash-eb-duration" style="width:100%;margin-top:4px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:9px;border-radius:6px"><option value="GTC">GTC</option><option value="DAYS_7">7 days</option><option value="DAYS_10">10 days</option></select></div>
       </div>
       <label style="font-family:monospace;font-size:9px;color:var(--dim)">CONDITION DESCRIPTION</label>
@@ -16973,7 +16978,7 @@ function openEbayFromDash(id){
       <details open style="margin:10px 0">
         <summary style="font-family:monospace;font-size:9px;color:var(--gold);cursor:pointer;margin-bottom:8px">LISTING DETAILS / ITEM SPECIFICS</summary>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
-          <div><label style="font-family:monospace;font-size:8px;color:var(--dim)">CUSTOM CATEGORY ID</label><input id="dash-eb-category-id" value="${catId}" style="width:100%;margin-top:3px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:7px;border-radius:6px;box-sizing:border-box"></div>
+          <div><label style="font-family:monospace;font-size:8px;color:var(--dim)">CUSTOM CATEGORY ID${catId===''?' (required -- CATEGORY above is Other)':''}</label><input id="dash-eb-category-id" value="${catId}" placeholder="e.g. 1305 -- exact eBay category ID" style="width:100%;margin-top:3px;background:var(--surf2);border:1px solid var(--border);color:${catId===''?'var(--gold)':'var(--text)'};padding:7px;border-radius:6px;box-sizing:border-box"></div>
           <div><label style="font-family:monospace;font-size:8px;color:var(--dim)">PRODUCT TYPE</label><select id="dash-eb-product-type" style="width:100%;margin-top:3px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:7px;border-radius:6px"><option value="single" ${!isSealed?'selected':''}>Single card/item</option><option value="sealed" ${isSealed?'selected':''}>Sealed box/pack</option><option value="lot">Lot</option><option value="comic">Comic</option></select></div>
           <div><label style="font-family:monospace;font-size:8px;color:var(--dim)">BRAND / MANUFACTURER</label><input id="dash-eb-mfr" value="${esc(inferManufacturer)}" style="width:100%;margin-top:3px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:7px;border-radius:6px;box-sizing:border-box"></div>
           <div><label style="font-family:monospace;font-size:8px;color:var(--dim)">SPORT / LEAGUE</label><input id="dash-eb-sport" value="${esc(item.sport || (cat==='Sports'?'Baseball':'') )}" placeholder="Baseball, Basketball, NFL, MLB..." style="width:100%;margin-top:3px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:7px;border-radius:6px;box-sizing:border-box"></div>
@@ -17021,6 +17026,7 @@ async function submitDashboardEbayListing(id){
   const price=parseFloat(document.getElementById('dash-eb-price').value)||0;
   if(!title || price<0.99){ toast_dash('eBay listing needs title and price'); return; }
   const categoryId=(document.getElementById('dash-eb-category-id')?.value.trim() || document.getElementById('dash-eb-category').value);
+  if(!categoryId){ toast_dash('eBay needs a specific category -- pick one above or enter an eBay category ID in LISTING DETAILS'); return; }
   const listConditionId=document.getElementById('dash-eb-condition')?.value || '3000';
   const conditionDescriptors=collectEbayConditionDescriptors('dash-eb', categoryId, listConditionId);
   if(isEbayTradingCardCategory(categoryId) && !conditionDescriptors.length){
@@ -17133,9 +17139,10 @@ function ebayBulkReviewCardHtml(item, fields, desc){
       <div><label style="font-size:8px;color:var(--dim)">DURATION</label><select id="${prefix}-duration" style="width:100%;margin-top:2px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:6px;border-radius:6px"><option value="GTC">GTC</option><option value="DAYS_7">7 days</option><option value="DAYS_10">10 days</option></select></div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px">
-      <div><label style="font-size:8px;color:var(--dim)">CATEGORY</label><select id="${prefix}-category" onchange="refreshEbayConditionUi('${prefix}', all.find(i=>i.id==='${item.id}'))" style="width:100%;margin-top:2px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:6px;border-radius:6px"><option value="261328" ${fields.catId==='261328'?'selected':''}>Sports Cards</option><option value="183454" ${fields.catId==='183454'?'selected':''}>TCG Cards</option><option value="259104" ${fields.catId==='259104'?'selected':''}>Comics</option><option value="261329" ${fields.catId==='261329'?'selected':''}>Sports Boxes/Packs</option><option value="2536" ${fields.catId==='2536'?'selected':''}>Card Lots</option></select></div>
-      <div><label style="font-size:8px;color:var(--dim)">CONDITION</label><div id="${prefix}-condition-host" style="margin-top:2px"></div></div>
+      <div><label style="font-size:8px;color:var(--dim)">CATEGORY</label><select id="${prefix}-category" onchange="refreshEbayConditionUi('${prefix}', all.find(i=>i.id==='${item.id}'))" style="width:100%;margin-top:2px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:6px;border-radius:6px"><option value="" ${fields.catId===''?'selected':''}>Other (set ID at right)</option><option value="261328" ${fields.catId==='261328'?'selected':''}>Sports Cards</option><option value="183454" ${fields.catId==='183454'?'selected':''}>TCG Cards</option><option value="259104" ${fields.catId==='259104'?'selected':''}>Comics</option><option value="261329" ${fields.catId==='261329'?'selected':''}>Sports Boxes/Packs</option><option value="2536" ${fields.catId==='2536'?'selected':''}>Card Lots</option></select></div>
+      <div><label style="font-size:8px;color:var(--dim)">CUSTOM CATEGORY ID${fields.catId===''?' (required)':''}</label><input id="${prefix}-category-id" value="${fields.catId}" placeholder="e.g. 1305" style="width:100%;margin-top:2px;background:var(--surf2);border:1px solid var(--border);color:${fields.catId===''?'var(--gold)':'var(--text)'};padding:6px;border-radius:6px;box-sizing:border-box"></div>
     </div>
+    <div style="margin-bottom:8px"><label style="font-size:8px;color:var(--dim)">CONDITION</label><div id="${prefix}-condition-host" style="margin-top:2px"></div></div>
     <div style="margin-bottom:8px"><label style="font-size:8px;color:var(--dim)">DESCRIPTION</label><textarea id="${prefix}-desc" rows="5" style="width:100%;margin-top:2px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:8px;border-radius:6px;box-sizing:border-box;resize:vertical;font-size:11px">${escHtml(desc)}</textarea></div>
     <div style="display:flex;gap:6px;align-items:center">
       <button class="hbtn" style="flex:1;background:rgba(255,209,102,.12);border-color:rgba(255,209,102,.35);color:var(--gold)" onclick="submitEbayBulkReviewItem('${item.id}')">LIST THIS ITEM</button>
@@ -17180,7 +17187,8 @@ async function submitEbayBulkReviewItem(id){
   const title = document.getElementById(prefix+'-title')?.value.trim();
   const price = parseFloat(document.getElementById(prefix+'-price')?.value)||0;
   if(!title || price < 0.99){ if(status){ status.style.color='var(--red)'; status.textContent='Needs a title and a price of at least $0.99'; } return; }
-  const catId = document.getElementById(prefix+'-category')?.value || '261328';
+  const catId = (document.getElementById(prefix+'-category-id')?.value.trim() || document.getElementById(prefix+'-category')?.value || '');
+  if(!catId){ if(status){ status.style.color='var(--red)'; status.textContent='eBay needs a specific category -- pick one above or enter an eBay category ID.'; } return; }
   const conditionId = document.getElementById(prefix+'-condition')?.value || '3000';
   const conditionDescriptors = collectEbayConditionDescriptors(prefix, catId, conditionId);
   if(isEbayTradingCardCategory(catId) && !conditionDescriptors.length){
