@@ -18755,18 +18755,35 @@ async function inventoryTcgReferencePatch(item = {}){
 // Once saved, price syncs that already prefer an exact pricechartingProductId
 // (e.g. MTG sealed) use it instead of a fuzzy name search.
 let inventoryPcReferenceState = { originalId:'', verified:null };
+// Unlike TCGplayer, a pricecharting.com/sportscardspro.com product URL never
+// contains the numeric product ID anywhere -- those URLs are slug-based
+// (/game/baseball-cards-2023-topps-holiday/mega-box). Blindly stripping
+// non-digits from a pasted URL used to grab whatever digits happened to be in
+// the slug (a year, a card number...) and silently "verify" a completely
+// unrelated product. So: reject URL-shaped input outright instead of guessing.
+function inventoryPcLooksLikeUrl(raw=''){
+  const t = String(raw||'').trim();
+  return /^https?:\/\//i.test(t) || /pricecharting\.com|sportscardspro\.com/i.test(t);
+}
+function inventoryPcIdFromRaw(raw=''){
+  const t = String(raw||'').trim();
+  if(!t || inventoryPcLooksLikeUrl(t)) return '';
+  return /^\d+$/.test(t) ? t : '';
+}
 function inventoryPcReferenceChanged(){
   const raw = document.getElementById('edit-pricecharting-ref')?.value || '';
-  const id = raw.replace(/\D+/g, '');
-  if(inventoryPcReferenceState.verified?.id !== id) inventoryPcReferenceState.verified = null;
+  const id = inventoryPcIdFromRaw(raw);
   const status = document.getElementById('edit-pricecharting-status');
   if(!status) return;
   status.style.color = raw && !id ? 'var(--red)' : 'var(--dim)';
-  status.textContent = raw && !id
-    ? 'Enter a numeric PriceCharting product ID.'
-    : id === inventoryPcReferenceState.originalId
-      ? 'Saved PriceCharting product #' + id + '. Click VERIFY to re-check it.'
-      : id ? 'Product #' + id + ' must be verified before saving.' : 'Paste the numeric PriceCharting/SportsCardsPro product ID to pin exact-match pricing.';
+  if(inventoryPcReferenceState.verified?.id !== id) inventoryPcReferenceState.verified = null;
+  status.textContent = inventoryPcLooksLikeUrl(raw)
+    ? "This field needs the numeric PriceCharting ID, not the page URL -- PriceCharting/SportsCardsPro links don't contain that ID. Look for the numeric \"PriceCharting ID\" shown on the product page, or match by name in Research instead."
+    : raw && !id
+      ? 'Enter a numeric PriceCharting product ID.'
+      : id === inventoryPcReferenceState.originalId
+        ? 'Saved PriceCharting product #' + id + '. Click VERIFY to re-check it.'
+        : id ? 'Product #' + id + ' must be verified before saving.' : 'Paste the numeric PriceCharting/SportsCardsPro product ID to pin exact-match pricing.';
 }
 function populateInventoryPcReference(item = {}){
   const id = String(item.pricechartingProductId || item.raw?.pricechartingProductId || '').trim();
@@ -18783,9 +18800,15 @@ async function verifyInventoryPriceChartingReference(){
   const input = document.getElementById('edit-pricecharting-ref');
   const status = document.getElementById('edit-pricecharting-status');
   const button = document.getElementById('edit-pricecharting-verify');
-  const id = (input?.value || '').replace(/\D+/g, '');
+  const raw = input?.value || '';
+  const id = inventoryPcIdFromRaw(raw);
   if(!id) {
-    if(status) { status.style.color='var(--red)'; status.textContent='Enter a numeric PriceCharting product ID.'; }
+    if(status) {
+      status.style.color='var(--red)';
+      status.textContent = inventoryPcLooksLikeUrl(raw)
+        ? "This field needs the numeric PriceCharting ID, not the page URL -- that ID isn't in the URL for this site."
+        : 'Enter a numeric PriceCharting product ID.';
+    }
     return null;
   }
   if(button) button.disabled = true;
@@ -18811,7 +18834,7 @@ async function verifyInventoryPriceChartingReference(){
 }
 async function inventoryPcReferencePatch(item = {}){
   const raw = document.getElementById('edit-pricecharting-ref')?.value || '';
-  const id = raw.replace(/\D+/g, '');
+  const id = inventoryPcIdFromRaw(raw);
   if(!id) return { pricechartingProductId:'', pricechartingProductName:item.pricechartingProductId ? '' : (item.pricechartingProductName || '') };
   let verified = inventoryPcReferenceState.verified?.id === id ? inventoryPcReferenceState.verified : null;
   if(!verified && id !== inventoryPcReferenceState.originalId) verified = await verifyInventoryPriceChartingReference();
