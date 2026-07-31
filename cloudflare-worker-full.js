@@ -1331,11 +1331,21 @@ function buildEbayInventoryItemBody(b) {
 }
 
 function buildEbayOfferBody(b, sku, locationKey, env) {
-  const { title, description, price, format = 'FIXED_PRICE', duration = 'GTC', quantity = 1, categoryId = '261328' } = b;
+  const {
+    title, description, price, format = 'FIXED_PRICE', duration = 'GTC', quantity = 1, categoryId = '261328',
+    bestOfferEnabled = false, autoAcceptPrice = '', autoDeclinePrice = '',
+  } = b;
   const listingPolicies = {};
   if (env.EBAY_FULFILLMENT_POLICY_ID) listingPolicies.fulfillmentPolicyId = env.EBAY_FULFILLMENT_POLICY_ID;
   if (env.EBAY_PAYMENT_POLICY_ID) listingPolicies.paymentPolicyId = env.EBAY_PAYMENT_POLICY_ID;
   if (env.EBAY_RETURN_POLICY_ID) listingPolicies.returnPolicyId = env.EBAY_RETURN_POLICY_ID;
+  // Best Offer is a FIXED_PRICE-only feature -- eBay rejects bestOfferTerms on an auction offer.
+  if (bestOfferEnabled && format !== 'AUCTION') {
+    const bestOfferTerms = { bestOfferEnabled: true };
+    if (parseFloat(autoAcceptPrice) > 0) bestOfferTerms.autoAcceptPrice = { value: parseFloat(autoAcceptPrice).toFixed(2), currency: 'USD' };
+    if (parseFloat(autoDeclinePrice) > 0) bestOfferTerms.autoDeclinePrice = { value: parseFloat(autoDeclinePrice).toFixed(2), currency: 'USD' };
+    listingPolicies.bestOfferTerms = bestOfferTerms;
+  }
   return {
     sku,
     marketplaceId: 'EBAY_US',
