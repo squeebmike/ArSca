@@ -17111,12 +17111,9 @@ function openEbayFromDash(id){
     </div>`;
   document.body.appendChild(modal);
   refreshEbayConditionUi('dash-eb', item);
-  if((item.lifecycle || 'in_stock') !== 'listed_online') {
-    const map = getLifecycleMap();
-    map[id] = 'pulled_ebay';
-    saveLifecycleMap(map);
-    item.lifecycle = 'pulled_ebay';
-  }
+  // Lifecycle only changes on an actual outcome (list/update/end succeeding) --
+  // just opening this form to look at an item must never silently mark it
+  // Pulled for eBay before anything has actually been submitted.
   document.getElementById('dash-eb-title').addEventListener('input', function(){
     document.getElementById('dash-eb-title-count').textContent=this.value.length+'/80';
   });
@@ -18546,15 +18543,32 @@ async function markInventoryRecordSold(item, fieldData, saleMeta){
     const storeId = getActiveStoreId();
     if(sb && session?.supabase && storeId) {
       const nextStatus = depleted ? 'sold' : 'in_stock';
+      const ebayOfferId = item.raw?.ebayOfferId || '';
+      const ebayListingId = item.raw?.ebayListingId || item.raw?.listingId || '';
+      let ebayEnded = false;
+      if(depleted && ebayOfferId){
+        // Sold out in-store -- if this item is still live on eBay, withdraw the
+        // listing so it can't also sell there. Best-effort: a failure here must
+        // never block recording the in-store sale itself.
+        try{
+          const res = await storeWorkerFetch('/ebay/end', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ offerId:ebayOfferId }) });
+          const data = await res.json().catch(()=>({}));
+          if(res.ok && data.ok) ebayEnded = true;
+        }catch(e){ console.warn('Could not auto-end eBay listing after sale:', e.message); }
+      }
       const nextData = { ...(item.raw || {}), ...item, ...saleMeta, status:nextStatus, lifecycle:nextStatus, qty:remainingQuantity, quantity:remainingQuantity, 'inventory-count':remainingQuantity, 'sold-out':depleted, soldAt:depleted ? saleMeta.soldAt : '' };
+      if(ebayEnded){ nextData.ebayListingId=''; nextData.ebayOfferId=''; nextData.ebaySku=''; nextData.ebayListedAt=''; }
       const { error } = await sb.from('inventory_items')
         .update({ status:nextStatus, data:nextData, updated_at:new Date().toISOString() })
         .eq('id', item.supabaseRowId || item.id)
         .eq('store_id', storeId);
       if(error) throw new Error('Built-in sold sync ' + error.message);
+      if(ebayEnded && item.raw){ item.raw.ebayListingId=''; item.raw.ebayOfferId=''; item.raw.ebaySku=''; item.raw.ebayListedAt=''; }
       const wfId=item.raw?.wfId||item.raw?.webflowId;
       if(wfId&&getWebflowIntegration().enabled){const soldFields={'sold-out':depleted,'inventory-count':remainingQuantity};if(depleted)soldFields.status=STATUS_SOLD;try{const wfRes=await wfPatch('/collections/'+WF_PRODUCTS+'/items/'+wfId,{fieldData:soldFields});if(!wfRes.ok)throw new Error('Webflow inventory update '+wfRes.status);}catch(e){enqueueOrReplaceSync('webflow-mirror-update','sold-'+wfId,'Update Webflow inventory: '+(item.name||wfId),{wfId,item,updates:{qty:remainingQuantity,status:nextStatus,'sold-out':depleted}},e.message);}}
-      if(depleted&&(item.raw?.ebayListingId||item.raw?.listingId))logOpsEvent('ebay_delist_needed','Sold item needs eBay delist',{itemId:item.id,listingId:item.raw.ebayListingId||item.raw.listingId});
+      if(depleted && ebayOfferId){
+        logOpsEvent(ebayEnded ? 'ebay_listing_end' : 'ebay_delist_needed', ebayEnded ? 'Auto-ended eBay listing after in-store sale' : 'Sold item needs eBay delist (auto-end failed)', {itemId:item.id, offerId:ebayOfferId, listingId:ebayListingId});
+      }
       return 'built-in';
     }
     updateUniversalInventoryItem(item.id, { ...saleMeta, qty:remainingQuantity, quantity:remainingQuantity, status:depleted?'sold':'in_stock', lifecycle:depleted?'sold':'in_stock' });
