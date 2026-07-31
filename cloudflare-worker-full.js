@@ -4162,6 +4162,7 @@ export default {
             ratio:cover.ratio || '',
             sku:cover.sku || '',
             notes:cover.notes || '',
+            isFoil:!!cover.isFoil,
             sourceUrl:cover.sourceUrl || '',
             addedBy:cover.addedBy || '',
             addedAt:cover.addedAt || '',
@@ -4278,6 +4279,7 @@ export default {
         const ratio = String(body.ratio || '').trim().slice(0, 40);
         const sku = String(body.sku || '').trim().slice(0, 60);
         const notes = String(body.notes || '').trim().slice(0, 500);
+        const isFoil = !!body.isFoil;
         if (!metronIssueId || !variantName) return json({ ok:false, error:'metronIssueId and variantName are required' }, 400);
         let imageKey = '', storedImageUrl = '';
         if (uploadedImageKey) {
@@ -4316,6 +4318,7 @@ export default {
           ratio,
           sku,
           notes,
+          isFoil,
           imageKey,
           imageUrl:storedImageUrl,
           sourceUrl:uploadedImageKey ? '' : imageUrl,
@@ -4348,6 +4351,7 @@ export default {
         if (body.ratio != null) target.ratio = String(body.ratio).trim().slice(0, 40);
         if (body.sku != null) target.sku = String(body.sku).trim().slice(0, 60);
         if (body.notes != null) target.notes = String(body.notes).trim().slice(0, 500);
+        if (body.isFoil != null) target.isFoil = !!body.isFoil;
         const uploadedImageKey = String(body.imageKey || '').trim();
         const imageUrl = String(body.imageUrl || '').trim().slice(0, 600);
         if (uploadedImageKey) {
