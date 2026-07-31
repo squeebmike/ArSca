@@ -13285,6 +13285,20 @@ async function fetchOtherTcgOrSportsLivePrice(item){
   }
   const key = qplCategoryKey(item.category || '');
   if(key === 'sports'){
+    // Pinned to an exact PriceCharting product (Edit modal > PriceCharting
+    // Product ID)? Use that directly instead of a fuzzy name search -- the
+    // whole point of pinning an ID is so sync doesn't have to guess.
+    const pcId = String(item.pricechartingProductId || item.raw?.pricechartingProductId || '').trim();
+    if(pcId){
+      try {
+        const res = await fetch(WORKER + '/pricing/pricecharting/product/' + encodeURIComponent(pcId), { cache:'no-store' });
+        const data = await res.json().catch(() => ({}));
+        const price = Number(data?.product?.prices?.ungraded || 0);
+        if(res.ok && data.ok && price > 0) {
+          return { market:price, source:'PriceCharting (pinned #' + pcId + ')', matchStatus:'exact PriceCharting ID match', productUrl:data.product.url || '' };
+        }
+      } catch(e) { /* fall through to fuzzy search below */ }
+    }
     const row = { name:inventoryCardName(item), year:item.year || '', set:inventorySetName(item), variant:item.variant || '', card_number:inventoryCardNumber(item), _game:'Sports Card' };
     const priced = await fetchCardSightRealPrice(row).catch(() => null);
     return priced?.market > 0 ? { market:priced.market, source:priced.priceSource || 'CardSight/PriceCharting', matchStatus:'sports live match' } : null;
@@ -14127,6 +14141,8 @@ function mapBuiltInItem(row){
     tcgplayerSkuId:d.tcgplayerSkuId || '',
     tcgPlayerId:d.tcgPlayerId || d.tcgplayerId || d.tcgplayerProductId || d.externalRefs?.tcgPlayerId || '',
     tcgPlayerUrl:d.tcgPlayerUrl || '',
+    pricechartingProductId:d.pricechartingProductId || '',
+    pricechartingProductName:d.pricechartingProductName || '',
     marketPrice:d.marketPrice ?? d.market ?? '',
     rawMarketPrice:d.rawMarketPrice ?? d.marketPrice ?? d.market ?? '',
     lastMarketPrice:d.lastMarketPrice ?? d.previousMarketPrice ?? '',
@@ -14213,6 +14229,8 @@ function builtInDataFromItem(item, updates={}){
     priceSyncRequestPath:updates.priceSyncRequestPath ?? item.priceSyncRequestPath ?? '',
     tcgPlayerId:updates.tcgPlayerId ?? item.tcgPlayerId ?? item.tcgplayerId ?? '',
     tcgPlayerUrl:updates.tcgPlayerUrl ?? item.tcgPlayerUrl ?? '',
+    pricechartingProductId:updates.pricechartingProductId ?? item.pricechartingProductId ?? item.raw?.pricechartingProductId ?? '',
+    pricechartingProductName:updates.pricechartingProductName ?? item.pricechartingProductName ?? item.raw?.pricechartingProductName ?? '',
     location:updates.location ?? item.location ?? '',
     status:updates.status ?? item.status ?? 'in_stock',
     lifecycle:updates.lifecycle ?? item.lifecycle ?? updates.status ?? item.status ?? 'in_stock',
@@ -14508,6 +14526,8 @@ function applyDashboardItemUpdate(id, updates) {
     is_patch: updates.is_patch,
     is_key: updates.is_key,
     is_signed: updates.is_signed,
+    pricechartingProductId: updates.pricechartingProductId ?? all[idx].pricechartingProductId,
+    pricechartingProductName: updates.pricechartingProductName ?? all[idx].pricechartingProductName,
   });
   soldData = all.filter(i => i.status === 'sold');
   renderAll();
