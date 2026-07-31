@@ -4261,7 +4261,7 @@ export default {
         const ext = (contentType.split('/')[1] || 'jpg').replace(/[^a-z0-9]/gi, '') || 'jpg';
         const imageKey = `comic-covers/${metronIssueId}/${crypto.randomUUID()}.${ext}`;
         await env.MTG_CATALOG_R2.put(imageKey, buf, { httpMetadata:{ contentType } });
-        return json({ ok:true, imageKey, imageUrl:`/comic/covers/image/${encodeURIComponent(imageKey)}` });
+        return json({ ok:true, imageKey, imageUrl:`${url.origin}/comic/covers/image/${encodeURIComponent(imageKey)}` });
       }
 
       if (url.pathname === '/comic/covers/global/add' && request.method === 'POST') {
@@ -4290,7 +4290,7 @@ export default {
           const uploaded = await env.MTG_CATALOG_R2.head(uploadedImageKey).catch(() => null);
           if (!uploaded) return json({ ok:false, error:'Uploaded image was not found; try uploading again' }, 400);
           imageKey = uploadedImageKey;
-          storedImageUrl = `/comic/covers/image/${encodeURIComponent(imageKey)}`;
+          storedImageUrl = `${url.origin}/comic/covers/image/${encodeURIComponent(imageKey)}`;
         } else if (imageUrl) {
           try {
             const imgRes = await fetch(imageUrl, { headers:{ 'User-Agent':'Mozilla/5.0 (compatible; WalkOff Comic Cover Archive/1.0)', Accept:'image/*' } });
@@ -4301,7 +4301,7 @@ export default {
             const coverId = crypto.randomUUID();
             imageKey = `comic-covers/${metronIssueId}/${coverId}.jpg`;
             await env.MTG_CATALOG_R2.put(imageKey, bytes, { httpMetadata:{ contentType } });
-            storedImageUrl = `/comic/covers/image/${encodeURIComponent(imageKey)}`;
+            storedImageUrl = `${url.origin}/comic/covers/image/${encodeURIComponent(imageKey)}`;
           } catch (error) {
             return json({ ok:false, error:'Could not fetch that image URL: ' + error.message }, 400);
           }
@@ -4359,7 +4359,7 @@ export default {
           const uploaded = env.MTG_CATALOG_R2 ? await env.MTG_CATALOG_R2.head(uploadedImageKey).catch(() => null) : null;
           if (!uploaded) return json({ ok:false, error:'Uploaded image was not found; try uploading again' }, 400);
           target.imageKey = uploadedImageKey;
-          target.imageUrl = `/comic/covers/image/${encodeURIComponent(uploadedImageKey)}`;
+          target.imageUrl = `${url.origin}/comic/covers/image/${encodeURIComponent(uploadedImageKey)}`;
           target.sourceUrl = '';
         } else if (imageUrl) {
           try {
@@ -4371,7 +4371,7 @@ export default {
             const newImageKey = `comic-covers/${metronIssueId}/${crypto.randomUUID()}.jpg`;
             if (env.MTG_CATALOG_R2) await env.MTG_CATALOG_R2.put(newImageKey, bytes, { httpMetadata:{ contentType } });
             target.imageKey = newImageKey;
-            target.imageUrl = `/comic/covers/image/${encodeURIComponent(newImageKey)}`;
+            target.imageUrl = `${url.origin}/comic/covers/image/${encodeURIComponent(newImageKey)}`;
             target.sourceUrl = imageUrl;
           } catch (error) {
             return json({ ok:false, error:'Could not fetch that image URL: ' + error.message }, 400);
