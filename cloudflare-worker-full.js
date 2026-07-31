@@ -3715,7 +3715,7 @@ export default {
     }
 
     // PriceCharting guide proxy. Token and CSV URLs stay in Worker/KV only.
-    if (url.pathname.startsWith('/pricing/pricecharting') || url.pathname.startsWith('/comic/metron/') || url.pathname === '/barcode/lookup') {
+    if (url.pathname.startsWith('/pricing/pricecharting') || url.pathname.startsWith('/comic/metron/') || url.pathname.startsWith('/comic/covers/') || url.pathname === '/barcode/lookup') {
       const token = env.PRICECHARTING_TOKEN || env.PRICECHARTING_API_KEY;
 
       const pennies = v => {
