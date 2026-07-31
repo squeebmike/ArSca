@@ -17061,10 +17061,17 @@ function openEbayFromDash(id){
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px">
         <div><label style="font-family:monospace;font-size:9px;color:var(--dim)">PRICE</label><input id="dash-eb-price" type="number" step="0.01" min="0.99" value="${price?price.toFixed(2):''}" style="width:100%;margin-top:4px;background:var(--surf2);border:1px solid var(--border);color:var(--gold);padding:9px;border-radius:6px;box-sizing:border-box"></div>
         <div><label style="font-family:monospace;font-size:9px;color:var(--dim)">QTY</label><input id="dash-eb-qty" type="number" min="1" value="${Math.max(1, item.qty||1)}" style="width:100%;margin-top:4px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:9px;border-radius:6px;box-sizing:border-box"></div>
-        <div><label style="font-family:monospace;font-size:9px;color:var(--dim)">FORMAT</label><select id="dash-eb-format" style="width:100%;margin-top:4px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:9px;border-radius:6px"><option value="FIXED_PRICE">Buy It Now</option><option value="AUCTION">Auction</option></select></div>
+        <div><label style="font-family:monospace;font-size:9px;color:var(--dim)">FORMAT</label><select id="dash-eb-format" onchange="const off=document.getElementById('dash-eb-allow-offers');if(this.value==='AUCTION'){off.checked=false;off.disabled=true;document.getElementById('dash-eb-offer-fields').style.display='none';}else{off.disabled=false;}" style="width:100%;margin-top:4px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:9px;border-radius:6px"><option value="FIXED_PRICE">Buy It Now</option><option value="AUCTION">Auction</option></select></div>
         <div><label style="font-family:monospace;font-size:9px;color:var(--dim)">CONDITION</label><div id="dash-eb-condition-host" style="margin-top:4px"></div></div>
         <div><label style="font-family:monospace;font-size:9px;color:var(--dim)">CATEGORY</label><select id="dash-eb-category" onchange="refreshEbayConditionUi('dash-eb', all.find(i=>i.id==='${id}'))" style="width:100%;margin-top:4px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:9px;border-radius:6px"><option value="" ${catId===''?'selected':''}>Other (set ID below)</option><option value="261328" ${catId==='261328'?'selected':''}>Sports Cards</option><option value="183454" ${catId==='183454'?'selected':''}>TCG Cards</option><option value="259104" ${catId==='259104'?'selected':''}>Comics</option><option value="261329">Sports Boxes/Packs</option><option value="2536">Card Lots</option></select></div>
         <div><label style="font-family:monospace;font-size:9px;color:var(--dim)">DURATION</label><select id="dash-eb-duration" style="width:100%;margin-top:4px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:9px;border-radius:6px"><option value="GTC">GTC</option><option value="DAYS_7">7 days</option><option value="DAYS_10">10 days</option></select></div>
+      </div>
+      <div style="border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:10px">
+        <label style="display:flex;align-items:center;gap:8px;font-family:monospace;font-size:11px;cursor:pointer"><input id="dash-eb-allow-offers" type="checkbox" onchange="document.getElementById('dash-eb-offer-fields').style.display=this.checked?'grid':'none'"> ALLOW OFFERS <span style="color:var(--dim);font-weight:normal">(buyers can send a Best Offer)</span></label>
+        <div id="dash-eb-offer-fields" style="display:none;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
+          <div><label style="font-family:monospace;font-size:8px;color:var(--dim)">MINIMUM OFFER (auto-decline below)</label><input id="dash-eb-min-offer" type="number" step="0.01" min="0" placeholder="optional" style="width:100%;margin-top:2px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:7px;border-radius:6px;box-sizing:border-box"></div>
+          <div><label style="font-family:monospace;font-size:8px;color:var(--dim)">AUTO-ACCEPT AT OR ABOVE</label><input id="dash-eb-auto-accept" type="number" step="0.01" min="0" placeholder="optional" style="width:100%;margin-top:2px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:7px;border-radius:6px;box-sizing:border-box"></div>
+        </div>
       </div>
       <label style="font-family:monospace;font-size:9px;color:var(--dim)">CONDITION DESCRIPTION</label>
       <input id="dash-eb-cond-desc" value="${esc(isGraded?[item.grader,item.grade].filter(Boolean).join(' '):condText)}" style="width:100%;margin:4px 0 10px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:9px;border-radius:6px;box-sizing:border-box">
@@ -17139,6 +17146,9 @@ function collectDashboardEbayFormPayload(item){
     duration:document.getElementById('dash-eb-duration').value,
     quantity:parseInt(document.getElementById('dash-eb-qty').value)||1,
     categoryId,
+    bestOfferEnabled:!!document.getElementById('dash-eb-allow-offers')?.checked,
+    autoDeclinePrice:document.getElementById('dash-eb-min-offer')?.value || '',
+    autoAcceptPrice:document.getElementById('dash-eb-auto-accept')?.value || '',
     imageUrl:item.thumbnail||null,
     imageUrls:[item.thumbnail,...(Array.isArray(item.photos)?item.photos:[])].filter(Boolean),
     sport:document.getElementById('dash-eb-sport')?.value.trim() || item.sport || '',
@@ -17289,7 +17299,7 @@ function ebayBulkReviewCardHtml(item, fields, desc){
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px;margin-bottom:8px">
       <div><label style="font-size:8px;color:var(--dim)">PRICE</label><input id="${prefix}-price" type="number" step="0.01" min="0.99" value="${fields.price?fields.price.toFixed(2):''}" style="width:100%;margin-top:2px;background:var(--surf2);border:1px solid var(--border);color:var(--gold);padding:6px;border-radius:6px;box-sizing:border-box"></div>
       <div><label style="font-size:8px;color:var(--dim)">QTY</label><input id="${prefix}-qty" type="number" min="1" value="${Math.max(1,item.qty||1)}" style="width:100%;margin-top:2px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:6px;border-radius:6px;box-sizing:border-box"></div>
-      <div><label style="font-size:8px;color:var(--dim)">FORMAT</label><select id="${prefix}-format" style="width:100%;margin-top:2px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:6px;border-radius:6px"><option value="FIXED_PRICE">Buy It Now</option><option value="AUCTION">Auction</option></select></div>
+      <div><label style="font-size:8px;color:var(--dim)">FORMAT</label><select id="${prefix}-format" onchange="const off=document.getElementById('${prefix}-allow-offers');if(this.value==='AUCTION'){off.checked=false;off.disabled=true;document.getElementById('${prefix}-offer-fields').style.display='none';}else{off.disabled=false;}" style="width:100%;margin-top:2px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:6px;border-radius:6px"><option value="FIXED_PRICE">Buy It Now</option><option value="AUCTION">Auction</option></select></div>
       <div><label style="font-size:8px;color:var(--dim)">DURATION</label><select id="${prefix}-duration" style="width:100%;margin-top:2px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:6px;border-radius:6px"><option value="GTC">GTC</option><option value="DAYS_7">7 days</option><option value="DAYS_10">10 days</option></select></div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px">
@@ -17297,6 +17307,13 @@ function ebayBulkReviewCardHtml(item, fields, desc){
       <div><label style="font-size:8px;color:var(--dim)">CUSTOM CATEGORY ID${fields.catId===''?' (required)':''}</label><input id="${prefix}-category-id" value="${fields.catId}" placeholder="e.g. 1305" style="width:100%;margin-top:2px;background:var(--surf2);border:1px solid var(--border);color:${fields.catId===''?'var(--gold)':'var(--text)'};padding:6px;border-radius:6px;box-sizing:border-box"></div>
     </div>
     <div style="margin-bottom:8px"><label style="font-size:8px;color:var(--dim)">CONDITION</label><div id="${prefix}-condition-host" style="margin-top:2px"></div></div>
+    <div style="border:1px solid var(--border);border-radius:6px;padding:8px;margin-bottom:8px">
+      <label style="display:flex;align-items:center;gap:6px;font-family:var(--font-mono);font-size:10px;cursor:pointer"><input id="${prefix}-allow-offers" type="checkbox" onchange="document.getElementById('${prefix}-offer-fields').style.display=this.checked?'grid':'none'"> ALLOW OFFERS</label>
+      <div id="${prefix}-offer-fields" style="display:none;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px">
+        <div><label style="font-size:8px;color:var(--dim)">MIN OFFER</label><input id="${prefix}-min-offer" type="number" step="0.01" min="0" placeholder="optional" style="width:100%;margin-top:2px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:6px;border-radius:6px;box-sizing:border-box"></div>
+        <div><label style="font-size:8px;color:var(--dim)">AUTO-ACCEPT</label><input id="${prefix}-auto-accept" type="number" step="0.01" min="0" placeholder="optional" style="width:100%;margin-top:2px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:6px;border-radius:6px;box-sizing:border-box"></div>
+      </div>
+    </div>
     <div style="margin-bottom:8px"><label style="font-size:8px;color:var(--dim)">DESCRIPTION</label><textarea id="${prefix}-desc" rows="5" style="width:100%;margin-top:2px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:8px;border-radius:6px;box-sizing:border-box;resize:vertical;font-size:11px">${escHtml(desc)}</textarea></div>
     <div style="display:flex;gap:6px;align-items:center">
       <button class="hbtn" style="flex:1;background:rgba(255,209,102,.12);border-color:rgba(255,209,102,.35);color:var(--gold)" onclick="submitEbayBulkReviewItem('${item.id}')">LIST THIS ITEM</button>
@@ -17362,6 +17379,9 @@ async function submitEbayBulkReviewItem(id){
     duration: document.getElementById(prefix+'-duration')?.value || 'GTC',
     quantity: Math.max(1, parseInt(document.getElementById(prefix+'-qty')?.value)||1),
     categoryId: catId,
+    bestOfferEnabled: !!document.getElementById(prefix+'-allow-offers')?.checked,
+    autoDeclinePrice: document.getElementById(prefix+'-min-offer')?.value || '',
+    autoAcceptPrice: document.getElementById(prefix+'-auto-accept')?.value || '',
     imageUrl: item.thumbnail||null,
     imageUrls: [item.thumbnail, ...(Array.isArray(item.photos)?item.photos:[])].filter(Boolean),
     sport: item.sport || '',
