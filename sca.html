@@ -695,7 +695,10 @@ const STORE = {
   window.fetch = function(...args){
     inflight++;
     clearTimeout(showTimer);
-    showTimer = setTimeout(() => { if(inflight > 0) busyBadge().classList.add('on'); }, 250);
+    // Most button presses resolve well under a second and shouldn't ever
+    // flash the badge -- only show it once something's actually slow enough
+    // to notice.
+    showTimer = setTimeout(() => { if(inflight > 0) busyBadge().classList.add('on'); }, 700);
     return origFetch(...args).finally(() => {
       inflight = Math.max(0, inflight - 1);
       if(inflight === 0){ clearTimeout(showTimer); busyBadge().classList.remove('on'); }

@@ -3103,8 +3103,10 @@ window.APP_VERSION = APP_VERSION;
   function beginGlobalBusy(){
     inflight++;
     clearTimeout(showTimer);
-    // Small delay so a fast (<250ms) operation never flashes the badge.
-    showTimer = setTimeout(() => { if(inflight > 0) busyBadge().classList.add('on'); }, 250);
+    // Most button presses resolve well under a second and shouldn't ever
+    // flash the badge -- only show it once something's actually slow enough
+    // to notice.
+    showTimer = setTimeout(() => { if(inflight > 0) busyBadge().classList.add('on'); }, 700);
   }
   function endGlobalBusy(){
     inflight = Math.max(0, inflight - 1);
