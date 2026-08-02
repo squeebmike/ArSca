@@ -2603,6 +2603,16 @@ body.show-mode .inv-sync-badge{display:none;}
       <div id="edit-pricecharting-status" style="font-family:var(--font-mono);font-size:9px;color:var(--dim);line-height:1.45;margin-top:5px">Paste the numeric PriceCharting/SportsCardsPro product ID (shown as "PriceCharting ID" on the product page) to pin exact-match pricing.</div>
     </div>
 
+    <div style="margin-top:8px">
+      <label style="display:block">Paste PriceCharting Comic Link (Comics)</label>
+      <div style="display:flex;gap:7px;align-items:center">
+        <input type="text" id="edit-comic-url" inputmode="url" placeholder="https://www.pricecharting.com/game/..." style="flex:1" onkeydown="if(event.key==='Enter'){event.preventDefault();lookupComicFromPastedUrl()}">
+        <button class="hbtn" type="button" id="edit-comic-url-find" onclick="lookupComicFromPastedUrl()">FIND</button>
+      </div>
+      <div id="edit-comic-url-status" style="font-family:var(--font-mono);font-size:9px;color:var(--dim);line-height:1.45;margin-top:5px">Paste a PriceCharting comic page link to fill in series, issue, cover, and pinned pricing -- instead of searching Research by name.</div>
+      <div id="edit-comic-url-picker" style="margin-top:6px;display:grid;gap:6px"></div>
+    </div>
+
     <label style="margin-top:8px;display:block">Variant / Parallel</label>
     <input type="text" id="edit-variant" placeholder="Base, Holo, Gold Prizm...">
 
@@ -19055,6 +19065,99 @@ async function inventoryPcReferencePatch(item = {}){
     pricechartingProductId:id,
     pricechartingProductName:verified?.product?.productName || item.pricechartingProductName || '',
   };
+}
+
+// PriceCharting comic URLs are slug-based (/game/<series-slug>/<issue-slug>)
+// same as the sports-card URLs handled by inventoryPcLooksLikeUrl -- the
+// numeric product ID is never in the URL itself. So instead of asking for
+// that ID (which isn't shown anywhere obvious on a comic's PriceCharting
+// page either), turn the pasted link's slug into a search query and run it
+// through the same comic-sweep search the manual series+issue flow uses,
+// then apply the result straight onto this edit form.
+function comicQueryFromPastedUrl(raw){
+  const t = String(raw || '').trim();
+  if(!t) return '';
+  try {
+    const url = new URL(/^https?:\/\//i.test(t) ? t : 'https://' + t);
+    const parts = url.pathname.split('/').filter(Boolean);
+    const slugs = parts[0] === 'game' ? parts.slice(1) : parts;
+    return slugs.join(' ').replace(/-/g, ' ').replace(/\s+/g, ' ').trim();
+  } catch (e) {
+    return t.replace(/^https?:\/\/[^/]+/i, '').replace(/[/\-]+/g, ' ').trim();
+  }
+}
+async function lookupComicFromPastedUrl(){
+  const input = document.getElementById('edit-comic-url');
+  const status = document.getElementById('edit-comic-url-status');
+  const picker = document.getElementById('edit-comic-url-picker');
+  const btn = document.getElementById('edit-comic-url-find');
+  const raw = input?.value || '';
+  const query = comicQueryFromPastedUrl(raw);
+  if(picker) picker.innerHTML = '';
+  if(!query){ if(status){status.style.color='var(--red)';status.textContent='Paste a PriceCharting comic page link first.';} return; }
+  if(btn) btn.disabled = true;
+  if(status){ status.style.color='var(--gold)'; status.textContent='Searching PriceCharting for "' + query + '"…'; }
+  try {
+    const res = await fetch(WORKER + '/pricing/pricecharting/comic-sweep', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ queries:[query] }) });
+    const data = await res.json().catch(() => ({}));
+    const products = (res.ok && data.ok) ? (data.products || []) : [];
+    if(!products.length){ if(status){status.style.color='var(--red)';status.textContent='No PriceCharting comic match found for that link. Try Research → search by series name instead.';} return; }
+    const api = window.ArsCaComicIssueHub;
+    const parsed = api.parseComicQuery(query);
+    const scored = products.map(p => ({ p, score:api.scoreCandidate(p, parsed).score })).sort((a,b) => b.score - a.score);
+    if(scored.length === 1 || (scored[0].score - (scored[1]?.score || 0)) >= 25){
+      applyComicCandidateToEditForm(scored[0].p);
+      if(status){ status.style.color='var(--g)'; status.textContent='✓ Matched: ' + (scored[0].p.productName || 'comic') + '. Review the fields below, then Save.'; }
+      return;
+    }
+    if(status){ status.style.color='var(--gold)'; status.textContent=scored.length + ' possible matches — pick the right cover below.'; }
+    if(picker){
+      picker.innerHTML = scored.slice(0, 8).map(({p}, i) => `<div style="display:flex;gap:8px;align-items:center;border:1px solid var(--border);border-radius:8px;padding:6px;background:var(--surf2)">
+        ${p.imageUrl ? `<img src="${escHtml(p.imageUrl)}" style="width:34px;height:46px;object-fit:cover;border-radius:4px" loading="lazy">` : '<div style="width:34px;height:46px;border-radius:4px;background:var(--surf);display:grid;place-items:center;font-size:7px;color:var(--dim)">NO IMG</div>'}
+        <div style="flex:1;font-size:10px;line-height:1.4">${escHtml(p.productName || 'Unnamed comic')}${p.comicPrices?.ungraded ? '<br><span style="color:var(--dim);font-size:9px">Raw $' + Number(p.comicPrices.ungraded).toFixed(2) + '</span>' : ''}</div>
+        <button class="hbtn" type="button" onclick="applyComicCandidateFromPicker(${i})">USE THIS</button>
+      </div>`).join('');
+      window._editComicPickerCandidates = scored.map(s => s.p);
+    }
+  } catch(e) {
+    if(status){ status.style.color='var(--red)'; status.textContent='Lookup failed: ' + (e.message || e); }
+  } finally {
+    if(btn) btn.disabled = false;
+  }
+}
+function applyComicCandidateFromPicker(idx){
+  const p = window._editComicPickerCandidates?.[idx];
+  if(!p) return;
+  applyComicCandidateToEditForm(p);
+  const status = document.getElementById('edit-comic-url-status');
+  if(status){ status.style.color='var(--g)'; status.textContent='✓ Using: ' + (p.productName || 'comic') + '. Review the fields below, then Save.'; }
+  const picker = document.getElementById('edit-comic-url-picker');
+  if(picker) picker.innerHTML = '';
+}
+function applyComicCandidateToEditForm(product){
+  if(!product) return;
+  const api = window.ArsCaComicIssueHub;
+  const parsed = api.parseComicQuery(product.productName || '');
+  const setEl = document.getElementById('edit-set');
+  if(setEl && (product.consoleName || parsed.seriesGuess)) setEl.value = product.consoleName || parsed.seriesGuess;
+  const issueEl = document.getElementById('edit-issue');
+  if(issueEl && parsed.issueNumber) issueEl.value = parsed.issueNumber;
+  const yearEl = document.getElementById('edit-year');
+  const year = String(product.releaseDate || parsed.yearGuess || '').slice(0, 4);
+  if(yearEl && /^\d{4}$/.test(year)) yearEl.value = year;
+  const teamEl = document.getElementById('edit-team');
+  if(teamEl && parsed.publisherGuess && !teamEl.value) teamEl.value = parsed.publisherGuess;
+  if(product.imageUrl) setInventoryEditPhoto(product.imageUrl, 'PriceCharting');
+  const pcInput = document.getElementById('edit-pricecharting-ref');
+  if(pcInput && product.productId){
+    pcInput.value = String(product.productId);
+    inventoryPcReferenceState = { originalId:inventoryPcReferenceState.originalId, verified:{ id:String(product.productId), product, url:product.url || '' } };
+    const pcStatus = document.getElementById('edit-pricecharting-status');
+    if(pcStatus){ pcStatus.style.color='var(--g)'; pcStatus.textContent='✓ #' + product.productId + ' · ' + (product.productName || 'Unnamed product') + ' (from pasted link)'; }
+  }
+  const marketEl = document.getElementById('edit-market');
+  const raw = Number(product.comicPrices?.ungraded || 0);
+  if(marketEl && raw > 0 && !Number(marketEl.value)) { marketEl.value = raw; updateEditProfit(); }
 }
 
 function consignmentOwnerDirectory(){const map=new Map();(consignorPeople||[]).forEach(p=>{const name=String(p.name||'').trim();if(name)map.set(name.toLowerCase(),{name,contact:p.contact||'',split:Number(p.split||25),personId:p.id||''});});(consignItems||[]).forEach(c=>{const name=String(c.owner||'').trim();if(name&&!map.has(name.toLowerCase()))map.set(name.toLowerCase(),{name,contact:c.contact||'',split:Number(c.split||25)});});return [...map.values()].sort((a,b)=>a.name.localeCompare(b.name));}
