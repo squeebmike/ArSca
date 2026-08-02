@@ -12327,14 +12327,16 @@ function pokemonCardNumberForSync(card = {}){
 }
 function pokemonPriceTrackerMarketPrice(card = {}, condition = ''){
   const prices = card.prices || {};
-  // A real per-condition price (the same prices.conditions data the
-  // Research tab's single-card lookup already reads correctly via
-  // pokemonPptObjectMatch) always wins when the caller knows what condition
-  // this specific card actually is. Every field below this point is a
-  // generic/NM-denominated "market price" -- comparing that against an
-  // inventory item that's actually LP/MP/HP/DMG makes ordinary condition
-  // grading look like a huge, fake price swing.
-  if(condition){
+  // Only override with a per-condition price for a genuinely non-NM item.
+  // The very first cut of this fix checked this for EVERY condition
+  // (including plain NM), which meant it started preferring
+  // prices.conditions over the primary market fields for ordinary NM
+  // inventory too -- and that per-condition figure runs lower than the
+  // curated market price PokemonPriceTracker returns in the fields below,
+  // which is what mass-mispriced ~150 unrelated NM cards as "big drops" in
+  // one sync. NM (or no condition given) must fall straight through to the
+  // original, unchanged fallback chain below.
+  if(condition && pokemonPptConditionCode(condition) !== 'NM'){
     const perCondition = pokemonPptPriceValue(pokemonPptObjectMatch(prices.conditions || {}, pokemonPptConditionLabel(condition)));
     if(perCondition > 0) return perCondition;
   }
