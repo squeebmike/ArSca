@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.02.16-run-chooser-survive-autoselect">
+<meta name="version" content="2026.08.02.17-run-publisher-carryover">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1510,13 +1510,13 @@ body.show-mode .inv-sync-badge{display:none;}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.02.16-run-chooser-survive-autoselect"></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.02.16-run-chooser-survive-autoselect"></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.02.16-run-chooser-survive-autoselect"></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.02.16-run-chooser-survive-autoselect"></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.02.16-run-chooser-survive-autoselect"></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.02.16-run-chooser-survive-autoselect"></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.02.16-run-chooser-survive-autoselect"></script>
+<script src="scripts/query-routing.js?v=2026.08.02.17-run-publisher-carryover"></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.02.17-run-publisher-carryover"></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.02.17-run-publisher-carryover"></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.02.17-run-publisher-carryover"></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.02.17-run-publisher-carryover"></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.02.17-run-publisher-carryover"></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.02.17-run-publisher-carryover"></script>
 </head>
 <body>
 
@@ -1566,11 +1566,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.02.16-run-chooser-survive-autoselect</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.02.17-run-publisher-carryover</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.02.16-run-chooser-survive-autoselect</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.02.17-run-publisher-carryover</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1592,7 +1592,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.02.16-run-chooser-survive-autoselect</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.02.17-run-publisher-carryover</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3080,7 +3080,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.02.16-run-chooser-survive-autoselect';
+const APP_VERSION = '2026.08.02.17-run-publisher-carryover';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -28350,7 +28350,18 @@ function renderComicRunChooser(results=qplResults){const api=window.ArsCaComicIs
   if(!parsed.seriesGuess||!parsed.issueNumber){
     for(const row of comicRows){
       const guess=api.parseComicQuery(row.name||row.pricecharting?.productName||'');
-      if(guess.seriesGuess&&guess.issueNumber){parsed=guess;break;}
+      if(guess.seriesGuess&&guess.issueNumber){
+        // parseComicQuery only spots a publisher by finding its literal name
+        // inside the title text ("Marvel", "DC"...) which almost no comic's
+        // own product name ever includes ("Amazing Spider-Man #1" doesn't
+        // say "Marvel" anywhere) -- so a scanned Metron match, which DOES
+        // carry a real publisher/year, was getting its known answer thrown
+        // away and re-guessed blind. That's why runs kept landing in
+        // "Unsorted / Needs Review" with a huge unfiltered candidate dump:
+        // detectRun()/buildSweepQueries() had no publisher to narrow by.
+        parsed={...guess,publisherGuess:guess.publisherGuess||row.publisher||row.metron?.publisher||'',yearGuess:guess.yearGuess||row.year||''};
+        break;
+      }
     }
   }
   if(!parsed.seriesGuess||!parsed.issueNumber)return;const candidates=comicRows.map(r=>r.pricecharting||r.raw).filter(Boolean);if(!candidates.length)return;window._comicRunGroups=api.groupCandidates(candidates,parsed);if(!window._comicRunGroups.length)return;const money=r=>r?.min==null?'No guide':'$'+Number(r.min).toFixed(2)+(r.max!==r.min?'–$'+Number(r.max).toFixed(2):'');const panel=document.createElement('div');panel.id='comic-run-chooser';panel.style.marginBottom='14px';panel.innerHTML=`<div class="panel" style="border-color:rgba(199,125,255,.3)"><div class="ph"><b style="color:var(--purple)">PICK THE SERIES / RUN · OLDEST TO NEWEST</b><span>${escHtml(parsed.raw)}</span></div><div style="font-size:10px;color:var(--dim);margin-bottom:9px">Barcode and search narrow the neighborhood. Pick the run, then confirm the exact cover in the Issue Hub.</div><div class="comic-run-grid">${window._comicRunGroups.map((g,i)=>`<div class="comic-run-card">${g.topCoverImageUrl?`<img src="${escHtml(g.topCoverImageUrl)}" class="comic-cover-img" loading="lazy">`:'<div class="comic-cover-img" style="display:grid;place-items:center;color:var(--dim)">NO COVER</div>'}<b>${escHtml(g.seriesTitle)} #${escHtml(g.issueNumber)}</b><div style="color:var(--purple);margin:4px 0">${escHtml([g.yearGuess,g.runLabel].filter(Boolean).join(' · '))}</div><div>${g.candidateCount} candidate${g.candidateCount===1?'':'s'} · Raw ${money(g.priceRangeRaw)}</div><button class="hbtn" style="width:100%;margin-top:8px" onclick="openComicIssueHubFromGroup(${i})">OPEN ISSUE HUB</button></div>`).join('')}</div></div>`;host.prepend(panel);}
@@ -36079,7 +36090,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.02.16-run-chooser-survive-autoselect"></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.02.17-run-publisher-carryover"></script>
 </body>
 </html>
 
