@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.02.05-pokemon-sealed-search">
+<meta name="version" content="2026.08.02.06-price-movers-checklist">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1500,13 +1500,13 @@ body.show-mode .inv-sync-badge{display:none;}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.02.05-pokemon-sealed-search"></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.02.05-pokemon-sealed-search"></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.02.05-pokemon-sealed-search"></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.02.05-pokemon-sealed-search"></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.02.05-pokemon-sealed-search"></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.02.05-pokemon-sealed-search"></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.02.05-pokemon-sealed-search"></script>
+<script src="scripts/query-routing.js?v=2026.08.02.06-price-movers-checklist"></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.02.06-price-movers-checklist"></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.02.06-price-movers-checklist"></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.02.06-price-movers-checklist"></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.02.06-price-movers-checklist"></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.02.06-price-movers-checklist"></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.02.06-price-movers-checklist"></script>
 </head>
 <body>
 
@@ -1556,11 +1556,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.02.05-pokemon-sealed-search</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.02.06-price-movers-checklist</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.02.05-pokemon-sealed-search</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.02.06-price-movers-checklist</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1582,7 +1582,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.02.05-pokemon-sealed-search</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.02.06-price-movers-checklist</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -1675,7 +1675,6 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <!-- INVENTORY TAB -->
 <div id="tab-inventory" class="tab-panel">
-  <div id="price-change-alerts"></div>
   <div class="sec" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
     FULL INVENTORY
     <div class="inv-view-toggle">
@@ -1790,6 +1789,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <!-- ALERTS TAB -->
 <div id="tab-alerts" class="tab-panel">
   <div class="sec">NEEDS ATTENTION</div>
+  <div id="price-change-alerts"></div>
   <div class="panel" style="margin-top:0;margin-bottom:14px;border-color:rgba(199,125,255,.3)">
     <div class="ph">CONSIGNMENTS SOLD — PAYOUT REQUIRED <b id="consignment-alert-count"></b></div>
     <div id="consignment-sale-alerts"></div>
@@ -3071,7 +3071,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.02.05-pokemon-sealed-search';
+const APP_VERSION = '2026.08.02.06-price-movers-checklist';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -13192,6 +13192,15 @@ async function buildLivePokemonPriceSyncProposal(options = {}){
           selectedVariantMarketPrice:live.card.selectedVariant?.marketPrice ?? null,
           primaryCondition:live.card.primaryCondition || live.card.condition || '',
         },
+        sealed,
+        // For a sealed-product name search (no pinned tcgPlayerId), this is
+        // the only way to see which queries were actually tried and which
+        // product they landed on -- see the sealed-specific admin-debug
+        // line in renderPriceSyncProposal().
+        attemptedQueries:sealed ? (live.attemptedQueries || []) : null,
+        matchedProductName:sealed ? (live.card.name || live.card.productName || live.card.title || '') : '',
+        matchedProductSet:sealed ? (live.card.setName || live.card.set || '') : '',
+        matchedTcgPlayerId:sealed ? (live.card.tcgPlayerId || live.card.tcgplayerId || '') : '',
         selected:true,
       });
     } catch(e) {
@@ -13628,7 +13637,8 @@ function renderPriceSyncProposal(){
       <div style="flex:1;min-width:0">
         <div style="font-size:12px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(priceSyncItemTitle(p.item))}</div>
         <div style="font-size:10px;color:var(--dim)">${escHtml(p.item.set||'')}${(p.item.card_number || p.item.cardNumber)?' · #'+escHtml(p.item.card_number || p.item.cardNumber):''} · ${escHtml(p.mode === 'live' ? 'live ' + (p.matchStatus || 'match') : p.mode === 'mtg-live' ? (p.matchStatus || 'live MTG match') : p.mode === 'mtg-offline' ? (p.matchStatus || 'offline MTG match') : 'cached')} · ${escHtml(p.source || '')}${p.lastUpdated?' · '+escHtml(String(p.lastUpdated).slice(0,10)):''}</div>
-        ${p.mode === 'live' && (p.isBig || showAdminDebug()) ? `<div style="font-size:8px;color:var(--gold);margin-top:3px;font-family:monospace">Debug: itemCondition=${escHtml(p.item.condition||'NM')} / primaryPrinting=${escHtml(p.prices?.primaryPrinting||'')} / variant printings [${escHtml(Object.keys(p.variants||{}).join(', ')||'none')}] / matchedVariantCondition=${escHtml(String(pokemonPriceTrackerVariantConditionPrice({prices:p.prices}, p.item.condition||'NM')||''))} / legacy conditions keys [${escHtml(Object.keys(p.prices?.conditions||{}).join(', ')||'none')}] / matchedLegacyCondition=${escHtml(String(pokemonPptPriceValue(pokemonPptObjectMatch(p.prices?.conditions||{}, pokemonPptConditionLabel(p.item.condition||'NM')))||''))} / prices.market=${escHtml(String(p.prices?.market?.price ?? p.prices?.market ?? ''))} / card.marketPrice=${escHtml(String(p.rawDebug?.marketPrice ?? ''))}</div>` : ''}
+        ${p.mode === 'live' && p.sealed && (p.isBig || showAdminDebug()) ? `<div style="font-size:8px;color:var(--gold);margin-top:3px;font-family:monospace">Debug: attemptedQueries [${escHtml((p.attemptedQueries||[]).join(' | ')||'none')}] / matchedProduct="${escHtml(p.matchedProductName||'')}" / matchedSet="${escHtml(p.matchedProductSet||'')}" / matchedTcgPlayerId=${escHtml(p.matchedTcgPlayerId||'')} / prices.market=${escHtml(String(p.prices?.market?.price ?? p.prices?.market ?? ''))} / card.marketPrice=${escHtml(String(p.rawDebug?.marketPrice ?? ''))} / card.price=${escHtml(String(p.rawDebug?.price ?? ''))} / unopenedPrice=${escHtml(String(p.rawDebug?.unopenedPrice ?? ''))}</div>` : ''}
+        ${p.mode === 'live' && !p.sealed && (p.isBig || showAdminDebug()) ? `<div style="font-size:8px;color:var(--gold);margin-top:3px;font-family:monospace">Debug: itemCondition=${escHtml(p.item.condition||'NM')} / primaryPrinting=${escHtml(p.prices?.primaryPrinting||'')} / variant printings [${escHtml(Object.keys(p.variants||{}).join(', ')||'none')}] / matchedVariantCondition=${escHtml(String(pokemonPriceTrackerVariantConditionPrice({prices:p.prices}, p.item.condition||'NM')||''))} / legacy conditions keys [${escHtml(Object.keys(p.prices?.conditions||{}).join(', ')||'none')}] / matchedLegacyCondition=${escHtml(String(pokemonPptPriceValue(pokemonPptObjectMatch(p.prices?.conditions||{}, pokemonPptConditionLabel(p.item.condition||'NM')))||''))} / prices.market=${escHtml(String(p.prices?.market?.price ?? p.prices?.market ?? ''))} / card.marketPrice=${escHtml(String(p.rawDebug?.marketPrice ?? ''))}</div>` : ''}
       </div>
       <div style="text-align:right;white-space:nowrap">
         ${bigBadge}
@@ -29177,47 +29187,33 @@ function maybeRaisePriceChangeAlert(inventoryItem, oldPrice, newPrice){
   toast_dash(`PRICE CHANGE: ${alert.name} ${dir} $${Math.abs(dollarChange).toFixed(2)} / ${pctChange>=0?'+':''}${(pctChange*100).toFixed(0)}%`);
   return alert;
 }
+// This list is purely a physical re-sticker checklist -- the inventory's
+// actual price is already current the moment a sync applies it (see
+// SYNC LATEST PRICES / UPDATE SELECTED), so nothing here ever writes to
+// inventory. Marking a row done just means "I walked over and changed the
+// paper sticker to match," and clears it from the list.
 function dismissPriceChangeAlert(id){
   savePriceChangeAlerts(getPriceChangeAlerts().filter(a => a.id !== id));
-}
-async function applyPriceChangeAlert(id){
-  const alerts = getPriceChangeAlerts();
-  const alert = alerts.find(a => a.id === id);
-  if(!alert) return;
-  const item = all.find(i => String(i.id) === String(alert.itemId));
-  if(!item) { toast_dash('Item no longer in inventory'); dismissPriceChangeAlert(id); return; }
-  try {
-    if(typeof updateBuiltInInventoryItem === 'function' && item.source === 'built_in') {
-      await updateBuiltInInventoryItem(item, { market:alert.newPrice });
-    }
-    item.market = alert.newPrice;
-    logOpsEvent('price_alert_applied', 'Updated inventory price for ' + alert.name, { itemId:item.id, oldPrice:alert.oldPrice, newPrice:alert.newPrice });
-    toast_dash('Updated ' + alert.name + ' to $' + alert.newPrice.toFixed(2));
-  } catch(e) {
-    toast_dash('Price update failed: ' + (e.message || e));
-  }
-  dismissPriceChangeAlert(id);
-  loadInventory();
 }
 function renderPriceChangeAlerts(){
   const host = document.getElementById('price-change-alerts');
   if(!host) return;
   // Biggest movers first (by dollar swing) -- this list can span several
-  // days of syncs since an alert stays open until applied/ignored, so with
-  // more than a handful of items the ones worth re-stickering first need to
-  // be at the top, not buried in whatever order they happened to fire.
+  // days of syncs since an alert stays open until marked done or ignored,
+  // so with more than a handful of items the ones worth re-stickering
+  // first need to be at the top, not buried in whatever order they fired.
   const alerts = getPriceChangeAlerts().filter(a => a.status === 'open').sort((a,b) => Math.abs(b.dollarChange) - Math.abs(a.dollarChange));
   if(!alerts.length) { host.innerHTML = ''; return; }
   const shown = alerts.slice(0, 20);
   host.innerHTML = `<div class="panel" style="border-color:rgba(255,184,0,.35);margin-bottom:10px;padding:10px 12px">
       <div style="font-family:'Orbitron',monospace;font-size:11px;color:var(--gold);letter-spacing:.04em">📈 PRICE MOVERS · ${alerts.length} ITEM${alerts.length===1?'':'S'} CHANGED A LOT SINCE LAST CHECKED</div>
-      <div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);margin-top:3px">From your daily price sync -- update the sticker or ignore, then it clears from this list.</div>
+      <div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);margin-top:3px">The system price below is already current from your last sync -- this is just a reminder of which physical stickers still need to be changed to match. Mark it done once you've updated the sticker in the shop.</div>
     </div>` + shown.map(a => `
     <div class="panel" style="border-color:rgba(255,184,0,.35);background:rgba(255,184,0,.06);margin-bottom:8px;padding:10px 12px">
       <div style="font-family:var(--font-mono);font-size:11px;font-weight:800;color:var(--gold)">${escHtml(a.name)} ${a.dollarChange>=0?'up':'down'} $${Math.abs(a.dollarChange).toFixed(2)} / ${a.pctChange>=0?'+':''}${(a.pctChange*100).toFixed(0)}%</div>
-      <div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);margin:4px 0">Old $${a.oldPrice.toFixed(2)} → New $${a.newPrice.toFixed(2)} · Last checked ${escHtml(pokemonCacheAgeLabel(a.lastChecked))}</div>
+      <div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);margin:4px 0">Was $${a.oldPrice.toFixed(2)} → Now $${a.newPrice.toFixed(2)} · Last checked ${escHtml(pokemonCacheAgeLabel(a.lastChecked))}</div>
       <div style="display:flex;gap:8px">
-        <button class="hbtn" onclick="applyPriceChangeAlert('${a.id}')">UPDATE INVENTORY PRICE</button>
+        <button class="hbtn" onclick="dismissPriceChangeAlert('${a.id}')">✓ STICKER UPDATED</button>
         <button class="hbtn" style="color:var(--dim)" onclick="dismissPriceChangeAlert('${a.id}')">IGNORE</button>
       </div>
     </div>`).join('') + (alerts.length > shown.length ? `<div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);text-align:center;padding:6px">+${alerts.length-shown.length} more smaller movers</div>` : '');
@@ -35888,7 +35884,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.02.05-pokemon-sealed-search"></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.02.06-price-movers-checklist"></script>
 </body>
 </html>
 
