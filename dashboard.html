@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.02.07-scanner-category-ux">
+<meta name="version" content="2026.08.02.08-comic-helper-removed">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1119,9 +1119,6 @@ body.customer-browse-mode{padding-bottom:0}body.customer-browse-mode header,body
   #qpl-ctrl-row #qpl-cat{flex:1 1 100%;min-height:44px;font-size:13px;padding:10px 12px;}
   #qpl-ctrl-row .hbtn{flex:1;min-height:44px;white-space:nowrap;}
 
-  /* Comic helper buttons — thumb-friendly (were 9px / 3px padding) */
-  #qpl-comic-helper .hbtn{min-height:40px!important;font-size:11px!important;padding:6px 12px!important;}
-
   /* QPL hero card image — was forced to min-height:300px!important here,
      which fought the max-height:200px set for phones above and (since the
      shell uses overflow:visible for its "tap to zoom" label) let the image
@@ -1502,13 +1499,13 @@ body.show-mode .inv-sync-badge{display:none;}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.02.07-scanner-category-ux"></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.02.07-scanner-category-ux"></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.02.07-scanner-category-ux"></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.02.07-scanner-category-ux"></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.02.07-scanner-category-ux"></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.02.07-scanner-category-ux"></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.02.07-scanner-category-ux"></script>
+<script src="scripts/query-routing.js?v=2026.08.02.08-comic-helper-removed"></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.02.08-comic-helper-removed"></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.02.08-comic-helper-removed"></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.02.08-comic-helper-removed"></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.02.08-comic-helper-removed"></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.02.08-comic-helper-removed"></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.02.08-comic-helper-removed"></script>
 </head>
 <body>
 
@@ -1558,11 +1555,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.02.07-scanner-category-ux</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.02.08-comic-helper-removed</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.02.07-scanner-category-ux</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.02.08-comic-helper-removed</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1584,7 +1581,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.02.07-scanner-category-ux</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.02.08-comic-helper-removed</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -1987,18 +1984,6 @@ body.show-mode .inv-sync-badge{display:none;}
       <div id="pokemon-offline-banner" class="pokemon-offline-banner"></div>
       <div id="mtg-offline-banner" class="mtg-offline-banner"></div>
       <div id="comics-offline-banner" class="comics-offline-banner"></div>
-      <!-- Comic helper row — shown only when Comics category is selected -->
-      <div id="qpl-comic-helper" style="display:none;margin-bottom:10px;padding:9px 12px;background:rgba(199,125,255,.06);border:1px solid rgba(199,125,255,.22);border-radius:8px">
-        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:6px">
-          <span style="font-family:'Orbitron',monospace;font-size:9px;color:var(--purple);letter-spacing:.05em">ONE SEARCH BOX · TITLE, ISSUE, CREATOR, OR BARCODE</span>
-          <button class="hbtn" style="font-size:9px;padding:3px 9px" onclick="appendComicPublisher('Marvel')">Marvel</button>
-          <button class="hbtn" style="font-size:9px;padding:3px 9px" onclick="appendComicPublisher('DC')">DC</button>
-          <button class="hbtn" style="font-size:9px;padding:3px 9px" onclick="appendComicPublisher('Image')">Image</button>
-          <button class="hbtn" style="font-size:9px;padding:3px 9px" onclick="appendComicPublisher('Dark Horse')">Dark Horse</button>
-          <button class="hbtn" style="font-size:9px;padding:3px 9px" onclick="appendComicPublisher('IDW')">IDW</button>
-        </div>
-        <div style="font-family:monospace;font-size:10px;color:var(--dim);line-height:1.5">Examples: <em>TMNT</em> to choose a run, <em>Amazing Spider-Man #300 newsstand</em>, or <em>artist: Jim Lee</em>. Variant tips: <em>direct · foil · sketch · facsimile · incentive · 2nd print · virgin</em></div>
-      </div>
       <!-- Pokémon helper row — shown only when Pokemon TCG category is selected -->
       <div id="qpl-pokemon-helper" style="display:none;margin-bottom:10px;padding:9px 12px;background:rgba(255,209,102,.06);border:1px solid rgba(255,209,102,.22);border-radius:8px">
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
@@ -3073,7 +3058,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.02.07-scanner-category-ux';
+const APP_VERSION = '2026.08.02.08-comic-helper-removed';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -21730,18 +21715,6 @@ function isComicLookupIntent(q = '', cat = ''){
 }
 
 
-// ── Comic helper UI functions ─────────────────────────────────────
-function appendComicPublisher(pub){
-  const inp = document.getElementById('qpl-input');
-  if(!inp) return;
-  const cur = inp.value.trim();
-  const pubLower = pub.toLowerCase();
-  if(!cur.toLowerCase().includes(pubLower)){
-    inp.value = (cur ? cur + ' ' : '') + pub;
-  }
-  inp.focus();
-}
-
 // ── Comic inline price panel (shown in result card instead of slab controls) ─
 function qplComicPricePanel(r, idx){
   const pc = r.pricecharting || {};
@@ -35907,7 +35880,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.02.07-scanner-category-ux"></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.02.08-comic-helper-removed"></script>
 </body>
 </html>
 
