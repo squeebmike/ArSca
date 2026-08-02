@@ -3096,16 +3096,26 @@ window.APP_VERSION = APP_VERSION;
     }
     return el;
   }
-  const origFetch = window.fetch.bind(window);
-  window.fetch = function(...args){
+  // Exposed so a long logical operation that isn't just "one fetch" (e.g.
+  // Research's multi-step offline-cache-then-live-provider search, which has
+  // real gaps between short fetches) can hold the badge/lock for its whole
+  // duration instead of it flickering on/off between each short request.
+  function beginGlobalBusy(){
     inflight++;
     clearTimeout(showTimer);
-    // Small delay so a fast (<250ms) request never flashes the badge.
+    // Small delay so a fast (<250ms) operation never flashes the badge.
     showTimer = setTimeout(() => { if(inflight > 0) busyBadge().classList.add('on'); }, 250);
-    return origFetch(...args).finally(() => {
-      inflight = Math.max(0, inflight - 1);
-      if(inflight === 0){ clearTimeout(showTimer); busyBadge().classList.remove('on'); }
-    });
+  }
+  function endGlobalBusy(){
+    inflight = Math.max(0, inflight - 1);
+    if(inflight === 0){ clearTimeout(showTimer); busyBadge().classList.remove('on'); }
+  }
+  window.beginGlobalBusy = beginGlobalBusy;
+  window.endGlobalBusy = endGlobalBusy;
+  const origFetch = window.fetch.bind(window);
+  window.fetch = function(...args){
+    beginGlobalBusy();
+    return origFetch(...args).finally(endGlobalBusy);
   };
 
   const pendingClicks = new WeakSet();
@@ -23228,7 +23238,20 @@ function tcgplayerSearchLinkToQplRow(query = '', game = 'magic'){
   };
 }
 
+// Research's search has real gaps between short fetches (offline-cache
+// checks, sequential provider calls, scoring/merging) so the global fetch
+// wrapper's badge would flicker on and off through a single search instead
+// of staying up for the whole thing -- hold it explicitly for the full
+// call instead, regardless of which of the many early returns inside fires.
 async function runPriceLookup(){
+  window.beginGlobalBusy?.();
+  try {
+    return await _runPriceLookupInner();
+  } finally {
+    window.endGlobalBusy?.();
+  }
+}
+async function _runPriceLookupInner(){
   clearTimeout(qplTimer);
   // If comics selected, combine main input + optional issue# helper
   const rawQ = document.getElementById('qpl-input').value.trim();
