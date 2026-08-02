@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.02.11-signature-persist-fix">
+<meta name="version" content="2026.08.02.12-webflow-publish-fix">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1505,13 +1505,13 @@ body.show-mode .inv-sync-badge{display:none;}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.02.11-signature-persist-fix"></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.02.11-signature-persist-fix"></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.02.11-signature-persist-fix"></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.02.11-signature-persist-fix"></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.02.11-signature-persist-fix"></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.02.11-signature-persist-fix"></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.02.11-signature-persist-fix"></script>
+<script src="scripts/query-routing.js?v=2026.08.02.12-webflow-publish-fix"></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.02.12-webflow-publish-fix"></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.02.12-webflow-publish-fix"></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.02.12-webflow-publish-fix"></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.02.12-webflow-publish-fix"></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.02.12-webflow-publish-fix"></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.02.12-webflow-publish-fix"></script>
 </head>
 <body>
 
@@ -1561,11 +1561,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.02.11-signature-persist-fix</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.02.12-webflow-publish-fix</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.02.11-signature-persist-fix</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.02.12-webflow-publish-fix</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1587,7 +1587,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.02.11-signature-persist-fix</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.02.12-webflow-publish-fix</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3071,7 +3071,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.02.11-signature-persist-fix';
+const APP_VERSION = '2026.08.02.12-webflow-publish-fix';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -18566,7 +18566,12 @@ async function createWebflowProduct(item, updates) {
   const nameParts = [item.name||'Card', updates.year||item.year, updates.set||item.set, updates.variant||item.variant].filter(Boolean);
   const displayName = nameParts.join(' ').substring(0, 200);
   const slug = 'inv-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2,6);
-  const priceCents = Math.max(1, Math.round((updates.market||0) * 100));
+  // Same floor + signature-inclusive price as the other Webflow push sites
+  // (mirrorUpdateToWebflow, confirmEditAndSync) -- this create path was
+  // missed when those were fixed, so an item that's already signed at the
+  // moment it's first added to inventory still got listed live at the raw
+  // unsigned market price.
+  const priceCents = Math.max(1, Math.round(inventoryListPrice({...item, ...updates}) * 100));
   const desc = [
     updates.key_notes || '',
     updates.condition ? 'Condition: ' + updates.condition : '',
@@ -18930,6 +18935,14 @@ async function mirrorUpdateToWebflow(wfId, item, updates){
       body:JSON.stringify({ sku:{ fieldData:{ price:{ value:priceCents, unit:'USD' } } } })
     }).catch(()=>{});
   }
+  // Webflow CMS edits stay in draft/staged until explicitly published -- the
+  // pure-Webflow edit path (confirmEditAndSync's non-hybrid branch) already
+  // does this, but this hybrid/built_in mirror path never did, so a signed
+  // item's edit correctly updated Webflow's data yet the live custom-domain
+  // site (walkoffsc.com) kept showing the old price indefinitely.
+  await storeWorkerFetch('/proxy/collections/' + WF_PRODUCTS + '/items/publish', {
+    method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ itemIds:[wfId] })
+  }).catch(()=>{});
 }
 
 async function createInventoryRecord(item, updates) {
@@ -36021,7 +36034,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.02.11-signature-persist-fix"></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.02.12-webflow-publish-fix"></script>
 </body>
 </html>
 
