@@ -589,6 +589,13 @@ th.th-thumb, td.td-thumb { width:82px; padding:5px 5px 5px 8px; }
 .dsb-net-cached b { color:var(--blue); }
 @keyframes dsb-pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
 @keyframes spin { to { transform:rotate(360deg); } }
+/* Global busy badge — small corner "master ball" spinner, shown whenever a
+   real network request is in flight (see the fetch wrapper near the top of
+   the script). Non-blocking by design: it's a status indicator, not a modal. */
+#global-busy-badge { position:fixed; bottom:16px; right:16px; z-index:99999; display:none; align-items:center; gap:8px; padding:6px 12px 6px 6px; border-radius:999px; background:rgba(10,10,20,.9); border:1px solid rgba(199,125,255,.4); box-shadow:0 4px 18px rgba(0,0,0,.4); font-family:var(--font-mono,monospace); font-size:9px; color:var(--dim,#999); letter-spacing:.04em; pointer-events:none; }
+#global-busy-badge.on { display:flex; }
+.masterball-spin { width:20px; height:20px; border-radius:50%; flex:none; position:relative; background:linear-gradient(to bottom,#7b2ff7 0%,#7b2ff7 42%,#fff 42%,#fff 58%,#7b2ff7 58%,#7b2ff7 100%); border:2px solid #2a1a3d; box-shadow:inset -2px -2px 3px rgba(0,0,0,.35), inset 2px 2px 2px rgba(255,255,255,.2); animation:spin .8s linear infinite; }
+.masterball-spin::after { content:''; position:absolute; top:50%; left:50%; width:7px; height:7px; margin:-4px 0 0 -4px; border-radius:50%; background:#ff6ec7; border:2px solid #2a1a3d; }
 /* Intake chip */
 .dsb-intake-active b { color:var(--gold); }
 /* Stale data badge */
@@ -3066,6 +3073,58 @@ const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
 const APP_VERSION = '2026.07.28.06-comic-load-controls';
 window.APP_VERSION = APP_VERSION;
+
+// ── Global busy indicator + double-tap guard ──────────────────────────────
+// Purely additive: no existing onclick="..." handler anywhere needs to
+// change. A click on a button that turns out to kick off a network request
+// (fetch is wrapped globally below, so this catches every Worker/Supabase
+// call in the app) stays locked until that request settles, so tapping a
+// slow button twice can't fire the same action twice. A plain synchronous
+// button (steppers, filters, etc.) unlocks again almost immediately since
+// nothing async ever started, so rapid deliberate clicking still works.
+// The small corner spinner mirrors real network activity so "slow" doesn't
+// read as "broken."
+(function(){
+  let inflight = 0, showTimer = null;
+  function busyBadge(){
+    let el = document.getElementById('global-busy-badge');
+    if(!el){
+      el = document.createElement('div');
+      el.id = 'global-busy-badge';
+      el.innerHTML = '<div class="masterball-spin"></div><span>WORKING…</span>';
+      document.body.appendChild(el);
+    }
+    return el;
+  }
+  const origFetch = window.fetch.bind(window);
+  window.fetch = function(...args){
+    inflight++;
+    clearTimeout(showTimer);
+    // Small delay so a fast (<250ms) request never flashes the badge.
+    showTimer = setTimeout(() => { if(inflight > 0) busyBadge().classList.add('on'); }, 250);
+    return origFetch(...args).finally(() => {
+      inflight = Math.max(0, inflight - 1);
+      if(inflight === 0){ clearTimeout(showTimer); busyBadge().classList.remove('on'); }
+    });
+  };
+
+  const pendingClicks = new WeakSet();
+  document.addEventListener('click', function(e){
+    const el = e.target.closest('button, .hbtn');
+    if(!el || el.disabled) return;
+    if(pendingClicks.has(el)){ e.stopImmediatePropagation(); e.preventDefault(); return; }
+    pendingClicks.add(el);
+    const baseline = inflight;
+    setTimeout(() => {
+      if(inflight <= baseline){ pendingClicks.delete(el); return; }
+      const check = setInterval(() => {
+        if(inflight <= baseline){ pendingClicks.delete(el); clearInterval(check); }
+      }, 120);
+      // Safety cap -- a request that never settles can never permanently lock a button.
+      setTimeout(() => { pendingClicks.delete(el); clearInterval(check); }, 15000);
+    }, 60);
+  }, true);
+})();
 
 // This page has no cache-busting of its own (unlike the secondary scripts,
 // which carry a ?v= query string), so a phone can sit on a stale cached copy

@@ -67,6 +67,11 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
 .sort-card{position:absolute;top:15px;width:30px;height:40px;border-radius:5px;border:1px solid rgba(255,255,255,.18);background:linear-gradient(135deg,rgba(255,255,255,.82),rgba(0,255,179,.2));animation:sortCard 1.8s linear infinite;}
 .sort-card:nth-child(1){animation-delay:-1.2s}.sort-card:nth-child(2){animation-delay:-.6s}.sort-card:nth-child(3){animation-delay:0s}
 @keyframes sortCard{0%{left:-42px;transform:rotate(-6deg);opacity:.2}22%{opacity:1}55%{transform:rotate(2deg)}100%{left:calc(100% + 42px);opacity:.25}}
+@keyframes spin{to{transform:rotate(360deg);}}
+#global-busy-badge{position:fixed;bottom:16px;right:16px;z-index:99999;display:none;align-items:center;gap:8px;padding:6px 12px 6px 6px;border-radius:999px;background:rgba(10,10,20,.9);border:1px solid rgba(199,125,255,.4);box-shadow:0 4px 18px rgba(0,0,0,.4);font-family:monospace;font-size:9px;color:rgba(255,255,255,.6);letter-spacing:.04em;pointer-events:none;}
+#global-busy-badge.on{display:flex;}
+.masterball-spin{width:20px;height:20px;border-radius:50%;flex:none;position:relative;background:linear-gradient(to bottom,#7b2ff7 0%,#7b2ff7 42%,#fff 42%,#fff 58%,#7b2ff7 58%,#7b2ff7 100%);border:2px solid #2a1a3d;box-shadow:inset -2px -2px 3px rgba(0,0,0,.35), inset 2px 2px 2px rgba(255,255,255,.2);animation:spin .8s linear infinite;}
+.masterball-spin::after{content:'';position:absolute;top:50%;left:50%;width:7px;height:7px;margin:-4px 0 0 -4px;border-radius:50%;background:#ff6ec7;border:2px solid #2a1a3d;}
 .scanner-step-list{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:8px 0;}
 .scanner-step{font-family:monospace;font-size:9px;color:rgba(255,255,255,.32);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:6px 7px;background:rgba(255,255,255,.03);}
 .scanner-step.done{color:var(--g);border-color:rgba(0,255,179,.24);background:rgba(0,255,179,.07);}
@@ -665,6 +670,54 @@ const STORE = {
   wf_status_instock:'f3769d1e15fa0956f98984d6fa36437f',
   wf_status_sold:   'e6b42f14fcb99aa2168a5f5672226f68',
 };
+// ── Global busy indicator + double-tap guard ──────────────────────────────
+// Purely additive: no existing onclick="..." handler anywhere needs to
+// change. A click on a button that turns out to kick off a network request
+// (fetch is wrapped globally below, so this catches every Worker/Supabase
+// call) stays locked until that request settles, so tapping a slow button
+// twice during a scan session can't fire the same add-to-inventory/buy
+// action twice. A plain synchronous button unlocks again almost
+// immediately since nothing async ever started. The small corner spinner
+// mirrors real network activity so "slow" doesn't read as "broken."
+(function(){
+  let inflight = 0, showTimer = null;
+  function busyBadge(){
+    let el = document.getElementById('global-busy-badge');
+    if(!el){
+      el = document.createElement('div');
+      el.id = 'global-busy-badge';
+      el.innerHTML = '<div class="masterball-spin"></div><span>WORKING…</span>';
+      document.body.appendChild(el);
+    }
+    return el;
+  }
+  const origFetch = window.fetch.bind(window);
+  window.fetch = function(...args){
+    inflight++;
+    clearTimeout(showTimer);
+    showTimer = setTimeout(() => { if(inflight > 0) busyBadge().classList.add('on'); }, 250);
+    return origFetch(...args).finally(() => {
+      inflight = Math.max(0, inflight - 1);
+      if(inflight === 0){ clearTimeout(showTimer); busyBadge().classList.remove('on'); }
+    });
+  };
+  const pendingClicks = new WeakSet();
+  document.addEventListener('click', function(e){
+    const el = e.target.closest('button, .hbtn');
+    if(!el || el.disabled) return;
+    if(pendingClicks.has(el)){ e.stopImmediatePropagation(); e.preventDefault(); return; }
+    pendingClicks.add(el);
+    const baseline = inflight;
+    setTimeout(() => {
+      if(inflight <= baseline){ pendingClicks.delete(el); return; }
+      const check = setInterval(() => {
+        if(inflight <= baseline){ pendingClicks.delete(el); clearInterval(check); }
+      }, 120);
+      setTimeout(() => { pendingClicks.delete(el); clearInterval(check); }, 15000);
+    }, 60);
+  }, true);
+})();
+
 const APP_VERSION = '2026.07.13.06-offline-export-scope';
 const SUPABASE_URL = window.WALKOFF_CONFIG?.supabaseUrl || 'https://vroknjrxubsqyexngwus.supabase.co';
 const SUPABASE_ANON_KEY = window.WALKOFF_CONFIG?.supabaseAnonKey || 'sb_publishable_wbpX2nL8l-4NbXtZNG_bjA_nabSYaJ5';
