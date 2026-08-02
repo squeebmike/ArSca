@@ -12325,8 +12325,19 @@ function isPokemonInventorySyncItem(item = {}){
 function pokemonCardNumberForSync(card = {}){
   return card.cardNumber || card.number || card.collectorNumber || card.card_number || card.raw?.cardNumber || card.raw?.number || '';
 }
-function pokemonPriceTrackerMarketPrice(card = {}){
+function pokemonPriceTrackerMarketPrice(card = {}, condition = ''){
   const prices = card.prices || {};
+  // A real per-condition price (the same prices.conditions data the
+  // Research tab's single-card lookup already reads correctly via
+  // pokemonPptObjectMatch) always wins when the caller knows what condition
+  // this specific card actually is. Every field below this point is a
+  // generic/NM-denominated "market price" -- comparing that against an
+  // inventory item that's actually LP/MP/HP/DMG makes ordinary condition
+  // grading look like a huge, fake price swing.
+  if(condition){
+    const perCondition = pokemonPptPriceValue(pokemonPptObjectMatch(prices.conditions || {}, pokemonPptConditionLabel(condition)));
+    if(perCondition > 0) return perCondition;
+  }
   return firstMoneyValue(
     card.unopenedPrice,
     card.marketPrice?.price,
@@ -13049,7 +13060,26 @@ async function buildLivePokemonPriceSyncProposal(options = {}){
         continue;
       }
       if(sealed) summary.sealedMatched++;
-      const freshPrice = pokemonPriceTrackerMarketPrice(live.card);
+      const itemCondition = String(item.condition || 'NM');
+      // Sealed product doesn't carry NM/LP/MP/HP/DMG grading, so this check
+      // only applies to raw singles. A non-NM single with no real
+      // per-condition price on file gets skipped rather than silently
+      // compared against PokemonPriceTracker's generic/NM market price --
+      // that mismatch is exactly what made an ordinary MP card look like it
+      // "spiked" when the sync actually just fetched its NM price.
+      if(!sealed && pokemonPptConditionCode(itemCondition) !== 'NM'){
+        const perConditionPrice = pokemonPptPriceValue(pokemonPptObjectMatch(live.card.prices?.conditions || {}, pokemonPptConditionLabel(itemCondition)));
+        if(!(perConditionPrice > 0)){
+          summary.noPrice++;
+          summary.issues.push({
+            item:{ ...item }, type:'no-price', tcgPlayerId:exactId,
+            title:'Skipped -- no real ' + pokemonPptConditionLabel(itemCondition) + ' price available',
+            reason:'PokemonPriceTracker only returned a Near Mint / generic market price for this card, not a real ' + pokemonPptConditionLabel(itemCondition) + ' price. Syncing it would have compared the wrong condition instead of a real market move.',
+          });
+          continue;
+        }
+      }
+      const freshPrice = pokemonPriceTrackerMarketPrice(live.card, itemCondition);
       if(!freshPrice || freshPrice <= 0) {
         summary.noPrice++;
         const linkedId = inventoryTcgPlayerId(item) || live.card.tcgPlayerId || live.card.tcgplayerId || '';
@@ -19009,7 +19039,7 @@ async function verifyInventoryTcgplayerReference(){
     const url = match.tcgPlayerUrl || match.productUrl || 'https://www.tcgplayer.com/product/' + id;
     inventoryTcgReferenceState.verified = { id, url, match, productType };
     if(input) input.value = url;
-    const price = pokemonPriceTrackerMarketPrice(match);
+    const price = pokemonPriceTrackerMarketPrice(match, formItem.condition);
     if(status) {
       status.style.color='var(--g)';
       status.textContent='✓ #' + id + ' · ' + (match.name || match.productName || 'Exact Pokémon product') + ' · ' + (productType === 'sealed' ? 'Sealed' : 'Single') + (price ? ' · $' + price.toFixed(2) : '');
