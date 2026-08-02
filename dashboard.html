@@ -13586,7 +13586,11 @@ function applyShowPriceRule(price){
   const pct = Number(show?.priceRulePct || 0);
   const base = Number(price || 0);
   if(!pct || base <= 0) return base;
-  return Math.max(0, Math.round((base * (1 - pct / 100)) * 100) / 100);
+  // Store policy is whole-dollar, cash-register-friendly pricing everywhere
+  // else (see inventoryEffectiveBasePrice) -- a show discount landing on
+  // cents (e.g. 10% off $19 = $17.10) rang up a price nobody actually
+  // charged at the register and threw off recorded revenue/profit.
+  return Math.max(0, Math.round(base * (1 - pct / 100)));
 }
 
 function scopedWorkerPath(path){
@@ -14616,13 +14620,14 @@ function dedupeTransactionRows(txRows, inventorySoldItems){
 function renderStats(){
   const ins=all.filter(i=>i.status==='in_stock');
   const inventorySold=all.filter(i=>i.status==='sold');
-  // When Supabase items are loaded, sold status + profit come from Supabase inventory_items.
-  // Don't add pos_transactions localStorage — those same sales are already in inventorySold,
-  // and old/corrupt test transactions in localStorage would inflate stats permanently.
+  // When Supabase items are loaded, an inventory-linked sale's status + profit
+  // come from Supabase inventory_items, so a matching pos_transactions row
+  // would double-count it -- dedupeTransactionRows already drops those by
+  // shopId. But a one-off/non-inventory sale (supplies, misc items) never has
+  // a shopId and never appears in inventorySold at all, so it must always be
+  // kept here or that sale silently vanishes from every stat on this page.
   const hasSupabaseItems = all.some(i => i.source === 'built_in');
-  const sol = hasSupabaseItems
-    ? inventorySold
-    : inventorySold.concat(dedupeTransactionRows(transactionSoldRows(), inventorySold));
+  const sol = inventorySold.concat(dedupeTransactionRows(transactionSoldRows(), inventorySold).filter(r => !hasSupabaseItems || !r.shopId));
   const totalQty=ins.reduce((a,i)=>a+(i.qty||1),0);
   // Two distinct totals, not blended: pure market reference vs. what we'd
   // actually collect at our real (floor/override/rounded) sell price.
@@ -14693,10 +14698,11 @@ function renderCats(){
   }
   document.getElementById('ct-total').textContent=ins.length+' in stock';
 
-  // Profit meter — same Supabase-first logic as renderStats
+  // Profit meter — same Supabase-first logic as renderStats (keep one-off/
+  // non-inventory transaction rows always; only dedupe inventory-linked ones)
   const invSold=all.filter(i=>i.status==='sold');
   const hasSupabaseItems2=all.some(i=>i.source==='built_in');
-  const sol=hasSupabaseItems2 ? invSold : invSold.concat(dedupeTransactionRows(transactionSoldRows(), invSold));
+  const sol=invSold.concat(dedupeTransactionRows(transactionSoldRows(), invSold).filter(r => !hasSupabaseItems2 || !r.shopId));
   const profitMeter=document.getElementById('profit-meter');
   const catProfits=cats.map(c=>({c,p:sol.filter(i=>i.category===c).reduce((a,i)=>a+(i.profit||0),0)}));
   const maxP=Math.max(...catProfits.map(x=>Math.abs(x.p)),1);
@@ -15002,7 +15008,7 @@ function renderInventoryHealthPanel(){
 }
 function getOwnerSaleRows(){
   const hasSupabaseItems = all.some(i=>i.source === 'built_in');
-  const txRows = hasSupabaseItems ? [] : dedupeTransactionRows(transactionSoldRows(), soldData);
+  const txRows = dedupeTransactionRows(transactionSoldRows(), soldData).filter(r => !hasSupabaseItems || !r.shopId);
   return soldData.concat(txRows);
 }
 function ownerAnalyticsData(){
@@ -15182,8 +15188,12 @@ function renderTable(){
 
 function renderSoldTable(){
   const q=(document.getElementById('sold-q')?.value||'').toLowerCase();
+  // Always keep one-off/non-inventory sale rows (supplies, misc cart items)
+  // -- they have no shopId so they can never appear in soldData, and
+  // suppressing them here made money that was actually charged invisible in
+  // the Sold Items list for every store using Supabase-backed inventory.
   const hasSupabaseItems3=all.some(i=>i.source==='built_in');
-  const txRows=hasSupabaseItems3 ? [] : dedupeTransactionRows(transactionSoldRows(), soldData);
+  const txRows=dedupeTransactionRows(transactionSoldRows(), soldData).filter(r => !hasSupabaseItems3 || !r.shopId);
   const rows=soldData.concat(txRows).filter(i=>!q||(i.name||'').toLowerCase().includes(q)).sort((a,b)=>new Date(b.soldAt||0)-new Date(a.soldAt||0));
   const tb=document.getElementById('sold-body');
   if(!rows.length){tb.innerHTML=`<tr><td colspan="9"><div class="empty"><div class="empty-t">NO SALES YET</div></div></td></tr>`;return;}
@@ -18697,7 +18707,11 @@ async function mirrorUpdateToWebflow(wfId, item, updates){
   Object.keys(fieldData).forEach(k => {
     if(fieldData[k] === '' || fieldData[k] == null || Number.isNaN(fieldData[k])) delete fieldData[k];
   });
-  const priceCents = Math.round(Number(u.market || i.market || 0) * 100);
+  // The checkout SKU price must include the floor and any signature premium,
+  // the same as inventoryListPrice() everywhere else -- pushing raw market
+  // here meant a signed item listed correctly in the dashboard but charged
+  // the un-signed price on the live site.
+  const priceCents = Math.round(inventoryListPrice({...i, ...u}) * 100);
   const r1 = await storeWorkerFetch('/proxy/collections/' + WF_PRODUCTS + '/items/' + wfId, {
     method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ fieldData })
   });
@@ -19441,11 +19455,19 @@ function updateEditProfit() {
   const cost = parseFloat(document.getElementById('edit-cost').value)||0;
   const market = parseFloat(document.getElementById('edit-market').value)||0;
   const list = parseFloat(document.getElementById('edit-list-price')?.value)||market;
-  const profit = list - cost;
-  const unrealized = market - cost;
+  const floor = parseFloat(document.getElementById('edit-min-price')?.value)||0;
+  const sig = parseFloat(document.getElementById('edit-signature-value')?.value)||0;
+  // Match inventoryListPrice()/inventoryEffectiveBasePrice(): the floor is a
+  // hard minimum under list/market, and a signature premium sits on top of
+  // that -- this preview was ignoring both, so editing the floor or the
+  // signature value never moved LIST PROFIT/MARGIN/UNREALIZED at all.
+  const effectiveList = (floor > 0 ? Math.max(list, floor) : list) + sig;
+  const effectiveMarket = (floor > 0 ? Math.max(market, floor) : market) + sig;
+  const profit = effectiveList - cost;
+  const unrealized = effectiveMarket - cost;
   const el = document.getElementById('edit-profit-preview');
   if(cost > 0 && (market > 0 || list > 0)) {
-    const margin = list > 0 ? (profit/list*100).toFixed(0) : '0';
+    const margin = effectiveList > 0 ? (profit/effectiveList*100).toFixed(0) : '0';
     el.innerHTML = `<div class="inv-money-grid">
       <div class="inv-money-card"><div class="k">LIST PROFIT</div><div class="v" style="color:${profit>=0?'var(--g)':'var(--red)'}">${profit>=0?'+':''}$${profit.toFixed(2)}</div></div>
       <div class="inv-money-card"><div class="k">MARGIN</div><div class="v">${margin}%</div></div>
@@ -19458,6 +19480,8 @@ function updateEditProfit() {
 document.getElementById('edit-cost').addEventListener('input', updateEditProfit);
 document.getElementById('edit-market').addEventListener('input', updateEditProfit);
 document.getElementById('edit-list-price')?.addEventListener('input', updateEditProfit);
+document.getElementById('edit-min-price')?.addEventListener('input', updateEditProfit);
+document.getElementById('edit-signature-value')?.addEventListener('input', updateEditProfit);
 
 function saveInvListPrice(id, rawVal){
   const val = parseFloat(rawVal);
@@ -19707,7 +19731,9 @@ async function confirmEditAndSync() {
   }
 
   try {
-    const priceCents = Math.round((updates.market||0) * 100);
+    // Include the floor and any signature premium in the live checkout
+    // price -- same fix as mirrorUpdateToWebflow (see comment there).
+    const priceCents = Math.round(inventoryListPrice(updates) * 100);
     const catMap = {
       'Sports':       '891253037409c4fe59854f3c9ef99a6b',
       'Sports Cards': '891253037409c4fe59854f3c9ef99a6b',
@@ -20159,10 +20185,14 @@ async function runPriceSync() {
     // Update Webflow if shopId exists
     if(item.shopId) {
       try {
+        // Same floor/signature-inclusive price as mirrorUpdateToWebflow --
+        // a synced market price shouldn't ring up below the item's floor or
+        // drop a signature premium that was already applied.
+        const skuPriceCents = Math.round(inventoryListPrice({...item, market:newPrice}) * 100);
         const skuRes = await storeWorkerFetch('/proxy/sites/65b15ee0228d06647ca7e4ce/products/'+item.shopId, {
           method:'PATCH',
           headers:{'Content-Type':'application/json','accept':'application/json'},
-          body: JSON.stringify({ sku: { fieldData: { price: { value: Math.round(newPrice*100), unit:'USD' } } } })
+          body: JSON.stringify({ sku: { fieldData: { price: { value: skuPriceCents, unit:'USD' } } } })
         });
         if(!skuRes.ok) throw new Error('SKU update ' + skuRes.status);
         await wfPatch('/collections/'+WF_PRODUCTS+'/items/'+item.id, {
