@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.02.14-qty-stepper">
+<meta name="version" content="2026.08.02.15-comic-run-chooser-scan-fix">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1510,13 +1510,13 @@ body.show-mode .inv-sync-badge{display:none;}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.02.14-qty-stepper"></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.02.14-qty-stepper"></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.02.14-qty-stepper"></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.02.14-qty-stepper"></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.02.14-qty-stepper"></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.02.14-qty-stepper"></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.02.14-qty-stepper"></script>
+<script src="scripts/query-routing.js?v=2026.08.02.15-comic-run-chooser-scan-fix"></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.02.15-comic-run-chooser-scan-fix"></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.02.15-comic-run-chooser-scan-fix"></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.02.15-comic-run-chooser-scan-fix"></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.02.15-comic-run-chooser-scan-fix"></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.02.15-comic-run-chooser-scan-fix"></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.02.15-comic-run-chooser-scan-fix"></script>
 </head>
 <body>
 
@@ -1566,11 +1566,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.02.14-qty-stepper</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.02.15-comic-run-chooser-scan-fix</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.02.14-qty-stepper</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.02.15-comic-run-chooser-scan-fix</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1592,7 +1592,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.02.14-qty-stepper</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.02.15-comic-run-chooser-scan-fix</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3080,7 +3080,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.02.14-qty-stepper';
+const APP_VERSION = '2026.08.02.15-comic-run-chooser-scan-fix';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -28339,7 +28339,21 @@ async function mergeComicHubCloudDecisions(state=comicIssueHubState){
   return {confirmed,hidden};
 }
 function hubCandidateToResult(c,state=comicIssueHubState){const cp=c.comicPrices||{},score=window.ArsCaComicIssueHub.scoreCandidate(c,state);return {source:'PriceCharting',name:c.productName||'Comic candidate',category:'Comic',set:c.consoleName||'',year:String(c.releaseDate||state?.yearGuess||'').slice(0,4),variant:(window.ArsCaComicIssueHub.variantLabels(c.productName||'')||[]).join(', '),variantLabel:(window.ArsCaComicIssueHub.variantLabels(c.productName||'')||[]).join(', '),series:state?.seriesTitle||'',seriesTitle:state?.seriesTitle||'',issue:state?.currentIssueNumber||'',card_number:state?.currentIssueNumber||'',publisher:state?.publisher||'',runLabel:state?.runLabel||'',market:Number(cp.ungraded||0),imageUrl:c.imageUrl||'',coverImageUrl:c.imageUrl||'',imageSource:c.imageUrl?'pricecharting':'placeholder',coverConfidence:c.coverConfirmed?'confirmed':'needs-confirmation',coverConfirmed:!!c.coverConfirmed,confidence:score.score,matchWhy:score.reasons,providerProductId:c.productId||'',providerUrl:c.url||'',productId:c.productId||'',productUrl:c.url||'',priceSource:'PriceCharting candidates',lastPriceUpdate:new Date().toISOString(),pricecharting:{...c,comicPrices:cp,productId:c.productId,productName:c.productName,url:c.url},raw:c};}
-function renderComicRunChooser(results=qplResults){const api=window.ArsCaComicIssueHub,host=document.getElementById('qpl-result');if(!api||!host)return;host.querySelector('#comic-run-chooser')?.remove();const parsed=api.parseComicQuery(qplLastSearch||document.getElementById('qpl-input')?.value||'');if(!parsed.seriesGuess||!parsed.issueNumber)return;const candidates=(results||[]).filter(r=>qplResultCategoryKey(r)==='comic').map(r=>r.pricecharting||r.raw).filter(Boolean);if(!candidates.length)return;window._comicRunGroups=api.groupCandidates(candidates,parsed);if(!window._comicRunGroups.length)return;const money=r=>r?.min==null?'No guide':'$'+Number(r.min).toFixed(2)+(r.max!==r.min?'–$'+Number(r.max).toFixed(2):'');const panel=document.createElement('div');panel.id='comic-run-chooser';panel.style.marginBottom='14px';panel.innerHTML=`<div class="panel" style="border-color:rgba(199,125,255,.3)"><div class="ph"><b style="color:var(--purple)">PICK THE SERIES / RUN · OLDEST TO NEWEST</b><span>${escHtml(parsed.raw)}</span></div><div style="font-size:10px;color:var(--dim);margin-bottom:9px">Barcode and search narrow the neighborhood. Pick the run, then confirm the exact cover in the Issue Hub.</div><div class="comic-run-grid">${window._comicRunGroups.map((g,i)=>`<div class="comic-run-card">${g.topCoverImageUrl?`<img src="${escHtml(g.topCoverImageUrl)}" class="comic-cover-img" loading="lazy">`:'<div class="comic-cover-img" style="display:grid;place-items:center;color:var(--dim)">NO COVER</div>'}<b>${escHtml(g.seriesTitle)} #${escHtml(g.issueNumber)}</b><div style="color:var(--purple);margin:4px 0">${escHtml([g.yearGuess,g.runLabel].filter(Boolean).join(' · '))}</div><div>${g.candidateCount} candidate${g.candidateCount===1?'':'s'} · Raw ${money(g.priceRangeRaw)}</div><button class="hbtn" style="width:100%;margin-top:8px" onclick="openComicIssueHubFromGroup(${i})">OPEN ISSUE HUB</button></div>`).join('')}</div></div>`;host.prepend(panel);}
+function renderComicRunChooser(results=qplResults){const api=window.ArsCaComicIssueHub,host=document.getElementById('qpl-result');if(!api||!host)return;host.querySelector('#comic-run-chooser')?.remove();const comicRows=(results||[]).filter(r=>qplResultCategoryKey(r)==='comic');if(!comicRows.length)return;
+  // A barcode/CardSight scan never types anything into the search box, so
+  // qplLastSearch is just the raw scanned digits -- that parses to no
+  // series/issue at all, which silently hid this whole picker after every
+  // scan. Fall back to the scanned result's own product name/title (e.g.
+  // "Amazing Spider-Man #300"), which barcodeCandidateToResearch/
+  // metronIssueToQplRow always set, so scanned comics get a run picker too.
+  let parsed=api.parseComicQuery(qplLastSearch||document.getElementById('qpl-input')?.value||'');
+  if(!parsed.seriesGuess||!parsed.issueNumber){
+    for(const row of comicRows){
+      const guess=api.parseComicQuery(row.name||row.pricecharting?.productName||'');
+      if(guess.seriesGuess&&guess.issueNumber){parsed=guess;break;}
+    }
+  }
+  if(!parsed.seriesGuess||!parsed.issueNumber)return;const candidates=comicRows.map(r=>r.pricecharting||r.raw).filter(Boolean);if(!candidates.length)return;window._comicRunGroups=api.groupCandidates(candidates,parsed);if(!window._comicRunGroups.length)return;const money=r=>r?.min==null?'No guide':'$'+Number(r.min).toFixed(2)+(r.max!==r.min?'–$'+Number(r.max).toFixed(2):'');const panel=document.createElement('div');panel.id='comic-run-chooser';panel.style.marginBottom='14px';panel.innerHTML=`<div class="panel" style="border-color:rgba(199,125,255,.3)"><div class="ph"><b style="color:var(--purple)">PICK THE SERIES / RUN · OLDEST TO NEWEST</b><span>${escHtml(parsed.raw)}</span></div><div style="font-size:10px;color:var(--dim);margin-bottom:9px">Barcode and search narrow the neighborhood. Pick the run, then confirm the exact cover in the Issue Hub.</div><div class="comic-run-grid">${window._comicRunGroups.map((g,i)=>`<div class="comic-run-card">${g.topCoverImageUrl?`<img src="${escHtml(g.topCoverImageUrl)}" class="comic-cover-img" loading="lazy">`:'<div class="comic-cover-img" style="display:grid;place-items:center;color:var(--dim)">NO COVER</div>'}<b>${escHtml(g.seriesTitle)} #${escHtml(g.issueNumber)}</b><div style="color:var(--purple);margin:4px 0">${escHtml([g.yearGuess,g.runLabel].filter(Boolean).join(' · '))}</div><div>${g.candidateCount} candidate${g.candidateCount===1?'':'s'} · Raw ${money(g.priceRangeRaw)}</div><button class="hbtn" style="width:100%;margin-top:8px" onclick="openComicIssueHubFromGroup(${i})">OPEN ISSUE HUB</button></div>`).join('')}</div></div>`;host.prepend(panel);}
 async function openComicIssueHubFromGroup(index){const g=window._comicRunGroups?.[index];if(!g)return;comicIssueHubState={seriesTitle:g.seriesTitle,seriesAliases:[],publisher:g.publisher,runLabel:g.runLabel,yearGuess:g.yearGuess,currentIssueNumber:g.issueNumber,selectedRunConfidence:g.confidence,lastQueries:[],filters:{filter:'all',sort:'best',showHidden:false},candidates:g.candidates||[],hiddenCandidateIds:[]};document.getElementById('comic-issue-hub')?.classList.add('on');document.body.style.overflow='hidden';const cached=await comicHubGet('comic_issue_hubs',comicHubContextKey()).catch(()=>null);if(cached){comicIssueHubState={...comicIssueHubState,...cached.context,candidates:cached.candidates||comicIssueHubState.candidates,hiddenCandidateIds:cached.hiddenCandidateIds||[],lastFetchedAt:cached.lastFetchedAt,lastQueries:cached.queriesTried||[]};}await mergeComicHubCloudDecisions();await loadComicIssueHubCandidates(false);}
 function closeComicIssueHub(){document.getElementById('comic-issue-hub')?.classList.remove('on');document.body.style.overflow='';}
 async function loadComicIssueHubCandidates(broad=false){const s=comicIssueHubState,api=window.ArsCaComicIssueHub;if(!s||!api)return;renderComicIssueHub(!(s.candidates||[]).length);if(!navigator.onLine){renderComicIssueHub(false);return;}const queries=api.buildSweepQueries(s,broad);try{const res=await fetch(WORKER+'/pricing/pricecharting/comic-sweep',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({queries})});const data=await res.json();if(res.ok&&data.ok){const liveProducts=data.products||[],localConfirmed=await comicHubGet('confirmed_covers',comicHubContextKey()).catch(()=>null),shared=await mergeComicHubCloudDecisions(s),confirmed=shared.confirmed||localConfirmed;if(liveProducts.length){
@@ -36058,7 +36072,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.02.14-qty-stepper"></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.02.15-comic-run-chooser-scan-fix"></script>
 </body>
 </html>
 
