@@ -68,10 +68,10 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
 .sort-card:nth-child(1){animation-delay:-1.2s}.sort-card:nth-child(2){animation-delay:-.6s}.sort-card:nth-child(3){animation-delay:0s}
 @keyframes sortCard{0%{left:-42px;transform:rotate(-6deg);opacity:.2}22%{opacity:1}55%{transform:rotate(2deg)}100%{left:calc(100% + 42px);opacity:.25}}
 @keyframes spin{to{transform:rotate(360deg);}}
-#global-busy-badge{position:fixed;bottom:16px;right:16px;z-index:99999;display:none;align-items:center;gap:8px;padding:6px 12px 6px 6px;border-radius:999px;background:rgba(10,10,20,.9);border:1px solid rgba(199,125,255,.4);box-shadow:0 4px 18px rgba(0,0,0,.4);font-family:monospace;font-size:9px;color:rgba(255,255,255,.6);letter-spacing:.04em;pointer-events:none;}
+#global-busy-badge{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:99999;display:none;flex-direction:column;align-items:center;gap:10px;padding:20px 26px;border-radius:18px;background:rgba(10,10,20,.92);border:1px solid rgba(199,125,255,.4);box-shadow:0 10px 34px rgba(0,0,0,.55);font-family:monospace;font-size:10px;color:rgba(255,255,255,.6);letter-spacing:.06em;pointer-events:none;}
 #global-busy-badge.on{display:flex;}
-.masterball-spin{width:20px;height:20px;border-radius:50%;flex:none;position:relative;background:linear-gradient(to bottom,#7b2ff7 0%,#7b2ff7 42%,#fff 42%,#fff 58%,#7b2ff7 58%,#7b2ff7 100%);border:2px solid #2a1a3d;box-shadow:inset -2px -2px 3px rgba(0,0,0,.35), inset 2px 2px 2px rgba(255,255,255,.2);animation:spin .8s linear infinite;}
-.masterball-spin::after{content:'';position:absolute;top:50%;left:50%;width:7px;height:7px;margin:-4px 0 0 -4px;border-radius:50%;background:#ff6ec7;border:2px solid #2a1a3d;}
+.masterball-spin{width:38px;height:38px;border-radius:50%;flex:none;position:relative;background:linear-gradient(to bottom,#7b2ff7 0%,#7b2ff7 42%,#fff 42%,#fff 58%,#7b2ff7 58%,#7b2ff7 100%);border:3px solid #2a1a3d;box-shadow:inset -3px -3px 5px rgba(0,0,0,.35), inset 3px 3px 4px rgba(255,255,255,.2);animation:spin .8s linear infinite;}
+.masterball-spin::after{content:'';position:absolute;top:50%;left:50%;width:13px;height:13px;margin:-7px 0 0 -7px;border-radius:50%;background:#ff6ec7;border:3px solid #2a1a3d;}
 .scanner-step-list{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:8px 0;}
 .scanner-step{font-family:monospace;font-size:9px;color:rgba(255,255,255,.32);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:6px 7px;background:rgba(255,255,255,.03);}
 .scanner-step.done{color:var(--g);border-color:rgba(0,255,179,.24);background:rgba(0,255,179,.07);}
