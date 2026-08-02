@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.02.12-webflow-publish-fix">
+<meta name="version" content="2026.08.02.13-detect-silent-update-fail">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1505,13 +1505,13 @@ body.show-mode .inv-sync-badge{display:none;}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.02.12-webflow-publish-fix"></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.02.12-webflow-publish-fix"></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.02.12-webflow-publish-fix"></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.02.12-webflow-publish-fix"></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.02.12-webflow-publish-fix"></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.02.12-webflow-publish-fix"></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.02.12-webflow-publish-fix"></script>
+<script src="scripts/query-routing.js?v=2026.08.02.13-detect-silent-update-fail"></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.02.13-detect-silent-update-fail"></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.02.13-detect-silent-update-fail"></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.02.13-detect-silent-update-fail"></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.02.13-detect-silent-update-fail"></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.02.13-detect-silent-update-fail"></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.02.13-detect-silent-update-fail"></script>
 </head>
 <body>
 
@@ -1561,11 +1561,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.02.12-webflow-publish-fix</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.02.13-detect-silent-update-fail</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.02.12-webflow-publish-fix</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.02.13-detect-silent-update-fail</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1587,7 +1587,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.02.12-webflow-publish-fix</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.02.13-detect-silent-update-fail</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3071,7 +3071,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.02.12-webflow-publish-fix';
+const APP_VERSION = '2026.08.02.13-detect-silent-update-fail';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -18720,12 +18720,21 @@ async function updateBuiltInInventoryItem(item, updates){
   const nextData = builtInDataFromItem(item, updates);
   if(Number(nextData.qty || 0) < 0) throw new Error('Inventory quantity cannot be negative.');
   if(sb && session?.supabase && storeId) {
-    const { error } = await sb
+    // .update() without .select() reports success even when the .eq()
+    // filters matched zero rows (RLS silently denying the write, or a
+    // stale/wrong id) -- that looked exactly like "saved fine" here while
+    // the real database row never changed, so the dashboard's own local
+    // copy (always updated below via applyDashboardItemUpdate regardless)
+    // showed the new price while every other reader of the same row never
+    // saw it. Select the updated row back and throw if nothing came back.
+    const { data:rows, error } = await sb
       .from('inventory_items')
       .update({ data:nextData, status:nextData.status || 'in_stock', updated_at:new Date().toISOString() })
       .eq('id', item.supabaseRowId || item.id)
-      .eq('store_id', storeId);
+      .eq('store_id', storeId)
+      .select('id');
     if(error) throw new Error('Built-in inventory update ' + error.message);
+    if(!rows?.length) throw new Error('Built-in inventory update matched no row (id/store mismatch or permission denied)');
     applyDashboardItemUpdate(item.id, updates);
     return true;
   }
@@ -36034,7 +36043,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.02.12-webflow-publish-fix"></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.02.13-detect-silent-update-fail"></script>
 </body>
 </html>
 
