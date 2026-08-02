@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.02.09-comic-photo-cover-tile">
+<meta name="version" content="2026.08.02.10-storefront-photos-wheel">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1153,15 +1153,21 @@ body.customer-browse-mode{padding-bottom:0}body.customer-browse-mode header,body
   .row-act-v2{gap:6px;}
   .rab{min-height:48px;}
 }
-/* Category pills */
-.qpl-cat-pill{opacity:.55;transition:opacity .12s,background .12s;flex:0 0 auto;scroll-snap-align:start;}
-.qpl-cat-pill.active{opacity:1;background:rgba(255,255,255,.1);box-shadow:inset 0 0 0 1px rgba(255,255,255,.25);}
-.qpl-cat-pill:hover{opacity:.85;}
-/* Category pills: a single non-wrapping row you swipe/scroll through
-   horizontally instead of a tall stack you have to scroll past just to
-   reach the search button. The most-used categories (ALL/POKEMON/MTG/
-   SEALED/SPORTS/COMICS) sit first so they're reachable with zero scroll. */
-#qpl-cat-pills{flex-wrap:nowrap!important;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scroll-snap-type:x proximity;min-width:0;scrollbar-width:thin;}
+/* Category pills (kept for JS compatibility -- lots of code toggles
+   .active on .qpl-cat-pill elements) plus the compact scroll-wheel picker
+   that replaced the tall stacked/horizontal-scroll button list: scroll it
+   up or down and whichever category lands in the center band becomes the
+   active one automatically, no tap required -- like a native iOS picker
+   wheel, just compact enough to sit inline instead of taking a whole sheet.
+   Tapping an item still works too, as a shortcut to scroll it to center. */
+.qpl-cat-pill.active{color:var(--g);}
+.qpl-cat-wheel{position:relative;height:96px;width:150px;flex:0 0 150px;overflow:hidden;border:1px solid var(--border);border-radius:9px;background:var(--surf2);}
+.qpl-cat-wheel-highlight{position:absolute;top:50%;left:0;right:0;height:32px;transform:translateY(-50%);pointer-events:none;border-top:1px solid rgba(255,255,255,.16);border-bottom:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.05);}
+.qpl-cat-wheel-track{height:100%;overflow-y:auto;scroll-snap-type:y mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
+.qpl-cat-wheel-track::-webkit-scrollbar{display:none;}
+.qpl-cat-wheel-pad{height:32px;scroll-snap-align:none;}
+.qpl-cat-wheel-item{height:32px;display:flex;align-items:center;justify-content:center;scroll-snap-align:center;font-family:'Orbitron',monospace;font-size:10px;letter-spacing:.03em;color:var(--dim);opacity:.4;cursor:pointer;user-select:none;white-space:nowrap;transition:opacity .1s,font-size .1s;}
+.qpl-cat-wheel-item.active{opacity:1;font-size:12px;font-weight:800;color:var(--g);}
 /* ── END PASS A ─────────────────────────────────────────────────── */
 
 /* ── POKÉMON SET BROWSER (Pass B) ───────────────────────────── */
@@ -1499,13 +1505,13 @@ body.show-mode .inv-sync-badge{display:none;}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.02.09-comic-photo-cover-tile"></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.02.09-comic-photo-cover-tile"></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.02.09-comic-photo-cover-tile"></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.02.09-comic-photo-cover-tile"></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.02.09-comic-photo-cover-tile"></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.02.09-comic-photo-cover-tile"></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.02.09-comic-photo-cover-tile"></script>
+<script src="scripts/query-routing.js?v=2026.08.02.10-storefront-photos-wheel"></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.02.10-storefront-photos-wheel"></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.02.10-storefront-photos-wheel"></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.02.10-storefront-photos-wheel"></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.02.10-storefront-photos-wheel"></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.02.10-storefront-photos-wheel"></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.02.10-storefront-photos-wheel"></script>
 </head>
 <body>
 
@@ -1555,11 +1561,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.02.09-comic-photo-cover-tile</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.02.10-storefront-photos-wheel</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.02.09-comic-photo-cover-tile</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.02.10-storefront-photos-wheel</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1581,7 +1587,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.02.09-comic-photo-cover-tile</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.02.10-storefront-photos-wheel</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -1959,23 +1965,30 @@ body.show-mode .inv-sync-badge{display:none;}
         <option value="Gaming Magazines">Gaming Magazines</option>
         <option value="Collectibles">Collectibles</option>
       </select>
-      <div id="qpl-ctrl-row" style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap">
-        <div id="qpl-cat-pills" style="display:flex;gap:4px;flex-wrap:nowrap;flex:1;min-width:0">
-          <button class="hbtn qpl-cat-pill active" data-cat="" onclick="setQplCategory(this)" style="font-size:9px;padding:4px 8px;min-height:28px">ALL</button>
-          <button class="hbtn qpl-cat-pill" data-cat="Pokemon TCG" onclick="setQplCategory(this)" style="font-size:9px;padding:4px 8px;min-height:28px;color:var(--gold)">POKEMON</button>
-          <button class="hbtn qpl-cat-pill" data-cat="Magic: The Gathering" onclick="setQplCategory(this)" style="font-size:9px;padding:4px 8px;min-height:28px;color:#5ba3f5">MTG</button>
-          <button class="hbtn qpl-cat-pill" data-cat="Sealed" onclick="setQplCategory(this)" style="font-size:9px;padding:4px 8px;min-height:28px;color:var(--gold)">SEALED</button>
-          <button class="hbtn qpl-cat-pill" data-cat="Sports Card" onclick="setQplCategory(this)" style="font-size:9px;padding:4px 8px;min-height:28px;color:var(--g)">SPORTS</button>
-          <button class="hbtn qpl-cat-pill" data-cat="Sports Card" onclick="openSportsSetBrowserFromResearch()" style="font-size:9px;padding:4px 8px;min-height:28px;color:var(--gold)">SPORTS SETS</button>
-          <button class="hbtn qpl-cat-pill" data-cat="Comic" onclick="setQplCategory(this)" style="font-size:9px;padding:4px 8px;min-height:28px;color:var(--purple)">COMICS</button>
-          <button class="hbtn qpl-cat-pill" data-cat="Yu-Gi-Oh!" onclick="setQplCategory(this)" style="font-size:9px;padding:4px 8px;min-height:28px">YUGIOH</button>
-          <button class="hbtn qpl-cat-pill" data-cat="One Piece Cards" onclick="setQplCategory(this)" style="font-size:9px;padding:4px 8px;min-height:28px">ONE PIECE</button>
-          <button class="hbtn qpl-cat-pill" data-cat="Graded" onclick="setQplCategory(this)" style="font-size:9px;padding:4px 8px;min-height:28px">GRADED</button>
-          <button class="hbtn qpl-cat-pill" data-cat="PSA Cert" onclick="openPsaCertSearchModal()" style="font-size:9px;padding:4px 8px;min-height:28px;color:var(--blue)">PSA CERT</button>
-          <button class="hbtn qpl-cat-pill" data-cat="Video Games" onclick="setQplCategory(this)" style="font-size:9px;padding:4px 8px;min-height:28px">GAMES</button>
-          <button class="hbtn qpl-cat-pill" data-cat="Funko Pops" onclick="setQplCategory(this)" style="font-size:9px;padding:4px 8px;min-height:28px">FUNKO</button>
-          <button class="hbtn qpl-cat-pill" data-cat="LEGO Sets" onclick="setQplCategory(this)" style="font-size:9px;padding:4px 8px;min-height:28px">LEGO</button>
-          <button class="hbtn qpl-cat-pill" data-cat="Coins" onclick="setQplCategory(this)" style="font-size:9px;padding:4px 8px;min-height:28px">COINS</button>
+      <div id="qpl-ctrl-row" style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap;align-items:center">
+        <div class="qpl-cat-wheel" id="qpl-cat-wheel" role="listbox" aria-label="Category">
+          <div class="qpl-cat-wheel-highlight"></div>
+          <div class="qpl-cat-wheel-track" id="qpl-cat-wheel-track" onscroll="handleQplCatWheelScroll()">
+            <div class="qpl-cat-wheel-pad" aria-hidden="true"></div>
+            <div class="qpl-cat-pill qpl-cat-wheel-item active" data-cat="" onclick="scrollQplCatWheelTo(this)" role="option" aria-selected="true">ALL</div>
+            <div class="qpl-cat-pill qpl-cat-wheel-item" data-cat="Pokemon TCG" onclick="scrollQplCatWheelTo(this)" role="option">POKEMON</div>
+            <div class="qpl-cat-pill qpl-cat-wheel-item" data-cat="Magic: The Gathering" onclick="scrollQplCatWheelTo(this)" role="option">MTG</div>
+            <div class="qpl-cat-pill qpl-cat-wheel-item" data-cat="Sealed" onclick="scrollQplCatWheelTo(this)" role="option">SEALED</div>
+            <div class="qpl-cat-pill qpl-cat-wheel-item" data-cat="Sports Card" onclick="scrollQplCatWheelTo(this)" role="option">SPORTS</div>
+            <div class="qpl-cat-pill qpl-cat-wheel-item" data-cat="Comic" onclick="scrollQplCatWheelTo(this)" role="option">COMICS</div>
+            <div class="qpl-cat-pill qpl-cat-wheel-item" data-cat="Yu-Gi-Oh!" onclick="scrollQplCatWheelTo(this)" role="option">YUGIOH</div>
+            <div class="qpl-cat-pill qpl-cat-wheel-item" data-cat="One Piece Cards" onclick="scrollQplCatWheelTo(this)" role="option">ONE PIECE</div>
+            <div class="qpl-cat-pill qpl-cat-wheel-item" data-cat="Graded" onclick="scrollQplCatWheelTo(this)" role="option">GRADED</div>
+            <div class="qpl-cat-pill qpl-cat-wheel-item" data-cat="Video Games" onclick="scrollQplCatWheelTo(this)" role="option">GAMES</div>
+            <div class="qpl-cat-pill qpl-cat-wheel-item" data-cat="Funko Pops" onclick="scrollQplCatWheelTo(this)" role="option">FUNKO</div>
+            <div class="qpl-cat-pill qpl-cat-wheel-item" data-cat="LEGO Sets" onclick="scrollQplCatWheelTo(this)" role="option">LEGO</div>
+            <div class="qpl-cat-pill qpl-cat-wheel-item" data-cat="Coins" onclick="scrollQplCatWheelTo(this)" role="option">COINS</div>
+            <div class="qpl-cat-wheel-pad" aria-hidden="true"></div>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;flex:0 0 auto">
+          <button class="hbtn" onclick="openSportsSetBrowserFromResearch()" style="flex:0 0 auto;font-size:8px;padding:3px 7px;min-height:26px;color:var(--gold);white-space:nowrap">SPORTS SETS</button>
+          <button class="hbtn" onclick="openPsaCertSearchModal()" style="flex:0 0 auto;font-size:8px;padding:3px 7px;min-height:26px;color:var(--blue);white-space:nowrap">PSA CERT</button>
         </div>
         <button class="hbtn" onclick="runPriceLookup()" style="white-space:nowrap">LOOK UP</button>
         <button class="hbtn" onclick="openSettingsSection('catalogs','offline-catalog-manager-panel')" style="white-space:nowrap;color:var(--blue)">OFFLINE DATA</button>
@@ -3058,7 +3071,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.02.09-comic-photo-cover-tile';
+const APP_VERSION = '2026.08.02.10-storefront-photos-wheel';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -19409,8 +19422,21 @@ let editPhotosWorking = [];
 function renderEditPhotosGallery(){
   const box = document.getElementById('edit-photos-gallery');
   if(!box) return;
-  box.innerHTML = editPhotosWorking.map((url,i) => `<div style="position:relative;width:56px;height:56px"><img src="${escHtml(url)}" style="width:56px;height:56px;object-fit:cover;border-radius:6px;border:1px solid var(--border)"><button type="button" onclick="removeInventoryEditGalleryPhoto(${i})" style="position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;border:none;background:var(--red);color:#fff;font-size:10px;line-height:18px;padding:0;cursor:pointer">✕</button></div>`).join('')
+  box.innerHTML = editPhotosWorking.map((url,i) => `<div style="position:relative;width:56px;height:56px"><img src="${escHtml(url)}" style="width:56px;height:56px;object-fit:cover;border-radius:6px;border:1px solid var(--border)"><button type="button" title="Make this the default photo" onclick="makeGalleryPhotoDefault(${i})" style="position:absolute;top:-6px;left:-6px;width:18px;height:18px;border-radius:50%;border:none;background:var(--gold);color:#000;font-size:10px;line-height:18px;padding:0;cursor:pointer">★</button><button type="button" onclick="removeInventoryEditGalleryPhoto(${i})" style="position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;border:none;background:var(--red);color:#fff;font-size:10px;line-height:18px;padding:0;cursor:pointer">✕</button></div>`).join('')
     || '<div style="font-family:monospace;font-size:8px;color:var(--dim)">None yet</div>';
+}
+// Swaps a gallery photo into the single "default" slot everything else
+// (storefront card, inventory list, sale cart) displays -- the old default
+// photo isn't lost, it just moves into the gallery so it's still pickable.
+function makeGalleryPhotoDefault(index){
+  const url = editPhotosWorking[index];
+  if(!url) return;
+  const priorMain = document.getElementById('edit-photo-data')?.value || '';
+  editPhotosWorking.splice(index,1);
+  if(priorMain && priorMain !== url) editPhotosWorking.unshift(priorMain);
+  setInventoryEditPhoto(url, 'Gallery photo');
+  renderEditPhotosGallery();
+  toast_dash('Set as default photo — remember to save.');
 }
 function handleAddInventoryEditPhoto(file){
   if(!file) return;
@@ -19628,6 +19654,15 @@ function openAddToInventoryModal(idx){
   document.getElementById('edit-is-sealed').checked = item.is_sealed || false;
   document.getElementById('edit-sync-status').textContent = '';
   setInventoryEditPhoto(inventoryImageUrl(item), inventoryImageSourceLabel(item));
+  // openEditModal (editing an existing item) always resets this working
+  // gallery from item.photos -- this "add new from Research" path never did,
+  // so it silently carried over whatever photos were left in the gallery
+  // from the last item anyone edited, AND confirmAddToInventoryFromModal
+  // never even saved it, so extra photos uploaded here were dropped either
+  // way. Reset properly and persist below.
+  editPhotosWorking = Array.isArray(item.photos) ? [...item.photos] : [];
+  renderEditPhotosGallery();
+  document.getElementById('edit-photos-status').textContent = '';
 
   const condSel = document.getElementById('edit-condition');
   const cond = item.condition || 'NM';
@@ -19657,12 +19692,20 @@ async function confirmAddToInventoryFromModal(){
   const addMarketVal = parseFloat(document.getElementById('edit-market').value)||0;
   const addListVal = parseFloat(document.getElementById('edit-list-price')?.value)||0;
   const addHasOverride = addListVal > 0 && Math.abs(addListVal - addMarketVal) >= 0.01;
+  // The main-photo widget (#edit-photo-data) already lets you swap the
+  // default image in this modal -- SAVE CHANGES (edit path) persists it,
+  // but this add-new-from-Research path never read it back out, so a
+  // changed default photo (or a gallery photo promoted to default) was
+  // silently dropped and the item kept whatever image Research found first.
+  const addPhotoData = document.getElementById('edit-photo-data')?.value || '';
   Object.assign(item, {
     cost: parseFloat(document.getElementById('edit-cost').value)||0,
     market: addMarketVal,
     price: addMarketVal,
     priceOverride: addHasOverride ? addListVal : 0,
     salePrice: addHasOverride ? addListVal : addMarketVal,
+    thumbnail: addPhotoData || item.thumbnail || item.imageUrl || '',
+    photoDataUrl: addPhotoData || item.photoDataUrl || '',
     listPrice: addHasOverride ? addListVal : addMarketVal,
     displayPrice: addHasOverride ? addListVal : addMarketVal,
     minPrice: parseFloat(document.getElementById('edit-min-price')?.value)||0,
@@ -19688,6 +19731,7 @@ async function confirmAddToInventoryFromModal(){
     signed_by: document.getElementById('edit-signed-by').value.trim(),
     signature_value: parseFloat(document.getElementById('edit-signature-value')?.value) || 0,
     is_sealed: document.getElementById('edit-is-sealed').checked,
+    photos: [...editPhotosWorking],
     ...tcgReferencePatch,
     ...pcReferencePatch,
   });
@@ -27662,25 +27706,77 @@ function filterQplMasterResults(results, cat){
     .filter(r => r.closestStrictFallback || qplStrictAllows(r, strict, true));
 }
 
+// Kept for any old call sites -- sets the category from a clicked element
+// and jumps the wheel to it, same as scrollQplCatWheelTo below.
 function setQplCategory(btn){
   const cat = btn?.dataset?.cat ?? '';
+  setQplCategoryByValue(cat);
+}
+
+// The single source of truth for "which category is selected" -- called
+// either by the wheel settling on an item after a scroll (see
+// commitQplCatWheelSelection) or by tapping an item directly. Tapping just
+// scrolls that item to the center band; commitQplCatWheelSelection is what
+// actually finalizes the selection once it gets there, so both paths end
+// up in the same place.
+function setQplCategoryByValue(cat, scrollToIt){
   const sel = document.getElementById('qpl-cat');
   if(sel) sel.value = cat;
   document.querySelectorAll('.qpl-cat-pill').forEach(b => b.classList.toggle('active', b.dataset.cat === cat));
+  if(scrollToIt){
+    const target = [...document.querySelectorAll('.qpl-cat-wheel-item')].find(el => el.dataset.cat === cat);
+    target?.scrollIntoView({block: 'center', behavior: 'smooth'});
+  }
   handleQplCategoryChange();
 }
-
-// The category strip is now a single horizontally-scrolling row instead of
-// a tall stack, so whenever code elsewhere flips which pill is "active"
-// (barcode scans, MTG/sealed search-intent detection, etc.) the newly
-// active pill needs to be scrolled into view -- otherwise it can silently
-// select a category off-screen with no visual feedback.
-(function initQplCatPillAutoScroll(){
-  const host = document.getElementById('qpl-cat-pills');
+function scrollQplCatWheelTo(el){
+  el?.scrollIntoView({block: 'center', behavior: 'smooth'});
+  // The scroll it triggers will settle and commit the selection itself
+  // (handleQplCatWheelScroll -> commitQplCatWheelSelection) once it lands.
+}
+let qplCatWheelSettleTimer = null;
+function qplCatWheelCenteredItem(){
+  const track = document.getElementById('qpl-cat-wheel-track');
+  if(!track) return null;
+  const mid = track.scrollTop + track.clientHeight / 2;
+  let closest = null, closestDist = Infinity;
+  track.querySelectorAll('.qpl-cat-wheel-item').forEach(el => {
+    const dist = Math.abs((el.offsetTop + el.offsetHeight / 2) - mid);
+    if(dist < closestDist){ closestDist = dist; closest = el; }
+  });
+  return closest;
+}
+function qplCatWheelUpdateVisual(){
+  const track = document.getElementById('qpl-cat-wheel-track');
+  if(!track) return;
+  const mid = track.scrollTop + track.clientHeight / 2;
+  track.querySelectorAll('.qpl-cat-wheel-item').forEach(el => {
+    const dist = Math.abs((el.offsetTop + el.offsetHeight / 2) - mid);
+    const closeness = Math.max(0, 1 - dist / 40);
+    el.style.opacity = String(.35 + .65 * closeness);
+    el.style.fontSize = (10 + 2 * closeness).toFixed(1) + 'px';
+  });
+}
+function commitQplCatWheelSelection(){
+  const el = qplCatWheelCenteredItem();
+  if(el) setQplCategoryByValue(el.dataset.cat, false);
+}
+function handleQplCatWheelScroll(){
+  requestAnimationFrame(qplCatWheelUpdateVisual);
+  clearTimeout(qplCatWheelSettleTimer);
+  qplCatWheelSettleTimer = setTimeout(commitQplCatWheelSelection, 120);
+}
+// Whenever code elsewhere flips which category is "active" (barcode scans,
+// MTG/sealed search-intent detection, etc.) the wheel needs to physically
+// scroll that item to the center band -- otherwise it can silently select
+// a category that isn't even in view.
+(function initQplCatWheelAutoScroll(){
+  const host = document.getElementById('qpl-cat-wheel-track');
   if(!host || typeof MutationObserver === 'undefined') return;
+  qplCatWheelUpdateVisual();
   const obs = new MutationObserver(() => {
     const active = host.querySelector('.qpl-cat-pill.active');
-    if(active) active.scrollIntoView({inline: 'nearest', block: 'nearest', behavior: 'smooth'});
+    if(active) active.scrollIntoView({block: 'center', behavior: 'smooth'});
   });
   obs.observe(host, {attributes: true, attributeFilter: ['class'], subtree: true});
 })();
@@ -29787,9 +29883,15 @@ function saveQuickLookupLocalInventory(item, productId){
   localStorage.setItem('walkoff_universal_inventory', JSON.stringify(inv.slice(0,5000)));
 }
 
-function addQuickLookupToInventory(idx){
-  selectQuickLookupResult(idx);
-  setTimeout(() => openAddToInventoryModal(idx), 0);
+async function addQuickLookupToInventory(idx){
+  // selectQuickLookupResult() awaits a real Metron detail fetch for comics
+  // (writers/credits/description/covers) -- this used to fire it without
+  // awaiting and open the modal on the next tick regardless, which almost
+  // always won the race against that fetch. The item got saved with an
+  // empty comicMetadata, so the storefront's book-details panel had
+  // nothing to show even though the comic really did have Metron data.
+  await selectQuickLookupResult(idx);
+  openAddToInventoryModal(idx);
 }
 
 async function saveComicResearchBackToInventory(idx){
@@ -29922,9 +30024,9 @@ function addSelectedQuickLookupToSaleCart(idx){
   switchTab('pos', document.querySelector('[data-tab=pos]'));
 }
 
-function addQuickLookupToSaleCart(idx){
-  selectQuickLookupResult(idx);
-  setTimeout(() => addSelectedQuickLookupToSaleCart(idx), 0);
+async function addQuickLookupToSaleCart(idx){
+  await selectQuickLookupResult(idx);
+  addSelectedQuickLookupToSaleCart(idx);
 }
 
 function selectedResearchIndex(){
@@ -30037,12 +30139,12 @@ function addSelectedQuickLookupToBuyOffer(idx){
   toast_dash('Added to buy offer: ' + item.name + (quantity > 1 ? ' x' + quantity : ''));
 }
 
-function addQuickLookupToBuyOffer(idx){
+async function addQuickLookupToBuyOffer(idx){
   const r = qplResults[idx];
   if(!r) return;
   qplResults[idx] = { ...r, category:normalizeQuickCategory(r.category) };
-  selectQuickLookupResult(idx);
-  setTimeout(() => addSelectedQuickLookupToBuyOffer(idx), 0);
+  await selectQuickLookupResult(idx);
+  addSelectedQuickLookupToBuyOffer(idx);
 }
 
 function pushQuickLookupHistory(q, r){
@@ -35906,7 +36008,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.02.09-comic-photo-cover-tile"></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.02.10-storefront-photos-wheel"></script>
 </body>
 </html>
 
