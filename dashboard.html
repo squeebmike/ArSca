@@ -21727,7 +21727,19 @@ function updateComicAppraisal(idx,field,value,rerender=true){
   if(rerender)updateQplResultCard(idx);
 }
 function toggleComicDefect(idx,defect,checked){const a=comicAppraisalState(qplResults[idx]||{});a.defects=checked?[...new Set([...(a.defects||[]),defect])]:(a.defects||[]).filter(x=>x!==defect);}
-function confirmComicCover(idx){const r=qplResults[idx];if(!r)return;comicAppraisalState(r).coverConfirmed=true;r.coverConfidence='confirmed';updateQplResultCard(idx);}
+function confirmComicCover(idx){
+  const r=qplResults[idx];if(!r)return;
+  // A photo that auto-matched an official Metron cover only becomes the
+  // shared default everyone else's future search sees once this explicit
+  // confirm happens -- see handleComicCoverPhoto for why it can't do that
+  // itself. Sharing the matched official artwork here, never the raw
+  // personal photo, same as picking that cover from the list directly would.
+  if(r.photoCoverMatch && Number.isInteger(r.photoCoverMatch.suggestedCoverIndex)){
+    selectMetronComicCover(idx, r.photoCoverMatch.suggestedCoverIndex);
+    return;
+  }
+  comicAppraisalState(r).coverConfirmed=true;r.coverConfidence='confirmed';updateQplResultCard(idx);
+}
 window._comicPhotoUrls ||= {};
 async function comicPhotoPHash(file){
   const bitmap=await createImageBitmap(file),size=32,hashSize=8,canvas=document.createElement('canvas');canvas.width=size;canvas.height=size;const ctx=canvas.getContext('2d',{willReadFrequently:true});ctx.drawImage(bitmap,0,0,size,size);bitmap.close?.();const rgba=ctx.getImageData(0,0,size,size).data,pixels=Array.from({length:size},(_,y)=>Array.from({length:size},(_,x)=>{const i=(y*size+x)*4;return rgba[i]*.299+rgba[i+1]*.587+rgba[i+2]*.114;})),low=[];
@@ -21738,11 +21750,38 @@ function comicHashDistance(a,b){try{let value=BigInt('0x'+String(a||''))^BigInt(
 async function handleComicCoverPhoto(idx,file){
   let r=qplResults[idx];if(!r||!file)return;if(!/^image\//.test(file.type||'')){toast_dash('Choose an image file');return;}
   if(file.size>12*1024*1024){toast_dash('Cover photo must be under 12 MB');return;}
-  let photoHash='';try{photoHash=await comicPhotoPHash(file);const ranked=(r.metronCovers||[]).map((cover,index)=>({cover,index,distance:cover.coverHash?comicHashDistance(photoHash,cover.coverHash):99})).sort((a,b)=>a.distance-b.distance);if(ranked[0]?.distance<=10){await selectMetronComicCover(idx,ranked[0].index);r=qplResults[idx];r.photoCoverMatch={metronCoverHash:ranked[0].cover.coverHash,photoHash,distance:ranked[0].distance,matchedAt:new Date().toISOString()};}}catch(_){}
+  // A hash match here used to call selectMetronComicCover() immediately,
+  // which writes the shared /kv/comic_cover_<issue> cache that every future
+  // Research search for this same issue reads as its default cover -- so
+  // uploading a personal reference photo could silently overwrite what
+  // every other lookup (this device or anyone else's) shows first, with no
+  // review step. Now it's only ever a local suggestion until CONFIRM COVER
+  // is clicked explicitly (see confirmComicCover), same as picking a known
+  // cover from the list already requires.
+  let photoHash='',matchedIndex=-1,matchedDistance=99;
+  try{
+    photoHash=await comicPhotoPHash(file);
+    const ranked=(r.metronCovers||[]).map((cover,index)=>({cover,index,distance:cover.coverHash?comicHashDistance(photoHash,cover.coverHash):99})).sort((a,b)=>a.distance-b.distance);
+    if(ranked[0]?.distance<=10){ matchedIndex=ranked[0].index; matchedDistance=ranked[0].distance; }
+  }catch(_){}
   const key='comic-photo:'+String(r.pricecharting?.productId||Date.now())+':'+Date.now();
   await comicsDbPut('userPhotos',{key,blob:file,updatedAt:new Date().toISOString(),source:'user-upload'});
   if(r.imageUrl&&!/^blob:/.test(r.imageUrl))r.externalCoverImageUrl=r.imageUrl;
-  const objectUrl=URL.createObjectURL(file);window._comicPhotoUrls[key]=objectUrl;r.userPhotoBlobKey=key;r.imageUrl=objectUrl;r.imageSource='user-upload';r.photoCoverHash=photoHash;r.coverConfidence=r.photoCoverMatch?'confirmed':'photo-needs-review';comicAppraisalState(r).coverConfirmed=!!r.photoCoverMatch;qplResults[idx]=r;updateQplResultCard(idx);toast_dash(r.photoCoverMatch?'Photo matched a Metron cover; verify before saving':'Photo saved. No close Metron cover hash matched, so choose the cover visually.');
+  const objectUrl=URL.createObjectURL(file);window._comicPhotoUrls[key]=objectUrl;r.userPhotoBlobKey=key;r.photoCoverHash=photoHash;
+  if(matchedIndex>=0){
+    const cover=r.metronCovers[matchedIndex];
+    r.imageUrl=cover.imageUrl||objectUrl;r.coverImageUrl=r.imageUrl;r.variant=cover.issueName||cover.name||r.variant;r.variantLabel=r.variant;
+    r.photoCoverMatch={metronCoverHash:cover.coverHash,photoHash,distance:matchedDistance,matchedAt:new Date().toISOString(),suggestedCoverIndex:matchedIndex};
+    r.coverConfidence='photo-matched-needs-confirmation';
+    comicAppraisalState(r).coverConfirmed=false;
+    qplResults[idx]=r;updateQplResultCard(idx);
+    toast_dash('Photo matched a Metron cover -- click CONFIRM COVER to make it the default for this issue.');
+  } else {
+    r.imageUrl=objectUrl;r.imageSource='user-upload';r.coverConfidence='photo-needs-review';r.photoCoverMatch=null;
+    comicAppraisalState(r).coverConfirmed=false;
+    qplResults[idx]=r;updateQplResultCard(idx);
+    toast_dash('Photo saved as your reference image. No close Metron cover match, so this stays local -- it will not change what others see.');
+  }
 }
 async function hydrateComicPhotoKey(key){
   if(!key||window._comicPhotoUrls[key]||window._comicPhotoUrls[key]===null)return;
