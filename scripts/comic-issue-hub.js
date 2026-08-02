@@ -53,6 +53,16 @@
     if(issue&&issueFromName(name)===issue){score+=30;reasons.push('issue #'+issue);}
     const publisher=norm(context.publisher||context.publisherGuess||'');if(publisher&&hay.includes(publisher)){score+=15;reasons.push('selected run');}
     const year=String(context.yearGuess||'');if(year&&hay.includes(year)){score+=6;reasons.push(year);}
+    // Series-title word overlap alone lets a totally different book through
+    // with a deceptively high score -- "Superman vs. The Amazing Spider-Man
+    // #1 (1976)" and "The Official Marvel Index to the Amazing Spider-Man #1
+    // (1985)" both hit every title token and the right issue number against
+    // a 2018 run, scoring 75% with nothing to tell them apart from the real
+    // 2018 #1. A comic's own cover-printed year rarely drifts far from its
+    // run's start year for an early issue, so a big gap is strong evidence
+    // of a different printing/crossover/reference book entirely.
+    const candidateYear=name.match(/\b(19|20)\d{2}\b/)?.[0]||'';
+    if(year&&candidateYear&&Math.abs(Number(candidateYear)-Number(year))>3){score-=50;reasons.push('wrong era');}
     const wanted=context.variantTerms||[];if(wanted.some(v=>hay.includes(norm(v)))){score+=8;reasons.push('variant terms');}
     if(/omnibus|hardcover|trade paperback|volume set/i.test(name)){score-=35;reasons.push('collected edition penalty');}
     if(issue&&issueFromName(name)&&issueFromName(name)!==issue){score-=45;reasons.push('different issue');}
