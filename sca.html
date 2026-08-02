@@ -3847,9 +3847,19 @@ function getType(item){
     if(gr.includes('cgc')) return 'cgc';
     if(gr.includes('sgc')) return 'sgc';
   }
-  if(g==='sports card'||g==='sports') return 'sports';
-  if(g==='comic') return 'comic';
-  if(g==='hot wheels'||g==='funko pop'||g==='lego'||g==='action figure'||g==='video game'||g==='sports memorabilia'||g==='collectible') return 'general';
+  if(g.includes('sports')) return 'sports';
+  if(g.includes('comic')) return 'comic';
+  if(/hot wheels|funko|lego|action figure|video game|memorabilia|collectible/.test(g)) return 'general';
+  if(/pokemon|pok[eé]mon|magic|\bmtg\b|one piece|yu-?gi-?oh|\btcg\b|trading card/.test(g)) return 'tcg';
+  // item.game was blank or phrased in a way none of the checks above caught
+  // (a common AI-scan miss) -- rather than silently bucketing every one of
+  // those as TCG, which is what made "everything defaults to TCG" happen in
+  // practice, take a second pass over the name/set text itself before
+  // falling back.
+  const text = [item.name, item.set_name, item.product_line, item.configuration].filter(Boolean).join(' ').toLowerCase();
+  if(/\bcomic\b/.test(text)) return 'comic';
+  if(/\b(topps|panini|bowman|prizm|donruss|upper deck|leaf|score card|optic|select|mosaic|rookie card|baseball card|football card|basketball card|hockey card)\b/.test(text)) return 'sports';
+  if(/hot wheels|funko|\blego\b|action figure/.test(text)) return 'general';
   return 'tcg';
 }
 function checkStock(item){
