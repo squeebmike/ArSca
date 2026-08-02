@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.02.06-price-movers-checklist">
+<meta name="version" content="2026.08.02.07-scanner-category-ux">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1157,13 +1157,14 @@ body.customer-browse-mode{padding-bottom:0}body.customer-browse-mode header,body
   .rab{min-height:48px;}
 }
 /* Category pills */
-.qpl-cat-pill{opacity:.55;transition:opacity .12s,background .12s;}
+.qpl-cat-pill{opacity:.55;transition:opacity .12s,background .12s;flex:0 0 auto;scroll-snap-align:start;}
 .qpl-cat-pill.active{opacity:1;background:rgba(255,255,255,.1);box-shadow:inset 0 0 0 1px rgba(255,255,255,.25);}
 .qpl-cat-pill:hover{opacity:.85;}
-/* Category pills used to hard-hide everything past the 4th on narrow
-   screens with no way to reach them short of rotating to landscape.
-   The container already wraps (flex-wrap:wrap), so just let all pills
-   wrap onto extra rows in portrait instead of disappearing. */
+/* Category pills: a single non-wrapping row you swipe/scroll through
+   horizontally instead of a tall stack you have to scroll past just to
+   reach the search button. The most-used categories (ALL/POKEMON/MTG/
+   SEALED/SPORTS/COMICS) sit first so they're reachable with zero scroll. */
+#qpl-cat-pills{flex-wrap:nowrap!important;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scroll-snap-type:x proximity;min-width:0;scrollbar-width:thin;}
 /* ── END PASS A ─────────────────────────────────────────────────── */
 
 /* ── POKÉMON SET BROWSER (Pass B) ───────────────────────────── */
@@ -1475,9 +1476,10 @@ body.show-mode .inv-sync-badge{display:none;}
 .barcode-candidate-actions{grid-column:1/-1;display:flex;gap:7px;flex-wrap:wrap;}
 .barcode-candidate-actions .hbtn{flex:1 1 125px;min-height:40px;}
 .barcode-evidence{font-family:var(--font-mono);font-size:9px;color:var(--dim);line-height:1.5;}
-#cardsight-scanner-modal .barcode-sheet{width:min(920px,100%);}
-#cardsight-camera{min-height:360px;}
-#cardsight-camera video{max-height:560px;}
+#cardsight-scanner-modal .barcode-sheet{width:min(920px,100%);display:flex;flex-direction:column;}
+#cardsight-camera{min-height:0;height:min(40vh,360px);flex:0 0 auto;}
+#cardsight-camera video{max-height:100%;height:100%;}
+#cardsight-scan-actions{position:sticky;bottom:0;background:var(--surf);padding-top:8px;margin-top:8px;z-index:2;}
 @media(max-width:600px){
   .comic-appraisal-grid,.comic-values{grid-template-columns:1fr!important}
   .comic-appraisal .tsi{width:100%;max-width:100%}
@@ -1487,7 +1489,7 @@ body.show-mode .inv-sync-badge{display:none;}
   .barcode-sheet{width:100%;max-height:calc(100vh - 48px - env(safe-area-inset-bottom));border-radius:16px 16px 0 0;padding:14px 12px calc(18px + env(safe-area-inset-bottom));}
   .barcode-controls{grid-template-columns:1fr;}
   .barcode-camera{min-height:180px;}
-  #cardsight-camera{min-height:260px;}
+  #cardsight-camera{height:min(30vh,260px);}
   .barcode-candidate{grid-template-columns:72px minmax(0,1fr);}
   .barcode-candidate img{width:72px;height:96px;}
   #qpl-search-row #qpl-input{flex:1 1 100%!important;}
@@ -1500,13 +1502,13 @@ body.show-mode .inv-sync-badge{display:none;}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.02.06-price-movers-checklist"></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.02.06-price-movers-checklist"></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.02.06-price-movers-checklist"></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.02.06-price-movers-checklist"></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.02.06-price-movers-checklist"></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.02.06-price-movers-checklist"></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.02.06-price-movers-checklist"></script>
+<script src="scripts/query-routing.js?v=2026.08.02.07-scanner-category-ux"></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.02.07-scanner-category-ux"></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.02.07-scanner-category-ux"></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.02.07-scanner-category-ux"></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.02.07-scanner-category-ux"></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.02.07-scanner-category-ux"></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.02.07-scanner-category-ux"></script>
 </head>
 <body>
 
@@ -1556,11 +1558,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.02.06-price-movers-checklist</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.02.07-scanner-category-ux</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.02.06-price-movers-checklist</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.02.07-scanner-category-ux</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1582,7 +1584,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.02.06-price-movers-checklist</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.02.07-scanner-category-ux</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -1961,7 +1963,7 @@ body.show-mode .inv-sync-badge{display:none;}
         <option value="Collectibles">Collectibles</option>
       </select>
       <div id="qpl-ctrl-row" style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap">
-        <div id="qpl-cat-pills" style="display:flex;gap:4px;flex-wrap:wrap;flex:1">
+        <div id="qpl-cat-pills" style="display:flex;gap:4px;flex-wrap:nowrap;flex:1;min-width:0">
           <button class="hbtn qpl-cat-pill active" data-cat="" onclick="setQplCategory(this)" style="font-size:9px;padding:4px 8px;min-height:28px">ALL</button>
           <button class="hbtn qpl-cat-pill" data-cat="Pokemon TCG" onclick="setQplCategory(this)" style="font-size:9px;padding:4px 8px;min-height:28px;color:var(--gold)">POKEMON</button>
           <button class="hbtn qpl-cat-pill" data-cat="Magic: The Gathering" onclick="setQplCategory(this)" style="font-size:9px;padding:4px 8px;min-height:28px;color:#5ba3f5">MTG</button>
@@ -2272,7 +2274,7 @@ body.show-mode .inv-sync-badge{display:none;}
     </div>
     <div id="cardsight-camera" class="barcode-camera"><video id="cardsight-video" playsinline muted></video><div class="barcode-scan-line"></div><div id="cardsight-camera-placeholder" style="font-family:monospace;font-size:10px;color:var(--dim);text-align:center;padding:18px">Opening camera...</div></div>
     <div id="cardsight-status" style="font-family:var(--font-mono);font-size:10px;color:var(--dim);min-height:18px;line-height:1.5"></div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+    <div id="cardsight-scan-actions" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
       <button class="hbtn" id="cardsight-scan-btn" onclick="doCardSightScan()" style="min-height:42px;color:var(--g)">📷 SCAN</button>
       <button class="hbtn" id="cardsight-camera-toggle" onclick="toggleCardSightCamera()">STOP CAMERA</button>
     </div>
@@ -3071,7 +3073,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.02.06-price-movers-checklist';
+const APP_VERSION = '2026.08.02.07-scanner-category-ux';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -21013,7 +21015,7 @@ function setCardSightStatus(message, tone = ''){
   if(el){ el.textContent = message || ''; el.style.color = tone || 'var(--dim)'; }
 }
 
-function openCardSightScanner(){
+async function openCardSightScanner(){
   const modal = document.getElementById('cardsight-scanner-modal');
   if(!modal) return;
   modal.classList.add('on');
@@ -21021,7 +21023,11 @@ function openCardSightScanner(){
   const log = document.getElementById('cardsight-results-log');
   if(log) log.innerHTML = '';
   setCardSightStatus('');
-  startCardSightCamera();
+  const ready = await startCardSightCamera();
+  // Give autofocus/exposure a beat to settle before the first automatic
+  // scan -- a frame grabbed the instant getUserMedia resolves is often
+  // still blurry. The user can still tap SCAN manually any time.
+  if(ready) setTimeout(() => { if(cardsightStream) doCardSightScan(); }, 450);
 }
 
 function closeCardSightScanner(){
@@ -21054,8 +21060,10 @@ async function startCardSightCamera(){
     const toggleBtn = document.getElementById('cardsight-camera-toggle');
     if(toggleBtn) toggleBtn.textContent = 'STOP CAMERA';
     setCardSightStatus('Camera ready. Tap SCAN.', 'var(--g)');
+    return true;
   } catch(e){
     setCardSightStatus('Camera error: ' + e.message, 'var(--red)');
+    return false;
   }
 }
 
@@ -27662,6 +27670,21 @@ function setQplCategory(btn){
   document.querySelectorAll('.qpl-cat-pill').forEach(b => b.classList.toggle('active', b.dataset.cat === cat));
   handleQplCategoryChange();
 }
+
+// The category strip is now a single horizontally-scrolling row instead of
+// a tall stack, so whenever code elsewhere flips which pill is "active"
+// (barcode scans, MTG/sealed search-intent detection, etc.) the newly
+// active pill needs to be scrolled into view -- otherwise it can silently
+// select a category off-screen with no visual feedback.
+(function initQplCatPillAutoScroll(){
+  const host = document.getElementById('qpl-cat-pills');
+  if(!host || typeof MutationObserver === 'undefined') return;
+  const obs = new MutationObserver(() => {
+    const active = host.querySelector('.qpl-cat-pill.active');
+    if(active) active.scrollIntoView({inline: 'nearest', block: 'nearest', behavior: 'smooth'});
+  });
+  obs.observe(host, {attributes: true, attributeFilter: ['class'], subtree: true});
+})();
 
 function handleQplCategoryChange(){
   const q = document.getElementById('qpl-input')?.value.trim() || qplLastSearch || '';
@@ -35884,7 +35907,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.02.06-price-movers-checklist"></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.02.07-scanner-category-ux"></script>
 </body>
 </html>
 
