@@ -12388,14 +12388,23 @@ async function fetchLivePokemonInventoryCard(item = {}){
   let query = '';
   let attemptedQueries = [];
   let result;
+  // This is the ONLY caller of pokemonPriceTrackerCardsRequest/
+  // pokemonPriceTrackerSealedProductsRequest that's supposed to be "live" --
+  // it backs the FETCH LIVE POKEMON button, distinct from SCAN CACHED
+  // PRICES. Without fresh:true, both requests default to the Worker's own
+  // KV cache (up to 24h old, keyed only by tcgPlayerId), so "live" sync was
+  // silently serving the exact same stale response on every run regardless
+  // of what actually changed upstream -- which is why re-running the sync
+  // kept showing the identical (and, for at least one card, simply wrong)
+  // numbers every time.
   if(tcgPlayerId) {
     const params = new URLSearchParams();
     params.set('tcgPlayerId', tcgPlayerId);
     params.set('limit', '1');
     if(!sealed) params.set('includeBoth', 'true');
     result = sealed
-      ? await pokemonPriceTrackerSealedProductsRequest(params, 'inventory.sync.sealed.tcgPlayerId')
-      : await pokemonPriceTrackerCardsRequest(params, 'inventory.sync.tcgPlayerId');
+      ? await pokemonPriceTrackerSealedProductsRequest(params, 'inventory.sync.sealed.tcgPlayerId', { fresh:true })
+      : await pokemonPriceTrackerCardsRequest(params, 'inventory.sync.tcgPlayerId', { fresh:true });
   } else {
     query = inventoryPokemonExactQuery(item);
     if(!query) return { card:null, requestPath:'', matchStatus:'no-query', resultCount:0, tcgPlayerId:'', query:'', productType:sealed ? 'sealed' : 'card' };
@@ -12404,14 +12413,14 @@ async function fetchLivePokemonInventoryCard(item = {}){
       for(const candidateQuery of queries) {
         attemptedQueries.push(candidateQuery);
         const params = new URLSearchParams({ search:candidateQuery, limit:'20' });
-        result = await pokemonPriceTrackerSealedProductsRequest(params, 'inventory.sync.sealed.search');
+        result = await pokemonPriceTrackerSealedProductsRequest(params, 'inventory.sync.sealed.search', { fresh:true });
         query = candidateQuery;
         if(result.cards?.length) break;
       }
     } else {
       attemptedQueries = [query];
       const params = new URLSearchParams({ search:query, limit:'20' });
-      result = await pokemonPriceTrackerCardsRequest(params, 'inventory.sync.search');
+      result = await pokemonPriceTrackerCardsRequest(params, 'inventory.sync.search', { fresh:true });
     }
   }
   const cards = result.cards || [];
