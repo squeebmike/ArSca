@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.02.03-pokemon-debug-visible">
+<meta name="version" content="2026.08.02.04-pokemon-variants-fix">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1500,13 +1500,13 @@ body.show-mode .inv-sync-badge{display:none;}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.02.03-pokemon-debug-visible"></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.02.03-pokemon-debug-visible"></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.02.03-pokemon-debug-visible"></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.02.03-pokemon-debug-visible"></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.02.03-pokemon-debug-visible"></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.02.03-pokemon-debug-visible"></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.02.03-pokemon-debug-visible"></script>
+<script src="scripts/query-routing.js?v=2026.08.02.04-pokemon-variants-fix"></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.02.04-pokemon-variants-fix"></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.02.04-pokemon-variants-fix"></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.02.04-pokemon-variants-fix"></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.02.04-pokemon-variants-fix"></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.02.04-pokemon-variants-fix"></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.02.04-pokemon-variants-fix"></script>
 </head>
 <body>
 
@@ -1556,11 +1556,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.02.03-pokemon-debug-visible</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.02.04-pokemon-variants-fix</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.02.03-pokemon-debug-visible</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.02.04-pokemon-variants-fix</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1582,7 +1582,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.02.03-pokemon-debug-visible</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.02.04-pokemon-variants-fix</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3071,7 +3071,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.02.03-pokemon-debug-visible';
+const APP_VERSION = '2026.08.02.04-pokemon-variants-fix';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -12325,6 +12325,30 @@ function isPokemonInventorySyncItem(item = {}){
 function pokemonCardNumberForSync(card = {}){
   return card.cardNumber || card.number || card.collectorNumber || card.card_number || card.raw?.cardNumber || card.raw?.number || '';
 }
+// PokemonPriceTracker's own OpenAPI spec (docs/api/pokemon-price-tracker-
+// openapi.json, PriceData schema) documents prices.conditions as "Legacy
+// condition-based pricing" and prices.variants as the current structure:
+// { [printingName]: { [conditionName]: ConditionPrice } }, scoped per
+// printing (Normal / Holofoil / Reverse Holofoil / 1st Edition Holofoil /
+// etc). A card with more than one printing can have completely different
+// condition keys living inside the SAME flat prices.conditions map with no
+// indication which printing each belongs to -- reading it directly can
+// silently return a different (much cheaper) printing's condition price
+// than the one this exact card/row actually is. prices.variants is scoped
+// correctly and must be tried first.
+function pokemonPriceTrackerVariantConditionPrice(card = {}, condition = ''){
+  const prices = card.prices || {};
+  const variants = prices.variants || {};
+  const variantNames = Object.keys(variants);
+  if(!variantNames.length) return 0;
+  // Prefer whichever printing the API itself says the primary/market price
+  // represents (primaryPrinting) so a holofoil-only card never gets read
+  // out of some other printing's bucket.
+  const preferredName = (prices.primaryPrinting && variants[prices.primaryPrinting])
+    ? prices.primaryPrinting
+    : variantNames.find(name => normalizePokemonPptKey(name) === normalizePokemonPptKey(prices.primaryPrinting || '')) || variantNames[0];
+  return pokemonPptPriceValue(pokemonPptObjectMatch(variants[preferredName] || {}, pokemonPptConditionLabel(condition)));
+}
 function pokemonPriceTrackerMarketPrice(card = {}, condition = ''){
   const prices = card.prices || {};
   // Only override with a per-condition price for a genuinely non-NM item.
@@ -12337,6 +12361,8 @@ function pokemonPriceTrackerMarketPrice(card = {}, condition = ''){
   // one sync. NM (or no condition given) must fall straight through to the
   // original, unchanged fallback chain below.
   if(condition && pokemonPptConditionCode(condition) !== 'NM'){
+    const variantPrice = pokemonPriceTrackerVariantConditionPrice(card, condition);
+    if(variantPrice > 0) return variantPrice;
     const perCondition = pokemonPptPriceValue(pokemonPptObjectMatch(prices.conditions || {}, pokemonPptConditionLabel(condition)));
     if(perCondition > 0) return perCondition;
   }
@@ -13079,7 +13105,8 @@ async function buildLivePokemonPriceSyncProposal(options = {}){
       // that mismatch is exactly what made an ordinary MP card look like it
       // "spiked" when the sync actually just fetched its NM price.
       if(!sealed && pokemonPptConditionCode(itemCondition) !== 'NM'){
-        const perConditionPrice = pokemonPptPriceValue(pokemonPptObjectMatch(live.card.prices?.conditions || {}, pokemonPptConditionLabel(itemCondition)));
+        const perConditionPrice = pokemonPriceTrackerVariantConditionPrice(live.card, itemCondition)
+          || pokemonPptPriceValue(pokemonPptObjectMatch(live.card.prices?.conditions || {}, pokemonPptConditionLabel(itemCondition)));
         if(!(perConditionPrice > 0)){
           summary.noPrice++;
           summary.issues.push({
@@ -13592,7 +13619,7 @@ function renderPriceSyncProposal(){
       <div style="flex:1;min-width:0">
         <div style="font-size:12px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(priceSyncItemTitle(p.item))}</div>
         <div style="font-size:10px;color:var(--dim)">${escHtml(p.item.set||'')}${(p.item.card_number || p.item.cardNumber)?' · #'+escHtml(p.item.card_number || p.item.cardNumber):''} · ${escHtml(p.mode === 'live' ? 'live ' + (p.matchStatus || 'match') : p.mode === 'mtg-live' ? (p.matchStatus || 'live MTG match') : p.mode === 'mtg-offline' ? (p.matchStatus || 'offline MTG match') : 'cached')} · ${escHtml(p.source || '')}${p.lastUpdated?' · '+escHtml(String(p.lastUpdated).slice(0,10)):''}</div>
-        ${p.mode === 'live' && (p.isBig || showAdminDebug()) ? `<div style="font-size:8px;color:var(--gold);margin-top:3px;font-family:monospace">Debug: itemCondition=${escHtml(p.item.condition||'NM')} / conditions keys [${escHtml(Object.keys(p.prices?.conditions||{}).join(', ')||'none')}] / matchedPerCondition=${escHtml(String(pokemonPptPriceValue(pokemonPptObjectMatch(p.prices?.conditions||{}, pokemonPptConditionLabel(p.item.condition||'NM')))||''))} / prices.market=${escHtml(String(p.prices?.market?.price ?? p.prices?.market ?? ''))} / card.marketPrice=${escHtml(String(p.rawDebug?.marketPrice ?? ''))} / card.market=${escHtml(String(p.rawDebug?.market ?? ''))} / card.price=${escHtml(String(p.rawDebug?.price ?? ''))} / selectedVariantMarketPrice=${escHtml(String(p.rawDebug?.selectedVariantMarketPrice ?? ''))}</div>` : ''}
+        ${p.mode === 'live' && (p.isBig || showAdminDebug()) ? `<div style="font-size:8px;color:var(--gold);margin-top:3px;font-family:monospace">Debug: itemCondition=${escHtml(p.item.condition||'NM')} / primaryPrinting=${escHtml(p.prices?.primaryPrinting||'')} / variant printings [${escHtml(Object.keys(p.variants||{}).join(', ')||'none')}] / matchedVariantCondition=${escHtml(String(pokemonPriceTrackerVariantConditionPrice({prices:p.prices}, p.item.condition||'NM')||''))} / legacy conditions keys [${escHtml(Object.keys(p.prices?.conditions||{}).join(', ')||'none')}] / matchedLegacyCondition=${escHtml(String(pokemonPptPriceValue(pokemonPptObjectMatch(p.prices?.conditions||{}, pokemonPptConditionLabel(p.item.condition||'NM')))||''))} / prices.market=${escHtml(String(p.prices?.market?.price ?? p.prices?.market ?? ''))} / card.marketPrice=${escHtml(String(p.rawDebug?.marketPrice ?? ''))}</div>` : ''}
       </div>
       <div style="text-align:right;white-space:nowrap">
         ${bigBadge}
@@ -35852,7 +35879,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.02.03-pokemon-debug-visible"></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.02.04-pokemon-variants-fix"></script>
 </body>
 </html>
 
