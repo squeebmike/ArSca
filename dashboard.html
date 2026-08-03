@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.03.14-logout-and-inv-cat-wheel">
+<meta name="version" content="2026.08.03.15-price-alerts-sync-comic-ebay">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1541,13 +1541,13 @@ body.show-mode .inv-sync-badge{display:none;}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.03.14-logout-and-inv-cat-wheel"></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.03.14-logout-and-inv-cat-wheel"></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.03.14-logout-and-inv-cat-wheel"></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.03.14-logout-and-inv-cat-wheel"></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.03.14-logout-and-inv-cat-wheel"></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.03.14-logout-and-inv-cat-wheel"></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.03.14-logout-and-inv-cat-wheel"></script>
+<script src="scripts/query-routing.js?v=2026.08.03.15-price-alerts-sync-comic-ebay"></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.03.15-price-alerts-sync-comic-ebay"></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.03.15-price-alerts-sync-comic-ebay"></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.03.15-price-alerts-sync-comic-ebay"></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.03.15-price-alerts-sync-comic-ebay"></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.03.15-price-alerts-sync-comic-ebay"></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.03.15-price-alerts-sync-comic-ebay"></script>
 </head>
 <body>
 
@@ -1597,11 +1597,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.03.14-logout-and-inv-cat-wheel</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.03.15-price-alerts-sync-comic-ebay</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.03.14-logout-and-inv-cat-wheel</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.03.15-price-alerts-sync-comic-ebay</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1623,7 +1623,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.03.14-logout-and-inv-cat-wheel</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.03.15-price-alerts-sync-comic-ebay</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3118,7 +3118,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.03.14-logout-and-inv-cat-wheel';
+const APP_VERSION = '2026.08.03.15-price-alerts-sync-comic-ebay';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -3269,6 +3269,7 @@ const WALKOFF_SCOPED_KEYS = new Set([
   'pos_transactions','pos_drawer','pos_drawer_closeouts','pos_store_credits','pos_pending_trade_purchase',
   // POS / operations
   'pos_wantlist','set_needs_v1','pos_consign','pos_consignors','pos_consignment_alerts','pos_locations',
+  'price_change_alerts',
   'pos_ops_log','pos_show_mode','pos_customers','pos_undo_stack',
   // Store settings / profile
   'vendor_profile_v1','vendor_config_v1','store_payment_settings_v1',
@@ -14672,6 +14673,7 @@ window.addEventListener('load', async function(){
   seedDemoDataIfNeeded();
   await loadStoreSettingsFromSupabase();
   await loadConsignmentsFromCloud();
+  await loadPriceChangeAlertsFromCloud();
   setupAppShell();
   setInvView(_invView);
   checkAndApplySubscriptionState().catch(console.warn);
@@ -17575,6 +17577,14 @@ function computeEbayListingFields(item){
 }
 
 async function generateAiEbayDescription(item, fields){
+  // Comic-specific facts -- writer/artist/cover credits, key-issue status,
+  // and story/character keywords are exactly what comic buyers search eBay
+  // for, and none of it was reaching the AI prompt before (only the
+  // generic card fields were). See inventoryComicPeopleLine/comicMetadata.
+  const cm = item.comicMetadata || {};
+  const comicPeople = fields.isComic ? inventoryComicPeopleLine(item) : '';
+  const storyTitles = fields.isComic && Array.isArray(cm.storyTitles) ? cm.storyTitles.filter(Boolean) : [];
+  const characters = fields.isComic && Array.isArray(cm.characters) ? cm.characters.filter(Boolean) : [];
   const facts = [
     fields.title,
     item.category ? 'Category: '+item.category : '',
@@ -17588,7 +17598,12 @@ async function generateAiEbayDescription(item, fields){
     item.team ? 'Team: '+item.team : '',
     item.issue ? 'Issue #: '+item.issue : '',
     item.publisher ? 'Publisher: '+item.publisher : '',
+    comicPeople,
+    storyTitles.length ? 'Story: '+storyTitles.join(', ') : '',
+    characters.length ? 'Featured characters: '+characters.join(', ') : '',
+    item.is_key ? 'Key issue' + (item.key_notes ? ' -- '+item.key_notes : '') : '',
     fields.isGraded ? 'Grade: '+[item.grader,item.grade].filter(Boolean).join(' ') : '',
+    fields.isGraded && item.cert_number ? 'Certification #: '+item.cert_number : '',
     item.isRookie ? 'Rookie card' : '',
     fields.isSealed ? 'Factory sealed' : '',
   ].filter(Boolean).join('\n');
@@ -29693,9 +29708,66 @@ const PRICE_ALERT_DOLLAR_THRESHOLD = 25;  // $25
 function getPriceChangeAlerts(){
   return safeLocalJson('price_change_alerts', []);
 }
+// Cloud-synced so a price sync run on one device (register, phone, laptop)
+// shows up as a re-sticker reminder on every device signed into the store --
+// same pattern as consignment alerts (see loadConsignmentsFromCloud).
+let priceAlertsCloudReady = false;
+let priceAlertsCloudSyncTimer = null;
+function priceAlertToCloud(a){
+  return {
+    id:a.id, store_id:getActiveStoreId(), inventory_item_id:a.itemId||null, item_name:a.name||'Item',
+    old_price:Number(a.oldPrice||0), new_price:Number(a.newPrice||0),
+    dollar_change:Number(a.dollarChange||0), pct_change:Number(a.pctChange||0),
+    status:a.status||'open', last_checked:a.lastChecked||new Date().toISOString(),
+    created_at:a.createdAt||new Date().toISOString(), updated_at:new Date().toISOString(),
+  };
+}
+function priceAlertFromCloud(a){
+  return {
+    id:a.id, itemId:a.inventory_item_id||'', name:a.item_name,
+    oldPrice:Number(a.old_price||0), newPrice:Number(a.new_price||0),
+    dollarChange:Number(a.dollar_change||0), pctChange:Number(a.pct_change||0),
+    lastChecked:a.last_checked, status:a.status, createdAt:a.created_at,
+  };
+}
+async function loadPriceChangeAlertsFromCloud(){
+  const sb = getSupabaseClient(), session = getAuthSession(), storeId = getActiveStoreId();
+  if(!sb || !session?.supabase || !storeId || storeId === 'demo') return false;
+  const { data, error } = await sb.from('price_change_alerts').select('*').eq('store_id', storeId).order('created_at', { ascending:false }).limit(500);
+  if(error) { console.warn('[PRICE ALERTS] Cloud schema unavailable; using device cache:', error.message); return false; }
+  const localAlerts = getPriceChangeAlerts();
+  const cloudAlerts = (data || []).map(priceAlertFromCloud);
+  localStorage.setItem('price_change_alerts', JSON.stringify(cloudAlerts));
+  priceAlertsCloudReady = true;
+  const migrationKey = 'price_alerts_cloud_migrated_v1';
+  if(!localStorage.getItem(migrationKey) && localAlerts.length) {
+    const merged = [...new Map([...cloudAlerts, ...localAlerts].filter(a => a?.id).map(a => [a.id, a])).values()];
+    localStorage.setItem('price_change_alerts', JSON.stringify(merged));
+    await syncPriceChangeAlertsToCloud();
+    localStorage.setItem(migrationKey, new Date().toISOString());
+  }
+  return true;
+}
+function schedulePriceAlertsCloudSync(){
+  if(!priceAlertsCloudReady) return;
+  clearTimeout(priceAlertsCloudSyncTimer);
+  priceAlertsCloudSyncTimer = setTimeout(() => syncPriceChangeAlertsToCloud().catch(e => console.warn('[PRICE ALERTS] Cloud sync failed:', e.message)), 250);
+}
+async function syncPriceChangeAlertsToCloud(){
+  const sb = getSupabaseClient(), storeId = getActiveStoreId();
+  if(!sb || !priceAlertsCloudReady || !storeId) return false;
+  const rows = getPriceChangeAlerts().filter(a => a?.id).map(priceAlertToCloud);
+  if(!rows.length) return true;
+  const { error } = await sb.from('price_change_alerts').upsert(rows, { onConflict:'id' });
+  if(error) throw error;
+  return true;
+}
 function savePriceChangeAlerts(list){
-  localStorage.setItem('price_change_alerts', JSON.stringify((list || []).slice(0, 200)));
+  // Dismissed alerts are now kept (status flip, not removed -- see
+  // dismissPriceChangeAlert) so the cap needs more headroom than it used to.
+  localStorage.setItem('price_change_alerts', JSON.stringify((list || []).slice(0, 500)));
   renderPriceChangeAlerts();
+  schedulePriceAlertsCloudSync();
 }
 function maybeRaisePriceChangeAlert(inventoryItem, oldPrice, newPrice){
   if(!inventoryItem || !(oldPrice > 0) || !(newPrice > 0)) return;
@@ -29714,6 +29786,7 @@ function maybeRaisePriceChangeAlert(inventoryItem, oldPrice, newPrice){
     dollarChange, pctChange,
     lastChecked: new Date().toISOString(),
     status: 'open',
+    createdAt: new Date().toISOString(),
   };
   alerts.unshift(alert);
   savePriceChangeAlerts(alerts);
@@ -29727,7 +29800,10 @@ function maybeRaisePriceChangeAlert(inventoryItem, oldPrice, newPrice){
 // inventory. Marking a row done just means "I walked over and changed the
 // paper sticker to match," and clears it from the list.
 function dismissPriceChangeAlert(id){
-  savePriceChangeAlerts(getPriceChangeAlerts().filter(a => a.id !== id));
+  // Flip status rather than removing the row -- matches consignment alerts'
+  // convention (see saveConsignmentAlerts) so a dismiss on one device isn't
+  // silently undone the next time another device pulls the cloud list down.
+  savePriceChangeAlerts(getPriceChangeAlerts().map(a => a.id === id ? { ...a, status:'dismissed' } : a));
 }
 function renderPriceChangeAlerts(){
   const host = document.getElementById('price-change-alerts');
@@ -36420,7 +36496,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.03.14-logout-and-inv-cat-wheel"></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.03.15-price-alerts-sync-comic-ebay"></script>
 </body>
 </html>
 
