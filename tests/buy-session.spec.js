@@ -20,9 +20,12 @@ test('selected Research result renders Buy and Sell actions without an availabil
 test('direct trade handoff subtracts credit on Sell and carries it into checkout', async ({ page }) => {
   await openDashboard(page);
   await page.evaluate(() => {
-    const credit = issueStoreCredit({ customerName:'QA Trade Customer', amount:20, buySessionId:'qa-trade-session' });
+    // Trade-in credit is never persisted to a store-credit ledger (see
+    // payCustomerForBuySession) -- it's just a plain object embedded
+    // directly on the cart, exactly like attachTradeToActiveSaleCart does.
+    const credit = { id:makeUuid('credit'), customerName:'QA Trade Customer', amount:20, remainingBalance:20, buySessionId:'qa-trade-session' };
     localStorage.setItem('pos_pending_trade_purchase', JSON.stringify({ creditId:credit.id, buySessionId:'qa-trade-session' }));
-    const cart = { items:[{ id:'qa-sale-item', name:'QA Purchase Item', price:50, cost:10, quantity:1 }], total:50, subtotal:50, discount:0 };
+    const cart = { items:[{ id:'qa-sale-item', name:'QA Purchase Item', price:50, cost:10, quantity:1 }], total:50, subtotal:50, discount:0, tradeCredit:credit };
     saveCartDataLocal(cart, 'QA direct trade handoff');
     switchTab('display');
     renderDealerCartTools(cart);
