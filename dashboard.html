@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.03.16-ebay-image-quality-comic-specifics">
+<meta name="version" content="2026.08.03.17-fix-comic-metadata-persistence">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1541,13 +1541,13 @@ body.show-mode .inv-sync-badge{display:none;}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.03.16-ebay-image-quality-comic-specifics"></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.03.16-ebay-image-quality-comic-specifics"></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.03.16-ebay-image-quality-comic-specifics"></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.03.16-ebay-image-quality-comic-specifics"></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.03.16-ebay-image-quality-comic-specifics"></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.03.16-ebay-image-quality-comic-specifics"></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.03.16-ebay-image-quality-comic-specifics"></script>
+<script src="scripts/query-routing.js?v=2026.08.03.17-fix-comic-metadata-persistence"></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.03.17-fix-comic-metadata-persistence"></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.03.17-fix-comic-metadata-persistence"></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.03.17-fix-comic-metadata-persistence"></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.03.17-fix-comic-metadata-persistence"></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.03.17-fix-comic-metadata-persistence"></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.03.17-fix-comic-metadata-persistence"></script>
 </head>
 <body>
 
@@ -1597,11 +1597,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.03.16-ebay-image-quality-comic-specifics</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.03.17-fix-comic-metadata-persistence</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.03.16-ebay-image-quality-comic-specifics</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.03.17-fix-comic-metadata-persistence</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1623,7 +1623,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.03.16-ebay-image-quality-comic-specifics</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.03.17-fix-comic-metadata-persistence</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3118,7 +3118,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.03.16-ebay-image-quality-comic-specifics';
+const APP_VERSION = '2026.08.03.17-fix-comic-metadata-persistence';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -14520,6 +14520,16 @@ const BUILT_IN_ITEM_SIMPLE_FIELDS = [
   ['photos',[],'array'],
   ['pokemonPriceTrackerPrices',null,'raw'], ['pokemonPriceTrackerVariants',null,'raw'],
   ['externalRefs',null,'raw'],
+  // Metron comic record (writers/artists/synopsis/covers/etc) -- dropped
+  // silently until now, since it was never added to either field list when
+  // the old hand-written mapBuiltInItem/builtInDataFromItem code was
+  // consolidated. That meant it survived a fresh load (raw still had it
+  // buried in item.raw) but vanished from the actual comic info panel
+  // (which only ever checked item.comicMetadata) and got wiped from the
+  // saved row on the next edit, which is also why it disappeared from the
+  // public storefront (comicDetailFor in the Worker reads it straight off
+  // the saved row).
+  ['comicMetadata',null,'raw'],
   ['is_signed',false,'bool'], ['is_sealed',false,'bool'],
   ['is_auto',false,'bool'], ['is_patch',false,'bool'], ['is_key',false,'bool'],
   ['stalePrice',false,'bool'],
@@ -19814,7 +19824,7 @@ async function removeInventoryEditGalleryPhoto(index){
 }
 
 function inventoryComicInfoHtml(item={}){
-  const m=item.comicMetadata;if(!m)return '';
+  const m=item.comicMetadata||item.raw?.comicMetadata;if(!m)return '';
   const credits=(m.credits||[]).map(c=>[c.creator,(c.roles||[]).join(', ')].filter(Boolean).join(' - ')).join('; ');
   const fields=[['Writer',(m.writers||[]).join(', ')],['Artist',(m.artists||[]).join(', ')],['Cover artist',(m.coverArtists||[]).join(', ')],['Story titles',(m.storyTitles||[]).join(' / ')],['Characters',(m.characters||[]).join(', ')],['Story arcs',(m.arcs||[]).join(', ')],['UPC',m.upc],['SKU',m.sku],['Metron ID',m.metronIssueId||m.id],['PriceCharting product',item.pricechartingProductName||m.pricechartingProductName||'']].filter(([,value])=>value);
   const covers=m.availableCovers||[];
@@ -36525,7 +36535,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.03.16-ebay-image-quality-comic-specifics"></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.03.17-fix-comic-metadata-persistence"></script>
 </body>
 </html>
 
