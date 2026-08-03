@@ -19,7 +19,8 @@ assert.match(selectedQuickResult, /const inventoryUnavailable = r\.source === 'i
 
 assert.match(html, /APPLY \$\$\{tradeTotal\.toFixed\(2\)\} TO PURCHASE/, 'Accepted buys must offer a direct trade-in-toward-purchase action');
 assert.match(html, /pos_pending_trade_purchase/, 'Trade-in purchase handoff must persist until checkout');
-assert.match(html, /getStoreCredits\(\)\.find\(c => c\.buySessionId === session\.buySessionId\)/, 'Trade credit issuance must be idempotent per buy session');
+assert.match(html, /trade_credit_same_visit/, 'Trade-in value must apply to the same visit only, never a persisted store-credit ledger entry');
+assert.doesNotMatch(html, /function issueStoreCredit/, 'Trade-in buys must not create a persisted, redeemable-later store credit record');
 assert.match(html, /id="bl-trade-btn"[^>]+onclick="acceptBuyAsTrade\(\)"/, 'Buy screen must expose a direct Trade to Sale action');
 assert.match(html, /async function acceptBuyAsTrade\(/, 'Direct trade workflow must accept the buy without a second payout modal');
 assert.match(html, /switchTab\('display'\)/, 'Direct trade workflow must open the Sell screen');

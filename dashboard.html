@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.03.11-void-trade-credit">
+<meta name="version" content="2026.08.03.12-same-visit-trade-credit-only">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1513,13 +1513,13 @@ body.show-mode .inv-sync-badge{display:none;}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.03.11-void-trade-credit"></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.03.11-void-trade-credit"></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.03.11-void-trade-credit"></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.03.11-void-trade-credit"></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.03.11-void-trade-credit"></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.03.11-void-trade-credit"></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.03.11-void-trade-credit"></script>
+<script src="scripts/query-routing.js?v=2026.08.03.12-same-visit-trade-credit-only"></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.03.12-same-visit-trade-credit-only"></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.03.12-same-visit-trade-credit-only"></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.03.12-same-visit-trade-credit-only"></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.03.12-same-visit-trade-credit-only"></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.03.12-same-visit-trade-credit-only"></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.03.12-same-visit-trade-credit-only"></script>
 </head>
 <body>
 
@@ -1569,11 +1569,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.03.11-void-trade-credit</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.03.12-same-visit-trade-credit-only</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.03.11-void-trade-credit</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.03.12-same-visit-trade-credit-only</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1595,7 +1595,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.03.11-void-trade-credit</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.03.12-same-visit-trade-credit-only</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3083,7 +3083,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.03.11-void-trade-credit';
+const APP_VERSION = '2026.08.03.12-same-visit-trade-credit-only';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -10691,7 +10691,7 @@ function ensureStoreCreditPanel(backoffice){
   panel.id = 'store-credit-panel';
   panel.style.marginBottom = '14px';
   panel.innerHTML = `<div class="ph">TRADE-IN STORE CREDIT <span id="store-credit-count" style="font-size:9px;color:var(--dim)">0 outstanding</span></div>
-    <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);margin-bottom:8px">Issued from Buy sessions paid out as "Trade Credit". Redeemed as a tender at cart checkout.</div>
+    <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);margin-bottom:8px">Trade-in buys apply directly to the same visit's purchase, with any leftover paid out in cash — nothing new gets saved here. This list is only for any pre-existing balance; void one to clear it out.</div>
     <div id="store-credit-list" style="display:grid;gap:6px;font-family:var(--font-mono);font-size:10px;color:var(--dim)"></div>`;
   backoffice.appendChild(panel);
   renderStoreCreditPanel();
@@ -12055,11 +12055,11 @@ function leaveShowSession(){
 }
 
 // ── Trade-in store credit ledger ──────────────────────────────────────────
-// Issued when a buy session is paid out as "Trade Credit" instead of cash
-// (see payCustomerForBuySession). Redeemed as a tender line at checkout
-// (see selectLockedPaymentMethod('trade_credit') / applyTradeCreditTender) so a customer can pay
-// for a purchase, in whole or in part, out of a prior trade-in's value —
-// same idea as a car dealership trade-in against a new purchase.
+// A "Trade Credit" buy payout (see payCustomerForBuySession) is never
+// written here -- it only ever applies to a purchase made the same visit
+// (see lockCheckoutForPayment), with any leftover paid out in cash instead
+// of banked. This ledger exists only so any pre-existing balance can still
+// be viewed/voided from the backoffice Trade-In Store Credit panel.
 function getStoreCredits(){
   try { return JSON.parse(localStorage.getItem('pos_store_credits') || '[]'); }
   catch(e) { return []; }
@@ -12087,25 +12087,6 @@ async function syncStoreCreditsFromWorker(){
     }
   } catch(e) {}
 }
-function issueStoreCredit({ customerName, customerPhone, customerEmail, amount, buySessionId, note }){
-  const amt = Math.round(Number(amount || 0) * 100) / 100;
-  const record = {
-    id: makeUuid('credit'),
-    storeId: getActiveStoreId(),
-    customerName: customerName || '',
-    customerPhone: customerPhone || '',
-    customerEmail: customerEmail || '',
-    amount: amt,
-    remainingBalance: amt,
-    buySessionId: buySessionId || '',
-    note: note || '',
-    createdAt: new Date().toISOString(),
-  };
-  const credits = getStoreCredits();
-  credits.unshift(record);
-  saveStoreCredits(credits);
-  return record;
-}
 function getPendingTradePurchase(cartData = null){
   const embedded = cartData?.tradeCredit || null;
   const handoff = safeLocalJson('pos_pending_trade_purchase', null);
@@ -12121,18 +12102,6 @@ function pendingTradeAmounts(total, cartData = null){
   const applied = pending ? Math.min(purchaseTotal, Number(pending.credit.remainingBalance || 0)) : 0;
   return { pending, applied:Math.round(applied * 100) / 100, due:Math.round((purchaseTotal - applied) * 100) / 100 };
 }
-function findStoreCreditsForCustomer(query){
-  const q = String(query || '').trim().toLowerCase();
-  if(!q) return getStoreCredits().filter(c => Number(c.remainingBalance || 0) > 0);
-  const digits = q.replace(/\D/g,'');
-  return getStoreCredits().filter(c => {
-    if(Number(c.remainingBalance || 0) <= 0) return false;
-    if(digits.length >= 4 && c.customerPhone && c.customerPhone.replace(/\D/g,'').includes(digits)) return true;
-    if(c.customerName && c.customerName.toLowerCase().includes(q)) return true;
-    if(c.customerEmail && c.customerEmail.toLowerCase() === q) return true;
-    return false;
-  });
-}
 function redeemStoreCredit(id, amount){
   const credits = getStoreCredits();
   let rec = credits.find(c => c.id === id);
@@ -12146,6 +12115,29 @@ function redeemStoreCredit(id, amount){
   rec.lastRedeemedAt = new Date().toISOString();
   saveStoreCredits(credits);
   return true;
+}
+// The portion of a same-visit trade-in that wasn't applied to the sale
+// (see payCustomerForBuySession's trade_credit branch, which never banks
+// trade-in value for a later visit) gets paid out in cash from the bag
+// right now -- same drawer-movement mechanics as a normal cash buy payout.
+function payTradeInLeftoverAsCash(amount, tenderLine){
+  if(!(amount > 0) || !drawerState) return;
+  const payoutNote = 'Trade-in leftover payout' + (tenderLine?.customerName ? ': ' + tenderLine.customerName : '');
+  const movementId = makeUuid('move'), movementAt = new Date().toISOString();
+  drawerState.log.push({
+    id:movementId, drawerSessionId:drawerState.id || '', dir:-1, amt:amount,
+    note:payoutNote, type:'trade_in_cash_payout', label:'Trade-In Cash Payout',
+    time:new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'}), createdAt:movementAt,
+  });
+  drawerState.expectedCash = Number(drawerState.expectedCash ?? drawerState.startingCash ?? drawerState.float ?? 0) - amount;
+  saveDrawer();
+  renderDrawer();
+  const movement = {
+    id:movementId, drawer_session_id:drawerState.id || '', store_id:getActiveStoreId(), sale_id:null,
+    movement_type:'trade_in_cash_payout', amount:-amount, note:payoutNote,
+    created_by:getCurrentUserId(), created_at:movementAt,
+  };
+  MoneyLedgerService().writeDrawerMovement(movement).catch(e => enqueueSync('drawer-movement', 'Queued trade-in cash payout: ' + payoutNote, movement, e.message));
 }
 // Zeroes a trade credit's remaining balance instead of deleting the record
 // outright -- same "keep the audit trail, just stop it from being
@@ -31380,20 +31372,23 @@ function payCustomerForBuySession(method){
     };
     MoneyLedgerService().writeDrawerMovement(movement).catch(e => enqueueSync('drawer-movement', 'Queued cash buy payout: ' + payoutNote, movement, e.message));
   } else if(normalizeTenderType(session.paymentType) === 'trade_credit') {
-    // Only one credit may be issued for a buy session, even if confirmation is retried.
-    let record = getStoreCredits().find(c => c.buySessionId === session.buySessionId);
-    if(!record) {
-      record = issueStoreCredit({
-        customerName: session.customerName,
-        customerPhone: session.customerPhone,
-        customerEmail: session.customerEmail,
-        amount: session.tradeCreditTotal,
-        buySessionId: session.buySessionId,
-        note: 'Trade-in credit from buy session ' + session.buySessionId,
-      });
-      logOpsEvent('trade_credit_issued', 'Issued trade credit', { buySessionId:session.buySessionId, creditId:record.id, amount:record.amount, customerName:session.customerName });
-    }
-    toast_dash('Trade credit issued: $' + record.amount.toFixed(2) + ' — redeemable at checkout');
+    // Trade-in value applies only to a purchase made THIS same visit -- it
+    // is never written to the persisted store-credit ledger, so there is
+    // nothing for a customer to redeem on a later, unrelated visit. If it
+    // isn't fully spent, whatever's left over gets paid out in cash from
+    // the bag at checkout instead of being banked (see
+    // finalizeCompletedCheckout's trade_credit handling).
+    const amount = Math.round(Number(session.tradeCreditTotal || 0) * 100) / 100;
+    const record = {
+      id: makeUuid('credit'),
+      amount,
+      remainingBalance: amount,
+      customerName: session.customerName || '',
+      customerPhone: session.customerPhone || '',
+      buySessionId: session.buySessionId,
+    };
+    logOpsEvent('trade_credit_same_visit', 'Trade-in value ready for this visit only (not saved)', { buySessionId:session.buySessionId, amount, customerName:session.customerName });
+    toast_dash('Trade-in value ready: $' + amount.toFixed(2) + ' — add purchase items, then checkout');
     return { session, credit:record };
   }
   logOpsEvent('customer_paid', 'Recorded customer payout for buy session', { buySessionId:session.buySessionId, method:session.paymentType, amount:session.cashOfferTotal });
@@ -33044,7 +33039,7 @@ async function lockCheckoutForPayment(){
   await enterCustomerDisplayMode();
   const trade = pendingTradeAmounts(lockedCheckoutSnapshot.total, cart);
   if(trade.pending && trade.applied > 0) {
-    selectedTenderLines = [{ method:'trade_credit', amount:trade.applied, reference:trade.pending.credit.id }];
+    selectedTenderLines = [{ method:'trade_credit', amount:trade.applied, reference:trade.pending.credit.id, fullAmount:Number(trade.pending.credit.remainingBalance ?? trade.pending.credit.amount ?? 0), customerName:trade.pending.credit.customerName || '' }];
     selectLockedPaymentMethod('trade_credit');
     const remaining = remainingCheckoutDue();
     if(remaining <= 0.009) {
@@ -33166,8 +33161,8 @@ async function confirmStripeCardPayment(){const rt=stripePosRuntime;if(!rt||rt.b
 function cancelStripeCardPayment(){if(stripePosRuntime?.busy)return toast_dash('Wait for the current Stripe request to finish');stripePosRuntime=null;selectedTenderLines=[];checkoutState=CHECKOUT_STATES.PAYMENT_METHOD_SELECTED;const wb=document.getElementById('customer-payment-workbench');if(wb)wb.innerHTML='<div style="text-align:center;font-family:var(--font-mono);padding:14px">Choose another payment method above.</div>';}
 
 // Amount still owed on the locked checkout after any tender lines already queued
-// (currently only ever populated by a partial trade-credit redemption — see
-// applyTradeCreditTender). Every other tender flow starts from an empty
+// (currently only ever populated by a same-visit trade-in auto-applied by
+// lockCheckoutForPayment). Every other tender flow starts from an empty
 // selectedTenderLines, so this is just the full total in the common case.
 function remainingCheckoutDue(){
   if(!lockedCheckoutSnapshot) return 0;
@@ -33187,13 +33182,19 @@ function selectLockedPaymentMethod(method){
   // QR rebuild: switching to Cash or Credit/Debit must never leave a stale P2P QR open
   if(['cash','card'].includes(method)) closeP2pQrModal();
   if(method === 'trade_credit') {
-    wb.innerHTML = `<div style="font-weight:800;text-align:center;margin-bottom:8px">Trade Credit</div>
-      <div style="text-align:center;color:#657080;font-family:var(--font-mono);font-size:12px;margin-bottom:12px">Amount due $${total.toFixed(2)}</div>
-      <input id="trade-credit-search" placeholder="Customer name or phone" oninput="renderTradeCreditMatches()" style="width:100%;min-height:44px;border:1px solid #cfd7e3;border-radius:7px;padding:10px 12px;font-size:14px;box-sizing:border-box">
-      <div id="trade-credit-matches" style="margin-top:10px"></div>`;
+    // Trade credit only ever comes from a trade-in buy accepted THIS same
+    // visit (see payCustomerForBuySession / lockCheckoutForPayment) -- it
+    // is never banked for a customer to look up and redeem on a different,
+    // later visit, so there's nothing to search for here.
+    const priorTrade = selectedTenderLines.find(t => t.method === 'trade_credit');
+    wb.innerHTML = priorTrade
+      ? `<div style="font-weight:800;text-align:center;margin-bottom:8px">Trade Credit</div>
+        <div style="text-align:center;color:#05835f;font-family:var(--font-mono);font-size:12px;margin-bottom:12px">✓ $${Number(priorTrade.amount).toFixed(2)} trade-in applied to this sale</div>
+        <div class="payment-confirm-row"><button class="hbtn danger" onclick="removeTradeCreditTender()">REMOVE</button></div>`
+      : `<div style="font-weight:800;text-align:center;margin-bottom:8px">Trade Credit</div>
+        <div style="text-align:center;color:var(--dim);font-family:var(--font-mono);font-size:12px">No trade-in on this sale. Accept this customer's trade-in buy first — it applies here automatically.</div>`;
     wb.classList.add('on');
     renderCustomerDisplaySnapshot();
-    setTimeout(renderTradeCreditMatches, 0);
     return;
   }
   if(method === 'cash') {
@@ -33248,50 +33249,6 @@ function updateLockedCashChange(){
   if(el) el.textContent = received >= due ? 'Change due $' + (received - due).toFixed(2) : 'Still due $' + (due - received).toFixed(2);
 }
 
-// ── Trade-credit redemption picker (invoked from selectLockedPaymentMethod) ──
-function renderTradeCreditMatches(){
-  const el = document.getElementById('trade-credit-matches');
-  if(!el || !lockedCheckoutSnapshot) return;
-  const priorTrade = selectedTenderLines.find(t => t.method === 'trade_credit');
-  if(priorTrade) {
-    el.innerHTML = `<div style="text-align:center;color:#05835f;font-family:var(--font-mono);font-size:12px;margin-bottom:8px">✓ $${Number(priorTrade.amount).toFixed(2)} trade credit applied</div>
-      <div class="payment-confirm-row"><button class="hbtn danger" onclick="removeTradeCreditTender()">REMOVE</button></div>`;
-    return;
-  }
-  const q = document.getElementById('trade-credit-search')?.value || '';
-  if(!q.trim()) {
-    el.innerHTML = '<div style="text-align:center;color:var(--dim);font-family:var(--font-mono);font-size:11px;padding:8px">Search by the name or phone used when the trade-in was accepted.</div>';
-    return;
-  }
-  const matches = findStoreCreditsForCustomer(q).slice(0, 8);
-  if(!matches.length) {
-    el.innerHTML = '<div style="text-align:center;color:var(--dim);font-family:var(--font-mono);font-size:11px;padding:8px">No available trade credit found.</div>';
-    return;
-  }
-  el.innerHTML = matches.map(c => `<div style="border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;gap:8px">
-    <div><div style="font-weight:700">${escHtml(c.customerName || c.customerPhone || 'Customer')}</div><div style="font-family:var(--font-mono);font-size:10px;color:var(--dim)">Balance $${Number(c.remainingBalance).toFixed(2)}</div></div>
-    <button class="hbtn" onclick="applyTradeCreditTender('${c.id}')">APPLY</button>
-  </div>`).join('');
-}
-
-function applyTradeCreditTender(creditId){
-  if(!lockedCheckoutSnapshot) return;
-  const record = getStoreCredits().find(c => c.id === creditId);
-  if(!record) return toast_dash('Trade credit not found');
-  const due = remainingCheckoutDue();
-  const applied = Math.round(Math.min(Number(record.remainingBalance || 0), due) * 100) / 100;
-  if(applied <= 0) return toast_dash('No trade credit balance available');
-  selectedTenderLines = [...selectedTenderLines.filter(t => t.method !== 'trade_credit'), { method:'trade_credit', amount:applied, reference:creditId }];
-  const remaining = remainingCheckoutDue();
-  if(remaining <= 0.009) {
-    checkoutState = CHECKOUT_STATES.PAYMENT_PENDING;
-    completeLockedCheckout();
-    return;
-  }
-  toast_dash('$' + applied.toFixed(2) + ' trade credit applied — $' + remaining.toFixed(2) + ' remaining');
-  selectLockedPaymentMethod('trade_credit');
-}
-
 function removeTradeCreditTender(){
   selectedTenderLines = selectedTenderLines.filter(t => t.method !== 'trade_credit');
   selectLockedPaymentMethod('trade_credit');
@@ -33300,9 +33257,10 @@ function removeTradeCreditTender(){
 async function confirmLockedPayment(method){
   if(checkoutFinalizing) return toast_dash('Checkout is already finalizing');
   if(!lockedCheckoutSnapshot) return toast_dash('No locked checkout');
-  // A prior trade-credit tender (applyTradeCreditTender) may already have
-  // covered part of the total — this method only needs to cover what's left,
-  // and joins rather than replaces that queued trade-credit line.
+  // A prior trade-credit tender (auto-applied by lockCheckoutForPayment when
+  // a same-visit trade-in is pending) may already have covered part of the
+  // total — this method only needs to cover what's left, and joins rather
+  // than replaces that queued trade-credit line.
   const priorTenders = selectedTenderLines.filter(t => t.method === 'trade_credit');
   const priorTotal = priorTenders.reduce((a,t) => a + Number(t.amount || 0), 0);
   const total = Math.max(0, Math.round((Number(lockedCheckoutSnapshot.total || 0) - priorTotal) * 100) / 100);
@@ -33368,17 +33326,25 @@ async function finalizeCompletedCheckout(bundle, queued, inventoryCommittedAtomi
     saveDrawer();
     renderDrawer();
   }
-  // Trade-credit tenders carry the store credit record id as their `reference` —
-  // draw the redeemed amount down from that customer's balance now that the sale
-  // is durably recorded (either committed or queued for sync, same as inventory above).
+  // Trade-credit tenders carry a credit id as their `reference`. A same-visit
+  // trade-in (see payCustomerForBuySession) never gets written to the
+  // persisted store-credit ledger, so it won't be found here -- whatever
+  // wasn't applied to this sale gets paid out in cash from the bag right
+  // now instead of being banked for later. A genuinely pre-existing ledger
+  // credit (looked up for a returning customer) still just draws down.
   bundle.payments.filter(p => normalizeTenderType(p.method) === 'trade_credit' && p.reference)
     .forEach(p => {
-      redeemStoreCredit(p.reference, Number(p.amount || 0));
+      const ledgerRecord = getStoreCredits().find(c => c.id === p.reference);
+      if(ledgerRecord) {
+        redeemStoreCredit(p.reference, Number(p.amount || 0));
+      } else {
+        const leftover = Math.max(0, Math.round((Number(p.fullAmount || p.amount || 0) - Number(p.amount || 0)) * 100) / 100);
+        payTradeInLeftoverAsCash(leftover, p);
+      }
       const pendingTrade = safeLocalJson('pos_pending_trade_purchase', null);
       if(pendingTrade?.creditId === p.reference) localStorage.removeItem('pos_pending_trade_purchase');
     });
-  // The explicit handoff is for the next purchase only. The store-credit record
-  // itself remains available in the ledger if it was not used on this sale.
+  // The explicit handoff is for this same purchase only.
   localStorage.removeItem('pos_pending_trade_purchase');
   await completeActiveSaleCartAfterCheckout(bundle.sale.id);
   confirmedSaleContext = bundle;
@@ -36350,7 +36316,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.03.11-void-trade-credit"></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.03.12-same-visit-trade-credit-only"></script>
 </body>
 </html>
 
