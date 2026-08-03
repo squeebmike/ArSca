@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.03.08-detect-silent-sold-member-write-fail">
+<meta name="version" content="2026.08.03.09-delta-inventory-sync">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1513,13 +1513,13 @@ body.show-mode .inv-sync-badge{display:none;}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.03.08-detect-silent-sold-member-write-fail"></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.03.08-detect-silent-sold-member-write-fail"></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.03.08-detect-silent-sold-member-write-fail"></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.03.08-detect-silent-sold-member-write-fail"></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.03.08-detect-silent-sold-member-write-fail"></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.03.08-detect-silent-sold-member-write-fail"></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.03.08-detect-silent-sold-member-write-fail"></script>
+<script src="scripts/query-routing.js?v=2026.08.03.09-delta-inventory-sync"></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.03.09-delta-inventory-sync"></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.03.09-delta-inventory-sync"></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.03.09-delta-inventory-sync"></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.03.09-delta-inventory-sync"></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.03.09-delta-inventory-sync"></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.03.09-delta-inventory-sync"></script>
 </head>
 <body>
 
@@ -1569,11 +1569,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.03.08-detect-silent-sold-member-write-fail</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.03.09-delta-inventory-sync</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.03.08-detect-silent-sold-member-write-fail</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.03.09-delta-inventory-sync</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1595,7 +1595,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.03.08-detect-silent-sold-member-write-fail</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.03.09-delta-inventory-sync</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3083,7 +3083,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.03.08-detect-silent-sold-member-write-fail';
+const APP_VERSION = '2026.08.03.09-delta-inventory-sync';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -14390,6 +14390,12 @@ async function loadWebflowInventoryItems(){
   return { items:products.map(p=>mapItem(p,skuMap)), count:products.length };
 }
 
+// Newest inventory_items.updated_at seen by any full built-in load -- lets
+// the quiet background refresh (see refreshBuiltInInventoryDelta) ask "what
+// changed since then" instead of re-downloading every item's full record
+// (photos included) every 60 seconds regardless of whether anything
+// actually changed.
+let _builtInSyncWatermark = null;
 async function loadBuiltInInventoryItems(){
   const sb = getSupabaseClient();
   const session = getAuthSession();
@@ -14414,6 +14420,8 @@ async function loadBuiltInInventoryItems(){
     console.info('[INV] Supabase returned 0 inventory_items for store_id=' + storeId + '. RLS or empty store.');
   }
   console.info('[INV] Loaded ' + (data||[]).length + ' built-in items from Supabase for store ' + storeId);
+  // Rows are ordered updated_at DESC, so the first row is the newest.
+  if(data?.length) _builtInSyncWatermark = data[0].updated_at;
   return (data || []).map(mapBuiltInItem);
 }
 
@@ -14862,10 +14870,52 @@ function applyDashboardItemUpdate(id, updates) {
   return true;
 }
 
+// Pulls only what changed since _builtInSyncWatermark instead of every
+// built-in item's full record. Returns false (caller falls back to a full
+// loadInventory()) when there's no baseline yet, the store isn't on
+// built-in/hybrid inventory, or the delta fetch itself fails -- this only
+// ever narrows what the quiet 60s poll downloads, it never replaces the
+// explicit full-reload paths (manual REFRESH, right after a save, tab
+// switches, etc.).
+async function refreshBuiltInInventoryDelta(){
+  if(!_builtInSyncWatermark || !all.some(i => i.source === 'built_in')) return false;
+  const sb = getSupabaseClient();
+  const session = getAuthSession();
+  const storeId = getActiveStoreId();
+  if(!sb || !storeId || !session?.supabase) return false;
+  const [{ data:changedRows, error:changedError }, { data:manifest, error:manifestError }] = await Promise.all([
+    sb.from('inventory_items').select('id,data,status,created_at,updated_at').eq('store_id', storeId).gt('updated_at', _builtInSyncWatermark).order('updated_at', { ascending:true }).limit(1000),
+    // Cheap id-only manifest (no data blob) -- the only way to notice an
+    // item deleted elsewhere without pulling every row's full record.
+    sb.from('inventory_items').select('id').eq('store_id', storeId).limit(2000),
+  ]);
+  if(changedError || manifestError) return false;
+
+  const liveIds = new Set((manifest || []).map(r => r.id));
+  const changedItems = applyInventoryEditOverrides((changedRows || []).map(mapBuiltInItem));
+  changedItems.forEach(item => {
+    const idx = all.findIndex(i => i.id === item.id);
+    if(idx >= 0) all[idx] = item; else all.push(item);
+  });
+  all = all.filter(i => i.source !== 'built_in' || liveIds.has(i.id));
+
+  if(changedRows?.length) _builtInSyncWatermark = changedRows[changedRows.length - 1].updated_at;
+  soldData = all.filter(i => i.status === 'sold');
+  filtered = [...all];
+  renderAll();
+  renderInventoryCategoryFilters();
+  const el = document.getElementById('sync-status');
+  if(el) el.textContent = 'v' + APP_VERSION + ' · live sync · ' + changedItems.length + ' updated · ' + new Date().toLocaleTimeString();
+  return true;
+}
+
 async function refreshInventoryQuietly(){
   if(document.hidden || document.getElementById('edit-modal')?.classList.contains('on')) return;
   const oldStatus = document.getElementById('sync-status')?.textContent || '';
-  try { await loadInventory(); }
+  try {
+    const delta = await refreshBuiltInInventoryDelta();
+    if(!delta) await loadInventory();
+  }
   catch(e) { if(oldStatus) document.getElementById('sync-status').textContent = oldStatus; }
 }
 
@@ -36284,7 +36334,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.03.08-detect-silent-sold-member-write-fail"></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.03.09-delta-inventory-sync"></script>
 </body>
 </html>
 
