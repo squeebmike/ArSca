@@ -5397,6 +5397,31 @@ export default {
           }
           return json({ ok: true, source: 'PriceCharting', product, ...product });
         }
+        // Bulk price sync (comics) used to make one Worker round trip per
+        // inventory item, each of which could also trigger a second upstream
+        // fetch (HTML page scrape) just to backfill a cover image nobody
+        // needed for a price-only sync. This batches many product ids into
+        // one dashboard<->Worker round trip -- pcFetch's own ~1.1s pacing
+        // between PriceCharting calls is unchanged (still applied per id,
+        // sequentially, inside this one request), so PriceCharting sees the
+        // exact same call rate as before, just without N-1 extra round trips
+        // of network latency stacked on top for a whole shelf of comics.
+        if (url.pathname === '/pricing/pricecharting/products/batch' && request.method === 'POST') {
+          let body = {};
+          try { body = await request.json(); } catch (_) {}
+          const ids = Array.isArray(body.ids) ? [...new Set(body.ids.map(v => String(v || '').trim()).filter(Boolean))].slice(0, 40) : [];
+          if (!ids.length) return json({ ok: false, error: 'ids required (max 40 per batch)' }, 400);
+          const products = {};
+          for (const id of ids) {
+            try {
+              const data = await pcFetch('/api/product', { id });
+              products[id] = { ok: true, product: normalizePcProduct(data, data['product-name'] || '') };
+            } catch (error) {
+              products[id] = { ok: false, error: String(error.message || error) };
+            }
+          }
+          return json({ ok: true, source: 'PriceCharting', products });
+        }
         if (url.pathname === '/pricing/pricecharting/slab-prices') {
           const q = [url.searchParams.get('q'), url.searchParams.get('setName'), url.searchParams.get('cardNumber') ? '#' + url.searchParams.get('cardNumber') : ''].filter(Boolean).join(' ').trim();
           const company = url.searchParams.get('company') || 'PSA';
