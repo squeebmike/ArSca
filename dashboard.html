@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.03.07-bulk-price-sync-speedup">
+<meta name="version" content="2026.08.03.08-detect-silent-sold-member-write-fail">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1513,13 +1513,13 @@ body.show-mode .inv-sync-badge{display:none;}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.03.07-bulk-price-sync-speedup"></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.03.07-bulk-price-sync-speedup"></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.03.07-bulk-price-sync-speedup"></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.03.07-bulk-price-sync-speedup"></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.03.07-bulk-price-sync-speedup"></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.03.07-bulk-price-sync-speedup"></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.03.07-bulk-price-sync-speedup"></script>
+<script src="scripts/query-routing.js?v=2026.08.03.08-detect-silent-sold-member-write-fail"></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.03.08-detect-silent-sold-member-write-fail"></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.03.08-detect-silent-sold-member-write-fail"></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.03.08-detect-silent-sold-member-write-fail"></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.03.08-detect-silent-sold-member-write-fail"></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.03.08-detect-silent-sold-member-write-fail"></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.03.08-detect-silent-sold-member-write-fail"></script>
 </head>
 <body>
 
@@ -1569,11 +1569,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.03.07-bulk-price-sync-speedup</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.03.08-detect-silent-sold-member-write-fail</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.03.07-bulk-price-sync-speedup</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.03.08-detect-silent-sold-member-write-fail</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1595,7 +1595,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.03.07-bulk-price-sync-speedup</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.03.08-detect-silent-sold-member-write-fail</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3083,7 +3083,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.03.07-bulk-price-sync-speedup';
+const APP_VERSION = '2026.08.03.08-detect-silent-sold-member-write-fail';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -8061,8 +8061,13 @@ async function inviteStoreMember(){
 async function updateStoreMemberRole(memberId, role){
   const sb = getSupabaseClient();
   if(!sb || !requireOwnerAdmin()) return;
-  const { error } = await sb.from('store_members').update({ role }).eq('id', memberId);
+  // .update() without .select() reports success even when .eq() matched
+  // zero rows -- a role change could silently not persist while still
+  // toasting "Role updated". Select the row back and treat zero rows as a
+  // failure, same fix already applied to inventory writes.
+  const { data:rows, error } = await sb.from('store_members').update({ role }).eq('id', memberId).select('id');
   if(error) { toast_dash('Role update failed: ' + error.message); return; }
+  if(!rows?.length) { toast_dash('Role update failed: member not found or permission denied'); return; }
   logOpsEvent('member_role', 'Changed member role', { memberId, role });
   toast_dash('Role updated');
   renderStoreMembersPanel();
@@ -8071,8 +8076,9 @@ async function updateStoreMemberRole(memberId, role){
 async function setStoreMemberActive(memberId, active){
   const sb = getSupabaseClient();
   if(!sb || !requireOwnerAdmin()) return;
-  const { error } = await sb.from('store_members').update({ active:!!active }).eq('id', memberId);
+  const { data:rows, error } = await sb.from('store_members').update({ active:!!active }).eq('id', memberId).select('id');
   if(error) { toast_dash('Member update failed: ' + error.message); return; }
+  if(!rows?.length) { toast_dash('Member update failed: member not found or permission denied'); return; }
   logOpsEvent('member_active', 'Changed member active state', { memberId, active:!!active });
   toast_dash(active ? 'Member enabled' : 'Member disabled');
   renderStoreMembersPanel();
@@ -19178,11 +19184,20 @@ async function markInventoryRecordSold(item, fieldData, saleMeta){
       }
       const nextData = { ...(item.raw || {}), ...item, ...saleMeta, status:nextStatus, lifecycle:nextStatus, qty:remainingQuantity, quantity:remainingQuantity, 'inventory-count':remainingQuantity, 'sold-out':depleted, soldAt:depleted ? saleMeta.soldAt : '' };
       if(ebayEnded){ nextData.ebayListingId=''; nextData.ebayOfferId=''; nextData.ebaySku=''; nextData.ebayListedAt=''; }
-      const { error } = await sb.from('inventory_items')
+      // .update() without .select() reports success even when the .eq()
+      // filters matched zero rows -- the checkout would then complete (money
+      // charged, local UI shows sold) while the real inventory row silently
+      // stayed in_stock forever, able to show as available again or get sold
+      // a second time. Same bug class already fixed for price edits; select
+      // the updated row back and throw if nothing came back so the caller's
+      // existing offline-retry queue picks it up instead of losing it.
+      const { data:rows, error } = await sb.from('inventory_items')
         .update({ status:nextStatus, data:nextData, updated_at:new Date().toISOString() })
         .eq('id', item.supabaseRowId || item.id)
-        .eq('store_id', storeId);
+        .eq('store_id', storeId)
+        .select('id');
       if(error) throw new Error('Built-in sold sync ' + error.message);
+      if(!rows?.length) throw new Error('Built-in sold sync matched no row (id/store mismatch or permission denied)');
       if(ebayEnded && item.raw){ item.raw.ebayListingId=''; item.raw.ebayOfferId=''; item.raw.ebaySku=''; item.raw.ebayListedAt=''; }
       const wfId=item.raw?.wfId||item.raw?.webflowId;
       if(wfId&&getWebflowIntegration().enabled){const soldFields={'sold-out':depleted,'inventory-count':remainingQuantity};if(depleted)soldFields.status=STATUS_SOLD;try{const wfRes=await wfPatch('/collections/'+WF_PRODUCTS+'/items/'+wfId,{fieldData:soldFields});if(!wfRes.ok)throw new Error('Webflow inventory update '+wfRes.status);}catch(e){enqueueOrReplaceSync('webflow-mirror-update','sold-'+wfId,'Update Webflow inventory: '+(item.name||wfId),{wfId,item,updates:{qty:remainingQuantity,status:nextStatus,'sold-out':depleted}},e.message);}}
@@ -36269,7 +36284,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.03.07-bulk-price-sync-speedup"></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.03.08-detect-silent-sold-member-write-fail"></script>
 </body>
 </html>
 
