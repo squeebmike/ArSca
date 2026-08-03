@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.03.09-delta-inventory-sync">
+<meta name="version" content="2026.08.03.10-shared-field-map-auto-reload">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1513,13 +1513,13 @@ body.show-mode .inv-sync-badge{display:none;}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.03.09-delta-inventory-sync"></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.03.09-delta-inventory-sync"></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.03.09-delta-inventory-sync"></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.03.09-delta-inventory-sync"></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.03.09-delta-inventory-sync"></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.03.09-delta-inventory-sync"></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.03.09-delta-inventory-sync"></script>
+<script src="scripts/query-routing.js?v=2026.08.03.10-shared-field-map-auto-reload"></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.03.10-shared-field-map-auto-reload"></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.03.10-shared-field-map-auto-reload"></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.03.10-shared-field-map-auto-reload"></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.03.10-shared-field-map-auto-reload"></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.03.10-shared-field-map-auto-reload"></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.03.10-shared-field-map-auto-reload"></script>
 </head>
 <body>
 
@@ -1569,11 +1569,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.03.09-delta-inventory-sync</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.03.10-shared-field-map-auto-reload</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.03.09-delta-inventory-sync</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.03.10-shared-field-map-auto-reload</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1595,7 +1595,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.03.09-delta-inventory-sync</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.03.10-shared-field-map-auto-reload</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3083,7 +3083,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.03.09-delta-inventory-sync';
+const APP_VERSION = '2026.08.03.10-shared-field-map-auto-reload';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -3162,7 +3162,16 @@ async function checkForAppUpdate(){
     if(!res.ok) return;
     const html = await res.text();
     const latest = html.match(/<meta name="version" content="([^"]+)">/)?.[1];
-    if(latest && latest !== APP_VERSION) showAppUpdateBanner(latest);
+    if(!latest || latest === APP_VERSION) return;
+    // A tab that's currently hidden (backgrounded, switched away from,
+    // screen locked) isn't being looked at, so it's safe to reload itself
+    // straight away instead of waiting for someone to notice and tap the
+    // banner -- as long as there's no sale in progress a reload would blow
+    // away. A visible tab always falls back to the manual banner so an
+    // update never interrupts whatever's actually on screen.
+    const checkoutIdle = typeof checkoutState === 'undefined' || checkoutState === 'IDLE';
+    if(document.hidden && checkoutIdle) { reloadIntoAppVersion(latest); return; }
+    showAppUpdateBanner(latest);
   } catch(e) { /* offline or blocked — current version keeps working, try again later */ }
 }
 function showAppUpdateBanner(latest){
@@ -14425,6 +14434,69 @@ async function loadBuiltInInventoryItems(){
   return (data || []).map(mapBuiltInItem);
 }
 
+// Every "plain passthrough" built-in inventory field -- one that just needs
+// to flow from the Supabase row into the in-memory item (read), from an
+// edit form into the Supabase write payload (write), and from a successful
+// save into the in-memory item afterward (sync) -- lives in exactly ONE of
+// these two lists instead of being hand-copied into all three functions
+// separately. That's exactly how the signed/signature-value/photos fields
+// went missing from reads earlier this session, and how this list-building
+// itself turned up more of the same: serial_number, comic_grade, is_auto,
+// is_patch, is_key, and priceSyncRequestPath were missing from
+// mapBuiltInItem's read entirely, and manufacturer/sport/publisher/tags/
+// upc/configuration/product_line/set/category/location/player/... and a
+// dozen others were missing from applyDashboardItemUpdate's in-memory sync
+// (an edit could save fine but not show until the next full reload). Add a
+// new simple field to BUILT_IN_ITEM_SIMPLE_FIELDS ONCE and it round-trips
+// everywhere automatically.
+//
+// BUILT_IN_ITEM_SIMPLE_FIELDS: no legacy read alias, no cross-field
+// derivation anywhere -- fully generic on read, write, AND sync.
+// [fieldName, default, type] -- type is 'num'|'bool'|'array'|'raw'|omitted(string).
+const BUILT_IN_ITEM_SIMPLE_FIELDS = [
+  ['year',''], ['condition',''], ['team',''], ['sport',''],
+  ['configuration',''], ['upc',''], ['publisher',''], ['tags',''],
+  ['comic_grade',''], ['serial_number',''], ['productType',''],
+  ['priceLabel',''], ['marketPriceSource',''], ['lastPriceUpdate',''],
+  ['priceUpdatedAt',''], ['livePriceStatus',''], ['priceSyncRequestPath',''],
+  ['tcgPlayerUrl',''], ['tcgplayerSkuId',''], ['buySessionId',''],
+  ['sourceProductId',''], ['sourceVariantId',''],
+  ['consignorName',''], ['consignmentId',''], ['signed_by',''],
+  ['pokemonPriceTrackerLastUpdated',''],
+  ['signature_value',0,'num'], ['minPrice',0,'num'],
+  ['expectedProfit',0,'num'],
+  ['photos',[],'array'],
+  ['pokemonPriceTrackerPrices',null,'raw'], ['pokemonPriceTrackerVariants',null,'raw'],
+  ['externalRefs',null,'raw'],
+  ['is_signed',false,'bool'], ['is_sealed',false,'bool'],
+  ['is_auto',false,'bool'], ['is_patch',false,'bool'], ['is_key',false,'bool'],
+  ['stalePrice',false,'bool'],
+];
+// BUILT_IN_ITEM_ALIASED_FIELDS: the read side stays hand-written in
+// mapBuiltInItem below (a saved row might use an older key name, or the
+// value derives from a different field), but write + sync are plain
+// passthrough -- generic there so at least those two steps can't drift
+// apart from each other.
+const BUILT_IN_ITEM_ALIASED_FIELDS = [
+  ['set',''], ['variant',''], ['category','TCG'], ['channel',''],
+  ['location',''], ['player',''], ['manufacturer',''], ['product_line',''],
+  ['issue',''], ['grader',''], ['cert_number',''], ['inventorySku',''],
+  ['ownershipType','store'], ['inventoryOwner','Store'],
+];
+function readBuiltInSimpleField(d, field, def, type){
+  const raw = d[field];
+  if(type === 'num') return Number(raw ?? def) || def;
+  if(type === 'bool') return !!raw;
+  if(type === 'array') return Array.isArray(raw) ? raw : def;
+  return raw ?? def;
+}
+function mergeBuiltInSimpleField(updates, existing, field, def, type){
+  const raw = updates[field] ?? existing[field];
+  if(type === 'num') return Number(raw ?? def) || def;
+  if(type === 'bool') return !!raw;
+  return raw ?? def;
+}
+
 function mapBuiltInItem(row){
   const d = row.data || {};
   const isSold = row.status === 'sold' || d.status === 'sold';
@@ -14432,14 +14504,13 @@ function mapBuiltInItem(row){
   const id = row.id || d.id || ('builtin_' + Date.now());
   const market = Number(d.market ?? d.marketPrice ?? d.rawMarketPrice ?? d.price ?? d.askingPrice ?? d.salePrice ?? 0);
   const cost = Number(d.cost ?? d.costBasis ?? d.cost_basis ?? 0);
-  return {
+  const out = {
     id,
     source:'built_in',
     supabaseRowId:row.id || '',
     name:d.name || d.title || d.cardName || d.player || 'Inventory item',
     set:d.set || d.setName || d['set-name'] || '',
     variant:d.variant || d.parallel || '',
-    year:d.year || '',
     category:d.category || d.itemType || d.inventoryType || 'TCG',
     cost,
     market,
@@ -14449,87 +14520,53 @@ function mapBuiltInItem(row){
     displayPrice:Number(d.displayPrice || d.listPrice || d.salePrice || d.sale_price || market || 0),
     qty:Number(d.qty ?? d.quantity ?? d['inventory-count'] ?? 1),
     profit:isSold ? Number(d.profit || (Number(d.salePrice || market || 0) - cost)) : 0,
-    condition:d.condition || '',
     priceSource:d.priceSource || d.marketPriceSource || d['price-source'] || '',
     status:isArchived ? 'archived' : (isSold ? 'sold' : (row.status || d.status || 'in_stock')),
     lifecycle:getLifecycle(id, isArchived ? 'archived' : (isSold ? 'sold' : (row.status || d.status || 'in_stock'))),
     channel:d.channel || d.saleChannel || '',
     addedAt:d.addedAt || row.created_at || '',
     soldAt:d.soldAt || '',
+    saleId:d.saleId || '',
     archivedAt:d.archivedAt || '',
     archiveReason:d.archiveReason || '',
-    buySessionId:d.buySessionId || '',
-    sourceProductId:d.sourceProductId || '',
-    sourceVariantId:d.sourceVariantId || '',
-    tcgplayerSkuId:d.tcgplayerSkuId || '',
     tcgPlayerId:d.tcgPlayerId || d.tcgplayerId || d.tcgplayerProductId || d.externalRefs?.tcgPlayerId || '',
-    tcgPlayerUrl:d.tcgPlayerUrl || '',
     pricechartingProductId:d.pricechartingProductId || '',
     pricechartingProductName:d.pricechartingProductName || '',
     marketPrice:d.marketPrice ?? d.market ?? '',
     rawMarketPrice:d.rawMarketPrice ?? d.marketPrice ?? d.market ?? '',
     lastMarketPrice:d.lastMarketPrice ?? d.previousMarketPrice ?? '',
-    marketPriceSource:d.marketPriceSource || '',
-    lastPriceUpdate:d.lastPriceUpdate || '',
-    priceUpdatedAt:d.priceUpdatedAt || '',
-    stalePrice:!!d.stalePrice,
-    livePriceStatus:d.livePriceStatus || '',
-    saleId:d.saleId || '',
-    pokemonPriceTrackerLastUpdated:d.pokemonPriceTrackerLastUpdated || '',
-    pokemonPriceTrackerPrices:d.pokemonPriceTrackerPrices || null,
-    pokemonPriceTrackerVariants:d.pokemonPriceTrackerVariants || null,
-    inventorySku:d.inventorySku || d.sku || '',
     ownershipType:d.ownershipType || (d.consignorName||d.consignmentId?'consignor':'store'),
     inventoryOwner:d.inventoryOwner || d.consignorName || 'Store',
-    consignorName:d.consignorName || '',
-    consignmentId:d.consignmentId || '',
-    externalRefs:d.externalRefs || null,
-    priceLabel:d.priceLabel || '',
     isRookie:!!(d.isRookie || d.rookieCard),
     is_rookie:!!(d.isRookie || d.rookieCard),
-    is_signed:!!d.is_signed,
-    signed_by:d.signed_by || '',
-    signature_value:Number(d.signature_value || 0) || 0,
-    photos:Array.isArray(d.photos) ? d.photos : [],
     grader:d.grader || d.gradingCompany || '',
     grade:d.grade || '',
     cert_number:d.cert_number || d.certNumber || '',
-    tags:d.tags || '',
     thumbnail:d.photoDataUrl || d.uploadedPhotoUrl || d.thumbnail || d.imageUrl || d.image_url || d.image || null,
     imageUrl:d.imageUrl || d.image_url || d.image || '',
     photoDataUrl:d.photoDataUrl || '',
     photoSource:d.photoSource || '',
     notes:d.notes || '',
-    productType:d.productType || '',
-    is_sealed:!!d.is_sealed,
     location:d.location || d.location_path || '',
     player:d.player || d.cardName || '',
-    team:d.team || '',
-    sport:d.sport || '',
     manufacturer:d.manufacturer || d.brand || '',
     card_number:d.card_number || d.cardNumber || d.collectorNumber || '',
     product_line:d.product_line || d.productLine || '',
-    configuration:d.configuration || '',
-    upc:d.upc || '',
     issue:d.issue || d.issueNumber || '',
-    publisher:d.publisher || '',
-    minPrice:Number(d.minPrice ?? 0) || 0,
+    inventorySku:d.inventorySku || d.sku || '',
     raw:d,
   };
+  BUILT_IN_ITEM_SIMPLE_FIELDS.forEach(([field, def, type]) => { out[field] = readBuiltInSimpleField(d, field, def, type); });
+  return out;
 }
 
 function builtInDataFromItem(item, updates={}){
   const nextQty = Math.max(0, Number(updates.qty ?? item.qty ?? 1) || 0);
-  return {
+  const out = {
     ...(item.raw || {}),
     id:item.id,
     name:updates.name ?? item.name ?? '',
     title:updates.name ?? item.name ?? '',
-    category:updates.category ?? item.category ?? 'TCG',
-    set:updates.set ?? item.set ?? '',
-    year:updates.year ?? item.year ?? '',
-    variant:updates.variant ?? item.variant ?? '',
-    condition:updates.condition ?? item.condition ?? '',
     qty:nextQty,
     quantity:nextQty,
     'inventory-count':nextQty,
@@ -14538,75 +14575,38 @@ function builtInDataFromItem(item, updates={}){
     priceOverride:Number(updates.priceOverride ?? item.priceOverride ?? item.raw?.priceOverride ?? 0) || 0,
     salePrice:Number(updates.salePrice ?? updates.listPrice ?? item.salePrice ?? item.listPrice ?? item.raw?.salePrice ?? item.market ?? updates.market ?? 0),
     listPrice:Number(updates.listPrice ?? updates.salePrice ?? item.listPrice ?? item.displayPrice ?? item.salePrice ?? item.raw?.listPrice ?? item.market ?? updates.market ?? 0),
-    minPrice:Number(updates.minPrice ?? item.minPrice ?? item.raw?.minPrice ?? 0) || 0,
     price:Number(updates.price ?? updates.market ?? item.price ?? item.market ?? 0),
     displayPrice:Number(updates.displayPrice ?? updates.listPrice ?? updates.salePrice ?? item.displayPrice ?? item.listPrice ?? item.salePrice ?? updates.price ?? updates.market ?? item.market ?? 0),
     marketPrice:Number(updates.marketPrice ?? updates.market ?? item.marketPrice ?? item.market ?? 0),
     rawMarketPrice:Number(updates.rawMarketPrice ?? updates.marketPrice ?? updates.market ?? item.rawMarketPrice ?? item.market ?? 0),
     lastMarketPrice:updates.lastMarketPrice ?? item.lastMarketPrice ?? '',
     previousMarketPrice:updates.previousMarketPrice ?? item.previousMarketPrice ?? '',
-    marketPriceSource:updates.marketPriceSource ?? item.marketPriceSource ?? '',
-    lastPriceUpdate:updates.lastPriceUpdate ?? item.lastPriceUpdate ?? '',
-    priceUpdatedAt:updates.priceUpdatedAt ?? item.priceUpdatedAt ?? '',
-    stalePrice:!!(updates.stalePrice ?? item.stalePrice),
-    livePriceStatus:updates.livePriceStatus ?? item.livePriceStatus ?? '',
-    pokemonPriceTrackerLastUpdated:updates.pokemonPriceTrackerLastUpdated ?? item.pokemonPriceTrackerLastUpdated ?? '',
-    pokemonPriceTrackerPrices:updates.pokemonPriceTrackerPrices ?? item.pokemonPriceTrackerPrices ?? null,
-    pokemonPriceTrackerVariants:updates.pokemonPriceTrackerVariants ?? item.pokemonPriceTrackerVariants ?? null,
-    priceSyncRequestPath:updates.priceSyncRequestPath ?? item.priceSyncRequestPath ?? '',
     tcgPlayerId:updates.tcgPlayerId ?? item.tcgPlayerId ?? item.tcgplayerId ?? '',
-    tcgPlayerUrl:updates.tcgPlayerUrl ?? item.tcgPlayerUrl ?? '',
     pricechartingProductId:updates.pricechartingProductId ?? item.pricechartingProductId ?? item.raw?.pricechartingProductId ?? '',
     pricechartingProductName:updates.pricechartingProductName ?? item.pricechartingProductName ?? item.raw?.pricechartingProductName ?? '',
-    location:updates.location ?? item.location ?? '',
     status:updates.status ?? item.status ?? 'in_stock',
     lifecycle:updates.lifecycle ?? item.lifecycle ?? updates.status ?? item.status ?? 'in_stock',
     archivedAt:updates.archivedAt ?? item.archivedAt ?? '',
     archivedBy:updates.archivedBy ?? item.archivedBy ?? '',
     archiveReason:updates.archiveReason ?? item.archiveReason ?? '',
-    buySessionId:updates.buySessionId ?? item.buySessionId ?? '',
-    sourceProductId:updates.sourceProductId ?? item.sourceProductId ?? '',
-    sourceVariantId:updates.sourceVariantId ?? item.sourceVariantId ?? '',
-    tcgplayerSkuId:updates.tcgplayerSkuId ?? item.tcgplayerSkuId ?? '',
-    inventorySku:updates.inventorySku ?? item.inventorySku ?? '',
-    ownershipType:updates.ownershipType ?? item.ownershipType ?? 'store',
-    inventoryOwner:updates.inventoryOwner ?? item.inventoryOwner ?? 'Store',
-    consignorName:updates.consignorName ?? item.consignorName ?? '',
-    consignmentId:updates.consignmentId ?? item.consignmentId ?? '',
     sku:updates.inventorySku ?? item.inventorySku ?? updates.sku ?? item.sku ?? '',
-    externalRefs:updates.externalRefs ?? item.externalRefs ?? null,
-    priceLabel:updates.priceLabel ?? item.priceLabel ?? '',
-    priceUsed:Number(updates.priceUsed ?? item.priceUsed ?? updates.market ?? item.market ?? 0),
-    expectedProfit:Number(updates.expectedProfit ?? item.expectedProfit ?? 0),
     priceSource:updates.priceSource ?? item.priceSource ?? '',
     thumbnail:updates.thumbnail ?? item.thumbnail ?? item.photoDataUrl ?? item.imageUrl ?? '',
     imageUrl:updates.imageUrl ?? item.imageUrl ?? item.thumbnail ?? '',
     photoDataUrl:updates.photoDataUrl ?? item.photoDataUrl ?? '',
     photoSource:updates.photoSource ?? item.photoSource ?? '',
     key_notes:updates.key_notes ?? item.key_notes ?? item.notes ?? '',
-    player:updates.player ?? item.player ?? '',
-    team:updates.team ?? item.team ?? '',
-    issue:updates.issue ?? item.issue ?? '',
-    serial_number:updates.serial_number ?? item.serial_number ?? '',
-    card_number:updates.card_number ?? item.card_number ?? '',
-    comic_grade:updates.comic_grade ?? item.comic_grade ?? '',
     grade:updates.comic_grade ?? updates.grade ?? item.grade ?? '',
-    grader:updates.grader ?? item.grader ?? item.raw?.grader ?? '',
-    cert_number:updates.cert_number ?? item.cert_number ?? item.raw?.cert_number ?? '',
-    is_sealed:!!(updates.is_sealed ?? item.is_sealed ?? item.raw?.is_sealed),
-    productType:updates.productType ?? item.productType ?? item.raw?.productType ?? '',
     is_rookie:!!(updates.is_rookie ?? item.is_rookie ?? item.isRookie),
-    is_auto:!!(updates.is_auto ?? item.is_auto),
-    is_patch:!!(updates.is_patch ?? item.is_patch),
-    is_key:!!(updates.is_key ?? item.is_key),
-    is_signed:!!(updates.is_signed ?? item.is_signed),
-    signed_by:updates.signed_by ?? item.signed_by ?? '',
-    signature_value:Number(updates.signature_value ?? item.signature_value ?? 0) || 0,
-    photos:updates.photos ?? item.photos ?? [],
+    priceUsed:Number(updates.priceUsed ?? item.priceUsed ?? updates.market ?? item.market ?? 0),
     source:'built_in',
     appVersion:APP_VERSION,
     updatedAt:new Date().toISOString(),
   };
+  [...BUILT_IN_ITEM_SIMPLE_FIELDS, ...BUILT_IN_ITEM_ALIASED_FIELDS].forEach(([field, def, type]) => {
+    out[field] = mergeBuiltInSimpleField(updates, item, field, def, type);
+  });
+  return out;
 }
 
 window.addEventListener('load', async function(){
@@ -14821,49 +14821,43 @@ function renderAll(){
 function applyDashboardItemUpdate(id, updates) {
   const idx = all.findIndex(i => i.id === id);
   if(idx < 0) return false;
-  Object.assign(all[idx], {
-    cost: updates.cost,
-    market: updates.market,
-    price: updates.market,
-    priceOverride: updates.priceOverride ?? all[idx].priceOverride,
-    salePrice: updates.salePrice ?? updates.listPrice ?? all[idx].salePrice,
-    listPrice: updates.listPrice ?? updates.salePrice ?? all[idx].listPrice,
-    displayPrice: updates.displayPrice ?? updates.listPrice ?? updates.salePrice ?? all[idx].displayPrice,
-    qty: updates.qty,
-    year: updates.year,
-    set: updates.set,
-    variant: updates.variant,
-    location: updates.location,
-    condition: updates.condition,
-    category: updates.category,
-    priceSource: updates.priceSource || updates.price_source || all[idx].priceSource,
-    thumbnail: updates.thumbnail ?? updates.photoDataUrl ?? all[idx].thumbnail,
-    imageUrl: updates.imageUrl ?? all[idx].imageUrl,
-    photoDataUrl: updates.photoDataUrl ?? all[idx].photoDataUrl,
-    photoSource: updates.photoSource ?? all[idx].photoSource,
-    key_notes: updates.key_notes,
-    notes: updates.key_notes,
-    player: updates.player,
-    team: updates.team,
-    issue: updates.issue,
-    serial_number: updates.serial_number,
-    card_number: updates.card_number,
-    comic_grade: updates.comic_grade,
-    grade: updates.grade ?? updates.comic_grade ?? all[idx].grade,
-    grader: updates.grader ?? all[idx].grader,
-    cert_number: updates.cert_number ?? all[idx].cert_number,
-    is_sealed: updates.is_sealed ?? all[idx].is_sealed,
-    is_rookie: updates.is_rookie,
-    isRookie: updates.is_rookie,
-    is_auto: updates.is_auto,
-    is_patch: updates.is_patch,
-    is_key: updates.is_key,
-    is_signed: updates.is_signed,
-    signed_by: updates.signed_by ?? all[idx].signed_by,
-    signature_value: updates.signature_value ?? all[idx].signature_value,
-    photos: updates.photos ?? all[idx].photos,
-    pricechartingProductId: updates.pricechartingProductId ?? all[idx].pricechartingProductId,
-    pricechartingProductName: updates.pricechartingProductName ?? all[idx].pricechartingProductName,
+  const existing = all[idx];
+  // Several callers (eBay list/delist, restock merge, offline-queue retry)
+  // call this with a PARTIAL updates object -- just the 2-3 fields they
+  // actually changed. Every field below used to be a plain `updates.field`
+  // with no `?? existing.field` fallback, so any of those partial-update
+  // callers would silently wipe year/set/variant/location/condition/
+  // category/qty/notes/player/team/issue/serial_number/card_number/
+  // comic_grade/is_rookie/is_auto/is_patch/is_key/is_signed to undefined in
+  // the local copy the instant an eBay listing changed, until the next
+  // reload quietly re-synced it from Supabase (where the write itself was
+  // always correct via builtInDataFromItem's own fallback chain). Every
+  // field here and in the shared field lists below now falls back to the
+  // existing value instead of undefined.
+  Object.assign(existing, {
+    cost: updates.cost ?? existing.cost,
+    market: updates.market ?? existing.market,
+    price: updates.market ?? existing.price,
+    priceOverride: updates.priceOverride ?? existing.priceOverride,
+    salePrice: updates.salePrice ?? updates.listPrice ?? existing.salePrice,
+    listPrice: updates.listPrice ?? updates.salePrice ?? existing.listPrice,
+    displayPrice: updates.displayPrice ?? updates.listPrice ?? updates.salePrice ?? existing.displayPrice,
+    qty: updates.qty ?? existing.qty,
+    priceSource: updates.priceSource || updates.price_source || existing.priceSource,
+    thumbnail: updates.thumbnail ?? updates.photoDataUrl ?? existing.thumbnail,
+    imageUrl: updates.imageUrl ?? existing.imageUrl,
+    photoDataUrl: updates.photoDataUrl ?? existing.photoDataUrl,
+    photoSource: updates.photoSource ?? existing.photoSource,
+    key_notes: updates.key_notes ?? existing.key_notes,
+    notes: updates.key_notes ?? existing.notes,
+    grade: updates.grade ?? updates.comic_grade ?? existing.grade,
+    is_rookie: updates.is_rookie ?? existing.is_rookie,
+    isRookie: updates.is_rookie ?? existing.isRookie,
+    pricechartingProductId: updates.pricechartingProductId ?? existing.pricechartingProductId,
+    pricechartingProductName: updates.pricechartingProductName ?? existing.pricechartingProductName,
+  });
+  [...BUILT_IN_ITEM_SIMPLE_FIELDS, ...BUILT_IN_ITEM_ALIASED_FIELDS].forEach(([field, def, type]) => {
+    existing[field] = mergeBuiltInSimpleField(updates, existing, field, def, type);
   });
   soldData = all.filter(i => i.status === 'sold');
   renderAll();
@@ -36334,7 +36328,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.03.09-delta-inventory-sync"></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.03.10-shared-field-map-auto-reload"></script>
 </body>
 </html>
 
