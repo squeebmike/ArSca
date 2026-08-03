@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.03.15-price-alerts-sync-comic-ebay">
+<meta name="version" content="2026.08.03.16-ebay-image-quality-comic-specifics">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1541,13 +1541,13 @@ body.show-mode .inv-sync-badge{display:none;}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.03.15-price-alerts-sync-comic-ebay"></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.03.15-price-alerts-sync-comic-ebay"></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.03.15-price-alerts-sync-comic-ebay"></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.03.15-price-alerts-sync-comic-ebay"></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.03.15-price-alerts-sync-comic-ebay"></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.03.15-price-alerts-sync-comic-ebay"></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.03.15-price-alerts-sync-comic-ebay"></script>
+<script src="scripts/query-routing.js?v=2026.08.03.16-ebay-image-quality-comic-specifics"></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.03.16-ebay-image-quality-comic-specifics"></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.03.16-ebay-image-quality-comic-specifics"></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.03.16-ebay-image-quality-comic-specifics"></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.03.16-ebay-image-quality-comic-specifics"></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.03.16-ebay-image-quality-comic-specifics"></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.03.16-ebay-image-quality-comic-specifics"></script>
 </head>
 <body>
 
@@ -1597,11 +1597,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.03.15-price-alerts-sync-comic-ebay</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.03.16-ebay-image-quality-comic-specifics</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.03.15-price-alerts-sync-comic-ebay</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.03.16-ebay-image-quality-comic-specifics</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1623,7 +1623,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.03.15-price-alerts-sync-comic-ebay</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.03.16-ebay-image-quality-comic-specifics</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3118,7 +3118,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.03.15-price-alerts-sync-comic-ebay';
+const APP_VERSION = '2026.08.03.16-ebay-image-quality-comic-specifics';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -17649,7 +17649,7 @@ async function openEbayFromDash(id){
   toast_dash(isManaging ? 'Loading current eBay listing...' : 'Opening eBay listing form...');
   const esc = v => String(v||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
   const fields = computeEbayListingFields(item);
-  const {condText, isSealed, inferManufacturer, inferConfig, cat, isGraded} = fields;
+  const {condText, isSealed, inferManufacturer, inferConfig, cat, isGraded, isComic} = fields;
 
   // Manage mode pulls the CURRENT live state from eBay first, so editing works
   // off reality instead of a locally-recomputed guess -- otherwise hitting
@@ -17729,6 +17729,12 @@ async function openEbayFromDash(id){
           <div><label style="font-family:monospace;font-size:8px;color:var(--dim)">FEATURES</label><input id="dash-eb-features" value="${esc((aspects['Features']||[]).join(', ') || [item.isRookie?'Rookie':null,item.is_auto?'Autograph':null,isSealed?'Sealed':''].filter(Boolean).join(', '))}" placeholder="Rookie, Sealed, Insert, Autograph" style="width:100%;margin-top:3px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:7px;border-radius:6px;box-sizing:border-box"></div>
           <div><label style="font-family:monospace;font-size:8px;color:var(--dim)">GRADER</label><input id="dash-eb-grader" value="${esc(item.grader || '')}" placeholder="PSA, BGS, CGC..." style="width:100%;margin-top:3px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:7px;border-radius:6px;box-sizing:border-box"></div>
           <div><label style="font-family:monospace;font-size:8px;color:var(--dim)">GRADE / CERT</label><input id="dash-eb-grade" value="${esc([item.grade,item.cert_number].filter(Boolean).join(' Cert '))}" style="width:100%;margin-top:3px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:7px;border-radius:6px;box-sizing:border-box"></div>
+          ${isComic ? `
+          <div><label style="font-family:monospace;font-size:8px;color:var(--dim)">PUBLISHER</label><input id="dash-eb-publisher" value="${esc(aspectVal('Publisher', item.publisher || ''))}" style="width:100%;margin-top:3px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:7px;border-radius:6px;box-sizing:border-box"></div>
+          <div><label style="font-family:monospace;font-size:8px;color:var(--dim)">WRITER</label><input id="dash-eb-writer" value="${esc(aspectVal('Writer', comicCreditList(item,'writers').join(', ')))}" style="width:100%;margin-top:3px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:7px;border-radius:6px;box-sizing:border-box"></div>
+          <div><label style="font-family:monospace;font-size:8px;color:var(--dim)">ARTIST</label><input id="dash-eb-artist" value="${esc(aspectVal('Artist', comicCreditList(item,'artists').join(', ')))}" style="width:100%;margin-top:3px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:7px;border-radius:6px;box-sizing:border-box"></div>
+          <div><label style="font-family:monospace;font-size:8px;color:var(--dim)">COVER ARTIST</label><input id="dash-eb-cover-artist" value="${esc(aspectVal('Cover Artist', comicCreditList(item,'coverArtists').join(', ')))}" style="width:100%;margin-top:3px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:7px;border-radius:6px;box-sizing:border-box"></div>
+          ` : ''}
         </div>
       </details>
       <div style="display:flex;justify-content:space-between;align-items:center">
@@ -17843,6 +17849,10 @@ function collectDashboardEbayFormPayload(item){
       'Configuration':document.getElementById('dash-eb-config')?.value.trim() || (document.getElementById('dash-eb-product-type')?.value === 'sealed' ? 'Box' : ''),
       'Card Size':'Standard',
       'Language':'English',
+      'Publisher':document.getElementById('dash-eb-publisher')?.value.trim() || '',
+      'Writer':document.getElementById('dash-eb-writer')?.value.trim() || '',
+      'Artist':document.getElementById('dash-eb-artist')?.value.trim() || '',
+      'Cover Artist':document.getElementById('dash-eb-cover-artist')?.value.trim() || '',
     },
   };
   return { payload };
@@ -18112,6 +18122,10 @@ async function submitEbayBulkReviewItem(id){
       'Configuration': fields.inferConfig || (fields.isSealed ? 'Box' : ''),
       'Card Size': 'Standard',
       'Language': 'English',
+      'Publisher': item.publisher || '',
+      'Writer': comicCreditList(item,'writers').join(', '),
+      'Artist': comicCreditList(item,'artists').join(', '),
+      'Cover Artist': comicCreditList(item,'coverArtists').join(', '),
     },
   };
   try{
@@ -19694,13 +19708,18 @@ function handleInventoryEditPhoto(file){
   reader.onload = () => {
     const img = new Image();
     img.onload = () => {
-      const max = 1200;
+      // 1600px/92% -- eBay's zoom feature (and its own photo guidance) wants
+      // at least 1600px on the longest side; the old 1200px/78% cap looked
+      // fine at dashboard thumbnail sizes but turned soft/blocky the moment
+      // eBay rendered it full-size or zoomed, since this same stored file is
+      // what both the dashboard AND eBay display.
+      const max = 1600;
       const scale = Math.min(1, max / Math.max(img.width, img.height));
       const canvas = document.createElement('canvas');
       canvas.width = Math.max(1, Math.round(img.width * scale));
       canvas.height = Math.max(1, Math.round(img.height * scale));
       canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
-      const localPreview = canvas.toDataURL('image/jpeg', .78);
+      const localPreview = canvas.toDataURL('image/jpeg', .92);
       setInventoryEditPhoto(localPreview, 'Uploading...');
       canvas.toBlob(async blob => {
         if(!blob) { toast_dash('Could not process image'); return; }
@@ -19714,7 +19733,7 @@ function handleInventoryEditPhoto(file){
           setInventoryEditPhoto(localPreview, 'Uploaded photo (this device only)');
           toast_dash('Saved locally only — reconnect and re-attach to sync to other devices (' + (e.message || e) + ')');
         }
-      }, 'image/jpeg', .78);
+      }, 'image/jpeg', .92);
     };
     img.onerror = () => toast_dash('Could not read image');
     img.src = reader.result;
@@ -19755,7 +19774,7 @@ function handleAddInventoryEditPhoto(file){
   reader.onload = () => {
     const img = new Image();
     img.onload = () => {
-      const max = 1200;
+      const max = 1600;
       const scale = Math.min(1, max / Math.max(img.width, img.height));
       const canvas = document.createElement('canvas');
       canvas.width = Math.max(1, Math.round(img.width * scale));
@@ -19774,7 +19793,7 @@ function handleAddInventoryEditPhoto(file){
         } catch(e) {
           if(status) status.textContent = 'Upload failed: ' + (e.message || e);
         }
-      }, 'image/jpeg', .78);
+      }, 'image/jpeg', .92);
     };
     img.onerror = () => toast_dash('Could not read image');
     img.src = reader.result;
@@ -19828,6 +19847,16 @@ function inventoryComicPeopleLine(item={}){
   const artists=list(item.artists).length?list(item.artists):list(m.artists);
   const covers=list(item.coverArtists).length?list(item.coverArtists):list(m.coverArtists);
   return [writers.length?'Writer: '+writers.join(', '):'',artists.length?'Artist: '+artists.join(', '):'',covers.length?'Cover: '+covers.join(', '):''].filter(Boolean).join(' · ');
+}
+// Same item-then-comicMetadata fallback as inventoryComicPeopleLine above,
+// but returns one credit list (writers/artists/coverArtists) at a time --
+// used wherever a single field (not the combined display line) is needed,
+// e.g. populating individual eBay Item Specifics inputs.
+function comicCreditList(item={}, key){
+  const list=value=>Array.isArray(value)?value:(value?[String(value)]:[]);
+  const own=list(item[key]);
+  if(own.length) return own;
+  return list((item.comicMetadata||{})[key]);
 }
 
 function renderInventoryComicInfo(item){const host=document.getElementById('edit-comic-info');if(host)host.innerHTML=inventoryComicInfoHtml(item);}
@@ -36496,7 +36525,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.03.15-price-alerts-sync-comic-ebay"></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.03.16-ebay-image-quality-comic-specifics"></script>
 </body>
 </html>
 
