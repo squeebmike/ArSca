@@ -283,6 +283,75 @@ function roundUpToDollar(value) {
   return Math.ceil(n - 1e-9);
 }
 
+// ── Public storefront item shaping — single source of truth ────────────────
+// Used by /public/storefront (list) and /public/storefront/item (single-row
+// verification for wo-checkout's Stripe checkout, via a Cloudflare Service
+// Binding). Every place that needs "what's the real price/stock of this
+// item" goes through shapeStorefrontItem() -- not its own copy of this
+// logic. wo-checkout used to reimplement this query and formula itself
+// (forced to, since Cloudflare blocks *.workers.dev-to-*.workers.dev
+// fetches -- Error 1042), and that duplicate silently drifted out of sync:
+// its copy never picked up signature-value pricing or comic details. A
+// Service Binding is a same-account Worker-to-Worker call, not a public
+// fetch, so it isn't subject to that restriction -- there's no reason for
+// a second implementation to exist anymore.
+function storefrontCleanText(v, n = 240) { return String(v == null ? '' : v).trim().slice(0, n); }
+function storefrontCleanUrl(v) { const s = storefrontCleanText(v, 1000); return /^https?:\/\//i.test(s) || /^data:image\//i.test(s) ? s : ''; }
+function storefrontCleanList(v, n = 12) { return (Array.isArray(v) ? v : []).map(x => storefrontCleanText(x, 80)).filter(Boolean).slice(0, n); }
+// Same book-detail fields the dashboard's own item editor already shows
+// (Metron-sourced), trimmed for public payload size -- only attached for
+// comic rows, and only when the item actually has a saved comic record.
+function storefrontComicDetailFor(d) {
+  const m = d.comicMetadata;
+  if (!m || !/comic/i.test(String(d.category || ''))) return null;
+  const credits = (Array.isArray(m.credits) ? m.credits : []).slice(0, 20).map(c => ({ creator: storefrontCleanText(c?.creator, 80), roles: storefrontCleanList(c?.roles, 6) })).filter(c => c.creator);
+  return {
+    seriesName: storefrontCleanText(m.seriesName || m.series || '', 160), number: storefrontCleanText(m.number || m.issueNumber || '', 20),
+    selectedCover: storefrontCleanText(m.selectedCover?.issueName || m.selectedCover?.name || d.variant || '', 120),
+    publisher: storefrontCleanText(m.publisher, 120), seriesYearBegan: storefrontCleanText(m.seriesYearBegan, 12),
+    coverDate: storefrontCleanText(m.coverDate, 20), storeDate: storefrontCleanText(m.storeDate, 20),
+    coverPrice: Number(m.coverPrice || 0) || 0, coverPriceCurrency: storefrontCleanText(m.coverPriceCurrency || 'USD', 10),
+    rating: storefrontCleanText(m.rating, 60), upc: storefrontCleanText(m.upc, 40), sku: storefrontCleanText(m.sku, 40),
+    description: storefrontCleanText(m.description, 2000),
+    writers: storefrontCleanList(m.writers), artists: storefrontCleanList(m.artists), coverArtists: storefrontCleanList(m.coverArtists),
+    characters: storefrontCleanList(m.characters, 30), teams: storefrontCleanList(m.teams, 20), credits,
+  };
+}
+function shapeStorefrontItem(row) {
+  const d = row.data || {};
+  const rawQty = d.quantity ?? d.qty ?? 1;
+  const quantity = Number.isFinite(Number(rawQty)) ? Number(rawQty) : 1;
+  const inventoryStatus = storefrontCleanText(d.lifecycle || d.status || row.status || 'in_stock', 40).toLowerCase();
+  // Price rule: market price, unless there's a floor (minPrice) or a
+  // manually-entered override (priceOverride) from the dashboard's edit
+  // screen -- whichever of those is higher than market wins. A signature is
+  // a fixed dollar add-on tracked separately from market price (see
+  // inventoryListPrice/inventorySignatureValue in dashboard.html) so it
+  // stays fixed while market price re-syncs -- added on top here, after
+  // the floor, the same way.
+  const rowMarket = Number(d.market || d.marketPrice || d.rawMarketPrice || 0) || 0;
+  const rowBase = Number(d.priceOverride || 0) || roundUpToDollar(rowMarket);
+  const rowSignatureValue = Number(d.signature_value || 0) || 0;
+  return {
+    id: storefrontCleanText(row.id, 80), name: storefrontCleanText(d.name || d.title || 'Item'), category: storefrontCleanText(d.category || d.type || 'Other', 80),
+    set: storefrontCleanText(d.set || d.series || '', 120), year: storefrontCleanText(d.year || '', 12), variant: storefrontCleanText(d.variant || d.finish || '', 120), condition: storefrontCleanText(d.condition || d.grade || '', 80),
+    // photoDataUrl/thumbnail are where the dashboard's own upload flow
+    // (camera/file photo, R2-hosted or legacy base64) actually saves a
+    // user-taken photo -- checked first, same precedence the dashboard's
+    // own inventoryImageUrl() uses, so a self-taken photo with no
+    // catalog-sourced image still shows up on the public storefront.
+    price: Math.max(rowBase, Number(d.minPrice || 0) || 0) + rowSignatureValue, market: rowMarket, image: storefrontCleanUrl(d.photoDataUrl || d.thumbnail || d.image || d.img || d.imageUrl || d.image_url || d.photo),
+    photos: (Array.isArray(d.photos) ? d.photos : []).map(storefrontCleanUrl).filter(Boolean).slice(0, 12),
+    isSealed: !!d.is_sealed, gradingCompany: storefrontCleanText(d.grading_company || d.grader || '', 40),
+    isSigned: !!d.is_signed, signedBy: storefrontCleanText(d.signed_by || '', 120), signatureValue: rowSignatureValue,
+    comic: storefrontComicDetailFor(d),
+    quantity, inventoryStatus, soldAt: d.soldAt || d.sold_at || '', archivedAt: d.archivedAt || '', addedAt: row.created_at || '', updatedAt: row.updated_at || ''
+  };
+}
+function isStorefrontItemAvailable(i) {
+  return !!(i.name && i.quantity > 0 && !i.soldAt && !i.archivedAt && !['sold','archived','returned','deleted','sold_pending_pickup','sold_pending_shipment','hold','lost_damaged'].includes(i.inventoryStatus));
+}
+
 function json(data, status = 200, extraHeaders = {}) {
   return new Response(JSON.stringify(data), {
     status,
@@ -1824,56 +1893,9 @@ export default {
       const { data:stores } = await supabaseAdminFetch(env, `stores?id=eq.${encodeURIComponent(storeId)}&select=id,name,display_name&limit=1`);
       const { data:rows, response } = await supabaseAdminFetch(env, `inventory_items?store_id=eq.${encodeURIComponent(storeId)}&select=id,data,status,created_at,updated_at&order=updated_at.desc&limit=1000`);
       if (!response?.ok) return json({ ok:false, error:'Inventory unavailable' }, 502);
-      const cleanText = (v,n=240) => String(v == null ? '' : v).trim().slice(0,n);
-      const cleanUrl = v => { const s=cleanText(v,1000); return /^https?:\/\//i.test(s)||/^data:image\//i.test(s)?s:''; };
-      const cleanList = (v,n=12) => (Array.isArray(v) ? v : []).map(x => cleanText(x,80)).filter(Boolean).slice(0,n);
-      // Same book-detail fields the dashboard's own item editor already shows
-      // (Metron-sourced), trimmed for public payload size -- only attached for
-      // comic rows, and only when the item actually has a saved comic record.
-      const comicDetailFor = d => {
-        const m = d.comicMetadata;
-        if (!m || !/comic/i.test(String(d.category || ''))) return null;
-        const credits = (Array.isArray(m.credits) ? m.credits : []).slice(0,20).map(c => ({ creator:cleanText(c?.creator,80), roles:cleanList(c?.roles,6) })).filter(c => c.creator);
-        return {
-          seriesName:cleanText(m.seriesName || m.series || '',160), number:cleanText(m.number || m.issueNumber || '',20),
-          selectedCover:cleanText(m.selectedCover?.issueName || m.selectedCover?.name || d.variant || '',120),
-          publisher:cleanText(m.publisher,120), seriesYearBegan:cleanText(m.seriesYearBegan,12),
-          coverDate:cleanText(m.coverDate,20), storeDate:cleanText(m.storeDate,20),
-          coverPrice:Number(m.coverPrice || 0) || 0, coverPriceCurrency:cleanText(m.coverPriceCurrency || 'USD',10),
-          rating:cleanText(m.rating,60), upc:cleanText(m.upc,40), sku:cleanText(m.sku,40),
-          description:cleanText(m.description,2000),
-          writers:cleanList(m.writers), artists:cleanList(m.artists), coverArtists:cleanList(m.coverArtists),
-          characters:cleanList(m.characters,30), teams:cleanList(m.teams,20), credits,
-        };
-      };
       const linkedWfIds = new Set((rows || []).map(row => row.data?.wfId || row.data?.webflowId).filter(Boolean).map(String));
-      let items = (rows || []).map(row => { const d=row.data || {}; const rawQty=d.quantity ?? d.qty ?? 1; const quantity=Number.isFinite(Number(rawQty))?Number(rawQty):1; const inventoryStatus=cleanText(d.lifecycle || d.status || row.status || 'in_stock',40).toLowerCase();
-        // Price rule: market price, unless there's a floor (minPrice) or a
-        // manually-entered override (priceOverride) from the dashboard's edit
-        // screen -- whichever of those is higher than market wins. A
-        // signature is a fixed dollar add-on tracked separately from market
-        // price (see inventoryListPrice/inventorySignatureValue in
-        // dashboard.html) so it stays fixed while market price re-syncs --
-        // added on top here, after the floor, the same way.
-        const rowMarket = Number(d.market || d.marketPrice || d.rawMarketPrice || 0) || 0;
-        const rowBase = Number(d.priceOverride || 0) || roundUpToDollar(rowMarket);
-        const rowSignatureValue = Number(d.signature_value || 0) || 0;
-        return {
-        id:cleanText(row.id,80), name:cleanText(d.name || d.title || 'Item'), category:cleanText(d.category || d.type || 'Other',80),
-        set:cleanText(d.set || d.series || '',120), year:cleanText(d.year || '',12), variant:cleanText(d.variant || d.finish || '',120), condition:cleanText(d.condition || d.grade || '',80),
-        // photoDataUrl/thumbnail are where the dashboard's own upload flow
-        // (camera/file photo, R2-hosted or legacy base64) actually saves a
-        // user-taken photo -- checked first, same precedence the dashboard's
-        // own inventoryImageUrl() uses, so a self-taken photo with no
-        // catalog-sourced image still shows up on the public storefront.
-        price:Math.max(rowBase, Number(d.minPrice || 0) || 0) + rowSignatureValue, market:rowMarket, image:cleanUrl(d.photoDataUrl || d.thumbnail || d.image || d.img || d.imageUrl || d.image_url || d.photo),
-        photos:(Array.isArray(d.photos) ? d.photos : []).map(cleanUrl).filter(Boolean).slice(0, 12),
-        isSealed:!!d.is_sealed, gradingCompany:cleanText(d.grading_company || d.grader || '',40),
-        isSigned:!!d.is_signed, signedBy:cleanText(d.signed_by || '',120), signatureValue:rowSignatureValue,
-        comic:comicDetailFor(d),
-        quantity, inventoryStatus, soldAt:d.soldAt || d.sold_at || '', archivedAt:d.archivedAt || '', addedAt:row.created_at || '', updatedAt:row.updated_at || ''
-      }; }).filter(i => i.name && i.quantity > 0 && !i.soldAt && !i.archivedAt && !['sold','archived','returned','deleted','sold_pending_pickup','sold_pending_shipment','hold','lost_damaged'].includes(i.inventoryStatus));
-      const inventorySource = cleanText(settings?.[0]?.modules?.inventorySource || '',40).toLowerCase();
+      let items = (rows || []).map(shapeStorefrontItem).filter(isStorefrontItemAvailable);
+      const inventorySource = storefrontCleanText(settings?.[0]?.modules?.inventorySource || '',40).toLowerCase();
       if ((inventorySource === 'webflow' || inventorySource === 'hybrid') && env.WEBFLOW_TOKEN) {
         const webflowItems=[];
         for(let offset=0;offset<1000;offset+=100){
@@ -1884,12 +1906,38 @@ export default {
           if(batch.length<100)break;
         }
         const mappedWebflow=webflowItems.filter(row=>!linkedWfIds.has(String(row.id))).map(row=>{const d=row.fieldData||{};const quantity=Number(d['inventory-count']??1);const isSold=d['sold-out']===true||String(d.status||'').toLowerCase().includes('sold');return {
-          id:cleanText(row.id,80),name:cleanText(d.name||'Item'),category:cleanText(d['card-category']||d.category||d['custom-category']||d['item-type']||'Other',80),set:cleanText(d['set-name']||'',120),year:cleanText(d.year||'',12),variant:cleanText(d.variant||'',120),condition:cleanText(d.condition||'',80),price:Number(d['list-price']||d['sale-price']||d['retail-price']||d.msrp||0)||0,image:cleanUrl(d['image-url']||d.photoDataUrl||d.thumbnail?.url),quantity,inventoryStatus:isSold?'sold':'in_stock',soldAt:d['date-sold']||'',archivedAt:'',addedAt:d['date-added']||row.createdOn||'',updatedAt:row.lastUpdated||row.updatedOn||''
+          id:storefrontCleanText(row.id,80),name:storefrontCleanText(d.name||'Item'),category:storefrontCleanText(d['card-category']||d.category||d['custom-category']||d['item-type']||'Other',80),set:storefrontCleanText(d['set-name']||'',120),year:storefrontCleanText(d.year||'',12),variant:storefrontCleanText(d.variant||'',120),condition:storefrontCleanText(d.condition||'',80),price:Number(d['list-price']||d['sale-price']||d['retail-price']||d.msrp||0)||0,image:storefrontCleanUrl(d['image-url']||d.photoDataUrl||d.thumbnail?.url),quantity,inventoryStatus:isSold?'sold':'in_stock',soldAt:d['date-sold']||'',archivedAt:'',addedAt:d['date-added']||row.createdOn||'',updatedAt:row.lastUpdated||row.updatedOn||''
         };}).filter(i=>i.name&&i.quantity>0&&i.inventoryStatus==='in_stock'&&!i.soldAt);
         items=[...items,...mappedWebflow];
       }
       const store = stores?.[0] || {};
-      return json({ ok:true, store:{ id:storeId, name:cleanText(cfg.storeName || cfg.shortName || store.display_name || store.name || 'Store',120), location:cleanText(cfg.location,160), website:cleanUrl(cfg.website), email:cleanText(cfg.email,200), phone:cleanText(cfg.phone,80), logo:cleanUrl(cfg.logo), message:cleanText(cfg.storefrontMessage,500), theme:settings?.[0]?.theme || {} }, items, updatedAt:new Date().toISOString() }, 200, { 'Cache-Control':'public, max-age=60, stale-while-revalidate=300' });
+      return json({ ok:true, store:{ id:storeId, name:storefrontCleanText(cfg.storeName || cfg.shortName || store.display_name || store.name || 'Store',120), location:storefrontCleanText(cfg.location,160), website:storefrontCleanUrl(cfg.website), email:storefrontCleanText(cfg.email,200), phone:storefrontCleanText(cfg.phone,80), logo:storefrontCleanUrl(cfg.logo), message:storefrontCleanText(cfg.storefrontMessage,500), theme:settings?.[0]?.theme || {} }, items, updatedAt:new Date().toISOString() }, 200, { 'Cache-Control':'public, max-age=60, stale-while-revalidate=300' });
+    }
+
+    // GET /public/storefront/item?store_id=...&id=... -- single-row version of
+    // /public/storefront. Built for wo-checkout (walkoffsc.com's separate
+    // Stripe checkout Worker) to verify real-time stock and price for one
+    // cart line right before charging, via a Cloudflare Service Binding
+    // instead of wo-checkout reimplementing this query itself -- that
+    // reimplementation is exactly how signature-value pricing and comic
+    // details silently drifted out of sync between the two Workers before.
+    // Same shapeStorefrontItem()/isStorefrontItemAvailable() as the list
+    // route above, so there is exactly one place price/stock rules live.
+    if (url.pathname === '/public/storefront/item' && request.method === 'GET') {
+      const storeId = String(url.searchParams.get('store_id') || '').trim();
+      const itemId = String(url.searchParams.get('id') || '').trim();
+      if (!/^[0-9a-z_-]{2,80}$/i.test(storeId)) return json({ ok:false, error:'Valid store_id required' }, 400);
+      if (!itemId) return json({ ok:false, error:'id required' }, 400);
+      if (!(env.SUPABASE_URL && (env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_KEY))) return json({ ok:false, error:'Storefront service unavailable' }, 503);
+      const { data:settings } = await supabaseAdminFetch(env, `store_settings?store_id=eq.${encodeURIComponent(storeId)}&select=receipt_settings&limit=1`);
+      if (settings?.[0]?.receipt_settings?.storefrontEnabled !== true) return json({ ok:false, error:'Storefront is not published' }, 404);
+      const { data:rows, response } = await supabaseAdminFetch(env, `inventory_items?id=eq.${encodeURIComponent(itemId)}&store_id=eq.${encodeURIComponent(storeId)}&select=id,data,status,created_at,updated_at&limit=1`);
+      if (!response?.ok) return json({ ok:false, error:'Inventory unavailable' }, 502);
+      const row = rows?.[0];
+      if (!row) return json({ ok:false, error:'Item not found' }, 404);
+      const item = shapeStorefrontItem(row);
+      if (!isStorefrontItemAvailable(item)) return json({ ok:false, error:'Item is not currently available', item }, 409);
+      return json({ ok:true, item });
     }
 
     // POST /public/storefront/checkout — public (unauthenticated) checkout.
