@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.03.02-use-exact-issue-button">
+<meta name="version" content="2026.08.03.03-fix-duplicate-sold-rows">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1510,13 +1510,13 @@ body.show-mode .inv-sync-badge{display:none;}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.03.02-use-exact-issue-button"></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.03.02-use-exact-issue-button"></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.03.02-use-exact-issue-button"></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.03.02-use-exact-issue-button"></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.03.02-use-exact-issue-button"></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.03.02-use-exact-issue-button"></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.03.02-use-exact-issue-button"></script>
+<script src="scripts/query-routing.js?v=2026.08.03.03-fix-duplicate-sold-rows"></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.03.03-fix-duplicate-sold-rows"></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.03.03-fix-duplicate-sold-rows"></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.03.03-fix-duplicate-sold-rows"></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.03.03-fix-duplicate-sold-rows"></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.03.03-fix-duplicate-sold-rows"></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.03.03-fix-duplicate-sold-rows"></script>
 </head>
 <body>
 
@@ -1566,11 +1566,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.03.02-use-exact-issue-button</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.03.03-fix-duplicate-sold-rows</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.03.02-use-exact-issue-button</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.03.03-fix-duplicate-sold-rows</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1592,7 +1592,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.03.02-use-exact-issue-button</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.03.03-fix-duplicate-sold-rows</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3080,7 +3080,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.03.02-use-exact-issue-button';
+const APP_VERSION = '2026.08.03.03-fix-duplicate-sold-rows';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -14831,7 +14831,28 @@ function transactionSoldRows(){
 // sold array — prevents double-counting when a POS sale updates the item's status.
 function dedupeTransactionRows(txRows, inventorySoldItems){
   const inventoryIds = new Set(inventorySoldItems.map(i => i.id || i.localId || i.shopId).filter(Boolean));
-  return txRows.filter(r => !r.shopId || !inventoryIds.has(r.shopId));
+  // Every sale through the live checkout path used to log its pos_transactions
+  // entry with no shopId at all (now fixed at the write site in
+  // finalizeCompletedCheckout), so every inventory-linked sale made before
+  // that fix is permanently unmatchable by id and shows twice -- once as the
+  // real Supabase sold record, once as this leftover local log entry with no
+  // shopId to dedupe by. Fall back to a same-day/name/price match for
+  // shopId-less rows so those legacy duplicates stop double-counting
+  // revenue/profit too, not just sales made after the fix. Narrow enough
+  // (name + exact price + same day) that a real coincidental one-off sale
+  // matching all three is rare, and one-off/non-inventory sales never
+  // appear in inventorySoldItems at all so they can never false-match here.
+  const fuzzyKey = (name, salePrice, soldAt) => {
+    const d = new Date(soldAt || 0);
+    if(!name || Number.isNaN(d.getTime())) return '';
+    return [String(name).trim().toLowerCase(), Number(salePrice || 0).toFixed(2), d.toDateString()].join('|');
+  };
+  const fuzzyKeys = new Set(inventorySoldItems.map(i => fuzzyKey(i.name, i.salePrice, i.soldAt)).filter(Boolean));
+  return txRows.filter(r => {
+    if(r.shopId) return !inventoryIds.has(r.shopId);
+    const key = fuzzyKey(r.name, r.salePrice, r.soldAt);
+    return !key || !fuzzyKeys.has(key);
+  });
 }
 
 function renderStats(){
@@ -33126,7 +33147,16 @@ async function finalizeCompletedCheckout(bundle, queued, inventoryCommittedAtomi
   const method = bundle.payments.map(p => p.method).join('+');
   await markCartItemsSoldFromPayment((lockedCheckoutSnapshot?.lines || []).map(l => ({ name:l.title, price:l.adjusted_price, cost:l.cost_basis, category:l.category, condition:l.condition, quantity:l.quantity, shopId:l.item_id })), method, paidAt, { skipRemote:inventoryCommittedAtomically });
   const txLog = safeLocalJson('pos_transactions', []);
-  txLog.unshift({ id:bundle.sale.id, date:paidAt, method, tenderType:normalizeTenderType(method), paymentBreakdown:bundle.payments.map(payment=>({method:payment.method,tenderType:normalizeTenderType(payment.method),amount:Number(payment.amount||0),reference:payment.reference||'',provider:payment.provider||''})), total:bundle.sale.total, items:bundle.saleLines.map(l => ({ name:l.title, price:l.adjusted_price, cost:l.cost_basis, category:l.category, soldAt:paidAt })), source:queued?'offline-queued-ledger':'supabase-ledger', showSessionId:bundle.sale.show_session_id||'', drawerSessionId:bundle.sale.drawer_session_id, storeId:bundle.sale.store_id });
+  // shopId is what dedupeTransactionRows()/getOwnerSaleRows() use to tell
+  // "this transaction row already exists as an inventory sold record,
+  // don't show it twice" from "this is a genuine one-off sale with no
+  // inventory link, always show it" -- it was never set here even though
+  // the exact same item_id was already available and used one line above
+  // for markCartItemsSoldFromPayment. Every inventory-linked sale through
+  // this (the only live) checkout path logged with no shopId, so dedup
+  // always treated it as a one-off and kept it alongside the real
+  // Supabase-sold record, showing every such sale twice in Sold history.
+  txLog.unshift({ id:bundle.sale.id, date:paidAt, method, tenderType:normalizeTenderType(method), paymentBreakdown:bundle.payments.map(payment=>({method:payment.method,tenderType:normalizeTenderType(payment.method),amount:Number(payment.amount||0),reference:payment.reference||'',provider:payment.provider||''})), total:bundle.sale.total, items:bundle.saleLines.map(l => ({ name:l.title, price:l.adjusted_price, cost:l.cost_basis, category:l.category, soldAt:paidAt, shopId:l.item_id||'' })), source:queued?'offline-queued-ledger':'supabase-ledger', showSessionId:bundle.sale.show_session_id||'', drawerSessionId:bundle.sale.drawer_session_id, storeId:bundle.sale.store_id });
   localStorage.setItem('pos_transactions', JSON.stringify(txLog.slice(0,1000)));
   const empty = { items:[], discount:0, savedAt:paidAt, clearedAt:paidAt, lastTxId:bundle.sale.id, storeId:getActiveStoreId(), registerId:REGISTER_ID, appVersion:APP_VERSION };
   localStorage.setItem('pos_cart_v2', JSON.stringify(empty));
@@ -36120,7 +36150,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.03.02-use-exact-issue-button"></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.03.03-fix-duplicate-sold-rows"></script>
 </body>
 </html>
 
