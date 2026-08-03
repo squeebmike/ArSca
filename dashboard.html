@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.03.13-fast-price-update-toast-scope">
+<meta name="version" content="2026.08.03.14-logout-and-inv-cat-wheel">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1174,8 +1174,36 @@ body.customer-browse-mode{padding-bottom:0}body.customer-browse-mode header,body
 .qpl-cat-wheel-track{height:100%;overflow-y:auto;scroll-snap-type:y mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
 .qpl-cat-wheel-track::-webkit-scrollbar{display:none;}
 .qpl-cat-wheel-pad{height:32px;scroll-snap-align:none;}
-.qpl-cat-wheel-item{height:32px;display:flex;align-items:center;justify-content:center;scroll-snap-align:center;font-family:'Orbitron',monospace;font-size:10px;letter-spacing:.03em;color:var(--dim);opacity:.4;cursor:pointer;user-select:none;white-space:nowrap;transition:opacity .1s,font-size .1s;}
+/* scroll-snap-stop:always forces a fast flick to land on the very next item
+   instead of gliding past several -- that overshoot was the "too loose,
+   too easy to scroll past" complaint. Shared by the Inventory tab's
+   category wheel below too. */
+.qpl-cat-wheel-item,.inv-cat-wheel-item{height:32px;display:flex;align-items:center;justify-content:center;scroll-snap-align:center;scroll-snap-stop:always;font-family:'Orbitron',monospace;font-size:10px;letter-spacing:.03em;color:var(--dim);opacity:.4;cursor:pointer;user-select:none;white-space:nowrap;transition:opacity .1s,font-size .1s;}
 .qpl-cat-wheel-item.active{opacity:1;font-size:12px;font-weight:800;color:var(--g);}
+/* Inventory tab's category wheel -- same compact scrollable picker as
+   Research, wired to the existing setF() filter buttons instead of the
+   Research-specific category state, so selection is a plain .fb.on class
+   toggle rather than a separate JS commit step. */
+.inv-cat-wheel{position:relative;height:96px;width:150px;flex:0 0 150px;overflow:hidden;border:1px solid var(--border);border-radius:9px;background:var(--surf2);}
+.inv-cat-wheel-highlight{position:absolute;top:50%;left:0;right:0;height:32px;transform:translateY(-50%);pointer-events:none;border-top:1px solid rgba(255,255,255,.16);border-bottom:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.05);}
+.inv-cat-wheel-track{height:100%;overflow-y:auto;scroll-snap-type:y mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
+.inv-cat-wheel-track::-webkit-scrollbar{display:none;}
+.inv-cat-wheel-pad{height:32px;scroll-snap-align:none;flex:none;}
+.fb.inv-cat-wheel-item{min-height:32px;background:none;border:none;border-radius:0;padding:0 8px;opacity:.55;}
+.fb.inv-cat-wheel-item.on{opacity:1;font-size:12px;font-weight:800;color:var(--g);}
+/* Desktop: a constrained scroll wheel is a step down from just showing
+   every category as a normal clickable row when there's room for it -- so
+   above this width both wheels become a plain wrapped button row instead. */
+@media(min-width:901px){
+  .qpl-cat-wheel,.inv-cat-wheel{height:auto;width:auto;flex:1 1 auto;overflow:visible;border:none;background:none;}
+  .qpl-cat-wheel-highlight,.inv-cat-wheel-highlight{display:none;}
+  .qpl-cat-wheel-track,.inv-cat-wheel-track{height:auto;overflow:visible;scroll-snap-type:none;display:flex;flex-wrap:wrap;gap:6px;}
+  .qpl-cat-wheel-pad,.inv-cat-wheel-pad{display:none;}
+  .qpl-cat-wheel-item{height:auto;opacity:1!important;font-size:11px!important;font-weight:700!important;padding:8px 14px;border:1px solid var(--border);border-radius:20px;background:var(--surf);scroll-snap-align:none;}
+  .qpl-cat-wheel-item.active{background:rgba(0,255,179,.14);border-color:var(--g);}
+  .fb.inv-cat-wheel-item{height:auto;min-height:36px;opacity:1!important;font-size:10px!important;font-weight:600;padding:8px 14px;border:1px solid var(--border);border-radius:6px;background:var(--surf2);scroll-snap-align:none;}
+  .fb.inv-cat-wheel-item.on{background:rgba(0,255,179,.14);border-color:var(--g);}
+}
 /* ── END PASS A ─────────────────────────────────────────────────── */
 
 /* ── POKÉMON SET BROWSER (Pass B) ───────────────────────────── */
@@ -1513,13 +1541,13 @@ body.show-mode .inv-sync-badge{display:none;}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.03.13-fast-price-update-toast-scope"></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.03.13-fast-price-update-toast-scope"></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.03.13-fast-price-update-toast-scope"></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.03.13-fast-price-update-toast-scope"></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.03.13-fast-price-update-toast-scope"></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.03.13-fast-price-update-toast-scope"></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.03.13-fast-price-update-toast-scope"></script>
+<script src="scripts/query-routing.js?v=2026.08.03.14-logout-and-inv-cat-wheel"></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.03.14-logout-and-inv-cat-wheel"></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.03.14-logout-and-inv-cat-wheel"></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.03.14-logout-and-inv-cat-wheel"></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.03.14-logout-and-inv-cat-wheel"></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.03.14-logout-and-inv-cat-wheel"></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.03.14-logout-and-inv-cat-wheel"></script>
 </head>
 <body>
 
@@ -1569,11 +1597,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.03.13-fast-price-update-toast-scope</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.03.14-logout-and-inv-cat-wheel</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.03.13-fast-price-update-toast-scope</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.03.14-logout-and-inv-cat-wheel</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1595,7 +1623,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.03.13-fast-price-update-toast-scope</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.03.14-logout-and-inv-cat-wheel</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -1718,11 +1746,18 @@ body.show-mode .inv-sync-badge{display:none;}
     <button class="fb" onclick="setF('stale_price',this)">Stale Price</button>
     <button class="fb" onclick="setF('below_cost',this)">Below Cost</button>
     <button class="fb" onclick="setF('pulled_ebay',this)">Pulled</button>
-    <button class="fb" onclick="setF('Sports',this)">⚾ Sports</button>
-    <button class="fb" onclick="setF('TCG',this)">🎴 TCG</button>
-    <button class="fb" onclick="setF('Comic',this)">📖 Comics</button>
-    <button class="fb" onclick="setF('Graded',this)">🏆 Graded</button>
-    <button class="fb" onclick="setF('Collectibles',this)">🏷 Collectibles</button>
+    <div class="inv-cat-wheel" id="inv-cat-wheel" role="listbox" aria-label="Category">
+      <div class="inv-cat-wheel-highlight"></div>
+      <div class="inv-cat-wheel-track" id="inv-cat-wheel-track" onscroll="handleInvCatWheelScroll()">
+        <div class="inv-cat-wheel-pad" aria-hidden="true"></div>
+        <button class="fb inv-cat-wheel-item" onclick="invCatWheelSelect(this,'Sports')" role="option">⚾ Sports</button>
+        <button class="fb inv-cat-wheel-item" onclick="invCatWheelSelect(this,'TCG')" role="option">🎴 TCG</button>
+        <button class="fb inv-cat-wheel-item" onclick="invCatWheelSelect(this,'Comic')" role="option">📖 Comics</button>
+        <button class="fb inv-cat-wheel-item" onclick="invCatWheelSelect(this,'Graded')" role="option">🏆 Graded</button>
+        <button class="fb inv-cat-wheel-item" onclick="invCatWheelSelect(this,'Collectibles')" role="option">🏷 Collectibles</button>
+        <div class="inv-cat-wheel-pad" aria-hidden="true"></div>
+      </div>
+    </div>
   </div>
   <div class="tc inv-filter-chips" aria-label="Comic inventory filters">
     <button class="fb" onclick="setF('comic_raw',this)">Comic Raw</button>
@@ -3083,7 +3118,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.03.13-fast-price-update-toast-scope';
+const APP_VERSION = '2026.08.03.14-logout-and-inv-cat-wheel';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -5433,7 +5468,7 @@ function setupAppShell(){
       <div id="header-actions-menu">
         <button class="hbtn" onclick="loadInventory();toggleHeaderActionsMenu()">REFRESH</button>
         <button class="hbtn" onclick="toggleAppFullscreen(document.documentElement);toggleHeaderActionsMenu()">FULL SCREEN</button>
-        <button class="hbtn danger" onclick="if(window.logoutSupabaseAccount) window.logoutSupabaseAccount();toggleHeaderActionsMenu()">LOGOUT</button>
+        <button class="hbtn danger" onclick="logoutAccount();toggleHeaderActionsMenu()">LOGOUT</button>
       </div>`;
     hdrRight.appendChild(wrap);
   }
@@ -7924,7 +7959,7 @@ function ensureStoreMembersPanel(backoffice){
   panel.className = 'panel';
   panel.id = 'store-members-panel';
   panel.style.marginBottom = '14px';
-  panel.innerHTML = '<div class="ph">STORE MEMBERS / INVITES <span style="font-size:9px;color:var(--dim)">roles, testers, scanner accounts</span></div><div id="store-members-body"></div>';
+  panel.innerHTML = '<div class="ph"><span>STORE MEMBERS / INVITES <span style="font-size:9px;color:var(--dim)">roles, testers, scanner accounts</span></span><button class="hbtn" style="padding:4px 10px;font-size:9px;flex:none" onclick="logoutAccount()" title="Log out of this account">⏻ LOGOUT</button></div><div id="store-members-body"></div>';
   backoffice.prepend(panel);
   renderStoreMembersPanel();
 }
@@ -8467,11 +8502,11 @@ function getInventoryCategoryColors(){
 }
 
 function renderInventoryCategoryFilters(){
-  const count = document.getElementById('tbl-count');
-  if(!count) return;
-  document.querySelectorAll('.vendor-cat-filter').forEach(b => b.remove());
+  const wheelTrack = document.getElementById('inv-cat-wheel-track');
+  if(!wheelTrack) return;
+  wheelTrack.querySelectorAll('.vendor-cat-filter').forEach(b => b.remove());
   const configured = getInventoryCategories();
-  document.querySelectorAll('#tab-inventory .fb').forEach(btn => {
+  wheelTrack.querySelectorAll('.fb').forEach(btn => {
     const txt = btn.textContent.replace(/[^\w\s-]/g,'').trim().toLowerCase();
     // "Graded" is intentionally excluded here -- it's a cross-category
     // attribute now (any item can be graded regardless of category), not a
@@ -8480,14 +8515,16 @@ function renderInventoryCategoryFilters(){
     const key = Object.keys(map).find(k => txt.includes(k));
     if(key) btn.style.display = configured.includes(map[key]) ? '' : 'none';
   });
+  const lastPad = wheelTrack.lastElementChild;
   configured.forEach(cat => {
-    const exists = [...document.querySelectorAll('#tab-inventory .fb')].some(b => b.textContent.toLowerCase().includes(cat.toLowerCase()));
+    const exists = [...wheelTrack.querySelectorAll('.fb')].some(b => b.textContent.toLowerCase().includes(cat.toLowerCase()));
     if(exists) return;
     const btn = document.createElement('button');
-    btn.className = 'fb vendor-cat-filter';
+    btn.className = 'fb inv-cat-wheel-item vendor-cat-filter';
+    btn.setAttribute('role','option');
     btn.textContent = cat;
-    btn.onclick = function(){ setF(cat, btn); };
-    count.parentElement.insertBefore(btn, count);
+    btn.onclick = function(){ invCatWheelSelect(btn, cat); };
+    wheelTrack.insertBefore(btn, lastPad);
   });
 }
 
@@ -28012,9 +28049,15 @@ function setQplCategoryByValue(cat, scrollToIt){
   handleQplCategoryChange();
 }
 function scrollQplCatWheelTo(el){
+  // Select immediately on tap instead of only after the scroll settles --
+  // on desktop (see the min-width:901px override) the wheel becomes a
+  // plain wrapped row with nothing to scroll, so waiting on a scroll event
+  // that will never fire meant clicking a category there did nothing.
+  if(el?.dataset) setQplCategoryByValue(el.dataset.cat, false);
   el?.scrollIntoView({block: 'center', behavior: 'smooth'});
-  // The scroll it triggers will settle and commit the selection itself
-  // (handleQplCatWheelScroll -> commitQplCatWheelSelection) once it lands.
+  // On mobile the scroll it triggers will also settle and re-commit the
+  // selection itself (handleQplCatWheelScroll -> commitQplCatWheelSelection)
+  // once it lands -- harmless, since it's the same value already set above.
 }
 let qplCatWheelSettleTimer = null;
 function qplCatWheelCenteredItem(){
@@ -28048,6 +28091,56 @@ function handleQplCatWheelScroll(){
   clearTimeout(qplCatWheelSettleTimer);
   qplCatWheelSettleTimer = setTimeout(commitQplCatWheelSelection, 120);
 }
+
+// Inventory tab's category wheel -- same settle-based scroll selection as
+// the Research wheel above, but wired to the existing .fb/.on/setF()
+// filter convention instead of a separate active-class state machine.
+function invCatWheelSelect(btn, cat){
+  setF(cat, btn);
+  btn.scrollIntoView({block: 'center', behavior: 'smooth'});
+}
+let invCatWheelSettleTimer = null;
+function invCatWheelCenteredItem(){
+  const track = document.getElementById('inv-cat-wheel-track');
+  if(!track) return null;
+  const mid = track.scrollTop + track.clientHeight / 2;
+  let closest = null, closestDist = Infinity;
+  track.querySelectorAll('.inv-cat-wheel-item').forEach(el => {
+    const dist = Math.abs((el.offsetTop + el.offsetHeight / 2) - mid);
+    if(dist < closestDist){ closestDist = dist; closest = el; }
+  });
+  return closest;
+}
+function invCatWheelUpdateVisual(){
+  const track = document.getElementById('inv-cat-wheel-track');
+  if(!track) return;
+  const mid = track.scrollTop + track.clientHeight / 2;
+  track.querySelectorAll('.inv-cat-wheel-item').forEach(el => {
+    const dist = Math.abs((el.offsetTop + el.offsetHeight / 2) - mid);
+    const closeness = Math.max(0, 1 - dist / 40);
+    el.style.opacity = String(.35 + .65 * closeness);
+    el.style.fontSize = (10 + 2 * closeness).toFixed(1) + 'px';
+  });
+}
+function commitInvCatWheelSelection(){
+  const el = invCatWheelCenteredItem();
+  if(el && !el.classList.contains('on')) el.click();
+}
+function handleInvCatWheelScroll(){
+  requestAnimationFrame(invCatWheelUpdateVisual);
+  clearTimeout(invCatWheelSettleTimer);
+  invCatWheelSettleTimer = setTimeout(commitInvCatWheelSelection, 120);
+}
+(function initInvCatWheelAutoScroll(){
+  const host = document.getElementById('inv-cat-wheel-track');
+  if(!host || typeof MutationObserver === 'undefined') return;
+  invCatWheelUpdateVisual();
+  const obs = new MutationObserver(() => {
+    const active = host.querySelector('.inv-cat-wheel-item.on');
+    if(active) active.scrollIntoView({block: 'center', behavior: 'smooth'});
+  });
+  obs.observe(host, {attributes: true, attributeFilter: ['class'], subtree: true});
+})();
 // Whenever code elsewhere flips which category is "active" (barcode scans,
 // MTG/sealed search-intent detection, etc.) the wheel needs to physically
 // scroll that item to the center band -- otherwise it can silently select
@@ -36327,7 +36420,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.03.13-fast-price-update-toast-scope"></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.03.14-logout-and-inv-cat-wheel"></script>
 </body>
 </html>
 
