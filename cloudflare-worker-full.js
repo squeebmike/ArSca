@@ -1955,7 +1955,7 @@ async function fetchSoldCompsProvider(env, query, limit = 40) {
 }
 
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     if (request.method === 'OPTIONS') {
       return new Response(null, { status: 204, headers: CORS });
     }
