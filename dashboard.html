@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.04.11-sports-scp-health-and-dedup">
+<meta name="version" content="2026.08.04.12-ebay-taxonomy-tab-and-cardsight-guard">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1541,13 +1541,13 @@ body.show-mode .inv-sync-badge{display:none;}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.04.11-sports-scp-health-and-dedup"></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.04.11-sports-scp-health-and-dedup"></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.04.11-sports-scp-health-and-dedup"></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.04.11-sports-scp-health-and-dedup"></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.04.11-sports-scp-health-and-dedup"></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.04.11-sports-scp-health-and-dedup"></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.04.11-sports-scp-health-and-dedup"></script>
+<script src="scripts/query-routing.js?v=2026.08.04.12-ebay-taxonomy-tab-and-cardsight-guard"></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.04.12-ebay-taxonomy-tab-and-cardsight-guard"></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.04.12-ebay-taxonomy-tab-and-cardsight-guard"></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.04.12-ebay-taxonomy-tab-and-cardsight-guard"></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.04.12-ebay-taxonomy-tab-and-cardsight-guard"></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.04.12-ebay-taxonomy-tab-and-cardsight-guard"></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.04.12-ebay-taxonomy-tab-and-cardsight-guard"></script>
 </head>
 <body>
 
@@ -1597,11 +1597,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.04.11-sports-scp-health-and-dedup</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.04.12-ebay-taxonomy-tab-and-cardsight-guard</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.04.11-sports-scp-health-and-dedup</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.04.12-ebay-taxonomy-tab-and-cardsight-guard</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1623,7 +1623,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.04.11-sports-scp-health-and-dedup</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.04.12-ebay-taxonomy-tab-and-cardsight-guard</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -1908,6 +1908,18 @@ body.show-mode .inv-sync-badge{display:none;}
     <div id="storefront-orders-list" style="display:grid;gap:8px">
       <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);padding:10px;border:1px dashed var(--border);border-radius:8px;text-align:center">No storefront orders yet</div>
     </div>
+  </div>
+
+  <div class="panel" id="ebay-hub-panel" style="margin-top:4px;margin-bottom:14px">
+    <div class="ph">EBAY QUICK ACCESS</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+      <button class="hbtn" onclick="renderEbayHubPanel()">REFRESH</button>
+      <button class="hbtn" style="color:var(--gold)" onclick="openSetBrowser()">SCAN EBAY FOR DEALS</button>
+    </div>
+    <div style="font-family:monospace;font-size:9px;color:var(--purple);letter-spacing:.05em;margin-bottom:6px">BUSINESS POLICIES</div>
+    <div id="ebay-hub-policies" style="font-family:monospace;font-size:10px;color:var(--dim);margin-bottom:14px">Loading...</div>
+    <div style="font-family:monospace;font-size:9px;color:var(--purple);letter-spacing:.05em;margin-bottom:6px">ACTIVE EBAY LISTINGS</div>
+    <div id="ebay-hub-listings" style="display:grid;gap:6px">Loading...</div>
   </div>
 
   <div class="panel" id="backoffice-ebay-panel" style="margin-top:4px;margin-bottom:14px">
@@ -2456,7 +2468,7 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <!-- CHANNELS TAB -->
 <div id="tab-channels" class="tab-panel">
-  <div class="sec">ONLINE CHANNELS / PRICING</div>
+  <div class="sec">EBAY / ONLINE LISTINGS</div>
   <div id="channels-panels" style="max-width:1400px;margin:0 auto;padding:0 20px"></div>
 </div>
 
@@ -3118,7 +3130,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.04.11-sports-scp-health-and-dedup';
+const APP_VERSION = '2026.08.04.12-ebay-taxonomy-tab-and-cardsight-guard';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -4324,11 +4336,11 @@ const DAILY_TABS = [
   ['inventory', 'INVENTORY'],
   ['sets', 'SETS'],
   ['shows', 'SHOWS'],
+  ['channels', 'EBAY / LISTINGS'],
 ];
 const MORE_TABS = [
   ['browse', 'CUSTOMER BROWSE'],
   ['pos', 'LEGACY REGISTER'],
-  ['channels', 'ONLINE LISTINGS'],
   ['sales', 'SALES'],
   ['orders', 'ORDERS'],
   ['alerts', 'ALERTS'],
@@ -5723,9 +5735,13 @@ function organizeRegisterLayout(){
   ensureOnboardingPanel(overview || backoffice);
   cleanupEmptyWorkflowRows();
 
+  moveNode('ebay-hub-panel', channels);
   moveNode('backoffice-ebay-panel', channels);
   moveNode('backoffice-ebay-bulk-panel', channels);
   moveNode('backoffice-tcg-sync-panel', channels);
+  const ebayHubPanel = document.getElementById('ebay-hub-panel');
+  if(ebayHubPanel && channels.firstChild !== ebayHubPanel) channels.insertBefore(ebayHubPanel, channels.firstChild);
+  renderEbayHubPanel();
   moveNode('backoffice-system-panel', backoffice);
   moveNode('backoffice-ops-panel', backoffice);
   ensureVendorProfilePanel(backoffice);
@@ -14009,6 +14025,49 @@ async function connectEbay(){
   }
 }
 
+// Single landing spot for "all the eBay stuff" -- business policies (so a
+// misconfigured EBAY_FULFILLMENT_POLICY_ID/etc shows up instead of listing
+// just silently failing) and every currently-listed item, so managing or
+// ending a listing doesn't require hunting through Inventory first.
+async function renderEbayHubPanel(){
+  refreshEbayStatus();
+  const polHost = document.getElementById('ebay-hub-policies');
+  const listHost = document.getElementById('ebay-hub-listings');
+  if(polHost) {
+    polHost.textContent = 'Loading...';
+    try {
+      const res = await storeWorkerFetch('/ebay/business-policies', { cache:'no-store' });
+      const d = await res.json();
+      if(d.needsToken) { polHost.innerHTML = '<span style="color:var(--gold)">Connect eBay above to see business policies.</span>'; }
+      else if(!d.ok) { polHost.innerHTML = '<span style="color:var(--red)">' + escHtml(d.error || 'Could not load business policies') + '</span>'; }
+      else {
+        const row = (label, r, configuredId) => {
+          if(r.error) return `<div>${label}: <span style="color:var(--red)">${escHtml(r.error)}</span></div>`;
+          if(!r.policies.length) return `<div>${label}: <span style="color:var(--gold)">none configured on eBay</span></div>`;
+          const active = configuredId ? r.policies.find(p => p.id === configuredId) : null;
+          return `<div>${label}: ${r.policies.map(p => escHtml(p.name) + (p.id === configuredId ? ' ✓' : '')).join(', ')}${configuredId && !active ? ' <span style="color:var(--red)">(configured ID ' + escHtml(configuredId) + ' not found)</span>' : ''}</div>`;
+        };
+        polHost.innerHTML = [
+          row('Shipping', d.fulfillment, d.configured.fulfillmentPolicyId),
+          row('Payment', d.payment, d.configured.paymentPolicyId),
+          row('Returns', d.returnPolicy, d.configured.returnPolicyId),
+        ].join('');
+      }
+    } catch(e) { polHost.innerHTML = '<span style="color:var(--red)">Could not load business policies.</span>'; }
+  }
+  if(listHost) {
+    const listed = (all || []).filter(i => i.ebayListingId && i.status === 'in_stock');
+    listHost.innerHTML = listed.length ? listed.map(i => `
+      <div style="display:flex;align-items:center;gap:10px;padding:8px;border:1px solid var(--border);border-radius:6px">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(i.name)}</div>
+          <div style="font-family:monospace;font-size:9px;color:var(--dim)">${i.market?fd$(i.market):''} · <a href="https://www.ebay.com/itm/${escHtml(i.ebayListingId)}" target="_blank" style="color:var(--g)">view live</a></div>
+        </div>
+        <button class="hbtn" style="padding:4px 8px;font-size:9px" onclick="openEbayFromDash('${i.id}')">MANAGE</button>
+      </div>`).join('') : '<div style="font-family:monospace;font-size:10px;color:var(--dim)">No active eBay listings.</div>';
+  }
+}
+
 // Detects items that sold on eBay without any action taken in this dashboard --
 // eBay has no way to tell us that on its own, so this asks the Worker to check
 // eBay's own paid-order list against SKUs we track locally (see /ebay/orders/sync).
@@ -17728,7 +17787,7 @@ async function openEbayFromDash(id){
         <div><label style="font-family:monospace;font-size:9px;color:var(--dim)">QTY</label><input id="dash-eb-qty" type="number" min="1" value="${qtyVal}" style="width:100%;margin-top:4px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:9px;border-radius:6px;box-sizing:border-box"></div>
         <div><label style="font-family:monospace;font-size:9px;color:var(--dim)">FORMAT</label><select id="dash-eb-format" onchange="const off=document.getElementById('dash-eb-allow-offers');if(this.value==='AUCTION'){off.checked=false;off.disabled=true;document.getElementById('dash-eb-offer-fields').style.display='none';}else{off.disabled=false;}" style="width:100%;margin-top:4px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:9px;border-radius:6px"><option value="FIXED_PRICE" ${formatVal!=='AUCTION'?'selected':''}>Buy It Now</option><option value="AUCTION" ${formatVal==='AUCTION'?'selected':''}>Auction</option></select></div>
         <div><label style="font-family:monospace;font-size:9px;color:var(--dim)">CONDITION</label><div id="dash-eb-condition-host" style="margin-top:4px"></div></div>
-        <div><label style="font-family:monospace;font-size:9px;color:var(--dim)">CATEGORY</label><select id="dash-eb-category" onchange="refreshEbayConditionUi('dash-eb', all.find(i=>i.id==='${id}'))" style="width:100%;margin-top:4px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:9px;border-radius:6px"><option value="" ${catId===''?'selected':''}>Other (set ID below)</option><option value="261328" ${catId==='261328'?'selected':''}>Sports Cards</option><option value="183454" ${catId==='183454'?'selected':''}>TCG Cards</option><option value="259104" ${catId==='259104'?'selected':''}>Comics</option><option value="261329" ${catId==='261329'?'selected':''}>Sports Boxes/Packs</option><option value="2536" ${catId==='2536'?'selected':''}>Card Lots</option></select></div>
+        <div><label style="font-family:monospace;font-size:9px;color:var(--dim)">CATEGORY <button type="button" class="hbtn" style="padding:1px 5px;font-size:8px;margin-left:4px" onclick="suggestDashboardEbayCategory('${id}')">SUGGEST</button></label><select id="dash-eb-category" onchange="refreshEbayConditionUi('dash-eb', all.find(i=>i.id==='${id}'));loadDashboardEbayAspects('${id}')" style="width:100%;margin-top:4px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:9px;border-radius:6px"><option value="" ${catId===''?'selected':''}>Other (set ID below)</option><option value="261328" ${catId==='261328'?'selected':''}>Sports Cards</option><option value="183454" ${catId==='183454'?'selected':''}>TCG Cards</option><option value="259104" ${catId==='259104'?'selected':''}>Comics</option><option value="261329" ${catId==='261329'?'selected':''}>Sports Boxes/Packs</option><option value="2536" ${catId==='2536'?'selected':''}>Card Lots</option></select></div>
         <div><label style="font-family:monospace;font-size:9px;color:var(--dim)">DURATION</label><select id="dash-eb-duration" style="width:100%;margin-top:4px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:9px;border-radius:6px"><option value="GTC" ${durationVal==='GTC'?'selected':''}>GTC</option><option value="DAYS_7" ${durationVal==='DAYS_7'?'selected':''}>7 days</option><option value="DAYS_10" ${durationVal==='DAYS_10'?'selected':''}>10 days</option></select></div>
       </div>
       <div style="border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:10px">
@@ -17743,7 +17802,7 @@ async function openEbayFromDash(id){
       <details open style="margin:10px 0">
         <summary style="font-family:monospace;font-size:9px;color:var(--gold);cursor:pointer;margin-bottom:8px">LISTING DETAILS / ITEM SPECIFICS</summary>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
-          <div><label style="font-family:monospace;font-size:8px;color:var(--dim)">CUSTOM CATEGORY ID${catId===''?' (required -- CATEGORY above is Other)':''}</label><input id="dash-eb-category-id" value="${catId}" placeholder="e.g. 1305 -- exact eBay category ID" oninput="ebayCategoryIdInputChanged(this)" style="width:100%;margin-top:3px;background:var(--surf2);border:1px solid var(--border);color:${catId===''?'var(--gold)':'var(--text)'};padding:7px;border-radius:6px;box-sizing:border-box"></div>
+          <div><label style="font-family:monospace;font-size:8px;color:var(--dim)">CUSTOM CATEGORY ID${catId===''?' (required -- CATEGORY above is Other)':''}</label><input id="dash-eb-category-id" value="${catId}" placeholder="e.g. 1305 -- exact eBay category ID" oninput="ebayCategoryIdInputChanged(this);debounceDashboardEbayAspects('${id}')" style="width:100%;margin-top:3px;background:var(--surf2);border:1px solid var(--border);color:${catId===''?'var(--gold)':'var(--text)'};padding:7px;border-radius:6px;box-sizing:border-box"></div>
           <div><label style="font-family:monospace;font-size:8px;color:var(--dim)">PRODUCT TYPE</label><select id="dash-eb-product-type" style="width:100%;margin-top:3px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:7px;border-radius:6px"><option value="single" ${!isSealed?'selected':''}>Single card/item</option><option value="sealed" ${isSealed?'selected':''}>Sealed box/pack</option><option value="lot">Lot</option><option value="comic">Comic</option></select></div>
           <div><label style="font-family:monospace;font-size:8px;color:var(--dim)">BRAND / MANUFACTURER</label><input id="dash-eb-mfr" value="${esc(aspectVal('Manufacturer', inferManufacturer))}" style="width:100%;margin-top:3px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:7px;border-radius:6px;box-sizing:border-box"></div>
           <div><label style="font-family:monospace;font-size:8px;color:var(--dim)">SPORT / LEAGUE</label><input id="dash-eb-sport" value="${esc(aspectVal('Sport', item.sport || (cat==='Sports'?'Baseball':'')))}" placeholder="Baseball, Basketball, NFL, MLB..." style="width:100%;margin-top:3px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:7px;border-radius:6px;box-sizing:border-box"></div>
@@ -17765,6 +17824,7 @@ async function openEbayFromDash(id){
           <div><label style="font-family:monospace;font-size:8px;color:var(--dim)">COVER ARTIST</label><input id="dash-eb-cover-artist" value="${esc(aspectVal('Cover Artist', comicCreditList(item,'coverArtists').join(', ')))}" style="width:100%;margin-top:3px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:7px;border-radius:6px;box-sizing:border-box"></div>
           ` : ''}
         </div>
+        <div id="dash-eb-dynamic-aspects" style="margin-top:10px"></div>
       </details>
       <div style="display:flex;justify-content:space-between;align-items:center">
         <label style="font-family:monospace;font-size:9px;color:var(--dim)">DESCRIPTION</label>
@@ -17783,6 +17843,7 @@ async function openEbayFromDash(id){
   document.body.appendChild(modal);
   await refreshEbayConditionUi('dash-eb', item, conditionId);
   if(live?.item?.conditionDescriptors?.length) applyLiveEbayConditionDescriptors('dash-eb', live.item.conditionDescriptors);
+  loadDashboardEbayAspects(id);
   // Lifecycle only changes on an actual outcome (list/update/end succeeding) --
   // just opening this form to look at an item must never silently mark it
   // Pulled for eBay before anything has actually been submitted.
@@ -17826,6 +17887,75 @@ function ebayCategoryIdInputChanged(inputEl){
   const v = inputEl.value.trim();
   inputEl.style.color = v && !/^\d+$/.test(v) ? 'var(--red)' : (v ? 'var(--text)' : 'var(--gold)');
   inputEl.title = v && !/^\d+$/.test(v) ? 'eBay category IDs are numeric only' : '';
+}
+
+// Aspect names already covered by a fixed field elsewhere in the form --
+// the Taxonomy API result is filtered against this so we only ever add NEW
+// fields (e.g. "Character", "Autographed") instead of duplicating inputs.
+const DASH_EBAY_COVERED_ASPECTS = new Set([
+  'sport','year','manufacturer','set','parallel/variety','card number','player/athlete',
+  'team','upc','configuration','features','professional grader','grade','type',
+  'publisher','writer','artist','cover artist','rookie','serial numbered',
+]);
+
+let _dashEbayAspectsTimer = null;
+function debounceDashboardEbayAspects(id){
+  clearTimeout(_dashEbayAspectsTimer);
+  _dashEbayAspectsTimer = setTimeout(() => loadDashboardEbayAspects(id), 500);
+}
+
+// Pulls eBay's own Item Specifics list for whatever category is currently
+// selected (Taxonomy API get_item_aspects_for_category) and renders any
+// field not already covered above -- this is how fields like "Character"
+// show up automatically instead of us guessing every possible aspect name.
+async function loadDashboardEbayAspects(id){
+  const host = document.getElementById('dash-eb-dynamic-aspects');
+  if(!host) return;
+  const categoryId = (document.getElementById('dash-eb-category-id')?.value.trim() || document.getElementById('dash-eb-category')?.value || '').trim();
+  if(!/^\d+$/.test(categoryId)){ host.innerHTML = ''; return; }
+  host.innerHTML = '<div style="font-family:monospace;font-size:9px;color:var(--dim)">Loading eBay\'s fields for this category...</div>';
+  try {
+    const res = await storeWorkerFetch('/ebay/item-aspects?categoryId=' + encodeURIComponent(categoryId));
+    const data = await res.json();
+    if(!data.ok){ host.innerHTML = '<div style="font-family:monospace;font-size:9px;color:var(--dim)">Could not load eBay category fields (' + escHtml(data.error||'unknown error') + ')</div>'; return; }
+    const extra = (data.aspects||[]).filter(a => !DASH_EBAY_COVERED_ASPECTS.has(String(a.name||'').toLowerCase()));
+    if(!extra.length){ host.innerHTML = ''; return; }
+    host.innerHTML = `<div style="font-family:monospace;font-size:8px;color:var(--purple);letter-spacing:.05em;margin-bottom:6px">MORE EBAY FIELDS FOR THIS CATEGORY</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        ${extra.map(a => {
+          const dlId = 'dl-' + a.name.replace(/[^a-z0-9]/gi,'').toLowerCase();
+          const datalist = a.values.length ? `<datalist id="${dlId}">${a.values.map(v=>`<option value="${escHtml(v)}">`).join('')}</datalist>` : '';
+          return `<div><label style="font-family:monospace;font-size:8px;color:${a.required?'var(--gold)':'var(--dim)'}">${escHtml(a.name.toUpperCase())}${a.required?' (required)':''}</label>
+            <input data-dyn-aspect="${escHtml(a.name)}" list="${a.values.length?dlId:''}" style="width:100%;margin-top:3px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:7px;border-radius:6px;box-sizing:border-box">
+            ${datalist}</div>`;
+        }).join('')}
+      </div>`;
+  } catch(e) { host.innerHTML = '<div style="font-family:monospace;font-size:9px;color:var(--dim)">Could not load eBay category fields.</div>'; }
+}
+
+// eBay's own "pick a category" suggestion from the current title -- lets
+// the user match eBay's real taxonomy instead of guessing/typing an ID.
+async function suggestDashboardEbayCategory(id){
+  const title = document.getElementById('dash-eb-title')?.value.trim();
+  if(!title){ toast_dash('Enter a title first'); return; }
+  toast_dash('Looking up eBay category suggestions...');
+  try {
+    const res = await storeWorkerFetch('/ebay/category-suggestions?q=' + encodeURIComponent(title));
+    const data = await res.json();
+    if(!data.ok || !data.suggestions?.length){ toast_dash('No eBay category suggestions found'); return; }
+    const pick = data.suggestions.map((s,i) => (i+1) + '. ' + s.categoryName + ' (' + s.categoryId + ')').join('\n');
+    const choice = prompt('eBay category suggestions -- enter a number to use it:\n\n' + pick);
+    const idx = parseInt(choice) - 1;
+    const sel = data.suggestions[idx];
+    if(!sel) return;
+    const catSel = document.getElementById('dash-eb-category');
+    const catIdInput = document.getElementById('dash-eb-category-id');
+    if(catSel){ catSel.value = [...catSel.options].some(o=>o.value===sel.categoryId) ? sel.categoryId : ''; }
+    if(catIdInput){ catIdInput.value = sel.categoryId; ebayCategoryIdInputChanged(catIdInput); }
+    await refreshEbayConditionUi('dash-eb', all.find(i=>i.id===id));
+    loadDashboardEbayAspects(id);
+    toast_dash('Category set to ' + sel.categoryName);
+  } catch(e) { toast_dash('Category suggestion lookup failed'); }
 }
 
 // Shared by submitDashboardEbayListing (new listing) and updateDashboardEbayListing
@@ -17884,6 +18014,10 @@ function collectDashboardEbayFormPayload(item){
       'Cover Artist':document.getElementById('dash-eb-cover-artist')?.value.trim() || '',
     },
   };
+  document.querySelectorAll('#dash-eb-dynamic-aspects [data-dyn-aspect]').forEach(el => {
+    const v = el.value.trim();
+    if(v) payload.customAspects[el.dataset.dynAspect] = v;
+  });
   return { payload };
 }
 
@@ -29342,7 +29476,15 @@ function openQuickExternal(idx, type){
   const q = [r.year,r.name,r.set,r.card_number ? '#'+r.card_number : ''].filter(Boolean).join(' ');
   if(type === 'pricecharting') {
     const exactQ = r.pricechartingQuery || q;
-    window.open(r.pricecharting?.url || r.pricecharting?.productUrl || r.productUrl || ('https://www.pricecharting.com/search-products?q=' + encodeURIComponent(exactQ)), '_blank');
+    const directUrl = r.pricecharting?.url || r.pricecharting?.productUrl || r.productUrl || '';
+    // A CardSight scan with no exact catalog match (no _cardsightCardId) means
+    // the name itself may be a misread (e.g. a misidentified player) -- a
+    // blind PriceCharting site search on that name can land on a completely
+    // unrelated product with no warning. Confirm before sending the user there.
+    if(!directUrl && r.source === 'cardsight' && !r._cardsightCardId){
+      if(!confirm('CardSight didn\'t find a confident catalog match for "' + (r.name||'this card') + '" -- the name may be misread. This will run a generic PriceCharting search, which can return an unrelated product. Continue?')) return;
+    }
+    window.open(directUrl || ('https://www.pricecharting.com/search-products?q=' + encodeURIComponent(exactQ)), '_blank');
     return;
   }
   window.open('https://www.ebay.com/sch/i.html?_nkw=' + encodeURIComponent(q) + '&LH_Sold=1&LH_Complete=1', '_blank');
@@ -36986,7 +37128,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.04.11-sports-scp-health-and-dedup"></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.04.12-ebay-taxonomy-tab-and-cardsight-guard"></script>
 </body>
 </html>
 

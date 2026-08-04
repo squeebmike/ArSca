@@ -3412,6 +3412,125 @@ export default {
       }
     }
 
+    // Taxonomy API: the same per-category Item Specifics (aspects) that
+    // eBay's own listing form uses to populate its dropdowns -- required vs
+    // recommended, free-text vs a fixed value list. App-level token only
+    // (no seller auth needed, this is public category metadata).
+    if (url.pathname === '/ebay/item-aspects') {
+      if (request.method !== 'GET') return json({ error: 'GET only' }, 405);
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId, ['owner','admin']);
+      if (auth.error) return auth.error;
+      const categoryId = (url.searchParams.get('categoryId') || '').trim();
+      if (!/^\d+$/.test(categoryId)) return json({ error: 'categoryId is required' }, 400);
+      let token = '';
+      try { token = await getEbayAppAccessToken(env); }
+      catch (tokenErr) { return json({ error: 'eBay app token unavailable: ' + tokenErr.message }, 502); }
+      if (!token) return json({ error: 'eBay app token unavailable' }, 502);
+      try {
+        const res = await fetch(`https://api.ebay.com/commerce/taxonomy/v1/category_tree/0/get_item_aspects_for_category?category_id=${encodeURIComponent(categoryId)}`, {
+          headers: { 'Authorization': 'Bearer ' + token, 'Accept-Language': 'en-US' },
+        });
+        const txt = await res.text();
+        let data; try { data = JSON.parse(txt); } catch (_) { data = { raw: txt }; }
+        if (!res.ok) {
+          const msg = data?.errors?.[0]?.longMessage || data?.errors?.[0]?.message || txt.substring(0, 300);
+          return json({ ok: false, error: 'Item aspects lookup failed (' + res.status + '): ' + msg }, res.status);
+        }
+        const aspects = (data.aspects || []).map(a => {
+          const c = a.aspectConstraint || {};
+          return {
+            name: a.localizedAspectName || '',
+            required: c.aspectRequired === true,
+            usage: c.aspectUsage || (c.aspectRequired ? 'REQUIRED' : 'RECOMMENDED'),
+            mode: c.aspectMode || 'FREE_TEXT',
+            dataType: c.aspectDataType || 'STRING',
+            maxValues: c.itemToAspectCardinality === 'MULTI' ? 0 : 1,
+            values: (a.aspectValues || []).map(v => v.localizedValue).filter(Boolean),
+          };
+        }).filter(a => a.name);
+        return json({ ok: true, categoryId, aspects });
+      } catch (e) {
+        return json({ ok: false, error: 'Item aspects lookup failed: ' + e.message }, 502);
+      }
+    }
+
+    // Taxonomy API: suggests the correct eBay category from a free-text
+    // title, same as eBay's own "pick a category" listing step.
+    if (url.pathname === '/ebay/category-suggestions') {
+      if (request.method !== 'GET') return json({ error: 'GET only' }, 405);
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId, ['owner','admin']);
+      if (auth.error) return auth.error;
+      const q = (url.searchParams.get('q') || '').trim().slice(0, 200);
+      if (!q) return json({ error: 'q is required' }, 400);
+      let token = '';
+      try { token = await getEbayAppAccessToken(env); }
+      catch (tokenErr) { return json({ error: 'eBay app token unavailable: ' + tokenErr.message }, 502); }
+      if (!token) return json({ error: 'eBay app token unavailable' }, 502);
+      try {
+        const res = await fetch(`https://api.ebay.com/commerce/taxonomy/v1/category_tree/0/get_category_suggestions?q=${encodeURIComponent(q)}`, {
+          headers: { 'Authorization': 'Bearer ' + token, 'Accept-Language': 'en-US' },
+        });
+        const txt = await res.text();
+        let data; try { data = JSON.parse(txt); } catch (_) { data = { raw: txt }; }
+        if (!res.ok) {
+          const msg = data?.errors?.[0]?.longMessage || data?.errors?.[0]?.message || txt.substring(0, 300);
+          return json({ ok: false, error: 'Category suggestions failed (' + res.status + '): ' + msg }, res.status);
+        }
+        const suggestions = (data.categorySuggestions || []).map(s => ({
+          categoryId: String(s.category?.categoryId || ''),
+          categoryName: s.category?.categoryName || '',
+        })).filter(s => s.categoryId).slice(0, 8);
+        return json({ ok: true, suggestions });
+      } catch (e) {
+        return json({ ok: false, error: 'Category suggestions failed: ' + e.message }, 502);
+      }
+    }
+
+    // Sell Account API: read-only view of the seller's configured business
+    // policies (shipping/payment/return) so the EBAY tab can show whether
+    // EBAY_FULFILLMENT_POLICY_ID/EBAY_PAYMENT_POLICY_ID/EBAY_RETURN_POLICY_ID
+    // actually resolve to something instead of listing failing silently.
+    if (url.pathname === '/ebay/business-policies') {
+      if (request.method !== 'GET') return json({ error: 'GET only' }, 405);
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId, ['owner','admin']);
+      if (auth.error) return auth.error;
+      let ebayToken = '';
+      try { ebayToken = await getEbayUserAccessToken(env); }
+      catch (tokenErr) { return json({ needsToken: true, error: tokenErr.message }, 401); }
+      if (!ebayToken) return json({ needsToken: true, error: 'Connect eBay first: missing user access/refresh token' }, 401);
+      const fetchPolicies = async (kind) => {
+        try {
+          const res = await fetch(`https://api.ebay.com/sell/account/v1/${kind}?marketplace_id=EBAY_US`, {
+            headers: { 'Authorization': 'Bearer ' + ebayToken },
+          });
+          const txt = await res.text();
+          let data; try { data = JSON.parse(txt); } catch (_) { data = {}; }
+          if (!res.ok) return { error: data?.errors?.[0]?.message || txt.substring(0, 200) };
+          return { list: data[kind + 's'] || [] };
+        } catch (e) { return { error: e.message }; }
+      };
+      const [fulfillment, payment, ret] = await Promise.all([
+        fetchPolicies('fulfillment_policy'),
+        fetchPolicies('payment_policy'),
+        fetchPolicies('return_policy'),
+      ]);
+      const summarize = (r, idKey) => r.error ? { error: r.error, policies: [] } : { policies: (r.list || []).map(p => ({ id: p[idKey], name: p.name })) };
+      return json({
+        ok: true,
+        fulfillment: summarize(fulfillment, 'fulfillmentPolicyId'),
+        payment: summarize(payment, 'paymentPolicyId'),
+        returnPolicy: summarize(ret, 'returnPolicyId'),
+        configured: {
+          fulfillmentPolicyId: env.EBAY_FULFILLMENT_POLICY_ID || '',
+          paymentPolicyId: env.EBAY_PAYMENT_POLICY_ID || '',
+          returnPolicyId: env.EBAY_RETURN_POLICY_ID || '',
+        },
+      });
+    }
+
     if (url.pathname === '/ebay/list') {
       if (request.method !== 'POST') return json({ error: 'POST only' }, 405);
       const storeId = requestStoreId(request, url);
