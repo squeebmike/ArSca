@@ -2467,6 +2467,81 @@ export default {
       });
     }
 
+    // Own-catalog card identification for Pokemon TCG / Magic: The Gathering
+    // only -- a cheaper alternative to /cardsight/identify below, reusing the
+    // same ANTHROPIC_API_KEY already configured for /anthropic/messages.
+    // Claude only extracts what's printed on the card (name/set/number/
+    // finish/etc); it never guesses a final identity or a price. The client
+    // resolves the extracted fields against the real Pokemon/MTG catalogs
+    // (searchQuickCatalog -- the same pipeline manual Research-tab search and
+    // price sync already trust) so the actual card + pricing always comes
+    // from verified catalog data, not the model's opinion.
+    if (url.pathname === '/identify/card') {
+      if (request.method !== 'POST') return json({ ok:false, error: 'POST only' }, 405);
+      if (!env.ANTHROPIC_API_KEY) return json({ ok:false, error: 'ANTHROPIC_API_KEY not set' }, 500);
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId);
+      if (auth.error) return auth.error;
+      const limited = await readJsonWithLimit(request, 6 * 1024 * 1024);
+      if (limited.error) return limited.error;
+      const body = limited.data;
+      const rawBase64 = String(body.image || '').includes(',') ? String(body.image).split(',').pop() : String(body.image || '');
+      if (!rawBase64) return json({ ok:false, error:'image is required' }, 400);
+      const rateError = await enforceUsageLimit(env, `identify-card:${storeId}:${auth.user.id}`, 60, 60);
+      if (rateError) return rateError;
+
+      const identifyPrompt = 'You are looking at a photo of one or more physical trading cards. Only Pokemon TCG and Magic: The Gathering cards are in scope -- if the photo shows a sports card, One Piece card, comic, sealed product, or anything else, return an empty "cards" array rather than guessing.\n\n'
+        + 'For each distinct Pokemon or MTG card clearly visible, extract exactly what is printed on the card -- do not guess a card you cannot actually read, and never estimate a price. Respond with strict JSON only, no markdown fences, no prose, matching this shape:\n'
+        + '{"cards":[{"game":"pokemon"|"mtg","name":"","setName":"","number":"","hp":"","manaCost":"","rarity":"","finish":"normal"|"holo"|"reverse holo"|"foil"|"etched foil"|"","specialMarkings":"","confidence":"high"|"medium"|"low"}]}\n\n'
+        + 'setName is whatever set name or set symbol you can identify (e.g. "Base Set", "Surging Sparks", "Bloomburrow"). number is the printed collector number (e.g. "4/102", "087/091"). specialMarkings covers things like a 1st Edition stamp or promo stamp. If a field is not legible, use an empty string rather than guessing.';
+
+      const res = await fetch(`${ANTHROPIC_BASE}/messages`, {
+        method: 'POST',
+        headers: {
+          'x-api-key': env.ANTHROPIC_API_KEY,
+          'anthropic-version': '2023-06-01',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'claude-haiku-4-5-20251001',
+          max_tokens: 800,
+          temperature: 0,
+          messages: [{
+            role: 'user',
+            content: [
+              { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: rawBase64 } },
+              { type: 'text', text: identifyPrompt },
+            ],
+          }],
+        }),
+      });
+      if (!res.ok) {
+        const errText = await res.text();
+        return json({ ok:false, error: 'Anthropic ' + res.status + ': ' + errText.slice(0, 300) }, res.status === 429 ? 429 : 502);
+      }
+      const anthropicData = await res.json().catch(() => ({}));
+      const textBlock = Array.isArray(anthropicData.content) ? anthropicData.content.find(b => b.type === 'text') : null;
+      const rawText = String(textBlock?.text || '').trim().replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/, '');
+      let parsedIdentify;
+      try { parsedIdentify = JSON.parse(rawText); } catch (_) { return json({ ok:false, error:'Model did not return valid JSON', raw: rawText.slice(0, 300) }, 502); }
+      const identifiedCards = (Array.isArray(parsedIdentify.cards) ? parsedIdentify.cards : [])
+        .filter(c => c && (c.game === 'pokemon' || c.game === 'mtg') && String(c.name || '').trim())
+        .slice(0, 12)
+        .map(c => ({
+          game: c.game,
+          name: String(c.name || '').trim().slice(0, 120),
+          setName: String(c.setName || '').trim().slice(0, 120),
+          number: String(c.number || '').trim().slice(0, 20),
+          hp: String(c.hp || '').trim().slice(0, 10),
+          manaCost: String(c.manaCost || '').trim().slice(0, 40),
+          rarity: String(c.rarity || '').trim().slice(0, 40),
+          finish: String(c.finish || '').trim().slice(0, 20),
+          specialMarkings: String(c.specialMarkings || '').trim().slice(0, 80),
+          confidence: ['high', 'medium', 'low'].includes(c.confidence) ? c.confidence : 'low',
+        }));
+      return json({ ok:true, success:true, cards: identifiedCards });
+    }
+
     if (url.pathname === '/cardsight/identify') {
       if (request.method !== 'POST') return json({ error: 'POST only' }, 405);
       if (!env.CARDSIGHTAI_API_KEY) return json({ error: 'CARDSIGHTAI_API_KEY not set' }, 500);
