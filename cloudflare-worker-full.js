@@ -1725,6 +1725,11 @@ async function fetchEbayActiveListings(env, query, opts = {}) {
   const appId = env.EBAY_APP_ID || await getStoredSecret(env, 'EBAY_CLIENT_ID');
   if (!appId) return { source: 'none', listings: [], warning: 'EBAY_APP_ID not set' };
   const { maxPrice = 0, sortOrder = 'BestMatch', listingType = '', limit = 5 } = opts;
+  // itemFilter(N).name -- the literal parentheses must be percent-encoded
+  // (%28/%29), matching fetchEbaySoldComps above. The Finding API silently
+  // no-ops (0 results, no error) on unencoded parens instead of rejecting
+  // the request, which made this look like "no deals exist" rather than a
+  // malformed filter.
   const params = [
     'OPERATION-NAME=findItemsByKeywords', 'SERVICE-VERSION=1.0.0',
     'SECURITY-APPNAME=' + appId, 'RESPONSE-DATA-FORMAT=JSON', 'REST-PAYLOAD',
@@ -1735,11 +1740,11 @@ async function fetchEbayActiveListings(env, query, opts = {}) {
   ];
   let filterIndex = 0;
   if (maxPrice > 0) {
-    params.push(`itemFilter(${filterIndex}).name=MaxPrice`, `itemFilter(${filterIndex}).value=${maxPrice}`, `itemFilter(${filterIndex}).paramName=Currency`, `itemFilter(${filterIndex}).paramValue=USD`);
+    params.push(`itemFilter%28${filterIndex}%29.name=MaxPrice`, `itemFilter%28${filterIndex}%29.value=${maxPrice}`, `itemFilter%28${filterIndex}%29.paramName=Currency`, `itemFilter%28${filterIndex}%29.paramValue=USD`);
     filterIndex++;
   }
   if (listingType) {
-    params.push(`itemFilter(${filterIndex}).name=ListingType`, `itemFilter(${filterIndex}).value=${listingType}`);
+    params.push(`itemFilter%28${filterIndex}%29.name=ListingType`, `itemFilter%28${filterIndex}%29.value=${listingType}`);
     filterIndex++;
   }
   const findRes = await fetch(`https://svcs.ebay.com/services/search/FindingService/v1?${params.join('&')}`);
@@ -6485,17 +6490,34 @@ export default {
       if (rateError) return rateError;
 
       const deals = [];
+      const warnings = new Set();
       let idx = 0;
+      async function runBothQueries(query, maxPrice) {
+        return Promise.all([
+          fetchEbayActiveListings(env, query, { maxPrice, sortOrder:'StartTimeNewest', limit:5 }),
+          fetchEbayActiveListings(env, query, { maxPrice, sortOrder:'EndTimeSoonest', listingType:'Auction', limit:5 }),
+        ]);
+      }
       async function dealScanWorker() {
         while (idx < cards.length) {
           const card = cards[idx++];
-          const query = [card.name, card.set].filter(Boolean).join(' ');
           const maxPrice = Math.round(card.marketPrice * (1 - thresholdPct / 100) * 100) / 100;
           if (maxPrice <= 0) continue;
-          const [freshResult, auctionResult] = await Promise.all([
-            fetchEbayActiveListings(env, query, { maxPrice, sortOrder:'StartTimeNewest', limit:5 }).catch(() => ({ listings: [] })),
-            fetchEbayActiveListings(env, query, { maxPrice, sortOrder:'EndTimeSoonest', listingType:'Auction', limit:5 }).catch(() => ({ listings: [] })),
-          ]);
+          const nameAndSetQuery = [card.name, card.set].filter(Boolean).join(' ');
+          let [freshResult, auctionResult] = await runBothQueries(nameAndSetQuery, maxPrice).catch(() => [{ listings: [] }, { listings: [] }]);
+          if (freshResult.warning) warnings.add(freshResult.warning);
+          if (auctionResult.warning) warnings.add(auctionResult.warning);
+          // The full "name + official set name" query is often too specific --
+          // eBay's keyword search is closer to an AND of every word, and
+          // seller listing titles rarely spell out the full official set
+          // name verbatim. If that combined query came back completely
+          // empty (not just below-threshold), retry with just the card name
+          // for broader recall before giving up on this card.
+          if (card.set && !freshResult.listings.length && !auctionResult.listings.length) {
+            [freshResult, auctionResult] = await runBothQueries(card.name, maxPrice).catch(() => [{ listings: [] }, { listings: [] }]);
+            if (freshResult.warning) warnings.add(freshResult.warning);
+            if (auctionResult.warning) warnings.add(auctionResult.warning);
+          }
           const seen = new Set();
           for (const listing of [...freshResult.listings, ...auctionResult.listings]) {
             if (!listing || !listing.itemId || seen.has(listing.itemId)) continue;
@@ -6514,7 +6536,12 @@ export default {
       }
       await Promise.all(Array.from({ length: Math.min(4, cards.length) }, dealScanWorker));
       deals.sort((a, b) => b.pctBelow - a.pctBelow);
-      const result = { deals, scannedCount: cards.length, scannedAt: new Date().toISOString(), thresholdPct };
+      const ebayAppAvailable = !!(env.EBAY_APP_ID || await getStoredSecret(env, 'EBAY_CLIENT_ID'));
+      const result = {
+        deals, scannedCount: cards.length, scannedAt: new Date().toISOString(), thresholdPct,
+        warnings: [...warnings].slice(0, 3),
+        needsProvider: !ebayAppAvailable,
+      };
       if (env.LBA_KV) await env.LBA_KV.put(`dealscan:${storeId}:latest`, JSON.stringify(result), { expirationTtl: 6 * 60 * 60 }).catch(() => {});
       return json({ ok:true, ...result });
     }
