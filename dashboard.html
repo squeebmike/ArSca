@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.04.09-dealscan-quality-filters">
+<meta name="version" content="2026.08.04.10-dealscan-polish-and-cron">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1541,13 +1541,13 @@ body.show-mode .inv-sync-badge{display:none;}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.04.09-dealscan-quality-filters"></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.04.09-dealscan-quality-filters"></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.04.09-dealscan-quality-filters"></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.04.09-dealscan-quality-filters"></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.04.09-dealscan-quality-filters"></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.04.09-dealscan-quality-filters"></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.04.09-dealscan-quality-filters"></script>
+<script src="scripts/query-routing.js?v=2026.08.04.10-dealscan-polish-and-cron"></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.04.10-dealscan-polish-and-cron"></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.04.10-dealscan-polish-and-cron"></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.04.10-dealscan-polish-and-cron"></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.04.10-dealscan-polish-and-cron"></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.04.10-dealscan-polish-and-cron"></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.04.10-dealscan-polish-and-cron"></script>
 </head>
 <body>
 
@@ -1597,11 +1597,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.04.09-dealscan-quality-filters</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.04.10-dealscan-polish-and-cron</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.04.09-dealscan-quality-filters</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.04.10-dealscan-polish-and-cron</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1623,7 +1623,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.04.09-dealscan-quality-filters</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.04.10-dealscan-polish-and-cron</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3118,7 +3118,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.04.09-dealscan-quality-filters';
+const APP_VERSION = '2026.08.04.10-dealscan-polish-and-cron';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -34033,6 +34033,31 @@ function sbApplyFilters(){
   _sbState.filteredCards = f;
 }
 
+// Seeds the scan controls from the persisted prefs the first time the
+// browser opens in this page session (sbScanEbayDeals keeps them in sync
+// after that) -- so MIN $/MAX %/BIN-AUCTIONS/SCOPE survive a page reload
+// instead of resetting to hardcoded defaults every time.
+function sbInitDealScanPrefs(){
+  if(_sbState.dealPrefsLoaded) return;
+  const p = getDealScanPrefs();
+  _sbState.dealMinPrice = p.minPrice; _sbState.dealThresholdPct = p.thresholdPct; _sbState.dealMaxPct = p.maxPct;
+  _sbState.dealIncludeFresh = p.includeFresh; _sbState.dealIncludeAuctions = p.includeAuctions; _sbState.dealScope = p.scope;
+  _sbState.dealPrefsLoaded = true;
+}
+// Pulls whatever the last scan found (on-demand or the scheduled cron scan)
+// out of KV so results survive closing/reopening the browser or reloading
+// the page, instead of only ever existing until the next navigation.
+async function sbLoadCachedDealScan(){
+  if(_sbState.dealScan) return;
+  try {
+    const res = await storeWorkerFetch('/dealscan/latest');
+    const data = await res.json().catch(() => ({}));
+    if(data.ok !== false && Array.isArray(data.deals) && data.scannedAt && !_sbState.dealScan){
+      _sbState.dealScan = data;
+      sbRenderContent(false);
+    }
+  } catch(e){ /* best-effort -- a fresh scan is still one tap away */ }
+}
 function openSetBrowser(){
   let modal = document.getElementById('ppsb-modal');
   if(!modal){
@@ -34044,7 +34069,9 @@ function openSetBrowser(){
     document.body.appendChild(modal);
   }
   modal.classList.add('on');
+  sbInitDealScanPrefs();
   renderSetBrowserShell();
+  sbLoadCachedDealScan();
 }
 
 function closeSetBrowser(){
@@ -34129,7 +34156,10 @@ async function sbSelectSet(){
   _sbState.sortField = 'number';
   _sbState.sortDir = 1;
   _sbState.artistCoverage = '';
-  _sbState.dealScan = null;
+  // Inventory-scope results aren't tied to whatever set happens to be open
+  // right now, so switching sets shouldn't clear them -- only a set-scoped
+  // scan goes stale when the set changes.
+  if(_sbState.dealScope !== 'inventory') _sbState.dealScan = null;
   if(setId) sessionStorage.setItem('sb_last_set_id', setId);
   sbRenderContent(true);
   try {
@@ -34245,6 +34275,19 @@ function sbToggleFilters(){
 // below each card's known market price -- fresh listings the seller hasn't
 // priced to market yet, and auctions about to close still under value. Not
 // sold-comp history; this is "can I buy one right now."
+// Shared by both the Pokemon and MTG Set Browsers -- these settings used to
+// live only in _sbState/_mtgsbState (in-memory), so they reset on every
+// page reload. Persisted here instead.
+function getDealScanPrefs(){
+  const defaults = { minPrice:10, thresholdPct:25, maxPct:55, includeFresh:true, includeAuctions:true, scope:'set' };
+  try { return { ...defaults, ...JSON.parse(localStorage.getItem('dealscan_prefs_v1') || '{}') }; }
+  catch(e){ return defaults; }
+}
+function saveDealScanPrefs(patch){
+  const next = { ...getDealScanPrefs(), ...patch };
+  localStorage.setItem('dealscan_prefs_v1', JSON.stringify(next));
+  return next;
+}
 function ebayListingEndsSoonLabel(endTime){
   if(!endTime) return '';
   const ms = new Date(endTime).getTime() - Date.now();
@@ -34255,34 +34298,48 @@ function ebayListingEndsSoonLabel(endTime){
   return Math.round(hours/24) + 'd left';
 }
 
+// Inventory-wide candidates -- every in-stock Pokemon TCG item, any set,
+// highest market value first -- used when SCOPE is set to MY INVENTORY
+// instead of the currently-open set. Reuses the exact same "in_stock only"
+// rule the Set Browser's own OWNED badge uses.
+function sbInventoryDealCandidates(){
+  return (Array.isArray(all) ? all : [])
+    .filter(i => i.status === 'in_stock' && qplCategoryKey(i.category) === 'pokemon' && Number(i.market) > 0)
+    .map(i => ({ name:i.name, set:i.set || i.setName || '', marketPrice:Number(i.market), imageUrl:inventoryImageUrl(i), cardId:String(i.id || i.tcgPlayerId || '') }));
+}
+
 async function sbScanEbayDeals(){
   const thresholdPct = Math.min(90, Math.max(5, Number(document.getElementById('ppsb-deal-threshold')?.value) || 25));
   const maxPct = Math.min(95, Math.max(thresholdPct, Number(document.getElementById('ppsb-deal-max-pct')?.value) || 55));
   const minPrice = Math.max(0, Number(document.getElementById('ppsb-deal-min-price')?.value) || 0);
   const includeFresh = !!document.getElementById('ppsb-deal-include-fresh')?.checked;
   const includeAuctions = !!document.getElementById('ppsb-deal-include-auctions')?.checked;
+  const scope = document.getElementById('ppsb-deal-scope')?.value === 'inventory' ? 'inventory' : 'set';
   if(!includeFresh && !includeAuctions){ toast_dash('Check at least one of NEW/BIN or AUCTIONS to scan.'); return; }
   _sbState.dealThresholdPct = thresholdPct;
   _sbState.dealMaxPct = maxPct;
   _sbState.dealMinPrice = minPrice;
   _sbState.dealIncludeFresh = includeFresh;
   _sbState.dealIncludeAuctions = includeAuctions;
+  _sbState.dealScope = scope;
+  saveDealScanPrefs({ minPrice, thresholdPct, maxPct, includeFresh, includeAuctions, scope });
   // MIN $ keeps low-value cards out of the scan entirely -- a 30%-below-
   // market "deal" on a $2 card saves 60 cents and isn't worth chasing, and
   // was drowning out the deals that actually matter. MAX % rejects claimed
   // discounts past a plausible range -- 90%+ off is almost always a wrong-
   // item match or a scam/bait listing, not a real deal.
-  const candidates = (_sbState.filteredCards || [])
+  const sourceCards = scope === 'inventory' ? sbInventoryDealCandidates() : (_sbState.filteredCards || []).map(c => ({ name:c.name, set:c.setName, marketPrice:c.marketPrice, imageUrl:c.imageUrl, cardId:String(c.id || c.tcgPlayerId || '') }));
+  const candidates = sourceCards
     .filter(c => Number(c.marketPrice) > 0 && Number(c.marketPrice) >= minPrice)
-    .map(c => ({ name:c.name, set:c.setName, marketPrice:c.marketPrice, imageUrl:c.imageUrl, cardId:String(c.id || c.tcgPlayerId || '') }));
-  if(!candidates.length){ toast_dash('No cards priced $' + minPrice.toFixed(2) + '+ in the current filter to scan — adjust filters/price range or lower MIN $.'); return; }
+    .sort((a, b) => b.marketPrice - a.marketPrice);
+  if(!candidates.length){ toast_dash(scope === 'inventory' ? ('No in-stock Pokemon priced $' + minPrice.toFixed(2) + '+ to scan — lower MIN $.') : ('No cards priced $' + minPrice.toFixed(2) + '+ in the current filter to scan — adjust filters/price range or lower MIN $.')); return; }
   const btn = document.getElementById('ppsb-deal-scan-btn');
   if(btn){ btn.disabled = true; btn.textContent = '⟳ SCANNING…'; }
   try {
     const res = await storeWorkerFetch('/dealscan/check', {
       method: 'POST',
       headers: { 'Content-Type':'application/json' },
-      body: JSON.stringify({ cards: candidates.slice(0, 25), thresholdPct, maxPct, includeFresh, includeAuctions }),
+      body: JSON.stringify({ cards: candidates.slice(0, 25), thresholdPct, maxPct, includeFresh, includeAuctions, scanScope:scope }),
     });
     const data = await res.json().catch(() => ({}));
     if(!res.ok || data.ok === false) throw new Error(data.error || ('HTTP '+res.status));
@@ -34304,13 +34361,18 @@ function dealScanWarningHtml(scan){
 function dealScanRangeLabel(scan){
   return scan.maxPct ? (scan.thresholdPct + '-' + scan.maxPct + '%') : (scan.thresholdPct + '%+');
 }
+function dealScanScopeLabel(scan){
+  if(scan.scanScope === 'inventory') return 'my inventory';
+  if(scan.scanScope === 'inventory-scheduled') return 'my inventory, auto-scanned';
+  return 'this set';
+}
 function sbRenderDealScanPanel(){
   const scan = _sbState.dealScan;
   if(!scan) return '';
   const deals = scan.deals || [];
-  if(!deals.length) return dealScanWarningHtml(scan) || `<div class="ppsb-empty" style="margin:8px 0;font-size:10px">No listings found ${dealScanRangeLabel(scan)} below market as of ${new Date(scan.scannedAt).toLocaleTimeString()}. Try again later or widen the range.</div>`;
+  if(!deals.length) return dealScanWarningHtml(scan) || `<div class="ppsb-empty" style="margin:8px 0;font-size:10px">No listings found ${dealScanRangeLabel(scan)} below market (${escHtml(dealScanScopeLabel(scan))}) as of ${new Date(scan.scannedAt).toLocaleTimeString()}. Try again later or widen the range.</div>`;
   return `<div style="margin:8px 0;display:grid;gap:6px">
-    <div style="font-family:monospace;font-size:9px;color:var(--dim)">${deals.length} listing${deals.length>1?'s':''} found ${dealScanRangeLabel(scan)} below market · scanned ${new Date(scan.scannedAt).toLocaleTimeString()}</div>
+    <div style="font-family:monospace;font-size:9px;color:var(--dim)">${deals.length} listing${deals.length>1?'s':''} found ${dealScanRangeLabel(scan)} below market · ${escHtml(dealScanScopeLabel(scan))} · scanned ${new Date(scan.scannedAt).toLocaleTimeString()}</div>
     ${deals.map(d => `<div style="display:flex;gap:10px;align-items:center;padding:8px;border:1px solid rgba(255,209,102,.35);border-radius:8px;background:rgba(255,209,102,.05)">
       ${d.listingImageUrl?`<img src="${escHtml(d.listingImageUrl)}" alt="" style="width:44px;height:60px;object-fit:cover;border-radius:4px;flex-shrink:0">`:''}
       <div style="flex:1;min-width:0">
@@ -34593,6 +34655,7 @@ function sbRenderContent(loading){
         ${!isSwipe?`SORT: ${sortBtn('number','#')} ${sortBtn('price','PRICE')} ${sortBtn('name','NAME')} ${sortBtn('rarity','RARITY')} ${sortBtn('artist','ARTIST')} ${sortBtn('owned','OWNED')} ${sortBtn('missing','MISSING')}`:''}
         <button class="hbtn ppsb-sort-btn ppsb-filter-toggle" onclick="sbToggleFilters()">FILTERS${hasFilter?' *':''}</button>
         <button class="hbtn ppsb-sort-btn" style="margin-left:4px;border-color:rgba(0,255,179,.4);color:var(--g)" onclick="sbToggleView()">${viewLabel}</button>
+        <label style="display:flex;align-items:center;gap:4px;font-family:monospace;font-size:9px;color:var(--dim);margin-left:6px">SCOPE<select id="ppsb-deal-scope" style="background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:2px 4px;border-radius:4px"><option value="set" ${(_sbState.dealScope||'set')==='set'?'selected':''}>THIS SET</option><option value="inventory" ${_sbState.dealScope==='inventory'?'selected':''}>MY INVENTORY</option></select></label>
         <label style="display:flex;align-items:center;gap:4px;font-family:monospace;font-size:9px;color:var(--dim);margin-left:6px">MIN $<input type="number" id="ppsb-deal-min-price" value="${escHtml(String(_sbState.dealMinPrice??10))}" min="0" step="1" style="width:44px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:2px 4px;border-radius:4px"></label>
         <label style="display:flex;align-items:center;gap:4px;font-family:monospace;font-size:9px;color:var(--dim);margin-left:6px">% BELOW: MIN<input type="number" id="ppsb-deal-threshold" value="${escHtml(String(_sbState.dealThresholdPct||25))}" min="5" max="90" style="width:40px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:2px 4px;border-radius:4px">MAX<input type="number" id="ppsb-deal-max-pct" value="${escHtml(String(_sbState.dealMaxPct??55))}" min="5" max="95" style="width:40px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:2px 4px;border-radius:4px" title="Claims above this are almost always a wrong-item match (keychains, stickers, customs) or a scam/bait listing, not a real deal"></label>
         <label style="display:flex;align-items:center;gap:4px;font-family:monospace;font-size:9px;color:var(--dim);margin-left:6px"><input type="checkbox" id="ppsb-deal-include-fresh" ${_sbState.dealIncludeFresh!==false?'checked':''}>NEW/BIN</label>
@@ -35016,6 +35079,7 @@ function mtgsbRenderContent(loading){
         ${view==='table'?`<label style="display:flex;align-items:center;gap:5px;font-family:monospace;font-size:9px;color:var(--dim);margin-left:8px">IMG<input type="range" min="54" max="220" step="6" value="${_mtgsbState.tableImgSize || 84}" style="width:90px;accent-color:#5ba3f5;cursor:pointer" oninput="mtgsbSetTableImgSize(this.value)"></label>`:''}
         <button id="mtsb-cache-images" class="hbtn" ${_mtgsbState.imageCacheProgress?'disabled':''} onclick="mtgsbCacheSelectedSetImages()">${_mtgsbState.imageCacheProgress?`IMAGES ${_mtgsbState.imageCacheProgress.done}/${_mtgsbState.imageCacheProgress.total}`:`CACHE SET IMAGES (${_mtgsbState.cachedImageUrls.size})`}</button>
         <button class="hbtn mtsb-sort-btn mtsb-filter-toggle" onclick="mtgsbToggleMobileFilters()">FILTERS</button>
+        <label style="display:flex;align-items:center;gap:4px;font-family:monospace;font-size:9px;color:var(--dim);margin-left:6px">SCOPE<select id="mtsb-deal-scope" style="background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:2px 4px;border-radius:4px"><option value="set" ${(_mtgsbState.dealScope||'set')==='set'?'selected':''}>THIS SET</option><option value="inventory" ${_mtgsbState.dealScope==='inventory'?'selected':''}>MY INVENTORY</option></select></label>
         <label style="display:flex;align-items:center;gap:4px;font-family:monospace;font-size:9px;color:var(--dim);margin-left:6px">MIN $<input type="number" id="mtsb-deal-min-price" value="${escHtml(String(_mtgsbState.dealMinPrice??10))}" min="0" step="1" style="width:44px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:2px 4px;border-radius:4px"></label>
         <label style="display:flex;align-items:center;gap:4px;font-family:monospace;font-size:9px;color:var(--dim);margin-left:6px">% BELOW: MIN<input type="number" id="mtsb-deal-threshold" value="${escHtml(String(_mtgsbState.dealThresholdPct||25))}" min="5" max="90" style="width:40px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:2px 4px;border-radius:4px">MAX<input type="number" id="mtsb-deal-max-pct" value="${escHtml(String(_mtgsbState.dealMaxPct??55))}" min="5" max="95" style="width:40px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:2px 4px;border-radius:4px" title="Claims above this are almost always a wrong-item match (keychains, stickers, customs) or a scam/bait listing, not a real deal"></label>
         <label style="display:flex;align-items:center;gap:4px;font-family:monospace;font-size:9px;color:var(--dim);margin-left:6px"><input type="checkbox" id="mtsb-deal-include-fresh" ${_mtgsbState.dealIncludeFresh!==false?'checked':''}>NEW/BIN</label>
@@ -35120,6 +35184,30 @@ function mtgsbRenderContent(loading){
   content.innerHTML = toolbar + `<div class="mtsb-cards-area${view==='table'?' mtsb-table-mode':''}" style="--mtsb-card-min:${cardSize}px">${cardsHtml}</div>`;
 }
 
+// Seeds the scan controls from the persisted prefs the first time the
+// browser opens in this page session -- mirrors sbInitDealScanPrefs (see
+// Pokemon Set Browser) using the same shared dealscan_prefs_v1 key.
+function mtgsbInitDealScanPrefs(){
+  if(_mtgsbState.dealPrefsLoaded) return;
+  const p = getDealScanPrefs();
+  _mtgsbState.dealMinPrice = p.minPrice; _mtgsbState.dealThresholdPct = p.thresholdPct; _mtgsbState.dealMaxPct = p.maxPct;
+  _mtgsbState.dealIncludeFresh = p.includeFresh; _mtgsbState.dealIncludeAuctions = p.includeAuctions; _mtgsbState.dealScope = p.scope;
+  _mtgsbState.dealPrefsLoaded = true;
+}
+// Mirrors sbLoadCachedDealScan (Pokemon Set Browser) -- pulls the last scan
+// out of KV so results survive closing/reopening the browser or reloading
+// the page.
+async function mtgsbLoadCachedDealScan(){
+  if(_mtgsbState.dealScan) return;
+  try {
+    const res = await storeWorkerFetch('/dealscan/latest');
+    const data = await res.json().catch(() => ({}));
+    if(data.ok !== false && Array.isArray(data.deals) && data.scannedAt && !_mtgsbState.dealScan){
+      _mtgsbState.dealScan = data;
+      mtgsbRenderContent(false);
+    }
+  } catch(e){ /* best-effort -- a fresh scan is still one tap away */ }
+}
 function openMtgSetBrowser(){
   let modal = document.getElementById('mtsb-modal');
   if(!modal){
@@ -35131,7 +35219,9 @@ function openMtgSetBrowser(){
     document.body.appendChild(modal);
   }
   modal.classList.add('on');
+  mtgsbInitDealScanPrefs();
   renderMtgSetBrowserShell();
+  mtgsbLoadCachedDealScan();
 }
 
 function closeMtgSetBrowser(){
@@ -35211,7 +35301,10 @@ async function mtgsbSelectSet(){
   _mtgsbState.filters = { name:'', artist:'', rarity:'', color:'', minPrice:'', maxPrice:'', owned:false, missing:false };
   _mtgsbState.sortField = 'number';
   _mtgsbState.sortDir = 1;
-  _mtgsbState.dealScan = null;
+  // Inventory-scope results aren't tied to whatever set happens to be open
+  // right now, so switching sets shouldn't clear them -- only a set-scoped
+  // scan goes stale when the set changes.
+  if(_mtgsbState.dealScope !== 'inventory') _mtgsbState.dealScan = null;
   sessionStorage.setItem('mtsb_last_set_code', setCode);
   mtgsbRenderContent(true);
   try {
@@ -35261,6 +35354,16 @@ function mtgsbClearFilters(){
   mtgsbRenderContent(false);
 }
 
+// Inventory-wide candidates -- every in-stock MTG item, any set, highest
+// market value first -- used when SCOPE is set to MY INVENTORY instead of
+// the currently-open set. Reuses the exact same "in_stock only" rule the
+// Set Browser's own OWNED badge uses.
+function mtgsbInventoryDealCandidates(){
+  return (Array.isArray(all) ? all : [])
+    .filter(i => i.status === 'in_stock' && qplCategoryKey(i.category) === 'mtg' && Number(i.market) > 0)
+    .map(i => ({ name:i.name, set:i.set || i.setName || '', marketPrice:Number(i.market), imageUrl:inventoryImageUrl(i), cardId:String(i.id || '') }));
+}
+
 // Same deal scanner as the Pokemon Set Browser (sbScanEbayDeals) -- takes
 // the set/price-range filter already applied above (_mtgsbState.filteredCards)
 // and checks eBay for active listings priced well below each card's known
@@ -35271,28 +35374,32 @@ async function mtgsbScanEbayDeals(){
   const minPrice = Math.max(0, Number(document.getElementById('mtsb-deal-min-price')?.value) || 0);
   const includeFresh = !!document.getElementById('mtsb-deal-include-fresh')?.checked;
   const includeAuctions = !!document.getElementById('mtsb-deal-include-auctions')?.checked;
+  const scope = document.getElementById('mtsb-deal-scope')?.value === 'inventory' ? 'inventory' : 'set';
   if(!includeFresh && !includeAuctions){ toast_dash('Check at least one of NEW/BIN or AUCTIONS to scan.'); return; }
   _mtgsbState.dealThresholdPct = thresholdPct;
   _mtgsbState.dealMaxPct = maxPct;
   _mtgsbState.dealMinPrice = minPrice;
   _mtgsbState.dealIncludeFresh = includeFresh;
   _mtgsbState.dealIncludeAuctions = includeAuctions;
+  _mtgsbState.dealScope = scope;
+  saveDealScanPrefs({ minPrice, thresholdPct, maxPct, includeFresh, includeAuctions, scope });
   // MIN $ keeps low-value cards out of the scan entirely -- a 30%-below-
   // market "deal" on a $2 card saves 60 cents and isn't worth chasing, and
   // was drowning out the deals that actually matter. MAX % rejects claimed
   // discounts past a plausible range -- 90%+ off is almost always a wrong-
   // item match or a scam/bait listing, not a real deal.
-  const candidates = (_mtgsbState.filteredCards || [])
-    .filter(c => Number(c.prices?.usd) > 0 && Number(c.prices.usd) >= minPrice)
-    .map(c => ({ name:c.name, set:c.set_name, marketPrice:Number(c.prices.usd), imageUrl:mtgsbCardImgSrc(c), cardId:String(c.id || '') }));
-  if(!candidates.length){ toast_dash('No cards priced $' + minPrice.toFixed(2) + '+ in the current filter to scan — adjust filters/price range or lower MIN $.'); return; }
+  const sourceCards = scope === 'inventory' ? mtgsbInventoryDealCandidates() : (_mtgsbState.filteredCards || []).map(c => ({ name:c.name, set:c.set_name, marketPrice:Number(c.prices?.usd || 0), imageUrl:mtgsbCardImgSrc(c), cardId:String(c.id || '') }));
+  const candidates = sourceCards
+    .filter(c => Number(c.marketPrice) > 0 && Number(c.marketPrice) >= minPrice)
+    .sort((a, b) => b.marketPrice - a.marketPrice);
+  if(!candidates.length){ toast_dash(scope === 'inventory' ? ('No in-stock MTG priced $' + minPrice.toFixed(2) + '+ to scan — lower MIN $.') : ('No cards priced $' + minPrice.toFixed(2) + '+ in the current filter to scan — adjust filters/price range or lower MIN $.')); return; }
   const btn = document.getElementById('mtsb-deal-scan-btn');
   if(btn){ btn.disabled = true; btn.textContent = '⟳ SCANNING…'; }
   try {
     const res = await storeWorkerFetch('/dealscan/check', {
       method: 'POST',
       headers: { 'Content-Type':'application/json' },
-      body: JSON.stringify({ cards: candidates.slice(0, 25), thresholdPct, maxPct, includeFresh, includeAuctions }),
+      body: JSON.stringify({ cards: candidates.slice(0, 25), thresholdPct, maxPct, includeFresh, includeAuctions, scanScope:scope }),
     });
     const data = await res.json().catch(() => ({}));
     if(!res.ok || data.ok === false) throw new Error(data.error || ('HTTP '+res.status));
@@ -35310,9 +35417,9 @@ function mtgsbRenderDealScanPanel(){
   const scan = _mtgsbState.dealScan;
   if(!scan) return '';
   const deals = scan.deals || [];
-  if(!deals.length) return dealScanWarningHtml(scan) || `<div class="mtsb-empty" style="margin:8px 0;font-size:10px">No listings found ${dealScanRangeLabel(scan)} below market as of ${new Date(scan.scannedAt).toLocaleTimeString()}. Try again later or widen the range.</div>`;
+  if(!deals.length) return dealScanWarningHtml(scan) || `<div class="mtsb-empty" style="margin:8px 0;font-size:10px">No listings found ${dealScanRangeLabel(scan)} below market (${escHtml(dealScanScopeLabel(scan))}) as of ${new Date(scan.scannedAt).toLocaleTimeString()}. Try again later or widen the range.</div>`;
   return `<div style="margin:8px 0;display:grid;gap:6px">
-    <div style="font-family:monospace;font-size:9px;color:var(--dim)">${deals.length} listing${deals.length>1?'s':''} found ${dealScanRangeLabel(scan)} below market · scanned ${new Date(scan.scannedAt).toLocaleTimeString()}</div>
+    <div style="font-family:monospace;font-size:9px;color:var(--dim)">${deals.length} listing${deals.length>1?'s':''} found ${dealScanRangeLabel(scan)} below market · ${escHtml(dealScanScopeLabel(scan))} · scanned ${new Date(scan.scannedAt).toLocaleTimeString()}</div>
     ${deals.map(d => `<div style="display:flex;gap:10px;align-items:center;padding:8px;border:1px solid rgba(255,209,102,.35);border-radius:8px;background:rgba(255,209,102,.05)">
       ${d.listingImageUrl?`<img src="${escHtml(d.listingImageUrl)}" alt="" style="width:44px;height:60px;object-fit:cover;border-radius:4px;flex-shrink:0">`:''}
       <div style="flex:1;min-width:0">
@@ -36899,7 +37006,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.04.09-dealscan-quality-filters"></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.04.10-dealscan-polish-and-cron"></script>
 </body>
 </html>
 

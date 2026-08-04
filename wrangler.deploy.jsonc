@@ -17,5 +17,8 @@
       "binding": "MTG_CATALOG_R2",
       "bucket_name": "arsca-offline-catalogs"
     }
-  ]
+  ],
+  "triggers": {
+    "crons": ["0 */6 * * *"]
+  }
 }
