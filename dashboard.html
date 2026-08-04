@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.04.08-dealscan-min-price-and-ebay-sort">
+<meta name="version" content="2026.08.04.09-dealscan-quality-filters">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1541,13 +1541,13 @@ body.show-mode .inv-sync-badge{display:none;}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.04.08-dealscan-min-price-and-ebay-sort"></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.04.08-dealscan-min-price-and-ebay-sort"></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.04.08-dealscan-min-price-and-ebay-sort"></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.04.08-dealscan-min-price-and-ebay-sort"></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.04.08-dealscan-min-price-and-ebay-sort"></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.04.08-dealscan-min-price-and-ebay-sort"></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.04.08-dealscan-min-price-and-ebay-sort"></script>
+<script src="scripts/query-routing.js?v=2026.08.04.09-dealscan-quality-filters"></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.04.09-dealscan-quality-filters"></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.04.09-dealscan-quality-filters"></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.04.09-dealscan-quality-filters"></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.04.09-dealscan-quality-filters"></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.04.09-dealscan-quality-filters"></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.04.09-dealscan-quality-filters"></script>
 </head>
 <body>
 
@@ -1597,11 +1597,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.04.08-dealscan-min-price-and-ebay-sort</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.04.09-dealscan-quality-filters</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.04.08-dealscan-min-price-and-ebay-sort</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.04.09-dealscan-quality-filters</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1623,7 +1623,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.04.08-dealscan-min-price-and-ebay-sort</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.04.09-dealscan-quality-filters</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3118,7 +3118,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.04.08-dealscan-min-price-and-ebay-sort';
+const APP_VERSION = '2026.08.04.09-dealscan-quality-filters';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -34257,12 +34257,21 @@ function ebayListingEndsSoonLabel(endTime){
 
 async function sbScanEbayDeals(){
   const thresholdPct = Math.min(90, Math.max(5, Number(document.getElementById('ppsb-deal-threshold')?.value) || 25));
+  const maxPct = Math.min(95, Math.max(thresholdPct, Number(document.getElementById('ppsb-deal-max-pct')?.value) || 55));
   const minPrice = Math.max(0, Number(document.getElementById('ppsb-deal-min-price')?.value) || 0);
+  const includeFresh = !!document.getElementById('ppsb-deal-include-fresh')?.checked;
+  const includeAuctions = !!document.getElementById('ppsb-deal-include-auctions')?.checked;
+  if(!includeFresh && !includeAuctions){ toast_dash('Check at least one of NEW/BIN or AUCTIONS to scan.'); return; }
   _sbState.dealThresholdPct = thresholdPct;
+  _sbState.dealMaxPct = maxPct;
   _sbState.dealMinPrice = minPrice;
+  _sbState.dealIncludeFresh = includeFresh;
+  _sbState.dealIncludeAuctions = includeAuctions;
   // MIN $ keeps low-value cards out of the scan entirely -- a 30%-below-
   // market "deal" on a $2 card saves 60 cents and isn't worth chasing, and
-  // was drowning out the deals that actually matter.
+  // was drowning out the deals that actually matter. MAX % rejects claimed
+  // discounts past a plausible range -- 90%+ off is almost always a wrong-
+  // item match or a scam/bait listing, not a real deal.
   const candidates = (_sbState.filteredCards || [])
     .filter(c => Number(c.marketPrice) > 0 && Number(c.marketPrice) >= minPrice)
     .map(c => ({ name:c.name, set:c.setName, marketPrice:c.marketPrice, imageUrl:c.imageUrl, cardId:String(c.id || c.tcgPlayerId || '') }));
@@ -34273,12 +34282,12 @@ async function sbScanEbayDeals(){
     const res = await storeWorkerFetch('/dealscan/check', {
       method: 'POST',
       headers: { 'Content-Type':'application/json' },
-      body: JSON.stringify({ cards: candidates.slice(0, 25), thresholdPct }),
+      body: JSON.stringify({ cards: candidates.slice(0, 25), thresholdPct, maxPct, includeFresh, includeAuctions }),
     });
     const data = await res.json().catch(() => ({}));
     if(!res.ok || data.ok === false) throw new Error(data.error || ('HTTP '+res.status));
     _sbState.dealScan = data;
-    toast_dash(data.deals.length ? (data.deals.length + ' deal' + (data.deals.length>1?'s':'') + ' found!') : ('No listings found ' + thresholdPct + '%+ below market right now.'));
+    toast_dash(data.deals.length ? (data.deals.length + ' deal' + (data.deals.length>1?'s':'') + ' found!') : ('No listings found ' + thresholdPct + '-' + maxPct + '% below market right now.'));
     sbRenderContent(false);
   } catch(e){
     toast_dash('Deal scan failed: ' + e.message);
@@ -34292,13 +34301,16 @@ function dealScanWarningHtml(scan){
   if((scan.warnings||[]).length) return `<div class="ppsb-empty" style="margin:8px 0;font-size:10px;color:var(--gold)">eBay returned a warning: ${escHtml(scan.warnings.join(' / '))}</div>`;
   return '';
 }
+function dealScanRangeLabel(scan){
+  return scan.maxPct ? (scan.thresholdPct + '-' + scan.maxPct + '%') : (scan.thresholdPct + '%+');
+}
 function sbRenderDealScanPanel(){
   const scan = _sbState.dealScan;
   if(!scan) return '';
   const deals = scan.deals || [];
-  if(!deals.length) return dealScanWarningHtml(scan) || `<div class="ppsb-empty" style="margin:8px 0;font-size:10px">No listings found ${scan.thresholdPct}%+ below market as of ${new Date(scan.scannedAt).toLocaleTimeString()}. Try again later or widen the price range.</div>`;
+  if(!deals.length) return dealScanWarningHtml(scan) || `<div class="ppsb-empty" style="margin:8px 0;font-size:10px">No listings found ${dealScanRangeLabel(scan)} below market as of ${new Date(scan.scannedAt).toLocaleTimeString()}. Try again later or widen the range.</div>`;
   return `<div style="margin:8px 0;display:grid;gap:6px">
-    <div style="font-family:monospace;font-size:9px;color:var(--dim)">${deals.length} listing${deals.length>1?'s':''} found ${scan.thresholdPct}%+ below market · scanned ${new Date(scan.scannedAt).toLocaleTimeString()}</div>
+    <div style="font-family:monospace;font-size:9px;color:var(--dim)">${deals.length} listing${deals.length>1?'s':''} found ${dealScanRangeLabel(scan)} below market · scanned ${new Date(scan.scannedAt).toLocaleTimeString()}</div>
     ${deals.map(d => `<div style="display:flex;gap:10px;align-items:center;padding:8px;border:1px solid rgba(255,209,102,.35);border-radius:8px;background:rgba(255,209,102,.05)">
       ${d.listingImageUrl?`<img src="${escHtml(d.listingImageUrl)}" alt="" style="width:44px;height:60px;object-fit:cover;border-radius:4px;flex-shrink:0">`:''}
       <div style="flex:1;min-width:0">
@@ -34582,7 +34594,9 @@ function sbRenderContent(loading){
         <button class="hbtn ppsb-sort-btn ppsb-filter-toggle" onclick="sbToggleFilters()">FILTERS${hasFilter?' *':''}</button>
         <button class="hbtn ppsb-sort-btn" style="margin-left:4px;border-color:rgba(0,255,179,.4);color:var(--g)" onclick="sbToggleView()">${viewLabel}</button>
         <label style="display:flex;align-items:center;gap:4px;font-family:monospace;font-size:9px;color:var(--dim);margin-left:6px">MIN $<input type="number" id="ppsb-deal-min-price" value="${escHtml(String(_sbState.dealMinPrice??10))}" min="0" step="1" style="width:44px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:2px 4px;border-radius:4px"></label>
-        <label style="display:flex;align-items:center;gap:4px;font-family:monospace;font-size:9px;color:var(--dim);margin-left:6px">% BELOW MARKET<input type="number" id="ppsb-deal-threshold" value="${escHtml(String(_sbState.dealThresholdPct||25))}" min="5" max="90" style="width:44px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:2px 4px;border-radius:4px"></label>
+        <label style="display:flex;align-items:center;gap:4px;font-family:monospace;font-size:9px;color:var(--dim);margin-left:6px">% BELOW: MIN<input type="number" id="ppsb-deal-threshold" value="${escHtml(String(_sbState.dealThresholdPct||25))}" min="5" max="90" style="width:40px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:2px 4px;border-radius:4px">MAX<input type="number" id="ppsb-deal-max-pct" value="${escHtml(String(_sbState.dealMaxPct??55))}" min="5" max="95" style="width:40px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:2px 4px;border-radius:4px" title="Claims above this are almost always a wrong-item match (keychains, stickers, customs) or a scam/bait listing, not a real deal"></label>
+        <label style="display:flex;align-items:center;gap:4px;font-family:monospace;font-size:9px;color:var(--dim);margin-left:6px"><input type="checkbox" id="ppsb-deal-include-fresh" ${_sbState.dealIncludeFresh!==false?'checked':''}>NEW/BIN</label>
+        <label style="display:flex;align-items:center;gap:4px;font-family:monospace;font-size:9px;color:var(--dim)"><input type="checkbox" id="ppsb-deal-include-auctions" ${_sbState.dealIncludeAuctions!==false?'checked':''}>AUCTIONS</label>
         <button class="hbtn ppsb-sort-btn" id="ppsb-deal-scan-btn" style="border-color:rgba(255,209,102,.5);color:var(--gold)" onclick="sbScanEbayDeals()">💰 SCAN EBAY FOR DEALS</button>
         ${!isSwipe&&!isTable?`<label style="display:flex;align-items:center;gap:4px;font-family:monospace;font-size:9px;color:var(--dim);margin-left:6px">SIZE<input type="range" min="220" max="520" step="20" value="${cardSize}" style="width:90px;accent-color:var(--g);cursor:pointer" oninput="sbSetCardSize(this.value)"></label>`:''}
         ${isTable?`<label style="display:flex;align-items:center;gap:4px;font-family:monospace;font-size:9px;color:var(--dim);margin-left:6px">IMG<input type="range" min="54" max="220" step="6" value="${tableImgSz}" style="width:90px;accent-color:var(--g);cursor:pointer" oninput="sbSetTableImgSize(this.value)"></label>`:''}
@@ -35003,7 +35017,9 @@ function mtgsbRenderContent(loading){
         <button id="mtsb-cache-images" class="hbtn" ${_mtgsbState.imageCacheProgress?'disabled':''} onclick="mtgsbCacheSelectedSetImages()">${_mtgsbState.imageCacheProgress?`IMAGES ${_mtgsbState.imageCacheProgress.done}/${_mtgsbState.imageCacheProgress.total}`:`CACHE SET IMAGES (${_mtgsbState.cachedImageUrls.size})`}</button>
         <button class="hbtn mtsb-sort-btn mtsb-filter-toggle" onclick="mtgsbToggleMobileFilters()">FILTERS</button>
         <label style="display:flex;align-items:center;gap:4px;font-family:monospace;font-size:9px;color:var(--dim);margin-left:6px">MIN $<input type="number" id="mtsb-deal-min-price" value="${escHtml(String(_mtgsbState.dealMinPrice??10))}" min="0" step="1" style="width:44px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:2px 4px;border-radius:4px"></label>
-        <label style="display:flex;align-items:center;gap:4px;font-family:monospace;font-size:9px;color:var(--dim);margin-left:6px">% BELOW MARKET<input type="number" id="mtsb-deal-threshold" value="${escHtml(String(_mtgsbState.dealThresholdPct||25))}" min="5" max="90" style="width:44px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:2px 4px;border-radius:4px"></label>
+        <label style="display:flex;align-items:center;gap:4px;font-family:monospace;font-size:9px;color:var(--dim);margin-left:6px">% BELOW: MIN<input type="number" id="mtsb-deal-threshold" value="${escHtml(String(_mtgsbState.dealThresholdPct||25))}" min="5" max="90" style="width:40px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:2px 4px;border-radius:4px">MAX<input type="number" id="mtsb-deal-max-pct" value="${escHtml(String(_mtgsbState.dealMaxPct??55))}" min="5" max="95" style="width:40px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:2px 4px;border-radius:4px" title="Claims above this are almost always a wrong-item match (keychains, stickers, customs) or a scam/bait listing, not a real deal"></label>
+        <label style="display:flex;align-items:center;gap:4px;font-family:monospace;font-size:9px;color:var(--dim);margin-left:6px"><input type="checkbox" id="mtsb-deal-include-fresh" ${_mtgsbState.dealIncludeFresh!==false?'checked':''}>NEW/BIN</label>
+        <label style="display:flex;align-items:center;gap:4px;font-family:monospace;font-size:9px;color:var(--dim)"><input type="checkbox" id="mtsb-deal-include-auctions" ${_mtgsbState.dealIncludeAuctions!==false?'checked':''}>AUCTIONS</label>
         <button class="hbtn mtsb-sort-btn" id="mtsb-deal-scan-btn" style="border-color:rgba(255,209,102,.5);color:var(--gold)" onclick="mtgsbScanEbayDeals()">💰 SCAN EBAY FOR DEALS</button>
       </div>
     </div>
@@ -35251,12 +35267,21 @@ function mtgsbClearFilters(){
 // market price.
 async function mtgsbScanEbayDeals(){
   const thresholdPct = Math.min(90, Math.max(5, Number(document.getElementById('mtsb-deal-threshold')?.value) || 25));
+  const maxPct = Math.min(95, Math.max(thresholdPct, Number(document.getElementById('mtsb-deal-max-pct')?.value) || 55));
   const minPrice = Math.max(0, Number(document.getElementById('mtsb-deal-min-price')?.value) || 0);
+  const includeFresh = !!document.getElementById('mtsb-deal-include-fresh')?.checked;
+  const includeAuctions = !!document.getElementById('mtsb-deal-include-auctions')?.checked;
+  if(!includeFresh && !includeAuctions){ toast_dash('Check at least one of NEW/BIN or AUCTIONS to scan.'); return; }
   _mtgsbState.dealThresholdPct = thresholdPct;
+  _mtgsbState.dealMaxPct = maxPct;
   _mtgsbState.dealMinPrice = minPrice;
+  _mtgsbState.dealIncludeFresh = includeFresh;
+  _mtgsbState.dealIncludeAuctions = includeAuctions;
   // MIN $ keeps low-value cards out of the scan entirely -- a 30%-below-
   // market "deal" on a $2 card saves 60 cents and isn't worth chasing, and
-  // was drowning out the deals that actually matter.
+  // was drowning out the deals that actually matter. MAX % rejects claimed
+  // discounts past a plausible range -- 90%+ off is almost always a wrong-
+  // item match or a scam/bait listing, not a real deal.
   const candidates = (_mtgsbState.filteredCards || [])
     .filter(c => Number(c.prices?.usd) > 0 && Number(c.prices.usd) >= minPrice)
     .map(c => ({ name:c.name, set:c.set_name, marketPrice:Number(c.prices.usd), imageUrl:mtgsbCardImgSrc(c), cardId:String(c.id || '') }));
@@ -35267,12 +35292,12 @@ async function mtgsbScanEbayDeals(){
     const res = await storeWorkerFetch('/dealscan/check', {
       method: 'POST',
       headers: { 'Content-Type':'application/json' },
-      body: JSON.stringify({ cards: candidates.slice(0, 25), thresholdPct }),
+      body: JSON.stringify({ cards: candidates.slice(0, 25), thresholdPct, maxPct, includeFresh, includeAuctions }),
     });
     const data = await res.json().catch(() => ({}));
     if(!res.ok || data.ok === false) throw new Error(data.error || ('HTTP '+res.status));
     _mtgsbState.dealScan = data;
-    toast_dash(data.deals.length ? (data.deals.length + ' deal' + (data.deals.length>1?'s':'') + ' found!') : ('No listings found ' + thresholdPct + '%+ below market right now.'));
+    toast_dash(data.deals.length ? (data.deals.length + ' deal' + (data.deals.length>1?'s':'') + ' found!') : ('No listings found ' + thresholdPct + '-' + maxPct + '% below market right now.'));
     mtgsbRenderContent(false);
   } catch(e){
     toast_dash('Deal scan failed: ' + e.message);
@@ -35285,9 +35310,9 @@ function mtgsbRenderDealScanPanel(){
   const scan = _mtgsbState.dealScan;
   if(!scan) return '';
   const deals = scan.deals || [];
-  if(!deals.length) return dealScanWarningHtml(scan) || `<div class="mtsb-empty" style="margin:8px 0;font-size:10px">No listings found ${scan.thresholdPct}%+ below market as of ${new Date(scan.scannedAt).toLocaleTimeString()}. Try again later or widen the price range.</div>`;
+  if(!deals.length) return dealScanWarningHtml(scan) || `<div class="mtsb-empty" style="margin:8px 0;font-size:10px">No listings found ${dealScanRangeLabel(scan)} below market as of ${new Date(scan.scannedAt).toLocaleTimeString()}. Try again later or widen the range.</div>`;
   return `<div style="margin:8px 0;display:grid;gap:6px">
-    <div style="font-family:monospace;font-size:9px;color:var(--dim)">${deals.length} listing${deals.length>1?'s':''} found ${scan.thresholdPct}%+ below market · scanned ${new Date(scan.scannedAt).toLocaleTimeString()}</div>
+    <div style="font-family:monospace;font-size:9px;color:var(--dim)">${deals.length} listing${deals.length>1?'s':''} found ${dealScanRangeLabel(scan)} below market · scanned ${new Date(scan.scannedAt).toLocaleTimeString()}</div>
     ${deals.map(d => `<div style="display:flex;gap:10px;align-items:center;padding:8px;border:1px solid rgba(255,209,102,.35);border-radius:8px;background:rgba(255,209,102,.05)">
       ${d.listingImageUrl?`<img src="${escHtml(d.listingImageUrl)}" alt="" style="width:44px;height:60px;object-fit:cover;border-radius:4px;flex-shrink:0">`:''}
       <div style="flex:1;min-width:0">
@@ -36874,7 +36899,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.04.08-dealscan-min-price-and-ebay-sort"></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.04.09-dealscan-quality-filters"></script>
 </body>
 </html>
 
