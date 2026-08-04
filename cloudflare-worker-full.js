@@ -467,6 +467,46 @@ async function secureSecretEqual(provided, expected) {
   return different === 0;
 }
 
+function cardLensMobileInstallationId(request) {
+  const installationId = String(request.headers.get('X-Card-Lens-Install-Id') || '');
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(installationId)
+    ? installationId
+    : null;
+}
+
+async function requireCardLensMobileClient(request, env) {
+  const installationId = cardLensMobileInstallationId(request);
+  if (!installationId) {
+    return { error:json({ ok:false, error:'A valid Card Lens installation ID is required' }, 400) };
+  }
+  // Development mode: accept any valid app-generated installation ID. The ID
+  // still namespaces same-frame caches, but reinstalling no longer requires a
+  // manual KV enrollment step. Add device authorization back before release.
+  return { installationId };
+}
+
+function cardLensCacheKey(request, kind, value) {
+  const cacheUrl = new URL(request.url);
+  cacheUrl.pathname = `/__card-lens-cache/${encodeURIComponent(kind)}/${encodeURIComponent(value)}`;
+  cacheUrl.search = '';
+  return new Request(cacheUrl.toString(), { method:'GET' });
+}
+
+function cardLensCachedResponse(cached) {
+  const headers = new Headers(cached.headers);
+  for (const [key, value] of Object.entries(CORS)) headers.set(key, value);
+  headers.set('Cache-Control', 'no-store');
+  headers.set('X-Card-Lens-Cache', 'HIT');
+  return new Response(cached.body, { status:cached.status, headers });
+}
+
+function cardLensCacheableResponse(body, status, maxAgeSeconds) {
+  return new Response(body, {
+    status,
+    headers:{ ...CORS, 'Content-Type':'application/json', 'Cache-Control':`public, max-age=${maxAgeSeconds}` },
+  });
+}
+
 function stripeMode(env, requested) {
   const configured = String(env.STRIPE_PLATFORM_MODE || 'test').toLowerCase() === 'live' ? 'live' : 'test';
   const wanted = String(requested || configured).toLowerCase();
@@ -2647,6 +2687,130 @@ export default {
         status: res.status,
         headers: { ...CORS, 'Content-Type': 'application/json' },
       });
+    }
+
+    // Development mobile bridge. Provider credentials remain in Worker secrets;
+    // app-generated installation IDs are used only to namespace response caches.
+    if (url.pathname === '/card-lens/mobile/status') {
+      if (request.method !== 'GET') return json({ error:'GET only' }, 405);
+      return json({ ok:true, provider:'CardSight', configured:!!env.CARDSIGHTAI_API_KEY, access:'development-open', perMinuteLimit:null }, 200, { 'Cache-Control':'no-store' });
+    }
+
+    if (url.pathname === '/card-lens/mobile/identify') {
+      if (request.method !== 'POST') return json({ error:'POST only' }, 405);
+      if (!env.CARDSIGHTAI_API_KEY) return json({ error:'CARDSIGHTAI_API_KEY not set' }, 500);
+      const client = await requireCardLensMobileClient(request, env);
+      if (client.error) return client.error;
+      const installationId = client.installationId;
+      const frameKey = String(request.headers.get('X-Card-Lens-Frame-Key') || '');
+      const validFrameKey = /^[0-9a-f]{1,16}-[0-9]{1,3}$/i.test(frameKey) ? frameKey : '';
+      const identifyCacheKey = validFrameKey ? cardLensCacheKey(request, 'identify', `${installationId}:${validFrameKey}`) : null;
+      if (identifyCacheKey) {
+        const cached = await caches.default.match(identifyCacheKey);
+        if (cached) return cardLensCachedResponse(cached);
+      }
+      const limited = await readJsonWithLimit(request, 6 * 1024 * 1024);
+      if (limited.error) return limited.error;
+      const body = limited.data;
+      const rawBase64 = String(body.image || '').includes(',') ? String(body.image).split(',').pop() : String(body.image || '');
+      if (!rawBase64) return json({ ok:false, error:'image is required' }, 400);
+      if (rawBase64.length > 8 * 1024 * 1024) return json({ ok:false, error:'Image is too large' }, 413);
+      let bytes;
+      try {
+        const binaryStr = atob(rawBase64);
+        bytes = new Uint8Array(binaryStr.length);
+        for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
+      } catch (_) {
+        return json({ ok:false, error:'Invalid base64 image' }, 400);
+      }
+      const imageBlob = new Blob([bytes], { type:'image/jpeg' });
+      const detectionForm = new FormData();
+      detectionForm.append('image', imageBlob, 'card-lens-scan.jpg');
+      const detectionResponse = await fetch(`${CARDSIGHTAI_BASE}/v1/detect/card`, {
+        method:'POST',
+        headers:{ 'X-API-Key':env.CARDSIGHTAI_API_KEY },
+        body:detectionForm,
+      });
+      if (detectionResponse.ok) {
+        const detection = await detectionResponse.json().catch(() => null);
+        if (detection && !detection.detected) {
+          const noMatch = JSON.stringify({
+            success:true,
+            requestId:detection.requestId,
+            detections:[],
+            processingTime:detection.processingTime,
+            messages:detection.messages || [],
+          });
+          if (identifyCacheKey) ctx.waitUntil(caches.default.put(identifyCacheKey, cardLensCacheableResponse(noMatch, 200, 90)));
+          return new Response(noMatch, { status:200, headers:{ ...CORS, 'Content-Type':'application/json', 'Cache-Control':'no-store', 'X-Card-Lens-Cache':'DETECT-NO-MATCH' } });
+        }
+      }
+      // The free detector confirmed a card. Same-frame caching still prevents
+      // repeated paid identification calls for an unchanged view.
+      const identifyForm = new FormData();
+      identifyForm.append('image', imageBlob, 'card-lens-scan.jpg');
+      const res = await fetch(`${CARDSIGHTAI_BASE}/v1/identify/card`, {
+        method:'POST',
+        headers:{ 'X-API-Key':env.CARDSIGHTAI_API_KEY },
+        body:identifyForm,
+      });
+      const data = await res.text();
+      // Cache a same-frame catalog miss briefly too. CardSight counts identify
+      // attempts even when no card is matched, so an unchanged difficult view
+      // must not consume another provider call every few seconds.
+      if ((res.ok || res.status === 404) && identifyCacheKey) {
+        ctx.waitUntil(caches.default.put(identifyCacheKey, cardLensCacheableResponse(data, res.status, res.ok ? 90 : 30)));
+      }
+      return new Response(data, { status:res.status, headers:{ ...CORS, 'Content-Type':'application/json', 'Cache-Control':'no-store', 'X-Card-Lens-Cache':'MISS' } });
+    }
+
+    const cardLensImageMatch = url.pathname.match(/^\/card-lens\/mobile\/image\/([0-9a-f-]{36})$/i);
+    if (cardLensImageMatch) {
+      if (request.method !== 'GET') return json({ error:'GET only' }, 405);
+      if (!env.CARDSIGHTAI_API_KEY) return json({ error:'CARDSIGHTAI_API_KEY not set' }, 500);
+      const client = await requireCardLensMobileClient(request, env);
+      if (client.error) return client.error;
+      const cardId = cardLensImageMatch[1];
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(cardId)) {
+        return json({ ok:false, error:'A valid CardSight card ID is required' }, 400);
+      }
+      const imageCacheKey = cardLensCacheKey(request, 'image', cardId);
+      const cachedImage = await caches.default.match(imageCacheKey);
+      if (cachedImage) return cardLensCachedResponse(cachedImage);
+      const imageResponse = await fetch(`${CARDSIGHTAI_BASE}/v1/images/cards/${encodeURIComponent(cardId)}?format=raw&default=true`, {
+        headers:{ 'X-API-Key':env.CARDSIGHTAI_API_KEY },
+      });
+      const imageData = await imageResponse.arrayBuffer();
+      const imageType = imageResponse.headers.get('Content-Type') || 'image/jpeg';
+      if (imageResponse.ok) {
+        const cacheableImage = new Response(imageData.slice(0), {
+          status:200,
+          headers:{ 'Content-Type':imageType, 'Cache-Control':'public, max-age=86400' },
+        });
+        ctx.waitUntil(caches.default.put(imageCacheKey, cacheableImage));
+      }
+      return new Response(imageData, { status:imageResponse.status, headers:{ ...CORS, 'Content-Type':imageType, 'Cache-Control':'no-store', 'X-Card-Lens-Cache':'MISS' } });
+    }
+
+    const cardLensPricingMatch = url.pathname.match(/^\/card-lens\/mobile\/pricing\/([a-zA-Z0-9_-]{1,80})$/);
+    if (cardLensPricingMatch) {
+      if (request.method !== 'GET') return json({ error:'GET only' }, 405);
+      if (!env.CARDSIGHTAI_API_KEY) return json({ error:'CARDSIGHTAI_API_KEY not set' }, 500);
+      const client = await requireCardLensMobileClient(request, env);
+      if (client.error) return client.error;
+      const params = new URLSearchParams({ period:'90d', listing_type:'auction', limit:'500' });
+      const parallelId = String(url.searchParams.get('parallel_id') || 'null');
+      if (/^(null|[a-zA-Z0-9_-]{1,80})$/.test(parallelId)) params.set('parallel_id', parallelId);
+      const pricingCacheKey = cardLensCacheKey(request, 'pricing', `${cardLensPricingMatch[1]}:${parallelId}`);
+      const cachedPricing = await caches.default.match(pricingCacheKey);
+      if (cachedPricing) return cardLensCachedResponse(cachedPricing);
+      const res = await fetch(`${CARDSIGHTAI_BASE}/v1/pricing/${encodeURIComponent(cardLensPricingMatch[1])}?${params.toString()}`, {
+        method:'GET',
+        headers:{ 'X-API-Key':env.CARDSIGHTAI_API_KEY },
+      });
+      const data = await res.text();
+      if (res.ok) ctx.waitUntil(caches.default.put(pricingCacheKey, cardLensCacheableResponse(data, res.status, 300)));
+      return new Response(data, { status:res.status, headers:{ ...CORS, 'Content-Type':'application/json', 'Cache-Control':'no-store', 'X-Card-Lens-Cache':'MISS' } });
     }
 
     // Own-catalog card identification for Pokemon TCG / Magic: The Gathering
