@@ -1946,6 +1946,13 @@ export default {
         metron: !!(env.METRON_USER && env.METRON_PASS),
         justtcg: !!env.JUSTTCG_API_KEY,
         pricecharting: !!(env.PRICECHARTING_TOKEN || env.PRICECHARTING_API_KEY),
+        // Sports card search/pricing (searchSportsCardsPro in dashboard.html)
+        // -- a separate token from CARDSIGHTAI_API_KEY above, which only
+        // covers camera-scan identification, not the Research-tab text
+        // search these routes power. No flag existed for this before, so a
+        // missing SCP_ACCESS_TOKEN silently fell back to PriceCharting's
+        // thinner generic Sports Cards category with nothing surfaced.
+        scp: !!(env.SCP_ACCESS_TOKEN || (env.LBA_KV && await env.LBA_KV.get('secret:SCP_ACCESS_TOKEN'))),
         tcgapi: !!env.TCGAPI_KEY,
         pokemontcg: !!env.POKEMONTCG_API_KEY,
         pokemonprice: !!(env.POKEMONPRICE_API_KEY || env.POKEMON_PRICE_TRACKER_API_KEY),
