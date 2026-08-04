@@ -1677,6 +1677,18 @@ function filterSoldComps(comps, query, mode = '') {
 // that. Both Finding API callers send these headers for that reason.
 const EBAY_FINDING_HEADERS = { 'Accept': 'application/json', 'User-Agent': 'Mozilla/5.0 (compatible; WalkOffInventory/1.0; +https://walkoffsc.com)' };
 
+// Still on the legacy Finding API (unlike fetchEbayActiveListings above,
+// which moved to the Browse API after 418s). Not a straightforward same
+// migration: the Browse API only searches active listings, and eBay's real
+// "sold" equivalent is the Marketplace Insights API, which requires
+// separate, harder-to-get application approval beyond standard API access.
+// Headers are applied (EBAY_FINDING_HEADERS) as the same cheap mitigation
+// used on the active-listings side, and /comps/sold already tries
+// SOLDCOMPS_API_KEY first with this only as a fallback (see filterSoldComps
+// call site) -- so if this endpoint gets fully blocked like findItemsByKeywords
+// did, sold comps degrade rather than break outright, as long as
+// SOLDCOMPS_API_KEY is configured. Revisit if Marketplace Insights access
+// becomes available.
 async function fetchEbaySoldComps(env, query, limit = 40) {
   const appId = env.EBAY_APP_ID || await getStoredSecret(env, 'EBAY_CLIENT_ID');
   if (!appId) return { source: 'none', comps: [], warning: 'EBAY_APP_ID not set' };
@@ -1774,6 +1786,89 @@ async function fetchEbayActiveListings(env, query, opts = {}) {
   if (!res.ok) return { source: 'ebay_active', listings: [], warning: 'eBay Browse API ' + res.status + (data?.errors?.[0]?.message ? ': ' + data.errors[0].message : '') };
   const items = Array.isArray(data.itemSummaries) ? data.itemSummaries : [];
   return { source: 'ebay_active', listings: items.map(normalizeBrowseListing).filter(Boolean), warning: null };
+}
+
+// Core of /dealscan/check, extracted so the scheduled() cron handler below
+// can run the exact same scan (same thresholds, same junk filtering, same
+// BIN/auction split) against a store's inventory instead of only ever being
+// reachable from an on-demand button click.
+async function runDealScan(env, cards, opts = {}) {
+  const thresholdPct = Math.min(90, Math.max(5, Number(opts.thresholdPct) || 25));
+  // A claimed discount past this is far more likely to be a mismatched item
+  // (keychain, sticker, custom, wrong printing) or a scam/bait listing than
+  // a real deal -- genuine underpriced copies are rare much past this range.
+  const maxPct = Math.min(95, Math.max(thresholdPct, Number(opts.maxPct) || 55));
+  const includeFresh = opts.includeFresh !== false;
+  const includeAuctions = opts.includeAuctions !== false;
+  // Capped well below what callers may send -- each candidate can fire up
+  // to 4 Browse API calls (2 listing-type queries x an optional name-only
+  // retry), and eBay's Finding API edge (used elsewhere) starts blocking
+  // once a burst looks like scraping. 25 candidates keeps a single scan's
+  // worst case around 100 calls instead of unbounded.
+  const boundedCards = cards.slice(0, 25);
+
+  // Non-card junk (keychains, stickers, pins, customs, plush, funko,
+  // proxies) matches on the card name alone often enough that it was
+  // showing up as "98% below market" deals -- exclude the common cases
+  // straight from the eBay query instead of trying to detect them after
+  // the fact.
+  const JUNK_EXCLUDE_TERMS = ['keychain', 'sticker', 'pin', 'custom', 'proxy', 'sleeve', 'case', 'funko', 'plush', 'figure', 'pop', 'magnet', 'button', 'charm'];
+  const junkExcludeQuery = JUNK_EXCLUDE_TERMS.map(t => '-' + t).join(' ');
+
+  const deals = [];
+  const warnings = new Set();
+  let idx = 0;
+  async function runBothQueries(query, maxPrice) {
+    const fullQuery = query + ' ' + junkExcludeQuery;
+    return Promise.all([
+      includeFresh ? fetchEbayActiveListings(env, fullQuery, { maxPrice, sortOrder:'newlyListed', listingType:'FixedPrice', limit:5 }) : Promise.resolve({ listings: [] }),
+      includeAuctions ? fetchEbayActiveListings(env, fullQuery, { maxPrice, sortOrder:'endingSoonest', listingType:'Auction', limit:5 }) : Promise.resolve({ listings: [] }),
+    ]);
+  }
+  async function dealScanWorker() {
+    while (idx < boundedCards.length) {
+      const card = boundedCards[idx++];
+      const maxPrice = Math.round(card.marketPrice * (1 - thresholdPct / 100) * 100) / 100;
+      if (maxPrice <= 0) continue;
+      const nameAndSetQuery = [card.name, card.set].filter(Boolean).join(' ');
+      let [freshResult, auctionResult] = await runBothQueries(nameAndSetQuery, maxPrice).catch(() => [{ listings: [] }, { listings: [] }]);
+      if (freshResult.warning) warnings.add(freshResult.warning);
+      if (auctionResult.warning) warnings.add(auctionResult.warning);
+      // The full "name + official set name" query is often too specific --
+      // eBay's keyword search is closer to an AND of every word, and
+      // seller listing titles rarely spell out the full official set
+      // name verbatim. If that combined query came back completely
+      // empty (not just below-threshold), retry with just the card name
+      // for broader recall before giving up on this card.
+      if (card.set && !freshResult.listings.length && !auctionResult.listings.length) {
+        [freshResult, auctionResult] = await runBothQueries(card.name, maxPrice).catch(() => [{ listings: [] }, { listings: [] }]);
+        if (freshResult.warning) warnings.add(freshResult.warning);
+        if (auctionResult.warning) warnings.add(auctionResult.warning);
+      }
+      const seen = new Set();
+      for (const listing of [...freshResult.listings, ...auctionResult.listings]) {
+        if (!listing || !listing.itemId || seen.has(listing.itemId)) continue;
+        seen.add(listing.itemId);
+        if (!(listing.total > 0) || listing.total >= card.marketPrice) continue;
+        const pctBelow = Math.round((1 - listing.total / card.marketPrice) * 1000) / 10;
+        if (pctBelow < thresholdPct || pctBelow > maxPct) continue;
+        deals.push({
+          cardName: card.name, set: card.set, cardImageUrl: card.imageUrl, cardId: card.cardId,
+          marketPrice: card.marketPrice, listingPrice: listing.total, pctBelow,
+          listingType: listing.listingType === 'Auction' ? 'auction' : 'fixed',
+          endTime: listing.endTime, title: listing.title, url: listing.url, listingImageUrl: listing.imageUrl,
+        });
+      }
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(2, boundedCards.length) }, dealScanWorker));
+  deals.sort((a, b) => b.pctBelow - a.pctBelow);
+  const ebayAppAvailable = !!(env.EBAY_APP_ID || await getStoredSecret(env, 'EBAY_CLIENT_ID'));
+  return {
+    deals, scannedCount: boundedCards.length, scannedAt: new Date().toISOString(), thresholdPct, maxPct,
+    warnings: [...warnings].slice(0, 3),
+    needsProvider: !ebayAppAvailable,
+  };
 }
 
 async function fetchSoldCompsProvider(env, query, limit = 40) {
@@ -2571,9 +2666,10 @@ export default {
       if (rateError) return rateError;
 
       const identifyPrompt = 'You are looking at a photo of one or more physical trading cards. Only Pokemon TCG and Magic: The Gathering cards are in scope -- if the photo shows a sports card, One Piece card, comic, sealed product, or anything else, return an empty "cards" array rather than guessing.\n\n'
+        + 'Count only actual separate physical cards visible in the photo -- one entry per card, never one entry per line of text on a card. Do NOT create a separate entry for an attack name, ability name, move, spell, flavor text, or any other text printed ON a card -- e.g. if a Pokemon card has an attack called "Cyclone Kick" printed on it, that is part of that ONE card\'s data, not a second card. If you only see one physical card in the photo, return exactly one entry.\n\n'
         + 'For each distinct Pokemon or MTG card clearly visible, extract exactly what is printed on the card -- do not guess a card you cannot actually read, and never estimate a price. Respond with strict JSON only, no markdown fences, no prose, matching this shape:\n'
         + '{"cards":[{"game":"pokemon"|"mtg","name":"","setName":"","number":"","hp":"","manaCost":"","rarity":"","finish":"normal"|"holo"|"reverse holo"|"foil"|"etched foil"|"","specialMarkings":"","confidence":"high"|"medium"|"low"}]}\n\n'
-        + 'setName is whatever set name or set symbol you can identify (e.g. "Base Set", "Surging Sparks", "Bloomburrow"). number is the printed collector number (e.g. "4/102", "087/091"). specialMarkings covers things like a 1st Edition stamp or promo stamp. If a field is not legible, use an empty string rather than guessing.';
+        + 'name is the card\'s own title/name only (e.g. "Lucario V"), never an attack, ability, or move name. setName is whatever set name or set symbol you can identify (e.g. "Base Set", "Surging Sparks", "Bloomburrow"). number is the printed collector number (e.g. "4/102", "087/091"). specialMarkings covers things like a 1st Edition stamp or promo stamp. If a field is not legible, use an empty string rather than guessing.';
 
       const res = await fetch(`${ANTHROPIC_BASE}/messages`, {
         method: 'POST',
@@ -6498,92 +6594,26 @@ export default {
       const limited = await readJsonWithLimit(request, 512 * 1024);
       if (limited.error) return limited.error;
       const body = limited.data;
-      const thresholdPct = Math.min(90, Math.max(5, Number(body.thresholdPct) || 25));
-      // A claimed discount past this is far more likely to be a mismatched
-      // item (keychain, sticker, custom, wrong printing) or a scam/bait
-      // listing than a real deal -- genuine underpriced copies are rare
-      // much past this range. Default 55%, same floor/ceiling as the UI.
-      const maxPct = Math.min(95, Math.max(thresholdPct, Number(body.maxPct) || 55));
-      const includeFresh = body.includeFresh !== false;
-      const includeAuctions = body.includeAuctions !== false;
-      // Capped well below the /dealscan/check cards limit sent from the
-      // client -- each candidate can fire up to 4 Finding API calls (2
-      // listing-type queries x an optional name-only retry), and eBay's
-      // Finding API edge starts returning HTTP 418 ("teapot" -- a raw,
-      // pre-application block, not a normal error envelope) once a burst
-      // looks like scraping. 25 candidates keeps a single scan's worst case
-      // around 100 calls instead of ~240.
       const cards = (Array.isArray(body.cards) ? body.cards : [])
         .filter(c => c && String(c.name || '').trim() && Number(c.marketPrice) > 0)
-        .slice(0, 25)
         .map(c => ({ name:String(c.name).trim().slice(0, 120), set:String(c.set || '').trim().slice(0, 120), marketPrice:Number(c.marketPrice), imageUrl:String(c.imageUrl || ''), cardId:String(c.cardId || '') }));
       if (!cards.length) return json({ ok:false, error:'cards is required' }, 400);
+      const includeFresh = body.includeFresh !== false;
+      const includeAuctions = body.includeAuctions !== false;
       if (!includeFresh && !includeAuctions) return json({ ok:false, error:'includeFresh and includeAuctions cannot both be false' }, 400);
       const rateError = await enforceUsageLimit(env, `dealscan:${storeId}:${auth.user.id}`, 10, 300);
       if (rateError) return rateError;
 
-      // Non-card junk (keychains, stickers, pins, customs, plush, funko,
-      // proxies) matches on the card name alone often enough that it was
-      // showing up as "98% below market" deals -- exclude the common cases
-      // straight from the eBay query instead of trying to detect them after
-      // the fact.
-      const JUNK_EXCLUDE_TERMS = ['keychain', 'sticker', 'pin', 'custom', 'proxy', 'sleeve', 'case', 'funko', 'plush', 'figure', 'pop', 'magnet', 'button', 'charm'];
-      const junkExcludeQuery = JUNK_EXCLUDE_TERMS.map(t => '-' + t).join(' ');
-
-      const deals = [];
-      const warnings = new Set();
-      let idx = 0;
-      async function runBothQueries(query, maxPrice) {
-        const fullQuery = query + ' ' + junkExcludeQuery;
-        return Promise.all([
-          includeFresh ? fetchEbayActiveListings(env, fullQuery, { maxPrice, sortOrder:'newlyListed', listingType:'FixedPrice', limit:5 }) : Promise.resolve({ listings: [] }),
-          includeAuctions ? fetchEbayActiveListings(env, fullQuery, { maxPrice, sortOrder:'endingSoonest', listingType:'Auction', limit:5 }) : Promise.resolve({ listings: [] }),
-        ]);
-      }
-      async function dealScanWorker() {
-        while (idx < cards.length) {
-          const card = cards[idx++];
-          const maxPrice = Math.round(card.marketPrice * (1 - thresholdPct / 100) * 100) / 100;
-          if (maxPrice <= 0) continue;
-          const nameAndSetQuery = [card.name, card.set].filter(Boolean).join(' ');
-          let [freshResult, auctionResult] = await runBothQueries(nameAndSetQuery, maxPrice).catch(() => [{ listings: [] }, { listings: [] }]);
-          if (freshResult.warning) warnings.add(freshResult.warning);
-          if (auctionResult.warning) warnings.add(auctionResult.warning);
-          // The full "name + official set name" query is often too specific --
-          // eBay's keyword search is closer to an AND of every word, and
-          // seller listing titles rarely spell out the full official set
-          // name verbatim. If that combined query came back completely
-          // empty (not just below-threshold), retry with just the card name
-          // for broader recall before giving up on this card.
-          if (card.set && !freshResult.listings.length && !auctionResult.listings.length) {
-            [freshResult, auctionResult] = await runBothQueries(card.name, maxPrice).catch(() => [{ listings: [] }, { listings: [] }]);
-            if (freshResult.warning) warnings.add(freshResult.warning);
-            if (auctionResult.warning) warnings.add(auctionResult.warning);
-          }
-          const seen = new Set();
-          for (const listing of [...freshResult.listings, ...auctionResult.listings]) {
-            if (!listing || !listing.itemId || seen.has(listing.itemId)) continue;
-            seen.add(listing.itemId);
-            if (!(listing.total > 0) || listing.total >= card.marketPrice) continue;
-            const pctBelow = Math.round((1 - listing.total / card.marketPrice) * 1000) / 10;
-            if (pctBelow < thresholdPct || pctBelow > maxPct) continue;
-            deals.push({
-              cardName: card.name, set: card.set, cardImageUrl: card.imageUrl, cardId: card.cardId,
-              marketPrice: card.marketPrice, listingPrice: listing.total, pctBelow,
-              listingType: listing.listingType === 'Auction' ? 'auction' : 'fixed',
-              endTime: listing.endTime, title: listing.title, url: listing.url, listingImageUrl: listing.imageUrl,
-            });
-          }
-        }
-      }
-      await Promise.all(Array.from({ length: Math.min(2, cards.length) }, dealScanWorker));
-      deals.sort((a, b) => b.pctBelow - a.pctBelow);
-      const ebayAppAvailable = !!(env.EBAY_APP_ID || await getStoredSecret(env, 'EBAY_CLIENT_ID'));
-      const result = {
-        deals, scannedCount: cards.length, scannedAt: new Date().toISOString(), thresholdPct, maxPct,
-        warnings: [...warnings].slice(0, 3),
-        needsProvider: !ebayAppAvailable,
-      };
+      const result = await runDealScan(env, cards, {
+        thresholdPct: Number(body.thresholdPct) || 25,
+        maxPct: Number(body.maxPct) || 55,
+        includeFresh, includeAuctions,
+      });
+      // Informational only (echoed back, not trusted for anything) -- lets
+      // /dealscan/latest tell the client whether the cached result it's
+      // showing came from "this set" or a whole-inventory scan, since the
+      // KV cache is one slot per store regardless of which scope ran it.
+      result.scanScope = /^[a-z0-9_-]{1,40}$/i.test(String(body.scanScope || '')) ? String(body.scanScope) : 'set';
       if (env.LBA_KV) await env.LBA_KV.put(`dealscan:${storeId}:latest`, JSON.stringify(result), { expirationTtl: 6 * 60 * 60 }).catch(() => {});
       return json({ ok:true, ...result });
     }
@@ -7972,7 +8002,41 @@ export default {
       return json({ ok: false, error: e?.message || 'Internal error' }, 500);
     }
   },
+
+  // Runs the same deal scan the SCAN EBAY FOR DEALS button triggers, on a
+  // schedule, against each active store's own in-stock Pokemon/MTG
+  // inventory (the highest-value items first) -- so results are already
+  // waiting in dealscan:{storeId}:latest (the same KV key /dealscan/latest
+  // reads) instead of only ever being reachable by an on-demand click.
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(runScheduledDealScans(env));
+  },
 };
+
+async function runScheduledDealScans(env) {
+  if (!(env.SUPABASE_URL && (env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_KEY))) return;
+  const { data: members } = await supabaseAdminFetch(env, `store_members?active=eq.true&select=store_id`);
+  const storeIds = [...new Set((members || []).map(m => String(m.store_id || '')).filter(Boolean))];
+  for (const storeId of storeIds) {
+    try {
+      const { data: rows, response } = await supabaseAdminFetch(env, `inventory_items?store_id=eq.${encodeURIComponent(storeId)}&status=neq.sold&select=id,data,status,created_at,updated_at&limit=1000`);
+      if (!response?.ok) continue;
+      const items = (rows || []).map(shapeStorefrontItem).filter(isStorefrontItemAvailable);
+      const cards = items
+        .filter(i => /pokemon/i.test(i.category) || /magic|\bmtg\b/i.test(i.category))
+        .filter(i => Number(i.market) > 0)
+        .sort((a, b) => Number(b.market) - Number(a.market))
+        .slice(0, 25)
+        .map(i => ({ name: i.name, set: i.set, marketPrice: Number(i.market), imageUrl: i.image, cardId: i.id }));
+      if (!cards.length) continue;
+      const result = await runDealScan(env, cards, { thresholdPct: 25, maxPct: 55, includeFresh: true, includeAuctions: true });
+      if (env.LBA_KV) await env.LBA_KV.put(`dealscan:${storeId}:latest`, JSON.stringify({ ...result, scanScope: 'inventory-scheduled' }), { expirationTtl: 6 * 60 * 60 });
+    } catch (e) {
+      // One store's failure shouldn't block the rest -- there's no request
+      // to report an error to out here, just move on to the next store.
+    }
+  }
+}
 
 // ── BECKETT HTML PARSER ───────────────────────────────────────────────────────
 function parseBeckettChecklist(html, slug, name, sport, year) {
