@@ -1759,6 +1759,7 @@ async function fetchEbayActiveListings(env, query, opts = {}) {
   const filters = [];
   if (maxPrice > 0) filters.push(`price:[..${maxPrice}]`, 'priceCurrency:USD');
   if (listingType === 'Auction') filters.push('buyingOptions:{AUCTION}');
+  else if (listingType === 'FixedPrice') filters.push('buyingOptions:{FIXED_PRICE}');
   const params = new URLSearchParams({ q: query, limit: String(Math.min(50, Math.max(1, limit))) });
   if (filters.length) params.set('filter', filters.join(','));
   if (sortOrder) params.set('sort', sortOrder);
@@ -6498,6 +6499,13 @@ export default {
       if (limited.error) return limited.error;
       const body = limited.data;
       const thresholdPct = Math.min(90, Math.max(5, Number(body.thresholdPct) || 25));
+      // A claimed discount past this is far more likely to be a mismatched
+      // item (keychain, sticker, custom, wrong printing) or a scam/bait
+      // listing than a real deal -- genuine underpriced copies are rare
+      // much past this range. Default 55%, same floor/ceiling as the UI.
+      const maxPct = Math.min(95, Math.max(thresholdPct, Number(body.maxPct) || 55));
+      const includeFresh = body.includeFresh !== false;
+      const includeAuctions = body.includeAuctions !== false;
       // Capped well below the /dealscan/check cards limit sent from the
       // client -- each candidate can fire up to 4 Finding API calls (2
       // listing-type queries x an optional name-only retry), and eBay's
@@ -6510,16 +6518,26 @@ export default {
         .slice(0, 25)
         .map(c => ({ name:String(c.name).trim().slice(0, 120), set:String(c.set || '').trim().slice(0, 120), marketPrice:Number(c.marketPrice), imageUrl:String(c.imageUrl || ''), cardId:String(c.cardId || '') }));
       if (!cards.length) return json({ ok:false, error:'cards is required' }, 400);
+      if (!includeFresh && !includeAuctions) return json({ ok:false, error:'includeFresh and includeAuctions cannot both be false' }, 400);
       const rateError = await enforceUsageLimit(env, `dealscan:${storeId}:${auth.user.id}`, 10, 300);
       if (rateError) return rateError;
+
+      // Non-card junk (keychains, stickers, pins, customs, plush, funko,
+      // proxies) matches on the card name alone often enough that it was
+      // showing up as "98% below market" deals -- exclude the common cases
+      // straight from the eBay query instead of trying to detect them after
+      // the fact.
+      const JUNK_EXCLUDE_TERMS = ['keychain', 'sticker', 'pin', 'custom', 'proxy', 'sleeve', 'case', 'funko', 'plush', 'figure', 'pop', 'magnet', 'button', 'charm'];
+      const junkExcludeQuery = JUNK_EXCLUDE_TERMS.map(t => '-' + t).join(' ');
 
       const deals = [];
       const warnings = new Set();
       let idx = 0;
       async function runBothQueries(query, maxPrice) {
+        const fullQuery = query + ' ' + junkExcludeQuery;
         return Promise.all([
-          fetchEbayActiveListings(env, query, { maxPrice, sortOrder:'newlyListed', limit:5 }),
-          fetchEbayActiveListings(env, query, { maxPrice, sortOrder:'endingSoonest', listingType:'Auction', limit:5 }),
+          includeFresh ? fetchEbayActiveListings(env, fullQuery, { maxPrice, sortOrder:'newlyListed', listingType:'FixedPrice', limit:5 }) : Promise.resolve({ listings: [] }),
+          includeAuctions ? fetchEbayActiveListings(env, fullQuery, { maxPrice, sortOrder:'endingSoonest', listingType:'Auction', limit:5 }) : Promise.resolve({ listings: [] }),
         ]);
       }
       async function dealScanWorker() {
@@ -6548,7 +6566,7 @@ export default {
             seen.add(listing.itemId);
             if (!(listing.total > 0) || listing.total >= card.marketPrice) continue;
             const pctBelow = Math.round((1 - listing.total / card.marketPrice) * 1000) / 10;
-            if (pctBelow < thresholdPct) continue;
+            if (pctBelow < thresholdPct || pctBelow > maxPct) continue;
             deals.push({
               cardName: card.name, set: card.set, cardImageUrl: card.imageUrl, cardId: card.cardId,
               marketPrice: card.marketPrice, listingPrice: listing.total, pctBelow,
@@ -6562,7 +6580,7 @@ export default {
       deals.sort((a, b) => b.pctBelow - a.pctBelow);
       const ebayAppAvailable = !!(env.EBAY_APP_ID || await getStoredSecret(env, 'EBAY_CLIENT_ID'));
       const result = {
-        deals, scannedCount: cards.length, scannedAt: new Date().toISOString(), thresholdPct,
+        deals, scannedCount: cards.length, scannedAt: new Date().toISOString(), thresholdPct, maxPct,
         warnings: [...warnings].slice(0, 3),
         needsProvider: !ebayAppAvailable,
       };
