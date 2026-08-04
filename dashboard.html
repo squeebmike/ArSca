@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.04.02-own-ai-card-identify-pokemon-mtg">
+<meta name="version" content="2026.08.04.03-card-scanner-provider-setting">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1541,13 +1541,13 @@ body.show-mode .inv-sync-badge{display:none;}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.04.02-own-ai-card-identify-pokemon-mtg"></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.04.02-own-ai-card-identify-pokemon-mtg"></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.04.02-own-ai-card-identify-pokemon-mtg"></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.04.02-own-ai-card-identify-pokemon-mtg"></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.04.02-own-ai-card-identify-pokemon-mtg"></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.04.02-own-ai-card-identify-pokemon-mtg"></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.04.02-own-ai-card-identify-pokemon-mtg"></script>
+<script src="scripts/query-routing.js?v=2026.08.04.03-card-scanner-provider-setting"></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.04.03-card-scanner-provider-setting"></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.04.03-card-scanner-provider-setting"></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.04.03-card-scanner-provider-setting"></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.04.03-card-scanner-provider-setting"></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.04.03-card-scanner-provider-setting"></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.04.03-card-scanner-provider-setting"></script>
 </head>
 <body>
 
@@ -1597,11 +1597,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.04.02-own-ai-card-identify-pokemon-mtg</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.04.03-card-scanner-provider-setting</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.04.02-own-ai-card-identify-pokemon-mtg</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.04.03-card-scanner-provider-setting</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1623,7 +1623,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.04.02-own-ai-card-identify-pokemon-mtg</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.04.03-card-scanner-provider-setting</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3118,7 +3118,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.04.02-own-ai-card-identify-pokemon-mtg';
+const APP_VERSION = '2026.08.04.03-card-scanner-provider-setting';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -4746,7 +4746,11 @@ function saveAlertSettings(patch){
 function getResearchSettings(){
   let saved = {};
   try { saved = JSON.parse(localStorage.getItem('research_settings_v1') || '{}'); } catch(e) {}
-  return { defaultCategory:'', rememberLastCategory:false, ...saved };
+  // cardScannerProvider only affects Pokemon/MTG scans -- sports/One Piece
+  // always use CardSight regardless, since our own AI doesn't cover those
+  // games. 'own' (default) is the cheaper Claude-vision + catalog-match
+  // path; 'cardsight' forces CardSight for every game as before.
+  return { defaultCategory:'', rememberLastCategory:false, cardScannerProvider:'own', ...saved };
 }
 function saveResearchSettings(patch){
   const merged = { ...getResearchSettings(), ...patch };
@@ -5287,7 +5291,8 @@ function applyResearchDefaultCategory(){
 function saveResearchSettingsFromForm(){
   const cat = document.getElementById('research-default-category')?.value || '';
   const remember = !!document.getElementById('research-remember-last')?.checked;
-  saveResearchSettings({ defaultCategory:cat, rememberLastCategory:remember });
+  const scannerProvider = document.getElementById('research-card-scanner-provider')?.value || 'own';
+  saveResearchSettings({ defaultCategory:cat, rememberLastCategory:remember, cardScannerProvider:scannerProvider });
   toast_dash('Research defaults saved');
   applyResearchDefaultCategory();
 }
@@ -5312,7 +5317,20 @@ function ensureResearchSettingsPanel(backoffice){
       </label>
       <button class="hbtn" onclick="saveResearchSettingsFromForm()">SAVE</button>
     </div>
-    <div style="font-family:var(--font-mono);font-size:9px;color:var(--dim)">Manually changing the category in Research only affects the current session unless "Remember last used category" is on, or you Save a new default here.</div>`;
+    <div style="font-family:var(--font-mono);font-size:9px;color:var(--dim)">Manually changing the category in Research only affects the current session unless "Remember last used category" is on, or you Save a new default here.</div>
+    <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
+      <div style="font-family:var(--font-mono);font-size:10px;color:var(--text);margin-bottom:6px">CARD SCANNER (POKEMON / MTG)</div>
+      <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);margin-bottom:10px;line-height:1.55">
+        Choose which identification service the camera scanner uses when the POKEMON or MTG category is selected. Sports and One Piece scans always use CardSight -- our own AI doesn't cover those games yet.
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <select id="research-card-scanner-provider" style="background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:6px 10px;border-radius:6px;font-family:var(--font-mono);font-size:10px">
+          <option value="own" ${settings.cardScannerProvider!=='cardsight'?'selected':''}>Our own AI (cheaper, Claude vision + catalog match)</option>
+          <option value="cardsight" ${settings.cardScannerProvider==='cardsight'?'selected':''}>CardSight AI (paid, all games)</option>
+        </select>
+        <button class="hbtn" onclick="saveResearchSettingsFromForm()">SAVE</button>
+      </div>
+    </div>`;
   backoffice.appendChild(panel);
 }
 
@@ -21953,7 +21971,10 @@ async function doCardSightScan(){
     // catalog match instead of paid CardSight -- see runOwnCardIdentifyScan.
     // Everything else (sports, One Piece, auto/unselected) keeps using
     // CardSight, since that's the only place those games get identified.
-    if(categoryHint === 'pokemon' || categoryHint === 'mtg'){
+    // The RESEARCH DEFAULTS setting can force CardSight for these two games
+    // too (e.g. while comparing accuracy, or if our own AI mismatches).
+    const useOwnScanner = getResearchSettings().cardScannerProvider !== 'cardsight';
+    if(useOwnScanner && (categoryHint === 'pokemon' || categoryHint === 'mtg')){
       await runOwnCardIdentifyScan(img);
       if(btn){ btn.textContent = '📷 SCAN'; btn.disabled = false; }
       return;
@@ -36663,7 +36684,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.04.02-own-ai-card-identify-pokemon-mtg"></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.04.03-card-scanner-provider-setting"></script>
 </body>
 </html>
 
