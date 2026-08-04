@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.03.17-fix-comic-metadata-persistence">
+<meta name="version" content="2026.08.04.01-parallelize-comic-search-load">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1541,13 +1541,13 @@ body.show-mode .inv-sync-badge{display:none;}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.03.17-fix-comic-metadata-persistence"></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.03.17-fix-comic-metadata-persistence"></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.03.17-fix-comic-metadata-persistence"></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.03.17-fix-comic-metadata-persistence"></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.03.17-fix-comic-metadata-persistence"></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.03.17-fix-comic-metadata-persistence"></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.03.17-fix-comic-metadata-persistence"></script>
+<script src="scripts/query-routing.js?v=2026.08.04.01-parallelize-comic-search-load"></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.04.01-parallelize-comic-search-load"></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.04.01-parallelize-comic-search-load"></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.04.01-parallelize-comic-search-load"></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.04.01-parallelize-comic-search-load"></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.04.01-parallelize-comic-search-load"></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.04.01-parallelize-comic-search-load"></script>
 </head>
 <body>
 
@@ -1597,11 +1597,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.03.17-fix-comic-metadata-persistence</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.04.01-parallelize-comic-search-load</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.03.17-fix-comic-metadata-persistence</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.04.01-parallelize-comic-search-load</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1623,7 +1623,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.03.17-fix-comic-metadata-persistence</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.04.01-parallelize-comic-search-load</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3118,7 +3118,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.03.17-fix-comic-metadata-persistence';
+const APP_VERSION = '2026.08.04.01-parallelize-comic-search-load';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -24151,9 +24151,19 @@ async function chooseMetronComicSeries(idx){
 async function searchMetronComicCatalog(q,parsed={}){
   const params=new URLSearchParams({q});if(parsed.seriesGuess)params.set('series',parsed.seriesGuess);if(parsed.issueNumber)params.set('number',parsed.issueNumber);if(parsed.yearGuess)params.set('year',parsed.yearGuess);if(parsed.publisherGuess)params.set('publisher',parsed.publisherGuess);if(parsed.creatorGuess)params.set('creator',parsed.creatorGuess);
   const digits=String(q||'').replace(/\D/g,'');if(/^(?:\d[ -]?){12,18}$/.test(String(q||'').trim())&&digits.length>=12)params.set('upc',digits);
-  let preferred=null;
-  if(!parsed.creatorGuess&&!parsed.yearGuess&&!parsed.publisherGuess){const prefs=await loadComicSeriesPreferences();preferred=window.ArsCaComicIssueHub?.pickSeriesPreference(prefs,parsed)||null;}
-  let res=await storeWorkerFetch('/comic/metron/search?'+params.toString(),{cache:'no-store'}),data=await res.json().catch(()=>({}));if(!res.ok||!data.ok)throw new Error(data.error||'Metron comic search failed');
+  const wantsPreference=!parsed.creatorGuess&&!parsed.yearGuess&&!parsed.publisherGuess;
+  // The series-preference lookup only decides which result gets flagged as
+  // "your usual pick" once results are back -- it doesn't gate the search
+  // itself, so run it alongside the real search instead of blocking on it
+  // first (that used to add a full extra Worker round trip in front of
+  // every comic search).
+  const [res,prefs]=await Promise.all([
+    storeWorkerFetch('/comic/metron/search?'+params.toString(),{cache:'no-store'}),
+    wantsPreference?loadComicSeriesPreferences():Promise.resolve(null),
+  ]);
+  const data=await res.json().catch(()=>({}));
+  if(!res.ok||!data.ok)throw new Error(data.error||'Metron comic search failed');
+  const preferred=prefs?(window.ArsCaComicIssueHub?.pickSeriesPreference(prefs,parsed)||null):null;
   const seriesRows=(data.seriesChoices||[]).map(series=>metronSeriesToQplRow(series,parsed,preferred?.seriesId===String(series.id)));
   const selectedId=String(data.selectedSeries?.id||'');
   const issueRows=(data.issues||[]).map(issue=>({...metronIssueToQplRow(issue,data.priceCandidates||[]),recentSeries:preferred&&selectedId===String(preferred.seriesId)?preferred:null}));
@@ -24163,16 +24173,29 @@ async function searchMetronComicCatalog(q,parsed={}){
 async function hydrateMetronComicResult(idx,force=false,variantKey=''){
   let r=qplResults[idx];if(!r?.metronIssueId||(!force&&r.metronDetailLoaded))return r;
   const query=new URLSearchParams();if(force)query.set('refresh','1');if(variantKey)query.set('variant',variantKey);
-  try{const linkedResponse=await storeWorkerFetch('/kv/comic_price_link_'+encodeURIComponent(r.metronIssueId),{cache:'no-store'}),linkedRaw=(await linkedResponse.json().catch(()=>({}))).value,linked=linkedRaw?JSON.parse(linkedRaw):null;if(linked?.pricechartingProductId)query.set('pricecharting_id',linked.pricechartingProductId);}catch(_){}
+  // These three KV lookups (price link, hidden prices, saved cover) are
+  // mutually independent -- only the price-link one actually needs to
+  // finish before the main issue fetch (it feeds a query param). The old
+  // code awaited all three one at a time plus the main fetch, stacking
+  // four sequential round trips. Kick off all three together; by the time
+  // hidden/saved are needed below (after the main fetch resolves) they've
+  // normally already finished alongside it.
+  const kvJson=p=>p.then(res=>res.json()).catch(()=>({}));
+  const linkedPromise=kvJson(storeWorkerFetch('/kv/comic_price_link_'+encodeURIComponent(r.metronIssueId),{cache:'no-store'})).then(d=>{try{return d.value?JSON.parse(d.value):null;}catch(_){return null;}});
+  const hiddenPromise=kvJson(storeWorkerFetch('/kv/comic_price_hidden_'+encodeURIComponent(r.metronIssueId),{cache:'no-store'})).then(d=>{try{return d.value?JSON.parse(d.value):[];}catch(_){return [];}});
+  const savedCoverPromise=kvJson(storeWorkerFetch('/kv/comic_cover_'+encodeURIComponent(r.metronIssueId),{cache:'no-store'})).then(d=>{try{return d.value?JSON.parse(d.value):null;}catch(_){return null;}});
+  const linked=await linkedPromise;
+  if(linked?.pricechartingProductId)query.set('pricecharting_id',linked.pricechartingProductId);
   const path='/comic/metron/issue/'+encodeURIComponent(r.metronIssueId)+(query.size?'?'+query.toString():'');
   const res=await storeWorkerFetch(path,{cache:'no-store'}),data=await res.json().catch(()=>({}));if(!res.ok||!data.ok)throw new Error(data.error||'Metron issue detail failed');
-  let hiddenPriceIds=[];try{const hiddenResponse=await storeWorkerFetch('/kv/comic_price_hidden_'+encodeURIComponent(r.metronIssueId),{cache:'no-store'}),hiddenRaw=(await hiddenResponse.json().catch(()=>({}))).value;hiddenPriceIds=hiddenRaw?JSON.parse(hiddenRaw):[];}catch(_){}
+  const hiddenPriceIds=await hiddenPromise;
   const hiddenSet=new Set((Array.isArray(hiddenPriceIds)?hiddenPriceIds:[]).map(String)),issue=data.issue||{},expectedSeriesId=String(issue.seriesId||''),expectedNumber=String(issue.number||'').toLowerCase().replace(/[^a-z0-9.]/g,'');
   const exactCover=cover=>{const seriesId=String(cover.seriesId||expectedSeriesId),number=String(cover.number||expectedNumber).toLowerCase().replace(/[^a-z0-9.]/g,'');return (!expectedSeriesId||seriesId===expectedSeriesId)&&(!expectedNumber||number===expectedNumber);};
   const visiblePriceCandidates=(data.priceCandidates||[]).filter(candidate=>!hiddenSet.has(String(candidate.productId||''))&&comicPriceCandidateFitsIssue(candidate,issue)),visibleCovers=(data.covers||[]).filter(cover=>(!cover.pricechartingProductId||!hiddenSet.has(String(cover.pricechartingProductId)))&&exactCover(cover));
   const serverPrice=data.priceMatch&&!hiddenSet.has(String(data.priceMatch.productId||''))&&comicPriceCandidateFitsIssue(data.priceMatch,issue)?data.priceMatch:null,pc=serverPrice||(r.pricecharting?.savedExactLink&&comicPriceCandidateFitsIssue(r.pricecharting,issue)?r.pricecharting:null);
   r={...r,name:[issue.seriesName,issue.number?'#'+issue.number:''].filter(Boolean).join(' ')||r.name,series:issue.seriesName||r.series||'',seriesTitle:issue.seriesName||r.seriesTitle||'',issue:String(issue.number||r.issue||''),card_number:String(issue.number||r.card_number||''),variant:issue.issueName||r.variant||'',publisher:issue.publisher||r.publisher||'',year:String(issue.seriesYearBegan||issue.coverDate||r.year||'').slice(0,4),set:[issue.publisher,issue.seriesYearBegan?issue.seriesYearBegan+' series':''].filter(Boolean).join(' / ')||r.set||'',imageUrl:issue.imageUrl||r.imageUrl||'',coverImageUrl:issue.imageUrl||r.imageUrl||'',metron:issue,metronDetailLoaded:true,metronCovers:visibleCovers,metronVariants:issue.variants||[],comicPriceCandidates:visiblePriceCandidates,pricecharting:pc,providerProductId:String(pc?.productId||issue.id||''),providerUrl:pc?.url||issue.metronUrl||issue.resourceUrl||'',market:Number(pc?.comicPrices?.ungraded||r.market||0),lastPriceUpdate:pc?new Date().toISOString():(r.lastPriceUpdate||''),priceSource:pc?(pc.savedExactLink?'Saved exact PriceCharting link':'PriceCharting live'):visiblePriceCandidates.length>1?'Choose the exact PriceCharting product':'No exact PriceCharting match'};
-  try{const savedRes=await storeWorkerFetch('/kv/comic_cover_'+encodeURIComponent(r.metronIssueId),{cache:'no-store'}),savedRaw=(await savedRes.json().catch(()=>({}))).value,saved=savedRaw?JSON.parse(savedRaw):null;if(saved?.imageUrl){r.imageUrl=saved.imageUrl;r.coverImageUrl=saved.imageUrl;r.variant=saved.variantName||'';r.variantLabel=saved.variantName||'';r.selectedComicCover={...saved,issueName:saved.variantName||'',name:saved.variantName||'',selectedAt:saved.confirmedAt||''};r.coverConfirmed=true;r.coverConfidence='confirmed';comicAppraisalState(r).coverConfirmed=true;}}catch(_){}
+  const saved=await savedCoverPromise;
+  if(saved?.imageUrl){r.imageUrl=saved.imageUrl;r.coverImageUrl=saved.imageUrl;r.variant=saved.variantName||'';r.variantLabel=saved.variantName||'';r.selectedComicCover={...saved,issueName:saved.variantName||'',name:saved.variantName||'',selectedAt:saved.confirmedAt||''};r.coverConfirmed=true;r.coverConfidence='confirmed';comicAppraisalState(r).coverConfirmed=true;}
   qplResults[idx]=r;return r;
 }
 
@@ -36535,7 +36558,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.03.17-fix-comic-metadata-persistence"></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.04.01-parallelize-comic-search-load"></script>
 </body>
 </html>
 
