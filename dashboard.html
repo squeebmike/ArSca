@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.04.10-dealscan-polish-and-cron">
+<meta name="version" content="2026.08.04.11-sports-scp-health-and-dedup">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1541,13 +1541,13 @@ body.show-mode .inv-sync-badge{display:none;}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.04.10-dealscan-polish-and-cron"></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.04.10-dealscan-polish-and-cron"></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.04.10-dealscan-polish-and-cron"></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.04.10-dealscan-polish-and-cron"></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.04.10-dealscan-polish-and-cron"></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.04.10-dealscan-polish-and-cron"></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.04.10-dealscan-polish-and-cron"></script>
+<script src="scripts/query-routing.js?v=2026.08.04.11-sports-scp-health-and-dedup"></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.04.11-sports-scp-health-and-dedup"></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.04.11-sports-scp-health-and-dedup"></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.04.11-sports-scp-health-and-dedup"></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.04.11-sports-scp-health-and-dedup"></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.04.11-sports-scp-health-and-dedup"></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.04.11-sports-scp-health-and-dedup"></script>
 </head>
 <body>
 
@@ -1597,11 +1597,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.04.10-dealscan-polish-and-cron</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.04.11-sports-scp-health-and-dedup</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.04.10-dealscan-polish-and-cron</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.04.11-sports-scp-health-and-dedup</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1623,7 +1623,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.04.10-dealscan-polish-and-cron</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.04.11-sports-scp-health-and-dedup</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3118,7 +3118,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.04.10-dealscan-polish-and-cron';
+const APP_VERSION = '2026.08.04.11-sports-scp-health-and-dedup';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -14186,6 +14186,7 @@ async function runSystemCheck(){
     rows.push(systemLine('PokemonPrice', !!h.pokemonprice, h.pokemonprice ? 'connected' : 'missing key'));
     rows.push(systemLine('JustTCG', !!h.justtcg, h.justtcg ? 'connected' : 'missing key'));
     rows.push(systemLine('PriceCharting', !!h.pricecharting, h.pricecharting ? 'connected' : 'missing key'));
+    rows.push(systemLine('SportsCardsPro (sports search/pricing)', !!h.scp, h.scp ? 'connected' : 'missing key -- sports search falls back to plain PriceCharting'));
     rows.push(systemLine('TCG API', !!h.tcgapi, h.tcgapi ? 'connected' : 'not configured'));
   } catch(e) {
     rows.push(systemLine('Cloudflare Worker', false, e.message));
@@ -26349,33 +26350,12 @@ function scpDetailToQplRow(data, baseRow){
   };
 }
 
-// Step 1: candidate search → QPL rows (no hydration yet)
-async function searchSportsCardsPro(q){
-  if(!q) return [];
-  const params = new URLSearchParams({ q: String(q).trim() });
-  let data = {};
-  try {
-    const res = await fetch(WORKER + '/pricing/sportscardspro/products?' + params, { cache:'no-store' });
-    data = await res.json().catch(() => ({}));
-    // needsKey = SCP_ACCESS_TOKEN not yet configured in worker secrets
-    if(data.needsKey) {
-      console.warn('[SCP] SCP_ACCESS_TOKEN not set in Worker secrets — SportsCardsPro search unavailable. Set it with: wrangler secret put SCP_ACCESS_TOKEN');
-      return [];
-    }
-    if(!data.ok) return [];
-  } catch(e) {
-    console.warn('[SCP] fetch error:', e);
-    return [];
-  }
-  // Worker now always returns { ok, products: [] } — safe to read directly
-  const products = data.products || data.matches || data.data || data.results || (Array.isArray(data) ? data : []);
-  return products.slice(0, 10).map(p => scpProductToQplRow(p, q));
-}
-
-// Step 1b: async image enrichment — fires after results render, patches images in place.
-// No-op if image already populated or row has no set/name.
-// Override the simple SCP search with ranked multi-query lookup so exact card numbers
-// and product words beat loose player-name matches.
+// Candidate search → QPL rows (no hydration yet). Runs up to 3 query
+// variants (see buildSportsQueryVariants), ranks every candidate returned
+// across all of them by sportsProductMatchScore, and stops early once a
+// clearly-exact match is found -- so an exact card number/product-word hit
+// beats a loose player-name-only match instead of whichever query happened
+// to run first.
 async function searchSportsCardsPro(q, searchPlan = qplLastSearchPlan){
   if(!q) return [];
   const seen = new Map();
@@ -37006,7 +36986,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.04.10-dealscan-polish-and-cron"></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.04.11-sports-scp-health-and-dedup"></script>
 </body>
 </html>
 
