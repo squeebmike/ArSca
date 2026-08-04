@@ -1696,6 +1696,63 @@ async function fetchEbaySoldComps(env, query, limit = 40) {
   };
 }
 
+function normalizeActiveListing(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  const price = compMoneyValue(raw.sellingStatus?.[0]?.currentPrice?.[0]?.['__value__']);
+  const shipping = compMoneyValue(raw.shippingInfo?.[0]?.shippingServiceCost?.[0]?.['__value__']);
+  if (!price) return null;
+  return {
+    itemId: String(raw.itemId || '').trim(),
+    title: String(raw.title || 'eBay listing').trim(),
+    price: Math.round(price * 100) / 100,
+    shipping: Math.round(shipping * 100) / 100,
+    total: Math.round((price + shipping) * 100) / 100,
+    listingType: String(raw.listingInfo?.[0]?.listingType?.[0] || ''),
+    endTime: raw.listingInfo?.[0]?.endTime?.[0] || null,
+    startTime: raw.listingInfo?.[0]?.startTime?.[0] || null,
+    condition: raw.condition?.[0]?.conditionDisplayName?.[0] || null,
+    url: raw.viewItemURL?.[0] || null,
+    imageUrl: raw.galleryURL?.[0] || null,
+  };
+}
+
+// Active (not-yet-sold) listing search -- same Finding API + EBAY_APP_ID
+// already used for sold comps above, just findItemsByKeywords instead of
+// findCompletedItems. Used by /dealscan/check to catch underpriced listings
+// (fresh listings the seller hasn't priced to market yet, or auctions about
+// to close still below value) instead of only ever looking at sold history.
+async function fetchEbayActiveListings(env, query, opts = {}) {
+  const appId = env.EBAY_APP_ID || await getStoredSecret(env, 'EBAY_CLIENT_ID');
+  if (!appId) return { source: 'none', listings: [], warning: 'EBAY_APP_ID not set' };
+  const { maxPrice = 0, sortOrder = 'BestMatch', listingType = '', limit = 5 } = opts;
+  const params = [
+    'OPERATION-NAME=findItemsByKeywords', 'SERVICE-VERSION=1.0.0',
+    'SECURITY-APPNAME=' + appId, 'RESPONSE-DATA-FORMAT=JSON', 'REST-PAYLOAD',
+    'GLOBAL-ID=EBAY-US',
+    'keywords=' + encodeURIComponent(query),
+    'sortOrder=' + sortOrder,
+    'paginationInput.entriesPerPage=' + Math.min(20, Math.max(1, limit)),
+  ];
+  let filterIndex = 0;
+  if (maxPrice > 0) {
+    params.push(`itemFilter(${filterIndex}).name=MaxPrice`, `itemFilter(${filterIndex}).value=${maxPrice}`, `itemFilter(${filterIndex}).paramName=Currency`, `itemFilter(${filterIndex}).paramValue=USD`);
+    filterIndex++;
+  }
+  if (listingType) {
+    params.push(`itemFilter(${filterIndex}).name=ListingType`, `itemFilter(${filterIndex}).value=${listingType}`);
+    filterIndex++;
+  }
+  const findRes = await fetch(`https://svcs.ebay.com/services/search/FindingService/v1?${params.join('&')}`);
+  const { data } = await readApiJson(findRes);
+  if (!findRes.ok) return { source: 'ebay_active', listings: [], warning: 'Finding API ' + findRes.status };
+  const root = data.findItemsByKeywordsResponse?.[0] || {};
+  const ack = root.ack?.[0] || '';
+  const errMsg = root.errorMessage?.[0]?.error?.[0]?.message?.[0] || '';
+  if (ack && !['Success', 'Warning'].includes(ack)) return { source: 'ebay_active', listings: [], warning: errMsg || ack };
+  const items = root.searchResult?.[0]?.item || [];
+  return { source: 'ebay_active', listings: items.map(normalizeActiveListing).filter(Boolean), warning: errMsg || null };
+}
+
 async function fetchSoldCompsProvider(env, query, limit = 40) {
   if (!env.SOLDCOMPS_API_KEY) return { source: 'none', comps: [], warning: 'SOLDCOMPS_API_KEY not set' };
   const base = (env.SOLDCOMPS_BASE || 'https://api.sold-comps.com').replace(/\/+$/, '');
@@ -6401,6 +6458,75 @@ export default {
       } catch (e) {
         return json({ ok: false, error: e.message }, 500);
       }
+    }
+
+    // Deal scanner: given a list of cards with known market prices (the
+    // client builds this from the Pokemon/MTG Set Browser it already has --
+    // same set + price-range picker used for offline catalog browsing, not a
+    // new one), search eBay for active listings priced well below that
+    // market value -- fresh listings the seller hasn't priced to market yet,
+    // and auctions about to close still under value. Not sold-comp history
+    // (that's /comps/sold above); this is "can I buy one right now."
+    if (url.pathname === '/dealscan/check') {
+      if (request.method !== 'POST') return json({ ok:false, error:'POST only' }, 405);
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId);
+      if (auth.error) return auth.error;
+      const limited = await readJsonWithLimit(request, 512 * 1024);
+      if (limited.error) return limited.error;
+      const body = limited.data;
+      const thresholdPct = Math.min(90, Math.max(5, Number(body.thresholdPct) || 25));
+      const cards = (Array.isArray(body.cards) ? body.cards : [])
+        .filter(c => c && String(c.name || '').trim() && Number(c.marketPrice) > 0)
+        .slice(0, 60)
+        .map(c => ({ name:String(c.name).trim().slice(0, 120), set:String(c.set || '').trim().slice(0, 120), marketPrice:Number(c.marketPrice), imageUrl:String(c.imageUrl || ''), cardId:String(c.cardId || '') }));
+      if (!cards.length) return json({ ok:false, error:'cards is required' }, 400);
+      const rateError = await enforceUsageLimit(env, `dealscan:${storeId}:${auth.user.id}`, 10, 300);
+      if (rateError) return rateError;
+
+      const deals = [];
+      let idx = 0;
+      async function dealScanWorker() {
+        while (idx < cards.length) {
+          const card = cards[idx++];
+          const query = [card.name, card.set].filter(Boolean).join(' ');
+          const maxPrice = Math.round(card.marketPrice * (1 - thresholdPct / 100) * 100) / 100;
+          if (maxPrice <= 0) continue;
+          const [freshResult, auctionResult] = await Promise.all([
+            fetchEbayActiveListings(env, query, { maxPrice, sortOrder:'StartTimeNewest', limit:5 }).catch(() => ({ listings: [] })),
+            fetchEbayActiveListings(env, query, { maxPrice, sortOrder:'EndTimeSoonest', listingType:'Auction', limit:5 }).catch(() => ({ listings: [] })),
+          ]);
+          const seen = new Set();
+          for (const listing of [...freshResult.listings, ...auctionResult.listings]) {
+            if (!listing || !listing.itemId || seen.has(listing.itemId)) continue;
+            seen.add(listing.itemId);
+            if (!(listing.total > 0) || listing.total >= card.marketPrice) continue;
+            const pctBelow = Math.round((1 - listing.total / card.marketPrice) * 1000) / 10;
+            if (pctBelow < thresholdPct) continue;
+            deals.push({
+              cardName: card.name, set: card.set, cardImageUrl: card.imageUrl, cardId: card.cardId,
+              marketPrice: card.marketPrice, listingPrice: listing.total, pctBelow,
+              listingType: listing.listingType === 'Auction' ? 'auction' : 'fixed',
+              endTime: listing.endTime, title: listing.title, url: listing.url, listingImageUrl: listing.imageUrl,
+            });
+          }
+        }
+      }
+      await Promise.all(Array.from({ length: Math.min(4, cards.length) }, dealScanWorker));
+      deals.sort((a, b) => b.pctBelow - a.pctBelow);
+      const result = { deals, scannedCount: cards.length, scannedAt: new Date().toISOString(), thresholdPct };
+      if (env.LBA_KV) await env.LBA_KV.put(`dealscan:${storeId}:latest`, JSON.stringify(result), { expirationTtl: 6 * 60 * 60 }).catch(() => {});
+      return json({ ok:true, ...result });
+    }
+
+    if (url.pathname === '/dealscan/latest') {
+      if (request.method !== 'GET') return json({ ok:false, error:'GET only' }, 405);
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId);
+      if (auth.error) return auth.error;
+      if (!env.LBA_KV) return json({ ok:true, deals: [], scannedAt: null });
+      const cached = await env.LBA_KV.get(`dealscan:${storeId}:latest`, 'json').catch(() => null);
+      return json({ ok:true, ...(cached || { deals: [], scannedAt: null }) });
     }
 
     if (url.pathname === '/graded/pricing') {
