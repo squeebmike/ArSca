@@ -25,8 +25,13 @@
 // the Worker -- reused here instead of duplicating checklist-parsing logic.
 import { buildChecklistIndex, parseChecklistText, sha1Hex, slugify } from './scripts/topps-checklist-parser.js';
 
-// Per-isolate rate limiter for PriceCharting API (no KV needed)
+// Per-isolate rate limiter for PriceCharting API (no KV needed). _pcQueueTail
+// serializes the check-and-update of _pcLastCall itself so concurrent callers
+// (e.g. Promise.all'd barcode candidates, or overlapping requests in the same
+// isolate) can't both read a stale "time since last call" and fire together --
+// see pcFetch() below.
 let _pcLastCall = 0;
+let _pcQueueTail = Promise.resolve();
 
 const WEBFLOW_BASE = 'https://api.webflow.com/v2';
 const ANTHROPIC_BASE = 'https://api.anthropic.com/v1';
@@ -4285,20 +4290,27 @@ export default {
         if (g.startsWith('7')) return 'grade7';
         return 'ungraded';
       };
-      async function pcFetch(path, params = {}) {
+      function pcFetch(path, params = {}) {
         const qs = new URLSearchParams({ t: token, ...params });
-        // In-process rate limiter — no KV needed, good enough per isolate
-        const now = Date.now();
-        if (_pcLastCall > 0) {
-          const wait = Math.max(0, 1100 - (now - _pcLastCall));
+        // In-process rate limiter — no KV needed, good enough per isolate.
+        // Each call chains onto the shared _pcQueueTail so the "how long since
+        // the last call" check and the _pcLastCall update happen atomically in
+        // turn, even when multiple callers invoke pcFetch concurrently -- a
+        // plain read-then-write on _pcLastCall let two concurrent calls both
+        // see wait=0 and fire back-to-back, violating PriceCharting's rate limit.
+        const run = async () => {
+          const wait = _pcLastCall > 0 ? Math.max(0, 1100 - (Date.now() - _pcLastCall)) : 0;
           if (wait > 0) await new Promise(resolve => setTimeout(resolve, wait));
-        }
-        _pcLastCall = Date.now();
-        const res = await fetch(pcUrl(path) + '?' + qs.toString(), { headers: { 'Accept': 'application/json' } });
-        const text = await res.text();
-        let data; try { data = JSON.parse(text); } catch (_) { data = { raw: text }; }
-        if (!res.ok || data.status === 'error') throw new Error(data['error-message'] || data.error || 'PriceCharting ' + res.status);
-        return data;
+          _pcLastCall = Date.now();
+          const res = await fetch(pcUrl(path) + '?' + qs.toString(), { headers: { 'Accept': 'application/json' } });
+          const text = await res.text();
+          let data; try { data = JSON.parse(text); } catch (_) { data = { raw: text }; }
+          if (!res.ok || data.status === 'error') throw new Error(data['error-message'] || data.error || 'PriceCharting ' + res.status);
+          return data;
+        };
+        const turn = _pcQueueTail.then(run, run);
+        _pcQueueTail = turn.then(() => {}, () => {});
+        return turn;
       }
 
       const comicPcQuery = issue => [issue.seriesName, issue.number ? '#' + issue.number : '', issue.seriesYearBegan || '', 'Comic Books']
@@ -4882,8 +4894,21 @@ export default {
         if (!barcode.isValidLikely) return json({ status:'error', error:'Barcode must be a likely UPC-A, UPC-E, or EAN-13 value', barcode }, 400);
         if (body.supplement) barcode.supplement = String(body.supplement).replace(/\D/g, '').slice(0, 5);
         const sourceCalls = [], found = [], tried = [];
-        if ((hint === 'comics' || hint === 'auto') && env.METRON_USER && env.METRON_PASS) {
-          for (const code of barcode.candidates.slice(0, 3)) {
+        // Metron (comics) and PriceCharting-by-UPC are independent providers,
+        // so run them concurrently instead of back-to-back -- this was the
+        // main source of "scan barcode, wait several seconds" latency. Each
+        // provider's own results are collected into local arrays and merged
+        // into `found`/`sourceCalls` in the original Metron-then-PriceCharting
+        // priority order once both settle, so which one happens to resolve
+        // first over the network never changes which candidate ends up first.
+        const metronFound = [], metronCalls = [];
+        const metronPromise = (async () => {
+          if (!((hint === 'comics' || hint === 'auto') && env.METRON_USER && env.METRON_PASS)) return;
+          // The 3 candidate UPC formats are independent lookups against
+          // Metron (no shared rate limiter, unlike PriceCharting below), so
+          // fire them concurrently and keep whichever earliest-preference
+          // candidate actually matched.
+          const results = await Promise.all(barcode.candidates.slice(0, 3).map(async code => {
             const fullCode = code + (barcode.supplement || '');
             try {
               let result = await metronFetch(env, '/issue/', { upc:fullCode }, 60 * 60 * 24 * 7);
@@ -4892,22 +4917,34 @@ export default {
                 result = await metronFetch(env, '/issue/', { upc_starts_with:code }, 60 * 60 * 24 * 7);
                 issues = Array.isArray(result.data) ? result.data : (result.data?.results || []);
               }
-              found.push(...issues.slice(0, 20).map(normalizeMetronListIssue).map(issue => metronBarcodeCandidate(issue, code, barcode.supplement)));
-              sourceCalls.push({ provider:'metron', routeType:'upc', barcode:code, success:issues.length > 0 });
-              if (issues.length) break;
-            } catch (_) { sourceCalls.push({ provider:'metron', routeType:'upc', barcode:code, success:false }); }
+              return { code, issues, success:issues.length > 0 };
+            } catch (_) { return { code, issues:[], success:false }; }
+          }));
+          for (const { code, issues, success } of results) metronCalls.push({ provider:'metron', routeType:'upc', barcode:code, success });
+          const winner = results.find(r => r.success);
+          if (winner) metronFound.push(...winner.issues.slice(0, 20).map(normalizeMetronListIssue).map(issue => metronBarcodeCandidate(issue, winner.code, barcode.supplement)));
+        })();
+        const pcUpcFound = [], pcUpcCalls = [];
+        const pcUpcPromise = (async () => {
+          // PriceCharting is rate-limited (pcFetch enforces ~1.1s between
+          // calls), so these stay sequential-with-early-break -- firing all 3
+          // concurrently wouldn't make them resolve any faster (still gated
+          // by the shared throttle) and would waste calls once an earlier
+          // candidate already matched.
+          for (const code of token ? barcode.candidates.slice(0, 3) : []) {
+            tried.push(code);
+            try {
+              const data = await pcFetch('/api/product', { upc:code });
+              const product = normalizePcProduct(data, code);
+              const success = !!product.productId;
+              pcUpcCalls.push({ provider:'pricecharting', routeType:'upc', barcode:code, success });
+              if (success) { pcUpcFound.push(barcodeCandidate(product, hint, 'upc', code)); break; }
+            } catch (_) { pcUpcCalls.push({ provider:'pricecharting', routeType:'upc', barcode:code, success:false }); }
           }
-        }
-        for (const code of token ? barcode.candidates.slice(0, 3) : []) {
-          tried.push(code);
-          try {
-            const data = await pcFetch('/api/product', { upc:code });
-            const product = normalizePcProduct(data, code);
-            const success = !!product.productId;
-            sourceCalls.push({ provider:'pricecharting', routeType:'upc', barcode:code, success });
-            if (success) { found.push(barcodeCandidate(product, hint, 'upc', code)); break; }
-          } catch (_) { sourceCalls.push({ provider:'pricecharting', routeType:'upc', barcode:code, success:false }); }
-        }
+        })();
+        await Promise.all([metronPromise, pcUpcPromise]);
+        found.push(...metronFound, ...pcUpcFound);
+        sourceCalls.push(...metronCalls, ...pcUpcCalls);
         const fallbackQuery = query || (found[0]?.category === 'comics' ? found[0].title : '');
         if (fallbackQuery && (!found.length || found[0]?.confidence < 85)) {
           try {
