@@ -1704,10 +1704,30 @@ async function fetchEbaySoldComps(env, query, limit = 40) {
   };
 }
 
-function normalizeActiveListing(raw) {
+// App-level (client_credentials) OAuth token -- separate from
+// getEbayUserAccessToken()'s refresh-token flow (which grants sell.*
+// scopes for the checkout/listing features) and cached under its own KV
+// keys so the two never clobber each other. Only the base api_scope is
+// needed here: the Browse API's item search is a public read, no user
+// consent required.
+async function getEbayAppAccessToken(env) {
+  const cached = env.LBA_KV ? await env.LBA_KV.get('secret:EBAY_APP_ACCESS_TOKEN') : null;
+  const exp = env.LBA_KV ? Number(await env.LBA_KV.get('secret:EBAY_APP_ACCESS_EXPIRES') || 0) : 0;
+  if (cached && exp > Date.now() + 120000) return cached;
+  const params = new URLSearchParams({ grant_type: 'client_credentials', scope: 'https://api.ebay.com/oauth/api_scope' });
+  const data = await ebayTokenRequest(env, params);
+  const accessToken = data.access_token;
+  if (accessToken && env.LBA_KV) {
+    await env.LBA_KV.put('secret:EBAY_APP_ACCESS_TOKEN', accessToken, { expirationTtl: Math.max(300, Number(data.expires_in || 7200)) });
+    await env.LBA_KV.put('secret:EBAY_APP_ACCESS_EXPIRES', String(Date.now() + Number(data.expires_in || 7200) * 1000));
+  }
+  return accessToken || '';
+}
+
+function normalizeBrowseListing(raw) {
   if (!raw || typeof raw !== 'object') return null;
-  const price = compMoneyValue(raw.sellingStatus?.[0]?.currentPrice?.[0]?.['__value__']);
-  const shipping = compMoneyValue(raw.shippingInfo?.[0]?.shippingServiceCost?.[0]?.['__value__']);
+  const price = compMoneyValue(raw.price?.value);
+  const shipping = compMoneyValue(raw.shippingOptions?.[0]?.shippingCost?.value);
   if (!price) return null;
   return {
     itemId: String(raw.itemId || '').trim(),
@@ -1715,55 +1735,44 @@ function normalizeActiveListing(raw) {
     price: Math.round(price * 100) / 100,
     shipping: Math.round(shipping * 100) / 100,
     total: Math.round((price + shipping) * 100) / 100,
-    listingType: String(raw.listingInfo?.[0]?.listingType?.[0] || ''),
-    endTime: raw.listingInfo?.[0]?.endTime?.[0] || null,
-    startTime: raw.listingInfo?.[0]?.startTime?.[0] || null,
-    condition: raw.condition?.[0]?.conditionDisplayName?.[0] || null,
-    url: raw.viewItemURL?.[0] || null,
-    imageUrl: raw.galleryURL?.[0] || null,
+    listingType: (raw.buyingOptions || []).includes('AUCTION') ? 'Auction' : 'FixedPrice',
+    endTime: raw.itemEndDate || null,
+    startTime: raw.itemCreationDate || null,
+    condition: raw.condition || null,
+    url: raw.itemWebUrl || null,
+    imageUrl: raw.image?.imageUrl || raw.thumbnailImages?.[0]?.imageUrl || null,
   };
 }
 
-// Active (not-yet-sold) listing search -- same Finding API + EBAY_APP_ID
-// already used for sold comps above, just findItemsByKeywords instead of
-// findCompletedItems. Used by /dealscan/check to catch underpriced listings
-// (fresh listings the seller hasn't priced to market yet, or auctions about
-// to close still below value) instead of only ever looking at sold history.
+// Active (not-yet-sold) listing search via eBay's modern Browse API. The
+// legacy Finding API used here previously (svcs.ebay.com) started
+// returning HTTP 418 on every call regardless of headers -- eBay has been
+// winding that API down, so this uses the RESTful Buy Browse API instead
+// (same EBAY_CLIENT_ID/SECRET already configured, just a different OAuth
+// grant). Used by /dealscan/check to catch underpriced listings (fresh
+// listings the seller hasn't priced to market yet, or auctions about to
+// close still below value) instead of only ever looking at sold history.
 async function fetchEbayActiveListings(env, query, opts = {}) {
-  const appId = env.EBAY_APP_ID || await getStoredSecret(env, 'EBAY_CLIENT_ID');
-  if (!appId) return { source: 'none', listings: [], warning: 'EBAY_APP_ID not set' };
-  const { maxPrice = 0, sortOrder = 'BestMatch', listingType = '', limit = 5 } = opts;
-  // itemFilter(N).name -- the literal parentheses must be percent-encoded
-  // (%28/%29), matching fetchEbaySoldComps above. The Finding API silently
-  // no-ops (0 results, no error) on unencoded parens instead of rejecting
-  // the request, which made this look like "no deals exist" rather than a
-  // malformed filter.
-  const params = [
-    'OPERATION-NAME=findItemsByKeywords', 'SERVICE-VERSION=1.0.0',
-    'SECURITY-APPNAME=' + appId, 'RESPONSE-DATA-FORMAT=JSON', 'REST-PAYLOAD',
-    'GLOBAL-ID=EBAY-US',
-    'keywords=' + encodeURIComponent(query),
-    'sortOrder=' + sortOrder,
-    'paginationInput.entriesPerPage=' + Math.min(20, Math.max(1, limit)),
-  ];
-  let filterIndex = 0;
-  if (maxPrice > 0) {
-    params.push(`itemFilter%28${filterIndex}%29.name=MaxPrice`, `itemFilter%28${filterIndex}%29.value=${maxPrice}`, `itemFilter%28${filterIndex}%29.paramName=Currency`, `itemFilter%28${filterIndex}%29.paramValue=USD`);
-    filterIndex++;
-  }
-  if (listingType) {
-    params.push(`itemFilter%28${filterIndex}%29.name=ListingType`, `itemFilter%28${filterIndex}%29.value=${listingType}`);
-    filterIndex++;
-  }
-  const findRes = await fetch(`https://svcs.ebay.com/services/search/FindingService/v1?${params.join('&')}`, { headers: EBAY_FINDING_HEADERS });
-  const { data } = await readApiJson(findRes);
-  if (!findRes.ok) return { source: 'ebay_active', listings: [], warning: 'Finding API ' + findRes.status };
-  const root = data.findItemsByKeywordsResponse?.[0] || {};
-  const ack = root.ack?.[0] || '';
-  const errMsg = root.errorMessage?.[0]?.error?.[0]?.message?.[0] || '';
-  if (ack && !['Success', 'Warning'].includes(ack)) return { source: 'ebay_active', listings: [], warning: errMsg || ack };
-  const items = root.searchResult?.[0]?.item || [];
-  return { source: 'ebay_active', listings: items.map(normalizeActiveListing).filter(Boolean), warning: errMsg || null };
+  const token = await getEbayAppAccessToken(env).catch(() => '');
+  if (!token) return { source: 'none', listings: [], warning: 'eBay app access token unavailable -- check EBAY_CLIENT_ID/EBAY_CLIENT_SECRET' };
+  const { maxPrice = 0, sortOrder = '', listingType = '', limit = 5 } = opts;
+  const filters = [];
+  if (maxPrice > 0) filters.push(`price:[..${maxPrice}]`, 'priceCurrency:USD');
+  if (listingType === 'Auction') filters.push('buyingOptions:{AUCTION}');
+  const params = new URLSearchParams({ q: query, limit: String(Math.min(50, Math.max(1, limit))) });
+  if (filters.length) params.set('filter', filters.join(','));
+  if (sortOrder) params.set('sort', sortOrder);
+  const res = await fetch(`https://api.ebay.com/buy/browse/v1/item_summary/search?${params.toString()}`, {
+    headers: {
+      'Authorization': 'Bearer ' + token,
+      'X-EBAY-C-MARKETPLACE-ID': 'EBAY_US',
+      'Accept': 'application/json',
+    },
+  });
+  const { data } = await readApiJson(res);
+  if (!res.ok) return { source: 'ebay_active', listings: [], warning: 'eBay Browse API ' + res.status + (data?.errors?.[0]?.message ? ': ' + data.errors[0].message : '') };
+  const items = Array.isArray(data.itemSummaries) ? data.itemSummaries : [];
+  return { source: 'ebay_active', listings: items.map(normalizeBrowseListing).filter(Boolean), warning: null };
 }
 
 async function fetchSoldCompsProvider(env, query, limit = 40) {
@@ -6509,8 +6518,8 @@ export default {
       let idx = 0;
       async function runBothQueries(query, maxPrice) {
         return Promise.all([
-          fetchEbayActiveListings(env, query, { maxPrice, sortOrder:'StartTimeNewest', limit:5 }),
-          fetchEbayActiveListings(env, query, { maxPrice, sortOrder:'EndTimeSoonest', listingType:'Auction', limit:5 }),
+          fetchEbayActiveListings(env, query, { maxPrice, sortOrder:'newlyListed', limit:5 }),
+          fetchEbayActiveListings(env, query, { maxPrice, sortOrder:'endingSoonest', listingType:'Auction', limit:5 }),
         ]);
       }
       async function dealScanWorker() {
