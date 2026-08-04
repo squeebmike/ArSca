@@ -1670,6 +1670,13 @@ function filterSoldComps(comps, query, mode = '') {
   return deduped;
 }
 
+// eBay's Finding API edge (svcs.ebay.com) returns HTTP 418 for requests
+// that look like bot/scraper traffic before the request even reaches their
+// application logic (no JSON error envelope, just a raw non-2xx status) --
+// a Worker fetch() with no User-Agent/Accept headers looks exactly like
+// that. Both Finding API callers send these headers for that reason.
+const EBAY_FINDING_HEADERS = { 'Accept': 'application/json', 'User-Agent': 'Mozilla/5.0 (compatible; WalkOffInventory/1.0; +https://walkoffsc.com)' };
+
 async function fetchEbaySoldComps(env, query, limit = 40) {
   const appId = env.EBAY_APP_ID || await getStoredSecret(env, 'EBAY_CLIENT_ID');
   if (!appId) return { source: 'none', comps: [], warning: 'EBAY_APP_ID not set' };
@@ -1680,7 +1687,8 @@ async function fetchEbaySoldComps(env, query, limit = 40) {
     `&GLOBAL-ID=EBAY-US` +
     `&keywords=${encodeURIComponent(query)}` +
     `&itemFilter%280%29.name=SoldItemsOnly&itemFilter%280%29.value=true` +
-    `&sortOrder=EndTimeSoonest&paginationInput.entriesPerPage=${Math.min(100, Math.max(10, limit))}`
+    `&sortOrder=EndTimeSoonest&paginationInput.entriesPerPage=${Math.min(100, Math.max(10, limit))}`,
+    { headers: EBAY_FINDING_HEADERS }
   );
   const { data } = await readApiJson(findRes);
   if (!findRes.ok) return { source: 'ebay_sold', comps: [], warning: 'Finding API ' + findRes.status };
@@ -1747,7 +1755,7 @@ async function fetchEbayActiveListings(env, query, opts = {}) {
     params.push(`itemFilter%28${filterIndex}%29.name=ListingType`, `itemFilter%28${filterIndex}%29.value=${listingType}`);
     filterIndex++;
   }
-  const findRes = await fetch(`https://svcs.ebay.com/services/search/FindingService/v1?${params.join('&')}`);
+  const findRes = await fetch(`https://svcs.ebay.com/services/search/FindingService/v1?${params.join('&')}`, { headers: EBAY_FINDING_HEADERS });
   const { data } = await readApiJson(findRes);
   if (!findRes.ok) return { source: 'ebay_active', listings: [], warning: 'Finding API ' + findRes.status };
   const root = data.findItemsByKeywordsResponse?.[0] || {};
@@ -6481,9 +6489,16 @@ export default {
       if (limited.error) return limited.error;
       const body = limited.data;
       const thresholdPct = Math.min(90, Math.max(5, Number(body.thresholdPct) || 25));
+      // Capped well below the /dealscan/check cards limit sent from the
+      // client -- each candidate can fire up to 4 Finding API calls (2
+      // listing-type queries x an optional name-only retry), and eBay's
+      // Finding API edge starts returning HTTP 418 ("teapot" -- a raw,
+      // pre-application block, not a normal error envelope) once a burst
+      // looks like scraping. 25 candidates keeps a single scan's worst case
+      // around 100 calls instead of ~240.
       const cards = (Array.isArray(body.cards) ? body.cards : [])
         .filter(c => c && String(c.name || '').trim() && Number(c.marketPrice) > 0)
-        .slice(0, 60)
+        .slice(0, 25)
         .map(c => ({ name:String(c.name).trim().slice(0, 120), set:String(c.set || '').trim().slice(0, 120), marketPrice:Number(c.marketPrice), imageUrl:String(c.imageUrl || ''), cardId:String(c.cardId || '') }));
       if (!cards.length) return json({ ok:false, error:'cards is required' }, 400);
       const rateError = await enforceUsageLimit(env, `dealscan:${storeId}:${auth.user.id}`, 10, 300);
@@ -6534,7 +6549,7 @@ export default {
           }
         }
       }
-      await Promise.all(Array.from({ length: Math.min(4, cards.length) }, dealScanWorker));
+      await Promise.all(Array.from({ length: Math.min(2, cards.length) }, dealScanWorker));
       deals.sort((a, b) => b.pctBelow - a.pctBelow);
       const ebayAppAvailable = !!(env.EBAY_APP_ID || await getStoredSecret(env, 'EBAY_CLIENT_ID'));
       const result = {
