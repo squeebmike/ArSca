@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.06.01-team-theme-picker-in-dashboard">
+<meta name="version" content="2026.08.06.02-team-picker-parity-fixes">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1545,13 +1545,13 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.06.01-team-theme-picker-in-dashboard"></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.06.01-team-theme-picker-in-dashboard"></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.06.01-team-theme-picker-in-dashboard"></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.06.01-team-theme-picker-in-dashboard"></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.06.01-team-theme-picker-in-dashboard"></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.06.01-team-theme-picker-in-dashboard"></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.06.01-team-theme-picker-in-dashboard"></script>
+<script src="scripts/query-routing.js?v=2026.08.06.02-team-picker-parity-fixes"></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.06.02-team-picker-parity-fixes"></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.06.02-team-picker-parity-fixes"></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.06.02-team-picker-parity-fixes"></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.06.02-team-picker-parity-fixes"></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.06.02-team-picker-parity-fixes"></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.06.02-team-picker-parity-fixes"></script>
 </head>
 <body>
 
@@ -1601,11 +1601,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.06.01-team-theme-picker-in-dashboard</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.06.02-team-picker-parity-fixes</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.06.01-team-theme-picker-in-dashboard</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.06.02-team-picker-parity-fixes</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1627,7 +1627,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.06.01-team-theme-picker-in-dashboard</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.06.02-team-picker-parity-fixes</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3134,7 +3134,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.06.01-team-theme-picker-in-dashboard';
+const APP_VERSION = '2026.08.06.02-team-picker-parity-fixes';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -3893,16 +3893,36 @@ function applyThemePreset(name){ const theme = { ...(STORE_THEME_PRESETS[name] |
 // below still does the actual persisting, so this is purely a faster way
 // to generate colors, not a second save path.
 let _teamPickerLeague = 'nfl', _teamPickerColorway = 'home', _teamPickerQuery = '';
+// Same per-league colorway labels as the website's picker (Pokemon calls it
+// Pokemon/Shiny, MTG calls it Mana Theme/Foil Alt, everything else is Home/Away)
+// -- these were hardcoded to generic HOME/AWAY before, which is the one
+// concrete behavior gap from the site's own picker (the color data/math was
+// always shared; this label mapping wasn't ported over).
+function teamPickerColorwayLabels(league){
+  if(league === 'pokemon') return [{k:'home',l:'Pokémon'},{k:'away',l:'✨ Shiny'}];
+  if(league === 'mtg') return [{k:'home',l:'Mana Theme'},{k:'away',l:'Foil Alt'}];
+  return [{k:'home',l:'🏠 Home Colors'},{k:'away',l:'✈️ Away Colors'}];
+}
+function renderTeamPickerColorwayTabs(){
+  const host = document.getElementById('team-theme-cw-tabs');
+  if(!host) return;
+  host.innerHTML = teamPickerColorwayLabels(_teamPickerLeague).map(o => `<button class="hbtn" data-cw="${o.k}" style="padding:4px 10px;font-size:10px;${o.k===_teamPickerColorway?'color:var(--g);border-color:var(--g)':''}" onclick="setTeamPickerColorway('${o.k}')">${escHtml(o.l)}</button>`).join('');
+}
 function teamThemeSwatchesHtml(){
   const WTP = window.WOTeamPalette;
   if(!WTP) return '<div style="padding:20px;text-align:center;color:var(--dim);font-family:var(--font-mono);font-size:11px">Loading team database…</div>';
   const q = _teamPickerQuery.trim().toLowerCase();
   const list = (WTP.TEAMS[_teamPickerLeague] || []).filter(t => !q || t.n.toLowerCase().includes(q));
   if(!list.length) return '<div style="padding:20px;text-align:center;color:var(--dim);font-family:var(--font-mono);font-size:11px">No matches.</div>';
-  return list.slice(0, 300).map(t => `<button class="hbtn" style="display:flex;align-items:center;gap:8px;text-align:left;padding:8px 10px;min-height:40px" onclick="applyTeamThemeSelection('${_teamPickerLeague}','${escHtml(String(t.k))}','${_teamPickerColorway}')">
-    <span style="width:20px;height:20px;border-radius:50%;flex-shrink:0;background:linear-gradient(135deg, ${escHtml(t.hp||'#333')} 50%, ${escHtml(t.ap||'#666')} 50%);border:1px solid var(--border)"></span>
-    <span style="font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(t.n)}</span>
-  </button>`).join('');
+  return list.slice(0, 300).map(t => {
+    const swatch = `<span class="team-picker-fallback" style="width:22px;height:22px;border-radius:50%;flex-shrink:0;background:linear-gradient(135deg, ${escHtml(t.hp||'#333')} 50%, ${escHtml(t.ap||'#666')} 50%);border:1px solid var(--border);display:none"></span>`;
+    const logo = WTP.logoUrl(_teamPickerLeague, t.k, _teamPickerColorway);
+    return `<button class="hbtn" style="display:flex;align-items:center;gap:8px;text-align:left;padding:8px 10px;min-height:40px" onclick="applyTeamThemeSelection('${_teamPickerLeague}','${escHtml(String(t.k))}','${_teamPickerColorway}')">
+      <img src="${escHtml(logo)}" alt="" style="width:22px;height:22px;object-fit:contain;border-radius:50%;background:rgba(255,255,255,.08);flex-shrink:0" onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
+      ${swatch}
+      <span style="font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(t.n)}</span>
+    </button>`;
+  }).join('');
 }
 function renderTeamThemePicker(){
   const grid = document.getElementById('team-theme-grid');
@@ -3915,8 +3935,8 @@ function markActiveTeamPickerTab(container, matchAttr, activeVal){
     b.style.borderColor = isOn ? 'var(--g)' : '';
   });
 }
-function setTeamPickerLeague(league){ _teamPickerLeague = league; markActiveTeamPickerTab('#team-theme-league-tabs', 'data-league', league); renderTeamThemePicker(); }
-function setTeamPickerColorway(cw){ _teamPickerColorway = cw; markActiveTeamPickerTab('#team-theme-cw-tabs', 'data-cw', cw); }
+function setTeamPickerLeague(league){ _teamPickerLeague = league; _teamPickerColorway = 'home'; markActiveTeamPickerTab('#team-theme-league-tabs', 'data-league', league); renderTeamPickerColorwayTabs(); renderTeamThemePicker(); }
+function setTeamPickerColorway(cw){ _teamPickerColorway = cw; markActiveTeamPickerTab('#team-theme-cw-tabs', 'data-cw', cw); renderTeamThemePicker(); }
 function filterTeamThemePicker(q){ _teamPickerQuery = q || ''; renderTeamThemePicker(); }
 // Maps the engine's accessible-derived colors onto the dashboard's own
 // theme fields, without touching font/radius/logo/background-image (those
@@ -3956,15 +3976,13 @@ function openTeamThemePicker(){
     <div id="team-theme-league-tabs" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
       ${leagues.map((l,i) => `<button class="hbtn" data-league="${l}" style="padding:4px 10px;font-size:10px;${i===0?'color:var(--g);border-color:var(--g)':''}" onclick="setTeamPickerLeague('${l}')">${escHtml(labelFor(l))}</button>`).join('')}
     </div>
-    <div id="team-theme-cw-tabs" style="display:flex;gap:6px;margin-bottom:10px">
-      <button class="hbtn" data-cw="home" style="padding:4px 10px;font-size:10px;color:var(--g);border-color:var(--g)" onclick="setTeamPickerColorway('home')">🏠 HOME</button>
-      <button class="hbtn" data-cw="away" style="padding:4px 10px;font-size:10px" onclick="setTeamPickerColorway('away')">✈️ AWAY</button>
-    </div>
+    <div id="team-theme-cw-tabs" style="display:flex;gap:6px;margin-bottom:10px"></div>
     <input class="tsi" placeholder="Search teams…" oninput="filterTeamThemePicker(this.value)" style="margin-bottom:10px">
     <div id="team-theme-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:6px;max-height:50vh;overflow-y:auto"></div>
   </div>`;
   document.body.appendChild(modal);
   _teamPickerLeague = 'nfl'; _teamPickerColorway = 'home'; _teamPickerQuery = '';
+  renderTeamPickerColorwayTabs();
   renderTeamThemePicker();
 }
 async function resetBrandTheme(){ setThemeForm(DEFAULT_STORE_THEME); applyStoreTheme(DEFAULT_STORE_THEME, true); await saveStoreSettingsToSupabase({ theme:DEFAULT_STORE_THEME }); toast_dash('Default theme restored'); }
@@ -37241,7 +37259,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.06.01-team-theme-picker-in-dashboard"></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.06.02-team-picker-parity-fixes"></script>
 </body>
 </html>
 
