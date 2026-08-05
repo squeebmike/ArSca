@@ -2272,6 +2272,109 @@ export default {
       return json({ ok:true, clientSecret:pi.client_secret, publishableKey:stripeConfig(env, mode).publishableKey, confirmationNumber, amountCents:totalCents, shippingFeeCents, mode });
     }
 
+    // POST /public/storefront/record-order — records an order that was
+    // already charged via a DIFFERENT checkout surface's own Stripe
+    // PaymentIntent (today: wo-checkout, walkoffsc.com's Webflow-embedded
+    // cart) into the same pos_sales/pos_sale_lines/pos_payments/
+    // storefront_orders tables /public/storefront/checkout writes, so it
+    // shows up in the dashboard's Orders tab exactly like a storefront.html
+    // order instead of only existing in that other Worker's own separate
+    // KV store. The PaymentIntent is fetched live from Stripe (never
+    // trusted from the caller) before anything is written. The existing
+    // /stripe/webhook handler (syncStripeWebhookPayment ->
+    // fulfillStorefrontOrderInventory) then fulfills it automatically once
+    // Stripe confirms the charge, matched purely by stripe_payment_intent_id
+    // -- it has no idea which Worker created the intent, so nothing else
+    // needs to change there. Item rows may have itemId:null for products
+    // that aren't in inventory_items at all (e.g. wo-checkout's Dougvana
+    // print run) -- unlike /public/storefront/checkout this doesn't
+    // re-verify against inventory_items, since the caller already did that
+    // against the same /public/storefront/item source moments earlier and
+    // non-inventory items wouldn't be found there anyway.
+    if (url.pathname === '/public/storefront/record-order' && request.method === 'POST') {
+      if (!(env.SUPABASE_URL && (env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_KEY))) return json({ ok:false, error:'Storefront service unavailable' }, 503);
+      const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
+      const limited = await readJsonWithLimit(request, 32 * 1024);
+      if (limited.error) return limited.error;
+      const body = limited.data || {};
+      const storeId = String(body.storeId || '').trim();
+      if (!/^[0-9a-z_-]{2,80}$/i.test(storeId)) return json({ ok:false, error:'Valid storeId required' }, 400);
+      const rateError = await enforceUsageLimit(env, `storefront-record-order:${storeId}:${ip}`, 20, 60);
+      if (rateError) return rateError;
+
+      const piId = String(body.stripePaymentIntentId || '').trim();
+      if (!/^pi_[a-zA-Z0-9]+$/.test(piId)) return json({ ok:false, error:'Valid stripePaymentIntentId required' }, 400);
+
+      const fulfillment = body.fulfillment || {};
+      const method = String(fulfillment.method || '');
+      if (!['pickup_fedway', 'pickup_kitsap', 'shipping'].includes(method)) return json({ ok:false, error:'A valid fulfillment method is required' }, 400);
+      const customerName = String(fulfillment.name || '').trim().slice(0, 160);
+      const customerPhone = String(fulfillment.phone || '').trim().slice(0, 40);
+      if (!customerName || !customerPhone) return json({ ok:false, error:'Name and phone number are required' }, 400);
+      const customerEmail = String(fulfillment.email || '').trim().slice(0, 200);
+      let shippingAddress = null;
+      if (method === 'shipping') {
+        const addr = fulfillment.shippingAddress || {};
+        shippingAddress = {
+          line1: String(addr.line1 || '').trim().slice(0, 200),
+          line2: String(addr.line2 || '').trim().slice(0, 200),
+          city: String(addr.city || '').trim().slice(0, 120),
+          state: String(addr.state || '').trim().slice(0, 40),
+          zip: String(addr.zip || '').trim().slice(0, 20),
+        };
+        if (!shippingAddress.line1 || !shippingAddress.city || !shippingAddress.state || !shippingAddress.zip) return json({ ok:false, error:'A complete shipping address is required' }, 400);
+      }
+
+      const requestedItems = Array.isArray(body.items) ? body.items.slice(0, 20) : [];
+      if (!requestedItems.length) return json({ ok:false, error:'No items to record' }, 400);
+      const cleanUrlLoose = v => { const s = String(v == null ? '' : v).trim().slice(0, 1000); return /^https?:\/\//i.test(s) || /^data:image\//i.test(s) ? s : ''; };
+      const cleanText = (v, n) => String(v == null ? '' : v).trim().slice(0, n);
+
+      const lineItems = [];
+      for (const reqItem of requestedItems) {
+        const rawId = String(reqItem.itemId || '').trim();
+        const itemId = /^[0-9a-f-]{36}$/i.test(rawId) ? rawId : null; // null = not a real inventory row (e.g. a Dougvana print run)
+        const qty = Math.max(1, Math.min(50, Number(reqItem.quantity || 1)));
+        const unitPrice = Math.max(0, Number(reqItem.price || 0));
+        if (unitPrice <= 0) return json({ ok:false, error:'Every recorded item needs a positive price' }, 400);
+        lineItems.push({ itemId, quantity: qty, unitPrice, title: cleanText(reqItem.name || 'Item', 200), category: cleanText(reqItem.category || 'Other', 80), imageUrl: cleanUrlLoose(reqItem.imageUrl) });
+      }
+      const subtotalCents = lineItems.reduce((sum, li) => sum + Math.round(li.unitPrice * 100) * li.quantity, 0);
+      const shippingFeeCents = Math.max(0, Math.round(Number(body.shippingFeeCents || 0)));
+      const totalCents = subtotalCents + shippingFeeCents;
+
+      // wo-checkout has a single unsplit STRIPE_SECRET_KEY (no separate
+      // live/test vars), so it can't reliably tell us which of this
+      // Worker's own live/test keys corresponds to the account that
+      // actually created the PaymentIntent -- try the requested mode first,
+      // then the other one, rather than failing on a guessable mismatch.
+      const requestedMode = stripeMode(env, body.mode);
+      let pi;
+      try {
+        pi = await stripeApi(env, requestedMode, `payment_intents/${encodeURIComponent(piId)}`);
+      } catch (e) {
+        const otherMode = requestedMode === 'live' ? 'test' : 'live';
+        try { pi = await stripeApi(env, otherMode, `payment_intents/${encodeURIComponent(piId)}`); }
+        catch (e2) { return json({ ok:false, error:'Could not verify payment: ' + e.message }, 502); }
+      }
+      const mode = pi.livemode ? 'live' : 'test';
+      if (Math.abs(Number(pi.amount || 0) - totalCents) > 1) return json({ ok:false, error:'Recorded total does not match the charged amount' }, 409);
+
+      const confirmationNumber = String(body.confirmationNumber || '').trim().slice(0, 40) || ('ORD-' + crypto.randomUUID().split('-')[0].toUpperCase());
+      const saleId = crypto.randomUUID();
+      await supabaseAdminFetch(env, 'pos_sales', { method:'POST', headers:{ Prefer:'return=minimal' }, body:JSON.stringify({ id:saleId, store_id:storeId, subtotal:subtotalCents/100, discount_total:0, tax_total:0, total:totalCents/100, status:'pending' }) });
+
+      const saleLines = lineItems.map(li => ({ id:crypto.randomUUID(), sale_id:saleId, store_id:storeId, item_id:li.itemId, title:li.title, category:li.category, quantity:li.quantity, unit_price:li.unitPrice, original_price:li.unitPrice, adjusted_price:li.unitPrice, discount_amount:0, cost_basis:0, profit:0, condition:'', image_url:li.imageUrl }));
+      if (shippingFeeCents > 0) saleLines.push({ id:crypto.randomUUID(), sale_id:saleId, store_id:storeId, item_id:null, title:'Shipping', category:'Shipping', quantity:1, unit_price:shippingFeeCents/100, original_price:shippingFeeCents/100, adjusted_price:shippingFeeCents/100, discount_amount:0, cost_basis:0, profit:0 });
+      await supabaseAdminFetch(env, 'pos_sale_lines', { method:'POST', headers:{ Prefer:'return=minimal' }, body:JSON.stringify(saleLines) });
+
+      await supabaseAdminFetch(env, 'pos_payments', { method:'POST', headers:{ Prefer:'return=minimal' }, body:JSON.stringify({ id:crypto.randomUUID(), sale_id:saleId, store_id:storeId, method:'Stripe Card', amount:totalCents/100, status:pi.status, provider:'stripe', stripe_mode:mode, stripe_payment_intent_id:pi.id, currency:pi.currency, amount_cents:totalCents, processing_fee_paid_by:'platform_account' }) });
+
+      await supabaseAdminFetch(env, 'storefront_orders', { method:'POST', headers:{ Prefer:'return=minimal' }, body:JSON.stringify({ id:crypto.randomUUID(), store_id:storeId, sale_id:saleId, confirmation_number:confirmationNumber, customer_name:customerName, customer_phone:customerPhone, customer_email:customerEmail || null, fulfillment_method:method, shipping_address:shippingAddress, shipping_fee_cents:shippingFeeCents, fulfillment_status:'pending' }) });
+
+      return json({ ok:true, saleId, confirmationNumber });
+    }
+
     if (url.pathname === '/catalog/mtg/manifest') {
       if (request.method !== 'GET') return json({ ok: false, error: 'GET only' }, 405);
       if (!env.MTG_CATALOG_R2) return json({ ok: false, error: 'MTG_CATALOG_R2 binding is not configured' }, 503);
