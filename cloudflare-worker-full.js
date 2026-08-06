@@ -1962,7 +1962,7 @@ async function fetchSoldCompsProvider(env, query, limit = 40) {
 }
 
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     if (request.method === 'OPTIONS') {
       return new Response(null, { status: 204, headers: CORS });
     }
@@ -2851,7 +2851,7 @@ export default {
             processingTime:detection.processingTime,
             messages:detection.messages || [],
           });
-          if (identifyCacheKey) ctx.waitUntil(caches.default.put(identifyCacheKey, cardLensCacheableResponse(noMatch, 200, 90)));
+          if (identifyCacheKey) await caches.default.put(identifyCacheKey, cardLensCacheableResponse(noMatch, 200, 90));
           return new Response(noMatch, { status:200, headers:{ ...CORS, 'Content-Type':'application/json', 'Cache-Control':'no-store', 'X-Card-Lens-Cache':'DETECT-NO-MATCH' } });
         }
       }
@@ -2869,7 +2869,7 @@ export default {
       // attempts even when no card is matched, so an unchanged difficult view
       // must not consume another provider call every few seconds.
       if ((res.ok || res.status === 404) && identifyCacheKey) {
-        ctx.waitUntil(caches.default.put(identifyCacheKey, cardLensCacheableResponse(data, res.status, res.ok ? 90 : 30)));
+        await caches.default.put(identifyCacheKey, cardLensCacheableResponse(data, res.status, res.ok ? 90 : 30));
       }
       return new Response(data, { status:res.status, headers:{ ...CORS, 'Content-Type':'application/json', 'Cache-Control':'no-store', 'X-Card-Lens-Cache':'MISS' } });
     }
@@ -2897,7 +2897,7 @@ export default {
           status:200,
           headers:{ 'Content-Type':imageType, 'Cache-Control':'public, max-age=86400' },
         });
-        ctx.waitUntil(caches.default.put(imageCacheKey, cacheableImage));
+        await caches.default.put(imageCacheKey, cacheableImage);
       }
       return new Response(imageData, { status:imageResponse.status, headers:{ ...CORS, 'Content-Type':imageType, 'Cache-Control':'no-store', 'X-Card-Lens-Cache':'MISS' } });
     }
@@ -2919,7 +2919,7 @@ export default {
         headers:{ 'X-API-Key':env.CARDSIGHTAI_API_KEY },
       });
       const data = await res.text();
-      if (res.ok) ctx.waitUntil(caches.default.put(pricingCacheKey, cardLensCacheableResponse(data, res.status, 300)));
+      if (res.ok) await caches.default.put(pricingCacheKey, cardLensCacheableResponse(data, res.status, 300));
       return new Response(data, { status:res.status, headers:{ ...CORS, 'Content-Type':'application/json', 'Cache-Control':'no-store', 'X-Card-Lens-Cache':'MISS' } });
     }
 

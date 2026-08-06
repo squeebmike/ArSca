@@ -3,8 +3,9 @@
   "version": "2026.07.14.2",
   "private": true,
   "scripts": {
-    "test": "npm run test:parse && npm run test:topps-parser && npm run test:buy-workspace && npm run test:search-adapter && npm run test:pokemon-sync && npm run test:comic-hub && npm run test:consignment && npm run test:stripe-foundation && npm run test:settings-architecture && npm run test:subscription-plans && npm run test:storefront && npm run test:webflow-sync && npm run test:inventory-usability && npm run test:barcode && npm run test:mtg-offline && npm run test:pricecharting-offline && npm run test:deck-lab && npm run test:mtg-research-batch && npm run test:admin-support && npm run test:release-hardening && npm run test:security-hardening && npm run test:research-pipeline && npm run test:operational-durability",
+    "test": "npm run test:parse && npm run test:card-lens-worker && npm run test:topps-parser && npm run test:buy-workspace && npm run test:search-adapter && npm run test:pokemon-sync && npm run test:comic-hub && npm run test:consignment && npm run test:stripe-foundation && npm run test:settings-architecture && npm run test:subscription-plans && npm run test:storefront && npm run test:webflow-sync && npm run test:inventory-usability && npm run test:barcode && npm run test:mtg-offline && npm run test:pricecharting-offline && npm run test:deck-lab && npm run test:mtg-research-batch && npm run test:admin-support && npm run test:release-hardening && npm run test:security-hardening && npm run test:research-pipeline && npm run test:operational-durability",
     "test:qa": "npm run test:parse",
+    "test:card-lens-worker": "node tests/card-lens-worker-context.test.mjs",
     "test:smoke:manual": "playwright test --config=tests/playwright.config.js --workers=1",
     "test:headed": "playwright test --config=tests/playwright.config.js --headed",
     "test:parse": "node tests/parse-check.js",
