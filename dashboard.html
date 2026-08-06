@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.06.06-ebay-account-external-sales">
+<meta name="version" content="2026.08.06.07-ebay-category-picker">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1545,13 +1545,13 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.06.06-ebay-account-external-sales"></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.06.06-ebay-account-external-sales"></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.06.06-ebay-account-external-sales"></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.06.06-ebay-account-external-sales"></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.06.06-ebay-account-external-sales"></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.06.06-ebay-account-external-sales"></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.06.06-ebay-account-external-sales"></script>
+<script src="scripts/query-routing.js?v=2026.08.06.07-ebay-category-picker"></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.06.07-ebay-category-picker"></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.06.07-ebay-category-picker"></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.06.07-ebay-category-picker"></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.06.07-ebay-category-picker"></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.06.07-ebay-category-picker"></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.06.07-ebay-category-picker"></script>
 </head>
 <body>
 
@@ -1601,11 +1601,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.06.06-ebay-account-external-sales</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.06.07-ebay-category-picker</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.06.06-ebay-account-external-sales</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.06.07-ebay-category-picker</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1627,7 +1627,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.06.06-ebay-account-external-sales</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.06.07-ebay-category-picker</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3148,7 +3148,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.06.06-ebay-account-external-sales';
+const APP_VERSION = '2026.08.06.07-ebay-category-picker';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -18303,27 +18303,69 @@ async function loadDashboardEbayAspects(id, prefix='dash-eb'){
 
 // eBay's own "pick a category" suggestion from the current title -- lets
 // the user match eBay's real taxonomy instead of guessing/typing an ID.
-async function suggestDashboardEbayCategory(id, prefix='dash-eb'){
+function suggestDashboardEbayCategory(id, prefix='dash-eb'){
   const title = document.getElementById(prefix+'-title')?.value.trim();
   if(!title){ toast_dash('Enter a title first'); return; }
-  toast_dash('Looking up eBay category suggestions...');
-  try {
-    const res = await storeWorkerFetch('/ebay/category-suggestions?q=' + encodeURIComponent(title));
+  openEbayCategoryPicker(id, prefix, title);
+}
+
+// Real clickable category picker -- searches eBay's Taxonomy API
+// (get_category_suggestions, the same one behind SUGGEST) and shows results
+// as tappable cards with their full category path, instead of the old
+// prompt()-based "type a number" list. Works for both the single-item LIST
+// ON EBAY modal (prefix "dash-eb") and each EBAY BULK LISTING review card.
+async function openEbayCategoryPicker(id, prefix, initialQuery){
+  document.getElementById('ebay-category-picker-modal')?.remove();
+  const modal = document.createElement('div');
+  modal.id = 'ebay-category-picker-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:10000;display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;padding:24px 12px';
+  modal.innerHTML = `
+    <div style="width:100%;max-width:480px;background:var(--surf);border:1px solid var(--border);border-radius:10px;padding:16px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div style="font-family:'Orbitron',monospace;color:var(--gold);font-size:13px;letter-spacing:2px">PICK EBAY CATEGORY</div>
+        <button onclick="document.getElementById('ebay-category-picker-modal').remove()" style="background:none;border:none;color:var(--dim);font-size:22px;cursor:pointer">×</button>
+      </div>
+      <input id="ebay-cat-picker-search" value="${escHtml(initialQuery||'')}" placeholder="Search eBay categories..." oninput="debounceEbayCategoryPickerSearch('${id}','${prefix}')" style="width:100%;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:9px;border-radius:6px;box-sizing:border-box;margin-bottom:10px">
+      <div id="ebay-cat-picker-results" style="display:grid;gap:6px;max-height:60vh;overflow-y:auto">Loading...</div>
+    </div>`;
+  document.body.appendChild(modal);
+  document.getElementById('ebay-cat-picker-search')?.focus();
+  await runEbayCategoryPickerSearch(id, prefix);
+}
+
+let _ebayCatPickerTimer = null;
+function debounceEbayCategoryPickerSearch(id, prefix){
+  clearTimeout(_ebayCatPickerTimer);
+  _ebayCatPickerTimer = setTimeout(() => runEbayCategoryPickerSearch(id, prefix), 400);
+}
+
+async function runEbayCategoryPickerSearch(id, prefix){
+  const q = document.getElementById('ebay-cat-picker-search')?.value.trim();
+  const host = document.getElementById('ebay-cat-picker-results');
+  if(!host) return;
+  if(!q){ host.innerHTML = '<div style="font-family:monospace;font-size:10px;color:var(--dim)">Type a keyword to search categories.</div>'; return; }
+  host.innerHTML = '<div style="font-family:monospace;font-size:10px;color:var(--dim)">Searching...</div>';
+  try{
+    const res = await storeWorkerFetch('/ebay/category-suggestions?q=' + encodeURIComponent(q));
     const data = await res.json();
-    if(!data.ok || !data.suggestions?.length){ toast_dash('No eBay category suggestions found'); return; }
-    const pick = data.suggestions.map((s,i) => (i+1) + '. ' + s.categoryName + ' (' + s.categoryId + ')').join('\n');
-    const choice = prompt('eBay category suggestions -- enter a number to use it:\n\n' + pick);
-    const idx = parseInt(choice) - 1;
-    const sel = data.suggestions[idx];
-    if(!sel) return;
-    const catSel = document.getElementById(prefix+'-category');
-    const catIdInput = document.getElementById(prefix+'-category-id');
-    if(catSel){ catSel.value = [...catSel.options].some(o=>o.value===sel.categoryId) ? sel.categoryId : ''; }
-    if(catIdInput){ catIdInput.value = sel.categoryId; ebayCategoryIdInputChanged(catIdInput); }
-    await refreshEbayConditionUi(prefix, all.find(i=>i.id===id));
-    loadDashboardEbayAspects(id, prefix);
-    toast_dash('Category set to ' + sel.categoryName);
-  } catch(e) { toast_dash('Category suggestion lookup failed'); }
+    if(!data.ok || !data.suggestions?.length){ host.innerHTML = '<div style="font-family:monospace;font-size:10px;color:var(--dim)">No matches -- try different keywords.</div>'; return; }
+    host.innerHTML = data.suggestions.map(s => `
+      <button class="hbtn" style="width:100%;text-align:left;padding:10px;min-height:auto" data-cat-id="${escHtml(s.categoryId)}" data-cat-name="${escHtml(s.categoryName)}" onclick="pickEbayCategory('${id}','${prefix}',this.dataset.catId,this.dataset.catName)">
+        <div style="font-size:12px;color:var(--text)">${escHtml(s.categoryName)}</div>
+        ${s.path?.length?`<div style="font-family:monospace;font-size:8px;color:var(--dim);margin-top:2px">${s.path.map(escHtml).join(' &rsaquo; ')}</div>`:''}
+      </button>`).join('');
+  }catch(e){ host.innerHTML = '<div style="color:var(--red);font-family:monospace;font-size:10px">Search failed: '+escHtml(e.message)+'</div>'; }
+}
+
+async function pickEbayCategory(id, prefix, categoryId, categoryName){
+  document.getElementById('ebay-category-picker-modal')?.remove();
+  const catSel = document.getElementById(prefix+'-category');
+  const catIdInput = document.getElementById(prefix+'-category-id');
+  if(catSel){ catSel.value = [...catSel.options].some(o=>o.value===categoryId) ? categoryId : ''; }
+  if(catIdInput){ catIdInput.value = categoryId; ebayCategoryIdInputChanged(catIdInput); }
+  await refreshEbayConditionUi(prefix, all.find(i=>i.id===id));
+  loadDashboardEbayAspects(id, prefix);
+  toast_dash('Category set to ' + categoryName);
 }
 
 // Shared by submitDashboardEbayListing (new listing) and updateDashboardEbayListing
@@ -37520,7 +37562,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.06.06-ebay-account-external-sales"></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.06.07-ebay-category-picker"></script>
 </body>
 </html>
 

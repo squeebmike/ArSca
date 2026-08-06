@@ -3755,6 +3755,10 @@ export default {
         const suggestions = (data.categorySuggestions || []).map(s => ({
           categoryId: String(s.category?.categoryId || ''),
           categoryName: s.category?.categoryName || '',
+          // Path from root to this category's immediate parent (L1 first) --
+          // lets the picker show e.g. "Sports Mem, Cards & Fan Shop > Cards >
+          // Sports Trading Cards" instead of just a bare, ambiguous name.
+          path: (s.categoryTreeNodeAncestors || []).map(a => a.categoryName).filter(Boolean).reverse(),
         })).filter(s => s.categoryId).slice(0, 8);
         return json({ ok: true, suggestions });
       } catch (e) {
