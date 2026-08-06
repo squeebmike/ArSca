@@ -4064,12 +4064,17 @@ export default {
     }
 
     // Detects eBay sales that this dashboard never recorded on its own -- a listing
-    // can sell on eBay with zero action taken in this app. Matches paid, unfulfilled
-    // eBay orders' line-item SKUs against this store's inventory (every item listed
-    // through /ebay/list carries its own ebaySku), then records a pos_sales/
-    // pos_sale_lines/pos_payments row and marks the inventory item sold -- the same
-    // shape the in-store POS checkout and storefront-order paths already write, so
-    // an eBay sale shows up in profit stats and sales history like any other sale.
+    // can sell on eBay with zero action taken in this app. Pulls every paid eBay
+    // order from the Sell Fulfillment API and records a pos_sales/pos_sale_lines/
+    // pos_payments row for EVERY line item -- the same shape the in-store POS
+    // checkout and storefront-order paths already write, so an eBay sale shows up
+    // in profit stats and sales history like any other sale. Line items whose SKU
+    // matches this store's own inventory (every item listed through /ebay/list
+    // carries its own ebaySku) additionally mark that inventory item sold; line
+    // items that don't match (sold directly through eBay's own site/app, or never
+    // listed through this tool) are still recorded as a standalone sale, just
+    // without an inventory link -- previously those were silently discarded, which
+    // is why "sold through eBay directly" orders never showed up anywhere.
     // Idempotent via a KV flag per (order, sku) so re-running this doesn't double-record.
     if (url.pathname === '/ebay/orders/sync') {
       if (request.method !== 'POST') return json({ error: 'POST only' }, 405);
@@ -4088,7 +4093,6 @@ export default {
           const sku = row.data?.ebaySku;
           if (sku) skuMap.set(String(sku), row);
         }
-        if (!skuMap.size) return json({ ok: true, checked: 0, matched: 0, results: [] });
 
         // Regular sync only looks at orders eBay itself hasn't marked fulfilled yet.
         // Reconcile mode additionally covers orders already fulfilled (through eBay's
@@ -4119,44 +4123,55 @@ export default {
           if (order.orderPaymentStatus !== 'PAID') continue;
           for (const li of (order.lineItems || [])) {
             const sku = String(li.sku || '');
-            const invRow = skuMap.get(sku);
-            if (!invRow) continue;
+            const invRow = skuMap.get(sku) || null;
 
-            const trackKey = `ebay_order_synced:${storeId}:${order.orderId}:${sku}`;
+            // Keyed by sku (as before) whenever one exists -- preserves the exact
+            // KV key every previously-synced matched sale was already recorded
+            // under, so this change can't cause those to be double-recorded.
+            // Unmatched line items (which never got a key before) fall back to
+            // eBay's own lineItemId so different items in the same order don't
+            // collide when sku is blank.
+            const trackKey = `ebay_order_synced:${storeId}:${order.orderId}:${sku || li.lineItemId || 'noid'}`;
             if (env.LBA_KV && await env.LBA_KV.get(trackKey)) continue;
 
             try {
               const quantitySold = Math.max(1, Number(li.quantity || 1));
               const salePrice = Number(li.lineItemCost?.value || li.total?.value || 0);
-              const d = invRow.data || {};
-              const currentQty = Number(d.quantity ?? d.qty ?? 1) || 0;
-              const remaining = Math.max(0, currentQty - quantitySold);
-              const depleted = remaining <= 0;
-              const cost = Number(d.cost || 0);
-              const profit = salePrice - cost;
               const soldAt = order.creationDate || new Date().toISOString();
+
+              const d = invRow ? (invRow.data || {}) : {};
+              let remaining = 0, depleted = false;
+              const cost = invRow ? Number(d.cost || 0) : 0;
+              const profit = salePrice - cost;
+              const itemName = d.name || li.title || 'eBay Item';
 
               const saleId = crypto.randomUUID();
               await supabaseAdminFetch(env, 'pos_sales', { method: 'POST', headers: { Prefer: 'return=minimal' },
                 body: JSON.stringify({ id: saleId, store_id: storeId, subtotal: salePrice, discount_total: 0, tax_total: 0, total: salePrice, status: 'completed', payment_status: 'paid', completed_at: soldAt, created_at: soldAt }) });
               await supabaseAdminFetch(env, 'pos_sale_lines', { method: 'POST', headers: { Prefer: 'return=minimal' },
-                body: JSON.stringify([{ id: crypto.randomUUID(), sale_id: saleId, store_id: storeId, item_id: invRow.id, title: d.name || 'Item', category: d.category || '', quantity: quantitySold, unit_price: salePrice / quantitySold, original_price: salePrice / quantitySold, adjusted_price: salePrice / quantitySold, discount_amount: 0, cost_basis: cost, profit, condition: d.condition || '', image_url: d.thumbnail || d.image || '' }]) });
+                body: JSON.stringify([{ id: crypto.randomUUID(), sale_id: saleId, store_id: storeId, item_id: invRow ? invRow.id : null, title: itemName, category: d.category || '', quantity: quantitySold, unit_price: salePrice / quantitySold, original_price: salePrice / quantitySold, adjusted_price: salePrice / quantitySold, discount_amount: 0, cost_basis: cost, profit, condition: d.condition || '', source_id: 'ebay:' + order.orderId, image_url: d.thumbnail || d.image || '' }]) });
               await supabaseAdminFetch(env, 'pos_payments', { method: 'POST', headers: { Prefer: 'return=minimal' },
                 body: JSON.stringify({ id: crypto.randomUUID(), sale_id: saleId, store_id: storeId, method: 'eBay', amount: salePrice, status: 'confirmed', provider: 'ebay', currency: 'USD', confirmed_by: auth.user.id, confirmed_at: soldAt, created_at: soldAt }) });
 
-              const nextStatus = depleted ? 'sold' : 'in_stock';
-              const nextData = { ...d, status: nextStatus, lifecycle: nextStatus, qty: remaining, quantity: remaining, salePrice, profit, channel: 'eBay', soldAt: depleted ? soldAt : '' };
-              if (depleted) { nextData.ebayListingId = ''; nextData.ebayOfferId = ''; nextData.ebaySku = ''; nextData.ebayListedAt = ''; }
-              await supabaseAdminFetch(env, `inventory_items?id=eq.${encodeURIComponent(invRow.id)}&store_id=eq.${encodeURIComponent(storeId)}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ data: nextData, status: nextStatus, updated_at: new Date().toISOString() }) });
+              if (invRow) {
+                const currentQty = Number(d.quantity ?? d.qty ?? 1) || 0;
+                remaining = Math.max(0, currentQty - quantitySold);
+                depleted = remaining <= 0;
+                const nextStatus = depleted ? 'sold' : 'in_stock';
+                const nextData = { ...d, status: nextStatus, lifecycle: nextStatus, qty: remaining, quantity: remaining, salePrice, profit, channel: 'eBay', soldAt: depleted ? soldAt : '' };
+                if (depleted) { nextData.ebayListingId = ''; nextData.ebayOfferId = ''; nextData.ebaySku = ''; nextData.ebayListedAt = ''; }
+                await supabaseAdminFetch(env, `inventory_items?id=eq.${encodeURIComponent(invRow.id)}&store_id=eq.${encodeURIComponent(storeId)}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ data: nextData, status: nextStatus, updated_at: new Date().toISOString() }) });
+              }
 
               if (env.LBA_KV) await env.LBA_KV.put(trackKey, '1', { expirationTtl: 60 * 60 * 24 * 180 });
-              results.push({ itemId: invRow.id, name: d.name || 'Item', sku, orderId: order.orderId, salePrice, quantitySold, depleted });
+              results.push({ itemId: invRow ? invRow.id : null, name: itemName, sku, orderId: order.orderId, salePrice, quantitySold, depleted, matchedInventory: !!invRow });
             } catch (itemErr) {
               errors.push({ sku, orderId: order.orderId, error: itemErr.message });
             }
           }
         }
-        return json({ ok: true, checked: orders.length, matched: results.length, results, errors });
+        const matchedCount = results.filter(r => r.matchedInventory).length;
+        return json({ ok: true, checked: orders.length, matched: matchedCount, recorded: results.length, results, errors });
       } catch (e) {
         console.error('eBay order sync error:', e);
         return json({ ok: false, error: e.message }, 500);
