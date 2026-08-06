@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.06.03-ebay-orders-full-sync">
+<meta name="version" content="2026.08.06.04-ebay-listing-performance">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1545,13 +1545,13 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.06.03-ebay-orders-full-sync"></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.06.03-ebay-orders-full-sync"></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.06.03-ebay-orders-full-sync"></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.06.03-ebay-orders-full-sync"></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.06.03-ebay-orders-full-sync"></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.06.03-ebay-orders-full-sync"></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.06.03-ebay-orders-full-sync"></script>
+<script src="scripts/query-routing.js?v=2026.08.06.04-ebay-listing-performance"></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.06.04-ebay-listing-performance"></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.06.04-ebay-listing-performance"></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.06.04-ebay-listing-performance"></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.06.04-ebay-listing-performance"></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.06.04-ebay-listing-performance"></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.06.04-ebay-listing-performance"></script>
 </head>
 <body>
 
@@ -1601,11 +1601,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.06.03-ebay-orders-full-sync</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.06.04-ebay-listing-performance</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.06.03-ebay-orders-full-sync</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.06.04-ebay-listing-performance</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1627,7 +1627,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.06.03-ebay-orders-full-sync</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.06.04-ebay-listing-performance</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -1922,7 +1922,7 @@ body.show-mode .inv-sync-badge{display:none;}
     </div>
     <div style="font-family:monospace;font-size:9px;color:var(--purple);letter-spacing:.05em;margin-bottom:6px">BUSINESS POLICIES</div>
     <div id="ebay-hub-policies" style="font-family:monospace;font-size:10px;color:var(--dim);margin-bottom:14px">Loading...</div>
-    <div style="font-family:monospace;font-size:9px;color:var(--purple);letter-spacing:.05em;margin-bottom:6px">ACTIVE EBAY LISTINGS</div>
+    <div style="font-family:monospace;font-size:9px;color:var(--purple);letter-spacing:.05em;margin-bottom:6px">ACTIVE EBAY LISTINGS <span style="color:var(--dim);text-transform:none;letter-spacing:normal">— views/clicks are last 30 days</span></div>
     <div id="ebay-hub-listings" style="display:grid;gap:6px;margin-bottom:14px">Loading...</div>
     <div style="font-family:monospace;font-size:9px;color:var(--purple);letter-spacing:.05em;margin-bottom:6px">RECENT EBAY SALES <span style="color:var(--dim);text-transform:none;letter-spacing:normal">— everything eBay reports as sold, including orders sold outside this app</span></div>
     <div id="ebay-hub-orders" style="display:grid;gap:6px">Loading...</div>
@@ -3136,7 +3136,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.06.03-ebay-orders-full-sync';
+const APP_VERSION = '2026.08.06.04-ebay-listing-performance';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -14164,16 +14164,48 @@ async function renderEbayHubPanel(){
   }
   if(listHost) {
     const listed = (all || []).filter(i => i.ebayListingId && i.status === 'in_stock');
-    listHost.innerHTML = listed.length ? listed.map(i => `
-      <div style="display:flex;align-items:center;gap:10px;padding:8px;border:1px solid var(--border);border-radius:6px">
-        <div style="flex:1;min-width:0">
-          <div style="font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(i.name)}</div>
-          <div style="font-family:monospace;font-size:9px;color:var(--dim)">${i.market?fd$(i.market):''} · <a href="https://www.ebay.com/itm/${escHtml(i.ebayListingId)}" target="_blank" style="color:var(--g)">view live</a></div>
-        </div>
-        <button class="hbtn" style="padding:4px 8px;font-size:9px" onclick="openEbayFromDash('${i.id}')">MANAGE</button>
-      </div>`).join('') : '<div style="font-family:monospace;font-size:10px;color:var(--dim)">No active eBay listings.</div>';
+    if(!listed.length){
+      listHost.innerHTML = '<div style="font-family:monospace;font-size:10px;color:var(--dim)">No active eBay listings.</div>';
+    } else {
+      listHost.innerHTML = listed.map(i => `
+        <div style="display:flex;align-items:center;gap:10px;padding:8px;border:1px solid var(--border);border-radius:6px">
+          <div style="flex:1;min-width:0">
+            <div style="font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(i.name)}</div>
+            <div style="font-family:monospace;font-size:9px;color:var(--dim)">${i.market?fd$(i.market):''} · <a href="https://www.ebay.com/itm/${escHtml(i.ebayListingId)}" target="_blank" style="color:var(--g)">view live</a></div>
+            <div id="ebay-perf-${escHtml(i.ebayListingId)}" style="font-family:monospace;font-size:9px;color:var(--dim);margin-top:2px">Loading views...</div>
+          </div>
+          <button class="hbtn" style="padding:4px 8px;font-size:9px" onclick="openEbayFromDash('${i.id}')">MANAGE</button>
+        </div>`).join('');
+      loadEbayListingPerformance(listed.map(i => i.ebayListingId)).catch(()=>{});
+    }
   }
   loadEbayOrderHistory().catch(()=>{});
+}
+
+// Per-listing views/impressions/click-through/conversion over the last 30
+// days (eBay Sell Analytics traffic report). Needs the sell.analytics.readonly
+// scope -- a store connected before this was added will get needsReconnect
+// back and should hit CONNECT EBAY again to pick up the wider consent.
+async function loadEbayListingPerformance(listingIds){
+  if(!listingIds?.length) return;
+  try{
+    const res = await storeWorkerFetch('/ebay/listing-performance?listingIds=' + encodeURIComponent(listingIds.join(',')), { cache:'no-store' });
+    const d = await res.json().catch(()=>({}));
+    if(!d.ok){
+      const msg = d.needsReconnect ? 'Reconnect eBay (below) to see view/click stats' : (d.error || 'Could not load stats');
+      for(const id of listingIds){ const el = document.getElementById('ebay-perf-' + id); if(el) el.textContent = msg; }
+      return;
+    }
+    const byId = Object.fromEntries((d.listings || []).map(l => [String(l.listingId), l]));
+    for(const id of listingIds){
+      const el = document.getElementById('ebay-perf-' + id);
+      if(!el) continue;
+      const p = byId[String(id)];
+      el.textContent = p ? (p.views + ' view' + (p.views===1?'':'s') + ' · ' + p.impressions + ' impressions · CTR ' + Number(p.clickThroughRate||0).toFixed(3)) : 'No traffic data yet';
+    }
+  }catch(e){
+    for(const id of listingIds){ const el = document.getElementById('ebay-perf-' + id); if(el) el.textContent = 'Could not load stats'; }
+  }
 }
 
 // Every eBay sale this app has ever recorded (via /ebay/orders/sync), matched
@@ -37300,7 +37332,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.06.03-ebay-orders-full-sync"></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.06.04-ebay-listing-performance"></script>
 </body>
 </html>
 

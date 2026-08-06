@@ -46,6 +46,7 @@ const EBAY_SCOPES = [
   'https://api.ebay.com/oauth/api_scope/sell.inventory',
   'https://api.ebay.com/oauth/api_scope/sell.account',
   'https://api.ebay.com/oauth/api_scope/sell.fulfillment.readonly',
+  'https://api.ebay.com/oauth/api_scope/sell.analytics.readonly',
 ].join(' ');
 
 const CORS = {
@@ -4175,6 +4176,59 @@ export default {
       } catch (e) {
         console.error('eBay order sync error:', e);
         return json({ ok: false, error: e.message }, 500);
+      }
+    }
+
+    // GET /ebay/listing-performance?listingIds=111,222,333
+    // Per-listing views/impressions/click-through/conversion over the last 30
+    // days, via the Sell Analytics API's traffic report (dimension=LISTING).
+    // Needs the sell.analytics.readonly scope -- a seller who connected eBay
+    // before this scope was added will get a 403 from eBay here and needs to
+    // reconnect (CONNECT EBAY) so a fresh token picks up the wider consent.
+    if (url.pathname === '/ebay/listing-performance') {
+      if (request.method !== 'GET') return json({ error: 'GET only' }, 405);
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId, ['owner','admin']);
+      if (auth.error) return auth.error;
+      const listingIds = (url.searchParams.get('listingIds') || '').split(',').map(s => s.trim()).filter(Boolean).slice(0, 200);
+      if (!listingIds.length) return json({ ok: true, listings: [] });
+      let ebayToken = '';
+      try { ebayToken = await getEbayUserAccessToken(env); }
+      catch (tokenErr) { return json({ needsToken: true, error: tokenErr.message }, 401); }
+      if (!ebayToken) return json({ needsToken: true, error: 'Connect eBay first: missing user access/refresh token' }, 401);
+
+      try {
+        const fmt = d => d.toISOString().slice(0, 10).replace(/-/g, '');
+        const end = new Date();
+        const start = new Date(end.getTime() - 29 * 24 * 60 * 60 * 1000);
+        const filter = `listing_ids:{${listingIds.join('|')}},marketplace_ids:{EBAY_US},date_range:[${fmt(start)}..${fmt(end)}]`;
+        const metrics = ['LISTING_IMPRESSION_TOTAL', 'LISTING_VIEWS_TOTAL', 'CLICK_THROUGH_RATE', 'SALES_CONVERSION_RATE'];
+        const res = await fetch('https://api.ebay.com/sell/analytics/v1/traffic_report?dimension=LISTING&filter=' + encodeURIComponent(filter) + '&metric=' + metrics.join(','), {
+          headers: { 'Authorization': 'Bearer ' + ebayToken },
+        });
+        const txt = await res.text();
+        let data; try { data = JSON.parse(txt); } catch (_) { data = { raw: txt }; }
+        if (!res.ok) {
+          const msg = data?.errors?.[0]?.longMessage || data?.errors?.[0]?.message || txt.substring(0, 300);
+          const scopeIssue = res.status === 403 || /scope|insufficient permission/i.test(msg);
+          return json({ ok: false, needsReconnect: scopeIssue, error: 'eBay traffic report failed (' + res.status + '): ' + msg }, res.status);
+        }
+        const metricKeys = (data.header?.metrics || []).map(m => m.key);
+        const listings = (data.records || []).map(r => {
+          const listingId = r.dimensionValues?.[0]?.value ?? null;
+          const out = { listingId };
+          (r.metricValues || []).forEach((v, i) => { const key = metricKeys[i]; if (key) out[key] = v.value; });
+          return {
+            listingId,
+            impressions: Number(out.LISTING_IMPRESSION_TOTAL || 0),
+            views: Number(out.LISTING_VIEWS_TOTAL || 0),
+            clickThroughRate: Number(out.CLICK_THROUGH_RATE || 0),
+            conversionRate: Number(out.SALES_CONVERSION_RATE || 0),
+          };
+        });
+        return json({ ok: true, startDate: data.startDate, endDate: data.endDate, listings });
+      } catch (e) {
+        return json({ ok: false, error: 'eBay traffic report failed: ' + e.message }, 502);
       }
     }
 
