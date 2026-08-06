@@ -47,6 +47,7 @@ const EBAY_SCOPES = [
   'https://api.ebay.com/oauth/api_scope/sell.account',
   'https://api.ebay.com/oauth/api_scope/sell.fulfillment.readonly',
   'https://api.ebay.com/oauth/api_scope/sell.analytics.readonly',
+  'https://api.ebay.com/oauth/api_scope/sell.finances',
 ].join(' ');
 
 const CORS = {
@@ -4234,6 +4235,195 @@ export default {
         return json({ ok: true, startDate: data.startDate, endDate: data.endDate, listings });
       } catch (e) {
         return json({ ok: false, error: 'eBay traffic report failed: ' + e.message }, 502);
+      }
+    }
+
+    // GET /ebay/orders/all?days=90 -- every order on the eBay account in the
+    // window, any status (not just PAID, not just unfulfilled), read straight
+    // from the Sell Fulfillment API with zero relationship to this store's own
+    // inventory. Purely for display -- unlike /ebay/orders/sync this never
+    // writes to pos_sales or touches inventory, so it can't double up with it.
+    // This exists because /ebay/orders/sync only surfaces orders it could
+    // record as a sale; a seller still needs to be able to see literally
+    // everything eBay has, including orders still in progress or unpaid.
+    if (url.pathname === '/ebay/orders/all') {
+      if (request.method !== 'GET') return json({ error: 'GET only' }, 405);
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId, ['owner','admin']);
+      if (auth.error) return auth.error;
+      let ebayToken = '';
+      try { ebayToken = await getEbayUserAccessToken(env); }
+      catch (tokenErr) { return json({ needsToken: true, error: tokenErr.message }, 401); }
+      if (!ebayToken) return json({ needsToken: true, error: 'Connect eBay first: missing user access/refresh token' }, 401);
+
+      try {
+        const days = Math.min(365, Math.max(1, Number(url.searchParams.get('days')) || 90));
+        const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+        const filter = 'creationdate:[' + since + '..]';
+        const res = await fetch('https://api.ebay.com/sell/fulfillment/v1/order?filter=' + encodeURIComponent(filter) + '&limit=200&sort=creationdate', {
+          headers: { 'Authorization': 'Bearer ' + ebayToken },
+        });
+        const txt = await res.text();
+        let data; try { data = JSON.parse(txt); } catch (_) { data = { raw: txt }; }
+        if (!res.ok) {
+          const msg = data?.errors?.[0]?.longMessage || data?.errors?.[0]?.message || txt.substring(0, 300);
+          return json({ ok: false, error: 'eBay order lookup failed (' + res.status + '): ' + msg }, res.status);
+        }
+        const orders = (data.orders || []).map(o => ({
+          orderId: o.orderId,
+          creationDate: o.creationDate,
+          fulfillmentStatus: o.orderFulfillmentStatus,
+          paymentStatus: o.orderPaymentStatus,
+          buyerUsername: o.buyer?.username || '',
+          total: o.pricingSummary?.total ? { value: Number(o.pricingSummary.total.value || 0), currency: o.pricingSummary.total.currency } : null,
+          shipTo: o.fulfillmentStartInstructions?.[0]?.shippingStep?.shipTo
+            ? {
+                name: o.fulfillmentStartInstructions[0].shippingStep.shipTo.fullName || '',
+                city: o.fulfillmentStartInstructions[0].shippingStep.shipTo.contactAddress?.city || '',
+                stateOrProvince: o.fulfillmentStartInstructions[0].shippingStep.shipTo.contactAddress?.stateOrProvince || '',
+                postalCode: o.fulfillmentStartInstructions[0].shippingStep.shipTo.contactAddress?.postalCode || '',
+              }
+            : null,
+          lineItems: (o.lineItems || []).map(li => ({
+            lineItemId: li.lineItemId,
+            sku: li.sku || '',
+            title: li.title || '',
+            quantity: Number(li.quantity || 1),
+            lineItemCost: li.lineItemCost ? Number(li.lineItemCost.value || 0) : 0,
+          })),
+        }));
+        return json({ ok: true, checked: orders.length, total: Number(data.total || orders.length), orders });
+      } catch (e) {
+        return json({ ok: false, error: 'eBay order lookup failed: ' + e.message }, 502);
+      }
+    }
+
+    // GET /ebay/finances/summary?days=30 -- payouts + fee/refund transactions
+    // from the Sell Finances API (a different eBay host, apiz.ebay.com --
+    // not api.ebay.com like every other eBay route here). Needs the
+    // sell.finances scope; a store connected before this shipped gets
+    // needsReconnect and should hit CONNECT EBAY again.
+    if (url.pathname === '/ebay/finances/summary') {
+      if (request.method !== 'GET') return json({ error: 'GET only' }, 405);
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId, ['owner','admin']);
+      if (auth.error) return auth.error;
+      let ebayToken = '';
+      try { ebayToken = await getEbayUserAccessToken(env); }
+      catch (tokenErr) { return json({ needsToken: true, error: tokenErr.message }, 401); }
+      if (!ebayToken) return json({ needsToken: true, error: 'Connect eBay first: missing user access/refresh token' }, 401);
+
+      try {
+        const days = Math.min(90, Math.max(1, Number(url.searchParams.get('days')) || 30));
+        const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+        const txFilter = 'transactionDate:[' + since + '..]';
+        const [txRes, payoutRes] = await Promise.all([
+          fetch('https://apiz.ebay.com/sell/finances/v1/transaction?filter=' + encodeURIComponent(txFilter) + '&limit=200', {
+            headers: { 'Authorization': 'Bearer ' + ebayToken },
+          }),
+          fetch('https://apiz.ebay.com/sell/finances/v1/payout?filter=' + encodeURIComponent('payoutDate:[' + since + '..]') + '&limit=50&sort=payoutDate', {
+            headers: { 'Authorization': 'Bearer ' + ebayToken },
+          }),
+        ]);
+        const txTxt = await txRes.text();
+        let txData; try { txData = JSON.parse(txTxt); } catch (_) { txData = { raw: txTxt }; }
+        if (!txRes.ok) {
+          const msg = txData?.errors?.[0]?.longMessage || txData?.errors?.[0]?.message || txTxt.substring(0, 300);
+          const scopeIssue = txRes.status === 403 || /scope|insufficient permission/i.test(msg);
+          return json({ ok: false, needsReconnect: scopeIssue, error: 'eBay finances lookup failed (' + txRes.status + '): ' + msg }, txRes.status);
+        }
+        const payoutTxt = await payoutRes.text();
+        let payoutData; try { payoutData = JSON.parse(payoutTxt); } catch (_) { payoutData = { raw: payoutTxt }; }
+
+        let salesGross = 0, feesTotal = 0, refundsTotal = 0;
+        const transactions = (txData.transactions || []).map(t => {
+          const amt = Number(t.amount?.value || 0);
+          if (t.transactionType === 'SALE') salesGross += amt;
+          if (t.transactionType === 'REFUND') refundsTotal += Math.abs(amt);
+          if (t.bookingEntry === 'DEBIT' && /FEE/i.test(t.transactionType || t.feeType || '')) feesTotal += Math.abs(amt);
+          return {
+            transactionId: t.transactionId,
+            transactionDate: t.transactionDate,
+            transactionType: t.transactionType,
+            feeType: t.feeType || '',
+            bookingEntry: t.bookingEntry,
+            amount: amt,
+            currency: t.amount?.currency || 'USD',
+            orderId: t.orderId || '',
+          };
+        });
+        const payouts = (payoutData.payouts || []).map(p => ({
+          payoutId: p.payoutId,
+          status: p.payoutStatus,
+          amount: Number(p.amount?.value || 0),
+          currency: p.amount?.currency || 'USD',
+          payoutDate: p.payoutDate,
+          transactionCount: p.transactionCount || 0,
+        }));
+        return json({
+          ok: true,
+          days,
+          summary: { salesGross, feesTotal, refundsTotal, netEstimate: salesGross - feesTotal - refundsTotal },
+          transactions,
+          payouts,
+        });
+      } catch (e) {
+        return json({ ok: false, error: 'eBay finances lookup failed: ' + e.message }, 502);
+      }
+    }
+
+    // POST /inventory/record-external-sale -- a manual "this sold somewhere
+    // we don't auto-sync" entry point (Whatnot, a manual eBay sale, Mercari,
+    // Poshmark, etc). No marketplace API call happens here -- the seller
+    // types in what it actually sold for and the channel's fee, and this
+    // writes the exact same pos_sales/pos_sale_lines/pos_payments shape (and
+    // the same inventory status/profit/channel fields) that /ebay/orders/sync
+    // and in-store POS checkout already write, so it shows up in sales
+    // history and profit stats identically -- no separate code path to keep
+    // in sync later.
+    if (url.pathname === '/inventory/record-external-sale' && request.method === 'POST') {
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId, ['owner','admin']);
+      if (auth.error) return auth.error;
+      try {
+        const body = await request.json().catch(() => ({}));
+        const itemId = String(body.itemId || '');
+        const channel = String(body.channel || '').trim().slice(0, 40);
+        const salePrice = Number(body.salePrice);
+        const feeAmount = Math.max(0, Number(body.feeAmount) || 0);
+        const quantitySold = Math.max(1, Number(body.quantitySold) || 1);
+        if (!itemId) return json({ ok: false, error: 'itemId is required' }, 400);
+        if (!channel) return json({ ok: false, error: 'channel is required' }, 400);
+        if (!(salePrice > 0)) return json({ ok: false, error: 'salePrice must be greater than 0' }, 400);
+
+        const { data: rows } = await supabaseAdminFetch(env, `inventory_items?id=eq.${encodeURIComponent(itemId)}&store_id=eq.${encodeURIComponent(storeId)}&select=id,data,status&limit=1`);
+        const invRow = rows?.[0];
+        if (!invRow) return json({ ok: false, error: 'Inventory item not found for this store' }, 404);
+        if (invRow.status === 'sold') return json({ ok: false, error: 'That item is already marked sold' }, 409);
+
+        const d = invRow.data || {};
+        const cost = Number(d.cost || 0);
+        const profit = salePrice - feeAmount - cost;
+        const soldAt = body.soldAt || new Date().toISOString();
+        const saleId = crypto.randomUUID();
+
+        await supabaseAdminFetch(env, 'pos_sales', { method: 'POST', headers: { Prefer: 'return=minimal' },
+          body: JSON.stringify({ id: saleId, store_id: storeId, subtotal: salePrice, discount_total: 0, tax_total: 0, total: salePrice, status: 'completed', payment_status: 'paid', completed_at: soldAt, created_at: soldAt }) });
+        await supabaseAdminFetch(env, 'pos_sale_lines', { method: 'POST', headers: { Prefer: 'return=minimal' },
+          body: JSON.stringify([{ id: crypto.randomUUID(), sale_id: saleId, store_id: storeId, item_id: invRow.id, title: d.name || 'Item', category: d.category || '', quantity: quantitySold, unit_price: salePrice / quantitySold, original_price: salePrice / quantitySold, adjusted_price: salePrice / quantitySold, discount_amount: 0, cost_basis: cost, profit, condition: d.condition || '', image_url: d.thumbnail || d.image || '' }]) });
+        await supabaseAdminFetch(env, 'pos_payments', { method: 'POST', headers: { Prefer: 'return=minimal' },
+          body: JSON.stringify({ id: crypto.randomUUID(), sale_id: saleId, store_id: storeId, method: channel, amount: salePrice, status: 'confirmed', provider: channel.toLowerCase(), currency: 'USD', confirmed_by: auth.user.id, confirmed_at: soldAt, created_at: soldAt }) });
+
+        const currentQty = Number(d.quantity ?? d.qty ?? 1) || 0;
+        const remaining = Math.max(0, currentQty - quantitySold);
+        const depleted = remaining <= 0;
+        const nextStatus = depleted ? 'sold' : 'in_stock';
+        const nextData = { ...d, status: nextStatus, lifecycle: nextStatus, qty: remaining, quantity: remaining, salePrice, profit, channel, soldAt: depleted ? soldAt : '' };
+        await supabaseAdminFetch(env, `inventory_items?id=eq.${encodeURIComponent(invRow.id)}&store_id=eq.${encodeURIComponent(storeId)}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ data: nextData, status: nextStatus, updated_at: new Date().toISOString() }) });
+
+        return json({ ok: true, itemId: invRow.id, saleId, salePrice, feeAmount, profit, depleted, channel });
+      } catch (e) {
+        return json({ ok: false, error: 'Failed to record external sale: ' + e.message }, 500);
       }
     }
 
