@@ -1296,6 +1296,11 @@ function errorMessageFromApi(data, fallback = 'API error') {
     || data?.error?.message
     || data?.errors?.[0]?.longMessage
     || data?.errors?.[0]?.message
+    // OAuth token endpoints (eBay's included) use a different flat shape --
+    // {"error":"invalid_client","error_description":"..."} -- not caught by
+    // the REST-style checks above, so without this an OAuth failure's real
+    // reason silently collapses into whatever generic fallback the caller passed.
+    || (typeof data?.error === 'string' ? [data.error, data?.error_description].filter(Boolean).join(': ') : '')
     || fallback;
 }
 
