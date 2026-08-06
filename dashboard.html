@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.06.05-ebay-condition-for-custom-category">
+<meta name="version" content="2026.08.06.06-ebay-account-external-sales">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1545,13 +1545,13 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.06.05-ebay-condition-for-custom-category"></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.06.05-ebay-condition-for-custom-category"></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.06.05-ebay-condition-for-custom-category"></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.06.05-ebay-condition-for-custom-category"></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.06.05-ebay-condition-for-custom-category"></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.06.05-ebay-condition-for-custom-category"></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.06.05-ebay-condition-for-custom-category"></script>
+<script src="scripts/query-routing.js?v=2026.08.06.06-ebay-account-external-sales"></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.06.06-ebay-account-external-sales"></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.06.06-ebay-account-external-sales"></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.06.06-ebay-account-external-sales"></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.06.06-ebay-account-external-sales"></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.06.06-ebay-account-external-sales"></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.06.06-ebay-account-external-sales"></script>
 </head>
 <body>
 
@@ -1601,11 +1601,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.06.05-ebay-condition-for-custom-category</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.06.06-ebay-account-external-sales</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.06.05-ebay-condition-for-custom-category</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.06.06-ebay-account-external-sales</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1627,7 +1627,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.06.05-ebay-condition-for-custom-category</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.06.06-ebay-account-external-sales</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -1926,6 +1926,18 @@ body.show-mode .inv-sync-badge{display:none;}
     <div id="ebay-hub-listings" style="display:grid;gap:6px;margin-bottom:14px">Loading...</div>
     <div style="font-family:monospace;font-size:9px;color:var(--purple);letter-spacing:.05em;margin-bottom:6px">RECENT EBAY SALES <span style="color:var(--dim);text-transform:none;letter-spacing:normal">— everything eBay reports as sold, including orders sold outside this app</span></div>
     <div id="ebay-hub-orders" style="display:grid;gap:6px">Loading...</div>
+  </div>
+
+  <div class="panel" id="ebay-account-panel" style="margin-top:4px;margin-bottom:14px">
+    <div class="ph">EBAY ACCOUNT <span style="font-size:9px;color:var(--dim)">— everything on the eBay account, independent of what's tracked as inventory here</span></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+      <button class="hbtn" onclick="renderEbayAccountPanel()">REFRESH</button>
+    </div>
+    <div style="font-family:monospace;font-size:9px;color:var(--purple);letter-spacing:.05em;margin-bottom:6px">FINANCES <span style="color:var(--dim);text-transform:none;letter-spacing:normal">— last 30 days, direct from eBay</span></div>
+    <div id="ebay-finances-summary" style="font-family:monospace;font-size:10px;color:var(--dim);margin-bottom:8px">Loading...</div>
+    <div id="ebay-finances-payouts" style="display:grid;gap:6px;margin-bottom:14px"></div>
+    <div style="font-family:monospace;font-size:9px;color:var(--purple);letter-spacing:.05em;margin-bottom:6px">ALL EBAY ORDERS <span style="color:var(--dim);text-transform:none;letter-spacing:normal">— last 90 days, any status</span></div>
+    <div id="ebay-all-orders" style="display:grid;gap:6px">Loading...</div>
   </div>
 
   <div class="panel" id="backoffice-ebay-panel" style="margin-top:4px;margin-bottom:14px">
@@ -3136,7 +3148,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.06.05-ebay-condition-for-custom-category';
+const APP_VERSION = '2026.08.06.06-ebay-account-external-sales';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -5843,12 +5855,14 @@ function organizeRegisterLayout(){
   cleanupEmptyWorkflowRows();
 
   moveNode('ebay-hub-panel', channels);
+  moveNode('ebay-account-panel', channels);
   moveNode('backoffice-ebay-panel', channels);
   moveNode('backoffice-ebay-bulk-panel', channels);
   moveNode('backoffice-tcg-sync-panel', channels);
   const ebayHubPanel = document.getElementById('ebay-hub-panel');
   if(ebayHubPanel && channels.firstChild !== ebayHubPanel) channels.insertBefore(ebayHubPanel, channels.firstChild);
   renderEbayHubPanel();
+  renderEbayAccountPanel();
   moveNode('backoffice-system-panel', backoffice);
   moveNode('backoffice-ops-panel', backoffice);
   ensureVendorProfilePanel(backoffice);
@@ -11379,6 +11393,7 @@ function showInvRowMenu(e, id, isInStock){
     `<button class="hbtn" style="${btnStyle};color:var(--g)" onclick="openInventoryTcgplayer('${id}');this.closest('.inv-row-menu').remove()">🛒 TCGplayer</button>`,
     `<button class="hbtn" style="${btnStyle};color:var(--blue)" onclick="openInventoryItemInResearch('${id}');this.closest('.inv-row-menu').remove()">🔍 Research</button>`,
     `<button class="hbtn" style="${btnStyle}" onclick="openEbayFromDash('${id}');this.closest('.inv-row-menu').remove()">📦 ${item?.ebayListingId?'Manage eBay Listing':'eBay List'}</button>`,
+    isInStock?`<button class="hbtn" style="${btnStyle};color:var(--gold)" onclick="openExternalSaleModal('${id}');this.closest('.inv-row-menu').remove()">💰 Record External Sale</button>`:'',
     `<button class="hbtn" style="${btnStyle}" onclick="showItemHistory?.('${id}');this.closest('.inv-row-menu').remove()">📋 History</button>`,
     `<button class="hbtn" style="${btnStyle};color:var(--blue)" onclick="sendInventoryItemToAuthCheck('${id}');this.closest('.inv-row-menu').remove()">✓ Authentication Check</button>`,
     isInStock?`<button class="hbtn" style="${btnStyle};color:var(--g)" onclick="publishInventoryItemToWebflow('${id}');this.closest('.inv-row-menu').remove()">🌐 Publish / Sync Webflow</button>`:'',
@@ -14239,6 +14254,165 @@ async function loadEbayOrderHistory(){
       </div>`;
     }).join('');
   }catch(e){ host.textContent = e.message; }
+}
+
+// Everything on the eBay account -- all orders (any status) plus fees/
+// payouts -- independent of this store's own inventory matching. This is
+// deliberately separate from RECENT EBAY SALES above: that panel is what
+// got recorded as a dashboard sale, this one is a straight read of eBay
+// itself, so a seller can always see "everything eBay has" even for orders
+// still in progress, unpaid, or otherwise not yet reflected as a sale here.
+async function renderEbayAccountPanel(){
+  await Promise.all([loadEbayFinances(), loadEbayAllOrders()]);
+}
+
+async function loadEbayFinances(){
+  const summaryHost = document.getElementById('ebay-finances-summary');
+  const payoutsHost = document.getElementById('ebay-finances-payouts');
+  if(!summaryHost) return;
+  summaryHost.textContent = 'Loading...';
+  if(payoutsHost) payoutsHost.innerHTML = '';
+  try{
+    const res = await storeWorkerFetch('/ebay/finances/summary?days=30', { cache:'no-store' });
+    const d = await res.json().catch(()=>({}));
+    if(!d.ok){
+      const msg = d.needsToken ? 'Connect eBay above to see finances.' : d.needsReconnect ? 'Reconnect eBay (CONNECT EBAY below) to see finances -- needs an updated permission.' : (d.error || 'Could not load finances');
+      summaryHost.innerHTML = '<span style="color:'+((d.needsToken||d.needsReconnect)?'var(--gold)':'var(--red)')+'">'+escHtml(msg)+'</span>';
+      return;
+    }
+    const s = d.summary || {};
+    summaryHost.innerHTML = `Sales: <b style="color:var(--text)">$${s.salesGross.toFixed(2)}</b> &nbsp;·&nbsp; Fees: <b style="color:var(--red)">-$${s.feesTotal.toFixed(2)}</b> &nbsp;·&nbsp; Refunds: <b style="color:var(--gold)">-$${s.refundsTotal.toFixed(2)}</b> &nbsp;·&nbsp; Net est.: <b style="color:var(--g)">$${s.netEstimate.toFixed(2)}</b>`;
+    if(payoutsHost){
+      const payouts = d.payouts || [];
+      payoutsHost.innerHTML = payouts.length ? payouts.map(p => `
+        <div style="display:flex;align-items:center;gap:10px;padding:8px;border:1px solid var(--border);border-radius:6px">
+          <div style="flex:1;min-width:0">
+            <div style="font-size:11px">$${p.amount.toFixed(2)} ${escHtml(p.currency)} · ${p.transactionCount} transaction${p.transactionCount===1?'':'s'}</div>
+            <div style="font-family:monospace;font-size:9px;color:var(--dim)">${p.payoutDate ? new Date(p.payoutDate).toLocaleDateString():''} · <span class="data-pill ${p.status==='SUCCEEDED'?'':'warn'}">${escHtml(p.status||'')}</span></div>
+          </div>
+        </div>`).join('') : '<div style="font-family:monospace;font-size:10px;color:var(--dim)">No payouts in the last 30 days.</div>';
+    }
+  }catch(e){ summaryHost.textContent = e.message; }
+}
+
+async function loadEbayAllOrders(){
+  const host = document.getElementById('ebay-all-orders');
+  if(!host) return;
+  host.textContent = 'Loading...';
+  try{
+    const res = await storeWorkerFetch('/ebay/orders/all?days=90', { cache:'no-store' });
+    const d = await res.json().catch(()=>({}));
+    if(!d.ok){
+      const msg = d.needsToken ? 'Connect eBay above to see orders.' : (d.error || 'Could not load orders');
+      host.innerHTML = '<span style="color:'+(d.needsToken?'var(--gold)':'var(--red)')+'">'+escHtml(msg)+'</span>';
+      return;
+    }
+    const orders = d.orders || [];
+    if(!orders.length){ host.innerHTML = '<div style="font-family:monospace;font-size:10px;color:var(--dim)">No eBay orders in the last 90 days.</div>'; return; }
+    host.innerHTML = orders.slice().reverse().map(o => {
+      const items = (o.lineItems||[]).map(li => escHtml(li.title) + (li.quantity>1?' x'+li.quantity:'')).join(', ') || 'Order';
+      const ship = o.shipTo ? [o.shipTo.name, [o.shipTo.city,o.shipTo.stateOrProvince].filter(Boolean).join(', ')].filter(Boolean).join(' · ') : '';
+      return `<div style="padding:8px;border:1px solid var(--border);border-radius:6px">
+        <div style="display:flex;justify-content:space-between;gap:8px">
+          <div style="font-size:11px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${items}</div>
+          <div style="font-size:11px;color:var(--gold);white-space:nowrap">${o.total ? '$'+o.total.value.toFixed(2) : ''}</div>
+        </div>
+        <div style="font-family:monospace;font-size:9px;color:var(--dim);margin-top:2px">${o.creationDate?new Date(o.creationDate).toLocaleDateString():''} · ${escHtml(o.buyerUsername||'')}${ship?' · '+escHtml(ship):''} · <span class="data-pill ${o.paymentStatus==='PAID'?'':'warn'}">${escHtml(o.paymentStatus||'')}</span> <span class="data-pill ${o.fulfillmentStatus==='FULFILLED'?'':'warn'}">${escHtml(o.fulfillmentStatus||'')}</span> · <a href="https://www.ebay.com/sh/ord/details?orderid=${encodeURIComponent(o.orderId)}" target="_blank" style="color:var(--g)">view on eBay</a></div>
+      </div>`;
+    }).join('');
+  }catch(e){ host.textContent = e.message; }
+}
+
+// Manual "this sold somewhere we don't auto-sync" entry -- Whatnot has no
+// usable seller API, and this doubles as a quick alternative to the full
+// eBay OAuth sync for a one-off eBay sale. Fee defaults are editable
+// estimates, not exact -- actual rates vary by category/store tier.
+const EXTERNAL_SALE_FEE_DEFAULTS = {
+  Whatnot: { pct: 8, flat: 0.30, note: '8% commission + 2.9% + $0.30 processing (approx -- lower for electronics/coins)' },
+  eBay: { pct: 13.25, flat: 0, note: 'Typical eBay final value fee -- varies by category and store subscription' },
+  Mercari: { pct: 10, flat: 0, note: 'Approximate -- confirm your actual rate' },
+  Poshmark: { pct: 20, flat: 0, note: 'Approximate -- confirm your actual rate' },
+  'Facebook Marketplace': { pct: 5, flat: 0.40, note: 'Approximate shipped-order fee -- local pickup is usually free' },
+  Other: { pct: 0, flat: 0, note: '' },
+};
+
+function openExternalSaleModal(itemId){
+  const item = all.find(i => i.id === itemId);
+  if(!item){ toast_dash('Could not find that inventory item'); return; }
+  document.getElementById('external-sale-modal')?.remove();
+  const modal = document.createElement('div');
+  modal.id = 'external-sale-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px';
+  modal.dataset.itemId = itemId;
+  const price = Number(item.market || item.listPrice || 0);
+  modal.innerHTML = `
+    <div style="width:100%;max-width:420px;background:var(--surf);border:1px solid var(--border);border-radius:10px;padding:16px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <div style="font-family:'Orbitron',monospace;color:var(--gold);font-size:13px;letter-spacing:2px">RECORD EXTERNAL SALE</div>
+        <button onclick="document.getElementById('external-sale-modal').remove()" style="background:none;border:none;color:var(--dim);font-size:22px;cursor:pointer">×</button>
+      </div>
+      <div style="font-family:monospace;font-size:10px;color:var(--dim);margin-bottom:10px">${escHtml(item.name || 'Item')} -- for sales that happened outside this app (Whatnot, a manual eBay sale, etc). Records the sale and marks this item sold, same as any other sale.</div>
+      <label style="font-family:monospace;font-size:9px;color:var(--dim)">CHANNEL</label>
+      <select id="ext-sale-channel" onchange="updateExternalSaleFeeDefault()" style="width:100%;margin:4px 0 10px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:9px;border-radius:6px;box-sizing:border-box">
+        ${Object.keys(EXTERNAL_SALE_FEE_DEFAULTS).map(c => `<option value="${escHtml(c)}">${escHtml(c)}</option>`).join('')}
+      </select>
+      <label style="font-family:monospace;font-size:9px;color:var(--dim)">SALE PRICE</label>
+      <input id="ext-sale-price" type="number" step="0.01" min="0.01" value="${price?price.toFixed(2):''}" oninput="updateExternalSalePreview()" style="width:100%;margin:4px 0 10px;background:var(--surf2);border:1px solid var(--border);color:var(--gold);padding:9px;border-radius:6px;box-sizing:border-box">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:4px">
+        <div><label style="font-family:monospace;font-size:9px;color:var(--dim)">FEE %</label><input id="ext-sale-fee-pct" type="number" step="0.1" min="0" oninput="updateExternalSalePreview()" style="width:100%;margin-top:4px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:9px;border-radius:6px;box-sizing:border-box"></div>
+        <div><label style="font-family:monospace;font-size:9px;color:var(--dim)">FEE FLAT $</label><input id="ext-sale-fee-flat" type="number" step="0.01" min="0" oninput="updateExternalSalePreview()" style="width:100%;margin-top:4px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:9px;border-radius:6px;box-sizing:border-box"></div>
+      </div>
+      <div id="ext-sale-fee-note" style="font-family:monospace;font-size:8px;color:var(--dim);margin-bottom:10px"></div>
+      <div id="ext-sale-preview" style="font-family:monospace;font-size:11px;padding:10px;border:1px solid var(--border);border-radius:6px;margin-bottom:12px"></div>
+      <div style="display:flex;gap:8px">
+        <button class="hbtn" style="flex:1;color:var(--gold)" onclick="submitExternalSale('${itemId}')">RECORD SALE</button>
+        <button class="hbtn" onclick="document.getElementById('external-sale-modal').remove()">CANCEL</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+  updateExternalSaleFeeDefault();
+}
+
+function updateExternalSaleFeeDefault(){
+  const channel = document.getElementById('ext-sale-channel')?.value;
+  const def = EXTERNAL_SALE_FEE_DEFAULTS[channel] || EXTERNAL_SALE_FEE_DEFAULTS.Other;
+  const pctEl = document.getElementById('ext-sale-fee-pct');
+  const flatEl = document.getElementById('ext-sale-fee-flat');
+  const noteEl = document.getElementById('ext-sale-fee-note');
+  if(pctEl) pctEl.value = def.pct;
+  if(flatEl) flatEl.value = def.flat;
+  if(noteEl) noteEl.textContent = def.note;
+  updateExternalSalePreview();
+}
+
+function updateExternalSalePreview(){
+  const price = Number(document.getElementById('ext-sale-price')?.value) || 0;
+  const pct = Number(document.getElementById('ext-sale-fee-pct')?.value) || 0;
+  const flat = Number(document.getElementById('ext-sale-fee-flat')?.value) || 0;
+  const fee = price * (pct / 100) + flat;
+  const el = document.getElementById('ext-sale-preview');
+  if(!el) return;
+  const item = all.find(i => i.id === document.getElementById('external-sale-modal')?.dataset.itemId);
+  const cost = Number(item?.cost || 0);
+  const profit = price - fee - cost;
+  el.innerHTML = `Sale: <b style="color:var(--text)">$${price.toFixed(2)}</b> &nbsp;-&nbsp; Fee: <b style="color:var(--red)">$${fee.toFixed(2)}</b> &nbsp;-&nbsp; Cost: <b style="color:var(--dim)">$${cost.toFixed(2)}</b> &nbsp;=&nbsp; Profit: <b style="color:${profit>=0?'var(--g)':'var(--red)'}">$${profit.toFixed(2)}</b>`;
+}
+
+async function submitExternalSale(itemId){
+  const channel = document.getElementById('ext-sale-channel')?.value;
+  const salePrice = Number(document.getElementById('ext-sale-price')?.value);
+  const pct = Number(document.getElementById('ext-sale-fee-pct')?.value) || 0;
+  const flat = Number(document.getElementById('ext-sale-fee-flat')?.value) || 0;
+  const feeAmount = Math.round((salePrice * (pct / 100) + flat) * 100) / 100;
+  if(!(salePrice > 0)){ toast_dash('Enter a valid sale price'); return; }
+  try{
+    const res = await storeWorkerFetch('/inventory/record-external-sale', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ itemId, channel, salePrice, feeAmount }) });
+    const d = await res.json().catch(()=>({}));
+    if(!d.ok){ toast_dash(d.error || 'Could not record sale'); return; }
+    document.getElementById('external-sale-modal')?.remove();
+    toast_dash(channel + ' sale recorded -- $' + d.profit.toFixed(2) + ' profit');
+    await loadInventory().catch(()=>{});
+  }catch(e){ toast_dash(e.message || 'Could not record sale'); }
 }
 
 // Detects items that sold on eBay without any action taken in this dashboard --
@@ -37346,7 +37520,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.06.05-ebay-condition-for-custom-category"></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.06.06-ebay-account-external-sales"></script>
 </body>
 </html>
 
