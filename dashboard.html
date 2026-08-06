@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.06.02-team-picker-parity-fixes">
+<meta name="version" content="2026.08.06.03-ebay-orders-full-sync">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1545,13 +1545,13 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.06.02-team-picker-parity-fixes"></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.06.02-team-picker-parity-fixes"></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.06.02-team-picker-parity-fixes"></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.06.02-team-picker-parity-fixes"></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.06.02-team-picker-parity-fixes"></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.06.02-team-picker-parity-fixes"></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.06.02-team-picker-parity-fixes"></script>
+<script src="scripts/query-routing.js?v=2026.08.06.03-ebay-orders-full-sync"></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.06.03-ebay-orders-full-sync"></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.06.03-ebay-orders-full-sync"></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.06.03-ebay-orders-full-sync"></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.06.03-ebay-orders-full-sync"></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.06.03-ebay-orders-full-sync"></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.06.03-ebay-orders-full-sync"></script>
 </head>
 <body>
 
@@ -1601,11 +1601,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.06.02-team-picker-parity-fixes</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.06.03-ebay-orders-full-sync</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.06.02-team-picker-parity-fixes</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.06.03-ebay-orders-full-sync</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1627,7 +1627,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.06.02-team-picker-parity-fixes</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.06.03-ebay-orders-full-sync</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -1923,7 +1923,9 @@ body.show-mode .inv-sync-badge{display:none;}
     <div style="font-family:monospace;font-size:9px;color:var(--purple);letter-spacing:.05em;margin-bottom:6px">BUSINESS POLICIES</div>
     <div id="ebay-hub-policies" style="font-family:monospace;font-size:10px;color:var(--dim);margin-bottom:14px">Loading...</div>
     <div style="font-family:monospace;font-size:9px;color:var(--purple);letter-spacing:.05em;margin-bottom:6px">ACTIVE EBAY LISTINGS</div>
-    <div id="ebay-hub-listings" style="display:grid;gap:6px">Loading...</div>
+    <div id="ebay-hub-listings" style="display:grid;gap:6px;margin-bottom:14px">Loading...</div>
+    <div style="font-family:monospace;font-size:9px;color:var(--purple);letter-spacing:.05em;margin-bottom:6px">RECENT EBAY SALES <span style="color:var(--dim);text-transform:none;letter-spacing:normal">— everything eBay reports as sold, including orders sold outside this app</span></div>
+    <div id="ebay-hub-orders" style="display:grid;gap:6px">Loading...</div>
   </div>
 
   <div class="panel" id="backoffice-ebay-panel" style="margin-top:4px;margin-bottom:14px">
@@ -3134,7 +3136,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.06.02-team-picker-parity-fixes';
+const APP_VERSION = '2026.08.06.03-ebay-orders-full-sync';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -14171,6 +14173,40 @@ async function renderEbayHubPanel(){
         <button class="hbtn" style="padding:4px 8px;font-size:9px" onclick="openEbayFromDash('${i.id}')">MANAGE</button>
       </div>`).join('') : '<div style="font-family:monospace;font-size:10px;color:var(--dim)">No active eBay listings.</div>';
   }
+  loadEbayOrderHistory().catch(()=>{});
+}
+
+// Every eBay sale this app has ever recorded (via /ebay/orders/sync), matched
+// to inventory or not -- reads pos_payments/pos_sale_lines directly the same
+// way loadStripePaymentHistory() does for Stripe, so "everything eBay has"
+// shows up here even for orders sold outside this app's own listing flow.
+async function loadEbayOrderHistory(){
+  const host = document.getElementById('ebay-hub-orders');
+  const sb = getSupabaseClient();
+  if(!host || !sb) return;
+  host.textContent = 'Loading...';
+  try{
+    const storeId = getActiveStoreId();
+    const { data: payments, error } = await sb.from('pos_payments').select('id,sale_id,amount,created_at,status').eq('store_id', storeId).eq('provider','ebay').order('created_at',{ascending:false}).limit(30);
+    if(error) throw error;
+    if(!payments?.length){ host.innerHTML = '<div style="font-family:monospace;font-size:10px;color:var(--dim)">No eBay sales recorded yet -- click REFRESH above or SYNC EBAY ORDERS in the eBay Connection panel below.</div>'; return; }
+    const saleIds = payments.map(p => p.sale_id);
+    const { data: lines } = await sb.from('pos_sale_lines').select('sale_id,title,item_id,source_id').in('sale_id', saleIds);
+    const linesBySale = {};
+    for(const l of (lines || [])){ (linesBySale[l.sale_id] ||= []).push(l); }
+    host.innerHTML = payments.map(p => {
+      const ls = linesBySale[p.sale_id] || [];
+      const orderId = (ls[0]?.source_id || '').replace(/^ebay:/, '');
+      const title = ls.map(l => l.title).join(', ') || 'eBay order';
+      const linked = ls.some(l => l.item_id);
+      return `<div style="display:flex;align-items:center;gap:10px;padding:8px;border:1px solid var(--border);border-radius:6px">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(title)}${linked ? '' : ' <span style="color:var(--gold)">· not in inventory</span>'}</div>
+          <div style="font-family:monospace;font-size:9px;color:var(--dim)">$${Number(p.amount || 0).toFixed(2)} · ${new Date(p.created_at).toLocaleDateString()}${orderId ? ' · <a href="https://www.ebay.com/sh/ord/details?orderid=' + encodeURIComponent(orderId) + '" target="_blank" style="color:var(--g)">view on eBay</a>' : ''}</div>
+        </div>
+      </div>`;
+    }).join('');
+  }catch(e){ host.textContent = e.message; }
 }
 
 // Detects items that sold on eBay without any action taken in this dashboard --
@@ -14198,12 +14234,17 @@ async function syncEbayOrders(silent, reconcile){
       if(status){ status.style.color = 'var(--red)'; status.textContent = msg + ' (last tried ' + ebaySyncTimeLabel() + ')'; }
       return;
     }
-    if(data.matched > 0){
-      await loadInventory().catch(()=>{});
-      toast_dash(data.matched + ' eBay sale' + (data.matched > 1 ? 's' : '') + ' recorded');
-      logOpsEvent('ebay_order_synced', 'Recorded ' + data.matched + ' eBay sale(s)', { results: data.results });
+    const recorded = data.recorded ?? data.matched ?? 0;
+    const unmatched = Math.max(0, recorded - (data.matched || 0));
+    if(recorded > 0){
+      if(data.matched > 0) await loadInventory().catch(()=>{});
+      loadEbayOrderHistory().catch(()=>{});
+      let msg = recorded + ' eBay sale' + (recorded > 1 ? 's' : '') + ' recorded';
+      if(unmatched > 0) msg += ' (' + unmatched + ' not linked to inventory -- sold outside this app)';
+      toast_dash(msg);
+      logOpsEvent('ebay_order_synced', msg, { results: data.results });
     }
-    // Errors here mean a specific matched order failed to record -- that's a
+    // Errors here mean a specific order failed to record -- that's a
     // real gap in the sales ledger, not just noise, so surface it even on a
     // silent auto-poll rather than only logging to console.
     if(data.errors?.length){
@@ -14212,10 +14253,10 @@ async function syncEbayOrders(silent, reconcile){
     }
     if(status){
       const parts = [];
-      if(data.matched > 0) parts.push(data.matched + ' new eBay sale(s) recorded');
+      if(recorded > 0) parts.push(recorded + ' new eBay sale(s) recorded' + (unmatched > 0 ? ' (' + unmatched + ' not linked to inventory)' : ''));
       if(data.errors?.length) parts.push(data.errors.length + ' failed -- see ops log');
       if(!parts.length) parts.push('No new eBay sales found');
-      status.style.color = data.errors?.length ? 'var(--red)' : (data.matched > 0 ? 'var(--g)' : 'var(--dim)');
+      status.style.color = data.errors?.length ? 'var(--red)' : (recorded > 0 ? 'var(--g)' : 'var(--dim)');
       status.textContent = parts.join(' · ') + '. Last checked ' + ebaySyncTimeLabel() + ' · auto-checks every few minutes while this tab is open.';
     }
   }catch(e){
@@ -37259,7 +37300,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.06.02-team-picker-parity-fixes"></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.06.03-ebay-orders-full-sync"></script>
 </body>
 </html>
 
