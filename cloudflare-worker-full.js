@@ -4574,6 +4574,10 @@ export default {
     // user token as every other eBay route here; if the account never
     // granted a scope this call needs, needsReconnect tells the frontend to
     // send the seller through CONNECT EBAY again.
+    // NOTE: the Post-Order API rejects the standard "Bearer <token>" scheme
+    // every other eBay route here uses -- it wants "IAF <token>" instead
+    // (confirmed live: "Bad scheme: Bearer" 401). Same applies to
+    // /ebay/cancellations below.
     if (url.pathname === '/ebay/returns') {
       if (request.method !== 'GET') return json({ error: 'GET only' }, 405);
       const storeId = requestStoreId(request, url);
@@ -4593,7 +4597,7 @@ export default {
           limit: '50',
         });
         const res = await fetch('https://api.ebay.com/post-order/v2/return/search?' + qs.toString(), {
-          headers: { 'Authorization': 'Bearer ' + ebayToken, 'Accept': 'application/json' },
+          headers: { 'Authorization': 'IAF ' + ebayToken, 'Accept': 'application/json' },
         });
         const txt = await res.text();
         let data; try { data = JSON.parse(txt); } catch (_) { data = { raw: txt }; }
@@ -4643,7 +4647,7 @@ export default {
           limit: '50',
         });
         const res = await fetch('https://api.ebay.com/post-order/v2/cancellation/search?' + qs.toString(), {
-          headers: { 'Authorization': 'Bearer ' + ebayToken, 'Accept': 'application/json' },
+          headers: { 'Authorization': 'IAF ' + ebayToken, 'Accept': 'application/json' },
         });
         const txt = await res.text();
         let data; try { data = JSON.parse(txt); } catch (_) { data = { raw: txt }; }
