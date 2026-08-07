@@ -1794,6 +1794,90 @@ async function getEbayAppAccessToken(env) {
   return accessToken || '';
 }
 
+// Reuses one destination across every subscription instead of creating a
+// new one per topic -- eBay's Commerce Notification API lets a single
+// destination fan out to many topic subscriptions. Cached in KV so a
+// re-subscribe doesn't spam eBay with duplicate destinations. The
+// verificationToken is a shared secret eBay echoes back during the
+// challenge-response handshake (see the GET handler on the webhook route)
+// to prove this endpoint is the one that requested the subscription.
+async function getOrCreateEbayNotificationDestination(env, originUrl) {
+  const webhookUrl = originUrl + '/ebay/notifications/webhook';
+  const cachedId = env.LBA_KV ? await env.LBA_KV.get('ebay_notif:destinationId') : null;
+  const cachedUrl = env.LBA_KV ? await env.LBA_KV.get('ebay_notif:destinationUrl') : null;
+  if (cachedId && cachedUrl === webhookUrl) return cachedId;
+
+  let verificationToken = env.LBA_KV ? await env.LBA_KV.get('ebay_notif:verificationToken') : null;
+  if (!verificationToken) {
+    verificationToken = (crypto.randomUUID() + crypto.randomUUID()).replace(/-/g, '').slice(0, 64);
+    if (env.LBA_KV) await env.LBA_KV.put('ebay_notif:verificationToken', verificationToken);
+  }
+
+  const appToken = await getEbayAppAccessToken(env);
+  const res = await fetch('https://api.ebay.com/commerce/notification/v1/destination', {
+    method: 'POST',
+    headers: { 'Authorization': 'Bearer ' + appToken, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      name: 'walkoff-dashboard',
+      status: 'ENABLED',
+      deliveryConfig: { endpoint: webhookUrl, verificationToken, deliveryProtocol: 'REST', payloadType: 'JSON' },
+    }),
+  });
+  const txt = await res.text();
+  let data; try { data = JSON.parse(txt); } catch (_) { data = { raw: txt }; }
+  if (!res.ok) throw new Error(errorMessageFromApi(data, 'destination create failed (' + res.status + ')'));
+  const destinationId = data.destinationId;
+  if (destinationId && env.LBA_KV) {
+    await env.LBA_KV.put('ebay_notif:destinationId', destinationId);
+    await env.LBA_KV.put('ebay_notif:destinationUrl', webhookUrl);
+  }
+  return destinationId;
+}
+
+// Best-effort verification of eBay's push signature (ECDSA over the raw
+// request body, key id + signature carried in the base64-JSON
+// X-EBAY-SIGNATURE header, public key fetched and cached per key id).
+// This has never been exercised against a real eBay push from this sandbox
+// -- there's no way to generate one without a live, publicly reachable
+// deployment and an actual subscribed event. It fails closed to
+// verified:false rather than throwing, and the caller stores the event
+// either way with the verified flag attached, since these notifications only
+// drive dashboard display (not money-moving actions) -- an unverified
+// event is at worst a wrong toast, not a financial exposure.
+async function verifyEbayNotificationSignature(env, request, bodyText) {
+  try {
+    const sigHeader = request.headers.get('x-ebay-signature');
+    if (!sigHeader) return { verified: false, reason: 'missing signature header' };
+    const decoded = JSON.parse(atob(sigHeader));
+    const { kid, signature, digest } = decoded || {};
+    if (!kid || !signature) return { verified: false, reason: 'malformed signature header' };
+
+    let publicKeyPem = env.LBA_KV ? await env.LBA_KV.get('ebay_notif:pubkey:' + kid) : null;
+    if (!publicKeyPem) {
+      const appToken = await getEbayAppAccessToken(env);
+      const res = await fetch('https://api.ebay.com/commerce/notification/v1/public_key/' + encodeURIComponent(kid), {
+        headers: { 'Authorization': 'Bearer ' + appToken, 'Accept': 'application/json' },
+      });
+      if (!res.ok) return { verified: false, reason: 'public key fetch failed (' + res.status + ')' };
+      const data = await res.json();
+      publicKeyPem = data.key;
+      if (publicKeyPem && env.LBA_KV) await env.LBA_KV.put('ebay_notif:pubkey:' + kid, publicKeyPem, { expirationTtl: 3600 });
+    }
+    if (!publicKeyPem) return { verified: false, reason: 'no public key returned' };
+
+    const pemBody = String(publicKeyPem).replace(/-----BEGIN[^-]+-----/, '').replace(/-----END[^-]+-----/, '').replace(/\s+/g, '');
+    const der = Uint8Array.from(atob(pemBody), c => c.charCodeAt(0));
+    const cryptoKey = await crypto.subtle.importKey('spki', der, { name: 'ECDSA', namedCurve: 'P-256' }, false, ['verify']);
+    const sigBytes = Uint8Array.from(atob(signature), c => c.charCodeAt(0));
+    const bodyBytes = new TextEncoder().encode(bodyText);
+    const hashName = String(digest || '').toUpperCase() === 'SHA1' ? 'SHA-1' : 'SHA-256';
+    const ok = await crypto.subtle.verify({ name: 'ECDSA', hash: hashName }, cryptoKey, sigBytes, bodyBytes);
+    return { verified: !!ok };
+  } catch (e) {
+    return { verified: false, reason: e.message };
+  }
+}
+
 function normalizeBrowseListing(raw) {
   if (!raw || typeof raw !== 'object') return null;
   const price = compMoneyValue(raw.price?.value);
@@ -4659,6 +4743,165 @@ export default {
         });
       } catch (e) {
         return json({ ok: false, error: 'eBay privileges lookup failed: ' + e.message }, 502);
+      }
+    }
+
+    // GET/POST /ebay/notifications/webhook -- PUBLIC, unauthenticated, hit
+    // directly by eBay's servers (same pattern as /stripe/webhook above).
+    // GET handles the one-time challenge-response handshake eBay runs
+    // before activating a destination; POST receives actual push events.
+    if (url.pathname === '/ebay/notifications/webhook') {
+      if (request.method === 'GET') {
+        const challengeCode = url.searchParams.get('challenge_code');
+        if (!challengeCode) return json({ error: 'missing challenge_code' }, 400);
+        const verificationToken = env.LBA_KV ? (await env.LBA_KV.get('ebay_notif:verificationToken')) || '' : '';
+        const endpointUrl = url.origin + '/ebay/notifications/webhook';
+        const hashBuf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(challengeCode + verificationToken + endpointUrl));
+        const challengeResponse = [...new Uint8Array(hashBuf)].map(b => b.toString(16).padStart(2, '0')).join('');
+        return new Response(JSON.stringify({ challengeResponse }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+      }
+      if (request.method === 'POST') {
+        const bodyText = await request.text();
+        let payload; try { payload = JSON.parse(bodyText); } catch (_) { payload = null; }
+        const sigResult = await verifyEbayNotificationSignature(env, request, bodyText);
+        const event = {
+          receivedAt: new Date().toISOString(),
+          topic: payload?.metadata?.topic || payload?.topic || '',
+          notificationId: payload?.notification?.notificationId || payload?.notificationId || '',
+          verified: !!sigResult.verified,
+          summary: JSON.stringify(payload?.notification?.data || payload?.data || payload || {}).slice(0, 500),
+        };
+        try {
+          const existingRaw = env.LBA_KV ? await env.LBA_KV.get('ebay_notif:events') : null;
+          const existing = existingRaw ? JSON.parse(existingRaw) : [];
+          existing.unshift(event);
+          if (env.LBA_KV) await env.LBA_KV.put('ebay_notif:events', JSON.stringify(existing.slice(0, 50)));
+        } catch (_) { /* best-effort logging only */ }
+        return new Response('', { status: 200 });
+      }
+      return json({ error: 'GET or POST only' }, 405);
+    }
+
+    // GET /ebay/notifications/topics -- whatever notification topics THIS
+    // app is actually allowed to subscribe to. Deliberately not hardcoded:
+    // eBay gates some topics to approved partners, so the real answer for
+    // this account can only come from eBay itself.
+    if (url.pathname === '/ebay/notifications/topics') {
+      if (request.method !== 'GET') return json({ error: 'GET only' }, 405);
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId, ['owner','admin']);
+      if (auth.error) return auth.error;
+      try {
+        const appToken = await getEbayAppAccessToken(env);
+        const res = await fetch('https://api.ebay.com/commerce/notification/v1/topic?limit=100', {
+          headers: { 'Authorization': 'Bearer ' + appToken, 'Accept': 'application/json' },
+        });
+        const txt = await res.text();
+        let data; try { data = JSON.parse(txt); } catch (_) { data = { raw: txt }; }
+        if (!res.ok) {
+          const msg = errorMessageFromApi(data, txt.substring(0, 300));
+          return json({ ok: false, error: 'eBay topics lookup failed (' + res.status + '): ' + msg }, res.status);
+        }
+        const topics = (data.topics || []).map(t => ({ topicId: t.topicId || '', description: t.description || '', status: t.status || '' }));
+        return json({ ok: true, topics });
+      } catch (e) {
+        return json({ ok: false, error: 'eBay topics lookup failed: ' + e.message }, 502);
+      }
+    }
+
+    // GET /ebay/notifications/subscriptions -- currently active subscriptions.
+    if (url.pathname === '/ebay/notifications/subscriptions') {
+      if (request.method !== 'GET') return json({ error: 'GET only' }, 405);
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId, ['owner','admin']);
+      if (auth.error) return auth.error;
+      try {
+        const appToken = await getEbayAppAccessToken(env);
+        const res = await fetch('https://api.ebay.com/commerce/notification/v1/subscription?limit=50', {
+          headers: { 'Authorization': 'Bearer ' + appToken, 'Accept': 'application/json' },
+        });
+        const txt = await res.text();
+        let data; try { data = JSON.parse(txt); } catch (_) { data = { raw: txt }; }
+        if (!res.ok) {
+          const msg = errorMessageFromApi(data, txt.substring(0, 300));
+          return json({ ok: false, error: 'eBay subscriptions lookup failed (' + res.status + '): ' + msg }, res.status);
+        }
+        const subscriptions = (data.subscriptions || []).map(s => ({ subscriptionId: s.subscriptionId || '', topicId: s.topicId || '', status: s.status || '' }));
+        return json({ ok: true, subscriptions });
+      } catch (e) {
+        return json({ ok: false, error: 'eBay subscriptions lookup failed: ' + e.message }, 502);
+      }
+    }
+
+    // POST /ebay/notifications/subscribe -- body { topicId }. Creates (or
+    // reuses) this Worker's own webhook as the destination, then subscribes
+    // it to the topic.
+    if (url.pathname === '/ebay/notifications/subscribe' && request.method === 'POST') {
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId, ['owner','admin']);
+      if (auth.error) return auth.error;
+      try {
+        const body = await request.json().catch(() => ({}));
+        const topicId = String(body.topicId || '');
+        if (!topicId) return json({ ok: false, error: 'topicId is required' }, 400);
+        const destinationId = await getOrCreateEbayNotificationDestination(env, url.origin);
+        if (!destinationId) return json({ ok: false, error: 'Could not create/find a notification destination' }, 502);
+        const appToken = await getEbayAppAccessToken(env);
+        const res = await fetch('https://api.ebay.com/commerce/notification/v1/subscription', {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + appToken, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ topicId, status: 'ENABLED', payload: { format: 'JSON', schemaVersion: '1.0', deliveryProtocol: 'REST' }, destinationId }),
+        });
+        const txt = await res.text();
+        let data; try { data = JSON.parse(txt); } catch (_) { data = { raw: txt }; }
+        if (!res.ok) {
+          const msg = errorMessageFromApi(data, txt.substring(0, 300));
+          return json({ ok: false, error: 'Subscribe failed (' + res.status + '): ' + msg }, res.status);
+        }
+        return json({ ok: true, subscriptionId: data.subscriptionId || '', topicId });
+      } catch (e) {
+        return json({ ok: false, error: 'Subscribe failed: ' + e.message }, 502);
+      }
+    }
+
+    // POST /ebay/notifications/unsubscribe -- body { subscriptionId }.
+    if (url.pathname === '/ebay/notifications/unsubscribe' && request.method === 'POST') {
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId, ['owner','admin']);
+      if (auth.error) return auth.error;
+      try {
+        const body = await request.json().catch(() => ({}));
+        const subscriptionId = String(body.subscriptionId || '');
+        if (!subscriptionId) return json({ ok: false, error: 'subscriptionId is required' }, 400);
+        const appToken = await getEbayAppAccessToken(env);
+        const res = await fetch('https://api.ebay.com/commerce/notification/v1/subscription/' + encodeURIComponent(subscriptionId), {
+          method: 'DELETE',
+          headers: { 'Authorization': 'Bearer ' + appToken },
+        });
+        if (!res.ok && res.status !== 204) {
+          const txt = await res.text();
+          let data; try { data = JSON.parse(txt); } catch (_) { data = { raw: txt }; }
+          const msg = errorMessageFromApi(data, txt.substring(0, 300));
+          return json({ ok: false, error: 'Unsubscribe failed (' + res.status + '): ' + msg }, res.status);
+        }
+        return json({ ok: true, subscriptionId });
+      } catch (e) {
+        return json({ ok: false, error: 'Unsubscribe failed: ' + e.message }, 502);
+      }
+    }
+
+    // GET /ebay/notifications/events -- most recent events this Worker's
+    // webhook has actually received, for the dashboard to display.
+    if (url.pathname === '/ebay/notifications/events') {
+      if (request.method !== 'GET') return json({ error: 'GET only' }, 405);
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId, ['owner','admin']);
+      if (auth.error) return auth.error;
+      try {
+        const raw = env.LBA_KV ? await env.LBA_KV.get('ebay_notif:events') : null;
+        return json({ ok: true, events: raw ? JSON.parse(raw) : [] });
+      } catch (e) {
+        return json({ ok: false, error: e.message }, 500);
       }
     }
 
