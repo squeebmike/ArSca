@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.07.02-whatnot-button-ebay-tracking-pushback">
+<meta name="version" content="2026.08.07.03-ui-fixes-refund-flag">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -16,11 +16,8 @@
 :root{--app-bg:#07080a;--app-surface:#0d0f14;--app-surface-2:#141720;--app-text:#e4e4e8;--app-muted:rgba(228,228,232,.4);--app-primary:#00ffb3;--app-secondary:#ffd166;--app-accent:#c77dff;--app-success:#00ffb3;--app-warning:#ffd166;--app-danger:#ff4d6d;--app-border:rgba(255,255,255,.07);--app-button-text:#050507;--app-radius:10px;--app-font:'DM Sans',sans-serif;--customer-bg-image:none;--brand-primary:var(--app-primary);--brand-secondary:var(--app-secondary);--brand-accent:var(--app-accent);--brand-background:var(--app-bg);--brand-surface:var(--app-surface);--brand-surface-2:var(--app-surface-2);--brand-text:var(--app-text);--brand-muted:var(--app-muted);--brand-success:var(--app-success);--brand-warning:var(--app-warning);--brand-danger:var(--app-danger);--brand-info:#48cae4;--brand-border:var(--app-border);--brand-card-radius:var(--app-radius);--brand-button-radius:6px;--brand-font-family:var(--app-font);--btn-height:38px;--btn-height-lg:52px;--font-mono:'DM Mono',monospace;--g:var(--brand-primary);--gd:rgba(0,255,179,.1);--gold:var(--brand-warning);--red:var(--brand-danger);--blue:var(--brand-info);--purple:var(--brand-accent);--bg:var(--brand-background);--surf:var(--brand-surface);--surf2:var(--brand-surface-2);--border:var(--brand-border);--text:var(--brand-text);--dim:var(--brand-muted);}
 *{margin:0;padding:0;box-sizing:border-box;}
 html{max-width:100vw;overflow-x:hidden;}
-body{background:var(--bg);color:var(--text);font-family:var(--brand-font-family);min-height:100vh;padding-bottom:calc(72px + env(safe-area-inset-bottom));max-width:100vw;overflow-x:hidden;}
-@media(min-width:901px){
-  body{padding-bottom:0;}
-  #lba-nav{display:none!important;}
-}
+body{background:var(--bg);color:var(--text);font-family:var(--brand-font-family);min-height:100vh;padding-bottom:env(safe-area-inset-bottom);max-width:100vw;overflow-x:hidden;}
+#lba-nav{display:none!important;}
 @media(max-width:640px){
   /* GLOBAL MOBILE CONTAINMENT — belt-and-suspenders against any element pushing past viewport width */
   .panel,.sec,.two,.three,.tc,.tabs,.tbl-wrap,.tab-panel,.module-grid,.responsive-grid,
@@ -1545,13 +1542,13 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.07.02-whatnot-button-ebay-tracking-pushback"></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.07.02-whatnot-button-ebay-tracking-pushback"></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.07.02-whatnot-button-ebay-tracking-pushback"></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.07.02-whatnot-button-ebay-tracking-pushback"></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.07.02-whatnot-button-ebay-tracking-pushback"></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.07.02-whatnot-button-ebay-tracking-pushback"></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.07.02-whatnot-button-ebay-tracking-pushback"></script>
+<script src="scripts/query-routing.js?v=2026.08.07.03-ui-fixes-refund-flag"></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.07.03-ui-fixes-refund-flag"></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.07.03-ui-fixes-refund-flag"></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.07.03-ui-fixes-refund-flag"></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.07.03-ui-fixes-refund-flag"></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.07.03-ui-fixes-refund-flag"></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.07.03-ui-fixes-refund-flag"></script>
 </head>
 <body>
 
@@ -1601,11 +1598,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.07.02-whatnot-button-ebay-tracking-pushback</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.07.03-ui-fixes-refund-flag</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.07.02-whatnot-button-ebay-tracking-pushback</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.07.03-ui-fixes-refund-flag</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1627,7 +1624,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.07.02-whatnot-button-ebay-tracking-pushback</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.07.03-ui-fixes-refund-flag</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -1929,7 +1926,8 @@ body.show-mode .inv-sync-badge{display:none;}
   </div>
 
   <div class="panel" id="ebay-account-panel" style="margin-top:4px;margin-bottom:14px">
-    <div class="ph">EBAY ACCOUNT <span style="font-size:9px;color:var(--dim)">— everything on the eBay account, independent of what's tracked as inventory here</span></div>
+    <div class="ph">EBAY ACCOUNT</div>
+    <div style="font-family:monospace;font-size:10px;color:var(--dim);margin-bottom:10px">Everything on the eBay account, independent of what's tracked as inventory here.</div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
       <button class="hbtn" onclick="renderEbayAccountPanel()">REFRESH</button>
     </div>
@@ -3148,7 +3146,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.07.02-whatnot-button-ebay-tracking-pushback';
+const APP_VERSION = '2026.08.07.03-ui-fixes-refund-flag';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -14242,15 +14240,31 @@ async function loadEbayOrderHistory(){
     const { data: lines } = await sb.from('pos_sale_lines').select('sale_id,title,item_id,source_id').in('sale_id', saleIds);
     const linesBySale = {};
     for(const l of (lines || [])){ (linesBySale[l.sale_id] ||= []).push(l); }
+
+    // eBay's own refund record is the only place a refund shows up today --
+    // nothing here ever goes back and reverses the profit/inventory-sold
+    // numbers a matched sale already wrote, so a refunded order would
+    // otherwise keep counting as profit forever with zero indication
+    // anything happened. Cross-reference refund transactions against the
+    // recorded sales here so at least it's visible and reviewable by hand.
+    let refundedOrderIds = new Set();
+    try{
+      const finRes = await storeWorkerFetch('/ebay/finances/summary?days=90', { cache:'no-store' });
+      const finData = await finRes.json().catch(()=>({}));
+      if(finData.ok) refundedOrderIds = new Set((finData.transactions || []).filter(t => t.transactionType === 'REFUND' && t.orderId).map(t => t.orderId));
+    }catch(e){}
+
     host.innerHTML = payments.map(p => {
       const ls = linesBySale[p.sale_id] || [];
       const orderId = (ls[0]?.source_id || '').replace(/^ebay:/, '');
       const title = ls.map(l => l.title).join(', ') || 'eBay order';
       const linked = ls.some(l => l.item_id);
-      return `<div style="display:flex;align-items:center;gap:10px;padding:8px;border:1px solid var(--border);border-radius:6px">
+      const refunded = orderId && refundedOrderIds.has(orderId);
+      return `<div style="display:flex;align-items:center;gap:10px;padding:8px;border:1px solid ${refunded ? 'var(--red)' : 'var(--border)'};border-radius:6px">
         <div style="flex:1;min-width:0">
-          <div style="font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(title)}${linked ? '' : ' <span style="color:var(--gold)">· not in inventory</span>'}</div>
+          <div style="font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(title)}${linked ? '' : ' <span style="color:var(--gold)">· not in inventory</span>'}${refunded ? ' <span style="color:var(--red)">· ⚠ REFUNDED ON EBAY</span>' : ''}</div>
           <div style="font-family:monospace;font-size:9px;color:var(--dim)">$${Number(p.amount || 0).toFixed(2)} · ${new Date(p.created_at).toLocaleDateString()}${orderId ? ' · <a href="https://www.ebay.com/sh/ord/details?orderid=' + encodeURIComponent(orderId) + '" target="_blank" style="color:var(--g)">view on eBay</a>' : ''}</div>
+          ${refunded ? '<div style="font-family:monospace;font-size:9px;color:var(--red);margin-top:2px">Still counted as profit in your totals -- this wasn\'t auto-reversed. Review and adjust/restock by hand.</div>' : ''}
         </div>
       </div>`;
     }).join('');
@@ -37648,7 +37662,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.07.02-whatnot-button-ebay-tracking-pushback"></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.07.03-ui-fixes-refund-flag"></script>
 </body>
 </html>
 
