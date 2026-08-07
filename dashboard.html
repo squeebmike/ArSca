@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.07.08-recommendations-catalog-marketing">
+<meta name="version" content="2026.08.07.09-portrait-fix-post-order-auth">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -910,7 +910,7 @@ body.show-mode .show-mode-toggle { border-color:rgba(0,255,179,.4); color:var(--
 .beta-help-menu-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-top:10px}
 .beta-help-menu .hbtn{min-height:42px;font-size:9px;white-space:normal;line-height:1.25}
 .beta-help-note{font-family:var(--font-mono);font-size:9px;color:var(--dim);line-height:1.45;margin-top:8px}
-.beta-floating-help{display:none;position:fixed;right:12px;bottom:calc(66px + env(safe-area-inset-bottom));z-index:9990;min-width:58px;min-height:46px;border-radius:999px;background:rgba(0,255,179,.14);border:1px solid rgba(0,255,179,.4);color:var(--g);font-family:'Orbitron',monospace;font-size:10px;font-weight:800;letter-spacing:.08em;box-shadow:0 10px 34px rgba(0,0,0,.45)}
+.beta-floating-help{display:none;position:fixed;right:12px;bottom:calc(12px + env(safe-area-inset-bottom));z-index:9990;min-width:58px;min-height:46px;border-radius:999px;background:rgba(0,255,179,.14);border:1px solid rgba(0,255,179,.4);color:var(--g);font-family:'Orbitron',monospace;font-size:10px;font-weight:800;letter-spacing:.08em;box-shadow:0 10px 34px rgba(0,0,0,.45)}
 .beta-checklist-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:8px}
 .beta-check-item{border:1px solid var(--border);border-radius:8px;background:var(--surf2);padding:10px}
 .beta-check-item.complete{border-color:rgba(0,255,179,.28)}
@@ -1542,13 +1542,13 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.07.08-recommendations-catalog-marketing"></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.07.08-recommendations-catalog-marketing"></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.07.08-recommendations-catalog-marketing"></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.07.08-recommendations-catalog-marketing"></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.07.08-recommendations-catalog-marketing"></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.07.08-recommendations-catalog-marketing"></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.07.08-recommendations-catalog-marketing"></script>
+<script src="scripts/query-routing.js?v=2026.08.07.09-portrait-fix-post-order-auth"></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.07.09-portrait-fix-post-order-auth"></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.07.09-portrait-fix-post-order-auth"></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.07.09-portrait-fix-post-order-auth"></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.07.09-portrait-fix-post-order-auth"></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.07.09-portrait-fix-post-order-auth"></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.07.09-portrait-fix-post-order-auth"></script>
 </head>
 <body>
 
@@ -1598,11 +1598,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.07.08-recommendations-catalog-marketing</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.07.09-portrait-fix-post-order-auth</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.07.08-recommendations-catalog-marketing</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.07.09-portrait-fix-post-order-auth</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1624,7 +1624,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.07.08-recommendations-catalog-marketing</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.07.09-portrait-fix-post-order-auth</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -1934,23 +1934,23 @@ body.show-mode .inv-sync-badge{display:none;}
     <div id="ebay-selling-limit" style="font-family:monospace;font-size:10px;color:var(--dim);margin-bottom:12px">Loading selling limit...</div>
     <div style="font-family:monospace;font-size:9px;color:var(--purple);letter-spacing:.05em;margin-bottom:6px">FINANCES <span style="color:var(--dim);text-transform:none;letter-spacing:normal">— last 30 days, direct from eBay</span></div>
     <div id="ebay-finances-summary" style="font-family:monospace;font-size:10px;color:var(--dim);margin-bottom:8px">Loading...</div>
-    <div id="ebay-finances-payouts" style="display:grid;gap:6px;margin-bottom:14px"></div>
+    <div id="ebay-finances-payouts" style="display:grid;grid-template-columns:minmax(0,1fr);gap:6px;margin-bottom:14px"></div>
     <div style="font-family:monospace;font-size:9px;color:var(--purple);letter-spacing:.05em;margin-bottom:6px">ALL EBAY ORDERS <span style="color:var(--dim);text-transform:none;letter-spacing:normal">— last 90 days, any status</span></div>
-    <div id="ebay-all-orders" style="display:grid;gap:6px;margin-bottom:14px">Loading...</div>
+    <div id="ebay-all-orders" style="display:grid;grid-template-columns:minmax(0,1fr);gap:6px;margin-bottom:14px">Loading...</div>
     <div style="font-family:monospace;font-size:9px;color:var(--purple);letter-spacing:.05em;margin-bottom:6px">RETURNS &amp; CANCELLATIONS <span style="color:var(--dim);text-transform:none;letter-spacing:normal">— last 90 days</span></div>
-    <div id="ebay-returns-cancellations" style="display:grid;gap:6px;margin-bottom:14px">Loading...</div>
+    <div id="ebay-returns-cancellations" style="display:grid;grid-template-columns:minmax(0,1fr);gap:6px;margin-bottom:14px">Loading...</div>
     <div style="font-family:monospace;font-size:9px;color:var(--purple);letter-spacing:.05em;margin-bottom:6px">PROMOTED LISTINGS <span style="color:var(--dim);text-transform:none;letter-spacing:normal">— spends real eBay ad budget when a promoted listing sells</span></div>
     <div style="display:flex;gap:8px;margin-bottom:8px">
       <button class="hbtn" style="color:var(--gold)" onclick="openCreateCampaignModal()">CREATE CAMPAIGN</button>
     </div>
-    <div id="ebay-promoted-campaigns" style="display:grid;gap:6px;margin-bottom:14px">Loading...</div>
+    <div id="ebay-promoted-campaigns" style="display:grid;grid-template-columns:minmax(0,1fr);gap:6px;margin-bottom:14px">Loading...</div>
     <div style="font-family:monospace;font-size:9px;color:var(--purple);letter-spacing:.05em;margin-bottom:6px">SEND OFFERS TO BUYERS <span style="color:var(--dim);text-transform:none;letter-spacing:normal">— listings with an interested buyer who hasn't bought yet</span></div>
-    <div id="ebay-negotiation-eligible" style="display:grid;gap:6px;margin-bottom:14px">Loading...</div>
+    <div id="ebay-negotiation-eligible" style="display:grid;grid-template-columns:minmax(0,1fr);gap:6px;margin-bottom:14px">Loading...</div>
     <div style="font-family:monospace;font-size:9px;color:var(--purple);letter-spacing:.05em;margin-bottom:6px">PUSH NOTIFICATIONS <span style="color:var(--dim);text-transform:none;letter-spacing:normal">— eBay pushes events here instead of waiting for REFRESH</span></div>
-    <div style="font-family:monospace;font-size:9px;color:var(--dim);margin-bottom:8px">Available topics depend on what eBay allows this app -- some are partner-gated and won't show up. Subscribing here doesn't change anything else; it just starts a feed you can watch below.</div>
-    <div id="ebay-notif-topics" style="display:grid;gap:6px;margin-bottom:10px">Loading...</div>
+    <div style="font-family:monospace;font-size:9px;color:var(--dim);margin-bottom:8px">Available topics depend on what eBay allows this app -- some are partner-gated and won't show up, and eBay doesn't currently offer an "item sold"/order-paid topic to standard seller apps at all. Subscribing here doesn't change anything else; it just starts a feed you can watch below.</div>
+    <div id="ebay-notif-topics" style="display:grid;grid-template-columns:minmax(0,1fr);gap:6px;margin-bottom:10px">Loading...</div>
     <div style="font-family:monospace;font-size:9px;color:var(--purple);letter-spacing:.05em;margin-bottom:6px">RECENT PUSHED EVENTS</div>
-    <div id="ebay-notif-events" style="display:grid;gap:6px">No events received yet.</div>
+    <div id="ebay-notif-events" style="display:grid;grid-template-columns:minmax(0,1fr);gap:6px">No events received yet.</div>
   </div>
 
   <div class="panel" id="backoffice-ebay-panel" style="margin-top:4px;margin-bottom:14px">
@@ -3161,7 +3161,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.07.08-recommendations-catalog-marketing';
+const APP_VERSION = '2026.08.07.09-portrait-fix-post-order-auth';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -14337,9 +14337,14 @@ async function loadEbayNotificationTopics(){
       host.innerHTML = '<span style="color:var(--red)">'+escHtml(topicsData.error||'Could not load notification topics')+'</span>';
       return;
     }
-    const topics = topicsData.topics || [];
+    // eBay's app-level topic list includes things with zero relevance to a
+    // card shop (loan-application events, generic account-deletion
+    // compliance topics) mixed in with the few that are actually about
+    // items/listings -- filtered out here rather than shown as noise.
+    const irrelevantTopic = t => /^LOAN_/i.test(t.topicId) || t.topicId === 'MARKETPLACE_ACCOUNT_DELETION';
+    const topics = (topicsData.topics || []).filter(t => !irrelevantTopic(t));
     const subsByTopic = Object.fromEntries((subsData.ok ? subsData.subscriptions : []).filter(s=>s.status==='ENABLED').map(s=>[s.topicId, s.subscriptionId]));
-    if(!topics.length){ host.innerHTML = '<div style="font-family:monospace;font-size:10px;color:var(--dim)">No notification topics available to this app right now.</div>'; return; }
+    if(!topics.length){ host.innerHTML = '<div style="font-family:monospace;font-size:10px;color:var(--dim)">eBay isn\'t offering this app any listing-related notification topics right now -- nothing to subscribe to.</div>'; return; }
     host.innerHTML = topics.map(t => {
       const subId = subsByTopic[t.topicId];
       return `<div style="display:flex;align-items:center;gap:8px;padding:8px;border:1px solid var(--border);border-radius:6px">
@@ -38179,7 +38184,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.07.08-recommendations-catalog-marketing"></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.07.09-portrait-fix-post-order-auth"></script>
 </body>
 </html>
 
