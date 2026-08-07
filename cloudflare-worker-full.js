@@ -4541,6 +4541,127 @@ export default {
       }
     }
 
+    // GET /ebay/negotiation/eligible-items -- listings eBay has flagged as
+    // having an "interested" buyer (watched/cart-added but not bought) that
+    // are eligible for a seller-initiated discount offer. Uses the same
+    // sell.inventory scope this account already has -- no reconnect needed.
+    if (url.pathname === '/ebay/negotiation/eligible-items') {
+      if (request.method !== 'GET') return json({ error: 'GET only' }, 405);
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId, ['owner','admin']);
+      if (auth.error) return auth.error;
+      let ebayToken = '';
+      try { ebayToken = await getEbayUserAccessToken(env); }
+      catch (tokenErr) { return json({ needsToken: true, error: tokenErr.message }, 401); }
+      if (!ebayToken) return json({ needsToken: true, error: 'Connect eBay first: missing user access/refresh token' }, 401);
+
+      try {
+        const res = await fetch('https://api.ebay.com/sell/negotiation/v1/find_eligible_items?limit=100', {
+          headers: { 'Authorization': 'Bearer ' + ebayToken, 'Accept': 'application/json', 'X-EBAY-C-MARKETPLACE-ID': 'EBAY_US' },
+        });
+        const txt = await res.text();
+        let data; try { data = JSON.parse(txt); } catch (_) { data = { raw: txt }; }
+        if (!res.ok) {
+          const msg = errorMessageFromApi(data, txt.substring(0, 300));
+          const scopeIssue = res.status === 403 || /scope|insufficient permission/i.test(msg);
+          return json({ ok: false, needsReconnect: scopeIssue, error: 'eBay eligible-offers lookup failed (' + res.status + '): ' + msg }, res.status);
+        }
+        const listingIds = (data.eligibleItems || []).map(e => e.listingId).filter(Boolean);
+        return json({ ok: true, listingIds });
+      } catch (e) {
+        return json({ ok: false, error: 'eBay eligible-offers lookup failed: ' + e.message }, 502);
+      }
+    }
+
+    // POST /ebay/negotiation/send-offer -- sends a discount offer to every
+    // buyer who's shown interest (watched/cart-added) in a listing, via the
+    // Negotiation API. Body: { listingId, price, quantity, message,
+    // offerDurationDays }. No auto-triggering anywhere -- a seller picks the
+    // listing and price by hand, same as clicking through eBay's own "Send
+    // offers to buyers" flow.
+    if (url.pathname === '/ebay/negotiation/send-offer' && request.method === 'POST') {
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId, ['owner','admin']);
+      if (auth.error) return auth.error;
+      let ebayToken = '';
+      try { ebayToken = await getEbayUserAccessToken(env); }
+      catch (tokenErr) { return json({ needsToken: true, error: tokenErr.message }, 401); }
+      if (!ebayToken) return json({ needsToken: true, error: 'Connect eBay first: missing user access/refresh token' }, 401);
+
+      try {
+        const body = await request.json().catch(() => ({}));
+        const listingId = String(body.listingId || '');
+        const price = Number(body.price);
+        const quantity = Math.max(1, Number(body.quantity) || 1);
+        const message = String(body.message || '').slice(0, 250);
+        const offerDurationDays = Math.min(5, Math.max(1, Number(body.offerDurationDays) || 2));
+        if (!listingId) return json({ ok: false, error: 'listingId is required' }, 400);
+        if (!(price > 0)) return json({ ok: false, error: 'price must be greater than 0' }, 400);
+
+        const payload = {
+          offerDuration: { unit: 'DAY', value: String(offerDurationDays) },
+          offeredItems: [{ listingId, quantity: String(quantity), price: { value: price.toFixed(2), currency: 'USD' } }],
+        };
+        if (message) payload.message = message;
+
+        const res = await fetch('https://api.ebay.com/sell/negotiation/v1/send_offer_to_interested_buyers', {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + ebayToken, 'Content-Type': 'application/json', 'X-EBAY-C-MARKETPLACE-ID': 'EBAY_US' },
+          body: JSON.stringify(payload),
+        });
+        const txt = await res.text();
+        let data; try { data = JSON.parse(txt); } catch (_) { data = { raw: txt }; }
+        if (!res.ok) {
+          const msg = errorMessageFromApi(data, txt.substring(0, 300));
+          const scopeIssue = res.status === 403 || /scope|insufficient permission/i.test(msg);
+          return json({ ok: false, needsReconnect: scopeIssue, error: 'Send offer failed (' + res.status + '): ' + msg }, res.status);
+        }
+        return json({ ok: true, listingId, offerId: data.offerId || '' });
+      } catch (e) {
+        return json({ ok: false, error: 'Send offer failed: ' + e.message }, 502);
+      }
+    }
+
+    // GET /ebay/account/privileges -- current site-wide selling limit (amount
+    // + quantity per month) and how registered the account is. Uses the
+    // existing sell.account scope -- no reconnect needed. Exists so a seller
+    // gets an early warning before hitting eBay's cap and having listings
+    // silently blocked, instead of finding out when a listing fails.
+    if (url.pathname === '/ebay/account/privileges') {
+      if (request.method !== 'GET') return json({ error: 'GET only' }, 405);
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId, ['owner','admin']);
+      if (auth.error) return auth.error;
+      let ebayToken = '';
+      try { ebayToken = await getEbayUserAccessToken(env); }
+      catch (tokenErr) { return json({ needsToken: true, error: tokenErr.message }, 401); }
+      if (!ebayToken) return json({ needsToken: true, error: 'Connect eBay first: missing user access/refresh token' }, 401);
+
+      try {
+        const res = await fetch('https://api.ebay.com/sell/account/v1/privilege', {
+          headers: { 'Authorization': 'Bearer ' + ebayToken, 'Accept': 'application/json' },
+        });
+        const txt = await res.text();
+        let data; try { data = JSON.parse(txt); } catch (_) { data = { raw: txt }; }
+        if (!res.ok) {
+          const msg = errorMessageFromApi(data, txt.substring(0, 300));
+          const scopeIssue = res.status === 403 || /scope|insufficient permission/i.test(msg);
+          return json({ ok: false, needsReconnect: scopeIssue, error: 'eBay privileges lookup failed (' + res.status + '): ' + msg }, res.status);
+        }
+        return json({
+          ok: true,
+          sellerRegistrationCompleted: !!data.sellerRegistrationCompleted,
+          sellingLimit: {
+            amount: Number(data.sellingLimit?.amount?.value ?? 0),
+            currency: data.sellingLimit?.amount?.currency || 'USD',
+            quantity: Number(data.sellingLimit?.quantity ?? 0),
+          },
+        });
+      } catch (e) {
+        return json({ ok: false, error: 'eBay privileges lookup failed: ' + e.message }, 502);
+      }
+    }
+
     // POST /inventory/record-external-sale -- a manual "this sold somewhere
     // we don't auto-sync" entry point (Whatnot, a manual eBay sale, Mercari,
     // Poshmark, etc). No marketplace API call happens here -- the seller
